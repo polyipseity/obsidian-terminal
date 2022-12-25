@@ -1,15 +1,21 @@
 {
-	"name": "obsidian-sample-plugin",
-	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"name": "obsidian-terminal",
+	"displayName": "Obsidian Terminal",
+	"version": "0.0.0",
+	"description": "Open terminals in Obsidian directly.",
 	"main": "main.js",
 	"scripts": {
-		"dev": "node esbuild.config.mjs",
-		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-		"version": "node version-bump.mjs && git add manifest.json versions.json"
+		"dev": "node scripts/esbuild.config.mjs",
+		"build": "tsc -noEmit -skipLibCheck && node scripts/esbuild.config.mjs production",
+		"version": "node scripts/version-bump.mjs && git add manifest.json versions.json",
+		"postversion": "node scripts/version-commit.mjs"
 	},
-	"keywords": [],
-	"author": "",
+	"keywords": [
+		"obsidian",
+		"plugin",
+		"terminal"
+	],
+	"author": "polyipseity",
 	"license": "MIT",
 	"devDependencies": {
 		"@types/node": "^16.11.6",
@@ -20,5 +26,11 @@
 		"obsidian": "latest",
 		"tslib": "2.4.0",
 		"typescript": "4.7.4"
-	}
+	},
+	"obsidian": {
+		"minAppVersion": "1.1.9",
+		"authorUrl": "",
+		"fundingUrl": {},
+		"isDesktopOnly": false
+	}	
 }
