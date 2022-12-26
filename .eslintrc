@@ -52,7 +52,6 @@
       {
         "code": 80,
         "tabWidth": 2,
-        "ignorePattern": true,
         "ignoreUrls": true,
         "ignoreStrings": true,
         "ignoreTemplateLiterals": true,
