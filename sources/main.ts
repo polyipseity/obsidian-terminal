@@ -8,13 +8,18 @@ import {
 	TFolder,
 } from "obsidian"
 import { SettingTab, type TerminalExecutables, getDefaultSettings } from "./settings"
+import { TerminalView, type TerminalViewState } from "./terminal"
 import type Settings from "./settings"
 import { notice } from "./util"
 import { spawn } from "child_process"
 
 export default class ObsidianTerminalPlugin extends Plugin {
-	protected readonly adapter = this.app.vault.adapter as FileSystemAdapter
 	public readonly settings: Settings = getDefaultSettings()
+	protected readonly adapter = this.app.vault.adapter as FileSystemAdapter
+	protected readonly platform: keyof TerminalExecutables | null =
+		process.platform in this.settings.executables
+			? process.platform as keyof TerminalExecutables
+			: null
 
 	public async onload(): Promise<void> {
 		if (!Platform.isDesktopApp) {
@@ -24,25 +29,52 @@ export default class ObsidianTerminalPlugin extends Plugin {
 		await this.loadSettings()
 		this.addSettingTab(new SettingTab(this.app, this))
 
-		const spawnTerminal = (cwd: string): void => {
-			if (!(process.platform in this.settings.executables)) {
+		this.registerView(TerminalView.viewType, leaf => new TerminalView(leaf))
+
+		const spawnTerminal = async (cwd: string, mode: "external" | "integrated"): Promise<void> => {
+			if (this.platform === null) {
 				return
 			}
-			const exec =
-				this.settings.executables[process.platform as keyof TerminalExecutables],
+			const executable =
+				this.settings.executables[this.platform],
 				noticeTimeout = 5000
-			notice(`Spawning terminal: ${exec}`, noticeTimeout)
-			spawn(exec, {
-				cwd,
-				detached: true,
-				shell: true,
-				stdio: "ignore",
-			})
-				.on("error", err => {
-					console.error(`Error spawning terminal: ${err.name}: ${err.message}`)
-					notice(`Error spawning terminal: ${err.name}: ${err.message}`)
-				})
-				.unref()
+			notice(`Spawning terminal: ${executable}`, noticeTimeout)
+			switch (mode) {
+				case "external": {
+					spawn(executable, {
+						cwd,
+						detached: true,
+						shell: true,
+						stdio: "ignore",
+					})
+						.on("error", err => {
+							console.error(`Error spawning terminal: ${err.name}: ${err.message}`)
+							notice(`Error spawning terminal: ${err.name}: ${err.message}`)
+						})
+						.unref()
+					break
+				}
+				case "integrated": {
+					const leaf = this.app.workspace.getLeaf("split", "horizontal"),
+						state: TerminalViewState =
+						{
+							cwd,
+							executable,
+							platform: this.platform,
+							type: "TerminalViewState",
+						}
+					await leaf.setViewState({
+						active: true,
+						state,
+						type: TerminalView.viewType,
+					})
+					this.app.workspace.revealLeaf(leaf)
+					this.app.workspace.setActiveLeaf(leaf, { focus: true })
+					break
+				}
+				default:
+					throw new TypeError(mode)
+			}
 		}
 
 		this.addCommand({
@@ -51,7 +83,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 					return false
 				}
 				if (!checking) {
-					spawnTerminal(this.adapter.getBasePath())
+					void spawnTerminal(this.adapter.getBasePath(), "external")
 				}
 				return true
 			},
@@ -59,17 +91,43 @@ export default class ObsidianTerminalPlugin extends Plugin {
 			name: "Open in external terminal (root)",
 		})
 		this.addCommand({
+			checkCallback: checking => {
+				if (!this.settings.command) {
+					return false
+				}
+				if (!checking) {
+					void spawnTerminal(this.adapter.getBasePath(), "integrated")
+				}
+				return true
+			},
+			id: "open-integrated-terminal-root",
+			name: "Open in integrated terminal (root)",
+		})
+		this.addCommand({
 			editorCheckCallback: (checking, _0, ctx) => {
 				if (!this.settings.command || ctx.file === null) {
 					return false
 				}
 				if (!checking) {
-					spawnTerminal(this.adapter.getFullPath(ctx.file.parent.path))
+					void spawnTerminal(this.adapter.getFullPath(ctx.file.parent.path), "external")
 				}
 				return true
 			},
 			id: "open-external-terminal-editor",
 			name: "Open in external terminal (editor)",
+		})
+		this.addCommand({
+			editorCheckCallback: (checking, _0, ctx) => {
+				if (!this.settings.command || ctx.file === null) {
+					return false
+				}
+				if (!checking) {
+					void spawnTerminal(this.adapter.getFullPath(ctx.file.parent.path), "integrated")
+				}
+				return true
+			},
+			id: "open-integrated-terminal-editor",
+			name: "Open in integrated terminal (editor)",
 		})
 
 		const addContextMenus = (menu: Menu, cwd: TFolder): void => {
@@ -78,8 +136,14 @@ export default class ObsidianTerminalPlugin extends Plugin {
 				.addItem(item => item
 					.setTitle("Open in external terminal")
 					.setIcon("terminal")
-					.onClick(() => {
-						spawnTerminal(this.adapter.getFullPath(cwd.path))
+					.onClick(async () => {
+						await spawnTerminal(this.adapter.getFullPath(cwd.path), "external")
+					}))
+				.addItem(item => item
+					.setTitle("Open in integrated terminal")
+					.setIcon("terminal-square")
+					.onClick(async () => {
+						await spawnTerminal(this.adapter.getFullPath(cwd.path), "integrated")
 					}))
 		}
 		this.registerEvent(this.app.workspace.on("file-menu", (menu, file,) => {

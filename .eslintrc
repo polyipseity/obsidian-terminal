@@ -28,6 +28,7 @@
       "error",
       "as-needed"
     ],
+    "class-methods-use-this": "off",
     "comma-dangle": "off",
     "dot-location": [
       "error",
@@ -59,12 +60,14 @@
       }
     ],
     "max-lines-per-function": "off",
+    "max-statements": "off",
     "multiline-ternary": [
       "error",
       "always-multiline"
     ],
     "no-console": "off",
     "no-empty-function": "off",
+    "no-unused-vars": "off",
     "no-tabs": [
       "error",
       {
@@ -72,6 +75,12 @@
       }
     ],
     "no-ternary": "off",
+    "no-void": [
+      "error",
+      {
+        "allowAsStatement": true
+      }
+    ],
     "object-curly-spacing": "off",
     "one-var": [
       "error",
@@ -91,6 +100,7 @@
       }
     ],
     "semi": "off",
+    "sort-vars": "off",
     "space-before-function-paren": "off",
     "@typescript-eslint/comma-dangle": [
       "error",
@@ -101,6 +111,12 @@
       {
         "prefer": "type-imports",
         "disallowTypeAnnotations": true
+      }
+    ],
+    "@typescript-eslint/explicit-module-boundary-types": [
+      "error",
+      {
+        "allowArgumentsExplicitlyTypedAsAny": true
       }
     ],
     "@typescript-eslint/indent": [
@@ -173,6 +189,13 @@
         "allow": [
           "overrideMethods"
         ]
+      }
+    ],
+    "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_"
       }
     ],
     "@typescript-eslint/object-curly-spacing": [

@@ -27,6 +27,10 @@
 		"tslib": "2.4.0",
 		"typescript": "4.7.4"
 	},
+	"dependencies": {
+		"xterm": "5.1.0",
+		"xterm-addon-fit": "0.7.0"
+	},
 	"obsidian": {
 		"minAppVersion": "1.1.9",
 		"authorUrl": "",
