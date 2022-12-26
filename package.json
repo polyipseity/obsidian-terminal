@@ -5,10 +5,10 @@
 	"description": "Open terminals in Obsidian directly.",
 	"main": "main.js",
 	"scripts": {
-		"dev": "node scripts/esbuild.config.mjs",
-		"build": "tsc -noEmit -skipLibCheck && node scripts/esbuild.config.mjs production",
-		"version": "node scripts/version-bump.mjs && git add manifest.json versions.json",
-		"postversion": "node scripts/version-commit.mjs"
+		"dev": "node build/esbuild.config.mjs",
+		"build": "tsc -noEmit -skipLibCheck && node build/esbuild.config.mjs production",
+		"version": "node build/version-bump.mjs && git add manifest.json versions.json",
+		"postversion": "node build/version-commit.mjs"
 	},
 	"keywords": [
 		"obsidian",
