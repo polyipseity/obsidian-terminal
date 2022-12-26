@@ -1,137 +1,177 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian'
+import { spawn } from "child_process"
+import "node:process"
+import { App, FileSystemAdapter, MarkdownView, Menu, Notice, Platform, Plugin, PluginSettingTab, Setting, TFolder } from "obsidian"
 
-// Remember to rename these classes and interfaces!
-
-interface MyPluginSettings {
-	mySetting: string
+interface TerminalExecs {
+	darwin: string
+	linux: string
+	win32: string
+}
+interface Settings {
+	command: boolean
+	context_menu: boolean
+	execs: TerminalExecs
+}
+function getDefaultSettings(): Settings {
+	return {
+		command: true,
+		context_menu: true,
+		execs: {
+			darwin: "Terminal.app",
+			linux: "xterm",
+			win32: "C:\\Windows\\System32\\cmd.exe",
+		},
+	}
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
-}
+export default class ObsidianTerminalPlugin extends Plugin {
+	readonly adapter: FileSystemAdapter = this.app.vault.adapter as FileSystemAdapter
+	readonly settings: Settings = getDefaultSettings()
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings
+	async onload(): Promise<void> {
+		if (!Platform.isDesktopApp) return
 
-	async onload() {
 		await this.loadSettings()
+		this.addSettingTab(new SettingTab(this.app, this))
 
-		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!')
-		})
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class')
+		const spawnTerminal = (cwd: string): void => {
+			if (!(process.platform in this.settings.execs)) return
+			const exec = this.settings.execs[process.platform as keyof TerminalExecs]
+			new Notice("Spawning terminal: " + exec, 10000)
+			spawn(exec, { cwd, shell: true, detached: true, stdio: "ignore", })
+				.on("error", err => {
+					console.error("Error spawning terminal: " + err)
+					new Notice("Error spawning terminal: " + err.message)
+				})
+				.unref()
+		}
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem()
-		statusBarItemEl.setText('Status Bar Text')
-
-		// This adds a simple command that can be triggered anywhere
 		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open()
+			id: "open-external-terminal-root",
+			name: "Open in external terminal (root)",
+			checkCallback: checking => {
+				if (this.settings.command) {
+					if (!checking) spawnTerminal(this.adapter.getBasePath())
+					return true
+				}
 			}
 		})
-		// This adds an editor command that can perform some operation on the current editor instance
 		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection())
-				editor.replaceSelection('Sample Editor Command')
-			}
-		})
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView)
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open()
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
+			id: "open-external-terminal-editor",
+			name: "Open in external terminal (editor)",
+			editorCheckCallback: (checking, _, ctx) => {
+				if (this.settings.command && ctx.file !== null) {
+					if (!checking) spawnTerminal(this.adapter.getFullPath(ctx.file.parent.path))
 					return true
 				}
 			}
 		})
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this))
-
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt)
-		})
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000))
+		const addContextMenus = (menu: Menu, cwd: TFolder): void => {
+			menu
+				.addSeparator()
+				.addItem(item => item
+					.setTitle("Open in external terminal")
+					.setIcon("terminal")
+					.onClick(() => spawnTerminal(this.adapter.getFullPath(cwd.path))))
+		}
+		this.registerEvent(this.app.workspace.on("file-menu", (menu, file,) => {
+			if (!this.settings.context_menu) return
+			addContextMenus(menu, file instanceof TFolder ? file : file.parent)
+		}))
+		this.registerEvent(this.app.workspace.on("editor-menu", (menu, _, info,) => {
+			if (!this.settings.context_menu) return
+			if (info instanceof MarkdownView) return
+			if (info.file === null) return
+			addContextMenus(menu, info.file.parent)
+		}))
 	}
 
-	onunload() {
+	async onunload(): Promise<void> { }
 
+	async loadSettings(): Promise<void> {
+		Object.assign(this.settings, await this.loadData())
 	}
 
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData())
-	}
-
-	async saveSettings() {
+	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings)
 	}
 }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app)
-	}
-
-	onOpen() {
-		const {contentEl} = this
-		contentEl.setText('Woah!')
-	}
-
-	onClose() {
-		const {contentEl} = this
-		contentEl.empty()
-	}
-}
-
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin
-
-	constructor(app: App, plugin: MyPlugin) {
+class SettingTab extends PluginSettingTab {
+	constructor(app: App, readonly plugin: ObsidianTerminalPlugin) {
 		super(app, plugin)
-		this.plugin = plugin
 	}
 
 	display(): void {
-		const {containerEl} = this
-
+		const { containerEl } = this
 		containerEl.empty()
-
-		containerEl.createEl('h2', {text: 'Settings for my awesome plugin.'})
+		containerEl.createEl("h1", { text: "Obsidian Terminal", })
+		new Setting(containerEl)
+			.setName("Reset all")
+			.addButton(button => button
+				.setTooltip("Reset")
+				.setIcon("reset")
+				.onClick(async () => {
+					Object.assign(this.plugin.settings, getDefaultSettings())
+					await this.plugin.saveSettings()
+					this.display()
+				}))
 
 		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					console.log('Secret: ' + value)
-					this.plugin.settings.mySetting = value
+			.setName("Command")
+			.setDesc("Add terminal commands.")
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.command)
+				.onChange(async value => {
+					this.plugin.settings.command = value
 					await this.plugin.saveSettings()
 				}))
+			.addExtraButton(button => button
+				.setTooltip("Reset")
+				.setIcon("reset")
+				.onClick(async () => {
+					this.plugin.settings.command = getDefaultSettings().command
+					await this.plugin.saveSettings()
+					this.display()
+				}))
+		new Setting(containerEl)
+			.setName("Context menu")
+			.setDesc("Add terminal buttons to context menus.")
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.context_menu)
+				.onChange(async value => {
+					this.plugin.settings.context_menu = value
+					await this.plugin.saveSettings()
+				}))
+			.addExtraButton(button => button
+				.setTooltip("Reset")
+				.setIcon("reset")
+				.onClick(async () => {
+					this.plugin.settings.context_menu = getDefaultSettings().context_menu
+					await this.plugin.saveSettings()
+					this.display()
+				}))
+
+		containerEl.createEl("h2", { text: "Executables", })
+		for (const [key, def_val] of Object.entries(getDefaultSettings().execs)) {
+			const key0 = key as keyof TerminalExecs
+			new Setting(containerEl)
+				.setName(key)
+				.addText(text => text
+					.setValue(this.plugin.settings.execs[key0])
+					.onChange(async value => {
+						this.plugin.settings.execs[key0] = value
+						await this.plugin.saveSettings()
+					}))
+				.addExtraButton(button => button
+					.setTooltip("Reset")
+					.setIcon("reset")
+					.onClick(async () => {
+						this.plugin.settings.execs[key0] = getDefaultSettings().execs[key0]
+						await this.plugin.saveSettings()
+						this.display()
+					}))
+		}
 	}
 }
