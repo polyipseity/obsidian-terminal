@@ -22,7 +22,8 @@
   },
   "ignorePatterns": [
     "node_modules",
-    "build"
+    "build",
+    "main.js"
   ],
   "rules": {}
 }
