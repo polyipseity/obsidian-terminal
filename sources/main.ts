@@ -1,4 +1,3 @@
-import "node:process"
 import {
 	type FileSystemAdapter,
 	MarkdownView,
@@ -11,14 +10,15 @@ import { SettingTab, type TerminalExecutables, getDefaultSettings } from "./sett
 import { TerminalView, type TerminalViewState } from "./terminal"
 import type Settings from "./settings"
 import { notice } from "./util"
+import { platform } from "process"
 import { spawn } from "child_process"
 
 export default class ObsidianTerminalPlugin extends Plugin {
 	public readonly settings: Settings = getDefaultSettings()
 	protected readonly adapter = this.app.vault.adapter as FileSystemAdapter
 	protected readonly platform: keyof TerminalExecutables | null =
-		process.platform in this.settings.executables
-			? process.platform as keyof TerminalExecutables
+		platform in this.settings.executables
+			? platform as keyof TerminalExecutables
 			: null
 
 	public async onload(): Promise<void> {
