@@ -15,7 +15,10 @@
     "plugin:@typescript-eslint/strict"
   ],
   "parserOptions": {
-    "sourceType": "module"
+    "sourceType": "module",
+    "project": [
+      "tsconfig.json"
+    ]
   },
   "ignorePatterns": [
     "node_modules",
