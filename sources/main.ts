@@ -30,7 +30,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 			}
 			const exec =
 				this.settings.executables[process.platform as keyof TerminalExecutables],
-				noticeTimeout = 10000
+				noticeTimeout = 5000
 			notice(`Spawning terminal: ${exec}`, noticeTimeout)
 			spawn(exec, {
 				cwd,
