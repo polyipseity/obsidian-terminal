@@ -13,7 +13,7 @@ import { notice } from "./util"
 import { spawn } from "child_process"
 
 export default class ObsidianTerminalPlugin extends Plugin {
-	public readonly adapter = this.app.vault.adapter as FileSystemAdapter
+	protected readonly adapter = this.app.vault.adapter as FileSystemAdapter
 	public readonly settings: Settings = getDefaultSettings()
 
 	public async onload(): Promise<void> {
