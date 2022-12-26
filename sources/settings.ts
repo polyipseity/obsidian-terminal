@@ -4,9 +4,9 @@ import type ObsidianTerminalPlugin from "./main"
 export default interface Settings {
 	command: boolean
 	contextMenu: boolean
-	execs: TerminalExecs
+	executables: TerminalExecutables
 }
-export interface TerminalExecs {
+export interface TerminalExecutables {
 	darwin: string
 	linux: string
 	win32: string
@@ -15,7 +15,7 @@ export function getDefaultSettings(): Settings {
 	return {
 		command: true,
 		contextMenu: true,
-		execs: {
+		executables: {
 			darwin: "Terminal.app",
 			linux: "xterm",
 			win32: "C:\\Windows\\System32\\cmd.exe",
@@ -83,22 +83,22 @@ export class SettingTab extends PluginSettingTab {
 				}))
 
 		containerEl.createEl("h2", { text: "Executables" })
-		for (const key of Object.keys(getDefaultSettings().execs)) {
-			const key0 = key as keyof TerminalExecs
+		for (const key of Object.keys(getDefaultSettings().executables)) {
+			const key0 = key as keyof TerminalExecutables
 			new Setting(containerEl)
 				.setName(key)
 				.addText(text => text
-					.setValue(this.plugin.settings.execs[key0])
+					.setValue(this.plugin.settings.executables[key0])
 					.onChange(async value => {
-						this.plugin.settings.execs[key0] = value
+						this.plugin.settings.executables[key0] = value
 						await this.plugin.saveSettings()
 					}))
 				.addExtraButton(button => button
 					.setTooltip("Reset")
 					.setIcon("reset")
 					.onClick(async () => {
-						this.plugin.settings.execs[key0] =
-							getDefaultSettings().execs[key0]
+						this.plugin.settings.executables[key0] =
+							getDefaultSettings().executables[key0]
 						await this.plugin.saveSettings()
 						this.display()
 					}))

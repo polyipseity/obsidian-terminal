@@ -7,7 +7,7 @@ import {
 	Plugin,
 	TFolder,
 } from "obsidian"
-import { SettingTab, type TerminalExecs, getDefaultSettings } from "./settings"
+import { SettingTab, type TerminalExecutables, getDefaultSettings } from "./settings"
 import type Settings from "./settings"
 import { notice } from "./util"
 import { spawn } from "child_process"
@@ -25,11 +25,11 @@ export default class ObsidianTerminalPlugin extends Plugin {
 		this.addSettingTab(new SettingTab(this.app, this))
 
 		const spawnTerminal = (cwd: string): void => {
-			if (!(process.platform in this.settings.execs)) {
+			if (!(process.platform in this.settings.executables)) {
 				return
 			}
 			const exec =
-				this.settings.execs[process.platform as keyof TerminalExecs],
+				this.settings.executables[process.platform as keyof TerminalExecutables],
 				noticeTimeout = 10000
 			notice(`Spawning terminal: ${exec}`, noticeTimeout)
 			spawn(exec, {
