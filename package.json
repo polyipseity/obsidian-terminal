@@ -1,7 +1,7 @@
 {
 	"name": "obsidian-terminal",
 	"displayName": "Obsidian Terminal",
-	"version": "0.0.1",
+	"version": "1.0.0",
 	"description": "Open terminals in Obsidian directly.",
 	"main": "main.js",
 	"scripts": {
