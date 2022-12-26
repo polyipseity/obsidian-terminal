@@ -15,6 +15,7 @@ export interface TerminalViewState {
 }
 export class TerminalView extends ItemView {
 	public static readonly viewType = "terminal-view"
+	protected state: TerminalViewState | null = null
 	protected readonly terminal = new Terminal()
 	protected readonly fitAddon = new FitAddon()
 	protected pty?: ChildProcessWithoutNullStreams
@@ -52,7 +53,12 @@ export class TerminalView extends ItemView {
 			this.terminal.write(data as Uint8Array | string)
 		})
 		this.terminal.onData(data => this.pty?.stdin.write(data))
+		this.state = state1
 		await Promise.resolve()
+	}
+
+	public getState(): TerminalViewState | null {
+		return this.state
 	}
 
 	public async onResize(): Promise<void> {
