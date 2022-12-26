@@ -4,7 +4,8 @@ Open terminals in Obsidian directly.
 
 ## Features
 
-- Open folders in terminals externally from commands or context menus.
+- Open files or folders in terminals externally from commands or context menus.
+- Embed terminals inside Obsidian.
 
 ## Installation
 
