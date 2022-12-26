@@ -10,9 +10,7 @@
   "extends": [
     "eslint:all",
     "plugin:@typescript-eslint/eslint-recommended",
-    "plugin:@typescript-eslint/recommended",
-    "plugin:@typescript-eslint/recommended-requiring-type-checking",
-    "plugin:@typescript-eslint/strict"
+    "plugin:@typescript-eslint/all"
   ],
   "parserOptions": {
     "sourceType": "module",
@@ -25,5 +23,186 @@
     "build",
     "main.js"
   ],
-  "rules": {}
+  "rules": {
+    "arrow-parens": [
+      "error",
+      "as-needed"
+    ],
+    "comma-dangle": "off",
+    "dot-location": [
+      "error",
+      "property"
+    ],
+    "func-style": [
+      "error",
+      "declaration",
+      {
+        "allowArrowFunctions": true
+      }
+    ],
+    "function-call-argument-newline": [
+      "error",
+      "consistent"
+    ],
+    "indent": "off",
+    "linebreak-style": "off",
+    "lines-between-class-members": "off",
+    "max-len": [
+      "error",
+      {
+        "code": 80,
+        "tabWidth": 2,
+        "ignorePattern": true,
+        "ignoreUrls": true,
+        "ignoreStrings": true,
+        "ignoreTemplateLiterals": true,
+        "ignoreRegExpLiterals": true
+      }
+    ],
+    "max-lines-per-function": "off",
+    "multiline-ternary": [
+      "error",
+      "always-multiline"
+    ],
+    "no-console": "off",
+    "no-empty-function": "off",
+    "no-tabs": [
+      "error",
+      {
+        "allowIndentationTabs": true
+      }
+    ],
+    "no-ternary": "off",
+    "object-curly-spacing": "off",
+    "one-var": [
+      "error",
+      "consecutive"
+    ],
+    "padded-blocks": [
+      "error",
+      "never"
+    ],
+    "quote-props": [
+      "error",
+      "as-needed",
+      {
+        "keywords": true,
+        "unnecessary": true,
+        "numbers": true
+      }
+    ],
+    "semi": "off",
+    "space-before-function-paren": "off",
+    "@typescript-eslint/comma-dangle": [
+      "error",
+      "always-multiline"
+    ],
+    "@typescript-eslint/consistent-type-imports": [
+      "error",
+      {
+        "prefer": "type-imports",
+        "disallowTypeAnnotations": true
+      }
+    ],
+    "@typescript-eslint/indent": [
+      "error",
+      "tab"
+    ],
+    "@typescript-eslint/lines-between-class-members": [
+      "error",
+      "always",
+      {
+        "exceptAfterSingleLine": true
+      }
+    ],
+    "@typescript-eslint/member-delimiter-style": [
+      "error",
+      {
+        "multiline": {
+          "delimiter": "none",
+          "requireLast": false
+        },
+        "singleline": {
+          "delimiter": "semi",
+          "requireLast": false
+        },
+        "multilineDetection": "brackets"
+      }
+    ],
+    "@typescript-eslint/naming-convention": [
+      "error",
+      {
+        "selector": "default",
+        "format": [
+          "camelCase"
+        ]
+      },
+      {
+        "selector": "variable",
+        "format": [
+          "camelCase",
+          "UPPER_CASE"
+        ]
+      },
+      {
+        "selector": "parameter",
+        "format": [
+          "camelCase"
+        ],
+        "leadingUnderscore": "allow"
+      },
+      {
+        "selector": "memberLike",
+        "modifiers": [
+          "private"
+        ],
+        "format": [
+          "camelCase"
+        ],
+        "leadingUnderscore": "require"
+      },
+      {
+        "selector": "typeLike",
+        "format": [
+          "PascalCase"
+        ]
+      }
+    ],
+    "@typescript-eslint/no-empty-function": [
+      "error",
+      {
+        "allow": [
+          "overrideMethods"
+        ]
+      }
+    ],
+    "@typescript-eslint/object-curly-spacing": [
+      "error",
+      "always"
+    ],
+    "@typescript-eslint/parameter-properties": [
+      "error",
+      {
+        "prefer": "parameter-property"
+      }
+    ],
+    "@typescript-eslint/prefer-readonly-parameter-types": [
+      "off"
+    ],
+    "@typescript-eslint/semi": [
+      "error",
+      "never",
+      {
+        "beforeStatementContinuationChars": "always"
+      }
+    ],
+    "@typescript-eslint/space-before-function-paren": [
+      "error",
+      {
+        "anonymous": "never",
+        "named": "never",
+        "asyncArrow": "always"
+      }
+    ]
+  }
 }
