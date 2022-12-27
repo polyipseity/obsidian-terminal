@@ -20,7 +20,13 @@ export interface TerminalViewState {
 }
 export class TerminalView extends ItemView {
 	public static readonly viewType = "terminal-view"
-	protected state: TerminalViewState | null = null
+	protected state: TerminalViewState = {
+		cwd: "",
+		executable: "",
+		platform: "",
+		type: "TerminalViewState",
+	}
+
 	protected readonly terminal = new Terminal()
 	protected readonly fitAddon = new FitAddon()
 	protected pty?: ChildProcessWithoutNullStreams
@@ -99,7 +105,7 @@ export class TerminalView extends ItemView {
 		await Promise.resolve()
 	}
 
-	public getState(): TerminalViewState | null {
+	public getState(): TerminalViewState {
 		return this.state
 	}
 
@@ -109,7 +115,7 @@ export class TerminalView extends ItemView {
 	}
 
 	public getDisplayText(): string {
-		return i18n.t("views.terminal-view.display-name", { executable: this.getState()?.executable }) as string
+		return i18n.t("views.terminal-view.display-name", { executable: this.getState().executable }) as string
 	}
 
 	public getViewType(): string {
