@@ -133,6 +133,10 @@ export class TerminalView extends ItemView {
 		return i18n.t("views.terminal-view.display-name", { executable: basename(executable, extname(executable)) })
 	}
 
+	public getIcon(): string {
+		return i18n.t("assets:views.terminal-view-icon")
+	}
+
 	public getViewType(): string {
 		return TerminalView.viewType
 	}

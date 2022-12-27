@@ -3,6 +3,9 @@
 		"open-terminal-external-icon": "terminal-square",
 		"open-terminal-integrated-icon": "terminal"
 	},
+	"views": {
+		"terminal-view-icon": "terminal"
+	},
 	"settings": {
 		"reset-icon": "reset"
 	}
