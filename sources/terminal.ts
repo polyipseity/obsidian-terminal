@@ -76,12 +76,21 @@ export class TerminalView extends ItemView {
 				],
 				windowsHide: true,
 				windowsVerbatimArguments: true,
-			}).on("close", () => {
+			}).on("close", (conCode, signal) => {
 				try {
-					const code = parseInt(readFileSync(tmp.name, {
-						encoding: "utf-8",
-						flag: "r",
-					}).trim(), 10)
+					const code = ((): NodeJS.Signals | number => {
+						const termCode = parseInt(readFileSync(tmp.name, {
+							encoding: "utf-8",
+							flag: "r",
+						}).trim(), 10)
+						return isNaN(termCode)
+							? conCode === null
+								? signal === null
+									? NaN
+									: signal
+								: conCode
+							: termCode
+					})()
 					notice(i18n.t("notices.terminal-exited", { code }), code === EXIT_SUCCESS ? this.plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
 				} finally {
 					tmp.removeCallback()
@@ -96,7 +105,8 @@ export class TerminalView extends ItemView {
 					"pipe",
 				],
 				windowsHide: true,
-			}).on("close", code => {
+			}).on("close", (code0, signal) => {
+				const code = code0 === null ? signal === null ? NaN : signal : code0
 				notice(i18n.t("notices.terminal-exited", { code }), code === EXIT_SUCCESS ? this.plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
 			})
 		}
