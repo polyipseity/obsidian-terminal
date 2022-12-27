@@ -1,7 +1,5 @@
 import {
-	type Editor,
 	type FileSystemAdapter,
-	type MarkdownFileInfo,
 	MarkdownView,
 	type Menu,
 	Platform,
@@ -41,51 +39,50 @@ export default class ObsidianTerminalPlugin extends Plugin {
 			leaf => new TerminalView(this, leaf),
 		)
 
-		const terminalSpawnCommand = (type: TerminalType,) => (
-			checking: boolean,
-			_0?: Editor,
-			ctx?: MarkdownFileInfo | MarkdownView,
-		): boolean => {
+		const terminalSpawnCommand = (type: TerminalType, cwd: "current" | "root") => (checking: boolean): boolean => {
 			if (!this.settings.command) {
 				return false
 			}
-			if (typeof ctx === "undefined") {
-				if (!checking) {
-					void this._spawnTerminal(this.adapter.getBasePath(), type)
+			switch (cwd) {
+				case "root": {
+					if (!checking) {
+						void this._spawnTerminal(this.adapter.getBasePath(), type)
+					}
+					return true
 				}
-				return true
+				case "current": {
+					const activeFile = this.app.workspace.getActiveFile()
+					if (activeFile === null) {
+						return false
+					}
+					if (!checking) {
+						void this._spawnTerminal(
+							this.adapter.getFullPath(activeFile.parent.path),
+							type,
+						)
+					}
+					return true
+				}
+				default:
+					throw new TypeError(cwd)
 			}
-			if (ctx.file === null) {
-				return false
-			}
-			if (!checking) {
-				void this._spawnTerminal(
-					this.adapter.getFullPath(ctx.file.parent.path),
-					type,
-				)
-			}
-			return true
 		}
-		this.addCommand({
-			checkCallback: terminalSpawnCommand("external"),
-			id: "open-terminal-external-root",
-			name: i18n.t("commands.open-terminal-external-root"),
-		})
-		this.addCommand({
-			editorCheckCallback: terminalSpawnCommand("external"),
-			id: "open-terminal-external-current",
-			name: i18n.t("commands.open-terminal-external-current"),
-		})
-		this.addCommand({
-			checkCallback: terminalSpawnCommand("integrated"),
-			id: "open-terminal-integrated-root",
-			name: i18n.t("commands.open-terminal-integrated-root"),
-		})
-		this.addCommand({
-			editorCheckCallback: terminalSpawnCommand("integrated"),
-			id: "open-terminal-integrated-current",
-			name: i18n.t("commands.open-terminal-integrated-current"),
-		})
+		for (const type of [
+			"external",
+			"integrated",
+		] as const) {
+			for (const cwd of [
+				"root",
+				"current",
+			] as const) {
+				const id = `open-terminal-${type}-${cwd}` as const
+				this.addCommand({
+					checkCallback: terminalSpawnCommand(type, cwd),
+					id,
+					name: i18n.t(`commands.${id}`),
+				})
+			}
+		}
 
 		const addContextMenus = (menu: Menu, cwd: TFolder): void => {
 			menu
