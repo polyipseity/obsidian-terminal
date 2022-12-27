@@ -57,8 +57,7 @@ export class TerminalView extends ItemView {
 				],
 				windowsHide: true,
 				windowsVerbatimArguments: true,
-			})
-			this.pty.on("close", () => {
+			}).on("close", () => {
 				try {
 					const code = parseInt(readFileSync(tmp.name, {
 						encoding: "utf-8",
@@ -78,11 +77,16 @@ export class TerminalView extends ItemView {
 					"pipe",
 				],
 				windowsHide: true,
-			})
-			this.pty.on("close", code => {
+			}).on("close", code => {
 				notice(i18n.t("errors.error-spawning-terminal", { code }) as string, this.plugin.settings.noticeTimeout)
 			})
 		}
+		this.pty.on("close", () => {
+			this.leaf.detach()
+		}).on("error", error => {
+			printError(error, i18n.t("errors.error-spawning-terminal") as string)
+		})
+
 		this.pty.stdout.on("data", data => {
 			this.terminal.write(data as Uint8Array | string)
 		})
@@ -91,12 +95,7 @@ export class TerminalView extends ItemView {
 		})
 		const { pty } = this
 		this.terminal.onData(data => pty.stdin.write(data))
-		this.pty.on("close", () => {
-			this.leaf.detach()
-		})
-		this.pty.on("error", error => {
-			printError(error, i18n.t("errors.error-spawning-terminal") as string)
-		})
+
 		await Promise.resolve()
 	}
 
