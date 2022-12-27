@@ -70,7 +70,7 @@ export class TerminalView extends ItemView {
 						encoding: "utf-8",
 						flag: "r",
 					}).trim(), 10)
-					notice(i18n.t("errors.error-spawning-terminal", { code }) as string, this.plugin.settings.noticeTimeout)
+					notice(i18n.t("notices.terminal-exited", { code }) as string, this.plugin.settings.noticeTimeout)
 				} finally {
 					tmp.removeCallback()
 				}
@@ -85,7 +85,7 @@ export class TerminalView extends ItemView {
 				],
 				windowsHide: true,
 			}).on("close", code => {
-				notice(i18n.t("errors.error-spawning-terminal", { code }) as string, this.plugin.settings.noticeTimeout)
+				notice(i18n.t("notices.terminal-exited", { code }) as string, this.plugin.settings.noticeTimeout)
 			})
 		}
 		this.pty.on("close", () => {
