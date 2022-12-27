@@ -8,6 +8,7 @@ import { notice, printError } from "./util"
 import { FitAddon } from "xterm-addon-fit"
 import type ObsidianTerminalPlugin from "./main"
 import { Terminal } from "xterm"
+import { i18n } from "./i18n"
 import { readFileSync } from "fs"
 import { fileSync as tmpFileSync } from "tmp"
 
@@ -58,11 +59,11 @@ export class TerminalView extends ItemView {
 				windowsVerbatimArguments: true,
 			})
 			this.pty.on("close", () => {
-				const exitCode = parseInt(readFileSync(tmp.name, {
+				const code = parseInt(readFileSync(tmp.name, {
 					encoding: "utf-8",
 					flag: "r",
 				}).trim(), 10)
-				notice(`Terminal exited with code ${exitCode}`, this.plugin.settings.noticeTimeout)
+				notice(i18n.t("errors.error-spawning-terminal", { code }) as string, this.plugin.settings.noticeTimeout)
 				tmp.removeCallback()
 			})
 		} else {
@@ -75,8 +76,8 @@ export class TerminalView extends ItemView {
 				],
 				windowsHide: true,
 			})
-			this.pty.on("close", exitCode => {
-				notice(`Terminal exited with code ${exitCode === null ? "null" : exitCode}`, this.plugin.settings.noticeTimeout)
+			this.pty.on("close", code => {
+				notice(i18n.t("errors.error-spawning-terminal", { code }) as string, this.plugin.settings.noticeTimeout)
 			})
 		}
 		this.pty.stdout.on("data", data => {
@@ -90,7 +91,9 @@ export class TerminalView extends ItemView {
 		this.pty.on("close", () => {
 			this.leaf.detach()
 		})
-		this.pty.on("error", error => { printError(error, "Error spawning terminal") })
+		this.pty.on("error", error => {
+			printError(error, i18n.t("errors.error-spawning-terminal") as string)
+		})
 		await Promise.resolve()
 	}
 
@@ -104,7 +107,7 @@ export class TerminalView extends ItemView {
 	}
 
 	public getDisplayText(): string {
-		return "Terminal"
+		return i18n.t("views.terminal-view.display-name") as string
 	}
 
 	public getViewType(): string {

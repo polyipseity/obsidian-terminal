@@ -1,0 +1,9 @@
+{
+	"menus": {
+		"open-terminal-external-icon": "terminal",
+		"open-terminal-integrated-icon": "terminal-square"
+	},
+	"settings": {
+		"reset-icon": "reset"
+	}
+}

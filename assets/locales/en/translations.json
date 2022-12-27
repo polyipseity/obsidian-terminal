@@ -1,0 +1,40 @@
+{
+	"commands": {
+		"open-terminal-external-root": "Open root in external terminal",
+		"open-terminal-external-current": "Open current folder in external terminal",
+		"open-terminal-integrated-root": "Open root in integrated terminal",
+		"open-terminal-integrated-current": "Open current folder in integrated terminal"
+	},
+	"errors": {
+		"error": "Error",
+		"error-spawning-terminal": "Error spawning terminal",
+		"unsupported-platform": "Unsupported platform"
+	},
+	"menus": {
+		"open-terminal-external": "Open in external terminal",
+		"open-terminal-integrated": "Open in integrated terminal"
+	},
+	"name": "Terminal",
+	"notices": {
+		"spawning-terminal": "Spawning terminal",
+		"terminal-exited": "Terminal exited with code {{code}}"
+	},
+	"settings": {
+		"add-to-commands": "Add to commands",
+		"add-to-context-menus": "Add to context menus",
+		"executables": "Executables",
+		"executable-list": {
+			"darwin": "MacOS",
+			"linux": "Linux",
+			"win32": "Windows"
+		},
+		"notice-timeout": "Notice timeout",
+		"reset": "Reset",
+		"reset-all": "Reset all"
+	},
+	"views": {
+		"terminal-view": {
+			"display-name": "Terminal"
+		}
+	}
+}

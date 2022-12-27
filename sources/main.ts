@@ -12,6 +12,7 @@ import { SettingTab, type TerminalExecutables, getDefaultSettings } from "./sett
 import { TerminalView, type TerminalViewState } from "./terminal"
 import { notice, printError } from "./util"
 import type Settings from "./settings"
+import { i18n } from "./i18n"
 import { platform } from "process"
 import { spawn } from "child_process"
 
@@ -63,37 +64,37 @@ export default class ObsidianTerminalPlugin extends Plugin {
 		}
 		this.addCommand({
 			checkCallback: terminalSpawnCommand("external"),
-			id: "open-external-terminal-root",
-			name: "Open in external terminal (root)",
-		})
-		this.addCommand({
-			checkCallback: terminalSpawnCommand("integrated"),
-			id: "open-integrated-terminal-root",
-			name: "Open in integrated terminal (root)",
+			id: "open-terminal-external-root",
+			name: i18n.t("commands.open-terminal-external-root") as string,
 		})
 		this.addCommand({
 			editorCheckCallback: terminalSpawnCommand("external"),
-			id: "open-external-terminal-editor",
-			name: "Open in external terminal (editor)",
+			id: "open-terminal-external-current",
+			name: i18n.t("commands.open-terminal-external-current") as string,
+		})
+		this.addCommand({
+			checkCallback: terminalSpawnCommand("integrated"),
+			id: "open-terminal-integrated-root",
+			name: i18n.t("commands.open-terminal-integrated-root") as string,
 		})
 		this.addCommand({
 			editorCheckCallback: terminalSpawnCommand("integrated"),
-			id: "open-integrated-terminal-editor",
-			name: "Open in integrated terminal (editor)",
+			id: "open-terminal-integrated-current",
+			name: i18n.t("commands.open-terminal-integrated-current") as string,
 		})
 
 		const addContextMenus = (menu: Menu, cwd: TFolder): void => {
 			menu
 				.addSeparator()
 				.addItem(item => item
-					.setTitle("Open in external terminal")
-					.setIcon("terminal")
+					.setTitle(i18n.t("menus.open-terminal-external") as string)
+					.setIcon(i18n.t("assets:menus.open-terminal-external-icon") as string)
 					.onClick(async () => {
 						await this._spawnTerminal(this.adapter.getFullPath(cwd.path), "external")
 					}))
 				.addItem(item => item
-					.setTitle("Open in integrated terminal")
-					.setIcon("terminal-square")
+					.setTitle(i18n.t("menus.open-terminal-integrated") as string)
+					.setIcon(i18n.t("assets:menus.open-terminal-integrated-icon") as string)
 					.onClick(async () => {
 						await this._spawnTerminal(this.adapter.getFullPath(cwd.path), "integrated")
 					}))
@@ -127,10 +128,10 @@ export default class ObsidianTerminalPlugin extends Plugin {
 
 	private async _spawnTerminal(cwd: string, type: TerminalType): Promise<void> {
 		if (this.platform === null) {
-			throw Error("Unsupported platform")
+			throw Error(i18n.t("errors.unsupported-platform") as string)
 		}
 		const executable = this.settings.executables[this.platform]
-		notice(`Spawning terminal: ${executable}`, this.settings.noticeTimeout)
+		notice(`${i18n.t("notices.spawning-terminal") as string}: ${executable}`, this.settings.noticeTimeout)
 		switch (type) {
 			case "external": {
 				spawn(executable, {
@@ -139,7 +140,9 @@ export default class ObsidianTerminalPlugin extends Plugin {
 					shell: true,
 					stdio: "ignore",
 				})
-					.on("error", error => { printError(error, "Error spawning command") })
+					.on("error", error => {
+						printError(error, i18n.t("errors.error-spawning-terminal") as string)
+					})
 					.unref()
 				break
 			}
