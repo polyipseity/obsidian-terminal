@@ -25,65 +25,16 @@ export default class ObsidianTerminalPlugin extends Plugin {
 		if (!Platform.isDesktopApp) {
 			return
 		}
-
 		await this.loadSettings()
 		this.addSettingTab(new SettingTab(this.app, this))
-
 		this.registerView(TerminalView.viewType, leaf => new TerminalView(leaf))
-
-		const spawnTerminal = async (cwd: string, mode: "external" | "integrated"): Promise<void> => {
-			if (this.platform === null) {
-				return
-			}
-			const executable =
-				this.settings.executables[this.platform],
-				noticeTimeout = 5000
-			notice(`Spawning terminal: ${executable}`, noticeTimeout)
-			switch (mode) {
-				case "external": {
-					spawn(executable, {
-						cwd,
-						detached: true,
-						shell: true,
-						stdio: "ignore",
-					})
-						.on("error", err => {
-							console.error(`Error spawning terminal: ${err.name}: ${err.message}`)
-							notice(`Error spawning terminal: ${err.name}: ${err.message}`)
-						})
-						.unref()
-					break
-				}
-				case "integrated": {
-					const leaf = this.app.workspace.getLeaf("split", "horizontal"),
-						state: TerminalViewState =
-						{
-							cwd,
-							executable,
-							platform: this.platform,
-							type: "TerminalViewState",
-						}
-					await leaf.setViewState({
-						active: true,
-						state,
-						type: TerminalView.viewType,
-					})
-					this.app.workspace.revealLeaf(leaf)
-					this.app.workspace.setActiveLeaf(leaf, { focus: true })
-					break
-				}
-				default:
-					throw new TypeError(mode)
-			}
-		}
-
 		this.addCommand({
 			checkCallback: checking => {
 				if (!this.settings.command) {
 					return false
 				}
 				if (!checking) {
-					void spawnTerminal(this.adapter.getBasePath(), "external")
+					void this._spawnTerminal(this.adapter.getBasePath(), "external")
 				}
 				return true
 			},
@@ -96,7 +47,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 					return false
 				}
 				if (!checking) {
-					void spawnTerminal(this.adapter.getBasePath(), "integrated")
+					void this._spawnTerminal(this.adapter.getBasePath(), "integrated")
 				}
 				return true
 			},
@@ -109,7 +60,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 					return false
 				}
 				if (!checking) {
-					void spawnTerminal(this.adapter.getFullPath(ctx.file.parent.path), "external")
+					void this._spawnTerminal(this.adapter.getFullPath(ctx.file.parent.path), "external")
 				}
 				return true
 			},
@@ -122,7 +73,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 					return false
 				}
 				if (!checking) {
-					void spawnTerminal(this.adapter.getFullPath(ctx.file.parent.path), "integrated")
+					void this._spawnTerminal(this.adapter.getFullPath(ctx.file.parent.path), "integrated")
 				}
 				return true
 			},
@@ -137,13 +88,13 @@ export default class ObsidianTerminalPlugin extends Plugin {
 					.setTitle("Open in external terminal")
 					.setIcon("terminal")
 					.onClick(async () => {
-						await spawnTerminal(this.adapter.getFullPath(cwd.path), "external")
+						await this._spawnTerminal(this.adapter.getFullPath(cwd.path), "external")
 					}))
 				.addItem(item => item
 					.setTitle("Open in integrated terminal")
 					.setIcon("terminal-square")
 					.onClick(async () => {
-						await spawnTerminal(this.adapter.getFullPath(cwd.path), "integrated")
+						await this._spawnTerminal(this.adapter.getFullPath(cwd.path), "integrated")
 					}))
 		}
 		this.registerEvent(this.app.workspace.on("file-menu", (menu, file,) => {
@@ -171,5 +122,51 @@ export default class ObsidianTerminalPlugin extends Plugin {
 
 	public async saveSettings(): Promise<void> {
 		await this.saveData(this.settings)
+	}
+
+	private async _spawnTerminal(cwd: string, mode: "external" | "integrated"): Promise<void> {
+		if (this.platform === null) {
+			throw Error("Unsupported platform")
+		}
+		const executable =
+			this.settings.executables[this.platform],
+			noticeTimeout = 5000
+		notice(`Spawning terminal: ${executable}`, noticeTimeout)
+		switch (mode) {
+			case "external": {
+				spawn(executable, {
+					cwd,
+					detached: true,
+					shell: true,
+					stdio: "ignore",
+				})
+					.on("error", err => {
+						console.error(`Error spawning terminal: ${err.name}: ${err.message}`)
+						notice(`Error spawning terminal: ${err.name}: ${err.message}`)
+					})
+					.unref()
+				break
+			}
+			case "integrated": {
+				const leaf = this.app.workspace.getLeaf("split", "horizontal"),
+					state: TerminalViewState =
+					{
+						cwd,
+						executable,
+						platform: this.platform,
+						type: "TerminalViewState",
+					}
+				await leaf.setViewState({
+					active: true,
+					state,
+					type: TerminalView.viewType,
+				})
+				this.app.workspace.revealLeaf(leaf)
+				this.app.workspace.setActiveLeaf(leaf, { focus: true })
+				break
+			}
+			default:
+				throw new TypeError(mode)
+		}
 	}
 }

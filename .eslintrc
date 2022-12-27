@@ -68,6 +68,12 @@
     ],
     "no-console": "off",
     "no-empty-function": "off",
+    "no-underscore-dangle": [
+      "error",
+      {
+        "allowAfterThis": true
+      }
+    ],
     "no-unused-vars": "off",
     "no-tabs": [
       "error",
