@@ -6,6 +6,7 @@ import {
 	type ValueComponent,
 } from "obsidian"
 import type ObsidianTerminalPlugin from "./main"
+import { i18n } from "./i18n"
 
 export default interface Settings {
 	command: boolean
@@ -39,7 +40,8 @@ export class SettingTab extends PluginSettingTab {
 	public display(): void {
 		const { containerEl } = this
 		containerEl.empty()
-		containerEl.createEl("h1", { text: "Terminal" })
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		containerEl.createEl("h1", { text: i18n.t("name") })
 
 		const linkSetting = <C extends ValueComponent<V>
 			& {
