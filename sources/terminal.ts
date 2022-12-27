@@ -36,7 +36,7 @@ export class TerminalView extends ItemView {
 		if (!("type" in state)) {
 			return
 		}
-		const state0 = state as { type: any }
+		const state0 = state as { type: unknown }
 		if (state0.type !== "TerminalViewState" || typeof this.pty !== "undefined") {
 			return
 		}
