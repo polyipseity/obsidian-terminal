@@ -7,6 +7,7 @@ import {
 	Platform,
 	Plugin,
 	TFolder,
+	moment,
 } from "obsidian"
 import { SettingTab, type TerminalExecutables, getDefaultSettings } from "./settings"
 import { TerminalView, type TerminalViewState } from "./terminal"
@@ -30,6 +31,8 @@ export default class ObsidianTerminalPlugin extends Plugin {
 		if (!Platform.isDesktopApp) {
 			return
 		}
+		await i18n.changeLanguage(moment.locale())
+
 		await this.loadSettings()
 		this.addSettingTab(new SettingTab(this))
 		this.registerView(
