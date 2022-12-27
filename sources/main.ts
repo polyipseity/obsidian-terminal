@@ -1,5 +1,7 @@
 import {
+	type Editor,
 	type FileSystemAdapter,
+	type MarkdownFileInfo,
 	MarkdownView,
 	type Menu,
 	Platform,
@@ -12,6 +14,8 @@ import type Settings from "./settings"
 import { notice } from "./util"
 import { platform } from "process"
 import { spawn } from "child_process"
+
+type TerminalType = "external" | "integrated"
 
 export default class ObsidianTerminalPlugin extends Plugin {
 	public readonly settings: Settings = getDefaultSettings()
@@ -31,55 +35,49 @@ export default class ObsidianTerminalPlugin extends Plugin {
 			TerminalView.viewType,
 			leaf => new TerminalView(this, leaf),
 		)
-		this.addCommand({
-			checkCallback: checking => {
-				if (!this.settings.command) {
-					return false
-				}
+
+		const terminalSpawnCommand = (type: TerminalType,) => (
+			checking: boolean,
+			_0?: Editor,
+			ctx?: MarkdownFileInfo | MarkdownView,
+		): boolean => {
+			if (!this.settings.command) {
+				return false
+			}
+			if (typeof ctx === "undefined") {
 				if (!checking) {
-					void this._spawnTerminal(this.adapter.getBasePath(), "external")
+					void this._spawnTerminal(this.adapter.getBasePath(), type)
 				}
 				return true
-			},
+			}
+			if (ctx.file === null) {
+				return false
+			}
+			if (!checking) {
+				void this._spawnTerminal(
+					this.adapter.getFullPath(ctx.file.parent.path),
+					type,
+				)
+			}
+			return true
+		}
+		this.addCommand({
+			checkCallback: terminalSpawnCommand("external"),
 			id: "open-external-terminal-root",
 			name: "Open in external terminal (root)",
 		})
 		this.addCommand({
-			checkCallback: checking => {
-				if (!this.settings.command) {
-					return false
-				}
-				if (!checking) {
-					void this._spawnTerminal(this.adapter.getBasePath(), "integrated")
-				}
-				return true
-			},
+			checkCallback: terminalSpawnCommand("integrated"),
 			id: "open-integrated-terminal-root",
 			name: "Open in integrated terminal (root)",
 		})
 		this.addCommand({
-			editorCheckCallback: (checking, _0, ctx) => {
-				if (!this.settings.command || ctx.file === null) {
-					return false
-				}
-				if (!checking) {
-					void this._spawnTerminal(this.adapter.getFullPath(ctx.file.parent.path), "external")
-				}
-				return true
-			},
+			editorCheckCallback: terminalSpawnCommand("external"),
 			id: "open-external-terminal-editor",
 			name: "Open in external terminal (editor)",
 		})
 		this.addCommand({
-			editorCheckCallback: (checking, _0, ctx) => {
-				if (!this.settings.command || ctx.file === null) {
-					return false
-				}
-				if (!checking) {
-					void this._spawnTerminal(this.adapter.getFullPath(ctx.file.parent.path), "integrated")
-				}
-				return true
-			},
+			editorCheckCallback: terminalSpawnCommand("integrated"),
 			id: "open-integrated-terminal-editor",
 			name: "Open in integrated terminal (editor)",
 		})
@@ -127,14 +125,14 @@ export default class ObsidianTerminalPlugin extends Plugin {
 		await this.saveData(this.settings)
 	}
 
-	private async _spawnTerminal(cwd: string, mode: "external" | "integrated"): Promise<void> {
+	private async _spawnTerminal(cwd: string, type: TerminalType): Promise<void> {
 		if (this.platform === null) {
 			throw Error("Unsupported platform")
 		}
 		const executable =
 			this.settings.executables[this.platform]
 		notice(`Spawning terminal: ${executable}`, this.settings.noticeTimeout)
-		switch (mode) {
+		switch (type) {
 			case "external": {
 				spawn(executable, {
 					cwd,
@@ -168,7 +166,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 				break
 			}
 			default:
-				throw new TypeError(mode)
+				throw new TypeError(type)
 		}
 	}
 }
