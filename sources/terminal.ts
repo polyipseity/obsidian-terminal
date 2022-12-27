@@ -80,7 +80,7 @@ export class TerminalView extends ItemView {
 						encoding: "utf-8",
 						flag: "r",
 					}).trim(), 10)
-					notice(i18n.t("notices.terminal-exited", { code }) as string, code === EXIT_SUCCESS ? this.plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
+					notice(i18n.t("notices.terminal-exited", { code }), code === EXIT_SUCCESS ? this.plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
 				} finally {
 					tmp.removeCallback()
 				}
@@ -95,13 +95,13 @@ export class TerminalView extends ItemView {
 				],
 				windowsHide: true,
 			}).on("close", code => {
-				notice(i18n.t("notices.terminal-exited", { code }) as string, code === EXIT_SUCCESS ? this.plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
+				notice(i18n.t("notices.terminal-exited", { code }), code === EXIT_SUCCESS ? this.plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
 			})
 		}
 		this.pty.on("close", () => {
 			this.leaf.detach()
 		}).on("error", error => {
-			printError(error, i18n.t("errors.error-spawning-terminal") as string)
+			printError(error, i18n.t("errors.error-spawning-terminal"))
 		})
 
 		this.pty.stdout.on("data", data => {
@@ -127,7 +127,7 @@ export class TerminalView extends ItemView {
 
 	public getDisplayText(): string {
 		const { executable } = this.getState()
-		return i18n.t("views.terminal-view.display-name", { executable: basename(executable, extname(executable)) }) as string
+		return i18n.t("views.terminal-view.display-name", { executable: basename(executable, extname(executable)) })
 	}
 
 	public getViewType(): string {

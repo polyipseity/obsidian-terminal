@@ -10,7 +10,7 @@ export function notice(
 
 export function printError(
 	error: Error,
-	message = i18n.t("errors.error") as string,
+	message = i18n.t("errors.error"),
 ): void {
 	console.error(`${message}: ${error.name}: ${error.message}${typeof error.stack === "undefined" ? "" : `\n${error.stack}`}`)
 	notice(`${message}: ${error.name}: ${error.message}`)

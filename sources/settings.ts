@@ -40,7 +40,7 @@ export class SettingTab extends PluginSettingTab {
 	public display(): void {
 		const { containerEl } = this
 		containerEl.empty()
-		containerEl.createEl("h1", { text: i18n.t("name") as string })
+		containerEl.createEl("h1", { text: i18n.t("name") })
 
 		const linkSetting = <C extends ValueComponent<V>
 			& {
@@ -68,8 +68,8 @@ export class SettingTab extends PluginSettingTab {
 			) =>
 				(component: C) => {
 					component
-						.setTooltip(i18n.t("settings.reset") as string)
-						.setIcon(i18n.t("assets:settings.reset-icon") as string)
+						.setTooltip(i18n.t("settings.reset"))
+						.setIcon(i18n.t("assets:settings.reset-icon"))
 						.onClick(async () => {
 							const ret = resetter(component)
 							if (typeof ret === "boolean" && !ret) {
@@ -105,13 +105,13 @@ export class SettingTab extends PluginSettingTab {
 			}
 
 		new Setting(containerEl)
-			.setName(i18n.t("settings.reset-all") as string)
+			.setName(i18n.t("settings.reset-all"))
 			.addButton(resetButton(() => {
 				Object.assign(this.plugin.settings, getDefaultSettings())
 			}))
 
 		new Setting(containerEl)
-			.setName(i18n.t("settings.add-to-commands") as string)
+			.setName(i18n.t("settings.add-to-commands"))
 			.addToggle(linkSetting(
 				() => this.plugin.settings.command,
 				value => {
@@ -122,7 +122,7 @@ export class SettingTab extends PluginSettingTab {
 				this.plugin.settings.command = getDefaultSettings().command
 			}))
 		new Setting(containerEl)
-			.setName(i18n.t("settings.add-to-context-menus") as string)
+			.setName(i18n.t("settings.add-to-context-menus"))
 			.addToggle(linkSetting(
 				() => this.plugin.settings.contextMenu,
 				value => {
@@ -134,7 +134,7 @@ export class SettingTab extends PluginSettingTab {
 			}))
 
 		new Setting(containerEl)
-			.setName(i18n.t("settings.notice-timeout") as string)
+			.setName(i18n.t("settings.notice-timeout"))
 			.addText(linkSetting(
 				() => this.plugin.settings.noticeTimeout.toString(),
 				textToNumberSetter(value => {
@@ -146,11 +146,11 @@ export class SettingTab extends PluginSettingTab {
 					getDefaultSettings().noticeTimeout
 			}))
 
-		containerEl.createEl("h2", { text: i18n.t("settings.executables") as string })
+		containerEl.createEl("h2", { text: i18n.t("settings.executables") })
 		for (const key of Object.keys(getDefaultSettings().executables)) {
 			const key0 = key as keyof TerminalExecutables
 			new Setting(containerEl)
-				.setName(i18n.t(`settings.executable-list.${key0}`) as string)
+				.setName(i18n.t(`settings.executable-list.${key0}`))
 				.addText(linkSetting(
 					() => this.plugin.settings.executables[key0],
 					value => {
