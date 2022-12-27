@@ -59,12 +59,15 @@ export class TerminalView extends ItemView {
 				windowsVerbatimArguments: true,
 			})
 			this.pty.on("close", () => {
-				const code = parseInt(readFileSync(tmp.name, {
-					encoding: "utf-8",
-					flag: "r",
-				}).trim(), 10)
-				notice(i18n.t("errors.error-spawning-terminal", { code }) as string, this.plugin.settings.noticeTimeout)
-				tmp.removeCallback()
+				try {
+					const code = parseInt(readFileSync(tmp.name, {
+						encoding: "utf-8",
+						flag: "r",
+					}).trim(), 10)
+					notice(i18n.t("errors.error-spawning-terminal", { code }) as string, this.plugin.settings.noticeTimeout)
+				} finally {
+					tmp.removeCallback()
+				}
 			})
 		} else {
 			this.pty = spawn(this.state.executable, [], {
