@@ -25,10 +25,9 @@ export function getDefaultSettings(): Settings {
 
 export class SettingTab extends PluginSettingTab {
 	public constructor(
-		app: App,
 		protected readonly plugin: ObsidianTerminalPlugin,
 	) {
-		super(app, plugin)
+		super(plugin.app, plugin)
 	}
 
 	public display(): void {

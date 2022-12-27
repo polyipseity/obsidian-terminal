@@ -26,8 +26,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 			return
 		}
 		await this.loadSettings()
-		this.addSettingTab(new SettingTab(this.app, this))
-		this.registerView(TerminalView.viewType, leaf => new TerminalView(leaf))
+		this.addSettingTab(new SettingTab(this))
 		this.addCommand({
 			checkCallback: checking => {
 				if (!this.settings.command) {
