@@ -1,0 +1,3 @@
+export const
+	EXIT_SUCCESS = 0,
+	NOTICE_NO_TIMEOUT = 0
