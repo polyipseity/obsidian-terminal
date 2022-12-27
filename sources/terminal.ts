@@ -1,5 +1,5 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "child_process"
-import { Debouncer, notice, printError } from "./util"
+import { Debouncer, notice, onVisible, printError } from "./util"
 import { EXIT_SUCCESS, NOTICE_NO_TIMEOUT } from "./magic"
 import {
 	ItemView,
@@ -122,11 +122,10 @@ export class TerminalView extends ItemView {
 		return this.state
 	}
 
-	public async onResize(): Promise<void> {
+	public onResize(): void {
 		this.resizeDebouncer.apply(() => {
 			this.terminalAddons.fit.fit()
 		})
-		await Promise.resolve()
 	}
 
 	public getDisplayText(): string {
@@ -141,9 +140,16 @@ export class TerminalView extends ItemView {
 	protected async onOpen(): Promise<void> {
 		const { containerEl } = this
 		containerEl.empty()
-		this.terminal.open(containerEl.createDiv())
-		await this.onResize()
-		this.terminal.focus()
+		containerEl.createDiv({}, el => {
+			onVisible(el, observer => {
+				try {
+					this.terminal.open(el)
+				} finally {
+					observer.disconnect()
+				}
+			})
+		})
+		await Promise.resolve()
 	}
 
 	protected async onClose(): Promise<void> {
