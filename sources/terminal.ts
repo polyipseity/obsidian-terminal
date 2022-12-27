@@ -8,7 +8,9 @@ import { basename, extname } from "path"
 import { notice, printError } from "./util"
 import { FitAddon } from "xterm-addon-fit"
 import type ObsidianTerminalPlugin from "./main"
+import { SearchAddon } from "xterm-addon-search"
 import { Terminal } from "xterm"
+import { WebLinksAddon } from "xterm-addon-web-links"
 import { i18n } from "./i18n"
 import { readFileSync } from "fs"
 import { fileSync as tmpFileSync } from "tmp"
@@ -29,7 +31,12 @@ export class TerminalView extends ItemView {
 	}
 
 	protected readonly terminal = new Terminal()
-	protected readonly fitAddon = new FitAddon()
+	protected readonly terminalAddons = {
+		fit: new FitAddon(),
+		search: new SearchAddon(),
+		webLinks: new WebLinksAddon(),
+	} as const
+
 	protected pty?: ChildProcessWithoutNullStreams
 
 	public constructor(
@@ -37,7 +44,9 @@ export class TerminalView extends ItemView {
 		leaf: WorkspaceLeaf
 	) {
 		super(leaf)
-		this.terminal.loadAddon(this.fitAddon)
+		for (const addon of Object.values(this.terminalAddons)) {
+			this.terminal.loadAddon(addon)
+		}
 	}
 
 	public async setState(state: any, _0: ViewStateResult): Promise<void> {
@@ -111,7 +120,7 @@ export class TerminalView extends ItemView {
 	}
 
 	public async onResize(): Promise<void> {
-		this.fitAddon.fit()
+		this.terminalAddons.fit.fit()
 		await Promise.resolve()
 	}
 

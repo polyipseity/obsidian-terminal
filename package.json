@@ -32,7 +32,9 @@
 		"i18next": "22.4.6",
 		"tmp": "0.2.1",
 		"xterm": "5.1.0",
-		"xterm-addon-fit": "0.7.0"
+		"xterm-addon-fit": "0.7.0",
+		"xterm-addon-search": "0.11.0",
+		"xterm-addon-web-links": "0.8.0"
 	},
 	"obsidian": {
 		"id": "terminal",
