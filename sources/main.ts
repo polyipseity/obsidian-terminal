@@ -131,7 +131,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 			throw Error(i18n.t("errors.unsupported-platform") as string)
 		}
 		const executable = this.settings.executables[this.platform]
-		notice(`${i18n.t("notices.spawning-terminal") as string}: ${executable}`, this.settings.noticeTimeout)
+		notice(i18n.t("notices.spawning-terminal", { executable }) as string, this.settings.noticeTimeout)
 		switch (type) {
 			case "external": {
 				spawn(executable, {

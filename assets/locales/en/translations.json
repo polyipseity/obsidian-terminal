@@ -16,7 +16,7 @@
 	},
 	"name": "Terminal",
 	"notices": {
-		"spawning-terminal": "Spawning terminal",
+		"spawning-terminal": "Spawning terminal: {{executable}}",
 		"terminal-exited": "Terminal exited with code {{code}}"
 	},
 	"settings": {
@@ -34,7 +34,7 @@
 	},
 	"views": {
 		"terminal-view": {
-			"display-name": "Terminal"
+			"display-name": "Terminal: {{executable}}"
 		}
 	}
 }
