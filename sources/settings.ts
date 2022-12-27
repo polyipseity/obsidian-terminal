@@ -39,7 +39,7 @@ export class SettingTab extends PluginSettingTab {
 	public display(): void {
 		const { containerEl } = this
 		containerEl.empty()
-		containerEl.createEl("h1", { text: "Obsidian Terminal" })
+		containerEl.createEl("h1", { text: "Terminal" })
 
 		const linkSetting = <C extends ValueComponent<V>
 			& {
