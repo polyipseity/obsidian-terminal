@@ -1,9 +1,10 @@
-import { type App, PluginSettingTab, Setting } from "obsidian"
+import { PluginSettingTab, Setting } from "obsidian"
 import type ObsidianTerminalPlugin from "./main"
 
 export default interface Settings {
 	command: boolean
 	contextMenu: boolean
+	noticeTimeout: number
 	executables: TerminalExecutables
 }
 export interface TerminalExecutables {
@@ -20,13 +21,12 @@ export function getDefaultSettings(): Settings {
 			linux: "xterm",
 			win32: "C:\\Windows\\System32\\cmd.exe",
 		},
+		noticeTimeout: 5000,
 	}
 }
 
 export class SettingTab extends PluginSettingTab {
-	public constructor(
-		protected readonly plugin: ObsidianTerminalPlugin,
-	) {
+	public constructor(protected readonly plugin: ObsidianTerminalPlugin) {
 		super(plugin.app, plugin)
 	}
 
@@ -77,6 +77,30 @@ export class SettingTab extends PluginSettingTab {
 				.onClick(async () => {
 					this.plugin.settings.contextMenu =
 						getDefaultSettings().contextMenu
+					await this.plugin.saveSettings()
+					this.display()
+				}))
+
+		new Setting(containerEl)
+			.setName("Notice timeout")
+			.setDesc("Timeout for informational notices.")
+			.addText(text => text
+				.setValue(this.plugin.settings.noticeTimeout.toString())
+				.onChange(async value => {
+					const num = Number.parseInt(value, 10)
+					if (isNaN(num)) {
+						text.setValue(this.plugin.settings.noticeTimeout.toString())
+						return
+					}
+					this.plugin.settings.noticeTimeout = num
+					await this.plugin.saveSettings()
+				}))
+			.addExtraButton(button => button
+				.setTooltip("Reset")
+				.setIcon("reset")
+				.onClick(async () => {
+					this.plugin.settings.noticeTimeout =
+						getDefaultSettings().noticeTimeout
 					await this.plugin.saveSettings()
 					this.display()
 				}))

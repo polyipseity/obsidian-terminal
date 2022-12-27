@@ -5,6 +5,7 @@ import {
 	type WorkspaceLeaf,
 } from "obsidian"
 import { FitAddon } from "xterm-addon-fit"
+import type ObsidianTerminalPlugin from "./main"
 import { Terminal } from "xterm"
 import { notice } from "./util"
 import { readFileSync } from "fs"
@@ -23,7 +24,10 @@ export class TerminalView extends ItemView {
 	protected readonly fitAddon = new FitAddon()
 	protected pty?: ChildProcessWithoutNullStreams
 
-	public constructor(leaf: WorkspaceLeaf) {
+	public constructor(
+		protected readonly plugin: ObsidianTerminalPlugin,
+		leaf: WorkspaceLeaf
+	) {
 		super(leaf)
 		this.terminal.loadAddon(this.fitAddon)
 	}
@@ -37,7 +41,6 @@ export class TerminalView extends ItemView {
 			return
 		}
 		this.state = state0 as TerminalViewState
-		const noticeTimeout = 5000
 		if (this.state.platform === "win32") {
 			const tmp = tmpFileSync({ discardDescriptor: true })
 			this.pty = spawn("C:\\Windows\\System32\\conhost.exe", [
@@ -59,7 +62,7 @@ export class TerminalView extends ItemView {
 					encoding: "utf-8",
 					flag: "r",
 				}).trim(), 10)
-				notice(`Terminal exited with code ${exitCode}`, noticeTimeout)
+				notice(`Terminal exited with code ${exitCode}`, this.plugin.settings.noticeTimeout)
 				tmp.removeCallback()
 			})
 		} else {
@@ -73,7 +76,7 @@ export class TerminalView extends ItemView {
 				windowsHide: true,
 			})
 			this.pty.on("close", exitCode => {
-				notice(`Terminal exited with code ${exitCode === null ? "null" : exitCode}`, noticeTimeout)
+				notice(`Terminal exited with code ${exitCode === null ? "null" : exitCode}`, this.plugin.settings.noticeTimeout)
 			})
 		}
 		this.pty.stdout.on("data", data => {

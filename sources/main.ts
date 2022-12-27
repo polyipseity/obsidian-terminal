@@ -27,6 +27,10 @@ export default class ObsidianTerminalPlugin extends Plugin {
 		}
 		await this.loadSettings()
 		this.addSettingTab(new SettingTab(this))
+		this.registerView(
+			TerminalView.viewType,
+			leaf => new TerminalView(this, leaf),
+		)
 		this.addCommand({
 			checkCallback: checking => {
 				if (!this.settings.command) {
@@ -128,9 +132,8 @@ export default class ObsidianTerminalPlugin extends Plugin {
 			throw Error("Unsupported platform")
 		}
 		const executable =
-			this.settings.executables[this.platform],
-			noticeTimeout = 5000
-		notice(`Spawning terminal: ${executable}`, noticeTimeout)
+			this.settings.executables[this.platform]
+		notice(`Spawning terminal: ${executable}`, this.settings.noticeTimeout)
 		switch (mode) {
 			case "external": {
 				spawn(executable, {
