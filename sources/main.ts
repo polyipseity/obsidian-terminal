@@ -7,6 +7,7 @@ import {
 	Platform,
 	Plugin,
 	TFolder,
+	type WorkspaceLeaf,
 	moment,
 } from "obsidian"
 import { SettingTab, type TerminalExecutables, getDefaultSettings } from "./settings"
@@ -150,7 +151,19 @@ export default class ObsidianTerminalPlugin extends Plugin {
 				break
 			}
 			case "integrated": {
-				const leaf = this.app.workspace.getLeaf("split", "horizontal"),
+				const { workspace } = this.app,
+					existingLeaves = workspace.getLeavesOfType(TerminalView.viewType),
+					leaf = ((): WorkspaceLeaf => {
+						const { length } = existingLeaves
+						if (length === 0) {
+							return workspace.getLeaf("split", "horizontal")
+						}
+						workspace.setActiveLeaf(
+							existingLeaves[length - 1],
+							{ focus: false },
+						)
+						return workspace.getLeaf("tab")
+					})(),
 					state: TerminalViewState =
 					{
 						cwd,
@@ -163,7 +176,6 @@ export default class ObsidianTerminalPlugin extends Plugin {
 					state,
 					type: TerminalView.viewType,
 				})
-				this.app.workspace.revealLeaf(leaf)
 				this.app.workspace.setActiveLeaf(leaf, { focus: true })
 				break
 			}
