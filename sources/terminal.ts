@@ -6,6 +6,9 @@ import {
 } from "obsidian"
 import { FitAddon } from "xterm-addon-fit"
 import { Terminal } from "xterm"
+import { notice } from "./util"
+import { readFileSync } from "fs"
+import { fileSync as tmpFileSync } from "tmp"
 
 export interface TerminalViewState {
 	type: "TerminalViewState"
@@ -33,27 +36,57 @@ export class TerminalView extends ItemView {
 		if (state0.type !== "TerminalViewState" || typeof this.pty !== "undefined") {
 			return
 		}
-		const state1 = state0 as TerminalViewState,
-			win32 = state1.platform === "win32",
-			exec = win32 ? "C:\\Windows\\System32\\conhost.exe" : state1.executable,
-			args = win32 ? [state1.executable] : []
-		this.pty = spawn(exec, args, {
-			cwd: state1.cwd,
-			stdio: [
-				"pipe",
-				"pipe",
-				"pipe",
-			],
-			windowsHide: true,
-		})
+		this.state = state0 as TerminalViewState
+		const noticeTimeout = 5000
+		if (this.state.platform === "win32") {
+			const tmp = tmpFileSync({ discardDescriptor: true })
+			this.pty = spawn("C:\\Windows\\System32\\conhost.exe", [
+				"C:\\Windows\\System32\\cmd.exe",
+				"/C",
+				`${this.state.executable} & call echo %^ERRORLEVEL% >"${tmp.name}"`,
+			], {
+				cwd: this.state.cwd,
+				stdio: [
+					"pipe",
+					"pipe",
+					"pipe",
+				],
+				windowsHide: true,
+				windowsVerbatimArguments: true,
+			})
+			this.pty.on("close", () => {
+				const exitCode = parseInt(readFileSync(tmp.name, {
+					encoding: "utf-8",
+					flag: "r",
+				}).trim(), 10)
+				notice(`Terminal exited with code ${exitCode}`, noticeTimeout)
+				tmp.removeCallback()
+			})
+		} else {
+			this.pty = spawn(this.state.executable, [], {
+				cwd: this.state.cwd,
+				stdio: [
+					"pipe",
+					"pipe",
+					"pipe",
+				],
+				windowsHide: true,
+			})
+			this.pty.on("close", exitCode => {
+				notice(`Terminal exited with code ${exitCode === null ? "null" : exitCode}`, noticeTimeout)
+			})
+		}
 		this.pty.stdout.on("data", data => {
 			this.terminal.write(data as Uint8Array | string)
 		})
 		this.pty.stderr.on("data", data => {
 			this.terminal.write(data as Uint8Array | string)
 		})
-		this.terminal.onData(data => this.pty?.stdin.write(data))
-		this.state = state1
+		const { pty } = this
+		this.terminal.onData(data => pty.stdin.write(data))
+		this.pty.on("close", () => {
+			this.leaf.detach()
+		})
 		await Promise.resolve()
 	}
 

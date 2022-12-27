@@ -19,6 +19,7 @@
 	"license": "MIT",
 	"devDependencies": {
 		"@types/node": "^16.18.10",
+		"@types/tmp": "^0.2.3",
 		"@typescript-eslint/eslint-plugin": "5.29.0",
 		"@typescript-eslint/parser": "5.29.0",
 		"builtin-modules": "3.3.0",
@@ -28,6 +29,7 @@
 		"typescript": "4.7.4"
 	},
 	"dependencies": {
+		"tmp": "0.2.1",
 		"xterm": "5.1.0",
 		"xterm-addon-fit": "0.7.0"
 	},
