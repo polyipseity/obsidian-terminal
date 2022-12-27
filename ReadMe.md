@@ -14,3 +14,11 @@ Right-click files, folders, or editor tabs to open the context menu, from which 
 ## Installation
 
 Create `obsidian-terminal` under `.obsidian/plugins`. Then place `manifest.json`, `main.js`, and `styles.css` inside. Lastly, enable the plugin.
+
+## Todos
+
+- Untested on Linux and MacOS.
+- Underlying terminal size is not configured properly yet.
+- Terminal addons are not working yet.
+- Save console history.
+- Connect to remote shells. (could support mobile devices)
