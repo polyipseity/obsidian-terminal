@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync } from "fs"
 
 const manifest_map = {
-	"id": "name",
-	"name": "displayName",
+	// "id": "name",
+	// "name": "displayName",
 	"version": "version",
 	"description": "description",
 	"author": "author",
