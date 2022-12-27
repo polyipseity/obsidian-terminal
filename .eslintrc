@@ -28,6 +28,7 @@
       "error",
       "as-needed"
     ],
+    "brace-style": "off",
     "class-methods-use-this": "off",
     "comma-dangle": "off",
     "dot-location": [
@@ -62,6 +63,7 @@
     "max-lines-per-function": "off",
     "max-params": "off",
     "max-statements": "off",
+    "max-statements-per-line": "off",
     "multiline-ternary": [
       "error",
       "always-multiline"
@@ -109,6 +111,13 @@
     "semi": "off",
     "sort-vars": "off",
     "space-before-function-paren": "off",
+    "@typescript-eslint/brace-style": [
+      "error",
+      "1tbs",
+      {
+        "allowSingleLine": true
+      }
+    ],
     "@typescript-eslint/comma-dangle": [
       "error",
       "always-multiline"

@@ -4,10 +4,10 @@ import {
 	type ViewStateResult,
 	type WorkspaceLeaf,
 } from "obsidian"
+import { notice, printError } from "./util"
 import { FitAddon } from "xterm-addon-fit"
 import type ObsidianTerminalPlugin from "./main"
 import { Terminal } from "xterm"
-import { notice } from "./util"
 import { readFileSync } from "fs"
 import { fileSync as tmpFileSync } from "tmp"
 
@@ -90,10 +90,7 @@ export class TerminalView extends ItemView {
 		this.pty.on("close", () => {
 			this.leaf.detach()
 		})
-		this.pty.on("error", err => {
-			console.error(`Error spawning terminal: ${err.name}: ${err.message}${typeof err.stack === "undefined" ? "" : `\n${err.stack}`}`)
-			notice(`Error spawning terminal: ${err.name}: ${err.message}`)
-		})
+		this.pty.on("error", error => { printError(error, "Error spawning terminal") })
 		await Promise.resolve()
 	}
 

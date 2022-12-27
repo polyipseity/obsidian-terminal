@@ -10,8 +10,8 @@ import {
 } from "obsidian"
 import { SettingTab, type TerminalExecutables, getDefaultSettings } from "./settings"
 import { TerminalView, type TerminalViewState } from "./terminal"
+import { notice, printError } from "./util"
 import type Settings from "./settings"
-import { notice } from "./util"
 import { platform } from "process"
 import { spawn } from "child_process"
 
@@ -140,10 +140,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 					shell: true,
 					stdio: "ignore",
 				})
-					.on("error", err => {
-						console.error(`Error spawning terminal: ${err.name}: ${err.message}`)
-						notice(`Error spawning terminal: ${err.name}: ${err.message}`)
-					})
+					.on("error", error => { printError(error, "Error spawning command") })
 					.unref()
 				break
 			}
