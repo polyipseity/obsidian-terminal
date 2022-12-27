@@ -109,7 +109,7 @@ export class TerminalView extends ItemView {
 	}
 
 	public getDisplayText(): string {
-		return i18n.t("views.terminal-view.display-name") as string
+		return i18n.t("views.terminal-view.display-name", { executable: this.getState()?.executable }) as string
 	}
 
 	public getViewType(): string {
