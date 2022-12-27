@@ -35,7 +35,7 @@
  *  Default styles for xterm.js
  */
 
- .xterm {
+.xterm {
 	cursor: text;
 	position: relative;
 	user-select: none;
@@ -162,19 +162,33 @@
 	opacity: 0.5;
 }
 
-.xterm-underline-1 { text-decoration: underline; }
-.xterm-underline-2 { text-decoration: double underline; }
-.xterm-underline-3 { text-decoration: wavy underline; }
-.xterm-underline-4 { text-decoration: dotted underline; }
-.xterm-underline-5 { text-decoration: dashed underline; }
+.xterm-underline-1 {
+	text-decoration: underline;
+}
+
+.xterm-underline-2 {
+	text-decoration: double underline;
+}
+
+.xterm-underline-3 {
+	text-decoration: wavy underline;
+}
+
+.xterm-underline-4 {
+	text-decoration: dotted underline;
+}
+
+.xterm-underline-5 {
+	text-decoration: dashed underline;
+}
 
 .xterm-strikethrough {
 	text-decoration: line-through;
 }
 
 .xterm-screen .xterm-decoration-container .xterm-decoration {
-z-index: 6;
-position: absolute;
+	z-index: 6;
+	position: absolute;
 }
 
 .xterm-decoration-overview-ruler {
@@ -188,4 +202,11 @@ position: absolute;
 .xterm-decoration-top {
 	z-index: 2;
 	position: relative;
+}
+
+/* end of xterm styles */
+
+.workspace-leaf-content[data-type="terminal-view"]>div {
+	width: 100%;
+	height: 100%;
 }

@@ -137,7 +137,7 @@ export class TerminalView extends ItemView {
 	protected async onOpen(): Promise<void> {
 		const { containerEl } = this
 		containerEl.empty()
-		this.terminal.open(containerEl.createDiv({ cls: "obsidian-terminal" }))
+		this.terminal.open(containerEl.createDiv())
 		await this.onResize()
 		this.terminal.focus()
 	}
