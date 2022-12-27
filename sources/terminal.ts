@@ -4,6 +4,7 @@ import {
 	type ViewStateResult,
 	type WorkspaceLeaf,
 } from "obsidian"
+import { basename, extname } from "path"
 import { notice, printError } from "./util"
 import { FitAddon } from "xterm-addon-fit"
 import type ObsidianTerminalPlugin from "./main"
@@ -115,7 +116,8 @@ export class TerminalView extends ItemView {
 	}
 
 	public getDisplayText(): string {
-		return i18n.t("views.terminal-view.display-name", { executable: this.getState().executable }) as string
+		const { executable } = this.getState()
+		return i18n.t("views.terminal-view.display-name", { executable: basename(executable, extname(executable)) }) as string
 	}
 
 	public getViewType(): string {
