@@ -129,8 +129,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 		if (this.platform === null) {
 			throw Error("Unsupported platform")
 		}
-		const executable =
-			this.settings.executables[this.platform]
+		const executable = this.settings.executables[this.platform]
 		notice(`Spawning terminal: ${executable}`, this.settings.noticeTimeout)
 		switch (type) {
 			case "external": {

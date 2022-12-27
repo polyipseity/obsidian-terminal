@@ -46,6 +46,7 @@
       "error",
       "consistent"
     ],
+    "implicit-arrow-linebreak": "off",
     "indent": "off",
     "linebreak-style": "off",
     "lines-between-class-members": "off",
@@ -203,6 +204,7 @@
       "error",
       {
         "allow": [
+          "arrowFunctions",
           "overrideMethods"
         ]
       }
