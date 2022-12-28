@@ -15,14 +15,3 @@ export function printError(
 	console.error(`${message}: ${error.name}: ${error.message}${typeof error.stack === "undefined" ? "" : `\n${error.stack}`}`)
 	notice(`${message}: ${error.name}: ${error.message}`)
 }
-
-export class Debouncer {
-	protected timer?: number
-
-	public constructor(public readonly timeout?: number) { }
-
-	public apply(callback: () => any, timeout = this.timeout): void {
-		window.clearTimeout(this.timer)
-		this.timer = window.setTimeout(callback, timeout)
-	}
-}

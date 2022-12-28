@@ -1,12 +1,13 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "child_process"
-import { Debouncer, notice, printError } from "./util"
 import { EXIT_SUCCESS, NOTICE_NO_TIMEOUT } from "./magic"
 import {
 	ItemView,
 	type ViewStateResult,
 	type WorkspaceLeaf,
+	debounce,
 } from "obsidian"
 import { basename, extname } from "path"
+import { notice, printError } from "./util"
 import { FitAddon } from "xterm-addon-fit"
 import type ObsidianTerminalPlugin from "./main"
 import { SearchAddon } from "xterm-addon-search"
@@ -40,7 +41,9 @@ export class TerminalView extends ItemView {
 	} as const
 
 	protected pty?: ChildProcessWithoutNullStreams
-	protected resizeDebouncer = new Debouncer(1000 / 2)
+	protected resizer = debounce(() => {
+		this.terminalAddons.fit.fit()
+	}, 1000 / 2, false)
 
 	public constructor(
 		protected readonly plugin: ObsidianTerminalPlugin,
@@ -133,9 +136,7 @@ export class TerminalView extends ItemView {
 	}
 
 	public onResize(): void {
-		this.resizeDebouncer.apply(() => {
-			this.terminalAddons.fit.fit()
-		})
+		this.resizer()
 	}
 
 	public getDisplayText(): string {
