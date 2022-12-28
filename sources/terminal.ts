@@ -37,7 +37,7 @@ export class TerminalView extends ItemView {
 	protected readonly terminalAddons = {
 		fit: new FitAddon(),
 		search: new SearchAddon(),
-		webLinks: new WebLinksAddon(),
+		webLinks: new WebLinksAddon((_0, uri) => { window.open(uri) }),
 	} as const
 
 	protected pty?: ChildProcessWithoutNullStreams
