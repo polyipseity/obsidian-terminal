@@ -1,5 +1,5 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "child_process"
-import { EXIT_SUCCESS, NOTICE_NO_TIMEOUT } from "./magic"
+import { EXIT_SUCCESS, NOTICE_NO_TIMEOUT, TERMINAL_RESIZE_TIMEOUT } from "./magic"
 import {
 	ItemView,
 	type ViewStateResult,
@@ -43,7 +43,7 @@ export class TerminalView extends ItemView {
 	protected pty?: ChildProcessWithoutNullStreams
 	protected resizer = debounce(() => {
 		this.terminalAddons.fit.fit()
-	}, 1000 / 2, false)
+	}, TERMINAL_RESIZE_TIMEOUT, false)
 
 	public constructor(
 		protected readonly plugin: ObsidianTerminalPlugin,
