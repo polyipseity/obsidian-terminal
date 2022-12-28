@@ -1,11 +1,11 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "child_process"
-import { EXIT_SUCCESS, NOTICE_NO_TIMEOUT, TERMINAL_RESIZE_TIMEOUT } from "./magic"
 import {
 	ItemView,
 	type ViewStateResult,
 	type WorkspaceLeaf,
 	debounce,
 } from "obsidian"
+import { NOTICE_NO_TIMEOUT, TERMINAL_EXIT_SUCCESS, TERMINAL_RESIZE_TIMEOUT } from "./magic"
 import { basename, extname } from "path"
 import { notice, printError } from "./util"
 import { FitAddon } from "xterm-addon-fit"
@@ -94,7 +94,7 @@ export class TerminalView extends ItemView {
 								: conCode
 							: termCode
 					})()
-					notice(i18n.t("notices.terminal-exited", { code }), code === EXIT_SUCCESS ? this.plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
+					notice(i18n.t("notices.terminal-exited", { code }), TERMINAL_EXIT_SUCCESS.includes(code) ? this.plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
 				} finally {
 					tmp.removeCallback()
 				}
@@ -110,7 +110,7 @@ export class TerminalView extends ItemView {
 				windowsHide: true,
 			}).on("close", (code0, signal) => {
 				const code = code0 === null ? signal === null ? NaN : signal : code0
-				notice(i18n.t("notices.terminal-exited", { code }), code === EXIT_SUCCESS ? this.plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
+				notice(i18n.t("notices.terminal-exited", { code }), TERMINAL_EXIT_SUCCESS.includes(code) ? this.plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
 			})
 		}
 		this.pty.on("close", () => {
