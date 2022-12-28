@@ -7,7 +7,7 @@ import {
 } from "obsidian"
 import { NOTICE_NO_TIMEOUT, TERMINAL_EXIT_SUCCESS, TERMINAL_RESIZE_TIMEOUT } from "./magic"
 import { basename, extname } from "path"
-import { notice, printError } from "./util"
+import { notice, onVisible, printError } from "./util"
 import { FitAddon } from "xterm-addon-fit"
 import type ObsidianTerminalPlugin from "./main"
 import { SearchAddon } from "xterm-addon-search"
@@ -156,8 +156,12 @@ export class TerminalView extends ItemView {
 		const { containerEl } = this
 		containerEl.empty()
 		containerEl.createDiv({}, el => {
-			this.plugin.app.workspace.onLayoutReady(() => {
-				this.terminal.open(el)
+			onVisible(el, observer => {
+				try {
+					this.terminal.open(el)
+				} finally {
+					observer.disconnect()
+				}
 			})
 		})
 		await Promise.resolve()
