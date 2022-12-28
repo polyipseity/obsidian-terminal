@@ -2,7 +2,15 @@
 	"name": "obsidian-terminal",
 	"displayName": "Obsidian Terminal",
 	"version": "2.1.0",
+	"author": "polyipseity",
+	"license": "MIT",
 	"description": "Open terminals in Obsidian directly.",
+	"keywords": [
+		"obsidian",
+		"plugin",
+		"terminal"
+	],
+	"private": true,
 	"main": "main.js",
 	"scripts": {
 		"dev": "node build/esbuild.config.mjs",
@@ -10,13 +18,14 @@
 		"version": "node build/version-bump.mjs && git add manifest.json versions.json",
 		"postversion": "node build/version-commit.mjs"
 	},
-	"keywords": [
-		"obsidian",
-		"plugin",
-		"terminal"
-	],
-	"author": "polyipseity",
-	"license": "MIT",
+	"dependencies": {
+		"i18next": "22.4.6",
+		"tmp": "0.2.1",
+		"xterm": "5.1.0",
+		"xterm-addon-fit": "0.7.0",
+		"xterm-addon-search": "0.11.0",
+		"xterm-addon-web-links": "0.8.0"
+	},
 	"devDependencies": {
 		"@types/node": "^16.18.10",
 		"@types/tmp": "^0.2.3",
@@ -27,14 +36,6 @@
 		"obsidian": "latest",
 		"tslib": "2.4.0",
 		"typescript": "4.7.4"
-	},
-	"dependencies": {
-		"i18next": "22.4.6",
-		"tmp": "0.2.1",
-		"xterm": "5.1.0",
-		"xterm-addon-fit": "0.7.0",
-		"xterm-addon-search": "0.11.0",
-		"xterm-addon-web-links": "0.8.0"
 	},
 	"obsidian": {
 		"id": "terminal",
