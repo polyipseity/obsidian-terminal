@@ -13,7 +13,7 @@ Right-click files, folders, or editor tabs to open the context menu, from which 
 
 ## Installation
 
-Create `obsidian-terminal` under `.obsidian/plugins`. Then place `manifest.json`, `main.js`, and `styles.css` inside. Lastly, enable the plugin.
+Create directory `terminal` under `.obsidian/plugins`. Then place `manifest.json`, `main.js`, and `styles.css` inside. Lastly, enable the plugin.
 
 ## Todos
 
