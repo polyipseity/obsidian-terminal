@@ -24,6 +24,10 @@
     "main.js"
   ],
   "rules": {
+    "array-element-newline": [
+      "error",
+      "consistent"
+    ],
     "arrow-parens": [
       "error",
       "as-needed"
@@ -68,6 +72,12 @@
     "multiline-ternary": [
       "error",
       "always-multiline"
+    ],
+    "new-cap": [
+      "error",
+      {
+        "capIsNew": false
+      }
     ],
     "no-console": "off",
     "no-empty-function": "off",
