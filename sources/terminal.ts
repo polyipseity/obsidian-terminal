@@ -1,4 +1,7 @@
-import { type ChildProcessWithoutNullStreams, spawn } from "child_process"
+import * as ffi from "ffi-napi"
+import type * as win32def from "win32-def"
+import * as win32defCommon from "win32-def/common.def"
+import { type ChildProcessWithoutNullStreams, spawn, fork } from "child_process"
 import { Debouncer, notice, onVisible, printError } from "./util"
 import { EXIT_SUCCESS, NOTICE_NO_TIMEOUT } from "./magic"
 import {
@@ -11,14 +14,13 @@ import { FitAddon } from "xterm-addon-fit"
 import type ObsidianTerminalPlugin from "./main"
 import { SearchAddon } from "xterm-addon-search"
 import { Terminal } from "xterm"
+import { User32 } from "win32-api/promise"
 import { WebLinksAddon } from "xterm-addon-web-links"
 import { i18n } from "./i18n"
-import { readFileSync } from "fs"
 import { fileSync as tmpFileSync } from "tmp"
 
 export interface TerminalViewState {
 	type: "TerminalViewState"
-	platform: string
 	executable: string
 	cwd: string
 }
@@ -28,7 +30,6 @@ export class TerminalView extends ItemView {
 	protected state: TerminalViewState = {
 		cwd: "",
 		executable: "",
-		platform: "",
 		type: "TerminalViewState",
 	}
 
@@ -61,7 +62,7 @@ export class TerminalView extends ItemView {
 			return
 		}
 		this.state = state0 as TerminalViewState
-		if (this.state.platform === "win32") {
+		if (this.plugin.platform === "win32") {
 			const tmp = tmpFileSync({ discardDescriptor: true })
 			this.pty = spawn("C:\\Windows\\System32\\conhost.exe", [
 				"C:\\Windows\\System32\\cmd.exe",
@@ -132,9 +133,29 @@ export class TerminalView extends ItemView {
 		return this.state
 	}
 
-	public onResize(): void {
-		this.resizeDebouncer.apply(() => {
-			this.terminalAddons.fit.fit()
+	public async onResize(): Promise<void> {
+		const { plugin, pty, resizeDebouncer, terminalAddons } = this
+		if (typeof pty === "undefined") {
+			return
+		}
+		if (plugin.platform === "win32") {
+			const { pid } = pty
+			if (typeof pid !== "undefined") {
+				const user32 = User32.load(["User32.dll"])
+				console.log(await user32.EnumWindows(new ffi.Callback(
+					win32defCommon.BOOL,
+					[win32defCommon.HWND, win32defCommon.LPARAM],
+					async (hwnd: win32def.HANDLE, lParam: win32def.LPARAM) => {
+						if (await user32.GetWindowThreadProcessId(hwnd, null) === lParam) {
+							return false
+						}
+						return true
+					}
+				), pid))
+			}
+		}
+		resizeDebouncer.apply(() => {
+			terminalAddons.fit.fit()
 		})
 	}
 

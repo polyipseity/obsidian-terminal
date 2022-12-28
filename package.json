@@ -19,6 +19,7 @@
 		"postversion": "node build/version-commit.mjs"
 	},
 	"dependencies": {
+		"ffi-napi": "4.0.3",
 		"i18next": "22.4.6",
 		"tmp": "0.2.1",
 		"xterm": "5.1.0",
@@ -26,7 +27,12 @@
 		"xterm-addon-search": "0.11.0",
 		"xterm-addon-web-links": "0.8.0"
 	},
+	"optionalDependencies": {
+		"win32-api": "20.2.0",
+		"win32-def": "20.0.0"
+	},
 	"devDependencies": {
+		"@types/ffi-napi": "^4.0.7",
 		"@types/node": "^16.18.10",
 		"@types/tmp": "^0.2.3",
 		"@typescript-eslint/eslint-plugin": "5.29.0",

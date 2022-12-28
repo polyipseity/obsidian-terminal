@@ -20,8 +20,8 @@ type TerminalType = "external" | "integrated"
 
 export default class ObsidianTerminalPlugin extends Plugin {
 	public readonly settings: Settings = getDefaultSettings()
-	protected readonly adapter = this.app.vault.adapter as FileSystemAdapter
-	protected readonly platform: keyof TerminalExecutables | null =
+	public readonly adapter = this.app.vault.adapter as FileSystemAdapter
+	public readonly platform: keyof TerminalExecutables | null =
 		platform in this.settings.executables
 			? platform as keyof TerminalExecutables
 			: null
@@ -165,7 +165,6 @@ export default class ObsidianTerminalPlugin extends Plugin {
 					{
 						cwd,
 						executable,
-						platform: this.platform,
 						type: "TerminalViewState",
 					}
 				await leaf.setViewState({

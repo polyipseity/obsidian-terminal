@@ -27,6 +27,7 @@ If you want to view the source, please visit the repository of this plugin.
 		"@lezer/common",
 		"@lezer/highlight",
 		"@lezer/lr",
+		"node:*",
 		...builtins],
 	format: "cjs",
 	watch: !prod,
