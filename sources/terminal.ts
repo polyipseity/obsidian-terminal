@@ -1,5 +1,5 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "child_process"
-import { Debouncer, notice, onVisible, printError } from "./util"
+import { Debouncer, notice, printError } from "./util"
 import { EXIT_SUCCESS, NOTICE_NO_TIMEOUT } from "./magic"
 import {
 	ItemView,
@@ -155,12 +155,8 @@ export class TerminalView extends ItemView {
 		const { containerEl } = this
 		containerEl.empty()
 		containerEl.createDiv({}, el => {
-			onVisible(el, observer => {
-				try {
-					this.terminal.open(el)
-				} finally {
-					observer.disconnect()
-				}
+			this.plugin.app.workspace.onLayoutReady(() => {
+				this.terminal.open(el)
 			})
 		})
 		await Promise.resolve()
