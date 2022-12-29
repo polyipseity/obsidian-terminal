@@ -15,6 +15,7 @@ import { Terminal } from "xterm"
 import { WebLinksAddon } from "xterm-addon-web-links"
 import { i18n } from "./i18n"
 import { readFileSync } from "fs"
+import resizerPy from "./resizer.py"
 import { fileSync as tmpFileSync } from "tmp"
 
 export interface TerminalViewState {
@@ -41,8 +42,20 @@ export class TerminalView extends ItemView {
 	} as const
 
 	protected pty?: ChildProcessWithoutNullStreams
-	protected resizer = debounce(() => {
-		this.terminalAddons.fit.fit()
+	protected readonly resizer = spawn("python", ["-c", resizerPy], {
+		stdio: ["pipe", "pipe", "pipe"],
+		windowsHide: true,
+	})
+
+	protected readonly resize = debounce(() => {
+		const { terminalAddons, resizer } = this,
+			dim = terminalAddons.fit.proposeDimensions()
+		if (typeof dim === "undefined") {
+			return
+		}
+		terminalAddons.fit.fit()
+		resizer.stdin.write(`${dim.cols}\n`)
+		resizer.stdin.write(`${dim.rows}\n`)
 	}, TERMINAL_RESIZE_TIMEOUT, false)
 
 	public constructor(
@@ -69,15 +82,11 @@ export class TerminalView extends ItemView {
 			this.pty = spawn("C:\\Windows\\System32\\conhost.exe", [
 				"C:\\Windows\\System32\\cmd.exe",
 				"/C",
-				`${this.state.executable} & call echo %^ERRORLEVEL% >"${tmp.name}"`,
+				`"${this.state.executable}" & call echo %^ERRORLEVEL% >"${tmp.name}"`,
 			], {
 				cwd: this.state.cwd,
-				stdio: [
-					"pipe",
-					"pipe",
-					"pipe",
-				],
-				windowsHide: true,
+				stdio: ["pipe", "pipe", "pipe"],
+				windowsHide: false,
 				windowsVerbatimArguments: true,
 			}).on("close", (conCode, signal) => {
 				try {
@@ -102,30 +111,35 @@ export class TerminalView extends ItemView {
 		} else {
 			this.pty = spawn(this.state.executable, [], {
 				cwd: this.state.cwd,
-				stdio: [
-					"pipe",
-					"pipe",
-					"pipe",
-				],
-				windowsHide: true,
+				stdio: ["pipe", "pipe", "pipe"],
+				windowsHide: false,
 			}).on("close", (code0, signal) => {
 				const code = code0 === null ? signal === null ? NaN : signal : code0
 				notice(i18n.t("notices.terminal-exited", { code }), TERMINAL_EXIT_SUCCESS.includes(code) ? this.plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
 			})
 		}
-		this.pty.on("close", () => {
-			this.leaf.detach()
-		}).on("error", error => {
-			printError(error, i18n.t("errors.error-spawning-terminal"))
-		})
-
-		this.pty.stdout.on("data", data => {
-			this.terminal.write(data as Uint8Array | string)
-		})
-		this.pty.stderr.on("data", data => {
-			this.terminal.write(data as Uint8Array | string)
-		})
 		const { pty } = this
+		pty
+			.on("spawn", () => {
+				if (typeof pty.pid === "undefined") {
+					this.resizer.kill()
+					return
+				}
+				this.resizer.stdin.write(`${pty.pid}\n`)
+			})
+			.on("close", () => {
+				this.leaf.detach()
+			})
+			.on("error", error => {
+				printError(error, i18n.t("errors.error-spawning-terminal"))
+			})
+
+		pty.stdout.on("data", data => {
+			this.terminal.write(data as Uint8Array | string)
+		})
+		pty.stderr.on("data", data => {
+			this.terminal.write(data as Uint8Array | string)
+		})
 		this.terminal.onData(data => pty.stdin.write(data))
 
 		await Promise.resolve()
@@ -136,7 +150,7 @@ export class TerminalView extends ItemView {
 	}
 
 	public onResize(): void {
-		this.resizer()
+		this.resize()
 	}
 
 	public getDisplayText(): string {
@@ -168,6 +182,7 @@ export class TerminalView extends ItemView {
 	}
 
 	protected async onClose(): Promise<void> {
+		this.resizer.kill()
 		this.pty?.kill()
 		this.terminal.dispose()
 		await Promise.resolve()

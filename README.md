@@ -18,7 +18,6 @@ Create directory `terminal` under `.obsidian/plugins`. Then place `manifest.json
 ## Todos
 
 - Untested on Linux and MacOS.
-- Underlying terminal size is not configured properly yet.
 - Terminal addons are not working yet.
 - Save console history.
 - Connect to remote shells. (could support mobile devices)

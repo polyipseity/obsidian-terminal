@@ -21,6 +21,6 @@
   },
   "include": [
     "assets/**/*",
-    "sources/**/*.ts"
+    "sources/**/*"
   ]
 }
