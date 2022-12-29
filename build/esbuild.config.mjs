@@ -14,8 +14,8 @@ If you want to view the source, please visit the repository of this plugin.
 	bundle: true,
 	entryPoints: ["sources/main.ts"],
 	external: [
-		"obsidian",
 		"electron",
+		"obsidian",
 		"@codemirror/autocomplete",
 		"@codemirror/collab",
 		"@codemirror/commands",
