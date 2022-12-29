@@ -4,25 +4,28 @@ import os as _os
 import psutil as _psutil
 import pywinctl as _pywinctl  # type: ignore
 import sys as _sys
+import types as _types
 import typing as _typing
 
 
 def main() -> None:
     pid = int(input("PID: "))
     print(f"received: {pid}")
-    pids = (pid,) + tuple(
-        proc.pid for proc in _psutil.Process(pid).children(recursive=True)
+    proc = _psutil.Process(pid)
+    procs = (proc,) + tuple(proc.children(recursive=True))
+    print(f"Process(es): {procs}")
+    pids: _typing.Mapping[int, _psutil.Process] = _types.MappingProxyType(
+        {proc.pid: proc for proc in procs}
     )
-    print(f"PIDs: {pids}")
 
     windows: _typing.Collection[_pywinctl.Window] = _pywinctl.getAllWindows()
     print(f"windows: {windows}")
     for win in windows:
         win_pid = win_to_pid(win)
         if win_pid in pids:
-            resizer(win_pid, win)
+            resizer(pids[_typing.cast(int, win_pid)], win)
             break
-    resizer(pid, None)
+    resizer(proc, None)
 
 
 def win_to_pid(window: _pywinctl.Window) -> int | None:
@@ -39,27 +42,32 @@ def win_to_pid(window: _pywinctl.Window) -> int | None:
     return None
 
 
-def resizer(pid: int, window: _pywinctl.BaseWindow | None) -> None:
+def resizer(process: _psutil.Process, window: _pywinctl.BaseWindow | None) -> None:
     print(f"window: {window}")
-    r_in = resizer_in()
-    r_out = resizer_out(pid, window)
+    r_in = resizer_in(process)
+    r_out = resizer_out(process, window)
     next(r_out)
     for size in r_in:
         r_out.send(size)
 
 
-def resizer_in() -> _typing.Iterator[tuple[int, int]]:
+def resizer_in(process: _psutil.Process) -> _typing.Iterator[tuple[int, int]]:
     while True:
+        size0 = ""
+        while not size0:  # stdin watchdog triggers this loop
+            if not process.is_running():
+                return
+            size0 = input("size: ")
         size = _typing.cast(
             tuple[int, int],
-            tuple(int(s.strip()) for s in input("size: ").split("x", 2)),
+            tuple(int(s.strip()) for s in size0.split("x", 2)),
         )
         print(f"received: {'x'.join(map(str, size))}")
         yield size
 
 
 def resizer_out(
-    pid: int, window: _pywinctl.BaseWindow | None
+    process: _psutil.Process, window: _pywinctl.BaseWindow | None
 ) -> _typing.Generator[None, tuple[int, int], None]:
     if window is None:
         while True:
@@ -107,12 +115,12 @@ def resizer_out(
             finally:
                 _win32console.FreeConsole()
 
-        while True:
-            columns: int
-            rows: int
-            columns, rows = yield  # should be detached while waiting
-            _win32console.FreeConsole()
-            with attach_console(pid) as console:
+        _win32console.FreeConsole()
+        with attach_console(process.pid) as console:
+            while True:
+                columns: int
+                rows: int
+                columns, rows = yield
                 info: ConsoleScreenBufferInfo = (
                     console.GetConsoleScreenBufferInfo()  # type: ignore
                 )
@@ -148,14 +156,14 @@ def resizer_out(
                         | _win32con.SWP_NOZORDER,
                     ),
                     # accurate, SetConsoleWindowInfo does not work for alternate screen buffer
-                    lambda: (console.SetConsoleWindowInfo)(  # type: ignore
+                    lambda: console.SetConsoleWindowInfo(  # type: ignore
                         True,
                         _win32console.PySMALL_RECTType(0, 0, columns - 1, old_rows - 1),  # type: ignore
                     ),
                     lambda: console.SetConsoleScreenBufferSize(
                         _win32console.PyCOORDType(columns, old_rows)  # type: ignore
                     ),
-                    lambda: (console.SetConsoleWindowInfo)(  # type: ignore
+                    lambda: console.SetConsoleWindowInfo(  # type: ignore
                         True,
                         _win32console.PySMALL_RECTType(0, 0, columns - 1, rows - 1),  # type: ignore
                     ),
@@ -169,7 +177,7 @@ def resizer_out(
                     setters[3], setters[4] = setters[4], setters[3]
                 for setter in setters:
                     ignore_error(setter)
-                print(f"resized")
+                print(f"resized")  # used by the plugin
     else:
         import termios as _termios
 
@@ -181,13 +189,13 @@ def resizer_out(
             finally:
                 _os.close(fd)
 
-        with open_tty(pid) as tty:
+        with open_tty(process.pid) as tty:
             while True:
                 columns: int
                 rows: int
                 columns, rows = yield
                 _termios.tcsetwinsize(tty, (rows, columns))
-                print(f"resized")
+                print(f"resized")  # used by the plugin
 
 
 if __name__ == "__main__":

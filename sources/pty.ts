@@ -1,4 +1,5 @@
 import { type ChildProcess, type ChildProcessWithoutNullStreams, spawn } from "child_process"
+import { TERMINAL_WATCHDOG_INTERVAL } from "./magic"
 import { i18n } from "./i18n"
 import { printError } from "./util"
 import { promisify } from "util"
@@ -21,7 +22,18 @@ abstract class PtyWithResizer implements TerminalPty {
 		stdio: ["pipe", "pipe", "pipe"],
 		windowsHide: true,
 	})
-		.once("spawn", () => { this.resizable0 = true })
+		.once("spawn", () => {
+			this.resizable0 = true
+			const watchdog = window.setInterval(() => {
+				void this._write("\n")
+			}, TERMINAL_WATCHDOG_INTERVAL)
+			try {
+				this.resizer.once("exit", () => { window.clearInterval(watchdog) })
+			} catch (err) {
+				window.clearInterval(watchdog)
+				throw err
+			}
+		})
 		.once("error", error => {
 			this.resizable0 = false
 			printError(error, i18n.t("errors.error-spawning-resizer"))
