@@ -1,5 +1,7 @@
 # Terminal for Obsidian
 
+![Trailer](assets/trailer.png)
+
 Open terminals in Obsidian directly.
 
 ## Features
