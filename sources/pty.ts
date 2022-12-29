@@ -61,15 +61,20 @@ abstract class PtyWithResizer implements TerminalPty {
 		await this._write(`${columns}\n`)
 		await this._write(`${rows}\n`)
 		return new Promise((resolve, reject) => {
-			resizer.once("error", reject)
 			const succ = (chunk: Buffer): void => {
 				if (chunk.toString().includes("resized")) {
-					resizer.removeListener("error", reject)
+					// eslint-disable-next-line @typescript-eslint/no-use-before-define
+					resizer.removeListener("error", fail)
 					stdout.removeListener("data", succ)
 					resolve()
 				}
 			}
+			function fail(err: Error): void {
+				stdout.removeListener("data", succ)
+				reject(err)
+			}
 			stdout.on("data", succ)
+			resizer.once("error", fail)
 		})
 	}
 
