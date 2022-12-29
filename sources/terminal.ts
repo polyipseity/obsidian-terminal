@@ -65,14 +65,10 @@ export default class TerminalView extends ItemView {
 	}
 
 	public async setState(state: any, _0: ViewStateResult): Promise<void> {
-		if (!("type" in state)) {
+		if (!("type" in state) || (state as { type: unknown }).type !== "TerminalViewState" || typeof this.pty !== "undefined") {
 			return
 		}
-		const state0 = state as { type: unknown }
-		if (state0.type !== "TerminalViewState" || typeof this.pty !== "undefined") {
-			return
-		}
-		this.state = state0 as TerminalViewState
+		this.state = state as TerminalViewState
 		this.pty = new this.plugin.platformDispatch.terminalPty(
 			this.state.executable,
 			this.state.cwd,

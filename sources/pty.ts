@@ -126,13 +126,7 @@ export class WindowsTerminalPty
 								readFileSync(this.codeTmp.name, { encoding: "utf-8", flag: "r" }).trim(),
 								10
 							),
-							code = isNaN(termCode)
-								? conCode === null
-									? signal === null
-										? NaN
-										: signal
-									: conCode
-								: termCode
+							code = isNaN(termCode) ? conCode ?? signal ?? NaN : termCode
 						this.exitCode = code
 						for (const listener of this.exitListeners) { listener(code) }
 						this.exitListeners.length = 0
@@ -181,7 +175,7 @@ export class GenericTerminalPty
 
 	public once(event: "exit", listener: (code: NodeJS.Signals | number) => void): this {
 		this.shell0.once(event, (code, signal) => {
-			listener(code === null ? signal === null ? NaN : signal : code)
+			listener(code ?? signal ?? NaN)
 		})
 		return this
 	}
