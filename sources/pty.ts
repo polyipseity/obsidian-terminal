@@ -58,8 +58,7 @@ abstract class PtyWithResizer implements TerminalPty {
 	public async resize(columns: number, rows: number): Promise<void> {
 		const { resizer } = this,
 			{ stdout } = resizer
-		await this._write(`${columns}\n`)
-		await this._write(`${rows}\n`)
+		await this._write(`${columns}x${rows}\n`)
 		return new Promise((resolve, reject) => {
 			const succ = (chunk: Buffer): void => {
 				if (chunk.toString().includes("resized")) {

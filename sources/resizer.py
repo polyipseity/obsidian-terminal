@@ -50,11 +50,12 @@ def resizer(pid: int, window: _pywinctl.BaseWindow | None) -> None:
 
 def resizer_in() -> _typing.Iterator[tuple[int, int]]:
     while True:
-        columns = int(input("columns: "))
-        print(f"received: {columns}")
-        rows = int(input("rows: "))
-        print(f"received: {rows}")
-        yield columns, rows
+        size = _typing.cast(
+            tuple[int, int],
+            tuple(int(s.strip()) for s in input("size: ").split("x", 2)),
+        )
+        print(f"received: {'x'.join(map(str, size))}")
+        yield size
 
 
 def resizer_out(
@@ -106,12 +107,12 @@ def resizer_out(
             finally:
                 _win32console.FreeConsole()
 
-        _win32console.FreeConsole()
-        with attach_console(pid) as console:
-            while True:
-                columns: int
-                rows: int
-                columns, rows = yield
+        while True:
+            columns: int
+            rows: int
+            columns, rows = yield  # should be detached while waiting
+            _win32console.FreeConsole()
+            with attach_console(pid) as console:
                 info: ConsoleScreenBufferInfo = (
                     console.GetConsoleScreenBufferInfo()  # type: ignore
                 )
@@ -133,7 +134,7 @@ def resizer_out(
                     + old_actual_rect.height
                     - old_height,
                 )
-                print(f"size: {size}")
+                print(f"pixel size: {size}")
                 setters = [
                     # almost accurate, works for alternate screen buffer
                     lambda: _win32gui.SetWindowPos(
