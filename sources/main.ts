@@ -147,10 +147,10 @@ export default class ObsidianTerminalPlugin extends Plugin {
 			throw Error(I18N.t("errors.unsupported-platform"))
 		}
 		const executable = this.settings.executables[this.platform]
-		notice(I18N.t("notices.spawning-terminal", { executable }), this.settings.noticeTimeout)
+		notice(I18N.t("notices.spawning-terminal", { executable: executable.name }), this.settings.noticeTimeout)
 		switch (type) {
 			case "external": {
-				spawn(executable, {
+				spawn(executable.name, executable.args, {
 					cwd,
 					detached: true,
 					shell: true,
@@ -176,11 +176,10 @@ export default class ObsidianTerminalPlugin extends Plugin {
 						)
 						return workspace.getLeaf("tab")
 					})(),
-					state: TerminalViewState =
-					{
+					state: TerminalViewState = {
+						args: executable.args,
 						cwd,
-						executable,
-						platform: this.platform,
+						executable: executable.name,
 						type: "TerminalViewState",
 					}
 				await leaf.setViewState({

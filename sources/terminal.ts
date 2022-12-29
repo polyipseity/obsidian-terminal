@@ -17,17 +17,17 @@ import { WebLinksAddon } from "xterm-addon-web-links"
 
 export interface TerminalViewState {
 	readonly type: "TerminalViewState"
-	readonly platform: string
 	readonly executable: string
 	readonly cwd: string
+	readonly args: string[]
 }
 export default class TerminalView extends ItemView {
 	public static readonly viewType = "terminal-view"
 
 	protected state: TerminalViewState = {
+		args: [],
 		cwd: "",
 		executable: "",
-		platform: "",
 		type: "TerminalViewState",
 	}
 
@@ -39,7 +39,6 @@ export default class TerminalView extends ItemView {
 	} as const
 
 	protected pty?: TerminalPty
-
 	protected readonly resize = debounce(async () => {
 		const { pty, terminalAddons } = this
 		if (typeof pty === "undefined") {
@@ -72,7 +71,7 @@ export default class TerminalView extends ItemView {
 		this.pty = new this.plugin.platformDispatch.terminalPty(
 			this.state.executable,
 			this.state.cwd,
-			[],
+			this.state.args,
 		)
 		this.pty.once("exit", code => {
 			notice(I18N.t("notices.terminal-exited", { code }), TERMINAL_EXIT_SUCCESS.includes(code) ? this.plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)

@@ -14,19 +14,32 @@ export default interface Settings {
 	noticeTimeout: number
 	executables: TerminalExecutables
 }
+interface TerminalExecutable {
+	name: string
+	args: string[]
+}
 export interface TerminalExecutables {
-	darwin: string
-	linux: string
-	win32: string
+	darwin: TerminalExecutable
+	linux: TerminalExecutable
+	win32: TerminalExecutable
 }
 export function getDefaultSettings(): Settings {
 	return {
 		command: true,
 		contextMenu: true,
 		executables: {
-			darwin: "Terminal.app",
-			linux: "xterm",
-			win32: "C:\\Windows\\System32\\cmd.exe",
+			darwin: {
+				args: [],
+				name: "Terminal.app",
+			},
+			linux: {
+				args: [],
+				name: "xterm",
+			},
+			win32: {
+				args: [],
+				name: "C:\\Windows\\System32\\cmd.exe",
+			},
 		},
 		noticeTimeout: 5000,
 	}
@@ -152,14 +165,14 @@ export class SettingTab extends PluginSettingTab {
 			new Setting(containerEl)
 				.setName(I18N.t(`settings.executable-list.${key0}`))
 				.addText(linkSetting(
-					() => this.plugin.settings.executables[key0],
+					() => this.plugin.settings.executables[key0].name,
 					value => {
-						this.plugin.settings.executables[key0] = value
+						this.plugin.settings.executables[key0].name = value
 					},
 				))
 				.addExtraButton(resetButton(() => {
-					this.plugin.settings.executables[key0] =
-						getDefaultSettings().executables[key0]
+					this.plugin.settings.executables[key0].name =
+						getDefaultSettings().executables[key0].name
 				}))
 		}
 	}
