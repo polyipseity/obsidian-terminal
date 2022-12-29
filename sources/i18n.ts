@@ -1,13 +1,13 @@
-import { defaultLanguage, defaultNamespace, resources } from "assets/locales"
+import { DEFAULT_LANGUAGE, DEFAULT_NAMESPACE, RESOURCES } from "assets/locales"
 import i18next from "i18next"
 
-export const i18n = i18next.createInstance({
+export const I18N = i18next.createInstance({
 	cleanCode: true,
-	defaultNS: defaultNamespace,
-	fallbackLng: defaultLanguage,
+	defaultNS: DEFAULT_NAMESPACE,
+	fallbackLng: DEFAULT_LANGUAGE,
 	initImmediate: false,
 	nonExplicitSupportedLngs: true,
-	resources,
+	resources: RESOURCES,
 	returnNull: false,
 }, error => {
 	if (error as boolean) {

@@ -1,5 +1,5 @@
+import { I18N } from "./i18n"
 import { Notice } from "obsidian"
-import { i18n } from "./i18n"
 
 export function notice(
 	message: DocumentFragment | string,
@@ -29,7 +29,7 @@ export function onVisible<E extends Element>(
 
 export function printError(
 	error: any,
-	message = i18n.t("errors.error"),
+	message = I18N.t("errors.error"),
 ): void {
 	if (error instanceof Error) {
 		console.error(`${message}: ${error.name}: ${error.message}${typeof error.stack === "undefined" ? "" : `\n${error.stack}`}`)

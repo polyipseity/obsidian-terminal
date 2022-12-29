@@ -12,8 +12,8 @@ import { GenericTerminalPty, type TerminalPtyConstructor, WindowsTerminalPty } f
 import { SettingTab, type TerminalExecutables, getDefaultSettings } from "./settings"
 import TerminalView, { type TerminalViewState } from "./terminal"
 import { notice, printError } from "./util"
+import { I18N } from "./i18n"
 import type Settings from "./settings"
-import { i18n } from "./i18n"
 import { spawn } from "child_process"
 
 type TerminalType = "external" | "integrated"
@@ -45,7 +45,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 		if (!Platform.isDesktopApp) {
 			return
 		}
-		await i18n.changeLanguage(moment.locale())
+		await I18N.changeLanguage(moment.locale())
 
 		await this.loadSettings()
 		this.addSettingTab(new SettingTab(this))
@@ -94,7 +94,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 				this.addCommand({
 					checkCallback: terminalSpawnCommand(type, cwd),
 					id,
-					name: i18n.t(`commands.${id}`),
+					name: I18N.t(`commands.${id}`),
 				})
 			}
 		}
@@ -103,14 +103,14 @@ export default class ObsidianTerminalPlugin extends Plugin {
 			menu
 				.addSeparator()
 				.addItem(item => item
-					.setTitle(i18n.t("menus.open-terminal-external"))
-					.setIcon(i18n.t("assets:menus.open-terminal-external-icon"))
+					.setTitle(I18N.t("menus.open-terminal-external"))
+					.setIcon(I18N.t("assets:menus.open-terminal-external-icon"))
 					.onClick(async () => {
 						await this._spawnTerminal(this.adapter.getFullPath(cwd.path), "external")
 					}))
 				.addItem(item => item
-					.setTitle(i18n.t("menus.open-terminal-integrated"))
-					.setIcon(i18n.t("assets:menus.open-terminal-integrated-icon"))
+					.setTitle(I18N.t("menus.open-terminal-integrated"))
+					.setIcon(I18N.t("assets:menus.open-terminal-integrated-icon"))
 					.onClick(async () => {
 						await this._spawnTerminal(this.adapter.getFullPath(cwd.path), "integrated")
 					}))
@@ -144,10 +144,10 @@ export default class ObsidianTerminalPlugin extends Plugin {
 
 	private async _spawnTerminal(cwd: string, type: TerminalType): Promise<void> {
 		if (this.platform === null) {
-			throw Error(i18n.t("errors.unsupported-platform"))
+			throw Error(I18N.t("errors.unsupported-platform"))
 		}
 		const executable = this.settings.executables[this.platform]
-		notice(i18n.t("notices.spawning-terminal", { executable }), this.settings.noticeTimeout)
+		notice(I18N.t("notices.spawning-terminal", { executable }), this.settings.noticeTimeout)
 		switch (type) {
 			case "external": {
 				spawn(executable, {
@@ -157,7 +157,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 					stdio: "ignore",
 				})
 					.once("error", error => {
-						printError(error, i18n.t("errors.error-spawning-terminal"))
+						printError(error, I18N.t("errors.error-spawning-terminal"))
 					})
 					.unref()
 				break

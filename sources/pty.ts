@@ -1,6 +1,6 @@
 import { type ChildProcess, type ChildProcessWithoutNullStreams, spawn } from "child_process"
+import { I18N } from "./i18n"
 import { TERMINAL_WATCHDOG_INTERVAL } from "./magic"
-import { i18n } from "./i18n"
 import { printError } from "./util"
 import { promisify } from "util"
 import { readFileSync } from "fs"
@@ -36,7 +36,7 @@ abstract class PtyWithResizer implements TerminalPty {
 		})
 		.once("error", error => {
 			this.resizable0 = false
-			printError(error, i18n.t("errors.error-spawning-resizer"))
+			printError(error, I18N.t("errors.error-spawning-resizer"))
 		})
 		.once("exit", () => { this.resizable0 = false })
 
@@ -56,7 +56,7 @@ abstract class PtyWithResizer implements TerminalPty {
 				this._write(`${pid}\n`)
 					.catch(reason => {
 						resizer.kill()
-						printError(reason, i18n.t("errors.error-spawning-resizer"))
+						printError(reason, I18N.t("errors.error-spawning-resizer"))
 					})
 			})
 			.once("error", () => { this.resizer.kill() })

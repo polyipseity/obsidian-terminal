@@ -2,11 +2,11 @@
 import * as assets from "assets/locales/en/assets.json"
 import * as en from "assets/locales/en/translations.json"
 
-export const defaultNamespace = "translation"
-export const defaultLanguage = "en"
-export const resources = {
+export const DEFAULT_NAMESPACE = "translation"
+export const DEFAULT_LANGUAGE = "en"
+export const RESOURCES = {
 	en: {
+		[DEFAULT_NAMESPACE]: en,
 		assets,
-		[defaultNamespace]: en,
 	},
 } as const
