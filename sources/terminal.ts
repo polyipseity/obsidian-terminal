@@ -5,8 +5,8 @@ import {
 	debounce,
 } from "obsidian"
 import { NOTICE_NO_TIMEOUT, TERMINAL_EXIT_SUCCESS, TERMINAL_RESIZE_TIMEOUT } from "./magic"
+import { UnnamespacedID, notice, onVisible, printError } from "./util"
 import { basename, extname } from "path"
-import { notice, onVisible, printError } from "./util"
 import { FitAddon } from "xterm-addon-fit"
 import { I18N } from "./i18n"
 import type ObsidianTerminalPlugin from "./main"
@@ -22,7 +22,8 @@ export interface TerminalViewState {
 	readonly args: string[]
 }
 export default class TerminalView extends ItemView {
-	public static readonly viewType = "terminal-view"
+	public static readonly viewType = new UnnamespacedID("terminal-view")
+	public static namespacedViewType: string
 
 	protected state: TerminalViewState = {
 		args: [],
@@ -110,7 +111,8 @@ export default class TerminalView extends ItemView {
 	}
 
 	public getViewType(): string {
-		return TerminalView.viewType
+		// Workaround: super() calls this method
+		return TerminalView.namespacedViewType
 	}
 
 	protected async onOpen(): Promise<void> {

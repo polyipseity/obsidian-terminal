@@ -1,5 +1,13 @@
+import { Notice, Plugin, type PluginManifest } from "obsidian"
 import { I18N } from "./i18n"
-import { Notice } from "obsidian"
+
+export class UnnamespacedID<V extends string> {
+	public constructor(public readonly id: V) { }
+
+	public namespaced(plugin: Plugin | PluginManifest): string {
+		return `${(plugin instanceof Plugin ? plugin.manifest : plugin).id}:${this.id}`
+	}
+}
 
 export function notice(
 	message: DocumentFragment | string,

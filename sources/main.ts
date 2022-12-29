@@ -45,12 +45,13 @@ export default class ObsidianTerminalPlugin extends Plugin {
 		if (!Platform.isDesktopApp) {
 			return
 		}
-		await I18N.changeLanguage(moment.locale())
+		TerminalView.namespacedViewType = TerminalView.viewType.namespaced(this)
 
+		await I18N.changeLanguage(moment.locale())
 		await this.loadSettings()
 		this.addSettingTab(new SettingTab(this))
 		this.registerView(
-			TerminalView.viewType,
+			TerminalView.viewType.namespaced(this),
 			leaf => new TerminalView(this, leaf),
 		)
 
@@ -164,7 +165,8 @@ export default class ObsidianTerminalPlugin extends Plugin {
 			}
 			case "integrated": {
 				const { workspace } = this.app,
-					existingLeaves = workspace.getLeavesOfType(TerminalView.viewType),
+					existingLeaves = workspace
+						.getLeavesOfType(TerminalView.viewType.namespaced(this)),
 					leaf = ((): WorkspaceLeaf => {
 						const { length } = existingLeaves
 						if (length === 0) {
@@ -185,7 +187,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 				await leaf.setViewState({
 					active: true,
 					state,
-					type: TerminalView.viewType,
+					type: TerminalView.viewType.namespaced(this),
 				})
 				this.app.workspace.setActiveLeaf(leaf, { focus: true })
 				break
