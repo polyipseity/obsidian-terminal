@@ -16,10 +16,10 @@ import { WebLinksAddon } from "xterm-addon-web-links"
 import { i18n } from "./i18n"
 
 export interface TerminalViewState {
-	type: "TerminalViewState"
-	platform: string
-	executable: string
-	cwd: string
+	readonly type: "TerminalViewState"
+	readonly platform: string
+	readonly executable: string
+	readonly cwd: string
 }
 export default class TerminalView extends ItemView {
 	public static readonly viewType = "terminal-view"

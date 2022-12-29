@@ -3,8 +3,8 @@ import type { defaultLanguage, defaultNamespace, resources } from "assets/locale
 
 declare module "i18next" {
 	interface CustomTypeOptions {
-		defaultNS: typeof defaultNamespace
-		resources: typeof resources[typeof defaultLanguage]
-		returnNull: false
+		readonly defaultNS: typeof defaultNamespace
+		readonly resources: typeof resources[typeof defaultLanguage]
+		readonly returnNull: false
 	}
 }

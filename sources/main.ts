@@ -19,7 +19,7 @@ import { spawn } from "child_process"
 type TerminalType = "external" | "integrated"
 
 interface PlatformDispatch {
-	terminalPty: TerminalPtyConstructor
+	readonly terminalPty: TerminalPtyConstructor
 }
 
 export default class ObsidianTerminalPlugin extends Plugin {
