@@ -8,6 +8,7 @@
 	"errors": {
 		"error": "Error",
 		"error-spawning-terminal": "Error spawning terminal",
+		"error-spawning-resizer": "Error spawning terminal resizer (terminal experience may degrade)",
 		"unsupported-platform": "Unsupported platform"
 	},
 	"menus": {

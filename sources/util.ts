@@ -28,9 +28,14 @@ export function onVisible<E extends Element>(
 }
 
 export function printError(
-	error: Error,
+	error: any,
 	message = i18n.t("errors.error"),
 ): void {
-	console.error(`${message}: ${error.name}: ${error.message}${typeof error.stack === "undefined" ? "" : `\n${error.stack}`}`)
-	notice(`${message}: ${error.name}: ${error.message}`)
+	if (error instanceof Error) {
+		console.error(`${message}: ${error.name}: ${error.message}${typeof error.stack === "undefined" ? "" : `\n${error.stack}`}`)
+		notice(`${message}: ${error.name}: ${error.message}`)
+		return
+	}
+	console.error(`${message}: ${String(error)}`)
+	notice(`${message}: ${String(error)}`)
 }

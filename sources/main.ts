@@ -8,23 +8,38 @@ import {
 	type WorkspaceLeaf,
 	moment,
 } from "obsidian"
+import { GenericTerminalPty, type TerminalPtyConstructor, WindowsTerminalPty } from "./pty"
 import { SettingTab, type TerminalExecutables, getDefaultSettings } from "./settings"
-import { TerminalView, type TerminalViewState } from "./terminal"
+import TerminalView, { type TerminalViewState } from "./terminal"
 import { notice, printError } from "./util"
 import type Settings from "./settings"
 import { i18n } from "./i18n"
-import { platform } from "process"
 import { spawn } from "child_process"
 
 type TerminalType = "external" | "integrated"
 
+interface PlatformDispatch {
+	terminalPty: TerminalPtyConstructor
+}
+
 export default class ObsidianTerminalPlugin extends Plugin {
 	public readonly settings: Settings = getDefaultSettings()
-	protected readonly adapter = this.app.vault.adapter as FileSystemAdapter
-	protected readonly platform: keyof TerminalExecutables | null =
-		platform in this.settings.executables
-			? platform as keyof TerminalExecutables
+	public readonly adapter = this.app.vault.adapter as FileSystemAdapter
+	public readonly platform: keyof TerminalExecutables | null =
+		process.platform in this.settings.executables
+			? process.platform as keyof TerminalExecutables
 			: null
+
+	public readonly platformDispatch = ((): PlatformDispatch => {
+		if (this.platform === "win32") {
+			return {
+				terminalPty: WindowsTerminalPty,
+			}
+		}
+		return {
+			terminalPty: GenericTerminalPty,
+		}
+	})()
 
 	public async onload(): Promise<void> {
 		if (!Platform.isDesktopApp) {
@@ -141,7 +156,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 					shell: true,
 					stdio: "ignore",
 				})
-					.on("error", error => {
+					.once("error", error => {
 						printError(error, i18n.t("errors.error-spawning-terminal"))
 					})
 					.unref()
