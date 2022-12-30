@@ -32,17 +32,23 @@ export function onVisible<E extends Element>(
 		observer: IntersectionObserver,
 		element: E,
 		entry: IntersectionObserverEntry,
-		entries: IntersectionObserverEntry[],
 	) => any,
-): void {
-	new IntersectionObserver((entries, observer) => {
-		for (const entry of entries) {
-			if (entry.intersectionRatio > 0) {
-				callback(observer, element, entry, entries)
-				break
-			}
+	transient = false,
+): IntersectionObserver {
+	const ret = new IntersectionObserver((ents, obsr) => {
+		const lastEnt = ents.last()
+		if (typeof lastEnt === "undefined") {
+			return
 		}
-	}).observe(element)
+		const intersect = (transient ? ents.reverse() : [lastEnt])
+			.find(ent => ent.isIntersecting)
+		if (typeof intersect === "undefined") {
+			return
+		}
+		callback(obsr, element, intersect)
+	})
+	ret.observe(element)
+	return ret
 }
 
 export function printError(

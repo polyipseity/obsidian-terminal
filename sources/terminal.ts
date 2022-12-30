@@ -127,14 +127,15 @@ export default class TerminalView extends ItemView {
 	protected async onOpen(): Promise<void> {
 		const { containerEl, plugin, terminal } = this
 		containerEl.empty()
-		containerEl.createDiv({}, el => {
-			onVisible(el, observer => {
+		containerEl.createDiv({}, ele => {
+			const obsr = onVisible(ele, obsr0 => {
 				try {
-					terminal.open(el)
+					terminal.open(ele)
 				} finally {
-					observer.disconnect()
+					obsr0.disconnect()
 				}
 			})
+			this.register(() => { obsr.disconnect() })
 		})
 		const statusBarModifier = (function* gen(): Generator<undefined, never, "blur" | "focus"> {
 			let prev: string | null = null
