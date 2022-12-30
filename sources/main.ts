@@ -93,14 +93,11 @@ export default class ObsidianTerminalPlugin extends Plugin {
 						existingLeaves = workspace
 							.getLeavesOfType(TerminalView.viewType.namespaced(plugin)),
 						leaf = ((): WorkspaceLeaf => {
-							const { length } = existingLeaves
-							if (length === 0) {
+							const existingLeaf = existingLeaves.at(-1)
+							if (typeof existingLeaf === "undefined") {
 								return workspace.getLeaf("split", "horizontal")
 							}
-							workspace.setActiveLeaf(
-								existingLeaves[length - 1],
-								{ focus: false },
-							)
+							workspace.setActiveLeaf(existingLeaf, { focus: false })
 							return workspace.getLeaf("tab")
 						})(),
 						state: TerminalViewState = {
