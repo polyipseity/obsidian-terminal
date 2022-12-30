@@ -5,7 +5,7 @@ import {
 	debounce,
 } from "obsidian"
 import { NOTICE_NO_TIMEOUT, TERMINAL_EXIT_SUCCESS, TERMINAL_RESIZE_TIMEOUT } from "./magic"
-import { UnnamespacedID, notice, onVisible, printError } from "./util"
+import { UnnamespacedID, notice, onVisible, printError, statusBar } from "./util"
 import { basename, extname } from "path"
 import { FitAddon } from "xterm-addon-fit"
 import type ObsidianTerminalPlugin from "./main"
@@ -136,12 +136,22 @@ export default class TerminalView extends ItemView {
 				}
 			})
 		})
+		statusBar(div => {
+			const { display } = div.style
+			this.register(() => statusBar(div0 => { div0.style.display = display }))
+		})
+		let prevDisplay = ""
 		this.registerEvent(plugin.app.workspace.on("active-leaf-change", leaf => {
 			if (leaf === this.leaf) {
+				statusBar(div => {
+					prevDisplay = div.style.display
+					div.style.display = "none"
+				})
 				terminal.focus()
 				return
 			}
 			terminal.blur()
+			statusBar(div => { div.style.display = prevDisplay })
 		}))
 		await Promise.resolve()
 	}
