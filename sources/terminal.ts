@@ -39,18 +39,15 @@ export default class TerminalView extends ItemView {
 	} as const
 
 	protected pty?: TerminalPty
-	protected readonly resize = debounce(async () => {
-		const { pty, terminalAddons } = this
+	protected readonly resizeNative = debounce(async (
+		columns: number,
+		rows: number,
+	) => {
+		const { pty } = this
 		if (typeof pty === "undefined") {
 			return
 		}
-		const { fit } = terminalAddons,
-			dim = fit.proposeDimensions()
-		if (typeof dim === "undefined") {
-			return
-		}
-		await pty.resize(dim.cols, dim.rows)
-		fit.fit()
+		await pty.resize(columns, rows).catch()
 	}, TERMINAL_RESIZE_TIMEOUT, false)
 
 	public constructor(
@@ -103,7 +100,13 @@ export default class TerminalView extends ItemView {
 
 	public onResize(): void {
 		if (this.plugin.app.workspace.getActiveViewOfType(TerminalView) === this) {
-			this.resize()
+			const { fit } = this.terminalAddons,
+				dim = fit.proposeDimensions()
+			if (typeof dim === "undefined") {
+				return
+			}
+			fit.fit()
+			this.resizeNative(dim.cols, dim.rows)
 		}
 	}
 
