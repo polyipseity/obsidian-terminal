@@ -50,6 +50,10 @@
       "error",
       "consistent"
     ],
+    "generator-star-spacing": [
+      "error",
+      "after"
+    ],
     "implicit-arrow-linebreak": "off",
     "indent": "off",
     "linebreak-style": "off",
@@ -244,6 +248,12 @@
       }
     ],
     "@typescript-eslint/no-type-alias": "off",
+    "@typescript-eslint/no-unnecessary-condition": [
+      "error",
+      {
+        "allowConstantLoopConditions": true
+      }
+    ],
     "@typescript-eslint/no-unused-vars": [
       "error",
       {

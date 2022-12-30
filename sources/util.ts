@@ -8,8 +8,9 @@ export class UnnamespacedID<V extends string> {
 	}
 }
 
-export function statusBar(callback: (
-	element: HTMLDivElement) => any): HTMLDivElement | null {
+export function statusBar(callback = (_0: HTMLDivElement): any => {
+
+}): HTMLDivElement | null {
 	const ret = document.querySelector<HTMLDivElement>(".app-container>div.status-bar")
 	if (ret !== null) {
 		callback(ret)

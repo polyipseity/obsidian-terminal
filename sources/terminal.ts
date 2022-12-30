@@ -136,22 +136,48 @@ export default class TerminalView extends ItemView {
 				}
 			})
 		})
-		statusBar(div => {
-			const { display } = div.style
-			this.register(() => statusBar(div0 => { div0.style.display = display }))
-		})
-		let prevDisplay = ""
+		const statusBarModifier = (function* gen(): Generator<undefined, never, "blur" | "focus"> {
+			let prev: string | null = null
+			do {
+				const action = yield,
+					div = statusBar()
+				switch (action) {
+					case "focus": {
+						if (div === null) {
+							prev = null
+							break
+						}
+						const now = div.style.display
+						if (prev === null || now !== "none") {
+							prev = now
+						}
+						div.style.display = "none"
+						break
+					}
+					case "blur": {
+						if (prev === null) {
+							break
+						}
+						if (div !== null) {
+							div.style.display = prev
+						}
+						prev = null
+						break
+					}
+					default:
+						throw new TypeError(action)
+				}
+			} while (true)
+		}())
+		this.register(() => statusBarModifier.next("blur"))
 		this.registerEvent(plugin.app.workspace.on("active-leaf-change", leaf => {
 			if (leaf === this.leaf) {
-				statusBar(div => {
-					prevDisplay = div.style.display
-					div.style.display = "none"
-				})
+				statusBarModifier.next("focus")
 				terminal.focus()
 				return
 			}
 			terminal.blur()
-			statusBar(div => { div.style.display = prevDisplay })
+			statusBarModifier.next("blur")
 		}))
 		await Promise.resolve()
 	}
