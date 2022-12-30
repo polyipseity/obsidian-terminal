@@ -1,9 +1,11 @@
 import {
+	type App,
 	type FileSystemAdapter,
 	MarkdownView,
 	type Menu,
 	Platform,
 	Plugin,
+	type PluginManifest,
 	TFolder,
 	type WorkspaceLeaf,
 	moment,
@@ -19,33 +21,95 @@ import { spawn } from "child_process"
 type TerminalType = "external" | "integrated"
 
 interface PlatformDispatch {
+	readonly spawnTerminal: (
+		plugin: ObsidianTerminalPlugin,
+		cwd: string,
+		type: TerminalType
+	) => Promise<void>
 	readonly terminalPty: TerminalPtyConstructor
 }
 
 export default class ObsidianTerminalPlugin extends Plugin {
 	public readonly settings: Settings = getDefaultSettings()
-	public readonly adapter = this.app.vault.adapter as FileSystemAdapter
-	public readonly platform: keyof TerminalExecutables | null =
-		process.platform in this.settings.executables
+	public readonly platform = ((): PlatformDispatch => {
+		const platform = process.platform in this.settings.executables
 			? process.platform as keyof TerminalExecutables
 			: null
-
-	public readonly platformDispatch = ((): PlatformDispatch => {
-		if (this.platform === "win32") {
-			return {
-				terminalPty: WindowsTerminalPty,
-			}
-		}
 		return {
-			terminalPty: GenericTerminalPty,
+			// eslint-disable-next-line no-underscore-dangle
+			spawnTerminal: ObsidianTerminalPlugin._terminalSpawner(platform),
+			terminalPty: platform === "win32" ? WindowsTerminalPty : GenericTerminalPty,
 		}
 	})()
+
+	public constructor(app: App, manifest: PluginManifest) {
+		super(app, manifest)
+		TerminalView.namespacedViewType = TerminalView.viewType.namespaced(manifest)
+	}
+
+	private static _terminalSpawner(platform: keyof TerminalExecutables | null): PlatformDispatch["spawnTerminal"] {
+		if (platform === null) {
+			return () => {
+				throw Error(I18N.t("errors.unsupported-platform"))
+			}
+		}
+		return async (plugin, cwd, type) => {
+			const executable = plugin.settings.executables[platform]
+			notice(I18N.t("notices.spawning-terminal", { executable: executable.name }), plugin.settings.noticeTimeout)
+			switch (type) {
+				case "external": {
+					spawn(executable.name, executable.args, {
+						cwd,
+						detached: true,
+						shell: true,
+						stdio: "ignore",
+					})
+						.once("error", error => {
+							printError(error, I18N.t("errors.error-spawning-terminal"))
+						})
+						.unref()
+					break
+				}
+				case "integrated": {
+					const { workspace } = plugin.app,
+						existingLeaves = workspace
+							.getLeavesOfType(TerminalView.viewType.namespaced(plugin)),
+						leaf = ((): WorkspaceLeaf => {
+							const { length } = existingLeaves
+							if (length === 0) {
+								return workspace.getLeaf("split", "horizontal")
+							}
+							workspace.setActiveLeaf(
+								existingLeaves[length - 1],
+								{ focus: false },
+							)
+							return workspace.getLeaf("tab")
+						})(),
+						state: TerminalViewState = {
+							args: executable.args,
+							cwd,
+							executable: executable.name,
+							type: "TerminalViewState",
+						}
+					await leaf.setViewState({
+						active: true,
+						state,
+						type: TerminalView.viewType.namespaced(plugin),
+					})
+					plugin.app.workspace.setActiveLeaf(leaf, { focus: true })
+					break
+				}
+				default:
+					throw new TypeError(type)
+			}
+		}
+	}
 
 	public async onload(): Promise<void> {
 		if (!Platform.isDesktopApp) {
 			return
 		}
-		TerminalView.namespacedViewType = TerminalView.viewType.namespaced(this)
+		const adapter = this.app.vault.adapter as FileSystemAdapter
 
 		await I18N.changeLanguage(moment.locale())
 		await this.loadSettings()
@@ -62,7 +126,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 			switch (cwd) {
 				case "root": {
 					if (!checking) {
-						void this._spawnTerminal(this.adapter.getBasePath(), type)
+						void this.platform.spawnTerminal(this, adapter.getBasePath(), type)
 					}
 					return true
 				}
@@ -72,8 +136,9 @@ export default class ObsidianTerminalPlugin extends Plugin {
 						return false
 					}
 					if (!checking) {
-						void this._spawnTerminal(
-							this.adapter.getFullPath(activeFile.parent.path),
+						void this.platform.spawnTerminal(
+							this,
+							adapter.getFullPath(activeFile.parent.path),
 							type,
 						)
 					}
@@ -107,13 +172,13 @@ export default class ObsidianTerminalPlugin extends Plugin {
 					.setTitle(I18N.t("menus.open-terminal-external"))
 					.setIcon(I18N.t("assets:menus.open-terminal-external-icon"))
 					.onClick(async () => {
-						await this._spawnTerminal(this.adapter.getFullPath(cwd.path), "external")
+						await this.platform.spawnTerminal(this, adapter.getFullPath(cwd.path), "external")
 					}))
 				.addItem(item => item
 					.setTitle(I18N.t("menus.open-terminal-integrated"))
 					.setIcon(I18N.t("assets:menus.open-terminal-integrated-icon"))
 					.onClick(async () => {
-						await this._spawnTerminal(this.adapter.getFullPath(cwd.path), "integrated")
+						await this.platform.spawnTerminal(this, adapter.getFullPath(cwd.path), "integrated")
 					}))
 		}
 		this.registerEvent(this.app.workspace.on("file-menu", (menu, file,) => {
@@ -141,59 +206,5 @@ export default class ObsidianTerminalPlugin extends Plugin {
 
 	public async saveSettings(): Promise<void> {
 		await this.saveData(this.settings)
-	}
-
-	private async _spawnTerminal(cwd: string, type: TerminalType): Promise<void> {
-		if (this.platform === null) {
-			throw Error(I18N.t("errors.unsupported-platform"))
-		}
-		const executable = this.settings.executables[this.platform]
-		notice(I18N.t("notices.spawning-terminal", { executable: executable.name }), this.settings.noticeTimeout)
-		switch (type) {
-			case "external": {
-				spawn(executable.name, executable.args, {
-					cwd,
-					detached: true,
-					shell: true,
-					stdio: "ignore",
-				})
-					.once("error", error => {
-						printError(error, I18N.t("errors.error-spawning-terminal"))
-					})
-					.unref()
-				break
-			}
-			case "integrated": {
-				const { workspace } = this.app,
-					existingLeaves = workspace
-						.getLeavesOfType(TerminalView.viewType.namespaced(this)),
-					leaf = ((): WorkspaceLeaf => {
-						const { length } = existingLeaves
-						if (length === 0) {
-							return workspace.getLeaf("split", "horizontal")
-						}
-						workspace.setActiveLeaf(
-							existingLeaves[length - 1],
-							{ focus: false },
-						)
-						return workspace.getLeaf("tab")
-					})(),
-					state: TerminalViewState = {
-						args: executable.args,
-						cwd,
-						executable: executable.name,
-						type: "TerminalViewState",
-					}
-				await leaf.setViewState({
-					active: true,
-					state,
-					type: TerminalView.viewType.namespaced(this),
-				})
-				this.app.workspace.setActiveLeaf(leaf, { focus: true })
-				break
-			}
-			default:
-				throw new TypeError(type)
-		}
 	}
 }

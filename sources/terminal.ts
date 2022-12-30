@@ -69,7 +69,7 @@ export default class TerminalView extends ItemView {
 			return
 		}
 		this.state = state as TerminalViewState
-		this.pty = new this.plugin.platformDispatch.terminalPty(
+		this.pty = new this.plugin.platform.terminalPty(
 			this.state.executable,
 			this.state.cwd,
 			this.state.args,
