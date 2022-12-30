@@ -12,6 +12,7 @@ export function notice(
 	message: DocumentFragment | string,
 	timeout?: number,
 ): void {
+	// Useless but to avoid triggering ESLint rule "no-new"
 	new Notice("", timeout).setMessage(message)
 }
 
