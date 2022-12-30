@@ -1,5 +1,4 @@
 import { Notice, Plugin, type PluginManifest } from "obsidian"
-import { I18N } from "./i18n"
 
 export class UnnamespacedID<V extends string> {
 	public constructor(public readonly id: V) { }
@@ -37,13 +36,14 @@ export function onVisible<E extends Element>(
 
 export function printError(
 	error: any,
-	message = I18N.t("errors.error"),
+	message?: string,
 ): void {
+	const message0 = typeof message === "undefined" ? "" : `${message}: `
 	if (error instanceof Error) {
-		console.error(`${message}: ${error.name}: ${error.message}${typeof error.stack === "undefined" ? "" : `\n${error.stack}`}`)
-		notice(`${message}: ${error.name}: ${error.message}`)
+		console.error(`${message0}${error.name}: ${error.message}${typeof error.stack === "undefined" ? "" : `\n${error.stack}`}`)
+		notice(`${message0}${error.name}: ${error.message}`)
 		return
 	}
-	console.error(`${message}: ${String(error)}`)
-	notice(`${message}: ${String(error)}`)
+	console.error(`${message0}${String(error)}`)
+	notice(`${message0}${String(error)}`)
 }

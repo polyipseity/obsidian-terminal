@@ -10,3 +10,4 @@ export const RESOURCES = {
 		assets,
 	},
 } as const
+export default RESOURCES

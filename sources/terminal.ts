@@ -8,7 +8,6 @@ import { NOTICE_NO_TIMEOUT, TERMINAL_EXIT_SUCCESS, TERMINAL_RESIZE_TIMEOUT } fro
 import { UnnamespacedID, notice, onVisible, printError } from "./util"
 import { basename, extname } from "path"
 import { FitAddon } from "xterm-addon-fit"
-import { I18N } from "./i18n"
 import type ObsidianTerminalPlugin from "./main"
 import { SearchAddon } from "xterm-addon-search"
 import { Terminal } from "xterm"
@@ -68,28 +67,32 @@ export default class TerminalView extends ItemView {
 		if (!("type" in state) || (state as { type: unknown }).type !== "TerminalViewState" || typeof this.pty !== "undefined") {
 			return
 		}
-		this.state = state as TerminalViewState
-		this.pty = new this.plugin.platform.terminalPty(
-			this.state.executable,
-			this.state.cwd,
-			this.state.args,
-		)
-		this.pty.once("exit", code => {
-			notice(I18N.t("notices.terminal-exited", { code }), TERMINAL_EXIT_SUCCESS.includes(code) ? this.plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
+		const state0 = state as TerminalViewState
+		this.state = state0
+		const { plugin, terminal } = this,
+			{ i18n } = plugin,
+			pty = new plugin.platform.terminalPty(
+				plugin,
+				state0.executable,
+				state0.cwd,
+				state0.args,
+			)
+		this.pty = pty
+		pty.once("exit", code => {
+			notice(i18n.t("notices.terminal-exited", { code }), TERMINAL_EXIT_SUCCESS.includes(code) ? plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
 			this.leaf.detach()
 		})
-		const shell = this.pty.shell()
+		const shell = pty.shell()
 			.once("error", error => {
-				printError(error, I18N.t("errors.error-spawning-terminal"))
+				printError(error, i18n.t("errors.error-spawning-terminal"))
 			})
 		shell.stdout.on("data", data => {
-			this.terminal.write(data as Uint8Array | string)
+			terminal.write(data as Uint8Array | string)
 		})
 		shell.stderr.on("data", data => {
-			this.terminal.write(data as Uint8Array | string)
+			terminal.write(data as Uint8Array | string)
 		})
-		this.terminal.onData(data => shell.stdin.write(data))
-
+		terminal.onData(data => shell.stdin.write(data))
 		await Promise.resolve()
 	}
 
@@ -103,11 +106,11 @@ export default class TerminalView extends ItemView {
 
 	public getDisplayText(): string {
 		const { executable } = this.getState()
-		return I18N.t("views.terminal-view.display-name", { executable: basename(executable, extname(executable)) })
+		return this.plugin.i18n.t("views.terminal-view.display-name", { executable: basename(executable, extname(executable)) })
 	}
 
 	public getIcon(): string {
-		return I18N.t("assets:views.terminal-view-icon")
+		return this.plugin.i18n.t("assets:views.terminal-view-icon")
 	}
 
 	public getViewType(): string {

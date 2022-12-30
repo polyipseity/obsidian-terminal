@@ -14,8 +14,9 @@ import { GenericTerminalPty, type TerminalPtyConstructor, WindowsTerminalPty } f
 import { SettingTab, type TerminalExecutables, getDefaultSettings } from "./settings"
 import TerminalView, { type TerminalViewState } from "./terminal"
 import { notice, printError } from "./util"
-import { I18N } from "./i18n"
+import I18N from "./i18n"
 import type Settings from "./settings"
+import type { i18n } from "i18next"
 import { spawn } from "child_process"
 
 type TerminalType = "external" | "integrated"
@@ -42,33 +43,50 @@ export default class ObsidianTerminalPlugin extends Plugin {
 		}
 	})()
 
+	protected i18n0: i18n
+
 	public constructor(app: App, manifest: PluginManifest) {
 		super(app, manifest)
 		TerminalView.namespacedViewType = TerminalView.viewType.namespaced(manifest)
 	}
 
+	public get i18n(): i18n {
+		return this.i18n0
+	}
+
 	private static _terminalSpawner(platform: keyof TerminalExecutables | null): PlatformDispatch["spawnTerminal"] {
 		if (platform === null) {
-			return () => {
-				throw Error(I18N.t("errors.unsupported-platform"))
+			return plugin => {
+				throw Error(plugin.i18n.t("errors.unsupported-platform"))
 			}
 		}
 		return async (plugin, cwd, type) => {
 			const executable = plugin.settings.executables[platform]
-			notice(I18N.t("notices.spawning-terminal", { executable: executable.name }), plugin.settings.noticeTimeout)
+			notice(plugin.i18n.t("notices.spawning-terminal", { executable: executable.name }), plugin.settings.noticeTimeout)
 			switch (type) {
 				case "external": {
-					spawn(executable.name, executable.args, {
+					const process = spawn(executable.name, executable.args, {
 						cwd,
 						detached: true,
 						shell: true,
 						stdio: "ignore",
 					})
 						.once("error", error => {
-							printError(error, I18N.t("errors.error-spawning-terminal"))
+							printError(error, plugin.i18n.t("errors.error-spawning-terminal"))
 						})
-						.unref()
-					break
+					process.unref()
+					return new Promise((resolve, reject) => {
+						const succ = (): void => {
+							// eslint-disable-next-line @typescript-eslint/no-use-before-define
+							process.removeListener("error", fail)
+							resolve()
+						}
+						function fail(error: Error): void {
+							process.removeListener("spawn", succ)
+							reject(error)
+						}
+						process.once("spawn", succ).once("error", fail)
+					})
 				}
 				case "integrated": {
 					const { workspace } = plugin.app,
@@ -102,6 +120,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 				default:
 					throw new TypeError(type)
 			}
+			return Promise.resolve()
 		}
 	}
 
@@ -109,10 +128,16 @@ export default class ObsidianTerminalPlugin extends Plugin {
 		if (!Platform.isDesktopApp) {
 			return
 		}
+		const [i18n] = await Promise.all([
+			I18N.then(async i18n0 => {
+				await i18n0.changeLanguage(moment.locale())
+				return i18n0
+			}),
+			this.loadSettings(),
+		])
+		this.i18n0 = i18n
 		const adapter = this.app.vault.adapter as FileSystemAdapter
 
-		await I18N.changeLanguage(moment.locale())
-		await this.loadSettings()
 		this.addSettingTab(new SettingTab(this))
 		this.registerView(
 			TerminalView.viewType.namespaced(this),
@@ -160,7 +185,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 				this.addCommand({
 					checkCallback: terminalSpawnCommand(type, cwd),
 					id,
-					name: I18N.t(`commands.${id}`),
+					name: i18n.t(`commands.${id}`),
 				})
 			}
 		}
@@ -169,14 +194,14 @@ export default class ObsidianTerminalPlugin extends Plugin {
 			menu
 				.addSeparator()
 				.addItem(item => item
-					.setTitle(I18N.t("menus.open-terminal-external"))
-					.setIcon(I18N.t("assets:menus.open-terminal-external-icon"))
+					.setTitle(i18n.t("menus.open-terminal-external"))
+					.setIcon(i18n.t("assets:menus.open-terminal-external-icon"))
 					.onClick(async () => {
 						await this.platform.spawnTerminal(this, adapter.getFullPath(cwd.path), "external")
 					}))
 				.addItem(item => item
-					.setTitle(I18N.t("menus.open-terminal-integrated"))
-					.setIcon(I18N.t("assets:menus.open-terminal-integrated-icon"))
+					.setTitle(i18n.t("menus.open-terminal-integrated"))
+					.setIcon(i18n.t("assets:menus.open-terminal-integrated-icon"))
 					.onClick(async () => {
 						await this.platform.spawnTerminal(this, adapter.getFullPath(cwd.path), "integrated")
 					}))

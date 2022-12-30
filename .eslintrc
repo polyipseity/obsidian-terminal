@@ -60,6 +60,7 @@
       {
         "code": 80,
         "tabWidth": 2,
+        "ignorePattern": "// eslint-disable-next-line ",
         "ignoreUrls": true,
         "ignoreStrings": true,
         "ignoreTemplateLiterals": true,

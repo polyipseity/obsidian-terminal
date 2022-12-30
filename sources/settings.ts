@@ -5,7 +5,6 @@ import {
 	Setting,
 	type ValueComponent,
 } from "obsidian"
-import { I18N } from "./i18n"
 import type ObsidianTerminalPlugin from "./main"
 
 export default interface Settings {
@@ -50,10 +49,11 @@ export class SettingTab extends PluginSettingTab {
 		super(plugin.app, plugin)
 	}
 
-	public display(): void {
-		const { containerEl } = this
+	public async display(): Promise<void> {
+		const { containerEl, plugin } = this,
+			{ i18n } = plugin
 		containerEl.empty()
-		containerEl.createEl("h1", { text: I18N.t("name") })
+		containerEl.createEl("h1", { text: plugin.i18n.t("name") })
 
 		const linkSetting = <C extends ValueComponent<V>
 			& {
@@ -71,7 +71,7 @@ export class SettingTab extends PluginSettingTab {
 						if (typeof ret === "boolean" && !ret) {
 							return
 						}
-						await this.plugin.saveSettings()
+						await plugin.saveSettings()
 					})
 				action(component)
 			},
@@ -81,15 +81,14 @@ export class SettingTab extends PluginSettingTab {
 			) =>
 				(component: C) => {
 					component
-						.setTooltip(I18N.t("settings.reset"))
-						.setIcon(I18N.t("assets:settings.reset-icon"))
+						.setTooltip(i18n.t("settings.reset"))
+						.setIcon(i18n.t("assets:settings.reset-icon"))
 						.onClick(async () => {
 							const ret = resetter(component)
 							if (typeof ret === "boolean" && !ret) {
 								return
 							}
-							await this.plugin.saveSettings()
-							this.display()
+							await Promise.all([plugin.saveSettings(), this.display()])
 						})
 					action(component)
 				},
@@ -118,62 +117,63 @@ export class SettingTab extends PluginSettingTab {
 			}
 
 		new Setting(containerEl)
-			.setName(I18N.t("settings.reset-all"))
+			.setName(i18n.t("settings.reset-all"))
 			.addButton(resetButton(() => {
-				Object.assign(this.plugin.settings, getDefaultSettings())
+				Object.assign(plugin.settings, getDefaultSettings())
 			}))
 
 		new Setting(containerEl)
-			.setName(I18N.t("settings.add-to-commands"))
+			.setName(i18n.t("settings.add-to-commands"))
 			.addToggle(linkSetting(
-				() => this.plugin.settings.command,
+				() => plugin.settings.command,
 				value => {
-					this.plugin.settings.command = value
+					plugin.settings.command = value
 				},
 			))
 			.addExtraButton(resetButton(() => {
-				this.plugin.settings.command = getDefaultSettings().command
+				plugin.settings.command = getDefaultSettings().command
 			}))
 		new Setting(containerEl)
-			.setName(I18N.t("settings.add-to-context-menus"))
+			.setName(i18n.t("settings.add-to-context-menus"))
 			.addToggle(linkSetting(
-				() => this.plugin.settings.contextMenu,
+				() => plugin.settings.contextMenu,
 				value => {
-					this.plugin.settings.contextMenu = value
+					plugin.settings.contextMenu = value
 				},
 			))
 			.addExtraButton(resetButton(() => {
-				this.plugin.settings.contextMenu = getDefaultSettings().contextMenu
+				plugin.settings.contextMenu = getDefaultSettings().contextMenu
 			}))
 
 		new Setting(containerEl)
-			.setName(I18N.t("settings.notice-timeout"))
+			.setName(i18n.t("settings.notice-timeout"))
 			.addText(linkSetting(
-				() => this.plugin.settings.noticeTimeout.toString(),
+				() => plugin.settings.noticeTimeout.toString(),
 				textToNumberSetter(value => {
-					this.plugin.settings.noticeTimeout = value
+					plugin.settings.noticeTimeout = value
 				})
 			))
 			.addExtraButton(resetButton(() => {
-				this.plugin.settings.noticeTimeout =
+				plugin.settings.noticeTimeout =
 					getDefaultSettings().noticeTimeout
 			}))
 
-		containerEl.createEl("h2", { text: I18N.t("settings.executables") })
+		containerEl.createEl("h2", { text: i18n.t("settings.executables") })
 		for (const key of Object.keys(getDefaultSettings().executables)) {
 			const key0 = key as keyof TerminalExecutables
 			new Setting(containerEl)
-				.setName(I18N.t(`settings.executable-list.${key0}`))
+				.setName(i18n.t(`settings.executable-list.${key0}`))
 				.addText(linkSetting(
-					() => this.plugin.settings.executables[key0].name,
+					() => plugin.settings.executables[key0].name,
 					value => {
-						this.plugin.settings.executables[key0].name = value
+						plugin.settings.executables[key0].name = value
 					},
 				))
 				.addExtraButton(resetButton(() => {
-					this.plugin.settings.executables[key0].name =
+					plugin.settings.executables[key0].name =
 						getDefaultSettings().executables[key0].name
 				}))
 		}
+		await Promise.resolve()
 	}
 }
