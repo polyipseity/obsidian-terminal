@@ -102,7 +102,9 @@ export default class TerminalView extends ItemView {
 	}
 
 	public onResize(): void {
-		this.resize()
+		if (this.plugin.app.workspace.getActiveViewOfType(TerminalView) === this) {
+			this.resize()
+		}
 	}
 
 	public getDisplayText(): string {
