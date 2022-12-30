@@ -93,7 +93,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 						existingLeaves = workspace
 							.getLeavesOfType(TerminalView.viewType.namespaced(plugin)),
 						leaf = ((): WorkspaceLeaf => {
-							const existingLeaf = existingLeaves.at(-1)
+							const existingLeaf = existingLeaves.last()
 							if (typeof existingLeaf === "undefined") {
 								return workspace.getLeaf("split", "horizontal")
 							}
