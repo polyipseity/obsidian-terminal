@@ -111,7 +111,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 						state,
 						type: TerminalView.viewType.namespaced(plugin),
 					})
-					plugin.app.workspace.setActiveLeaf(leaf, { focus: true })
+					workspace.setActiveLeaf(leaf, { focus: true })
 					break
 				}
 				default:

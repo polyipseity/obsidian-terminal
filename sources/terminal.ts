@@ -122,17 +122,24 @@ export default class TerminalView extends ItemView {
 	}
 
 	protected async onOpen(): Promise<void> {
-		const { containerEl } = this
+		const { containerEl, plugin, terminal } = this
 		containerEl.empty()
 		containerEl.createDiv({}, el => {
 			onVisible(el, observer => {
 				try {
-					this.terminal.open(el)
+					terminal.open(el)
 				} finally {
 					observer.disconnect()
 				}
 			})
 		})
+		this.registerEvent(plugin.app.workspace.on("active-leaf-change", leaf => {
+			if (leaf === this.leaf) {
+				terminal.focus()
+				return
+			}
+			terminal.blur()
+		}))
 		await Promise.resolve()
 	}
 
