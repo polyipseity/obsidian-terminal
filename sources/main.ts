@@ -10,7 +10,7 @@ import {
 	type WorkspaceLeaf,
 	moment,
 } from "obsidian"
-import { GenericTerminalPty, type TerminalPtyConstructor, WindowsTerminalPty } from "./pty"
+import { GenericTerminalPty, type TerminalPty, WindowsTerminalPty } from "./pty"
 import { SettingTab, type TerminalExecutables, getDefaultSettings } from "./settings"
 import TerminalView, { type TerminalViewState } from "./terminal"
 import { notice, printError } from "./util"
@@ -27,7 +27,7 @@ interface PlatformDispatch {
 		cwd: string,
 		type: TerminalType
 	) => Promise<void>
-	readonly terminalPty: TerminalPtyConstructor
+	readonly terminalPty: typeof TerminalPty
 }
 
 export default class ObsidianTerminalPlugin extends Plugin {

@@ -13,7 +13,8 @@ export default interface TerminalPty {
 	readonly resize: (columns: number, rows: number) => Promise<void>
 	readonly once: (event: "exit", listener: (code: NodeJS.Signals | number) => void) => this
 }
-export type TerminalPtyConstructor = new (
+// eslint-disable-next-line @typescript-eslint/no-redeclare, @typescript-eslint/naming-convention
+export declare const TerminalPty: new (
 	plugin: ObsidianTerminalPlugin,
 	executable: string,
 	cwd?: string,
