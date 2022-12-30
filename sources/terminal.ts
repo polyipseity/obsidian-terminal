@@ -82,7 +82,8 @@ export default class TerminalView extends ItemView {
 			notice(i18n.t("notices.terminal-exited", { code }), TERMINAL_EXIT_SUCCESS.includes(code) ? plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
 			this.leaf.detach()
 		})
-		const shell = pty.shell()
+		const { shell } = pty
+		shell
 			.once("error", error => {
 				printError(error, i18n.t("errors.error-spawning-terminal"))
 			})
@@ -134,7 +135,7 @@ export default class TerminalView extends ItemView {
 	}
 
 	protected async onClose(): Promise<void> {
-		this.pty?.shell().kill()
+		this.pty?.shell.kill()
 		this.terminal.dispose()
 		await Promise.resolve()
 	}

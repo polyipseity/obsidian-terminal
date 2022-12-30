@@ -1,4 +1,4 @@
-import { type ChildProcess, type ChildProcessWithoutNullStreams, spawn } from "child_process"
+import { type ChildProcessWithoutNullStreams, spawn } from "child_process"
 import type ObsidianTerminalPlugin from "./main"
 import { TERMINAL_WATCHDOG_INTERVAL } from "./magic"
 import { printError } from "./util"
@@ -8,8 +8,8 @@ import resizerPy from "./resizer.py"
 import { fileSync as tmpFileSync } from "tmp"
 
 export default interface TerminalPty {
-	readonly shell: () => ChildProcessWithoutNullStreams
-	readonly resizable: () => boolean
+	readonly shell: ChildProcessWithoutNullStreams
+	readonly resizable: boolean
 	readonly resize: (columns: number, rows: number) => Promise<void>
 	readonly once: (event: "exit", listener: (code: NodeJS.Signals | number) => void) => this
 }
@@ -21,9 +21,9 @@ export type TerminalPtyConstructor = new (
 ) => TerminalPty
 
 abstract class BaseTerminalPty implements TerminalPty {
+	public abstract readonly shell: ChildProcessWithoutNullStreams
+	public abstract readonly resizable: boolean
 	protected constructor(protected readonly plugin: ObsidianTerminalPlugin) { }
-	public abstract shell(): ChildProcessWithoutNullStreams
-	public abstract resizable(): boolean
 	public abstract resize(columns: number, rows: number): Promise<void>
 	public abstract once(event: "exit", listener: (code: NodeJS.Signals | number) => void): this
 }
@@ -56,12 +56,15 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 		promisify(this.resizer.stdin.write.bind(this.resizer.stdin) as
 			(chunk: any, callback: (error?: Error | null) => void) => boolean)
 
-	protected constructor(plugin: ObsidianTerminalPlugin, process: ChildProcess) {
+	protected constructor(
+		plugin: ObsidianTerminalPlugin,
+		public readonly shell: ChildProcessWithoutNullStreams,
+	) {
 		super(plugin)
 		const { resizer } = this
-		process
+		shell
 			.once("spawn", () => {
-				const { pid } = process
+				const { pid } = shell
 				if (typeof pid === "undefined") {
 					resizer.kill()
 					return
@@ -76,7 +79,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 			.once("exit", () => { this.resizer.kill() })
 	}
 
-	public resizable(): boolean {
+	public get resizable(): boolean {
 		return this.resizable0
 	}
 
@@ -102,7 +105,6 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 		})
 	}
 
-	public abstract shell(): ChildProcessWithoutNullStreams
 	public abstract once(event: "exit", listener: (code: NodeJS.Signals | number) => void): this
 }
 
@@ -110,7 +112,6 @@ export class WindowsTerminalPty
 	extends PtyWithResizer
 	implements TerminalPty {
 	protected readonly codeTmp
-	protected readonly shell0: ChildProcessWithoutNullStreams
 	protected exitCode?: NodeJS.Signals | number
 	protected readonly exitListeners: (
 		(code: NodeJS.Signals | number) => void)[] = []
@@ -149,7 +150,6 @@ export class WindowsTerminalPty
 					}
 				})
 		super(plugin, shell)
-		this.shell0 = shell
 		this.codeTmp = codeTmp
 	}
 
@@ -162,17 +162,11 @@ export class WindowsTerminalPty
 		listener(exitCode)
 		return this
 	}
-
-	public shell(): ChildProcessWithoutNullStreams {
-		return this.shell0
-	}
 }
 
 export class GenericTerminalPty
 	extends PtyWithResizer
 	implements TerminalPty {
-	protected readonly shell0: ChildProcessWithoutNullStreams
-
 	public constructor(
 		plugin: ObsidianTerminalPlugin,
 		executable: string,
@@ -185,17 +179,12 @@ export class GenericTerminalPty
 			windowsHide: false,
 		})
 		super(plugin, shell)
-		this.shell0 = shell
 	}
 
 	public once(event: "exit", listener: (code: NodeJS.Signals | number) => void): this {
-		this.shell0.once(event, (code, signal) => {
+		this.shell.once(event, (code, signal) => {
 			listener(code ?? signal ?? NaN)
 		})
 		return this
-	}
-
-	public shell(): ChildProcessWithoutNullStreams {
-		return this.shell0
 	}
 }
