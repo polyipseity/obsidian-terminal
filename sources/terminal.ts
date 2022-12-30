@@ -47,7 +47,7 @@ export default class TerminalView extends ItemView {
 		if (typeof pty === "undefined") {
 			return
 		}
-		await pty.resize(columns, rows).catch()
+		await pty.resize(columns, rows).catch(() => { })
 	}, TERMINAL_RESIZE_TIMEOUT, false)
 
 	public constructor(

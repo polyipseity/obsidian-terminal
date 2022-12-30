@@ -37,7 +37,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 		.once("spawn", () => {
 			this.resizable0 = true
 			const watchdog = this.plugin.registerInterval(window.setInterval(() => {
-				void this._write("\n").catch()
+				void this._write("\n").catch(() => { })
 			}, TERMINAL_WATCHDOG_INTERVAL))
 			try {
 				this.resizer.once("exit", () => { window.clearInterval(watchdog) })
