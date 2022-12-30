@@ -74,6 +74,7 @@ export default class TerminalView extends ItemView {
 				state0.cwd,
 				state0.args,
 			)
+		this.register(() => pty.shell.kill())
 		this.pty = pty
 		pty.once("exit", code => {
 			notice(i18n.t("notices.terminal-exited", { code }), TERMINAL_EXIT_SUCCESS.includes(code) ? plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
@@ -130,6 +131,7 @@ export default class TerminalView extends ItemView {
 		containerEl.createDiv({}, ele => {
 			const obsr = onVisible(ele, obsr0 => {
 				try {
+					this.register(() => { terminal.dispose() })
 					terminal.open(ele)
 				} finally {
 					obsr0.disconnect()
@@ -163,12 +165,6 @@ export default class TerminalView extends ItemView {
 				div.style.visibility = ""
 			}))
 		})
-		await Promise.resolve()
-	}
-
-	protected async onClose(): Promise<void> {
-		this.pty?.shell.kill()
-		this.terminal.dispose()
 		await Promise.resolve()
 	}
 }
