@@ -13,10 +13,10 @@ import {
 import { GenericTerminalPty, type TerminalPty, WindowsTerminalPty } from "./pty"
 import { SettingTab, type TerminalExecutables, getDefaultSettings } from "./settings"
 import TerminalView, { type TerminalViewState } from "./terminal"
+import i18next, { type i18n } from "i18next"
 import { notice, printError } from "./util"
 import I18N from "./i18n"
 import type Settings from "./settings"
-import type { i18n } from "i18next"
 import { spawn } from "child_process"
 
 type TerminalType = "external" | "integrated"
@@ -43,7 +43,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 		}
 	})()
 
-	protected i18n0: i18n
+	protected i18n0: i18n = i18next
 
 	public constructor(app: App, manifest: PluginManifest) {
 		super(app, manifest)
@@ -121,7 +121,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 		}
 	}
 
-	public async onload(): Promise<void> {
+	public override async onload(): Promise<void> {
 		if (!Platform.isDesktopApp) {
 			return
 		}

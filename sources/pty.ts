@@ -107,7 +107,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 		})
 	}
 
-	public abstract once(event: "exit", listener: (code: NodeJS.Signals | number) => void): this
+	public abstract override once(event: "exit", listener: (code: NodeJS.Signals | number) => void): this
 }
 
 export class WindowsTerminalPty

@@ -60,7 +60,10 @@ export default class TerminalView extends ItemView {
 		}
 	}
 
-	public async setState(state: any, _0: ViewStateResult): Promise<void> {
+	public override async setState(
+		state: any,
+		_0: ViewStateResult
+	): Promise<void> {
 		if (!("type" in state) || (state as { type: unknown }).type !== "TerminalViewState" || typeof this.pty !== "undefined") {
 			return
 		}
@@ -95,11 +98,11 @@ export default class TerminalView extends ItemView {
 		await Promise.resolve()
 	}
 
-	public getState(): TerminalViewState {
+	public override getState(): TerminalViewState {
 		return this.state
 	}
 
-	public onResize(): void {
+	public override onResize(): void {
 		if (this.plugin.app.workspace.getActiveViewOfType(TerminalView) === this) {
 			const { fit } = this.terminalAddons,
 				dim = fit.proposeDimensions()
@@ -116,7 +119,7 @@ export default class TerminalView extends ItemView {
 		return this.plugin.i18n.t("views.terminal-view.display-name", { executable: basename(executable, extname(executable)) })
 	}
 
-	public getIcon(): string {
+	public override getIcon(): string {
 		return this.plugin.i18n.t("assets:views.terminal-view-icon")
 	}
 
@@ -125,7 +128,7 @@ export default class TerminalView extends ItemView {
 		return TerminalView.namespacedViewType
 	}
 
-	protected async onOpen(): Promise<void> {
+	protected override async onOpen(): Promise<void> {
 		const { containerEl, plugin, terminal } = this
 		containerEl.empty()
 		containerEl.createDiv({}, ele => {
