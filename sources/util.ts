@@ -36,16 +36,16 @@ export function onVisible<E extends Element>(
 	transient = false,
 ): IntersectionObserver {
 	const ret = new IntersectionObserver((ents, obsr) => {
-		const lastEnt = ents.last()
-		if (typeof lastEnt === "undefined") {
-			return
-		}
-		const intersect = (transient ? ents.reverse() : [lastEnt])
-			.find(ent => ent.isIntersecting)
-		if (typeof intersect === "undefined") {
-			return
-		}
-		callback(obsr, element, intersect)
+		(transient
+			? ents.reverse()
+			: [ents.last() ?? { isIntersecting: false }])
+			.some(ent => {
+				if (ent.isIntersecting) {
+					callback(obsr, element, ent)
+					return true
+				}
+				return false
+			})
 	})
 	ret.observe(element)
 	return ret

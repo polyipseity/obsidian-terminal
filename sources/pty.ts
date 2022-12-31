@@ -128,7 +128,7 @@ export class WindowsTerminalPty
 			shell = spawn("C:\\Windows\\System32\\conhost.exe", [
 				"C:\\Windows\\System32\\cmd.exe",
 				"/C",
-				`"${executable}" ${args0.length === 0 ? "" : "\""}${args0.join("\" \"")}${args0.length === 0 ? "" : "\""} & call echo %^ERRORLEVEL% >"${codeTmp.name}"`,
+				`"${executable}" ${args0.map(arg => `"${arg}"`).join(" ")} & call echo %^ERRORLEVEL% >"${codeTmp.name}"`,
 			], {
 				cwd,
 				stdio: ["pipe", "pipe", "pipe"],

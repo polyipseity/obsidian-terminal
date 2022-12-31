@@ -1,7 +1,7 @@
 import { spawnSync } from "child_process"
 
 function check(ret) {
-	if (ret.error !== undefined) throw ret.error
+	if (typeof ret.error !== "undefined") throw ret.error
 }
 function log(ret) {
 	console.log(ret.stdout)

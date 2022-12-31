@@ -55,16 +55,15 @@ class TerminalPlugin extends Plugin {
 						case "integrated": {
 							const { workspace } = plugin.app,
 								existingLeaves = workspace
-									.getLeavesOfType(TerminalView.viewType.namespaced(plugin)),
-								leaf = ((): WorkspaceLeaf => {
-									const existingLeaf = existingLeaves.last()
-									if (typeof existingLeaf === "undefined") {
-										return workspace.getLeaf("split", "horizontal")
-									}
-									workspace.setActiveLeaf(existingLeaf, { focus: false })
-									return workspace.getLeaf("tab")
-								})()
-							return leaf.setViewState({
+									.getLeavesOfType(TerminalView.viewType.namespaced(plugin))
+							return ((): WorkspaceLeaf => {
+								const existingLeaf = existingLeaves.last()
+								if (typeof existingLeaf === "undefined") {
+									return workspace.getLeaf("split", "horizontal")
+								}
+								workspace.setActiveLeaf(existingLeaf, { focus: false })
+								return workspace.getLeaf("tab")
+							})().setViewState({
 								active: true,
 								state: new TerminalView.State({
 									args: executable.args,
