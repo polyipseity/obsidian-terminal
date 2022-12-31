@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import * as assets from "assets/locales/en/assets.json"
 import * as en from "assets/locales/en/translations.json"
 
