@@ -30,6 +30,7 @@ abstract class BaseTerminalPty implements TerminalPty {
 }
 
 abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
+	protected readonly asdd = resizerPy
 	protected resizable0 = false
 	protected readonly resizer = spawn("python", ["-c", resizerPy], {
 		stdio: ["pipe", "pipe", "pipe"],

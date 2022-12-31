@@ -1,7 +1,6 @@
 {
   "extends": "@tsconfig/node16-strictest/tsconfig.json",
   "include": [
-    "@types/**/*",
     "assets/**/*",
     "sources/**/*",
   ],
@@ -33,7 +32,6 @@
     "paths": {},
     "resolveJsonModule": true,
     "rootDirs": [
-      "@types/",
       "assets/",
       "sources/",
     ],
