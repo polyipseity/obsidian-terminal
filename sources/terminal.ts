@@ -5,7 +5,7 @@ import {
 	debounce,
 } from "obsidian"
 import { NOTICE_NO_TIMEOUT, TERMINAL_EXIT_SUCCESS, TERMINAL_RESIZE_TIMEOUT } from "./magic"
-import { UnnamespacedID, notice, onVisible, printError, statusBar } from "./util"
+import { UnnamespacedID, notice, onVisible, openExternal, printError, statusBar } from "./util"
 import { basename, extname } from "path"
 import { FitAddon } from "xterm-addon-fit"
 import type ObsidianTerminalPlugin from "./main"
@@ -35,7 +35,7 @@ export default class TerminalView extends ItemView {
 	protected readonly terminalAddons = {
 		fit: new FitAddon(),
 		search: new SearchAddon(),
-		webLinks: new WebLinksAddon((_0, uri) => { window.open(uri) }),
+		webLinks: new WebLinksAddon((_0, uri) => { openExternal(uri) }),
 	} as const
 
 	protected pty?: TerminalPty

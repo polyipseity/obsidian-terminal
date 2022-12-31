@@ -51,6 +51,10 @@ export function onVisible<E extends Element>(
 	return ret
 }
 
+export function openExternal(url?: URL | string): Window | null {
+	return window.open(url, "_blank", "noreferrer")
+}
+
 export function printError(
 	error: any,
 	message?: string,
