@@ -14,22 +14,11 @@ import type TerminalPlugin from "./main"
 import type TerminalPty from "./pty"
 import { WebLinksAddon } from "xterm-addon-web-links"
 
-interface TerminalViewState0 {
-	readonly executable: string
-	readonly cwd: string
-	readonly args: string[]
-}
-export class TerminalViewState implements TerminalViewState0 {
-	public constructor(protected readonly obj: TerminalViewState0) { }
-	public get executable(): string { return this.obj.executable }
-	public get cwd(): string { return this.obj.cwd }
-	public get args(): string[] { return this.obj.args }
-}
-export default class TerminalView extends ItemView {
+class TerminalView extends ItemView {
 	public static readonly viewType = new UnnamespacedID("terminal-view")
 	public static namespacedViewType: string
 
-	protected state = new TerminalViewState({
+	protected state = new TerminalView.State({
 		args: [],
 		cwd: "",
 		executable: "",
@@ -68,7 +57,7 @@ export default class TerminalView extends ItemView {
 		state: any,
 		_0: ViewStateResult
 	): Promise<void> {
-		if (!(state instanceof TerminalViewState) || typeof this.pty !== "undefined") {
+		if (!(state instanceof TerminalView.State) || typeof this.pty !== "undefined") {
 			return
 		}
 		this.state = state
@@ -101,7 +90,7 @@ export default class TerminalView extends ItemView {
 		await Promise.resolve()
 	}
 
-	public override getState(): TerminalViewState {
+	public override getState(): TerminalView.State {
 		return this.state
 	}
 
@@ -174,3 +163,19 @@ export default class TerminalView extends ItemView {
 		await Promise.resolve()
 	}
 }
+namespace TerminalView {
+	export class State implements State.Impl {
+		public constructor(protected readonly obj: State.Impl) { }
+		public get executable(): string { return this.obj.executable }
+		public get cwd(): string { return this.obj.cwd }
+		public get args(): string[] { return this.obj.args }
+	}
+	namespace State {
+		export interface Impl {
+			readonly executable: string
+			readonly cwd: string
+			readonly args: string[]
+		}
+	}
+}
+export default TerminalView

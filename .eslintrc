@@ -247,6 +247,7 @@
         ]
       }
     ],
+    "@typescript-eslint/no-namespace": "off",
     "@typescript-eslint/no-type-alias": "off",
     "@typescript-eslint/no-unnecessary-condition": [
       "error",

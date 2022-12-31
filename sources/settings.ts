@@ -5,22 +5,24 @@ import {
 	Setting,
 	type ValueComponent,
 } from "obsidian"
-import type TerminalPlugin from "./main"
+import TerminalPlugin from "./main"
 
 export default interface Settings {
 	command: boolean
 	contextMenu: boolean
 	noticeTimeout: number
-	executables: TerminalExecutables
+	executables: Settings.Executables
 }
-interface TerminalExecutable {
-	name: string
-	args: string[]
-}
-export interface TerminalExecutables {
-	darwin: TerminalExecutable
-	linux: TerminalExecutable
-	win32: TerminalExecutable
+namespace Settings {
+	export type Executables = {
+		[key in TerminalPlugin.Platform]: Executables.Entry
+	}
+	namespace Executables {
+		export interface Entry {
+			name: string
+			args: string[]
+		}
+	}
 }
 export function getDefaultSettings(): Settings {
 	return {
@@ -159,19 +161,18 @@ export class SettingTab extends PluginSettingTab {
 			}))
 
 		containerEl.createEl("h2", { text: i18n.t("settings.executables") })
-		for (const key of Object.keys(getDefaultSettings().executables)) {
-			const key0 = key as keyof TerminalExecutables
+		for (const key of TerminalPlugin.ALL_PLATFORMS) {
 			new Setting(containerEl)
-				.setName(i18n.t(`settings.executable-list.${key0}`))
+				.setName(i18n.t(`settings.executable-list.${key}`))
 				.addText(linkSetting(
-					() => plugin.settings.executables[key0].name,
+					() => plugin.settings.executables[key].name,
 					value => {
-						plugin.settings.executables[key0].name = value
+						plugin.settings.executables[key].name = value
 					},
 				))
 				.addExtraButton(resetButton(() => {
-					plugin.settings.executables[key0].name =
-						getDefaultSettings().executables[key0].name
+					plugin.settings.executables[key].name =
+						getDefaultSettings().executables[key].name
 				}))
 		}
 		await Promise.resolve()

@@ -7,19 +7,20 @@ import { readFileSync } from "fs"
 import resizerPy from "./resizer.py"
 import { fileSync as tmpFileSync } from "tmp"
 
-export default interface TerminalPty {
+interface TerminalPty {
 	readonly shell: ChildProcessWithoutNullStreams
 	readonly resizable: boolean
 	readonly resize: (columns: number, rows: number) => Promise<void>
 	readonly once: (event: "exit", listener: (code: NodeJS.Signals | number) => void) => this
 }
 // eslint-disable-next-line @typescript-eslint/no-redeclare, @typescript-eslint/naming-convention
-export declare const TerminalPty: new (
+declare const TerminalPty: new (
 	plugin: TerminalPlugin,
 	executable: string,
 	cwd?: string,
 	args?: string[],
 ) => TerminalPty
+export default TerminalPty
 
 abstract class BaseTerminalPty implements TerminalPty {
 	public abstract readonly shell: ChildProcessWithoutNullStreams

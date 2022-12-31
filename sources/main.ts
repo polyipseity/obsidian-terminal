@@ -10,31 +10,23 @@ import {
 	type WorkspaceLeaf,
 	moment,
 } from "obsidian"
-import { GenericTerminalPty, type TerminalPty, WindowsTerminalPty } from "./pty"
-import { SettingTab, type TerminalExecutables, getDefaultSettings } from "./settings"
-import TerminalView, { TerminalViewState } from "./terminal"
+import { GenericTerminalPty, WindowsTerminalPty } from "./pty"
+import { SettingTab, getDefaultSettings } from "./settings"
 import i18next, { type i18n } from "i18next"
 import { notice, printError } from "./util"
 import I18N from "./i18n"
 import type Settings from "./settings"
+import type TerminalPty from "./pty"
+import TerminalView from "./terminal"
 import { spawn } from "child_process"
 
 type TerminalType = "external" | "integrated"
 
-interface PlatformDispatch {
-	readonly spawnTerminal: (
-		plugin: TerminalPlugin,
-		cwd: string,
-		type: TerminalType
-	) => Promise<void>
-	readonly terminalPty: typeof TerminalPty
-}
-
-export default class TerminalPlugin extends Plugin {
+class TerminalPlugin extends Plugin {
 	public readonly settings: Settings = getDefaultSettings()
-	public readonly platform = ((): PlatformDispatch => {
+	public readonly platform = ((): TerminalPlugin.PlatformDispatch => {
 		const platform = process.platform in this.settings.executables
-			? process.platform as keyof TerminalExecutables
+			? process.platform as TerminalPlugin.Platform
 			: null
 		return {
 			// eslint-disable-next-line no-underscore-dangle
@@ -54,7 +46,7 @@ export default class TerminalPlugin extends Plugin {
 		return this.i18n0
 	}
 
-	private static _terminalSpawner(platform: keyof TerminalExecutables | null): PlatformDispatch["spawnTerminal"] {
+	private static _terminalSpawner(platform: TerminalPlugin.Platform | null): TerminalPlugin.PlatformDispatch["spawnTerminal"] {
 		if (platform === null) {
 			return plugin => {
 				throw Error(plugin.i18n.t("errors.unsupported-platform"))
@@ -91,7 +83,7 @@ export default class TerminalPlugin extends Plugin {
 						})()
 					await leaf.setViewState({
 						active: true,
-						state: new TerminalViewState({
+						state: new TerminalView.State({
 							args: executable.args,
 							cwd,
 							executable: executable.name,
@@ -217,3 +209,16 @@ export default class TerminalPlugin extends Plugin {
 		await this.saveData(this.settings)
 	}
 }
+namespace TerminalPlugin {
+	export const ALL_PLATFORMS = ["darwin", "linux", "win32"] as const
+	export type Platform = typeof ALL_PLATFORMS[number]
+	export interface PlatformDispatch {
+		readonly spawnTerminal: (
+			plugin: TerminalPlugin,
+			cwd: string,
+			type: TerminalType
+		) => Promise<void>
+		readonly terminalPty: typeof TerminalPty
+	}
+}
+export default TerminalPlugin
