@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 # pip install psutil pywinctl
 import contextlib as _contextlib
 import os as _os
