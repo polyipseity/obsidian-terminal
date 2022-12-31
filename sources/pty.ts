@@ -114,9 +114,7 @@ export class WindowsTerminalPty
 	extends PtyWithResizer
 	implements TerminalPty {
 	protected readonly codeTmp
-	protected exitCode?: NodeJS.Signals | number
-	protected readonly exitListeners: (
-		(code: NodeJS.Signals | number) => void)[] = []
+	protected readonly exitCode
 
 	public constructor(
 		plugin: ObsidianTerminalPlugin,
@@ -135,33 +133,36 @@ export class WindowsTerminalPty
 				stdio: ["pipe", "pipe", "pipe"],
 				windowsHide: false,
 				windowsVerbatimArguments: true,
+			}),
+			exitCode = new Promise<NodeJS.Signals | number>((resolve, reject) => {
+				shell
+					.once("exit", (conCode, signal) => {
+						try {
+							const termCode =
+								parseInt(
+									readFileSync(this.codeTmp.name, { encoding: "utf-8", flag: "r" }).trim(),
+									10
+								)
+							resolve(isNaN(termCode) ? conCode ?? signal ?? NaN : termCode)
+						} finally {
+							this.codeTmp.removeCallback()
+						}
+					})
+					.once("error", error => {
+						try {
+							reject(error)
+						} finally {
+							this.codeTmp.removeCallback()
+						}
+					})
 			})
-				.once("exit", (conCode, signal) => {
-					try {
-						const termCode =
-							parseInt(
-								readFileSync(this.codeTmp.name, { encoding: "utf-8", flag: "r" }).trim(),
-								10
-							),
-							code = isNaN(termCode) ? conCode ?? signal ?? NaN : termCode
-						this.exitCode = code
-						for (const listener of this.exitListeners) { listener(code) }
-						this.exitListeners.length = 0
-					} finally {
-						this.codeTmp.removeCallback()
-					}
-				})
 		super(plugin, shell)
 		this.codeTmp = codeTmp
+		this.exitCode = exitCode
 	}
 
 	public once(_0: "exit", listener: (code: NodeJS.Signals | number) => void): this {
-		const { exitCode } = this
-		if (typeof exitCode === "undefined") {
-			this.exitListeners.push(listener)
-			return this
-		}
-		listener(exitCode)
+		void this.exitCode.then(listener)
 		return this
 	}
 }
