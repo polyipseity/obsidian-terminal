@@ -6,6 +6,7 @@
 	"license": "MIT",
 	"description": "Open terminals in Obsidian directly.",
 	"keywords": [
+		"console",
 		"obsidian",
 		"plugin",
 		"terminal"
