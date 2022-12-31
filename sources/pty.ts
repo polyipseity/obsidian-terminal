@@ -31,32 +31,31 @@ abstract class BaseTerminalPty implements TerminalPty {
 }
 
 abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
-	protected readonly asdd = resizerPy
-	protected resizable0 = false
-	protected readonly resizer = spawn("python", ["-c", resizerPy], {
+	#resizable = false
+	readonly #resizer = spawn("python", ["-c", resizerPy], {
 		stdio: ["pipe", "pipe", "pipe"],
 		windowsHide: true,
 	})
 		.once("spawn", () => {
-			this.resizable0 = true
+			this.#resizable = true
 			const watchdog = this.plugin.registerInterval(window.setInterval(() => {
-				void this._write("\n").catch(() => { })
+				void this.#write("\n").catch(() => { })
 			}, TERMINAL_WATCHDOG_INTERVAL))
 			try {
-				this.resizer.once("exit", () => { window.clearInterval(watchdog) })
+				this.#resizer.once("exit", () => { window.clearInterval(watchdog) })
 			} catch (err) {
 				window.clearInterval(watchdog)
 				throw err
 			}
 		})
 		.once("error", error => {
-			this.resizable0 = false
+			this.#resizable = false
 			printError(error, this.plugin.i18n.t("errors.error-spawning-resizer"))
 		})
-		.once("exit", () => { this.resizable0 = false })
+		.once("exit", () => { this.#resizable = false })
 
-	private readonly _write =
-		promisify(this.resizer.stdin.write.bind(this.resizer.stdin) as
+	readonly #write =
+		promisify(this.#resizer.stdin.write.bind(this.#resizer.stdin) as
 			(chunk: any, callback: (error?: Error | null) => void) => boolean)
 
 	protected constructor(
@@ -64,32 +63,30 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 		public readonly shell: ChildProcessWithoutNullStreams,
 	) {
 		super(plugin)
-		const { resizer } = this
 		shell
 			.once("spawn", () => {
 				const { pid } = shell
 				if (typeof pid === "undefined") {
-					resizer.kill()
+					this.#resizer.kill()
 					return
 				}
-				this._write(`${pid}\n`)
+				this.#write(`${pid}\n`)
 					.catch(reason => {
-						resizer.kill()
+						this.#resizer.kill()
 						printError(reason, this.plugin.i18n.t("errors.error-spawning-resizer"))
 					})
 			})
-			.once("error", () => { this.resizer.kill() })
-			.once("exit", () => { this.resizer.kill() })
+			.once("error", () => { this.#resizer.kill() })
+			.once("exit", () => { this.#resizer.kill() })
 	}
 
 	public get resizable(): boolean {
-		return this.resizable0
+		return this.#resizable
 	}
 
 	public async resize(columns: number, rows: number): Promise<void> {
-		const { resizer } = this,
-			{ stdout } = resizer
-		await this._write(`${columns}x${rows}\n`)
+		const { stdout } = this.#resizer
+		await this.#write(`${columns}x${rows}\n`)
 		return new Promise((resolve, reject) => {
 			const succ = (chunk: Buffer): void => {
 				if (chunk.toString().includes("resized")) {
@@ -101,7 +98,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 				}
 			}
 			stdout.on("data", succ)
-			resizer.once("error", error => {
+			this.#resizer.once("error", error => {
 				try {
 					reject(error)
 				} finally {
@@ -117,8 +114,8 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 export class WindowsTerminalPty
 	extends PtyWithResizer
 	implements TerminalPty {
-	protected readonly codeTmp
-	protected readonly exitCode
+	readonly #codeTmp
+	readonly #exitCode
 
 	public constructor(
 		plugin: TerminalPlugin,
@@ -144,29 +141,29 @@ export class WindowsTerminalPty
 						try {
 							const termCode =
 								parseInt(
-									readFileSync(this.codeTmp.name, { encoding: "utf-8", flag: "r" }).trim(),
+									readFileSync(this.#codeTmp.name, { encoding: "utf-8", flag: "r" }).trim(),
 									10
 								)
 							resolve(isNaN(termCode) ? conCode ?? signal ?? NaN : termCode)
 						} finally {
-							this.codeTmp.removeCallback()
+							this.#codeTmp.removeCallback()
 						}
 					})
 					.once("error", error => {
 						try {
 							reject(error)
 						} finally {
-							this.codeTmp.removeCallback()
+							this.#codeTmp.removeCallback()
 						}
 					})
 			})
 		super(plugin, shell)
-		this.codeTmp = codeTmp
-		this.exitCode = exitCode
+		this.#codeTmp = codeTmp
+		this.#exitCode = exitCode
 	}
 
 	public once(_0: "exit", listener: (code: NodeJS.Signals | number) => void): this {
-		void this.exitCode.then(listener)
+		void this.#exitCode.then(listener)
 		return this
 	}
 }

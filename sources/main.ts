@@ -29,13 +29,64 @@ class TerminalPlugin extends Plugin {
 			? process.platform as TerminalPlugin.Platform
 			: null
 		return {
-			// eslint-disable-next-line no-underscore-dangle
-			spawnTerminal: TerminalPlugin._terminalSpawner(platform),
+			spawnTerminal: ((): TerminalPlugin.PlatformDispatch["spawnTerminal"] => {
+				if (platform === null) {
+					return plugin => {
+						throw Error(plugin.i18n.t("errors.unsupported-platform"))
+					}
+				}
+				return async (plugin, cwd, type) => {
+					const executable = plugin.settings.executables[platform]
+					notice(plugin.i18n.t("notices.spawning-terminal", { executable: executable.name }), plugin.settings.noticeTimeout)
+					switch (type) {
+						case "external": {
+							const process = spawn(executable.name, executable.args, {
+								cwd,
+								detached: true,
+								shell: true,
+								stdio: "ignore",
+							})
+								.once("error", error => {
+									printError(error, plugin.i18n.t("errors.error-spawning-terminal"))
+								})
+							process.unref()
+							return new Promise((resolve, reject) => { process.once("spawn", resolve).once("error", reject) })
+						}
+						case "integrated": {
+							const { workspace } = plugin.app,
+								existingLeaves = workspace
+									.getLeavesOfType(TerminalView.viewType.namespaced(plugin)),
+								leaf = ((): WorkspaceLeaf => {
+									const existingLeaf = existingLeaves.last()
+									if (typeof existingLeaf === "undefined") {
+										return workspace.getLeaf("split", "horizontal")
+									}
+									workspace.setActiveLeaf(existingLeaf, { focus: false })
+									return workspace.getLeaf("tab")
+								})()
+							await leaf.setViewState({
+								active: true,
+								state: new TerminalView.State({
+									args: executable.args,
+									cwd,
+									executable: executable.name,
+								}),
+								type: TerminalView.viewType.namespaced(plugin),
+							})
+							workspace.setActiveLeaf(leaf, { focus: true })
+							break
+						}
+						default:
+							throw new TypeError(type)
+					}
+					return Promise.resolve()
+				}
+			})(),
 			terminalPty: platform === "win32" ? WindowsTerminalPty : GenericTerminalPty,
 		}
 	})()
 
-	protected i18n0: i18n = i18next
+	#i18n0: i18n = i18next
 
 	public constructor(app: App, manifest: PluginManifest) {
 		super(app, manifest)
@@ -43,61 +94,7 @@ class TerminalPlugin extends Plugin {
 	}
 
 	public get i18n(): i18n {
-		return this.i18n0
-	}
-
-	private static _terminalSpawner(platform: TerminalPlugin.Platform | null): TerminalPlugin.PlatformDispatch["spawnTerminal"] {
-		if (platform === null) {
-			return plugin => {
-				throw Error(plugin.i18n.t("errors.unsupported-platform"))
-			}
-		}
-		return async (plugin, cwd, type) => {
-			const executable = plugin.settings.executables[platform]
-			notice(plugin.i18n.t("notices.spawning-terminal", { executable: executable.name }), plugin.settings.noticeTimeout)
-			switch (type) {
-				case "external": {
-					const process = spawn(executable.name, executable.args, {
-						cwd,
-						detached: true,
-						shell: true,
-						stdio: "ignore",
-					})
-						.once("error", error => {
-							printError(error, plugin.i18n.t("errors.error-spawning-terminal"))
-						})
-					process.unref()
-					return new Promise((resolve, reject) => { process.once("spawn", resolve).once("error", reject) })
-				}
-				case "integrated": {
-					const { workspace } = plugin.app,
-						existingLeaves = workspace
-							.getLeavesOfType(TerminalView.viewType.namespaced(plugin)),
-						leaf = ((): WorkspaceLeaf => {
-							const existingLeaf = existingLeaves.last()
-							if (typeof existingLeaf === "undefined") {
-								return workspace.getLeaf("split", "horizontal")
-							}
-							workspace.setActiveLeaf(existingLeaf, { focus: false })
-							return workspace.getLeaf("tab")
-						})()
-					await leaf.setViewState({
-						active: true,
-						state: new TerminalView.State({
-							args: executable.args,
-							cwd,
-							executable: executable.name,
-						}),
-						type: TerminalView.viewType.namespaced(plugin),
-					})
-					workspace.setActiveLeaf(leaf, { focus: true })
-					break
-				}
-				default:
-					throw new TypeError(type)
-			}
-			return Promise.resolve()
-		}
+		return this.#i18n0
 	}
 
 	public override async onload(): Promise<void> {
@@ -111,7 +108,7 @@ class TerminalPlugin extends Plugin {
 			}),
 			this.loadSettings(),
 		])
-		this.i18n0 = i18n
+		this.#i18n0 = i18n
 		const adapter = this.app.vault.adapter as FileSystemAdapter
 
 		this.addSettingTab(new SettingTab(this))

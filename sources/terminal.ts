@@ -17,30 +17,28 @@ import { WebLinksAddon } from "xterm-addon-web-links"
 class TerminalView extends ItemView {
 	public static readonly viewType = new UnnamespacedID("terminal-view")
 	public static namespacedViewType: string
-
-	protected state = new TerminalView.State({
+	#state = new TerminalView.State({
 		args: [],
 		cwd: "",
 		executable: "",
 	})
 
-	protected readonly terminal = new Terminal()
-	protected readonly terminalAddons = {
+	readonly #terminal = new Terminal()
+	readonly #terminalAddons = {
 		fit: new FitAddon(),
 		search: new SearchAddon(),
 		webLinks: new WebLinksAddon((_0, uri) => { openExternal(uri) }),
 	} as const
 
-	protected pty?: TerminalPty
-	protected readonly resizeNative = debounce(async (
+	#pty?: TerminalPty
+	readonly #resizeNative = debounce(async (
 		columns: number,
 		rows: number,
 	) => {
-		const { pty } = this
-		if (typeof pty === "undefined") {
+		if (typeof this.#pty === "undefined") {
 			return
 		}
-		await pty.resize(columns, rows).catch(() => { })
+		await this.#pty.resize(columns, rows).catch(() => { })
 	}, TERMINAL_RESIZE_TIMEOUT, false)
 
 	public constructor(
@@ -48,8 +46,8 @@ class TerminalView extends ItemView {
 		leaf: WorkspaceLeaf
 	) {
 		super(leaf)
-		for (const addon of Object.values(this.terminalAddons)) {
-			this.terminal.loadAddon(addon)
+		for (const addon of Object.values(this.#terminalAddons)) {
+			this.#terminal.loadAddon(addon)
 		}
 	}
 
@@ -57,11 +55,11 @@ class TerminalView extends ItemView {
 		state: any,
 		_0: ViewStateResult
 	): Promise<void> {
-		if (!(state instanceof TerminalView.State) || typeof this.pty !== "undefined") {
+		if (!(state instanceof TerminalView.State) || typeof this.#pty !== "undefined") {
 			return
 		}
-		this.state = state
-		const { plugin, terminal } = this,
+		this.#state = state
+		const { plugin } = this,
 			{ i18n } = plugin,
 			pty = new plugin.platform.terminalPty(
 				plugin,
@@ -70,7 +68,7 @@ class TerminalView extends ItemView {
 				state.args,
 			)
 		this.register(() => pty.shell.kill())
-		this.pty = pty
+		this.#pty = pty
 		pty.once("exit", code => {
 			notice(i18n.t("notices.terminal-exited", { code }), TERMINAL_EXIT_SUCCESS.includes(code) ? plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
 			this.leaf.detach()
@@ -81,28 +79,28 @@ class TerminalView extends ItemView {
 				printError(error, i18n.t("errors.error-spawning-terminal"))
 			})
 		shell.stdout.on("data", data => {
-			terminal.write(data as Uint8Array | string)
+			this.#terminal.write(data as Uint8Array | string)
 		})
 		shell.stderr.on("data", data => {
-			terminal.write(data as Uint8Array | string)
+			this.#terminal.write(data as Uint8Array | string)
 		})
-		terminal.onData(data => shell.stdin.write(data))
+		this.#terminal.onData(data => shell.stdin.write(data))
 		await Promise.resolve()
 	}
 
 	public override getState(): TerminalView.State {
-		return this.state
+		return this.#state
 	}
 
 	public override onResize(): void {
 		if (this.plugin.app.workspace.getActiveViewOfType(TerminalView) === this) {
-			const { fit } = this.terminalAddons,
+			const { fit } = this.#terminalAddons,
 				dim = fit.proposeDimensions()
 			if (typeof dim === "undefined") {
 				return
 			}
 			fit.fit()
-			this.resizeNative(dim.cols, dim.rows)
+			this.#resizeNative(dim.cols, dim.rows)
 		}
 	}
 
@@ -121,13 +119,13 @@ class TerminalView extends ItemView {
 	}
 
 	protected override async onOpen(): Promise<void> {
-		const { containerEl, plugin, terminal } = this
+		const { containerEl, plugin } = this
 		containerEl.empty()
 		containerEl.createDiv({}, ele => {
 			const obsr = onVisible(ele, obsr0 => {
 				try {
-					this.register(() => { terminal.dispose() })
-					terminal.open(ele)
+					this.register(() => { this.#terminal.dispose() })
+					this.#terminal.open(ele)
 				} finally {
 					obsr0.disconnect()
 				}
@@ -137,10 +135,10 @@ class TerminalView extends ItemView {
 
 		this.registerEvent(plugin.app.workspace.on("active-leaf-change", leaf => {
 			if (leaf === this.leaf) {
-				terminal.focus()
+				this.#terminal.focus()
 				return
 			}
-			terminal.blur()
+			this.#terminal.blur()
 		}))
 		statusBar(div => {
 			const hider = new MutationObserver(() => {

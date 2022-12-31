@@ -215,7 +215,9 @@
         "format": [
           "camelCase"
         ],
-        "leadingUnderscore": "require"
+        "prefix": [
+          "#"
+        ]
       },
       {
         "selector": "typeLike",
