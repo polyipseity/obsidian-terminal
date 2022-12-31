@@ -14,6 +14,7 @@ import { GenericTerminalPty, WindowsTerminalPty } from "./pty"
 import { SettingTab, getDefaultSettings } from "./settings"
 import { commandNamer, notice, printError } from "./util"
 import i18next, { type i18n } from "i18next"
+import { DEFAULT_LANGUAGE } from "assets/locales"
 import I18N from "./i18n"
 import type Settings from "./settings"
 import type TerminalPty from "./pty"
@@ -150,13 +151,18 @@ class TerminalPlugin extends Plugin {
 		for (const type of TerminalPlugin.TERMINAL_TYPES) {
 			for (const cwd of CWD_TYPES) {
 				const id = `open-terminal-${type}-${cwd}` as const
-				let namer = commandNamer(() => i18n.t(`commands.${id}`), () => i18n.t("name"))
+				let namer = (): string => i18n.t(`commands.${id}`)
 				this.addCommand({
 					checkCallback: terminalSpawnCommand(type, cwd),
 					id,
 					get name() { return namer() },
 					set name(format) {
-						namer = commandNamer(() => i18n.t(`commands.${id}`), () => i18n.t("name"), format)
+						namer = commandNamer(
+							() => i18n.t(`commands.${id}`),
+							() => i18n.t("name"),
+							i18n.t("name", { lng: DEFAULT_LANGUAGE }),
+							format,
+						)
 					},
 				})
 			}
