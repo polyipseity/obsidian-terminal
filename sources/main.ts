@@ -100,7 +100,8 @@ class TerminalPlugin extends Plugin {
 		}
 		const [i18n] = await Promise.all([I18N, this.loadSettings()])
 		this.#i18n0 = i18n
-		await this.language.changeLanguage(moment.locale())
+		const { settings, language } = this
+		await language.changeLanguage(settings.language)
 		const adapter = this.app.vault.adapter as FileSystemAdapter
 
 		this.addSettingTab(new SettingTab(this))
@@ -114,7 +115,7 @@ class TerminalPlugin extends Plugin {
 				type: TerminalPlugin.TerminalType,
 				cwd: typeof CWD_TYPES[number],
 			) => (checking: boolean): boolean => {
-				if (!this.settings.command) {
+				if (!settings.command) {
 					return false
 				}
 				switch (cwd) {
@@ -186,7 +187,7 @@ class TerminalPlugin extends Plugin {
 					}))
 		}
 		this.registerEvent(this.app.workspace.on("file-menu", (menu, file,) => {
-			if (!this.settings.contextMenu) {
+			if (!settings.contextMenu) {
 				return
 			}
 			addContextMenus(menu, file instanceof TFolder ? file : file.parent)
@@ -194,7 +195,7 @@ class TerminalPlugin extends Plugin {
 		this.registerEvent(this.app.workspace.on(
 			"editor-menu",
 			(menu, _0, info,) => {
-				if (!this.settings.contextMenu ||
+				if (!settings.contextMenu ||
 					info instanceof MarkdownView ||
 					info.file === null) {
 					return
@@ -230,7 +231,7 @@ namespace TerminalPlugin {
 		public constructor(protected readonly plugin: TerminalPlugin) { }
 
 		public async changeLanguage(language: string): Promise<void> {
-			await this.plugin.i18n.changeLanguage(language)
+			await this.plugin.i18n.changeLanguage(language === "" ? moment.locale() : language)
 			for (const use of this.#uses) {
 				// eslint-disable-next-line no-await-in-loop
 				await Promise.resolve(use())
