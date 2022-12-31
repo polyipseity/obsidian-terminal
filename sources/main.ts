@@ -12,7 +12,7 @@ import {
 } from "obsidian"
 import { GenericTerminalPty, type TerminalPty, WindowsTerminalPty } from "./pty"
 import { SettingTab, type TerminalExecutables, getDefaultSettings } from "./settings"
-import TerminalView, { type TerminalViewState } from "./terminal"
+import TerminalView, { TerminalViewState } from "./terminal"
 import i18next, { type i18n } from "i18next"
 import { notice, printError } from "./util"
 import I18N from "./i18n"
@@ -99,16 +99,14 @@ export default class ObsidianTerminalPlugin extends Plugin {
 							}
 							workspace.setActiveLeaf(existingLeaf, { focus: false })
 							return workspace.getLeaf("tab")
-						})(),
-						state: TerminalViewState = {
+						})()
+					await leaf.setViewState({
+						active: true,
+						state: new TerminalViewState({
 							args: executable.args,
 							cwd,
 							executable: executable.name,
-							type: "TerminalViewState",
-						}
-					await leaf.setViewState({
-						active: true,
-						state,
+						}),
 						type: TerminalView.viewType.namespaced(plugin),
 					})
 					workspace.setActiveLeaf(leaf, { focus: true })

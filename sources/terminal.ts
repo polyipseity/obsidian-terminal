@@ -14,22 +14,26 @@ import { Terminal } from "xterm"
 import type TerminalPty from "./pty"
 import { WebLinksAddon } from "xterm-addon-web-links"
 
-export interface TerminalViewState {
-	readonly type: "TerminalViewState"
+interface TerminalViewState0 {
 	readonly executable: string
 	readonly cwd: string
 	readonly args: string[]
+}
+export class TerminalViewState implements TerminalViewState0 {
+	public constructor(protected readonly obj: TerminalViewState0) { }
+	public get executable(): string { return this.obj.executable }
+	public get cwd(): string { return this.obj.cwd }
+	public get args(): string[] { return this.obj.args }
 }
 export default class TerminalView extends ItemView {
 	public static readonly viewType = new UnnamespacedID("terminal-view")
 	public static namespacedViewType: string
 
-	protected state: TerminalViewState = {
+	protected state = new TerminalViewState({
 		args: [],
 		cwd: "",
 		executable: "",
-		type: "TerminalViewState",
-	}
+	})
 
 	protected readonly terminal = new Terminal()
 	protected readonly terminalAddons = {
@@ -64,18 +68,17 @@ export default class TerminalView extends ItemView {
 		state: any,
 		_0: ViewStateResult
 	): Promise<void> {
-		if (!("type" in state) || (state as { type: unknown }).type !== "TerminalViewState" || typeof this.pty !== "undefined") {
+		if (!(state instanceof TerminalViewState) || typeof this.pty !== "undefined") {
 			return
 		}
-		const state0 = state as TerminalViewState
-		this.state = state0
+		this.state = state
 		const { plugin, terminal } = this,
 			{ i18n } = plugin,
 			pty = new plugin.platform.terminalPty(
 				plugin,
-				state0.executable,
-				state0.cwd,
-				state0.args,
+				state.executable,
+				state.cwd,
+				state.args,
 			)
 		this.register(() => pty.shell.kill())
 		this.pty = pty
