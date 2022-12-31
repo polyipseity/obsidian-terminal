@@ -155,6 +155,13 @@ export class SettingTab extends PluginSettingTab {
 			))
 			.addExtraButton(resetButton(() => {
 				plugin.settings.language = getDefaultSettings().language
+			}, {
+				post: (component, activate) => component
+					.onClick(async () => {
+						await activate()
+						await plugin.language.changeLanguage(plugin.settings.language)
+						await this.display()
+					}),
 			}))
 		new Setting(containerEl)
 			.setName(i18n.t("settings.reset-all"))
