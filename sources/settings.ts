@@ -161,7 +161,7 @@ export class SettingTab extends PluginSettingTab {
 			}))
 
 		containerEl.createEl("h2", { text: i18n.t("settings.executables") })
-		for (const key of TerminalPlugin.ALL_PLATFORMS) {
+		for (const key of TerminalPlugin.PLATFORMS) {
 			new Setting(containerEl)
 				.setName(i18n.t(`settings.executable-list.${key}`))
 				.addText(linkSetting(

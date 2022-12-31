@@ -20,8 +20,6 @@ import type TerminalPty from "./pty"
 import TerminalView from "./terminal"
 import { spawn } from "child_process"
 
-type TerminalType = "external" | "integrated"
-
 class TerminalPlugin extends Plugin {
 	public readonly settings: Settings = getDefaultSettings()
 	public readonly platform = ((): TerminalPlugin.PlatformDispatch => {
@@ -113,43 +111,45 @@ class TerminalPlugin extends Plugin {
 			leaf => new TerminalView(this, leaf),
 		)
 
-		const terminalSpawnCommand = (type: TerminalType, cwd: "current" | "root") => (checking: boolean): boolean => {
-			if (!this.settings.command) {
-				return false
-			}
-			switch (cwd) {
-				case "root": {
-					if (!checking) {
-						void this.platform.spawnTerminal(this, adapter.getBasePath(), type)
-					}
-					return true
+		const CWD_TYPES = ["root", "current"] as const,
+			terminalSpawnCommand = (
+				type: TerminalPlugin.TerminalType,
+				cwd: typeof CWD_TYPES[number],
+			) => (checking: boolean): boolean => {
+				if (!this.settings.command) {
+					return false
 				}
-				case "current": {
-					const activeFile = this.app.workspace.getActiveFile()
-					if (activeFile === null) {
-						return false
+				switch (cwd) {
+					case "root": {
+						if (!checking) {
+							void this.platform.spawnTerminal(
+								this,
+								adapter.getBasePath(),
+								type,
+							)
+						}
+						return true
 					}
-					if (!checking) {
-						void this.platform.spawnTerminal(
-							this,
-							adapter.getFullPath(activeFile.parent.path),
-							type,
-						)
+					case "current": {
+						const activeFile = this.app.workspace.getActiveFile()
+						if (activeFile === null) {
+							return false
+						}
+						if (!checking) {
+							void this.platform.spawnTerminal(
+								this,
+								adapter.getFullPath(activeFile.parent.path),
+								type,
+							)
+						}
+						return true
 					}
-					return true
+					default:
+						throw new TypeError(cwd)
 				}
-				default:
-					throw new TypeError(cwd)
 			}
-		}
-		for (const type of [
-			"external",
-			"integrated",
-		] as const) {
-			for (const cwd of [
-				"root",
-				"current",
-			] as const) {
+		for (const type of TerminalPlugin.TERMINAL_TYPES) {
+			for (const cwd of CWD_TYPES) {
 				const id = `open-terminal-${type}-${cwd}` as const
 				this.addCommand({
 					checkCallback: terminalSpawnCommand(type, cwd),
@@ -166,13 +166,21 @@ class TerminalPlugin extends Plugin {
 					.setTitle(i18n.t("menus.open-terminal-external"))
 					.setIcon(i18n.t("assets:menus.open-terminal-external-icon"))
 					.onClick(async () => {
-						await this.platform.spawnTerminal(this, adapter.getFullPath(cwd.path), "external")
+						await this.platform.spawnTerminal(
+							this,
+							adapter.getFullPath(cwd.path),
+							"external",
+						)
 					}))
 				.addItem(item => item
 					.setTitle(i18n.t("menus.open-terminal-integrated"))
 					.setIcon(i18n.t("assets:menus.open-terminal-integrated-icon"))
 					.onClick(async () => {
-						await this.platform.spawnTerminal(this, adapter.getFullPath(cwd.path), "integrated")
+						await this.platform.spawnTerminal(
+							this,
+							adapter.getFullPath(cwd.path),
+							"integrated",
+						)
 					}))
 		}
 		this.registerEvent(this.app.workspace.on("file-menu", (menu, file,) => {
@@ -203,8 +211,10 @@ class TerminalPlugin extends Plugin {
 	}
 }
 namespace TerminalPlugin {
-	export const ALL_PLATFORMS = ["darwin", "linux", "win32"] as const
-	export type Platform = typeof ALL_PLATFORMS[number]
+	export const PLATFORMS = ["darwin", "linux", "win32"] as const
+	export type Platform = typeof PLATFORMS[number]
+	export const TERMINAL_TYPES = ["external", "integrated"] as const
+	export type TerminalType = typeof TERMINAL_TYPES[number]
 	export interface PlatformDispatch {
 		readonly spawnTerminal: (
 			plugin: TerminalPlugin,
