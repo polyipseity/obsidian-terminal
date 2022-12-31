@@ -75,18 +75,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 							printError(error, plugin.i18n.t("errors.error-spawning-terminal"))
 						})
 					process.unref()
-					return new Promise((resolve, reject) => {
-						const succ = (): void => {
-							// eslint-disable-next-line @typescript-eslint/no-use-before-define
-							process.removeListener("error", fail)
-							resolve()
-						}
-						function fail(error: Error): void {
-							process.removeListener("spawn", succ)
-							reject(error)
-						}
-						process.once("spawn", succ).once("error", fail)
-					})
+					return new Promise((resolve, reject) => { process.once("spawn", resolve).once("error", reject) })
 				}
 				case "integrated": {
 					const { workspace } = plugin.app,

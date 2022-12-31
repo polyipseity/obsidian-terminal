@@ -92,18 +92,21 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 		return new Promise((resolve, reject) => {
 			const succ = (chunk: Buffer): void => {
 				if (chunk.toString().includes("resized")) {
-					// eslint-disable-next-line @typescript-eslint/no-use-before-define
-					resizer.removeListener("error", fail)
-					stdout.removeListener("data", succ)
-					resolve()
+					try {
+						resolve()
+					} finally {
+						stdout.removeListener("data", succ)
+					}
 				}
 			}
-			function fail(err: Error): void {
-				stdout.removeListener("data", succ)
-				reject(err)
-			}
 			stdout.on("data", succ)
-			resizer.once("error", fail)
+			resizer.once("error", error => {
+				try {
+					reject(error)
+				} finally {
+					stdout.removeListener("data", succ)
+				}
+			})
 		})
 	}
 
