@@ -8,9 +8,9 @@ import { NOTICE_NO_TIMEOUT, TERMINAL_EXIT_SUCCESS, TERMINAL_RESIZE_TIMEOUT } fro
 import { UnnamespacedID, notice, onVisible, openExternal, printError, statusBar } from "./util"
 import { basename, extname } from "path"
 import { FitAddon } from "xterm-addon-fit"
-import type ObsidianTerminalPlugin from "./main"
 import { SearchAddon } from "xterm-addon-search"
 import { Terminal } from "xterm"
+import type TerminalPlugin from "./main"
 import type TerminalPty from "./pty"
 import { WebLinksAddon } from "xterm-addon-web-links"
 
@@ -55,7 +55,7 @@ export default class TerminalView extends ItemView {
 	}, TERMINAL_RESIZE_TIMEOUT, false)
 
 	public constructor(
-		protected readonly plugin: ObsidianTerminalPlugin,
+		protected readonly plugin: TerminalPlugin,
 		leaf: WorkspaceLeaf
 	) {
 		super(leaf)

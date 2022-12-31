@@ -1,6 +1,6 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "child_process"
-import type ObsidianTerminalPlugin from "./main"
 import { TERMINAL_WATCHDOG_INTERVAL } from "./magic"
+import type TerminalPlugin from "./main"
 import { printError } from "./util"
 import { promisify } from "util"
 import { readFileSync } from "fs"
@@ -15,7 +15,7 @@ export default interface TerminalPty {
 }
 // eslint-disable-next-line @typescript-eslint/no-redeclare, @typescript-eslint/naming-convention
 export declare const TerminalPty: new (
-	plugin: ObsidianTerminalPlugin,
+	plugin: TerminalPlugin,
 	executable: string,
 	cwd?: string,
 	args?: string[],
@@ -24,7 +24,7 @@ export declare const TerminalPty: new (
 abstract class BaseTerminalPty implements TerminalPty {
 	public abstract readonly shell: ChildProcessWithoutNullStreams
 	public abstract readonly resizable: boolean
-	protected constructor(protected readonly plugin: ObsidianTerminalPlugin) { }
+	protected constructor(protected readonly plugin: TerminalPlugin) { }
 	public abstract resize(columns: number, rows: number): Promise<void>
 	public abstract once(event: "exit", listener: (code: NodeJS.Signals | number) => void): this
 }
@@ -59,7 +59,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 			(chunk: any, callback: (error?: Error | null) => void) => boolean)
 
 	protected constructor(
-		plugin: ObsidianTerminalPlugin,
+		plugin: TerminalPlugin,
 		public readonly shell: ChildProcessWithoutNullStreams,
 	) {
 		super(plugin)
@@ -120,7 +120,7 @@ export class WindowsTerminalPty
 	protected readonly exitCode
 
 	public constructor(
-		plugin: ObsidianTerminalPlugin,
+		plugin: TerminalPlugin,
 		executable: string,
 		cwd?: string,
 		args?: string[],
@@ -174,7 +174,7 @@ export class GenericTerminalPty
 	extends PtyWithResizer
 	implements TerminalPty {
 	public constructor(
-		plugin: ObsidianTerminalPlugin,
+		plugin: TerminalPlugin,
 		executable: string,
 		cwd?: string,
 		args?: string[],

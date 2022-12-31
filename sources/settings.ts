@@ -5,7 +5,7 @@ import {
 	Setting,
 	type ValueComponent,
 } from "obsidian"
-import type ObsidianTerminalPlugin from "./main"
+import type TerminalPlugin from "./main"
 
 export default interface Settings {
 	command: boolean
@@ -45,7 +45,7 @@ export function getDefaultSettings(): Settings {
 }
 
 export class SettingTab extends PluginSettingTab {
-	public constructor(protected readonly plugin: ObsidianTerminalPlugin) {
+	public constructor(protected readonly plugin: TerminalPlugin) {
 		super(plugin.app, plugin)
 	}
 

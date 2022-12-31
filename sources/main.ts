@@ -23,14 +23,14 @@ type TerminalType = "external" | "integrated"
 
 interface PlatformDispatch {
 	readonly spawnTerminal: (
-		plugin: ObsidianTerminalPlugin,
+		plugin: TerminalPlugin,
 		cwd: string,
 		type: TerminalType
 	) => Promise<void>
 	readonly terminalPty: typeof TerminalPty
 }
 
-export default class ObsidianTerminalPlugin extends Plugin {
+export default class TerminalPlugin extends Plugin {
 	public readonly settings: Settings = getDefaultSettings()
 	public readonly platform = ((): PlatformDispatch => {
 		const platform = process.platform in this.settings.executables
@@ -38,7 +38,7 @@ export default class ObsidianTerminalPlugin extends Plugin {
 			: null
 		return {
 			// eslint-disable-next-line no-underscore-dangle
-			spawnTerminal: ObsidianTerminalPlugin._terminalSpawner(platform),
+			spawnTerminal: TerminalPlugin._terminalSpawner(platform),
 			terminalPty: platform === "win32" ? WindowsTerminalPty : GenericTerminalPty,
 		}
 	})()
