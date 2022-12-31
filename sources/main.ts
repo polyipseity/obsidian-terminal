@@ -12,8 +12,8 @@ import {
 } from "obsidian"
 import { GenericTerminalPty, WindowsTerminalPty } from "./pty"
 import { SettingTab, getDefaultSettings } from "./settings"
+import { commandNamer, notice, printError } from "./util"
 import i18next, { type i18n } from "i18next"
-import { notice, printError } from "./util"
 import I18N from "./i18n"
 import type Settings from "./settings"
 import type TerminalPty from "./pty"
@@ -83,6 +83,7 @@ class TerminalPlugin extends Plugin {
 	})()
 
 	#i18n0: i18n = i18next
+	public readonly language = new TerminalPlugin.LanguageManager(this)
 
 	public constructor(app: App, manifest: PluginManifest) {
 		super(app, manifest)
@@ -97,14 +98,9 @@ class TerminalPlugin extends Plugin {
 		if (!Platform.isDesktopApp) {
 			return
 		}
-		const [i18n] = await Promise.all([
-			I18N.then(async i18n0 => {
-				await i18n0.changeLanguage(moment.locale())
-				return i18n0
-			}),
-			this.loadSettings(),
-		])
+		const [i18n] = await Promise.all([I18N, this.loadSettings()])
 		this.#i18n0 = i18n
+		await this.language.changeLanguage(moment.locale())
 		const adapter = this.app.vault.adapter as FileSystemAdapter
 
 		this.addSettingTab(new SettingTab(this))
@@ -153,10 +149,14 @@ class TerminalPlugin extends Plugin {
 		for (const type of TerminalPlugin.TERMINAL_TYPES) {
 			for (const cwd of CWD_TYPES) {
 				const id = `open-terminal-${type}-${cwd}` as const
+				let namer = commandNamer(() => i18n.t(`commands.${id}`), () => i18n.t("name"))
 				this.addCommand({
 					checkCallback: terminalSpawnCommand(type, cwd),
 					id,
-					name: i18n.t(`commands.${id}`),
+					get name() { return namer() },
+					set name(format) {
+						namer = commandNamer(() => i18n.t(`commands.${id}`), () => i18n.t("name"), format)
+					},
 				})
 			}
 		}
@@ -224,6 +224,23 @@ namespace TerminalPlugin {
 			type: TerminalType
 		) => Promise<void>
 		readonly terminalPty: typeof TerminalPty
+	}
+	export class LanguageManager {
+		readonly #uses: (() => any)[] = []
+		public constructor(protected readonly plugin: TerminalPlugin) { }
+
+		public async changeLanguage(language: string): Promise<void> {
+			await this.plugin.i18n.changeLanguage(language)
+			for (const use of this.#uses) {
+				// eslint-disable-next-line no-await-in-loop
+				await Promise.resolve(use())
+			}
+		}
+
+		public registerUse(use: () => any): void {
+			use()
+			this.#uses.push(use)
+		}
 	}
 }
 export default TerminalPlugin

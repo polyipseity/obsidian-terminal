@@ -5,9 +5,11 @@ import {
 	Setting,
 	type ValueComponent,
 } from "obsidian"
+import { RESOURCES } from "assets/locales"
 import TerminalPlugin from "./main"
 
 export default interface Settings {
+	language: string
 	command: boolean
 	contextMenu: boolean
 	noticeTimeout: number
@@ -42,6 +44,7 @@ export function getDefaultSettings(): Settings {
 				name: "C:\\Windows\\System32\\cmd.exe",
 			},
 		},
+		language: "",
 		noticeTimeout: 5000,
 	}
 }
@@ -57,6 +60,13 @@ export class SettingTab extends PluginSettingTab {
 		containerEl.empty()
 		containerEl.createEl("h1", { text: plugin.i18n.t("name") })
 
+		interface ComponentAction<C, V> {
+			readonly pre?: (component: C) => any
+			readonly post?: (
+				component: C,
+				activate: (value: V) => Promise<void>,
+			) => any
+		}
 		const linkSetting = <C extends ValueComponent<V>
 			& {
 				onChange: (callback: (value: V) => any) => C
@@ -64,35 +74,37 @@ export class SettingTab extends PluginSettingTab {
 				getter: () => V,
 				setter: ((value: V, component: C, getter: () => V) => boolean) | (
 					(value: V, component: C, getter: () => V) => void),
-				action = (_0: C): void => { },
+				action: ComponentAction<C, V> = {},
 			) => (component: C) => {
-				component
-					.setValue(getter())
-					.onChange(async value => {
-						const ret = setter(value, component, getter)
-						if (typeof ret === "boolean" && !ret) {
-							return
-						}
-						await plugin.saveSettings()
-					})
-				action(component)
+				(action.pre ?? ((): void => { }))(component)
+				const activate = async (value: V): Promise<void> => {
+					const ret = setter(value, component, getter)
+					if (typeof ret === "boolean" && !ret) {
+						return
+					}
+					await plugin.saveSettings()
+				}
+				component.setValue(getter()).onChange(activate);
+				(action.post ?? ((): void => { }))(component, activate)
 			},
 			resetButton = <C extends ButtonComponent | ExtraButtonComponent>(
 				resetter: ((component: C) => boolean) | ((component: C) => void),
-				action = (_0: C): void => { },
+				action: ComponentAction<C, void> = {},
 			) =>
 				(component: C) => {
+					(action.pre ?? ((): void => { }))(component)
+					const activate = async (): Promise<void> => {
+						const ret = resetter(component)
+						if (typeof ret === "boolean" && !ret) {
+							return
+						}
+						await Promise.all([plugin.saveSettings(), this.display()])
+					}
 					component
 						.setTooltip(i18n.t("settings.reset"))
 						.setIcon(i18n.t("assets:settings.reset-icon"))
-						.onClick(async () => {
-							const ret = resetter(component)
-							if (typeof ret === "boolean" && !ret) {
-								return
-							}
-							await Promise.all([plugin.saveSettings(), this.display()])
-						})
-					action(component)
+						.onClick(activate);
+					(action.post ?? ((): void => { }))(component, activate)
 				},
 			textToNumberSetter = <C extends ValueComponent<string>>(
 				setter: ((
@@ -118,6 +130,32 @@ export class SettingTab extends PluginSettingTab {
 				return true
 			}
 
+		new Setting(containerEl)
+			.setName(i18n.t("settings.language"))
+			.setDesc(i18n.t("settings.language-description"))
+			.addDropdown(linkSetting(
+				() => plugin.settings.language,
+				value => {
+					plugin.settings.language = value
+				},
+				{
+					post: (component, activate) => component
+						.onChange(async value => {
+							await activate(value)
+							await plugin.language.changeLanguage(value)
+							await this.display()
+						}),
+					pre: component => component
+						.addOption("", i18n.t("settings.language-default"))
+						.addOptions(Object
+							.fromEntries(Object
+								.entries(RESOURCES.en.languages)
+								.filter(entry => entry.every(half => typeof half === "string")))),
+				},
+			))
+			.addExtraButton(resetButton(() => {
+				plugin.settings.language = getDefaultSettings().language
+			}))
 		new Setting(containerEl)
 			.setName(i18n.t("settings.reset-all"))
 			.addButton(resetButton(() => {

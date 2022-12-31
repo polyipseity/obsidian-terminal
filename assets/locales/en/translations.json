@@ -28,6 +28,9 @@
 			"linux": "Linux",
 			"win32": "Windows"
 		},
+		"language": "Language",
+		"language-default": "Use app setting",
+		"language-description": "Applies to this plugin only.",
 		"notice-timeout": "Notice timeout",
 		"reset": "Reset",
 		"reset-all": "Reset all"

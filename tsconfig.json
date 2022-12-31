@@ -32,8 +32,7 @@
     "paths": {},
     "resolveJsonModule": true,
     "rootDirs": [
-      "assets/",
-      "sources/",
+      "./",
     ],
     "typeRoots": [
       "node_modules/@types/",

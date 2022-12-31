@@ -8,6 +8,18 @@ export class UnnamespacedID<V extends string> {
 	}
 }
 
+export function commandNamer(
+	cmdNamer: () => string,
+	pluginNamer: () => string,
+	format?: string
+): () => string {
+	if (typeof format === "undefined") {
+		return cmdNamer
+	}
+	const [cmd, plugin] = [cmdNamer(), pluginNamer()]
+	return () => format.replace(plugin, pluginNamer()).replace(cmd, cmdNamer())
+}
+
 export function isInterface<T extends { __type: T["__type"] }>(id: T["__type"], obj: any): obj is T {
 	if (!("__type" in obj)) {
 		return false
