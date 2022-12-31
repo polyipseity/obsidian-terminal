@@ -23,7 +23,7 @@ import { spawn } from "child_process"
 class TerminalPlugin extends Plugin {
 	public readonly settings: Settings = getDefaultSettings()
 	public readonly platform = ((): TerminalPlugin.PlatformDispatch => {
-		const platform = process.platform in this.settings.executables
+		const platform = process.platform in TerminalPlugin.PLATFORMS
 			? process.platform as TerminalPlugin.Platform
 			: null
 		return {
