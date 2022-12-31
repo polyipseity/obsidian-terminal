@@ -64,7 +64,7 @@ class TerminalPlugin extends Plugin {
 									workspace.setActiveLeaf(existingLeaf, { focus: false })
 									return workspace.getLeaf("tab")
 								})()
-							await leaf.setViewState({
+							return leaf.setViewState({
 								active: true,
 								state: new TerminalView.State({
 									args: executable.args,
@@ -73,13 +73,10 @@ class TerminalPlugin extends Plugin {
 								}),
 								type: TerminalView.viewType.namespaced(plugin),
 							})
-							workspace.setActiveLeaf(leaf, { focus: true })
-							break
 						}
 						default:
 							throw new TypeError(type)
 					}
-					return Promise.resolve()
 				}
 			})(),
 			terminalPty: platform === "win32" ? WindowsTerminalPty : GenericTerminalPty,
