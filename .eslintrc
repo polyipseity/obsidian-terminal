@@ -209,6 +209,13 @@
       },
       {
         "selector": "memberLike",
+        "format": [
+          "camelCase"
+        ],
+        "leadingUnderscore": "allowDouble"
+      },
+      {
+        "selector": "memberLike",
         "modifiers": [
           "private"
         ],

@@ -8,6 +8,14 @@ export class UnnamespacedID<V extends string> {
 	}
 }
 
+export function isInterface<T extends { __type: T["__type"] }>(id: T["__type"], obj: any): obj is T {
+	if (!("__type" in obj)) {
+		return false
+	}
+	// eslint-disable-next-line no-underscore-dangle
+	return (obj as { __type: any }).__type === id
+}
+
 export function statusBar(callback = (_0: HTMLDivElement): any => {
 
 }): HTMLDivElement | null {

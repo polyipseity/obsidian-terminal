@@ -5,7 +5,7 @@ import {
 	debounce,
 } from "obsidian"
 import { NOTICE_NO_TIMEOUT, TERMINAL_EXIT_SUCCESS, TERMINAL_RESIZE_TIMEOUT } from "./magic"
-import { UnnamespacedID, notice, onVisible, openExternal, printError, statusBar } from "./util"
+import { UnnamespacedID, isInterface, notice, onVisible, openExternal, printError, statusBar } from "./util"
 import { basename, extname } from "path"
 import { FitAddon } from "xterm-addon-fit"
 import { SearchAddon } from "xterm-addon-search"
@@ -17,11 +17,12 @@ import { WebLinksAddon } from "xterm-addon-web-links"
 class TerminalView extends ItemView {
 	public static readonly viewType = new UnnamespacedID("terminal-view")
 	public static namespacedViewType: string
-	#state = new TerminalView.State({
+	#state: TerminalView.State = {
+		__type: TerminalView.State.TYPE,
 		args: [],
 		cwd: "",
 		executable: "",
-	})
+	}
 
 	readonly #terminal = new Terminal()
 	readonly #terminalAddons = {
@@ -55,7 +56,7 @@ class TerminalView extends ItemView {
 		state: any,
 		_0: ViewStateResult
 	): Promise<void> {
-		if (!(state instanceof TerminalView.State) || typeof this.#pty !== "undefined") {
+		if (!isInterface<TerminalView.State>(TerminalView.State.TYPE, state) || typeof this.#pty !== "undefined") {
 			return
 		}
 		this.#state = state
@@ -162,18 +163,14 @@ class TerminalView extends ItemView {
 	}
 }
 namespace TerminalView {
-	export class State implements State.Impl {
-		public constructor(protected readonly obj: State.Impl) { }
-		public get executable(): string { return this.obj.executable }
-		public get cwd(): string { return this.obj.cwd }
-		public get args(): string[] { return this.obj.args }
+	export interface State {
+		readonly __type: typeof State.TYPE
+		readonly executable: string
+		readonly cwd: string
+		readonly args: string[]
 	}
-	namespace State {
-		export interface Impl {
-			readonly executable: string
-			readonly cwd: string
-			readonly args: string[]
-		}
+	export namespace State {
+		export const TYPE = "8d54e44a-32e7-4297-8ae2-cff88e92ce28"
 	}
 }
 export default TerminalView

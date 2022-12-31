@@ -53,7 +53,13 @@ class TerminalPlugin extends Plugin {
 						case "integrated": {
 							const { workspace } = plugin.app,
 								existingLeaves = workspace
-									.getLeavesOfType(TerminalView.viewType.namespaced(plugin))
+									.getLeavesOfType(TerminalView.viewType.namespaced(plugin)),
+								state: TerminalView.State = {
+									__type: TerminalView.State.TYPE,
+									args: executable.args,
+									cwd,
+									executable: executable.name,
+								}
 							return ((): WorkspaceLeaf => {
 								const existingLeaf = existingLeaves.last()
 								if (typeof existingLeaf === "undefined") {
@@ -63,11 +69,7 @@ class TerminalPlugin extends Plugin {
 								return workspace.getLeaf("tab")
 							})().setViewState({
 								active: true,
-								state: new TerminalView.State({
-									args: executable.args,
-									cwd,
-									executable: executable.name,
-								}),
+								state,
 								type: TerminalView.viewType.namespaced(plugin),
 							})
 						}
