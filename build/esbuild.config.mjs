@@ -42,7 +42,7 @@ await esbuild.build({
 	platform: "browser",
 	sourcemap: production ? false : "inline",
 	sourcesContent: true,
-	target: "es2018",
+	target: "ES2018",
 	treeShaking: true,
 	watch: !production,
 }).catch(() => process.exit(1))
