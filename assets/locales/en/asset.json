@@ -7,7 +7,11 @@
 		"terminal-view-icon": "terminal"
 	},
 	"settings": {
+		"add-to-commands-icon": "terminal",
+		"add-to-context-menus-icon": "menu",
+		"executable-list-icon": "terminal-square",
 		"language-icon": "languages",
+		"notice-timeout-icon": "timer",
 		"reset-icon": "reset"
 	}
 }

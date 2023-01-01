@@ -88,6 +88,7 @@ export class SettingTab extends PluginSettingTab {
 			},
 			resetButton = <C extends ButtonComponent | ExtraButtonComponent>(
 				resetter: (component: C) => any,
+				icon: string = i18n.t("asset:settings.reset-icon"),
 				action: ComponentAction<C, void> = {},
 			) =>
 				(component: C) => {
@@ -103,7 +104,7 @@ export class SettingTab extends PluginSettingTab {
 					}
 					component
 						.setTooltip(i18n.t("settings.reset"))
-						.setIcon(i18n.t("asset:settings.reset-icon"))
+						.setIcon(icon)
 						.onClick(activate);
 					(action.post ?? ((): void => { }))(component, activate)
 				},
@@ -148,9 +149,8 @@ export class SettingTab extends PluginSettingTab {
 			))
 			.addExtraButton(resetButton(() => {
 				plugin.settings.language = getDefaultSettings().language
-			}, {
+			}, i18n.t("asset:settings.language-icon"), {
 				post: (button, activate) => button
-					.setIcon(i18n.t("asset:settings.language-icon"))
 					.onClick(async () => {
 						await activate()
 						await plugin.language.changeLanguage(plugin.settings.language)
@@ -174,7 +174,7 @@ export class SettingTab extends PluginSettingTab {
 			))
 			.addExtraButton(resetButton(() => {
 				plugin.settings.command = getDefaultSettings().command
-			}))
+			}, i18n.t("asset:settings.add-to-commands-icon")))
 		new Setting(containerEl)
 			.setName(i18n.t("settings.add-to-context-menus"))
 			.addToggle(linkSetting(
@@ -185,7 +185,7 @@ export class SettingTab extends PluginSettingTab {
 			))
 			.addExtraButton(resetButton(() => {
 				plugin.settings.contextMenu = getDefaultSettings().contextMenu
-			}))
+			}, i18n.t("asset:settings.add-to-context-menus-icon")))
 
 		new Setting(containerEl)
 			.setName(i18n.t("settings.notice-timeout"))
@@ -197,7 +197,7 @@ export class SettingTab extends PluginSettingTab {
 			.addExtraButton(resetButton(() => {
 				plugin.settings.noticeTimeout =
 					getDefaultSettings().noticeTimeout
-			}))
+			}, i18n.t("asset:settings.notice-timeout-icon")))
 
 		containerEl.createEl("h2", { text: i18n.t("settings.executables") })
 		for (const key of TerminalPlugin.PLATFORMS) {
@@ -212,7 +212,7 @@ export class SettingTab extends PluginSettingTab {
 				.addExtraButton(resetButton(() => {
 					plugin.settings.executables[key].name =
 						getDefaultSettings().executables[key].name
-				}))
+				}, i18n.t("asset:settings.executable-list-icon")))
 		}
 	}
 }
