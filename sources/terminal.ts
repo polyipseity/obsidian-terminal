@@ -32,15 +32,14 @@ class TerminalView extends ItemView {
 	} as const
 
 	#pty?: TerminalPty
-	readonly #resizeNative = debounce(async (
-		columns: number,
-		rows: number,
-	) => {
-		if (typeof this.#pty === "undefined") {
-			return
-		}
-		await this.#pty.resize(columns, rows).catch(() => { })
-	}, TERMINAL_RESIZE_TIMEOUT, false)
+	readonly #resizeNative = debounce(
+		async (
+			columns: number,
+			rows: number,
+		) => this.#pty?.resize(columns, rows).catch(() => { }),
+		TERMINAL_RESIZE_TIMEOUT,
+		false,
+	)
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
@@ -108,7 +107,7 @@ class TerminalView extends ItemView {
 	}
 
 	public getDisplayText(): string {
-		const { executable } = this.getState()
+		const { executable } = this.#state
 		return this.plugin.i18n.t("views.terminal-view.display-name", { executable: basename(executable, extname(executable)) })
 	}
 
