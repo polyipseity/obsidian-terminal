@@ -228,12 +228,12 @@ export namespace TerminalPlugin {
 		readonly terminalPty: typeof TerminalPty
 	}
 	export class LanguageManager {
-		readonly #uses: (() => any)[] = []
+		readonly #uses: (() => unknown)[] = []
 		public constructor(protected readonly plugin: TerminalPlugin) { }
 
 		public async changeLanguage(language: string): Promise<void> {
 			await this.plugin.i18n.changeLanguage(language === "" ? moment.locale() : language)
-			await Promise.all(this.#uses)
+			await Promise.all(this.#uses.map(use => use()))
 		}
 
 		public registerUse(use: () => any): () => void {
