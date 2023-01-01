@@ -158,8 +158,10 @@ export class SettingTab extends PluginSettingTab {
 			}))
 		new Setting(containerEl)
 			.setName(i18n.t("settings.reset-all"))
-			.addButton(resetButton(() =>
-				Object.assign(plugin.settings, getDefaultSettings())))
+			.addButton(resetButton(async () => {
+				Object.assign(plugin.settings, getDefaultSettings())
+				await plugin.language.changeLanguage(plugin.settings.language)
+			}))
 
 		new Setting(containerEl)
 			.setName(i18n.t("settings.add-to-commands"))
