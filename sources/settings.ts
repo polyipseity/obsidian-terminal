@@ -77,7 +77,7 @@ export class SettingTab extends PluginSettingTab {
 			) => (component: C) => {
 				(action.pre ?? ((): void => { }))(component)
 				const activate = async (value: V): Promise<void> => {
-					const ret: unknown = setter(value, component, getter)
+					const ret: unknown = await setter(value, component, getter)
 					if (typeof ret === "boolean" && !ret) {
 						return
 					}
@@ -93,7 +93,7 @@ export class SettingTab extends PluginSettingTab {
 				(component: C) => {
 					(action.pre ?? ((): void => { }))(component)
 					const activate = async (): Promise<void> => {
-						const ret: unknown = resetter(component)
+						const ret: unknown = await resetter(component)
 						if (typeof ret === "boolean" && !ret) {
 							return
 						}
@@ -108,14 +108,14 @@ export class SettingTab extends PluginSettingTab {
 			textToNumberSetter = <C extends ValueComponent<string>>(
 				setter: (value: number, component: C, getter: () => string) => any,
 				integer = false,
-			) => (value: string, component: C, getter: () => string) => {
+			) => async (value: string, component: C, getter: () => string) => {
 				const num = Number(value)
 				if (integer ? Number.isSafeInteger(num) : isFinite(num)) {
 					console.log("asdadsd")
 					component.setValue(getter())
 					return false
 				}
-				const ret: unknown = setter(num, component, getter)
+				const ret: unknown = await setter(num, component, getter)
 				if (typeof ret === "boolean" && !ret) {
 					return false
 				}
