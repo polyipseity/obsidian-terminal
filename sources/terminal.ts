@@ -10,11 +10,11 @@ import { basename, extname } from "path"
 import { FitAddon } from "xterm-addon-fit"
 import { SearchAddon } from "xterm-addon-search"
 import { Terminal } from "xterm"
-import type TerminalPlugin from "./main"
-import type TerminalPty from "./pty"
+import type { TerminalPlugin } from "./main"
+import type { TerminalPty } from "./pty"
 import { WebLinksAddon } from "xterm-addon-web-links"
 
-class TerminalView extends ItemView {
+export class TerminalView extends ItemView {
 	public static readonly viewType = new UnnamespacedID("terminal-view")
 	public static namespacedViewType: string
 	#state: TerminalView.State = {
@@ -165,7 +165,7 @@ class TerminalView extends ItemView {
 		await Promise.resolve()
 	}
 }
-namespace TerminalView {
+export namespace TerminalView {
 	export interface State {
 		readonly __type: typeof State.TYPE
 		readonly executable: string
@@ -176,4 +176,3 @@ namespace TerminalView {
 		export const TYPE = "8d54e44a-32e7-4297-8ae2-cff88e92ce28"
 	}
 }
-export default TerminalView

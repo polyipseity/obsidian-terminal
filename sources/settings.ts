@@ -6,20 +6,20 @@ import {
 	type ValueComponent,
 } from "obsidian"
 import { RESOURCES } from "assets/locales"
-import TerminalPlugin from "./main"
+import { TerminalPlugin } from "./main"
 
-export default interface Settings {
+export interface Settings {
 	language: string
 	command: boolean
 	contextMenu: boolean
 	noticeTimeout: number
 	executables: Settings.Executables
 }
-namespace Settings {
+export namespace Settings {
 	export type Executables = {
 		[key in TerminalPlugin.Platform]: Executables.Entry
 	}
-	namespace Executables {
+	export namespace Executables {
 		export interface Entry {
 			name: string
 			args: string[]

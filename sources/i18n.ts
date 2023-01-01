@@ -10,7 +10,7 @@ declare module "i18next" {
 	}
 }
 
-const I18N = Promise.resolve(i18next.createInstance({
+export const I18N = Promise.resolve(i18next.createInstance({
 	cleanCode: true,
 	defaultNS: DEFAULT_NAMESPACE,
 	fallbackLng: FALLBACK_LANGUAGES,
@@ -27,4 +27,3 @@ const I18N = Promise.resolve(i18next.createInstance({
 		printError(error, () => "i18n error")
 		throw error
 	})
-export default I18N

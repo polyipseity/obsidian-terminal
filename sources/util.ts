@@ -1,6 +1,6 @@
 import { Notice, Plugin, type PluginManifest, type View } from "obsidian"
 import { NOTICE_NO_TIMEOUT } from "./magic"
-import type TerminalPlugin from "./main"
+import type { TerminalPlugin } from "./main"
 
 export class UnnamespacedID<V extends string> {
 	public constructor(public readonly id: V) { }

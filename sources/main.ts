@@ -15,13 +15,13 @@ import { SettingTab, getDefaultSettings } from "./settings"
 import { commandNamer, inSet, notice, printError } from "./util"
 import i18next, { type i18n } from "i18next"
 import { DEFAULT_LANGUAGE } from "assets/locales"
-import I18N from "./i18n"
-import type Settings from "./settings"
-import type TerminalPty from "./pty"
-import TerminalView from "./terminal"
+import { I18N } from "./i18n"
+import type { Settings } from "./settings"
+import type { TerminalPty } from "./pty"
+import { TerminalView } from "./terminal"
 import { spawn } from "child_process"
 
-class TerminalPlugin extends Plugin {
+export class TerminalPlugin extends Plugin {
 	public readonly settings: Settings = getDefaultSettings()
 	public readonly platform = ((): TerminalPlugin.PlatformDispatch => {
 		const platform = inSet(TerminalPlugin.PLATFORMS, process.platform)
@@ -219,7 +219,7 @@ class TerminalPlugin extends Plugin {
 		await this.saveData(this.settings)
 	}
 }
-namespace TerminalPlugin {
+export namespace TerminalPlugin {
 	export const PLATFORMS = ["darwin", "linux", "win32"] as const
 	export type Platform = typeof PLATFORMS[number]
 	export const TERMINAL_TYPES = ["external", "integrated"] as const
@@ -253,4 +253,5 @@ namespace TerminalPlugin {
 		}
 	}
 }
+// Needed for loading
 export default TerminalPlugin
