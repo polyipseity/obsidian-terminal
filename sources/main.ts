@@ -103,7 +103,6 @@ export class TerminalPlugin extends Plugin {
 		this.#i18n0 = i18n
 		const { settings, language } = this
 		await language.changeLanguage(settings.language)
-		const adapter = this.app.vault.adapter as FileSystemAdapter
 
 		this.addSettingTab(new SettingTab(this))
 		this.registerView(
@@ -111,7 +110,8 @@ export class TerminalPlugin extends Plugin {
 			leaf => new TerminalView(this, leaf),
 		)
 
-		const CWD_TYPES = ["root", "current"] as const,
+		const adapter = this.app.vault.adapter as FileSystemAdapter,
+			CWD_TYPES = ["root", "current"] as const,
 			terminalSpawnCommand = (
 				type: TerminalPlugin.TerminalType,
 				cwd: typeof CWD_TYPES[number],
@@ -167,30 +167,25 @@ export class TerminalPlugin extends Plugin {
 				})
 			}
 		}
-
 		const addContextMenus = (menu: Menu, cwd: TFolder): void => {
 			menu
 				.addSeparator()
 				.addItem(item => item
 					.setTitle(i18n.t("menus.open-terminal-external"))
 					.setIcon(i18n.t("asset:menus.open-terminal-external-icon"))
-					.onClick(async () => {
-						await this.platform.spawnTerminal(
-							this,
-							adapter.getFullPath(cwd.path),
-							"external",
-						)
-					}))
+					.onClick(async () => this.platform.spawnTerminal(
+						this,
+						adapter.getFullPath(cwd.path),
+						"external",
+					)))
 				.addItem(item => item
 					.setTitle(i18n.t("menus.open-terminal-integrated"))
 					.setIcon(i18n.t("asset:menus.open-terminal-integrated-icon"))
-					.onClick(async () => {
-						await this.platform.spawnTerminal(
-							this,
-							adapter.getFullPath(cwd.path),
-							"integrated",
-						)
-					}))
+					.onClick(async () => this.platform.spawnTerminal(
+						this,
+						adapter.getFullPath(cwd.path),
+						"integrated",
+					)))
 		}
 		this.registerEvent(this.app.workspace.on("file-menu", (menu, file,) => {
 			if (!settings.contextMenu) {
@@ -238,16 +233,10 @@ export namespace TerminalPlugin {
 
 		public async changeLanguage(language: string): Promise<void> {
 			await this.plugin.i18n.changeLanguage(language === "" ? moment.locale() : language)
-			for (const use of this.#uses) {
-				// eslint-disable-next-line no-await-in-loop
-				await Promise.resolve(use())
-			}
+			await Promise.all(this.#uses)
 		}
 
-		public registerUse(use: () => any, run = false): () => void {
-			if (run) {
-				use()
-			}
+		public registerUse(use: () => any): () => void {
 			this.#uses.push(use)
 			return () => { this.#uses.remove(use) }
 		}

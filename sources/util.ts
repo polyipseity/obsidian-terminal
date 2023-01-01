@@ -49,13 +49,11 @@ export function notice(
 	plugin?: TerminalPlugin,
 ): Notice {
 	const timeoutMs = 1000 * timeout,
-		ret = new Notice("", timeoutMs)
+		ret = new Notice(message(), timeoutMs)
 	if (typeof plugin === "undefined") {
-		ret.setMessage(message())
 		return ret
 	}
-	const unreg =
-		plugin.language.registerUse(() => ret.setMessage(message()), true)
+	const unreg = plugin.language.registerUse(() => ret.setMessage(message()))
 	try {
 		if (timeoutMs === 0) {
 			plugin.register(unreg)

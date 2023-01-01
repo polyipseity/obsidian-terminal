@@ -54,7 +54,7 @@ export class SettingTab extends PluginSettingTab {
 		super(plugin.app, plugin)
 	}
 
-	public async display(): Promise<void> {
+	public display(): void {
 		const { containerEl, plugin } = this,
 			{ i18n } = plugin
 		containerEl.empty()
@@ -97,7 +97,9 @@ export class SettingTab extends PluginSettingTab {
 						if (typeof ret === "boolean" && !ret) {
 							return
 						}
-						await Promise.all([plugin.saveSettings(), this.display()])
+						const save = plugin.saveSettings()
+						this.display()
+						await save
 					}
 					component
 						.setTooltip(i18n.t("settings.reset"))
@@ -135,7 +137,7 @@ export class SettingTab extends PluginSettingTab {
 						.onChange(async value => {
 							await activate(value)
 							await plugin.language.changeLanguage(value)
-							await this.display()
+							this.display()
 						}),
 					pre: dropdown => dropdown
 						.addOption("", i18n.t("settings.language-default"))
@@ -153,7 +155,7 @@ export class SettingTab extends PluginSettingTab {
 					.onClick(async () => {
 						await activate()
 						await plugin.language.changeLanguage(plugin.settings.language)
-						await this.display()
+						this.display()
 					}),
 			}))
 		new Setting(containerEl)
@@ -213,6 +215,5 @@ export class SettingTab extends PluginSettingTab {
 						getDefaultSettings().executables[key].name
 				}))
 		}
-		await Promise.resolve()
 	}
 }

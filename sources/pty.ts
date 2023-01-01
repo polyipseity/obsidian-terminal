@@ -97,7 +97,6 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 						}
 					}
 				}
-			stdout.on("data", data)
 			this.#resizer.once("error", error => {
 				try {
 					reject(error)
@@ -105,6 +104,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 					stdout.removeListener("data", data)
 				}
 			})
+			stdout.on("data", data)
 			void this.#write(`${columns}x${rows}\n`)
 		})
 	}
@@ -146,6 +146,8 @@ export class WindowsTerminalPty
 									10
 								)
 							resolve(isNaN(termCode) ? conCode ?? signal ?? NaN : termCode)
+						} catch (error) {
+							reject(error)
 						} finally {
 							this.#codeTmp.removeCallback()
 						}
