@@ -94,17 +94,17 @@ export function openExternal(url?: URL | string): Window | null {
 
 export function printError(
 	error: any,
-	message?: () => string,
+	message = (): string => "",
 	plugin?: TerminalPlugin,
 ): void {
-	const message0 = typeof message === "undefined" ? (): string => "" : (): string => `${message()}: `
-	if (error instanceof Error) {
-		console.error(`${message0()}${error.name}: ${error.message}${typeof error.stack === "undefined" ? "" : `\n${error.stack}`}`)
-		notice(() => `${message0()}${error.name}: ${error.message}`, NOTICE_NO_TIMEOUT, plugin)
-		return
-	}
-	console.error(`${message0()}${String(error)}`)
-	notice(() => `${message0()}${String(error)}`, NOTICE_NO_TIMEOUT, plugin)
+	console.error(message(), error)
+	notice(
+		error instanceof Error
+			? (): string => `${message()}\n${error.name}: ${error.message}`
+			: (): string => `${message()}\n${String(error)}`,
+		NOTICE_NO_TIMEOUT,
+		plugin,
+	)
 }
 
 export function updateDisplayText(view: View): boolean {
