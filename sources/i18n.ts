@@ -1,4 +1,4 @@
-import { DEFAULT_LANGUAGE, DEFAULT_NAMESPACE, RESOURCES } from "assets/locales"
+import { type DEFAULT_LANGUAGE, DEFAULT_NAMESPACE, FALLBACK_LANGUAGES, RESOURCES } from "assets/locales"
 import i18next from "i18next"
 import { printError } from "./util"
 
@@ -13,7 +13,7 @@ declare module "i18next" {
 const I18N = Promise.resolve(i18next.createInstance({
 	cleanCode: true,
 	defaultNS: DEFAULT_NAMESPACE,
-	fallbackLng: DEFAULT_LANGUAGE,
+	fallbackLng: FALLBACK_LANGUAGES,
 	initImmediate: true,
 	nonExplicitSupportedLngs: true,
 	resources: RESOURCES,
