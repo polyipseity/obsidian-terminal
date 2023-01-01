@@ -72,13 +72,12 @@ export class SettingTab extends PluginSettingTab {
 				onChange: (callback: (value: V) => any) => C
 			}, V>(
 				getter: () => V,
-				setter: ((value: V, component: C, getter: () => V) => boolean) | (
-					(value: V, component: C, getter: () => V) => void),
+				setter: (value: V, component: C, getter: () => V) => any,
 				action: ComponentAction<C, V> = {},
 			) => (component: C) => {
 				(action.pre ?? ((): void => { }))(component)
 				const activate = async (value: V): Promise<void> => {
-					const ret = setter(value, component, getter)
+					const ret: unknown = setter(value, component, getter)
 					if (typeof ret === "boolean" && !ret) {
 						return
 					}
@@ -88,13 +87,13 @@ export class SettingTab extends PluginSettingTab {
 				(action.post ?? ((): void => { }))(component, activate)
 			},
 			resetButton = <C extends ButtonComponent | ExtraButtonComponent>(
-				resetter: ((component: C) => boolean) | ((component: C) => void),
+				resetter: (component: C) => any,
 				action: ComponentAction<C, void> = {},
 			) =>
 				(component: C) => {
 					(action.pre ?? ((): void => { }))(component)
 					const activate = async (): Promise<void> => {
-						const ret = resetter(component)
+						const ret: unknown = resetter(component)
 						if (typeof ret === "boolean" && !ret) {
 							return
 						}
@@ -107,15 +106,7 @@ export class SettingTab extends PluginSettingTab {
 					(action.post ?? ((): void => { }))(component, activate)
 				},
 			textToNumberSetter = <C extends ValueComponent<string>>(
-				setter: ((
-					value: number,
-					component: C,
-					getter: () => string,
-				) => boolean) | ((
-					value: number,
-					component: C,
-					getter: () => string,
-				) => void),
+				setter: (value: number, component: C, getter: () => string) => any,
 				parser = (value: string): number => parseInt(value, 10),
 			) => (value: string, component: C, getter: () => string) => {
 				const num = parser(value)
@@ -123,7 +114,7 @@ export class SettingTab extends PluginSettingTab {
 					component.setValue(getter())
 					return false
 				}
-				const ret = setter(num, component, getter)
+				const ret: unknown = setter(num, component, getter)
 				if (typeof ret === "boolean" && !ret) {
 					return false
 				}
@@ -165,9 +156,8 @@ export class SettingTab extends PluginSettingTab {
 			}))
 		new Setting(containerEl)
 			.setName(i18n.t("settings.reset-all"))
-			.addButton(resetButton(() => {
-				Object.assign(plugin.settings, getDefaultSettings())
-			}))
+			.addButton(resetButton(() =>
+				Object.assign(plugin.settings, getDefaultSettings())))
 
 		new Setting(containerEl)
 			.setName(i18n.t("settings.add-to-commands"))

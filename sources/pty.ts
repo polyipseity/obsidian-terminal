@@ -11,7 +11,7 @@ interface TerminalPty {
 	readonly shell: ChildProcessWithoutNullStreams
 	readonly resizable: boolean
 	readonly resize: (columns: number, rows: number) => Promise<void>
-	readonly once: (event: "exit", listener: (code: NodeJS.Signals | number) => void) => this
+	readonly once: (event: "exit", listener: (code: NodeJS.Signals | number) => any) => this
 }
 // eslint-disable-next-line @typescript-eslint/no-redeclare, @typescript-eslint/naming-convention
 declare const TerminalPty: new (
@@ -27,7 +27,7 @@ abstract class BaseTerminalPty implements TerminalPty {
 	public abstract readonly resizable: boolean
 	protected constructor(protected readonly plugin: TerminalPlugin) { }
 	public abstract resize(columns: number, rows: number): Promise<void>
-	public abstract once(event: "exit", listener: (code: NodeJS.Signals | number) => void): this
+	public abstract once(event: "exit", listener: (code: NodeJS.Signals | number) => any): this
 }
 
 abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
@@ -55,8 +55,10 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 		.once("exit", () => { this.#resizable = false })
 
 	readonly #write =
-		promisify(this.#resizer.stdin.write.bind(this.#resizer.stdin) as
-			(chunk: any, callback: (error?: Error | null) => void) => boolean)
+		promisify((
+			chunk: any,
+			callback: (error?: Error | null) => void
+		) => this.#resizer.stdin.write(chunk, callback))
 
 	protected constructor(
 		plugin: TerminalPlugin,
@@ -108,7 +110,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 		})
 	}
 
-	public abstract override once(event: "exit", listener: (code: NodeJS.Signals | number) => void): this
+	public abstract override once(event: "exit", listener: (code: NodeJS.Signals | number) => any): this
 }
 
 export class WindowsTerminalPty
@@ -162,7 +164,7 @@ export class WindowsTerminalPty
 		this.#exitCode = exitCode
 	}
 
-	public once(_0: "exit", listener: (code: NodeJS.Signals | number) => void): this {
+	public once(_0: "exit", listener: (code: NodeJS.Signals | number) => any): this {
 		void this.#exitCode.then(listener)
 		return this
 	}
@@ -185,7 +187,7 @@ export class GenericTerminalPty
 		super(plugin, shell)
 	}
 
-	public once(event: "exit", listener: (code: NodeJS.Signals | number) => void): this {
+	public once(event: "exit", listener: (code: NodeJS.Signals | number) => any): this {
 		this.shell.once(event, (code, signal) => {
 			listener(code ?? signal ?? NaN)
 		})
