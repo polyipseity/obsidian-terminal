@@ -60,74 +60,10 @@ export class SettingTab extends PluginSettingTab {
 		containerEl.empty()
 		containerEl.createEl("h1", { text: plugin.i18n.t("name") })
 
-		interface ComponentAction<C, V> {
-			readonly pre?: (component: C) => void
-			readonly post?: (
-				component: C,
-				activate: (value: V) => Promise<void>,
-			) => void
-		}
-		const linkSetting = <C extends ValueComponent<V>
-			& {
-				onChange: (callback: (value: V) => any) => C
-			}, V>(
-				getter: () => V,
-				setter: (value: V, component: C, getter: () => V) => any,
-				action: ComponentAction<C, V> = {},
-			) => (component: C) => {
-				(action.pre ?? ((): void => { }))(component)
-				const activate = async (value: V): Promise<void> => {
-					const ret: unknown = await setter(value, component, getter)
-					if (typeof ret === "boolean" && !ret) {
-						return
-					}
-					await plugin.saveSettings()
-				}
-				component.setValue(getter()).onChange(activate);
-				(action.post ?? ((): void => { }))(component, activate)
-			},
-			resetButton = <C extends ButtonComponent | ExtraButtonComponent>(
-				resetter: (component: C) => any,
-				icon: string = i18n.t("asset:settings.reset-icon"),
-				action: ComponentAction<C, void> = {},
-			) =>
-				(component: C) => {
-					(action.pre ?? ((): void => { }))(component)
-					const activate = async (): Promise<void> => {
-						const ret: unknown = await resetter(component)
-						if (typeof ret === "boolean" && !ret) {
-							return
-						}
-						const save = plugin.saveSettings()
-						this.display()
-						await save
-					}
-					component
-						.setTooltip(i18n.t("settings.reset"))
-						.setIcon(icon)
-						.onClick(activate);
-					(action.post ?? ((): void => { }))(component, activate)
-				},
-			textToNumberSetter = <C extends ValueComponent<string>>(
-				setter: (value: number, component: C, getter: () => string) => any,
-				integer = false,
-			) => async (value: string, component: C, getter: () => string) => {
-				const num = Number(value)
-				if (integer ? Number.isSafeInteger(num) : isFinite(num)) {
-					component.setValue(getter())
-					return false
-				}
-				const ret: unknown = await setter(num, component, getter)
-				if (typeof ret === "boolean" && !ret) {
-					return false
-				}
-				return true
-			}
-
 		new Setting(containerEl)
 			.setName(i18n.t("settings.language"))
 			.setDesc(i18n.t("settings.language-description"))
-			.addDropdown(linkSetting(
+			.addDropdown(this.#linkSetting(
 				() => plugin.settings.language,
 				value => {
 					plugin.settings.language = value
@@ -151,56 +87,60 @@ export class SettingTab extends PluginSettingTab {
 					},
 				},
 			))
-			.addExtraButton(resetButton(() => {
-				plugin.settings.language = getDefaultSettings().language
-			}, i18n.t("asset:settings.language-icon"), {
-				post: (button, activate) => {
-					button
-						.onClick(async () => {
-							await activate()
-							await plugin.language.changeLanguage(plugin.settings.language)
-							this.display()
-						})
+			.addExtraButton(this.#resetButton(
+				() => { plugin.settings.language = getDefaultSettings().language },
+				i18n.t("asset:settings.language-icon"),
+				{
+					post: (button, activate) => {
+						button
+							.onClick(async () => {
+								await activate()
+								await plugin.language.changeLanguage(plugin.settings.language)
+								this.display()
+							})
+					},
 				},
-			}))
+			))
 		new Setting(containerEl)
 			.setName(i18n.t("settings.reset-all"))
-			.addButton(resetButton(async () => {
+			.addButton(this.#resetButton(async () => {
 				Object.assign(plugin.settings, getDefaultSettings())
 				await plugin.language.changeLanguage(plugin.settings.language)
 			}))
 
 		new Setting(containerEl)
 			.setName(i18n.t("settings.add-to-commands"))
-			.addToggle(linkSetting(
+			.addToggle(this.#linkSetting(
 				() => plugin.settings.command,
 				value => {
 					plugin.settings.command = value
 				},
 			))
-			.addExtraButton(resetButton(() => {
+			.addExtraButton(this.#resetButton(() => {
 				plugin.settings.command = getDefaultSettings().command
 			}, i18n.t("asset:settings.add-to-commands-icon")))
 		new Setting(containerEl)
 			.setName(i18n.t("settings.add-to-context-menus"))
-			.addToggle(linkSetting(
+			.addToggle(this.#linkSetting(
 				() => plugin.settings.contextMenu,
 				value => {
 					plugin.settings.contextMenu = value
 				},
 			))
-			.addExtraButton(resetButton(() => {
+			.addExtraButton(this.#resetButton(() => {
 				plugin.settings.contextMenu = getDefaultSettings().contextMenu
 			}, i18n.t("asset:settings.add-to-context-menus-icon")))
 
 		new Setting(containerEl)
 			.setName(i18n.t("settings.notice-timeout"))
 			.setDesc(i18n.t("settings.notice-timeout-description"))
-			.addText(linkSetting(
+			.addText(this.#linkSetting(
 				() => plugin.settings.noticeTimeout.toString(),
-				textToNumberSetter(value => { plugin.settings.noticeTimeout = value }),
+				this.#setTextToNumber(value => {
+					plugin.settings.noticeTimeout = value
+				}),
 			))
-			.addExtraButton(resetButton(() => {
+			.addExtraButton(this.#resetButton(() => {
 				plugin.settings.noticeTimeout =
 					getDefaultSettings().noticeTimeout
 			}, i18n.t("asset:settings.notice-timeout-icon")))
@@ -209,16 +149,96 @@ export class SettingTab extends PluginSettingTab {
 		for (const key of TerminalPlugin.PLATFORMS) {
 			new Setting(containerEl)
 				.setName(i18n.t(`settings.executable-list.${key}`))
-				.addText(linkSetting(
+				.addText(this.#linkSetting(
 					() => plugin.settings.executables[key].name,
 					value => {
 						plugin.settings.executables[key].name = value
 					},
 				))
-				.addExtraButton(resetButton(() => {
+				.addExtraButton(this.#resetButton(() => {
 					plugin.settings.executables[key].name =
 						getDefaultSettings().executables[key].name
 				}, i18n.t("asset:settings.executable-list-icon")))
 		}
+	}
+
+	#linkSetting<
+		C extends ValueComponent<V> & {
+			onChange: (
+				callback: (value: V) => any) => C
+		},
+		V,
+	>(
+		getter: () => V,
+		setter: (value: V, component: C, getter: () => V) => any,
+		action: SettingTab.ComponentAction<C, V> = {},
+	) {
+		return (component: C): void => {
+			(action.pre ?? ((): void => { }))(component)
+			const activate = async (value: V): Promise<void> => {
+				const ret: unknown = await setter(value, component, getter)
+				if (typeof ret === "boolean" && !ret) {
+					return
+				}
+				await this.plugin.saveSettings()
+			}
+			component.setValue(getter()).onChange(activate);
+			(action.post ?? ((): void => { }))(component, activate)
+		}
+	}
+
+	#setTextToNumber<C extends ValueComponent<string>>(
+		setter: (value: number, component: C, getter: () => string) => any,
+		integer = false,
+	) {
+		return async (
+			value: string,
+			component: C,
+			getter: () => string,
+		): Promise<boolean> => {
+			const num = Number(value)
+			if (integer ? Number.isSafeInteger(num) : isFinite(num)) {
+				component.setValue(getter())
+				return false
+			}
+			const ret: unknown = await setter(num, component, getter)
+			if (typeof ret === "boolean" && !ret) {
+				return false
+			}
+			return true
+		}
+	}
+
+	#resetButton<C extends ButtonComponent | ExtraButtonComponent>(
+		resetter: (component: C) => any,
+		icon: string = this.plugin.i18n.t("asset:settings.reset-icon"),
+		action: SettingTab.ComponentAction<C, void> = {},
+	) {
+		return (component: C): void => {
+			(action.pre ?? ((): void => { }))(component)
+			const activate = async (): Promise<void> => {
+				const ret: unknown = await resetter(component)
+				if (typeof ret === "boolean" && !ret) {
+					return
+				}
+				const save = this.plugin.saveSettings()
+				this.display()
+				await save
+			}
+			component
+				.setTooltip(this.plugin.i18n.t("settings.reset"))
+				.setIcon(icon)
+				.onClick(activate);
+			(action.post ?? ((): void => { }))(component, activate)
+		}
+	}
+}
+namespace SettingTab {
+	export interface ComponentAction<C, V> {
+		readonly pre?: (component: C) => void
+		readonly post?: (
+			component: C,
+			activate: (value: V) => Promise<void>,
+		) => void
 	}
 }
