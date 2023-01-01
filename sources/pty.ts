@@ -87,7 +87,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 	public async resize(columns: number, rows: number): Promise<void> {
 		return new Promise((resolve, reject) => {
 			const { stdout } = this.#resizer,
-				data = (chunk: Buffer): void => {
+				data = (chunk: Buffer | string): void => {
 					if (chunk.toString().includes("resized")) {
 						try {
 							resolve()

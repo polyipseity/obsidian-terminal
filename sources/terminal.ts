@@ -79,12 +79,8 @@ class TerminalView extends ItemView {
 			.once("error", error => {
 				printError(error, i18n.t("errors.error-spawning-terminal"))
 			})
-		shell.stdout.on("data", data => {
-			this.#terminal.write(data as Uint8Array | string)
-		})
-		shell.stderr.on("data", data => {
-			this.#terminal.write(data as Uint8Array | string)
-		})
+		shell.stdout.on("data", (chunk: Buffer | string) => { this.#terminal.write(chunk) })
+		shell.stderr.on("data", (chunk: Buffer | string) => { this.#terminal.write(chunk) })
 		this.#terminal.onData(data => shell.stdin.write(data))
 		await Promise.resolve()
 	}
