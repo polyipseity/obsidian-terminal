@@ -1,5 +1,5 @@
 import * as assets from "assets/locales/en/assets.json"
-import * as en from "assets/locales/en/translations.json"
+import * as en from "assets/locales/en/translation.json"
 import * as languages from "assets/locales/en/languages.json"
 
 export const DEFAULT_NAMESPACE = "translation"
