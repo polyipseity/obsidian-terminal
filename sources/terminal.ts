@@ -5,7 +5,7 @@ import {
 	debounce,
 } from "obsidian"
 import { NOTICE_NO_TIMEOUT, TERMINAL_EXIT_SUCCESS, TERMINAL_RESIZE_TIMEOUT } from "./magic"
-import { UnnamespacedID, isInterface, notice, onVisible, openExternal, printError, statusBar } from "./util"
+import { UnnamespacedID, inSet, isInterface, notice, onVisible, openExternal, printError, statusBar } from "./util"
 import { basename, extname } from "path"
 import { FitAddon } from "xterm-addon-fit"
 import { SearchAddon } from "xterm-addon-search"
@@ -71,7 +71,7 @@ class TerminalView extends ItemView {
 		this.register(() => pty.shell.kill())
 		this.#pty = pty
 		pty.once("exit", code => {
-			notice(i18n.t("notices.terminal-exited", { code }), TERMINAL_EXIT_SUCCESS.includes(code) ? plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
+			notice(i18n.t("notices.terminal-exited", { code }), inSet(TERMINAL_EXIT_SUCCESS, code) ? plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
 			this.leaf.detach()
 		})
 		const { shell } = pty
