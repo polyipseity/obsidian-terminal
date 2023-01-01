@@ -101,7 +101,7 @@ export class SettingTab extends PluginSettingTab {
 					}
 					component
 						.setTooltip(i18n.t("settings.reset"))
-						.setIcon(i18n.t("assets:settings.reset-icon"))
+						.setIcon(i18n.t("asset:settings.reset-icon"))
 						.onClick(activate);
 					(action.post ?? ((): void => { }))(component, activate)
 				},
@@ -141,7 +141,7 @@ export class SettingTab extends PluginSettingTab {
 						.addOption("", i18n.t("settings.language-default"))
 						.addOptions(Object
 							.fromEntries(Object
-								.entries(RESOURCES.en.languages)
+								.entries(RESOURCES.en.language)
 								.filter(entry => entry.every(half => typeof half === "string")))),
 				},
 			))
@@ -149,7 +149,7 @@ export class SettingTab extends PluginSettingTab {
 				plugin.settings.language = getDefaultSettings().language
 			}, {
 				post: (button, activate) => button
-					.setIcon(i18n.t("assets:settings.language-icon"))
+					.setIcon(i18n.t("asset:settings.language-icon"))
 					.onClick(async () => {
 						await activate()
 						await plugin.language.changeLanguage(plugin.settings.language)

@@ -112,7 +112,7 @@ export class TerminalView extends ItemView {
 	}
 
 	public override getIcon(): string {
-		return this.plugin.i18n.t("assets:views.terminal-view-icon")
+		return this.plugin.i18n.t("asset:views.terminal-view-icon")
 	}
 
 	public getViewType(): string {

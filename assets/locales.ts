@@ -1,6 +1,6 @@
-import * as assets from "assets/locales/en/assets.json"
+import * as asset from "assets/locales/en/asset.json"
 import * as en from "assets/locales/en/translation.json"
-import * as languages from "assets/locales/en/languages.json"
+import * as language from "assets/locales/en/language.json"
 import * as zhHans from "assets/locales/zh-Hans/translation.json"
 import * as zhHant from "assets/locales/zh-Hant/translation.json"
 
@@ -16,8 +16,8 @@ export const FALLBACK_LANGUAGES = {
 export const RESOURCES = {
 	en: {
 		[DEFAULT_NAMESPACE]: en,
-		assets,
-		languages,
+		asset,
+		language,
 	},
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	"zh-Hans": {

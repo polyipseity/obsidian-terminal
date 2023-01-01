@@ -173,7 +173,7 @@ export class TerminalPlugin extends Plugin {
 				.addSeparator()
 				.addItem(item => item
 					.setTitle(i18n.t("menus.open-terminal-external"))
-					.setIcon(i18n.t("assets:menus.open-terminal-external-icon"))
+					.setIcon(i18n.t("asset:menus.open-terminal-external-icon"))
 					.onClick(async () => {
 						await this.platform.spawnTerminal(
 							this,
@@ -183,7 +183,7 @@ export class TerminalPlugin extends Plugin {
 					}))
 				.addItem(item => item
 					.setTitle(i18n.t("menus.open-terminal-integrated"))
-					.setIcon(i18n.t("assets:menus.open-terminal-integrated-icon"))
+					.setIcon(i18n.t("asset:menus.open-terminal-integrated-icon"))
 					.onClick(async () => {
 						await this.platform.spawnTerminal(
 							this,
