@@ -45,7 +45,7 @@ export function getDefaultSettings(): Settings {
 			},
 		},
 		language: "",
-		noticeTimeout: 5000,
+		noticeTimeout: 5,
 	}
 }
 

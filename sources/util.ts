@@ -45,10 +45,11 @@ export function statusBar(callback: (
 
 export function notice(
 	message: () => DocumentFragment | string,
-	timeout?: number,
+	timeout: number = NOTICE_NO_TIMEOUT,
 	plugin?: TerminalPlugin,
 ): Notice {
-	const ret = new Notice("", timeout)
+	const timeoutMs = 1000 * timeout,
+		ret = new Notice("", timeoutMs)
 	if (typeof plugin === "undefined") {
 		ret.setMessage(message())
 		return ret
@@ -56,7 +57,11 @@ export function notice(
 	const unreg =
 		plugin.language.registerUse(() => ret.setMessage(message()), true)
 	try {
-		window.setTimeout(unreg, timeout)
+		if (timeoutMs === 0) {
+			plugin.register(unreg)
+		} else {
+			window.setTimeout(unreg, timeoutMs)
+		}
 	} catch {
 		unreg()
 	}
