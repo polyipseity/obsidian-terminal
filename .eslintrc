@@ -85,6 +85,7 @@
         "properties": false
       }
     ],
+    "no-confusing-arrow": "off",
     "no-console": "off",
     "no-empty-function": "off",
     "no-magic-numbers": "off",

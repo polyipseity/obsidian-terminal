@@ -107,10 +107,11 @@ export class SettingTab extends PluginSettingTab {
 				},
 			textToNumberSetter = <C extends ValueComponent<string>>(
 				setter: (value: number, component: C, getter: () => string) => any,
-				parser = (value: string): number => parseInt(value, 10),
+				integer = false,
 			) => (value: string, component: C, getter: () => string) => {
-				const num = parser(value)
-				if (isNaN(num)) {
+				const num = Number(value)
+				if (integer ? Number.isSafeInteger(num) : isFinite(num)) {
+					console.log("asdadsd")
 					component.setValue(getter())
 					return false
 				}
@@ -186,9 +187,7 @@ export class SettingTab extends PluginSettingTab {
 			.setName(i18n.t("settings.notice-timeout"))
 			.addText(linkSetting(
 				() => plugin.settings.noticeTimeout.toString(),
-				textToNumberSetter(value => {
-					plugin.settings.noticeTimeout = value
-				})
+				textToNumberSetter(value => { plugin.settings.noticeTimeout = value })
 			))
 			.addExtraButton(resetButton(() => {
 				plugin.settings.noticeTimeout =
