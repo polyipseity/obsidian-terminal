@@ -131,13 +131,13 @@ export class SettingTab extends PluginSettingTab {
 					plugin.settings.language = value
 				},
 				{
-					post: (component, activate) => component
+					post: (dropdown, activate) => dropdown
 						.onChange(async value => {
 							await activate(value)
 							await plugin.language.changeLanguage(value)
 							await this.display()
 						}),
-					pre: component => component
+					pre: dropdown => dropdown
 						.addOption("", i18n.t("settings.language-default"))
 						.addOptions(Object
 							.fromEntries(Object
@@ -148,7 +148,8 @@ export class SettingTab extends PluginSettingTab {
 			.addExtraButton(resetButton(() => {
 				plugin.settings.language = getDefaultSettings().language
 			}, {
-				post: (component, activate) => component
+				post: (button, activate) => button
+					.setIcon(i18n.t("assets:settings.language-icon"))
 					.onClick(async () => {
 						await activate()
 						await plugin.language.changeLanguage(plugin.settings.language)
