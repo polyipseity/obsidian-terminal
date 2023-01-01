@@ -43,7 +43,7 @@ export class TerminalView extends ItemView {
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
-		leaf: WorkspaceLeaf
+		leaf: WorkspaceLeaf,
 	) {
 		super(leaf)
 		for (const addon of Object.values(this.#terminalAddons)) {
@@ -53,7 +53,7 @@ export class TerminalView extends ItemView {
 
 	public override async setState(
 		state: any,
-		_0: ViewStateResult
+		_0: ViewStateResult,
 	): Promise<void> {
 		if (!isInterface<TerminalView.State>(TerminalView.State.TYPE, state) || typeof this.#pty !== "undefined") {
 			return

@@ -192,7 +192,7 @@ export class SettingTab extends PluginSettingTab {
 			.setDesc(i18n.t("settings.notice-timeout-description"))
 			.addText(linkSetting(
 				() => plugin.settings.noticeTimeout.toString(),
-				textToNumberSetter(value => { plugin.settings.noticeTimeout = value })
+				textToNumberSetter(value => { plugin.settings.noticeTimeout = value }),
 			))
 			.addExtraButton(resetButton(() => {
 				plugin.settings.noticeTimeout =

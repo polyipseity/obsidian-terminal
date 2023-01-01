@@ -187,7 +187,7 @@ export class TerminalPlugin extends Plugin {
 						"integrated",
 					)))
 		}
-		this.registerEvent(this.app.workspace.on("file-menu", (menu, file,) => {
+		this.registerEvent(this.app.workspace.on("file-menu", (menu, file) => {
 			if (!settings.contextMenu) {
 				return
 			}
@@ -195,7 +195,7 @@ export class TerminalPlugin extends Plugin {
 		}))
 		this.registerEvent(this.app.workspace.on(
 			"editor-menu",
-			(menu, _0, info,) => {
+			(menu, _0, info) => {
 				if (!settings.contextMenu ||
 					info instanceof MarkdownView ||
 					info.file === null) {
