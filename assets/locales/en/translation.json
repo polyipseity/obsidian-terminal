@@ -31,7 +31,8 @@
 		"language": "Language",
 		"language-default": "Use app setting",
 		"language-description": "Applies to this plugin only.",
-		"notice-timeout": "Notice timeout",
+		"notice-timeout": "Notice timeout (s)",
+		"notice-timeout-description": "Set 0 s for no timeout.",
 		"reset": "Reset",
 		"reset-all": "Reset all"
 	},

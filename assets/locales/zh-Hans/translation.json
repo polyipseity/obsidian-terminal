@@ -31,7 +31,8 @@
 		"language": "语言",
 		"language-default": "使用应用设定",
 		"language-description": "仅适用於此插件。",
-		"notice-timeout": "通知超时",
+		"notice-timeout": "通知超时（秒）",
+		"notice-timeout-description": "设置 0 秒是无超时。",
 		"reset": "重设",
 		"reset-all": "重设全部"
 	},
