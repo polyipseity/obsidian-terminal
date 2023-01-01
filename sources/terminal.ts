@@ -28,7 +28,7 @@ export class TerminalView extends ItemView {
 	readonly #terminalAddons = {
 		fit: new FitAddon(),
 		search: new SearchAddon(),
-		webLinks: new WebLinksAddon((_0, uri) => { openExternal(uri) }),
+		webLinks: new WebLinksAddon((_0, uri) => openExternal(uri)),
 	} as const
 
 	#pty?: TerminalPty
@@ -80,10 +80,9 @@ export class TerminalView extends ItemView {
 			this.leaf.detach()
 		})
 		const { shell } = pty
-		shell
-			.once("error", error => {
-				printError(error, () => i18n.t("errors.error-spawning-terminal"), plugin)
-			})
+		shell.once("error", error => {
+			printError(error, () => i18n.t("errors.error-spawning-terminal"), plugin)
+		})
 		shell.stdout.on("data", (chunk: Buffer | string) => { this.#terminal.write(chunk) })
 		shell.stderr.on("data", (chunk: Buffer | string) => { this.#terminal.write(chunk) })
 		this.#terminal.onData(data => shell.stdin.write(data))
@@ -143,9 +142,7 @@ export class TerminalView extends ItemView {
 			this.#terminal.blur()
 		}))
 		statusBar(div => {
-			const hider = new MutationObserver(() => {
-				div.style.visibility = "hidden"
-			})
+			const hider = new MutationObserver(() => void (div.style.visibility = "hidden"))
 			this.register(() => {
 				hider.disconnect()
 				div.style.visibility = ""

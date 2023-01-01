@@ -65,40 +65,32 @@ export class SettingTab extends PluginSettingTab {
 			.setDesc(i18n.t("settings.language-description"))
 			.addDropdown(this.#linkSetting(
 				() => plugin.settings.language,
-				value => {
-					plugin.settings.language = value
-				},
+				value => void (plugin.settings.language = value),
 				{
-					post: (dropdown, activate) => {
-						dropdown
-							.onChange(async value => {
-								await activate(value)
-								await plugin.language.changeLanguage(value)
-								this.display()
-							})
-					},
-					pre: dropdown => {
-						dropdown
-							.addOption("", i18n.t("settings.language-default"))
-							.addOptions(Object
-								.fromEntries(Object
-									.entries(RESOURCES.en.language)
-									.filter(entry => entry.every(half => typeof half === "string"))))
-					},
+					post: (dropdown, activate) => void dropdown
+						.onChange(async value => {
+							await activate(value)
+							await plugin.language.changeLanguage(value)
+							this.display()
+						}),
+					pre: dropdown => void dropdown
+						.addOption("", i18n.t("settings.language-default"))
+						.addOptions(Object
+							.fromEntries(Object
+								.entries(RESOURCES.en.language)
+								.filter(entry => entry.every(half => typeof half === "string")))),
 				},
 			))
 			.addExtraButton(this.#resetButton(
-				() => { plugin.settings.language = getDefaultSettings().language },
+				() => void (plugin.settings.language = getDefaultSettings().language),
 				i18n.t("asset:settings.language-icon"),
 				{
-					post: (button, activate) => {
-						button
-							.onClick(async () => {
-								await activate()
-								await plugin.language.changeLanguage(plugin.settings.language)
-								this.display()
-							})
-					},
+					post: (button, activate) => void button
+						.onClick(async () => {
+							await activate()
+							await plugin.language.changeLanguage(plugin.settings.language)
+							this.display()
+						}),
 				},
 			))
 		new Setting(containerEl)
@@ -112,38 +104,37 @@ export class SettingTab extends PluginSettingTab {
 			.setName(i18n.t("settings.add-to-commands"))
 			.addToggle(this.#linkSetting(
 				() => plugin.settings.command,
-				value => {
-					plugin.settings.command = value
-				},
+				value => void (plugin.settings.command = value),
 			))
-			.addExtraButton(this.#resetButton(() => {
-				plugin.settings.command = getDefaultSettings().command
-			}, i18n.t("asset:settings.add-to-commands-icon")))
+			.addExtraButton(this.#resetButton(
+				() => void (plugin.settings.command = getDefaultSettings().command),
+				i18n.t("asset:settings.add-to-commands-icon"),
+			))
 		new Setting(containerEl)
 			.setName(i18n.t("settings.add-to-context-menus"))
 			.addToggle(this.#linkSetting(
 				() => plugin.settings.contextMenu,
-				value => {
-					plugin.settings.contextMenu = value
-				},
+				value => void (plugin.settings.contextMenu = value),
 			))
-			.addExtraButton(this.#resetButton(() => {
-				plugin.settings.contextMenu = getDefaultSettings().contextMenu
-			}, i18n.t("asset:settings.add-to-context-menus-icon")))
+			.addExtraButton(this.#resetButton(
+				() => void (plugin.settings.contextMenu =
+					getDefaultSettings().contextMenu),
+				i18n.t("asset:settings.add-to-context-menus-icon"),
+			))
 
 		new Setting(containerEl)
 			.setName(i18n.t("settings.notice-timeout"))
 			.setDesc(i18n.t("settings.notice-timeout-description"))
 			.addText(this.#linkSetting(
 				() => plugin.settings.noticeTimeout.toString(),
-				this.#setTextToNumber(value => {
-					plugin.settings.noticeTimeout = value
-				}),
+				this.#setTextToNumber(value =>
+					void (plugin.settings.noticeTimeout = value)),
 			))
-			.addExtraButton(this.#resetButton(() => {
-				plugin.settings.noticeTimeout =
-					getDefaultSettings().noticeTimeout
-			}, i18n.t("asset:settings.notice-timeout-icon")))
+			.addExtraButton(this.#resetButton(
+				() => void (plugin.settings.noticeTimeout =
+					getDefaultSettings().noticeTimeout),
+				i18n.t("asset:settings.notice-timeout-icon"),
+			))
 
 		containerEl.createEl("h2", { text: i18n.t("settings.executables") })
 		for (const key of TerminalPlugin.PLATFORMS) {
@@ -151,14 +142,13 @@ export class SettingTab extends PluginSettingTab {
 				.setName(i18n.t(`settings.executable-list.${key}`))
 				.addText(this.#linkSetting(
 					() => plugin.settings.executables[key].name,
-					value => {
-						plugin.settings.executables[key].name = value
-					},
+					value => void (plugin.settings.executables[key].name = value),
 				))
-				.addExtraButton(this.#resetButton(() => {
-					plugin.settings.executables[key].name =
-						getDefaultSettings().executables[key].name
-				}, i18n.t("asset:settings.executable-list-icon")))
+				.addExtraButton(this.#resetButton(
+					() => void (plugin.settings.executables[key].name =
+						getDefaultSettings().executables[key].name),
+					i18n.t("asset:settings.executable-list-icon"),
+				))
 		}
 	}
 

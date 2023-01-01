@@ -109,12 +109,7 @@
       }
     ],
     "no-ternary": "off",
-    "no-void": [
-      "error",
-      {
-        "allowAsStatement": true
-      }
-    ],
+    "no-void": "off",
     "object-curly-spacing": "off",
     "object-property-newline": [
       "error",

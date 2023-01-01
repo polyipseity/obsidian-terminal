@@ -37,9 +37,10 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 	})
 		.once("spawn", () => {
 			this.#resizable = true
-			const watchdog = this.plugin.registerInterval(window.setInterval(() => {
-				void this.#write("\n").catch(() => { })
-			}, TERMINAL_WATCHDOG_INTERVAL))
+			const watchdog = this.plugin.registerInterval(window.setInterval(
+				() => void this.#write("\n").catch(() => { }),
+				TERMINAL_WATCHDOG_INTERVAL,
+			))
 			try {
 				this.#resizer.once("exit", () => { window.clearInterval(watchdog) })
 			} catch (err) {
@@ -51,7 +52,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 			this.#resizable = false
 			printError(error, () => this.plugin.i18n.t("errors.error-spawning-resizer"), this.plugin)
 		})
-		.once("exit", () => { this.#resizable = false })
+		.once("exit", () => void (this.#resizable = false))
 
 	readonly #write =
 		promisify((
@@ -77,8 +78,8 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 						printError(reason, () => this.plugin.i18n.t("errors.error-spawning-resizer"), this.plugin)
 					})
 			})
-			.once("error", () => { this.#resizer.kill() })
-			.once("exit", () => { this.#resizer.kill() })
+			.once("error", () => this.#resizer.kill())
+			.once("exit", () => this.#resizer.kill())
 	}
 
 	public get resizable(): boolean {
@@ -189,9 +190,8 @@ export class GenericTerminalPty
 	}
 
 	public once(event: "exit", listener: (code: NodeJS.Signals | number) => any): this {
-		this.shell.once(event, (code, signal) => {
-			listener(code ?? signal ?? NaN)
-		})
+		this.shell.once(event, (code, signal) =>
+			void listener(code ?? signal ?? NaN))
 		return this
 	}
 }
