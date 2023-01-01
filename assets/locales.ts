@@ -8,6 +8,7 @@ export const DEFAULT_NAMESPACE = "translation"
 export const DEFAULT_LANGUAGE = "en"
 export const FALLBACK_LANGUAGES = {
 	"default": [DEFAULT_LANGUAGE],
+	zh: ["zh-Hans", DEFAULT_LANGUAGE],
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	"zh-CN": ["zh-Hans", "zh", DEFAULT_LANGUAGE],
 	// eslint-disable-next-line @typescript-eslint/naming-convention
