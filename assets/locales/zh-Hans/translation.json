@@ -1,0 +1,43 @@
+{
+	"commands": {
+		"open-terminal-external-root": "在外部终端机开啟根目録",
+		"open-terminal-external-current": "在外部终端机开啟目前目録",
+		"open-terminal-integrated-root": "在整合式终端机开啟根目録",
+		"open-terminal-integrated-current": "在整合式终端机开啟目前目録"
+	},
+	"errors": {
+		"error-spawning-terminal": "啟动终端机时出错",
+		"error-spawning-resizer": "啟动终端机縮放迸程时出错（终端机体验可能变差）",
+		"unsupported-platform": "不支持此平台"
+	},
+	"menus": {
+		"open-terminal-external": "在外部终端机开啟",
+		"open-terminal-integrated": "在整合式终端机开啟"
+	},
+	"name": "终端机",
+	"notices": {
+		"spawning-terminal": "终端机啟动中：{{executable}}",
+		"terminal-exited": "终端机已退出：{{code}}"
+	},
+	"settings": {
+		"add-to-commands": "加入至命令",
+		"add-to-context-menus": "加入至右键选单",
+		"executables": "可执行文件",
+		"executable-list": {
+			"darwin": "macOS",
+			"linux": "Linux",
+			"win32": "Microsoft Windows"
+		},
+		"language": "语言",
+		"language-default": "使用应用设定",
+		"language-description": "仅适用於此插件。",
+		"notice-timeout": "通知超时",
+		"reset": "重设",
+		"reset-all": "重设全部"
+	},
+	"views": {
+		"terminal-view": {
+			"display-name": "终端机：{{executable}}"
+		}
+	}
+}
