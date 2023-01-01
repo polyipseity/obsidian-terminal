@@ -7,7 +7,7 @@
 	},
 	"errors": {
 		"error-spawning-terminal": "啟動終端機時出錯",
-		"error-spawning-resizer": "啟動終端機縮放程式時出錯（終端機體驗可能變差）",
+		"error-spawning-resizer": "啟動終端機縮放程式時出錯",
 		"unsupported-platform": "不支持此平台"
 	},
 	"menus": {

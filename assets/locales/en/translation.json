@@ -7,7 +7,7 @@
 	},
 	"errors": {
 		"error-spawning-terminal": "Error spawning terminal",
-		"error-spawning-resizer": "Error spawning terminal resizer (terminal experience may degrade)",
+		"error-spawning-resizer": "Error spawning terminal resizer",
 		"unsupported-platform": "Unsupported platform"
 	},
 	"menus": {

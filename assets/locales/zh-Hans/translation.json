@@ -7,7 +7,7 @@
 	},
 	"errors": {
 		"error-spawning-terminal": "啟动终端机时出错",
-		"error-spawning-resizer": "啟动终端机縮放迸程时出错（终端机体验可能变差）",
+		"error-spawning-resizer": "啟动终端机縮放迸程时出错",
 		"unsupported-platform": "不支持此平台"
 	},
 	"menus": {
