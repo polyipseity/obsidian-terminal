@@ -83,8 +83,8 @@ export class TerminalPlugin extends Plugin {
 		}
 	})()
 
-	#i18n0: i18n = i18next
 	public readonly language = new TerminalPlugin.LanguageManager(this)
+	#i18n0: i18n = i18next
 
 	public constructor(app: App, manifest: PluginManifest) {
 		super(app, manifest)
