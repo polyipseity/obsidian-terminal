@@ -61,11 +61,11 @@ export class SettingTab extends PluginSettingTab {
 		containerEl.createEl("h1", { text: plugin.i18n.t("name") })
 
 		interface ComponentAction<C, V> {
-			readonly pre?: (component: C) => any
+			readonly pre?: (component: C) => void
 			readonly post?: (
 				component: C,
 				activate: (value: V) => Promise<void>,
-			) => any
+			) => void
 		}
 		const linkSetting = <C extends ValueComponent<V>
 			& {
@@ -133,29 +133,35 @@ export class SettingTab extends PluginSettingTab {
 					plugin.settings.language = value
 				},
 				{
-					post: (dropdown, activate) => dropdown
-						.onChange(async value => {
-							await activate(value)
-							await plugin.language.changeLanguage(value)
-							this.display()
-						}),
-					pre: dropdown => dropdown
-						.addOption("", i18n.t("settings.language-default"))
-						.addOptions(Object
-							.fromEntries(Object
-								.entries(RESOURCES.en.language)
-								.filter(entry => entry.every(half => typeof half === "string")))),
+					post: (dropdown, activate) => {
+						dropdown
+							.onChange(async value => {
+								await activate(value)
+								await plugin.language.changeLanguage(value)
+								this.display()
+							})
+					},
+					pre: dropdown => {
+						dropdown
+							.addOption("", i18n.t("settings.language-default"))
+							.addOptions(Object
+								.fromEntries(Object
+									.entries(RESOURCES.en.language)
+									.filter(entry => entry.every(half => typeof half === "string"))))
+					},
 				},
 			))
 			.addExtraButton(resetButton(() => {
 				plugin.settings.language = getDefaultSettings().language
 			}, i18n.t("asset:settings.language-icon"), {
-				post: (button, activate) => button
-					.onClick(async () => {
-						await activate()
-						await plugin.language.changeLanguage(plugin.settings.language)
-						this.display()
-					}),
+				post: (button, activate) => {
+					button
+						.onClick(async () => {
+							await activate()
+							await plugin.language.changeLanguage(plugin.settings.language)
+							this.display()
+						})
+				},
 			}))
 		new Setting(containerEl)
 			.setName(i18n.t("settings.reset-all"))
