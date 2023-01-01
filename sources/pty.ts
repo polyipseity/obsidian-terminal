@@ -50,7 +50,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 		})
 		.once("error", error => {
 			this.#resizable = false
-			printError(error, this.plugin.i18n.t("errors.error-spawning-resizer"))
+			printError(error, () => this.plugin.i18n.t("errors.error-spawning-resizer"), this.plugin)
 		})
 		.once("exit", () => { this.#resizable = false })
 
@@ -73,7 +73,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 				this.#write(`${pid}\n`)
 					.catch(reason => {
 						this.#resizer.kill()
-						printError(reason, this.plugin.i18n.t("errors.error-spawning-resizer"))
+						printError(reason, () => this.plugin.i18n.t("errors.error-spawning-resizer"), this.plugin)
 					})
 			})
 			.once("error", () => { this.#resizer.kill() })

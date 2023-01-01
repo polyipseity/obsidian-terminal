@@ -71,13 +71,19 @@ class TerminalView extends ItemView {
 		this.register(() => pty.shell.kill())
 		this.#pty = pty
 		pty.once("exit", code => {
-			notice(i18n.t("notices.terminal-exited", { code }), inSet(TERMINAL_EXIT_SUCCESS, code) ? plugin.settings.noticeTimeout : NOTICE_NO_TIMEOUT)
+			notice(
+				() => i18n.t("notices.terminal-exited", { code }),
+				inSet(TERMINAL_EXIT_SUCCESS, code)
+					? plugin.settings.noticeTimeout
+					: NOTICE_NO_TIMEOUT,
+				plugin,
+			)
 			this.leaf.detach()
 		})
 		const { shell } = pty
 		shell
 			.once("error", error => {
-				printError(error, i18n.t("errors.error-spawning-terminal"))
+				printError(error, () => i18n.t("errors.error-spawning-terminal"), plugin)
 			})
 		shell.stdout.on("data", (chunk: Buffer | string) => { this.#terminal.write(chunk) })
 		shell.stderr.on("data", (chunk: Buffer | string) => { this.#terminal.write(chunk) })

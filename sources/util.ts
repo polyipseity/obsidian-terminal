@@ -1,4 +1,6 @@
 import { Notice, Plugin, type PluginManifest } from "obsidian"
+import { NOTICE_NO_TIMEOUT } from "./magic"
+import type TerminalPlugin from "./main"
 
 export class UnnamespacedID<V extends string> {
 	public constructor(public readonly id: V) { }
@@ -42,11 +44,22 @@ export function statusBar(callback: (
 }
 
 export function notice(
-	message: DocumentFragment | string,
+	message: () => DocumentFragment | string,
 	timeout?: number,
-): void {
-	// Useless but to avoid triggering ESLint rule "no-new"
-	new Notice("", timeout).setMessage(message)
+	plugin?: TerminalPlugin,
+): Notice {
+	const ret = new Notice("", timeout)
+	if (typeof plugin === "undefined") {
+		ret.setMessage(message())
+		return ret
+	}
+	const unreg = plugin.language.registerUse(() => ret.setMessage(message()))
+	try {
+		window.setTimeout(unreg, timeout)
+	} catch {
+		unreg()
+	}
+	return ret
 }
 
 export function onVisible<E extends Element>(
@@ -80,14 +93,15 @@ export function openExternal(url?: URL | string): Window | null {
 
 export function printError(
 	error: any,
-	message?: string,
+	message?: () => string,
+	plugin?: TerminalPlugin,
 ): void {
-	const message0 = typeof message === "undefined" ? "" : `${message}: `
+	const message0 = typeof message === "undefined" ? (): string => "" : (): string => `${message()}: `
 	if (error instanceof Error) {
-		console.error(`${message0}${error.name}: ${error.message}${typeof error.stack === "undefined" ? "" : `\n${error.stack}`}`)
-		notice(`${message0}${error.name}: ${error.message}`)
+		console.error(`${message0()}${error.name}: ${error.message}${typeof error.stack === "undefined" ? "" : `\n${error.stack}`}`)
+		notice(() => `${message0()}${error.name}: ${error.message}`, NOTICE_NO_TIMEOUT, plugin)
 		return
 	}
-	console.error(`${message0}${String(error)}`)
-	notice(`${message0}${String(error)}`)
+	console.error(`${message0()}${String(error)}`)
+	notice(() => `${message0()}${String(error)}`, NOTICE_NO_TIMEOUT, plugin)
 }

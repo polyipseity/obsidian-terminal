@@ -36,7 +36,7 @@ class TerminalPlugin extends Plugin {
 				}
 				return async (plugin, cwd, type) => {
 					const executable = plugin.settings.executables[platform]
-					notice(plugin.i18n.t("notices.spawning-terminal", { executable: executable.name }), plugin.settings.noticeTimeout)
+					notice(() => plugin.i18n.t("notices.spawning-terminal", { executable: executable.name }), plugin.settings.noticeTimeout, plugin)
 					switch (type) {
 						case "external": {
 							const process = spawn(executable.name, executable.args, {
@@ -46,7 +46,7 @@ class TerminalPlugin extends Plugin {
 								stdio: "ignore",
 							})
 								.once("error", error => {
-									printError(error, plugin.i18n.t("errors.error-spawning-terminal"))
+									printError(error, () => plugin.i18n.t("errors.error-spawning-terminal"), plugin)
 								})
 							process.unref()
 							return new Promise((resolve, reject) => { process.once("spawn", resolve).once("error", reject) })
@@ -244,9 +244,10 @@ namespace TerminalPlugin {
 			}
 		}
 
-		public registerUse(use: () => any): void {
+		public registerUse(use: () => any): () => void {
 			use()
 			this.#uses.push(use)
+			return () => { this.#uses.remove(use) }
 		}
 	}
 }

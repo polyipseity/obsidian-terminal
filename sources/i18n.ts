@@ -24,7 +24,7 @@ const I18N = Promise.resolve(i18next.createInstance({
 		return i18n
 	})
 	.catch(error => {
-		printError(error, "i18n error")
+		printError(error, () => "i18n error")
 		throw error
 	})
 export default I18N
