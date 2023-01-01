@@ -113,7 +113,6 @@ export class SettingTab extends PluginSettingTab {
 			) => async (value: string, component: C, getter: () => string) => {
 				const num = Number(value)
 				if (integer ? Number.isSafeInteger(num) : isFinite(num)) {
-					console.log("asdadsd")
 					component.setValue(getter())
 					return false
 				}
