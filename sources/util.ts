@@ -20,6 +20,10 @@ export function commandNamer(
 		.replace(defaultPluginName, pluginNamer())
 }
 
+export function inSet<T>(set: readonly T[], obj: any): obj is T {
+	return set.some(mem => obj === mem)
+}
+
 export function isInterface<T extends { __type: T["__type"] }>(id: T["__type"], obj: any): obj is T {
 	if (!("__type" in obj)) {
 		return false

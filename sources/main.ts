@@ -12,7 +12,7 @@ import {
 } from "obsidian"
 import { GenericTerminalPty, WindowsTerminalPty } from "./pty"
 import { SettingTab, getDefaultSettings } from "./settings"
-import { commandNamer, notice, printError } from "./util"
+import { commandNamer, inSet, notice, printError } from "./util"
 import i18next, { type i18n } from "i18next"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import I18N from "./i18n"
@@ -24,8 +24,8 @@ import { spawn } from "child_process"
 class TerminalPlugin extends Plugin {
 	public readonly settings: Settings = getDefaultSettings()
 	public readonly platform = ((): TerminalPlugin.PlatformDispatch => {
-		const platform = process.platform in TerminalPlugin.PLATFORMS
-			? process.platform as TerminalPlugin.Platform
+		const platform = inSet(TerminalPlugin.PLATFORMS, process.platform)
+			? process.platform
 			: null
 		return {
 			spawnTerminal: ((): TerminalPlugin.PlatformDispatch["spawnTerminal"] => {
