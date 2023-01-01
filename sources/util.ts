@@ -34,11 +34,11 @@ export function isInterface<T extends { __type: T["__type"] }>(id: T["__type"], 
 	return (obj as { __type: any }).__type === id
 }
 
-export function statusBar(callback: (
-	element: HTMLDivElement) => any = (): void => { }): HTMLDivElement | null {
+export function statusBar(callback?: (
+	element: HTMLDivElement) => any): HTMLDivElement | null {
 	const ret = document.querySelector<HTMLDivElement>(".app-container>div.status-bar")
 	if (ret !== null) {
-		callback(ret)
+		(callback ?? ((): void => { }))(ret)
 	}
 	return ret
 }
