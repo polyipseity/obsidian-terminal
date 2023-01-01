@@ -244,8 +244,10 @@ namespace TerminalPlugin {
 			}
 		}
 
-		public registerUse(use: () => any): () => void {
-			use()
+		public registerUse(use: () => any, run = false): () => void {
+			if (run) {
+				use()
+			}
 			this.#uses.push(use)
 			return () => { this.#uses.remove(use) }
 		}

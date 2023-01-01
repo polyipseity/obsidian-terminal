@@ -1,4 +1,4 @@
-import { Notice, Plugin, type PluginManifest } from "obsidian"
+import { Notice, Plugin, type PluginManifest, type View } from "obsidian"
 import { NOTICE_NO_TIMEOUT } from "./magic"
 import type TerminalPlugin from "./main"
 
@@ -53,7 +53,8 @@ export function notice(
 		ret.setMessage(message())
 		return ret
 	}
-	const unreg = plugin.language.registerUse(() => ret.setMessage(message()))
+	const unreg =
+		plugin.language.registerUse(() => ret.setMessage(message()), true)
 	try {
 		window.setTimeout(unreg, timeout)
 	} catch {
@@ -104,4 +105,21 @@ export function printError(
 	}
 	console.error(`${message0()}${String(error)}`)
 	notice(() => `${message0()}${String(error)}`, NOTICE_NO_TIMEOUT, plugin)
+}
+
+export function updateDisplayText(view: View): boolean {
+	const type = view.getViewType(),
+		text = view.getDisplayText(),
+		header = document.querySelector(`.workspace-tab-header[data-type="${type}"]`),
+		title = header?.querySelector(".workspace-tab-header-inner-title") ?? null,
+		oldText = title?.textContent ?? null
+	if (oldText === null) {
+		return false
+	}
+	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+	title!.textContent = text
+	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+	header!.ariaLabel = text
+	document.title = document.title.replace(oldText, text)
+	return true
 }

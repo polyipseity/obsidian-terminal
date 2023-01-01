@@ -5,7 +5,7 @@ import {
 	debounce,
 } from "obsidian"
 import { NOTICE_NO_TIMEOUT, TERMINAL_EXIT_SUCCESS, TERMINAL_RESIZE_TIMEOUT } from "./magic"
-import { UnnamespacedID, inSet, isInterface, notice, onVisible, openExternal, printError, statusBar } from "./util"
+import { UnnamespacedID, inSet, isInterface, notice, onVisible, openExternal, printError, statusBar, updateDisplayText } from "./util"
 import { basename, extname } from "path"
 import { FitAddon } from "xterm-addon-fit"
 import { SearchAddon } from "xterm-addon-search"
@@ -108,6 +108,7 @@ class TerminalView extends ItemView {
 	}
 
 	public getDisplayText(): string {
+		console.log(new Error())
 		const { executable } = this.getState()
 		return this.plugin.i18n.t("views.terminal-view.display-name", { executable: basename(executable, extname(executable)) })
 	}
@@ -161,6 +162,8 @@ class TerminalView extends ItemView {
 				div.style.visibility = ""
 			}))
 		})
+		this.register(this.plugin.language.registerUse(() =>
+			updateDisplayText(this)))
 		await Promise.resolve()
 	}
 }
