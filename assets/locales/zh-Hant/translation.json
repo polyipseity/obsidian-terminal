@@ -32,7 +32,7 @@
 		"language-default": "使用應用程式設定",
 		"language-description": "僅適用於此外掛程式。",
 		"notice-timeout": "通知超時（秒）",
-		"notice-timeout-description": "設置 0 秒是無超時。",
+		"notice-timeout-description": "設為 0 秒是無超時。",
 		"reset": "重設",
 		"reset-all": "重設全部"
 	},
