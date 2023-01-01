@@ -14,7 +14,7 @@ export function commandNamer(
 	cmdNamer: () => string,
 	pluginNamer: () => string,
 	defaultPluginName: string,
-	format: string
+	format: string,
 ): () => string {
 	const cmd = cmdNamer()
 	return () => format

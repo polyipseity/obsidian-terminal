@@ -56,7 +56,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 	readonly #write =
 		promisify((
 			chunk: any,
-			callback: (error?: Error | null) => void
+			callback: (error?: Error | null) => void,
 		) => this.#resizer.stdin.write(chunk, callback))
 
 	protected constructor(
@@ -143,7 +143,7 @@ export class WindowsTerminalPty
 							const termCode =
 								parseInt(
 									readFileSync(this.#codeTmp.name, { encoding: "utf-8", flag: "r" }).trim(),
-									10
+									10,
 								)
 							resolve(isNaN(termCode) ? conCode ?? signal ?? NaN : termCode)
 						} catch (error) {

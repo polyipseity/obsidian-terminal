@@ -1,28 +1,33 @@
 {
-  "root": true,
-  "parser": "@typescript-eslint/parser",
   "env": {
+    "browser": true,
+    "es2018": true,
     "node": true
   },
-  "plugins": [
-    "@typescript-eslint"
-  ],
   "extends": [
     "eslint:all",
     "plugin:@typescript-eslint/eslint-recommended",
     "plugin:@typescript-eslint/all"
   ],
+  "ignorePatterns": [
+    "build/",
+    "main.js",
+    "node_modules/"
+  ],
+  "parser": "@typescript-eslint/parser",
   "parserOptions": {
-    "sourceType": "module",
+    "allowReserved": false,
+    "ecmaFeatures": {},
+    "ecmaVersion": "latest",
     "project": [
       "tsconfig.json"
-    ]
+    ],
+    "sourceType": "module"
   },
-  "ignorePatterns": [
-    "node_modules",
-    "build",
-    "main.js"
+  "plugins": [
+    "@typescript-eslint"
   ],
+  "root": true,
   "rules": {
     "array-element-newline": [
       "error",
