@@ -17,16 +17,16 @@
 	"name": "Terminal",
 	"notices": {
 		"spawning-terminal": "Spawning terminal: {{executable}}",
-		"terminal-exited": "Terminal exited with code {{code}}"
+		"terminal-exited": "Terminal exited: {{code}}"
 	},
 	"settings": {
 		"add-to-commands": "Add to commands",
 		"add-to-context-menus": "Add to context menus",
 		"executables": "Executables",
 		"executable-list": {
-			"darwin": "MacOS",
+			"darwin": "macOS",
 			"linux": "Linux",
-			"win32": "Windows"
+			"win32": "Microsoft Windows"
 		},
 		"language": "Language",
 		"language-default": "Use app setting",
