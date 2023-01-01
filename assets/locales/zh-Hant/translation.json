@@ -1,0 +1,43 @@
+{
+	"commands": {
+		"open-terminal-external-root": "在外部終端機開啟根目錄",
+		"open-terminal-external-current": "在外部終端機開啟目前目錄",
+		"open-terminal-integrated-root": "在整合式終端機開啟根目錄",
+		"open-terminal-integrated-current": "在整合式終端機開啟目前目錄"
+	},
+	"errors": {
+		"error-spawning-terminal": "啟動終端機時出錯",
+		"error-spawning-resizer": "啟動終端機縮放程式時出錯（終端機體驗可能變差）",
+		"unsupported-platform": "不支持此平台"
+	},
+	"menus": {
+		"open-terminal-external": "在外部終端機開啟",
+		"open-terminal-integrated": "在整合式終端機開啟"
+	},
+	"name": "終端機",
+	"notices": {
+		"spawning-terminal": "終端機啟動中：{{executable}}",
+		"terminal-exited": "終端機已退出：{{code}}"
+	},
+	"settings": {
+		"add-to-commands": "加入至命令",
+		"add-to-context-menus": "加入至右鍵選單",
+		"executables": "執行檔",
+		"executable-list": {
+			"darwin": "macOS",
+			"linux": "Linux",
+			"win32": "Microsoft Windows"
+		},
+		"language": "語言",
+		"language-default": "使用應用程式設定",
+		"language-description": "僅適用於此外掛程式。",
+		"notice-timeout": "通知超時",
+		"reset": "重設",
+		"reset-all": "重設全部"
+	},
+	"views": {
+		"terminal-view": {
+			"display-name": "終端機：{{executable}}"
+		}
+	}
+}
