@@ -108,7 +108,6 @@ class TerminalView extends ItemView {
 	}
 
 	public getDisplayText(): string {
-		console.log(new Error())
 		const { executable } = this.getState()
 		return this.plugin.i18n.t("views.terminal-view.display-name", { executable: basename(executable, extname(executable)) })
 	}
