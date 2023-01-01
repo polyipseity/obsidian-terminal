@@ -79,11 +79,7 @@
     "jsx": "react",
     "lib": [
       "DOM",
-      "ES2015",
-      "ES2016",
-      "ES2017",
       "ES2018",
-      "ES5",
     ],
     "moduleDetection": "force",
     "noLib": false,
