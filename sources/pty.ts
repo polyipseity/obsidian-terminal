@@ -58,7 +58,18 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 		promisify((
 			chunk: any,
 			callback: (error?: Error | null) => void,
-		) => this.#resizer.stdin.write(chunk, callback))
+		) => {
+			try {
+				return this.#resizer.stdin.write(chunk, callback)
+			} catch (error) {
+				if (error instanceof Error) {
+					callback(error)
+				} else {
+					callback(new Error(String(error)))
+				}
+			}
+			return false
+		})
 
 	protected constructor(
 		plugin: TerminalPlugin,
