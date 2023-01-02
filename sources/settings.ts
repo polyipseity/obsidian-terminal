@@ -37,7 +37,7 @@ export function getDefaultSettings(): Settings {
 			},
 			linux: {
 				args: [],
-				name: "xterm",
+				name: "xterm-256color",
 			},
 			win32: {
 				args: [],
