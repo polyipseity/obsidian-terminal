@@ -5,13 +5,14 @@ import {
 	debounce,
 } from "obsidian"
 import { NOTICE_NO_TIMEOUT, TERMINAL_EXIT_SUCCESS, TERMINAL_RESIZE_TIMEOUT } from "./magic"
+import { type TerminalPty, WindowsTerminalPty } from "./pty"
+import { type TerminalSerial, TerminalSerializer } from "./terminal-serialize"
 import { UnnamespacedID, inSet, isInterface, notice, onVisible, openExternal, printError, statusBar, updateDisplayText } from "./util"
 import { basename, extname } from "path"
 import { FitAddon } from "xterm-addon-fit"
 import { SearchAddon } from "xterm-addon-search"
 import { Terminal } from "xterm"
 import type { TerminalPlugin } from "./main"
-import type { TerminalPty } from "./pty"
 import { WebLinksAddon } from "xterm-addon-web-links"
 
 export class TerminalView extends ItemView {
@@ -24,7 +25,10 @@ export class TerminalView extends ItemView {
 		executable: "",
 	}
 
-	readonly #terminal = new Terminal()
+	readonly #terminal = new Terminal({
+		allowProposedApi: true,
+	})
+
 	readonly #terminalAddons = {
 		fit: new FitAddon(),
 		search: new SearchAddon(),
@@ -36,10 +40,16 @@ export class TerminalView extends ItemView {
 		async (
 			columns: number,
 			rows: number,
-		) => this.#pty?.resize(columns, rows).catch(() => { }),
+		) => {
+			await this.#pty?.resize(columns, rows).catch(() => { })
+			this.#serializer.resize(columns, rows)
+			this.plugin.app.workspace.requestSaveLayout()
+		},
 		TERMINAL_RESIZE_TIMEOUT,
 		false,
 	)
+
+	readonly #serializer = new TerminalSerializer()
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
@@ -53,12 +63,14 @@ export class TerminalView extends ItemView {
 
 	public override async setState(
 		state: any,
-		_0: ViewStateResult,
+		result: ViewStateResult,
 	): Promise<void> {
+		await super.setState(state, result)
 		if (!isInterface<TerminalView.State>(TerminalView.State.TYPE, state) || typeof this.#pty !== "undefined") {
 			return
 		}
 		this.#state = state
+
 		const { plugin } = this,
 			{ i18n } = plugin,
 			pty = new plugin.platform.terminalPty(
@@ -83,14 +95,42 @@ export class TerminalView extends ItemView {
 		shell.once("error", error => {
 			printError(error, () => i18n.t("errors.error-spawning-terminal"), plugin)
 		})
-		shell.stdout.on("data", (chunk: Buffer | string) => { this.#terminal.write(chunk) })
+
+		const { serial } = state
+		const enum StdoutState {
+			conhost = 1,
+			clear = 2,
+		}
+		let stdoutState: StdoutState =
+			(pty instanceof WindowsTerminalPty ? 0 : StdoutState.conhost) |
+			StdoutState.clear
+		if (typeof serial !== "undefined") {
+			stdoutState &= ~StdoutState.clear
+			this.#serializer.unserialize(serial)
+			this.#terminal.resize(serial.columns, serial.rows)
+			this.#terminal.write(serial.data)
+		}
+		shell.stdout.on("data", (chunk: Buffer | string) => {
+			if ((stdoutState & StdoutState.conhost) === 0) {
+				stdoutState |= StdoutState.conhost
+				// Skip conhost.exe output
+				return
+			}
+			if ((stdoutState & StdoutState.clear) === 0) {
+				stdoutState |= StdoutState.clear
+				// Clear screen with scrollback kept
+				this.#write("\n\u001b[K".repeat(this.#terminal.rows))
+				this.#write("\u001b[H")
+			}
+			this.#write(chunk)
+		})
 		shell.stderr.on("data", (chunk: Buffer | string) => { this.#terminal.write(chunk) })
 		this.#terminal.onData(data => shell.stdin.write(data))
-		await Promise.resolve()
 	}
 
-	public override getState(): TerminalView.State {
-		return this.#state
+	public override getState(): any {
+		this.#state.serial = this.#serializer.serialize()
+		return Object.assign(super.getState(), this.#state)
 	}
 
 	public override onResize(): void {
@@ -121,6 +161,7 @@ export class TerminalView extends ItemView {
 
 	protected override async onOpen(): Promise<void> {
 		const { containerEl, plugin } = this
+
 		containerEl.empty()
 		containerEl.createDiv({}, ele => {
 			const obsr = onVisible(ele, obsr0 => {
@@ -161,6 +202,12 @@ export class TerminalView extends ItemView {
 			updateDisplayText(this)))
 		await Promise.resolve()
 	}
+
+	#write(data: Buffer | string): void {
+		this.#serializer.write(data)
+		this.#terminal.write(data)
+		this.plugin.app.workspace.requestSaveLayout()
+	}
 }
 export namespace TerminalView {
 	export interface State {
@@ -168,6 +215,7 @@ export namespace TerminalView {
 		readonly executable: string
 		readonly cwd: string
 		readonly args: string[]
+		serial?: TerminalSerial
 	}
 	export namespace State {
 		export const TYPE = "8d54e44a-32e7-4297-8ae2-cff88e92ce28"

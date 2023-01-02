@@ -90,11 +90,13 @@
         "properties": false
       }
     ],
+    "no-bitwise": "off",
     "no-confusing-arrow": "off",
     "no-console": "off",
     "no-empty-function": "off",
     "no-magic-numbers": "off",
     "no-nested-ternary": "off",
+    "no-plusplus": "off",
     "no-underscore-dangle": [
       "error",
       {

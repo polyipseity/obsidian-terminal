@@ -8,6 +8,7 @@ Open terminals in Obsidian directly.
 
 - Open files or folders in terminals externally from commands or context menus.
 - Embed terminals inside Obsidian.
+- Automatically save and restore terminal history across Obsidian restarts.
 
 ## Usage
 
@@ -21,5 +22,4 @@ Create directory `terminal` under `.obsidian/plugins`. Then place `manifest.json
 
 - Untested on Linux and MacOS.
 - Terminal addons are not working yet.
-- Save console history.
 - Connect to remote shells. (could support mobile devices)
