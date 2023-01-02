@@ -49,4 +49,4 @@ await esbuild.build({
 	target: "ES2018",
 	treeShaking: true,
 	watch: !production,
-}).catch(error => { throw error })
+})
