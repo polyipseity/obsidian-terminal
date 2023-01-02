@@ -6,9 +6,9 @@ Open terminals in Obsidian directly.
 
 ## Features
 
-- Open files or folders in terminals externally from commands or context menus.
-- Embed terminals inside Obsidian.
-- Automatically save and restore terminal history across Obsidian restarts.
+- Open external terminals directly from Obsidian.
+- Open terminals integrated into the Obsidian workspace.
+- Automatically save and restore integrated terminal history across Obsidian restarts.
 
 ## Usage
 
