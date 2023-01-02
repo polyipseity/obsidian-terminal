@@ -41,9 +41,11 @@ export class TerminalView extends ItemView {
 			columns: number,
 			rows: number,
 		) => {
-			await this.#pty?.resize(columns, rows).catch(() => { })
-			this.#serializer.resize(columns, rows)
-			this.plugin.app.workspace.requestSaveLayout()
+			try {
+				await this.#pty?.resize(columns, rows)
+				this.#serializer.resize(columns, rows)
+				this.plugin.app.workspace.requestSaveLayout()
+			} catch (error) { void error }
 		},
 		TERMINAL_RESIZE_TIMEOUT,
 		false,
@@ -81,7 +83,8 @@ export class TerminalView extends ItemView {
 			)
 		this.register(() => pty.shell.kill())
 		this.#pty = pty
-		pty.once("exit", code => {
+		const { shell } = pty.once("exit", code => {
+			this.leaf.detach()
 			notice(
 				() => i18n.t("notices.terminal-exited", { code }),
 				inSet(TERMINAL_EXIT_SUCCESS, code)
@@ -89,9 +92,7 @@ export class TerminalView extends ItemView {
 					: NOTICE_NO_TIMEOUT,
 				plugin,
 			)
-			this.leaf.detach()
 		})
-		const { shell } = pty
 		shell.once("error", error => {
 			printError(error, () => i18n.t("errors.error-spawning-terminal"), plugin)
 		})

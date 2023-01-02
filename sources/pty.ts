@@ -37,22 +37,24 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 	})
 		.once("spawn", () => {
 			this.#resizable = true
-			const watchdog = this.plugin.registerInterval(window.setInterval(
-				() => void this.#write("\n").catch(() => { }),
-				TERMINAL_WATCHDOG_INTERVAL,
-			))
+			const watchdog =
+				this.plugin.registerInterval(window.setInterval(
+					() => void this.#write("\n").catch(() => { }),
+					TERMINAL_WATCHDOG_INTERVAL,
+				)),
+				clear = (): void => { window.clearInterval(watchdog) }
 			try {
-				this.#resizer.once("exit", () => { window.clearInterval(watchdog) })
-			} catch (err) {
-				window.clearInterval(watchdog)
-				throw err
+				this.#resizer.once("exit", clear).once("error", clear)
+			} catch (error) {
+				clear()
+				throw error
 			}
 		})
+		.once("exit", () => void (this.#resizable = false))
 		.once("error", error => {
 			this.#resizable = false
 			printError(error, () => this.plugin.i18n.t("errors.error-spawning-resizer"), this.plugin)
 		})
-		.once("exit", () => void (this.#resizable = false))
 
 	readonly #write =
 		promisify((
@@ -89,8 +91,8 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 						printError(reason, () => this.plugin.i18n.t("errors.error-spawning-resizer"), this.plugin)
 					})
 			})
-			.once("error", () => this.#resizer.kill())
 			.once("exit", () => this.#resizer.kill())
+			.once("error", () => this.#resizer.kill())
 	}
 
 	public get resizable(): boolean {
@@ -99,25 +101,48 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 
 	public async resize(columns: number, rows: number): Promise<void> {
 		return new Promise((resolve, reject) => {
-			const { stdout } = this.#resizer,
+			const resizer = this.#resizer,
+				{ stdout } = resizer,
 				data = (chunk: Buffer | string): void => {
 					if (chunk.toString().includes("resized")) {
 						try {
 							resolve()
 						} finally {
 							stdout.removeListener("data", data)
+							// eslint-disable-next-line @typescript-eslint/no-use-before-define
+							resizer.removeListener("exit", exit).removeListener("error", errorFn)
 						}
 					}
 				}
-			this.#resizer.once("error", error => {
+			function exit(...args: any[]): void {
+				try {
+					reject(new Error(args.toString()))
+				} catch (error) {
+					reject(error)
+				} finally {
+					stdout.removeListener("data", data)
+					// eslint-disable-next-line @typescript-eslint/no-use-before-define
+					resizer.removeListener("error", errorFn)
+				}
+			}
+			function errorFn(error: Error): void {
 				try {
 					reject(error)
 				} finally {
 					stdout.removeListener("data", data)
+					resizer.removeListener("exit", exit)
+				}
+			}
+			resizer.once("exit", exit).once("error", errorFn)
+			stdout.on("data", data)
+			this.#write(`${columns}x${rows}\n`).catch(error => {
+				try {
+					reject(error)
+				} finally {
+					stdout.removeListener("data", data)
+					resizer.removeListener("exit", exit).removeListener("error", errorFn)
 				}
 			})
-			stdout.on("data", data)
-			void this.#write(`${columns}x${rows}\n`)
 		})
 	}
 
@@ -178,7 +203,7 @@ export class WindowsTerminalPty
 	}
 
 	public once(_0: "exit", listener: (code: NodeJS.Signals | number) => any): this {
-		void this.#exitCode.then(listener)
+		this.#exitCode.then(listener).catch(() => { })
 		return this
 	}
 }
