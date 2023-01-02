@@ -94,6 +94,7 @@ export class TerminalView extends ItemView {
 			)
 		})
 		shell.once("error", error => {
+			this.leaf.detach()
 			printError(error, () => i18n.t("errors.error-spawning-terminal"), plugin)
 		})
 
