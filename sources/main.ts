@@ -96,6 +96,7 @@ export class TerminalPlugin extends Plugin {
 	}
 
 	public override async onload(): Promise<void> {
+		super.onload()
 		if (!Platform.isDesktopApp) {
 			return
 		}

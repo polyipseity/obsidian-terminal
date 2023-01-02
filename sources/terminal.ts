@@ -135,6 +135,7 @@ export class TerminalView extends ItemView {
 	}
 
 	public override onResize(): void {
+		super.onResize()
 		if (this.plugin.app.workspace.getActiveViewOfType(TerminalView) === this) {
 			const { fit } = this.#terminalAddons,
 				dim = fit.proposeDimensions()
@@ -161,6 +162,7 @@ export class TerminalView extends ItemView {
 	}
 
 	protected override async onOpen(): Promise<void> {
+		await super.onOpen()
 		const { containerEl, plugin } = this
 
 		containerEl.empty()
@@ -201,7 +203,6 @@ export class TerminalView extends ItemView {
 		})
 		this.register(this.plugin.language.registerUse(() =>
 			updateDisplayText(this)))
-		await Promise.resolve()
 	}
 
 	#write(data: Buffer | string): void {
