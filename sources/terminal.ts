@@ -1,5 +1,6 @@
 import {
 	ItemView,
+	type Menu,
 	type ViewStateResult,
 	type WorkspaceLeaf,
 	debounce,
@@ -7,7 +8,7 @@ import {
 import { NOTICE_NO_TIMEOUT, TERMINAL_EXIT_SUCCESS, TERMINAL_RESIZE_TIMEOUT } from "./magic"
 import { type TerminalPty, WindowsTerminalPty } from "./pty"
 import { type TerminalSerial, TerminalSerializer } from "./terminal-serialize"
-import { UnnamespacedID, inSet, isInterface, notice, onVisible, openExternal, printError, statusBar, updateDisplayText } from "./util"
+import { UnnamespacedID, inSet, isInterface, notice, onVisible, openExternal, printError, saveFile, statusBar, updateDisplayText } from "./util"
 import { basename, extname } from "path"
 import { FitAddon } from "xterm-addon-fit"
 import { SearchAddon } from "xterm-addon-search"
@@ -36,6 +37,7 @@ export class TerminalView extends ItemView {
 	} as const
 
 	#pty?: TerminalPty
+	readonly #serializer = new TerminalSerializer(this.#terminal)
 	readonly #resizeNative = debounce(
 		async (
 			columns: number,
@@ -43,15 +45,13 @@ export class TerminalView extends ItemView {
 		) => {
 			try {
 				await this.#pty?.resize(columns, rows)
-				this.#serializer.resize(columns, rows)
+				this.#terminal.resize(columns, rows)
 				this.plugin.app.workspace.requestSaveLayout()
 			} catch (error) { void error }
 		},
 		TERMINAL_RESIZE_TIMEOUT,
 		false,
 	)
-
-	readonly #serializer = new TerminalSerializer()
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
@@ -149,8 +149,7 @@ export class TerminalView extends ItemView {
 	}
 
 	public getDisplayText(): string {
-		const { executable } = this.#state
-		return this.plugin.i18n.t("views.terminal-view.display-name", { executable: basename(executable, extname(executable)) })
+		return this.plugin.i18n.t("views.terminal-view.display-name", { executable: this.#getExecutableBasename() })
 	}
 
 	public override getIcon(): string {
@@ -160,6 +159,26 @@ export class TerminalView extends ItemView {
 	public getViewType(): string {
 		// Workaround: super() calls this method
 		return TerminalView.namespacedViewType
+	}
+
+	public override onPaneMenu(menu: Menu, source: string): void {
+		super.onPaneMenu(menu, source)
+		const { i18n } = this.plugin
+		menu
+			.addSeparator()
+			.addItem(item => item
+				.setTitle(i18n.t("menus.save-as-HTML"))
+				.setIcon(i18n.t("asset:menus.save-as-HTML-icon"))
+				.onClick(() => {
+					saveFile(
+						this.#serializer.serializer.serializeAsHTML({
+							includeGlobalBackground: false,
+							onlySelection: false,
+						}),
+						"text/html; charset=UTF-8;",
+						`${this.#getExecutableBasename()}.html`,
+					)
+				}))
 	}
 
 	protected override async onOpen(): Promise<void> {
@@ -206,8 +225,12 @@ export class TerminalView extends ItemView {
 			updateDisplayText(this)))
 	}
 
+	#getExecutableBasename(): string {
+		const { executable } = this.#state
+		return basename(executable, extname(executable))
+	}
+
 	#write(data: Buffer | string): void {
-		this.#serializer.write(data)
 		this.#terminal.write(data)
 		this.plugin.app.workspace.requestSaveLayout()
 	}

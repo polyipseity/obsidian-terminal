@@ -9,6 +9,7 @@ Open terminals in Obsidian directly.
 - Open external terminals directly from Obsidian.
 - Open terminals integrated into the Obsidian workspace.
 - Automatically save and restore integrated terminal history across Obsidian restarts.
+- Save terminal history as file.
 
 ## Usage
 

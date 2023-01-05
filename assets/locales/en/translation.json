@@ -12,7 +12,8 @@
 	},
 	"menus": {
 		"open-terminal-external": "Open in external terminal",
-		"open-terminal-integrated": "Open in integrated terminal"
+		"open-terminal-integrated": "Open in integrated terminal",
+		"save-as-HTML": "Save as HTML"
 	},
 	"name": "Terminal",
 	"notices": {

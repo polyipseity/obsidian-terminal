@@ -12,7 +12,8 @@
 	},
 	"menus": {
 		"open-terminal-external": "在外部終端機開啟",
-		"open-terminal-integrated": "在整合式終端機開啟"
+		"open-terminal-integrated": "在整合式終端機開啟",
+		"save-as-HTML": "儲存為 HTML"
 	},
 	"name": "終端機",
 	"notices": {

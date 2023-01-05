@@ -1,5 +1,5 @@
 import { SerializeAddon } from "xterm-addon-serialize"
-import { Terminal } from "xterm"
+import type { Terminal } from "xterm"
 
 export interface TerminalSerial {
 	readonly columns: number
@@ -7,37 +7,25 @@ export interface TerminalSerial {
 	readonly data: string
 }
 export class TerminalSerializer {
-	readonly #terminal = new Terminal({
-		allowProposedApi: true,
-	})
+	public readonly serializer = new SerializeAddon()
 
-	readonly #serializer = new SerializeAddon()
-
-	public constructor() {
-		this.#terminal.loadAddon(this.#serializer)
-	}
-
-	public write(data: Buffer | string): void {
-		this.#terminal.write(data)
-	}
-
-	public resize(columns: number, rows: number): void {
-		this.#terminal.resize(columns, rows)
+	public constructor(protected readonly terminal: Terminal) {
+		this.terminal.loadAddon(this.serializer)
 	}
 
 	public unserialize(serial: TerminalSerial): void {
-		this.resize(serial.columns, serial.rows)
-		this.write(serial.data)
+		this.terminal.resize(serial.columns, serial.rows)
+		this.terminal.write(serial.data)
 	}
 
 	public serialize(): TerminalSerial {
 		return {
-			columns: this.#terminal.cols,
-			data: this.#serializer.serialize({
+			columns: this.terminal.cols,
+			data: this.serializer.serialize({
 				excludeAltBuffer: true,
 				excludeModes: true,
 			}),
-			rows: this.#terminal.rows,
+			rows: this.terminal.rows,
 		}
 	}
 }

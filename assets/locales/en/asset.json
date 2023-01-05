@@ -1,7 +1,8 @@
 {
 	"menus": {
 		"open-terminal-external-icon": "terminal-square",
-		"open-terminal-integrated-icon": "terminal"
+		"open-terminal-integrated-icon": "terminal",
+		"save-as-HTML-icon": "save"
 	},
 	"views": {
 		"terminal-view-icon": "terminal"

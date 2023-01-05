@@ -12,7 +12,8 @@
 	},
 	"menus": {
 		"open-terminal-external": "在外部终端机开啟",
-		"open-terminal-integrated": "在整合式终端机开啟"
+		"open-terminal-integrated": "在整合式终端机开啟",
+		"save-as-HTML": "储存为 HTML"
 	},
 	"name": "终端机",
 	"notices": {
