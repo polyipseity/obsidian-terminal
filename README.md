@@ -2,7 +2,7 @@
 
 ![Trailer](assets/trailer.png)
 
-Open terminals in Obsidian directly.
+Open terminals in [Obsidian](https://obsidian.md/) directly.
 
 ## Features
 
