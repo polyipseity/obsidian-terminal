@@ -217,12 +217,11 @@ export class GenericTerminalPty
 		cwd?: string,
 		args?: string[],
 	) {
-		const shell = spawn(executable, args, {
+		super(plugin, spawn(executable, args, {
 			cwd,
 			stdio: ["pipe", "pipe", "pipe"],
 			windowsHide: false,
-		})
-		super(plugin, shell)
+		}))
 	}
 
 	public once(event: "exit", listener: (code: NodeJS.Signals | number) => any): this {
