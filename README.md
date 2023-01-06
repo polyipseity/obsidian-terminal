@@ -4,6 +4,8 @@
 
 Open terminals in [Obsidian](https://obsidian.md/) directly.
 
+- Repository: https://github.com/polyipseity/obsidian-terminal
+
 ## Features
 
 - Open external terminals directly from Obsidian.
