@@ -187,7 +187,7 @@ export class SettingTab extends PluginSettingTab {
 			getter: () => string,
 		): Promise<boolean> => {
 			const num = Number(value)
-			if (integer ? Number.isSafeInteger(num) : isFinite(num)) {
+			if (!(integer ? Number.isSafeInteger(num) : isFinite(num))) {
 				component.setValue(getter())
 				return false
 			}
