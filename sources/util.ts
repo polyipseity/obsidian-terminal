@@ -113,7 +113,7 @@ export function printError(
 	message = (): string => "",
 	plugin?: TerminalPlugin,
 ): void {
-	console.error(message(), error)
+	console.error(`${message()}\n`, error)
 	notice(
 		error instanceof Error
 			? (): string => `${message()}\n${error.name}: ${error.message}`
