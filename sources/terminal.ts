@@ -137,15 +137,17 @@ export class TerminalView extends ItemView {
 
 	public override onResize(): void {
 		super.onResize()
-		if (this.plugin.app.workspace.getActiveViewOfType(TerminalView) === this) {
-			const { fit } = this.#terminalAddons,
-				dim = fit.proposeDimensions()
-			if (typeof dim === "undefined") {
-				return
-			}
-			fit.fit()
-			this.#resizeNative(dim.cols, dim.rows)
+		const { containerEl } = this
+		if (containerEl.offsetWidth <= 0 || containerEl.offsetHeight <= 0) {
+			return
 		}
+		const { fit } = this.#terminalAddons,
+			dim = fit.proposeDimensions()
+		if (typeof dim === "undefined") {
+			return
+		}
+		fit.fit()
+		this.#resizeNative(dim.cols, dim.rows)
 	}
 
 	public getDisplayText(): string {
