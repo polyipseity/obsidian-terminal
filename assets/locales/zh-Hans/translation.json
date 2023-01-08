@@ -38,7 +38,7 @@
 		"reset-all": "重设全部"
 	},
 	"views": {
-		"terminal-view": {
+		"terminal": {
 			"display-name": "终端机：{{executable}}"
 		}
 	}

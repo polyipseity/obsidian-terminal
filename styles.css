@@ -206,7 +206,7 @@
 
 /* end of xterm styles */
 
-.workspace-leaf-content[data-type="terminal:terminal-view"]>div {
+.workspace-leaf-content[data-type="terminal:terminal"]>div {
 	width: 100%;
 	height: 100%;
 }

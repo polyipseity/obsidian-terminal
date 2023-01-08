@@ -17,7 +17,7 @@ import type { TerminalPlugin } from "./main"
 import { WebLinksAddon } from "xterm-addon-web-links"
 
 export class TerminalView extends ItemView {
-	public static readonly viewType = new UnnamespacedID("terminal-view")
+	public static readonly type = new UnnamespacedID("terminal")
 	public static namespacedViewType: string
 	#state: TerminalView.State = {
 		__type: TerminalView.State.TYPE,
@@ -149,11 +149,11 @@ export class TerminalView extends ItemView {
 	}
 
 	public getDisplayText(): string {
-		return this.plugin.i18n.t("views.terminal-view.display-name", { executable: this.#getExecutableBasename() })
+		return this.plugin.i18n.t(`views.${TerminalView.type.id}.display-name`, { executable: this.#getExecutableBasename() })
 	}
 
 	public override getIcon(): string {
-		return this.plugin.i18n.t("asset:views.terminal-view-icon")
+		return this.plugin.i18n.t(`asset:views.${TerminalView.type.id}-icon`)
 	}
 
 	public getViewType(): string {

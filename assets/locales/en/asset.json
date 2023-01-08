@@ -5,7 +5,7 @@
 		"save-as-HTML-icon": "save"
 	},
 	"views": {
-		"terminal-view-icon": "terminal"
+		"terminal-icon": "terminal"
 	},
 	"settings": {
 		"add-to-commands-icon": "terminal",

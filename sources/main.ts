@@ -54,7 +54,7 @@ export class TerminalPlugin extends Plugin {
 						case "integrated": {
 							const { workspace } = plugin.app,
 								existingLeaves = workspace
-									.getLeavesOfType(TerminalView.viewType.namespaced(plugin)),
+									.getLeavesOfType(TerminalView.type.namespaced(plugin)),
 								state: TerminalView.State = {
 									__type: TerminalView.State.TYPE,
 									args: executable.args,
@@ -71,7 +71,7 @@ export class TerminalPlugin extends Plugin {
 							})().setViewState({
 								active: true,
 								state,
-								type: TerminalView.viewType.namespaced(plugin),
+								type: TerminalView.type.namespaced(plugin),
 							})
 						}
 						default:
@@ -88,7 +88,7 @@ export class TerminalPlugin extends Plugin {
 
 	public constructor(app: App, manifest: PluginManifest) {
 		super(app, manifest)
-		TerminalView.namespacedViewType = TerminalView.viewType.namespaced(manifest)
+		TerminalView.namespacedViewType = TerminalView.type.namespaced(manifest)
 	}
 
 	public get i18n(): i18n {
@@ -107,7 +107,7 @@ export class TerminalPlugin extends Plugin {
 
 		this.addSettingTab(new SettingTab(this))
 		this.registerView(
-			TerminalView.viewType.namespaced(this),
+			TerminalView.type.namespaced(this),
 			leaf => new TerminalView(this, leaf),
 		)
 
