@@ -15,7 +15,20 @@ Open terminals in [Obsidian](https://obsidian.md/) directly.
 
 ## Usage
 
-Right-click files, folders, or editor tabs to open the context menu, from which you can open an external or integrated terminal. Alternatively, use the command palette (`Ctrl+P`).
+- To open a new external or integrated terminal
+	- Context menu
+		1. Right-click on files, folders, or tab headers.
+		2. Choose the desired terminal action.
+	- Command palette
+		1. Press `Ctrl+P` or click on the `Open command palette` ribbon next to the left window border.
+		2. Choose the desired terminal action.
+- To save and restore integrated terminal history
+	1. Keep the terminal open when exiting Obsidian.
+	2. Terminal history will be restored next time Obsidian is opened.
+- To save terminal history as file
+	1. Right-click on the terminal tab header.
+	2. Choose the desired save action.
+	3. Interact with the save dialog popup.
 
 ## Installation
 
