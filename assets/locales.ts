@@ -4,6 +4,7 @@ import * as language from "assets/locales/en/language.json"
 import * as zhHans from "assets/locales/zh-Hans/translation.json"
 import * as zhHant from "assets/locales/zh-Hant/translation.json"
 
+export const RETURN_NULL = false
 export const DEFAULT_NAMESPACE = "translation"
 export const DEFAULT_LANGUAGE = "en"
 export const FALLBACK_LANGUAGES = {
