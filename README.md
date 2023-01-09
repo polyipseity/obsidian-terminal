@@ -36,7 +36,7 @@ Open terminals in [Obsidian](https://obsidian.md/) directly.
 2. Place `manifest.json`, `main.js`, and `styles.css` into the directory.
 3. Enable the plugin.
 4. (optional, recommended) Install Python and dependencies for properly resized terminals.
-	1. [Download](https://www.python.org/downloads/) and install Python 3.
+	1. [Download](https://www.python.org/downloads/) and install Python 3.11/+.
 	2. Run `pip install psutil pywinctl`.
 	3. Ensure `python` is in your `PATH`.
 5. (optional) Configure plugin settings.
