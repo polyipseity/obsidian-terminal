@@ -35,7 +35,7 @@
  *  Default styles for xterm.js
  */
 
-.xterm {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm {
 	cursor: text;
 	position: relative;
 	user-select: none;
@@ -43,12 +43,12 @@
 	-webkit-user-select: none;
 }
 
-.xterm.focus,
-.xterm:focus {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm.focus,
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm:focus {
 	outline: none;
 }
 
-.xterm .xterm-helpers {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm .xterm-helpers {
 	position: absolute;
 	top: 0;
 	/**
@@ -58,7 +58,7 @@
 	z-index: 5;
 }
 
-.xterm .xterm-helper-textarea {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm .xterm-helper-textarea {
 	padding: 0;
 	border: 0;
 	margin: 0;
@@ -76,7 +76,7 @@
 	resize: none;
 }
 
-.xterm .composition-view {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm .composition-view {
 	/* TODO: Composition position got messed up somewhere */
 	background: #000;
 	color: #FFF;
@@ -86,11 +86,11 @@
 	z-index: 1;
 }
 
-.xterm .composition-view.active {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm .composition-view.active {
 	display: block;
 }
 
-.xterm .xterm-viewport {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm .xterm-viewport {
 	/* On OS X this is required in order for the scroll bar to appear fully opaque */
 	background-color: #000;
 	overflow-y: scroll;
@@ -102,21 +102,21 @@
 	bottom: 0;
 }
 
-.xterm .xterm-screen {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm .xterm-screen {
 	position: relative;
 }
 
-.xterm .xterm-screen canvas {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm .xterm-screen canvas {
 	position: absolute;
 	left: 0;
 	top: 0;
 }
 
-.xterm .xterm-scroll-area {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm .xterm-scroll-area {
 	visibility: hidden;
 }
 
-.xterm-char-measure-element {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm-char-measure-element {
 	display: inline-block;
 	visibility: hidden;
 	position: absolute;
@@ -125,23 +125,23 @@
 	line-height: normal;
 }
 
-.xterm.enable-mouse-events {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm.enable-mouse-events {
 	/* When mouse events are enabled (eg. tmux), revert to the standard pointer cursor */
 	cursor: default;
 }
 
-.xterm.xterm-cursor-pointer,
-.xterm .xterm-cursor-pointer {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm.xterm-cursor-pointer,
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm .xterm-cursor-pointer {
 	cursor: pointer;
 }
 
-.xterm.column-select.focus {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm.column-select.focus {
 	/* Column selection mode */
 	cursor: crosshair;
 }
 
-.xterm .xterm-accessibility,
-.xterm .xterm-message {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm .xterm-accessibility,
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm .xterm-message {
 	position: absolute;
 	left: 0;
 	top: 0;
@@ -150,7 +150,7 @@
 	color: transparent;
 }
 
-.xterm .live-region {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm .live-region {
 	position: absolute;
 	left: -9999px;
 	width: 1px;
@@ -158,40 +158,40 @@
 	overflow: hidden;
 }
 
-.xterm-dim {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm-dim {
 	opacity: 0.5;
 }
 
-.xterm-underline-1 {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm-underline-1 {
 	text-decoration: underline;
 }
 
-.xterm-underline-2 {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm-underline-2 {
 	text-decoration: double underline;
 }
 
-.xterm-underline-3 {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm-underline-3 {
 	text-decoration: wavy underline;
 }
 
-.xterm-underline-4 {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm-underline-4 {
 	text-decoration: dotted underline;
 }
 
-.xterm-underline-5 {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm-underline-5 {
 	text-decoration: dashed underline;
 }
 
-.xterm-strikethrough {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm-strikethrough {
 	text-decoration: line-through;
 }
 
-.xterm-screen .xterm-decoration-container .xterm-decoration {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm-screen .xterm-decoration-container .xterm-decoration {
 	z-index: 6;
 	position: absolute;
 }
 
-.xterm-decoration-overview-ruler {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm-decoration-overview-ruler {
 	z-index: 7;
 	position: absolute;
 	top: 0;
@@ -199,7 +199,7 @@
 	pointer-events: none;
 }
 
-.xterm-decoration-top {
+.workspace-leaf-content[data-type="terminal:terminal"]>div .xterm-decoration-top {
 	z-index: 2;
 	position: relative;
 }
