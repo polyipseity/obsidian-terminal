@@ -2,6 +2,9 @@ import { Notice, Plugin, type PluginManifest, type View } from "obsidian"
 import { NOTICE_NO_TIMEOUT } from "./magic"
 import type { TerminalPlugin } from "./main"
 
+export type Immutable<T> = { readonly [key in keyof T]: Immutable<T[key]> }
+export type Mutable<T> = { -readonly [key in keyof T]: Mutable<T[key]> }
+
 export class UnnamespacedID<V extends string> {
 	public constructor(public readonly id: V) { }
 
@@ -22,6 +25,11 @@ export function commandNamer(
 		.replace(defaultPluginName, pluginNamer())
 }
 
+export function cloneAsMutable<T>(obj: T): Mutable<T> {
+	// `readonly` is fake at runtime
+	return structuredClone(obj) as Mutable<T>
+}
+
 export function saveFile(text: string, type = "text/plain;charset=UTF-8;", filename = ""): void {
 	const ele = document.createElement("a")
 	ele.target = "_blank"
@@ -39,12 +47,12 @@ export function inSet<T>(set: readonly T[], obj: any): obj is T {
 	return set.some(mem => obj === mem)
 }
 
-export function isInterface<T extends { __type: T["__type"] }>(id: T["__type"], obj: any): obj is T {
+export function isInterface<T extends { readonly __type: T["__type"] }>(id: T["__type"], obj: any): obj is T {
 	if (!("__type" in obj)) {
 		return false
 	}
 	// eslint-disable-next-line no-underscore-dangle
-	return (obj as { __type: any }).__type === id
+	return (obj as { readonly __type: any }).__type === id
 }
 
 export function statusBar(callback?: (

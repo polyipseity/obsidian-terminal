@@ -5,49 +5,49 @@ import {
 	Setting,
 	type ValueComponent,
 } from "obsidian"
+import type { Mutable } from "./util"
 import { RESOURCES } from "assets/locales"
 import { TerminalPlugin } from "./main"
 
 export interface Settings {
-	language: string
-	command: boolean
-	contextMenu: boolean
-	noticeTimeout: number
-	executables: Settings.Executables
+	readonly language: string
+	readonly command: boolean
+	readonly contextMenu: boolean
+	readonly noticeTimeout: number
+	readonly executables: Settings.Executables
 }
 export namespace Settings {
 	export type Executables = {
-		[key in TerminalPlugin.Platform]: Executables.Entry
+		readonly [key in TerminalPlugin.Platform]: Executables.Entry
 	}
 	export namespace Executables {
 		export interface Entry {
-			name: string
-			args: string[]
+			readonly name: string
+			readonly args: readonly string[]
 		}
 	}
 }
-export function getDefaultSettings(): Settings {
-	return {
-		command: true,
-		contextMenu: true,
-		executables: {
-			darwin: {
-				args: [],
-				name: "Terminal.app",
-			},
-			linux: {
-				args: [],
-				name: "xterm-256color",
-			},
-			win32: {
-				args: [],
-				name: "C:\\Windows\\System32\\cmd.exe",
-			},
+export type MutableSettings = Mutable<Settings>
+export const DEFAULT_SETTINGS: Settings = {
+	command: true,
+	contextMenu: true,
+	executables: {
+		darwin: {
+			args: [],
+			name: "Terminal.app",
 		},
-		language: "",
-		noticeTimeout: 5,
-	}
-}
+		linux: {
+			args: [],
+			name: "xterm-256color",
+		},
+		win32: {
+			args: [],
+			name: "C:\\Windows\\System32\\cmd.exe",
+		},
+	},
+	language: "",
+	noticeTimeout: 5,
+} as const
 
 export class SettingTab extends PluginSettingTab {
 	public constructor(protected readonly plugin: TerminalPlugin) {
@@ -82,7 +82,7 @@ export class SettingTab extends PluginSettingTab {
 				},
 			))
 			.addExtraButton(this.#resetButton(
-				() => void (plugin.settings.language = getDefaultSettings().language),
+				() => void (plugin.settings.language = DEFAULT_SETTINGS.language),
 				i18n.t("asset:settings.language-icon"),
 				{
 					post: (button, activate) => void button
@@ -96,7 +96,7 @@ export class SettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(i18n.t("settings.reset-all"))
 			.addButton(this.#resetButton(async () => {
-				Object.assign(plugin.settings, getDefaultSettings())
+				Object.assign(plugin.settings, DEFAULT_SETTINGS)
 				await plugin.language.changeLanguage(plugin.settings.language)
 			}))
 
@@ -107,7 +107,7 @@ export class SettingTab extends PluginSettingTab {
 				value => void (plugin.settings.command = value),
 			))
 			.addExtraButton(this.#resetButton(
-				() => void (plugin.settings.command = getDefaultSettings().command),
+				() => void (plugin.settings.command = DEFAULT_SETTINGS.command),
 				i18n.t("asset:settings.add-to-commands-icon"),
 			))
 		new Setting(containerEl)
@@ -118,7 +118,7 @@ export class SettingTab extends PluginSettingTab {
 			))
 			.addExtraButton(this.#resetButton(
 				() => void (plugin.settings.contextMenu =
-					getDefaultSettings().contextMenu),
+					DEFAULT_SETTINGS.contextMenu),
 				i18n.t("asset:settings.add-to-context-menus-icon"),
 			))
 
@@ -132,7 +132,7 @@ export class SettingTab extends PluginSettingTab {
 			))
 			.addExtraButton(this.#resetButton(
 				() => void (plugin.settings.noticeTimeout =
-					getDefaultSettings().noticeTimeout),
+					DEFAULT_SETTINGS.noticeTimeout),
 				i18n.t("asset:settings.notice-timeout-icon"),
 			))
 
@@ -146,7 +146,7 @@ export class SettingTab extends PluginSettingTab {
 				))
 				.addExtraButton(this.#resetButton(
 					() => void (plugin.settings.executables[key].name =
-						getDefaultSettings().executables[key].name),
+						DEFAULT_SETTINGS.executables[key].name),
 					i18n.t("asset:settings.executable-list-icon"),
 				))
 		}

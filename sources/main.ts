@@ -10,19 +10,18 @@ import {
 	type WorkspaceLeaf,
 	moment,
 } from "obsidian"
+import { DEFAULT_SETTINGS, SettingTab, type Settings } from "./settings"
 import { GenericTerminalPty, WindowsTerminalPty } from "./pty"
-import { SettingTab, getDefaultSettings } from "./settings"
-import { commandNamer, inSet, notice, printError } from "./util"
+import { type Mutable, cloneAsMutable, commandNamer, inSet, notice, printError } from "./util"
 import i18next, { type i18n } from "i18next"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import { I18N } from "./i18n"
-import type { Settings } from "./settings"
 import type { TerminalPty } from "./pty"
 import { TerminalView } from "./terminal"
 import { spawn } from "child_process"
 
 export class TerminalPlugin extends Plugin {
-	public readonly settings: Settings = getDefaultSettings()
+	public readonly settings: Mutable<Settings> = cloneAsMutable(DEFAULT_SETTINGS)
 	public readonly platform = ((): TerminalPlugin.PlatformDispatch => {
 		const platform = inSet(TerminalPlugin.PLATFORMS, process.platform)
 			? process.platform
