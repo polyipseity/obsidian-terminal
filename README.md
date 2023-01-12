@@ -4,7 +4,11 @@
 
 Open terminals in [Obsidian](https://obsidian.md/) directly.
 
+For first time users, read the [installation](#installation) section first!
+
 - Repository: https://github.com/polyipseity/obsidian-terminal
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
+- Community plugin: https://obsidian.md/plugins?id=terminal
 
 ## Features
 
@@ -32,17 +36,21 @@ Open terminals in [Obsidian](https://obsidian.md/) directly.
 
 ## Installation
 
-1. Create directory `terminal` under `.obsidian/plugins` of your vault.
-2. Place `manifest.json`, `main.js`, and `styles.css` into the directory.
-3. Enable the plugin.
-4. (optional, recommended) Install Python and dependencies for properly resized terminals.
+1. Install plugin.
+	- Community plugins
+		1. [Install](https://obsidian.md/plugins?id=terminal) from community plugins directly.
+	- Manual
+		1. Create directory `terminal` under `.obsidian/plugins` of your vault.
+		2. Place [`manifest.json`](manifest.json), [`main.js`](main.js), and [`styles.css`](styles.css) into the directory.
+2. Enable plugin.
+3. (optional, recommended) Install Python and dependencies for properly resized terminals.
 	1. [Download](https://www.python.org/downloads/) and install Python 3.11/+.
 	2. Run `pip install psutil pywinctl`.
-	3. Ensure `python` is in your `PATH`.
-5. (optional) Configure plugin settings.
+	3. Configure Python executable in plugin settings.
+4. (optional) Configure plugin settings.
 
 ## Todos
 
 - Untested on Linux and MacOS.
-- Terminal addons are not working yet.
+- Find in terminal support.
 - Connect to remote shells. (could support mobile devices)
