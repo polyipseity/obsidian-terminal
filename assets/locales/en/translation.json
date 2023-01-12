@@ -8,6 +8,7 @@
 	"errors": {
 		"error-spawning-terminal": "Error spawning terminal",
 		"error-spawning-resizer": "Error spawning terminal resizer",
+		"resizer-disabled": "Terminal resizer disabled",
 		"unsupported-platform": "Unsupported platform"
 	},
 	"menus": {
@@ -34,6 +35,9 @@
 		"language-description": "Applies to this plugin only.",
 		"notice-timeout": "Notice timeout (s)",
 		"notice-timeout-description": "Set to 0 s for no timeout.",
+		"python-executable": "Python executable",
+		"python-executable-description": "Clear field to disable terminal resizer.",
+		"python-executable-placeholder": "(Disabled)",
 		"reset": "Reset",
 		"reset-all": "Reset all"
 	},

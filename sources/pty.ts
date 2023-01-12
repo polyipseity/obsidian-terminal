@@ -7,11 +7,13 @@ import { readFileSync } from "fs"
 import resizerPy from "./resizer.py"
 import { fileSync as tmpFileSync } from "tmp"
 
+type ShellChildProcess = ChildProcessWithoutNullStreams
+
 export interface TerminalPty {
-	readonly shell: ChildProcessWithoutNullStreams
+	readonly shell: Promise<ShellChildProcess>
 	readonly resizable: boolean
 	readonly resize: (columns: number, rows: number) => Promise<void>
-	readonly once: (event: "exit", listener: (code: NodeJS.Signals | number) => any) => this
+	readonly once: (event: "exit", listener: (code: NodeJS.Signals | number) => any) => Promise<this>
 }
 // eslint-disable-next-line @typescript-eslint/no-redeclare, @typescript-eslint/naming-convention
 export declare const TerminalPty: new (
@@ -22,47 +24,61 @@ export declare const TerminalPty: new (
 ) => TerminalPty
 
 abstract class BaseTerminalPty implements TerminalPty {
-	public abstract readonly shell: ChildProcessWithoutNullStreams
+	public abstract readonly shell: Promise<ShellChildProcess>
 	public abstract readonly resizable: boolean
 	protected constructor(protected readonly plugin: TerminalPlugin) { }
 	public abstract resize(columns: number, rows: number): Promise<void>
-	public abstract once(event: "exit", listener: (code: NodeJS.Signals | number) => any): this
+	public abstract once(event: "exit", listener: (code: NodeJS.Signals | number) => any): Promise<this>
 }
 
 abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
+	public readonly shell
 	#resizable = false
-	readonly #resizer = spawn("python", ["-c", resizerPy], {
-		stdio: ["pipe", "pipe", "pipe"],
-		windowsHide: true,
-	})
-		.once("spawn", () => {
-			this.#resizable = true
-			const watchdog =
-				this.plugin.registerInterval(window.setInterval(
-					() => void this.#write("\n").catch(() => { }),
-					TERMINAL_WATCHDOG_INTERVAL,
-				)),
-				clear = (): void => { window.clearInterval(watchdog) }
-			try {
-				this.#resizer.once("exit", clear).once("error", clear)
-			} catch (error) {
-				clear()
-				throw error
-			}
+	readonly #resizer = ((): ChildProcessWithoutNullStreams | null => {
+		const { pythonExecutable } = this.plugin.settings
+		if (pythonExecutable === "") {
+			return null
+		}
+		const ret = spawn(this.plugin.settings.pythonExecutable, ["-c", resizerPy], {
+			stdio: ["pipe", "pipe", "pipe"],
+			windowsHide: true,
 		})
-		.once("exit", () => void (this.#resizable = false))
-		.once("error", error => {
-			this.#resizable = false
-			printError(error, () => this.plugin.i18n.t("errors.error-spawning-resizer"), this.plugin)
-		})
+		ret
+			.once("spawn", () => {
+				this.#resizable = true
+				const watchdog =
+					this.plugin.registerInterval(window.setInterval(
+						() => void this.#write("\n").catch(() => { }),
+						TERMINAL_WATCHDOG_INTERVAL,
+					)),
+					clear = (): void => { window.clearInterval(watchdog) }
+				try {
+					ret.once("exit", clear).once("error", clear)
+				} catch (error) {
+					clear()
+					throw error
+				}
+			})
+			.once("exit", () => void (this.#resizable = false))
+			.once("error", error => {
+				this.#resizable = false
+				printError(error, () => this.plugin.i18n.t("errors.error-spawning-resizer"), this.plugin)
+			})
+		return ret
+	})()
 
 	readonly #write =
 		promisify((
 			chunk: any,
 			callback: (error?: Error | null) => void,
 		) => {
+			const resizer = this.#resizer
+			if (resizer === null) {
+				callback(new Error(this.plugin.i18n.t("errors.resizer-disabled")))
+				return false
+			}
 			try {
-				return this.#resizer.stdin.write(chunk, callback)
+				return resizer.stdin.write(chunk, callback)
 			} catch (error) {
 				if (error instanceof Error) {
 					callback(error)
@@ -75,24 +91,58 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 
 	protected constructor(
 		plugin: TerminalPlugin,
-		public readonly shell: ChildProcessWithoutNullStreams,
+		public readonly spawnShell: (
+			resizable: boolean) => ShellChildProcess,
 	) {
 		super(plugin)
-		shell
-			.once("spawn", () => {
-				const { pid } = shell
-				if (typeof pid === "undefined") {
-					this.#resizer.kill()
-					return
+		this.shell = new Promise<ShellChildProcess>((resolve, reject) => {
+			const resizer = this.#resizer
+			if (resizer === null) {
+				try {
+					resolve(spawnShell(false))
+				} catch (error) {
+					reject(error)
 				}
-				this.#write(`${pid}\n`)
-					.catch(reason => {
-						this.#resizer.kill()
-						printError(reason, () => this.plugin.i18n.t("errors.error-spawning-resizer"), this.plugin)
+				return
+			}
+			const
+				connect = (shell: ShellChildProcess): ShellChildProcess => shell
+					.once("spawn", () => {
+						const { pid } = shell
+						if (typeof pid === "undefined") {
+							resizer.kill()
+							return
+						}
+						this.#write(`${pid}\n`)
+							.catch(reason => {
+								resizer.kill()
+								printError(reason, () => this.plugin.i18n.t("errors.error-spawning-resizer"), this.plugin)
+							})
 					})
-			})
-			.once("exit", () => this.#resizer.kill())
-			.once("error", () => this.#resizer.kill())
+					.once("exit", () => resizer.kill())
+					.once("error", () => resizer.kill()),
+				onSpawn = (): void => {
+					try {
+						resolve(connect(spawnShell(true)))
+					} catch (error) {
+						reject(error)
+					} finally {
+						// eslint-disable-next-line @typescript-eslint/no-use-before-define
+						resizer.removeListener("error", onError)
+					}
+				},
+				resizer0 = resizer
+			function onError(): void {
+				try {
+					connect(spawnShell(false))
+				} catch (error) {
+					reject(error)
+				} finally {
+					resizer0.removeListener("spawn", onSpawn)
+				}
+			}
+			resizer.once("spawn", onSpawn).once("error", onError)
+		})
 	}
 
 	public get resizable(): boolean {
@@ -101,7 +151,12 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 
 	public async resize(columns: number, rows: number): Promise<void> {
 		return new Promise((resolve, reject) => {
-			const resizer = this.#resizer,
+			const resizer = this.#resizer
+			if (resizer === null) {
+				reject(new Error(this.plugin.i18n.t("errors.resizer-disabled")))
+				return
+			}
+			const resizer0 = resizer,
 				{ stdout } = resizer,
 				data = (chunk: Buffer | string): void => {
 					if (chunk.toString().includes("resized")) {
@@ -122,7 +177,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 				} finally {
 					stdout.removeListener("data", data)
 					// eslint-disable-next-line @typescript-eslint/no-use-before-define
-					resizer.removeListener("error", errorFn)
+					resizer0.removeListener("error", errorFn)
 				}
 			}
 			function errorFn(error: Error): void {
@@ -130,7 +185,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 					reject(error)
 				} finally {
 					stdout.removeListener("data", data)
-					resizer.removeListener("exit", exit)
+					resizer0.removeListener("exit", exit)
 				}
 			}
 			resizer.once("exit", exit).once("error", errorFn)
@@ -146,13 +201,12 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 		})
 	}
 
-	public abstract override once(event: "exit", listener: (code: NodeJS.Signals | number) => any): this
+	public abstract override once(event: "exit", listener: (code: NodeJS.Signals | number) => any): Promise<this>
 }
 
 export class WindowsTerminalPty
 	extends PtyWithResizer
 	implements TerminalPty {
-	readonly #codeTmp
 	readonly #exitCode
 
 	public constructor(
@@ -163,53 +217,51 @@ export class WindowsTerminalPty
 	) {
 		const esc = WindowsTerminalPty.#escapeArgument.bind(WindowsTerminalPty),
 			args0 = args ?? [],
-			codeTmp = tmpFileSync({ discardDescriptor: true }),
-			shell = spawn("C:\\Windows\\System32\\conhost.exe", [
-				"C:\\Windows\\System32\\cmd.exe",
-				"/C",
-				`${esc(executable)} ${args0.map(esc).join(" ")} & call echo %^ERRORLEVEL% >${esc(codeTmp.name)}`,
-			], {
-				cwd,
-				stdio: ["pipe", "pipe", "pipe"],
-				windowsHide: false,
-				windowsVerbatimArguments: true,
-			}),
-			exitCode = new Promise<NodeJS.Signals | number>((resolve, reject) => {
-				shell
+			codeTmp = tmpFileSync({ discardDescriptor: true })
+		super(plugin, resizable => spawn("C:\\Windows\\System32\\conhost.exe", [
+			"C:\\Windows\\System32\\cmd.exe",
+			"/C",
+			`${esc(executable)} ${args0.map(esc).join(" ")} & call echo %^ERRORLEVEL% >${esc(codeTmp.name)}`,
+		], {
+			cwd,
+			stdio: ["pipe", "pipe", "pipe"],
+			windowsHide: !resizable,
+			windowsVerbatimArguments: true,
+		}))
+		this.#exitCode = this.shell.then(async shell0 =>
+			new Promise<NodeJS.Signals | number>((resolve, reject) => {
+				shell0
 					.once("exit", (conCode, signal) => {
 						try {
 							const termCode =
 								parseInt(
-									readFileSync(this.#codeTmp.name, { encoding: "utf-8", flag: "r" }).trim(),
+									readFileSync(codeTmp.name, { encoding: "utf-8", flag: "r" }).trim(),
 									10,
 								)
 							resolve(isNaN(termCode) ? conCode ?? signal ?? NaN : termCode)
 						} catch (error) {
 							reject(error)
 						} finally {
-							this.#codeTmp.removeCallback()
+							codeTmp.removeCallback()
 						}
 					})
 					.once("error", error => {
 						try {
 							reject(error)
 						} finally {
-							this.#codeTmp.removeCallback()
+							codeTmp.removeCallback()
 						}
 					})
-			})
-		super(plugin, shell)
-		this.#codeTmp = codeTmp
-		this.#exitCode = exitCode
+			}))
 	}
 
 	static #escapeArgument(arg: string): string {
 		return `"${arg.replace(/(?<meta>[()%!^"<>&|])/gu, "^$<meta>")}"`
 	}
 
-	public once(_0: "exit", listener: (code: NodeJS.Signals | number) => any): this {
+	public async once(_0: "exit", listener: (code: NodeJS.Signals | number) => any): Promise<this> {
 		this.#exitCode.then(listener).catch(() => { })
-		return this
+		return Promise.resolve(this)
 	}
 }
 
@@ -222,16 +274,16 @@ export class GenericTerminalPty
 		cwd?: string,
 		args?: string[],
 	) {
-		super(plugin, spawn(executable, args, {
+		super(plugin, resizable => spawn(executable, args, {
 			cwd,
 			stdio: ["pipe", "pipe", "pipe"],
-			windowsHide: false,
+			windowsHide: !resizable,
 		}))
 	}
 
-	public once(event: "exit", listener: (code: NodeJS.Signals | number) => any): this {
-		this.shell.once(event, (code, signal) =>
-			void listener(code ?? signal ?? NaN))
+	public async once(event: "exit", listener: (code: NodeJS.Signals | number) => any): Promise<this> {
+		(await this.shell)
+			.once(event, (code, signal) => void listener(code ?? signal ?? NaN))
 		return this
 	}
 }

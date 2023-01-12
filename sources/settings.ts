@@ -14,6 +14,7 @@ export interface Settings {
 	readonly command: boolean
 	readonly contextMenu: boolean
 	readonly noticeTimeout: number
+	readonly pythonExecutable: string
 	readonly executables: Settings.Executables
 }
 export namespace Settings {
@@ -47,6 +48,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	},
 	language: "",
 	noticeTimeout: 5,
+	pythonExecutable: "python",
 } as const
 
 export class SettingTab extends PluginSettingTab {
@@ -134,6 +136,22 @@ export class SettingTab extends PluginSettingTab {
 				() => void (plugin.settings.noticeTimeout =
 					DEFAULT_SETTINGS.noticeTimeout),
 				i18n.t("asset:settings.notice-timeout-icon"),
+			))
+		new Setting(containerEl)
+			.setName(i18n.t("settings.python-executable"))
+			.setDesc(i18n.t("settings.python-executable-description"))
+			.addText(this.#linkSetting(
+				() => plugin.settings.pythonExecutable,
+				value => void (plugin.settings.pythonExecutable = value),
+				{
+					post: component => void component
+						.setPlaceholder(i18n.t("settings.python-executable-placeholder")),
+				},
+			))
+			.addExtraButton(this.#resetButton(
+				() => void (plugin.settings.pythonExecutable =
+					DEFAULT_SETTINGS.pythonExecutable),
+				i18n.t("asset:settings.python-executable-icon"),
 			))
 
 		containerEl.createEl("h2", { text: i18n.t("settings.executables") })

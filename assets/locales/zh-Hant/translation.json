@@ -8,6 +8,7 @@
 	"errors": {
 		"error-spawning-terminal": "啟動終端機時出錯",
 		"error-spawning-resizer": "啟動終端機縮放程式時出錯",
+		"resizer-disabled": "終端機縮放程式已禁用",
 		"unsupported-platform": "不支持此平台"
 	},
 	"menus": {
@@ -34,6 +35,9 @@
 		"language-description": "僅適用於此外掛程式。",
 		"notice-timeout": "通知超時（秒）",
 		"notice-timeout-description": "設為 0 秒是無超時。",
+		"python-executable": "Python 執行檔",
+		"python-executable-description": "清除文字域以禁用終端機縮放程式。",
+		"python-executable-placeholder": "（已禁用）",
 		"reset": "重設",
 		"reset-all": "重設全部"
 	},

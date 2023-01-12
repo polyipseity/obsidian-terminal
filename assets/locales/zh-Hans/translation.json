@@ -8,6 +8,7 @@
 	"errors": {
 		"error-spawning-terminal": "啟动终端机时出错",
 		"error-spawning-resizer": "啟动终端机缩放迸程时出错",
+		"resizer-disabled": "终端机缩放迸程已禁用",
 		"unsupported-platform": "不支持此平台"
 	},
 	"menus": {
@@ -34,6 +35,9 @@
 		"language-description": "仅适用於此插件。",
 		"notice-timeout": "通知超时（秒）",
 		"notice-timeout-description": "设为 0 秒是无超时。",
+		"python-executable": "Python 可执行文件",
+		"python-executable-description": "清除文本框以禁用终端机缩放迸程。",
+		"python-executable-placeholder": "（已禁用）",
 		"reset": "重设",
 		"reset-all": "重设全部"
 	},

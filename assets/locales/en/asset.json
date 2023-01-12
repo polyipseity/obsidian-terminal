@@ -13,6 +13,7 @@
 		"executable-list-icon": "terminal-square",
 		"language-icon": "languages",
 		"notice-timeout-icon": "timer",
+		"python-executable-icon": "scaling",
 		"reset-icon": "reset"
 	}
 }
