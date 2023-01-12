@@ -256,7 +256,12 @@ export class WindowsTerminalPty
 	}
 
 	static #escapeArgument(arg: string): string {
-		return `"${arg.replace(/(?<meta>[()%!^"<>&|])/gu, "^$<meta>")}"`
+		return `"${arg.replace("\"", "\\\"")}"`.replace(/(?<meta>[()%!^"<>&|])/gu, "^$<meta>")
+
+		/*
+		 * Replace 1: quote argument
+		 * Replace 2: escape cmd.exe metacharacters
+		 */
 	}
 
 	public async once(_0: "exit", listener: (code: NodeJS.Signals | number) => any): Promise<this> {
