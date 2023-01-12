@@ -165,21 +165,49 @@ export class TerminalView extends ItemView {
 
 	public override onPaneMenu(menu: Menu, source: string): void {
 		super.onPaneMenu(menu, source)
-		const { i18n } = this.plugin
+		const { leaf, plugin } = this,
+			{ i18n } = plugin
 		menu
 			.addSeparator()
 			.addItem(item => item
 				.setTitle(i18n.t("menus.save-as-HTML"))
 				.setIcon(i18n.t("asset:menus.save-as-HTML-icon"))
 				.onClick(() => {
-					saveFile(
-						this.#serializer.serializer.serializeAsHTML({
-							includeGlobalBackground: false,
-							onlySelection: false,
-						}),
-						"text/html; charset=UTF-8;",
-						`${this.#getExecutableBasename()}.html`,
-					)
+					const terminal = this.#terminal,
+						save = (): void => {
+							saveFile(
+								this.#serializer.serializer.serializeAsHTML({
+									includeGlobalBackground: false,
+									onlySelection: false,
+								}),
+								"text/html; charset=UTF-8;",
+								`${this.#getExecutableBasename()}.html`,
+							)
+						}
+					if (typeof terminal.element === "undefined") {
+						const { workspace } = plugin.app,
+							last = workspace.getMostRecentLeaf(),
+							dispose = terminal.onRender(() => {
+								try {
+									save()
+								} finally {
+									try {
+										if (last !== null) {
+											workspace.setActiveLeaf(last)
+										}
+									} finally {
+										dispose.dispose()
+									}
+								}
+							})
+						try {
+							workspace.setActiveLeaf(leaf)
+						} catch {
+							dispose.dispose()
+						}
+						return
+					}
+					save()
 				}))
 	}
 
