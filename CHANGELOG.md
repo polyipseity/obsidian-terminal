@@ -4,7 +4,13 @@ Versions are ordered by recency.
 
 - Read me: [README.md](README.md)
 
-## 2.7.0
+## 2.7.0 🥳
+
+The plugin has just been [accepted](https://github.com/obsidianmd/obsidian-releases/pull/1472) into community plugins! 🥳
+
+You can now get the plugin here instead: https://obsidian.md/plugins?id=terminal
+
+No, there is no celebration for this. 😞
 
 __Features__
 - Add setting to configure or disable Python terminal resizer.
@@ -20,7 +26,7 @@ __Others__
 - Improve `README.md` significantly.
 - Create `CHANGELOG.md` (the file you are viewing now).
 
-__Full Changelog__: [`2.6.1...2.7.0`](https://github.com/polyipseity/obsidian-terminal/compare/2.6.1...2.7.0)
+__Full changelog__: [`2.6.1...2.7.0`](https://github.com/polyipseity/obsidian-terminal/compare/2.6.1...2.7.0)
 
 ## 2.6.1
 
