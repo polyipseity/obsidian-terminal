@@ -161,12 +161,13 @@ export class WindowsTerminalPty
 		cwd?: string,
 		args?: string[],
 	) {
-		const args0 = args ?? [],
+		const esc = WindowsTerminalPty.#escapeArgument.bind(WindowsTerminalPty),
+			args0 = args ?? [],
 			codeTmp = tmpFileSync({ discardDescriptor: true }),
 			shell = spawn("C:\\Windows\\System32\\conhost.exe", [
 				"C:\\Windows\\System32\\cmd.exe",
 				"/C",
-				`"${executable}" ${args0.map(arg => `"${arg}"`).join(" ")} & call echo %^ERRORLEVEL% >"${codeTmp.name}"`,
+				`${esc(executable)} ${args0.map(esc).join(" ")} & call echo %^ERRORLEVEL% >${esc(codeTmp.name)}`,
 			], {
 				cwd,
 				stdio: ["pipe", "pipe", "pipe"],
@@ -200,6 +201,10 @@ export class WindowsTerminalPty
 		super(plugin, shell)
 		this.#codeTmp = codeTmp
 		this.#exitCode = exitCode
+	}
+
+	static #escapeArgument(arg: string): string {
+		return `"${arg.replace(/(?<meta>[()%!^"<>&|])/gu, "^$<meta>")}"`
 	}
 
 	public once(_0: "exit", listener: (code: NodeJS.Signals | number) => any): this {
