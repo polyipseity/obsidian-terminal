@@ -39,7 +39,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 		if (pythonExecutable === "") {
 			return null
 		}
-		const ret = spawn(this.plugin.settings.pythonExecutable, ["-c", resizerPy], {
+		const ret = spawn(pythonExecutable, ["-c", resizerPy], {
 			stdio: ["pipe", "pipe", "pipe"],
 			windowsHide: true,
 		})
