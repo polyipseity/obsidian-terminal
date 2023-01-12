@@ -57,7 +57,7 @@ export function isInterface<T extends { readonly __type: T["__type"] }>(id: T["_
 
 export function statusBar(callback?: (
 	element: HTMLDivElement) => any): HTMLDivElement | null {
-	const ret = document.querySelector<HTMLDivElement>(".app-container>div.status-bar")
+	const ret = document.querySelector<HTMLDivElement>("div.status-bar")
 	if (ret !== null) {
 		(callback ?? ((): void => { }))(ret)
 	}
