@@ -1,7 +1,7 @@
 {
 	"id": "terminal",
 	"name": "Terminal",
-	"version": "2.6.1",
+	"version": "2.7.0",
 	"minAppVersion": "1.1.9",
 	"description": "Open terminals in Obsidian directly.",
 	"author": "polyipseity",
