@@ -134,16 +134,14 @@ export function printError(
 export function updateDisplayText(view: View): boolean {
 	const type = view.getViewType(),
 		text = view.getDisplayText(),
-		header = document.querySelector(`.workspace-tab-header[data-type="${type}"]`),
-		title = header?.querySelector(".workspace-tab-header-inner-title") ?? null,
-		oldText = title?.textContent ?? null
-	if (oldText === null) {
-		return false
-	}
-	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-	title!.textContent = text
-	// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-	header!.ariaLabel = text
+		header = document.querySelector(`.workspace-tab-header[data-type="${type}"]`)
+	if (header === null) { return false }
+	const title = header.querySelector(".workspace-tab-header-inner-title")
+	if (title === null) { return false }
+	const oldText = title.textContent
+	if (oldText === null) { return false }
+	title.textContent = text
+	header.ariaLabel = text
 	document.title = document.title.replace(oldText, text)
 	return true
 }
