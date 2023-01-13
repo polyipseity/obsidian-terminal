@@ -87,8 +87,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 
 	protected constructor(
 		plugin: TerminalPlugin,
-		public readonly spawnShell: (
-			resizable: boolean) => ShellChildProcess,
+		spawnShell: (resizable: boolean) => ShellChildProcess,
 	) {
 		super(plugin)
 		this.shell =
