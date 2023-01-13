@@ -5,10 +5,24 @@ import {
 	type WorkspaceLeaf,
 	debounce,
 } from "obsidian"
-import { NOTICE_NO_TIMEOUT, TERMINAL_EXIT_SUCCESS, TERMINAL_RESIZE_TIMEOUT } from "./magic"
+import {
+	NOTICE_NO_TIMEOUT,
+	TERMINAL_EXIT_SUCCESS,
+	TERMINAL_RESIZE_TIMEOUT,
+} from "./magic"
 import { type TerminalPty, WindowsTerminalPty } from "./pty"
 import { type TerminalSerial, TerminalSerializer } from "./terminal-serialize"
-import { UnnamespacedID, inSet, isInterface, notice, onVisible, openExternal, printError, saveFile, updateDisplayText } from "./util"
+import {
+	UnnamespacedID,
+	inSet,
+	isInterface,
+	notice,
+	onVisible,
+	openExternal,
+	printError,
+	saveFile,
+	updateDisplayText,
+} from "./util"
 import { basename, extname } from "path"
 import { FitAddon } from "xterm-addon-fit"
 import { SearchAddon } from "xterm-addon-search"
@@ -68,7 +82,8 @@ export class TerminalView extends ItemView {
 		result: ViewStateResult,
 	): Promise<void> {
 		await super.setState(state, result)
-		if (!isInterface<TerminalView.State>(TerminalView.State.TYPE, state) || typeof this.#pty !== "undefined") {
+		if (!isInterface<TerminalView.State>(TerminalView.State.TYPE, state) ||
+			typeof this.#pty !== "undefined") {
 			return
 		}
 		this.#state = state
@@ -126,7 +141,9 @@ export class TerminalView extends ItemView {
 			}
 			this.#write(chunk)
 		})
-		shell.stderr.on("data", (chunk: Buffer | string) => { this.#terminal.write(chunk) })
+		shell.stderr.on("data", (chunk: Buffer | string) => {
+			this.#terminal.write(chunk)
+		})
 		this.#terminal.onData(data => shell.stdin.write(data))
 	}
 

@@ -19,7 +19,8 @@ export interface Settings {
 	readonly executables: Settings.Executables
 }
 export namespace Settings {
-	export const HIDE_STATUS_BAR_OPTIONS = ["never", "always", "focused", "running"] as const
+	export const HIDE_STATUS_BAR_OPTIONS =
+		["never", "always", "focused", "running"] as const
 	export type HideStatusBarOption = typeof HIDE_STATUS_BAR_OPTIONS[number]
 	export type Executables = {
 		readonly [key in TerminalPlugin.Platform]: Executables.Entry
@@ -84,7 +85,8 @@ export class SettingTab extends PluginSettingTab {
 						.addOptions(Object
 							.fromEntries(Object
 								.entries(RESOURCES.en.language)
-								.filter(entry => entry.every(half => typeof half === "string")))),
+								.filter(entry => entry
+									.every(half => typeof half === "string")))),
 				},
 			))
 			.addExtraButton(this.#resetButton(

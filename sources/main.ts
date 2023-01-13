@@ -12,7 +12,15 @@ import {
 } from "obsidian"
 import { DEFAULT_SETTINGS, SettingTab, type Settings } from "./settings"
 import { GenericTerminalPty, WindowsTerminalPty } from "./pty"
-import { type Mutable, cloneAsMutable, commandNamer, inSet, notice, printError, statusBar } from "./util"
+import {
+	type Mutable,
+	cloneAsMutable,
+	commandNamer,
+	inSet,
+	notice,
+	printError,
+	statusBar,
+} from "./util"
 import i18next, { type i18n } from "i18next"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import { I18N } from "./i18n"
@@ -42,7 +50,14 @@ export class TerminalPlugin extends Plugin {
 				return async (plugin, cwd, type) => {
 					const { settings } = plugin.state,
 						executable = settings.executables[platform]
-					notice(() => plugin.i18n.t("notices.spawning-terminal", { executable: executable.name }), settings.noticeTimeout, plugin)
+					notice(
+						() => plugin.i18n.t(
+							"notices.spawning-terminal",
+							{ executable: executable.name },
+						),
+						settings.noticeTimeout,
+						plugin,
+					)
 					switch (type) {
 						case "external": {
 							const process = spawn(executable.name, executable.args, {
@@ -52,10 +67,16 @@ export class TerminalPlugin extends Plugin {
 								stdio: "ignore",
 							})
 								.once("error", error => {
-									printError(error, () => plugin.i18n.t("errors.error-spawning-terminal"), plugin)
+									printError(
+										error,
+										() => plugin.i18n.t("errors.error-spawning-terminal"),
+										plugin,
+									)
 								})
 							process.unref()
-							return new Promise((resolve, reject) => { process.once("spawn", resolve).once("error", reject) })
+							return new Promise((resolve, reject) => {
+								process.once("spawn", resolve).once("error", reject)
+							})
 						}
 						case "integrated": {
 							const { workspace } = plugin.app,
@@ -85,7 +106,9 @@ export class TerminalPlugin extends Plugin {
 					}
 				}
 			})(),
-			terminalPty: platform === "win32" ? WindowsTerminalPty : GenericTerminalPty,
+			terminalPty: platform === "win32"
+				? WindowsTerminalPty
+				: GenericTerminalPty,
 		}
 	})()
 
@@ -243,7 +266,9 @@ export namespace TerminalPlugin {
 		public constructor(protected readonly plugin: TerminalPlugin) { }
 
 		public async changeLanguage(language: string): Promise<void> {
-			await this.plugin.i18n.changeLanguage(language === "" ? moment.locale() : language)
+			await this.plugin.i18n.changeLanguage(language === ""
+				? moment.locale()
+				: language)
 			await Promise.all(this.#uses.map(use => use()))
 		}
 
@@ -268,7 +293,11 @@ export namespace TerminalPlugin {
 					this.update()
 					obs.observe(div, { attributeFilter: ["style"] })
 				}) === null) {
-					notice(() => plugin.i18n.t("errors.cannot-find-status-bar"), NOTICE_NO_TIMEOUT, plugin)
+					notice(
+						() => plugin.i18n.t("errors.cannot-find-status-bar"),
+						NOTICE_NO_TIMEOUT,
+						plugin,
+					)
 				}
 			})
 		}
@@ -290,7 +319,8 @@ export namespace TerminalPlugin {
 		}
 
 		#maybeHide(div: HTMLDivElement): void {
-			if (this.plugin.state.settings.hideStatusBar === "always" || this.#hiders.some(hider0 => hider0())) {
+			if (this.plugin.state.settings.hideStatusBar === "always" ||
+				this.#hiders.some(hider0 => hider0())) {
 				div.style.visibility = "hidden"
 			}
 		}

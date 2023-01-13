@@ -13,7 +13,10 @@ export interface TerminalPty {
 	readonly shell: Promise<ShellChildProcess>
 	readonly resizable: boolean
 	readonly resize: (columns: number, rows: number) => Promise<void>
-	readonly once: (event: "exit", listener: (code: NodeJS.Signals | number) => any) => Promise<this>
+	readonly once: (
+		event: "exit",
+		listener: (code: NodeJS.Signals | number) => any,
+	) => Promise<this>
 }
 // eslint-disable-next-line @typescript-eslint/no-redeclare, @typescript-eslint/naming-convention
 export declare const TerminalPty: new (
@@ -28,7 +31,10 @@ abstract class BaseTerminalPty implements TerminalPty {
 	public abstract readonly resizable: boolean
 	protected constructor(protected readonly plugin: TerminalPlugin) { }
 	public abstract resize(columns: number, rows: number): Promise<void>
-	public abstract once(event: "exit", listener: (code: NodeJS.Signals | number) => any): Promise<this>
+	public abstract once(
+		event: "exit",
+		listener: (code: NodeJS.Signals | number) => any,
+	): Promise<this>
 }
 
 abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
@@ -62,7 +68,11 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 			.once("exit", () => void (this.#resizable = false))
 			.once("error", error => {
 				this.#resizable = false
-				printError(error, () => this.plugin.i18n.t("errors.error-spawning-resizer"), this.plugin)
+				printError(
+					error,
+					() => this.plugin.i18n.t("errors.error-spawning-resizer"),
+					this.plugin,
+				)
 			})
 		return ret
 	})()
@@ -108,7 +118,11 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 							this.#write(`${pid}\n`)
 								.catch(reason => {
 									resizer.kill()
-									printError(reason, () => this.plugin.i18n.t("errors.error-spawning-resizer"), this.plugin)
+									printError(
+										reason,
+										() => this.plugin.i18n.t("errors.error-spawning-resizer"),
+										this.plugin,
+									)
 								})
 						})
 						.once("exit", () => resizer.kill())
@@ -152,8 +166,11 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 							resolve(() => { })
 						} finally {
 							stdout.removeListener("data", data)
-							// eslint-disable-next-line @typescript-eslint/no-use-before-define
-							resizer.removeListener("exit", exit).removeListener("error", errorFn)
+							resizer
+								// eslint-disable-next-line @typescript-eslint/no-use-before-define
+								.removeListener("exit", exit)
+								// eslint-disable-next-line @typescript-eslint/no-use-before-define
+								.removeListener("error", errorFn)
 						}
 					}
 				}
@@ -187,7 +204,10 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 		}))
 	}
 
-	public abstract override once(event: "exit", listener: (code: NodeJS.Signals | number) => any): Promise<this>
+	public abstract override once(
+		event: "exit",
+		listener: (code: NodeJS.Signals | number) => any,
+	): Promise<this>
 }
 
 export class WindowsTerminalPty
@@ -224,7 +244,8 @@ export class WindowsTerminalPty
 						try {
 							resolve(() => {
 								const termCode = parseInt(
-									readFileSync(codeTmp.name, { encoding: "utf-8", flag: "r" }).trim(),
+									readFileSync(codeTmp.name, { encoding: "utf-8", flag: "r" })
+										.trim(),
 									10,
 								)
 								return isNaN(termCode) ? conCode ?? signal ?? NaN : termCode
@@ -252,7 +273,10 @@ export class WindowsTerminalPty
 		 */
 	}
 
-	public async once(_0: "exit", listener: (code: NodeJS.Signals | number) => any): Promise<this> {
+	public async once(
+		_event: "exit",
+		listener: (code: NodeJS.Signals | number) => any,
+	): Promise<this> {
 		this.#exitCode.then(listener).catch(() => { })
 		return Promise.resolve(this)
 	}
@@ -274,7 +298,10 @@ export class GenericTerminalPty
 		}))
 	}
 
-	public async once(event: "exit", listener: (code: NodeJS.Signals | number) => any): Promise<this> {
+	public async once(
+		event: "exit",
+		listener: (code: NodeJS.Signals | number) => any,
+	): Promise<this> {
 		(await this.shell)
 			.once(event, (code, signal) => void listener(code ?? signal ?? NaN))
 		return this

@@ -58,7 +58,11 @@ export function executeParanoidly<T>(callback: (
 	}
 }
 
-export function saveFile(text: string, type = "text/plain; charset=UTF-8;", filename = ""): void {
+export function saveFile(
+	text: string,
+	type = "text/plain; charset=UTF-8;",
+	filename = "",
+): void {
 	const ele = document.createElement("a")
 	ele.target = "_blank"
 	ele.download = filename
@@ -75,7 +79,10 @@ export function inSet<T>(set: readonly T[], obj: any): obj is T {
 	return (set as readonly any[]).includes(obj)
 }
 
-export function isInterface<T extends { readonly __type: T["__type"] }>(id: T["__type"], obj: any): obj is T {
+export function isInterface<T extends { readonly __type: T["__type"] }>(
+	id: T["__type"],
+	obj: any,
+): obj is T {
 	if (!("__type" in obj)) {
 		return false
 	}

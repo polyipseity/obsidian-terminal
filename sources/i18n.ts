@@ -1,4 +1,10 @@
-import { type DEFAULT_LANGUAGE, DEFAULT_NAMESPACE, FALLBACK_LANGUAGES, RESOURCES, RETURN_NULL } from "assets/locales"
+import {
+	type DEFAULT_LANGUAGE,
+	DEFAULT_NAMESPACE,
+	FALLBACK_LANGUAGES,
+	RESOURCES,
+	RETURN_NULL,
+} from "assets/locales"
 import i18next from "i18next"
 import { printError } from "./util"
 
