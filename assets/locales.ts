@@ -4,6 +4,10 @@ import * as language from "assets/locales/en/language.json"
 import * as zhHans from "assets/locales/zh-Hans/translation.json"
 import * as zhHant from "assets/locales/zh-Hant/translation.json"
 
+function checkSynchronized(translation: typeof en): typeof en {
+	return translation
+}
+
 export const RETURN_NULL = false
 export const DEFAULT_NAMESPACE = "translation"
 export const DEFAULT_LANGUAGE = "en"
@@ -17,16 +21,16 @@ export const FALLBACK_LANGUAGES = {
 } as const
 export const RESOURCES = {
 	en: {
-		[DEFAULT_NAMESPACE]: en,
+		[DEFAULT_NAMESPACE]: checkSynchronized(en),
 		asset,
 		language,
 	},
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	"zh-Hans": {
-		[DEFAULT_NAMESPACE]: zhHans,
+		[DEFAULT_NAMESPACE]: checkSynchronized(zhHans),
 	},
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	"zh-Hant": {
-		[DEFAULT_NAMESPACE]: zhHant,
+		[DEFAULT_NAMESPACE]: checkSynchronized(zhHant),
 	},
 } as const
