@@ -21,7 +21,11 @@ import { TerminalView } from "./terminal"
 import { spawn } from "child_process"
 
 export class TerminalPlugin extends Plugin {
-	public readonly settings: Mutable<Settings> = cloneAsMutable(DEFAULT_SETTINGS)
+	public readonly state: TerminalPlugin.State = {
+		language: new TerminalPlugin.LanguageManager(this),
+		settings: cloneAsMutable(DEFAULT_SETTINGS),
+	}
+
 	public readonly platform = ((): TerminalPlugin.PlatformDispatch => {
 		const platform = inSet(TerminalPlugin.PLATFORMS, process.platform)
 			? process.platform
@@ -34,8 +38,9 @@ export class TerminalPlugin extends Plugin {
 					}
 				}
 				return async (plugin, cwd, type) => {
-					const executable = plugin.settings.executables[platform]
-					notice(() => plugin.i18n.t("notices.spawning-terminal", { executable: executable.name }), plugin.settings.noticeTimeout, plugin)
+					const { settings } = plugin.state,
+						executable = settings.executables[platform]
+					notice(() => plugin.i18n.t("notices.spawning-terminal", { executable: executable.name }), settings.noticeTimeout, plugin)
 					switch (type) {
 						case "external": {
 							const process = spawn(executable.name, executable.args, {
@@ -82,12 +87,11 @@ export class TerminalPlugin extends Plugin {
 		}
 	})()
 
-	public readonly language = new TerminalPlugin.LanguageManager(this)
 	#i18n0: i18n = i18next
 
 	public constructor(app: App, manifest: PluginManifest) {
-		super(app, manifest)
 		TerminalView.namespacedViewType = TerminalView.type.namespaced(manifest)
+		super(app, manifest)
 	}
 
 	public get i18n(): i18n {
@@ -101,7 +105,7 @@ export class TerminalPlugin extends Plugin {
 		}
 		const [i18n] = await Promise.all([I18N, this.loadSettings()])
 		this.#i18n0 = i18n
-		const { settings, language } = this
+		const { settings, language } = this.state
 		await language.changeLanguage(settings.language)
 
 		this.addSettingTab(new SettingTab(this))
@@ -207,11 +211,11 @@ export class TerminalPlugin extends Plugin {
 	}
 
 	public async loadSettings(): Promise<void> {
-		Object.assign(this.settings, await this.loadData())
+		Object.assign(this.state.settings, await this.loadData())
 	}
 
 	public async saveSettings(): Promise<void> {
-		await this.saveData(this.settings)
+		await this.saveData(this.state.settings)
 	}
 }
 export namespace TerminalPlugin {
@@ -226,6 +230,10 @@ export namespace TerminalPlugin {
 			type: TerminalType
 		) => Promise<void>
 		readonly terminalPty: typeof TerminalPty
+	}
+	export interface State {
+		readonly settings: Mutable<Settings>
+		readonly language: LanguageManager
 	}
 	export class LanguageManager {
 		readonly #uses: (() => unknown)[] = []

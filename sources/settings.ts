@@ -58,7 +58,8 @@ export class SettingTab extends PluginSettingTab {
 
 	public display(): void {
 		const { containerEl, plugin } = this,
-			{ i18n } = plugin
+			{ i18n, state } = plugin,
+			{ settings, language } = state
 		containerEl.empty()
 		containerEl.createEl("h1", { text: plugin.i18n.t("name") })
 
@@ -66,13 +67,13 @@ export class SettingTab extends PluginSettingTab {
 			.setName(i18n.t("settings.language"))
 			.setDesc(i18n.t("settings.language-description"))
 			.addDropdown(this.#linkSetting(
-				() => plugin.settings.language,
-				value => void (plugin.settings.language = value),
+				() => settings.language,
+				value => void (settings.language = value),
 				{
 					post: (dropdown, activate) => void dropdown
 						.onChange(async value => {
 							await activate(value)
-							await plugin.language.changeLanguage(value)
+							await language.changeLanguage(value)
 							this.display()
 						}),
 					pre: dropdown => void dropdown
@@ -84,13 +85,13 @@ export class SettingTab extends PluginSettingTab {
 				},
 			))
 			.addExtraButton(this.#resetButton(
-				() => void (plugin.settings.language = DEFAULT_SETTINGS.language),
+				() => void (settings.language = DEFAULT_SETTINGS.language),
 				i18n.t("asset:settings.language-icon"),
 				{
 					post: (button, activate) => void button
 						.onClick(async () => {
 							await activate()
-							await plugin.language.changeLanguage(plugin.settings.language)
+							await language.changeLanguage(settings.language)
 							this.display()
 						}),
 				},
@@ -98,28 +99,28 @@ export class SettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(i18n.t("settings.reset-all"))
 			.addButton(this.#resetButton(async () => {
-				Object.assign(plugin.settings, DEFAULT_SETTINGS)
-				await plugin.language.changeLanguage(plugin.settings.language)
+				Object.assign(settings, DEFAULT_SETTINGS)
+				await language.changeLanguage(settings.language)
 			}))
 
 		new Setting(containerEl)
 			.setName(i18n.t("settings.add-to-commands"))
 			.addToggle(this.#linkSetting(
-				() => plugin.settings.command,
-				value => void (plugin.settings.command = value),
+				() => settings.command,
+				value => void (settings.command = value),
 			))
 			.addExtraButton(this.#resetButton(
-				() => void (plugin.settings.command = DEFAULT_SETTINGS.command),
+				() => void (settings.command = DEFAULT_SETTINGS.command),
 				i18n.t("asset:settings.add-to-commands-icon"),
 			))
 		new Setting(containerEl)
 			.setName(i18n.t("settings.add-to-context-menus"))
 			.addToggle(this.#linkSetting(
-				() => plugin.settings.contextMenu,
-				value => void (plugin.settings.contextMenu = value),
+				() => settings.contextMenu,
+				value => void (settings.contextMenu = value),
 			))
 			.addExtraButton(this.#resetButton(
-				() => void (plugin.settings.contextMenu =
+				() => void (settings.contextMenu =
 					DEFAULT_SETTINGS.contextMenu),
 				i18n.t("asset:settings.add-to-context-menus-icon"),
 			))
@@ -128,12 +129,12 @@ export class SettingTab extends PluginSettingTab {
 			.setName(i18n.t("settings.notice-timeout"))
 			.setDesc(i18n.t("settings.notice-timeout-description"))
 			.addText(this.#linkSetting(
-				() => plugin.settings.noticeTimeout.toString(),
+				() => settings.noticeTimeout.toString(),
 				this.#setTextToNumber(value =>
-					void (plugin.settings.noticeTimeout = value)),
+					void (settings.noticeTimeout = value)),
 			))
 			.addExtraButton(this.#resetButton(
-				() => void (plugin.settings.noticeTimeout =
+				() => void (settings.noticeTimeout =
 					DEFAULT_SETTINGS.noticeTimeout),
 				i18n.t("asset:settings.notice-timeout-icon"),
 			))
@@ -141,15 +142,15 @@ export class SettingTab extends PluginSettingTab {
 			.setName(i18n.t("settings.python-executable"))
 			.setDesc(i18n.t("settings.python-executable-description"))
 			.addText(this.#linkSetting(
-				() => plugin.settings.pythonExecutable,
-				value => void (plugin.settings.pythonExecutable = value),
+				() => settings.pythonExecutable,
+				value => void (settings.pythonExecutable = value),
 				{
 					post: component => void component
 						.setPlaceholder(i18n.t("settings.python-executable-placeholder")),
 				},
 			))
 			.addExtraButton(this.#resetButton(
-				() => void (plugin.settings.pythonExecutable =
+				() => void (settings.pythonExecutable =
 					DEFAULT_SETTINGS.pythonExecutable),
 				i18n.t("asset:settings.python-executable-icon"),
 			))
@@ -159,11 +160,11 @@ export class SettingTab extends PluginSettingTab {
 			new Setting(containerEl)
 				.setName(i18n.t(`settings.executable-list.${key}`))
 				.addText(this.#linkSetting(
-					() => plugin.settings.executables[key].name,
-					value => void (plugin.settings.executables[key].name = value),
+					() => settings.executables[key].name,
+					value => void (settings.executables[key].name = value),
 				))
 				.addExtraButton(this.#resetButton(
-					() => void (plugin.settings.executables[key].name =
+					() => void (settings.executables[key].name =
 						DEFAULT_SETTINGS.executables[key].name),
 					i18n.t("asset:settings.executable-list-icon"),
 				))

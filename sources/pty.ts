@@ -35,7 +35,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 	public readonly shell
 	#resizable = false
 	readonly #resizer = ((): ChildProcessWithoutNullStreams | null => {
-		const { pythonExecutable } = this.plugin.settings
+		const { pythonExecutable } = this.plugin.state.settings
 		if (pythonExecutable === "") {
 			return null
 		}

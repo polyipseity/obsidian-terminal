@@ -88,7 +88,7 @@ export class TerminalView extends ItemView {
 			notice(
 				() => i18n.t("notices.terminal-exited", { code }),
 				inSet(TERMINAL_EXIT_SUCCESS, code)
-					? plugin.settings.noticeTimeout
+					? plugin.state.settings.noticeTimeout
 					: NOTICE_NO_TIMEOUT,
 				plugin,
 			)
@@ -251,7 +251,7 @@ export class TerminalView extends ItemView {
 				div.style.visibility = ""
 			}))
 		})
-		this.register(this.plugin.language.registerUse(() =>
+		this.register(this.plugin.state.language.registerUse(() =>
 			updateDisplayText(this)))
 	}
 
