@@ -52,5 +52,13 @@ For first time users, read the [installation](#installation) section first!
 ## Todos
 
 - Untested on Linux and MacOS.
-- Find in terminal support.
-- Connect to remote shells. (could support mobile devices)
+- Add status bar hiding option.
+- Add `conhost.exe` hack disable option.
+- Add terminal text loading.
+- Add terminal duplication.
+- Support multiple executables.
+- Add terminal style options.
+- Check whether the terminal looks okay in light theme.
+- Add arguments in options.
+- Add finding text in terminal.
+- Add connecting to remote shells. It should also be available on mobile.
