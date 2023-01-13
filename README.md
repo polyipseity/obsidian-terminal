@@ -52,6 +52,7 @@ For first time users, read the [installation](#installation) section first!
 ## Todos
 
 - Untested on Linux and MacOS.
+- Add setting for successful exit codes.
 - Add terminal text loading.
 - Add terminal duplication.
 - Support multiple executables.
