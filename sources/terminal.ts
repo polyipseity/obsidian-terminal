@@ -8,7 +8,7 @@ import {
 import { NOTICE_NO_TIMEOUT, TERMINAL_EXIT_SUCCESS, TERMINAL_RESIZE_TIMEOUT } from "./magic"
 import { type TerminalPty, WindowsTerminalPty } from "./pty"
 import { type TerminalSerial, TerminalSerializer } from "./terminal-serialize"
-import { UnnamespacedID, inSet, isInterface, notice, onVisible, openExternal, printError, saveFile, statusBar, updateDisplayText } from "./util"
+import { UnnamespacedID, inSet, isInterface, notice, onVisible, openExternal, printError, saveFile, updateDisplayText } from "./util"
 import { basename, extname } from "path"
 import { FitAddon } from "xterm-addon-fit"
 import { SearchAddon } from "xterm-addon-search"
@@ -213,7 +213,9 @@ export class TerminalView extends ItemView {
 
 	protected override async onOpen(): Promise<void> {
 		await super.onOpen()
-		const { containerEl, plugin } = this
+		const { containerEl, plugin } = this,
+			{ app, state } = plugin,
+			{ language, statusBarHider } = state
 
 		containerEl.empty()
 		containerEl.createDiv({}, ele => {
@@ -228,31 +230,20 @@ export class TerminalView extends ItemView {
 			this.register(() => { obsr.disconnect() })
 		})
 
-		this.registerEvent(plugin.app.workspace.on("active-leaf-change", leaf => {
+		this.registerEvent(app.workspace.on("active-leaf-change", leaf => {
 			if (leaf === this.leaf) {
 				this.#terminal.focus()
 				return
 			}
 			this.#terminal.blur()
 		}))
-		statusBar(div => {
-			const hider = new MutationObserver(() => void (div.style.visibility = "hidden"))
-			this.register(() => {
-				hider.disconnect()
-				div.style.visibility = ""
-			})
-			this.registerEvent(plugin.app.workspace.on("active-leaf-change", leaf => {
-				hider.disconnect()
-				if (leaf === this.leaf) {
-					div.style.visibility = "hidden"
-					hider.observe(div, { attributeFilter: ["style"] })
-					return
-				}
-				div.style.visibility = ""
-			}))
-		})
-		this.register(this.plugin.state.language.registerUse(() =>
+		this.register(language.registerUse(() =>
 			updateDisplayText(this)))
+		this.register(statusBarHider.hide(this.#hidesStatusBar.bind(this)))
+		this.registerEvent(app.workspace.on(
+			"active-leaf-change",
+			statusBarHider.update.bind(statusBarHider),
+		))
 	}
 
 	#getExecutableBasename(): string {
@@ -263,6 +254,18 @@ export class TerminalView extends ItemView {
 	#write(data: Buffer | string): void {
 		this.#terminal.write(data)
 		this.plugin.app.workspace.requestSaveLayout()
+	}
+
+	#hidesStatusBar(): boolean {
+		const { plugin } = this
+		switch (plugin.state.settings.hideStatusBar) {
+			case "focused":
+				return plugin.app.workspace.getActiveViewOfType(TerminalView) === this
+			case "running":
+				return true
+			default:
+				return false
+		}
 	}
 }
 export namespace TerminalView {

@@ -6,6 +6,7 @@
 		"open-terminal-integrated-current": "在整合式終端機開啟目前目錄"
 	},
 	"errors": {
+		"cannot-find-status-bar": "找不到狀態欄",
 		"error-spawning-terminal": "啟動終端機時出錯",
 		"error-spawning-resizer": "啟動終端機縮放程式時出錯",
 		"resizer-disabled": "終端機縮放程式已禁用",
@@ -29,6 +30,13 @@
 			"darwin": "macOS",
 			"linux": "Linux",
 			"win32": "Microsoft Windows"
+		},
+		"hide-status-bar": "隱藏狀態欄",
+		"hide-status-bar-options": {
+			"never": "從不",
+			"always": "總是",
+			"focused": "當聚焦終端機時",
+			"open": "當執行終端機時"
 		},
 		"language": "語言",
 		"language-default": "使用應用程式設定",

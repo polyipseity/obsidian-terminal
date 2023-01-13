@@ -5,7 +5,7 @@ import {
 	Setting,
 	type ValueComponent,
 } from "obsidian"
-import type { Mutable } from "./util"
+import { type Mutable, inSet } from "./util"
 import { RESOURCES } from "assets/locales"
 import { TerminalPlugin } from "./main"
 
@@ -13,11 +13,14 @@ export interface Settings {
 	readonly language: string
 	readonly command: boolean
 	readonly contextMenu: boolean
+	readonly hideStatusBar: Settings.HideStatusBarOption
 	readonly noticeTimeout: number
 	readonly pythonExecutable: string
 	readonly executables: Settings.Executables
 }
 export namespace Settings {
+	export const HIDE_STATUS_BAR_OPTIONS = ["never", "always", "focused", "running"] as const
+	export type HideStatusBarOption = typeof HIDE_STATUS_BAR_OPTIONS[number]
 	export type Executables = {
 		readonly [key in TerminalPlugin.Platform]: Executables.Entry
 	}
@@ -46,6 +49,7 @@ export const DEFAULT_SETTINGS: Settings = {
 			name: "C:\\Windows\\System32\\cmd.exe",
 		},
 	},
+	hideStatusBar: "focused",
 	language: "",
 	noticeTimeout: 5,
 	pythonExecutable: "python",
@@ -59,7 +63,7 @@ export class SettingTab extends PluginSettingTab {
 	public display(): void {
 		const { containerEl, plugin } = this,
 			{ i18n, state } = plugin,
-			{ settings, language } = state
+			{ settings, language, statusBarHider } = state
 		containerEl.empty()
 		containerEl.createEl("h1", { text: plugin.i18n.t("name") })
 
@@ -73,7 +77,6 @@ export class SettingTab extends PluginSettingTab {
 					post: (dropdown, activate) => void dropdown
 						.onChange(async value => {
 							await activate(value)
-							await language.changeLanguage(value)
 							this.display()
 						}),
 					pre: dropdown => void dropdown
@@ -124,7 +127,40 @@ export class SettingTab extends PluginSettingTab {
 					DEFAULT_SETTINGS.contextMenu),
 				i18n.t("asset:settings.add-to-context-menus-icon"),
 			))
-
+		new Setting(containerEl)
+			.setName(i18n.t("settings.hide-status-bar"))
+			.addDropdown(this.#linkSetting(
+				() => settings.hideStatusBar as string,
+				value => {
+					if (inSet(Settings.HIDE_STATUS_BAR_OPTIONS, value)) {
+						settings.hideStatusBar = value
+						return true
+					}
+					return false
+				},
+				{
+					post: (dropdown, activate) => void dropdown
+						.onChange(async value => {
+							await activate(value)
+							statusBarHider.update()
+						}),
+					pre: dropdown => void dropdown
+						.addOptions(Object
+							.fromEntries(Settings.HIDE_STATUS_BAR_OPTIONS
+								.map(value => [value, i18n.t(`settings.hide-status-bar-options.${value}`)]))),
+				},
+			))
+			.addExtraButton(this.#resetButton(
+				() => void (settings.hideStatusBar = DEFAULT_SETTINGS.hideStatusBar),
+				i18n.t("asset:settings.hide-status-bar-icon"),
+				{
+					post: (button, activate) => void button
+						.onClick(async () => {
+							await activate()
+							statusBarHider.update()
+						}),
+				},
+			))
 		new Setting(containerEl)
 			.setName(i18n.t("settings.notice-timeout"))
 			.setDesc(i18n.t("settings.notice-timeout-description"))
@@ -138,6 +174,7 @@ export class SettingTab extends PluginSettingTab {
 					DEFAULT_SETTINGS.noticeTimeout),
 				i18n.t("asset:settings.notice-timeout-icon"),
 			))
+
 		new Setting(containerEl)
 			.setName(i18n.t("settings.python-executable"))
 			.setDesc(i18n.t("settings.python-executable-description"))
@@ -154,7 +191,6 @@ export class SettingTab extends PluginSettingTab {
 					DEFAULT_SETTINGS.pythonExecutable),
 				i18n.t("asset:settings.python-executable-icon"),
 			))
-
 		containerEl.createEl("h2", { text: i18n.t("settings.executables") })
 		for (const key of TerminalPlugin.PLATFORMS) {
 			new Setting(containerEl)
@@ -172,11 +208,11 @@ export class SettingTab extends PluginSettingTab {
 	}
 
 	#linkSetting<
+		V,
 		C extends ValueComponent<V> & {
 			onChange: (
 				callback: (value: V) => any) => C
 		},
-		V,
 	>(
 		getter: () => V,
 		setter: (value: V, component: C, getter: () => V) => any,

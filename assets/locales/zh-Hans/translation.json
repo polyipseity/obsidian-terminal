@@ -6,6 +6,7 @@
 		"open-terminal-integrated-current": "在整合式终端机开啟目前目録"
 	},
 	"errors": {
+		"cannot-find-status-bar": "找不到状态栏",
 		"error-spawning-terminal": "啟动终端机时出错",
 		"error-spawning-resizer": "啟动终端机缩放迸程时出错",
 		"resizer-disabled": "终端机缩放迸程已禁用",
@@ -29,6 +30,13 @@
 			"darwin": "macOS",
 			"linux": "Linux",
 			"win32": "Microsoft Windows"
+		},
+		"hide-status-bar": "隐藏状态栏",
+		"hide-status-bar-options": {
+			"never": "从不",
+			"always": "总是",
+			"focused": "当聚焦终端机时",
+			"open": "当执行终端机时"
 		},
 		"language": "语言",
 		"language-default": "使用应用设定",

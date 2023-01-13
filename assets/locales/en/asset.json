@@ -11,6 +11,7 @@
 		"add-to-commands-icon": "terminal",
 		"add-to-context-menus-icon": "menu",
 		"executable-list-icon": "terminal-square",
+		"hide-status-bar-icon": "eye-off",
 		"language-icon": "languages",
 		"notice-timeout-icon": "timer",
 		"python-executable-icon": "scaling",

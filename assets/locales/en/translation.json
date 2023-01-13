@@ -6,6 +6,7 @@
 		"open-terminal-integrated-current": "Open current folder in integrated terminal"
 	},
 	"errors": {
+		"cannot-find-status-bar": "Cannot find status bar",
 		"error-spawning-terminal": "Error spawning terminal",
 		"error-spawning-resizer": "Error spawning terminal resizer",
 		"resizer-disabled": "Terminal resizer disabled",
@@ -29,6 +30,13 @@
 			"darwin": "macOS",
 			"linux": "Linux",
 			"win32": "Microsoft Windows"
+		},
+		"hide-status-bar": "Hide status bar",
+		"hide-status-bar-options": {
+			"never": "Never",
+			"always": "Always",
+			"focused": "When terminal is focused",
+			"running": "When terminal is running"
 		},
 		"language": "Language",
 		"language-default": "Use app setting",

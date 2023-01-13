@@ -12,10 +12,11 @@ import {
 } from "obsidian"
 import { DEFAULT_SETTINGS, SettingTab, type Settings } from "./settings"
 import { GenericTerminalPty, WindowsTerminalPty } from "./pty"
-import { type Mutable, cloneAsMutable, commandNamer, inSet, notice, printError } from "./util"
+import { type Mutable, cloneAsMutable, commandNamer, inSet, notice, printError, statusBar } from "./util"
 import i18next, { type i18n } from "i18next"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import { I18N } from "./i18n"
+import { NOTICE_NO_TIMEOUT } from "./magic"
 import type { TerminalPty } from "./pty"
 import { TerminalView } from "./terminal"
 import { spawn } from "child_process"
@@ -24,6 +25,7 @@ export class TerminalPlugin extends Plugin {
 	public readonly state: TerminalPlugin.State = {
 		language: new TerminalPlugin.LanguageManager(this),
 		settings: cloneAsMutable(DEFAULT_SETTINGS),
+		statusBarHider: new TerminalPlugin.StatusBarHider(this),
 	}
 
 	public readonly platform = ((): TerminalPlugin.PlatformDispatch => {
@@ -234,6 +236,7 @@ export namespace TerminalPlugin {
 	export interface State {
 		readonly settings: Mutable<Settings>
 		readonly language: LanguageManager
+		readonly statusBarHider: StatusBarHider
 	}
 	export class LanguageManager {
 		readonly #uses: (() => unknown)[] = []
@@ -247,6 +250,53 @@ export namespace TerminalPlugin {
 		public registerUse(use: () => any): () => void {
 			this.#uses.push(use)
 			return () => { this.#uses.remove(use) }
+		}
+	}
+	export class StatusBarHider {
+		readonly #hiders: (() => boolean)[] = []
+		public constructor(protected readonly plugin: TerminalPlugin) {
+			plugin.app.workspace.onLayoutReady(() => {
+				if (statusBar(div => {
+					const obs = new MutationObserver(this.#maybeHide.bind(this, div))
+					plugin.register(() => {
+						try {
+							obs.disconnect()
+						} finally {
+							this.#unhide(div)
+						}
+					})
+					this.update()
+					obs.observe(div, { attributeFilter: ["style"] })
+				}) === null) {
+					notice(() => plugin.i18n.t("errors.cannot-find-status-bar"), NOTICE_NO_TIMEOUT, plugin)
+				}
+			})
+		}
+
+		public hide(hider: () => boolean): () => void {
+			this.#hiders.push(hider)
+			this.update()
+			return () => {
+				this.#hiders.remove(hider)
+				this.update()
+			}
+		}
+
+		public update(): void {
+			statusBar(div => {
+				this.#unhide(div)
+				this.#maybeHide(div)
+			})
+		}
+
+		#maybeHide(div: HTMLDivElement): void {
+			if (this.plugin.state.settings.hideStatusBar === "always" || this.#hiders.some(hider0 => hider0())) {
+				div.style.visibility = "hidden"
+			}
+		}
+
+		#unhide(div: HTMLDivElement): void {
+			div.style.visibility = ""
 		}
 	}
 }
