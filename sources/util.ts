@@ -30,7 +30,7 @@ export function cloneAsMutable<T>(obj: T): Mutable<T> {
 	return structuredClone(obj) as Mutable<T>
 }
 
-export function saveFile(text: string, type = "text/plain;charset=UTF-8;", filename = ""): void {
+export function saveFile(text: string, type = "text/plain; charset=UTF-8;", filename = ""): void {
 	const ele = document.createElement("a")
 	ele.target = "_blank"
 	ele.download = filename
