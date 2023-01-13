@@ -69,7 +69,7 @@ export function notice(
 	timeout: number = NOTICE_NO_TIMEOUT,
 	plugin?: TerminalPlugin,
 ): Notice {
-	const timeoutMs = 1000 * timeout,
+	const timeoutMs = 1000 * Math.max(timeout, 0),
 		ret = new Notice(message(), timeoutMs)
 	if (typeof plugin === "undefined") {
 		return ret
