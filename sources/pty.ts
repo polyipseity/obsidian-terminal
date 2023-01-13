@@ -134,7 +134,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 				resizer0 = resizer
 			function onError(): void {
 				try {
-					connect(spawnShell(false))
+					resolve(spawnShell(false))
 				} catch (error) {
 					reject(error)
 				} finally {
