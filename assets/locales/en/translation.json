@@ -19,8 +19,8 @@
 	},
 	"name": "Terminal",
 	"notices": {
-		"spawning-terminal": "Spawning terminal: {{executable}}",
-		"terminal-exited": "Terminal exited: {{code}}"
+		"spawning-terminal": "Spawning terminal: {{- executable}}",
+		"terminal-exited": "Terminal exited: {{- code}}"
 	},
 	"settings": {
 		"add-to-commands": "Add to commands",
@@ -53,7 +53,7 @@
 	},
 	"views": {
 		"terminal": {
-			"display-name": "Terminal: {{executable}}"
+			"display-name": "Terminal: {{- executable}}"
 		}
 	}
 }

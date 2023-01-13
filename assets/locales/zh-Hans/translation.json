@@ -19,8 +19,8 @@
 	},
 	"name": "终端",
 	"notices": {
-		"spawning-terminal": "终端啟动中：{{executable}}",
-		"terminal-exited": "终端已退出：{{code}}"
+		"spawning-terminal": "终端啟动中：{{- executable}}",
+		"terminal-exited": "终端已退出：{{- code}}"
 	},
 	"settings": {
 		"add-to-commands": "加入至命令",
@@ -53,7 +53,7 @@
 	},
 	"views": {
 		"terminal": {
-			"display-name": "终端：{{executable}}"
+			"display-name": "终端：{{- executable}}"
 		}
 	}
 }
