@@ -1,6 +1,6 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "child_process"
-import { anyToError, executeParanoidly, printError } from "./util"
-import { TERMINAL_WATCHDOG_INTERVAL } from "./magic"
+import { NOTICE_NO_TIMEOUT, TERMINAL_WATCHDOG_INTERVAL } from "./magic"
+import { anyToError, executeParanoidly, notice, printError } from "./util"
 import type { TerminalPlugin } from "./main"
 import { promisify } from "util"
 import { readFileSync } from "fs"
@@ -41,7 +41,8 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 	public readonly shell
 	#resizable = false
 	readonly #resizer = ((): ChildProcessWithoutNullStreams | null => {
-		const { pythonExecutable } = this.plugin.state.settings
+		const { plugin } = this,
+			{ pythonExecutable } = plugin.state.settings
 		if (pythonExecutable === "") {
 			return null
 		}
@@ -53,7 +54,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 			.once("spawn", () => {
 				this.#resizable = true
 				const watchdog =
-					this.plugin.registerInterval(window.setInterval(
+					plugin.registerInterval(window.setInterval(
 						() => void this.#write("\n").catch(() => { }),
 						TERMINAL_WATCHDOG_INTERVAL,
 					)),
@@ -65,15 +66,30 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 					throw error
 				}
 			})
-			.once("exit", () => void (this.#resizable = false))
+			.once("exit", (code, signal) => {
+				this.#resizable = false
+				if (code !== 0) {
+					notice(
+						() => plugin.i18n.t(
+							"errors.resizer-exited-unexpectedly",
+							{ code: code ?? signal },
+						),
+						NOTICE_NO_TIMEOUT,
+						plugin,
+					)
+				}
+			})
 			.once("error", error => {
 				this.#resizable = false
 				printError(
 					error,
-					() => this.plugin.i18n.t("errors.error-spawning-resizer"),
-					this.plugin,
+					() => plugin.i18n.t("errors.error-spawning-resizer"),
+					plugin,
 				)
 			})
+		ret.stderr.on("data", (chunk: Buffer | string) => {
+			console.error(chunk.toString())
+		})
 		return ret
 	})()
 

@@ -10,6 +10,7 @@
 		"error-spawning-terminal": "Error spawning terminal",
 		"error-spawning-resizer": "Error spawning terminal resizer",
 		"resizer-disabled": "Terminal resizer disabled",
+		"resizer-exited-unexpectedly": "Terminal resizer exited unexpectedly: {{- code}}",
 		"unsupported-platform": "Unsupported platform"
 	},
 	"menus": {
