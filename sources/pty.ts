@@ -117,16 +117,17 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 							}
 							this.#write(`${pid}\n`)
 								.catch(reason => {
-									resizer.kill()
-									printError(
-										reason,
-										() => this.plugin.i18n.t("errors.error-spawning-resizer"),
-										this.plugin,
-									)
+									try {
+										printError(
+											reason,
+											() => this.plugin.i18n.t("errors.error-spawning-resizer"),
+											this.plugin,
+										)
+									} finally {
+										resizer.kill()
+									}
 								})
-						})
-						.once("exit", () => resizer.kill())
-						.once("error", () => resizer.kill()),
+						}),
 					onSpawn = (): void => {
 						try {
 							resolve(() => connect(spawnShell(true)))
