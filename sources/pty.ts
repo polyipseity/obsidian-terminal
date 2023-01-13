@@ -1,7 +1,7 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "child_process"
+import { anyToError, executeParanoidly, printError } from "./util"
 import { TERMINAL_WATCHDOG_INTERVAL } from "./magic"
 import type { TerminalPlugin } from "./main"
-import { printError } from "./util"
 import { promisify } from "util"
 import { readFileSync } from "fs"
 import resizerPy from "./resizer.py"
@@ -80,11 +80,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 			try {
 				return resizer.stdin.write(chunk, callback)
 			} catch (error) {
-				if (error instanceof Error) {
-					callback(error)
-				} else {
-					callback(new Error(String(error)))
-				}
+				callback(anyToError(error))
 			}
 			return false
 		})
@@ -95,54 +91,47 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 			resizable: boolean) => ShellChildProcess,
 	) {
 		super(plugin)
-		this.shell = new Promise<ShellChildProcess>((resolve, reject) => {
-			const resizer = this.#resizer
-			if (resizer === null) {
-				try {
-					resolve(spawnShell(false))
-				} catch (error) {
-					reject(error)
+		this.shell =
+			new Promise<ShellChildProcess>(executeParanoidly(resolve => {
+				const resizer = this.#resizer
+				if (resizer === null) {
+					resolve(() => spawnShell(false))
+					return
 				}
-				return
-			}
-			const
-				connect = (shell: ShellChildProcess): ShellChildProcess => shell
-					.once("spawn", () => {
-						const { pid } = shell
-						if (typeof pid === "undefined") {
-							resizer.kill()
-							return
-						}
-						this.#write(`${pid}\n`)
-							.catch(reason => {
+				const
+					connect = (shell: ShellChildProcess): ShellChildProcess => shell
+						.once("spawn", () => {
+							const { pid } = shell
+							if (typeof pid === "undefined") {
 								resizer.kill()
-								printError(reason, () => this.plugin.i18n.t("errors.error-spawning-resizer"), this.plugin)
-							})
-					})
-					.once("exit", () => resizer.kill())
-					.once("error", () => resizer.kill()),
-				onSpawn = (): void => {
+								return
+							}
+							this.#write(`${pid}\n`)
+								.catch(reason => {
+									resizer.kill()
+									printError(reason, () => this.plugin.i18n.t("errors.error-spawning-resizer"), this.plugin)
+								})
+						})
+						.once("exit", () => resizer.kill())
+						.once("error", () => resizer.kill()),
+					onSpawn = (): void => {
+						try {
+							resolve(() => connect(spawnShell(true)))
+						} finally {
+							// eslint-disable-next-line @typescript-eslint/no-use-before-define
+							resizer.removeListener("error", onError)
+						}
+					},
+					resizer0 = resizer
+				function onError(): void {
 					try {
-						resolve(connect(spawnShell(true)))
-					} catch (error) {
-						reject(error)
+						resolve(() => spawnShell(false))
 					} finally {
-						// eslint-disable-next-line @typescript-eslint/no-use-before-define
-						resizer.removeListener("error", onError)
+						resizer0.removeListener("spawn", onSpawn)
 					}
-				},
-				resizer0 = resizer
-			function onError(): void {
-				try {
-					resolve(spawnShell(false))
-				} catch (error) {
-					reject(error)
-				} finally {
-					resizer0.removeListener("spawn", onSpawn)
 				}
-			}
-			resizer.once("spawn", onSpawn).once("error", onError)
-		})
+				resizer.once("spawn", onSpawn).once("error", onError)
+			}))
 	}
 
 	public get resizable(): boolean {
@@ -150,10 +139,10 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 	}
 
 	public async resize(columns: number, rows: number): Promise<void> {
-		return new Promise((resolve, reject) => {
+		return new Promise(executeParanoidly((resolve, reject) => {
 			const resizer = this.#resizer
 			if (resizer === null) {
-				reject(new Error(this.plugin.i18n.t("errors.resizer-disabled")))
+				reject(() => new Error(this.plugin.i18n.t("errors.resizer-disabled")))
 				return
 			}
 			const resizer0 = resizer,
@@ -161,7 +150,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 				data = (chunk: Buffer | string): void => {
 					if (chunk.toString().includes("resized")) {
 						try {
-							resolve()
+							resolve(() => { })
 						} finally {
 							stdout.removeListener("data", data)
 							// eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -171,9 +160,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 				}
 			function exit(...args: any[]): void {
 				try {
-					reject(new Error(args.toString()))
-				} catch (error) {
-					reject(error)
+					reject(() => new Error(args.toString()))
 				} finally {
 					stdout.removeListener("data", data)
 					// eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -182,7 +169,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 			}
 			function errorFn(error: Error): void {
 				try {
-					reject(error)
+					reject(() => error)
 				} finally {
 					stdout.removeListener("data", data)
 					resizer0.removeListener("exit", exit)
@@ -192,13 +179,13 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 			stdout.on("data", data)
 			this.#write(`${columns}x${rows}\n`).catch(error => {
 				try {
-					reject(error)
+					reject(() => anyToError(error))
 				} finally {
 					stdout.removeListener("data", data)
 					resizer.removeListener("exit", exit).removeListener("error", errorFn)
 				}
 			})
-		})
+		}))
 	}
 
 	public abstract override once(event: "exit", listener: (code: NodeJS.Signals | number) => any): Promise<this>
@@ -229,30 +216,32 @@ export class WindowsTerminalPty
 			windowsVerbatimArguments: true,
 		}))
 		this.#exitCode = this.shell.then(async shell0 =>
-			new Promise<NodeJS.Signals | number>((resolve, reject) => {
+			new Promise<NodeJS.Signals | number>(executeParanoidly((
+				resolve,
+				reject,
+			) => {
 				shell0
 					.once("exit", (conCode, signal) => {
 						try {
-							const termCode =
-								parseInt(
+							resolve(() => {
+								const termCode = parseInt(
 									readFileSync(codeTmp.name, { encoding: "utf-8", flag: "r" }).trim(),
 									10,
 								)
-							resolve(isNaN(termCode) ? conCode ?? signal ?? NaN : termCode)
-						} catch (error) {
-							reject(error)
+								return isNaN(termCode) ? conCode ?? signal ?? NaN : termCode
+							})
 						} finally {
 							codeTmp.removeCallback()
 						}
 					})
 					.once("error", error => {
 						try {
-							reject(error)
+							reject(() => error)
 						} finally {
 							codeTmp.removeCallback()
 						}
 					})
-			}))
+			})))
 	}
 
 	static #escapeArgument(arg: string): string {

@@ -13,6 +13,10 @@ export class UnnamespacedID<V extends string> {
 	}
 }
 
+export function anyToError(obj: any): Error {
+	return obj instanceof Error ? obj : new Error(String(obj))
+}
+
 export function commandNamer(
 	cmdNamer: () => string,
 	pluginNamer: () => string,
@@ -28,6 +32,30 @@ export function commandNamer(
 export function cloneAsMutable<T>(obj: T): Mutable<T> {
 	// `readonly` is fake at runtime
 	return structuredClone(obj) as Mutable<T>
+}
+
+export function executeParanoidly<T>(callback: (
+	resolve: (valueSupplier: () => PromiseLike<T> | T) => void,
+	reject: (reasonSupplier?: () => any) => void
+) => void) {
+	return (
+		resolve: (value: PromiseLike<T> | T) => void,
+		reject: (reason?: any) => void,
+	): void => {
+		callback(supplier => {
+			try {
+				resolve(supplier())
+			} catch (error) {
+				reject(error)
+			}
+		}, supplier => {
+			try {
+				reject((supplier ?? ((): void => { }))())
+			} catch (error) {
+				reject(error)
+			}
+		})
+	}
 }
 
 export function saveFile(text: string, type = "text/plain; charset=UTF-8;", filename = ""): void {
