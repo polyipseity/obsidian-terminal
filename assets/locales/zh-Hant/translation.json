@@ -25,6 +25,8 @@
 	"settings": {
 		"add-to-commands": "加入至命令",
 		"add-to-context-menus": "加入至右鍵選單",
+		"enable-Windows-conhost-workaround": "啟用 Windows「conhost.exe」解決方法",
+		"enable-Windows-conhost-workaround-description": "如果執行「conhost.exe」沒有創建視窗，請禁用。無保證這會起作用。",
 		"executables": "執行檔",
 		"executable-list": {
 			"darwin": "macOS",

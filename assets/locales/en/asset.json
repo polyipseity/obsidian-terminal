@@ -10,6 +10,7 @@
 	"settings": {
 		"add-to-commands-icon": "terminal",
 		"add-to-context-menus-icon": "menu",
+		"enable-Windows-conhost-workaround-icon": "code",
 		"executable-list-icon": "terminal-square",
 		"hide-status-bar-icon": "eye-off",
 		"language-icon": "languages",

@@ -17,6 +17,7 @@ export interface Settings {
 	readonly noticeTimeout: number
 	readonly pythonExecutable: string
 	readonly executables: Settings.Executables
+	readonly enableWindowsConhostWorkaround: boolean
 }
 export namespace Settings {
 	export const HIDE_STATUS_BAR_OPTIONS =
@@ -36,6 +37,7 @@ export type MutableSettings = Mutable<Settings>
 export const DEFAULT_SETTINGS: Settings = {
 	command: true,
 	contextMenu: true,
+	enableWindowsConhostWorkaround: true,
 	executables: {
 		darwin: {
 			args: [],
@@ -208,6 +210,19 @@ export class SettingTab extends PluginSettingTab {
 					i18n.t("asset:settings.executable-list-icon"),
 				))
 		}
+
+		new Setting(containerEl)
+			.setName(i18n.t("settings.enable-Windows-conhost-workaround"))
+			.setDesc(i18n.t("settings.enable-Windows-conhost-workaround-description"))
+			.addToggle(this.#linkSetting(
+				() => settings.enableWindowsConhostWorkaround,
+				value => void (settings.enableWindowsConhostWorkaround = value),
+			))
+			.addExtraButton(this.#resetButton(
+				() => void (settings.enableWindowsConhostWorkaround =
+					DEFAULT_SETTINGS.enableWindowsConhostWorkaround),
+				i18n.t("asset:settings.enable-Windows-conhost-workaround-icon"),
+			))
 	}
 
 	#linkSetting<

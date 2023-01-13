@@ -25,6 +25,8 @@
 	"settings": {
 		"add-to-commands": "Add to commands",
 		"add-to-context-menus": "Add to context menus",
+		"enable-Windows-conhost-workaround": "Enable Windows 'conhost.exe' workaround",
+		"enable-Windows-conhost-workaround-description": "Disable if running 'conhost.exe' does not create a window. No guarantees this will work.",
 		"executables": "Executables",
 		"executable-list": {
 			"darwin": "macOS",

@@ -119,7 +119,9 @@ export class TerminalView extends ItemView {
 			clear = 2,
 		}
 		let stdoutState: StdoutState =
-			(pty instanceof WindowsTerminalPty ? 0 : StdoutState.conhost) |
+			(pty instanceof WindowsTerminalPty && pty.conhost
+				? 0
+				: StdoutState.conhost) |
 			StdoutState.clear
 		if (typeof serial !== "undefined") {
 			stdoutState &= ~StdoutState.clear

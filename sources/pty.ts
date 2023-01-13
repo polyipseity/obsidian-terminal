@@ -213,6 +213,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 export class WindowsTerminalPty
 	extends PtyWithResizer
 	implements TerminalPty {
+	public readonly conhost
 	readonly #exitCode
 
 	public constructor(
@@ -221,19 +222,31 @@ export class WindowsTerminalPty
 		cwd?: string,
 		args?: string[],
 	) {
-		const esc = WindowsTerminalPty.#escapeArgument.bind(WindowsTerminalPty),
-			args0 = args ?? [],
+		const conhost = plugin.state.settings.enableWindowsConhostWorkaround,
 			codeTmp = tmpFileSync({ discardDescriptor: true })
-		super(plugin, resizable => spawn("C:\\Windows\\System32\\conhost.exe", [
-			"C:\\Windows\\System32\\cmd.exe",
-			"/C",
-			`${esc(executable)} ${args0.map(esc).join(" ")} & call echo %^ERRORLEVEL% >${esc(codeTmp.name)}`,
-		], {
-			cwd,
-			stdio: ["pipe", "pipe", "pipe"],
-			windowsHide: !resizable,
-			windowsVerbatimArguments: true,
-		}))
+		super(plugin, resizable => {
+			const esc = WindowsTerminalPty.#escapeArgument.bind(WindowsTerminalPty),
+				cmd = [
+					"C:\\Windows\\System32\\cmd.exe",
+					"/C",
+					`${esc(executable)} ${(args ?? []).map(esc).join(" ")} & call echo %^ERRORLEVEL% >${esc(codeTmp.name)}`,
+				]
+			if (conhost) {
+				cmd.unshift("C:\\Windows\\System32\\conhost.exe")
+			}
+			return spawn(
+				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+				cmd.shift()!,
+				cmd,
+				{
+					cwd,
+					stdio: ["pipe", "pipe", "pipe"],
+					windowsHide: !resizable,
+					windowsVerbatimArguments: true,
+				},
+			)
+		})
+		this.conhost = conhost
 		this.#exitCode = this.shell.then(async shell0 =>
 			new Promise<NodeJS.Signals | number>(executeParanoidly((
 				resolve,
