@@ -36,7 +36,7 @@
 			"never": "从不",
 			"always": "总是",
 			"focused": "当聚焦终端时",
-			"open": "当执行终端时"
+			"running": "当执行终端时"
 		},
 		"language": "语言",
 		"language-default": "使用应用设定",

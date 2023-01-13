@@ -36,7 +36,7 @@
 			"never": "從不",
 			"always": "總是",
 			"focused": "當聚焦終端時",
-			"open": "當執行終端時"
+			"running": "當執行終端時"
 		},
 		"language": "語言",
 		"language-default": "使用應用程式設定",
