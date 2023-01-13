@@ -76,6 +76,7 @@
         "ignoreRegExpLiterals": true
       }
     ],
+    "max-lines": "off",
     "max-lines-per-function": "off",
     "max-params": "off",
     "max-statements": "off",
