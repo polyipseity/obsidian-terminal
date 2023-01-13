@@ -78,6 +78,7 @@ export class SettingTab extends PluginSettingTab {
 					post: (dropdown, activate) => void dropdown
 						.onChange(async value => {
 							await activate(value)
+							await language.changeLanguage(settings.language)
 							this.display()
 						}),
 					pre: dropdown => void dropdown
