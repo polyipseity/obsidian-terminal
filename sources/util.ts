@@ -72,7 +72,7 @@ export function saveFile(text: string, type = "text/plain; charset=UTF-8;", file
 }
 
 export function inSet<T>(set: readonly T[], obj: any): obj is T {
-	return set.some(mem => obj === mem)
+	return (set as readonly any[]).includes(obj)
 }
 
 export function isInterface<T extends { readonly __type: T["__type"] }>(id: T["__type"], obj: any): obj is T {
@@ -125,16 +125,14 @@ export function onVisible<E extends Element>(
 	transient = false,
 ): IntersectionObserver {
 	const ret = new IntersectionObserver((ents, obsr) => {
-		(transient
+		for (const ent of transient
 			? ents.reverse()
-			: [ents.last() ?? { isIntersecting: false }])
-			.some(ent => {
-				if (ent.isIntersecting) {
-					callback(obsr, element, ent)
-					return true
-				}
-				return false
-			})
+			: [ents.last() ?? { isIntersecting: false }]) {
+			if (ent.isIntersecting) {
+				callback(obsr, element, ent)
+				break
+			}
+		}
 	})
 	ret.observe(element)
 	return ret
