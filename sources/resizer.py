@@ -8,6 +8,19 @@ import sys as _sys
 import types as _types
 import typing as _typing
 
+if _sys.platform == "darwin":
+    pass
+elif _sys.platform == "linux":
+    import ewmh as _ewmh
+    import termios as _termios
+elif _sys.platform == "win32":
+    import pywintypes as _pywintypes
+    import win32con as _win32con
+    import win32console as _win32console
+    import win32file as _win32file
+    import win32gui as _win32gui
+    import win32process as _win32process
+
 
 def main() -> None:
     pid = int(input("PID: "))
@@ -33,12 +46,8 @@ def win_to_pid(window: _pywinctl.Window) -> int | None:
     if _sys.platform == "darwin":
         return window._app.processIdentifier()
     elif _sys.platform == "linux":
-        import ewmh as _ewmh
-
         return _ewmh.getWmPid(window.getHandle())
     elif _sys.platform == "win32":
-        import win32process as _win32process
-
         return _win32process.GetWindowThreadProcessId(window.getHandle())[1]
     return None
 
@@ -75,11 +84,6 @@ def resizer_out(
             yield
     window.hide()
     if _sys.platform == "win32":
-        import pywintypes as _pywintypes
-        import win32con as _win32con
-        import win32console as _win32console
-        import win32file as _win32file
-        import win32gui as _win32gui
 
         @_typing.final
         class ConsoleScreenBufferInfo(_typing.TypedDict):
@@ -180,7 +184,6 @@ def resizer_out(
                     ignore_error(setter)
                 print(f"resized")  # used by the plugin
     else:
-        import termios as _termios
 
         @_contextlib.contextmanager
         def open_tty(pid: int) -> _typing.Iterator[int]:
