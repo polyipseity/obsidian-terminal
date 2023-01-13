@@ -1,26 +1,26 @@
 {
 	"commands": {
-		"open-terminal-external-root": "在外部終端機開啟根目錄",
-		"open-terminal-external-current": "在外部終端機開啟目前目錄",
-		"open-terminal-integrated-root": "在整合式終端機開啟根目錄",
-		"open-terminal-integrated-current": "在整合式終端機開啟目前目錄"
+		"open-terminal-external-root": "在外部終端開啟根目錄",
+		"open-terminal-external-current": "在外部終端開啟目前目錄",
+		"open-terminal-integrated-root": "在整合式終端開啟根目錄",
+		"open-terminal-integrated-current": "在整合式終端開啟目前目錄"
 	},
 	"errors": {
 		"cannot-find-status-bar": "找不到狀態欄",
-		"error-spawning-terminal": "啟動終端機時出錯",
-		"error-spawning-resizer": "啟動終端機縮放程式時出錯",
-		"resizer-disabled": "終端機縮放程式已禁用",
+		"error-spawning-terminal": "啟動終端時出錯",
+		"error-spawning-resizer": "啟動終端縮放程式時出錯",
+		"resizer-disabled": "終端縮放程式已禁用",
 		"unsupported-platform": "不支持此平台"
 	},
 	"menus": {
-		"open-terminal-external": "在外部終端機開啟",
-		"open-terminal-integrated": "在整合式終端機開啟",
+		"open-terminal-external": "在外部終端開啟",
+		"open-terminal-integrated": "在整合式終端開啟",
 		"save-as-HTML": "儲存為 HTML"
 	},
-	"name": "終端機",
+	"name": "終端",
 	"notices": {
-		"spawning-terminal": "終端機啟動中：{{executable}}",
-		"terminal-exited": "終端機已退出：{{code}}"
+		"spawning-terminal": "終端啟動中：{{executable}}",
+		"terminal-exited": "終端已退出：{{code}}"
 	},
 	"settings": {
 		"add-to-commands": "加入至命令",
@@ -35,8 +35,8 @@
 		"hide-status-bar-options": {
 			"never": "從不",
 			"always": "總是",
-			"focused": "當聚焦終端機時",
-			"open": "當執行終端機時"
+			"focused": "當聚焦終端時",
+			"open": "當執行終端時"
 		},
 		"language": "語言",
 		"language-default": "使用應用程式設定",
@@ -44,14 +44,14 @@
 		"notice-timeout": "通知超時（秒）",
 		"notice-timeout-description": "設為 0 秒是無超時。",
 		"python-executable": "Python 執行檔",
-		"python-executable-description": "清除文字域以禁用終端機縮放程式。",
+		"python-executable-description": "清除文字域以禁用終端縮放程式。",
 		"python-executable-placeholder": "（已禁用）",
 		"reset": "重設",
 		"reset-all": "重設全部"
 	},
 	"views": {
 		"terminal": {
-			"display-name": "終端機：{{executable}}"
+			"display-name": "終端：{{executable}}"
 		}
 	}
 }
