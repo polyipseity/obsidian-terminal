@@ -130,8 +130,10 @@ export class TerminalPlugin extends Plugin {
 		}
 		const [i18n] = await Promise.all([I18N, this.loadSettings()])
 		this.#i18n0 = i18n
-		const { settings, language } = this.state
-		await language.changeLanguage(settings.language)
+		const { state } = this,
+			{ settings } = this.state
+		await state.language.load()
+		state.statusBarHider.load()
 
 		this.addSettingTab(new SettingTab(this))
 		this.registerView(
@@ -265,6 +267,10 @@ export namespace TerminalPlugin {
 		readonly #uses: (() => unknown)[] = []
 		public constructor(protected readonly plugin: TerminalPlugin) { }
 
+		public async load(): Promise<void> {
+			await this.changeLanguage(this.plugin.state.settings.language)
+		}
+
 		public async changeLanguage(language: string): Promise<void> {
 			await this.plugin.i18n.changeLanguage(language === ""
 				? moment.locale()
@@ -279,7 +285,10 @@ export namespace TerminalPlugin {
 	}
 	export class StatusBarHider {
 		readonly #hiders: (() => boolean)[] = []
-		public constructor(protected readonly plugin: TerminalPlugin) {
+		public constructor(protected readonly plugin: TerminalPlugin) { }
+
+		public load(): void {
+			const { plugin } = this
 			plugin.app.workspace.onLayoutReady(() => {
 				if (statusBar(div => {
 					const obs = new MutationObserver(this.#maybeHide.bind(this, div))
