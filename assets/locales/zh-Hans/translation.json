@@ -27,7 +27,7 @@
 	"settings": {
 		"add-to-commands": "加入至命令",
 		"add-to-context-menus": "加入至右键选单",
-		"enable-Windows-conhost-workaround": "启用 Windows「conhost.exe」解决方法",
+		"enable-Windows-conhost-workaround": "启用Microsoft Windows「conhost.exe」解决方法",
 		"enable-Windows-conhost-workaround-description": "如果执行「conhost.exe」没有创建视窗，请禁用。无保证这会起作用。",
 		"executables": "可执行文件",
 		"executable-list": {
