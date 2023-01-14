@@ -13,6 +13,7 @@ import { DEFAULT_SETTINGS, SettingTab, Settings } from "./settings"
 import { GenericTerminalPty, WindowsTerminalPty } from "./pty"
 import {
 	type Mutable,
+	PLATFORM,
 	cloneAsMutable,
 	commandNamer,
 	inSet,
@@ -33,18 +34,10 @@ export class TerminalPlugin extends Plugin {
 		statusBarHider: new StatusBarHider(this),
 	}
 
-	public readonly platform = ((): TerminalPlugin.PlatformDispatch => {
-		const platform = inSet(TerminalPlugin.PLATFORMS, process.platform)
-			? process.platform
-			: null
-		return {
-			spawnTerminal: ((): TerminalPlugin.PlatformDispatch["spawnTerminal"] => {
-				if (platform === null) {
-					return plugin => {
-						throw new Error(plugin.state.language
-							.i18n.t("errors.unsupported-platform"))
-					}
-				}
+	public readonly platform = ((): TerminalPlugin.PlatformDispatch => ({
+		spawnTerminal: ((): TerminalPlugin.PlatformDispatch["spawnTerminal"] => {
+			if (inSet(TerminalView.supportedPlatforms, PLATFORM)) {
+				const platform = PLATFORM
 				return async (plugin, cwd, type) => {
 					const { settings, language } = plugin.state,
 						{ i18n } = language,
@@ -104,12 +97,16 @@ export class TerminalPlugin extends Plugin {
 							throw new TypeError(type)
 					}
 				}
-			})(),
-			terminalPty: platform === "win32"
-				? WindowsTerminalPty
-				: GenericTerminalPty,
-		}
-	})()
+			}
+			return plugin => {
+				throw new Error(plugin.state.language
+					.i18n.t("errors.unsupported-platform"))
+			}
+		})(),
+		terminalPty: PLATFORM === "win32"
+			? WindowsTerminalPty
+			: GenericTerminalPty,
+	}))()
 
 	public constructor(app: App, manifest: PluginManifest) {
 		TerminalView.namespacedViewType = TerminalView.type.namespaced(manifest)
@@ -231,8 +228,6 @@ export class TerminalPlugin extends Plugin {
 	}
 }
 export namespace TerminalPlugin {
-	export const PLATFORMS = ["darwin", "linux", "win32"] as const
-	export type Platform = typeof PLATFORMS[number]
 	export const TERMINAL_TYPES = ["external", "integrated"] as const
 	export type TerminalType = typeof TERMINAL_TYPES[number]
 	export interface PlatformDispatch {

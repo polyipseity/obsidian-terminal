@@ -32,6 +32,9 @@ import { WebLinksAddon } from "xterm-addon-web-links"
 
 export class TerminalView extends ItemView {
 	public static readonly type = new UnnamespacedID("terminal")
+	public static readonly supportedPlatforms =
+		["darwin", "linux", "win32"] as const
+
 	public static namespacedViewType: string
 	#state: TerminalView.State = {
 		__type: TerminalView.State.TYPE,

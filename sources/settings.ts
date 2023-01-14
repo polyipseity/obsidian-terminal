@@ -8,7 +8,8 @@ import {
 } from "obsidian"
 import { type Mutable, inSet } from "./util"
 import { RESOURCES } from "assets/locales"
-import { TerminalPlugin } from "./main"
+import type { TerminalPlugin } from "./main"
+import { TerminalView } from "./terminal"
 
 export interface Settings {
 	readonly language: string
@@ -25,7 +26,8 @@ export namespace Settings {
 		["never", "always", "focused", "running"] as const
 	export type HideStatusBarOption = typeof HIDE_STATUS_BAR_OPTIONS[number]
 	export type Executables = {
-		readonly [key in TerminalPlugin.Platform]: Executables.Entry
+		readonly [key in
+		typeof TerminalView.supportedPlatforms[number]]: Executables.Entry
 	}
 	export namespace Executables {
 		export interface Entry {
@@ -209,7 +211,7 @@ export class SettingTab extends PluginSettingTab {
 				i18n.t("asset:settings.python-executable-icon"),
 			))
 		containerEl.createEl("h2", { text: i18n.t("settings.executables") })
-		for (const key of TerminalPlugin.PLATFORMS) {
+		for (const key of TerminalView.supportedPlatforms) {
 			new Setting(containerEl)
 				.setName(i18n.t(`settings.executable-list.${key}`))
 				.addText(this.#linkSetting(

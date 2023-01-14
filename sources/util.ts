@@ -5,6 +5,29 @@ import type { TerminalPlugin } from "./main"
 export type Immutable<T> = { readonly [key in keyof T]: Immutable<T[key]> }
 export type Mutable<T> = { -readonly [key in keyof T]: Mutable<T[key]> }
 
+export const PLATFORMS =
+	["android", "darwin", "ios", "linux", "unknown", "win32"] as const
+export type Platform = typeof PLATFORMS[number]
+export const PLATFORM = ((): Platform => {
+	const { userAgent } = navigator
+	if (userAgent.includes("Win")) {
+		return "win32"
+	}
+	if (userAgent.includes("Linux") || userAgent.includes("X11")) {
+		return "linux"
+	}
+	if (userAgent.includes("like Mac")) {
+		return "ios"
+	}
+	if (userAgent.includes("Mac")) {
+		return "darwin"
+	}
+	if (userAgent.includes("Android")) {
+		return "android"
+	}
+	return "unknown"
+})()
+
 export class UnnamespacedID<V extends string> {
 	public constructor(public readonly id: V) { }
 
