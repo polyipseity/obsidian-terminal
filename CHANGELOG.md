@@ -4,6 +4,14 @@ Versions are ordered by recency.
 
 - Read me: [README.md](README.md)
 
+## 2.8.1
+
+__Fixes__
+- Fix failing to load plugin. (`fc07030d02699323f103b9609590ca5f6d6245ef`)
+- Housekeeping.
+
+__Full changelog__: [`2.8.0...2.8.1`](https://github.com/polyipseity/obsidian-terminal/compare/2.8.0...2.8.1)
+
 ## 2.8.0
 
 __Features__
