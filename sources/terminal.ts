@@ -277,7 +277,7 @@ export namespace TerminalView {
 		readonly __type: typeof State.TYPE
 		readonly executable: string
 		readonly cwd: string
-		readonly args: string[]
+		readonly args: readonly string[]
 		serial?: TerminalSerial
 	}
 	export namespace State {

@@ -255,7 +255,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 						}
 					}
 				}
-			function exit(...args: any[]): void {
+			function exit(...args: readonly any[]): void {
 				try {
 					reject(() => new Error(args.toString()))
 				} finally {
