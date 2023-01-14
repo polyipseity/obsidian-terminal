@@ -11,6 +11,7 @@
 		"error-spawning-resizer": "啟动终端缩放迸程时出错",
 		"resizer-disabled": "终端缩放迸程已禁用",
 		"resizer-exited-unexpectedly": "终端缩放迸程意外退出：{{- code}}",
+		"unsupported-operation": "不支持此操作",
 		"unsupported-platform": "不支持此平台"
 	},
 	"menus": {

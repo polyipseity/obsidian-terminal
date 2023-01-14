@@ -9,7 +9,7 @@ import {
 import { type Mutable, inSet } from "./util"
 import { RESOURCES } from "assets/locales"
 import type { TerminalPlugin } from "./main"
-import { TerminalView } from "./terminal"
+import { TerminalPty } from "./pty"
 
 export interface Settings {
 	readonly language: string
@@ -27,7 +27,7 @@ export namespace Settings {
 	export type HideStatusBarOption = typeof HIDE_STATUS_BAR_OPTIONS[number]
 	export type Executables = {
 		readonly [key in
-		typeof TerminalView.supportedPlatforms[number]]: Executables.Entry
+		typeof TerminalPty.SUPPORTED_PLATFORMS[number]]: Executables.Entry
 	}
 	export namespace Executables {
 		export interface Entry {
@@ -211,7 +211,7 @@ export class SettingTab extends PluginSettingTab {
 				i18n.t("asset:settings.python-executable-icon"),
 			))
 		containerEl.createEl("h2", { text: i18n.t("settings.executables") })
-		for (const key of TerminalView.supportedPlatforms) {
+		for (const key of TerminalPty.SUPPORTED_PLATFORMS) {
 			new Setting(containerEl)
 				.setName(i18n.t(`settings.executable-list.${key}`))
 				.addText(this.#linkSetting(

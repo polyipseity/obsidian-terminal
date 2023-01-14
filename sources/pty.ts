@@ -1,6 +1,12 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "child_process"
 import { NOTICE_NO_TIMEOUT, TERMINAL_WATCHDOG_INTERVAL } from "./magic"
-import { anyToError, executeParanoidly, notice, printError } from "./util"
+import {
+	PLATFORM,
+	anyToError,
+	executeParanoidly,
+	notice,
+	printError,
+} from "./util"
 import type { Terminal } from "xterm"
 import type { TerminalPlugin } from "./main"
 import { promisify } from "util"
@@ -20,13 +26,9 @@ export interface TerminalPty {
 		listener: (code: NodeJS.Signals | number) => any,
 	) => Promise<this>
 }
-// eslint-disable-next-line @typescript-eslint/no-redeclare, @typescript-eslint/naming-convention
-export declare const TerminalPty: new (
-	plugin: TerminalPlugin,
-	executable: string,
-	cwd?: string,
-	args?: string[],
-) => TerminalPty
+export namespace TerminalPty {
+	export const SUPPORTED_PLATFORMS = ["darwin", "linux", "win32"] as const
+}
 
 function clearTerminal(terminal: Terminal): void {
 	// Clear screen with scrollback kept
@@ -44,6 +46,54 @@ abstract class BaseTerminalPty implements TerminalPty {
 		event: "exit",
 		listener: (code: NodeJS.Signals | number) => any,
 	): Promise<this>
+}
+
+export class ExternalTerminalPty
+	extends BaseTerminalPty
+	implements TerminalPty {
+	public readonly shell
+	public readonly resizable = false
+	// It's not really a pty, isn't it?
+	public constructor(
+		plugin: TerminalPlugin,
+		executable: string,
+		cwd?: string,
+		args?: readonly string[],
+	) {
+		super(plugin)
+		this.shell =
+			new Promise<ShellChildProcess>(executeParanoidly(resolve => {
+				resolve(() => {
+					const ret = spawn(executable, args ?? [], {
+						cwd,
+						detached: true,
+						shell: true,
+						stdio: ["pipe", "pipe", "pipe"],
+					})
+					ret.unref()
+					return ret
+				})
+			}))
+	}
+
+	public async pipe(_terminal: Terminal): Promise<void> {
+		return Promise.reject(new Error(this.plugin.state.language
+			.i18n.t("errors.unsupported-operation")))
+	}
+
+	public async resize(_columns: number, _rows: number): Promise<void> {
+		return Promise.reject(new Error(this.plugin.state.language
+			.i18n.t("errors.unsupported-operation")))
+	}
+
+	public async once(
+		event: "exit",
+		listener: (code: NodeJS.Signals | number) => any,
+	): Promise<this> {
+		(await this.shell)
+			.once(event, (code, signal) => void listener(code ?? signal ?? NaN))
+		return this
+	}
 }
 
 abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
@@ -251,7 +301,7 @@ export class WindowsTerminalPty
 		plugin: TerminalPlugin,
 		executable: string,
 		cwd?: string,
-		args?: string[],
+		args?: readonly string[],
 	) {
 		const conhost = plugin.state.settings.enableWindowsConhostWorkaround,
 			codeTmp = tmpFileSync({ discardDescriptor: true })
@@ -352,7 +402,7 @@ export class GenericTerminalPty
 		plugin: TerminalPlugin,
 		executable: string,
 		cwd?: string,
-		args?: string[],
+		args?: readonly string[],
 	) {
 		super(plugin, resizable => spawn(executable, args, {
 			cwd,
@@ -382,3 +432,6 @@ export class GenericTerminalPty
 		terminal.onData(data => shell.stdin.write(data))
 	}
 }
+
+export const PLATFORM_PTY =
+	PLATFORM === "win32" ? WindowsTerminalPty : GenericTerminalPty

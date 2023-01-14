@@ -11,6 +11,7 @@
 		"error-spawning-resizer": "啟動終端縮放程式時出錯",
 		"resizer-disabled": "終端縮放程式已禁用",
 		"resizer-exited-unexpectedly": "終端縮放程式意外退出：{{- code}}",
+		"unsupported-operation": "不支持此操作",
 		"unsupported-platform": "不支持此平台"
 	},
 	"menus": {
