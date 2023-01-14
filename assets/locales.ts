@@ -33,4 +33,9 @@ export const RESOURCES = {
 	"zh-Hant": {
 		[DEFAULT_NAMESPACE]: checkSynchronized(zhHant),
 	},
-} as const
+} as const;
+(function checkLanguage(_language: {
+	readonly [key in keyof typeof RESOURCES]: string
+}): void {
+	// NOOP
+}(RESOURCES[DEFAULT_LANGUAGE].language))
