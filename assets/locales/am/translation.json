@@ -1,0 +1,61 @@
+{
+	"commands": {
+		"open-terminal-external-root": "Open root in external terminal",
+		"open-terminal-external-current": "Open current folder in external terminal",
+		"open-terminal-integrated-root": "Open root in integrated terminal",
+		"open-terminal-integrated-current": "Open current folder in integrated terminal"
+	},
+	"errors": {
+		"cannot-find-status-bar": "Cannot find status bar",
+		"error-spawning-terminal": "Error spawning terminal",
+		"error-spawning-resizer": "Error spawning terminal resizer",
+		"resizer-disabled": "Terminal resizer disabled",
+		"resizer-exited-unexpectedly": "Terminal resizer exited unexpectedly: {{- code}}",
+		"unsupported-operation": "Unsupported operation",
+		"unsupported-platform": "Unsupported platform"
+	},
+	"menus": {
+		"open-terminal-external": "Open in external terminal",
+		"open-terminal-integrated": "Open in integrated terminal",
+		"save-as-HTML": "Save as HTML"
+	},
+	"name": "Terminal",
+	"notices": {
+		"spawning-terminal": "Spawning terminal: {{- executable}}",
+		"terminal-exited": "Terminal exited: {{- code}}"
+	},
+	"settings": {
+		"add-to-commands": "Add to commands",
+		"add-to-context-menus": "Add to context menus",
+		"enable-Windows-conhost-workaround": "Enable Windows 'conhost.exe' workaround",
+		"enable-Windows-conhost-workaround-description": "Disable if running 'conhost.exe' does not create a window. No guarantees this will work.",
+		"executables": "Executables",
+		"executable-list": {
+			"darwin": "macOS",
+			"linux": "Linux",
+			"win32": "Microsoft Windows"
+		},
+		"hide-status-bar": "Hide status bar",
+		"hide-status-bar-options": {
+			"never": "Never",
+			"always": "Always",
+			"focused": "When terminal is focused",
+			"running": "When terminal is running"
+		},
+		"language": "Language",
+		"language-default": "Use app setting",
+		"language-description": "Applies to this plugin only.",
+		"notice-timeout": "Notice timeout (s)",
+		"notice-timeout-description": "Set to 0 s for no timeout.",
+		"python-executable": "Python executable",
+		"python-executable-description": "Clear field to disable terminal resizer.",
+		"python-executable-placeholder": "(Disabled)",
+		"reset": "Reset",
+		"reset-all": "Reset all"
+	},
+	"views": {
+		"terminal": {
+			"display-name": "Terminal: {{- executable}}"
+		}
+	}
+}
