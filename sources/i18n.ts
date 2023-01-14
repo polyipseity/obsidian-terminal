@@ -5,7 +5,9 @@ import {
 	RESOURCES,
 	RETURN_NULL,
 } from "assets/locales"
-import i18next from "i18next"
+import i18next, { type i18n } from "i18next"
+import type TerminalPlugin from "./main"
+import { moment } from "obsidian"
 import { printError } from "./util"
 
 declare module "i18next" {
@@ -33,3 +35,30 @@ export const I18N = Promise.resolve(i18next.createInstance({
 		printError(error, () => "i18n error")
 		throw error
 	})
+
+export class LanguageManager {
+	#i18n = i18next
+	readonly #uses: (() => unknown)[] = []
+	public constructor(protected readonly plugin: TerminalPlugin) { }
+
+	public get i18n(): i18n {
+		return this.#i18n
+	}
+
+	public async load(): Promise<void> {
+		this.#i18n = await I18N
+		await this.changeLanguage(this.plugin.state.settings.language)
+	}
+
+	public async changeLanguage(language: string): Promise<void> {
+		await this.i18n.changeLanguage(language === ""
+			? moment.locale()
+			: language)
+		await Promise.all(this.#uses.map(use => use()))
+	}
+
+	public registerUse(use: () => any): () => void {
+		this.#uses.push(use)
+		return () => { this.#uses.remove(use) }
+	}
+}

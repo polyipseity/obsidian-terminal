@@ -8,7 +8,6 @@ import {
 	type PluginManifest,
 	TFolder,
 	type WorkspaceLeaf,
-	moment,
 } from "obsidian"
 import { DEFAULT_SETTINGS, SettingTab, type Settings } from "./settings"
 import { GenericTerminalPty, WindowsTerminalPty } from "./pty"
@@ -21,9 +20,8 @@ import {
 	printError,
 	statusBar,
 } from "./util"
-import i18next, { type i18n } from "i18next"
 import { DEFAULT_LANGUAGE } from "assets/locales"
-import { I18N } from "./i18n"
+import { LanguageManager } from "./i18n"
 import { NOTICE_NO_TIMEOUT } from "./magic"
 import type { TerminalPty } from "./pty"
 import { TerminalView } from "./terminal"
@@ -31,7 +29,7 @@ import { spawn } from "child_process"
 
 export class TerminalPlugin extends Plugin {
 	public readonly state: TerminalPlugin.State = {
-		language: new TerminalPlugin.LanguageManager(this),
+		language: new LanguageManager(this),
 		settings: cloneAsMutable(DEFAULT_SETTINGS),
 		statusBarHider: new TerminalPlugin.StatusBarHider(this),
 	}
@@ -258,32 +256,6 @@ export namespace TerminalPlugin {
 		readonly settings: Mutable<Settings>
 		readonly language: LanguageManager
 		readonly statusBarHider: StatusBarHider
-	}
-	export class LanguageManager {
-		#i18n = i18next
-		readonly #uses: (() => unknown)[] = []
-		public constructor(protected readonly plugin: TerminalPlugin) { }
-
-		public get i18n(): i18n {
-			return this.#i18n
-		}
-
-		public async load(): Promise<void> {
-			this.#i18n = await I18N
-			await this.changeLanguage(this.plugin.state.settings.language)
-		}
-
-		public async changeLanguage(language: string): Promise<void> {
-			await this.i18n.changeLanguage(language === ""
-				? moment.locale()
-				: language)
-			await Promise.all(this.#uses.map(use => use()))
-		}
-
-		public registerUse(use: () => any): () => void {
-			this.#uses.push(use)
-			return () => { this.#uses.remove(use) }
-		}
 	}
 	export class StatusBarHider {
 		readonly #hiders: (() => boolean)[] = []
