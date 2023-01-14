@@ -41,7 +41,8 @@ export const DEFAULT_SETTINGS: Settings = {
 	executables: {
 		darwin: {
 			args: [],
-			name: "Terminal.app",
+			name:
+				"/System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal",
 		},
 		linux: {
 			args: [],
