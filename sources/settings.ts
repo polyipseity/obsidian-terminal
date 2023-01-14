@@ -1,6 +1,7 @@
 import {
 	type ButtonComponent,
 	type ExtraButtonComponent,
+	type Plugin,
 	PluginSettingTab,
 	Setting,
 	type ValueComponent,
@@ -31,6 +32,12 @@ export namespace Settings {
 			readonly name: string
 			readonly args: readonly string[]
 		}
+	}
+	export async function load(self: Settings, plugin: Plugin): Promise<void> {
+		Object.assign(self, await plugin.loadData())
+	}
+	export async function save(self: Settings, plugin: Plugin): Promise<void> {
+		await plugin.saveData(self)
 	}
 }
 export type MutableSettings = Mutable<Settings>
@@ -248,7 +255,7 @@ export class SettingTab extends PluginSettingTab {
 				if (typeof ret === "boolean" && !ret) {
 					return
 				}
-				await this.plugin.saveSettings()
+				await Settings.save(this.plugin.state.settings, this.plugin)
 			}
 			component.setValue(getter()).onChange(activate);
 			(action.post ?? ((): void => { }))(component, activate)
@@ -290,7 +297,7 @@ export class SettingTab extends PluginSettingTab {
 				if (typeof ret === "boolean" && !ret) {
 					return
 				}
-				const save = this.plugin.saveSettings()
+				const save = Settings.save(this.plugin.state.settings, this.plugin)
 				this.display()
 				await save
 			}

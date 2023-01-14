@@ -9,7 +9,7 @@ import {
 	TFolder,
 	type WorkspaceLeaf,
 } from "obsidian"
-import { DEFAULT_SETTINGS, SettingTab, type Settings } from "./settings"
+import { DEFAULT_SETTINGS, SettingTab, Settings } from "./settings"
 import { GenericTerminalPty, WindowsTerminalPty } from "./pty"
 import {
 	type Mutable,
@@ -121,9 +121,9 @@ export class TerminalPlugin extends Plugin {
 		if (!Platform.isDesktopApp) {
 			return
 		}
-		await this.loadSettings()
 		const { state } = this,
 			{ settings, language, statusBarHider } = state
+		await Settings.load(settings, this)
 		await language.load()
 		statusBarHider.load()
 		const { i18n } = language
@@ -228,14 +228,6 @@ export class TerminalPlugin extends Plugin {
 				addContextMenus(menu, info.file.parent)
 			},
 		))
-	}
-
-	public async loadSettings(): Promise<void> {
-		Object.assign(this.state.settings, await this.loadData())
-	}
-
-	public async saveSettings(): Promise<void> {
-		await this.saveData(this.state.settings)
 	}
 }
 export namespace TerminalPlugin {
