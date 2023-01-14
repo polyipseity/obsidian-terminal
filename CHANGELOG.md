@@ -4,6 +4,22 @@ Versions are ordered by recency.
 
 - Read me: [README.md](README.md)
 
+## 2.8.0
+
+__Features__
+- Add 2 new plugin settings.
+  - Hide status bar (`86c6602bd2b6b2e93f13e182ae11daa413a28cf3`)
+  - Enable Windows 'conhost.exe' workaround (`e2710eca0e38570e812cd7beb467b71223a4696c`)
+
+__Improvements__
+- Log error and notify user if terminal resizer fails to start. (`5be0367243ad9a4655f9b09575d6a17ee317a707`)
+
+__Fixes__
+- Fix terminal not starting if terminal resizer fails to start. (`459ac226e08bc8898885731a41de6406af10c322`)
+- Fix text escaping unnecessarily in notice messages. (`0dc8152517d29f896021beeafd355c4f2b8d2907`)
+
+__Full changelog__: [`2.7.0...2.8.0`](https://github.com/polyipseity/obsidian-terminal/compare/2.7.0...2.8.0)
+
 ## 2.7.0 🥳
 
 The plugin has just been [accepted](https://github.com/obsidianmd/obsidian-releases/pull/1472) into community plugins! 🥳
