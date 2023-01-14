@@ -46,6 +46,6 @@
 		"minAppVersion": "1.1.9",
 		"authorUrl": "",
 		"fundingUrl": {},
-		"isDesktopOnly": true
+		"isDesktopOnly": false
 	}
 }
