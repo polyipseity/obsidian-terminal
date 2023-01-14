@@ -42,7 +42,9 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 	#resizable = false
 	readonly #resizer = ((): ChildProcessWithoutNullStreams | null => {
 		const { plugin } = this,
-			{ pythonExecutable } = plugin.state.settings
+			{ settings, language } = plugin.state,
+			{ pythonExecutable } = settings,
+			{ i18n } = language
 		if (pythonExecutable === "") {
 			return null
 		}
@@ -70,7 +72,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 				this.#resizable = false
 				if (code !== 0) {
 					notice(
-						() => plugin.i18n.t(
+						() => i18n.t(
 							"errors.resizer-exited-unexpectedly",
 							{ code: code ?? signal },
 						),
@@ -83,7 +85,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 				this.#resizable = false
 				printError(
 					error,
-					() => plugin.i18n.t("errors.error-spawning-resizer"),
+					() => i18n.t("errors.error-spawning-resizer"),
 					plugin,
 				)
 			})
@@ -100,7 +102,8 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 		) => {
 			const resizer = this.#resizer
 			if (resizer === null) {
-				callback(new Error(this.plugin.i18n.t("errors.resizer-disabled")))
+				callback(new Error(this.plugin.state.language
+					.i18n.t("errors.resizer-disabled")))
 				return false
 			}
 			try {
@@ -136,7 +139,8 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 									try {
 										printError(
 											reason,
-											() => this.plugin.i18n.t("errors.error-spawning-resizer"),
+											() => this.plugin.state.language
+												.i18n.t("errors.error-spawning-resizer"),
 											this.plugin,
 										)
 									} finally {
@@ -172,7 +176,8 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 		return new Promise(executeParanoidly((resolve, reject) => {
 			const resizer = this.#resizer
 			if (resizer === null) {
-				reject(() => new Error(this.plugin.i18n.t("errors.resizer-disabled")))
+				reject(() => new Error(this.plugin.state.language
+					.i18n.t("errors.resizer-disabled")))
 				return
 			}
 			const resizer0 = resizer,

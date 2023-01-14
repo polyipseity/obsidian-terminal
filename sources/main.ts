@@ -44,14 +44,16 @@ export class TerminalPlugin extends Plugin {
 			spawnTerminal: ((): TerminalPlugin.PlatformDispatch["spawnTerminal"] => {
 				if (platform === null) {
 					return plugin => {
-						throw Error(plugin.i18n.t("errors.unsupported-platform"))
+						throw new Error(plugin.state.language
+							.i18n.t("errors.unsupported-platform"))
 					}
 				}
 				return async (plugin, cwd, type) => {
-					const { settings } = plugin.state,
+					const { settings, language } = plugin.state,
+						{ i18n } = language,
 						executable = settings.executables[platform]
 					notice(
-						() => plugin.i18n.t(
+						() => i18n.t(
 							"notices.spawning-terminal",
 							{ executable: executable.name },
 						),
@@ -69,7 +71,7 @@ export class TerminalPlugin extends Plugin {
 								.once("error", error => {
 									printError(
 										error,
-										() => plugin.i18n.t("errors.error-spawning-terminal"),
+										() => i18n.t("errors.error-spawning-terminal"),
 										plugin,
 									)
 								})
@@ -112,15 +114,9 @@ export class TerminalPlugin extends Plugin {
 		}
 	})()
 
-	#i18n0: i18n = i18next
-
 	public constructor(app: App, manifest: PluginManifest) {
 		TerminalView.namespacedViewType = TerminalView.type.namespaced(manifest)
 		super(app, manifest)
-	}
-
-	public get i18n(): i18n {
-		return this.#i18n0
 	}
 
 	public override async onload(): Promise<void> {
@@ -128,12 +124,12 @@ export class TerminalPlugin extends Plugin {
 		if (!Platform.isDesktopApp) {
 			return
 		}
-		const [i18n] = await Promise.all([I18N, this.loadSettings()])
-		this.#i18n0 = i18n
+		await this.loadSettings()
 		const { state } = this,
-			{ settings } = this.state
-		await state.language.load()
-		state.statusBarHider.load()
+			{ settings, language, statusBarHider } = state
+		await language.load()
+		statusBarHider.load()
+		const { i18n } = language
 
 		this.addSettingTab(new SettingTab(this))
 		this.registerView(
@@ -264,15 +260,21 @@ export namespace TerminalPlugin {
 		readonly statusBarHider: StatusBarHider
 	}
 	export class LanguageManager {
+		#i18n = i18next
 		readonly #uses: (() => unknown)[] = []
 		public constructor(protected readonly plugin: TerminalPlugin) { }
 
+		public get i18n(): i18n {
+			return this.#i18n
+		}
+
 		public async load(): Promise<void> {
+			this.#i18n = await I18N
 			await this.changeLanguage(this.plugin.state.settings.language)
 		}
 
 		public async changeLanguage(language: string): Promise<void> {
-			await this.plugin.i18n.changeLanguage(language === ""
+			await this.i18n.changeLanguage(language === ""
 				? moment.locale()
 				: language)
 			await Promise.all(this.#uses.map(use => use()))
@@ -303,7 +305,7 @@ export namespace TerminalPlugin {
 					obs.observe(div, { attributeFilter: ["style"] })
 				}) === null) {
 					notice(
-						() => plugin.i18n.t("errors.cannot-find-status-bar"),
+						() => plugin.state.language.i18n.t("errors.cannot-find-status-bar"),
 						NOTICE_NO_TIMEOUT,
 						plugin,
 					)

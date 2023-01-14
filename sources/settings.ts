@@ -66,10 +66,11 @@ export class SettingTab extends PluginSettingTab {
 
 	public display(): void {
 		const { containerEl, plugin } = this,
-			{ i18n, state } = plugin,
-			{ settings, language, statusBarHider } = state
+			{ state } = plugin,
+			{ settings, language, statusBarHider } = state,
+			{ i18n } = language
 		containerEl.empty()
-		containerEl.createEl("h1", { text: plugin.i18n.t("name") })
+		containerEl.createEl("h1", { text: i18n.t("name") })
 
 		new Setting(containerEl)
 			.setName(i18n.t("settings.language"))
@@ -275,7 +276,8 @@ export class SettingTab extends PluginSettingTab {
 
 	#resetButton<C extends ButtonComponent | ExtraButtonComponent>(
 		resetter: (component: C) => any,
-		icon: string = this.plugin.i18n.t("asset:settings.reset-icon"),
+		icon: string = this.plugin.state.language
+			.i18n.t("asset:settings.reset-icon"),
 		action: SettingTab.ComponentAction<C, void> = {},
 	) {
 		return (component: C): void => {
@@ -290,7 +292,7 @@ export class SettingTab extends PluginSettingTab {
 				await save
 			}
 			component
-				.setTooltip(this.plugin.i18n.t("settings.reset"))
+				.setTooltip(this.plugin.state.language.i18n.t("settings.reset"))
 				.setIcon(icon)
 				.onClick(activate);
 			(action.post ?? ((): void => { }))(component, activate)

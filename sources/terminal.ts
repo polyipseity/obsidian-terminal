@@ -89,7 +89,7 @@ export class TerminalView extends ItemView {
 		this.#state = state
 
 		const { plugin } = this,
-			{ i18n } = plugin,
+			{ i18n } = plugin.state.language,
 			pty = new plugin.platform.terminalPty(
 				plugin,
 				state.executable,
@@ -170,11 +170,11 @@ export class TerminalView extends ItemView {
 	}
 
 	public getDisplayText(): string {
-		return this.plugin.i18n.t(`views.${TerminalView.type.id}.display-name`, { executable: this.#getExecutableBasename() })
+		return this.plugin.state.language.i18n.t(`views.${TerminalView.type.id}.display-name`, { executable: this.#getExecutableBasename() })
 	}
 
 	public override getIcon(): string {
-		return this.plugin.i18n.t(`asset:views.${TerminalView.type.id}-icon`)
+		return this.plugin.state.language.i18n.t(`asset:views.${TerminalView.type.id}-icon`)
 	}
 
 	public getViewType(): string {
@@ -185,7 +185,7 @@ export class TerminalView extends ItemView {
 	public override onPaneMenu(menu: Menu, source: string): void {
 		super.onPaneMenu(menu, source)
 		const { leaf, plugin } = this,
-			{ i18n } = plugin
+			{ i18n } = plugin.state.language
 		menu
 			.addSeparator()
 			.addItem(item => item
