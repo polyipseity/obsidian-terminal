@@ -97,6 +97,10 @@ export class TerminalView extends ItemView {
 
 		const { plugin } = this,
 			{ i18n } = plugin.language
+		if (PLATFORM_PTY === null) {
+			this.leaf.detach()
+			return
+		}
 		this.#pty = new PLATFORM_PTY(
 			plugin,
 			state.executable,

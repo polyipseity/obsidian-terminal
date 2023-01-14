@@ -4,6 +4,7 @@ import {
 	PLATFORM,
 	anyToError,
 	executeParanoidly,
+	inSet,
 	notice,
 	printError,
 } from "./util"
@@ -434,4 +435,6 @@ export class GenericTerminalPty
 }
 
 export const PLATFORM_PTY =
-	PLATFORM === "win32" ? WindowsTerminalPty : GenericTerminalPty
+	inSet(TerminalPty.SUPPORTED_PLATFORMS, PLATFORM)
+		? PLATFORM === "win32" ? WindowsTerminalPty : GenericTerminalPty
+		: null
