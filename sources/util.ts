@@ -125,8 +125,7 @@ export function notice(
 	if (typeof plugin === "undefined") {
 		return ret
 	}
-	const unreg =
-		plugin.state.language.registerUse(() => ret.setMessage(message()))
+	const unreg = plugin.language.registerUse(() => ret.setMessage(message()))
 	try {
 		if (timeoutMs === 0) {
 			plugin.register(unreg)

@@ -47,7 +47,7 @@ export class LanguageManager {
 
 	public async load(): Promise<void> {
 		this.#i18n = await I18N
-		await this.changeLanguage(this.plugin.state.settings.language)
+		await this.changeLanguage(this.plugin.settings.language)
 	}
 
 	public async changeLanguage(language: string): Promise<void> {

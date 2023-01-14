@@ -96,7 +96,7 @@ export class TerminalView extends ItemView {
 		this.#state = state
 
 		const { plugin } = this,
-			{ i18n } = plugin.state.language
+			{ i18n } = plugin.language
 		this.#pty = new PLATFORM_PTY(
 			plugin,
 			state.executable,
@@ -112,7 +112,7 @@ export class TerminalView extends ItemView {
 				notice(
 					() => i18n.t("notices.terminal-exited", { code }),
 					inSet(TERMINAL_EXIT_SUCCESS, code)
-						? plugin.state.settings.noticeTimeout
+						? plugin.settings.noticeTimeout
 						: NOTICE_NO_TIMEOUT,
 					plugin,
 				)
@@ -156,7 +156,7 @@ export class TerminalView extends ItemView {
 	}
 
 	public getDisplayText(): string {
-		return this.plugin.state.language
+		return this.plugin.language
 			.i18n.t(
 				`views.${TerminalView.type.id}.display-name`,
 				{ executable: this.#getExecutableBasename() },
@@ -164,7 +164,7 @@ export class TerminalView extends ItemView {
 	}
 
 	public override getIcon(): string {
-		return this.plugin.state.language
+		return this.plugin.language
 			.i18n.t(`asset:views.${TerminalView.type.id}-icon`)
 	}
 
@@ -176,7 +176,7 @@ export class TerminalView extends ItemView {
 	public override onPaneMenu(menu: Menu, source: string): void {
 		super.onPaneMenu(menu, source)
 		const { leaf, plugin } = this,
-			{ i18n } = plugin.state.language
+			{ i18n } = plugin.language
 		menu
 			.addSeparator()
 			.addItem(item => item
@@ -224,8 +224,7 @@ export class TerminalView extends ItemView {
 	protected override async onOpen(): Promise<void> {
 		await super.onOpen()
 		const { containerEl, plugin } = this,
-			{ app, state } = plugin,
-			{ language, statusBarHider } = state
+			{ app, language, statusBarHider } = plugin
 
 		containerEl.empty()
 		containerEl.createDiv({}, ele => {
@@ -263,7 +262,7 @@ export class TerminalView extends ItemView {
 
 	#hidesStatusBar(): boolean {
 		const { plugin } = this
-		switch (plugin.state.settings.hideStatusBar) {
+		switch (plugin.settings.hideStatusBar) {
 			case "focused":
 				return plugin.app.workspace.getActiveViewOfType(TerminalView) === this
 			case "running":
@@ -290,8 +289,7 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 	const
 		CWD_TYPES = ["root", "current"] as const,
 		TERMINAL_TYPES = ["external", "integrated"] as const,
-		{ app, state } = plugin,
-		{ settings, language } = state,
+		{ app, settings, language } = plugin,
 		{ i18n } = language
 	type CwdType = typeof CWD_TYPES[number]
 	type TerminalType = typeof TERMINAL_TYPES[number]

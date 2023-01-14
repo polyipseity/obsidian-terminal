@@ -31,7 +31,7 @@ export class StatusBarHider {
 				obs.observe(div, { attributeFilter: ["style"] })
 			}) === null) {
 				notice(
-					() => plugin.state.language.i18n.t("errors.cannot-find-status-bar"),
+					() => plugin.language.i18n.t("errors.cannot-find-status-bar"),
 					NOTICE_NO_TIMEOUT,
 					plugin,
 				)
@@ -56,7 +56,7 @@ export class StatusBarHider {
 	}
 
 	#maybeHide(div: HTMLDivElement): void {
-		if (this.plugin.state.settings.hideStatusBar === "always" ||
+		if (this.plugin.settings.hideStatusBar === "always" ||
 			this.#hiders.some(hider0 => hider0())) {
 			div.style.visibility = "hidden"
 		}

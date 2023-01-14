@@ -77,12 +77,12 @@ export class ExternalTerminalPty
 	}
 
 	public async pipe(_terminal: Terminal): Promise<void> {
-		return Promise.reject(new Error(this.plugin.state.language
+		return Promise.reject(new Error(this.plugin.language
 			.i18n.t("errors.unsupported-operation")))
 	}
 
 	public async resize(_columns: number, _rows: number): Promise<void> {
-		return Promise.reject(new Error(this.plugin.state.language
+		return Promise.reject(new Error(this.plugin.language
 			.i18n.t("errors.unsupported-operation")))
 	}
 
@@ -101,7 +101,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 	#resizable = false
 	readonly #resizer = ((): ChildProcessWithoutNullStreams | null => {
 		const { plugin } = this,
-			{ settings, language } = plugin.state,
+			{ settings, language } = plugin,
 			{ pythonExecutable } = settings,
 			{ i18n } = language
 		if (pythonExecutable === "") {
@@ -161,7 +161,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 		) => {
 			const resizer = this.#resizer
 			if (resizer === null) {
-				callback(new Error(this.plugin.state.language
+				callback(new Error(this.plugin.language
 					.i18n.t("errors.resizer-disabled")))
 				return false
 			}
@@ -198,7 +198,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 									try {
 										printError(
 											reason,
-											() => this.plugin.state.language
+											() => this.plugin.language
 												.i18n.t("errors.error-spawning-resizer"),
 											this.plugin,
 										)
@@ -235,7 +235,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 		return new Promise(executeParanoidly((resolve, reject) => {
 			const resizer = this.#resizer
 			if (resizer === null) {
-				reject(() => new Error(this.plugin.state.language
+				reject(() => new Error(this.plugin.language
 					.i18n.t("errors.resizer-disabled")))
 				return
 			}
@@ -303,7 +303,7 @@ export class WindowsTerminalPty
 		cwd?: string,
 		args?: readonly string[],
 	) {
-		const conhost = plugin.state.settings.enableWindowsConhostWorkaround,
+		const conhost = plugin.settings.enableWindowsConhostWorkaround,
 			codeTmp = tmpFileSync({ discardDescriptor: true })
 		super(plugin, resizable => {
 			const esc = WindowsTerminalPty.#escapeArgument.bind(WindowsTerminalPty),
