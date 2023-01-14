@@ -44,7 +44,7 @@
 		},
 		"language": "语言",
 		"language-default": "使用应用设定",
-		"language-description": "仅适用於此插件。",
+		"language-description": "仅适用於此插件。标有🚧的语言需要您帮助来翻译！",
 		"notice-timeout": "通知超时（秒）",
 		"notice-timeout-description": "设为 0 秒是无超时。",
 		"python-executable": "Python 可执行文件",

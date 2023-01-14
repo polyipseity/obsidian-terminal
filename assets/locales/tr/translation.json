@@ -44,7 +44,7 @@
 		},
 		"language": "Language",
 		"language-default": "Use app setting",
-		"language-description": "Applies to this plugin only.",
+		"language-description": "Applies to this plugin only. Languages with 🚧 need your help with translation!",
 		"notice-timeout": "Notice timeout (s)",
 		"notice-timeout-description": "Set to 0 s for no timeout.",
 		"python-executable": "Python executable",

@@ -44,7 +44,7 @@
 		},
 		"language": "語言",
 		"language-default": "使用應用程式設定",
-		"language-description": "僅適用於此外掛程式。",
+		"language-description": "僅適用於此外掛程式。標有🚧的語言需要您幫助來翻譯！",
 		"notice-timeout": "通知超時（秒）",
 		"notice-timeout-description": "設為 0 秒是無超時。",
 		"python-executable": "Python 執行檔",
