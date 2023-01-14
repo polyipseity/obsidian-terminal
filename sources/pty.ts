@@ -1,6 +1,7 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "child_process"
 import { NOTICE_NO_TIMEOUT, TERMINAL_WATCHDOG_INTERVAL } from "./magic"
 import { anyToError, executeParanoidly, notice, printError } from "./util"
+import type { Terminal } from "xterm"
 import type { TerminalPlugin } from "./main"
 import { promisify } from "util"
 import { readFileSync } from "fs"
@@ -12,6 +13,7 @@ type ShellChildProcess = ChildProcessWithoutNullStreams
 export interface TerminalPty {
 	readonly shell: Promise<ShellChildProcess>
 	readonly resizable: boolean
+	readonly pipe: (terminal: Terminal) => Promise<void>
 	readonly resize: (columns: number, rows: number) => Promise<void>
 	readonly once: (
 		event: "exit",
@@ -26,10 +28,17 @@ export declare const TerminalPty: new (
 	args?: string[],
 ) => TerminalPty
 
+function clearTerminal(terminal: Terminal): void {
+	// Clear screen with scrollback kept
+	terminal.write(`${"\n\u001b[K".repeat(terminal.rows)}\u001b[H`)
+}
+
 abstract class BaseTerminalPty implements TerminalPty {
 	public abstract readonly shell: Promise<ShellChildProcess>
 	public abstract readonly resizable: boolean
 	protected constructor(protected readonly plugin: TerminalPlugin) { }
+
+	public abstract pipe(terminal: Terminal): Promise<void>
 	public abstract resize(columns: number, rows: number): Promise<void>
 	public abstract once(
 		event: "exit",
@@ -318,6 +327,22 @@ export class WindowsTerminalPty
 		this.#exitCode.then(listener).catch(() => { })
 		return Promise.resolve(this)
 	}
+
+	public async pipe(terminal: Terminal): Promise<void> {
+		const shell = await this.shell
+		clearTerminal(terminal)
+		shell.stdout.once("data", (chunk: Buffer | string) => {
+			shell.stdout.on("data", (chunk0: Buffer | string) => {
+				terminal.write(chunk0)
+			})
+			if (this.conhost) { return }
+			terminal.write(chunk)
+		})
+		shell.stderr.on("data", (chunk: Buffer | string) => {
+			terminal.write(chunk)
+		})
+		terminal.onData(data => shell.stdin.write(data))
+	}
 }
 
 export class GenericTerminalPty
@@ -343,5 +368,17 @@ export class GenericTerminalPty
 		(await this.shell)
 			.once(event, (code, signal) => void listener(code ?? signal ?? NaN))
 		return this
+	}
+
+	public async pipe(terminal: Terminal): Promise<void> {
+		const shell = await this.shell
+		clearTerminal(terminal)
+		shell.stdout.on("data", (chunk: Buffer | string) => {
+			terminal.write(chunk)
+		})
+		shell.stderr.on("data", (chunk: Buffer | string) => {
+			terminal.write(chunk)
+		})
+		terminal.onData(data => shell.stdin.write(data))
 	}
 }

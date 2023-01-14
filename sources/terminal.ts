@@ -10,7 +10,6 @@ import {
 	TERMINAL_EXIT_SUCCESS,
 	TERMINAL_RESIZE_TIMEOUT,
 } from "./magic"
-import { type TerminalPty, WindowsTerminalPty } from "./pty"
 import { type TerminalSerial, TerminalSerializer } from "./terminal-serialize"
 import {
 	UnnamespacedID,
@@ -28,6 +27,7 @@ import { FitAddon } from "xterm-addon-fit"
 import { SearchAddon } from "xterm-addon-search"
 import { Terminal } from "xterm"
 import type { TerminalPlugin } from "./main"
+import type { TerminalPty } from "./pty"
 import { WebLinksAddon } from "xterm-addon-web-links"
 
 export class TerminalView extends ItemView {
@@ -78,6 +78,7 @@ export class TerminalView extends ItemView {
 		for (const addon of Object.values(this.#terminalAddons)) {
 			this.#terminal.loadAddon(addon)
 		}
+		this.#terminal.onWriteParsed(this.plugin.app.workspace.requestSaveLayout)
 	}
 
 	public override async setState(
@@ -92,64 +93,43 @@ export class TerminalView extends ItemView {
 		this.#state = state
 
 		const { plugin } = this,
-			{ i18n } = plugin.state.language,
-			pty = new plugin.platform.terminalPty(
-				plugin,
-				state.executable,
-				state.cwd,
-				state.args,
-			)
-		this.register(async () => (await pty.shell).kill())
-		this.#pty = pty
-		const shell = await (await pty.once("exit", code => {
-			this.leaf.detach()
-			notice(
-				() => i18n.t("notices.terminal-exited", { code }),
-				inSet(TERMINAL_EXIT_SUCCESS, code)
-					? plugin.state.settings.noticeTimeout
-					: NOTICE_NO_TIMEOUT,
-				plugin,
-			)
-		})).shell
-		shell.once("error", error => {
-			this.leaf.detach()
-			printError(error, () => i18n.t("errors.error-spawning-terminal"), plugin)
+			{ i18n } = plugin.state.language
+		this.#pty = new plugin.platform.terminalPty(
+			plugin,
+			state.executable,
+			state.cwd,
+			state.args,
+		)
+		const shell = await this.#pty.shell
+		this.register(shell.kill.bind(shell))
+		await this.#pty.once("exit", code => {
+			try {
+				this.leaf.detach()
+			} finally {
+				notice(
+					() => i18n.t("notices.terminal-exited", { code }),
+					inSet(TERMINAL_EXIT_SUCCESS, code)
+						? plugin.state.settings.noticeTimeout
+						: NOTICE_NO_TIMEOUT,
+					plugin,
+				)
+			}
 		})
-
+		shell.once("error", error => {
+			try {
+				printError(error, () =>
+					i18n.t("errors.error-spawning-terminal"), plugin)
+			} finally {
+				this.leaf.detach()
+			}
+		})
 		const { serial } = state
-		const enum StdoutState {
-			conhost = 1,
-			clear = 2,
-		}
-		let stdoutState: StdoutState =
-			(pty instanceof WindowsTerminalPty && pty.conhost
-				? 0
-				: StdoutState.conhost) |
-			StdoutState.clear
 		if (typeof serial !== "undefined") {
-			stdoutState &= ~StdoutState.clear
 			this.#serializer.unserialize(serial)
 			this.#terminal.resize(serial.columns, serial.rows)
 			this.#terminal.write(serial.data)
 		}
-		shell.stdout.on("data", (chunk: Buffer | string) => {
-			if ((stdoutState & StdoutState.conhost) === 0) {
-				stdoutState |= StdoutState.conhost
-				// Skip conhost.exe output
-				return
-			}
-			if ((stdoutState & StdoutState.clear) === 0) {
-				stdoutState |= StdoutState.clear
-				// Clear screen with scrollback kept
-				this.#write("\n\u001b[K".repeat(this.#terminal.rows))
-				this.#write("\u001b[H")
-			}
-			this.#write(chunk)
-		})
-		shell.stderr.on("data", (chunk: Buffer | string) => {
-			this.#terminal.write(chunk)
-		})
-		this.#terminal.onData(data => shell.stdin.write(data))
+		await this.#pty.pipe(this.#terminal)
 	}
 
 	public override getState(): any {
@@ -276,11 +256,6 @@ export class TerminalView extends ItemView {
 	#getExecutableBasename(): string {
 		const { executable } = this.#state
 		return basename(executable, extname(executable))
-	}
-
-	#write(data: Buffer | string): void {
-		this.#terminal.write(data)
-		this.plugin.app.workspace.requestSaveLayout()
 	}
 
 	#hidesStatusBar(): boolean {
