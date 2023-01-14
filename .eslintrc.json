@@ -72,8 +72,8 @@
         "ignorePattern": "// eslint-disable-next-line ",
         "ignoreUrls": true,
         "ignoreStrings": false,
-        "ignoreTemplateLiterals": true,
-        "ignoreRegExpLiterals": true
+        "ignoreTemplateLiterals": false,
+        "ignoreRegExpLiterals": false
       }
     ],
     "max-lines": "off",

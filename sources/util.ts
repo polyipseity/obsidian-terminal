@@ -9,7 +9,9 @@ export class UnnamespacedID<V extends string> {
 	public constructor(public readonly id: V) { }
 
 	public namespaced(plugin: Plugin | PluginManifest): string {
-		return `${(plugin instanceof Plugin ? plugin.manifest : plugin).id}:${this.id}`
+		return `${(plugin instanceof Plugin
+			? plugin.manifest
+			: plugin).id}:${this.id}`
 	}
 }
 
@@ -168,7 +170,8 @@ export function printError(
 export function updateDisplayText(view: View): boolean {
 	const type = view.getViewType(),
 		text = view.getDisplayText(),
-		header = document.querySelector(`.workspace-tab-header[data-type="${type}"]`)
+		header = document
+			.querySelector(`.workspace-tab-header[data-type="${type}"]`)
 	if (header === null) { return false }
 	const title = header.querySelector(".workspace-tab-header-inner-title")
 	if (title === null) { return false }

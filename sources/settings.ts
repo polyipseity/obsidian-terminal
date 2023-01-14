@@ -154,7 +154,10 @@ export class SettingTab extends PluginSettingTab {
 					pre: dropdown => void dropdown
 						.addOptions(Object
 							.fromEntries(Settings.HIDE_STATUS_BAR_OPTIONS
-								.map(value => [value, i18n.t(`settings.hide-status-bar-options.${value}`)]))),
+								.map(value => [
+									value,
+									i18n.t(`settings.hide-status-bar-options.${value}`),
+								]))),
 				},
 			))
 			.addExtraButton(this.#resetButton(

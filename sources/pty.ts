@@ -251,7 +251,9 @@ export class WindowsTerminalPty
 				cmd = [
 					"C:\\Windows\\System32\\cmd.exe",
 					"/C",
-					`${esc(executable)} ${(args ?? []).map(esc).join(" ")} & call echo %^ERRORLEVEL% >${esc(codeTmp.name)}`,
+					`${esc(executable)} ${(args ?? [])
+						.map(esc)
+						.join(" ")} & call echo %^ERRORLEVEL% >${esc(codeTmp.name)}`,
 				]
 			if (conhost) {
 				cmd.unshift("C:\\Windows\\System32\\conhost.exe")
@@ -300,7 +302,8 @@ export class WindowsTerminalPty
 	}
 
 	static #escapeArgument(arg: string): string {
-		return `"${arg.replace("\"", "\\\"")}"`.replace(/(?<meta>[()%!^"<>&|])/gu, "^$<meta>")
+		return `"${arg.replace("\"", "\\\"")}"`
+			.replace(/(?<meta>[()%!^"<>&|])/gu, "^$<meta>")
 
 		/*
 		 * Replace 1: quote argument

@@ -170,11 +170,16 @@ export class TerminalView extends ItemView {
 	}
 
 	public getDisplayText(): string {
-		return this.plugin.state.language.i18n.t(`views.${TerminalView.type.id}.display-name`, { executable: this.#getExecutableBasename() })
+		return this.plugin.state.language
+			.i18n.t(
+				`views.${TerminalView.type.id}.display-name`,
+				{ executable: this.#getExecutableBasename() },
+			)
 	}
 
 	public override getIcon(): string {
-		return this.plugin.state.language.i18n.t(`asset:views.${TerminalView.type.id}-icon`)
+		return this.plugin.state.language
+			.i18n.t(`asset:views.${TerminalView.type.id}-icon`)
 	}
 
 	public getViewType(): string {
