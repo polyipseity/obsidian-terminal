@@ -18,11 +18,10 @@ import {
 	inSet,
 	notice,
 	printError,
-	statusBar,
 } from "./util"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import { LanguageManager } from "./i18n"
-import { NOTICE_NO_TIMEOUT } from "./magic"
+import { StatusBarHider } from "./status-bar"
 import type { TerminalPty } from "./pty"
 import { TerminalView } from "./terminal"
 import { spawn } from "child_process"
@@ -31,7 +30,7 @@ export class TerminalPlugin extends Plugin {
 	public readonly state: TerminalPlugin.State = {
 		language: new LanguageManager(this),
 		settings: cloneAsMutable(DEFAULT_SETTINGS),
-		statusBarHider: new TerminalPlugin.StatusBarHider(this),
+		statusBarHider: new StatusBarHider(this),
 	}
 
 	public readonly platform = ((): TerminalPlugin.PlatformDispatch => {
@@ -256,61 +255,6 @@ export namespace TerminalPlugin {
 		readonly settings: Mutable<Settings>
 		readonly language: LanguageManager
 		readonly statusBarHider: StatusBarHider
-	}
-	export class StatusBarHider {
-		readonly #hiders: (() => boolean)[] = []
-		public constructor(protected readonly plugin: TerminalPlugin) { }
-
-		public load(): void {
-			const { plugin } = this
-			plugin.app.workspace.onLayoutReady(() => {
-				if (statusBar(div => {
-					const obs = new MutationObserver(this.#maybeHide.bind(this, div))
-					plugin.register(() => {
-						try {
-							obs.disconnect()
-						} finally {
-							this.#unhide(div)
-						}
-					})
-					this.update()
-					obs.observe(div, { attributeFilter: ["style"] })
-				}) === null) {
-					notice(
-						() => plugin.state.language.i18n.t("errors.cannot-find-status-bar"),
-						NOTICE_NO_TIMEOUT,
-						plugin,
-					)
-				}
-			})
-		}
-
-		public hide(hider: () => boolean): () => void {
-			this.#hiders.push(hider)
-			this.update()
-			return () => {
-				this.#hiders.remove(hider)
-				this.update()
-			}
-		}
-
-		public update(): void {
-			statusBar(div => {
-				this.#unhide(div)
-				this.#maybeHide(div)
-			})
-		}
-
-		#maybeHide(div: HTMLDivElement): void {
-			if (this.plugin.state.settings.hideStatusBar === "always" ||
-				this.#hiders.some(hider0 => hider0())) {
-				div.style.visibility = "hidden"
-			}
-		}
-
-		#unhide(div: HTMLDivElement): void {
-			div.style.visibility = ""
-		}
 	}
 }
 // Needed for loading

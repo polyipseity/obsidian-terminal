@@ -92,15 +92,6 @@ export function isInterface<T extends { readonly __type: T["__type"] }>(
 	return (obj as { readonly __type: any }).__type === id
 }
 
-export function statusBar(callback?: (
-	element: HTMLDivElement) => any): HTMLDivElement | null {
-	const ret = document.querySelector<HTMLDivElement>("div.status-bar")
-	if (ret !== null) {
-		(callback ?? ((): void => { }))(ret)
-	}
-	return ret
-}
-
 export function notice(
 	message: () => DocumentFragment | string,
 	timeout: number = NOTICE_NO_TIMEOUT,
