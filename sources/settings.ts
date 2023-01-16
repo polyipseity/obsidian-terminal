@@ -65,7 +65,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	hideStatusBar: "focused",
 	language: "",
 	noticeTimeout: 5,
-	pythonExecutable: "python",
+	pythonExecutable: "python3",
 } as const
 
 export class SettingTab extends PluginSettingTab {
