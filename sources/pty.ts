@@ -398,7 +398,7 @@ export class UnixTerminalPty
 		cwd?: string,
 		args?: readonly string[],
 	) {
-		super(plugin, resizable => {
+		super(plugin, _0 => {
 			const { settings, language } = plugin,
 				{ pythonExecutable } = settings
 			if (pythonExecutable === "") {
@@ -411,7 +411,7 @@ export class UnixTerminalPty
 				{
 					cwd,
 					stdio: ["pipe", "pipe", "pipe"],
-					windowsHide: !resizable,
+					windowsHide: true,
 				},
 			)
 		})
