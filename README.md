@@ -51,7 +51,6 @@ For first time users, read the [installation](#installation) section first!
 
 ## Todos
 
-- Untested on Linux and MacOS.
 - Keep terminal views across plugin updates.
 - Add setting for successful exit codes.
 - Add terminal text loading.
