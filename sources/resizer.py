@@ -1,5 +1,4 @@
 # -*- coding: UTF-8 -*-
-# pip install psutil pywinctl
 import contextlib as _contextlib
 import os as _os
 import psutil as _psutil
@@ -9,9 +8,13 @@ import types as _types
 import typing as _typing
 
 if _sys.platform == "darwin":
-    pass
+    import fcntl as _fcntl
+    import struct as _struct
+    import termios as _termios
 elif _sys.platform == "linux":
-    import ewmh as _ewmh
+    import fcntl as _fcntl
+    import pywinctl._pywinctl_linux as _pywinctl_linux
+    import struct as _struct
     import termios as _termios
 elif _sys.platform == "win32":
     import pywintypes as _pywintypes
@@ -38,15 +41,15 @@ def main() -> None:
         win_pid = win_to_pid(win)
         if win_pid in pids:
             resizer(pids[_typing.cast(int, win_pid)], win)
-            break
-    resizer(proc, None)
+            return
+    resizer(pids[max(pids)], None)
 
 
 def win_to_pid(window: _pywinctl.Window) -> int | None:
     if _sys.platform == "darwin":
         return window._app.processIdentifier()
     elif _sys.platform == "linux":
-        return _ewmh.getWmPid(window.getHandle())
+        return _pywinctl_linux.EWMH.getWmPid(window.getHandle())
     elif _sys.platform == "win32":
         return _win32process.GetWindowThreadProcessId(window.getHandle())[1]
     return None
@@ -79,11 +82,11 @@ def resizer_in(process: _psutil.Process) -> _typing.Iterator[tuple[int, int]]:
 def resizer_out(
     process: _psutil.Process, window: _pywinctl.BaseWindow | None
 ) -> _typing.Generator[None, tuple[int, int], None]:
-    if window is None:
-        while True:
-            yield
-    window.hide()
     if _sys.platform == "win32":
+        if window is None:
+            while True:
+                yield
+        window.hide()
 
         @_typing.final
         class ConsoleScreenBufferInfo(_typing.TypedDict):
@@ -187,19 +190,21 @@ def resizer_out(
 
         @_contextlib.contextmanager
         def open_tty(pid: int) -> _typing.Iterator[int]:
-            fd = _os.open(f"/proc/{pid}/fd/0", _os.O_RDONLY)
+            fd = _os.open(f"/proc/{pid}/fd/0", _os.O_WRONLY)
             try:
                 yield fd
             finally:
                 _os.close(fd)
 
-        with open_tty(process.pid) as tty:
-            while True:
-                columns: int
-                rows: int
-                columns, rows = yield
-                _termios.tcsetwinsize(tty, (rows, columns))
-                print(f"resized")  # used by the plugin
+        while True:
+            columns: int
+            rows: int
+            columns, rows = yield
+            with open_tty(process.pid) as tty:
+                _fcntl.ioctl(
+                    tty, _termios.TIOCSWINSZ, _struct.pack("HHHH", rows, columns, 0, 0)
+                )
+            print(f"resized")  # used by the plugin
 
 
 if __name__ == "__main__":

@@ -50,12 +50,11 @@ export const DEFAULT_SETTINGS: Settings = {
 	executables: {
 		darwin: {
 			args: [],
-			name:
-				"/System/Applications/Utilities/Terminal.app/Contents/MacOS/Terminal",
+			name: "/bin/zsh",
 		},
 		linux: {
 			args: [],
-			name: "xterm-256color",
+			name: "/bin/sh",
 		},
 		win32: {
 			args: [],

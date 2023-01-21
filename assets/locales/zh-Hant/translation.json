@@ -9,6 +9,7 @@
 		"cannot-find-status-bar": "找不到狀態欄",
 		"error-spawning-terminal": "啟動終端時出錯",
 		"error-spawning-resizer": "啟動終端縮放程式時出錯",
+		"no-python-to-start-unix-pseudoterminal": "沒有Python來啟動Unix偽終端",
 		"resizer-disabled": "終端縮放程式已禁用",
 		"resizer-exited-unexpectedly": "終端縮放程式意外退出：{{- code}}",
 		"unsupported-operation": "不支持此操作",

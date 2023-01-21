@@ -1,4 +1,4 @@
-import { ExternalTerminalPty, PLATFORM_PTY, TerminalPty } from "./pty"
+import { ExternalTerminalPty, TerminalPty } from "./pty"
 import {
 	type FileSystemAdapter,
 	ItemView,
@@ -97,11 +97,11 @@ export class TerminalView extends ItemView {
 
 		const { plugin } = this,
 			{ i18n } = plugin.language
-		if (PLATFORM_PTY === null) {
+		if (TerminalPty.PLATFORM_PTY === null) {
 			this.leaf.detach()
 			return
 		}
-		this.#pty = new PLATFORM_PTY(
+		this.#pty = new TerminalPty.PLATFORM_PTY(
 			plugin,
 			state.executable,
 			state.cwd,

@@ -14,11 +14,12 @@ import { promisify } from "util"
 import { readFileSync } from "fs"
 import resizerPy from "./resizer.py"
 import { fileSync as tmpFileSync } from "tmp"
+import unixPtyPy from "./unix_pty.py"
 
-type ShellChildProcess = ChildProcessWithoutNullStreams
+type PipedChildProcess = ChildProcessWithoutNullStreams
 
 export interface TerminalPty {
-	readonly shell: Promise<ShellChildProcess>
+	readonly shell: Promise<PipedChildProcess>
 	readonly resizable: boolean
 	readonly pipe: (terminal: Terminal) => Promise<void>
 	readonly resize: (columns: number, rows: number) => Promise<void>
@@ -27,9 +28,6 @@ export interface TerminalPty {
 		listener: (code: NodeJS.Signals | number) => any,
 	) => Promise<this>
 }
-export namespace TerminalPty {
-	export const SUPPORTED_PLATFORMS = ["darwin", "linux", "win32"] as const
-}
 
 function clearTerminal(terminal: Terminal): void {
 	// Clear screen with scrollback kept
@@ -37,7 +35,7 @@ function clearTerminal(terminal: Terminal): void {
 }
 
 abstract class BaseTerminalPty implements TerminalPty {
-	public abstract readonly shell: Promise<ShellChildProcess>
+	public abstract readonly shell: Promise<PipedChildProcess>
 	public abstract readonly resizable: boolean
 	protected constructor(protected readonly plugin: TerminalPlugin) { }
 
@@ -63,7 +61,7 @@ export class ExternalTerminalPty
 	) {
 		super(plugin)
 		this.shell =
-			new Promise<ShellChildProcess>(executeParanoidly(resolve => {
+			new Promise<PipedChildProcess>(executeParanoidly(resolve => {
 				resolve(() => {
 					const ret = spawn(executable, args ?? [], {
 						cwd,
@@ -100,7 +98,7 @@ export class ExternalTerminalPty
 abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 	public readonly shell
 	#resizable = false
-	readonly #resizer = ((): ChildProcessWithoutNullStreams | null => {
+	readonly #resizer = ((): PipedChildProcess | null => {
 		const { plugin } = this,
 			{ settings, language } = plugin,
 			{ pythonExecutable } = settings,
@@ -112,7 +110,6 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 			stdio: ["pipe", "pipe", "pipe"],
 			windowsHide: true,
 		})
-		ret
 			.once("spawn", () => {
 				this.#resizable = true
 				const watchdog =
@@ -176,18 +173,18 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 
 	protected constructor(
 		plugin: TerminalPlugin,
-		spawnShell: (resizable: boolean) => ShellChildProcess,
+		spawnShell: (resizable: boolean) => PipedChildProcess,
 	) {
 		super(plugin)
 		this.shell =
-			new Promise<ShellChildProcess>(executeParanoidly(resolve => {
+			new Promise<PipedChildProcess>(executeParanoidly(resolve => {
 				const resizer = this.#resizer
 				if (resizer === null) {
 					resolve(() => spawnShell(false))
 					return
 				}
 				const
-					connect = (shell: ShellChildProcess): ShellChildProcess => shell
+					connect = (shell: PipedChildProcess): PipedChildProcess => shell
 						.once("spawn", () => {
 							const { pid } = shell
 							if (typeof pid === "undefined") {
@@ -396,7 +393,7 @@ export class WindowsTerminalPty
 	}
 }
 
-export class GenericTerminalPty
+export class UnixTerminalPty
 	extends PtyWithResizer
 	implements TerminalPty {
 	public constructor(
@@ -405,11 +402,23 @@ export class GenericTerminalPty
 		cwd?: string,
 		args?: readonly string[],
 	) {
-		super(plugin, resizable => spawn(executable, args, {
-			cwd,
-			stdio: ["pipe", "pipe", "pipe"],
-			windowsHide: !resizable,
-		}))
+		super(plugin, resizable => {
+			const { settings, language } = plugin,
+				{ pythonExecutable } = settings
+			if (pythonExecutable === "") {
+				throw new Error(language
+					.i18n.t("errors.no-python-to-start-unix-pseudoterminal"))
+			}
+			return spawn(
+				pythonExecutable,
+				["-c", unixPtyPy, executable].concat(args ?? []),
+				{
+					cwd,
+					stdio: ["pipe", "pipe", "pipe"],
+					windowsHide: !resizable,
+				},
+			)
+		})
 	}
 
 	public async once(
@@ -434,7 +443,14 @@ export class GenericTerminalPty
 	}
 }
 
-export const PLATFORM_PTY =
-	inSet(TerminalPty.SUPPORTED_PLATFORMS, PLATFORM)
-		? PLATFORM === "win32" ? WindowsTerminalPty : GenericTerminalPty
-		: null
+export namespace TerminalPty {
+	export const PLATFORM_PTYS = {
+		darwin: UnixTerminalPty,
+		linux: UnixTerminalPty,
+		win32: WindowsTerminalPty,
+	} as const
+	export const SUPPORTED_PLATFORMS =
+		Object.keys(PLATFORM_PTYS) as readonly (keyof typeof PLATFORM_PTYS)[]
+	export const PLATFORM_PTY =
+		inSet(SUPPORTED_PLATFORMS, PLATFORM) ? PLATFORM_PTYS[PLATFORM] : null
+}

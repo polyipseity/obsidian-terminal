@@ -9,6 +9,7 @@
 		"cannot-find-status-bar": "Cannot find status bar",
 		"error-spawning-terminal": "Error spawning terminal",
 		"error-spawning-resizer": "Error spawning terminal resizer",
+		"no-python-to-start-unix-pseudoterminal": "No Python to start Unix pseudoterminal",
 		"resizer-disabled": "Terminal resizer disabled",
 		"resizer-exited-unexpectedly": "Terminal resizer exited unexpectedly: {{- code}}",
 		"unsupported-operation": "Unsupported operation",
