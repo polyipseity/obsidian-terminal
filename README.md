@@ -42,11 +42,11 @@ For first time users, read the [installation](#installation) section first!
 	- Manual
 		1. Create directory `terminal` under `.obsidian/plugins` of your vault.
 		2. Place [`manifest.json`](manifest.json), [`main.js`](main.js), and [`styles.css`](styles.css) into the directory.
-2. Enable plugin.
-3. (optional, recommended) Install Python and dependencies for properly resized terminals.
+2. (optional for Windows, recommended) Install Python and dependencies.
 	1. [Download](https://www.python.org/downloads/) and install Python 3.10/+.
 	2. (Windows only) Run `pip3 install psutil pywinctl`.
 	3. Configure Python executable in plugin settings.
+3. Enable plugin.
 4. (optional) Configure plugin settings.
 
 ## Todos
