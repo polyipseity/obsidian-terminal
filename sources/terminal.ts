@@ -393,10 +393,10 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 			switch (cwd) {
 				case "root": {
 					if (!checking) {
-						void spawnTerminal(
+						spawnTerminal(
 							adapter.getBasePath(),
 							terminal,
-						)
+						).catch(() => { })
 					}
 					return true
 				}
@@ -406,10 +406,10 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 						return false
 					}
 					if (!checking) {
-						void spawnTerminal(
+						spawnTerminal(
 							adapter.getFullPath(activeFile.parent.path),
 							terminal,
-						)
+						).catch(() => { })
 					}
 					return true
 				}
