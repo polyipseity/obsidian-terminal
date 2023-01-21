@@ -13,9 +13,9 @@ import type { TerminalPlugin } from "./main"
 import type { Writable } from "stream"
 import { promisify } from "util"
 import { readFileSync } from "fs"
-import resizerPy from "./resizer.py"
 import { fileSync as tmpFileSync } from "tmp"
 import unixPtyPy from "./unix_pty.py"
+import win32ResizerPy from "./win32_resizer.py"
 
 export interface TerminalPty {
 	readonly shell: Promise<ChildProcessWithoutNullStreams>
@@ -105,7 +105,7 @@ abstract class WindowsTerminalPty
 		if (pythonExecutable === "") {
 			return null
 		}
-		const ret = spawn(pythonExecutable, ["-c", resizerPy], {
+		const ret = spawn(pythonExecutable, ["-c", win32ResizerPy], {
 			stdio: ["pipe", "pipe", "pipe"],
 			windowsHide: true,
 		})

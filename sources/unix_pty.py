@@ -1,4 +1,6 @@
 # -*- coding: UTF-8
+# dependencies: (none)
+
 import fcntl as _fcntl
 import os as _os
 import pty as _pty

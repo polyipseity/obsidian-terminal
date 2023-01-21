@@ -1,83 +1,67 @@
 # -*- coding: UTF-8 -*-
+# dependencies: psutil, pywinctl
+
 import contextlib as _contextlib
-import os as _os
 import psutil as _psutil
 import pywinctl as _pywinctl  # type: ignore
+import pywintypes as _pywintypes
 import sys as _sys
 import types as _types
 import typing as _typing
+import win32con as _win32con
+import win32console as _win32console
+import win32file as _win32file
+import win32gui as _win32gui
+import win32process as _win32process
 
-if _sys.platform == "darwin" or _sys.platform == "linux":
-    import fcntl as _fcntl
-    import struct as _struct
-    import termios as _termios
-elif _sys.platform == "win32":
-    import pywintypes as _pywintypes
-    import win32con as _win32con
-    import win32console as _win32console
-    import win32file as _win32file
-    import win32gui as _win32gui
-    import win32process as _win32process
+if _sys.platform == "win32":
 
+    def main() -> None:
+        pid = int(input("PID: "))
+        print(f"received: {pid}")
+        proc = _psutil.Process(pid)
+        procs = (proc,) + tuple(proc.children(recursive=True))
+        print(f"process(es): {procs}")
+        pids: _typing.Mapping[int, _psutil.Process] = _types.MappingProxyType(
+            {proc.pid: proc for proc in procs}
+        )
 
-def main() -> None:
-    pid = int(input("PID: "))
-    print(f"received: {pid}")
-    proc = _psutil.Process(pid)
-    procs = (proc,) + tuple(proc.children(recursive=True))
-    print(f"Process(es): {procs}")
-    pids: _typing.Mapping[int, _psutil.Process] = _types.MappingProxyType(
-        {proc.pid: proc for proc in procs}
-    )
-
-    if _sys.platform == "win32":
         windows: _typing.Collection[_pywinctl.Window] = _pywinctl.getAllWindows()
-        print(f"windows: {windows}")
+        print(f"window(s): {windows}")
         for win in windows:
             win_pid = win_to_pid(win)
             if win_pid in pids:
-                resizer(pids[_typing.cast(int, win_pid)], win)
+                resizer(pids[win_pid], win)
                 return
-    resizer(pids[max(pids)], None)
 
-
-def win_to_pid(window: _pywinctl.Window) -> int | None:
-    if _sys.platform == "win32":
+    def win_to_pid(window: _pywinctl.Window) -> int:
         return _win32process.GetWindowThreadProcessId(window.getHandle())[1]
-    return None
 
+    def resizer(process: _psutil.Process, window: _pywinctl.BaseWindow) -> None:
+        print(f"window: {window}")
+        r_in = resizer_in(process)
+        r_out = resizer_out(process, window)
+        next(r_out)
+        for size in r_in:
+            r_out.send(size)
 
-def resizer(process: _psutil.Process, window: _pywinctl.BaseWindow | None) -> None:
-    print(f"window: {window}")
-    r_in = resizer_in(process)
-    r_out = resizer_out(process, window)
-    next(r_out)
-    for size in r_in:
-        r_out.send(size)
+    def resizer_in(process: _psutil.Process) -> _typing.Iterator[tuple[int, int]]:
+        while True:
+            size0 = ""
+            while not size0:  # stdin watchdog triggers this loop
+                if not process.is_running():
+                    return
+                size0 = input("size: ")
+            size = _typing.cast(
+                tuple[int, int],
+                tuple(int(s.strip()) for s in size0.split("x", 2)),
+            )
+            print(f"received: {'x'.join(map(str, size))}")
+            yield size
 
-
-def resizer_in(process: _psutil.Process) -> _typing.Iterator[tuple[int, int]]:
-    while True:
-        size0 = ""
-        while not size0:  # stdin watchdog triggers this loop
-            if not process.is_running():
-                return
-            size0 = input("size: ")
-        size = _typing.cast(
-            tuple[int, int],
-            tuple(int(s.strip()) for s in size0.split("x", 2)),
-        )
-        print(f"received: {'x'.join(map(str, size))}")
-        yield size
-
-
-def resizer_out(
-    process: _psutil.Process, window: _pywinctl.BaseWindow | None
-) -> _typing.Generator[None, tuple[int, int], None]:
-    if _sys.platform == "win32":
-        if window is None:
-            while True:
-                yield
+    def resizer_out(
+        process: _psutil.Process, window: _pywinctl.BaseWindow
+    ) -> _typing.Generator[None, tuple[int, int], None]:
         window.hide()
 
         @_typing.final
@@ -177,27 +161,7 @@ def resizer_out(
                     setters[3], setters[4] = setters[4], setters[3]
                 for setter in setters:
                     ignore_error(setter)
-                print(f"resized")  # used by the plugin
-    else:
+                print(f"resized")
 
-        @_contextlib.contextmanager
-        def open_tty(pid: int) -> _typing.Iterator[int]:
-            fd = _os.open(f"/proc/{pid}/fd/0", _os.O_WRONLY)
-            try:
-                yield fd
-            finally:
-                _os.close(fd)
-
-        while True:
-            columns: int
-            rows: int
-            columns, rows = yield
-            with open_tty(process.pid) as tty:
-                _fcntl.ioctl(
-                    tty, _termios.TIOCSWINSZ, _struct.pack("HHHH", rows, columns, 0, 0)
-                )
-            print(f"resized")  # used by the plugin
-
-
-if __name__ == "__main__":
-    main()
+    if __name__ == "__main__":
+        main()
