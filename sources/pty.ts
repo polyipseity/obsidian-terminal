@@ -10,6 +10,7 @@ import {
 } from "./util"
 import type { Terminal } from "xterm"
 import type { TerminalPlugin } from "./main"
+import type { Writable } from "stream"
 import { promisify } from "util"
 import { readFileSync } from "fs"
 import resizerPy from "./resizer.py"
@@ -389,32 +390,39 @@ export class WindowsTerminalPty
 	}
 }
 
-export class UnixTerminalPty
-	extends PtyWithResizer
-	implements TerminalPty {
+export class UnixTerminalPty implements TerminalPty {
+	public readonly shell
+	public readonly resizable = true
+
 	public constructor(
-		plugin: TerminalPlugin,
+		protected readonly plugin: TerminalPlugin,
 		executable: string,
 		cwd?: string,
 		args?: readonly string[],
 	) {
-		super(plugin, _0 => {
-			const { settings, language } = plugin,
-				{ pythonExecutable } = settings
-			if (pythonExecutable === "") {
-				throw new Error(language
-					.i18n.t("errors.no-python-to-start-unix-pseudoterminal"))
-			}
-			return spawn(
+		const { settings, language } = plugin,
+			{ pythonExecutable } = settings
+		if (pythonExecutable === "") {
+			throw new Error(language
+				.i18n.t("errors.no-python-to-start-unix-pseudoterminal"))
+		}
+		try {
+			const shell = spawn(
 				pythonExecutable,
 				["-c", unixPtyPy, executable].concat(args ?? []),
 				{
 					cwd,
-					stdio: ["pipe", "pipe", "pipe"],
+					stdio: ["pipe", "pipe", "pipe", "pipe"],
 					windowsHide: true,
 				},
 			)
-		})
+			shell.stderr.on("data", (chunk: Buffer | string) => {
+				console.error(chunk.toString())
+			})
+			this.shell = Promise.resolve(shell)
+		} catch (error) {
+			this.shell = Promise.reject(error)
+		}
 	}
 
 	public async once(
@@ -436,6 +444,23 @@ export class UnixTerminalPty
 			terminal.write(chunk)
 		})
 		terminal.onData(data => shell.stdin.write(data))
+	}
+
+	public async resize(columns: number, rows: number): Promise<void> {
+		const CMDIO = 3,
+			shell = await this.shell,
+			cmdio = shell.stdio[CMDIO] as Writable
+		await promisify((
+			chunk: any,
+			callback: (error?: Error | null) => void,
+		) => {
+			try {
+				return cmdio.write(chunk, callback)
+			} catch (error) {
+				callback(anyToError(error))
+			}
+			return false
+		})(`${columns}x${rows}\n`)
 	}
 }
 
