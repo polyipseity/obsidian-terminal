@@ -209,7 +209,6 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 						try {
 							resolve(() => connect(spawnShell(true)))
 						} finally {
-							// eslint-disable-next-line @typescript-eslint/no-use-before-define
 							resizer.removeListener("error", onError)
 						}
 					},
@@ -246,9 +245,7 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 						} finally {
 							stdout.removeListener("data", data)
 							resizer
-								// eslint-disable-next-line @typescript-eslint/no-use-before-define
 								.removeListener("exit", exit)
-								// eslint-disable-next-line @typescript-eslint/no-use-before-define
 								.removeListener("error", errorFn)
 						}
 					}
@@ -258,7 +255,6 @@ abstract class PtyWithResizer extends BaseTerminalPty implements TerminalPty {
 					reject(() => new Error(args.toString()))
 				} finally {
 					stdout.removeListener("data", data)
-					// eslint-disable-next-line @typescript-eslint/no-use-before-define
 					resizer0.removeListener("error", errorFn)
 				}
 			}

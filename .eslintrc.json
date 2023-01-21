@@ -105,6 +105,7 @@
       }
     ],
     "no-unused-vars": "off",
+    "no-use-before-define": "off",
     "no-tabs": [
       "error",
       {
@@ -273,6 +274,12 @@
       "error",
       {
         "argsIgnorePattern": "^_"
+      }
+    ],
+    "@typescript-eslint/no-use-before-define": [
+      "error",
+      {
+        "functions": false
       }
     ],
     "@typescript-eslint/object-curly-spacing": [
