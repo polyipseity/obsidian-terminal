@@ -62,3 +62,6 @@ For first time users, read the [installation](#installation) section first!
 - Add arguments in options.
 - Add finding text in terminal.
 - Add connecting to remote shells. It should also be available on mobile.
+- Fix key problems (e.g. `Esc` unfocuses the terminal).
+- Add button to restart terminal and resizer.
+- Use different executables for integrated and external terminals.
