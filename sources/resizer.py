@@ -7,13 +7,8 @@ import sys as _sys
 import types as _types
 import typing as _typing
 
-if _sys.platform == "darwin":
+if _sys.platform == "darwin" or _sys.platform == "linux":
     import fcntl as _fcntl
-    import struct as _struct
-    import termios as _termios
-elif _sys.platform == "linux":
-    import fcntl as _fcntl
-    import pywinctl._pywinctl_linux as _pywinctl_linux
     import struct as _struct
     import termios as _termios
 elif _sys.platform == "win32":
@@ -35,22 +30,19 @@ def main() -> None:
         {proc.pid: proc for proc in procs}
     )
 
-    windows: _typing.Collection[_pywinctl.Window] = _pywinctl.getAllWindows()
-    print(f"windows: {windows}")
-    for win in windows:
-        win_pid = win_to_pid(win)
-        if win_pid in pids:
-            resizer(pids[_typing.cast(int, win_pid)], win)
-            return
+    if _sys.platform == "win32":
+        windows: _typing.Collection[_pywinctl.Window] = _pywinctl.getAllWindows()
+        print(f"windows: {windows}")
+        for win in windows:
+            win_pid = win_to_pid(win)
+            if win_pid in pids:
+                resizer(pids[_typing.cast(int, win_pid)], win)
+                return
     resizer(pids[max(pids)], None)
 
 
 def win_to_pid(window: _pywinctl.Window) -> int | None:
-    if _sys.platform == "darwin":
-        return window._app.processIdentifier()
-    elif _sys.platform == "linux":
-        return _pywinctl_linux.EWMH.getWmPid(window.getHandle())
-    elif _sys.platform == "win32":
+    if _sys.platform == "win32":
         return _win32process.GetWindowThreadProcessId(window.getHandle())[1]
     return None
 
