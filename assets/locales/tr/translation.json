@@ -49,7 +49,7 @@
 		"notice-timeout": "Notice timeout (s)",
 		"notice-timeout-description": "Set to 0 s for no timeout.",
 		"python-executable": "Python executable",
-		"python-executable-description": "Clear field to disable terminal resizer.",
+		"python-executable-description": "Required for Unix to start terminals. Clear field to disable Python.",
 		"python-executable-placeholder": "(Disabled)",
 		"reset": "Reset",
 		"reset-all": "Reset all"

@@ -49,7 +49,7 @@
 		"notice-timeout": "通知超时（秒）",
 		"notice-timeout-description": "设为 0 秒是无超时。",
 		"python-executable": "Python 可执行文件",
-		"python-executable-description": "清除文本框以禁用终端缩放迸程。",
+		"python-executable-description": "于Unix启动终端所需要的。清除文本框以禁用Python。",
 		"python-executable-placeholder": "（已禁用）",
 		"reset": "重设",
 		"reset-all": "重设全部"
