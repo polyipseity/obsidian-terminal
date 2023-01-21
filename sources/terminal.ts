@@ -101,42 +101,51 @@ export class TerminalView extends ItemView {
 			this.leaf.detach()
 			return
 		}
-		this.#pty = new TerminalPty.PLATFORM_PTY(
-			plugin,
-			state.executable,
-			state.cwd,
-			state.args,
-		)
-		const shell = await this.#pty.shell
-		this.register(shell.kill.bind(shell))
-		await this.#pty.once("exit", code => {
-			try {
-				this.leaf.detach()
-			} finally {
-				notice(
-					() => i18n.t("notices.terminal-exited", { code }),
-					inSet(TERMINAL_EXIT_SUCCESS, code)
-						? plugin.settings.noticeTimeout
-						: NOTICE_NO_TIMEOUT,
-					plugin,
-				)
+		try {
+			this.#pty = new TerminalPty.PLATFORM_PTY(
+				plugin,
+				state.executable,
+				state.cwd,
+				state.args,
+			)
+			const shell = await this.#pty.shell
+			this.register(shell.kill.bind(shell))
+			await this.#pty.once("exit", code => {
+				try {
+					this.leaf.detach()
+				} finally {
+					notice(
+						() => i18n.t("notices.terminal-exited", { code }),
+						inSet(TERMINAL_EXIT_SUCCESS, code)
+							? plugin.settings.noticeTimeout
+							: NOTICE_NO_TIMEOUT,
+						plugin,
+					)
+				}
+			})
+			shell.once("error", error => {
+				try {
+					printError(error, () =>
+						i18n.t("errors.error-spawning-terminal"), plugin)
+				} finally {
+					this.leaf.detach()
+				}
+			})
+			const { serial } = state
+			if (typeof serial !== "undefined") {
+				this.#serializer.unserialize(serial)
+				this.#terminal.resize(serial.columns, serial.rows)
+				this.#terminal.write(serial.data)
 			}
-		})
-		shell.once("error", error => {
+			await this.#pty.pipe(this.#terminal)
+		} catch (error) {
 			try {
 				printError(error, () =>
 					i18n.t("errors.error-spawning-terminal"), plugin)
 			} finally {
 				this.leaf.detach()
 			}
-		})
-		const { serial } = state
-		if (typeof serial !== "undefined") {
-			this.#serializer.unserialize(serial)
-			this.#terminal.resize(serial.columns, serial.rows)
-			this.#terminal.write(serial.data)
 		}
-		await this.#pty.pipe(this.#terminal)
 	}
 
 	public override getState(): any {
