@@ -20,7 +20,9 @@ if _sys.platform != "win32":
     pty_fd: int
     pid, pty_fd = _pty.fork()  # type: ignore
     if pid == 0:
-        _os.execvp(_sys.argv[1], _sys.argv[1:])
+        _os.execvpe(
+            _sys.argv[1], _sys.argv[1:], _os.environ | {"TERM": "xterm-256color"}
+        )
 
     def _write_all(fd: int, data: bytes) -> None:
         while data:
