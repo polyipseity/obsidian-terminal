@@ -8,6 +8,7 @@ import pywintypes as _pywintypes
 import sys as _sys
 import types as _types
 import typing as _typing
+import win32api as _win32api
 import win32con as _win32con
 import win32console as _win32console
 import win32file as _win32file
@@ -99,8 +100,18 @@ if _sys.platform == "win32":
             finally:
                 _win32console.FreeConsole()
 
+        def consoleCtrlHandler(event: int) -> bool:
+            if event in (
+                _win32con.CTRL_C_EVENT,
+                _win32con.CTRL_BREAK_EVENT,
+                _win32con.CTRL_CLOSE_EVENT,
+            ):
+                return True
+            return False
+
         _win32console.FreeConsole()
         with attach_console(process.pid) as console:
+            _win32api.SetConsoleCtrlHandler(consoleCtrlHandler, True)
             while True:
                 columns: int
                 rows: int
