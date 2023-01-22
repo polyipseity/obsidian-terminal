@@ -3,6 +3,7 @@ import { Notice, Plugin, type PluginManifest, type View } from "obsidian"
 import type { ChildProcess } from "node:child_process"
 import { NOTICE_NO_TIMEOUT } from "./magic"
 import type { TerminalPlugin } from "./main"
+import type { Writable } from "node:stream"
 
 export type Immutable<T> = { readonly [key in keyof T]: Immutable<T[key]> }
 export type Mutable<T> = { -readonly [key in keyof T]: Mutable<T[key]> }
@@ -227,4 +228,16 @@ export function updateDisplayText(view: View): boolean {
 	header.ariaLabel = text
 	document.title = document.title.replace(oldText, text)
 	return true
+}
+
+export async function writePromise(
+	stream: Writable,
+	chunk: any,
+): Promise<void> {
+	return new Promise<void>(executeParanoidly((resolve, reject) => {
+		const written = stream.write(chunk, error => {
+			if (error) { reject(error) } else if (written) { resolve() }
+		})
+		if (!written) { stream.once("drain", () => { resolve() }) }
+	}))
 }

@@ -9,6 +9,7 @@ import {
 	printError,
 	spawnPromise,
 	typedKeys,
+	writePromise,
 } from "../util"
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
@@ -134,11 +135,9 @@ class WindowsTerminalPty implements TerminalPty {
 				try {
 					if (resizer !== null) {
 						try {
-							await WindowsTerminalPty.#resize(resizer, `${shell0.pid ?? -1}`)
+							await writePromise(resizer.stdin, `${shell0.pid ?? -1}`)
 							const watchdog = window.setInterval(
-								() => {
-									WindowsTerminalPty.#resize(resizer, "\n").catch(() => { })
-								},
+								() => void writePromise(resizer.stdin, "\n").catch(() => { }),
 								TERMINAL_RESIZER_WATCHDOG_INTERVAL,
 							)
 							try {
@@ -187,19 +186,6 @@ class WindowsTerminalPty implements TerminalPty {
 					}))))
 	}
 
-	static async #resize(
-		resizer: PipedChildProcess,
-		chunk: Buffer | string,
-	): Promise<void> {
-		const { stdin } = resizer
-		return new Promise<void>(executeParanoidly((resolve, reject) => {
-			const written = stdin.write(chunk, error => {
-				if (error) { reject(error) } else if (written) { resolve() }
-			})
-			if (!written) { stdin.once("drain", () => { resolve() }) }
-		}))
-	}
-
 	static #escapeArgument(arg: string): string {
 		return `"${arg.replace("\"", "\\\"")}"`
 			.replace(/(?<meta>[()%!^"<>&|])/gu, "^$<meta>")
@@ -215,7 +201,7 @@ class WindowsTerminalPty implements TerminalPty {
 		if (resizer === null) {
 			throw new Error(this.plugin.language.i18n.t("errors.resizer-disabled"))
 		}
-		await WindowsTerminalPty.#resize(resizer, `${columns}x${rows}\n`)
+		await writePromise(resizer.stdin, `${columns}x${rows}\n`)
 	}
 
 	public async pipe(terminal: Terminal): Promise<void> {
