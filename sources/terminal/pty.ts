@@ -135,7 +135,7 @@ class WindowsTerminalPty implements TerminalPty {
 				try {
 					if (resizer !== null) {
 						try {
-							await writePromise(resizer.stdin, `${shell0.pid ?? -1}`)
+							await writePromise(resizer.stdin, `${shell0.pid ?? -1}\n`)
 							const watchdog = window.setInterval(
 								() => void writePromise(resizer.stdin, "\n").catch(() => { }),
 								TERMINAL_RESIZER_WATCHDOG_INTERVAL,
