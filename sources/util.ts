@@ -1,3 +1,4 @@
+import { BUNDLE, BUNDLE_KEYS } from "./bundle"
 import { Notice, Plugin, type PluginManifest, type View } from "obsidian"
 import { NOTICE_NO_TIMEOUT } from "./magic"
 import type { TerminalPlugin } from "./main"
@@ -8,6 +9,7 @@ export type Mutable<T> = { -readonly [key in keyof T]: Mutable<T[key]> }
 export const PLATFORMS =
 	["android", "darwin", "ios", "linux", "unknown", "win32"] as const
 export type Platform = typeof PLATFORMS[number]
+export const DESKTOP_PLATFORMS = ["darwin", "linux", "win32"] as const
 export const PLATFORM = ((): Platform => {
 	const { userAgent } = navigator
 	if (userAgent.includes("Win")) {
@@ -40,6 +42,14 @@ export class UnnamespacedID<V extends string> {
 
 export function anyToError(obj: any): Error {
 	return obj instanceof Error ? obj : new Error(String(obj))
+}
+
+export function basename(path: string, ext = ""): string {
+	const ret = path.substring(Math.max(
+		path.lastIndexOf("/"),
+		path.lastIndexOf("\\"),
+	) + 1)
+	return ret.endsWith(ext) ? ret.substring(0, ret.length - ext.length) : ret
 }
 
 export function commandNamer(
@@ -83,6 +93,10 @@ export function executeParanoidly<T>(callback: (
 	}
 }
 
+export function extname(path: string): string {
+	return basename(path).substring(path.lastIndexOf("."))
+}
+
 export function saveFile(
 	text: string,
 	type = "text/plain; charset=UTF-8;",
@@ -113,6 +127,16 @@ export function isInterface<T extends { readonly __type: T["__type"] }>(
 	}
 	// eslint-disable-next-line no-underscore-dangle
 	return (obj as { readonly __type: any }).__type === id
+}
+
+export async function importIfDesktop<T>(module: string): Promise<T> {
+	if (inSet(DESKTOP_PLATFORMS, PLATFORM)) {
+		return Promise.resolve().then(() => inSet(BUNDLE_KEYS, module)
+			? BUNDLE[module]() as T
+			// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+			: require(module) as T)
+	}
+	throw new TypeError(module)
 }
 
 export function notice(

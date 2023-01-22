@@ -17,7 +17,9 @@ import {
 import {
 	PLATFORM,
 	UnnamespacedID,
+	basename,
 	commandNamer,
+	extname,
 	inSet,
 	isInterface,
 	notice,
@@ -28,7 +30,6 @@ import {
 	updateDisplayText,
 } from "./util"
 import { type TerminalSerial, TerminalSerializer } from "./terminal-serialize"
-import { basename, extname } from "path"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import { FitAddon } from "xterm-addon-fit"
 import { SearchAddon } from "xterm-addon-search"

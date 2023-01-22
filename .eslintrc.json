@@ -156,7 +156,7 @@
       "error",
       {
         "prefer": "type-imports",
-        "disallowTypeAnnotations": true
+        "disallowTypeAnnotations": false
       }
     ],
     "@typescript-eslint/explicit-module-boundary-types": [

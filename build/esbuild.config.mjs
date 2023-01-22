@@ -29,6 +29,7 @@ await esbuild.build({
 		"@lezer/common",
 		"@lezer/highlight",
 		"@lezer/lr",
+		"node:*",
 		...builtins,
 	],
 	footer: { js: COMMENT },
