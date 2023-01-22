@@ -9,7 +9,7 @@ import {
 import { type Mutable, inSet } from "./util"
 import { RESOURCES } from "assets/locales"
 import type { TerminalPlugin } from "./main"
-import { TerminalPty } from "./pty"
+import { TerminalPty } from "./terminal/pty"
 
 export interface Settings {
 	readonly language: string

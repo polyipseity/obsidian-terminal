@@ -1,4 +1,4 @@
-import { NOTICE_NO_TIMEOUT, TERMINAL_RESIZER_WATCHDOG_INTERVAL } from "./magic"
+import { NOTICE_NO_TIMEOUT, TERMINAL_RESIZER_WATCHDOG_INTERVAL } from "../magic"
 import {
 	PLATFORM,
 	anyToError,
@@ -8,12 +8,12 @@ import {
 	notice,
 	printError,
 	typedKeys,
-} from "./util"
+} from "../util"
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
 } from "node:child_process"
 import type { Terminal } from "xterm"
-import type { TerminalPlugin } from "./main"
+import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
 import unixPtyPy from "./unix_pty.py"
 import win32ResizerPy from "./win32_resizer.py"

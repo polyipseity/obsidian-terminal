@@ -1,6 +1,6 @@
 import { type App, Plugin, type PluginManifest } from "obsidian"
 import { DEFAULT_SETTINGS, SettingTab, Settings } from "./settings"
-import { TerminalView, registerTerminal } from "./terminal"
+import { TerminalView, registerTerminal } from "./terminal/view"
 import { LanguageManager } from "./i18n"
 import { StatusBarHider } from "./status-bar"
 import { cloneAsMutable } from "./util"

@@ -13,7 +13,7 @@ import {
 	NOTICE_NO_TIMEOUT,
 	TERMINAL_EXIT_SUCCESS,
 	TERMINAL_RESIZE_TIMEOUT,
-} from "./magic"
+} from "../magic"
 import {
 	PLATFORM,
 	UnnamespacedID,
@@ -28,13 +28,13 @@ import {
 	printError,
 	saveFile,
 	updateDisplayText,
-} from "./util"
-import { type TerminalSerial, TerminalSerializer } from "./terminal-serialize"
+} from "../util"
+import { type TerminalSerial, TerminalSerializer } from "./serialize"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import { FitAddon } from "xterm-addon-fit"
 import { SearchAddon } from "xterm-addon-search"
 import { Terminal } from "xterm"
-import type { TerminalPlugin } from "./main"
+import type { TerminalPlugin } from "../main"
 import { WebLinksAddon } from "xterm-addon-web-links"
 
 export class TerminalView extends ItemView {
