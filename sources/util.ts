@@ -12,20 +12,20 @@ export type Platform = typeof PLATFORMS[number]
 export const DESKTOP_PLATFORMS = ["darwin", "linux", "win32"] as const
 export const PLATFORM = ((): Platform => {
 	const { userAgent } = navigator
+	if (userAgent.includes("like Mac")) {
+		return "ios"
+	}
+	if (userAgent.includes("Android")) {
+		return "android"
+	}
+	if (userAgent.includes("Mac")) {
+		return "darwin"
+	}
 	if (userAgent.includes("Win")) {
 		return "win32"
 	}
 	if (userAgent.includes("Linux") || userAgent.includes("X11")) {
 		return "linux"
-	}
-	if (userAgent.includes("like Mac")) {
-		return "ios"
-	}
-	if (userAgent.includes("Mac")) {
-		return "darwin"
-	}
-	if (userAgent.includes("Android")) {
-		return "android"
 	}
 	return "unknown"
 })()
