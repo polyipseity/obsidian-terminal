@@ -208,7 +208,7 @@ class WindowsTerminalPty implements TerminalPty {
 					})
 				}).once("error", error => { reject(() => error) }))))
 			.finally(() => void codeTmp.then(codeTmp0 => {
-				codeTmp0.removeCallback()
+				try { codeTmp0.removeCallback() } catch (error) { void error }
 			}))
 	}
 
