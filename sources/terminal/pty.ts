@@ -40,30 +40,15 @@ function clearTerminal(terminal: Terminal): void {
 	terminal.write(`${"\n\u001b[K".repeat(terminal.rows)}\u001b[H`)
 }
 
-abstract class BaseTerminalPty implements TerminalPty {
-	public abstract readonly shell: Promise<PipedChildProcess>
-	protected constructor(protected readonly plugin: TerminalPlugin) { }
-
-	public abstract pipe(terminal: Terminal): Promise<void>
-	public abstract resize(columns: number, rows: number): Promise<void>
-	public abstract once(
-		event: "exit",
-		listener: (code: NodeJS.Signals | number) => any,
-	): Promise<this>
-}
-
-export class ExternalTerminalPty
-	extends BaseTerminalPty
-	implements TerminalPty {
+export class ExternalTerminalPty implements TerminalPty {
 	public readonly shell
 	// It's not really a pty, isn't it?
 	public constructor(
-		plugin: TerminalPlugin,
+		protected readonly plugin: TerminalPlugin,
 		executable: string,
 		cwd?: string,
 		args?: readonly string[],
 	) {
-		super(plugin)
 		this.shell =
 			new Promise<PipedChildProcess>(executeParanoidly(resolve => {
 				resolve(async () => {
@@ -99,9 +84,7 @@ export class ExternalTerminalPty
 	}
 }
 
-class WindowsTerminalPty
-	extends BaseTerminalPty
-	implements TerminalPty {
+class WindowsTerminalPty implements TerminalPty {
 	public readonly shell
 	public readonly conhost
 	readonly #exitCode
@@ -168,12 +151,11 @@ class WindowsTerminalPty
 		})
 
 	public constructor(
-		plugin: TerminalPlugin,
+		protected readonly plugin: TerminalPlugin,
 		executable: string,
 		cwd?: string,
 		args?: readonly string[],
 	) {
-		super(plugin)
 		this.conhost = plugin.settings.enableWindowsConhostWorkaround
 		const
 			codeTmp = tmp.then(tmp0 => tmp0.fileSync({ discardDescriptor: true })),
@@ -339,18 +321,15 @@ class WindowsTerminalPty
 	}
 }
 
-class UnixTerminalPty
-	extends BaseTerminalPty
-	implements TerminalPty {
+class UnixTerminalPty implements TerminalPty {
 	public readonly shell
 
 	public constructor(
-		plugin: TerminalPlugin,
+		protected readonly plugin: TerminalPlugin,
 		executable: string,
 		cwd?: string,
 		args?: readonly string[],
 	) {
-		super(plugin)
 		const { settings, language } = plugin,
 			{ pythonExecutable } = settings
 		this.shell = childProcess
