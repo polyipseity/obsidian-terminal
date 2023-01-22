@@ -29,8 +29,8 @@ export async function spawnExternalTerminalEmulator(
 			stdio: ["ignore", "ignore", "ignore"],
 		}),
 		op = new Promise<ChildProcess>(executeParanoidly((resolve, reject) => {
-			ret.once("spawn", () => { resolve(() => ret) })
-				.once("error", error => { reject(() => error) })
+			ret.once("spawn", () => { resolve(ret) })
+				.once("error", reject)
 		}))
 	ret.unref()
 	return op
@@ -116,10 +116,7 @@ export class XtermTerminalEmulator<A> {
 			return
 		}
 		const op = new Promise<void>(executeParanoidly((resolve, reject) => {
-			this.#resizePromises.push({
-				reject: reason => { reject(() => reason as unknown) },
-				resolve: () => { resolve(() => { }) },
-			})
+			this.#resizePromises.push({ reject, resolve })
 			this.#resize(dim.cols, dim.rows)
 		}))
 		fit.fit()

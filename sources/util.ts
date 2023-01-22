@@ -70,27 +70,15 @@ export function cloneAsMutable<T>(obj: T): Mutable<T> {
 }
 
 export function executeParanoidly<T>(callback: (
-	resolve: (valueSupplier: () => PromiseLike<T> | T) => void,
-	reject: (reasonSupplier?: () => any) => void
+	resolve: (value: PromiseLike<T> | T) => void,
+	reject: (reason?: any) => void,
 ) => void) {
 	return (
 		resolve: (value: PromiseLike<T> | T) => void,
 		reject: (reason?: any) => void,
 	): void => {
 		try {
-			callback(supplier => {
-				try {
-					resolve(supplier())
-				} catch (error) {
-					reject(error)
-				}
-			}, supplier => {
-				try {
-					reject((supplier ?? ((): void => { }))())
-				} catch (error) {
-					reject(error)
-				}
-			})
+			callback(resolve, reject)
 		} catch (error) {
 			reject(error)
 		}

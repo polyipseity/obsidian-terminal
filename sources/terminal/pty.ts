@@ -60,8 +60,8 @@ class WindowsTerminalPty implements TerminalPty {
 				reject,
 			) => {
 				ret
-					.once("spawn", () => { resolve(() => ret) })
-					.once("error", error => { reject(() => error) })
+					.once("spawn", () => { resolve(ret) })
+					.once("error", reject)
 			}))
 		ret.once("exit", (code, signal) => {
 			if (code !== 0) {
@@ -154,17 +154,18 @@ class WindowsTerminalPty implements TerminalPty {
 					reject,
 				) => shell0
 					.once("exit", (conCode, signal) => {
-						resolve(async () => {
+						fs.then(fs0 => {
 							const termCode = parseInt(
-								(await fs).readFileSync(
+								fs0.readFileSync(
 									codeTmp0.name,
 									{ encoding: "utf-8", flag: "r" },
 								).trim(),
 								10,
 							)
 							return isNaN(termCode) ? conCode ?? signal ?? NaN : termCode
-						})
-					}).once("error", error => { reject(() => error) })))
+						}).then(resolve)
+							.catch(reject)
+					}).once("error", reject)))
 					.finally(() => {
 						try { codeTmp0.removeCallback() } catch (error) { void error }
 					})
@@ -178,11 +179,9 @@ class WindowsTerminalPty implements TerminalPty {
 		const { stdin } = resizer
 		return new Promise<void>(executeParanoidly((resolve, reject) => {
 			const written = stdin.write(chunk, error => {
-				if (error) {
-					reject(() => error)
-				} else if (written) { resolve(() => { }) }
+				if (error) { reject(error) } else if (written) { resolve() }
 			})
-			if (!written) { stdin.once("drain", () => { resolve(() => { }) }) }
+			if (!written) { stdin.once("drain", () => { resolve() }) }
 		}))
 	}
 
@@ -261,8 +260,8 @@ class UnixTerminalPty implements TerminalPty {
 				) => {
 					shell.once(
 						"exit",
-						(code, signal) => { resolve(() => code ?? signal ?? NaN) },
-					).once("error", error => { reject(() => error) })
+						(code, signal) => { resolve(code ?? signal ?? NaN) },
+					).once("error", reject)
 				})))
 	}
 
