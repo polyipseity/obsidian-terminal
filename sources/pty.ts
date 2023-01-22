@@ -91,7 +91,7 @@ export class ExternalTerminalPty
 	}
 }
 
-abstract class WindowsTerminalPty
+class WindowsTerminalPty
 	extends BaseTerminalPty
 	implements TerminalPty {
 	public readonly shell
@@ -314,7 +314,7 @@ abstract class WindowsTerminalPty
 	}
 }
 
-export class UnixTerminalPty
+class UnixTerminalPty
 	extends BaseTerminalPty
 	implements TerminalPty {
 	public readonly shell
