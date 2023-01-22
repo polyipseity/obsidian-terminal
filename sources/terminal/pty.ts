@@ -27,12 +27,9 @@ const
 
 export interface TerminalPty {
 	readonly shell: Promise<PipedChildProcess>
+	readonly exit: Promise<NodeJS.Signals | number>
 	readonly pipe: (terminal: Terminal) => Promise<void>
 	readonly resize: (columns: number, rows: number) => Promise<void>
-	readonly once: (
-		event: "exit",
-		listener: (code: NodeJS.Signals | number) => any,
-	) => Promise<this>
 }
 
 function clearTerminal(terminal: Terminal): void {
@@ -40,54 +37,10 @@ function clearTerminal(terminal: Terminal): void {
 	terminal.write(`${"\n\u001b[K".repeat(terminal.rows)}\u001b[H`)
 }
 
-export class ExternalTerminalPty implements TerminalPty {
-	public readonly shell
-	// It's not really a pty, isn't it?
-	public constructor(
-		protected readonly plugin: TerminalPlugin,
-		executable: string,
-		cwd?: string,
-		args?: readonly string[],
-	) {
-		this.shell =
-			new Promise<PipedChildProcess>(executeParanoidly(resolve => {
-				resolve(async () => {
-					const ret = (await childProcess).spawn(executable, args ?? [], {
-						cwd,
-						detached: true,
-						shell: true,
-						stdio: ["pipe", "pipe", "pipe"],
-					})
-					ret.unref()
-					return ret
-				})
-			}))
-	}
-
-	public async pipe(_terminal: Terminal): Promise<void> {
-		return Promise.reject(new Error(this.plugin.language
-			.i18n.t("errors.unsupported-operation")))
-	}
-
-	public async resize(_columns: number, _rows: number): Promise<void> {
-		return Promise.reject(new Error(this.plugin.language
-			.i18n.t("errors.unsupported-operation")))
-	}
-
-	public async once(
-		event: "exit",
-		listener: (code: NodeJS.Signals | number) => any,
-	): Promise<this> {
-		(await this.shell)
-			.once(event, (code, signal) => void listener(code ?? signal ?? NaN))
-		return this
-	}
-}
-
 class WindowsTerminalPty implements TerminalPty {
 	public readonly shell
 	public readonly conhost
-	readonly #exitCode
+	public readonly exit
 	readonly #resizer = ((): Promise<PipedChildProcess> | null => {
 		const { plugin } = this,
 			{ settings, language } = plugin,
@@ -237,7 +190,7 @@ class WindowsTerminalPty implements TerminalPty {
 					resizer0.once("spawn", onSpawn).once("error", onError)
 				}).catch(reject)
 			}))
-		this.#exitCode = this.shell
+		this.exit = this.shell
 			.then(async shell0 =>
 				new Promise<NodeJS.Signals | number>(executeParanoidly((
 					resolve,
@@ -296,14 +249,6 @@ class WindowsTerminalPty implements TerminalPty {
 		}))
 	}
 
-	public async once(
-		_event: "exit",
-		listener: (code: NodeJS.Signals | number) => any,
-	): Promise<this> {
-		this.#exitCode.then(listener).catch(() => { })
-		return Promise.resolve(this)
-	}
-
 	public async pipe(terminal: Terminal): Promise<void> {
 		const shell = await this.shell
 		clearTerminal(terminal)
@@ -323,6 +268,7 @@ class WindowsTerminalPty implements TerminalPty {
 
 class UnixTerminalPty implements TerminalPty {
 	public readonly shell
+	public readonly exit
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
@@ -352,15 +298,17 @@ class UnixTerminalPty implements TerminalPty {
 				})
 				return shell
 			})
-	}
-
-	public async once(
-		event: "exit",
-		listener: (code: NodeJS.Signals | number) => any,
-	): Promise<this> {
-		(await this.shell)
-			.once(event, (code, signal) => void listener(code ?? signal ?? NaN))
-		return this
+		this.exit = this.shell
+			.then(async shell =>
+				new Promise<NodeJS.Signals | number>(executeParanoidly((
+					resolve,
+					reject,
+				) => {
+					shell.once(
+						"exit",
+						(code, signal) => { resolve(() => code ?? signal ?? NaN) },
+					).once("error", reject)
+				})))
 	}
 
 	public async pipe(terminal: Terminal): Promise<void> {

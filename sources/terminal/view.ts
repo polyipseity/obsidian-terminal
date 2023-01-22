@@ -1,4 +1,3 @@
-import { ExternalTerminalPty, TerminalPty } from "./pty"
 import {
 	type FileSystemAdapter,
 	ItemView,
@@ -7,12 +6,10 @@ import {
 	TFolder,
 	type ViewStateResult,
 	type WorkspaceLeaf,
-	debounce,
 } from "obsidian"
 import {
 	NOTICE_NO_TIMEOUT,
 	TERMINAL_EXIT_SUCCESS,
-	TERMINAL_RESIZE_TIMEOUT,
 } from "../magic"
 import {
 	PLATFORM,
@@ -29,17 +26,21 @@ import {
 	saveFile,
 	updateDisplayText,
 } from "../util"
-import { type TerminalSerial, TerminalSerializer } from "./serialize"
+import {
+	XtermTerminalEmulator,
+	spawnExternalTerminalEmulator,
+} from "./emulator"
 import { DEFAULT_LANGUAGE } from "assets/locales"
-import { FitAddon } from "xterm-addon-fit"
 import { SearchAddon } from "xterm-addon-search"
-import { Terminal } from "xterm"
 import type { TerminalPlugin } from "../main"
+import { TerminalPty } from "./pty"
 import { WebLinksAddon } from "xterm-addon-web-links"
 
 export class TerminalView extends ItemView {
 	public static readonly type = new UnnamespacedID("terminal")
 	public static namespacedViewType: string
+	#emulator0: TerminalView.EmulatorType | null = null
+	#focus0 = false
 	#state: TerminalView.State = {
 		__type: TerminalView.State.TYPE,
 		args: [],
@@ -47,42 +48,57 @@ export class TerminalView extends ItemView {
 		executable: "",
 	}
 
-	readonly #terminal = new Terminal({
-		allowProposedApi: true,
-	})
-
-	readonly #terminalAddons = {
-		fit: new FitAddon(),
-		search: new SearchAddon(),
-		webLinks: new WebLinksAddon((_0, uri) => openExternal(uri)),
-	} as const
-
-	#pty?: TerminalPty
-	readonly #serializer = new TerminalSerializer(this.#terminal)
-	readonly #resizeNative = debounce(
-		async (
-			columns: number,
-			rows: number,
-		) => {
-			try {
-				await this.#pty?.resize(columns, rows)
-				this.#terminal.resize(columns, rows)
-				this.plugin.app.workspace.requestSaveLayout()
-			} catch (error) { void error }
-		},
-		TERMINAL_RESIZE_TIMEOUT,
-		false,
-	)
-
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
 		leaf: WorkspaceLeaf,
 	) {
 		super(leaf)
-		for (const addon of Object.values(this.#terminalAddons)) {
-			this.#terminal.loadAddon(addon)
-		}
-		this.#terminal.onWriteParsed(this.plugin.app.workspace.requestSaveLayout)
+	}
+
+	get #emulator(): TerminalView.EmulatorType | null {
+		return this.#emulator0
+	}
+
+	get #focus(): boolean {
+		return this.#focus0
+	}
+
+	set #emulator(val: TerminalView.EmulatorType | null) {
+		this.#emulator0?.close().catch(error => {
+			printError(
+				error,
+				() => this.plugin.language
+					.i18n.t("errors.failed-to-kill-pseudoterminal"),
+				this.plugin,
+			)
+		})
+		const { plugin } = this,
+			{ app, language } = plugin,
+			{ i18n } = language,
+			{ requestSaveLayout } = app.workspace
+		val?.exit
+			.then(code => {
+				notice(
+					() => i18n.t("notices.terminal-exited", { code }),
+					inSet(TERMINAL_EXIT_SUCCESS, code)
+						? plugin.settings.noticeTimeout
+						: NOTICE_NO_TIMEOUT,
+					plugin,
+				)
+			}, error => {
+				printError(error, () =>
+					i18n.t("errors.error-spawning-terminal"), plugin)
+			})
+		val?.terminal.onWriteParsed(requestSaveLayout)
+		val?.terminal.onResize(requestSaveLayout)
+		if (this.#focus) { val?.terminal.focus() } else { val?.terminal.blur() }
+		this.#emulator0 = val
+	}
+
+	set #focus(val: boolean) {
+		const term = this.#emulator?.terminal
+		if (this.#focus) { term?.focus() } else { term?.blur() }
+		this.#focus0 = val
 	}
 
 	public override async setState(
@@ -90,83 +106,26 @@ export class TerminalView extends ItemView {
 		result: ViewStateResult,
 	): Promise<void> {
 		await super.setState(state, result)
-		if (!isInterface<TerminalView.State>(TerminalView.State.TYPE, state) ||
-			typeof this.#pty !== "undefined") {
-			return
-		}
-		this.#state = state
-
-		const { plugin } = this,
-			{ i18n } = plugin.language
-		if (TerminalPty.PLATFORM_PTY === null) {
-			this.leaf.detach()
-			return
-		}
-		try {
-			this.#pty = new TerminalPty.PLATFORM_PTY(
-				plugin,
-				state.executable,
-				state.cwd,
-				state.args,
-			)
-			const shell = await this.#pty.shell
-			this.register(shell.kill.bind(shell))
-			await this.#pty.once("exit", code => {
-				try {
-					this.leaf.detach()
-				} finally {
-					notice(
-						() => i18n.t("notices.terminal-exited", { code }),
-						inSet(TERMINAL_EXIT_SUCCESS, code)
-							? plugin.settings.noticeTimeout
-							: NOTICE_NO_TIMEOUT,
-						plugin,
-					)
-				}
-			})
-			shell.once("error", error => {
-				try {
-					printError(error, () =>
-						i18n.t("errors.error-spawning-terminal"), plugin)
-				} finally {
-					this.leaf.detach()
-				}
-			})
-			const { serial } = state
-			if (typeof serial !== "undefined") {
-				this.#serializer.unserialize(serial)
-				this.#terminal.resize(serial.columns, serial.rows)
-				this.#terminal.write(serial.data)
-			}
-			await this.#pty.pipe(this.#terminal)
-		} catch (error) {
-			try {
-				printError(error, () =>
-					i18n.t("errors.error-spawning-terminal"), plugin)
-			} finally {
-				this.leaf.detach()
-			}
+		if (isInterface<TerminalView.State>(TerminalView.State.TYPE, state)) {
+			this.#state = state
 		}
 	}
 
 	public override getState(): any {
-		this.#state.serial = this.#serializer.serialize()
+		const serial = this.#emulator?.serialize()
+		if (typeof serial !== "undefined") {
+			this.#state.serial = serial
+		}
 		return Object.assign(super.getState(), this.#state)
 	}
 
-	public override onResize(): void {
+	public override async onResize(): Promise<void> {
 		super.onResize()
 		const { containerEl } = this
 		if (containerEl.offsetWidth <= 0 || containerEl.offsetHeight <= 0) {
 			return
 		}
-		const { fit } = this.#terminalAddons,
-			dim = fit.proposeDimensions()
-		if (typeof dim === "undefined") {
-			return
-		}
-		fit.fit()
-		this.#resizeNative(dim.cols, dim.rows)
+		await this.#emulator?.resize()
 	}
 
 	public getDisplayText(): string {
@@ -189,49 +148,24 @@ export class TerminalView extends ItemView {
 
 	public override onPaneMenu(menu: Menu, source: string): void {
 		super.onPaneMenu(menu, source)
-		const { leaf, plugin } = this,
-			{ i18n } = plugin.language
+		const { i18n } = this.plugin.language
 		menu
 			.addSeparator()
 			.addItem(item => item
 				.setTitle(i18n.t("menus.save-as-HTML"))
 				.setIcon(i18n.t("asset:menus.save-as-HTML-icon"))
+				.setDisabled(this.#emulator === null)
 				.onClick(() => {
-					const terminal = this.#terminal,
-						save = (): void => {
-							saveFile(
-								this.#serializer.serializer.serializeAsHTML({
-									includeGlobalBackground: false,
-									onlySelection: false,
-								}),
-								"text/html; charset=UTF-8;",
-								`${this.#getExecutableBasename()}.html`,
-							)
-						}
-					if (typeof terminal.element === "undefined") {
-						const { workspace } = plugin.app,
-							last = workspace.getMostRecentLeaf(),
-							dispose = terminal.onRender(() => {
-								try {
-									save()
-								} finally {
-									try {
-										if (last !== null) {
-											workspace.setActiveLeaf(last)
-										}
-									} finally {
-										dispose.dispose()
-									}
-								}
-							})
-						try {
-							workspace.setActiveLeaf(leaf)
-						} catch {
-							dispose.dispose()
-						}
-						return
-					}
-					save()
+					const emu = this.#emulator
+					if (emu === null) { return }
+					saveFile(
+						emu.addons.serialize.serializeAsHTML({
+							includeGlobalBackground: false,
+							onlySelection: false,
+						}),
+						"text/html; charset=UTF-8;",
+						`${this.#getExecutableBasename()}.html`,
+					)
 				}))
 	}
 
@@ -244,8 +178,7 @@ export class TerminalView extends ItemView {
 		containerEl.createDiv({}, ele => {
 			const obsr = onVisible(ele, obsr0 => {
 				try {
-					this.register(() => { this.#terminal.dispose() })
-					this.#terminal.open(ele)
+					this.#startEmulator(ele)
 				} finally {
 					obsr0.disconnect()
 				}
@@ -255,10 +188,10 @@ export class TerminalView extends ItemView {
 
 		this.registerEvent(app.workspace.on("active-leaf-change", leaf => {
 			if (leaf === this.leaf) {
-				this.#terminal.focus()
+				this.#focus = true
 				return
 			}
-			this.#terminal.blur()
+			this.#focus = false
 		}))
 		this.register(language.registerUse(() =>
 			updateDisplayText(this)))
@@ -269,16 +202,49 @@ export class TerminalView extends ItemView {
 		))
 	}
 
+	protected override async onClose(): Promise<void> {
+		await super.onClose()
+		this.#emulator = null
+	}
+
+	#startEmulator(element: HTMLElement): void {
+		const { plugin } = this,
+			state = this.#state,
+			{ i18n } = plugin.language
+		this.#emulator = new TerminalView.EmulatorType(
+			plugin,
+			element,
+			() => {
+				if (TerminalPty.PLATFORM_PTY === null) {
+					throw new TypeError(i18n.t("errors.unsupported-platform"))
+				}
+				return new TerminalPty.PLATFORM_PTY(
+					plugin,
+					state.executable,
+					state.cwd,
+					state.args,
+				)
+			},
+			state.serial,
+			{
+				allowProposedApi: true,
+			},
+			{
+				search: new SearchAddon(),
+				webLinks: new WebLinksAddon((_0, uri) => openExternal(uri)),
+			},
+		)
+	}
+
 	#getExecutableBasename(): string {
 		const { executable } = this.#state
 		return basename(executable, extname(executable))
 	}
 
 	#hidesStatusBar(): boolean {
-		const { plugin } = this
-		switch (plugin.settings.hideStatusBar) {
+		switch (this.plugin.settings.hideStatusBar) {
 			case "focused":
-				return plugin.app.workspace.getActiveViewOfType(TerminalView) === this
+				return this.#focus
 			case "running":
 				return true
 			default:
@@ -287,12 +253,18 @@ export class TerminalView extends ItemView {
 	}
 }
 export namespace TerminalView {
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	export const EmulatorType = XtermTerminalEmulator
+	export type EmulatorType = XtermTerminalEmulator<{
+		readonly search: SearchAddon
+		readonly webLinks: WebLinksAddon
+	}>
 	export interface State {
 		readonly __type: typeof State.TYPE
 		readonly executable: string
 		readonly cwd: string
 		readonly args: readonly string[]
-		serial?: TerminalSerial
+		serial?: XtermTerminalEmulator.State
 	}
 	export namespace State {
 		export const TYPE = "8d54e44a-32e7-4297-8ae2-cff88e92ce28"
@@ -320,10 +292,10 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 	if (inSet(TerminalPty.SUPPORTED_PLATFORMS, PLATFORM)) {
 		const platform = PLATFORM,
 			adapter = app.vault.adapter as FileSystemAdapter,
-			spawnTerminal = async (
+			spawnTerminal = (
 				cwd: string,
 				terminal: TerminalType,
-			): Promise<void> => {
+			): void => {
 				const executable = settings.executables[platform]
 				notice(
 					() => i18n.t(
@@ -332,54 +304,52 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 					),
 					settings.noticeTimeout,
 					plugin,
-				)
-				switch (terminal) {
-					case "external": {
-						const
-							pty = new ExternalTerminalPty(
-								plugin,
+				);
+				(async (): Promise<void> => {
+					switch (terminal) {
+						case "external": {
+							await spawnExternalTerminalEmulator(
 								executable.name,
 								cwd,
 								executable.args,
-							),
-							shell = await pty.shell
-						shell.once("error", error => {
-							printError(
-								error,
-								() => i18n.t("errors.error-spawning-terminal"),
-								plugin,
 							)
-						})
-						return new Promise((resolve, reject) => {
-							shell.once("spawn", resolve).once("error", reject)
-						})
+							break
+						}
+						case "integrated": {
+							const { workspace } = app,
+								existingLeaves = workspace
+									.getLeavesOfType(TerminalView.type.namespaced(plugin)),
+								viewState: TerminalView.State = {
+									__type: TerminalView.State.TYPE,
+									args: executable.args,
+									cwd,
+									executable: executable.name,
+								}
+							await ((): WorkspaceLeaf => {
+								const existingLeaf = existingLeaves.last()
+								if (typeof existingLeaf === "undefined") {
+									return workspace.getLeaf("split", "horizontal")
+								}
+								workspace.setActiveLeaf(existingLeaf, { focus: false })
+								return workspace.getLeaf("tab")
+							})()
+								.setViewState({
+									active: true,
+									state: viewState,
+									type: TerminalView.type.namespaced(plugin),
+								})
+							break
+						}
+						default:
+							throw new TypeError(terminal)
 					}
-					case "integrated": {
-						const { workspace } = app,
-							existingLeaves = workspace
-								.getLeavesOfType(TerminalView.type.namespaced(plugin)),
-							viewState: TerminalView.State = {
-								__type: TerminalView.State.TYPE,
-								args: executable.args,
-								cwd,
-								executable: executable.name,
-							}
-						return ((): WorkspaceLeaf => {
-							const existingLeaf = existingLeaves.last()
-							if (typeof existingLeaf === "undefined") {
-								return workspace.getLeaf("split", "horizontal")
-							}
-							workspace.setActiveLeaf(existingLeaf, { focus: false })
-							return workspace.getLeaf("tab")
-						})().setViewState({
-							active: true,
-							state: viewState,
-							type: TerminalView.type.namespaced(plugin),
-						})
-					}
-					default:
-						throw new TypeError(terminal)
-				}
+				})().catch(error => {
+					printError(
+						error,
+						() => i18n.t("errors.error-spawning-terminal"),
+						plugin,
+					)
+				})
 			},
 			addContextMenus = (menu: Menu, cwd: TFolder): void => {
 				menu.addSeparator()
@@ -387,10 +357,12 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 					menu.addItem(item => item
 						.setTitle(i18n.t(`menus.open-terminal-${terminal}`))
 						.setIcon(i18n.t(`asset:menus.open-terminal-${terminal}-icon`))
-						.onClick(async () => spawnTerminal(
-							adapter.getFullPath(cwd.path),
-							terminal,
-						)))
+						.onClick(() => {
+							spawnTerminal(
+								adapter.getFullPath(cwd.path),
+								terminal,
+							)
+						}))
 				}
 			}
 		terminalSpawnCommand = (
@@ -403,10 +375,7 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 			switch (cwd) {
 				case "root": {
 					if (!checking) {
-						spawnTerminal(
-							adapter.getBasePath(),
-							terminal,
-						).catch(() => { })
+						spawnTerminal(adapter.getBasePath(), terminal)
 					}
 					return true
 				}
@@ -419,7 +388,7 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 						spawnTerminal(
 							adapter.getFullPath(activeFile.parent.path),
 							terminal,
-						).catch(() => { })
+						)
 					}
 					return true
 				}

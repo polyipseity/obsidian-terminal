@@ -52,7 +52,6 @@ For first time users, read the [installation](#installation) section first!
 ## Todos
 
 - Add option to disable notices.
-- Keep terminal views across plugin updates.
 - Add setting for successful exit codes.
 - Add terminal text loading.
 - Add terminal duplication.

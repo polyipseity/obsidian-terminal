@@ -59,6 +59,7 @@
       "error",
       "after"
     ],
+    "grouped-accessor-pairs": "off",
     "implicit-arrow-linebreak": "off",
     "indent": "off",
     "linebreak-style": "off",
@@ -141,6 +142,7 @@
     "semi": "off",
     "sort-vars": "off",
     "space-before-function-paren": "off",
+    "@typescript-eslint/adjacent-overload-signatures": "off",
     "@typescript-eslint/brace-style": [
       "error",
       "1tbs",
