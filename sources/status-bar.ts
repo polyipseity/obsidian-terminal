@@ -19,7 +19,7 @@ export class StatusBarHider {
 		const { plugin } = this
 		plugin.app.workspace.onLayoutReady(() => {
 			if (statusBar(div => {
-				const obs = new MutationObserver(this.#maybeHide.bind(this, div))
+				const obs = new MutationObserver(() => { this.#maybeHide(div) })
 				plugin.register(() => {
 					try {
 						obs.disconnect()

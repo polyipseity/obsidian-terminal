@@ -195,10 +195,10 @@ export class TerminalView extends ItemView {
 		}))
 		this.register(language.registerUse(() =>
 			updateDisplayText(this)))
-		this.register(statusBarHider.hide(this.#hidesStatusBar.bind(this)))
+		this.register(statusBarHider.hide(() => this.#hidesStatusBar()))
 		this.registerEvent(app.workspace.on(
 			"active-leaf-change",
-			statusBarHider.update.bind(statusBarHider),
+			() => { statusBarHider.update() },
 		))
 	}
 
