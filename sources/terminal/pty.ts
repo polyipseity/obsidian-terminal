@@ -178,7 +178,7 @@ class WindowsTerminalPty implements TerminalPty {
 									10,
 								)
 								resolve(isNaN(termCode) ? conCode ?? signal ?? NaN : termCode)
-							} catch (error) {
+							} catch {
 								resolve(conCode ?? signal ?? NaN)
 							} finally {
 								codeTmp.removeCallback()
