@@ -7,8 +7,8 @@ import {
 	inSet,
 	notice,
 	printError,
-	typedKeys,
 	spawnPromise,
+	typedKeys,
 } from "../util"
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
@@ -142,7 +142,7 @@ class WindowsTerminalPty implements TerminalPty {
 								TERMINAL_RESIZER_WATCHDOG_INTERVAL,
 							)
 							try {
-								resizer.once("close", () => { window.clearInterval(watchdog) })
+								resizer.once("exit", () => { window.clearInterval(watchdog) })
 							} catch (error) {
 								window.clearInterval(watchdog)
 								throw error
@@ -166,25 +166,25 @@ class WindowsTerminalPty implements TerminalPty {
 		this.shell = shell.then(([shell0]) => shell0)
 		this.exit = shell
 			.then(async ([shell0, codeTmp]) =>
-				new Promise<NodeJS.Signals | number>(executeParanoidly((
-					resolve,
-					reject,
-				) => shell0.once("exit", (conCode, signal) => {
-					fs.then(fs0 => {
-						const termCode = parseInt(
-							fs0.readFileSync(
-								codeTmp.name,
-								{ encoding: "utf-8", flag: "r" },
-							).trim(),
-							10,
-						)
-						return isNaN(termCode) ? conCode ?? signal ?? NaN : termCode
-					}).then(resolve)
-						.catch(reject)
-				}).once("error", reject)))
-					.finally(() => {
-						try { codeTmp.removeCallback() } catch (error) { void error }
-					}))
+				new Promise<NodeJS.Signals | number>(executeParanoidly(resolve =>
+					shell0.once("exit", (conCode, signal) => {
+						(async (): Promise<void> => {
+							try {
+								const termCode = parseInt(
+									(await fs).readFileSync(
+										codeTmp.name,
+										{ encoding: "utf-8", flag: "r" },
+									).trim(),
+									10,
+								)
+								resolve(isNaN(termCode) ? conCode ?? signal ?? NaN : termCode)
+							} catch (error) {
+								resolve(conCode ?? signal ?? NaN)
+							} finally {
+								codeTmp.removeCallback()
+							}
+						})().catch(() => { })
+					}))))
 	}
 
 	static async #resize(
@@ -271,14 +271,10 @@ class UnixTerminalPty implements TerminalPty {
 		})
 		this.exit = this.shell
 			.then(async shell =>
-				new Promise<NodeJS.Signals | number>(executeParanoidly((
-					resolve,
-					reject,
-				) => {
+				new Promise<NodeJS.Signals | number>(executeParanoidly(resolve =>
 					shell.once("exit", (code, signal) => {
 						resolve(code ?? signal ?? NaN)
-					}).once("error", reject)
-				})))
+					}))))
 	}
 
 	public async pipe(terminal: Terminal): Promise<void> {
