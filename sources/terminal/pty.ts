@@ -8,6 +8,7 @@ import {
 	notice,
 	printError,
 	typedKeys,
+	spawnPromise,
 } from "../util"
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
@@ -49,36 +50,36 @@ class WindowsTerminalPty implements TerminalPty {
 		if (pythonExecutable === "") {
 			return null
 		}
-		const childProcess0 = await childProcess,
-			ret = childProcess0
-				.spawn(pythonExecutable, ["-c", win32ResizerPy], {
-					stdio: ["pipe", "pipe", "pipe"],
-					windowsHide: true,
-				}),
-			op = new Promise<PipedChildProcess>(executeParanoidly((
-				resolve,
-				reject,
-			) => {
-				ret
-					.once("spawn", () => { resolve(ret) })
-					.once("error", reject)
+		return spawnPromise(async () =>
+			(await childProcess).spawn(pythonExecutable, ["-c", win32ResizerPy], {
+				stdio: ["pipe", "pipe", "pipe"],
+				windowsHide: true,
 			}))
-		ret.once("exit", (code, signal) => {
-			if (code !== 0) {
-				notice(
-					() => i18n.t(
-						"errors.resizer-exited-unexpectedly",
-						{ code: code ?? signal },
-					),
-					NOTICE_NO_TIMEOUT,
-					plugin,
-				)
-			}
-		})
-		ret.stderr.on("data", (chunk: Buffer | string) => {
-			console.error(chunk.toString())
-		})
-		return op
+			.then(ret => {
+				try {
+					try {
+						ret.stderr.on("data", (chunk: Buffer | string) => {
+							console.error(chunk.toString())
+						})
+					} finally {
+						ret.once("exit", (code, signal) => {
+							if (code !== 0) {
+								notice(
+									() => i18n.t(
+										"errors.resizer-exited-unexpectedly",
+										{ code: code ?? signal },
+									),
+									NOTICE_NO_TIMEOUT,
+									plugin,
+								)
+							}
+						})
+					}
+				} catch (error) {
+					void error
+				}
+				return ret
+			})
 	})()
 
 	public constructor(
@@ -88,88 +89,102 @@ class WindowsTerminalPty implements TerminalPty {
 		args?: readonly string[],
 	) {
 		this.conhost = plugin.settings.enableWindowsConhostWorkaround
-		const
-			codeTmp = tmp.then(tmp0 => tmp0.fileSync({ discardDescriptor: true })),
-			spawnShell = async (resizable: boolean): Promise<PipedChildProcess> => {
-				const cmd = [
-					"C:\\Windows\\System32\\cmd.exe",
-					"/C",
-					`${WindowsTerminalPty.#escapeArgument(executable)} ${(args ?? [])
-						.map(arg => WindowsTerminalPty.#escapeArgument(arg))
-						.join(" ")
-					} & call echo %^ERRORLEVEL% >${WindowsTerminalPty
-						.#escapeArgument((await codeTmp).name)}`,
-				]
-				if (this.conhost) { cmd.unshift("C:\\Windows\\System32\\conhost.exe") }
-				return (await childProcess).spawn(
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-					cmd.shift()!,
-					cmd,
-					{
-						cwd,
-						stdio: ["pipe", "pipe", "pipe"],
-						windowsHide: !resizable,
-						windowsVerbatimArguments: true,
-					},
-				)
-			}
-		this.shell = this.#resizer.then(async resizer0 => {
-			if (resizer0 === null) {
-				return spawnShell(false)
-			}
-			const ret = await spawnShell(true)
-			try {
-				await WindowsTerminalPty.#resize(resizer0, `${ret.pid ?? -1}`)
-				const watchdog = window.setInterval(
-					() => {
-						WindowsTerminalPty.#resize(resizer0, "\n").catch(() => { })
-					},
-					TERMINAL_RESIZER_WATCHDOG_INTERVAL,
-				)
+		const shell = this.#resizer.catch(() => null)
+			.then(async resizer => {
 				try {
-					resizer0.once("close", () => { window.clearInterval(watchdog) })
+					const codeTmp = (await tmp).fileSync({ discardDescriptor: true })
+					try {
+						const cmd = [
+							"C:\\Windows\\System32\\cmd.exe",
+							"/C",
+							`${WindowsTerminalPty.#escapeArgument(executable)} ${(args ?? [])
+								.map(arg => WindowsTerminalPty.#escapeArgument(arg))
+								.join(" ")
+							} & call echo %^ERRORLEVEL% >${WindowsTerminalPty
+								.#escapeArgument(codeTmp.name)}`,
+						]
+						if (this.conhost) {
+							cmd.unshift("C:\\Windows\\System32\\conhost.exe")
+						}
+						return [
+							resizer,
+							codeTmp,
+							await spawnPromise(async () => (await childProcess).spawn(
+								// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+								cmd.shift()!,
+								cmd,
+								{
+									cwd,
+									stdio: ["pipe", "pipe", "pipe"],
+									windowsHide: resizer === null,
+									windowsVerbatimArguments: true,
+								},
+							)),
+						] as const
+					} catch (error) {
+						codeTmp.removeCallback()
+						throw error
+					}
 				} catch (error) {
-					window.clearInterval(watchdog)
+					resizer?.kill()
 					throw error
 				}
-			} catch (error) {
+			})
+			.then(async ([resizer, codeTmp, shell0]) => {
 				try {
-					printError(
-						error,
-						() => this.plugin.language
-							.i18n.t("errors.error-spawning-resizer"),
-						this.plugin,
-					)
-				} finally {
-					resizer0.kill()
-				}
-			}
-			return ret
-		}, async () => spawnShell(false))
-		this.exit = this.shell
-			.then(async shell0 => {
-				const codeTmp0 = await codeTmp
-				return new Promise<NodeJS.Signals | number>(executeParanoidly((
+					if (resizer !== null) {
+						try {
+							await WindowsTerminalPty.#resize(resizer, `${shell0.pid ?? -1}`)
+							const watchdog = window.setInterval(
+								() => {
+									WindowsTerminalPty.#resize(resizer, "\n").catch(() => { })
+								},
+								TERMINAL_RESIZER_WATCHDOG_INTERVAL,
+							)
+							try {
+								resizer.once("close", () => { window.clearInterval(watchdog) })
+							} catch (error) {
+								window.clearInterval(watchdog)
+								throw error
+							}
+						} catch (error) {
+							try {
+								printError(
+									error,
+									() => this.plugin.language
+										.i18n.t("errors.error-spawning-resizer"),
+									this.plugin,
+								)
+							} finally {
+								resizer.kill()
+							}
+						}
+					}
+				} catch (error) { void error }
+				return [shell0, codeTmp] as const
+			})
+		this.shell = shell.then(([shell0]) => shell0)
+		this.exit = shell
+			.then(async ([shell0, codeTmp]) =>
+				new Promise<NodeJS.Signals | number>(executeParanoidly((
 					resolve,
 					reject,
-				) => shell0
-					.once("exit", (conCode, signal) => {
-						fs.then(fs0 => {
-							const termCode = parseInt(
-								fs0.readFileSync(
-									codeTmp0.name,
-									{ encoding: "utf-8", flag: "r" },
-								).trim(),
-								10,
-							)
-							return isNaN(termCode) ? conCode ?? signal ?? NaN : termCode
-						}).then(resolve)
-							.catch(reject)
-					}).once("error", reject)))
+				) => shell0.once("exit", (conCode, signal) => {
+					fs.then(fs0 => {
+						const termCode = parseInt(
+							fs0.readFileSync(
+								codeTmp.name,
+								{ encoding: "utf-8", flag: "r" },
+							).trim(),
+							10,
+						)
+						return isNaN(termCode) ? conCode ?? signal ?? NaN : termCode
+					}).then(resolve)
+						.catch(reject)
+				}).once("error", reject)))
 					.finally(() => {
-						try { codeTmp0.removeCallback() } catch (error) { void error }
-					})
-			})
+						try { codeTmp.removeCallback() } catch (error) { void error }
+					}))
 	}
 
 	static async #resize(
@@ -232,36 +247,37 @@ class UnixTerminalPty implements TerminalPty {
 	) {
 		const { settings, language } = plugin,
 			{ pythonExecutable } = settings
-		this.shell = childProcess
-			.then(childProcess0 => {
-				if (pythonExecutable === "") {
-					throw new Error(language
-						.i18n.t("errors.no-python-to-start-unix-pseudoterminal"))
-				}
-				const shell = childProcess0.spawn(
-					pythonExecutable,
-					["-c", unixPtyPy, executable].concat(args ?? []),
-					{
-						cwd,
-						stdio: ["pipe", "pipe", "pipe", "pipe"],
-						windowsHide: true,
-					},
-				)
-				shell.stderr.on("data", (chunk: Buffer | string) => {
+		this.shell = spawnPromise(async () => {
+			if (pythonExecutable === "") {
+				throw new Error(language
+					.i18n.t("errors.no-python-to-start-unix-pseudoterminal"))
+			}
+			return (await childProcess).spawn(
+				pythonExecutable,
+				["-c", unixPtyPy, executable].concat(args ?? []),
+				{
+					cwd,
+					stdio: ["pipe", "pipe", "pipe", "pipe"],
+					windowsHide: true,
+				},
+			)
+		}).then(ret => {
+			try {
+				ret.stderr.on("data", (chunk: Buffer | string) => {
 					console.error(chunk.toString())
 				})
-				return shell
-			})
+			} catch (error) { void error }
+			return ret
+		})
 		this.exit = this.shell
 			.then(async shell =>
 				new Promise<NodeJS.Signals | number>(executeParanoidly((
 					resolve,
 					reject,
 				) => {
-					shell.once(
-						"exit",
-						(code, signal) => { resolve(code ?? signal ?? NaN) },
-					).once("error", reject)
+					shell.once("exit", (code, signal) => {
+						resolve(code ?? signal ?? NaN)
+					}).once("error", reject)
 				})))
 	}
 

@@ -1,5 +1,6 @@
 import { BUNDLE, BUNDLE_KEYS } from "./bundle"
 import { Notice, Plugin, type PluginManifest, type View } from "obsidian"
+import type { ChildProcess } from "node:child_process"
 import { NOTICE_NO_TIMEOUT } from "./magic"
 import type { TerminalPlugin } from "./main"
 
@@ -104,6 +105,16 @@ export function saveFile(
 	} finally {
 		URL.revokeObjectURL(url)
 	}
+}
+
+export async function spawnPromise<T extends ChildProcess>(spawn: (
+
+) => Promise<T> | T): Promise<T> {
+	const ret = await spawn()
+	return new Promise<T>(executeParanoidly((resolve, reject) => {
+		ret.once("spawn", () => { resolve(ret) })
+			.once("error", reject)
+	}))
 }
 
 export function typedKeys<T extends number | string | symbol>(obj: {

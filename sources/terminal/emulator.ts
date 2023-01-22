@@ -3,8 +3,8 @@ import {
 	type ITerminalOptions,
 	Terminal,
 } from "xterm"
-import { executeParanoidly, importIfDesktop } from "sources/util"
-import type { ChildProcess } from "node:child_process"
+import { executeParanoidly, importIfDesktop, spawnPromise } from "sources/util"
+import type { ChildProcessByStdio } from "node:child_process"
 import { FitAddon } from "xterm-addon-fit"
 import { SerializeAddon } from "xterm-addon-serialize"
 import { TERMINAL_RESIZE_TIMEOUT } from "sources/magic"
@@ -20,20 +20,18 @@ export async function spawnExternalTerminalEmulator(
 	executable: string,
 	cwd?: string,
 	args?: readonly string[],
-): Promise<ChildProcess> {
-	const
-		ret = (await childProcess).spawn(executable, args ?? [], {
+): Promise<ChildProcessByStdio<null, null, null>> {
+	return spawnPromise(async () =>
+		(await childProcess).spawn(executable, args ?? [], {
 			cwd,
 			detached: true,
 			shell: true,
 			stdio: ["ignore", "ignore", "ignore"],
-		}),
-		op = new Promise<ChildProcess>(executeParanoidly((resolve, reject) => {
-			ret.once("spawn", () => { resolve(ret) })
-				.once("error", reject)
 		}))
-	ret.unref()
-	return op
+		.then(ret => {
+			try { ret.unref() } catch (error) { void error }
+			return ret
+		})
 }
 
 export class XtermTerminalEmulator<A> {
