@@ -13,7 +13,6 @@
 		"no-python-to-start-unix-pseudoterminal": "No Python to start Unix PTY",
 		"resizer-disabled": "Terminal resizer disabled",
 		"resizer-exited-unexpectedly": "Terminal resizer exited unexpectedly: {{- code}}",
-		"unsupported-operation": "Unsupported operation",
 		"unsupported-platform": "Unsupported platform"
 	},
 	"menus": {
