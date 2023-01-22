@@ -49,7 +49,7 @@
 		"notice-timeout": "通知超時（秒）",
 		"notice-timeout-description": "設為 0 秒是無超時。",
 		"python-executable": "Python 執行檔",
-		"python-executable-description": "於Unix啟動終端所需要的。清除文字域以禁用Python。",
+		"python-executable-description": "於Unix啟動整合式終端所需要的。清除文字域以禁用Python。",
 		"python-executable-placeholder": "（已禁用）",
 		"reset": "重設",
 		"reset-all": "重設全部"

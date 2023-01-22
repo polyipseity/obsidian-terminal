@@ -49,7 +49,7 @@
 		"notice-timeout": "Notice timeout (s)",
 		"notice-timeout-description": "Set to 0 s for no timeout.",
 		"python-executable": "Python executable",
-		"python-executable-description": "Required on Unix to start terminals. Clear field to disable Python.",
+		"python-executable-description": "Required on Unix to start integrated terminal. Clear field to disable Python.",
 		"python-executable-placeholder": "(Disabled)",
 		"reset": "Reset",
 		"reset-all": "Reset all"
