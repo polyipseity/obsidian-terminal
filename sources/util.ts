@@ -114,6 +114,12 @@ export function saveFile(
 	}
 }
 
+export function typedKeys<T extends number | string | symbol>(obj: {
+	readonly [key in T]: any
+}): readonly T[] {
+	return Object.keys(obj) as T[]
+}
+
 export function inSet<T>(set: readonly T[], obj: any): obj is T {
 	return (set as readonly any[]).includes(obj)
 }

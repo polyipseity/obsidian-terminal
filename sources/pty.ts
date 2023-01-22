@@ -7,6 +7,7 @@ import {
 	inSet,
 	notice,
 	printError,
+	typedKeys,
 } from "./util"
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
@@ -419,8 +420,7 @@ export namespace TerminalPty {
 		linux: UnixTerminalPty,
 		win32: WindowsTerminalPty,
 	} as const
-	export const SUPPORTED_PLATFORMS =
-		Object.keys(PLATFORM_PTYS) as readonly (keyof typeof PLATFORM_PTYS)[]
+	export const SUPPORTED_PLATFORMS = typedKeys(PLATFORM_PTYS)
 	export const PLATFORM_PTY =
 		inSet(SUPPORTED_PLATFORMS, PLATFORM) ? PLATFORM_PTYS[PLATFORM] : null
 }
