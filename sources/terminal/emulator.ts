@@ -21,18 +21,19 @@ export async function spawnExternalTerminalEmulator(
 	cwd?: string,
 	args?: readonly string[],
 ): Promise<ChildProcess> {
-	return new Promise<ChildProcess>(executeParanoidly((resolve, reject) => {
-		childProcess.then(childProcess0 => {
-			const ret = childProcess0.spawn(executable, args ?? [], {
-				cwd,
-				detached: true,
-				shell: true,
-				stdio: ["ignore", "ignore", "ignore"],
-			})
-			ret.unref()
-			ret.once("spawn", resolve.bind(ret)).once("error", reject)
-		}).catch(reject)
-	}))
+	const
+		ret = (await childProcess).spawn(executable, args ?? [], {
+			cwd,
+			detached: true,
+			shell: true,
+			stdio: ["ignore", "ignore", "ignore"],
+		}),
+		op = new Promise<ChildProcess>(executeParanoidly((resolve, reject) => {
+			ret.once("spawn", () => { resolve(() => ret) })
+				.once("error", error => { reject(() => error) })
+		}))
+	ret.unref()
+	return op
 }
 
 export class XtermTerminalEmulator<A> {
@@ -109,19 +110,20 @@ export class XtermTerminalEmulator<A> {
 	}
 
 	public async resize(): Promise<void> {
-		return new Promise<void>(executeParanoidly((resolve, reject) => {
-			const { fit } = this.addons,
-				dim = fit.proposeDimensions()
-			if (typeof dim === "undefined") {
-				return
-			}
-			fit.fit()
+		const { fit } = this.addons,
+			dim = fit.proposeDimensions()
+		if (typeof dim === "undefined") {
+			return
+		}
+		const op = new Promise<void>(executeParanoidly((resolve, reject) => {
 			this.#resizePromises.push({
 				reject: reason => { reject(() => reason as unknown) },
 				resolve: () => { resolve(() => { }) },
 			})
 			this.#resize(dim.cols, dim.rows)
 		}))
+		fit.fit()
+		await op
 	}
 
 	public serialize(): XtermTerminalEmulator.State {

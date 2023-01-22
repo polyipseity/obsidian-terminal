@@ -41,7 +41,7 @@ class WindowsTerminalPty implements TerminalPty {
 	public readonly shell
 	public readonly conhost
 	public readonly exit
-	readonly #resizer = ((): Promise<PipedChildProcess> | null => {
+	readonly #resizer = (async (): Promise<PipedChildProcess | null> => {
 		const { plugin } = this,
 			{ settings, language } = plugin,
 			{ pythonExecutable } = settings,
@@ -49,36 +49,36 @@ class WindowsTerminalPty implements TerminalPty {
 		if (pythonExecutable === "") {
 			return null
 		}
-		return childProcess
-			.then(async childProcess0 =>
-				new Promise<PipedChildProcess>(executeParanoidly((
-					resolve,
-					reject,
-				) => {
-					const ret = childProcess0
-						.spawn(pythonExecutable, ["-c", win32ResizerPy], {
-							stdio: ["pipe", "pipe", "pipe"],
-							windowsHide: true,
-						})
-						.once("exit", (code, signal) => {
-							if (code !== 0) {
-								notice(
-									() => i18n.t(
-										"errors.resizer-exited-unexpectedly",
-										{ code: code ?? signal },
-									),
-									NOTICE_NO_TIMEOUT,
-									plugin,
-								)
-							}
-						})
-					ret.stderr.on("data", (chunk: Buffer | string) => {
-						console.error(chunk.toString())
-					})
-					ret
-						.once("spawn", () => { resolve(() => ret) })
-						.once("error", error => { reject(() => error) })
-				})))
+		const childProcess0 = await childProcess,
+			ret = childProcess0
+				.spawn(pythonExecutable, ["-c", win32ResizerPy], {
+					stdio: ["pipe", "pipe", "pipe"],
+					windowsHide: true,
+				}),
+			op = new Promise<PipedChildProcess>(executeParanoidly((
+				resolve,
+				reject,
+			) => {
+				ret
+					.once("spawn", () => { resolve(() => ret) })
+					.once("error", error => { reject(() => error) })
+			}))
+		ret.once("exit", (code, signal) => {
+			if (code !== 0) {
+				notice(
+					() => i18n.t(
+						"errors.resizer-exited-unexpectedly",
+						{ code: code ?? signal },
+					),
+					NOTICE_NO_TIMEOUT,
+					plugin,
+				)
+			}
+		})
+		ret.stderr.on("data", (chunk: Buffer | string) => {
+			console.error(chunk.toString())
+		})
+		return op
 	})()
 
 	public constructor(
@@ -113,72 +113,76 @@ class WindowsTerminalPty implements TerminalPty {
 					},
 				)
 			}
-		this.shell = this.#resizer === null
-			? spawnShell(false)
-			: this.#resizer.then(async resizer0 => {
-				const ret = await spawnShell(true)
+		this.shell = this.#resizer.then(async resizer0 => {
+			if (resizer0 === null) {
+				return spawnShell(false)
+			}
+			const ret = await spawnShell(true)
+			try {
+				await WindowsTerminalPty.#resize(resizer0, `${ret.pid ?? -1}`)
+				const watchdog = window.setInterval(
+					() => {
+						WindowsTerminalPty.#resize(resizer0, "\n").catch(() => { })
+					},
+					TERMINAL_RESIZER_WATCHDOG_INTERVAL,
+				)
 				try {
-					await WindowsTerminalPty.#resize(resizer0, `${ret.pid ?? -1}`)
-					const watchdog = window.setInterval(
-						() => {
-							WindowsTerminalPty.#resize(resizer0, "\n").catch(() => { })
-						},
-						TERMINAL_RESIZER_WATCHDOG_INTERVAL,
-					)
-					try {
-						resizer0.once("close", () => { window.clearInterval(watchdog) })
-					} catch (error) {
-						window.clearInterval(watchdog)
-						throw error
-					}
+					resizer0.once("close", () => { window.clearInterval(watchdog) })
 				} catch (error) {
-					try {
-						printError(
-							error,
-							() => this.plugin.language
-								.i18n.t("errors.error-spawning-resizer"),
-							this.plugin,
-						)
-					} finally {
-						resizer0.kill()
-					}
+					window.clearInterval(watchdog)
+					throw error
 				}
-				return ret
-			}, async () => spawnShell(false))
+			} catch (error) {
+				try {
+					printError(
+						error,
+						() => this.plugin.language
+							.i18n.t("errors.error-spawning-resizer"),
+						this.plugin,
+					)
+				} finally {
+					resizer0.kill()
+				}
+			}
+			return ret
+		}, async () => spawnShell(false))
 		this.exit = this.shell
-			.then(async shell0 =>
-				new Promise<NodeJS.Signals | number>(executeParanoidly((
+			.then(async shell0 => {
+				const codeTmp0 = await codeTmp
+				return new Promise<NodeJS.Signals | number>(executeParanoidly((
 					resolve,
 					reject,
-				) => shell0.once("exit", (conCode, signal) => {
-					resolve(async () => {
-						const termCode = parseInt(
-							(await fs).readFileSync(
-								(await codeTmp).name,
-								{ encoding: "utf-8", flag: "r" },
-							).trim(),
-							10,
-						)
-						return isNaN(termCode) ? conCode ?? signal ?? NaN : termCode
+				) => shell0
+					.once("exit", (conCode, signal) => {
+						resolve(async () => {
+							const termCode = parseInt(
+								(await fs).readFileSync(
+									codeTmp0.name,
+									{ encoding: "utf-8", flag: "r" },
+								).trim(),
+								10,
+							)
+							return isNaN(termCode) ? conCode ?? signal ?? NaN : termCode
+						})
+					}).once("error", error => { reject(() => error) })))
+					.finally(() => {
+						try { codeTmp0.removeCallback() } catch (error) { void error }
 					})
-				}).once("error", error => { reject(() => error) }))))
-			.finally(() => void codeTmp.then(codeTmp0 => {
-				try { codeTmp0.removeCallback() } catch (error) { void error }
-			}))
+			})
 	}
 
 	static async #resize(
 		resizer: PipedChildProcess,
 		chunk: Buffer | string,
 	): Promise<void> {
+		const { stdin } = resizer
 		return new Promise<void>(executeParanoidly((resolve, reject) => {
-			const { stdin } = resizer,
-				written = stdin.write(chunk, error => {
-					if (error) {
-						reject(() => error)
-					} else if (written) { resolve(() => { }) }
-				})
-			if (!written) { stdin.once("drain", resolve) }
+			const written = stdin.write(chunk, error => {
+				if (error) {
+					reject(() => error)
+				} else if (written) { resolve(() => { }) }
+			})
+			if (!written) { stdin.once("drain", () => { resolve(() => { }) }) }
 		}))
 	}
 
@@ -193,18 +197,11 @@ class WindowsTerminalPty implements TerminalPty {
 	}
 
 	public async resize(columns: number, rows: number): Promise<void> {
-		return new Promise(executeParanoidly((resolve, reject) => {
-			const resizer = this.#resizer
-			if (resizer === null) {
-				reject(() => new Error(this.plugin.language
-					.i18n.t("errors.resizer-disabled")))
-				return
-			}
-			resizer.then(async resizer0 =>
-				WindowsTerminalPty.#resize(resizer0, `${columns}x${rows}\n`))
-				.then(() => { resolve(() => { }) })
-				.catch(reason => { reject(() => reason as unknown) })
-		}))
+		const resizer = await this.#resizer
+		if (resizer === null) {
+			throw new Error(this.plugin.language.i18n.t("errors.resizer-disabled"))
+		}
+		await WindowsTerminalPty.#resize(resizer, `${columns}x${rows}\n`)
 	}
 
 	public async pipe(terminal: Terminal): Promise<void> {
@@ -265,7 +262,7 @@ class UnixTerminalPty implements TerminalPty {
 					shell.once(
 						"exit",
 						(code, signal) => { resolve(() => code ?? signal ?? NaN) },
-					).once("error", reject)
+					).once("error", error => { reject(() => error) })
 				})))
 	}
 
