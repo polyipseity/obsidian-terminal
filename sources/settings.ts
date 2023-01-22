@@ -314,7 +314,7 @@ namespace SettingTab {
 		readonly pre?: (component: C) => void
 		readonly post?: (
 			component: C,
-			activate: (value: V) => Promise<void>,
+			activate: (value: V) => PromiseLike<void>,
 		) => void
 	}
 }
