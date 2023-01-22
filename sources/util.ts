@@ -77,19 +77,23 @@ export function executeParanoidly<T>(callback: (
 		resolve: (value: PromiseLike<T> | T) => void,
 		reject: (reason?: any) => void,
 	): void => {
-		callback(supplier => {
-			try {
-				resolve(supplier())
-			} catch (error) {
-				reject(error)
-			}
-		}, supplier => {
-			try {
-				reject((supplier ?? ((): void => { }))())
-			} catch (error) {
-				reject(error)
-			}
-		})
+		try {
+			callback(supplier => {
+				try {
+					resolve(supplier())
+				} catch (error) {
+					reject(error)
+				}
+			}, supplier => {
+				try {
+					reject((supplier ?? ((): void => { }))())
+				} catch (error) {
+					reject(error)
+				}
+			})
+		} catch (error) {
+			reject(error)
+		}
 	}
 }
 
