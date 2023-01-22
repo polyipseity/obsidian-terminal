@@ -3,4 +3,5 @@
 export const BUNDLE = {
 	tmp: () => require("tmp") as unknown,
 } as const
-export const BUNDLE_KEYS = Object.keys(BUNDLE) as (keyof typeof BUNDLE)[]
+export const BUNDLE_KEYS =
+	Object.keys(BUNDLE) as readonly (keyof typeof BUNDLE)[]
