@@ -89,7 +89,7 @@ export class SettingTab extends PluginSettingTab {
 					post: (dropdown, activate) => void dropdown
 						.onChange(async value => {
 							await activate(value)
-							await language.changeLanguage(settings.language)
+							await language.updateLanguage()
 							this.display()
 						}),
 					pre: dropdown => void dropdown
@@ -108,7 +108,7 @@ export class SettingTab extends PluginSettingTab {
 					post: (button, activate) => void button
 						.onClick(async () => {
 							await activate()
-							await language.changeLanguage(settings.language)
+							await language.updateLanguage()
 							this.display()
 						}),
 				},
@@ -117,7 +117,7 @@ export class SettingTab extends PluginSettingTab {
 			.setName(i18n.t("settings.reset-all"))
 			.addButton(this.#resetButton(async () => {
 				Object.assign(settings, structuredClone(DEFAULT_SETTINGS))
-				await language.changeLanguage(settings.language)
+				await language.updateLanguage()
 			}))
 
 		new Setting(containerEl)

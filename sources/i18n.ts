@@ -45,15 +45,18 @@ export class LanguageManager {
 		return this.#i18n
 	}
 
-	public async load(): Promise<void> {
-		this.#i18n = await I18N
-		await this.changeLanguage(this.plugin.settings.language)
+	public get language(): string {
+		const { language } = this.plugin.settings
+		return language === "" ? moment.locale() : language
 	}
 
-	public async changeLanguage(language: string): Promise<void> {
-		await this.i18n.changeLanguage(language === ""
-			? moment.locale()
-			: language)
+	public async load(): Promise<void> {
+		this.#i18n = await I18N
+		await this.updateLanguage()
+	}
+
+	public async updateLanguage(): Promise<void> {
+		await this.i18n.changeLanguage(this.language)
 		await Promise.all(this.#uses.map(use => use()))
 	}
 
