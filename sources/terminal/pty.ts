@@ -1,6 +1,7 @@
 import { NOTICE_NO_TIMEOUT, TERMINAL_RESIZER_WATCHDOG_INTERVAL } from "../magic"
 import {
 	PLATFORM,
+	anyToError,
 	executeParanoidly,
 	inSet,
 	notice,
@@ -145,7 +146,7 @@ class WindowsTerminalPty implements TerminalPty {
 						} catch (error) {
 							try {
 								printError(
-									error,
+									anyToError(error),
 									() => this.plugin.language
 										.i18n.t("errors.error-spawning-resizer"),
 									this.plugin,

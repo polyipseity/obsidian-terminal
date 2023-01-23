@@ -14,6 +14,7 @@ import {
 import {
 	PLATFORM,
 	UnnamespacedID,
+	anyToError,
 	basename,
 	commandNamer,
 	extname,
@@ -66,7 +67,7 @@ export class TerminalView extends ItemView {
 	set #emulator(val: TerminalView.EmulatorType | null) {
 		this.#emulator0?.close().catch(error => {
 			printError(
-				error,
+				anyToError(error),
 				() => this.plugin.language
 					.i18n.t("errors.failed-to-kill-pseudoterminal"),
 				this.plugin,
@@ -86,7 +87,7 @@ export class TerminalView extends ItemView {
 					plugin,
 				)
 			}, error => {
-				printError(error, () =>
+				printError(anyToError(error), () =>
 					i18n.t("errors.error-spawning-terminal"), plugin)
 			})
 		val?.terminal.onWriteParsed(requestSaveLayout)
@@ -345,7 +346,7 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 					}
 				})().catch(error => {
 					printError(
-						error,
+						anyToError(error),
 						() => i18n.t("errors.error-spawning-terminal"),
 						plugin,
 					)

@@ -5,10 +5,10 @@ import {
 	RESOURCES,
 	RETURN_NULL,
 } from "assets/locales"
+import { anyToError, printError } from "./util"
 import i18next, { type i18n } from "i18next"
 import type TerminalPlugin from "./main"
 import { moment } from "obsidian"
-import { printError } from "./util"
 
 declare module "i18next" {
 	interface CustomTypeOptions {
@@ -32,7 +32,7 @@ export const I18N = Promise.resolve(i18next.createInstance({
 		return i18n
 	})
 	.catch(error => {
-		printError(error, () => "i18n error")
+		printError(anyToError(error), () => "i18n error")
 		throw error
 	})
 

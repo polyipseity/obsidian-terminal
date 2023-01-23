@@ -188,15 +188,13 @@ export function openExternal(url?: URL | string): Window | null {
 }
 
 export function printError(
-	error: unknown,
+	error: Error,
 	message = (): string => "",
 	plugin?: TerminalPlugin,
 ): void {
 	console.error(`${message()}\n`, error)
 	notice(
-		error instanceof Error
-			? (): string => `${message()}\n${error.name}: ${error.message}`
-			: (): string => `${message()}\n${String(error)}`,
+		() => `${message()}\n${error.name}: ${error.message}`,
 		NOTICE_NO_TIMEOUT,
 		plugin,
 	)
