@@ -1,4 +1,9 @@
 import {
+	CombinedCanvasAddon,
+	XtermTerminalEmulator,
+	spawnExternalTerminalEmulator,
+} from "./emulator"
+import {
 	type FileSystemAdapter,
 	ItemView,
 	MarkdownView,
@@ -23,10 +28,7 @@ import {
 	saveFile,
 	updateDisplayText,
 } from "../util"
-import {
-	XtermTerminalEmulator,
-	spawnExternalTerminalEmulator,
-} from "./emulator"
+import { CanvasAddon } from "xterm-addon-canvas"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import { LigaturesAddon } from "xterm-addon-ligatures"
 import { TERMINAL_EXIT_SUCCESS } from "../magic"
@@ -34,6 +36,7 @@ import type { TerminalPlugin } from "../main"
 import { TerminalPty } from "./pty"
 import { Unicode11Addon } from "xterm-addon-unicode11"
 import { WebLinksAddon } from "xterm-addon-web-links"
+import { WebglAddon } from "xterm-addon-webgl"
 
 export class TerminalView extends ItemView {
 	public static readonly type = new UnnamespacedID("terminal")
@@ -228,6 +231,10 @@ export class TerminalView extends ItemView {
 							allowProposedApi: true,
 						},
 						{
+							combinedCanvas: new CombinedCanvasAddon(
+								new CanvasAddon(),
+								() => new WebglAddon(false),
+							),
 							ligatures: new LigaturesAddon({}),
 							unicode11: new Unicode11Addon(),
 							webLinks: new WebLinksAddon((_0, uri) => openExternal(uri), {}),
@@ -263,6 +270,7 @@ export namespace TerminalView {
 	export type EMULATOR = XtermTerminalEmulator<EMULATOR.Addons>
 	export namespace EMULATOR {
 		export interface Addons {
+			readonly combinedCanvas: CombinedCanvasAddon
 			readonly ligatures: LigaturesAddon
 			readonly unicode11: Unicode11Addon
 			readonly webLinks: WebLinksAddon

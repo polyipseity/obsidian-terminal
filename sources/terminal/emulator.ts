@@ -1,15 +1,18 @@
 import {
+	type ITerminalAddon,
 	type ITerminalInitOnlyOptions,
 	type ITerminalOptions,
 	Terminal,
 } from "xterm"
 import { asyncDebounce, spawnPromise } from "sources/util"
+import type { CanvasAddon } from "xterm-addon-canvas"
 import type { ChildProcessByStdio } from "node:child_process"
 import { FitAddon } from "xterm-addon-fit"
 import { SerializeAddon } from "xterm-addon-serialize"
 import { TERMINAL_RESIZE_TIMEOUT } from "sources/magic"
 import type TerminalPlugin from "sources/main"
 import type { TerminalPty } from "./pty"
+import type { WebglAddon } from "xterm-addon-webgl"
 import { debounce } from "obsidian"
 import { dynamicRequire } from "sources/bundle"
 
@@ -125,5 +128,43 @@ export namespace XtermTerminalEmulator {
 		readonly columns: number
 		readonly rows: number
 		readonly data: string
+	}
+}
+
+export class CombinedCanvasAddon implements ITerminalAddon {
+	public webgl?: WebglAddon
+
+	public constructor(
+		public readonly canvas?: CanvasAddon,
+		protected readonly webglSupplier?: () => WebglAddon,
+	) { }
+
+	public activate(terminal: Terminal): void {
+		const load = (): void => {
+			if (typeof this.webglSupplier !== "undefined") {
+				try {
+					this.webgl?.dispose()
+					this.webgl = this.webglSupplier()
+					terminal.loadAddon(this.webgl)
+					const contextLoss = this.webgl.onContextLoss(() => {
+						try {
+							load()
+						} finally {
+							contextLoss.dispose()
+						}
+					})
+					return
+				} catch (error) { void error }
+			}
+			if (typeof this.canvas !== "undefined") {
+				terminal.loadAddon(this.canvas)
+			}
+		}
+		load()
+	}
+
+	public dispose(): void {
+		this.webgl?.dispose()
+		this.canvas?.dispose()
 	}
 }
