@@ -42,7 +42,7 @@ export class TerminalView extends ItemView {
 	public static namespacedViewType: string
 	#emulator0: TerminalView.EmulatorType | null = null
 	#focus0 = false
-	#state: TerminalView.State = {
+	readonly #state: TerminalView.State = {
 		__type: TerminalView.State.TYPE,
 		args: [],
 		cwd: "",
@@ -108,7 +108,7 @@ export class TerminalView extends ItemView {
 	): Promise<void> {
 		await super.setState(state, result)
 		if (isInterface<TerminalView.State>(TerminalView.State.TYPE, state)) {
-			this.#state = state
+			Object.assign(this.#state, state)
 		}
 	}
 

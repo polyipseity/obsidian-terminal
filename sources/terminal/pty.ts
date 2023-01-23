@@ -108,7 +108,6 @@ class WindowsTerminalPty implements TerminalPty {
 							resizer,
 							codeTmp,
 							await spawnPromise(async () => (await childProcess).spawn(
-								// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 								cmd.shift()!,
 								cmd,
 								{
