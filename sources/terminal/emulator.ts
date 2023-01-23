@@ -37,13 +37,10 @@ export async function spawnExternalTerminalEmulator(
 
 export class XtermTerminalEmulator<A> {
 	public readonly terminal
-	public readonly addons: A & {
-		readonly fit: FitAddon
-		readonly serialize: SerializeAddon
-	}
+	public readonly addons
 
-	public readonly exit: Promise<NodeJS.Signals | number>
-	readonly #pty: Promise<TerminalPty>
+	public readonly exit
+	readonly #pty
 	#exited = false
 	readonly #resize = asyncDebounce(debounce(async (
 		resolve: (value: Promise<void> | void) => void,
