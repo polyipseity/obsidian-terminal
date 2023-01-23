@@ -56,7 +56,7 @@ export class XtermTerminalEmulator<A> {
 			this.terminal.resize(columns, rows)
 			resolve()
 		} catch (error) {
-			reject()
+			reject(error)
 		}
 	}, TERMINAL_RESIZE_TIMEOUT, false))
 
@@ -109,9 +109,7 @@ export class XtermTerminalEmulator<A> {
 		if (typeof dim === "undefined") {
 			return
 		}
-		const op = this.#resize(dim.cols, dim.rows)
-		fit.fit()
-		await op
+		await this.#resize(dim.cols, dim.rows)
 	}
 
 	public serialize(): XtermTerminalEmulator.State {
