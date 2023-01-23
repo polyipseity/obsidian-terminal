@@ -4,7 +4,7 @@
 	"version": "2.9.0",
 	"author": "polyipseity",
 	"license": "MIT",
-	"description": "Start and integrate console/shell/terminal into Obsidian directly.",
+	"description": "Integrate consoles/shells/terminals inside Obsidian.",
 	"keywords": [
 		"console",
 		"obsidian",

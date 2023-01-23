@@ -2,7 +2,7 @@
 
 ![Trailer](assets/trailer.png)
 
-Open terminals in [Obsidian](https://obsidian.md/) directly.
+Integrate consoles/shells/terminals inside [Obsidian](https://obsidian.md/).
 
 For first time users, read the [installation](#installation) section first!
 
