@@ -55,13 +55,13 @@ export const DEFAULT_SETTINGS: Settings = {
 	executables: {
 		darwin: {
 			extArgs: [],
-			extExe: "xterm",
+			extExe: "Terminal.app",
 			intArgs: [],
 			intExe: "/bin/zsh",
 		},
 		linux: {
 			extArgs: [],
-			extExe: "Terminal.app",
+			extExe: "xterm",
 			intArgs: [],
 			intExe: "/bin/sh",
 		},
