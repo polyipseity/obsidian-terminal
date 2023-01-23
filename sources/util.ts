@@ -1,5 +1,5 @@
-import { BUNDLE, BUNDLE_KEYS } from "./bundle"
 import { Notice, Plugin, type PluginManifest, type View } from "obsidian"
+import { BUNDLE, dynamicRequire } from "./bundle"
 import type { ChildProcess } from "node:child_process"
 import { NOTICE_NO_TIMEOUT } from "./magic"
 import type { TerminalPlugin } from "./main"
@@ -141,10 +141,7 @@ export function isInterface<T extends { readonly __type: T["__type"] }>(
 
 export async function importIfDesktop<T>(module: string): Promise<T> {
 	if (inSet(DESKTOP_PLATFORMS, PLATFORM)) {
-		return Promise.resolve().then(() => inSet(BUNDLE_KEYS, module)
-			? BUNDLE[module]() as T
-			// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-			: require(module) as T)
+		return dynamicRequire(module)
 	}
 	throw new TypeError(module)
 }
