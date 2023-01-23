@@ -238,6 +238,6 @@ export async function writePromise(
 		const written = stream.write(chunk, error => {
 			if (error) { reject(error) } else if (written) { resolve() }
 		})
-		if (!written) { stream.once("drain", () => { resolve() }) }
+		if (!written) { stream.once("drain", resolve) }
 	}))
 }

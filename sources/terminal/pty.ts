@@ -76,9 +76,7 @@ class WindowsTerminalPty implements TerminalPty {
 							}
 						})
 					}
-				} catch (error) {
-					void error
-				}
+				} catch (error) { void error }
 				return ret
 			})
 	})()
