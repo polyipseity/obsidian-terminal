@@ -241,11 +241,11 @@ export class SettingTab extends PluginSettingTab {
 		V,
 		C extends ValueComponent<V> & {
 			onChange: (
-				callback: (value: V) => any) => C
+				callback: (value: V) => unknown) => C
 		},
 	>(
 		getter: () => V,
-		setter: (value: V, component: C, getter: () => V) => any,
+		setter: (value: V, component: C, getter: () => V) => unknown,
 		action: SettingTab.ComponentAction<C, V> = {},
 	) {
 		return (component: C): void => {
@@ -263,7 +263,7 @@ export class SettingTab extends PluginSettingTab {
 	}
 
 	#setTextToNumber<C extends ValueComponent<string>>(
-		setter: (value: number, component: C, getter: () => string) => any,
+		setter: (value: number, component: C, getter: () => string) => unknown,
 		integer = false,
 	) {
 		return async (
@@ -285,7 +285,7 @@ export class SettingTab extends PluginSettingTab {
 	}
 
 	#resetButton<C extends ButtonComponent | ExtraButtonComponent>(
-		resetter: (component: C) => any,
+		resetter: (component: C) => unknown,
 		icon: string = this.plugin.language
 			.i18n.t("asset:settings.reset-icon"),
 		action: SettingTab.ComponentAction<C, void> = {},

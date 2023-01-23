@@ -102,7 +102,7 @@ export class TerminalView extends ItemView {
 	}
 
 	public override async setState(
-		state: any,
+		state: unknown,
 		result: ViewStateResult,
 	): Promise<void> {
 		await super.setState(state, result)
@@ -111,7 +111,7 @@ export class TerminalView extends ItemView {
 		}
 	}
 
-	public override getState(): any {
+	public override getState(): unknown {
 		const serial = this.#emulator?.serialize()
 		if (typeof serial !== "undefined") {
 			this.#state.serial = serial

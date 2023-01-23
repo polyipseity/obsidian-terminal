@@ -40,7 +40,7 @@ export class UnnamespacedID<V extends string> {
 	}
 }
 
-export function anyToError(obj: any): Error {
+export function anyToError(obj: unknown): Error {
 	return obj instanceof Error ? obj : new Error(String(obj))
 }
 
@@ -71,11 +71,11 @@ export function cloneAsMutable<T>(obj: T): Mutable<T> {
 
 export function executeParanoidly<T>(callback: (
 	resolve: (value: PromiseLike<T> | T) => void,
-	reject: (reason?: any) => void,
+	reject: (reason?: unknown) => void,
 ) => void) {
 	return (
 		resolve: (value: PromiseLike<T> | T) => void,
-		reject: (reason?: any) => void,
+		reject: (reason?: unknown) => void,
 	): void => {
 		try {
 			callback(resolve, reject)
@@ -117,13 +117,13 @@ export async function spawnPromise<T extends ChildProcess>(spawn: (
 }
 
 export function typedKeys<T extends number | string | symbol>(obj: {
-	readonly [key in T]: any
+	readonly [key in T]: unknown
 }): readonly T[] {
 	return Object.keys(obj) as T[]
 }
 
-export function inSet<T>(set: readonly T[], obj: any): obj is T {
-	return (set as readonly any[]).includes(obj)
+export function inSet<T>(set: readonly T[], obj: unknown): obj is T {
+	return (set as readonly unknown[]).includes(obj)
 }
 
 export function isInterface<T extends { readonly __type: T["__type"] }>(
@@ -134,7 +134,7 @@ export function isInterface<T extends { readonly __type: T["__type"] }>(
 		return false
 	}
 	// eslint-disable-next-line no-underscore-dangle
-	return (obj as { readonly __type: any }).__type === id
+	return (obj as { readonly __type: unknown }).__type === id
 }
 
 export function notice(
@@ -166,7 +166,7 @@ export function onVisible<E extends Element>(
 		observer: IntersectionObserver,
 		element: E,
 		entry: IntersectionObserverEntry,
-	) => any,
+	) => unknown,
 	transient = false,
 ): IntersectionObserver {
 	const ret = new IntersectionObserver((ents, obsr) => {
@@ -188,7 +188,7 @@ export function openExternal(url?: URL | string): Window | null {
 }
 
 export function printError(
-	error: any,
+	error: unknown,
 	message = (): string => "",
 	plugin?: TerminalPlugin,
 ): void {
@@ -220,7 +220,7 @@ export function updateDisplayText(view: View): boolean {
 
 export async function writePromise(
 	stream: Writable,
-	chunk: any,
+	chunk: unknown,
 ): Promise<void> {
 	return new Promise<void>(executeParanoidly((resolve, reject) => {
 		const written = stream.write(chunk, error => {

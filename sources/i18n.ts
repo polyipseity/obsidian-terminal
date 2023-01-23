@@ -57,7 +57,7 @@ export class LanguageManager {
 		await Promise.all(this.#uses.map(use => use()))
 	}
 
-	public registerUse(use: () => any): () => void {
+	public registerUse(use: () => unknown): () => void {
 		this.#uses.push(use)
 		return () => { this.#uses.remove(use) }
 	}

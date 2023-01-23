@@ -47,7 +47,7 @@ export class XtermTerminalEmulator<A> {
 	#exited = false
 	#resizePromises: {
 		resolve: () => void
-		reject: (reason?: any) => void
+		reject: (reason?: unknown) => void
 	}[] = []
 
 	readonly #resize = debounce(async (

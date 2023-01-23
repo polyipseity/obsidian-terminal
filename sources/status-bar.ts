@@ -3,7 +3,7 @@ import type TerminalPlugin from "./main"
 import { notice } from "./util"
 
 export function statusBar(callback?: (
-	element: HTMLDivElement) => any): HTMLDivElement | null {
+	element: HTMLDivElement) => void): HTMLDivElement | null {
 	const ret = document.querySelector<HTMLDivElement>("div.status-bar")
 	if (ret !== null) {
 		(callback ?? ((): void => { }))(ret)
