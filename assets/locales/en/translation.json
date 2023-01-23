@@ -37,6 +37,10 @@
 		"executable-list": {
 			"darwin": "macOS",
 			"linux": "Linux",
+			"type": {
+				"external": " (external)",
+				"integrated": " (integrated)"
+			},
 			"win32": "Microsoft Windows"
 		},
 		"hide-status-bar": "Hide status bar",

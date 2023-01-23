@@ -61,4 +61,3 @@ For first time users, read the [installation](#installation) section first!
 - Add finding text in terminal.
 - Add connecting to remote shells. It should also be available on mobile.
 - Fix key problems (e.g. `Esc` unfocuses the terminal).
-- Use different executables for integrated and external terminals.

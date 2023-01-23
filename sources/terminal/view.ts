@@ -301,34 +301,42 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 				cwd: string,
 				terminal: TerminalType,
 			): void => {
-				const executable = settings.executables[platform]
-				notice2(
-					() => i18n.t(
-						"notices.spawning-terminal",
-						{ executable: executable.name },
-					),
-					settings.noticeTimeout,
-					plugin,
-				);
 				(async (): Promise<void> => {
+					const executable = settings.executables[platform]
 					switch (terminal) {
 						case "external": {
+							notice2(
+								() => i18n.t(
+									"notices.spawning-terminal",
+									{ executable: executable.extExe },
+								),
+								settings.noticeTimeout,
+								plugin,
+							)
 							await spawnExternalTerminalEmulator(
-								executable.name,
+								executable.extExe,
 								cwd,
-								executable.args,
+								executable.extArgs,
 							)
 							break
 						}
 						case "integrated": {
+							notice2(
+								() => i18n.t(
+									"notices.spawning-terminal",
+									{ executable: executable.intExe },
+								),
+								settings.noticeTimeout,
+								plugin,
+							)
 							const { workspace } = app,
 								existingLeaves = workspace
 									.getLeavesOfType(TerminalView.type.namespaced(plugin)),
 								viewState: TerminalView.State = {
 									__type: TerminalView.State.TYPE,
-									args: executable.args,
+									args: executable.intArgs,
 									cwd,
-									executable: executable.name,
+									executable: executable.intExe,
 								}
 							await ((): WorkspaceLeaf => {
 								const existingLeaf = existingLeaves.last()

@@ -33,8 +33,10 @@ export namespace Settings {
 	}
 	export namespace Executables {
 		export interface Entry {
-			readonly name: string
-			readonly args: readonly string[]
+			readonly intExe: string
+			readonly intArgs: readonly string[]
+			readonly extExe: string
+			readonly extArgs: readonly string[]
 		}
 	}
 	export async function load(self: Settings, plugin: Plugin): Promise<void> {
@@ -52,16 +54,22 @@ export const DEFAULT_SETTINGS: Settings = {
 	errorNoticeTimeout: NOTICE_NO_TIMEOUT,
 	executables: {
 		darwin: {
-			args: [],
-			name: "/bin/zsh",
+			extArgs: [],
+			extExe: "xterm",
+			intArgs: [],
+			intExe: "/bin/zsh",
 		},
 		linux: {
-			args: [],
-			name: "/bin/sh",
+			extArgs: [],
+			extExe: "Terminal.app",
+			intArgs: [],
+			intExe: "/bin/sh",
 		},
 		win32: {
-			args: [],
-			name: "C:\\Windows\\System32\\cmd.exe",
+			extArgs: [],
+			extExe: "C:\\Windows\\System32\\cmd.exe",
+			intArgs: [],
+			intExe: "C:\\Windows\\System32\\cmd.exe",
 		},
 	},
 	hideStatusBar: "focused",
@@ -227,15 +235,28 @@ export class SettingTab extends PluginSettingTab {
 		containerEl.createEl("h2", { text: i18n.t("settings.executables") })
 		for (const key of TerminalPty.SUPPORTED_PLATFORMS) {
 			new Setting(containerEl)
-				.setName(i18n.t(`settings.executable-list.${key}`))
+				.setName(`${i18n.t(`settings.executable-list.${key}`)}${i18n
+					.t("settings.executable-list.type.external")}`)
 				.addText(this.#linkSetting(
-					() => settings.executables[key].name,
-					value => void (settings.executables[key].name = value),
+					() => settings.executables[key].extExe,
+					value => void (settings.executables[key].extExe = value),
 				))
 				.addExtraButton(this.#resetButton(
-					() => void (settings.executables[key].name =
-						DEFAULT_SETTINGS.executables[key].name),
-					i18n.t("asset:settings.executable-list-icon"),
+					() => void (settings.executables[key].extExe =
+						DEFAULT_SETTINGS.executables[key].extExe),
+					i18n.t("asset:settings.executable-list-external-icon"),
+				))
+			new Setting(containerEl)
+				.setName(`${i18n.t(`settings.executable-list.${key}`)}${i18n
+					.t("settings.executable-list.type.integrated")}`)
+				.addText(this.#linkSetting(
+					() => settings.executables[key].intExe,
+					value => void (settings.executables[key].intExe = value),
+				))
+				.addExtraButton(this.#resetButton(
+					() => void (settings.executables[key].intExe =
+						DEFAULT_SETTINGS.executables[key].intExe),
+					i18n.t("asset:settings.executable-list-integrated-icon"),
 				))
 		}
 
