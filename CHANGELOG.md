@@ -4,6 +4,41 @@ Versions are ordered by recency.
 
 - Read me: [README.md](README.md)
 
+## 2.10.0
+
+__Notices__
+- Updating the plugin starting from this version to a newer version will no longer close all active terminal views. (Does not include updating from a previous version to this version.)
+- Please reset your settings and reconfigure it.
+- Linux, macOS: Please specify a terminal emulator (not a shell) for external terminal, and a shell (not a terminal emulator) for internal terminal.
+- macOS: This is not necessary if you have only used the release versions. But just in case, you might need to reset settings to apply the external terminal cwd fix.
+- macOS: The external terminal cwd fix is implemented by passing `$PWD` as the first argument to the external terminal. This might cause issues with non-default terminals. You may need to edit `executables.darwin.extArgs` in `.obsidian/plugins/terminal/data.json` to remove the first argument. Also see the hint.
+- mobile: You can only change settings on mobile for now.
+- Hint: There are hidden settings to set the launching arguments in `.obsidian/plugins/terminal/data.json`. Search for `intArgs` and `extArgs`. I still need to figure out how to present the hidden settings in the settings UI well.
+
+__Features__
+- Terminal view no longer closes when the underlying process terminates. (`934eb24e2c7106e1122c8c29e4160ca5d55749ef`)
+- Add terminal restoration message in the format of ` * Restored history at (time)`. (`5dd1efb5709af6d5f7dae7ee5d4b813fc4156612`)
+- Add menu to restart terminal and resizer. Access by right-clicking terminal tab header. (`313b4b8f0c2ec2f71d79fd519925aab71cfff910`)
+- Add settings to disable annoying notices. (`602954ee0ee619368ffb770310262656ee1a1551`)
+- Add settings to specify external terminal separately. (`a80466f309483f6971c29b85d5825449ab93c448`)
+
+__Fixes__
+- Terminal view persists when updating the plugin. (`934eb24e2c7106e1122c8c29e4160ca5d55749ef`)
+- Windows: Pressing `Ctrl-C` will no longer close the resizer sometimes. (`fc95167374d3174ce94ce47ecc8bb41709b2c535`)
+- Fix "reset all" not resetting all settings. (`133a141e10b09f9bf29c59ed5ffaa6cde5594b72`)
+- (See notices) Mobile: Fix plugin not loading. (`3b55de2c48bb5bbcb35f7a4d5a533b58d520670d`..`63c99375fbf29ef9fa6cbf27dd527071987a13fd`)
+- (See notices) Linux, macOS: Fix external terminal not opening by separating external and internal terminal executable. (`a80466f309483f6971c29b85d5825449ab93c448`)
+- (See notices) macOS: Fix external terminal not starting in the specified cwd. Might not work with non-default terminals. (`0b66970f065160e713067bb930bedf97f7f71793`)
+
+__Internals__
+- Housekeeping.
+- Refactor terminal files.
+- Handle more uncaught errors. Less errors in the developer console!
+- Update npm packages. (`02f455b7c8b196116d45d98dd8fe51f750671b59`)
+- Improve build scripts. (`02b0174ec8b6252dcd98fbc1925069db41d5ab23`)
+
+__Full changelog__: [`2.9.0...2.10.0`](https://github.com/polyipseity/obsidian-terminal/compare/2.9.0...2.10.0)
+
 ## 2.9.0
 
 After lots of hard work, v2.9.0 is finally ready! 😅
