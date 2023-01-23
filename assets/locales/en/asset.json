@@ -9,8 +9,8 @@
 		"terminal-icon": "terminal"
 	},
 	"settings": {
-		"add-to-commands-icon": "terminal",
-		"add-to-context-menus-icon": "menu",
+		"add-to-command-icon": "terminal",
+		"add-to-context-menu-icon": "menu",
 		"enable-Windows-conhost-workaround-icon": "code",
 		"executable-list-icon": "terminal-square",
 		"hide-status-bar-icon": "eye-off",

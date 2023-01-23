@@ -27,8 +27,8 @@
 		"terminal-exited": "Terminal exited: {{- code}}"
 	},
 	"settings": {
-		"add-to-commands": "Add to commands",
-		"add-to-context-menus": "Add to context menus",
+		"add-to-command": "Add to command",
+		"add-to-context-menu": "Add to context menu",
 		"enable-Windows-conhost-workaround": "Enable Microsoft Windows 'conhost.exe' workaround",
 		"enable-Windows-conhost-workaround-description": "Disable if running 'conhost.exe' does not create a window. No guarantees this will work.",
 		"executables": "Executables",

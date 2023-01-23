@@ -13,8 +13,8 @@ import { TerminalPty } from "./terminal/pty"
 
 export interface Settings {
 	readonly language: string
-	readonly command: boolean
-	readonly contextMenu: boolean
+	readonly addToCommand: boolean
+	readonly addToContextMenu: boolean
 	readonly hideStatusBar: Settings.HideStatusBarOption
 	readonly noticeTimeout: number
 	readonly pythonExecutable: string
@@ -44,8 +44,8 @@ export namespace Settings {
 }
 export type MutableSettings = Mutable<Settings>
 export const DEFAULT_SETTINGS: Settings = {
-	command: true,
-	contextMenu: true,
+	addToCommand: true,
+	addToContextMenu: true,
 	enableWindowsConhostWorkaround: true,
 	executables: {
 		darwin: {
@@ -121,25 +121,25 @@ export class SettingTab extends PluginSettingTab {
 			}))
 
 		new Setting(containerEl)
-			.setName(i18n.t("settings.add-to-commands"))
+			.setName(i18n.t("settings.add-to-command"))
 			.addToggle(this.#linkSetting(
-				() => settings.command,
-				value => void (settings.command = value),
+				() => settings.addToCommand,
+				value => void (settings.addToCommand = value),
 			))
 			.addExtraButton(this.#resetButton(
-				() => void (settings.command = DEFAULT_SETTINGS.command),
-				i18n.t("asset:settings.add-to-commands-icon"),
+				() => void (settings.addToCommand = DEFAULT_SETTINGS.addToCommand),
+				i18n.t("asset:settings.add-to-command-icon"),
 			))
 		new Setting(containerEl)
-			.setName(i18n.t("settings.add-to-context-menus"))
+			.setName(i18n.t("settings.add-to-context-menu"))
 			.addToggle(this.#linkSetting(
-				() => settings.contextMenu,
-				value => void (settings.contextMenu = value),
+				() => settings.addToContextMenu,
+				value => void (settings.addToContextMenu = value),
 			))
 			.addExtraButton(this.#resetButton(
-				() => void (settings.contextMenu =
-					DEFAULT_SETTINGS.contextMenu),
-				i18n.t("asset:settings.add-to-context-menus-icon"),
+				() => void (settings.addToContextMenu =
+					DEFAULT_SETTINGS.addToContextMenu),
+				i18n.t("asset:settings.add-to-context-menu-icon"),
 			))
 		new Setting(containerEl)
 			.setName(i18n.t("settings.hide-status-bar"))

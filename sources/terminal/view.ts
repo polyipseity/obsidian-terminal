@@ -376,7 +376,7 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 			terminal: TerminalType,
 			cwd: CwdType,
 		) => (checking: boolean): boolean => {
-			if (!settings.command) {
+			if (!settings.addToCommand) {
 				return false
 			}
 			switch (cwd) {
@@ -404,7 +404,7 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 			}
 		}
 		plugin.registerEvent(app.workspace.on("file-menu", (menu, file) => {
-			if (!settings.contextMenu) {
+			if (!settings.addToContextMenu) {
 				return
 			}
 			addContextMenus(menu, file instanceof TFolder ? file : file.parent)
@@ -412,7 +412,7 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 		plugin.registerEvent(app.workspace.on(
 			"editor-menu",
 			(menu, _0, info) => {
-				if (!settings.contextMenu ||
+				if (!settings.addToContextMenu ||
 					info instanceof MarkdownView ||
 					info.file === null) {
 					return
