@@ -4,12 +4,14 @@
 	"version": "2.9.0",
 	"author": "polyipseity",
 	"license": "MIT",
-	"description": "Open terminals in Obsidian directly.",
+	"description": "Start and integrate console/shell/terminal into Obsidian directly.",
 	"keywords": [
 		"console",
 		"obsidian",
 		"plugin",
-		"terminal"
+		"shell",
+		"terminal",
+		"terminal emulator"
 	],
 	"private": true,
 	"main": "main.js",
