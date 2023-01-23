@@ -18,6 +18,7 @@
 	"menus": {
 		"open-terminal-external": "Open in external terminal",
 		"open-terminal-integrated": "Open in integrated terminal",
+		"restart-terminal": "Restart terminal (and resizer)",
 		"save-as-HTML": "Save as HTML"
 	},
 	"name": "Terminal",

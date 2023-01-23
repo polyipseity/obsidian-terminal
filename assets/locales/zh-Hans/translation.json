@@ -18,6 +18,7 @@
 	"menus": {
 		"open-terminal-external": "在外部终端开啟",
 		"open-terminal-integrated": "在整合式终端开啟",
+		"restart-terminal": "重启终端（和缩放迸程）",
 		"save-as-HTML": "储存为 HTML"
 	},
 	"name": "终端",

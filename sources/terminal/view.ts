@@ -153,14 +153,18 @@ export class TerminalView extends ItemView {
 		menu
 			.addSeparator()
 			.addItem(item => item
+				.setTitle(i18n.t("menus.restart-terminal"))
+				.setIcon(i18n.t("asset:menus.restart-terminal-icon"))
+				.onClick(() => { this.#startEmulator() }))
+			.addItem(item => item
 				.setTitle(i18n.t("menus.save-as-HTML"))
 				.setIcon(i18n.t("asset:menus.save-as-HTML-icon"))
-				.setDisabled(this.#emulator === null)
+				.setDisabled(typeof this.#emulator?.addons.serialize === "undefined")
 				.onClick(() => {
-					const emu = this.#emulator
-					if (emu === null) { return }
+					const ser = this.#emulator?.addons.serialize
+					if (typeof ser === "undefined") { return }
 					saveFile(
-						emu.addons.serialize.serializeAsHTML({
+						ser.serializeAsHTML({
 							includeGlobalBackground: false,
 							onlySelection: false,
 						}),
@@ -172,21 +176,7 @@ export class TerminalView extends ItemView {
 
 	protected override async onOpen(): Promise<void> {
 		await super.onOpen()
-		const { containerEl, plugin } = this,
-			{ app, language, statusBarHider } = plugin
-
-		containerEl.empty()
-		containerEl.createDiv({}, ele => {
-			const obsr = onVisible(ele, obsr0 => {
-				try {
-					this.#startEmulator(ele)
-				} finally {
-					obsr0.disconnect()
-				}
-			})
-			this.register(() => { obsr.disconnect() })
-		})
-
+		const { app, language, statusBarHider } = this.plugin
 		this.registerEvent(app.workspace.on("active-leaf-change", leaf => {
 			if (leaf === this.leaf) {
 				this.#focus = true
@@ -201,47 +191,56 @@ export class TerminalView extends ItemView {
 			"active-leaf-change",
 			() => { statusBarHider.update() },
 		))
+		this.register(() => void (this.#emulator = null))
+		this.#startEmulator()
 	}
 
-	protected override async onClose(): Promise<void> {
-		await super.onClose()
-		this.#emulator = null
-	}
-
-	#startEmulator(element: HTMLElement): void {
-		const { plugin } = this,
-			state = this.#state,
-			{ language } = plugin,
-			{ i18n } = language
-		this.#emulator = new TerminalView.EmulatorType(
-			plugin,
-			element,
-			terminal => {
-				if (typeof state.serial !== "undefined") {
-					terminal.write(i18n.t(
-						"views.terminal.restored-history",
-						{ time: new Date().toLocaleString(language.language) },
-					))
+	#startEmulator(): void {
+		const { containerEl } = this
+		containerEl.empty()
+		const element = containerEl.createDiv({}),
+			obsr = onVisible(element, async obsr0 => {
+				try {
+					const { plugin } = this,
+						state = this.#state,
+						{ language } = plugin,
+						{ i18n } = language
+					this.#emulator = null
+					this.#emulator = new TerminalView.EmulatorType(
+						plugin,
+						element,
+						terminal => {
+							if (typeof state.serial !== "undefined") {
+								terminal.write(i18n.t(
+									"views.terminal.restored-history",
+									{ time: new Date().toLocaleString(language.language) },
+								))
+							}
+							if (TerminalPty.PLATFORM_PTY === null) {
+								throw new TypeError(i18n.t("errors.unsupported-platform"))
+							}
+							return new TerminalPty.PLATFORM_PTY(
+								plugin,
+								state.executable,
+								state.cwd,
+								state.args,
+							)
+						},
+						state.serial,
+						{
+							allowProposedApi: true,
+						},
+						{
+							search: new SearchAddon(),
+							webLinks: new WebLinksAddon((_0, uri) => openExternal(uri)),
+						},
+					)
+					await this.#emulator.resize()
+				} finally {
+					obsr0.disconnect()
 				}
-				if (TerminalPty.PLATFORM_PTY === null) {
-					throw new TypeError(i18n.t("errors.unsupported-platform"))
-				}
-				return new TerminalPty.PLATFORM_PTY(
-					plugin,
-					state.executable,
-					state.cwd,
-					state.args,
-				)
-			},
-			state.serial,
-			{
-				allowProposedApi: true,
-			},
-			{
-				search: new SearchAddon(),
-				webLinks: new WebLinksAddon((_0, uri) => openExternal(uri)),
-			},
-		)
+			})
+		this.register(() => { obsr.disconnect() })
 	}
 
 	#getExecutableBasename(): string {

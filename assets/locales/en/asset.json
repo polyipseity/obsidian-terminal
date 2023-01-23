@@ -2,6 +2,7 @@
 	"menus": {
 		"open-terminal-external-icon": "terminal-square",
 		"open-terminal-integrated-icon": "terminal",
+		"restart-terminal-icon": "reset",
 		"save-as-HTML-icon": "save"
 	},
 	"views": {

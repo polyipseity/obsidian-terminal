@@ -18,6 +18,7 @@
 	"menus": {
 		"open-terminal-external": "在外部終端開啟",
 		"open-terminal-integrated": "在整合式終端開啟",
+		"restart-terminal": "重啟終端（和縮放程式）",
 		"save-as-HTML": "儲存為 HTML"
 	},
 	"name": "終端",
