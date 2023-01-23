@@ -60,7 +60,7 @@ export class XtermTerminalEmulator<A> {
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
 		element: HTMLElement,
-		pty: () => PromiseLike<TerminalPty> | TerminalPty,
+		pty: (terminal: Terminal) => PromiseLike<TerminalPty> | TerminalPty,
 		state?: XtermTerminalEmulator.State,
 		options?: ITerminalInitOnlyOptions & ITerminalOptions,
 		addons?: A,
@@ -78,7 +78,7 @@ export class XtermTerminalEmulator<A> {
 			this.terminal.resize(state.columns, state.rows)
 			this.terminal.write(state.data)
 		}
-		this.#pty = Promise.resolve()
+		this.#pty = Promise.resolve(this.terminal)
 			.then(pty)
 			.then(async pty0 => {
 				await pty0.pipe(this.terminal)

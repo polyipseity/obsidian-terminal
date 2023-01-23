@@ -56,7 +56,8 @@
 	},
 	"views": {
 		"terminal": {
-			"display-name": "Terminal: {{- executable}}"
+			"display-name": "Terminal: {{- executable}}",
+			"restored-history": "\n\r * Restored history at {{- time}}\n\r"
 		}
 	}
 }

@@ -56,7 +56,8 @@
 	},
 	"views": {
 		"terminal": {
-			"display-name": "终端：{{- executable}}"
+			"display-name": "终端：{{- executable}}",
+			"restored-history": "\n\r * 已还原于{{- time}}的历史\n\r"
 		}
 	}
 }

@@ -211,11 +211,18 @@ export class TerminalView extends ItemView {
 	#startEmulator(element: HTMLElement): void {
 		const { plugin } = this,
 			state = this.#state,
-			{ i18n } = plugin.language
+			{ language } = plugin,
+			{ i18n } = language
 		this.#emulator = new TerminalView.EmulatorType(
 			plugin,
 			element,
-			() => {
+			terminal => {
+				if (typeof state.serial !== "undefined") {
+					terminal.write(i18n.t(
+						"views.terminal.restored-history",
+						{ time: new Date().toLocaleString(language.language) },
+					))
+				}
 				if (TerminalPty.PLATFORM_PTY === null) {
 					throw new TypeError(i18n.t("errors.unsupported-platform"))
 				}
