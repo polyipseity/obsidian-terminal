@@ -8,10 +8,6 @@ import {
 	type WorkspaceLeaf,
 } from "obsidian"
 import {
-	NOTICE_NO_TIMEOUT,
-	TERMINAL_EXIT_SUCCESS,
-} from "../magic"
-import {
 	PLATFORM,
 	UnnamespacedID,
 	anyToError,
@@ -20,7 +16,7 @@ import {
 	extname,
 	inSet,
 	isInterface,
-	notice,
+	notice2,
 	onVisible,
 	openExternal,
 	printError,
@@ -33,6 +29,7 @@ import {
 } from "./emulator"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import { SearchAddon } from "xterm-addon-search"
+import { TERMINAL_EXIT_SUCCESS } from "../magic"
 import type { TerminalPlugin } from "../main"
 import { TerminalPty } from "./pty"
 import { WebLinksAddon } from "xterm-addon-web-links"
@@ -74,16 +71,16 @@ export class TerminalView extends ItemView {
 			)
 		})
 		const { plugin } = this,
-			{ app, language } = plugin,
+			{ app, language, settings } = plugin,
 			{ i18n } = language,
 			{ requestSaveLayout } = app.workspace
 		val?.exit
 			.then(code => {
-				notice(
+				notice2(
 					() => i18n.t("notices.terminal-exited", { code }),
 					inSet(TERMINAL_EXIT_SUCCESS, code)
-						? plugin.settings.noticeTimeout
-						: NOTICE_NO_TIMEOUT,
+						? settings.noticeTimeout
+						: settings.errorNoticeTimeout,
 					plugin,
 				)
 			}, error => {
@@ -304,7 +301,7 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 				terminal: TerminalType,
 			): void => {
 				const executable = settings.executables[platform]
-				notice(
+				notice2(
 					() => i18n.t(
 						"notices.spawning-terminal",
 						{ executable: executable.name },

@@ -12,6 +12,7 @@
 		"add-to-command-icon": "terminal",
 		"add-to-context-menu-icon": "menu",
 		"enable-Windows-conhost-workaround-icon": "code",
+		"error-notice-timeout-icon": "timer",
 		"executable-list-icon": "terminal-square",
 		"hide-status-bar-icon": "eye-off",
 		"language-icon": "languages",

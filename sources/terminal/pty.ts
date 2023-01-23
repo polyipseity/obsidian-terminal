@@ -1,10 +1,9 @@
-import { NOTICE_NO_TIMEOUT, TERMINAL_RESIZER_WATCHDOG_INTERVAL } from "../magic"
 import {
 	PLATFORM,
 	anyToError,
 	executeParanoidly,
 	inSet,
-	notice,
+	notice2,
 	printError,
 	spawnPromise,
 	typedKeys,
@@ -13,6 +12,7 @@ import {
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
 } from "node:child_process"
+import { TERMINAL_RESIZER_WATCHDOG_INTERVAL } from "../magic"
 import type { Terminal } from "xterm"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
@@ -64,12 +64,12 @@ class WindowsTerminalPty implements TerminalPty {
 					} finally {
 						ret.once("exit", (code, signal) => {
 							if (code !== 0) {
-								notice(
+								notice2(
 									() => i18n.t(
 										"errors.resizer-exited-unexpectedly",
 										{ code: code ?? signal },
 									),
-									NOTICE_NO_TIMEOUT,
+									settings.errorNoticeTimeout,
 									plugin,
 								)
 							}

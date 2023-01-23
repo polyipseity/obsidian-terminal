@@ -1,6 +1,5 @@
-import { NOTICE_NO_TIMEOUT } from "./magic"
 import type TerminalPlugin from "./main"
-import { notice } from "./util"
+import { notice2 } from "./util"
 
 export function statusBar(callback?: (
 	element: HTMLDivElement) => void): HTMLDivElement | null {
@@ -30,9 +29,9 @@ export class StatusBarHider {
 				this.update()
 				obs.observe(div, { attributeFilter: ["style"] })
 			}) === null) {
-				notice(
+				notice2(
 					() => plugin.language.i18n.t("errors.cannot-find-status-bar"),
-					NOTICE_NO_TIMEOUT,
+					plugin.settings.errorNoticeTimeout,
 					plugin,
 				)
 			}

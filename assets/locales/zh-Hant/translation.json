@@ -31,6 +31,8 @@
 		"add-to-context-menu": "加入至右鍵選單",
 		"enable-Windows-conhost-workaround": "啟用Microsoft Windows「conhost.exe」解決方法",
 		"enable-Windows-conhost-workaround-description": "如果執行「conhost.exe」沒有創建視窗，請禁用。無保證這會起作用。",
+		"error-notice-timeout": "錯誤通知超時（秒）",
+		"error-notice-timeout-description": "設為0秒是無超時。設為負數以禁用通知。",
 		"executables": "執行檔",
 		"executable-list": {
 			"darwin": "macOS",
@@ -48,7 +50,7 @@
 		"language-default": "使用應用程式設定",
 		"language-description": "僅適用於此外掛程式。標有🚧的語言需要您幫助來翻譯！",
 		"notice-timeout": "通知超時（秒）",
-		"notice-timeout-description": "設為 0 秒是無超時。",
+		"notice-timeout-description": "設為0秒是無超時。設為負數以禁用通知。",
 		"python-executable": "Python 執行檔",
 		"python-executable-description": "於Unix啟動整合式終端所需要的。清除文字域以禁用Python。",
 		"python-executable-placeholder": "（已禁用）",

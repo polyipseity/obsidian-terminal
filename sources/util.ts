@@ -194,6 +194,16 @@ export function notice(
 	return ret
 }
 
+export function notice2(
+	message: () => DocumentFragment | string,
+	timeout: number = NOTICE_NO_TIMEOUT,
+	plugin?: TerminalPlugin,
+): void {
+	if (timeout >= 0) {
+		notice(message, timeout, plugin)
+	}
+}
+
 export function onVisible<E extends Element>(
 	element: E,
 	callback: (
@@ -227,9 +237,9 @@ export function printError(
 	plugin?: TerminalPlugin,
 ): void {
 	console.error(`${message()}\n`, error)
-	notice(
+	notice2(
 		() => `${message()}\n${error.name}: ${error.message}`,
-		NOTICE_NO_TIMEOUT,
+		plugin?.settings.errorNoticeTimeout ?? NOTICE_NO_TIMEOUT,
 		plugin,
 	)
 }

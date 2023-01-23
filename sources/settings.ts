@@ -7,6 +7,7 @@ import {
 	type ValueComponent,
 } from "obsidian"
 import { type Mutable, inSet } from "./util"
+import { NOTICE_NO_TIMEOUT } from "./magic"
 import { RESOURCES } from "assets/locales"
 import type { TerminalPlugin } from "./main"
 import { TerminalPty } from "./terminal/pty"
@@ -17,6 +18,7 @@ export interface Settings {
 	readonly addToContextMenu: boolean
 	readonly hideStatusBar: Settings.HideStatusBarOption
 	readonly noticeTimeout: number
+	readonly errorNoticeTimeout: number
 	readonly pythonExecutable: string
 	readonly executables: Settings.Executables
 	readonly enableWindowsConhostWorkaround: boolean
@@ -47,6 +49,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	addToCommand: true,
 	addToContextMenu: true,
 	enableWindowsConhostWorkaround: true,
+	errorNoticeTimeout: NOTICE_NO_TIMEOUT,
 	executables: {
 		darwin: {
 			args: [],
@@ -190,6 +193,19 @@ export class SettingTab extends PluginSettingTab {
 				() => void (settings.noticeTimeout =
 					DEFAULT_SETTINGS.noticeTimeout),
 				i18n.t("asset:settings.notice-timeout-icon"),
+			))
+		new Setting(containerEl)
+			.setName(i18n.t("settings.error-notice-timeout"))
+			.setDesc(i18n.t("settings.error-notice-timeout-description"))
+			.addText(this.#linkSetting(
+				() => settings.errorNoticeTimeout.toString(),
+				this.#setTextToNumber(value =>
+					void (settings.errorNoticeTimeout = value)),
+			))
+			.addExtraButton(this.#resetButton(
+				() => void (settings.noticeTimeout =
+					DEFAULT_SETTINGS.noticeTimeout),
+				i18n.t("asset:settings.error-notice-timeout-icon"),
 			))
 
 		new Setting(containerEl)

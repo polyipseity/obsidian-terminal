@@ -31,6 +31,8 @@
 		"add-to-context-menu": "Add to context menu",
 		"enable-Windows-conhost-workaround": "Enable Microsoft Windows 'conhost.exe' workaround",
 		"enable-Windows-conhost-workaround-description": "Disable if running 'conhost.exe' does not create a window. No guarantees this will work.",
+		"error-notice-timeout": "Error notice timeout (s)",
+		"error-notice-timeout-description": "Set to 0 s for no timeout. Set to negative to disable notice.",
 		"executables": "Executables",
 		"executable-list": {
 			"darwin": "macOS",
@@ -48,7 +50,7 @@
 		"language-default": "Use app setting",
 		"language-description": "Applies to this plugin only. Languages with 🚧 need your help with translation!",
 		"notice-timeout": "Notice timeout (s)",
-		"notice-timeout-description": "Set to 0 s for no timeout.",
+		"notice-timeout-description": "Set to 0 s for no timeout. Set to negative to disable notice.",
 		"python-executable": "Python executable",
 		"python-executable-description": "Required on Unix to start integrated terminal. Clear field to disable Python.",
 		"python-executable-placeholder": "(Disabled)",
