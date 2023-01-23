@@ -54,8 +54,9 @@ export const DEFAULT_SETTINGS: Settings = {
 	errorNoticeTimeout: NOTICE_NO_TIMEOUT,
 	executables: {
 		darwin: {
-			extArgs: [],
-			extExe: "Terminal.app",
+			extArgs: ["$PWD"],
+			extExe:
+				"/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal",
 			intArgs: [],
 			intExe: "/bin/zsh",
 		},
