@@ -118,7 +118,9 @@ export function executeParanoidly<T>(callback: (
 }
 
 export function extname(path: string): string {
-	return basename(path).substring(path.lastIndexOf("."))
+	const base = basename(path),
+		idx = base.lastIndexOf(".")
+	return idx === -1 ? "" : base.substring(idx)
 }
 
 export function saveFile(
