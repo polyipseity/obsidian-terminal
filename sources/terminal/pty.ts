@@ -213,7 +213,9 @@ class WindowsTerminalPty implements TerminalPty {
 		shell.stderr.on("data", (chunk: Buffer | string) => {
 			terminal.write(chunk)
 		})
-		terminal.onData(async data => writePromise(shell.stdin, data))
+		const writer =
+			terminal.onData(async data => writePromise(shell.stdin, data))
+		this.exit.finally(() => { writer.dispose() })
 	}
 }
 
@@ -268,7 +270,9 @@ class UnixTerminalPty implements TerminalPty {
 		shell.stderr.on("data", (chunk: Buffer | string) => {
 			terminal.write(chunk)
 		})
-		terminal.onData(async data => writePromise(shell.stdin, data))
+		const writer =
+			terminal.onData(async data => writePromise(shell.stdin, data))
+		this.exit.finally(() => { writer.dispose() })
 	}
 
 	public async resize(columns: number, rows: number): Promise<void> {
