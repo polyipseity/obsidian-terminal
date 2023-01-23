@@ -1,4 +1,4 @@
-import { spawnSync } from "child_process"
+import { spawnSync } from "node:child_process"
 
 function check(ret) {
 	if (typeof ret.error !== "undefined") {
