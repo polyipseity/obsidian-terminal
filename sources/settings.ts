@@ -251,7 +251,7 @@ export class SettingTab extends PluginSettingTab {
 		return (component: C): void => {
 			(action.pre ?? ((): void => { }))(component)
 			const activate = async (value: V): Promise<void> => {
-				const ret: unknown = await setter(value, component, getter)
+				const ret = await setter(value, component, getter)
 				if (typeof ret === "boolean" && !ret) {
 					return
 				}
@@ -276,7 +276,7 @@ export class SettingTab extends PluginSettingTab {
 				component.setValue(getter())
 				return false
 			}
-			const ret: unknown = await setter(num, component, getter)
+			const ret = await setter(num, component, getter)
 			if (typeof ret === "boolean" && !ret) {
 				return false
 			}
@@ -293,7 +293,7 @@ export class SettingTab extends PluginSettingTab {
 		return (component: C): void => {
 			(action.pre ?? ((): void => { }))(component)
 			const activate = async (): Promise<void> => {
-				const ret: unknown = await resetter(component)
+				const ret = await resetter(component)
 				if (typeof ret === "boolean" && !ret) {
 					return
 				}
