@@ -28,6 +28,7 @@ import {
 	spawnExternalTerminalEmulator,
 } from "./emulator"
 import { DEFAULT_LANGUAGE } from "assets/locales"
+import { LigaturesAddon } from "xterm-addon-ligatures"
 import { TERMINAL_EXIT_SUCCESS } from "../magic"
 import type { TerminalPlugin } from "../main"
 import { TerminalPty } from "./pty"
@@ -227,8 +228,9 @@ export class TerminalView extends ItemView {
 							allowProposedApi: true,
 						},
 						{
+							ligatures: new LigaturesAddon({}),
 							unicode11: new Unicode11Addon(),
-							webLinks: new WebLinksAddon((_0, uri) => openExternal(uri)),
+							webLinks: new WebLinksAddon((_0, uri) => openExternal(uri), {}),
 						},
 					)
 					this.#emulator.terminal.unicode.activeVersion = "11"
@@ -261,6 +263,7 @@ export namespace TerminalView {
 	export type EMULATOR = XtermTerminalEmulator<EMULATOR.Addons>
 	export namespace EMULATOR {
 		export interface Addons {
+			readonly ligatures: LigaturesAddon
 			readonly unicode11: Unicode11Addon
 			readonly webLinks: WebLinksAddon
 		}

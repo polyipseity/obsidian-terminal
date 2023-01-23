@@ -66,6 +66,7 @@ export class XtermTerminalEmulator<A> {
 		addons?: A,
 	) {
 		this.terminal = new Terminal(options)
+		this.terminal.open(element)
 		// eslint-disable-next-line prefer-object-spread
 		this.addons = Object.assign({
 			fit: new FitAddon(),
@@ -86,7 +87,6 @@ export class XtermTerminalEmulator<A> {
 			})
 		this.exit = this.#pty.then(async pty0 => pty0.exit)
 			.finally(() => void (this.#exited = true))
-		this.terminal.open(element)
 	}
 
 	public async close(): Promise<void> {
