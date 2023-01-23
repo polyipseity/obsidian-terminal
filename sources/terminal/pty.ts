@@ -1,7 +1,6 @@
 import { NOTICE_NO_TIMEOUT, TERMINAL_RESIZER_WATCHDOG_INTERVAL } from "../magic"
 import {
 	PLATFORM,
-	anyToError,
 	executeParanoidly,
 	inSet,
 	notice,
@@ -24,8 +23,7 @@ const
 	childProcess =
 		dynamicRequire<typeof import("node:child_process")>("node:child_process"),
 	fs = dynamicRequire<typeof import("node:fs")>("node:fs"),
-	tmp = dynamicRequire<typeof import("tmp")>("tmp"),
-	util = dynamicRequire<typeof import("node:util")>("node:util")
+	tmp = dynamicRequire<typeof import("tmp")>("tmp")
 
 export interface TerminalPty {
 	readonly shell: Promise<PipedChildProcess>
@@ -274,20 +272,11 @@ class UnixTerminalPty implements TerminalPty {
 	}
 
 	public async resize(columns: number, rows: number): Promise<void> {
-		const CMDIO = 3,
-			shell = await this.shell,
-			cmdio = shell.stdio[CMDIO] as Writable
-		await (await util).promisify((
-			chunk: any,
-			callback: (error?: Error | null) => void,
-		) => {
-			try {
-				return cmdio.write(chunk, callback)
-			} catch (error) {
-				callback(anyToError(error))
-			}
-			return false
-		})(`${columns}x${rows}\n`)
+		const CMDIO = 3
+		await writePromise(
+			(await this.shell).stdio[CMDIO] as Writable,
+			`${columns}x${rows}\n`,
+		)
 	}
 }
 
