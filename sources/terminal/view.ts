@@ -37,7 +37,7 @@ import { WebLinksAddon } from "xterm-addon-web-links"
 export class TerminalView extends ItemView {
 	public static readonly type = new UnnamespacedID("terminal")
 	public static namespacedViewType: string
-	#emulator0: TerminalView.EmulatorType | null = null
+	#emulator0: TerminalView.EMULATOR | null = null
 	#focus0 = false
 	readonly #state: TerminalView.State = {
 		__type: TerminalView.State.TYPE,
@@ -53,7 +53,7 @@ export class TerminalView extends ItemView {
 		super(leaf)
 	}
 
-	get #emulator(): TerminalView.EmulatorType | null {
+	get #emulator(): TerminalView.EMULATOR | null {
 		return this.#emulator0
 	}
 
@@ -61,7 +61,7 @@ export class TerminalView extends ItemView {
 		return this.#focus0
 	}
 
-	set #emulator(val: TerminalView.EmulatorType | null) {
+	set #emulator(val: TerminalView.EMULATOR | null) {
 		this.#emulator0?.close().catch(error => {
 			printError(
 				anyToError(error),
@@ -202,7 +202,7 @@ export class TerminalView extends ItemView {
 						state = this.#state,
 						{ language } = plugin,
 						{ i18n } = language
-					this.#emulator = new TerminalView.EmulatorType(
+					this.#emulator = new TerminalView.EMULATOR(
 						plugin,
 						element,
 						terminal => {
@@ -256,9 +256,11 @@ export class TerminalView extends ItemView {
 	}
 }
 export namespace TerminalView {
-	// eslint-disable-next-line @typescript-eslint/naming-convention
-	export const EmulatorType = XtermTerminalEmulator
-	export type EmulatorType = XtermTerminalEmulator<{
+	export const EMULATOR = XtermTerminalEmulator<{
+		readonly search: SearchAddon
+		readonly webLinks: WebLinksAddon
+	}>
+	export type EMULATOR = XtermTerminalEmulator<{
 		readonly search: SearchAddon
 		readonly webLinks: WebLinksAddon
 	}>
