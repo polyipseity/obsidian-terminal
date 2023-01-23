@@ -78,9 +78,9 @@ export class XtermTerminalEmulator<A> {
 			this.terminal.resize(state.columns, state.rows)
 			this.terminal.write(state.data)
 		}
-		this.#pty = Promise.resolve(this.terminal)
-			.then(pty)
-			.then(async pty0 => {
+		this.#pty = Promise.resolve()
+			.then(async () => {
+				const pty0 = await pty(this.terminal)
 				await pty0.pipe(this.terminal)
 				return pty0
 			})
@@ -90,8 +90,8 @@ export class XtermTerminalEmulator<A> {
 	}
 
 	public async close(): Promise<void> {
-		return this.#pty.then(async pty => pty.shell).then(shell => {
-			if (this.#exited || shell.kill()) {
+		return this.#pty.then(async pty => pty.shell, () => null).then(shell => {
+			if (this.#exited || (shell?.kill() ?? true)) {
 				this.terminal.dispose()
 				return
 			}
