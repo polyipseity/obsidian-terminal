@@ -3,7 +3,7 @@ import {
 	type ITerminalOptions,
 	Terminal,
 } from "xterm"
-import { executeParanoidly, spawnPromise } from "sources/util"
+import { asyncDebounce, spawnPromise } from "sources/util"
 import type { ChildProcessByStdio } from "node:child_process"
 import { FitAddon } from "xterm-addon-fit"
 import { SerializeAddon } from "xterm-addon-serialize"
@@ -45,25 +45,20 @@ export class XtermTerminalEmulator<A> {
 	public readonly exit: Promise<NodeJS.Signals | number>
 	readonly #pty: Promise<TerminalPty>
 	#exited = false
-	#resizePromises: {
-		resolve: () => void
-		reject: (reason?: unknown) => void
-	}[] = []
-
-	readonly #resize = debounce(async (
+	readonly #resize = asyncDebounce(debounce(async (
+		resolve: (value: Promise<void> | void) => void,
+		reject: (reason?: unknown) => void,
 		columns: number,
 		rows: number,
 	) => {
-		const promises = this.#resizePromises
-		this.#resizePromises = []
 		try {
 			await (await this.#pty).resize(columns, rows)
 			this.terminal.resize(columns, rows)
-			promises.forEach(promise => { promise.resolve() })
+			resolve()
 		} catch (error) {
-			promises.forEach(promise => { promise.reject(error) })
+			reject()
 		}
-	}, TERMINAL_RESIZE_TIMEOUT, false)
+	}, TERMINAL_RESIZE_TIMEOUT, false))
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
@@ -114,10 +109,7 @@ export class XtermTerminalEmulator<A> {
 		if (typeof dim === "undefined") {
 			return
 		}
-		const op = new Promise<void>(executeParanoidly((resolve, reject) => {
-			this.#resizePromises.push({ reject, resolve })
-			this.#resize(dim.cols, dim.rows)
-		}))
+		const op = this.#resize(dim.cols, dim.rows)
 		fit.fit()
 		await op
 	}

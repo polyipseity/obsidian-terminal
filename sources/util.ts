@@ -1,4 +1,10 @@
-import { Notice, Plugin, type PluginManifest, type View } from "obsidian"
+import {
+	type Debouncer,
+	Notice,
+	Plugin,
+	type PluginManifest,
+	type View,
+} from "obsidian"
 import type { ChildProcess } from "node:child_process"
 import { NOTICE_NO_TIMEOUT } from "./magic"
 import type { TerminalPlugin } from "./main"
@@ -42,6 +48,32 @@ export class UnnamespacedID<V extends string> {
 
 export function anyToError(obj: unknown): Error {
 	return obj instanceof Error ? obj : new Error(String(obj))
+}
+
+export function asyncDebounce<
+	A extends unknown[],
+	R,
+>(debouncer: Debouncer<[
+	(value: PromiseLike<R> | R) => void,
+	(reason?: unknown) => void,
+	...A], R>): (...args_0: A) => Promise<R> {
+	const promises: {
+		resolve: (value: PromiseLike<R> | R) => void
+		reject: (reason?: unknown) => void
+	}[] = []
+	return async (...args: [...A]): Promise<R> =>
+		new Promise<R>((resolve, reject) => {
+			promises.push({ reject, resolve })
+			debouncer(value => {
+				for (const promise of promises.splice(0)) {
+					promise.resolve(value)
+				}
+			}, error => {
+				for (const promise of promises.splice(0)) {
+					promise.reject(error)
+				}
+			}, ...args)
+		})
 }
 
 export function basename(path: string, ext = ""): string {
