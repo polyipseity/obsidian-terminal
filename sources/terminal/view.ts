@@ -28,7 +28,6 @@ import {
 	spawnExternalTerminalEmulator,
 } from "./emulator"
 import { DEFAULT_LANGUAGE } from "assets/locales"
-import { SearchAddon } from "xterm-addon-search"
 import { TERMINAL_EXIT_SUCCESS } from "../magic"
 import type { TerminalPlugin } from "../main"
 import { TerminalPty } from "./pty"
@@ -227,7 +226,6 @@ export class TerminalView extends ItemView {
 							allowProposedApi: true,
 						},
 						{
-							search: new SearchAddon(),
 							webLinks: new WebLinksAddon((_0, uri) => openExternal(uri)),
 						},
 					)
@@ -256,14 +254,13 @@ export class TerminalView extends ItemView {
 	}
 }
 export namespace TerminalView {
-	export const EMULATOR = XtermTerminalEmulator<{
-		readonly search: SearchAddon
-		readonly webLinks: WebLinksAddon
-	}>
-	export type EMULATOR = XtermTerminalEmulator<{
-		readonly search: SearchAddon
-		readonly webLinks: WebLinksAddon
-	}>
+	export const EMULATOR = XtermTerminalEmulator<EMULATOR.Addons>
+	export type EMULATOR = XtermTerminalEmulator<EMULATOR.Addons>
+	export namespace EMULATOR {
+		export interface Addons {
+			readonly webLinks: WebLinksAddon
+		}
+	}
 	export interface State {
 		readonly __type: typeof State.TYPE
 		readonly executable: string
