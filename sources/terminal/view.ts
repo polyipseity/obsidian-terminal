@@ -202,7 +202,6 @@ export class TerminalView extends ItemView {
 						state = this.#state,
 						{ language } = plugin,
 						{ i18n } = language
-					this.#emulator = null
 					this.#emulator = new TerminalView.EmulatorType(
 						plugin,
 						element,
