@@ -3,7 +3,6 @@ import {
 	PLATFORM,
 	anyToError,
 	executeParanoidly,
-	importIfDesktop,
 	inSet,
 	notice,
 	printError,
@@ -17,15 +16,16 @@ import type {
 import type { Terminal } from "xterm"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
+import { dynamicRequire } from "sources/bundle"
 import unixPtyPy from "./unix_pty.py"
 import win32ResizerPy from "./win32_resizer.py"
 
 const
 	childProcess =
-		importIfDesktop<typeof import("node:child_process")>("node:child_process"),
-	fs = importIfDesktop<typeof import("node:fs")>("node:fs"),
-	tmp = importIfDesktop<typeof import("tmp")>("tmp"),
-	util = importIfDesktop<typeof import("node:util")>("node:util")
+		dynamicRequire<typeof import("node:child_process")>("node:child_process"),
+	fs = dynamicRequire<typeof import("node:fs")>("node:fs"),
+	tmp = dynamicRequire<typeof import("tmp")>("tmp"),
+	util = dynamicRequire<typeof import("node:util")>("node:util")
 
 export interface TerminalPty {
 	readonly shell: Promise<PipedChildProcess>

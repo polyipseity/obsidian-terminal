@@ -1,5 +1,4 @@
 import { Notice, Plugin, type PluginManifest, type View } from "obsidian"
-import { BUNDLE, dynamicRequire } from "./bundle"
 import type { ChildProcess } from "node:child_process"
 import { NOTICE_NO_TIMEOUT } from "./magic"
 import type { TerminalPlugin } from "./main"
@@ -11,7 +10,6 @@ export type Mutable<T> = { -readonly [key in keyof T]: Mutable<T[key]> }
 export const PLATFORMS =
 	["android", "darwin", "ios", "linux", "unknown", "win32"] as const
 export type Platform = typeof PLATFORMS[number]
-export const DESKTOP_PLATFORMS = ["darwin", "linux", "win32"] as const
 export const PLATFORM = ((): Platform => {
 	const { userAgent } = navigator
 	if (userAgent.includes("like Mac")) {
@@ -137,13 +135,6 @@ export function isInterface<T extends { readonly __type: T["__type"] }>(
 	}
 	// eslint-disable-next-line no-underscore-dangle
 	return (obj as { readonly __type: any }).__type === id
-}
-
-export async function importIfDesktop<T>(module: string): Promise<T> {
-	if (inSet(DESKTOP_PLATFORMS, PLATFORM)) {
-		return dynamicRequire(module)
-	}
-	throw new TypeError(module)
 }
 
 export function notice(

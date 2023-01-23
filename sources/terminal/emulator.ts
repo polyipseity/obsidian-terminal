@@ -3,7 +3,7 @@ import {
 	type ITerminalOptions,
 	Terminal,
 } from "xterm"
-import { executeParanoidly, importIfDesktop, spawnPromise } from "sources/util"
+import { executeParanoidly, spawnPromise } from "sources/util"
 import type { ChildProcessByStdio } from "node:child_process"
 import { FitAddon } from "xterm-addon-fit"
 import { SerializeAddon } from "xterm-addon-serialize"
@@ -11,10 +11,11 @@ import { TERMINAL_RESIZE_TIMEOUT } from "sources/magic"
 import type TerminalPlugin from "sources/main"
 import type { TerminalPty } from "./pty"
 import { debounce } from "obsidian"
+import { dynamicRequire } from "sources/bundle"
 
 const
 	childProcess =
-		importIfDesktop<typeof import("node:child_process")>("node:child_process")
+		dynamicRequire<typeof import("node:child_process")>("node:child_process")
 
 export async function spawnExternalTerminalEmulator(
 	executable: string,
