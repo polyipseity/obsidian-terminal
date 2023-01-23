@@ -33,6 +33,11 @@ For first time users, read the [installation](#installation) section first!
 	1. Right-click on the terminal tab header.
 	2. Choose the desired save action.
 	3. Interact with the save dialog popup.
+- Additional actions
+	- Includes
+		- Restart terminal
+	- Available from
+		- Right-click on the terminal tab header.
 
 ## Installation
 
