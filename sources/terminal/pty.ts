@@ -214,7 +214,7 @@ class WindowsTerminalPty implements TerminalPty {
 		shell.stderr.on("data", (chunk: Buffer | string) => {
 			terminal.write(chunk)
 		})
-		terminal.onData(data => shell.stdin.write(data))
+		terminal.onData(async data => writePromise(shell.stdin, data))
 	}
 }
 
@@ -269,7 +269,7 @@ class UnixTerminalPty implements TerminalPty {
 		shell.stderr.on("data", (chunk: Buffer | string) => {
 			terminal.write(chunk)
 		})
-		terminal.onData(data => shell.stdin.write(data))
+		terminal.onData(async data => writePromise(shell.stdin, data))
 	}
 
 	public async resize(columns: number, rows: number): Promise<void> {
