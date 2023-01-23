@@ -100,7 +100,7 @@ if _sys.platform == "win32":
             finally:
                 _win32console.FreeConsole()
 
-        def consoleCtrlHandler(event: int) -> bool:
+        def console_ctrl_handler(event: int) -> bool:
             if event in (
                 _win32con.CTRL_C_EVENT,
                 _win32con.CTRL_BREAK_EVENT,
@@ -111,7 +111,7 @@ if _sys.platform == "win32":
 
         _win32console.FreeConsole()
         with attach_console(process.pid) as console:
-            _win32api.SetConsoleCtrlHandler(consoleCtrlHandler, True)
+            _win32api.SetConsoleCtrlHandler(console_ctrl_handler, True)
             while True:
                 columns: int
                 rows: int
