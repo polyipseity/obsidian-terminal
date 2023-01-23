@@ -213,7 +213,7 @@ export class TerminalView extends ItemView {
 								))
 							}
 							if (TerminalPty.PLATFORM_PTY === null) {
-								throw new TypeError(i18n.t("errors.unsupported-platform"))
+								throw new Error(i18n.t("errors.unsupported-platform"))
 							}
 							return new TerminalPty.PLATFORM_PTY(
 								plugin,
