@@ -37,7 +37,7 @@ For first time users, read the [installation](#installation) section first!
 	- Includes
 		- Restart terminal
 	- Available from
-		- Right-click on the terminal tab header.
+		- Right-click on the terminal tab header
 
 ## Installation
 
