@@ -93,6 +93,9 @@ class WindowsTerminalPty implements TerminalPty {
 					const codeTmp = (await tmp).fileSync({ discardDescriptor: true })
 					try {
 						const cmd = [
+							...this.conhost
+								? ["C:\\Windows\\System32\\conhost.exe"] as const
+								: [] as const,
 							"C:\\Windows\\System32\\cmd.exe",
 							"/C",
 							`${WindowsTerminalPty.#escapeArgument(executable)} ${(args ?? [])
@@ -100,16 +103,13 @@ class WindowsTerminalPty implements TerminalPty {
 								.join(" ")
 							} & call echo %^ERRORLEVEL% >${WindowsTerminalPty
 								.#escapeArgument(codeTmp.name)}`,
-						]
-						if (this.conhost) {
-							cmd.unshift("C:\\Windows\\System32\\conhost.exe")
-						}
+						] as const
 						return [
 							resizer,
 							codeTmp,
 							await spawnPromise(async () => (await childProcess).spawn(
-								cmd.shift()!,
-								cmd,
+								cmd[0],
+								cmd.slice(1),
 								{
 									cwd,
 									stdio: ["pipe", "pipe", "pipe"],
