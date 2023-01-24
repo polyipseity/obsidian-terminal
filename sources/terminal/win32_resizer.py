@@ -63,7 +63,7 @@ if _sys.platform == "win32":
     def resizer_out(
         process: _psutil.Process, window: _pywinctl.BaseWindow
     ) -> _typing.Generator[None, tuple[int, int], None]:
-        window.hide()
+        window.hide(True)
 
         @_typing.final
         class ConsoleScreenBufferInfo(_typing.TypedDict):
