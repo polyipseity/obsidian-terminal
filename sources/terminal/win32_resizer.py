@@ -23,10 +23,10 @@ if _sys.platform == "win32":
         proc = _psutil.Process(pid)
         procs = (proc,) + tuple(proc.children(recursive=True))
         print(f"process(es): {procs}")
+
         pids: _typing.Mapping[int, _psutil.Process] = _types.MappingProxyType(
             {proc.pid: proc for proc in procs}
         )
-
         windows: _typing.Collection[_pywinctl.Window] = _pywinctl.getAllWindows()
         print(f"window(s): {windows}")
         for win in windows:
@@ -34,6 +34,7 @@ if _sys.platform == "win32":
             if win_pid in pids:
                 resizer(pids[win_pid], win)
                 return
+        raise LookupError(procs, windows)
 
     def win_to_pid(window: _pywinctl.Window) -> int:
         return _win32process.GetWindowThreadProcessId(window.getHandle())[1]
