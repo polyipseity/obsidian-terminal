@@ -88,7 +88,7 @@ export class TerminalView extends ItemView {
 				settings0 => settings0.preferredRenderer,
 				cur => { addons.renderer.use(cur) },
 			))
-			val.exit
+			val.onExit
 				.then(code => {
 					notice2(
 						() => i18n.t("notices.terminal-exited", { code }),

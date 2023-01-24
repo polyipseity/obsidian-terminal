@@ -28,7 +28,7 @@ const
 
 export interface TerminalPty {
 	readonly shell: Promise<PipedChildProcess>
-	readonly exit: Promise<NodeJS.Signals | number>
+	readonly onExit: Promise<NodeJS.Signals | number>
 	readonly pipe: (terminal: Terminal) => Promise<void>
 	readonly resize: (columns: number, rows: number) => Promise<void>
 }
@@ -41,7 +41,7 @@ function clearTerminal(terminal: Terminal): void {
 class WindowsTerminalPty implements TerminalPty {
 	public readonly shell
 	public readonly conhost
-	public readonly exit
+	public readonly onExit
 	readonly #resizer = Promise.resolve().then(async () => {
 		const { plugin } = this,
 			{ settings, language } = plugin,
@@ -159,7 +159,7 @@ class WindowsTerminalPty implements TerminalPty {
 				return [shell0, codeTmp] as const
 			})
 		this.shell = shell.then(([shell0]) => shell0)
-		this.exit = shell
+		this.onExit = shell
 			.then(async ([shell0, codeTmp]) =>
 				new Promise<NodeJS.Signals | number>(executeParanoidly(resolve =>
 					shell0.once("exit", (conCode, signal) => {
@@ -216,13 +216,13 @@ class WindowsTerminalPty implements TerminalPty {
 		})
 		const writer =
 			terminal.onData(async data => writePromise(shell.stdin, data))
-		this.exit.finally(() => { writer.dispose() })
+		this.onExit.finally(() => { writer.dispose() })
 	}
 }
 
 class UnixTerminalPty implements TerminalPty {
 	public readonly shell
-	public readonly exit
+	public readonly onExit
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
@@ -254,7 +254,7 @@ class UnixTerminalPty implements TerminalPty {
 			} catch (error) { void error }
 			return ret
 		})
-		this.exit = this.shell
+		this.onExit = this.shell
 			.then(async shell =>
 				new Promise<NodeJS.Signals | number>(executeParanoidly(resolve =>
 					shell.once("exit", (code, signal) => {
@@ -273,7 +273,7 @@ class UnixTerminalPty implements TerminalPty {
 		})
 		const writer =
 			terminal.onData(async data => writePromise(shell.stdin, data))
-		this.exit.finally(() => { writer.dispose() })
+		this.onExit.finally(() => { writer.dispose() })
 	}
 
 	public async resize(columns: number, rows: number): Promise<void> {

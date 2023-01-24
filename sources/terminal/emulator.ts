@@ -42,7 +42,7 @@ export class XtermTerminalEmulator<A> {
 	public readonly terminal
 	public readonly addons
 
-	public readonly exit
+	public readonly onExit
 	readonly #pty
 	#exited = false
 	readonly #resize = asyncDebounce(debounce(async (
@@ -87,7 +87,7 @@ export class XtermTerminalEmulator<A> {
 			await pty0.pipe(this.terminal)
 			return pty0
 		})
-		this.exit = this.#pty.then(async pty0 => pty0.exit)
+		this.onExit = this.#pty.then(async pty0 => pty0.onExit)
 			.finally(() => void (this.#exited = true))
 	}
 
