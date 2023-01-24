@@ -38,8 +38,8 @@
 			"darwin": "macOS",
 			"linux": "Linux",
 			"type": {
-				"external": "（外部）",
-				"integrated": "（整合式）"
+				"external": "外部",
+				"integrated": "整合式"
 			},
 			"win32": "Microsoft Windows"
 		},

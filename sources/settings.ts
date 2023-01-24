@@ -85,6 +85,7 @@ export class SettingTab extends PluginSettingTab {
 	}
 
 	public display(): void {
+		// Avoid <h2/>
 		const { containerEl, plugin } = this,
 			{ settings, language, statusBarHider } = plugin,
 			{ i18n } = language
@@ -217,6 +218,7 @@ export class SettingTab extends PluginSettingTab {
 				i18n.t("asset:settings.error-notice-timeout-icon"),
 			))
 
+		containerEl.createEl("h3", { text: i18n.t("settings.executables") })
 		new Setting(containerEl)
 			.setName(i18n.t("settings.python-executable"))
 			.setDesc(i18n.t("settings.python-executable-description"))
@@ -233,11 +235,13 @@ export class SettingTab extends PluginSettingTab {
 					DEFAULT_SETTINGS.pythonExecutable),
 				i18n.t("asset:settings.python-executable-icon"),
 			))
-		containerEl.createEl("h2", { text: i18n.t("settings.executables") })
 		for (const key of TerminalPty.SUPPORTED_PLATFORMS) {
+			containerEl.createEl(
+				"h4",
+				{ text: i18n.t(`settings.executable-list.${key}`) },
+			)
 			new Setting(containerEl)
-				.setName(`${i18n.t(`settings.executable-list.${key}`)}${i18n
-					.t("settings.executable-list.type.external")}`)
+				.setName(i18n.t("settings.executable-list.type.external"))
 				.addText(this.#linkSetting(
 					() => settings.executables[key].extExe,
 					value => void (settings.executables[key].extExe = value),
@@ -248,8 +252,7 @@ export class SettingTab extends PluginSettingTab {
 					i18n.t("asset:settings.executable-list-external-icon"),
 				))
 			new Setting(containerEl)
-				.setName(`${i18n.t(`settings.executable-list.${key}`)}${i18n
-					.t("settings.executable-list.type.integrated")}`)
+				.setName(i18n.t("settings.executable-list.type.integrated"))
 				.addText(this.#linkSetting(
 					() => settings.executables[key].intExe,
 					value => void (settings.executables[key].intExe = value),
@@ -259,20 +262,22 @@ export class SettingTab extends PluginSettingTab {
 						DEFAULT_SETTINGS.executables[key].intExe),
 					i18n.t("asset:settings.executable-list-integrated-icon"),
 				))
+			if (key === "win32") {
+				new Setting(containerEl)
+					.setName(i18n.t("settings.enable-Windows-conhost-workaround"))
+					.setDesc(i18n
+						.t("settings.enable-Windows-conhost-workaround-description"))
+					.addToggle(this.#linkSetting(
+						() => settings.enableWindowsConhostWorkaround,
+						value => void (settings.enableWindowsConhostWorkaround = value),
+					))
+					.addExtraButton(this.#resetButton(
+						() => void (settings.enableWindowsConhostWorkaround =
+							DEFAULT_SETTINGS.enableWindowsConhostWorkaround),
+						i18n.t("asset:settings.enable-Windows-conhost-workaround-icon"),
+					))
+			}
 		}
-
-		new Setting(containerEl)
-			.setName(i18n.t("settings.enable-Windows-conhost-workaround"))
-			.setDesc(i18n.t("settings.enable-Windows-conhost-workaround-description"))
-			.addToggle(this.#linkSetting(
-				() => settings.enableWindowsConhostWorkaround,
-				value => void (settings.enableWindowsConhostWorkaround = value),
-			))
-			.addExtraButton(this.#resetButton(
-				() => void (settings.enableWindowsConhostWorkaround =
-					DEFAULT_SETTINGS.enableWindowsConhostWorkaround),
-				i18n.t("asset:settings.enable-Windows-conhost-workaround-icon"),
-			))
 	}
 
 	#linkSetting<
