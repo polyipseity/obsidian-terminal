@@ -154,14 +154,11 @@ export class SettingTab extends PluginSettingTab {
 			.setName(i18n.t("settings.hide-status-bar"))
 			.addDropdown(this.#linkSetting(
 				() => settings.hideStatusBar as string,
-				async value => {
-					if (inSet(Settings.HIDE_STATUS_BAR_OPTIONS, value)) {
-						await plugin.mutateSettings(settingsM =>
-							void (settingsM.hideStatusBar = value))
-						return true
-					}
-					return false
-				},
+				this.#setTextToEnum(
+					Settings.HIDE_STATUS_BAR_OPTIONS,
+					async value => plugin.mutateSettings(settingsM =>
+						void (settingsM.hideStatusBar = value)),
+				),
 				{
 					pre: dropdown => void dropdown
 						.addOptions(Object
@@ -290,12 +287,33 @@ export class SettingTab extends PluginSettingTab {
 			const activate = async (value: V): Promise<void> => {
 				const ret = await setter(value, component, getter)
 				if (typeof ret === "boolean" && !ret) {
+					component.setValue(getter())
 					return
 				}
 				await Settings.save(this.plugin.settings, this.plugin)
 			}
 			component.setValue(getter()).onChange(activate);
 			(action.post ?? ((): void => { }))(component, activate)
+		}
+	}
+
+	#setTextToEnum<E extends V, V, C extends ValueComponent<V>>(
+		enums: readonly E[],
+		setter: (value: E, component: C, getter: () => V) => unknown,
+	) {
+		return async (
+			value: V,
+			component: C,
+			getter: () => V,
+		): Promise<boolean> => {
+			if (!inSet(enums, value)) {
+				return false
+			}
+			const ret = await setter(value, component, getter)
+			if (typeof ret === "boolean" && !ret) {
+				return false
+			}
+			return true
 		}
 	}
 
@@ -310,7 +328,6 @@ export class SettingTab extends PluginSettingTab {
 		): Promise<boolean> => {
 			const num = Number(value)
 			if (!(integer ? Number.isSafeInteger(num) : isFinite(num))) {
-				component.setValue(getter())
 				return false
 			}
 			const ret = await setter(num, component, getter)
