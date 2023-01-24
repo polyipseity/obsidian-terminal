@@ -133,13 +133,13 @@ export class TerminalView extends ItemView {
 		return Object.assign(super.getState(), this.#state)
 	}
 
-	public override async onResize(): Promise<void> {
+	public override onResize(): void {
 		super.onResize()
 		const { containerEl } = this
 		if (containerEl.offsetWidth <= 0 || containerEl.offsetHeight <= 0) {
 			return
 		}
-		await this.#emulator?.resize()
+		this.#emulator?.resize().catch(error => { console.warn(error) })
 	}
 
 	public getDisplayText(): string {

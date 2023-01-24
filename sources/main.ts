@@ -47,13 +47,16 @@ export class TerminalPlugin extends Plugin {
 			})
 	}
 
-	public override async onload(): Promise<void> {
-		super.onload()
-		await Settings.load(this.settings, this)
-		await this.language.load()
-		this.statusBarHider.load()
-		this.addSettingTab(new SettingTab(this))
-		registerTerminal(this)
+	public override onload(): void {
+		Promise.resolve().then(async () => {
+			super.onload()
+			await Settings.load(this.settings, this)
+			await this.language.load()
+			this.statusBarHider.load()
+			this.addSettingTab(new SettingTab(this))
+			registerTerminal(this)
+		})
+			.catch(error => { console.error(error) })
 	}
 }
 // Needed for loading
