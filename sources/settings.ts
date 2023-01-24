@@ -228,10 +228,10 @@ export class SettingTab extends PluginSettingTab {
 		for (const key of TerminalPty.SUPPORTED_PLATFORMS) {
 			containerEl.createEl(
 				"h4",
-				{ text: i18n.t(`settings.executable-list.${key}`) },
+				{ text: i18n.t(`types.platforms.${key}`) },
 			)
 			new Setting(containerEl)
-				.setName(i18n.t("settings.executable-list.type.external"))
+				.setName(i18n.t("types.terminals.external"))
 				.addText(this.#linkSetting(
 					() => settings.executables[key].extExe,
 					async value => plugin.mutateSettings(settingsM =>
@@ -244,7 +244,7 @@ export class SettingTab extends PluginSettingTab {
 					i18n.t("asset:settings.executable-list-external-icon"),
 				))
 			new Setting(containerEl)
-				.setName(i18n.t("settings.executable-list.type.integrated"))
+				.setName(i18n.t("types.terminals.integrated"))
 				.addText(this.#linkSetting(
 					() => settings.executables[key].intExe,
 					async value => plugin.mutateSettings(settingsM =>
@@ -292,7 +292,7 @@ export class SettingTab extends PluginSettingTab {
 								.map(value => [
 									value,
 									capitalize(
-										i18n.t(`types.renderer.${value}`),
+										i18n.t(`types.renderers.${value}`),
 										language.language,
 									),
 								]))),

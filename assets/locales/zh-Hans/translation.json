@@ -35,15 +35,6 @@
 		"error-notice-timeout": "错误通知超时（秒）",
 		"error-notice-timeout-description": "设为0秒是无超时。设为负数以禁用通知。",
 		"executables": "可执行文件",
-		"executable-list": {
-			"darwin": "macOS",
-			"linux": "Linux",
-			"type": {
-				"external": "外部",
-				"integrated": "整合式"
-			},
-			"win32": "Microsoft Windows"
-		},
 		"hide-status-bar": "隐藏状态栏",
 		"hide-status-bar-options": {
 			"never": "从不",
@@ -64,10 +55,19 @@
 		"reset-all": "重设全部"
 	},
 	"types": {
-		"renderer": {
+		"platforms": {
+			"darwin": "macOS",
+			"linux": "Linux",
+			"win32": "Microsoft Windows"
+		},
+		"renderers": {
 			"canvas": "画布",
 			"dom": "文件物件模型",
 			"webgl": "WebGL"
+		},
+		"terminals": {
+			"external": "外部",
+			"integrated": "整合式"
 		}
 	},
 	"views": {

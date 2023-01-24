@@ -10,7 +10,7 @@
 		"error-spawning-terminal": "Error spawning terminal",
 		"error-spawning-resizer": "Error spawning terminal resizer",
 		"failed-to-kill-pseudoterminal": "Failed to kill pseudoterminal",
-		"no-python-to-start-unix-pseudoterminal": "No Python to start Unix PTY",
+		"no-python-to-start-unix-pseudoterminal": "No Python to start Unix pseudoterminal",
 		"resizer-disabled": "Terminal resizer disabled",
 		"resizer-exited-unexpectedly": "Terminal resizer exited unexpectedly: {{- code}}",
 		"unsupported-platform": "Unsupported platform"
@@ -35,15 +35,6 @@
 		"error-notice-timeout": "Error notice timeout (s)",
 		"error-notice-timeout-description": "Set to 0 s for no timeout. Set to negative to disable notice.",
 		"executables": "Executables",
-		"executable-list": {
-			"darwin": "macOS",
-			"linux": "Linux",
-			"type": {
-				"external": "External",
-				"integrated": "Integrated"
-			},
-			"win32": "Microsoft Windows"
-		},
 		"hide-status-bar": "Hide status bar",
 		"hide-status-bar-options": {
 			"never": "Never",
@@ -64,10 +55,19 @@
 		"reset-all": "Reset all"
 	},
 	"types": {
-		"renderer": {
+		"platforms": {
+			"darwin": "macOS",
+			"linux": "Linux",
+			"win32": "Microsoft Windows"
+		},
+		"renderers": {
 			"canvas": "canvas",
 			"dom": "DOM",
 			"webgl": "WebGL"
+		},
+		"terminals": {
+			"external": "External",
+			"integrated": "Integrated"
 		}
 	},
 	"views": {
