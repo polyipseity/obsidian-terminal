@@ -313,7 +313,7 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 				cwd: string,
 				terminal: TerminalType,
 			): void => {
-				(async (): Promise<void> => {
+				Promise.resolve().then(async () => {
 					const executable = settings.executables[platform]
 					switch (terminal) {
 						case "external": {
@@ -368,13 +368,14 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 						default:
 							throw new TypeError(terminal)
 					}
-				})().catch(error => {
-					printError(
-						anyToError(error),
-						() => i18n.t("errors.error-spawning-terminal"),
-						plugin,
-					)
 				})
+					.catch(error => {
+						printError(
+							anyToError(error),
+							() => i18n.t("errors.error-spawning-terminal"),
+							plugin,
+						)
+					})
 			},
 			addContextMenus = (menu: Menu, cwd: TFolder): void => {
 				menu.addSeparator()

@@ -18,23 +18,24 @@ declare module "i18next" {
 	}
 }
 
-export const I18N = Promise.resolve(i18next.createInstance({
-	cleanCode: true,
-	defaultNS: DEFAULT_NAMESPACE,
-	fallbackLng: FALLBACK_LANGUAGES,
-	initImmediate: true,
-	nonExplicitSupportedLngs: true,
-	resources: RESOURCES,
-	returnNull: RETURN_NULL,
-}))
-	.then(async i18n => {
-		await i18n.init()
-		return i18n
-	})
-	.catch(error => {
+export const I18N = Promise.resolve().then(async () => {
+	try {
+		const ret = i18next.createInstance({
+			cleanCode: true,
+			defaultNS: DEFAULT_NAMESPACE,
+			fallbackLng: FALLBACK_LANGUAGES,
+			initImmediate: true,
+			nonExplicitSupportedLngs: true,
+			resources: RESOURCES,
+			returnNull: RETURN_NULL,
+		})
+		await ret.init()
+		return ret
+	} catch (error) {
 		printError(anyToError(error), () => "i18n error")
 		throw error
-	})
+	}
+})
 
 export class LanguageManager {
 	public readonly onChangeLanguage = new EventEmitterLite<[]>()

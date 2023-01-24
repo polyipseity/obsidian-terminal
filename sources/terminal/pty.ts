@@ -42,7 +42,7 @@ class WindowsTerminalPty implements TerminalPty {
 	public readonly shell
 	public readonly conhost
 	public readonly exit
-	readonly #resizer = (async (): Promise<PipedChildProcess | null> => {
+	readonly #resizer = Promise.resolve().then(async () => {
 		const { plugin } = this,
 			{ settings, language } = plugin,
 			{ pythonExecutable } = settings,
@@ -78,7 +78,7 @@ class WindowsTerminalPty implements TerminalPty {
 				} catch (error) { void error }
 				return ret
 			})
-	})()
+	})
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
@@ -163,7 +163,7 @@ class WindowsTerminalPty implements TerminalPty {
 			.then(async ([shell0, codeTmp]) =>
 				new Promise<NodeJS.Signals | number>(executeParanoidly(resolve =>
 					shell0.once("exit", (conCode, signal) => {
-						(async (): Promise<void> => {
+						Promise.resolve().then(async () => {
 							try {
 								const termCode = parseInt(
 									(await fs).readFileSync(
@@ -178,7 +178,8 @@ class WindowsTerminalPty implements TerminalPty {
 							} finally {
 								codeTmp.removeCallback()
 							}
-						})().catch(() => { })
+						})
+							.catch(() => { })
 					}))))
 	}
 
