@@ -65,6 +65,7 @@
     "linebreak-style": "off",
     "lines-between-class-members": "off",
     "max-classes-per-file": "off",
+    "max-depth": "off",
     "max-len": [
       "error",
       {

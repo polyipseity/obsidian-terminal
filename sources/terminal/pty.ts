@@ -93,8 +93,11 @@ class WindowsTerminalPty implements TerminalPty {
 		args?: readonly string[],
 	) {
 		this.conhost = plugin.settings.enableWindowsConhostWorkaround
-		const shell = this.#resizer.catch(() => null)
-			.then(async resizer => {
+		const shell = this.#resizer.then(
+			resizer => [resizer, null] as const,
+			error => [null, anyToError(error)] as const,
+		)
+			.then(async ([resizer, resizerError]) => {
 				try {
 					const codeTmp = (await tmp).fileSync({ discardDescriptor: true })
 					try {
@@ -111,7 +114,7 @@ class WindowsTerminalPty implements TerminalPty {
 								.#escapeArgument(codeTmp.name)}`,
 						] as const
 						return [
-							resizer,
+							resizer ?? resizerError,
 							codeTmp,
 							await spawnPromise(async () => (await childProcess).spawn(
 								cmd[0],
@@ -137,6 +140,9 @@ class WindowsTerminalPty implements TerminalPty {
 				try {
 					if (resizer !== null) {
 						try {
+							if (resizer instanceof Error) {
+								throw resizer
+							}
 							await writePromise(resizer.stdin, `${shell0.pid ?? -1}\n`)
 							const watchdog = window.setInterval(
 								() => void writePromise(resizer.stdin, "\n")
@@ -158,7 +164,7 @@ class WindowsTerminalPty implements TerminalPty {
 									this.plugin,
 								)
 							} finally {
-								resizer.kill()
+								if (!(resizer instanceof Error)) { resizer.kill() }
 							}
 						}
 					}
