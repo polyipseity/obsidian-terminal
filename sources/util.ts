@@ -36,6 +36,23 @@ export const PLATFORM = ((): Platform => {
 	return "unknown"
 })()
 
+export class EventEmitterLite<A extends unknown[]> {
+	#emitter: Promise<unknown> = Promise.resolve()
+	readonly #listeners: ((...args: [...A]) => unknown)[] = []
+
+	public async emit(...args: [...A]): Promise<void> {
+		this.#emitter = this.#emitter
+			.then(async () => Promise.allSettled(this.#listeners
+				.map(async list => { await list(...args) })))
+		await this.#emitter
+	}
+
+	public listen(listener: (...args: [...A]) => unknown): () => void {
+		this.#listeners.push(listener)
+		return () => { this.#listeners.remove(listener) }
+	}
+}
+
 export class UnnamespacedID<V extends string> {
 	public constructor(public readonly id: V) { }
 
