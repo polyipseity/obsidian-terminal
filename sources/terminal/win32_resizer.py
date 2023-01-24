@@ -6,6 +6,7 @@ import psutil as _psutil
 import pywinctl as _pywinctl  # type: ignore
 import pywintypes as _pywintypes
 import sys as _sys
+import time as _time
 import types as _types
 import typing as _typing
 import win32api as _win32api
@@ -16,6 +17,8 @@ import win32gui as _win32gui
 import win32process as _win32process
 
 if _sys.platform == "win32":
+    LOOKUP_WINDOW_RETRY_INTERVAL = 1
+    LOOKUP_WINDOW_RETRIES = 10
 
     def main() -> None:
         pid = int(input("PID: "))
@@ -27,13 +30,16 @@ if _sys.platform == "win32":
         pids: _typing.Mapping[int, _psutil.Process] = _types.MappingProxyType(
             {proc.pid: proc for proc in procs}
         )
-        windows: _typing.Collection[_pywinctl.Window] = _pywinctl.getAllWindows()
-        print(f"window(s): {windows}")
-        for win in windows:
-            win_pid = win_to_pid(win)
-            if win_pid in pids:
-                resizer(pids[win_pid], win)
-                return
+        windows: _typing.Collection[_pywinctl.Window] = ()
+        for tries in range(LOOKUP_WINDOW_RETRIES):
+            windows = _pywinctl.getAllWindows()
+            print(f"window(s) (try {tries + 1}): {windows}")
+            for win in windows:
+                win_pid = win_to_pid(win)
+                if win_pid in pids:
+                    resizer(pids[win_pid], win)
+                    return
+            _time.sleep(LOOKUP_WINDOW_RETRY_INTERVAL)
         raise LookupError(procs, windows)
 
     def win_to_pid(window: _pywinctl.Window) -> int:
