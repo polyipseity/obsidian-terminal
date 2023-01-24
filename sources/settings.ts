@@ -82,12 +82,14 @@ export const DEFAULT_SETTINGS: Settings = {
 export class SettingTab extends PluginSettingTab {
 	public constructor(protected readonly plugin: TerminalPlugin) {
 		super(plugin.app, plugin)
+		plugin.register(plugin.language.onChangeLanguage
+			.listen(() => { this.display() }))
 	}
 
 	public display(): void {
 		// Avoid <h2/>
 		const { containerEl, plugin } = this,
-			{ settings, language, statusBarHider } = plugin,
+			{ settings, language } = plugin,
 			{ i18n } = language
 		containerEl.empty()
 		containerEl.createEl("h1", { text: i18n.t("name") })
@@ -97,14 +99,9 @@ export class SettingTab extends PluginSettingTab {
 			.setDesc(i18n.t("settings.language-description"))
 			.addDropdown(this.#linkSetting(
 				() => settings.language,
-				value => void (settings.language = value),
+				async value => plugin
+					.mutateSettings(settingsM => void (settingsM.language = value)),
 				{
-					post: (dropdown, activate) => void dropdown
-						.onChange(async value => {
-							await activate(value)
-							await language.updateLanguage()
-							this.display()
-						}),
 					pre: dropdown => void dropdown
 						.addOption("", i18n.t("settings.language-default"))
 						.addOptions(Object
@@ -115,62 +112,57 @@ export class SettingTab extends PluginSettingTab {
 				},
 			))
 			.addExtraButton(this.#resetButton(
-				() => void (settings.language = DEFAULT_SETTINGS.language),
+				async () => plugin
+					.mutateSettings(settingsM =>
+						void (settingsM.language = DEFAULT_SETTINGS.language)),
 				i18n.t("asset:settings.language-icon"),
-				{
-					post: (button, activate) => void button
-						.onClick(async () => {
-							await activate()
-							await language.updateLanguage()
-							this.display()
-						}),
-				},
 			))
 		new Setting(containerEl)
 			.setName(i18n.t("settings.reset-all"))
-			.addButton(this.#resetButton(async () => {
-				Object.assign(settings, structuredClone(DEFAULT_SETTINGS))
-				await language.updateLanguage()
-			}))
+			.addButton(this.#resetButton(async () => plugin
+				.mutateSettings(settingsM =>
+					Object.assign(settingsM, structuredClone))))
 
 		new Setting(containerEl)
 			.setName(i18n.t("settings.add-to-command"))
 			.addToggle(this.#linkSetting(
 				() => settings.addToCommand,
-				value => void (settings.addToCommand = value),
+				async value => plugin
+					.mutateSettings(settingsM => void (settingsM.addToCommand = value)),
 			))
 			.addExtraButton(this.#resetButton(
-				() => void (settings.addToCommand = DEFAULT_SETTINGS.addToCommand),
+				async () => plugin
+					.mutateSettings(settingsM =>
+						void (settingsM.addToCommand = DEFAULT_SETTINGS.addToCommand)),
 				i18n.t("asset:settings.add-to-command-icon"),
 			))
 		new Setting(containerEl)
 			.setName(i18n.t("settings.add-to-context-menu"))
 			.addToggle(this.#linkSetting(
 				() => settings.addToContextMenu,
-				value => void (settings.addToContextMenu = value),
+				async value => plugin
+					.mutateSettings(settingsM =>
+						void (settingsM.addToContextMenu = value)),
 			))
 			.addExtraButton(this.#resetButton(
-				() => void (settings.addToContextMenu =
-					DEFAULT_SETTINGS.addToContextMenu),
+				async () => plugin
+					.mutateSettings(settingsM => void (settingsM.addToContextMenu =
+						DEFAULT_SETTINGS.addToContextMenu)),
 				i18n.t("asset:settings.add-to-context-menu-icon"),
 			))
 		new Setting(containerEl)
 			.setName(i18n.t("settings.hide-status-bar"))
 			.addDropdown(this.#linkSetting(
 				() => settings.hideStatusBar as string,
-				value => {
+				async value => {
 					if (inSet(Settings.HIDE_STATUS_BAR_OPTIONS, value)) {
-						settings.hideStatusBar = value
+						await plugin.mutateSettings(settingsM =>
+							void (settingsM.hideStatusBar = value))
 						return true
 					}
 					return false
 				},
 				{
-					post: (dropdown, activate) => void dropdown
-						.onChange(async value => {
-							await activate(value)
-							statusBarHider.update()
-						}),
 					pre: dropdown => void dropdown
 						.addOptions(Object
 							.fromEntries(Settings.HIDE_STATUS_BAR_OPTIONS
@@ -181,27 +173,21 @@ export class SettingTab extends PluginSettingTab {
 				},
 			))
 			.addExtraButton(this.#resetButton(
-				() => void (settings.hideStatusBar = DEFAULT_SETTINGS.hideStatusBar),
+				async () => plugin.mutateSettings(settingsM =>
+					void (settingsM.hideStatusBar = DEFAULT_SETTINGS.hideStatusBar)),
 				i18n.t("asset:settings.hide-status-bar-icon"),
-				{
-					post: (button, activate) => void button
-						.onClick(async () => {
-							await activate()
-							statusBarHider.update()
-						}),
-				},
 			))
 		new Setting(containerEl)
 			.setName(i18n.t("settings.notice-timeout"))
 			.setDesc(i18n.t("settings.notice-timeout-description"))
 			.addText(this.#linkSetting(
 				() => settings.noticeTimeout.toString(),
-				this.#setTextToNumber(value =>
-					void (settings.noticeTimeout = value)),
+				this.#setTextToNumber(async value => plugin.mutateSettings(settingsM =>
+					void (settingsM.noticeTimeout = value))),
 			))
 			.addExtraButton(this.#resetButton(
-				() => void (settings.noticeTimeout =
-					DEFAULT_SETTINGS.noticeTimeout),
+				async () => plugin.mutateSettings(settingsM =>
+					void (settingsM.noticeTimeout = DEFAULT_SETTINGS.noticeTimeout)),
 				i18n.t("asset:settings.notice-timeout-icon"),
 			))
 		new Setting(containerEl)
@@ -209,12 +195,12 @@ export class SettingTab extends PluginSettingTab {
 			.setDesc(i18n.t("settings.error-notice-timeout-description"))
 			.addText(this.#linkSetting(
 				() => settings.errorNoticeTimeout.toString(),
-				this.#setTextToNumber(value =>
-					void (settings.errorNoticeTimeout = value)),
+				this.#setTextToNumber(async value => plugin.mutateSettings(settingsM =>
+					void (settingsM.errorNoticeTimeout = value))),
 			))
 			.addExtraButton(this.#resetButton(
-				() => void (settings.noticeTimeout =
-					DEFAULT_SETTINGS.noticeTimeout),
+				async () => plugin.mutateSettings(settingsM =>
+					void (settingsM.noticeTimeout = DEFAULT_SETTINGS.noticeTimeout)),
 				i18n.t("asset:settings.error-notice-timeout-icon"),
 			))
 
@@ -224,15 +210,17 @@ export class SettingTab extends PluginSettingTab {
 			.setDesc(i18n.t("settings.python-executable-description"))
 			.addText(this.#linkSetting(
 				() => settings.pythonExecutable,
-				value => void (settings.pythonExecutable = value),
+				async value => plugin.mutateSettings(settingsM =>
+					void (settingsM.pythonExecutable = value)),
 				{
 					post: component => void component
 						.setPlaceholder(i18n.t("settings.python-executable-placeholder")),
 				},
 			))
 			.addExtraButton(this.#resetButton(
-				() => void (settings.pythonExecutable =
-					DEFAULT_SETTINGS.pythonExecutable),
+				async () => plugin.mutateSettings(settingsM =>
+					void (settingsM.pythonExecutable =
+						DEFAULT_SETTINGS.pythonExecutable)),
 				i18n.t("asset:settings.python-executable-icon"),
 			))
 		for (const key of TerminalPty.SUPPORTED_PLATFORMS) {
@@ -244,22 +232,26 @@ export class SettingTab extends PluginSettingTab {
 				.setName(i18n.t("settings.executable-list.type.external"))
 				.addText(this.#linkSetting(
 					() => settings.executables[key].extExe,
-					value => void (settings.executables[key].extExe = value),
+					async value => plugin.mutateSettings(settingsM =>
+						void (settingsM.executables[key].extExe = value)),
 				))
 				.addExtraButton(this.#resetButton(
-					() => void (settings.executables[key].extExe =
-						DEFAULT_SETTINGS.executables[key].extExe),
+					async () => plugin.mutateSettings(settingsM =>
+						void (settingsM.executables[key].extExe =
+							DEFAULT_SETTINGS.executables[key].extExe)),
 					i18n.t("asset:settings.executable-list-external-icon"),
 				))
 			new Setting(containerEl)
 				.setName(i18n.t("settings.executable-list.type.integrated"))
 				.addText(this.#linkSetting(
 					() => settings.executables[key].intExe,
-					value => void (settings.executables[key].intExe = value),
+					async value => plugin.mutateSettings(settingsM =>
+						void (settingsM.executables[key].intExe = value)),
 				))
 				.addExtraButton(this.#resetButton(
-					() => void (settings.executables[key].intExe =
-						DEFAULT_SETTINGS.executables[key].intExe),
+					async () => plugin.mutateSettings(settingsM =>
+						void (settingsM.executables[key].intExe =
+							DEFAULT_SETTINGS.executables[key].intExe)),
 					i18n.t("asset:settings.executable-list-integrated-icon"),
 				))
 			if (key === "win32") {
@@ -269,11 +261,13 @@ export class SettingTab extends PluginSettingTab {
 						.t("settings.enable-Windows-conhost-workaround-description"))
 					.addToggle(this.#linkSetting(
 						() => settings.enableWindowsConhostWorkaround,
-						value => void (settings.enableWindowsConhostWorkaround = value),
+						async value => plugin.mutateSettings(settingsM =>
+							void (settingsM.enableWindowsConhostWorkaround = value)),
 					))
 					.addExtraButton(this.#resetButton(
-						() => void (settings.enableWindowsConhostWorkaround =
-							DEFAULT_SETTINGS.enableWindowsConhostWorkaround),
+						async () => plugin.mutateSettings(settingsM =>
+							void (settingsM.enableWindowsConhostWorkaround =
+								DEFAULT_SETTINGS.enableWindowsConhostWorkaround)),
 						i18n.t("asset:settings.enable-Windows-conhost-workaround-icon"),
 					))
 			}

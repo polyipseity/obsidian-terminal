@@ -36,6 +36,11 @@ export class StatusBarHider {
 				)
 			}
 		})
+		plugin.on(
+			"mutate-settings",
+			settings => settings.hideStatusBar,
+			() => { this.update() },
+		)
 	}
 
 	public hide(hider: () => boolean): () => void {

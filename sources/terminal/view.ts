@@ -185,7 +185,7 @@ export class TerminalView extends ItemView {
 			}
 			this.#focus = false
 		}))
-		this.register(language.registerUse(() =>
+		this.register(language.onChangeLanguage.listen(() =>
 			updateDisplayText(this)))
 		this.register(statusBarHider.hide(() => this.#hidesStatusBar()))
 		this.registerEvent(app.workspace.on(

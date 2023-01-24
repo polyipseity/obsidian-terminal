@@ -5,7 +5,7 @@ import {
 	RESOURCES,
 	RETURN_NULL,
 } from "assets/locales"
-import { anyToError, printError } from "./util"
+import { EventEmitterLite, anyToError, printError } from "./util"
 import i18next, { type i18n } from "i18next"
 import type TerminalPlugin from "./main"
 import { moment } from "obsidian"
@@ -37,8 +37,8 @@ export const I18N = Promise.resolve(i18next.createInstance({
 	})
 
 export class LanguageManager {
+	public readonly onChangeLanguage = new EventEmitterLite<[]>()
 	#i18n = i18next
-	readonly #uses: (() => unknown)[] = []
 	public constructor(protected readonly plugin: TerminalPlugin) { }
 
 	public get i18n(): i18n {
@@ -52,16 +52,16 @@ export class LanguageManager {
 
 	public async load(): Promise<void> {
 		this.#i18n = await I18N
-		await this.updateLanguage()
+		await this.#changeLanguage(this.language)
+		this.plugin.register(this.plugin.on(
+			"mutate-settings",
+			() => this.language,
+			async cur => this.#changeLanguage(cur),
+		))
 	}
 
-	public async updateLanguage(): Promise<void> {
-		await this.i18n.changeLanguage(this.language)
-		await Promise.all(this.#uses.map(use => use()))
-	}
-
-	public registerUse(use: () => unknown): () => void {
-		this.#uses.push(use)
-		return () => { this.#uses.remove(use) }
+	async #changeLanguage(language: string): Promise<void> {
+		await this.i18n.changeLanguage(language)
+		await this.onChangeLanguage.emit()
 	}
 }
