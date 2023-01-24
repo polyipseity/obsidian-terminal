@@ -94,11 +94,11 @@ export function asyncDebounce<
 }
 
 export function basename(path: string, ext = ""): string {
-	const ret = path.substring(Math.max(
+	const ret = path.slice(Math.max(
 		path.lastIndexOf("/"),
 		path.lastIndexOf("\\"),
 	) + 1)
-	return ret.endsWith(ext) ? ret.substring(0, ret.length - ext.length) : ret
+	return ret.endsWith(ext) ? ret.slice(0, ret.length - ext.length) : ret
 }
 
 export function commandNamer(
@@ -137,7 +137,7 @@ export function executeParanoidly<T>(callback: (
 export function extname(path: string): string {
 	const base = basename(path),
 		idx = base.lastIndexOf(".")
-	return idx === -1 ? "" : base.substring(idx)
+	return idx === -1 ? "" : base.slice(idx)
 }
 
 export function saveFile(
