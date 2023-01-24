@@ -99,7 +99,7 @@ export class TerminalView extends ItemView {
 
 	set #focus(val: boolean) {
 		const term = this.#emulator?.terminal
-		if (this.#focus) { term?.focus() } else { term?.blur() }
+		if (val) { term?.focus() } else { term?.blur() }
 		this.#focus0 = val
 	}
 
