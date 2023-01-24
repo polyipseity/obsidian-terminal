@@ -44,6 +44,7 @@ export class TerminalView extends ItemView {
 	public static namespacedViewType: string
 	#emulator0: TerminalView.EMULATOR | null = null
 	#focus0 = false
+	#resizable = true
 	readonly #state: TerminalView.State = {
 		__type: TerminalView.State.TYPE,
 		args: [],
@@ -104,7 +105,11 @@ export class TerminalView extends ItemView {
 			val.terminal.onWriteParsed(requestSaveLayout)
 			val.terminal.onResize(requestSaveLayout)
 			if (this.#focus) { val.terminal.focus() } else { val.terminal.blur() }
-			val.resize().catch(error => { console.warn(error) })
+			this.#resizable = true
+			val.resize().catch(error => {
+				console.warn(error)
+				this.#resizable = false
+			})
 		}
 		this.#emulator0 = val
 	}
@@ -136,10 +141,13 @@ export class TerminalView extends ItemView {
 	public override onResize(): void {
 		super.onResize()
 		const { containerEl } = this
-		if (containerEl.offsetWidth <= 0 || containerEl.offsetHeight <= 0) {
+		if (!this.#resizable || containerEl.offsetWidth <= 0 || containerEl.offsetHeight <= 0) {
 			return
 		}
-		this.#emulator?.resize().catch(error => { console.warn(error) })
+		this.#emulator?.resize().catch(error => {
+			console.warn(error)
+			this.#resizable = false
+		})
 	}
 
 	public getDisplayText(): string {
