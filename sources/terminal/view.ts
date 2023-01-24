@@ -1,5 +1,6 @@
 import {
-	CombinedCanvasAddon,
+	DisposerAddon,
+	RendererAddon,
 	XtermTerminalEmulator,
 	spawnExternalTerminalEmulator,
 } from "./emulator"
@@ -74,26 +75,37 @@ export class TerminalView extends ItemView {
 				this.plugin,
 			)
 		})
-		const { plugin } = this,
-			{ app, language, settings } = plugin,
-			{ i18n } = language,
-			{ requestSaveLayout } = app.workspace
-		val?.exit
-			.then(code => {
-				notice2(
-					() => i18n.t("notices.terminal-exited", { code }),
-					inSet(TERMINAL_EXIT_SUCCESS, code)
-						? settings.noticeTimeout
-						: settings.errorNoticeTimeout,
-					plugin,
-				)
-			}, error => {
-				printError(anyToError(error), () =>
-					i18n.t("errors.error-spawning-terminal"), plugin)
-			})
-		val?.terminal.onWriteParsed(requestSaveLayout)
-		val?.terminal.onResize(requestSaveLayout)
-		if (this.#focus) { val?.terminal.focus() } else { val?.terminal.blur() }
+		if (val !== null) {
+			const { plugin } = this,
+				{ app, language, settings } = plugin,
+				{ i18n } = language,
+				{ terminal, addons } = val,
+				{ requestSaveLayout } = app.workspace
+			terminal.unicode.activeVersion = "11"
+			addons.renderer.use(settings.preferredRenderer)
+			addons.disposer.push(plugin.on(
+				"mutate-settings",
+				settings0 => settings0.preferredRenderer,
+				cur => { addons.renderer.use(cur) },
+			))
+			val.exit
+				.then(code => {
+					notice2(
+						() => i18n.t("notices.terminal-exited", { code }),
+						inSet(TERMINAL_EXIT_SUCCESS, code)
+							? settings.noticeTimeout
+							: settings.errorNoticeTimeout,
+						plugin,
+					)
+				}, error => {
+					printError(anyToError(error), () =>
+						i18n.t("errors.error-spawning-terminal"), plugin)
+				})
+			val.terminal.onWriteParsed(requestSaveLayout)
+			val.terminal.onResize(requestSaveLayout)
+			if (this.#focus) { val.terminal.focus() } else { val.terminal.blur() }
+			val.resize().catch(() => { })
+		}
 		this.#emulator0 = val
 	}
 
@@ -200,7 +212,7 @@ export class TerminalView extends ItemView {
 		const { containerEl } = this
 		containerEl.empty()
 		const element = containerEl.createDiv({}),
-			obsr = onVisible(element, async obsr0 => {
+			obsr = onVisible(element, obsr0 => {
 				try {
 					const { plugin } = this,
 						state = this.#state,
@@ -231,17 +243,16 @@ export class TerminalView extends ItemView {
 							allowProposedApi: true,
 						},
 						{
-							combinedCanvas: new CombinedCanvasAddon(
-								new CanvasAddon(),
+							disposer: new DisposerAddon(),
+							ligatures: new LigaturesAddon({}),
+							renderer: new RendererAddon(
+								() => new CanvasAddon(),
 								() => new WebglAddon(false),
 							),
-							ligatures: new LigaturesAddon({}),
 							unicode11: new Unicode11Addon(),
 							webLinks: new WebLinksAddon((_0, uri) => openExternal(uri), {}),
 						},
 					)
-					this.#emulator.terminal.unicode.activeVersion = "11"
-					await this.#emulator.resize()
 				} finally {
 					obsr0.disconnect()
 				}
@@ -270,8 +281,9 @@ export namespace TerminalView {
 	export type EMULATOR = XtermTerminalEmulator<EMULATOR.Addons>
 	export namespace EMULATOR {
 		export interface Addons {
-			readonly combinedCanvas: CombinedCanvasAddon
+			readonly disposer: DisposerAddon
 			readonly ligatures: LigaturesAddon
+			readonly renderer: RendererAddon
 			readonly unicode11: Unicode11Addon
 			readonly webLinks: WebLinksAddon
 		}

@@ -29,6 +29,7 @@
 	"settings": {
 		"add-to-command": "Add to command",
 		"add-to-context-menu": "Add to context menu",
+		"advanced-settings": "Advanced settings",
 		"enable-Windows-conhost-workaround": "Enable Microsoft Windows 'conhost.exe' workaround",
 		"enable-Windows-conhost-workaround-description": "Disable if running 'conhost.exe' does not create a window. No guarantees this will work.",
 		"error-notice-timeout": "Error notice timeout (s)",
@@ -55,11 +56,19 @@
 		"language-description": "Applies to this plugin only. Languages with 🚧 need your help with translation!",
 		"notice-timeout": "Notice timeout (s)",
 		"notice-timeout-description": "Set to 0 s for no timeout. Set to negative to disable notice.",
+		"preferred-renderer": "Preferred renderer",
 		"python-executable": "Python executable",
 		"python-executable-description": "Required on Unix to start integrated terminal. Clear field to disable Python.",
 		"python-executable-placeholder": "(Disabled)",
 		"reset": "Reset",
 		"reset-all": "Reset all"
+	},
+	"types": {
+		"renderer": {
+			"canvas": "canvas",
+			"dom": "DOM",
+			"webgl": "WebGL"
+		}
 	},
 	"views": {
 		"terminal": {

@@ -18,6 +18,7 @@
 		"hide-status-bar-icon": "eye-off",
 		"language-icon": "languages",
 		"notice-timeout-icon": "timer",
+		"preferred-renderer-icon": "brush",
 		"python-executable-icon": "scaling",
 		"reset-icon": "reset"
 	}

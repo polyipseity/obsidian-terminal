@@ -29,6 +29,7 @@
 	"settings": {
 		"add-to-command": "加入至命令",
 		"add-to-context-menu": "加入至右键选单",
+		"advanced-settings": "高级设置",
 		"enable-Windows-conhost-workaround": "启用Microsoft Windows「conhost.exe」解决方法",
 		"enable-Windows-conhost-workaround-description": "如果执行「conhost.exe」没有创建视窗，请禁用。无保证这会起作用。",
 		"error-notice-timeout": "错误通知超时（秒）",
@@ -55,11 +56,19 @@
 		"language-description": "仅适用於此插件。标有🚧的语言需要您帮助来翻译！",
 		"notice-timeout": "通知超时（秒）",
 		"notice-timeout-description": "设为0秒是无超时。设为负数以禁用通知。",
-		"python-executable": "Python 可执行文件",
+		"preferred-renderer": "首选渲染器",
+		"python-executable": "Python可执行文件",
 		"python-executable-description": "于Unix启动整合式终端所需要的。清除文本框以禁用Python。",
 		"python-executable-placeholder": "（已禁用）",
 		"reset": "重设",
 		"reset-all": "重设全部"
+	},
+	"types": {
+		"renderer": {
+			"canvas": "画布",
+			"dom": "文件物件模型",
+			"webgl": "WebGL"
+		}
 	},
 	"views": {
 		"terminal": {

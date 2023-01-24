@@ -6,9 +6,10 @@ import {
 	Setting,
 	type ValueComponent,
 } from "obsidian"
-import { type Mutable, inSet } from "./util"
+import { type Mutable, capitalize, inSet } from "./util"
 import { NOTICE_NO_TIMEOUT } from "./magic"
 import { RESOURCES } from "assets/locales"
+import { RendererAddon } from "./terminal/emulator"
 import type { TerminalPlugin } from "./main"
 import { TerminalPty } from "./terminal/pty"
 
@@ -22,11 +23,14 @@ export interface Settings {
 	readonly pythonExecutable: string
 	readonly executables: Settings.Executables
 	readonly enableWindowsConhostWorkaround: boolean
+	readonly preferredRenderer: Settings.PreferredRendererOption
 }
 export namespace Settings {
 	export const HIDE_STATUS_BAR_OPTIONS =
 		["never", "always", "focused", "running"] as const
 	export type HideStatusBarOption = typeof HIDE_STATUS_BAR_OPTIONS[number]
+	export const PREFERRED_RENDERER_OPTIONS = RendererAddon.RENDERER_OPTIONS
+	export type PreferredRendererOption = RendererAddon.RendererOption
 	export type Executables = {
 		readonly [key in
 		typeof TerminalPty.SUPPORTED_PLATFORMS[number]]: Executables.Entry
@@ -76,6 +80,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	hideStatusBar: "focused",
 	language: "",
 	noticeTimeout: 5,
+	preferredRenderer: "webgl",
 	pythonExecutable: "python3",
 } as const
 
@@ -269,6 +274,36 @@ export class SettingTab extends PluginSettingTab {
 					))
 			}
 		}
+
+		containerEl.createEl("h3", { text: i18n.t("settings.advanced-settings") })
+		new Setting(containerEl)
+			.setName(i18n.t("settings.preferred-renderer"))
+			.addDropdown(this.#linkSetting(
+				() => settings.preferredRenderer as string,
+				this.#setTextToEnum(
+					Settings.PREFERRED_RENDERER_OPTIONS,
+					async value => plugin.mutateSettings(settingsM =>
+						void (settingsM.preferredRenderer = value)),
+				),
+				{
+					pre: dropdown => void dropdown
+						.addOptions(Object
+							.fromEntries(Settings.PREFERRED_RENDERER_OPTIONS
+								.map(value => [
+									value,
+									capitalize(
+										i18n.t(`types.renderer.${value}`),
+										language.language,
+									),
+								]))),
+				},
+			))
+			.addExtraButton(this.#resetButton(
+				async () => plugin.mutateSettings(settingsM =>
+					void (settingsM.preferredRenderer =
+						DEFAULT_SETTINGS.preferredRenderer)),
+				i18n.t("asset:settings.preferred-renderer-icon"),
+			))
 	}
 
 	#linkSetting<

@@ -101,6 +101,16 @@ export function basename(path: string, ext = ""): string {
 	return ret.endsWith(ext) ? ret.slice(0, ret.length - ext.length) : ret
 }
 
+export function capitalize(
+	str: string,
+	locales?: string[] | string,
+): string {
+	const cp0 = str.codePointAt(0)
+	if (typeof cp0 === "undefined") { return "" }
+	const char0 = String.fromCodePoint(cp0)
+	return `${char0.toLocaleUpperCase(locales)}${str.slice(char0.length)}`
+}
+
 export function commandNamer(
 	cmdNamer: () => string,
 	pluginNamer: () => string,

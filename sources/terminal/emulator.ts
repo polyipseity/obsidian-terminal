@@ -130,40 +130,75 @@ export namespace XtermTerminalEmulator {
 	}
 }
 
-export class CombinedCanvasAddon implements ITerminalAddon {
-	public webgl?: WebglAddon
-
-	public constructor(
-		public readonly canvas?: CanvasAddon,
-		protected readonly webglSupplier?: () => WebglAddon,
-	) { }
-
-	public activate(terminal: Terminal): void {
-		const load = (): void => {
-			if (typeof this.webglSupplier !== "undefined") {
-				try {
-					this.webgl?.dispose()
-					this.webgl = this.webglSupplier()
-					terminal.loadAddon(this.webgl)
-					const contextLoss = this.webgl.onContextLoss(() => {
-						try {
-							load()
-						} finally {
-							contextLoss.dispose()
-						}
-					})
-					return
-				} catch (error) { void error }
-			}
-			if (typeof this.canvas !== "undefined") {
-				terminal.loadAddon(this.canvas)
-			}
-		}
-		load()
+export class DisposerAddon extends Array<() => void> implements ITerminalAddon {
+	public activate(_terminal: Terminal): void {
+		// NOOP
 	}
 
 	public dispose(): void {
-		this.webgl?.dispose()
-		this.canvas?.dispose()
+		for (const disposer of this) { disposer() }
 	}
+}
+
+export class RendererAddon implements ITerminalAddon {
+	public renderer: CanvasAddon | WebglAddon | null = null
+	#terminal: Terminal | null = null
+
+	public constructor(
+		public readonly canvasSupplier: () => CanvasAddon,
+		protected readonly webglSupplier: () => WebglAddon,
+	) { }
+
+	public use(renderer: RendererAddon.RendererOption): void {
+		const term = this.#terminal
+		if (term === null) { return }
+		this.renderer?.dispose()
+		switch (renderer) {
+			case "dom":
+				this.renderer = null
+				break
+			case "canvas":
+				try {
+					const renderer0 = this.canvasSupplier()
+					term.loadAddon(this.renderer = renderer0)
+					break
+				} catch (error) {
+					console.warn(error)
+					this.use("dom")
+				}
+				break
+			case "webgl": {
+				try {
+					const renderer0 = this.webglSupplier(),
+						contextLoss = renderer0.onContextLoss(() => {
+							try {
+								this.use("webgl")
+							} finally {
+								contextLoss.dispose()
+							}
+						})
+					term.loadAddon(this.renderer = renderer0)
+				} catch (error) {
+					console.warn(error)
+					this.use("canvas")
+				}
+				break
+			}
+			default:
+				throw new TypeError(renderer)
+		}
+	}
+
+	public activate(terminal: Terminal): void {
+		this.#terminal = terminal
+	}
+
+	public dispose(): void {
+		this.renderer?.dispose()
+		this.#terminal = null
+	}
+}
+export namespace RendererAddon {
+	export const RENDERER_OPTIONS = ["dom", "canvas", "webgl"] as const
+	export type RendererOption = typeof RENDERER_OPTIONS[number]
 }
