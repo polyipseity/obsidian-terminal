@@ -1,3 +1,4 @@
+import { DEFAULT_ENCODING, TERMINAL_RESIZER_WATCHDOG_INTERVAL } from "../magic"
 import {
 	PLATFORM,
 	anyToError,
@@ -12,7 +13,6 @@ import {
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
 } from "node:child_process"
-import { TERMINAL_RESIZER_WATCHDOG_INTERVAL } from "../magic"
 import type { Terminal } from "xterm"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
@@ -24,6 +24,7 @@ const
 	childProcess =
 		dynamicRequire<typeof import("node:child_process")>("node:child_process"),
 	fs = dynamicRequire<typeof import("node:fs")>("node:fs"),
+	process = dynamicRequire<typeof import("node:process")>("node:process"),
 	tmp = dynamicRequire<typeof import("tmp")>("tmp")
 
 export interface TerminalPty {
@@ -52,6 +53,11 @@ class WindowsTerminalPty implements TerminalPty {
 		}
 		return spawnPromise(async () =>
 			(await childProcess).spawn(pythonExecutable, ["-c", win32ResizerPy], {
+				env: {
+					...(await process).env,
+					// eslint-disable-next-line @typescript-eslint/naming-convention
+					PYTHONIOENCODING: "UTF-8:backslashreplace",
+				},
 				stdio: ["pipe", "pipe", "pipe"],
 				windowsHide: true,
 			}))
@@ -59,7 +65,7 @@ class WindowsTerminalPty implements TerminalPty {
 				try {
 					try {
 						ret.stderr.on("data", (chunk: Buffer | string) => {
-							console.error(chunk.toString())
+							console.error(chunk.toString(DEFAULT_ENCODING))
 						})
 					} finally {
 						ret.once("exit", (code, signal) => {
@@ -169,7 +175,7 @@ class WindowsTerminalPty implements TerminalPty {
 								const termCode = parseInt(
 									(await fs).readFileSync(
 										codeTmp.name,
-										{ encoding: "utf-8", flag: "r" },
+										{ encoding: DEFAULT_ENCODING, flag: "r" },
 									).trim(),
 									10,
 								)
@@ -244,6 +250,11 @@ class UnixTerminalPty implements TerminalPty {
 				["-c", unixPtyPy, executable].concat(args ?? []),
 				{
 					cwd,
+					env: {
+						...(await process).env,
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						PYTHONIOENCODING: `${DEFAULT_ENCODING}:backslashreplace`,
+					},
 					stdio: ["pipe", "pipe", "pipe", "pipe"],
 					windowsHide: true,
 				},
@@ -251,7 +262,7 @@ class UnixTerminalPty implements TerminalPty {
 		}).then(ret => {
 			try {
 				ret.stderr.on("data", (chunk: Buffer | string) => {
-					console.error(chunk.toString())
+					console.error(chunk.toString(DEFAULT_ENCODING))
 				})
 			} catch (error) { console.warn(error) }
 			return ret
