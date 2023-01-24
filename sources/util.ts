@@ -216,7 +216,8 @@ export function notice(
 		} else {
 			window.setTimeout(unreg, timeoutMs)
 		}
-	} catch {
+	} catch (error) {
+		console.warn(error)
 		unreg()
 	}
 	return ret

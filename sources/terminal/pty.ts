@@ -75,7 +75,7 @@ class WindowsTerminalPty implements TerminalPty {
 							}
 						})
 					}
-				} catch (error) { void error }
+				} catch (error) { console.warn(error) }
 				return ret
 			})
 	})
@@ -155,7 +155,7 @@ class WindowsTerminalPty implements TerminalPty {
 							}
 						}
 					}
-				} catch (error) { void error }
+				} catch (error) { console.warn(error) }
 				return [shell0, codeTmp] as const
 			})
 		this.shell = shell.then(([shell0]) => shell0)
@@ -173,13 +173,14 @@ class WindowsTerminalPty implements TerminalPty {
 									10,
 								)
 								resolve(isNaN(termCode) ? conCode ?? signal ?? NaN : termCode)
-							} catch {
+							} catch (error) {
 								resolve(conCode ?? signal ?? NaN)
+								throw error
 							} finally {
 								codeTmp.removeCallback()
 							}
 						})
-							.catch(() => { })
+							.catch(error => { console.warn(error) })
 					}))))
 	}
 
@@ -251,7 +252,7 @@ class UnixTerminalPty implements TerminalPty {
 				ret.stderr.on("data", (chunk: Buffer | string) => {
 					console.error(chunk.toString())
 				})
-			} catch (error) { void error }
+			} catch (error) { console.warn(error) }
 			return ret
 		})
 		this.onExit = this.shell

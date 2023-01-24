@@ -104,7 +104,7 @@ export class TerminalView extends ItemView {
 			val.terminal.onWriteParsed(requestSaveLayout)
 			val.terminal.onResize(requestSaveLayout)
 			if (this.#focus) { val.terminal.focus() } else { val.terminal.blur() }
-			val.resize().catch(() => { })
+			val.resize().catch(error => { console.warn(error) })
 		}
 		this.#emulator0 = val
 	}

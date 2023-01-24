@@ -33,7 +33,7 @@ export async function spawnExternalTerminalEmulator(
 			stdio: ["ignore", "ignore", "ignore"],
 		}))
 		.then(ret => {
-			try { ret.unref() } catch (error) { void error }
+			try { ret.unref() } catch (error) { console.warn(error) }
 			return ret
 		})
 }
