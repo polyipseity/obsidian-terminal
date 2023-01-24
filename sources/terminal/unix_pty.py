@@ -74,5 +74,5 @@ if _sys.platform != "win32":
                 key.data()
 
     _sys.exit(_os.waitstatus_to_exitcode(_os.waitpid(pid, 0)[1]))
-
-_sys.exit(1)
+else:
+    raise NotImplementedError(_sys.platform)

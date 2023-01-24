@@ -176,3 +176,5 @@ if _sys.platform == "win32":
 
     if __name__ == "__main__":
         main()
+else:
+    raise NotImplementedError(_sys.platform)
