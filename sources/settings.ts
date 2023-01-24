@@ -126,7 +126,7 @@ export class SettingTab extends PluginSettingTab {
 			.setName(i18n.t("settings.reset-all"))
 			.addButton(this.#resetButton(async () => plugin
 				.mutateSettings(settingsM =>
-					Object.assign(settingsM, structuredClone))))
+					Object.assign(settingsM, structuredClone(DEFAULT_SETTINGS)))))
 
 		new Setting(containerEl)
 			.setName(i18n.t("settings.add-to-command"))
