@@ -90,6 +90,7 @@ export class TerminalView extends ItemView {
 				cur => { addons.renderer.use(cur) },
 			))
 			val.onExit
+				.finally(() => this.#resizable = false)
 				.then(code => {
 					notice2(
 						() => i18n.t("notices.terminal-exited", { code }),
@@ -105,7 +106,7 @@ export class TerminalView extends ItemView {
 			val.terminal.onWriteParsed(requestSaveLayout)
 			val.terminal.onResize(requestSaveLayout)
 			if (this.#focus) { val.terminal.focus() } else { val.terminal.blur() }
-			val.resize().then(() => void (this.#resizable = true), error => {
+			val.resize().then(() => this.#resizable = true, error => {
 				console.warn(error)
 			})
 		}
