@@ -44,7 +44,6 @@ export class TerminalView extends ItemView {
 	public static namespacedViewType: string
 	#emulator0: TerminalView.EMULATOR | null = null
 	#focus0 = false
-	#resizable = false
 	readonly #state: TerminalView.State = {
 		__type: TerminalView.State.TYPE,
 		args: [],
@@ -90,7 +89,6 @@ export class TerminalView extends ItemView {
 				cur => { addons.renderer.use(cur) },
 			))
 			val.onExit
-				.finally(() => this.#resizable = false)
 				.then(code => {
 					notice2(
 						() => i18n.t("notices.terminal-exited", { code }),
@@ -106,9 +104,7 @@ export class TerminalView extends ItemView {
 			val.terminal.onWriteParsed(requestSaveLayout)
 			val.terminal.onResize(requestSaveLayout)
 			if (this.#focus) { val.terminal.focus() } else { val.terminal.blur() }
-			val.resize().then(() => this.#resizable = true, error => {
-				console.warn(error)
-			})
+			val.resize().catch(error => { console.warn(error) })
 		}
 		this.#emulator0 = val
 	}
@@ -140,13 +136,10 @@ export class TerminalView extends ItemView {
 	public override onResize(): void {
 		super.onResize()
 		const { containerEl } = this
-		if (!this.#resizable || containerEl.offsetWidth <= 0 || containerEl.offsetHeight <= 0) {
+		if (containerEl.offsetWidth <= 0 || containerEl.offsetHeight <= 0) {
 			return
 		}
-		this.#emulator?.resize().catch(error => {
-			console.warn(error)
-			this.#resizable = false
-		})
+		this.#emulator?.resize(false).catch(error => { console.warn(error) })
 	}
 
 	public getDisplayText(): string {
@@ -332,7 +325,7 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 				cwd: string,
 				terminal: TerminalType,
 			): void => {
-				(async () => {
+				(async (): Promise<void> => {
 					try {
 						const executable = settings.executables[platform]
 						switch (terminal) {

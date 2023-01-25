@@ -48,9 +48,14 @@ export class XtermTerminalEmulator<A> {
 		reject: (reason?: unknown) => void,
 		columns: number,
 		rows: number,
+		mustResizePty: boolean,
 	) => {
 		try {
-			await (await this.#pty).resize(columns, rows)
+			try {
+				await (await this.#pty).resize(columns, rows)
+			} catch (error) {
+				if (mustResizePty) { throw error }
+			}
 			this.terminal.resize(columns, rows)
 			resolve()
 		} catch (error) {
@@ -101,13 +106,13 @@ export class XtermTerminalEmulator<A> {
 			.i18n.t("errors.failed-to-kill-pseudoterminal"))
 	}
 
-	public async resize(): Promise<void> {
+	public async resize(mustResizePty = true): Promise<void> {
 		const { fit } = this.addons,
 			dim = fit.proposeDimensions()
 		if (typeof dim === "undefined") {
 			return
 		}
-		await this.#resize(dim.cols, dim.rows)
+		await this.#resize(dim.cols, dim.rows, mustResizePty)
 	}
 
 	public serialize(): XtermTerminalEmulator.State {
