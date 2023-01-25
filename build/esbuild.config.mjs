@@ -1,6 +1,8 @@
 import builtins from "builtin-modules"
 import esbuild from "esbuild"
 import process from "node:process"
+import sveltePlugin from "esbuild-svelte"
+import sveltePreprocess from "svelte-preprocess"
 
 const ARGV_PRODUCTION = 2,
 	COMMENT = `/*
@@ -41,6 +43,62 @@ If you want to view the source, please visit the repository of this plugin.
 		minify: production,
 		outfile: "main.js",
 		platform: "browser",
+		plugins: [
+			sveltePlugin({
+				cache: "overzealous",
+				compilerOptions: {
+					accessors: false,
+					css: "external",
+					cssHash: (_name, _filename, css, hash) => `svelte-${hash(css)}`,
+					cssOutputFilename: null,
+					customElement: true,
+					dev: !production,
+					enableSourcemap: {
+						cs: !production,
+						js: !production,
+					},
+					errorMode: "throw",
+					filename: null,
+					format: "esm",
+					generate: "dom",
+					hydratable: true,
+					immutable: true,
+					legacy: false,
+					loopGuardTimeout: 0,
+					name: "Component",
+					namespace: "html",
+					outputFilename: null,
+					preserveComments: false,
+					preserveWhitespace: false,
+					sourcemap: "",
+					sveltePath: "svelte",
+					tag: null,
+					varsReport: "full",
+				},
+				filterWarnings: () => true,
+				fromEntryFile: false,
+				include: /\.svelte$/ug,
+				preprocess: [
+					sveltePreprocess({
+						aliases: [],
+						globalStyle: {
+							sourceMap: !production,
+						},
+						markupTagName: "template",
+						preserve: [],
+						replace: [],
+						sourceMap: !production,
+						typescript: {
+							compilerOptions: {},
+							handleMixedImports: false,
+							reportDiagnostics: true,
+							tsconfigDirectory: "./",
+							tsconfigFile: "./tsconfig.json",
+						},
+					}),
+				],
+			}),
+		],
 		sourcemap: production
 			? false
 			: "inline",
@@ -51,6 +109,5 @@ If you want to view the source, please visit the repository of this plugin.
 if (production) {
 	await esbuild.build(options)
 } else {
-	const build = await esbuild.context(options)
-	await build.watch({})
+	await (await esbuild.context(options)).watch({})
 }

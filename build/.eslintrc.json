@@ -63,6 +63,7 @@
 				"ignoreRegExpLiterals": true
 			}
 		],
+		"max-params": "off",
 		"multiline-ternary": [
 			"error",
 			"always-multiline"
