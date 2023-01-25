@@ -18,7 +18,7 @@ declare module "i18next" {
 	}
 }
 
-export const I18N = Promise.resolve().then(async () => {
+export const I18N = (async (): Promise<i18n> => {
 	try {
 		const ret = i18next.createInstance({
 			cleanCode: true,
@@ -35,7 +35,7 @@ export const I18N = Promise.resolve().then(async () => {
 		printError(anyToError(error), () => "i18n error")
 		throw error
 	}
-})
+})()
 
 export class LanguageManager {
 	public readonly onChangeLanguage = new EventEmitterLite<[]>()

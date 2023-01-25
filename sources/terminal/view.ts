@@ -331,69 +331,70 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 				cwd: string,
 				terminal: TerminalType,
 			): void => {
-				Promise.resolve().then(async () => {
-					const executable = settings.executables[platform]
-					switch (terminal) {
-						case "external": {
-							notice2(
-								() => i18n.t(
-									"notices.spawning-terminal",
-									{ executable: executable.extExe },
-								),
-								settings.noticeTimeout,
-								plugin,
-							)
-							await spawnExternalTerminalEmulator(
-								executable.extExe,
-								cwd,
-								executable.extArgs,
-							)
-							break
-						}
-						case "integrated": {
-							notice2(
-								() => i18n.t(
-									"notices.spawning-terminal",
-									{ executable: executable.intExe },
-								),
-								settings.noticeTimeout,
-								plugin,
-							)
-							const { workspace } = app,
-								existingLeaves = workspace
-									.getLeavesOfType(TerminalView.type.namespaced(plugin)),
-								viewState: TerminalView.State = {
-									__type: TerminalView.State.TYPE,
-									args: executable.intArgs,
+				(async () => {
+					try {
+						const executable = settings.executables[platform]
+						switch (terminal) {
+							case "external": {
+								notice2(
+									() => i18n.t(
+										"notices.spawning-terminal",
+										{ executable: executable.extExe },
+									),
+									settings.noticeTimeout,
+									plugin,
+								)
+								await spawnExternalTerminalEmulator(
+									executable.extExe,
 									cwd,
-									executable: executable.intExe,
-								}
-							await ((): WorkspaceLeaf => {
-								const existingLeaf = existingLeaves.last()
-								if (typeof existingLeaf === "undefined") {
-									return workspace.getLeaf("split", "horizontal")
-								}
-								workspace.setActiveLeaf(existingLeaf, { focus: false })
-								return workspace.getLeaf("tab")
-							})()
-								.setViewState({
-									active: true,
-									state: viewState,
-									type: TerminalView.type.namespaced(plugin),
-								})
-							break
+									executable.extArgs,
+								)
+								break
+							}
+							case "integrated": {
+								notice2(
+									() => i18n.t(
+										"notices.spawning-terminal",
+										{ executable: executable.intExe },
+									),
+									settings.noticeTimeout,
+									plugin,
+								)
+								const { workspace } = app,
+									existingLeaves = workspace
+										.getLeavesOfType(TerminalView.type.namespaced(plugin)),
+									viewState: TerminalView.State = {
+										__type: TerminalView.State.TYPE,
+										args: executable.intArgs,
+										cwd,
+										executable: executable.intExe,
+									}
+								await ((): WorkspaceLeaf => {
+									const existingLeaf = existingLeaves.last()
+									if (typeof existingLeaf === "undefined") {
+										return workspace.getLeaf("split", "horizontal")
+									}
+									workspace.setActiveLeaf(existingLeaf, { focus: false })
+									return workspace.getLeaf("tab")
+								})()
+									.setViewState({
+										active: true,
+										state: viewState,
+										type: TerminalView.type.namespaced(plugin),
+									})
+								break
+							}
+							default:
+								throw new TypeError(terminal)
 						}
-						default:
-							throw new TypeError(terminal)
-					}
-				})
-					.catch(error => {
+					} catch (error) {
 						printError(
 							anyToError(error),
 							() => i18n.t("errors.error-spawning-terminal"),
 							plugin,
 						)
-					})
+					}
+				})()
 			},
 			addContextMenus = (menu: Menu, cwd: TFolder): void => {
 				menu.addSeparator()

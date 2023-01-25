@@ -251,6 +251,12 @@
       }
     ],
     "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/no-floating-promises": [
+      "error",
+      {
+        "ignoreIIFE": true
+      }
+    ],
     "@typescript-eslint/no-magic-numbers": [
       "error",
       {

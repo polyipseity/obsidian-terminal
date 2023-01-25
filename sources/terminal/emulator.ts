@@ -25,17 +25,15 @@ export async function spawnExternalTerminalEmulator(
 	cwd?: string,
 	args?: readonly string[],
 ): Promise<ChildProcessByStdio<null, null, null>> {
-	return spawnPromise(async () =>
+	const ret = await spawnPromise(async () =>
 		(await childProcess).spawn(executable, args ?? [], {
 			cwd,
 			detached: true,
 			shell: true,
 			stdio: ["ignore", "ignore", "ignore"],
 		}))
-		.then(ret => {
-			try { ret.unref() } catch (error) { console.warn(error) }
-			return ret
-		})
+	try { ret.unref() } catch (error) { console.warn(error) }
+	return ret
 }
 
 export class XtermTerminalEmulator<A> {
@@ -69,37 +67,38 @@ export class XtermTerminalEmulator<A> {
 		addons?: A,
 	) {
 		this.terminal = new Terminal(options)
-		this.terminal.open(element)
+		const { terminal } = this
+		terminal.open(element)
 		// eslint-disable-next-line prefer-object-spread
 		this.addons = Object.assign({
 			fit: new FitAddon(),
 			serialize: new SerializeAddon(),
 		}, addons)
 		for (const addon of Object.values(this.addons)) {
-			this.terminal.loadAddon(addon)
+			terminal.loadAddon(addon)
 		}
 		if (typeof state !== "undefined") {
-			this.terminal.resize(state.columns, state.rows)
-			this.terminal.write(state.data)
+			terminal.resize(state.columns, state.rows)
+			terminal.write(state.data)
 		}
-		this.#pty = Promise.resolve().then(async () => {
-			const pty0 = await pty(this.terminal)
-			await pty0.pipe(this.terminal)
+		this.#pty = (async (): Promise<TerminalPty> => {
+			const pty0 = await pty(terminal)
+			await pty0.pipe(terminal)
 			return pty0
-		})
+		})()
 		this.onExit = this.#pty.then(async pty0 => pty0.onExit)
 			.finally(() => void (this.#exited = true))
 	}
 
 	public async close(): Promise<void> {
-		return this.#pty.then(async pty => pty.shell, () => null).then(shell => {
-			if (this.#exited || (shell?.kill() ?? true)) {
-				this.terminal.dispose()
-				return
-			}
-			throw new Error(this.plugin.language
-				.i18n.t("errors.failed-to-kill-pseudoterminal"))
-		})
+		if (this.#exited ||
+			((await this.#pty.then(async pty => pty.shell).catch(() => null))
+				?.kill() ?? true)) {
+			this.terminal.dispose()
+			return
+		}
+		throw new Error(this.plugin.language
+			.i18n.t("errors.failed-to-kill-pseudoterminal"))
 	}
 
 	public async resize(): Promise<void> {
