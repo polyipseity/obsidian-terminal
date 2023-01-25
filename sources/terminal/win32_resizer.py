@@ -17,8 +17,9 @@ import win32gui as _win32gui
 import win32process as _win32process
 
 if _sys.platform == "win32":
-    LOOKUP_WINDOW_RETRY_INTERVAL = 1
-    LOOKUP_WINDOW_RETRIES = 10
+    LOOKUP_RETRY_INTERVAL = 1
+    LOOKUP_RETRIES = 10
+    RESIZE_ITERATIONS = 2
 
     def main() -> None:
         pid = int(input("PID: "))
@@ -31,7 +32,7 @@ if _sys.platform == "win32":
             {proc.pid: proc for proc in procs}
         )
         windows: _typing.Collection[_pywinctl.Window] = ()
-        for tries in range(LOOKUP_WINDOW_RETRIES):
+        for tries in range(LOOKUP_RETRIES):
             windows = _pywinctl.getAllWindows()
             print(f"window(s) (try {tries + 1}): {windows}")
             for win in windows:
@@ -39,7 +40,7 @@ if _sys.platform == "win32":
                 if win_pid in pids:
                     resizer(pids[win_pid], win)
                     return
-            _time.sleep(LOOKUP_WINDOW_RETRY_INTERVAL)
+            _time.sleep(LOOKUP_RETRY_INTERVAL)
         raise LookupError(procs, windows)
 
     def win_to_pid(window: _pywinctl.Window) -> int:
@@ -123,62 +124,64 @@ if _sys.platform == "win32":
                 columns: int
                 rows: int
                 columns, rows = yield
-                info: ConsoleScreenBufferInfo = (
-                    console.GetConsoleScreenBufferInfo()  # type: ignore
-                )
-                old_rect = window.getClientFrame()
-                old_actual_rect = window.size
-                old_cols: int = (
-                    info["Window"].Right - info["Window"].Left + 1  # type: ignore
-                )
-                old_rows: int = (
-                    info["Window"].Bottom - info["Window"].Top + 1  # type: ignore
-                )
-                old_width = old_rect.right - old_rect.left
-                old_height = old_rect.bottom - old_rect.top
-                size = (
-                    int(old_width * columns / old_cols)
-                    + old_actual_rect.width
-                    - old_width,
-                    int(old_height * rows / old_rows)
-                    + old_actual_rect.height
-                    - old_height,
-                )
-                print(f"pixel size: {size}")
-                setters = [
-                    # almost accurate, works for alternate screen buffer
-                    lambda: _win32gui.SetWindowPos(
-                        _typing.cast(int, window.getHandle()),
-                        None,
-                        0,
-                        0,
-                        *size,
-                        _win32con.SWP_NOACTIVATE
-                        | _win32con.SWP_NOREDRAW
-                        | _win32con.SWP_NOZORDER,
-                    ),
-                    # accurate, SetConsoleWindowInfo does not work for alternate screen buffer
-                    lambda: console.SetConsoleWindowInfo(  # type: ignore
-                        True,
-                        _win32console.PySMALL_RECTType(0, 0, columns - 1, old_rows - 1),  # type: ignore
-                    ),
-                    lambda: console.SetConsoleScreenBufferSize(
-                        _win32console.PyCOORDType(columns, old_rows)  # type: ignore
-                    ),
-                    lambda: console.SetConsoleWindowInfo(  # type: ignore
-                        True,
-                        _win32console.PySMALL_RECTType(0, 0, columns - 1, rows - 1),  # type: ignore
-                    ),
-                    lambda: console.SetConsoleScreenBufferSize(
-                        _win32console.PyCOORDType(columns, rows)  # type: ignore
-                    ),
-                ]
-                if old_cols < columns:
-                    setters[1], setters[2] = setters[2], setters[1]
-                if old_rows < rows:
-                    setters[3], setters[4] = setters[4], setters[3]
-                for setter in setters:
-                    ignore_error(setter)
+                # iterate to resize accurately
+                for iter in range(RESIZE_ITERATIONS):
+                    info: ConsoleScreenBufferInfo = (
+                        console.GetConsoleScreenBufferInfo()  # type: ignore
+                    )
+                    old_rect = window.getClientFrame()
+                    old_actual_rect = window.size
+                    old_cols: int = (
+                        info["Window"].Right - info["Window"].Left + 1  # type: ignore
+                    )
+                    old_rows: int = (
+                        info["Window"].Bottom - info["Window"].Top + 1  # type: ignore
+                    )
+                    old_width = old_rect.right - old_rect.left
+                    old_height = old_rect.bottom - old_rect.top
+                    size = (
+                        int(old_width * columns / old_cols)
+                        + old_actual_rect.width
+                        - old_width,
+                        int(old_height * rows / old_rows)
+                        + old_actual_rect.height
+                        - old_height,
+                    )
+                    print(f"pixel size (iteration {iter + 1}): {size}")
+                    setters = [
+                        # almost accurate, works for alternate screen buffer
+                        lambda: _win32gui.SetWindowPos(
+                            _typing.cast(int, window.getHandle()),
+                            None,
+                            0,
+                            0,
+                            *size,
+                            _win32con.SWP_NOACTIVATE
+                            | _win32con.SWP_NOREDRAW
+                            | _win32con.SWP_NOZORDER,
+                        ),
+                        # accurate, SetConsoleWindowInfo does not work for alternate screen buffer
+                        lambda: console.SetConsoleWindowInfo(  # type: ignore
+                            True,
+                            _win32console.PySMALL_RECTType(0, 0, columns - 1, old_rows - 1),  # type: ignore
+                        ),
+                        lambda: console.SetConsoleScreenBufferSize(
+                            _win32console.PyCOORDType(columns, old_rows)  # type: ignore
+                        ),
+                        lambda: console.SetConsoleWindowInfo(  # type: ignore
+                            True,
+                            _win32console.PySMALL_RECTType(0, 0, columns - 1, rows - 1),  # type: ignore
+                        ),
+                        lambda: console.SetConsoleScreenBufferSize(
+                            _win32console.PyCOORDType(columns, rows)  # type: ignore
+                        ),
+                    ]
+                    if old_cols < columns:
+                        setters[1], setters[2] = setters[2], setters[1]
+                    if old_rows < rows:
+                        setters[3], setters[4] = setters[4], setters[3]
+                    for setter in setters:
+                        ignore_error(setter)
                 print(f"resized")
 
     if __name__ == "__main__":
