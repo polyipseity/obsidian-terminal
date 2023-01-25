@@ -41,10 +41,10 @@ export class EventEmitterLite<A extends unknown[]> {
 	readonly #listeners: ((...args: [...A]) => unknown)[] = []
 
 	public async emit(...args: [...A]): Promise<void> {
-		this.#emitter = this.#emitter
-			.then(async () => Promise.allSettled(this.#listeners
-				.map(async list => { await list(...args) })))
 		await this.#emitter
+		const emitted = this.#listeners.map(async list => { await list(...args) })
+		this.#emitter = Promise.allSettled(emitted)
+		await Promise.all(emitted)
 	}
 
 	public listen(listener: (...args: [...A]) => unknown): () => void {
