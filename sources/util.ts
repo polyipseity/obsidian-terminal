@@ -36,18 +36,18 @@ export const PLATFORM = ((): Platform => {
 	return "unknown"
 })()
 
-export class EventEmitterLite<A extends unknown[]> {
+export class EventEmitterLite<A extends readonly unknown[]> {
 	#emitter: Promise<unknown> = Promise.resolve()
-	readonly #listeners: ((...args: [...A]) => unknown)[] = []
+	readonly #listeners: ((...args: A) => unknown)[] = []
 
-	public async emit(...args: [...A]): Promise<void> {
+	public async emit(...args: A): Promise<void> {
 		await this.#emitter
 		const emitted = this.#listeners.map(async list => { await list(...args) })
 		this.#emitter = Promise.allSettled(emitted)
 		await Promise.all(emitted)
 	}
 
-	public listen(listener: (...args: [...A]) => unknown): () => void {
+	public listen(listener: (...args: A) => unknown): () => void {
 		this.#listeners.push(listener)
 		return () => { this.#listeners.remove(listener) }
 	}
@@ -68,17 +68,17 @@ export function anyToError(obj: unknown): Error {
 }
 
 export function asyncDebounce<
-	A extends unknown[],
+	A extends readonly unknown[],
 	R,
 >(debouncer: Debouncer<[
 	(value: PromiseLike<R> | R) => void,
 	(reason?: unknown) => void,
 	...A], R>): (...args_0: A) => Promise<R> {
 	const promises: {
-		resolve: (value: PromiseLike<R> | R) => void
-		reject: (reason?: unknown) => void
+		readonly resolve: (value: PromiseLike<R> | R) => void
+		readonly reject: (reason?: unknown) => void
 	}[] = []
-	return async (...args: [...A]): Promise<R> =>
+	return async (...args: A): Promise<R> =>
 		new Promise<R>((resolve, reject) => {
 			promises.push({ reject, resolve })
 			debouncer(value => {
