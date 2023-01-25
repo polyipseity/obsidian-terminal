@@ -44,7 +44,7 @@ export class TerminalView extends ItemView {
 	public static namespacedViewType: string
 	#emulator0: TerminalView.EMULATOR | null = null
 	#focus0 = false
-	#resizable = true
+	#resizable = false
 	readonly #state: TerminalView.State = {
 		__type: TerminalView.State.TYPE,
 		args: [],
@@ -105,10 +105,8 @@ export class TerminalView extends ItemView {
 			val.terminal.onWriteParsed(requestSaveLayout)
 			val.terminal.onResize(requestSaveLayout)
 			if (this.#focus) { val.terminal.focus() } else { val.terminal.blur() }
-			this.#resizable = true
-			val.resize().catch(error => {
+			val.resize().then(() => void (this.#resizable = true), error => {
 				console.warn(error)
-				this.#resizable = false
 			})
 		}
 		this.#emulator0 = val
