@@ -14,18 +14,30 @@
     "main.js",
     "node_modules/"
   ],
+  "overrides": [
+    {
+      "files": [
+        "*.svelte"
+      ],
+      "processor": "svelte3/svelte3"
+    }
+  ],
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "allowReserved": false,
     "ecmaFeatures": {},
     "ecmaVersion": "latest",
+    "extraFileExtensions": [
+      ".svelte"
+    ],
     "project": [
       "tsconfig.json"
     ],
     "sourceType": "module"
   },
   "plugins": [
-    "@typescript-eslint"
+    "@typescript-eslint",
+    "svelte3"
   ],
   "root": true,
   "rules": {
@@ -319,5 +331,9 @@
         "asyncArrow": "always"
       }
     ]
+  },
+  "settings": {
+    "svelte3/named-blocks": true,
+    "svelte3/typescript": true
   }
 }
