@@ -267,7 +267,9 @@ export class TerminalView extends ItemView {
 
 	protected override async onOpen(): Promise<void> {
 		await super.onOpen()
-		const { app, language, statusBarHider } = this.plugin
+		const { app, language, statusBarHider } = this.plugin,
+			{ workspace } = app
+		this.#focus = workspace.getActiveViewOfType(TerminalView) === this
 		this.registerEvent(app.workspace.on("active-leaf-change", leaf => {
 			if (leaf === this.leaf) {
 				this.#focus = true
@@ -278,7 +280,7 @@ export class TerminalView extends ItemView {
 		this.register(language.onChangeLanguage.listen(() =>
 			updateDisplayText(this)))
 		this.register(statusBarHider.hide(() => this.#hidesStatusBar()))
-		this.registerEvent(app.workspace.on(
+		this.registerEvent(workspace.on(
 			"active-leaf-change",
 			() => { statusBarHider.update() },
 		))
