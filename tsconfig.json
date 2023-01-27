@@ -58,11 +58,15 @@
     "disableSizeLimit": false,
     "plugins": [
       {
+        "name": "typescript-eslint-language-service",
+        "enableForWorkspaceTypeScriptVersions": false,
+      },
+      {
         "name": "typescript-styled-plugin",
         "enableForWorkspaceTypeScriptVersions": false,
       },
       {
-        "name": "typescript-eslint-language-service",
+        "name": "typescript-svelte-plugin",
         "enableForWorkspaceTypeScriptVersions": false,
       },
     ],

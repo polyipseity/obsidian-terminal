@@ -52,8 +52,8 @@ If you want to view the source, please visit the repository of this plugin.
 					customElement: false,
 					dev: !production,
 					enableSourcemap: {
-						cs: !production,
-						js: !production,
+						css: !production,
+						js: true,
 					},
 					errorMode: "throw",
 					format: "esm",
@@ -77,10 +77,10 @@ If you want to view the source, please visit the repository of this plugin.
 						},
 						preserve: [],
 						replace: [],
-						sourceMap: !production,
+						sourceMap: false,
 						typescript: {
 							compilerOptions: {},
-							handleMixedImports: false,
+							handleMixedImports: true,
 							reportDiagnostics: true,
 							tsconfigDirectory: "./",
 							tsconfigFile: "./tsconfig.json",
