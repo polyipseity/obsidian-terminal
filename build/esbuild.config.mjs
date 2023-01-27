@@ -68,14 +68,13 @@ If you want to view the source, please visit the repository of this plugin.
 				},
 				filterWarnings: () => true,
 				fromEntryFile: false,
-				include: /\.svelte$/ug,
+				include: /\.svelte$/u,
 				preprocess: [
 					sveltePreprocess({
 						aliases: [],
 						globalStyle: {
 							sourceMap: !production,
 						},
-						markupTagName: "template",
 						preserve: [],
 						replace: [],
 						sourceMap: !production,
