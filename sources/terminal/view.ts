@@ -1,3 +1,4 @@
+import { Direction, type Params } from "sources/components/find"
 import {
 	DisposerAddon,
 	RendererAddon,
@@ -31,7 +32,9 @@ import {
 } from "../util"
 import { CanvasAddon } from "xterm-addon-canvas"
 import { DEFAULT_LANGUAGE } from "assets/locales"
+import FindComponent from "../components/find.svelte"
 import { LigaturesAddon } from "xterm-addon-ligatures"
+import { SearchAddon } from "xterm-addon-search"
 import { TERMINAL_EXIT_SUCCESS } from "../magic"
 import type { TerminalPlugin } from "../main"
 import { TerminalPty } from "./pty"
@@ -43,6 +46,7 @@ export class TerminalView extends ItemView {
 	public static readonly type = new UnnamespacedID("terminal")
 	public static namespacedViewType: string
 	#emulator0: TerminalView.EMULATOR | null = null
+	#find0: FindComponent | null = null
 	#focus0 = false
 	readonly #state: TerminalView.State = {
 		__type: TerminalView.State.TYPE,
@@ -60,6 +64,10 @@ export class TerminalView extends ItemView {
 
 	get #emulator(): TerminalView.EMULATOR | null {
 		return this.#emulator0
+	}
+
+	get #find(): FindComponent | null {
+		return this.#find0
 	}
 
 	get #focus(): boolean {
@@ -105,8 +113,30 @@ export class TerminalView extends ItemView {
 			val.terminal.onResize(requestSaveLayout)
 			if (this.#focus) { val.terminal.focus() } else { val.terminal.blur() }
 			val.resize().catch(error => { console.warn(error) })
+			val.addons.search.onDidChangeResults(results => {
+				const find = this.#find
+				if (find === null) { return }
+				if (typeof results === "undefined") {
+					find.$set({
+						searchResult: i18n.t("views.find.too-many-search-results"),
+					})
+					return
+				}
+				const { resultIndex, resultCount } = results
+				find.$set({
+					searchResult: i18n.t("views.find.search-results", {
+						index: resultIndex + 1,
+						number: resultCount,
+					}),
+				})
+			})
 		}
 		this.#emulator0 = val
+	}
+
+	set #find(val: FindComponent | null) {
+		this.#find?.$destroy()
+		this.#find0 = val
 	}
 
 	set #focus(val: boolean) {
@@ -162,9 +192,57 @@ export class TerminalView extends ItemView {
 
 	public override onPaneMenu(menu: Menu, source: string): void {
 		super.onPaneMenu(menu, source)
-		const { i18n } = this.plugin.language
+		const { plugin, containerEl, contentEl } = this,
+			{ i18n } = plugin.language
 		menu
 			.addSeparator()
+			.addItem(item => item
+				.setTitle(i18n.t("menus.find-in-terminal"))
+				.setIcon(i18n.t("asset:menus.find-in-terminal-icon"))
+				.setDisabled(this.#find !== null)
+				.onClick(() => {
+					const
+						find = (
+							direction: Direction,
+							params: Params,
+							incremental = false,
+						): void => {
+							const finder = this.#emulator?.addons.search
+							if (typeof finder === "undefined") { return }
+							const func = direction === Direction.next
+								? finder.findNext.bind(finder)
+								: finder.findPrevious.bind(finder)
+							func(
+								params.findText,
+								{
+									caseSensitive: params.caseSensitive,
+									decorations: {
+										activeMatchColorOverviewRuler: "#00000000",
+										matchOverviewRuler: "#00000000",
+									},
+									incremental,
+									regex: params.regex,
+									wholeWord: params.wholeWord,
+								},
+							)
+							if (params.findText === "") {
+								this.#find?.$set({ searchResult: "" })
+							}
+						}
+					this.#find = new FindComponent({
+						anchor: contentEl,
+						intro: true,
+						props: {
+							onClose: () => void (this.#find = null),
+							onFind: find,
+							onParamsChanged: (params: Params): void => {
+								this.#emulator?.addons.search.clearDecorations()
+								find(Direction.previous, params)
+							},
+						},
+						target: containerEl,
+					})
+				}))
 			.addItem(item => item
 				.setTitle(i18n.t("menus.restart-terminal"))
 				.setIcon(i18n.t("asset:menus.restart-terminal-icon"))
@@ -211,8 +289,9 @@ export class TerminalView extends ItemView {
 	#startEmulator(): void {
 		const { containerEl } = this
 		containerEl.empty()
-		const element = containerEl.createDiv({}),
-			obsr = onVisible(element, obsr0 => {
+		this.contentEl = containerEl.createDiv({})
+		const { contentEl } = this,
+			obsr = onVisible(contentEl, obsr0 => {
 				try {
 					const { plugin } = this,
 						state = this.#state,
@@ -220,7 +299,7 @@ export class TerminalView extends ItemView {
 						{ i18n } = language
 					this.#emulator = new TerminalView.EMULATOR(
 						plugin,
-						element,
+						contentEl,
 						terminal => {
 							if (typeof state.serial !== "undefined") {
 								terminal.write(i18n.t(
@@ -249,6 +328,7 @@ export class TerminalView extends ItemView {
 								() => new CanvasAddon(),
 								() => new WebglAddon(false),
 							),
+							search: new SearchAddon(),
 							unicode11: new Unicode11Addon(),
 							webLinks: new WebLinksAddon((_0, uri) => openExternal(uri), {}),
 						},
@@ -284,6 +364,7 @@ export namespace TerminalView {
 			readonly disposer: DisposerAddon
 			readonly ligatures: LigaturesAddon
 			readonly renderer: RendererAddon
+			readonly search: SearchAddon
 			readonly unicode11: Unicode11Addon
 			readonly webLinks: WebLinksAddon
 		}

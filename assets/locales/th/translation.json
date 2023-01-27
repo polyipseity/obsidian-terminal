@@ -16,6 +16,7 @@
 		"unsupported-platform": "Unsupported platform"
 	},
 	"menus": {
+		"find-in-terminal": "Find in terminal",
 		"open-terminal-external": "Open in external terminal",
 		"open-terminal-integrated": "Open in integrated terminal",
 		"restart-terminal": "Restart terminal (and resizer)",
@@ -71,9 +72,13 @@
 		}
 	},
 	"views": {
+		"find": {
+			"search-results": "{{- index}}/{{- number}}",
+			"too-many-search-results": "?/1000+"
+		},
 		"terminal": {
 			"display-name": "Terminal: {{- executable}}",
-			"restored-history": "\n\r * Restored history at {{- time}}\n\r"
+			"restored-history": "\r\n * Restored history at {{- time}}\r\n"
 		}
 	}
 }

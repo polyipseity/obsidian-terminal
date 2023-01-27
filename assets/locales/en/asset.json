@@ -1,5 +1,6 @@
 {
 	"menus": {
+		"find-in-terminal-icon": "search",
 		"open-terminal-external-icon": "terminal-square",
 		"open-terminal-integrated-icon": "terminal",
 		"restart-terminal-icon": "reset",

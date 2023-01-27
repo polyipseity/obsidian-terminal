@@ -16,6 +16,7 @@
 		"unsupported-platform": "不支持此平台"
 	},
 	"menus": {
+		"find-in-terminal": "在终端中搜索",
 		"open-terminal-external": "在外部终端开啟",
 		"open-terminal-integrated": "在整合式终端开啟",
 		"restart-terminal": "重启终端（和缩放迸程）",
@@ -71,9 +72,13 @@
 		}
 	},
 	"views": {
+		"find": {
+			"search-results": "{{- index}}/{{- number}}",
+			"too-many-search-results": "?/1000+"
+		},
 		"terminal": {
 			"display-name": "终端：{{- executable}}",
-			"restored-history": "\n\r * 已还原于{{- time}}的历史\n\r"
+			"restored-history": "\r\n * 已还原于{{- time}}的历史\r\n"
 		}
 	}
 }
