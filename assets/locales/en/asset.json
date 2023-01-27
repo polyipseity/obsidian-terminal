@@ -1,13 +1,13 @@
 {
+	"components": {
+		"terminal-icon": "terminal"
+	},
 	"menus": {
 		"find-in-terminal-icon": "search",
 		"open-terminal-external-icon": "terminal-square",
 		"open-terminal-integrated-icon": "terminal",
 		"restart-terminal-icon": "reset",
 		"save-as-HTML-icon": "save"
-	},
-	"views": {
-		"terminal-icon": "terminal"
 	},
 	"settings": {
 		"add-to-command-icon": "terminal",

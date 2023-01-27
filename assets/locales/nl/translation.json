@@ -5,6 +5,16 @@
 		"open-terminal-integrated-root": "Open root in integrated terminal",
 		"open-terminal-integrated-current": "Open current folder in integrated terminal"
 	},
+	"components": {
+		"find": {
+			"search-results": "{{- index}}/{{- number}}",
+			"too-many-search-results": "?/1000+"
+		},
+		"terminal": {
+			"display-name": "Terminal: {{- executable}}",
+			"restored-history": "\r\n * Restored history at {{- time}}\r\n"
+		}
+	},
 	"errors": {
 		"cannot-find-status-bar": "Cannot find status bar",
 		"error-spawning-terminal": "Error spawning terminal",
@@ -69,16 +79,6 @@
 		"terminals": {
 			"external": "External",
 			"integrated": "Integrated"
-		}
-	},
-	"views": {
-		"find": {
-			"search-results": "{{- index}}/{{- number}}",
-			"too-many-search-results": "?/1000+"
-		},
-		"terminal": {
-			"display-name": "Terminal: {{- executable}}",
-			"restored-history": "\r\n * Restored history at {{- time}}\r\n"
 		}
 	}
 }

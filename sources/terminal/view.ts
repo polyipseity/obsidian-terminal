@@ -118,13 +118,13 @@ export class TerminalView extends ItemView {
 				if (find === null) { return }
 				if (typeof results === "undefined") {
 					find.$set({
-						searchResult: i18n.t("views.find.too-many-search-results"),
+						searchResult: i18n.t("components.find.too-many-search-results"),
 					})
 					return
 				}
 				const { resultIndex, resultCount } = results
 				find.$set({
-					searchResult: i18n.t("views.find.search-results", {
+					searchResult: i18n.t("components.find.search-results", {
 						index: resultIndex + 1,
 						number: resultCount,
 					}),
@@ -175,14 +175,14 @@ export class TerminalView extends ItemView {
 	public getDisplayText(): string {
 		return this.plugin.language
 			.i18n.t(
-				`views.${TerminalView.type.id}.display-name`,
+				`components.${TerminalView.type.id}.display-name`,
 				{ executable: this.#getExecutableBasename() },
 			)
 	}
 
 	public override getIcon(): string {
 		return this.plugin.language
-			.i18n.t(`asset:views.${TerminalView.type.id}-icon`)
+			.i18n.t(`asset:components.${TerminalView.type.id}-icon`)
 	}
 
 	public getViewType(): string {
@@ -303,7 +303,7 @@ export class TerminalView extends ItemView {
 						terminal => {
 							if (typeof state.serial !== "undefined") {
 								terminal.write(i18n.t(
-									"views.terminal.restored-history",
+									"components.terminal.restored-history",
 									{ time: new Date().toLocaleString(language.language) },
 								))
 							}

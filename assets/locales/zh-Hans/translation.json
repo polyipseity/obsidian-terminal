@@ -15,6 +15,16 @@
 		"resizer-exited-unexpectedly": "终端缩放迸程意外退出：{{- code}}",
 		"unsupported-platform": "不支持此平台"
 	},
+	"components": {
+		"find": {
+			"search-results": "{{- index}}/{{- number}}",
+			"too-many-search-results": "?/1000+"
+		},
+		"terminal": {
+			"display-name": "终端：{{- executable}}",
+			"restored-history": "\r\n * 已还原于{{- time}}的历史\r\n"
+		}
+	},
 	"menus": {
 		"find-in-terminal": "在终端中搜索",
 		"open-terminal-external": "在外部终端开啟",
@@ -69,16 +79,6 @@
 		"terminals": {
 			"external": "外部",
 			"integrated": "整合式"
-		}
-	},
-	"views": {
-		"find": {
-			"search-results": "{{- index}}/{{- number}}",
-			"too-many-search-results": "?/1000+"
-		},
-		"terminal": {
-			"display-name": "终端：{{- executable}}",
-			"restored-history": "\r\n * 已还原于{{- time}}的历史\r\n"
 		}
 	}
 }
