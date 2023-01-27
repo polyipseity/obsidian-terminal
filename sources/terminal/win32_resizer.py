@@ -2,6 +2,7 @@
 # dependencies: psutil, pywinctl
 
 import contextlib as _contextlib
+import itertools as _itertools
 import psutil as _psutil
 import pywinctl as _pywinctl  # type: ignore
 import pywintypes as _pywintypes
@@ -25,20 +26,22 @@ if _sys.platform == "win32":
         pid = int(input("PID: "))
         print(f"received: {pid}")
         proc = _psutil.Process(pid)
-        procs = (proc,) + tuple(proc.children(recursive=True))
-        print(f"process(es): {procs}")
-
-        pids: _typing.Mapping[int, _psutil.Process] = _types.MappingProxyType(
-            {proc.pid: proc for proc in procs}
-        )
-        windows: _typing.Collection[_pywinctl.Window] = ()
+        procs: _typing.Mapping[int, _psutil.Process] = {}
+        windows: _typing.Sequence[_pywinctl.BaseWindow] = ()
         for tries in range(LOOKUP_RETRIES):
+            procs = _types.MappingProxyType(
+                {
+                    proc.pid: proc
+                    for proc in _itertools.chain((proc,), proc.children(recursive=True))
+                }
+            )
+            print(f"process(es) (try {tries + 1}): {procs}")
             windows = _pywinctl.getAllWindows()
             print(f"window(s) (try {tries + 1}): {windows}")
             for win in windows:
                 win_pid = win_to_pid(win)
-                if win_pid in pids:
-                    resizer(pids[win_pid], win)
+                if win_pid in procs:
+                    resizer(procs[win_pid], win)
                     return
             _time.sleep(LOOKUP_RETRY_INTERVAL)
         raise LookupError(procs, windows)
