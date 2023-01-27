@@ -127,7 +127,6 @@
       }
     ],
     "no-ternary": "off",
-    "no-void": "off",
     "object-curly-spacing": "off",
     "object-property-newline": [
       "error",

@@ -105,21 +105,24 @@ export class SettingTab extends PluginSettingTab {
 			.addDropdown(this.#linkSetting(
 				() => settings.language,
 				async value => plugin
-					.mutateSettings(settingsM => void (settingsM.language = value)),
+					.mutateSettings(settingsM => { settingsM.language = value }),
 				{
-					pre: dropdown => void dropdown
-						.addOption("", i18n.t("settings.language-default"))
-						.addOptions(Object
-							.fromEntries(Object
-								.entries(RESOURCES.en.language)
-								.filter(entry => entry
-									.every(half => typeof half === "string")))),
+					pre: dropdown => {
+						dropdown
+							.addOption("", i18n.t("settings.language-default"))
+							.addOptions(Object
+								.fromEntries(Object
+									.entries(RESOURCES.en.language)
+									.filter(entry => entry
+										.every(half => typeof half === "string"))))
+					},
 				},
 			))
 			.addExtraButton(this.#resetButton(
 				async () => plugin
-					.mutateSettings(settingsM =>
-						void (settingsM.language = DEFAULT_SETTINGS.language)),
+					.mutateSettings(settingsM => {
+						settingsM.language = DEFAULT_SETTINGS.language
+					}),
 				i18n.t("asset:settings.language-icon"),
 			))
 		new Setting(containerEl)
@@ -133,12 +136,13 @@ export class SettingTab extends PluginSettingTab {
 			.addToggle(this.#linkSetting(
 				() => settings.addToCommand,
 				async value => plugin
-					.mutateSettings(settingsM => void (settingsM.addToCommand = value)),
+					.mutateSettings(settingsM => { settingsM.addToCommand = value }),
 			))
 			.addExtraButton(this.#resetButton(
 				async () => plugin
-					.mutateSettings(settingsM =>
-						void (settingsM.addToCommand = DEFAULT_SETTINGS.addToCommand)),
+					.mutateSettings(settingsM => {
+						settingsM.addToCommand = DEFAULT_SETTINGS.addToCommand
+					}),
 				i18n.t("asset:settings.add-to-command-icon"),
 			))
 		new Setting(containerEl)
@@ -146,13 +150,13 @@ export class SettingTab extends PluginSettingTab {
 			.addToggle(this.#linkSetting(
 				() => settings.addToContextMenu,
 				async value => plugin
-					.mutateSettings(settingsM =>
-						void (settingsM.addToContextMenu = value)),
+					.mutateSettings(settingsM => { settingsM.addToContextMenu = value }),
 			))
 			.addExtraButton(this.#resetButton(
 				async () => plugin
-					.mutateSettings(settingsM => void (settingsM.addToContextMenu =
-						DEFAULT_SETTINGS.addToContextMenu)),
+					.mutateSettings(settingsM => {
+						settingsM.addToContextMenu = DEFAULT_SETTINGS.addToContextMenu
+					}),
 				i18n.t("asset:settings.add-to-context-menu-icon"),
 			))
 		new Setting(containerEl)
@@ -161,22 +165,26 @@ export class SettingTab extends PluginSettingTab {
 				() => settings.hideStatusBar as string,
 				this.#setTextToEnum(
 					Settings.HIDE_STATUS_BAR_OPTIONS,
-					async value => plugin.mutateSettings(settingsM =>
-						void (settingsM.hideStatusBar = value)),
+					async value => plugin.mutateSettings(settingsM => {
+						settingsM.hideStatusBar = value
+					}),
 				),
 				{
-					pre: dropdown => void dropdown
-						.addOptions(Object
-							.fromEntries(Settings.HIDE_STATUS_BAR_OPTIONS
-								.map(value => [
-									value,
-									i18n.t(`settings.hide-status-bar-options.${value}`),
-								]))),
+					pre: dropdown => {
+						dropdown
+							.addOptions(Object
+								.fromEntries(Settings.HIDE_STATUS_BAR_OPTIONS
+									.map(value => [
+										value,
+										i18n.t(`settings.hide-status-bar-options.${value}`),
+									])))
+					},
 				},
 			))
 			.addExtraButton(this.#resetButton(
-				async () => plugin.mutateSettings(settingsM =>
-					void (settingsM.hideStatusBar = DEFAULT_SETTINGS.hideStatusBar)),
+				async () => plugin.mutateSettings(settingsM => {
+					settingsM.hideStatusBar = DEFAULT_SETTINGS.hideStatusBar
+				}),
 				i18n.t("asset:settings.hide-status-bar-icon"),
 			))
 		new Setting(containerEl)
@@ -184,12 +192,13 @@ export class SettingTab extends PluginSettingTab {
 			.setDesc(i18n.t("settings.notice-timeout-description"))
 			.addText(this.#linkSetting(
 				() => settings.noticeTimeout.toString(),
-				this.#setTextToNumber(async value => plugin.mutateSettings(settingsM =>
-					void (settingsM.noticeTimeout = value))),
+				this.#setTextToNumber(async value => plugin
+					.mutateSettings(settingsM => { settingsM.noticeTimeout = value })),
 			))
 			.addExtraButton(this.#resetButton(
-				async () => plugin.mutateSettings(settingsM =>
-					void (settingsM.noticeTimeout = DEFAULT_SETTINGS.noticeTimeout)),
+				async () => plugin.mutateSettings(settingsM => {
+					settingsM.noticeTimeout = DEFAULT_SETTINGS.noticeTimeout
+				}),
 				i18n.t("asset:settings.notice-timeout-icon"),
 			))
 		new Setting(containerEl)
@@ -197,12 +206,15 @@ export class SettingTab extends PluginSettingTab {
 			.setDesc(i18n.t("settings.error-notice-timeout-description"))
 			.addText(this.#linkSetting(
 				() => settings.errorNoticeTimeout.toString(),
-				this.#setTextToNumber(async value => plugin.mutateSettings(settingsM =>
-					void (settingsM.errorNoticeTimeout = value))),
+				this.#setTextToNumber(async value => plugin
+					.mutateSettings(settingsM => {
+						settingsM.errorNoticeTimeout = value
+					})),
 			))
 			.addExtraButton(this.#resetButton(
-				async () => plugin.mutateSettings(settingsM =>
-					void (settingsM.noticeTimeout = DEFAULT_SETTINGS.noticeTimeout)),
+				async () => plugin.mutateSettings(settingsM => {
+					settingsM.noticeTimeout = DEFAULT_SETTINGS.noticeTimeout
+				}),
 				i18n.t("asset:settings.error-notice-timeout-icon"),
 			))
 
@@ -212,17 +224,20 @@ export class SettingTab extends PluginSettingTab {
 			.setDesc(i18n.t("settings.python-executable-description"))
 			.addText(this.#linkSetting(
 				() => settings.pythonExecutable,
-				async value => plugin.mutateSettings(settingsM =>
-					void (settingsM.pythonExecutable = value)),
+				async value => plugin.mutateSettings(settingsM => {
+					settingsM.pythonExecutable = value
+				}),
 				{
-					post: component => void component
-						.setPlaceholder(i18n.t("settings.python-executable-placeholder")),
+					post: component => {
+						component
+							.setPlaceholder(i18n.t("settings.python-executable-placeholder"))
+					},
 				},
 			))
 			.addExtraButton(this.#resetButton(
-				async () => plugin.mutateSettings(settingsM =>
-					void (settingsM.pythonExecutable =
-						DEFAULT_SETTINGS.pythonExecutable)),
+				async () => plugin.mutateSettings(settingsM => {
+					settingsM.pythonExecutable = DEFAULT_SETTINGS.pythonExecutable
+				}),
 				i18n.t("asset:settings.python-executable-icon"),
 			))
 		for (const key of TerminalPty.SUPPORTED_PLATFORMS) {
@@ -234,26 +249,30 @@ export class SettingTab extends PluginSettingTab {
 				.setName(i18n.t("types.terminals.external"))
 				.addText(this.#linkSetting(
 					() => settings.executables[key].extExe,
-					async value => plugin.mutateSettings(settingsM =>
-						void (settingsM.executables[key].extExe = value)),
+					async value => plugin.mutateSettings(settingsM => {
+						settingsM.executables[key].extExe = value
+					}),
 				))
 				.addExtraButton(this.#resetButton(
-					async () => plugin.mutateSettings(settingsM =>
-						void (settingsM.executables[key].extExe =
-							DEFAULT_SETTINGS.executables[key].extExe)),
+					async () => plugin.mutateSettings(settingsM => {
+						settingsM.executables[key].extExe =
+							DEFAULT_SETTINGS.executables[key].extExe
+					}),
 					i18n.t("asset:settings.executable-list-external-icon"),
 				))
 			new Setting(containerEl)
 				.setName(i18n.t("types.terminals.integrated"))
 				.addText(this.#linkSetting(
 					() => settings.executables[key].intExe,
-					async value => plugin.mutateSettings(settingsM =>
-						void (settingsM.executables[key].intExe = value)),
+					async value => plugin.mutateSettings(settingsM => {
+						settingsM.executables[key].intExe = value
+					}),
 				))
 				.addExtraButton(this.#resetButton(
-					async () => plugin.mutateSettings(settingsM =>
-						void (settingsM.executables[key].intExe =
-							DEFAULT_SETTINGS.executables[key].intExe)),
+					async () => plugin.mutateSettings(settingsM => {
+						settingsM.executables[key].intExe =
+							DEFAULT_SETTINGS.executables[key].intExe
+					}),
 					i18n.t("asset:settings.executable-list-integrated-icon"),
 				))
 			if (key === "win32") {
@@ -263,13 +282,15 @@ export class SettingTab extends PluginSettingTab {
 						.t("settings.enable-Windows-conhost-workaround-description"))
 					.addToggle(this.#linkSetting(
 						() => settings.enableWindowsConhostWorkaround,
-						async value => plugin.mutateSettings(settingsM =>
-							void (settingsM.enableWindowsConhostWorkaround = value)),
+						async value => plugin.mutateSettings(settingsM => {
+							settingsM.enableWindowsConhostWorkaround = value
+						}),
 					))
 					.addExtraButton(this.#resetButton(
-						async () => plugin.mutateSettings(settingsM =>
-							void (settingsM.enableWindowsConhostWorkaround =
-								DEFAULT_SETTINGS.enableWindowsConhostWorkaround)),
+						async () => plugin.mutateSettings(settingsM => {
+							settingsM.enableWindowsConhostWorkaround =
+								DEFAULT_SETTINGS.enableWindowsConhostWorkaround
+						}),
 						i18n.t("asset:settings.enable-Windows-conhost-workaround-icon"),
 					))
 			}
@@ -282,26 +303,29 @@ export class SettingTab extends PluginSettingTab {
 				() => settings.preferredRenderer as string,
 				this.#setTextToEnum(
 					Settings.PREFERRED_RENDERER_OPTIONS,
-					async value => plugin.mutateSettings(settingsM =>
-						void (settingsM.preferredRenderer = value)),
+					async value => plugin.mutateSettings(settingsM => {
+						settingsM.preferredRenderer = value
+					}),
 				),
 				{
-					pre: dropdown => void dropdown
-						.addOptions(Object
-							.fromEntries(Settings.PREFERRED_RENDERER_OPTIONS
-								.map(value => [
-									value,
-									capitalize(
-										i18n.t(`types.renderers.${value}`),
-										language.language,
-									),
-								]))),
+					pre: dropdown => {
+						dropdown
+							.addOptions(Object
+								.fromEntries(Settings.PREFERRED_RENDERER_OPTIONS
+									.map(value => [
+										value,
+										capitalize(
+											i18n.t(`types.renderers.${value}`),
+											language.language,
+										),
+									])))
+					},
 				},
 			))
 			.addExtraButton(this.#resetButton(
-				async () => plugin.mutateSettings(settingsM =>
-					void (settingsM.preferredRenderer =
-						DEFAULT_SETTINGS.preferredRenderer)),
+				async () => plugin.mutateSettings(settingsM => {
+					settingsM.preferredRenderer = DEFAULT_SETTINGS.preferredRenderer
+				}),
 				i18n.t("asset:settings.preferred-renderer-icon"),
 			))
 	}

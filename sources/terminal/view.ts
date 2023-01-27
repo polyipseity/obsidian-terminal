@@ -233,7 +233,7 @@ export class TerminalView extends ItemView {
 						anchor: contentEl,
 						intro: true,
 						props: {
-							onClose: () => void (this.#find = null),
+							onClose: (): void => { this.#find = null },
 							onFind: find,
 							onParamsChanged: (params: Params): void => {
 								this.#emulator?.addons.search.clearDecorations()
@@ -282,7 +282,7 @@ export class TerminalView extends ItemView {
 			"active-leaf-change",
 			() => { statusBarHider.update() },
 		))
-		this.register(() => void (this.#emulator = null))
+		this.register(() => { this.#emulator = null })
 		this.#startEmulator()
 	}
 

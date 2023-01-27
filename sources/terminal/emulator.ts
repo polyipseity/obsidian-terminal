@@ -92,7 +92,7 @@ export class XtermTerminalEmulator<A> {
 			return pty0
 		})()
 		this.onExit = this.#pty.then(async pty0 => pty0.onExit)
-			.finally(() => void (this.#exited = true))
+			.finally(() => { this.#exited = true })
 	}
 
 	public async close(): Promise<void> {

@@ -89,7 +89,6 @@
 			}
 		],
 		"no-ternary": "off",
-		"no-void": "off",
 		"object-curly-spacing": [
 			"error",
 			"always"
