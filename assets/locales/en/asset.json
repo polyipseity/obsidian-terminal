@@ -20,7 +20,7 @@
 		"language-icon": "languages",
 		"notice-timeout-icon": "timer",
 		"preferred-renderer-icon": "brush",
-		"python-executable-icon": "scaling",
+		"python-executable-icon": "file-cog",
 		"reset-icon": "reset"
 	}
 }
