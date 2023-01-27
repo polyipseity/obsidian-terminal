@@ -12,14 +12,15 @@ For first time users, read the [installation](#installation) section first!
 
 ## Features
 
-- Open external terminals directly from Obsidian.
-- Open terminals integrated into the Obsidian workspace.
-- Automatically save and restore integrated terminal history across Obsidian restarts.
+- Start external terminals from Obsidian.
+- Integrate terminals into Obsidian.
+- Find in terminal.
+- Automatically save and restore integrated terminal history.
 - Save terminal history as file.
 
 ## Usage
 
-- To open a new external or integrated terminal
+- To start a new external or integrated terminal
 	- Context menu
 		1. Right-click on files, folders, or tab headers.
 		2. Choose the desired terminal action.
@@ -29,15 +30,13 @@ For first time users, read the [installation](#installation) section first!
 - To save and restore integrated terminal history
 	1. Keep the terminal open when exiting Obsidian.
 	2. Terminal history will be restored next time Obsidian is opened.
-- To save terminal history as file
-	1. Right-click on the terminal tab header.
-	2. Choose the desired save action.
-	3. Interact with the save dialog popup.
 - Additional actions
 	- Includes
+		- Find in terminal
 		- Restart terminal
-	- Available from
-		- Right-click on the terminal tab header
+		- Save terminal history as file
+	- Available by
+		- Right-click on terminal tab header
 
 ## Installation
 
