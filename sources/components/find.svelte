@@ -1,41 +1,51 @@
 <svelte:options immutable={false} />
 
 <script context="module" lang="typescript">
-	import { Direction, type Params, copyParams } from "./find";
+	import { Direction, type Params } from "./find";
 	import type { Mutable } from "sources/util";
 	import { setIcon } from "obsidian";
 </script>
 
 <script lang="typescript">
-	export let params: Partial<Mutable<Params>> = {};
-	params = copyParams(params);
+	export let params: Mutable<Params> = {
+		caseSensitive: false,
+		findText: "",
+		regex: false,
+		wholeWord: false,
+	};
 	export let inputPlaceholder = "";
-	export let onClose = () => {};
-	export let onFind = (_direction: Direction, _params: Params) => {};
-	export let onParamsChanged = (_params: Params) => {};
+	export let onClose = (): void => {};
+	export let onFind = (_direction: Direction, _params: Params): void => {};
+	export let onParamsChanged = (_params: Params): void => {};
 	export let searchResult = "";
 
-	$: onParamsChanged(copyParams(params));
+	$: onParamsChanged(params);
 </script>
 
-<div class="document-search-container">
+<div class="document-search-container" lang="typescript">
 	<div class="document-search">
 		<div class="document-search-buttons">
 			<button
 				class={`document-search-button${
 					params.caseSensitive ? " mod-cta" : ""
 				}`}
-				on:click={() => (params.caseSensitive = !params.caseSensitive)}
+				on:click={() => {
+					params.caseSensitive = !params.caseSensitive;
+				}}
 				use:setIcon={"uppercase-lowercase-a"}
 			/>
 			<button
 				class={`document-search-button${params.wholeWord ? " mod-cta" : ""}`}
-				on:click={() => (params.wholeWord = !params.wholeWord)}
+				on:click={() => {
+					params.wholeWord = !params.wholeWord;
+				}}
 				use:setIcon={"align-horizontal-space-around"}
 			/>
 			<button
 				class={`document-search-button${params.regex ? " mod-cta" : ""}`}
-				on:click={() => (params.regex = !params.regex)}
+				on:click={() => {
+					params.regex = !params.regex;
+				}}
 				use:setIcon={"regex"}
 			/>
 		</div>
@@ -48,12 +58,16 @@
 		<div class="document-search-buttons">
 			<button
 				class="document-search-button"
-				on:click={() => onFind(Direction.previous, copyParams(params))}
+				on:click={() => {
+					onFind(Direction.previous, params);
+				}}
 				use:setIcon={"arrow-up"}
 			/>
 			<button
 				class="document-search-button"
-				on:click={() => onFind(Direction.next, copyParams(params))}
+				on:click={() => {
+					onFind(Direction.next, params);
+				}}
 				use:setIcon={"arrow-down"}
 			/>
 			<div class="document-search-results">{searchResult}</div>
