@@ -56,7 +56,7 @@
 			{
 				"code": 80,
 				"tabWidth": 2,
-				"ignorePattern": "// eslint-disable-next-line ",
+				"ignorePattern": "eslint-disable",
 				"ignoreUrls": true,
 				"ignoreStrings": true,
 				"ignoreTemplateLiterals": true,

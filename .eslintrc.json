@@ -19,7 +19,17 @@
       "files": [
         "*.svelte"
       ],
-      "processor": "svelte3/svelte3"
+      "processor": "svelte3/svelte3",
+      "rules": {
+        "semi": "off",
+        "@typescript-eslint/semi": [
+          "error",
+          "always",
+          {
+            "omitLastInOneLineBlock": false
+          }
+        ]
+      }
     }
   ],
   "parser": "@typescript-eslint/parser",
@@ -83,7 +93,7 @@
       {
         "code": 80,
         "tabWidth": 2,
-        "ignorePattern": "// eslint-disable-next-line ",
+        "ignorePattern": "eslint-disable",
         "ignoreUrls": true,
         "ignoreStrings": false,
         "ignoreTemplateLiterals": false,
