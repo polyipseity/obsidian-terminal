@@ -75,27 +75,21 @@ export class TerminalView extends ItemView {
 	}
 
 	set #emulator(val: TerminalView.EMULATOR | null) {
+		const { plugin } = this
 		this.#emulator0?.close().catch(error => {
 			printError(
 				anyToError(error),
-				() => this.plugin.language
+				() => plugin.language
 					.i18n.t("errors.failed-to-kill-pseudoterminal"),
-				this.plugin,
+				plugin,
 			)
 		})
 		if (val !== null) {
-			const { plugin } = this,
-				{ app, language, settings } = plugin,
+			const { app, language, settings } = plugin,
 				{ i18n } = language,
 				{ terminal, addons } = val,
+				{ disposer, renderer, search } = addons,
 				{ requestSaveLayout } = app.workspace
-			terminal.unicode.activeVersion = "11"
-			addons.renderer.use(settings.preferredRenderer)
-			addons.disposer.push(plugin.on(
-				"mutate-settings",
-				settings0 => settings0.preferredRenderer,
-				cur => { addons.renderer.use(cur) },
-			))
 			val.onExit
 				.then(code => {
 					notice2(
@@ -109,27 +103,33 @@ export class TerminalView extends ItemView {
 					printError(anyToError(error), () =>
 						i18n.t("errors.error-spawning-terminal"), plugin)
 				})
-			val.terminal.onWriteParsed(requestSaveLayout)
-			val.terminal.onResize(requestSaveLayout)
-			if (this.#focus) { val.terminal.focus() } else { val.terminal.blur() }
-			val.resize().catch(error => { console.warn(error) })
-			val.addons.search.onDidChangeResults(results => {
-				const find = this.#find
-				if (find === null) { return }
+			terminal.onWriteParsed(requestSaveLayout)
+			terminal.onResize(requestSaveLayout)
+			terminal.unicode.activeVersion = "11"
+			disposer.push(plugin.on(
+				"mutate-settings",
+				settings0 => settings0.preferredRenderer,
+				cur => { renderer.use(cur) },
+			))
+			renderer.use(settings.preferredRenderer)
+			disposer.push(() => { this.#find?.$set({ searchResult: "" }) })
+			search.onDidChangeResults(results => {
 				if (typeof results === "undefined") {
-					find.$set({
+					this.#find?.$set({
 						searchResult: i18n.t("components.find.too-many-search-results"),
 					})
 					return
 				}
 				const { resultIndex, resultCount } = results
-				find.$set({
+				this.#find?.$set({
 					searchResult: i18n.t("components.find.search-results", {
 						index: resultIndex + 1,
 						number: resultCount,
 					}),
 				})
 			})
+			if (this.#focus) { terminal.focus() } else { terminal.blur() }
+			val.resize().catch(error => { console.warn(error) })
 		}
 		this.#emulator0 = val
 	}
@@ -267,8 +267,14 @@ export class TerminalView extends ItemView {
 
 	protected override async onOpen(): Promise<void> {
 		await super.onOpen()
-		const { app, language, statusBarHider } = this.plugin,
+		const { containerEl, plugin } = this,
+			{ app, language, statusBarHider } = plugin,
 			{ workspace } = app
+		containerEl.empty()
+
+		this.register(language.onChangeLanguage.listen(() =>
+			updateDisplayText(this)))
+
 		this.#focus = workspace.getActiveViewOfType(TerminalView) === this
 		this.registerEvent(app.workspace.on("active-leaf-change", leaf => {
 			if (leaf === this.leaf) {
@@ -277,21 +283,20 @@ export class TerminalView extends ItemView {
 			}
 			this.#focus = false
 		}))
-		this.register(language.onChangeLanguage.listen(() =>
-			updateDisplayText(this)))
+
 		this.register(statusBarHider.hide(() => this.#hidesStatusBar()))
 		this.registerEvent(workspace.on(
 			"active-leaf-change",
 			() => { statusBarHider.update() },
 		))
+
 		this.register(() => { this.#emulator = null })
 		this.#startEmulator()
 	}
 
 	#startEmulator(): void {
-		const { containerEl } = this
-		containerEl.empty()
-		this.contentEl = containerEl.createDiv({})
+		this.contentEl.detach()
+		this.contentEl = this.containerEl.createDiv()
 		const { contentEl } = this,
 			obsr = onVisible(contentEl, obsr0 => {
 				try {
