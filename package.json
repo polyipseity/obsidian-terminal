@@ -16,10 +16,12 @@
 	"private": true,
 	"main": "main.js",
 	"scripts": {
+		"build": "tsc -noEmit && eslint . && node build/esbuild.config.mjs production",
 		"dev": "node build/esbuild.config.mjs",
-		"build": "tsc -noEmit && node build/esbuild.config.mjs production",
-		"version": "node build/version-bump.mjs && git add manifest.json versions.json",
-		"postversion": "node build/version-commit.mjs"
+		"lint": "eslint .",
+		"lint:fix": "eslint --fix .",
+		"postversion": "node build/version-commit.mjs",
+		"version": "node build/version-bump.mjs && git add manifest.json versions.json"
 	},
 	"dependencies": {
 		"i18next": "22.4.9",
