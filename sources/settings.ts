@@ -162,7 +162,7 @@ export class SettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(i18n.t("settings.hide-status-bar"))
 			.addDropdown(this.#linkSetting(
-				() => settings.hideStatusBar as string,
+				(): string => settings.hideStatusBar,
 				this.#setTextToEnum(
 					Settings.HIDE_STATUS_BAR_OPTIONS,
 					async value => plugin.mutateSettings(settingsM => {
@@ -300,7 +300,7 @@ export class SettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(i18n.t("settings.preferred-renderer"))
 			.addDropdown(this.#linkSetting(
-				() => settings.preferredRenderer as string,
+				(): string => settings.preferredRenderer,
 				this.#setTextToEnum(
 					Settings.PREFERRED_RENDERER_OPTIONS,
 					async value => plugin.mutateSettings(settingsM => {
