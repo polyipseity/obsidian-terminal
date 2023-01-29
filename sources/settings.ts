@@ -7,14 +7,14 @@ import {
 	type ValueComponent,
 } from "obsidian"
 import { type Mutable, capitalize, inSet } from "./util"
+import { LANGUAGES } from "assets/locales"
 import { NOTICE_NO_TIMEOUT } from "./magic"
-import { RESOURCES } from "assets/locales"
 import { RendererAddon } from "./terminal/emulator"
 import type { TerminalPlugin } from "./main"
 import { TerminalPty } from "./terminal/pty"
 
 export interface Settings {
-	readonly language: string
+	readonly language: Settings.DefaultableLanguage
 	readonly addToCommand: boolean
 	readonly addToContextMenu: boolean
 	readonly hideStatusBar: Settings.HideStatusBarOption
@@ -26,6 +26,8 @@ export interface Settings {
 	readonly preferredRenderer: Settings.PreferredRendererOption
 }
 export namespace Settings {
+	export const DEFAULTABLE_LANGUAGES = ["", ...LANGUAGES] as const
+	export type DefaultableLanguage = typeof DEFAULTABLE_LANGUAGES[number]
 	export const HIDE_STATUS_BAR_OPTIONS =
 		["never", "always", "focused", "running"] as const
 	export type HideStatusBarOption = typeof HIDE_STATUS_BAR_OPTIONS[number]
@@ -103,16 +105,19 @@ export class SettingTab extends PluginSettingTab {
 			.setName(i18n.t("settings.language"))
 			.setDesc(i18n.t("settings.language-description"))
 			.addDropdown(this.#linkSetting(
-				() => settings.language,
-				async value => plugin
-					.mutateSettings(settingsM => { settingsM.language = value }),
+				(): string => settings.language,
+				this.#setTextToEnum(
+					Settings.DEFAULTABLE_LANGUAGES,
+					async value => plugin
+						.mutateSettings(settingsM => { settingsM.language = value }),
+				),
 				{
 					pre: dropdown => {
 						dropdown
 							.addOption("", i18n.t("settings.language-default"))
 							.addOptions(Object
 								.fromEntries(Object
-									.entries(RESOURCES.en.language)
+									.entries(LANGUAGES)
 									.filter(entry => entry
 										.every(half => typeof half === "string"))))
 					},

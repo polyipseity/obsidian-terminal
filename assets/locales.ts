@@ -24,8 +24,9 @@ import * as th from "assets/locales/th/translation.json"
 import * as tr from "assets/locales/tr/translation.json"
 import * as zhHans from "assets/locales/zh-Hans/translation.json"
 import * as zhHant from "assets/locales/zh-Hant/translation.json"
+import { typedKeys } from "sources/util"
 
-function checkSynchronized(translation: typeof en): typeof en {
+function sync(translation: typeof en): typeof en {
 	return translation
 }
 
@@ -42,40 +43,40 @@ export const FALLBACK_LANGUAGES = {
 } as const
 // Add those with ✅ in https://github.com/obsidianmd/obsidian-translations#existing-languages
 export const RESOURCES = {
-	am: { [DEFAULT_NAMESPACE]: checkSynchronized(am) },
-	cs: { [DEFAULT_NAMESPACE]: checkSynchronized(cs) },
-	da: { [DEFAULT_NAMESPACE]: checkSynchronized(da) },
-	de: { [DEFAULT_NAMESPACE]: checkSynchronized(de) },
+	am: { [DEFAULT_NAMESPACE]: sync(am) },
+	cs: { [DEFAULT_NAMESPACE]: sync(cs) },
+	da: { [DEFAULT_NAMESPACE]: sync(da) },
+	de: { [DEFAULT_NAMESPACE]: sync(de) },
 	en: {
-		[DEFAULT_NAMESPACE]: checkSynchronized(en),
+		[DEFAULT_NAMESPACE]: sync(en),
 		asset,
 		language,
 	},
-	es: { [DEFAULT_NAMESPACE]: checkSynchronized(es) },
-	fa: { [DEFAULT_NAMESPACE]: checkSynchronized(fa) },
-	fr: { [DEFAULT_NAMESPACE]: checkSynchronized(fr) },
-	id: { [DEFAULT_NAMESPACE]: checkSynchronized(id) },
-	it: { [DEFAULT_NAMESPACE]: checkSynchronized(it) },
-	ja: { [DEFAULT_NAMESPACE]: checkSynchronized(ja) },
-	ko: { [DEFAULT_NAMESPACE]: checkSynchronized(ko) },
-	nl: { [DEFAULT_NAMESPACE]: checkSynchronized(nl) },
-	no: { [DEFAULT_NAMESPACE]: checkSynchronized(no) },
-	pl: { [DEFAULT_NAMESPACE]: checkSynchronized(pl) },
-	pt: { [DEFAULT_NAMESPACE]: checkSynchronized(pt) },
+	es: { [DEFAULT_NAMESPACE]: sync(es) },
+	fa: { [DEFAULT_NAMESPACE]: sync(fa) },
+	fr: { [DEFAULT_NAMESPACE]: sync(fr) },
+	id: { [DEFAULT_NAMESPACE]: sync(id) },
+	it: { [DEFAULT_NAMESPACE]: sync(it) },
+	ja: { [DEFAULT_NAMESPACE]: sync(ja) },
+	ko: { [DEFAULT_NAMESPACE]: sync(ko) },
+	nl: { [DEFAULT_NAMESPACE]: sync(nl) },
+	no: { [DEFAULT_NAMESPACE]: sync(no) },
+	pl: { [DEFAULT_NAMESPACE]: sync(pl) },
+	pt: { [DEFAULT_NAMESPACE]: sync(pt) },
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	"pt-BR": { [DEFAULT_NAMESPACE]: checkSynchronized(ptBR) },
-	ro: { [DEFAULT_NAMESPACE]: checkSynchronized(ro) },
-	ru: { [DEFAULT_NAMESPACE]: checkSynchronized(ru) },
-	sq: { [DEFAULT_NAMESPACE]: checkSynchronized(sq) },
-	th: { [DEFAULT_NAMESPACE]: checkSynchronized(th) },
-	tr: { [DEFAULT_NAMESPACE]: checkSynchronized(tr) },
+	"pt-BR": { [DEFAULT_NAMESPACE]: sync(ptBR) },
+	ro: { [DEFAULT_NAMESPACE]: sync(ro) },
+	ru: { [DEFAULT_NAMESPACE]: sync(ru) },
+	sq: { [DEFAULT_NAMESPACE]: sync(sq) },
+	th: { [DEFAULT_NAMESPACE]: sync(th) },
+	tr: { [DEFAULT_NAMESPACE]: sync(tr) },
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	"zh-Hans": { [DEFAULT_NAMESPACE]: checkSynchronized(zhHans) },
+	"zh-Hans": { [DEFAULT_NAMESPACE]: sync(zhHans) },
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	"zh-Hant": { [DEFAULT_NAMESPACE]: checkSynchronized(zhHant) },
-} as const;
-(function checkLanguage(_language: {
-	readonly [key in keyof typeof RESOURCES]: string
-}): void {
+	"zh-Hant": { [DEFAULT_NAMESPACE]: sync(zhHant) },
+} as const
+export const LANGUAGES = typedKeys(RESOURCES[DEFAULT_LANGUAGE].language);
+(function selectable(_languages: readonly (keyof typeof RESOURCES)[]): void {
 	// NOOP
-}(RESOURCES[DEFAULT_LANGUAGE].language))
+}(LANGUAGES))
+export type Language = typeof LANGUAGES[number]
