@@ -189,13 +189,15 @@ export function inSet<T>(set: readonly T[], obj: unknown): obj is T {
 
 export function isInterface<T extends { readonly __type: T["__type"] }>(
 	id: T["__type"],
-	obj: any,
+	obj: unknown,
 ): obj is T {
-	if (!("__type" in obj)) {
+	const tmp = {}
+	Object.assign(tmp, obj)
+	if (!("__type" in tmp)) {
 		return false
 	}
 	// eslint-disable-next-line no-underscore-dangle
-	return (obj as { readonly __type: unknown }).__type === id
+	return tmp.__type === id
 }
 
 export function notice(
