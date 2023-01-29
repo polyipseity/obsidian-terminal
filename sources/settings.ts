@@ -34,8 +34,7 @@ export namespace Settings {
 	export const PREFERRED_RENDERER_OPTIONS = RendererAddon.RENDERER_OPTIONS
 	export type PreferredRendererOption = RendererAddon.RendererOption
 	export type Executables = {
-		readonly [key in
-		typeof TerminalPty.SUPPORTED_PLATFORMS[number]]: Executables.Entry
+		readonly [key in TerminalPty.SupportedPlatform]: Executables.Entry
 	}
 	export namespace Executables {
 		export interface Entry {
