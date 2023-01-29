@@ -309,10 +309,10 @@ export class TerminalView extends ItemView {
 						contentEl,
 						terminal => {
 							if (typeof state.serial !== "undefined") {
-								terminal.write(i18n.t(
+								terminal.write(`${i18n.t(
 									"components.terminal.restored-history",
 									{ time: new Date().toLocaleString(language.language) },
-								))
+								)}\r\n`)
 							}
 							if (TerminalPty.PLATFORM_PTY === null) {
 								throw new Error(i18n.t("errors.unsupported-platform"))

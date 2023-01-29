@@ -37,7 +37,7 @@ export interface TerminalPty {
 
 function clearTerminal(terminal: Terminal): void {
 	// Clear screen with scrollback kept
-	terminal.write(`${"\n\u001b[2K".repeat(terminal.rows)}\u001b[H`)
+	terminal.write(`${"\u001b[2K\n".repeat(terminal.rows - 1)}\u001b[2K\u001b[H`)
 }
 
 class WindowsTerminalPty implements TerminalPty {
