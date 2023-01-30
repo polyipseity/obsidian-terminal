@@ -24,7 +24,7 @@ import * as th from "assets/locales/th/translation.json"
 import * as tr from "assets/locales/tr/translation.json"
 import * as zhHans from "assets/locales/zh-Hans/translation.json"
 import * as zhHant from "assets/locales/zh-Hant/translation.json"
-import { typedKeys } from "sources/utils/util"
+import { deepFreeze, typedKeys } from "sources/utils/util"
 
 function sync(translation: typeof en): typeof en {
 	return translation
@@ -33,16 +33,16 @@ function sync(translation: typeof en): typeof en {
 export const RETURN_NULL = false
 export const DEFAULT_NAMESPACE = "translation"
 export const DEFAULT_LANGUAGE = "en"
-export const FALLBACK_LANGUAGES = {
+export const FALLBACK_LANGUAGES = deepFreeze({
 	"default": [DEFAULT_LANGUAGE],
 	zh: ["zh-Hans", DEFAULT_LANGUAGE],
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	"zh-CN": ["zh-Hans", "zh", DEFAULT_LANGUAGE],
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	"zh-TW": ["zh-Hant", "zh", DEFAULT_LANGUAGE],
-} as const
+} as const)
 // Add those with ✅ in https://github.com/obsidianmd/obsidian-translations#existing-languages
-export const RESOURCES = {
+export const RESOURCES = deepFreeze({
 	am: { [DEFAULT_NAMESPACE]: sync(am) },
 	cs: { [DEFAULT_NAMESPACE]: sync(cs) },
 	da: { [DEFAULT_NAMESPACE]: sync(da) },
@@ -74,7 +74,7 @@ export const RESOURCES = {
 	"zh-Hans": { [DEFAULT_NAMESPACE]: sync(zhHans) },
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	"zh-Hant": { [DEFAULT_NAMESPACE]: sync(zhHant) },
-} as const
+} as const)
 export const LANGUAGES = typedKeys(RESOURCES[DEFAULT_LANGUAGE].language);
 (function selectable(_languages: readonly (keyof typeof RESOURCES)[]): void {
 	// NOOP

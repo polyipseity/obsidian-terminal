@@ -20,6 +20,7 @@ import {
 	anyToError,
 	basename,
 	commandNamer,
+	deepFreeze,
 	extname,
 	inSet,
 	isInterface,
@@ -390,8 +391,8 @@ export namespace TerminalView {
 
 export function registerTerminal(plugin: TerminalPlugin): void {
 	const
-		CWD_TYPES = ["root", "current"] as const,
-		TERMINAL_TYPES = ["external", "integrated"] as const,
+		CWD_TYPES = deepFreeze(["root", "current"] as const),
+		TERMINAL_TYPES = deepFreeze(["external", "integrated"] as const),
 		{ app, settings, language } = plugin,
 		{ i18n } = language
 	type CwdType = typeof CWD_TYPES[number]

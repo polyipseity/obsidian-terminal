@@ -4,7 +4,7 @@ import {
 	type ITerminalOptions,
 	Terminal,
 } from "xterm"
-import { asyncDebounce, spawnPromise } from "sources/utils/util"
+import { asyncDebounce, deepFreeze, spawnPromise } from "sources/utils/util"
 import type { CanvasAddon } from "xterm-addon-canvas"
 import type { ChildProcessByStdio } from "node:child_process"
 import { FitAddon } from "xterm-addon-fit"
@@ -203,6 +203,7 @@ export class RendererAddon implements ITerminalAddon {
 	}
 }
 export namespace RendererAddon {
-	export const RENDERER_OPTIONS = ["dom", "canvas", "webgl"] as const
+	export const RENDERER_OPTIONS =
+		deepFreeze(["dom", "canvas", "webgl"] as const)
 	export type RendererOption = typeof RENDERER_OPTIONS[number]
 }

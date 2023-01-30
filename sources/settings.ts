@@ -11,6 +11,7 @@ import {
 	type Mutable,
 	capitalize,
 	cloneAsMutable,
+	deepFreeze,
 	inSet,
 	isHomogenousArray,
 	typedStructuredClone,
@@ -35,7 +36,7 @@ export interface Settings {
 	readonly preferredRenderer: Settings.PreferredRendererOption
 }
 export type MutableSettings = Mutable<Settings>
-export const DEFAULT_SETTINGS: Settings = {
+export const DEFAULT_SETTINGS: Settings = deepFreeze({
 	addToCommand: true,
 	addToContextMenu: true,
 	enableWindowsConhostWorkaround: true,
@@ -66,12 +67,12 @@ export const DEFAULT_SETTINGS: Settings = {
 	noticeTimeout: 5,
 	preferredRenderer: "webgl",
 	pythonExecutable: "python3",
-} as const
+} as const)
 export namespace Settings {
-	export const DEFAULTABLE_LANGUAGES = ["", ...LANGUAGES] as const
+	export const DEFAULTABLE_LANGUAGES = deepFreeze(["", ...LANGUAGES] as const)
 	export type DefaultableLanguage = typeof DEFAULTABLE_LANGUAGES[number]
 	export const HIDE_STATUS_BAR_OPTIONS =
-		["never", "always", "focused", "running"] as const
+		deepFreeze(["never", "always", "focused", "running"] as const)
 	export type HideStatusBarOption = typeof HIDE_STATUS_BAR_OPTIONS[number]
 	export const PREFERRED_RENDERER_OPTIONS = RendererAddon.RENDERER_OPTIONS
 	export type PreferredRendererOption = RendererAddon.RendererOption

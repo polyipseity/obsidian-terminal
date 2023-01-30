@@ -15,7 +15,7 @@ export type Immutable<T> = { readonly [key in keyof T]: Immutable<T[key]> }
 export type Mutable<T> = { -readonly [key in keyof T]: Mutable<T[key]> }
 
 export const PLATFORMS =
-	["android", "darwin", "ios", "linux", "unknown", "win32"] as const
+	deepFreeze(["android", "darwin", "ios", "linux", "unknown", "win32"] as const)
 export type Platform = typeof PLATFORMS[number]
 export const PLATFORM = ((): Platform => {
 	const { userAgent } = navigator
@@ -127,6 +127,15 @@ export function commandNamer(
 export function cloneAsMutable<T>(obj: T): Mutable<T> {
 	// `readonly` is fake at runtime
 	return typedStructuredClone(obj)
+}
+
+export function deepFreeze<T>(obj: T): Immutable<T> {
+	if (typeof obj === "object") {
+		for (const value of Object.values(obj ?? {})) {
+			if (!Object.isFrozen(value)) { deepFreeze(value) }
+		}
+	}
+	return Object.freeze(obj)
 }
 
 export function executeParanoidly<T>(callback: (

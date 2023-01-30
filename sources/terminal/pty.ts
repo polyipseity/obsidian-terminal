@@ -2,6 +2,7 @@ import { DEFAULT_ENCODING, TERMINAL_RESIZER_WATCHDOG_INTERVAL } from "../magic"
 import {
 	PLATFORM,
 	anyToError,
+	deepFreeze,
 	executeParanoidly,
 	inSet,
 	notice2,
@@ -98,13 +99,13 @@ class WindowsTerminalPty implements TerminalPty {
 				FileResultNoFd,
 			]> => {
 				const [resizer, resizerError] = await this.#resizer
-					.then(resizer0 => [resizer0, null] as const)
-					.catch(error => [null, anyToError(error)] as const)
+					.then(resizer0 => Object.freeze([resizer0, null] as const))
+					.catch(error => Object.freeze([null, anyToError(error)] as const))
 				try {
 					const codeTmp = (await tmp).fileSync({ discardDescriptor: true })
 					try {
 						const
-							cmd = [
+							cmd = deepFreeze([
 								...conhost
 									? ["C:\\Windows\\System32\\conhost.exe"] as const
 									: [] as const,
@@ -116,7 +117,7 @@ class WindowsTerminalPty implements TerminalPty {
 									.join(" ")
 								} & call echo %^ERRORLEVEL% >${WindowsTerminalPty
 									.#escapeArgument(codeTmp.name)}`,
-							] as const,
+							] as const),
 							ret = await spawnPromise(async () => (await childProcess).spawn(
 								cmd[0],
 								cmd.slice(1),
@@ -309,11 +310,11 @@ class UnixTerminalPty implements TerminalPty {
 }
 
 export namespace TerminalPty {
-	export const PLATFORM_PTYS = {
+	export const PLATFORM_PTYS = Object.freeze({
 		darwin: UnixTerminalPty,
 		linux: UnixTerminalPty,
 		win32: WindowsTerminalPty,
-	} as const
+	} as const)
 	export const SUPPORTED_PLATFORMS = typedKeys(PLATFORM_PTYS)
 	export type SupportedPlatform = typeof SUPPORTED_PLATFORMS[number]
 	export const PLATFORM_PTY =
