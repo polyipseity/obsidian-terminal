@@ -6,7 +6,16 @@ import {
 	Setting,
 	type ValueComponent,
 } from "obsidian"
-import { type Mutable, capitalize, inSet } from "./util"
+import type { InverseTypeofMap, PrimitiveOf } from "./typeof"
+import {
+	type Mutable,
+	capitalize,
+	cloneAsMutable,
+	inSet,
+	isHomogenousArray,
+	typedStructuredClone,
+} from "./util"
+import { genericTypeofGuard, primitiveOf } from "./typeof"
 import { LANGUAGES } from "assets/locales"
 import { NOTICE_NO_TIMEOUT } from "./magic"
 import { RendererAddon } from "./terminal/emulator"
@@ -24,32 +33,6 @@ export interface Settings {
 	readonly executables: Settings.Executables
 	readonly enableWindowsConhostWorkaround: boolean
 	readonly preferredRenderer: Settings.PreferredRendererOption
-}
-export namespace Settings {
-	export const DEFAULTABLE_LANGUAGES = ["", ...LANGUAGES] as const
-	export type DefaultableLanguage = typeof DEFAULTABLE_LANGUAGES[number]
-	export const HIDE_STATUS_BAR_OPTIONS =
-		["never", "always", "focused", "running"] as const
-	export type HideStatusBarOption = typeof HIDE_STATUS_BAR_OPTIONS[number]
-	export const PREFERRED_RENDERER_OPTIONS = RendererAddon.RENDERER_OPTIONS
-	export type PreferredRendererOption = RendererAddon.RendererOption
-	export type Executables = {
-		readonly [key in TerminalPty.SupportedPlatform]: Executables.Entry
-	}
-	export namespace Executables {
-		export interface Entry {
-			readonly intExe: string
-			readonly intArgs: readonly string[]
-			readonly extExe: string
-			readonly extArgs: readonly string[]
-		}
-	}
-	export async function load(self: Settings, plugin: Plugin): Promise<void> {
-		Object.assign(self, await plugin.loadData())
-	}
-	export async function save(self: Settings, plugin: Plugin): Promise<void> {
-		await plugin.saveData(self)
-	}
 }
 export type MutableSettings = Mutable<Settings>
 export const DEFAULT_SETTINGS: Settings = {
@@ -84,6 +67,146 @@ export const DEFAULT_SETTINGS: Settings = {
 	preferredRenderer: "webgl",
 	pythonExecutable: "python3",
 } as const
+export namespace Settings {
+	export const DEFAULTABLE_LANGUAGES = ["", ...LANGUAGES] as const
+	export type DefaultableLanguage = typeof DEFAULTABLE_LANGUAGES[number]
+	export const HIDE_STATUS_BAR_OPTIONS =
+		["never", "always", "focused", "running"] as const
+	export type HideStatusBarOption = typeof HIDE_STATUS_BAR_OPTIONS[number]
+	export const PREFERRED_RENDERER_OPTIONS = RendererAddon.RENDERER_OPTIONS
+	export type PreferredRendererOption = RendererAddon.RendererOption
+	export type Executables = {
+		readonly [key in TerminalPty.SupportedPlatform]: Executables.Entry
+	}
+	export namespace Executables {
+		export interface Entry {
+			readonly intExe: string
+			readonly intArgs: readonly string[]
+			readonly extExe: string
+			readonly extArgs: readonly string[]
+		}
+	}
+	export function fix(self: unknown): Settings {
+		type Unknownize<T> = { readonly [key in keyof T]?: unknown }
+		const tmp: Unknownize<Settings> = {}
+		Object.assign(tmp, self)
+		const
+			fixTyped = <S, K extends keyof S>(
+				defaults: S,
+				from: Unknownize<S>,
+				key: K,
+				type: InverseTypeofMap<S[K]>,
+			): PrimitiveOf<S[K]> => {
+				const val = from[key]
+				return genericTypeofGuard(type, val)
+					? val
+					: primitiveOf(defaults[key])
+			},
+			fixArray = <S,
+				K extends keyof S,
+				V extends S[K] extends readonly (infer V0)[] ? V0 : never,
+			>(
+				defaults: S,
+				from: Unknownize<S>,
+				key: K,
+				type: InverseTypeofMap<V>,
+			): PrimitiveOf<V>[] => {
+				const val = from[key]
+				if (isHomogenousArray(type, val)) { return val }
+				const default0 = defaults[key]
+				if (Array.isArray(default0)) {
+					const default1: readonly V[] = default0
+					return default1.map(primitiveOf)
+				}
+				throw new TypeError(String(default0))
+			},
+			fixInSet = <S, K extends keyof S>(
+				defaults: S,
+				from: Unknownize<S>,
+				key: K,
+				set: readonly S[K][],
+			): S[K] => {
+				const val = from[key]
+				return inSet(set, val) ? val : defaults[key]
+			}
+		return {
+			addToCommand: fixTyped(DEFAULT_SETTINGS, tmp, "addToCommand", "boolean"),
+			addToContextMenu: fixTyped(
+				DEFAULT_SETTINGS,
+				tmp,
+				"addToContextMenu",
+				"boolean",
+			),
+			enableWindowsConhostWorkaround: fixTyped(
+				DEFAULT_SETTINGS,
+				tmp,
+				"enableWindowsConhostWorkaround",
+				"boolean",
+			),
+			errorNoticeTimeout: fixTyped(
+				DEFAULT_SETTINGS,
+				tmp,
+				"errorNoticeTimeout",
+				"number",
+			),
+			executables: ((): Executables => {
+				const defaults2 = DEFAULT_SETTINGS.executables
+				if (typeof tmp.executables === "object") {
+					const tmp2: Unknownize<Executables> =
+						{ ...tmp.executables },
+						fixEntry =
+							<K extends keyof Executables>(key: K): Executables.Entry => {
+								const defaults3 = defaults2[key],
+									val = tmp2[key]
+								if (typeof val === "object") {
+									const tmp3: Unknownize<Executables.Entry> = { ...val ?? {} }
+									return {
+										extArgs: fixArray(defaults3, tmp3, "extArgs", "string"),
+										extExe: fixTyped(defaults3, tmp3, "extExe", "string"),
+										intArgs: fixArray(defaults3, tmp3, "intArgs", "string"),
+										intExe: fixTyped(defaults3, tmp3, "intExe", "string"),
+									}
+								}
+								return typedStructuredClone(defaults3)
+							}
+					return {
+						darwin: fixEntry("darwin"),
+						linux: fixEntry("linux"),
+						win32: fixEntry("win32"),
+					}
+				}
+				return typedStructuredClone(defaults2)
+			})(),
+			hideStatusBar: fixInSet(
+				DEFAULT_SETTINGS,
+				tmp,
+				"hideStatusBar",
+				HIDE_STATUS_BAR_OPTIONS,
+			),
+			language: fixInSet(
+				DEFAULT_SETTINGS,
+				tmp,
+				"language",
+				DEFAULTABLE_LANGUAGES,
+			),
+			noticeTimeout: fixTyped(DEFAULT_SETTINGS, tmp, "noticeTimeout", "number"),
+			preferredRenderer: fixInSet(
+				DEFAULT_SETTINGS,
+				tmp,
+				"preferredRenderer",
+				PREFERRED_RENDERER_OPTIONS,
+			),
+			pythonExecutable:
+				fixTyped(DEFAULT_SETTINGS, tmp, "pythonExecutable", "string"),
+		}
+	}
+	export async function load(self: Settings, plugin: Plugin): Promise<void> {
+		Object.assign(self, fix(await plugin.loadData()))
+	}
+	export async function save(self: Settings, plugin: Plugin): Promise<void> {
+		await plugin.saveData(self)
+	}
+}
 
 export class SettingTab extends PluginSettingTab {
 	public constructor(protected readonly plugin: TerminalPlugin) {
@@ -133,7 +256,7 @@ export class SettingTab extends PluginSettingTab {
 			.setName(i18n.t("settings.reset-all"))
 			.addButton(this.#resetButton(async () => plugin
 				.mutateSettings(settingsM =>
-					Object.assign(settingsM, structuredClone(DEFAULT_SETTINGS)))))
+					Object.assign(settingsM, cloneAsMutable(DEFAULT_SETTINGS)))))
 
 		new Setting(containerEl)
 			.setName(i18n.t("settings.add-to-command"))

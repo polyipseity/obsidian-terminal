@@ -5,6 +5,7 @@ import {
 	type PluginManifest,
 	type View,
 } from "obsidian"
+import type { PrimitiveType, TypeofMap } from "./typeof"
 import type { ChildProcess } from "node:child_process"
 import { NOTICE_NO_TIMEOUT } from "./magic"
 import type { TerminalPlugin } from "./main"
@@ -125,7 +126,7 @@ export function commandNamer(
 
 export function cloneAsMutable<T>(obj: T): Mutable<T> {
 	// `readonly` is fake at runtime
-	return structuredClone(obj) as Mutable<T>
+	return typedStructuredClone(obj)
 }
 
 export function executeParanoidly<T>(callback: (
@@ -181,6 +182,21 @@ export function typedKeys<T extends number | string | symbol>(obj: {
 	readonly [key in T]: unknown
 }): readonly T[] {
 	return Object.keys(obj) as T[]
+}
+
+export function typedStructuredClone<T>(
+	value: T,
+	transfer?: StructuredSerializeOptions,
+): T {
+	return structuredClone(value, transfer) as T
+}
+
+export function isHomogenousArray<T extends PrimitiveType>(
+	type: T,
+	value: unknown,
+): value is TypeofMap[T][] {
+	if (!Array.isArray(value)) { return false }
+	return value.every(element => typeof element === type)
 }
 
 export function inSet<T>(set: readonly T[], obj: unknown): obj is T {
