@@ -4,7 +4,7 @@ import {
 	type ITerminalOptions,
 	Terminal,
 } from "xterm"
-import { asyncDebounce, spawnPromise } from "sources/util"
+import { asyncDebounce, spawnPromise } from "sources/utils/util"
 import type { CanvasAddon } from "xterm-addon-canvas"
 import type { ChildProcessByStdio } from "node:child_process"
 import { FitAddon } from "xterm-addon-fit"

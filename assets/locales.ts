@@ -24,7 +24,7 @@ import * as th from "assets/locales/th/translation.json"
 import * as tr from "assets/locales/tr/translation.json"
 import * as zhHans from "assets/locales/zh-Hans/translation.json"
 import * as zhHant from "assets/locales/zh-Hant/translation.json"
-import { typedKeys } from "sources/util"
+import { typedKeys } from "sources/utils/util"
 
 function sync(translation: typeof en): typeof en {
 	return translation

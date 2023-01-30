@@ -9,7 +9,7 @@ import {
 	spawnPromise,
 	typedKeys,
 	writePromise,
-} from "../util"
+} from "../utils/util"
 import type { FileResultNoFd } from "tmp"
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,

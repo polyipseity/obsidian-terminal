@@ -7,8 +7,8 @@ import {
 } from "obsidian"
 import type { PrimitiveType, TypeofMap } from "./typeof"
 import type { ChildProcess } from "node:child_process"
-import { NOTICE_NO_TIMEOUT } from "./magic"
-import type { TerminalPlugin } from "./main"
+import { NOTICE_NO_TIMEOUT } from "../magic"
+import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
 
 export type Immutable<T> = { readonly [key in keyof T]: Immutable<T[key]> }

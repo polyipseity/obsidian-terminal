@@ -1,6 +1,6 @@
 import { type App, Plugin, type PluginManifest } from "obsidian"
 import { DEFAULT_SETTINGS, SettingTab, Settings } from "./settings"
-import { EventEmitterLite, type Mutable, cloneAsMutable } from "./util"
+import { EventEmitterLite, type Mutable, cloneAsMutable } from "./utils/util"
 import { TerminalView, registerTerminal } from "./terminal/view"
 import { LanguageManager } from "./i18n"
 import { StatusBarHider } from "./status-bar"

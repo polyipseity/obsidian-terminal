@@ -1,5 +1,5 @@
 import type TerminalPlugin from "./main"
-import { notice2 } from "./util"
+import { notice2 } from "./utils/util"
 
 export function statusBar(callback?: (
 	element: HTMLDivElement) => void): HTMLDivElement | null {

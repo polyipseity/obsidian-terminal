@@ -6,7 +6,7 @@ import {
 	Setting,
 	type ValueComponent,
 } from "obsidian"
-import type { InverseTypeofMap, PrimitiveOf } from "./typeof"
+import type { InverseTypeofMap, PrimitiveOf } from "./utils/typeof"
 import {
 	type Mutable,
 	capitalize,
@@ -14,8 +14,8 @@ import {
 	inSet,
 	isHomogenousArray,
 	typedStructuredClone,
-} from "./util"
-import { genericTypeofGuard, primitiveOf } from "./typeof"
+} from "./utils/util"
+import { genericTypeofGuard, primitiveOf } from "./utils/typeof"
 import { LANGUAGES } from "assets/locales"
 import { NOTICE_NO_TIMEOUT } from "./magic"
 import { RendererAddon } from "./terminal/emulator"

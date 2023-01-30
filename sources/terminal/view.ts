@@ -29,7 +29,7 @@ import {
 	printError,
 	saveFile,
 	updateDisplayText,
-} from "../util"
+} from "../utils/util"
 import { CanvasAddon } from "xterm-addon-canvas"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import FindComponent from "../components/find.svelte"

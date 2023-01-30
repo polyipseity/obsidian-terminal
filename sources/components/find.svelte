@@ -2,7 +2,7 @@
 
 <script context="module" lang="typescript">
 	import { Direction, type Params } from "./find";
-	import type { Mutable } from "sources/util";
+	import type { Mutable } from "../utils/util";
 	import { setIcon } from "obsidian";
 </script>
 

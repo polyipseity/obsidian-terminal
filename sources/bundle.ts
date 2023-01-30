@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-import { inSet, typedKeys } from "./util"
+import { inSet, typedKeys } from "./utils/util"
 
 const BUNDLE = {
 	tmp: (): unknown => require("tmp"),
