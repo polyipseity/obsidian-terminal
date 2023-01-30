@@ -2,7 +2,7 @@
 
 ![Trailer](assets/trailer.png)
 
-Integrate consoles/shells/terminals inside [Obsidian](https://obsidian.md/).
+Integrate consoles, shells, and terminals inside [Obsidian](https://obsidian.md/).
 
 For first time users, read the [installation](#installation) section first!
 
