@@ -115,11 +115,9 @@ export namespace Settings {
 				const val = from[key]
 				if (isHomogenousArray(type, val)) { return val }
 				const default0 = defaults[key]
-				if (Array.isArray(default0)) {
-					const default1: readonly V[] = default0
-					return default1.map(primitiveOf)
-				}
-				throw new TypeError(String(default0))
+				if (!Array.isArray(default0)) { throw new TypeError(String(default0)) }
+				const default1: readonly V[] = default0
+				return default1.map(primitiveOf)
 			},
 			fixInSet = <S, K extends keyof S>(
 				defaults: S,
@@ -159,8 +157,8 @@ export namespace Settings {
 							<K extends keyof Executables>(key: K): Executables.Entry => {
 								const defaults3 = defaults2[key],
 									val = tmp2[key]
-								if (typeof val === "object") {
-									const tmp3: Unknownize<Executables.Entry> = { ...val ?? {} }
+								if (typeof val === "object" && val !== null) {
+									const tmp3: Unknownize<Executables.Entry> = { ...val }
 									return {
 										extArgs: fixArray(defaults3, tmp3, "extArgs", "string"),
 										extExe: fixTyped(defaults3, tmp3, "extExe", "string"),
