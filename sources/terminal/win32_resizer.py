@@ -51,12 +51,12 @@ if _sys.platform == "win32":
 
     def resizer(process: _psutil.Process, window: _pywinctl.BaseWindow) -> None:
         print(f"window: {window}")
-        out = resizer_out(process, window)
-        next(out)
-        for size in resizer_in(process):
-            out.send(size)
+        writer = resizer_writer(process, window)
+        next(writer)
+        for size in resizer_reader(process):
+            writer.send(size)
 
-    def resizer_in(process: _psutil.Process) -> _typing.Iterator[tuple[int, int]]:
+    def resizer_reader(process: _psutil.Process) -> _typing.Iterator[tuple[int, int]]:
         _signal.signal(_signal.SIGINT, _signal.SIG_IGN)
         _signal.signal(_signal.SIGBREAK, _signal.SIG_IGN)
         while True:
@@ -72,7 +72,7 @@ if _sys.platform == "win32":
             print(f"received: {'x'.join(map(str, size))}")
             yield size
 
-    def resizer_out(
+    def resizer_writer(
         process: _psutil.Process, window: _pywinctl.BaseWindow
     ) -> _typing.Generator[None, tuple[int, int], None]:
         window.hide(True)
