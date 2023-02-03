@@ -22,7 +22,7 @@
 	$: onParamsChanged(params);
 </script>
 
-<div class="document-search-container" lang="typescript">
+<div class="document-search-container">
 	<div class="document-search">
 		<div class="document-search-buttons">
 			<button
