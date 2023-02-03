@@ -6,11 +6,11 @@ import itertools as _itertools
 import psutil as _psutil
 import pywinctl as _pywinctl  # type: ignore
 import pywintypes as _pywintypes
+import signal as _signal
 import sys as _sys
 import time as _time
 import types as _types
 import typing as _typing
-import win32api as _win32api
 import win32con as _win32con
 import win32console as _win32console
 import win32file as _win32file
@@ -51,13 +51,14 @@ if _sys.platform == "win32":
 
     def resizer(process: _psutil.Process, window: _pywinctl.BaseWindow) -> None:
         print(f"window: {window}")
-        r_in = resizer_in(process)
-        r_out = resizer_out(process, window)
-        next(r_out)
-        for size in r_in:
-            r_out.send(size)
+        out = resizer_out(process, window)
+        next(out)
+        for size in resizer_in(process):
+            out.send(size)
 
     def resizer_in(process: _psutil.Process) -> _typing.Iterator[tuple[int, int]]:
+        _signal.signal(_signal.SIGINT, _signal.SIG_IGN)
+        _signal.signal(_signal.SIGBREAK, _signal.SIG_IGN)
         while True:
             size0 = ""
             while not size0:  # stdin watchdog triggers this loop
@@ -111,18 +112,8 @@ if _sys.platform == "win32":
             finally:
                 _win32console.FreeConsole()
 
-        def console_ctrl_handler(event: int) -> bool:
-            if event in (
-                _win32con.CTRL_C_EVENT,
-                _win32con.CTRL_BREAK_EVENT,
-                _win32con.CTRL_CLOSE_EVENT,
-            ):
-                return True
-            return False
-
         _win32console.FreeConsole()
         with attach_console(process.pid) as console:
-            _win32api.SetConsoleCtrlHandler(console_ctrl_handler, True)
             while True:
                 columns: int
                 rows: int
