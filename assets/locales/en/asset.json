@@ -1,6 +1,16 @@
 {
 	"components": {
-		"terminal-icon": "terminal"
+		"find": {
+			"case-sensitive-icon": "uppercase-lowercase-a",
+			"close-icon": "x",
+			"next-icon": "arrow-down",
+			"previous-icon": "arrow-up",
+			"regex-icon": "regex",
+			"whole-word-icon": "align-horizontal-space-around"
+		},
+		"terminal": {
+			"icon": "terminal"
+		}
 	},
 	"menus": {
 		"find-in-terminal-icon": "search",

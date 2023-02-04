@@ -183,7 +183,7 @@ export class TerminalView extends ItemView {
 
 	public override getIcon(): string {
 		return this.plugin.language
-			.i18n.t(`asset:components.${TerminalView.type.id}-icon`)
+			.i18n.t(`asset:components.${TerminalView.type.id}.icon`)
 	}
 
 	public getViewType(): string {
@@ -234,6 +234,7 @@ export class TerminalView extends ItemView {
 						anchor: contentEl,
 						intro: true,
 						props: {
+							i18n: i18n.t,
 							onClose: (): void => { this.#find = null },
 							onFind: find,
 							onParamsChanged: (params: Params): void => {

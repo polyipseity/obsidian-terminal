@@ -3,10 +3,12 @@
 <script context="module" lang="typescript">
 	import { Direction, type Params } from "./find";
 	import type { Mutable } from "../utils/util";
+	import i18next from "i18next";
 	import { setIcon } from "obsidian";
 </script>
 
 <script lang="typescript">
+	export let i18n = i18next.t;
 	export let params: Mutable<Params> = {
 		caseSensitive: false,
 		findText: "",
@@ -32,21 +34,21 @@
 				on:click={() => {
 					params.caseSensitive = !params.caseSensitive;
 				}}
-				use:setIcon={"uppercase-lowercase-a"}
+				use:setIcon={i18n("asset:components.find.case-sensitive-icon")}
 			/>
 			<button
 				class={`document-search-button${params.wholeWord ? " mod-cta" : ""}`}
 				on:click={() => {
 					params.wholeWord = !params.wholeWord;
 				}}
-				use:setIcon={"align-horizontal-space-around"}
+				use:setIcon={i18n("asset:components.find.whole-word-icon")}
 			/>
 			<button
 				class={`document-search-button${params.regex ? " mod-cta" : ""}`}
 				on:click={() => {
 					params.regex = !params.regex;
 				}}
-				use:setIcon={"regex"}
+				use:setIcon={i18n("asset:components.find.regex-icon")}
 			/>
 		</div>
 		<input
@@ -61,20 +63,20 @@
 				on:click={() => {
 					onFind(Direction.previous, params);
 				}}
-				use:setIcon={"arrow-up"}
+				use:setIcon={i18n("asset:components.find.previous-icon")}
 			/>
 			<button
 				class="document-search-button"
 				on:click={() => {
 					onFind(Direction.next, params);
 				}}
-				use:setIcon={"arrow-down"}
+				use:setIcon={i18n("asset:components.find.next-icon")}
 			/>
 			<div class="document-search-results">{searchResult}</div>
 			<button
 				class="document-search-close-button"
 				on:click={onClose}
-				use:setIcon={"x"}
+				use:setIcon={i18n("asset:components.find.close-icon")}
 			/>
 		</div>
 	</div>
