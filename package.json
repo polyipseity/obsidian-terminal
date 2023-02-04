@@ -16,7 +16,7 @@
 	"private": true,
 	"main": "main.js",
 	"scripts": {
-		"build": "tsc -noEmit && eslint . && node build/esbuild.config.mjs production",
+		"build": "tsc -noEmit && npm run lint && npm run dev production",
 		"dev": "node build/esbuild.config.mjs",
 		"lint": "eslint .",
 		"lint:fix": "eslint --fix .",
