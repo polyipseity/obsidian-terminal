@@ -124,8 +124,10 @@ export class TerminalView extends ItemView {
 				const { resultIndex, resultCount } = results
 				this.#find?.$set({
 					searchResult: i18n.t("components.find.search-results", {
-						index: resultIndex + 1,
-						number: resultCount,
+						replace: {
+							count: resultCount,
+							index: resultIndex + 1,
+						},
 					}),
 				})
 			})

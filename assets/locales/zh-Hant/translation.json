@@ -7,7 +7,7 @@
 	},
 	"components": {
 		"find": {
-			"search-results": "{{- index}}/{{- number}}",
+			"search-results": "{{- index}}/{{- count}}",
 			"too-many-search-results": "?/1000+"
 		},
 		"terminal": {
