@@ -13,6 +13,8 @@ import type { Writable } from "node:stream"
 
 export type Immutable<T> = { readonly [key in keyof T]: Immutable<T[key]> }
 export type Mutable<T> = { -readonly [key in keyof T]: Mutable<T[key]> }
+export type Sized<T extends readonly unknown[]> =
+	number extends T["length"] ? never : T
 
 export const PLATFORMS =
 	deepFreeze(["android", "darwin", "ios", "linux", "unknown", "win32"] as const)
@@ -187,10 +189,11 @@ export async function spawnPromise<T extends ChildProcess>(spawn: (
 	}))
 }
 
-export function typedKeys<T extends number | string | symbol>(obj: {
-	readonly [key in T]: unknown
-}): readonly T[] {
-	return Object.freeze(Object.keys(obj) as T[])
+export function typedKeys<T extends readonly (number | string | symbol)[]>() {
+	return <O extends (keyof O extends T[number] ? {
+		readonly [key in T[number]]: unknown
+	} : never)>(obj: O): Readonly<T> =>
+		Object.freeze(Object.keys(obj)) as T
 }
 
 export function typedStructuredClone<T>(
@@ -208,9 +211,11 @@ export function isHomogenousArray<T extends PrimitiveType>(
 	return value.every(element => typeof element === type)
 }
 
-export function inSet<T>(set: readonly T[], obj: unknown): obj is T {
-	const set0: readonly unknown[] = set
-	return set0.includes(obj)
+export function inSet<T extends readonly unknown[]>(
+	set: Sized<T>,
+	obj: unknown,
+): obj is T[number] {
+	return set.includes(obj)
 }
 
 export function isInterface<T extends { readonly __type: T["__type"] }>(

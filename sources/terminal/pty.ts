@@ -315,7 +315,8 @@ export namespace TerminalPty {
 		linux: UnixTerminalPty,
 		win32: WindowsTerminalPty,
 	} as const)
-	export const SUPPORTED_PLATFORMS = typedKeys(PLATFORM_PTYS)
+	export const SUPPORTED_PLATFORMS =
+		typedKeys<["darwin", "linux", "win32"]>()(PLATFORM_PTYS)
 	export type SupportedPlatform = typeof SUPPORTED_PLATFORMS[number]
 	export const PLATFORM_PTY =
 		inSet(SUPPORTED_PLATFORMS, PLATFORM) ? PLATFORM_PTYS[PLATFORM] : null

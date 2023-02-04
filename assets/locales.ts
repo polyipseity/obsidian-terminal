@@ -75,7 +75,32 @@ export const RESOURCES = deepFreeze({
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	"zh-Hant": { [DEFAULT_NAMESPACE]: sync(zhHant) },
 } as const)
-export const LANGUAGES = typedKeys(RESOURCES[DEFAULT_LANGUAGE].language);
+export const LANGUAGES = typedKeys<[
+	"am",
+	"cs",
+	"da",
+	"de",
+	"en",
+	"es",
+	"fa",
+	"fr",
+	"id",
+	"it",
+	"ja",
+	"ko",
+	"nl",
+	"no",
+	"pl",
+	"pt",
+	"pt-BR",
+	"ro",
+	"ru",
+	"sq",
+	"th",
+	"tr",
+	"zh-Hans",
+	"zh-Hant",
+]>()(RESOURCES[DEFAULT_LANGUAGE].language);
 (function selectable(_languages: readonly (keyof typeof RESOURCES)[]): void {
 	// NOOP
 }(LANGUAGES))

@@ -9,6 +9,7 @@ import {
 import type { InverseTypeofMap, PrimitiveOf } from "./utils/typeof"
 import {
 	type Mutable,
+	type Sized,
 	capitalize,
 	cloneAsMutable,
 	deepFreeze,
@@ -119,12 +120,12 @@ export namespace Settings {
 				const default1: readonly V[] = default0
 				return default1.map(primitiveOf)
 			},
-			fixInSet = <S, K extends keyof S>(
+			fixInSet = <S, K extends keyof S, Vs extends readonly S[K][]>(
 				defaults: S,
 				from: Unknownize<S>,
 				key: K,
-				set: readonly S[K][],
-			): S[K] => {
+				set: Sized<Vs>,
+			): Vs[number] => {
 				const val = from[key]
 				return inSet(set, val) ? val : defaults[key]
 			}
@@ -482,9 +483,9 @@ export class SettingTab extends PluginSettingTab {
 		}
 	}
 
-	#setTextToEnum<E extends V, V, C extends ValueComponent<V>>(
-		enums: readonly E[],
-		setter: (value: E, component: C, getter: () => V) => unknown,
+	#setTextToEnum<Es extends readonly V[], V, C extends ValueComponent<V>>(
+		enums: Sized<Es>,
+		setter: (value: Es[number], component: C, getter: () => V) => unknown,
 	) {
 		return async (
 			value: V,
