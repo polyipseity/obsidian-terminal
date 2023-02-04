@@ -190,7 +190,7 @@ export async function spawnPromise<T extends ChildProcess>(spawn: (
 export function typedKeys<T extends number | string | symbol>(obj: {
 	readonly [key in T]: unknown
 }): readonly T[] {
-	return Object.keys(obj) as T[]
+	return Object.freeze(Object.keys(obj) as T[])
 }
 
 export function typedStructuredClone<T>(
@@ -209,7 +209,8 @@ export function isHomogenousArray<T extends PrimitiveType>(
 }
 
 export function inSet<T>(set: readonly T[], obj: unknown): obj is T {
-	return (set as readonly unknown[]).includes(obj)
+	const set0: readonly unknown[] = set
+	return set0.includes(obj)
 }
 
 export function isInterface<T extends { readonly __type: T["__type"] }>(

@@ -445,13 +445,7 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 								)
 								const { workspace } = app,
 									existingLeaves = workspace
-										.getLeavesOfType(TerminalView.type.namespaced(plugin)),
-									viewState: TerminalView.State = {
-										__type: TerminalView.State.TYPE,
-										args: executable.intArgs,
-										cwd,
-										executable: executable.intExe,
-									}
+										.getLeavesOfType(TerminalView.type.namespaced(plugin))
 								await ((): WorkspaceLeaf => {
 									const existingLeaf = existingLeaves.last()
 									if (typeof existingLeaf === "undefined") {
@@ -462,7 +456,12 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 								})()
 									.setViewState({
 										active: true,
-										state: viewState,
+										state: {
+											__type: TerminalView.State.TYPE,
+											args: executable.intArgs,
+											cwd,
+											executable: executable.intExe,
+										} satisfies TerminalView.State,
 										type: TerminalView.type.namespaced(plugin),
 									})
 								break
