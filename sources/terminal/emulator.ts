@@ -149,7 +149,7 @@ export class RendererAddon implements ITerminalAddon {
 	#terminal: Terminal | null = null
 
 	public constructor(
-		public readonly canvasSupplier: () => CanvasAddon,
+		protected readonly canvasSupplier: () => CanvasAddon,
 		protected readonly webglSupplier: () => WebglAddon,
 	) { }
 
