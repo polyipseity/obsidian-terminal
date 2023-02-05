@@ -3,7 +3,7 @@ import { DEFAULT_SETTINGS, Settings } from "./settings/data"
 import { EventEmitterLite, type Mutable, cloneAsMutable } from "./utils/util"
 import { TerminalView, registerTerminal } from "./terminal/view"
 import { LanguageManager } from "./i18n"
-import { SettingTab } from "./settings/ui"
+import { SettingTab } from "./settings/tab"
 import { StatusBarHider } from "./status-bar"
 
 export class TerminalPlugin extends Plugin {
