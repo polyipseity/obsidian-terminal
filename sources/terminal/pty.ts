@@ -18,7 +18,7 @@ import type {
 import type { Terminal } from "xterm"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
-import { dynamicRequire } from "sources/bundle"
+import { dynamicRequire } from "../bundle"
 import unixPtyPy from "./unix_pty.py"
 import win32ResizerPy from "./win32_resizer.py"
 

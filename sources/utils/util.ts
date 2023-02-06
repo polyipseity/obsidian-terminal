@@ -7,7 +7,6 @@ import {
 } from "obsidian"
 import type { PrimitiveType, TypeofMap } from "./typeof"
 import type { ChildProcess } from "node:child_process"
-import { NOTICE_NO_TIMEOUT } from "../magic"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
 
@@ -16,6 +15,7 @@ export type Mutable<T> = { -readonly [key in keyof T]: Mutable<T[key]> }
 export type Sized<T extends readonly unknown[]> =
 	number extends T["length"] ? never : T
 
+export const NOTICE_NO_TIMEOUT = 0
 export const PLATFORMS =
 	deepFreeze(["android", "darwin", "ios", "linux", "unknown", "win32"] as const)
 export type Platform = typeof PLATFORMS[number]

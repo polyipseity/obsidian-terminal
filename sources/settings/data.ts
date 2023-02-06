@@ -1,5 +1,6 @@
 import type { InverseTypeofMap, PrimitiveOf } from "../utils/typeof"
 import {
+	NOTICE_NO_TIMEOUT,
 	type Sized,
 	deepFreeze,
 	inSet,
@@ -8,7 +9,6 @@ import {
 } from "../utils/util"
 import { genericTypeofGuard, primitiveOf } from "../utils/typeof"
 import { LANGUAGES } from "assets/locales"
-import { NOTICE_NO_TIMEOUT } from "../magic"
 import type { Plugin } from "obsidian"
 import { RendererAddon } from "../terminal/emulator"
 import type { TerminalPty } from "../terminal/pty"

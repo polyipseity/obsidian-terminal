@@ -1,4 +1,4 @@
-import type TerminalPlugin from "./main"
+import type { TerminalPlugin } from "./main"
 import { notice2 } from "./utils/util"
 
 export function statusBar(callback?: (

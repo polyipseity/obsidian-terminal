@@ -4,17 +4,17 @@ import {
 	type ITerminalOptions,
 	Terminal,
 } from "xterm"
-import { asyncDebounce, deepFreeze, spawnPromise } from "sources/utils/util"
+import { asyncDebounce, deepFreeze, spawnPromise } from "../utils/util"
 import type { CanvasAddon } from "xterm-addon-canvas"
 import type { ChildProcessByStdio } from "node:child_process"
 import { FitAddon } from "xterm-addon-fit"
 import { SerializeAddon } from "xterm-addon-serialize"
-import { TERMINAL_RESIZE_TIMEOUT } from "sources/magic"
-import type TerminalPlugin from "sources/main"
+import { TERMINAL_RESIZE_TIMEOUT } from "../magic"
+import type { TerminalPlugin } from "../main"
 import type { TerminalPty } from "./pty"
 import type { WebglAddon } from "xterm-addon-webgl"
 import { debounce } from "obsidian"
-import { dynamicRequire } from "sources/bundle"
+import { dynamicRequire } from "../bundle"
 
 const
 	childProcess =

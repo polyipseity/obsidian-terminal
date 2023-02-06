@@ -1,4 +1,4 @@
-import { Direction, type Params } from "sources/components/find"
+import { Direction, type Params } from "../components/find"
 import {
 	DisposerAddon,
 	RendererAddon,
@@ -368,17 +368,15 @@ export class TerminalView extends ItemView {
 	}
 }
 export namespace TerminalView {
-	export const EMULATOR = XtermTerminalEmulator<EMULATOR.Addons>
-	export type EMULATOR = XtermTerminalEmulator<EMULATOR.Addons>
-	export namespace EMULATOR {
-		export interface Addons {
-			readonly disposer: DisposerAddon
-			readonly ligatures: LigaturesAddon
-			readonly renderer: RendererAddon
-			readonly search: SearchAddon
-			readonly unicode11: Unicode11Addon
-			readonly webLinks: WebLinksAddon
-		}
+	export const EMULATOR = XtermTerminalEmulator<Addons>
+	export type EMULATOR = XtermTerminalEmulator<Addons>
+	export interface Addons {
+		readonly disposer: DisposerAddon
+		readonly ligatures: LigaturesAddon
+		readonly renderer: RendererAddon
+		readonly search: SearchAddon
+		readonly unicode11: Unicode11Addon
+		readonly webLinks: WebLinksAddon
 	}
 	export interface State {
 		readonly __type: typeof State.TYPE

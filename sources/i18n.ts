@@ -6,8 +6,8 @@ import {
 	RETURN_NULL,
 } from "assets/locales"
 import { EventEmitterLite, anyToError, printError } from "./utils/util"
-import i18next, { type i18n } from "i18next"
-import type TerminalPlugin from "./main"
+import i18next, { createInstance, type i18n } from "i18next"
+import type { TerminalPlugin } from "./main"
 import { moment } from "obsidian"
 
 declare module "i18next" {
@@ -20,7 +20,7 @@ declare module "i18next" {
 
 export const I18N = (async (): Promise<i18n> => {
 	try {
-		const ret = i18next.createInstance({
+		const ret = createInstance({
 			cleanCode: true,
 			defaultNS: DEFAULT_NAMESPACE,
 			fallbackLng: FALLBACK_LANGUAGES,

@@ -3,12 +3,12 @@
 <script context="module" lang="typescript">
 	import { Direction, type Params } from "./find";
 	import type { Mutable } from "../utils/util";
-	import i18next from "i18next";
+	import { t as i18t } from "i18next";
 	import { setIcon } from "obsidian";
 </script>
 
 <script lang="typescript">
-	export let i18n = i18next.t;
+	export let i18n = i18t;
 	export let params: Mutable<Params> = {
 		caseSensitive: false,
 		findText: "",
