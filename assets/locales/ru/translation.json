@@ -26,11 +26,13 @@
 		"unsupported-platform": "Unsupported platform"
 	},
 	"menus": {
-		"find-in-terminal": "Find in terminal",
 		"open-terminal-external": "Open in external terminal",
 		"open-terminal-integrated": "Open in integrated terminal",
-		"restart-terminal": "Restart terminal (and resizer)",
-		"save-as-HTML": "Save as HTML"
+		"terminal": {
+			"find": "Find",
+			"restart": "Restart",
+			"save-as-HTML": "Save as HTML"
+		}
 	},
 	"name": "Terminal",
 	"notices": {

@@ -200,8 +200,8 @@ export class TerminalView extends ItemView {
 		menu
 			.addSeparator()
 			.addItem(item => item
-				.setTitle(i18n.t("menus.find-in-terminal"))
-				.setIcon(i18n.t("asset:menus.find-in-terminal-icon"))
+				.setTitle(i18n.t("menus.terminal.find"))
+				.setIcon(i18n.t("asset:menus.terminal.find-icon"))
 				.setDisabled(this.#find !== null)
 				.onClick(() => {
 					const
@@ -248,12 +248,12 @@ export class TerminalView extends ItemView {
 					})
 				}))
 			.addItem(item => item
-				.setTitle(i18n.t("menus.restart-terminal"))
-				.setIcon(i18n.t("asset:menus.restart-terminal-icon"))
+				.setTitle(i18n.t("menus.terminal.restart"))
+				.setIcon(i18n.t("asset:menus.terminal.restart-icon"))
 				.onClick(() => { this.#startEmulator() }))
 			.addItem(item => item
-				.setTitle(i18n.t("menus.save-as-HTML"))
-				.setIcon(i18n.t("asset:menus.save-as-HTML-icon"))
+				.setTitle(i18n.t("menus.terminal.save-as-HTML"))
+				.setIcon(i18n.t("asset:menus.terminal.save-as-HTML-icon"))
 				.setDisabled(typeof this.#emulator?.addons.serialize === "undefined")
 				.onClick(() => {
 					const ser = this.#emulator?.addons.serialize
