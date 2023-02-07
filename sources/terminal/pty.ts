@@ -202,9 +202,9 @@ class WindowsTerminalPty implements TerminalPty {
 					}))))
 	}
 
-	static #escapeArgument(arg: string): string {
-		return `"${arg.replace("\"", "\\\"")}"`
-			.replace(/(?<meta>[()%!^"<>&|])/gu, "^$<meta>")
+	static #escapeArgument(arg: string, shell = false): string {
+		const ret = `"${arg.replace("\"", "\\\"")}"`
+		return shell ? ret.replace(/(?<meta>[()%!^"<>&|])/gu, "^$<meta>") : ret
 
 		/*
 		 * Replace 1: quote argument
