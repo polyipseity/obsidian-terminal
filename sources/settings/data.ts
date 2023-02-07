@@ -77,7 +77,7 @@ export namespace Settings {
 		}
 	}
 	export function fix(self: unknown): Settings {
-		type Unknownize<T> = { readonly [key in keyof T]?: unknown }
+		type Unknownize<T> = { readonly [_ in keyof T]?: unknown }
 		const tmp: Unknownize<Settings> = {}
 		Object.assign(tmp, self)
 		const

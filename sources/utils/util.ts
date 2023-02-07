@@ -191,7 +191,7 @@ export async function spawnPromise<T extends ChildProcess>(spawn: (
 
 export function typedKeys<T extends readonly (number | string | symbol)[]>() {
 	return <O extends (keyof O extends T[number] ? {
-		readonly [key in T[number]]: unknown
+		readonly [_ in T[number]]: unknown
 	} : never)>(obj: O): Readonly<T> =>
 		Object.freeze(Object.keys(obj)) as T
 }
