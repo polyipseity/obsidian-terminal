@@ -49,9 +49,9 @@ export class TerminalPlugin extends Plugin {
 	}
 
 	public override onload(): void {
+		super.onload();
 		(async (): Promise<void> => {
 			try {
-				super.onload()
 				await Settings.load(this.settings, this)
 				await this.language.load()
 				this.statusBarHider.load()
