@@ -40,7 +40,7 @@
 		"terminal": {
 			"find": "搜索",
 			"restart": "重启",
-			"save-as-HTML": "储存为 HTML"
+			"save-as-HTML": "储存为HTML"
 		}
 	},
 	"name": "终端",

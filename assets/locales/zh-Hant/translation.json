@@ -40,7 +40,7 @@
 		"terminal": {
 			"find": "搜尋",
 			"restart": "重啟",
-			"save-as-HTML": "儲存為 HTML"
+			"save-as-HTML": "儲存為HTML"
 		}
 	},
 	"name": "終端",
