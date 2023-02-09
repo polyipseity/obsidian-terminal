@@ -133,9 +133,7 @@ export function cloneAsMutable<T>(obj: T): Mutable<T> {
 
 export function deepFreeze<T>(obj: T): Immutable<T> {
 	if (typeof obj === "object" && obj !== null) {
-		Object.values(obj)
-			.filter(value => !Object.isFrozen(value))
-			.forEach(deepFreeze)
+		Object.values(obj).forEach(deepFreeze)
 	}
 	return Object.freeze(obj)
 }
