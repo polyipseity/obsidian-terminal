@@ -79,10 +79,12 @@ export function anyToError(obj: unknown): Error {
 export function asyncDebounce<
 	A extends readonly unknown[],
 	R,
->(debouncer: Debouncer<[
+	R0,
+// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+>(debouncer: R0 extends void ? Debouncer<[
 	(value: PromiseLike<R> | R) => void,
 	(reason?: unknown) => void,
-	...A], R>): (...args_0: A) => Promise<R> {
+	...A], R0> : never): (...args_0: A) => Promise<R> {
 	const promises: {
 		readonly resolve: (value: PromiseLike<R> | R) => void
 		readonly reject: (reason?: unknown) => void
