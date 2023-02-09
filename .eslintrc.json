@@ -63,6 +63,7 @@
     "@typescript-eslint",
     "svelte3"
   ],
+  "reportUnusedDisableDirectives": true,
   "root": true,
   "rules": {
     "array-element-newline": [
