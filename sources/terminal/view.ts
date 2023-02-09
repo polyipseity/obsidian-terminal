@@ -456,7 +456,7 @@ export namespace TerminalView {
 	}
 	export interface State {
 		readonly __type: typeof State.TYPE
-		readonly cwd: string
+		cwd: string
 		profile: Settings.Profile
 		serial?: XtermTerminalEmulator.State
 	}

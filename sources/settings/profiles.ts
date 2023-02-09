@@ -427,7 +427,9 @@ export class ProfilesModal extends ListModal {
 				.setTooltip(i18n.t("components.editable-list.prepend"))
 				.onClick(async () => {
 					await this.#addProfile(0, cloneAsMutable(PROFILE_PRESETS.empty))
+					const save = Settings.save(plugin.settings, plugin)
 					this.display()
+					await save
 				}))
 		for (const [index, [id, profile]] of Object.entries(profiles).entries()) {
 			new Setting(listEl)
@@ -459,7 +461,9 @@ export class ProfilesModal extends ListModal {
 						await this.#mutateProfiles(profilesM => {
 							removeAt(profilesM, index)
 						})
+						const save = Settings.save(plugin.settings, plugin)
 						this.display()
+						await save
 					}))
 		}
 		new Setting(listEl)
@@ -472,7 +476,9 @@ export class ProfilesModal extends ListModal {
 						length(profiles),
 						cloneAsMutable(PROFILE_PRESETS.empty),
 					)
+					const save = Settings.save(plugin.settings, plugin)
 					this.display()
+					await save
 				}))
 	}
 
@@ -487,7 +493,6 @@ export class ProfilesModal extends ListModal {
 			mutator(profiles, settings.profiles, settings)
 			settings.profiles = Object.fromEntries(profiles)
 		})
-		await Settings.save(plugin.settings, plugin)
 	}
 
 	async #addProfile(
