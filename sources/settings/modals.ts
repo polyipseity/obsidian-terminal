@@ -31,11 +31,11 @@ export class EditableListModal<T> extends ListModal {
 		protected readonly inputter: (
 			setting: Setting,
 			getter: () => T,
-			setter: (value: T) => void,
+			setter: (value: T) => unknown,
 		) => void,
 		protected readonly placeholder: T,
 		list: readonly T[],
-		callback: (list: readonly T[]) => void,
+		callback: (list: readonly T[]) => unknown,
 	) {
 		super(app)
 		this.#inputter = inputter
@@ -46,7 +46,7 @@ export class EditableListModal<T> extends ListModal {
 	public static readonly stringInputter = (
 		setting: Setting,
 		getter: () => string,
-		setter: (value: string) => void,
+		setter: (value: string) => unknown,
 		input: (
 			setting: Setting,
 			callback: (component: ValueComponent<string> & {
@@ -66,15 +66,6 @@ export class EditableListModal<T> extends ListModal {
 		this.display()
 	}
 
-	public override onClose(): void {
-		super.onClose()
-		try {
-			this.#callback(this.#list)
-		} catch (error) {
-			console.log(error)
-		}
-	}
-
 	protected display(): void {
 		const { listEl, plugin, placeholder } = this,
 			{ i18n } = plugin.language
@@ -84,9 +75,9 @@ export class EditableListModal<T> extends ListModal {
 			.addButton(button => button
 				.setIcon(i18n.t("asset:components.editable-list.prepend-icon"))
 				.setTooltip(i18n.t("components.editable-list.prepend"))
-				.onClick(() => {
+				.onClick(async () => {
 					this.#list.unshift(placeholder)
-					this.display()
+					await this.#postMutate()
 				}))
 		for (const [index, item] of this.#list.entries()) {
 			const setting = new Setting(listEl)
@@ -97,14 +88,17 @@ export class EditableListModal<T> extends ListModal {
 			this.#inputter(
 				setting,
 				() => item,
-				value => { this.#list[index] = value },
+				async value => {
+					this.#list[index] = value
+					await this.#postMutate()
+				},
 			)
 			setting.addExtraButton(button => button
 				.setTooltip(i18n.t("components.editable-list.remove"))
 				.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
-				.onClick(() => {
+				.onClick(async () => {
 					removeAt(this.#list, index)
-					this.display()
+					await this.#postMutate()
 				}))
 		}
 		new Setting(listEl)
@@ -112,9 +106,15 @@ export class EditableListModal<T> extends ListModal {
 			.addButton(button => button
 				.setIcon(i18n.t("asset:components.editable-list.append-icon"))
 				.setTooltip(i18n.t("components.editable-list.append"))
-				.onClick(() => {
+				.onClick(async () => {
 					this.#list.push(placeholder)
-					this.display()
+					await this.#postMutate()
 				}))
+	}
+
+	async #postMutate(): Promise<void> {
+		const cb = this.#callback(this.#list)
+		this.display()
+		await cb
 	}
 }

@@ -176,18 +176,11 @@ export class ProfileModal extends ListModal {
 								EditableListModal.stringInputter,
 								"",
 								profile.args,
-								value => {
-									(async (): Promise<void> => {
-										try {
-											await this.#mutateProfile(type, profileM => {
-												profileM.args =
-													cloneAsMutable(value)
-											})
-											this.display()
-										} catch (error) {
-											console.error(error)
-										}
-									})()
+								async value => {
+									await this.#mutateProfile(type, profileM => {
+										profileM.args = cloneAsMutable(value)
+									})
+									await this.#postMutate()
 								},
 							).open()
 						}))
@@ -256,18 +249,11 @@ export class ProfileModal extends ListModal {
 								EditableListModal.stringInputter,
 								"",
 								profile.args,
-								value => {
-									(async (): Promise<void> => {
-										try {
-											await this.#mutateProfile(type, profileM => {
-												profileM.args =
-													cloneAsMutable(value)
-											})
-											this.display()
-										} catch (error) {
-											console.error(error)
-										}
-									})()
+								async value => {
+									await this.#mutateProfile(type, profileM => {
+										profileM.args = cloneAsMutable(value)
+									})
+									await this.#postMutate()
 								},
 							).open()
 						}))
@@ -401,6 +387,13 @@ export class ProfileModal extends ListModal {
 			await mutator(profile, settings)
 		})
 	}
+
+	async #postMutate(): Promise<void> {
+		const { plugin } = this,
+			save = Settings.save(plugin.settings, plugin)
+		this.display()
+		await save
+	}
 }
 
 export class ProfilesModal extends ListModal {
@@ -427,9 +420,7 @@ export class ProfilesModal extends ListModal {
 				.setTooltip(i18n.t("components.editable-list.prepend"))
 				.onClick(async () => {
 					await this.#addProfile(0, cloneAsMutable(PROFILE_PRESETS.empty))
-					const save = Settings.save(plugin.settings, plugin)
-					this.display()
-					await save
+					await this.#postMutate()
 				}))
 		for (const [index, [id, profile]] of Object.entries(profiles).entries()) {
 			new Setting(listEl)
@@ -461,9 +452,7 @@ export class ProfilesModal extends ListModal {
 						await this.#mutateProfiles(profilesM => {
 							removeAt(profilesM, index)
 						})
-						const save = Settings.save(plugin.settings, plugin)
-						this.display()
-						await save
+						await this.#postMutate()
 					}))
 		}
 		new Setting(listEl)
@@ -476,10 +465,15 @@ export class ProfilesModal extends ListModal {
 						length(profiles),
 						cloneAsMutable(PROFILE_PRESETS.empty),
 					)
-					const save = Settings.save(plugin.settings, plugin)
-					this.display()
-					await save
+					await this.#postMutate()
 				}))
+	}
+
+	async #postMutate(): Promise<void> {
+		const { plugin } = this,
+			save = Settings.save(plugin.settings, plugin)
+		this.display()
+		await save
 	}
 
 	async #mutateProfiles(mutator: (
