@@ -1,6 +1,6 @@
 import { Modal, Setting, type ValueComponent } from "obsidian"
+import { removeAt, swap } from "sources/utils/util"
 import type { TerminalPlugin } from "sources/main"
-import { removeAt } from "sources/utils/util"
 
 export class ListModal extends Modal {
 	#listEl: HTMLElement | null = null
@@ -93,13 +93,30 @@ export class EditableListModal<T> extends ListModal {
 					await this.#postMutate()
 				},
 			)
-			setting.addExtraButton(button => button
-				.setTooltip(i18n.t("components.editable-list.remove"))
-				.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
-				.onClick(async () => {
-					removeAt(this.#list, index)
-					await this.#postMutate()
-				}))
+			setting
+				.addExtraButton(button => button
+					.setTooltip(i18n.t("components.editable-list.move-up"))
+					.setIcon(i18n.t("asset:components.editable-list.move-up-icon"))
+					.onClick(async () => {
+						if (index <= 0) { return }
+						swap(this.#list, index - 1, index)
+						await this.#postMutate()
+					}))
+				.addExtraButton(button => button
+					.setTooltip(i18n.t("components.editable-list.move-down"))
+					.setIcon(i18n.t("asset:components.editable-list.move-down-icon"))
+					.onClick(async () => {
+						if (index >= this.#list.length - 1) { return }
+						swap(this.#list, index, index + 1)
+						await this.#postMutate()
+					}))
+				.addExtraButton(button => button
+					.setTooltip(i18n.t("components.editable-list.remove"))
+					.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
+					.onClick(async () => {
+						removeAt(this.#list, index)
+						await this.#postMutate()
+					}))
 		}
 		new Setting(listEl)
 			.setName(i18n.t("components.editable-list.append"))

@@ -336,6 +336,10 @@ export function removeAt<T>(self: T[], index: number): T | undefined {
 	return self.splice(index, 1)[0]
 }
 
+export function swap(self: unknown[], left: number, right: number): void {
+	[self[left], self[right]] = [self[right], self[left]]
+}
+
 export function updateDisplayText(view: View): boolean {
 	const type = view.getViewType(),
 		text = view.getDisplayText(),

@@ -2,6 +2,8 @@
 	"components": {
 		"editable-list": {
 			"append-icon": "plus",
+			"move-down-icon": "arrow-down",
+			"move-up-icon": "arrow-up",
 			"prepend-icon": "plus",
 			"remove-icon": "minus"
 		},

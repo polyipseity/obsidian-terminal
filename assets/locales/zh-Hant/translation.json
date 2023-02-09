@@ -8,6 +8,8 @@
 	"components": {
 		"editable-list": {
 			"append": "後置",
+			"move-down": "下移",
+			"move-up": "上移",
 			"name": "第{{- count}}",
 			"prepend": "前置",
 			"remove": "刪除"

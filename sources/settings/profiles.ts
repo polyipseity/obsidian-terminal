@@ -7,6 +7,7 @@ import {
 	insertAt,
 	length,
 	removeAt,
+	swap,
 	typedStructuredClone,
 } from "sources/utils/util"
 import { linkSetting, resetButton, setTextToEnum } from "./util"
@@ -442,6 +443,26 @@ export class ProfilesModal extends ListModal {
 							}
 						}
 						modal.open()
+					}))
+				.addExtraButton(button => button
+					.setTooltip(i18n.t("components.editable-list.move-up"))
+					.setIcon(i18n.t("asset:components.editable-list.move-up-icon"))
+					.onClick(async () => {
+						if (index <= 0) { return }
+						await this.#mutateProfiles(profilesM => {
+							swap(profilesM, index - 1, index)
+						})
+						this.#postMutate()
+					}))
+				.addExtraButton(button => button
+					.setTooltip(i18n.t("components.editable-list.move-down"))
+					.setIcon(i18n.t("asset:components.editable-list.move-down-icon"))
+					.onClick(async () => {
+						if (index >= length(profiles) - 1) { return }
+						await this.#mutateProfiles(profilesM => {
+							swap(profilesM, index, index + 1)
+						})
+						this.#postMutate()
 					}))
 				.addExtraButton(button => button
 					.setIcon(i18n.t("asset:components.editable-list.remove-icon"))

@@ -8,6 +8,8 @@
 	"components": {
 		"editable-list": {
 			"append": "Append",
+			"move-down": "Move down",
+			"move-up": "Move up",
 			"name_few": "{{- count}}rd",
 			"name_one": "{{- count}}st",
 			"name_other": "{{- count}}th",
