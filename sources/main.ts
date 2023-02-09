@@ -1,6 +1,11 @@
 import { type App, Plugin, type PluginManifest } from "obsidian"
 import { DEFAULT_SETTINGS, Settings } from "./settings/data"
-import { EventEmitterLite, type Mutable, cloneAsMutable } from "./utils/util"
+import {
+	EventEmitterLite,
+	type Mutable,
+	cloneAsMutable,
+	typedStructuredClone,
+} from "./utils/util"
 import { TerminalView, registerTerminal } from "./terminal/view"
 import { LanguageManager } from "./i18n"
 import { SettingTab } from "./settings/tab"
@@ -10,7 +15,7 @@ import { registerIcons } from "./icons"
 export class TerminalPlugin extends Plugin {
 	public readonly language = new LanguageManager(this)
 	public readonly statusBarHider = new StatusBarHider(this)
-	readonly #settings = cloneAsMutable(DEFAULT_SETTINGS)
+	#settings = cloneAsMutable(DEFAULT_SETTINGS)
 	readonly #onMutateSettings = new EventEmitterLite<[Settings]>()
 
 	public constructor(app: App, manifest: PluginManifest) {
@@ -24,8 +29,9 @@ export class TerminalPlugin extends Plugin {
 
 	public async mutateSettings(mutator: (
 		settings: Mutable<Settings>) => unknown): Promise<void> {
-		await mutator(this.#settings)
-		await this.#onMutateSettings.emit(this.settings)
+		const settings = typedStructuredClone(this.#settings)
+		await mutator(settings)
+		await this.#onMutateSettings.emit(this.#settings = settings)
 	}
 
 	public on<T>(

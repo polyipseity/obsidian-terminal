@@ -57,33 +57,33 @@ export class ProfileModal extends ListModal {
 			})
 			return
 		}
-		const namer = (): string =>
-			typeof profile.name === "string" ? profile.name : ""
+		const { name, type } = profile,
+			namer = (name0: unknown): string =>
+				typeof name0 === "string" ? name0 : ""
 		listEl.createEl("h1", {
 			text: i18n.t("settings.profile.title", {
 				id,
-				nameOrID: namer() || id,
+				nameOrID: namer(name) || id,
 				profile,
 			}),
 		}, el => {
 			this.#displayFinally.push(plugin.on(
 				"mutate-settings",
 				settings0 => settings0.profiles[id]?.name,
-				() => {
+				cur => {
 					el.textContent = i18n.t("settings.profile.title", {
 						id,
-						nameOrID: namer() || id,
+						nameOrID: namer(cur) || id,
 						profile,
 					})
 				},
 			))
 		})
-		const { type } = profile
 		new Setting(listEl)
 			.setName(i18n.t("settings.profile.name"))
 			.addText(linkSetting(
 				plugin,
-				namer,
+				() => namer(name),
 				async value => this.#mutateProfile(type, profileM => {
 					profileM.name = value
 				}),
