@@ -1,13 +1,15 @@
-import { type App, Plugin, type PluginManifest } from "obsidian"
+import { type App, Plugin, type PluginManifest, debounce } from "obsidian"
 import { DEFAULT_SETTINGS, Settings } from "./settings/data"
 import {
 	EventEmitterLite,
 	type Mutable,
+	asyncDebounce,
 	cloneAsMutable,
 	typedStructuredClone,
 } from "./utils/util"
 import { TerminalView, registerTerminal } from "./terminal/view"
 import { LanguageManager } from "./i18n"
+import { SAVE_SETTINGS_TIMEOUT } from "./magic"
 import { SettingTab } from "./settings/tab"
 import { StatusBarHider } from "./status-bar"
 import { registerIcons } from "./icons"
@@ -15,6 +17,16 @@ import { registerIcons } from "./icons"
 export class TerminalPlugin extends Plugin {
 	public readonly language = new LanguageManager(this)
 	public readonly statusBarHider = new StatusBarHider(this)
+	public readonly saveSettings =
+		asyncDebounce(debounce((
+			resolve: (value: PromiseLike<void> | void) => void,
+			reject: (reason?: unknown) => void,
+		) => {
+			(async (): Promise<void> => {
+				await this.saveData(this.settings)
+			})().then(resolve, reject)
+		}, SAVE_SETTINGS_TIMEOUT, false))
+
 	#settings = cloneAsMutable(DEFAULT_SETTINGS)
 	readonly #onMutateSettings = new EventEmitterLite<[Settings]>()
 
@@ -32,6 +44,10 @@ export class TerminalPlugin extends Plugin {
 		const settings = typedStructuredClone(this.#settings)
 		await mutator(settings)
 		await this.#onMutateSettings.emit(this.#settings = settings)
+	}
+
+	public async loadSettings(settings: Mutable<Settings>): Promise<void> {
+		Object.assign(settings, Settings.fix(await this.loadData()))
 	}
 
 	public on<T>(
@@ -59,12 +75,14 @@ export class TerminalPlugin extends Plugin {
 		super.onload();
 		(async (): Promise<void> => {
 			try {
-				await Settings.load(this.settings, this)
-				const init = this.language.load()
+				const init = Promise.all([
+					this.mutateSettings(this.loadSettings.bind(this)),
+					this.language.load(),
+				])
 				registerIcons(this)
 				await init
-				this.statusBarHider.load()
 				this.addSettingTab(new SettingTab(this))
+				this.statusBarHider.load()
 				registerTerminal(this)
 			} catch (error) {
 				console.error(error)

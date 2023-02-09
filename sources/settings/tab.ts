@@ -94,8 +94,7 @@ export class SettingTab extends PluginSettingTab {
 			.addButton(resetButton(
 				plugin,
 				this.display.bind(this),
-				async () => plugin.mutateSettings(async settingsM =>
-					Settings.load(settingsM, plugin)),
+				async () => plugin.mutateSettings(plugin.loadSettings.bind(plugin)),
 				i18n.t("asset:settings.all-settings-actions.reload-icon"),
 				{
 					post: component => {

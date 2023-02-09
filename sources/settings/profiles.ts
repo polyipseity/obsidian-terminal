@@ -180,7 +180,7 @@ export class ProfileModal extends ListModal {
 									await this.#mutateProfile(type, profileM => {
 										profileM.args = cloneAsMutable(value)
 									})
-									await this.#postMutate()
+									this.#postMutate()
 								},
 							).open()
 						}))
@@ -253,7 +253,7 @@ export class ProfileModal extends ListModal {
 									await this.#mutateProfile(type, profileM => {
 										profileM.args = cloneAsMutable(value)
 									})
-									await this.#postMutate()
+									this.#postMutate()
 								},
 							).open()
 						}))
@@ -388,11 +388,9 @@ export class ProfileModal extends ListModal {
 		})
 	}
 
-	async #postMutate(): Promise<void> {
-		const { plugin } = this,
-			save = Settings.save(plugin.settings, plugin)
+	#postMutate(): void {
+		this.plugin.saveSettings().catch(error => { console.error(error) })
 		this.display()
-		await save
 	}
 }
 
@@ -420,7 +418,7 @@ export class ProfilesModal extends ListModal {
 				.setTooltip(i18n.t("components.editable-list.prepend"))
 				.onClick(async () => {
 					await this.#addProfile(0, cloneAsMutable(PROFILE_PRESETS.empty))
-					await this.#postMutate()
+					this.#postMutate()
 				}))
 		for (const [index, [id, profile]] of Object.entries(profiles).entries()) {
 			new Setting(listEl)
@@ -452,7 +450,7 @@ export class ProfilesModal extends ListModal {
 						await this.#mutateProfiles(profilesM => {
 							removeAt(profilesM, index)
 						})
-						await this.#postMutate()
+						this.#postMutate()
 					}))
 		}
 		new Setting(listEl)
@@ -465,15 +463,13 @@ export class ProfilesModal extends ListModal {
 						length(profiles),
 						cloneAsMutable(PROFILE_PRESETS.empty),
 					)
-					await this.#postMutate()
+					this.#postMutate()
 				}))
 	}
 
-	async #postMutate(): Promise<void> {
-		const { plugin } = this,
-			save = Settings.save(plugin.settings, plugin)
+	#postMutate(): void {
+		this.plugin.saveSettings().catch(error => { console.error(error) })
 		this.display()
-		await save
 	}
 
 	async #mutateProfiles(mutator: (

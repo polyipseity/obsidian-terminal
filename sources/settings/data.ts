@@ -6,15 +6,14 @@ import {
 	type Platform,
 	type RecursiveRequired,
 	type Sized,
+	cloneAsMutable,
 	deepFreeze,
 	inSet,
 	isHomogenousArray,
-	typedStructuredClone,
 } from "../utils/util"
 import { PROFILE_DEFAULTS, PROFILE_PRESETS } from "./profile-presets"
 import { genericTypeofGuard, primitiveOf } from "../utils/typeof"
 import { LANGUAGES } from "assets/locales"
-import type { Plugin } from "obsidian"
 import { Pseudoterminal } from "../terminal/pseudoterminal"
 import { RendererAddon } from "../terminal/emulator"
 
@@ -152,7 +151,7 @@ export namespace Settings {
 			} satisfies RecursiveRequired<Invalid> as RecursiveRequired<Invalid>,
 		} as const)
 	}
-	export function fix(self: unknown): Settings {
+	export function fix(self: unknown): Mutable<Settings> {
 		type Unknownize<T> = { readonly [_ in keyof T]?: unknown }
 		const tmp: Unknownize<Settings> = {}
 		Object.assign(tmp, self)
@@ -226,7 +225,7 @@ export namespace Settings {
 				"preferredRenderer",
 				PREFERRED_RENDERER_OPTIONS,
 			),
-			profiles: ((): Profiles => {
+			profiles: ((): Mutable<Profiles> => {
 				const defaults2 = DEFAULT_SETTINGS.profiles,
 					{ profiles } = tmp
 				if (profiles !== null && typeof profiles === "object") {
@@ -366,14 +365,8 @@ export namespace Settings {
 					}
 					return ret
 				}
-				return typedStructuredClone(defaults2)
+				return cloneAsMutable(defaults2)
 			})(),
 		}
-	}
-	export async function load(self: Settings, plugin: Plugin): Promise<void> {
-		Object.assign(self, fix(await plugin.loadData()))
-	}
-	export async function save(self: Settings, plugin: Plugin): Promise<void> {
-		await plugin.saveData(self)
 	}
 }

@@ -4,7 +4,6 @@ import type {
 	ValueComponent,
 } from "obsidian"
 import { type Sized, inSet } from "sources/utils/util"
-import { Settings } from "./data"
 import type { TerminalPlugin } from "sources/main"
 
 export interface ComponentAction<C, V> {
@@ -35,7 +34,7 @@ export function linkSetting<
 				component.setValue(getter())
 				return
 			}
-			await Settings.save(plugin.settings, plugin)
+			plugin.saveSettings().catch(error => { console.error(error) })
 		}
 		component.setValue(getter()).onChange(activate);
 		(action.post ?? ((): void => { }))(component, activate)
@@ -101,7 +100,8 @@ export function resetButton<C extends ButtonComponent | ExtraButtonComponent>(
 			if (typeof ret === "boolean" && !ret) {
 				return
 			}
-			await Promise.all([Settings.save(plugin.settings, plugin), draw()])
+			plugin.saveSettings().catch(error => { console.error(error) })
+			await draw()
 		}
 		component
 			.setTooltip(plugin.language.i18n.t("settings.reset"))
