@@ -5,7 +5,7 @@ import {
 	type Mutable,
 	asyncDebounce,
 	cloneAsMutable,
-	typedStructuredClone,
+	deepFreeze,
 } from "./utils/util"
 import { TerminalView, registerTerminal } from "./terminal/view"
 import { LanguageManager } from "./i18n"
@@ -27,7 +27,7 @@ export class TerminalPlugin extends Plugin {
 			})().then(resolve, reject)
 		}, SAVE_SETTINGS_TIMEOUT, false))
 
-	#settings = cloneAsMutable(DEFAULT_SETTINGS)
+	#settings = DEFAULT_SETTINGS
 	readonly #onMutateSettings = new EventEmitterLite<[Settings]>()
 
 	public constructor(app: App, manifest: PluginManifest) {
@@ -41,9 +41,9 @@ export class TerminalPlugin extends Plugin {
 
 	public async mutateSettings(mutator: (
 		settings: Mutable<Settings>) => unknown): Promise<void> {
-		const settings = typedStructuredClone(this.#settings)
+		const settings = cloneAsMutable(this.#settings)
 		await mutator(settings)
-		await this.#onMutateSettings.emit(this.#settings = settings)
+		await this.#onMutateSettings.emit(this.#settings = deepFreeze(settings))
 	}
 
 	public async loadSettings(settings: Mutable<Settings>): Promise<void> {
