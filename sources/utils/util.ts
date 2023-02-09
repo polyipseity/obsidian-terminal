@@ -21,7 +21,9 @@ export type RecursiveRequired<T> =
 export type Sized<T extends readonly unknown[]> =
 	number extends T["length"] ? never : T
 
-export const NOTICE_NO_TIMEOUT = 0
+export const
+	SI_PREFIX_SCALE = 1000,
+	NOTICE_NO_TIMEOUT = 0
 export const PLATFORMS =
 	deepFreeze(["android", "darwin", "ios", "linux", "unknown", "win32"] as const)
 export type Platform = typeof PLATFORMS[number]
@@ -258,7 +260,7 @@ export function notice(
 	timeout: number = NOTICE_NO_TIMEOUT,
 	plugin?: TerminalPlugin,
 ): Notice {
-	const timeoutMs = 1000 * Math.max(timeout, 0),
+	const timeoutMs = SI_PREFIX_SCALE * Math.max(timeout, 0),
 		ret = new Notice(message(), timeoutMs)
 	if (typeof plugin === "undefined") {
 		return ret

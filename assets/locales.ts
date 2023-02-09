@@ -80,6 +80,7 @@ export const RESOURCES = deepFreeze({
 	ru: { [DEFAULT_NAMESPACE]: sync(ru) },
 	sq: { [DEFAULT_NAMESPACE]: sync(sq) },
 	th: { [DEFAULT_NAMESPACE]: sync(th) },
+
 	tr: { [DEFAULT_NAMESPACE]: sync(tr) },
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	"zh-Hans": { [DEFAULT_NAMESPACE]: sync(zhHans) },

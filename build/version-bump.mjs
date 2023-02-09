@@ -21,4 +21,5 @@ writeFileSync("manifest.json", JSON.stringify(manifest, null, "\t"))
 // Update versions.json with target version and minAppVersion from manifest.json
 const versions = JSON.parse(readFileSync("versions.json", "utf-8"))
 versions[manifest.version] = manifest.minAppVersion
+
 writeFileSync("versions.json", JSON.stringify(versions, null, "\t"))
