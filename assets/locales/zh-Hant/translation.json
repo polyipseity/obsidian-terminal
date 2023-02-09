@@ -51,6 +51,12 @@
 		"add-to-command": "加入至命令",
 		"add-to-context-menu": "加入至右鍵選單",
 		"advanced-settings": "高級設置",
+		"all-settings": "所有設置",
+		"all-settings-actions": {
+			"reload": "重新加載",
+			"reset": "重設",
+			"undo": "復原"
+		},
 		"edit": "編輯",
 		"error-notice-timeout": "錯誤通知超時（秒）",
 		"error-notice-timeout-description": "設為0秒是無超時。設為負數以禁用通知。",
@@ -97,8 +103,7 @@
 			"title": "配置"
 		},
 		"profiles": "配置",
-		"reset": "重設",
-		"reset-all": "重設全部"
+		"reset": "重設"
 	},
 	"types": {
 		"platforms": {

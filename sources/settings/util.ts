@@ -91,7 +91,7 @@ export function resetButton<C extends ButtonComponent | ExtraButtonComponent>(
 	plugin: TerminalPlugin,
 	draw: () => unknown,
 	resetter: (component: C) => unknown,
-	icon?: string,
+	icon: string,
 	action: ComponentAction<C, void> = {},
 ) {
 	return (component: C): void => {
@@ -105,7 +105,7 @@ export function resetButton<C extends ButtonComponent | ExtraButtonComponent>(
 		}
 		component
 			.setTooltip(plugin.language.i18n.t("settings.reset"))
-			.setIcon(icon ?? plugin.language.i18n.t("asset:settings.reset-icon"))
+			.setIcon(icon)
 			.onClick(activate);
 		(action.post ?? ((): void => { }))(component, activate)
 	}

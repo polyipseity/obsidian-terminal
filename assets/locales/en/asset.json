@@ -29,6 +29,11 @@
 	"settings": {
 		"add-to-command-icon": "terminal",
 		"add-to-context-menu-icon": "menu",
+		"all-settings-actions": {
+			"reload-icon": "loader",
+			"reset-icon": "reset",
+			"undo-icon": "undo"
+		},
 		"error-notice-timeout-icon": "timer",
 		"hide-status-bar-icon": "eye-off",
 		"language-icon": "languages",
@@ -57,8 +62,7 @@
 			"edit-icon": "edit"
 		},
 		"profiles-edit-icon": "list",
-		"profiles-icon": "terminal",
-		"reset-icon": "reset"
+		"profiles-icon": "terminal"
 	},
 	"types": {
 		"platforms": {

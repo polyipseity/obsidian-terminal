@@ -3,6 +3,8 @@ import { PluginSettingTab, Setting } from "obsidian"
 import {
 	capitalize,
 	cloneAsMutable,
+	executeParanoidly,
+	identity,
 	length,
 } from "../utils/util"
 import {
@@ -17,10 +19,17 @@ import { ProfilesModal } from "./profiles"
 import type { TerminalPlugin } from "../main"
 
 export class SettingTab extends PluginSettingTab {
+	#onMutation = this.#snapshot()
+
 	public constructor(protected readonly plugin: TerminalPlugin) {
 		super(plugin.app, plugin)
 		plugin.register(plugin.language.onChangeLanguage
 			.listen(() => { this.display() }))
+	}
+
+	public override hide(): void {
+		super.hide()
+		this.#onMutation = this.#snapshot()
 	}
 
 	public display(): void {
@@ -61,13 +70,51 @@ export class SettingTab extends PluginSettingTab {
 				i18n.t("asset:settings.language-icon"),
 			))
 		new Setting(containerEl)
-			.setName(i18n.t("settings.reset-all"))
+			.setName(i18n.t("settings.all-settings"))
+			.addButton(resetButton(
+				plugin,
+				() => {
+					this.#onMutation = this.#snapshot()
+					this.display()
+				},
+				async () => plugin.mutateSettings(async settingsM =>
+					Object.assign(settingsM, await this.#onMutation)),
+				i18n.t("asset:settings.all-settings-actions.undo-icon"),
+				{
+					post: component => {
+						component
+							.setTooltip(i18n.t("settings.all-settings-actions.undo"))
+							.setDisabled(true)
+						this.#onMutation.then(() => {
+							component.setDisabled(false).setCta()
+						}).catch(error => { console.error(error) })
+					},
+				},
+			))
+			.addButton(resetButton(
+				plugin,
+				this.display.bind(this),
+				async () => plugin.mutateSettings(async settingsM =>
+					Settings.load(settingsM, plugin)),
+				i18n.t("asset:settings.all-settings-actions.reload-icon"),
+				{
+					post: component => {
+						component.setTooltip(i18n.t("settings.all-settings-actions.reload"))
+					},
+				},
+			))
 			.addButton(resetButton(
 				plugin,
 				this.display.bind(this),
 				async () => plugin
 					.mutateSettings(settingsM =>
 						Object.assign(settingsM, cloneAsMutable(DEFAULT_SETTINGS))),
+				i18n.t("asset:settings.all-settings-actions.reset-icon"),
+				{
+					post: component => {
+						component.setTooltip(i18n.t("settings.all-settings-actions.reset"))
+					},
+				},
 			))
 
 		new Setting(containerEl)
@@ -238,5 +285,25 @@ export class SettingTab extends PluginSettingTab {
 				}),
 				i18n.t("asset:settings.preferred-renderer-icon"),
 			))
+	}
+
+	async #snapshot(): Promise<Settings> {
+		const { plugin } = this,
+			{ settings: snapshot } = plugin
+		return new Promise<Settings>(executeParanoidly((
+			resolve,
+			reject,
+		) => {
+			const unregister = plugin.on("mutate-settings", identity, () => {
+				try {
+					resolve(snapshot)
+				} catch (error) {
+					reject(error)
+				} finally {
+					unregister()
+				}
+			})
+			plugin.register(unregister)
+		}))
 	}
 }

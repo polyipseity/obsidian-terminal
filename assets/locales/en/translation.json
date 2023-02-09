@@ -54,6 +54,12 @@
 		"add-to-command": "Add to command",
 		"add-to-context-menu": "Add to context menu",
 		"advanced-settings": "Advanced settings",
+		"all-settings": "All settings",
+		"all-settings-actions": {
+			"reload": "Reload",
+			"reset": "Reset",
+			"undo": "Undo"
+		},
 		"edit": "Edit",
 		"error-notice-timeout": "Error notice timeout (s)",
 		"error-notice-timeout-description": "Set to 0 s for no timeout. Set to negative to disable notice.",
@@ -101,8 +107,7 @@
 			"title": "Profiles"
 		},
 		"profiles": "Profiles",
-		"reset": "Reset",
-		"reset-all": "Reset all"
+		"reset": "Reset"
 	},
 	"types": {
 		"platforms": {
