@@ -52,7 +52,7 @@ export class EventEmitterLite<A extends readonly unknown[]> {
 
 	public listen(listener: (...args: A) => unknown): () => void {
 		this.#listeners.push(listener)
-		return () => { this.#listeners.remove(listener) }
+		return () => { remove(this.#listeners, listener) }
 	}
 }
 
@@ -229,6 +229,14 @@ export function isInterface<T extends { readonly __type: T["__type"] }>(
 	return tmp.__type === id
 }
 
+export function insertAt<T>(
+	self: T[],
+	index: number,
+	...items: readonly T[]
+): void {
+	self.splice(index, 0, ...items)
+}
+
 export function notice(
 	message: () => DocumentFragment | string,
 	timeout: number = NOTICE_NO_TIMEOUT,
@@ -276,7 +284,7 @@ export function onVisible<E extends Element>(
 	const ret = new IntersectionObserver((ents, obsr) => {
 		for (const ent of transient
 			? ents.reverse()
-			: [ents.last() ?? { isIntersecting: false }]) {
+			: [ents.at(-1) ?? { isIntersecting: false }]) {
 			if (ent.isIntersecting) {
 				callback(obsr, element, ent)
 				break
@@ -302,6 +310,14 @@ export function printError(
 		plugin?.settings.errorNoticeTimeout ?? NOTICE_NO_TIMEOUT,
 		plugin,
 	)
+}
+
+export function remove<T>(self: T[], item: T): T | undefined {
+	return removeAt(self, self.indexOf(item))
+}
+
+export function removeAt<T>(self: T[], index: number): T | undefined {
+	return self.splice(index, 1)[0]
 }
 
 export function updateDisplayText(view: View): boolean {

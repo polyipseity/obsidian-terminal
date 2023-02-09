@@ -1,5 +1,5 @@
+import { notice2, remove } from "./utils/util"
 import type { TerminalPlugin } from "./main"
-import { notice2 } from "./utils/util"
 
 export function statusBar(callback?: (
 	element: HTMLDivElement) => void): HTMLDivElement | null {
@@ -47,7 +47,7 @@ export class StatusBarHider {
 		this.#hiders.push(hider)
 		this.update()
 		return () => {
-			this.#hiders.remove(hider)
+			remove(this.#hiders, hider)
 			this.update()
 		}
 	}

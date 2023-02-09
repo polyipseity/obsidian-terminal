@@ -448,7 +448,7 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 									existingLeaves = workspace
 										.getLeavesOfType(TerminalView.type.namespaced(plugin))
 								await ((): WorkspaceLeaf => {
-									const existingLeaf = existingLeaves.last()
+									const existingLeaf = existingLeaves.at(-1)
 									if (typeof existingLeaf === "undefined") {
 										return workspace.getLeaf("split", "horizontal")
 									}
