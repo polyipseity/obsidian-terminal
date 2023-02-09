@@ -5,6 +5,7 @@ import {
 	type PluginManifest,
 	type View,
 } from "obsidian"
+import { NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
 import type { PrimitiveType, TypeofMap } from "./typeof"
 import type { ChildProcess } from "node:child_process"
 import type { TerminalPlugin } from "../main"
@@ -21,9 +22,6 @@ export type RecursiveRequired<T> =
 export type Sized<T extends readonly unknown[]> =
 	number extends T["length"] ? never : T
 
-export const
-	SI_PREFIX_SCALE = 1000,
-	NOTICE_NO_TIMEOUT = 0
 export const PLATFORMS =
 	deepFreeze(["android", "darwin", "ios", "linux", "unknown", "win32"] as const)
 export type Platform = typeof PLATFORMS[number]

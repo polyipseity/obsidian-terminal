@@ -1,7 +1,6 @@
 import type { InverseTypeofMap, PrimitiveOf } from "../utils/typeof"
 import {
 	type Mutable,
-	NOTICE_NO_TIMEOUT,
 	PLATFORM,
 	type Platform,
 	type RecursiveRequired,
@@ -14,6 +13,7 @@ import {
 import { PROFILE_DEFAULTS, PROFILE_PRESETS } from "./profile-presets"
 import { genericTypeofGuard, primitiveOf } from "../utils/typeof"
 import { LANGUAGES } from "assets/locales"
+import { NOTICE_NO_TIMEOUT } from "sources/magic"
 import { Pseudoterminal } from "../terminal/pseudoterminal"
 import { RendererAddon } from "../terminal/emulator"
 
