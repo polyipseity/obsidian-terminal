@@ -5,6 +5,7 @@ import { TerminalView, registerTerminal } from "./terminal/view"
 import { LanguageManager } from "./i18n"
 import { SettingTab } from "./settings/tab"
 import { StatusBarHider } from "./status-bar"
+import { registerIcons } from "./icons"
 
 export class TerminalPlugin extends Plugin {
 	public readonly language = new LanguageManager(this)
@@ -53,7 +54,9 @@ export class TerminalPlugin extends Plugin {
 		(async (): Promise<void> => {
 			try {
 				await Settings.load(this.settings, this)
-				await this.language.load()
+				const init = this.language.load()
+				registerIcons(this)
+				await init
 				this.statusBarHider.load()
 				this.addSettingTab(new SettingTab(this))
 				registerTerminal(this)

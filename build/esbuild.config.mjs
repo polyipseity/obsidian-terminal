@@ -11,6 +11,9 @@ If you want to view the source, please visit the repository of this plugin.
 */`,
 	production = process.argv[ARGV_PRODUCTION] === "production",
 	build = await esbuild.context({
+		alias: {
+			"simple-icons": "simple-icons/icons",
+		},
 		banner: { js: COMMENT },
 		bundle: true,
 		color: true,
