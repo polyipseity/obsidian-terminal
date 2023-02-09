@@ -29,77 +29,126 @@ const
 	process = dynamicRequire<typeof import("node:process")>("node:process"),
 	tmp = dynamicRequire<typeof import("tmp")>("tmp")
 
-export interface TerminalPty {
-	readonly shell: Promise<PipedChildProcess>
-	readonly onExit: Promise<NodeJS.Signals | number>
-	readonly pipe: (terminal: Terminal) => Promise<void>
-	readonly resize: (columns: number, rows: number) => Promise<void>
-}
-
 function clearTerminal(terminal: Terminal): void {
 	// Clear screen with scrollback kept
 	terminal.write(`${"\u001b[2K\n".repeat(terminal.rows - 1)}\u001b[2K\u001b[H`)
+}
+
+export interface TerminalPty {
+	readonly shell?: Promise<PipedChildProcess>
+	readonly onExit?: Promise<NodeJS.Signals | number>
+	readonly pipe: (terminal: Terminal) => Promise<void> | void
+	readonly resize?: (columns: number, rows: number) => Promise<void> | void
+}
+
+export class TextPty implements TerminalPty {
+	readonly #terminals: Terminal[] = []
+	#text: string
+
+	public constructor(text = "") {
+		this.#text = text
+	}
+
+	public get text(): string {
+		return this.#text
+	}
+
+	public set text(value: string) {
+		this.#text = value
+		this.#terminals.forEach(terminal => {
+			terminal.clear()
+			terminal.write(value)
+		})
+	}
+
+	public pipe(terminal: Terminal): void {
+		terminal.clear()
+		terminal.write(this.text)
+		this.#terminals.push(terminal)
+	}
+}
+
+export class ConsolePty implements TerminalPty {
+	// Implement me!
+
+	readonly #terminals: Terminal[] = []
+
+	public pipe(terminal: Terminal): void {
+		terminal.clear()
+		this.#terminals.push(terminal)
+	}
+}
+
+export interface ShellPtyArguments {
+	readonly executable: string
+	readonly cwd?: string
+	readonly args?: readonly string[]
+	readonly pythonExecutable?: string
+	readonly enableWindowsConhostWorkaround?: boolean
 }
 
 class WindowsTerminalPty implements TerminalPty {
 	public readonly shell
 	public readonly conhost
 	public readonly onExit
-	readonly #resizer = (async (): Promise<PipedChildProcess | null> => {
-		const { plugin } = this,
-			{ settings, language } = plugin,
-			{ pythonExecutable } = settings,
-			{ i18n } = language
-		if (pythonExecutable === "") {
-			return null
-		}
-		const ret = await spawnPromise(async () =>
-			(await childProcess).spawn(pythonExecutable, ["-c", win32ResizerPy], {
-				env: {
-					...(await process).env,
-					// eslint-disable-next-line @typescript-eslint/naming-convention
-					PYTHONIOENCODING: "UTF-8:backslashreplace",
-				},
-				stdio: ["pipe", "pipe", "pipe"],
-				windowsHide: true,
-			}))
-		try {
-			try {
-				ret.stderr.on("data", (chunk: Buffer | string) => {
-					console.error(chunk.toString(DEFAULT_ENCODING))
-				})
-			} finally {
-				ret.once("exit", (code, signal) => {
-					if (code !== 0) {
-						notice2(
-							() => i18n.t(
-								"errors.resizer-exited-unexpectedly",
-								{ code: code ?? signal },
-							),
-							settings.errorNoticeTimeout,
-							plugin,
-						)
-					}
-				})
-			}
-		} catch (error) { console.warn(error) }
-		return ret
-	})()
+	readonly #resizer
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
-		executable: string,
-		cwd?: string,
-		args?: readonly string[],
+		{
+			args,
+			cwd,
+			executable,
+			enableWindowsConhostWorkaround,
+			pythonExecutable,
+		}: ShellPtyArguments,
 	) {
-		this.conhost = plugin.settings.enableWindowsConhostWorkaround
+		this.conhost = enableWindowsConhostWorkaround ?? false
 		const { conhost } = this,
+			{ settings, language } = plugin,
+			{ i18n } = language,
+			resizer = (async (): Promise<PipedChildProcess | null> => {
+				if (typeof pythonExecutable === "undefined") {
+					return null
+				}
+				const ret = await spawnPromise(async () =>
+					(await childProcess).spawn(pythonExecutable, ["-c", win32ResizerPy], {
+						env: {
+							...(await process).env,
+							// eslint-disable-next-line @typescript-eslint/naming-convention
+							PYTHONIOENCODING: "UTF-8:backslashreplace",
+						},
+						stdio: ["pipe", "pipe", "pipe"],
+						windowsHide: true,
+					}))
+				try {
+					try {
+						ret.stderr.on("data", (chunk: Buffer | string) => {
+							console.error(chunk.toString(DEFAULT_ENCODING))
+						})
+					} finally {
+						ret.once("exit", (code, signal) => {
+							if (code !== 0) {
+								notice2(
+									() => i18n.t(
+										"errors.resizer-exited-unexpectedly",
+										{ code: code ?? signal },
+									),
+									settings.errorNoticeTimeout,
+									plugin,
+								)
+							}
+						})
+					}
+				} catch (error) { console.warn(error) }
+				return ret
+			})(),
 			shell = (async (): Promise<readonly [
 				PipedChildProcess,
 				FileResultNoFd,
 			]> => {
-				const [resizer, resizerError] = await this.#resizer
-					.then(resizer0 => Object.freeze([resizer0, null] as const))
+				const [resizer0, resizerError] = await resizer
+					.then(resizer1 => Object.freeze([resizer1, null] as const))
 					.catch(error => Object.freeze([null, anyToError(error)] as const))
 				try {
 					const codeTmp = (await tmp).fileSync({ discardDescriptor: true })
@@ -111,8 +160,8 @@ class WindowsTerminalPty implements TerminalPty {
 									: [] as const,
 								"C:\\Windows\\System32\\cmd.exe",
 								"/C",
-								`${WindowsTerminalPty.#escapeArgument(executable)} ${(args ??
-									[])
+								`${WindowsTerminalPty.#escapeArgument(executable)} ${(
+									args ?? [])
 									.map(arg => WindowsTerminalPty.#escapeArgument(arg))
 									.join(" ")
 								} & call echo %^ERRORLEVEL% >${WindowsTerminalPty
@@ -124,24 +173,24 @@ class WindowsTerminalPty implements TerminalPty {
 								{
 									cwd,
 									stdio: ["pipe", "pipe", "pipe"],
-									windowsHide: resizer === null,
+									windowsHide: resizer0 === null,
 									windowsVerbatimArguments: true,
 								},
 							))
 						try {
 							let resizerError0 = resizerError
-							if (resizer !== null) {
+							if (resizer0 !== null) {
 								try {
-									await writePromise(resizer.stdin, `${ret.pid ?? -1}\n`)
+									await writePromise(resizer0.stdin, `${ret.pid ?? -1}\n`)
 									const watchdog = window.setInterval(
 										() => {
-											writePromise(resizer.stdin, "\n")
+											writePromise(resizer0.stdin, "\n")
 												.catch(error => { console.trace(error) })
 										},
 										TERMINAL_RESIZER_WATCHDOG_INTERVAL,
 									)
 									try {
-										resizer.once(
+										resizer0.once(
 											"exit",
 											() => { window.clearInterval(watchdog) },
 										)
@@ -151,7 +200,7 @@ class WindowsTerminalPty implements TerminalPty {
 									}
 								} catch (error) {
 									resizerError0 = anyToError(error)
-									resizer.kill()
+									resizer0.kill()
 								}
 							}
 							if (resizerError0 !== null) {
@@ -169,10 +218,11 @@ class WindowsTerminalPty implements TerminalPty {
 						throw error
 					}
 				} catch (error) {
-					resizer?.kill()
+					resizer0?.kill()
 					throw error
 				}
 			})()
+		this.#resizer = resizer
 		this.shell = shell.then(([shell0]) => shell0)
 		this.onExit = shell
 			.then(async ([shell0, codeTmp]) =>
@@ -245,14 +295,16 @@ class UnixTerminalPty implements TerminalPty {
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
-		executable: string,
-		cwd?: string,
-		args?: readonly string[],
+		{
+			args,
+			cwd,
+			executable,
+			pythonExecutable,
+		}: ShellPtyArguments,
 	) {
-		const { settings, language } = plugin,
-			{ pythonExecutable } = settings
+		const { language } = plugin
 		this.shell = spawnPromise(async () => {
-			if (pythonExecutable === "") {
+			if (typeof pythonExecutable === "undefined") {
 				throw new Error(language
 					.i18n.t("errors.no-python-to-start-unix-pseudoterminal"))
 			}

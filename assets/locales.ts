@@ -24,9 +24,15 @@ import * as th from "assets/locales/th/translation.json"
 import * as tr from "assets/locales/tr/translation.json"
 import * as zhHans from "assets/locales/zh-Hans/translation.json"
 import * as zhHant from "assets/locales/zh-Hant/translation.json"
-import { deepFreeze, typedKeys } from "sources/utils/util"
+import { type Equals, deepFreeze, typedKeys } from "sources/utils/util"
 
-function sync(translation: typeof en): typeof en {
+type FilterKey<K> = K extends `${infer K0}_${string}` ? K0 : K
+type SyncNorm<T> = {
+	readonly [key in keyof T as FilterKey<key>]: SyncNorm<T[key]>
+}
+function sync<T>(translation: Equals<SyncNorm<T>, SyncNorm<typeof en>
+> extends true ? T : never): T {
+	// Odd bug: does not check more than 2 layers
 	return translation
 }
 

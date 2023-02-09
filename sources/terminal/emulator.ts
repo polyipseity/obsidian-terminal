@@ -39,10 +39,8 @@ export async function spawnExternalTerminalEmulator(
 export class XtermTerminalEmulator<A> {
 	public readonly terminal
 	public readonly addons
-
-	public readonly onExit
-	readonly #pty
-	#exited = false
+	public readonly pty
+	#running = true
 	readonly #resize = asyncDebounce(debounce(async (
 		resolve: (value: Promise<void> | void) => void,
 		reject: (reason?: unknown) => void,
@@ -52,7 +50,10 @@ export class XtermTerminalEmulator<A> {
 	) => {
 		try {
 			try {
-				await (await this.#pty).resize(columns, rows)
+				const pty = await this.pty
+				if (typeof pty.resize !== "undefined") {
+					await pty.resize(columns, rows)
+				}
 			} catch (error) {
 				if (mustResizePty) { throw error }
 			}
@@ -86,18 +87,18 @@ export class XtermTerminalEmulator<A> {
 			terminal.resize(state.columns, state.rows)
 			terminal.write(state.data)
 		}
-		this.#pty = (async (): Promise<TerminalPty> => {
+		this.pty = (async (): Promise<TerminalPty> => {
 			const pty0 = await pty(terminal)
 			await pty0.pipe(terminal)
 			return pty0
 		})()
-		this.onExit = this.#pty.then(async pty0 => pty0.onExit)
-			.finally(() => { this.#exited = true })
+		this.pty.then(async pty0 => pty0.onExit)
+			.finally(() => { this.#running = false })
 	}
 
 	public async close(): Promise<void> {
-		if (this.#exited ||
-			((await this.#pty.then(async pty => pty.shell).catch(() => null))
+		if (!this.#running ||
+			((await this.pty.then(async pty => pty.shell).catch(() => null))
 				?.kill() ?? true)) {
 			this.terminal.dispose()
 			return

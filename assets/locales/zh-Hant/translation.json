@@ -6,13 +6,21 @@
 		"open-terminal-integrated-current": "在整合式終端開啟目前目錄"
 	},
 	"components": {
+		"editable-list": {
+			"append": "後置",
+			"name": "第{{- count}}",
+			"prepend": "前置",
+			"remove": "刪除"
+		},
 		"find": {
 			"search-results": "{{- index}}/{{- count}}",
 			"too-many-search-results": "?/1000+"
 		},
 		"terminal": {
 			"display-name": "終端：{{- executable}}",
-			"restored-history": "\r\n * 已還原於{{- time}}的歷史\r\n"
+			"restored-history": "\r\n * 已還原於{{- time}}的歷史\r\n",
+			"unknown-profile-name": "不明",
+			"unsupported-profile": "不支持的配置：\r\n{{- profile}}\r\n"
 		}
 	},
 	"errors": {
@@ -22,8 +30,7 @@
 		"failed-to-kill-pseudoterminal": "終止偽終端失敗",
 		"no-python-to-start-unix-pseudoterminal": "沒有Python來啟動Unix偽終端",
 		"resizer-disabled": "終端縮放程式已禁用",
-		"resizer-exited-unexpectedly": "終端縮放程式意外退出：{{- code}}",
-		"unsupported-platform": "不支持此平台"
+		"resizer-exited-unexpectedly": "終端縮放程式意外退出：{{- code}}"
 	},
 	"menus": {
 		"open-terminal-external": "在外部終端開啟",
@@ -36,6 +43,7 @@
 	},
 	"name": "終端",
 	"notices": {
+		"no-default-profile": "沒有類型「{{- type}}」的默認配置",
 		"spawning-terminal": "終端啟動中：{{- executable}}",
 		"terminal-exited": "終端已退出：{{- code}}"
 	},
@@ -43,11 +51,8 @@
 		"add-to-command": "加入至命令",
 		"add-to-context-menu": "加入至右鍵選單",
 		"advanced-settings": "高級設置",
-		"enable-Windows-conhost-workaround": "啟用Microsoft Windows「conhost.exe」解決方法",
-		"enable-Windows-conhost-workaround-description": "如果執行「conhost.exe」沒有創建視窗，請禁用。無保證這會起作用。",
 		"error-notice-timeout": "錯誤通知超時（秒）",
 		"error-notice-timeout-description": "設為0秒是無超時。設為負數以禁用通知。",
-		"executables": "執行檔",
 		"hide-status-bar": "隱藏狀態欄",
 		"hide-status-bar-options": {
 			"never": "從不",
@@ -58,12 +63,39 @@
 		"language": "語言",
 		"language-default": "使用應用程式設定",
 		"language-description": "僅適用於此外掛程式。標有🚧的語言需要您幫助來翻譯！",
+		"list-description_other": "有{{- count}}項項目。",
+		"list-description_zero": "沒有項目。",
 		"notice-timeout": "通知超時（秒）",
 		"notice-timeout-description": "設為0秒是無超時。設為負數以禁用通知。",
 		"preferred-renderer": "首選渲染器",
-		"python-executable": "Python執行檔",
-		"python-executable-description": "於Unix啟動整合式終端所需要的。清除文字域以禁用Python。",
-		"python-executable-placeholder": "（已禁用）",
+		"profile": {
+			"external": {
+				"arguments": "參數",
+				"executable": "執行檔"
+			},
+			"integrated": {
+				"arguments": "參數",
+				"enable-Windows-conhost-workaround": "啟用Microsoft Windows「conhost.exe」解決方法",
+				"enable-Windows-conhost-workaround-description": "如果執行「conhost.exe」沒有創建視窗，請禁用。無保證這會起作用。",
+				"executable": "執行檔",
+				"python-executable": "Python執行檔",
+				"python-executable-description": "於Unix啟動整合式終端所需要的。清除文字域以禁用Python。",
+				"python-executable-placeholder": "（已禁用）"
+			},
+			"invalid": {
+				"data": "數據"
+			},
+			"name": "名稱",
+			"not-found": "配置文件「{{- id}}」不存在。",
+			"title": "{{- nameOrID}}",
+			"type": "類型"
+		},
+		"profile-list": {
+			"description": "{{- id}}",
+			"name": "{{- profile.name}}",
+			"title": "配置"
+		},
+		"profiles": "配置",
 		"reset": "重設",
 		"reset-all": "重設全部"
 	},
@@ -73,14 +105,17 @@
 			"linux": "Linux",
 			"win32": "Microsoft Windows"
 		},
+		"profiles": {
+			"": "空白",
+			"console": "控制台",
+			"external": "外部",
+			"integrated": "整合式",
+			"invalid": "無效"
+		},
 		"renderers": {
 			"canvas": "畫布",
 			"dom": "文件物件模型",
 			"webgl": "WebGL"
-		},
-		"terminals": {
-			"external": "外部",
-			"integrated": "整合式"
 		}
 	}
 }

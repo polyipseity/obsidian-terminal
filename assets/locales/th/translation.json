@@ -6,13 +6,24 @@
 		"open-terminal-integrated-current": "Open current folder in integrated terminal"
 	},
 	"components": {
+		"editable-list": {
+			"append": "Append",
+			"name_few": "{{- count}}rd",
+			"name_one": "{{- count}}st",
+			"name_other": "{{- count}}th",
+			"name_two": "{{- count}}nd",
+			"prepend": "Prepend",
+			"remove": "Remove"
+		},
 		"find": {
 			"search-results": "{{- index}}/{{- count}}",
 			"too-many-search-results": "?/1000+"
 		},
 		"terminal": {
 			"display-name": "Terminal: {{- executable}}",
-			"restored-history": "\r\n * Restored history at {{- time}}\r\n"
+			"restored-history": "\r\n * Restored history at {{- time}}\r\n",
+			"unknown-profile-name": "Unknown",
+			"unsupported-profile": "Unsupported profile:\r\n{{- profile}}\r\n"
 		}
 	},
 	"errors": {
@@ -22,8 +33,7 @@
 		"failed-to-kill-pseudoterminal": "Failed to kill pseudoterminal",
 		"no-python-to-start-unix-pseudoterminal": "No Python to start Unix pseudoterminal",
 		"resizer-disabled": "Terminal resizer disabled",
-		"resizer-exited-unexpectedly": "Terminal resizer exited unexpectedly: {{- code}}",
-		"unsupported-platform": "Unsupported platform"
+		"resizer-exited-unexpectedly": "Terminal resizer exited unexpectedly: {{- code}}"
 	},
 	"menus": {
 		"open-terminal-external": "Open in external terminal",
@@ -36,6 +46,7 @@
 	},
 	"name": "Terminal",
 	"notices": {
+		"no-default-profile": "No default profile for type '{{- type}}'",
 		"spawning-terminal": "Spawning terminal: {{- executable}}",
 		"terminal-exited": "Terminal exited: {{- code}}"
 	},
@@ -43,11 +54,8 @@
 		"add-to-command": "Add to command",
 		"add-to-context-menu": "Add to context menu",
 		"advanced-settings": "Advanced settings",
-		"enable-Windows-conhost-workaround": "Enable Microsoft Windows 'conhost.exe' workaround",
-		"enable-Windows-conhost-workaround-description": "Disable if running 'conhost.exe' does not create a window. No guarantees this will work.",
 		"error-notice-timeout": "Error notice timeout (s)",
 		"error-notice-timeout-description": "Set to 0 s for no timeout. Set to negative to disable notice.",
-		"executables": "Executables",
 		"hide-status-bar": "Hide status bar",
 		"hide-status-bar-options": {
 			"never": "Never",
@@ -58,12 +66,40 @@
 		"language": "Language",
 		"language-default": "Use app setting",
 		"language-description": "Applies to this plugin only. Languages with 🚧 need your help with translation!",
+		"list-description_one": "There is {{- count}} item.",
+		"list-description_other": "There are {{- count}} items.",
+		"list-description_zero": "There are no items.",
 		"notice-timeout": "Notice timeout (s)",
 		"notice-timeout-description": "Set to 0 s for no timeout. Set to negative to disable notice.",
 		"preferred-renderer": "Preferred renderer",
-		"python-executable": "Python executable",
-		"python-executable-description": "Required on Unix to start integrated terminal. Clear field to disable Python.",
-		"python-executable-placeholder": "(Disabled)",
+		"profile": {
+			"external": {
+				"arguments": "Arguments",
+				"executable": "Executable"
+			},
+			"integrated": {
+				"arguments": "Arguments",
+				"enable-Windows-conhost-workaround": "Enable Microsoft Windows 'conhost.exe' workaround",
+				"enable-Windows-conhost-workaround-description": "Disable if running 'conhost.exe' does not create a window. No guarantees this will work.",
+				"executable": "Executable",
+				"python-executable": "Python executable",
+				"python-executable-description": "Required on Unix to start integrated terminal. Clear field to disable Python.",
+				"python-executable-placeholder": "(Disabled)"
+			},
+			"invalid": {
+				"data": "Data"
+			},
+			"name": "Name",
+			"not-found": "Profile '{{- id}}' does not exist.",
+			"title": "{{- nameOrID}}",
+			"type": "Type"
+		},
+		"profile-list": {
+			"description": "{{- id}}",
+			"name": "{{- profile.name}}",
+			"title": "Profiles"
+		},
+		"profiles": "Profiles",
 		"reset": "Reset",
 		"reset-all": "Reset all"
 	},
@@ -73,14 +109,17 @@
 			"linux": "Linux",
 			"win32": "Microsoft Windows"
 		},
+		"profiles": {
+			"": "Empty",
+			"console": "Console",
+			"external": "External",
+			"integrated": "Integrated",
+			"invalid": "Invalid"
+		},
 		"renderers": {
 			"canvas": "canvas",
 			"dom": "DOM",
 			"webgl": "WebGL"
-		},
-		"terminals": {
-			"external": "External",
-			"integrated": "Integrated"
 		}
 	}
 }

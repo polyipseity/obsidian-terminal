@@ -10,8 +10,14 @@ import type { ChildProcess } from "node:child_process"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
 
+export type Equals<X, Y> =
+	(<T>() => T extends X ? true : false) extends
+	(<T>() => T extends Y ? true : false) ? true : false
 export type Immutable<T> = { readonly [key in keyof T]: Immutable<T[key]> }
 export type Mutable<T> = { -readonly [key in keyof T]: Mutable<T[key]> }
+export type NonReadonly<T> = { -readonly [key in keyof T]: T[key] }
+export type RecursiveRequired<T> =
+	{ [key in keyof T]-?: RecursiveRequired<T[key]> }
 export type Sized<T extends readonly unknown[]> =
 	number extends T["length"] ? never : T
 
@@ -235,6 +241,10 @@ export function insertAt<T>(
 	...items: readonly T[]
 ): void {
 	self.splice(index, 0, ...items)
+}
+
+export function length(obj: object): number {
+	return Object.keys(obj).length
 }
 
 export function notice(

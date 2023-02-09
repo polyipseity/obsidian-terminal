@@ -1,3 +1,4 @@
+import { ConsolePty, type ShellPtyArguments, TerminalPty, TextPty } from "./pty"
 import { Direction, type Params } from "../components/find"
 import {
 	DisposerAddon,
@@ -15,6 +16,7 @@ import {
 	type WorkspaceLeaf,
 } from "obsidian"
 import {
+	type NonReadonly,
 	PLATFORM,
 	UnnamespacedID,
 	anyToError,
@@ -36,9 +38,9 @@ import { DEFAULT_LANGUAGE } from "assets/locales"
 import FindComponent from "../components/find.svelte"
 import { LigaturesAddon } from "xterm-addon-ligatures"
 import { SearchAddon } from "xterm-addon-search"
+import { Settings } from "sources/settings/data"
 import { TERMINAL_EXIT_SUCCESS } from "../magic"
 import type { TerminalPlugin } from "../main"
-import { TerminalPty } from "./pty"
 import { Unicode11Addon } from "xterm-addon-unicode11"
 import { WebLinksAddon } from "xterm-addon-web-links"
 import { WebglAddon } from "xterm-addon-webgl"
@@ -51,9 +53,8 @@ export class TerminalView extends ItemView {
 	#focus0 = false
 	readonly #state: TerminalView.State = {
 		__type: TerminalView.State.TYPE,
-		args: [],
 		cwd: "",
-		executable: "",
+		profile: Settings.Profile.DEFAULTS.invalid,
 	}
 
 	public constructor(
@@ -65,6 +66,10 @@ export class TerminalView extends ItemView {
 
 	get #emulator(): TerminalView.EMULATOR | null {
 		return this.#emulator0
+	}
+
+	get #profile(): Settings.Profile {
+		return this.#state.profile
 	}
 
 	get #find(): FindComponent | null {
@@ -85,56 +90,10 @@ export class TerminalView extends ItemView {
 				plugin,
 			)
 		})
-		if (val !== null) {
-			const { app, language, settings } = plugin,
-				{ i18n } = language,
-				{ terminal, addons } = val,
-				{ disposer, renderer, search } = addons,
-				{ requestSaveLayout } = app.workspace
-			val.onExit
-				.then(code => {
-					notice2(
-						() => i18n.t("notices.terminal-exited", { code }),
-						inSet(TERMINAL_EXIT_SUCCESS, code)
-							? settings.noticeTimeout
-							: settings.errorNoticeTimeout,
-						plugin,
-					)
-				}, error => {
-					printError(anyToError(error), () =>
-						i18n.t("errors.error-spawning-terminal"), plugin)
-				})
-			terminal.onWriteParsed(requestSaveLayout)
-			terminal.onResize(requestSaveLayout)
-			terminal.unicode.activeVersion = "11"
-			disposer.push(plugin.on(
-				"mutate-settings",
-				settings0 => settings0.preferredRenderer,
-				cur => { renderer.use(cur) },
-			))
-			renderer.use(settings.preferredRenderer)
-			disposer.push(() => { this.#find?.$set({ searchResult: "" }) })
-			search.onDidChangeResults(results => {
-				if (typeof results === "undefined") {
-					this.#find?.$set({
-						searchResult: i18n.t("components.find.too-many-search-results"),
-					})
-					return
-				}
-				const { resultIndex, resultCount } = results
-				this.#find?.$set({
-					searchResult: i18n.t("components.find.search-results", {
-						replace: {
-							count: resultCount,
-							index: resultIndex + 1,
-						},
-					}),
-				})
-			})
-			if (this.#focus) { terminal.focus() } else { terminal.blur() }
-			val.resize().catch(error => { console.warn(error) })
-		}
 		this.#emulator0 = val
+		if (val === null) { return }
+		const { terminal } = val
+		if (this.#focus) { terminal.focus() } else { terminal.blur() }
 	}
 
 	set #find(val: FindComponent | null) {
@@ -146,6 +105,11 @@ export class TerminalView extends ItemView {
 		const term = this.#emulator?.terminal
 		if (val) { term?.focus() } else { term?.blur() }
 		this.#focus0 = val
+	}
+
+	set #profile(value: Settings.Profile) {
+		this.#state.profile = value
+		this.#emulator = null
 	}
 
 	public override async setState(
@@ -179,7 +143,7 @@ export class TerminalView extends ItemView {
 		return this.plugin.language
 			.i18n.t(
 				`components.${TerminalView.type.id}.display-name`,
-				{ executable: this.#getExecutableBasename() },
+				{ executable: this.#displayName() },
 			)
 	}
 
@@ -264,7 +228,7 @@ export class TerminalView extends ItemView {
 							onlySelection: false,
 						}),
 						"text/html; charset=UTF-8;",
-						`${this.#getExecutableBasename()}.html`,
+						`${this.#displayName()}.html`,
 					)
 				}))
 	}
@@ -306,44 +270,137 @@ export class TerminalView extends ItemView {
 				try {
 					const { plugin } = this,
 						state = this.#state,
-						{ language } = plugin,
-						{ i18n } = language
-					this.#emulator = new TerminalView.EMULATOR(
-						plugin,
-						contentEl,
-						terminal => {
-							if (typeof state.serial !== "undefined") {
-								terminal.write(`${i18n.t(
-									"components.terminal.restored-history",
-									{ time: new Date().toLocaleString(language.language) },
-								)}\r\n`)
-							}
-							if (TerminalPty.PLATFORM_PTY === null) {
-								throw new Error(i18n.t("errors.unsupported-platform"))
-							}
-							return new TerminalPty.PLATFORM_PTY(
+						{ cwd, serial } = state,
+						{ app, language, settings } = plugin,
+						{ i18n } = language,
+						{ requestSaveLayout } = app.workspace,
+						protodisposer: (() => void)[] = [],
+						emulator = new TerminalView.EMULATOR(
+							plugin,
+							contentEl,
+							terminal => {
+								if (typeof serial !== "undefined") {
+									terminal.write(`${i18n.t(
+										"components.terminal.restored-history",
+										{ time: new Date().toLocaleString(language.language) },
+									)}\r\n`)
+								}
+								const profile = this.#profile,
+									{ type } = profile
+								switch (type) {
+									case "": {
+										return new TextPty()
+									}
+									case "console": {
+										return new ConsolePty()
+									}
+									case "integrated": {
+										if (TerminalPty.PLATFORM_PTY === null) { break }
+										const
+											{
+												args,
+												platforms,
+												enableWindowsConhostWorkaround,
+												executable,
+												pythonExecutable,
+											} = profile,
+											platforms0: Readonly<Record<string, boolean>> = platforms
+										if (!(platforms0[PLATFORM] ?? false)) { break }
+										const ptyArgs: NonReadonly<ShellPtyArguments> = {
+											args,
+											cwd,
+											executable,
+										}
+										if (typeof enableWindowsConhostWorkaround !== "undefined") {
+											ptyArgs.enableWindowsConhostWorkaround =
+												enableWindowsConhostWorkaround
+										}
+										if (typeof pythonExecutable !== "undefined") {
+											ptyArgs.pythonExecutable = pythonExecutable
+										}
+										return new TerminalPty.PLATFORM_PTY(plugin, ptyArgs)
+									}
+									case "external":
+									// Fallthrough
+									case "invalid": {
+										break
+									}
+									default:
+										throw new TypeError(type)
+								}
+								const pty = new TextPty(i18n
+									.t("components.terminal.unsupported-profile", {
+										profile: JSON.stringify(profile),
+									}))
+								protodisposer.push(language.onChangeLanguage.listen(() => {
+									pty.text =
+										i18n.t("components.terminal.unsupported-profile", {
+											profile: JSON.stringify(profile),
+										})
+								}))
+								return pty
+							},
+							serial,
+							{
+								allowProposedApi: true,
+							},
+							{
+								disposer: new DisposerAddon(...protodisposer),
+								ligatures: new LigaturesAddon({}),
+								renderer: new RendererAddon(
+									() => new CanvasAddon(),
+									() => new WebglAddon(false),
+								),
+								search: new SearchAddon(),
+								unicode11: new Unicode11Addon(),
+								webLinks: new WebLinksAddon((_0, uri) => openExternal(uri), {}),
+							},
+						),
+						{ pty, terminal, addons } = emulator,
+						{ disposer, renderer, search } = addons
+					pty.then(async pty0 => pty0.onExit)
+						.then(code => {
+							if (typeof code === "undefined") { return }
+							notice2(
+								() => i18n.t("notices.terminal-exited", { code }),
+								inSet(TERMINAL_EXIT_SUCCESS, code)
+									? settings.noticeTimeout
+									: settings.errorNoticeTimeout,
 								plugin,
-								state.executable,
-								state.cwd,
-								state.args,
 							)
-						},
-						state.serial,
-						{
-							allowProposedApi: true,
-						},
-						{
-							disposer: new DisposerAddon(),
-							ligatures: new LigaturesAddon({}),
-							renderer: new RendererAddon(
-								() => new CanvasAddon(),
-								() => new WebglAddon(false),
-							),
-							search: new SearchAddon(),
-							unicode11: new Unicode11Addon(),
-							webLinks: new WebLinksAddon((_0, uri) => openExternal(uri), {}),
-						},
-					)
+						}, error => {
+							printError(anyToError(error), () =>
+								i18n.t("errors.error-spawning-terminal"), plugin)
+						})
+					terminal.onWriteParsed(requestSaveLayout)
+					terminal.onResize(requestSaveLayout)
+					terminal.unicode.activeVersion = "11"
+					disposer.push(plugin.on(
+						"mutate-settings",
+						settings0 => settings0.preferredRenderer,
+						cur => { renderer.use(cur) },
+					))
+					renderer.use(settings.preferredRenderer)
+					disposer.push(() => { this.#find?.$set({ searchResult: "" }) })
+					search.onDidChangeResults(results => {
+						if (typeof results === "undefined") {
+							this.#find?.$set({
+								searchResult: i18n.t("components.find.too-many-search-results"),
+							})
+							return
+						}
+						const { resultIndex, resultCount } = results
+						this.#find?.$set({
+							searchResult: i18n.t("components.find.search-results", {
+								replace: {
+									count: resultCount,
+									index: resultIndex + 1,
+								},
+							}),
+						})
+					})
+					emulator.resize().catch(error => { console.warn(error) })
+					this.#emulator = emulator
 				} finally {
 					obsr0.disconnect()
 				}
@@ -351,9 +408,20 @@ export class TerminalView extends ItemView {
 		this.register(() => { obsr.disconnect() })
 	}
 
-	#getExecutableBasename(): string {
-		const { executable } = this.#state
-		return basename(executable, extname(executable))
+	#displayName(): string {
+		const { profile } = this.#state
+		if ("executable" in profile) {
+			const { executable } = profile
+			if (typeof executable === "string") {
+				return basename(executable, extname(executable))
+			}
+		}
+		if ("name" in profile) {
+			const { name } = profile
+			if (typeof name === "string") { return name }
+		}
+		return this.plugin.language.i18n
+			.t("components.terminal.unknown-profile-name")
 	}
 
 	#hidesStatusBar(): boolean {
@@ -380,9 +448,8 @@ export namespace TerminalView {
 	}
 	export interface State {
 		readonly __type: typeof State.TYPE
-		readonly executable: string
 		readonly cwd: string
-		readonly args: readonly string[]
+		profile: Settings.Profile
 		serial?: XtermTerminalEmulator.State
 	}
 	export namespace State {
@@ -409,7 +476,7 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 	)
 
 	if (inSet(TerminalPty.SUPPORTED_PLATFORMS, PLATFORM)) {
-		const platform = PLATFORM,
+		const
 			adapter = app.vault.adapter as FileSystemAdapter,
 			spawnTerminal = (
 				cwd: string,
@@ -417,29 +484,37 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 			): void => {
 				(async (): Promise<void> => {
 					try {
-						const executable = settings.executables[platform]
+						const { profiles, noticeTimeout, errorNoticeTimeout } = settings
 						switch (terminal) {
 							case "external": {
+								const profile =
+									Settings.Profile.defaultOfType(terminal, profiles)
+								if (profile === null) { break }
+								const { executable, args } = profile
 								notice2(
 									() => i18n.t(
 										"notices.spawning-terminal",
-										{ executable: executable.extExe },
+										{ executable },
 									),
-									settings.noticeTimeout,
+									noticeTimeout,
 									plugin,
 								)
 								await spawnExternalTerminalEmulator(
-									executable.extExe,
+									executable,
 									cwd,
-									executable.extArgs,
+									args,
 								)
-								break
+								return
 							}
 							case "integrated": {
+								const profile =
+									Settings.Profile.defaultOfType(terminal, profiles)
+								if (profile === null) { break }
+								const { executable } = profile
 								notice2(
 									() => i18n.t(
 										"notices.spawning-terminal",
-										{ executable: executable.intExe },
+										{ executable },
 									),
 									settings.noticeTimeout,
 									plugin,
@@ -459,17 +534,26 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 										active: true,
 										state: {
 											__type: TerminalView.State.TYPE,
-											args: executable.intArgs,
 											cwd,
-											executable: executable.intExe,
+											profile,
 										} satisfies TerminalView.State,
 										type: TerminalView.type.namespaced(plugin),
 									})
-								break
+								return
 							}
 							default:
 								throw new TypeError(terminal)
 						}
+						notice2(
+							() => i18n.t(
+								"notices.no-default-profile",
+								{
+									type: i18n.t(`types.profiles.${terminal}`),
+								},
+							),
+							errorNoticeTimeout,
+							plugin,
+						)
 					} catch (error) {
 						printError(
 							anyToError(error),

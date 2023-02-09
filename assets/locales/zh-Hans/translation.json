@@ -5,6 +5,24 @@
 		"open-terminal-integrated-root": "在整合式终端开啟根目録",
 		"open-terminal-integrated-current": "在整合式终端开啟目前目録"
 	},
+	"components": {
+		"editable-list": {
+			"append": "后置",
+			"name": "第{{- count}}",
+			"prepend": "前置",
+			"remove": "删除"
+		},
+		"find": {
+			"search-results": "{{- index}}/{{- count}}",
+			"too-many-search-results": "?/1000+"
+		},
+		"terminal": {
+			"display-name": "终端：{{- executable}}",
+			"restored-history": "\r\n * 已还原于{{- time}}的历史\r\n",
+			"unknown-profile-name": "不明",
+			"unsupported-profile": "不支持的配置：\r\n{{- profile}}\r\n"
+		}
+	},
 	"errors": {
 		"cannot-find-status-bar": "找不到状态栏",
 		"error-spawning-terminal": "啟动终端时出错",
@@ -12,18 +30,7 @@
 		"failed-to-kill-pseudoterminal": "终止伪终端失败",
 		"no-python-to-start-unix-pseudoterminal": "没有Python来启动Unix伪终端",
 		"resizer-disabled": "终端缩放迸程已禁用",
-		"resizer-exited-unexpectedly": "终端缩放迸程意外退出：{{- code}}",
-		"unsupported-platform": "不支持此平台"
-	},
-	"components": {
-		"find": {
-			"search-results": "{{- index}}/{{- count}}",
-			"too-many-search-results": "?/1000+"
-		},
-		"terminal": {
-			"display-name": "终端：{{- executable}}",
-			"restored-history": "\r\n * 已还原于{{- time}}的历史\r\n"
-		}
+		"resizer-exited-unexpectedly": "终端缩放迸程意外退出：{{- code}}"
 	},
 	"menus": {
 		"open-terminal-external": "在外部终端开啟",
@@ -36,6 +43,7 @@
 	},
 	"name": "终端",
 	"notices": {
+		"no-default-profile": "没有类型「{{- type}}」的默认配置",
 		"spawning-terminal": "终端啟动中：{{- executable}}",
 		"terminal-exited": "终端已退出：{{- code}}"
 	},
@@ -43,11 +51,8 @@
 		"add-to-command": "加入至命令",
 		"add-to-context-menu": "加入至右键选单",
 		"advanced-settings": "高级设置",
-		"enable-Windows-conhost-workaround": "启用Microsoft Windows「conhost.exe」解决方法",
-		"enable-Windows-conhost-workaround-description": "如果执行「conhost.exe」没有创建视窗，请禁用。无保证这会起作用。",
 		"error-notice-timeout": "错误通知超时（秒）",
 		"error-notice-timeout-description": "设为0秒是无超时。设为负数以禁用通知。",
-		"executables": "可执行文件",
 		"hide-status-bar": "隐藏状态栏",
 		"hide-status-bar-options": {
 			"never": "从不",
@@ -58,12 +63,39 @@
 		"language": "语言",
 		"language-default": "使用应用设定",
 		"language-description": "仅适用於此插件。标有🚧的语言需要您帮助来翻译！",
+		"list-description_other": "有{{- count}}項項目。",
+		"list-description_zero": "沒有項目。",
 		"notice-timeout": "通知超时（秒）",
 		"notice-timeout-description": "设为0秒是无超时。设为负数以禁用通知。",
 		"preferred-renderer": "首选渲染器",
-		"python-executable": "Python可执行文件",
-		"python-executable-description": "于Unix启动整合式终端所需要的。清除文本框以禁用Python。",
-		"python-executable-placeholder": "（已禁用）",
+		"profile": {
+			"external": {
+				"arguments": "参数",
+				"executable": "可执行文件"
+			},
+			"integrated": {
+				"arguments": "参数",
+				"enable-Windows-conhost-workaround": "启用Microsoft Windows「conhost.exe」解决方法",
+				"enable-Windows-conhost-workaround-description": "如果执行「conhost.exe」没有创建视窗，请禁用。无保证这会起作用。",
+				"executable": "可执行文件",
+				"python-executable": "Python可执行文件",
+				"python-executable-description": "于Unix启动整合式终端所需要的。清除文本框以禁用Python。",
+				"python-executable-placeholder": "（已禁用）"
+			},
+			"invalid": {
+				"data": "数据"
+			},
+			"name": "名称",
+			"not-found": "配置文件「{{- id}}」不存在。",
+			"title": "{{- nameOrID}}",
+			"type": "类型"
+		},
+		"profile-list": {
+			"description": "{{- id}}",
+			"name": "{{- profile.name}}",
+			"title": "配置"
+		},
+		"profiles": "配置",
 		"reset": "重设",
 		"reset-all": "重设全部"
 	},
@@ -73,14 +105,17 @@
 			"linux": "Linux",
 			"win32": "Microsoft Windows"
 		},
+		"profiles": {
+			"": "空白",
+			"console": "控制台",
+			"external": "外部",
+			"integrated": "整合式",
+			"invalid": "无效"
+		},
 		"renderers": {
 			"canvas": "画布",
 			"dom": "文件物件模型",
 			"webgl": "WebGL"
-		},
-		"terminals": {
-			"external": "外部",
-			"integrated": "整合式"
 		}
 	}
 }

@@ -1,5 +1,10 @@
 {
 	"components": {
+		"editable-list": {
+			"append-icon": "plus",
+			"prepend-icon": "plus",
+			"remove-icon": "minus"
+		},
 		"find": {
 			"case-sensitive-icon": "uppercase-lowercase-a",
 			"close-icon": "x",
@@ -24,15 +29,42 @@
 	"settings": {
 		"add-to-command-icon": "terminal",
 		"add-to-context-menu-icon": "menu",
-		"enable-Windows-conhost-workaround-icon": "code",
 		"error-notice-timeout-icon": "timer",
-		"executable-list-external-icon": "terminal-square",
-		"executable-list-integrated-icon": "terminal",
 		"hide-status-bar-icon": "eye-off",
 		"language-icon": "languages",
 		"notice-timeout-icon": "timer",
 		"preferred-renderer-icon": "brush",
-		"python-executable-icon": "file-cog",
+		"profile": {
+			"external": {
+				"arguments-edit-icon": "list",
+				"arguments-icon": "form-input",
+				"executable-icon": "file-terminal"
+			},
+			"integrated": {
+				"arguments-edit-icon": "list",
+				"arguments-icon": "form-input",
+				"enable-Windows-conhost-workaround-icon": "code",
+				"executable-icon": "file-terminal",
+				"python-executable-icon": "file-cog"
+			},
+			"invalid": {
+				"data-icon": "curly-braces"
+			},
+			"name-icon": "text-cursor-input",
+			"type-icon": "type"
+		},
+		"profile-list": {
+			"edit-icon": "edit"
+		},
+		"profiles-edit-icon": "list",
+		"profiles-icon": "terminal",
 		"reset-icon": "reset"
+	},
+	"types": {
+		"platforms": {
+			"darwin-icon": "terminal:macos",
+			"linux-icon": "terminal:linux",
+			"win32-icon": "terminal:windows"
+		}
 	}
 }
