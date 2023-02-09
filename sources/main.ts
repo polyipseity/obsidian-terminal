@@ -7,12 +7,13 @@ import {
 	cloneAsMutable,
 	deepFreeze,
 } from "./utils/util"
-import { TerminalView, registerTerminal } from "./terminal/view"
 import { LanguageManager } from "./i18n"
 import { SAVE_SETTINGS_TIMEOUT } from "./magic"
 import { SettingTab } from "./settings/tab"
 import { StatusBarHider } from "./status-bar"
-import { registerIcons } from "./icons"
+import { TerminalView } from "./terminal/view"
+import { loadIcons } from "./icons"
+import { loadTerminal } from "./terminal/load"
 
 export class TerminalPlugin extends Plugin {
 	public readonly language = new LanguageManager(this)
@@ -79,11 +80,11 @@ export class TerminalPlugin extends Plugin {
 					this.mutateSettings(this.loadSettings.bind(this)),
 					this.language.load(),
 				])
-				registerIcons(this)
+				loadIcons(this)
 				await init
 				this.addSettingTab(new SettingTab(this))
 				this.statusBarHider.load()
-				registerTerminal(this)
+				loadTerminal(this)
 			} catch (error) {
 				console.error(error)
 			}
