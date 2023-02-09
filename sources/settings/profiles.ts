@@ -11,10 +11,10 @@ import {
 } from "sources/utils/util"
 import { linkSetting, resetButton, setTextToEnum } from "./util"
 import { PROFILE_PRESETS } from "./profile-presets"
+import { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import { Setting } from "obsidian"
 import { Settings } from "./data"
 import type { TerminalPlugin } from "sources/main"
-import { TerminalPty } from "sources/terminal/pty"
 
 export class ProfileModal extends ListModal {
 	static #mutateTypePreserveKeys = deepFreeze(["name"] as const)
@@ -200,7 +200,7 @@ export class ProfileModal extends ListModal {
 						}),
 						i18n.t(`asset:settings.profile.${type}.arguments-icon`),
 					))
-				for (const platform of TerminalPty.SUPPORTED_PLATFORMS) {
+				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
 					new Setting(listEl)
 						.setName(i18n.t(`types.platforms.${platform}`))
 						.addToggle(linkSetting(
@@ -280,7 +280,7 @@ export class ProfileModal extends ListModal {
 						}),
 						i18n.t(`asset:settings.profile.${type}.arguments-icon`),
 					))
-				for (const platform of TerminalPty.SUPPORTED_PLATFORMS) {
+				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
 					new Setting(listEl)
 						.setName(i18n.t(`types.platforms.${platform}`))
 						.addToggle(linkSetting(

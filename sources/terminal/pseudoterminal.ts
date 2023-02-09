@@ -19,7 +19,7 @@ import type { Terminal } from "xterm"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
 import { dynamicRequire } from "../bundle"
-import unixPtyPy from "./unix_pty.py"
+import unixPseudoterminalPy from "./unix_pseudoterminal.py"
 import win32ResizerPy from "./win32_resizer.py"
 
 const
@@ -34,14 +34,14 @@ function clearTerminal(terminal: Terminal): void {
 	terminal.write(`${"\u001b[2K\n".repeat(terminal.rows - 1)}\u001b[2K\u001b[H`)
 }
 
-export interface TerminalPty {
+export interface Pseudoterminal {
 	readonly shell?: Promise<PipedChildProcess>
 	readonly onExit?: Promise<NodeJS.Signals | number>
 	readonly pipe: (terminal: Terminal) => Promise<void> | void
 	readonly resize?: (columns: number, rows: number) => Promise<void> | void
 }
 
-export class TextPty implements TerminalPty {
+export class TextPseudoterminal implements Pseudoterminal {
 	readonly #terminals: Terminal[] = []
 	#text: string
 
@@ -68,7 +68,7 @@ export class TextPty implements TerminalPty {
 	}
 }
 
-export class ConsolePty implements TerminalPty {
+export class ConsolePseudoterminal implements Pseudoterminal {
 	// Implement me!
 
 	readonly #terminals: Terminal[] = []
@@ -79,7 +79,7 @@ export class ConsolePty implements TerminalPty {
 	}
 }
 
-export interface ShellPtyArguments {
+export interface ShellPseudoterminalArguments {
 	readonly executable: string
 	readonly cwd?: string
 	readonly args?: readonly string[]
@@ -87,7 +87,7 @@ export interface ShellPtyArguments {
 	readonly enableWindowsConhostWorkaround?: boolean
 }
 
-class WindowsTerminalPty implements TerminalPty {
+class WindowsPseudoterminal implements Pseudoterminal {
 	public readonly shell
 	public readonly conhost
 	public readonly onExit
@@ -101,7 +101,7 @@ class WindowsTerminalPty implements TerminalPty {
 			executable,
 			enableWindowsConhostWorkaround,
 			pythonExecutable,
-		}: ShellPtyArguments,
+		}: ShellPseudoterminalArguments,
 	) {
 		this.conhost = enableWindowsConhostWorkaround ?? false
 		const { conhost } = this,
@@ -160,11 +160,11 @@ class WindowsTerminalPty implements TerminalPty {
 									: [] as const,
 								"C:\\Windows\\System32\\cmd.exe",
 								"/C",
-								`${WindowsTerminalPty.#escapeArgument(executable)} ${(
+								`${WindowsPseudoterminal.#escapeArgument(executable)} ${(
 									args ?? [])
-									.map(arg => WindowsTerminalPty.#escapeArgument(arg))
+									.map(arg => WindowsPseudoterminal.#escapeArgument(arg))
 									.join(" ")
-								} & call echo %^ERRORLEVEL% >${WindowsTerminalPty
+								} & call echo %^ERRORLEVEL% >${WindowsPseudoterminal
 									.#escapeArgument(codeTmp.name)}`,
 							] as const),
 							ret = await spawnPromise(async () => (await childProcess).spawn(
@@ -289,7 +289,7 @@ class WindowsTerminalPty implements TerminalPty {
 	}
 }
 
-class UnixTerminalPty implements TerminalPty {
+class UnixPseudoterminal implements Pseudoterminal {
 	public readonly shell
 	public readonly onExit
 
@@ -300,7 +300,7 @@ class UnixTerminalPty implements TerminalPty {
 			cwd,
 			executable,
 			pythonExecutable,
-		}: ShellPtyArguments,
+		}: ShellPseudoterminalArguments,
 	) {
 		const { language } = plugin
 		this.shell = spawnPromise(async () => {
@@ -310,7 +310,7 @@ class UnixTerminalPty implements TerminalPty {
 			}
 			return (await childProcess).spawn(
 				pythonExecutable,
-				["-c", unixPtyPy, executable].concat(args ?? []),
+				["-c", unixPseudoterminalPy, executable].concat(args ?? []),
 				{
 					cwd,
 					env: {
@@ -361,15 +361,17 @@ class UnixTerminalPty implements TerminalPty {
 	}
 }
 
-export namespace TerminalPty {
-	export const PLATFORM_PTYS = Object.freeze({
-		darwin: UnixTerminalPty,
-		linux: UnixTerminalPty,
-		win32: WindowsTerminalPty,
+export namespace Pseudoterminal {
+	export const PLATFORM_PSEUDOTERMINALS = Object.freeze({
+		darwin: UnixPseudoterminal,
+		linux: UnixPseudoterminal,
+		win32: WindowsPseudoterminal,
 	} as const)
 	export const SUPPORTED_PLATFORMS =
-		typedKeys<["darwin", "linux", "win32"]>()(PLATFORM_PTYS)
+		typedKeys<["darwin", "linux", "win32"]>()(PLATFORM_PSEUDOTERMINALS)
 	export type SupportedPlatform = typeof SUPPORTED_PLATFORMS[number]
-	export const PLATFORM_PTY =
-		inSet(SUPPORTED_PLATFORMS, PLATFORM) ? PLATFORM_PTYS[PLATFORM] : null
+	export const PLATFORM_PSEUDOTERMINAL =
+		inSet(SUPPORTED_PLATFORMS, PLATFORM)
+			? PLATFORM_PSEUDOTERMINALS[PLATFORM]
+			: null
 }

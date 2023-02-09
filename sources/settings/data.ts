@@ -15,8 +15,8 @@ import { PROFILE_DEFAULTS, PROFILE_PRESETS } from "./profile-presets"
 import { genericTypeofGuard, primitiveOf } from "../utils/typeof"
 import { LANGUAGES } from "assets/locales"
 import type { Plugin } from "obsidian"
+import { Pseudoterminal } from "../terminal/pseudoterminal"
 import { RendererAddon } from "../terminal/emulator"
-import { TerminalPty } from "../terminal/pty"
 
 export interface Settings {
 	readonly language: Settings.DefaultableLanguage
@@ -104,13 +104,13 @@ export namespace Settings {
 			readonly type: "external"
 			readonly executable: string
 			readonly args: readonly string[]
-			readonly platforms: Platforms<TerminalPty.SupportedPlatform>
+			readonly platforms: Platforms<Pseudoterminal.SupportedPlatform>
 		}
 		export interface Integrated extends Base {
 			readonly type: "integrated"
 			readonly executable: string
 			readonly args: readonly string[]
-			readonly platforms: Platforms<TerminalPty.SupportedPlatform>
+			readonly platforms: Platforms<Pseudoterminal.SupportedPlatform>
 			readonly pythonExecutable: string
 			readonly enableWindowsConhostWorkaround?: boolean
 		}
@@ -305,7 +305,7 @@ export namespace Settings {
 										platforms: fixPlatforms(
 											Profile.DEFAULTS[type].platforms,
 											profile["platforms"] ?? {},
-											TerminalPty.SUPPORTED_PLATFORMS,
+											Pseudoterminal.SUPPORTED_PLATFORMS,
 										),
 										type,
 									} satisfies Required<Profile.External>
@@ -340,7 +340,7 @@ export namespace Settings {
 										platforms: fixPlatforms(
 											Profile.DEFAULTS[type].platforms,
 											profile["platforms"] ?? {},
-											TerminalPty.SUPPORTED_PLATFORMS,
+											Pseudoterminal.SUPPORTED_PLATFORMS,
 										),
 										pythonExecutable: fixTyped(
 											Profile.DEFAULTS[type],

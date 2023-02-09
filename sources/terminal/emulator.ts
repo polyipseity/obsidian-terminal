@@ -8,10 +8,10 @@ import { asyncDebounce, deepFreeze, spawnPromise } from "../utils/util"
 import type { CanvasAddon } from "xterm-addon-canvas"
 import type { ChildProcessByStdio } from "node:child_process"
 import { FitAddon } from "xterm-addon-fit"
+import type { Pseudoterminal } from "./pseudoterminal"
 import { SerializeAddon } from "xterm-addon-serialize"
 import { TERMINAL_RESIZE_TIMEOUT } from "../magic"
 import type { TerminalPlugin } from "../main"
-import type { TerminalPty } from "./pty"
 import type { WebglAddon } from "xterm-addon-webgl"
 import { debounce } from "obsidian"
 import { dynamicRequire } from "../bundle"
@@ -39,23 +39,23 @@ export async function spawnExternalTerminalEmulator(
 export class XtermTerminalEmulator<A> {
 	public readonly terminal
 	public readonly addons
-	public readonly pty
+	public readonly pseudoterminal
 	#running = true
 	readonly #resize = asyncDebounce(debounce(async (
 		resolve: (value: Promise<void> | void) => void,
 		reject: (reason?: unknown) => void,
 		columns: number,
 		rows: number,
-		mustResizePty: boolean,
+		mustResizePseudoterminal: boolean,
 	) => {
 		try {
 			try {
-				const pty = await this.pty
+				const pty = await this.pseudoterminal
 				if (typeof pty.resize !== "undefined") {
 					await pty.resize(columns, rows)
 				}
 			} catch (error) {
-				if (mustResizePty) { throw error }
+				if (mustResizePseudoterminal) { throw error }
 			}
 			this.terminal.resize(columns, rows)
 			resolve()
@@ -67,7 +67,8 @@ export class XtermTerminalEmulator<A> {
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
 		element: HTMLElement,
-		pty: (terminal: Terminal) => PromiseLike<TerminalPty> | TerminalPty,
+		pseudoterminal: (
+			terminal: Terminal) => PromiseLike<Pseudoterminal> | Pseudoterminal,
 		state?: XtermTerminalEmulator.State,
 		options?: ITerminalInitOnlyOptions & ITerminalOptions,
 		addons?: A,
@@ -87,18 +88,20 @@ export class XtermTerminalEmulator<A> {
 			terminal.resize(state.columns, state.rows)
 			terminal.write(state.data)
 		}
-		this.pty = (async (): Promise<TerminalPty> => {
-			const pty0 = await pty(terminal)
+		this.pseudoterminal = (async (): Promise<Pseudoterminal> => {
+			const pty0 = await pseudoterminal(terminal)
 			await pty0.pipe(terminal)
 			return pty0
 		})()
-		this.pty.then(async pty0 => pty0.onExit)
+		this.pseudoterminal.then(async pty0 => pty0.onExit)
 			.finally(() => { this.#running = false })
 	}
 
 	public async close(): Promise<void> {
 		if (!this.#running ||
-			((await this.pty.then(async pty => pty.shell).catch(() => null))
+			((await this.pseudoterminal
+				.then(async pty => pty.shell)
+				.catch(() => null))
 				?.kill() ?? true)) {
 			this.terminal.dispose()
 			return
@@ -107,13 +110,13 @@ export class XtermTerminalEmulator<A> {
 			.i18n.t("errors.failed-to-kill-pseudoterminal"))
 	}
 
-	public async resize(mustResizePty = true): Promise<void> {
+	public async resize(mustResizePseudoterminal = true): Promise<void> {
 		const { fit } = this.addons,
 			dim = fit.proposeDimensions()
 		if (typeof dim === "undefined") {
 			return
 		}
-		await this.#resize(dim.cols, dim.rows, mustResizePty)
+		await this.#resize(dim.cols, dim.rows, mustResizePseudoterminal)
 	}
 
 	public serialize(): XtermTerminalEmulator.State {

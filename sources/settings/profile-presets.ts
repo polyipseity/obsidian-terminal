@@ -1,13 +1,13 @@
+import type { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import type { Settings } from "./data"
-import type { TerminalPty } from "sources/terminal/pty"
 import { deepFreeze } from "sources/utils/util"
 
 type ExternalDefaults = {
-	readonly [_ in `${TerminalPty.SupportedPlatform
+	readonly [_ in `${Pseudoterminal.SupportedPlatform
 	}ExternalDefault`]: Settings.Profile.External
 }
 type IntegratedDefaults = {
-	readonly [_ in `${TerminalPty.SupportedPlatform
+	readonly [_ in `${Pseudoterminal.SupportedPlatform
 	}IntegratedDefault`]: Settings.Profile.Integrated
 }
 export interface ProfilePresets extends ExternalDefaults, IntegratedDefaults {

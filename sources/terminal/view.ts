@@ -1,4 +1,9 @@
-import { ConsolePty, type ShellPtyArguments, TerminalPty, TextPty } from "./pty"
+import {
+	ConsolePseudoterminal,
+	Pseudoterminal,
+	type ShellPseudoterminalArguments,
+	TextPseudoterminal,
+} from "./pseudoterminal"
 import { Direction, type Params } from "../components/find"
 import {
 	DisposerAddon,
@@ -289,13 +294,15 @@ export class TerminalView extends ItemView {
 									{ type } = profile
 								switch (type) {
 									case "": {
-										return new TextPty()
+										return new TextPseudoterminal()
 									}
 									case "console": {
-										return new ConsolePty()
+										return new ConsolePseudoterminal()
 									}
 									case "integrated": {
-										if (TerminalPty.PLATFORM_PTY === null) { break }
+										if (Pseudoterminal.PLATFORM_PSEUDOTERMINAL === null) {
+											break
+										}
 										const
 											{
 												args,
@@ -306,7 +313,7 @@ export class TerminalView extends ItemView {
 											} = profile,
 											platforms0: Readonly<Record<string, boolean>> = platforms
 										if (!(platforms0[PLATFORM] ?? false)) { break }
-										const ptyArgs: NonReadonly<ShellPtyArguments> = {
+										const ptyArgs: NonReadonly<ShellPseudoterminalArguments> = {
 											args,
 											cwd,
 											executable,
@@ -318,7 +325,8 @@ export class TerminalView extends ItemView {
 										if (typeof pythonExecutable !== "undefined") {
 											ptyArgs.pythonExecutable = pythonExecutable
 										}
-										return new TerminalPty.PLATFORM_PTY(plugin, ptyArgs)
+										return new Pseudoterminal
+											.PLATFORM_PSEUDOTERMINAL(plugin, ptyArgs)
 									}
 									case "external":
 									// Fallthrough
@@ -328,7 +336,7 @@ export class TerminalView extends ItemView {
 									default:
 										throw new TypeError(type)
 								}
-								const pty = new TextPty(i18n
+								const pty = new TextPseudoterminal(i18n
 									.t("components.terminal.unsupported-profile", {
 										profile: JSON.stringify(profile),
 									}))
@@ -356,9 +364,9 @@ export class TerminalView extends ItemView {
 								webLinks: new WebLinksAddon((_0, uri) => openExternal(uri), {}),
 							},
 						),
-						{ pty, terminal, addons } = emulator,
+						{ pseudoterminal, terminal, addons } = emulator,
 						{ disposer, renderer, search } = addons
-					pty.then(async pty0 => pty0.onExit)
+					pseudoterminal.then(async pty0 => pty0.onExit)
 						.then(code => {
 							if (typeof code === "undefined") { return }
 							notice2(
@@ -475,7 +483,7 @@ export function registerTerminal(plugin: TerminalPlugin): void {
 		leaf => new TerminalView(plugin, leaf),
 	)
 
-	if (inSet(TerminalPty.SUPPORTED_PLATFORMS, PLATFORM)) {
+	if (inSet(Pseudoterminal.SUPPORTED_PLATFORMS, PLATFORM)) {
 		const
 			adapter = app.vault.adapter as FileSystemAdapter,
 			spawnTerminal = (
