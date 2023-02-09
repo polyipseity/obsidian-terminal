@@ -46,10 +46,8 @@ export class SettingTab extends PluginSettingTab {
 						dropdown
 							.addOption("", i18n.t("settings.language-default"))
 							.addOptions(Object
-								.fromEntries(Object
-									.entries(LANGUAGES)
-									.filter(entry => entry
-										.every(half => typeof half === "string"))))
+								.fromEntries(LANGUAGES
+									.map(lang => [lang, i18n.t(`language:${lang}`)])))
 					},
 				},
 			))

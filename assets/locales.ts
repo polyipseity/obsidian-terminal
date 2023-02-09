@@ -26,6 +26,11 @@ import * as zhHans from "assets/locales/zh-Hans/translation.json"
 import * as zhHant from "assets/locales/zh-Hant/translation.json"
 import { type Equals, deepFreeze, typedKeys } from "sources/utils/util"
 
+function sanitize<T extends object>(value: T): T {
+	return Object.freeze(Object.fromEntries(Object.entries(value)
+		.filter(([_0, val]) => typeof val === "string")) as T)
+}
+
 type FilterKey<K> = K extends `${infer K0}_${string}` ? K0 : K
 type SyncNorm<T> = {
 	readonly [key in keyof T as FilterKey<key>]: SyncNorm<T[key]>
@@ -56,7 +61,7 @@ export const RESOURCES = deepFreeze({
 	en: {
 		[DEFAULT_NAMESPACE]: sync(en),
 		asset,
-		language,
+		language: sanitize(language),
 	},
 	es: { [DEFAULT_NAMESPACE]: sync(es) },
 	fa: { [DEFAULT_NAMESPACE]: sync(fa) },
