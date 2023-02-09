@@ -18,8 +18,8 @@
 	"scripts": {
 		"build": "tsc -noEmit && npm run lint && npm run dev production",
 		"dev": "node build/esbuild.config.mjs",
-		"lint": "eslint --ignore-pattern \"*.svelte\" --rule \"@typescript-eslint/no-unsafe-argument: off\" --rule \"@typescript-eslint/no-unsafe-assignment: off\" --rule \"@typescript-eslint/no-unsafe-return: off\" --rule \"@typescript-eslint/restrict-template-expressions: off\" .",
-		"lint:fix": "eslint --fix --ignore-pattern \"*.svelte\" --rule \"@typescript-eslint/no-unsafe-argument: off\" --rule \"@typescript-eslint/no-unsafe-assignment: off\" --rule \"@typescript-eslint/no-unsafe-return: off\" --rule \"@typescript-eslint/restrict-template-expressions: off\" .",
+		"lint": "eslint --cache --ignore-pattern \"*.svelte\" --rule \"@typescript-eslint/no-unsafe-argument: off\" --rule \"@typescript-eslint/no-unsafe-assignment: off\" --rule \"@typescript-eslint/no-unsafe-return: off\" --rule \"@typescript-eslint/restrict-template-expressions: off\" .",
+		"lint:fix": "eslint --cache --fix --ignore-pattern \"*.svelte\" --rule \"@typescript-eslint/no-unsafe-argument: off\" --rule \"@typescript-eslint/no-unsafe-assignment: off\" --rule \"@typescript-eslint/no-unsafe-return: off\" --rule \"@typescript-eslint/restrict-template-expressions: off\" .",
 		"postversion": "node build/version-commit.mjs",
 		"version": "node build/version-bump.mjs && git add manifest.json versions.json"
 	},

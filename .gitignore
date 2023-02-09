@@ -22,4 +22,5 @@ data.json
 .DS_Store
 
 # custom
+.eslintcache
 .tsbuildinfo
