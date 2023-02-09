@@ -83,6 +83,7 @@ export class EditableListModal<T> extends ListModal {
 			.setName(i18n.t("components.editable-list.prepend"))
 			.addButton(button => button
 				.setIcon(i18n.t("asset:components.editable-list.prepend-icon"))
+				.setTooltip(i18n.t("components.editable-list.prepend"))
 				.onClick(() => {
 					this.#list.unshift(placeholder)
 					this.display()
@@ -110,6 +111,7 @@ export class EditableListModal<T> extends ListModal {
 			.setName(i18n.t("components.editable-list.append"))
 			.addButton(button => button
 				.setIcon(i18n.t("asset:components.editable-list.append-icon"))
+				.setTooltip(i18n.t("components.editable-list.append"))
 				.onClick(() => {
 					this.#list.push(placeholder)
 					this.display()

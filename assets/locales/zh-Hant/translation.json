@@ -51,6 +51,7 @@
 		"add-to-command": "加入至命令",
 		"add-to-context-menu": "加入至右鍵選單",
 		"advanced-settings": "高級設置",
+		"edit": "編輯",
 		"error-notice-timeout": "錯誤通知超時（秒）",
 		"error-notice-timeout-description": "設為0秒是無超時。設為負數以禁用通知。",
 		"hide-status-bar": "隱藏狀態欄",

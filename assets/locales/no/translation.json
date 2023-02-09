@@ -54,6 +54,7 @@
 		"add-to-command": "Add to command",
 		"add-to-context-menu": "Add to context menu",
 		"advanced-settings": "Advanced settings",
+		"edit": "Edit",
 		"error-notice-timeout": "Error notice timeout (s)",
 		"error-notice-timeout-description": "Set to 0 s for no timeout. Set to negative to disable notice.",
 		"hide-status-bar": "Hide status bar",

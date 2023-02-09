@@ -180,6 +180,7 @@ export class SettingTab extends PluginSettingTab {
 			}))
 			.addButton(button => button
 				.setIcon(i18n.t("asset:settings.profiles-edit-icon"))
+				.setTooltip(i18n.t("settings.edit"))
 				.onClick(() => {
 					const modal = new ProfilesModal(plugin),
 						onClose = modal.onClose.bind(modal)

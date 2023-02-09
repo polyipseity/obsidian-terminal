@@ -169,6 +169,7 @@ export class ProfileModal extends ListModal {
 					.addButton(button => button
 						.setIcon(i18n
 							.t(`asset:settings.profile.${type}.arguments-edit-icon`))
+						.setTooltip(i18n.t("settings.edit"))
 						.onClick(() => {
 							new EditableListModal(
 								plugin,
@@ -248,6 +249,7 @@ export class ProfileModal extends ListModal {
 					.addButton(button => button
 						.setIcon(i18n
 							.t(`asset:settings.profile.${type}.arguments-edit-icon`))
+						.setTooltip(i18n.t("settings.edit"))
 						.onClick(() => {
 							new EditableListModal(
 								plugin,
@@ -422,6 +424,7 @@ export class ProfilesModal extends ListModal {
 			.setName(i18n.t("components.editable-list.prepend"))
 			.addButton(button => button
 				.setIcon(i18n.t("asset:components.editable-list.prepend-icon"))
+				.setTooltip(i18n.t("components.editable-list.prepend"))
 				.onClick(async () => {
 					await this.#addProfile(0, cloneAsMutable(PROFILE_PRESETS.empty))
 					this.display()
@@ -432,6 +435,7 @@ export class ProfilesModal extends ListModal {
 				.setDesc(i18n.t("settings.profile-list.description", { id, profile }))
 				.addButton(button => button
 					.setIcon(i18n.t("asset:settings.profile-list.edit-icon"))
+					.setTooltip(i18n.t("settings.edit"))
 					.onClick(() => {
 						const modal = new ProfileModal(plugin, id),
 							onClose = modal.onClose.bind(modal)
@@ -462,6 +466,7 @@ export class ProfilesModal extends ListModal {
 			.setName(i18n.t("components.editable-list.append"))
 			.addButton(button => button
 				.setIcon(i18n.t("asset:components.editable-list.append-icon"))
+				.setTooltip(i18n.t("components.editable-list.append"))
 				.onClick(async () => {
 					await this.#addProfile(
 						length(profiles),
