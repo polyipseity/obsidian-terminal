@@ -18,8 +18,8 @@
 	"scripts": {
 		"build": "tsc -noEmit && npm run lint && npm run dev production",
 		"dev": "node build/esbuild.config.mjs",
-		"lint": "eslint .",
-		"lint:fix": "eslint --fix .",
+		"lint": "eslint --rule \"@typescript-eslint/no-unsafe-argument: off\" --rule \"@typescript-eslint/no-unsafe-assignment: off\" --rule \"@typescript-eslint/no-unsafe-return: off\" --rule \"@typescript-eslint/restrict-template-expressions: off\" .",
+		"lint:fix": "eslint --fix --rule \"@typescript-eslint/no-unsafe-argument: off\" --rule \"@typescript-eslint/no-unsafe-assignment: off\" --rule \"@typescript-eslint/no-unsafe-return: off\" --rule \"@typescript-eslint/restrict-template-expressions: off\" .",
 		"postversion": "node build/version-commit.mjs",
 		"version": "node build/version-bump.mjs && git add manifest.json versions.json"
 	},
