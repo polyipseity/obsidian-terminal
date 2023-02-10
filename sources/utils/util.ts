@@ -14,7 +14,11 @@ import type { Writable } from "node:stream"
 export type Equals<X, Y> =
 	(<T>() => T extends X ? true : false) extends
 	(<T>() => T extends Y ? true : false) ? true : false
-export type Immutable<T> = { readonly [key in keyof T]: Immutable<T[key]> }
+export type Immutable<T> = {
+	readonly [key in
+	// eslint-disable-next-line @typescript-eslint/ban-types
+	keyof T]: T[key] extends Function ? T[key] : Immutable<T[key]>
+}
 export type MaybePromise<T, L extends "" | "like" = ""> =
 	L extends "" ? Promise<T> | T : PromiseLike<T> | T
 export type Mutable<T> = { -readonly [key in keyof T]: Mutable<T[key]> }
