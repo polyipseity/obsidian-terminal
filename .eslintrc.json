@@ -348,6 +348,7 @@
         ]
       }
     ],
+    "no-nested-ternary": "off",
     "no-underscore-dangle": [
       "error",
       {
