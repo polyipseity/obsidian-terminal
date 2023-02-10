@@ -29,6 +29,7 @@ import type { Terminal } from "xterm"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
 import { dynamicRequire } from "../imports"
+import { processText } from "./emulator"
 import unixPseudoterminalPy from "./unix_pseudoterminal.py"
 import win32ResizerPy from "./win32_resizer.py"
 
@@ -42,10 +43,6 @@ const
 function clearTerminal(terminal: Terminal): void {
 	// Clear screen with scrollback kept
 	terminal.write(`${"\u001b[2K\n".repeat(terminal.rows - 1)}\u001b[2K\u001b[H`)
-}
-
-function processText(text: string): string {
-	return text.replace("\r\n", "\n").replace("\n", "\r\n")
 }
 
 export interface Pseudoterminal {
@@ -82,8 +79,8 @@ export class TextPseudoterminal
 
 	public constructor(text = "") {
 		super()
-		this.onExit.finally(() => { clear(this.#terminals) })
 		this.#text = text
+		this.onExit.finally(() => { clear(this.#terminals) })
 	}
 
 	public get text(): string {
@@ -91,18 +88,18 @@ export class TextPseudoterminal
 	}
 
 	public set text(value: string) {
-		const value0 = processText(value)
-		this.#text = value0
+		this.#text = value
+		const text = processText(value)
 		this.#terminals.forEach(terminal => {
 			terminal.clear()
-			terminal.write(value0)
+			terminal.write(text)
 		})
 	}
 
 	public override pipe(terminal: Terminal): void {
 		if (this.exited) { throw new Error() }
 		terminal.clear()
-		terminal.write(this.text)
+		terminal.write(processText(this.text))
 		this.#terminals.push(terminal)
 	}
 }
