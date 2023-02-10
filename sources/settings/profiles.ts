@@ -356,8 +356,7 @@ export class ProfileModal extends ListModal {
 					))
 				break
 			}
-			default:
-				throw new TypeError(type)
+			// No default
 		}
 	}
 

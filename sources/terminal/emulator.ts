@@ -190,8 +190,7 @@ export class RendererAddon implements ITerminalAddon {
 				}
 				break
 			}
-			default:
-				throw new TypeError(renderer)
+			// No default
 		}
 	}
 

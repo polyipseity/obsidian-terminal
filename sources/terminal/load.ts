@@ -105,8 +105,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 									})
 								return
 							}
-							default:
-								throw new TypeError(terminal)
+							// No default
 						}
 						notice2(
 							() => i18n.t(
@@ -168,8 +167,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 					}
 					return true
 				}
-				default:
-					throw new TypeError(cwd)
+				// No default
 			}
 		}
 		plugin.registerEvent(app.workspace.on("file-menu", (menu, file) => {

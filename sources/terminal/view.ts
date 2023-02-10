@@ -94,14 +94,17 @@ export class TerminalView extends ItemView {
 			.t("components.terminal.unknown-profile-name")
 	}
 
+	// eslint-disable-next-line consistent-return
 	get #hidesStatusBar(): boolean {
 		switch (this.plugin.settings.hideStatusBar) {
 			case "focused":
 				return this.#focus
 			case "running":
 				return true
-			default:
+			case "always":
+			case "never":
 				return false
+			// No default
 		}
 	}
 
@@ -349,12 +352,9 @@ export class TerminalView extends ItemView {
 											.PLATFORM_PSEUDOTERMINAL(plugin, ptyArgs)
 									}
 									case "external":
-									// Fallthrough
-									case "invalid": {
+									case "invalid":
 										break
-									}
-									default:
-										throw new TypeError(type)
+									// No default
 								}
 								const pty = new TextPseudoterminal(i18n
 									.t("components.terminal.unsupported-profile", {

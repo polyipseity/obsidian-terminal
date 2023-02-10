@@ -365,8 +365,7 @@ export namespace Settings {
 									} satisfies Required<Profile.Typed<typeof type>>
 									break
 								}
-								default:
-									throw new TypeError(type)
+								// No default
 							}
 						}
 					}
