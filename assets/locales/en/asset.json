@@ -29,9 +29,6 @@
 	"ribbons": {
 		"open-terminal": "terminal-square"
 	},
-	"ribbons": {
-		"open-terminal": "Open terminal"
-	},
 	"settings": {
 		"add-to-command-icon": "terminal",
 		"add-to-context-menu-icon": "menu",
