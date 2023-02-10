@@ -19,7 +19,7 @@
 			"too-many-search-results": "?/1000+"
 		},
 		"terminal": {
-			"display-name": "終端：{{- executable}}",
+			"display-name": "終端：{{- name}}",
 			"restored-history": "\r\n * 已還原於{{- time}}的歷史\r\n",
 			"unknown-profile-name": "不明",
 			"unsupported-profile": "不支持的配置：\r\n{{- profile}}\r\n"
@@ -46,7 +46,7 @@
 	"name": "終端",
 	"notices": {
 		"no-default-profile": "沒有類型「{{- type}}」的默認配置",
-		"spawning-terminal": "終端啟動中：{{- executable}}",
+		"spawning-terminal": "終端啟動中：{{- name}}",
 		"terminal-exited": "終端已退出：{{- code}}"
 	},
 	"settings": {

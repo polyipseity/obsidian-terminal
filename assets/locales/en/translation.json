@@ -22,7 +22,7 @@
 			"too-many-search-results": "?/1000+"
 		},
 		"terminal": {
-			"display-name": "Terminal: {{- executable}}",
+			"display-name": "Terminal: {{- name}}",
 			"restored-history": "\r\n * Restored history at {{- time}}\r\n",
 			"unknown-profile-name": "Unknown",
 			"unsupported-profile": "Unsupported profile:\r\n{{- profile}}\r\n"
@@ -49,7 +49,7 @@
 	"name": "Terminal",
 	"notices": {
 		"no-default-profile": "No default profile for type '{{- type}}'",
-		"spawning-terminal": "Spawning terminal: {{- executable}}",
+		"spawning-terminal": "Spawning terminal: {{- name}}",
 		"terminal-exited": "Terminal exited: {{- code}}"
 	},
 	"settings": {

@@ -58,7 +58,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 								notice2(
 									() => i18n.t(
 										"notices.spawning-terminal",
-										{ executable },
+										{ name: executable },
 									),
 									noticeTimeout,
 									plugin,
@@ -78,7 +78,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 								notice2(
 									() => i18n.t(
 										"notices.spawning-terminal",
-										{ executable },
+										{ name: executable },
 									),
 									settings.noticeTimeout,
 									plugin,

@@ -141,7 +141,7 @@ export class TerminalView extends ItemView {
 		return this.plugin.language
 			.i18n.t(
 				`components.${TerminalView.type.id}.display-name`,
-				{ executable: this.#displayName() },
+				{ name: this.#displayName() },
 			)
 	}
 
