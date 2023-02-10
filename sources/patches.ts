@@ -50,8 +50,8 @@ export function patch(): () => void {
 		const consolePatch = (
 			type: "debug" | "error" | "info" | "warn",
 			proto: (...data: unknown[]) => void,
-		) => function fn(...data: unknown[]) {
-			proto(...data)
+		) => function fn(this: Console, ...data: unknown[]) {
+			proto.apply(this, data)
 			LOGGER.emit({ data, type }).catch(() => { })
 		}
 		unpatchers.push(
@@ -63,10 +63,17 @@ export function patch(): () => void {
 			}),
 			around(window, {
 				onerror(proto) {
-					return function fn(event, filename, lineno, colno, error) {
+					return function fn(
+						this: Window,
+						event,
+						filename,
+						lineno,
+						colno,
+						error,
+					) {
 						let ret: unknown = false
 						if (proto !== null) {
-							ret = proto(event, filename, lineno, colno, error)
+							ret = proto.call(this, event, filename, lineno, colno, error)
 						}
 						LOGGER.emit({
 							data: new ErrorEvent("error", {
@@ -97,7 +104,9 @@ export function patch(): () => void {
 					}
 				},
 				toString(proto) {
-					return function fn(...args) { return proto(...args) }
+					return function fn(this: Window, ...args) {
+						return proto.apply(this, args)
+					}
 				},
 			}),
 		)
