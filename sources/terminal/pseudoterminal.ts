@@ -9,6 +9,7 @@ import {
 	clear,
 	executeParanoidly,
 	inSet,
+	isUndefined,
 	notice2,
 	printError,
 	promisePromise,
@@ -145,7 +146,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 			{ settings, language } = plugin,
 			{ i18n } = language,
 			resizer = (async (): Promise<PipedChildProcess | null> => {
-				if (typeof pythonExecutable === "undefined") {
+				if (isUndefined(pythonExecutable)) {
 					return null
 				}
 				const ret = await spawnPromise(async () =>
@@ -348,7 +349,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 	) {
 		const { language } = plugin
 		this.shell = spawnPromise(async () => {
-			if (typeof pythonExecutable === "undefined") {
+			if (isUndefined(pythonExecutable)) {
 				throw new Error(language
 					.i18n.t("errors.no-python-to-start-unix-pseudoterminal"))
 			}

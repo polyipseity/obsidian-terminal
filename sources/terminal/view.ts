@@ -19,6 +19,7 @@ import {
 	extname,
 	inSet,
 	isInterface,
+	isUndefined,
 	notice2,
 	onVisible,
 	openExternal,
@@ -190,7 +191,7 @@ export class TerminalView extends ItemView {
 							incremental = false,
 						): void => {
 							const finder = this.#emulator?.addons.search
-							if (typeof finder === "undefined") { return }
+							if (isUndefined(finder)) { return }
 							const func = direction === Direction.next
 								? finder.findNext.bind(finder)
 								: finder.findPrevious.bind(finder)
@@ -233,10 +234,10 @@ export class TerminalView extends ItemView {
 			.addItem(item => item
 				.setTitle(i18n.t("menus.terminal.save-as-HTML"))
 				.setIcon(i18n.t("asset:menus.terminal.save-as-HTML-icon"))
-				.setDisabled(typeof this.#emulator?.addons.serialize === "undefined")
+				.setDisabled(isUndefined(this.#emulator?.addons.serialize))
 				.onClick(() => {
 					const ser = this.#emulator?.addons.serialize
-					if (typeof ser === "undefined") { return }
+					if (isUndefined(ser)) { return }
 					saveFile(
 						ser.serializeAsHTML({
 							includeGlobalBackground: false,
@@ -376,7 +377,7 @@ export class TerminalView extends ItemView {
 				renderer.use(settings.preferredRenderer)
 				disposer.push(() => { this.#find?.$set({ searchResult: "" }) })
 				search.onDidChangeResults(results => {
-					if (typeof results === "undefined") {
+					if (isUndefined(results)) {
 						this.#find?.$set({
 							searchResult: i18n.t("components.find.too-many-search-results"),
 						})

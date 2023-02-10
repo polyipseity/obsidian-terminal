@@ -3,6 +3,7 @@ import { EditableListModal, ListModal } from "./modals"
 import {
 	cloneAsMutable,
 	insertAt,
+	isUndefined,
 	length,
 	removeAt,
 	swap,
@@ -50,7 +51,7 @@ export class ProfileModal extends ListModal {
 			{ profiles } = settings
 		listEl.empty()
 		const profile = profiles[id]
-		if (typeof profile === "undefined") {
+		if (isUndefined(profile)) {
 			listEl.createEl("h1", {
 				text: i18n.t("settings.profile.not-found", { id }),
 			})
@@ -69,7 +70,7 @@ export class ProfileModal extends ListModal {
 				settings0 => settings0.profiles[id]?.name,
 				(_0, _1, settings0) => {
 					const profile0 = settings0.profiles[id]
-					if (typeof profile0 === "undefined") { return }
+					if (isUndefined(profile0)) { return }
 					el.textContent = i18n.t("settings.profile.title", {
 						id,
 						nameOrID: Settings.Profile.nameOrID([id, profile0]),
@@ -371,7 +372,7 @@ export class ProfileModal extends ListModal {
 		const { plugin, id } = this
 		await plugin.mutateSettings(async settings => {
 			const profile = settings.profiles[id]
-			if (typeof profile === "undefined") {
+			if (isUndefined(profile)) {
 				throw new Error(id)
 			}
 			if (!Settings.Profile.isType(type, profile)) {

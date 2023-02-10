@@ -6,6 +6,7 @@ import {
 } from "xterm"
 import {
 	asyncDebounce,
+	isUndefined,
 	spawnPromise,
 } from "../utils/util"
 import { dynamicRequire, importable } from "../imports"
@@ -113,7 +114,7 @@ export class XtermTerminalEmulator<A> {
 	public async resize(mustResizePseudoterminal = true): Promise<void> {
 		const { fit } = this.addons,
 			dim = fit.proposeDimensions()
-		if (typeof dim === "undefined") {
+		if (isUndefined(dim)) {
 			return
 		}
 		await this.#resize(dim.cols, dim.rows, mustResizePseudoterminal)

@@ -6,7 +6,13 @@ import {
 	TFolder,
 	type WorkspaceLeaf,
 } from "obsidian"
-import { commandNamer, deepFreeze, isNonNull, notice2 } from "../utils/util"
+import {
+	commandNamer,
+	deepFreeze,
+	isNonNullish,
+	isUndefined,
+	notice2,
+} from "../utils/util"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
 import { Settings } from "sources/settings/data"
@@ -23,7 +29,7 @@ function spawnTerminal(
 			.getLeavesOfType(TerminalView.type.namespaced(plugin));
 	((): WorkspaceLeaf => {
 		const existingLeaf = existingLeaves.at(-1)
-		if (typeof existingLeaf === "undefined") {
+		if (isUndefined(existingLeaf)) {
 			return workspace.getLeaf("split", "horizontal")
 		}
 		workspace.setActiveLeaf(existingLeaf, { focus: false })
@@ -104,7 +110,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 			type: Settings.Profile.Type | "select",
 			cwd?: TFolder,
 		): ((item: MenuItem) => void) | null => {
-			const cwd0 = typeof cwd === "undefined"
+			const cwd0 = isUndefined(cwd)
 				? cwd
 				: adapter === null ? null : adapter.getFullPath(cwd.path)
 			if (cwd0 === null) { return null }
@@ -171,7 +177,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 		menu.addSeparator()
 		const items = PROFILE_TYPES
 			.map(type => contextMenu(type, folder))
-			.filter(isNonNull)
+			.filter(isNonNullish)
 		if (items.length > 0) {
 			menu.addSeparator()
 			items.forEach(item => menu.addItem(item))
@@ -189,7 +195,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 			menu.addSeparator()
 			const items = PROFILE_TYPES
 				.map(type => contextMenu(type, folder))
-				.filter(isNonNull)
+				.filter(isNonNullish)
 			if (items.length > 0) {
 				menu.addSeparator()
 				items.forEach(item => menu.addItem(item))

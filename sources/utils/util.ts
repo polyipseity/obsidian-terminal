@@ -111,7 +111,7 @@ export function capitalize(
 	locales?: string[] | string,
 ): string {
 	const cp0 = str.codePointAt(0)
-	if (typeof cp0 === "undefined") { return "" }
+	if (isUndefined(cp0)) { return "" }
 	const char0 = String.fromCodePoint(cp0)
 	return `${char0.toLocaleUpperCase(locales)}${str.slice(char0.length)}`
 }
@@ -237,15 +237,12 @@ export function isHomogenousArray<T extends PrimitiveType>(
 	return value.every(element => typeof element === type)
 }
 
-export function isNonNull<T>(value: T | null | undefined): value is T {
-	return value !== null && typeof value !== "undefined"
+export function isNonNullish<T>(value: T | null | undefined): value is T {
+	return !isNull(value) && !isUndefined(value)
 }
 
-export function inSet<T extends readonly unknown[]>(
-	set: Sized<T>,
-	obj: unknown,
-): obj is T[number] {
-	return set.includes(obj)
+export function isNull(value: unknown): value is null {
+	return value === null
 }
 
 export function isInterface<T extends { readonly __type: T["__type"] }>(
@@ -259,6 +256,17 @@ export function isInterface<T extends { readonly __type: T["__type"] }>(
 	}
 	// eslint-disable-next-line no-underscore-dangle
 	return tmp.__type === id
+}
+
+export function inSet<T extends readonly unknown[]>(
+	set: Sized<T>,
+	obj: unknown,
+): obj is T[number] {
+	return set.includes(obj)
+}
+
+export function isUndefined(value: unknown): value is undefined {
+	return isUndefined(value)
 }
 
 export function insertAt<T>(
@@ -280,7 +288,7 @@ export function notice(
 ): Notice {
 	const timeoutMs = SI_PREFIX_SCALE * Math.max(timeout, 0),
 		ret = new Notice(message(), timeoutMs)
-	if (typeof plugin === "undefined") {
+	if (isUndefined(plugin)) {
 		return ret
 	}
 	const unreg = plugin.language.onChangeLanguage
