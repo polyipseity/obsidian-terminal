@@ -15,6 +15,8 @@ export type Equals<X, Y> =
 	(<T>() => T extends X ? true : false) extends
 	(<T>() => T extends Y ? true : false) ? true : false
 export type Immutable<T> = { readonly [key in keyof T]: Immutable<T[key]> }
+export type MaybePromise<T, L extends "" | "like" = ""> =
+	L extends "" ? Promise<T> | T : PromiseLike<T> | T
 export type Mutable<T> = { -readonly [key in keyof T]: Mutable<T[key]> }
 export type NonReadonly<T> = { -readonly [key in keyof T]: T[key] }
 export type RecursiveRequired<T> =
@@ -82,11 +84,11 @@ export function asyncDebounce<
 	R0,
 // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 >(debouncer: R0 extends void ? Debouncer<[
-	(value: PromiseLike<R> | R) => void,
+	(value: MaybePromise<R, "like">) => void,
 	(reason?: unknown) => void,
 	...A], R0> : never): (...args_0: A) => Promise<R> {
 	const promises: {
-		readonly resolve: (value: PromiseLike<R> | R) => void
+		readonly resolve: (value: MaybePromise<R, "like">) => void
 		readonly reject: (reason?: unknown) => void
 	}[] = []
 	return async (...args: A): Promise<R> =>
@@ -147,11 +149,11 @@ export function deepFreeze<T>(obj: T): Immutable<T> {
 }
 
 export function executeParanoidly<T>(callback: (
-	resolve: (value: PromiseLike<T> | T) => void,
+	resolve: (value: MaybePromise<T, "like">) => void,
 	reject: (reason?: unknown) => void,
 ) => void) {
 	return (
-		resolve: (value: PromiseLike<T> | T) => void,
+		resolve: (value: MaybePromise<T, "like">) => void,
 		reject: (reason?: unknown) => void,
 	): void => {
 		try {
@@ -187,7 +189,7 @@ export function saveFile(
 
 export async function spawnPromise<T extends ChildProcess>(spawn: (
 
-) => Promise<T> | T): Promise<T> {
+) => MaybePromise<T, "like">): Promise<T> {
 	const ret = await spawn()
 	return new Promise<T>(executeParanoidly((resolve, reject) => {
 		ret.once("spawn", () => { resolve(ret) })

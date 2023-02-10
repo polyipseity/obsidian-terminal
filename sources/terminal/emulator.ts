@@ -4,7 +4,12 @@ import {
 	type ITerminalOptions,
 	Terminal,
 } from "xterm"
-import { asyncDebounce, deepFreeze, spawnPromise } from "../utils/util"
+import {
+	type MaybePromise,
+	asyncDebounce,
+	deepFreeze,
+	spawnPromise,
+} from "../utils/util"
 import type { CanvasAddon } from "xterm-addon-canvas"
 import type { ChildProcessByStdio } from "node:child_process"
 import { FitAddon } from "xterm-addon-fit"
@@ -42,7 +47,7 @@ export class XtermTerminalEmulator<A> {
 	public readonly pseudoterminal
 	#running = true
 	readonly #resize = asyncDebounce(debounce((
-		resolve: (value: Promise<void> | void) => void,
+		resolve: (value: MaybePromise<void, "like">) => void,
 		reject: (reason?: unknown) => void,
 		columns: number,
 		rows: number,
@@ -65,7 +70,7 @@ export class XtermTerminalEmulator<A> {
 		protected readonly plugin: TerminalPlugin,
 		element: HTMLElement,
 		pseudoterminal: (
-			terminal: Terminal) => PromiseLike<Pseudoterminal> | Pseudoterminal,
+			terminal: Terminal) => MaybePromise<Pseudoterminal, "like">,
 		state?: XtermTerminalEmulator.State,
 		options?: ITerminalInitOnlyOptions & ITerminalOptions,
 		addons?: A,

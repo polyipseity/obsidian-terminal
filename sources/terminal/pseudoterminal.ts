@@ -1,5 +1,6 @@
 import { DEFAULT_ENCODING, TERMINAL_RESIZER_WATCHDOG_INTERVAL } from "../magic"
 import {
+	type MaybePromise,
 	PLATFORM,
 	anyToError,
 	deepFreeze,
@@ -37,8 +38,8 @@ function clearTerminal(terminal: Terminal): void {
 export interface Pseudoterminal {
 	readonly shell?: Promise<PipedChildProcess>
 	readonly onExit?: Promise<NodeJS.Signals | number>
-	readonly pipe: (terminal: Terminal) => Promise<void> | void
-	readonly resize?: (columns: number, rows: number) => Promise<void> | void
+	readonly pipe: (terminal: Terminal) => MaybePromise<void>
+	readonly resize?: (columns: number, rows: number) => MaybePromise<void>
 }
 
 export class TextPseudoterminal implements Pseudoterminal {

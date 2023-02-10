@@ -2,6 +2,7 @@ import { type App, Plugin, type PluginManifest, debounce } from "obsidian"
 import { DEFAULT_SETTINGS, Settings } from "./settings/data"
 import {
 	EventEmitterLite,
+	type MaybePromise,
 	type Mutable,
 	asyncDebounce,
 	cloneAsMutable,
@@ -20,7 +21,7 @@ export class TerminalPlugin extends Plugin {
 	public readonly statusBarHider = new StatusBarHider(this)
 	public readonly saveSettings =
 		asyncDebounce(debounce((
-			resolve: (value: PromiseLike<void> | void) => void,
+			resolve: (value: MaybePromise<void, "like">) => void,
 			reject: (reason?: unknown) => void,
 		) => {
 			(async (): Promise<void> => {
