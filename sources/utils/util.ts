@@ -360,11 +360,9 @@ export async function promisePromise<T>(): Promise<{
 }> {
 	return new Promise(executeParanoidly((resolve0, reject0) => {
 		const promise = new Promise<T>((resolve, reject) => {
-			try {
-				resolve0({ promise, reject, resolve })
-			} catch (error) {
-				reject0(error)
-			}
+			Promise.resolve()
+				.then(() => ({ promise, reject, resolve }))
+				.then(resolve0, reject0)
 		})
 	}))
 }
