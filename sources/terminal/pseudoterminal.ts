@@ -4,11 +4,9 @@ import {
 	TERMINAL_RESIZER_WATCHDOG_INTERVAL,
 } from "../magic"
 import {
-	type MaybePromise,
 	PLATFORM,
 	anyToError,
 	clear,
-	deepFreeze,
 	executeParanoidly,
 	inSet,
 	notice2,
@@ -18,6 +16,7 @@ import {
 	typedKeys,
 	writePromise,
 } from "../utils/util"
+import type { AsyncOrSync } from "ts-essentials"
 import type { FileResultNoFd } from "tmp"
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
@@ -43,10 +42,10 @@ function clearTerminal(terminal: Terminal): void {
 
 export interface Pseudoterminal {
 	readonly shell?: Promise<PipedChildProcess>
-	readonly kill: () => MaybePromise<void>
+	readonly kill: () => AsyncOrSync<void>
 	readonly onExit: Promise<NodeJS.Signals | number>
-	readonly pipe: (terminal: Terminal) => MaybePromise<void>
-	readonly resize?: (columns: number, rows: number) => MaybePromise<void>
+	readonly pipe: (terminal: Terminal) => AsyncOrSync<void>
+	readonly resize?: (columns: number, rows: number) => AsyncOrSync<void>
 }
 
 abstract class PseudoPseudoterminal implements Pseudoterminal {
@@ -64,7 +63,7 @@ abstract class PseudoPseudoterminal implements Pseudoterminal {
 		(await this.#exit).resolve(EXIT_SUCCESS)
 	}
 
-	public abstract pipe(terminal: Terminal): MaybePromise<void>
+	public abstract pipe(terminal: Terminal): AsyncOrSync<void>
 }
 
 export class TextPseudoterminal
@@ -192,7 +191,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 					const codeTmp = (await tmp).fileSync({ discardDescriptor: true })
 					try {
 						const
-							cmd = deepFreeze([
+							cmd = Object.freeze([
 								...conhost
 									? ["C:\\Windows\\System32\\conhost.exe"] as const
 									: [] as const,

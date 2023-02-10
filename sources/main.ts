@@ -1,9 +1,8 @@
 import { type App, Plugin, type PluginManifest, debounce } from "obsidian"
+import type { AsyncOrSync, DeepWritable } from "ts-essentials"
 import { DEFAULT_SETTINGS, Settings } from "./settings/data"
 import {
 	EventEmitterLite,
-	type MaybePromise,
-	type Mutable,
 	asyncDebounce,
 	copyOnWriteAsync,
 } from "./utils/util"
@@ -20,7 +19,7 @@ export class TerminalPlugin extends Plugin {
 	public readonly statusBarHider = new StatusBarHider(this)
 	public readonly saveSettings =
 		asyncDebounce(debounce((
-			resolve: (value: MaybePromise<void, "like">) => void,
+			resolve: (value: AsyncOrSync<void>) => void,
 			reject: (reason?: unknown) => void,
 		) => {
 			(async (): Promise<void> => {
@@ -41,12 +40,12 @@ export class TerminalPlugin extends Plugin {
 	}
 
 	public async mutateSettings(mutator: (
-		settings: Mutable<Settings>) => unknown): Promise<void> {
+		settings: DeepWritable<Settings>) => unknown): Promise<void> {
 		await this.#onMutateSettings.emit(this.#settings =
 			await copyOnWriteAsync(this.#settings, mutator))
 	}
 
-	public async loadSettings(settings: Mutable<Settings>): Promise<void> {
+	public async loadSettings(settings: DeepWritable<Settings>): Promise<void> {
 		Object.assign(settings, Settings.fix(await this.loadData()))
 	}
 

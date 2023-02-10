@@ -5,11 +5,10 @@ import {
 	Terminal,
 } from "xterm"
 import {
-	type MaybePromise,
 	asyncDebounce,
-	deepFreeze,
 	spawnPromise,
 } from "../utils/util"
+import type { AsyncOrSync } from "ts-essentials"
 import type { CanvasAddon } from "xterm-addon-canvas"
 import type { ChildProcessByStdio } from "node:child_process"
 import { FitAddon } from "xterm-addon-fit"
@@ -47,7 +46,7 @@ export class XtermTerminalEmulator<A> {
 	public readonly pseudoterminal
 	#running = true
 	readonly #resize = asyncDebounce(debounce((
-		resolve: (value: MaybePromise<void, "like">) => void,
+		resolve: (value: AsyncOrSync<void>) => void,
 		reject: (reason?: unknown) => void,
 		columns: number,
 		rows: number,
@@ -72,7 +71,7 @@ export class XtermTerminalEmulator<A> {
 		pseudoterminal: (
 			terminal: Terminal,
 			addons: XtermTerminalEmulator<A>["addons"],
-		) => MaybePromise<Pseudoterminal, "like">,
+		) => AsyncOrSync<Pseudoterminal>,
 		state?: XtermTerminalEmulator.State,
 		options?: ITerminalInitOnlyOptions & ITerminalOptions,
 		addons?: A,
@@ -207,6 +206,6 @@ export class RendererAddon implements ITerminalAddon {
 }
 export namespace RendererAddon {
 	export const RENDERER_OPTIONS =
-		deepFreeze(["dom", "canvas", "webgl"] as const)
+		Object.freeze(["dom", "canvas", "webgl"] as const)
 	export type RendererOption = typeof RENDERER_OPTIONS[number]
 }

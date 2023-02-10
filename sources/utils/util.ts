@@ -1,3 +1,4 @@
+import type { AsyncOrSync, DeepReadonly, DeepWritable } from "ts-essentials"
 import {
 	type Debouncer,
 	Notice,
@@ -10,17 +11,8 @@ import type { PrimitiveType, TypeofMap } from "./typeof"
 import type { ChildProcess } from "node:child_process"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
+import { simplify } from "./types"
 
-export type Equals<X, Y> =
-	(<T>() => T extends X ? true : false) extends
-	(<T>() => T extends Y ? true : false) ? true : false
-export type Immutable<T> = { readonly [key in keyof T]: Immutable<T[key]> }
-export type MaybePromise<T, L extends "" | "like" = ""> =
-	L extends "" ? Promise<T> | T : PromiseLike<T> | T
-export type Mutable<T> = { -readonly [key in keyof T]: Mutable<T[key]> }
-export type NonReadonly<T> = { -readonly [key in keyof T]: T[key] }
-export type RecursiveRequired<T> =
-	{ [key in keyof T]-?: RecursiveRequired<T[key]> }
 export type Sized<T extends readonly unknown[]> =
 	number extends T["length"] ? never : T
 
@@ -84,11 +76,11 @@ export function asyncDebounce<
 	R0,
 // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 >(debouncer: R0 extends void ? Debouncer<[
-	(value: MaybePromise<R, "like">) => void,
+	(value: AsyncOrSync<R>) => void,
 	(reason?: unknown) => void,
 	...A], R0> : never): (...args_0: A) => Promise<R> {
 	const promises: {
-		readonly resolve: (value: MaybePromise<R, "like">) => void
+		readonly resolve: (value: AsyncOrSync<R>) => void
 		readonly reject: (reason?: unknown) => void
 	}[] = []
 	return async (...args: A): Promise<R> =>
@@ -125,30 +117,30 @@ export function capitalize(
 }
 
 export function copyOnWrite<T extends object>(
-	obj: Immutable<T>,
-	mutator: (obj: Mutable<T>) => void,
-): Immutable<T> {
-	const ret = cloneAsMutable(obj)
+	obj: DeepReadonly<T>,
+	mutator: (obj: DeepWritable<T>) => void,
+): DeepReadonly<T> {
+	const ret = simplify(cloneAsMutable(obj))
 	mutator(ret)
-	return deepFreeze(ret)
+	return simplify(deepFreeze(ret))
 }
 
 export async function copyOnWriteAsync<T extends object>(
-	obj: Immutable<T>,
-	mutator: (obj: Mutable<T>) => unknown,
-): Promise<Immutable<T>> {
-	const ret = cloneAsMutable(obj)
+	obj: DeepReadonly<T>,
+	mutator: (obj: DeepWritable<T>) => unknown,
+): Promise<DeepReadonly<T>> {
+	const ret = simplify(cloneAsMutable(obj))
 	await mutator(ret)
-	return deepFreeze(ret)
+	return simplify(deepFreeze(ret))
 }
 
 export function clear(self: unknown[]): void {
 	self.length = 0
 }
 
-export function cloneAsMutable<T>(obj: T): Mutable<T> {
+export function cloneAsMutable<T>(obj: T): DeepWritable<T> {
 	// `readonly` is fake at runtime
-	return typedStructuredClone(obj)
+	return typedStructuredClone(obj) as DeepWritable<T>
 }
 
 export function commandNamer(
@@ -163,20 +155,19 @@ export function commandNamer(
 		.replace(defaultPluginName, pluginNamer())
 }
 
-
-export function deepFreeze<T>(obj: T): Immutable<T> {
-	if (typeof obj === "object" && obj !== null) {
-		Object.values(obj).forEach(deepFreeze)
+export function deepFreeze<T>(value: T): DeepReadonly<T> {
+	if (typeof value === "object" && value !== null) {
+		Object.values(value).forEach(deepFreeze)
 	}
-	return Object.freeze(obj)
+	return Object.freeze(value) as DeepReadonly<T>
 }
 
 export function executeParanoidly<T>(callback: (
-	resolve: (value: MaybePromise<T, "like">) => void,
+	resolve: (value: AsyncOrSync<T>) => void,
 	reject: (reason?: unknown) => void,
 ) => void) {
 	return (
-		resolve: (value: MaybePromise<T, "like">) => void,
+		resolve: (value: AsyncOrSync<T>) => void,
 		reject: (reason?: unknown) => void,
 	): void => {
 		try {
@@ -212,7 +203,7 @@ export function saveFile(
 
 export async function spawnPromise<T extends ChildProcess>(spawn: (
 
-) => MaybePromise<T, "like">): Promise<T> {
+) => AsyncOrSync<T>): Promise<T> {
 	const ret = await spawn()
 	return new Promise<T>(executeParanoidly((resolve, reject) => {
 		ret.once("spawn", () => { resolve(ret) })
@@ -355,7 +346,7 @@ export function printError(
 
 export async function promisePromise<T>(): Promise<{
 	readonly promise: Promise<T>
-	readonly resolve: (value: MaybePromise<T, "like">) => void
+	readonly resolve: (value: AsyncOrSync<T>) => void
 	readonly reject: (reason?: unknown) => void
 }> {
 	return new Promise(executeParanoidly((resolve0, reject0) => {

@@ -1,9 +1,8 @@
+import type { DeepRequired, DeepWritable } from "ts-essentials"
 import type { InverseTypeofMap, PrimitiveOf } from "../utils/typeof"
 import {
-	type Mutable,
 	PLATFORM,
 	type Platform,
-	type RecursiveRequired,
 	type Sized,
 	cloneAsMutable,
 	deepFreeze,
@@ -38,10 +37,11 @@ export const DEFAULT_SETTINGS = deepFreeze({
 	profiles: PROFILE_DEFAULTS,
 } as const) satisfies Settings
 export namespace Settings {
-	export const DEFAULTABLE_LANGUAGES = deepFreeze(["", ...LANGUAGES] as const)
+	export const DEFAULTABLE_LANGUAGES =
+		Object.freeze(["", ...LANGUAGES] as const)
 	export type DefaultableLanguage = typeof DEFAULTABLE_LANGUAGES[number]
 	export const HIDE_STATUS_BAR_OPTIONS =
-		deepFreeze(["never", "always", "focused", "running"] as const)
+		Object.freeze(["never", "always", "focused", "running"] as const)
 	export type HideStatusBarOption = typeof HIDE_STATUS_BAR_OPTIONS[number]
 	export const PREFERRED_RENDERER_OPTIONS = RendererAddon.RENDERER_OPTIONS
 	export type PreferredRendererOption = RendererAddon.RendererOption
@@ -54,7 +54,13 @@ export namespace Settings {
 	export type Profiles = Readonly<Record<string, Profile>>
 	export namespace Profile {
 		export const TYPES =
-			deepFreeze(["", "invalid", "console", "external", "integrated"] as const)
+			Object.freeze([
+				"",
+				"invalid",
+				"console",
+				"external",
+				"integrated",
+			] as const)
 		export type Type = typeof TYPES[number]
 		export type Typed<T extends Type> = Profile & { readonly type: T }
 		export function defaultOfType<T extends Type>(
@@ -115,7 +121,7 @@ export namespace Settings {
 			readonly enableWindowsConhostWorkaround?: boolean
 		}
 		export const DEFAULTS: {
-			readonly [key in Type]: RecursiveRequired<Typed<key>>
+			readonly [key in Type]: DeepRequired<Typed<key>>
 		} = deepFreeze({
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			"": PROFILE_PRESETS.empty,
@@ -152,7 +158,7 @@ export namespace Settings {
 			},
 		} as const)
 	}
-	export function fix(self: unknown): Mutable<Settings> {
+	export function fix(self: unknown): DeepWritable<Settings> {
 		type Unknownize<T> = { readonly [_ in keyof T]?: unknown }
 		const tmp: Unknownize<Settings> = {}
 		Object.assign(tmp, self)
@@ -226,11 +232,11 @@ export namespace Settings {
 				"preferredRenderer",
 				PREFERRED_RENDERER_OPTIONS,
 			),
-			profiles: ((): Mutable<Profiles> => {
+			profiles: ((): DeepWritable<Profiles> => {
 				const defaults2 = DEFAULT_SETTINGS.profiles,
 					{ profiles } = tmp
 				if (profiles !== null && typeof profiles === "object") {
-					const ret: Mutable<Profiles> = {}
+					const ret: DeepWritable<Profiles> = {}
 					for (const [id, profile0] of Object.entries(profiles)) {
 						const profile1: unknown = profile0,
 							fixPlatforms = <

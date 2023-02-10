@@ -2,14 +2,14 @@
 
 <script context="module" lang="typescript">
 	import { Direction, type Params } from "./find";
-	import type { Mutable } from "../utils/util";
+	import type { DeepWritable } from "ts-essentials";
 	import { t as i18t } from "i18next";
 	import { setIcon } from "obsidian";
 </script>
 
 <script lang="typescript">
 	export let i18n = i18t;
-	export let params: Mutable<Params> = {
+	export let params: DeepWritable<Params> = {
 		caseSensitive: false,
 		findText: "",
 		regex: false,

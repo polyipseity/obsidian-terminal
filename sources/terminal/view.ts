@@ -17,7 +17,6 @@ import {
 	type WorkspaceLeaf,
 } from "obsidian"
 import {
-	type NonReadonly,
 	PLATFORM,
 	UnnamespacedID,
 	anyToError,
@@ -42,6 +41,7 @@ import type { TerminalPlugin } from "../main"
 import { Unicode11Addon } from "xterm-addon-unicode11"
 import { WebLinksAddon } from "xterm-addon-web-links"
 import { WebglAddon } from "xterm-addon-webgl"
+import type { Writable } from "ts-essentials"
 
 export class TerminalView extends ItemView {
 	public static readonly type = new UnnamespacedID("terminal")
@@ -333,7 +333,7 @@ export class TerminalView extends ItemView {
 											} = profile,
 											platforms0: Readonly<Record<string, boolean>> = platforms
 										if (!(platforms0[PLATFORM] ?? false)) { break }
-										const ptyArgs: NonReadonly<ShellPseudoterminalArguments> = {
+										const ptyArgs: Writable<ShellPseudoterminalArguments> = {
 											args,
 											cwd,
 											executable,

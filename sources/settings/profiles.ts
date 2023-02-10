@@ -1,16 +1,14 @@
 import { DISABLED_TOOLTIP, JSON_STRINGIFY_SPACE } from "sources/magic"
 import { EditableListModal, ListModal } from "./modals"
 import {
-	type Mutable,
 	cloneAsMutable,
-	deepFreeze,
 	insertAt,
 	length,
 	removeAt,
 	swap,
-	typedStructuredClone,
 } from "sources/utils/util"
 import { linkSetting, resetButton, setTextToEnum } from "./util"
+import type { DeepWritable } from "ts-essentials"
 import { PROFILE_PRESETS } from "./profile-presets"
 import { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import { Setting } from "obsidian"
@@ -18,7 +16,6 @@ import { Settings } from "./data"
 import type { TerminalPlugin } from "sources/main"
 
 export class ProfileModal extends ListModal {
-	static #mutateTypePreserveKeys = deepFreeze(["name"] as const)
 	readonly #displayFinally: (() => void)[] = []
 
 	public constructor(
@@ -106,11 +103,8 @@ export class ProfileModal extends ListModal {
 					Settings.Profile.TYPES,
 					async value => {
 						await this.#mutateProfile(type, (prev, settingsM) => {
-							const next =
-								cloneAsMutable(Settings.Profile.DEFAULTS[value])
-							for (const key of ProfileModal.#mutateTypePreserveKeys) {
-								next[key] = typedStructuredClone(prev[key])
-							}
+							const next = cloneAsMutable(Settings.Profile.DEFAULTS[value])
+							next.name = typeof prev.name === "string" ? prev.name : ""
 							settingsM.profiles[id] = next
 						})
 						this.display()
@@ -370,8 +364,8 @@ export class ProfileModal extends ListModal {
 	async #mutateProfile<T extends Settings.Profile.Type>(
 		type: T,
 		mutator: (
-			profile: Mutable<Settings.Profile.Typed<T>>,
-			settings: Mutable<Settings>,
+			profile: DeepWritable<Settings.Profile> & { type: T },
+			settings: DeepWritable<Settings>,
 		) => unknown,
 	): Promise<void> {
 		const { plugin, id } = this
@@ -492,9 +486,9 @@ export class ProfilesModal extends ListModal {
 	}
 
 	async #mutateProfiles(mutator: (
-		profiles: [string, Mutable<Settings.Profile>][],
+		profiles: [string, DeepWritable<Settings.Profile>][],
 		profilesView: Settings.Profiles,
-		settings: Mutable<Settings>,
+		settings: DeepWritable<Settings>,
 	) => void): Promise<void> {
 		const { plugin } = this
 		await plugin.mutateSettings(settings => {
@@ -506,7 +500,7 @@ export class ProfilesModal extends ListModal {
 
 	async #addProfile(
 		index: number,
-		profile: Mutable<Settings.Profile>,
+		profile: DeepWritable<Settings.Profile>,
 	): Promise<void> {
 		await this.#mutateProfiles((profiles, view) => {
 			let key = crypto.randomUUID()
