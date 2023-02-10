@@ -14,11 +14,7 @@ import type { Writable } from "node:stream"
 export type Equals<X, Y> =
 	(<T>() => T extends X ? true : false) extends
 	(<T>() => T extends Y ? true : false) ? true : false
-export type Immutable<T> = {
-	readonly [key in
-	// eslint-disable-next-line @typescript-eslint/ban-types
-	keyof T]: T[key] extends Function ? T[key] : Immutable<T[key]>
-}
+export type Immutable<T> = { readonly [key in keyof T]: Immutable<T[key]> }
 export type MaybePromise<T, L extends "" | "like" = ""> =
 	L extends "" ? Promise<T> | T : PromiseLike<T> | T
 export type Mutable<T> = { -readonly [key in keyof T]: Mutable<T[key]> }
@@ -126,6 +122,24 @@ export function capitalize(
 	if (typeof cp0 === "undefined") { return "" }
 	const char0 = String.fromCodePoint(cp0)
 	return `${char0.toLocaleUpperCase(locales)}${str.slice(char0.length)}`
+}
+
+export function copyOnWrite<T extends object>(
+	obj: Immutable<T>,
+	mutator: (obj: Mutable<T>) => void,
+): Immutable<T> {
+	const ret = cloneAsMutable(obj)
+	mutator(ret)
+	return deepFreeze(ret)
+}
+
+export async function copyOnWriteAsync<T extends object>(
+	obj: Immutable<T>,
+	mutator: (obj: Mutable<T>) => unknown,
+): Promise<Immutable<T>> {
+	const ret = cloneAsMutable(obj)
+	await mutator(ret)
+	return deepFreeze(ret)
 }
 
 export function clear(self: unknown[]): void {

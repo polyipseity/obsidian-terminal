@@ -5,8 +5,7 @@ import {
 	type MaybePromise,
 	type Mutable,
 	asyncDebounce,
-	cloneAsMutable,
-	deepFreeze,
+	copyOnWriteAsync,
 } from "./utils/util"
 import { LanguageManager } from "./i18n"
 import { SAVE_SETTINGS_TIMEOUT } from "./magic"
@@ -43,9 +42,8 @@ export class TerminalPlugin extends Plugin {
 
 	public async mutateSettings(mutator: (
 		settings: Mutable<Settings>) => unknown): Promise<void> {
-		const settings = cloneAsMutable(this.#settings)
-		await mutator(settings)
-		await this.#onMutateSettings.emit(this.#settings = deepFreeze(settings))
+		await this.#onMutateSettings.emit(this.#settings =
+			await copyOnWriteAsync(this.#settings, mutator))
 	}
 
 	public async loadSettings(settings: Mutable<Settings>): Promise<void> {
