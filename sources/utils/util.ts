@@ -266,7 +266,7 @@ export function inSet<T extends readonly unknown[]>(
 }
 
 export function isUndefined(value: unknown): value is undefined {
-	return isUndefined(value)
+	return typeof value === "undefined"
 }
 
 export function insertAt<T>(
