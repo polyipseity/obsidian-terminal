@@ -70,7 +70,9 @@ export class XtermTerminalEmulator<A> {
 		protected readonly plugin: TerminalPlugin,
 		element: HTMLElement,
 		pseudoterminal: (
-			terminal: Terminal) => MaybePromise<Pseudoterminal, "like">,
+			terminal: Terminal,
+			addons: XtermTerminalEmulator<A>["addons"],
+		) => MaybePromise<Pseudoterminal, "like">,
 		state?: XtermTerminalEmulator.State,
 		options?: ITerminalInitOnlyOptions & ITerminalOptions,
 		addons?: A,
@@ -79,19 +81,20 @@ export class XtermTerminalEmulator<A> {
 		const { terminal } = this
 		terminal.open(element)
 		// eslint-disable-next-line prefer-object-spread
-		this.addons = Object.assign({
+		const addons0 = Object.assign({
 			fit: new FitAddon(),
 			serialize: new SerializeAddon(),
 		}, addons)
-		for (const addon of Object.values(this.addons)) {
+		for (const addon of Object.values(addons0)) {
 			terminal.loadAddon(addon)
 		}
+		this.addons = addons0
 		if (typeof state !== "undefined") {
 			terminal.resize(state.columns, state.rows)
 			terminal.write(state.data)
 		}
 		this.pseudoterminal = (async (): Promise<Pseudoterminal> => {
-			const pty0 = await pseudoterminal(terminal)
+			const pty0 = await pseudoterminal(terminal, addons0)
 			await pty0.pipe(terminal)
 			return pty0
 		})()
