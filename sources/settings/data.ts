@@ -56,11 +56,12 @@ export namespace Settings {
 		export const TYPES =
 			deepFreeze(["", "invalid", "console", "external", "integrated"] as const)
 		export type Type = typeof TYPES[number]
+		export type Typed<T extends Type> = Profile & { readonly type: T }
 		export function defaultOfType<T extends Type>(
 			type: T,
 			profiles: Profiles,
 			platform: Platform | null = PLATFORM,
-		): (Profile & { readonly type: T }) | null {
+		): Typed<T> | null {
 			for (const profile of Object.values(profiles)) {
 				if (isType(type, profile)) {
 					if (platform === null || !("platforms" in profile)) {
@@ -81,7 +82,7 @@ export namespace Settings {
 		export function isType<T extends Type>(
 			type: T,
 			profile: Profile,
-		): profile is Profile & { readonly type: T } {
+		): profile is Typed<T> {
 			return profile.type === type
 		}
 		export type Platforms<T extends string> = { readonly [_ in T]?: boolean }
@@ -113,14 +114,15 @@ export namespace Settings {
 			readonly pythonExecutable: string
 			readonly enableWindowsConhostWorkaround?: boolean
 		}
-		export const DEFAULTS = deepFreeze({
+		export const DEFAULTS: {
+			readonly [key in Type]: RecursiveRequired<Typed<key>>
+		} = deepFreeze({
 			// eslint-disable-next-line @typescript-eslint/naming-convention
-			"": PROFILE_PRESETS.empty satisfies RecursiveRequired<Empty
-			> as RecursiveRequired<Empty>,
+			"": PROFILE_PRESETS.empty,
 			console: {
 				name: "",
 				type: "console",
-			} satisfies RecursiveRequired<Console> as RecursiveRequired<Console>,
+			},
 			external: {
 				args: [],
 				executable: "",
@@ -131,7 +133,7 @@ export namespace Settings {
 					win32: false,
 				},
 				type: "external",
-			} satisfies RecursiveRequired<External> as RecursiveRequired<External>,
+			},
 			integrated: {
 				args: [],
 				enableWindowsConhostWorkaround: false,
@@ -144,11 +146,10 @@ export namespace Settings {
 				},
 				pythonExecutable: "",
 				type: "integrated",
-			} satisfies RecursiveRequired<Integrated
-			> as RecursiveRequired<Integrated>,
+			},
 			invalid: {
 				type: "invalid",
-			} satisfies RecursiveRequired<Invalid> as RecursiveRequired<Invalid>,
+			},
 		} as const)
 	}
 	export function fix(self: unknown): Mutable<Settings> {
@@ -266,7 +267,7 @@ export namespace Settings {
 											"string",
 										),
 										type,
-									} satisfies Required<Profile.Empty>
+									} satisfies Required<Profile.Typed<typeof type>>
 									break
 								}
 								case "console": {
@@ -278,7 +279,7 @@ export namespace Settings {
 											"string",
 										),
 										type,
-									} satisfies Required<Profile.Console>
+									} satisfies Required<Profile.Typed<typeof type>>
 									break
 								}
 								case "external": {
@@ -307,7 +308,7 @@ export namespace Settings {
 											Pseudoterminal.SUPPORTED_PLATFORMS,
 										),
 										type,
-									} satisfies Required<Profile.External>
+									} satisfies Required<Profile.Typed<typeof type>>
 									break
 								}
 								case "integrated": {
@@ -348,14 +349,14 @@ export namespace Settings {
 											"string",
 										),
 										type,
-									} satisfies Required<Profile.Integrated>
+									} satisfies Required<Profile.Typed<typeof type>>
 									break
 								}
 								case "invalid": {
 									ret[id] = {
 										...profile,
 										type,
-									} satisfies Required<Profile.Invalid>
+									} satisfies Required<Profile.Typed<typeof type>>
 									break
 								}
 								default:

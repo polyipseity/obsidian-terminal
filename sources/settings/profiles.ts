@@ -370,9 +370,7 @@ export class ProfileModal extends ListModal {
 	async #mutateProfile<T extends Settings.Profile.Type>(
 		type: T,
 		mutator: (
-			profile: Mutable<Settings.Profile & {
-				readonly type: T
-			}>,
+			profile: Mutable<Settings.Profile.Typed<T>>,
 			settings: Mutable<Settings>,
 		) => unknown,
 	): Promise<void> {
