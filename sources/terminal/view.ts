@@ -78,6 +78,33 @@ export class TerminalView extends ItemView {
 		return this.#focus0
 	}
 
+	get #name(): string {
+		const { profile } = this.#state
+		if ("executable" in profile) {
+			const { executable } = profile
+			if (typeof executable === "string") {
+				return basename(executable, extname(executable))
+			}
+		}
+		if ("name" in profile) {
+			const { name } = profile
+			if (typeof name === "string") { return name }
+		}
+		return this.plugin.language.i18n
+			.t("components.terminal.unknown-profile-name")
+	}
+
+	get #hidesStatusBar(): boolean {
+		switch (this.plugin.settings.hideStatusBar) {
+			case "focused":
+				return this.#focus
+			case "running":
+				return true
+			default:
+				return false
+		}
+	}
+
 	set #emulator(val: TerminalView.EMULATOR | null) {
 		const { plugin } = this
 		this.#emulator0?.close().catch(error => {
@@ -141,7 +168,7 @@ export class TerminalView extends ItemView {
 		return this.plugin.language
 			.i18n.t(
 				`components.${TerminalView.type.id}.display-name`,
-				{ name: this.#displayName() },
+				{ name: this.#name },
 			)
 	}
 
@@ -226,7 +253,7 @@ export class TerminalView extends ItemView {
 							onlySelection: false,
 						}),
 						"text/html; charset=UTF-8;",
-						`${this.#displayName()}.html`,
+						`${this.#name}.html`,
 					)
 				}))
 	}
@@ -250,7 +277,7 @@ export class TerminalView extends ItemView {
 			this.#focus = false
 		}))
 
-		this.register(statusBarHider.hide(() => this.#hidesStatusBar()))
+		this.register(statusBarHider.hide(() => this.#hidesStatusBar))
 		this.registerEvent(workspace.on(
 			"active-leaf-change",
 			() => { statusBarHider.update() },
@@ -407,33 +434,6 @@ export class TerminalView extends ItemView {
 				}
 			})
 		this.register(() => { obsr.disconnect() })
-	}
-
-	#displayName(): string {
-		const { profile } = this.#state
-		if ("executable" in profile) {
-			const { executable } = profile
-			if (typeof executable === "string") {
-				return basename(executable, extname(executable))
-			}
-		}
-		if ("name" in profile) {
-			const { name } = profile
-			if (typeof name === "string") { return name }
-		}
-		return this.plugin.language.i18n
-			.t("components.terminal.unknown-profile-name")
-	}
-
-	#hidesStatusBar(): boolean {
-		switch (this.plugin.settings.hideStatusBar) {
-			case "focused":
-				return this.#focus
-			case "running":
-				return true
-			default:
-				return false
-		}
 	}
 }
 export namespace TerminalView {
