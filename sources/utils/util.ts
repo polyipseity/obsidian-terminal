@@ -6,7 +6,11 @@ import {
 	type PluginManifest,
 	type View,
 } from "obsidian"
-import { NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
+import {
+	JSON_STRINGIFY_SPACE,
+	NOTICE_NO_TIMEOUT,
+	SI_PREFIX_SCALE,
+} from "sources/magic"
 import type { PrimitiveType, TypeofMap } from "./typeof"
 import type { ChildProcess } from "node:child_process"
 import type { TerminalPlugin } from "../main"
@@ -279,6 +283,75 @@ export function insertAt<T>(
 
 export function length(obj: object): number {
 	return Object.keys(obj).length
+}
+
+export function logFormat(...args: readonly unknown[]): string {
+	if (args.length <= 0) { return "" }
+	const
+		stringify = (param: unknown): string => {
+			if (typeof param === "object" && typeof param !== "function") {
+				return JSON.stringify(param, null, JSON_STRINGIFY_SPACE)
+			}
+			return String(param)
+		},
+		[format, ...rest] = args
+	if (typeof format === "string") {
+		return [
+			...(function* fn(): Generator<string, void> {
+				const params = rest[Symbol.iterator]()
+				let back = 0
+				for (let sub = format.indexOf("%");
+					sub !== -1;
+					sub = format.indexOf("%", back)) {
+					yield format.slice(back, sub)
+					back = sub + "%".length
+					const type = format.codePointAt(back)
+					if (isUndefined(type)) {
+						yield "%"
+						continue
+					}
+					const type0 = String.fromCodePoint(type)
+					back += type0.length
+					let func: ((param: unknown) => string) | null = null
+					switch (type0) {
+						case "%":
+							yield "%%"
+							break
+						case "s":
+							func = (param): string => String(param)
+							break
+						case "o":
+						case "O":
+							func = stringify
+							break
+						case "f":
+							func = (param): string => Number(param).toString()
+							break
+						case "d":
+						case "i":
+							func = (param): string => Math.trunc(Number(param)).toString()
+							break
+						default:
+							yield `%${type0}`
+							break
+					}
+					if (func !== null) {
+						const param = params.next()
+						if (param.done ?? false) {
+							yield `%${type0}`
+							break
+						}
+						yield func(param.value)
+					}
+				}
+				yield format.slice(back)
+				for (const param of params) {
+					yield ` ${stringify(param)}`
+				}
+			}()),
+		].join("")
+	}
+	return args.map(stringify).join(" ")
 }
 
 export function notice(

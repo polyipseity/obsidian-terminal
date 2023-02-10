@@ -337,6 +337,7 @@
     ],
     "no-confusing-arrow": "off",
     "no-console": "off",
+    "no-continue": "off",
     "no-magic-numbers": [
       "error",
       {

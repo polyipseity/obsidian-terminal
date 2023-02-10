@@ -1,7 +1,5 @@
 import type { DeepReadonly } from "ts-essentials"
 import { EventEmitterLite } from "./utils/util"
-import type { PluginManifest } from "obsidian"
-import { TerminalView } from "./terminal/view"
 import { around } from "monkey-around"
 
 export const LOGGER = new EventEmitterLite<readonly [Log.Event]>()
@@ -21,7 +19,7 @@ export namespace Log {
 	export type Event = BaseEvent & (
 		{
 			readonly type: "debug" | "error" | "info" | "warn"
-			readonly data: unknown[]
+			readonly data: readonly unknown[]
 		} | {
 			readonly type: "unhandledRejection"
 			readonly data: PromiseRejectionEvent
@@ -37,7 +35,7 @@ export namespace Log {
 const LOG: Log.Event[] = []
 LOGGER.listen(event => LOG.push(event))
 
-export function patch(manifest: PluginManifest): () => void {
+export function patch(): () => void {
 	const unpatchers: (() => void)[] = [],
 		unpatch = (): void => {
 			try {
@@ -103,7 +101,6 @@ export function patch(manifest: PluginManifest): () => void {
 				},
 			}),
 		)
-		TerminalView.namespacedViewType = TerminalView.type.namespaced(manifest)
 	} catch (error) {
 		unpatch()
 		throw error

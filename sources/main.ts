@@ -10,6 +10,7 @@ import { LanguageManager } from "./i18n"
 import { SAVE_SETTINGS_TIMEOUT } from "./magic"
 import { SettingTab } from "./settings/tab"
 import { StatusBarHider } from "./status-bar"
+import { TerminalView } from "./terminal/view"
 import { loadIcons } from "./icons"
 import { loadTerminal } from "./terminal/load"
 import { patch } from "./patches"
@@ -31,7 +32,8 @@ export class TerminalPlugin extends Plugin {
 	readonly #onMutateSettings = new EventEmitterLite<[Settings]>()
 
 	public constructor(app: App, manifest: PluginManifest) {
-		const unpatch = patch(manifest)
+		const unpatch = patch()
+		TerminalView.namespacedViewType = TerminalView.type.namespaced(manifest)
 		super(app, manifest)
 		this.register(unpatch)
 	}

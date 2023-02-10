@@ -1,8 +1,10 @@
 import {
 	DEFAULT_ENCODING,
 	EXIT_SUCCESS,
+	JSON_STRINGIFY_SPACE,
 	TERMINAL_RESIZER_WATCHDOG_INTERVAL,
 } from "../magic"
+import { LOGGER, type Log, log } from "sources/patches"
 import {
 	PLATFORM,
 	anyToError,
@@ -10,6 +12,7 @@ import {
 	executeParanoidly,
 	inSet,
 	isUndefined,
+	logFormat,
 	notice2,
 	printError,
 	promisePromise,
@@ -39,6 +42,10 @@ const
 function clearTerminal(terminal: Terminal): void {
 	// Clear screen with scrollback kept
 	terminal.write(`${"\u001b[2K\n".repeat(terminal.rows - 1)}\u001b[2K\u001b[H`)
+}
+
+function processText(text: string): string {
+	return text.replace("\r\n", "\n").replace("\n", "\r\n")
 }
 
 export interface Pseudoterminal {
@@ -84,7 +91,7 @@ export class TextPseudoterminal
 	}
 
 	public set text(value: string) {
-		const value0 = value.replace("\r\n", "\n").replace("\n", "\r\n")
+		const value0 = processText(value)
 		this.#text = value0
 		this.#terminals.forEach(terminal => {
 			terminal.clear()
@@ -107,12 +114,36 @@ export class ConsolePseudoterminal
 
 	public constructor() {
 		super()
-		this.onExit.finally(() => { clear(this.#terminals) })
+		this.onExit
+			.finally(() => { clear(this.#terminals) })
+			.finally(LOGGER.listen(event => {
+				for (const terminal of this.#terminals) {
+					terminal.writeln(processText(ConsolePseudoterminal.#format(event)))
+				}
+			}))
+	}
+
+	// eslint-disable-next-line consistent-return
+	static #format(event: Log.Event): string {
+		switch (event.type) {
+			case "debug":
+			case "error":
+			case "info":
+			case "warn":
+				return logFormat(...event.data)
+			case "windowError":
+			case "unhandledRejection":
+				return JSON.stringify(event.data, null, JSON_STRINGIFY_SPACE)
+			// No default
+		}
 	}
 
 	public override pipe(terminal: Terminal): void {
 		if (this.exited) { throw new Error() }
 		terminal.clear()
+		for (const event of log()) {
+			terminal.writeln(processText(ConsolePseudoterminal.#format(event)))
+		}
 		this.#terminals.push(terminal)
 	}
 }
