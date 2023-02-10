@@ -124,6 +124,15 @@ export function capitalize(
 	return `${char0.toLocaleUpperCase(locales)}${str.slice(char0.length)}`
 }
 
+export function clear(self: unknown[]): void {
+	self.length = 0
+}
+
+export function cloneAsMutable<T>(obj: T): Mutable<T> {
+	// `readonly` is fake at runtime
+	return typedStructuredClone(obj)
+}
+
 export function commandNamer(
 	cmdNamer: () => string,
 	pluginNamer: () => string,
@@ -136,10 +145,6 @@ export function commandNamer(
 		.replace(defaultPluginName, pluginNamer())
 }
 
-export function cloneAsMutable<T>(obj: T): Mutable<T> {
-	// `readonly` is fake at runtime
-	return typedStructuredClone(obj)
-}
 
 export function deepFreeze<T>(obj: T): Immutable<T> {
 	if (typeof obj === "object" && obj !== null) {
@@ -328,6 +333,22 @@ export function printError(
 		plugin?.settings.errorNoticeTimeout ?? NOTICE_NO_TIMEOUT,
 		plugin,
 	)
+}
+
+export async function promisePromise<T>(): Promise<{
+	readonly promise: Promise<T>
+	readonly resolve: (value: MaybePromise<T, "like">) => void
+	readonly reject: (reason?: unknown) => void
+}> {
+	return new Promise(executeParanoidly((resolve0, reject0) => {
+		const promise = new Promise<T>((resolve, reject) => {
+			try {
+				resolve0({ promise, reject, resolve })
+			} catch (error) {
+				reject0(error)
+			}
+		})
+	}))
 }
 
 export function remove<T>(self: T[], item: T): T | undefined {

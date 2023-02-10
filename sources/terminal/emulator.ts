@@ -103,16 +103,10 @@ export class XtermTerminalEmulator<A> {
 	}
 
 	public async close(): Promise<void> {
-		if (!this.#running ||
-			((await this.pseudoterminal
-				.then(async pty => pty.shell)
-				.catch(() => null))
-				?.kill() ?? true)) {
-			this.terminal.dispose()
-			return
+		if (this.#running) {
+			await (await this.pseudoterminal).kill()
 		}
-		throw new Error(this.plugin.language
-			.i18n.t("errors.failed-to-kill-pseudoterminal"))
+		this.terminal.dispose()
 	}
 
 	public async resize(mustResizePseudoterminal = true): Promise<void> {

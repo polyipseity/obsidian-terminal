@@ -1,13 +1,19 @@
-import { DEFAULT_ENCODING, TERMINAL_RESIZER_WATCHDOG_INTERVAL } from "../magic"
+import {
+	DEFAULT_ENCODING,
+	EXIT_SUCCESS,
+	TERMINAL_RESIZER_WATCHDOG_INTERVAL,
+} from "../magic"
 import {
 	type MaybePromise,
 	PLATFORM,
 	anyToError,
+	clear,
 	deepFreeze,
 	executeParanoidly,
 	inSet,
 	notice2,
 	printError,
+	promisePromise,
 	spawnPromise,
 	typedKeys,
 	writePromise,
@@ -37,16 +43,39 @@ function clearTerminal(terminal: Terminal): void {
 
 export interface Pseudoterminal {
 	readonly shell?: Promise<PipedChildProcess>
-	readonly onExit?: Promise<NodeJS.Signals | number>
+	readonly kill: () => MaybePromise<void>
+	readonly onExit: Promise<NodeJS.Signals | number>
 	readonly pipe: (terminal: Terminal) => MaybePromise<void>
 	readonly resize?: (columns: number, rows: number) => MaybePromise<void>
 }
 
-export class TextPseudoterminal implements Pseudoterminal {
+abstract class PseudoPseudoterminal implements Pseudoterminal {
+	public readonly onExit
+	protected exited = false
+	readonly #exit = promisePromise<NodeJS.Signals | number>()
+
+	public constructor() {
+		this.onExit = this.#exit
+			.then(async ({ promise }) => promise)
+			.finally(() => { this.exited = true })
+	}
+
+	public async kill(): Promise<void> {
+		(await this.#exit).resolve(EXIT_SUCCESS)
+	}
+
+	public abstract pipe(terminal: Terminal): MaybePromise<void>
+}
+
+export class TextPseudoterminal
+	extends PseudoPseudoterminal
+	implements Pseudoterminal {
 	readonly #terminals: Terminal[] = []
 	#text: string
 
 	public constructor(text = "") {
+		super()
+		this.onExit.finally(() => { clear(this.#terminals) })
 		this.#text = text
 	}
 
@@ -62,19 +91,27 @@ export class TextPseudoterminal implements Pseudoterminal {
 		})
 	}
 
-	public pipe(terminal: Terminal): void {
+	public override pipe(terminal: Terminal): void {
+		if (this.exited) { throw new Error() }
 		terminal.clear()
 		terminal.write(this.text)
 		this.#terminals.push(terminal)
 	}
 }
 
-export class ConsolePseudoterminal implements Pseudoterminal {
+export class ConsolePseudoterminal
+	extends PseudoPseudoterminal
+	implements Pseudoterminal {
 	// Implement me!
-
 	readonly #terminals: Terminal[] = []
 
-	public pipe(terminal: Terminal): void {
+	public constructor() {
+		super()
+		this.onExit.finally(() => { clear(this.#terminals) })
+	}
+
+	public override pipe(terminal: Terminal): void {
+		if (this.exited) { throw new Error() }
 		terminal.clear()
 		this.#terminals.push(terminal)
 	}
@@ -263,6 +300,13 @@ class WindowsPseudoterminal implements Pseudoterminal {
 		 */
 	}
 
+	public async kill(): Promise<void> {
+		if (!(await this.shell).kill()) {
+			throw new Error(this.plugin.language
+				.i18n.t("errors.failed-to-kill-pseudoterminal"))
+		}
+	}
+
 	public async resize(columns: number, rows: number): Promise<void> {
 		const resizer = await this.#resizer
 		if (resizer === null) {
@@ -337,6 +381,13 @@ class UnixPseudoterminal implements Pseudoterminal {
 					shell.once("exit", (code, signal) => {
 						resolve(code ?? signal ?? NaN)
 					}))))
+	}
+
+	public async kill(): Promise<void> {
+		if ((await this.shell).kill()) {
+			throw new Error(this.plugin.language
+				.i18n.t("errors.failed-to-kill-pseudoterminal"))
+		}
 	}
 
 	public async pipe(terminal: Terminal): Promise<void> {
