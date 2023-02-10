@@ -19,7 +19,7 @@ import { TERMINAL_RESIZE_TIMEOUT } from "../magic"
 import type { TerminalPlugin } from "../main"
 import type { WebglAddon } from "xterm-addon-webgl"
 import { debounce } from "obsidian"
-import { dynamicRequire } from "../bundle"
+import { dynamicRequire } from "../imports"
 
 const
 	childProcess =
