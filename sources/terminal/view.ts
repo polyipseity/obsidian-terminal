@@ -10,6 +10,7 @@ import {
 	type ViewStateResult,
 	type WorkspaceLeaf,
 } from "obsidian"
+import { JSON_STRINGIFY_SPACE, TERMINAL_EXIT_SUCCESS } from "../magic"
 import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
 import {
 	UnnamespacedID,
@@ -33,7 +34,6 @@ import FindComponent from "../components/find.svelte"
 import { LigaturesAddon } from "xterm-addon-ligatures"
 import { SearchAddon } from "xterm-addon-search"
 import { Settings } from "sources/settings/data"
-import { TERMINAL_EXIT_SUCCESS } from "../magic"
 import type { TerminalPlugin } from "../main"
 import { TextPseudoterminal } from "./pseudoterminal"
 import { Unicode11Addon } from "xterm-addon-unicode11"
@@ -323,12 +323,20 @@ export class TerminalView extends ItemView {
 							if (ret === null) {
 								const pty = new TextPseudoterminal(i18n
 									.t("components.terminal.unsupported-profile", {
-										profile: JSON.stringify(profile),
+										profile: JSON.stringify(
+											profile,
+											null,
+											JSON_STRINGIFY_SPACE,
+										),
 									}))
 								pty.onExit.finally(language.onChangeLanguage.listen(() => {
 									pty.text =
 										i18n.t("components.terminal.unsupported-profile", {
-											profile: JSON.stringify(profile),
+											profile: JSON.stringify(
+												profile,
+												null,
+												JSON_STRINGIFY_SPACE,
+											),
 										})
 								}))
 								return pty

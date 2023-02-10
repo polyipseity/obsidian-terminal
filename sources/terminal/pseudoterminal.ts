@@ -84,10 +84,11 @@ export class TextPseudoterminal
 	}
 
 	public set text(value: string) {
-		this.#text = value
+		const value0 = value.replace("\r\n", "\n").replace("\n", "\r\n")
+		this.#text = value0
 		this.#terminals.forEach(terminal => {
 			terminal.clear()
-			terminal.write(value)
+			terminal.write(value0)
 		})
 	}
 
