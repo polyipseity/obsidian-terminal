@@ -102,7 +102,6 @@ export class TextPseudoterminal
 export class ConsolePseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
-	// Implement me!
 	readonly #terminals: Terminal[] = []
 
 	public constructor() {

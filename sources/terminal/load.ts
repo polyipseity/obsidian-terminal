@@ -173,7 +173,8 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 	plugin.addRibbonIcon(
 		i18n.t("asset:ribbons.open-terminal"),
 		i18n.t("ribbons.open-terminal"),
-		async () => { new SelectProfileModal(plugin).open() })
+		() => { new SelectProfileModal(plugin).open() },
+	)
 	plugin.registerEvent(app.workspace.on("file-menu", (menu, file) => {
 		if (!plugin.settings.addToContextMenu) {
 			return
