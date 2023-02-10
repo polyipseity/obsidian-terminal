@@ -1,9 +1,8 @@
 {
 	"commands": {
-		"open-terminal-external-root": "在外部終端開啟根目錄",
-		"open-terminal-external-current": "在外部終端開啟目前目錄",
-		"open-terminal-integrated-root": "在整合式終端開啟根目錄",
-		"open-terminal-integrated-current": "在整合式終端開啟目前目錄"
+		"open-terminal-": "在終端開啟：{{- type}}",
+		"open-terminal-current": "在終端開啟目前目錄：{{- type}}",
+		"open-terminal-root": "在終端開啟根目錄：{{- type}}"
 	},
 	"components": {
 		"editable-list": {
@@ -35,8 +34,7 @@
 		"resizer-exited-unexpectedly": "終端縮放程式意外退出：{{- code}}"
 	},
 	"menus": {
-		"open-terminal-external": "在外部終端開啟",
-		"open-terminal-integrated": "在整合式終端開啟",
+		"open-terminal": "在終端開啟：{{- type}}",
 		"terminal": {
 			"find": "搜尋",
 			"restart": "重啟",
@@ -118,7 +116,8 @@
 			"console": "控制台",
 			"external": "外部",
 			"integrated": "整合式",
-			"invalid": "無效"
+			"invalid": "無效",
+			"select": "（選擇）"
 		},
 		"renderers": {
 			"canvas": "畫布",

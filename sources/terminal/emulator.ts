@@ -8,6 +8,7 @@ import {
 	asyncDebounce,
 	spawnPromise,
 } from "../utils/util"
+import { dynamicRequire, importable } from "../imports"
 import type { AsyncOrSync } from "ts-essentials"
 import type { CanvasAddon } from "xterm-addon-canvas"
 import type { ChildProcessByStdio } from "node:child_process"
@@ -18,16 +19,17 @@ import { TERMINAL_RESIZE_TIMEOUT } from "../magic"
 import type { TerminalPlugin } from "../main"
 import type { WebglAddon } from "xterm-addon-webgl"
 import { debounce } from "obsidian"
-import { dynamicRequire } from "../imports"
 
 const
 	childProcess =
 		dynamicRequire<typeof import("node:child_process")>("node:child_process")
 
+export const SUPPORTS_EXTERNAL_TERMINAL_EMULATOR =
+	importable("node:child_process")
 export async function spawnExternalTerminalEmulator(
 	executable: string,
-	cwd?: string,
 	args?: readonly string[],
+	cwd?: string,
 ): Promise<ChildProcessByStdio<null, null, null>> {
 	const ret = await spawnPromise(async () =>
 		(await childProcess).spawn(executable, args ?? [], {

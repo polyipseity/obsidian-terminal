@@ -53,6 +53,7 @@ export namespace Settings {
 		Profile.Invalid
 	export type Profiles = Readonly<Record<string, Profile>>
 	export namespace Profile {
+		export type Entry = readonly [key: string, value: Profile]
 		export const TYPES =
 			Object.freeze([
 				"",
@@ -90,6 +91,14 @@ export namespace Settings {
 			profile: Profile,
 		): profile is Typed<T> {
 			return profile.type === type
+		}
+		export function name(profile: Profile): string {
+			const { name: name0 } = profile
+			if (typeof name0 === "string") { return name0 }
+			return ""
+		}
+		export function nameOrID(entry: Entry): string {
+			return name(entry[1]) || entry[0]
 		}
 		export type Platforms<T extends string> = { readonly [_ in T]?: boolean }
 		interface Base {

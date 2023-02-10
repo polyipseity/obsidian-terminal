@@ -1,205 +1,220 @@
 import {
-	type FileSystemAdapter,
+	FileSystemAdapter,
+	FuzzySuggestModal,
 	MarkdownView,
-	type Menu,
+	type MenuItem,
 	TFolder,
 	type WorkspaceLeaf,
 } from "obsidian"
-import {
-	PLATFORM,
-	anyToError,
-	commandNamer,
-	deepFreeze,
-	inSet,
-	notice2,
-	printError,
-} from "../utils/util"
+import { commandNamer, deepFreeze, isNonNull, notice2 } from "../utils/util"
 import { DEFAULT_LANGUAGE } from "assets/locales"
-import { Pseudoterminal } from "./pseudoterminal"
+import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "../main"
 import { TerminalView } from "./view"
-import { spawnExternalTerminalEmulator } from "./emulator"
+
+function spawnTerminal(
+	plugin: TerminalPlugin,
+	profile: Settings.Profile,
+	cwd?: string,
+): void {
+	const { workspace } = app,
+		existingLeaves = workspace
+			.getLeavesOfType(TerminalView.type.namespaced(plugin));
+	((): WorkspaceLeaf => {
+		const existingLeaf = existingLeaves.at(-1)
+		if (typeof existingLeaf === "undefined") {
+			return workspace.getLeaf("split", "horizontal")
+		}
+		workspace.setActiveLeaf(existingLeaf, { focus: false })
+		return workspace.getLeaf("tab")
+	})()
+		.setViewState({
+			active: true,
+			state: {
+				__type: TerminalView.State.TYPE,
+				cwd,
+				profile,
+			} satisfies TerminalView.State,
+			type: TerminalView.type.namespaced(plugin),
+		})
+		.catch(error => { console.error(error) })
+}
+
+class SelectProfileModal
+	extends FuzzySuggestModal<Settings.Profile.Entry> {
+	public constructor(
+		protected readonly plugin: TerminalPlugin,
+		protected readonly cwd?: string,
+	) {
+		super(plugin.app)
+	}
+
+	public override getItems(): Settings.Profile.Entry[] {
+		return Object.entries(this.plugin.settings.profiles)
+	}
+
+	public override getItemText(item: Settings.Profile.Entry): string {
+		return Settings.Profile.nameOrID(item)
+	}
+
+	public override onChooseItem(
+		item: Settings.Profile.Entry,
+		_evt: KeyboardEvent | MouseEvent,
+	): void {
+		this.close()
+		spawnTerminal(this.plugin, item[1], this.cwd)
+	}
+}
 
 export function loadTerminal(plugin: TerminalPlugin): void {
-	const
-		CWD_TYPES = deepFreeze(["root", "current"] as const),
-		TERMINAL_TYPES = deepFreeze(["external", "integrated"] as const),
-		{ app, settings, language } = plugin,
-		{ i18n } = language
-	type CwdType = typeof CWD_TYPES[number]
-	type TerminalType = typeof TERMINAL_TYPES[number]
-	let terminalSpawnCommand = (
-		_terminal: TerminalType,
-		_cwd: CwdType,
-	) => (_checking: boolean): boolean => false
-
 	plugin.registerView(
 		TerminalView.type.namespaced(plugin),
 		leaf => new TerminalView(plugin, leaf),
 	)
 
-	if (inSet(Pseudoterminal.SUPPORTED_PLATFORMS, PLATFORM)) {
-		const
-			adapter = app.vault.adapter as FileSystemAdapter,
-			spawnTerminal = (
-				cwd: string,
-				terminal: TerminalType,
-			): void => {
-				(async (): Promise<void> => {
-					try {
-						const { profiles, noticeTimeout, errorNoticeTimeout } = settings
-						switch (terminal) {
-							case "external": {
-								const profile =
-									Settings.Profile.defaultOfType(terminal, profiles)
-								if (profile === null) { break }
-								const { executable, args } = profile
-								notice2(
-									() => i18n.t(
-										"notices.spawning-terminal",
-										{ name: executable },
-									),
-									noticeTimeout,
-									plugin,
-								)
-								await spawnExternalTerminalEmulator(
-									executable,
-									cwd,
-									args,
-								)
-								return
-							}
-							case "integrated": {
-								const profile =
-									Settings.Profile.defaultOfType(terminal, profiles)
-								if (profile === null) { break }
-								const { executable } = profile
-								notice2(
-									() => i18n.t(
-										"notices.spawning-terminal",
-										{ name: executable },
-									),
-									settings.noticeTimeout,
-									plugin,
-								)
-								const { workspace } = app,
-									existingLeaves = workspace
-										.getLeavesOfType(TerminalView.type.namespaced(plugin))
-								await ((): WorkspaceLeaf => {
-									const existingLeaf = existingLeaves.at(-1)
-									if (typeof existingLeaf === "undefined") {
-										return workspace.getLeaf("split", "horizontal")
-									}
-									workspace.setActiveLeaf(existingLeaf, { focus: false })
-									return workspace.getLeaf("tab")
-								})()
-									.setViewState({
-										active: true,
-										state: {
-											__type: TerminalView.State.TYPE,
-											cwd,
-											profile,
-										} satisfies TerminalView.State,
-										type: TerminalView.type.namespaced(plugin),
-									})
-								return
-							}
-							// No default
+	const
+		CWD_TYPES = deepFreeze(["", "root", "current"] as const),
+		PROFILE_TYPES = deepFreeze((["select", "integrated", "external"] as const)
+			.filter(type => type === "select" || PROFILE_PROPERTIES[type].available)),
+		{ app, language } = plugin,
+		{ i18n } = language
+	type CWDType = typeof CWD_TYPES[number]
+	const defaultProfile =
+		(type: Settings.Profile.Type): Settings.Profile | null => {
+			const ret = Settings.Profile.defaultOfType(type, plugin.settings.profiles)
+			if (ret === null) {
+				notice2(
+					() => i18n.t(
+						"notices.no-default-profile",
+						{
+							type: i18n.t(`types.profiles.${type}`),
+						},
+					),
+					plugin.settings.errorNoticeTimeout,
+					plugin,
+				)
+			}
+			return ret
+		},
+		adapter = app.vault.adapter instanceof FileSystemAdapter
+			? app.vault.adapter
+			: null,
+		contextMenu = (
+			type: Settings.Profile.Type | "select",
+			cwd?: TFolder,
+		): ((item: MenuItem) => void) | null => {
+			const cwd0 = typeof cwd === "undefined"
+				? cwd
+				: adapter === null ? null : adapter.getFullPath(cwd.path)
+			if (cwd0 === null) { return null }
+			return (item: MenuItem) => {
+				item
+					.setTitle(i18n.t("menus.open-terminal", {
+						type: i18n.t(`types.profiles.${type}`),
+					}))
+					.setIcon(i18n.t(`asset:types.profiles.${type}-icon`))
+					.onClick(() => {
+						if (type === "select") {
+							new SelectProfileModal(plugin, cwd0).open()
+							return
 						}
-						notice2(
-							() => i18n.t(
-								"notices.no-default-profile",
-								{
-									type: i18n.t(`types.profiles.${terminal}`),
-								},
-							),
-							errorNoticeTimeout,
-							plugin,
-						)
-					} catch (error) {
-						printError(
-							anyToError(error),
-							() => i18n.t("errors.error-spawning-terminal"),
-							plugin,
-						)
-					}
-				})()
-			},
-			addContextMenus = (menu: Menu, cwd: TFolder): void => {
-				menu.addSeparator()
-				for (const terminal of TERMINAL_TYPES) {
-					menu.addItem(item => item
-						.setTitle(i18n.t(`menus.open-terminal-${terminal}`))
-						.setIcon(i18n.t(`asset:menus.open-terminal-${terminal}-icon`))
-						.onClick(() => {
-							spawnTerminal(
-								adapter.getFullPath(cwd.path),
-								terminal,
-							)
-						}))
-				}
-			}
-		terminalSpawnCommand = (
-			terminal: TerminalType,
-			cwd: CwdType,
-		) => (checking: boolean): boolean => {
-			if (!settings.addToCommand) {
-				return false
-			}
-			switch (cwd) {
-				case "root": {
-					if (!checking) {
-						spawnTerminal(adapter.getBasePath(), terminal)
-					}
-					return true
-				}
-				case "current": {
-					const activeFile = app.workspace.getActiveFile()
-					if (activeFile === null) {
-						return false
-					}
-					if (!checking) {
+						const profile = defaultProfile(type)
+						if (profile === null) { return }
 						spawnTerminal(
-							adapter.getFullPath(activeFile.parent.path),
-							terminal,
+							plugin,
+							profile,
+							cwd0,
 						)
+					})
+			}
+		},
+		command = (
+			type: Settings.Profile.Type | "select",
+			cwd: CWDType,
+		) => (checking: boolean) => {
+			// eslint-disable-next-line consistent-return
+			const cwd0 = ((): string | null | undefined => {
+				if (adapter === null) { return null }
+				switch (cwd) {
+					case "":
+						// eslint-disable-next-line no-void
+						return void 0
+					case "root":
+						return adapter.getBasePath()
+					case "current": {
+						const active = app.workspace.getActiveFile()
+						if (active === null) { return null }
+						return adapter.getFullPath(active.parent.path)
 					}
+					// No default
+				}
+			})()
+			if (cwd0 === null) { return false }
+			if (!checking) {
+				if (type === "select") {
+					new SelectProfileModal(plugin, cwd0).open()
 					return true
 				}
-				// No default
+				const profile = defaultProfile(type)
+				if (profile !== null) {
+					spawnTerminal(plugin, profile, cwd0)
+				}
 			}
+			return true
 		}
-		plugin.registerEvent(app.workspace.on("file-menu", (menu, file) => {
-			if (!settings.addToContextMenu) {
+	plugin.registerEvent(app.workspace.on("file-menu", (menu, file) => {
+		if (!plugin.settings.addToContextMenu) {
+			return
+		}
+		const folder = file instanceof TFolder ? file : file.parent
+		menu.addSeparator()
+		const items = PROFILE_TYPES
+			.map(type => contextMenu(type, folder))
+			.filter(isNonNull)
+		if (items.length > 0) {
+			menu.addSeparator()
+			items.forEach(item => menu.addItem(item))
+		}
+	}))
+	plugin.registerEvent(app.workspace.on(
+		"editor-menu",
+		(menu, _0, info) => {
+			if (!plugin.settings.addToContextMenu ||
+				info instanceof MarkdownView ||
+				info.file === null) {
 				return
 			}
-			addContextMenus(menu, file instanceof TFolder ? file : file.parent)
-		}))
-		plugin.registerEvent(app.workspace.on(
-			"editor-menu",
-			(menu, _0, info) => {
-				if (!settings.addToContextMenu ||
-					info instanceof MarkdownView ||
-					info.file === null) {
-					return
-				}
-				addContextMenus(menu, info.file.parent)
-			},
-		))
-	}
-	for (const terminal of TERMINAL_TYPES) {
-		for (const cwd of CWD_TYPES) {
-			const id = `open-terminal-${terminal}-${cwd}` as const
-			let namer = (): string => i18n.t(`commands.${id}`)
-			// Always register command for interop with other plugins
+			const folder = info.file.parent
+			menu.addSeparator()
+			const items = PROFILE_TYPES
+				.map(type => contextMenu(type, folder))
+				.filter(isNonNull)
+			if (items.length > 0) {
+				menu.addSeparator()
+				items.forEach(item => menu.addItem(item))
+			}
+		},
+	))
+	// Always register command for interop with other plugins
+	for (const cwd of CWD_TYPES) {
+		for (const type of PROFILE_TYPES) {
+			const id = `open-terminal-${cwd}.${type}` as const
+			let namer = (): string => i18n.t(`commands.open-terminal-${cwd}`, {
+				type: i18n.t(`types.profiles.${type}`),
+			})
 			plugin.addCommand({
-				checkCallback: terminalSpawnCommand(terminal, cwd),
+				checkCallback: checking => {
+					if (!plugin.settings.addToCommand) { return false }
+					return command(type, cwd)(checking)
+				},
 				id,
 				get name() { return namer() },
 				set name(format) {
 					namer = commandNamer(
-						() => i18n.t(`commands.${id}`),
+						() => i18n.t(`commands.open-terminal-${cwd}`, {
+							type: i18n.t(`types.profiles.${type}`),
+						}),
 						() => i18n.t("name"),
 						i18n.t("name", { lng: DEFAULT_LANGUAGE }),
 						format,

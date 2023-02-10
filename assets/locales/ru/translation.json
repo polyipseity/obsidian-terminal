@@ -1,9 +1,8 @@
 {
 	"commands": {
-		"open-terminal-external-root": "Open root in external terminal",
-		"open-terminal-external-current": "Open current folder in external terminal",
-		"open-terminal-integrated-root": "Open root in integrated terminal",
-		"open-terminal-integrated-current": "Open current folder in integrated terminal"
+		"open-terminal-": "Open terminal: {{- type}}",
+		"open-terminal-current": "Open current folder in terminal: {{- type}}",
+		"open-terminal-root": "Open root in terminal: {{- type}}"
 	},
 	"components": {
 		"editable-list": {
@@ -38,8 +37,7 @@
 		"resizer-exited-unexpectedly": "Terminal resizer exited unexpectedly: {{- code}}"
 	},
 	"menus": {
-		"open-terminal-external": "Open in external terminal",
-		"open-terminal-integrated": "Open in integrated terminal",
+		"open-terminal": "Open in terminal: {{- type}}",
 		"terminal": {
 			"find": "Find",
 			"restart": "Restart",
@@ -122,7 +120,8 @@
 			"console": "Console",
 			"external": "External",
 			"integrated": "Integrated",
-			"invalid": "Invalid"
+			"invalid": "Invalid",
+			"select": "(Select)"
 		},
 		"renderers": {
 			"canvas": "canvas",

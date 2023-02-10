@@ -237,6 +237,10 @@ export function isHomogenousArray<T extends PrimitiveType>(
 	return value.every(element => typeof element === type)
 }
 
+export function isNonNull<T>(value: T | null | undefined): value is T {
+	return value !== null && typeof value !== "undefined"
+}
+
 export function inSet<T extends readonly unknown[]>(
 	set: Sized<T>,
 	obj: unknown,

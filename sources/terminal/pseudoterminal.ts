@@ -118,10 +118,10 @@ export class ConsolePseudoterminal
 
 export interface ShellPseudoterminalArguments {
 	readonly executable: string
-	readonly cwd?: string
-	readonly args?: readonly string[]
-	readonly pythonExecutable?: string
-	readonly enableWindowsConhostWorkaround?: boolean
+	readonly cwd?: string | undefined
+	readonly args?: readonly string[] | undefined
+	readonly pythonExecutable?: string | undefined
+	readonly enableWindowsConhostWorkaround?: boolean | undefined
 }
 
 class WindowsPseudoterminal implements Pseudoterminal {

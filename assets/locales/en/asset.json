@@ -20,8 +20,6 @@
 		}
 	},
 	"menus": {
-		"open-terminal-external-icon": "terminal-square",
-		"open-terminal-integrated-icon": "terminal",
 		"terminal": {
 			"find-icon": "search",
 			"restart-icon": "reset",
@@ -71,6 +69,14 @@
 			"darwin-icon": "terminal:macos",
 			"linux-icon": "terminal:linux",
 			"win32-icon": "terminal:windows"
+		},
+		"profiles": {
+			"-icon": "square",
+			"console-icon": "curly-braces",
+			"external-icon": "terminal-square",
+			"integrated-icon": "terminal",
+			"invalid-icon": "x-circle",
+			"select-icon": "text-cursor-input"
 		}
 	}
 }

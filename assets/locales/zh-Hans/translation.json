@@ -1,9 +1,8 @@
 {
 	"commands": {
-		"open-terminal-external-root": "在外部终端开啟根目録",
-		"open-terminal-external-current": "在外部终端开啟目前目録",
-		"open-terminal-integrated-root": "在整合式终端开啟根目録",
-		"open-terminal-integrated-current": "在整合式终端开啟目前目録"
+		"open-terminal-": "在终端开啟：{{- type}}",
+		"open-terminal-current": "在终端开啟目前目録：{{- type}}",
+		"open-terminal-root": "在终端开啟根目録：{{- type}}"
 	},
 	"components": {
 		"editable-list": {
@@ -35,8 +34,7 @@
 		"resizer-exited-unexpectedly": "终端缩放迸程意外退出：{{- code}}"
 	},
 	"menus": {
-		"open-terminal-external": "在外部终端开啟",
-		"open-terminal-integrated": "在整合式终端开啟",
+		"open-terminal": "在终端开啟：{{- type}}",
 		"terminal": {
 			"find": "搜索",
 			"restart": "重启",
@@ -118,7 +116,8 @@
 			"console": "控制台",
 			"external": "外部",
 			"integrated": "整合式",
-			"invalid": "无效"
+			"invalid": "无效",
+			"select": "（选择）"
 		},
 		"renderers": {
 			"canvas": "画布",

@@ -10,6 +10,7 @@ import {
 import { linkSetting, resetButton, setTextToEnum } from "./util"
 import type { DeepWritable } from "ts-essentials"
 import { PROFILE_PRESETS } from "./profile-presets"
+import { PROFILE_PROPERTIES } from "./profile-properties"
 import { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import { Setting } from "obsidian"
 import { Settings } from "./data"
@@ -55,23 +56,23 @@ export class ProfileModal extends ListModal {
 			})
 			return
 		}
-		const { name, type } = profile,
-			namer = (name0: unknown): string =>
-				typeof name0 === "string" ? name0 : ""
+		const { type } = profile
 		listEl.createEl("h1", {
 			text: i18n.t("settings.profile.title", {
 				id,
-				nameOrID: namer(name) || id,
+				nameOrID: Settings.Profile.nameOrID([id, profile]),
 				profile,
 			}),
 		}, el => {
 			this.#displayFinally.push(plugin.on(
 				"mutate-settings",
 				settings0 => settings0.profiles[id]?.name,
-				cur => {
+				(_0, _1, settings0) => {
+					const profile0 = settings0.profiles[id]
+					if (typeof profile0 === "undefined") { return }
 					el.textContent = i18n.t("settings.profile.title", {
 						id,
-						nameOrID: namer(cur) || id,
+						nameOrID: Settings.Profile.nameOrID([id, profile0]),
 						profile,
 					})
 				},
@@ -81,7 +82,7 @@ export class ProfileModal extends ListModal {
 			.setName(i18n.t("settings.profile.name"))
 			.addText(linkSetting(
 				plugin,
-				() => namer(name),
+				() => Settings.Profile.name(profile),
 				async value => this.#mutateProfile(type, profileM => {
 					profileM.name = value
 				}),
@@ -115,7 +116,7 @@ export class ProfileModal extends ListModal {
 						dropdown
 							.addOptions(Object
 								.fromEntries(Settings.Profile.TYPES
-									.filter(type0 => type0 !== "invalid")
+									.filter(type0 => PROFILE_PROPERTIES[type0].valid)
 									.map(type0 => [type0, i18n.t(`types.profiles.${type0}`)])))
 					},
 				},

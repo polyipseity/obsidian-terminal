@@ -1,9 +1,3 @@
-import {
-	ConsolePseudoterminal,
-	Pseudoterminal,
-	type ShellPseudoterminalArguments,
-	TextPseudoterminal,
-} from "./pseudoterminal"
 import { Direction, type Params } from "../components/find"
 import {
 	DisposerAddon,
@@ -16,11 +10,12 @@ import {
 	type ViewStateResult,
 	type WorkspaceLeaf,
 } from "obsidian"
+import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
 import {
-	PLATFORM,
 	UnnamespacedID,
 	anyToError,
 	basename,
+	copyOnWrite,
 	extname,
 	inSet,
 	isInterface,
@@ -29,6 +24,7 @@ import {
 	openExternal,
 	printError,
 	saveFile,
+	typedStructuredClone,
 	updateDisplayText,
 } from "../utils/util"
 import { CanvasAddon } from "xterm-addon-canvas"
@@ -38,10 +34,10 @@ import { SearchAddon } from "xterm-addon-search"
 import { Settings } from "sources/settings/data"
 import { TERMINAL_EXIT_SUCCESS } from "../magic"
 import type { TerminalPlugin } from "../main"
+import { TextPseudoterminal } from "./pseudoterminal"
 import { Unicode11Addon } from "xterm-addon-unicode11"
 import { WebLinksAddon } from "xterm-addon-web-links"
 import { WebglAddon } from "xterm-addon-webgl"
-import type { Writable } from "ts-essentials"
 
 export class TerminalView extends ItemView {
 	public static readonly type = new UnnamespacedID("terminal")
@@ -49,9 +45,8 @@ export class TerminalView extends ItemView {
 	#emulator0: TerminalView.EMULATOR | null = null
 	#find0: FindComponent | null = null
 	#focus0 = false
-	readonly #state: TerminalView.State = {
+	#state: TerminalView.State = {
 		__type: TerminalView.State.TYPE,
-		cwd: "",
 		profile: Settings.Profile.DEFAULTS.invalid,
 	}
 
@@ -64,10 +59,6 @@ export class TerminalView extends ItemView {
 
 	get #emulator(): TerminalView.EMULATOR | null {
 		return this.#emulator0
-	}
-
-	get #profile(): Settings.Profile {
-		return this.#state.profile
 	}
 
 	get #find(): FindComponent | null {
@@ -135,25 +126,21 @@ export class TerminalView extends ItemView {
 		this.#focus0 = val
 	}
 
-	set #profile(value: Settings.Profile) {
-		this.#state.profile = value
-		this.#emulator = null
-	}
-
 	public override async setState(
 		state: unknown,
 		result: ViewStateResult,
 	): Promise<void> {
 		await super.setState(state, result)
 		if (isInterface<TerminalView.State>(TerminalView.State.TYPE, state)) {
-			Object.assign(this.#state, state)
+			this.#state = typedStructuredClone(state)
+			this.#startEmulator()
 		}
 	}
 
 	public override getState(): unknown {
 		const serial = this.#emulator?.serialize()
 		if (typeof serial !== "undefined") {
-			this.#state.serial = serial
+			this.#state = copyOnWrite(this.#state, state => { state.serial = serial })
 		}
 		return Object.assign(super.getState(), this.#state)
 	}
@@ -287,153 +274,130 @@ export class TerminalView extends ItemView {
 		))
 
 		this.register(() => { this.#emulator = null })
-		this.#startEmulator()
 	}
 
 	#startEmulator(): void {
 		this.contentEl.detach()
 		this.contentEl = this.containerEl.createDiv()
-		const { contentEl } = this,
-			obsr = onVisible(contentEl, obsr0 => {
+		const { contentEl, plugin, leaf } = this,
+			state = this.#state,
+			{ profile, cwd, serial } = state,
+			{ app, language, settings } = plugin,
+			{ i18n } = language,
+			{ requestSaveLayout } = app.workspace
+		notice2(
+			() => i18n.t(
+				"notices.spawning-terminal",
+				{ name: this.#name },
+			),
+			settings.noticeTimeout,
+			plugin,
+		)
+		if (!PROFILE_PROPERTIES[profile.type].integratable) {
+			(async (): Promise<void> => {
 				try {
-					const { plugin } = this,
-						state = this.#state,
-						{ cwd, serial } = state,
-						{ app, language, settings } = plugin,
-						{ i18n } = language,
-						{ requestSaveLayout } = app.workspace,
-						protodisposer: (() => void)[] = [],
-						emulator = new TerminalView.EMULATOR(
-							plugin,
-							contentEl,
-							terminal => {
-								if (typeof serial !== "undefined") {
-									terminal.write(`${i18n.t(
-										"components.terminal.restored-history",
-										{ time: new Date().toLocaleString(language.language) },
-									)}\r\n`)
-								}
-								const profile = this.#profile,
-									{ type } = profile
-								switch (type) {
-									case "": {
-										return new TextPseudoterminal()
-									}
-									case "console": {
-										return new ConsolePseudoterminal()
-									}
-									case "integrated": {
-										if (Pseudoterminal.PLATFORM_PSEUDOTERMINAL === null) {
-											break
-										}
-										const
-											{
-												args,
-												platforms,
-												enableWindowsConhostWorkaround,
-												executable,
-												pythonExecutable,
-											} = profile,
-											platforms0: Readonly<Record<string, boolean>> = platforms
-										if (!(platforms0[PLATFORM] ?? false)) { break }
-										const ptyArgs: Writable<ShellPseudoterminalArguments> = {
-											args,
-											cwd,
-											executable,
-										}
-										if (typeof enableWindowsConhostWorkaround !== "undefined") {
-											ptyArgs.enableWindowsConhostWorkaround =
-												enableWindowsConhostWorkaround
-										}
-										if (typeof pythonExecutable !== "undefined") {
-											ptyArgs.pythonExecutable = pythonExecutable
-										}
-										return new Pseudoterminal
-											.PLATFORM_PSEUDOTERMINAL(plugin, ptyArgs)
-									}
-									case "external":
-									case "invalid":
-										break
-									// No default
-								}
+					await openProfile(plugin, profile, cwd)
+				} catch (error) {
+					printError(anyToError(error), () =>
+						i18n.t("errors.error-spawning-terminal"), plugin)
+				}
+			})()
+			leaf.detach()
+			return
+		}
+		onVisible(contentEl, obsr => {
+			try {
+				const
+					emulator = new TerminalView.EMULATOR(
+						plugin,
+						contentEl,
+						async terminal => {
+							if (typeof serial !== "undefined") {
+								terminal.write(`${i18n.t(
+									"components.terminal.restored-history",
+									{ time: new Date().toLocaleString(language.language) },
+								)}\r\n`)
+							}
+							const ret = await openProfile(plugin, profile, cwd)
+							if (ret === null) {
 								const pty = new TextPseudoterminal(i18n
 									.t("components.terminal.unsupported-profile", {
 										profile: JSON.stringify(profile),
 									}))
-								protodisposer.push(language.onChangeLanguage.listen(() => {
+								pty.onExit.finally(language.onChangeLanguage.listen(() => {
 									pty.text =
 										i18n.t("components.terminal.unsupported-profile", {
 											profile: JSON.stringify(profile),
 										})
 								}))
 								return pty
-							},
-							serial,
-							{
-								allowProposedApi: true,
-							},
-							{
-								disposer: new DisposerAddon(...protodisposer),
-								ligatures: new LigaturesAddon({}),
-								renderer: new RendererAddon(
-									() => new CanvasAddon(),
-									() => new WebglAddon(false),
-								),
-								search: new SearchAddon(),
-								unicode11: new Unicode11Addon(),
-								webLinks: new WebLinksAddon((_0, uri) => openExternal(uri), {}),
-							},
-						),
-						{ pseudoterminal, terminal, addons } = emulator,
-						{ disposer, renderer, search } = addons
-					pseudoterminal.then(async pty0 => pty0.onExit)
-						.then(code => {
-							if (typeof code === "undefined") { return }
-							notice2(
-								() => i18n.t("notices.terminal-exited", { code }),
-								inSet(TERMINAL_EXIT_SUCCESS, code)
-									? settings.noticeTimeout
-									: settings.errorNoticeTimeout,
-								plugin,
-							)
-						}, error => {
-							printError(anyToError(error), () =>
-								i18n.t("errors.error-spawning-terminal"), plugin)
-						})
-					terminal.onWriteParsed(requestSaveLayout)
-					terminal.onResize(requestSaveLayout)
-					terminal.unicode.activeVersion = "11"
-					disposer.push(plugin.on(
-						"mutate-settings",
-						settings0 => settings0.preferredRenderer,
-						cur => { renderer.use(cur) },
-					))
-					renderer.use(settings.preferredRenderer)
-					disposer.push(() => { this.#find?.$set({ searchResult: "" }) })
-					search.onDidChangeResults(results => {
-						if (typeof results === "undefined") {
-							this.#find?.$set({
-								searchResult: i18n.t("components.find.too-many-search-results"),
-							})
-							return
-						}
-						const { resultIndex, resultCount } = results
-						this.#find?.$set({
-							searchResult: i18n.t("components.find.search-results", {
-								replace: {
-									count: resultCount,
-									index: resultIndex + 1,
-								},
-							}),
-						})
+							}
+							return ret
+						},
+						serial,
+						{
+							allowProposedApi: true,
+						},
+						{
+							disposer: new DisposerAddon(),
+							ligatures: new LigaturesAddon({}),
+							renderer: new RendererAddon(
+								() => new CanvasAddon(),
+								() => new WebglAddon(false),
+							),
+							search: new SearchAddon(),
+							unicode11: new Unicode11Addon(),
+							webLinks: new WebLinksAddon((_0, uri) => openExternal(uri), {}),
+						},
+					),
+					{ pseudoterminal, terminal, addons } = emulator,
+					{ disposer, renderer, search } = addons
+				pseudoterminal.then(async pty0 => pty0.onExit)
+					.then(code => {
+						notice2(
+							() => i18n.t("notices.terminal-exited", { code }),
+							inSet(TERMINAL_EXIT_SUCCESS, code)
+								? settings.noticeTimeout
+								: settings.errorNoticeTimeout,
+							plugin,
+						)
+					}, error => {
+						printError(anyToError(error), () =>
+							i18n.t("errors.error-spawning-terminal"), plugin)
 					})
-					emulator.resize().catch(error => { console.warn(error) })
-					this.#emulator = emulator
-				} finally {
-					obsr0.disconnect()
-				}
-			})
-		this.register(() => { obsr.disconnect() })
+				terminal.onWriteParsed(requestSaveLayout)
+				terminal.onResize(requestSaveLayout)
+				terminal.unicode.activeVersion = "11"
+				disposer.push(plugin.on(
+					"mutate-settings",
+					settings0 => settings0.preferredRenderer,
+					cur => { renderer.use(cur) },
+				))
+				renderer.use(settings.preferredRenderer)
+				disposer.push(() => { this.#find?.$set({ searchResult: "" }) })
+				search.onDidChangeResults(results => {
+					if (typeof results === "undefined") {
+						this.#find?.$set({
+							searchResult: i18n.t("components.find.too-many-search-results"),
+						})
+						return
+					}
+					const { resultIndex, resultCount } = results
+					this.#find?.$set({
+						searchResult: i18n.t("components.find.search-results", {
+							replace: {
+								count: resultCount,
+								index: resultIndex + 1,
+							},
+						}),
+					})
+				})
+				emulator.resize().catch(error => { console.warn(error) })
+				this.#emulator = emulator
+			} finally {
+				obsr.disconnect()
+			}
+		})
 	}
 }
 export namespace TerminalView {
@@ -449,9 +413,9 @@ export namespace TerminalView {
 	}
 	export interface State {
 		readonly __type: typeof State.TYPE
-		cwd: string
-		profile: Settings.Profile
-		serial?: XtermTerminalEmulator.State
+		readonly profile: Settings.Profile
+		readonly cwd?: string | undefined
+		readonly serial?: XtermTerminalEmulator.State
 	}
 	export namespace State {
 		export const TYPE = "8d54e44a-32e7-4297-8ae2-cff88e92ce28"
