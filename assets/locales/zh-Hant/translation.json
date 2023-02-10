@@ -1,6 +1,6 @@
 {
 	"commands": {
-		"open-terminal-": "在終端開啟：{{- type}}",
+		"open-terminal-": "開啟終端：{{- type}}",
 		"open-terminal-current": "在終端開啟目前目錄：{{- type}}",
 		"open-terminal-root": "在終端開啟根目錄：{{- type}}"
 	},
@@ -46,6 +46,9 @@
 		"no-default-profile": "沒有類型「{{- type}}」的默認配置",
 		"spawning-terminal": "終端啟動中：{{- name}}",
 		"terminal-exited": "終端已退出：{{- code}}"
+	},
+	"ribbons": {
+		"open-terminal": "開啟終端"
 	},
 	"settings": {
 		"add-to-command": "加入至命令",

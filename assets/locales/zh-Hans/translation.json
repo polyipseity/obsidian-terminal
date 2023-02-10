@@ -1,6 +1,6 @@
 {
 	"commands": {
-		"open-terminal-": "在终端开啟：{{- type}}",
+		"open-terminal-": "开啟终端：{{- type}}",
 		"open-terminal-current": "在终端开啟目前目録：{{- type}}",
 		"open-terminal-root": "在终端开啟根目録：{{- type}}"
 	},
@@ -46,6 +46,9 @@
 		"no-default-profile": "没有类型「{{- type}}」的默认配置",
 		"spawning-terminal": "终端啟动中：{{- name}}",
 		"terminal-exited": "终端已退出：{{- code}}"
+	},
+	"ribbons": {
+		"open-terminal": "开啟终端"
 	},
 	"settings": {
 		"add-to-command": "加入至命令",

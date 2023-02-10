@@ -50,6 +50,9 @@
 		"spawning-terminal": "Spawning terminal: {{- name}}",
 		"terminal-exited": "Terminal exited: {{- code}}"
 	},
+	"ribbons": {
+		"open-terminal": "Open terminal"
+	},
 	"settings": {
 		"add-to-command": "Add to command",
 		"add-to-context-menu": "Add to context menu",
