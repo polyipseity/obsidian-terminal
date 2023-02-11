@@ -1,4 +1,4 @@
-import { Direction, type Params } from "../components/find"
+import { Direction, type Params } from "../ui/find"
 import {
 	DisposerAddon,
 	RendererAddon,
@@ -30,7 +30,7 @@ import {
 	updateDisplayText,
 } from "../utils/util"
 import { CanvasAddon } from "xterm-addon-canvas"
-import FindComponent from "../components/find.svelte"
+import FindComponent from "../ui/find.svelte"
 import { LigaturesAddon } from "xterm-addon-ligatures"
 import { SearchAddon } from "xterm-addon-search"
 import { Settings } from "sources/settings/data"
