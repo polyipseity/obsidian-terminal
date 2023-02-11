@@ -292,7 +292,8 @@ export function insertAt<T>(
 	self.splice(index, 0, ...items)
 }
 
-export function length(obj: object): number {
+export function length<T extends object,
+>(obj: T extends readonly unknown[] ? never : T): number {
 	return Object.keys(obj).length
 }
 

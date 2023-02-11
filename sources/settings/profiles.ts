@@ -1,11 +1,5 @@
 import { ListModal, ProfileModal } from "../ui/modals"
-import {
-	cloneAsMutable,
-	insertAt,
-	length,
-	removeAt,
-	swap,
-} from "sources/utils/util"
+import { cloneAsMutable, insertAt, removeAt, swap } from "sources/utils/util"
 import type { DeepWritable } from "ts-essentials"
 import { PROFILE_PRESETS } from "./profile-presets"
 import { Setting } from "obsidian"
@@ -79,7 +73,7 @@ export class ProfilesModal extends ListModal {
 					.setTooltip(i18n.t("components.editable-list.move-down"))
 					.setIcon(i18n.t("asset:components.editable-list.move-down-icon"))
 					.onClick(async () => {
-						if (index >= length(this.#data) - 1) { return }
+						if (index >= this.#data.length - 1) { return }
 						swap(this.#data, index, index + 1)
 						await this.#postMutate(true)
 					}))
