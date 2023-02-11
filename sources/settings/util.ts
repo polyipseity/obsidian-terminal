@@ -21,9 +21,9 @@ export function linkSetting<
 			callback: (value: V) => unknown) => C
 	},
 >(
-	plugin: TerminalPlugin,
 	getter: () => V,
 	setter: (value: V, component: C, getter: () => V) => unknown,
+	callback: () => unknown,
 	action: ComponentAction<C, V> = {},
 ) {
 	return (component: C): void => {
@@ -34,7 +34,7 @@ export function linkSetting<
 				component.setValue(getter())
 				return
 			}
-			plugin.saveSettings().catch(error => { console.error(error) })
+			await callback()
 		}
 		component.setValue(getter()).onChange(activate);
 		(action.post ?? ((): void => { }))(component, activate)
@@ -88,9 +88,9 @@ export function setTextToNumber<C extends ValueComponent<string>>(
 
 export function resetButton<C extends ButtonComponent | ExtraButtonComponent>(
 	plugin: TerminalPlugin,
-	draw: () => unknown,
-	resetter: (component: C) => unknown,
 	icon: string,
+	resetter: (component: C) => unknown,
+	callback: () => unknown,
 	action: ComponentAction<C, void> = {},
 ) {
 	return (component: C): void => {
@@ -100,8 +100,7 @@ export function resetButton<C extends ButtonComponent | ExtraButtonComponent>(
 			if (typeof ret === "boolean" && !ret) {
 				return
 			}
-			plugin.saveSettings().catch(error => { console.error(error) })
-			await draw()
+			await callback()
 		}
 		component
 			.setTooltip(plugin.language.i18n.t("settings.reset"))

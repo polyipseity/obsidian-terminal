@@ -77,7 +77,7 @@ export class EditableListModal<T> extends ListModal {
 				.setTooltip(i18n.t("components.editable-list.prepend"))
 				.onClick(async () => {
 					this.#list.unshift(placeholder)
-					await this.#postMutate()
+					await this.#postMutate(true)
 				}))
 		for (const [index, item] of this.#list.entries()) {
 			const setting = new Setting(listEl)
@@ -100,7 +100,7 @@ export class EditableListModal<T> extends ListModal {
 					.onClick(async () => {
 						if (index <= 0) { return }
 						swap(this.#list, index - 1, index)
-						await this.#postMutate()
+						await this.#postMutate(true)
 					}))
 				.addExtraButton(button => button
 					.setTooltip(i18n.t("components.editable-list.move-down"))
@@ -108,14 +108,14 @@ export class EditableListModal<T> extends ListModal {
 					.onClick(async () => {
 						if (index >= this.#list.length - 1) { return }
 						swap(this.#list, index, index + 1)
-						await this.#postMutate()
+						await this.#postMutate(true)
 					}))
 				.addExtraButton(button => button
 					.setTooltip(i18n.t("components.editable-list.remove"))
 					.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
 					.onClick(async () => {
 						removeAt(this.#list, index)
-						await this.#postMutate()
+						await this.#postMutate(true)
 					}))
 		}
 		new Setting(listEl)
@@ -125,13 +125,13 @@ export class EditableListModal<T> extends ListModal {
 				.setTooltip(i18n.t("components.editable-list.append"))
 				.onClick(async () => {
 					this.#list.push(placeholder)
-					await this.#postMutate()
+					await this.#postMutate(true)
 				}))
 	}
 
-	async #postMutate(): Promise<void> {
+	async #postMutate(redraw = false): Promise<void> {
 		const cb = this.#callback(this.#list)
-		this.display()
+		if (redraw) { this.display() }
 		await cb
 	}
 }

@@ -459,6 +459,10 @@ export function swap(self: unknown[], left: number, right: number): void {
 	[self[left], self[right]] = [self[right], self[left]]
 }
 
+export function unexpected(): never {
+	throw new Error()
+}
+
 export function updateDisplayText(view: View): boolean {
 	const type = view.getViewType(),
 		text = view.getDisplayText(),

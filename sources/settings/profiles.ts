@@ -7,6 +7,7 @@ import {
 	length,
 	removeAt,
 	swap,
+	unexpected,
 } from "sources/utils/util"
 import { linkSetting, resetButton, setTextToEnum } from "./util"
 import type { DeepWritable } from "ts-essentials"
@@ -82,36 +83,33 @@ export class ProfileModal extends ListModal {
 		new Setting(listEl)
 			.setName(i18n.t("settings.profile.name"))
 			.addText(linkSetting(
-				plugin,
 				() => Settings.Profile.name(profile),
 				async value => this.#mutateProfile(type, profileM => {
 					profileM.name = value
 				}),
+				this.#postMutate.bind(this),
 			))
 			.addExtraButton(resetButton(
 				plugin,
-				this.display.bind(this),
+				i18n.t("asset:settings.profile.name-icon"),
 				async () => this.#mutateProfile(type, profileM => {
 					profileM.name = Settings.Profile.DEFAULTS[type].name
 				}),
-				i18n.t("asset:settings.profile.name-icon"),
+				this.#postMutate.bind(this, true),
 			))
 		new Setting(listEl)
 			.setName(i18n.t("settings.profile.type"))
 			.addDropdown(linkSetting(
-				plugin,
 				(): string => type,
 				setTextToEnum(
 					Settings.Profile.TYPES,
-					async value => {
-						await this.#mutateProfile(type, (prev, settingsM) => {
-							const next = cloneAsMutable(Settings.Profile.DEFAULTS[value])
-							next.name = typeof prev.name === "string" ? prev.name : ""
-							settingsM.profiles[id] = next
-						})
-						this.display()
-					},
+					async value => this.#mutateProfile(type, (prev, settingsM) => {
+						const next = cloneAsMutable(Settings.Profile.DEFAULTS[value])
+						next.name = typeof prev.name === "string" ? prev.name : ""
+						settingsM.profiles[id] = next
+					}),
 				),
+				this.#postMutate.bind(this, true),
 				{
 					pre: dropdown => {
 						dropdown
@@ -124,9 +122,9 @@ export class ProfileModal extends ListModal {
 			))
 			.addExtraButton(resetButton(
 				plugin,
-				this.display.bind(this),
-				() => { throw Error() },
 				i18n.t("asset:settings.profile.type-icon"),
+				unexpected,
+				unexpected,
 				{
 					post: button => {
 						button.setTooltip(DISABLED_TOOLTIP).setDisabled(true)
@@ -144,19 +142,19 @@ export class ProfileModal extends ListModal {
 				new Setting(listEl)
 					.setName(i18n.t(`settings.profile.${type}.executable`))
 					.addText(linkSetting(
-						plugin,
 						() => profile.executable,
 						async value => this.#mutateProfile(type, profileM => {
 							profileM.executable = value
 						}),
+						this.#postMutate.bind(this),
 					))
 					.addExtraButton(resetButton(
 						plugin,
-						this.display.bind(this),
+						i18n.t(`asset:settings.profile.${type}.executable-icon`),
 						async () => this.#mutateProfile(type, profileM => {
 							profileM.executable = Settings.Profile.DEFAULTS[type].executable
 						}),
-						i18n.t(`asset:settings.profile.${type}.executable-icon`),
+						this.#postMutate.bind(this, true),
 					))
 				new Setting(listEl)
 					.setName(i18n.t(`settings.profile.${type}.arguments`))
@@ -177,38 +175,38 @@ export class ProfileModal extends ListModal {
 									await this.#mutateProfile(type, profileM => {
 										profileM.args = cloneAsMutable(value)
 									})
-									this.#postMutate()
+									this.#postMutate(true)
 								},
 							).open()
 						}))
 					.addExtraButton(resetButton(
 						plugin,
-						this.display.bind(this),
+						i18n.t(`asset:settings.profile.${type}.arguments-icon`),
 						async () => this.#mutateProfile(type, profileM => {
 							profileM.args =
 								cloneAsMutable(Settings.Profile.DEFAULTS[type].args)
 						}),
-						i18n.t(`asset:settings.profile.${type}.arguments-icon`),
+						this.#postMutate.bind(this, true),
 					))
 				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
 					new Setting(listEl)
 						.setName(i18n.t(`types.platforms.${platform}`))
 						.addToggle(linkSetting(
-							plugin,
 							() => profile.platforms[platform] ??
 								Settings.Profile.DEFAULTS[type].platforms[platform],
 							async value => this.#mutateProfile(type, profileM => {
 								profileM.platforms[platform] = value
 							}),
+							this.#postMutate.bind(this),
 						))
 						.addExtraButton(resetButton(
 							plugin,
-							this.display.bind(this),
+							i18n.t(`asset:types.platforms.${platform}-icon`),
 							async () => this.#mutateProfile(type, profileM => {
 								profileM.platforms[platform] =
 									Settings.Profile.DEFAULTS[type].platforms[platform]
 							}),
-							i18n.t(`asset:types.platforms.${platform}-icon`),
+							this.#postMutate.bind(this, true),
 						))
 				}
 				break
@@ -217,19 +215,19 @@ export class ProfileModal extends ListModal {
 				new Setting(listEl)
 					.setName(i18n.t(`settings.profile.${type}.executable`))
 					.addText(linkSetting(
-						plugin,
 						() => profile.executable,
 						async value => this.#mutateProfile(type, profileM => {
 							profileM.executable = value
 						}),
+						this.#postMutate.bind(this),
 					))
 					.addExtraButton(resetButton(
 						plugin,
-						this.display.bind(this),
+						i18n.t(`asset:settings.profile.${type}.executable-icon`),
 						async () => this.#mutateProfile(type, profileM => {
 							profileM.executable = Settings.Profile.DEFAULTS[type].executable
 						}),
-						i18n.t(`asset:settings.profile.${type}.executable-icon`),
+						this.#postMutate.bind(this, true),
 					))
 				new Setting(listEl)
 					.setName(i18n.t(`settings.profile.${type}.arguments`))
@@ -250,38 +248,38 @@ export class ProfileModal extends ListModal {
 									await this.#mutateProfile(type, profileM => {
 										profileM.args = cloneAsMutable(value)
 									})
-									this.#postMutate()
+									this.#postMutate(true)
 								},
 							).open()
 						}))
 					.addExtraButton(resetButton(
 						plugin,
-						this.display.bind(this),
+						i18n.t(`asset:settings.profile.${type}.arguments-icon`),
 						async () => this.#mutateProfile(type, profileM => {
 							profileM.args =
 								cloneAsMutable(Settings.Profile.DEFAULTS[type].args)
 						}),
-						i18n.t(`asset:settings.profile.${type}.arguments-icon`),
+						this.#postMutate.bind(this, true),
 					))
 				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
 					new Setting(listEl)
 						.setName(i18n.t(`types.platforms.${platform}`))
 						.addToggle(linkSetting(
-							plugin,
 							() => profile.platforms[platform] ??
 								Settings.Profile.DEFAULTS[type].platforms[platform],
 							async value => this.#mutateProfile(type, profileM => {
 								profileM.platforms[platform] = value
 							}),
+							this.#postMutate.bind(this),
 						))
 						.addExtraButton(resetButton(
 							plugin,
-							this.display.bind(this),
+							i18n.t(`asset:types.platforms.${platform}-icon`),
 							async () => this.#mutateProfile(type, profileM => {
 								profileM.platforms[platform] =
 									Settings.Profile.DEFAULTS[type].platforms[platform]
 							}),
-							i18n.t(`asset:types.platforms.${platform}-icon`),
+							this.#postMutate.bind(this, true),
 						))
 				}
 				new Setting(listEl)
@@ -289,11 +287,11 @@ export class ProfileModal extends ListModal {
 					.setDesc(i18n
 						.t(`settings.profile.${type}.python-executable-description`))
 					.addText(linkSetting(
-						plugin,
 						() => profile.pythonExecutable,
 						async value => this.#mutateProfile(type, profileM => {
 							profileM.pythonExecutable = value
 						}),
+						this.#postMutate.bind(this),
 						{
 							post: component => {
 								component
@@ -305,12 +303,12 @@ export class ProfileModal extends ListModal {
 					))
 					.addExtraButton(resetButton(
 						plugin,
-						this.display.bind(this),
+						i18n.t(`asset:settings.profile.${type}.python-executable-icon`),
 						async () => this.#mutateProfile(type, profileM => {
 							profileM.pythonExecutable =
 								Settings.Profile.DEFAULTS[type].pythonExecutable
 						}),
-						i18n.t(`asset:settings.profile.${type}.python-executable-icon`),
+						this.#postMutate.bind(this, true),
 					))
 				new Setting(listEl)
 					.setName(i18n
@@ -319,23 +317,23 @@ export class ProfileModal extends ListModal {
 						// eslint-disable-next-line max-len
 						.t(`settings.profile.${type}.enable-Windows-conhost-workaround-description`))
 					.addToggle(linkSetting(
-						plugin,
 						() => profile.enableWindowsConhostWorkaround ??
 							Settings.Profile.DEFAULTS[type].enableWindowsConhostWorkaround,
 						async value => this.#mutateProfile(type, profileM => {
 							profileM.enableWindowsConhostWorkaround = value
 						}),
+						this.#postMutate.bind(this),
 					))
 					.addExtraButton(resetButton(
 						plugin,
-						this.display.bind(this),
+						i18n
+							// eslint-disable-next-line max-len
+							.t(`asset:settings.profile.${type}.enable-Windows-conhost-workaround-icon`),
 						async () => this.#mutateProfile(type, profileM => {
 							profileM.enableWindowsConhostWorkaround =
 								Settings.Profile.DEFAULTS[type].enableWindowsConhostWorkaround
 						}),
-						i18n
-							// eslint-disable-next-line max-len
-							.t(`asset:settings.profile.${type}.enable-Windows-conhost-workaround-icon`),
+						this.#postMutate.bind(this, true),
 					))
 				break
 			}
@@ -347,9 +345,9 @@ export class ProfileModal extends ListModal {
 						.setDisabled(true))
 					.addExtraButton(resetButton(
 						plugin,
-						this.display.bind(this),
-						() => { throw Error() },
 						i18n.t(`asset:settings.profile.${type}.data-icon`),
+						unexpected,
+						unexpected,
 						{
 							post: button => {
 								button.setTooltip(DISABLED_TOOLTIP).setDisabled(true)
@@ -382,9 +380,9 @@ export class ProfileModal extends ListModal {
 		})
 	}
 
-	#postMutate(): void {
+	#postMutate(redraw = false): void {
 		this.plugin.saveSettings().catch(error => { console.error(error) })
-		this.display()
+		if (redraw) { this.display() }
 	}
 }
 
@@ -413,7 +411,7 @@ export class ProfilesModal extends ListModal {
 				.setTooltip(i18n.t("components.editable-list.prepend"))
 				.onClick(async () => {
 					await this.#addProfile(0, cloneAsMutable(PROFILE_PRESETS.empty))
-					this.#postMutate()
+					this.#postMutate(true)
 				}))
 		for (const [index, [id, profile]] of Object.entries(profiles).entries()) {
 			new Setting(listEl)
@@ -446,7 +444,7 @@ export class ProfilesModal extends ListModal {
 						await this.#mutateProfiles(profilesM => {
 							swap(profilesM, index - 1, index)
 						})
-						this.#postMutate()
+						this.#postMutate(true)
 					}))
 				.addExtraButton(button => button
 					.setTooltip(i18n.t("components.editable-list.move-down"))
@@ -456,7 +454,7 @@ export class ProfilesModal extends ListModal {
 						await this.#mutateProfiles(profilesM => {
 							swap(profilesM, index, index + 1)
 						})
-						this.#postMutate()
+						this.#postMutate(true)
 					}))
 				.addExtraButton(button => button
 					.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
@@ -465,7 +463,7 @@ export class ProfilesModal extends ListModal {
 						await this.#mutateProfiles(profilesM => {
 							removeAt(profilesM, index)
 						})
-						this.#postMutate()
+						this.#postMutate(true)
 					}))
 		}
 		new Setting(listEl)
@@ -478,13 +476,13 @@ export class ProfilesModal extends ListModal {
 						length(profiles),
 						cloneAsMutable(PROFILE_PRESETS.empty),
 					)
-					this.#postMutate()
+					this.#postMutate(true)
 				}))
 	}
 
-	#postMutate(): void {
+	#postMutate(redraw = false): void {
 		this.plugin.saveSettings().catch(error => { console.error(error) })
-		this.display()
+		if (redraw) { this.display() }
 	}
 
 	async #mutateProfiles(mutator: (
