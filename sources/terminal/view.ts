@@ -284,7 +284,7 @@ export class TerminalView extends ItemView {
 
 	public override onPaneMenu(menu: Menu, source: string): void {
 		super.onPaneMenu(menu, source)
-		const { plugin, containerEl, contentEl } = this,
+		const { plugin, contentEl } = this,
 			{ i18n } = plugin.language
 		menu
 			.addSeparator()
@@ -320,9 +320,13 @@ export class TerminalView extends ItemView {
 							if (params.findText === "") {
 								this.#find?.$set({ searchResult: "" })
 							}
-						}
+						},
+						optional: { anchor?: Element } = {},
+						{ firstElementChild } = contentEl
+					if (firstElementChild !== null) {
+						optional.anchor = firstElementChild
+					}
 					this.#find = new FindComponent({
-						anchor: contentEl,
 						intro: true,
 						props: {
 							i18n: i18n.t,
@@ -333,7 +337,8 @@ export class TerminalView extends ItemView {
 								find(Direction.previous, params)
 							},
 						},
-						target: containerEl,
+						target: contentEl,
+						...optional,
 					})
 				}))
 			.addItem(item => item
@@ -373,10 +378,9 @@ export class TerminalView extends ItemView {
 
 	protected override async onOpen(): Promise<void> {
 		await super.onOpen()
-		const { containerEl, plugin } = this,
+		const { plugin } = this,
 			{ app, language, statusBarHider } = plugin,
 			{ workspace } = app
-		containerEl.replaceChildren()
 
 		this.register(language.onChangeLanguage.listen(() =>
 			updateDisplayText(this)))
@@ -400,25 +404,12 @@ export class TerminalView extends ItemView {
 	}
 
 	#startEmulator(): void {
-		const { containerEl, plugin, leaf } = this,
+		const { contentEl, plugin, leaf } = this,
 			state = this.#state,
 			{ profile, cwd, serial } = state,
 			{ app, language, settings } = plugin,
 			{ i18n } = language,
 			{ requestSaveLayout } = app.workspace
-		this.contentEl.remove()
-		this.contentEl = containerEl.createDiv({
-			cls: TerminalView.divClass.namespaced(plugin),
-		}, ele => {
-			onResize(ele, ent => {
-				if (ent.contentBoxSize
-					.some(size => size.blockSize <= 0 || size.inlineSize <= 0)) {
-					return
-				}
-				this.#emulator?.resize(false).catch(error => { console.warn(error) })
-			})
-		})
-		const { contentEl } = this
 		notice2(
 			() => i18n.t(
 				"notices.spawning-terminal",
@@ -439,106 +430,117 @@ export class TerminalView extends ItemView {
 			leaf.detach()
 			return
 		}
-		const obsr = onVisible(contentEl, () => {
-			try {
-				const
-					emulator = new TerminalView.EMULATOR(
-						plugin,
-						contentEl,
-						async terminal => {
-							if (typeof serial !== "undefined") {
-								terminal.write(`${i18n.t(
-									"components.terminal.restored-history",
-									{ time: new Date().toLocaleString(language.language) },
-								)}`)
-							}
-							const ret = await openProfile(plugin, profile, cwd)
-							if (ret === null) {
-								const pty = new TextPseudoterminal(i18n
-									.t("components.terminal.unsupported-profile", {
-										profile: JSON.stringify(
-											profile,
-											null,
-											JSON_STRINGIFY_SPACE,
-										),
-									}))
-								pty.onExit.finally(language.onChangeLanguage.listen(() => {
-									pty.text =
-										i18n.t("components.terminal.unsupported-profile", {
+		contentEl.createDiv({
+			cls: TerminalView.divClass.namespaced(plugin),
+		}, ele => {
+			const obsr = onVisible(ele, () => {
+				try {
+					const
+						emulator = new TerminalView.EMULATOR(
+							plugin,
+							ele,
+							async terminal => {
+								if (typeof serial !== "undefined") {
+									terminal.write(`${i18n.t(
+										"components.terminal.restored-history",
+										{ time: new Date().toLocaleString(language.language) },
+									)}`)
+								}
+								const ret = await openProfile(plugin, profile, cwd)
+								if (ret === null) {
+									const pty = new TextPseudoterminal(i18n
+										.t("components.terminal.unsupported-profile", {
 											profile: JSON.stringify(
 												profile,
 												null,
 												JSON_STRINGIFY_SPACE,
 											),
-										})
-								}))
-								return pty
-							}
-							return ret
-						},
-						serial,
-						{
-							allowProposedApi: true,
-						},
-						{
-							disposer: new DisposerAddon(),
-							ligatures: new LigaturesAddon({}),
-							renderer: new RendererAddon(
-								() => new CanvasAddon(),
-								() => new WebglAddon(false),
-							),
-							search: new SearchAddon(),
-							unicode11: new Unicode11Addon(),
-							webLinks: new WebLinksAddon((_0, uri) => openExternal(uri), {}),
-						},
-					),
-					{ pseudoterminal, terminal, addons } = emulator,
-					{ disposer, renderer, search } = addons
-				pseudoterminal.then(async pty0 => pty0.onExit)
-					.then(code => {
-						notice2(
-							() => i18n.t("notices.terminal-exited", { code }),
-							inSet(TERMINAL_EXIT_SUCCESS, code)
-								? settings.noticeTimeout
-								: settings.errorNoticeTimeout,
-							plugin,
-						)
-					}, error => {
-						printError(anyToError(error), () =>
-							i18n.t("errors.error-spawning-terminal"), plugin)
-					})
-				terminal.onWriteParsed(requestSaveLayout)
-				terminal.onResize(requestSaveLayout)
-				terminal.unicode.activeVersion = "11"
-				disposer.push(plugin.on(
-					"mutate-settings",
-					settings0 => settings0.preferredRenderer,
-					cur => { renderer.use(cur) },
-				))
-				renderer.use(settings.preferredRenderer)
-				disposer.push(() => { this.#find?.$set({ searchResult: "" }) })
-				search.onDidChangeResults(results => {
-					if (isUndefined(results)) {
-						this.#find?.$set({
-							searchResult: i18n.t("components.find.too-many-search-results"),
-						})
-						return
-					}
-					const { resultIndex, resultCount } = results
-					this.#find?.$set({
-						searchResult: i18n.t("components.find.search-results", {
-							replace: {
-								count: resultCount,
-								index: resultIndex + 1,
+										}))
+									pty.onExit.finally(language.onChangeLanguage.listen(() => {
+										pty.text =
+											i18n.t("components.terminal.unsupported-profile", {
+												profile: JSON.stringify(
+													profile,
+													null,
+													JSON_STRINGIFY_SPACE,
+												),
+											})
+									}))
+									return pty
+								}
+								return ret
 							},
-						}),
+							serial,
+							{
+								allowProposedApi: true,
+							},
+							{
+								disposer: new DisposerAddon(),
+								ligatures: new LigaturesAddon({}),
+								renderer: new RendererAddon(
+									() => new CanvasAddon(),
+									() => new WebglAddon(false),
+								),
+								search: new SearchAddon(),
+								unicode11: new Unicode11Addon(),
+								webLinks: new WebLinksAddon((_0, uri) => openExternal(uri), {}),
+							},
+						),
+						{ pseudoterminal, terminal, addons } = emulator,
+						{ disposer, renderer, search } = addons
+					pseudoterminal.then(async pty0 => pty0.onExit)
+						.then(code => {
+							notice2(
+								() => i18n.t("notices.terminal-exited", { code }),
+								inSet(TERMINAL_EXIT_SUCCESS, code)
+									? settings.noticeTimeout
+									: settings.errorNoticeTimeout,
+								plugin,
+							)
+						}, error => {
+							printError(anyToError(error), () =>
+								i18n.t("errors.error-spawning-terminal"), plugin)
+						})
+					terminal.onWriteParsed(requestSaveLayout)
+					terminal.onResize(requestSaveLayout)
+					terminal.unicode.activeVersion = "11"
+					disposer.push(plugin.on(
+						"mutate-settings",
+						settings0 => settings0.preferredRenderer,
+						cur => { renderer.use(cur) },
+					))
+					renderer.use(settings.preferredRenderer)
+					disposer.push(() => { this.#find?.$set({ searchResult: "" }) })
+					search.onDidChangeResults(results => {
+						if (isUndefined(results)) {
+							this.#find?.$set({
+								searchResult: i18n.t("components.find.too-many-search-results"),
+							})
+							return
+						}
+						const { resultIndex, resultCount } = results
+						this.#find?.$set({
+							searchResult: i18n.t("components.find.search-results", {
+								replace: {
+									count: resultCount,
+									index: resultIndex + 1,
+								},
+							}),
+						})
 					})
-				})
-				emulator.resize().catch(error => { console.warn(error) })
-				this.#emulator = emulator
-			} finally {
-				obsr.disconnect()
-			}
+					emulator.resize().catch(error => { console.warn(error) })
+					onResize(ele, ent => {
+						if (ent.contentBoxSize
+							.some(size => size.blockSize <= 0 || size.inlineSize <= 0)) {
+							return
+						}
+						emulator.resize(false).catch(error => { console.warn(error) })
+					})
+					this.#emulator = emulator
+				} finally {
+					obsr.disconnect()
+				}
+			})
 		})
 	}
 }
