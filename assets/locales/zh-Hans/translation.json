@@ -101,6 +101,7 @@
 			"type": "类型"
 		},
 		"profile-list": {
+			"content": "列表中第一个此平台上可用的配置是其终端类型的默认配置。.",
 			"description": "{{- id}}",
 			"name": "{{- profile.name}}",
 			"title": "配置"

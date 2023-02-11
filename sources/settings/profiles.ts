@@ -405,6 +405,7 @@ export class ProfilesModal extends ListModal {
 			{ profiles } = settings
 		listEl.empty()
 		listEl.createEl("h1", { text: i18n.t("settings.profile-list.title") })
+		listEl.createEl("div", { text: i18n.t("settings.profile-list.content") })
 		new Setting(listEl)
 			.setName(i18n.t("components.editable-list.prepend"))
 			.addButton(button => button

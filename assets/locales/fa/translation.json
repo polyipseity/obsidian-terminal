@@ -105,6 +105,7 @@
 			"type": "Type"
 		},
 		"profile-list": {
+			"content": "The first profile in the list available on this platform is the default profile for its terminal type.",
 			"description": "{{- id}}",
 			"name": "{{- profile.name}}",
 			"title": "Profiles"
