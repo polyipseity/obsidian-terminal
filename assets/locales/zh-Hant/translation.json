@@ -9,6 +9,9 @@
 			"cancel": "取消",
 			"confirm": "確認"
 		},
+		"dropdown": {
+			"unselected": ""
+		},
 		"editable-list": {
 			"append": "後置",
 			"move-down": "下移",

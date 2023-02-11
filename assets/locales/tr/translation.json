@@ -9,6 +9,9 @@
 			"cancel": "Cancel",
 			"confirm": "Confirm"
 		},
+		"dropdown": {
+			"unselected": ""
+		},
 		"editable-list": {
 			"append": "Append",
 			"move-down": "Move down",

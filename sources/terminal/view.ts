@@ -78,7 +78,7 @@ export class TerminalEditModal extends DialogModal {
 			{ settings, language } = plugin,
 			{ profiles } = settings,
 			{ i18n } = language,
-			customProfile = randomNotIn(Object.keys(profiles))
+			noProfile = randomNotIn(Object.keys(profiles))
 		new Setting(listEl)
 			.setName(i18n.t("components.terminal.working-directory"))
 			.addText(linkSetting(
@@ -105,7 +105,7 @@ export class TerminalEditModal extends DialogModal {
 		new Setting(listEl)
 			.setName(i18n.t("components.terminal.profile"))
 			.addDropdown(linkSetting(
-				() => profile === null ? customProfile : profile,
+				() => profile === null ? noProfile : profile,
 				value => {
 					const profile0 = profiles[value]
 					if (isUndefined(profile0)) {
@@ -119,7 +119,7 @@ export class TerminalEditModal extends DialogModal {
 				{
 					pre: component => {
 						component
-							.addOption(customProfile, "")
+							.addOption(noProfile, i18n.t("components.dropdown.unselected"))
 							.addOptions(Object.fromEntries(Object.entries(profiles)
 								.map(entry => [entry[0], Settings.Profile.nameOrID(entry)])))
 					},

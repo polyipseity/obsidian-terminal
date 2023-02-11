@@ -112,12 +112,12 @@ export function resetButton<C extends ButtonComponent | ExtraButtonComponent>(
 }
 
 export function dropdownSelect<V, C extends DropdownComponent>(
+	unselected: string,
 	selections: readonly {
 		readonly name: string
 		readonly value: V
 	}[],
 	callback: (value: V, component: C) => unknown,
-	unselected = "",
 	action: ComponentAction<C, string> = {},
 ) {
 	return (component: C): void => {

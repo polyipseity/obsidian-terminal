@@ -214,6 +214,7 @@ export class ProfileModal extends Modal {
 		new Setting(listEl)
 			.setName(i18n.t("components.profile.preset"))
 			.addDropdown(dropdownSelect(
+				i18n.t("components.dropdown.unselected"),
 				this.#presets,
 				async value => {
 					this.#replaceData(cloneAsWritable(value))
@@ -534,6 +535,7 @@ export class ProfileListModal extends Modal {
 		new Setting(listEl)
 			.setName(i18n.t("components.editable-list.prepend"))
 			.addDropdown(dropdownSelect(
+				i18n.t("components.dropdown.unselected"),
 				this.#presets,
 				async value => {
 					this.#addProfile(0, cloneAsWritable(value))
@@ -584,6 +586,7 @@ export class ProfileListModal extends Modal {
 		new Setting(listEl)
 			.setName(i18n.t("components.editable-list.append"))
 			.addDropdown(dropdownSelect(
+				i18n.t("components.dropdown.unselected"),
 				this.#presets,
 				async value => {
 					this.#addProfile(this.#data.length, cloneAsWritable(value))
