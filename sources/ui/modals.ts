@@ -35,9 +35,9 @@ export class ListModal extends Modal {
 }
 
 export class EditableListModal<T> extends ListModal {
-	readonly #callback
+	readonly #data
 	readonly #inputter
-	readonly #list
+	readonly #callback
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
@@ -47,12 +47,12 @@ export class EditableListModal<T> extends ListModal {
 			setter: (value: T) => unknown,
 		) => void,
 		protected readonly placeholder: T,
-		list: readonly T[],
-		callback: (list: T[]) => unknown,
+		data: readonly T[],
+		callback: (data: T[]) => unknown,
 	) {
 		super(app)
 		this.#inputter = inputter
-		this.#list = [...list]
+		this.#data = [...data]
 		this.#callback = callback
 	}
 
@@ -89,10 +89,10 @@ export class EditableListModal<T> extends ListModal {
 				.setIcon(i18n.t("asset:components.editable-list.prepend-icon"))
 				.setTooltip(i18n.t("components.editable-list.prepend"))
 				.onClick(async () => {
-					this.#list.unshift(placeholder)
+					this.#data.unshift(placeholder)
 					await this.#postMutate(true)
 				}))
-		for (const [index, item] of this.#list.entries()) {
+		for (const [index, item] of this.#data.entries()) {
 			const setting = new Setting(listEl)
 				.setName(i18n.t("components.editable-list.name", {
 					count: index + 1,
@@ -102,7 +102,7 @@ export class EditableListModal<T> extends ListModal {
 				setting,
 				() => item,
 				async value => {
-					this.#list[index] = value
+					this.#data[index] = value
 					await this.#postMutate()
 				},
 			)
@@ -112,22 +112,22 @@ export class EditableListModal<T> extends ListModal {
 					.setIcon(i18n.t("asset:components.editable-list.move-up-icon"))
 					.onClick(async () => {
 						if (index <= 0) { return }
-						swap(this.#list, index - 1, index)
+						swap(this.#data, index - 1, index)
 						await this.#postMutate(true)
 					}))
 				.addExtraButton(button => button
 					.setTooltip(i18n.t("components.editable-list.move-down"))
 					.setIcon(i18n.t("asset:components.editable-list.move-down-icon"))
 					.onClick(async () => {
-						if (index >= this.#list.length - 1) { return }
-						swap(this.#list, index, index + 1)
+						if (index >= this.#data.length - 1) { return }
+						swap(this.#data, index, index + 1)
 						await this.#postMutate(true)
 					}))
 				.addExtraButton(button => button
 					.setTooltip(i18n.t("components.editable-list.remove"))
 					.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
 					.onClick(async () => {
-						removeAt(this.#list, index)
+						removeAt(this.#data, index)
 						await this.#postMutate(true)
 					}))
 		}
@@ -137,29 +137,29 @@ export class EditableListModal<T> extends ListModal {
 				.setIcon(i18n.t("asset:components.editable-list.append-icon"))
 				.setTooltip(i18n.t("components.editable-list.append"))
 				.onClick(async () => {
-					this.#list.push(placeholder)
+					this.#data.push(placeholder)
 					await this.#postMutate(true)
 				}))
 	}
 
 	async #postMutate(redraw = false): Promise<void> {
-		const cb = this.#callback(typedStructuredClone(this.#list))
+		const cb = this.#callback(typedStructuredClone(this.#data))
 		if (redraw) { this.display() }
 		await cb
 	}
 }
 
 export class ProfileModal extends ListModal {
-	readonly #profile: DeepWritable<Settings.Profile>
+	readonly #data
 	readonly #callback
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
-		profile: Settings.Profile,
-		callback: (profile: DeepWritable<Settings.Profile>) => unknown,
+		data: Settings.Profile,
+		callback: (data: DeepWritable<Settings.Profile>) => unknown,
 	) {
 		super(plugin.app)
-		this.#profile = cloneAsMutable(profile)
+		this.#data = cloneAsMutable(data)
 		this.#callback = callback
 	}
 
@@ -170,7 +170,7 @@ export class ProfileModal extends ListModal {
 
 	protected display(): void {
 		const { listEl, plugin } = this,
-			profile = this.#profile,
+			profile = this.#data,
 			{ type } = profile,
 			{ language } = plugin,
 			{ i18n } = language
@@ -207,10 +207,10 @@ export class ProfileModal extends ListModal {
 				setTextToEnum(
 					Settings.Profile.TYPES,
 					value => {
-						const { name } = this.#profile
-						clearProperties(this.#profile)
+						const { name } = this.#data
+						clearProperties(this.#data)
 						Object.assign(
-							this.#profile,
+							this.#data,
 							cloneAsMutable(Settings.Profile.DEFAULTS[value]),
 							{ name },
 						)
@@ -462,7 +462,7 @@ export class ProfileModal extends ListModal {
 	}
 
 	async #postMutate(redraw = false): Promise<void> {
-		const cb = this.#callback(typedStructuredClone(this.#profile))
+		const cb = this.#callback(typedStructuredClone(this.#data))
 		if (redraw) { this.display() }
 		await cb
 	}
