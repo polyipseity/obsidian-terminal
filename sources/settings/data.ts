@@ -4,7 +4,7 @@ import {
 	PLATFORM,
 	type Platform,
 	type Sized,
-	cloneAsMutable,
+	cloneAsWritable,
 	deepFreeze,
 	inSet,
 	isHomogenousArray,
@@ -380,7 +380,7 @@ export namespace Settings {
 					}
 					return ret
 				}
-				return cloneAsMutable(defaults2)
+				return cloneAsWritable(defaults2)
 			})(),
 		}
 	}

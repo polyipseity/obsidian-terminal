@@ -3,7 +3,7 @@ import type { DeepWritable, Writable } from "ts-essentials"
 import { Modal, Setting, type ValueComponent } from "obsidian"
 import {
 	clearProperties,
-	cloneAsMutable,
+	cloneAsWritable,
 	insertAt,
 	removeAt,
 	swap,
@@ -161,7 +161,7 @@ export class ProfileModal extends ListModal {
 		callback: (data_: DeepWritable<typeof data>) => unknown,
 	) {
 		super(plugin.app)
-		this.#data = cloneAsMutable(data)
+		this.#data = cloneAsWritable(data)
 		this.#callback = callback
 	}
 
@@ -213,7 +213,7 @@ export class ProfileModal extends ListModal {
 						clearProperties(this.#data)
 						Object.assign(
 							this.#data,
-							cloneAsMutable(Settings.Profile.DEFAULTS[value]),
+							cloneAsWritable(Settings.Profile.DEFAULTS[value]),
 							{ name },
 						)
 					},
@@ -289,7 +289,7 @@ export class ProfileModal extends ListModal {
 						i18n.t(`asset:settings.profile.${type}.arguments-icon`),
 						() => {
 							profile.args =
-								cloneAsMutable(Settings.Profile.DEFAULTS[type].args)
+								cloneAsWritable(Settings.Profile.DEFAULTS[type].args)
 						},
 						this.#postMutate.bind(this, true),
 					))
@@ -360,7 +360,7 @@ export class ProfileModal extends ListModal {
 						i18n.t(`asset:settings.profile.${type}.arguments-icon`),
 						() => {
 							profile.args =
-								cloneAsMutable(Settings.Profile.DEFAULTS[type].args)
+								cloneAsWritable(Settings.Profile.DEFAULTS[type].args)
 						},
 						this.#postMutate.bind(this, true),
 					))
@@ -482,7 +482,7 @@ export class ProfilesModal extends ListModal {
 		keygen = crypto.randomUUID.bind(crypto),
 	) {
 		super(plugin.app)
-		this.#data = cloneAsMutable(data)
+		this.#data = cloneAsWritable(data)
 		this.#callback = callback
 		this.#keygen = keygen
 	}
@@ -505,7 +505,7 @@ export class ProfilesModal extends ListModal {
 				.setIcon(i18n.t("asset:components.editable-list.prepend-icon"))
 				.setTooltip(i18n.t("components.editable-list.prepend"))
 				.onClick(async () => {
-					this.#addProfile(0, cloneAsMutable(PROFILE_PRESETS.empty))
+					this.#addProfile(0, cloneAsWritable(PROFILE_PRESETS.empty))
 					await this.#postMutate(true)
 				}))
 		for (const [index, [id, profile]] of this.#data.entries()) {
@@ -557,14 +557,14 @@ export class ProfilesModal extends ListModal {
 				.onClick(async () => {
 					this.#addProfile(
 						this.#data.length,
-						cloneAsMutable(PROFILE_PRESETS.empty),
+						cloneAsWritable(PROFILE_PRESETS.empty),
 					)
 					await this.#postMutate(true)
 				}))
 	}
 
 	async #postMutate(redraw = false): Promise<void> {
-		const cb = this.#callback(cloneAsMutable(this.#data))
+		const cb = this.#callback(cloneAsWritable(this.#data))
 		if (redraw) { this.display() }
 		await cb
 	}

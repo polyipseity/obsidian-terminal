@@ -2,7 +2,7 @@ import { DEFAULT_SETTINGS, Settings } from "./data"
 import { PluginSettingTab, Setting } from "obsidian"
 import {
 	capitalize,
-	cloneAsMutable,
+	cloneAsWritable,
 	executeParanoidly,
 	identity,
 	length,
@@ -107,7 +107,7 @@ export class SettingTab extends PluginSettingTab {
 				i18n.t("asset:settings.all-settings-actions.reset-icon"),
 				async () => plugin
 					.mutateSettings(settingsM =>
-						Object.assign(settingsM, cloneAsMutable(DEFAULT_SETTINGS))),
+						Object.assign(settingsM, cloneAsWritable(DEFAULT_SETTINGS))),
 				this.#postMutate.bind(this, true),
 				{
 					post: component => {
@@ -241,7 +241,7 @@ export class SettingTab extends PluginSettingTab {
 				plugin,
 				i18n.t("asset:settings.profiles-icon"),
 				async () => plugin.mutateSettings(settingsM => {
-					settingsM.profiles = cloneAsMutable(PROFILE_DEFAULTS)
+					settingsM.profiles = cloneAsWritable(PROFILE_DEFAULTS)
 				}),
 				this.#postMutate.bind(this, true),
 			))

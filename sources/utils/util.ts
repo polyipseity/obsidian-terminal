@@ -124,7 +124,7 @@ export function copyOnWrite<T extends object>(
 	obj: DeepReadonly<T>,
 	mutator: (obj: DeepWritable<T>) => void,
 ): DeepReadonly<T> {
-	const ret = simplify(cloneAsMutable(obj))
+	const ret = simplify(cloneAsWritable(obj))
 	mutator(ret)
 	return simplify(deepFreeze(ret))
 }
@@ -133,7 +133,7 @@ export async function copyOnWriteAsync<T extends object>(
 	obj: DeepReadonly<T>,
 	mutator: (obj: DeepWritable<T>) => unknown,
 ): Promise<DeepReadonly<T>> {
-	const ret = simplify(cloneAsMutable(obj))
+	const ret = simplify(cloneAsWritable(obj))
 	await mutator(ret)
 	return simplify(deepFreeze(ret))
 }
@@ -153,7 +153,7 @@ export function clearProperties(self: object): void {
 	}
 }
 
-export function cloneAsMutable<T>(obj: T): DeepWritable<T> {
+export function cloneAsWritable<T>(obj: T): DeepWritable<T> {
 	// `readonly` is fake at runtime
 	return typedStructuredClone(obj) as DeepWritable<T>
 }
