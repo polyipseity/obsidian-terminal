@@ -60,6 +60,7 @@ For first time users, read the [installation](#installation) section first!
 - Add terminal duplication.
 - Add terminal restoring options.
 - Fix key problems (e.g. `Esc` unfocuses the terminal).
+- Color console log.
 - Add terminal style options.
 - Check whether the terminal looks okay in light theme.
 - Add connecting to remote shells. It should also be available on mobile.
