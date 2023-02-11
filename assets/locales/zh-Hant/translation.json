@@ -17,6 +17,34 @@
 			"search-results": "{{- index}}/{{- count}}",
 			"too-many-search-results": "?/1000+"
 		},
+		"profile": {
+			"external": {
+				"arguments": "參數",
+				"executable": "執行檔"
+			},
+			"integrated": {
+				"arguments": "參數",
+				"enable-Windows-conhost-workaround": "啟用Microsoft Windows「conhost.exe」解決方法",
+				"enable-Windows-conhost-workaround-description": "如果執行「conhost.exe」沒有創建視窗，請禁用。無保證這會起作用。",
+				"executable": "執行檔",
+				"python-executable": "Python執行檔",
+				"python-executable-description": "於Unix啟動整合式終端所需要的。清除文字域以禁用Python。",
+				"python-executable-placeholder": "（已禁用）"
+			},
+			"invalid": {
+				"data": "數據"
+			},
+			"name": "名稱",
+			"preset": "預設",
+			"title": "{{- name}}",
+			"type": "類型"
+		},
+		"profile-list": {
+			"content": "列表中第一個此平台上可用的配置是其終端類型的默認配置。",
+			"description": "{{- id}}",
+			"name": "{{- profile.name}}",
+			"title": "配置"
+		},
 		"terminal": {
 			"display-name": "終端：{{- name}}",
 			"restored-history": "\r\n * 已還原於{{- time}}的歷史\r\n",
@@ -78,34 +106,6 @@
 		"notice-timeout": "通知超時（秒）",
 		"notice-timeout-description": "設為0秒是無超時。設為負數以禁用通知。",
 		"preferred-renderer": "首選渲染器",
-		"profile": {
-			"external": {
-				"arguments": "參數",
-				"executable": "執行檔"
-			},
-			"integrated": {
-				"arguments": "參數",
-				"enable-Windows-conhost-workaround": "啟用Microsoft Windows「conhost.exe」解決方法",
-				"enable-Windows-conhost-workaround-description": "如果執行「conhost.exe」沒有創建視窗，請禁用。無保證這會起作用。",
-				"executable": "執行檔",
-				"python-executable": "Python執行檔",
-				"python-executable-description": "於Unix啟動整合式終端所需要的。清除文字域以禁用Python。",
-				"python-executable-placeholder": "（已禁用）"
-			},
-			"invalid": {
-				"data": "數據"
-			},
-			"name": "名稱",
-			"preset": "預設",
-			"title": "{{- name}}",
-			"type": "類型"
-		},
-		"profile-list": {
-			"content": "列表中第一個此平台上可用的配置是其終端類型的默認配置。",
-			"description": "{{- id}}",
-			"name": "{{- profile.name}}",
-			"title": "配置"
-		},
 		"profiles": "配置",
 		"reset": "重設"
 	},

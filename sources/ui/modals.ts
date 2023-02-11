@@ -198,18 +198,18 @@ export class ProfileModal extends ListModal {
 			{ i18n } = language
 		listEl.empty()
 		const title = listEl.createEl("h1", {
-			text: i18n.t("settings.profile.title", {
+			text: i18n.t("components.profile.title", {
 				name: Settings.Profile.name(profile),
 				profile,
 			}),
 		})
 		new Setting(listEl)
-			.setName(i18n.t("settings.profile.name"))
+			.setName(i18n.t("components.profile.name"))
 			.addText(linkSetting(
 				() => Settings.Profile.name(profile),
 				value => { profile.name = value },
 				async value => {
-					title.textContent = i18n.t("settings.profile.title", {
+					title.textContent = i18n.t("components.profile.title", {
 						name: value,
 						profile,
 					})
@@ -218,12 +218,12 @@ export class ProfileModal extends ListModal {
 			))
 			.addExtraButton(resetButton(
 				plugin,
-				i18n.t("asset:settings.profile.name-icon"),
+				i18n.t("asset:components.profile.name-icon"),
 				() => { profile.name = Settings.Profile.DEFAULTS[type].name },
 				this.#postMutate.bind(this, true),
 			))
 		new Setting(listEl)
-			.setName(i18n.t("settings.profile.preset"))
+			.setName(i18n.t("components.profile.preset"))
 			.addDropdown(dropdownSelect(
 				this.#presets,
 				async value => {
@@ -232,7 +232,7 @@ export class ProfileModal extends ListModal {
 				},
 			))
 		new Setting(listEl)
-			.setName(i18n.t("settings.profile.type"))
+			.setName(i18n.t("components.profile.type"))
 			.addDropdown(linkSetting(
 				(): string => type,
 				setTextToEnum(
@@ -254,7 +254,7 @@ export class ProfileModal extends ListModal {
 			))
 			.addExtraButton(resetButton(
 				plugin,
-				i18n.t("asset:settings.profile.type-icon"),
+				i18n.t("asset:components.profile.type-icon"),
 				unexpected,
 				unexpected,
 				{
@@ -272,7 +272,7 @@ export class ProfileModal extends ListModal {
 			}
 			case "external": {
 				new Setting(listEl)
-					.setName(i18n.t(`settings.profile.${type}.executable`))
+					.setName(i18n.t(`components.profile.${type}.executable`))
 					.addText(linkSetting(
 						() => profile.executable,
 						value => { profile.executable = value },
@@ -280,20 +280,20 @@ export class ProfileModal extends ListModal {
 					))
 					.addExtraButton(resetButton(
 						plugin,
-						i18n.t(`asset:settings.profile.${type}.executable-icon`),
+						i18n.t(`asset:components.profile.${type}.executable-icon`),
 						() => {
 							profile.executable = Settings.Profile.DEFAULTS[type].executable
 						},
 						this.#postMutate.bind(this, true),
 					))
 				new Setting(listEl)
-					.setName(i18n.t(`settings.profile.${type}.arguments`))
+					.setName(i18n.t(`components.profile.${type}.arguments`))
 					.setDesc(i18n.t("settings.list-description", {
 						count: profile.args.length,
 					}))
 					.addButton(button => button
 						.setIcon(i18n
-							.t(`asset:settings.profile.${type}.arguments-edit-icon`))
+							.t(`asset:components.profile.${type}.arguments-edit-icon`))
 						.setTooltip(i18n.t("settings.edit"))
 						.onClick(() => {
 							new EditableListModal(
@@ -309,7 +309,7 @@ export class ProfileModal extends ListModal {
 						}))
 					.addExtraButton(resetButton(
 						plugin,
-						i18n.t(`asset:settings.profile.${type}.arguments-icon`),
+						i18n.t(`asset:components.profile.${type}.arguments-icon`),
 						() => {
 							profile.args =
 								cloneAsWritable(Settings.Profile.DEFAULTS[type].args)
@@ -341,7 +341,7 @@ export class ProfileModal extends ListModal {
 			}
 			case "integrated": {
 				new Setting(listEl)
-					.setName(i18n.t(`settings.profile.${type}.executable`))
+					.setName(i18n.t(`components.profile.${type}.executable`))
 					.addText(linkSetting(
 						() => profile.executable,
 						value => {
@@ -351,20 +351,20 @@ export class ProfileModal extends ListModal {
 					))
 					.addExtraButton(resetButton(
 						plugin,
-						i18n.t(`asset:settings.profile.${type}.executable-icon`),
+						i18n.t(`asset:components.profile.${type}.executable-icon`),
 						() => {
 							profile.executable = Settings.Profile.DEFAULTS[type].executable
 						},
 						this.#postMutate.bind(this, true),
 					))
 				new Setting(listEl)
-					.setName(i18n.t(`settings.profile.${type}.arguments`))
+					.setName(i18n.t(`components.profile.${type}.arguments`))
 					.setDesc(i18n.t("settings.list-description", {
 						count: profile.args.length,
 					}))
 					.addButton(button => button
 						.setIcon(i18n
-							.t(`asset:settings.profile.${type}.arguments-edit-icon`))
+							.t(`asset:components.profile.${type}.arguments-edit-icon`))
 						.setTooltip(i18n.t("settings.edit"))
 						.onClick(() => {
 							new EditableListModal(
@@ -380,7 +380,7 @@ export class ProfileModal extends ListModal {
 						}))
 					.addExtraButton(resetButton(
 						plugin,
-						i18n.t(`asset:settings.profile.${type}.arguments-icon`),
+						i18n.t(`asset:components.profile.${type}.arguments-icon`),
 						() => {
 							profile.args =
 								cloneAsWritable(Settings.Profile.DEFAULTS[type].args)
@@ -409,9 +409,9 @@ export class ProfileModal extends ListModal {
 						))
 				}
 				new Setting(listEl)
-					.setName(i18n.t(`settings.profile.${type}.python-executable`))
+					.setName(i18n.t(`components.profile.${type}.python-executable`))
 					.setDesc(i18n
-						.t(`settings.profile.${type}.python-executable-description`))
+						.t(`components.profile.${type}.python-executable-description`))
 					.addText(linkSetting(
 						() => profile.pythonExecutable,
 						value => {
@@ -423,13 +423,13 @@ export class ProfileModal extends ListModal {
 								component
 									.setPlaceholder(i18n
 										// eslint-disable-next-line max-len
-										.t(`settings.profile.${type}.python-executable-placeholder`))
+										.t(`components.profile.${type}.python-executable-placeholder`))
 							},
 						},
 					))
 					.addExtraButton(resetButton(
 						plugin,
-						i18n.t(`asset:settings.profile.${type}.python-executable-icon`),
+						i18n.t(`asset:components.profile.${type}.python-executable-icon`),
 						() => {
 							profile.pythonExecutable =
 								Settings.Profile.DEFAULTS[type].pythonExecutable
@@ -438,10 +438,10 @@ export class ProfileModal extends ListModal {
 					))
 				new Setting(listEl)
 					.setName(i18n
-						.t(`settings.profile.${type}.enable-Windows-conhost-workaround`))
+						.t(`components.profile.${type}.enable-Windows-conhost-workaround`))
 					.setDesc(i18n
 						// eslint-disable-next-line max-len
-						.t(`settings.profile.${type}.enable-Windows-conhost-workaround-description`))
+						.t(`components.profile.${type}.enable-Windows-conhost-workaround-description`))
 					.addToggle(linkSetting(
 						() => profile.enableWindowsConhostWorkaround ??
 							Settings.Profile.DEFAULTS[type].enableWindowsConhostWorkaround,
@@ -454,7 +454,7 @@ export class ProfileModal extends ListModal {
 						plugin,
 						i18n
 							// eslint-disable-next-line max-len
-							.t(`asset:settings.profile.${type}.enable-Windows-conhost-workaround-icon`),
+							.t(`asset:components.profile.${type}.enable-Windows-conhost-workaround-icon`),
 						() => {
 							profile.enableWindowsConhostWorkaround =
 								Settings.Profile.DEFAULTS[type].enableWindowsConhostWorkaround
@@ -465,13 +465,13 @@ export class ProfileModal extends ListModal {
 			}
 			case "invalid": {
 				new Setting(listEl)
-					.setName(i18n.t(`settings.profile.${type}.data`))
+					.setName(i18n.t(`components.profile.${type}.data`))
 					.addTextArea(textArea => textArea
 						.setValue(JSON.stringify(profile, null, JSON_STRINGIFY_SPACE))
 						.setDisabled(true))
 					.addExtraButton(resetButton(
 						plugin,
-						i18n.t(`asset:settings.profile.${type}.data-icon`),
+						i18n.t(`asset:components.profile.${type}.data-icon`),
 						unexpected,
 						unexpected,
 						{
@@ -503,7 +503,7 @@ export class ProfileModal extends ListModal {
 	}
 }
 
-export class ProfilesModal extends ListModal {
+export class ProfileListModal extends ListModal {
 	readonly #data
 	readonly #callback
 	readonly #presets
@@ -542,8 +542,8 @@ export class ProfilesModal extends ListModal {
 			{ language } = plugin,
 			{ i18n } = language
 		listEl.empty()
-		listEl.createEl("h1", { text: i18n.t("settings.profile-list.title") })
-		listEl.createEl("div", { text: i18n.t("settings.profile-list.content") })
+		listEl.createEl("h1", { text: i18n.t("components.profile-list.title") })
+		listEl.createEl("div", { text: i18n.t("components.profile-list.content") })
 		new Setting(listEl)
 			.setName(i18n.t("components.editable-list.prepend"))
 			.addDropdown(dropdownSelect(
@@ -555,10 +555,10 @@ export class ProfilesModal extends ListModal {
 			))
 		for (const [index, [id, profile]] of this.#data.entries()) {
 			new Setting(listEl)
-				.setName(i18n.t("settings.profile-list.name", { profile }))
-				.setDesc(i18n.t("settings.profile-list.description", { id, profile }))
+				.setName(i18n.t("components.profile-list.name", { profile }))
+				.setDesc(i18n.t("components.profile-list.description", { id, profile }))
 				.addButton(button => button
-					.setIcon(i18n.t("asset:settings.profile-list.edit-icon"))
+					.setIcon(i18n.t("asset:components.profile-list.edit-icon"))
 					.setTooltip(i18n.t("settings.edit"))
 					.onClick(() => {
 						new ProfileModal(

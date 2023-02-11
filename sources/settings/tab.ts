@@ -14,7 +14,7 @@ import {
 	setTextToNumber,
 } from "../ui/settings"
 import { LANGUAGES } from "assets/locales"
-import { ProfilesModal } from "sources/ui/modals"
+import { ProfileListModal } from "sources/ui/modals"
 import type { TerminalPlugin } from "../main"
 
 export class SettingTab extends PluginSettingTab {
@@ -225,7 +225,7 @@ export class SettingTab extends PluginSettingTab {
 				.setIcon(i18n.t("asset:settings.profiles-edit-icon"))
 				.setTooltip(i18n.t("settings.edit"))
 				.onClick(() => {
-					new ProfilesModal(
+					new ProfileListModal(
 						plugin,
 						Object.entries(settings.profiles),
 						async data => {

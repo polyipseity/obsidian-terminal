@@ -20,6 +20,34 @@
 			"search-results": "{{- index}}/{{- count}}",
 			"too-many-search-results": "?/1000+"
 		},
+		"profile": {
+			"external": {
+				"arguments": "Arguments",
+				"executable": "Executable"
+			},
+			"integrated": {
+				"arguments": "Arguments",
+				"enable-Windows-conhost-workaround": "Enable Microsoft Windows 'conhost.exe' workaround",
+				"enable-Windows-conhost-workaround-description": "Disable if running 'conhost.exe' does not create a window. No guarantees this will work.",
+				"executable": "Executable",
+				"python-executable": "Python executable",
+				"python-executable-description": "Required on Unix to start integrated terminal. Clear field to disable Python.",
+				"python-executable-placeholder": "(Disabled)"
+			},
+			"invalid": {
+				"data": "Data"
+			},
+			"name": "Name",
+			"preset": "Preset",
+			"title": "{{- name}}",
+			"type": "Type"
+		},
+		"profile-list": {
+			"content": "The first profile in the list available on this platform is the default profile for its terminal type.",
+			"description": "{{- id}}",
+			"name": "{{- profile.name}}",
+			"title": "Profiles"
+		},
 		"terminal": {
 			"display-name": "Terminal: {{- name}}",
 			"restored-history": "\r\n * Restored history at {{- time}}\r\n\r\n",
@@ -82,34 +110,6 @@
 		"notice-timeout": "Notice timeout (s)",
 		"notice-timeout-description": "Set to 0 s for no timeout. Set to negative to disable notice.",
 		"preferred-renderer": "Preferred renderer",
-		"profile": {
-			"external": {
-				"arguments": "Arguments",
-				"executable": "Executable"
-			},
-			"integrated": {
-				"arguments": "Arguments",
-				"enable-Windows-conhost-workaround": "Enable Microsoft Windows 'conhost.exe' workaround",
-				"enable-Windows-conhost-workaround-description": "Disable if running 'conhost.exe' does not create a window. No guarantees this will work.",
-				"executable": "Executable",
-				"python-executable": "Python executable",
-				"python-executable-description": "Required on Unix to start integrated terminal. Clear field to disable Python.",
-				"python-executable-placeholder": "(Disabled)"
-			},
-			"invalid": {
-				"data": "Data"
-			},
-			"name": "Name",
-			"preset": "Preset",
-			"title": "{{- name}}",
-			"type": "Type"
-		},
-		"profile-list": {
-			"content": "The first profile in the list available on this platform is the default profile for its terminal type.",
-			"description": "{{- id}}",
-			"name": "{{- profile.name}}",
-			"title": "Profiles"
-		},
 		"profiles": "Profiles",
 		"reset": "Reset"
 	},

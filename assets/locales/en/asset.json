@@ -15,6 +15,28 @@
 			"regex-icon": "regex",
 			"whole-word-icon": "align-horizontal-space-around"
 		},
+		"profile": {
+			"external": {
+				"arguments-edit-icon": "list",
+				"arguments-icon": "form-input",
+				"executable-icon": "file-terminal"
+			},
+			"integrated": {
+				"arguments-edit-icon": "list",
+				"arguments-icon": "form-input",
+				"enable-Windows-conhost-workaround-icon": "code",
+				"executable-icon": "file-terminal",
+				"python-executable-icon": "file-cog"
+			},
+			"invalid": {
+				"data-icon": "curly-braces"
+			},
+			"name-icon": "text-cursor-input",
+			"type-icon": "type"
+		},
+		"profile-list": {
+			"edit-icon": "edit"
+		},
 		"terminal": {
 			"icon": "terminal"
 		}
@@ -42,28 +64,6 @@
 		"language-icon": "languages",
 		"notice-timeout-icon": "timer",
 		"preferred-renderer-icon": "brush",
-		"profile": {
-			"external": {
-				"arguments-edit-icon": "list",
-				"arguments-icon": "form-input",
-				"executable-icon": "file-terminal"
-			},
-			"integrated": {
-				"arguments-edit-icon": "list",
-				"arguments-icon": "form-input",
-				"enable-Windows-conhost-workaround-icon": "code",
-				"executable-icon": "file-terminal",
-				"python-executable-icon": "file-cog"
-			},
-			"invalid": {
-				"data-icon": "curly-braces"
-			},
-			"name-icon": "text-cursor-input",
-			"type-icon": "type"
-		},
-		"profile-list": {
-			"edit-icon": "edit"
-		},
 		"profiles-edit-icon": "list",
 		"profiles-icon": "terminal"
 	},

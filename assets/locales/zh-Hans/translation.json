@@ -17,6 +17,34 @@
 			"search-results": "{{- index}}/{{- count}}",
 			"too-many-search-results": "?/1000+"
 		},
+		"profile": {
+			"external": {
+				"arguments": "参数",
+				"executable": "可执行文件"
+			},
+			"integrated": {
+				"arguments": "参数",
+				"enable-Windows-conhost-workaround": "启用Microsoft Windows「conhost.exe」解决方法",
+				"enable-Windows-conhost-workaround-description": "如果执行「conhost.exe」没有创建视窗，请禁用。无保证这会起作用。",
+				"executable": "可执行文件",
+				"python-executable": "Python可执行文件",
+				"python-executable-description": "于Unix启动整合式终端所需要的。清除文本框以禁用Python。",
+				"python-executable-placeholder": "（已禁用）"
+			},
+			"invalid": {
+				"data": "数据"
+			},
+			"name": "名称",
+			"preset": "预设",
+			"title": "{{- name}}",
+			"type": "类型"
+		},
+		"profile-list": {
+			"content": "列表中第一个此平台上可用的配置是其终端类型的默认配置。.",
+			"description": "{{- id}}",
+			"name": "{{- profile.name}}",
+			"title": "配置"
+		},
 		"terminal": {
 			"display-name": "终端：{{- name}}",
 			"restored-history": "\r\n * 已还原于{{- time}}的历史\r\n",
@@ -78,34 +106,6 @@
 		"notice-timeout": "通知超时（秒）",
 		"notice-timeout-description": "设为0秒是无超时。设为负数以禁用通知。",
 		"preferred-renderer": "首选渲染器",
-		"profile": {
-			"external": {
-				"arguments": "参数",
-				"executable": "可执行文件"
-			},
-			"integrated": {
-				"arguments": "参数",
-				"enable-Windows-conhost-workaround": "启用Microsoft Windows「conhost.exe」解决方法",
-				"enable-Windows-conhost-workaround-description": "如果执行「conhost.exe」没有创建视窗，请禁用。无保证这会起作用。",
-				"executable": "可执行文件",
-				"python-executable": "Python可执行文件",
-				"python-executable-description": "于Unix启动整合式终端所需要的。清除文本框以禁用Python。",
-				"python-executable-placeholder": "（已禁用）"
-			},
-			"invalid": {
-				"data": "数据"
-			},
-			"name": "名称",
-			"preset": "预设",
-			"title": "{{- name}}",
-			"type": "类型"
-		},
-		"profile-list": {
-			"content": "列表中第一个此平台上可用的配置是其终端类型的默认配置。.",
-			"description": "{{- id}}",
-			"name": "{{- profile.name}}",
-			"title": "配置"
-		},
 		"profiles": "配置",
 		"reset": "重设"
 	},
