@@ -253,11 +253,15 @@ export function isHomogenousArray<T extends PrimitiveType>(
 }
 
 export function isNonNullish<T>(value: T | null | undefined): value is T {
-	return !isNull(value) && !isUndefined(value)
+	return !isNullish(value)
 }
 
 export function isNull(value: unknown): value is null {
 	return value === null
+}
+
+export function isNullish(value: unknown): value is null | undefined {
+	return isNull(value) || isUndefined(value)
 }
 
 export function isInterface<T extends { readonly __type: T["__type"] }>(

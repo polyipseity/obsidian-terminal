@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-import { inSet, typedKeys } from "./utils/util"
+import { inSet, isNullish, typedKeys } from "./utils/util"
 
 const
 	BUNDLE = Object.freeze({
@@ -13,10 +13,13 @@ export async function dynamicRequire<T>(module: string): Promise<T> {
 }
 
 export function dynamicRequireSync(module: string): unknown {
-	if (inSet(MODULES, module)) {
-		return BUNDLE[module]()
+	const ret: unknown = inSet(MODULES, module)
+		? BUNDLE[module]()
+		: require(module)
+	if (isNullish(ret)) {
+		throw new Error(module)
 	}
-	return require(module)
+	return ret
 }
 
 export function importable(module: string): boolean {
