@@ -220,7 +220,7 @@ export class ProfileModal extends ListModal {
 				plugin,
 				i18n.t("asset:components.profile.name-icon"),
 				() => { profile.name = Settings.Profile.DEFAULTS[type].name },
-				this.#postMutate.bind(this, true),
+				async () => this.#postMutate(true),
 			))
 		new Setting(listEl)
 			.setName(i18n.t("components.profile.preset"))
@@ -241,7 +241,7 @@ export class ProfileModal extends ListModal {
 						this.#replaceData(cloneAsWritable(Settings.Profile.DEFAULTS[value]))
 					},
 				),
-				this.#postMutate.bind(this, true),
+				async () => this.#postMutate(true),
 				{
 					pre: dropdown => {
 						dropdown
@@ -276,7 +276,7 @@ export class ProfileModal extends ListModal {
 					.addText(linkSetting(
 						() => profile.executable,
 						value => { profile.executable = value },
-						this.#postMutate.bind(this, false),
+						async () => this.#postMutate(false),
 					))
 					.addExtraButton(resetButton(
 						plugin,
@@ -284,7 +284,7 @@ export class ProfileModal extends ListModal {
 						() => {
 							profile.executable = Settings.Profile.DEFAULTS[type].executable
 						},
-						this.#postMutate.bind(this, true),
+						async () => this.#postMutate(true),
 					))
 				new Setting(listEl)
 					.setName(i18n.t(`components.profile.${type}.arguments`))
@@ -314,7 +314,7 @@ export class ProfileModal extends ListModal {
 							profile.args =
 								cloneAsWritable(Settings.Profile.DEFAULTS[type].args)
 						},
-						this.#postMutate.bind(this, true),
+						async () => this.#postMutate(true),
 					))
 				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
 					new Setting(listEl)
@@ -325,7 +325,7 @@ export class ProfileModal extends ListModal {
 							value => {
 								profile.platforms[platform] = value
 							},
-							this.#postMutate.bind(this, false),
+							async () => this.#postMutate(false),
 						))
 						.addExtraButton(resetButton(
 							plugin,
@@ -334,7 +334,7 @@ export class ProfileModal extends ListModal {
 								profile.platforms[platform] =
 									Settings.Profile.DEFAULTS[type].platforms[platform]
 							},
-							this.#postMutate.bind(this, true),
+							async () => this.#postMutate(true),
 						))
 				}
 				break
@@ -347,7 +347,7 @@ export class ProfileModal extends ListModal {
 						value => {
 							profile.executable = value
 						},
-						this.#postMutate.bind(this, false),
+						async () => this.#postMutate(false),
 					))
 					.addExtraButton(resetButton(
 						plugin,
@@ -355,7 +355,7 @@ export class ProfileModal extends ListModal {
 						() => {
 							profile.executable = Settings.Profile.DEFAULTS[type].executable
 						},
-						this.#postMutate.bind(this, true),
+						async () => this.#postMutate(true),
 					))
 				new Setting(listEl)
 					.setName(i18n.t(`components.profile.${type}.arguments`))
@@ -385,7 +385,7 @@ export class ProfileModal extends ListModal {
 							profile.args =
 								cloneAsWritable(Settings.Profile.DEFAULTS[type].args)
 						},
-						this.#postMutate.bind(this, true),
+						async () => this.#postMutate(true),
 					))
 				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
 					new Setting(listEl)
@@ -396,7 +396,7 @@ export class ProfileModal extends ListModal {
 							value => {
 								profile.platforms[platform] = value
 							},
-							this.#postMutate.bind(this, false),
+							async () => this.#postMutate(false),
 						))
 						.addExtraButton(resetButton(
 							plugin,
@@ -405,7 +405,7 @@ export class ProfileModal extends ListModal {
 								profile.platforms[platform] =
 									Settings.Profile.DEFAULTS[type].platforms[platform]
 							},
-							this.#postMutate.bind(this, true),
+							async () => this.#postMutate(true),
 						))
 				}
 				new Setting(listEl)
@@ -417,7 +417,7 @@ export class ProfileModal extends ListModal {
 						value => {
 							profile.pythonExecutable = value
 						},
-						this.#postMutate.bind(this, false),
+						async () => this.#postMutate(false),
 						{
 							post: component => {
 								component
@@ -434,7 +434,7 @@ export class ProfileModal extends ListModal {
 							profile.pythonExecutable =
 								Settings.Profile.DEFAULTS[type].pythonExecutable
 						},
-						this.#postMutate.bind(this, true),
+						async () => this.#postMutate(true),
 					))
 				new Setting(listEl)
 					.setName(i18n
@@ -448,7 +448,7 @@ export class ProfileModal extends ListModal {
 						value => {
 							profile.enableWindowsConhostWorkaround = value
 						},
-						this.#postMutate.bind(this, false),
+						async () => this.#postMutate(false),
 					))
 					.addExtraButton(resetButton(
 						plugin,
@@ -459,7 +459,7 @@ export class ProfileModal extends ListModal {
 							profile.enableWindowsConhostWorkaround =
 								Settings.Profile.DEFAULTS[type].enableWindowsConhostWorkaround
 						},
-						this.#postMutate.bind(this, true),
+						async () => this.#postMutate(true),
 					))
 				break
 			}
@@ -523,7 +523,7 @@ export class ProfileListModal extends ListModal {
 				},
 				value: PROFILE_PRESETS[key],
 			})),
-		keygen = crypto.randomUUID.bind(crypto),
+		keygen = (): string => crypto.randomUUID(),
 	) {
 		super(plugin.app)
 		this.#data = cloneAsWritable(data)
