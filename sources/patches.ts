@@ -61,55 +61,32 @@ export function patch(): () => void {
 				log(proto) { return consolePatch("info", proto) },
 				warn(proto) { return consolePatch("warn", proto) },
 			}),
-			around(window, {
-				onerror(proto) {
-					return function fn(
-						this: Window,
-						event,
-						filename,
-						lineno,
-						colno,
-						error,
-					) {
-						let ret: unknown = false
-						if (proto !== null) {
-							ret = proto.call(this, event, filename, lineno, colno, error)
-						}
-						LOGGER.emit({
-							data: new ErrorEvent("error", {
-								colno: colno ?? 0,
-								error,
-								filename: filename ?? "",
-								lineno: lineno ?? 0,
-								message: event instanceof Event ? event.type : event,
-							}),
-							type: "windowError",
-						}).catch(() => { })
-						return ret
-					}
-				},
-				onunhandledrejection(proto) {
-					return function fn(
-						this: WindowEventHandlers,
-						event: PromiseRejectionEvent,
-					) {
-						// eslint-disable-next-line no-void
-						let ret: unknown = void 0
-						if (proto !== null) {
-							ret = proto.call(this as Window, event)
-						}
-						LOGGER.emit({ data: event, type: "unhandledRejection" })
-							.catch(() => { })
-						return ret
-					}
-				},
-				toString(proto) {
-					return function fn(this: Window, ...args) {
-						return proto.apply(this, args)
-					}
-				},
-			}),
 		)
+		const
+			onWindowError = (error: ErrorEvent) => {
+				LOGGER.emit({
+					data: error,
+					type: "windowError",
+				}).catch(() => { })
+			},
+			onUnhandledRejection = (error: PromiseRejectionEvent) => {
+				LOGGER.emit({
+					data: error,
+					type: "unhandledRejection",
+				}).catch(() => { })
+			}
+		unpatchers.push(
+			() => { window.removeEventListener("error", onWindowError, { capture: true }) },
+			() => { window.removeEventListener("unhandledrejection", onUnhandledRejection, { capture: true }) },
+		)
+		window.addEventListener("error", onWindowError, {
+			capture: true,
+			passive: true,
+		})
+		window.addEventListener("unhandledrejection", onUnhandledRejection, {
+			capture: true,
+			passive: true,
+		})
 	} catch (error) {
 		unpatch()
 		throw error
