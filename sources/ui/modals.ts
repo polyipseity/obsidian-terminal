@@ -622,7 +622,6 @@ export abstract class DialogModal extends Modal {
 		super.onOpen()
 		const { plugin, modalEl, scope } = this,
 			{ i18n } = plugin.language
-		modalEl.replaceChildren()
 		new Setting(modalEl)
 			.addButton(button => button
 				.setIcon(i18n.t("asset:components.dialog.cancel-icon"))
