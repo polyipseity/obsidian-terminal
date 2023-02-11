@@ -34,6 +34,9 @@ export function useSettings(element: HTMLElement): HTMLElement {
 }
 
 export class EditableListModal<T> extends Modal {
+	readonly #languageChanger =
+		this.plugin.language.onChangeLanguage.listen(() => { this.display() })
+
 	readonly #data
 	readonly #inputter
 	readonly #callback
@@ -56,8 +59,6 @@ export class EditableListModal<T> extends Modal {
 		this.#data = [...data]
 		this.#callback = callback
 		this.#title = title
-		plugin.register(plugin.language.onChangeLanguage
-			.listen(() => { this.display() }))
 	}
 
 	public static readonly stringInputter = (
@@ -81,6 +82,11 @@ export class EditableListModal<T> extends Modal {
 	public override onOpen(): void {
 		super.onOpen()
 		this.display()
+	}
+
+	public override onClose(): void {
+		super.onClose()
+		this.#languageChanger()
 	}
 
 	protected display(): void {
@@ -158,6 +164,9 @@ export class EditableListModal<T> extends Modal {
 }
 
 export class ProfileModal extends Modal {
+	readonly #languageChanger =
+		this.plugin.language.onChangeLanguage.listen(() => { this.display() })
+
 	readonly #data
 	readonly #callback
 	readonly #presets
@@ -181,13 +190,16 @@ export class ProfileModal extends Modal {
 		this.#data = cloneAsWritable(data)
 		this.#callback = callback
 		this.#presets = presets
-		plugin.register(plugin.language.onChangeLanguage
-			.listen(() => { this.display() }))
 	}
 
 	public override onOpen(): void {
 		super.onOpen()
 		this.display()
+	}
+
+	public override onClose(): void {
+		super.onClose()
+		this.#languageChanger()
 	}
 
 	protected display(): void {
@@ -627,12 +639,13 @@ export class ProfileListModal extends Modal {
 }
 
 export abstract class DialogModal extends Modal {
+	readonly #languageChanger =
+		this.plugin.language.onChangeLanguage.listen(() => { this.display() })
+
 	#setting: Setting | null = null
 
 	public constructor(protected readonly plugin: TerminalPlugin) {
 		super(plugin.app)
-		plugin.register(plugin.language.onChangeLanguage
-			.listen(() => { this.display() }))
 	}
 
 	public override onOpen(): void {
@@ -645,6 +658,11 @@ export abstract class DialogModal extends Modal {
 			event.preventDefault()
 			event.stopPropagation()
 		})
+	}
+
+	public override onClose(): void {
+		super.onClose()
+		this.#languageChanger()
 	}
 
 	public override close(): void {
