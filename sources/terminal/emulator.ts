@@ -4,7 +4,6 @@ import {
 	type ITerminalOptions,
 	Terminal,
 } from "xterm"
-import { TAB_SPACES, TERMINAL_RESIZE_TIMEOUT } from "../magic"
 import {
 	asyncDebounce,
 	isUndefined,
@@ -17,6 +16,7 @@ import type { ChildProcessByStdio } from "node:child_process"
 import { FitAddon } from "xterm-addon-fit"
 import type { Pseudoterminal } from "./pseudoterminal"
 import { SerializeAddon } from "xterm-addon-serialize"
+import { TERMINAL_RESIZE_TIMEOUT } from "../magic"
 import type { TerminalPlugin } from "../main"
 import type { WebglAddon } from "xterm-addon-webgl"
 import { debounce } from "obsidian"
@@ -27,7 +27,6 @@ const
 
 export function processText(text: string): string {
 	return text
-		.replace(/\t/gu, " ".repeat(TAB_SPACES))
 		.replace(/\r\n/gu, "\n")
 		.replace(/\n/gu, "\r\n")
 }
