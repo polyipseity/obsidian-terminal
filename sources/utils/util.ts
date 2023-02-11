@@ -306,7 +306,11 @@ export function logFormat(...args: readonly unknown[]): string {
 	const
 		stringify = (param: unknown): string => {
 			if (typeof param === "object" && typeof param !== "function") {
-				return JSON.stringify(param, null, JSON_STRINGIFY_SPACE)
+				try {
+					return JSON.stringify(param, null, JSON_STRINGIFY_SPACE)
+				} catch (error) {
+					console.warn(error)
+				}
 			}
 			return String(param)
 		},
