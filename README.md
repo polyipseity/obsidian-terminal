@@ -58,9 +58,8 @@ For first time users, read the [installation](#installation) section first!
 - Add setting for successful exit codes.
 - Add terminal text loading.
 - Add terminal duplication.
-- Support multiple executables.
+- Add terminal restoring options.
+- Fix key problems (e.g. `Esc` unfocuses the terminal).
 - Add terminal style options.
 - Check whether the terminal looks okay in light theme.
-- Add arguments in options.
 - Add connecting to remote shells. It should also be available on mobile.
-- Fix key problems (e.g. `Esc` unfocuses the terminal).
