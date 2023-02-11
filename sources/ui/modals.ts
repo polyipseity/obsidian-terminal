@@ -37,6 +37,7 @@ export class EditableListModal<T> extends Modal {
 	readonly #data
 	readonly #inputter
 	readonly #callback
+	readonly #title
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
@@ -48,11 +49,13 @@ export class EditableListModal<T> extends Modal {
 		protected readonly placeholder: T,
 		data: readonly T[],
 		callback: (data_: Writable<typeof data>) => unknown,
+		title = (): string | null => null,
 	) {
 		super(app)
 		this.#inputter = inputter
 		this.#data = [...data]
 		this.#callback = callback
+		this.#title = title
 	}
 
 	public static readonly stringInputter = (
@@ -81,7 +84,11 @@ export class EditableListModal<T> extends Modal {
 	protected display(): void {
 		const { contentEl, plugin, placeholder } = this,
 			listEl = useSettings(contentEl),
-			{ i18n } = plugin.language
+			{ i18n } = plugin.language,
+			title = this.#title()
+		if (title !== null) {
+			listEl.createEl("h1", { text: title })
+		}
 		new Setting(listEl)
 			.setName(i18n.t("components.editable-list.prepend"))
 			.addButton(button => button
@@ -294,6 +301,7 @@ export class ProfileModal extends Modal {
 									profile.args = value
 									await this.#postMutate(true)
 								},
+								() => i18n.t(`components.profile.${type}.arguments`),
 							).open()
 						}))
 					.addExtraButton(resetButton(
@@ -364,6 +372,7 @@ export class ProfileModal extends Modal {
 									profile.args = value
 									await this.#postMutate(true)
 								},
+								() => i18n.t(`components.profile.${type}.arguments`),
 							).open()
 						}))
 					.addExtraButton(resetButton(

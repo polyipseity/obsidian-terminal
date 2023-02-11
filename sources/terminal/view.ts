@@ -79,6 +79,7 @@ export class TerminalEditModal extends DialogModal {
 			{ profiles } = settings,
 			{ i18n } = language,
 			noProfile = randomNotIn(Object.keys(profiles))
+		listEl.createEl("h1", { text: i18n.t("generic.edit") })
 		new Setting(listEl)
 			.setName(i18n.t("components.terminal.working-directory"))
 			.addText(linkSetting(
