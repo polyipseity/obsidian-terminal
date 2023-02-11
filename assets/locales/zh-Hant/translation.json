@@ -96,8 +96,7 @@
 				"data": "數據"
 			},
 			"name": "名稱",
-			"not-found": "配置文件「{{- id}}」不存在。",
-			"title": "{{- nameOrID}}",
+			"title": "{{- name}}",
 			"type": "類型"
 		},
 		"profile-list": {

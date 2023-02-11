@@ -142,6 +142,17 @@ export function clear(self: unknown[]): void {
 	self.length = 0
 }
 
+export function clearProperties(self: object): void {
+	for (const prop of Object.getOwnPropertyNames(self)) {
+		// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+		delete self[prop as keyof typeof self]
+	}
+	for (const prop of Object.getOwnPropertySymbols(self)) {
+		// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+		delete self[prop as keyof typeof self]
+	}
+}
+
 export function cloneAsMutable<T>(obj: T): DeepWritable<T> {
 	// `readonly` is fake at runtime
 	return typedStructuredClone(obj) as DeepWritable<T>

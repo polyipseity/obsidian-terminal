@@ -49,7 +49,7 @@ export class SettingTab extends PluginSettingTab {
 					async value => plugin
 						.mutateSettings(settingsM => { settingsM.language = value }),
 				),
-				this.#postMutate.bind(this),
+				this.#postMutate.bind(this, false),
 				{
 					pre: dropdown => {
 						dropdown
@@ -122,7 +122,7 @@ export class SettingTab extends PluginSettingTab {
 				() => settings.addToCommand,
 				async value => plugin
 					.mutateSettings(settingsM => { settingsM.addToCommand = value }),
-				this.#postMutate.bind(this),
+				this.#postMutate.bind(this, false),
 			))
 			.addExtraButton(resetButton(
 				plugin,
@@ -139,7 +139,7 @@ export class SettingTab extends PluginSettingTab {
 				() => settings.addToContextMenu,
 				async value => plugin
 					.mutateSettings(settingsM => { settingsM.addToContextMenu = value }),
-				this.#postMutate.bind(this),
+				this.#postMutate.bind(this, false),
 			))
 			.addExtraButton(resetButton(
 				plugin,
@@ -160,7 +160,7 @@ export class SettingTab extends PluginSettingTab {
 						settingsM.hideStatusBar = value
 					}),
 				),
-				this.#postMutate.bind(this),
+				this.#postMutate.bind(this, false),
 				{
 					pre: dropdown => {
 						dropdown
@@ -188,7 +188,7 @@ export class SettingTab extends PluginSettingTab {
 				() => settings.noticeTimeout.toString(),
 				setTextToNumber(async value => plugin
 					.mutateSettings(settingsM => { settingsM.noticeTimeout = value })),
-				this.#postMutate.bind(this),
+				this.#postMutate.bind(this, false),
 			))
 			.addExtraButton(resetButton(
 				plugin,
@@ -207,7 +207,7 @@ export class SettingTab extends PluginSettingTab {
 					.mutateSettings(settingsM => {
 						settingsM.errorNoticeTimeout = value
 					})),
-				this.#postMutate.bind(this),
+				this.#postMutate.bind(this, false),
 			))
 			.addExtraButton(resetButton(
 				plugin,
@@ -260,7 +260,7 @@ export class SettingTab extends PluginSettingTab {
 						settingsM.preferredRenderer = value
 					}),
 				),
-				this.#postMutate.bind(this),
+				this.#postMutate.bind(this, false),
 				{
 					pre: dropdown => {
 						dropdown

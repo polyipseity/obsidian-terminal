@@ -23,7 +23,7 @@ export function linkSetting<
 >(
 	getter: () => V,
 	setter: (value: V, component: C, getter: () => V) => unknown,
-	callback: () => unknown,
+	callback: (value: V, component: C, getter: () => V) => unknown,
 	action: ComponentAction<C, V> = {},
 ) {
 	return (component: C): void => {
@@ -34,7 +34,7 @@ export function linkSetting<
 				component.setValue(getter())
 				return
 			}
-			await callback()
+			await callback(value, component, getter)
 		}
 		component.setValue(getter()).onChange(activate);
 		(action.post ?? ((): void => { }))(component, activate)
@@ -90,7 +90,7 @@ export function resetButton<C extends ButtonComponent | ExtraButtonComponent>(
 	plugin: TerminalPlugin,
 	icon: string,
 	resetter: (component: C) => unknown,
-	callback: () => unknown,
+	callback: (component: C) => unknown,
 	action: ComponentAction<C, void> = {},
 ) {
 	return (component: C): void => {
@@ -100,7 +100,7 @@ export function resetButton<C extends ButtonComponent | ExtraButtonComponent>(
 			if (typeof ret === "boolean" && !ret) {
 				return
 			}
-			await callback()
+			await callback(component)
 		}
 		component
 			.setTooltip(plugin.language.i18n.t("settings.reset"))

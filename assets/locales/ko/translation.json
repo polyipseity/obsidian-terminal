@@ -100,8 +100,7 @@
 				"data": "Data"
 			},
 			"name": "Name",
-			"not-found": "Profile '{{- id}}' does not exist.",
-			"title": "{{- nameOrID}}",
+			"title": "{{- name}}",
 			"type": "Type"
 		},
 		"profile-list": {
