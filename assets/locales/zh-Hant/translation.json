@@ -114,6 +114,22 @@
 			"linux": "Linux",
 			"win32": "Microsoft Windows"
 		},
+		"profile-presets": {
+			"bashIntegrated": "bash：整合式",
+			"cmdIntegrated": "cmd：整合式",
+			"console": "開發者控制台",
+			"darwinExternalDefault": "macOS默認：外部",
+			"darwinIntegratedDefault": "macOS默認：整合式",
+			"dashIntegrated": "dash：整合式",
+			"empty": "空白",
+			"linuxExternalDefault": "Linux默認：外部",
+			"linuxIntegratedDefault": "Linux默認：整合式",
+			"pwshIntegrated": "pwsh：整合式",
+			"shIntegrated": "sh：整合式",
+			"win32ExternalDefault": "Microsoft Windows默認：外部",
+			"win32IntegratedDefault": "Microsoft Windows默認：整合式",
+			"zshIntegrated": "zsh：整合式"
+		},
 		"profiles": {
 			"": "空白",
 			"console": "控制台",

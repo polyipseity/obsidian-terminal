@@ -145,3 +145,12 @@ export const PROFILE_PRESET_KEYS = typedKeys<[
 	"win32IntegratedDefault",
 ]>()(PROFILE_PRESETS)
 export type ProfilePresetKeys = typeof PROFILE_PRESET_KEYS[number]
+export const PROFILE_PRESET_ORDERED_KEYS =
+	deepFreeze(PROFILE_PRESET_KEYS.reduce<ProfilePresetKeys[]>((prev, cur) => {
+		if (cur === "empty") {
+			prev.unshift(cur)
+		} else {
+			prev.push(cur)
+		}
+		return prev
+	}, []))

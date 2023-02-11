@@ -2,6 +2,10 @@ import { DISABLED_TOOLTIP, JSON_STRINGIFY_SPACE } from "sources/magic"
 import type { DeepWritable, Writable } from "ts-essentials"
 import { Modal, Setting, type ValueComponent } from "obsidian"
 import {
+	PROFILE_PRESETS,
+	PROFILE_PRESET_ORDERED_KEYS,
+} from "sources/settings/profile-presets"
+import {
 	clearProperties,
 	cloneAsWritable,
 	insertAt,
@@ -10,8 +14,12 @@ import {
 	typedStructuredClone,
 	unexpected,
 } from "sources/utils/util"
-import { linkSetting, resetButton, setTextToEnum } from "./settings"
-import { PROFILE_PRESETS } from "sources/settings/profile-presets"
+import {
+	dropdownSelect,
+	linkSetting,
+	resetButton,
+	setTextToEnum,
+} from "./settings"
 import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
 import { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import { Settings } from "sources/settings/data"
@@ -473,17 +481,29 @@ export class ProfileModal extends ListModal {
 export class ProfilesModal extends ListModal {
 	readonly #data
 	readonly #callback
+	readonly #presets
 	readonly #keygen
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
 		data: readonly Settings.Profile.Entry[],
 		callback: (data_: DeepWritable<typeof data>) => unknown,
+		presets: readonly {
+			readonly name: string
+			readonly value: Settings.Profile
+		}[] = PROFILE_PRESET_ORDERED_KEYS
+			.map(key => ({
+				get name(): string {
+					return plugin.language.i18n.t(`types.profile-presets.${key}`)
+				},
+				value: PROFILE_PRESETS[key],
+			})),
 		keygen = crypto.randomUUID.bind(crypto),
 	) {
 		super(plugin.app)
 		this.#data = cloneAsWritable(data)
 		this.#callback = callback
+		this.#presets = presets
 		this.#keygen = keygen
 	}
 
@@ -501,13 +521,13 @@ export class ProfilesModal extends ListModal {
 		listEl.createEl("div", { text: i18n.t("settings.profile-list.content") })
 		new Setting(listEl)
 			.setName(i18n.t("components.editable-list.prepend"))
-			.addButton(button => button
-				.setIcon(i18n.t("asset:components.editable-list.prepend-icon"))
-				.setTooltip(i18n.t("components.editable-list.prepend"))
-				.onClick(async () => {
-					this.#addProfile(0, cloneAsWritable(PROFILE_PRESETS.empty))
+			.addDropdown(dropdownSelect(
+				this.#presets,
+				async value => {
+					this.#addProfile(0, cloneAsWritable(value))
 					await this.#postMutate(true)
-				}))
+				},
+			))
 		for (const [index, [id, profile]] of this.#data.entries()) {
 			new Setting(listEl)
 				.setName(i18n.t("settings.profile-list.name", { profile }))
@@ -551,16 +571,13 @@ export class ProfilesModal extends ListModal {
 		}
 		new Setting(listEl)
 			.setName(i18n.t("components.editable-list.append"))
-			.addButton(button => button
-				.setIcon(i18n.t("asset:components.editable-list.append-icon"))
-				.setTooltip(i18n.t("components.editable-list.append"))
-				.onClick(async () => {
-					this.#addProfile(
-						this.#data.length,
-						cloneAsWritable(PROFILE_PRESETS.empty),
-					)
+			.addDropdown(dropdownSelect(
+				this.#presets,
+				async value => {
+					this.#addProfile(this.#data.length, cloneAsWritable(value))
 					await this.#postMutate(true)
-				}))
+				},
+			))
 	}
 
 	async #postMutate(redraw = false): Promise<void> {

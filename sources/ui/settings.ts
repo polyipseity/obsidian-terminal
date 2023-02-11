@@ -1,9 +1,10 @@
 import type {
 	ButtonComponent,
+	DropdownComponent,
 	ExtraButtonComponent,
 	ValueComponent,
 } from "obsidian"
-import { type Sized, inSet } from "sources/utils/util"
+import { type Sized, inSet, isUndefined } from "sources/utils/util"
 import type { TerminalPlugin } from "sources/main"
 
 export interface ComponentAction<C, V> {
@@ -106,6 +107,33 @@ export function resetButton<C extends ButtonComponent | ExtraButtonComponent>(
 			.setTooltip(plugin.language.i18n.t("settings.reset"))
 			.setIcon(icon)
 			.onClick(activate);
+		(action.post ?? ((): void => { }))(component, activate)
+	}
+}
+
+export function dropdownSelect<V, C extends DropdownComponent>(
+	selections: readonly {
+		readonly name: string
+		readonly value: V
+	}[],
+	callback: (value: V, component: C) => unknown,
+	unselected = "",
+	action: ComponentAction<C, string> = {},
+) {
+	return (component: C): void => {
+		(action.pre ?? ((): void => { }))(component)
+		const activate = async (value: string): Promise<void> => {
+			const selection = selections[Number(value)]
+			if (isUndefined(selection)) { return }
+			component.setValue("NaN")
+			await callback(selection.value, component)
+		}
+		component
+			.addOption("NaN", unselected)
+			.addOptions(Object.fromEntries(selections
+				.map((selection, index) => [index, selection.name])))
+			.setValue("NaN")
+			.onChange(activate);
 		(action.post ?? ((): void => { }))(component, activate)
 	}
 }

@@ -118,6 +118,22 @@
 			"linux": "Linux",
 			"win32": "Microsoft Windows"
 		},
+		"profile-presets": {
+			"bashIntegrated": "bash: Integrated",
+			"cmdIntegrated": "cmd: Integrated",
+			"console": "Developer console",
+			"darwinExternalDefault": "macOS default: External",
+			"darwinIntegratedDefault": "macOS default: Integrated",
+			"dashIntegrated": "dash: Integrated",
+			"empty": "Empty",
+			"linuxExternalDefault": "Linux default: External",
+			"linuxIntegratedDefault": "Linux default: Integrated",
+			"pwshIntegrated": "pwsh: Integrated",
+			"shIntegrated": "sh: Integrated",
+			"win32ExternalDefault": "Microsoft Windows default: External",
+			"win32IntegratedDefault": "Microsoft Windows default: Integrated",
+			"zshIntegrated": "zsh: Integrated"
+		},
 		"profiles": {
 			"": "Empty",
 			"console": "Console",
