@@ -68,7 +68,6 @@ class SelectProfileModal
 		item: Settings.Profile.Entry,
 		_evt: KeyboardEvent | MouseEvent,
 	): void {
-		this.close()
 		spawnTerminal(this.plugin, item[1], this.cwd)
 	}
 }
