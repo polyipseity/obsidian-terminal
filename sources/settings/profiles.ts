@@ -1,5 +1,5 @@
 import { DISABLED_TOOLTIP, JSON_STRINGIFY_SPACE } from "sources/magic"
-import { EditableListModal, ListModal } from "./modals"
+import { EditableListModal, ListModal } from "../ui/modals"
 import {
 	cloneAsMutable,
 	insertAt,
