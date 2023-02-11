@@ -13,8 +13,20 @@ import type { Settings } from "./data"
 import type { TerminalPlugin } from "sources/main"
 
 export class ProfilesModal extends ListModal {
-	public constructor(protected readonly plugin: TerminalPlugin) {
+	readonly #data
+	readonly #callback
+	readonly #keygen
+
+	public constructor(
+		protected readonly plugin: TerminalPlugin,
+		data: readonly Settings.Profile.Entry[],
+		callback: (data_: DeepWritable<typeof data>) => unknown,
+		keygen = crypto.randomUUID.bind(crypto),
+	) {
 		super(plugin.app)
+		this.#data = cloneAsMutable(data)
+		this.#callback = callback
+		this.#keygen = keygen
 	}
 
 	public override onOpen(): void {
@@ -24,9 +36,8 @@ export class ProfilesModal extends ListModal {
 
 	protected display(): void {
 		const { listEl, plugin } = this,
-			{ settings, language } = plugin,
-			{ i18n } = language,
-			{ profiles } = settings
+			{ language } = plugin,
+			{ i18n } = language
 		listEl.empty()
 		listEl.createEl("h1", { text: i18n.t("settings.profile-list.title") })
 		listEl.createEl("div", { text: i18n.t("settings.profile-list.content") })
@@ -36,10 +47,10 @@ export class ProfilesModal extends ListModal {
 				.setIcon(i18n.t("asset:components.editable-list.prepend-icon"))
 				.setTooltip(i18n.t("components.editable-list.prepend"))
 				.onClick(async () => {
-					await this.#addProfile(0, cloneAsMutable(PROFILE_PRESETS.empty))
-					this.#postMutate(true)
+					this.#addProfile(0, cloneAsMutable(PROFILE_PRESETS.empty))
+					await this.#postMutate(true)
 				}))
-		for (const [index, [id, profile]] of Object.entries(profiles).entries()) {
+		for (const [index, [id, profile]] of this.#data.entries()) {
 			new Setting(listEl)
 				.setName(i18n.t("settings.profile-list.name", { profile }))
 				.setDesc(i18n.t("settings.profile-list.description", { id, profile }))
@@ -51,10 +62,8 @@ export class ProfilesModal extends ListModal {
 							plugin,
 							profile,
 							async profile0 => {
-								await this.#mutateProfiles(profilesM => {
-									profilesM[index] = [id, profile0]
-								})
-								this.#postMutate(true)
+								this.#data[index] = [id, profile0]
+								await this.#postMutate(true)
 							},
 						).open()
 					}))
@@ -63,29 +72,23 @@ export class ProfilesModal extends ListModal {
 					.setIcon(i18n.t("asset:components.editable-list.move-up-icon"))
 					.onClick(async () => {
 						if (index <= 0) { return }
-						await this.#mutateProfiles(profilesM => {
-							swap(profilesM, index - 1, index)
-						})
-						this.#postMutate(true)
+						swap(this.#data, index - 1, index)
+						await this.#postMutate(true)
 					}))
 				.addExtraButton(button => button
 					.setTooltip(i18n.t("components.editable-list.move-down"))
 					.setIcon(i18n.t("asset:components.editable-list.move-down-icon"))
 					.onClick(async () => {
-						if (index >= length(profiles) - 1) { return }
-						await this.#mutateProfiles(profilesM => {
-							swap(profilesM, index, index + 1)
-						})
-						this.#postMutate(true)
+						if (index >= length(this.#data) - 1) { return }
+						swap(this.#data, index, index + 1)
+						await this.#postMutate(true)
 					}))
 				.addExtraButton(button => button
 					.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
 					.setTooltip(i18n.t("components.editable-list.remove"))
 					.onClick(async () => {
-						await this.#mutateProfiles(profilesM => {
-							removeAt(profilesM, index)
-						})
-						this.#postMutate(true)
+						removeAt(this.#data, index)
+						await this.#postMutate(true)
 					}))
 		}
 		new Setting(listEl)
@@ -94,40 +97,28 @@ export class ProfilesModal extends ListModal {
 				.setIcon(i18n.t("asset:components.editable-list.append-icon"))
 				.setTooltip(i18n.t("components.editable-list.append"))
 				.onClick(async () => {
-					await this.#addProfile(
-						length(profiles),
+					this.#addProfile(
+						this.#data.length,
 						cloneAsMutable(PROFILE_PRESETS.empty),
 					)
-					this.#postMutate(true)
+					await this.#postMutate(true)
 				}))
 	}
 
-	#postMutate(redraw = false): void {
-		this.plugin.saveSettings().catch(error => { console.error(error) })
+	async #postMutate(redraw = false): Promise<void> {
+		const cb = this.#callback(cloneAsMutable(this.#data))
 		if (redraw) { this.display() }
+		await cb
 	}
 
-	async #mutateProfiles(mutator: (
-		profiles: [string, DeepWritable<Settings.Profile>][],
-		profilesView: Settings.Profiles,
-		settings: DeepWritable<Settings>,
-	) => void): Promise<void> {
-		const { plugin } = this
-		await plugin.mutateSettings(settings => {
-			const profiles = Object.entries(settings.profiles)
-			mutator(profiles, settings.profiles, settings)
-			settings.profiles = Object.fromEntries(profiles)
-		})
-	}
-
-	async #addProfile(
+	#addProfile(
 		index: number,
 		profile: DeepWritable<Settings.Profile>,
-	): Promise<void> {
-		await this.#mutateProfiles((profiles, view) => {
-			let key = crypto.randomUUID()
-			while (key in view) { key = crypto.randomUUID() }
-			insertAt(profiles, index, [key, profile])
-		})
+	): void {
+		let key = this.#keygen()
+		while (this.#data.map(entry => entry[0]).includes(key)) {
+			key = this.#keygen()
+		}
+		insertAt(this.#data, index, [key, profile])
 	}
 }

@@ -1,4 +1,5 @@
 import { DISABLED_TOOLTIP, JSON_STRINGIFY_SPACE } from "sources/magic"
+import type { DeepWritable, Writable } from "ts-essentials"
 import { Modal, Setting, type ValueComponent } from "obsidian"
 import {
 	clearProperties,
@@ -9,7 +10,6 @@ import {
 	unexpected,
 } from "sources/utils/util"
 import { linkSetting, resetButton, setTextToEnum } from "./settings"
-import type { DeepWritable } from "ts-essentials"
 import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
 import { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import { Settings } from "sources/settings/data"
@@ -48,7 +48,7 @@ export class EditableListModal<T> extends ListModal {
 		) => void,
 		protected readonly placeholder: T,
 		data: readonly T[],
-		callback: (data: T[]) => unknown,
+		callback: (data_: Writable<typeof data>) => unknown,
 	) {
 		super(app)
 		this.#inputter = inputter
@@ -156,7 +156,7 @@ export class ProfileModal extends ListModal {
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
 		data: Settings.Profile,
-		callback: (data: DeepWritable<Settings.Profile>) => unknown,
+		callback: (data_: DeepWritable<typeof data>) => unknown,
 	) {
 		super(plugin.app)
 		this.#data = cloneAsMutable(data)

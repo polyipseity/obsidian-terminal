@@ -226,20 +226,16 @@ export class SettingTab extends PluginSettingTab {
 				.setIcon(i18n.t("asset:settings.profiles-edit-icon"))
 				.setTooltip(i18n.t("settings.edit"))
 				.onClick(() => {
-					const modal = new ProfilesModal(plugin),
-						onClose = modal.onClose.bind(modal)
-					modal.onClose = (): void => {
-						try {
-							onClose()
-						} finally {
-							try {
-								this.display()
-							} catch (error) {
-								console.error(error)
-							}
-						}
-					}
-					modal.open()
+					new ProfilesModal(
+						plugin,
+						Object.entries(settings.profiles),
+						async data => {
+							await plugin.mutateSettings(settingsM => {
+								settingsM.profiles = Object.fromEntries(data)
+							})
+							this.#postMutate(true)
+						},
+					).open()
 				}))
 			.addExtraButton(resetButton(
 				plugin,
