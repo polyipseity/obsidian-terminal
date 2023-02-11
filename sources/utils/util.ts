@@ -71,6 +71,20 @@ export class UnnamespacedID<V extends string> {
 	}
 }
 
+export function circularReplacer(): (key: string, value: unknown) => unknown {
+	const seen = new WeakSet()
+	return (_0, value): unknown => {
+		if (typeof value === "object" && value !== null) {
+			if (seen.has(value)) {
+				// eslint-disable-next-line no-void
+				return void 0
+			}
+			seen.add(value)
+		}
+		return value
+	}
+}
+
 export function anyToError(obj: unknown): Error {
 	return obj instanceof Error ? obj : new Error(String(obj))
 }
@@ -307,7 +321,14 @@ export function logFormat(...args: readonly unknown[]): string {
 	const
 		stringify0 = (param: unknown): string => {
 			if (typeof param === "object" && typeof param !== "function") {
-				return stringify(param, null, JSON_STRINGIFY_SPACE)
+				try {
+					// Buggy, can recurse infinitely
+					return stringify(param, null, JSON_STRINGIFY_SPACE)
+				} catch (error) { console.warn(error) }
+				try {
+					// No cyclic objects allowed
+					return JSON.stringify(param, circularReplacer(), JSON_STRINGIFY_SPACE)
+				} catch (error) { console.warn(error) }
 			}
 			return String(param)
 		},
