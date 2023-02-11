@@ -54,30 +54,36 @@ export function patch(): () => void {
 			proto.apply(this, data)
 			LOGGER.emit({ data, type }).catch(() => { })
 		}
-		unpatchers.push(
-			around(console, {
-				debug(proto) { return consolePatch("debug", proto) },
-				error(proto) { return consolePatch("error", proto) },
-				log(proto) { return consolePatch("info", proto) },
-				warn(proto) { return consolePatch("warn", proto) },
-			}),
-		)
+		unpatchers.push(around(console, {
+			debug(proto) { return consolePatch("debug", proto) },
+			error(proto) { return consolePatch("error", proto) },
+			log(proto) { return consolePatch("info", proto) },
+			warn(proto) { return consolePatch("warn", proto) },
+		}))
 		const
-			onWindowError = (error: ErrorEvent) => {
+			onWindowError = (error: ErrorEvent): void => {
 				LOGGER.emit({
 					data: error,
 					type: "windowError",
 				}).catch(() => { })
 			},
-			onUnhandledRejection = (error: PromiseRejectionEvent) => {
+			onUnhandledRejection = (error: PromiseRejectionEvent): void => {
 				LOGGER.emit({
 					data: error,
 					type: "unhandledRejection",
 				}).catch(() => { })
 			}
 		unpatchers.push(
-			() => { window.removeEventListener("error", onWindowError, { capture: true }) },
-			() => { window.removeEventListener("unhandledrejection", onUnhandledRejection, { capture: true }) },
+			() => {
+				window.removeEventListener("error", onWindowError, { capture: true })
+			},
+			() => {
+				window.removeEventListener(
+					"unhandledrejection",
+					onUnhandledRejection,
+					{ capture: true },
+				)
+			},
 		)
 		window.addEventListener("error", onWindowError, {
 			capture: true,
