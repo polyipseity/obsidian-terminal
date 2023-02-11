@@ -42,6 +42,7 @@ import { WebglAddon } from "xterm-addon-webgl"
 
 export class TerminalView extends ItemView {
 	public static readonly type = new UnnamespacedID("terminal")
+	public static readonly divClass = TerminalView.type
 	public static namespacedViewType: string
 	#emulator0: TerminalView.EMULATOR | null = null
 	#find0: FindComponent | null = null
@@ -278,14 +279,17 @@ export class TerminalView extends ItemView {
 	}
 
 	#startEmulator(): void {
-		this.contentEl.detach()
-		this.contentEl = this.containerEl.createDiv()
-		const { contentEl, plugin, leaf } = this,
+		const { containerEl, plugin, leaf } = this,
 			state = this.#state,
 			{ profile, cwd, serial } = state,
 			{ app, language, settings } = plugin,
 			{ i18n } = language,
 			{ requestSaveLayout } = app.workspace
+		this.contentEl.detach()
+		this.contentEl = containerEl.createDiv({
+			cls: TerminalView.divClass.namespaced(plugin),
+		})
+		const { contentEl } = this
 		notice2(
 			() => i18n.t(
 				"notices.spawning-terminal",
