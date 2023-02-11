@@ -15,7 +15,7 @@ import {
 } from "../ui/settings"
 import { LANGUAGES } from "assets/locales"
 import { PROFILE_DEFAULTS } from "./profile-presets"
-import { ProfilesModal } from "./profiles"
+import { ProfilesModal } from "sources/ui/modals"
 import type { TerminalPlugin } from "../main"
 
 export class SettingTab extends PluginSettingTab {
