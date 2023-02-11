@@ -1,8 +1,8 @@
 import {
 	DEFAULT_ENCODING,
 	EXIT_SUCCESS,
-	JSON_STRINGIFY_SPACE,
 	TERMINAL_RESIZER_WATCHDOG_INTERVAL,
+	UNHANDLED_REJECTION_MESSAGE,
 } from "../magic"
 import { LOGGER, type Log, log } from "sources/patches"
 import {
@@ -129,8 +129,9 @@ export class ConsolePseudoterminal
 			case "warn":
 				return logFormat(...event.data)
 			case "windowError":
+				return logFormat(event.data.message, event.data)
 			case "unhandledRejection":
-				return JSON.stringify(event.data, null, JSON_STRINGIFY_SPACE)
+				return logFormat(UNHANDLED_REJECTION_MESSAGE, event.data)
 			// No default
 		}
 	}
