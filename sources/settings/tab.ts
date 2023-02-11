@@ -14,7 +14,6 @@ import {
 	setTextToNumber,
 } from "../ui/settings"
 import { LANGUAGES } from "assets/locales"
-import { PROFILE_DEFAULTS } from "./profile-presets"
 import { ProfilesModal } from "sources/ui/modals"
 import type { TerminalPlugin } from "../main"
 
@@ -241,7 +240,7 @@ export class SettingTab extends PluginSettingTab {
 				plugin,
 				i18n.t("asset:settings.profiles-icon"),
 				async () => plugin.mutateSettings(settingsM => {
-					settingsM.profiles = cloneAsWritable(PROFILE_DEFAULTS)
+					settingsM.profiles = cloneAsWritable(DEFAULT_SETTINGS.profiles)
 				}),
 				this.#postMutate.bind(this, true),
 			))

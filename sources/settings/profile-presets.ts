@@ -1,6 +1,6 @@
+import { deepFreeze, typedKeys } from "sources/utils/util"
 import type { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import type { Settings } from "./data"
-import { deepFreeze } from "sources/utils/util"
 
 type ExternalDefaults = {
 	readonly [_ in `${Pseudoterminal.SupportedPlatform
@@ -128,21 +128,20 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		type: "integrated",
 	},
 } as const)
-const {
-	console,
-	darwinExternalDefault,
-	darwinIntegratedDefault,
-	linuxExternalDefault,
-	linuxIntegratedDefault,
-	win32ExternalDefault,
-	win32IntegratedDefault,
-} = PROFILE_PRESETS
-export const PROFILE_DEFAULTS = deepFreeze({
-	console,
-	darwinExternalDefault,
-	darwinIntegratedDefault,
-	linuxExternalDefault,
-	linuxIntegratedDefault,
-	win32ExternalDefault,
-	win32IntegratedDefault,
-} as const)
+export const PROFILE_PRESET_KEYS = typedKeys<[
+	"empty",
+	"console",
+	"cmdIntegrated",
+	"bashIntegrated",
+	"dashIntegrated",
+	"pwshIntegrated",
+	"shIntegrated",
+	"zshIntegrated",
+	"darwinExternalDefault",
+	"darwinIntegratedDefault",
+	"linuxExternalDefault",
+	"linuxIntegratedDefault",
+	"win32ExternalDefault",
+	"win32IntegratedDefault",
+]>()(PROFILE_PRESETS)
+export type ProfilePresetKeys = typeof PROFILE_PRESET_KEYS[number]

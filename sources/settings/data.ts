@@ -9,10 +9,10 @@ import {
 	inSet,
 	isHomogenousArray,
 } from "../utils/util"
-import { PROFILE_DEFAULTS, PROFILE_PRESETS } from "./profile-presets"
 import { genericTypeofGuard, primitiveOf } from "../utils/typeof"
 import { LANGUAGES } from "assets/locales"
 import { NOTICE_NO_TIMEOUT } from "sources/magic"
+import { PROFILE_PRESETS } from "./profile-presets"
 import { Pseudoterminal } from "../terminal/pseudoterminal"
 import { RendererAddon } from "../terminal/emulator"
 
@@ -34,7 +34,15 @@ export const DEFAULT_SETTINGS = deepFreeze({
 	language: "",
 	noticeTimeout: 5,
 	preferredRenderer: "webgl",
-	profiles: PROFILE_DEFAULTS,
+	profiles: Object.fromEntries(([
+		"console",
+		"darwinExternalDefault",
+		"darwinIntegratedDefault",
+		"linuxExternalDefault",
+		"linuxIntegratedDefault",
+		"win32ExternalDefault",
+		"win32IntegratedDefault",
+	] as const).map(key => [key, PROFILE_PRESETS[key]])),
 } as const) satisfies Settings
 export namespace Settings {
 	export const DEFAULTABLE_LANGUAGES =
