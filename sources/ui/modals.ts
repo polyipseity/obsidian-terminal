@@ -264,7 +264,7 @@ export class ProfileModal extends Modal {
 					.addText(linkSetting(
 						() => profile.executable,
 						value => { profile.executable = value },
-						async () => this.#postMutate(false),
+						async () => this.#postMutate(),
 					))
 					.addExtraButton(resetButton(
 						plugin,
@@ -313,7 +313,7 @@ export class ProfileModal extends Modal {
 							value => {
 								profile.platforms[platform] = value
 							},
-							async () => this.#postMutate(false),
+							async () => this.#postMutate(),
 						))
 						.addExtraButton(resetButton(
 							plugin,
@@ -335,7 +335,7 @@ export class ProfileModal extends Modal {
 						value => {
 							profile.executable = value
 						},
-						async () => this.#postMutate(false),
+						async () => this.#postMutate(),
 					))
 					.addExtraButton(resetButton(
 						plugin,
@@ -384,7 +384,7 @@ export class ProfileModal extends Modal {
 							value => {
 								profile.platforms[platform] = value
 							},
-							async () => this.#postMutate(false),
+							async () => this.#postMutate(),
 						))
 						.addExtraButton(resetButton(
 							plugin,
@@ -405,7 +405,7 @@ export class ProfileModal extends Modal {
 						value => {
 							profile.pythonExecutable = value
 						},
-						async () => this.#postMutate(false),
+						async () => this.#postMutate(),
 						{
 							post: component => {
 								component
@@ -436,7 +436,7 @@ export class ProfileModal extends Modal {
 						value => {
 							profile.enableWindowsConhostWorkaround = value
 						},
-						async () => this.#postMutate(false),
+						async () => this.#postMutate(),
 					))
 					.addExtraButton(resetButton(
 						plugin,
