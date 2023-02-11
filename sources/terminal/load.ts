@@ -140,11 +140,12 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 		) => (checking: boolean) => {
 			// eslint-disable-next-line consistent-return
 			const cwd0 = ((): string | null | undefined => {
+				if (cwd === "") {
+					// eslint-disable-next-line no-void
+					return void 0
+				}
 				if (adapter === null) { return null }
 				switch (cwd) {
-					case "":
-						// eslint-disable-next-line no-void
-						return void 0
 					case "root":
 						return adapter.getBasePath()
 					case "current": {
