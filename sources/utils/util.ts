@@ -331,6 +331,10 @@ export function logFormat(...args: readonly unknown[]): string {
 						case "i":
 							func = (param): string => Math.trunc(Number(param)).toString()
 							break
+						case "c":
+							// CSS unsupported
+							func = (): string => ""
+							break
 						default:
 							yield `%${type0}`
 							break
