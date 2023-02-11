@@ -164,7 +164,7 @@ export class TerminalView extends ItemView {
 	#emulator0: TerminalView.EMULATOR | null = null
 	#find0: FindComponent | null = null
 	#focus0 = false
-	#state: TerminalView.State = {
+	#state0: TerminalView.State = {
 		__type: TerminalView.State.TYPE,
 		profile: Settings.Profile.DEFAULTS.invalid,
 	}
@@ -174,6 +174,10 @@ export class TerminalView extends ItemView {
 		leaf: WorkspaceLeaf,
 	) {
 		super(leaf)
+	}
+
+	get #state(): TerminalView.State {
+		return this.#state0
 	}
 
 	get #emulator(): TerminalView.EMULATOR | null {
@@ -216,6 +220,11 @@ export class TerminalView extends ItemView {
 				return false
 			// No default
 		}
+	}
+
+	set #state(value: TerminalView.State) {
+		this.#state0 = value
+		updateDisplayText(this)
 	}
 
 	set #emulator(val: TerminalView.EMULATOR | null) {
@@ -382,8 +391,9 @@ export class TerminalView extends ItemView {
 			{ app, language, statusBarHider } = plugin,
 			{ workspace } = app
 
-		this.register(language.onChangeLanguage.listen(() =>
-			updateDisplayText(this)))
+		this.register(language.onChangeLanguage.listen(() => {
+			updateDisplayText(this)
+		}))
 
 		this.#focus = workspace.getActiveViewOfType(TerminalView) === this
 		this.registerEvent(app.workspace.on("active-leaf-change", leaf => {

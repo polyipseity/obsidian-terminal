@@ -497,20 +497,34 @@ export function unexpected(): never {
 	throw new Error()
 }
 
-export function updateDisplayText(view: View): boolean {
-	const type = view.getViewType(),
+export function updateDisplayText(view: View): void {
+	const { containerEl } = view,
 		text = view.getDisplayText(),
-		header = document
-			.querySelector(`.workspace-tab-header[data-type="${type}"]`)
-	if (header === null) { return false }
-	const title = header.querySelector(".workspace-tab-header-inner-title")
-	if (title === null) { return false }
-	const oldText = title.textContent
-	if (oldText === null) { return false }
-	title.textContent = text
-	header.ariaLabel = text
-	document.title = document.title.replace(oldText, text)
-	return true
+		viewHeaderEl = containerEl.querySelector(".view-header-title")
+	let oldText: string | null = null
+	if (viewHeaderEl !== null) {
+		oldText = viewHeaderEl.textContent
+		viewHeaderEl.textContent = text
+	}
+	const leafEl = containerEl.parentElement
+	if (leafEl !== null) {
+		const leavesEl = leafEl.parentElement
+		if (leavesEl !== null) {
+			const
+				headerEl = leavesEl.parentElement
+					?.querySelector(".workspace-tab-header-container")
+					?.querySelectorAll(".workspace-tab-header")
+					.item(leavesEl.indexOf(leafEl)) ?? null,
+				titleEl = headerEl
+					?.querySelector(".workspace-tab-header-inner-title") ?? null
+			oldText ??= titleEl?.textContent ?? null
+			if (titleEl !== null) { titleEl.textContent = text }
+			if (headerEl !== null) { headerEl.ariaLabel = text }
+		}
+	}
+	if (oldText !== null) {
+		document.title = document.title.replace(oldText, text)
+	}
 }
 
 export async function writePromise(
