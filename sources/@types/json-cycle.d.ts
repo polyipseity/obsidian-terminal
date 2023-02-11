@@ -1,17 +1,17 @@
 declare module "json-cycle" {
 	export function stringify(
-		value: any,
+		value: unknown,
 		replacer?: (number | string)[] | ((
-			this: any,
+			this: unknown,
 			key: string,
-			value: any,
-		) => any) | null,
+			value: unknown,
+		) => unknown) | null,
 		space?: number | string,
 	): string
 	export function parse(
 		text: string,
-		reviver?: (this: any, key: string, value: any) => any,
-	): any
-	export function decycle(object: any): any
-	export function retrocycle(object: any): any
+		reviver?: (this: unknown, key: string, value: unknown) => unknown,
+	): unknown
+	export function decycle(object: unknown): unknown
+	export function retrocycle(object: unknown): unknown
 }
