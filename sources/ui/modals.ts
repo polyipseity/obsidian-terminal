@@ -25,26 +25,14 @@ import { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "sources/main"
 
-export class ListModal extends Modal {
-	#listEl: HTMLElement | null = null
-
-	protected get listEl(): HTMLElement {
-		const val = this.#listEl
-		if (val === null) { throw new Error() }
-		return val
-	}
-
-	public override onOpen(): void {
-		super.onOpen()
-		const { contentEl } = this
-		contentEl.empty()
-		this.#listEl = contentEl.createEl("div", {
-			cls: "vertical-tab-content",
-		})
-	}
+export function useSettings(element: HTMLElement): HTMLElement {
+	element.replaceChildren()
+	return element.createEl("div", {
+		cls: "vertical-tab-content",
+	})
 }
 
-export class EditableListModal<T> extends ListModal {
+export class EditableListModal<T> extends Modal {
 	readonly #data
 	readonly #inputter
 	readonly #callback
@@ -90,9 +78,9 @@ export class EditableListModal<T> extends ListModal {
 	}
 
 	protected display(): void {
-		const { listEl, plugin, placeholder } = this,
+		const { contentEl, plugin, placeholder } = this,
+			listEl = useSettings(contentEl),
 			{ i18n } = plugin.language
-		listEl.empty()
 		new Setting(listEl)
 			.setName(i18n.t("components.editable-list.prepend"))
 			.addButton(button => button
@@ -159,7 +147,7 @@ export class EditableListModal<T> extends ListModal {
 	}
 }
 
-export class ProfileModal extends ListModal {
+export class ProfileModal extends Modal {
 	readonly #data
 	readonly #callback
 	readonly #presets
@@ -191,18 +179,18 @@ export class ProfileModal extends ListModal {
 	}
 
 	protected display(): void {
-		const { listEl, plugin } = this,
+		const { contentEl, plugin } = this,
+			listEl = useSettings(contentEl),
 			profile = this.#data,
 			{ type } = profile,
 			{ language } = plugin,
-			{ i18n } = language
-		listEl.empty()
-		const title = listEl.createEl("h1", {
-			text: i18n.t("components.profile.title", {
-				name: Settings.Profile.name(profile),
-				profile,
-			}),
-		})
+			{ i18n } = language,
+			title = listEl.createEl("h1", {
+				text: i18n.t("components.profile.title", {
+					name: Settings.Profile.name(profile),
+					profile,
+				}),
+			})
 		new Setting(listEl)
 			.setName(i18n.t("components.profile.name"))
 			.addText(linkSetting(
@@ -503,7 +491,7 @@ export class ProfileModal extends ListModal {
 	}
 }
 
-export class ProfileListModal extends ListModal {
+export class ProfileListModal extends Modal {
 	readonly #data
 	readonly #callback
 	readonly #presets
@@ -538,10 +526,10 @@ export class ProfileListModal extends ListModal {
 	}
 
 	protected display(): void {
-		const { listEl, plugin } = this,
+		const { contentEl, plugin } = this,
+			listEl = useSettings(contentEl),
 			{ language } = plugin,
 			{ i18n } = language
-		listEl.empty()
 		listEl.createEl("h1", { text: i18n.t("components.profile-list.title") })
 		listEl.createEl("div", { text: i18n.t("components.profile-list.content") })
 		new Setting(listEl)
