@@ -1,5 +1,5 @@
+import type { AsyncOrSync, DeepWritable, Writable } from "ts-essentials"
 import { DISABLED_TOOLTIP, JSON_STRINGIFY_SPACE } from "sources/magic"
-import type { DeepWritable, Writable } from "ts-essentials"
 import { Modal, Setting, type ValueComponent } from "obsidian"
 import {
 	PROFILE_PRESETS,
@@ -9,6 +9,7 @@ import {
 	clearProperties,
 	cloneAsWritable,
 	insertAt,
+	randomNotIn,
 	removeAt,
 	swap,
 	typedStructuredClone,
@@ -280,9 +281,8 @@ export class ProfileModal extends Modal {
 						count: profile.args.length,
 					}))
 					.addButton(button => button
-						.setIcon(i18n
-							.t(`asset:components.profile.${type}.arguments-edit-icon`))
-						.setTooltip(i18n.t("settings.edit"))
+						.setIcon(i18n.t("asset:generic.edit-list-icon"))
+						.setTooltip(i18n.t("generic.edit"))
 						.onClick(() => {
 							new EditableListModal(
 								plugin,
@@ -351,9 +351,8 @@ export class ProfileModal extends Modal {
 						count: profile.args.length,
 					}))
 					.addButton(button => button
-						.setIcon(i18n
-							.t(`asset:components.profile.${type}.arguments-edit-icon`))
-						.setTooltip(i18n.t("settings.edit"))
+						.setIcon(i18n.t("asset:generic.edit-list-icon"))
+						.setTooltip(i18n.t("generic.edit"))
 						.onClick(() => {
 							new EditableListModal(
 								plugin,
@@ -546,8 +545,8 @@ export class ProfileListModal extends Modal {
 				.setName(i18n.t("components.profile-list.name", { profile }))
 				.setDesc(i18n.t("components.profile-list.description", { id, profile }))
 				.addButton(button => button
-					.setIcon(i18n.t("asset:components.profile-list.edit-icon"))
-					.setTooltip(i18n.t("settings.edit"))
+					.setIcon(i18n.t("asset:generic.edit-icon"))
+					.setTooltip(i18n.t("generic.edit"))
 					.onClick(() => {
 						new ProfileModal(
 							plugin,
@@ -603,10 +602,59 @@ export class ProfileListModal extends Modal {
 		index: number,
 		profile: DeepWritable<Settings.Profile>,
 	): void {
-		let key = this.#keygen()
-		while (this.#data.map(entry => entry[0]).includes(key)) {
-			key = this.#keygen()
-		}
-		insertAt(this.#data, index, [key, profile])
+		insertAt(
+			this.#data,
+			index,
+			[randomNotIn(this.#data.map(entry => entry[0]), this.#keygen), profile],
+		)
 	}
+}
+
+export abstract class DialogModal extends Modal {
+	public constructor(protected readonly plugin: TerminalPlugin) {
+		super(plugin.app)
+	}
+
+	public override onOpen(): void {
+		super.onOpen()
+		const { plugin, modalEl, scope } = this,
+			{ i18n } = plugin.language
+		modalEl.replaceChildren()
+		new Setting(modalEl)
+			.addButton(button => button
+				.setIcon(i18n.t("asset:components.dialog.cancel-icon"))
+				.setTooltip(i18n.t("components.dialog.cancel"))
+				.onClick(async () => { await this.cancel(this.#close) }))
+			.addButton(button => button
+				.setIcon(i18n.t("asset:components.dialog.confirm-icon"))
+				.setTooltip(i18n.t("components.dialog.confirm"))
+				.setCta()
+				.onClick(async () => { await this.confirm(this.#close) }))
+		// Hooking escape does not work as it is already registered
+		scope.register([], "enter", async event => {
+			await this.confirm(this.#close)
+			event.preventDefault()
+			event.stopPropagation()
+		})
+	}
+
+	public override close(): void {
+		(async (): Promise<void> => {
+			try {
+				await this.cancel(this.#close)
+			} catch (error) {
+				console.error(error)
+			}
+		})()
+	}
+
+	protected confirm(close: () => void): AsyncOrSync<void> {
+		close()
+	}
+
+	protected cancel(close: () => void): AsyncOrSync<void> {
+		close()
+	}
+
+	readonly #close = (): void => { super.close() }
 }

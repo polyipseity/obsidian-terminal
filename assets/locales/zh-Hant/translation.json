@@ -5,6 +5,10 @@
 		"open-terminal-root": "在終端開啟根目錄：{{- type}}"
 	},
 	"components": {
+		"dialog": {
+			"cancel": "取消",
+			"confirm": "確認"
+		},
 		"editable-list": {
 			"append": "後置",
 			"move-down": "下移",
@@ -47,9 +51,12 @@
 		},
 		"terminal": {
 			"display-name": "終端：{{- name}}",
+			"profile": "配置",
 			"restored-history": "\r\n * 已還原於{{- time}}的歷史\r\n",
 			"unknown-profile-name": "不明",
-			"unsupported-profile": "不支持的配置：\r\n{{- profile}}\r\n\r\n"
+			"unsupported-profile": "不支持的配置：\r\n{{- profile}}\r\n\r\n",
+			"working-directory": "工作目錄",
+			"working-directory-placeholder": "（未定義）"
 		}
 	},
 	"errors": {
@@ -60,6 +67,9 @@
 		"no-python-to-start-unix-pseudoterminal": "沒有Python來啟動Unix偽終端",
 		"resizer-disabled": "終端縮放程式已禁用",
 		"resizer-exited-unexpectedly": "終端縮放程式意外退出：{{- code}}"
+	},
+	"generic": {
+		"edit": "編輯"
 	},
 	"menus": {
 		"open-terminal": "在終端開啟：{{- type}}",
@@ -88,7 +98,6 @@
 			"reset": "重設",
 			"undo": "復原"
 		},
-		"edit": "編輯",
 		"error-notice-timeout": "錯誤通知超時（秒）",
 		"error-notice-timeout-description": "設為0秒是無超時。設為負數以禁用通知。",
 		"hide-status-bar": "隱藏狀態欄",

@@ -125,14 +125,14 @@ export function dropdownSelect<V, C extends DropdownComponent>(
 		const activate = async (value: string): Promise<void> => {
 			const selection = selections[Number(value)]
 			if (isUndefined(selection)) { return }
-			component.setValue("NaN")
+			component.setValue(NaN.toString())
 			await callback(selection.value, component)
 		}
 		component
-			.addOption("NaN", unselected)
+			.addOption(NaN.toString(), unselected)
 			.addOptions(Object.fromEntries(selections
 				.map((selection, index) => [index, selection.name])))
-			.setValue("NaN")
+			.setValue(NaN.toString())
 			.onChange(activate);
 		(action.post ?? ((): void => { }))(component, activate)
 	}

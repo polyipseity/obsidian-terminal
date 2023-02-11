@@ -468,6 +468,15 @@ export async function promisePromise<T>(): Promise<{
 	}))
 }
 
+export function randomNotIn(
+	self: readonly string[],
+	generator = (): string => crypto.randomUUID(),
+): string {
+	let ret = generator()
+	while (self.includes(ret)) { ret = generator() }
+	return ret
+}
+
 export function remove<T>(self: T[], item: T): T | undefined {
 	return removeAt(self, self.indexOf(item))
 }

@@ -223,8 +223,8 @@ export class SettingTab extends PluginSettingTab {
 				count: length(settings.profiles),
 			}))
 			.addButton(button => button
-				.setIcon(i18n.t("asset:settings.profiles-edit-icon"))
-				.setTooltip(i18n.t("settings.edit"))
+				.setIcon(i18n.t("asset:generic.edit-list-icon"))
+				.setTooltip(i18n.t("generic.edit"))
 				.onClick(() => {
 					new ProfileListModal(
 						plugin,

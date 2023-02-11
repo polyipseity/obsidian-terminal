@@ -5,6 +5,10 @@
 		"open-terminal-root": "在终端开啟根目録：{{- type}}"
 	},
 	"components": {
+		"dialog": {
+			"cancel": "取消",
+			"confirm": "确认"
+		},
 		"editable-list": {
 			"append": "后置",
 			"move-down": "下移",
@@ -47,9 +51,12 @@
 		},
 		"terminal": {
 			"display-name": "终端：{{- name}}",
+			"profile": "配置",
 			"restored-history": "\r\n * 已还原于{{- time}}的历史\r\n",
 			"unknown-profile-name": "不明",
-			"unsupported-profile": "不支持的配置：\r\n{{- profile}}\r\n\r\n"
+			"unsupported-profile": "不支持的配置：\r\n{{- profile}}\r\n\r\n",
+			"working-directory": "工作目录",
+			"working-directory-placeholder": "（未定义）"
 		}
 	},
 	"errors": {
@@ -60,6 +67,9 @@
 		"no-python-to-start-unix-pseudoterminal": "没有Python来启动Unix伪终端",
 		"resizer-disabled": "终端缩放迸程已禁用",
 		"resizer-exited-unexpectedly": "终端缩放迸程意外退出：{{- code}}"
+	},
+	"generic": {
+		"edit": "编辑"
 	},
 	"menus": {
 		"open-terminal": "在终端开啟：{{- type}}",
@@ -88,7 +98,6 @@
 			"reset": "重设",
 			"undo": "复原"
 		},
-		"edit": "编辑",
 		"error-notice-timeout": "错误通知超时（秒）",
 		"error-notice-timeout-description": "设为0秒是无超时。设为负数以禁用通知。",
 		"hide-status-bar": "隐藏状态栏",

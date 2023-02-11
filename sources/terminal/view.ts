@@ -1,3 +1,4 @@
+import { DialogModal, ProfileModal, useSettings } from "sources/ui/modals"
 import { Direction, type Params } from "../ui/find"
 import {
 	DisposerAddon,
@@ -7,6 +8,7 @@ import {
 import {
 	ItemView,
 	type Menu,
+	Setting,
 	type ViewStateResult,
 	type WorkspaceLeaf,
 } from "obsidian"
@@ -16,6 +18,7 @@ import {
 	UnnamespacedID,
 	anyToError,
 	basename,
+	cloneAsWritable,
 	copyOnWrite,
 	extname,
 	inSet,
@@ -26,11 +29,14 @@ import {
 	onVisible,
 	openExternal,
 	printError,
+	randomNotIn,
 	saveFile,
 	typedStructuredClone,
 	updateDisplayText,
 } from "../utils/util"
+import { linkSetting, resetButton } from "sources/ui/settings"
 import { CanvasAddon } from "xterm-addon-canvas"
+import type { DeepWritable } from "ts-essentials"
 import FindComponent from "../ui/find.svelte"
 import { LigaturesAddon } from "xterm-addon-ligatures"
 import { SearchAddon } from "xterm-addon-search"
@@ -40,6 +46,119 @@ import { TextPseudoterminal } from "./pseudoterminal"
 import { Unicode11Addon } from "xterm-addon-unicode11"
 import { WebLinksAddon } from "xterm-addon-web-links"
 import { WebglAddon } from "xterm-addon-webgl"
+
+export class TerminalEditModal extends DialogModal {
+	readonly #protostate
+	readonly #state
+	#profile: string | null = null
+	readonly #confirm
+
+	public constructor(
+		plugin: TerminalPlugin,
+		state: TerminalView.State,
+		confirm: (state_: DeepWritable<typeof state>) => unknown,
+	) {
+		super(plugin)
+		this.#protostate = state
+		this.#state = cloneAsWritable(state)
+		this.#confirm = confirm
+	}
+
+	public override onOpen(): void {
+		super.onOpen()
+		this.display()
+	}
+
+	protected display(): void {
+		const { contentEl, plugin } = this,
+			listEl = useSettings(contentEl),
+			protostate = this.#protostate,
+			state = this.#state,
+			profile = this.#profile,
+			{ settings, language } = plugin,
+			{ profiles } = settings,
+			{ i18n } = language,
+			customProfile = randomNotIn(Object.keys(profiles))
+		new Setting(listEl)
+			.setName(i18n.t("components.terminal.working-directory"))
+			.addText(linkSetting(
+				() => state.cwd ?? "",
+				value => {
+					// eslint-disable-next-line no-void
+					state.cwd = value === "" ? void 0 : value
+				},
+				() => { this.#postMutate() },
+				{
+					post: component => {
+						component
+							.setPlaceholder(i18n
+								.t("components.terminal.working-directory-placeholder"))
+					},
+				},
+			))
+			.addExtraButton(resetButton(
+				plugin,
+				i18n.t("asset:components.terminal.working-directory-icon"),
+				() => { state.cwd = protostate.cwd },
+				() => { this.#postMutate(true) },
+			))
+		new Setting(listEl)
+			.setName(i18n.t("components.terminal.profile"))
+			.addDropdown(linkSetting(
+				() => profile === null ? customProfile : profile,
+				value => {
+					const profile0 = profiles[value]
+					if (isUndefined(profile0)) {
+						this.#profile = null
+						return
+					}
+					this.#profile = value
+					this.#state.profile = cloneAsWritable(profile0)
+				},
+				() => { this.#postMutate(true) },
+				{
+					pre: component => {
+						component
+							.addOption(customProfile, "")
+							.addOptions(Object.fromEntries(Object.entries(profiles)
+								.map(entry => [entry[0], Settings.Profile.nameOrID(entry)])))
+					},
+				},
+			))
+			.addButton(button => button
+				.setIcon(i18n.t("asset:generic.edit-icon"))
+				.setTooltip(i18n.t("generic.edit"))
+				.onClick(() => {
+					new ProfileModal(
+						plugin,
+						state.profile,
+						profile0 => {
+							this.#profile = null
+							state.profile = profile0
+							this.#postMutate(true)
+						},
+					).open()
+				}))
+			.addExtraButton(resetButton(
+				plugin,
+				i18n.t("asset:components.terminal.profile-icon"),
+				() => {
+					this.#profile = null
+					state.profile = cloneAsWritable(protostate.profile)
+				},
+				() => { this.#postMutate(true) },
+			))
+	}
+
+	protected override async confirm(close: () => void): Promise<void> {
+		await this.#confirm(typedStructuredClone(this.#state))
+		await super.confirm(close)
+	}
+
+	#postMutate(redraw = false): void {
+		if (redraw) { this.display() }
+	}
+}
 
 export class TerminalView extends ItemView {
 	public static readonly type = new UnnamespacedID("terminal")
@@ -224,6 +343,19 @@ export class TerminalView extends ItemView {
 				.setTitle(i18n.t("menus.terminal.restart"))
 				.setIcon(i18n.t("asset:menus.terminal.restart-icon"))
 				.onClick(() => { this.#startEmulator() }))
+			.addItem(item => item
+				.setTitle(i18n.t("generic.edit"))
+				.setIcon(i18n.t("asset:generic.edit-icon"))
+				.onClick(() => {
+					new TerminalEditModal(
+						plugin,
+						this.#state,
+						state => {
+							this.#state = state
+							this.#startEmulator()
+						},
+					).open()
+				}))
 			.addItem(item => item
 				.setTitle(i18n.t("menus.terminal.save-as-HTML"))
 				.setIcon(i18n.t("asset:menus.terminal.save-as-HTML-icon"))
@@ -434,3 +566,4 @@ export namespace TerminalView {
 		export const TYPE = "8d54e44a-32e7-4297-8ae2-cff88e92ce28"
 	}
 }
+

@@ -1,5 +1,9 @@
 {
 	"components": {
+		"dialog": {
+			"cancel-icon": "x",
+			"confirm-icon": "check"
+		},
 		"editable-list": {
 			"append-icon": "plus",
 			"move-down-icon": "arrow-down",
@@ -17,12 +21,10 @@
 		},
 		"profile": {
 			"external": {
-				"arguments-edit-icon": "list",
 				"arguments-icon": "form-input",
 				"executable-icon": "file-terminal"
 			},
 			"integrated": {
-				"arguments-edit-icon": "list",
 				"arguments-icon": "form-input",
 				"enable-Windows-conhost-workaround-icon": "code",
 				"executable-icon": "file-terminal",
@@ -34,12 +36,15 @@
 			"name-icon": "text-cursor-input",
 			"type-icon": "type"
 		},
-		"profile-list": {
-			"edit-icon": "edit"
-		},
 		"terminal": {
-			"icon": "terminal"
+			"icon": "terminal",
+			"profile-icon": "terminal-square",
+			"working-directory-icon": "folder"
 		}
+	},
+	"generic": {
+		"edit-icon": "edit",
+		"edit-list-icon": "list"
 	},
 	"menus": {
 		"terminal": {
@@ -64,7 +69,6 @@
 		"language-icon": "languages",
 		"notice-timeout-icon": "timer",
 		"preferred-renderer-icon": "brush",
-		"profiles-edit-icon": "list",
 		"profiles-icon": "terminal-square"
 	},
 	"types": {
