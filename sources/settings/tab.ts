@@ -35,7 +35,7 @@ export class SettingTab extends PluginSettingTab {
 		const { containerEl, plugin } = this,
 			{ settings, language } = plugin,
 			{ i18n } = language
-		containerEl.empty()
+		containerEl.replaceChildren()
 		containerEl.createEl("h1", { text: i18n.t("name") })
 
 		new Setting(containerEl)

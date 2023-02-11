@@ -379,7 +379,7 @@ export class TerminalView extends ItemView {
 		const { containerEl, plugin } = this,
 			{ app, language, statusBarHider } = plugin,
 			{ workspace } = app
-		containerEl.empty()
+		containerEl.replaceChildren()
 
 		this.register(language.onChangeLanguage.listen(() =>
 			updateDisplayText(this)))
@@ -409,7 +409,7 @@ export class TerminalView extends ItemView {
 			{ app, language, settings } = plugin,
 			{ i18n } = language,
 			{ requestSaveLayout } = app.workspace
-		this.contentEl.detach()
+		this.contentEl.remove()
 		this.contentEl = containerEl.createDiv({
 			cls: TerminalView.divClass.namespaced(plugin),
 		}, ele => {
