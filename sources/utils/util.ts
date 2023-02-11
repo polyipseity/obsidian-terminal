@@ -16,6 +16,7 @@ import type { ChildProcess } from "node:child_process"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
 import { simplify } from "./types"
+import { stringify } from "json-cycle"
 
 export type Sized<T extends readonly unknown[]> =
 	number extends T["length"] ? never : T
@@ -304,13 +305,9 @@ export function length<T extends object,
 export function logFormat(...args: readonly unknown[]): string {
 	if (args.length <= 0) { return "" }
 	const
-		stringify = (param: unknown): string => {
+		stringify0 = (param: unknown): string => {
 			if (typeof param === "object" && typeof param !== "function") {
-				try {
-					return JSON.stringify(param, null, JSON_STRINGIFY_SPACE)
-				} catch (error) {
-					console.warn(error)
-				}
+				return stringify(param, null, JSON_STRINGIFY_SPACE)
 			}
 			return String(param)
 		},
@@ -342,7 +339,7 @@ export function logFormat(...args: readonly unknown[]): string {
 							break
 						case "o":
 						case "O":
-							func = stringify
+							func = stringify0
 							break
 						case "f":
 							func = (param): string => Number(param).toString()
@@ -370,12 +367,12 @@ export function logFormat(...args: readonly unknown[]): string {
 				}
 				yield format.slice(back)
 				for (const param of params) {
-					yield ` ${stringify(param)}`
+					yield ` ${stringify0(param)}`
 				}
 			}()),
 		].join("")
 	}
-	return args.map(stringify).join(" ")
+	return args.map(stringify0).join(" ")
 }
 
 export function notice(
