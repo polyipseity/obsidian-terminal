@@ -162,15 +162,27 @@ export class EditableListModal<T> extends ListModal {
 export class ProfileModal extends ListModal {
 	readonly #data
 	readonly #callback
+	readonly #presets
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
 		data: Settings.Profile,
 		callback: (data_: DeepWritable<typeof data>) => unknown,
+		presets: readonly {
+			readonly name: string
+			readonly value: Settings.Profile
+		}[] = PROFILE_PRESET_ORDERED_KEYS
+			.map(key => ({
+				get name(): string {
+					return plugin.language.i18n.t(`types.profile-presets.${key}`)
+				},
+				value: PROFILE_PRESETS[key],
+			})),
 	) {
 		super(plugin.app)
 		this.#data = cloneAsWritable(data)
 		this.#callback = callback
+		this.#presets = presets
 	}
 
 	public override onOpen(): void {
@@ -211,19 +223,22 @@ export class ProfileModal extends ListModal {
 				this.#postMutate.bind(this, true),
 			))
 		new Setting(listEl)
+			.setName(i18n.t("settings.profile.preset"))
+			.addDropdown(dropdownSelect(
+				this.#presets,
+				async value => {
+					this.#replaceData(cloneAsWritable(value))
+					await this.#postMutate(true)
+				},
+			))
+		new Setting(listEl)
 			.setName(i18n.t("settings.profile.type"))
 			.addDropdown(linkSetting(
 				(): string => type,
 				setTextToEnum(
 					Settings.Profile.TYPES,
 					value => {
-						const { name } = this.#data
-						clearProperties(this.#data)
-						Object.assign(
-							this.#data,
-							cloneAsWritable(Settings.Profile.DEFAULTS[value]),
-							{ name },
-						)
+						this.#replaceData(cloneAsWritable(Settings.Profile.DEFAULTS[value]))
 					},
 				),
 				this.#postMutate.bind(this, true),
@@ -475,6 +490,16 @@ export class ProfileModal extends ListModal {
 		const cb = this.#callback(typedStructuredClone(this.#data))
 		if (redraw) { this.display() }
 		await cb
+	}
+
+	#replaceData(profile: DeepWritable<Settings.Profile>): void {
+		const { name } = this.#data
+		clearProperties(this.#data)
+		Object.assign(
+			this.#data,
+			profile,
+			{ name },
+		)
 	}
 }
 

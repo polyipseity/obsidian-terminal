@@ -96,6 +96,7 @@
 				"data": "数据"
 			},
 			"name": "名称",
+			"preset": "预设",
 			"title": "{{- name}}",
 			"type": "类型"
 		},
