@@ -22,7 +22,7 @@
 		},
 		"terminal": {
 			"display-name": "Terminal: {{- name}}",
-			"restored-history": "\r\n * Restored history at {{- time}}\r\n",
+			"restored-history": "\r\n * Restored history at {{- time}}\r\n\r\n",
 			"unknown-profile-name": "Unknown",
 			"unsupported-profile": "Unsupported profile:\r\n{{- profile}}\r\n"
 		}

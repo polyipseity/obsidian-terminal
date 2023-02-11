@@ -317,7 +317,7 @@ export class TerminalView extends ItemView {
 								terminal.write(`${i18n.t(
 									"components.terminal.restored-history",
 									{ time: new Date().toLocaleString(language.language) },
-								)}\r\n`)
+								)}`)
 							}
 							const ret = await openProfile(plugin, profile, cwd)
 							if (ret === null) {
