@@ -65,7 +65,7 @@
 		"notice-timeout-icon": "timer",
 		"preferred-renderer-icon": "brush",
 		"profiles-edit-icon": "list",
-		"profiles-icon": "terminal"
+		"profiles-icon": "terminal-square"
 	},
 	"types": {
 		"platforms": {
