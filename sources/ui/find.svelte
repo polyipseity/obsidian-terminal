@@ -73,11 +73,7 @@
 				use:setIcon={i18n("asset:components.find.next-icon")}
 			/>
 			<div class="document-search-results">{searchResult}</div>
-			<button
-				class="document-search-close-button"
-				on:click={onClose}
-				use:setIcon={i18n("asset:components.find.close-icon")}
-			/>
+			<button class="document-search-close-button" on:click={onClose} />
 		</div>
 	</div>
 </div>
@@ -85,5 +81,8 @@
 <style>
 	.document-search-container {
 		margin: 0;
+	}
+	.document-search {
+		flex-wrap: wrap;
 	}
 </style>

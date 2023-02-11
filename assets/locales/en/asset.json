@@ -13,7 +13,6 @@
 		},
 		"find": {
 			"case-sensitive-icon": "uppercase-lowercase-a",
-			"close-icon": "x",
 			"next-icon": "arrow-down",
 			"previous-icon": "arrow-up",
 			"regex-icon": "regex",
