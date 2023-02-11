@@ -56,6 +56,8 @@ export class EditableListModal<T> extends Modal {
 		this.#data = [...data]
 		this.#callback = callback
 		this.#title = title
+		plugin.register(plugin.language.onChangeLanguage
+			.listen(() => { this.display() }))
 	}
 
 	public static readonly stringInputter = (
@@ -179,6 +181,8 @@ export class ProfileModal extends Modal {
 		this.#data = cloneAsWritable(data)
 		this.#callback = callback
 		this.#presets = presets
+		plugin.register(plugin.language.onChangeLanguage
+			.listen(() => { this.display() }))
 	}
 
 	public override onOpen(): void {
@@ -623,24 +627,18 @@ export class ProfileListModal extends Modal {
 }
 
 export abstract class DialogModal extends Modal {
+	#setting: Setting | null = null
+
 	public constructor(protected readonly plugin: TerminalPlugin) {
 		super(plugin.app)
+		plugin.register(plugin.language.onChangeLanguage
+			.listen(() => { this.display() }))
 	}
 
 	public override onOpen(): void {
 		super.onOpen()
-		const { plugin, modalEl, scope } = this,
-			{ i18n } = plugin.language
-		new Setting(modalEl)
-			.addButton(button => button
-				.setIcon(i18n.t("asset:components.dialog.cancel-icon"))
-				.setTooltip(i18n.t("components.dialog.cancel"))
-				.onClick(async () => { await this.cancel(this.#close) }))
-			.addButton(button => button
-				.setIcon(i18n.t("asset:components.dialog.confirm-icon"))
-				.setTooltip(i18n.t("components.dialog.confirm"))
-				.setCta()
-				.onClick(async () => { await this.confirm(this.#close) }))
+		const { scope } = this
+		this.display()
 		// Hooking escape does not work as it is already registered
 		scope.register([], "enter", async event => {
 			await this.confirm(this.#close)
@@ -657,6 +655,22 @@ export abstract class DialogModal extends Modal {
 				console.error(error)
 			}
 		})()
+	}
+
+	protected display(): void {
+		const { plugin, modalEl } = this,
+			{ i18n } = plugin.language
+		this.#setting?.settingEl.remove()
+		this.#setting = new Setting(modalEl)
+			.addButton(button => button
+				.setIcon(i18n.t("asset:components.dialog.cancel-icon"))
+				.setTooltip(i18n.t("components.dialog.cancel"))
+				.onClick(async () => { await this.cancel(this.#close) }))
+			.addButton(button => button
+				.setIcon(i18n.t("asset:components.dialog.confirm-icon"))
+				.setTooltip(i18n.t("components.dialog.confirm"))
+				.setCta()
+				.onClick(async () => { await this.confirm(this.#close) }))
 	}
 
 	protected confirm(close: () => void): AsyncOrSync<void> {

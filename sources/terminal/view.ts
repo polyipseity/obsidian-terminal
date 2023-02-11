@@ -64,12 +64,8 @@ export class TerminalEditModal extends DialogModal {
 		this.#confirm = confirm
 	}
 
-	public override onOpen(): void {
-		super.onOpen()
-		this.display()
-	}
-
-	protected display(): void {
+	protected override display(): void {
+		super.display()
 		const { contentEl, plugin } = this,
 			listEl = useSettings(contentEl),
 			protostate = this.#protostate,
