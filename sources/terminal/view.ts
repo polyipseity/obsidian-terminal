@@ -485,7 +485,7 @@ export class TerminalView extends ItemView {
 								allowProposedApi: true,
 							},
 							{
-								disposer: new DisposerAddon(),
+								disposer: new DisposerAddon(() => { ele.remove() }),
 								ligatures: new LigaturesAddon({}),
 								renderer: new RendererAddon(
 									() => new CanvasAddon(),
