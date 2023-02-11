@@ -9,7 +9,7 @@ import {
 	swap,
 	unexpected,
 } from "sources/utils/util"
-import { linkSetting, resetButton, setTextToEnum } from "./util"
+import { linkSetting, resetButton, setTextToEnum } from "../ui/settings"
 import type { DeepWritable } from "ts-essentials"
 import { PROFILE_PRESETS } from "./profile-presets"
 import { PROFILE_PROPERTIES } from "./profile-properties"

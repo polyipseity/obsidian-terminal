@@ -12,7 +12,7 @@ import {
 	resetButton,
 	setTextToEnum,
 	setTextToNumber,
-} from "./util"
+} from "../ui/settings"
 import { LANGUAGES } from "assets/locales"
 import { PROFILE_DEFAULTS } from "./profile-presets"
 import { ProfilesModal } from "./profiles"
