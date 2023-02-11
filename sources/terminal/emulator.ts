@@ -120,7 +120,7 @@ export class XtermTerminalEmulator<A> {
 	public async resize(mustResizePseudoterminal = true): Promise<void> {
 		const { fit } = this.addons,
 			dim = fit.proposeDimensions()
-		if (isUndefined(dim)) {
+		if (isUndefined(dim) || !isFinite(dim.cols) || !isFinite(dim.rows)) {
 			return
 		}
 		await this.#resize(dim.cols, dim.rows, mustResizePseudoterminal)

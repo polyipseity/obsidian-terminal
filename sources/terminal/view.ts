@@ -22,6 +22,7 @@ import {
 	isInterface,
 	isUndefined,
 	notice2,
+	onResize,
 	onVisible,
 	openExternal,
 	printError,
@@ -145,15 +146,6 @@ export class TerminalView extends ItemView {
 			this.#state = copyOnWrite(this.#state, state => { state.serial = serial })
 		}
 		return Object.assign(super.getState(), this.#state)
-	}
-
-	public override onResize(): void {
-		super.onResize()
-		const { containerEl } = this
-		if (containerEl.offsetWidth <= 0 || containerEl.offsetHeight <= 0) {
-			return
-		}
-		this.#emulator?.resize(false).catch(error => { console.warn(error) })
 	}
 
 	public getDisplayText(): string {
@@ -288,6 +280,14 @@ export class TerminalView extends ItemView {
 		this.contentEl.detach()
 		this.contentEl = containerEl.createDiv({
 			cls: TerminalView.divClass.namespaced(plugin),
+		}, ele => {
+			onResize(ele, ent => {
+				if (ent.contentBoxSize
+					.some(size => size.blockSize <= 0 || size.inlineSize <= 0)) {
+					return
+				}
+				this.#emulator?.resize(false).catch(error => { console.warn(error) })
+			})
 		})
 		const { contentEl } = this
 		notice2(
@@ -310,7 +310,7 @@ export class TerminalView extends ItemView {
 			leaf.detach()
 			return
 		}
-		onVisible(contentEl, obsr => {
+		const obsr = onVisible(contentEl, () => {
 			try {
 				const
 					emulator = new TerminalView.EMULATOR(

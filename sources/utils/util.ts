@@ -405,21 +405,30 @@ export function notice2(
 	}
 }
 
-export function onVisible<E extends Element>(
-	element: E,
-	callback: (
-		observer: IntersectionObserver,
-		element: E,
-		entry: IntersectionObserverEntry,
-	) => unknown,
+export function onResize(
+	element: Element,
+	callback: (entry: ResizeObserverEntry) => unknown,
+): ResizeObserver {
+	const ret = new ResizeObserver(ents => {
+		const ent = ents.at(-1)
+		if (isUndefined(ent)) { return }
+		callback(ent)
+	})
+	ret.observe(element)
+	return ret
+}
+
+export function onVisible(
+	element: Element,
+	callback: (entry: IntersectionObserverEntry) => unknown,
 	transient = false,
 ): IntersectionObserver {
-	const ret = new IntersectionObserver((ents, obsr) => {
+	const ret = new IntersectionObserver(ents => {
 		for (const ent of transient
 			? ents.reverse()
 			: [ents.at(-1) ?? { isIntersecting: false }]) {
 			if (ent.isIntersecting) {
-				callback(obsr, element, ent)
+				callback(ent)
 				break
 			}
 		}
