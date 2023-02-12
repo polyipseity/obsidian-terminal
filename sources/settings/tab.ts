@@ -33,7 +33,7 @@ export class SettingTab extends PluginSettingTab {
 
 	public display(): void {
 		const { containerEl, plugin } = this,
-			{ settings, language } = plugin,
+			{ language } = plugin,
 			{ i18n } = language
 		containerEl.replaceChildren()
 		containerEl.createEl("h1", { text: i18n.t("name") })
@@ -42,7 +42,7 @@ export class SettingTab extends PluginSettingTab {
 			.setName(i18n.t("settings.language"))
 			.setDesc(i18n.t("settings.language-description"))
 			.addDropdown(linkSetting(
-				(): string => settings.language,
+				(): string => plugin.settings.language,
 				setTextToEnum(
 					Settings.DEFAULTABLE_LANGUAGES,
 					async value => plugin
@@ -119,7 +119,7 @@ export class SettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(i18n.t("settings.add-to-command"))
 			.addToggle(linkSetting(
-				() => settings.addToCommand,
+				() => plugin.settings.addToCommand,
 				async value => plugin
 					.mutateSettings(settingsM => { settingsM.addToCommand = value }),
 				() => { this.#postMutate() },
@@ -136,7 +136,7 @@ export class SettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(i18n.t("settings.add-to-context-menu"))
 			.addToggle(linkSetting(
-				() => settings.addToContextMenu,
+				() => plugin.settings.addToContextMenu,
 				async value => plugin
 					.mutateSettings(settingsM => { settingsM.addToContextMenu = value }),
 				() => { this.#postMutate() },
@@ -153,7 +153,7 @@ export class SettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(i18n.t("settings.hide-status-bar"))
 			.addDropdown(linkSetting(
-				(): string => settings.hideStatusBar,
+				(): string => plugin.settings.hideStatusBar,
 				setTextToEnum(
 					Settings.HIDE_STATUS_BAR_OPTIONS,
 					async value => plugin.mutateSettings(settingsM => {
@@ -185,7 +185,7 @@ export class SettingTab extends PluginSettingTab {
 			.setName(i18n.t("settings.notice-timeout"))
 			.setDesc(i18n.t("settings.notice-timeout-description"))
 			.addText(linkSetting(
-				() => settings.noticeTimeout.toString(),
+				() => plugin.settings.noticeTimeout.toString(),
 				setTextToNumber(async value => plugin
 					.mutateSettings(settingsM => { settingsM.noticeTimeout = value })),
 				() => { this.#postMutate() },
@@ -202,7 +202,7 @@ export class SettingTab extends PluginSettingTab {
 			.setName(i18n.t("settings.error-notice-timeout"))
 			.setDesc(i18n.t("settings.error-notice-timeout-description"))
 			.addText(linkSetting(
-				() => settings.errorNoticeTimeout.toString(),
+				() => plugin.settings.errorNoticeTimeout.toString(),
 				setTextToNumber(async value => plugin
 					.mutateSettings(settingsM => {
 						settingsM.errorNoticeTimeout = value
@@ -220,7 +220,7 @@ export class SettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(i18n.t("settings.profiles"))
 			.setDesc(i18n.t("settings.list-description", {
-				count: length(settings.profiles),
+				count: length(plugin.settings.profiles),
 			}))
 			.addButton(button => button
 				.setIcon(i18n.t("asset:generic.edit-list-icon"))
@@ -228,7 +228,7 @@ export class SettingTab extends PluginSettingTab {
 				.onClick(() => {
 					new ProfileListModal(
 						plugin,
-						Object.entries(settings.profiles),
+						Object.entries(plugin.settings.profiles),
 						async data => {
 							await plugin.mutateSettings(settingsM => {
 								settingsM.profiles = Object.fromEntries(data)
@@ -249,7 +249,7 @@ export class SettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName(i18n.t("settings.preferred-renderer"))
 			.addDropdown(linkSetting(
-				(): string => settings.preferredRenderer,
+				(): string => plugin.settings.preferredRenderer,
 				setTextToEnum(
 					Settings.PREFERRED_RENDERER_OPTIONS,
 					async value => plugin.mutateSettings(settingsM => {

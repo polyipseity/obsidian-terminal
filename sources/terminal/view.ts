@@ -73,8 +73,8 @@ export class TerminalEditModal extends DialogModal {
 			protostate = this.#protostate,
 			state = this.#state,
 			profile = this.#profile,
-			{ settings, language } = plugin,
-			{ profiles } = settings,
+			{ language } = plugin,
+			{ profiles } = plugin.settings,
 			{ i18n } = language,
 			noProfile = randomNotIn(Object.keys(profiles))
 		listEl.createEl("h1", { text: i18n.t("generic.edit") })
@@ -419,7 +419,7 @@ export class TerminalView extends ItemView {
 		const { contentEl, plugin, leaf } = this,
 			state = this.#state,
 			{ profile, cwd, serial } = state,
-			{ app, language, settings } = plugin,
+			{ app, language } = plugin,
 			{ i18n } = language,
 			{ requestSaveLayout } = app.workspace
 		notice2(
@@ -427,7 +427,7 @@ export class TerminalView extends ItemView {
 				"notices.spawning-terminal",
 				{ name: this.#name },
 			),
-			settings.noticeTimeout,
+			plugin.settings.noticeTimeout,
 			plugin,
 		)
 		if (!PROFILE_PROPERTIES[profile.type].integratable) {
@@ -508,8 +508,8 @@ export class TerminalView extends ItemView {
 							notice2(
 								() => i18n.t("notices.terminal-exited", { code }),
 								inSet(TERMINAL_EXIT_SUCCESS, code)
-									? settings.noticeTimeout
-									: settings.errorNoticeTimeout,
+									? plugin.settings.noticeTimeout
+									: plugin.settings.errorNoticeTimeout,
 								plugin,
 							)
 						}, error => {
@@ -524,7 +524,7 @@ export class TerminalView extends ItemView {
 						settings0 => settings0.preferredRenderer,
 						cur => { renderer.use(cur) },
 					))
-					renderer.use(settings.preferredRenderer)
+					renderer.use(plugin.settings.preferredRenderer)
 					search.onDidChangeResults(results => {
 						if (isUndefined(results)) {
 							this.#find?.$set({

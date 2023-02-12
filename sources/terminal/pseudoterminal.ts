@@ -171,7 +171,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 	) {
 		this.conhost = enableWindowsConhostWorkaround ?? false
 		const { conhost } = this,
-			{ settings, language } = plugin,
+			{ language } = plugin,
 			{ i18n } = language,
 			resizer = (async (): Promise<PipedChildProcess | null> => {
 				if (isUndefined(pythonExecutable)) {
@@ -200,7 +200,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 										"errors.resizer-exited-unexpectedly",
 										{ code: code ?? signal },
 									),
-									settings.errorNoticeTimeout,
+									plugin.settings.errorNoticeTimeout,
 									plugin,
 								)
 							}
