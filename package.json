@@ -25,7 +25,7 @@
 	},
 	"dependencies": {
 		"i18next": "22.4.9",
-		"json-stringify-safe": "^5.0.1",
+		"json-stringify-safe": "5.0.1",
 		"monkey-around": "2.3.0",
 		"simple-icons": "8.4.0",
 		"tmp": "0.2.1",
@@ -42,6 +42,7 @@
 	},
 	"devDependencies": {
 		"@tsconfig/node16-strictest": "1.0.4",
+		"@types/json-stringify-safe": "5.0.0",
 		"@types/node": "16.18.12",
 		"@types/tmp": "0.2.3",
 		"@typescript-eslint/eslint-plugin": "5.51.0",
