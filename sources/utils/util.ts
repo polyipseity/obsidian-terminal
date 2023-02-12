@@ -15,6 +15,7 @@ import type { PrimitiveType, TypeofMap } from "./typeof"
 import type { ChildProcess } from "node:child_process"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
+import { getSerialize } from "json-stringify-safe"
 import { simplify } from "./types"
 
 export type Sized<T extends readonly unknown[]> =
@@ -70,20 +71,6 @@ export class UnnamespacedID<V extends string> {
 	}
 }
 
-export function circularReplacer(): (key: string, value: unknown) => unknown {
-	const seen = new WeakSet()
-	return (_0, value): unknown => {
-		if (typeof value === "object" && value !== null) {
-			if (seen.has(value)) {
-				// eslint-disable-next-line no-void
-				return void 0
-			}
-			seen.add(value)
-		}
-		return value
-	}
-}
-
 export function anyToError(obj: unknown): Error {
 	return obj instanceof Error ? obj : new Error(String(obj))
 }
@@ -122,6 +109,15 @@ export function basename(path: string, ext = ""): string {
 		path.lastIndexOf("\\"),
 	) + 1)
 	return ret.endsWith(ext) ? ret.slice(0, ret.length - ext.length) : ret
+}
+
+export function bigIntReplacer(): (key: string, value: unknown) => unknown {
+	return (_0, value) => {
+		if (typeof value === "bigint") {
+			return value.toString()
+		}
+		return value
+	}
 }
 
 export function capitalize(
@@ -321,9 +317,16 @@ export function logFormat(...args: readonly unknown[]): string {
 		stringify0 = (param: unknown): string => {
 			if (typeof param === "object" && typeof param !== "function") {
 				try {
-					// No cyclic objects allowed
-					return JSON.stringify(param, circularReplacer(), JSON_STRINGIFY_SPACE)
-				} catch (error) { console.error(error) }
+					return JSON.stringify(
+						param,
+						// This package has really bad exports
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call
+						getSerialize(bigIntReplacer()),
+						JSON_STRINGIFY_SPACE,
+					)
+				} catch {
+					// NOOP
+				}
 			}
 			return String(param)
 		},
