@@ -308,13 +308,12 @@ class WindowsPseudoterminal implements Pseudoterminal {
 									resolve(isNaN(termCode) ? conCode ?? signal ?? NaN : termCode)
 								} catch (error) {
 									resolve(conCode ?? signal ?? NaN)
-									throw error
 								} finally {
-									codeTmp.removeCallback()
+									try {
+										codeTmp.removeCallback()
+									} catch (error) { console.warn(error) }
 								}
-							} catch (error) {
-								console.warn(error)
-							}
+							} catch (error) { console.error(error) }
 						})()
 					}))))
 	}
