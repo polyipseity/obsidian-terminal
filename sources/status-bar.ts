@@ -1,5 +1,6 @@
-import { notice2, remove } from "./utils/util"
 import type { TerminalPlugin } from "./main"
+import { notice2 } from "./utils/obsidian"
+import { remove } from "./utils/util"
 
 export function statusBar(callback?: (
 	element: HTMLDivElement) => void): HTMLDivElement | null {

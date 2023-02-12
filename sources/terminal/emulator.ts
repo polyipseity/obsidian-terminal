@@ -4,12 +4,8 @@ import {
 	type ITerminalOptions,
 	Terminal,
 } from "xterm"
-import {
-	asyncDebounce,
-	isUndefined,
-	spawnPromise,
-} from "../utils/util"
 import { dynamicRequire, importable } from "../imports"
+import { isUndefined, spawnPromise } from "../utils/util"
 import type { AsyncOrSync } from "ts-essentials"
 import type { CanvasAddon } from "xterm-addon-canvas"
 import type { ChildProcessByStdio } from "node:child_process"
@@ -19,6 +15,7 @@ import { SerializeAddon } from "xterm-addon-serialize"
 import { TERMINAL_RESIZE_TIMEOUT } from "../magic"
 import type { TerminalPlugin } from "../main"
 import type { WebglAddon } from "xterm-addon-webgl"
+import { asyncDebounce } from "sources/utils/obsidian"
 import { debounce } from "obsidian"
 
 const

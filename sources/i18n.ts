@@ -5,10 +5,11 @@ import {
 	RESOURCES,
 	RETURN_NULL,
 } from "assets/locales"
-import { EventEmitterLite, anyToError, printError } from "./utils/util"
+import { EventEmitterLite, anyToError } from "./utils/util"
 import i18next, { createInstance, type i18n } from "i18next"
 import type { TerminalPlugin } from "./main"
 import { moment } from "obsidian"
+import { printError } from "./utils/obsidian"
 
 declare module "i18next" {
 	interface CustomTypeOptions {

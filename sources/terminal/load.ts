@@ -11,13 +11,13 @@ import {
 	deepFreeze,
 	isNonNullish,
 	isUndefined,
-	notice2,
 } from "../utils/util"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "../main"
 import { TerminalView } from "./view"
+import { notice2 } from "sources/utils/obsidian"
 
 function spawnTerminal(
 	plugin: TerminalPlugin,

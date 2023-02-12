@@ -4,7 +4,8 @@ import type {
 	ExtraButtonComponent,
 	ValueComponent,
 } from "obsidian"
-import { type Sized, inSet, isUndefined } from "sources/utils/util"
+import { inSet, isUndefined } from "sources/utils/util"
+import type { Sized } from "sources/utils/types"
 import type { TerminalPlugin } from "sources/main"
 
 export interface ComponentAction<C, V> {

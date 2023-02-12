@@ -13,13 +13,12 @@ import {
 	inSet,
 	isUndefined,
 	logFormat,
-	notice2,
-	printError,
 	promisePromise,
 	spawnPromise,
 	typedKeys,
 	writePromise,
 } from "../utils/util"
+import { notice2, printError } from "sources/utils/obsidian"
 import type { AsyncOrSync } from "ts-essentials"
 import type { FileResultNoFd } from "tmp"
 import type {

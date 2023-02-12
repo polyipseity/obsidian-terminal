@@ -1,5 +1,8 @@
 import type { DeepReadonly, DeepWritable } from "ts-essentials"
 
+export type Sized<T extends readonly unknown[]> =
+	number extends T["length"] ? never : T
+
 export function simplify<T>(value: DeepWritable<DeepReadonly<T>
 >): DeepWritable<T>
 export function simplify<T>(value: DeepReadonly<DeepWritable<T>

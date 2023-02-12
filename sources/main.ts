@@ -1,16 +1,13 @@
 import { type App, Plugin, type PluginManifest, debounce } from "obsidian"
 import type { AsyncOrSync, DeepWritable } from "ts-essentials"
 import { DEFAULT_SETTINGS, Settings } from "./settings/data"
-import {
-	EventEmitterLite,
-	asyncDebounce,
-	copyOnWriteAsync,
-} from "./utils/util"
+import { EventEmitterLite, copyOnWriteAsync } from "./utils/util"
 import { LanguageManager } from "./i18n"
 import { SAVE_SETTINGS_TIMEOUT } from "./magic"
 import { SettingTab } from "./settings/tab"
 import { StatusBarHider } from "./status-bar"
 import { TerminalView } from "./terminal/view"
+import { asyncDebounce } from "./utils/obsidian"
 import { loadIcons } from "./icons"
 import { loadTerminal } from "./terminal/load"
 import { patch } from "./patches"

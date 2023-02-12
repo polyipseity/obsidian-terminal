@@ -8,7 +8,6 @@ import {
 import {
 	PLATFORM,
 	type Platform,
-	type Sized,
 	cloneAsWritable,
 	deepFreeze,
 	inSet,
@@ -19,6 +18,7 @@ import { NOTICE_NO_TIMEOUT } from "sources/magic"
 import { PROFILE_PRESETS } from "./profile-presets"
 import { Pseudoterminal } from "../terminal/pseudoterminal"
 import { RendererAddon } from "../terminal/emulator"
+import type { Sized } from "sources/utils/types"
 
 export interface Settings {
 	readonly language: Settings.DefaultableLanguage

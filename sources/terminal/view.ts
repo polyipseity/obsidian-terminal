@@ -16,6 +16,11 @@ import { JSON_STRINGIFY_SPACE, TERMINAL_EXIT_SUCCESS } from "../magic"
 import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
 import {
 	UnnamespacedID,
+	notice2,
+	printError,
+	updateDisplayText,
+} from "sources/utils/obsidian"
+import {
 	anyToError,
 	basename,
 	cloneAsWritable,
@@ -24,15 +29,12 @@ import {
 	inSet,
 	isInterface,
 	isUndefined,
-	notice2,
 	onResize,
 	onVisible,
 	openExternal,
-	printError,
 	randomNotIn,
 	saveFile,
 	typedStructuredClone,
-	updateDisplayText,
 } from "../utils/util"
 import { linkSetting, resetButton } from "sources/ui/settings"
 import { CanvasAddon } from "xterm-addon-canvas"
