@@ -213,7 +213,7 @@ export class SettingTab extends PluginSettingTab {
 				plugin,
 				i18n.t("asset:settings.error-notice-timeout-icon"),
 				async () => plugin.mutateSettings(settingsM => {
-					settingsM.noticeTimeout = DEFAULT_SETTINGS.noticeTimeout
+					settingsM.errorNoticeTimeout = DEFAULT_SETTINGS.errorNoticeTimeout
 				}),
 				() => { this.#postMutate(true) },
 			))
