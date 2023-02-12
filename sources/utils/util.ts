@@ -266,8 +266,6 @@ export function logFormat(...args: readonly unknown[]): string {
 				try {
 					return JSON.stringify(
 						param,
-						// This package has really bad exports
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call
 						getSerialize(bigIntReplacer()),
 						JSON_STRINGIFY_SPACE,
 					)
