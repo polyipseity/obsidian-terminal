@@ -1,5 +1,10 @@
 import type { DeepRequired, DeepWritable } from "ts-essentials"
-import type { InverseTypeofMap, PrimitiveOf } from "../utils/typeof"
+import {
+	type InverseTypeofMap,
+	type PrimitiveOf,
+	genericTypeofGuard,
+	primitiveOf,
+} from "../utils/typeof"
 import {
 	PLATFORM,
 	type Platform,
@@ -9,7 +14,6 @@ import {
 	inSet,
 	isHomogenousArray,
 } from "../utils/util"
-import { genericTypeofGuard, primitiveOf } from "../utils/typeof"
 import { LANGUAGES } from "assets/locales"
 import { NOTICE_NO_TIMEOUT } from "sources/magic"
 import { PROFILE_PRESETS } from "./profile-presets"
