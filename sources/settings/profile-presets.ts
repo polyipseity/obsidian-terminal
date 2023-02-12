@@ -128,7 +128,7 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		type: "integrated",
 	},
 } as const)
-export const PROFILE_PRESET_KEYS = typedKeys<[
+export const PROFILE_PRESET_KEYS = typedKeys<readonly [
 	"empty",
 	"console",
 	"cmdIntegrated",

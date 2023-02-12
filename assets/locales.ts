@@ -88,7 +88,7 @@ export const RESOURCES = deepFreeze({
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	"zh-Hant": { [DEFAULT_NAMESPACE]: sync(zhHant) },
 } as const)
-export const LANGUAGES = typedKeys<[
+export const LANGUAGES = typedKeys<readonly [
 	"am",
 	"cs",
 	"da",

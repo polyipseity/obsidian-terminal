@@ -449,7 +449,7 @@ export namespace Pseudoterminal {
 		win32: WindowsPseudoterminal,
 	} as const)
 	export const SUPPORTED_PLATFORMS =
-		typedKeys<["darwin", "linux", "win32"]>()(PLATFORM_PSEUDOTERMINALS)
+		typedKeys<readonly ["darwin", "linux", "win32"]>()(PLATFORM_PSEUDOTERMINALS)
 	export type SupportedPlatform = typeof SUPPORTED_PLATFORMS[number]
 	export const PLATFORM_PSEUDOTERMINAL =
 		inSet(SUPPORTED_PLATFORMS, PLATFORM)

@@ -485,7 +485,10 @@ export class TerminalView extends ItemView {
 								allowProposedApi: true,
 							},
 							{
-								disposer: new DisposerAddon(() => { ele.remove() }),
+								disposer: new DisposerAddon(
+									() => { ele.remove() },
+									() => { this.#find?.$set({ searchResult: "" }) },
+								),
 								ligatures: new LigaturesAddon({}),
 								renderer: new RendererAddon(
 									() => new CanvasAddon(),
@@ -520,7 +523,6 @@ export class TerminalView extends ItemView {
 						cur => { renderer.use(cur) },
 					))
 					renderer.use(settings.preferredRenderer)
-					disposer.push(() => { this.#find?.$set({ searchResult: "" }) })
 					search.onDidChangeResults(results => {
 						if (isUndefined(results)) {
 							this.#find?.$set({

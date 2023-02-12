@@ -38,7 +38,7 @@ export const I18N = (async (): Promise<i18n> => {
 })()
 
 export class LanguageManager {
-	public readonly onChangeLanguage = new EventEmitterLite<[]>()
+	public readonly onChangeLanguage = new EventEmitterLite<readonly [string]>()
 	#i18n = i18next
 	public constructor(protected readonly plugin: TerminalPlugin) { }
 
@@ -63,6 +63,6 @@ export class LanguageManager {
 
 	async #changeLanguage(language: string): Promise<void> {
 		await this.i18n.changeLanguage(language)
-		await this.onChangeLanguage.emit()
+		await this.onChangeLanguage.emit(language)
 	}
 }

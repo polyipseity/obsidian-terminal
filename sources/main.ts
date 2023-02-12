@@ -29,7 +29,7 @@ export class TerminalPlugin extends Plugin {
 		}, SAVE_SETTINGS_TIMEOUT, false))
 
 	#settings = DEFAULT_SETTINGS
-	readonly #onMutateSettings = new EventEmitterLite<[Settings]>()
+	readonly #onMutateSettings = new EventEmitterLite<readonly [Settings]>()
 
 	public constructor(app: App, manifest: PluginManifest) {
 		const unpatch = patch()
