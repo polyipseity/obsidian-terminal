@@ -4,6 +4,39 @@ Versions are ordered by recency.
 
 - Read me: [README.md](README.md)
 
+## 3.0.0
+
+A major version bump as there are many shiny new features this time! ✨
+
+__Notices__
+- Please reconfigure your settings. Old settings will likely be overwritten.
+- Now usable on mobile! (You can only open developer console, however...)
+
+__Features__
+- Implement terminal profiles! Comes with several presets. (`dda444885bd032fc4c85e9d9b95ace90be706d68`)
+- Implement editing arguments. (``dda444885bd032fc4c85e9d9b95ace90be706d68`)
+- Add buttons to undo and reload all settings. (`d12898142b16a3daed0b1e4826b5f759fecaffc2`)
+- Add commands and context menus to select terminal profile. (`804a3448f58d44a6bea9cccfde579fb1fc7ed4cd`)
+- Add a ribbon to select terminal profile. (`9ea5c140102342e6916c596257ce32c16c440b87`)
+- New terminal type: Console. It prints messages from the developer console. Works on mobile. (`3619f5865d054269819095cbad912184377e66e8`)
+- Implement editing terminal. You can change terminal profile and working directory. (`c9909513604d5b2b2f15cbe9dbeb9936a7c85018`)
+
+__Fixes__
+- Fix unable to find after terminal restart. (`5586baa16320da28acb6c3a64f4b73c58e760013`)
+- Fix escaping arguments. (`a4fd03d737fe86b1d2ccd9bb59aa0429445a4fb0`)
+- Make context menu usable on mobile by keeping `contentEl`. (`0ec66b4e632a272e199b7c506189ef303a5b5b97`)
+- Fix updating terminal tab name. (`1e7adcc23abeef98fb96ac587aaf4912209af10d`)
+- Fix find in terminal styling on mobile. (`7de6c2a69715882e076fae5b42940daa7c28add6`..`35e8e5f6fdeb90986b193a4bfcab952788faa1ff`)
+
+__Internals__
+- Improve code, as always.
+- Improve build scripts.
+- Settings are validated and fixed on loading. (`5b78d4d10f1dff36abfc30c6695ac2755eb8045d`)
+- Freeze `as const`-ed objects. (`5023e90fd54a9457d1182526e4d5d18e22311049`)
+- Update npm packages.
+
+__Full changelog__: [`2.11.0...3.0.0`](https://github.com/polyipseity/obsidian-terminal/compare/2.11.0...3.0.0)
+
 ## 2.11.0
 
 __Features__
