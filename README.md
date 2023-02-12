@@ -14,6 +14,7 @@ For first time users, read the [installation](#installation) section first!
 
 - Start external terminals from Obsidian.
 - Integrate terminals into Obsidian.
+- Supports multiple terminal profiles.
 - Find in terminal.
 - Automatically save and restore integrated terminal history.
 - Save terminal history as file.
@@ -21,12 +22,15 @@ For first time users, read the [installation](#installation) section first!
 ## Usage
 
 - To start a new external or integrated terminal
+	- Ribbon
+		1. Click on the `Open terminal` ribbon.
+		2. Choose the desired profile.
 	- Context menu
 		1. Right-click on files, folders, or tab headers.
-		2. Choose the desired terminal action.
+		2. Choose the desired action (and profile).
 	- Command palette
 		1. Press `Ctrl+P` or click on the `Open command palette` ribbon next to the left window border.
-		2. Choose the desired terminal action.
+		2. Choose the desired action (and profile).
 - To save and restore integrated terminal history
 	1. Keep the terminal open when exiting Obsidian.
 	2. Terminal history will be restored next time Obsidian is opened.
@@ -34,9 +38,11 @@ For first time users, read the [installation](#installation) section first!
 	- Includes
 		- Find in terminal
 		- Restart terminal
+		- Edit terminal
 		- Save terminal history as file
 	- Available by
 		- Right-click on terminal tab header
+		- Right-click on `More options` button
 
 ## Installation
 
