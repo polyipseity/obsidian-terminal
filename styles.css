@@ -207,6 +207,7 @@
 /* end of xterm styles */
 
 .workspace-leaf-content[data-type="terminal:terminal"] .view-content {
+	overflow: clip;
 	display: flex;
 	flex-direction: column;
 }
