@@ -29,6 +29,8 @@ import type { TerminalPlugin } from "sources/main"
 export function useSettings(element: HTMLElement): HTMLElement {
 	element.replaceChildren()
 	return element.createEl("div", {
+		cls: "vertical-tab-content-container",
+	}).createEl("div", {
 		cls: "vertical-tab-content",
 	})
 }
