@@ -55,9 +55,9 @@
 		"terminal": {
 			"display-name": "終端：{{- name}}",
 			"profile": "配置",
-			"restored-history": "\r\n * 已還原於{{- time}}的歷史\r\n",
+			"restored-history": "\r\n * 已還原於{{- time}}的歷史\r\n\r\n",
 			"unknown-profile-name": "不明",
-			"unsupported-profile": "不支持的配置：\r\n{{- profile}}\r\n\r\n",
+			"unsupported-profile": "不支持的配置：\r\n{{- profile}}\r\n",
 			"working-directory": "工作目錄",
 			"working-directory-placeholder": "（未定義）"
 		}
