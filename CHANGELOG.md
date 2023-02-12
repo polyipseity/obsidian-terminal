@@ -10,11 +10,12 @@ A major version bump as there are many shiny new features this time! ✨
 
 __Notices__
 - Please reconfigure your settings. Old settings will likely be overwritten.
-- Now usable on mobile! (You can only open developer console, however...)
+- Now usable and useful on mobile! (You can only open developer console, however...)
 
 __Features__
 - Implement terminal profiles! Comes with several presets. (`dda444885bd032fc4c85e9d9b95ace90be706d68`)
-- Implement editing arguments. (``dda444885bd032fc4c85e9d9b95ace90be706d68`)
+- Implement editing arguments. (`dda444885bd032fc4c85e9d9b95ace90be706d68`)
+- Allowing specifying Python executable per profile. (`dda444885bd032fc4c85e9d9b95ace90be706d68`)
 - Add buttons to undo and reload all settings. (`d12898142b16a3daed0b1e4826b5f759fecaffc2`)
 - Add commands and context menus to select terminal profile. (`804a3448f58d44a6bea9cccfde579fb1fc7ed4cd`)
 - Add a ribbon to select terminal profile. (`9ea5c140102342e6916c596257ce32c16c440b87`)
