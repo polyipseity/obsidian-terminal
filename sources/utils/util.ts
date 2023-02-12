@@ -16,7 +16,6 @@ import type { ChildProcess } from "node:child_process"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
 import { simplify } from "./types"
-import { stringify } from "json-cycle"
 
 export type Sized<T extends readonly unknown[]> =
 	number extends T["length"] ? never : T
@@ -322,13 +321,9 @@ export function logFormat(...args: readonly unknown[]): string {
 		stringify0 = (param: unknown): string => {
 			if (typeof param === "object" && typeof param !== "function") {
 				try {
-					// Buggy, can recurse infinitely
-					return stringify(param, null, JSON_STRINGIFY_SPACE)
-				} catch (error) { console.warn(error) }
-				try {
 					// No cyclic objects allowed
 					return JSON.stringify(param, circularReplacer(), JSON_STRINGIFY_SPACE)
-				} catch (error) { console.warn(error) }
+				} catch (error) { console.error(error) }
 			}
 			return String(param)
 		},
