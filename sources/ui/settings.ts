@@ -4,7 +4,7 @@ import type {
 	ExtraButtonComponent,
 	ValueComponent,
 } from "obsidian"
-import { inSet, isUndefined } from "sources/utils/util"
+import { inSet, isUndefined, unexpected } from "sources/utils/util"
 import type { Sized } from "sources/utils/types"
 import type { TerminalPlugin } from "sources/main"
 
@@ -120,21 +120,26 @@ export function dropdownSelect<V, C extends DropdownComponent>(
 	}[],
 	callback: (value: V, component: C) => unknown,
 	action: ComponentAction<C, string> = {},
-) {
-	return (component: C): void => {
-		(action.pre ?? ((): void => { }))(component)
-		const activate = async (value: string): Promise<void> => {
+): (component: C) => void {
+	return linkSetting(
+		() => NaN.toString(),
+		async (value, component) => {
 			const selection = selections[Number(value)]
-			if (isUndefined(selection)) { return }
-			component.setValue(NaN.toString())
-			await callback(selection.value, component)
-		}
-		component
-			.addOption(NaN.toString(), unselected)
-			.addOptions(Object.fromEntries(selections
-				.map((selection, index) => [index, selection.name])))
-			.setValue(NaN.toString())
-			.onChange(activate);
-		(action.post ?? ((): void => { }))(component, activate)
-	}
+			if (!isUndefined(selection)) {
+				await callback(selection.value, component)
+			}
+			return false
+		},
+		unexpected,
+		{
+			...action,
+			pre(component) {
+				component
+					.addOption(NaN.toString(), unselected)
+					.addOptions(Object.fromEntries(selections
+						.map((selection, index) => [index, selection.name])));
+				(action.pre ?? ((): void => { }))(component)
+			},
+		},
+	)
 }
