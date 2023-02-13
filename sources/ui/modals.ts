@@ -136,10 +136,11 @@ export class EditableListModal<T> extends Modal {
 	#setupListSubUI(ui: UpdatableUI, element: HTMLElement): void {
 		ui.clear()
 		const { plugin } = this,
+			data = this.#data,
 			{ language } = plugin,
 			{ i18n } = language
 		ui.finally(() => { element.replaceChildren() })
-		for (const [index, item] of this.#data.entries()) {
+		for (const [index, item] of data.entries()) {
 			ui.newSetting(element, setting => {
 				setting.setName(i18n.t("components.editable-list.name", {
 					count: index + 1,
@@ -149,7 +150,7 @@ export class EditableListModal<T> extends Modal {
 					setting,
 					() => item,
 					async value => {
-						this.#data[index] = value
+						data[index] = value
 						await this.#postMutate()
 					},
 				)
@@ -158,7 +159,7 @@ export class EditableListModal<T> extends Modal {
 						.setTooltip(i18n.t("components.editable-list.remove"))
 						.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
 						.onClick(async () => {
-							removeAt(this.#data, index)
+							removeAt(data, index)
 							this.#setupListSubUI0()
 							await this.#postMutate()
 						}))
@@ -167,7 +168,7 @@ export class EditableListModal<T> extends Modal {
 						.setIcon(i18n.t("asset:components.editable-list.move-up-icon"))
 						.onClick(async () => {
 							if (index <= 0) { return }
-							swap(this.#data, index - 1, index)
+							swap(data, index - 1, index)
 							this.#setupListSubUI0()
 							await this.#postMutate()
 						}))
@@ -175,8 +176,8 @@ export class EditableListModal<T> extends Modal {
 						.setTooltip(i18n.t("components.editable-list.move-down"))
 						.setIcon(i18n.t("asset:components.editable-list.move-down-icon"))
 						.onClick(async () => {
-							if (index >= this.#data.length - 1) { return }
-							swap(this.#data, index, index + 1)
+							if (index >= data.length - 1) { return }
+							swap(data, index, index + 1)
 							this.#setupListSubUI0()
 							await this.#postMutate()
 						}))
@@ -351,10 +352,9 @@ export class ProfileModal extends Modal {
 		ui.clear()
 		const { plugin } = this,
 			profile = this.#data,
-			{ i18n } = plugin.language,
-			{ type } = profile
+			{ i18n } = plugin.language
 		ui.finally(() => { element.replaceChildren() })
-		switch (type) {
+		switch (profile.type) {
 			case "": {
 				break
 			}
@@ -364,7 +364,7 @@ export class ProfileModal extends Modal {
 			case "external": {
 				ui.newSetting(element, setting => {
 					setting
-						.setName(i18n.t(`components.profile.${type}.executable`))
+						.setName(i18n.t(`components.profile.${profile.type}.executable`))
 						.addText(linkSetting(
 							() => profile.executable,
 							value => { profile.executable = value },
@@ -372,15 +372,17 @@ export class ProfileModal extends Modal {
 						))
 						.addExtraButton(resetButton(
 							plugin,
-							i18n.t(`asset:components.profile.${type}.executable-icon`),
+							i18n
+								.t(`asset:components.profile.${profile.type}.executable-icon`),
 							() => {
-								profile.executable = Settings.Profile.DEFAULTS[type].executable
+								profile.executable =
+									Settings.Profile.DEFAULTS[profile.type].executable
 							},
 							async () => this.#postMutate(),
 						))
 				}).newSetting(element, setting => {
 					setting
-						.setName(i18n.t(`components.profile.${type}.arguments`))
+						.setName(i18n.t(`components.profile.${profile.type}.arguments`))
 						.setDesc(i18n.t("settings.list-description", {
 							count: profile.args.length,
 						}))
@@ -397,15 +399,15 @@ export class ProfileModal extends Modal {
 										profile.args = value
 										await this.#postMutate()
 									},
-									() => i18n.t(`components.profile.${type}.arguments`),
+									() => i18n.t(`components.profile.${profile.type}.arguments`),
 								).open()
 							}))
 						.addExtraButton(resetButton(
 							plugin,
-							i18n.t(`asset:components.profile.${type}.arguments-icon`),
+							i18n.t(`asset:components.profile.${profile.type}.arguments-icon`),
 							() => {
 								profile.args =
-									cloneAsWritable(Settings.Profile.DEFAULTS[type].args)
+									cloneAsWritable(Settings.Profile.DEFAULTS[profile.type].args)
 							},
 							async () => this.#postMutate(),
 						))
@@ -416,7 +418,7 @@ export class ProfileModal extends Modal {
 							.setName(i18n.t(`types.platforms.${platform}`))
 							.addToggle(linkSetting(
 								() => profile.platforms[platform] ??
-									Settings.Profile.DEFAULTS[type].platforms[platform],
+									Settings.Profile.DEFAULTS[profile.type].platforms[platform],
 								value => {
 									profile.platforms[platform] = value
 								},
@@ -427,7 +429,7 @@ export class ProfileModal extends Modal {
 								i18n.t(`asset:types.platforms.${platform}-icon`),
 								() => {
 									profile.platforms[platform] =
-										Settings.Profile.DEFAULTS[type].platforms[platform]
+										Settings.Profile.DEFAULTS[profile.type].platforms[platform]
 								},
 								async () => this.#postMutate(),
 							))
@@ -438,7 +440,7 @@ export class ProfileModal extends Modal {
 			case "integrated": {
 				ui.newSetting(element, setting => {
 					setting
-						.setName(i18n.t(`components.profile.${type}.executable`))
+						.setName(i18n.t(`components.profile.${profile.type}.executable`))
 						.addText(linkSetting(
 							() => profile.executable,
 							value => {
@@ -448,15 +450,17 @@ export class ProfileModal extends Modal {
 						))
 						.addExtraButton(resetButton(
 							plugin,
-							i18n.t(`asset:components.profile.${type}.executable-icon`),
+							i18n
+								.t(`asset:components.profile.${profile.type}.executable-icon`),
 							() => {
-								profile.executable = Settings.Profile.DEFAULTS[type].executable
+								profile.executable =
+									Settings.Profile.DEFAULTS[profile.type].executable
 							},
 							async () => this.#postMutate(),
 						))
 				}).newSetting(element, setting => {
 					setting
-						.setName(i18n.t(`components.profile.${type}.arguments`))
+						.setName(i18n.t(`components.profile.${profile.type}.arguments`))
 						.setDesc(i18n.t("settings.list-description", {
 							count: profile.args.length,
 						}))
@@ -473,15 +477,15 @@ export class ProfileModal extends Modal {
 										profile.args = value
 										await this.#postMutate()
 									},
-									() => i18n.t(`components.profile.${type}.arguments`),
+									() => i18n.t(`components.profile.${profile.type}.arguments`),
 								).open()
 							}))
 						.addExtraButton(resetButton(
 							plugin,
-							i18n.t(`asset:components.profile.${type}.arguments-icon`),
+							i18n.t(`asset:components.profile.${profile.type}.arguments-icon`),
 							() => {
 								profile.args =
-									cloneAsWritable(Settings.Profile.DEFAULTS[type].args)
+									cloneAsWritable(Settings.Profile.DEFAULTS[profile.type].args)
 							},
 							async () => this.#postMutate(),
 						))
@@ -492,7 +496,7 @@ export class ProfileModal extends Modal {
 							.setName(i18n.t(`types.platforms.${platform}`))
 							.addToggle(linkSetting(
 								() => profile.platforms[platform] ??
-									Settings.Profile.DEFAULTS[type].platforms[platform],
+									Settings.Profile.DEFAULTS[profile.type].platforms[platform],
 								value => {
 									profile.platforms[platform] = value
 								},
@@ -503,7 +507,7 @@ export class ProfileModal extends Modal {
 								i18n.t(`asset:types.platforms.${platform}-icon`),
 								() => {
 									profile.platforms[platform] =
-										Settings.Profile.DEFAULTS[type].platforms[platform]
+										Settings.Profile.DEFAULTS[profile.type].platforms[platform]
 								},
 								async () => this.#postMutate(),
 							))
@@ -511,9 +515,10 @@ export class ProfileModal extends Modal {
 				}
 				ui.newSetting(element, setting => {
 					setting
-						.setName(i18n.t(`components.profile.${type}.python-executable`))
-						.setDesc(i18n
-							.t(`components.profile.${type}.python-executable-description`))
+						.setName(i18n
+							.t(`components.profile.${profile.type}.python-executable`))
+						.setDesc(i18n.t(`components.profile.${profile
+							.type}.python-executable-description`))
 						.addText(linkSetting(
 							() => profile.pythonExecutable,
 							value => {
@@ -524,31 +529,34 @@ export class ProfileModal extends Modal {
 								post: component => {
 									component
 										.setPlaceholder(i18n
-											// eslint-disable-next-line max-len
-											.t(`components.profile.${type}.python-executable-placeholder`))
+											.t(`components.profile.${profile
+												.type}.python-executable-placeholder`))
 								},
 							},
 						))
 						.addExtraButton(resetButton(
 							plugin,
-							i18n.t(`asset:components.profile.${type}.python-executable-icon`),
+							i18n.t(`asset:components.profile.${profile
+								.type}.python-executable-icon`),
 							() => {
 								profile.pythonExecutable =
-									Settings.Profile.DEFAULTS[type].pythonExecutable
+									Settings.Profile.DEFAULTS[profile.type].pythonExecutable
 							},
 							async () => this.#postMutate(),
 						))
 				}).newSetting(element, setting => {
 					setting
 						.setName(i18n
-							// eslint-disable-next-line max-len
-							.t(`components.profile.${type}.enable-Windows-conhost-workaround`))
+
+							.t(`components.profile.${profile
+								.type}.enable-Windows-conhost-workaround`))
 						.setDesc(i18n
-							// eslint-disable-next-line max-len
-							.t(`components.profile.${type}.enable-Windows-conhost-workaround-description`))
+							.t(`components.profile.${profile
+								.type}.enable-Windows-conhost-workaround-description`))
 						.addToggle(linkSetting(
 							() => profile.enableWindowsConhostWorkaround ??
-								Settings.Profile.DEFAULTS[type].enableWindowsConhostWorkaround,
+								Settings.Profile.DEFAULTS[profile.type]
+									.enableWindowsConhostWorkaround,
 							value => {
 								profile.enableWindowsConhostWorkaround = value
 							},
@@ -557,11 +565,12 @@ export class ProfileModal extends Modal {
 						.addExtraButton(resetButton(
 							plugin,
 							i18n
-								// eslint-disable-next-line max-len
-								.t(`asset:components.profile.${type}.enable-Windows-conhost-workaround-icon`),
+								.t(`asset:components.profile.${profile
+									.type}.enable-Windows-conhost-workaround-icon`),
 							() => {
 								profile.enableWindowsConhostWorkaround =
-									Settings.Profile.DEFAULTS[type].enableWindowsConhostWorkaround
+									Settings.Profile.DEFAULTS[profile.type]
+										.enableWindowsConhostWorkaround
 							},
 							async () => this.#postMutate(),
 						))
@@ -571,13 +580,13 @@ export class ProfileModal extends Modal {
 			case "invalid": {
 				ui.newSetting(element, setting => {
 					setting
-						.setName(i18n.t(`components.profile.${type}.data`))
+						.setName(i18n.t(`components.profile.${profile.type}.data`))
 						.addTextArea(textArea => textArea
 							.setValue(JSON.stringify(profile, null, JSON_STRINGIFY_SPACE))
 							.setDisabled(true))
 						.addExtraButton(resetButton(
 							plugin,
-							i18n.t(`asset:components.profile.${type}.data-icon`),
+							i18n.t(`asset:components.profile.${profile.type}.data-icon`),
 							unexpected,
 							unexpected,
 							{
@@ -701,24 +710,30 @@ export class ProfileListModal extends Modal {
 	#setupListSubUI(ui: UpdatableUI, element: HTMLElement): void {
 		ui.clear()
 		const { plugin } = this,
+			data = this.#data,
 			{ language } = plugin,
 			{ i18n } = language
 		ui.finally(() => { element.replaceChildren() })
-		for (const [index, [id, profile]] of this.#data.entries()) {
+		for (const [index, value] of data.entries()) {
 			ui.newSetting(element, setting => {
 				setting
-					.setName(i18n.t("components.profile-list.name", { profile }))
+					.setName(i18n.t("components.profile-list.name", {
+						profile: value[1],
+					}))
 					.setDesc(i18n
-						.t("components.profile-list.description", { id, profile }))
+						.t("components.profile-list.description", {
+							id: value[0],
+							profile: value[1],
+						}))
 					.addButton(button => button
 						.setIcon(i18n.t("asset:generic.edit-icon"))
 						.setTooltip(i18n.t("generic.edit"))
 						.onClick(() => {
 							new ProfileModal(
 								plugin,
-								profile,
+								value[1],
 								async profile0 => {
-									this.#data[index] = [id, profile0]
+									value[1] = profile0
 									await this.#postMutate()
 								},
 							).open()
@@ -727,7 +742,7 @@ export class ProfileListModal extends Modal {
 						.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
 						.setTooltip(i18n.t("components.editable-list.remove"))
 						.onClick(async () => {
-							removeAt(this.#data, index)
+							removeAt(data, index)
 							this.#setupListSubUI0()
 							await this.#postMutate()
 						}))
@@ -736,7 +751,7 @@ export class ProfileListModal extends Modal {
 						.setIcon(i18n.t("asset:components.editable-list.move-up-icon"))
 						.onClick(async () => {
 							if (index <= 0) { return }
-							swap(this.#data, index - 1, index)
+							swap(data, index - 1, index)
 							this.#setupListSubUI0()
 							await this.#postMutate()
 						}))
@@ -744,8 +759,8 @@ export class ProfileListModal extends Modal {
 						.setTooltip(i18n.t("components.editable-list.move-down"))
 						.setIcon(i18n.t("asset:components.editable-list.move-down-icon"))
 						.onClick(async () => {
-							if (index >= this.#data.length - 1) { return }
-							swap(this.#data, index, index + 1)
+							if (index >= data.length - 1) { return }
+							swap(data, index, index + 1)
 							this.#setupListSubUI0()
 							await this.#postMutate()
 						}))
