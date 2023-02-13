@@ -1,5 +1,5 @@
+import { EventEmitterLite, Functions } from "./utils/util"
 import type { DeepReadonly } from "ts-essentials"
-import { EventEmitterLite } from "./utils/util"
 import { around } from "monkey-around"
 
 export const LOGGER = new EventEmitterLite<readonly [Log.Event]>()
@@ -36,16 +36,7 @@ const LOG: Log.Event[] = []
 LOGGER.listen(event => LOG.push(event))
 
 export function patch(): () => void {
-	const unpatchers: (() => void)[] = [],
-		unpatch = (): void => {
-			try {
-				unpatchers.forEach(unwinder => {
-					try { unwinder() } catch (error) { console.error(error) }
-				})
-			} catch (error) {
-				console.error(error)
-			}
-		}
+	const unpatchers = new Functions({ async: false, settled: true })
 	try {
 		const consolePatch = (
 			type: "debug" | "error" | "info" | "warn",
@@ -94,10 +85,10 @@ export function patch(): () => void {
 			passive: true,
 		})
 	} catch (error) {
-		unpatch()
+		unpatchers.call()
 		throw error
 	}
-	return unpatch
+	return () => { unpatchers.call() }
 }
 
 export function log(): DeepReadonly<typeof LOG> { return LOG }

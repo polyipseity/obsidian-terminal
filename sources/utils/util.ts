@@ -49,6 +49,74 @@ export class EventEmitterLite<A extends readonly unknown[]> {
 	}
 }
 
+export class Functions<
+	Async extends boolean = false,
+	Args extends readonly unknown[] = [],
+> extends Array<
+	Async extends true ? (
+		...args: Args
+	) => unknown : Async extends false ? (
+		...args: Args
+	) => void : never> {
+	public constructor(
+		protected readonly options: {
+			readonly async: Async
+			readonly settled?: boolean
+		},
+		...args: (Async extends true ? (
+			...args: Args
+		) => unknown : Async extends false ? (
+			...args: Args
+		) => void : never)[]
+	) {
+		super(...args)
+	}
+
+	public transform(func: (
+		self: this[number][],
+	) => readonly this[number][]): Functions<Async, Args> {
+		return new Functions(this.options, ...func(this))
+	}
+
+	public call(...args: Args): Async extends true
+		// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+		? Promise<void> : Async extends false ? void : never {
+		return this.call0(null, ...args)
+	}
+
+	public call0(
+		thisArg: unknown,
+		...args: Args
+	): Async extends true
+		// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+		? Promise<void> : Async extends false ? void : never
+	public call0(thisArg: unknown, ...args: Args): AsyncOrSync<void> {
+		const { async, settled } = this.options
+		if (async) {
+			return (async (): Promise<void> => {
+				const promises = this.map(async func => {
+					await func.call(thisArg, ...args)
+				})
+				if (settled ?? false) {
+					await Promise.allSettled(promises)
+					return
+				}
+				await Promise.all(promises)
+			})()
+		}
+		this.forEach(settled ?? false
+			? (func): void => {
+				try {
+					func.call(thisArg, ...args)
+				} catch (error) {
+					console.error(error)
+				}
+			}
+			: (func): void => { func.call(thisArg, ...args) })
+		return UNDEF
+	}
+}
+
 export function anyToError(obj: unknown): Error {
 	return obj instanceof Error ? obj : new Error(String(obj))
 }

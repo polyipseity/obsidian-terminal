@@ -9,8 +9,8 @@ import {
 	Setting,
 	type View,
 } from "obsidian"
+import { Functions, isNonNullish, isUndefined } from "./util"
 import { NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
-import { isNonNullish, isUndefined } from "./util"
 import type { AsyncOrSync } from "ts-essentials"
 import type { TerminalPlugin } from "sources/main"
 import { around } from "monkey-around"
@@ -37,8 +37,8 @@ export function useSubsettings(element: HTMLElement): HTMLElement {
 }
 
 export class UpdatableUI {
-	readonly #updaters: (() => void)[] = []
-	readonly #finalizers: (() => void)[] = []
+	readonly #updaters = new Functions({ async: false })
+	readonly #finalizers = new Functions({ async: false })
 
 	public new<V>(
 		create: () => V,
@@ -123,7 +123,7 @@ export class UpdatableUI {
 		return this
 	}
 
-	public embed<U extends UpdatableUI>(
+	public embed<U extends this>(
 		create: () => U,
 		configure?: ((ele: U) => void) | null,
 		destroy?: ((ele: U) => void) | null,
@@ -140,11 +140,11 @@ export class UpdatableUI {
 	}
 
 	public update(): void {
-		this.#updaters.forEach(func => { func() })
+		this.#updaters.call()
 	}
 
 	public clear(): void {
-		this.#finalizers.splice(0).forEach(func => { func() })
+		this.#finalizers.transform(self => self.splice(0)).call()
 		this.#updaters.length = 0
 	}
 }
