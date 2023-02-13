@@ -59,7 +59,6 @@
 			"display-name": "Terminal: {{- name}}",
 			"profile": "Profile",
 			"restored-history": "\r\n * Restored history at {{- time}}\r\n\r\n",
-			"unknown-profile-name": "Unknown",
 			"unsupported-profile": "Unsupported profile:\r\n{{- profile}}\r\n",
 			"working-directory": "Working directory",
 			"working-directory-placeholder": "(Undefined)"

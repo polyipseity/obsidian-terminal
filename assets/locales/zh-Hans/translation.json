@@ -56,7 +56,6 @@
 			"display-name": "终端：{{- name}}",
 			"profile": "配置",
 			"restored-history": "\r\n * 已还原于{{- time}}的历史\r\n\r\n",
-			"unknown-profile-name": "不明",
 			"unsupported-profile": "不支持的配置：\r\n{{- profile}}\r\n",
 			"working-directory": "工作目录",
 			"working-directory-placeholder": "（未定义）"

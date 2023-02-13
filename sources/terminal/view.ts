@@ -213,19 +213,17 @@ export class TerminalView extends ItemView {
 	}
 
 	get #name(): string {
-		const { profile } = this.#state
+		const { i18n } = this.plugin.language,
+			{ profile } = this.#state,
+			{ name } = profile
+		if (typeof name === "string" && name) { return name }
 		if ("executable" in profile) {
 			const { executable } = profile
 			if (typeof executable === "string") {
 				return basename(executable, extname(executable))
 			}
 		}
-		if ("name" in profile) {
-			const { name } = profile
-			if (typeof name === "string") { return name }
-		}
-		return this.plugin.language.i18n
-			.t("components.terminal.unknown-profile-name")
+		return i18n.t(`types.profiles.${profile.type}`)
 	}
 
 	// eslint-disable-next-line consistent-return
