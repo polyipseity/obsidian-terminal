@@ -10,11 +10,7 @@ import {
 	type View,
 } from "obsidian"
 import { NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
-import {
-	escapeQuerySelectorAttribute as escQueryAttr,
-	isNonNullish,
-	isUndefined,
-} from "./util"
+import { isNonNullish, isUndefined } from "./util"
 import type { AsyncOrSync } from "ts-essentials"
 import type { TerminalPlugin } from "sources/main"
 import { around } from "monkey-around"
@@ -73,40 +69,6 @@ export class UpdatableUI {
 					): Setting {
 						if (recording) {
 							return proto.call(this, component => {
-								if (component instanceof DropdownComponent) {
-									const comp0: DropdownComponent = component
-									around(comp0, {
-										addOption(proto0) {
-											return function fn0(
-												this: DropdownComponent,
-												value: string,
-												display: string,
-											): DropdownComponent {
-												const query = `option[value="${escQueryAttr(value)}"]`
-												if (this.selectEl.querySelector(query) === null) {
-													return proto0.call(this, value, display)
-												}
-												return this
-											}
-										},
-										addOptions(proto0) {
-											return function fn0(
-												this: DropdownComponent,
-												options: Record<string, string>,
-											): DropdownComponent {
-												return proto0.call(
-													this,
-													Object.fromEntries(Object.entries(options)
-														.filter(([value]) => {
-															const query =
-																`option[value="${escQueryAttr(value)}"]`
-															return this.selectEl.querySelector(query) === null
-														})),
-												)
-											}
-										},
-									})
-								}
 								components.push(component)
 								cb(component)
 							})
@@ -114,6 +76,18 @@ export class UpdatableUI {
 						const comp = components[index++ % components.length]
 						if (isUndefined(comp)) {
 							throw new Error(index.toString())
+						}
+						if ("onChange" in comp) {
+							try {
+								(comp.onChange as ((
+									callback: (value: unknown) => unknown,
+								) => unknown))((): void => { })
+							} catch (error) {
+								console.error(error)
+							}
+						}
+						if (comp instanceof DropdownComponent) {
+							comp.selectEl.replaceChildren()
 						}
 						cb(comp)
 						return this
