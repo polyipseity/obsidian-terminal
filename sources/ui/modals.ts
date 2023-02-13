@@ -217,7 +217,6 @@ export class ProfileModal extends Modal {
 		const { plugin, ui } = this,
 			[listEl, listElRemover] = useSettings(this.contentEl),
 			profile = this.#data,
-			{ type } = profile,
 			{ language } = plugin,
 			{ i18n } = language
 		ui.finally(listElRemover)
@@ -238,7 +237,9 @@ export class ProfileModal extends Modal {
 					.addExtraButton(resetButton(
 						plugin,
 						i18n.t("asset:components.profile.name-icon"),
-						() => { profile.name = Settings.Profile.DEFAULTS[type].name },
+						() => {
+							profile.name = Settings.Profile.DEFAULTS[profile.type].name
+						},
 						async () => this.#postMutate(true),
 					))
 			})
@@ -259,7 +260,7 @@ export class ProfileModal extends Modal {
 				setting
 					.setName(i18n.t("components.profile.type"))
 					.addDropdown(linkSetting(
-						(): string => type,
+						(): string => profile.type,
 						setTextToEnum(
 							Settings.Profile.TYPES,
 							value => {
