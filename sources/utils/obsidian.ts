@@ -139,29 +139,40 @@ export class UnnamespacedID<V extends string> {
 }
 
 export function addRibbonIcon(
-	plugin: Plugin,
-	...args: Parameters<Plugin["addRibbonIcon"]>
-): readonly [HTMLElement, (() => void) | null] {
-	let unregister: (() => void) | null = null
-	const unpatch = around(plugin, {
-		register(proto) {
-			return function fn(this: Plugin, cb: () => unknown): void {
-				let unregistered = false
-				unregister = (): void => {
-					if (unregistered) { return }
-					cb()
-					unregistered = true
-				}
-				proto.call(this, unregister)
+	plugin: TerminalPlugin,
+	id: string,
+	icon: string,
+	title: () => string,
+	callback: (event: MouseEvent) => unknown,
+): void {
+	const { app, language } = plugin,
+		{ workspace } = app,
+		{ leftRibbon } = workspace
+	usePrivateAPI(
+		plugin,
+		() => {
+			const ribbon = (): readonly [HTMLElement, string] => {
+				const title0 = title()
+				return [
+					leftRibbon.addRibbonItemButton(
+						new UnnamespacedID(id).namespaced(plugin),
+						icon,
+						title0,
+						callback,
+					), title0,
+				]
 			}
+			let [ele, title0] = ribbon()
+			plugin.register(() => {
+				leftRibbon.removeRibbonAction(title0)
+				ele.remove()
+			})
+			plugin.register(language.onChangeLanguage.listen(() => {
+				ele.replaceWith(([ele, title0] = ribbon())[0])
+			}))
 		},
-	})
-	try {
-		const element = plugin.addRibbonIcon(...args)
-		return [element, unregister]
-	} finally {
-		unpatch()
-	}
+		() => { plugin.addRibbonIcon(icon, id, callback) },
+	)
 }
 
 export function asyncDebounce<
@@ -267,6 +278,19 @@ export function updateDisplayText(view: View): void {
 	}
 	if (oldText !== null) {
 		document.title = document.title.replace(oldText, text)
+	}
+}
+
+export function usePrivateAPI<R>(
+	plugin: TerminalPlugin,
+	func: () => R,
+	fallback: (error: unknown) => R,
+): R {
+	try {
+		return func()
+	} catch (error) {
+		console.warn(plugin.language.i18n.t("errors.private-API-changed"), error)
+		return fallback(error)
 	}
 }
 

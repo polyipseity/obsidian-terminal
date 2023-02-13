@@ -84,6 +84,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 		PROFILE_TYPES = deepFreeze((["select", "integrated", "external"] as const)
 			.filter(type => type === "select" || PROFILE_PROPERTIES[type].available)),
 		{ app, language } = plugin,
+		{ workspace } = app,
 		{ i18n } = language
 	type CWDType = typeof CWD_TYPES[number]
 	const defaultProfile =
@@ -147,7 +148,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 					case "root":
 						return adapter.getBasePath()
 					case "current": {
-						const active = app.workspace.getActiveFile()
+						const active = workspace.getActiveFile()
 						if (active === null) { return null }
 						return adapter.getFullPath(active.parent.path)
 					}
@@ -166,25 +167,16 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 				}
 			}
 			return true
-		},
-		ribbon =
-			(): readonly [HTMLElement, (() => void) | null] => addRibbonIcon(
-				plugin,
-				i18n.t("asset:ribbons.open-terminal"),
-				i18n.t("ribbons.open-terminal"),
-				() => { new SelectProfileModal(plugin).open() },
-			)
-
-	let [, unregisterRibbon] = ribbon()
-	plugin.register(language.onChangeLanguage.listen(() => {
-		if (unregisterRibbon === null) {
-			console.warn(i18n.t("errors.private-API-changed"), plugin)
-			return
 		}
-		unregisterRibbon();
-		[, unregisterRibbon] = ribbon()
-	}))
-	plugin.registerEvent(app.workspace.on("file-menu", (menu, file) => {
+
+	addRibbonIcon(
+		plugin,
+		i18n.t("asset:ribbons.open-terminal-id"),
+		i18n.t("asset:ribbons.open-terminal-icon"),
+		() => i18n.t("ribbons.open-terminal"),
+		() => { new SelectProfileModal(plugin).open() },
+	)
+	plugin.registerEvent(workspace.on("file-menu", (menu, file) => {
 		if (!plugin.settings.addToContextMenu) {
 			return
 		}
@@ -198,7 +190,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 			items.forEach(item => menu.addItem(item))
 		}
 	}))
-	plugin.registerEvent(app.workspace.on(
+	plugin.registerEvent(workspace.on(
 		"editor-menu",
 		(menu, _0, info) => {
 			if (!plugin.settings.addToContextMenu ||

@@ -53,7 +53,8 @@
 		}
 	},
 	"ribbons": {
-		"open-terminal": "terminal-square"
+		"open-terminal-id": "Open terminal",
+		"open-terminal-icon": "terminal-square"
 	},
 	"settings": {
 		"add-to-command-icon": "terminal",
