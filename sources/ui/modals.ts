@@ -190,6 +190,7 @@ export class ProfileModal extends Modal {
 	readonly #data
 	readonly #callback
 	readonly #presets
+	#preset = NaN
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
@@ -219,6 +220,7 @@ export class ProfileModal extends Modal {
 			profile = this.#data,
 			{ language } = plugin,
 			{ i18n } = language
+		let keepPreset = false
 		ui.finally(listElRemover)
 			.new(() => listEl.createEl("h1"), ele => {
 				ele.textContent = i18n.t("components.profile.title", {
@@ -244,15 +246,29 @@ export class ProfileModal extends Modal {
 					))
 			})
 			.newSetting(listEl, setting => {
+				if (!keepPreset) { this.#preset = NaN }
+				keepPreset = false
 				setting
 					.setName(i18n.t("components.profile.preset"))
-					.addDropdown(dropdownSelect(
-						i18n.t("components.dropdown.unselected"),
-						this.#presets,
-						async value => {
-							this.#replaceData(cloneAsWritable(value))
+					.addDropdown(linkSetting(
+						() => this.#preset.toString(),
+						value => { this.#preset = Number(value) },
+						async () => {
+							const preset = this.#presets[this.#preset]
+							if (isUndefined(preset)) { return }
+							this.#replaceData(cloneAsWritable(preset.value))
 							this.#setupTypedUI0()
+							keepPreset = true
 							await this.#postMutate()
+						},
+						{
+							pre: component => {
+								component
+									.addOption(NaN.toString(), i18n
+										.t("components.dropdown.unselected"))
+									.addOptions(Object.fromEntries(this.#presets
+										.map((selection, index) => [index, selection.name])))
+							},
 						},
 					))
 			})
