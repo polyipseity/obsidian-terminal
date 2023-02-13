@@ -76,9 +76,7 @@ export class TerminalEditModal extends DialogModal {
 			protostate = this.#protostate,
 			state = this.#state,
 			{ language } = plugin,
-			{ profiles } = plugin.settings,
-			{ i18n } = language,
-			noProfile = randomNotIn(Object.keys(profiles))
+			{ i18n } = language
 		ui.finally(listElRemover)
 			.new(() => listEl.createEl("h1"), ele => {
 				ele.textContent = i18n.t("generic.edit")
@@ -106,10 +104,12 @@ export class TerminalEditModal extends DialogModal {
 					))
 			})
 			.newSetting(listEl, setting => {
+				const { profiles } = plugin.settings,
+					unselected = randomNotIn(Object.keys(profiles))
 				setting
 					.setName(i18n.t("components.terminal.profile"))
 					.addDropdown(linkSetting(
-						() => this.#profile ?? noProfile,
+						() => this.#profile ?? unselected,
 						value => {
 							const profile0 = profiles[value]
 							if (isUndefined(profile0)) {
@@ -123,7 +123,7 @@ export class TerminalEditModal extends DialogModal {
 						{
 							pre: component => {
 								component
-									.addOption(noProfile, i18n
+									.addOption(unselected, i18n
 										.t("components.dropdown.unselected"))
 									.addOptions(Object
 										.fromEntries(Object
