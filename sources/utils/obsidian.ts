@@ -7,7 +7,8 @@ import {
 	Plugin,
 	type PluginManifest,
 	Setting,
-	type View,
+	View,
+	type Workspace,
 } from "obsidian"
 import { Functions, isNonNullish, isUndefined } from "./util"
 import { NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
@@ -251,7 +252,7 @@ export function printError(
 	)
 }
 
-export function updateDisplayText(view: View): void {
+export function updateDisplayText(view: View, workspace: Workspace): void {
 	const { containerEl } = view,
 		text = view.getDisplayText(),
 		viewHeaderEl = containerEl.querySelector(".view-header-title")
@@ -276,7 +277,7 @@ export function updateDisplayText(view: View): void {
 			if (headerEl !== null) { headerEl.ariaLabel = text }
 		}
 	}
-	if (oldText !== null) {
+	if (workspace.getActiveViewOfType(View) === view && oldText !== null) {
 		document.title = document.title.replace(oldText, text)
 	}
 }
