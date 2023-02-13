@@ -229,7 +229,6 @@ export class ProfileModal extends Modal {
 			.new(() => listEl.createEl("h1"), ele => {
 				ele.textContent = i18n.t("components.profile.title", {
 					name: Settings.Profile.name(profile),
-					profile,
 				})
 			})
 			.newSetting(listEl, setting => {
@@ -719,12 +718,13 @@ export class ProfileListModal extends Modal {
 			ui.newSetting(element, setting => {
 				setting
 					.setName(i18n.t("components.profile-list.name", {
-						profile: value[1],
+						id: value[0],
+						name: Settings.Profile.name(value[1]),
 					}))
 					.setDesc(i18n
 						.t("components.profile-list.description", {
 							id: value[0],
-							profile: value[1],
+							name: Settings.Profile.name(value[1]),
 						}))
 					.addButton(button => button
 						.setIcon(i18n.t("asset:generic.edit-icon"))

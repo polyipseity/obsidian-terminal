@@ -49,7 +49,7 @@
 		"profile-list": {
 			"content": "列表中第一個此平台上可用的配置是其終端類型的默認配置。",
 			"description": "{{- id}}",
-			"name": "{{- profile.name}}",
+			"name": "{{- name}}",
 			"title": "配置"
 		},
 		"terminal": {
