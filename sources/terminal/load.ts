@@ -13,12 +13,12 @@ import {
 	isNonNullish,
 	isUndefined,
 } from "../utils/util"
+import { addRibbonIcon, notice2 } from "sources/utils/obsidian"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "../main"
 import { TerminalView } from "./view"
-import { notice2 } from "sources/utils/obsidian"
 
 function spawnTerminal(
 	plugin: TerminalPlugin,
@@ -166,14 +166,24 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 				}
 			}
 			return true
-		}
+		},
+		ribbon =
+			(): readonly [HTMLElement, (() => void) | null] => addRibbonIcon(
+				plugin,
+				i18n.t("asset:ribbons.open-terminal"),
+				i18n.t("ribbons.open-terminal"),
+				() => { new SelectProfileModal(plugin).open() },
+			)
 
-	// Does not change name on language change
-	plugin.addRibbonIcon(
-		i18n.t("asset:ribbons.open-terminal"),
-		i18n.t("ribbons.open-terminal"),
-		() => { new SelectProfileModal(plugin).open() },
-	)
+	let [, unregisterRibbon] = ribbon()
+	plugin.register(language.onChangeLanguage.listen(() => {
+		if (unregisterRibbon === null) {
+			console.warn(i18n.t("errors.private-API-changed"), plugin)
+			return
+		}
+		unregisterRibbon();
+		[, unregisterRibbon] = ribbon()
+	}))
 	plugin.registerEvent(app.workspace.on("file-menu", (menu, file) => {
 		if (!plugin.settings.addToContextMenu) {
 			return

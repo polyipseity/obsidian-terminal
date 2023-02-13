@@ -71,6 +71,7 @@
 		"error-spawning-resizer": "Error spawning terminal resizer",
 		"failed-to-kill-pseudoterminal": "Failed to kill pseudoterminal",
 		"no-python-to-start-unix-pseudoterminal": "No Python to start Unix pseudoterminal",
+		"private-API-changed": "Private API changed",
 		"resizer-disabled": "Terminal resizer disabled",
 		"resizer-exited-unexpectedly": "Terminal resizer exited unexpectedly: {{- code}}"
 	},

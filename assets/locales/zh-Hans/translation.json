@@ -68,6 +68,7 @@
 		"error-spawning-resizer": "啟动终端缩放迸程时出错",
 		"failed-to-kill-pseudoterminal": "终止伪终端失败",
 		"no-python-to-start-unix-pseudoterminal": "没有Python来启动Unix伪终端",
+		"private-API-changed": "私有API改变了",
 		"resizer-disabled": "终端缩放迸程已禁用",
 		"resizer-exited-unexpectedly": "终端缩放迸程意外退出：{{- code}}"
 	},

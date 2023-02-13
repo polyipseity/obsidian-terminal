@@ -15,27 +15,6 @@ import type { AsyncOrSync } from "ts-essentials"
 import type { TerminalPlugin } from "sources/main"
 import { around } from "monkey-around"
 
-export function useSettings(element: HTMLElement): readonly [
-	HTMLElement,
-	() => void,
-] {
-	const container = element.createEl("div", {
-		cls: "vertical-tab-content-container",
-	})
-	return [
-		container.createEl("div", {
-			cls: "vertical-tab-content",
-		}),
-		(): void => { container.remove() },
-	]
-}
-
-export function useSubsettings(element: HTMLElement): HTMLElement {
-	const ret = element.createEl("div")
-	ret.createEl("div")
-	return ret
-}
-
 export class UpdatableUI {
 	readonly #updaters = new Functions({ async: false })
 	readonly #finalizers = new Functions({ async: false })
@@ -159,6 +138,32 @@ export class UnnamespacedID<V extends string> {
 	}
 }
 
+export function addRibbonIcon(
+	plugin: Plugin,
+	...args: Parameters<Plugin["addRibbonIcon"]>
+): readonly [HTMLElement, (() => void) | null] {
+	let unregister: (() => void) | null = null
+	const unpatch = around(plugin, {
+		register(proto) {
+			return function fn(this: Plugin, cb: () => unknown): void {
+				let unregistered = false
+				unregister = (): void => {
+					if (unregistered) { return }
+					cb()
+					unregistered = true
+				}
+				proto.call(this, unregister)
+			}
+		},
+	})
+	try {
+		const element = plugin.addRibbonIcon(...args)
+		return [element, unregister]
+	} finally {
+		unpatch()
+	}
+}
+
 export function asyncDebounce<
 	A extends readonly unknown[],
 	R,
@@ -263,4 +268,25 @@ export function updateDisplayText(view: View): void {
 	if (oldText !== null) {
 		document.title = document.title.replace(oldText, text)
 	}
+}
+
+export function useSettings(element: HTMLElement): readonly [
+	HTMLElement,
+	() => void,
+] {
+	const container = element.createEl("div", {
+		cls: "vertical-tab-content-container",
+	})
+	return [
+		container.createEl("div", {
+			cls: "vertical-tab-content",
+		}),
+		(): void => { container.remove() },
+	]
+}
+
+export function useSubsettings(element: HTMLElement): HTMLElement {
+	const ret = element.createEl("div")
+	ret.createEl("div")
+	return ret
 }
