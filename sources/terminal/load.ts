@@ -173,7 +173,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 		i18n.t("asset:ribbons.open-terminal"),
 		i18n.t("ribbons.open-terminal"),
 		() => { new SelectProfileModal(plugin).open() },
-	).remove()
+	)
 	plugin.registerEvent(app.workspace.on("file-menu", (menu, file) => {
 		if (!plugin.settings.addToContextMenu) {
 			return
