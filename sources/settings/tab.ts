@@ -61,7 +61,7 @@ export class SettingTab extends PluginSettingTab {
 							.mutateSettings(settingsM => {
 								settingsM.language = DEFAULT_SETTINGS.language
 							}),
-						() => { this.#postMutate(true) },
+						() => { this.#postMutate() },
 					))
 			})
 			.newSetting(containerEl, setting => {
@@ -74,7 +74,7 @@ export class SettingTab extends PluginSettingTab {
 							Object.assign(settingsM, await this.#onMutation)),
 						() => {
 							this.#onMutation = this.#snapshot()
-							this.#postMutate(true)
+							this.#postMutate()
 						},
 						{
 							post: component => {
@@ -92,7 +92,7 @@ export class SettingTab extends PluginSettingTab {
 						i18n.t("asset:settings.all-settings-actions.reload-icon"),
 						async () => plugin.mutateSettings(async settingsM =>
 							plugin.loadSettings(settingsM)),
-						() => { this.#postMutate(true) },
+						() => { this.#postMutate() },
 						{
 							post: component => {
 								component
@@ -106,7 +106,7 @@ export class SettingTab extends PluginSettingTab {
 						async () => plugin
 							.mutateSettings(settingsM =>
 								Object.assign(settingsM, cloneAsWritable(DEFAULT_SETTINGS))),
-						() => { this.#postMutate(true) },
+						() => { this.#postMutate() },
 						{
 							post: component => {
 								component
@@ -131,7 +131,7 @@ export class SettingTab extends PluginSettingTab {
 							.mutateSettings(settingsM => {
 								settingsM.addToCommand = DEFAULT_SETTINGS.addToCommand
 							}),
-						() => { this.#postMutate(true) },
+						() => { this.#postMutate() },
 					))
 			})
 			.newSetting(containerEl, setting => {
@@ -151,7 +151,7 @@ export class SettingTab extends PluginSettingTab {
 							.mutateSettings(settingsM => {
 								settingsM.addToContextMenu = DEFAULT_SETTINGS.addToContextMenu
 							}),
-						() => { this.#postMutate(true) },
+						() => { this.#postMutate() },
 					))
 			})
 			.newSetting(containerEl, setting => {
@@ -184,7 +184,7 @@ export class SettingTab extends PluginSettingTab {
 						async () => plugin.mutateSettings(settingsM => {
 							settingsM.hideStatusBar = DEFAULT_SETTINGS.hideStatusBar
 						}),
-						() => { this.#postMutate(true) },
+						() => { this.#postMutate() },
 					))
 			})
 			.newSetting(containerEl, setting => {
@@ -204,7 +204,7 @@ export class SettingTab extends PluginSettingTab {
 						async () => plugin.mutateSettings(settingsM => {
 							settingsM.noticeTimeout = DEFAULT_SETTINGS.noticeTimeout
 						}),
-						() => { this.#postMutate(true) },
+						() => { this.#postMutate() },
 					))
 			})
 			.newSetting(containerEl, setting => {
@@ -225,7 +225,7 @@ export class SettingTab extends PluginSettingTab {
 						async () => plugin.mutateSettings(settingsM => {
 							settingsM.errorNoticeTimeout = DEFAULT_SETTINGS.errorNoticeTimeout
 						}),
-						() => { this.#postMutate(true) },
+						() => { this.#postMutate() },
 					))
 			})
 			.newSetting(containerEl, setting => {
@@ -245,7 +245,7 @@ export class SettingTab extends PluginSettingTab {
 									await plugin.mutateSettings(settingsM => {
 										settingsM.profiles = Object.fromEntries(data)
 									})
-									this.#postMutate(true)
+									this.#postMutate()
 								},
 							).open()
 						}))
@@ -255,7 +255,7 @@ export class SettingTab extends PluginSettingTab {
 						async () => plugin.mutateSettings(settingsM => {
 							settingsM.profiles = cloneAsWritable(DEFAULT_SETTINGS.profiles)
 						}),
-						() => { this.#postMutate(true) },
+						() => { this.#postMutate() },
 					))
 			})
 			.new(() => containerEl.createEl("h2"), ele => {
@@ -294,7 +294,7 @@ export class SettingTab extends PluginSettingTab {
 						async () => plugin.mutateSettings(settingsM => {
 							settingsM.preferredRenderer = DEFAULT_SETTINGS.preferredRenderer
 						}),
-						() => { this.#postMutate(true) },
+						() => { this.#postMutate() },
 					))
 			})
 			.finally(language.onChangeLanguage.listen(() => { this.display() }))
@@ -329,8 +329,8 @@ export class SettingTab extends PluginSettingTab {
 		}))
 	}
 
-	#postMutate(redraw = false): void {
+	#postMutate(): void {
 		this.plugin.saveSettings().catch(error => { console.error(error) })
-		if (redraw) { this.display() }
+		this.display()
 	}
 }

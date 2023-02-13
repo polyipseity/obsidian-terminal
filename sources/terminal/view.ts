@@ -100,7 +100,7 @@ export class TerminalEditModal extends DialogModal {
 						plugin,
 						i18n.t("asset:components.terminal.working-directory-icon"),
 						() => { state.cwd = protostate.cwd },
-						() => { this.#postMutate(true) },
+						() => { this.#postMutate() },
 					))
 			})
 			.newSetting(listEl, setting => {
@@ -119,7 +119,7 @@ export class TerminalEditModal extends DialogModal {
 							this.#profile = value
 							this.#state.profile = cloneAsWritable(profile0)
 						},
-						() => { this.#postMutate(true) },
+						() => { this.#postMutate() },
 						{
 							pre: component => {
 								component
@@ -145,7 +145,7 @@ export class TerminalEditModal extends DialogModal {
 								profile0 => {
 									this.#profile = null
 									state.profile = profile0
-									this.#postMutate(true)
+									this.#postMutate()
 								},
 							).open()
 						}))
@@ -156,7 +156,7 @@ export class TerminalEditModal extends DialogModal {
 							this.#profile = null
 							state.profile = cloneAsWritable(protostate.profile)
 						},
-						() => { this.#postMutate(true) },
+						() => { this.#postMutate() },
 					))
 			})
 			.finally(language.onChangeLanguage.listen(() => { ui.update() }))
@@ -172,8 +172,8 @@ export class TerminalEditModal extends DialogModal {
 		await super.confirm(close)
 	}
 
-	#postMutate(redraw = false): void {
-		if (redraw) { this.ui.update() }
+	#postMutate(): void {
+		this.ui.update()
 	}
 }
 

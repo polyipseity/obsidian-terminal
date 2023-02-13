@@ -95,7 +95,7 @@ export class EditableListModal<T> extends Modal {
 							.onClick(async () => {
 								this.#data.unshift(placeholder)
 								this.#setupListSubUI0()
-								await this.#postMutate(true)
+								await this.#postMutate()
 							})
 					})
 			})
@@ -115,7 +115,7 @@ export class EditableListModal<T> extends Modal {
 						.onClick(async () => {
 							this.#data.push(placeholder)
 							this.#setupListSubUI0()
-							await this.#postMutate(true)
+							await this.#postMutate()
 						}))
 			})
 			.finally(language.onChangeLanguage.listen(() => { ui.update() }))
@@ -126,9 +126,9 @@ export class EditableListModal<T> extends Modal {
 		this.ui.clear()
 	}
 
-	async #postMutate(redraw = false): Promise<void> {
+	async #postMutate(): Promise<void> {
 		const cb = this.#callback(typedStructuredClone(this.#data))
-		if (redraw) { this.ui.update() }
+		this.ui.update()
 		await cb
 	}
 
@@ -160,7 +160,7 @@ export class EditableListModal<T> extends Modal {
 						.onClick(async () => {
 							removeAt(this.#data, index)
 							this.#setupListSubUI0()
-							await this.#postMutate(true)
+							await this.#postMutate()
 						}))
 					.addExtraButton(button => button
 						.setTooltip(i18n.t("components.editable-list.move-up"))
@@ -169,7 +169,7 @@ export class EditableListModal<T> extends Modal {
 							if (index <= 0) { return }
 							swap(this.#data, index - 1, index)
 							this.#setupListSubUI0()
-							await this.#postMutate(true)
+							await this.#postMutate()
 						}))
 					.addExtraButton(button => button
 						.setTooltip(i18n.t("components.editable-list.move-down"))
@@ -178,7 +178,7 @@ export class EditableListModal<T> extends Modal {
 							if (index >= this.#data.length - 1) { return }
 							swap(this.#data, index, index + 1)
 							this.#setupListSubUI0()
-							await this.#postMutate(true)
+							await this.#postMutate()
 						}))
 			})
 		}
@@ -232,7 +232,7 @@ export class ProfileModal extends Modal {
 					.addText(linkSetting(
 						() => Settings.Profile.name(profile),
 						value => { profile.name = value },
-						async () => this.#postMutate(true),
+						async () => this.#postMutate(),
 					))
 					.addExtraButton(resetButton(
 						plugin,
@@ -240,7 +240,7 @@ export class ProfileModal extends Modal {
 						() => {
 							profile.name = Settings.Profile.DEFAULTS[profile.type].name
 						},
-						async () => this.#postMutate(true),
+						async () => this.#postMutate(),
 					))
 			})
 			.newSetting(listEl, setting => {
@@ -252,7 +252,7 @@ export class ProfileModal extends Modal {
 						async value => {
 							this.#replaceData(cloneAsWritable(value))
 							this.#setupTypedUI0()
-							await this.#postMutate(true)
+							await this.#postMutate()
 						},
 					))
 			})
@@ -270,7 +270,7 @@ export class ProfileModal extends Modal {
 						),
 						async () => {
 							this.#setupTypedUI0()
-							await this.#postMutate(true)
+							await this.#postMutate()
 						},
 						{
 							pre: dropdown => {
@@ -314,9 +314,9 @@ export class ProfileModal extends Modal {
 		this.ui.clear()
 	}
 
-	async #postMutate(redraw = false): Promise<void> {
+	async #postMutate(): Promise<void> {
 		const cb = this.#callback(typedStructuredClone(this.#data))
-		if (redraw) { this.ui.update() }
+		this.ui.update()
 		await cb
 	}
 
@@ -360,7 +360,7 @@ export class ProfileModal extends Modal {
 							() => {
 								profile.executable = Settings.Profile.DEFAULTS[type].executable
 							},
-							async () => this.#postMutate(true),
+							async () => this.#postMutate(),
 						))
 				}).newSetting(element, setting => {
 					setting
@@ -379,7 +379,7 @@ export class ProfileModal extends Modal {
 									profile.args,
 									async value => {
 										profile.args = value
-										await this.#postMutate(true)
+										await this.#postMutate()
 									},
 									() => i18n.t(`components.profile.${type}.arguments`),
 								).open()
@@ -391,7 +391,7 @@ export class ProfileModal extends Modal {
 								profile.args =
 									cloneAsWritable(Settings.Profile.DEFAULTS[type].args)
 							},
-							async () => this.#postMutate(true),
+							async () => this.#postMutate(),
 						))
 				})
 				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
@@ -413,7 +413,7 @@ export class ProfileModal extends Modal {
 									profile.platforms[platform] =
 										Settings.Profile.DEFAULTS[type].platforms[platform]
 								},
-								async () => this.#postMutate(true),
+								async () => this.#postMutate(),
 							))
 					})
 				}
@@ -436,7 +436,7 @@ export class ProfileModal extends Modal {
 							() => {
 								profile.executable = Settings.Profile.DEFAULTS[type].executable
 							},
-							async () => this.#postMutate(true),
+							async () => this.#postMutate(),
 						))
 				}).newSetting(element, setting => {
 					setting
@@ -455,7 +455,7 @@ export class ProfileModal extends Modal {
 									profile.args,
 									async value => {
 										profile.args = value
-										await this.#postMutate(true)
+										await this.#postMutate()
 									},
 									() => i18n.t(`components.profile.${type}.arguments`),
 								).open()
@@ -467,7 +467,7 @@ export class ProfileModal extends Modal {
 								profile.args =
 									cloneAsWritable(Settings.Profile.DEFAULTS[type].args)
 							},
-							async () => this.#postMutate(true),
+							async () => this.#postMutate(),
 						))
 				})
 				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
@@ -489,7 +489,7 @@ export class ProfileModal extends Modal {
 									profile.platforms[platform] =
 										Settings.Profile.DEFAULTS[type].platforms[platform]
 								},
-								async () => this.#postMutate(true),
+								async () => this.#postMutate(),
 							))
 					})
 				}
@@ -520,7 +520,7 @@ export class ProfileModal extends Modal {
 								profile.pythonExecutable =
 									Settings.Profile.DEFAULTS[type].pythonExecutable
 							},
-							async () => this.#postMutate(true),
+							async () => this.#postMutate(),
 						))
 				}).newSetting(element, setting => {
 					setting
@@ -547,7 +547,7 @@ export class ProfileModal extends Modal {
 								profile.enableWindowsConhostWorkaround =
 									Settings.Profile.DEFAULTS[type].enableWindowsConhostWorkaround
 							},
-							async () => this.#postMutate(true),
+							async () => this.#postMutate(),
 						))
 				})
 				break
@@ -630,7 +630,7 @@ export class ProfileListModal extends Modal {
 						async value => {
 							this.#addProfile(0, cloneAsWritable(value))
 							this.#setupListSubUI0()
-							await this.#postMutate(true)
+							await this.#postMutate()
 						},
 					))
 			})
@@ -652,7 +652,7 @@ export class ProfileListModal extends Modal {
 						async value => {
 							this.#addProfile(this.#data.length, cloneAsWritable(value))
 							this.#setupListSubUI0()
-							await this.#postMutate(true)
+							await this.#postMutate()
 						},
 					))
 			})
@@ -664,9 +664,9 @@ export class ProfileListModal extends Modal {
 		this.ui.update()
 	}
 
-	async #postMutate(redraw = false): Promise<void> {
+	async #postMutate(): Promise<void> {
 		const cb = this.#callback(cloneAsWritable(this.#data))
-		if (redraw) { this.ui.update() }
+		this.ui.update()
 		await cb
 	}
 
@@ -703,7 +703,7 @@ export class ProfileListModal extends Modal {
 								profile,
 								async profile0 => {
 									this.#data[index] = [id, profile0]
-									await this.#postMutate(true)
+									await this.#postMutate()
 								},
 							).open()
 						}))
@@ -713,7 +713,7 @@ export class ProfileListModal extends Modal {
 						.onClick(async () => {
 							removeAt(this.#data, index)
 							this.#setupListSubUI0()
-							await this.#postMutate(true)
+							await this.#postMutate()
 						}))
 					.addExtraButton(button => button
 						.setTooltip(i18n.t("components.editable-list.move-up"))
@@ -722,7 +722,7 @@ export class ProfileListModal extends Modal {
 							if (index <= 0) { return }
 							swap(this.#data, index - 1, index)
 							this.#setupListSubUI0()
-							await this.#postMutate(true)
+							await this.#postMutate()
 						}))
 					.addExtraButton(button => button
 						.setTooltip(i18n.t("components.editable-list.move-down"))
@@ -731,7 +731,7 @@ export class ProfileListModal extends Modal {
 							if (index >= this.#data.length - 1) { return }
 							swap(this.#data, index, index + 1)
 							this.#setupListSubUI0()
-							await this.#postMutate(true)
+							await this.#postMutate()
 						}))
 			})
 		}
