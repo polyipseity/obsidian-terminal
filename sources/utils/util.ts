@@ -6,6 +6,9 @@ import { JSON_STRINGIFY_SPACE } from "sources/magic"
 import type { Writable } from "node:stream"
 import { getSerialize } from "json-stringify-safe"
 
+// eslint-disable-next-line no-void
+export const UNDEF = void 0
+
 export const PLATFORMS =
 	deepFreeze(["android", "darwin", "ios", "linux", "unknown", "win32"] as const)
 export type Platform = typeof PLATFORMS[number]

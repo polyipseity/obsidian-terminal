@@ -14,14 +14,7 @@ import {
 import { JSON_STRINGIFY_SPACE, TERMINAL_EXIT_SUCCESS } from "../magic"
 import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
 import {
-	UnnamespacedID,
-	UpdatableUI,
-	notice2,
-	printError,
-	updateDisplayText,
-	useSettings,
-} from "sources/utils/obsidian"
-import {
+	UNDEF,
 	anyToError,
 	basename,
 	cloneAsWritable,
@@ -37,6 +30,14 @@ import {
 	saveFile,
 	typedStructuredClone,
 } from "../utils/util"
+import {
+	UnnamespacedID,
+	UpdatableUI,
+	notice2,
+	printError,
+	updateDisplayText,
+	useSettings,
+} from "sources/utils/obsidian"
 import { linkSetting, resetButton } from "sources/ui/settings"
 import { CanvasAddon } from "xterm-addon-canvas"
 import type { DeepWritable } from "ts-essentials"
@@ -87,10 +88,7 @@ export class TerminalEditModal extends DialogModal {
 					.setName(i18n.t("components.terminal.working-directory"))
 					.addText(linkSetting(
 						() => state.cwd ?? "",
-						value => {
-							// eslint-disable-next-line no-void
-							state.cwd = value === "" ? void 0 : value
-						},
+						value => { state.cwd = value === "" ? UNDEF : value },
 						() => { this.#postMutate() },
 						{
 							post: component => {

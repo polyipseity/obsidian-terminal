@@ -7,6 +7,7 @@ import {
 	type WorkspaceLeaf,
 } from "obsidian"
 import {
+	UNDEF,
 	commandNamer,
 	deepFreeze,
 	isNonNullish,
@@ -140,10 +141,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 		) => (checking: boolean) => {
 			// eslint-disable-next-line consistent-return
 			const cwd0 = ((): string | null | undefined => {
-				if (cwd === "") {
-					// eslint-disable-next-line no-void
-					return void 0
-				}
+				if (cwd === "") { return UNDEF }
 				if (adapter === null) { return null }
 				switch (cwd) {
 					case "root":
