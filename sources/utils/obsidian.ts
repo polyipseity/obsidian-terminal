@@ -1,15 +1,173 @@
 
 import {
+	type BaseComponent,
 	type Debouncer,
+	DropdownComponent,
 	Notice,
 	Plugin,
 	type PluginManifest,
+	Setting,
 	type View,
 } from "obsidian"
 import { NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
+import {
+	escapeQuerySelectorAttribute as escQueryAttr,
+	isNonNullish,
+	isUndefined,
+} from "./util"
 import type { AsyncOrSync } from "ts-essentials"
 import type { TerminalPlugin } from "sources/main"
-import { isUndefined } from "./util"
+import { around } from "monkey-around"
+
+export function useSettings(element: HTMLElement): readonly [
+	HTMLElement,
+	() => void,
+] {
+	const container = element.createEl("div", {
+		cls: "vertical-tab-content-container",
+	})
+	return [
+		container.createEl("div", {
+			cls: "vertical-tab-content",
+		}),
+		(): void => { container.remove() },
+	]
+}
+
+export class UpdatableUI {
+	readonly #updaters: (() => void)[] = []
+	readonly #finalizers: (() => void)[] = []
+
+	public new<V>(
+		create: () => V,
+		configure?: ((value: V) => void) | null,
+		destroy?: ((value: V) => void) | null,
+	): this {
+		const value = create()
+		if (isNonNullish(configure)) {
+			const updater = (): void => { configure(value) }
+			updater()
+			this.#updaters.push(updater)
+		}
+		if (isNonNullish(destroy)) {
+			this.#finalizers.push(() => { destroy(value) })
+		}
+		return this
+	}
+
+	public newSetting(
+		element: HTMLElement,
+		configure: (setting: Setting) => void,
+	): this {
+		let recording = true
+		return this.new(() => {
+			const setting = new Setting(element),
+				patch = <C extends BaseComponent>(proto: (
+					cb: (component: C) => unknown,
+				) => Setting): (cb: (component: C) => unknown) => Setting => {
+					const components: C[] = []
+					let index = 0
+					return function fn(
+						this: Setting,
+						cb: (component: C) => unknown,
+					): Setting {
+						if (recording) {
+							return proto.call(this, component => {
+								if (component instanceof DropdownComponent) {
+									const comp0: DropdownComponent = component
+									around(comp0, {
+										addOption(proto0) {
+											return function fn0(
+												this: DropdownComponent,
+												value: string,
+												display: string,
+											): DropdownComponent {
+												const query = `option[value="${escQueryAttr(value)}"]`
+												if (this.selectEl.querySelector(query) === null) {
+													return proto0.call(this, value, display)
+												}
+												return this
+											}
+										},
+										addOptions(proto0) {
+											return function fn0(
+												this: DropdownComponent,
+												options: Record<string, string>,
+											): DropdownComponent {
+												return proto0.call(
+													this,
+													Object.fromEntries(Object.entries(options)
+														.filter(([value]) => {
+															const query =
+																`option[value="${escQueryAttr(value)}"]`
+															return this.selectEl.querySelector(query) === null
+														})),
+												)
+											}
+										},
+									})
+								}
+								components.push(component)
+								cb(component)
+							})
+						}
+						const comp = components[index++ % components.length]
+						if (isUndefined(comp)) {
+							throw new Error(index.toString())
+						}
+						cb(comp)
+						return this
+					}
+				}
+			around(setting, {
+				addButton: patch,
+				addColorPicker: patch,
+				addDropdown: patch,
+				addExtraButton: patch,
+				addMomentFormat: patch,
+				addSearch: patch,
+				addSlider: patch,
+				addText: patch,
+				addTextArea: patch,
+				addToggle: patch,
+			} satisfies { [key in (keyof Setting) & `add${string}`]: unknown })
+			return setting
+		}, setting => {
+			configure(setting)
+			recording = false
+		}, setting => { setting.clear() })
+	}
+
+	public finally(finalizer: () => void): this {
+		this.#finalizers.push(finalizer)
+		return this
+	}
+
+	public embed<U extends UpdatableUI>(
+		create: () => U,
+		configure?: ((ele: U) => void) | null,
+		destroy?: ((ele: U) => void) | null,
+	): this {
+		let update = false
+		return this.new(create, ele => {
+			if (update) { ele.update() }
+			update = true;
+			(configure ?? ((): void => { }))(ele)
+		}, ele => {
+			ele.clear();
+			(destroy ?? ((): void => { }))(ele)
+		})
+	}
+
+	public update(): void {
+		this.#updaters.forEach(func => { func() })
+	}
+
+	public clear(): void {
+		this.#finalizers.splice(0).forEach(func => { func() })
+		this.#updaters.length = 0
+	}
+}
 
 export class UnnamespacedID<V extends string> {
 	public constructor(public readonly id: V) { }

@@ -134,6 +134,10 @@ export function deepFreeze<T>(value: T): DeepReadonly<T> {
 	return Object.freeze(value) as DeepReadonly<T>
 }
 
+export function escapeQuerySelectorAttribute(value: string): string {
+	return value.replace(/\\/gu, "\\\\").replace(/"/gu, "\\\"")
+}
+
 export function executeParanoidly<T>(callback: (
 	resolve: (value: AsyncOrSync<T>) => void,
 	reject: (reason?: unknown) => void,

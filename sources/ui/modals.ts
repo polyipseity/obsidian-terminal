@@ -1,14 +1,16 @@
 import type { AsyncOrSync, DeepWritable, Writable } from "ts-essentials"
 import { DISABLED_TOOLTIP, JSON_STRINGIFY_SPACE } from "sources/magic"
-import { Modal, Setting, type ValueComponent } from "obsidian"
+import { Modal, type Setting, type ValueComponent } from "obsidian"
 import {
 	PROFILE_PRESETS,
 	PROFILE_PRESET_ORDERED_KEYS,
 } from "sources/settings/profile-presets"
+import { UpdatableUI, useSettings } from "sources/utils/obsidian"
 import {
 	clearProperties,
 	cloneAsWritable,
 	insertAt,
+	isUndefined,
 	randomNotIn,
 	removeAt,
 	swap,
@@ -26,19 +28,8 @@ import { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "sources/main"
 
-export function useSettings(element: HTMLElement): HTMLElement {
-	element.replaceChildren()
-	return element.createEl("div", {
-		cls: "vertical-tab-content-container",
-	}).createEl("div", {
-		cls: "vertical-tab-content",
-	})
-}
-
 export class EditableListModal<T> extends Modal {
-	readonly #languageChanger =
-		this.plugin.language.onChangeLanguage.listen(() => { this.display() })
-
+	protected readonly ui = new UpdatableUI()
 	readonly #data
 	readonly #inputter
 	readonly #callback
@@ -54,7 +45,7 @@ export class EditableListModal<T> extends Modal {
 		protected readonly placeholder: T,
 		data: readonly T[],
 		callback: (data_: Writable<typeof data>) => unknown,
-		title = (): string | null => null,
+		title?: () => string,
 	) {
 		super(app)
 		this.#inputter = inputter
@@ -83,92 +74,119 @@ export class EditableListModal<T> extends Modal {
 
 	public override onOpen(): void {
 		super.onOpen()
-		this.display()
+		const { plugin, placeholder, ui } = this,
+			[listEl, listElRemover] = useSettings(this.contentEl),
+			{ language } = plugin,
+			{ i18n } = language,
+			title = this.#title
+		if (!isUndefined(title)) {
+			ui.new(() => listEl.createEl("h1"), ele => {
+				ele.textContent = title()
+			})
+		}
+		ui.finally(listElRemover)
+			.newSetting(listEl, setting => {
+				setting
+					.setName(i18n.t("components.editable-list.prepend"))
+					.addButton(button => {
+						button
+							.setIcon(i18n.t("asset:components.editable-list.prepend-icon"))
+							.setTooltip(i18n.t("components.editable-list.prepend"))
+							.onClick(async () => {
+								this.#data.unshift(placeholder)
+								this.#setupListSubUI0()
+								await this.#postMutate(true)
+							})
+					})
+			})
+			.embed(() => {
+				const subUI = new UpdatableUI(),
+					ele = listEl.createEl("div")
+				this.#setupListSubUI0 = (): void => { this.#setupListSubUI(subUI, ele) }
+				this.#setupListSubUI0()
+				return subUI
+			})
+			.newSetting(listEl, setting => {
+				setting
+					.setName(i18n.t("components.editable-list.append"))
+					.addButton(button => button
+						.setIcon(i18n.t("asset:components.editable-list.append-icon"))
+						.setTooltip(i18n.t("components.editable-list.append"))
+						.onClick(async () => {
+							this.#data.push(placeholder)
+							this.#setupListSubUI0()
+							await this.#postMutate(true)
+						}))
+			})
+			.finally(language.onChangeLanguage.listen(() => { ui.update() }))
 	}
 
 	public override onClose(): void {
 		super.onClose()
-		this.#languageChanger()
-	}
-
-	protected display(): void {
-		const { contentEl, plugin, placeholder } = this,
-			listEl = useSettings(contentEl),
-			{ i18n } = plugin.language,
-			title = this.#title()
-		if (title !== null) {
-			listEl.createEl("h1", { text: title })
-		}
-		new Setting(listEl)
-			.setName(i18n.t("components.editable-list.prepend"))
-			.addButton(button => button
-				.setIcon(i18n.t("asset:components.editable-list.prepend-icon"))
-				.setTooltip(i18n.t("components.editable-list.prepend"))
-				.onClick(async () => {
-					this.#data.unshift(placeholder)
-					await this.#postMutate(true)
-				}))
-		for (const [index, item] of this.#data.entries()) {
-			const setting = new Setting(listEl)
-				.setName(i18n.t("components.editable-list.name", {
-					count: index + 1,
-					ordinal: true,
-				}))
-			this.#inputter(
-				setting,
-				() => item,
-				async value => {
-					this.#data[index] = value
-					await this.#postMutate()
-				},
-			)
-			setting
-				.addExtraButton(button => button
-					.setTooltip(i18n.t("components.editable-list.move-up"))
-					.setIcon(i18n.t("asset:components.editable-list.move-up-icon"))
-					.onClick(async () => {
-						if (index <= 0) { return }
-						swap(this.#data, index - 1, index)
-						await this.#postMutate(true)
-					}))
-				.addExtraButton(button => button
-					.setTooltip(i18n.t("components.editable-list.move-down"))
-					.setIcon(i18n.t("asset:components.editable-list.move-down-icon"))
-					.onClick(async () => {
-						if (index >= this.#data.length - 1) { return }
-						swap(this.#data, index, index + 1)
-						await this.#postMutate(true)
-					}))
-				.addExtraButton(button => button
-					.setTooltip(i18n.t("components.editable-list.remove"))
-					.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
-					.onClick(async () => {
-						removeAt(this.#data, index)
-						await this.#postMutate(true)
-					}))
-		}
-		new Setting(listEl)
-			.setName(i18n.t("components.editable-list.append"))
-			.addButton(button => button
-				.setIcon(i18n.t("asset:components.editable-list.append-icon"))
-				.setTooltip(i18n.t("components.editable-list.append"))
-				.onClick(async () => {
-					this.#data.push(placeholder)
-					await this.#postMutate(true)
-				}))
+		this.ui.clear()
 	}
 
 	async #postMutate(redraw = false): Promise<void> {
 		const cb = this.#callback(typedStructuredClone(this.#data))
-		if (redraw) { this.display() }
+		if (redraw) { this.ui.update() }
 		await cb
+	}
+
+	#setupListSubUI0 = (): void => { }
+	#setupListSubUI(ui: UpdatableUI, element: HTMLElement): void {
+		ui.clear()
+		const { plugin } = this,
+			{ language } = plugin,
+			{ i18n } = language
+		ui.finally(() => { element.replaceChildren() })
+		for (const [index, item] of this.#data.entries()) {
+			ui.newSetting(element, setting => {
+				setting.setName(i18n.t("components.editable-list.name", {
+					count: index + 1,
+					ordinal: true,
+				}))
+				this.#inputter(
+					setting,
+					() => item,
+					async value => {
+						this.#data[index] = value
+						await this.#postMutate()
+					},
+				)
+				setting
+					.addExtraButton(button => button
+						.setTooltip(i18n.t("components.editable-list.move-up"))
+						.setIcon(i18n.t("asset:components.editable-list.move-up-icon"))
+						.onClick(async () => {
+							if (index <= 0) { return }
+							swap(this.#data, index - 1, index)
+							this.#setupListSubUI0()
+							await this.#postMutate(true)
+						}))
+					.addExtraButton(button => button
+						.setTooltip(i18n.t("components.editable-list.move-down"))
+						.setIcon(i18n.t("asset:components.editable-list.move-down-icon"))
+						.onClick(async () => {
+							if (index >= this.#data.length - 1) { return }
+							swap(this.#data, index, index + 1)
+							this.#setupListSubUI0()
+							await this.#postMutate(true)
+						}))
+					.addExtraButton(button => button
+						.setTooltip(i18n.t("components.editable-list.remove"))
+						.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
+						.onClick(async () => {
+							removeAt(this.#data, index)
+							this.#setupListSubUI0()
+							await this.#postMutate(true)
+						}))
+			})
+		}
 	}
 }
 
 export class ProfileModal extends Modal {
-	readonly #languageChanger =
-		this.plugin.language.onChangeLanguage.listen(() => { this.display() })
-
+	protected readonly ui = new UpdatableUI()
 	readonly #data
 	readonly #callback
 	readonly #presets
@@ -196,297 +214,79 @@ export class ProfileModal extends Modal {
 
 	public override onOpen(): void {
 		super.onOpen()
-		this.display()
-	}
-
-	public override onClose(): void {
-		super.onClose()
-		this.#languageChanger()
-	}
-
-	protected display(): void {
-		const { contentEl, plugin } = this,
-			listEl = useSettings(contentEl),
+		const { plugin, ui } = this,
+			[listEl, listElRemover] = useSettings(this.contentEl),
 			profile = this.#data,
 			{ type } = profile,
 			{ language } = plugin,
-			{ i18n } = language,
-			title = listEl.createEl("h1", {
-				text: i18n.t("components.profile.title", {
+			{ i18n } = language
+		ui.finally(listElRemover)
+			.new(() => listEl.createEl("h1"), ele => {
+				ele.textContent = i18n.t("components.profile.title", {
 					name: Settings.Profile.name(profile),
 					profile,
-				}),
+				})
 			})
-		new Setting(listEl)
-			.setName(i18n.t("components.profile.name"))
-			.addText(linkSetting(
-				() => Settings.Profile.name(profile),
-				value => { profile.name = value },
-				async value => {
-					title.textContent = i18n.t("components.profile.title", {
-						name: value,
-						profile,
-					})
-					await this.#postMutate()
-				},
-			))
-			.addExtraButton(resetButton(
-				plugin,
-				i18n.t("asset:components.profile.name-icon"),
-				() => { profile.name = Settings.Profile.DEFAULTS[type].name },
-				async () => this.#postMutate(true),
-			))
-		new Setting(listEl)
-			.setName(i18n.t("components.profile.preset"))
-			.addDropdown(dropdownSelect(
-				i18n.t("components.dropdown.unselected"),
-				this.#presets,
-				async value => {
-					this.#replaceData(cloneAsWritable(value))
-					await this.#postMutate(true)
-				},
-			))
-		new Setting(listEl)
-			.setName(i18n.t("components.profile.type"))
-			.addDropdown(linkSetting(
-				(): string => type,
-				setTextToEnum(
-					Settings.Profile.TYPES,
-					value => {
-						this.#replaceData(cloneAsWritable(Settings.Profile.DEFAULTS[value]))
-					},
-				),
-				async () => this.#postMutate(true),
-				{
-					pre: dropdown => {
-						dropdown
-							.addOptions(Object
-								.fromEntries(Settings.Profile.TYPES
-									.filter(type0 => PROFILE_PROPERTIES[type0].valid)
-									.map(type0 => [type0, i18n.t(`types.profiles.${type0}`)])))
-					},
-				},
-			))
-			.addExtraButton(resetButton(
-				plugin,
-				i18n.t("asset:components.profile.type-icon"),
-				unexpected,
-				unexpected,
-				{
-					post: button => {
-						button.setTooltip(DISABLED_TOOLTIP).setDisabled(true)
-					},
-				},
-			))
-		switch (type) {
-			case "": {
-				break
-			}
-			case "console": {
-				break
-			}
-			case "external": {
-				new Setting(listEl)
-					.setName(i18n.t(`components.profile.${type}.executable`))
+			.newSetting(listEl, setting => {
+				setting
+					.setName(i18n.t("components.profile.name"))
 					.addText(linkSetting(
-						() => profile.executable,
-						value => { profile.executable = value },
-						async () => this.#postMutate(),
+						() => Settings.Profile.name(profile),
+						value => { profile.name = value },
+						async () => this.#postMutate(true),
 					))
 					.addExtraButton(resetButton(
 						plugin,
-						i18n.t(`asset:components.profile.${type}.executable-icon`),
-						() => {
-							profile.executable = Settings.Profile.DEFAULTS[type].executable
-						},
+						i18n.t("asset:components.profile.name-icon"),
+						() => { profile.name = Settings.Profile.DEFAULTS[type].name },
 						async () => this.#postMutate(true),
 					))
-				new Setting(listEl)
-					.setName(i18n.t(`components.profile.${type}.arguments`))
-					.setDesc(i18n.t("settings.list-description", {
-						count: profile.args.length,
-					}))
-					.addButton(button => button
-						.setIcon(i18n.t("asset:generic.edit-list-icon"))
-						.setTooltip(i18n.t("generic.edit"))
-						.onClick(() => {
-							new EditableListModal(
-								plugin,
-								EditableListModal.stringInputter,
-								"",
-								profile.args,
-								async value => {
-									profile.args = value
-									await this.#postMutate(true)
-								},
-								() => i18n.t(`components.profile.${type}.arguments`),
-							).open()
-						}))
-					.addExtraButton(resetButton(
-						plugin,
-						i18n.t(`asset:components.profile.${type}.arguments-icon`),
-						() => {
-							profile.args =
-								cloneAsWritable(Settings.Profile.DEFAULTS[type].args)
+			})
+			.newSetting(listEl, setting => {
+				setting
+					.setName(i18n.t("components.profile.preset"))
+					.addDropdown(dropdownSelect(
+						i18n.t("components.dropdown.unselected"),
+						this.#presets,
+						async value => {
+							this.#replaceData(cloneAsWritable(value))
+							this.#setupTypedUI0()
+							await this.#postMutate(true)
 						},
-						async () => this.#postMutate(true),
 					))
-				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
-					new Setting(listEl)
-						.setName(i18n.t(`types.platforms.${platform}`))
-						.addToggle(linkSetting(
-							() => profile.platforms[platform] ??
-								Settings.Profile.DEFAULTS[type].platforms[platform],
+			})
+			.newSetting(listEl, setting => {
+				setting
+					.setName(i18n.t("components.profile.type"))
+					.addDropdown(linkSetting(
+						(): string => type,
+						setTextToEnum(
+							Settings.Profile.TYPES,
 							value => {
-								profile.platforms[platform] = value
+								this.#replaceData(cloneAsWritable(Settings.Profile
+									.DEFAULTS[value]))
 							},
-							async () => this.#postMutate(),
-						))
-						.addExtraButton(resetButton(
-							plugin,
-							i18n.t(`asset:types.platforms.${platform}-icon`),
-							() => {
-								profile.platforms[platform] =
-									Settings.Profile.DEFAULTS[type].platforms[platform]
-							},
-							async () => this.#postMutate(true),
-						))
-				}
-				break
-			}
-			case "integrated": {
-				new Setting(listEl)
-					.setName(i18n.t(`components.profile.${type}.executable`))
-					.addText(linkSetting(
-						() => profile.executable,
-						value => {
-							profile.executable = value
+						),
+						async () => {
+							this.#setupTypedUI0()
+							await this.#postMutate(true)
 						},
-						async () => this.#postMutate(),
-					))
-					.addExtraButton(resetButton(
-						plugin,
-						i18n.t(`asset:components.profile.${type}.executable-icon`),
-						() => {
-							profile.executable = Settings.Profile.DEFAULTS[type].executable
-						},
-						async () => this.#postMutate(true),
-					))
-				new Setting(listEl)
-					.setName(i18n.t(`components.profile.${type}.arguments`))
-					.setDesc(i18n.t("settings.list-description", {
-						count: profile.args.length,
-					}))
-					.addButton(button => button
-						.setIcon(i18n.t("asset:generic.edit-list-icon"))
-						.setTooltip(i18n.t("generic.edit"))
-						.onClick(() => {
-							new EditableListModal(
-								plugin,
-								EditableListModal.stringInputter,
-								"",
-								profile.args,
-								async value => {
-									profile.args = value
-									await this.#postMutate(true)
-								},
-								() => i18n.t(`components.profile.${type}.arguments`),
-							).open()
-						}))
-					.addExtraButton(resetButton(
-						plugin,
-						i18n.t(`asset:components.profile.${type}.arguments-icon`),
-						() => {
-							profile.args =
-								cloneAsWritable(Settings.Profile.DEFAULTS[type].args)
-						},
-						async () => this.#postMutate(true),
-					))
-				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
-					new Setting(listEl)
-						.setName(i18n.t(`types.platforms.${platform}`))
-						.addToggle(linkSetting(
-							() => profile.platforms[platform] ??
-								Settings.Profile.DEFAULTS[type].platforms[platform],
-							value => {
-								profile.platforms[platform] = value
-							},
-							async () => this.#postMutate(),
-						))
-						.addExtraButton(resetButton(
-							plugin,
-							i18n.t(`asset:types.platforms.${platform}-icon`),
-							() => {
-								profile.platforms[platform] =
-									Settings.Profile.DEFAULTS[type].platforms[platform]
-							},
-							async () => this.#postMutate(true),
-						))
-				}
-				new Setting(listEl)
-					.setName(i18n.t(`components.profile.${type}.python-executable`))
-					.setDesc(i18n
-						.t(`components.profile.${type}.python-executable-description`))
-					.addText(linkSetting(
-						() => profile.pythonExecutable,
-						value => {
-							profile.pythonExecutable = value
-						},
-						async () => this.#postMutate(),
 						{
-							post: component => {
-								component
-									.setPlaceholder(i18n
-										// eslint-disable-next-line max-len
-										.t(`components.profile.${type}.python-executable-placeholder`))
+							pre: dropdown => {
+								dropdown
+									.addOptions(Object
+										.fromEntries(Settings.Profile.TYPES
+											.filter(type0 => PROFILE_PROPERTIES[type0].valid)
+											.map(type0 => [
+												type0,
+												i18n.t(`types.profiles.${type0}`),
+											])))
 							},
 						},
 					))
 					.addExtraButton(resetButton(
 						plugin,
-						i18n.t(`asset:components.profile.${type}.python-executable-icon`),
-						() => {
-							profile.pythonExecutable =
-								Settings.Profile.DEFAULTS[type].pythonExecutable
-						},
-						async () => this.#postMutate(true),
-					))
-				new Setting(listEl)
-					.setName(i18n
-						.t(`components.profile.${type}.enable-Windows-conhost-workaround`))
-					.setDesc(i18n
-						// eslint-disable-next-line max-len
-						.t(`components.profile.${type}.enable-Windows-conhost-workaround-description`))
-					.addToggle(linkSetting(
-						() => profile.enableWindowsConhostWorkaround ??
-							Settings.Profile.DEFAULTS[type].enableWindowsConhostWorkaround,
-						value => {
-							profile.enableWindowsConhostWorkaround = value
-						},
-						async () => this.#postMutate(),
-					))
-					.addExtraButton(resetButton(
-						plugin,
-						i18n
-							// eslint-disable-next-line max-len
-							.t(`asset:components.profile.${type}.enable-Windows-conhost-workaround-icon`),
-						() => {
-							profile.enableWindowsConhostWorkaround =
-								Settings.Profile.DEFAULTS[type].enableWindowsConhostWorkaround
-						},
-						async () => this.#postMutate(true),
-					))
-				break
-			}
-			case "invalid": {
-				new Setting(listEl)
-					.setName(i18n.t(`components.profile.${type}.data`))
-					.addTextArea(textArea => textArea
-						.setValue(JSON.stringify(profile, null, JSON_STRINGIFY_SPACE))
-						.setDisabled(true))
-					.addExtraButton(resetButton(
-						plugin,
-						i18n.t(`asset:components.profile.${type}.data-icon`),
+						i18n.t("asset:components.profile.type-icon"),
 						unexpected,
 						unexpected,
 						{
@@ -495,15 +295,27 @@ export class ProfileModal extends Modal {
 							},
 						},
 					))
-				break
-			}
-			// No default
-		}
+			})
+			.embed(() => {
+				const typedUI = new UpdatableUI(),
+					el = listEl.createEl("div")
+				this.#setupTypedUI0 = (): void => {
+					this.#setupTypedUI(typedUI, el)
+				}
+				this.#setupTypedUI0()
+				return typedUI
+			}, null, () => { this.#setupTypedUI0 = (): void => { } })
+			.finally(language.onChangeLanguage.listen(() => { ui.update() }))
+	}
+
+	public override onClose(): void {
+		super.onClose()
+		this.ui.clear()
 	}
 
 	async #postMutate(redraw = false): Promise<void> {
 		const cb = this.#callback(typedStructuredClone(this.#data))
-		if (redraw) { this.display() }
+		if (redraw) { this.ui.update() }
 		await cb
 	}
 
@@ -516,9 +328,257 @@ export class ProfileModal extends Modal {
 			{ name },
 		)
 	}
+
+	#setupTypedUI0 = (): void => { }
+	#setupTypedUI(ui: UpdatableUI, element: HTMLElement): void {
+		ui.clear()
+		const { plugin } = this,
+			profile = this.#data,
+			{ i18n } = plugin.language,
+			{ type } = profile
+		ui.finally(() => { element.replaceChildren() })
+		switch (type) {
+			case "": {
+				break
+			}
+			case "console": {
+				break
+			}
+			case "external": {
+				ui.newSetting(element, setting => {
+					setting
+						.setName(i18n.t(`components.profile.${type}.executable`))
+						.addText(linkSetting(
+							() => profile.executable,
+							value => { profile.executable = value },
+							async () => this.#postMutate(),
+						))
+						.addExtraButton(resetButton(
+							plugin,
+							i18n.t(`asset:components.profile.${type}.executable-icon`),
+							() => {
+								profile.executable = Settings.Profile.DEFAULTS[type].executable
+							},
+							async () => this.#postMutate(true),
+						))
+				}).newSetting(element, setting => {
+					setting
+						.setName(i18n.t(`components.profile.${type}.arguments`))
+						.setDesc(i18n.t("settings.list-description", {
+							count: profile.args.length,
+						}))
+						.addButton(button => button
+							.setIcon(i18n.t("asset:generic.edit-list-icon"))
+							.setTooltip(i18n.t("generic.edit"))
+							.onClick(() => {
+								new EditableListModal(
+									plugin,
+									EditableListModal.stringInputter,
+									"",
+									profile.args,
+									async value => {
+										profile.args = value
+										await this.#postMutate(true)
+									},
+									() => i18n.t(`components.profile.${type}.arguments`),
+								).open()
+							}))
+						.addExtraButton(resetButton(
+							plugin,
+							i18n.t(`asset:components.profile.${type}.arguments-icon`),
+							() => {
+								profile.args =
+									cloneAsWritable(Settings.Profile.DEFAULTS[type].args)
+							},
+							async () => this.#postMutate(true),
+						))
+				})
+				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
+					ui.newSetting(element, setting => {
+						setting
+							.setName(i18n.t(`types.platforms.${platform}`))
+							.addToggle(linkSetting(
+								() => profile.platforms[platform] ??
+									Settings.Profile.DEFAULTS[type].platforms[platform],
+								value => {
+									profile.platforms[platform] = value
+								},
+								async () => this.#postMutate(),
+							))
+							.addExtraButton(resetButton(
+								plugin,
+								i18n.t(`asset:types.platforms.${platform}-icon`),
+								() => {
+									profile.platforms[platform] =
+										Settings.Profile.DEFAULTS[type].platforms[platform]
+								},
+								async () => this.#postMutate(true),
+							))
+					})
+				}
+				break
+			}
+			case "integrated": {
+				ui.newSetting(element, setting => {
+					setting
+						.setName(i18n.t(`components.profile.${type}.executable`))
+						.addText(linkSetting(
+							() => profile.executable,
+							value => {
+								profile.executable = value
+							},
+							async () => this.#postMutate(),
+						))
+						.addExtraButton(resetButton(
+							plugin,
+							i18n.t(`asset:components.profile.${type}.executable-icon`),
+							() => {
+								profile.executable = Settings.Profile.DEFAULTS[type].executable
+							},
+							async () => this.#postMutate(true),
+						))
+				}).newSetting(element, setting => {
+					setting
+						.setName(i18n.t(`components.profile.${type}.arguments`))
+						.setDesc(i18n.t("settings.list-description", {
+							count: profile.args.length,
+						}))
+						.addButton(button => button
+							.setIcon(i18n.t("asset:generic.edit-list-icon"))
+							.setTooltip(i18n.t("generic.edit"))
+							.onClick(() => {
+								new EditableListModal(
+									plugin,
+									EditableListModal.stringInputter,
+									"",
+									profile.args,
+									async value => {
+										profile.args = value
+										await this.#postMutate(true)
+									},
+									() => i18n.t(`components.profile.${type}.arguments`),
+								).open()
+							}))
+						.addExtraButton(resetButton(
+							plugin,
+							i18n.t(`asset:components.profile.${type}.arguments-icon`),
+							() => {
+								profile.args =
+									cloneAsWritable(Settings.Profile.DEFAULTS[type].args)
+							},
+							async () => this.#postMutate(true),
+						))
+				})
+				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
+					ui.newSetting(element, setting => {
+						setting
+							.setName(i18n.t(`types.platforms.${platform}`))
+							.addToggle(linkSetting(
+								() => profile.platforms[platform] ??
+									Settings.Profile.DEFAULTS[type].platforms[platform],
+								value => {
+									profile.platforms[platform] = value
+								},
+								async () => this.#postMutate(),
+							))
+							.addExtraButton(resetButton(
+								plugin,
+								i18n.t(`asset:types.platforms.${platform}-icon`),
+								() => {
+									profile.platforms[platform] =
+										Settings.Profile.DEFAULTS[type].platforms[platform]
+								},
+								async () => this.#postMutate(true),
+							))
+					})
+				}
+				ui.newSetting(element, setting => {
+					setting
+						.setName(i18n.t(`components.profile.${type}.python-executable`))
+						.setDesc(i18n
+							.t(`components.profile.${type}.python-executable-description`))
+						.addText(linkSetting(
+							() => profile.pythonExecutable,
+							value => {
+								profile.pythonExecutable = value
+							},
+							async () => this.#postMutate(),
+							{
+								post: component => {
+									component
+										.setPlaceholder(i18n
+											// eslint-disable-next-line max-len
+											.t(`components.profile.${type}.python-executable-placeholder`))
+								},
+							},
+						))
+						.addExtraButton(resetButton(
+							plugin,
+							i18n.t(`asset:components.profile.${type}.python-executable-icon`),
+							() => {
+								profile.pythonExecutable =
+									Settings.Profile.DEFAULTS[type].pythonExecutable
+							},
+							async () => this.#postMutate(true),
+						))
+				}).newSetting(element, setting => {
+					setting
+						.setName(i18n
+							// eslint-disable-next-line max-len
+							.t(`components.profile.${type}.enable-Windows-conhost-workaround`))
+						.setDesc(i18n
+							// eslint-disable-next-line max-len
+							.t(`components.profile.${type}.enable-Windows-conhost-workaround-description`))
+						.addToggle(linkSetting(
+							() => profile.enableWindowsConhostWorkaround ??
+								Settings.Profile.DEFAULTS[type].enableWindowsConhostWorkaround,
+							value => {
+								profile.enableWindowsConhostWorkaround = value
+							},
+							async () => this.#postMutate(),
+						))
+						.addExtraButton(resetButton(
+							plugin,
+							i18n
+								// eslint-disable-next-line max-len
+								.t(`asset:components.profile.${type}.enable-Windows-conhost-workaround-icon`),
+							() => {
+								profile.enableWindowsConhostWorkaround =
+									Settings.Profile.DEFAULTS[type].enableWindowsConhostWorkaround
+							},
+							async () => this.#postMutate(true),
+						))
+				})
+				break
+			}
+			case "invalid": {
+				ui.newSetting(element, setting => {
+					setting
+						.setName(i18n.t(`components.profile.${type}.data`))
+						.addTextArea(textArea => textArea
+							.setValue(JSON.stringify(profile, null, JSON_STRINGIFY_SPACE))
+							.setDisabled(true))
+						.addExtraButton(resetButton(
+							plugin,
+							i18n.t(`asset:components.profile.${type}.data-icon`),
+							unexpected,
+							unexpected,
+							{
+								post: button => {
+									button.setTooltip(DISABLED_TOOLTIP).setDisabled(true)
+								},
+							},
+						))
+				})
+				break
+			}
+			// No default
+		}
+	}
 }
 
 export class ProfileListModal extends Modal {
+	protected readonly ui = new UpdatableUI()
 	readonly #data
 	readonly #callback
 	readonly #presets
@@ -549,82 +609,63 @@ export class ProfileListModal extends Modal {
 
 	public override onOpen(): void {
 		super.onOpen()
-		this.display()
-	}
-
-	protected display(): void {
-		const { contentEl, plugin } = this,
-			listEl = useSettings(contentEl),
+		const { plugin, ui } = this,
+			[listEl, listElRemover] = useSettings(this.contentEl),
 			{ language } = plugin,
 			{ i18n } = language
-		listEl.createEl("h1", { text: i18n.t("components.profile-list.title") })
-		listEl.createEl("div", { text: i18n.t("components.profile-list.content") })
-		new Setting(listEl)
-			.setName(i18n.t("components.editable-list.prepend"))
-			.addDropdown(dropdownSelect(
-				i18n.t("components.dropdown.unselected"),
-				this.#presets,
-				async value => {
-					this.#addProfile(0, cloneAsWritable(value))
-					await this.#postMutate(true)
-				},
-			))
-		for (const [index, [id, profile]] of this.#data.entries()) {
-			new Setting(listEl)
-				.setName(i18n.t("components.profile-list.name", { profile }))
-				.setDesc(i18n.t("components.profile-list.description", { id, profile }))
-				.addButton(button => button
-					.setIcon(i18n.t("asset:generic.edit-icon"))
-					.setTooltip(i18n.t("generic.edit"))
-					.onClick(() => {
-						new ProfileModal(
-							plugin,
-							profile,
-							async profile0 => {
-								this.#data[index] = [id, profile0]
-								await this.#postMutate(true)
-							},
-						).open()
-					}))
-				.addExtraButton(button => button
-					.setTooltip(i18n.t("components.editable-list.move-up"))
-					.setIcon(i18n.t("asset:components.editable-list.move-up-icon"))
-					.onClick(async () => {
-						if (index <= 0) { return }
-						swap(this.#data, index - 1, index)
-						await this.#postMutate(true)
-					}))
-				.addExtraButton(button => button
-					.setTooltip(i18n.t("components.editable-list.move-down"))
-					.setIcon(i18n.t("asset:components.editable-list.move-down-icon"))
-					.onClick(async () => {
-						if (index >= this.#data.length - 1) { return }
-						swap(this.#data, index, index + 1)
-						await this.#postMutate(true)
-					}))
-				.addExtraButton(button => button
-					.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
-					.setTooltip(i18n.t("components.editable-list.remove"))
-					.onClick(async () => {
-						removeAt(this.#data, index)
-						await this.#postMutate(true)
-					}))
-		}
-		new Setting(listEl)
-			.setName(i18n.t("components.editable-list.append"))
-			.addDropdown(dropdownSelect(
-				i18n.t("components.dropdown.unselected"),
-				this.#presets,
-				async value => {
-					this.#addProfile(this.#data.length, cloneAsWritable(value))
-					await this.#postMutate(true)
-				},
-			))
+		ui.finally(listElRemover)
+			.new(() => listEl.createEl("h1"), ele => {
+				ele.textContent = i18n.t("components.profile-list.title")
+			})
+			.new(() => listEl.createEl("div"), ele => {
+				ele.textContent = i18n.t("components.profile-list.content")
+			})
+			.newSetting(listEl, setting => {
+				setting
+					.setName(i18n.t("components.editable-list.prepend"))
+					.addDropdown(dropdownSelect(
+						i18n.t("components.dropdown.unselected"),
+						this.#presets,
+						async value => {
+							this.#addProfile(0, cloneAsWritable(value))
+							this.#setupListSubUI0()
+							await this.#postMutate(true)
+						},
+					))
+			})
+			.embed(() => {
+				const subUI = new UpdatableUI(),
+					el = listEl.createEl("div")
+				this.#setupListSubUI0 = (): void => {
+					this.#setupListSubUI(subUI, el)
+				}
+				this.#setupListSubUI0()
+				return subUI
+			})
+			.newSetting(listEl, setting => {
+				setting
+					.setName(i18n.t("components.editable-list.append"))
+					.addDropdown(dropdownSelect(
+						i18n.t("components.dropdown.unselected"),
+						this.#presets,
+						async value => {
+							this.#addProfile(this.#data.length, cloneAsWritable(value))
+							this.#setupListSubUI0()
+							await this.#postMutate(true)
+						},
+					))
+			})
+			.finally(language.onChangeLanguage.listen(() => { ui.update() }))
+	}
+
+	public override onClose(): void {
+		super.onClose()
+		this.ui.update()
 	}
 
 	async #postMutate(redraw = false): Promise<void> {
 		const cb = this.#callback(cloneAsWritable(this.#data))
-		if (redraw) { this.display() }
+		if (redraw) { this.ui.update() }
 		await cb
 	}
 
@@ -638,13 +679,66 @@ export class ProfileListModal extends Modal {
 			[randomNotIn(this.#data.map(entry => entry[0]), this.#keygen), profile],
 		)
 	}
+
+	#setupListSubUI0 = (): void => { }
+	#setupListSubUI(ui: UpdatableUI, element: HTMLElement): void {
+		ui.clear()
+		const { plugin } = this,
+			{ language } = plugin,
+			{ i18n } = language
+		ui.finally(() => { element.replaceChildren() })
+		for (const [index, [id, profile]] of this.#data.entries()) {
+			ui.newSetting(element, setting => {
+				setting
+					.setName(i18n.t("components.profile-list.name", { profile }))
+					.setDesc(i18n
+						.t("components.profile-list.description", { id, profile }))
+					.addButton(button => button
+						.setIcon(i18n.t("asset:generic.edit-icon"))
+						.setTooltip(i18n.t("generic.edit"))
+						.onClick(() => {
+							new ProfileModal(
+								plugin,
+								profile,
+								async profile0 => {
+									this.#data[index] = [id, profile0]
+									await this.#postMutate(true)
+								},
+							).open()
+						}))
+					.addExtraButton(button => button
+						.setTooltip(i18n.t("components.editable-list.move-up"))
+						.setIcon(i18n.t("asset:components.editable-list.move-up-icon"))
+						.onClick(async () => {
+							if (index <= 0) { return }
+							swap(this.#data, index - 1, index)
+							this.#setupListSubUI0()
+							await this.#postMutate(true)
+						}))
+					.addExtraButton(button => button
+						.setTooltip(i18n.t("components.editable-list.move-down"))
+						.setIcon(i18n.t("asset:components.editable-list.move-down-icon"))
+						.onClick(async () => {
+							if (index >= this.#data.length - 1) { return }
+							swap(this.#data, index, index + 1)
+							this.#setupListSubUI0()
+							await this.#postMutate(true)
+						}))
+					.addExtraButton(button => button
+						.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
+						.setTooltip(i18n.t("components.editable-list.remove"))
+						.onClick(async () => {
+							removeAt(this.#data, index)
+							this.#setupListSubUI0()
+							await this.#postMutate(true)
+						}))
+			})
+		}
+	}
 }
 
-export abstract class DialogModal extends Modal {
-	readonly #languageChanger =
-		this.plugin.language.onChangeLanguage.listen(() => { this.display() })
-
-	#setting: Setting | null = null
+export class DialogModal extends Modal {
+	protected readonly modalUI = new UpdatableUI()
 
 	public constructor(protected readonly plugin: TerminalPlugin) {
 		super(plugin.app)
@@ -652,19 +746,34 @@ export abstract class DialogModal extends Modal {
 
 	public override onOpen(): void {
 		super.onOpen()
-		const { scope } = this
-		this.display()
-		// Hooking escape does not work as it is already registered
-		scope.register([], "enter", async event => {
-			await this.confirm(this.#close)
-			event.preventDefault()
-			event.stopPropagation()
-		})
+		const { plugin, modalEl, scope, modalUI } = this,
+			{ language } = plugin,
+			{ i18n } = language
+		modalUI
+			.newSetting(modalEl, setting => {
+				setting
+					.addButton(button => button
+						.setIcon(i18n.t("asset:components.dialog.cancel-icon"))
+						.setTooltip(i18n.t("components.dialog.cancel"))
+						.onClick(async () => { await this.cancel(this.#close) }))
+					.addButton(button => button
+						.setIcon(i18n.t("asset:components.dialog.confirm-icon"))
+						.setTooltip(i18n.t("components.dialog.confirm"))
+						.setCta()
+						.onClick(async () => { await this.confirm(this.#close) }))
+			})
+			// Hooking escape does not work as it is already registered
+			.new(() => scope.register([], "enter", async event => {
+				await this.confirm(this.#close)
+				event.preventDefault()
+				event.stopPropagation()
+			}), null, ele => { scope.unregister(ele) })
+			.finally(language.onChangeLanguage.listen(() => { modalUI.update() }))
 	}
 
 	public override onClose(): void {
 		super.onClose()
-		this.#languageChanger()
+		this.modalUI.clear()
 	}
 
 	public override close(): void {
@@ -675,22 +784,6 @@ export abstract class DialogModal extends Modal {
 				console.error(error)
 			}
 		})()
-	}
-
-	protected display(): void {
-		const { plugin, modalEl } = this,
-			{ i18n } = plugin.language
-		this.#setting?.settingEl.remove()
-		this.#setting = new Setting(modalEl)
-			.addButton(button => button
-				.setIcon(i18n.t("asset:components.dialog.cancel-icon"))
-				.setTooltip(i18n.t("components.dialog.cancel"))
-				.onClick(async () => { await this.cancel(this.#close) }))
-			.addButton(button => button
-				.setIcon(i18n.t("asset:components.dialog.confirm-icon"))
-				.setTooltip(i18n.t("components.dialog.confirm"))
-				.setCta()
-				.onClick(async () => { await this.confirm(this.#close) }))
 	}
 
 	protected confirm(close: () => void): AsyncOrSync<void> {

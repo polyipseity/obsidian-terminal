@@ -1,4 +1,4 @@
-import { DialogModal, ProfileModal, useSettings } from "sources/ui/modals"
+import { DialogModal, ProfileModal } from "sources/ui/modals"
 import { Direction, type Params } from "../ui/find"
 import {
 	DisposerAddon,
@@ -8,7 +8,6 @@ import {
 import {
 	ItemView,
 	type Menu,
-	Setting,
 	type ViewStateResult,
 	type WorkspaceLeaf,
 } from "obsidian"
@@ -16,9 +15,11 @@ import { JSON_STRINGIFY_SPACE, TERMINAL_EXIT_SUCCESS } from "../magic"
 import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
 import {
 	UnnamespacedID,
+	UpdatableUI,
 	notice2,
 	printError,
 	updateDisplayText,
+	useSettings,
 } from "sources/utils/obsidian"
 import {
 	anyToError,
@@ -50,6 +51,7 @@ import { WebLinksAddon } from "xterm-addon-web-links"
 import { WebglAddon } from "xterm-addon-webgl"
 
 export class TerminalEditModal extends DialogModal {
+	protected readonly ui = new UpdatableUI()
 	readonly #protostate
 	readonly #state
 	#profile: string | null = null
@@ -66,87 +68,105 @@ export class TerminalEditModal extends DialogModal {
 		this.#confirm = confirm
 	}
 
-	protected override display(): void {
-		super.display()
-		const { contentEl, plugin } = this,
-			listEl = useSettings(contentEl),
+	public override onOpen(): void {
+		super.onOpen()
+		const { plugin, ui } = this,
+			[listEl, listElRemover] = useSettings(this.contentEl),
 			protostate = this.#protostate,
 			state = this.#state,
-			profile = this.#profile,
 			{ language } = plugin,
 			{ profiles } = plugin.settings,
 			{ i18n } = language,
 			noProfile = randomNotIn(Object.keys(profiles))
-		listEl.createEl("h1", { text: i18n.t("generic.edit") })
-		new Setting(listEl)
-			.setName(i18n.t("components.terminal.working-directory"))
-			.addText(linkSetting(
-				() => state.cwd ?? "",
-				value => {
-					// eslint-disable-next-line no-void
-					state.cwd = value === "" ? void 0 : value
-				},
-				() => { this.#postMutate() },
-				{
-					post: component => {
-						component
-							.setPlaceholder(i18n
-								.t("components.terminal.working-directory-placeholder"))
-					},
-				},
-			))
-			.addExtraButton(resetButton(
-				plugin,
-				i18n.t("asset:components.terminal.working-directory-icon"),
-				() => { state.cwd = protostate.cwd },
-				() => { this.#postMutate(true) },
-			))
-		new Setting(listEl)
-			.setName(i18n.t("components.terminal.profile"))
-			.addDropdown(linkSetting(
-				() => profile === null ? noProfile : profile,
-				value => {
-					const profile0 = profiles[value]
-					if (isUndefined(profile0)) {
-						this.#profile = null
-						return
-					}
-					this.#profile = value
-					this.#state.profile = cloneAsWritable(profile0)
-				},
-				() => { this.#postMutate(true) },
-				{
-					pre: component => {
-						component
-							.addOption(noProfile, i18n.t("components.dropdown.unselected"))
-							.addOptions(Object.fromEntries(Object.entries(profiles)
-								.map(entry => [entry[0], Settings.Profile.nameOrID(entry)])))
-					},
-				},
-			))
-			.addButton(button => button
-				.setIcon(i18n.t("asset:generic.edit-icon"))
-				.setTooltip(i18n.t("generic.edit"))
-				.onClick(() => {
-					new ProfileModal(
-						plugin,
-						state.profile,
-						profile0 => {
-							this.#profile = null
-							state.profile = profile0
-							this.#postMutate(true)
+		ui.finally(listElRemover)
+			.new(() => listEl.createEl("h1"), ele => {
+				ele.textContent = i18n.t("generic.edit")
+			})
+			.newSetting(listEl, setting => {
+				setting
+					.setName(i18n.t("components.terminal.working-directory"))
+					.addText(linkSetting(
+						() => state.cwd ?? "",
+						value => {
+							// eslint-disable-next-line no-void
+							state.cwd = value === "" ? void 0 : value
 						},
-					).open()
-				}))
-			.addExtraButton(resetButton(
-				plugin,
-				i18n.t("asset:components.terminal.profile-icon"),
-				() => {
-					this.#profile = null
-					state.profile = cloneAsWritable(protostate.profile)
-				},
-				() => { this.#postMutate(true) },
-			))
+						() => { this.#postMutate() },
+						{
+							post: component => {
+								component
+									.setPlaceholder(i18n
+										.t("components.terminal.working-directory-placeholder"))
+							},
+						},
+					))
+					.addExtraButton(resetButton(
+						plugin,
+						i18n.t("asset:components.terminal.working-directory-icon"),
+						() => { state.cwd = protostate.cwd },
+						() => { this.#postMutate(true) },
+					))
+			})
+			.newSetting(listEl, setting => {
+				setting
+					.setName(i18n.t("components.terminal.profile"))
+					.addDropdown(linkSetting(
+						() => this.#profile ?? noProfile,
+						value => {
+							const profile0 = profiles[value]
+							if (isUndefined(profile0)) {
+								this.#profile = null
+								return
+							}
+							this.#profile = value
+							this.#state.profile = cloneAsWritable(profile0)
+						},
+						() => { this.#postMutate(true) },
+						{
+							pre: component => {
+								component
+									.addOption(noProfile, i18n
+										.t("components.dropdown.unselected"))
+									.addOptions(Object
+										.fromEntries(Object
+											.entries(profiles)
+											.map(entry => [
+												entry[0],
+												Settings.Profile.nameOrID(entry),
+											])))
+							},
+						},
+					))
+					.addButton(button => button
+						.setIcon(i18n.t("asset:generic.edit-icon"))
+						.setTooltip(i18n.t("generic.edit"))
+						.onClick(() => {
+							new ProfileModal(
+								plugin,
+								state.profile,
+								profile0 => {
+									this.#profile = null
+									state.profile = profile0
+									this.#postMutate(true)
+								},
+							).open()
+						}))
+					.addExtraButton(resetButton(
+						plugin,
+						i18n.t("asset:components.terminal.profile-icon"),
+						() => {
+							this.#profile = null
+							state.profile = cloneAsWritable(protostate.profile)
+						},
+						() => { this.#postMutate(true) },
+					))
+			})
+			.finally(language.onChangeLanguage.listen(() => { ui.update() }))
+	}
+
+	public override onClose(): void {
+		super.onClose()
+		this.ui.clear()
 	}
 
 	protected override async confirm(close: () => void): Promise<void> {
@@ -155,7 +175,7 @@ export class TerminalEditModal extends DialogModal {
 	}
 
 	#postMutate(redraw = false): void {
-		if (redraw) { this.display() }
+		if (redraw) { this.ui.update() }
 	}
 }
 
@@ -442,7 +462,7 @@ export class TerminalView extends ItemView {
 			leaf.detach()
 			return
 		}
-		contentEl.createDiv({
+		contentEl.createEl("div", {
 			cls: TerminalView.divClass.namespaced(plugin),
 		}, ele => {
 			const obsr = onVisible(ele, () => {
