@@ -29,7 +29,7 @@ import type { Exact } from "ts-essentials"
 
 function sanitize<T extends object>(value: T): T {
 	return Object.freeze(Object.fromEntries(Object.entries(value)
-		.filter(([_0, val]) => typeof val === "string")) as T)
+		.filter(([, val]) => typeof val === "string")) as T)
 }
 
 type FilterKey<K> = K extends `${infer K0}_${string}` ? K0 : K

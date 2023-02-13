@@ -183,7 +183,7 @@ export function asyncDebounce<
 >(debouncer: R0 extends void ? Debouncer<[
 	(value: AsyncOrSync<R>) => void,
 	(reason?: unknown) => void,
-	...A], R0> : never): (...args_0: A) => Promise<R> {
+	...A], R0> : never): (...args: A) => Promise<R> {
 	const promises: {
 		readonly resolve: (value: AsyncOrSync<R>) => void
 		readonly reject: (reason?: unknown) => void
