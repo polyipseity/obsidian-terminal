@@ -5,7 +5,11 @@ import {
 	PROFILE_PRESETS,
 	PROFILE_PRESET_ORDERED_KEYS,
 } from "sources/settings/profile-presets"
-import { UpdatableUI, useSettings } from "sources/utils/obsidian"
+import {
+	UpdatableUI,
+	useSettings,
+	useSubsettings,
+} from "sources/utils/obsidian"
 import {
 	clearProperties,
 	cloneAsWritable,
@@ -101,7 +105,7 @@ export class EditableListModal<T> extends Modal {
 			})
 			.embed(() => {
 				const subUI = new UpdatableUI(),
-					ele = listEl.createEl("div")
+					ele = useSubsettings(listEl)
 				this.#setupListSubUI0 = (): void => { this.#setupListSubUI(subUI, ele) }
 				this.#setupListSubUI0()
 				return subUI
@@ -134,12 +138,11 @@ export class EditableListModal<T> extends Modal {
 
 	#setupListSubUI0 = (): void => { }
 	#setupListSubUI(ui: UpdatableUI, element: HTMLElement): void {
-		ui.clear()
 		const { plugin } = this,
 			data = this.#data,
 			{ language } = plugin,
 			{ i18n } = language
-		ui.finally(() => { element.replaceChildren() })
+		ui.clear()
 		for (const [index, item] of data.entries()) {
 			ui.newSetting(element, setting => {
 				setting.setName(i18n.t("components.editable-list.name", {
@@ -316,9 +319,9 @@ export class ProfileModal extends Modal {
 			})
 			.embed(() => {
 				const typedUI = new UpdatableUI(),
-					el = listEl.createEl("div")
+					ele = useSubsettings(listEl)
 				this.#setupTypedUI0 = (): void => {
-					this.#setupTypedUI(typedUI, el)
+					this.#setupTypedUI(typedUI, ele)
 				}
 				this.#setupTypedUI0()
 				return typedUI
@@ -349,11 +352,10 @@ export class ProfileModal extends Modal {
 
 	#setupTypedUI0 = (): void => { }
 	#setupTypedUI(ui: UpdatableUI, element: HTMLElement): void {
-		ui.clear()
 		const { plugin } = this,
 			profile = this.#data,
 			{ i18n } = plugin.language
-		ui.finally(() => { element.replaceChildren() })
+		ui.clear()
 		switch (profile.type) {
 			case "": {
 				break
@@ -661,9 +663,9 @@ export class ProfileListModal extends Modal {
 			})
 			.embed(() => {
 				const subUI = new UpdatableUI(),
-					el = listEl.createEl("div")
+					ele = useSubsettings(listEl)
 				this.#setupListSubUI0 = (): void => {
-					this.#setupListSubUI(subUI, el)
+					this.#setupListSubUI(subUI, ele)
 				}
 				this.#setupListSubUI0()
 				return subUI
@@ -708,12 +710,11 @@ export class ProfileListModal extends Modal {
 
 	#setupListSubUI0 = (): void => { }
 	#setupListSubUI(ui: UpdatableUI, element: HTMLElement): void {
-		ui.clear()
 		const { plugin } = this,
 			data = this.#data,
 			{ language } = plugin,
 			{ i18n } = language
-		ui.finally(() => { element.replaceChildren() })
+		ui.clear()
 		for (const [index, value] of data.entries()) {
 			ui.newSetting(element, setting => {
 				setting

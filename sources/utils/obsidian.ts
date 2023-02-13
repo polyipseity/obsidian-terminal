@@ -30,6 +30,12 @@ export function useSettings(element: HTMLElement): readonly [
 	]
 }
 
+export function useSubsettings(element: HTMLElement): HTMLElement {
+	const ret = element.createEl("div")
+	ret.createEl("div")
+	return ret
+}
+
 export class UpdatableUI {
 	readonly #updaters: (() => void)[] = []
 	readonly #finalizers: (() => void)[] = []
@@ -109,7 +115,7 @@ export class UpdatableUI {
 		}, setting => {
 			configure(setting)
 			recording = false
-		}, setting => { setting.clear() })
+		}, setting => { setting.settingEl.remove() })
 	}
 
 	public finally(finalizer: () => void): this {
