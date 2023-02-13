@@ -441,18 +441,21 @@ export class TerminalView extends ItemView {
 			{ profile, cwd, serial } = state,
 			{ app, language } = plugin,
 			{ i18n } = language,
-			{ requestSaveLayout } = app.workspace
-		notice2(
-			() => i18n.t(
-				"notices.spawning-terminal",
-				{ name: this.#name },
-			),
-			plugin.settings.noticeTimeout,
-			plugin,
-		)
+			{ requestSaveLayout } = app.workspace,
+			noticeSpawn = (): void => {
+				notice2(
+					() => i18n.t(
+						"notices.spawning-terminal",
+						{ name: this.#name },
+					),
+					plugin.settings.noticeTimeout,
+					plugin,
+				)
+			}
 		if (!PROFILE_PROPERTIES[profile.type].integratable) {
 			(async (): Promise<void> => {
 				try {
+					noticeSpawn()
 					await openProfile(plugin, profile, cwd)
 				} catch (error) {
 					printError(anyToError(error), () =>
@@ -467,6 +470,7 @@ export class TerminalView extends ItemView {
 		}, ele => {
 			const obsr = onVisible(ele, () => {
 				try {
+					noticeSpawn()
 					const
 						emulator = new TerminalView.EMULATOR(
 							plugin,
