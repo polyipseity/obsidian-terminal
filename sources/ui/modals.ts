@@ -154,6 +154,14 @@ export class EditableListModal<T> extends Modal {
 					},
 				)
 				setting
+					.addButton(button => button
+						.setTooltip(i18n.t("components.editable-list.remove"))
+						.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
+						.onClick(async () => {
+							removeAt(this.#data, index)
+							this.#setupListSubUI0()
+							await this.#postMutate(true)
+						}))
 					.addExtraButton(button => button
 						.setTooltip(i18n.t("components.editable-list.move-up"))
 						.setIcon(i18n.t("asset:components.editable-list.move-up-icon"))
@@ -169,14 +177,6 @@ export class EditableListModal<T> extends Modal {
 						.onClick(async () => {
 							if (index >= this.#data.length - 1) { return }
 							swap(this.#data, index, index + 1)
-							this.#setupListSubUI0()
-							await this.#postMutate(true)
-						}))
-					.addExtraButton(button => button
-						.setTooltip(i18n.t("components.editable-list.remove"))
-						.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
-						.onClick(async () => {
-							removeAt(this.#data, index)
 							this.#setupListSubUI0()
 							await this.#postMutate(true)
 						}))
@@ -706,6 +706,14 @@ export class ProfileListModal extends Modal {
 								},
 							).open()
 						}))
+					.addButton(button => button
+						.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
+						.setTooltip(i18n.t("components.editable-list.remove"))
+						.onClick(async () => {
+							removeAt(this.#data, index)
+							this.#setupListSubUI0()
+							await this.#postMutate(true)
+						}))
 					.addExtraButton(button => button
 						.setTooltip(i18n.t("components.editable-list.move-up"))
 						.setIcon(i18n.t("asset:components.editable-list.move-up-icon"))
@@ -721,14 +729,6 @@ export class ProfileListModal extends Modal {
 						.onClick(async () => {
 							if (index >= this.#data.length - 1) { return }
 							swap(this.#data, index, index + 1)
-							this.#setupListSubUI0()
-							await this.#postMutate(true)
-						}))
-					.addExtraButton(button => button
-						.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
-						.setTooltip(i18n.t("components.editable-list.remove"))
-						.onClick(async () => {
-							removeAt(this.#data, index)
 							this.#setupListSubUI0()
 							await this.#postMutate(true)
 						}))
