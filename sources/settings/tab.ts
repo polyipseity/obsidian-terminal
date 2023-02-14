@@ -81,6 +81,7 @@ export class SettingTab extends PluginSettingTab {
 								component
 									.setTooltip(i18n.t("settings.all-settings-actions.undo"))
 									.setDisabled(true)
+									.removeCta()
 								this.#onMutation.then(() => {
 									component.setDisabled(false).setCta()
 								}).catch(error => { console.error(error) })
