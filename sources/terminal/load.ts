@@ -1,7 +1,6 @@
 import {
 	FileSystemAdapter,
 	FuzzySuggestModal,
-	MarkdownView,
 	type MenuItem,
 	TFolder,
 	type WorkspaceLeaf,
@@ -193,9 +192,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 	plugin.registerEvent(workspace.on(
 		"editor-menu",
 		(menu, _0, info) => {
-			if (!plugin.settings.addToContextMenu ||
-				info instanceof MarkdownView ||
-				info.file === null) {
+			if (!plugin.settings.addToContextMenu || info.file === null) {
 				return
 			}
 			const folder = info.file.parent
