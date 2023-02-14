@@ -296,19 +296,6 @@ export function isNullish(value: unknown): value is null | undefined {
 	return isNull(value) || isUndefined(value)
 }
 
-export function isInterface<T extends { readonly __type: T["__type"] }>(
-	id: T["__type"],
-	obj: unknown,
-): obj is T {
-	const tmp = {}
-	Object.assign(tmp, obj)
-	if (!("__type" in tmp)) {
-		return false
-	}
-	// eslint-disable-next-line no-underscore-dangle
-	return tmp.__type === id
-}
-
 export function inSet<T extends readonly unknown[]>(
 	set: Sized<T>,
 	obj: unknown,

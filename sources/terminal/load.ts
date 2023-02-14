@@ -38,7 +38,6 @@ function spawnTerminal(
 		.setViewState({
 			active: true,
 			state: {
-				__type: TerminalView.State.TYPE,
 				cwd,
 				profile,
 			} satisfies TerminalView.State,

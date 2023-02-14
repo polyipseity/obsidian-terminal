@@ -6,6 +6,12 @@ import {
 	XtermTerminalEmulator,
 } from "./emulator"
 import {
+	type Fixed,
+	fixTyped,
+	launderUnchecked,
+	markFixed,
+} from "sources/ui/fixers"
+import {
 	ItemView,
 	type Menu,
 	type ViewStateResult,
@@ -19,9 +25,9 @@ import {
 	basename,
 	cloneAsWritable,
 	copyOnWrite,
+	deepFreeze,
 	extname,
 	inSet,
-	isInterface,
 	isUndefined,
 	onResize,
 	onVisible,
@@ -35,6 +41,7 @@ import {
 	UpdatableUI,
 	notice2,
 	printError,
+	printMalformedData,
 	updateDisplayText,
 	useSettings,
 } from "sources/utils/obsidian"
@@ -180,10 +187,7 @@ export class TerminalView extends ItemView {
 	#emulator0: TerminalView.EMULATOR | null = null
 	#find0: FindComponent | null = null
 	#focus0 = false
-	#state: TerminalView.State = {
-		__type: TerminalView.State.TYPE,
-		profile: Settings.Profile.DEFAULTS.invalid,
-	}
+	#state = TerminalView.State.DEFAULT
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
@@ -274,10 +278,11 @@ export class TerminalView extends ItemView {
 		result: ViewStateResult,
 	): Promise<void> {
 		await super.setState(state, result)
-		if (isInterface<TerminalView.State>(TerminalView.State.TYPE, state)) {
-			this.state = typedStructuredClone(state)
-			this.startEmulator()
-		}
+		const { plugin } = this,
+			{ value, valid } = TerminalView.State.fix(state)
+		if (!valid) { printMalformedData(plugin, state) }
+		this.state = typedStructuredClone(value)
+		this.startEmulator()
 	}
 
 	public override getState(): unknown {
@@ -586,13 +591,23 @@ export namespace TerminalView {
 		readonly webLinks: WebLinksAddon
 	}
 	export interface State {
-		readonly __type: typeof State.TYPE
 		readonly profile: Settings.Profile
 		readonly cwd?: string | undefined
-		readonly serial?: XtermTerminalEmulator.State
+		readonly serial?: XtermTerminalEmulator.State | undefined
 	}
 	export namespace State {
-		export const TYPE = "8d54e44a-32e7-4297-8ae2-cff88e92ce28"
+		export const DEFAULT: State = deepFreeze({
+			profile: Settings.Profile.DEFAULTS.invalid,
+		} as const)
+		export function fix(self: unknown): Fixed<State> {
+			const unc = launderUnchecked<State>(self)
+			return markFixed<State>(self, {
+				cwd: fixTyped(DEFAULT, unc, "cwd", "string"),
+				profile: Settings.Profile.fix(unc.profile).value,
+				serial: isUndefined(unc.serial)
+					? UNDEF
+					: XtermTerminalEmulator.State.fix(unc.serial).value,
+			})
+		}
 	}
 }
-

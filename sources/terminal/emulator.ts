@@ -1,11 +1,17 @@
 import {
+	type Fixed,
+	fixTyped,
+	launderUnchecked,
+	markFixed,
+} from "sources/ui/fixers"
+import {
 	type ITerminalAddon,
 	type ITerminalInitOnlyOptions,
 	type ITerminalOptions,
 	Terminal,
 } from "xterm"
+import { deepFreeze, isUndefined, spawnPromise } from "../utils/util"
 import { dynamicRequire, importable } from "../imports"
-import { isUndefined, spawnPromise } from "../utils/util"
 import type { AsyncOrSync } from "ts-essentials"
 import type { CanvasAddon } from "xterm-addon-canvas"
 import type { ChildProcessByStdio } from "node:child_process"
@@ -141,6 +147,21 @@ export namespace XtermTerminalEmulator {
 		readonly columns: number
 		readonly rows: number
 		readonly data: string
+	}
+	export namespace State {
+		export const DEFAULT: State = deepFreeze({
+			columns: 1,
+			data: "",
+			rows: 1,
+		} as const)
+		export function fix(self: unknown): Fixed<State> {
+			const unc = launderUnchecked<State>(self)
+			return markFixed(self, {
+				columns: fixTyped(DEFAULT, unc, "columns", "number"),
+				data: fixTyped(DEFAULT, unc, "data", "string"),
+				rows: fixTyped(DEFAULT, unc, "rows", "number"),
+			})
+		}
 	}
 }
 

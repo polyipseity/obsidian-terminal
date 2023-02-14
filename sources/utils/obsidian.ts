@@ -212,6 +212,19 @@ export function asyncDebounce<
 		})
 }
 
+export function printMalformedData(
+	plugin: TerminalPlugin,
+	data: unknown,
+): void {
+	const { i18n } = plugin.language
+	console.error(i18n.t("errors.malformed-data"), data)
+	notice2(
+		() => i18n.t("errors.malformed-data"),
+		plugin.settings.errorNoticeTimeout,
+		plugin,
+	)
+}
+
 export function notice(
 	message: () => DocumentFragment | string,
 	timeout: number = NOTICE_NO_TIMEOUT,

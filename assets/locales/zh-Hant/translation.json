@@ -66,6 +66,7 @@
 		"error-spawning-terminal": "啟動終端時出錯",
 		"error-spawning-resizer": "啟動終端縮放程式時出錯",
 		"failed-to-kill-pseudoterminal": "終止偽終端失敗",
+		"malformed-data": "數據格式不正確",
 		"no-python-to-start-unix-pseudoterminal": "沒有Python來啟動Unix偽終端",
 		"private-API-changed": "私有API改變了",
 		"resizer-disabled": "終端縮放程式已禁用",

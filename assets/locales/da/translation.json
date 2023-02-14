@@ -69,6 +69,7 @@
 		"error-spawning-terminal": "Error spawning terminal",
 		"error-spawning-resizer": "Error spawning terminal resizer",
 		"failed-to-kill-pseudoterminal": "Failed to kill pseudoterminal",
+		"malformed-data": "Malformed data",
 		"no-python-to-start-unix-pseudoterminal": "No Python to start Unix pseudoterminal",
 		"private-API-changed": "Private API changed",
 		"resizer-disabled": "Terminal resizer disabled",
