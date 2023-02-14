@@ -70,7 +70,7 @@
         "enableForWorkspaceTypeScriptVersions": false,
       },
     ],
-    "allowSyntheticDefaultImports": false,
+    "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,

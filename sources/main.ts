@@ -1,9 +1,9 @@
 import { type App, Plugin, type PluginManifest, debounce } from "obsidian"
 import type { AsyncOrSync, DeepWritable } from "ts-essentials"
 import { DEFAULT_SETTINGS, Settings } from "./settings/data"
-import { EventEmitterLite, copyOnWriteAsync } from "./utils/util"
+import { EventEmitterLite, copyOnWriteAsync, isUndefined } from "./utils/util"
+import { JSON_STRINGIFY_SPACE, SAVE_SETTINGS_TIMEOUT } from "./magic"
 import { LanguageManager } from "./i18n"
-import { SAVE_SETTINGS_TIMEOUT } from "./magic"
 import { SettingTab } from "./settings/tab"
 import { StatusBarHider } from "./status-bar"
 import { TerminalView } from "./terminal/view"
@@ -20,11 +20,10 @@ export class TerminalPlugin extends Plugin {
 			resolve: (value: AsyncOrSync<void>) => void,
 			reject: (reason?: unknown) => void,
 		) => {
-			this.saveData(this.settings)
-				.then(resolve, reject)
+			this.saveData(this.settings).then(resolve, reject)
 		}, SAVE_SETTINGS_TIMEOUT, false))
 
-	#settings = DEFAULT_SETTINGS
+	#settings: Settings = { ...DEFAULT_SETTINGS, recovery: {} }
 	readonly #onMutateSettings = new EventEmitterLite<readonly [Settings]>()
 
 	public constructor(app: App, manifest: PluginManifest) {
@@ -45,7 +44,14 @@ export class TerminalPlugin extends Plugin {
 	}
 
 	public async loadSettings(settings: DeepWritable<Settings>): Promise<void> {
-		Object.assign(settings, Settings.fix(await this.loadData()))
+		const loaded: unknown = await this.loadData(),
+			{ value, valid } = Settings.fix(loaded)
+		Object.assign(settings, value)
+		if (!valid) {
+			if (isUndefined(settings.recovery)) { settings.recovery = {} }
+			settings.recovery[new Date().toISOString()] =
+				JSON.stringify(loaded, null, JSON_STRINGIFY_SPACE)
+		}
 	}
 
 	public on<T>(

@@ -97,6 +97,7 @@
 		"advanced-settings": "高级设置",
 		"all-settings": "所有设置",
 		"all-settings-actions": {
+			"recover": "复原",
 			"reload": "重新加载",
 			"reset": "重设",
 			"undo": "复原"

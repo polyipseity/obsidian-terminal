@@ -24,6 +24,7 @@
 		"version": "node build/version-bump.mjs && git add manifest.json versions.json"
 	},
 	"dependencies": {
+		"deep-equal": "2.2.0",
 		"i18next": "22.4.9",
 		"json-stringify-safe": "5.0.1",
 		"monkey-around": "2.3.0",
@@ -42,6 +43,7 @@
 	},
 	"devDependencies": {
 		"@tsconfig/node16-strictest": "1.0.4",
+		"@types/deep-equal": "1.0.1",
 		"@types/json-stringify-safe": "5.0.0",
 		"@types/node": "16.18.12",
 		"@types/tmp": "0.2.3",

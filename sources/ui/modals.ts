@@ -14,6 +14,7 @@ import {
 	clearProperties,
 	cloneAsWritable,
 	deepFreeze,
+	identity,
 	insertAt,
 	isUndefined,
 	randomNotIn,
@@ -46,8 +47,9 @@ export class ListModal<T> extends Modal {
 	readonly #data
 	readonly #inputter
 	readonly #callback
-	readonly #editable
+	readonly #editables
 	readonly #title
+	readonly #namer
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
@@ -57,40 +59,51 @@ export class ListModal<T> extends Modal {
 			getter: () => T,
 			setter: (value: T) => unknown,
 		) => void,
-		protected readonly placeholder: T,
+		protected readonly placeholder: () => T,
 		data: readonly T[],
 		options?: {
 			readonly callback?: (data_: Writable<typeof data>) => unknown
-			readonly editable?: typeof ListModal.editables
+			readonly editables?: typeof ListModal.editables
 			readonly title?: () => string
+			readonly namer?: (value: T, index: number, data: readonly T[]) => string
 		},
 	) {
 		super(app)
 		this.#inputter = inputter
 		this.#data = [...data]
 		this.#callback = options?.callback ?? ((): void => { })
-		this.#editable = deepFreeze([...options?.editable ?? ListModal.editables])
+		this.#editables = deepFreeze([...options?.editables ?? ListModal.editables])
 		this.#title = options?.title
+		this.#namer = options?.namer ?? ((_0, index): string =>
+			plugin.language.i18n.t("components.editable-list.name", {
+				count: index + 1,
+				ordinal: true,
+			}))
 	}
 
-	public static readonly stringInputter = (
-		setting: Setting,
-		editable: boolean,
-		getter: () => string,
-		setter: (value: string) => unknown,
-		input: (
+	public static stringInputter<T>(transformer: {
+		readonly forth: (value: T) => string
+		readonly back: (value: string) => T
+	}) {
+		return (
 			setting: Setting,
-			callback: (component: ValueComponent<string> & {
-				readonly onChange: (callback: (value: string) => unknown) => unknown
-			}) => unknown,
-		) => void = (setting0, callback): void => {
-			setting0.addTextArea(callback)
-		},
-	): void => {
-		input(setting, text => text
-			.setValue(getter())
-			.setDisabled(!editable)
-			.onChange(setter))
+			editable: boolean,
+			getter: () => T,
+			setter: (value: T) => unknown,
+			input: (
+				setting: Setting,
+				callback: (component: ValueComponent<string> & {
+					readonly onChange: (callback: (value: string) => unknown) => unknown
+				}) => unknown,
+			) => void = (setting0, callback): void => {
+				setting0.addTextArea(callback)
+			},
+		): void => {
+			input(setting, text => text
+				.setValue(transformer.forth(getter()))
+				.setDisabled(!editable)
+				.onChange(value => setter(transformer.back(value))))
+		}
 	}
 
 	public override onOpen(): void {
@@ -99,7 +112,7 @@ export class ListModal<T> extends Modal {
 			[listEl, listElRemover] = useSettings(this.contentEl),
 			{ language } = plugin,
 			{ i18n } = language,
-			editable = this.#editable,
+			editables = this.#editables,
 			title = this.#title
 		if (!isUndefined(title)) {
 			ui.new(() => listEl.createEl("h1"), ele => {
@@ -108,7 +121,7 @@ export class ListModal<T> extends Modal {
 		}
 		ui.finally(listElRemover)
 			.newSetting(listEl, setting => {
-				if (!editable.includes("prepend")) {
+				if (!editables.includes("prepend")) {
 					setting.settingEl.remove()
 					return
 				}
@@ -119,7 +132,7 @@ export class ListModal<T> extends Modal {
 							.setIcon(i18n.t("asset:components.editable-list.prepend-icon"))
 							.setTooltip(i18n.t("components.editable-list.prepend"))
 							.onClick(async () => {
-								this.#data.unshift(placeholder)
+								this.#data.unshift(placeholder())
 								this.#setupListSubUI0()
 								await this.#postMutate()
 							})
@@ -133,7 +146,7 @@ export class ListModal<T> extends Modal {
 				return subUI
 			})
 			.newSetting(listEl, setting => {
-				if (!editable.includes("append")) {
+				if (!editables.includes("append")) {
 					setting.settingEl.remove()
 					return
 				}
@@ -143,7 +156,7 @@ export class ListModal<T> extends Modal {
 						.setIcon(i18n.t("asset:components.editable-list.append-icon"))
 						.setTooltip(i18n.t("components.editable-list.append"))
 						.onClick(async () => {
-							this.#data.push(placeholder)
+							this.#data.push(placeholder())
 							this.#setupListSubUI0()
 							await this.#postMutate()
 						}))
@@ -166,26 +179,24 @@ export class ListModal<T> extends Modal {
 	#setupListSubUI(ui: UpdatableUI, element: HTMLElement): void {
 		const { plugin } = this,
 			data = this.#data,
-			editable = this.#editable,
+			editables = this.#editables,
+			namer = this.#namer,
 			{ language } = plugin,
 			{ i18n } = language
 		ui.clear()
 		for (const [index, item] of data.entries()) {
 			ui.newSetting(element, setting => {
-				setting.setName(i18n.t("components.editable-list.name", {
-					count: index + 1,
-					ordinal: true,
-				}))
+				setting.setName(namer(item, index, data))
 				this.#inputter(
 					setting,
-					editable.includes("edit"),
+					editables.includes("edit"),
 					() => item,
 					async value => {
 						data[index] = value
 						await this.#postMutate()
 					},
 				)
-				if (editable.includes("remove")) {
+				if (editables.includes("remove")) {
 					setting
 						.addButton(button => button
 							.setTooltip(i18n.t("components.editable-list.remove"))
@@ -196,7 +207,7 @@ export class ListModal<T> extends Modal {
 								await this.#postMutate()
 							}))
 				}
-				if (editable.includes("move")) {
+				if (editables.includes("move")) {
 					setting.addExtraButton(button => button
 						.setTooltip(i18n.t("components.editable-list.move-up"))
 						.setIcon(i18n.t("asset:components.editable-list.move-up-icon"))
@@ -425,8 +436,8 @@ export class ProfileModal extends Modal {
 							.onClick(() => {
 								new ListModal(
 									plugin,
-									ListModal.stringInputter,
-									"",
+									ListModal.stringInputter({ back: identity, forth: identity }),
+									() => "",
 									profile.args,
 									{
 										callback: async (value): Promise<void> => {
@@ -506,8 +517,8 @@ export class ProfileModal extends Modal {
 							.onClick(() => {
 								new ListModal(
 									plugin,
-									ListModal.stringInputter,
-									"",
+									ListModal.stringInputter({ back: identity, forth: identity }),
+									() => "",
 									profile.args,
 									{
 										callback: async (value): Promise<void> => {

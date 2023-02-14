@@ -60,6 +60,7 @@
 		"add-to-command-icon": "terminal",
 		"add-to-context-menu-icon": "menu",
 		"all-settings-actions": {
+			"recover-icon": "file-x",
 			"reload-icon": "loader",
 			"reset-icon": "reset",
 			"undo-icon": "undo"

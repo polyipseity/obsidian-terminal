@@ -100,6 +100,7 @@
 		"advanced-settings": "Advanced settings",
 		"all-settings": "All settings",
 		"all-settings-actions": {
+			"recover": "Recover",
 			"reload": "Reload",
 			"reset": "Reset",
 			"undo": "Undo"

@@ -1,10 +1,12 @@
 import { DEFAULT_SETTINGS, Settings } from "./data"
+import { ListModal, ProfileListModal } from "sources/ui/modals"
 import {
 	capitalize,
 	cloneAsWritable,
 	executeParanoidly,
 	identity,
 	length,
+	unexpected,
 } from "../utils/util"
 import {
 	linkSetting,
@@ -14,13 +16,12 @@ import {
 } from "../ui/settings"
 import { LANGUAGES } from "assets/locales"
 import { PluginSettingTab } from "obsidian"
-import { ProfileListModal } from "sources/ui/modals"
 import type { TerminalPlugin } from "../main"
 import { UpdatableUI } from "sources/utils/obsidian"
 
 export class SettingTab extends PluginSettingTab {
 	protected readonly ui = new UpdatableUI()
-	#onMutation = this.#snapshot()
+	#onMutate = this.#snapshot()
 
 	public constructor(protected readonly plugin: TerminalPlugin) {
 		super(plugin.app, plugin)
@@ -67,13 +68,45 @@ export class SettingTab extends PluginSettingTab {
 			.newSetting(containerEl, setting => {
 				setting
 					.setName(i18n.t("settings.all-settings"))
+					.addButton(button => {
+						button
+							.setIcon(i18n
+								.t("asset:settings.all-settings-actions.recover-icon"))
+							.setTooltip(i18n.t("settings.all-settings-actions.recover"))
+							.onClick(() => {
+								new ListModal(
+									plugin,
+									ListModal.stringInputter<readonly [string, string]>({
+										back: unexpected,
+										forth: value => value[1],
+									}),
+									unexpected,
+									Object.entries(plugin.settings.recovery ?? {}),
+									{
+										callback: async (recovery0): Promise<void> => {
+											await plugin.mutateSettings(settingsM => {
+												settingsM.recovery = Object.fromEntries(recovery0)
+											})
+											this.#postMutate()
+										},
+										editables: ["remove"],
+										namer: (value): string => value[0],
+										title: (): string =>
+											i18n.t("settings.all-settings-actions.recover"),
+									},
+								).open()
+							})
+						if (length(plugin.settings.recovery ?? {}) > 0) {
+							button.setCta()
+						}
+					})
 					.addButton(resetButton(
 						plugin,
 						i18n.t("asset:settings.all-settings-actions.undo-icon"),
 						async () => plugin.mutateSettings(async settingsM =>
-							Object.assign(settingsM, await this.#onMutation)),
+							Object.assign(settingsM, await this.#onMutate)),
 						() => {
-							this.#onMutation = this.#snapshot()
+							this.#onMutate = this.#snapshot()
 							this.#postMutate()
 						},
 						{
@@ -82,7 +115,7 @@ export class SettingTab extends PluginSettingTab {
 									.setTooltip(i18n.t("settings.all-settings-actions.undo"))
 									.setDisabled(true)
 									.removeCta()
-								this.#onMutation.then(() => {
+								this.#onMutate.then(() => {
 									component.setDisabled(false).setCta()
 								}).catch(error => { console.error(error) })
 							},
@@ -303,7 +336,7 @@ export class SettingTab extends PluginSettingTab {
 
 	public override hide(): void {
 		super.hide()
-		this.#onMutation = this.#snapshot()
+		this.#onMutate = this.#snapshot()
 	}
 
 	public display(): void {
@@ -312,7 +345,8 @@ export class SettingTab extends PluginSettingTab {
 
 	async #snapshot(): Promise<Settings> {
 		const { plugin } = this,
-			{ settings: snapshot } = plugin
+			snapshot = cloneAsWritable(plugin.settings)
+		delete snapshot.recovery
 		return new Promise<Settings>(executeParanoidly((
 			resolve,
 			reject,
