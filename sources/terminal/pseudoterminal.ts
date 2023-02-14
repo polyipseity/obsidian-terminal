@@ -73,6 +73,7 @@ abstract class PseudoPseudoterminal implements Pseudoterminal {
 export class TextPseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
+	#writer: Promise<unknown> = Promise.resolve()
 	readonly #terminals: Terminal[] = []
 	#text: string
 
@@ -87,36 +88,40 @@ export class TextPseudoterminal
 	}
 
 	public set text(value: string) {
-		this.#text = value
-		const text = processText(value)
-		this.#terminals.forEach(terminal => {
-			terminal.clear()
-			terminal.write(text)
-		})
+		this.#rewrite(this.#terminals, processText(this.#text = value))
+			.catch(error => { console.error(error) })
 	}
 
-	public override pipe(terminal: Terminal): void {
+	public override async pipe(terminal: Terminal): Promise<void> {
 		if (this.exited) { throw new Error() }
-		terminal.clear()
-		terminal.write(processText(this.text))
 		this.#terminals.push(terminal)
+		await this.#rewrite([terminal], processText(this.text))
+	}
+
+	async #rewrite(terminals: readonly Terminal[], text: string): Promise<void> {
+		await this.#writer
+		const writers = terminals.map(async terminal =>
+			Promise.resolve().then(() => {
+				terminal.clear()
+				terminal.write(text)
+			}))
+		this.#writer = Promise.allSettled(writers)
+		await Promise.all(writers)
 	}
 }
 
 export class ConsolePseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
+	#writer: Promise<unknown> = Promise.resolve()
 	readonly #terminals: Terminal[] = []
 
 	public constructor() {
 		super()
 		this.onExit
 			.finally(() => { clear(this.#terminals) })
-			.finally(LOGGER.listen(event => {
-				for (const terminal of this.#terminals) {
-					terminal.writeln(processText(ConsolePseudoterminal.#format(event)))
-				}
-			}))
+			.finally(LOGGER.listen(async event =>
+				this.#write(this.#terminals, [event])))
 	}
 
 	// eslint-disable-next-line consistent-return
@@ -135,13 +140,29 @@ export class ConsolePseudoterminal
 		}
 	}
 
-	public override pipe(terminal: Terminal): void {
+	public override async pipe(terminal: Terminal): Promise<void> {
 		if (this.exited) { throw new Error() }
 		terminal.clear()
-		for (const event of log()) {
-			terminal.writeln(processText(ConsolePseudoterminal.#format(event)))
-		}
 		this.#terminals.push(terminal)
+		await this.#write([terminal], log())
+	}
+
+	async #write(
+		terminals: readonly Terminal[],
+		events: readonly Log.Event[],
+	): Promise<void> {
+		const logStrings = events.map(event =>
+			processText(ConsolePseudoterminal.#format(event)))
+		await this.#writer
+		const writers = terminals.map(async terminal =>
+			Promise.resolve()
+				.then(() => {
+					for (const logString of logStrings) {
+						terminal.writeln(logString)
+					}
+				}))
+		this.#writer = Promise.allSettled(writers)
+		await Promise.all(writers)
 	}
 }
 
