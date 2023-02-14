@@ -20,9 +20,8 @@ export class TerminalPlugin extends Plugin {
 			resolve: (value: AsyncOrSync<void>) => void,
 			reject: (reason?: unknown) => void,
 		) => {
-			(async (): Promise<void> => {
-				await this.saveData(this.settings)
-			})().then(resolve, reject)
+			this.saveData(this.settings)
+				.then(resolve, reject)
 		}, SAVE_SETTINGS_TIMEOUT, false))
 
 	#settings = DEFAULT_SETTINGS
