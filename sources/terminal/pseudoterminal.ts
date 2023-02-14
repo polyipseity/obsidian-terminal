@@ -88,17 +88,20 @@ export class TextPseudoterminal
 	}
 
 	public set text(value: string) {
-		this.#rewrite(this.#terminals, processText(this.#text = value))
+		this.rewrite(processText(this.#text = value))
 			.catch(error => { console.error(error) })
 	}
 
 	public override async pipe(terminal: Terminal): Promise<void> {
 		if (this.exited) { throw new Error() }
 		this.#terminals.push(terminal)
-		await this.#rewrite([terminal], processText(this.text))
+		await this.rewrite(processText(this.text), [terminal])
 	}
 
-	async #rewrite(terminals: readonly Terminal[], text: string): Promise<void> {
+	protected async rewrite(
+		text: string,
+		terminals: readonly Terminal[] = this.#terminals,
+	): Promise<void> {
 		await this.#writer
 		const writers = terminals.map(async terminal =>
 			Promise.resolve().then(() => {
@@ -120,12 +123,11 @@ export class ConsolePseudoterminal
 		super()
 		this.onExit
 			.finally(() => { clear(this.#terminals) })
-			.finally(LOGGER.listen(async event =>
-				this.#write(this.#terminals, [event])))
+			.finally(LOGGER.listen(async event => this.write([event])))
 	}
 
 	// eslint-disable-next-line consistent-return
-	static #format(event: Log.Event): string {
+	protected static format(event: Log.Event): string {
 		switch (event.type) {
 			case "debug":
 			case "error":
@@ -144,15 +146,15 @@ export class ConsolePseudoterminal
 		if (this.exited) { throw new Error() }
 		terminal.clear()
 		this.#terminals.push(terminal)
-		await this.#write([terminal], log())
+		await this.write(log(), [terminal])
 	}
 
-	async #write(
-		terminals: readonly Terminal[],
+	protected async write(
 		events: readonly Log.Event[],
+		terminals: readonly Terminal[] = this.#terminals,
 	): Promise<void> {
 		const logStrings = events.map(event =>
-			processText(ConsolePseudoterminal.#format(event)))
+			processText(ConsolePseudoterminal.format(event)))
 		await this.#writer
 		const writers = terminals.map(async terminal =>
 			Promise.resolve()
@@ -178,7 +180,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 	public readonly shell
 	public readonly conhost
 	public readonly onExit
-	readonly #resizer
+	protected readonly resizer
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
@@ -247,12 +249,12 @@ class WindowsPseudoterminal implements Pseudoterminal {
 									: [] as const,
 								"C:\\Windows\\System32\\cmd.exe",
 								"/C",
-								`${WindowsPseudoterminal.#escapeArgument(executable)} ${(
+								`${WindowsPseudoterminal.escapeArgument(executable)} ${(
 									args ?? [])
-									.map(arg => WindowsPseudoterminal.#escapeArgument(arg))
+									.map(arg => WindowsPseudoterminal.escapeArgument(arg))
 									.join(" ")
 								} & call echo %^ERRORLEVEL% >${WindowsPseudoterminal
-									.#escapeArgument(codeTmp.name)}`,
+									.escapeArgument(codeTmp.name)}`,
 							] as const),
 							ret = await spawnPromise(async () => (await childProcess).spawn(
 								cmd[0],
@@ -309,7 +311,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 					throw error
 				}
 			})()
-		this.#resizer = resizer
+		this.resizer = resizer
 		this.shell = shell.then(([shell0]) => shell0)
 		this.onExit = shell
 			.then(async ([shell0, codeTmp]) =>
@@ -338,7 +340,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 					}))))
 	}
 
-	static #escapeArgument(arg: string, shell = false): string {
+	protected static escapeArgument(arg: string, shell = false): string {
 		const ret = `"${arg.replace("\"", "\\\"")}"`
 		return shell ? ret.replace(/(?<meta>[()%!^"<>&|])/gu, "^$<meta>") : ret
 
@@ -356,11 +358,12 @@ class WindowsPseudoterminal implements Pseudoterminal {
 	}
 
 	public async resize(columns: number, rows: number): Promise<void> {
-		const resizer = await this.#resizer
-		if (resizer === null) {
-			throw new Error(this.plugin.language.i18n.t("errors.resizer-disabled"))
+		const { resizer, plugin } = this,
+			resizer0 = await resizer
+		if (resizer0 === null) {
+			throw new Error(plugin.language.i18n.t("errors.resizer-disabled"))
 		}
-		await writePromise(resizer.stdin, `${columns}x${rows}\n`)
+		await writePromise(resizer0.stdin, `${columns}x${rows}\n`)
 	}
 
 	public async pipe(terminal: Terminal): Promise<void> {

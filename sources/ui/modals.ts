@@ -44,7 +44,7 @@ export class ListModal<T> extends Modal {
 	] as const)
 
 	protected readonly ui = new UpdatableUI()
-	readonly #data
+	protected readonly data
 	readonly #inputter
 	readonly #callback
 	readonly #editables
@@ -69,8 +69,8 @@ export class ListModal<T> extends Modal {
 		},
 	) {
 		super(app)
+		this.data = [...data]
 		this.#inputter = inputter
-		this.#data = [...data]
 		this.#callback = options?.callback ?? ((): void => { })
 		this.#editables = deepFreeze([...options?.editables ?? ListModal.editables])
 		this.#title = options?.title
@@ -108,7 +108,7 @@ export class ListModal<T> extends Modal {
 
 	public override onOpen(): void {
 		super.onOpen()
-		const { plugin, placeholder, ui } = this,
+		const { plugin, placeholder, data, ui } = this,
 			[listEl, listElRemover] = useSettings(this.contentEl),
 			{ language } = plugin,
 			{ i18n } = language,
@@ -132,17 +132,17 @@ export class ListModal<T> extends Modal {
 							.setIcon(i18n.t("asset:components.editable-list.prepend-icon"))
 							.setTooltip(i18n.t("components.editable-list.prepend"))
 							.onClick(async () => {
-								this.#data.unshift(placeholder())
-								this.#setupListSubUI0()
-								await this.#postMutate()
+								data.unshift(placeholder())
+								this.#setupListSubUI()
+								await this.postMutate()
 							})
 					})
 			})
 			.embed(() => {
 				const subUI = new UpdatableUI(),
 					ele = useSubsettings(listEl)
-				this.#setupListSubUI0 = (): void => { this.#setupListSubUI(subUI, ele) }
-				this.#setupListSubUI0()
+				this.#setupListSubUI = (): void => { this.setupListSubUI(subUI, ele) }
+				this.#setupListSubUI()
 				return subUI
 			})
 			.newSetting(listEl, setting => {
@@ -156,9 +156,9 @@ export class ListModal<T> extends Modal {
 						.setIcon(i18n.t("asset:components.editable-list.append-icon"))
 						.setTooltip(i18n.t("components.editable-list.append"))
 						.onClick(async () => {
-							this.#data.push(placeholder())
-							this.#setupListSubUI0()
-							await this.#postMutate()
+							data.push(placeholder())
+							this.#setupListSubUI()
+							await this.postMutate()
 						}))
 			})
 			.finally(language.onChangeLanguage.listen(() => { ui.update() }))
@@ -169,16 +169,15 @@ export class ListModal<T> extends Modal {
 		this.ui.clear()
 	}
 
-	async #postMutate(): Promise<void> {
-		const cb = this.#callback(typedStructuredClone(this.#data))
-		this.ui.update()
+	protected async postMutate(): Promise<void> {
+		const { data, ui } = this,
+			cb = this.#callback(typedStructuredClone(data))
+		ui.update()
 		await cb
 	}
 
-	#setupListSubUI0 = (): void => { }
-	#setupListSubUI(ui: UpdatableUI, element: HTMLElement): void {
-		const { plugin } = this,
-			data = this.#data,
+	protected setupListSubUI(ui: UpdatableUI, element: HTMLElement): void {
+		const { plugin, data } = this,
 			editables = this.#editables,
 			namer = this.#namer,
 			{ language } = plugin,
@@ -193,7 +192,7 @@ export class ListModal<T> extends Modal {
 					() => item,
 					async value => {
 						data[index] = value
-						await this.#postMutate()
+						await this.postMutate()
 					},
 				)
 				if (editables.includes("remove")) {
@@ -203,8 +202,8 @@ export class ListModal<T> extends Modal {
 							.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
 							.onClick(async () => {
 								removeAt(data, index)
-								this.#setupListSubUI0()
-								await this.#postMutate()
+								this.#setupListSubUI()
+								await this.postMutate()
 							}))
 				}
 				if (editables.includes("move")) {
@@ -214,8 +213,8 @@ export class ListModal<T> extends Modal {
 						.onClick(async () => {
 							if (index <= 0) { return }
 							swap(data, index - 1, index)
-							this.#setupListSubUI0()
-							await this.#postMutate()
+							this.#setupListSubUI()
+							await this.postMutate()
 						}))
 						.addExtraButton(button => button
 							.setTooltip(i18n.t("components.editable-list.move-down"))
@@ -223,18 +222,20 @@ export class ListModal<T> extends Modal {
 							.onClick(async () => {
 								if (index >= data.length - 1) { return }
 								swap(data, index, index + 1)
-								this.#setupListSubUI0()
-								await this.#postMutate()
+								this.#setupListSubUI()
+								await this.postMutate()
 							}))
 				}
 			})
 		}
 	}
+
+	#setupListSubUI = (): void => { }
 }
 
 export class ProfileModal extends Modal {
 	protected readonly ui = new UpdatableUI()
-	readonly #data
+	protected readonly data
 	readonly #callback
 	readonly #presets
 	#preset = NaN
@@ -255,16 +256,16 @@ export class ProfileModal extends Modal {
 			})),
 	) {
 		super(plugin.app)
-		this.#data = cloneAsWritable(data)
+		this.data = cloneAsWritable(data)
 		this.#callback = callback
 		this.#presets = presets
 	}
 
 	public override onOpen(): void {
 		super.onOpen()
-		const { plugin, ui } = this,
+		const { plugin, ui, data } = this,
 			[listEl, listElRemover] = useSettings(this.contentEl),
-			profile = this.#data,
+			profile = data,
 			{ language } = plugin,
 			{ i18n } = language
 		let keepPreset = false
@@ -280,7 +281,7 @@ export class ProfileModal extends Modal {
 					.addText(linkSetting(
 						() => Settings.Profile.name(profile),
 						value => { profile.name = value },
-						async () => this.#postMutate(),
+						async () => this.postMutate(),
 					))
 					.addExtraButton(resetButton(
 						plugin,
@@ -288,7 +289,7 @@ export class ProfileModal extends Modal {
 						() => {
 							profile.name = Settings.Profile.DEFAULTS[profile.type].name
 						},
-						async () => this.#postMutate(),
+						async () => this.postMutate(),
 					))
 			})
 			.newSetting(listEl, setting => {
@@ -302,10 +303,10 @@ export class ProfileModal extends Modal {
 						async () => {
 							const preset = this.#presets[this.#preset]
 							if (isUndefined(preset)) { return }
-							this.#replaceData(cloneAsWritable(preset.value))
-							this.#setupTypedUI0()
+							this.replaceData(cloneAsWritable(preset.value))
+							this.#setupTypedUI()
 							keepPreset = true
-							await this.#postMutate()
+							await this.postMutate()
 						},
 						{
 							pre: component => {
@@ -326,13 +327,13 @@ export class ProfileModal extends Modal {
 						setTextToEnum(
 							Settings.Profile.TYPES,
 							value => {
-								this.#replaceData(cloneAsWritable(Settings.Profile
+								this.replaceData(cloneAsWritable(Settings.Profile
 									.DEFAULTS[value]))
 							},
 						),
 						async () => {
-							this.#setupTypedUI0()
-							await this.#postMutate()
+							this.#setupTypedUI()
+							await this.postMutate()
 						},
 						{
 							pre: dropdown => {
@@ -362,12 +363,12 @@ export class ProfileModal extends Modal {
 			.embed(() => {
 				const typedUI = new UpdatableUI(),
 					ele = useSubsettings(listEl)
-				this.#setupTypedUI0 = (): void => {
-					this.#setupTypedUI(typedUI, ele)
+				this.#setupTypedUI = (): void => {
+					this.setupTypedUI(typedUI, ele)
 				}
-				this.#setupTypedUI0()
+				this.#setupTypedUI()
 				return typedUI
-			}, null, () => { this.#setupTypedUI0 = (): void => { } })
+			}, null, () => { this.#setupTypedUI = (): void => { } })
 			.finally(language.onChangeLanguage.listen(() => { ui.update() }))
 	}
 
@@ -376,26 +377,25 @@ export class ProfileModal extends Modal {
 		this.ui.clear()
 	}
 
-	async #postMutate(): Promise<void> {
-		const cb = this.#callback(typedStructuredClone(this.#data))
-		this.ui.update()
+	protected async postMutate(): Promise<void> {
+		const { data, ui } = this,
+			cb = this.#callback(typedStructuredClone(data))
+		ui.update()
 		await cb
 	}
 
-	#replaceData(profile: DeepWritable<Settings.Profile>): void {
-		const { name } = this.#data
-		clearProperties(this.#data)
-		Object.assign(
-			this.#data,
-			profile,
-			{ name },
-		)
+	protected replaceData(profile: DeepWritable<Settings.Profile>): void {
+		const { data } = this,
+			{ name } = data
+		clearProperties(data)
+		Object.assign(data, profile, {
+			name,
+		})
 	}
 
-	#setupTypedUI0 = (): void => { }
-	#setupTypedUI(ui: UpdatableUI, element: HTMLElement): void {
-		const { plugin } = this,
-			profile = this.#data,
+	protected setupTypedUI(ui: UpdatableUI, element: HTMLElement): void {
+		const { plugin, data } = this,
+			profile = data,
 			{ i18n } = plugin.language
 		ui.clear()
 		switch (profile.type) {
@@ -412,7 +412,7 @@ export class ProfileModal extends Modal {
 						.addText(linkSetting(
 							() => profile.executable,
 							value => { profile.executable = value },
-							async () => this.#postMutate(),
+							async () => this.postMutate(),
 						))
 						.addExtraButton(resetButton(
 							plugin,
@@ -422,7 +422,7 @@ export class ProfileModal extends Modal {
 								profile.executable =
 									Settings.Profile.DEFAULTS[profile.type].executable
 							},
-							async () => this.#postMutate(),
+							async () => this.postMutate(),
 						))
 				}).newSetting(element, setting => {
 					setting
@@ -442,7 +442,7 @@ export class ProfileModal extends Modal {
 									{
 										callback: async (value): Promise<void> => {
 											profile.args = value
-											await this.#postMutate()
+											await this.postMutate()
 										},
 										title: () =>
 											i18n.t(`components.profile.${profile.type}.arguments`),
@@ -456,7 +456,7 @@ export class ProfileModal extends Modal {
 								profile.args =
 									cloneAsWritable(Settings.Profile.DEFAULTS[profile.type].args)
 							},
-							async () => this.#postMutate(),
+							async () => this.postMutate(),
 						))
 				})
 				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
@@ -469,7 +469,7 @@ export class ProfileModal extends Modal {
 								value => {
 									profile.platforms[platform] = value
 								},
-								async () => this.#postMutate(),
+								async () => this.postMutate(),
 							))
 							.addExtraButton(resetButton(
 								plugin,
@@ -478,7 +478,7 @@ export class ProfileModal extends Modal {
 									profile.platforms[platform] =
 										Settings.Profile.DEFAULTS[profile.type].platforms[platform]
 								},
-								async () => this.#postMutate(),
+								async () => this.postMutate(),
 							))
 					})
 				}
@@ -493,7 +493,7 @@ export class ProfileModal extends Modal {
 							value => {
 								profile.executable = value
 							},
-							async () => this.#postMutate(),
+							async () => this.postMutate(),
 						))
 						.addExtraButton(resetButton(
 							plugin,
@@ -503,7 +503,7 @@ export class ProfileModal extends Modal {
 								profile.executable =
 									Settings.Profile.DEFAULTS[profile.type].executable
 							},
-							async () => this.#postMutate(),
+							async () => this.postMutate(),
 						))
 				}).newSetting(element, setting => {
 					setting
@@ -523,7 +523,7 @@ export class ProfileModal extends Modal {
 									{
 										callback: async (value): Promise<void> => {
 											profile.args = value
-											await this.#postMutate()
+											await this.postMutate()
 										},
 										title: () =>
 											i18n.t(`components.profile.${profile.type}.arguments`),
@@ -537,7 +537,7 @@ export class ProfileModal extends Modal {
 								profile.args =
 									cloneAsWritable(Settings.Profile.DEFAULTS[profile.type].args)
 							},
-							async () => this.#postMutate(),
+							async () => this.postMutate(),
 						))
 				})
 				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
@@ -550,7 +550,7 @@ export class ProfileModal extends Modal {
 								value => {
 									profile.platforms[platform] = value
 								},
-								async () => this.#postMutate(),
+								async () => this.postMutate(),
 							))
 							.addExtraButton(resetButton(
 								plugin,
@@ -559,7 +559,7 @@ export class ProfileModal extends Modal {
 									profile.platforms[platform] =
 										Settings.Profile.DEFAULTS[profile.type].platforms[platform]
 								},
-								async () => this.#postMutate(),
+								async () => this.postMutate(),
 							))
 					})
 				}
@@ -574,7 +574,7 @@ export class ProfileModal extends Modal {
 							value => {
 								profile.pythonExecutable = value
 							},
-							async () => this.#postMutate(),
+							async () => this.postMutate(),
 							{
 								post: component => {
 									component
@@ -592,7 +592,7 @@ export class ProfileModal extends Modal {
 								profile.pythonExecutable =
 									Settings.Profile.DEFAULTS[profile.type].pythonExecutable
 							},
-							async () => this.#postMutate(),
+							async () => this.postMutate(),
 						))
 				}).newSetting(element, setting => {
 					setting
@@ -610,7 +610,7 @@ export class ProfileModal extends Modal {
 							value => {
 								profile.enableWindowsConhostWorkaround = value
 							},
-							async () => this.#postMutate(),
+							async () => this.postMutate(),
 						))
 						.addExtraButton(resetButton(
 							plugin,
@@ -622,7 +622,7 @@ export class ProfileModal extends Modal {
 									Settings.Profile.DEFAULTS[profile.type]
 										.enableWindowsConhostWorkaround
 							},
-							async () => this.#postMutate(),
+							async () => this.postMutate(),
 						))
 				})
 				break
@@ -651,11 +651,13 @@ export class ProfileModal extends Modal {
 			// No default
 		}
 	}
+
+	#setupTypedUI = (): void => { }
 }
 
 export class ProfileListModal extends Modal {
 	protected readonly ui = new UpdatableUI()
-	readonly #data
+	protected readonly data
 	readonly #callback
 	readonly #presets
 	readonly #keygen
@@ -677,7 +679,7 @@ export class ProfileListModal extends Modal {
 		keygen = (): string => crypto.randomUUID(),
 	) {
 		super(plugin.app)
-		this.#data = cloneAsWritable(data)
+		this.data = cloneAsWritable(data)
 		this.#callback = callback
 		this.#presets = presets
 		this.#keygen = keygen
@@ -685,7 +687,7 @@ export class ProfileListModal extends Modal {
 
 	public override onOpen(): void {
 		super.onOpen()
-		const { plugin, ui } = this,
+		const { plugin, ui, data } = this,
 			[listEl, listElRemover] = useSettings(this.contentEl),
 			{ language } = plugin,
 			{ i18n } = language
@@ -703,19 +705,19 @@ export class ProfileListModal extends Modal {
 						i18n.t("components.dropdown.unselected"),
 						this.#presets,
 						async value => {
-							this.#addProfile(0, cloneAsWritable(value))
-							this.#setupListSubUI0()
-							await this.#postMutate()
+							this.addProfile(0, cloneAsWritable(value))
+							this.#setupListSubUI()
+							await this.postMutate()
 						},
 					))
 			})
 			.embed(() => {
 				const subUI = new UpdatableUI(),
 					ele = useSubsettings(listEl)
-				this.#setupListSubUI0 = (): void => {
-					this.#setupListSubUI(subUI, ele)
+				this.#setupListSubUI = (): void => {
+					this.setupListSubUI(subUI, ele)
 				}
-				this.#setupListSubUI0()
+				this.#setupListSubUI()
 				return subUI
 			})
 			.newSetting(listEl, setting => {
@@ -725,9 +727,9 @@ export class ProfileListModal extends Modal {
 						i18n.t("components.dropdown.unselected"),
 						this.#presets,
 						async value => {
-							this.#addProfile(this.#data.length, cloneAsWritable(value))
-							this.#setupListSubUI0()
-							await this.#postMutate()
+							this.addProfile(data.length, cloneAsWritable(value))
+							this.#setupListSubUI()
+							await this.postMutate()
 						},
 					))
 			})
@@ -739,27 +741,27 @@ export class ProfileListModal extends Modal {
 		this.ui.update()
 	}
 
-	async #postMutate(): Promise<void> {
-		const cb = this.#callback(cloneAsWritable(this.#data))
-		this.ui.update()
+	protected async postMutate(): Promise<void> {
+		const { data, ui } = this,
+			cb = this.#callback(cloneAsWritable(data))
+		ui.update()
 		await cb
 	}
 
-	#addProfile(
+	protected addProfile(
 		index: number,
 		profile: DeepWritable<Settings.Profile>,
 	): void {
+		const { data } = this
 		insertAt(
-			this.#data,
+			data,
 			index,
-			[randomNotIn(this.#data.map(entry => entry[0]), this.#keygen), profile],
+			[randomNotIn(data.map(entry => entry[0]), this.#keygen), profile],
 		)
 	}
 
-	#setupListSubUI0 = (): void => { }
-	#setupListSubUI(ui: UpdatableUI, element: HTMLElement): void {
-		const { plugin } = this,
-			data = this.#data,
+	protected setupListSubUI(ui: UpdatableUI, element: HTMLElement): void {
+		const { plugin, data } = this,
 			{ language } = plugin,
 			{ i18n } = language
 		ui.clear()
@@ -784,7 +786,7 @@ export class ProfileListModal extends Modal {
 								value[1],
 								async profile0 => {
 									value[1] = profile0
-									await this.#postMutate()
+									await this.postMutate()
 								},
 							).open()
 						}))
@@ -793,8 +795,8 @@ export class ProfileListModal extends Modal {
 						.setTooltip(i18n.t("components.editable-list.remove"))
 						.onClick(async () => {
 							removeAt(data, index)
-							this.#setupListSubUI0()
-							await this.#postMutate()
+							this.#setupListSubUI()
+							await this.postMutate()
 						}))
 					.addExtraButton(button => button
 						.setTooltip(i18n.t("components.editable-list.move-up"))
@@ -802,8 +804,8 @@ export class ProfileListModal extends Modal {
 						.onClick(async () => {
 							if (index <= 0) { return }
 							swap(data, index - 1, index)
-							this.#setupListSubUI0()
-							await this.#postMutate()
+							this.#setupListSubUI()
+							await this.postMutate()
 						}))
 					.addExtraButton(button => button
 						.setTooltip(i18n.t("components.editable-list.move-down"))
@@ -811,12 +813,14 @@ export class ProfileListModal extends Modal {
 						.onClick(async () => {
 							if (index >= data.length - 1) { return }
 							swap(data, index, index + 1)
-							this.#setupListSubUI0()
-							await this.#postMutate()
+							this.#setupListSubUI()
+							await this.postMutate()
 						}))
 			})
 		}
 	}
+
+	#setupListSubUI = (): void => { }
 }
 
 export class DialogModal extends Modal {

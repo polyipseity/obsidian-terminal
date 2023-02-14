@@ -19,12 +19,12 @@ export class StatusBarHider {
 		const { plugin } = this
 		plugin.app.workspace.onLayoutReady(() => {
 			if (statusBar(div => {
-				const obs = new MutationObserver(() => { this.#maybeHide(div) })
+				const obs = new MutationObserver(() => { this.maybeHide(div) })
 				plugin.register(() => {
 					try {
 						obs.disconnect()
 					} finally {
-						this.#unhide(div)
+						this.unhide(div)
 					}
 				})
 				this.update()
@@ -55,19 +55,19 @@ export class StatusBarHider {
 
 	public update(): void {
 		statusBar(div => {
-			this.#unhide(div)
-			this.#maybeHide(div)
+			this.unhide(div)
+			this.maybeHide(div)
 		})
 	}
 
-	#maybeHide(div: HTMLDivElement): void {
+	protected maybeHide(div: HTMLDivElement): void {
 		if (this.plugin.settings.hideStatusBar === "always" ||
 			this.#hiders.some(hider0 => hider0())) {
 			div.style.visibility = "hidden"
 		}
 	}
 
-	#unhide(div: HTMLDivElement): void {
+	protected unhide(div: HTMLDivElement): void {
 		div.style.visibility = ""
 	}
 }

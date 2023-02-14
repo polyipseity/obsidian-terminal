@@ -21,7 +21,7 @@ import { UpdatableUI } from "sources/utils/obsidian"
 
 export class SettingTab extends PluginSettingTab {
 	protected readonly ui = new UpdatableUI()
-	#onMutate = this.#snapshot()
+	#onMutate = this.snapshot()
 
 	public constructor(protected readonly plugin: TerminalPlugin) {
 		super(plugin.app, plugin)
@@ -44,7 +44,7 @@ export class SettingTab extends PluginSettingTab {
 							async value => plugin
 								.mutateSettings(settingsM => { settingsM.language = value }),
 						),
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 						{
 							pre: dropdown => {
 								dropdown
@@ -62,7 +62,7 @@ export class SettingTab extends PluginSettingTab {
 							.mutateSettings(settingsM => {
 								settingsM.language = DEFAULT_SETTINGS.language
 							}),
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 					))
 			})
 			.newSetting(containerEl, setting => {
@@ -89,7 +89,7 @@ export class SettingTab extends PluginSettingTab {
 											await plugin.mutateSettings(settingsM => {
 												settingsM.recovery = Object.fromEntries(recovery0)
 											})
-											this.#postMutate()
+											this.postMutate()
 										},
 										editables: ["remove"],
 										namer: (value): string => value[0],
@@ -112,8 +112,8 @@ export class SettingTab extends PluginSettingTab {
 							return true
 						},
 						() => {
-							this.#onMutate = this.#snapshot()
-							this.#postMutate()
+							this.#onMutate = this.snapshot()
+							this.postMutate()
 						},
 						{
 							post: component => {
@@ -131,7 +131,7 @@ export class SettingTab extends PluginSettingTab {
 						i18n.t("asset:settings.all-settings-actions.reload-icon"),
 						async () => plugin.mutateSettings(async settingsM =>
 							plugin.loadSettings(settingsM)),
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 						{
 							post: component => {
 								component
@@ -145,7 +145,7 @@ export class SettingTab extends PluginSettingTab {
 						async () => plugin
 							.mutateSettings(settingsM =>
 								Object.assign(settingsM, cloneAsWritable(DEFAULT_SETTINGS))),
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 						{
 							post: component => {
 								component
@@ -161,7 +161,7 @@ export class SettingTab extends PluginSettingTab {
 						() => plugin.settings.addToCommand,
 						async value => plugin
 							.mutateSettings(settingsM => { settingsM.addToCommand = value }),
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 					))
 					.addExtraButton(resetButton(
 						plugin,
@@ -170,7 +170,7 @@ export class SettingTab extends PluginSettingTab {
 							.mutateSettings(settingsM => {
 								settingsM.addToCommand = DEFAULT_SETTINGS.addToCommand
 							}),
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 					))
 			})
 			.newSetting(containerEl, setting => {
@@ -181,7 +181,7 @@ export class SettingTab extends PluginSettingTab {
 						async value => plugin.mutateSettings(settingsM => {
 							settingsM.addToContextMenu = value
 						}),
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 					))
 					.addExtraButton(resetButton(
 						plugin,
@@ -190,7 +190,7 @@ export class SettingTab extends PluginSettingTab {
 							.mutateSettings(settingsM => {
 								settingsM.addToContextMenu = DEFAULT_SETTINGS.addToContextMenu
 							}),
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 					))
 			})
 			.newSetting(containerEl, setting => {
@@ -204,7 +204,7 @@ export class SettingTab extends PluginSettingTab {
 								settingsM.hideStatusBar = value
 							}),
 						),
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 						{
 							pre: dropdown => {
 								dropdown
@@ -223,7 +223,7 @@ export class SettingTab extends PluginSettingTab {
 						async () => plugin.mutateSettings(settingsM => {
 							settingsM.hideStatusBar = DEFAULT_SETTINGS.hideStatusBar
 						}),
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 					))
 			})
 			.newSetting(containerEl, setting => {
@@ -235,7 +235,7 @@ export class SettingTab extends PluginSettingTab {
 						setTextToNumber(async value => plugin.mutateSettings(settingsM => {
 							settingsM.noticeTimeout = value
 						})),
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 					))
 					.addExtraButton(resetButton(
 						plugin,
@@ -243,7 +243,7 @@ export class SettingTab extends PluginSettingTab {
 						async () => plugin.mutateSettings(settingsM => {
 							settingsM.noticeTimeout = DEFAULT_SETTINGS.noticeTimeout
 						}),
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 					))
 			})
 			.newSetting(containerEl, setting => {
@@ -256,7 +256,7 @@ export class SettingTab extends PluginSettingTab {
 							.mutateSettings(settingsM => {
 								settingsM.errorNoticeTimeout = value
 							})),
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 					))
 					.addExtraButton(resetButton(
 						plugin,
@@ -264,7 +264,7 @@ export class SettingTab extends PluginSettingTab {
 						async () => plugin.mutateSettings(settingsM => {
 							settingsM.errorNoticeTimeout = DEFAULT_SETTINGS.errorNoticeTimeout
 						}),
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 					))
 			})
 			.newSetting(containerEl, setting => {
@@ -284,7 +284,7 @@ export class SettingTab extends PluginSettingTab {
 									await plugin.mutateSettings(settingsM => {
 										settingsM.profiles = Object.fromEntries(data)
 									})
-									this.#postMutate()
+									this.postMutate()
 								},
 							).open()
 						}))
@@ -294,7 +294,7 @@ export class SettingTab extends PluginSettingTab {
 						async () => plugin.mutateSettings(settingsM => {
 							settingsM.profiles = cloneAsWritable(DEFAULT_SETTINGS.profiles)
 						}),
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 					))
 			})
 			.new(() => containerEl.createEl("h2"), ele => {
@@ -311,7 +311,7 @@ export class SettingTab extends PluginSettingTab {
 								settingsM.preferredRenderer = value
 							}),
 						),
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 						{
 							pre: dropdown => {
 								dropdown
@@ -333,7 +333,7 @@ export class SettingTab extends PluginSettingTab {
 						async () => plugin.mutateSettings(settingsM => {
 							settingsM.preferredRenderer = DEFAULT_SETTINGS.preferredRenderer
 						}),
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 					))
 			})
 			.finally(language.onChangeLanguage.listen(() => { this.display() }))
@@ -341,14 +341,14 @@ export class SettingTab extends PluginSettingTab {
 
 	public override hide(): void {
 		super.hide()
-		this.#onMutate = this.#snapshot()
+		this.#onMutate = this.snapshot()
 	}
 
 	public display(): void {
 		this.ui.update()
 	}
 
-	async #snapshot(): Promise<Settings> {
+	protected async snapshot(): Promise<Settings> {
 		const { plugin } = this,
 			snapshot = cloneAsWritable(plugin.settings)
 		delete snapshot.recovery
@@ -369,7 +369,7 @@ export class SettingTab extends PluginSettingTab {
 		}))
 	}
 
-	#postMutate(): void {
+	protected postMutate(): void {
 		this.plugin.saveSettings().catch(error => { console.error(error) })
 		this.display()
 	}

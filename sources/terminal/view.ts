@@ -53,28 +53,24 @@ import { WebglAddon } from "xterm-addon-webgl"
 
 export class TerminalEditModal extends DialogModal {
 	protected readonly ui = new UpdatableUI()
-	readonly #protostate
-	readonly #state
+	protected readonly state
 	#profile: string | null = null
 	readonly #confirm
 
 	public constructor(
 		plugin: TerminalPlugin,
-		state: TerminalView.State,
-		confirm: (state_: DeepWritable<typeof state>) => unknown,
+		protected readonly protostate: TerminalView.State,
+		confirm: (state_: DeepWritable<typeof protostate>) => unknown,
 	) {
 		super(plugin)
-		this.#protostate = state
-		this.#state = cloneAsWritable(state)
+		this.state = cloneAsWritable(protostate)
 		this.#confirm = confirm
 	}
 
 	public override onOpen(): void {
 		super.onOpen()
-		const { plugin, ui } = this,
+		const { plugin, ui, protostate, state } = this,
 			[listEl, listElRemover] = useSettings(this.contentEl),
-			protostate = this.#protostate,
-			state = this.#state,
 			{ language } = plugin,
 			{ i18n } = language
 		ui.finally(listElRemover)
@@ -87,7 +83,7 @@ export class TerminalEditModal extends DialogModal {
 					.addText(linkSetting(
 						() => state.cwd ?? "",
 						value => { state.cwd = value === "" ? UNDEF : value },
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 						{
 							post: component => {
 								component
@@ -100,7 +96,7 @@ export class TerminalEditModal extends DialogModal {
 						plugin,
 						i18n.t("asset:components.terminal.working-directory-icon"),
 						() => { state.cwd = protostate.cwd },
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 					))
 			})
 			.newSetting(listEl, setting => {
@@ -117,9 +113,9 @@ export class TerminalEditModal extends DialogModal {
 								return
 							}
 							this.#profile = value
-							this.#state.profile = cloneAsWritable(profile0)
+							this.state.profile = cloneAsWritable(profile0)
 						},
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 						{
 							pre: component => {
 								component
@@ -145,7 +141,7 @@ export class TerminalEditModal extends DialogModal {
 								profile0 => {
 									this.#profile = null
 									state.profile = profile0
-									this.#postMutate()
+									this.postMutate()
 								},
 							).open()
 						}))
@@ -156,7 +152,7 @@ export class TerminalEditModal extends DialogModal {
 							this.#profile = null
 							state.profile = cloneAsWritable(protostate.profile)
 						},
-						() => { this.#postMutate() },
+						() => { this.postMutate() },
 					))
 			})
 			.finally(language.onChangeLanguage.listen(() => { ui.update() }))
@@ -168,11 +164,11 @@ export class TerminalEditModal extends DialogModal {
 	}
 
 	protected override async confirm(close: () => void): Promise<void> {
-		await this.#confirm(typedStructuredClone(this.#state))
+		await this.#confirm(typedStructuredClone(this.state))
 		await super.confirm(close)
 	}
 
-	#postMutate(): void {
+	protected postMutate(): void {
 		this.ui.update()
 	}
 }
@@ -184,7 +180,7 @@ export class TerminalView extends ItemView {
 	#emulator0: TerminalView.EMULATOR | null = null
 	#find0: FindComponent | null = null
 	#focus0 = false
-	#state0: TerminalView.State = {
+	#state: TerminalView.State = {
 		__type: TerminalView.State.TYPE,
 		profile: Settings.Profile.DEFAULTS.invalid,
 	}
@@ -196,8 +192,8 @@ export class TerminalView extends ItemView {
 		super(leaf)
 	}
 
-	get #state(): TerminalView.State {
-		return this.#state0
+	protected get state(): TerminalView.State {
+		return this.#state
 	}
 
 	get #emulator(): TerminalView.EMULATOR | null {
@@ -213,8 +209,9 @@ export class TerminalView extends ItemView {
 	}
 
 	get #name(): string {
-		const { i18n } = this.plugin.language,
-			{ profile } = this.#state,
+		const { plugin, state } = this,
+			{ i18n } = plugin.language,
+			{ profile } = state,
 			{ name } = profile
 		if (typeof name === "string" && name) { return name }
 		if ("executable" in profile) {
@@ -240,8 +237,8 @@ export class TerminalView extends ItemView {
 		}
 	}
 
-	set #state(value: TerminalView.State) {
-		this.#state0 = value
+	protected set state(value: TerminalView.State) {
+		this.#state = value
 		updateDisplayText(this, this.plugin.app.workspace)
 	}
 
@@ -278,17 +275,17 @@ export class TerminalView extends ItemView {
 	): Promise<void> {
 		await super.setState(state, result)
 		if (isInterface<TerminalView.State>(TerminalView.State.TYPE, state)) {
-			this.#state = typedStructuredClone(state)
-			this.#startEmulator()
+			this.state = typedStructuredClone(state)
+			this.startEmulator()
 		}
 	}
 
 	public override getState(): unknown {
 		const serial = this.#emulator?.serialize()
 		if (typeof serial !== "undefined") {
-			this.#state = copyOnWrite(this.#state, state => { state.serial = serial })
+			this.state = copyOnWrite(this.state, state => { state.serial = serial })
 		}
-		return Object.assign(super.getState(), this.#state)
+		return Object.assign(super.getState(), this.state)
 	}
 
 	public getDisplayText(): string {
@@ -371,17 +368,17 @@ export class TerminalView extends ItemView {
 			.addItem(item => item
 				.setTitle(i18n.t("menus.terminal.restart"))
 				.setIcon(i18n.t("asset:menus.terminal.restart-icon"))
-				.onClick(() => { this.#startEmulator() }))
+				.onClick(() => { this.startEmulator() }))
 			.addItem(item => item
 				.setTitle(i18n.t("generic.edit"))
 				.setIcon(i18n.t("asset:generic.edit-icon"))
 				.onClick(() => {
 					new TerminalEditModal(
 						plugin,
-						this.#state,
+						this.state,
 						state => {
-							this.#state = state
-							this.#startEmulator()
+							this.state = state
+							this.startEmulator()
 						},
 					).open()
 				}))
@@ -431,9 +428,8 @@ export class TerminalView extends ItemView {
 		this.register(() => { this.#emulator = null })
 	}
 
-	#startEmulator(): void {
-		const { contentEl, plugin, leaf } = this,
-			state = this.#state,
+	protected startEmulator(): void {
+		const { contentEl, plugin, leaf, state } = this,
 			{ profile, cwd, serial } = state,
 			{ app, language } = plugin,
 			{ i18n } = language,
