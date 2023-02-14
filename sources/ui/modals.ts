@@ -13,6 +13,7 @@ import {
 import {
 	clearProperties,
 	cloneAsWritable,
+	deepFreeze,
 	insertAt,
 	isUndefined,
 	randomNotIn,
@@ -32,34 +33,49 @@ import { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "sources/main"
 
-export class EditableListModal<T> extends Modal {
+export class ListModal<T> extends Modal {
+	public static readonly editables = deepFreeze([
+		"edit",
+		"append",
+		"prepend",
+		"remove",
+		"move",
+	] as const)
+
 	protected readonly ui = new UpdatableUI()
 	readonly #data
 	readonly #inputter
 	readonly #callback
+	readonly #editable
 	readonly #title
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
 		protected readonly inputter: (
 			setting: Setting,
+			editable: boolean,
 			getter: () => T,
 			setter: (value: T) => unknown,
 		) => void,
 		protected readonly placeholder: T,
 		data: readonly T[],
-		callback: (data_: Writable<typeof data>) => unknown,
-		title?: () => string,
+		options?: {
+			readonly callback?: (data_: Writable<typeof data>) => unknown
+			readonly editable?: typeof ListModal.editables
+			readonly title?: () => string
+		},
 	) {
 		super(app)
 		this.#inputter = inputter
 		this.#data = [...data]
-		this.#callback = callback
-		this.#title = title
+		this.#callback = options?.callback ?? ((): void => { })
+		this.#editable = deepFreeze([...options?.editable ?? ListModal.editables])
+		this.#title = options?.title
 	}
 
 	public static readonly stringInputter = (
 		setting: Setting,
+		editable: boolean,
 		getter: () => string,
 		setter: (value: string) => unknown,
 		input: (
@@ -73,6 +89,7 @@ export class EditableListModal<T> extends Modal {
 	): void => {
 		input(setting, text => text
 			.setValue(getter())
+			.setDisabled(!editable)
 			.onChange(setter))
 	}
 
@@ -82,6 +99,7 @@ export class EditableListModal<T> extends Modal {
 			[listEl, listElRemover] = useSettings(this.contentEl),
 			{ language } = plugin,
 			{ i18n } = language,
+			editable = this.#editable,
 			title = this.#title
 		if (!isUndefined(title)) {
 			ui.new(() => listEl.createEl("h1"), ele => {
@@ -90,6 +108,10 @@ export class EditableListModal<T> extends Modal {
 		}
 		ui.finally(listElRemover)
 			.newSetting(listEl, setting => {
+				if (!editable.includes("prepend")) {
+					setting.settingEl.remove()
+					return
+				}
 				setting
 					.setName(i18n.t("components.editable-list.prepend"))
 					.addButton(button => {
@@ -111,6 +133,10 @@ export class EditableListModal<T> extends Modal {
 				return subUI
 			})
 			.newSetting(listEl, setting => {
+				if (!editable.includes("append")) {
+					setting.settingEl.remove()
+					return
+				}
 				setting
 					.setName(i18n.t("components.editable-list.append"))
 					.addButton(button => button
@@ -140,6 +166,7 @@ export class EditableListModal<T> extends Modal {
 	#setupListSubUI(ui: UpdatableUI, element: HTMLElement): void {
 		const { plugin } = this,
 			data = this.#data,
+			editable = this.#editable,
 			{ language } = plugin,
 			{ i18n } = language
 		ui.clear()
@@ -151,22 +178,26 @@ export class EditableListModal<T> extends Modal {
 				}))
 				this.#inputter(
 					setting,
+					editable.includes("edit"),
 					() => item,
 					async value => {
 						data[index] = value
 						await this.#postMutate()
 					},
 				)
-				setting
-					.addButton(button => button
-						.setTooltip(i18n.t("components.editable-list.remove"))
-						.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
-						.onClick(async () => {
-							removeAt(data, index)
-							this.#setupListSubUI0()
-							await this.#postMutate()
-						}))
-					.addExtraButton(button => button
+				if (editable.includes("remove")) {
+					setting
+						.addButton(button => button
+							.setTooltip(i18n.t("components.editable-list.remove"))
+							.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
+							.onClick(async () => {
+								removeAt(data, index)
+								this.#setupListSubUI0()
+								await this.#postMutate()
+							}))
+				}
+				if (editable.includes("move")) {
+					setting.addExtraButton(button => button
 						.setTooltip(i18n.t("components.editable-list.move-up"))
 						.setIcon(i18n.t("asset:components.editable-list.move-up-icon"))
 						.onClick(async () => {
@@ -175,15 +206,16 @@ export class EditableListModal<T> extends Modal {
 							this.#setupListSubUI0()
 							await this.#postMutate()
 						}))
-					.addExtraButton(button => button
-						.setTooltip(i18n.t("components.editable-list.move-down"))
-						.setIcon(i18n.t("asset:components.editable-list.move-down-icon"))
-						.onClick(async () => {
-							if (index >= data.length - 1) { return }
-							swap(data, index, index + 1)
-							this.#setupListSubUI0()
-							await this.#postMutate()
-						}))
+						.addExtraButton(button => button
+							.setTooltip(i18n.t("components.editable-list.move-down"))
+							.setIcon(i18n.t("asset:components.editable-list.move-down-icon"))
+							.onClick(async () => {
+								if (index >= data.length - 1) { return }
+								swap(data, index, index + 1)
+								this.#setupListSubUI0()
+								await this.#postMutate()
+							}))
+				}
 			})
 		}
 	}
@@ -391,16 +423,19 @@ export class ProfileModal extends Modal {
 							.setIcon(i18n.t("asset:generic.edit-list-icon"))
 							.setTooltip(i18n.t("generic.edit"))
 							.onClick(() => {
-								new EditableListModal(
+								new ListModal(
 									plugin,
-									EditableListModal.stringInputter,
+									ListModal.stringInputter,
 									"",
 									profile.args,
-									async value => {
-										profile.args = value
-										await this.#postMutate()
+									{
+										callback: async (value): Promise<void> => {
+											profile.args = value
+											await this.#postMutate()
+										},
+										title: () =>
+											i18n.t(`components.profile.${profile.type}.arguments`),
 									},
-									() => i18n.t(`components.profile.${profile.type}.arguments`),
 								).open()
 							}))
 						.addExtraButton(resetButton(
@@ -469,16 +504,19 @@ export class ProfileModal extends Modal {
 							.setIcon(i18n.t("asset:generic.edit-list-icon"))
 							.setTooltip(i18n.t("generic.edit"))
 							.onClick(() => {
-								new EditableListModal(
+								new ListModal(
 									plugin,
-									EditableListModal.stringInputter,
+									ListModal.stringInputter,
 									"",
 									profile.args,
-									async value => {
-										profile.args = value
-										await this.#postMutate()
+									{
+										callback: async (value): Promise<void> => {
+											profile.args = value
+											await this.#postMutate()
+										},
+										title: () =>
+											i18n.t(`components.profile.${profile.type}.arguments`),
 									},
-									() => i18n.t(`components.profile.${profile.type}.arguments`),
 								).open()
 							}))
 						.addExtraButton(resetButton(
