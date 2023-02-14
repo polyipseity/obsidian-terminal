@@ -182,6 +182,133 @@ export namespace Settings {
 				type: "invalid",
 			},
 		} as const)
+		// eslint-disable-next-line @typescript-eslint/no-shadow
+		export function fix(self: unknown): Fixed<Profile> {
+			const unc = launderUnchecked<Invalid>(self),
+				fixPlatforms = <
+					V extends Platforms<Vs[number]>,
+					Vs extends readonly string[],
+				>(
+					defaults: V,
+					from: Unchecked<V>,
+					set: Sized<Vs>,
+				): Platforms<Vs[number]> => {
+					const ret2: { [_ in Vs[number]]?: boolean } = {}
+					for (const platform0 of set) {
+						const platform: Vs[number] = platform0,
+							value = from[platform]
+						ret2[platform] = typeof value === "boolean"
+							? value
+							: defaults[platform]
+					}
+					return ret2
+				}
+			// eslint-disable-next-line consistent-return
+			return markFixed(self, ((): DeepWritable<Profile> => {
+				const type = inSet(TYPES, unc.type)
+					? unc.type
+					: "invalid"
+				switch (type) {
+					case "": {
+						return {
+							name: fixTyped(
+								DEFAULTS[type],
+								unc,
+								"name",
+								"string",
+							),
+							type,
+						} satisfies Required<Typed<typeof type>>
+					}
+					case "console": {
+						return {
+							name: fixTyped(
+								DEFAULTS[type],
+								unc,
+								"name",
+								"string",
+							),
+							type,
+						} satisfies Required<Typed<typeof type>>
+					}
+					case "external": {
+						return {
+							args: fixArray(
+								DEFAULTS[type],
+								unc,
+								"args",
+								"string",
+							),
+							executable: fixTyped(
+								DEFAULTS[type],
+								unc,
+								"executable",
+								"string",
+							),
+							name: fixTyped(
+								DEFAULTS[type],
+								unc,
+								"name",
+								"string",
+							),
+							platforms: fixPlatforms(
+								DEFAULTS[type].platforms,
+								unc["platforms"] ?? {},
+								Pseudoterminal.SUPPORTED_PLATFORMS,
+							),
+							type,
+						} satisfies Required<Typed<typeof type>>
+					}
+					case "integrated": {
+						return {
+							args: fixArray(
+								DEFAULTS[type],
+								unc,
+								"args",
+								"string",
+							),
+							enableWindowsConhostWorkaround: fixTyped(
+								DEFAULTS[type],
+								unc,
+								"enableWindowsConhostWorkaround",
+								"boolean",
+							),
+							executable: fixTyped(
+								DEFAULTS[type],
+								unc,
+								"executable",
+								"string",
+							),
+							name: fixTyped(
+								DEFAULTS[type],
+								unc,
+								"name",
+								"string",
+							),
+							platforms: fixPlatforms(
+								DEFAULTS[type].platforms,
+								unc["platforms"] ?? {},
+								Pseudoterminal.SUPPORTED_PLATFORMS,
+							),
+							pythonExecutable: fixTyped(
+								DEFAULTS[type],
+								unc,
+								"pythonExecutable",
+								"string",
+							),
+							type,
+						} satisfies Required<Typed<typeof type>>
+					}
+					case "invalid": {
+						return {
+							...unc,
+							type,
+						} satisfies Required<Typed<typeof type>>
+					}
+					// No default
+				}
+			})())
+		}
 	}
 	export function fix(self: unknown): Fixed<Settings> {
 		const unc = launderUnchecked<Settings>(self)
@@ -231,141 +358,9 @@ export namespace Settings {
 			profiles: ((): DeepWritable<Profiles> => {
 				const defaults2 = DEFAULT_SETTINGS.profiles,
 					{ profiles } = unc
-				if (profiles !== null && typeof profiles === "object") {
-					const ret: DeepWritable<Profiles> = {}
-					for (const [id, profile0] of Object.entries(profiles)) {
-						const profile1: unknown = profile0,
-							fixPlatforms = <
-								V extends Profile.Platforms<Vs[number]>,
-								Vs extends readonly string[],
-							>(
-								defaults: V,
-								from: Unchecked<V>,
-								set: Sized<Vs>,
-							): Profile.Platforms<Vs[number]> => {
-								const ret2: { [_ in Vs[number]]?: boolean } = {}
-								for (const platform0 of set) {
-									const platform: Vs[number] = platform0,
-										value = from[platform]
-									ret2[platform] = typeof value === "boolean"
-										? value
-										: defaults[platform]
-								}
-								return ret2
-							}
-						if (profile1 !== null && typeof profile1 === "object") {
-							const
-								profile: Readonly<Record<string, unknown>> = { ...profile1 },
-								type = inSet(Profile.TYPES, profile["type"])
-									? profile["type"]
-									: "invalid"
-							switch (type) {
-								case "": {
-									ret[id] = {
-										name: fixTyped(
-											Profile.DEFAULTS[type],
-											profile,
-											"name",
-											"string",
-										),
-										type,
-									} satisfies Required<Profile.Typed<typeof type>>
-									break
-								}
-								case "console": {
-									ret[id] = {
-										name: fixTyped(
-											Profile.DEFAULTS[type],
-											profile,
-											"name",
-											"string",
-										),
-										type,
-									} satisfies Required<Profile.Typed<typeof type>>
-									break
-								}
-								case "external": {
-									ret[id] = {
-										args: fixArray(
-											Profile.DEFAULTS[type],
-											profile,
-											"args",
-											"string",
-										),
-										executable: fixTyped(
-											Profile.DEFAULTS[type],
-											profile,
-											"executable",
-											"string",
-										),
-										name: fixTyped(
-											Profile.DEFAULTS[type],
-											profile,
-											"name",
-											"string",
-										),
-										platforms: fixPlatforms(
-											Profile.DEFAULTS[type].platforms,
-											profile["platforms"] ?? {},
-											Pseudoterminal.SUPPORTED_PLATFORMS,
-										),
-										type,
-									} satisfies Required<Profile.Typed<typeof type>>
-									break
-								}
-								case "integrated": {
-									ret[id] = {
-										args: fixArray(
-											Profile.DEFAULTS[type],
-											profile,
-											"args",
-											"string",
-										),
-										enableWindowsConhostWorkaround: fixTyped(
-											Profile.DEFAULTS[type],
-											profile,
-											"enableWindowsConhostWorkaround",
-											"boolean",
-										),
-										executable: fixTyped(
-											Profile.DEFAULTS[type],
-											profile,
-											"executable",
-											"string",
-										),
-										name: fixTyped(
-											Profile.DEFAULTS[type],
-											profile,
-											"name",
-											"string",
-										),
-										platforms: fixPlatforms(
-											Profile.DEFAULTS[type].platforms,
-											profile["platforms"] ?? {},
-											Pseudoterminal.SUPPORTED_PLATFORMS,
-										),
-										pythonExecutable: fixTyped(
-											Profile.DEFAULTS[type],
-											profile,
-											"pythonExecutable",
-											"string",
-										),
-										type,
-									} satisfies Required<Profile.Typed<typeof type>>
-									break
-								}
-								case "invalid": {
-									ret[id] = {
-										...profile,
-										type,
-									} satisfies Required<Profile.Typed<typeof type>>
-									break
-								}
-								// No default
-							}
-						}
-					}
-					return ret
+				if (typeof profiles === "object" && profiles !== null) {
+					return Object.fromEntries(Object.entries(profiles)
+						.map(([id, profile]) => [id, Profile.fix(profile).value]))
 				}
 				return cloneAsWritable(defaults2)
 			})(),
