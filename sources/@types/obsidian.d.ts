@@ -11,6 +11,4 @@ declare module "obsidian" {
 		) => HTMLElement
 		removeRibbonAction: (title: string) => void
 	}
-	// Someone made a mistake...
-	export type WorkspacceRibbon = WorkspaceRibbon
 }
