@@ -63,11 +63,19 @@ export class UpdatableUI {
 						if (isUndefined(comp)) {
 							throw new Error(index.toString())
 						}
+						comp.setDisabled(false)
 						if ("onChange" in comp) {
 							try {
 								(comp.onChange as ((
 									callback: (value: unknown) => unknown,
 								) => unknown))((): void => { })
+							} catch (error) {
+								console.error(error)
+							}
+						}
+						if ("removeCta" in comp) {
+							try {
+								(comp.removeCta as (() => void))()
 							} catch (error) {
 								console.error(error)
 							}
