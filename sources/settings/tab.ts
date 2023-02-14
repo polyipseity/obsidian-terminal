@@ -66,6 +66,8 @@ export class SettingTab extends PluginSettingTab {
 					))
 			})
 			.newSetting(containerEl, setting => {
+				// Disabling undo is required for its CTA status to work properly
+				let undoable = false
 				setting
 					.setName(i18n.t("settings.all-settings"))
 					.addButton(button => {
@@ -103,8 +105,12 @@ export class SettingTab extends PluginSettingTab {
 					.addButton(resetButton(
 						plugin,
 						i18n.t("asset:settings.all-settings-actions.undo-icon"),
-						async () => plugin.mutateSettings(async settingsM =>
-							Object.assign(settingsM, await this.#onMutate)),
+						async () => {
+							if (!undoable) { return false }
+							await plugin.mutateSettings(async settingsM =>
+								Object.assign(settingsM, await this.#onMutate))
+							return true
+						},
 						() => {
 							this.#onMutate = this.#snapshot()
 							this.#postMutate()
@@ -113,9 +119,9 @@ export class SettingTab extends PluginSettingTab {
 							post: component => {
 								component
 									.setTooltip(i18n.t("settings.all-settings-actions.undo"))
-									.setDisabled(true)
 								this.#onMutate.then(() => {
-									component.setDisabled(false).setCta()
+									undoable = true
+									component.setCta()
 								}).catch(error => { console.error(error) })
 							},
 						},
