@@ -311,7 +311,8 @@ export function useSettings(element: HTMLElement): readonly [
 }
 
 export function useSubsettings(element: HTMLElement): HTMLElement {
-	const ret = element.createEl("div")
-	ret.createEl("div")
+	const first = element.firstChild === null,
+		ret = element.createEl("div")
+	if (!first) { ret.createEl("div") }
 	return ret
 }
