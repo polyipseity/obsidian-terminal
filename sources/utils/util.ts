@@ -186,18 +186,6 @@ export function cloneAsWritable<T>(obj: T): DeepWritable<T> {
 	return typedStructuredClone(obj) as DeepWritable<T>
 }
 
-export function commandNamer(
-	cmdNamer: () => string,
-	pluginNamer: () => string,
-	defaultPluginName: string,
-	format: string,
-): () => string {
-	const cmd = cmdNamer()
-	return () => format
-		.replace(cmd, cmdNamer())
-		.replace(defaultPluginName, pluginNamer())
-}
-
 export function deepFreeze<T>(value: T): DeepReadonly<T> {
 	if (typeof value === "object" && value !== null) {
 		Object.values(value).forEach(deepFreeze)

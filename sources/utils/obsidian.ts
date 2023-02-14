@@ -1,6 +1,7 @@
 
 import {
 	type BaseComponent,
+	type Command,
 	type Debouncer,
 	DropdownComponent,
 	Notice,
@@ -13,6 +14,7 @@ import {
 import { Functions, isNonNullish, isUndefined } from "./util"
 import { NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
 import type { AsyncOrSync } from "ts-essentials"
+import { DEFAULT_LANGUAGE } from "assets/locales"
 import type { TerminalPlugin } from "sources/main"
 import { around } from "monkey-around"
 
@@ -147,6 +149,27 @@ export class UnnamespacedID<V extends string> {
 	}
 }
 
+export function addCommand(
+	plugin: TerminalPlugin,
+	name: () => string,
+	command: Omit<Readonly<Command>, "name">,
+): Command {
+	const { i18n } = plugin.language
+	let namer = name
+	return plugin.addCommand({
+		...command,
+		get name() { return namer() },
+		set name(format) {
+			namer = commandNamer(
+				name,
+				() => i18n.t("name"),
+				i18n.t("name", { lng: DEFAULT_LANGUAGE }),
+				format,
+			)
+		},
+	})
+}
+
 export function addRibbonIcon(
 	plugin: TerminalPlugin,
 	id: string,
@@ -210,6 +233,18 @@ export function asyncDebounce<
 				}
 			}, ...args)
 		})
+}
+
+export function commandNamer(
+	cmdNamer: () => string,
+	pluginNamer: () => string,
+	defaultPluginName: string,
+	format: string,
+): () => string {
+	const cmd = cmdNamer()
+	return () => format
+		.replace(cmd, cmdNamer())
+		.replace(defaultPluginName, pluginNamer())
 }
 
 export function printMalformedData(

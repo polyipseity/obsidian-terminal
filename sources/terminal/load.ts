@@ -7,13 +7,11 @@ import {
 } from "obsidian"
 import {
 	UNDEF,
-	commandNamer,
 	deepFreeze,
 	isNonNullish,
 	isUndefined,
 } from "../utils/util"
-import { addRibbonIcon, notice2 } from "sources/utils/obsidian"
-import { DEFAULT_LANGUAGE } from "assets/locales"
+import { addCommand, addRibbonIcon, notice2 } from "sources/utils/obsidian"
 import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "../main"
@@ -208,27 +206,14 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 	// Always register command for interop with other plugins
 	for (const cwd of CWD_TYPES) {
 		for (const type of PROFILE_TYPES) {
-			const id = `open-terminal-${cwd}.${type}` as const
-			let namer = (): string => i18n.t(`commands.open-terminal-${cwd}`, {
+			addCommand(plugin, () => i18n.t(`commands.open-terminal-${cwd}`, {
 				type: i18n.t(`types.profiles.${type}`),
-			})
-			plugin.addCommand({
-				checkCallback: checking => {
+			}), {
+				checkCallback(checking) {
 					if (!plugin.settings.addToCommand) { return false }
 					return command(type, cwd)(checking)
 				},
-				id,
-				get name() { return namer() },
-				set name(format) {
-					namer = commandNamer(
-						() => i18n.t(`commands.open-terminal-${cwd}`, {
-							type: i18n.t(`types.profiles.${type}`),
-						}),
-						() => i18n.t("name"),
-						i18n.t("name", { lng: DEFAULT_LANGUAGE }),
-						format,
-					)
-				},
+				id: `open-terminal-${cwd}.${type}`,
 			})
 		}
 	}
