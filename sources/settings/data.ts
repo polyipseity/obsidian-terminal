@@ -1,17 +1,19 @@
 import type { DeepRequired, DeepWritable } from "ts-essentials"
 import {
-	type InverseTypeofMap,
-	type PrimitiveOf,
-	genericTypeofGuard,
-	primitiveOf,
-} from "../utils/typeof"
+	type Fixed,
+	type Unchecked,
+	fixArray,
+	fixInSet,
+	fixTyped,
+	launderUnchecked,
+	markFixed,
+} from "sources/ui/fixers"
 import {
 	PLATFORM,
 	type Platform,
 	cloneAsWritable,
 	deepFreeze,
 	inSet,
-	isHomogenousArray,
 } from "../utils/util"
 import { LANGUAGES } from "assets/locales"
 import { NOTICE_NO_TIMEOUT } from "sources/magic"
@@ -19,7 +21,6 @@ import { PROFILE_PRESETS } from "./profile-presets"
 import { Pseudoterminal } from "../terminal/pseudoterminal"
 import { RendererAddon } from "../terminal/emulator"
 import type { Sized } from "sources/utils/types"
-import deepEqual from "deep-equal"
 
 export interface Settings {
 	readonly language: Settings.DefaultableLanguage
@@ -182,241 +183,195 @@ export namespace Settings {
 			},
 		} as const)
 	}
-	export function fix(self: unknown): {
-		readonly value: DeepWritable<Settings>
-		readonly valid: boolean
-	} {
-		type Unknownize<T> = { readonly [_ in keyof T]?: unknown }
-		const tmp: Unknownize<Settings> = {}
-		Object.assign(tmp, self)
-		const
-			fixTyped = <S, K extends keyof S>(
-				defaults: S,
-				from: Unknownize<S>,
-				key: K,
-				type: InverseTypeofMap<S[K]>,
-			): PrimitiveOf<S[K]> => {
-				const val = from[key]
-				return genericTypeofGuard(type, val)
-					? val
-					: primitiveOf(defaults[key])
-			},
-			fixArray = <S,
-				K extends keyof S,
-				V extends S[K] extends readonly (infer V0)[] ? V0 : never,
-			>(
-				defaults: S,
-				from: Unknownize<S>,
-				key: K,
-				type: InverseTypeofMap<V>,
-			): PrimitiveOf<V>[] => {
-				const val = from[key]
-				if (isHomogenousArray(type, val)) { return val }
-				const default0 = defaults[key]
-				if (!Array.isArray(default0)) { throw new TypeError(String(default0)) }
-				const default1: readonly V[] = default0
-				return default1.map(primitiveOf)
-			},
-			fixInSet = <S, K extends keyof S, Vs extends readonly S[K][]>(
-				defaults: S,
-				from: Unknownize<S>,
-				key: K,
-				set: Sized<Vs>,
-			): Vs[number] => {
-				const val = from[key]
-				return inSet(set, val) ? val : defaults[key]
-			},
-			fixed: DeepWritable<Settings> = {
-				addToCommand: fixTyped(
-					DEFAULT_SETTINGS,
-					tmp,
-					"addToCommand",
-					"boolean",
-				),
-				addToContextMenu: fixTyped(
-					DEFAULT_SETTINGS,
-					tmp,
-					"addToContextMenu",
-					"boolean",
-				),
-				errorNoticeTimeout: fixTyped(
-					DEFAULT_SETTINGS,
-					tmp,
-					"errorNoticeTimeout",
-					"number",
-				),
-				hideStatusBar: fixInSet(
-					DEFAULT_SETTINGS,
-					tmp,
-					"hideStatusBar",
-					HIDE_STATUS_BAR_OPTIONS,
-				),
-				language: fixInSet(
-					DEFAULT_SETTINGS,
-					tmp,
-					"language",
-					DEFAULTABLE_LANGUAGES,
-				),
-				noticeTimeout: fixTyped(
-					DEFAULT_SETTINGS,
-					tmp,
-					"noticeTimeout",
-					"number",
-				),
-				preferredRenderer: fixInSet(
-					DEFAULT_SETTINGS,
-					tmp,
-					"preferredRenderer",
-					PREFERRED_RENDERER_OPTIONS,
-				),
-				profiles: ((): DeepWritable<Profiles> => {
-					const defaults2 = DEFAULT_SETTINGS.profiles,
-						{ profiles } = tmp
-					if (profiles !== null && typeof profiles === "object") {
-						const ret: DeepWritable<Profiles> = {}
-						for (const [id, profile0] of Object.entries(profiles)) {
-							const profile1: unknown = profile0,
-								fixPlatforms = <
-									V extends Profile.Platforms<Vs[number]>,
-									Vs extends readonly string[],
-								>(
-									defaults: V,
-									from: Unknownize<V>,
-									set: Sized<Vs>,
-								): Profile.Platforms<Vs[number]> => {
-									const ret2: { [_ in Vs[number]]?: boolean } = {}
-									for (const platform0 of set) {
-										const platform: Vs[number] = platform0,
-											value = from[platform]
-										ret2[platform] = typeof value === "boolean"
-											? value
-											: defaults[platform]
-									}
-									return ret2
+	export function fix(self: unknown): Fixed<Settings> {
+		const unc = launderUnchecked<Settings>(self)
+		return markFixed(self, {
+			addToCommand: fixTyped(
+				DEFAULT_SETTINGS,
+				unc,
+				"addToCommand",
+				"boolean",
+			),
+			addToContextMenu: fixTyped(
+				DEFAULT_SETTINGS,
+				unc,
+				"addToContextMenu",
+				"boolean",
+			),
+			errorNoticeTimeout: fixTyped(
+				DEFAULT_SETTINGS,
+				unc,
+				"errorNoticeTimeout",
+				"number",
+			),
+			hideStatusBar: fixInSet(
+				DEFAULT_SETTINGS,
+				unc,
+				"hideStatusBar",
+				HIDE_STATUS_BAR_OPTIONS,
+			),
+			language: fixInSet(
+				DEFAULT_SETTINGS,
+				unc,
+				"language",
+				DEFAULTABLE_LANGUAGES,
+			),
+			noticeTimeout: fixTyped(
+				DEFAULT_SETTINGS,
+				unc,
+				"noticeTimeout",
+				"number",
+			),
+			preferredRenderer: fixInSet(
+				DEFAULT_SETTINGS,
+				unc,
+				"preferredRenderer",
+				PREFERRED_RENDERER_OPTIONS,
+			),
+			profiles: ((): DeepWritable<Profiles> => {
+				const defaults2 = DEFAULT_SETTINGS.profiles,
+					{ profiles } = unc
+				if (profiles !== null && typeof profiles === "object") {
+					const ret: DeepWritable<Profiles> = {}
+					for (const [id, profile0] of Object.entries(profiles)) {
+						const profile1: unknown = profile0,
+							fixPlatforms = <
+								V extends Profile.Platforms<Vs[number]>,
+								Vs extends readonly string[],
+							>(
+								defaults: V,
+								from: Unchecked<V>,
+								set: Sized<Vs>,
+							): Profile.Platforms<Vs[number]> => {
+								const ret2: { [_ in Vs[number]]?: boolean } = {}
+								for (const platform0 of set) {
+									const platform: Vs[number] = platform0,
+										value = from[platform]
+									ret2[platform] = typeof value === "boolean"
+										? value
+										: defaults[platform]
 								}
-							if (profile1 !== null && typeof profile1 === "object") {
-								const
-									profile: Readonly<Record<string, unknown>> = { ...profile1 },
-									type = inSet(Profile.TYPES, profile["type"])
-										? profile["type"]
-										: "invalid"
-								switch (type) {
-									case "": {
-										ret[id] = {
-											name: fixTyped(
-												Profile.DEFAULTS[type],
-												profile,
-												"name",
-												"string",
-											),
-											type,
-										} satisfies Required<Profile.Typed<typeof type>>
-										break
-									}
-									case "console": {
-										ret[id] = {
-											name: fixTyped(
-												Profile.DEFAULTS[type],
-												profile,
-												"name",
-												"string",
-											),
-											type,
-										} satisfies Required<Profile.Typed<typeof type>>
-										break
-									}
-									case "external": {
-										ret[id] = {
-											args: fixArray(
-												Profile.DEFAULTS[type],
-												profile,
-												"args",
-												"string",
-											),
-											executable: fixTyped(
-												Profile.DEFAULTS[type],
-												profile,
-												"executable",
-												"string",
-											),
-											name: fixTyped(
-												Profile.DEFAULTS[type],
-												profile,
-												"name",
-												"string",
-											),
-											platforms: fixPlatforms(
-												Profile.DEFAULTS[type].platforms,
-												profile["platforms"] ?? {},
-												Pseudoterminal.SUPPORTED_PLATFORMS,
-											),
-											type,
-										} satisfies Required<Profile.Typed<typeof type>>
-										break
-									}
-									case "integrated": {
-										ret[id] = {
-											args: fixArray(
-												Profile.DEFAULTS[type],
-												profile,
-												"args",
-												"string",
-											),
-											enableWindowsConhostWorkaround: fixTyped(
-												Profile.DEFAULTS[type],
-												profile,
-												"enableWindowsConhostWorkaround",
-												"boolean",
-											),
-											executable: fixTyped(
-												Profile.DEFAULTS[type],
-												profile,
-												"executable",
-												"string",
-											),
-											name: fixTyped(
-												Profile.DEFAULTS[type],
-												profile,
-												"name",
-												"string",
-											),
-											platforms: fixPlatforms(
-												Profile.DEFAULTS[type].platforms,
-												profile["platforms"] ?? {},
-												Pseudoterminal.SUPPORTED_PLATFORMS,
-											),
-											pythonExecutable: fixTyped(
-												Profile.DEFAULTS[type],
-												profile,
-												"pythonExecutable",
-												"string",
-											),
-											type,
-										} satisfies Required<Profile.Typed<typeof type>>
-										break
-									}
-									case "invalid": {
-										ret[id] = {
-											...profile,
-											type,
-										} satisfies Required<Profile.Typed<typeof type>>
-										break
-									}
-									// No default
+								return ret2
+							}
+						if (profile1 !== null && typeof profile1 === "object") {
+							const
+								profile: Readonly<Record<string, unknown>> = { ...profile1 },
+								type = inSet(Profile.TYPES, profile["type"])
+									? profile["type"]
+									: "invalid"
+							switch (type) {
+								case "": {
+									ret[id] = {
+										name: fixTyped(
+											Profile.DEFAULTS[type],
+											profile,
+											"name",
+											"string",
+										),
+										type,
+									} satisfies Required<Profile.Typed<typeof type>>
+									break
 								}
+								case "console": {
+									ret[id] = {
+										name: fixTyped(
+											Profile.DEFAULTS[type],
+											profile,
+											"name",
+											"string",
+										),
+										type,
+									} satisfies Required<Profile.Typed<typeof type>>
+									break
+								}
+								case "external": {
+									ret[id] = {
+										args: fixArray(
+											Profile.DEFAULTS[type],
+											profile,
+											"args",
+											"string",
+										),
+										executable: fixTyped(
+											Profile.DEFAULTS[type],
+											profile,
+											"executable",
+											"string",
+										),
+										name: fixTyped(
+											Profile.DEFAULTS[type],
+											profile,
+											"name",
+											"string",
+										),
+										platforms: fixPlatforms(
+											Profile.DEFAULTS[type].platforms,
+											profile["platforms"] ?? {},
+											Pseudoterminal.SUPPORTED_PLATFORMS,
+										),
+										type,
+									} satisfies Required<Profile.Typed<typeof type>>
+									break
+								}
+								case "integrated": {
+									ret[id] = {
+										args: fixArray(
+											Profile.DEFAULTS[type],
+											profile,
+											"args",
+											"string",
+										),
+										enableWindowsConhostWorkaround: fixTyped(
+											Profile.DEFAULTS[type],
+											profile,
+											"enableWindowsConhostWorkaround",
+											"boolean",
+										),
+										executable: fixTyped(
+											Profile.DEFAULTS[type],
+											profile,
+											"executable",
+											"string",
+										),
+										name: fixTyped(
+											Profile.DEFAULTS[type],
+											profile,
+											"name",
+											"string",
+										),
+										platforms: fixPlatforms(
+											Profile.DEFAULTS[type].platforms,
+											profile["platforms"] ?? {},
+											Pseudoterminal.SUPPORTED_PLATFORMS,
+										),
+										pythonExecutable: fixTyped(
+											Profile.DEFAULTS[type],
+											profile,
+											"pythonExecutable",
+											"string",
+										),
+										type,
+									} satisfies Required<Profile.Typed<typeof type>>
+									break
+								}
+								case "invalid": {
+									ret[id] = {
+										...profile,
+										type,
+									} satisfies Required<Profile.Typed<typeof type>>
+									break
+								}
+								// No default
 							}
 						}
-						return ret
 					}
-					return cloneAsWritable(defaults2)
-				})(),
-				recovery: Object.fromEntries(Object
-					.entries(typeof tmp.recovery === "object" ? { ...tmp.recovery } : {})
-					.map(([key, value]) => [key, String(value)])),
-			}
-		return {
-			valid: deepEqual(self, fixed, { strict: true }),
-			value: fixed,
-		}
+					return ret
+				}
+				return cloneAsWritable(defaults2)
+			})(),
+			recovery: Object.fromEntries(Object
+				.entries(typeof unc.recovery === "object" ? { ...unc.recovery } : {})
+				.map(([key, value]) => [key, String(value)])),
+		})
 	}
 }
