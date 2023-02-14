@@ -1,10 +1,10 @@
 import { type App, Plugin, type PluginManifest, debounce } from "obsidian"
 import type { AsyncOrSync, DeepWritable } from "ts-essentials"
-import { DEFAULT_SETTINGS, Settings } from "./settings/data"
 import { EventEmitterLite, copyOnWriteAsync, isUndefined } from "./utils/util"
 import { JSON_STRINGIFY_SPACE, SAVE_SETTINGS_TIMEOUT } from "./magic"
 import { LanguageManager } from "./i18n"
 import { SettingTab } from "./settings/tab"
+import { Settings } from "./settings/data"
 import { StatusBarHider } from "./status-bar"
 import { TerminalView } from "./terminal/view"
 import { asyncDebounce } from "./utils/obsidian"
@@ -23,7 +23,7 @@ export class TerminalPlugin extends Plugin {
 			this.saveData(this.settings).then(resolve, reject)
 		}, SAVE_SETTINGS_TIMEOUT, false))
 
-	#settings: Settings = { ...DEFAULT_SETTINGS, recovery: {} }
+	#settings: Settings = { ...Settings.DEFAULT, recovery: {} }
 	readonly #onMutateSettings = new EventEmitterLite<readonly [Settings]>()
 
 	public constructor(app: App, manifest: PluginManifest) {

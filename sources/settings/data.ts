@@ -33,25 +33,25 @@ export interface Settings {
 	readonly preferredRenderer: Settings.PreferredRendererOption
 	readonly recovery?: Settings.Recovery
 }
-export const DEFAULT_SETTINGS: Settings = deepFreeze({
-	addToCommand: true,
-	addToContextMenu: true,
-	errorNoticeTimeout: NOTICE_NO_TIMEOUT,
-	hideStatusBar: "focused",
-	language: "",
-	noticeTimeout: 5,
-	preferredRenderer: "webgl",
-	profiles: Object.fromEntries(([
-		"console",
-		"darwinExternalDefault",
-		"darwinIntegratedDefault",
-		"linuxExternalDefault",
-		"linuxIntegratedDefault",
-		"win32ExternalDefault",
-		"win32IntegratedDefault",
-	] as const).map(key => [key, PROFILE_PRESETS[key]])),
-} as const)
 export namespace Settings {
+	export const DEFAULT: Settings = deepFreeze({
+		addToCommand: true,
+		addToContextMenu: true,
+		errorNoticeTimeout: NOTICE_NO_TIMEOUT,
+		hideStatusBar: "focused",
+		language: "",
+		noticeTimeout: 5,
+		preferredRenderer: "webgl",
+		profiles: Object.fromEntries(([
+			"console",
+			"darwinExternalDefault",
+			"darwinIntegratedDefault",
+			"linuxExternalDefault",
+			"linuxIntegratedDefault",
+			"win32ExternalDefault",
+			"win32IntegratedDefault",
+		] as const).map(key => [key, PROFILE_PRESETS[key]])),
+	} as const)
 	export type Recovery = Readonly<Record<string, string>>
 	export const DEFAULTABLE_LANGUAGES =
 		Object.freeze(["", ...LANGUAGES] as const)
@@ -314,49 +314,49 @@ export namespace Settings {
 		const unc = launderUnchecked<Settings>(self)
 		return markFixed(self, {
 			addToCommand: fixTyped(
-				DEFAULT_SETTINGS,
+				DEFAULT,
 				unc,
 				"addToCommand",
 				"boolean",
 			),
 			addToContextMenu: fixTyped(
-				DEFAULT_SETTINGS,
+				DEFAULT,
 				unc,
 				"addToContextMenu",
 				"boolean",
 			),
 			errorNoticeTimeout: fixTyped(
-				DEFAULT_SETTINGS,
+				DEFAULT,
 				unc,
 				"errorNoticeTimeout",
 				"number",
 			),
 			hideStatusBar: fixInSet(
-				DEFAULT_SETTINGS,
+				DEFAULT,
 				unc,
 				"hideStatusBar",
 				HIDE_STATUS_BAR_OPTIONS,
 			),
 			language: fixInSet(
-				DEFAULT_SETTINGS,
+				DEFAULT,
 				unc,
 				"language",
 				DEFAULTABLE_LANGUAGES,
 			),
 			noticeTimeout: fixTyped(
-				DEFAULT_SETTINGS,
+				DEFAULT,
 				unc,
 				"noticeTimeout",
 				"number",
 			),
 			preferredRenderer: fixInSet(
-				DEFAULT_SETTINGS,
+				DEFAULT,
 				unc,
 				"preferredRenderer",
 				PREFERRED_RENDERER_OPTIONS,
 			),
 			profiles: ((): DeepWritable<Profiles> => {
-				const defaults2 = DEFAULT_SETTINGS.profiles,
+				const defaults2 = DEFAULT.profiles,
 					{ profiles } = unc
 				if (typeof profiles === "object" && profiles !== null) {
 					return Object.fromEntries(Object.entries(profiles)

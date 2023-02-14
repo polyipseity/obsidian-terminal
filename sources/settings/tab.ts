@@ -1,4 +1,3 @@
-import { DEFAULT_SETTINGS, Settings } from "./data"
 import { ListModal, ProfileListModal } from "sources/ui/modals"
 import {
 	capitalize,
@@ -16,6 +15,7 @@ import {
 } from "../ui/settings"
 import { LANGUAGES } from "assets/locales"
 import { PluginSettingTab } from "obsidian"
+import { Settings } from "./data"
 import type { TerminalPlugin } from "../main"
 import { UpdatableUI } from "sources/utils/obsidian"
 
@@ -60,7 +60,7 @@ export class SettingTab extends PluginSettingTab {
 						i18n.t("asset:settings.language-icon"),
 						async () => plugin
 							.mutateSettings(settingsM => {
-								settingsM.language = DEFAULT_SETTINGS.language
+								settingsM.language = Settings.DEFAULT.language
 							}),
 						() => { this.postMutate() },
 					))
@@ -144,7 +144,7 @@ export class SettingTab extends PluginSettingTab {
 						i18n.t("asset:settings.all-settings-actions.reset-icon"),
 						async () => plugin
 							.mutateSettings(settingsM =>
-								Object.assign(settingsM, cloneAsWritable(DEFAULT_SETTINGS))),
+								Object.assign(settingsM, cloneAsWritable(Settings.DEFAULT))),
 						() => { this.postMutate() },
 						{
 							post: component => {
@@ -168,7 +168,7 @@ export class SettingTab extends PluginSettingTab {
 						i18n.t("asset:settings.add-to-command-icon"),
 						async () => plugin
 							.mutateSettings(settingsM => {
-								settingsM.addToCommand = DEFAULT_SETTINGS.addToCommand
+								settingsM.addToCommand = Settings.DEFAULT.addToCommand
 							}),
 						() => { this.postMutate() },
 					))
@@ -188,7 +188,7 @@ export class SettingTab extends PluginSettingTab {
 						i18n.t("asset:settings.add-to-context-menu-icon"),
 						async () => plugin
 							.mutateSettings(settingsM => {
-								settingsM.addToContextMenu = DEFAULT_SETTINGS.addToContextMenu
+								settingsM.addToContextMenu = Settings.DEFAULT.addToContextMenu
 							}),
 						() => { this.postMutate() },
 					))
@@ -221,7 +221,7 @@ export class SettingTab extends PluginSettingTab {
 						plugin,
 						i18n.t("asset:settings.hide-status-bar-icon"),
 						async () => plugin.mutateSettings(settingsM => {
-							settingsM.hideStatusBar = DEFAULT_SETTINGS.hideStatusBar
+							settingsM.hideStatusBar = Settings.DEFAULT.hideStatusBar
 						}),
 						() => { this.postMutate() },
 					))
@@ -241,7 +241,7 @@ export class SettingTab extends PluginSettingTab {
 						plugin,
 						i18n.t("asset:settings.notice-timeout-icon"),
 						async () => plugin.mutateSettings(settingsM => {
-							settingsM.noticeTimeout = DEFAULT_SETTINGS.noticeTimeout
+							settingsM.noticeTimeout = Settings.DEFAULT.noticeTimeout
 						}),
 						() => { this.postMutate() },
 					))
@@ -262,7 +262,7 @@ export class SettingTab extends PluginSettingTab {
 						plugin,
 						i18n.t("asset:settings.error-notice-timeout-icon"),
 						async () => plugin.mutateSettings(settingsM => {
-							settingsM.errorNoticeTimeout = DEFAULT_SETTINGS.errorNoticeTimeout
+							settingsM.errorNoticeTimeout = Settings.DEFAULT.errorNoticeTimeout
 						}),
 						() => { this.postMutate() },
 					))
@@ -292,7 +292,7 @@ export class SettingTab extends PluginSettingTab {
 						plugin,
 						i18n.t("asset:settings.profiles-icon"),
 						async () => plugin.mutateSettings(settingsM => {
-							settingsM.profiles = cloneAsWritable(DEFAULT_SETTINGS.profiles)
+							settingsM.profiles = cloneAsWritable(Settings.DEFAULT.profiles)
 						}),
 						() => { this.postMutate() },
 					))
@@ -331,7 +331,7 @@ export class SettingTab extends PluginSettingTab {
 						plugin,
 						i18n.t("asset:settings.preferred-renderer-icon"),
 						async () => plugin.mutateSettings(settingsM => {
-							settingsM.preferredRenderer = DEFAULT_SETTINGS.preferredRenderer
+							settingsM.preferredRenderer = Settings.DEFAULT.preferredRenderer
 						}),
 						() => { this.postMutate() },
 					))
