@@ -16,3 +16,10 @@ export const
 	// eslint-disable-next-line no-void
 	UNDEFINED = void 0,
 	UNHANDLED_REJECTION_MESSAGE = "Uncaught (in promise)"
+
+export namespace DOMClasses {
+	export const
+		MOD_WARNING = "mod-warning",
+		VERTICAL_TAB_CONTENT = "vertical-tab-content",
+		VERTICAL_TAB_CONTENT_CONTAINER = "vertical-tab-content-container"
+}

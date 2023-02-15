@@ -1,6 +1,7 @@
 
 import {
 	type BaseComponent,
+	ButtonComponent,
 	type Command,
 	type Debouncer,
 	DropdownComponent,
@@ -11,8 +12,8 @@ import {
 	View,
 	type Workspace,
 } from "obsidian"
+import { DOMClasses, NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
 import { Functions, executeParanoidly, isNonNullish, isUndefined } from "./util"
-import { NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
 import type { AsyncOrSync } from "ts-essentials"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import type { TerminalPlugin } from "sources/main"
@@ -81,6 +82,9 @@ export class UpdatableUI {
 							} catch (error) {
 								console.error(error)
 							}
+						}
+						if (comp instanceof ButtonComponent) {
+							comp.buttonEl.removeClass(DOMClasses.MOD_WARNING)
 						}
 						if (comp instanceof DropdownComponent) {
 							comp.selectEl.replaceChildren()
@@ -356,11 +360,11 @@ export function useSettings(element: HTMLElement): readonly [
 	() => void,
 ] {
 	const container = element.createEl("div", {
-		cls: "vertical-tab-content-container",
+		cls: DOMClasses.VERTICAL_TAB_CONTENT_CONTAINER,
 	})
 	return [
 		container.createEl("div", {
-			cls: "vertical-tab-content",
+			cls: DOMClasses.VERTICAL_TAB_CONTENT,
 		}),
 		(): void => { container.remove() },
 	]
