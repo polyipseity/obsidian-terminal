@@ -839,14 +839,14 @@ export class DialogModal extends Modal {
 			.newSetting(modalEl, setting => {
 				setting
 					.addButton(button => button
-						.setIcon(i18n.t("asset:components.dialog.cancel-icon"))
-						.setTooltip(i18n.t("components.dialog.cancel"))
-						.onClick(async () => { await this.cancel(this.#close) }))
-					.addButton(button => button
 						.setIcon(i18n.t("asset:components.dialog.confirm-icon"))
 						.setTooltip(i18n.t("components.dialog.confirm"))
 						.setCta()
 						.onClick(async () => { await this.confirm(this.#close) }))
+					.addButton(button => button
+						.setIcon(i18n.t("asset:components.dialog.cancel-icon"))
+						.setTooltip(i18n.t("components.dialog.cancel"))
+						.onClick(async () => { await this.cancel(this.#close) }))
 			})
 			// Hooking escape does not work as it is already registered
 			.new(() => scope.register([], "enter", async event => {
