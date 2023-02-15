@@ -14,6 +14,7 @@ import {
 import type { AsyncOrSync } from "ts-essentials"
 import type { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "sources/main"
+import { UNDEFINED } from "sources/magic"
 
 export const PROFILE_PROPERTIES: {
 	readonly [key in Settings.Profile.Type]: {
@@ -87,7 +88,9 @@ export const PROFILE_PROPERTIES: {
 				cwd,
 				enableWindowsConhostWorkaround,
 				executable,
-				pythonExecutable,
+				pythonExecutable: pythonExecutable === ""
+					? UNDEFINED
+					: pythonExecutable,
 			})
 		},
 		valid: true,
