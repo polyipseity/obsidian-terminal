@@ -66,7 +66,7 @@ export class XtermTerminalEmulator<A> {
 		(async (): Promise<void> => {
 			try {
 				const pty = await this.pseudoterminal
-				if (typeof pty.resize !== "undefined") {
+				if (!isUndefined(pty.resize)) {
 					await pty.resize(columns, rows)
 				}
 			} catch (error) {
@@ -101,7 +101,7 @@ export class XtermTerminalEmulator<A> {
 			terminal.loadAddon(addon)
 		}
 		this.addons = addons0
-		if (typeof state !== "undefined") {
+		if (!isUndefined(state)) {
 			terminal.resize(state.columns, state.rows)
 			terminal.write(state.data)
 		}

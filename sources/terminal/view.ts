@@ -291,7 +291,7 @@ export class TerminalView extends ItemView {
 
 	public override getState(): unknown {
 		const serial = this.#emulator?.serialize()
-		if (typeof serial !== "undefined") {
+		if (!isUndefined(serial)) {
 			this.state = copyOnWrite(this.state, state => { state.serial = serial })
 		}
 		return Object.assign(super.getState(), this.state)
@@ -477,7 +477,7 @@ export class TerminalView extends ItemView {
 							plugin,
 							ele,
 							async terminal => {
-								if (typeof serial !== "undefined") {
+								if (!isUndefined(serial)) {
 									terminal.write(`${i18n.t(
 										"components.terminal.restored-history",
 										{ time: new Date().toLocaleString(language.language) },
