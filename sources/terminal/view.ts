@@ -41,6 +41,7 @@ import {
 	extname,
 	inSet,
 	isUndefined,
+	logWarn,
 	onResize,
 	onVisible,
 	openExternal,
@@ -567,13 +568,13 @@ export class TerminalView extends ItemView {
 							}),
 						})
 					})
-					emulator.resize().catch(error => { console.warn(error) })
+					emulator.resize().catch(logWarn)
 					onResize(ele, ent => {
 						if (ent.contentBoxSize
 							.some(size => size.blockSize <= 0 || size.inlineSize <= 0)) {
 							return
 						}
-						emulator.resize(false).catch(error => { console.warn(error) })
+						emulator.resize(false).catch(logWarn)
 					})
 					this.#emulator = emulator
 				} finally {

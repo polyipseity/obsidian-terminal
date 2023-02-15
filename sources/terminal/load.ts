@@ -18,27 +18,32 @@ function spawnTerminal(
 	profile: Settings.Profile,
 	cwd?: string,
 ): void {
-	const { workspace } = app,
-		existingLeaves = workspace
-			.getLeavesOfType(TerminalView.type.namespaced(plugin));
-	((): WorkspaceLeaf => {
-		const existingLeaf = existingLeaves.at(-1)
-		if (isUndefined(existingLeaf)) {
-			return workspace.getLeaf("split", "horizontal")
+	(async (): Promise<void> => {
+		try {
+			const { workspace } = app,
+				existingLeaves = workspace
+					.getLeavesOfType(TerminalView.type.namespaced(plugin))
+			await ((): WorkspaceLeaf => {
+				const existingLeaf = existingLeaves.at(-1)
+				if (isUndefined(existingLeaf)) {
+					return workspace.getLeaf("split", "horizontal")
+				}
+				workspace.setActiveLeaf(existingLeaf, { focus: false })
+				return workspace.getLeaf("tab")
+			})()
+				.setViewState({
+					active: true,
+					state: {
+						cwd: cwd ?? null,
+						profile,
+						serial: null,
+					} satisfies TerminalView.State,
+					type: TerminalView.type.namespaced(plugin),
+				})
+		} catch (error) {
+			console.error(error)
 		}
-		workspace.setActiveLeaf(existingLeaf, { focus: false })
-		return workspace.getLeaf("tab")
 	})()
-		.setViewState({
-			active: true,
-			state: {
-				cwd: cwd ?? null,
-				profile,
-				serial: null,
-			} satisfies TerminalView.State,
-			type: TerminalView.type.namespaced(plugin),
-		})
-		.catch(error => { console.error(error) })
 }
 
 class SelectProfileModal

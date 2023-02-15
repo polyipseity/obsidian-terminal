@@ -13,6 +13,7 @@ import {
 	executeParanoidly,
 	inSet,
 	isNullish,
+	logError,
 	logFormat,
 	promisePromise,
 	spawnPromise,
@@ -89,8 +90,7 @@ export class TextPseudoterminal
 	}
 
 	public set text(value: string) {
-		this.rewrite(processText(this.#text = value))
-			.catch(error => { console.error(error) })
+		this.rewrite(processText(this.#text = value)).catch(logError)
 	}
 
 	public override async pipe(terminal: Terminal): Promise<void> {

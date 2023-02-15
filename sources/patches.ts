@@ -1,5 +1,5 @@
+import { type DeepReadonly, noop } from "ts-essentials"
 import { EventEmitterLite, Functions } from "./utils/util"
-import type { DeepReadonly } from "ts-essentials"
 import { around } from "monkey-around"
 
 export const LOGGER = new EventEmitterLite<readonly [Log.Event]>()
@@ -43,7 +43,7 @@ export function patch(): () => void {
 			proto: (...data: unknown[]) => void,
 		) => function fn(this: Console, ...data: unknown[]) {
 			proto.apply(this, data)
-			LOGGER.emit({ data, type }).catch(() => { })
+			LOGGER.emit({ data, type }).catch(noop)
 		}
 		unpatchers.push(around(console, {
 			debug(proto) { return consolePatch("debug", proto) },
@@ -56,13 +56,13 @@ export function patch(): () => void {
 				LOGGER.emit({
 					data: error,
 					type: "windowError",
-				}).catch(() => { })
+				}).catch(noop)
 			},
 			onUnhandledRejection = (error: PromiseRejectionEvent): void => {
 				LOGGER.emit({
 					data: error,
 					type: "unhandledRejection",
-				}).catch(() => { })
+				}).catch(noop)
 			}
 		unpatchers.push(
 			() => {

@@ -309,6 +309,10 @@ export function length<T extends object,
 	return Object.keys(obj).length
 }
 
+export function logError(thing: unknown): void {
+	console.error(thing)
+}
+
 export function logFormat(...args: readonly unknown[]): string {
 	if (args.length <= 0) { return "" }
 	const
@@ -388,6 +392,14 @@ export function logFormat(...args: readonly unknown[]): string {
 		].join("")
 	}
 	return args.map(stringify0).join(" ")
+}
+
+export function logWarn(thing: unknown): void {
+	console.warn(thing)
+}
+
+export function noop(): void {
+	// NOOP
 }
 
 export function onResize(

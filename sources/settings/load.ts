@@ -8,7 +8,12 @@ import {
 	cleanFrontmatterCache,
 	printError,
 } from "sources/utils/obsidian"
-import { anyToError, clearProperties, length } from "sources/utils/util"
+import {
+	anyToError,
+	clearProperties,
+	length,
+	logError,
+} from "sources/utils/util"
 import { DialogModal } from "sources/ui/modals"
 import { SettingTab } from "./tab"
 import type { TerminalPlugin } from "sources/main"
@@ -89,7 +94,7 @@ export function loadSettings(plugin: TerminalPlugin): void {
 								JSON.parse(await navigator.clipboard.readText())
 							return ret
 						}))
-					plugin.saveSettings().catch(error => { console.error(error) })
+					plugin.saveSettings().catch(logError)
 				} catch (error) {
 					printError(anyToError(error), () =>
 						i18n.t("errors.error-importing-settings"), plugin)
@@ -111,7 +116,7 @@ export function loadSettings(plugin: TerminalPlugin): void {
 								cleanFrontmatterCache(
 									metadataCache.getFileCache(file)?.frontmatter,
 								)))
-						plugin.saveSettings().catch(error => { console.error(error) })
+						plugin.saveSettings().catch(logError)
 					} catch (error) {
 						printError(anyToError(error), () =>
 							i18n.t("errors.error-importing-settings"), plugin)

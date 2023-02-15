@@ -5,6 +5,7 @@ import {
 	executeParanoidly,
 	identity,
 	length,
+	logError,
 	unexpected,
 } from "../utils/util"
 import {
@@ -125,7 +126,7 @@ export class SettingTab extends PluginSettingTab {
 								this.#onMutate.then(() => {
 									undoable = true
 									component.setCta()
-								}).catch(error => { console.error(error) })
+								}).catch(logError)
 							},
 						},
 					))
@@ -369,7 +370,7 @@ export class SettingTab extends PluginSettingTab {
 	}
 
 	protected postMutate(): void {
-		this.plugin.saveSettings().catch(error => { console.error(error) })
+		this.plugin.saveSettings().catch(logError)
 		this.ui.update()
 	}
 }
