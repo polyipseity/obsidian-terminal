@@ -49,7 +49,8 @@ export class ListModal<T> extends Modal {
 		"append",
 		"prepend",
 		"remove",
-		"move",
+		"moveUp",
+		"moveDown",
 	] as const)
 
 	protected readonly ui = new UpdatableUI()
@@ -215,7 +216,7 @@ export class ListModal<T> extends Modal {
 								await this.postMutate()
 							}))
 				}
-				if (editables.includes("move")) {
+				if (editables.includes("moveUp")) {
 					setting.addExtraButton(button => button
 						.setTooltip(i18n.t("components.editable-list.move-up"))
 						.setIcon(i18n.t("asset:components.editable-list.move-up-icon"))
@@ -225,15 +226,17 @@ export class ListModal<T> extends Modal {
 							this.#setupListSubUI()
 							await this.postMutate()
 						}))
-						.addExtraButton(button => button
-							.setTooltip(i18n.t("components.editable-list.move-down"))
-							.setIcon(i18n.t("asset:components.editable-list.move-down-icon"))
-							.onClick(async () => {
-								if (index >= data.length - 1) { return }
-								swap(data, index, index + 1)
-								this.#setupListSubUI()
-								await this.postMutate()
-							}))
+				}
+				if (editables.includes("moveDown")) {
+					setting.addExtraButton(button => button
+						.setTooltip(i18n.t("components.editable-list.move-down"))
+						.setIcon(i18n.t("asset:components.editable-list.move-down-icon"))
+						.onClick(async () => {
+							if (index >= data.length - 1) { return }
+							swap(data, index, index + 1)
+							this.#setupListSubUI()
+							await this.postMutate()
+						}))
 				}
 			})
 		}
