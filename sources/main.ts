@@ -6,7 +6,6 @@ import { LanguageManager } from "./i18n"
 import { SettingTab } from "./settings/tab"
 import { Settings } from "./settings/data"
 import { StatusBarHider } from "./status-bar"
-import { TerminalView } from "./terminal/view"
 import { asyncDebounce } from "./utils/obsidian"
 import { loadIcons } from "./icons"
 import { loadTerminal } from "./terminal/load"
@@ -28,7 +27,6 @@ export class TerminalPlugin extends Plugin {
 
 	public constructor(app: App, manifest: PluginManifest) {
 		const unpatch = patch()
-		TerminalView.namespacedViewType = TerminalView.type.namespaced(manifest)
 		super(app, manifest)
 		this.register(unpatch)
 	}

@@ -186,7 +186,7 @@ export class TerminalEditModal extends DialogModal {
 export class TerminalView extends ItemView {
 	public static readonly type = new UnnamespacedID("terminal")
 	public static readonly divClass = TerminalView.type
-	public static namespacedViewType: string
+	static #namespacedType: string
 	#emulator0: TerminalView.EMULATOR | null = null
 	#find0: FindComponent | null = null
 	#focus0 = false
@@ -196,6 +196,7 @@ export class TerminalView extends ItemView {
 		protected readonly plugin: TerminalPlugin,
 		leaf: WorkspaceLeaf,
 	) {
+		TerminalView.#namespacedType = TerminalView.type.namespaced(plugin)
 		super(leaf)
 	}
 
@@ -311,7 +312,7 @@ export class TerminalView extends ItemView {
 
 	public getViewType(): string {
 		// Workaround: super() calls this method
-		return TerminalView.namespacedViewType
+		return TerminalView.#namespacedType
 	}
 
 	public override onPaneMenu(menu: Menu, source: string): void {
