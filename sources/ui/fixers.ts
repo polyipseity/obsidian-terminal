@@ -35,12 +35,15 @@ export function fixTyped<S, K extends keyof S>(
 	defaults: S,
 	from: Unchecked<S>,
 	key: K,
-	type: InverseTypeofMap<S[K]>,
+	types: readonly InverseTypeofMap<S[K]>[],
 ): PrimitiveOf<S[K]> {
 	const val = from[key]
-	return genericTypeofGuard(type, val)
-		? val
-		: primitiveOf(defaults[key])
+	for (const type of types) {
+		if (genericTypeofGuard(type, val)) {
+			return val
+		}
+	}
+	return primitiveOf(defaults[key])
 }
 
 export function fixArray<S,
@@ -51,10 +54,10 @@ export function fixArray<S,
 	defaults: S,
 	from: Unchecked<S>,
 	key: K,
-	type: InverseTypeofMap<V>,
+	types: readonly InverseTypeofMap<V>[],
 ): PrimitiveOf<V>[] {
 	const val = from[key]
-	if (isHomogenousArray(type, val)) { return val }
+	if (isHomogenousArray(types, val)) { return val }
 	const default0 = defaults[key]
 	if (!Array.isArray(default0)) { throw new TypeError(String(default0)) }
 	const default1: readonly V[] = default0

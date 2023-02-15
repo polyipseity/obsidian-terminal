@@ -606,7 +606,7 @@ export namespace TerminalView {
 		export function fix(self: unknown): Fixed<State> {
 			const unc = launderUnchecked<State>(self)
 			return markFixed<State>(self, {
-				cwd: fixTyped(DEFAULT, unc, "cwd", "string"),
+				cwd: fixTyped(DEFAULT, unc, "cwd", ["string"]),
 				profile: Settings.Profile.fix(unc.profile).value,
 				serial: isUndefined(unc.serial)
 					? UNDEFINED

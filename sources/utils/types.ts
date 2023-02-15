@@ -10,3 +10,7 @@ export function simplify<T>(value: DeepReadonly<DeepWritable<T>
 export function simplify<T>(value: T): T {
 	return value
 }
+
+export function contravariant<T>(value: readonly T[]): readonly T[] {
+	return value
+}

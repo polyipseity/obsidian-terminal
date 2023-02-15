@@ -157,9 +157,9 @@ export namespace XtermTerminalEmulator {
 		export function fix(self: unknown): Fixed<State> {
 			const unc = launderUnchecked<State>(self)
 			return markFixed(self, {
-				columns: fixTyped(DEFAULT, unc, "columns", "number"),
-				data: fixTyped(DEFAULT, unc, "data", "string"),
-				rows: fixTyped(DEFAULT, unc, "rows", "number"),
+				columns: fixTyped(DEFAULT, unc, "columns", ["number"]),
+				data: fixTyped(DEFAULT, unc, "data", ["string"]),
+				rows: fixTyped(DEFAULT, unc, "rows", ["number"]),
 			})
 		}
 	}
