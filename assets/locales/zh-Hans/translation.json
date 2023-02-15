@@ -11,7 +11,7 @@
 	"components": {
 		"dialog": {
 			"cancel": "取消",
-			"okay": "确认"
+			"confirm": "确认"
 		},
 		"dropdown": {
 			"unselected": ""
