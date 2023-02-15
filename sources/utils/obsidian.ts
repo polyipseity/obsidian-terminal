@@ -16,6 +16,7 @@ import {
 import { DOMClasses, NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
 import {
 	Functions,
+	deepFreeze,
 	executeParanoidly,
 	isNonNullish,
 	isUndefined,
@@ -252,7 +253,7 @@ export function cleanFrontmatterCache(
 	if (isUndefined(cache)) { return {} }
 	const ret = typedStructuredClone<Partial<typeof cache>>(cache)
 	delete ret.position
-	return ret
+	return deepFreeze(ret)
 }
 
 export function commandNamer(
