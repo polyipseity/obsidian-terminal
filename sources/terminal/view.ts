@@ -170,7 +170,7 @@ export class TerminalEditModal extends DialogModal {
 
 	public override onClose(): void {
 		super.onClose()
-		this.ui.clear()
+		this.ui.destroy()
 	}
 
 	protected override async confirm(close: () => void): Promise<void> {

@@ -128,7 +128,7 @@ export class UpdatableUI {
 			update = true;
 			(configure ?? ((): void => { }))(ele)
 		}, ele => {
-			ele.clear();
+			ele.destroy();
 			(destroy ?? ((): void => { }))(ele)
 		})
 	}
@@ -137,7 +137,7 @@ export class UpdatableUI {
 		this.#updaters.call()
 	}
 
-	public clear(): void {
+	public destroy(): void {
 		this.#finalizers.transform(self => self.splice(0)).call()
 		this.#updaters.length = 0
 	}

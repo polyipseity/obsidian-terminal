@@ -166,7 +166,7 @@ export class ListModal<T> extends Modal {
 
 	public override onClose(): void {
 		super.onClose()
-		this.ui.clear()
+		this.ui.destroy()
 	}
 
 	protected async postMutate(): Promise<void> {
@@ -182,7 +182,7 @@ export class ListModal<T> extends Modal {
 			namer = this.#namer,
 			{ language } = plugin,
 			{ i18n } = language
-		ui.clear()
+		ui.destroy()
 		for (const [index, item] of data.entries()) {
 			ui.newSetting(element, setting => {
 				setting.setName(namer(item, index, data))
@@ -374,7 +374,7 @@ export class ProfileModal extends Modal {
 
 	public override onClose(): void {
 		super.onClose()
-		this.ui.clear()
+		this.ui.destroy()
 	}
 
 	protected async postMutate(): Promise<void> {
@@ -397,7 +397,7 @@ export class ProfileModal extends Modal {
 		const { plugin, data } = this,
 			profile = data,
 			{ i18n } = plugin.language
-		ui.clear()
+		ui.destroy()
 		switch (profile.type) {
 			case "": {
 				break
@@ -764,7 +764,7 @@ export class ProfileListModal extends Modal {
 		const { plugin, data } = this,
 			{ language } = plugin,
 			{ i18n } = language
-		ui.clear()
+		ui.destroy()
 		for (const [index, value] of data.entries()) {
 			ui.newSetting(element, setting => {
 				setting
@@ -881,7 +881,7 @@ export class DialogModal extends Modal {
 
 	public override onClose(): void {
 		super.onClose()
-		this.modalUI.clear()
+		this.modalUI.destroy()
 	}
 
 	public override close(): void {

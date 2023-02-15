@@ -28,7 +28,7 @@ export class SettingTab extends PluginSettingTab {
 		const { containerEl, ui } = this,
 			{ language } = plugin,
 			{ i18n } = language
-		plugin.register(() => { ui.clear() })
+		plugin.register(() => { ui.destroy() })
 		ui
 			.new(() => containerEl.createEl("h1"), ele => {
 				ele.textContent = i18n.t("name")
