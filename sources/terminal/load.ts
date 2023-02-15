@@ -5,17 +5,13 @@ import {
 	TFolder,
 	type WorkspaceLeaf,
 } from "obsidian"
-import {
-	UNDEF,
-	deepFreeze,
-	isNonNullish,
-	isUndefined,
-} from "../utils/util"
 import { addCommand, addRibbonIcon, notice2 } from "sources/utils/obsidian"
+import { deepFreeze, isNonNullish, isUndefined } from "../utils/util"
 import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "../main"
 import { TerminalView } from "./view"
+import { UNDEFINED } from "sources/magic"
 
 function spawnTerminal(
 	plugin: TerminalPlugin,
@@ -138,7 +134,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 		) => (checking: boolean) => {
 			// eslint-disable-next-line consistent-return
 			const cwd0 = ((): string | null | undefined => {
-				if (cwd === "") { return UNDEF }
+				if (cwd === "") { return UNDEFINED }
 				if (adapter === null) { return null }
 				switch (cwd) {
 					case "root":

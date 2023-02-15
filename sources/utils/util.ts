@@ -1,13 +1,10 @@
 import type { AsyncOrSync, DeepReadonly, DeepWritable } from "ts-essentials"
+import { JSON_STRINGIFY_SPACE, UNDEFINED } from "sources/magic"
 import type { PrimitiveType, TypeofMap } from "./typeof"
 import { type Sized, simplify } from "./types"
 import type { ChildProcess } from "node:child_process"
-import { JSON_STRINGIFY_SPACE } from "sources/magic"
 import type { Writable } from "node:stream"
 import { getSerialize } from "json-stringify-safe"
-
-// eslint-disable-next-line no-void
-export const UNDEF = void 0
 
 export const PLATFORMS =
 	deepFreeze(["android", "darwin", "ios", "linux", "unknown", "win32"] as const)
@@ -113,7 +110,7 @@ export class Functions<
 				}
 			}
 			: (func): void => { func.call(thisArg, ...args) })
-		return UNDEF
+		return UNDEFINED
 	}
 }
 

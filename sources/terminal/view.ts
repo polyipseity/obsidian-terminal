@@ -17,10 +17,22 @@ import {
 	type ViewStateResult,
 	type WorkspaceLeaf,
 } from "obsidian"
-import { JSON_STRINGIFY_SPACE, TERMINAL_EXIT_SUCCESS } from "../magic"
+import {
+	JSON_STRINGIFY_SPACE,
+	TERMINAL_EXIT_SUCCESS,
+	UNDEFINED,
+} from "../magic"
 import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
 import {
-	UNDEF,
+	UnnamespacedID,
+	UpdatableUI,
+	notice2,
+	printError,
+	printMalformedData,
+	updateDisplayText,
+	useSettings,
+} from "sources/utils/obsidian"
+import {
 	anyToError,
 	basename,
 	cloneAsWritable,
@@ -36,15 +48,6 @@ import {
 	saveFile,
 	typedStructuredClone,
 } from "../utils/util"
-import {
-	UnnamespacedID,
-	UpdatableUI,
-	notice2,
-	printError,
-	printMalformedData,
-	updateDisplayText,
-	useSettings,
-} from "sources/utils/obsidian"
 import { linkSetting, resetButton } from "sources/ui/settings"
 import { CanvasAddon } from "xterm-addon-canvas"
 import type { DeepWritable } from "ts-essentials"
@@ -89,7 +92,7 @@ export class TerminalEditModal extends DialogModal {
 					.setName(i18n.t("components.terminal.working-directory"))
 					.addText(linkSetting(
 						() => state.cwd ?? "",
-						value => { state.cwd = value === "" ? UNDEF : value },
+						value => { state.cwd = value === "" ? UNDEFINED : value },
 						() => { this.postMutate() },
 						{
 							post: component => {
@@ -605,7 +608,7 @@ export namespace TerminalView {
 				cwd: fixTyped(DEFAULT, unc, "cwd", "string"),
 				profile: Settings.Profile.fix(unc.profile).value,
 				serial: isUndefined(unc.serial)
-					? UNDEF
+					? UNDEFINED
 					: XtermTerminalEmulator.State.fix(unc.serial).value,
 			})
 		}
