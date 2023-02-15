@@ -1,7 +1,11 @@
 import type { AsyncOrSync, DeepReadonly, DeepWritable } from "ts-essentials"
 import { JSON_STRINGIFY_SPACE, UNDEFINED } from "sources/magic"
-import type { PrimitiveType, TypeofMap } from "./typeof"
-import { type Sized, contravariant, simplify } from "./types"
+import {
+	type PrimitiveTypeE,
+	type TypeofMapE,
+	genericTypeofGuardE,
+} from "./typeof"
+import { type Sized, simplify } from "./types"
 import type { ChildProcess } from "node:child_process"
 import type { Writable } from "node:stream"
 import { getSerialize } from "json-stringify-safe"
@@ -261,13 +265,12 @@ export function identity<T>(value: T): T {
 	return value
 }
 
-export function isHomogenousArray<T extends PrimitiveType>(
+export function isHomogenousArray<T extends PrimitiveTypeE>(
 	types: readonly T[],
 	value: unknown,
-): value is TypeofMap[T][] {
+): value is TypeofMapE[T][] {
 	if (!Array.isArray(value)) { return false }
-	return value.every(element => contravariant<unknown>(types)
-		.includes(typeof element))
+	return value.every(element => genericTypeofGuardE(types, element))
 }
 
 export function isNonNullish<T>(value: T | null | undefined): value is T {

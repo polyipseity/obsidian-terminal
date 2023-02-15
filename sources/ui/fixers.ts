@@ -1,8 +1,8 @@
 import {
-	type InverseTypeofMap,
-	type PrimitiveOf,
-	genericTypeofGuard,
-	primitiveOf,
+	type InverseTypeofMapE,
+	type PrimitiveOfE,
+	genericTypeofGuardE,
+	primitiveOfE,
 } from "sources/utils/typeof"
 import { inSet, isHomogenousArray } from "sources/utils/util"
 import type { DeepWritable } from "ts-essentials"
@@ -35,15 +35,10 @@ export function fixTyped<S, K extends keyof S>(
 	defaults: S,
 	from: Unchecked<S>,
 	key: K,
-	types: readonly InverseTypeofMap<S[K]>[],
-): PrimitiveOf<S[K]> {
+	types: readonly InverseTypeofMapE<S[K]>[],
+): PrimitiveOfE<S[K]> {
 	const val = from[key]
-	for (const type of types) {
-		if (genericTypeofGuard(type, val)) {
-			return val
-		}
-	}
-	return primitiveOf(defaults[key])
+	return genericTypeofGuardE(types, val) ? val : primitiveOfE(defaults[key])
 }
 
 export function fixArray<S,
@@ -54,14 +49,14 @@ export function fixArray<S,
 	defaults: S,
 	from: Unchecked<S>,
 	key: K,
-	types: readonly InverseTypeofMap<V>[],
-): PrimitiveOf<V>[] {
+	types: readonly InverseTypeofMapE<V>[],
+): PrimitiveOfE<V>[] {
 	const val = from[key]
 	if (isHomogenousArray(types, val)) { return val }
 	const default0 = defaults[key]
 	if (!Array.isArray(default0)) { throw new TypeError(String(default0)) }
 	const default1: readonly V[] = default0
-	return default1.map(primitiveOf)
+	return default1.map(primitiveOfE)
 }
 
 export function fixInSet<S, K extends keyof S, Vs extends readonly S[K][]>(
