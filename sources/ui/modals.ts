@@ -1,5 +1,5 @@
-import type { AsyncOrSync, DeepWritable, Writable } from "ts-essentials"
 import { DISABLED_TOOLTIP, JSON_STRINGIFY_SPACE } from "sources/magic"
+import type { DeepWritable, Writable } from "ts-essentials"
 import { Modal, type Setting, type ValueComponent } from "obsidian"
 import {
 	PROFILE_PRESETS,
@@ -825,16 +825,26 @@ export class ProfileListModal extends Modal {
 
 export class DialogModal extends Modal {
 	protected readonly modalUI = new UpdatableUI()
+	readonly #cancel
+	readonly #confirm
+	readonly #draw
+	readonly #drawUI = new UpdatableUI()
 	readonly #doubleConfirmTimeout
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
 		options?: {
+			cancel?: (close: () => void) => unknown
+			confirm?: (close: () => void) => unknown
+			draw?: (ui: UpdatableUI, self: DialogModal) => void
 			doubleConfirmTimeout?: number
 		},
 	) {
 		super(plugin.app)
 		this.#doubleConfirmTimeout = options?.doubleConfirmTimeout
+		this.#cancel = options?.cancel ?? ((close): void => { close() })
+		this.#confirm = options?.confirm ?? ((close): void => { close() })
+		this.#draw = options?.draw ?? ((): void => { })
 	}
 
 	public override onOpen(): void {
@@ -877,10 +887,12 @@ export class DialogModal extends Modal {
 				event.stopPropagation()
 			}), null, ele => { scope.unregister(ele) })
 			.finally(language.onChangeLanguage.listen(() => { modalUI.update() }))
+		this.#draw(this.#drawUI, this)
 	}
 
 	public override onClose(): void {
 		super.onClose()
+		this.#drawUI.destroy()
 		this.modalUI.destroy()
 	}
 
@@ -894,12 +906,12 @@ export class DialogModal extends Modal {
 		})()
 	}
 
-	protected confirm(close: () => void): AsyncOrSync<void> {
-		close()
+	protected async confirm(close: () => void): Promise<void> {
+		await this.#confirm(close)
 	}
 
-	protected cancel(close: () => void): AsyncOrSync<void> {
-		close()
+	protected async cancel(close: () => void): Promise<void> {
+		await this.#cancel(close)
 	}
 
 	readonly #close = (): void => { super.close() }
