@@ -195,8 +195,9 @@ export namespace Settings {
 				): Platforms<Vs[number]> => {
 					const ret2: { [_ in Vs[number]]?: boolean } = {}
 					for (const platform0 of set) {
-						const platform: Vs[number] = platform0,
-							value = from[platform]
+						const platform: Vs[number] = platform0
+						if (!(platform in from)) { continue }
+						const value = from[platform]
 						ret2[platform] = typeof value === "boolean"
 							? value
 							: defaults[platform]
