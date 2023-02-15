@@ -428,11 +428,11 @@ export async function promisePromise<T>(): Promise<{
 	readonly reject: (reason?: unknown) => void
 }> {
 	return new Promise(executeParanoidly((resolve0, reject0) => {
-		const promise = new Promise<T>((resolve, reject) => {
+		const promise = new Promise<T>(executeParanoidly((resolve, reject) => {
 			Promise.resolve()
 				.then(() => ({ promise, reject, resolve }))
 				.then(resolve0, reject0)
-		})
+		}))
 	}))
 }
 

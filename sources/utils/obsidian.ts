@@ -11,7 +11,7 @@ import {
 	View,
 	type Workspace,
 } from "obsidian"
-import { Functions, isNonNullish, isUndefined } from "./util"
+import { Functions, executeParanoidly, isNonNullish, isUndefined } from "./util"
 import { NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
 import type { AsyncOrSync } from "ts-essentials"
 import { DEFAULT_LANGUAGE } from "assets/locales"
@@ -221,7 +221,7 @@ export function asyncDebounce<
 		readonly reject: (reason?: unknown) => void
 	}[] = []
 	return async (...args: A): Promise<R> =>
-		new Promise<R>((resolve, reject) => {
+		new Promise(executeParanoidly((resolve, reject) => {
 			promises.push({ reject, resolve })
 			debouncer(value => {
 				for (const promise of promises.splice(0)) {
@@ -232,7 +232,7 @@ export function asyncDebounce<
 					promise.reject(error)
 				}
 			}, ...args)
-		})
+		}))
 }
 
 export function commandNamer(
