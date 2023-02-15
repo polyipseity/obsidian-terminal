@@ -825,32 +825,54 @@ export class ProfileListModal extends Modal {
 
 export class DialogModal extends Modal {
 	protected readonly modalUI = new UpdatableUI()
+	readonly #doubleConfirmTimeout
 
-	public constructor(protected readonly plugin: TerminalPlugin) {
+	public constructor(
+		protected readonly plugin: TerminalPlugin,
+		options?: {
+			doubleConfirmTimeout?: number
+		},
+	) {
 		super(plugin.app)
+		this.#doubleConfirmTimeout = options?.doubleConfirmTimeout
 	}
 
 	public override onOpen(): void {
 		super.onOpen()
 		const { plugin, modalEl, scope, modalUI } = this,
+			doubleConfirmTimeout = this.#doubleConfirmTimeout,
 			{ language } = plugin,
 			{ i18n } = language
+		let preconfirmed = (doubleConfirmTimeout ?? 0) <= 0
 		modalUI
 			.newSetting(modalEl, setting => {
 				setting
-					.addButton(button => button
-						.setIcon(i18n.t("asset:components.dialog.confirm-icon"))
-						.setTooltip(i18n.t("components.dialog.confirm"))
-						.setCta()
-						.onClick(async () => { await this.confirm(this.#close) }))
+					.addButton(button => {
+						button
+							.setIcon(i18n.t("asset:components.dialog.confirm-icon"))
+							.setTooltip(i18n.t("components.dialog.confirm"))
+							.onClick(async () => this.confirm(this.#close))
+						if (isUndefined(doubleConfirmTimeout)) {
+							button.setCta()
+						} else {
+							button.setWarning()
+						}
+					})
 					.addButton(button => button
 						.setIcon(i18n.t("asset:components.dialog.cancel-icon"))
 						.setTooltip(i18n.t("components.dialog.cancel"))
-						.onClick(async () => { await this.cancel(this.#close) }))
+						.onClick(async () => this.cancel(this.#close)))
 			})
 			// Hooking escape does not work as it is already registered
 			.new(() => scope.register([], "enter", async event => {
-				await this.confirm(this.#close)
+				if (preconfirmed) {
+					await this.confirm(this.#close)
+				} else {
+					window.setTimeout(() => {
+						preconfirmed = false
+					}, doubleConfirmTimeout)
+					preconfirmed = true
+				}
 				event.preventDefault()
 				event.stopPropagation()
 			}), null, ele => { scope.unregister(ele) })
