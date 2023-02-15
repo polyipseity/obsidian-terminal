@@ -339,15 +339,11 @@ export class SettingTab extends PluginSettingTab {
 						() => { this.postMutate() },
 					))
 			})
-			.finally(language.onChangeLanguage.listen(() => { this.display() }))
-	}
-
-	public override hide(): void {
-		super.hide()
-		this.#onMutate = this.snapshot()
+			.finally(language.onChangeLanguage.listen(() => { this.ui.update() }))
 	}
 
 	public display(): void {
+		this.#onMutate = this.snapshot()
 		this.ui.update()
 	}
 
@@ -374,6 +370,6 @@ export class SettingTab extends PluginSettingTab {
 
 	protected postMutate(): void {
 		this.plugin.saveSettings().catch(error => { console.error(error) })
-		this.display()
+		this.ui.update()
 	}
 }
