@@ -89,6 +89,7 @@ export function loadSettings(plugin: TerminalPlugin): void {
 								JSON.parse(await navigator.clipboard.readText())
 							return ret
 						}))
+					plugin.saveSettings().catch(error => { console.error(error) })
 				} catch (error) {
 					printError(anyToError(error), () =>
 						i18n.t("errors.error-importing-settings"), plugin)
@@ -110,6 +111,7 @@ export function loadSettings(plugin: TerminalPlugin): void {
 								cleanFrontmatterCache(
 									metadataCache.getFileCache(file)?.frontmatter,
 								)))
+						plugin.saveSettings().catch(error => { console.error(error) })
 					} catch (error) {
 						printError(anyToError(error), () =>
 							i18n.t("errors.error-importing-settings"), plugin)
