@@ -14,7 +14,6 @@ import {
 import type { AsyncOrSync } from "ts-essentials"
 import type { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "sources/main"
-import { UNDEFINED } from "sources/magic"
 
 export const PROFILE_PROPERTIES: {
 	readonly [key in Settings.Profile.Type]: {
@@ -85,12 +84,10 @@ export const PROFILE_PROPERTIES: {
 			if (!(platforms0[PLATFORM] ?? false)) { return null }
 			return new Pseudoterminal.PLATFORM_PSEUDOTERMINAL(plugin, {
 				args,
-				cwd,
-				enableWindowsConhostWorkaround,
+				cwd: cwd ?? null,
+				enableWindowsConhostWorkaround: enableWindowsConhostWorkaround ?? null,
 				executable,
-				pythonExecutable: pythonExecutable === ""
-					? UNDEFINED
-					: pythonExecutable,
+				pythonExecutable: pythonExecutable || null,
 			})
 		},
 		valid: true,

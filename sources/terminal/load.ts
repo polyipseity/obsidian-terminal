@@ -32,8 +32,9 @@ function spawnTerminal(
 		.setViewState({
 			active: true,
 			state: {
-				cwd,
+				cwd: cwd ?? null,
 				profile,
+				serial: null,
 			} satisfies TerminalView.State,
 			type: TerminalView.type.namespaced(plugin),
 		})

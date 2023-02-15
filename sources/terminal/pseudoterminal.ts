@@ -2,6 +2,7 @@ import {
 	DEFAULT_ENCODING,
 	EXIT_SUCCESS,
 	TERMINAL_RESIZER_WATCHDOG_INTERVAL,
+	UNDEFINED,
 	UNHANDLED_REJECTION_MESSAGE,
 } from "../magic"
 import { LOGGER, type Log, log } from "sources/patches"
@@ -11,7 +12,7 @@ import {
 	clear,
 	executeParanoidly,
 	inSet,
-	isUndefined,
+	isNullish,
 	logFormat,
 	promisePromise,
 	spawnPromise,
@@ -170,10 +171,10 @@ export class ConsolePseudoterminal
 
 export interface ShellPseudoterminalArguments {
 	readonly executable: string
-	readonly cwd?: string | undefined
-	readonly args?: readonly string[] | undefined
-	readonly pythonExecutable?: string | undefined
-	readonly enableWindowsConhostWorkaround?: boolean | undefined
+	readonly cwd?: URL | string | null
+	readonly args?: readonly string[] | null
+	readonly pythonExecutable?: string | null
+	readonly enableWindowsConhostWorkaround?: boolean | null
 }
 
 class WindowsPseudoterminal implements Pseudoterminal {
@@ -197,7 +198,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 			{ language } = plugin,
 			{ i18n } = language,
 			resizer = (async (): Promise<PipedChildProcess | null> => {
-				if (isUndefined(pythonExecutable)) {
+				if (isNullish(pythonExecutable)) {
 					return null
 				}
 				const ret = await spawnPromise(async () =>
@@ -256,7 +257,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 								cmd[0],
 								cmd.slice(1),
 								{
-									cwd,
+									cwd: cwd ?? UNDEFINED,
 									stdio: ["pipe", "pipe", "pipe"],
 									windowsHide: resizer0 === null,
 									windowsVerbatimArguments: true,
@@ -396,7 +397,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 	) {
 		const { language } = plugin
 		this.shell = spawnPromise(async () => {
-			if (isUndefined(pythonExecutable)) {
+			if (isNullish(pythonExecutable)) {
 				throw new Error(language
 					.i18n.t("errors.no-python-to-start-unix-pseudoterminal"))
 			}
@@ -404,7 +405,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 				pythonExecutable,
 				["-c", unixPseudoterminalPy, executable].concat(args ?? []),
 				{
-					cwd,
+					cwd: cwd ?? UNDEFINED,
 					env: {
 						...(await process).env,
 						// eslint-disable-next-line @typescript-eslint/naming-convention

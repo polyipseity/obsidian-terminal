@@ -92,7 +92,7 @@ export class TerminalEditModal extends DialogModal {
 					.setName(i18n.t("components.terminal.working-directory"))
 					.addText(linkSetting(
 						() => state.cwd ?? "",
-						value => { state.cwd = value === "" ? UNDEFINED : value },
+						value => { state.cwd = value === "" ? null : value },
 						() => { this.postMutate() },
 						{
 							post: component => {
@@ -457,7 +457,7 @@ export class TerminalView extends ItemView {
 			(async (): Promise<void> => {
 				try {
 					noticeSpawn()
-					await openProfile(plugin, profile, cwd)
+					await openProfile(plugin, profile, cwd ?? UNDEFINED)
 				} catch (error) {
 					printError(anyToError(error), () =>
 						i18n.t("errors.error-spawning-terminal"), plugin)
@@ -483,7 +483,7 @@ export class TerminalView extends ItemView {
 										{ time: new Date().toLocaleString(language.language) },
 									)}`)
 								}
-								const ret = await openProfile(plugin, profile, cwd)
+								const ret = await openProfile(plugin, profile, cwd ?? UNDEFINED)
 								if (ret === null) {
 									const pty = new TextPseudoterminal(i18n
 										.t("components.terminal.unsupported-profile", {
@@ -507,7 +507,7 @@ export class TerminalView extends ItemView {
 								}
 								return ret
 							},
-							serial,
+							serial ?? UNDEFINED,
 							{
 								allowProposedApi: true,
 							},
@@ -596,20 +596,22 @@ export namespace TerminalView {
 	}
 	export interface State {
 		readonly profile: Settings.Profile
-		readonly cwd?: string | undefined
-		readonly serial?: XtermTerminalEmulator.State | undefined
+		readonly cwd: string | null
+		readonly serial: XtermTerminalEmulator.State | null
 	}
 	export namespace State {
 		export const DEFAULT: State = deepFreeze({
+			cwd: null,
 			profile: Settings.Profile.DEFAULTS.invalid,
+			serial: null,
 		} as const)
 		export function fix(self: unknown): Fixed<State> {
 			const unc = launderUnchecked<State>(self)
 			return markFixed<State>(self, {
-				cwd: fixTyped(DEFAULT, unc, "cwd", ["string"]),
+				cwd: fixTyped(DEFAULT, unc, "cwd", ["string", "null"]),
 				profile: Settings.Profile.fix(unc.profile).value,
-				serial: isUndefined(unc.serial)
-					? UNDEFINED
+				serial: unc.serial === null
+					? null
 					: XtermTerminalEmulator.State.fix(unc.serial).value,
 			})
 		}
