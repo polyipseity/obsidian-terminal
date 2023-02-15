@@ -1,6 +1,15 @@
-import { DISABLED_TOOLTIP, JSON_STRINGIFY_SPACE } from "sources/magic"
+import {
+	type ButtonComponent,
+	Modal,
+	type Setting,
+	type ValueComponent,
+} from "obsidian"
+import {
+	DISABLED_TOOLTIP,
+	DOMClasses,
+	JSON_STRINGIFY_SPACE,
+} from "sources/magic"
 import type { DeepWritable, Writable } from "ts-essentials"
-import { Modal, type Setting, type ValueComponent } from "obsidian"
 import {
 	PROFILE_PRESETS,
 	PROFILE_PRESET_ORDERED_KEYS,
@@ -853,7 +862,8 @@ export class DialogModal extends Modal {
 			doubleConfirmTimeout = this.#doubleConfirmTimeout,
 			{ language } = plugin,
 			{ i18n } = language
-		let preconfirmed = (doubleConfirmTimeout ?? 0) <= 0
+		let confirmButton: ButtonComponent | null = null,
+			preconfirmed = (doubleConfirmTimeout ?? 0) <= 0
 		modalUI
 			.newSetting(modalEl, setting => {
 				setting
@@ -862,11 +872,12 @@ export class DialogModal extends Modal {
 							.setIcon(i18n.t("asset:components.dialog.confirm-icon"))
 							.setTooltip(i18n.t("components.dialog.confirm"))
 							.onClick(async () => this.confirm(this.#close))
-						if (isUndefined(doubleConfirmTimeout)) {
+						if (preconfirmed) {
 							button.setCta()
 						} else {
 							button.setWarning()
 						}
+						confirmButton = button
 					})
 					.addButton(button => button
 						.setIcon(i18n.t("asset:components.dialog.cancel-icon"))
@@ -880,8 +891,10 @@ export class DialogModal extends Modal {
 				} else {
 					window.setTimeout(() => {
 						preconfirmed = false
+						confirmButton?.removeCta().setWarning()
 					}, doubleConfirmTimeout)
 					preconfirmed = true
+					confirmButton?.setCta().buttonEl.removeClass(DOMClasses.MOD_WARNING)
 				}
 				event.preventDefault()
 				event.stopPropagation()
