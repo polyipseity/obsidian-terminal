@@ -2,11 +2,11 @@ import { type App, Plugin, type PluginManifest, debounce } from "obsidian"
 import type { AsyncOrSync, DeepWritable } from "ts-essentials"
 import { EventEmitterLite, copyOnWriteAsync, isUndefined } from "./utils/util"
 import { JSON_STRINGIFY_SPACE, SAVE_SETTINGS_TIMEOUT } from "./magic"
+import { asyncDebounce, printMalformedData } from "./utils/obsidian"
 import { LanguageManager } from "./i18n"
 import { SettingTab } from "./settings/tab"
 import { Settings } from "./settings/data"
 import { StatusBarHider } from "./status-bar"
-import { asyncDebounce } from "./utils/obsidian"
 import { loadIcons } from "./icons"
 import { loadTerminal } from "./terminal/load"
 import { patch } from "./patches"
@@ -46,6 +46,7 @@ export class TerminalPlugin extends Plugin {
 			{ value, valid } = Settings.fix(loaded)
 		Object.assign(settings, value)
 		if (!valid) {
+			printMalformedData(this, loaded)
 			if (isUndefined(settings.recovery)) { settings.recovery = {} }
 			settings.recovery[new Date().toISOString()] =
 				JSON.stringify(loaded, null, JSON_STRINGIFY_SPACE)
