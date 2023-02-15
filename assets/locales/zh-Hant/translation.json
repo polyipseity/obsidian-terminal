@@ -1,5 +1,9 @@
 {
 	"commands": {
+		"export-settings-to-clipboard": "導出設置到剪貼板",
+		"export-settings-to-current-file": "導出設置到目前文件",
+		"import-settings-from-clipboard": "從剪貼板導入設置",
+		"import-settings-from-current-file": "從目前文件導入設置",
 		"open-terminal-": "開啟終端：{{- type}}",
 		"open-terminal-current": "在終端開啟目前目錄：{{- type}}",
 		"open-terminal-root": "在終端開啟根目錄：{{- type}}"
@@ -61,8 +65,14 @@
 			"working-directory-placeholder": "（未定義）"
 		}
 	},
+	"dialogs": {
+		"overwrite-existing-frontmatter": "覆蓋現有的前文？"
+	},
 	"errors": {
 		"cannot-find-status-bar": "找不到狀態欄",
+		"error-exporting-settings": "導出設置時出錯",
+		"error-importing-settings": "導入設置時出錯",
+		"error-processing-frontmatter": "處理前文時出錯：{{- file.path}}",
 		"error-spawning-terminal": "啟動終端時出錯",
 		"error-spawning-resizer": "啟動終端縮放程式時出錯",
 		"failed-to-kill-pseudoterminal": "終止偽終端失敗",
@@ -70,7 +80,8 @@
 		"no-python-to-start-unix-pseudoterminal": "沒有Python來啟動Unix偽終端",
 		"private-API-changed": "私有API改變了",
 		"resizer-disabled": "終端縮放程式已禁用",
-		"resizer-exited-unexpectedly": "終端縮放程式意外退出：{{- code}}"
+		"resizer-exited-unexpectedly": "終端縮放程式意外退出：{{- code}}",
+		"retry-outdated-frontmatter": "請重試，因為前文在後台更新了"
 	},
 	"generic": {
 		"edit": "編輯"
@@ -103,6 +114,7 @@
 			"reset": "重設",
 			"undo": "復原"
 		},
+		"description": "請使用命令面板以導出或導入設置。",
 		"error-notice-timeout": "錯誤通知超時（秒）",
 		"error-notice-timeout-description": "設為0秒是無超時。設為負數以禁用通知。",
 		"hide-status-bar": "隱藏狀態欄",

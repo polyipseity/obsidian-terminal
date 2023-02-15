@@ -4,10 +4,10 @@ import { EventEmitterLite, copyOnWriteAsync, isUndefined } from "./utils/util"
 import { JSON_STRINGIFY_SPACE, SAVE_SETTINGS_TIMEOUT } from "./magic"
 import { asyncDebounce, printMalformedData } from "./utils/obsidian"
 import { LanguageManager } from "./i18n"
-import { SettingTab } from "./settings/tab"
 import { Settings } from "./settings/data"
 import { StatusBarHider } from "./status-bar"
 import { loadIcons } from "./icons"
+import { loadSettings } from "./settings/load"
 import { loadTerminal } from "./terminal/load"
 import { patch } from "./patches"
 
@@ -41,8 +41,11 @@ export class TerminalPlugin extends Plugin {
 			await copyOnWriteAsync(this.#settings, mutator))
 	}
 
-	public async loadSettings(settings: DeepWritable<Settings>): Promise<void> {
-		const loaded: unknown = await this.loadData(),
+	public async loadSettings(
+		settings: DeepWritable<Settings>,
+		loader: () => unknown = async (): Promise<unknown> => this.loadData(),
+	): Promise<void> {
+		const loaded: unknown = await loader(),
 			{ value, valid } = Settings.fix(loaded)
 		Object.assign(settings, value)
 		if (!valid) {
@@ -84,7 +87,7 @@ export class TerminalPlugin extends Plugin {
 				])
 				loadIcons(this)
 				await init
-				this.addSettingTab(new SettingTab(this))
+				loadSettings(this)
 				this.statusBarHider.load()
 				loadTerminal(this)
 			} catch (error) {

@@ -24,3 +24,8 @@ export namespace DOMClasses {
 		VERTICAL_TAB_CONTENT = "vertical-tab-content",
 		VERTICAL_TAB_CONTENT_CONTAINER = "vertical-tab-content-container"
 }
+
+export namespace FileExtensions {
+	export const
+		MARKDOWN = "md"
+}

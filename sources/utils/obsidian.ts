@@ -5,6 +5,7 @@ import {
 	type Command,
 	type Debouncer,
 	DropdownComponent,
+	type FrontMatterCache,
 	Notice,
 	Plugin,
 	type PluginManifest,
@@ -13,7 +14,13 @@ import {
 	type Workspace,
 } from "obsidian"
 import { DOMClasses, NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
-import { Functions, executeParanoidly, isNonNullish, isUndefined } from "./util"
+import {
+	Functions,
+	executeParanoidly,
+	isNonNullish,
+	isUndefined,
+	typedStructuredClone,
+} from "./util"
 import type { AsyncOrSync } from "ts-essentials"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import type { TerminalPlugin } from "sources/main"
@@ -237,6 +244,15 @@ export function asyncDebounce<
 				}
 			}, ...args)
 		}))
+}
+
+export function cleanFrontmatterCache(
+	cache?: FrontMatterCache,
+): Readonly<Record<string, unknown>> {
+	if (isUndefined(cache)) { return {} }
+	const ret = typedStructuredClone<Partial<typeof cache>>(cache)
+	delete ret.position
+	return ret
 }
 
 export function commandNamer(

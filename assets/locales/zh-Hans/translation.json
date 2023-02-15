@@ -1,5 +1,9 @@
 {
 	"commands": {
+		"export-settings-to-clipboard": "导出设置到剪贴板",
+		"export-settings-to-current-file": "导出设置到目前文件",
+		"import-settings-from-clipboard": "从剪贴板导入设置",
+		"import-settings-from-current-file": "从目前文件导入设置",
 		"open-terminal-": "开啟终端：{{- type}}",
 		"open-terminal-current": "在终端开啟目前目録：{{- type}}",
 		"open-terminal-root": "在终端开啟根目録：{{- type}}"
@@ -61,8 +65,14 @@
 			"working-directory-placeholder": "（未定义）"
 		}
 	},
+	"dialogs": {
+		"overwrite-existing-frontmatter": "覆盖现有的前文？"
+	},
 	"errors": {
 		"cannot-find-status-bar": "找不到状态栏",
+		"error-exporting-settings": "导出设置时出错",
+		"error-importing-settings": "导入设置时出错",
+		"error-processing-frontmatter": "处理前文时出错：{{- file.path}}",
 		"error-spawning-terminal": "啟动终端时出错",
 		"error-spawning-resizer": "啟动终端缩放迸程时出错",
 		"failed-to-kill-pseudoterminal": "终止伪终端失败",
@@ -70,7 +80,8 @@
 		"no-python-to-start-unix-pseudoterminal": "没有Python来启动Unix伪终端",
 		"private-API-changed": "私有API改变了",
 		"resizer-disabled": "终端缩放迸程已禁用",
-		"resizer-exited-unexpectedly": "终端缩放迸程意外退出：{{- code}}"
+		"resizer-exited-unexpectedly": "终端缩放迸程意外退出：{{- code}}",
+		"retry-outdated-frontmatter": "请重试，因为前文在后台更新了"
 	},
 	"generic": {
 		"edit": "编辑"
@@ -103,6 +114,7 @@
 			"reset": "重设",
 			"undo": "复原"
 		},
+		"description": "请使用命令面板以导出或导入设置。",
 		"error-notice-timeout": "错误通知超时（秒）",
 		"error-notice-timeout-description": "设为0秒是无超时。设为负数以禁用通知。",
 		"hide-status-bar": "隐藏状态栏",

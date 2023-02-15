@@ -287,6 +287,10 @@
       "error",
       "consistent"
     ],
+    "function-paren-newline": [
+      "error",
+      "multiline-arguments"
+    ],
     "generator-star-spacing": [
       "error",
       "after"

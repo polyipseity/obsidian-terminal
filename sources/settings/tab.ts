@@ -33,6 +33,9 @@ export class SettingTab extends PluginSettingTab {
 			.new(() => containerEl.createEl("h1"), ele => {
 				ele.textContent = i18n.t("name")
 			})
+			.new(() => containerEl.createEl("div"), ele => {
+				ele.textContent = i18n.t("settings.description")
+			})
 			.newSetting(containerEl, setting => {
 				setting
 					.setName(i18n.t("settings.language"))

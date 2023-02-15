@@ -1,5 +1,9 @@
 {
 	"commands": {
+		"export-settings-to-clipboard": "Export settings to clipboard",
+		"export-settings-to-current-file": "Export settings to current file",
+		"import-settings-from-clipboard": "Import settings from clipboard",
+		"import-settings-from-current-file": "Import settings from current file",
 		"open-terminal-": "Open terminal: {{- type}}",
 		"open-terminal-current": "Open current folder in terminal: {{- type}}",
 		"open-terminal-root": "Open root in terminal: {{- type}}"
@@ -64,8 +68,14 @@
 			"working-directory-placeholder": "(Undefined)"
 		}
 	},
+	"dialogs": {
+		"overwrite-existing-frontmatter": "Overwrite existing frontmatter?"
+	},
 	"errors": {
 		"cannot-find-status-bar": "Cannot find status bar",
+		"error-exporting-settings": "Error exporting settings",
+		"error-importing-settings": "Error importing settings",
+		"error-processing-frontmatter": "Error processing frontmatter: {{- file.path}}",
 		"error-spawning-terminal": "Error spawning terminal",
 		"error-spawning-resizer": "Error spawning terminal resizer",
 		"failed-to-kill-pseudoterminal": "Failed to kill pseudoterminal",
@@ -73,7 +83,8 @@
 		"no-python-to-start-unix-pseudoterminal": "No Python to start Unix pseudoterminal",
 		"private-API-changed": "Private API changed",
 		"resizer-disabled": "Terminal resizer disabled",
-		"resizer-exited-unexpectedly": "Terminal resizer exited unexpectedly: {{- code}}"
+		"resizer-exited-unexpectedly": "Terminal resizer exited unexpectedly: {{- code}}",
+		"retry-outdated-frontmatter": "Please retry as frontmatter was updated in the background"
 	},
 	"generic": {
 		"edit": "Edit"
@@ -106,6 +117,7 @@
 			"reset": "Reset",
 			"undo": "Undo"
 		},
+		"description": "To export or import settings, use the command palette.",
 		"error-notice-timeout": "Error notice timeout (s)",
 		"error-notice-timeout-description": "Set to 0 s for no timeout. Set to negative to disable notice.",
 		"hide-status-bar": "Hide status bar",
