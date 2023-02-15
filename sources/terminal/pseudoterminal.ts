@@ -211,24 +211,20 @@ class WindowsPseudoterminal implements Pseudoterminal {
 						windowsHide: true,
 					}))
 				try {
-					try {
-						ret.stderr.on("data", (chunk: Buffer | string) => {
-							console.error(chunk.toString(DEFAULT_ENCODING))
-						})
-					} finally {
-						ret.once("exit", (code, signal) => {
-							if (code !== 0) {
-								notice2(
-									() => i18n.t(
-										"errors.resizer-exited-unexpectedly",
-										{ code: code ?? signal },
-									),
-									plugin.settings.errorNoticeTimeout,
-									plugin,
-								)
-							}
-						})
-					}
+					ret.once("exit", (code, signal) => {
+						if (code !== 0) {
+							notice2(
+								() => i18n.t(
+									"errors.resizer-exited-unexpectedly",
+									{ code: code ?? signal },
+								),
+								plugin.settings.errorNoticeTimeout,
+								plugin,
+							)
+						}
+					}).stderr.on("data", (chunk: Buffer | string) => {
+						console.error(chunk.toString(DEFAULT_ENCODING))
+					})
 				} catch (error) { console.warn(error) }
 				return ret
 			})(),

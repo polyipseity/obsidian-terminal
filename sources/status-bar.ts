@@ -21,11 +21,8 @@ export class StatusBarHider {
 			if (statusBar(div => {
 				const obs = new MutationObserver(() => { this.maybeHide(div) })
 				plugin.register(() => {
-					try {
-						obs.disconnect()
-					} finally {
-						this.unhide(div)
-					}
+					obs.disconnect()
+					this.unhide(div)
 				})
 				this.update()
 				obs.observe(div, { attributeFilter: ["style"] })
