@@ -273,8 +273,20 @@ export function printMalformedData(
 	actual: unknown,
 	expected?: unknown,
 ): void {
-	const { i18n } = plugin.language
-	console.error(i18n.t("errors.malformed-data"), actual, expected)
+	const { i18n } = plugin.language,
+		tryClone = (thing: unknown): unknown => {
+			try {
+				return typedStructuredClone(thing)
+			} catch (error) {
+				console.warn(error)
+				return thing
+			}
+		}
+	console.error(
+		i18n.t("errors.malformed-data"),
+		tryClone(actual),
+		tryClone(expected),
+	)
 	notice2(
 		() => i18n.t("errors.malformed-data"),
 		plugin.settings.errorNoticeTimeout,
