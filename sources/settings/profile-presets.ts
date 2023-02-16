@@ -46,7 +46,6 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 	},
 	darwinExternalDefault: {
 		args: ["$PWD"],
-		enableWindowsConhostWorkaround: false,
 		executable:
 			"/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal",
 		name: "",
