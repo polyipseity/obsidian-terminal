@@ -44,6 +44,7 @@ import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "sources/main"
 
 export class ListModal<T> extends Modal {
+	protected readonly modalUI = new UpdatableUI()
 	protected readonly ui = new UpdatableUI()
 	protected readonly data
 	readonly #inputter
@@ -120,19 +121,22 @@ export class ListModal<T> extends Modal {
 
 	public override onOpen(): void {
 		super.onOpen()
-		const { plugin, placeholder, data, ui } = this,
+		const { plugin, placeholder, data, ui, titleEl, modalUI } = this,
 			[listEl, listElRemover] = useSettings(this.contentEl),
 			{ language } = plugin,
+			{ onChangeLanguage } = language,
 			{ i18n } = language,
 			editables = this.#editables,
 			title = this.#title,
 			description = this.#description,
 			presets = this.#presets
+		modalUI.finally(onChangeLanguage.listen(() => { modalUI.update() }))
 		ui.finally(listElRemover)
+			.finally(onChangeLanguage.listen(() => { ui.update() }))
 		if (!isUndefined(title)) {
-			ui.new(() => listEl.createEl("h1"), ele => {
+			modalUI.new(() => titleEl, ele => {
 				ele.textContent = title()
-			})
+			}, ele => { ele.textContent = null })
 		}
 		if (!isUndefined(description)) {
 			ui.new(() => listEl.createEl("div"), ele => {
@@ -208,17 +212,18 @@ export class ListModal<T> extends Modal {
 						},
 					))
 			})
-			.finally(language.onChangeLanguage.listen(() => { ui.update() }))
 	}
 
 	public override onClose(): void {
 		super.onClose()
+		this.modalUI.destroy()
 		this.ui.destroy()
 	}
 
 	protected async postMutate(): Promise<void> {
-		const { data, ui } = this,
+		const { data, ui, modalUI } = this,
 			cb = this.#callback([...data])
+		modalUI.update()
 		ui.update()
 		await cb
 	}
@@ -313,6 +318,7 @@ export namespace ListModal {
 }
 
 export class ProfileModal extends Modal {
+	protected readonly modalUI = new UpdatableUI()
 	protected readonly ui = new UpdatableUI()
 	protected readonly data
 	readonly #callback
@@ -342,18 +348,21 @@ export class ProfileModal extends Modal {
 
 	public override onOpen(): void {
 		super.onOpen()
-		const { plugin, ui, data } = this,
+		const { plugin, ui, data, titleEl, modalUI } = this,
 			[listEl, listElRemover] = useSettings(this.contentEl),
 			profile = data,
 			{ language } = plugin,
+			{ onChangeLanguage } = language,
 			{ i18n } = language
-		let keepPreset = false
-		ui.finally(listElRemover)
-			.new(() => listEl.createEl("h1"), ele => {
-				ele.textContent = i18n.t("components.profile.title", {
-					name: Settings.Profile.name(profile),
-				})
+		modalUI.new(() => titleEl, ele => {
+			ele.textContent = i18n.t("components.profile.title", {
+				name: Settings.Profile.name(profile),
 			})
+		}, ele => { ele.textContent = null })
+		ui.finally(listElRemover)
+			.finally(onChangeLanguage.listen(() => { ui.update() }))
+		let keepPreset = false
+		ui
 			.newSetting(listEl, setting => {
 				setting
 					.setName(i18n.t("components.profile.name"))
@@ -448,17 +457,18 @@ export class ProfileModal extends Modal {
 				this.#setupTypedUI()
 				return typedUI
 			}, null, () => { this.#setupTypedUI = (): void => { } })
-			.finally(language.onChangeLanguage.listen(() => { ui.update() }))
 	}
 
 	public override onClose(): void {
 		super.onClose()
+		this.modalUI.destroy()
 		this.ui.destroy()
 	}
 
 	protected async postMutate(): Promise<void> {
-		const { data, ui } = this,
+		const { data, modalUI, ui } = this,
 			cb = this.#callback(typedStructuredClone(data))
+		modalUI.update()
 		ui.update()
 		await cb
 	}
@@ -824,10 +834,12 @@ export namespace ProfileListModal {
 
 export class DialogModal extends Modal {
 	protected readonly modalUI = new UpdatableUI()
+	protected readonly ui = new UpdatableUI()
 	readonly #cancel
 	readonly #confirm
+	readonly #title
+	readonly #description
 	readonly #draw
-	readonly #drawUI = new UpdatableUI()
 	readonly #doubleConfirmTimeout
 
 	public constructor(
@@ -835,7 +847,9 @@ export class DialogModal extends Modal {
 		options?: {
 			cancel?: (close: () => void) => unknown
 			confirm?: (close: () => void) => unknown
-			draw?: (ui: UpdatableUI, self: DialogModal) => void
+			title?: () => string
+			description?: () => string
+			draw?: (ui: UpdatableUI, element: HTMLElement) => void
 			doubleConfirmTimeout?: number
 		},
 	) {
@@ -843,15 +857,28 @@ export class DialogModal extends Modal {
 		this.#doubleConfirmTimeout = options?.doubleConfirmTimeout
 		this.#cancel = options?.cancel ?? ((close): void => { close() })
 		this.#confirm = options?.confirm ?? ((close): void => { close() })
+		this.#title = options?.title
+		this.#description = options?.description
 		this.#draw = options?.draw ?? ((): void => { })
 	}
 
 	public override onOpen(): void {
 		super.onOpen()
-		const { plugin, modalEl, scope, modalUI } = this,
+		const { plugin, modalEl, scope, modalUI, titleEl, ui, contentEl } = this,
 			doubleConfirmTimeout = this.#doubleConfirmTimeout,
 			{ language } = plugin,
-			{ i18n } = language
+			{ onChangeLanguage } = language,
+			{ i18n } = language,
+			title = this.#title,
+			description = this.#description
+		modalUI.finally(onChangeLanguage.listen(() => { modalUI.update() }))
+		ui.finally(() => { contentEl.replaceChildren() })
+			.finally(onChangeLanguage.listen(() => { ui.update() }))
+		if (!isUndefined(title)) {
+			modalUI.new(() => titleEl, ele => {
+				ele.textContent = title()
+			}, ele => { ele.textContent = null })
+		}
 		let confirmButton: ButtonComponent | null = null,
 			preconfirmed = (doubleConfirmTimeout ?? 0) <= 0
 		modalUI
@@ -889,14 +916,18 @@ export class DialogModal extends Modal {
 				event.preventDefault()
 				event.stopPropagation()
 			}), null, ele => { scope.unregister(ele) })
-			.finally(language.onChangeLanguage.listen(() => { modalUI.update() }))
-		this.#draw(this.#drawUI, this)
+		if (!isUndefined(description)) {
+			ui.new(() => contentEl.createEl("div"), ele => {
+				ele.textContent = description()
+			})
+		}
+		this.#draw(ui, contentEl)
 	}
 
 	public override onClose(): void {
 		super.onClose()
-		this.#drawUI.destroy()
 		this.modalUI.destroy()
+		this.ui.destroy()
 	}
 
 	public override close(): void {

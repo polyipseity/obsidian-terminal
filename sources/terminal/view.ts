@@ -25,7 +25,6 @@ import {
 import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
 import {
 	UnnamespacedID,
-	UpdatableUI,
 	notice2,
 	printError,
 	printMalformedData,
@@ -63,7 +62,6 @@ import { WebLinksAddon } from "xterm-addon-web-links"
 import { WebglAddon } from "xterm-addon-webgl"
 
 export class TerminalEditModal extends DialogModal {
-	protected readonly ui = new UpdatableUI()
 	protected readonly state
 	#profile: string | null = null
 	readonly #confirm
@@ -73,7 +71,10 @@ export class TerminalEditModal extends DialogModal {
 		protected readonly protostate: TerminalView.State,
 		confirm: (state_: DeepWritable<typeof protostate>) => unknown,
 	) {
-		super(plugin)
+		const { i18n } = plugin.language
+		super(plugin, {
+			title: () => i18n.t("generic.edit"),
+		})
 		this.state = cloneAsWritable(protostate)
 		this.#confirm = confirm
 	}
@@ -85,9 +86,7 @@ export class TerminalEditModal extends DialogModal {
 			{ language } = plugin,
 			{ i18n } = language
 		ui.finally(listElRemover)
-			.new(() => listEl.createEl("h1"), ele => {
-				ele.textContent = i18n.t("generic.edit")
-			})
+			.finally(language.onChangeLanguage.listen(() => { ui.update() }))
 			.newSetting(listEl, setting => {
 				setting
 					.setName(i18n.t("components.terminal.working-directory"))
@@ -166,12 +165,6 @@ export class TerminalEditModal extends DialogModal {
 						() => { this.postMutate() },
 					))
 			})
-			.finally(language.onChangeLanguage.listen(() => { ui.update() }))
-	}
-
-	public override onClose(): void {
-		super.onClose()
-		this.ui.destroy()
 	}
 
 	protected override async confirm(close: () => void): Promise<void> {
@@ -180,7 +173,9 @@ export class TerminalEditModal extends DialogModal {
 	}
 
 	protected postMutate(): void {
-		this.ui.update()
+		const { modalUI, ui } = this
+		modalUI.update()
+		ui.update()
 	}
 }
 

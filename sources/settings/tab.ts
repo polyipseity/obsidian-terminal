@@ -30,7 +30,7 @@ export class SettingTab extends PluginSettingTab {
 			{ language } = plugin,
 			{ i18n } = language
 		plugin.register(() => { ui.destroy() })
-		ui
+		ui.finally(language.onChangeLanguage.listen(() => { this.ui.update() }))
 			.new(() => containerEl.createEl("h1"), ele => {
 				ele.textContent = i18n.t("name")
 			})
@@ -344,7 +344,6 @@ export class SettingTab extends PluginSettingTab {
 						() => { this.postMutate() },
 					))
 			})
-			.finally(language.onChangeLanguage.listen(() => { this.ui.update() }))
 	}
 
 	public display(): void {
@@ -374,7 +373,8 @@ export class SettingTab extends PluginSettingTab {
 	}
 
 	protected postMutate(): void {
-		this.plugin.saveSettings().catch(logError)
-		this.ui.update()
+		const { plugin, ui } = this
+		plugin.saveSettings().catch(logError)
+		ui.update()
 	}
 }

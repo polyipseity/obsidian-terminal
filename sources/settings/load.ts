@@ -72,8 +72,8 @@ export function loadSettings(plugin: TerminalPlugin): void {
 							process()
 						},
 						doubleConfirmTimeout: DOUBLE_ACTION_TIMEOUT,
-						draw(ui, self): void {
-							ui.new(() => self.contentEl.createEl("div"), ele => {
+						draw(ui, element): void {
+							ui.new(() => element.createEl("div"), ele => {
 								ele.textContent =
 									i18n.t("dialogs.overwrite-existing-frontmatter")
 							})
