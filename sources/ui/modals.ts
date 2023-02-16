@@ -43,6 +43,15 @@ import { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "sources/main"
 
+export function makeModalDynamicWidth(
+	ui: UpdatableUI,
+	element: HTMLElement,
+): void {
+	const { width } = element.style
+	element.style.width = "unset"
+	ui.finally(() => { element.style.width = width })
+}
+
 export class ListModal<T> extends Modal {
 	protected readonly modalUI = new UpdatableUI()
 	protected readonly ui = new UpdatableUI()
@@ -134,11 +143,7 @@ export class ListModal<T> extends Modal {
 		modalUI.finally(onChangeLanguage.listen(() => { modalUI.update() }))
 		ui.finally(listElRemover)
 			.finally(onChangeLanguage.listen(() => { ui.update() }))
-		if (this.#dynamicWidth) {
-			const { width } = modalEl.style
-			modalEl.style.width = "unset"
-			modalUI.finally(() => { modalEl.style.width = width })
-		}
+		if (this.#dynamicWidth) { makeModalDynamicWidth(modalUI, modalEl) }
 		if (!isUndefined(title)) {
 			modalUI.new(() => titleEl, ele => {
 				ele.textContent = title()

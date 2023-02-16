@@ -69,10 +69,16 @@
 		"add-to-command-icon": "terminal",
 		"add-to-context-menu-icon": "menu",
 		"all-settings-actions": {
+			"edit-icon": "file-edit",
 			"recover-icon": "file-x",
 			"reload-icon": "loader",
 			"reset-icon": "reset",
 			"undo-icon": "undo"
+		},
+		"edit-settings": {
+			"data-icon": "file",
+			"export-to-clipboard-icon": "clipboard-copy",
+			"import-from-clipboard-icon": "clipboard"
 		},
 		"error-notice-timeout-icon": "timer",
 		"hide-status-bar-icon": "eye-off",

@@ -111,12 +111,20 @@
 		"advanced-settings": "Advanced settings",
 		"all-settings": "All settings",
 		"all-settings-actions": {
+			"edit": "Edit",
 			"recover": "Recover",
 			"reload": "Reload",
 			"reset": "Reset",
 			"undo": "Undo"
 		},
-		"description": "To export or import settings, use the command palette.",
+		"description": "To export or import settings, open '$t(settings.all-settings-actions.edit)' under '$t(settings.all-settings)' or use the command palette.",
+		"edit-settings": {
+			"data": "Data",
+			"export": "Export",
+			"export-to-clipboard": "Export to clipboard",
+			"import": "Import",
+			"import-from-clipboard": "Import from clipboard"
+		},
 		"error-notice-timeout": "Error notice timeout (s)",
 		"error-notice-timeout-description": "Set to 0 s for no timeout. Set to negative to disable notice.",
 		"hide-status-bar": "Hide status bar",

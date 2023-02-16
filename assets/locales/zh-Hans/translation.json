@@ -108,12 +108,20 @@
 		"advanced-settings": "高级设置",
 		"all-settings": "所有设置",
 		"all-settings-actions": {
+			"edit": "编辑",
 			"recover": "复原",
 			"reload": "重新加载",
 			"reset": "重设",
 			"undo": "复原"
 		},
-		"description": "请使用命令面板以导出或导入设置。",
+		"description": "打开「$t(settings.all-settings)」下的「$t(settings.all-settings-actions.edit)」或使用命令面板以导出或导入设置。",
+		"edit-settings": {
+			"data": "数据",
+			"export": "导出",
+			"export-to-clipboard": "导出到剪贴板",
+			"import": "导入",
+			"import-from-clipboard": "从剪贴板导入"
+		},
 		"error-notice-timeout": "错误通知超时（秒）",
 		"error-notice-timeout-description": "设为0秒是无超时。设为负数以禁用通知。",
 		"hide-status-bar": "隐藏状态栏",

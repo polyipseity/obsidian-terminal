@@ -1,11 +1,20 @@
-import { ListModal, ProfileListModal } from "sources/ui/modals"
+import { DOMClasses, JSON_STRINGIFY_SPACE } from "sources/magic"
+import {
+	ListModal,
+	ProfileListModal,
+	makeModalDynamicWidth,
+} from "sources/ui/modals"
+import { Modal, PluginSettingTab } from "obsidian"
+import { UpdatableUI, useSettings } from "sources/utils/obsidian"
 import {
 	capitalize,
+	clearProperties,
 	cloneAsWritable,
 	executeParanoidly,
 	identity,
 	length,
 	logError,
+	typedStructuredClone,
 	unexpected,
 } from "../utils/util"
 import {
@@ -14,11 +23,150 @@ import {
 	setTextToEnum,
 	setTextToNumber,
 } from "../ui/settings"
+import type { DeepWritable } from "ts-essentials"
 import { LANGUAGES } from "assets/locales"
-import { PluginSettingTab } from "obsidian"
 import { Settings } from "./data"
 import type { TerminalPlugin } from "../main"
-import { UpdatableUI } from "sources/utils/obsidian"
+
+export class EditSettingsModal extends Modal {
+	protected readonly modalUI = new UpdatableUI()
+	protected readonly ui = new UpdatableUI()
+	protected readonly data
+	#dataText
+	readonly #callback
+
+	public constructor(
+		protected readonly plugin: TerminalPlugin,
+		protected readonly protodata: Settings,
+		callback?: (data: DeepWritable<typeof protodata>) => unknown,
+	) {
+		super(plugin.app)
+		this.data = cloneAsWritable(protodata)
+		this.#dataText = JSON.stringify(this.data, null, JSON_STRINGIFY_SPACE)
+		this.#callback = callback ?? ((): void => { })
+	}
+
+	public override onOpen(): void {
+		super.onOpen()
+		const { modalUI, ui, modalEl, titleEl, plugin, data, protodata } = this,
+			[listEl, listElRemover] = useSettings(this.contentEl),
+			{ language } = plugin,
+			{ i18n, onChangeLanguage } = language
+		modalUI.finally(onChangeLanguage.listen(() => { modalUI.update() }))
+		ui.finally(listElRemover)
+			.finally(onChangeLanguage.listen(() => { ui.update() }))
+		makeModalDynamicWidth(modalUI, modalEl)
+		modalUI.new(() => titleEl, ele => {
+			ele.textContent = i18n.t("generic.edit")
+		}, ele => { ele.textContent = null })
+		let errorEl: HTMLElement = document.createElement("a")
+		const resetDataText = (): void => {
+			this.#dataText = JSON.stringify(data, null, JSON_STRINGIFY_SPACE)
+			errorEl.textContent = null
+			ui.update()
+		}
+		ui.finally(resetDataText)
+			.new(() => {
+				errorEl = listEl.createEl("div", {
+					cls: [DOMClasses.MOD_WARNING],
+				})
+				return errorEl
+			})
+			.newSetting(listEl, setting => {
+				setting
+					.setName(i18n.t("settings.edit-settings.export"))
+					.addButton(button => button
+						.setIcon(i18n
+							.t("asset:settings.edit-settings.export-to-clipboard-icon"))
+						.setTooltip(i18n.t("settings.edit-settings.export-to-clipboard"))
+						.onClick(async () => {
+							try {
+								await navigator.clipboard.writeText(this.#dataText)
+								errorEl.textContent = null
+							} catch (error) {
+								console.debug(error)
+								errorEl.textContent = String(error)
+							}
+						}))
+			})
+			.newSetting(listEl, setting => {
+				setting
+					.setName(i18n.t("settings.edit-settings.import"))
+					.addButton(button => button
+						.setIcon(i18n
+							.t("asset:settings.edit-settings.import-from-clipboard-icon"))
+						.setTooltip(i18n.t("settings.edit-settings.import-from-clipboard"))
+						.onClick(async () => {
+							try {
+								const { value: parsed, valid } =
+									Settings.fix(JSON.parse(await navigator.clipboard.readText()))
+								if (!valid) {
+									throw new Error(i18n.t("errors.malformed-data"))
+								}
+								this.replaceData(parsed)
+								errorEl.textContent = null
+							} catch (error) {
+								console.debug(error)
+								errorEl.textContent = String(error)
+								return
+							}
+							resetDataText()
+							await this.postMutate()
+						}))
+			})
+			.newSetting(listEl, setting => {
+				setting
+					.setName(i18n.t("settings.edit-settings.data"))
+					.addTextArea(linkSetting(
+						() => this.#dataText,
+						value => { this.#dataText = value },
+						async value => {
+							try {
+								const { value: parsed, valid } = Settings.fix(JSON.parse(value))
+								if (!valid) {
+									throw new Error(i18n.t("errors.malformed-data"))
+								}
+								this.replaceData(parsed)
+								errorEl.textContent = null
+							} catch (error) {
+								console.debug(error)
+								errorEl.textContent = String(error)
+								return
+							}
+							await this.postMutate()
+						},
+					))
+					.addExtraButton(resetButton(
+						plugin,
+						i18n.t("asset:settings.edit-settings.data-icon"),
+						() => { this.replaceData(cloneAsWritable(protodata)) },
+						async () => {
+							resetDataText()
+							await this.postMutate()
+						},
+					))
+			})
+	}
+
+	public override onClose(): void {
+		super.onClose()
+		this.modalUI.destroy()
+		this.ui.destroy()
+	}
+
+	protected async postMutate(): Promise<void> {
+		const { data, modalUI, ui } = this,
+			cb = this.#callback(typedStructuredClone(data))
+		modalUI.update()
+		ui.update()
+		await cb
+	}
+
+	protected replaceData(data: DeepWritable<typeof this.data>): void {
+		clearProperties(this.data)
+		Object.assign(this.data, data)
+	}
+}
 
 export class SettingTab extends PluginSettingTab {
 	protected readonly ui = new UpdatableUI()
@@ -74,6 +222,23 @@ export class SettingTab extends PluginSettingTab {
 				let undoable = false
 				setting
 					.setName(i18n.t("settings.all-settings"))
+					.addButton(button => {
+						button
+							.setIcon(i18n.t("asset:settings.all-settings-actions.edit-icon"))
+							.setTooltip(i18n.t("settings.all-settings-actions.edit"))
+							.onClick(() => {
+								new EditSettingsModal(
+									plugin,
+									plugin.settings,
+									async settings => {
+										await plugin.mutateSettings(settingsM => {
+											Object.assign(settingsM, settings)
+										})
+										this.postMutate()
+									},
+								).open()
+							})
+					})
 					.addButton(button => {
 						button
 							.setIcon(i18n
