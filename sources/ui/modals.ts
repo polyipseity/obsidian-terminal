@@ -126,8 +126,7 @@ export class ListModal<T> extends Modal {
 		const { plugin, placeholder, data, ui, titleEl, modalUI, modalEl } = this,
 			[listEl, listElRemover] = useSettings(this.contentEl),
 			{ language } = plugin,
-			{ onChangeLanguage } = language,
-			{ i18n } = language,
+			{ i18n, onChangeLanguage } = language,
 			editables = this.#editables,
 			title = this.#title,
 			description = this.#description,
@@ -360,8 +359,7 @@ export class ProfileModal extends Modal {
 			[listEl, listElRemover] = useSettings(this.contentEl),
 			profile = data,
 			{ language } = plugin,
-			{ onChangeLanguage } = language,
-			{ i18n } = language
+			{ i18n, onChangeLanguage } = language
 		modalUI.new(() => titleEl, ele => {
 			ele.textContent = i18n.t("components.profile.title", {
 				name: Settings.Profile.name(profile),
@@ -875,8 +873,7 @@ export class DialogModal extends Modal {
 		const { plugin, modalEl, scope, modalUI, titleEl, ui, contentEl } = this,
 			doubleConfirmTimeout = this.#doubleConfirmTimeout,
 			{ language } = plugin,
-			{ onChangeLanguage } = language,
-			{ i18n } = language,
+			{ i18n, onChangeLanguage } = language,
 			title = this.#title,
 			description = this.#description
 		modalUI.finally(onChangeLanguage.listen(() => { modalUI.update() }))
