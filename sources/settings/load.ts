@@ -78,6 +78,9 @@ export function loadSettings(plugin: TerminalPlugin): void {
 									i18n.t("dialogs.overwrite-existing-frontmatter")
 							})
 						},
+						title(): string {
+							return i18n.t("commands.export-settings-to-current-file")
+						},
 					}).open()
 				}
 			}
