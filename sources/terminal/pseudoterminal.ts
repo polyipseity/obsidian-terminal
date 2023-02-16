@@ -271,7 +271,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 									const watchdog = window.setInterval(
 										() => {
 											writePromise(resizer0.stdin, "\n")
-												.catch(error => { console.trace(error) })
+												.catch(error => { console.debug(error) })
 										},
 										TERMINAL_RESIZER_WATCHDOG_INTERVAL,
 									)
