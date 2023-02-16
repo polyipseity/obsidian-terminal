@@ -215,6 +215,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 					if (!plugin.settings.addToCommand) { return false }
 					return command(type, cwd)(checking)
 				},
+				icon: i18n.t(`asset:commands.open-terminal-${cwd}-icon`),
 				id: `open-terminal-${cwd}.${type}`,
 			})
 		}

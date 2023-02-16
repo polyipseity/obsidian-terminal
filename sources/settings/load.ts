@@ -39,6 +39,7 @@ export function loadSettings(plugin: TerminalPlugin): void {
 				}
 			})()
 		},
+		icon: i18n.t("asset:commands.export-settings-to-clipboard-icon"),
 		id: "export-settings-to-clipboard",
 	})
 	addCommand(plugin, () => i18n.t("commands.export-settings-to-current-file"), {
@@ -82,6 +83,7 @@ export function loadSettings(plugin: TerminalPlugin): void {
 			}
 			return true
 		},
+		icon: i18n.t("asset:commands.export-settings-to-current-file-icon"),
 		id: "export-settings-to-current-file",
 	})
 	addCommand(plugin, () => i18n.t("commands.import-settings-from-clipboard"), {
@@ -101,6 +103,7 @@ export function loadSettings(plugin: TerminalPlugin): void {
 				}
 			})()
 		},
+		icon: i18n.t("asset:commands.import-settings-from-clipboard-icon"),
 		id: "import-settings-from-clipboard",
 	})
 	addCommand(plugin, () =>
@@ -125,6 +128,7 @@ export function loadSettings(plugin: TerminalPlugin): void {
 			}
 			return true
 		},
+		icon: i18n.t("asset:commands.import-settings-from-current-file-icon"),
 		id: "import-settings-from-current-file",
 	})
 }

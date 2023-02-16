@@ -1,4 +1,13 @@
 {
+	"commands": {
+		"export-settings-to-clipboard-icon": "clipboard-copy",
+		"export-settings-to-current-file-icon": "file-input",
+		"import-settings-from-clipboard-icon": "clipboard",
+		"import-settings-from-current-file-icon": "file-output",
+		"open-terminal--icon": "command",
+		"open-terminal-current-icon": "file-terminal",
+		"open-terminal-root-icon": "terminal"
+	},
 	"components": {
 		"dialog": {
 			"cancel-icon": "x",
