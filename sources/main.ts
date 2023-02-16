@@ -49,7 +49,7 @@ export class TerminalPlugin extends Plugin {
 			{ value, valid } = Settings.fix(loaded)
 		Object.assign(settings, value)
 		if (!valid) {
-			printMalformedData(this, loaded)
+			printMalformedData(this, loaded, value)
 			if (isUndefined(settings.recovery)) { settings.recovery = {} }
 			settings.recovery[new Date().toISOString()] =
 				JSON.stringify(loaded, null, JSON_STRINGIFY_SPACE)

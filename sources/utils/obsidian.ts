@@ -270,10 +270,11 @@ export function commandNamer(
 
 export function printMalformedData(
 	plugin: TerminalPlugin,
-	data: unknown,
+	actual: unknown,
+	expected?: unknown,
 ): void {
 	const { i18n } = plugin.language
-	console.error(i18n.t("errors.malformed-data"), data)
+	console.error(i18n.t("errors.malformed-data"), actual, expected)
 	notice2(
 		() => i18n.t("errors.malformed-data"),
 		plugin.settings.errorNoticeTimeout,

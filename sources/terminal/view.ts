@@ -285,8 +285,8 @@ export class TerminalView extends ItemView {
 		await super.setState(state, result)
 		const { plugin } = this,
 			{ value, valid } = TerminalView.State.fix(state)
-		if (!valid) { printMalformedData(plugin, state) }
-		this.state = typedStructuredClone(value)
+		if (!valid) { printMalformedData(plugin, state, value) }
+		this.state = value
 		this.startEmulator()
 	}
 
