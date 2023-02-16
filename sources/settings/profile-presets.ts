@@ -24,6 +24,7 @@ export interface ProfilePresets extends ExternalDefaults, IntegratedDefaults {
 export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 	bashIntegrated: {
 		args: [],
+		enableWindowsConhostWorkaround: false,
 		executable: "/bin/bash",
 		name: "",
 		platforms: { darwin: true, linux: true },
@@ -45,6 +46,7 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 	},
 	darwinExternalDefault: {
 		args: ["$PWD"],
+		enableWindowsConhostWorkaround: false,
 		executable:
 			"/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal",
 		name: "",
@@ -53,6 +55,7 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 	},
 	darwinIntegratedDefault: {
 		args: [],
+		enableWindowsConhostWorkaround: false,
 		executable: "/bin/zsh",
 		name: "",
 		platforms: { darwin: true },
@@ -61,6 +64,7 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 	},
 	dashIntegrated: {
 		args: [],
+		enableWindowsConhostWorkaround: false,
 		executable: "/bin/dash",
 		name: "",
 		platforms: { darwin: true, linux: true },
@@ -80,6 +84,7 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 	},
 	linuxIntegratedDefault: {
 		args: [],
+		enableWindowsConhostWorkaround: false,
 		executable: "/bin/sh",
 		name: "",
 		platforms: { linux: true },
@@ -97,6 +102,7 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 	},
 	shIntegrated: {
 		args: [],
+		enableWindowsConhostWorkaround: false,
 		executable: "/bin/sh",
 		name: "",
 		platforms: { darwin: true, linux: true },
@@ -121,6 +127,7 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 	},
 	zshIntegrated: {
 		args: [],
+		enableWindowsConhostWorkaround: false,
 		executable: "/bin/zsh",
 		name: "",
 		platforms: { darwin: true, linux: true },

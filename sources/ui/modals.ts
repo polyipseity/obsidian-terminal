@@ -693,9 +693,7 @@ export class ProfileModal extends Modal {
 							.t(`components.profile.${profile
 								.type}.enable-Windows-conhost-workaround-description`))
 						.addToggle(linkSetting(
-							() => profile.enableWindowsConhostWorkaround ??
-								Settings.Profile.DEFAULTS[profile.type]
-									.enableWindowsConhostWorkaround,
+							() => profile.enableWindowsConhostWorkaround,
 							value => {
 								profile.enableWindowsConhostWorkaround = value
 							},

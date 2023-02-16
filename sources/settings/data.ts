@@ -143,7 +143,7 @@ export namespace Settings {
 			readonly args: readonly string[]
 			readonly platforms: Platforms<Pseudoterminal.SupportedPlatform>
 			readonly pythonExecutable: string
-			readonly enableWindowsConhostWorkaround?: boolean
+			readonly enableWindowsConhostWorkaround: boolean
 		}
 		export const DEFAULTS: {
 			readonly [key in Type]: DeepRequired<Typed<key>>
@@ -219,7 +219,7 @@ export namespace Settings {
 								["string"],
 							),
 							type,
-						} satisfies Required<Typed<typeof type>>
+						} satisfies Typed<typeof type>
 					}
 					case "console": {
 						return {
@@ -230,7 +230,7 @@ export namespace Settings {
 								["string"],
 							),
 							type,
-						} satisfies Required<Typed<typeof type>>
+						} satisfies Typed<typeof type>
 					}
 					case "external": {
 						return {
@@ -258,7 +258,7 @@ export namespace Settings {
 								Pseudoterminal.SUPPORTED_PLATFORMS,
 							),
 							type,
-						} satisfies Required<Typed<typeof type>>
+						} satisfies Typed<typeof type>
 					}
 					case "integrated": {
 						return {
@@ -298,13 +298,13 @@ export namespace Settings {
 								["string"],
 							),
 							type,
-						} satisfies Required<Typed<typeof type>>
+						} satisfies Typed<typeof type>
 					}
 					case "invalid": {
 						return {
 							...unc,
 							type,
-						} satisfies Required<Typed<typeof type>>
+						} satisfies Typed<typeof type>
 					}
 					// No default
 				}
