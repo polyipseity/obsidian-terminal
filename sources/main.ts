@@ -82,7 +82,8 @@ export class TerminalPlugin extends Plugin {
 		(async (): Promise<void> => {
 			try {
 				const init = Promise.all([
-					this.mutateSettings(async settings => this.loadSettings(settings)),
+					this.mutateSettings(async settings => this.loadSettings(settings))
+						.then(async () => this.saveSettings()),
 					this.language.load(),
 				])
 				loadIcons(this)
