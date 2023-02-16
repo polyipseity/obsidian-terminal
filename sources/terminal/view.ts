@@ -61,7 +61,7 @@ import { Unicode11Addon } from "xterm-addon-unicode11"
 import { WebLinksAddon } from "xterm-addon-web-links"
 import { WebglAddon } from "xterm-addon-webgl"
 
-export class TerminalEditModal extends DialogModal {
+class TerminalEditModal extends DialogModal {
 	protected readonly state
 	#profile: string | null = null
 	readonly #confirm
