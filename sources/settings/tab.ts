@@ -95,6 +95,7 @@ export class SettingTab extends PluginSettingTab {
 											})
 											this.postMutate()
 										},
+										dynamicWidth: true,
 										editables: ["remove"],
 										namer: (value): string => value[0],
 										title: (): string =>

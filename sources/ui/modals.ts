@@ -55,6 +55,7 @@ export class ListModal<T> extends Modal {
 	readonly #namer
 	readonly #descriptor
 	readonly #presets
+	readonly #dynamicWidth
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
@@ -86,6 +87,7 @@ export class ListModal<T> extends Modal {
 			}))
 		this.#descriptor = options?.descriptor ?? ((): string => "")
 		this.#presets = options?.presets
+		this.#dynamicWidth = options?.dynamicWidth ?? false
 	}
 
 	public static stringInputter<T>(transformer: {
@@ -121,7 +123,7 @@ export class ListModal<T> extends Modal {
 
 	public override onOpen(): void {
 		super.onOpen()
-		const { plugin, placeholder, data, ui, titleEl, modalUI } = this,
+		const { plugin, placeholder, data, ui, titleEl, modalUI, modalEl } = this,
 			[listEl, listElRemover] = useSettings(this.contentEl),
 			{ language } = plugin,
 			{ onChangeLanguage } = language,
@@ -133,6 +135,11 @@ export class ListModal<T> extends Modal {
 		modalUI.finally(onChangeLanguage.listen(() => { modalUI.update() }))
 		ui.finally(listElRemover)
 			.finally(onChangeLanguage.listen(() => { ui.update() }))
+		if (this.#dynamicWidth) {
+			const { width } = modalEl.style
+			modalEl.style.width = "unset"
+			modalUI.finally(() => { modalEl.style.width = width })
+		}
 		if (!isUndefined(title)) {
 			modalUI.new(() => titleEl, ele => {
 				ele.textContent = title()
@@ -314,6 +321,7 @@ export namespace ListModal {
 			readonly name: string
 			readonly value: T
 		}[]
+		readonly dynamicWidth?: boolean
 	}
 }
 
@@ -533,6 +541,7 @@ export class ProfileModal extends Modal {
 											profile.args = value
 											await this.postMutate()
 										},
+										dynamicWidth: true,
 										title: () =>
 											i18n.t(`components.profile.${profile.type}.arguments`),
 									},
@@ -614,6 +623,7 @@ export class ProfileModal extends Modal {
 											profile.args = value
 											await this.postMutate()
 										},
+										dynamicWidth: true,
 										title: () =>
 											i18n.t(`components.profile.${profile.type}.arguments`),
 									},
