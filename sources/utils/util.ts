@@ -5,7 +5,7 @@ import {
 	type TypeofMapE,
 	genericTypeofGuardE,
 } from "./typeof"
-import { type Sized, simplify } from "./types"
+import { type Sized, simplifyType } from "./types"
 import type { ChildProcess } from "node:child_process"
 import type { Writable } from "node:stream"
 import { getSerialize } from "json-stringify-safe"
@@ -165,18 +165,18 @@ export function copyOnWrite<T extends object>(
 	obj: DeepReadonly<T>,
 	mutator: (obj: DeepWritable<T>) => void,
 ): DeepReadonly<T> {
-	const ret = simplify(cloneAsWritable(obj))
+	const ret = simplifyType(cloneAsWritable(obj))
 	mutator(ret)
-	return simplify(deepFreeze(ret))
+	return simplifyType(deepFreeze(ret))
 }
 
 export async function copyOnWriteAsync<T extends object>(
 	obj: DeepReadonly<T>,
 	mutator: (obj: DeepWritable<T>) => unknown,
 ): Promise<DeepReadonly<T>> {
-	const ret = simplify(cloneAsWritable(obj))
+	const ret = simplifyType(cloneAsWritable(obj))
 	await mutator(ret)
-	return simplify(deepFreeze(ret))
+	return simplifyType(deepFreeze(ret))
 }
 
 export function clear(self: unknown[]): void {
