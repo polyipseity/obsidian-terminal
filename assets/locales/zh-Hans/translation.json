@@ -51,9 +51,8 @@
 			"type": "类型"
 		},
 		"profile-list": {
-			"content": "列表中第一个此平台上可用的配置是其终端类型的默认配置。.",
-			"description": "{{- id}}",
-			"name": "{{- name}}",
+			"descriptor": "{{- id}}",
+			"namer": "{{- name}}",
 			"title": "配置"
 		},
 		"terminal": {
@@ -132,6 +131,9 @@
 		"notice-timeout": "通知超时（秒）",
 		"notice-timeout-description": "设为0秒是无超时。设为负数以禁用通知。",
 		"preferred-renderer": "首选渲染器",
+		"profile-list": {
+			"description": "列表中第一个此平台上可用的配置是其终端类型的默认配置。."
+		},
 		"profiles": "配置",
 		"reset": "重设"
 	},

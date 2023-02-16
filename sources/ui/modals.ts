@@ -9,7 +9,6 @@ import {
 	DOMClasses,
 	JSON_STRINGIFY_SPACE,
 } from "sources/magic"
-import type { DeepWritable, Writable } from "ts-essentials"
 import {
 	PROFILE_PRESETS,
 	PROFILE_PRESET_ORDERED_KEYS,
@@ -20,11 +19,11 @@ import {
 	useSubsettings,
 } from "sources/utils/obsidian"
 import {
+	bracket,
 	clearProperties,
 	cloneAsWritable,
 	deepFreeze,
 	identity,
-	insertAt,
 	isUndefined,
 	randomNotIn,
 	removeAt,
@@ -38,28 +37,23 @@ import {
 	resetButton,
 	setTextToEnum,
 } from "./settings"
+import type { DeepWritable } from "ts-essentials"
 import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
 import { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "sources/main"
 
 export class ListModal<T> extends Modal {
-	public static readonly editables = deepFreeze([
-		"edit",
-		"append",
-		"prepend",
-		"remove",
-		"moveUp",
-		"moveDown",
-	] as const)
-
 	protected readonly ui = new UpdatableUI()
 	protected readonly data
 	readonly #inputter
 	readonly #callback
 	readonly #editables
 	readonly #title
+	readonly #description
 	readonly #namer
+	readonly #descriptor
+	readonly #presets
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
@@ -67,28 +61,30 @@ export class ListModal<T> extends Modal {
 			setting: Setting,
 			editable: boolean,
 			getter: () => T,
-			setter: (value: T) => unknown,
+			setter: (setter: (
+				item: T,
+				index: number,
+				data: T[],
+			) => unknown) => unknown,
 		) => void,
 		protected readonly placeholder: () => T,
 		data: readonly T[],
-		options?: {
-			readonly callback?: (data_: Writable<typeof data>) => unknown
-			readonly editables?: typeof ListModal.editables
-			readonly title?: () => string
-			readonly namer?: (value: T, index: number, data: readonly T[]) => string
-		},
+		options?: ListModal.Options<T>,
 	) {
 		super(app)
 		this.data = [...data]
 		this.#inputter = inputter
 		this.#callback = options?.callback ?? ((): void => { })
-		this.#editables = deepFreeze([...options?.editables ?? ListModal.editables])
+		this.#editables = deepFreeze([...options?.editables ?? ListModal.EDITABLES])
 		this.#title = options?.title
+		this.#description = options?.description
 		this.#namer = options?.namer ?? ((_0, index): string =>
 			plugin.language.i18n.t("components.editable-list.name", {
 				count: index + 1,
 				ordinal: true,
 			}))
+		this.#descriptor = options?.descriptor ?? ((): string => "")
+		this.#presets = options?.presets
 	}
 
 	public static stringInputter<T>(transformer: {
@@ -99,7 +95,11 @@ export class ListModal<T> extends Modal {
 			setting: Setting,
 			editable: boolean,
 			getter: () => T,
-			setter: (value: T) => unknown,
+			setter: (setter: (
+				item: T,
+				index: number,
+				data: T[],
+			) => unknown) => unknown,
 			input: (
 				setting: Setting,
 				callback: (component: ValueComponent<string> & {
@@ -112,7 +112,9 @@ export class ListModal<T> extends Modal {
 			input(setting, text => text
 				.setValue(transformer.forth(getter()))
 				.setDisabled(!editable)
-				.onChange(value => setter(transformer.back(value))))
+				.onChange(value => setter((_0, index, data) => {
+					data[index] = transformer.back(value)
+				})))
 		}
 	}
 
@@ -123,18 +125,26 @@ export class ListModal<T> extends Modal {
 			{ language } = plugin,
 			{ i18n } = language,
 			editables = this.#editables,
-			title = this.#title
+			title = this.#title,
+			description = this.#description,
+			presets = this.#presets
+		ui.finally(listElRemover)
 		if (!isUndefined(title)) {
 			ui.new(() => listEl.createEl("h1"), ele => {
 				ele.textContent = title()
 			})
 		}
-		ui.finally(listElRemover)
-			.newSetting(listEl, setting => {
-				if (!editables.includes("prepend")) {
-					setting.settingEl.remove()
-					return
-				}
+		if (!isUndefined(description)) {
+			ui.new(() => listEl.createEl("div"), ele => {
+				ele.textContent = description()
+			})
+		}
+		ui.newSetting(listEl, setting => {
+			if (!editables.includes("prepend")) {
+				setting.settingEl.remove()
+				return
+			}
+			if (isUndefined(presets)) {
 				setting
 					.setName(i18n.t("components.editable-list.prepend"))
 					.addButton(button => {
@@ -147,7 +157,20 @@ export class ListModal<T> extends Modal {
 								await this.postMutate()
 							})
 					})
-			})
+				return
+			}
+			setting
+				.setName(i18n.t("components.editable-list.prepend"))
+				.addDropdown(dropdownSelect(
+					i18n.t("components.dropdown.unselected"),
+					presets,
+					async value => {
+						data.unshift(value)
+						this.#setupListSubUI()
+						await this.postMutate()
+					},
+				))
+		})
 			.embed(() => {
 				const subUI = new UpdatableUI(),
 					ele = useSubsettings(listEl)
@@ -160,16 +183,30 @@ export class ListModal<T> extends Modal {
 					setting.settingEl.remove()
 					return
 				}
+				if (isUndefined(presets)) {
+					setting
+						.setName(i18n.t("components.editable-list.append"))
+						.addButton(button => button
+							.setIcon(i18n.t("asset:components.editable-list.append-icon"))
+							.setTooltip(i18n.t("components.editable-list.append"))
+							.onClick(async () => {
+								data.push(placeholder())
+								this.#setupListSubUI()
+								await this.postMutate()
+							}))
+					return
+				}
 				setting
 					.setName(i18n.t("components.editable-list.append"))
-					.addButton(button => button
-						.setIcon(i18n.t("asset:components.editable-list.append-icon"))
-						.setTooltip(i18n.t("components.editable-list.append"))
-						.onClick(async () => {
-							data.push(placeholder())
+					.addDropdown(dropdownSelect(
+						i18n.t("components.dropdown.unselected"),
+						presets,
+						async value => {
+							data.push(value)
 							this.#setupListSubUI()
 							await this.postMutate()
-						}))
+						},
+					))
 			})
 			.finally(language.onChangeLanguage.listen(() => { ui.update() }))
 	}
@@ -181,7 +218,7 @@ export class ListModal<T> extends Modal {
 
 	protected async postMutate(): Promise<void> {
 		const { data, ui } = this,
-			cb = this.#callback(typedStructuredClone(data))
+			cb = this.#callback([...data])
 		ui.update()
 		await cb
 	}
@@ -190,18 +227,22 @@ export class ListModal<T> extends Modal {
 		const { plugin, data } = this,
 			editables = this.#editables,
 			namer = this.#namer,
+			descriptor = this.#descriptor,
 			{ language } = plugin,
 			{ i18n } = language
 		ui.destroy()
-		for (const [index, item] of data.entries()) {
+		for (const [index] of data.entries()) {
 			ui.newSetting(element, setting => {
+				const { valid, value: item } = bracket(data, index)
+				if (!valid) { throw new Error(index.toString()) }
 				setting.setName(namer(item, index, data))
+					.setDesc(descriptor(item, index, data))
 				this.#inputter(
 					setting,
 					editables.includes("edit"),
 					() => item,
-					async value => {
-						data[index] = value
+					async setter => {
+						await setter(item, index, data)
 						await this.postMutate()
 					},
 				)
@@ -243,6 +284,32 @@ export class ListModal<T> extends Modal {
 	}
 
 	#setupListSubUI = (): void => { }
+}
+export namespace ListModal {
+	export const EDITABLES = deepFreeze([
+		"edit",
+		"append",
+		"prepend",
+		"remove",
+		"moveUp",
+		"moveDown",
+	] as const)
+	export interface Options<T> {
+		readonly callback?: (data_: T[]) => unknown
+		readonly editables?: typeof EDITABLES
+		readonly title?: () => string
+		readonly description?: () => string
+		readonly namer?: (value: T, index: number, data: readonly T[]) => string
+		readonly descriptor?: (
+			value: T,
+			index: number,
+			data: readonly T[],
+		) => string
+		readonly presets?: readonly {
+			readonly name: string
+			readonly value: T
+		}[]
+	}
 }
 
 export class ProfileModal extends Modal {
@@ -667,172 +734,92 @@ export class ProfileModal extends Modal {
 	#setupTypedUI = (): void => { }
 }
 
-export class ProfileListModal extends Modal {
-	protected readonly ui = new UpdatableUI()
-	protected readonly data
-	readonly #callback
-	readonly #presets
-	readonly #keygen
+export class ProfileListModal
+	extends ListModal<DeepWritable<Settings.Profile>> {
+	protected readonly dataKeys
 
 	public constructor(
-		protected readonly plugin: TerminalPlugin,
+		plugin: TerminalPlugin,
 		data: readonly Settings.Profile.Entry[],
-		callback: (data_: DeepWritable<typeof data>) => unknown,
-		presets: readonly {
-			readonly name: string
-			readonly value: Settings.Profile
-		}[] = PROFILE_PRESET_ORDERED_KEYS
-			.map(key => ({
-				get name(): string {
-					return plugin.language.i18n.t(`types.profile-presets.${key}`)
-				},
-				value: PROFILE_PRESETS[key],
-			})),
-		keygen = (): string => crypto.randomUUID(),
+		options?: Omit<ProfileListModal.Options, "callback"
+		>,
 	) {
-		super(plugin.app)
-		this.data = cloneAsWritable(data)
-		this.#callback = callback
-		this.#presets = presets
-		this.#keygen = keygen
-	}
-
-	public override onOpen(): void {
-		super.onOpen()
-		const { plugin, ui, data } = this,
-			[listEl, listElRemover] = useSettings(this.contentEl),
-			{ language } = plugin,
-			{ i18n } = language
-		ui.finally(listElRemover)
-			.new(() => listEl.createEl("h1"), ele => {
-				ele.textContent = i18n.t("components.profile-list.title")
-			})
-			.new(() => listEl.createEl("div"), ele => {
-				ele.textContent = i18n.t("components.profile-list.content")
-			})
-			.newSetting(listEl, setting => {
-				setting
-					.setName(i18n.t("components.editable-list.prepend"))
-					.addDropdown(dropdownSelect(
-						i18n.t("components.dropdown.unselected"),
-						this.#presets,
-						async value => {
-							this.addProfile(0, cloneAsWritable(value))
-							this.#setupListSubUI()
-							await this.postMutate()
+		const { i18n } = plugin.language,
+			dataW = cloneAsWritable(data),
+			dataKeys = new Map(dataW.map(([key, value]) => [value, key])),
+			callback = options?.callback2 ?? ((): void => { }),
+			keygen = options?.keygen ?? ((): string => crypto.randomUUID())
+		super(
+			plugin,
+			(setting, editable, getter, setter) => {
+				setting.addButton(button => button
+					.setIcon(i18n.t("asset:generic.edit-icon"))
+					.setTooltip(i18n.t("generic.edit"))
+					.onClick(() => {
+						new ProfileModal(
+							plugin,
+							getter(),
+							async value => {
+								await setter(item => {
+									clearProperties(item)
+									Object.assign(item, value)
+								})
+							},
+						).open()
+					})
+					.setDisabled(!editable))
+			},
+			unexpected,
+			dataW.map(([, value]) => value),
+			{
+				...options,
+				async callback(data0) {
+					await callback(data0
+						.map(profile => {
+							let id = dataKeys.get(profile)
+							if (isUndefined(id)) {
+								dataKeys.set(
+									profile,
+									id = randomNotIn(Array.from(dataKeys.values()), keygen),
+								)
+							}
+							return [id, typedStructuredClone(profile)]
+						}))
+				},
+				descriptor: options?.descriptor ?? ((value): string =>
+					i18n.t("components.profile-list.descriptor", {
+						id: dataKeys.get(value),
+						name: Settings.Profile.name(value),
+					})),
+				namer: options?.namer ?? ((value): string =>
+					i18n.t("components.profile-list.namer", {
+						id: dataKeys.get(value),
+						name: Settings.Profile.name(value),
+					})),
+				presets: options?.presets ?? PROFILE_PRESET_ORDERED_KEYS
+					.map(key => ({
+						get name(): string {
+							return plugin.language.i18n.t(`types.profile-presets.${key}`)
 						},
-					))
-			})
-			.embed(() => {
-				const subUI = new UpdatableUI(),
-					ele = useSubsettings(listEl)
-				this.#setupListSubUI = (): void => {
-					this.setupListSubUI(subUI, ele)
-				}
-				this.#setupListSubUI()
-				return subUI
-			})
-			.newSetting(listEl, setting => {
-				setting
-					.setName(i18n.t("components.editable-list.append"))
-					.addDropdown(dropdownSelect(
-						i18n.t("components.dropdown.unselected"),
-						this.#presets,
-						async value => {
-							this.addProfile(data.length, cloneAsWritable(value))
-							this.#setupListSubUI()
-							await this.postMutate()
+						get value(): DeepWritable<Settings.Profile> {
+							return cloneAsWritable(PROFILE_PRESETS[key])
 						},
-					))
-			})
-			.finally(language.onChangeLanguage.listen(() => { ui.update() }))
-	}
-
-	public override onClose(): void {
-		super.onClose()
-		this.ui.update()
-	}
-
-	protected async postMutate(): Promise<void> {
-		const { data, ui } = this,
-			cb = this.#callback(cloneAsWritable(data))
-		ui.update()
-		await cb
-	}
-
-	protected addProfile(
-		index: number,
-		profile: DeepWritable<Settings.Profile>,
-	): void {
-		const { data } = this
-		insertAt(
-			data,
-			index,
-			[randomNotIn(data.map(entry => entry[0]), this.#keygen), profile],
+					})),
+				title: options?.title ?? ((): string =>
+					i18n.t("components.profile-list.title")),
+			},
 		)
+		this.dataKeys = dataKeys
 	}
-
-	protected setupListSubUI(ui: UpdatableUI, element: HTMLElement): void {
-		const { plugin, data } = this,
-			{ language } = plugin,
-			{ i18n } = language
-		ui.destroy()
-		for (const [index, value] of data.entries()) {
-			ui.newSetting(element, setting => {
-				setting
-					.setName(i18n.t("components.profile-list.name", {
-						id: value[0],
-						name: Settings.Profile.name(value[1]),
-					}))
-					.setDesc(i18n
-						.t("components.profile-list.description", {
-							id: value[0],
-							name: Settings.Profile.name(value[1]),
-						}))
-					.addButton(button => button
-						.setIcon(i18n.t("asset:generic.edit-icon"))
-						.setTooltip(i18n.t("generic.edit"))
-						.onClick(() => {
-							new ProfileModal(
-								plugin,
-								value[1],
-								async profile0 => {
-									value[1] = profile0
-									await this.postMutate()
-								},
-							).open()
-						}))
-					.addButton(button => button
-						.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
-						.setTooltip(i18n.t("components.editable-list.remove"))
-						.onClick(async () => {
-							removeAt(data, index)
-							this.#setupListSubUI()
-							await this.postMutate()
-						}))
-					.addExtraButton(button => button
-						.setTooltip(i18n.t("components.editable-list.move-up"))
-						.setIcon(i18n.t("asset:components.editable-list.move-up-icon"))
-						.onClick(async () => {
-							if (index <= 0) { return }
-							swap(data, index - 1, index)
-							this.#setupListSubUI()
-							await this.postMutate()
-						}))
-					.addExtraButton(button => button
-						.setTooltip(i18n.t("components.editable-list.move-down"))
-						.setIcon(i18n.t("asset:components.editable-list.move-down-icon"))
-						.onClick(async () => {
-							if (index >= data.length - 1) { return }
-							swap(data, index, index + 1)
-							this.#setupListSubUI()
-							await this.postMutate()
-						}))
-			})
-		}
+}
+export namespace ProfileListModal {
+	export interface Options
+		extends ListModal.Options<DeepWritable<Settings.Profile>> {
+		readonly callback2?: (
+			data: DeepWritable<Settings.Profile.Entry>[],
+		) => unknown
+		readonly keygen?: () => string
 	}
-
-	#setupListSubUI = (): void => { }
 }
 
 export class DialogModal extends Modal {

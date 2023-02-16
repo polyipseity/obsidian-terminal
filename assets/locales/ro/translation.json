@@ -54,9 +54,8 @@
 			"type": "Type"
 		},
 		"profile-list": {
-			"content": "The first profile in the list available on this platform is the default profile for its terminal type.",
-			"description": "{{- id}}",
-			"name": "{{- name}}",
+			"descriptor": "{{- id}}",
+			"namer": "{{- name}}",
 			"title": "Profiles"
 		},
 		"terminal": {
@@ -136,6 +135,9 @@
 		"notice-timeout": "Notice timeout (s)",
 		"notice-timeout-description": "Set to 0 s for no timeout. Set to negative to disable notice.",
 		"preferred-renderer": "Preferred renderer",
+		"profile-list": {
+			"description": "The first profile in the list available on this platform is the default profile for its terminal type."
+		},
 		"profiles": "Profiles",
 		"reset": "Reset"
 	},

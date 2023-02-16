@@ -139,6 +139,18 @@ export function bigIntReplacer(): (key: string, value: unknown) => unknown {
 	}
 }
 
+export function bracket<T>(self: readonly T[], index: number): {
+	readonly valid: false
+	readonly value?: never
+} | {
+	readonly valid: true
+	readonly value: T
+} {
+	return index in self
+		? { valid: true, value: self[index] as T }
+		: { valid: false }
+}
+
 export function capitalize(
 	str: string,
 	locales?: string[] | string,
@@ -171,14 +183,14 @@ export function clear(self: unknown[]): void {
 	self.length = 0
 }
 
-export function clearProperties(self: object): void {
-	for (const prop of Object.getOwnPropertyNames(self)) {
+export function clearProperties(self0: object): void {
+	for (const prop of Object.getOwnPropertyNames(self0)) {
 		// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-		delete self[prop as keyof typeof self]
+		delete self0[prop as keyof typeof self0]
 	}
-	for (const prop of Object.getOwnPropertySymbols(self)) {
+	for (const prop of Object.getOwnPropertySymbols(self0)) {
 		// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-		delete self[prop as keyof typeof self]
+		delete self0[prop as keyof typeof self0]
 	}
 }
 

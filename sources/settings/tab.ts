@@ -284,11 +284,15 @@ export class SettingTab extends PluginSettingTab {
 							new ProfileListModal(
 								plugin,
 								Object.entries(plugin.settings.profiles),
-								async data => {
-									await plugin.mutateSettings(settingsM => {
-										settingsM.profiles = Object.fromEntries(data)
-									})
-									this.postMutate()
+								{
+									callback2: async (data): Promise<void> => {
+										await plugin.mutateSettings(settingsM => {
+											settingsM.profiles = Object.fromEntries(data)
+										})
+										this.postMutate()
+									},
+									description: (): string =>
+										i18n.t("settings.profile-list.description"),
 								},
 							).open()
 						}))
