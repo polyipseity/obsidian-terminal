@@ -61,7 +61,7 @@ import { Unicode11Addon } from "xterm-addon-unicode11"
 import { WebLinksAddon } from "xterm-addon-web-links"
 import { WebglAddon } from "xterm-addon-webgl"
 
-class TerminalEditModal extends DialogModal {
+class EditTerminalModal extends DialogModal {
 	protected readonly state
 	#profile: string | null = null
 	readonly #confirm
@@ -378,7 +378,7 @@ export class TerminalView extends ItemView {
 				.setTitle(i18n.t("generic.edit"))
 				.setIcon(i18n.t("asset:generic.edit-icon"))
 				.onClick(() => {
-					new TerminalEditModal(
+					new EditTerminalModal(
 						plugin,
 						this.state,
 						state => {
