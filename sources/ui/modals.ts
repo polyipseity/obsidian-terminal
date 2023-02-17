@@ -385,8 +385,8 @@ export class ProfileModal extends Modal {
 						async () => this.postMutate(),
 					))
 					.addExtraButton(resetButton(
-						plugin,
 						i18n.t("asset:components.profile.name-icon"),
+						i18n.t("components.profile.reset"),
 						() => {
 							profile.name = Settings.Profile.DEFAULTS[profile.type].name
 						},
@@ -453,8 +453,8 @@ export class ProfileModal extends Modal {
 						},
 					))
 					.addExtraButton(resetButton(
-						plugin,
 						i18n.t("asset:components.profile.type-icon"),
+						i18n.t("components.profile.reset"),
 						unexpected,
 						unexpected,
 						{
@@ -520,9 +520,9 @@ export class ProfileModal extends Modal {
 							async () => this.postMutate(),
 						))
 						.addExtraButton(resetButton(
-							plugin,
 							i18n
 								.t(`asset:components.profile.${profile.type}.executable-icon`),
+							i18n.t("components.profile.reset"),
 							() => {
 								profile.executable =
 									Settings.Profile.DEFAULTS[profile.type].executable
@@ -560,8 +560,8 @@ export class ProfileModal extends Modal {
 								).open()
 							}))
 						.addExtraButton(resetButton(
-							plugin,
 							i18n.t(`asset:components.profile.${profile.type}.arguments-icon`),
+							i18n.t("components.profile.reset"),
 							() => {
 								profile.args =
 									cloneAsWritable(Settings.Profile.DEFAULTS[profile.type].args)
@@ -582,8 +582,8 @@ export class ProfileModal extends Modal {
 								async () => this.postMutate(),
 							))
 							.addExtraButton(resetButton(
-								plugin,
 								i18n.t(`asset:generic.platforms.${platform}-icon`),
+								i18n.t("components.profile.reset"),
 								() => {
 									profile.platforms[platform] =
 										Settings.Profile.DEFAULTS[profile.type].platforms[platform]
@@ -606,9 +606,9 @@ export class ProfileModal extends Modal {
 							async () => this.postMutate(),
 						))
 						.addExtraButton(resetButton(
-							plugin,
 							i18n
 								.t(`asset:components.profile.${profile.type}.executable-icon`),
+							i18n.t("components.profile.reset"),
 							() => {
 								profile.executable =
 									Settings.Profile.DEFAULTS[profile.type].executable
@@ -646,8 +646,8 @@ export class ProfileModal extends Modal {
 								).open()
 							}))
 						.addExtraButton(resetButton(
-							plugin,
 							i18n.t(`asset:components.profile.${profile.type}.arguments-icon`),
+							i18n.t("components.profile.reset"),
 							() => {
 								profile.args =
 									cloneAsWritable(Settings.Profile.DEFAULTS[profile.type].args)
@@ -668,8 +668,8 @@ export class ProfileModal extends Modal {
 								async () => this.postMutate(),
 							))
 							.addExtraButton(resetButton(
-								plugin,
 								i18n.t(`asset:generic.platforms.${platform}-icon`),
+								i18n.t("components.profile.reset"),
 								() => {
 									profile.platforms[platform] =
 										Settings.Profile.DEFAULTS[profile.type].platforms[platform]
@@ -700,9 +700,9 @@ export class ProfileModal extends Modal {
 							},
 						))
 						.addExtraButton(resetButton(
-							plugin,
 							i18n.t(`asset:components.profile.${profile
 								.type}.Python-executable-icon`),
+							i18n.t("components.profile.reset"),
 							() => {
 								profile.pythonExecutable =
 									Settings.Profile.DEFAULTS[profile.type].pythonExecutable
@@ -721,10 +721,10 @@ export class ProfileModal extends Modal {
 							async () => this.postMutate(),
 						))
 						.addExtraButton(resetButton(
-							plugin,
 							i18n
 								.t(`asset:components.profile.${profile
 									.type}.enable-win32-conhost-workaround-icon`),
+							i18n.t("components.profile.reset"),
 							() => {
 								profile.useWin32Conhost =
 									Settings.Profile.DEFAULTS[profile.type]
@@ -743,8 +743,8 @@ export class ProfileModal extends Modal {
 							.setValue(JSON.stringify(profile, null, JSON_STRINGIFY_SPACE))
 							.setDisabled(true))
 						.addExtraButton(resetButton(
-							plugin,
 							i18n.t(`asset:components.profile.${profile.type}.data-icon`),
+							i18n.t("components.profile.reset"),
 							unexpected,
 							unexpected,
 							{

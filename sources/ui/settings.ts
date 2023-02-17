@@ -6,7 +6,6 @@ import type {
 } from "obsidian"
 import { inSet, isUndefined, unexpected } from "sources/utils/util"
 import type { Sized } from "sources/utils/types"
-import type { TerminalPlugin } from "sources/main"
 
 export interface ComponentAction<C, V> {
 	readonly pre?: (component: C) => void
@@ -89,8 +88,8 @@ export function setTextToNumber<C extends ValueComponent<string>>(
 }
 
 export function resetButton<C extends ButtonComponent | ExtraButtonComponent>(
-	plugin: TerminalPlugin,
 	icon: string,
+	tooltip: string,
 	resetter: (component: C) => unknown,
 	callback: (component: C) => unknown,
 	action: ComponentAction<C, void> = {},
@@ -105,8 +104,8 @@ export function resetButton<C extends ButtonComponent | ExtraButtonComponent>(
 			await callback(component)
 		}
 		component
-			.setTooltip(plugin.language.i18n.t("settings.reset"))
 			.setIcon(icon)
+			.setTooltip(tooltip)
 			.onClick(activate);
 		(action.post ?? ((): void => { }))(component, activate)
 	}

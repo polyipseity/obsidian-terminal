@@ -135,8 +135,8 @@ export class EditSettingsModal extends Modal {
 						},
 					))
 					.addExtraButton(resetButton(
-						plugin,
 						i18n.t("asset:settings.edit-settings.data-icon"),
+						i18n.t("settings.reset"),
 						() => { this.replaceData(cloneAsWritable(protodata)) },
 						async () => {
 							resetDataText()
@@ -206,8 +206,8 @@ export class SettingTab extends PluginSettingTab {
 						},
 					))
 					.addExtraButton(resetButton(
-						plugin,
 						i18n.t("asset:settings.language-icon"),
+						i18n.t("settings.reset"),
 						async () => plugin
 							.mutateSettings(settingsM => {
 								settingsM.language = Settings.DEFAULT.language
@@ -271,8 +271,8 @@ export class SettingTab extends PluginSettingTab {
 						}
 					})
 					.addButton(resetButton(
-						plugin,
 						i18n.t("asset:settings.all-settings-actions.undo-icon"),
+						i18n.t("settings.all-settings-actions.undo"),
 						async () => {
 							if (!undoable) { return false }
 							await plugin.mutateSettings(async settingsM =>
@@ -285,8 +285,6 @@ export class SettingTab extends PluginSettingTab {
 						},
 						{
 							post: component => {
-								component
-									.setTooltip(i18n.t("settings.all-settings-actions.undo"))
 								this.#onMutate.then(() => {
 									undoable = true
 									component.setCta()
@@ -295,31 +293,19 @@ export class SettingTab extends PluginSettingTab {
 						},
 					))
 					.addButton(resetButton(
-						plugin,
 						i18n.t("asset:settings.all-settings-actions.reload-icon"),
+						i18n.t("settings.all-settings-actions.reload"),
 						async () => plugin.mutateSettings(async settingsM =>
 							plugin.loadSettings(settingsM)),
 						() => { this.postMutate() },
-						{
-							post: component => {
-								component
-									.setTooltip(i18n.t("settings.all-settings-actions.reload"))
-							},
-						},
 					))
 					.addButton(resetButton(
-						plugin,
 						i18n.t("asset:settings.all-settings-actions.reset-icon"),
+						i18n.t("settings.all-settings-actions.reset"),
 						async () => plugin
 							.mutateSettings(settingsM =>
 								Object.assign(settingsM, cloneAsWritable(Settings.DEFAULT))),
 						() => { this.postMutate() },
-						{
-							post: component => {
-								component
-									.setTooltip(i18n.t("settings.all-settings-actions.reset"))
-							},
-						},
 					))
 			})
 			.newSetting(containerEl, setting => {
@@ -332,8 +318,8 @@ export class SettingTab extends PluginSettingTab {
 						() => { this.postMutate() },
 					))
 					.addExtraButton(resetButton(
-						plugin,
 						i18n.t("asset:settings.add-to-command-icon"),
+						i18n.t("settings.reset"),
 						async () => plugin
 							.mutateSettings(settingsM => {
 								settingsM.addToCommand = Settings.DEFAULT.addToCommand
@@ -352,8 +338,8 @@ export class SettingTab extends PluginSettingTab {
 						() => { this.postMutate() },
 					))
 					.addExtraButton(resetButton(
-						plugin,
 						i18n.t("asset:settings.add-to-context-menu-icon"),
+						i18n.t("settings.reset"),
 						async () => plugin
 							.mutateSettings(settingsM => {
 								settingsM.addToContextMenu = Settings.DEFAULT.addToContextMenu
@@ -386,8 +372,8 @@ export class SettingTab extends PluginSettingTab {
 						},
 					))
 					.addExtraButton(resetButton(
-						plugin,
 						i18n.t("asset:settings.hide-status-bar-icon"),
+						i18n.t("settings.reset"),
 						async () => plugin.mutateSettings(settingsM => {
 							settingsM.hideStatusBar = Settings.DEFAULT.hideStatusBar
 						}),
@@ -406,8 +392,8 @@ export class SettingTab extends PluginSettingTab {
 						() => { this.postMutate() },
 					))
 					.addExtraButton(resetButton(
-						plugin,
 						i18n.t("asset:settings.notice-timeout-icon"),
+						i18n.t("settings.reset"),
 						async () => plugin.mutateSettings(settingsM => {
 							settingsM.noticeTimeout = Settings.DEFAULT.noticeTimeout
 						}),
@@ -427,8 +413,8 @@ export class SettingTab extends PluginSettingTab {
 						() => { this.postMutate() },
 					))
 					.addExtraButton(resetButton(
-						plugin,
 						i18n.t("asset:settings.error-notice-timeout-icon"),
+						i18n.t("settings.reset"),
 						async () => plugin.mutateSettings(settingsM => {
 							settingsM.errorNoticeTimeout = Settings.DEFAULT.errorNoticeTimeout
 						}),
@@ -462,8 +448,8 @@ export class SettingTab extends PluginSettingTab {
 							).open()
 						}))
 					.addExtraButton(resetButton(
-						plugin,
 						i18n.t("asset:settings.profiles-icon"),
+						i18n.t("settings.reset"),
 						async () => plugin.mutateSettings(settingsM => {
 							settingsM.profiles = cloneAsWritable(Settings.DEFAULT.profiles)
 						}),
@@ -501,8 +487,8 @@ export class SettingTab extends PluginSettingTab {
 						},
 					))
 					.addExtraButton(resetButton(
-						plugin,
 						i18n.t("asset:settings.preferred-renderer-icon"),
+						i18n.t("settings.reset"),
 						async () => plugin.mutateSettings(settingsM => {
 							settingsM.preferredRenderer = Settings.DEFAULT.preferredRenderer
 						}),

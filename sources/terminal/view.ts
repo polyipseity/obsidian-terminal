@@ -105,9 +105,9 @@ class EditTerminalModal extends DialogModal {
 						},
 					))
 					.addExtraButton(resetButton(
-						plugin,
 						i18n
 							.t("asset:components.terminal.edit-modal.working-directory-icon"),
+						i18n.t("components.terminal.edit-modal.reset"),
 						() => { state.cwd = protostate.cwd },
 						() => { this.postMutate() },
 					))
@@ -160,8 +160,8 @@ class EditTerminalModal extends DialogModal {
 							).open()
 						}))
 					.addExtraButton(resetButton(
-						plugin,
 						i18n.t("asset:components.terminal.edit-modal.profile-icon"),
+						i18n.t("components.terminal.edit-modal.reset"),
 						() => {
 							this.#profile = null
 							state.profile = cloneAsWritable(protostate.profile)

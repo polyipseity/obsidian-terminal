@@ -54,6 +54,7 @@
 			},
 			"name": "$t(generic.name, capitalize)",
 			"preset": "$t(generic.preset, capitalize)",
+			"reset": "$t(generic.reset, capitalize)",
 			"title": "{{name}}",
 			"type": "$t(generic.type, capitalize)",
 			"type-options": "$t(generic.profile-types.{{type}}, capitalize)"
@@ -69,6 +70,7 @@
 			"edit-modal": {
 				"profile": "$t(generic.profile, capitalize)",
 				"profile-edit": "$t(generic.edit, capitalize)",
+				"reset": "$t(generic.reset, capitalize)",
 				"title": "$t(generic.edit, capitalize) $t(generic.terminal)",
 				"working-directory": "$t(generic.working-directory, capitalize)",
 				"working-directory-placeholder": "(Undefined)"
