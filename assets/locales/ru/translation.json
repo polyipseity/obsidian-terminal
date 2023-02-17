@@ -28,8 +28,8 @@
 			"remove": "Remove"
 		},
 		"find": {
-			"search-results": "{{- index}}/{{- count}}",
-			"too-many-search-results": "?/1000+"
+			"search-results": "{{- index, number}}/{{- count, number}}",
+			"too-many-search-results": "?/{{limit, number}}+"
 		},
 		"profile": {
 			"external": {
@@ -72,7 +72,7 @@
 			},
 			"profile": "$t(generic.profile, capitalize)",
 			"profile-edit": "$t(generic.edit, capitalize)",
-			"restored-history": "\r\n * Restored history at {{- time}}\r\n\r\n",
+			"restored-history": "\r\n * Restored history at {{- datetime, datetime(dateStyle: full, timeStyle: full)}}\r\n\r\n",
 			"unsupported-profile": "Unsupported $t(generic.profile):\r\n{{- profile}}\r\n",
 			"working-directory": "$t(generic.working-directory, capitalize)",
 			"working-directory-placeholder": "(Undefined)"
@@ -135,16 +135,16 @@
 		"language_one": "language",
 		"language_other": "languages",
 		"list": "list",
-		"list-description_one": "There is {{- count}} item.",
-		"list-description_other": "There are {{- count}} items.",
+		"list-description_one": "There is {{- count, number}} item.",
+		"list-description_other": "There are {{- count, number}} items.",
 		"list-description_zero": "There are no items.",
 		"name": "name",
 		"notice": "notice",
 		"open": "open",
-		"ordinal_few": "{{- count}}rd",
-		"ordinal_one": "{{- count}}st",
-		"ordinal_other": "{{- count}}th",
-		"ordinal_two": "{{- count}}nd",
+		"ordinal_few": "{{- count, number}}rd",
+		"ordinal_one": "{{- count, number}}st",
+		"ordinal_other": "{{- count, number}}th",
+		"ordinal_two": "{{- count, number}}nd",
 		"overwrite": "overwrite",
 		"platform": "platform",
 		"platforms": {

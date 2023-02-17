@@ -20,6 +20,7 @@ import {
 import {
 	JSON_STRINGIFY_SPACE,
 	TERMINAL_EXIT_SUCCESS,
+	TERMINAL_SEARCH_RESULTS_LIMIT,
 	UNDEFINED,
 } from "../magic"
 import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
@@ -476,7 +477,7 @@ export class TerminalView extends ItemView {
 								if (!isUndefined(serial)) {
 									terminal.write(`${i18n.t(
 										"components.terminal.restored-history",
-										{ time: new Date().toLocaleString(language.language) },
+										{ datetime: new Date() },
 									)}`)
 								}
 								const ret = await openProfile(plugin, profile, cwd ?? UNDEFINED)
@@ -549,7 +550,10 @@ export class TerminalView extends ItemView {
 					search.onDidChangeResults(results => {
 						if (isUndefined(results)) {
 							this.#find?.$set({
-								searchResult: i18n.t("components.find.too-many-search-results"),
+								searchResult: i18n
+									.t("components.find.too-many-search-results", {
+										limit: TERMINAL_SEARCH_RESULTS_LIMIT,
+									}),
 							})
 							return
 						}

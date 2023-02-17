@@ -25,8 +25,8 @@
 			"remove": "刪除"
 		},
 		"find": {
-			"search-results": "{{- index}}/{{- count}}",
-			"too-many-search-results": "?/1000+"
+			"search-results": "{{- index, number}}/{{- count, number}}",
+			"too-many-search-results": "?/{{limit, number}}+"
 		},
 		"profile": {
 			"external": {
@@ -69,7 +69,7 @@
 			},
 			"profile": "$t(generic.profile)",
 			"profile-edit": "$t(generic.edit)",
-			"restored-history": "\r\n * 已還原於{{- time}}的歷史\r\n\r\n",
+			"restored-history": "\r\n * 已還原於{{- datetime, datetime(dateStyle: full, timeStyle: full)}}的歷史\r\n\r\n",
 			"unsupported-profile": "不支持的$t(generic.profile)：\r\n{{- profile}}\r\n",
 			"working-directory": "$t(generic.working-directory)",
 			"working-directory-placeholder": "（未定義）"
@@ -124,12 +124,12 @@
 		"import": "導入",
 		"language": "語言",
 		"list": "列表",
-		"list-description_other": "有{{- count}}項項目。",
+		"list-description_other": "有{{- count, number}}項項目。",
 		"list-description_zero": "沒有項目。",
 		"name": "名稱",
 		"notice": "通知",
 		"open": "開啟",
-		"ordinal": "第{{- count}}",
+		"ordinal": "第{{- count, number}}",
 		"overwrite": "覆蓋",
 		"platform": "平台",
 		"platforms": {

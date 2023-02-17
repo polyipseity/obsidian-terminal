@@ -14,6 +14,7 @@ export const
 	] as const),
 	TERMINAL_RESIZE_TIMEOUT = 500,
 	TERMINAL_RESIZER_WATCHDOG_INTERVAL = 500,
+	TERMINAL_SEARCH_RESULTS_LIMIT = 999,
 	// eslint-disable-next-line no-void
 	UNDEFINED = void 0,
 	UNHANDLED_REJECTION_MESSAGE = "Uncaught (in promise)"
