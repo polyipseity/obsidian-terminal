@@ -207,22 +207,6 @@ export function escapeQuerySelectorAttribute(value: string): string {
 	return value.replace(/\\/gu, "\\\\").replace(/"/gu, "\\\"")
 }
 
-export function executeParanoidly<T>(callback: (
-	resolve: (value: AsyncOrSync<T>) => void,
-	reject: (reason?: unknown) => void,
-) => void) {
-	return (
-		resolve: (value: AsyncOrSync<T>) => void,
-		reject: (reason?: unknown) => void,
-	): void => {
-		try {
-			callback(resolve, reject)
-		} catch (error) {
-			reject(error)
-		}
-	}
-}
-
 export function extname(path: string): string {
 	const base = basename(path),
 		idx = base.lastIndexOf(".")
@@ -250,10 +234,10 @@ export async function spawnPromise<T extends ChildProcess>(spawn: (
 
 ) => AsyncOrSync<T>): Promise<T> {
 	const ret = await spawn()
-	return new Promise<T>(executeParanoidly((resolve, reject) => {
+	return new Promise<T>((resolve, reject) => {
 		ret.once("spawn", () => { resolve(ret) })
 			.once("error", reject)
-	}))
+	})
 }
 
 export function typedKeys<T extends readonly (number | string | symbol)[]>() {
@@ -462,13 +446,13 @@ export async function promisePromise<T>(): Promise<{
 	readonly resolve: (value: AsyncOrSync<T>) => void
 	readonly reject: (reason?: unknown) => void
 }> {
-	return new Promise(executeParanoidly((resolve0, reject0) => {
-		const promise = new Promise<T>(executeParanoidly((resolve, reject) => {
+	return new Promise((resolve0, reject0) => {
+		const promise = new Promise<T>((resolve, reject) => {
 			Promise.resolve()
 				.then(() => ({ promise, reject, resolve }))
 				.then(resolve0, reject0)
-		}))
-	}))
+		})
+	})
 }
 
 export function randomNotIn(
@@ -507,10 +491,10 @@ export async function writePromise(
 	stream: Writable,
 	chunk: unknown,
 ): Promise<void> {
-	return new Promise<void>(executeParanoidly((resolve, reject) => {
+	return new Promise<void>((resolve, reject) => {
 		const written = stream.write(chunk, error => {
 			if (error) { reject(error) } else if (written) { resolve() }
 		})
 		if (!written) { stream.once("drain", resolve) }
-	}))
+	})
 }

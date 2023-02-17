@@ -9,7 +9,6 @@ import { UpdatableUI, useSettings } from "sources/utils/obsidian"
 import {
 	clearProperties,
 	cloneAsWritable,
-	executeParanoidly,
 	identity,
 	length,
 	logError,
@@ -521,10 +520,7 @@ export class SettingTab extends PluginSettingTab {
 		const { plugin } = this,
 			snapshot = cloneAsWritable(plugin.settings)
 		delete snapshot.recovery
-		return new Promise<Settings>(executeParanoidly((
-			resolve,
-			reject,
-		) => {
+		return new Promise<Settings>((resolve, reject) => {
 			const unregister = plugin.on("mutate-settings", identity, () => {
 				try {
 					resolve(snapshot)
@@ -535,7 +531,7 @@ export class SettingTab extends PluginSettingTab {
 				}
 			})
 			plugin.register(unregister)
-		}))
+		})
 	}
 
 	protected postMutate(): void {

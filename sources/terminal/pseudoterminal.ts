@@ -10,7 +10,6 @@ import {
 	PLATFORM,
 	anyToError,
 	clear,
-	executeParanoidly,
 	inSet,
 	isNullish,
 	logError,
@@ -315,7 +314,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 		this.shell = shell.then(([shell0]) => shell0)
 		this.onExit = shell
 			.then(async ([shell0, codeTmp]) =>
-				new Promise<NodeJS.Signals | number>(executeParanoidly(resolve =>
+				new Promise<NodeJS.Signals | number>(resolve => {
 					shell0.once("exit", (conCode, signal) => {
 						(async (): Promise<void> => {
 							try {
@@ -337,7 +336,8 @@ class WindowsPseudoterminal implements Pseudoterminal {
 								}
 							} catch (error) { console.error(error) }
 						})()
-					}))))
+					})
+				}))
 	}
 
 	protected static escapeArgument(arg: string, shell = false): string {
@@ -428,10 +428,11 @@ class UnixPseudoterminal implements Pseudoterminal {
 		})
 		this.onExit = this.shell
 			.then(async shell =>
-				new Promise<NodeJS.Signals | number>(executeParanoidly(resolve =>
+				new Promise<NodeJS.Signals | number>(resolve => {
 					shell.once("exit", (code, signal) => {
 						resolve(code ?? signal ?? NaN)
-					}))))
+					})
+				}))
 	}
 
 	public async kill(): Promise<void> {
