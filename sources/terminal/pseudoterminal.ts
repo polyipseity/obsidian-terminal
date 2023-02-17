@@ -327,6 +327,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 								)
 								return isNaN(termCode) ? conCode ?? signal ?? NaN : termCode
 							} catch (error) {
+								console.debug(error)
 								return conCode ?? signal ?? NaN
 							} finally {
 								try {

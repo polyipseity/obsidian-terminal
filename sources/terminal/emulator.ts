@@ -70,6 +70,7 @@ export class XtermTerminalEmulator<A> {
 					await pty.resize(columns, rows)
 				}
 			} catch (error) {
+				console.debug(error)
 				if (mustResizePseudoterminal) { throw error }
 			}
 			this.terminal.resize(columns, rows)
