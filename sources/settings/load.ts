@@ -59,7 +59,10 @@ export function loadSettings(plugin: TerminalPlugin): void {
 						}).catch(error => {
 							printError(anyToError(error), () => i18n.t(
 								"errors.error-processing-frontmatter",
-								{ file },
+								{
+									file,
+									interpolation: { escapeValue: false },
+								},
 							), plugin)
 						})
 					}

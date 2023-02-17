@@ -175,7 +175,10 @@ export function addCommand(
 			namer = commandNamer(
 				name,
 				() => i18n.t("name"),
-				i18n.t("name", { lng: DEFAULT_LANGUAGE }),
+				i18n.t("name", {
+					interpolation: { escapeValue: false },
+					lng: DEFAULT_LANGUAGE,
+				}),
 				format,
 			)
 		},

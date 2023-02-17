@@ -28,7 +28,7 @@
 			"remove": "Remove"
 		},
 		"find": {
-			"search-results": "{{- index, number}}/{{- count, number}}",
+			"search-results": "{{index, number}}/{{count, number}}",
 			"too-many-search-results": "?/{{limit, number}}+"
 		},
 		"profile": {
@@ -54,18 +54,18 @@
 			},
 			"name": "$t(generic.name, capitalize)",
 			"preset": "$t(generic.preset, capitalize)",
-			"title": "{{- name}}",
+			"title": "{{name}}",
 			"type": "$t(generic.type, capitalize)",
 			"type-options": "$t(generic.profile-types.{{type}}, capitalize)"
 		},
 		"profile-list": {
-			"descriptor": "{{- id}}",
+			"descriptor": "{{id}}",
 			"edit": "$t(generic.edit, capitalize)",
-			"namer": "{{- name}}",
+			"namer": "{{name}}",
 			"title": "$t(generic.profile_other, capitalize)"
 		},
 		"terminal": {
-			"display-name": "$t(generic.terminal, capitalize): {{- name}}",
+			"display-name": "$t(generic.terminal, capitalize): {{name}}",
 			"edit-modal": {
 				"profile": "$t(generic.profile, capitalize)",
 				"profile-edit": "$t(generic.edit, capitalize)",
@@ -82,8 +82,8 @@
 			"name": {
 				"profile-type": "$t(generic.profile-types.{{type}}, capitalize)"
 			},
-			"restored-history": "\r\n * Restored history at {{- datetime, datetime(dateStyle: full, timeStyle: full)}}\r\n\r\n",
-			"unsupported-profile": "Unsupported $t(generic.profile):\r\n{{- profile}}\r\n"
+			"restored-history": "\r\n * Restored history at {{datetime, datetime(dateStyle: full, timeStyle: full)}}\r\n\r\n",
+			"unsupported-profile": "Unsupported $t(generic.profile):\r\n{{profile}}\r\n"
 		}
 	},
 	"dialogs": {
@@ -93,7 +93,7 @@
 		"cannot-find-status-bar": "Cannot find $t(generic.status-bar)",
 		"error-exporting-settings": "Error $t(generic.export_gerund) $t(generic.setting_other)",
 		"error-importing-settings": "Error $t(generic.import_gerund) $t(generic.setting_other)",
-		"error-processing-frontmatter": "Error processing $t(generic.frontmatter): {{- file.path}}",
+		"error-processing-frontmatter": "Error processing $t(generic.frontmatter): {{file.path}}",
 		"error-spawning-terminal": "Error $t(generic.spawn_gerund) $t(generic.terminal)",
 		"error-spawning-resizer": "Error $t(generic.spawn_gerund) $t(generic.terminal-resizer)",
 		"error-killing-pseudoterminal": "Error killing $t(generic.pseudoterminal)",
@@ -101,7 +101,7 @@
 		"no-Python-to-spawn-Unix-pseudoterminal": "No $t(generic.Python) to $t(generic.spawn) $t(generic.platforms.unix) $t(generic.pseudoterminal)",
 		"private-API-changed": "Private $t(generic.API) changed",
 		"resizer-disabled": "$t(generic.terminal-resizer, capitalize) $t(generic.disable_past)",
-		"resizer-exited-unexpectedly": "$t(generic.terminal-resizer, capitalize) $t(generic.exit_past) unexpectedly: {{- code}}",
+		"resizer-exited-unexpectedly": "$t(generic.terminal-resizer, capitalize) $t(generic.exit_past) unexpectedly: {{code}}",
 		"retry-outdated-frontmatter": "Please $t(generic.retry) as $t(generic.frontmatter) was updated in the $t(generic.background)"
 	},
 	"generic": {
@@ -143,16 +143,16 @@
 		"language_one": "language",
 		"language_other": "languages",
 		"list": "list",
-		"list-description_one": "There is {{- count, number}} item.",
-		"list-description_other": "There are {{- count, number}} items.",
+		"list-description_one": "There is {{count, number}} item.",
+		"list-description_other": "There are {{count, number}} items.",
 		"list-description_zero": "There are no items.",
 		"name": "name",
 		"notice": "notice",
 		"open": "open",
-		"ordinal_few": "{{- count, number}}rd",
-		"ordinal_one": "{{- count, number}}st",
-		"ordinal_other": "{{- count, number}}th",
-		"ordinal_two": "{{- count, number}}nd",
+		"ordinal_few": "{{count, number}}rd",
+		"ordinal_one": "{{count, number}}st",
+		"ordinal_other": "{{count, number}}th",
+		"ordinal_two": "{{count, number}}nd",
 		"overwrite": "overwrite",
 		"platform": "platform",
 		"platforms": {
@@ -205,8 +205,8 @@
 	"name": "$t(generic.terminal, capitalize)",
 	"notices": {
 		"no-default-profile": "No $t(generic.default) $t(generic.profile) for $t(generic.type) '$t(generic.profile-types.{{type}}, capitalize)'",
-		"spawning-terminal": "$t(generic.spawn_gerund, capitalize) $t(generic.terminal): {{- name}}",
-		"terminal-exited": "$t(generic.terminal, capitalize) $t(generic.exit_past): {{- code}}"
+		"spawning-terminal": "$t(generic.spawn_gerund, capitalize) $t(generic.terminal): {{name}}",
+		"terminal-exited": "$t(generic.terminal, capitalize) $t(generic.exit_past): {{code}}"
 	},
 	"profile-presets": {
 		"bashIntegrated": "bash: $t(generic.profile-types.integrated, capitalize)",

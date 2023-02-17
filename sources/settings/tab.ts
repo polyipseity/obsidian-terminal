@@ -441,6 +441,7 @@ export class SettingTab extends PluginSettingTab {
 					.setName(i18n.t("settings.profiles"))
 					.setDesc(i18n.t("settings.profiles-description", {
 						count: length(plugin.settings.profiles),
+						interpolation: { escapeValue: false },
 					}))
 					.addButton(button => button
 						.setIcon(i18n.t("asset:settings.profiles-edit-icon"))
@@ -492,7 +493,10 @@ export class SettingTab extends PluginSettingTab {
 										.fromEntries(Settings.PREFERRED_RENDERER_OPTIONS
 											.map(type => [
 												type,
-												i18n.t("settings.preferred-renderer-options", { type }),
+												i18n.t("settings.preferred-renderer-options", {
+													interpolation: { escapeValue: false },
+													type,
+												}),
 											])))
 							},
 						},

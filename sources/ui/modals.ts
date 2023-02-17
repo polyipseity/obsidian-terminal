@@ -92,6 +92,7 @@ export class ListModal<T> extends Modal {
 		this.#namer = options?.namer ?? ((_0, index): string =>
 			plugin.language.i18n.t("components.editable-list.name", {
 				count: index + 1,
+				interpolation: { escapeValue: false },
 				ordinal: true,
 			}))
 		this.#descriptor = options?.descriptor ?? ((): string => "")
@@ -367,6 +368,7 @@ export class ProfileModal extends Modal {
 			{ i18n, onChangeLanguage } = language
 		modalUI.new(() => titleEl, ele => {
 			ele.textContent = i18n.t("components.profile.title", {
+				interpolation: { escapeValue: false },
 				name: Settings.Profile.name(profile),
 			})
 		}, ele => { ele.textContent = null })
@@ -442,7 +444,10 @@ export class ProfileModal extends Modal {
 											.filter(type => PROFILE_PROPERTIES[type].valid)
 											.map(type => [
 												type,
-												i18n.t("components.profile.type-options", { type }),
+												i18n.t("components.profile.type-options", {
+													interpolation: { escapeValue: false },
+													type,
+												}),
 											])))
 							},
 						},
@@ -530,6 +535,7 @@ export class ProfileModal extends Modal {
 						.setDesc(i18n.t(`components.profile.${profile
 							.type}.arguments-description`, {
 							count: profile.args.length,
+							interpolation: { escapeValue: false },
 						}))
 						.addButton(button => button
 							.setIcon(i18n.t(`asset:components.profile.${profile
@@ -615,6 +621,7 @@ export class ProfileModal extends Modal {
 						.setDesc(i18n.t(`components.profile.${profile
 							.type}.arguments-description`, {
 							count: profile.args.length,
+							interpolation: { escapeValue: false },
 						}))
 						.addButton(button => button
 							.setIcon(i18n.t(`asset:components.profile.${profile
@@ -811,11 +818,13 @@ export class ProfileListModal
 				descriptor: options?.descriptor ?? ((value): string =>
 					i18n.t("components.profile-list.descriptor", {
 						id: dataKeys.get(value),
+						interpolation: { escapeValue: false },
 						name: Settings.Profile.name(value),
 					})),
 				namer: options?.namer ?? ((value): string =>
 					i18n.t("components.profile-list.namer", {
 						id: dataKeys.get(value),
+						interpolation: { escapeValue: false },
 						name: Settings.Profile.name(value),
 					})),
 				presets: options?.presets ?? PROFILE_PRESET_ORDERED_KEYS

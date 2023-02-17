@@ -25,7 +25,7 @@
 			"remove": "删除"
 		},
 		"find": {
-			"search-results": "{{- index, number}}/{{- count, number}}",
+			"search-results": "{{index, number}}/{{count, number}}",
 			"too-many-search-results": "?/{{limit, number}}+"
 		},
 		"profile": {
@@ -51,18 +51,18 @@
 			},
 			"name": "$t(generic.name)",
 			"preset": "$t(generic.preset)",
-			"title": "{{- name}}",
+			"title": "{{name}}",
 			"type": "$t(generic.type)",
 			"type-options": "$t(generic.profile-types.{{type}})"
 		},
 		"profile-list": {
-			"descriptor": "{{- id}}",
+			"descriptor": "{{id}}",
 			"edit": "$t(generic.edit)",
-			"namer": "{{- name}}",
+			"namer": "{{name}}",
 			"title": "$t(generic.profile)"
 		},
 		"terminal": {
-			"display-name": "$t(generic.terminal)：{{- name}}",
+			"display-name": "$t(generic.terminal)：{{name}}",
 			"edit-modal": {
 				"profile": "$t(generic.profile)",
 				"profile-edit": "$t(generic.edit)",
@@ -79,8 +79,8 @@
 			"name": {
 				"profile-type": "$t(generic.profile-types.{{type}})"
 			},
-			"restored-history": "\r\n * 已还原于{{- datetime, datetime(dateStyle: full, timeStyle: full)}}的历史\r\n\r\n",
-			"unsupported-profile": "不支持的$t(generic.profile)：\r\n{{- profile}}\r\n"
+			"restored-history": "\r\n * 已还原于{{datetime, datetime(dateStyle: full, timeStyle: full)}}的历史\r\n\r\n",
+			"unsupported-profile": "不支持的$t(generic.profile)：\r\n{{profile}}\r\n"
 		}
 	},
 	"dialogs": {
@@ -90,7 +90,7 @@
 		"cannot-find-status-bar": "找不到$t(generic.status-bar)",
 		"error-exporting-settings": "$t(generic.export)$t(generic.setting)时出错",
 		"error-importing-settings": "$t(generic.import)$t(generic.setting)时出错",
-		"error-processing-frontmatter": "处理$t(generic.frontmatter)时出错：{{- file.path}}",
+		"error-processing-frontmatter": "处理$t(generic.frontmatter)时出错：{{file.path}}",
 		"error-spawning-terminal": "$t(generic.spawn)$t(generic.terminal)时出错",
 		"error-spawning-resizer": "$t(generic.spawn)$t(generic.terminal-resizer)时出错",
 		"error-killing-pseudoterminal": "终止$t(generic.pseudoterminal)时出错",
@@ -98,7 +98,7 @@
 		"no-Python-to-spawn-Unix-pseudoterminal": "没有$t(generic.Python)来$t(generic.spawn)$t(generic.platforms.unix)$t(generic.pseudoterminal)",
 		"private-API-changed": "私有$t(generic.API)改变了",
 		"resizer-disabled": "$t(generic.terminal-resizer)已$t(generic.disable)",
-		"resizer-exited-unexpectedly": "$t(generic.terminal-resizer)意外$t(generic.exit)：{{- code}}",
+		"resizer-exited-unexpectedly": "$t(generic.terminal-resizer)意外$t(generic.exit)：{{code}}",
 		"retry-outdated-frontmatter": "请$t(generic.retry)，因为$t(generic.frontmatter)在$t(generic.background)更新了"
 	},
 	"generic": {
@@ -132,12 +132,12 @@
 		"import": "导入",
 		"language": "语言",
 		"list": "列表",
-		"list-description_other": "有{{- count, number}}項項目。",
+		"list-description_other": "有{{count, number}}項項目。",
 		"list-description_zero": "沒有項目。",
 		"name": "名称",
 		"notice": "通知",
 		"open": "开啟",
-		"ordinal": "第{{- count, number}}",
+		"ordinal": "第{{count, number}}",
 		"overwrite": "覆盖",
 		"platform": "平台",
 		"platforms": {
@@ -186,8 +186,8 @@
 	"name": "$t(generic.terminal)",
 	"notices": {
 		"no-default-profile": "没有$t(generic.type)「$t(generic.profile-types.{{type}})」的$t(generic.default)$t(generic.profile)",
-		"spawning-terminal": "$t(generic.terminal)$t(generic.spawn)中：{{- name}}",
-		"terminal-exited": "$t(generic.terminal)已$t(generic.exit)：{{- code}}"
+		"spawning-terminal": "$t(generic.terminal)$t(generic.spawn)中：{{name}}",
+		"terminal-exited": "$t(generic.terminal)已$t(generic.exit)：{{code}}"
 	},
 	"profile-presets": {
 		"bashIntegrated": "bash：$t(generic.profile-types.integrated)",

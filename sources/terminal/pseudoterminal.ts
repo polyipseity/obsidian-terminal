@@ -217,7 +217,10 @@ class WindowsPseudoterminal implements Pseudoterminal {
 							notice2(
 								() => i18n.t(
 									"errors.resizer-exited-unexpectedly",
-									{ code: code ?? signal },
+									{
+										code: code ?? signal,
+										interpolation: { escapeValue: false },
+									},
 								),
 								plugin.settings.errorNoticeTimeout,
 								plugin,

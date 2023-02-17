@@ -228,7 +228,10 @@ export class TerminalView extends ItemView {
 				return basename(executable, extname(executable))
 			}
 		}
-		return i18n.t("components.terminal.name.profile-type", { type })
+		return i18n.t("components.terminal.name.profile-type", {
+			interpolation: { escapeValue: false },
+			type,
+		})
 	}
 
 	// eslint-disable-next-line consistent-return
@@ -301,7 +304,10 @@ export class TerminalView extends ItemView {
 		return this.plugin.language
 			.i18n.t(
 				`components.${TerminalView.type.id}.display-name`,
-				{ name: this.#name },
+				{
+					interpolation: { escapeValue: false },
+					name: this.#name,
+				},
 			)
 	}
 
@@ -447,7 +453,10 @@ export class TerminalView extends ItemView {
 				notice2(
 					() => i18n.t(
 						"notices.spawning-terminal",
-						{ name: this.#name },
+						{
+							interpolation: { escapeValue: false },
+							name: this.#name,
+						},
 					),
 					plugin.settings.noticeTimeout,
 					plugin,
@@ -480,13 +489,17 @@ export class TerminalView extends ItemView {
 								if (!isUndefined(serial)) {
 									terminal.write(`${i18n.t(
 										"components.terminal.restored-history",
-										{ datetime: new Date() },
+										{
+											datetime: new Date(),
+											interpolation: { escapeValue: false },
+										},
 									)}`)
 								}
 								const ret = await openProfile(plugin, profile, cwd ?? UNDEFINED)
 								if (ret === null) {
 									const pty = new TextPseudoterminal(i18n
 										.t("components.terminal.unsupported-profile", {
+											interpolation: { escapeValue: false },
 											profile: JSON.stringify(
 												profile,
 												null,
@@ -496,6 +509,7 @@ export class TerminalView extends ItemView {
 									pty.onExit.finally(language.onChangeLanguage.listen(() => {
 										pty.text =
 											i18n.t("components.terminal.unsupported-profile", {
+												interpolation: { escapeValue: false },
 												profile: JSON.stringify(
 													profile,
 													null,
@@ -531,7 +545,10 @@ export class TerminalView extends ItemView {
 					pseudoterminal.then(async pty0 => pty0.onExit)
 						.then(code => {
 							notice2(
-								() => i18n.t("notices.terminal-exited", { code }),
+								() => i18n.t("notices.terminal-exited", {
+									code,
+									interpolation: { escapeValue: false },
+								}),
 								inSet(TERMINAL_EXIT_SUCCESS, code)
 									? plugin.settings.noticeTimeout
 									: plugin.settings.errorNoticeTimeout,
@@ -555,6 +572,7 @@ export class TerminalView extends ItemView {
 							this.#find?.$set({
 								searchResult: i18n
 									.t("components.find.too-many-search-results", {
+										interpolation: { escapeValue: false },
 										limit: TERMINAL_SEARCH_RESULTS_LIMIT,
 									}),
 							})
@@ -563,6 +581,7 @@ export class TerminalView extends ItemView {
 						const { resultIndex, resultCount } = results
 						this.#find?.$set({
 							searchResult: i18n.t("components.find.search-results", {
+								interpolation: { escapeValue: false },
 								replace: {
 									count: resultCount,
 									index: resultIndex + 1,
