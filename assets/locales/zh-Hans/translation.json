@@ -63,16 +63,24 @@
 		},
 		"terminal": {
 			"display-name": "$t(generic.terminal)：{{- name}}",
-			"edit": "$t(generic.edit)",
+			"edit-modal": {
+				"profile": "$t(generic.profile)",
+				"profile-edit": "$t(generic.edit)",
+				"title": "$t(generic.edit)$t(generic.terminal)",
+				"working-directory": "$t(generic.working-directory)",
+				"working-directory-placeholder": "（未定义）"
+			},
+			"menus": {
+				"edit": "$t(generic.edit)",
+				"find": "$t(generic.find)",
+				"restart": "$t(generic.restart)",
+				"save-as-HTML": "$t(generic.save)为$t(generic.file-extensions.HTML)"
+			},
 			"name": {
 				"profile-type": "$t(generic.profile-types.{{type}})"
 			},
-			"profile": "$t(generic.profile)",
-			"profile-edit": "$t(generic.edit)",
 			"restored-history": "\r\n * 已还原于{{- datetime, datetime(dateStyle: full, timeStyle: full)}}的历史\r\n\r\n",
-			"unsupported-profile": "不支持的$t(generic.profile)：\r\n{{- profile}}\r\n",
-			"working-directory": "$t(generic.working-directory)",
-			"working-directory-placeholder": "（未定义）"
+			"unsupported-profile": "不支持的$t(generic.profile)：\r\n{{- profile}}\r\n"
 		}
 	},
 	"dialogs": {
@@ -173,13 +181,7 @@
 		"working-directory": "工作$t(generic.directory)"
 	},
 	"menus": {
-		"open-terminal": "在$t(generic.terminal)$t(generic.open)：$t(generic.profile-types.{{type}})",
-		"terminal": {
-			"edit": "$t(generic.edit)",
-			"find": "$t(generic.find)",
-			"restart": "$t(generic.restart)",
-			"save-as-HTML": "$t(generic.save)为$t(generic.file-extensions.HTML)"
-		}
+		"open-terminal": "在$t(generic.terminal)$t(generic.open)：$t(generic.profile-types.{{type}})"
 	},
 	"name": "$t(generic.terminal)",
 	"notices": {

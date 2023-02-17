@@ -74,7 +74,7 @@ class EditTerminalModal extends DialogModal {
 	) {
 		const { i18n } = plugin.language
 		super(plugin, {
-			title: () => i18n.t("components.terminal.edit"),
+			title: () => i18n.t("components.terminal.edit-modal.title"),
 		})
 		this.state = cloneAsWritable(protostate)
 		this.#confirm = confirm
@@ -90,7 +90,7 @@ class EditTerminalModal extends DialogModal {
 			.finally(language.onChangeLanguage.listen(() => { ui.update() }))
 			.newSetting(listEl, setting => {
 				setting
-					.setName(i18n.t("components.terminal.working-directory"))
+					.setName(i18n.t("components.terminal.edit-modal.working-directory"))
 					.addText(linkSetting(
 						() => state.cwd ?? "",
 						value => { state.cwd = value === "" ? null : value },
@@ -99,13 +99,15 @@ class EditTerminalModal extends DialogModal {
 							post: component => {
 								component
 									.setPlaceholder(i18n
-										.t("components.terminal.working-directory-placeholder"))
+										// eslint-disable-next-line max-len
+										.t("components.terminal.edit-modal.working-directory-placeholder"))
 							},
 						},
 					))
 					.addExtraButton(resetButton(
 						plugin,
-						i18n.t("asset:components.terminal.working-directory-icon"),
+						i18n
+							.t("asset:components.terminal.edit-modal.working-directory-icon"),
 						() => { state.cwd = protostate.cwd },
 						() => { this.postMutate() },
 					))
@@ -114,7 +116,7 @@ class EditTerminalModal extends DialogModal {
 				const { profiles } = plugin.settings,
 					unselected = randomNotIn(Object.keys(profiles))
 				setting
-					.setName(i18n.t("components.terminal.profile"))
+					.setName(i18n.t("components.terminal.edit-modal.profile"))
 					.addDropdown(linkSetting(
 						() => this.#profile ?? unselected,
 						value => {
@@ -143,8 +145,9 @@ class EditTerminalModal extends DialogModal {
 						},
 					))
 					.addButton(button => button
-						.setIcon(i18n.t("asset:components.terminal.profile-edit-icon"))
-						.setTooltip(i18n.t("components.terminal.profile-edit"))
+						.setIcon(i18n
+							.t("asset:components.terminal.edit-modal.profile-edit-icon"))
+						.setTooltip(i18n.t("components.terminal.edit-modal.profile-edit"))
 						.onClick(() => {
 							new ProfileModal(
 								plugin,
@@ -158,7 +161,7 @@ class EditTerminalModal extends DialogModal {
 						}))
 					.addExtraButton(resetButton(
 						plugin,
-						i18n.t("asset:components.terminal.profile-icon"),
+						i18n.t("asset:components.terminal.edit-modal.profile-icon"),
 						() => {
 							this.#profile = null
 							state.profile = cloneAsWritable(protostate.profile)
@@ -319,8 +322,8 @@ export class TerminalView extends ItemView {
 		menu
 			.addSeparator()
 			.addItem(item => item
-				.setTitle(i18n.t("menus.terminal.find"))
-				.setIcon(i18n.t("asset:menus.terminal.find-icon"))
+				.setTitle(i18n.t("components.terminal.menus.find"))
+				.setIcon(i18n.t("asset:components.terminal.menus.find-icon"))
 				.setDisabled(this.#find !== null)
 				.onClick(() => {
 					const
@@ -372,12 +375,12 @@ export class TerminalView extends ItemView {
 					})
 				}))
 			.addItem(item => item
-				.setTitle(i18n.t("menus.terminal.restart"))
-				.setIcon(i18n.t("asset:menus.terminal.restart-icon"))
+				.setTitle(i18n.t("components.terminal.menus.restart"))
+				.setIcon(i18n.t("asset:components.terminal.menus.restart-icon"))
 				.onClick(() => { this.startEmulator() }))
 			.addItem(item => item
-				.setTitle(i18n.t("menus.terminal.edit"))
-				.setIcon(i18n.t("asset:menus.terminal.edit-icon"))
+				.setTitle(i18n.t("components.terminal.menus.edit"))
+				.setIcon(i18n.t("asset:components.terminal.menus.edit-icon"))
 				.onClick(() => {
 					new EditTerminalModal(
 						plugin,
@@ -389,8 +392,8 @@ export class TerminalView extends ItemView {
 					).open()
 				}))
 			.addItem(item => item
-				.setTitle(i18n.t("menus.terminal.save-as-HTML"))
-				.setIcon(i18n.t("asset:menus.terminal.save-as-HTML-icon"))
+				.setTitle(i18n.t("components.terminal.menus.save-as-HTML"))
+				.setIcon(i18n.t("asset:components.terminal.menus.save-as-HTML-icon"))
 				.setDisabled(isUndefined(this.#emulator?.addons.serialize))
 				.onClick(() => {
 					const ser = this.#emulator?.addons.serialize

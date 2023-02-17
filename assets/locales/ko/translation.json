@@ -66,16 +66,24 @@
 		},
 		"terminal": {
 			"display-name": "$t(generic.terminal, capitalize): {{- name}}",
-			"edit": "$t(generic.edit, capitalize)",
+			"edit-modal": {
+				"profile": "$t(generic.profile, capitalize)",
+				"profile-edit": "$t(generic.edit, capitalize)",
+				"title": "$t(generic.edit, capitalize) $t(generic.terminal)",
+				"working-directory": "$t(generic.working-directory, capitalize)",
+				"working-directory-placeholder": "(Undefined)"
+			},
+			"menus": {
+				"edit": "$t(generic.edit, capitalize)",
+				"find": "$t(generic.find, capitalize)",
+				"restart": "$t(generic.restart, capitalize)",
+				"save-as-HTML": "$t(generic.save, capitalize) as $t(generic.file-extensions.HTML)"
+			},
 			"name": {
 				"profile-type": "$t(generic.profile-types.{{type}}, capitalize)"
 			},
-			"profile": "$t(generic.profile, capitalize)",
-			"profile-edit": "$t(generic.edit, capitalize)",
 			"restored-history": "\r\n * Restored history at {{- datetime, datetime(dateStyle: full, timeStyle: full)}}\r\n\r\n",
-			"unsupported-profile": "Unsupported $t(generic.profile):\r\n{{- profile}}\r\n",
-			"working-directory": "$t(generic.working-directory, capitalize)",
-			"working-directory-placeholder": "(Undefined)"
+			"unsupported-profile": "Unsupported $t(generic.profile):\r\n{{- profile}}\r\n"
 		}
 	},
 	"dialogs": {
@@ -192,13 +200,7 @@
 		"working-directory": "working $t(generic.directory)"
 	},
 	"menus": {
-		"open-terminal": "$t(generic.open, capitalize) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
-		"terminal": {
-			"edit": "$t(generic.edit, capitalize)",
-			"find": "$t(generic.find, capitalize)",
-			"restart": "$t(generic.restart, capitalize)",
-			"save-as-HTML": "$t(generic.save, capitalize) as $t(generic.file-extensions.HTML)"
-		}
+		"open-terminal": "$t(generic.open, capitalize) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)"
 	},
 	"name": "$t(generic.terminal, capitalize)",
 	"notices": {

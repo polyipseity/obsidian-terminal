@@ -55,9 +55,17 @@
 		},
 		"terminal": {
 			"icon": "terminal",
-			"profile-icon": "$t(asset:generic.terminal-profile-icon)",
-			"profile-edit-icon": "$t(asset:generic.edit-icon)",
-			"working-directory-icon": "folder"
+			"edit-modal": {
+				"profile-icon": "$t(asset:generic.terminal-profile-icon)",
+				"profile-edit-icon": "$t(asset:generic.edit-icon)",
+				"working-directory-icon": "folder"
+			},
+			"menus": {
+				"edit-icon": "$t(asset:generic.edit-icon)",
+				"find-icon": "search",
+				"restart-icon": "reset",
+				"save-as-HTML-icon": "save"
+			}
 		}
 	},
 	"generic": {
@@ -90,13 +98,7 @@
 		"terminal-profile-icon": "terminal-square"
 	},
 	"menus": {
-		"open-terminal-icon": "$t(asset:generic.profile-types.{{type}}-icon)",
-		"terminal": {
-			"edit-icon": "$t(asset:generic.edit-icon)",
-			"find-icon": "search",
-			"restart-icon": "reset",
-			"save-as-HTML-icon": "save"
-		}
+		"open-terminal-icon": "$t(asset:generic.profile-types.{{type}}-icon)"
 	},
 	"ribbons": {
 		"open-terminal-id": "Open terminal",
