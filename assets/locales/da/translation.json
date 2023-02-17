@@ -1,17 +1,17 @@
 {
 	"commands": {
-		"export-settings-to-clipboard": "Export settings to clipboard",
-		"export-settings-to-current-file": "Export settings to current file",
-		"import-settings-from-clipboard": "Import settings from clipboard",
-		"import-settings-from-current-file": "Import settings from current file",
-		"open-terminal-": "Open terminal: {{- type}}",
-		"open-terminal-current": "Open current folder in terminal: {{- type}}",
-		"open-terminal-root": "Open root in terminal: {{- type}}"
+		"export-settings-to-clipboard": "$t(generic.export, capitalize) $t(generic.setting_other) to $t(generic.clipboard)",
+		"export-settings-to-current-file": "$t(generic.export, capitalize) $t(generic.setting_other) to $t(generic.current-file)",
+		"import-settings-from-clipboard": "$t(generic.import, capitalize) $t(generic.setting_other) from $t(generic.clipboard)",
+		"import-settings-from-current-file": "$t(generic.import, capitalize) $t(generic.setting_other) from $t(generic.current-file)",
+		"open-terminal-": "$t(generic.open, capitalize) $t(generic.terminal): {{- type}}",
+		"open-terminal-current": "$t(generic.open, capitalize) $t(generic.current-directory) in $t(generic.terminal): {{- type}}",
+		"open-terminal-root": "$t(generic.open, capitalize) $t(generic.root-directory) in $t(generic.terminal): {{- type}}"
 	},
 	"components": {
 		"dialog": {
-			"cancel": "Cancel",
-			"confirm": "Confirm"
+			"cancel": "$t(generic.cancel, capitalize)",
+			"confirm": "$t(generic.confirm, capitalize)"
 		},
 		"dropdown": {
 			"unselected": ""
@@ -20,10 +20,10 @@
 			"append": "Append",
 			"move-down": "Move down",
 			"move-up": "Move up",
-			"name_few": "{{- count}}rd",
-			"name_one": "{{- count}}st",
-			"name_other": "{{- count}}th",
-			"name_two": "{{- count}}nd",
+			"name_few": "$t(generic.ordinal_few, capitalize)",
+			"name_one": "$t(generic.ordinal_one, capitalize)",
+			"name_other": "$t(generic.ordinal_other, capitalize)",
+			"name_two": "$t(generic.ordinal_two, capitalize)",
 			"prepend": "Prepend",
 			"remove": "Remove"
 		},
@@ -33,147 +33,230 @@
 		},
 		"profile": {
 			"external": {
-				"arguments": "Arguments",
-				"executable": "Executable"
+				"arguments": "$t(generic.argument_other, capitalize)",
+				"arguments-description": "$t(generic.list-description, capitalize)",
+				"arguments-edit": "$t(generic.edit, capitalize)",
+				"executable": "$t(generic.executable, capitalize)"
 			},
 			"integrated": {
-				"arguments": "Arguments",
-				"enable-Windows-conhost-workaround": "Enable Microsoft Windows 'conhost.exe' workaround",
-				"enable-Windows-conhost-workaround-description": "Disable if running 'conhost.exe' does not create a window. No guarantees this will work.",
-				"executable": "Executable",
-				"python-executable": "Python executable",
-				"python-executable-description": "Required on Unix to start integrated terminal. Clear field to disable Python.",
-				"python-executable-placeholder": "(Disabled)"
+				"arguments": "$t(generic.argument_other, capitalize)",
+				"arguments-description": "$t(generic.list-description, capitalize)",
+				"arguments-edit": "$t(generic.edit, capitalize)",
+				"enable-win32-conhost-workaround": "$t(generic.enable, capitalize) $t(types.platforms.win32) 'conhost.exe' workaround",
+				"enable-win32-conhost-workaround-description": "$t(generic.disable, capitalize) if running 'conhost.exe' does not create a window. No guarantees this will work.",
+				"executable": "$t(generic.executable, capitalize)",
+				"Python-executable": "$t(generic.Python, capitalize) $t(generic.executable)",
+				"Python-executable-description": "Required on $t(types.platforms.unix) to $t(generic.spawn) $t(types.profiles.integrated) $t(generic.terminal). Clear $t(generic.text-field) to $t(generic.disable) $t(generic.Python).",
+				"Python-executable-placeholder": "($t(generic.disable_past, capitalize))"
 			},
 			"invalid": {
-				"data": "Data"
+				"data": "$t(generic.data, capitalize)"
 			},
-			"name": "Name",
-			"preset": "Preset",
+			"name": "$t(generic.name, capitalize)",
+			"preset": "$t(generic.preset, capitalize)",
 			"title": "{{- name}}",
-			"type": "Type"
+			"type": "$t(generic.type, capitalize)"
 		},
 		"profile-list": {
 			"descriptor": "{{- id}}",
+			"edit": "$t(generic.edit, capitalize)",
 			"namer": "{{- name}}",
-			"title": "Profiles"
+			"title": "$t(generic.profile_other, capitalize)"
 		},
 		"terminal": {
-			"display-name": "Terminal: {{- name}}",
-			"profile": "Profile",
+			"display-name": "$t(generic.terminal, capitalize): {{- name}}",
+			"edit": "$t(generic.edit, capitalize)",
+			"profile": "$t(generic.profile, capitalize)",
+			"profile-edit": "$t(generic.edit, capitalize)",
 			"restored-history": "\r\n * Restored history at {{- time}}\r\n\r\n",
-			"unsupported-profile": "Unsupported profile:\r\n{{- profile}}\r\n",
-			"working-directory": "Working directory",
+			"unsupported-profile": "Unsupported $t(generic.profile):\r\n{{- profile}}\r\n",
+			"working-directory": "$t(generic.working-directory, capitalize)",
 			"working-directory-placeholder": "(Undefined)"
 		}
 	},
 	"dialogs": {
-		"overwrite-existing-frontmatter": "Overwrite existing frontmatter?"
+		"overwrite-existing-frontmatter": "$t(generic.overwrite, capitalize) existing $t(generic.frontmatter)?"
 	},
 	"errors": {
-		"cannot-find-status-bar": "Cannot find status bar",
-		"error-exporting-settings": "Error exporting settings",
-		"error-importing-settings": "Error importing settings",
-		"error-processing-frontmatter": "Error processing frontmatter: {{- file.path}}",
-		"error-spawning-terminal": "Error spawning terminal",
-		"error-spawning-resizer": "Error spawning terminal resizer",
-		"failed-to-kill-pseudoterminal": "Failed to kill pseudoterminal",
-		"malformed-data": "Malformed data",
-		"no-python-to-start-unix-pseudoterminal": "No Python to start Unix pseudoterminal",
-		"private-API-changed": "Private API changed",
-		"resizer-disabled": "Terminal resizer disabled",
-		"resizer-exited-unexpectedly": "Terminal resizer exited unexpectedly: {{- code}}",
-		"retry-outdated-frontmatter": "Please retry as frontmatter was updated in the background"
+		"cannot-find-status-bar": "Cannot find $t(generic.status-bar)",
+		"error-exporting-settings": "Error $t(generic.export_gerund) $t(generic.setting_other)",
+		"error-importing-settings": "Error $t(generic.import_gerund) $t(generic.setting_other)",
+		"error-processing-frontmatter": "Error processing $t(generic.frontmatter): {{- file.path}}",
+		"error-spawning-terminal": "Error $t(generic.spawn_gerund) $t(generic.terminal)",
+		"error-spawning-resizer": "Error $t(generic.spawn_gerund) $t(generic.terminal-resizer)",
+		"error-killing-pseudoterminal": "Error killing $t(generic.pseudoterminal)",
+		"malformed-data": "Malformed $t(generic.data)",
+		"no-Python-to-spawn-unix-pseudoterminal": "No $t(generic.Python) to $t(generic.spawn) $t(types.platforms.unix) $t(generic.pseudoterminal)",
+		"private-API-changed": "Private $t(generic.API) changed",
+		"resizer-disabled": "$t(generic.terminal-resizer, capitalize) $t(generic.disable_past)",
+		"resizer-exited-unexpectedly": "$t(generic.terminal-resizer, capitalize) $t(generic.exit_past) unexpectedly: {{- code}}",
+		"retry-outdated-frontmatter": "Please $t(generic.retry) as $t(generic.frontmatter) was updated in the $t(generic.background)"
 	},
 	"generic": {
-		"edit": "Edit"
-	},
-	"menus": {
-		"open-terminal": "Open in terminal: {{- type}}",
-		"terminal": {
-			"find": "Find",
-			"restart": "Restart",
-			"save-as-HTML": "Save as HTML"
-		}
-	},
-	"name": "Terminal",
-	"notices": {
-		"no-default-profile": "No default profile for type '{{- type}}'",
-		"spawning-terminal": "Spawning terminal: {{- name}}",
-		"terminal-exited": "Terminal exited: {{- code}}"
-	},
-	"ribbons": {
-		"open-terminal": "Open terminal"
-	},
-	"settings": {
-		"add-to-command": "Add to command",
-		"add-to-context-menu": "Add to context menu",
-		"advanced-settings": "Advanced settings",
-		"all-settings": "All settings",
-		"all-settings-actions": {
-			"edit": "Edit",
-			"recover": "Recover",
-			"reload": "Reload",
-			"reset": "Reset",
-			"undo": "Undo"
+		"API": "API",
+		"Python": "Python",
+		"app": "app",
+		"argument": "$t(generic.argument_one)",
+		"argument_one": "argument",
+		"argument_other": "arguments",
+		"background": "background",
+		"cancel": "cancel",
+		"clipboard": "clipboard",
+		"command": "command",
+		"command-palette": "command palette",
+		"confirm": "confirm",
+		"context-menu": "context menu",
+		"current-directory": "current $t(generic.directory)",
+		"current-file": "current $t(generic.file)",
+		"data": "data",
+		"default": "default",
+		"directory": "directory",
+		"disable": "disable",
+		"disable_past": "disabled",
+		"edit": "Edit",
+		"enable": "enable",
+		"executable": "executable",
+		"exit": "exit",
+		"exit_past": "exited",
+		"export": "export",
+		"export_gerund": "exporting",
+		"file": "file",
+		"file-extensions": {
+			"HTML": "HTML"
 		},
-		"description": "To export or import settings, open '$t(settings.all-settings-actions.edit)' under '$t(settings.all-settings)' or use the command palette.",
-		"edit-settings": {
-			"data": "Data",
-			"export": "Export",
-			"export-to-clipboard": "Export to clipboard",
-			"import": "Import",
-			"import-from-clipboard": "Import from clipboard"
-		},
-		"error-notice-timeout": "Error notice timeout (s)",
-		"error-notice-timeout-description": "Set to 0 s for no timeout. Set to negative to disable notice.",
-		"hide-status-bar": "Hide status bar",
-		"hide-status-bar-options": {
-			"never": "Never",
-			"always": "Always",
-			"focused": "When terminal is focused",
-			"running": "When terminal is running"
-		},
-		"language": "Language",
-		"language-default": "Use app setting",
-		"language-description": "Applies to this plugin only. Languages with 🚧 need your help with translation!",
+		"find": "find",
+		"frontmatter": "frontmatter",
+		"import": "import",
+		"import_gerund": "importing",
+		"language": "$t(generic.language_one)",
+		"language_one": "language",
+		"language_other": "languages",
+		"list": "list",
 		"list-description_one": "There is {{- count}} item.",
 		"list-description_other": "There are {{- count}} items.",
 		"list-description_zero": "There are no items.",
-		"notice-timeout": "Notice timeout (s)",
-		"notice-timeout-description": "Set to 0 s for no timeout. Set to negative to disable notice.",
-		"preferred-renderer": "Preferred renderer",
-		"profile-list": {
-			"description": "The first profile in the list available on this platform is the default profile for its terminal type."
+		"name": "name",
+		"notice": "notice",
+		"open": "open",
+		"ordinal_few": "{{- count}}rd",
+		"ordinal_one": "{{- count}}st",
+		"ordinal_other": "{{- count}}th",
+		"ordinal_two": "{{- count}}nd",
+		"overwrite": "overwrite",
+		"platform": "platform",
+		"plugin": "plugin",
+		"preset": "preset",
+		"profile": "$t(generic.profile_one)",
+		"profile_one": "profile",
+		"profile_other": "profiles",
+		"pseudoterminal": "pseudoterminal",
+		"renderer": "renderer",
+		"reset": "reset",
+		"restart": "restart",
+		"retry": "retry",
+		"root-directory": "root $t(generic.directory)",
+		"save": "save",
+		"setting": "$t(generic.setting_one)",
+		"setting_one": "setting",
+		"setting_other": "settings",
+		"spawn": "spawn",
+		"spawn_gerund": "spawning",
+		"status-bar": "status bar",
+		"terminal": "terminal",
+		"terminal-resizer": "$t(generic.terminal) resizer",
+		"timeout": "timeout",
+		"type": "type",
+		"use": "use",
+		"working-directory": "working $t(generic.directory)"
+	},
+	"menus": {
+		"open-terminal": "$t(generic.open, capitalize) in $t(generic.terminal): {{- type}}",
+		"terminal": {
+			"edit": "$t(generic.edit, capitalize)",
+			"find": "$t(generic.find, capitalize)",
+			"restart": "$t(generic.restart, capitalize)",
+			"save-as-HTML": "$t(generic.save, capitalize) as $t(generic.file-extensions.HTML)"
+		}
+	},
+	"name": "$t(generic.terminal, capitalize)",
+	"notices": {
+		"no-default-profile": "No $t(generic.default) $t(generic.profile) for $t(generic.type) '{{- type}}'",
+		"spawning-terminal": "$t(generic.spawn_gerund, capitalize) $t(generic.terminal): {{- name}}",
+		"terminal-exited": "$t(generic.terminal, capitalize) $t(generic.exit_past): {{- code}}"
+	},
+	"ribbons": {
+		"open-terminal": "$t(generic.open, capitalize) $t(generic.terminal)"
+	},
+	"settings": {
+		"add-to-command": "Add to $t(generic.command)",
+		"add-to-context-menu": "Add to $t(generic.context-menu)",
+		"advanced-settings": "Advanced $t(generic.setting_other)",
+		"all-settings": "All $t(generic.setting_other)",
+		"all-settings-actions": {
+			"edit": "$t(generic.edit, capitalize)",
+			"recover": "Recover",
+			"reload": "Reload",
+			"reset": "$t(generic.reset, capitalize)",
+			"undo": "Undo"
 		},
-		"profiles": "Profiles",
-		"reset": "Reset"
+		"description": "To $t(generic.export) or $t(generic.import) $t(generic.setting_other), open '$t(settings.all-settings-actions.edit)' under '$t(settings.all-settings)' or $t(generic.use) the $t(generic.command-palette).",
+		"edit-settings": {
+			"data": "$t(generic.data, capitalize)",
+			"export": "$t(generic.export, capitalize)",
+			"export-to-clipboard": "$t(generic.export, capitalize) to $t(generic.clipboard)",
+			"import": "$t(generic.import, capitalize)",
+			"import-from-clipboard": "$t(generic.import, capitalize) from $t(generic.clipboard)",
+			"title": "$t(generic.edit, capitalize)"
+		},
+		"error-notice-timeout": "Error $t(generic.notice) $t(generic.timeout) (s)",
+		"error-notice-timeout-description": "$t(settings.notice-timeout-description)",
+		"hide-status-bar": "Hide $t(generic.status-bar)",
+		"hide-status-bar-options": {
+			"never": "Never",
+			"always": "Always",
+			"focused": "When $t(generic.terminal) is focused",
+			"running": "When $t(generic.terminal) is running"
+		},
+		"language": "$t(generic.language, capitalize)",
+		"language-default": "$t(generic.use, capitalize) $t(generic.app) $t(generic.setting)",
+		"language-description": "Applies to this $t(generic.plugin) only. $t(generic.language_other) with 🚧 need your help with translation!",
+		"notice-timeout": "$t(generic.notice, capitalize) $t(generic.timeout) (s)",
+		"notice-timeout-description": "Set to 0 s for no $t(generic.timeout). Set to negative to $t(generic.disable) $t(generic.notice).",
+		"preferred-renderer": "Preferred $t(generic.renderer)",
+		"profile-list": {
+			"description": "The first $t(generic.profile) in the $t(generic.list) available on this $t(generic.platform) is the $t(generic.default) $t(generic.default) for its $t(generic.terminal) $t(generic.type)."
+		},
+		"profiles": "$t(generic.profile_other, capitalize)",
+		"profiles-description": "$t(generic.list-description, capitalize)",
+		"profiles-edit": "$t(generic.edit, capitalize)",
+		"reset": "$t(generic.reset, capitalize)"
 	},
 	"types": {
 		"platforms": {
-			"darwin": "macOS",
+			"darwin": "\u200bmacOS",
 			"linux": "Linux",
+			"unix": "Unix",
 			"win32": "Microsoft Windows"
 		},
 		"profile-presets": {
-			"bashIntegrated": "bash: Integrated",
-			"cmdIntegrated": "cmd: Integrated",
-			"console": "Developer console",
-			"darwinExternalDefault": "macOS default: External",
-			"darwinIntegratedDefault": "macOS default: Integrated",
-			"dashIntegrated": "dash: Integrated",
-			"empty": "Empty",
-			"linuxExternalDefault": "Linux default: External",
-			"linuxIntegratedDefault": "Linux default: Integrated",
-			"pwshIntegrated": "pwsh: Integrated",
-			"shIntegrated": "sh: Integrated",
-			"win32ExternalDefault": "Microsoft Windows default: External",
-			"win32IntegratedDefault": "Microsoft Windows default: Integrated",
-			"zshIntegrated": "zsh: Integrated"
+			"bashIntegrated": "bash: $t(types.profiles.integrated, capitalize)",
+			"cmdIntegrated": "cmd: $t(types.profiles.integrated, capitalize)",
+			"console": "$t(types.profiles.console)",
+			"darwinExternalDefault": "$t(types.platforms.darwin, capitalize) $t(generic.default): $t(types.profiles.external, capitalize)",
+			"darwinIntegratedDefault": "$t(types.platforms.darwin, capitalize) $t(generic.default): $t(types.profiles.integrated, capitalize)",
+			"dashIntegrated": "dash: $t(types.profiles.integrated, capitalize)",
+			"empty": "$t(types.profiles., capitalize)",
+			"linuxExternalDefault": "$t(types.platforms.linux, capitalize) $t(generic.default): $t(types.profiles.external, capitalize)",
+			"linuxIntegratedDefault": "$t(types.platforms.linux, capitalize) $t(generic.default): $t(types.profiles.integrated, capitalize)",
+			"pwshIntegrated": "pwsh: $t(types.profiles.integrated, capitalize)",
+			"shIntegrated": "sh: $t(types.profiles.integrated, capitalize)",
+			"win32ExternalDefault": "$t(types.platforms.win32, capitalize) $t(generic.default): $t(types.profiles.external, capitalize)",
+			"win32IntegratedDefault": "$t(types.platforms.win32, capitalize) $t(generic.default): $t(types.profiles.integrated, capitalize)",
+			"zshIntegrated": "zsh: $t(types.profiles.integrated, capitalize)"
 		},
 		"profiles": {
 			"": "Empty",
-			"console": "Console",
+			"console": "Developer console",
 			"external": "External",
 			"integrated": "Integrated",
 			"invalid": "Invalid",

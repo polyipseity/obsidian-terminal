@@ -1,61 +1,84 @@
 {
 	"commands": {
-		"export-settings-to-clipboard-icon": "clipboard-copy",
-		"export-settings-to-current-file-icon": "file-input",
-		"import-settings-from-clipboard-icon": "clipboard",
-		"import-settings-from-current-file-icon": "file-output",
+		"export-settings-to-clipboard-icon": "$t(asset:generic.output-to-clipboard-icon)",
+		"export-settings-to-current-file-icon": "$t(asset:generic.output-to-file-icon)",
+		"import-settings-from-clipboard-icon": "$t(asset:generic.input-from-clipboard-icon)",
+		"import-settings-from-current-file-icon": "$t(asset:generic.input-from-file-icon)",
 		"open-terminal--icon": "command",
 		"open-terminal-current-icon": "file-terminal",
 		"open-terminal-root-icon": "terminal"
 	},
 	"components": {
 		"dialog": {
-			"cancel-icon": "x",
-			"confirm-icon": "check"
+			"cancel-icon": "$t(asset:generic.cancel-icon)",
+			"confirm-icon": "$t(asset:generic.confirm-icon)"
 		},
 		"editable-list": {
-			"append-icon": "plus",
-			"move-down-icon": "arrow-down",
-			"move-up-icon": "arrow-up",
-			"prepend-icon": "plus",
-			"remove-icon": "minus"
+			"append-icon": "$t(asset:generic.add-icon)",
+			"move-down-icon": "$t(asset:generic.next-icon)",
+			"move-up-icon": "$t(asset:generic.previous-icon)",
+			"prepend-icon": "$t(asset:generic.add-icon)",
+			"remove-icon": "$t(asset:generic.remove-icon)"
 		},
 		"find": {
 			"case-sensitive-icon": "uppercase-lowercase-a",
-			"next-icon": "arrow-down",
-			"previous-icon": "arrow-up",
+			"next-icon": "$t(asset:generic.next-icon)",
+			"previous-icon": "$t(asset:generic.previous-icon)",
 			"regex-icon": "regex",
 			"whole-word-icon": "align-horizontal-space-around"
 		},
 		"profile": {
 			"external": {
+				"arguments-icon": "$t(asset:components.profile.generic.arguments-icon)",
+				"arguments-edit-icon": "$t(asset:generic.edit-list-icon)",
+				"executable-icon": "$t(asset:components.profile.generic.executable-icon)"
+			},
+			"generic": {
 				"arguments-icon": "form-input",
 				"executable-icon": "file-terminal"
 			},
 			"integrated": {
-				"arguments-icon": "form-input",
-				"enable-Windows-conhost-workaround-icon": "code",
-				"executable-icon": "file-terminal",
-				"python-executable-icon": "file-cog"
+				"arguments-icon": "$t(asset:components.profile.generic.arguments-icon)",
+				"arguments-edit-icon": "$t(asset:generic.edit-list-icon)",
+				"enable-win32-conhost-workaround-icon": "code",
+				"executable-icon": "$t(asset:components.profile.generic.executable-icon)",
+				"Python-executable-icon": "file-cog"
 			},
 			"invalid": {
-				"data-icon": "curly-braces"
+				"data-icon": "$t(asset:generic.data-icon)"
 			},
 			"name-icon": "text-cursor-input",
 			"type-icon": "type"
 		},
+		"profile-list": {
+			"edit-icon": "$t(asset:generic.edit-icon)"
+		},
 		"terminal": {
 			"icon": "terminal",
-			"profile-icon": "terminal-square",
+			"profile-icon": "$t(asset:generic.terminal-profile-icon)",
+			"profile-edit-icon": "$t(asset:generic.edit-icon)",
 			"working-directory-icon": "folder"
 		}
 	},
 	"generic": {
+		"add-icon": "plus",
+		"cancel-icon": "x",
+		"confirm-icon": "check",
+		"data-icon": "curly-braces",
 		"edit-icon": "edit",
-		"edit-list-icon": "list"
+		"edit-list-icon": "list",
+		"input-from-clipboard-icon": "clipboard",
+		"input-from-file-icon": "file-output",
+		"next-icon": "arrow-down",
+		"output-to-clipboard-icon": "clipboard-copy",
+		"output-to-file-icon": "file-input",
+		"previous-icon": "arrow-up",
+		"remove-icon": "minus",
+		"terminal-profile-icon": "terminal-square"
 	},
 	"menus": {
 		"terminal": {
+			"edit-icon": "$t(asset:generic.edit-icon)",
 			"find-icon": "search",
 			"restart-icon": "reset",
 			"save-as-HTML-icon": "save"
@@ -76,16 +99,17 @@
 			"undo-icon": "undo"
 		},
 		"edit-settings": {
-			"data-icon": "file",
-			"export-to-clipboard-icon": "clipboard-copy",
-			"import-from-clipboard-icon": "clipboard"
+			"data-icon": "$t(asset:generic.data-icon)",
+			"export-to-clipboard-icon": "$t(asset:generic.output-to-clipboard-icon)",
+			"import-from-clipboard-icon": "$t(asset:generic.input-from-clipboard-icon)"
 		},
-		"error-notice-timeout-icon": "timer",
+		"error-notice-timeout-icon": "$t(asset:settings.notice-timeout-icon)",
 		"hide-status-bar-icon": "eye-off",
 		"language-icon": "languages",
 		"notice-timeout-icon": "timer",
 		"preferred-renderer-icon": "brush",
-		"profiles-icon": "terminal-square"
+		"profiles-icon": "$t(asset:generic.terminal-profile-icon)",
+		"profiles-edit-icon": "$t(asset:generic.edit-list-icon)"
 	},
 	"types": {
 		"platforms": {

@@ -24,7 +24,12 @@ import * as th from "assets/locales/th/translation.json"
 import * as tr from "assets/locales/tr/translation.json"
 import * as zhHans from "assets/locales/zh-Hans/translation.json"
 import * as zhHant from "assets/locales/zh-Hant/translation.json"
-import { deepFreeze, typedKeys } from "sources/utils/util"
+import {
+	capitalize,
+	deepFreeze,
+	typedKeys,
+	uncapitalize,
+} from "sources/utils/util"
 import type { Exact } from "ts-essentials"
 
 function sanitize<T extends object>(value: T): T {
@@ -118,3 +123,10 @@ export const LANGUAGES = typedKeys<readonly [
 	// NOOP
 }(LANGUAGES))
 export type Language = typeof LANGUAGES[number]
+export const FORMATTERS: Readonly<Record<string, (
+	lng?: string,
+	options?: unknown,
+) => (value: unknown) => string>> = deepFreeze({
+	capitalize: lng => value => capitalize(String(value), lng),
+	uncapitalize: lng => value => uncapitalize(String(value), lng),
+} as const)

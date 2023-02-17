@@ -2,6 +2,7 @@ import {
 	type DEFAULT_LANGUAGE,
 	DEFAULT_NAMESPACE,
 	FALLBACK_LANGUAGES,
+	FORMATTERS,
 	RESOURCES,
 	RETURN_NULL,
 } from "assets/locales"
@@ -31,6 +32,11 @@ export const I18N = (async (): Promise<i18n> => {
 			returnNull: RETURN_NULL,
 		})
 		await ret.init()
+		const { services } = ret,
+			{ formatter } = services
+		for (const [key, value] of Object.entries(FORMATTERS)) {
+			formatter?.addCached(key, value)
+		}
 		return ret
 	} catch (error) {
 		printError(anyToError(error), () => "i18n error")

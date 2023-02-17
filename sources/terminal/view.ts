@@ -73,7 +73,7 @@ class EditTerminalModal extends DialogModal {
 	) {
 		const { i18n } = plugin.language
 		super(plugin, {
-			title: () => i18n.t("generic.edit"),
+			title: () => i18n.t("components.terminal.edit"),
 		})
 		this.state = cloneAsWritable(protostate)
 		this.#confirm = confirm
@@ -142,8 +142,8 @@ class EditTerminalModal extends DialogModal {
 						},
 					))
 					.addButton(button => button
-						.setIcon(i18n.t("asset:generic.edit-icon"))
-						.setTooltip(i18n.t("generic.edit"))
+						.setIcon(i18n.t("asset:components.terminal.profile-edit-icon"))
+						.setTooltip(i18n.t("components.terminal.profile-edit"))
 						.onClick(() => {
 							new ProfileModal(
 								plugin,
@@ -252,7 +252,7 @@ export class TerminalView extends ItemView {
 			printError(
 				anyToError(error),
 				() => plugin.language
-					.i18n.t("errors.failed-to-kill-pseudoterminal"),
+					.i18n.t("errors.error-killing-pseudoterminal"),
 				plugin,
 			)
 		})
@@ -375,8 +375,8 @@ export class TerminalView extends ItemView {
 				.setIcon(i18n.t("asset:menus.terminal.restart-icon"))
 				.onClick(() => { this.startEmulator() }))
 			.addItem(item => item
-				.setTitle(i18n.t("generic.edit"))
-				.setIcon(i18n.t("asset:generic.edit-icon"))
+				.setTitle(i18n.t("menus.terminal.edit"))
+				.setIcon(i18n.t("asset:menus.terminal.edit-icon"))
 				.onClick(() => {
 					new EditTerminalModal(
 						plugin,

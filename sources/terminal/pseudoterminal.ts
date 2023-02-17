@@ -350,7 +350,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 	public async kill(): Promise<void> {
 		if (!(await this.shell).kill()) {
 			throw new Error(this.plugin.language
-				.i18n.t("errors.failed-to-kill-pseudoterminal"))
+				.i18n.t("errors.error-killing-pseudoterminal"))
 		}
 	}
 
@@ -399,7 +399,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 		this.shell = spawnPromise(async () => {
 			if (isNullish(pythonExecutable)) {
 				throw new Error(language
-					.i18n.t("errors.no-python-to-start-unix-pseudoterminal"))
+					.i18n.t("errors.no-Python-to-spawn-unix-pseudoterminal"))
 			}
 			return (await childProcess).spawn(
 				pythonExecutable,
@@ -434,7 +434,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 	public async kill(): Promise<void> {
 		if ((await this.shell).kill()) {
 			throw new Error(this.plugin.language
-				.i18n.t("errors.failed-to-kill-pseudoterminal"))
+				.i18n.t("errors.error-killing-pseudoterminal"))
 		}
 	}
 

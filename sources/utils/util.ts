@@ -155,10 +155,7 @@ export function capitalize(
 	str: string,
 	locales?: string[] | string,
 ): string {
-	const cp0 = str.codePointAt(0)
-	if (isUndefined(cp0)) { return "" }
-	const char0 = String.fromCodePoint(cp0)
-	return `${char0.toLocaleUpperCase(locales)}${str.slice(char0.length)}`
+	return mapFirstCodePoint(first => first.toLocaleUpperCase(locales), str)
 }
 
 export function copyOnWrite<T extends object>(
@@ -410,6 +407,16 @@ export function logWarn(thing: unknown): void {
 	console.warn(thing)
 }
 
+export function mapFirstCodePoint(
+	map: (value: string) => string,
+	str: string,
+): string {
+	const cp0 = str.codePointAt(0)
+	if (isUndefined(cp0)) { return "" }
+	const char0 = String.fromCodePoint(cp0)
+	return `${map(char0)}${str.slice(char0.length)}`
+}
+
 export function noop(): void {
 	// NOOP
 }
@@ -483,6 +490,13 @@ export function removeAt<T>(self: T[], index: number): T | undefined {
 
 export function swap(self: unknown[], left: number, right: number): void {
 	[self[left], self[right]] = [self[right], self[left]]
+}
+
+export function uncapitalize(
+	str: string,
+	locales?: string[] | string,
+): string {
+	return mapFirstCodePoint(first => first.toLocaleLowerCase(locales), str)
 }
 
 export function unexpected(): never {

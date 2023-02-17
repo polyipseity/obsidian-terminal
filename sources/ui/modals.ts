@@ -527,12 +527,15 @@ export class ProfileModal extends Modal {
 				}).newSetting(element, setting => {
 					setting
 						.setName(i18n.t(`components.profile.${profile.type}.arguments`))
-						.setDesc(i18n.t("settings.list-description", {
+						.setDesc(i18n.t(`components.profile.${profile
+							.type}.arguments-description`, {
 							count: profile.args.length,
 						}))
 						.addButton(button => button
-							.setIcon(i18n.t("asset:generic.edit-list-icon"))
-							.setTooltip(i18n.t("generic.edit"))
+							.setIcon(i18n.t(`asset:components.profile.${profile
+								.type}.arguments-edit-icon`))
+							.setTooltip(i18n
+								.t(`components.profile.${profile.type}.arguments-edit`))
 							.onClick(() => {
 								new ListModal(
 									plugin,
@@ -609,12 +612,15 @@ export class ProfileModal extends Modal {
 				}).newSetting(element, setting => {
 					setting
 						.setName(i18n.t(`components.profile.${profile.type}.arguments`))
-						.setDesc(i18n.t("settings.list-description", {
+						.setDesc(i18n.t(`components.profile.${profile
+							.type}.arguments-description`, {
 							count: profile.args.length,
 						}))
 						.addButton(button => button
-							.setIcon(i18n.t("asset:generic.edit-list-icon"))
-							.setTooltip(i18n.t("generic.edit"))
+							.setIcon(i18n.t(`asset:components.profile.${profile
+								.type}.arguments-edit-icon`))
+							.setTooltip(i18n
+								.t(`components.profile.${profile.type}.arguments-edit`))
 							.onClick(() => {
 								new ListModal(
 									plugin,
@@ -668,9 +674,9 @@ export class ProfileModal extends Modal {
 				ui.newSetting(element, setting => {
 					setting
 						.setName(i18n
-							.t(`components.profile.${profile.type}.python-executable`))
+							.t(`components.profile.${profile.type}.Python-executable`))
 						.setDesc(i18n.t(`components.profile.${profile
-							.type}.python-executable-description`))
+							.type}.Python-executable-description`))
 						.addText(linkSetting(
 							() => profile.pythonExecutable,
 							value => {
@@ -682,14 +688,14 @@ export class ProfileModal extends Modal {
 									component
 										.setPlaceholder(i18n
 											.t(`components.profile.${profile
-												.type}.python-executable-placeholder`))
+												.type}.Python-executable-placeholder`))
 								},
 							},
 						))
 						.addExtraButton(resetButton(
 							plugin,
 							i18n.t(`asset:components.profile.${profile
-								.type}.python-executable-icon`),
+								.type}.Python-executable-icon`),
 							() => {
 								profile.pythonExecutable =
 									Settings.Profile.DEFAULTS[profile.type].pythonExecutable
@@ -701,10 +707,10 @@ export class ProfileModal extends Modal {
 						.setName(i18n
 
 							.t(`components.profile.${profile
-								.type}.enable-Windows-conhost-workaround`))
+								.type}.enable-win32-conhost-workaround`))
 						.setDesc(i18n
 							.t(`components.profile.${profile
-								.type}.enable-Windows-conhost-workaround-description`))
+								.type}.enable-win32-conhost-workaround-description`))
 						.addToggle(linkSetting(
 							() => profile.enableWindowsConhostWorkaround,
 							value => {
@@ -716,7 +722,7 @@ export class ProfileModal extends Modal {
 							plugin,
 							i18n
 								.t(`asset:components.profile.${profile
-									.type}.enable-Windows-conhost-workaround-icon`),
+									.type}.enable-win32-conhost-workaround-icon`),
 							() => {
 								profile.enableWindowsConhostWorkaround =
 									Settings.Profile.DEFAULTS[profile.type]
@@ -774,8 +780,8 @@ export class ProfileListModal
 			plugin,
 			(setting, editable, getter, setter) => {
 				setting.addButton(button => button
-					.setIcon(i18n.t("asset:generic.edit-icon"))
-					.setTooltip(i18n.t("generic.edit"))
+					.setIcon(i18n.t("asset:components.profile-list.edit-icon"))
+					.setTooltip(i18n.t("components.profile-list.edit"))
 					.onClick(() => {
 						new ProfileModal(
 							plugin,

@@ -57,7 +57,7 @@ export class EditSettingsModal extends Modal {
 			.finally(onChangeLanguage.listen(() => { ui.update() }))
 		makeModalDynamicWidth(modalUI, modalEl)
 		modalUI.new(() => titleEl, ele => {
-			ele.textContent = i18n.t("generic.edit")
+			ele.textContent = i18n.t("settings.edit-settings.title")
 		}, ele => { ele.textContent = null })
 		let errorEl: HTMLElement = document.createElement("a")
 		const resetDataText = (): void => {
@@ -440,12 +440,12 @@ export class SettingTab extends PluginSettingTab {
 			.newSetting(containerEl, setting => {
 				setting
 					.setName(i18n.t("settings.profiles"))
-					.setDesc(i18n.t("settings.list-description", {
+					.setDesc(i18n.t("settings.profiles-description", {
 						count: length(plugin.settings.profiles),
 					}))
 					.addButton(button => button
-						.setIcon(i18n.t("asset:generic.edit-list-icon"))
-						.setTooltip(i18n.t("generic.edit"))
+						.setIcon(i18n.t("asset:settings.profiles-edit-icon"))
+						.setTooltip(i18n.t("settings.profiles-edit"))
 						.onClick(() => {
 							new ProfileListModal(
 								plugin,

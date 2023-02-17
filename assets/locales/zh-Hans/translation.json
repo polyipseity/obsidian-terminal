@@ -1,17 +1,17 @@
 {
 	"commands": {
-		"export-settings-to-clipboard": "导出设置到剪贴板",
-		"export-settings-to-current-file": "导出设置到目前文件",
-		"import-settings-from-clipboard": "从剪贴板导入设置",
-		"import-settings-from-current-file": "从目前文件导入设置",
-		"open-terminal-": "开啟终端：{{- type}}",
-		"open-terminal-current": "在终端开啟目前目録：{{- type}}",
-		"open-terminal-root": "在终端开啟根目録：{{- type}}"
+		"export-settings-to-clipboard": "$t(generic.export)$t(generic.setting_other)到$t(generic.clipboard)",
+		"export-settings-to-current-file": "$t(generic.export)$t(generic.setting_other)到$t(generic.current-file)",
+		"import-settings-from-clipboard": "从$t(generic.clipboard)$t(generic.import)$t(generic.setting)",
+		"import-settings-from-current-file": "从$t(generic.current-file)$t(generic.import)$t(generic.setting)",
+		"open-terminal-": "$t(generic.open)$t(generic.terminal)：{{- type}}",
+		"open-terminal-current": "在$t(generic.terminal)$t(generic.open)$t(generic.current-directory)：{{- type}}",
+		"open-terminal-root": "在$t(generic.terminal)$t(generic.open)$t(generic.root-directory)：{{- type}}"
 	},
 	"components": {
 		"dialog": {
-			"cancel": "取消",
-			"confirm": "确认"
+			"cancel": "$t(generic.cancel)",
+			"confirm": "$t(generic.confirm)"
 		},
 		"dropdown": {
 			"unselected": ""
@@ -20,7 +20,7 @@
 			"append": "后置",
 			"move-down": "下移",
 			"move-up": "上移",
-			"name": "第{{- count}}",
+			"name": "$t(generic.ordinal)",
 			"prepend": "前置",
 			"remove": "删除"
 		},
@@ -30,146 +30,214 @@
 		},
 		"profile": {
 			"external": {
-				"arguments": "参数",
-				"executable": "可执行文件"
+				"arguments": "$t(generic.argument)",
+				"arguments-description": "$t(generic.list-description)",
+				"arguments-edit": "$t(generic.edit)",
+				"executable": "$t(generic.executable)"
 			},
 			"integrated": {
-				"arguments": "参数",
-				"enable-Windows-conhost-workaround": "启用Microsoft Windows「conhost.exe」解决方法",
-				"enable-Windows-conhost-workaround-description": "如果执行「conhost.exe」没有创建视窗，请禁用。无保证这会起作用。",
-				"executable": "可执行文件",
-				"python-executable": "Python可执行文件",
-				"python-executable-description": "于Unix启动整合式终端所需要的。清除文本框以禁用Python。",
-				"python-executable-placeholder": "（已禁用）"
+				"arguments": "$t(generic.argument)",
+				"arguments-description": "$t(generic.list-description)",
+				"arguments-edit": "$t(generic.edit)",
+				"enable-win32-conhost-workaround": "$t(generic.enable)$t(types.platforms.win32)「conhost.exe」解决方法",
+				"enable-win32-conhost-workaround-description": "如果执行「conhost.exe」没有创建视窗，请$t(generic.disable)。无保证这会起作用。",
+				"executable": "$t(generic.executable)",
+				"Python-executable": "$t(generic.Python)$t(generic.executable)",
+				"Python-executable-description": "于$t(types.platforms.unix)$t(generic.spawn)$t(types.profiles.integrated)$t(generic.terminal)所需要的。清除$t(generic.text-field)以$t(generic.disable)$t(generic.Python)。",
+				"Python-executable-placeholder": "（已$t(generic.disable)）"
 			},
 			"invalid": {
-				"data": "数据"
+				"data": "$t(generic.data)"
 			},
-			"name": "名称",
-			"preset": "预设",
+			"name": "$t(generic.name)",
+			"preset": "$t(generic.preset)",
 			"title": "{{- name}}",
-			"type": "类型"
+			"type": "$t(generic.type)"
 		},
 		"profile-list": {
 			"descriptor": "{{- id}}",
+			"edit": "$t(generic.edit)",
 			"namer": "{{- name}}",
-			"title": "配置"
+			"title": "$t(generic.profile)"
 		},
 		"terminal": {
-			"display-name": "终端：{{- name}}",
-			"profile": "配置",
+			"display-name": "$t(generic.terminal)：{{- name}}",
+			"edit": "$t(generic.edit)",
+			"profile": "$t(generic.profile)",
+			"profile-edit": "$t(generic.edit)",
 			"restored-history": "\r\n * 已还原于{{- time}}的历史\r\n\r\n",
-			"unsupported-profile": "不支持的配置：\r\n{{- profile}}\r\n",
-			"working-directory": "工作目录",
+			"unsupported-profile": "不支持的$t(generic.profile)：\r\n{{- profile}}\r\n",
+			"working-directory": "$t(generic.working-directory)",
 			"working-directory-placeholder": "（未定义）"
 		}
 	},
 	"dialogs": {
-		"overwrite-existing-frontmatter": "覆盖现有的前文？"
+		"overwrite-existing-frontmatter": "$t(generic.overwrite)现有的$t(generic.frontmatter)？"
 	},
 	"errors": {
-		"cannot-find-status-bar": "找不到状态栏",
-		"error-exporting-settings": "导出设置时出错",
-		"error-importing-settings": "导入设置时出错",
-		"error-processing-frontmatter": "处理前文时出错：{{- file.path}}",
-		"error-spawning-terminal": "啟动终端时出错",
-		"error-spawning-resizer": "啟动终端缩放迸程时出错",
-		"failed-to-kill-pseudoterminal": "终止伪终端失败",
-		"malformed-data": "数据格式不正确",
-		"no-python-to-start-unix-pseudoterminal": "没有Python来启动Unix伪终端",
-		"private-API-changed": "私有API改变了",
-		"resizer-disabled": "终端缩放迸程已禁用",
-		"resizer-exited-unexpectedly": "终端缩放迸程意外退出：{{- code}}",
-		"retry-outdated-frontmatter": "请重试，因为前文在后台更新了"
+		"cannot-find-status-bar": "找不到$t(generic.status-bar)",
+		"error-exporting-settings": "$t(generic.export)$t(generic.setting)时出错",
+		"error-importing-settings": "$t(generic.import)$t(generic.setting)时出错",
+		"error-processing-frontmatter": "处理$t(generic.frontmatter)时出错：{{- file.path}}",
+		"error-spawning-terminal": "$t(generic.spawn)$t(generic.terminal)时出错",
+		"error-spawning-resizer": "$t(generic.spawn)$t(generic.terminal-resizer)时出错",
+		"error-killing-pseudoterminal": "终止$t(generic.pseudoterminal)时出错",
+		"malformed-data": "$t(generic.data)格式不正确",
+		"no-Python-to-spawn-unix-pseudoterminal": "没有$t(generic.Python)来$t(generic.spawn)$t(types.platforms.unix)$t(generic.pseudoterminal)",
+		"private-API-changed": "私有$t(generic.API)改变了",
+		"resizer-disabled": "$t(generic.terminal-resizer)已$t(generic.disable)",
+		"resizer-exited-unexpectedly": "$t(generic.terminal-resizer)意外$t(generic.exit)：{{- code}}",
+		"retry-outdated-frontmatter": "请$t(generic.retry)，因为$t(generic.frontmatter)在$t(generic.background)更新了"
 	},
 	"generic": {
-		"edit": "编辑"
+		"API": "应用程序接口",
+		"Python": "Python",
+		"app": "应用",
+		"argument": "参数",
+		"background": "后台",
+		"cancel": "取消",
+		"clipboard": "剪贴板",
+		"command": "命令",
+		"command-palette": "命令面板",
+		"confirm": "确认",
+		"context-menu": "右键选单",
+		"current-directory": "目前$t(generic.directory)",
+		"current-file": "目前$t(generic.file)",
+		"data": "数据",
+		"default": "默认",
+		"directory": "目录",
+		"disable": "禁用",
+		"edit": "编辑",
+		"enable": "启用",
+		"executable": "可执行文件",
+		"exit": "退出",
+		"export": "导出",
+		"file": "文件",
+		"file-extensions": {
+			"HTML": "超文本标记语言"
+		},
+		"find": "搜索",
+		"frontmatter": "前文",
+		"import": "导入",
+		"language": "语言",
+		"list": "列表",
+		"list-description_other": "有{{- count}}項項目。",
+		"list-description_zero": "沒有項目。",
+		"name": "名称",
+		"notice": "通知",
+		"open": "开啟",
+		"ordinal": "第{{- count}}",
+		"overwrite": "覆盖",
+		"platform": "平台",
+		"plugin": "插件",
+		"preset": "预设",
+		"profile": "配置",
+		"pseudoterminal": "伪终端",
+		"renderer": "渲染器",
+		"reset": "重设",
+		"restart": "重启",
+		"retry": "重试",
+		"root-directory": "根$t(generic.directory)",
+		"save": "储存",
+		"setting": "设置",
+		"spawn": "啟动",
+		"status-bar": "状态栏",
+		"terminal": "终端",
+		"terminal-resizer": "$t(generic.terminal)缩放迸程",
+		"text-field": "文本框",
+		"timeout": "超时",
+		"type": "类型",
+		"use": "使用",
+		"working-directory": "工作$t(generic.directory)"
 	},
 	"menus": {
-		"open-terminal": "在终端开啟：{{- type}}",
+		"open-terminal": "在$t(generic.terminal)$t(generic.open)：{{- type}}",
 		"terminal": {
-			"find": "搜索",
-			"restart": "重启",
-			"save-as-HTML": "储存为HTML"
+			"edit": "$t(generic.edit)",
+			"find": "$t(generic.find)",
+			"restart": "$t(generic.restart)",
+			"save-as-HTML": "$t(generic.save)为$t(generic.file-extensions.HTML)"
 		}
 	},
-	"name": "终端",
+	"name": "$t(generic.terminal)",
 	"notices": {
-		"no-default-profile": "没有类型「{{- type}}」的默认配置",
-		"spawning-terminal": "终端啟动中：{{- name}}",
-		"terminal-exited": "终端已退出：{{- code}}"
+		"no-default-profile": "没有$t(generic.type)「{{- type}}」的$t(generic.default)$t(generic.profile)",
+		"spawning-terminal": "$t(generic.terminal)$t(generic.spawn)中：{{- name}}",
+		"terminal-exited": "$t(generic.terminal)已$t(generic.exit)：{{- code}}"
 	},
 	"ribbons": {
-		"open-terminal": "开啟终端"
+		"open-terminal": "$t(generic.open)$t(generic.terminal)"
 	},
 	"settings": {
-		"add-to-command": "加入至命令",
-		"add-to-context-menu": "加入至右键选单",
-		"advanced-settings": "高级设置",
-		"all-settings": "所有设置",
+		"add-to-command": "加入至$t(generic.command)",
+		"add-to-context-menu": "加入至$t(generic.context-menu)",
+		"advanced-settings": "高级$t(generic.setting)",
+		"all-settings": "所有$t(generic.setting)",
 		"all-settings-actions": {
-			"edit": "编辑",
+			"edit": "$t(generic.edit)",
 			"recover": "复原",
 			"reload": "重新加载",
-			"reset": "重设",
+			"reset": "$t(generic.reset)",
 			"undo": "复原"
 		},
-		"description": "打开「$t(settings.all-settings)」下的「$t(settings.all-settings-actions.edit)」或使用命令面板以导出或导入设置。",
+		"description": "$t(generic.open)「$t(settings.all-settings)」下的「$t(settings.all-settings-actions.edit)」或$t(generic.use)$t(generic.command-palette)以$t(generic.export)或$t(generic.import)$t(generic.setting)。",
 		"edit-settings": {
-			"data": "数据",
-			"export": "导出",
-			"export-to-clipboard": "导出到剪贴板",
-			"import": "导入",
-			"import-from-clipboard": "从剪贴板导入"
+			"data": "$t(generic.data)",
+			"export": "$t(generic.export)",
+			"export-to-clipboard": "$t(generic.export)到$t(generic.clipboard)",
+			"import": "$t(generic.import)",
+			"import-from-clipboard": "从$t(generic.import)$t(generic.import)",
+			"title": "$t(generic.edit)"
 		},
-		"error-notice-timeout": "错误通知超时（秒）",
-		"error-notice-timeout-description": "设为0秒是无超时。设为负数以禁用通知。",
-		"hide-status-bar": "隐藏状态栏",
+		"error-notice-timeout": "错误$t(generic.notice)$t(generic.timeout)（s）",
+		"error-notice-timeout-description": "$t(settings.notice-timeout-description)",
+		"hide-status-bar": "隐藏$t(generic.status-bar)",
 		"hide-status-bar-options": {
 			"never": "从不",
 			"always": "总是",
-			"focused": "当聚焦终端时",
-			"running": "当执行终端时"
+			"focused": "当聚焦$t(generic.terminal)时",
+			"running": "当执行$t(generic.terminal)时"
 		},
-		"language": "语言",
-		"language-default": "使用应用设定",
-		"language-description": "仅适用於此插件。标有🚧的语言需要您帮助来翻译！",
-		"list-description_other": "有{{- count}}項項目。",
-		"list-description_zero": "沒有項目。",
-		"notice-timeout": "通知超时（秒）",
-		"notice-timeout-description": "设为0秒是无超时。设为负数以禁用通知。",
-		"preferred-renderer": "首选渲染器",
+		"language": "$t(generic.language)",
+		"language-default": "$t(generic.use)$t(generic.app)$t(generic.setting)",
+		"language-description": "仅适用於此$t(generic.plugin)。标有🚧的$t(generic.language)需要您帮助来翻译！",
+		"notice-timeout": "$t(generic.notice)$t(generic.timeout)（s）",
+		"notice-timeout-description": "设为0 s是无$t(generic.timeout)。设为负数以$t(generic.disable)$t(generic.notice)。",
+		"preferred-renderer": "首选$t(generic.renderer)",
 		"profile-list": {
-			"description": "列表中第一个此平台上可用的配置是其终端类型的默认配置。."
+			"description": "$t(generic.list)中第一个此$t(generic.platform)上可用的$t(generic.profile)是其$t(generic.terminal)$t(generic.type)的$t(generic.default)$t(generic.profile)。"
 		},
-		"profiles": "配置",
-		"reset": "重设"
+		"profiles": "$t(generic.profile)",
+		"profiles-description": "$t(generic.list-description)",
+		"profiles-edit": "$t(generic.edit)",
+		"reset": "$t(generic.reset)"
 	},
 	"types": {
 		"platforms": {
-			"darwin": "macOS",
+			"darwin": "\u200bmacOS",
 			"linux": "Linux",
+			"unix": "Unix",
 			"win32": "Microsoft Windows"
 		},
 		"profile-presets": {
-			"bashIntegrated": "bash：整合式",
-			"cmdIntegrated": "cmd：整合式",
-			"console": "开发者控制台",
-			"darwinExternalDefault": "macOS默認：外部",
-			"darwinIntegratedDefault": "macOS默認：整合式",
-			"dashIntegrated": "dash：整合式",
-			"empty": "空白",
-			"linuxExternalDefault": "Linux默認：外部",
-			"linuxIntegratedDefault": "Linux默認：整合式",
-			"pwshIntegrated": "pwsh：整合式",
-			"shIntegrated": "sh：整合式",
-			"win32ExternalDefault": "Microsoft Windows默認：外部",
-			"win32IntegratedDefault": "Microsoft Windows默認：整合式",
-			"zshIntegrated": "zsh：整合式"
+			"bashIntegrated": "bash：$t(types.profiles.integrated)",
+			"cmdIntegrated": "cmd：$t(types.profiles.integrated)",
+			"console": "$t(types.profiles.console)",
+			"darwinExternalDefault": "$t(types.platforms.darwin)$t(generic.default)：$t(types.profiles.external)",
+			"darwinIntegratedDefault": "$t(types.platforms.darwin)$t(generic.default)：$t(types.profiles.integrated)",
+			"dashIntegrated": "dash：$t(types.profiles.integrated)",
+			"empty": "$t(types.profiles.)",
+			"linuxExternalDefault": "$t(types.platforms.linux)$t(generic.default)：$t(types.profiles.external)",
+			"linuxIntegratedDefault": "$t(types.platforms.linux)$t(generic.default)：$t(types.profiles.integrated)",
+			"pwshIntegrated": "pwsh：$t(types.profiles.integrated)",
+			"shIntegrated": "sh：$t(types.profiles.integrated)",
+			"win32ExternalDefault": "$t(types.platforms.win32)$t(generic.default)：$t(types.profiles.external)",
+			"win32IntegratedDefault": "$t(types.platforms.win32)$t(generic.default)：$t(types.profiles.integrated)",
+			"zshIntegrated": "zsh：$t(types.profiles.integrated)"
 		},
 		"profiles": {
 			"": "空白",
-			"console": "控制台",
+			"console": "开发者控制台",
 			"external": "外部",
 			"integrated": "整合式",
 			"invalid": "无效",
