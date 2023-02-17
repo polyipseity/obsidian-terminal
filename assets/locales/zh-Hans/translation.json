@@ -87,7 +87,7 @@
 		"error-spawning-resizer": "$t(generic.spawn)$t(generic.terminal-resizer)时出错",
 		"error-killing-pseudoterminal": "终止$t(generic.pseudoterminal)时出错",
 		"malformed-data": "$t(generic.data)格式不正确",
-		"no-Python-to-spawn-unix-pseudoterminal": "没有$t(generic.Python)来$t(generic.spawn)$t(generic.platforms.unix)$t(generic.pseudoterminal)",
+		"no-Python-to-spawn-Unix-pseudoterminal": "没有$t(generic.Python)来$t(generic.spawn)$t(generic.platforms.unix)$t(generic.pseudoterminal)",
 		"private-API-changed": "私有$t(generic.API)改变了",
 		"resizer-disabled": "$t(generic.terminal-resizer)已$t(generic.disable)",
 		"resizer-exited-unexpectedly": "$t(generic.terminal-resizer)意外$t(generic.exit)：{{- code}}",

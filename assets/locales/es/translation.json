@@ -90,7 +90,7 @@
 		"error-spawning-resizer": "Error $t(generic.spawn_gerund) $t(generic.terminal-resizer)",
 		"error-killing-pseudoterminal": "Error killing $t(generic.pseudoterminal)",
 		"malformed-data": "Malformed $t(generic.data)",
-		"no-Python-to-spawn-unix-pseudoterminal": "No $t(generic.Python) to $t(generic.spawn) $t(generic.platforms.unix) $t(generic.pseudoterminal)",
+		"no-Python-to-spawn-Unix-pseudoterminal": "No $t(generic.Python) to $t(generic.spawn) $t(generic.platforms.unix) $t(generic.pseudoterminal)",
 		"private-API-changed": "Private $t(generic.API) changed",
 		"resizer-disabled": "$t(generic.terminal-resizer, capitalize) $t(generic.disable_past)",
 		"resizer-exited-unexpectedly": "$t(generic.terminal-resizer, capitalize) $t(generic.exit_past) unexpectedly: {{- code}}",

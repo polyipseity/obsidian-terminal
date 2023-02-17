@@ -399,7 +399,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 		this.shell = spawnPromise(async () => {
 			if (isNullish(pythonExecutable)) {
 				throw new Error(language
-					.i18n.t("errors.no-Python-to-spawn-unix-pseudoterminal"))
+					.i18n.t("errors.no-Python-to-spawn-Unix-pseudoterminal"))
 			}
 			return (await childProcess).spawn(
 				pythonExecutable,
