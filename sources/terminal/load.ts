@@ -90,12 +90,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 			const ret = Settings.Profile.defaultOfType(type, plugin.settings.profiles)
 			if (ret === null) {
 				notice2(
-					() => i18n.t(
-						"notices.no-default-profile",
-						{
-							type: i18n.t(`types.profiles.${type}`),
-						},
-					),
+					() => i18n.t("notices.no-default-profile", { type }),
 					plugin.settings.errorNoticeTimeout,
 					plugin,
 				)
@@ -115,9 +110,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 			if (cwd0 === null) { return null }
 			return (item: MenuItem) => {
 				item
-					.setTitle(i18n.t("menus.open-terminal", {
-						type: i18n.t(`types.profiles.${type}`),
-					}))
+					.setTitle(i18n.t("menus.open-terminal", { type }))
 					.setIcon(i18n.t(`asset:types.profiles.${type}-icon`))
 					.onClick(() => {
 						if (type === "select") {
@@ -208,16 +201,18 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 	// Always register command for interop with other plugins
 	for (const cwd of CWD_TYPES) {
 		for (const type of PROFILE_TYPES) {
-			addCommand(plugin, () => i18n.t(`commands.open-terminal-${cwd}`, {
-				type: i18n.t(`types.profiles.${type}`),
-			}), {
-				checkCallback(checking) {
-					if (!plugin.settings.addToCommand) { return false }
-					return command(type, cwd)(checking)
+			addCommand(
+				plugin,
+				() => i18n.t(`commands.open-terminal-${cwd}`, { type }),
+				{
+					checkCallback(checking) {
+						if (!plugin.settings.addToCommand) { return false }
+						return command(type, cwd)(checking)
+					},
+					icon: i18n.t(`asset:commands.open-terminal-${cwd}-icon`),
+					id: `open-terminal-${cwd}.${type}`,
 				},
-				icon: i18n.t(`asset:commands.open-terminal-${cwd}-icon`),
-				id: `open-terminal-${cwd}.${type}`,
-			})
+			)
 		}
 	}
 }

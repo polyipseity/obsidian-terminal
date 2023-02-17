@@ -4,9 +4,9 @@
 		"export-settings-to-current-file": "$t(generic.export, capitalize) $t(generic.setting_other) to $t(generic.current-file)",
 		"import-settings-from-clipboard": "$t(generic.import, capitalize) $t(generic.setting_other) from $t(generic.clipboard)",
 		"import-settings-from-current-file": "$t(generic.import, capitalize) $t(generic.setting_other) from $t(generic.current-file)",
-		"open-terminal-": "$t(generic.open, capitalize) $t(generic.terminal): {{- type}}",
-		"open-terminal-current": "$t(generic.open, capitalize) $t(generic.current-directory) in $t(generic.terminal): {{- type}}",
-		"open-terminal-root": "$t(generic.open, capitalize) $t(generic.root-directory) in $t(generic.terminal): {{- type}}"
+		"open-terminal-": "$t(generic.open, capitalize) $t(generic.terminal): $t(types.profiles.{{type}}, capitalize)",
+		"open-terminal-current": "$t(generic.open, capitalize) $t(generic.current-directory) in $t(generic.terminal): $t(types.profiles.{{type}}, capitalize)",
+		"open-terminal-root": "$t(generic.open, capitalize) $t(generic.root-directory) in $t(generic.terminal): $t(types.profiles.{{type}}, capitalize)"
 	},
 	"components": {
 		"dialog": {
@@ -55,7 +55,8 @@
 			"name": "$t(generic.name, capitalize)",
 			"preset": "$t(generic.preset, capitalize)",
 			"title": "{{- name}}",
-			"type": "$t(generic.type, capitalize)"
+			"type": "$t(generic.type, capitalize)",
+			"type-options": "$t(types.profiles.{{type}}, capitalize)"
 		},
 		"profile-list": {
 			"descriptor": "{{- id}}",
@@ -66,6 +67,9 @@
 		"terminal": {
 			"display-name": "$t(generic.terminal, capitalize): {{- name}}",
 			"edit": "$t(generic.edit, capitalize)",
+			"name": {
+				"profile-type": "$t(types.profiles.{{type}}, capitalize)"
+			},
 			"profile": "$t(generic.profile, capitalize)",
 			"profile-edit": "$t(generic.edit, capitalize)",
 			"restored-history": "\r\n * Restored history at {{- time}}\r\n\r\n",
@@ -170,7 +174,7 @@
 		"working-directory": "working $t(generic.directory)"
 	},
 	"menus": {
-		"open-terminal": "$t(generic.open, capitalize) in $t(generic.terminal): {{- type}}",
+		"open-terminal": "$t(generic.open, capitalize) in $t(generic.terminal): $t(types.profiles.{{type}}, capitalize)",
 		"terminal": {
 			"edit": "$t(generic.edit, capitalize)",
 			"find": "$t(generic.find, capitalize)",
@@ -180,7 +184,7 @@
 	},
 	"name": "$t(generic.terminal, capitalize)",
 	"notices": {
-		"no-default-profile": "No $t(generic.default) $t(generic.profile) for $t(generic.type) '{{- type}}'",
+		"no-default-profile": "No $t(generic.default) $t(generic.profile) for $t(generic.type) '$t(types.profiles.{{type}}, capitalize)'",
 		"spawning-terminal": "$t(generic.spawn_gerund, capitalize) $t(generic.terminal): {{- name}}",
 		"terminal-exited": "$t(generic.terminal, capitalize) $t(generic.exit_past): {{- code}}"
 	},
@@ -223,6 +227,7 @@
 		"notice-timeout": "$t(generic.notice, capitalize) $t(generic.timeout) (s)",
 		"notice-timeout-description": "Set to 0 s for no $t(generic.timeout). Set to negative to $t(generic.disable) $t(generic.notice).",
 		"preferred-renderer": "Preferred $t(generic.renderer)",
+		"preferred-renderer-options": "$t(types.renderers.{{type}}, capitalize)",
 		"profile-list": {
 			"description": "The first $t(generic.profile) in the $t(generic.list) available on this $t(generic.platform) is the $t(generic.default) $t(generic.default) for its $t(generic.terminal) $t(generic.type)."
 		},
@@ -255,12 +260,12 @@
 			"zshIntegrated": "zsh: $t(types.profiles.integrated, capitalize)"
 		},
 		"profiles": {
-			"": "Empty",
-			"console": "Developer console",
-			"external": "External",
-			"integrated": "Integrated",
-			"invalid": "Invalid",
-			"select": "(Select)"
+			"": "empty",
+			"console": "developer console",
+			"external": "external",
+			"integrated": "integrated",
+			"invalid": "invalid",
+			"select": "select"
 		},
 		"renderers": {
 			"canvas": "canvas",

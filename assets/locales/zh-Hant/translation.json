@@ -4,9 +4,9 @@
 		"export-settings-to-current-file": "$t(generic.export)$t(generic.setting_other)到$t(generic.current-file)",
 		"import-settings-from-clipboard": "從$t(generic.clipboard)$t(generic.import)$t(generic.setting)",
 		"import-settings-from-current-file": "從$t(generic.current-file)$t(generic.import)$t(generic.setting)",
-		"open-terminal-": "$t(generic.open)$t(generic.terminal)：{{- type}}",
-		"open-terminal-current": "在$t(generic.terminal)$t(generic.open)$t(generic.current-directory)：{{- type}}",
-		"open-terminal-root": "在$t(generic.terminal)$t(generic.open)$t(generic.root-directory)：{{- type}}"
+		"open-terminal-": "$t(generic.open)$t(generic.terminal)：$t(types.profiles.{{type}})",
+		"open-terminal-current": "在$t(generic.terminal)$t(generic.open)$t(generic.current-directory)：$t(types.profiles.{{type}})",
+		"open-terminal-root": "在$t(generic.terminal)$t(generic.open)$t(generic.root-directory)：$t(types.profiles.{{type}})"
 	},
 	"components": {
 		"dialog": {
@@ -52,7 +52,8 @@
 			"name": "$t(generic.name)",
 			"preset": "$t(generic.preset)",
 			"title": "{{- name}}",
-			"type": "$t(generic.type)"
+			"type": "$t(generic.type)",
+			"type-options": "$t(types.profiles.{{type}})"
 		},
 		"profile-list": {
 			"descriptor": "{{- id}}",
@@ -63,6 +64,9 @@
 		"terminal": {
 			"display-name": "$t(generic.terminal)：{{- name}}",
 			"edit": "$t(generic.edit)",
+			"name": {
+				"profile-type": "$t(types.profiles.{{type}})"
+			},
 			"profile": "$t(generic.profile)",
 			"profile-edit": "$t(generic.edit)",
 			"restored-history": "\r\n * 已還原於{{- time}}的歷史\r\n\r\n",
@@ -151,7 +155,7 @@
 		"working-directory": "工作$t(generic.directory)"
 	},
 	"menus": {
-		"open-terminal": "在$t(generic.terminal)$t(generic.open)：{{- type}}",
+		"open-terminal": "在$t(generic.terminal)$t(generic.open)：$t(types.profiles.{{type}})",
 		"terminal": {
 			"edit": "$t(generic.edit)",
 			"find": "$t(generic.find)",
@@ -161,7 +165,7 @@
 	},
 	"name": "$t(generic.terminal)",
 	"notices": {
-		"no-default-profile": "沒有$t(generic.type)「{{- type}}」的$t(generic.default)$t(generic.profile)",
+		"no-default-profile": "沒有$t(generic.type)「$t(types.profiles.{{type}})」的$t(generic.default)$t(generic.profile)",
 		"spawning-terminal": "$t(generic.terminal)$t(generic.spawn)中：{{- name}}",
 		"terminal-exited": "$t(generic.terminal)已$t(generic.exit)：{{- code}}"
 	},
@@ -204,6 +208,7 @@
 		"notice-timeout": "$t(generic.notice)$t(generic.timeout)（s）",
 		"notice-timeout-description": "設為0 s是無$t(generic.timeout)。設為負數以$t(generic.disable)$t(generic.notice)。",
 		"preferred-renderer": "首選$t(generic.renderer)",
+		"preferred-renderer-options": "$t(types.renderers.{{type}})",
 		"profile-list": {
 			"description": "$t(generic.list)中第一個此$t(generic.platform)上可用的$t(generic.profile)是其$t(generic.terminal)$t(generic.type)的$t(generic.default)$t(generic.profile)。"
 		},

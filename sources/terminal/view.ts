@@ -216,7 +216,7 @@ export class TerminalView extends ItemView {
 		const { plugin, state } = this,
 			{ i18n } = plugin.language,
 			{ profile } = state,
-			{ name } = profile
+			{ name, type } = profile
 		if (typeof name === "string" && name) { return name }
 		if ("executable" in profile) {
 			const { executable } = profile
@@ -224,7 +224,7 @@ export class TerminalView extends ItemView {
 				return basename(executable, extname(executable))
 			}
 		}
-		return i18n.t(`types.profiles.${profile.type}`)
+		return i18n.t("components.terminal.name.profile-type", { type })
 	}
 
 	// eslint-disable-next-line consistent-return

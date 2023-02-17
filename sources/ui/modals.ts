@@ -439,10 +439,10 @@ export class ProfileModal extends Modal {
 								dropdown
 									.addOptions(Object
 										.fromEntries(Settings.Profile.TYPES
-											.filter(type0 => PROFILE_PROPERTIES[type0].valid)
-											.map(type0 => [
-												type0,
-												i18n.t(`types.profiles.${type0}`),
+											.filter(type => PROFILE_PROPERTIES[type].valid)
+											.map(type => [
+												type,
+												i18n.t("components.profile.type-options", { type }),
 											])))
 							},
 						},

@@ -7,7 +7,6 @@ import {
 import { Modal, PluginSettingTab } from "obsidian"
 import { UpdatableUI, useSettings } from "sources/utils/obsidian"
 import {
-	capitalize,
 	clearProperties,
 	cloneAsWritable,
 	executeParanoidly,
@@ -491,12 +490,9 @@ export class SettingTab extends PluginSettingTab {
 								dropdown
 									.addOptions(Object
 										.fromEntries(Settings.PREFERRED_RENDERER_OPTIONS
-											.map(value => [
-												value,
-												capitalize(
-													i18n.t(`types.renderers.${value}`),
-													language.language,
-												),
+											.map(type => [
+												type,
+												i18n.t("settings.preferred-renderer-options", { type }),
 											])))
 							},
 						},
