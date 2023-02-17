@@ -314,28 +314,26 @@ class WindowsPseudoterminal implements Pseudoterminal {
 		this.shell = shell.then(([shell0]) => shell0)
 		this.onExit = shell
 			.then(async ([shell0, codeTmp]) =>
-				new Promise<NodeJS.Signals | number>(resolve => {
+				new Promise(resolve => {
 					shell0.once("exit", (conCode, signal) => {
-						(async (): Promise<void> => {
+						resolve((async (): Promise<NodeJS.Signals | number> => {
 							try {
+								const termCode = parseInt(
+									(await fs).readFileSync(
+										codeTmp.name,
+										{ encoding: DEFAULT_ENCODING, flag: "r" },
+									).trim(),
+									10,
+								)
+								return isNaN(termCode) ? conCode ?? signal ?? NaN : termCode
+							} catch (error) {
+								return conCode ?? signal ?? NaN
+							} finally {
 								try {
-									const termCode = parseInt(
-										(await fs).readFileSync(
-											codeTmp.name,
-											{ encoding: DEFAULT_ENCODING, flag: "r" },
-										).trim(),
-										10,
-									)
-									resolve(isNaN(termCode) ? conCode ?? signal ?? NaN : termCode)
-								} catch (error) {
-									resolve(conCode ?? signal ?? NaN)
-								} finally {
-									try {
-										codeTmp.removeCallback()
-									} catch (error) { console.warn(error) }
-								}
-							} catch (error) { console.error(error) }
-						})()
+									codeTmp.removeCallback()
+								} catch (error) { console.warn(error) }
+							}
+						})())
 					})
 				}))
 	}

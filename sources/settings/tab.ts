@@ -520,7 +520,7 @@ export class SettingTab extends PluginSettingTab {
 		const { plugin } = this,
 			snapshot = cloneAsWritable(plugin.settings)
 		delete snapshot.recovery
-		return new Promise<Settings>((resolve, reject) => {
+		return new Promise((resolve, reject) => {
 			const unregister = plugin.on("mutate-settings", identity, () => {
 				try {
 					resolve(snapshot)

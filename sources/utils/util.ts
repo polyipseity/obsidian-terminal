@@ -446,11 +446,10 @@ export async function promisePromise<T>(): Promise<{
 	readonly resolve: (value: AsyncOrSync<T>) => void
 	readonly reject: (reason?: unknown) => void
 }> {
-	return new Promise((resolve0, reject0) => {
+	return new Promise(resolve0 => {
 		const promise = new Promise<T>((resolve, reject) => {
-			Promise.resolve()
-				.then(() => ({ promise, reject, resolve }))
-				.then(resolve0, reject0)
+			resolve0(Promise.resolve()
+				.then(() => ({ promise, reject, resolve })))
 		})
 	})
 }
