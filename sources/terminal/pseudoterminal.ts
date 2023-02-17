@@ -314,7 +314,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 		this.shell = shell.then(([shell0]) => shell0)
 		this.onExit = shell
 			.then(async ([shell0, codeTmp]) =>
-				new Promise(resolve => {
+				new Promise<NodeJS.Signals | number>(resolve => {
 					shell0.once("exit", (conCode, signal) => {
 						resolve((async (): Promise<NodeJS.Signals | number> => {
 							try {
