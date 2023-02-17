@@ -158,7 +158,7 @@
 		"profile": "$t(generic.profile_one)",
 		"profile-types": {
 			"": "empty",
-			"console": "developer console",
+			"developerConsole": "developer console",
 			"external": "external",
 			"integrated": "integrated",
 			"invalid": "invalid",
@@ -209,10 +209,10 @@
 	"profile-presets": {
 		"bashIntegrated": "bash: $t(generic.profile-types.integrated, capitalize)",
 		"cmdIntegrated": "cmd: $t(generic.profile-types.integrated, capitalize)",
-		"console": "$t(generic.profile-types.console)",
 		"darwinExternalDefault": "$t(generic.platforms.darwin, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
 		"darwinIntegratedDefault": "$t(generic.platforms.darwin, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",
 		"dashIntegrated": "dash: $t(generic.profile-types.integrated, capitalize)",
+		"developerConsole": "$t(generic.profile-types.developerConsole)",
 		"empty": "$t(generic.profile-types., capitalize)",
 		"linuxExternalDefault": "$t(generic.platforms.linux, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
 		"linuxIntegratedDefault": "$t(generic.platforms.linux, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",

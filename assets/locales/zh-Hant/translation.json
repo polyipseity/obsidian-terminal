@@ -143,7 +143,7 @@
 		"profile": "配置",
 		"profile-types": {
 			"": "空白",
-			"console": "開發者控制台",
+			"developerConsole": "開發者控制台",
 			"external": "外部",
 			"integrated": "整合式",
 			"invalid": "無效",
@@ -190,10 +190,10 @@
 	"profile-presets": {
 		"bashIntegrated": "bash：$t(generic.profile-types.integrated)",
 		"cmdIntegrated": "cmd：$t(generic.profile-types.integrated)",
-		"console": "$t(generic.profile-types.console)",
 		"darwinExternalDefault": "$t(generic.platforms.darwin)$t(generic.default)：$t(generic.profile-types.external)",
 		"darwinIntegratedDefault": "$t(generic.platforms.darwin)$t(generic.default)：$t(generic.profile-types.integrated)",
 		"dashIntegrated": "dash：$t(generic.profile-types.integrated)",
+		"developerConsole": "$t(generic.profile-types.developerConsole)",
 		"empty": "$t(generic.profile-types.)",
 		"linuxExternalDefault": "$t(generic.platforms.linux)$t(generic.default)：$t(generic.profile-types.external)",
 		"linuxIntegratedDefault": "$t(generic.platforms.linux)$t(generic.default)：$t(generic.profile-types.integrated)",

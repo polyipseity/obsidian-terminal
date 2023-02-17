@@ -36,7 +36,7 @@ export const PROFILE_PROPERTIES: {
 		},
 		valid: true,
 	},
-	console: {
+	developerConsole: {
 		available: true,
 		integratable: true,
 		opener() {

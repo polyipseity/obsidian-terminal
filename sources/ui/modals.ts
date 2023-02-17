@@ -502,7 +502,7 @@ export class ProfileModal extends Modal {
 			case "": {
 				break
 			}
-			case "console": {
+			case "developerConsole": {
 				break
 			}
 			case "external": {

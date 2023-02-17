@@ -80,7 +80,7 @@
 		"previous-icon": "arrow-up",
 		"profile-types": {
 			"-icon": "square",
-			"console-icon": "curly-braces",
+			"developerConsole-icon": "curly-braces",
 			"external-icon": "terminal-square",
 			"integrated-icon": "terminal",
 			"invalid-icon": "x-circle",

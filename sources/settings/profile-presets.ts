@@ -12,7 +12,7 @@ type IntegratedDefaults = {
 }
 export interface ProfilePresets extends ExternalDefaults, IntegratedDefaults {
 	readonly empty: Settings.Profile.Empty
-	readonly console: Settings.Profile.Console
+	readonly developerConsole: Settings.Profile.DeveloperConsole
 
 	readonly cmdIntegrated: Settings.Profile.Integrated
 	readonly bashIntegrated: Settings.Profile.Integrated
@@ -40,10 +40,6 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		type: "integrated",
 		useWin32Conhost: true,
 	},
-	console: {
-		name: "",
-		type: "console",
-	},
 	darwinExternalDefault: {
 		args: ["$PWD"],
 		executable:
@@ -69,6 +65,10 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		pythonExecutable: "python3",
 		type: "integrated",
 		useWin32Conhost: false,
+	},
+	developerConsole: {
+		name: "",
+		type: "developerConsole",
 	},
 	empty: {
 		name: "",
@@ -136,10 +136,10 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 } as const)
 export const PROFILE_PRESET_KEYS = typedKeys<readonly [
 	"empty",
-	"console",
 	"cmdIntegrated",
 	"bashIntegrated",
 	"dashIntegrated",
+	"developerConsole",
 	"pwshIntegrated",
 	"shIntegrated",
 	"zshIntegrated",

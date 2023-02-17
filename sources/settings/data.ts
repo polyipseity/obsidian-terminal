@@ -43,9 +43,9 @@ export namespace Settings {
 		noticeTimeout: 5,
 		preferredRenderer: "webgl",
 		profiles: Object.fromEntries(([
-			"console",
 			"darwinExternalDefault",
 			"darwinIntegratedDefault",
+			"developerConsole",
 			"linuxExternalDefault",
 			"linuxIntegratedDefault",
 			"win32ExternalDefault",
@@ -62,7 +62,7 @@ export namespace Settings {
 	export const PREFERRED_RENDERER_OPTIONS = RendererAddon.RENDERER_OPTIONS
 	export type PreferredRendererOption = RendererAddon.RendererOption
 	export type Profile =
-		Profile.Console |
+		Profile.DeveloperConsole |
 		Profile.Empty |
 		Profile.External |
 		Profile.Integrated |
@@ -74,7 +74,7 @@ export namespace Settings {
 			Object.freeze([
 				"",
 				"invalid",
-				"console",
+				"developerConsole",
 				"external",
 				"integrated",
 			] as const)
@@ -128,8 +128,8 @@ export namespace Settings {
 			readonly [_: string]: unknown
 			readonly type: "invalid"
 		}
-		export interface Console extends Base {
-			readonly type: "console"
+		export interface DeveloperConsole extends Base {
+			readonly type: "developerConsole"
 		}
 		export interface External extends Base {
 			readonly type: "external"
@@ -150,9 +150,9 @@ export namespace Settings {
 		} = deepFreeze({
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			"": PROFILE_PRESETS.empty,
-			console: {
+			developerConsole: {
 				name: "",
-				type: "console",
+				type: "developerConsole",
 			},
 			external: {
 				args: [],
@@ -221,7 +221,7 @@ export namespace Settings {
 							type,
 						} satisfies Typed<typeof type>
 					}
-					case "console": {
+					case "developerConsole": {
 						return {
 							name: fixTyped(
 								DEFAULTS[type],
