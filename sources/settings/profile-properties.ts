@@ -76,7 +76,7 @@ export const PROFILE_PROPERTIES: {
 				{
 					args,
 					platforms,
-					enableWindowsConhostWorkaround,
+					useWin32Conhost,
 					executable,
 					pythonExecutable,
 				} = profile,
@@ -85,9 +85,9 @@ export const PROFILE_PROPERTIES: {
 			return new Pseudoterminal.PLATFORM_PSEUDOTERMINAL(plugin, {
 				args,
 				cwd: cwd ?? null,
-				enableWindowsConhostWorkaround: enableWindowsConhostWorkaround ?? null,
 				executable,
 				pythonExecutable: pythonExecutable || null,
+				useWin32Conhost,
 			})
 		},
 		valid: true,

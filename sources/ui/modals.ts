@@ -705,17 +705,12 @@ export class ProfileModal extends Modal {
 				}).newSetting(element, setting => {
 					setting
 						.setName(i18n
-
-							.t(`components.profile.${profile
-								.type}.enable-win32-conhost-workaround`))
-						.setDesc(i18n
-							.t(`components.profile.${profile
-								.type}.enable-win32-conhost-workaround-description`))
+							.t(`components.profile.${profile.type}.use-win32-conhost`))
+						.setDesc(i18n.t(`components.profile.${profile
+							.type}.use-win32-conhost-description`))
 						.addToggle(linkSetting(
-							() => profile.enableWindowsConhostWorkaround,
-							value => {
-								profile.enableWindowsConhostWorkaround = value
-							},
+							() => profile.useWin32Conhost,
+							value => { profile.useWin32Conhost = value },
 							async () => this.postMutate(),
 						))
 						.addExtraButton(resetButton(
@@ -724,9 +719,9 @@ export class ProfileModal extends Modal {
 								.t(`asset:components.profile.${profile
 									.type}.enable-win32-conhost-workaround-icon`),
 							() => {
-								profile.enableWindowsConhostWorkaround =
+								profile.useWin32Conhost =
 									Settings.Profile.DEFAULTS[profile.type]
-										.enableWindowsConhostWorkaround
+										.useWin32Conhost
 							},
 							async () => this.postMutate(),
 						))

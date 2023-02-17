@@ -174,7 +174,7 @@ export interface ShellPseudoterminalArguments {
 	readonly cwd?: URL | string | null
 	readonly args?: readonly string[] | null
 	readonly pythonExecutable?: string | null
-	readonly enableWindowsConhostWorkaround?: boolean | null
+	readonly useWin32Conhost?: boolean | null
 }
 
 class WindowsPseudoterminal implements Pseudoterminal {
@@ -189,11 +189,11 @@ class WindowsPseudoterminal implements Pseudoterminal {
 			args,
 			cwd,
 			executable,
-			enableWindowsConhostWorkaround,
+			useWin32Conhost,
 			pythonExecutable,
 		}: ShellPseudoterminalArguments,
 	) {
-		this.conhost = enableWindowsConhostWorkaround ?? false
+		this.conhost = useWin32Conhost ?? false
 		const { conhost } = this,
 			{ language } = plugin,
 			{ i18n } = language,

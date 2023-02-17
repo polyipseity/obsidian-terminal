@@ -143,7 +143,7 @@ export namespace Settings {
 			readonly args: readonly string[]
 			readonly platforms: Platforms<Pseudoterminal.SupportedPlatform>
 			readonly pythonExecutable: string
-			readonly enableWindowsConhostWorkaround: boolean
+			readonly useWin32Conhost: boolean
 		}
 		export const DEFAULTS: {
 			readonly [key in Type]: DeepRequired<Typed<key>>
@@ -167,7 +167,6 @@ export namespace Settings {
 			},
 			integrated: {
 				args: [],
-				enableWindowsConhostWorkaround: false,
 				executable: "",
 				name: "",
 				platforms: {
@@ -177,6 +176,7 @@ export namespace Settings {
 				},
 				pythonExecutable: "",
 				type: "integrated",
+				useWin32Conhost: false,
 			},
 			invalid: {
 				type: "invalid",
@@ -268,12 +268,6 @@ export namespace Settings {
 								"args",
 								["string"],
 							),
-							enableWindowsConhostWorkaround: fixTyped(
-								DEFAULTS[type],
-								unc,
-								"enableWindowsConhostWorkaround",
-								["boolean"],
-							),
 							executable: fixTyped(
 								DEFAULTS[type],
 								unc,
@@ -298,6 +292,12 @@ export namespace Settings {
 								["string"],
 							),
 							type,
+							useWin32Conhost: fixTyped(
+								DEFAULTS[type],
+								unc,
+								"useWin32Conhost",
+								["boolean"],
+							),
 						} satisfies Typed<typeof type>
 					}
 					case "invalid": {
