@@ -94,7 +94,7 @@ export const PROFILE_PROPERTIES: {
 	},
 	invalid: {
 		available: true,
-		integratable: false,
+		integratable: true,
 		opener() { return null },
 		valid: false,
 	},
