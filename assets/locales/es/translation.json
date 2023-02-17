@@ -39,15 +39,15 @@
 				"executable": "$t(generic.executable, capitalize)"
 			},
 			"integrated": {
+				"Python-executable": "$t(generic.Python, capitalize) $t(generic.executable)",
+				"Python-executable-description": "Required on $t(generic.platforms.unix) to $t(generic.spawn) $t(generic.profile-types.integrated) $t(generic.terminal). Clear $t(generic.text-field) to $t(generic.disable) $t(generic.Python).",
+				"Python-executable-placeholder": "($t(generic.disable_past, capitalize))",
 				"arguments": "$t(generic.argument_other, capitalize)",
 				"arguments-description": "$t(generic.list-description, capitalize)",
 				"arguments-edit": "$t(generic.edit, capitalize)",
 				"executable": "$t(generic.executable, capitalize)",
 				"use-win32-conhost": "$t(generic.use, capitalize) $t(generic.platforms.win32) 'conhost.exe' workaround",
-				"use-win32-conhost-description": "$t(generic.disable, capitalize) if running 'conhost.exe' does not create a window. No guarantees this will work.",
-				"Python-executable": "$t(generic.Python, capitalize) $t(generic.executable)",
-				"Python-executable-description": "Required on $t(generic.platforms.unix) to $t(generic.spawn) $t(generic.profile-types.integrated) $t(generic.terminal). Clear $t(generic.text-field) to $t(generic.disable) $t(generic.Python).",
-				"Python-executable-placeholder": "($t(generic.disable_past, capitalize))"
+				"use-win32-conhost-description": "$t(generic.disable, capitalize) if running 'conhost.exe' does not create a window. No guarantees this will work."
 			},
 			"invalid": {
 				"data": "$t(generic.data, capitalize)"
