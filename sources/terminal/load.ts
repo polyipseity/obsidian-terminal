@@ -111,7 +111,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 			return (item: MenuItem) => {
 				item
 					.setTitle(i18n.t("menus.open-terminal", { type }))
-					.setIcon(i18n.t(`asset:generic.profile-types.${type}-icon`))
+					.setIcon(i18n.t("asset:menus.open-terminal-icon", { type }))
 					.onClick(() => {
 						if (type === "select") {
 							new SelectProfileModal(plugin, cwd0).open()

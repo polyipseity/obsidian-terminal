@@ -90,6 +90,7 @@
 		"terminal-profile-icon": "terminal-square"
 	},
 	"menus": {
+		"open-terminal-icon": "$t(asset:generic.profile-types.{{type}}-icon)",
 		"terminal": {
 			"edit-icon": "$t(asset:generic.edit-icon)",
 			"find-icon": "search",
