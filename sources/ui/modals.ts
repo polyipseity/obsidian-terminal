@@ -347,7 +347,7 @@ export class ProfileModal extends Modal {
 		}[] = PROFILE_PRESET_ORDERED_KEYS
 			.map(key => ({
 				get name(): string {
-					return plugin.language.i18n.t(`types.profile-presets.${key}`)
+					return plugin.language.i18n.t(`profile-presets.${key}`)
 				},
 				value: PROFILE_PRESETS[key],
 			})),
@@ -566,7 +566,7 @@ export class ProfileModal extends Modal {
 				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
 					ui.newSetting(element, setting => {
 						setting
-							.setName(i18n.t(`types.platforms.${platform}`))
+							.setName(i18n.t(`generic.platforms.${platform}`))
 							.addToggle(linkSetting(
 								() => profile.platforms[platform] ??
 									Settings.Profile.DEFAULTS[profile.type].platforms[platform],
@@ -577,7 +577,7 @@ export class ProfileModal extends Modal {
 							))
 							.addExtraButton(resetButton(
 								plugin,
-								i18n.t(`asset:types.platforms.${platform}-icon`),
+								i18n.t(`asset:generic.platforms.${platform}-icon`),
 								() => {
 									profile.platforms[platform] =
 										Settings.Profile.DEFAULTS[profile.type].platforms[platform]
@@ -651,7 +651,7 @@ export class ProfileModal extends Modal {
 				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
 					ui.newSetting(element, setting => {
 						setting
-							.setName(i18n.t(`types.platforms.${platform}`))
+							.setName(i18n.t(`generic.platforms.${platform}`))
 							.addToggle(linkSetting(
 								() => profile.platforms[platform] ??
 									Settings.Profile.DEFAULTS[profile.type].platforms[platform],
@@ -662,7 +662,7 @@ export class ProfileModal extends Modal {
 							))
 							.addExtraButton(resetButton(
 								plugin,
-								i18n.t(`asset:types.platforms.${platform}-icon`),
+								i18n.t(`asset:generic.platforms.${platform}-icon`),
 								() => {
 									profile.platforms[platform] =
 										Settings.Profile.DEFAULTS[profile.type].platforms[platform]
@@ -826,7 +826,7 @@ export class ProfileListModal
 				presets: options?.presets ?? PROFILE_PRESET_ORDERED_KEYS
 					.map(key => ({
 						get name(): string {
-							return plugin.language.i18n.t(`types.profile-presets.${key}`)
+							return plugin.language.i18n.t(`profile-presets.${key}`)
 						},
 						get value(): DeepWritable<Settings.Profile> {
 							return cloneAsWritable(PROFILE_PRESETS[key])

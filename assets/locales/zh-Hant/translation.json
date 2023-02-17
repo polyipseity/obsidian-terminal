@@ -4,9 +4,9 @@
 		"export-settings-to-current-file": "$t(generic.export)$t(generic.setting_other)到$t(generic.current-file)",
 		"import-settings-from-clipboard": "從$t(generic.clipboard)$t(generic.import)$t(generic.setting)",
 		"import-settings-from-current-file": "從$t(generic.current-file)$t(generic.import)$t(generic.setting)",
-		"open-terminal-": "$t(generic.open)$t(generic.terminal)：$t(types.profiles.{{type}})",
-		"open-terminal-current": "在$t(generic.terminal)$t(generic.open)$t(generic.current-directory)：$t(types.profiles.{{type}})",
-		"open-terminal-root": "在$t(generic.terminal)$t(generic.open)$t(generic.root-directory)：$t(types.profiles.{{type}})"
+		"open-terminal-": "$t(generic.open)$t(generic.terminal)：$t(generic.profile-types.{{type}})",
+		"open-terminal-current": "在$t(generic.terminal)$t(generic.open)$t(generic.current-directory)：$t(generic.profile-types.{{type}})",
+		"open-terminal-root": "在$t(generic.terminal)$t(generic.open)$t(generic.root-directory)：$t(generic.profile-types.{{type}})"
 	},
 	"components": {
 		"dialog": {
@@ -39,11 +39,11 @@
 				"arguments": "$t(generic.argument)",
 				"arguments-description": "$t(generic.list-description)",
 				"arguments-edit": "$t(generic.edit)",
-				"enable-win32-conhost-workaround": "$t(generic.enable)$t(types.platforms.win32)「conhost.exe」解決方法",
+				"enable-win32-conhost-workaround": "$t(generic.enable)$t(generic.platforms.win32)「conhost.exe」解決方法",
 				"enable-win32-conhost-workaround-description": "如果執行「conhost.exe」沒有創建視窗，請$t(generic.disable)。無保證這會起作用。",
 				"executable": "$t(generic.executable)",
 				"Python-executable": "$t(generic.Python)$t(generic.executable)",
-				"Python-executable-description": "於$t(types.platforms.unix)$t(generic.spawn)$t(types.profiles.integrated)$t(generic.terminal)所需要的。清除$t(generic.text-field)以$t(generic.disable)$t(generic.Python)。",
+				"Python-executable-description": "於$t(generic.platforms.unix)$t(generic.spawn)$t(generic.profile-types.integrated)$t(generic.terminal)所需要的。清除$t(generic.text-field)以$t(generic.disable)$t(generic.Python)。",
 				"Python-executable-placeholder": "（已$t(generic.disable)）"
 			},
 			"invalid": {
@@ -53,7 +53,7 @@
 			"preset": "$t(generic.preset)",
 			"title": "{{- name}}",
 			"type": "$t(generic.type)",
-			"type-options": "$t(types.profiles.{{type}})"
+			"type-options": "$t(generic.profile-types.{{type}})"
 		},
 		"profile-list": {
 			"descriptor": "{{- id}}",
@@ -65,7 +65,7 @@
 			"display-name": "$t(generic.terminal)：{{- name}}",
 			"edit": "$t(generic.edit)",
 			"name": {
-				"profile-type": "$t(types.profiles.{{type}})"
+				"profile-type": "$t(generic.profile-types.{{type}})"
 			},
 			"profile": "$t(generic.profile)",
 			"profile-edit": "$t(generic.edit)",
@@ -87,7 +87,7 @@
 		"error-spawning-resizer": "$t(generic.spawn)$t(generic.terminal-resizer)時出錯",
 		"error-killing-pseudoterminal": "終止$t(generic.pseudoterminal)時出錯",
 		"malformed-data": "$t(generic.data)格式不正確",
-		"no-Python-to-spawn-unix-pseudoterminal": "沒有$t(generic.Python)來$t(generic.spawn)$t(types.platforms.unix)$t(generic.pseudoterminal)",
+		"no-Python-to-spawn-unix-pseudoterminal": "沒有$t(generic.Python)來$t(generic.spawn)$t(generic.platforms.unix)$t(generic.pseudoterminal)",
 		"private-API-changed": "私有$t(generic.API)改變了",
 		"resizer-disabled": "$t(generic.terminal-resizer)已$t(generic.disable)",
 		"resizer-exited-unexpectedly": "$t(generic.terminal-resizer)意外$t(generic.exit)：{{- code}}",
@@ -133,11 +133,30 @@
 		"ordinal": "第{{- count}}",
 		"overwrite": "覆蓋",
 		"platform": "平台",
+		"platforms": {
+			"darwin": "\u200bmacOS",
+			"linux": "Linux",
+			"unix": "Unix",
+			"win32": "Microsoft Windows"
+		},
 		"plugin": "外掛程式",
 		"preset": "預設",
 		"profile": "配置",
+		"profile-types": {
+			"": "空白",
+			"console": "開發者控制台",
+			"external": "外部",
+			"integrated": "整合式",
+			"invalid": "無效",
+			"select": "（選擇）"
+		},
 		"pseudoterminal": "偽終端",
 		"renderer": "渲染器",
+		"renderers": {
+			"canvas": "畫布",
+			"dom": "文件物件模型",
+			"webgl": "WebGL"
+		},
 		"reset": "重設",
 		"restart": "重啟",
 		"retry": "重試",
@@ -155,7 +174,7 @@
 		"working-directory": "工作$t(generic.directory)"
 	},
 	"menus": {
-		"open-terminal": "在$t(generic.terminal)$t(generic.open)：$t(types.profiles.{{type}})",
+		"open-terminal": "在$t(generic.terminal)$t(generic.open)：$t(generic.profile-types.{{type}})",
 		"terminal": {
 			"edit": "$t(generic.edit)",
 			"find": "$t(generic.find)",
@@ -165,9 +184,25 @@
 	},
 	"name": "$t(generic.terminal)",
 	"notices": {
-		"no-default-profile": "沒有$t(generic.type)「$t(types.profiles.{{type}})」的$t(generic.default)$t(generic.profile)",
+		"no-default-profile": "沒有$t(generic.type)「$t(generic.profile-types.{{type}})」的$t(generic.default)$t(generic.profile)",
 		"spawning-terminal": "$t(generic.terminal)$t(generic.spawn)中：{{- name}}",
 		"terminal-exited": "$t(generic.terminal)已$t(generic.exit)：{{- code}}"
+	},
+	"profile-presets": {
+		"bashIntegrated": "bash：$t(generic.profile-types.integrated)",
+		"cmdIntegrated": "cmd：$t(generic.profile-types.integrated)",
+		"console": "$t(generic.profile-types.console)",
+		"darwinExternalDefault": "$t(generic.platforms.darwin)$t(generic.default)：$t(generic.profile-types.external)",
+		"darwinIntegratedDefault": "$t(generic.platforms.darwin)$t(generic.default)：$t(generic.profile-types.integrated)",
+		"dashIntegrated": "dash：$t(generic.profile-types.integrated)",
+		"empty": "$t(generic.profile-types.)",
+		"linuxExternalDefault": "$t(generic.platforms.linux)$t(generic.default)：$t(generic.profile-types.external)",
+		"linuxIntegratedDefault": "$t(generic.platforms.linux)$t(generic.default)：$t(generic.profile-types.integrated)",
+		"pwshIntegrated": "pwsh：$t(generic.profile-types.integrated)",
+		"shIntegrated": "sh：$t(generic.profile-types.integrated)",
+		"win32ExternalDefault": "$t(generic.platforms.win32)$t(generic.default)：$t(generic.profile-types.external)",
+		"win32IntegratedDefault": "$t(generic.platforms.win32)$t(generic.default)：$t(generic.profile-types.integrated)",
+		"zshIntegrated": "zsh：$t(generic.profile-types.integrated)"
 	},
 	"ribbons": {
 		"open-terminal": "$t(generic.open)$t(generic.terminal)"
@@ -208,7 +243,7 @@
 		"notice-timeout": "$t(generic.notice)$t(generic.timeout)（s）",
 		"notice-timeout-description": "設為0 s是無$t(generic.timeout)。設為負數以$t(generic.disable)$t(generic.notice)。",
 		"preferred-renderer": "首選$t(generic.renderer)",
-		"preferred-renderer-options": "$t(types.renderers.{{type}})",
+		"preferred-renderer-options": "$t(generic.renderers.{{type}})",
 		"profile-list": {
 			"description": "$t(generic.list)中第一個此$t(generic.platform)上可用的$t(generic.profile)是其$t(generic.terminal)$t(generic.type)的$t(generic.default)$t(generic.profile)。"
 		},
@@ -216,42 +251,5 @@
 		"profiles-description": "$t(generic.list-description)",
 		"profiles-edit": "$t(generic.edit)",
 		"reset": "$t(generic.reset)"
-	},
-	"types": {
-		"platforms": {
-			"darwin": "\u200bmacOS",
-			"linux": "Linux",
-			"unix": "Unix",
-			"win32": "Microsoft Windows"
-		},
-		"profile-presets": {
-			"bashIntegrated": "bash：$t(types.profiles.integrated)",
-			"cmdIntegrated": "cmd：$t(types.profiles.integrated)",
-			"console": "$t(types.profiles.console)",
-			"darwinExternalDefault": "$t(types.platforms.darwin)$t(generic.default)：$t(types.profiles.external)",
-			"darwinIntegratedDefault": "$t(types.platforms.darwin)$t(generic.default)：$t(types.profiles.integrated)",
-			"dashIntegrated": "dash：$t(types.profiles.integrated)",
-			"empty": "$t(types.profiles.)",
-			"linuxExternalDefault": "$t(types.platforms.linux)$t(generic.default)：$t(types.profiles.external)",
-			"linuxIntegratedDefault": "$t(types.platforms.linux)$t(generic.default)：$t(types.profiles.integrated)",
-			"pwshIntegrated": "pwsh：$t(types.profiles.integrated)",
-			"shIntegrated": "sh：$t(types.profiles.integrated)",
-			"win32ExternalDefault": "$t(types.platforms.win32)$t(generic.default)：$t(types.profiles.external)",
-			"win32IntegratedDefault": "$t(types.platforms.win32)$t(generic.default)：$t(types.profiles.integrated)",
-			"zshIntegrated": "zsh：$t(types.profiles.integrated)"
-		},
-		"profiles": {
-			"": "空白",
-			"console": "開發者控制台",
-			"external": "外部",
-			"integrated": "整合式",
-			"invalid": "無效",
-			"select": "（選擇）"
-		},
-		"renderers": {
-			"canvas": "畫布",
-			"dom": "文件物件模型",
-			"webgl": "WebGL"
-		}
 	}
 }

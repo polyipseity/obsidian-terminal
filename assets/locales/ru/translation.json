@@ -4,9 +4,9 @@
 		"export-settings-to-current-file": "$t(generic.export, capitalize) $t(generic.setting_other) to $t(generic.current-file)",
 		"import-settings-from-clipboard": "$t(generic.import, capitalize) $t(generic.setting_other) from $t(generic.clipboard)",
 		"import-settings-from-current-file": "$t(generic.import, capitalize) $t(generic.setting_other) from $t(generic.current-file)",
-		"open-terminal-": "$t(generic.open, capitalize) $t(generic.terminal): $t(types.profiles.{{type}}, capitalize)",
-		"open-terminal-current": "$t(generic.open, capitalize) $t(generic.current-directory) in $t(generic.terminal): $t(types.profiles.{{type}}, capitalize)",
-		"open-terminal-root": "$t(generic.open, capitalize) $t(generic.root-directory) in $t(generic.terminal): $t(types.profiles.{{type}}, capitalize)"
+		"open-terminal-": "$t(generic.open, capitalize) $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
+		"open-terminal-current": "$t(generic.open, capitalize) $t(generic.current-directory) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
+		"open-terminal-root": "$t(generic.open, capitalize) $t(generic.root-directory) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)"
 	},
 	"components": {
 		"dialog": {
@@ -42,11 +42,11 @@
 				"arguments": "$t(generic.argument_other, capitalize)",
 				"arguments-description": "$t(generic.list-description, capitalize)",
 				"arguments-edit": "$t(generic.edit, capitalize)",
-				"enable-win32-conhost-workaround": "$t(generic.enable, capitalize) $t(types.platforms.win32) 'conhost.exe' workaround",
+				"enable-win32-conhost-workaround": "$t(generic.enable, capitalize) $t(generic.platforms.win32) 'conhost.exe' workaround",
 				"enable-win32-conhost-workaround-description": "$t(generic.disable, capitalize) if running 'conhost.exe' does not create a window. No guarantees this will work.",
 				"executable": "$t(generic.executable, capitalize)",
 				"Python-executable": "$t(generic.Python, capitalize) $t(generic.executable)",
-				"Python-executable-description": "Required on $t(types.platforms.unix) to $t(generic.spawn) $t(types.profiles.integrated) $t(generic.terminal). Clear $t(generic.text-field) to $t(generic.disable) $t(generic.Python).",
+				"Python-executable-description": "Required on $t(generic.platforms.unix) to $t(generic.spawn) $t(generic.profile-types.integrated) $t(generic.terminal). Clear $t(generic.text-field) to $t(generic.disable) $t(generic.Python).",
 				"Python-executable-placeholder": "($t(generic.disable_past, capitalize))"
 			},
 			"invalid": {
@@ -56,7 +56,7 @@
 			"preset": "$t(generic.preset, capitalize)",
 			"title": "{{- name}}",
 			"type": "$t(generic.type, capitalize)",
-			"type-options": "$t(types.profiles.{{type}}, capitalize)"
+			"type-options": "$t(generic.profile-types.{{type}}, capitalize)"
 		},
 		"profile-list": {
 			"descriptor": "{{- id}}",
@@ -68,7 +68,7 @@
 			"display-name": "$t(generic.terminal, capitalize): {{- name}}",
 			"edit": "$t(generic.edit, capitalize)",
 			"name": {
-				"profile-type": "$t(types.profiles.{{type}}, capitalize)"
+				"profile-type": "$t(generic.profile-types.{{type}}, capitalize)"
 			},
 			"profile": "$t(generic.profile, capitalize)",
 			"profile-edit": "$t(generic.edit, capitalize)",
@@ -90,7 +90,7 @@
 		"error-spawning-resizer": "Error $t(generic.spawn_gerund) $t(generic.terminal-resizer)",
 		"error-killing-pseudoterminal": "Error killing $t(generic.pseudoterminal)",
 		"malformed-data": "Malformed $t(generic.data)",
-		"no-Python-to-spawn-unix-pseudoterminal": "No $t(generic.Python) to $t(generic.spawn) $t(types.platforms.unix) $t(generic.pseudoterminal)",
+		"no-Python-to-spawn-unix-pseudoterminal": "No $t(generic.Python) to $t(generic.spawn) $t(generic.platforms.unix) $t(generic.pseudoterminal)",
 		"private-API-changed": "Private $t(generic.API) changed",
 		"resizer-disabled": "$t(generic.terminal-resizer, capitalize) $t(generic.disable_past)",
 		"resizer-exited-unexpectedly": "$t(generic.terminal-resizer, capitalize) $t(generic.exit_past) unexpectedly: {{- code}}",
@@ -148,13 +148,32 @@
 		"ordinal_two": "{{- count}}nd",
 		"overwrite": "overwrite",
 		"platform": "platform",
+		"platforms": {
+			"darwin": "\u200bmacOS",
+			"linux": "Linux",
+			"unix": "Unix",
+			"win32": "Microsoft Windows"
+		},
 		"plugin": "plugin",
 		"preset": "preset",
 		"profile": "$t(generic.profile_one)",
+		"profile-types": {
+			"": "empty",
+			"console": "developer console",
+			"external": "external",
+			"integrated": "integrated",
+			"invalid": "invalid",
+			"select": "select"
+		},
 		"profile_one": "profile",
 		"profile_other": "profiles",
 		"pseudoterminal": "pseudoterminal",
 		"renderer": "renderer",
+		"renderers": {
+			"canvas": "canvas",
+			"dom": "DOM",
+			"webgl": "WebGL"
+		},
 		"reset": "reset",
 		"restart": "restart",
 		"retry": "retry",
@@ -174,7 +193,7 @@
 		"working-directory": "working $t(generic.directory)"
 	},
 	"menus": {
-		"open-terminal": "$t(generic.open, capitalize) in $t(generic.terminal): $t(types.profiles.{{type}}, capitalize)",
+		"open-terminal": "$t(generic.open, capitalize) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
 		"terminal": {
 			"edit": "$t(generic.edit, capitalize)",
 			"find": "$t(generic.find, capitalize)",
@@ -184,9 +203,25 @@
 	},
 	"name": "$t(generic.terminal, capitalize)",
 	"notices": {
-		"no-default-profile": "No $t(generic.default) $t(generic.profile) for $t(generic.type) '$t(types.profiles.{{type}}, capitalize)'",
+		"no-default-profile": "No $t(generic.default) $t(generic.profile) for $t(generic.type) '$t(generic.profile-types.{{type}}, capitalize)'",
 		"spawning-terminal": "$t(generic.spawn_gerund, capitalize) $t(generic.terminal): {{- name}}",
 		"terminal-exited": "$t(generic.terminal, capitalize) $t(generic.exit_past): {{- code}}"
+	},
+	"profile-presets": {
+		"bashIntegrated": "bash: $t(generic.profile-types.integrated, capitalize)",
+		"cmdIntegrated": "cmd: $t(generic.profile-types.integrated, capitalize)",
+		"console": "$t(generic.profile-types.console)",
+		"darwinExternalDefault": "$t(generic.platforms.darwin, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
+		"darwinIntegratedDefault": "$t(generic.platforms.darwin, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",
+		"dashIntegrated": "dash: $t(generic.profile-types.integrated, capitalize)",
+		"empty": "$t(generic.profile-types., capitalize)",
+		"linuxExternalDefault": "$t(generic.platforms.linux, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
+		"linuxIntegratedDefault": "$t(generic.platforms.linux, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",
+		"pwshIntegrated": "pwsh: $t(generic.profile-types.integrated, capitalize)",
+		"shIntegrated": "sh: $t(generic.profile-types.integrated, capitalize)",
+		"win32ExternalDefault": "$t(generic.platforms.win32, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
+		"win32IntegratedDefault": "$t(generic.platforms.win32, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",
+		"zshIntegrated": "zsh: $t(generic.profile-types.integrated, capitalize)"
 	},
 	"ribbons": {
 		"open-terminal": "$t(generic.open, capitalize) $t(generic.terminal)"
@@ -227,7 +262,7 @@
 		"notice-timeout": "$t(generic.notice, capitalize) $t(generic.timeout) (s)",
 		"notice-timeout-description": "Set to 0 s for no $t(generic.timeout). Set to negative to $t(generic.disable) $t(generic.notice).",
 		"preferred-renderer": "Preferred $t(generic.renderer)",
-		"preferred-renderer-options": "$t(types.renderers.{{type}}, capitalize)",
+		"preferred-renderer-options": "$t(generic.renderers.{{type}}, capitalize)",
 		"profile-list": {
 			"description": "The first $t(generic.profile) in the $t(generic.list) available on this $t(generic.platform) is the $t(generic.default) $t(generic.default) for its $t(generic.terminal) $t(generic.type)."
 		},
@@ -235,42 +270,5 @@
 		"profiles-description": "$t(generic.list-description, capitalize)",
 		"profiles-edit": "$t(generic.edit, capitalize)",
 		"reset": "$t(generic.reset, capitalize)"
-	},
-	"types": {
-		"platforms": {
-			"darwin": "\u200bmacOS",
-			"linux": "Linux",
-			"unix": "Unix",
-			"win32": "Microsoft Windows"
-		},
-		"profile-presets": {
-			"bashIntegrated": "bash: $t(types.profiles.integrated, capitalize)",
-			"cmdIntegrated": "cmd: $t(types.profiles.integrated, capitalize)",
-			"console": "$t(types.profiles.console)",
-			"darwinExternalDefault": "$t(types.platforms.darwin, capitalize) $t(generic.default): $t(types.profiles.external, capitalize)",
-			"darwinIntegratedDefault": "$t(types.platforms.darwin, capitalize) $t(generic.default): $t(types.profiles.integrated, capitalize)",
-			"dashIntegrated": "dash: $t(types.profiles.integrated, capitalize)",
-			"empty": "$t(types.profiles., capitalize)",
-			"linuxExternalDefault": "$t(types.platforms.linux, capitalize) $t(generic.default): $t(types.profiles.external, capitalize)",
-			"linuxIntegratedDefault": "$t(types.platforms.linux, capitalize) $t(generic.default): $t(types.profiles.integrated, capitalize)",
-			"pwshIntegrated": "pwsh: $t(types.profiles.integrated, capitalize)",
-			"shIntegrated": "sh: $t(types.profiles.integrated, capitalize)",
-			"win32ExternalDefault": "$t(types.platforms.win32, capitalize) $t(generic.default): $t(types.profiles.external, capitalize)",
-			"win32IntegratedDefault": "$t(types.platforms.win32, capitalize) $t(generic.default): $t(types.profiles.integrated, capitalize)",
-			"zshIntegrated": "zsh: $t(types.profiles.integrated, capitalize)"
-		},
-		"profiles": {
-			"": "empty",
-			"console": "developer console",
-			"external": "external",
-			"integrated": "integrated",
-			"invalid": "invalid",
-			"select": "select"
-		},
-		"renderers": {
-			"canvas": "canvas",
-			"dom": "DOM",
-			"webgl": "WebGL"
-		}
 	}
 }

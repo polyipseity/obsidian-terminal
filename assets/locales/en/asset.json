@@ -72,7 +72,20 @@
 		"next-icon": "arrow-down",
 		"output-to-clipboard-icon": "clipboard-copy",
 		"output-to-file-icon": "file-input",
+		"platforms": {
+			"darwin-icon": "terminal:macos",
+			"linux-icon": "terminal:linux",
+			"win32-icon": "terminal:windows"
+		},
 		"previous-icon": "arrow-up",
+		"profile-types": {
+			"-icon": "square",
+			"console-icon": "curly-braces",
+			"external-icon": "terminal-square",
+			"integrated-icon": "terminal",
+			"invalid-icon": "x-circle",
+			"select-icon": "text-cursor-input"
+		},
 		"remove-icon": "minus",
 		"terminal-profile-icon": "terminal-square"
 	},
@@ -110,20 +123,5 @@
 		"preferred-renderer-icon": "brush",
 		"profiles-icon": "$t(asset:generic.terminal-profile-icon)",
 		"profiles-edit-icon": "$t(asset:generic.edit-list-icon)"
-	},
-	"types": {
-		"platforms": {
-			"darwin-icon": "terminal:macos",
-			"linux-icon": "terminal:linux",
-			"win32-icon": "terminal:windows"
-		},
-		"profiles": {
-			"-icon": "square",
-			"console-icon": "curly-braces",
-			"external-icon": "terminal-square",
-			"integrated-icon": "terminal",
-			"invalid-icon": "x-circle",
-			"select-icon": "text-cursor-input"
-		}
 	}
 }
