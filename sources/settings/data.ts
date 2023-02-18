@@ -126,7 +126,7 @@ export namespace Settings {
 			readonly profile: Profile
 		} {
 			const name0 = name(profile)
-			return deepFreeze({
+			return Object.freeze({
 				id,
 				name: name0,
 				nameOrID: name0 || id,

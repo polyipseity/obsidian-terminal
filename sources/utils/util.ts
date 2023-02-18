@@ -147,9 +147,9 @@ export function bracket<T>(self: readonly T[], index: number): {
 	readonly valid: true
 	readonly value: T
 } {
-	return index in self
+	return Object.freeze(index in self
 		? { valid: true, value: self[index] as T }
-		: { valid: false }
+		: { valid: false })
 }
 
 export function capitalize(
