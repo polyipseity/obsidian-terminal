@@ -72,7 +72,7 @@
 		},
 		"select-profile": {
 			"item-text-": "$t(profile-name-formats.long)",
-			"item-text-incompatible": "($t(generic.incompatible)) $t(components.select-profile.item-text-)"
+			"item-text-incompatible": "（$t(generic.incompatible)）$t(components.select-profile.item-text-)"
 		},
 		"terminal": {
 			"display-name": "$t(generic.terminal)：{{name}}",
@@ -80,7 +80,7 @@
 				"profile": "$t(generic.profile)",
 				"profile-edit": "$t(generic.edit)",
 				"profile-name-": "$t(profile-name-formats.short)",
-				"profile-name-incompatible": "($t(generic.incompatible)) $t(components.terminal.edit-modal.profile-name-)",
+				"profile-name-incompatible": "（$t(generic.incompatible)）$t(components.terminal.edit-modal.profile-name-)",
 				"profile-placeholder": "$t(components.profile.preset-placeholder)",
 				"reset": "$t(generic.reset)",
 				"title": "$t(generic.edit)$t(generic.terminal)",
