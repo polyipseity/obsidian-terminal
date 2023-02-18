@@ -348,7 +348,7 @@ export function printError(
 export function updateDisplayText(view: View, workspace: Workspace): void {
 	const { containerEl } = view,
 		text = view.getDisplayText(),
-		viewHeaderEl = containerEl.querySelector(".view-header-title")
+		viewHeaderEl = containerEl.querySelector(`.${DOMClasses.VIEW_HEADER_TITLE}`)
 	let oldText: string | null = null
 	if (viewHeaderEl !== null) {
 		oldText = viewHeaderEl.textContent
@@ -360,11 +360,12 @@ export function updateDisplayText(view: View, workspace: Workspace): void {
 		if (leavesEl !== null) {
 			const
 				headerEl = leavesEl.parentElement
-					?.querySelector(".workspace-tab-header-container")
-					?.querySelectorAll(".workspace-tab-header")
+					?.querySelector(`.${DOMClasses.WORKSPACE_TAB_HEADER_CONTAINER}`)
+					?.querySelectorAll(`.${DOMClasses.WORKSPACE_TAB_HEADER}`)
 					.item(leavesEl.indexOf(leafEl)) ?? null,
 				titleEl = headerEl
-					?.querySelector(".workspace-tab-header-inner-title") ?? null
+					?.querySelector(`.${DOMClasses.WORKSPACE_TAB_HEADER_INNER_TITLE}`) ??
+					null
 			oldText ??= titleEl?.textContent ?? null
 			if (titleEl !== null) { titleEl.textContent = text }
 			if (headerEl !== null) { headerEl.ariaLabel = text }

@@ -25,8 +25,13 @@ export namespace DOMClasses {
 		MOD_WARNING = "mod-warning",
 		MODAL = "modal",
 		MODAL_CLOSE_BUTTON = "modal-close-button",
+		STATUS_BAR = "status-bar",
 		VERTICAL_TAB_CONTENT = "vertical-tab-content",
-		VERTICAL_TAB_CONTENT_CONTAINER = "vertical-tab-content-container"
+		VERTICAL_TAB_CONTENT_CONTAINER = "vertical-tab-content-container",
+		VIEW_HEADER_TITLE = "view-header-title",
+		WORKSPACE_TAB_HEADER = "workspace-tab-header",
+		WORKSPACE_TAB_HEADER_CONTAINER = "workspace-tab-header-container",
+		WORKSPACE_TAB_HEADER_INNER_TITLE = "workspace-tab-header-inner-title"
 }
 
 export namespace FileExtensions {
