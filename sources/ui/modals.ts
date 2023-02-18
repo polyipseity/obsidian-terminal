@@ -517,7 +517,8 @@ export class ProfileModal extends Modal {
 			case "developerConsole": {
 				break
 			}
-			case "external": {
+			case "external":
+			case "integrated": {
 				ui.newSetting(element, setting => {
 					setting
 						.setName(i18n.t(`components.profile.${profile.type}.executable`))
@@ -605,153 +606,63 @@ export class ProfileModal extends Modal {
 							))
 					})
 				}
-				break
-			}
-			case "integrated": {
-				ui.newSetting(element, setting => {
-					setting
-						.setName(i18n.t(`components.profile.${profile.type}.executable`))
-						.addText(linkSetting(
-							() => profile.executable,
-							value => {
-								profile.executable = value
-							},
-							async () => this.postMutate(),
-						))
-						.addExtraButton(resetButton(
-							i18n
-								.t(`asset:components.profile.${profile.type}.executable-icon`),
-							i18n.t("components.profile.reset"),
-							() => {
-								profile.executable =
-									Settings.Profile.DEFAULTS[profile.type].executable
-							},
-							async () => this.postMutate(),
-						))
-				}).newSetting(element, setting => {
-					setting
-						.setName(i18n.t(`components.profile.${profile.type}.arguments`))
-						.setDesc(i18n.t(`components.profile.${profile
-							.type}.arguments-description`, {
-							count: profile.args.length,
-							interpolation: { escapeValue: false },
-						}))
-						.addButton(button => button
-							.setIcon(i18n.t(`asset:components.profile.${profile
-								.type}.arguments-edit-icon`))
-							.setTooltip(i18n
-								.t(`components.profile.${profile.type}.arguments-edit`))
-							.onClick(() => {
-								new ListModal(
-									plugin,
-									ListModal.stringInputter({ back: identity, forth: identity }),
-									() => "",
-									profile.args,
-									{
-										callback: async (value): Promise<void> => {
-											profile.args = value
-											await this.postMutate()
-										},
-										dynamicWidth: true,
-										title: () =>
-											i18n.t(`components.profile.${profile.type}.arguments`),
-									},
-								).open()
-							}))
-						.addExtraButton(resetButton(
-							i18n.t(`asset:components.profile.${profile.type}.arguments-icon`),
-							i18n.t("components.profile.reset"),
-							() => {
-								profile.args =
-									cloneAsWritable(Settings.Profile.DEFAULTS[profile.type].args)
-							},
-							async () => this.postMutate(),
-						))
-				})
-				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
+				if (profile.type === "integrated") {
 					ui.newSetting(element, setting => {
 						setting
-							.setName(i18n.t("components.profile.platform", {
-								interpolation: { escapeValue: false },
-								type: platform,
-							}))
-							.addToggle(linkSetting(
-								() => profile.platforms[platform] ??
-									Settings.Profile.DEFAULTS[profile.type].platforms[platform],
+							.setName(i18n
+								.t(`components.profile.${profile.type}.Python-executable`))
+							.setDesc(i18n.t(`components.profile.${profile
+								.type}.Python-executable-description`))
+							.addText(linkSetting(
+								() => profile.pythonExecutable,
 								value => {
-									profile.platforms[platform] = value
+									profile.pythonExecutable = value
+								},
+								async () => this.postMutate(),
+								{
+									post: component => {
+										component
+											.setPlaceholder(i18n
+												.t(`components.profile.${profile
+													.type}.Python-executable-placeholder`))
+									},
+								},
+							))
+							.addExtraButton(resetButton(
+								i18n.t(`asset:components.profile.${profile
+									.type}.Python-executable-icon`),
+								i18n.t("components.profile.reset"),
+								() => {
+									profile.pythonExecutable =
+										Settings.Profile.DEFAULTS[profile.type].pythonExecutable
 								},
 								async () => this.postMutate(),
 							))
+					}).newSetting(element, setting => {
+						setting
+							.setName(i18n
+								.t(`components.profile.${profile.type}.use-win32-conhost`))
+							.setDesc(i18n.t(`components.profile.${profile
+								.type}.use-win32-conhost-description`))
+							.addToggle(linkSetting(
+								() => profile.useWin32Conhost,
+								value => { profile.useWin32Conhost = value },
+								async () => this.postMutate(),
+							))
 							.addExtraButton(resetButton(
-								i18n.t("asset:components.profile.platform-icon", {
-									interpolation: { escapeValue: false },
-									type: platform,
-								}),
+								i18n
+									.t(`asset:components.profile.${profile
+										.type}.enable-win32-conhost-workaround-icon`),
 								i18n.t("components.profile.reset"),
 								() => {
-									profile.platforms[platform] =
-										Settings.Profile.DEFAULTS[profile.type].platforms[platform]
+									profile.useWin32Conhost =
+										Settings.Profile.DEFAULTS[profile.type]
+											.useWin32Conhost
 								},
 								async () => this.postMutate(),
 							))
 					})
 				}
-				ui.newSetting(element, setting => {
-					setting
-						.setName(i18n
-							.t(`components.profile.${profile.type}.Python-executable`))
-						.setDesc(i18n.t(`components.profile.${profile
-							.type}.Python-executable-description`))
-						.addText(linkSetting(
-							() => profile.pythonExecutable,
-							value => {
-								profile.pythonExecutable = value
-							},
-							async () => this.postMutate(),
-							{
-								post: component => {
-									component
-										.setPlaceholder(i18n
-											.t(`components.profile.${profile
-												.type}.Python-executable-placeholder`))
-								},
-							},
-						))
-						.addExtraButton(resetButton(
-							i18n.t(`asset:components.profile.${profile
-								.type}.Python-executable-icon`),
-							i18n.t("components.profile.reset"),
-							() => {
-								profile.pythonExecutable =
-									Settings.Profile.DEFAULTS[profile.type].pythonExecutable
-							},
-							async () => this.postMutate(),
-						))
-				}).newSetting(element, setting => {
-					setting
-						.setName(i18n
-							.t(`components.profile.${profile.type}.use-win32-conhost`))
-						.setDesc(i18n.t(`components.profile.${profile
-							.type}.use-win32-conhost-description`))
-						.addToggle(linkSetting(
-							() => profile.useWin32Conhost,
-							value => { profile.useWin32Conhost = value },
-							async () => this.postMutate(),
-						))
-						.addExtraButton(resetButton(
-							i18n
-								.t(`asset:components.profile.${profile
-									.type}.enable-win32-conhost-workaround-icon`),
-							i18n.t("components.profile.reset"),
-							() => {
-								profile.useWin32Conhost =
-									Settings.Profile.DEFAULTS[profile.type]
-										.useWin32Conhost
-							},
-							async () => this.postMutate(),
-						))
-				})
 				break
 			}
 			case "invalid": {
