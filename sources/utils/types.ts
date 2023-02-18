@@ -1,6 +1,7 @@
 import type { DeepReadonly, DeepWritable } from "ts-essentials"
 
 export type AnyObject = Readonly<Record<number | string | symbol, unknown>>
+export type Contains<T, U> = T & U extends never ? false : true
 export type Sized<T extends readonly unknown[]> =
 	number extends T["length"] ? never : T
 export type Unchecked<T> = { readonly [_ in keyof T]?: unknown }

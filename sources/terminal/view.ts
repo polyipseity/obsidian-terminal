@@ -508,7 +508,7 @@ export class TerminalView extends ItemView {
 							plugin,
 							ele,
 							async terminal => {
-								if (!isUndefined(serial)) {
+								if (serial !== null) {
 									terminal.write(`${i18n.t(
 										"components.terminal.restored-history",
 										{

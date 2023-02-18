@@ -1,11 +1,11 @@
 import type { AsyncOrSync, DeepReadonly, DeepWritable } from "ts-essentials"
+import { type Contains, type Sized, simplifyType } from "./types"
 import { JSON_STRINGIFY_SPACE, SI_PREFIX_SCALE, UNDEFINED } from "sources/magic"
 import {
 	type PrimitiveTypeE,
 	type TypeofMapE,
 	genericTypeofGuardE,
 } from "./typeof"
-import { type Sized, simplifyType } from "./types"
 import type { ChildProcess } from "node:child_process"
 import type { Writable } from "node:stream"
 import { getSerialize } from "json-stringify-safe"
@@ -260,35 +260,11 @@ export function identity<T>(value: T): T {
 	return value
 }
 
-export function isHomogenousArray<T extends PrimitiveTypeE>(
-	types: readonly T[],
-	value: unknown,
-): value is TypeofMapE[T][] {
-	if (!Array.isArray(value)) { return false }
-	return value.every(element => genericTypeofGuardE(types, element))
-}
-
-export function isNonNullish<T>(value: T | null | undefined): value is T {
-	return !isNullish(value)
-}
-
-export function isNull(value: unknown): value is null {
-	return value === null
-}
-
-export function isNullish(value: unknown): value is null | undefined {
-	return isNull(value) || isUndefined(value)
-}
-
 export function inSet<T extends readonly unknown[]>(
 	set: Sized<T>,
 	obj: unknown,
 ): obj is T[number] {
 	return set.includes(obj)
-}
-
-export function isUndefined(value: unknown): value is undefined {
-	return typeof value === "undefined"
 }
 
 export function insertAt<T>(
@@ -297,6 +273,33 @@ export function insertAt<T>(
 	...items: readonly T[]
 ): void {
 	self.splice(index, 0, ...items)
+}
+
+export function isHomogenousArray<T extends PrimitiveTypeE>(
+	types: readonly T[],
+	value: unknown,
+): value is TypeofMapE[T][] {
+	if (!Array.isArray(value)) { return false }
+	return value.every(element => genericTypeofGuardE(types, element))
+}
+
+export function isNonNullish<T>(value: Contains<T, null | undefined
+> extends true ? T : never): value is Contains<T, null | undefined
+> extends true ? NonNullable<T> : never {
+	return !isNullish(value)
+}
+
+export function isNullish<T>(value: Contains<T, null | undefined
+> extends true ? T : never): value is
+	Contains<T, null | undefined
+	> extends true ? T & null | T & undefined : never {
+	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+	return value === null || typeof value === "undefined"
+}
+
+export function isUndefined<T>(value: undefined extends T
+	? T : never): value is undefined extends T ? undefined : never {
+	return typeof value === "undefined"
 }
 
 export function length<T extends object,
