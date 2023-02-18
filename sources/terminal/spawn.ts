@@ -1,8 +1,8 @@
 import { FuzzySuggestModal, type WorkspaceLeaf } from "obsidian"
+import { PLATFORM, isUndefined } from "sources/utils/util"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "sources/main"
 import { TerminalView } from "./view"
-import { isUndefined } from "sources/utils/util"
 
 export class SelectProfileModal
 	extends FuzzySuggestModal<Settings.Profile.Entry> {
@@ -17,16 +17,27 @@ export class SelectProfileModal
 		return Object.entries(this.plugin.settings.profiles)
 	}
 
-	public override getItemText(item: Settings.Profile.Entry): string {
-		return Settings.Profile.nameOrID(item)
+	public override getItemText([id, profile]: Settings.Profile.Entry): string {
+		return this.plugin.language.i18n.t(
+			`components.select-profile.item-text-${Settings.Profile
+				.isCompatible(profile, PLATFORM)
+				? ""
+				: "incompatible"}`,
+			{
+				id,
+				interpolation: { escapeValue: false },
+				name: Settings.Profile.name(profile),
+				profile,
+			},
+		)
 	}
 
 	public override onChooseItem(
-		item: Settings.Profile.Entry,
+		[, profile]: Settings.Profile.Entry,
 		_evt: KeyboardEvent | MouseEvent,
 	): void {
 		const { plugin, cwd } = this
-		spawnTerminal(plugin, item[1], cwd)
+		spawnTerminal(plugin, profile, cwd)
 	}
 }
 

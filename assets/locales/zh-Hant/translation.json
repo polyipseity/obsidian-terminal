@@ -66,6 +66,10 @@
 			"preset-placeholder": "$t(components.dropdown.placeholder)",
 			"title": "$t(generic.profile)"
 		},
+		"select-profile": {
+			"item-text-": "\"{{name}}\". $t(generic.profile-types.{{profile.type}}). {{id}}.",
+			"item-text-incompatible": "（不兼容）$t(components.select-profile.item-text-)"
+		},
 		"terminal": {
 			"display-name": "$t(generic.terminal)：{{name}}",
 			"edit-modal": {
