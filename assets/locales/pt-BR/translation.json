@@ -70,14 +70,16 @@
 			"title": "$t(generic.profile_other, capitalize)"
 		},
 		"select-profile": {
-			"item-text-": "\"{{info.name}}\". $t(generic.profile-types.{{info.profile.type}}, capitalize). {{info.id}}.",
-			"item-text-incompatible": "(Incompatible) $t(components.select-profile.item-text-)"
+			"item-text-": "$t(profile-name-formats.long)",
+			"item-text-incompatible": "($t(generic.incompatible, capitalize)) $t(components.select-profile.item-text-)"
 		},
 		"terminal": {
 			"display-name": "$t(generic.terminal, capitalize): {{name}}",
 			"edit-modal": {
 				"profile": "$t(generic.profile, capitalize)",
 				"profile-edit": "$t(generic.edit, capitalize)",
+				"profile-name-": "$t(profile-name-formats.short)",
+				"profile-name-incompatible": "($t(generic.incompatible, capitalize)) $t(components.terminal.edit-modal.profile-name-)",
 				"profile-placeholder": "$t(components.profile.preset-placeholder)",
 				"reset": "$t(generic.reset, capitalize)",
 				"title": "$t(generic.edit, capitalize) $t(generic.terminal)",
@@ -153,6 +155,7 @@
 		"frontmatter": "frontmatter",
 		"import": "import",
 		"import_gerund": "importing",
+		"incompatible": "incompatible",
 		"language": "$t(generic.language_one)",
 		"language_one": "language",
 		"language_other": "languages",
@@ -221,6 +224,10 @@
 		"no-default-profile": "No $t(generic.default) $t(generic.profile) for $t(generic.type) '$t(generic.profile-types.{{type}}, capitalize)'",
 		"spawning-terminal": "$t(generic.spawn_gerund, capitalize) $t(generic.terminal): {{name}}",
 		"terminal-exited": "$t(generic.terminal, capitalize) $t(generic.exit_past): {{code}}"
+	},
+	"profile-name-formats": {
+		"long": "\"{{info.name}}\". $t(generic.profile-types.{{info.profile.type}}, capitalize). {{info.id}}.",
+		"short": "\"{{info.nameOrID}}\". $t(generic.profile-types.{{info.profile.type}}, capitalize)."
 	},
 	"profile-presets": {
 		"bashIntegrated": "bash: $t(generic.profile-types.integrated, capitalize)",

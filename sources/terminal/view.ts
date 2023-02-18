@@ -23,16 +23,8 @@ import {
 	TERMINAL_SEARCH_RESULTS_LIMIT,
 	UNDEFINED,
 } from "../magic"
-import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
 import {
-	UnnamespacedID,
-	notice2,
-	printError,
-	printMalformedData,
-	updateDisplayText,
-	useSettings,
-} from "sources/utils/obsidian"
-import {
+	PLATFORM,
 	anyToError,
 	basename,
 	cloneAsWritable,
@@ -49,6 +41,15 @@ import {
 	saveFile,
 	typedStructuredClone,
 } from "../utils/util"
+import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
+import {
+	UnnamespacedID,
+	notice2,
+	printError,
+	printMalformedData,
+	updateDisplayText,
+	useSettings,
+} from "sources/utils/obsidian"
 import { linkSetting, resetButton } from "sources/ui/settings"
 import { CanvasAddon } from "xterm-addon-canvas"
 import type { DeepWritable } from "ts-essentials"
@@ -139,7 +140,14 @@ class EditTerminalModal extends DialogModal {
 											.entries(profiles)
 											.map(entry => [
 												entry[0],
-												Settings.Profile.info(entry).nameOrID,
+												// eslint-disable-next-line max-len
+												i18n.t(`components.terminal.edit-modal.profile-name-${Settings
+													.Profile.isCompatible(entry[1], PLATFORM)
+													? ""
+													: "incompatible"}`, {
+													info: Settings.Profile.info(entry),
+													interpolation: { escapeValue: false },
+												}),
 											])))
 							},
 						},

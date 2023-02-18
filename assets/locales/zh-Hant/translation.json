@@ -67,14 +67,16 @@
 			"title": "$t(generic.profile)"
 		},
 		"select-profile": {
-			"item-text-": "\"{{info.name}}\". $t(generic.profile-types.{{info.profile.type}}). {{info.id}}.",
-			"item-text-incompatible": "（不兼容）$t(components.select-profile.item-text-)"
+			"item-text-": "$t(profile-name-formats.long)",
+			"item-text-incompatible": "（$t(generic.incompatible)）$t(components.select-profile.item-text-)"
 		},
 		"terminal": {
 			"display-name": "$t(generic.terminal)：{{name}}",
 			"edit-modal": {
 				"profile": "$t(generic.profile)",
 				"profile-edit": "$t(generic.edit)",
+				"profile-name-": "$t(profile-name-formats.short)",
+				"profile-name-incompatible": "（$t(generic.incompatible)）$t(components.terminal.edit-modal.profile-name-)",
 				"profile-placeholder": "$t(components.profile.preset-placeholder)",
 				"reset": "$t(generic.reset)",
 				"title": "$t(generic.edit)$t(generic.terminal)",
@@ -144,6 +146,7 @@
 		"find": "搜尋",
 		"frontmatter": "前文",
 		"import": "導入",
+		"incompatible": "不兼容",
 		"language": "語言",
 		"list": "列表",
 		"list-description_other": "有{{count, number}}項項目。",
@@ -202,6 +205,10 @@
 		"no-default-profile": "沒有$t(generic.type)「$t(generic.profile-types.{{type}})」的$t(generic.default)$t(generic.profile)",
 		"spawning-terminal": "$t(generic.terminal)$t(generic.spawn)中：{{name}}",
 		"terminal-exited": "$t(generic.terminal)已$t(generic.exit)：{{code}}"
+	},
+	"profile-name-formats": {
+		"long": "\"{{info.name}}\". $t(generic.profile-types.{{info.profile.type}}). {{info.id}}.",
+		"short": "\"{{info.nameOrID}}\". $t(generic.profile-types.{{info.profile.type}})."
 	},
 	"profile-presets": {
 		"bashIntegrated": "bash：$t(generic.profile-types.integrated)",
