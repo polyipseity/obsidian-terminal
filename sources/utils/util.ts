@@ -1,5 +1,5 @@
 import type { AsyncOrSync, DeepReadonly, DeepWritable } from "ts-essentials"
-import { JSON_STRINGIFY_SPACE, UNDEFINED } from "sources/magic"
+import { JSON_STRINGIFY_SPACE, SI_PREFIX_SCALE, UNDEFINED } from "sources/magic"
 import {
 	type PrimitiveTypeE,
 	type TypeofMapE,
@@ -469,6 +469,12 @@ export function remove<T>(self: T[], item: T): T | undefined {
 
 export function removeAt<T>(self: T[], index: number): T | undefined {
 	return self.splice(index, 1)[0]
+}
+
+export async function sleep2(timeInSeconds: number): Promise<void> {
+	return new Promise(resolve => {
+		window.setTimeout(resolve, timeInSeconds * SI_PREFIX_SCALE)
+	})
 }
 
 export function swap(self: unknown[], left: number, right: number): void {

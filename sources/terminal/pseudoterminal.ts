@@ -2,6 +2,7 @@ import {
 	DEFAULT_ENCODING,
 	EXIT_SUCCESS,
 	TERMINAL_RESIZER_WATCHDOG_INTERVAL,
+	TERMINAL_RESIZE_DELAY,
 	UNDEFINED,
 	UNHANDLED_REJECTION_MESSAGE,
 } from "../magic"
@@ -15,6 +16,7 @@ import {
 	logError,
 	logFormat,
 	promisePromise,
+	sleep2,
 	spawnPromise,
 	typedKeys,
 	writePromise,
@@ -268,6 +270,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 							ret, codeTmp, resizerInitial.then(async resizer0 => {
 								if (resizer0 !== null) {
 									try {
+										await sleep2(TERMINAL_RESIZE_DELAY)
 										await writePromise(resizer0.stdin, `${ret.pid ?? -1}\n`)
 										const watchdog = window.setInterval(
 											() => {
