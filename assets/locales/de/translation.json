@@ -105,6 +105,8 @@
 		"error-spawning-resizer": "Error $t(generic.spawn_gerund) $t(generic.terminal-resizer)",
 		"error-killing-pseudoterminal": "Error killing $t(generic.pseudoterminal)",
 		"malformed-data": "Malformed $t(generic.data)",
+		"missing-interpolation": "Missing interpolation of name '{{name}}' is replaced by '{{value}}': {{text}}",
+		"missing-translation": "Missing translation of key '{{key}}' is replaced by '{{value}}'",
 		"no-Python-to-spawn-Unix-pseudoterminal": "No $t(generic.Python) to $t(generic.spawn) $t(generic.platforms.unix) $t(generic.pseudoterminal)",
 		"private-API-changed": "Private $t(generic.API) changed",
 		"resizer-disabled": "$t(generic.terminal-resizer, capitalize) $t(generic.disable_past)",

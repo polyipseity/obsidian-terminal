@@ -22,12 +22,44 @@ declare module "i18next" {
 
 export const I18N = (async (): Promise<i18n> => {
 	try {
+		const missingTranslationKey = "errors.missing-translation"
+		let missingInterpolationHandlerReentrant = false
 		const ret = createInstance({
 			cleanCode: true,
 			defaultNS: DEFAULT_NAMESPACE,
 			fallbackLng: FALLBACK_LANGUAGES,
 			initImmediate: true,
+			missingInterpolationHandler(text, value: RegExpExecArray) {
+				if (missingInterpolationHandlerReentrant) {
+					console.warn(value, text)
+				} else {
+					missingInterpolationHandlerReentrant = true
+					try {
+						console.warn(ret.t("errors.missing-interpolation", {
+							interpolation: { escapeValue: false },
+							name: value[1],
+							text,
+							value: value[0],
+						}))
+					} finally {
+						missingInterpolationHandlerReentrant = false
+					}
+				}
+				return value[0]
+			},
 			nonExplicitSupportedLngs: true,
+			parseMissingKeyHandler(key, defaultValue) {
+				if (key === missingTranslationKey) {
+					console.warn(key, defaultValue)
+				} else {
+					console.warn(ret.t(missingTranslationKey, {
+						interpolation: { escapeValue: false },
+						key,
+						value: defaultValue ?? key,
+					}))
+				}
+				return defaultValue ?? key
+			},
 			resources: RESOURCES,
 			returnNull: RETURN_NULL,
 		})

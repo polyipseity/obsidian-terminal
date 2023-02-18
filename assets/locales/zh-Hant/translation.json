@@ -102,6 +102,8 @@
 		"error-spawning-resizer": "$t(generic.spawn)$t(generic.terminal-resizer)時出錯",
 		"error-killing-pseudoterminal": "終止$t(generic.pseudoterminal)時出錯",
 		"malformed-data": "$t(generic.data)格式不正確",
+		"missing-interpolation": "名稱為「{{name}}」的缺少插值被替換為「{{value}}」：{{text}}",
+		"missing-translation": "鍵為「{{key}}」的缺少翻譯被替換為「{{value}}」",
 		"no-Python-to-spawn-Unix-pseudoterminal": "沒有$t(generic.Python)來$t(generic.spawn)$t(generic.platforms.unix)$t(generic.pseudoterminal)",
 		"private-API-changed": "私有$t(generic.API)改變了",
 		"resizer-disabled": "$t(generic.terminal-resizer)已$t(generic.disable)",
