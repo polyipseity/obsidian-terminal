@@ -75,6 +75,7 @@ class EditTerminalModal extends DialogModal {
 	) {
 		const { i18n } = plugin.language
 		super(plugin, {
+			dynamicWidth: true,
 			title: () => i18n.t("components.terminal.edit-modal.title"),
 		})
 		this.state = cloneAsWritable(protostate)

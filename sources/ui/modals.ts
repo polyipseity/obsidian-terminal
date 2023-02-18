@@ -810,6 +810,7 @@ export class DialogModal extends Modal {
 	readonly #description
 	readonly #draw
 	readonly #doubleConfirmTimeout
+	readonly #dynamicWidth
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
@@ -820,6 +821,7 @@ export class DialogModal extends Modal {
 			description?: () => string
 			draw?: (ui: UpdatableUI, element: HTMLElement) => void
 			doubleConfirmTimeout?: number
+			dynamicWidth?: boolean
 		},
 	) {
 		super(plugin.app)
@@ -829,6 +831,7 @@ export class DialogModal extends Modal {
 		this.#title = options?.title
 		this.#description = options?.description
 		this.#draw = options?.draw ?? ((): void => { })
+		this.#dynamicWidth = options?.dynamicWidth ?? false
 	}
 
 	public override onOpen(): void {
@@ -842,6 +845,7 @@ export class DialogModal extends Modal {
 		modalUI.finally(onChangeLanguage.listen(() => { modalUI.update() }))
 		ui.finally(() => { contentEl.replaceChildren() })
 			.finally(onChangeLanguage.listen(() => { ui.update() }))
+		if (this.#dynamicWidth) { makeModalDynamicWidth(modalUI, modalEl) }
 		if (!isUndefined(title)) {
 			modalUI.new(() => titleEl, ele => {
 				ele.textContent = title()
