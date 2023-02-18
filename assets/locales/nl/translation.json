@@ -65,9 +65,11 @@
 			"type-options": "$t(generic.profile-types.{{type}}, capitalize)"
 		},
 		"profile-list": {
-			"descriptor": "{{info.id}}",
+			"descriptor-": "{{info.id}}",
+			"descriptor-incompatible": "($t(generic.incompatible, capitalize)) $t(components.profile-list.descriptor-)",
 			"edit": "$t(generic.edit, capitalize)",
-			"namer": "{{info.name}}",
+			"namer-": "{{info.name}}",
+			"namer-incompatible": "$t(components.profile-list.namer-)",
 			"preset-placeholder": "$t(components.dropdown.placeholder)",
 			"title": "$t(generic.profile_other, capitalize)"
 		},

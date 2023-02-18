@@ -755,14 +755,20 @@ export class ProfileListModal
 				},
 				descriptor: options?.descriptor ?? ((profile): string => {
 					const id = dataKeys.get(profile) ?? ""
-					return i18n.t("components.profile-list.descriptor", {
+					return i18n.t(`components.profile-list.descriptor-${Settings
+						.Profile.isCompatible(profile, PLATFORM)
+						? ""
+						: "incompatible"}`, {
 						info: Settings.Profile.info([id, profile]),
 						interpolation: { escapeValue: false },
 					})
 				}),
 				namer: options?.namer ?? ((profile): string => {
 					const id = dataKeys.get(profile) ?? ""
-					return i18n.t("components.profile-list.namer", {
+					return i18n.t(`components.profile-list.namer-${Settings
+						.Profile.isCompatible(profile, PLATFORM)
+						? ""
+						: "incompatible"}`, {
 						info: Settings.Profile.info([id, profile]),
 						interpolation: { escapeValue: false },
 					})
