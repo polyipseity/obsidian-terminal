@@ -3,7 +3,7 @@
 	"displayName": "Obsidian Terminal",
 	"version": "3.0.0",
 	"author": "polyipseity",
-	"license": "MIT",
+	"license": "AGPL-3.0-or-later",
 	"description": "Integrate consoles, shells, and terminals inside Obsidian.",
 	"keywords": [
 		"console",
