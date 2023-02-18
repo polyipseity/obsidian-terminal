@@ -39,12 +39,12 @@ export class DocumentationMarkdownView extends MarkdownView {
 	): Promise<void> {
 		await super.setState(state, result)
 		const { plugin } = this,
-			{ value, valid } = DocumentationMarkdownView.State
-				.fix(readStateCollabratively(
-					DocumentationMarkdownView.type.namespaced(plugin),
-					state,
-				))
-		if (!valid) { printMalformedData(plugin, state, value) }
+			ownState = readStateCollabratively(
+				DocumentationMarkdownView.type.namespaced(plugin),
+				state,
+			),
+			{ value, valid } = DocumentationMarkdownView.State.fix(ownState)
+		if (!valid) { printMalformedData(plugin, ownState, value) }
 		this.state = value
 		this.setViewData(value.data, true)
 	}

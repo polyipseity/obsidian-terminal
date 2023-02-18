@@ -295,11 +295,12 @@ export class TerminalView extends ItemView {
 	): Promise<void> {
 		await super.setState(state, result)
 		const { plugin } = this,
-			{ value, valid } = TerminalView.State.fix(readStateCollabratively(
+			ownState = readStateCollabratively(
 				TerminalView.type.namespaced(plugin),
 				state,
-			))
-		if (!valid) { printMalformedData(plugin, state, value) }
+			),
+			{ value, valid } = TerminalView.State.fix(ownState)
+		if (!valid) { printMalformedData(plugin, ownState, value) }
 		this.state = value
 		this.startEmulator()
 	}
