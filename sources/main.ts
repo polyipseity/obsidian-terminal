@@ -10,6 +10,7 @@ import { asyncDebounce, printMalformedData } from "./utils/obsidian"
 import { LanguageManager } from "./i18n"
 import { Settings } from "./settings/data"
 import { StatusBarHider } from "./status-bar"
+import { loadDocumentation } from "./documentation/load"
 import { loadIcons } from "./icons"
 import { loadSettings } from "./settings/load"
 import { loadTerminal } from "./terminal/load"
@@ -94,6 +95,7 @@ export class TerminalPlugin extends Plugin {
 				await init
 				loadSettings(this)
 				this.statusBarHider.load()
+				loadDocumentation(this)
 				loadTerminal(this)
 			} catch (error) {
 				console.error(error)

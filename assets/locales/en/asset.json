@@ -4,6 +4,8 @@
 		"export-settings-to-current-file-icon": "$t(asset:generic.output-to-file-icon)",
 		"import-settings-from-clipboard-icon": "$t(asset:generic.input-from-clipboard-icon)",
 		"import-settings-from-current-file-icon": "$t(asset:generic.input-from-file-icon)",
+		"open-changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
+		"open-readme-icon": "$t(asset:generic.documentations.readme-icon)",
 		"open-terminal--icon": "command",
 		"open-terminal-current-icon": "file-terminal",
 		"open-terminal-root-icon": "terminal"
@@ -74,6 +76,10 @@
 		"cancel-icon": "x",
 		"confirm-icon": "check",
 		"data-icon": "curly-braces",
+		"documentations": {
+			"changelog-icon": "file-text",
+			"readme-icon": "file-question"
+		},
 		"edit-icon": "edit",
 		"edit-list-icon": "list",
 		"input-from-clipboard-icon": "clipboard",
@@ -114,6 +120,10 @@
 			"reload-icon": "loader",
 			"reset-icon": "reset",
 			"undo-icon": "undo"
+		},
+		"documentations": {
+			"changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
+			"readme-icon": "$t(asset:generic.documentations.readme-icon)"
 		},
 		"edit-settings": {
 			"data-icon": "$t(asset:generic.data-icon)",

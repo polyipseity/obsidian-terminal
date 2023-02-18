@@ -16,6 +16,7 @@ import {
 	unexpected,
 } from "../utils/util"
 import {
+	closeSetting,
 	linkSetting,
 	resetButton,
 	setTextToEnum,
@@ -25,6 +26,7 @@ import type { DeepWritable } from "ts-essentials"
 import { LANGUAGES } from "assets/locales"
 import { Settings } from "./data"
 import type { TerminalPlugin } from "../main"
+import { openDocumentation } from "sources/documentation/load"
 
 export class EditSettingsModal extends Modal {
 	protected readonly modalUI = new UpdatableUI()
@@ -214,6 +216,25 @@ export class SettingTab extends PluginSettingTab {
 							}),
 						() => { this.postMutate() },
 					))
+			})
+			.newSetting(containerEl, setting => {
+				setting
+					.setName(i18n.t("settings.documentation"))
+					.addButton(button => button
+						.setIcon(i18n.t("asset:settings.documentations.readme-icon"))
+						.setTooltip(i18n.t("settings.documentations.readme"))
+						.setCta()
+						.onClick(() => {
+							openDocumentation(plugin, "readme")
+							closeSetting(containerEl)
+						}))
+					.addButton(button => button
+						.setIcon(i18n.t("asset:settings.documentations.changelog-icon"))
+						.setTooltip(i18n.t("settings.documentations.changelog"))
+						.onClick(() => {
+							openDocumentation(plugin, "changelog")
+							closeSetting(containerEl)
+						}))
 			})
 			.newSetting(containerEl, setting => {
 				// Disabling undo is required for its CTA status to work properly

@@ -5,7 +5,18 @@ import type {
 	ValueComponent,
 } from "obsidian"
 import { inSet, isUndefined, unexpected } from "sources/utils/util"
+import { DOMClasses } from "sources/magic"
 import type { Sized } from "sources/utils/types"
+
+export function closeSetting(container: HTMLElement): void {
+	let element: HTMLElement | null = container
+	while (element !== null && !element.classList.contains(DOMClasses.MODAL)) {
+		element = element.parentElement
+	}
+	element
+		?.querySelector<HTMLElement>(`.${DOMClasses.MODAL_CLOSE_BUTTON}`)
+		?.click()
+}
 
 export interface ComponentAction<C, V> {
 	readonly pre?: (component: C) => void

@@ -23,6 +23,8 @@ export const
 export namespace DOMClasses {
 	export const
 		MOD_WARNING = "mod-warning",
+		MODAL = "modal",
+		MODAL_CLOSE_BUTTON = "modal-close-button",
 		VERTICAL_TAB_CONTENT = "vertical-tab-content",
 		VERTICAL_TAB_CONTENT_CONTAINER = "vertical-tab-content-container"
 }

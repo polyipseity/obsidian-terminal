@@ -38,7 +38,10 @@ If you want to view the source, please visit the repository of this plugin.
 		format: "cjs",
 		jsx: "transform",
 		legalComments: "inline",
-		loader: { ".py": "text" },
+		loader: {
+			".md": "text",
+			".py": "text",
+		},
 		logLevel: "info",
 		logLimit: 0,
 		metafile: true,

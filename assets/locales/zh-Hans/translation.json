@@ -4,6 +4,8 @@
 		"export-settings-to-current-file": "$t(generic.export)$t(generic.setting_other)到$t(generic.current-file)",
 		"import-settings-from-clipboard": "从$t(generic.clipboard)$t(generic.import)$t(generic.setting)",
 		"import-settings-from-current-file": "从$t(generic.current-file)$t(generic.import)$t(generic.setting)",
+		"open-changelog": "$t(generic.open)$t(generic.documentations.changelog)",
+		"open-readme": "$t(generic.open)$t(generic.documentations.readme)",
 		"open-terminal-": "$t(generic.open)$t(generic.terminal)：$t(generic.profile-types.{{type}})",
 		"open-terminal-current": "在$t(generic.terminal)$t(generic.open)$t(generic.current-directory)：$t(generic.profile-types.{{type}})",
 		"open-terminal-root": "在$t(generic.terminal)$t(generic.open)$t(generic.root-directory)：$t(generic.profile-types.{{type}})"
@@ -107,6 +109,7 @@
 		"cannot-find-status-bar": "找不到$t(generic.status-bar)",
 		"error-exporting-settings": "$t(generic.export)$t(generic.setting)时出错",
 		"error-importing-settings": "$t(generic.import)$t(generic.setting)时出错",
+		"error-opening-documentation": "$t(generic.open)$t(generic.documentation)时出错",
 		"error-processing-frontmatter": "处理$t(generic.frontmatter)时出错：{{file.path}}",
 		"error-spawning-terminal": "$t(generic.spawn)$t(generic.terminal)时出错",
 		"error-spawning-resizer": "$t(generic.spawn)$t(generic.terminal-resizer)时出错",
@@ -139,6 +142,11 @@
 		"default": "默认",
 		"directory": "目录",
 		"disable": "禁用",
+		"documentation": "文档",
+		"documentations": {
+			"changelog": "更改日志",
+			"readme": "自述文件"
+		},
 		"edit": "编辑",
 		"executable": "可执行文件",
 		"exit": "退出",
@@ -246,6 +254,11 @@
 			"undo": "复原"
 		},
 		"description": "$t(generic.open)「$t(settings.all-settings)」下的「$t(settings.all-settings-actions.edit)」或$t(generic.use)$t(generic.command-palette)以$t(generic.export)或$t(generic.import)$t(generic.setting)。",
+		"documentation": "$t(generic.documentation)",
+		"documentations": {
+			"changelog": "$t(generic.documentations.changelog)",
+			"readme": "$t(generic.documentations.readme)"
+		},
 		"edit-settings": {
 			"data": "$t(generic.data)",
 			"export": "$t(generic.export)",

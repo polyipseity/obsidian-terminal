@@ -4,6 +4,8 @@
 		"export-settings-to-current-file": "$t(generic.export, capitalize) $t(generic.setting_other) to $t(generic.current-file)",
 		"import-settings-from-clipboard": "$t(generic.import, capitalize) $t(generic.setting_other) from $t(generic.clipboard)",
 		"import-settings-from-current-file": "$t(generic.import, capitalize) $t(generic.setting_other) from $t(generic.current-file)",
+		"open-changelog": "$t(generic.open, capitalize) $t(generic.documentations.changelog)",
+		"open-readme": "$t(generic.open, capitalize) $t(generic.documentations.readme)",
 		"open-terminal-": "$t(generic.open, capitalize) $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
 		"open-terminal-current": "$t(generic.open, capitalize) $t(generic.current-directory) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
 		"open-terminal-root": "$t(generic.open, capitalize) $t(generic.root-directory) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)"
@@ -110,6 +112,7 @@
 		"cannot-find-status-bar": "Cannot find $t(generic.status-bar)",
 		"error-exporting-settings": "Error $t(generic.export_gerund) $t(generic.setting_other)",
 		"error-importing-settings": "Error $t(generic.import_gerund) $t(generic.setting_other)",
+		"error-opening-documentation": "Error $t(generic.open_gerund) $t(generic.documentation)",
 		"error-processing-frontmatter": "Error processing $t(generic.frontmatter): {{file.path}}",
 		"error-spawning-terminal": "Error $t(generic.spawn_gerund) $t(generic.terminal)",
 		"error-spawning-resizer": "Error $t(generic.spawn_gerund) $t(generic.terminal-resizer)",
@@ -145,6 +148,11 @@
 		"directory": "directory",
 		"disable": "disable",
 		"disable_past": "disabled",
+		"documentation": "documentation",
+		"documentations": {
+			"changelog": "changelog",
+			"readme": "readme"
+		},
 		"edit": "Edit",
 		"executable": "executable",
 		"exit": "exit",
@@ -170,6 +178,7 @@
 		"name": "name",
 		"notice": "notice",
 		"open": "open",
+		"open_gerund": "opening",
 		"ordinal_few": "{{count, number}}rd",
 		"ordinal_one": "{{count, number}}st",
 		"ordinal_other": "{{count, number}}th",
@@ -265,6 +274,11 @@
 			"undo": "Undo"
 		},
 		"description": "To $t(generic.export) or $t(generic.import) $t(generic.setting_other), open '$t(settings.all-settings-actions.edit)' under '$t(settings.all-settings)' or $t(generic.use) the $t(generic.command-palette).",
+		"documentation": "$t(generic.documentation, capitalize)",
+		"documentations": {
+			"changelog": "$t(generic.documentations.changelog, capitalize)",
+			"readme": "$t(generic.documentations.readme, capitalize)"
+		},
 		"edit-settings": {
 			"data": "$t(generic.data, capitalize)",
 			"export": "$t(generic.export, capitalize)",
