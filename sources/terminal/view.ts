@@ -133,7 +133,7 @@ class EditTerminalModal extends DialogModal {
 							pre: component => {
 								component
 									.addOption(unselected, i18n
-										.t("components.dropdown.unselected"))
+										.t("components.terminal.edit-modal.profile-placeholder"))
 									.addOptions(Object
 										.fromEntries(Object
 											.entries(profiles)

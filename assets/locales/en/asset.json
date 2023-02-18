@@ -48,6 +48,7 @@
 				"data-icon": "$t(asset:generic.data-icon)"
 			},
 			"name-icon": "text-cursor-input",
+			"platform-icon": "$t(asset:generic.platforms.{{type}}-icon)",
 			"type-icon": "type"
 		},
 		"profile-list": {

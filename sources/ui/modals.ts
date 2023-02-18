@@ -64,6 +64,7 @@ export class ListModal<T> extends Modal {
 	readonly #namer
 	readonly #descriptor
 	readonly #presets
+	readonly #presetPlaceholder
 	readonly #dynamicWidth
 
 	public constructor(
@@ -99,6 +100,8 @@ export class ListModal<T> extends Modal {
 			}))
 		this.#descriptor = options?.descriptor ?? ((): string => "")
 		this.#presets = options?.presets
+		this.#presetPlaceholder = options?.presetPlaceholder ?? ((): string =>
+			i18n.t("components.editable-list.preset-placeholder"))
 		this.#dynamicWidth = options?.dynamicWidth ?? false
 	}
 
@@ -142,7 +145,8 @@ export class ListModal<T> extends Modal {
 			editables = this.#editables,
 			title = this.#title,
 			description = this.#description,
-			presets = this.#presets
+			presets = this.#presets,
+			presetPlaceholder = this.#presetPlaceholder
 		modalUI.finally(onChangeLanguage.listen(() => { modalUI.update() }))
 		ui.finally(listElRemover)
 			.finally(onChangeLanguage.listen(() => { ui.update() }))
@@ -180,7 +184,7 @@ export class ListModal<T> extends Modal {
 			setting
 				.setName(i18n.t("components.editable-list.prepend"))
 				.addDropdown(dropdownSelect(
-					i18n.t("components.dropdown.unselected"),
+					presetPlaceholder("prepend"),
 					presets,
 					async value => {
 						data.unshift(value)
@@ -217,7 +221,7 @@ export class ListModal<T> extends Modal {
 				setting
 					.setName(i18n.t("components.editable-list.append"))
 					.addDropdown(dropdownSelect(
-						i18n.t("components.dropdown.unselected"),
+						presetPlaceholder("append"),
 						presets,
 						async value => {
 							data.push(value)
@@ -328,6 +332,7 @@ export namespace ListModal {
 			readonly name: string
 			readonly value: T
 		}[]
+		readonly presetPlaceholder?: (action: "append" | "prepend") => string
 		readonly dynamicWidth?: boolean
 	}
 }
@@ -415,7 +420,7 @@ export class ProfileModal extends Modal {
 							pre: component => {
 								component
 									.addOption(NaN.toString(), i18n
-										.t("components.dropdown.unselected"))
+										.t("components.profile.preset-placeholder"))
 									.addOptions(Object.fromEntries(this.#presets
 										.map((selection, index) => [index, selection.name])))
 							},
@@ -574,7 +579,10 @@ export class ProfileModal extends Modal {
 				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
 					ui.newSetting(element, setting => {
 						setting
-							.setName(i18n.t(`generic.platforms.${platform}`))
+							.setName(i18n.t("components.profile.platform", {
+								interpolation: { escapeValue: false },
+								type: platform,
+							}))
 							.addToggle(linkSetting(
 								() => profile.platforms[platform] ??
 									Settings.Profile.DEFAULTS[profile.type].platforms[platform],
@@ -584,7 +592,10 @@ export class ProfileModal extends Modal {
 								async () => this.postMutate(),
 							))
 							.addExtraButton(resetButton(
-								i18n.t(`asset:generic.platforms.${platform}-icon`),
+								i18n.t("asset:components.profile.platform-icon", {
+									interpolation: { escapeValue: false },
+									type: platform,
+								}),
 								i18n.t("components.profile.reset"),
 								() => {
 									profile.platforms[platform] =
@@ -660,7 +671,10 @@ export class ProfileModal extends Modal {
 				for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
 					ui.newSetting(element, setting => {
 						setting
-							.setName(i18n.t(`generic.platforms.${platform}`))
+							.setName(i18n.t("components.profile.platform", {
+								interpolation: { escapeValue: false },
+								type: platform,
+							}))
 							.addToggle(linkSetting(
 								() => profile.platforms[platform] ??
 									Settings.Profile.DEFAULTS[profile.type].platforms[platform],
@@ -670,7 +684,10 @@ export class ProfileModal extends Modal {
 								async () => this.postMutate(),
 							))
 							.addExtraButton(resetButton(
-								i18n.t(`asset:generic.platforms.${platform}-icon`),
+								i18n.t("asset:components.profile.platform-icon", {
+									interpolation: { escapeValue: false },
+									type: platform,
+								}),
 								i18n.t("components.profile.reset"),
 								() => {
 									profile.platforms[platform] =
@@ -829,6 +846,8 @@ export class ProfileListModal
 						interpolation: { escapeValue: false },
 						name: Settings.Profile.name(value),
 					})),
+				presetPlaceholder: options?.presetPlaceholder ?? ((): string =>
+					i18n.t("components.profile-list.preset-placeholder")),
 				presets: options?.presets ?? PROFILE_PRESET_ORDERED_KEYS
 					.map(key => ({
 						get name(): string {

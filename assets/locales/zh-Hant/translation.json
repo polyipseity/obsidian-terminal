@@ -14,7 +14,7 @@
 			"confirm": "$t(generic.confirm)"
 		},
 		"dropdown": {
-			"unselected": ""
+			"placeholder": "（未選擇）"
 		},
 		"editable-list": {
 			"append": "後置",
@@ -22,6 +22,7 @@
 			"move-up": "上移",
 			"name": "$t(generic.ordinal)",
 			"prepend": "前置",
+			"preset-placeholder": "$t(components.dropdown.placeholder)",
 			"remove": "刪除"
 		},
 		"find": {
@@ -50,7 +51,9 @@
 				"data": "$t(generic.data)"
 			},
 			"name": "$t(generic.name)",
+			"platform": "$t(generic.platforms.{{type}})",
 			"preset": "$t(generic.preset)",
+			"preset-placeholder": "($t(generic.custom))",
 			"reset": "$t(generic.reset)",
 			"title": "{{name}}",
 			"type": "$t(generic.type)",
@@ -60,6 +63,7 @@
 			"descriptor": "{{id}}",
 			"edit": "$t(generic.edit)",
 			"namer": "{{name}}",
+			"preset-placeholder": "$t(components.dropdown.placeholder)",
 			"title": "$t(generic.profile)"
 		},
 		"terminal": {
@@ -67,6 +71,7 @@
 			"edit-modal": {
 				"profile": "$t(generic.profile)",
 				"profile-edit": "$t(generic.edit)",
+				"profile-placeholder": "$t(components.profile.preset-placeholder)",
 				"reset": "$t(generic.reset)",
 				"title": "$t(generic.edit)$t(generic.terminal)",
 				"working-directory": "$t(generic.working-directory)",
@@ -117,6 +122,7 @@
 		"context-menu": "右鍵選單",
 		"current-directory": "目前$t(generic.directory)",
 		"current-file": "目前$t(generic.file)",
+		"custom": "自定義",
 		"data": "數據",
 		"default": "默認",
 		"directory": "目錄",

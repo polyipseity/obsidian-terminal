@@ -14,7 +14,7 @@
 			"confirm": "$t(generic.confirm, capitalize)"
 		},
 		"dropdown": {
-			"unselected": ""
+			"placeholder": "(Unselected)"
 		},
 		"editable-list": {
 			"append": "Append",
@@ -25,6 +25,7 @@
 			"name_other": "$t(generic.ordinal_other, capitalize)",
 			"name_two": "$t(generic.ordinal_two, capitalize)",
 			"prepend": "Prepend",
+			"preset-placeholder": "$t(components.dropdown.placeholder)",
 			"remove": "Remove"
 		},
 		"find": {
@@ -53,7 +54,9 @@
 				"data": "$t(generic.data, capitalize)"
 			},
 			"name": "$t(generic.name, capitalize)",
+			"platform": "$t(generic.platforms.{{type}}, capitalize)",
 			"preset": "$t(generic.preset, capitalize)",
+			"preset-placeholder": "($t(generic.custom, capitalize))",
 			"reset": "$t(generic.reset, capitalize)",
 			"title": "{{name}}",
 			"type": "$t(generic.type, capitalize)",
@@ -63,6 +66,7 @@
 			"descriptor": "{{id}}",
 			"edit": "$t(generic.edit, capitalize)",
 			"namer": "{{name}}",
+			"preset-placeholder": "$t(components.dropdown.placeholder)",
 			"title": "$t(generic.profile_other, capitalize)"
 		},
 		"terminal": {
@@ -70,6 +74,7 @@
 			"edit-modal": {
 				"profile": "$t(generic.profile, capitalize)",
 				"profile-edit": "$t(generic.edit, capitalize)",
+				"profile-placeholder": "$t(components.profile.preset-placeholder)",
 				"reset": "$t(generic.reset, capitalize)",
 				"title": "$t(generic.edit, capitalize) $t(generic.terminal)",
 				"working-directory": "$t(generic.working-directory, capitalize)",
@@ -122,6 +127,7 @@
 		"context-menu": "context menu",
 		"current-directory": "current $t(generic.directory)",
 		"current-file": "current $t(generic.file)",
+		"custom": "custom",
 		"data": "data",
 		"default": "default",
 		"directory": "directory",
