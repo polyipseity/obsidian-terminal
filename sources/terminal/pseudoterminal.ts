@@ -196,7 +196,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 		const { conhost } = this,
 			{ language } = plugin,
 			{ i18n } = language,
-			resizer = (async (): Promise<PipedChildProcess | null> => {
+			resizerInitial = (async (): Promise<PipedChildProcess | null> => {
 				if (isNullish(pythonExecutable)) {
 					return null
 				}
@@ -234,10 +234,9 @@ class WindowsPseudoterminal implements Pseudoterminal {
 			shell = (async (): Promise<readonly [
 				PipedChildProcess,
 				FileResultNoFd,
+				typeof resizerInitial,
 			]> => {
-				const [resizer0, resizerError] = await resizer
-					.then(resizer1 => Object.freeze([resizer1, null] as const))
-					.catch(error => Object.freeze([null, anyToError(error)] as const))
+				const resizer = await resizerInitial.catch(() => null)
 				try {
 					const codeTmp = (await tmp).fileSync({ discardDescriptor: true })
 					try {
@@ -261,56 +260,52 @@ class WindowsPseudoterminal implements Pseudoterminal {
 								{
 									cwd: cwd ?? UNDEFINED,
 									stdio: ["pipe", "pipe", "pipe"],
-									windowsHide: resizer0 === null,
+									windowsHide: resizer === null,
 									windowsVerbatimArguments: true,
 								},
 							))
-						try {
-							let resizerError0 = resizerError
-							if (resizer0 !== null) {
-								try {
-									await writePromise(resizer0.stdin, `${ret.pid ?? -1}\n`)
-									const watchdog = window.setInterval(
-										() => {
-											writePromise(resizer0.stdin, "\n")
-												.catch(error => { console.debug(error) })
-										},
-										TERMINAL_RESIZER_WATCHDOG_INTERVAL,
-									)
+						return [
+							ret, codeTmp, resizerInitial.then(async resizer0 => {
+								if (resizer0 !== null) {
 									try {
+										await writePromise(resizer0.stdin, `${ret.pid ?? -1}\n`)
+										const watchdog = window.setInterval(
+											() => {
+												writePromise(resizer0.stdin, "\n")
+													.catch(error => { console.debug(error) })
+											},
+											TERMINAL_RESIZER_WATCHDOG_INTERVAL,
+										)
 										resizer0.once(
 											"exit",
 											() => { window.clearInterval(watchdog) },
 										)
 									} catch (error) {
-										window.clearInterval(watchdog)
+										resizer0.kill()
 										throw error
 									}
-								} catch (error) {
-									resizerError0 = anyToError(error)
-									resizer0.kill()
 								}
-							}
-							if (resizerError0 !== null) {
+								return resizer0
+							}).catch(error => {
+								const error0 = anyToError(error)
 								printError(
-									resizerError0,
-									() => this.plugin.language
-										.i18n.t("errors.error-spawning-resizer"),
-									this.plugin,
+									error0,
+									() => i18n.t("errors.error-spawning-resizer"),
+									plugin,
 								)
-							}
-						} catch (error) { console.warn(error) }
-						return [ret, codeTmp]
+								throw error0
+							}),
+						]
 					} catch (error) {
 						codeTmp.removeCallback()
 						throw error
 					}
 				} catch (error) {
-					resizer0?.kill()
+					resizer?.kill()
 					throw error
 				}
 			})()
-		this.resizer = resizer
+		this.resizer = shell.then(async ([, , resizer]) => resizer)
 		this.shell = shell.then(([shell0]) => shell0)
 		this.onExit = shell
 			.then(async ([shell0, codeTmp]) =>
