@@ -1,5 +1,9 @@
 import { DOCUMENTATIONS, type DocumentationKey } from "./documentations"
-import { addCommand, printError } from "sources/utils/obsidian"
+import {
+	addCommand,
+	newCollabrativeState,
+	printError,
+} from "sources/utils/obsidian"
 import { DocumentationMarkdownView } from "./view"
 import type { TerminalPlugin } from "sources/main"
 import { anyToError } from "sources/utils/util"
@@ -33,9 +37,13 @@ export function openDocumentation(
 		{ i18n } = language
 	workspace.getLeaf("tab").setViewState({
 		active,
-		state: {
-			data: DOCUMENTATIONS[key],
-		} satisfies DocumentationMarkdownView.State,
+		state: newCollabrativeState(plugin, new Map([
+			[
+				DocumentationMarkdownView.type, {
+					data: DOCUMENTATIONS[key],
+				} satisfies DocumentationMarkdownView.State,
+			],
+		])),
 		type: DocumentationMarkdownView.type.namespaced(plugin),
 	})
 		.catch(error => {

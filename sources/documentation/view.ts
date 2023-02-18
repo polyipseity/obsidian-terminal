@@ -4,7 +4,12 @@ import {
 	type ViewStateResult,
 	type WorkspaceLeaf,
 } from "obsidian"
-import { UnnamespacedID, printMalformedData } from "sources/utils/obsidian"
+import {
+	UnnamespacedID,
+	printMalformedData,
+	readStateCollabratively,
+	writeStateCollabratively,
+} from "sources/utils/obsidian"
 import type { TerminalPlugin } from "sources/main"
 import { deepFreeze } from "sources/utils/util"
 import { launderUnchecked } from "sources/utils/types"
@@ -34,14 +39,22 @@ export class DocumentationMarkdownView extends MarkdownView {
 	): Promise<void> {
 		await super.setState(state, result)
 		const { plugin } = this,
-			{ value, valid } = DocumentationMarkdownView.State.fix(state)
+			{ value, valid } = DocumentationMarkdownView.State
+				.fix(readStateCollabratively(
+					DocumentationMarkdownView.type.namespaced(plugin),
+					state,
+				))
 		if (!valid) { printMalformedData(plugin, state, value) }
 		this.state = value
 		this.setViewData(value.data, true)
 	}
 
 	public override getState(): unknown {
-		return Object.assign(super.getState(), this.state)
+		return writeStateCollabratively(
+			super.getState(),
+			DocumentationMarkdownView.type.namespaced(this.plugin),
+			this.state,
+		)
 	}
 }
 export namespace DocumentationMarkdownView {

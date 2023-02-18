@@ -1,4 +1,4 @@
-
+import { type AnyObject, launderUnchecked } from "./types"
 import {
 	type BaseComponent,
 	ButtonComponent,
@@ -297,6 +297,18 @@ export function printMalformedData(
 	)
 }
 
+export function newCollabrativeState(
+	plugin: Plugin | PluginManifest,
+	states: ReadonlyMap<UnnamespacedID<string>, unknown>,
+): unknown {
+	const entries = (function* fn(): Generator<readonly [string, unknown], void> {
+		for (const [key, value] of states.entries()) {
+			yield [key.namespaced(plugin), value]
+		}
+	}())
+	return Object.freeze(Object.fromEntries(entries))
+}
+
 export function notice(
 	message: () => DocumentFragment | string,
 	timeout: number = NOTICE_NO_TIMEOUT,
@@ -343,6 +355,13 @@ export function printError(
 		plugin?.settings.errorNoticeTimeout ?? NOTICE_NO_TIMEOUT,
 		plugin,
 	)
+}
+
+export function readStateCollabratively(
+	implType: string,
+	state: unknown,
+): unknown {
+	return launderUnchecked<AnyObject>(state)[implType]
 }
 
 export function updateDisplayText(view: View, workspace: Workspace): void {
@@ -409,4 +428,12 @@ export function useSubsettings(element: HTMLElement): HTMLElement {
 		ret = element.createEl("div")
 	if (!first) { ret.createEl("div") }
 	return ret
+}
+
+export function writeStateCollabratively(
+	state: unknown,
+	implType: string,
+	implState: unknown,
+): unknown {
+	return Object.assign(launderUnchecked(state), { [implType]: implState })
 }

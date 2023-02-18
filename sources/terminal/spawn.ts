@@ -3,6 +3,7 @@ import { PLATFORM, isUndefined } from "sources/utils/util"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "sources/main"
 import { TerminalView } from "./view"
+import { newCollabrativeState } from "sources/utils/obsidian"
 
 export class SelectProfileModal
 	extends FuzzySuggestModal<Settings.Profile.Entry> {
@@ -60,11 +61,16 @@ export function spawnTerminal(
 			})()
 				.setViewState({
 					active: true,
-					state: {
-						cwd: cwd ?? null,
-						profile,
-						serial: null,
-					} satisfies TerminalView.State,
+					state: newCollabrativeState(plugin, new Map([
+						[
+							TerminalView.type,
+							{
+								cwd: cwd ?? null,
+								profile,
+								serial: null,
+							} satisfies TerminalView.State,
+						],
+					])),
 					type: TerminalView.type.namespaced(plugin),
 				})
 		} catch (error) {

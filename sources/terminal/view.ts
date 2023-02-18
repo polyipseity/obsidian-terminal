@@ -39,11 +39,14 @@ import {
 import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
 import {
 	UnnamespacedID,
+	newCollabrativeState,
 	notice2,
 	printError,
 	printMalformedData,
+	readStateCollabratively,
 	updateDisplayText,
 	useSettings,
+	writeStateCollabratively,
 } from "sources/utils/obsidian"
 import { linkSetting, resetButton } from "sources/ui/settings"
 import { CanvasAddon } from "xterm-addon-canvas"
@@ -292,7 +295,10 @@ export class TerminalView extends ItemView {
 	): Promise<void> {
 		await super.setState(state, result)
 		const { plugin } = this,
-			{ value, valid } = TerminalView.State.fix(state)
+			{ value, valid } = TerminalView.State.fix(readStateCollabratively(
+				TerminalView.type.namespaced(plugin),
+				state,
+			))
 		if (!valid) { printMalformedData(plugin, state, value) }
 		this.state = value
 		this.startEmulator()
@@ -303,7 +309,11 @@ export class TerminalView extends ItemView {
 		if (!isUndefined(serial)) {
 			this.state = copyOnWrite(this.state, state => { state.serial = serial })
 		}
-		return Object.assign(super.getState(), this.state)
+		return writeStateCollabratively(
+			super.getState(),
+			TerminalView.type.namespaced(this.plugin),
+			this.state,
+		)
 	}
 
 	public getDisplayText(): string {
@@ -399,7 +409,12 @@ export class TerminalView extends ItemView {
 						this.state,
 						async state => leaf.setViewState({
 							active: true,
-							state: state satisfies TerminalView.State,
+							state: newCollabrativeState(plugin, new Map([
+								[
+									TerminalView.type,
+									state satisfies TerminalView.State,
+								],
+							])),
 							type: this.getViewType(),
 						}),
 					).open()
