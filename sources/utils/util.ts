@@ -10,7 +10,8 @@ import type { ChildProcess } from "node:child_process"
 import type { Writable } from "node:stream"
 import { getSerialize } from "json-stringify-safe"
 
-export const EMPTY_OBJECT: Readonly<Record<string, never>> = deepFreeze({})
+export const EMPTY_OBJECT: Readonly<Record<number | string | symbol, never>> =
+	deepFreeze({})
 export const PLATFORMS =
 	deepFreeze(["android", "darwin", "ios", "linux", "unknown", "win32"] as const)
 export type Platform = typeof PLATFORMS[number]

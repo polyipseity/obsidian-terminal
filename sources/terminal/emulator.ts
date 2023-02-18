@@ -1,9 +1,4 @@
-import {
-	type Fixed,
-	fixTyped,
-	launderUnchecked,
-	markFixed,
-} from "sources/ui/fixers"
+import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
 import {
 	type ITerminalAddon,
 	type ITerminalInitOnlyOptions,
@@ -23,6 +18,7 @@ import type { TerminalPlugin } from "../main"
 import type { WebglAddon } from "xterm-addon-webgl"
 import { asyncDebounce } from "sources/utils/obsidian"
 import { debounce } from "obsidian"
+import { launderUnchecked } from "sources/utils/types"
 
 const
 	childProcess =

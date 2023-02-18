@@ -1,9 +1,4 @@
-import {
-	type Fixed,
-	fixTyped,
-	launderUnchecked,
-	markFixed,
-} from "sources/ui/fixers"
+import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
 import {
 	MarkdownView,
 	type ViewStateResult,
@@ -12,6 +7,7 @@ import {
 import { UnnamespacedID, printMalformedData } from "sources/utils/obsidian"
 import type { TerminalPlugin } from "sources/main"
 import { deepFreeze } from "sources/utils/util"
+import { launderUnchecked } from "sources/utils/types"
 
 export class DocumentationMarkdownView extends MarkdownView {
 	public static readonly type = new UnnamespacedID("documentation")

@@ -5,12 +5,7 @@ import {
 	RendererAddon,
 	XtermTerminalEmulator,
 } from "./emulator"
-import {
-	type Fixed,
-	fixTyped,
-	launderUnchecked,
-	markFixed,
-} from "sources/ui/fixers"
+import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
 import {
 	ItemView,
 	type Menu,
@@ -62,6 +57,7 @@ import { TextPseudoterminal } from "./pseudoterminal"
 import { Unicode11Addon } from "xterm-addon-unicode11"
 import { WebLinksAddon } from "xterm-addon-web-links"
 import { WebglAddon } from "xterm-addon-webgl"
+import { launderUnchecked } from "sources/utils/types"
 
 class EditTerminalModal extends DialogModal {
 	protected readonly state

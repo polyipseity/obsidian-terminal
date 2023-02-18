@@ -1,11 +1,15 @@
+import {
+	type AnyObject,
+	type Sized,
+	type Unchecked,
+	launderUnchecked,
+} from "sources/utils/types"
 import type { DeepRequired, DeepWritable } from "ts-essentials"
 import {
 	type Fixed,
-	type Unchecked,
 	fixArray,
 	fixInSet,
 	fixTyped,
-	launderUnchecked,
 	markFixed,
 } from "sources/ui/fixers"
 import {
@@ -20,7 +24,6 @@ import { NOTICE_NO_TIMEOUT } from "sources/magic"
 import { PROFILE_PRESETS } from "./profile-presets"
 import { Pseudoterminal } from "../terminal/pseudoterminal"
 import { RendererAddon } from "../terminal/emulator"
-import type { Sized } from "sources/utils/types"
 
 export interface Settings {
 	readonly language: Settings.DefaultableLanguage
@@ -98,13 +101,10 @@ export namespace Settings {
 			platform: Platform,
 		): boolean {
 			if (!("platforms" in profile)) { return true }
-			const { platforms } = profile
-			if (typeof platforms === "object") {
-				const ptfs: Readonly<Record<string, unknown>> = { ...platforms },
-					supported = ptfs[platform]
-				if (typeof supported === "boolean" && supported) {
-					return true
-				}
+			const platforms = launderUnchecked<AnyObject>(profile.platforms),
+				supported = platforms[platform]
+			if (typeof supported === "boolean" && supported) {
+				return true
 			}
 			return false
 		}
@@ -383,7 +383,7 @@ export namespace Settings {
 				return cloneAsWritable(defaults2)
 			})(),
 			recovery: Object.fromEntries(Object
-				.entries(typeof unc.recovery === "object" ? { ...unc.recovery } : {})
+				.entries(launderUnchecked(unc.recovery))
 				.map(([key, value]) => [key, String(value)])),
 		})
 	}

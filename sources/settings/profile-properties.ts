@@ -1,3 +1,4 @@
+import { type AnyObject, launderUnchecked } from "sources/utils/types"
 import {
 	ConsolePseudoterminal,
 	Pseudoterminal,
@@ -80,8 +81,8 @@ export const PROFILE_PROPERTIES: {
 					executable,
 					pythonExecutable,
 				} = profile,
-				platforms0: Readonly<Record<string, boolean>> = platforms
-			if (!(platforms0[PLATFORM] ?? false)) { return null }
+				supported = launderUnchecked<AnyObject>(platforms)[PLATFORM]
+			if (typeof supported !== "boolean" || !supported) { return null }
 			return new Pseudoterminal.PLATFORM_PSEUDOTERMINAL(plugin, {
 				args,
 				cwd: cwd ?? null,
