@@ -1,6 +1,7 @@
 import {
 	DEFAULT_ENCODING,
 	EXIT_SUCCESS,
+	SI_PREFIX_SCALE,
 	TERMINAL_RESIZER_WATCHDOG_INTERVAL,
 	TERMINAL_RESIZE_DELAY,
 	UNDEFINED,
@@ -277,7 +278,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 												writePromise(resizer0.stdin, "\n")
 													.catch(error => { console.debug(error) })
 											},
-											TERMINAL_RESIZER_WATCHDOG_INTERVAL,
+											TERMINAL_RESIZER_WATCHDOG_INTERVAL * SI_PREFIX_SCALE,
 										)
 										resizer0.once(
 											"exit",

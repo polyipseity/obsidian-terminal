@@ -10,6 +10,7 @@ import {
 	type ITerminalOptions,
 	Terminal,
 } from "xterm"
+import { SI_PREFIX_SCALE, TERMINAL_RESIZE_TIMEOUT } from "../magic"
 import { deepFreeze, isUndefined, spawnPromise } from "../utils/util"
 import { dynamicRequire, importable } from "../imports"
 import type { AsyncOrSync } from "ts-essentials"
@@ -18,7 +19,6 @@ import type { ChildProcessByStdio } from "node:child_process"
 import { FitAddon } from "xterm-addon-fit"
 import type { Pseudoterminal } from "./pseudoterminal"
 import { SerializeAddon } from "xterm-addon-serialize"
-import { TERMINAL_RESIZE_TIMEOUT } from "../magic"
 import type { TerminalPlugin } from "../main"
 import type { WebglAddon } from "xterm-addon-webgl"
 import { asyncDebounce } from "sources/utils/obsidian"
@@ -75,7 +75,7 @@ export class XtermTerminalEmulator<A> {
 			}
 			this.terminal.resize(columns, rows)
 		})().then(resolve, reject)
-	}, TERMINAL_RESIZE_TIMEOUT, false))
+	}, TERMINAL_RESIZE_TIMEOUT * SI_PREFIX_SCALE, false))
 
 	#running = true
 

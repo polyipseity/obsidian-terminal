@@ -8,6 +8,7 @@ import {
 	DISABLED_TOOLTIP,
 	DOMClasses,
 	JSON_STRINGIFY_SPACE,
+	SI_PREFIX_SCALE,
 } from "sources/magic"
 import {
 	PROFILE_PRESETS,
@@ -818,11 +819,11 @@ export class DialogModal extends Modal {
 	public override onOpen(): void {
 		super.onOpen()
 		const { plugin, modalEl, scope, modalUI, titleEl, ui, contentEl } = this,
-			doubleConfirmTimeout = this.#doubleConfirmTimeout,
 			{ language } = plugin,
 			{ i18n, onChangeLanguage } = language,
 			title = this.#title,
-			description = this.#description
+			description = this.#description,
+			doubleConfirmTimeout = this.#doubleConfirmTimeout ?? 0
 		modalUI.finally(onChangeLanguage.listen(() => { modalUI.update() }))
 		ui.finally(() => { contentEl.replaceChildren() })
 			.finally(onChangeLanguage.listen(() => { ui.update() }))
@@ -832,7 +833,7 @@ export class DialogModal extends Modal {
 			}, ele => { ele.textContent = null })
 		}
 		let confirmButton: ButtonComponent | null = null,
-			preconfirmed = (doubleConfirmTimeout ?? 0) <= 0
+			preconfirmed = doubleConfirmTimeout <= 0
 		modalUI
 			.newSetting(modalEl, setting => {
 				setting
@@ -861,7 +862,7 @@ export class DialogModal extends Modal {
 					window.setTimeout(() => {
 						preconfirmed = false
 						confirmButton?.removeCta().setWarning()
-					}, doubleConfirmTimeout)
+					}, doubleConfirmTimeout * SI_PREFIX_SCALE)
 					preconfirmed = true
 					confirmButton?.setCta().buttonEl.removeClass(DOMClasses.MOD_WARNING)
 				}
