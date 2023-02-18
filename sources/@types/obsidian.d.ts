@@ -2,6 +2,10 @@
 import "obsidian"
 
 declare module "obsidian" {
+	export interface ViewStateResult {
+		history: boolean
+	}
+
 	export interface WorkspaceRibbon {
 		addRibbonItemButton: (
 			id: string,

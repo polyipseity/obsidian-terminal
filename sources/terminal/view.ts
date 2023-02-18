@@ -207,6 +207,7 @@ export class TerminalView extends ItemView {
 	) {
 		TerminalView.#namespacedType = TerminalView.type.namespaced(plugin)
 		super(leaf)
+		this.navigation = true
 	}
 
 	protected get state(): TerminalView.State {
@@ -332,7 +333,7 @@ export class TerminalView extends ItemView {
 
 	public override onPaneMenu(menu: Menu, source: string): void {
 		super.onPaneMenu(menu, source)
-		const { plugin, contentEl } = this,
+		const { plugin, contentEl, leaf } = this,
 			{ i18n } = plugin.language
 		menu
 			.addSeparator()
@@ -400,10 +401,11 @@ export class TerminalView extends ItemView {
 					new EditTerminalModal(
 						plugin,
 						this.state,
-						state => {
-							this.state = state
-							this.startEmulator()
-						},
+						async state => leaf.setViewState({
+							active: true,
+							state: state satisfies TerminalView.State,
+							type: this.getViewType(),
+						}),
 					).open()
 				}))
 			.addItem(item => item
