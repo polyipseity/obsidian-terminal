@@ -55,6 +55,8 @@
 			},
 			"name": "$t(generic.name, capitalize)",
 			"platform": "$t(generic.platforms.{{type}}, capitalize)",
+			"platform-description-": "",
+			"platform-description-current": "Current $t(generic.platform)",
 			"preset": "$t(generic.preset, capitalize)",
 			"preset-placeholder": "($t(generic.custom, capitalize))",
 			"reset": "$t(generic.reset, capitalize)",

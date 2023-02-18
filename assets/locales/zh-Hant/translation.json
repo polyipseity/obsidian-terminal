@@ -52,6 +52,8 @@
 			},
 			"name": "$t(generic.name)",
 			"platform": "$t(generic.platforms.{{type}})",
+			"platform-description-": "",
+			"platform-description-current": "目前$t(generic.platform)",
 			"preset": "$t(generic.preset)",
 			"preset-placeholder": "($t(generic.custom))",
 			"reset": "$t(generic.reset)",

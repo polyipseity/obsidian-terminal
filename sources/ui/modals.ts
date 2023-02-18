@@ -11,15 +11,7 @@ import {
 	SI_PREFIX_SCALE,
 } from "sources/magic"
 import {
-	PROFILE_PRESETS,
-	PROFILE_PRESET_ORDERED_KEYS,
-} from "sources/settings/profile-presets"
-import {
-	UpdatableUI,
-	useSettings,
-	useSubsettings,
-} from "sources/utils/obsidian"
-import {
+	PLATFORM,
 	bracket,
 	clearProperties,
 	cloneAsWritable,
@@ -32,6 +24,15 @@ import {
 	typedStructuredClone,
 	unexpected,
 } from "sources/utils/util"
+import {
+	PROFILE_PRESETS,
+	PROFILE_PRESET_ORDERED_KEYS,
+} from "sources/settings/profile-presets"
+import {
+	UpdatableUI,
+	useSettings,
+	useSubsettings,
+} from "sources/utils/obsidian"
 import {
 	dropdownSelect,
 	linkSetting,
@@ -586,6 +587,11 @@ export class ProfileModal extends Modal {
 								interpolation: { escapeValue: false },
 								type: platform,
 							}))
+							.setDesc(i18n
+								.t(`components.profile.platform-description-${platform ===
+									PLATFORM
+									? "current"
+									: ""}`))
 							.addToggle(linkSetting(
 								() => profile.platforms[platform] ??
 									Settings.Profile.DEFAULTS[profile.type].platforms[platform],
