@@ -25,7 +25,8 @@ export class SelectProfileModal
 		item: Settings.Profile.Entry,
 		_evt: KeyboardEvent | MouseEvent,
 	): void {
-		spawnTerminal(this.plugin, item[1], this.cwd)
+		const { plugin, cwd } = this
+		spawnTerminal(plugin, item[1], cwd)
 	}
 }
 

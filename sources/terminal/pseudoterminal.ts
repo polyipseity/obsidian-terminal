@@ -71,7 +71,9 @@ abstract class PseudoPseudoterminal implements Pseudoterminal {
 		(await this.#exit).resolve(EXIT_SUCCESS)
 	}
 
-	public abstract pipe(terminal: Terminal): AsyncOrSync<void>
+	public pipe(_terminal: Terminal): AsyncOrSync<void> {
+		if (this.exited) { throw new Error() }
+	}
 }
 
 export class TextPseudoterminal
@@ -96,7 +98,7 @@ export class TextPseudoterminal
 	}
 
 	public override async pipe(terminal: Terminal): Promise<void> {
-		if (this.exited) { throw new Error() }
+		await super.pipe(terminal)
 		this.#terminals.push(terminal)
 		await this.rewrite(processText(this.text), [terminal])
 	}
@@ -146,7 +148,7 @@ export class ConsolePseudoterminal
 	}
 
 	public override async pipe(terminal: Terminal): Promise<void> {
-		if (this.exited) { throw new Error() }
+		await super.pipe(terminal)
 		terminal.clear()
 		this.#terminals.push(terminal)
 		await this.write(log(), [terminal])

@@ -9,11 +9,11 @@ import {
 	markFixed,
 } from "sources/ui/fixers"
 import {
-	PLATFORM,
 	type Platform,
 	cloneAsWritable,
 	deepFreeze,
 	inSet,
+	isUndefined,
 } from "../utils/util"
 import { LANGUAGES } from "assets/locales"
 import { NOTICE_NO_TIMEOUT } from "sources/magic"
@@ -83,24 +83,30 @@ export namespace Settings {
 		export function defaultOfType<T extends Type>(
 			type: T,
 			profiles: Profiles,
-			platform: Platform | null = PLATFORM,
+			platform?: Platform,
 		): Typed<T> | null {
 			for (const profile of Object.values(profiles)) {
-				if (isType(type, profile)) {
-					if (platform === null || !("platforms" in profile)) {
-						return profile
-					}
-					const { platforms } = profile
-					if (platforms !== null && typeof platforms === "object") {
-						const ptfs: Readonly<Record<string, unknown>> = { ...platforms },
-							supported = ptfs[platform]
-						if (typeof supported === "boolean" && supported) {
-							return profile
-						}
-					}
+				if (isType(type, profile) &&
+					(isUndefined(platform) || isCompatible(profile, platform))) {
+					return profile
 				}
 			}
 			return null
+		}
+		export function isCompatible(
+			profile: Profile,
+			platform: Platform,
+		): boolean {
+			if (!("platforms" in profile)) { return true }
+			const { platforms } = profile
+			if (typeof platforms === "object") {
+				const ptfs: Readonly<Record<string, unknown>> = { ...platforms },
+					supported = ptfs[platform]
+				if (typeof supported === "boolean" && supported) {
+					return true
+				}
+			}
+			return false
 		}
 		export function isType<T extends Type>(
 			type: T,

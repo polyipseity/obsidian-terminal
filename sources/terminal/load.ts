@@ -1,7 +1,7 @@
 import { FileSystemAdapter, type MenuItem, TFolder } from "obsidian"
+import { PLATFORM, deepFreeze, isNonNullish, isUndefined } from "../utils/util"
 import { SelectProfileModal, spawnTerminal } from "./spawn"
 import { addCommand, addRibbonIcon, notice2 } from "sources/utils/obsidian"
-import { deepFreeze, isNonNullish, isUndefined } from "../utils/util"
 import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "../main"
@@ -24,7 +24,11 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 	type CWDType = typeof CWD_TYPES[number]
 	const defaultProfile =
 		(type: Settings.Profile.Type): Settings.Profile | null => {
-			const ret = Settings.Profile.defaultOfType(type, plugin.settings.profiles)
+			const ret = Settings.Profile.defaultOfType(
+				type,
+				plugin.settings.profiles,
+				PLATFORM,
+			)
 			if (ret === null) {
 				notice2(
 					() => i18n.t("notices.no-default-profile", {
