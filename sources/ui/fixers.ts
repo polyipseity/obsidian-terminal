@@ -25,10 +25,10 @@ export function markFixed<T>(
 	unchecked: unknown,
 	fixed: DeepWritable<T>,
 ): Fixed<T> {
-	return {
+	return Object.freeze({
 		valid: deepEqual(unchecked, fixed, { strict: true }),
 		value: fixed,
-	}
+	})
 }
 
 export function fixTyped<S, K extends keyof S>(

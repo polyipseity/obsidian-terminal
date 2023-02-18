@@ -133,14 +133,14 @@ export class XtermTerminalEmulator<A> {
 	}
 
 	public serialize(): XtermTerminalEmulator.State {
-		return {
+		return deepFreeze({
 			columns: this.terminal.cols,
 			data: this.addons.serialize.serialize({
 				excludeAltBuffer: true,
 				excludeModes: true,
 			}),
 			rows: this.terminal.rows,
-		}
+		})
 	}
 }
 export namespace XtermTerminalEmulator {

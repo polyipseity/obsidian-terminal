@@ -15,6 +15,7 @@ import {
 } from "obsidian"
 import { DOMClasses, NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
 import {
+	EMPTY_OBJECT,
 	Functions,
 	deepFreeze,
 	isNonNullish,
@@ -252,7 +253,7 @@ export function asyncDebounce<
 export function cleanFrontmatterCache(
 	cache?: FrontMatterCache,
 ): Readonly<Record<string, unknown>> {
-	if (isUndefined(cache)) { return {} }
+	if (isUndefined(cache)) { return EMPTY_OBJECT }
 	const ret = typedStructuredClone<Partial<typeof cache>>(cache)
 	delete ret.position
 	return deepFreeze(ret)
