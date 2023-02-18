@@ -20,7 +20,8 @@ function spawnTerminal(
 ): void {
 	(async (): Promise<void> => {
 		try {
-			const { workspace } = app,
+			const { app } = plugin,
+				{ workspace } = app,
 				existingLeaves = workspace
 					.getLeavesOfType(TerminalView.type.namespaced(plugin))
 			await ((): WorkspaceLeaf => {

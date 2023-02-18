@@ -82,6 +82,8 @@ export class ListModal<T> extends Modal {
 		data: readonly T[],
 		options?: ListModal.Options<T>,
 	) {
+		const { app, language } = plugin,
+			{ i18n } = language
 		super(app)
 		this.data = [...data]
 		this.#inputter = inputter
@@ -90,7 +92,7 @@ export class ListModal<T> extends Modal {
 		this.#title = options?.title
 		this.#description = options?.description
 		this.#namer = options?.namer ?? ((_0, index): string =>
-			plugin.language.i18n.t("components.editable-list.name", {
+			i18n.t("components.editable-list.name", {
 				count: index + 1,
 				interpolation: { escapeValue: false },
 				ordinal: true,
