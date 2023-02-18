@@ -119,8 +119,19 @@ export namespace Settings {
 			if (typeof name0 === "string") { return name0 }
 			return ""
 		}
-		export function nameOrID(entry: Entry): string {
-			return name(entry[1]) || entry[0]
+		export function info([id, profile]: Entry): {
+			readonly id: string
+			readonly name: string
+			readonly nameOrID: string
+			readonly profile: Profile
+		} {
+			const name0 = name(profile)
+			return deepFreeze({
+				id,
+				name: name0,
+				nameOrID: name0 || id,
+				profile,
+			})
 		}
 		export type Platforms<T extends string> = { readonly [_ in T]?: boolean }
 		interface Base {

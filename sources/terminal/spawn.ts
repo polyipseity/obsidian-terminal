@@ -17,17 +17,15 @@ export class SelectProfileModal
 		return Object.entries(this.plugin.settings.profiles)
 	}
 
-	public override getItemText([id, profile]: Settings.Profile.Entry): string {
+	public override getItemText(item: Settings.Profile.Entry): string {
 		return this.plugin.language.i18n.t(
 			`components.select-profile.item-text-${Settings.Profile
-				.isCompatible(profile, PLATFORM)
+				.isCompatible(item[1], PLATFORM)
 				? ""
 				: "incompatible"}`,
 			{
-				id,
+				info: Settings.Profile.info(item),
 				interpolation: { escapeValue: false },
-				name: Settings.Profile.name(profile),
-				profile,
 			},
 		)
 	}

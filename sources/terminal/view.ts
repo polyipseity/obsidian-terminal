@@ -139,7 +139,7 @@ class EditTerminalModal extends DialogModal {
 											.entries(profiles)
 											.map(entry => [
 												entry[0],
-												Settings.Profile.nameOrID(entry),
+												Settings.Profile.info(entry).nameOrID,
 											])))
 							},
 						},

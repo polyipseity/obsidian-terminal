@@ -378,6 +378,7 @@ export class ProfileModal extends Modal {
 			ele.textContent = i18n.t("components.profile.title", {
 				interpolation: { escapeValue: false },
 				name: Settings.Profile.name(profile),
+				profile,
 			})
 		}, ele => { ele.textContent = null })
 		ui.finally(listElRemover)
@@ -746,18 +747,20 @@ export class ProfileListModal
 							return [id, typedStructuredClone(profile)]
 						}))
 				},
-				descriptor: options?.descriptor ?? ((value): string =>
-					i18n.t("components.profile-list.descriptor", {
-						id: dataKeys.get(value),
+				descriptor: options?.descriptor ?? ((profile): string => {
+					const id = dataKeys.get(profile) ?? ""
+					return i18n.t("components.profile-list.descriptor", {
+						info: Settings.Profile.info([id, profile]),
 						interpolation: { escapeValue: false },
-						name: Settings.Profile.name(value),
-					})),
-				namer: options?.namer ?? ((value): string =>
-					i18n.t("components.profile-list.namer", {
-						id: dataKeys.get(value),
+					})
+				}),
+				namer: options?.namer ?? ((profile): string => {
+					const id = dataKeys.get(profile) ?? ""
+					return i18n.t("components.profile-list.namer", {
+						info: Settings.Profile.info([id, profile]),
 						interpolation: { escapeValue: false },
-						name: Settings.Profile.name(value),
-					})),
+					})
+				}),
 				presetPlaceholder: options?.presetPlaceholder ?? ((): string =>
 					i18n.t("components.profile-list.preset-placeholder")),
 				presets: options?.presets ?? PROFILE_PRESET_ORDERED_KEYS

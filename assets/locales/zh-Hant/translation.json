@@ -60,14 +60,14 @@
 			"type-options": "$t(generic.profile-types.{{type}})"
 		},
 		"profile-list": {
-			"descriptor": "{{id}}",
+			"descriptor": "{{info.id}}",
 			"edit": "$t(generic.edit)",
-			"namer": "{{name}}",
+			"namer": "{{info.name}}",
 			"preset-placeholder": "$t(components.dropdown.placeholder)",
 			"title": "$t(generic.profile)"
 		},
 		"select-profile": {
-			"item-text-": "\"{{name}}\". $t(generic.profile-types.{{profile.type}}). {{id}}.",
+			"item-text-": "\"{{info.name}}\". $t(generic.profile-types.{{info.profile.type}}). {{info.id}}.",
 			"item-text-incompatible": "（不兼容）$t(components.select-profile.item-text-)"
 		},
 		"terminal": {
