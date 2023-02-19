@@ -11,7 +11,6 @@ import {
 	type PluginManifest,
 	Setting,
 	View,
-	type Workspace,
 } from "obsidian"
 import { DOMClasses, NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
 import {
@@ -364,19 +363,22 @@ export function readStateCollabratively(
 	return launderUnchecked<AnyObject>(state)[implType]
 }
 
-export function updateDisplayText(view: View, workspace: Workspace): void {
-	const { containerEl, leaf } = view,
-		{ tabHeaderEl, tabHeaderInnerTitleEl } = leaf,
-		text = view.getDisplayText(),
-		viewHeaderEl =
-			containerEl.querySelector(`.${DOMClasses.VIEW_HEADER_TITLE}`),
-		{ textContent: oldText } = tabHeaderInnerTitleEl
-	tabHeaderEl.ariaLabel = text
-	tabHeaderInnerTitleEl.textContent = text
-	if (viewHeaderEl !== null) { viewHeaderEl.textContent = text }
-	if (workspace.getActiveViewOfType(View) === view && oldText !== null) {
-		document.title = document.title.replace(oldText, text)
-	}
+export function updateDisplayText(plugin: TerminalPlugin, view: View): void {
+	usePrivateAPI(plugin, () => {
+		const { containerEl, leaf } = view,
+			{ tabHeaderEl, tabHeaderInnerTitleEl } = leaf,
+			text = view.getDisplayText(),
+			viewHeaderEl =
+				containerEl.querySelector(`.${DOMClasses.VIEW_HEADER_TITLE}`),
+			{ textContent: oldText } = tabHeaderInnerTitleEl
+		tabHeaderEl.ariaLabel = text
+		tabHeaderInnerTitleEl.textContent = text
+		if (viewHeaderEl !== null) { viewHeaderEl.textContent = text }
+		if (plugin.app.workspace.getActiveViewOfType(View) === view &&
+			oldText !== null) {
+			document.title = document.title.replace(oldText, text)
+		}
+	}, () => { })
 }
 
 export function usePrivateAPI<R>(

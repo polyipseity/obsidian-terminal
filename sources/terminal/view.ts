@@ -259,7 +259,7 @@ export class TerminalView extends ItemView {
 
 	protected set state(value: TerminalView.State) {
 		this.#state = value
-		updateDisplayText(this, this.plugin.app.workspace)
+		updateDisplayText(this.plugin, this)
 	}
 
 	set #emulator(val: TerminalView.EMULATOR | null) {
@@ -444,7 +444,7 @@ export class TerminalView extends ItemView {
 			{ workspace } = app
 
 		this.register(language.onChangeLanguage.listen(() => {
-			updateDisplayText(this, workspace)
+			updateDisplayText(plugin, this)
 		}))
 
 		this.#focus = workspace.getActiveViewOfType(TerminalView) === this

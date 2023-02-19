@@ -68,7 +68,7 @@ export class DocumentationMarkdownView extends MarkdownView {
 		}
 		await super.setState(state, result)
 		this.state = value
-		updateDisplayText(this, app.workspace)
+		updateDisplayText(plugin, this)
 		this.setViewData(value.data, true)
 	}
 
@@ -82,9 +82,9 @@ export class DocumentationMarkdownView extends MarkdownView {
 
 	protected override async onOpen(): Promise<void> {
 		await super.onOpen()
-		const { plugin, app } = this
+		const { plugin } = this
 		this.register(plugin.language.onChangeLanguage.listen(() => {
-			updateDisplayText(this, app.workspace)
+			updateDisplayText(plugin, this)
 		}))
 	}
 }
