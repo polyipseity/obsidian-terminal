@@ -65,7 +65,6 @@ For first time users, read the [installation](#installation) section first!
 - Add terminal text loading.
 - Add terminal duplication.
 - Add terminal restoring options.
-- Fix key problems (e.g. `Esc` unfocuses the terminal).
 - Color console log.
 - Add terminal style options.
 - Check whether the terminal looks okay in light theme.
