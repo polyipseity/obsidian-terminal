@@ -377,6 +377,41 @@ export class SettingTab extends PluginSettingTab {
 			})
 			.newSetting(containerEl, setting => {
 				setting
+					.setName(i18n.t("settings.profiles"))
+					.setDesc(i18n.t("settings.profiles-description", {
+						count: length(plugin.settings.profiles),
+						interpolation: { escapeValue: false },
+					}))
+					.addButton(button => button
+						.setIcon(i18n.t("asset:settings.profiles-edit-icon"))
+						.setTooltip(i18n.t("settings.profiles-edit"))
+						.onClick(() => {
+							new ProfileListModal(
+								plugin,
+								Object.entries(plugin.settings.profiles),
+								{
+									callback2: async (data): Promise<void> => {
+										await plugin.mutateSettings(settingsM => {
+											settingsM.profiles = Object.fromEntries(data)
+										})
+										this.postMutate()
+									},
+									description: (): string =>
+										i18n.t("settings.profile-list.description"),
+								},
+							).open()
+						}))
+					.addExtraButton(resetButton(
+						i18n.t("asset:settings.profiles-icon"),
+						i18n.t("settings.reset"),
+						async () => plugin.mutateSettings(settingsM => {
+							settingsM.profiles = cloneAsWritable(Settings.DEFAULT.profiles)
+						}),
+						() => { this.postMutate() },
+					))
+			})
+			.newSetting(containerEl, setting => {
+				setting
 					.setName(i18n.t("settings.hide-status-bar"))
 					.addDropdown(linkSetting(
 						(): string => plugin.settings.hideStatusBar,
@@ -445,41 +480,6 @@ export class SettingTab extends PluginSettingTab {
 						i18n.t("settings.reset"),
 						async () => plugin.mutateSettings(settingsM => {
 							settingsM.errorNoticeTimeout = Settings.DEFAULT.errorNoticeTimeout
-						}),
-						() => { this.postMutate() },
-					))
-			})
-			.newSetting(containerEl, setting => {
-				setting
-					.setName(i18n.t("settings.profiles"))
-					.setDesc(i18n.t("settings.profiles-description", {
-						count: length(plugin.settings.profiles),
-						interpolation: { escapeValue: false },
-					}))
-					.addButton(button => button
-						.setIcon(i18n.t("asset:settings.profiles-edit-icon"))
-						.setTooltip(i18n.t("settings.profiles-edit"))
-						.onClick(() => {
-							new ProfileListModal(
-								plugin,
-								Object.entries(plugin.settings.profiles),
-								{
-									callback2: async (data): Promise<void> => {
-										await plugin.mutateSettings(settingsM => {
-											settingsM.profiles = Object.fromEntries(data)
-										})
-										this.postMutate()
-									},
-									description: (): string =>
-										i18n.t("settings.profile-list.description"),
-								},
-							).open()
-						}))
-					.addExtraButton(resetButton(
-						i18n.t("asset:settings.profiles-icon"),
-						i18n.t("settings.reset"),
-						async () => plugin.mutateSettings(settingsM => {
-							settingsM.profiles = cloneAsWritable(Settings.DEFAULT.profiles)
 						}),
 						() => { this.postMutate() },
 					))

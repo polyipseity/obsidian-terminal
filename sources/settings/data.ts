@@ -33,11 +33,13 @@ export interface Settings {
 	readonly language: Settings.DefaultableLanguage
 	readonly addToCommand: boolean
 	readonly addToContextMenu: boolean
+	readonly profiles: Settings.Profiles
 	readonly hideStatusBar: Settings.HideStatusBarOption
 	readonly noticeTimeout: number
 	readonly errorNoticeTimeout: number
-	readonly profiles: Settings.Profiles
+
 	readonly preferredRenderer: Settings.PreferredRendererOption
+
 	readonly lastReadChangelogVersion: SemVerString
 	readonly recovery: Settings.Recovery
 }
