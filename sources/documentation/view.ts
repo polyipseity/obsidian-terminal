@@ -6,7 +6,6 @@ import {
 } from "obsidian"
 import {
 	UnnamespacedID,
-	printMalformedData,
 	readStateCollabratively,
 	writeStateCollabratively,
 } from "sources/utils/obsidian"
@@ -37,14 +36,20 @@ export class DocumentationMarkdownView extends MarkdownView {
 		state: unknown,
 		result: ViewStateResult,
 	): Promise<void> {
-		await super.setState(state, result)
-		const { plugin } = this,
+		const { plugin, app } = this,
 			ownState = readStateCollabratively(
 				DocumentationMarkdownView.type.namespaced(plugin),
 				state,
 			),
 			{ value, valid } = DocumentationMarkdownView.State.fix(ownState)
-		if (!valid) { printMalformedData(plugin, ownState, value) }
+		if (!valid) {
+			await app.workspace.getLeaf("tab").setViewState({
+				state,
+				type: super.getViewType(),
+			})
+			return
+		}
+		await super.setState(state, result)
 		this.state = value
 		this.setViewData(value.data, true)
 	}
