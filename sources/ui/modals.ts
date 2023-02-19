@@ -15,6 +15,7 @@ import {
 	bracket,
 	clearProperties,
 	cloneAsWritable,
+	consumeEvent,
 	deepFreeze,
 	identity,
 	isUndefined,
@@ -885,8 +886,7 @@ export class DialogModal extends Modal {
 					preconfirmed = true
 					confirmButton?.setCta().buttonEl.removeClass(DOMClasses.MOD_WARNING)
 				}
-				event.preventDefault()
-				event.stopPropagation()
+				consumeEvent(event)
 			}), null, ele => { scope.unregister(ele) })
 		if (!isUndefined(description)) {
 			ui.new(() => contentEl.createEl("div"), ele => {

@@ -160,6 +160,11 @@ export function capitalize(
 	return mapFirstCodePoint(first => first.toLocaleUpperCase(locales), str)
 }
 
+export function consumeEvent(event: Event): void {
+	event.preventDefault()
+	event.stopPropagation()
+}
+
 export function copyOnWrite<T extends object>(
 	obj: DeepReadonly<T>,
 	mutator: (obj: DeepWritable<T>) => void,

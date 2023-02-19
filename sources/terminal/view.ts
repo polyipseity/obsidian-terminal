@@ -25,6 +25,7 @@ import {
 	anyToError,
 	basename,
 	cloneAsWritable,
+	consumeEvent,
 	copyOnWrite,
 	deepFreeze,
 	extname,
@@ -201,10 +202,10 @@ export class TerminalView extends ItemView {
 		PLATFORM === "darwin" ? ["Meta"] : ["Ctrl", "Shift"]
 
 	static #namespacedType: string
-	protected readonly scope = new Scope()
+	protected readonly scope = new Scope(this.app.scope)
+	protected readonly focusedScope = new Scope()
 	#emulator0: TerminalView.EMULATOR | null = null
 	#find0: FindComponent | null = null
-	#focus0 = false
 	#state = TerminalView.State.DEFAULT
 
 	public constructor(
@@ -228,10 +229,6 @@ export class TerminalView extends ItemView {
 		return this.#find0
 	}
 
-	get #focus(): boolean {
-		return this.#focus0
-	}
-
 	get #name(): string {
 		const { plugin, state } = this,
 			{ i18n } = plugin.language,
@@ -252,9 +249,10 @@ export class TerminalView extends ItemView {
 
 	// eslint-disable-next-line consistent-return
 	get #hidesStatusBar(): boolean {
-		switch (this.plugin.settings.hideStatusBar) {
+		const { plugin, contentEl } = this
+		switch (plugin.settings.hideStatusBar) {
 			case "focused":
-				return this.#focus
+				return contentEl.contains(document.activeElement)
 			case "running":
 				return true
 			case "always":
@@ -280,29 +278,11 @@ export class TerminalView extends ItemView {
 			)
 		})
 		this.#emulator0 = val
-		if (val === null) { return }
-		const { terminal } = val
-		if (this.#focus) { terminal.focus() } else { terminal.blur() }
 	}
 
 	set #find(val: FindComponent | null) {
 		this.#find?.$destroy()
 		this.#find0 = val
-	}
-
-	set #focus(val: boolean) {
-		if (this.#focus0 === val) { return }
-		this.#focus0 = val
-		const { scope, app } = this,
-			{ keymap } = app,
-			term = this.#emulator?.terminal
-		if (val) {
-			keymap.pushScope(scope)
-			term?.focus()
-		} else {
-			keymap.popScope(scope)
-			term?.blur()
-		}
 	}
 
 	public override async setState(
@@ -408,61 +388,74 @@ export class TerminalView extends ItemView {
 
 	protected override async onOpen(): Promise<void> {
 		await super.onOpen()
-		const { plugin, scope, contentEl } = this,
-			{ app, language, statusBarHider } = plugin,
-			{ workspace, keymap, scope: appScope } = app
+		const { plugin, focusedScope, contentEl, containerEl, scope, app } = this,
+			{ language, statusBarHider } = plugin,
+			{ keymap } = app
 
 		this.register(language.onChangeLanguage.listen(() => {
 			updateDisplayText(plugin, this)
 		}))
 
-		this.register(() => { this.#focus = false })
-		this.#focus = workspace.getActiveViewOfType(TerminalView) === this
+		this.register(() => { keymap.popScope(scope) })
+		this.registerDomEvent(containerEl, "focusout", () => {
+			keymap.popScope(scope)
+		}, { passive: true })
+		this.registerDomEvent(containerEl, "focusin", () => {
+			keymap.pushScope(scope)
+		}, { capture: true, passive: true })
+		if (containerEl.contains(document.activeElement)) {
+			keymap.pushScope(scope)
+		}
+
+		this.register(() => { keymap.popScope(focusedScope) })
 		this.registerDomEvent(contentEl, "focusout", () => {
-			this.#focus = false
+			keymap.popScope(focusedScope)
+			statusBarHider.update()
 		}, { passive: true })
 		this.registerDomEvent(contentEl, "focusin", () => {
-			this.#focus = true
-		}, { passive: true })
+			keymap.pushScope(focusedScope)
+			statusBarHider.update()
+		}, { capture: true, passive: true })
+		if (contentEl.contains(document.activeElement)) {
+			keymap.pushScope(focusedScope)
+		}
 
-		this.register(() => { keymap.popScope(appScope) })
-		keymap.pushScope(appScope)
 		this.registerScopeEvent(scope.register(
 			cloneAsWritable(TerminalView.modifiers),
 			"`",
 			event => {
-				this.#focus = false
-				event.preventDefault()
-				event.stopPropagation()
+				this.#emulator?.terminal.focus()
+				consumeEvent(event)
 			},
 		))
-		this.registerScopeEvent(scope.register(
+		this.registerScopeEvent(focusedScope.register(
+			cloneAsWritable(TerminalView.modifiers),
+			"`",
+			event => {
+				this.#emulator?.terminal.blur()
+				consumeEvent(event)
+			},
+		))
+		this.registerScopeEvent(focusedScope.register(
 			cloneAsWritable(TerminalView.modifiers),
 			"f",
 			event => {
 				this.startFind()
-				event.preventDefault()
-				event.stopPropagation()
+				consumeEvent(event)
 			},
 		))
-		this.registerScopeEvent(scope.register(
+		this.registerScopeEvent(focusedScope.register(
 			cloneAsWritable(TerminalView.modifiers),
 			"k",
 			event => {
 				const term = this.#emulator?.terminal
 				term?.write("\u001b[2J\u001b[3J")
 				term?.clear()
-				event.preventDefault()
-				event.stopPropagation()
+				consumeEvent(event)
 			},
 		))
 
 		this.register(statusBarHider.hide(() => this.#hidesStatusBar))
-		this.registerEvent(workspace.on(
-			"active-leaf-change",
-			() => { statusBarHider.update() },
-		))
-
 		this.register(() => { this.#emulator = null })
 	}
 
@@ -519,11 +512,12 @@ export class TerminalView extends ItemView {
 	}
 
 	protected startEmulator(): void {
-		const { contentEl, plugin, leaf, state } = this,
+		const { contentEl, plugin, leaf, state, app } = this,
 			{ profile, cwd, serial } = state,
-			{ app, language } = plugin,
+			{ language } = plugin,
 			{ i18n } = language,
-			{ requestSaveLayout } = app.workspace,
+			{ workspace } = app,
+			{ requestSaveLayout } = workspace,
 			noticeSpawn = (): void => {
 				notice2(
 					() => i18n.t(
@@ -551,7 +545,7 @@ export class TerminalView extends ItemView {
 			return
 		}
 		contentEl.createEl("div", {
-			cls: TerminalView.divClass.namespaced(plugin),
+			cls: [TerminalView.divClass.namespaced(plugin)],
 		}, ele => {
 			const obsr = onVisible(ele, () => {
 				try {
