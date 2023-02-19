@@ -427,6 +427,15 @@ export class TerminalView extends ItemView {
 
 		this.registerScopeEvent(scope.register(
 			cloneAsWritable(TerminalView.modifiers),
+			"`",
+			event => {
+				this.#focus = false
+				event.preventDefault()
+				event.stopPropagation()
+			},
+		))
+		this.registerScopeEvent(scope.register(
+			cloneAsWritable(TerminalView.modifiers),
 			"f",
 			event => {
 				this.startFind()
