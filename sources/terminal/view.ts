@@ -9,6 +9,7 @@ import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
 import {
 	ItemView,
 	type Menu,
+	Scope,
 	type ViewStateResult,
 	type WorkspaceLeaf,
 } from "obsidian"
@@ -196,6 +197,7 @@ export class TerminalView extends ItemView {
 	public static readonly type = new UnnamespacedID("terminal")
 	public static readonly divClass = TerminalView.type
 	static #namespacedType: string
+	protected readonly scope = new Scope()
 	#emulator0: TerminalView.EMULATOR | null = null
 	#find0: FindComponent | null = null
 	#focus0 = false
@@ -285,9 +287,17 @@ export class TerminalView extends ItemView {
 	}
 
 	set #focus(val: boolean) {
-		const term = this.#emulator?.terminal
-		if (val) { term?.focus() } else { term?.blur() }
 		this.#focus0 = val
+		const { scope, app } = this,
+			{ keymap } = app,
+			term = this.#emulator?.terminal
+		if (val) {
+			keymap.pushScope(scope)
+			term?.focus()
+		} else {
+			keymap.popScope(scope)
+			term?.blur()
+		}
 	}
 
 	public override async setState(
@@ -449,6 +459,7 @@ export class TerminalView extends ItemView {
 			updateDisplayText(plugin, this)
 		}))
 
+		this.register(() => { this.#focus = false })
 		this.#focus = workspace.getActiveViewOfType(TerminalView) === this
 		this.registerEvent(app.workspace.on("active-leaf-change", leaf => {
 			if (leaf === this.leaf) {
