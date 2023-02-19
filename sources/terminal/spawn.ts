@@ -48,16 +48,31 @@ export function spawnTerminal(
 	(async (): Promise<void> => {
 		try {
 			const { app } = plugin,
-				{ workspace } = app,
-				existingLeaves = workspace
-					.getLeavesOfType(TerminalView.type.namespaced(plugin))
+				{ workspace } = app
+			// eslint-disable-next-line consistent-return
 			await ((): WorkspaceLeaf => {
-				const existingLeaf = existingLeaves.at(-1)
-				if (isUndefined(existingLeaf)) {
-					return workspace.getLeaf("split", "horizontal")
+				if (plugin.settings.createInstanceNearExistingOnes) {
+					const existingLeaf = workspace
+						.getLeavesOfType(TerminalView.type.namespaced(plugin))
+						.at(-1)
+					if (!isUndefined(existingLeaf)) {
+						workspace.setActiveLeaf(existingLeaf)
+						return workspace.getLeaf("tab")
+					}
 				}
-				workspace.setActiveLeaf(existingLeaf, { focus: false })
-				return workspace.getLeaf("tab")
+				switch (plugin.settings.newInstanceBehavior) {
+					case "replaceTab":
+						return workspace.getLeaf()
+					case "newTab":
+						return workspace.getLeaf("tab")
+					case "newHorizontalSplit":
+						return workspace.getLeaf("split", "horizontal")
+					case "newVerticalSplit":
+						return workspace.getLeaf("split", "vertical")
+					case "newWindow":
+						return workspace.getLeaf("window")
+					// No default
+				}
 			})()
 				.setViewState({
 					active: true,

@@ -138,6 +138,7 @@
 		"argument_one": "argument",
 		"argument_other": "arguments",
 		"background": "background",
+		"behavior": "behavior",
 		"cancel": "cancel",
 		"clipboard": "clipboard",
 		"command": "command",
@@ -172,6 +173,7 @@
 		"import": "import",
 		"import_gerund": "importing",
 		"incompatible": "incompatible",
+		"instance": "instance",
 		"language": "$t(generic.language_one)",
 		"language_one": "language",
 		"language_other": "languages",
@@ -225,12 +227,16 @@
 		"setting_other": "settings",
 		"spawn": "spawn",
 		"spawn_gerund": "spawning",
+		"split": "split",
 		"status-bar": "status bar",
+		"tab": "tab",
 		"terminal": "terminal",
 		"terminal-resizer": "$t(generic.terminal) resizer",
 		"timeout": "timeout",
+		"true": "true",
 		"type": "type",
 		"use": "use",
+		"window": "window",
 		"working-directory": "working $t(generic.directory)"
 	},
 	"menus": {
@@ -277,6 +283,8 @@
 			"reset": "$t(generic.reset, capitalize)",
 			"undo": "Undo"
 		},
+		"create-instance-near-existing-ones": "Create $t(generic.instance) near existing ones",
+		"create-instance-near-existing-ones-description": "Overrides '$t(settings.new-instance-behavior)' if $t(generic.true).",
 		"description": "To $t(generic.export) or $t(generic.import) $t(generic.setting_other), open '$t(settings.all-settings-actions.edit)' under '$t(settings.all-settings)' or $t(generic.use) the $t(generic.command-palette).",
 		"documentation": "$t(generic.documentation, capitalize)",
 		"documentations": {
@@ -303,6 +311,14 @@
 		"language": "$t(generic.language, capitalize)",
 		"language-default": "$t(generic.use, capitalize) $t(generic.app) $t(generic.setting)",
 		"language-description": "Applies to this $t(generic.plugin) only. $t(generic.language_other) with 🚧 need your help with translation!",
+		"new-instance-behavior": "New $t(generic.instance) $t(generic.behavior)",
+		"new-instance-behaviors": {
+			"newHorizontalSplit": "New horizontal $t(generic.split)",
+			"newTab": "New $t(generic.tab)",
+			"newVerticalSplit": "New vertical $t(generic.split)",
+			"newWindow": "New $t(generic.window)",
+			"replaceTab": "Replace $t(generic.tab)"
+		},
 		"notice-timeout": "$t(generic.notice, capitalize) $t(generic.timeout) (s)",
 		"notice-timeout-description": "Set to 0 s for no $t(generic.timeout). Set to negative to $t(generic.disable) $t(generic.notice).",
 		"preferred-renderer": "Preferred $t(generic.renderer)",

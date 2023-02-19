@@ -133,6 +133,7 @@
 		"app": "應用程式",
 		"argument": "參數",
 		"background": "後台",
+		"behavior": "行為",
 		"cancel": "取消",
 		"clipboard": "剪貼板",
 		"command": "命令",
@@ -163,6 +164,7 @@
 		"frontmatter": "前文",
 		"import": "導入",
 		"incompatible": "不兼容",
+		"instance": "個體",
 		"language": "語言",
 		"list": "列表",
 		"list-description_other": "有{{count, number}}項項目。",
@@ -204,13 +206,17 @@
 		"save": "儲存",
 		"setting": "設置",
 		"spawn": "啟動",
+		"split": "分割",
 		"status-bar": "狀態欄",
+		"tab": "分頁",
 		"terminal": "終端",
 		"terminal-resizer": "$t(generic.terminal)縮放程式",
 		"text-field": "文字域",
 		"timeout": "超時",
+		"true": "真",
 		"type": "類型",
 		"use": "使用",
+		"window": "視窗",
 		"working-directory": "工作$t(generic.directory)"
 	},
 	"menus": {
@@ -257,6 +263,8 @@
 			"reset": "$t(generic.reset)",
 			"undo": "復原"
 		},
+		"create-instance-near-existing-ones": "在現有$t(generic.instance)附近創建$t(generic.instance)",
+		"create-instance-near-existing-ones-description": "如果為$t(generic.true)，則覆蓋「$t(settings.new-instance-behavior)」。",
 		"description": "$t(generic.open)「$t(settings.all-settings)」下的「$t(settings.all-settings-actions.edit)」或$t(generic.use)$t(generic.command-palette)以$t(generic.export)或$t(generic.import)$t(generic.setting)。",
 		"documentation": "$t(generic.documentation)",
 		"documentations": {
@@ -283,6 +291,14 @@
 		"language": "$t(generic.language)",
 		"language-default": "$t(generic.use)$t(generic.app)$t(generic.setting)",
 		"language-description": "僅適用於此$t(generic.plugin)。標有🚧的$t(generic.language)需要您幫助來翻譯！",
+		"new-instance-behavior": "新$t(generic.instance)$t(generic.behavior)",
+		"new-instance-behaviors": {
+			"newHorizontalSplit": "新的水平$t(generic.split)",
+			"newTab": "新$t(generic.tab)",
+			"newVerticalSplit": "新的垂直$t(generic.split)",
+			"newWindow": "新$t(generic.window)",
+			"replaceTab": "替換$t(generic.tab)"
+		},
 		"notice-timeout": "$t(generic.notice)$t(generic.timeout)（s）",
 		"notice-timeout-description": "設為0 s是無$t(generic.timeout)。設為負數以$t(generic.disable)$t(generic.notice)。",
 		"preferred-renderer": "首選$t(generic.renderer)",

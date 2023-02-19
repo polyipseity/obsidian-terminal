@@ -125,6 +125,7 @@
 			"reset-icon": "reset",
 			"undo-icon": "undo"
 		},
+		"create-instance-near-existing-ones-icon": "plus",
 		"documentations": {
 			"changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
 			"readme-icon": "$t(asset:generic.documentations.readme-icon)"
@@ -137,6 +138,7 @@
 		"error-notice-timeout-icon": "$t(asset:settings.notice-timeout-icon)",
 		"hide-status-bar-icon": "eye-off",
 		"language-icon": "languages",
+		"new-instance-behavior-icon": "plus",
 		"notice-timeout-icon": "timer",
 		"preferred-renderer-icon": "brush",
 		"profiles-icon": "$t(asset:generic.terminal-profile-icon)",

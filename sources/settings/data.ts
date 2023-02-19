@@ -34,6 +34,8 @@ export interface Settings {
 	readonly addToCommand: boolean
 	readonly addToContextMenu: boolean
 	readonly profiles: Settings.Profiles
+	readonly newInstanceBehavior: Settings.NewInstanceBehavior
+	readonly createInstanceNearExistingOnes: boolean
 	readonly hideStatusBar: Settings.HideStatusBarOption
 	readonly noticeTimeout: number
 	readonly errorNoticeTimeout: number
@@ -58,12 +60,15 @@ export namespace Settings {
 		}
 		return ret
 	}
+
 	export const DEFAULT: Persistent = deepFreeze({
 		addToCommand: true,
 		addToContextMenu: true,
+		createInstanceNearExistingOnes: true,
 		errorNoticeTimeout: NOTICE_NO_TIMEOUT,
 		hideStatusBar: "focused",
 		language: "",
+		newInstanceBehavior: "newHorizontalSplit",
 		noticeTimeout: 5,
 		preferredRenderer: "webgl",
 		profiles: Object.fromEntries(([
@@ -76,15 +81,29 @@ export namespace Settings {
 			"win32IntegratedDefault",
 		] as const).map(key => [key, PROFILE_PRESETS[key]])),
 	} as const)
-	export type Recovery = Readonly<Record<string, string>>
+
 	export const DEFAULTABLE_LANGUAGES =
 		Object.freeze(["", ...LANGUAGES] as const)
 	export type DefaultableLanguage = typeof DEFAULTABLE_LANGUAGES[number]
+
+	export const NEW_INSTANCE_BEHAVIORS = Object.freeze([
+		"replaceTab",
+		"newTab",
+		"newHorizontalSplit",
+		"newVerticalSplit",
+		"newWindow",
+	] as const)
+	export type NewInstanceBehavior = typeof NEW_INSTANCE_BEHAVIORS[number]
+
 	export const HIDE_STATUS_BAR_OPTIONS =
 		Object.freeze(["never", "always", "focused", "running"] as const)
 	export type HideStatusBarOption = typeof HIDE_STATUS_BAR_OPTIONS[number]
+
 	export const PREFERRED_RENDERER_OPTIONS = RendererAddon.RENDERER_OPTIONS
 	export type PreferredRendererOption = RendererAddon.RendererOption
+
+	export type Recovery = Readonly<Record<string, string>>
+
 	export type Profile =
 		Profile.DeveloperConsole |
 		Profile.Empty |
@@ -220,6 +239,7 @@ export namespace Settings {
 				type: "invalid",
 			},
 		} as const)
+
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		export function fix(self: unknown): Fixed<Profile> {
 			const unc = launderUnchecked<Invalid>(self),
@@ -349,6 +369,7 @@ export namespace Settings {
 			})())
 		}
 	}
+
 	export function fix(self: unknown): Fixed<Settings> {
 		const unc = launderUnchecked<Settings>(self)
 		return markFixed(self, {
@@ -362,6 +383,12 @@ export namespace Settings {
 				DEFAULT,
 				unc,
 				"addToContextMenu",
+				["boolean"],
+			),
+			createInstanceNearExistingOnes: fixTyped(
+				DEFAULT,
+				unc,
+				"createInstanceNearExistingOnes",
 				["boolean"],
 			),
 			errorNoticeTimeout: fixTyped(
@@ -386,6 +413,12 @@ export namespace Settings {
 				semVerString,
 				String(unc.lastReadChangelogVersion),
 				NULL_SEM_VER_STRING,
+			),
+			newInstanceBehavior: fixInSet(
+				DEFAULT,
+				unc,
+				"newInstanceBehavior",
+				NEW_INSTANCE_BEHAVIORS,
 			),
 			noticeTimeout: fixTyped(
 				DEFAULT,

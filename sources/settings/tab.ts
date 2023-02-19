@@ -412,6 +412,61 @@ export class SettingTab extends PluginSettingTab {
 			})
 			.newSetting(containerEl, setting => {
 				setting
+					.setName(i18n.t("settings.new-instance-behavior"))
+					.addDropdown(linkSetting(
+						(): string => plugin.settings.newInstanceBehavior,
+						setTextToEnum(
+							Settings.NEW_INSTANCE_BEHAVIORS,
+							async value => plugin.mutateSettings(settingsM => {
+								settingsM.newInstanceBehavior = value
+							}),
+						),
+						() => { this.postMutate() },
+						{
+							pre: dropdown => {
+								dropdown
+									.addOptions(Object.fromEntries(Settings.NEW_INSTANCE_BEHAVIORS
+										.map(value => [
+											value,
+											i18n.t(`settings.new-instance-behaviors.${value}`),
+										])))
+							},
+						},
+					))
+					.addExtraButton(resetButton(
+						i18n.t("asset:settings.new-instance-behavior-icon"),
+						i18n.t("settings.reset"),
+						async () => plugin.mutateSettings(settingsM => {
+							settingsM.newInstanceBehavior =
+								Settings.DEFAULT.newInstanceBehavior
+						}),
+						() => { this.postMutate() },
+					))
+			})
+			.newSetting(containerEl, setting => {
+				setting
+					.setName(i18n.t("settings.create-instance-near-existing-ones"))
+					.setDesc(i18n
+						.t("settings.create-instance-near-existing-ones-description"))
+					.addToggle(linkSetting(
+						() => plugin.settings.createInstanceNearExistingOnes,
+						async value => plugin.mutateSettings(settingsM => {
+							settingsM.createInstanceNearExistingOnes = value
+						}),
+						() => { this.postMutate() },
+					))
+					.addExtraButton(resetButton(
+						i18n.t("asset:settings.create-instance-near-existing-ones-icon"),
+						i18n.t("settings.reset"),
+						async () => plugin.mutateSettings(settingsM => {
+							settingsM.createInstanceNearExistingOnes =
+								Settings.DEFAULT.createInstanceNearExistingOnes
+						}),
+						() => { this.postMutate() },
+					))
+			})
+			.newSetting(containerEl, setting => {
+				setting
 					.setName(i18n.t("settings.hide-status-bar"))
 					.addDropdown(linkSetting(
 						(): string => plugin.settings.hideStatusBar,
