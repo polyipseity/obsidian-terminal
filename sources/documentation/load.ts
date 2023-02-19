@@ -7,9 +7,10 @@ import {
 import { DocumentationMarkdownView } from "./view"
 import type { TerminalPlugin } from "sources/main"
 import { anyToError } from "sources/utils/util"
+import { lt } from "semver"
 
 export function loadDocumentation(plugin: TerminalPlugin): void {
-	const { language } = plugin,
+	const { language, version } = plugin,
 		{ i18n } = language
 	plugin.registerView(
 		DocumentationMarkdownView.type.namespaced(plugin),
@@ -25,6 +26,10 @@ export function loadDocumentation(plugin: TerminalPlugin): void {
 		icon: i18n.t("asset:commands.open-changelog-icon"),
 		id: "open-changelog",
 	})
+	if (version !== null &&
+		lt(plugin.settings.lastReadChangelogVersion, version)) {
+		openDocumentation(plugin, "changelog", false)
+	}
 }
 
 export function openDocumentation(
