@@ -16,63 +16,71 @@ if _sys.platform != "win32":
     STDOUT = _sys.stdout.fileno()
     CMDIO = 3
 
-    pid: int
-    pty_fd: int
-    pid, pty_fd = _pty.fork()  # type: ignore
-    if pid == 0:
-        _os.execvpe(
-            _sys.argv[1], _sys.argv[1:], _os.environ | {"TERM": "xterm-256color"}
-        )
+    def main() -> _typing.NoReturn:
+        pid: int
+        pty_fd: int
+        pid, pty_fd = _pty.fork()  # type: ignore
+        if pid == 0:
+            _os.execvpe(
+                _sys.argv[1], _sys.argv[1:], _os.environ | {"TERM": "xterm-256color"}
+            )
 
-    def _write_all(fd: int, data: bytes) -> None:
-        while data:
-            data = data[_os.write(fd, data) :]
+        def write_all(fd: int, data: bytes) -> None:
+            while data:
+                data = data[_os.write(fd, data) :]
 
-    with _selectors.DefaultSelector() as selector:
-        running = True
+        with _selectors.DefaultSelector() as selector:
+            running = True
 
-        def pipe_pty():
-            try:
-                data = _os.read(pty_fd, CHUNK_SIZE)
-            except OSError:
-                data = b""
-            if not data:
-                selector.unregister(pty_fd)
-                global running
-                running = False
-                return
-            _write_all(STDOUT, data)
+            def pipe_pty():
+                try:
+                    data = _os.read(pty_fd, CHUNK_SIZE)
+                except OSError:
+                    data = b""
+                if not data:
+                    selector.unregister(pty_fd)
+                    global running
+                    running = False
+                    return
+                write_all(STDOUT, data)
 
-        def pipe_stdin():
-            data = _os.read(STDIN, CHUNK_SIZE)
-            if not data:
-                selector.unregister(STDIN)
-                return
-            _write_all(pty_fd, data)
+            def pipe_stdin():
+                data = _os.read(STDIN, CHUNK_SIZE)
+                if not data:
+                    selector.unregister(STDIN)
+                    return
+                write_all(pty_fd, data)
 
-        def process_cmdio():
-            data = _os.read(CMDIO, CHUNK_SIZE)
-            if not data:
-                selector.unregister(CMDIO)
-                return
-            for line in data.decode("UTF-8", "strict").splitlines():
-                rows, columns = _typing.cast(
-                    tuple[int, int],
-                    tuple(int(ss.strip()) for ss in line.split("x", 2)),
-                )
-                _fcntl.ioctl(
-                    pty_fd,
-                    _termios.TIOCSWINSZ,
-                    _struct.pack("HHHH", columns, rows, 0, 0),
-                )
+            def process_cmdio():
+                data = _os.read(CMDIO, CHUNK_SIZE)
+                if not data:
+                    selector.unregister(CMDIO)
+                    return
+                for line in data.decode("UTF-8", "strict").splitlines():
+                    rows, columns = _typing.cast(
+                        tuple[int, int],
+                        tuple(int(ss.strip()) for ss in line.split("x", 2)),
+                    )
+                    _fcntl.ioctl(
+                        pty_fd,
+                        _termios.TIOCSWINSZ,
+                        _struct.pack("HHHH", columns, rows, 0, 0),
+                    )
 
-        selector.register(pty_fd, _selectors.EVENT_READ, pipe_pty)
-        selector.register(STDIN, _selectors.EVENT_READ, pipe_stdin)
-        selector.register(CMDIO, _selectors.EVENT_READ, process_cmdio)
-        while running:
-            for key, _ in selector.select():
-                key.data()
+            selector.register(pty_fd, _selectors.EVENT_READ, pipe_pty)
+            selector.register(STDIN, _selectors.EVENT_READ, pipe_stdin)
+            selector.register(CMDIO, _selectors.EVENT_READ, process_cmdio)
+            while running:
+                for key, _ in selector.select():
+                    key.data()
 
-    _sys.exit(_os.waitstatus_to_exitcode(_os.waitpid(pid, 0)[1]))
+        _sys.exit(_os.waitstatus_to_exitcode(_os.waitpid(pid, 0)[1]))
+
 else:
-    raise NotImplementedError(_sys.platform)
+
+    def main() -> _typing.NoReturn:
+        raise NotImplementedError(_sys.platform)
+
+
+if __name__ == "__main__":
+    main()

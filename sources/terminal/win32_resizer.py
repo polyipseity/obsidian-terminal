@@ -185,7 +185,11 @@ if _sys.platform == "win32":
                         ignore_error(setter)
                 print(f"resized")
 
-    if __name__ == "__main__":
-        main()
 else:
-    raise NotImplementedError(_sys.platform)
+
+    def main() -> _typing.NoReturn:
+        raise NotImplementedError(_sys.platform)
+
+
+if __name__ == "__main__":
+    main()
