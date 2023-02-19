@@ -8,7 +8,7 @@ import {
 	opaqueOrDefault,
 	semVerString,
 } from "sources/utils/types"
-import type { DeepRequired, DeepWritable } from "ts-essentials"
+import type { DeepRequired, DeepWritable, MarkOptional } from "ts-essentials"
 import {
 	type Fixed,
 	fixArray,
@@ -38,11 +38,25 @@ export interface Settings {
 	readonly errorNoticeTimeout: number
 	readonly profiles: Settings.Profiles
 	readonly preferredRenderer: Settings.PreferredRendererOption
-	readonly lastReadChangelogVersion?: SemVerString
-	readonly recovery?: Settings.Recovery
+	readonly lastReadChangelogVersion: SemVerString
+	readonly recovery: Settings.Recovery
 }
 export namespace Settings {
-	export const DEFAULT: Settings = deepFreeze({
+	export const optionals = deepFreeze([
+		"lastReadChangelogVersion",
+		"recovery",
+	] as const) satisfies readonly (keyof Settings)[]
+	export type Optionals = typeof optionals[number]
+	export type Persistent = Omit<Settings, Optionals>
+	export function persistent(settings: Settings): Persistent {
+		const ret: MarkOptional<Settings, Optionals> = cloneAsWritable(settings)
+		for (const optional of optionals) {
+			// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+			delete ret[optional]
+		}
+		return ret
+	}
+	export const DEFAULT: Persistent = deepFreeze({
 		addToCommand: true,
 		addToContextMenu: true,
 		errorNoticeTimeout: NOTICE_NO_TIMEOUT,

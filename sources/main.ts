@@ -1,6 +1,6 @@
 import { type App, Plugin, type PluginManifest, debounce } from "obsidian"
 import type { AsyncOrSync, DeepWritable } from "ts-essentials"
-import { EventEmitterLite, copyOnWriteAsync, isUndefined } from "./utils/util"
+import { EventEmitterLite, copyOnWriteAsync, deepFreeze } from "./utils/util"
 import {
 	JSON_STRINGIFY_SPACE,
 	SAVE_SETTINGS_TIMEOUT,
@@ -29,8 +29,8 @@ export class TerminalPlugin extends Plugin {
 			this.saveData(this.settings).then(resolve, reject)
 		}, SAVE_SETTINGS_TIMEOUT * SI_PREFIX_SCALE, false))
 
-	#settings: Settings = { ...Settings.DEFAULT, recovery: {} }
 	readonly #onMutateSettings = new EventEmitterLite<readonly [Settings]>()
+	#settings: Settings = deepFreeze(Settings.fix(Settings.DEFAULT).value)
 
 	public constructor(app: App, manifest: PluginManifest) {
 		const unpatch = patch()
@@ -63,7 +63,6 @@ export class TerminalPlugin extends Plugin {
 		Object.assign(settings, value)
 		if (!valid) {
 			printMalformedData(this, loaded, value)
-			if (isUndefined(settings.recovery)) { settings.recovery = {} }
 			settings.recovery[new Date().toISOString()] =
 				JSON.stringify(loaded, null, JSON_STRINGIFY_SPACE)
 		}

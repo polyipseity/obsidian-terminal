@@ -24,7 +24,6 @@ import {
 } from "../ui/settings"
 import type { DeepWritable } from "ts-essentials"
 import { LANGUAGES } from "assets/locales"
-import { NULL_SEM_VER_STRING } from "sources/utils/types"
 import { Settings } from "./data"
 import type { TerminalPlugin } from "../main"
 import { lt } from "semver"
@@ -239,8 +238,7 @@ export class SettingTab extends PluginSettingTab {
 								closeSetting(containerEl)
 							})
 						if (version === null ||
-							lt(plugin.settings.lastReadChangelogVersion ??
-								NULL_SEM_VER_STRING, version)) {
+							lt(plugin.settings.lastReadChangelogVersion, version)) {
 							button.setCta()
 						}
 					})
@@ -280,7 +278,7 @@ export class SettingTab extends PluginSettingTab {
 										forth: value => value[1],
 									}),
 									unexpected,
-									Object.entries(plugin.settings.recovery ?? {}),
+									Object.entries(plugin.settings.recovery),
 									{
 										callback: async (recovery0): Promise<void> => {
 											await plugin.mutateSettings(settingsM => {
@@ -296,7 +294,7 @@ export class SettingTab extends PluginSettingTab {
 									},
 								).open()
 							})
-						if (length(plugin.settings.recovery ?? {}) > 0) {
+						if (length(plugin.settings.recovery) > 0) {
 							button.setCta()
 						}
 					})
@@ -532,10 +530,9 @@ export class SettingTab extends PluginSettingTab {
 		this.ui.update()
 	}
 
-	protected async snapshot(): Promise<Settings> {
+	protected async snapshot(): Promise<Settings.Persistent> {
 		const { plugin } = this,
-			snapshot = cloneAsWritable(plugin.settings)
-		delete snapshot.recovery
+			snapshot = Settings.persistent(plugin.settings)
 		return new Promise((resolve, reject) => {
 			const unregister = plugin.on("mutate-settings", identity, () => {
 				try {
