@@ -27,10 +27,7 @@ export namespace DOMClasses {
 		STATUS_BAR = "status-bar",
 		VERTICAL_TAB_CONTENT = "vertical-tab-content",
 		VERTICAL_TAB_CONTENT_CONTAINER = "vertical-tab-content-container",
-		VIEW_HEADER_TITLE = "view-header-title",
-		WORKSPACE_TAB_HEADER = "workspace-tab-header",
-		WORKSPACE_TAB_HEADER_CONTAINER = "workspace-tab-header-container",
-		WORKSPACE_TAB_HEADER_INNER_TITLE = "workspace-tab-header-inner-title"
+		VIEW_HEADER_TITLE = "view-header-title"
 }
 
 export namespace FileExtensions {

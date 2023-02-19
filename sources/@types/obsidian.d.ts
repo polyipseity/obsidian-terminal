@@ -6,13 +6,19 @@ declare module "obsidian" {
 		history: boolean
 	}
 
+	export interface WorkspaceLeaf {
+		readonly tabHeaderEl: HTMLElement
+		readonly tabHeaderInnerIconEl: HTMLElement
+		readonly tabHeaderInnerTitleEl: HTMLElement
+	}
+
 	export interface WorkspaceRibbon {
-		addRibbonItemButton: (
+		readonly addRibbonItemButton: (
 			id: string,
 			icon: string,
 			title: string,
 			callback: (event: MouseEvent) => unknown,
 		) => HTMLElement
-		removeRibbonAction: (title: string) => void
+		readonly removeRibbonAction: (title: string) => void
 	}
 }

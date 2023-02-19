@@ -365,31 +365,15 @@ export function readStateCollabratively(
 }
 
 export function updateDisplayText(view: View, workspace: Workspace): void {
-	const { containerEl } = view,
+	const { containerEl, leaf } = view,
+		{ tabHeaderEl, tabHeaderInnerTitleEl } = leaf,
 		text = view.getDisplayText(),
-		viewHeaderEl = containerEl.querySelector(`.${DOMClasses.VIEW_HEADER_TITLE}`)
-	let oldText: string | null = null
-	if (viewHeaderEl !== null) {
-		oldText = viewHeaderEl.textContent
-		viewHeaderEl.textContent = text
-	}
-	const leafEl = containerEl.parentElement
-	if (leafEl !== null) {
-		const leavesEl = leafEl.parentElement
-		if (leavesEl !== null) {
-			const
-				headerEl = leavesEl.parentElement
-					?.querySelector(`.${DOMClasses.WORKSPACE_TAB_HEADER_CONTAINER}`)
-					?.querySelectorAll(`.${DOMClasses.WORKSPACE_TAB_HEADER}`)
-					.item(leavesEl.indexOf(leafEl)) ?? null,
-				titleEl = headerEl
-					?.querySelector(`.${DOMClasses.WORKSPACE_TAB_HEADER_INNER_TITLE}`) ??
-					null
-			oldText ??= titleEl?.textContent ?? null
-			if (titleEl !== null) { titleEl.textContent = text }
-			if (headerEl !== null) { headerEl.ariaLabel = text }
-		}
-	}
+		viewHeaderEl =
+			containerEl.querySelector(`.${DOMClasses.VIEW_HEADER_TITLE}`),
+		{ textContent: oldText } = tabHeaderInnerTitleEl
+	tabHeaderEl.ariaLabel = text
+	tabHeaderInnerTitleEl.textContent = text
+	if (viewHeaderEl !== null) { viewHeaderEl.textContent = text }
 	if (workspace.getActiveViewOfType(View) === view && oldText !== null) {
 		document.title = document.title.replace(oldText, text)
 	}
