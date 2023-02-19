@@ -26,7 +26,7 @@ if _sys.platform == "win32":
         pid = int(input("PID: "))
         print(f"received: {pid}")
         proc = _psutil.Process(pid)
-        procs: _typing.Mapping[int, _psutil.Process] = {}
+        procs: _typing.Mapping[int, _psutil.Process] = _types.MappingProxyType({})
         windows: _typing.Sequence[_pywinctl.BaseWindow] = ()
         for tries in range(LOOKUP_RETRIES):
             procs = _types.MappingProxyType(
@@ -85,12 +85,11 @@ if _sys.platform == "win32":
             Window: _win32console.PySMALL_RECTType
             MaximumWindowSize: _win32console.PyCOORDType
 
-        def ignore_error(func: _typing.Callable[[], None]) -> bool:
+        def ignore_error(func: _typing.Callable[[], None]) -> None:
             try:
                 func()
-                return True
             except _pywintypes.error:
-                return False
+                pass
 
         @_contextlib.contextmanager
         def attach_console(
