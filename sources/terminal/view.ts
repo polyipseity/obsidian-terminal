@@ -409,7 +409,6 @@ export class TerminalView extends ItemView {
 						plugin,
 						this.state,
 						async state => leaf.setViewState({
-							active: true,
 							state: newCollabrativeState(plugin, new Map([
 								[
 									TerminalView.type,
