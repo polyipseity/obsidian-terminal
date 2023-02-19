@@ -433,7 +433,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 	}
 
 	public async kill(): Promise<void> {
-		if ((await this.shell).kill()) {
+		if (!(await this.shell).kill()) {
 			throw new Error(this.plugin.language
 				.i18n.t("errors.error-killing-pseudoterminal"))
 		}
