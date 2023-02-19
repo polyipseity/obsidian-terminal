@@ -111,9 +111,14 @@ export class XtermTerminalEmulator<A> {
 			.finally(() => { this.#running = false })
 	}
 
-	public async close(): Promise<void> {
-		if (this.#running) {
-			await (await this.pseudoterminal).kill()
+	public async close(mustClosePseudoterminal = true): Promise<void> {
+		try {
+			if (this.#running) {
+				await (await this.pseudoterminal).kill()
+			}
+		} catch (error) {
+			console.debug(error)
+			if (mustClosePseudoterminal) { throw error }
 		}
 		this.terminal.dispose()
 	}

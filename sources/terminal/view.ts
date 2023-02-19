@@ -271,7 +271,7 @@ export class TerminalView extends ItemView {
 
 	set #emulator(val: TerminalView.EMULATOR | null) {
 		const { plugin } = this
-		this.#emulator0?.close().catch(error => {
+		this.#emulator0?.close(false).catch(error => {
 			printError(
 				anyToError(error),
 				() => plugin.language
