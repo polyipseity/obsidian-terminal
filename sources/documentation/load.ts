@@ -39,8 +39,8 @@ export function openDocumentation(
 ): void {
 	const { app, language, version } = plugin,
 		{ workspace } = app,
-		{ i18n } = language;
-	(async (): Promise<void> => {
+		{ i18n } = language
+	workspace.onLayoutReady(async () => {
 		try {
 			await workspace.getLeaf("tab").setViewState({
 				active,
@@ -68,5 +68,5 @@ export function openDocumentation(
 				plugin,
 			)
 		}
-	})()
+	})
 }
