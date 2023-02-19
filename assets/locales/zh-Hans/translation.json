@@ -105,6 +105,10 @@
 	"dialogs": {
 		"overwrite-existing-frontmatter": "$t(generic.overwrite)现有的$t(generic.frontmatter)？"
 	},
+	"documentations": {
+		"changelog": "$t(generic.documentations.changelog)",
+		"readme": "$t(generic.documentations.readme)"
+	},
 	"errors": {
 		"cannot-find-status-bar": "找不到$t(generic.status-bar)",
 		"error-exporting-settings": "$t(generic.export)$t(generic.setting)时出错",

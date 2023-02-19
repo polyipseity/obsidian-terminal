@@ -48,6 +48,8 @@ export function openDocumentation(
 					[
 						DocumentationMarkdownView.type, {
 							data: DOCUMENTATIONS[key],
+							displayTextI18nKey: `documentations.${key}`,
+							iconI18nKey: `asset:documentations.${key}-icon`,
 						} satisfies DocumentationMarkdownView.State,
 					],
 				])),

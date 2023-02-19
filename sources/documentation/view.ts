@@ -7,6 +7,7 @@ import {
 import {
 	UnnamespacedID,
 	readStateCollabratively,
+	updateDisplayText,
 	writeStateCollabratively,
 } from "sources/utils/obsidian"
 import type { TerminalPlugin } from "sources/main"
@@ -32,6 +33,22 @@ export class DocumentationMarkdownView extends MarkdownView {
 		return DocumentationMarkdownView.#namespacedType
 	}
 
+	public override getDisplayText(): string {
+		const { plugin, state } = this,
+			{ displayTextI18nKey } = state
+		return displayTextI18nKey === null
+			? super.getDisplayText()
+			: plugin.language.i18n.t(displayTextI18nKey as any)
+	}
+
+	public override getIcon(): string {
+		const { plugin, state } = this,
+			{ iconI18nKey } = state
+		return iconI18nKey === null
+			? super.getIcon()
+			: plugin.language.i18n.t(iconI18nKey as any)
+	}
+
 	public override async setState(
 		state: unknown,
 		result: ViewStateResult,
@@ -51,6 +68,7 @@ export class DocumentationMarkdownView extends MarkdownView {
 		}
 		await super.setState(state, result)
 		this.state = value
+		updateDisplayText(this, app.workspace)
 		this.setViewData(value.data, true)
 	}
 
@@ -61,17 +79,43 @@ export class DocumentationMarkdownView extends MarkdownView {
 			this.state,
 		)
 	}
+
+	protected override async onOpen(): Promise<void> {
+		await super.onOpen()
+		const { plugin, app } = this
+		this.register(plugin.language.onChangeLanguage.listen(() => {
+			updateDisplayText(this, app.workspace)
+		}))
+	}
 }
 export namespace DocumentationMarkdownView {
 	export interface State {
 		readonly data: string
+		readonly displayTextI18nKey: string | null
+		readonly iconI18nKey: string | null
 	}
 	export namespace State {
-		export const DEFAULT: State = deepFreeze({ data: "" } as const)
+		export const DEFAULT: State = deepFreeze({
+			data: "",
+			displayTextI18nKey: null,
+			iconI18nKey: null,
+		} as const)
 		export function fix(self: unknown): Fixed<State> {
 			const unc = launderUnchecked<State>(self)
 			return markFixed(self, {
 				data: fixTyped(DEFAULT, unc, "data", ["string"]),
+				displayTextI18nKey: fixTyped(
+					DEFAULT,
+					unc,
+					"displayTextI18nKey",
+					["string", "null"],
+				),
+				iconI18nKey: fixTyped(
+					DEFAULT,
+					unc,
+					"iconI18nKey",
+					["string", "null"],
+				),
 			})
 		}
 	}

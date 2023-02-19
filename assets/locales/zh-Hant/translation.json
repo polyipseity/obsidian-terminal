@@ -102,6 +102,10 @@
 			"unsupported-profile": "不支持的$t(generic.profile)：\r\n{{profile}}\r\n"
 		}
 	},
+	"documentations": {
+		"changelog": "$t(generic.documentations.changelog)",
+		"readme": "$t(generic.documentations.readme)"
+	},
 	"dialogs": {
 		"overwrite-existing-frontmatter": "$t(generic.overwrite)現有的$t(generic.frontmatter)？"
 	},

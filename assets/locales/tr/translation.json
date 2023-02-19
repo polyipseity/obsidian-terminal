@@ -108,6 +108,10 @@
 	"dialogs": {
 		"overwrite-existing-frontmatter": "$t(generic.overwrite, capitalize) existing $t(generic.frontmatter)?"
 	},
+	"documentations": {
+		"changelog": "$t(generic.documentations.changelog, capitalize)",
+		"readme": "$t(generic.documentations.readme, capitalize)"
+	},
 	"errors": {
 		"cannot-find-status-bar": "Cannot find $t(generic.status-bar)",
 		"error-exporting-settings": "Error $t(generic.export_gerund) $t(generic.setting_other)",

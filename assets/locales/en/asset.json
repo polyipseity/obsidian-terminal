@@ -71,6 +71,10 @@
 			}
 		}
 	},
+	"documentations": {
+		"changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
+		"readme-icon": "$t(asset:generic.documentations.readme-icon)"
+	},
 	"generic": {
 		"add-icon": "plus",
 		"cancel-icon": "x",
