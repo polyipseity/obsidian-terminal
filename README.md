@@ -62,8 +62,6 @@ For first time users, read the [installation](#installation) section first!
 ## Todos
 
 - Add setting for successful exit codes.
-- Add terminal text loading.
-- Add terminal duplication.
 - Add terminal restoring options.
 - Color console log.
 - Add terminal style options.
