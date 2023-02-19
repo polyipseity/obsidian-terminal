@@ -15,8 +15,10 @@ import { loadIcons } from "./icons"
 import { loadSettings } from "./settings/load"
 import { loadTerminal } from "./terminal/load"
 import { patch } from "./patches"
+import { semVerString } from "./utils/types"
 
 export class TerminalPlugin extends Plugin {
+	public readonly version
 	public readonly language = new LanguageManager(this)
 	public readonly statusBarHider = new StatusBarHider(this)
 	public readonly saveSettings =
@@ -34,6 +36,12 @@ export class TerminalPlugin extends Plugin {
 		const unpatch = patch()
 		super(app, manifest)
 		this.register(unpatch)
+		try {
+			this.version = semVerString(manifest.version)
+		} catch (error) {
+			console.warn(error)
+			this.version = null
+		}
 	}
 
 	public get settings(): Settings {

@@ -24,8 +24,10 @@ import {
 } from "../ui/settings"
 import type { DeepWritable } from "ts-essentials"
 import { LANGUAGES } from "assets/locales"
+import { NULL_SEM_VER_STRING } from "sources/utils/types"
 import { Settings } from "./data"
 import type { TerminalPlugin } from "../main"
+import { lt } from "semver"
 import { openDocumentation } from "sources/documentation/load"
 
 export class EditSettingsModal extends Modal {
@@ -175,7 +177,7 @@ export class SettingTab extends PluginSettingTab {
 	public constructor(protected readonly plugin: TerminalPlugin) {
 		super(plugin.app, plugin)
 		const { containerEl, ui } = this,
-			{ language } = plugin,
+			{ language, version } = plugin,
 			{ i18n } = language
 		plugin.register(() => { ui.destroy() })
 		ui.finally(language.onChangeLanguage.listen(() => { this.ui.update() }))
@@ -228,13 +230,20 @@ export class SettingTab extends PluginSettingTab {
 							openDocumentation(plugin, "readme")
 							closeSetting(containerEl)
 						}))
-					.addButton(button => button
-						.setIcon(i18n.t("asset:settings.documentations.changelog-icon"))
-						.setTooltip(i18n.t("settings.documentations.changelog"))
-						.onClick(() => {
-							openDocumentation(plugin, "changelog")
-							closeSetting(containerEl)
-						}))
+					.addButton(button => {
+						button
+							.setIcon(i18n.t("asset:settings.documentations.changelog-icon"))
+							.setTooltip(i18n.t("settings.documentations.changelog"))
+							.onClick(() => {
+								openDocumentation(plugin, "changelog")
+								closeSetting(containerEl)
+							})
+						if (version === null ||
+							lt(plugin.settings.lastReadChangelogVersion ??
+								NULL_SEM_VER_STRING, version)) {
+							button.setCta()
+						}
+					})
 			})
 			.newSetting(containerEl, setting => {
 				// Disabling undo is required for its CTA status to work properly

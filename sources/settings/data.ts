@@ -1,8 +1,12 @@
 import {
 	type AnyObject,
+	NULL_SEM_VER_STRING,
+	type SemVerString,
 	type Sized,
 	type Unchecked,
 	launderUnchecked,
+	opaqueOrDefault,
+	semVerString,
 } from "sources/utils/types"
 import type { DeepRequired, DeepWritable } from "ts-essentials"
 import {
@@ -34,6 +38,7 @@ export interface Settings {
 	readonly errorNoticeTimeout: number
 	readonly profiles: Settings.Profiles
 	readonly preferredRenderer: Settings.PreferredRendererOption
+	readonly lastReadChangelogVersion?: SemVerString
 	readonly recovery?: Settings.Recovery
 }
 export namespace Settings {
@@ -360,6 +365,11 @@ export namespace Settings {
 				unc,
 				"language",
 				DEFAULTABLE_LANGUAGES,
+			),
+			lastReadChangelogVersion: opaqueOrDefault(
+				semVerString,
+				String(unc.lastReadChangelogVersion),
+				NULL_SEM_VER_STRING,
 			),
 			noticeTimeout: fixTyped(
 				DEFAULT,

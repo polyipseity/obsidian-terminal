@@ -32,25 +32,34 @@ export function openDocumentation(
 	key: DocumentationKey,
 	active = true,
 ): void {
-	const { app, language } = plugin,
+	const { app, language, version } = plugin,
 		{ workspace } = app,
-		{ i18n } = language
-	workspace.getLeaf("tab").setViewState({
-		active,
-		state: newCollabrativeState(plugin, new Map([
-			[
-				DocumentationMarkdownView.type, {
-					data: DOCUMENTATIONS[key],
-				} satisfies DocumentationMarkdownView.State,
-			],
-		])),
-		type: DocumentationMarkdownView.type.namespaced(plugin),
-	})
-		.catch(error => {
+		{ i18n } = language;
+	(async (): Promise<void> => {
+		try {
+			await workspace.getLeaf("tab").setViewState({
+				active,
+				state: newCollabrativeState(plugin, new Map([
+					[
+						DocumentationMarkdownView.type, {
+							data: DOCUMENTATIONS[key],
+						} satisfies DocumentationMarkdownView.State,
+					],
+				])),
+				type: DocumentationMarkdownView.type.namespaced(plugin),
+			})
+			if (key === "changelog" && version !== null) {
+				await plugin.mutateSettings(settings => {
+					settings.lastReadChangelogVersion = version
+				})
+				await plugin.saveSettings()
+			}
+		} catch (error) {
 			printError(
 				anyToError(error),
 				() => i18n.t("errors.error-opening-documentation"),
 				plugin,
 			)
-		})
+		}
+	})()
 }
