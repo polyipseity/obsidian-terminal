@@ -45,6 +45,7 @@ import {
 	printMalformedData,
 	readStateCollabratively,
 	updateDisplayText,
+	usePrivateAPI,
 	useSettings,
 	writeStateCollabratively,
 } from "sources/utils/obsidian"
@@ -293,7 +294,6 @@ export class TerminalView extends ItemView {
 		state: unknown,
 		result: ViewStateResult,
 	): Promise<void> {
-		await super.setState(state, result)
 		const { plugin } = this,
 			ownState = readStateCollabratively(
 				TerminalView.type.namespaced(plugin),
@@ -301,8 +301,10 @@ export class TerminalView extends ItemView {
 			),
 			{ value, valid } = TerminalView.State.fix(ownState)
 		if (!valid) { printMalformedData(plugin, ownState, value) }
+		await super.setState(state, result)
 		this.state = value
 		this.startEmulator()
+		usePrivateAPI(plugin, () => { result.history = true }, () => { })
 	}
 
 	public override getState(): unknown {
