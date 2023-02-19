@@ -291,6 +291,7 @@ export class TerminalView extends ItemView {
 	}
 
 	set #focus(val: boolean) {
+		if (this.#focus0 === val) { return }
 		this.#focus0 = val
 		const { scope, app } = this,
 			{ keymap } = app,
@@ -407,9 +408,9 @@ export class TerminalView extends ItemView {
 
 	protected override async onOpen(): Promise<void> {
 		await super.onOpen()
-		const { plugin, scope } = this,
+		const { plugin, scope, contentEl } = this,
 			{ app, language, statusBarHider } = plugin,
-			{ workspace } = app
+			{ workspace, keymap, scope: appScope } = app
 
 		this.register(language.onChangeLanguage.listen(() => {
 			updateDisplayText(plugin, this)
@@ -417,14 +418,15 @@ export class TerminalView extends ItemView {
 
 		this.register(() => { this.#focus = false })
 		this.#focus = workspace.getActiveViewOfType(TerminalView) === this
-		this.registerEvent(app.workspace.on("active-leaf-change", leaf => {
-			if (leaf === this.leaf) {
-				this.#focus = true
-				return
-			}
+		this.registerDomEvent(contentEl, "focusout", () => {
 			this.#focus = false
-		}))
+		}, { passive: true })
+		this.registerDomEvent(contentEl, "focusin", () => {
+			this.#focus = true
+		}, { passive: true })
 
+		this.register(() => { keymap.popScope(appScope) })
+		keymap.pushScope(appScope)
 		this.registerScopeEvent(scope.register(
 			cloneAsWritable(TerminalView.modifiers),
 			"`",
