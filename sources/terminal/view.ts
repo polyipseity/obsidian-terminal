@@ -9,6 +9,7 @@ import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
 import {
 	ItemView,
 	type Menu,
+	type Modifier,
 	Scope,
 	type ViewStateResult,
 	type WorkspaceLeaf,
@@ -196,6 +197,9 @@ class EditTerminalModal extends DialogModal {
 export class TerminalView extends ItemView {
 	public static readonly type = new UnnamespacedID("terminal")
 	public static readonly divClass = TerminalView.type
+	protected static readonly modifiers: readonly Modifier[] =
+		PLATFORM === "darwin" ? ["Meta"] : ["Ctrl", "Shift"]
+
 	static #namespacedType: string
 	protected readonly scope = new Scope()
 	#emulator0: TerminalView.EMULATOR | null = null
@@ -352,7 +356,7 @@ export class TerminalView extends ItemView {
 
 	public override onPaneMenu(menu: Menu, source: string): void {
 		super.onPaneMenu(menu, source)
-		const { plugin, contentEl, leaf } = this,
+		const { plugin, leaf } = this,
 			{ i18n } = plugin.language
 		menu
 			.addSeparator()
@@ -360,55 +364,7 @@ export class TerminalView extends ItemView {
 				.setTitle(i18n.t("components.terminal.menus.find"))
 				.setIcon(i18n.t("asset:components.terminal.menus.find-icon"))
 				.setDisabled(this.#find !== null)
-				.onClick(() => {
-					const
-						find = (
-							direction: Direction,
-							params: Params,
-							incremental = false,
-						): void => {
-							const finder = this.#emulator?.addons.search
-							if (isUndefined(finder)) { return }
-							const func = direction === Direction.next
-								? finder.findNext.bind(finder)
-								: finder.findPrevious.bind(finder)
-							func(
-								params.findText,
-								{
-									caseSensitive: params.caseSensitive,
-									decorations: {
-										activeMatchColorOverviewRuler: "#00000000",
-										matchOverviewRuler: "#00000000",
-									},
-									incremental,
-									regex: params.regex,
-									wholeWord: params.wholeWord,
-								},
-							)
-							if (params.findText === "") {
-								this.#find?.$set({ searchResult: "" })
-							}
-						},
-						optional: { anchor?: Element } = {},
-						{ firstElementChild } = contentEl
-					if (firstElementChild !== null) {
-						optional.anchor = firstElementChild
-					}
-					this.#find = new FindComponent({
-						intro: true,
-						props: {
-							i18n: i18n.t,
-							onClose: (): void => { this.#find = null },
-							onFind: find,
-							onParamsChanged: (params: Params): void => {
-								this.#emulator?.addons.search.clearDecorations()
-								find(Direction.previous, params)
-							},
-						},
-						target: contentEl,
-						...optional,
-					})
-				}))
+				.onClick(() => { this.startFind() }))
 			.addItem(item => item
 				.setTitle(i18n.t("components.terminal.menus.restart"))
 				.setIcon(i18n.t("asset:components.terminal.menus.restart-icon"))
@@ -451,7 +407,7 @@ export class TerminalView extends ItemView {
 
 	protected override async onOpen(): Promise<void> {
 		await super.onOpen()
-		const { plugin } = this,
+		const { plugin, scope } = this,
 			{ app, language, statusBarHider } = plugin,
 			{ workspace } = app
 
@@ -469,6 +425,27 @@ export class TerminalView extends ItemView {
 			this.#focus = false
 		}))
 
+		this.registerScopeEvent(scope.register(
+			cloneAsWritable(TerminalView.modifiers),
+			"f",
+			event => {
+				this.startFind()
+				event.preventDefault()
+				event.stopPropagation()
+			},
+		))
+		this.registerScopeEvent(scope.register(
+			cloneAsWritable(TerminalView.modifiers),
+			"k",
+			event => {
+				const term = this.#emulator?.terminal
+				term?.write("\u001b[2J\u001b[3J")
+				term?.clear()
+				event.preventDefault()
+				event.stopPropagation()
+			},
+		))
+
 		this.register(statusBarHider.hide(() => this.#hidesStatusBar))
 		this.registerEvent(workspace.on(
 			"active-leaf-change",
@@ -476,6 +453,58 @@ export class TerminalView extends ItemView {
 		))
 
 		this.register(() => { this.#emulator = null })
+	}
+
+	protected startFind(): void {
+		const { plugin, contentEl } = this,
+			{ language } = plugin,
+			{ i18n } = language,
+			find = (
+				direction: Direction,
+				params: Params,
+				incremental = false,
+			): void => {
+				const finder = this.#emulator?.addons.search
+				if (isUndefined(finder)) { return }
+				const func = direction === Direction.next
+					? finder.findNext.bind(finder)
+					: finder.findPrevious.bind(finder)
+				func(
+					params.findText,
+					{
+						caseSensitive: params.caseSensitive,
+						decorations: {
+							activeMatchColorOverviewRuler: "#00000000",
+							matchOverviewRuler: "#00000000",
+						},
+						incremental,
+						regex: params.regex,
+						wholeWord: params.wholeWord,
+					},
+				)
+				if (params.findText === "") {
+					this.#find?.$set({ searchResult: "" })
+				}
+			},
+			optional: { anchor?: Element } = {},
+			{ firstElementChild } = contentEl
+		if (firstElementChild !== null) {
+			optional.anchor = firstElementChild
+		}
+		this.#find = new FindComponent({
+			intro: true,
+			props: {
+				i18n: i18n.t,
+				onClose: (): void => { this.#find = null },
+				onFind: find,
+				onParamsChanged: (params: Params): void => {
+					this.#emulator?.addons.search.clearDecorations()
+					find(Direction.previous, params)
+				},
+			},
+			target: contentEl,
+			...optional,
+		})
 	}
 
 	protected startEmulator(): void {
