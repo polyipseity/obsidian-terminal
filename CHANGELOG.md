@@ -49,6 +49,7 @@ __Internals__
 - Potentially invalid data are validated. If invalid, they are fixed and logged. (`ad9e9bf0c2def5e4bcb999fdff05b776e988d11b`, `1d4cc6abd5ab0bba1a74d9c7aa1854d5e949aecf`, `d6c1b5b298114cd267e2d7101a053e2dfb60a1e1`)
 - Rewrite translation files to use vocabularies. (`c5ba24d8707fc814a3d5d87f0e9ace97124ffd2e`)
 - Handle missing translation keys and interpolation. (`575cbfeb4293f7d602124f6470f5fb95ccf3b99c`)
+- Improve plugin loading. (`71f2e948c8dcee77ced2f772aeac204ab7f8dcf5`)
 
 __Miscellaneous__
 - Change license from "MIT" to "AGPL-3.0-or-later". (`77d9d9477b0dc1d56ab3b0cd36d3ba53ef5e52ff`)
