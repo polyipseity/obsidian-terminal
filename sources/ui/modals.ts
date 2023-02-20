@@ -478,14 +478,10 @@ export class ProfileModal extends Modal {
 					))
 					.addExtraButton(resetButton(
 						i18n.t("asset:components.profile.type-icon"),
-						i18n.t("components.profile.reset"),
+						DISABLED_TOOLTIP,
 						unexpected,
 						unexpected,
-						{
-							post: button => {
-								button.setTooltip(DISABLED_TOOLTIP).setDisabled(true)
-							},
-						},
+						{ post: button => { button.setDisabled(true) } },
 					))
 			})
 			.embed(() => {
@@ -756,14 +752,10 @@ export class ProfileModal extends Modal {
 							.setDisabled(true))
 						.addExtraButton(resetButton(
 							i18n.t(`asset:components.profile.${profile.type}.data-icon`),
-							i18n.t("components.profile.reset"),
+							DISABLED_TOOLTIP,
 							unexpected,
 							unexpected,
-							{
-								post: button => {
-									button.setTooltip(DISABLED_TOOLTIP).setDisabled(true)
-								},
-							},
+							{ post: button => { button.setDisabled(true) } },
 						))
 				})
 				break
