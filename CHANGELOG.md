@@ -16,7 +16,7 @@ __Features__
 - Add importing settings and exporting settings from the command palette. Using a file requires navigating to a markdown file first. (`e76949eb6694fcc4655a3b0d269116e199dc17b1`)
 - Add raw editing of settings. You can import and export settings there as well. (`6b8314252451d42c4de5a0d0e9218a9617e3cca8`)
 - Make history navigation buttons of the terminal view work. Using the `Edit` context menu item will add history. (`69c49596b289b9de8d91f4315ed1d719c8a5a189`)
-- Read readme and changelog (the file you are reading now) from the plugin itself. They can be accessed from the command palette or the settings UI. (`3d0c514231585a40bea5f8baf2a6e246d6ab9e35`)
+- Read readme and changelog (this very file you are reading now) from the plugin itself. They can be accessed from the command palette or the settings UI. (`3d0c514231585a40bea5f8baf2a6e246d6ab9e35`)
 - Open changelog on plugin update. (`29baeb4914ace485c6f3f3d4b489f1fdd876af87`)
 - Intercept all key when the terminal is focused. (`4e18bdc49320b8230dec5ad155e67692cd79b40d`)
 - Add keys to clear terminal (&lt;Ctrl+Shift+K&gt;; macOS: &lt;Cmd+K&gt;), start find in terminal (&lt;Ctrl+Shift+F&gt;; macOS: &lt;Cmd+F&gt;), and toggle focus of terminal (&lt;Ctrl+Shift+\`&gt;; macOS: &lt;Cmd+\`&gt;). Closes GH#7. (`9a384ff055709300069386258ff447fd27affbe9`)
@@ -38,6 +38,7 @@ __Fixes__
 - Make plugin downloadable on mobile by downgrading minimum app version. (`165b414e68e26027bcf677795bdc5d2d01380680`)
 - Fix empty Python executable not disabling Python. Fixes GH#8. (`09f2b3d1b0ae23867827977f2dbbba6b6f4f6460`)
 - Windows: Fix pressing &lt;Ctrl+C&gt; exiting the terminal resizer. (`5bff3f0749f16be80bfeb8a3ba903b0f8c6f79c4`)
+- Mobile: Fix bottom of terminal view covered by navbar. (`3230ca61defe56429358fcf368fade77abb6991d`)
 
 __Internals__
 - Improve UI code using `UpdatableUI`.
