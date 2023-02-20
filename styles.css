@@ -210,6 +210,9 @@
 	overflow: clip;
 	display: flex;
 	flex-direction: column;
+}
+
+.is-phone .workspace-leaf-content[data-type="terminal:terminal"] .view-content {
 	padding-bottom: max(var(--size-4-4), calc(var(--icon-l) + var(--size-4-2) + max(var(--size-4-2), var(--safe-area-inset-bottom))));
 }
 
