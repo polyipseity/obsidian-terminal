@@ -1,6 +1,11 @@
 import { type App, Plugin, type PluginManifest, debounce } from "obsidian"
 import type { AsyncOrSync, DeepWritable } from "ts-essentials"
-import { EventEmitterLite, copyOnWriteAsync, deepFreeze } from "./utils/util"
+import {
+	EventEmitterLite,
+	copyOnWriteAsync,
+	deepFreeze,
+	logError,
+} from "./utils/util"
 import {
 	JSON_STRINGIFY_SPACE,
 	SAVE_SETTINGS_TIMEOUT,
@@ -93,17 +98,20 @@ export class TerminalPlugin extends Plugin {
 		super.onload();
 		(async (): Promise<void> => {
 			try {
-				const init = Promise.all([
+				// Initialization
+				await Promise.all([
 					this.mutateSettings(async settings => this.loadSettings(settings))
-						.then(async () => this.saveSettings()),
+						.then(() => { this.saveSettings().catch(logError) }),
 					this.language.load(),
+					Promise.resolve().then(() => { loadIcons(this) }),
 				])
-				loadIcons(this)
-				await init
-				loadSettings(this)
-				this.statusBarHider.load()
-				loadDocumentation(this)
-				loadTerminal(this)
+				// Modules
+				await Promise.all([
+					Promise.resolve().then(() => { this.statusBarHider.load() }),
+					Promise.resolve().then(() => { loadSettings(this) }),
+					Promise.resolve().then(() => { loadDocumentation(this) }),
+					Promise.resolve().then(() => { loadTerminal(this) }),
+				])
 			} catch (error) {
 				console.error(error)
 			}
