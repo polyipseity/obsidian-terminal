@@ -45,7 +45,8 @@
 				"enable-win32-conhost-workaround-icon": "code",
 				"executable-icon": "$t(asset:components.profile.generic.executable-icon)",
 				"Python-executable-icon": "file-cog",
-				"Python-executable-check-icon": "file-check"
+				"Python-executable-check-icon": "file-check",
+				"Python-executable-checking-icon": "$t(asset:generic.load-icon)"
 			},
 			"invalid": {
 				"data-icon": "$t(asset:generic.data-icon)"
@@ -89,6 +90,7 @@
 		"edit-list-icon": "list",
 		"input-from-clipboard-icon": "clipboard",
 		"input-from-file-icon": "file-output",
+		"load-icon": "loader",
 		"next-icon": "arrow-down",
 		"output-to-clipboard-icon": "clipboard-copy",
 		"output-to-file-icon": "file-input",
@@ -126,7 +128,7 @@
 		"all-settings-actions": {
 			"edit-icon": "file-edit",
 			"recover-icon": "file-x",
-			"reload-icon": "loader",
+			"reload-icon": "$t(asset:generic.load-icon)",
 			"reset-icon": "reset",
 			"undo-icon": "undo"
 		},

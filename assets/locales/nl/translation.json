@@ -44,6 +44,7 @@
 			"integrated": {
 				"Python-executable": "$t(generic.Python, capitalize) $t(generic.executable)",
 				"Python-executable-check": "$t(generic.check, capitalize)",
+				"Python-executable-checking": "$t(generic.check_gerund, capitalize)",
 				"Python-executable-description": "Recommend $t(asset:magic.recommended-Python-version) or up. Required on $t(generic.platforms.unix) to $t(generic.spawn) $t(generic.profile-types.integrated) $t(generic.terminal). Clear $t(generic.text-field) to $t(generic.disable) $t(generic.Python).",
 				"Python-executable-placeholder": "($t(generic.disable_past, capitalize))",
 				"arguments": "$t(generic.argument_other, capitalize)",

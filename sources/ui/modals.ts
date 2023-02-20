@@ -629,6 +629,7 @@ export class ProfileModal extends Modal {
 					})
 				}
 				if (profile.type === "integrated") {
+					let checkingPython = false
 					ui.newSetting(element, setting => {
 						setting
 							.setName(i18n
@@ -650,52 +651,65 @@ export class ProfileModal extends Modal {
 									},
 								},
 							))
-							.addButton(button => button
-								.setIcon(i18n.t(`asset:components.profile.${profile
-									.type}.Python-executable-check-icon`))
-								.setTooltip(i18n.t(`components.profile.${profile
-									.type}.Python-executable-check`))
-								.onClick(async () => {
-									try {
-										const { stdout, stderr } = await (await util)
-											.promisify((await childProcess).execFile)(
-												profile.pythonExecutable,
-												["--version"],
-												{
-													env: {
-														...(await process).env,
-														// eslint-disable-next-line @typescript-eslint/naming-convention
-														PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
-													},
-													timeout: CHECK_EXECUTABLE_TIMEOUT * SI_PREFIX_SCALE,
-													windowsHide: true,
-												},
-											)
-										if (stdout) { console.log(stdout) }
-										if (stderr) { console.error(stderr) }
-										if (!stdout.contains(i18n
-											.t("asset:magic.Python-version-magic"))) {
-											throw new Error(i18n.t("errors.not-Python"))
-										}
-										notice2(
-											() => i18n.t("notices.Python-version-is", {
-												interpolation: { escapeValue: false },
-												version: new SemVer(
-													coerce(stdout, { loose: true }) ?? stdout,
-													{ loose: true },
-												).version,
-											}),
-											plugin.settings.noticeTimeout,
-											plugin,
-										)
-									} catch (error) {
-										printError(
-											anyToError(error),
-											() => i18n.t("errors.error-checking-Python"),
-											plugin,
-										)
-									}
-								}))
+							.addButton(button => {
+								const i18nVariant = checkingPython ? "ing" : ""
+								button
+									.setIcon(i18n.t(`asset:components.profile.${profile
+										.type}.Python-executable-check${i18nVariant}-icon`))
+									.setTooltip(i18n.t(`components.profile.${profile
+										.type}.Python-executable-check${i18nVariant}`))
+									.onClick(() => {
+										if (checkingPython) { return }
+										checkingPython = true;
+										(async (): Promise<void> => {
+											try {
+												const { stdout, stderr } = await (await util)
+													.promisify((await childProcess).execFile)(
+														profile.pythonExecutable,
+														["--version"],
+														{
+															env: {
+																...(await process).env,
+																// eslint-disable-next-line @typescript-eslint/naming-convention
+																PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
+															},
+															timeout: CHECK_EXECUTABLE_TIMEOUT *
+																SI_PREFIX_SCALE,
+															windowsHide: true,
+														},
+													)
+												if (stdout) { console.log(stdout) }
+												if (stderr) { console.error(stderr) }
+												if (!stdout.contains(i18n
+													.t("asset:magic.Python-version-magic"))) {
+													throw new Error(i18n.t("errors.not-Python"))
+												}
+												notice2(
+													() => i18n.t("notices.Python-version-is", {
+														interpolation: { escapeValue: false },
+														version: new SemVer(
+															coerce(stdout, { loose: true }) ?? stdout,
+															{ loose: true },
+														).version,
+													}),
+													plugin.settings.noticeTimeout,
+													plugin,
+												)
+											} catch (error) {
+												printError(
+													anyToError(error),
+													() => i18n.t("errors.error-checking-Python"),
+													plugin,
+												)
+											} finally {
+												checkingPython = false
+												ui.update()
+											}
+										})()
+										ui.update()
+									})
+								if (checkingPython) { button.setCta() }
+							})
 							.addExtraButton(resetButton(
 								i18n.t(`asset:components.profile.${profile
 									.type}.Python-executable-icon`),
