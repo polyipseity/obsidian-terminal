@@ -6,6 +6,8 @@ Integrate consoles, shells, and terminals inside [Obsidian](https://obsidian.md/
 
 For first time users, read the [installation](#installation) section first!
 
+This file is automatically opened on first install. You can reopen it in settings or command palette.
+
 - Repository: https://github.com/polyipseity/obsidian-terminal
 - Changelog: [CHANGELOG.md](CHANGELOG.md)
 - Community plugin: https://obsidian.md/plugins?id=terminal
@@ -15,8 +17,9 @@ For first time users, read the [installation](#installation) section first!
 - Start external terminals from Obsidian.
 - Integrate terminals into Obsidian.
 - Supports multiple terminal profiles.
-- Find in terminal.
+- Has builtin hotkeys.
 - Automatically save and restore integrated terminal history.
+- Find in terminal.
 - Save terminal history as file.
 
 ## Installation
@@ -51,13 +54,28 @@ For first time users, read the [installation](#installation) section first!
 	2. Terminal history will be restored next time Obsidian is opened.
 - Additional actions
 	- Includes
-		- Find in terminal
-		- Restart terminal
-		- Edit terminal
-		- Save terminal history as file
+		- Find in terminal: (1), (2)
+		- Restart terminal: (1), (2)
+		- Edit terminal: (1), (2)
+		- Save terminal history as file: (1), (2)
+		- Export, import, or edit settings: (3), (4)
+		- Open documentation: (3), (4)
 	- Available by
-		- Right-click on terminal tab header
-		- Right-click on `More options` button
+		- (1) Right-click on terminal tab header
+		- (2) Right-click on `More options` button
+		- (3) Open settings
+		- (4) Command palette
+
+### Hotkeys
+
+__Terminal tab is focused__
+- Focus terminal: Ctrl+Shift+`, Command+` (macOS)
+- Inherit from app hotkeys
+
+__Terminal is focused__
+- Focus terminal tab/Unfocus terminal: Ctrl+Shift+`, Command+` (macOS)
+- Clear terminal: Ctrl+Shift+K, Command+K (macOS)
+- Find in terminal: Ctrl+Shift+F, Command+F (macOS)
 
 ## Todos
 

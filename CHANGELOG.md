@@ -2,7 +2,7 @@
 
 Versions are ordered by recency.
 
-If you are using the plugin, this changelog is automatically opened on update. You can reopen it in the settings tab or the command palette.
+This file is automatically opened on update. You can reopen it in settings or command palette.
 
 - Read me: [README.md](README.md)
 
