@@ -98,9 +98,13 @@ export class TerminalPlugin extends Plugin {
 		super.onload();
 		(async (): Promise<void> => {
 			try {
+				const loaded = this.loadData()
 				// Initialization
 				await Promise.all([
-					this.mutateSettings(async settings => this.loadSettings(settings))
+					this.mutateSettings(async settings => this.loadSettings(
+						settings,
+						async () => loaded,
+					))
 						.then(() => { this.saveSettings().catch(logError) }),
 					this.language.load(),
 					Promise.resolve().then(() => { loadIcons(this) }),
@@ -109,7 +113,9 @@ export class TerminalPlugin extends Plugin {
 				await Promise.all([
 					Promise.resolve().then(() => { this.statusBarHider.load() }),
 					Promise.resolve().then(() => { loadSettings(this) }),
-					Promise.resolve().then(() => { loadDocumentation(this) }),
+					Promise.resolve().then(async () => {
+						loadDocumentation(this, await loaded === null)
+					}),
 					Promise.resolve().then(() => { loadTerminal(this) }),
 				])
 			} catch (error) {

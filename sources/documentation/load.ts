@@ -9,7 +9,10 @@ import type { TerminalPlugin } from "sources/main"
 import { anyToError } from "sources/utils/util"
 import { lt } from "semver"
 
-export function loadDocumentation(plugin: TerminalPlugin): void {
+export function loadDocumentation(
+	plugin: TerminalPlugin,
+	readme = false,
+): void {
 	const { language, version } = plugin,
 		{ i18n } = language
 	plugin.registerView(
@@ -26,6 +29,7 @@ export function loadDocumentation(plugin: TerminalPlugin): void {
 		icon: i18n.t("asset:commands.open-changelog-icon"),
 		id: "open-changelog",
 	})
+	if (readme) { openDocumentation(plugin, "readme", false) }
 	if (version !== null &&
 		lt(plugin.settings.lastReadChangelogVersion, version)) {
 		openDocumentation(plugin, "changelog", false)
