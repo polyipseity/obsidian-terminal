@@ -66,7 +66,7 @@ export class TerminalPlugin extends Plugin {
 		const loaded: unknown = await loader(),
 			{ value, valid } = Settings.fix(loaded)
 		Object.assign(settings, value)
-		if (!valid) {
+		if (loaded !== null && !valid) {
 			printMalformedData(this, loaded, value)
 			settings.recovery[new Date().toISOString()] =
 				JSON.stringify(loaded, null, JSON_STRINGIFY_SPACE)
