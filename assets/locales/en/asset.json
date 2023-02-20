@@ -44,7 +44,8 @@
 				"arguments-edit-icon": "$t(asset:generic.edit-list-icon)",
 				"enable-win32-conhost-workaround-icon": "code",
 				"executable-icon": "$t(asset:components.profile.generic.executable-icon)",
-				"Python-executable-icon": "file-cog"
+				"Python-executable-icon": "file-cog",
+				"Python-executable-check-icon": "file-check"
 			},
 			"invalid": {
 				"data-icon": "$t(asset:generic.data-icon)"
@@ -109,6 +110,7 @@
 		"terminal-profile-icon": "terminal-square"
 	},
 	"magic": {
+		"Python-version-magic": "Python ",
 		"recommended-Python-version": "3.10.0"
 	},
 	"menus": {

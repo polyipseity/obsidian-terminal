@@ -40,6 +40,7 @@
 			},
 			"integrated": {
 				"Python-executable": "$t(generic.Python)$t(generic.executable)",
+				"Python-executable-check": "$t(generic.check)",
 				"Python-executable-description": "推荐$t(asset:magic.recommended-Python-version)或更高版本。于$t(generic.platforms.unix)$t(generic.spawn)$t(generic.profile-types.integrated)$t(generic.terminal)所需要的。清除$t(generic.text-field)以$t(generic.disable)$t(generic.Python)。",
 				"Python-executable-placeholder": "（已$t(generic.disable)）",
 				"arguments": "$t(generic.argument)",
@@ -111,6 +112,7 @@
 	},
 	"errors": {
 		"cannot-find-status-bar": "找不到$t(generic.status-bar)",
+		"error-checking-Python": "$t(generic.check)$t(generic.Python)时出错",
 		"error-exporting-settings": "$t(generic.export)$t(generic.setting)时出错",
 		"error-importing-settings": "$t(generic.import)$t(generic.setting)时出错",
 		"error-opening-documentation": "$t(generic.open)$t(generic.documentation)时出错",
@@ -122,6 +124,7 @@
 		"missing-interpolation": "名称为「{{name}}」的缺少插值被替换为「{{value}}」：{{text}}",
 		"missing-translation": "键为「{{key}}」的缺少翻译被替换为「{{value}}」",
 		"no-Python-to-spawn-Unix-pseudoterminal": "没有$t(generic.Python)来$t(generic.spawn)$t(generic.platforms.unix)$t(generic.pseudoterminal)",
+		"not-Python": "不是$t(generic.Python)",
 		"private-API-changed": "私有$t(generic.API)改变了",
 		"resizer-disabled": "$t(generic.terminal-resizer)已$t(generic.disable)",
 		"resizer-exited-unexpectedly": "$t(generic.terminal-resizer)意外$t(generic.exit)：{{code}}",
@@ -135,6 +138,7 @@
 		"background": "后台",
 		"behavior": "行为",
 		"cancel": "取消",
+		"check": "检查",
 		"clipboard": "剪贴板",
 		"command": "命令",
 		"command-palette": "命令面板",
@@ -224,6 +228,7 @@
 	},
 	"name": "$t(generic.terminal)",
 	"notices": {
+		"Python-version-is": "$t(generic.Python)版本为{{version}}",
 		"no-default-profile": "没有$t(generic.type)「$t(generic.profile-types.{{type}})」的$t(generic.default)$t(generic.profile)",
 		"spawning-terminal": "$t(generic.terminal)$t(generic.spawn)中：{{name}}",
 		"terminal-exited": "$t(generic.terminal)已$t(generic.exit)：{{code}}"

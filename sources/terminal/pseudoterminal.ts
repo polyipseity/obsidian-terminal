@@ -1,5 +1,6 @@
 import {
 	DEFAULT_ENCODING,
+	DEFAULT_PYTHONIOENCODING,
 	EXIT_SUCCESS,
 	SI_PREFIX_SCALE,
 	TERMINAL_RESIZER_WATCHDOG_INTERVAL,
@@ -208,7 +209,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 						env: {
 							...(await process).env,
 							// eslint-disable-next-line @typescript-eslint/naming-convention
-							PYTHONIOENCODING: "UTF-8:backslashreplace",
+							PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
 						},
 						stdio: ["pipe", "pipe", "pipe"],
 						windowsHide: true,
@@ -409,7 +410,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 					env: {
 						...(await process).env,
 						// eslint-disable-next-line @typescript-eslint/naming-convention
-						PYTHONIOENCODING: `${DEFAULT_ENCODING}:backslashreplace`,
+						PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
 					},
 					stdio: ["pipe", "pipe", "pipe", "pipe"],
 					windowsHide: true,

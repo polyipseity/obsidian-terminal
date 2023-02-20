@@ -5,6 +5,8 @@ import {
 	type ValueComponent,
 } from "obsidian"
 import {
+	CHECK_EXECUTABLE_TIMEOUT,
+	DEFAULT_PYTHONIOENCODING,
 	DISABLED_TOOLTIP,
 	DOMClasses,
 	JSON_STRINGIFY_SPACE,
@@ -12,6 +14,7 @@ import {
 } from "sources/magic"
 import {
 	PLATFORM,
+	anyToError,
 	bracket,
 	clearProperties,
 	cloneAsWritable,
@@ -29,8 +32,11 @@ import {
 	PROFILE_PRESETS,
 	PROFILE_PRESET_ORDERED_KEYS,
 } from "sources/settings/profile-presets"
+import { SemVer, coerce } from "semver"
 import {
 	UpdatableUI,
+	notice2,
+	printError,
 	useSettings,
 	useSubsettings,
 } from "sources/utils/obsidian"
@@ -45,6 +51,13 @@ import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
 import { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "sources/main"
+import { dynamicRequire } from "sources/imports"
+
+const
+	childProcess =
+		dynamicRequire<typeof import("node:child_process")>("node:child_process"),
+	process = dynamicRequire<typeof import("node:process")>("node:process"),
+	util = dynamicRequire<typeof import("node:util")>("node:util")
 
 export function makeModalDynamicWidth(
 	ui: UpdatableUI,
@@ -637,6 +650,52 @@ export class ProfileModal extends Modal {
 									},
 								},
 							))
+							.addButton(button => button
+								.setIcon(i18n.t(`asset:components.profile.${profile
+									.type}.Python-executable-check-icon`))
+								.setTooltip(i18n.t(`components.profile.${profile
+									.type}.Python-executable-check`))
+								.onClick(async () => {
+									try {
+										const { stdout, stderr } = await (await util)
+											.promisify((await childProcess).execFile)(
+												profile.pythonExecutable,
+												["--version"],
+												{
+													env: {
+														...(await process).env,
+														// eslint-disable-next-line @typescript-eslint/naming-convention
+														PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
+													},
+													timeout: CHECK_EXECUTABLE_TIMEOUT * SI_PREFIX_SCALE,
+													windowsHide: true,
+												},
+											)
+										if (stdout) { console.log(stdout) }
+										if (stderr) { console.error(stderr) }
+										if (!stdout.contains(i18n
+											.t("asset:magic.Python-version-magic"))) {
+											throw new Error(i18n.t("errors.not-Python"))
+										}
+										notice2(
+											() => i18n.t("notices.Python-version-is", {
+												interpolation: { escapeValue: false },
+												version: new SemVer(
+													coerce(stdout, { loose: true }) ?? stdout,
+													{ loose: true },
+												).version,
+											}),
+											plugin.settings.noticeTimeout,
+											plugin,
+										)
+									} catch (error) {
+										printError(
+											anyToError(error),
+											() => i18n.t("errors.error-checking-Python"),
+											plugin,
+										)
+									}
+								}))
 							.addExtraButton(resetButton(
 								i18n.t(`asset:components.profile.${profile
 									.type}.Python-executable-icon`),
