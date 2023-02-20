@@ -77,6 +77,26 @@ __Terminal is focused__
 - Clear terminal: Ctrl+Shift+K, Command+K (macOS)
 - Find in terminal: Ctrl+Shift+F, Command+F (macOS)
 
+### Profiles
+
+This plugin comes with several profile presets that you can reference.
+
+#### Examples
+
+__Shells__
+- Bash: `bash`
+- Bourne shell: `sh`
+- Command Prompt: `cmd`
+- Dash: `dash`
+- PowerShell: `pwsh`
+- Windows Subsystem for Linux: `wsl -d <distribution name>`
+- Z shell: `zsh`
+
+__Terminals__
+- Command Prompt: `cmd`
+- macOS Terminal: `/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal`
+- xterm: `xterm`
+
 ## Todos
 
 - Add setting for successful exit codes.
