@@ -51,7 +51,7 @@
 				"arguments-description": "$t(generic.list-description, capitalize)",
 				"arguments-edit": "$t(generic.edit, capitalize)",
 				"executable": "$t(generic.executable, capitalize)",
-				"use-win32-conhost": "$t(generic.use, capitalize) $t(generic.platforms.win32) 'conhost.exe' workaround",
+				"use-win32-conhost": "$t(generic.use, capitalize) $t(generic.platforms.win32) 'conhost.exe'",
 				"use-win32-conhost-description": "$t(generic.disable, capitalize) if running 'conhost.exe' does not create a window. No guarantees this will work."
 			},
 			"invalid": {

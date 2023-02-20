@@ -48,7 +48,7 @@
 				"arguments-description": "$t(generic.list-description)",
 				"arguments-edit": "$t(generic.edit)",
 				"executable": "$t(generic.executable)",
-				"use-win32-conhost": "$t(generic.use)$t(generic.platforms.win32)「conhost.exe」解决方法",
+				"use-win32-conhost": "$t(generic.use)$t(generic.platforms.win32)「conhost.exe」",
 				"use-win32-conhost-description": "如果执行「conhost.exe」没有创建视窗，请$t(generic.disable)。无保证这会起作用。"
 			},
 			"invalid": {

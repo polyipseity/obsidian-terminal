@@ -730,7 +730,7 @@ export class ProfileModal extends Modal {
 							.addExtraButton(resetButton(
 								i18n
 									.t(`asset:components.profile.${profile
-										.type}.enable-win32-conhost-workaround-icon`),
+										.type}.use-win32-conhost-icon`),
 								i18n.t("components.profile.reset"),
 								() => {
 									profile.useWin32Conhost =

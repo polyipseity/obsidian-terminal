@@ -40,13 +40,13 @@
 				"executable-icon": "file-terminal"
 			},
 			"integrated": {
-				"arguments-icon": "$t(asset:components.profile.generic.arguments-icon)",
-				"arguments-edit-icon": "$t(asset:generic.edit-list-icon)",
-				"enable-win32-conhost-workaround-icon": "code",
-				"executable-icon": "$t(asset:components.profile.generic.executable-icon)",
 				"Python-executable-icon": "file-cog",
 				"Python-executable-check-icon": "file-check",
-				"Python-executable-checking-icon": "$t(asset:generic.load-icon)"
+				"Python-executable-checking-icon": "$t(asset:generic.load-icon)",
+				"arguments-icon": "$t(asset:components.profile.generic.arguments-icon)",
+				"arguments-edit-icon": "$t(asset:generic.edit-list-icon)",
+				"executable-icon": "$t(asset:components.profile.generic.executable-icon)",
+				"use-win32-conhost-icon": "code"
 			},
 			"invalid": {
 				"data-icon": "$t(asset:generic.data-icon)"
