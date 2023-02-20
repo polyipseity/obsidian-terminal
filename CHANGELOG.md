@@ -8,7 +8,10 @@ If you are using the plugin, this changelog is automatically opened on update. Y
 
 ## 3.1.0
 
+This update focuses on quality of life improvements.
+
 __Notices__
+- You can actually download the plugin on mobile now. Somehow this has not been caught for a long time.
 - Settings will probably be broken again. The plugin will attempt to fix it without changing it as much as possible. In case it goes wrong, you can recover the previous setting from the plugin itself now.
 
 __Features__
@@ -38,7 +41,7 @@ __Fixes__
 - Make plugin downloadable on mobile by downgrading minimum app version. (`165b414e68e26027bcf677795bdc5d2d01380680`)
 - Fix empty Python executable not disabling Python. Fixes GH#8. (`09f2b3d1b0ae23867827977f2dbbba6b6f4f6460`)
 - Windows: Fix pressing &lt;Ctrl+C&gt; exiting the terminal resizer. (`5bff3f0749f16be80bfeb8a3ba903b0f8c6f79c4`)
-- Mobile: Fix bottom of terminal view covered by navbar. (`3230ca61defe56429358fcf368fade77abb6991d`)
+- Mobile: Fix bottom of terminal view covered by navbar. (`3230ca61defe56429358fcf368fade77abb6991d`, `dc875923e67300e2a0826d4e9332c51c2f42c19b`)
 
 __Internals__
 - Improve UI code using `UpdatableUI`.
@@ -47,7 +50,7 @@ __Internals__
 - Handle missing translation keys and interpolation. (`575cbfeb4293f7d602124f6470f5fb95ccf3b99c`)
 
 __Miscellaneous__
-- Change license. (`77d9d9477b0dc1d56ab3b0cd36d3ba53ef5e52ff`)
+- Change license from "MIT" to "AGPL-3.0-or-later". (`77d9d9477b0dc1d56ab3b0cd36d3ba53ef5e52ff`)
 
 __Full changelog__: [`3.0.0...3.1.0`](https://github.com/polyipseity/obsidian-terminal/compare/3.0.0...3.1.0)
 
