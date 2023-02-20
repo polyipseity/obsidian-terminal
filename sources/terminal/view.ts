@@ -449,7 +449,7 @@ export class TerminalView extends ItemView {
 			"k",
 			event => {
 				const term = this.#emulator?.terminal
-				term?.write("\u001b[2J\u001b[3J")
+				term?.write("\u001b[3J\u001b[2J")
 				term?.clear()
 				consumeEvent(event)
 			},
