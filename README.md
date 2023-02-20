@@ -96,7 +96,7 @@ __Shells__
 
 __Terminal emulators__
 - Command Prompt: `cmd`
-- macOS Terminal: `/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal`
+- macOS Terminal: `/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal $PWD`
 - xterm: `xterm`
 
 ## Todos
