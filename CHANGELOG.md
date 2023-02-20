@@ -53,6 +53,7 @@ __Internals__
 
 __Miscellaneous__
 - Change license from "MIT" to "AGPL-3.0-or-later". (`77d9d9477b0dc1d56ab3b0cd36d3ba53ef5e52ff`)
+- Improve documentation. Closes GH#4 and GH#6. (`57a85254e1fd7bf9ed5a6feab08784b26d983090`, `25df148d992056b8378ff42d459120f4c48b52f3`)
 
 __Full changelog__: [`3.0.0...3.1.0`](https://github.com/polyipseity/obsidian-terminal/compare/3.0.0...3.1.0)
 
