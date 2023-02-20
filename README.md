@@ -69,13 +69,13 @@ This file is automatically opened on first install. You can reopen it in setting
 ### Hotkeys
 
 __Terminal tab is focused__
-- Focus terminal: Ctrl+Shift+`, Command+` (macOS)
+- Focus terminal: `Ctrl`+`Shift`+`` ` ``, `Command`+`` ` `` (macOS)
 - Inherit from app hotkeys
 
 __Terminal is focused__
-- Focus terminal tab/Unfocus terminal: Ctrl+Shift+`, Command+` (macOS)
-- Clear terminal: Ctrl+Shift+K, Command+K (macOS)
-- Find in terminal: Ctrl+Shift+F, Command+F (macOS)
+- Focus terminal tab/Unfocus terminal: `Ctrl`+`Shift`+`` ` ``, `Command`+`` ` `` (macOS)
+- Clear terminal: `Ctrl`+`Shift`+`K`, `Command`+`K` (macOS)
+- Find in terminal: `Ctrl`+`Shift`+`F`, `Command`+`F` (macOS)
 
 ### Profiles
 
