@@ -81,6 +81,8 @@ __Terminal is focused__
 
 This plugin comes with several profile presets that you can reference.
 
+When setting up a terminal profile, you need to distinguish between shells and terminal emulators. (Search online if needed.) Generally, integrated profiles only work with shells while external ones only work with terminal emulators.
+
 #### Examples
 
 __Shells__
@@ -92,7 +94,7 @@ __Shells__
 - Windows Subsystem for Linux: `wsl -d <distribution name>`
 - Z shell: `zsh`
 
-__Terminals__
+__Terminal emulators__
 - Command Prompt: `cmd`
 - macOS Terminal: `/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal`
 - xterm: `xterm`
