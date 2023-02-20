@@ -40,7 +40,7 @@
 			},
 			"integrated": {
 				"Python-executable": "$t(generic.Python)$t(generic.executable)",
-				"Python-executable-description": "于$t(generic.platforms.unix)$t(generic.spawn)$t(generic.profile-types.integrated)$t(generic.terminal)所需要的。清除$t(generic.text-field)以$t(generic.disable)$t(generic.Python)。",
+				"Python-executable-description": "推荐$t(asset:magic.recommended-Python-version)或更高版本。于$t(generic.platforms.unix)$t(generic.spawn)$t(generic.profile-types.integrated)$t(generic.terminal)所需要的。清除$t(generic.text-field)以$t(generic.disable)$t(generic.Python)。",
 				"Python-executable-placeholder": "（已$t(generic.disable)）",
 				"arguments": "$t(generic.argument)",
 				"arguments-description": "$t(generic.list-description)",

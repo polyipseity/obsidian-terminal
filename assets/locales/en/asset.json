@@ -108,6 +108,9 @@
 		"remove-icon": "minus",
 		"terminal-profile-icon": "terminal-square"
 	},
+	"magic": {
+		"recommended-Python-version": "3.10.0"
+	},
 	"menus": {
 		"open-terminal-icon": "$t(asset:generic.profile-types.{{type}}-icon)"
 	},
