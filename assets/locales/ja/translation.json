@@ -232,6 +232,7 @@
 		"tab": "tab",
 		"terminal": "terminal",
 		"terminal-resizer": "$t(generic.terminal) resizer",
+		"text-field": "text field",
 		"timeout": "timeout",
 		"true": "true",
 		"type": "type",
