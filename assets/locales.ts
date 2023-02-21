@@ -1,49 +1,21 @@
-import * as am from "assets/locales/am/translation.json"
-import * as asset from "assets/locales/en/asset.json"
-import * as cs from "assets/locales/cs/translation.json"
-import * as da from "assets/locales/da/translation.json"
-import * as de from "assets/locales/de/translation.json"
-import * as en from "assets/locales/en/translation.json"
-import * as es from "assets/locales/es/translation.json"
-import * as fa from "assets/locales/fa/translation.json"
-import * as fr from "assets/locales/fr/translation.json"
-import * as id from "assets/locales/id/translation.json"
-import * as it from "assets/locales/it/translation.json"
-import * as ja from "assets/locales/ja/translation.json"
-import * as ko from "assets/locales/ko/translation.json"
-import * as language from "assets/locales/en/language.json"
-import * as nl from "assets/locales/nl/translation.json"
-import * as no from "assets/locales/no/translation.json"
-import * as pl from "assets/locales/pl/translation.json"
-import * as pt from "assets/locales/pt/translation.json"
-import * as ptBR from "assets/locales/pt-BR/translation.json"
-import * as ro from "assets/locales/ro/translation.json"
-import * as ru from "assets/locales/ru/translation.json"
-import * as sq from "assets/locales/sq/translation.json"
-import * as th from "assets/locales/th/translation.json"
-import * as tr from "assets/locales/tr/translation.json"
-import * as zhHans from "assets/locales/zh-Hans/translation.json"
-import * as zhHant from "assets/locales/zh-Hant/translation.json"
+import type { Builtin, IsUnknown } from "ts-essentials"
 import {
 	capitalize,
 	deepFreeze,
 	typedKeys,
 	uncapitalize,
 } from "sources/utils/util"
-import type { Exact } from "ts-essentials"
+import type { Exact } from "sources/utils/types"
+import type en from "assets/locales/en/translation.json"
 
-function sanitize<T extends object>(value: T): T {
-	return Object.freeze(Object.fromEntries(Object.entries(value)
-		.filter(([, val]) => typeof val === "string")) as T)
-}
-
-type FilterKey<K> = K extends `${infer K0}_${string}` ? K0 : K
-type SyncNorm<T> = {
-	readonly [key in keyof T as FilterKey<key>]: SyncNorm<T[key]>
-}
+type SyncNorm<T> = T extends Builtin ? T
+	// eslint-disable-next-line @typescript-eslint/ban-types
+	: T extends {} ? {
+		[K in keyof T as K extends `${infer K0}_${string}` ? K0 : K]: SyncNorm<T[K]>
+	} : IsUnknown<T> extends true ? unknown : T
 function sync<T>(translation: Exact<SyncNorm<T>, SyncNorm<typeof en>
-> extends never ? never : T): T {
-	// Odd bug: does not check more than 2 layers
+> extends false ? never : T): T {
+	// TypeScript does not check more than 2 layers...
 	return translation
 }
 
@@ -58,42 +30,129 @@ export const FALLBACK_LANGUAGES = deepFreeze({
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	"zh-TW": ["zh-Hant", "zh", DEFAULT_LANGUAGE],
 } as const)
+export const FORMATTERS: Readonly<Record<string, (
+	lng?: string,
+	options?: unknown,
+) => (value: unknown) => string>> = deepFreeze({
+	capitalize: lng => value => capitalize(String(value), lng),
+	uncapitalize: lng => value => uncapitalize(String(value), lng),
+} as const)
+
 // Add those with ✅ in https://github.com/obsidianmd/obsidian-translations#existing-languages
 export const RESOURCES = deepFreeze({
-	am: { [DEFAULT_NAMESPACE]: sync(am) },
-	cs: { [DEFAULT_NAMESPACE]: sync(cs) },
-	da: { [DEFAULT_NAMESPACE]: sync(da) },
-	de: { [DEFAULT_NAMESPACE]: sync(de) },
-	en: {
-		[DEFAULT_NAMESPACE]: sync(en),
-		asset,
-		language: sanitize(language),
+	am: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/am/translation.json")).default),
 	},
-	es: { [DEFAULT_NAMESPACE]: sync(es) },
-	fa: { [DEFAULT_NAMESPACE]: sync(fa) },
-	fr: { [DEFAULT_NAMESPACE]: sync(fr) },
-	id: { [DEFAULT_NAMESPACE]: sync(id) },
-	it: { [DEFAULT_NAMESPACE]: sync(it) },
-	ja: { [DEFAULT_NAMESPACE]: sync(ja) },
-	ko: { [DEFAULT_NAMESPACE]: sync(ko) },
-	nl: { [DEFAULT_NAMESPACE]: sync(nl) },
-	no: { [DEFAULT_NAMESPACE]: sync(no) },
-	pl: { [DEFAULT_NAMESPACE]: sync(pl) },
-	pt: { [DEFAULT_NAMESPACE]: sync(pt) },
+	cs: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/cs/translation.json")).default),
+	},
+	da: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/da/translation.json")).default),
+	},
+	de: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/de/translation.json")).default),
+	},
+	en: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/en/translation.json")).default),
+		asset: async () =>
+			(await import("assets/locales/en/asset.json")).default,
+		language: async () =>
+			(await import("assets/locales/en/language.json")).default,
+	},
+	es: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/es/translation.json")).default),
+	},
+	fa: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/fa/translation.json")).default),
+	},
+	fr: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/fr/translation.json")).default),
+	},
+	id: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/id/translation.json")).default),
+	},
+	it: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/it/translation.json")).default),
+	},
+	ja: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/ja/translation.json")).default),
+	},
+	ko: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/ko/translation.json")).default),
+	},
+	nl: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/nl/translation.json")).default),
+	},
+	no: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/no/translation.json")).default),
+	},
+	pl: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/pl/translation.json")).default),
+	},
+	pt: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/pt/translation.json")).default),
+	},
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	"pt-BR": { [DEFAULT_NAMESPACE]: sync(ptBR) },
-	ro: { [DEFAULT_NAMESPACE]: sync(ro) },
-	ru: { [DEFAULT_NAMESPACE]: sync(ru) },
-	sq: { [DEFAULT_NAMESPACE]: sync(sq) },
-	th: { [DEFAULT_NAMESPACE]: sync(th) },
-
-	tr: { [DEFAULT_NAMESPACE]: sync(tr) },
+	"pt-BR": {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/pt-BR/translation.json")).default),
+	},
+	ro: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/ro/translation.json")).default),
+	},
+	ru: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/ru/translation.json")).default),
+	},
+	sq: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/sq/translation.json")).default),
+	},
+	th: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/th/translation.json")).default),
+	},
+	tr: {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/tr/translation.json")).default),
+	},
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	"zh-Hans": { [DEFAULT_NAMESPACE]: sync(zhHans) },
+	"zh-Hans": {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/zh-Hans/translation.json")).default),
+	},
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	"zh-Hant": { [DEFAULT_NAMESPACE]: sync(zhHant) },
+	"zh-Hant": {
+		[DEFAULT_NAMESPACE]: async () =>
+			sync((await import("assets/locales/zh-Hant/translation.json")).default),
+	},
 } as const)
-export const LANGUAGES = typedKeys<readonly [
+export type DefaultResources = {
+	[K in
+	keyof typeof RESOURCES[
+	typeof DEFAULT_LANGUAGE]]: Awaited<ReturnType<typeof RESOURCES[
+		typeof DEFAULT_LANGUAGE][K]>>
+}
+export type Namespace = readonly ["translation", "language", "asset"]
+export const NAMESPACES = typedKeys<Namespace>()(RESOURCES[DEFAULT_LANGUAGE])
+export type Language = readonly [
 	"am",
 	"cs",
 	"da",
@@ -118,15 +177,8 @@ export const LANGUAGES = typedKeys<readonly [
 	"tr",
 	"zh-Hans",
 	"zh-Hant",
-]>()(RESOURCES[DEFAULT_LANGUAGE].language);
-(function selectable(_languages: readonly (keyof typeof RESOURCES)[]): void {
-	// NOOP
-}(LANGUAGES))
-export type Language = typeof LANGUAGES[number]
-export const FORMATTERS: Readonly<Record<string, (
-	lng?: string,
-	options?: unknown,
-) => (value: unknown) => string>> = deepFreeze({
-	capitalize: lng => value => capitalize(String(value), lng),
-	uncapitalize: lng => value => uncapitalize(String(value), lng),
-} as const)
+]
+export const LANGUAGES = typedKeys<Language>()(RESOURCES) satisfies
+	readonly (keyof Awaited<ReturnType<
+		typeof RESOURCES[typeof DEFAULT_LANGUAGE]["language"]
+	>>)[]

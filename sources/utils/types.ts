@@ -3,6 +3,9 @@ import { SemVer } from "semver"
 
 export type AnyObject = Readonly<Record<number | string | symbol, unknown>>
 export type Contains<T, U> = T & U extends never ? false : true
+export type Exact<T, U> =
+	(<G>() => G extends T ? 1 : -1) extends
+	(<G>() => G extends U ? 1 : -1) ? true : false
 export type SemVerString =
 	Opaque<string, "fec54e0c-8342-4418-bc4b-57ea4d92c3d4">
 export type Sized<T extends readonly unknown[]> =

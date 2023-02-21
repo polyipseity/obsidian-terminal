@@ -1,21 +1,23 @@
 import {
-	type DEFAULT_LANGUAGE,
 	DEFAULT_NAMESPACE,
+	type DefaultResources,
 	FALLBACK_LANGUAGES,
-	FORMATTERS,
+	FORMATTERS, LANGUAGES,
+	NAMESPACES,
 	RESOURCES,
 	RETURN_NULL,
 } from "assets/locales"
-import { EventEmitterLite, anyToError } from "./utils/util"
+import { EventEmitterLite, anyToError, inSet } from "./utils/util"
 import i18next, { createInstance, type i18n } from "i18next"
 import type { TerminalPlugin } from "./main"
 import { moment } from "obsidian"
 import { printError } from "./utils/obsidian"
+import resourcesToBackend from "i18next-resources-to-backend"
 
 declare module "i18next" {
 	interface CustomTypeOptions {
 		readonly defaultNS: typeof DEFAULT_NAMESPACE
-		readonly resources: typeof RESOURCES[typeof DEFAULT_LANGUAGE]
+		readonly resources: DefaultResources
 		readonly returnNull: typeof RETURN_NULL
 	}
 }
@@ -48,6 +50,7 @@ export const I18N = (async (): Promise<i18n> => {
 				return value[0]
 			},
 			nonExplicitSupportedLngs: true,
+			ns: NAMESPACES,
 			parseMissingKeyHandler(key, defaultValue) {
 				if (key === missingTranslationKey) {
 					console.warn(key, defaultValue)
@@ -60,9 +63,19 @@ export const I18N = (async (): Promise<i18n> => {
 				}
 				return defaultValue ?? key
 			},
-			resources: RESOURCES,
 			returnNull: RETURN_NULL,
-		})
+		}).use(resourcesToBackend(async (
+			language: string,
+			namespace: string,
+		) => {
+			if (inSet(LANGUAGES, language)) {
+				const lngRes = RESOURCES[language]
+				if (namespace in lngRes) {
+					return lngRes[namespace as keyof typeof lngRes]()
+				}
+			}
+			return null
+		}))
 		await ret.init()
 		const { services } = ret,
 			{ formatter } = services
