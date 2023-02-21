@@ -332,7 +332,7 @@
 		"preferred-renderer": "Preferred $t(generic.renderer)",
 		"preferred-renderer-options": "$t(generic.renderers.{{type}}, capitalize)",
 		"profile-list": {
-			"description": "The first $t(generic.profile) in the $t(generic.list) available on this $t(generic.platform) is the $t(generic.default) $t(generic.default) for its $t(generic.terminal) $t(generic.type)."
+			"description": "The first $t(generic.profile) in the $t(generic.list) available on this $t(generic.platform) is the $t(generic.default) for its $t(generic.terminal) $t(generic.type)."
 		},
 		"profiles": "$t(generic.profile_other, capitalize)",
 		"profiles-description": "$t(generic.list-description, capitalize)",

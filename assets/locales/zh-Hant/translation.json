@@ -310,7 +310,7 @@
 		"preferred-renderer": "首選$t(generic.renderer)",
 		"preferred-renderer-options": "$t(generic.renderers.{{type}})",
 		"profile-list": {
-			"description": "$t(generic.list)中第一個此$t(generic.platform)上可用的$t(generic.profile)是其$t(generic.terminal)$t(generic.type)的$t(generic.default)$t(generic.profile)。"
+			"description": "$t(generic.list)中第一個此$t(generic.platform)上可用的$t(generic.profile)是其$t(generic.terminal)$t(generic.type)的$t(generic.default)。"
 		},
 		"profiles": "$t(generic.profile)",
 		"profiles-description": "$t(generic.list-description)",
