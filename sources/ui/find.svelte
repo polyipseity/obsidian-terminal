@@ -3,7 +3,9 @@
 <script context="module" lang="typescript">
 	import { Direction, type Params } from "./find";
 	import type { DeepWritable } from "ts-essentials";
+	import { consumeEvent } from "sources/utils/util";
 	import { t as i18t } from "i18next";
+	import { onMount } from "svelte";
 	import { setIcon } from "obsidian";
 </script>
 
@@ -22,7 +24,6 @@
 	export let searchResult = "";
 
 	let inputElement: HTMLElement | null = null;
-
 	export function focus() {
 		inputElement?.focus();
 	}
@@ -30,6 +31,14 @@
 		inputElement?.blur();
 	}
 
+	onMount(() => {
+		inputElement?.addEventListener("keydown", (event) => {
+			if (event.code === "Escape") {
+				onClose();
+				consumeEvent(event);
+			}
+		});
+	});
 	$: onParamsChanged(params);
 </script>
 

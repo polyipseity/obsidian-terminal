@@ -512,7 +512,8 @@ export class TerminalView extends ItemView {
 				...optional,
 			})
 		}
-		this.#find.focus()
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		this.#find["focus"]()
 	}
 
 	protected startEmulator(): void {

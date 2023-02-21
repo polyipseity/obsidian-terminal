@@ -1,4 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/no-import-type-side-effects
 import "obsidian"
 
 declare module "obsidian" {
