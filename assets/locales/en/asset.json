@@ -53,6 +53,7 @@
 			},
 			"name-icon": "text-cursor-input",
 			"platform-icon": "$t(asset:generic.platforms.{{type}}-icon)",
+			"preset-icon": "$t(asset:generic.profile-icon)",
 			"type-icon": "type"
 		},
 		"profile-list": {
@@ -61,7 +62,7 @@
 		"terminal": {
 			"icon": "terminal",
 			"edit-modal": {
-				"profile-icon": "$t(asset:generic.terminal-profile-icon)",
+				"profile-icon": "$t(asset:generic.profile-icon)",
 				"profile-edit-icon": "$t(asset:generic.edit-icon)",
 				"working-directory-icon": "folder"
 			},
@@ -100,6 +101,7 @@
 			"win32-icon": "terminal:windows"
 		},
 		"previous-icon": "arrow-up",
+		"profile-icon": "terminal-square",
 		"profile-types": {
 			"-icon": "square",
 			"developerConsole-icon": "curly-braces",
@@ -108,8 +110,7 @@
 			"invalid-icon": "x-circle",
 			"select-icon": "text-cursor-input"
 		},
-		"remove-icon": "minus",
-		"terminal-profile-icon": "terminal-square"
+		"remove-icon": "minus"
 	},
 	"magic": {
 		"Python-version-magic": "Python ",
@@ -148,7 +149,7 @@
 		"new-instance-behavior-icon": "plus",
 		"notice-timeout-icon": "timer",
 		"preferred-renderer-icon": "brush",
-		"profiles-icon": "$t(asset:generic.terminal-profile-icon)",
+		"profiles-icon": "$t(asset:generic.profile-icon)",
 		"profiles-edit-icon": "$t(asset:generic.edit-list-icon)"
 	}
 }

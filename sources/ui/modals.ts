@@ -208,6 +208,13 @@ export class ListModal<T> extends Modal {
 						await this.postMutate()
 					},
 				))
+				.addExtraButton(resetButton(
+					i18n.t("asset:components.editable-list.prepend-icon"),
+					DISABLED_TOOLTIP,
+					unexpected,
+					unexpected,
+					{ post(component) { component.setDisabled(true) } },
+				))
 		})
 			.embed(() => {
 				const subUI = new UpdatableUI(),
@@ -244,6 +251,13 @@ export class ListModal<T> extends Modal {
 							this.#setupListSubUI()
 							await this.postMutate()
 						},
+					))
+					.addExtraButton(resetButton(
+						i18n.t("asset:components.editable-list.append-icon"),
+						DISABLED_TOOLTIP,
+						unexpected,
+						unexpected,
+						{ post(component) { component.setDisabled(true) } },
 					))
 			})
 	}
@@ -443,6 +457,13 @@ export class ProfileModal extends Modal {
 							},
 						},
 					))
+					.addExtraButton(resetButton(
+						i18n.t("asset:components.profile.preset-icon"),
+						DISABLED_TOOLTIP,
+						unexpected,
+						unexpected,
+						{ post(component) { component.setDisabled(true) } },
+					))
 			})
 			.newSetting(listEl, setting => {
 				setting
@@ -481,7 +502,7 @@ export class ProfileModal extends Modal {
 						DISABLED_TOOLTIP,
 						unexpected,
 						unexpected,
-						{ post: button => { button.setDisabled(true) } },
+						{ post(component) { component.setDisabled(true) } },
 					))
 			})
 			.embed(() => {
@@ -755,7 +776,7 @@ export class ProfileModal extends Modal {
 							DISABLED_TOOLTIP,
 							unexpected,
 							unexpected,
-							{ post: button => { button.setDisabled(true) } },
+							{ post(component) { component.setDisabled(true) } },
 						))
 				})
 				break
