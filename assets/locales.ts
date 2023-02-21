@@ -150,9 +150,9 @@ export type DefaultResources = {
 	typeof DEFAULT_LANGUAGE]]: Awaited<ReturnType<typeof RESOURCES[
 		typeof DEFAULT_LANGUAGE][K]>>
 }
-export type Namespace = readonly ["translation", "language", "asset"]
-export const NAMESPACES = typedKeys<Namespace>()(RESOURCES[DEFAULT_LANGUAGE])
-export type Language = readonly [
+export type Namespaces = readonly ["translation", "language", "asset"]
+export const NAMESPACES = typedKeys<Namespaces>()(RESOURCES[DEFAULT_LANGUAGE])
+export type Languages = readonly [
 	"am",
 	"cs",
 	"da",
@@ -178,7 +178,7 @@ export type Language = readonly [
 	"zh-Hans",
 	"zh-Hant",
 ]
-export const LANGUAGES = typedKeys<Language>()(RESOURCES) satisfies
+export const LANGUAGES = typedKeys<Languages>()(RESOURCES) satisfies
 	readonly (keyof Awaited<ReturnType<
 		typeof RESOURCES[typeof DEFAULT_LANGUAGE]["language"]
 	>>)[]

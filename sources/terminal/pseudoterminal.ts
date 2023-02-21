@@ -469,9 +469,9 @@ export namespace Pseudoterminal {
 		linux: UnixPseudoterminal,
 		win32: WindowsPseudoterminal,
 	} as const)
+	export type SupportedPlatforms = readonly ["darwin", "linux", "win32"]
 	export const SUPPORTED_PLATFORMS =
-		typedKeys<readonly ["darwin", "linux", "win32"]>()(PLATFORM_PSEUDOTERMINALS)
-	export type SupportedPlatform = typeof SUPPORTED_PLATFORMS[number]
+		typedKeys<SupportedPlatforms>()(PLATFORM_PSEUDOTERMINALS)
 	export const PLATFORM_PSEUDOTERMINAL =
 		inSet(SUPPORTED_PLATFORMS, PLATFORM)
 			? PLATFORM_PSEUDOTERMINALS[PLATFORM]

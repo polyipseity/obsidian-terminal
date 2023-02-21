@@ -6,8 +6,5 @@ export const DOCUMENTATIONS = deepFreeze({
 	changelog: changelogMd,
 	readme: readmeMd,
 } as const)
-export const DOCUMENTATION_KEYS = typedKeys<readonly [
-	"changelog",
-	"readme",
-]>()(DOCUMENTATIONS)
-export type DocumentationKey = typeof DOCUMENTATION_KEYS[number]
+export type DocumentationKeys = readonly ["changelog", "readme"]
+export const DOCUMENTATION_KEYS = typedKeys<DocumentationKeys>()(DOCUMENTATIONS)

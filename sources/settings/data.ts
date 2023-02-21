@@ -192,13 +192,13 @@ export namespace Settings {
 			readonly type: "external"
 			readonly executable: string
 			readonly args: readonly string[]
-			readonly platforms: Platforms<Pseudoterminal.SupportedPlatform>
+			readonly platforms: Platforms<Pseudoterminal.SupportedPlatforms[number]>
 		}
 		export interface Integrated extends Base {
 			readonly type: "integrated"
 			readonly executable: string
 			readonly args: readonly string[]
-			readonly platforms: Platforms<Pseudoterminal.SupportedPlatform>
+			readonly platforms: Platforms<Pseudoterminal.SupportedPlatforms[number]>
 			readonly pythonExecutable: string
 			readonly useWin32Conhost: boolean
 		}

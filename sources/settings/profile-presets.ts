@@ -3,11 +3,11 @@ import type { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import type { Settings } from "./data"
 
 type ExternalDefaults = {
-	readonly [_ in `${Pseudoterminal.SupportedPlatform
+	readonly [_ in `${Pseudoterminal.SupportedPlatforms[number]
 	}ExternalDefault`]: Settings.Profile.External
 }
 type IntegratedDefaults = {
-	readonly [_ in `${Pseudoterminal.SupportedPlatform
+	readonly [_ in `${Pseudoterminal.SupportedPlatforms[number]
 	}IntegratedDefault`]: Settings.Profile.Integrated
 }
 export interface ProfilePresets extends ExternalDefaults, IntegratedDefaults {
@@ -134,7 +134,7 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		useWin32Conhost: true,
 	},
 } as const)
-export const PROFILE_PRESET_KEYS = typedKeys<readonly [
+export type ProfilePresetKeys = readonly [
 	"empty",
 	"cmdIntegrated",
 	"bashIntegrated",
@@ -149,10 +149,12 @@ export const PROFILE_PRESET_KEYS = typedKeys<readonly [
 	"linuxIntegratedDefault",
 	"win32ExternalDefault",
 	"win32IntegratedDefault",
-]>()(PROFILE_PRESETS)
-export type ProfilePresetKeys = typeof PROFILE_PRESET_KEYS[number]
+]
+export const PROFILE_PRESET_KEYS =
+	typedKeys<ProfilePresetKeys>()(PROFILE_PRESETS)
 export const PROFILE_PRESET_ORDERED_KEYS =
-	deepFreeze(PROFILE_PRESET_KEYS.reduce<ProfilePresetKeys[]>((prev, cur) => {
+	deepFreeze(PROFILE_PRESET_KEYS.reduce<ProfilePresetKeys[number][]
+	>((prev, cur) => {
 		if (cur === "empty") {
 			prev.unshift(cur)
 		} else {

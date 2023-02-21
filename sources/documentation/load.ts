@@ -1,4 +1,4 @@
-import { DOCUMENTATIONS, type DocumentationKey } from "./documentations"
+import { DOCUMENTATIONS, type DocumentationKeys } from "./documentations"
 import {
 	addCommand,
 	newCollabrativeState,
@@ -38,7 +38,7 @@ export function loadDocumentation(
 
 export function openDocumentation(
 	plugin: TerminalPlugin,
-	key: DocumentationKey,
+	key: DocumentationKeys[number],
 	active = true,
 ): void {
 	const { app, language, version } = plugin,
