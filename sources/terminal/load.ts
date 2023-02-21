@@ -115,7 +115,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 		i18n.t("asset:ribbons.open-terminal-id"),
 		i18n.t("asset:ribbons.open-terminal-icon"),
 		() => i18n.t("ribbons.open-terminal"),
-		() => { new SelectProfileModal(plugin).open() },
+		() => { new SelectProfileModal(plugin, adapter?.getBasePath()).open() },
 	)
 	plugin.registerEvent(workspace.on("file-menu", (menu, file) => {
 		if (!plugin.settings.addToContextMenu) {
