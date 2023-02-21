@@ -29,7 +29,7 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		platforms: { darwin: true, linux: true },
 		pythonExecutable: "python3",
 		type: "integrated",
-		useWin32Conhost: false,
+		useWin32Conhost: true,
 	},
 	cmdIntegrated: {
 		args: [],
@@ -55,7 +55,7 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		platforms: { darwin: true },
 		pythonExecutable: "python3",
 		type: "integrated",
-		useWin32Conhost: false,
+		useWin32Conhost: true,
 	},
 	dashIntegrated: {
 		args: [],
@@ -64,7 +64,7 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		platforms: { darwin: true, linux: true },
 		pythonExecutable: "python3",
 		type: "integrated",
-		useWin32Conhost: false,
+		useWin32Conhost: true,
 	},
 	developerConsole: {
 		name: "",
@@ -88,7 +88,7 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		platforms: { linux: true },
 		pythonExecutable: "python3",
 		type: "integrated",
-		useWin32Conhost: false,
+		useWin32Conhost: true,
 	},
 	pwshIntegrated: {
 		args: [],
@@ -106,7 +106,7 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		platforms: { darwin: true, linux: true },
 		pythonExecutable: "python3",
 		type: "integrated",
-		useWin32Conhost: false,
+		useWin32Conhost: true,
 	},
 	win32ExternalDefault: {
 		args: [],
@@ -131,7 +131,7 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		platforms: { darwin: true, linux: true },
 		pythonExecutable: "python3",
 		type: "integrated",
-		useWin32Conhost: false,
+		useWin32Conhost: true,
 	},
 } as const)
 export const PROFILE_PRESET_KEYS = typedKeys<readonly [

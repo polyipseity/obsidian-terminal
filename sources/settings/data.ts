@@ -233,7 +233,7 @@ export namespace Settings {
 				},
 				pythonExecutable: "",
 				type: "integrated",
-				useWin32Conhost: false,
+				useWin32Conhost: true,
 			},
 			invalid: {
 				type: "invalid",
