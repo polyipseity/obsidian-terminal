@@ -462,53 +462,57 @@ export class TerminalView extends ItemView {
 	protected startFind(): void {
 		const { plugin, contentEl } = this,
 			{ language } = plugin,
-			{ i18n } = language,
-			find = (
-				direction: Direction,
-				params: Params,
-				incremental = false,
-			): void => {
-				const finder = this.#emulator?.addons.search
-				if (isUndefined(finder)) { return }
-				const func = direction === Direction.next
-					? finder.findNext.bind(finder)
-					: finder.findPrevious.bind(finder)
-				func(
-					params.findText,
-					{
-						caseSensitive: params.caseSensitive,
-						decorations: {
-							activeMatchColorOverviewRuler: "#00000000",
-							matchOverviewRuler: "#00000000",
+			{ i18n } = language
+		if (this.#find === null) {
+			const
+				find = (
+					direction: Direction,
+					params: Params,
+					incremental = false,
+				): void => {
+					const finder = this.#emulator?.addons.search
+					if (isUndefined(finder)) { return }
+					const func = direction === Direction.next
+						? finder.findNext.bind(finder)
+						: finder.findPrevious.bind(finder)
+					func(
+						params.findText,
+						{
+							caseSensitive: params.caseSensitive,
+							decorations: {
+								activeMatchColorOverviewRuler: "#00000000",
+								matchOverviewRuler: "#00000000",
+							},
+							incremental,
+							regex: params.regex,
+							wholeWord: params.wholeWord,
 						},
-						incremental,
-						regex: params.regex,
-						wholeWord: params.wholeWord,
-					},
-				)
-				if (params.findText === "") {
-					this.#find?.$set({ searchResult: "" })
-				}
-			},
-			optional: { anchor?: Element } = {},
-			{ firstElementChild } = contentEl
-		if (firstElementChild !== null) {
-			optional.anchor = firstElementChild
-		}
-		this.#find = new FindComponent({
-			intro: true,
-			props: {
-				i18n: i18n.t,
-				onClose: (): void => { this.#find = null },
-				onFind: find,
-				onParamsChanged: (params: Params): void => {
-					this.#emulator?.addons.search.clearDecorations()
-					find(Direction.previous, params)
+					)
+					if (params.findText === "") {
+						this.#find?.$set({ searchResult: "" })
+					}
 				},
-			},
-			target: contentEl,
-			...optional,
-		})
+				optional: { anchor?: Element } = {},
+				{ firstElementChild } = contentEl
+			if (firstElementChild !== null) {
+				optional.anchor = firstElementChild
+			}
+			this.#find = new FindComponent({
+				intro: true,
+				props: {
+					i18n: i18n.t,
+					onClose: (): void => { this.#find = null },
+					onFind: find,
+					onParamsChanged: (params: Params): void => {
+						this.#emulator?.addons.search.clearDecorations()
+						find(Direction.previous, params)
+					},
+				},
+				target: contentEl,
+				...optional,
+			})
+		}
+		this.#find.focus()
 	}
 
 	protected startEmulator(): void {

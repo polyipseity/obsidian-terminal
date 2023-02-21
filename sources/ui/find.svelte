@@ -21,6 +21,15 @@
 	export let onParamsChanged = (_params: Params): void => {};
 	export let searchResult = "";
 
+	let inputElement: HTMLElement | null = null;
+
+	export function focus() {
+		inputElement?.focus();
+	}
+	export function blur() {
+		inputElement?.blur();
+	}
+
 	$: onParamsChanged(params);
 </script>
 
@@ -56,6 +65,7 @@
 			type="text"
 			placeholder={inputPlaceholder}
 			bind:value={params.findText}
+			bind:this={inputElement}
 		/>
 		<div class="document-search-buttons">
 			<button
