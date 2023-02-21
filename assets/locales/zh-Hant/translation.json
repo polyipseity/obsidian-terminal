@@ -143,6 +143,7 @@
 		"clipboard": "剪貼板",
 		"command": "命令",
 		"command-palette": "命令面板",
+		"compatible": "兼容",
 		"confirm": "確認",
 		"context-menu": "右鍵選單",
 		"current-directory": "目前$t(generic.directory)",
@@ -168,7 +169,7 @@
 		"find": "搜尋",
 		"frontmatter": "前文",
 		"import": "導入",
-		"incompatible": "不兼容",
+		"incompatible": "不$t(generic.compatible)",
 		"instance": "個體",
 		"language": "語言",
 		"list": "列表",
@@ -310,7 +311,7 @@
 		"preferred-renderer": "首選$t(generic.renderer)",
 		"preferred-renderer-options": "$t(generic.renderers.{{type}})",
 		"profile-list": {
-			"description": "$t(generic.list)中第一個此$t(generic.platform)上可用的$t(generic.profile)是其$t(generic.terminal)$t(generic.type)的$t(generic.default)。"
+			"description": "$t(generic.list)中第一個$t(generic.compatible)的$t(generic.profile)是其$t(generic.terminal)$t(generic.type)的$t(generic.default)。"
 		},
 		"profiles": "$t(generic.profile)",
 		"profiles-description": "$t(generic.list-description)",
