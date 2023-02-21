@@ -390,10 +390,12 @@ export class TerminalView extends ItemView {
 		await super.onOpen()
 		const { plugin, focusedScope, contentEl, containerEl, scope, app } = this,
 			{ language, statusBarHider } = plugin,
+			{ i18n } = language,
 			{ keymap } = app
 
 		this.register(language.onChangeLanguage.listen(() => {
 			updateDisplayText(plugin, this)
+			this.#find?.$set({ i18n: i18n.t })
 		}))
 
 		this.register(() => { keymap.popScope(scope) })
@@ -465,7 +467,7 @@ export class TerminalView extends ItemView {
 			{ i18n } = language
 		if (this.#find === null) {
 			const
-				find = (
+				onFind = (
 					direction: Direction,
 					params: Params,
 					incremental = false,
@@ -502,10 +504,10 @@ export class TerminalView extends ItemView {
 				props: {
 					i18n: i18n.t,
 					onClose: (): void => { this.#find = null },
-					onFind: find,
+					onFind,
 					onParamsChanged: (params: Params): void => {
 						this.#emulator?.addons.search.clearDecorations()
-						find(Direction.previous, params)
+						onFind(Direction.previous, params)
 					},
 				},
 				target: contentEl,
