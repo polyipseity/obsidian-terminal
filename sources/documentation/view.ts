@@ -17,7 +17,7 @@ import { launderUnchecked } from "sources/utils/types"
 export class DocumentationMarkdownView extends MarkdownView {
 	public static readonly type = new UnnamespacedID("documentation")
 	static #namespacedType: string
-	protected state = DocumentationMarkdownView.State.DEFAULT
+	#state = DocumentationMarkdownView.State.DEFAULT
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
@@ -27,6 +27,15 @@ export class DocumentationMarkdownView extends MarkdownView {
 			DocumentationMarkdownView.type.namespaced(plugin)
 		super(leaf)
 		this.allowNoFile = true
+	}
+
+	protected get state(): DocumentationMarkdownView.State {
+		return this.#state
+	}
+
+	protected set state(value: DocumentationMarkdownView.State) {
+		this.#state = value
+		updateDisplayText(this.plugin, this)
 	}
 
 	public override getViewType(): string {
@@ -68,7 +77,6 @@ export class DocumentationMarkdownView extends MarkdownView {
 		}
 		await super.setState(state, result)
 		this.state = value
-		updateDisplayText(plugin, this)
 		this.setViewData(value.data, true)
 	}
 
