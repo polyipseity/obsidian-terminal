@@ -16,6 +16,7 @@ import { DOMClasses, NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
 import {
 	EMPTY_OBJECT,
 	Functions,
+	createChildElement,
 	deepFreeze,
 	isNonNullish,
 	isUndefined,
@@ -398,12 +399,12 @@ export function useSettings(element: HTMLElement): readonly [
 	HTMLElement,
 	() => void,
 ] {
-	const container = element.createEl("div", {
-		cls: DOMClasses.VERTICAL_TAB_CONTENT_CONTAINER,
+	const container = createChildElement(element, "div", ele => {
+		ele.classList.add(DOMClasses.VERTICAL_TAB_CONTENT_CONTAINER)
 	})
 	return [
-		container.createEl("div", {
-			cls: DOMClasses.VERTICAL_TAB_CONTENT,
+		createChildElement(container, "div", ele => {
+			ele.classList.add(DOMClasses.VERTICAL_TAB_CONTENT)
 		}),
 		(): void => { container.remove() },
 	]
@@ -411,8 +412,8 @@ export function useSettings(element: HTMLElement): readonly [
 
 export function useSubsettings(element: HTMLElement): HTMLElement {
 	const first = element.firstChild === null,
-		ret = element.createEl("div")
-	if (!first) { ret.createEl("div") }
+		ret = createChildElement(element, "div")
+	if (!first) { createChildElement(ret, "div") }
 	return ret
 }
 

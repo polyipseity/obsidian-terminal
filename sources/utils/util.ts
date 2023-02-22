@@ -160,6 +160,26 @@ export function capitalize(
 	return mapFirstCodePoint(first => first.toLocaleUpperCase(locales), str)
 }
 
+export function clear(self: unknown[]): void {
+	self.length = 0
+}
+
+export function clearProperties(self0: object): void {
+	for (const prop of Object.getOwnPropertyNames(self0)) {
+		// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+		delete self0[prop as keyof typeof self0]
+	}
+	for (const prop of Object.getOwnPropertySymbols(self0)) {
+		// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+		delete self0[prop as keyof typeof self0]
+	}
+}
+
+export function cloneAsWritable<T>(obj: T): DeepWritable<T> {
+	// `readonly` is fake at runtime
+	return typedStructuredClone(obj) as DeepWritable<T>
+}
+
 export function consumeEvent(event: Event): void {
 	event.preventDefault()
 	event.stopPropagation()
@@ -183,24 +203,16 @@ export async function copyOnWriteAsync<T extends object>(
 	return simplifyType(deepFreeze(ret))
 }
 
-export function clear(self: unknown[]): void {
-	self.length = 0
-}
-
-export function clearProperties(self0: object): void {
-	for (const prop of Object.getOwnPropertyNames(self0)) {
-		// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-		delete self0[prop as keyof typeof self0]
-	}
-	for (const prop of Object.getOwnPropertySymbols(self0)) {
-		// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-		delete self0[prop as keyof typeof self0]
-	}
-}
-
-export function cloneAsWritable<T>(obj: T): DeepWritable<T> {
-	// `readonly` is fake at runtime
-	return typedStructuredClone(obj) as DeepWritable<T>
+export function createChildElement<K extends keyof HTMLElementTagNameMap>(
+	element: HTMLElement,
+	type: K,
+	callback = (_element: HTMLElementTagNameMap[K]): void => { },
+	options?: ElementCreationOptions,
+): HTMLElementTagNameMap[K] {
+	const ret = document.createElement(type, options)
+	element.append(ret)
+	callback(ret)
+	return ret
 }
 
 export function deepFreeze<T>(value: T): DeepReadonly<T> {

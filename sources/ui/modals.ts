@@ -19,6 +19,7 @@ import {
 	clearProperties,
 	cloneAsWritable,
 	consumeEvent,
+	createChildElement,
 	deepFreeze,
 	identity,
 	isUndefined,
@@ -173,7 +174,7 @@ export class ListModal<T> extends Modal {
 			}, ele => { ele.textContent = null })
 		}
 		if (!isUndefined(description)) {
-			ui.new(() => listEl.createEl("div"), ele => {
+			ui.new(() => createChildElement(listEl, "div"), ele => {
 				ele.textContent = description()
 			})
 		}
@@ -976,7 +977,7 @@ export class DialogModal extends Modal {
 				consumeEvent(event)
 			}), null, ele => { scope.unregister(ele) })
 		if (!isUndefined(description)) {
-			ui.new(() => contentEl.createEl("div"), ele => {
+			ui.new(() => createChildElement(contentEl, "div"), ele => {
 				ele.textContent = description()
 			})
 		}

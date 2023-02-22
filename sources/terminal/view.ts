@@ -27,6 +27,7 @@ import {
 	cloneAsWritable,
 	consumeEvent,
 	copyOnWrite,
+	createChildElement,
 	deepFreeze,
 	extname,
 	inSet,
@@ -556,9 +557,8 @@ export class TerminalView extends ItemView {
 			leaf.detach()
 			return
 		}
-		contentEl.createEl("div", {
-			cls: [TerminalView.divClass.namespaced(plugin)],
-		}, ele => {
+		createChildElement(contentEl, "div", ele => {
+			ele.classList.add(TerminalView.divClass.namespaced(plugin))
 			const obsr = onVisible(ele, () => {
 				try {
 					noticeSpawn()

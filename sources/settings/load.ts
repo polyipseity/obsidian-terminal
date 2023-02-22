@@ -11,6 +11,7 @@ import {
 import {
 	anyToError,
 	clearProperties,
+	createChildElement,
 	length,
 	logError,
 } from "sources/utils/util"
@@ -76,7 +77,7 @@ export function loadSettings(plugin: TerminalPlugin): void {
 						},
 						doubleConfirmTimeout: DOUBLE_ACTION_TIMEOUT,
 						draw(ui, element): void {
-							ui.new(() => element.createEl("div"), ele => {
+							ui.new(() => createChildElement(element, "div"), ele => {
 								ele.textContent =
 									i18n.t("dialogs.overwrite-existing-frontmatter")
 							})

@@ -9,6 +9,7 @@ import { UpdatableUI, useSettings } from "sources/utils/obsidian"
 import {
 	clearProperties,
 	cloneAsWritable,
+	createChildElement,
 	identity,
 	length,
 	logError,
@@ -68,8 +69,8 @@ export class EditSettingsModal extends Modal {
 		}
 		ui.finally(resetDataText)
 			.new(() => {
-				errorEl = listEl.createEl("div", {
-					cls: [DOMClasses.MOD_WARNING],
+				errorEl = createChildElement(listEl, "div", ele => {
+					ele.classList.add(DOMClasses.MOD_WARNING)
 				})
 				return errorEl
 			})
@@ -180,10 +181,10 @@ export class SettingTab extends PluginSettingTab {
 			{ i18n } = language
 		plugin.register(() => { ui.destroy() })
 		ui.finally(language.onChangeLanguage.listen(() => { this.ui.update() }))
-			.new(() => containerEl.createEl("h1"), ele => {
+			.new(() => createChildElement(containerEl, "h1"), ele => {
 				ele.textContent = i18n.t("name")
 			})
-			.new(() => containerEl.createEl("div"), ele => {
+			.new(() => createChildElement(containerEl, "div"), ele => {
 				ele.textContent = i18n.t("settings.description")
 			})
 			.newSetting(containerEl, setting => {
@@ -539,7 +540,7 @@ export class SettingTab extends PluginSettingTab {
 						() => { this.postMutate() },
 					))
 			})
-			.new(() => containerEl.createEl("h2"), ele => {
+			.new(() => createChildElement(containerEl, "h2"), ele => {
 				ele.textContent = i18n.t("settings.advanced-settings")
 			})
 			.newSetting(containerEl, setting => {

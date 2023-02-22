@@ -11,6 +11,7 @@
     "plugin:import/typescript"
   ],
   "ignorePatterns": [
+    "local/",
     "main.js",
     "node_modules/"
   ],
