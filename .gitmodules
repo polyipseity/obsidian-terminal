@@ -1,4 +1,4 @@
 [submodule "obsidian"]
 	path = local/obsidian
 	url = ../obsidian-api.git
-	branch = unaugmented
+	branch = unaugmented/v1.1.1
