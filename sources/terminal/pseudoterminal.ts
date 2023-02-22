@@ -3,6 +3,7 @@ import {
 	DEFAULT_PYTHONIOENCODING,
 	EXIT_SUCCESS,
 	SI_PREFIX_SCALE,
+	TERMINAL_EXIT_CLEANUP_DELAY,
 	TERMINAL_RESIZER_WATCHDOG_INTERVAL,
 	UNDEFINED,
 	UNHANDLED_REJECTION_MESSAGE,
@@ -17,6 +18,7 @@ import {
 	logError,
 	logFormat,
 	promisePromise,
+	sleep2,
 	spawnPromise,
 	typedKeys,
 	writePromise,
@@ -329,9 +331,12 @@ class WindowsPseudoterminal implements Pseudoterminal {
 								console.debug(error)
 								return conCode ?? signal ?? NaN
 							} finally {
-								try {
-									codeTmp.removeCallback()
-								} catch (error) { console.warn(error) }
+								(async (): Promise<void> => {
+									try {
+										await sleep2(TERMINAL_EXIT_CLEANUP_DELAY)
+										codeTmp.removeCallback()
+									} catch (error) { console.warn(error) }
+								})()
 							}
 						})())
 					})
