@@ -18,6 +18,10 @@ export function contravariant<T>(value: readonly T[]): readonly T[] {
 	return value
 }
 
+export function correct(value: Window): Window & typeof globalThis {
+	return value as Window & typeof globalThis
+}
+
 export function launderUnchecked<T extends object>(value: unknown): Unchecked<T
 > {
 	const ret = {}

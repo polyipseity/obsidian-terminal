@@ -1,6 +1,8 @@
 import { type DeepReadonly, noop } from "ts-essentials"
 import { EventEmitterLite, Functions } from "./utils/util"
+import type { Workspace } from "obsidian"
 import { around } from "monkey-around"
+import { correct } from "./utils/types"
 
 export const LOGGER = new EventEmitterLite<readonly [Log.Event]>()
 export namespace Log {
@@ -35,47 +37,53 @@ export namespace Log {
 const LOG: Log.Event[] = []
 LOGGER.listen(event => LOG.push(event))
 
-export function patch(): () => void {
-	const unpatchers = new Functions({ async: false, settled: true })
+export function log(): DeepReadonly<typeof LOG> { return LOG }
+
+const consolePatch = (
+	type: "debug" | "error" | "info" | "warn",
+	proto: (...data: unknown[]) => void,
+) => function fn(this: Console, ...data: unknown[]): void {
+	proto.apply(this, data)
+	LOGGER.emit({ data, type }).catch(noop)
+}
+function patchConsole(console: Console): () => void {
+	return around(console, {
+		debug(proto) { return consolePatch("debug", proto) },
+		error(proto) { return consolePatch("error", proto) },
+		log(proto) { return consolePatch("info", proto) },
+		warn(proto) { return consolePatch("warn", proto) },
+	})
+}
+
+const
+	onWindowError = (error: ErrorEvent): void => {
+		LOGGER.emit({
+			data: error,
+			type: "windowError",
+		}).catch(noop)
+	},
+	onUnhandledRejection = (error: PromiseRejectionEvent): void => {
+		LOGGER.emit({
+			data: error,
+			type: "unhandledRejection",
+		}).catch(noop)
+	}
+function patchWindow(window: Window): () => void {
+	const ret = new Functions(
+		{ async: false, settled: true },
+		() => {
+			window
+				.removeEventListener("error", onWindowError, { capture: true })
+		},
+		() => {
+			window.removeEventListener(
+				"unhandledrejection",
+				onUnhandledRejection,
+				{ capture: true },
+			)
+		},
+	)
 	try {
-		const consolePatch = (
-			type: "debug" | "error" | "info" | "warn",
-			proto: (...data: unknown[]) => void,
-		) => function fn(this: Console, ...data: unknown[]) {
-			proto.apply(this, data)
-			LOGGER.emit({ data, type }).catch(noop)
-		}
-		unpatchers.push(around(console, {
-			debug(proto) { return consolePatch("debug", proto) },
-			error(proto) { return consolePatch("error", proto) },
-			log(proto) { return consolePatch("info", proto) },
-			warn(proto) { return consolePatch("warn", proto) },
-		}))
-		const
-			onWindowError = (error: ErrorEvent): void => {
-				LOGGER.emit({
-					data: error,
-					type: "windowError",
-				}).catch(noop)
-			},
-			onUnhandledRejection = (error: PromiseRejectionEvent): void => {
-				LOGGER.emit({
-					data: error,
-					type: "unhandledRejection",
-				}).catch(noop)
-			}
-		unpatchers.push(
-			() => {
-				window.removeEventListener("error", onWindowError, { capture: true })
-			},
-			() => {
-				window.removeEventListener(
-					"unhandledrejection",
-					onUnhandledRejection,
-					{ capture: true },
-				)
-			},
-		)
 		window.addEventListener("error", onWindowError, {
 			capture: true,
 			passive: true,
@@ -84,11 +92,42 @@ export function patch(): () => void {
 			capture: true,
 			passive: true,
 		})
+		return () => { ret.call() }
+	} catch (error) {
+		ret.call()
+		throw error
+	}
+}
+
+export function patch(workspace: Workspace): () => void {
+	const unpatchers = new Functions({ async: false, settled: true })
+	try {
+		const windowConsolePatch = workspace.on("window-open", window => {
+			const unpatch = patchConsole(correct(window.win).console),
+				off = workspace.on("window-close", window0 => {
+					if (window !== window0) { return }
+					try {
+						unpatch()
+					} finally { workspace.offref(off) }
+				})
+		})
+		unpatchers.push(() => { workspace.offref(windowConsolePatch) })
+		unpatchers.push(patchConsole(console))
+
+		const windowWindowPatch = workspace.on("window-open", window => {
+			const unpatch = patchWindow(window.win),
+				off = workspace.on("window-close", window0 => {
+					if (window !== window0) { return }
+					try {
+						unpatch()
+					} finally { workspace.offref(off) }
+				})
+		})
+		unpatchers.push(() => { workspace.offref(windowWindowPatch) })
+		unpatchers.push(patchWindow(window))
+		return () => { unpatchers.call() }
 	} catch (error) {
 		unpatchers.call()
 		throw error
 	}
-	return () => { unpatchers.call() }
 }
-
-export function log(): DeepReadonly<typeof LOG> { return LOG }
