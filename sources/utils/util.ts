@@ -431,8 +431,10 @@ export function noop(): void {
 export function onResize(
 	element: Element,
 	callback: (entry: ResizeObserverEntry) => unknown,
-): ResizeObserver {
-	const ret = new ResizeObserver(ents => {
+): ResizeObserver | null {
+	const view = element.ownerDocument.defaultView
+	if (!view) { return null }
+	const ret = new view.ResizeObserver(ents => {
 		const ent = ents.at(-1)
 		if (isUndefined(ent)) { return }
 		callback(ent)
@@ -445,8 +447,10 @@ export function onVisible(
 	element: Element,
 	callback: (entry: IntersectionObserverEntry) => unknown,
 	transient = false,
-): IntersectionObserver {
-	const ret = new IntersectionObserver(ents => {
+): IntersectionObserver | null {
+	const view = element.ownerDocument.defaultView
+	if (!view) { return null }
+	const ret = new view.IntersectionObserver(ents => {
 		for (const ent of transient
 			? ents.reverse()
 			: [ents.at(-1) ?? { isIntersecting: false }]) {
