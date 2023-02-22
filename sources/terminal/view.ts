@@ -439,9 +439,12 @@ export class TerminalView extends ItemView {
 			"`",
 			event => {
 				const { activeElement } = document
-				if (activeElement instanceof HTMLElement) {
-					activeElement.blur()
-					consumeEvent(event)
+				if (activeElement) {
+					const cls = activeElement.ownerDocument.defaultView?.HTMLElement
+					if (cls && activeElement instanceof cls) {
+						activeElement.blur()
+						consumeEvent(event)
+					}
 				}
 			},
 		))
