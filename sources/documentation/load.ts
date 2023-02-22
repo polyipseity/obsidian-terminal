@@ -1,4 +1,8 @@
-import { DOCUMENTATIONS, type DocumentationKeys } from "./documentations"
+import {
+	DOCUMENTATIONS,
+	DOCUMENTATION_KEYS,
+	type DocumentationKeys,
+} from "./documentations"
 import {
 	addCommand,
 	newCollabrativeState,
@@ -19,16 +23,13 @@ export function loadDocumentation(
 		DocumentationMarkdownView.type.namespaced(plugin),
 		leaf => new DocumentationMarkdownView(plugin, leaf),
 	)
-	addCommand(plugin, () => i18n.t("commands.open-documentation-readme"), {
-		callback() { openDocumentation(plugin, "readme") },
-		icon: i18n.t("asset:commands.open-documentation-readme-icon"),
-		id: "open-documentation.readme",
-	})
-	addCommand(plugin, () => i18n.t("commands.open-documentation-changelog"), {
-		callback() { openDocumentation(plugin, "changelog") },
-		icon: i18n.t("asset:commands.open-documentation-changelog-icon"),
-		id: "open-documentation.changelog",
-	})
+	for (const doc of DOCUMENTATION_KEYS) {
+		addCommand(plugin, () => i18n.t(`commands.open-documentation-${doc}`), {
+			callback() { openDocumentation(plugin, doc) },
+			icon: i18n.t(`asset:commands.open-documentation-${doc}-icon`),
+			id: `open-documentation.${doc}`,
+		})
+	}
 	if (readme) { openDocumentation(plugin, "readme", false) }
 	if (version !== null &&
 		lt(plugin.settings.lastReadChangelogVersion, version)) {
