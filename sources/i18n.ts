@@ -99,8 +99,11 @@ export class LanguageManager {
 	}
 
 	public get language(): string {
-		const { language } = this.plugin.settings
-		return language === "" ? moment.locale() : language
+		return LanguageManager.interpretLanguage(this.plugin.settings.language)
+	}
+
+	protected static interpretLanguage(language: string): string {
+		return language || moment.locale() || language
 	}
 
 	public async load(): Promise<void> {
@@ -108,13 +111,14 @@ export class LanguageManager {
 		await this.changeLanguage(this.language)
 		this.plugin.register(this.plugin.on(
 			"mutate-settings",
-			() => this.language,
+			settings => settings.language,
 			async cur => this.changeLanguage(cur),
 		))
 	}
 
 	protected async changeLanguage(language: string): Promise<void> {
-		await this.i18n.changeLanguage(language)
-		await this.onChangeLanguage.emit(language)
+		const lng = LanguageManager.interpretLanguage(language)
+		await this.i18n.changeLanguage(lng)
+		await this.onChangeLanguage.emit(lng)
 	}
 }
