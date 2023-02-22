@@ -377,7 +377,8 @@ export function updateDisplayText(plugin: TerminalPlugin, view: View): void {
 		if (viewHeaderEl !== null) { viewHeaderEl.textContent = text }
 		if (plugin.app.workspace.getActiveViewOfType(View) === view &&
 			oldText !== null) {
-			document.title = document.title.replace(oldText, text)
+			const { ownerDocument } = containerEl
+			ownerDocument.title = ownerDocument.title.replace(oldText, text)
 		}
 	}, () => { })
 }

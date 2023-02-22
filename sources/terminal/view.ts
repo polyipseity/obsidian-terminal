@@ -253,7 +253,7 @@ export class TerminalView extends ItemView {
 		const { plugin, contentEl } = this
 		switch (plugin.settings.hideStatusBar) {
 			case "focused":
-				return contentEl.contains(document.activeElement)
+				return contentEl.contains(contentEl.ownerDocument.activeElement)
 			case "running":
 				return true
 			case "always":
@@ -338,7 +338,7 @@ export class TerminalView extends ItemView {
 
 	public override onPaneMenu(menu: Menu, source: string): void {
 		super.onPaneMenu(menu, source)
-		const { plugin, leaf } = this,
+		const { plugin, leaf, containerEl } = this,
 			{ i18n } = plugin.language
 		menu
 			.addSeparator()
@@ -377,6 +377,7 @@ export class TerminalView extends ItemView {
 					const ser = this.#emulator?.addons.serialize
 					if (isUndefined(ser)) { return }
 					saveFile(
+						containerEl.ownerDocument,
 						ser.serializeAsHTML({
 							includeGlobalBackground: false,
 							onlySelection: false,
@@ -406,7 +407,7 @@ export class TerminalView extends ItemView {
 		this.registerDomEvent(containerEl, "focusin", () => {
 			keymap.pushScope(scope)
 		}, { capture: true, passive: true })
-		if (containerEl.contains(document.activeElement)) {
+		if (containerEl.contains(containerEl.ownerDocument.activeElement)) {
 			keymap.pushScope(scope)
 		}
 
@@ -419,7 +420,7 @@ export class TerminalView extends ItemView {
 			keymap.pushScope(focusedScope)
 			statusBarHider.update()
 		}, { capture: true, passive: true })
-		if (contentEl.contains(document.activeElement)) {
+		if (contentEl.contains(contentEl.ownerDocument.activeElement)) {
 			keymap.pushScope(focusedScope)
 		}
 

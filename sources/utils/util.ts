@@ -209,7 +209,7 @@ export function createChildElement<K extends keyof HTMLElementTagNameMap>(
 	callback = (_element: HTMLElementTagNameMap[K]): void => { },
 	options?: ElementCreationOptions,
 ): HTMLElementTagNameMap[K] {
-	const ret = document.createElement(type, options)
+	const ret = element.ownerDocument.createElement(type, options)
 	element.append(ret)
 	callback(ret)
 	return ret
@@ -233,6 +233,7 @@ export function extname(path: string): string {
 }
 
 export function saveFile(
+	document: Document,
 	text: string,
 	type = "text/plain; charset=UTF-8;",
 	filename = "",

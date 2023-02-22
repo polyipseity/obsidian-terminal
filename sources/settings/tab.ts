@@ -61,7 +61,7 @@ export class EditSettingsModal extends Modal {
 		modalUI.new(() => titleEl, ele => {
 			ele.textContent = i18n.t("settings.edit-settings.title")
 		}, ele => { ele.textContent = null })
-		let errorEl: HTMLElement = document.createElement("a")
+		let errorEl: HTMLElement = listEl.ownerDocument.createElement("a")
 		const resetDataText = (): void => {
 			this.#dataText = JSON.stringify(data, null, JSON_STRINGIFY_SPACE)
 			errorEl.textContent = null
