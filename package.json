@@ -17,6 +17,7 @@
 	"main": "main.js",
 	"scripts": {
 		"build": "tsc -noEmit && npm run lint && npm run dev production",
+		"check": "tsc --noEmit",
 		"dev": "node build/esbuild.config.mjs",
 		"lint": "eslint --cache --ignore-pattern \"*.svelte\" .",
 		"lint:fix": "eslint --cache --fix --ignore-pattern \"*.svelte\" .",
