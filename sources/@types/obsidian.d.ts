@@ -1,17 +1,17 @@
 import "obsidian"
 
 declare module "obsidian" {
-	export interface ViewStateResult {
+	interface ViewStateResult {
 		history: boolean
 	}
 
-	export interface WorkspaceLeaf {
+	interface WorkspaceLeaf {
 		readonly tabHeaderEl: HTMLElement
 		readonly tabHeaderInnerIconEl: HTMLElement
 		readonly tabHeaderInnerTitleEl: HTMLElement
 	}
 
-	export interface WorkspaceRibbon {
+	interface WorkspaceRibbon {
 		readonly addRibbonItemButton: (
 			id: string,
 			icon: string,
