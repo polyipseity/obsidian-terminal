@@ -15,32 +15,35 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 	)
 
 	const
-		CWD_TYPES = deepFreeze(["", "root", "current"] as const),
 		PROFILE_TYPES = deepFreeze((["select", "integrated", "external"] as const)
 			.filter(type => type === "select" || PROFILE_PROPERTIES[type].available)),
+		CWD_TYPES = deepFreeze(["", "root", "current"] as const),
+		EXCLUDED_TYPES = deepFreeze([
+			{ cwd: "", profile: "integrated" },
+			{ cwd: "", profile: "external" },
+		] as const),
 		{ app, language } = plugin,
 		{ workspace } = app,
-		{ i18n } = language
-	type CWDType = typeof CWD_TYPES[number]
-	const defaultProfile =
-		(type: Settings.Profile.Type): Settings.Profile | null => {
-			const ret = Settings.Profile.defaultOfType(
-				type,
-				plugin.settings.profiles,
-				PLATFORM,
-			)
-			if (ret === null) {
-				notice2(
-					() => i18n.t("notices.no-default-profile", {
-						interpolation: { escapeValue: false },
-						type,
-					}),
-					plugin.settings.errorNoticeTimeout,
-					plugin,
+		{ i18n } = language,
+		defaultProfile =
+			(type: Settings.Profile.Type): Settings.Profile | null => {
+				const ret = Settings.Profile.defaultOfType(
+					type,
+					plugin.settings.profiles,
+					PLATFORM,
 				)
-			}
-			return ret
-		},
+				if (ret === null) {
+					notice2(
+						() => i18n.t("notices.no-default-profile", {
+							interpolation: { escapeValue: false },
+							type,
+						}),
+						plugin.settings.errorNoticeTimeout,
+						plugin,
+					)
+				}
+				return ret
+			},
 		adapter = app.vault.adapter instanceof FileSystemAdapter
 			? app.vault.adapter
 			: null,
@@ -79,7 +82,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 		},
 		command = (
 			type: Settings.Profile.Type | "select",
-			cwd: CWDType,
+			cwd: typeof CWD_TYPES[number],
 		) => (checking: boolean) => {
 			// eslint-disable-next-line consistent-return
 			const cwd0 = ((): string | null | undefined => {
@@ -149,8 +152,12 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 		},
 	))
 	// Always register command for interop with other plugins
-	for (const cwd of CWD_TYPES) {
-		for (const type of PROFILE_TYPES) {
+	for (const type of PROFILE_TYPES) {
+		for (const cwd of CWD_TYPES) {
+			if (EXCLUDED_TYPES.some(({ cwd: cwd0, profile }) =>
+				cwd0 === cwd && profile === type)) {
+				continue
+			}
 			addCommand(
 				plugin,
 				() => i18n.t(`commands.open-terminal-${cwd}`, {
