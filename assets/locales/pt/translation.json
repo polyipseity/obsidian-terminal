@@ -1,11 +1,11 @@
 {
 	"commands": {
-		"export-settings-to-clipboard": "$t(generic.export, capitalize) $t(generic.setting_other) to $t(generic.clipboard)",
-		"export-settings-to-current-file": "$t(generic.export, capitalize) $t(generic.setting_other) to $t(generic.current-file)",
-		"import-settings-from-clipboard": "$t(generic.import, capitalize) $t(generic.setting_other) from $t(generic.clipboard)",
-		"import-settings-from-current-file": "$t(generic.import, capitalize) $t(generic.setting_other) from $t(generic.current-file)",
-		"open-changelog": "$t(generic.open, capitalize) $t(generic.documentations.changelog)",
-		"open-readme": "$t(generic.open, capitalize) $t(generic.documentations.readme)",
+		"export-settings-clipboard": "$t(generic.export, capitalize) $t(generic.setting_other) to $t(generic.clipboard)",
+		"export-settings-current-file": "$t(generic.export, capitalize) $t(generic.setting_other) to $t(generic.current-file)",
+		"import-settings-clipboard": "$t(generic.import, capitalize) $t(generic.setting_other) from $t(generic.clipboard)",
+		"import-settings-current-file": "$t(generic.import, capitalize) $t(generic.setting_other) from $t(generic.current-file)",
+		"open-documentation-changelog": "$t(generic.open, capitalize) $t(generic.documentations.changelog)",
+		"open-documentation-readme": "$t(generic.open, capitalize) $t(generic.documentations.readme)",
 		"open-terminal-": "$t(generic.open, capitalize) $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
 		"open-terminal-current": "$t(generic.open, capitalize) $t(generic.current-directory) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
 		"open-terminal-root": "$t(generic.open, capitalize) $t(generic.root-directory) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)"

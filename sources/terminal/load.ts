@@ -170,7 +170,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 						return command(type, cwd)(checking)
 					},
 					icon: i18n.t(`asset:commands.open-terminal-${cwd}-icon`),
-					id: `open-terminal-${cwd}.${type}`,
+					id: `open-terminal.${type}.${cwd}`,
 				},
 			)
 		}

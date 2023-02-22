@@ -19,15 +19,15 @@ export function loadDocumentation(
 		DocumentationMarkdownView.type.namespaced(plugin),
 		leaf => new DocumentationMarkdownView(plugin, leaf),
 	)
-	addCommand(plugin, () => i18n.t("commands.open-readme"), {
+	addCommand(plugin, () => i18n.t("commands.open-documentation-readme"), {
 		callback() { openDocumentation(plugin, "readme") },
-		icon: i18n.t("asset:commands.open-readme-icon"),
-		id: "open-readme",
+		icon: i18n.t("asset:commands.open-documentation-readme-icon"),
+		id: "open-documentation.readme",
 	})
-	addCommand(plugin, () => i18n.t("commands.open-changelog"), {
+	addCommand(plugin, () => i18n.t("commands.open-documentation-changelog"), {
 		callback() { openDocumentation(plugin, "changelog") },
-		icon: i18n.t("asset:commands.open-changelog-icon"),
-		id: "open-changelog",
+		icon: i18n.t("asset:commands.open-documentation-changelog-icon"),
+		id: "open-documentation.changelog",
 	})
 	if (readme) { openDocumentation(plugin, "readme", false) }
 	if (version !== null &&

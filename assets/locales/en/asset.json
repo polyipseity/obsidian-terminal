@@ -1,11 +1,11 @@
 {
 	"commands": {
-		"export-settings-to-clipboard-icon": "$t(asset:generic.output-to-clipboard-icon)",
-		"export-settings-to-current-file-icon": "$t(asset:generic.output-to-file-icon)",
-		"import-settings-from-clipboard-icon": "$t(asset:generic.input-from-clipboard-icon)",
-		"import-settings-from-current-file-icon": "$t(asset:generic.input-from-file-icon)",
-		"open-changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
-		"open-readme-icon": "$t(asset:generic.documentations.readme-icon)",
+		"export-settings-clipboard-icon": "$t(asset:generic.output-to-clipboard-icon)",
+		"export-settings-current-file-icon": "$t(asset:generic.output-to-file-icon)",
+		"import-settings-clipboard-icon": "$t(asset:generic.input-from-clipboard-icon)",
+		"import-settings-current-file-icon": "$t(asset:generic.input-from-file-icon)",
+		"open-documentation-changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
+		"open-documentation-readme-icon": "$t(asset:generic.documentations.readme-icon)",
 		"open-terminal--icon": "command",
 		"open-terminal-current-icon": "file-terminal",
 		"open-terminal-root-icon": "terminal"

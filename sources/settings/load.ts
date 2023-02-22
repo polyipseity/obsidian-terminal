@@ -24,7 +24,7 @@ export function loadSettings(plugin: TerminalPlugin): void {
 		{ workspace, metadataCache, fileManager } = app,
 		{ i18n } = language
 	plugin.addSettingTab(new SettingTab(plugin))
-	addCommand(plugin, () => i18n.t("commands.export-settings-to-clipboard"), {
+	addCommand(plugin, () => i18n.t("commands.export-settings-clipboard"), {
 		callback() {
 			(async (): Promise<void> => {
 				try {
@@ -39,10 +39,10 @@ export function loadSettings(plugin: TerminalPlugin): void {
 				}
 			})()
 		},
-		icon: i18n.t("asset:commands.export-settings-to-clipboard-icon"),
-		id: "export-settings-to-clipboard",
+		icon: i18n.t("asset:commands.export-settings-clipboard-icon"),
+		id: "export-settings.clipboard",
 	})
-	addCommand(plugin, () => i18n.t("commands.export-settings-to-current-file"), {
+	addCommand(plugin, () => i18n.t("commands.export-settings-current-file"), {
 		checkCallback(checking) {
 			const file = workspace.getActiveFile()
 			if (file?.extension !== FileExtensions.MARKDOWN) { return false }
@@ -82,17 +82,17 @@ export function loadSettings(plugin: TerminalPlugin): void {
 							})
 						},
 						title(): string {
-							return i18n.t("commands.export-settings-to-current-file")
+							return i18n.t("commands.export-settings-current-file")
 						},
 					}).open()
 				}
 			}
 			return true
 		},
-		icon: i18n.t("asset:commands.export-settings-to-current-file-icon"),
-		id: "export-settings-to-current-file",
+		icon: i18n.t("asset:commands.export-settings-current-file-icon"),
+		id: "export-settings.current-file",
 	})
-	addCommand(plugin, () => i18n.t("commands.import-settings-from-clipboard"), {
+	addCommand(plugin, () => i18n.t("commands.import-settings-clipboard"), {
 		callback() {
 			(async (): Promise<void> => {
 				try {
@@ -109,11 +109,11 @@ export function loadSettings(plugin: TerminalPlugin): void {
 				}
 			})()
 		},
-		icon: i18n.t("asset:commands.import-settings-from-clipboard-icon"),
-		id: "import-settings-from-clipboard",
+		icon: i18n.t("asset:commands.import-settings-clipboard-icon"),
+		id: "import-settings.clipboard",
 	})
 	addCommand(plugin, () =>
-		i18n.t("commands.import-settings-from-current-file"), {
+		i18n.t("commands.import-settings-current-file"), {
 		checkCallback(checking) {
 			const file = workspace.getActiveFile()
 			if (file?.extension !== FileExtensions.MARKDOWN) { return false }
@@ -134,7 +134,7 @@ export function loadSettings(plugin: TerminalPlugin): void {
 			}
 			return true
 		},
-		icon: i18n.t("asset:commands.import-settings-from-current-file-icon"),
-		id: "import-settings-from-current-file",
+		icon: i18n.t("asset:commands.import-settings-current-file-icon"),
+		id: "import-settings.current-file",
 	})
 }

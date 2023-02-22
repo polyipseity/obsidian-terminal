@@ -1,11 +1,11 @@
 {
 	"commands": {
-		"export-settings-to-clipboard": "$t(generic.export)$t(generic.setting_other)到$t(generic.clipboard)",
-		"export-settings-to-current-file": "$t(generic.export)$t(generic.setting_other)到$t(generic.current-file)",
-		"import-settings-from-clipboard": "從$t(generic.clipboard)$t(generic.import)$t(generic.setting)",
-		"import-settings-from-current-file": "從$t(generic.current-file)$t(generic.import)$t(generic.setting)",
-		"open-changelog": "$t(generic.open)$t(generic.documentations.changelog)",
-		"open-readme": "$t(generic.open)$t(generic.documentations.readme)",
+		"export-settings-clipboard": "$t(generic.export)$t(generic.setting_other)到$t(generic.clipboard)",
+		"export-settings-current-file": "$t(generic.export)$t(generic.setting_other)到$t(generic.current-file)",
+		"import-settings-clipboard": "從$t(generic.clipboard)$t(generic.import)$t(generic.setting)",
+		"import-settings-current-file": "從$t(generic.current-file)$t(generic.import)$t(generic.setting)",
+		"open-documentation-changelog": "$t(generic.open)$t(generic.documentations.changelog)",
+		"open-documentation-readme": "$t(generic.open)$t(generic.documentations.readme)",
 		"open-terminal-": "$t(generic.open)$t(generic.terminal)：$t(generic.profile-types.{{type}})",
 		"open-terminal-current": "在$t(generic.terminal)$t(generic.open)$t(generic.current-directory)：$t(generic.profile-types.{{type}})",
 		"open-terminal-root": "在$t(generic.terminal)$t(generic.open)$t(generic.root-directory)：$t(generic.profile-types.{{type}})"
