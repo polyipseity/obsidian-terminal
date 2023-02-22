@@ -53,6 +53,7 @@ import {
 	useSettings,
 	writeStateCollabratively,
 } from "sources/utils/obsidian"
+import { correct, launderUnchecked } from "sources/utils/types"
 import { linkSetting, resetButton } from "sources/ui/settings"
 import { CanvasAddon } from "xterm-addon-canvas"
 import type { DeepWritable } from "ts-essentials"
@@ -65,7 +66,6 @@ import { TextPseudoterminal } from "./pseudoterminal"
 import { Unicode11Addon } from "xterm-addon-unicode11"
 import { WebLinksAddon } from "xterm-addon-web-links"
 import { WebglAddon } from "xterm-addon-webgl"
-import { launderUnchecked } from "sources/utils/types"
 
 class EditTerminalModal extends DialogModal {
 	protected readonly state
@@ -438,10 +438,11 @@ export class TerminalView extends ItemView {
 			cloneAsWritable(TerminalView.modifiers),
 			"`",
 			event => {
-				const { activeElement } = document
-				if (activeElement) {
-					const cls = activeElement.ownerDocument.defaultView?.HTMLElement
-					if (cls && activeElement instanceof cls) {
+				const view = event.view ? correct(event.view) : null
+				if (view) {
+					const { document } = view,
+						{ activeElement } = document
+					if (activeElement instanceof view.HTMLElement) {
 						activeElement.blur()
 						consumeEvent(event)
 					}
