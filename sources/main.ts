@@ -4,6 +4,7 @@ import {
 	EventEmitterLite,
 	copyOnWriteAsync,
 	deepFreeze,
+	isNullish,
 	logError,
 } from "./utils/util"
 import {
@@ -66,7 +67,7 @@ export class TerminalPlugin extends Plugin {
 		const loaded: unknown = await loader(),
 			{ value, valid } = Settings.fix(loaded)
 		Object.assign(settings, value)
-		if (loaded !== null && !valid) {
+		if (!isNullish(loaded) && !valid) {
 			printMalformedData(this, loaded, value)
 			settings.recovery[new Date().toISOString()] =
 				JSON.stringify(loaded, null, JSON_STRINGIFY_SPACE)
@@ -98,7 +99,7 @@ export class TerminalPlugin extends Plugin {
 		super.onload();
 		(async (): Promise<void> => {
 			try {
-				const loaded = this.loadData()
+				const loaded: Promise<unknown> = this.loadData()
 				// Initialization
 				await Promise.all([
 					this.mutateSettings(async settings => this.loadSettings(
@@ -114,7 +115,7 @@ export class TerminalPlugin extends Plugin {
 					Promise.resolve().then(() => { this.statusBarHider.load() }),
 					Promise.resolve().then(() => { loadSettings(this) }),
 					Promise.resolve().then(async () => {
-						loadDocumentation(this, await loaded === null)
+						loadDocumentation(this, isNullish(await loaded))
 					}),
 					Promise.resolve().then(() => { loadTerminal(this) }),
 				])
