@@ -464,7 +464,7 @@ export function onVisible(
 }
 
 export function openExternal(url?: URL | string): Window | null {
-	return window.open(url, "_blank", "noreferrer")
+	return self.open(url, "_blank", "noreferrer")
 }
 
 export async function promisePromise<T>(): Promise<{
@@ -499,7 +499,7 @@ export function removeAt<T>(self: T[], index: number): T | undefined {
 
 export async function sleep2(timeInSeconds: number): Promise<void> {
 	return new Promise(resolve => {
-		window.setTimeout(resolve, timeInSeconds * SI_PREFIX_SCALE)
+		self.setTimeout(resolve, timeInSeconds * SI_PREFIX_SCALE)
 	})
 }
 

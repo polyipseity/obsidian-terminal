@@ -68,15 +68,14 @@ const
 			type: "unhandledRejection",
 		}).catch(noop)
 	}
-function patchWindow(window: Window): () => void {
+function patchWindow(self: Window): () => void {
 	const ret = new Functions(
 		{ async: false, settled: true },
 		() => {
-			window
-				.removeEventListener("error", onWindowError, { capture: true })
+			self.removeEventListener("error", onWindowError, { capture: true })
 		},
 		() => {
-			window.removeEventListener(
+			self.removeEventListener(
 				"unhandledrejection",
 				onUnhandledRejection,
 				{ capture: true },
@@ -84,11 +83,11 @@ function patchWindow(window: Window): () => void {
 		},
 	)
 	try {
-		window.addEventListener("error", onWindowError, {
+		self.addEventListener("error", onWindowError, {
 			capture: true,
 			passive: true,
 		})
-		window.addEventListener("unhandledrejection", onUnhandledRejection, {
+		self.addEventListener("unhandledrejection", onUnhandledRejection, {
 			capture: true,
 			passive: true,
 		})

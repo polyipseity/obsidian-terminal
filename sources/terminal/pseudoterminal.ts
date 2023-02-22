@@ -275,7 +275,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 								if (resizer0) {
 									try {
 										await writePromise(resizer0.stdin, `${ret.pid ?? -1}\n`)
-										const watchdog = window.setInterval(
+										const watchdog = self.setInterval(
 											() => {
 												writePromise(resizer0.stdin, "\n")
 													.catch(error => { console.debug(error) })
@@ -284,7 +284,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 										)
 										resizer0.once(
 											"exit",
-											() => { window.clearInterval(watchdog) },
+											() => { self.clearInterval(watchdog) },
 										)
 									} catch (error) {
 										resizer0.kill()

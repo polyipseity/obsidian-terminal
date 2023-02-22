@@ -319,7 +319,7 @@ export function notice(
 		if (timeoutMs === 0) {
 			plugin.register(unreg)
 		} else {
-			window.setTimeout(unreg, timeoutMs)
+			self.setTimeout(unreg, timeoutMs)
 		}
 	} catch (error) {
 		console.warn(error)

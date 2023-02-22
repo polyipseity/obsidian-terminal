@@ -966,7 +966,7 @@ export class DialogModal extends Modal {
 				if (preconfirmed) {
 					await this.confirm(this.#close)
 				} else {
-					window.setTimeout(() => {
+					self.setTimeout(() => {
 						preconfirmed = false
 						confirmButton?.removeCta().setWarning()
 					}, doubleConfirmTimeout * SI_PREFIX_SCALE)

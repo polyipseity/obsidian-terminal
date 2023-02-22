@@ -4,6 +4,10 @@
     "es2018": true,
     "node": true
   },
+  "globals": {
+    "frames": "off",
+    "window": "off"
+  },
   "extends": [
     "eslint:all",
     "plugin:import/electron",
