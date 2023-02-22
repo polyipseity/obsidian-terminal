@@ -91,7 +91,7 @@ export class UpdatableUI {
 							}
 						}
 						if (comp instanceof ButtonComponent) {
-							comp.buttonEl.removeClass(DOMClasses.MOD_WARNING)
+							comp.buttonEl.classList.remove(DOMClasses.MOD_WARNING)
 						}
 						if (comp instanceof DropdownComponent) {
 							comp.selectEl.replaceChildren()

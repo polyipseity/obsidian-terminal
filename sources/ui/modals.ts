@@ -697,7 +697,7 @@ export class ProfileModal extends Modal {
 													)
 												if (stdout) { console.log(stdout) }
 												if (stderr) { console.error(stderr) }
-												if (!stdout.contains(i18n
+												if (!stdout.includes(i18n
 													.t("asset:magic.Python-version-magic"))) {
 													throw new Error(i18n.t("errors.not-Python"))
 												}
@@ -970,7 +970,8 @@ export class DialogModal extends Modal {
 						confirmButton?.removeCta().setWarning()
 					}, doubleConfirmTimeout * SI_PREFIX_SCALE)
 					preconfirmed = true
-					confirmButton?.setCta().buttonEl.removeClass(DOMClasses.MOD_WARNING)
+					confirmButton?.setCta().buttonEl
+						.classList.remove(DOMClasses.MOD_WARNING)
 				}
 				consumeEvent(event)
 			}), null, ele => { scope.unregister(ele) })
