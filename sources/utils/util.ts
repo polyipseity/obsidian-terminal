@@ -216,7 +216,7 @@ export function createChildElement<K extends keyof HTMLElementTagNameMap>(
 }
 
 export function deepFreeze<T>(value: T): DeepReadonly<T> {
-	if (typeof value === "object" && value !== null) {
+	if (typeof value === "object" && value) {
 		Object.values(value).forEach(deepFreeze)
 	}
 	return Object.freeze(value) as DeepReadonly<T>
@@ -391,7 +391,7 @@ export function logFormat(...args: readonly unknown[]): string {
 							yield `%${type0}`
 							break
 					}
-					if (func !== null) {
+					if (func) {
 						const param = params.next()
 						if (param.done ?? false) {
 							yield `%${type0}`
@@ -436,8 +436,7 @@ export function onResize(
 	if (!view) { return null }
 	const ret = new view.ResizeObserver(ents => {
 		const ent = ents.at(-1)
-		if (isUndefined(ent)) { return }
-		callback(ent)
+		if (ent) { callback(ent) }
 	})
 	ret.observe(element)
 	return ret

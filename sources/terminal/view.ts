@@ -31,7 +31,6 @@ import {
 	deepFreeze,
 	extname,
 	inSet,
-	isUndefined,
 	logWarn,
 	onResize,
 	onVisible,
@@ -127,7 +126,7 @@ class EditTerminalModal extends DialogModal {
 						() => this.#profile ?? unselected,
 						value => {
 							const profile0 = profiles[value]
-							if (isUndefined(profile0)) {
+							if (!profile0) {
 								this.#profile = null
 								return
 							}
@@ -305,7 +304,7 @@ export class TerminalView extends ItemView {
 
 	public override getState(): unknown {
 		const serial = this.#emulator?.serialize()
-		if (!isUndefined(serial)) {
+		if (serial) {
 			this.state = copyOnWrite(this.state, state => { state.serial = serial })
 		}
 		return writeStateCollabratively(
@@ -372,10 +371,10 @@ export class TerminalView extends ItemView {
 			.addItem(item => item
 				.setTitle(i18n.t("components.terminal.menus.save-as-HTML"))
 				.setIcon(i18n.t("asset:components.terminal.menus.save-as-HTML-icon"))
-				.setDisabled(isUndefined(this.#emulator?.addons.serialize))
+				.setDisabled(!this.#emulator?.addons.serialize)
 				.onClick(() => {
 					const ser = this.#emulator?.addons.serialize
-					if (isUndefined(ser)) { return }
+					if (!ser) { return }
 					saveFile(
 						containerEl.ownerDocument,
 						ser.serializeAsHTML({
@@ -429,7 +428,7 @@ export class TerminalView extends ItemView {
 			"`",
 			event => {
 				const emu = this.#emulator
-				if (emu === null) { return }
+				if (!emu) { return }
 				emu.terminal.focus()
 				consumeEvent(event)
 			},
@@ -476,7 +475,7 @@ export class TerminalView extends ItemView {
 		const { plugin, contentEl } = this,
 			{ language } = plugin,
 			{ i18n } = language
-		if (this.#find === null) {
+		if (!this.#find) {
 			const
 				onFind = (
 					direction: Direction,
@@ -484,7 +483,7 @@ export class TerminalView extends ItemView {
 					incremental = false,
 				): void => {
 					const finder = this.#emulator?.addons.search
-					if (isUndefined(finder)) { return }
+					if (!finder) { return }
 					const func = direction === Direction.next
 						? finder.findNext.bind(finder)
 						: finder.findPrevious.bind(finder)
@@ -507,7 +506,7 @@ export class TerminalView extends ItemView {
 				},
 				optional: { anchor?: Element } = {},
 				{ firstElementChild } = contentEl
-			if (firstElementChild !== null) {
+			if (firstElementChild) {
 				optional.anchor = firstElementChild
 			}
 			this.#find = new FindComponent({
@@ -572,7 +571,7 @@ export class TerminalView extends ItemView {
 							plugin,
 							ele,
 							async terminal => {
-								if (serial !== null) {
+								if (serial) {
 									terminal.write(`${i18n.t(
 										"components.terminal.restored-history",
 										{
@@ -582,30 +581,28 @@ export class TerminalView extends ItemView {
 									)}`)
 								}
 								const ret = await openProfile(plugin, profile, cwd ?? UNDEFINED)
-								if (ret === null) {
-									const pty = new TextPseudoterminal(i18n
-										.t("components.terminal.unsupported-profile", {
+								if (ret) { return ret }
+								const pty = new TextPseudoterminal(i18n
+									.t("components.terminal.unsupported-profile", {
+										interpolation: { escapeValue: false },
+										profile: JSON.stringify(
+											profile,
+											null,
+											JSON_STRINGIFY_SPACE,
+										),
+									}))
+								pty.onExit.finally(language.onChangeLanguage.listen(() => {
+									pty.text =
+										i18n.t("components.terminal.unsupported-profile", {
 											interpolation: { escapeValue: false },
 											profile: JSON.stringify(
 												profile,
 												null,
 												JSON_STRINGIFY_SPACE,
 											),
-										}))
-									pty.onExit.finally(language.onChangeLanguage.listen(() => {
-										pty.text =
-											i18n.t("components.terminal.unsupported-profile", {
-												interpolation: { escapeValue: false },
-												profile: JSON.stringify(
-													profile,
-													null,
-													JSON_STRINGIFY_SPACE,
-												),
-											})
-									}))
-									return pty
-								}
-								return ret
+										})
+								}))
+								return pty
 							},
 							serial ?? UNDEFINED,
 							{
@@ -654,25 +651,25 @@ export class TerminalView extends ItemView {
 					))
 					renderer.use(plugin.settings.preferredRenderer)
 					search.onDidChangeResults(results => {
-						if (isUndefined(results)) {
+						if (results) {
+							const { resultIndex, resultCount } = results
 							this.#find?.$set({
-								searchResult: i18n
-									.t("components.find.too-many-search-results", {
-										interpolation: { escapeValue: false },
-										limit: TERMINAL_SEARCH_RESULTS_LIMIT,
-									}),
+								searchResult: i18n.t("components.find.search-results", {
+									interpolation: { escapeValue: false },
+									replace: {
+										count: resultCount,
+										index: resultIndex + 1,
+									},
+								}),
 							})
 							return
 						}
-						const { resultIndex, resultCount } = results
 						this.#find?.$set({
-							searchResult: i18n.t("components.find.search-results", {
-								interpolation: { escapeValue: false },
-								replace: {
-									count: resultCount,
-									index: resultIndex + 1,
-								},
-							}),
+							searchResult: i18n
+								.t("components.find.too-many-search-results", {
+									interpolation: { escapeValue: false },
+									limit: TERMINAL_SEARCH_RESULTS_LIMIT,
+								}),
 						})
 					})
 					emulator.resize().catch(logWarn)

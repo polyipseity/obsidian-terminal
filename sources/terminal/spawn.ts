@@ -1,5 +1,5 @@
 import { FuzzySuggestModal, type WorkspaceLeaf } from "obsidian"
-import { PLATFORM, isUndefined } from "sources/utils/util"
+import { PLATFORM } from "sources/utils/util"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "sources/main"
 import { TerminalView } from "./view"
@@ -55,7 +55,7 @@ export function spawnTerminal(
 					const existingLeaf = workspace
 						.getLeavesOfType(TerminalView.type.namespaced(plugin))
 						.at(-1)
-					if (!isUndefined(existingLeaf)) {
+					if (existingLeaf) {
 						workspace.setActiveLeaf(existingLeaf)
 						return workspace.getLeaf("tab")
 					}

@@ -1,5 +1,5 @@
 import { FileSystemAdapter, type MenuItem, TFolder } from "obsidian"
-import { PLATFORM, deepFreeze, isNonNullish, isUndefined } from "../utils/util"
+import { PLATFORM, deepFreeze, isNonNullish } from "../utils/util"
 import { SelectProfileModal, spawnTerminal } from "./spawn"
 import { addCommand, addRibbonIcon, notice2 } from "sources/utils/obsidian"
 import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
@@ -32,7 +32,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 					plugin.settings.profiles,
 					PLATFORM,
 				)
-				if (ret === null) {
+				if (!ret) {
 					notice2(
 						() => i18n.t("notices.no-default-profile", {
 							interpolation: { escapeValue: false },
@@ -51,9 +51,9 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 			type: Settings.Profile.Type | "select",
 			cwd?: TFolder,
 		): ((item: MenuItem) => void) | null => {
-			const cwd0 = isUndefined(cwd)
-				? cwd
-				: adapter === null ? null : adapter.getFullPath(cwd.path)
+			const cwd0 = cwd
+				? adapter ? adapter.getFullPath(cwd.path) : null
+				: cwd
 			if (cwd0 === null) { return null }
 			return (item: MenuItem) => {
 				item
@@ -71,7 +71,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 							return
 						}
 						const profile = defaultProfile(type)
-						if (profile === null) { return }
+						if (!profile) { return }
 						spawnTerminal(
 							plugin,
 							profile,
@@ -86,14 +86,14 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 		) => (checking: boolean) => {
 			// eslint-disable-next-line consistent-return
 			const cwd0 = ((): string | null | undefined => {
-				if (cwd === "") { return UNDEFINED }
-				if (adapter === null) { return null }
+				if (!cwd) { return UNDEFINED }
+				if (!adapter) { return null }
 				switch (cwd) {
 					case "root":
 						return adapter.getBasePath()
 					case "current": {
 						const active = workspace.getActiveFile()
-						if (active === null) { return null }
+						if (!active) { return null }
 						return adapter.getFullPath(active.parent.path)
 					}
 					// No default
@@ -106,9 +106,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 					return true
 				}
 				const profile = defaultProfile(type)
-				if (profile !== null) {
-					spawnTerminal(plugin, profile, cwd0)
-				}
+				if (profile) { spawnTerminal(plugin, profile, cwd0) }
 			}
 			return true
 		}
@@ -136,11 +134,11 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 	}))
 	plugin.registerEvent(workspace.on(
 		"editor-menu",
-		(menu, _0, info) => {
-			if (!plugin.settings.addToContextMenu || info.file === null) {
+		(menu, _0, { file }) => {
+			if (!plugin.settings.addToContextMenu || !file) {
 				return
 			}
-			const folder = info.file.parent
+			const folder = file.parent
 			menu.addSeparator()
 			const items = PROFILE_TYPES
 				.map(type => contextMenu(type, folder))

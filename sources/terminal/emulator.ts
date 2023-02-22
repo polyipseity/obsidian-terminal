@@ -6,7 +6,7 @@ import {
 	Terminal,
 } from "xterm"
 import { SI_PREFIX_SCALE, TERMINAL_RESIZE_TIMEOUT } from "../magic"
-import { deepFreeze, isUndefined, spawnPromise } from "../utils/util"
+import { deepFreeze, spawnPromise } from "../utils/util"
 import { dynamicRequire, importable } from "../imports"
 import type { AsyncOrSync } from "ts-essentials"
 import type { CanvasAddon } from "xterm-addon-canvas"
@@ -62,7 +62,7 @@ export class XtermTerminalEmulator<A> {
 		(async (): Promise<void> => {
 			try {
 				const pty = await this.pseudoterminal
-				if (!isUndefined(pty.resize)) {
+				if (pty.resize) {
 					await pty.resize(columns, rows)
 				}
 			} catch (error) {
@@ -98,7 +98,7 @@ export class XtermTerminalEmulator<A> {
 			terminal.loadAddon(addon)
 		}
 		this.addons = addons0
-		if (!isUndefined(state)) {
+		if (state) {
 			terminal.resize(state.columns, state.rows)
 			terminal.write(state.data)
 		}
@@ -127,10 +127,9 @@ export class XtermTerminalEmulator<A> {
 		const { addons, resize0 } = this,
 			{ fit } = addons,
 			dim = fit.proposeDimensions()
-		if (isUndefined(dim) || !isFinite(dim.cols) || !isFinite(dim.rows)) {
-			return
+		if (dim && isFinite(dim.cols) && isFinite(dim.rows)) {
+			await resize0(dim.cols, dim.rows, mustResizePseudoterminal)
 		}
-		await resize0(dim.cols, dim.rows, mustResizePseudoterminal)
 	}
 
 	public serialize(): XtermTerminalEmulator.State {
@@ -188,7 +187,7 @@ export class RendererAddon implements ITerminalAddon {
 
 	public use(renderer: RendererAddon.RendererOption): void {
 		const term = this.#terminal
-		if (term === null) { return }
+		if (!term) { return }
 		this.renderer?.dispose()
 		switch (renderer) {
 			case "dom":

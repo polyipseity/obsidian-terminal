@@ -4,13 +4,13 @@ import type {
 	ExtraButtonComponent,
 	ValueComponent,
 } from "obsidian"
-import { inSet, isUndefined, unexpected } from "sources/utils/util"
+import { inSet, unexpected } from "sources/utils/util"
 import { DOMClasses } from "sources/magic"
 import type { Sized } from "sources/utils/types"
 
 export function closeSetting(container: HTMLElement): void {
 	let element: HTMLElement | null = container
-	while (element !== null && !element.classList.contains(DOMClasses.MODAL)) {
+	while (element && !element.classList.contains(DOMClasses.MODAL)) {
 		element = element.parentElement
 	}
 	element
@@ -135,7 +135,7 @@ export function dropdownSelect<V, C extends DropdownComponent>(
 		() => NaN.toString(),
 		async (value, component) => {
 			const selection = selections[Number(value)]
-			if (!isUndefined(selection)) {
+			if (selection) {
 				await callback(selection.value, component)
 			}
 			return false

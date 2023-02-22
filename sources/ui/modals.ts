@@ -168,12 +168,12 @@ export class ListModal<T> extends Modal {
 		ui.finally(listElRemover)
 			.finally(onChangeLanguage.listen(() => { ui.update() }))
 		if (this.#dynamicWidth) { makeModalDynamicWidth(modalUI, modalEl) }
-		if (!isUndefined(title)) {
+		if (title) {
 			modalUI.new(() => titleEl, ele => {
 				ele.textContent = title()
 			}, ele => { ele.textContent = null })
 		}
-		if (!isUndefined(description)) {
+		if (description) {
 			ui.new(() => createChildElement(listEl, "div"), ele => {
 				ele.textContent = description()
 			})
@@ -183,39 +183,39 @@ export class ListModal<T> extends Modal {
 				setting.settingEl.remove()
 				return
 			}
-			if (isUndefined(presets)) {
+			if (presets) {
 				setting
 					.setName(i18n.t("components.editable-list.prepend"))
-					.addButton(button => {
-						button
-							.setIcon(i18n.t("asset:components.editable-list.prepend-icon"))
-							.setTooltip(i18n.t("components.editable-list.prepend"))
-							.onClick(async () => {
-								data.unshift(placeholder())
-								this.#setupListSubUI()
-								await this.postMutate()
-							})
-					})
+					.addDropdown(dropdownSelect(
+						presetPlaceholder("prepend"),
+						presets,
+						async value => {
+							data.unshift(value)
+							this.#setupListSubUI()
+							await this.postMutate()
+						},
+					))
+					.addExtraButton(resetButton(
+						i18n.t("asset:components.editable-list.prepend-icon"),
+						DISABLED_TOOLTIP,
+						unexpected,
+						unexpected,
+						{ post(component) { component.setDisabled(true) } },
+					))
 				return
 			}
 			setting
 				.setName(i18n.t("components.editable-list.prepend"))
-				.addDropdown(dropdownSelect(
-					presetPlaceholder("prepend"),
-					presets,
-					async value => {
-						data.unshift(value)
-						this.#setupListSubUI()
-						await this.postMutate()
-					},
-				))
-				.addExtraButton(resetButton(
-					i18n.t("asset:components.editable-list.prepend-icon"),
-					DISABLED_TOOLTIP,
-					unexpected,
-					unexpected,
-					{ post(component) { component.setDisabled(true) } },
-				))
+				.addButton(button => {
+					button
+						.setIcon(i18n.t("asset:components.editable-list.prepend-icon"))
+						.setTooltip(i18n.t("components.editable-list.prepend"))
+						.onClick(async () => {
+							data.unshift(placeholder())
+							this.#setupListSubUI()
+							await this.postMutate()
+						})
+				})
 		})
 			.embed(() => {
 				const subUI = new UpdatableUI(),
@@ -229,37 +229,37 @@ export class ListModal<T> extends Modal {
 					setting.settingEl.remove()
 					return
 				}
-				if (isUndefined(presets)) {
+				if (presets) {
 					setting
 						.setName(i18n.t("components.editable-list.append"))
-						.addButton(button => button
-							.setIcon(i18n.t("asset:components.editable-list.append-icon"))
-							.setTooltip(i18n.t("components.editable-list.append"))
-							.onClick(async () => {
-								data.push(placeholder())
+						.addDropdown(dropdownSelect(
+							presetPlaceholder("append"),
+							presets,
+							async value => {
+								data.push(value)
 								this.#setupListSubUI()
 								await this.postMutate()
-							}))
+							},
+						))
+						.addExtraButton(resetButton(
+							i18n.t("asset:components.editable-list.append-icon"),
+							DISABLED_TOOLTIP,
+							unexpected,
+							unexpected,
+							{ post(component) { component.setDisabled(true) } },
+						))
 					return
 				}
 				setting
 					.setName(i18n.t("components.editable-list.append"))
-					.addDropdown(dropdownSelect(
-						presetPlaceholder("append"),
-						presets,
-						async value => {
-							data.push(value)
+					.addButton(button => button
+						.setIcon(i18n.t("asset:components.editable-list.append-icon"))
+						.setTooltip(i18n.t("components.editable-list.append"))
+						.onClick(async () => {
+							data.push(placeholder())
 							this.#setupListSubUI()
 							await this.postMutate()
-						},
-					))
-					.addExtraButton(resetButton(
-						i18n.t("asset:components.editable-list.append-icon"),
-						DISABLED_TOOLTIP,
-						unexpected,
-						unexpected,
-						{ post(component) { component.setDisabled(true) } },
-					))
+						}))
 			})
 	}
 
@@ -442,7 +442,7 @@ export class ProfileModal extends Modal {
 						value => { this.#preset = Number(value) },
 						async () => {
 							const preset = this.#presets[this.#preset]
-							if (isUndefined(preset)) { return }
+							if (!preset) { return }
 							this.replaceData(cloneAsWritable(preset.value))
 							this.#setupTypedUI()
 							keepPreset = true
@@ -934,7 +934,7 @@ export class DialogModal extends Modal {
 		ui.finally(() => { contentEl.replaceChildren() })
 			.finally(onChangeLanguage.listen(() => { ui.update() }))
 		if (this.#dynamicWidth) { makeModalDynamicWidth(modalUI, modalEl) }
-		if (!isUndefined(title)) {
+		if (title) {
 			modalUI.new(() => titleEl, ele => {
 				ele.textContent = title()
 			}, ele => { ele.textContent = null })
@@ -976,7 +976,7 @@ export class DialogModal extends Modal {
 				}
 				consumeEvent(event)
 			}), null, ele => { scope.unregister(ele) })
-		if (!isUndefined(description)) {
+		if (description) {
 			ui.new(() => createChildElement(contentEl, "div"), ele => {
 				ele.textContent = description()
 			})

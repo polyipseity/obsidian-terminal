@@ -18,8 +18,6 @@ import {
 	Functions,
 	createChildElement,
 	deepFreeze,
-	isNonNullish,
-	isUndefined,
 	typedStructuredClone,
 } from "./util"
 import type { AsyncOrSync } from "ts-essentials"
@@ -37,12 +35,12 @@ export class UpdatableUI {
 		destroy?: ((value: V) => void) | null,
 	): this {
 		const value = create()
-		if (isNonNullish(configure)) {
+		if (configure) {
 			const updater = (): void => { configure(value) }
 			updater()
 			this.#updaters.push(updater)
 		}
-		if (isNonNullish(destroy)) {
+		if (destroy) {
 			this.#finalizers.push(() => { destroy(value) })
 		}
 		return this
@@ -71,9 +69,7 @@ export class UpdatableUI {
 							})
 						}
 						const comp = components[index++ % components.length]
-						if (isUndefined(comp)) {
-							throw new Error(index.toString())
-						}
+						if (!comp) { throw new Error(index.toString()) }
 						comp.setDisabled(false)
 						if ("onChange" in comp) {
 							try {
@@ -253,7 +249,7 @@ export function asyncDebounce<
 export function cleanFrontmatterCache(
 	cache?: FrontMatterCache,
 ): Readonly<Record<string, unknown>> {
-	if (isUndefined(cache)) { return EMPTY_OBJECT }
+	if (!cache) { return EMPTY_OBJECT }
 	const ret = typedStructuredClone<Partial<typeof cache>>(cache)
 	delete ret.position
 	return deepFreeze(ret)
@@ -316,9 +312,7 @@ export function notice(
 ): Notice {
 	const timeoutMs = SI_PREFIX_SCALE * Math.max(timeout, 0),
 		ret = new Notice(message(), timeoutMs)
-	if (isUndefined(plugin)) {
-		return ret
-	}
+	if (!plugin) { return ret }
 	const unreg = plugin.language.onChangeLanguage
 		.listen(() => ret.setMessage(message()))
 	try {
@@ -374,7 +368,7 @@ export function updateDisplayText(plugin: TerminalPlugin, view: View): void {
 			{ textContent: oldText } = tabHeaderInnerTitleEl
 		tabHeaderEl.ariaLabel = text
 		tabHeaderInnerTitleEl.textContent = text
-		if (viewHeaderEl !== null) { viewHeaderEl.textContent = text }
+		if (viewHeaderEl) { viewHeaderEl.textContent = text }
 		if (plugin.app.workspace.getActiveViewOfType(View) === view &&
 			oldText !== null) {
 			const { ownerDocument } = containerEl
@@ -412,9 +406,8 @@ export function useSettings(element: HTMLElement): readonly [
 }
 
 export function useSubsettings(element: HTMLElement): HTMLElement {
-	const first = element.firstChild === null,
-		ret = createChildElement(element, "div")
-	if (!first) { createChildElement(ret, "div") }
+	const ret = createChildElement(element, "div")
+	if (element.firstChild) { createChildElement(ret, "div") }
 	return ret
 }
 

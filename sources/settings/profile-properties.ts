@@ -70,9 +70,7 @@ export const PROFILE_PROPERTIES: {
 			profile: Settings.Profile.Typed<"integrated">,
 			cwd?: string,
 		) {
-			if (Pseudoterminal.PLATFORM_PSEUDOTERMINAL === null) {
-				return null
-			}
+			if (!Pseudoterminal.PLATFORM_PSEUDOTERMINAL) { return null }
 			const
 				{
 					args,

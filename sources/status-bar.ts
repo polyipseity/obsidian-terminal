@@ -8,9 +8,7 @@ export function statusBar(callback?: (
 	// Okay to use `document` as it only exists on the main one
 	const ret = document
 		.querySelector<HTMLDivElement>(`div.${DOMClasses.STATUS_BAR}`)
-	if (ret !== null) {
-		(callback ?? ((): void => { }))(ret)
-	}
+	if (ret) { (callback ?? ((): void => { }))(ret) }
 	return ret
 }
 
@@ -21,7 +19,7 @@ export class StatusBarHider {
 	public load(): void {
 		const { plugin } = this
 		plugin.app.workspace.onLayoutReady(() => {
-			if (statusBar(div => {
+			if (!statusBar(div => {
 				const obs = new MutationObserver(() => { this.maybeHide(div) })
 				plugin.register(() => {
 					obs.disconnect()
@@ -29,7 +27,7 @@ export class StatusBarHider {
 				})
 				this.update()
 				obs.observe(div, { attributeFilter: ["style"] })
-			}) === null) {
+			})) {
 				notice2(
 					() => plugin.language.i18n.t("errors.cannot-find-status-bar"),
 					plugin.settings.errorNoticeTimeout,

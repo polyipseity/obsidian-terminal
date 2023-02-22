@@ -266,13 +266,13 @@ class WindowsPseudoterminal implements Pseudoterminal {
 								{
 									cwd: cwd ?? UNDEFINED,
 									stdio: ["pipe", "pipe", "pipe"],
-									windowsHide: resizer === null,
+									windowsHide: !resizer,
 									windowsVerbatimArguments: true,
 								},
 							))
 						return [
 							ret, codeTmp, resizerInitial.then(async resizer0 => {
-								if (resizer0 !== null) {
+								if (resizer0) {
 									try {
 										await writePromise(resizer0.stdin, `${ret.pid ?? -1}\n`)
 										const watchdog = window.setInterval(
@@ -363,7 +363,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 	public async resize(columns: number, rows: number): Promise<void> {
 		const { resizer, plugin } = this,
 			resizer0 = await resizer
-		if (resizer0 === null) {
+		if (!resizer0) {
 			throw new Error(plugin.language.i18n.t("errors.resizer-disabled"))
 		}
 		await writePromise(resizer0.stdin, `${columns}x${rows}\n`)

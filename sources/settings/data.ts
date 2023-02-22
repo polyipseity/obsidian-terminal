@@ -435,7 +435,7 @@ export namespace Settings {
 			profiles: ((): DeepWritable<Profiles> => {
 				const defaults2 = DEFAULT.profiles,
 					{ profiles } = unc
-				if (typeof profiles === "object" && profiles !== null) {
+				if (typeof profiles === "object" && profiles) {
 					return Object.fromEntries(Object.entries(profiles)
 						.map(([id, profile]) => [id, Profile.fix(profile).value]))
 				}
