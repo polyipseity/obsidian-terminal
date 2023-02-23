@@ -17,11 +17,10 @@
 		regex: false,
 		wholeWord: false,
 	};
-	export let inputPlaceholder = "";
 	export let onClose = (): void => {};
 	export let onFind = (_direction: Direction, _params: Params): void => {};
 	export let onParamsChanged = (_params: Params): void => {};
-	export let searchResult = "";
+	export let results = "";
 
 	let inputElement: HTMLElement | null = null;
 	export function focus() {
@@ -72,7 +71,7 @@
 		<input
 			class="document-search-input"
 			type="text"
-			placeholder={inputPlaceholder}
+			placeholder={i18n("components.find.input-placeholder")}
 			bind:value={params.findText}
 			bind:this={inputElement}
 		/>
@@ -91,7 +90,7 @@
 				}}
 				use:setIcon={i18n("asset:components.find.next-icon")}
 			/>
-			<div class="document-search-results">{searchResult}</div>
+			<div class="document-search-results">{results}</div>
 			<button class="document-search-close-button" on:click={onClose} />
 		</div>
 	</div>

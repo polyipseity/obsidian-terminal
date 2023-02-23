@@ -29,8 +29,9 @@
 			"remove": "删除"
 		},
 		"find": {
-			"search-results": "{{index, number}}/{{count, number}}",
-			"too-many-search-results": "?/{{limit, number}}+"
+			"input-placeholder": "$t(generic.find)",
+			"results": "{{index, number}}/{{count, number}}",
+			"too-many-results": "?/{{limit, number}}+"
 		},
 		"profile": {
 			"external": {

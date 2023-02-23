@@ -501,7 +501,7 @@ export class TerminalView extends ItemView {
 						},
 					)
 					if (params.findText === "") {
-						this.#find?.$set({ searchResult: "" })
+						this.#find?.$set({ results: "" })
 					}
 				},
 				optional: { anchor?: Element } = {},
@@ -611,7 +611,7 @@ export class TerminalView extends ItemView {
 							{
 								disposer: new DisposerAddon(
 									() => { ele.remove() },
-									() => { this.#find?.$set({ searchResult: "" }) },
+									() => { this.#find?.$set({ results: "" }) },
 								),
 								ligatures: new LigaturesAddon({}),
 								renderer: new RendererAddon(
@@ -654,7 +654,7 @@ export class TerminalView extends ItemView {
 						if (results) {
 							const { resultIndex, resultCount } = results
 							this.#find?.$set({
-								searchResult: i18n.t("components.find.search-results", {
+								results: i18n.t("components.find.results", {
 									interpolation: { escapeValue: false },
 									replace: {
 										count: resultCount,
@@ -665,8 +665,8 @@ export class TerminalView extends ItemView {
 							return
 						}
 						this.#find?.$set({
-							searchResult: i18n
-								.t("components.find.too-many-search-results", {
+							results: i18n
+								.t("components.find.too-many-results", {
 									interpolation: { escapeValue: false },
 									limit: TERMINAL_SEARCH_RESULTS_LIMIT,
 								}),
