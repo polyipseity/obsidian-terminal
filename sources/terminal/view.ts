@@ -611,7 +611,10 @@ export class TerminalView extends ItemView {
 							},
 							{
 								disposer: new DisposerAddon(
-									ele.onWindowMigrated(() => { emulator.reopen() }),
+									ele.onWindowMigrated(() => {
+										emulator.reopen()
+										emulator.resize(false).catch(logWarn)
+									}),
 									() => { ele.remove() },
 									() => { this.#find?.$set({ results: "" }) },
 								),
