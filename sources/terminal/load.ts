@@ -1,4 +1,9 @@
-import { FileSystemAdapter, type MenuItem, TFolder, MarkdownView } from "obsidian"
+import {
+	FileSystemAdapter,
+	MarkdownView,
+	type MenuItem,
+	TFolder,
+} from "obsidian"
 import { PLATFORM, deepFreeze, isNonNullish } from "../utils/util"
 import { SelectProfileModal, spawnTerminal } from "./spawn"
 import { addCommand, addRibbonIcon, notice2 } from "sources/utils/obsidian"
@@ -137,14 +142,14 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 		(menu, _0, info) => {
 			const { file } = info
 			if (!plugin.settings.addToContextMenu ||
-				info instanceof MarkdownView
-				|| !file) {
+				info instanceof MarkdownView ||
+				!file) {
 				return
 			}
-			const folder = file.parent
+			const { parent } = file
 			menu.addSeparator()
 			const items = PROFILE_TYPES
-				.map(type => contextMenu(type, folder))
+				.map(type => contextMenu(type, parent))
 				.filter(isNonNullish)
 			if (items.length > 0) {
 				menu.addSeparator()
