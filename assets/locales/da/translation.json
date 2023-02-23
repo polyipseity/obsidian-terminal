@@ -32,9 +32,15 @@
 			"remove": "Remove"
 		},
 		"find": {
+			"case-sensitive": "Case sensitive",
+			"close": "$t(generic.close, capitalize)",
 			"input-placeholder": "$t(generic.find, capitalize)",
+			"next": "Next",
+			"previous": "Previous",
+			"regex": "Regex",
 			"results": "{{index, number}}/{{count, number}}",
-			"too-many-results": "?/{{limit, number}}+"
+			"too-many-results": "?/{{limit, number}}+",
+			"whole-word": "Whole word"
 		},
 		"profile": {
 			"external": {
@@ -149,6 +155,7 @@
 		"check": "check",
 		"check_gerund": "checking",
 		"clipboard": "clipboard",
+		"close": "close",
 		"command": "command",
 		"command-palette": "command palette",
 		"compatible": "compatible",

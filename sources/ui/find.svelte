@@ -48,6 +48,7 @@
 				class={`document-search-button${
 					params.caseSensitive ? " mod-cta" : ""
 				}`}
+				aria-label={i18n("components.find.case-sensitive")}
 				on:click={() => {
 					params.caseSensitive = !params.caseSensitive;
 				}}
@@ -55,6 +56,7 @@
 			/>
 			<button
 				class={`document-search-button${params.wholeWord ? " mod-cta" : ""}`}
+				aria-label={i18n("components.find.whole-word")}
 				on:click={() => {
 					params.wholeWord = !params.wholeWord;
 				}}
@@ -62,6 +64,7 @@
 			/>
 			<button
 				class={`document-search-button${params.regex ? " mod-cta" : ""}`}
+				aria-label={i18n("components.find.regex")}
 				on:click={() => {
 					params.regex = !params.regex;
 				}}
@@ -78,6 +81,7 @@
 		<div class="document-search-buttons">
 			<button
 				class="document-search-button"
+				aria-label={i18n("components.find.previous")}
 				on:click={() => {
 					onFind(Direction.previous, params);
 				}}
@@ -85,13 +89,18 @@
 			/>
 			<button
 				class="document-search-button"
+				aria-label={i18n("components.find.next")}
 				on:click={() => {
 					onFind(Direction.next, params);
 				}}
 				use:setIcon={i18n("asset:components.find.next-icon")}
 			/>
 			<div class="document-search-results">{results}</div>
-			<button class="document-search-close-button" on:click={onClose} />
+			<button
+				class="document-search-close-button"
+				aria-label={i18n("components.find.close")}
+				on:click={onClose}
+			/>
 		</div>
 	</div>
 </div>

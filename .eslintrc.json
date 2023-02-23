@@ -232,6 +232,10 @@
       ],
       "processor": "svelte3/svelte3",
       "rules": {
+        "arrow-parens": [
+          "error",
+          "always"
+        ],
         "semi": "off",
         "@typescript-eslint/explicit-function-return-type": "off",
         "@typescript-eslint/semi": [
