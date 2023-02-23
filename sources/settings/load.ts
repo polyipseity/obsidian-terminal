@@ -80,7 +80,7 @@ export function loadSettings(plugin: TerminalPlugin): void {
 							ui.new(() => createChildElement(element, "div"), ele => {
 								ele.textContent =
 									i18n.t("dialogs.overwrite-existing-frontmatter")
-							})
+							}, ele => { ele.remove() })
 						},
 						title(): string {
 							return i18n.t("commands.export-settings-current-file")

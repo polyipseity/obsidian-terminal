@@ -931,8 +931,7 @@ export class DialogModal extends Modal {
 			description = this.#description,
 			doubleConfirmTimeout = this.#doubleConfirmTimeout ?? 0
 		modalUI.finally(onChangeLanguage.listen(() => { modalUI.update() }))
-		ui.finally(() => { contentEl.replaceChildren() })
-			.finally(onChangeLanguage.listen(() => { ui.update() }))
+		ui.finally(onChangeLanguage.listen(() => { ui.update() }))
 		if (this.#dynamicWidth) { makeModalDynamicWidth(modalUI, modalEl) }
 		if (title) {
 			modalUI.new(() => titleEl, ele => {
@@ -983,7 +982,7 @@ export class DialogModal extends Modal {
 		if (description) {
 			ui.new(() => createChildElement(contentEl, "div"), ele => {
 				ele.textContent = description()
-			})
+			}, ele => { ele.remove() })
 		}
 		this.#draw(ui, contentEl)
 	}
