@@ -1,7 +1,7 @@
 {
 	"commands": {
-		"export-settings-clipboard": "$t(generic.export)$t(generic.setting_other)到$t(generic.clipboard)",
-		"export-settings-current-file": "$t(generic.export)$t(generic.setting_other)到$t(generic.current-file)",
+		"export-settings-clipboard": "$t(generic.export)$t(generic.setting)到$t(generic.clipboard)",
+		"export-settings-current-file": "$t(generic.export)$t(generic.setting)到$t(generic.current-file)",
 		"import-settings-clipboard": "從$t(generic.clipboard)$t(generic.import)$t(generic.setting)",
 		"import-settings-current-file": "從$t(generic.current-file)$t(generic.import)$t(generic.setting)",
 		"open-documentation-changelog": "$t(generic.open)$t(generic.documentations.changelog)",
