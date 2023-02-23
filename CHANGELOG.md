@@ -6,7 +6,7 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 - Read me: [README.md](README.md)
 
-## 3.1.0
+## 3.1.0 (2023-02-20)
 
 This update focuses on quality of life improvements.
 
@@ -57,7 +57,7 @@ __Miscellaneous__
 
 __Full changelog__: [`3.0.0...3.1.0`](https://github.com/polyipseity/obsidian-terminal/compare/3.0.0...3.1.0)
 
-## 3.0.0
+## 3.0.0 (2023-02-12)
 
 A major version bump as there are many shiny new features this time! ✨
 
@@ -91,7 +91,7 @@ __Internals__
 
 __Full changelog__: [`2.11.0...3.0.0`](https://github.com/polyipseity/obsidian-terminal/compare/2.11.0...3.0.0)
 
-## 2.11.0
+## 2.11.0 (2023-01-28)
 
 __Features__
 - Add GPU acceleration! Now scrolling the terminal is super smooth. (`078c36818bfbb038501bd4302e5c45ead53f12ba`)
@@ -115,7 +115,7 @@ __Internals__
 
 __Full changelog__: [`2.10.0...2.11.0`](https://github.com/polyipseity/obsidian-terminal/compare/2.10.0...2.11.0)
 
-## 2.10.0
+## 2.10.0 (2023-01-23)
 
 __Notices__
 - Updating the plugin starting from this version to a newer version will no longer close all active terminal views. (Does not include updating from a previous version to this version.)
@@ -150,7 +150,7 @@ __Internals__
 
 __Full changelog__: [`2.9.0...2.10.0`](https://github.com/polyipseity/obsidian-terminal/compare/2.9.0...2.10.0)
 
-## 2.9.0
+## 2.9.0 (2023-01-21)
 
 After lots of hard work, v2.9.0 is finally ready! 😅
 
@@ -174,7 +174,7 @@ __Known bugs__
 
 __Full changelog__: [`2.8.1...2.9.0`](https://github.com/polyipseity/obsidian-terminal/compare/2.8.1...2.9.0)
 
-## 2.8.1
+## 2.8.1 (2023-01-14)
 
 __Fixes__
 - Fix failing to load plugin. (`fc07030d02699323f103b9609590ca5f6d6245ef`)
@@ -182,7 +182,7 @@ __Fixes__
 
 __Full changelog__: [`2.8.0...2.8.1`](https://github.com/polyipseity/obsidian-terminal/compare/2.8.0...2.8.1)
 
-## 2.8.0
+## 2.8.0 (2023-01-14)
 
 __Features__
 - Add 2 new plugin settings.
@@ -198,7 +198,7 @@ __Fixes__
 
 __Full changelog__: [`2.7.0...2.8.0`](https://github.com/polyipseity/obsidian-terminal/compare/2.7.0...2.8.0)
 
-## 2.7.0 🥳
+## 2.7.0 🥳 (2023-01-12)
 
 The plugin has just been [accepted](https://github.com/obsidianmd/obsidian-releases/pull/1472) into community plugins! 🥳
 
@@ -222,20 +222,20 @@ __Others__
 
 __Full changelog__: [`2.6.1...2.7.0`](https://github.com/polyipseity/obsidian-terminal/compare/2.6.1...2.7.0)
 
-## 2.6.1
+## 2.6.1 (2023-01-06)
 
 - Fix 2 bugs.
 - Housekeeping.
 
 **Full Changelog**: [`2.6.0...2.6.1`](https://github.com/polyipseity/obsidian-terminal/compare/2.6.0...2.6.1)
 
-## 2.6.0
+## 2.6.0 (2023-01-05)
 
 - Add the `Save as HTML` functioin to the tab context menu.
 
 **Full Changelog**: [`2.5.1...2.6.0`](https://github.com/polyipseity/obsidian-terminal/compare/2.5.1...2.6.0)
 
-## 2.5.1
+## 2.5.1 (2023-01-02)
 
 - No user-facing changes.
 - Fix tiny memory leak sources.
@@ -244,7 +244,7 @@ __Full changelog__: [`2.6.1...2.7.0`](https://github.com/polyipseity/obsidian-te
 
 **Full Changelog**: [`2.5.0...2.5.1`](https://github.com/polyipseity/obsidian-terminal/compare/2.5.0...2.5.1)
 
-## 2.5.0
+## 2.5.0 (2023-01-02)
 
 - Implement terminal history restoration.
 - Change default Linux terminal executable to ``xterm-256color``.
@@ -252,7 +252,7 @@ __Full changelog__: [`2.6.1...2.7.0`](https://github.com/polyipseity/obsidian-te
 
 **Full Changelog**: [`2.4.2...2.5.0`](https://github.com/polyipseity/obsidian-terminal/compare/2.4.2...2.5.0)
 
-## 2.4.2
+## 2.4.2 (2023-01-01)
 
 - Change icons of reset buttons to icons that represent the corresponding settings.
 - Improve a setting translation.
@@ -260,14 +260,14 @@ __Full changelog__: [`2.6.1...2.7.0`](https://github.com/polyipseity/obsidian-te
 
 **Full Changelog**: [`2.4.1...2.4.2`](https://github.com/polyipseity/obsidian-terminal/compare/2.4.1...2.4.2)
 
-## 2.4.1
+## 2.4.1 (2023-01-01)
 
 - No user-facing changes.
 - Various minor code improvements.
 
 **Full Changelog**: [`2.4.0...2.4.1`](https://github.com/polyipseity/obsidian-terminal/compare/2.4.0...2.4.1)
 
-## 2.4.0
+## 2.4.0 (2023-01-01)
 
 - Add language settings.
   - Translated text are dynamically updated when language is changed.
@@ -277,20 +277,20 @@ __Full changelog__: [`2.6.1...2.7.0`](https://github.com/polyipseity/obsidian-te
 
 **Full Changelog**: [`2.3.3...2.4.0`](https://github.com/polyipseity/obsidian-terminal/compare/2.3.3...2.4.0)
 
-## 2.3.3
+## 2.3.3 (2022-12-31)
 
 - Fix terminal persistence across Obsidian restarts.
 
 **Full Changelog**: [`2.3.2...2.3.3`](https://github.com/polyipseity/obsidian-terminal/compare/2.3.2...2.3.3)
 
-## 2.3.2
+## 2.3.2 (2022-12-31)
 
 - No user-facing changes.
 - Improve code.
 
 **Full Changelog**: [`2.3.1...2.3.2`](https://github.com/polyipseity/obsidian-terminal/compare/2.3.1...2.3.2)
 
-## 2.3.1
+## 2.3.1 (2022-12-31)
 
 - Configure esbuild to build an even smaller `main.js`.
 - Fix status bar hiding and error ignoring.
@@ -298,7 +298,7 @@ __Full changelog__: [`2.6.1...2.7.0`](https://github.com/polyipseity/obsidian-te
 
 **Full Changelog**: [`2.3.0...2.3.1`](https://github.com/polyipseity/obsidian-terminal/compare/2.3.0...2.3.1)
 
-## 2.3.0
+## 2.3.0 (2022-12-30)
 
 - Hide status bar when the terminal is focused to avoid obstruction.
 - Improve terminal resizing.
@@ -308,7 +308,7 @@ __Full changelog__: [`2.6.1...2.7.0`](https://github.com/polyipseity/obsidian-te
 
 **Full Changelog**: [`2.2.0...2.3.0`](https://github.com/polyipseity/obsidian-terminal/compare/2.2.0...2.3.0)
 
-## 2.2.0
+## 2.2.0 (2022-12-29)
 
 - Commands now work outside of editing mode (i.e. reading mode).
 - Improve reporting exit code of terminals.
@@ -322,7 +322,7 @@ __Full changelog__: [`2.6.1...2.7.0`](https://github.com/polyipseity/obsidian-te
 
 **Full Changelog**: [`2.1.0...2.2.0`](https://github.com/polyipseity/obsidian-terminal/compare/2.1.0...2.2.0)
 
-## 2.1.0
+## 2.1.0 (2022-12-27)
 
 - Add `Notice timeout` setting.
 - Various minor quality-of-life changes.
@@ -332,22 +332,22 @@ __Full changelog__: [`2.6.1...2.7.0`](https://github.com/polyipseity/obsidian-te
 
 **Full Changelog**: [`2.0.0...2.1.0`](https://github.com/polyipseity/obsidian-terminal/compare/2.0.0...2.1.0)
 
-## 2.0.0
+## 2.0.0 (2022-12-27)
 
 - Add functionality to embed terminals inside Obsidian.
 
 **Full Changelog**: [`1.0.0...2.0.0`](https://github.com/polyipseity/obsidian-terminal/compare/1.0.0...2.0.0)
 
-## 1.0.0
+## 1.0.0 (2022-12-26)
 
 Initial release.
 
 **Full Changelog**: [`0.0.1...1.0.0`](https://github.com/polyipseity/obsidian-terminal/compare/0.0.1...1.0.0)
 
-## 0.0.1
+## 0.0.1 (2022-12-26)
 
 __Full Changelog__: [`0.0.0...0.0.1`](https://github.com/polyipseity/obsidian-terminal/compare/0.0.0...0.0.1)
 
-## 0.0.0
+## 0.0.0 (2022-12-26)
 
 __Full Changelog__: [`717c0adec4eca8744da20e9d10a504f5edd95a3a...0.0.0`](https://github.com/polyipseity/obsidian-terminal/compare/717c0adec4eca8744da20e9d10a504f5edd95a3a...0.0.0)
