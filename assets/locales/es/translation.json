@@ -32,6 +32,7 @@
 			"remove": "Remove"
 		},
 		"find": {
+			"input-placeholder": "$t(generic.find, capitalize)",
 			"search-results": "{{index, number}}/{{count, number}}",
 			"too-many-search-results": "?/{{limit, number}}+"
 		},

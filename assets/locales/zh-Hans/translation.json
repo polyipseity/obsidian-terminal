@@ -29,6 +29,7 @@
 			"remove": "删除"
 		},
 		"find": {
+			"input-placeholder": "$t(generic.find)",
 			"search-results": "{{index, number}}/{{count, number}}",
 			"too-many-search-results": "?/{{limit, number}}+"
 		},

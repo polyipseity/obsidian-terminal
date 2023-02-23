@@ -17,7 +17,6 @@
 		regex: false,
 		wholeWord: false,
 	};
-	export let inputPlaceholder = "";
 	export let onClose = (): void => {};
 	export let onFind = (_direction: Direction, _params: Params): void => {};
 	export let onParamsChanged = (_params: Params): void => {};
@@ -72,7 +71,7 @@
 		<input
 			class="document-search-input"
 			type="text"
-			placeholder={inputPlaceholder}
+			placeholder={i18n("components.find.input-placeholder")}
 			bind:value={params.findText}
 			bind:this={inputElement}
 		/>
