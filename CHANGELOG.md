@@ -4,7 +4,7 @@ Versions are ordered by recency.
 
 This file is automatically opened on update. You can reopen it in settings or command palette.
 
-- Read me: [README.md](README.md)
+- Readme: [README.md](README.md)
 
 ## 3.1.0 (2023-02-20)
 
