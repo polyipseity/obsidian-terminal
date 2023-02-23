@@ -30,8 +30,8 @@
 		},
 		"find": {
 			"input-placeholder": "$t(generic.find)",
-			"search-results": "{{index, number}}/{{count, number}}",
-			"too-many-search-results": "?/{{limit, number}}+"
+			"results": "{{index, number}}/{{count, number}}",
+			"too-many-results": "?/{{limit, number}}+"
 		},
 		"profile": {
 			"external": {
