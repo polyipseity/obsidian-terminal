@@ -35,15 +35,20 @@ export class UpdatableUI {
 		destroy?: ((value: V) => void) | null,
 	): this {
 		const value = create()
-		if (configure) {
-			const updater = (): void => { configure(value) }
-			updater()
-			this.#updaters.push(updater)
+		try {
+			if (configure) {
+				const updater = (): void => { configure(value) }
+				updater()
+				this.#updaters.push(updater)
+			}
+			if (destroy) {
+				this.#finalizers.push(() => { destroy(value) })
+			}
+			return this
+		} catch (error) {
+			if (destroy) { destroy(value) }
+			throw error
 		}
-		if (destroy) {
-			this.#finalizers.push(() => { destroy(value) })
-		}
-		return this
 	}
 
 	public newSetting(
