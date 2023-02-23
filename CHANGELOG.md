@@ -343,3 +343,11 @@ __Full changelog__: [`2.6.1...2.7.0`](https://github.com/polyipseity/obsidian-te
 Initial release.
 
 **Full Changelog**: [`0.0.1...1.0.0`](https://github.com/polyipseity/obsidian-terminal/compare/0.0.1...1.0.0)
+
+## 0.0.1
+
+__Full Changelog__: [`0.0.0...0.0.1`](https://github.com/polyipseity/obsidian-terminal/compare/0.0.0...0.0.1)
+
+## 0.0.0
+
+__Full Changelog__: [`717c0adec4eca8744da20e9d10a504f5edd95a3a...0.0.0`](https://github.com/polyipseity/obsidian-terminal/compare/717c0adec4eca8744da20e9d10a504f5edd95a3a...0.0.0)
