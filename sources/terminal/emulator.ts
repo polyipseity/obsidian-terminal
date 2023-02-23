@@ -66,8 +66,8 @@ export class XtermTerminalEmulator<A> {
 					await pty.resize(columns, rows)
 				}
 			} catch (error) {
-				console.debug(error)
 				if (mustResizePseudoterminal) { throw error }
+				console.debug(error)
 			}
 			this.terminal.resize(columns, rows)
 		})().then(resolve, reject)
@@ -117,8 +117,8 @@ export class XtermTerminalEmulator<A> {
 				await (await this.pseudoterminal).kill()
 			}
 		} catch (error) {
-			console.debug(error)
 			if (mustClosePseudoterminal) { throw error }
+			console.debug(error)
 		}
 		this.terminal.dispose()
 	}
