@@ -58,7 +58,7 @@
 		"eslint-import-resolver-typescript": "3.5.3",
 		"eslint-plugin-import": "2.27.5",
 		"eslint-plugin-svelte3": "4.0.0",
-		"obsidian": "file:local/obsidian",
+		"obsidian": "file:build/obsidian",
 		"svelte": "3.55.1",
 		"svelte-preprocess": "5.0.1",
 		"tslib": "2.5.0",
