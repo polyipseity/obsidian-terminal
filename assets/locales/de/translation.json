@@ -13,7 +13,8 @@
 	"components": {
 		"dialog": {
 			"cancel": "$t(generic.cancel, capitalize)",
-			"confirm": "$t(generic.confirm, capitalize)"
+			"confirm": "$t(generic.confirm, capitalize)",
+			"double-confirm-hint": "Press <Enter> twice to $t(generic.confirm)."
 		},
 		"dropdown": {
 			"placeholder": "(Unselected)"

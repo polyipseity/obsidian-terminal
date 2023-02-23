@@ -939,10 +939,14 @@ export class DialogModal extends Modal {
 				ele.textContent = title()
 			}, ele => { ele.textContent = null })
 		}
+		const confirmOnce = doubleConfirmTimeout <= 0
 		let confirmButton: ButtonComponent | null = null,
-			preconfirmed = doubleConfirmTimeout <= 0
+			preconfirmed = confirmOnce
 		modalUI
 			.newSetting(modalEl, setting => {
+				if (!confirmOnce) {
+					setting.setDesc(i18n.t("components.dialog.double-confirm-hint"))
+				}
 				setting
 					.addButton(button => {
 						button

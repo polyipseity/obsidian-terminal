@@ -13,7 +13,8 @@
 	"components": {
 		"dialog": {
 			"cancel": "$t(generic.cancel)",
-			"confirm": "$t(generic.confirm)"
+			"confirm": "$t(generic.confirm)",
+			"double-confirm-hint": "按<Enter>兩次$t(generic.confirm)。"
 		},
 		"dropdown": {
 			"placeholder": "（未选择）"
