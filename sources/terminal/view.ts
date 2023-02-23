@@ -438,9 +438,10 @@ export class TerminalView extends ItemView {
 			"`",
 			event => {
 				const { activeElement } = contentEl.ownerDocument
-				if (activeElement && "blur" in activeElement) {
+				if (activeElement && "blur" in activeElement &&
+					typeof activeElement.blur === "function") {
 					try {
-						(activeElement.blur as HTMLElement["blur"])()
+						activeElement.blur()
 						consumeEvent(event)
 					} catch (error) {
 						console.debug(error)

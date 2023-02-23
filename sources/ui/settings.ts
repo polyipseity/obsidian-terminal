@@ -36,10 +36,10 @@ export function linkSetting<
 	getter: () => V,
 	setter: (value: V, component: C, getter: () => V) => unknown,
 	callback: (value: V, component: C, getter: () => V) => unknown,
-	action: ComponentAction<C, V> = {},
+	{ pre, post }: ComponentAction<C, V> = {},
 ) {
 	return (component: C): void => {
-		(action.pre ?? ((): void => { }))(component)
+		if (pre) { pre(component) }
 		const activate = async (value: V): Promise<void> => {
 			const ret = await setter(value, component, getter)
 			if (typeof ret === "boolean" && !ret) {
@@ -48,8 +48,8 @@ export function linkSetting<
 			}
 			await callback(value, component, getter)
 		}
-		component.setValue(getter()).onChange(activate);
-		(action.post ?? ((): void => { }))(component, activate)
+		component.setValue(getter()).onChange(activate)
+		if (post) { post(component, activate) }
 	}
 }
 
@@ -103,10 +103,10 @@ export function resetButton<C extends ButtonComponent | ExtraButtonComponent>(
 	tooltip: string,
 	resetter: (component: C) => unknown,
 	callback: (component: C) => unknown,
-	action: ComponentAction<C, void> = {},
+	{ pre, post }: ComponentAction<C, void> = {},
 ) {
 	return (component: C): void => {
-		(action.pre ?? ((): void => { }))(component)
+		if (pre) { pre(component) }
 		const activate = async (): Promise<void> => {
 			const ret = await resetter(component)
 			if (typeof ret === "boolean" && !ret) {
@@ -117,8 +117,8 @@ export function resetButton<C extends ButtonComponent | ExtraButtonComponent>(
 		component
 			.setIcon(icon)
 			.setTooltip(tooltip)
-			.onClick(activate);
-		(action.post ?? ((): void => { }))(component, activate)
+			.onClick(activate)
+		if (post) { post(component, activate) }
 	}
 }
 
@@ -147,8 +147,9 @@ export function dropdownSelect<V, C extends DropdownComponent>(
 				component
 					.addOption(NaN.toString(), unselected)
 					.addOptions(Object.fromEntries(selections
-						.map((selection, index) => [index, selection.name])));
-				(action.pre ?? ((): void => { }))(component)
+						.map((selection, index) => [index, selection.name])))
+				const { pre } = action
+				if (pre) { pre(component) }
 			},
 		},
 	)

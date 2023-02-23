@@ -76,18 +76,16 @@ export class UpdatableUI {
 						const comp = components[index++ % components.length]
 						if (!comp) { throw new Error(index.toString()) }
 						comp.setDisabled(false)
-						if ("onChange" in comp) {
+						if ("onChange" in comp && typeof comp.onChange === "function") {
 							try {
-								(comp.onChange as ((
-									callback: (value: unknown) => unknown,
-								) => unknown))((): void => { })
+								comp.onChange((): void => { })
 							} catch (error) {
 								console.error(error)
 							}
 						}
-						if ("removeCta" in comp) {
+						if ("removeCta" in comp && typeof comp.removeCta === "function") {
 							try {
-								(comp.removeCta as (() => void))()
+								comp.removeCta()
 							} catch (error) {
 								console.error(error)
 							}
@@ -134,11 +132,11 @@ export class UpdatableUI {
 		let update = false
 		return this.new(create, ele => {
 			if (update) { ele.update() }
-			update = true;
-			(configure ?? ((): void => { }))(ele)
+			update = true
+			if (configure) { configure(ele) }
 		}, ele => {
-			ele.destroy();
-			(destroy ?? ((): void => { }))(ele)
+			ele.destroy()
+			if (destroy) { destroy(ele) }
 		})
 	}
 

@@ -8,7 +8,7 @@ export function statusBar(callback?: (
 	// Okay to use `document` as it only exists on the main one
 	const ret = document
 		.querySelector<HTMLDivElement>(`div.${DOMClasses.STATUS_BAR}`)
-	if (ret) { (callback ?? ((): void => { }))(ret) }
+	if (ret && callback) { callback(ret) }
 	return ret
 }
 
