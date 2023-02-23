@@ -77,7 +77,7 @@ export class XtermTerminalEmulator<A> {
 
 	public constructor(
 		protected readonly plugin: TerminalPlugin,
-		element: HTMLElement,
+		protected readonly element: HTMLElement,
 		pseudoterminal: (
 			terminal: Terminal,
 			addons: XtermTerminalEmulator<A>["addons"],
@@ -130,6 +130,12 @@ export class XtermTerminalEmulator<A> {
 		if (dim && isFinite(dim.cols) && isFinite(dim.rows)) {
 			await resize0(dim.cols, dim.rows, mustResizePseudoterminal)
 		}
+	}
+
+	public reopen(): void {
+		const { element, terminal } = this
+		terminal.element?.remove()
+		terminal.open(element)
 	}
 
 	public serialize(): XtermTerminalEmulator.State {
