@@ -29,9 +29,15 @@
 			"remove": "刪除"
 		},
 		"find": {
+			"case-sensitive": "區分大小寫",
+			"close": "$t(generic.close)",
 			"input-placeholder": "$t(generic.find)",
+			"next": "下一個",
+			"previous": "上一個",
+			"regex": "正則表達式",
 			"search-results": "{{index, number}}/{{count, number}}",
-			"too-many-search-results": "?/{{limit, number}}+"
+			"too-many-search-results": "?/{{limit, number}}+",
+			"whole-word": "全字"
 		},
 		"profile": {
 			"external": {
@@ -143,6 +149,7 @@
 		"cancel": "取消",
 		"check": "檢查",
 		"clipboard": "剪貼板",
+		"close": "關閉",
 		"command": "命令",
 		"command-palette": "命令面板",
 		"compatible": "兼容",
