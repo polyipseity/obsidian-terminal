@@ -22,6 +22,7 @@
 	export let onParamsChanged = (_params: Params): void => {};
 	export let results = "";
 
+	let element: HTMLElement | null = null;
 	let inputElement: HTMLElement | null = null;
 	export function focus() {
 		inputElement?.focus();
@@ -31,7 +32,7 @@
 	}
 
 	onMount(() => {
-		inputElement?.addEventListener("keydown", (event) => {
+		element?.addEventListener("keydown", (event) => {
 			if (event.code === "Escape") {
 				onClose();
 				consumeEvent(event);
@@ -41,7 +42,7 @@
 	$: onParamsChanged(params);
 </script>
 
-<div class="document-search-container">
+<div class="document-search-container" bind:this={element}>
 	<div class="document-search">
 		<div class="document-search-buttons">
 			<button
