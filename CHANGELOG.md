@@ -29,6 +29,7 @@ __Internals__
 - Load translations on demand. (`268c684ec97f858d5a6ef030130b834eda305442`)
 - Delay removing exit code temp file to print less warnings to the console. (`6923553979451e1da6200c7ac01e637f2f2563ae`)
 - Avoid using non-standard functions. (`44dcfaf89f7638e77e7e0c0306c12c14ac613e00`, `8de1c59e2e6ca6afebf4c7f0fd676077d1a07502`)
+- Only create one `ConsolePseudoterminal`. (`bd97d08b1186584d607a8530b116c1aad1d9a761`)
 
 __Full changelog__: [`3.1.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.1.0...main)
 
