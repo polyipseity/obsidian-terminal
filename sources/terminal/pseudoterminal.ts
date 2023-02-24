@@ -8,7 +8,6 @@ import {
 	UNDEFINED,
 	UNHANDLED_REJECTION_MESSAGE,
 } from "../magic"
-import { LOG, type Log } from "sources/patches"
 import {
 	PLATFORM,
 	anyToError,
@@ -26,6 +25,7 @@ import {
 import { notice2, printError } from "sources/utils/obsidian"
 import type { AsyncOrSync } from "ts-essentials"
 import type { FileResultNoFd } from "tmp"
+import type { Log } from "sources/patches"
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
 } from "node:child_process"
@@ -125,11 +125,11 @@ export class ConsolePseudoterminal
 	#writer: Promise<unknown> = Promise.resolve()
 	readonly #terminals: Terminal[] = []
 
-	public constructor() {
+	public constructor(protected readonly log: Log) {
 		super()
 		this.onExit
 			.finally(() => { clear(this.#terminals) })
-			.finally(LOG.logger.listen(async event => this.write([event])))
+			.finally(log.logger.listen(async event => this.write([event])))
 	}
 
 	// eslint-disable-next-line consistent-return
@@ -152,7 +152,7 @@ export class ConsolePseudoterminal
 		await super.pipe(terminal)
 		terminal.clear()
 		this.#terminals.push(terminal)
-		await this.write(LOG.history, [terminal])
+		await this.write(this.log.history, [terminal])
 	}
 
 	protected async write(

@@ -25,6 +25,7 @@ import { semVerString } from "./utils/types"
 
 export class TerminalPlugin extends Plugin {
 	public readonly version
+	public readonly log
 	public readonly language = new LanguageManager(this)
 	public readonly statusBarHider = new StatusBarHider(this)
 	public readonly saveSettings =
@@ -39,9 +40,10 @@ export class TerminalPlugin extends Plugin {
 	#settings: Settings = deepFreeze(Settings.fix(Settings.DEFAULT).value)
 
 	public constructor(app: App, manifest: PluginManifest) {
-		const unpatch = patch(app.workspace)
+		const [unpatch, log] = patch(app.workspace)
 		super(app, manifest)
 		this.register(unpatch)
+		this.log = log
 		try {
 			this.version = semVerString(manifest.version)
 		} catch (error) {

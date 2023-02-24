@@ -40,8 +40,8 @@ export const PROFILE_PROPERTIES: {
 	developerConsole: {
 		available: true,
 		integratable: true,
-		opener() {
-			return new ConsolePseudoterminal()
+		opener(plugin: TerminalPlugin) {
+			return new ConsolePseudoterminal(plugin.log)
 		},
 		valid: true,
 	},
