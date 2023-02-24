@@ -3,7 +3,6 @@ import {
 	DEFAULT_PYTHONIOENCODING,
 	EXIT_SUCCESS,
 	SI_PREFIX_SCALE,
-	TERMINAL_ENVIRONMENT_VARIABLE,
 	TERMINAL_EXIT_CLEANUP_DELAY,
 	TERMINAL_RESIZER_WATCHDOG_INTERVAL,
 	UNDEFINED,
@@ -15,6 +14,7 @@ import {
 	anyToError,
 	clear,
 	inSet,
+	isNonNullish,
 	isNullish,
 	logError,
 	logFormat,
@@ -235,6 +235,7 @@ export interface ShellPseudoterminalArguments {
 	readonly executable: string
 	readonly cwd?: URL | string | null
 	readonly args?: readonly string[] | null
+	readonly terminal?: string | null
 	readonly pythonExecutable?: string | null
 	readonly useWin32Conhost?: boolean | null
 }
@@ -459,6 +460,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 			args,
 			cwd,
 			executable,
+			terminal,
 			pythonExecutable,
 		}: ShellPseudoterminalArguments,
 	) {
@@ -468,18 +470,18 @@ class UnixPseudoterminal implements Pseudoterminal {
 				throw new Error(language
 					.i18n.t("errors.no-Python-to-spawn-Unix-pseudoterminal"))
 			}
+			const env: NodeJS.ProcessEnv = {
+				...(await process).env,
+				// eslint-disable-next-line @typescript-eslint/naming-convention
+				PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
+			}
+			if (isNonNullish(terminal)) { env["TERM"] = terminal }
 			return (await childProcess).spawn(
 				pythonExecutable,
 				["-c", unixPseudoterminalPy, executable].concat(args ?? []),
 				{
 					cwd: cwd ?? UNDEFINED,
-					env: {
-						...(await process).env,
-						// eslint-disable-next-line @typescript-eslint/naming-convention
-						PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
-						// eslint-disable-next-line @typescript-eslint/naming-convention
-						TERM: TERMINAL_ENVIRONMENT_VARIABLE,
-					},
+					env,
 					stdio: ["pipe", "pipe", "pipe", "pipe"],
 					windowsHide: true,
 				},

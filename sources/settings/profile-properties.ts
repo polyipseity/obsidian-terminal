@@ -15,7 +15,12 @@ import {
 import type { AsyncOrSync } from "ts-essentials"
 import type { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "sources/main"
+import { UNDEFINED } from "sources/magic"
 
+export interface OpenOptions {
+	readonly cwd?: string | null
+	readonly terminal?: string | null
+}
 export const PROFILE_PROPERTIES: {
 	readonly [key in Settings.Profile.Type]: {
 		readonly available: boolean
@@ -24,7 +29,7 @@ export const PROFILE_PROPERTIES: {
 		readonly opener: (
 			plugin: TerminalPlugin,
 			profile: Settings.Profile.Typed<key>,
-			cwd?: string,
+			options?: OpenOptions,
 		) => AsyncOrSync<RefPsuedoterminal<Pseudoterminal> | null>
 	}
 } = deepFreeze({
@@ -49,12 +54,12 @@ export const PROFILE_PROPERTIES: {
 		async opener(
 			_plugin: TerminalPlugin,
 			profile: Settings.Profile.Typed<"external">,
-			cwd?: string,
+			options?: OpenOptions,
 		) {
 			await spawnExternalTerminalEmulator(
 				profile.executable,
 				profile.args,
-				cwd,
+				options?.cwd ?? UNDEFINED,
 			)
 			return null
 		},
@@ -66,7 +71,7 @@ export const PROFILE_PROPERTIES: {
 		opener(
 			plugin: TerminalPlugin,
 			profile: Settings.Profile.Typed<"integrated">,
-			cwd?: string,
+			options?: OpenOptions,
 		) {
 			if (!Pseudoterminal.PLATFORM_PSEUDOTERMINAL) { return null }
 			const
@@ -82,9 +87,10 @@ export const PROFILE_PROPERTIES: {
 			return new RefPsuedoterminal(
 				new Pseudoterminal.PLATFORM_PSEUDOTERMINAL(plugin, {
 					args,
-					cwd: cwd ?? null,
+					cwd: options?.cwd ?? null,
 					executable,
 					pythonExecutable: pythonExecutable || null,
+					terminal: options?.terminal ?? null,
 					useWin32Conhost,
 				}),
 			)
@@ -102,8 +108,8 @@ export const PROFILE_PROPERTIES: {
 export function openProfile<T extends Settings.Profile.Type>(
 	plugin: TerminalPlugin,
 	profile: Settings.Profile.Typed<T>,
-	cwd?: string,
+	options?: OpenOptions,
 ): AsyncOrSync<RefPsuedoterminal<Pseudoterminal> | null> {
 	const type0: T = profile.type
-	return PROFILE_PROPERTIES[type0].opener(plugin, profile, cwd)
+	return PROFILE_PROPERTIES[type0].opener(plugin, profile, options)
 }

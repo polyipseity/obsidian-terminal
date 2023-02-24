@@ -54,6 +54,7 @@ export async function spawnExternalTerminalEmulator(
 }
 
 export class XtermTerminalEmulator<A> {
+	public static readonly type = "xterm-256color"
 	public readonly terminal
 	public readonly addons
 	public readonly pseudoterminal
