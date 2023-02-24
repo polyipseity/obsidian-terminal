@@ -247,7 +247,7 @@ export function getKeyModifiers(
 	if (event.ctrlKey) { ret.push("Ctrl") }
 	if (event.metaKey) { ret.push("Meta") }
 	if (event.shiftKey) { ret.push("Shift") }
-	return Object.freeze(ret)
+	return deepFreeze(ret)
 }
 
 export async function spawnPromise<T extends ChildProcess>(spawn: (
