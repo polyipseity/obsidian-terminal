@@ -98,8 +98,10 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 						return adapter.getBasePath()
 					case "current": {
 						const active = workspace.getActiveFile()
-						if (!active) { return null }
-						return adapter.getFullPath(active.parent.path)
+						if (active?.parent) {
+							return adapter.getFullPath(active.parent.path)
+						}
+						return null
 					}
 					// No default
 				}
@@ -128,6 +130,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 			return
 		}
 		const folder = file instanceof TFolder ? file : file.parent
+		if (!folder) { return }
 		menu.addSeparator()
 		const items = PROFILE_TYPES
 			.map(type => contextMenu(type, folder))
@@ -143,7 +146,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 			const { file } = info
 			if (!plugin.settings.addToContextMenu ||
 				info instanceof MarkdownView ||
-				!file) {
+				!file?.parent) {
 				return
 			}
 			const { parent } = file
