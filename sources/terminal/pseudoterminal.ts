@@ -1,4 +1,5 @@
 import {
+	CONTROL_SEQUENCE_INTRODUCER as CSI,
 	DEFAULT_ENCODING,
 	DEFAULT_PYTHONIOENCODING,
 	EXIT_SUCCESS,
@@ -10,9 +11,12 @@ import {
 } from "../magic"
 import { DisposerAddon, processText } from "./emulator"
 import {
+	Functions,
 	PLATFORM,
 	anyToError,
 	clear,
+	consumeEvent,
+	getKeyModifiers,
 	inSet,
 	isNullish,
 	logError,
@@ -47,7 +51,7 @@ const
 
 function clearTerminal(terminal: Terminal): void {
 	// Clear screen with scrollback kept
-	terminal.write(`${"\u001b[2K\n".repeat(terminal.rows - 1)}\u001b[2K\u001b[H`)
+	terminal.write(`${`${CSI}2K\n`.repeat(terminal.rows - 1)}${CSI}2K${CSI}H`)
 }
 
 export interface Pseudoterminal {
@@ -179,11 +183,28 @@ export class ConsolePseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
 	#writer: Promise<unknown> = Promise.resolve()
+	#buffer = ""
 
 	public constructor(protected readonly log: Log) {
 		super()
 		this.onExit
 			.finally(log.logger.listen(async event => this.write([event])))
+	}
+
+	protected get buffer(): string {
+		return this.#buffer
+	}
+
+	protected set buffer(value: string) {
+		const processed = processText(value)
+		this.#writer = this.#writer.then(async () => Promise.allSettled(
+			this.terminals.map(async terminal =>
+				Promise.resolve()
+					.then(() => {
+						terminal.write(`\r${CSI}K${processed}`)
+					})),
+		))
+		this.#buffer = value
 	}
 
 	// eslint-disable-next-line consistent-return
@@ -206,6 +227,49 @@ export class ConsolePseudoterminal
 		await super.pipe(terminal)
 		terminal.clear()
 		await this.write(this.log.history, [terminal])
+		const disposer = new Functions(
+			{ async: false, settled: true },
+			...[
+				terminal.onKey(({ key, domEvent }) => {
+					let key0 = key
+					if (domEvent.key === "Enter") {
+						const modifiers = getKeyModifiers(domEvent)
+						if (modifiers.length === 0) {
+							this.eval()
+							consumeEvent(domEvent)
+							return
+						}
+						if (modifiers.includes("Shift")) {
+							key0 = "\n"
+						}
+					}
+					if (domEvent.key === "Backspace") {
+						this.buffer = this.buffer.replace(/.$/us, "")
+						consumeEvent(domEvent)
+						return
+					}
+					if (key0) {
+						this.buffer += key0
+						consumeEvent(domEvent)
+					}
+				}),
+			].map(disposer0 => () => { disposer0.dispose() }),
+		)
+		this.onExit.finally(() => { disposer.call() })
+	}
+
+	protected eval(): void {
+		const { buffer } = this
+		this.buffer = ""
+		console.log(buffer)
+		let ret: unknown = null
+		try {
+			ret = self.eval(buffer)
+		} catch (error) {
+			console.error(error)
+			return
+		}
+		console.log(ret)
 	}
 
 	protected async write(
