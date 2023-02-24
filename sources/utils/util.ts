@@ -334,11 +334,6 @@ export function isUndefined<T>(value: undefined extends T
 	return typeof value === "undefined"
 }
 
-export function length<T extends object,
->(obj: T extends readonly unknown[] ? never : T): number {
-	return Object.keys(obj).length
-}
-
 export function logError(thing: unknown): void {
 	console.error(thing)
 }
