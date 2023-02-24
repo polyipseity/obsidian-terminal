@@ -21,7 +21,6 @@ import {
 	consumeEvent,
 	createChildElement,
 	deepFreeze,
-	identity,
 	isUndefined,
 	randomNotIn,
 	removeAt,
@@ -53,6 +52,7 @@ import { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "sources/main"
 import { dynamicRequire } from "sources/imports"
+import { identity } from "lodash"
 
 const
 	childProcess =
@@ -588,7 +588,10 @@ export class ProfileModal extends Modal {
 							.onClick(() => {
 								new ListModal(
 									plugin,
-									ListModal.stringInputter({ back: identity, forth: identity }),
+									ListModal.stringInputter({
+										back: identity<string>,
+										forth: identity,
+									}),
 									() => "",
 									profile.args,
 									{

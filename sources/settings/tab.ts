@@ -10,7 +10,6 @@ import {
 	clearProperties,
 	cloneAsWritable,
 	createChildElement,
-	identity,
 	length,
 	logError,
 	typedStructuredClone,
@@ -27,6 +26,7 @@ import type { DeepWritable } from "ts-essentials"
 import { LANGUAGES } from "assets/locales"
 import { Settings } from "./data"
 import type { TerminalPlugin } from "../main"
+import { identity } from "lodash"
 import { lt } from "semver"
 import { openDocumentation } from "sources/documentation/load"
 

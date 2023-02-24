@@ -292,10 +292,6 @@ export function typedStructuredClone<T>(
 	return structuredClone(value, transfer) as T
 }
 
-export function identity<T>(value: T): T {
-	return value
-}
-
 export function inSet<T extends readonly unknown[]>(
 	set: Sized<T>,
 	obj: unknown,
