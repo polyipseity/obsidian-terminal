@@ -8,6 +8,9 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Notices__
+- The minimum API version has been bumped to v1.1.13. Please update your app to the latest version. (`e2733c5c36003db5556819088b50bad29671d4e0`)
+
 __Improvements__
 - All settings should have an icon representing it. (`eb1a647d0336041a7f705a3476f18bd5ed738913`)
 - Improve find in terminal.
