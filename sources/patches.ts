@@ -6,7 +6,7 @@ import { noop } from "ts-essentials"
 
 export interface Log {
 	readonly logger: EventEmitterLite<readonly [Log.Event]>
-	readonly history: Log.Event[]
+	readonly history: readonly Log.Event[]
 }
 export namespace Log {
 	export type Event = { readonly type: Event.Type } & (
@@ -36,11 +36,12 @@ export namespace Log {
 }
 
 function newLog(): Log {
-	const ret: Log = Object.freeze({
-		history: [],
-		logger: new EventEmitterLite<readonly [Log.Event]>(),
-	})
-	ret.logger.listen(event => ret.history.push(event))
+	const history: Log.Event[] = [],
+		ret: Log = Object.freeze({
+			history,
+			logger: new EventEmitterLite<readonly [Log.Event]>(),
+		})
+	ret.logger.listen(event => history.push(event))
 	return ret
 }
 
