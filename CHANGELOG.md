@@ -6,6 +6,29 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 - Readme: [README.md](README.md)
 
+## Unreleased
+
+__Improvements__
+- All settings should have an icon representing it. (`eb1a647d0336041a7f705a3476f18bd5ed738913`)
+- Improve find in terminal.
+  - Autofocus on the find input when you activate it. (`7d0c857e9bd68e4b15028dc0e5e9cc5e187ac5f5`)
+  - Pressing `Esc` when focused on find in terminal closes it. (`2ce8bdcd182c3abaf20bddacf925a84693cb8e50`, `7f13dd47fd5dab814bf9028a12f5e91c2bbdf67d`)
+  - Add ARIA labels. (`c747a490a158c7891effb24642d790ca58699de9`)
+- Improve working directory handling to reduce confusion like in GH#12. (`55b917052b371eb566976af7d13b6345c64554ef`, `985b6100ef14e9f0933de0859dd0e8872e217490`)
+- Add double confirm dialog hint. (`0f043376fb6f2528b826066128666baa855c774d`)
+
+__Fixes__
+- Fix some translation strings. (`88cbcf603ff0429d26f1616b7af67bf4cf27f3f9`, `2a4a4cfe45f4ffd787feb134ef0545af7a832fb5`)
+- Unfocusing terminal also works when find in terminal is focused. (`f7cde90970128bd4bbf1578fb2e1d3249451a628`)
+- Improve compatibility with pop-out windows. (`798b2988875e0688f7602efb20fbd6702edf00f9`..`59955f4ee1e9102dd956537464e53b88cc1a6d12`, `f38d0082a0fc9cccbb75c7383aa6c35810b1e9b8`..`7b8364086873ebeee11fd506c2f139708be6e740`)
+
+__Internals__
+- Load translations on demand. (`268c684ec97f858d5a6ef030130b834eda305442`)
+- Delay removing exit code temp file to print less warnings to the console. (`6923553979451e1da6200c7ac01e637f2f2563ae`)
+- Avoid using non-standard functions. (`44dcfaf89f7638e77e7e0c0306c12c14ac613e00`, `8de1c59e2e6ca6afebf4c7f0fd676077d1a07502`)
+
+__Full changelog__: [`3.1.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.1.0...main)
+
 ## 3.1.0 (2023-02-20)
 
 This update focuses on quality of life improvements.
