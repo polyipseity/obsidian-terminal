@@ -35,6 +35,15 @@ export namespace Log {
 	}
 }
 
+function newLog(): Log {
+	const ret: Log = Object.freeze({
+		history: [],
+		logger: new EventEmitterLite<readonly [Log.Event]>(),
+	})
+	ret.logger.listen(event => ret.history.push(event))
+	return ret
+}
+
 function patchConsole(console: Console, log: Log): () => void {
 	const consolePatch = (
 		type: "debug" | "error" | "info" | "warn",
@@ -97,11 +106,7 @@ function patchWindow(self: Window, log: Log): () => void {
 export function patch(workspace: Workspace): readonly [() => void, Log] {
 	const unpatchers = new Functions({ async: false, settled: true })
 	try {
-		const
-			log: Log = Object.freeze({
-				history: [],
-				logger: new EventEmitterLite<readonly [Log.Event]>(),
-			}),
+		const log = newLog(),
 			windowConsolePatch = workspace.on("window-open", window => {
 				const unpatch = patchConsole(correctType(window.win).console, log),
 					off = workspace.on("window-close", window0 => {
