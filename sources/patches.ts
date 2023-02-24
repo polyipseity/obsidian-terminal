@@ -4,7 +4,6 @@ import type { Workspace } from "obsidian"
 import { around } from "monkey-around"
 import { correctType } from "./utils/types"
 
-export const LOGGER = new EventEmitterLite<readonly [Log.Event]>()
 export namespace Log {
 	export const TYPES = Object.freeze([
 		"info",
@@ -34,10 +33,14 @@ export namespace Log {
 		export type Typed<T extends Type> = Event & { readonly type: T }
 	}
 }
-const LOG: Log.Event[] = []
-LOGGER.listen(event => LOG.push(event))
+const LOGGER = new EventEmitterLite<readonly [Log.Event]>(),
+	LOG_HISTORY: Log.Event[] = []
+LOGGER.listen(event => LOG_HISTORY.push(event))
 
-export function log(): DeepReadonly<typeof LOG> { return LOG }
+export const LOG: {
+	readonly logger: typeof LOGGER
+	readonly history: DeepReadonly<typeof LOG_HISTORY>
+} = Object.freeze({ history: LOG_HISTORY, logger: LOGGER })
 
 const consolePatch = (
 	type: "debug" | "error" | "info" | "warn",

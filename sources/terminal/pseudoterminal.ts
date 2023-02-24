@@ -8,7 +8,7 @@ import {
 	UNDEFINED,
 	UNHANDLED_REJECTION_MESSAGE,
 } from "../magic"
-import { LOGGER, type Log, log } from "sources/patches"
+import { LOG, type Log } from "sources/patches"
 import {
 	PLATFORM,
 	anyToError,
@@ -129,7 +129,7 @@ export class ConsolePseudoterminal
 		super()
 		this.onExit
 			.finally(() => { clear(this.#terminals) })
-			.finally(LOGGER.listen(async event => this.write([event])))
+			.finally(LOG.logger.listen(async event => this.write([event])))
 	}
 
 	// eslint-disable-next-line consistent-return
@@ -152,7 +152,7 @@ export class ConsolePseudoterminal
 		await super.pipe(terminal)
 		terminal.clear()
 		this.#terminals.push(terminal)
-		await this.write(log(), [terminal])
+		await this.write(LOG.history, [terminal])
 	}
 
 	protected async write(
