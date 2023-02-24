@@ -226,7 +226,3 @@ svg.svg-icon[class*="terminal:"] {
 	fill: none;
 	stroke: currentColor;
 }
-
-.is-phone .modal .modal-close-button {
-	z-index: 1;
-}
