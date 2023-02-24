@@ -424,10 +424,6 @@ export function mapFirstCodePoint(
 	return `${map(char0)}${str.slice(char0.length)}`
 }
 
-export function noop(): void {
-	// NOOP
-}
-
 export function onResize(
 	element: Element,
 	callback: (entry: ResizeObserverEntry) => unknown,
