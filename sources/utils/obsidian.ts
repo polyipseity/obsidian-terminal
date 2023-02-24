@@ -199,14 +199,14 @@ export function addRibbonIcon(
 		() => {
 			const ribbon = (): readonly [HTMLElement, string] => {
 				const title0 = title()
-				return [
+				return Object.freeze([
 					leftRibbon.addRibbonItemButton(
 						new UnnamespacedID(id).namespaced(plugin),
 						icon,
 						title0,
 						callback,
 					), title0,
-				]
+				])
 			}
 			let [ele, title0] = ribbon()
 			plugin.register(() => {
@@ -400,12 +400,12 @@ export function useSettings(element: HTMLElement): readonly [
 	const container = createChildElement(element, "div", ele => {
 		ele.classList.add(DOMClasses.VERTICAL_TAB_CONTENT_CONTAINER)
 	})
-	return [
+	return Object.freeze([
 		createChildElement(container, "div", ele => {
 			ele.classList.add(DOMClasses.VERTICAL_TAB_CONTENT)
 		}),
 		(): void => { container.remove() },
-	]
+	])
 }
 
 export function useSubsettings(element: HTMLElement): HTMLElement {
