@@ -225,9 +225,12 @@ export function deepFreeze<T>(value: T): DeepReadonly<T> {
 }
 
 export function escapeQuerySelectorAttribute(value: string): string {
-	return value
-		.replace(replaceAllRegex("\\"), "\\\\")
-		.replace(replaceAllRegex("\""), "\\\"")
+	return multireplace(value, {
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		"\"": "\\\"",
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		"\\": "\\\\",
+	})
 }
 
 export function extname(path: string): string {
@@ -437,6 +440,18 @@ export function mapFirstCodePoint(
 	if (isUndefined(cp0)) { return "" }
 	const char0 = String.fromCodePoint(cp0)
 	return `${map(char0)}${str.slice(char0.length)}`
+}
+
+export function multireplace(
+	self: string,
+	replacements: Readonly<Record<string, string>>,
+): string {
+	return self.replace(new RegExp(
+		Object.keys(replacements)
+			.map(escapeRegExp)
+			.join("|"),
+		"ug",
+	), match => replacements[match] ?? match)
 }
 
 export function onResize(

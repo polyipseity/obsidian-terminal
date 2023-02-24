@@ -18,6 +18,7 @@ import {
 	Functions,
 	createChildElement,
 	deepFreeze,
+	multireplace,
 	replaceAllRegex,
 	typedStructuredClone,
 } from "./util"
@@ -266,9 +267,10 @@ export function commandNamer(
 	format: string,
 ): () => string {
 	const cmd = cmdNamer()
-	return () => format
-		.replace(replaceAllRegex(cmd), cmdNamer())
-		.replace(replaceAllRegex(defaultPluginName), pluginNamer())
+	return () => multireplace(format, {
+		[cmd]: cmdNamer(),
+		[defaultPluginName]: pluginNamer(),
+	})
 }
 
 export function printMalformedData(
