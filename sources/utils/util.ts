@@ -1,14 +1,19 @@
 import type { AsyncOrSync, DeepReadonly, DeepWritable } from "ts-essentials"
-import { type Contains, type Sized, simplifyType } from "./types"
+import {
+	type CodePoint,
+	type Contains,
+	type Sized,
+	simplifyType,
+} from "./types"
 import { JSON_STRINGIFY_SPACE, SI_PREFIX_SCALE, UNDEFINED } from "sources/magic"
 import {
 	type PrimitiveTypeE,
 	type TypeofMapE,
 	genericTypeofGuardE,
 } from "./typeof"
+import { escapeRegExp, range } from "lodash"
 import type { ChildProcess } from "node:child_process"
 import type { Writable } from "node:stream"
-import { escapeRegExp } from "lodash"
 import { getSerialize } from "json-stringify-safe"
 
 export type KeyModifier = "Alt" | "Ctrl" | "Meta" | "Shift"
@@ -160,6 +165,15 @@ export function capitalize(
 	locales?: string[] | string,
 ): string {
 	return mapFirstCodePoint(first => first.toLocaleUpperCase(locales), str)
+}
+
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type, @typescript-eslint/explicit-module-boundary-types
+export function cartesianProduct<T extends readonly (readonly unknown[])[],
+>(...arrays: T) {
+	return deepFreeze(arrays.reduce((acc, arr) => acc
+		.flatMap(comb => arr.map(ele => [comb, ele].flat())), [[]])) as
+		readonly ({ readonly [I in keyof T]: T[I][number] } &
+		{ readonly length: T["length"] })[]
 }
 
 export function clear(self: unknown[]): void {
@@ -482,6 +496,17 @@ export function randomNotIn(
 	let ret = generator()
 	while (self.includes(ret)) { ret = generator() }
 	return ret
+}
+
+export function rangeCodePoint(
+	start: CodePoint,
+	end?: CodePoint,
+	step?: number,
+): readonly string[] {
+	return deepFreeze(
+		range(start.codePointAt(0), end?.codePointAt(0), step)
+			.map(cp => String.fromCodePoint(cp)),
+	)
 }
 
 export function remove<T>(self: T[], item: T): T | undefined {
