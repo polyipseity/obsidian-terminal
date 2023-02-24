@@ -8,6 +8,7 @@ import {
 } from "./typeof"
 import type { ChildProcess } from "node:child_process"
 import type { Writable } from "node:stream"
+import { escapeRegExp } from "lodash"
 import { getSerialize } from "json-stringify-safe"
 
 export type KeyModifier = "Alt" | "Ctrl" | "Meta" | "Shift"
@@ -224,7 +225,12 @@ export function deepFreeze<T>(value: T): DeepReadonly<T> {
 }
 
 export function escapeQuerySelectorAttribute(value: string): string {
-	return value.replace(/\\/gu, "\\\\").replace(/"/gu, "\\\"")
+	return multireplace(value, {
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		"\"": "\\\"",
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		"\\": "\\\\",
+	})
 }
 
 export function extname(path: string): string {
@@ -242,24 +248,6 @@ export function getKeyModifiers(
 	if (event.metaKey) { ret.push("Meta") }
 	if (event.shiftKey) { ret.push("Shift") }
 	return Object.freeze(ret)
-}
-
-export function saveFile(
-	document: Document,
-	text: string,
-	type = "text/plain; charset=UTF-8;",
-	filename = "",
-): void {
-	const ele = document.createElement("a")
-	ele.target = "_blank"
-	ele.download = filename
-	const url = URL.createObjectURL(new Blob([text], { type }))
-	try {
-		ele.href = url
-		ele.click()
-	} finally {
-		URL.revokeObjectURL(url)
-	}
 }
 
 export async function spawnPromise<T extends ChildProcess>(spawn: (
@@ -284,10 +272,6 @@ export function typedStructuredClone<T>(
 	transfer?: StructuredSerializeOptions,
 ): T {
 	return structuredClone(value, transfer) as T
-}
-
-export function identity<T>(value: T): T {
-	return value
 }
 
 export function inSet<T extends readonly unknown[]>(
@@ -330,11 +314,6 @@ export function isNullish<T>(value: Contains<T, null | undefined
 export function isUndefined<T>(value: undefined extends T
 	? T : never): value is undefined extends T ? undefined : never {
 	return typeof value === "undefined"
-}
-
-export function length<T extends object,
->(obj: T extends readonly unknown[] ? never : T): number {
-	return Object.keys(obj).length
 }
 
 export function logError(thing: unknown): void {
@@ -436,6 +415,18 @@ export function mapFirstCodePoint(
 	return `${map(char0)}${str.slice(char0.length)}`
 }
 
+export function multireplace(
+	self: string,
+	replacements: Readonly<Record<string, string>>,
+): string {
+	return self.replace(new RegExp(
+		Object.keys(replacements)
+			.map(escapeRegExp)
+			.join("|"),
+		"ug",
+	), match => replacements[match] ?? match)
+}
+
 export function onResize(
 	element: Element,
 	callback: (entry: ResizeObserverEntry) => unknown,
@@ -471,10 +462,6 @@ export function onVisible(
 	return ret
 }
 
-export function openExternal(url?: URL | string): Window | null {
-	return self.open(url, "_blank", "noreferrer")
-}
-
 export async function promisePromise<T>(): Promise<{
 	readonly promise: Promise<T>
 	readonly resolve: (value: AsyncOrSync<T>) => void
@@ -503,6 +490,10 @@ export function remove<T>(self: T[], item: T): T | undefined {
 
 export function removeAt<T>(self: T[], index: number): T | undefined {
 	return self.splice(index, 1)[0]
+}
+
+export function replaceAllRegex(string: string): RegExp {
+	return new RegExp(escapeRegExp(string), "ug")
 }
 
 export async function sleep2(timeInSeconds: number): Promise<void> {

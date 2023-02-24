@@ -18,6 +18,8 @@ import {
 	Functions,
 	createChildElement,
 	deepFreeze,
+	multireplace,
+	replaceAllRegex,
 	typedStructuredClone,
 } from "./util"
 import type { AsyncOrSync } from "ts-essentials"
@@ -163,7 +165,7 @@ export class UnnamespacedID<V extends string> {
 export function addCommand(
 	plugin: TerminalPlugin,
 	name: () => string,
-	command: Omit<Readonly<Command>, "name">,
+	command: Readonly<Omit<Command, "name">>,
 ): Command {
 	const { i18n } = plugin.language
 	let namer = name
@@ -265,9 +267,14 @@ export function commandNamer(
 	format: string,
 ): () => string {
 	const cmd = cmdNamer()
-	return () => format
-		.replace(cmd, cmdNamer())
-		.replace(defaultPluginName, pluginNamer())
+	return () => multireplace(format, {
+		[cmd]: cmdNamer(),
+		[defaultPluginName]: pluginNamer(),
+	})
+}
+
+export function openExternal(url?: URL | string): Window | null {
+	return self.open(url, "_blank", "noreferrer")
 }
 
 export function printMalformedData(
@@ -361,6 +368,24 @@ export function readStateCollabratively(
 	return launderUnchecked<AnyObject>(state)[implType]
 }
 
+export function saveFile(
+	document: Document,
+	text: string,
+	type = "text/plain; charset=UTF-8;",
+	filename = "",
+): void {
+	const ele = document.createElement("a")
+	ele.target = "_blank"
+	ele.download = filename
+	const url = URL.createObjectURL(new Blob([text], { type }))
+	try {
+		ele.href = url
+		ele.click()
+	} finally {
+		URL.revokeObjectURL(url)
+	}
+}
+
 export function updateDisplayText(plugin: TerminalPlugin, view: View): void {
 	usePrivateAPI(plugin, () => {
 		const { containerEl, leaf } = view,
@@ -375,7 +400,8 @@ export function updateDisplayText(plugin: TerminalPlugin, view: View): void {
 		if (plugin.app.workspace.getActiveViewOfType(View) === view &&
 			oldText !== null) {
 			const { ownerDocument } = containerEl
-			ownerDocument.title = ownerDocument.title.replace(oldText, text)
+			ownerDocument.title =
+				ownerDocument.title.replace(replaceAllRegex(oldText), text)
 		}
 	}, () => { })
 }

@@ -34,9 +34,7 @@ import {
 	logWarn,
 	onResize,
 	onVisible,
-	openExternal,
 	randomNotIn,
-	saveFile,
 	typedStructuredClone,
 } from "../utils/util"
 import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
@@ -44,9 +42,11 @@ import {
 	UnnamespacedID,
 	newCollabrativeState,
 	notice2,
+	openExternal,
 	printError,
 	printMalformedData,
 	readStateCollabratively,
+	saveFile,
 	updateDisplayText,
 	usePrivateAPI,
 	useSettings,
@@ -554,7 +554,7 @@ export class TerminalView extends ItemView {
 			(async (): Promise<void> => {
 				try {
 					noticeSpawn()
-					await openProfile(plugin, profile, cwd ?? UNDEFINED)
+					await openProfile(plugin, profile, { cwd })
 				} catch (error) {
 					printError(anyToError(error), () =>
 						i18n.t("errors.error-spawning-terminal"), plugin)
@@ -582,7 +582,10 @@ export class TerminalView extends ItemView {
 										},
 									)}`)
 								}
-								const ret = await openProfile(plugin, profile, cwd ?? UNDEFINED)
+								const ret = await openProfile(plugin, profile, {
+									cwd,
+									terminal: TerminalView.EMULATOR.type,
+								})
 								if (ret) { return ret }
 								const pty = new TextPseudoterminal(i18n
 									.t("components.terminal.unsupported-profile", {

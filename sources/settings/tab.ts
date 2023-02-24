@@ -10,8 +10,6 @@ import {
 	clearProperties,
 	cloneAsWritable,
 	createChildElement,
-	identity,
-	length,
 	logError,
 	typedStructuredClone,
 	unexpected,
@@ -23,6 +21,7 @@ import {
 	setTextToEnum,
 	setTextToNumber,
 } from "../ui/settings"
+import { identity, isEmpty, size } from "lodash"
 import type { DeepWritable } from "ts-essentials"
 import { LANGUAGES } from "assets/locales"
 import { Settings } from "./data"
@@ -295,7 +294,7 @@ export class SettingTab extends PluginSettingTab {
 									},
 								).open()
 							})
-						if (length(plugin.settings.recovery) > 0) {
+						if (!isEmpty(plugin.settings.recovery)) {
 							button.setCta()
 						}
 					})
@@ -380,7 +379,7 @@ export class SettingTab extends PluginSettingTab {
 				setting
 					.setName(i18n.t("settings.profiles"))
 					.setDesc(i18n.t("settings.profiles-description", {
-						count: length(plugin.settings.profiles),
+						count: size(plugin.settings.profiles),
 						interpolation: { escapeValue: false },
 					}))
 					.addButton(button => button

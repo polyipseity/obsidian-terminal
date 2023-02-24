@@ -25,10 +25,12 @@
 		"version": "node build/version-bump.mjs && git add manifest.json versions.json"
 	},
 	"dependencies": {
+		"ansi-escape-sequences": "6.2.1",
 		"deep-equal": "2.2.0",
 		"i18next": "22.4.10",
 		"i18next-resources-to-backend": "1.1.1",
 		"json-stringify-safe": "5.0.1",
+		"lodash": "4.17.21",
 		"monkey-around": "2.3.0",
 		"semver": "7.3.8",
 		"simple-icons": "8.5.0",
@@ -46,8 +48,10 @@
 	},
 	"devDependencies": {
 		"@tsconfig/node16-strictest": "1.0.4",
+		"@types/ansi-escape-sequences": "4.0.0",
 		"@types/deep-equal": "1.0.1",
 		"@types/json-stringify-safe": "5.0.0",
+		"@types/lodash": "4.14.191",
 		"@types/node": "16.18.12",
 		"@types/tmp": "0.2.3",
 		"@typescript-eslint/eslint-plugin": "5.52.0",

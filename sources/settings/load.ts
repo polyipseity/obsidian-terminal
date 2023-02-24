@@ -12,13 +12,13 @@ import {
 	anyToError,
 	clearProperties,
 	createChildElement,
-	length,
 	logError,
 } from "sources/utils/util"
 import { DialogModal } from "sources/ui/modals"
 import { SettingTab } from "./tab"
 import type { TerminalPlugin } from "sources/main"
 import deepEqual from "deep-equal"
+import { isEmpty } from "lodash"
 
 export function loadSettings(plugin: TerminalPlugin): void {
 	const { app, language } = plugin,
@@ -67,7 +67,7 @@ export function loadSettings(plugin: TerminalPlugin): void {
 							), plugin)
 						})
 					}
-				if (length(cachedFm) === 0) {
+				if (isEmpty(cachedFm)) {
 					process()
 				} else {
 					new DialogModal(plugin, {

@@ -1,5 +1,4 @@
 import {
-	CONTROL_SEQUENCE_INTRODUCER as CSI,
 	DEFAULT_ENCODING,
 	DEFAULT_PYTHONIOENCODING,
 	EXIT_SUCCESS,
@@ -18,11 +17,13 @@ import {
 	consumeEvent,
 	getKeyModifiers,
 	inSet,
+	isNonNullish,
 	isNullish,
 	logError,
 	logFormat,
 	promisePromise,
 	remove,
+	replaceAllRegex,
 	sleep2,
 	spawnPromise,
 	typedKeys,
@@ -38,6 +39,7 @@ import type {
 import type { Terminal } from "xterm"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
+import ansi from "ansi-escape-sequences"
 import { dynamicRequire } from "../imports"
 import unixPseudoterminalPy from "./unix_pseudoterminal.py"
 import win32ResizerPy from "./win32_resizer.py"
@@ -51,7 +53,8 @@ const
 
 function clearTerminal(terminal: Terminal): void {
 	// Clear screen with scrollback kept
-	terminal.write(`${`${CSI}2K\n`.repeat(terminal.rows - 1)}${CSI}2K${CSI}H`)
+	terminal.write(`${`\r${ansi.erase.inLine()}\n`.repeat(terminal.rows -
+		1)}\r${ansi.erase.inLine()}${ansi.cursor.position()}`)
 }
 
 export interface Pseudoterminal {
@@ -201,7 +204,7 @@ export class ConsolePseudoterminal
 			this.terminals.map(async terminal =>
 				Promise.resolve()
 					.then(() => {
-						terminal.write(`\r${CSI}K${processed}`)
+						terminal.write(`\r${ansi.erase.inLine()}${processed}`)
 					})),
 		))
 		this.#buffer = value
@@ -295,6 +298,7 @@ export interface ShellPseudoterminalArguments {
 	readonly executable: string
 	readonly cwd?: URL | string | null
 	readonly args?: readonly string[] | null
+	readonly terminal?: string | null
 	readonly pythonExecutable?: string | null
 	readonly useWin32Conhost?: boolean | null
 }
@@ -461,8 +465,8 @@ class WindowsPseudoterminal implements Pseudoterminal {
 	}
 
 	protected static escapeArgument(arg: string, shell = false): string {
-		const ret = `"${arg.replace("\"", "\\\"")}"`
-		return shell ? ret.replace(/(?<meta>[()%!^"<>&|])/gu, "^$<meta>") : ret
+		const ret = `"${arg.replace(replaceAllRegex("\""), "\\\"")}"`
+		return shell ? ret.replace(/(?<meta>[()%!^"<>&|])/ug, "^$<meta>") : ret
 
 		/*
 		 * Replace 1: quote argument
@@ -519,6 +523,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 			args,
 			cwd,
 			executable,
+			terminal,
 			pythonExecutable,
 		}: ShellPseudoterminalArguments,
 	) {
@@ -528,16 +533,18 @@ class UnixPseudoterminal implements Pseudoterminal {
 				throw new Error(language
 					.i18n.t("errors.no-Python-to-spawn-Unix-pseudoterminal"))
 			}
+			const env: NodeJS.ProcessEnv = {
+				...(await process).env,
+				// eslint-disable-next-line @typescript-eslint/naming-convention
+				PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
+			}
+			if (isNonNullish(terminal)) { env["TERM"] = terminal }
 			return (await childProcess).spawn(
 				pythonExecutable,
 				["-c", unixPseudoterminalPy, executable].concat(args ?? []),
 				{
 					cwd: cwd ?? UNDEFINED,
-					env: {
-						...(await process).env,
-						// eslint-disable-next-line @typescript-eslint/naming-convention
-						PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
-					},
+					env,
 					stdio: ["pipe", "pipe", "pipe", "pipe"],
 					windowsHide: true,
 				},
