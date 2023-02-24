@@ -116,7 +116,7 @@
 		}
 	},
 	"dialogs": {
-		"overwrite-existing-frontmatter": "$t(generic.overwrite, capitalize) existing $t(generic.frontmatter)?"
+		"overwrite-existing-frontmatter": "$t(generic.overwrite, capitalize) $t(generic.exist_gerund) $t(generic.frontmatter)?"
 	},
 	"documentations": {
 		"changelog": "$t(generic.documentations.changelog, capitalize)",
@@ -176,6 +176,9 @@
 		},
 		"edit": "Edit",
 		"executable": "executable",
+		"exist": "exist",
+		"exist_gerund": "existing",
+		"exist_singular": "exists",
 		"exit": "exit",
 		"exit_past": "exited",
 		"export": "export",
@@ -301,8 +304,8 @@
 			"reset": "$t(generic.reset, capitalize)",
 			"undo": "Undo"
 		},
-		"create-instance-near-existing-ones": "Create $t(generic.instance) near existing ones",
-		"create-instance-near-existing-ones-description": "Overrides '$t(settings.new-instance-behavior)' if $t(generic.true).",
+		"create-instance-near-existing-ones": "Create $t(generic.instance) near $t(generic.exist_gerund) ones",
+		"create-instance-near-existing-ones-description": "Overrides '$t(settings.new-instance-behavior)' when $t(generic.instance) $t(generic.exist_singular) if $t(generic.true).",
 		"description": "To $t(generic.export) or $t(generic.import) $t(generic.setting_other), open '$t(settings.all-settings-actions.edit)' under '$t(settings.all-settings)' or $t(generic.use) the $t(generic.command-palette).",
 		"documentation": "$t(generic.documentation, capitalize)",
 		"documentations": {

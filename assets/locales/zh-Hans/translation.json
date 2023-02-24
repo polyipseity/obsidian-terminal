@@ -113,7 +113,7 @@
 		}
 	},
 	"dialogs": {
-		"overwrite-existing-frontmatter": "$t(generic.overwrite)现有的$t(generic.frontmatter)？"
+		"overwrite-existing-frontmatter": "$t(generic.overwrite)$t(generic.exist)的$t(generic.frontmatter)？"
 	},
 	"documentations": {
 		"changelog": "$t(generic.documentations.changelog)",
@@ -169,6 +169,7 @@
 		},
 		"edit": "编辑",
 		"executable": "可执行文件",
+		"exist": "存在",
 		"exit": "退出",
 		"export": "导出",
 		"file": "文件",
@@ -279,8 +280,8 @@
 			"reset": "$t(generic.reset)",
 			"undo": "复原"
 		},
-		"create-instance-near-existing-ones": "在现有$t(generic.instance)附近创建$t(generic.instance)",
-		"create-instance-near-existing-ones-description": "如果为$t(generic.true)，则覆盖「$t(settings.new-instance-behavior)」。",
+		"create-instance-near-existing-ones": "在$t(generic.exist)$t(generic.instance)附近创建$t(generic.instance)",
+		"create-instance-near-existing-ones-description": "如果为$t(generic.true)，则在$t(generic.instance)$t(generic.exist)时覆盖「$t(settings.new-instance-behavior)」。",
 		"description": "$t(generic.open)「$t(settings.all-settings)」下的「$t(settings.all-settings-actions.edit)」或$t(generic.use)$t(generic.command-palette)以$t(generic.export)或$t(generic.import)$t(generic.setting)。",
 		"documentation": "$t(generic.documentation)",
 		"documentations": {

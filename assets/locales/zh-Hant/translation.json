@@ -117,7 +117,7 @@
 		"readme": "$t(generic.documentations.readme)"
 	},
 	"dialogs": {
-		"overwrite-existing-frontmatter": "$t(generic.overwrite)現有的$t(generic.frontmatter)？"
+		"overwrite-existing-frontmatter": "$t(generic.overwrite)$t(generic.exist)的$t(generic.frontmatter)？"
 	},
 	"errors": {
 		"cannot-find-status-bar": "找不到$t(generic.status-bar)",
@@ -169,6 +169,7 @@
 		},
 		"edit": "編輯",
 		"executable": "執行檔",
+		"exist": "存在",
 		"exit": "退出",
 		"export": "導出",
 		"file": "檔案",
@@ -279,8 +280,8 @@
 			"reset": "$t(generic.reset)",
 			"undo": "復原"
 		},
-		"create-instance-near-existing-ones": "在現有$t(generic.instance)附近創建$t(generic.instance)",
-		"create-instance-near-existing-ones-description": "如果為$t(generic.true)，則覆蓋「$t(settings.new-instance-behavior)」。",
+		"create-instance-near-existing-ones": "在$t(generic.exist)$t(generic.instance)附近創建$t(generic.instance)",
+		"create-instance-near-existing-ones-description": "如果為$t(generic.true)，則在$t(generic.instance)$t(generic.exist)時覆蓋「$t(settings.new-instance-behavior)」。",
 		"description": "$t(generic.open)「$t(settings.all-settings)」下的「$t(settings.all-settings-actions.edit)」或$t(generic.use)$t(generic.command-palette)以$t(generic.export)或$t(generic.import)$t(generic.setting)。",
 		"documentation": "$t(generic.documentation)",
 		"documentations": {
