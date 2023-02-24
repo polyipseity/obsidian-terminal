@@ -25,6 +25,7 @@
 		"version": "node build/version-bump.mjs && git add manifest.json versions.json"
 	},
 	"dependencies": {
+		"ansi-escape-sequences": "6.2.1",
 		"deep-equal": "2.2.0",
 		"i18next": "22.4.10",
 		"i18next-resources-to-backend": "1.1.1",
@@ -46,6 +47,7 @@
 	},
 	"devDependencies": {
 		"@tsconfig/node16-strictest": "1.0.4",
+		"@types/ansi-escape-sequences": "4.0.0",
 		"@types/deep-equal": "1.0.1",
 		"@types/json-stringify-safe": "5.0.0",
 		"@types/node": "16.18.12",

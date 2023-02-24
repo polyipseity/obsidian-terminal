@@ -34,6 +34,7 @@ import type {
 import type { Terminal } from "xterm"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
+import ansi from "ansi-escape-sequences"
 import { dynamicRequire } from "../imports"
 import unixPseudoterminalPy from "./unix_pseudoterminal.py"
 import win32ResizerPy from "./win32_resizer.py"
@@ -47,7 +48,8 @@ const
 
 function clearTerminal(terminal: Terminal): void {
 	// Clear screen with scrollback kept
-	terminal.write(`${"\u001b[2K\n".repeat(terminal.rows - 1)}\u001b[2K\u001b[H`)
+	terminal.write(`${`\r${ansi.erase.inLine()}\n`.repeat(terminal.rows -
+		1)}\r${ansi.erase.inLine()}${ansi.cursor.position()}`)
 }
 
 export interface Pseudoterminal {
