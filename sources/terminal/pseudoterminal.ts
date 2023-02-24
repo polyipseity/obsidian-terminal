@@ -3,6 +3,7 @@ import {
 	DEFAULT_PYTHONIOENCODING,
 	EXIT_SUCCESS,
 	SI_PREFIX_SCALE,
+	TERMINAL_ENVIRONMENT_VARIABLE,
 	TERMINAL_EXIT_CLEANUP_DELAY,
 	TERMINAL_RESIZER_WATCHDOG_INTERVAL,
 	UNDEFINED,
@@ -476,6 +477,8 @@ class UnixPseudoterminal implements Pseudoterminal {
 						...(await process).env,
 						// eslint-disable-next-line @typescript-eslint/naming-convention
 						PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						TERM: TERMINAL_ENVIRONMENT_VARIABLE,
 					},
 					stdio: ["pipe", "pipe", "pipe", "pipe"],
 					windowsHide: true,
