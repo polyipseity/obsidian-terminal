@@ -1,4 +1,5 @@
 import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
+import { Functions, deepFreeze, spawnPromise } from "../utils/util"
 import {
 	type ITerminalAddon,
 	type ITerminalInitOnlyOptions,
@@ -6,7 +7,6 @@ import {
 	Terminal,
 } from "xterm"
 import { SI_PREFIX_SCALE, TERMINAL_RESIZE_TIMEOUT } from "../magic"
-import { deepFreeze, spawnPromise } from "../utils/util"
 import { dynamicRequire, importable } from "../imports"
 import type { AsyncOrSync } from "ts-essentials"
 import type { CanvasAddon } from "xterm-addon-canvas"
@@ -172,13 +172,17 @@ export namespace XtermTerminalEmulator {
 	}
 }
 
-export class DisposerAddon extends Array<() => void> implements ITerminalAddon {
+export class DisposerAddon extends Functions implements ITerminalAddon {
+	public constructor(...args: readonly (() => void)[]) {
+		super({ async: false, settled: true }, ...args)
+	}
+
 	public activate(_terminal: Terminal): void {
 		// NOOP
 	}
 
 	public dispose(): void {
-		for (const disposer of this) { disposer() }
+		this.call()
 	}
 }
 
