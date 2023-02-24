@@ -2,15 +2,7 @@
 
 Integrate consoles, shells, and terminals inside [Obsidian](https://obsidian.md/).
 
-<ul>
-	<li style="display: inline-block;"><a href="#features">Features</a></li>
-	·
-	<li style="display: inline-block;"><a href="#installation">Installation</a></li>
-	·
-	<li style="display: inline-block;"><a href="#usage">Usage</a></li>
-	·
-	<li style="display: inline-block;"><a href="#todos">Todos</a></li>
-</ul>
+__[Features](#features) · [Installation](#installation) · [Usage](#usage) · [Todos](#todos)__
 
 ![Trailer](assets/trailer.png)
 
