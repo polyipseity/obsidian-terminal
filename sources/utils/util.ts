@@ -10,6 +10,7 @@ import type { ChildProcess } from "node:child_process"
 import type { Writable } from "node:stream"
 import { getSerialize } from "json-stringify-safe"
 
+export type KeyModifier = "Alt" | "Ctrl" | "Meta" | "Shift"
 export const EMPTY_OBJECT: Readonly<Record<number | string | symbol, never>> =
 	deepFreeze({})
 export const PLATFORMS =
@@ -66,7 +67,7 @@ export class Functions<
 			readonly async: Async
 			readonly settled?: boolean
 		},
-		...args: (Async extends true ? (
+		...args: readonly (Async extends true ? (
 			...args: Args
 		) => unknown : Async extends false ? (
 			...args: Args
@@ -230,6 +231,17 @@ export function extname(path: string): string {
 	const base = basename(path),
 		idx = base.lastIndexOf(".")
 	return idx === -1 ? "" : base.slice(idx)
+}
+
+export function getKeyModifiers(
+	event: KeyboardEvent,
+): readonly KeyModifier[] {
+	const ret: KeyModifier[] = []
+	if (event.altKey) { ret.push("Alt") }
+	if (event.ctrlKey) { ret.push("Ctrl") }
+	if (event.metaKey) { ret.push("Meta") }
+	if (event.shiftKey) { ret.push("Shift") }
+	return Object.freeze(ret)
 }
 
 export function saveFile(

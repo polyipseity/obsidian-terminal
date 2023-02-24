@@ -2,8 +2,8 @@
 
 <script context="module" lang="typescript">
 	import { Direction, type Params } from "./find";
+	import { consumeEvent, getKeyModifiers } from "sources/utils/util";
 	import type { DeepWritable } from "ts-essentials";
-	import { consumeEvent } from "sources/utils/util";
 	import { t as i18t } from "i18next";
 	import { onMount } from "svelte";
 	import { setIcon } from "obsidian";
@@ -33,7 +33,7 @@
 
 	onMount(() => {
 		element?.addEventListener("keydown", (event) => {
-			if (event.code === "Escape") {
+			if (event.key === "Escape" && getKeyModifiers(event).length === 0) {
 				onClose();
 				consumeEvent(event);
 			}
