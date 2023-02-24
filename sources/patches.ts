@@ -2,7 +2,7 @@ import { type DeepReadonly, noop } from "ts-essentials"
 import { EventEmitterLite, Functions } from "./utils/util"
 import type { Workspace } from "obsidian"
 import { around } from "monkey-around"
-import { correct } from "./utils/types"
+import { correctType } from "./utils/types"
 
 export const LOGGER = new EventEmitterLite<readonly [Log.Event]>()
 export namespace Log {
@@ -102,7 +102,7 @@ export function patch(workspace: Workspace): () => void {
 	const unpatchers = new Functions({ async: false, settled: true })
 	try {
 		const windowConsolePatch = workspace.on("window-open", window => {
-			const unpatch = patchConsole(correct(window.win).console),
+			const unpatch = patchConsole(correctType(window.win).console),
 				off = workspace.on("window-close", window0 => {
 					if (window !== window0) { return }
 					try {
