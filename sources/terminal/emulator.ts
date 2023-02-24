@@ -1,5 +1,10 @@
 import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
-import { Functions, deepFreeze, spawnPromise } from "../utils/util"
+import {
+	Functions,
+	deepFreeze,
+	replaceAllRegex,
+	spawnPromise,
+} from "../utils/util"
 import {
 	type ITerminalAddon,
 	type ITerminalInitOnlyOptions,
@@ -26,8 +31,8 @@ const
 
 export function processText(text: string): string {
 	return text
-		.replace(/\r\n/gu, "\n")
-		.replace(/\n/gu, "\r\n")
+		.replace(replaceAllRegex("\r\n"), "\n")
+		.replace(replaceAllRegex("\n"), "\r\n")
 }
 
 export const SUPPORTS_EXTERNAL_TERMINAL_EMULATOR =

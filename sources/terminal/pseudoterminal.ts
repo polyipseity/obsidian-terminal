@@ -19,6 +19,7 @@ import {
 	logFormat,
 	promisePromise,
 	remove,
+	replaceAllRegex,
 	sleep2,
 	spawnPromise,
 	typedKeys,
@@ -399,8 +400,8 @@ class WindowsPseudoterminal implements Pseudoterminal {
 	}
 
 	protected static escapeArgument(arg: string, shell = false): string {
-		const ret = `"${arg.replace("\"", "\\\"")}"`
-		return shell ? ret.replace(/(?<meta>[()%!^"<>&|])/gu, "^$<meta>") : ret
+		const ret = `"${arg.replace(replaceAllRegex("\""), "\\\"")}"`
+		return shell ? ret.replace(/(?<meta>[()%!^"<>&|])/ug, "^$<meta>") : ret
 
 		/*
 		 * Replace 1: quote argument

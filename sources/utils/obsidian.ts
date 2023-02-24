@@ -18,6 +18,7 @@ import {
 	Functions,
 	createChildElement,
 	deepFreeze,
+	replaceAllRegex,
 	typedStructuredClone,
 } from "./util"
 import type { AsyncOrSync } from "ts-essentials"
@@ -266,8 +267,8 @@ export function commandNamer(
 ): () => string {
 	const cmd = cmdNamer()
 	return () => format
-		.replace(cmd, cmdNamer())
-		.replace(defaultPluginName, pluginNamer())
+		.replace(replaceAllRegex(cmd), cmdNamer())
+		.replace(replaceAllRegex(defaultPluginName), pluginNamer())
 }
 
 export function printMalformedData(
@@ -375,7 +376,8 @@ export function updateDisplayText(plugin: TerminalPlugin, view: View): void {
 		if (plugin.app.workspace.getActiveViewOfType(View) === view &&
 			oldText !== null) {
 			const { ownerDocument } = containerEl
-			ownerDocument.title = ownerDocument.title.replace(oldText, text)
+			ownerDocument.title =
+				ownerDocument.title.replace(replaceAllRegex(oldText), text)
 		}
 	}, () => { })
 }

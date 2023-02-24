@@ -8,6 +8,7 @@ import {
 } from "./typeof"
 import type { ChildProcess } from "node:child_process"
 import type { Writable } from "node:stream"
+import { escapeRegExp } from "lodash"
 import { getSerialize } from "json-stringify-safe"
 
 export type KeyModifier = "Alt" | "Ctrl" | "Meta" | "Shift"
@@ -224,7 +225,9 @@ export function deepFreeze<T>(value: T): DeepReadonly<T> {
 }
 
 export function escapeQuerySelectorAttribute(value: string): string {
-	return value.replace(/\\/gu, "\\\\").replace(/"/gu, "\\\"")
+	return value
+		.replace(replaceAllRegex("\\"), "\\\\")
+		.replace(replaceAllRegex("\""), "\\\"")
 }
 
 export function extname(path: string): string {
@@ -503,6 +506,10 @@ export function remove<T>(self: T[], item: T): T | undefined {
 
 export function removeAt<T>(self: T[], index: number): T | undefined {
 	return self.splice(index, 1)[0]
+}
+
+export function replaceAllRegex(string: string): RegExp {
+	return new RegExp(escapeRegExp(string), "ug")
 }
 
 export async function sleep2(timeInSeconds: number): Promise<void> {
