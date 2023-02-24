@@ -2,3 +2,5 @@
 	path = build/obsidian
 	url = ../obsidian-api.git
 	branch = unaugmented/v1.1.1
+[submodule "build/obsidian"]
+	branch = unaugmented/v1.1.13

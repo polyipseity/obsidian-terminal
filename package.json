@@ -68,7 +68,7 @@
 	"obsidian": {
 		"id": "terminal",
 		"name": "Terminal",
-		"minAppVersion": "1.0.3",
+		"minAppVersion": "1.1.13",
 		"authorUrl": "",
 		"fundingUrl": {},
 		"isDesktopOnly": false
