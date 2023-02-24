@@ -165,7 +165,7 @@ export class UnnamespacedID<V extends string> {
 export function addCommand(
 	plugin: TerminalPlugin,
 	name: () => string,
-	command: Omit<Readonly<Command>, "name">,
+	command: Readonly<Omit<Command, "name">>,
 ): Command {
 	const { i18n } = plugin.language
 	let namer = name
