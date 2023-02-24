@@ -1,6 +1,10 @@
 import { type App, Plugin, type PluginManifest, debounce } from "obsidian"
 import type { AsyncOrSync, DeepWritable } from "ts-essentials"
 import {
+	ConsolePseudoterminal,
+	RefPsuedoterminal,
+} from "./terminal/pseudoterminal"
+import {
 	EventEmitterLite,
 	copyOnWriteAsync,
 	deepFreeze,
@@ -13,7 +17,6 @@ import {
 	SI_PREFIX_SCALE,
 } from "./magic"
 import { asyncDebounce, printMalformedData } from "./utils/obsidian"
-import { ConsolePseudoterminal } from "./terminal/pseudoterminal"
 import { LanguageManager } from "./i18n"
 import { Settings } from "./settings/data"
 import { StatusBarHider } from "./status-bar"
@@ -47,7 +50,9 @@ export class TerminalPlugin extends Plugin {
 		this.register(unpatch)
 
 		this.register(async () => this.console.kill())
-		this.console = new ConsolePseudoterminal(this.log = log)
+		this.console = new RefPsuedoterminal(
+			new ConsolePseudoterminal(this.log = log),
+		)
 
 		try {
 			this.version = semVerString(manifest.version)

@@ -1,13 +1,13 @@
 import { type AnyObject, launderUnchecked } from "sources/utils/types"
 import {
-	DupPsuedoterminal,
-	Pseudoterminal,
-	TextPseudoterminal,
-} from "../terminal/pseudoterminal"
-import {
 	PLATFORM,
 	deepFreeze,
 } from "sources/utils/util"
+import {
+	Pseudoterminal,
+	RefPsuedoterminal,
+	TextPseudoterminal,
+} from "../terminal/pseudoterminal"
 import {
 	SUPPORTS_EXTERNAL_TERMINAL_EMULATOR,
 	spawnExternalTerminalEmulator,
@@ -25,7 +25,7 @@ export const PROFILE_PROPERTIES: {
 			plugin: TerminalPlugin,
 			profile: Settings.Profile.Typed<key>,
 			cwd?: string,
-		) => AsyncOrSync<Pseudoterminal | null>
+		) => AsyncOrSync<RefPsuedoterminal<Pseudoterminal> | null>
 	}
 } = deepFreeze({
 	// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -33,16 +33,14 @@ export const PROFILE_PROPERTIES: {
 		available: true,
 		integratable: true,
 		opener() {
-			return new TextPseudoterminal()
+			return new RefPsuedoterminal(new TextPseudoterminal())
 		},
 		valid: true,
 	},
 	developerConsole: {
 		available: true,
 		integratable: true,
-		opener(plugin: TerminalPlugin) {
-			return new DupPsuedoterminal(plugin.console)
-		},
+		opener(plugin: TerminalPlugin) { return plugin.console.dup() },
 		valid: true,
 	},
 	external: {
@@ -81,13 +79,15 @@ export const PROFILE_PROPERTIES: {
 				} = profile,
 				supported = launderUnchecked<AnyObject>(platforms)[PLATFORM]
 			if (typeof supported !== "boolean" || !supported) { return null }
-			return new Pseudoterminal.PLATFORM_PSEUDOTERMINAL(plugin, {
-				args,
-				cwd: cwd ?? null,
-				executable,
-				pythonExecutable: pythonExecutable || null,
-				useWin32Conhost,
-			})
+			return new RefPsuedoterminal(
+				new Pseudoterminal.PLATFORM_PSEUDOTERMINAL(plugin, {
+					args,
+					cwd: cwd ?? null,
+					executable,
+					pythonExecutable: pythonExecutable || null,
+					useWin32Conhost,
+				}),
+			)
 		},
 		valid: true,
 	},
@@ -103,7 +103,7 @@ export function openProfile<T extends Settings.Profile.Type>(
 	plugin: TerminalPlugin,
 	profile: Settings.Profile.Typed<T>,
 	cwd?: string,
-): AsyncOrSync<Pseudoterminal | null> {
+): AsyncOrSync<RefPsuedoterminal<Pseudoterminal> | null> {
 	const type0: T = profile.type
 	return PROFILE_PROPERTIES[type0].opener(plugin, profile, cwd)
 }

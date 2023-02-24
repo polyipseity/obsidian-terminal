@@ -58,24 +58,43 @@ export interface Pseudoterminal {
 	readonly resize?: (columns: number, rows: number) => AsyncOrSync<void>
 }
 
-export class DupPsuedoterminal implements Pseudoterminal {
+export class RefPsuedoterminal<T extends Pseudoterminal,
+> implements Pseudoterminal {
 	public readonly onExit
+	protected readonly delegate: T
 	readonly #exit = promisePromise<NodeJS.Signals | number>()
+	readonly #ref: [number]
 
-	public constructor(protected readonly delegate: Pseudoterminal) {
+	public constructor(delegate: RefPsuedoterminal<T> | T) {
 		this.onExit = this.#exit.then(async ({ promise }) => promise)
-		delegate.onExit.then(
+		if (delegate instanceof RefPsuedoterminal) {
+			this.delegate = delegate.delegate
+			this.#ref = delegate.#ref
+		} else {
+			this.delegate = delegate
+			this.#ref = [0]
+		}
+		this.delegate.onExit.then(
 			async ret => { (await this.#exit).resolve(ret) },
 			async error => { (await this.#exit).reject(error) },
 		)
+		++this.#ref[0]
 	}
 
 	public get shell(): Promise<PipedChildProcess> | undefined {
 		return this.delegate.shell
 	}
 
+	public dup(): RefPsuedoterminal<T> {
+		return new RefPsuedoterminal(this)
+	}
+
 	public async kill(): Promise<void> {
-		(await this.#exit).resolve(EXIT_SUCCESS)
+		if (--this.#ref[0] <= 0) {
+			await this.delegate.kill()
+		} else {
+			(await this.#exit).resolve(EXIT_SUCCESS)
+		}
 	}
 
 	public pipe(terminal: Terminal): AsyncOrSync<void> {
