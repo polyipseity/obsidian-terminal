@@ -51,11 +51,44 @@ function clearTerminal(terminal: Terminal): void {
 }
 
 export interface Pseudoterminal {
-	readonly shell?: Promise<PipedChildProcess>
+	readonly shell?: Promise<PipedChildProcess> | undefined
 	readonly kill: () => AsyncOrSync<void>
 	readonly onExit: Promise<NodeJS.Signals | number>
 	readonly pipe: (terminal: Terminal) => AsyncOrSync<void>
 	readonly resize?: (columns: number, rows: number) => AsyncOrSync<void>
+}
+
+export class DupPsuedoterminal implements Pseudoterminal {
+	public readonly onExit
+	readonly #exit = promisePromise<NodeJS.Signals | number>()
+
+	public constructor(protected readonly delegate: Pseudoterminal) {
+		this.onExit = this.#exit.then(async ({ promise }) => promise)
+		delegate.onExit.then(
+			async ret => { (await this.#exit).resolve(ret) },
+			async error => { (await this.#exit).reject(error) },
+		)
+	}
+
+	public get shell(): Promise<PipedChildProcess> | undefined {
+		return this.delegate.shell
+	}
+
+	public async kill(): Promise<void> {
+		(await this.#exit).resolve(EXIT_SUCCESS)
+	}
+
+	public pipe(terminal: Terminal): AsyncOrSync<void> {
+		return this.delegate.pipe(terminal)
+	}
+
+	public resize(columns: number, rows: number): AsyncOrSync<void> {
+		const { delegate } = this
+		if (delegate.resize) {
+			return delegate.resize(columns, rows)
+		}
+		return UNDEFINED
+	}
 }
 
 abstract class PseudoPseudoterminal implements Pseudoterminal {

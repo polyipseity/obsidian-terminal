@@ -13,6 +13,7 @@ import {
 	SI_PREFIX_SCALE,
 } from "./magic"
 import { asyncDebounce, printMalformedData } from "./utils/obsidian"
+import { ConsolePseudoterminal } from "./terminal/pseudoterminal"
 import { LanguageManager } from "./i18n"
 import { Settings } from "./settings/data"
 import { StatusBarHider } from "./status-bar"
@@ -26,6 +27,7 @@ import { semVerString } from "./utils/types"
 export class TerminalPlugin extends Plugin {
 	public readonly version
 	public readonly log
+	public readonly console
 	public readonly language = new LanguageManager(this)
 	public readonly statusBarHider = new StatusBarHider(this)
 	public readonly saveSettings =
@@ -43,7 +45,10 @@ export class TerminalPlugin extends Plugin {
 		const [unpatch, log] = patch(app.workspace)
 		super(app, manifest)
 		this.register(unpatch)
-		this.log = log
+
+		this.register(async () => this.console.kill())
+		this.console = new ConsolePseudoterminal(this.log = log)
+
 		try {
 			this.version = semVerString(manifest.version)
 		} catch (error) {

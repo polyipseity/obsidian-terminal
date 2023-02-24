@@ -1,6 +1,6 @@
 import { type AnyObject, launderUnchecked } from "sources/utils/types"
 import {
-	ConsolePseudoterminal,
+	DupPsuedoterminal,
 	Pseudoterminal,
 	TextPseudoterminal,
 } from "../terminal/pseudoterminal"
@@ -41,7 +41,7 @@ export const PROFILE_PROPERTIES: {
 		available: true,
 		integratable: true,
 		opener(plugin: TerminalPlugin) {
-			return new ConsolePseudoterminal(plugin.log)
+			return new DupPsuedoterminal(plugin.console)
 		},
 		valid: true,
 	},
