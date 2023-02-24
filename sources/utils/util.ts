@@ -250,24 +250,6 @@ export function getKeyModifiers(
 	return Object.freeze(ret)
 }
 
-export function saveFile(
-	document: Document,
-	text: string,
-	type = "text/plain; charset=UTF-8;",
-	filename = "",
-): void {
-	const ele = document.createElement("a")
-	ele.target = "_blank"
-	ele.download = filename
-	const url = URL.createObjectURL(new Blob([text], { type }))
-	try {
-		ele.href = url
-		ele.click()
-	} finally {
-		URL.revokeObjectURL(url)
-	}
-}
-
 export async function spawnPromise<T extends ChildProcess>(spawn: (
 
 ) => AsyncOrSync<T>): Promise<T> {

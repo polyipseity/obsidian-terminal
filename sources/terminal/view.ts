@@ -35,7 +35,6 @@ import {
 	onResize,
 	onVisible,
 	randomNotIn,
-	saveFile,
 	typedStructuredClone,
 } from "../utils/util"
 import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
@@ -47,6 +46,7 @@ import {
 	printError,
 	printMalformedData,
 	readStateCollabratively,
+	saveFile,
 	updateDisplayText,
 	usePrivateAPI,
 	useSettings,
