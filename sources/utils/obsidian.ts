@@ -273,6 +273,10 @@ export function commandNamer(
 	})
 }
 
+export function openExternal(url?: URL | string): Window | null {
+	return self.open(url, "_blank", "noreferrer")
+}
+
 export function printMalformedData(
 	plugin: TerminalPlugin,
 	actual: unknown,

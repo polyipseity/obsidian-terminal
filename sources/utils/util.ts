@@ -480,10 +480,6 @@ export function onVisible(
 	return ret
 }
 
-export function openExternal(url?: URL | string): Window | null {
-	return self.open(url, "_blank", "noreferrer")
-}
-
 export async function promisePromise<T>(): Promise<{
 	readonly promise: Promise<T>
 	readonly resolve: (value: AsyncOrSync<T>) => void
