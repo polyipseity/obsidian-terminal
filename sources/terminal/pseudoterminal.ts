@@ -8,6 +8,7 @@ import {
 	UNDEFINED,
 	UNHANDLED_REJECTION_MESSAGE,
 } from "../magic"
+import { DisposerAddon, processText } from "./emulator"
 import {
 	PLATFORM,
 	anyToError,
@@ -17,6 +18,7 @@ import {
 	logError,
 	logFormat,
 	promisePromise,
+	remove,
 	sleep2,
 	spawnPromise,
 	typedKeys,
@@ -33,7 +35,6 @@ import type { Terminal } from "xterm"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
 import { dynamicRequire } from "../imports"
-import { processText } from "./emulator"
 import unixPseudoterminalPy from "./unix_pseudoterminal.py"
 import win32ResizerPy from "./win32_resizer.py"
 
@@ -59,6 +60,7 @@ export interface Pseudoterminal {
 
 abstract class PseudoPseudoterminal implements Pseudoterminal {
 	public readonly onExit
+	protected readonly terminals: Terminal[] = []
 	protected exited = false
 	readonly #exit = promisePromise<NodeJS.Signals | number>()
 
@@ -66,14 +68,19 @@ abstract class PseudoPseudoterminal implements Pseudoterminal {
 		this.onExit = this.#exit
 			.then(async ({ promise }) => promise)
 			.finally(() => { this.exited = true })
+			.finally(() => { clear(this.terminals) })
 	}
 
 	public async kill(): Promise<void> {
 		(await this.#exit).resolve(EXIT_SUCCESS)
 	}
 
-	public pipe(_terminal: Terminal): AsyncOrSync<void> {
+	public pipe(terminal: Terminal): AsyncOrSync<void> {
 		if (this.exited) { throw new Error() }
+		terminal.loadAddon(new DisposerAddon(
+			() => { remove(this.terminals, terminal) },
+		))
+		this.terminals.push(terminal)
 	}
 }
 
@@ -81,13 +88,11 @@ export class TextPseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
 	#writer: Promise<unknown> = Promise.resolve()
-	readonly #terminals: Terminal[] = []
 	#text: string
 
 	public constructor(text = "") {
 		super()
 		this.#text = text
-		this.onExit.finally(() => { clear(this.#terminals) })
 	}
 
 	public get text(): string {
@@ -100,13 +105,12 @@ export class TextPseudoterminal
 
 	public override async pipe(terminal: Terminal): Promise<void> {
 		await super.pipe(terminal)
-		this.#terminals.push(terminal)
 		await this.rewrite(processText(this.text), [terminal])
 	}
 
 	protected async rewrite(
 		text: string,
-		terminals: readonly Terminal[] = this.#terminals,
+		terminals: readonly Terminal[] = this.terminals,
 	): Promise<void> {
 		await this.#writer
 		const writers = terminals.map(async terminal =>
@@ -123,12 +127,10 @@ export class ConsolePseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
 	#writer: Promise<unknown> = Promise.resolve()
-	readonly #terminals: Terminal[] = []
 
 	public constructor(protected readonly log: Log) {
 		super()
 		this.onExit
-			.finally(() => { clear(this.#terminals) })
 			.finally(log.logger.listen(async event => this.write([event])))
 	}
 
@@ -151,13 +153,12 @@ export class ConsolePseudoterminal
 	public override async pipe(terminal: Terminal): Promise<void> {
 		await super.pipe(terminal)
 		terminal.clear()
-		this.#terminals.push(terminal)
 		await this.write(this.log.history, [terminal])
 	}
 
 	protected async write(
 		events: readonly Log.Event[],
-		terminals: readonly Terminal[] = this.#terminals,
+		terminals: readonly Terminal[] = this.terminals,
 	): Promise<void> {
 		const logStrings = events.map(event =>
 			processText(ConsolePseudoterminal.format(event)))
@@ -370,18 +371,22 @@ class WindowsPseudoterminal implements Pseudoterminal {
 	}
 
 	public async pipe(terminal: Terminal): Promise<void> {
-		const shell = await this.shell
+		let init = !this.conhost
+		const shell = await this.shell,
+			reader = (chunk: Buffer | string): void => {
+				if (!init) {
+					init = true
+					return
+				}
+				terminal.write(chunk)
+			}
 		clearTerminal(terminal)
-		shell.stdout.once("data", (chunk: Buffer | string) => {
-			shell.stdout.on("data", (chunk0: Buffer | string) => {
-				terminal.write(chunk0)
-			})
-			if (this.conhost) { return }
-			terminal.write(chunk)
-		})
-		shell.stderr.on("data", (chunk: Buffer | string) => {
-			terminal.write(chunk)
-		})
+		terminal.loadAddon(new DisposerAddon(
+			() => { shell.stdout.removeListener("data", reader) },
+			() => { shell.stderr.removeListener("data", reader) },
+		))
+		shell.stdout.on("data", reader)
+		shell.stderr.on("data", reader)
 		const writer =
 			terminal.onData(async data => writePromise(shell.stdin, data))
 		this.onExit.finally(() => { writer.dispose() })
@@ -446,14 +451,15 @@ class UnixPseudoterminal implements Pseudoterminal {
 	}
 
 	public async pipe(terminal: Terminal): Promise<void> {
-		const shell = await this.shell
+		const shell = await this.shell,
+			reader = (chunk: Buffer | string): void => { terminal.write(chunk) }
 		clearTerminal(terminal)
-		shell.stdout.on("data", (chunk: Buffer | string) => {
-			terminal.write(chunk)
-		})
-		shell.stderr.on("data", (chunk: Buffer | string) => {
-			terminal.write(chunk)
-		})
+		terminal.loadAddon(new DisposerAddon(
+			() => { shell.stdout.removeListener("data", reader) },
+			() => { shell.stderr.removeListener("data", reader) },
+		))
+		shell.stdout.on("data", reader)
+		shell.stderr.on("data", reader)
 		const writer =
 			terminal.onData(async data => writePromise(shell.stdin, data))
 		this.onExit.finally(() => { writer.dispose() })
