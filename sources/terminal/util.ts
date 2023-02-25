@@ -9,7 +9,9 @@ import {
 import {
 	cartesianProduct,
 	deepFreeze,
+	insertAt,
 	rangeCodePoint,
+	removeAt,
 	replaceAllRegex,
 } from "sources/utils/util"
 import { isUndefined, padEnd, range, size } from "lodash"
@@ -157,8 +159,8 @@ export class TerminalTextArea implements IDisposable {
 
 	public readonly terminal
 	protected readonly lock = new AsyncLock()
-	protected sequence = false
-	#value: readonly string[] = [""]
+	#sequence = false
+	#value = deepFreeze([""])
 
 	public constructor(options?: TerminalTextArea.Options) {
 		this.terminal = new Terminal({
@@ -172,7 +174,7 @@ export class TerminalTextArea implements IDisposable {
 			handler = ((): (handled: boolean) => () => boolean => {
 				const
 					handler0 = (handled: boolean) => (): boolean => {
-						this.sequence = false
+						this.#sequence = false
 						return handled
 					},
 					trueHandler = handler0(true),
@@ -229,59 +231,67 @@ export class TerminalTextArea implements IDisposable {
 			for (let datum = data0.shift();
 				!isUndefined(datum);
 				datum = data0.shift()) {
-				if (this.sequence) {
+				if (this.#sequence) {
 					// eslint-disable-next-line no-await-in-loop
 					await writePromise(terminal, datum)
 					continue
 				}
-				const { active: { cursorX, cursorY } } = buffer,
-					lines = this.#value.map(size)
+				const { active } = buffer,
+					{ cursorX, cursorY } = active,
+					lines = this.#value.map(size),
+					current = this.#value[cursorY] ?? ""
 				if (postSequence) {
 					// eslint-disable-next-line no-await-in-loop
 					await this.#sync(lines)
 					postSequence = false
 				}
 				switch (datum) {
-					case ESC:
+					case ESC: {
 						// eslint-disable-next-line no-await-in-loop
 						await writePromise(terminal, datum)
-						this.sequence = true
+						this.#sequence = true
 						postSequence = true
 						continue
-					case "\u007f":
+					}
+					case "\u007f": {
 						if (cursorX > 0) {
 							// eslint-disable-next-line no-await-in-loop
 							await writePromise(terminal, `\b${CSI}P`)
 							--lines[cursorY]
 						} else if (cursorY > 0) {
-							const length = this.#value[cursorY - 1]?.length ?? 0,
-								remain = this.#value[cursorY] ?? ""
+							const length = this.#value[cursorY - 1]?.length ?? 0
 							// eslint-disable-next-line no-await-in-loop
 							await writePromise(
 								terminal,
-								`${ansi.cursor.up()}${ansi.cursor
+								`${CSI}M${ansi.cursor.up()}${ansi.cursor
 									.horizontalAbsolute(length + 1)}`,
 							)
-							lines.pop()
+							removeAt(lines, cursorY)
 							data0.unshift(
-								...remain,
-								ansi.cursor.horizontalAbsolute(length + 1),
+								...current,
+								...ansi.cursor.horizontalAbsolute(length + 1),
 							)
 						}
 						break
+					}
 					case "\r": {
 						const remain = this.#value[cursorY]?.slice(cursorX) ?? ""
 						// eslint-disable-next-line no-await-in-loop
-						await writelnPromise(terminal, `${ansi.erase.inLine()}\r`)
-						lines.push(remain.length)
-						data0.unshift(...remain, ansi.cursor.horizontalAbsolute(1))
+						await writePromise(
+							terminal,
+							`${ansi.erase.inLine()}${ansi.cursor.down()}${CSI}L`,
+						)
+						lines[cursorY] -= remain.length
+						insertAt(lines, cursorY + 1, 0)
+						data0.unshift(...remain, ...ansi.cursor.horizontalAbsolute(1))
 						break
 					}
-					default:
+					default: {
 						// eslint-disable-next-line no-await-in-loop
 						await writePromise(terminal, `${CSI}@${datum}`)
 						++lines[cursorY]
 						break
+					}
 				}
 				// eslint-disable-next-line no-await-in-loop
 				await this.#sync(lines)
@@ -323,11 +333,12 @@ export class TerminalTextArea implements IDisposable {
 							length = left.push(line.translateToString(true))
 						}
 						left[length - 1] = padEnd(left[length - 1], lines[right], " ")
+							.slice(0, lines[right])
 					}
 					return left
 				}, []),
 			)
-		const yy = Math.min(cursorY, this.#value.length)
+		const yy = Math.min(cursorY, this.#value.length - 1)
 		await writePromise(terminal, ansi.cursor.position(
 			1 + yy,
 			1 + Math.min(cursorX, this.#value[yy]?.length ?? 0),
