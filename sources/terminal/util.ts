@@ -11,7 +11,7 @@ import {
 	rangeCodePoint,
 	replaceAllRegex,
 } from "sources/utils/util"
-import { constant, isUndefined, range } from "lodash"
+import { constant, isUndefined, padEnd, range, size } from "lodash"
 import AsyncLock from "async-lock"
 import ansi from "ansi-escape-sequences"
 import { codePoint } from "sources/utils/types"
@@ -126,13 +126,14 @@ export class TerminalTextArea implements IDisposable {
 			for (let datum = data0.shift();
 				!isUndefined(datum);
 				datum = data0.shift()) {
-				const { active: { cursorX, cursorY } } = buffer
-				let lines = this.#value.length
+				const { active: { cursorX, cursorY } } = buffer,
+					lines = this.#value.map(size)
 				switch (datum) {
 					case "\u007f":
 						if (cursorX > 0) {
 							// eslint-disable-next-line no-await-in-loop
 							await writePromise(terminal, `\b${CSI}P`)
+							--lines[cursorY]
 						} else if (cursorY > 0) {
 							const length = this.#value[cursorY - 1]?.length ?? 0,
 								remain = this.#value[cursorY] ?? ""
@@ -142,7 +143,7 @@ export class TerminalTextArea implements IDisposable {
 								`${ansi.cursor.up()}${ansi.cursor
 									.horizontalAbsolute(length + 1)}`,
 							)
-							--lines
+							lines.pop()
 							data0.unshift(
 								...remain,
 								ansi.cursor.horizontalAbsolute(length + 1),
@@ -153,13 +154,14 @@ export class TerminalTextArea implements IDisposable {
 						const remain = this.#value[cursorY]?.slice(cursorX) ?? ""
 						// eslint-disable-next-line no-await-in-loop
 						await writelnPromise(terminal, `${ansi.erase.inLine()}\r`)
-						++lines
+						lines.push(remain.length)
 						data0.unshift(...remain, ansi.cursor.horizontalAbsolute(1))
 						break
 					}
 					default:
 						// eslint-disable-next-line no-await-in-loop
 						await writePromise(terminal, datum)
+						++lines[cursorY]
 						break
 				}
 				this.#sync(lines)
@@ -175,7 +177,7 @@ export class TerminalTextArea implements IDisposable {
 				// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 				`${ansi.erase.display(2)}${ansi.cursor.position()}`,
 			)
-			this.#sync(TerminalTextArea.minRows)
+			this.#sync([0])
 		})
 	}
 
@@ -183,21 +185,22 @@ export class TerminalTextArea implements IDisposable {
 		this.terminal.dispose()
 	}
 
-	#sync(lines: number): void {
+	#sync(lines: readonly number[]): void {
 		const { terminal, lock } = this,
 			{ buffer: { active } } = terminal
 		if (!lock.isBusy(TerminalTextArea.writeLock)) { throw new Error() }
 		this.#value =
 			deepFreeze(
-				range(lines).reduce<string[]>((left, right) => {
+				range(lines.length).reduce<string[]>((left, right) => {
 					const line = active.getLine(right)
 					if (line) {
-						const { length } = left
+						let { length } = left
 						if (line.isWrapped && length > 0) {
 							left[length - 1] += line.translateToString(true)
 						} else {
-							left.push(line.translateToString(true))
+							length = left.push(line.translateToString(true))
 						}
+						left[length - 1] = padEnd(left[length - 1], lines[right], " ")
 					}
 					return left
 				}, []),
