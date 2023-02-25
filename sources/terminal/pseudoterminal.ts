@@ -59,10 +59,13 @@ const
 	process = dynamicRequire<typeof import("node:process")>("node:process"),
 	tmp = dynamicRequire<typeof import("tmp")>("tmp")
 
-function clearTerminal(terminal: Terminal): void {
+async function clearTerminal(terminal: Terminal): Promise<void> {
 	// Clear screen with scrollback kept
-	terminal.write(`${`\r${ansi.erase.inLine()}\n`.repeat(terminal.rows -
-		1)}\r${ansi.erase.inLine()}${ansi.cursor.position()}`)
+	await tWritePromise(
+		terminal,
+		`${`\r${ansi.erase.inLine()}\n`.repeat(terminal.rows -
+			1)}\r${ansi.erase.inLine()}${ansi.cursor.position()}`,
+	)
 }
 
 export interface Pseudoterminal {
@@ -180,11 +183,10 @@ export class TextPseudoterminal
 		terminals: readonly Terminal[] = this.terminals,
 	): Promise<void> {
 		await this.#writer
-		const writers = terminals.map(async terminal =>
-			Promise.resolve().then(() => {
-				terminal.clear()
-				terminal.write(text)
-			}))
+		const writers = terminals.map(async terminal => {
+			terminal.clear()
+			await tWritePromise(terminal, text)
+		})
 		this.#writer = Promise.allSettled(writers)
 		await Promise.all(writers)
 	}
@@ -285,16 +287,14 @@ export class ConsolePseudoterminal
 		events: readonly Log.Event[],
 		terminals: readonly Terminal[] = this.terminals,
 	): Promise<void> {
-		const logStrings = events.map(event =>
+		const lines = events.map(event =>
 			processText(ConsolePseudoterminal.format(event)))
 		await this.syncBuffer("clear", terminals)
 		await this.#writer
 		const writers = terminals.map(async terminal => {
 			await tWritePromise(terminal, `${ESC}8`)
-			for (const logString of logStrings) {
-				// eslint-disable-next-line no-await-in-loop
-				await tWritelnPromise(terminal, logString)
-			}
+			await Promise.all(lines.map(async line =>
+				tWritelnPromise(terminal, line)))
 			await tWritePromise(terminal, `${ESC}7`)
 		})
 		this.#writer = Promise.allSettled(writers)
@@ -507,9 +507,9 @@ class WindowsPseudoterminal implements Pseudoterminal {
 					init = true
 					return
 				}
-				terminal.write(chunk)
+				tWritePromise(terminal, chunk).catch(logError)
 			}
-		clearTerminal(terminal)
+		await clearTerminal(terminal)
 		terminal.loadAddon(new DisposerAddon(
 			() => { shell.stdout.removeListener("data", reader) },
 			() => { shell.stderr.removeListener("data", reader) },
@@ -584,8 +584,10 @@ class UnixPseudoterminal implements Pseudoterminal {
 
 	public async pipe(terminal: Terminal): Promise<void> {
 		const shell = await this.shell,
-			reader = (chunk: Buffer | string): void => { terminal.write(chunk) }
-		clearTerminal(terminal)
+			reader = (chunk: Buffer | string): void => {
+				tWritePromise(terminal, chunk).catch(logError)
+			}
+		await clearTerminal(terminal)
 		terminal.loadAddon(new DisposerAddon(
 			() => { shell.stdout.removeListener("data", reader) },
 			() => { shell.stderr.removeListener("data", reader) },

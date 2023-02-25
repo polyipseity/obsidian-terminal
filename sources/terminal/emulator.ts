@@ -19,6 +19,7 @@ import type { WebglAddon } from "xterm-addon-webgl"
 import { asyncDebounce } from "sources/utils/obsidian"
 import { debounce } from "obsidian"
 import { launderUnchecked } from "sources/utils/types"
+import { writePromise } from "./util"
 
 const
 	childProcess =
@@ -93,15 +94,16 @@ export class XtermTerminalEmulator<A> {
 			terminal.loadAddon(addon)
 		}
 		this.addons = addons0
+		let write = Promise.resolve()
 		if (state) {
 			terminal.resize(state.columns, state.rows)
-			terminal.write(state.data)
+			write = writePromise(terminal, state.data)
 		}
-		this.pseudoterminal = (async (): Promise<Pseudoterminal> => {
+		this.pseudoterminal = write.then(async () => {
 			const pty0 = await pseudoterminal(terminal, addons0)
 			await pty0.pipe(terminal)
 			return pty0
-		})()
+		})
 		this.pseudoterminal.then(async pty0 => pty0.onExit)
 			.finally(() => { this.#running = false })
 	}

@@ -65,6 +65,7 @@ import { Unicode11Addon } from "xterm-addon-unicode11"
 import { WebLinksAddon } from "xterm-addon-web-links"
 import { WebglAddon } from "xterm-addon-webgl"
 import { launderUnchecked } from "sources/utils/types"
+import { writePromise } from "./util"
 
 class EditTerminalModal extends DialogModal {
 	protected readonly state
@@ -574,13 +575,16 @@ export class TerminalView extends ItemView {
 							ele,
 							async terminal => {
 								if (serial) {
-									terminal.write(`${i18n.t(
-										"components.terminal.restored-history",
-										{
-											datetime: new Date(),
-											interpolation: { escapeValue: false },
-										},
-									)}`)
+									await writePromise(
+										terminal,
+										i18n.t(
+											"components.terminal.restored-history",
+											{
+												datetime: new Date(),
+												interpolation: { escapeValue: false },
+											},
+										),
+									)
 								}
 								const ret = await openProfile(plugin, profile, {
 									cwd,
