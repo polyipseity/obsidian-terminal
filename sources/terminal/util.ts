@@ -46,7 +46,9 @@ export const
 	).map(([intermediates0, intermediates1, final]) => ({
 		final,
 		intermediates: `${intermediates0}${intermediates1}`,
-	} as const satisfies IFunctionIdentifier)))
+	} as const satisfies IFunctionIdentifier))),
+	// eslint-disable-next-line @typescript-eslint/no-magic-numbers
+	MOST_OSC_IDENTIFIERS = range(1000)
 
 export function processText(text: string): string {
 	return text
@@ -92,6 +94,9 @@ export class TerminalTextArea implements IDisposable {
 		}
 		for (const id of ALL_ESC_IDENTIFIERS) {
 			parser.registerEscHandler(id, handler)
+		}
+		for (const id of MOST_OSC_IDENTIFIERS) {
+			parser.registerOscHandler(id, handler)
 		}
 	}
 
