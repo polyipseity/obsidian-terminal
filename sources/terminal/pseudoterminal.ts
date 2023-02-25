@@ -203,12 +203,12 @@ export class ConsolePseudoterminal
 	implements Pseudoterminal {
 	protected static readonly writeLock = "write"
 	protected readonly lock = new AsyncLock()
-	protected readonly textField = new TerminalTextArea()
+	protected readonly buffer = new TerminalTextArea()
 
 	public constructor(protected readonly log: Log) {
 		super()
 		this.onExit
-			.finally(() => { this.textField.dispose() })
+			.finally(() => { this.buffer.dispose() })
 			.finally(log.logger.listen(async event => this.write([event])))
 	}
 
@@ -242,7 +242,7 @@ export class ConsolePseudoterminal
 						block = false
 						return
 					}
-					await this.textField.write(data)
+					await this.buffer.write(data)
 					await this.syncBuffer()
 				}),
 				terminal.onKey(async ({ domEvent }) => {
@@ -258,8 +258,8 @@ export class ConsolePseudoterminal
 	}
 
 	protected async eval(): Promise<void> {
-		const value = this.textField.values.join("")
-		await this.textField.clear()
+		const value = this.buffer.values.join("")
+		await this.buffer.clear()
 		await this.syncBuffer()
 		console.log(value)
 		let ret: unknown = null
@@ -277,7 +277,7 @@ export class ConsolePseudoterminal
 		terminals: readonly Terminal[] = this.terminals,
 		lock = true,
 	): Promise<void> {
-		const { values } = this.textField,
+		const { values } = this.buffer,
 			processed = type === "sync"
 				? [processText(values[0]), processText(values[1])] as const
 				: ["", ""] as const
