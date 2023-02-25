@@ -1,5 +1,6 @@
 import builtins from "builtin-modules"
 import esbuild from "esbuild"
+import { isEmpty } from "lodash"
 import process from "node:process"
 import sveltePlugin from "esbuild-svelte"
 import sveltePreprocess from "svelte-preprocess"
@@ -110,13 +111,13 @@ if (production) {
 				verbose: true,
 			}))
 		}
-		if (warnings.length > 0) {
+		if (!isEmpty(warnings)) {
 			console.warn((await esbuild.formatMessages(warnings, {
 				color: true,
 				kind: "warning",
 			})).join("\n"))
 		}
-		if (errors.length > 0) {
+		if (!isEmpty(errors)) {
 			console.error((await esbuild.formatMessages(errors, {
 				color: true,
 				kind: "error",

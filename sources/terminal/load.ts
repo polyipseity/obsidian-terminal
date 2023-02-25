@@ -12,6 +12,7 @@ import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "../main"
 import { TerminalView } from "./view"
 import { UNDEFINED } from "sources/magic"
+import { isEmpty } from "lodash"
 
 export function loadTerminal(plugin: TerminalPlugin): void {
 	plugin.registerView(
@@ -135,7 +136,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 		const items = PROFILE_TYPES
 			.map(type => contextMenu(type, folder))
 			.filter(isNonNullish)
-		if (items.length > 0) {
+		if (!isEmpty(items)) {
 			menu.addSeparator()
 			items.forEach(item => menu.addItem(item))
 		}
@@ -154,7 +155,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 			const items = PROFILE_TYPES
 				.map(type => contextMenu(type, parent))
 				.filter(isNonNullish)
-			if (items.length > 0) {
+			if (!isEmpty(items)) {
 				menu.addSeparator()
 				items.forEach(item => menu.addItem(item))
 			}

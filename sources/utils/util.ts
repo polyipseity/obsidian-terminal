@@ -6,9 +6,9 @@ import {
 	type TypeofMapE,
 	genericTypeofGuardE,
 } from "./typeof"
+import { escapeRegExp, isEmpty } from "lodash"
 import type { ChildProcess } from "node:child_process"
 import type { Writable } from "node:stream"
-import { escapeRegExp } from "lodash"
 import { getSerialize } from "json-stringify-safe"
 
 export type KeyModifier = "Alt" | "Ctrl" | "Meta" | "Shift"
@@ -321,7 +321,7 @@ export function logError(thing: unknown): void {
 }
 
 export function logFormat(...args: readonly unknown[]): string {
-	if (args.length <= 0) { return "" }
+	if (isEmpty(args)) { return "" }
 	const
 		stringify0 = (param: unknown): string => {
 			if (typeof param === "object" && typeof param !== "function") {

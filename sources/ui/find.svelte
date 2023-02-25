@@ -5,6 +5,7 @@
 	import { consumeEvent, getKeyModifiers } from "sources/utils/util";
 	import type { DeepWritable } from "ts-essentials";
 	import { t as i18t } from "i18next";
+	import { isEmpty } from "lodash";
 	import { onMount } from "svelte";
 	import { setIcon } from "obsidian";
 </script>
@@ -33,7 +34,7 @@
 
 	onMount(() => {
 		element?.addEventListener("keydown", (event) => {
-			if (event.key === "Escape" && getKeyModifiers(event).length === 0) {
+			if (event.key === "Escape" && isEmpty(getKeyModifiers(event))) {
 				onClose();
 				consumeEvent(event);
 			}
