@@ -71,8 +71,9 @@ export async function writelnPromise(
 }
 
 export class TerminalTextArea implements IDisposable {
-	protected static readonly minCols = 1
-	protected static readonly minRows = 1
+	protected static readonly margin = 2
+	protected static readonly minCols = TerminalTextArea.margin
+	protected static readonly minRows = TerminalTextArea.margin
 	public readonly terminal
 	#value: readonly string[] = [""]
 
@@ -193,11 +194,11 @@ export class TerminalTextArea implements IDisposable {
 		terminal.resize(
 			Math.max(
 				TerminalTextArea.minCols,
-				...this.#value.map(line => line.length + 1),
+				...this.#value.map(line => line.length + TerminalTextArea.margin),
 			),
 			Math.max(
 				TerminalTextArea.minRows,
-				this.#value.length + 1,
+				this.#value.length + TerminalTextArea.margin,
 			),
 		)
 	}
