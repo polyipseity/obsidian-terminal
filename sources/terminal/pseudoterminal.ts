@@ -10,6 +10,12 @@ import {
 } from "../magic"
 import { DisposerAddon, processText } from "./emulator"
 import {
+	ESCAPE_SEQUENCE_INTRODUCER as ESC,
+	TerminalTextArea,
+	writePromise as tWritePromise,
+	writelnPromise as tWritelnPromise,
+} from "./util"
+import {
 	Functions,
 	PLATFORM,
 	anyToError,
@@ -41,6 +47,7 @@ import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
 import ansi from "ansi-escape-sequences"
 import { dynamicRequire } from "../imports"
+import { isEmpty } from "lodash"
 import unixPseudoterminalPy from "./unix_pseudoterminal.py"
 import win32ResizerPy from "./win32_resizer.py"
 
@@ -186,28 +193,13 @@ export class ConsolePseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
 	#writer: Promise<unknown> = Promise.resolve()
-	#buffer = ""
+	readonly #textField = new TerminalTextArea()
 
 	public constructor(protected readonly log: Log) {
 		super()
 		this.onExit
+			.finally(() => { this.#textField.dispose() })
 			.finally(log.logger.listen(async event => this.write([event])))
-	}
-
-	protected get buffer(): string {
-		return this.#buffer
-	}
-
-	protected set buffer(value: string) {
-		const processed = processText(value)
-		this.#writer = this.#writer.then(async () => Promise.allSettled(
-			this.terminals.map(async terminal =>
-				Promise.resolve()
-					.then(() => {
-						terminal.write(`\r${ansi.erase.inLine()}${processed}`)
-					})),
-		))
-		this.#buffer = value
 	}
 
 	// eslint-disable-next-line consistent-return
@@ -229,30 +221,24 @@ export class ConsolePseudoterminal
 	public override async pipe(terminal: Terminal): Promise<void> {
 		await super.pipe(terminal)
 		terminal.clear()
+		await tWritePromise(terminal, `${ESC}7`)
 		await this.write(this.log.history, [terminal])
+		let block = false
 		const disposer = new Functions(
 			{ async: false, settled: true },
 			...[
-				terminal.onKey(({ key, domEvent }) => {
-					let key0 = key
-					if (domEvent.key === "Enter") {
-						const modifiers = getKeyModifiers(domEvent)
-						if (modifiers.length === 0) {
-							this.eval()
-							consumeEvent(domEvent)
-							return
-						}
-						if (modifiers.includes("Shift")) {
-							key0 = "\n"
-						}
-					}
-					if (domEvent.key === "Backspace") {
-						this.buffer = this.buffer.replace(/.$/us, "")
-						consumeEvent(domEvent)
+				terminal.onData(async data => {
+					if (block) {
+						block = false
 						return
 					}
-					if (key0) {
-						this.buffer += key0
+					await this.#textField.write(data)
+					await this.syncBuffer()
+				}),
+				terminal.onKey(async ({ domEvent }) => {
+					if (domEvent.key === "Enter" && isEmpty(getKeyModifiers(domEvent))) {
+						block = true
+						await this.eval()
 						consumeEvent(domEvent)
 					}
 				}),
@@ -261,18 +247,37 @@ export class ConsolePseudoterminal
 		this.onExit.finally(() => { disposer.call() })
 	}
 
-	protected eval(): void {
-		const { buffer } = this
-		this.buffer = ""
-		console.log(buffer)
+	protected async eval(): Promise<void> {
+		const value = this.#textField.values.join("")
+		await this.#textField.clear()
+		await this.syncBuffer()
+		console.log(value)
 		let ret: unknown = null
 		try {
-			ret = self.eval(buffer)
+			ret = self.eval(value)
 		} catch (error) {
 			console.error(error)
 			return
 		}
 		console.log(ret)
+	}
+
+	protected async syncBuffer(
+		type: "clear" | "sync" = "sync",
+		terminals: readonly Terminal[] = this.terminals,
+	): Promise<void> {
+		const { values } = this.#textField,
+			processed = type === "sync"
+				? [processText(values[0]), processText(values[1])] as const
+				: ["", ""] as const
+		await this.#writer
+		const writers = terminals.map(async terminal => tWritePromise(
+			terminal,
+			`${ESC}8\r${ansi.erase.display()}${processed
+				.join("")}${ESC}8${processed[0]}`,
+		))
+		this.#writer = Promise.allSettled(writers)
+		await Promise.all(writers)
 	}
 
 	protected async write(
@@ -281,16 +286,19 @@ export class ConsolePseudoterminal
 	): Promise<void> {
 		const logStrings = events.map(event =>
 			processText(ConsolePseudoterminal.format(event)))
+		await this.syncBuffer("clear", terminals)
 		await this.#writer
-		const writers = terminals.map(async terminal =>
-			Promise.resolve()
-				.then(() => {
-					for (const logString of logStrings) {
-						terminal.writeln(logString)
-					}
-				}))
+		const writers = terminals.map(async terminal => {
+			await tWritePromise(terminal, `${ESC}8`)
+			for (const logString of logStrings) {
+				// eslint-disable-next-line no-await-in-loop
+				await tWritelnPromise(terminal, logString)
+			}
+			await tWritePromise(terminal, `${ESC}7`)
+		})
 		this.#writer = Promise.allSettled(writers)
 		await Promise.all(writers)
+		await this.syncBuffer("sync", terminals)
 	}
 }
 
