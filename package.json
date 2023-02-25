@@ -30,6 +30,7 @@
 		"deep-equal": "2.2.0",
 		"i18next": "22.4.10",
 		"i18next-resources-to-backend": "1.1.1",
+		"immutable": "4.2.4",
 		"json-stringify-safe": "5.0.1",
 		"lodash": "4.17.21",
 		"monkey-around": "2.3.0",
