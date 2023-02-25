@@ -11,7 +11,7 @@ import {
 	rangeCodePoint,
 	replaceAllRegex,
 } from "sources/utils/util"
-import { isUndefined, range } from "lodash"
+import { constant, isUndefined, range } from "lodash"
 import ansi from "ansi-escape-sequences"
 import { codePoint } from "sources/utils/types"
 
@@ -82,6 +82,17 @@ export class TerminalTextArea implements IDisposable {
 				rows: TerminalTextArea.minRows,
 			} satisfies TerminalTextArea.PredefinedOptions,
 		})
+		const { terminal: { parser } } = this,
+			handler = constant(true)
+		for (const id of ALL_CSI_IDENTIFIERS) {
+			parser.registerCsiHandler(id, handler)
+		}
+		for (const id of ALL_DCS_IDENTIFIERS) {
+			parser.registerDcsHandler(id, handler)
+		}
+		for (const id of ALL_ESC_IDENTIFIERS) {
+			parser.registerEscHandler(id, handler)
+		}
 	}
 
 	public get values(): readonly [string, string] {
