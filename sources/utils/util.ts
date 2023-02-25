@@ -11,7 +11,7 @@ import {
 	type TypeofMapE,
 	genericTypeofGuardE,
 } from "./typeof"
-import { escapeRegExp, isEmpty, noop } from "lodash"
+import { escapeRegExp, isEmpty, noop, range } from "lodash"
 import AsyncLock from "async-lock"
 import type { ChildProcess } from "node:child_process"
 import type { Writable } from "node:stream"
