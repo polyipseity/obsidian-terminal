@@ -18,6 +18,7 @@ import {
 import {
 	Functions,
 	PLATFORM,
+	acquireConditionally,
 	anyToError,
 	clear,
 	consumeEvent,
@@ -35,7 +36,9 @@ import {
 	typedKeys,
 	writePromise,
 } from "../utils/util"
+import { isEmpty, noop } from "lodash"
 import { notice2, printError } from "sources/utils/obsidian"
+import AsyncLock from "async-lock"
 import type { AsyncOrSync } from "ts-essentials"
 import { DisposerAddon } from "./emulator"
 import type { FileResultNoFd } from "tmp"
@@ -48,7 +51,6 @@ import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
 import ansi from "ansi-escape-sequences"
 import { dynamicRequire } from "../imports"
-import { isEmpty } from "lodash"
 import unixPseudoterminalPy from "./unix_pseudoterminal.py"
 import win32ResizerPy from "./win32_resizer.py"
 
@@ -157,7 +159,8 @@ abstract class PseudoPseudoterminal implements Pseudoterminal {
 export class TextPseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
-	#writer: Promise<unknown> = Promise.resolve()
+	protected static readonly writeLock = "write"
+	protected readonly lock = new AsyncLock()
 	#text: string
 
 	public constructor(text = "") {
@@ -182,26 +185,30 @@ export class TextPseudoterminal
 		text: string,
 		terminals: readonly Terminal[] = this.terminals,
 	): Promise<void> {
-		await this.#writer
-		const writers = terminals.map(async terminal => {
-			terminal.clear()
-			await tWritePromise(terminal, text)
+		return new Promise((resolve, reject) => {
+			this.lock.acquire(TextPseudoterminal.writeLock, async () => {
+				const writers = terminals.map(async terminal => {
+					terminal.clear()
+					await tWritePromise(terminal, text)
+				})
+				resolve(Promise.all(writers).then(noop))
+				await Promise.allSettled(writers)
+			}).catch(reject)
 		})
-		this.#writer = Promise.allSettled(writers)
-		await Promise.all(writers)
 	}
 }
 
 export class ConsolePseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
-	#writer: Promise<unknown> = Promise.resolve()
-	readonly #textField = new TerminalTextArea()
+	protected static readonly writeLock = "write"
+	protected readonly lock = new AsyncLock()
+	protected readonly textField = new TerminalTextArea()
 
 	public constructor(protected readonly log: Log) {
 		super()
 		this.onExit
-			.finally(() => { this.#textField.dispose() })
+			.finally(() => { this.textField.dispose() })
 			.finally(log.logger.listen(async event => this.write([event])))
 	}
 
@@ -235,7 +242,7 @@ export class ConsolePseudoterminal
 						block = false
 						return
 					}
-					await this.#textField.write(data)
+					await this.textField.write(data)
 					await this.syncBuffer()
 				}),
 				terminal.onKey(async ({ domEvent }) => {
@@ -251,8 +258,8 @@ export class ConsolePseudoterminal
 	}
 
 	protected async eval(): Promise<void> {
-		const value = this.#textField.values.join("")
-		await this.#textField.clear()
+		const value = this.textField.values.join("")
+		await this.textField.clear()
 		await this.syncBuffer()
 		console.log(value)
 		let ret: unknown = null
@@ -268,38 +275,52 @@ export class ConsolePseudoterminal
 	protected async syncBuffer(
 		type: "clear" | "sync" = "sync",
 		terminals: readonly Terminal[] = this.terminals,
+		lock = true,
 	): Promise<void> {
-		const { values } = this.#textField,
+		const { values } = this.textField,
 			processed = type === "sync"
 				? [processText(values[0]), processText(values[1])] as const
 				: ["", ""] as const
-		await this.#writer
-		const writers = terminals.map(async terminal => tWritePromise(
-			terminal,
-			`${ESC}8\r${ansi.erase.display()}${processed
-				.join("")}${ESC}8${processed[0]}`,
-		))
-		this.#writer = Promise.allSettled(writers)
-		await Promise.all(writers)
+		return new Promise((resolve, reject) => {
+			acquireConditionally(
+				this.lock,
+				ConsolePseudoterminal.writeLock,
+				lock,
+				async () => {
+					const writers = terminals.map(async terminal => tWritePromise(
+						terminal,
+						`${ESC}8\r${ansi.erase.display()}${processed
+							.join("")}${ESC}8${processed[0]}`,
+					))
+					resolve(Promise.all(writers).then(noop))
+					await Promise.allSettled(writers)
+				},
+			).catch(reject)
+		})
 	}
 
 	protected async write(
 		events: readonly Log.Event[],
 		terminals: readonly Terminal[] = this.terminals,
+		lock = true,
 	): Promise<void> {
 		const lines = events.map(event =>
 			processText(ConsolePseudoterminal.format(event)))
-		await this.syncBuffer("clear", terminals)
-		await this.#writer
-		const writers = terminals.map(async terminal => {
-			await tWritePromise(terminal, `${ESC}8`)
-			await Promise.all(lines.map(async line =>
-				tWritelnPromise(terminal, line)))
-			await tWritePromise(terminal, `${ESC}7`)
-		})
-		this.#writer = Promise.allSettled(writers)
-		await Promise.all(writers)
-		await this.syncBuffer("sync", terminals)
+		await acquireConditionally(
+			this.lock,
+			ConsolePseudoterminal.writeLock,
+			lock,
+			async () => {
+				await this.syncBuffer("clear", terminals, false)
+				await Promise.allSettled(terminals.map(async terminal => {
+					await tWritePromise(terminal, `${ESC}8`)
+					await Promise.all(lines.map(async line =>
+						tWritelnPromise(terminal, line)))
+					await tWritePromise(terminal, `${ESC}7`)
+				}))
+				await this.syncBuffer("sync", terminals, false)
+			},
+		)
 	}
 }
 

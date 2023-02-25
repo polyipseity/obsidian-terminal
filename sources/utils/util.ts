@@ -11,7 +11,8 @@ import {
 	type TypeofMapE,
 	genericTypeofGuardE,
 } from "./typeof"
-import { escapeRegExp, range } from "lodash"
+import { escapeRegExp, isEmpty, noop } from "lodash"
+import AsyncLock from "async-lock"
 import type { ChildProcess } from "node:child_process"
 import type { Writable } from "node:stream"
 import { getSerialize } from "json-stringify-safe"
@@ -43,14 +44,19 @@ export const PLATFORM = ((): Platform => {
 })()
 
 export class EventEmitterLite<A extends readonly unknown[]> {
-	#emitter: Promise<unknown> = Promise.resolve()
+	protected static readonly emitLock = "emit"
+	protected readonly lock = new AsyncLock()
 	readonly #listeners: ((...args: A) => unknown)[] = []
 
 	public async emit(...args: A): Promise<void> {
-		await this.#emitter
-		const emitted = this.#listeners.map(async list => { await list(...args) })
-		this.#emitter = Promise.allSettled(emitted)
-		await Promise.all(emitted)
+		return new Promise((resolve, reject) => {
+			this.lock.acquire(EventEmitterLite.emitLock, async () => {
+				const emitted = this.#listeners
+					.map(async list => { await list(...args) })
+				resolve(Promise.all(emitted).then(noop))
+				await Promise.allSettled(emitted)
+			}).catch(reject)
+		})
 	}
 
 	public listen(listener: (...args: A) => unknown): () => void {
@@ -125,6 +131,15 @@ export class Functions<
 			: (func): void => { func.call(thisArg, ...args) })
 		return UNDEFINED
 	}
+}
+
+export async function acquireConditionally<T>(
+	lock: AsyncLock,
+	key: string[] | string,
+	condition: boolean,
+	fn: () => PromiseLike<T> | T,
+): Promise<T> {
+	return condition ? lock.acquire(key, fn) : fn()
 }
 
 export function anyToError(obj: unknown): Error {
@@ -261,7 +276,7 @@ export function getKeyModifiers(
 	if (event.ctrlKey) { ret.push("Ctrl") }
 	if (event.metaKey) { ret.push("Meta") }
 	if (event.shiftKey) { ret.push("Shift") }
-	return Object.freeze(ret)
+	return deepFreeze(ret)
 }
 
 export async function spawnPromise<T extends ChildProcess>(spawn: (
@@ -335,7 +350,7 @@ export function logError(thing: unknown): void {
 }
 
 export function logFormat(...args: readonly unknown[]): string {
-	if (args.length <= 0) { return "" }
+	if (isEmpty(args)) { return "" }
 	const
 		stringify0 = (param: unknown): string => {
 			if (typeof param === "object" && typeof param !== "function") {

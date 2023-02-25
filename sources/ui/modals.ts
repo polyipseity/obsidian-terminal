@@ -799,13 +799,12 @@ export class ProfileListModal
 	public constructor(
 		plugin: TerminalPlugin,
 		data: readonly Settings.Profile.Entry[],
-		options?: Omit<ProfileListModal.Options, "callback"
-		>,
+		options?: ProfileListModal.Options,
 	) {
 		const { i18n } = plugin.language,
 			dataW = cloneAsWritable(data),
 			dataKeys = new Map(dataW.map(([key, value]) => [value, key])),
-			callback = options?.callback2 ?? ((): void => { }),
+			callback = options?.callback ?? ((): void => { }),
 			keygen = options?.keygen ?? ((): string => crypto.randomUUID())
 		super(
 			plugin,
@@ -831,19 +830,21 @@ export class ProfileListModal
 			dataW.map(([, value]) => value),
 			{
 				...options,
-				async callback(data0) {
-					await callback(data0
-						.map(profile => {
-							let id = dataKeys.get(profile)
-							if (isUndefined(id)) {
-								dataKeys.set(
-									profile,
-									id = randomNotIn(Array.from(dataKeys.values()), keygen),
-								)
-							}
-							return [id, typedStructuredClone(profile)]
-						}))
-				},
+				...{
+					async callback(data0): Promise<void> {
+						await callback(data0
+							.map(profile => {
+								let id = dataKeys.get(profile)
+								if (isUndefined(id)) {
+									dataKeys.set(
+										profile,
+										id = randomNotIn(Array.from(dataKeys.values()), keygen),
+									)
+								}
+								return [id, typedStructuredClone(profile)]
+							}))
+					},
+				} satisfies ProfileListModal.PredefinedOptions,
 				descriptor: options?.descriptor ?? ((profile): string => {
 					const id = dataKeys.get(profile) ?? ""
 					return i18n.t(`components.profile-list.descriptor-${Settings
@@ -883,9 +884,13 @@ export class ProfileListModal
 	}
 }
 export namespace ProfileListModal {
+	type InitialOptions = ListModal.Options<DeepWritable<Settings.Profile>>
+	export type PredefinedOptions = {
+		readonly [K in "callback"]: InitialOptions[K]
+	}
 	export interface Options
-		extends ListModal.Options<DeepWritable<Settings.Profile>> {
-		readonly callback2?: (
+		extends Omit<InitialOptions, keyof PredefinedOptions> {
+		readonly callback?: (
 			data: DeepWritable<Settings.Profile.Entry>[],
 		) => unknown
 		readonly keygen?: () => string

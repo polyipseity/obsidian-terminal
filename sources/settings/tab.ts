@@ -390,7 +390,7 @@ export class SettingTab extends PluginSettingTab {
 								plugin,
 								Object.entries(plugin.settings.profiles),
 								{
-									callback2: async (data): Promise<void> => {
+									callback: async (data): Promise<void> => {
 										await plugin.mutateSettings(settingsM => {
 											settingsM.profiles = Object.fromEntries(data)
 										})

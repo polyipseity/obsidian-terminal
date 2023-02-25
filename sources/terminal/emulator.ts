@@ -65,7 +65,6 @@ export class XtermTerminalEmulator<A> {
 				if (mustResizePseudoterminal) { throw error }
 				console.debug(error)
 			}
-			this.terminal.resize(columns, rows)
 		})().then(resolve, reject)
 	}, TERMINAL_RESIZE_TIMEOUT * SI_PREFIX_SCALE, false))
 
@@ -121,11 +120,15 @@ export class XtermTerminalEmulator<A> {
 	}
 
 	public async resize(mustResizePseudoterminal = true): Promise<void> {
-		const { addons, resize0 } = this,
+		const { addons, terminal, resize0 } = this,
 			{ fit } = addons,
 			dim = fit.proposeDimensions()
-		if (dim && isFinite(dim.cols) && isFinite(dim.rows)) {
-			await resize0(dim.cols, dim.rows, mustResizePseudoterminal)
+		if (dim) {
+			const { cols, rows } = dim
+			if (isFinite(cols) && isFinite(rows)) {
+				terminal.resize(cols, rows)
+				await resize0(cols, rows, mustResizePseudoterminal)
+			}
 		}
 	}
 
