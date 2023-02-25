@@ -16,6 +16,7 @@ import { DOMClasses, NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
 import {
 	EMPTY_OBJECT,
 	Functions,
+	clear,
 	createChildElement,
 	deepFreeze,
 	multireplace,
@@ -148,7 +149,7 @@ export class UpdatableUI {
 
 	public destroy(): void {
 		this.#finalizers.transform(self => self.splice(0)).call()
-		this.#updaters.length = 0
+		clear(this.#updaters)
 	}
 }
 
