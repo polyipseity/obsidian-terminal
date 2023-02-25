@@ -225,6 +225,7 @@ export class TerminalTextArea implements IDisposable {
 			{ buffer } = terminal,
 			data0 = Array.from(data)
 		await lock.acquire(TerminalTextArea.writeLock, async () => {
+			let postSequence = false
 			for (let datum = data0.shift();
 				!isUndefined(datum);
 				datum = data0.shift()) {
@@ -235,12 +236,18 @@ export class TerminalTextArea implements IDisposable {
 				}
 				const { active: { cursorX, cursorY } } = buffer,
 					lines = this.#value.map(size)
+				if (postSequence) {
+					// eslint-disable-next-line no-await-in-loop
+					await this.#sync(lines)
+					postSequence = false
+				}
 				switch (datum) {
 					case ESC:
-						this.sequence = true
 						// eslint-disable-next-line no-await-in-loop
 						await writePromise(terminal, datum)
-						break
+						this.sequence = true
+						postSequence = true
+						continue
 					case "\u007f":
 						if (cursorX > 0) {
 							// eslint-disable-next-line no-await-in-loop
@@ -276,8 +283,10 @@ export class TerminalTextArea implements IDisposable {
 						++lines[cursorY]
 						break
 				}
-				this.#sync(lines)
+				// eslint-disable-next-line no-await-in-loop
+				await this.#sync(lines)
 			}
+			if (postSequence) { await this.#sync(this.#value.map(size)) }
 		})
 	}
 
@@ -289,7 +298,7 @@ export class TerminalTextArea implements IDisposable {
 				// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 				`${ansi.erase.display(2)}${ansi.cursor.position()}`,
 			)
-			this.#sync([0])
+			await this.#sync([0])
 		})
 	}
 
@@ -297,9 +306,10 @@ export class TerminalTextArea implements IDisposable {
 		this.terminal.dispose()
 	}
 
-	#sync(lines: readonly number[]): void {
+	async #sync(lines: readonly number[]): Promise<void> {
 		const { terminal, lock } = this,
-			{ buffer: { active } } = terminal
+			{ buffer: { active } } = terminal,
+			{ cursorX, cursorY } = active
 		if (!lock.isBusy(TerminalTextArea.writeLock)) { throw new Error() }
 		this.#value =
 			deepFreeze(
@@ -317,6 +327,11 @@ export class TerminalTextArea implements IDisposable {
 					return left
 				}, []),
 			)
+		const yy = Math.min(cursorY, this.#value.length)
+		await writePromise(terminal, ansi.cursor.position(
+			1 + yy,
+			1 + Math.min(cursorX, this.#value[yy]?.length ?? 0),
+		))
 		terminal.resize(
 			Math.max(
 				TerminalTextArea.minCols,
