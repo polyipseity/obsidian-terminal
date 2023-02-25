@@ -163,27 +163,32 @@ export class UnnamespacedID<V extends string> {
 	}
 }
 
+type AddCommandPredefinedOptions = {
+	readonly [K in "name"]: Command[K]
+}
 export function addCommand(
 	plugin: TerminalPlugin,
 	name: () => string,
-	command: Readonly<Omit<Command, "name">>,
+	command: Readonly<Omit<Command, keyof AddCommandPredefinedOptions>>,
 ): Command {
 	const { i18n } = plugin.language
 	let namer = name
 	return plugin.addCommand({
 		...command,
-		get name() { return namer() },
-		set name(format) {
-			namer = commandNamer(
-				name,
-				() => i18n.t("name"),
-				i18n.t("name", {
-					interpolation: { escapeValue: false },
-					lng: DEFAULT_LANGUAGE,
-				}),
-				format,
-			)
-		},
+		...{
+			get name(): string { return namer() },
+			set name(format) {
+				namer = commandNamer(
+					name,
+					() => i18n.t("name"),
+					i18n.t("name", {
+						interpolation: { escapeValue: false },
+						lng: DEFAULT_LANGUAGE,
+					}),
+					format,
+				)
+			},
+		} satisfies AddCommandPredefinedOptions,
 	})
 }
 
