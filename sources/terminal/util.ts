@@ -5,8 +5,8 @@ import {
 	type ITerminalInitOnlyOptions as TerminalOptionsInit,
 } from "xterm"
 import { deepFreeze, replaceAllRegex } from "sources/utils/util"
+import { isUndefined, range } from "lodash"
 import ansi from "ansi-escape-sequences"
-import { range } from "lodash"
 
 export const ESCAPE_SEQUENCE_INTRODUCER = "\u001b"
 const ESC = ESCAPE_SEQUENCE_INTRODUCER
@@ -65,8 +65,11 @@ export class TerminalTextArea implements IDisposable {
 
 	public async write(data: string): Promise<void> {
 		const { terminal } = this,
-			{ buffer } = terminal
-		for (const datum of data) {
+			{ buffer } = terminal,
+			data0 = Array.from(data)
+		for (let datum = data0.shift();
+			!isUndefined(datum);
+			datum = data0.shift()) {
 			const { active: { cursorX, cursorY } } = buffer
 			let lines = this.#value.length
 			switch (datum) {
@@ -75,7 +78,8 @@ export class TerminalTextArea implements IDisposable {
 						// eslint-disable-next-line no-await-in-loop
 						await writePromise(terminal, `\b${CSI}P`)
 					} else if (cursorY > 0) {
-						const length = this.#value[cursorY - 1]?.length ?? 0
+						const length = this.#value[cursorY - 1]?.length ?? 0,
+							remain = this.#value[cursorY] ?? ""
 						// eslint-disable-next-line no-await-in-loop
 						await writePromise(
 							terminal,
@@ -83,13 +87,17 @@ export class TerminalTextArea implements IDisposable {
 								.horizontalAbsolute(length + 1)}`,
 						)
 						--lines
+						data0.unshift(...remain, ansi.cursor.horizontalAbsolute(length + 1))
 					}
 					break
-				case "\r":
+				case "\r": {
+					const remain = this.#value[cursorY]?.slice(cursorX) ?? ""
 					// eslint-disable-next-line no-await-in-loop
-					await writelnPromise(terminal, datum)
+					await writelnPromise(terminal, `${ansi.erase.inLine()}\r`)
 					++lines
+					data0.unshift(...remain, ansi.cursor.horizontalAbsolute(1))
 					break
+				}
 				default:
 					// eslint-disable-next-line no-await-in-loop
 					await writePromise(terminal, datum)
