@@ -12,6 +12,7 @@ import {
 	replaceAllRegex,
 } from "sources/utils/util"
 import { constant, isUndefined, range } from "lodash"
+import AsyncLock from "async-lock"
 import ansi from "ansi-escape-sequences"
 import { codePoint } from "sources/utils/types"
 
@@ -74,7 +75,9 @@ export class TerminalTextArea implements IDisposable {
 	protected static readonly margin = 2
 	protected static readonly minCols = TerminalTextArea.margin
 	protected static readonly minRows = TerminalTextArea.margin
+	protected static readonly writeLock = "write"
 	public readonly terminal
+	protected readonly lock = new AsyncLock()
 	#value: readonly string[] = [""]
 
 	public constructor(options?: TerminalTextArea.Options) {
@@ -116,57 +119,64 @@ export class TerminalTextArea implements IDisposable {
 	}
 
 	public async write(data: string): Promise<void> {
-		const { terminal } = this,
+		const { terminal, lock } = this,
 			{ buffer } = terminal,
 			data0 = Array.from(data)
-		for (let datum = data0.shift();
-			!isUndefined(datum);
-			datum = data0.shift()) {
-			const { active: { cursorX, cursorY } } = buffer
-			let lines = this.#value.length
-			switch (datum) {
-				case "\u007f":
-					if (cursorX > 0) {
+		await lock.acquire(TerminalTextArea.writeLock, async () => {
+			for (let datum = data0.shift();
+				!isUndefined(datum);
+				datum = data0.shift()) {
+				const { active: { cursorX, cursorY } } = buffer
+				let lines = this.#value.length
+				switch (datum) {
+					case "\u007f":
+						if (cursorX > 0) {
+							// eslint-disable-next-line no-await-in-loop
+							await writePromise(terminal, `\b${CSI}P`)
+						} else if (cursorY > 0) {
+							const length = this.#value[cursorY - 1]?.length ?? 0,
+								remain = this.#value[cursorY] ?? ""
+							// eslint-disable-next-line no-await-in-loop
+							await writePromise(
+								terminal,
+								`${ansi.cursor.up()}${ansi.cursor
+									.horizontalAbsolute(length + 1)}`,
+							)
+							--lines
+							data0.unshift(
+								...remain,
+								ansi.cursor.horizontalAbsolute(length + 1),
+							)
+						}
+						break
+					case "\r": {
+						const remain = this.#value[cursorY]?.slice(cursorX) ?? ""
 						// eslint-disable-next-line no-await-in-loop
-						await writePromise(terminal, `\b${CSI}P`)
-					} else if (cursorY > 0) {
-						const length = this.#value[cursorY - 1]?.length ?? 0,
-							remain = this.#value[cursorY] ?? ""
-						// eslint-disable-next-line no-await-in-loop
-						await writePromise(
-							terminal,
-							`${ansi.cursor.up()}${ansi.cursor
-								.horizontalAbsolute(length + 1)}`,
-						)
-						--lines
-						data0.unshift(...remain, ansi.cursor.horizontalAbsolute(length + 1))
+						await writelnPromise(terminal, `${ansi.erase.inLine()}\r`)
+						++lines
+						data0.unshift(...remain, ansi.cursor.horizontalAbsolute(1))
+						break
 					}
-					break
-				case "\r": {
-					const remain = this.#value[cursorY]?.slice(cursorX) ?? ""
-					// eslint-disable-next-line no-await-in-loop
-					await writelnPromise(terminal, `${ansi.erase.inLine()}\r`)
-					++lines
-					data0.unshift(...remain, ansi.cursor.horizontalAbsolute(1))
-					break
+					default:
+						// eslint-disable-next-line no-await-in-loop
+						await writePromise(terminal, datum)
+						break
 				}
-				default:
-					// eslint-disable-next-line no-await-in-loop
-					await writePromise(terminal, datum)
-					break
+				this.#sync(lines)
 			}
-			this.#sync(lines)
-		}
+		})
 	}
 
 	public async clear(): Promise<void> {
-		const { terminal } = this
-		await writePromise(
-			terminal,
-			// eslint-disable-next-line @typescript-eslint/no-magic-numbers
-			`${ansi.erase.display(2)}${ansi.cursor.position()}`,
-		)
-		this.#sync(TerminalTextArea.minRows)
+		const { terminal, lock } = this
+		await lock.acquire(TerminalTextArea.writeLock, async () => {
+			await writePromise(
+				terminal,
+				// eslint-disable-next-line @typescript-eslint/no-magic-numbers
+				`${ansi.erase.display(2)}${ansi.cursor.position()}`,
+			)
+			this.#sync(TerminalTextArea.minRows)
+		})
 	}
 
 	public dispose(): void {
@@ -174,8 +184,9 @@ export class TerminalTextArea implements IDisposable {
 	}
 
 	#sync(lines: number): void {
-		const { terminal } = this,
+		const { terminal, lock } = this,
 			{ buffer: { active } } = terminal
+		if (!lock.isBusy(TerminalTextArea.writeLock)) { throw new Error() }
 		this.#value =
 			deepFreeze(
 				range(lines).reduce<string[]>((left, right) => {
