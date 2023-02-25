@@ -38,13 +38,13 @@ export const PLATFORM = ((): Platform => {
 })()
 
 export class EventEmitterLite<A extends readonly unknown[]> {
-	#emitter: Promise<unknown> = Promise.resolve()
+	protected lock: Promise<unknown> = Promise.resolve()
 	readonly #listeners: ((...args: A) => unknown)[] = []
 
 	public async emit(...args: A): Promise<void> {
-		await this.#emitter
+		await this.lock
 		const emitted = this.#listeners.map(async list => { await list(...args) })
-		this.#emitter = Promise.allSettled(emitted)
+		this.lock = Promise.allSettled(emitted)
 		await Promise.all(emitted)
 	}
 

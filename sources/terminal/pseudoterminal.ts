@@ -143,7 +143,7 @@ abstract class PseudoPseudoterminal implements Pseudoterminal {
 export class TextPseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
-	#writer: Promise<unknown> = Promise.resolve()
+	protected lock: Promise<unknown> = Promise.resolve()
 	#text: string
 
 	public constructor(text = "") {
@@ -168,13 +168,13 @@ export class TextPseudoterminal
 		text: string,
 		terminals: readonly Terminal[] = this.terminals,
 	): Promise<void> {
-		await this.#writer
+		await this.lock
 		const writers = terminals.map(async terminal =>
 			Promise.resolve().then(() => {
 				terminal.clear()
 				terminal.write(text)
 			}))
-		this.#writer = Promise.allSettled(writers)
+		this.lock = Promise.allSettled(writers)
 		await Promise.all(writers)
 	}
 }
@@ -182,7 +182,7 @@ export class TextPseudoterminal
 export class ConsolePseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
-	#writer: Promise<unknown> = Promise.resolve()
+	protected lock: Promise<unknown> = Promise.resolve()
 
 	public constructor(protected readonly log: Log) {
 		super()
@@ -218,7 +218,7 @@ export class ConsolePseudoterminal
 	): Promise<void> {
 		const logStrings = events.map(event =>
 			processText(ConsolePseudoterminal.format(event)))
-		await this.#writer
+		await this.lock
 		const writers = terminals.map(async terminal =>
 			Promise.resolve()
 				.then(() => {
@@ -226,7 +226,7 @@ export class ConsolePseudoterminal
 						terminal.writeln(logString)
 					}
 				}))
-		this.#writer = Promise.allSettled(writers)
+		this.lock = Promise.allSettled(writers)
 		await Promise.all(writers)
 	}
 }
