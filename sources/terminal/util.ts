@@ -1,3 +1,4 @@
+import type { DeepReadonly, DeepRequired } from "ts-essentials"
 import {
 	type IDisposable,
 	type IFunctionIdentifier,
@@ -11,25 +12,31 @@ import {
 	rangeCodePoint,
 	replaceAllRegex,
 } from "sources/utils/util"
-import { constant, isUndefined, padEnd, range, size } from "lodash"
+import { isUndefined, padEnd, range, size } from "lodash"
 import AsyncLock from "async-lock"
 import ansi from "ansi-escape-sequences"
 import { codePoint } from "sources/utils/types"
+import { Set as valueSet } from "immutable"
 
+type IFunctionIdentifier0 = DeepReadonly<DeepRequired<IFunctionIdentifier>>
 export const ESCAPE_SEQUENCE_INTRODUCER = "\u001b"
 const ESC = ESCAPE_SEQUENCE_INTRODUCER
 export const CONTROL_SEQUENCE_INTRODUCER = `${ESC}[`
 const CSI = CONTROL_SEQUENCE_INTRODUCER
 export const
-	FUNCTION_IDENTIFIER_PREFIXES =
-		rangeCodePoint(codePoint("\x3c"), codePoint("\x3f")),
-	FUNCTION_IDENTIFIER_INTERMEDIATES =
-		rangeCodePoint(codePoint("\x20"), codePoint("\x2f")),
+	FUNCTION_IDENTIFIER_PREFIXES = deepFreeze([
+		"",
+		...rangeCodePoint(codePoint("\x3c"), codePoint("\x3f")),
+	] as const),
+	FUNCTION_IDENTIFIER_INTERMEDIATES = deepFreeze([
+		"",
+		...rangeCodePoint(codePoint("\x20"), codePoint("\x2f")),
+	] as const),
 	FUNCTION_IDENTIFIER_FINAL = deepFreeze({
 		"long": rangeCodePoint(codePoint("\x30"), codePoint("\x7e")),
 		"short": rangeCodePoint(codePoint("\x40"), codePoint("\x7e")),
 	} as const),
-	ALL_CSI_IDENTIFIERS = deepFreeze(cartesianProduct(
+	ALL_CSI_IDENTIFIERS = valueSet<IFunctionIdentifier0>(cartesianProduct(
 		FUNCTION_IDENTIFIER_PREFIXES,
 		FUNCTION_IDENTIFIER_INTERMEDIATES,
 		FUNCTION_IDENTIFIER_INTERMEDIATES,
@@ -38,18 +45,19 @@ export const
 		final,
 		intermediates: `${intermediates0}${intermediates1}`,
 		prefix,
-	} as const satisfies IFunctionIdentifier))),
+	} as const))),
 	ALL_DCS_IDENTIFIERS = ALL_CSI_IDENTIFIERS,
-	ALL_ESC_IDENTIFIERS = deepFreeze(cartesianProduct(
+	ALL_ESC_IDENTIFIERS = valueSet<IFunctionIdentifier0>(cartesianProduct(
 		FUNCTION_IDENTIFIER_INTERMEDIATES,
 		FUNCTION_IDENTIFIER_INTERMEDIATES,
 		FUNCTION_IDENTIFIER_FINAL.long,
 	).map(([intermediates0, intermediates1, final]) => ({
 		final,
 		intermediates: `${intermediates0}${intermediates1}`,
-	} as const satisfies IFunctionIdentifier))),
+		prefix: "",
+	} as const))),
 	// eslint-disable-next-line @typescript-eslint/no-magic-numbers
-	MOST_OSC_IDENTIFIERS = range(1000)
+	MOST_OSC_IDENTIFIERS = valueSet(range(2022))
 
 export function processText(text: string): string {
 	return text
@@ -76,8 +84,80 @@ export class TerminalTextArea implements IDisposable {
 	protected static readonly minCols = TerminalTextArea.margin
 	protected static readonly minRows = TerminalTextArea.margin
 	protected static readonly writeLock = "write"
+	// See https://xtermjs.org/docs/api/vtfeatures/
+	protected static readonly allowedIdentifiers = deepFreeze({
+		csi: valueSet<IFunctionIdentifier0>([
+			{ "final": "@", intermediates: "", prefix: "" },
+			{ "final": "A", intermediates: "", prefix: "" },
+			{ "final": "B", intermediates: "", prefix: "" },
+			{ "final": "C", intermediates: "", prefix: "" },
+			{ "final": "D", intermediates: "", prefix: "" },
+			{ "final": "E", intermediates: "", prefix: "" },
+			{ "final": "F", intermediates: "", prefix: "" },
+			{ "final": "G", intermediates: "", prefix: "" },
+			{ "final": "H", intermediates: "", prefix: "" },
+			{ "final": "I", intermediates: "", prefix: "" },
+			{ "final": "J", intermediates: "", prefix: "" },
+			{ "final": "J", intermediates: "", prefix: "?" },
+			{ "final": "K", intermediates: "", prefix: "" },
+			{ "final": "K", intermediates: "", prefix: "?" },
+			{ "final": "L", intermediates: "", prefix: "" },
+			{ "final": "M", intermediates: "", prefix: "" },
+			{ "final": "P", intermediates: "", prefix: "" },
+			{ "final": "S", intermediates: "", prefix: "" },
+			{ "final": "T", intermediates: "", prefix: "" },
+			{ "final": "X", intermediates: "", prefix: "" },
+			{ "final": "Z", intermediates: "", prefix: "" },
+			{ "final": "`", intermediates: "", prefix: "" },
+			{ "final": "a", intermediates: "", prefix: "" },
+			{ "final": "b", intermediates: "", prefix: "" },
+			{ "final": "d", intermediates: "", prefix: "" },
+			{ "final": "e", intermediates: "", prefix: "" },
+			{ "final": "f", intermediates: "", prefix: "" },
+			{ "final": "g", intermediates: "", prefix: "" },
+			{ "final": "h", intermediates: "", prefix: "" },
+			{ "final": "h", intermediates: "", prefix: "?" },
+			{ "final": "l", intermediates: "", prefix: "" },
+			{ "final": "l", intermediates: "", prefix: "?" },
+			{ "final": "m", intermediates: "", prefix: "" },
+			{ "final": "n", intermediates: "", prefix: "" },
+			{ "final": "m", intermediates: "", prefix: "?" },
+			{ "final": "p", intermediates: "$", prefix: "" },
+			{ "final": "p", intermediates: "", prefix: "!" },
+			{ "final": "q", intermediates: "\"", prefix: "" },
+			{ "final": "q", intermediates: "SP", prefix: "" },
+			{ "final": "r", intermediates: "", prefix: "" },
+			{ "final": "s", intermediates: "", prefix: "" },
+			{ "final": "u", intermediates: "", prefix: "" },
+		]),
+		dcs: valueSet<IFunctionIdentifier0>([
+			{ "final": "q", intermediates: "", prefix: "" },
+			{ "final": "|", intermediates: "\\", prefix: "" },
+			{ "final": "q", intermediates: "", prefix: "+" },
+			{ "final": "p", intermediates: "", prefix: "+" },
+			{ "final": "q", intermediates: "", prefix: "$" },
+		]),
+		esc: valueSet<IFunctionIdentifier0>([
+			{ "final": "7", intermediates: "", prefix: "" },
+			{ "final": "8", intermediates: "", prefix: "" },
+			{ "final": "D", intermediates: "", prefix: "" },
+			{ "final": "E", intermediates: "", prefix: "" },
+			{ "final": "H", intermediates: "", prefix: "" },
+			{ "final": "M", intermediates: "", prefix: "" },
+			{ "final": "P", intermediates: "", prefix: "" },
+			{ "final": "[", intermediates: "", prefix: "" },
+			{ "final": "\\", intermediates: "", prefix: "" },
+			{ "final": "]", intermediates: "", prefix: "" },
+			{ "final": "^", intermediates: "", prefix: "" },
+			{ "final": "_", intermediates: "", prefix: "" },
+		]),
+		// eslint-disable-next-line @typescript-eslint/no-magic-numbers
+		osc: valueSet<number>([0, 1, 2, 4, 8, 10, 11, 12, 104, 110, 111, 112]),
+	})
+
 	public readonly terminal
 	protected readonly lock = new AsyncLock()
+	protected sequence = false
 	#value: readonly string[] = [""]
 
 	public constructor(options?: TerminalTextArea.Options) {
@@ -89,18 +169,40 @@ export class TerminalTextArea implements IDisposable {
 			} satisfies TerminalTextArea.PredefinedOptions,
 		})
 		const { terminal: { parser } } = this,
-			handler = constant(true)
+			handler = ((): (pass: boolean) => () => boolean => {
+				const
+					handler0 = (pass: boolean) => (): boolean => {
+						this.sequence = false
+						return pass
+					},
+					trueHandler = handler0(true),
+					falseHandler = handler0(false)
+				return (cancel: boolean): () => boolean =>
+					cancel ? trueHandler : falseHandler
+			})()
 		for (const id of ALL_CSI_IDENTIFIERS) {
-			parser.registerCsiHandler(id, handler)
+			parser.registerCsiHandler(
+				id,
+				handler(TerminalTextArea.allowedIdentifiers.csi.has(id)),
+			)
 		}
 		for (const id of ALL_DCS_IDENTIFIERS) {
-			parser.registerDcsHandler(id, handler)
+			parser.registerDcsHandler(
+				id,
+				handler(TerminalTextArea.allowedIdentifiers.dcs.has(id)),
+			)
 		}
 		for (const id of ALL_ESC_IDENTIFIERS) {
-			parser.registerEscHandler(id, handler)
+			parser.registerEscHandler(
+				id,
+				handler(TerminalTextArea.allowedIdentifiers.esc.has(id)),
+			)
 		}
 		for (const id of MOST_OSC_IDENTIFIERS) {
-			parser.registerOscHandler(id, handler)
+			parser.registerOscHandler(
+				id,
+				handler(TerminalTextArea.allowedIdentifiers.osc.has(id)),
+			)
 		}
 	}
 
@@ -126,9 +228,19 @@ export class TerminalTextArea implements IDisposable {
 			for (let datum = data0.shift();
 				!isUndefined(datum);
 				datum = data0.shift()) {
+				if (this.sequence) {
+					// eslint-disable-next-line no-await-in-loop
+					await writePromise(terminal, datum)
+					continue
+				}
 				const { active: { cursorX, cursorY } } = buffer,
 					lines = this.#value.map(size)
 				switch (datum) {
+					case ESC:
+						this.sequence = true
+						// eslint-disable-next-line no-await-in-loop
+						await writePromise(terminal, datum)
+						break
 					case "\u007f":
 						if (cursorX > 0) {
 							// eslint-disable-next-line no-await-in-loop
@@ -160,7 +272,7 @@ export class TerminalTextArea implements IDisposable {
 					}
 					default:
 						// eslint-disable-next-line no-await-in-loop
-						await writePromise(terminal, datum)
+						await writePromise(terminal, `${CSI}@${datum}`)
 						++lines[cursorY]
 						break
 				}
