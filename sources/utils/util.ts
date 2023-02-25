@@ -6,7 +6,8 @@ import {
 	type TypeofMapE,
 	genericTypeofGuardE,
 } from "./typeof"
-import { escapeRegExp, isEmpty } from "lodash"
+import { escapeRegExp, isEmpty, noop } from "lodash"
+import AsyncLock from "async-lock"
 import type { ChildProcess } from "node:child_process"
 import type { Writable } from "node:stream"
 import { getSerialize } from "json-stringify-safe"
@@ -38,14 +39,19 @@ export const PLATFORM = ((): Platform => {
 })()
 
 export class EventEmitterLite<A extends readonly unknown[]> {
-	protected lock: Promise<unknown> = Promise.resolve()
+	protected static readonly emitLock = "emit"
+	protected readonly lock = new AsyncLock()
 	readonly #listeners: ((...args: A) => unknown)[] = []
 
 	public async emit(...args: A): Promise<void> {
-		await this.lock
-		const emitted = this.#listeners.map(async list => { await list(...args) })
-		this.lock = Promise.allSettled(emitted)
-		await Promise.all(emitted)
+		return new Promise((resolve, reject) => {
+			this.lock.acquire(EventEmitterLite.emitLock, async () => {
+				const emitted = this.#listeners
+					.map(async list => { await list(...args) })
+				resolve(Promise.all(emitted).then(noop))
+				await Promise.allSettled(emitted)
+			}).catch(reject)
+		})
 	}
 
 	public listen(listener: (...args: A) => unknown): () => void {

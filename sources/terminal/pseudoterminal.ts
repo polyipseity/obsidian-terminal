@@ -27,6 +27,7 @@ import {
 	writePromise,
 } from "../utils/util"
 import { notice2, printError } from "sources/utils/obsidian"
+import AsyncLock from "async-lock"
 import type { AsyncOrSync } from "ts-essentials"
 import type { FileResultNoFd } from "tmp"
 import type { Log } from "sources/patches"
@@ -38,6 +39,7 @@ import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
 import ansi from "ansi-escape-sequences"
 import { dynamicRequire } from "../imports"
+import { noop } from "lodash"
 import unixPseudoterminalPy from "./unix_pseudoterminal.py"
 import win32ResizerPy from "./win32_resizer.py"
 
@@ -143,7 +145,8 @@ abstract class PseudoPseudoterminal implements Pseudoterminal {
 export class TextPseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
-	protected lock: Promise<unknown> = Promise.resolve()
+	protected static readonly writeLock = "write"
+	protected readonly lock = new AsyncLock()
 	#text: string
 
 	public constructor(text = "") {
@@ -168,21 +171,25 @@ export class TextPseudoterminal
 		text: string,
 		terminals: readonly Terminal[] = this.terminals,
 	): Promise<void> {
-		await this.lock
-		const writers = terminals.map(async terminal =>
-			Promise.resolve().then(() => {
-				terminal.clear()
-				terminal.write(text)
-			}))
-		this.lock = Promise.allSettled(writers)
-		await Promise.all(writers)
+		return new Promise((resolve, reject) => {
+			this.lock.acquire(TextPseudoterminal.writeLock, async () => {
+				const writers = terminals.map(async terminal =>
+					Promise.resolve().then(() => {
+						terminal.clear()
+						terminal.write(text)
+					}))
+				resolve(Promise.all(writers).then(noop))
+				await Promise.allSettled(writers)
+			}).catch(reject)
+		})
 	}
 }
 
 export class ConsolePseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
-	protected lock: Promise<unknown> = Promise.resolve()
+	protected static readonly writeLock = "write"
+	protected readonly lock = new AsyncLock()
 
 	public constructor(protected readonly log: Log) {
 		super()
@@ -218,16 +225,19 @@ export class ConsolePseudoterminal
 	): Promise<void> {
 		const logStrings = events.map(event =>
 			processText(ConsolePseudoterminal.format(event)))
-		await this.lock
-		const writers = terminals.map(async terminal =>
-			Promise.resolve()
-				.then(() => {
-					for (const logString of logStrings) {
-						terminal.writeln(logString)
-					}
-				}))
-		this.lock = Promise.allSettled(writers)
-		await Promise.all(writers)
+		return new Promise((resolve, reject) => {
+			this.lock.acquire(ConsolePseudoterminal.writeLock, async () => {
+				const writers = terminals.map(async terminal =>
+					Promise.resolve()
+						.then(() => {
+							for (const logString of logStrings) {
+								terminal.writeln(logString)
+							}
+						}))
+				resolve(Promise.all(writers).then(noop))
+				await Promise.allSettled(writers)
+			}).catch(reject)
+		})
 	}
 }
 
