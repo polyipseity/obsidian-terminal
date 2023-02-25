@@ -26,15 +26,15 @@ const CSI = CONTROL_SEQUENCE_INTRODUCER
 export const
 	FUNCTION_IDENTIFIER_PREFIXES = deepFreeze([
 		"",
-		...rangeCodePoint(codePoint("\x3c"), codePoint("\x3f")),
+		...rangeCodePoint(codePoint("\x3c"), codePoint("\x40")),
 	] as const),
 	FUNCTION_IDENTIFIER_INTERMEDIATES = deepFreeze([
 		"",
-		...rangeCodePoint(codePoint("\x20"), codePoint("\x2f")),
+		...rangeCodePoint(codePoint("\x20"), codePoint("\x30")),
 	] as const),
 	FUNCTION_IDENTIFIER_FINAL = deepFreeze({
-		"long": rangeCodePoint(codePoint("\x30"), codePoint("\x7e")),
-		"short": rangeCodePoint(codePoint("\x40"), codePoint("\x7e")),
+		"long": rangeCodePoint(codePoint("\x30"), codePoint("\x7f")),
+		"short": rangeCodePoint(codePoint("\x40"), codePoint("\x7f")),
 	} as const),
 	ALL_CSI_IDENTIFIERS = valueSet<IFunctionIdentifier0>(cartesianProduct(
 		FUNCTION_IDENTIFIER_PREFIXES,
