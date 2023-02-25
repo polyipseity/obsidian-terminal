@@ -169,11 +169,11 @@ export class TerminalTextArea implements IDisposable {
 			} satisfies TerminalTextArea.PredefinedOptions,
 		})
 		const { terminal: { parser } } = this,
-			handler = ((): (pass: boolean) => () => boolean => {
+			handler = ((): (handled: boolean) => () => boolean => {
 				const
-					handler0 = (pass: boolean) => (): boolean => {
+					handler0 = (handled: boolean) => (): boolean => {
 						this.sequence = false
-						return pass
+						return handled
 					},
 					trueHandler = handler0(true),
 					falseHandler = handler0(false)
