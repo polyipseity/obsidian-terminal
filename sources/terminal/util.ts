@@ -144,7 +144,7 @@ export class TerminalTextArea implements IDisposable {
 	}
 }
 export namespace TerminalTextArea {
-	export type InitialOptions = Readonly<TerminalOptions & TerminalOptionsInit>
+	type InitialOptions = Readonly<TerminalOptions & TerminalOptionsInit>
 	export type PredefinedOptions = {
 		readonly [K in ("cols" | "rows")]: InitialOptions[K]
 	}
