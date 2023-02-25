@@ -1,10 +1,5 @@
 import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
-import {
-	Functions,
-	deepFreeze,
-	replaceAllRegex,
-	spawnPromise,
-} from "../utils/util"
+import { Functions, deepFreeze, spawnPromise } from "../utils/util"
 import {
 	type ITerminalAddon,
 	type ITerminalInitOnlyOptions,
@@ -28,12 +23,6 @@ import { launderUnchecked } from "sources/utils/types"
 const
 	childProcess =
 		dynamicRequire<typeof import("node:child_process")>("node:child_process")
-
-export function processText(text: string): string {
-	return text
-		.replace(replaceAllRegex("\r\n"), "\n")
-		.replace(replaceAllRegex("\n"), "\r\n")
-}
 
 export const SUPPORTS_EXTERNAL_TERMINAL_EMULATOR =
 	importable("node:child_process")

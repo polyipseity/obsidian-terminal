@@ -4,14 +4,20 @@ import {
 	type ITerminalOptions as TerminalOptions,
 	type ITerminalInitOnlyOptions as TerminalOptionsInit,
 } from "xterm"
+import { deepFreeze, replaceAllRegex } from "sources/utils/util"
 import ansi from "ansi-escape-sequences"
-import { deepFreeze } from "sources/utils/util"
 import { range } from "lodash"
 
 export const ESCAPE_SEQUENCE_INTRODUCER = "\u001b"
 const ESC = ESCAPE_SEQUENCE_INTRODUCER
 export const CONTROL_SEQUENCE_INTRODUCER = `${ESC}[`
 const CSI = CONTROL_SEQUENCE_INTRODUCER
+
+export function processText(text: string): string {
+	return text
+		.replace(replaceAllRegex("\r\n"), "\n")
+		.replace(replaceAllRegex("\n"), "\r\n")
+}
 
 export async function writePromise(
 	self: Terminal,

@@ -8,10 +8,10 @@ import {
 	UNDEFINED,
 	UNHANDLED_REJECTION_MESSAGE,
 } from "../magic"
-import { DisposerAddon, processText } from "./emulator"
 import {
 	ESCAPE_SEQUENCE_INTRODUCER as ESC,
 	TerminalTextArea,
+	processText,
 	writePromise as tWritePromise,
 	writelnPromise as tWritelnPromise,
 } from "./util"
@@ -37,6 +37,7 @@ import {
 } from "../utils/util"
 import { notice2, printError } from "sources/utils/obsidian"
 import type { AsyncOrSync } from "ts-essentials"
+import { DisposerAddon } from "./emulator"
 import type { FileResultNoFd } from "tmp"
 import type { Log } from "sources/patches"
 import type {
