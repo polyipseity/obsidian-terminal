@@ -19,6 +19,7 @@ __Improvements__
   - Add ARIA labels. (`c747a490a158c7891effb24642d790ca58699de9`)
 - Improve working directory handling to reduce confusion like in GH#12. (`55b917052b371eb566976af7d13b6345c64554ef`, `985b6100ef14e9f0933de0859dd0e8872e217490`)
 - Add double confirm dialog hint. (`0f043376fb6f2528b826066128666baa855c774d`)
+- Make terminal resizing extremely responsive. (`73a7836522d56e92b064a76a09bf18fc87d7ec42`)
 
 __Fixes__
 - Fix some translation strings. (`88cbcf603ff0429d26f1616b7af67bf4cf27f3f9`, `2a4a4cfe45f4ffd787feb134ef0545af7a832fb5`)
