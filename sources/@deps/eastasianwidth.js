@@ -25,8 +25,8 @@ import eaw from "eastasianwidth"
 
 eaw.slice = function slice(text, start, end) {
 	const textLen = eaw.length(text)
-	let start0 = start ? start : 0,
-		end0 = end ? end : 1
+	let start0 = start ?? 0,
+		end0 = end ?? 1
 	if (start0 < 0) {
 		start0 = textLen + start0
 	}
