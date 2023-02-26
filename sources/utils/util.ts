@@ -270,7 +270,7 @@ export function typedKeys<T extends readonly (number | string | symbol)[]>() {
 	return <O extends (keyof O extends T[number] ? {
 		readonly [_ in T[number]]: unknown
 	} : never)>(obj: O): Readonly<T> =>
-		Object.freeze(Object.keys(obj)) as T
+		deepFreeze(Object.keys(obj)) as T
 }
 
 export function typedStructuredClone<T>(

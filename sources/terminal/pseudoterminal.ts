@@ -13,6 +13,7 @@ import {
 	PLATFORM,
 	anyToError,
 	clear,
+	deepFreeze,
 	inSet,
 	isNonNullish,
 	isNullish,
@@ -545,7 +546,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 }
 
 export namespace Pseudoterminal {
-	export const PLATFORM_PSEUDOTERMINALS = Object.freeze({
+	export const PLATFORM_PSEUDOTERMINALS = deepFreeze({
 		darwin: UnixPseudoterminal,
 		linux: UnixPseudoterminal,
 		win32: WindowsPseudoterminal,

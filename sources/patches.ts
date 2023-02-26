@@ -1,4 +1,4 @@
-import { EventEmitterLite, Functions } from "./utils/util"
+import { EventEmitterLite, Functions, deepFreeze } from "./utils/util"
 import type { Workspace } from "obsidian"
 import { around } from "monkey-around"
 import { correctType } from "./utils/types"
@@ -22,7 +22,7 @@ export namespace Log {
 		}
 	)
 	export namespace Event {
-		export const TYPES = Object.freeze([
+		export const TYPES = deepFreeze([
 			"info",
 			"error",
 			"warn",

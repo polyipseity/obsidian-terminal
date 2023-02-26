@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-import { inSet, isNullish, typedKeys } from "./utils/util"
+import { deepFreeze, inSet, isNullish, typedKeys } from "./utils/util"
 
 const
-	BUNDLE = Object.freeze({
+	BUNDLE = deepFreeze({
 		tmp: (): unknown => require("tmp"),
 	} as const),
 	MODULES = typedKeys<readonly ["tmp"]>()(BUNDLE)
