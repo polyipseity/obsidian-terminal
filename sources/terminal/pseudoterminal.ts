@@ -259,11 +259,11 @@ export class ConsolePseudoterminal
 						}
 					})()
 				}),
-				terminal.onKey(async ({ domEvent }) => {
+				terminal.onKey(({ domEvent }) => {
 					if (domEvent.key === "Enter" && isEmpty(getKeyModifiers(domEvent))) {
-						block = true
-						await this.eval()
+						this.eval().catch(logError)
 						consumeEvent(domEvent)
+						block = true
 					}
 				}),
 			].map(disposer0 => () => { disposer0.dispose() }),
@@ -272,13 +272,18 @@ export class ConsolePseudoterminal
 	}
 
 	protected async eval(): Promise<void> {
-		const value = this.buffer.values.join("")
-		await this.buffer.clear()
-		await this.syncBuffer()
-		console.log(value)
+		const { buffer, lock, terminals } = this,
+			code =
+				await lock.acquire(ConsolePseudoterminal.syncLock, async () => {
+					const code0 = buffer.values.join("")
+					await buffer.clear()
+					await this.syncBuffer("sync", terminals, false)
+					return code0
+				})
+		console.log(code)
 		let ret: unknown = null
 		try {
-			ret = self.eval(value)
+			ret = self.eval(code)
 		} catch (error) {
 			console.error(error)
 			return
