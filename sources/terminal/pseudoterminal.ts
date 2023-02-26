@@ -185,9 +185,10 @@ export class TextPseudoterminal
 		text: string,
 		terminals: readonly Terminal[] = this.terminals,
 	): Promise<void> {
+		const terminals0 = [...terminals]
 		return new Promise((resolve, reject) => {
 			this.lock.acquire(TextPseudoterminal.syncLock, async () => {
-				const writers = terminals.map(async terminal => {
+				const writers = terminals0.map(async terminal => {
 					terminal.clear()
 					await tWritePromise(terminal, text)
 				})
@@ -296,7 +297,8 @@ export class ConsolePseudoterminal
 		terminals: readonly Terminal[] = this.terminals,
 		lock = true,
 	): Promise<void> {
-		const { values } = this.buffer,
+		const terminals0 = [...terminals],
+			{ values } = this.buffer,
 			processed = type === "sync"
 				? [processText(values[0]), processText(values[1])] as const
 				: ["", ""] as const
@@ -306,7 +308,7 @@ export class ConsolePseudoterminal
 				ConsolePseudoterminal.syncLock,
 				lock,
 				async () => {
-					const writers = terminals.map(async terminal => tWritePromise(
+					const writers = terminals0.map(async terminal => tWritePromise(
 						terminal,
 						`${ESC}8${ansi.erase.display()}${processed
 							.join("")}${ESC}8${processed[0]}`,
@@ -323,15 +325,16 @@ export class ConsolePseudoterminal
 		terminals: readonly Terminal[] = this.terminals,
 		lock = true,
 	): Promise<void> {
-		const lines = events.map(event =>
-			processText(ConsolePseudoterminal.format(event)))
+		const terminals0 = [...terminals],
+			lines = events.map(event =>
+				processText(ConsolePseudoterminal.format(event)))
 		await acquireConditionally(
 			this.lock,
 			ConsolePseudoterminal.syncLock,
 			lock,
 			async () => {
-				await this.syncBuffer("clear", terminals, false)
-				await Promise.allSettled(terminals.map(async terminal => {
+				await this.syncBuffer("clear", terminals0, false)
+				await Promise.allSettled(terminals0.map(async terminal => {
 					await tWritePromise(terminal, `${ESC}8`)
 					for (const line of lines) {
 						// eslint-disable-next-line no-await-in-loop
@@ -339,7 +342,7 @@ export class ConsolePseudoterminal
 					}
 					await tWritePromise(terminal, `${ESC}7`)
 				}))
-				await this.syncBuffer("sync", terminals, false)
+				await this.syncBuffer("sync", terminals0, false)
 			},
 		)
 	}
