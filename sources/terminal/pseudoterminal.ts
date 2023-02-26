@@ -209,8 +209,8 @@ export class ConsolePseudoterminal
 	public constructor(protected readonly log: Log) {
 		super()
 		this.onExit
-			.finally(() => { this.buffer.dispose() })
 			.finally(log.logger.listen(async event => this.write([event])))
+			.finally(() => { this.buffer.dispose() })
 	}
 
 	// eslint-disable-next-line consistent-return
@@ -232,8 +232,6 @@ export class ConsolePseudoterminal
 	public override async pipe(terminal: Terminal): Promise<void> {
 		await super.pipe(terminal)
 		terminal.clear()
-		await tWritePromise(terminal, `${ESC}7`)
-		await this.write(this.log.history, [terminal])
 		let block = false
 		const disposer = new Functions(
 			{ async: false, settled: true },
@@ -270,6 +268,7 @@ export class ConsolePseudoterminal
 			].map(disposer0 => () => { disposer0.dispose() }),
 		)
 		this.onExit.finally(() => { disposer.call() })
+		await this.write(this.log.history, [terminal])
 	}
 
 	protected async eval(): Promise<void> {
@@ -335,7 +334,6 @@ export class ConsolePseudoterminal
 			async () => {
 				await this.syncBuffer("clear", terminals0, false)
 				await Promise.allSettled(terminals0.map(async terminal => {
-					await tWritePromise(terminal, `${ESC}8`)
 					for (const line of lines) {
 						// eslint-disable-next-line no-await-in-loop
 						await tWritelnPromise(terminal, line)
