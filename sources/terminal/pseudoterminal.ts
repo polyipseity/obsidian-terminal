@@ -333,8 +333,10 @@ export class ConsolePseudoterminal
 				await this.syncBuffer("clear", terminals, false)
 				await Promise.allSettled(terminals.map(async terminal => {
 					await tWritePromise(terminal, `${ESC}8`)
-					await Promise.all(lines.map(async line =>
-						tWritelnPromise(terminal, line)))
+					for (const line of lines) {
+						// eslint-disable-next-line no-await-in-loop
+						await tWritelnPromise(terminal, line)
+					}
 					await tWritePromise(terminal, `${ESC}7`)
 				}))
 				await this.syncBuffer("sync", terminals, false)
