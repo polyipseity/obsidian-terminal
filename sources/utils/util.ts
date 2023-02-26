@@ -6,7 +6,7 @@ import {
 	type TypeofMapE,
 	genericTypeofGuardE,
 } from "./typeof"
-import { escapeRegExp, isEmpty, noop } from "lodash"
+import { escapeRegExp, isEmpty, isUndefined, noop } from "lodash"
 import AsyncLock from "async-lock"
 import type { ChildProcess } from "node:child_process"
 import type { Writable } from "node:stream"
@@ -315,11 +315,6 @@ export function isNullish<T>(value: Contains<T, null | undefined
 	> extends true ? T & null | T & undefined : never {
 	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 	return value === null || typeof value === "undefined"
-}
-
-export function isUndefined<T>(value: undefined extends T
-	? T : never): value is undefined extends T ? undefined : never {
-	return typeof value === "undefined"
 }
 
 export function logError(thing: unknown): void {

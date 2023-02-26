@@ -21,7 +21,6 @@ import {
 	consumeEvent,
 	createChildElement,
 	deepFreeze,
-	isUndefined,
 	randomNotIn,
 	removeAt,
 	swap,
@@ -46,13 +45,13 @@ import {
 	resetButton,
 	setTextToEnum,
 } from "./settings"
+import { identity, isUndefined } from "lodash"
 import type { DeepWritable } from "ts-essentials"
 import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
 import { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "sources/main"
 import { dynamicRequire } from "sources/imports"
-import { identity } from "lodash"
 
 const
 	childProcess =
