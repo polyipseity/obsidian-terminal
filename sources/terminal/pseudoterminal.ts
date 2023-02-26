@@ -46,7 +46,7 @@ import type { Log } from "sources/patches"
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
 } from "node:child_process"
-import type { Terminal } from "xterm"
+import { Terminal } from "xterm"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
 import ansi from "ansi-escape-sequences"
@@ -316,52 +316,61 @@ export class ConsolePseudoterminal
 				lock,
 				async () => {
 					const writers = terminals0.map(async terminal => {
-						const { buffer: { active }, rows } = terminal
-						let
+						const { buffer: { active }, cols, rows, options } = terminal,
 							start = this.positions.get(terminal) ?? deepFreeze({
 								xx: active.cursorX,
 								yy: active.cursorY,
 							}),
-							scrollback = start.yy >= rows - 1
-						const disposer = terminal.onLineFeed(() => {
-							if (scrollback) {
-								const newYY = start.yy - 1
-								this.positions.set(terminal, start = deepFreeze({
-									xx: newYY >= 0 ? start.xx : 0,
-									yy: newYY >= 0 ? newYY : 0,
-								}))
-							}
-							scrollback = active.cursorY >= rows - 1
-						})
-						try {
-							await tWritePromise(
-								terminal,
-								`${ansi.cursor.position(1 + start.yy, 1 + start.xx)}${ansi.erase
-									.display()}${processed[0]}`,
-							)
-							let { cursorX, cursorY } = active,
-								scrollback0 = cursorY >= rows - 1
-							const disposer0 = terminal.onLineFeed(() => {
-								if (scrollback0) {
-									const newCursorY = cursorY - 1
-									if (newCursorY >= 0) {
-										cursorY = newCursorY
-									} else {
-										cursorX = 0
+							ret = await (async (): Promise<{
+								readonly cursorX: number
+								readonly cursorY: number
+							}> => {
+								const
+									simulation = new Terminal({
+										...options,
+										cols,
+										rows,
+									}),
+									{ buffer: { active: active0 } } = simulation
+								let start0 = start,
+									scrollback = start0.yy >= rows - 1
+								simulation.onLineFeed(() => {
+									if (scrollback) {
+										const newYY = start0.yy - 1
+										this.positions.set(terminal, start0 = deepFreeze({
+											xx: newYY >= 0 ? start0.xx : 0,
+											yy: newYY >= 0 ? newYY : 0,
+										}))
 									}
-								}
-								scrollback0 = active.cursorY >= rows - 1
-							})
-							try {
-								await tWritePromise(terminal, `${processed[1]}`)
-								await tWritePromise(terminal, ansi.cursor
-									.position(1 + cursorY, 1 + cursorX))
-							} finally {
-								disposer0.dispose()
-							}
-						} finally {
-							disposer.dispose()
-						}
+									scrollback = active0.cursorY >= rows - 1
+								})
+								await tWritePromise(
+									simulation,
+									`${ansi.cursor.position(1 + start0.yy, 1 + start0.xx)}${ansi
+										.erase.display()}${processed[0]}`,
+								)
+								let { cursorX, cursorY } = active0,
+									scrollback0 = cursorY >= rows - 1
+								simulation.onLineFeed(() => {
+									if (scrollback0) {
+										const newCursorY = cursorY - 1
+										if (newCursorY >= 0) {
+											cursorY = newCursorY
+										} else {
+											cursorX = 0
+										}
+									}
+									scrollback0 = active0.cursorY >= rows - 1
+								})
+								await tWritePromise(simulation, `${processed[1]}`)
+								return deepFreeze({ cursorX, cursorY })
+							})()
+						await tWritePromise(
+							terminal,
+							`${ansi.cursor.position(1 + start.yy, 1 + start.xx)}${ansi.erase
+								.display()}${processed.join("")}${ansi.cursor.position(1 +
+									ret.cursorY, 1 + ret.cursorX)}`,
+						)
 					})
 					resolve(Promise.all(writers).then(noop))
 					await Promise.allSettled(writers)
