@@ -1,7 +1,5 @@
 import type { DeepReadonly, DeepRequired } from "ts-essentials"
 import {
-	type IBufferCell,
-	type IBufferLine,
 	type IDisposable,
 	type IFunctionIdentifier,
 	Terminal,
@@ -72,21 +70,6 @@ export function normalizeText(text: string): string {
 	return text
 		.replace(replaceAllRegex(NORMALIZED_LINE_FEED), "\n")
 		.replace(replaceAllRegex("\n"), NORMALIZED_LINE_FEED)
-}
-
-export function sliceBufferLine(
-	line: IBufferLine,
-	start = 0,
-	end = Infinity,
-	cell?: IBufferCell,
-): string {
-	let ret = ""
-	for (let xx = start, cell0 = line.getCell(xx, cell);
-		cell0 && xx < end;
-		cell0 = line.getCell(xx += cell0.getWidth(), cell)) {
-		ret += cell0.getChars()
-	}
-	return ret
 }
 
 export async function writePromise(
@@ -278,9 +261,8 @@ export class TerminalTextArea implements IDisposable {
 						break
 					}
 					case "\r": {
-						const rest = line
-							? sliceBufferLine(line, cursorX, lineWidth, this.#cell)
-							: ""
+						const rest =
+							line?.translateToString(false, cursorX, lineWidth) ?? ""
 						terminal.resize(terminal.cols, terminal.rows + 1)
 						// eslint-disable-next-line no-await-in-loop
 						await writePromise(
@@ -310,7 +292,7 @@ export class TerminalTextArea implements IDisposable {
 								this.#widths[cursorY] -= width
 							} else if (cursorY > 0) {
 								const
-									rest = sliceBufferLine(line, 0, lineWidth, this.#cell),
+									rest = line.translateToString(false, 0, lineWidth),
 									prev = this.#widths[cursorY - 1] ?? 0
 								// eslint-disable-next-line no-await-in-loop
 								await writePromise(
@@ -384,9 +366,8 @@ export class TerminalTextArea implements IDisposable {
 						cell = line.getCell(cursorX += direction, this.#cell)) {
 						// NOOP
 					}
-					values[0].push(sliceBufferLine(line, 0, cursorX, this.#cell))
-					values[1]
-						.push(sliceBufferLine(line, cursorX, width, this.#cell))
+					values[0].push(line.translateToString(false, 0, cursorX))
+					values[1].push(line.translateToString(false, cursorX, width))
 					// eslint-disable-next-line no-await-in-loop
 					await writePromise(
 						terminal,
@@ -394,7 +375,7 @@ export class TerminalTextArea implements IDisposable {
 					)
 				} else {
 					values[yy < cursorY ? 0 : 1]
-						.push(sliceBufferLine(line, 0, width, this.#cell))
+						.push(line.translateToString(false, 0, width))
 				}
 			}
 			++yy
