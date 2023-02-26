@@ -242,7 +242,9 @@ export class ConsolePseudoterminal
 						block = false
 						return
 					}
-					await this.buffer.write(data)
+					this.buffer.write(data)
+						.then(async () => this.syncBuffer())
+						.catch(logError)
 					await this.syncBuffer()
 				}),
 				terminal.onKey(async ({ domEvent }) => {
