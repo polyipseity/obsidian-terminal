@@ -322,6 +322,8 @@ export class ConsolePseudoterminal
 								yy: active.cursorY,
 							}),
 							ret = await (async (): Promise<{
+								readonly startX: number
+								readonly startY: number
 								readonly cursorX: number
 								readonly cursorY: number
 							}> => {
@@ -330,40 +332,35 @@ export class ConsolePseudoterminal
 										...options,
 										cols,
 										rows,
+										scrollback: Infinity,
 									}),
-									{ buffer: { active: active0 } } = simulation
-								let start0 = start,
-									scrollback = start0.yy >= rows - 1
-								simulation.onLineFeed(() => {
-									if (scrollback) {
-										const newYY = start0.yy - 1
-										this.positions.set(terminal, start0 = deepFreeze({
-											xx: newYY >= 0 ? start0.xx : 0,
-											yy: newYY >= 0 ? newYY : 0,
-										}))
-									}
-									scrollback = active0.cursorY >= rows - 1
-								})
+									{ buffer: { active: active0 } } = simulation,
+									startRowsRemaining = rows - 1 - start.yy,
+									startMarker = simulation.registerMarker(start.yy)
 								await tWritePromise(
 									simulation,
-									`${ansi.cursor.position(1 + start0.yy, 1 + start0.xx)}${ansi
-										.erase.display()}${processed[0]}`,
+									`${ansi.cursor.position(1 + start.yy, 1 +
+										start.xx)}${ansi.erase.display()}${processed[0]}`,
 								)
-								let { cursorX, cursorY } = active0,
-									scrollback0 = cursorY >= rows - 1
-								simulation.onLineFeed(() => {
-									if (scrollback0) {
-										const newCursorY = cursorY - 1
-										if (newCursorY >= 0) {
-											cursorY = newCursorY
-										} else {
-											cursorX = 0
-										}
-									}
-									scrollback0 = active0.cursorY >= rows - 1
+								const cursorMarker = simulation.registerMarker(),
+									{ cursorX, cursorY } = active0,
+									cursorRowsRemaining = rows - 1 - cursorY
+								await tWritePromise(simulation, processed[1])
+								const endMarker = simulation.registerMarker(),
+									newStartY = start.yy - (startMarker && endMarker
+										? Math.max(endMarker.line - startMarker.line -
+											startRowsRemaining, 0)
+										: 0),
+									newCursorY = cursorY - (cursorMarker && endMarker
+										? Math.max(endMarker.line - cursorMarker.line -
+											cursorRowsRemaining, 0)
+										: 0)
+								return deepFreeze({
+									cursorX: newCursorY >= 0 ? cursorX : 0,
+									cursorY: Math.max(newCursorY, 0),
+									startX: newStartY >= 0 ? start.xx : 0,
+									startY: Math.max(newStartY, 0),
 								})
-								await tWritePromise(simulation, `${processed[1]}`)
-								return deepFreeze({ cursorX, cursorY })
 							})()
 						await tWritePromise(
 							terminal,
@@ -371,6 +368,10 @@ export class ConsolePseudoterminal
 								.display()}${processed.join("")}${ansi.cursor.position(1 +
 									ret.cursorY, 1 + ret.cursorX)}`,
 						)
+						this.positions.set(terminal, deepFreeze({
+							xx: ret.startX,
+							yy: ret.startY,
+						}))
 					})
 					resolve(Promise.all(writers).then(noop))
 					await Promise.allSettled(writers)
