@@ -172,10 +172,14 @@ export class TerminalTextArea implements IDisposable {
 
 	public readonly terminal
 	protected readonly lock = new AsyncLock()
-	readonly #widths = [0]
-	#values: readonly [string, string] = deepFreeze(["", ""])
-	#sequence = false
 	readonly #cell
+	#sequence = false
+	readonly #widths = [0]
+	#value: {
+		readonly string: string
+		readonly cursor: number
+	} = deepFreeze({ cursor: 0, string: "" })
+
 	readonly #cursor = {
 		xx: 0,
 	}
@@ -227,8 +231,11 @@ export class TerminalTextArea implements IDisposable {
 		}
 	}
 
-	public get values(): readonly [string, string] {
-		return this.#values
+	public get value(): {
+		readonly string: string
+		readonly cursor: number
+	} {
+		return this.#value
 	}
 
 	public async write(data: string): Promise<void> {
@@ -365,7 +372,7 @@ export class TerminalTextArea implements IDisposable {
 			cursorX = this.#widths[cursorY] ?? 0
 		}
 		await writePromise(terminal, ansi.cursor.position(1 + cursorY, 1 + cursorX))
-		const values: readonly [string[], string[]] = [[], []]
+		const values: readonly [before: string[], after: string[]] = [[], []]
 		let yy = 0
 		for (const width of this.#widths) {
 			const line = active.getLine(yy)
@@ -392,7 +399,11 @@ export class TerminalTextArea implements IDisposable {
 			}
 			++yy
 		}
-		this.#values = deepFreeze([values[0].join("\n"), values[1].join("\n")])
+		const before = values[0].join("\n")
+		this.#value = deepFreeze({
+			cursor: before.length,
+			string: `${before}${values[1].join("\n")}`,
+		})
 		this.#cursor.xx = cursorX
 		terminal.resize(
 			Math.max(...this.#widths) + TerminalTextArea.margin,

@@ -283,7 +283,7 @@ export class ConsolePseudoterminal
 		const { buffer, lock, terminals } = this,
 			code =
 				await lock.acquire(ConsolePseudoterminal.syncLock, async () => {
-					const code0 = buffer.values.join("")
+					const { string: code0 } = buffer.value
 					await buffer.clear()
 					await this.syncBuffer(terminals, false)
 					return code0
@@ -304,8 +304,11 @@ export class ConsolePseudoterminal
 		lock = true,
 	): Promise<void> {
 		const terminals0 = [...terminals],
-			{ values } = this.buffer,
-			processed = [normalizeText(values[0]), normalizeText(values[1])] as const
+			{ value: { string, cursor } } = this.buffer,
+			processed = [
+				normalizeText(string.slice(0, cursor)),
+				normalizeText(string.slice(cursor)),
+			] as const
 		return new Promise((resolve, reject) => {
 			acquireConditionally(
 				this.lock,
