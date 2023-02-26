@@ -18,6 +18,7 @@ import { isUndefined, padEnd, range, size } from "lodash"
 import AsyncLock from "async-lock"
 import ansi from "ansi-escape-sequences"
 import { codePoint } from "sources/utils/types"
+import eaw from "sources/@deps/eastasianwidth"
 import { Set as valueSet } from "immutable"
 
 type IFunctionIdentifier0 = DeepReadonly<DeepRequired<IFunctionIdentifier>>
@@ -82,7 +83,8 @@ export async function writelnPromise(
 }
 
 export class TerminalTextArea implements IDisposable {
-	protected static readonly margin = 2
+	protected static readonly fullWidth = 2
+	protected static readonly margin = TerminalTextArea.fullWidth + 1
 	protected static readonly minCols = TerminalTextArea.margin
 	protected static readonly minRows = TerminalTextArea.margin
 	protected static readonly writeLock = "write"
@@ -159,8 +161,12 @@ export class TerminalTextArea implements IDisposable {
 
 	public readonly terminal
 	protected readonly lock = new AsyncLock()
-	#sequence = false
 	#value = deepFreeze([""])
+	#sequence = false
+	readonly #cell
+	readonly #cursor = {
+		xx: 0,
+	}
 
 	public constructor(options?: TerminalTextArea.Options) {
 		this.terminal = new Terminal({
@@ -170,7 +176,7 @@ export class TerminalTextArea implements IDisposable {
 				rows: TerminalTextArea.minRows,
 			} satisfies TerminalTextArea.PredefinedOptions,
 		})
-		const { terminal: { parser } } = this,
+		const { terminal: { buffer, parser } } = this,
 			handler = ((): (handled: boolean) => () => boolean => {
 				const
 					handler0 = (handled: boolean) => (): boolean => {
@@ -182,6 +188,7 @@ export class TerminalTextArea implements IDisposable {
 				return (cancel: boolean): () => boolean =>
 					cancel ? trueHandler : falseHandler
 			})()
+		this.#cell = buffer.active.getNullCell()
 		for (const id of ALL_CSI_IDENTIFIERS) {
 			parser.registerCsiHandler(
 				id,
@@ -209,14 +216,16 @@ export class TerminalTextArea implements IDisposable {
 	}
 
 	public get values(): readonly [string, string] {
-		const { terminal: { buffer: { active: { cursorX, cursorY } } } } = this
+		const { terminal: { buffer: { active } } } = this,
+			{ cursorX, cursorY } = active,
+			current = this.#value[cursorY] ?? ""
 		return deepFreeze([
 			[
 				...this.#value.slice(0, cursorY),
-				this.#value[cursorY]?.slice(0, cursorX) ?? "",
+				eaw.slice(current, 0, cursorX),
 			].join("\n"),
 			[
-				this.#value[cursorY]?.slice(cursorX) ?? "",
+				eaw.slice(current, cursorX, eaw.length(current)),
 				...this.#value.slice(cursorY + 1),
 			].join("\n"),
 		])
@@ -256,10 +265,14 @@ export class TerminalTextArea implements IDisposable {
 					case "\u007f": {
 						if (cursorX > 0) {
 							// eslint-disable-next-line no-await-in-loop
-							await writePromise(terminal, `\b${CSI}P`)
+							await writePromise(terminal, `${`\b${CSI}P`.repeat(active
+								.getLine(cursorY)?.getCell(cursorX - 1, this.#cell)
+								?.getWidth() === 0
+								? TerminalTextArea.fullWidth
+								: 1)}`)
 							--lines[cursorY]
 						} else if (cursorY > 0) {
-							const length = this.#value[cursorY - 1]?.length ?? 0
+							const length = eaw.length(this.#value[cursorY - 1] ?? "")
 							// eslint-disable-next-line no-await-in-loop
 							await writePromise(
 								terminal,
@@ -275,7 +288,7 @@ export class TerminalTextArea implements IDisposable {
 						break
 					}
 					case "\r": {
-						const remain = this.#value[cursorY]?.slice(cursorX) ?? ""
+						const remain = eaw.slice(current, cursorX, eaw.length(current))
 						// eslint-disable-next-line no-await-in-loop
 						await writePromise(
 							terminal,
@@ -288,7 +301,10 @@ export class TerminalTextArea implements IDisposable {
 					}
 					default: {
 						// eslint-disable-next-line no-await-in-loop
-						await writePromise(terminal, `${CSI}@${datum}`)
+						await writePromise(
+							terminal,
+							`${CSI}${eaw.characterLength(datum)}@${datum}`,
+						)
 						++lines[cursorY]
 						break
 					}
@@ -338,15 +354,23 @@ export class TerminalTextArea implements IDisposable {
 					return left
 				}, []),
 			)
-		const yy = Math.min(cursorY, this.#value.length - 1)
-		await writePromise(terminal, ansi.cursor.position(
-			1 + yy,
-			1 + Math.min(cursorX, this.#value[yy]?.length ?? 0),
-		))
+		const newY = Math.min(cursorY, this.#value.length - 1)
+		let newX = Math.min(cursorX, eaw.length(this.#value[newY] ?? ""))
+		if ((active.getLine(newY)
+			?.getCell(newX, this.#cell)
+			?.getWidth() ?? 1) === 0) {
+			if (newX < this.#cursor.xx) {
+				--newX
+			} else {
+				++newX
+			}
+		}
+		await writePromise(terminal, ansi.cursor.position(1 + newY, 1 + newX))
+		this.#cursor.xx = newX
 		terminal.resize(
 			Math.max(
 				TerminalTextArea.minCols,
-				...this.#value.map(line => line.length + TerminalTextArea.margin),
+				...this.#value.map(line => eaw.length(line) + TerminalTextArea.margin),
 			),
 			Math.max(
 				TerminalTextArea.minRows,
