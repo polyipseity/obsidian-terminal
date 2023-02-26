@@ -31,10 +31,10 @@ import {
 	writePromise,
 } from "../utils/util"
 import {
+	NORMALIZED_LINE_FEED,
 	TerminalTextArea,
-	processText,
+	normalizeText,
 	writePromise as tWritePromise,
-	writelnPromise as tWritelnPromise,
 } from "./util"
 import { isEmpty, noop } from "lodash"
 import { notice2, printError } from "sources/utils/obsidian"
@@ -173,12 +173,12 @@ export class TextPseudoterminal
 	}
 
 	public set text(value: string) {
-		this.rewrite(processText(this.#text = value)).catch(logError)
+		this.rewrite(normalizeText(this.#text = value)).catch(logError)
 	}
 
 	public override async pipe(terminal: Terminal): Promise<void> {
 		await super.pipe(terminal)
-		await this.rewrite(processText(this.text), [terminal])
+		await this.rewrite(normalizeText(this.text), [terminal])
 	}
 
 	protected async rewrite(
@@ -285,7 +285,7 @@ export class ConsolePseudoterminal
 				await lock.acquire(ConsolePseudoterminal.syncLock, async () => {
 					const code0 = buffer.values.join("")
 					await buffer.clear()
-					await this.syncBuffer("sync", terminals, false)
+					await this.syncBuffer(terminals, false)
 					return code0
 				})
 		console.log(code)
@@ -300,15 +300,12 @@ export class ConsolePseudoterminal
 	}
 
 	protected async syncBuffer(
-		type: "clear" | "sync" = "sync",
 		terminals: readonly Terminal[] = this.terminals,
 		lock = true,
 	): Promise<void> {
 		const terminals0 = [...terminals],
 			{ values } = this.buffer,
-			processed = type === "sync"
-				? [processText(values[0]), processText(values[1])] as const
-				: ["", ""] as const
+			processed = [normalizeText(values[0]), normalizeText(values[1])] as const
 		return new Promise((resolve, reject) => {
 			acquireConditionally(
 				this.lock,
@@ -386,26 +383,30 @@ export class ConsolePseudoterminal
 		lock = true,
 	): Promise<void> {
 		const terminals0 = [...terminals],
-			lines = events.map(event =>
-				processText(ConsolePseudoterminal.format(event)))
+			text = `${ansi.erase.inLine() + normalizeText(events
+				.map(event => ConsolePseudoterminal.format(event)).join("\n"))
+				.replace(
+					replaceAllRegex(NORMALIZED_LINE_FEED),
+					`${NORMALIZED_LINE_FEED}${ansi.erase.inLine()}`,
+				)}${NORMALIZED_LINE_FEED}`
 		await acquireConditionally(
 			this.lock,
 			ConsolePseudoterminal.syncLock,
 			lock,
 			async () => {
-				await this.syncBuffer("clear", terminals0, false)
 				await Promise.allSettled(terminals0.map(async terminal => {
-					for (const line of lines) {
-						// eslint-disable-next-line no-await-in-loop
-						await tWritelnPromise(terminal, line)
-					}
-					const { buffer: { active: { cursorX, cursorY } } } = terminal
+					const { buffer: { active } } = terminal,
+						position = this.positions.get(terminal)
+					await tWritePromise(terminal, `${ansi.cursor.position(
+						1 + (position?.yy ?? active.cursorY),
+						1 + (position?.xx ?? active.cursorX),
+					)}${text}`)
 					this.positions.set(terminal, deepFreeze({
-						xx: cursorX,
-						yy: cursorY,
+						xx: active.cursorX,
+						yy: active.cursorY,
 					}))
 				}))
-				await this.syncBuffer("sync", terminals0, false)
+				await this.syncBuffer(terminals0, false)
 			},
 		)
 	}

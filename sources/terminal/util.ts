@@ -65,12 +65,13 @@ export const
 	} as const))),
 	// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 	MOST_OSC_IDENTIFIERS = valueSet(range(2022)),
-	MAX_CHARACTER_WIDTH = 2
+	MAX_CHARACTER_WIDTH = 2,
+	NORMALIZED_LINE_FEED = "\r\n"
 
-export function processText(text: string): string {
+export function normalizeText(text: string): string {
 	return text
-		.replace(replaceAllRegex("\r\n"), "\n")
-		.replace(replaceAllRegex("\n"), "\r\n")
+		.replace(replaceAllRegex(NORMALIZED_LINE_FEED), "\n")
+		.replace(replaceAllRegex("\n"), NORMALIZED_LINE_FEED)
 }
 
 export function sliceBufferLine(
@@ -93,13 +94,6 @@ export async function writePromise(
 	data: Uint8Array | string,
 ): Promise<void> {
 	return new Promise(resolve => { self.write(data, resolve) })
-}
-
-export async function writelnPromise(
-	self: Terminal,
-	data: Uint8Array | string,
-): Promise<void> {
-	return new Promise(resolve => { self.writeln(data, resolve) })
 }
 
 export class TerminalTextArea implements IDisposable {
