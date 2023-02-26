@@ -348,13 +348,8 @@ export class TerminalTextArea implements IDisposable {
 	}
 
 	public async clear(): Promise<void> {
-		const { terminal, lock } = this
-		await lock.acquire(TerminalTextArea.writeLock, async () => {
-			await writePromise(
-				terminal,
-				// eslint-disable-next-line @typescript-eslint/no-magic-numbers
-				`${ansi.erase.display(2)}${ansi.cursor.position()}`,
-			)
+		await this.lock.acquire(TerminalTextArea.writeLock, async () => {
+			this.terminal.reset()
 			clear(this.#widths)
 			this.#widths.push(0)
 			await this.#sync()
