@@ -50,7 +50,7 @@ export class EditSettingsModal extends Modal {
 	public override onOpen(): void {
 		super.onOpen()
 		const { modalUI, ui, modalEl, titleEl, plugin, data, protodata } = this,
-			[listEl, listElRemover] = useSettings(this.contentEl),
+			{ element: listEl, remover: listElRemover } = useSettings(this.contentEl),
 			{ language } = plugin,
 			{ i18n, onChangeLanguage } = language
 		modalUI.finally(onChangeLanguage.listen(() => { modalUI.update() }))

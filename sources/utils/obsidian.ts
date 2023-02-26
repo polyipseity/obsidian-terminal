@@ -205,7 +205,7 @@ export function addRibbonIcon(
 	usePrivateAPI(
 		plugin,
 		() => {
-			const ribbon = (): readonly [HTMLElement, string] => {
+			const ribbon = (): readonly [ele: HTMLElement, title: string] => {
 				const title0 = title()
 				return Object.freeze([
 					leftRibbon.addRibbonItemButton(
@@ -425,19 +425,19 @@ export function usePrivateAPI<R>(
 	}
 }
 
-export function useSettings(element: HTMLElement): readonly [
-	HTMLElement,
-	() => void,
-] {
+export function useSettings(element: HTMLElement): {
+	readonly element: HTMLElement
+	readonly remover: () => void
+} {
 	const container = createChildElement(element, "div", ele => {
 		ele.classList.add(DOMClasses.VERTICAL_TAB_CONTENT_CONTAINER)
 	})
-	return Object.freeze([
-		createChildElement(container, "div", ele => {
+	return Object.freeze({
+		element: createChildElement(container, "div", ele => {
 			ele.classList.add(DOMClasses.VERTICAL_TAB_CONTENT)
 		}),
-		(): void => { container.remove() },
-	])
+		remover() { container.remove() },
+	})
 }
 
 export function useSubsettings(element: HTMLElement): HTMLElement {

@@ -155,7 +155,7 @@ export class ListModal<T> extends Modal {
 	public override onOpen(): void {
 		super.onOpen()
 		const { plugin, placeholder, data, ui, titleEl, modalUI, modalEl } = this,
-			[listEl, listElRemover] = useSettings(this.contentEl),
+			{ element: listEl, remover: listElRemover } = useSettings(this.contentEl),
 			{ language } = plugin,
 			{ i18n, onChangeLanguage } = language,
 			editables = this.#editables,
@@ -399,7 +399,7 @@ export class ProfileModal extends Modal {
 	public override onOpen(): void {
 		super.onOpen()
 		const { plugin, ui, data, titleEl, modalUI } = this,
-			[listEl, listElRemover] = useSettings(this.contentEl),
+			{ element: listEl, remover: listElRemover } = useSettings(this.contentEl),
 			profile = data,
 			{ language } = plugin,
 			{ i18n, onChangeLanguage } = language

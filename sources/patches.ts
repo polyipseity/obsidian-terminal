@@ -104,7 +104,10 @@ function patchWindow(self: Window, log: Log): () => void {
 	}
 }
 
-export function patch(workspace: Workspace): readonly [() => void, Log] {
+export function patch(workspace: Workspace): {
+	readonly unpatch: () => void
+	readonly log: Log
+} {
 	const unpatchers = new Functions({ async: false, settled: true })
 	try {
 		const log = newLog(),
@@ -131,7 +134,10 @@ export function patch(workspace: Workspace): readonly [() => void, Log] {
 		})
 		unpatchers.push(() => { workspace.offref(windowWindowPatch) })
 		unpatchers.push(patchWindow(window, log))
-		return Object.freeze([(): void => { unpatchers.call() }, log])
+		return Object.freeze({
+			log,
+			unpatch() { unpatchers.call() },
+		})
 	} catch (error) {
 		unpatchers.call()
 		throw error

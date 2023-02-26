@@ -45,7 +45,7 @@ export class TerminalPlugin extends Plugin {
 	#settings: Settings = deepFreeze(Settings.fix(Settings.DEFAULT).value)
 
 	public constructor(app: App, manifest: PluginManifest) {
-		const [unpatch, log] = patch(app.workspace)
+		const { unpatch, log } = patch(app.workspace)
 		super(app, manifest)
 		this.register(unpatch)
 

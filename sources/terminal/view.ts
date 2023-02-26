@@ -88,7 +88,7 @@ class EditTerminalModal extends DialogModal {
 	public override onOpen(): void {
 		super.onOpen()
 		const { plugin, ui, protostate, state } = this,
-			[listEl, listElRemover] = useSettings(this.contentEl),
+			{ element: listEl, remover: listElRemover } = useSettings(this.contentEl),
 			{ language } = plugin,
 			{ i18n } = language
 		ui.finally(listElRemover)
