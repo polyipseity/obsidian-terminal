@@ -159,7 +159,7 @@ abstract class PseudoPseudoterminal implements Pseudoterminal {
 export class TextPseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
-	protected static readonly writeLock = "write"
+	protected static readonly syncLock = "sync"
 	protected readonly lock = new AsyncLock()
 	#text: string
 
@@ -186,7 +186,7 @@ export class TextPseudoterminal
 		terminals: readonly Terminal[] = this.terminals,
 	): Promise<void> {
 		return new Promise((resolve, reject) => {
-			this.lock.acquire(TextPseudoterminal.writeLock, async () => {
+			this.lock.acquire(TextPseudoterminal.syncLock, async () => {
 				const writers = terminals.map(async terminal => {
 					terminal.clear()
 					await tWritePromise(terminal, text)
@@ -201,7 +201,7 @@ export class TextPseudoterminal
 export class ConsolePseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
-	protected static readonly writeLock = "write"
+	protected static readonly syncLock = "sync"
 	protected readonly lock = new AsyncLock()
 	protected readonly buffer = new TerminalTextArea()
 
@@ -298,7 +298,7 @@ export class ConsolePseudoterminal
 		return new Promise((resolve, reject) => {
 			acquireConditionally(
 				this.lock,
-				ConsolePseudoterminal.writeLock,
+				ConsolePseudoterminal.syncLock,
 				lock,
 				async () => {
 					const writers = terminals.map(async terminal => tWritePromise(
@@ -322,7 +322,7 @@ export class ConsolePseudoterminal
 			processText(ConsolePseudoterminal.format(event)))
 		await acquireConditionally(
 			this.lock,
-			ConsolePseudoterminal.writeLock,
+			ConsolePseudoterminal.syncLock,
 			lock,
 			async () => {
 				await this.syncBuffer("clear", terminals, false)
