@@ -1,5 +1,7 @@
 import type { DeepReadonly, DeepRequired } from "ts-essentials"
 import {
+	type IBufferCell,
+	type IBufferLine,
 	type IDisposable,
 	type IFunctionIdentifier,
 	Terminal,
@@ -8,17 +10,17 @@ import {
 } from "xterm"
 import {
 	cartesianProduct,
+	clear,
 	deepFreeze,
 	insertAt,
 	rangeCodePoint,
 	removeAt,
 	replaceAllRegex,
 } from "sources/utils/util"
-import { isUndefined, padEnd, range, size } from "lodash"
+import { escapeRegExp, isUndefined, range } from "lodash"
 import AsyncLock from "async-lock"
 import ansi from "ansi-escape-sequences"
 import { codePoint } from "sources/utils/types"
-import eaw from "sources/@deps/eastasianwidth"
 import { Set as valueSet } from "immutable"
 
 type IFunctionIdentifier0 = DeepReadonly<DeepRequired<IFunctionIdentifier>>
@@ -26,6 +28,8 @@ export const ESCAPE_SEQUENCE_INTRODUCER = "\u001b"
 const ESC = ESCAPE_SEQUENCE_INTRODUCER
 export const CONTROL_SEQUENCE_INTRODUCER = `${ESC}[`
 const CSI = CONTROL_SEQUENCE_INTRODUCER
+export const DEVICE_CONTROL_STRING = `${ESC}P`
+export const OPERATING_SYSTEM_COMMAND = `${ESC}]`
 export const
 	FUNCTION_IDENTIFIER_PREFIXES = deepFreeze([
 		"",
@@ -84,9 +88,7 @@ export async function writelnPromise(
 
 export class TerminalTextArea implements IDisposable {
 	protected static readonly fullWidth = 2
-	protected static readonly margin = TerminalTextArea.fullWidth + 1
-	protected static readonly minCols = TerminalTextArea.margin
-	protected static readonly minRows = TerminalTextArea.margin
+	protected static readonly margin = TerminalTextArea.fullWidth
 	protected static readonly writeLock = "write"
 	// See https://xtermjs.org/docs/api/vtfeatures/
 	protected static readonly allowedIdentifiers = deepFreeze({
@@ -161,7 +163,8 @@ export class TerminalTextArea implements IDisposable {
 
 	public readonly terminal
 	protected readonly lock = new AsyncLock()
-	#value = deepFreeze([""])
+	readonly #widths = [0]
+	#values: readonly [string, string] = deepFreeze(["", ""])
 	#sequence = false
 	readonly #cell
 	readonly #cursor = {
@@ -172,8 +175,8 @@ export class TerminalTextArea implements IDisposable {
 		this.terminal = new Terminal({
 			...options,
 			...{
-				cols: TerminalTextArea.minCols,
-				rows: TerminalTextArea.minRows,
+				cols: TerminalTextArea.margin,
+				rows: TerminalTextArea.margin,
 			} satisfies TerminalTextArea.PredefinedOptions,
 		})
 		const { terminal: { buffer, parser } } = this,
@@ -216,103 +219,131 @@ export class TerminalTextArea implements IDisposable {
 	}
 
 	public get values(): readonly [string, string] {
-		const { terminal: { buffer: { active } } } = this,
-			{ cursorX, cursorY } = active,
-			current = this.#value[cursorY] ?? ""
-		return deepFreeze([
-			[
-				...this.#value.slice(0, cursorY),
-				eaw.slice(current, 0, cursorX),
-			].join("\n"),
-			[
-				eaw.slice(current, cursorX, eaw.length(current)),
-				...this.#value.slice(cursorY + 1),
-			].join("\n"),
-		])
+		return this.#values
+	}
+
+	static #slice(
+		line: IBufferLine,
+		start = 0,
+		end = Infinity,
+		cell?: IBufferCell,
+	): string {
+		let ret = ""
+		for (let xx = start, cell0 = line.getCell(xx, cell);
+			cell0 && xx < end;
+			cell0 = line.getCell(xx += cell0.getWidth(), cell)) {
+			ret += cell0.getChars()
+		}
+		return ret
 	}
 
 	public async write(data: string): Promise<void> {
-		const { terminal, lock } = this,
-			{ buffer } = terminal,
-			data0 = Array.from(data)
+		const splitters = [ESC, "\u007f", "\r"],
+			{ terminal, lock } = this,
+			{ buffer: { active } } = terminal,
+			split = (str: string): string[] => str.split(
+				new RegExp(
+					`(${splitters.map(escapeRegExp).join("|")})`,
+					"ug",
+				),
+			),
+			data0 = split(data)
 		await lock.acquire(TerminalTextArea.writeLock, async () => {
-			let postSequence = false
 			for (let datum = data0.shift();
 				!isUndefined(datum);
 				datum = data0.shift()) {
-				if (this.#sequence) {
-					// eslint-disable-next-line no-await-in-loop
-					await writePromise(terminal, datum)
-					continue
-				}
-				const { active } = buffer,
-					{ cursorX, cursorY } = active,
-					lines = this.#value.map(size),
-					current = this.#value[cursorY] ?? ""
-				if (postSequence) {
-					// eslint-disable-next-line no-await-in-loop
-					await this.#sync(lines)
-					postSequence = false
-				}
+				const { cursorX, cursorY } = active,
+					lineWidth = this.#widths[cursorY] ?? 0,
+					line = active.getLine(cursorY)
 				switch (datum) {
+					case "": break
 					case ESC: {
 						// eslint-disable-next-line no-await-in-loop
 						await writePromise(terminal, datum)
-						this.#sequence = true
-						postSequence = true
-						continue
-					}
-					case "\u007f": {
-						if (cursorX > 0) {
-							// eslint-disable-next-line no-await-in-loop
-							await writePromise(terminal, `${`\b${CSI}P`.repeat(active
-								.getLine(cursorY)?.getCell(cursorX - 1, this.#cell)
-								?.getWidth() === 0
-								? TerminalTextArea.fullWidth
-								: 1)}`)
-							--lines[cursorY]
-						} else if (cursorY > 0) {
-							const length = eaw.length(this.#value[cursorY - 1] ?? "")
-							// eslint-disable-next-line no-await-in-loop
-							await writePromise(
-								terminal,
-								`${CSI}M${ansi.cursor.up()}${ansi.cursor
-									.horizontalAbsolute(length + 1)}`,
-							)
-							removeAt(lines, cursorY)
-							data0.unshift(
-								...current,
-								...ansi.cursor.horizontalAbsolute(length + 1),
-							)
+						const [seq] = data0
+						if (!isUndefined(seq)) {
+							this.#sequence = true
+							let consumed = 0
+							for (const char of seq) {
+								// eslint-disable-next-line no-await-in-loop
+								await writePromise(terminal, char)
+								consumed += char.length
+								// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+								if (!this.#sequence) { break }
+							}
+							this.#sequence = false
+							data0[0] = seq.slice(consumed)
 						}
 						break
 					}
 					case "\r": {
-						const remain = eaw.slice(current, cursorX, eaw.length(current))
+						const rest = line
+							? TerminalTextArea.#slice(line, cursorX, lineWidth, this.#cell)
+							: ""
+						terminal.resize(terminal.cols, terminal.rows + 1)
 						// eslint-disable-next-line no-await-in-loop
 						await writePromise(
 							terminal,
 							`${ansi.erase.inLine()}${ansi.cursor.down()}${CSI}L`,
 						)
-						lines[cursorY] -= remain.length
-						insertAt(lines, cursorY + 1, 0)
-						data0.unshift(...remain, ...ansi.cursor.horizontalAbsolute(1))
+						this.#widths[cursorY] = cursorX
+						insertAt(this.#widths, cursorY + 1, 0)
+						data0.unshift(...split(`${rest}${ansi.cursor
+							.horizontalAbsolute(1)}`))
+						break
+					}
+					case "\u007f": {
+						if (line) {
+							let width = 0
+							for (let xx = cursorX - 1, cell0 = line.getCell(xx, this.#cell);
+								width <= 0 && cell0;
+								cell0 = line.getCell(--xx, this.#cell)) {
+								width = cell0.getWidth()
+							}
+							if (width > 0) {
+								// eslint-disable-next-line no-await-in-loop
+								await writePromise(
+									terminal,
+									`${ansi.cursor.back(width)}${CSI}${width}P`,
+								)
+								this.#widths[cursorY] -= width
+							} else if (cursorY > 0) {
+								const
+									rest = TerminalTextArea
+										.#slice(line, 0, lineWidth, this.#cell),
+									prev = this.#widths[cursorY - 1] ?? 0
+								// eslint-disable-next-line no-await-in-loop
+								await writePromise(
+									terminal,
+									`${CSI}M${ansi.cursor.up()}${ansi.cursor
+										.horizontalAbsolute(1 + prev)}`,
+								)
+								removeAt(this.#widths, cursorY)
+								data0.unshift(...split(`${rest}${ansi.cursor
+									.horizontalAbsolute(1 + prev)}`))
+							}
+						}
 						break
 					}
 					default: {
+						const reserve = TerminalTextArea.fullWidth * datum.length
+						terminal.resize(terminal.cols + reserve, terminal.rows)
 						// eslint-disable-next-line no-await-in-loop
 						await writePromise(
 							terminal,
-							`${CSI}${eaw.characterLength(datum)}@${datum}`,
+							`${CSI}${reserve}@${datum}`,
 						)
-						++lines[cursorY]
+						this.#widths[cursorY] += reserve
+						const lossX = reserve - (active.cursorX - cursorX)
+						// eslint-disable-next-line no-await-in-loop
+						await writePromise(terminal, `${CSI}${lossX}P`)
+						this.#widths[cursorY] -= lossX
 						break
 					}
 				}
 				// eslint-disable-next-line no-await-in-loop
-				await this.#sync(lines)
+				await this.#sync()
 			}
-			if (postSequence) { await this.#sync(this.#value.map(size)) }
 		})
 	}
 
@@ -324,7 +355,9 @@ export class TerminalTextArea implements IDisposable {
 				// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 				`${ansi.erase.display(2)}${ansi.cursor.position()}`,
 			)
-			await this.#sync([0])
+			clear(this.#widths)
+			this.#widths.push(0)
+			await this.#sync()
 		})
 	}
 
@@ -332,50 +365,50 @@ export class TerminalTextArea implements IDisposable {
 		this.terminal.dispose()
 	}
 
-	async #sync(lines: readonly number[]): Promise<void> {
+	async #sync(): Promise<void> {
 		const { terminal, lock } = this,
-			{ buffer: { active } } = terminal,
-			{ cursorX, cursorY } = active
+			{ buffer: { active } } = terminal
 		if (!lock.isBusy(TerminalTextArea.writeLock)) { throw new Error() }
-		this.#value =
-			deepFreeze(
-				range(lines.length).reduce<string[]>((left, right) => {
-					const line = active.getLine(right)
-					if (line) {
-						let { length } = left
-						if (line.isWrapped && length > 0) {
-							left[length - 1] += line.translateToString(true)
-						} else {
-							length = left.push(line.translateToString(true))
-						}
-						left[length - 1] = padEnd(left[length - 1], lines[right], " ")
-							.slice(0, lines[right])
-					}
-					return left
-				}, []),
-			)
-		const newY = Math.min(cursorY, this.#value.length - 1)
-		let newX = Math.min(cursorX, eaw.length(this.#value[newY] ?? ""))
-		if ((active.getLine(newY)
-			?.getCell(newX, this.#cell)
-			?.getWidth() ?? 1) === 0) {
-			if (newX < this.#cursor.xx) {
-				--newX
-			} else {
-				++newX
-			}
+		let { cursorX, cursorY } = active
+		if (cursorY >= this.#widths.length) {
+			cursorY = this.#widths.length - 1
 		}
-		await writePromise(terminal, ansi.cursor.position(1 + newY, 1 + newX))
-		this.#cursor.xx = newX
+		if (cursorX > (this.#widths[cursorY] ?? 0)) {
+			cursorX = this.#widths[cursorY] ?? 0
+		}
+		await writePromise(terminal, ansi.cursor.position(1 + cursorY, 1 + cursorX))
+		const values: readonly [string[], string[]] = [[], []]
+		let yy = 0
+		for (const width of this.#widths) {
+			const line = active.getLine(yy)
+			if (line) {
+				if (yy === cursorY) {
+					const direction = cursorX - this.#cursor.xx < 0 ? -1 : 1
+					for (let cell = line.getCell(cursorX, this.#cell);
+						cell && cell.getWidth() <= 0;
+						cell = line.getCell(cursorX += direction, this.#cell)) {
+						// NOOP
+					}
+					values[0].push(TerminalTextArea.#slice(line, 0, cursorX, this.#cell))
+					values[1]
+						.push(TerminalTextArea.#slice(line, cursorX, width, this.#cell))
+					// eslint-disable-next-line no-await-in-loop
+					await writePromise(
+						terminal,
+						ansi.cursor.horizontalAbsolute(1 + cursorX),
+					)
+				} else {
+					values[yy < cursorY ? 0 : 1]
+						.push(TerminalTextArea.#slice(line, 0, width, this.#cell))
+				}
+			}
+			++yy
+		}
+		this.#values = deepFreeze([values[0].join("\n"), values[1].join("\n")])
+		this.#cursor.xx = cursorX
 		terminal.resize(
-			Math.max(
-				TerminalTextArea.minCols,
-				...this.#value.map(line => eaw.length(line) + TerminalTextArea.margin),
-			),
-			Math.max(
-				TerminalTextArea.minRows,
-				this.#value.length + TerminalTextArea.margin,
-			),
+			Math.max(...this.#widths) + TerminalTextArea.margin,
+			this.#widths.length + TerminalTextArea.margin,
 		)
 	}
 }
