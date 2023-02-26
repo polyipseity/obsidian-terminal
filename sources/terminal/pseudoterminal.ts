@@ -36,7 +36,7 @@ import {
 	normalizeText,
 	writePromise as tWritePromise,
 } from "./util"
-import { isEmpty, noop } from "lodash"
+import { isEmpty, noop, range } from "lodash"
 import { notice2, printError } from "sources/utils/obsidian"
 import AsyncLock from "async-lock"
 import type { AsyncOrSync } from "ts-essentials"
@@ -206,6 +206,7 @@ export class ConsolePseudoterminal
 	protected readonly lock = new AsyncLock()
 	protected readonly buffer = new TerminalTextArea()
 	protected readonly positions = new Map<Terminal, {
+		readonly scroll: number
 		readonly xx: number
 		readonly yy: number
 	}>()
@@ -318,10 +319,13 @@ export class ConsolePseudoterminal
 					const writers = terminals0.map(async terminal => {
 						const { buffer: { active }, cols, rows, options } = terminal,
 							start = this.positions.get(terminal) ?? deepFreeze({
+								scroll: 0,
 								xx: active.cursorX,
 								yy: active.cursorY,
 							}),
 							ret = await (async (): Promise<{
+								readonly buffer: string
+								readonly scroll: number
 								readonly startX: number
 								readonly startY: number
 								readonly cursorX: number
@@ -332,15 +336,18 @@ export class ConsolePseudoterminal
 										...options,
 										cols,
 										rows,
-										scrollback: Infinity,
+										scrollback: 0,
 									}),
 									{ buffer: { active: active0 } } = simulation,
 									startRowsRemaining = rows - 1 - start.yy,
 									startMarker = simulation.registerMarker(start.yy)
+								simulation.getSelection()
 								await tWritePromise(
 									simulation,
-									`${ansi.cursor.position(1 + start.yy, 1 +
-										start.xx)}${ansi.erase.display()}${processed[0]}`,
+									`${ansi.cursor.position(
+										1 + start.yy,
+										1 + start.xx,
+									)}${processed[0]}`,
 								)
 								const cursorMarker = simulation.registerMarker(),
 									{ cursorX, cursorY } = active0,
@@ -354,21 +361,37 @@ export class ConsolePseudoterminal
 									newCursorY = cursorY - (cursorMarker && endMarker
 										? Math.max(endMarker.line - cursorMarker.line -
 											cursorRowsRemaining, 0)
-										: 0)
+										: 0),
+									fromX = newStartY >= 0 ? start.xx : 0,
+									fromY = Math.max(newStartY, 0),
+									{ cursorX: toX, cursorY: toY } = active0
 								return deepFreeze({
+									buffer: range(fromY, toY + 1)
+										.map(yy => active0.getLine(yy)?.translateToString(
+											false,
+											yy === fromY ? fromX : 0,
+											yy === toY ? toX : cols,
+										) ?? "")
+										.join(NORMALIZED_LINE_FEED),
 									cursorX: newCursorY >= 0 ? cursorX : 0,
 									cursorY: Math.max(newCursorY, 0),
-									startX: newStartY >= 0 ? start.xx : 0,
-									startY: Math.max(newStartY, 0),
+									scroll: Math.max(start.yy - newStartY, 0),
+									startX: fromX,
+									startY: fromY,
 								})
 							})()
 						await tWritePromise(
 							terminal,
-							`${ansi.cursor.position(1 + start.yy, 1 + start.xx)}${ansi.erase
-								.display()}${processed.join("")}${ansi.cursor.position(1 +
-									ret.cursorY, 1 + ret.cursorX)}`,
+							`${ansi.cursor.position(rows)}${NORMALIZED_LINE_FEED.repeat(
+								Math.max(ret.scroll - start.scroll, 0),
+							)}${ansi.cursor.position(
+								1 + ret.startY,
+								1 + ret.startX,
+							)}${ansi.erase.display()}${ret.buffer}${ansi.cursor
+								.position(1 + ret.cursorY, 1 + ret.cursorX)}`,
 						)
 						this.positions.set(terminal, deepFreeze({
+							scroll: ret.scroll,
 							xx: ret.startX,
 							yy: ret.startY,
 						}))
@@ -405,6 +428,7 @@ export class ConsolePseudoterminal
 						1 + (position?.xx ?? active.cursorX),
 					)}${text}`)
 					this.positions.set(terminal, deepFreeze({
+						scroll: 0,
 						xx: active.cursorX,
 						yy: active.cursorY,
 					}))
