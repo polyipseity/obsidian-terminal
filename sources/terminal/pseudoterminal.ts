@@ -236,15 +236,15 @@ export class ConsolePseudoterminal
 		const disposer = new Functions(
 			{ async: false, settled: true },
 			...[
-				terminal.onData(data => {
+				terminal.onData(async data => {
 					if (block) {
 						block = false
 						return
 					}
 					let writing = true
-					this.buffer.write(data)
-						.catch(logError)
-						.finally(() => { writing = false });
+					const write = this.buffer.write(data)
+						.finally(() => { writing = false })
+						.then(async () => this.syncBuffer());
 					(async (): Promise<void> => {
 						try {
 							// eslint-disable-next-line no-unmodified-loop-condition
@@ -252,11 +252,11 @@ export class ConsolePseudoterminal
 								// eslint-disable-next-line no-await-in-loop
 								await this.syncBuffer()
 							}
-							await this.syncBuffer()
 						} catch (error) {
 							console.log(error)
 						}
 					})()
+					await write
 				}),
 				terminal.onKey(({ domEvent }) => {
 					if (domEvent.key === "Enter" && isEmpty(getKeyModifiers(domEvent))) {
