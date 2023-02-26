@@ -9,19 +9,13 @@ import {
 	UNHANDLED_REJECTION_MESSAGE,
 } from "../magic"
 import {
-	ESCAPE_SEQUENCE_INTRODUCER as ESC,
-	TerminalTextArea,
-	processText,
-	writePromise as tWritePromise,
-	writelnPromise as tWritelnPromise,
-} from "./util"
-import {
 	Functions,
 	PLATFORM,
 	acquireConditionally,
 	anyToError,
 	clear,
 	consumeEvent,
+	deepFreeze,
 	getKeyModifiers,
 	inSet,
 	isNonNullish,
@@ -36,6 +30,12 @@ import {
 	typedKeys,
 	writePromise,
 } from "../utils/util"
+import {
+	TerminalTextArea,
+	processText,
+	writePromise as tWritePromise,
+	writelnPromise as tWritelnPromise,
+} from "./util"
 import { isEmpty, noop } from "lodash"
 import { notice2, printError } from "sources/utils/obsidian"
 import AsyncLock from "async-lock"
@@ -205,11 +205,16 @@ export class ConsolePseudoterminal
 	protected static readonly syncLock = "sync"
 	protected readonly lock = new AsyncLock()
 	protected readonly buffer = new TerminalTextArea()
+	protected readonly positions = new Map<Terminal, {
+		readonly xx: number
+		readonly yy: number
+	}>()
 
 	public constructor(protected readonly log: Log) {
 		super()
 		this.onExit
 			.finally(log.logger.listen(async event => this.write([event])))
+			.finally(() => { this.positions.clear() })
 			.finally(() => { this.buffer.dispose() })
 	}
 
@@ -231,7 +236,9 @@ export class ConsolePseudoterminal
 
 	public override async pipe(terminal: Terminal): Promise<void> {
 		await super.pipe(terminal)
-		terminal.clear()
+		terminal.loadAddon(new DisposerAddon(
+			() => { this.positions.delete(terminal) },
+		))
 		let block = false
 		const disposer = new Functions(
 			{ async: false, settled: true },
@@ -268,6 +275,7 @@ export class ConsolePseudoterminal
 			].map(disposer0 => () => { disposer0.dispose() }),
 		)
 		this.onExit.finally(() => { disposer.call() })
+		terminal.clear()
 		await this.write(this.log.history, [terminal])
 	}
 
@@ -307,11 +315,54 @@ export class ConsolePseudoterminal
 				ConsolePseudoterminal.syncLock,
 				lock,
 				async () => {
-					const writers = terminals0.map(async terminal => tWritePromise(
-						terminal,
-						`${ESC}8${ansi.erase.display()}${processed
-							.join("")}${ESC}8${processed[0]}`,
-					))
+					const writers = terminals0.map(async terminal => {
+						const { buffer: { active }, rows } = terminal
+						let
+							start = this.positions.get(terminal) ?? deepFreeze({
+								xx: active.cursorX,
+								yy: active.cursorY,
+							}),
+							scrollback = start.yy >= rows - 1
+						const disposer = terminal.onLineFeed(() => {
+							if (scrollback) {
+								const newYY = start.yy - 1
+								this.positions.set(terminal, start = deepFreeze({
+									xx: newYY >= 0 ? start.xx : 0,
+									yy: newYY >= 0 ? newYY : 0,
+								}))
+							}
+							scrollback = active.cursorY >= rows - 1
+						})
+						try {
+							await tWritePromise(
+								terminal,
+								`${ansi.cursor.position(1 + start.yy, 1 + start.xx)}${ansi.erase
+									.display()}${processed[0]}`,
+							)
+							let { cursorX, cursorY } = active,
+								scrollback0 = cursorY >= rows - 1
+							const disposer0 = terminal.onLineFeed(() => {
+								if (scrollback0) {
+									const newCursorY = cursorY - 1
+									if (newCursorY >= 0) {
+										cursorY = newCursorY
+									} else {
+										cursorX = 0
+									}
+								}
+								scrollback0 = active.cursorY >= rows - 1
+							})
+							try {
+								await tWritePromise(terminal, `${processed[1]}`)
+								await tWritePromise(terminal, ansi.cursor
+									.position(1 + cursorY, 1 + cursorX))
+							} finally {
+								disposer0.dispose()
+							}
+						} finally {
+							disposer.dispose()
+						}
+					})
 					resolve(Promise.all(writers).then(noop))
 					await Promise.allSettled(writers)
 				},
@@ -338,7 +389,11 @@ export class ConsolePseudoterminal
 						// eslint-disable-next-line no-await-in-loop
 						await tWritelnPromise(terminal, line)
 					}
-					await tWritePromise(terminal, `${ESC}7`)
+					const { buffer: { active: { cursorX, cursorY } } } = terminal
+					this.positions.set(terminal, deepFreeze({
+						xx: cursorX,
+						yy: cursorY,
+					}))
 				}))
 				await this.syncBuffer("sync", terminals0, false)
 			},

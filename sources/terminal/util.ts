@@ -64,12 +64,28 @@ export const
 		prefix: "",
 	} as const))),
 	// eslint-disable-next-line @typescript-eslint/no-magic-numbers
-	MOST_OSC_IDENTIFIERS = valueSet(range(2022))
+	MOST_OSC_IDENTIFIERS = valueSet(range(2022)),
+	MAX_CHARACTER_WIDTH = 2
 
 export function processText(text: string): string {
 	return text
 		.replace(replaceAllRegex("\r\n"), "\n")
 		.replace(replaceAllRegex("\n"), "\r\n")
+}
+
+export function sliceBufferLine(
+	line: IBufferLine,
+	start = 0,
+	end = Infinity,
+	cell?: IBufferCell,
+): string {
+	let ret = ""
+	for (let xx = start, cell0 = line.getCell(xx, cell);
+		cell0 && xx < end;
+		cell0 = line.getCell(xx += cell0.getWidth(), cell)) {
+		ret += cell0.getChars()
+	}
+	return ret
 }
 
 export async function writePromise(
@@ -87,8 +103,7 @@ export async function writelnPromise(
 }
 
 export class TerminalTextArea implements IDisposable {
-	protected static readonly fullWidth = 2
-	protected static readonly margin = TerminalTextArea.fullWidth
+	protected static readonly margin = MAX_CHARACTER_WIDTH
 	protected static readonly writeLock = "write"
 	// See https://xtermjs.org/docs/api/vtfeatures/
 	protected static readonly allowedIdentifiers = deepFreeze({
@@ -222,21 +237,6 @@ export class TerminalTextArea implements IDisposable {
 		return this.#values
 	}
 
-	static #slice(
-		line: IBufferLine,
-		start = 0,
-		end = Infinity,
-		cell?: IBufferCell,
-	): string {
-		let ret = ""
-		for (let xx = start, cell0 = line.getCell(xx, cell);
-			cell0 && xx < end;
-			cell0 = line.getCell(xx += cell0.getWidth(), cell)) {
-			ret += cell0.getChars()
-		}
-		return ret
-	}
-
 	public async write(data: string): Promise<void> {
 		const splitters = [ESC, "\u007f", "\r"],
 			{ terminal, lock } = this,
@@ -278,7 +278,7 @@ export class TerminalTextArea implements IDisposable {
 					}
 					case "\r": {
 						const rest = line
-							? TerminalTextArea.#slice(line, cursorX, lineWidth, this.#cell)
+							? sliceBufferLine(line, cursorX, lineWidth, this.#cell)
 							: ""
 						terminal.resize(terminal.cols, terminal.rows + 1)
 						// eslint-disable-next-line no-await-in-loop
@@ -309,8 +309,7 @@ export class TerminalTextArea implements IDisposable {
 								this.#widths[cursorY] -= width
 							} else if (cursorY > 0) {
 								const
-									rest = TerminalTextArea
-										.#slice(line, 0, lineWidth, this.#cell),
+									rest = sliceBufferLine(line, 0, lineWidth, this.#cell),
 									prev = this.#widths[cursorY - 1] ?? 0
 								// eslint-disable-next-line no-await-in-loop
 								await writePromise(
@@ -326,7 +325,7 @@ export class TerminalTextArea implements IDisposable {
 						break
 					}
 					default: {
-						const reserve = TerminalTextArea.fullWidth * datum.length
+						const reserve = MAX_CHARACTER_WIDTH * datum.length
 						terminal.resize(terminal.cols + reserve, terminal.rows)
 						// eslint-disable-next-line no-await-in-loop
 						await writePromise(
@@ -384,9 +383,9 @@ export class TerminalTextArea implements IDisposable {
 						cell = line.getCell(cursorX += direction, this.#cell)) {
 						// NOOP
 					}
-					values[0].push(TerminalTextArea.#slice(line, 0, cursorX, this.#cell))
+					values[0].push(sliceBufferLine(line, 0, cursorX, this.#cell))
 					values[1]
-						.push(TerminalTextArea.#slice(line, cursorX, width, this.#cell))
+						.push(sliceBufferLine(line, cursorX, width, this.#cell))
 					// eslint-disable-next-line no-await-in-loop
 					await writePromise(
 						terminal,
@@ -394,7 +393,7 @@ export class TerminalTextArea implements IDisposable {
 					)
 				} else {
 					values[yy < cursorY ? 0 : 1]
-						.push(TerminalTextArea.#slice(line, 0, width, this.#cell))
+						.push(sliceBufferLine(line, 0, width, this.#cell))
 				}
 			}
 			++yy
