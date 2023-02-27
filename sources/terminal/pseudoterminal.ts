@@ -61,12 +61,14 @@ const
 	process = dynamicRequire<typeof import("node:process")>("node:process"),
 	tmp = dynamicRequire<typeof import("tmp")>("tmp")
 
-async function clearTerminal(terminal: Terminal): Promise<void> {
-	// Clear screen with scrollback kept
+async function clearTerminal(terminal: Terminal, keep = false): Promise<void> {
+	const { rows } = terminal
 	await tWritePromise(
 		terminal,
-		`${`\r${ansi.erase.inLine()}\n`.repeat(terminal.rows -
-			1)}\r${ansi.erase.inLine()}${ansi.cursor.position()}`,
+		`${keep
+			? `${NORMALIZED_LINE_FEED.repeat(Math.max(rows - 1, 0))}`
+			// eslint-disable-next-line @typescript-eslint/no-magic-numbers
+			: ""}${ansi.erase.display(keep ? 2 : 3)}${ansi.cursor.position()}`,
 	)
 }
 
@@ -189,7 +191,7 @@ export class TextPseudoterminal
 		return new Promise((resolve, reject) => {
 			this.lock.acquire(TextPseudoterminal.syncLock, async () => {
 				const writers = terminals0.map(async terminal => {
-					terminal.clear()
+					await clearTerminal(terminal)
 					await tWritePromise(terminal, text)
 				})
 				resolve(Promise.all(writers).then(noop))
@@ -311,7 +313,7 @@ export class ConsolePseudoterminal
 			].map(disposer0 => () => { disposer0.dispose() }),
 		)
 		this.onExit.finally(() => { disposer.call() })
-		terminal.clear()
+		await clearTerminal(terminal)
 		await this.write(this.log.history, [terminal])
 	}
 
@@ -680,7 +682,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 				}
 				tWritePromise(terminal, chunk).catch(logError)
 			}
-		await clearTerminal(terminal)
+		await clearTerminal(terminal, true)
 		terminal.loadAddon(new DisposerAddon(
 			() => { shell.stdout.removeListener("data", reader) },
 			() => { shell.stderr.removeListener("data", reader) },
@@ -758,7 +760,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 			reader = (chunk: Buffer | string): void => {
 				tWritePromise(terminal, chunk).catch(logError)
 			}
-		await clearTerminal(terminal)
+		await clearTerminal(terminal, true)
 		terminal.loadAddon(new DisposerAddon(
 			() => { shell.stdout.removeListener("data", reader) },
 			() => { shell.stderr.removeListener("data", reader) },
