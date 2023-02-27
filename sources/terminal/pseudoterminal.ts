@@ -205,7 +205,7 @@ export class ConsolePseudoterminal
 	protected static readonly syncLock = "sync"
 	protected readonly lock = new AsyncLock()
 	protected readonly buffer = new TerminalTextArea()
-	protected readonly positions = new Map<Terminal, {
+	readonly #positions = new Map<Terminal, {
 		readonly scroll: number
 		readonly xx: number
 		readonly yy: number
@@ -215,7 +215,7 @@ export class ConsolePseudoterminal
 		super()
 		this.onExit
 			.finally(log.logger.listen(async event => this.write([event])))
-			.finally(() => { this.positions.clear() })
+			.finally(() => { this.#positions.clear() })
 			.finally(() => { this.buffer.dispose() })
 	}
 
@@ -238,7 +238,7 @@ export class ConsolePseudoterminal
 	public override async pipe(terminal: Terminal): Promise<void> {
 		await super.pipe(terminal)
 		terminal.loadAddon(new DisposerAddon(
-			() => { this.positions.delete(terminal) },
+			() => { this.#positions.delete(terminal) },
 		))
 		let block = false
 		const disposer = new Functions(
@@ -281,14 +281,9 @@ export class ConsolePseudoterminal
 	}
 
 	protected async eval(): Promise<void> {
-		const { buffer, lock, terminals } = this,
-			code =
-				await lock.acquire(ConsolePseudoterminal.syncLock, async () => {
-					const { string: code0 } = buffer.value
-					await buffer.clear()
-					await this.syncBuffer(terminals, false)
-					return code0
-				})
+		const { buffer, terminals } = this,
+			{ string: code } = await buffer.clear()
+		await this.syncBuffer(terminals)
 		console.log(code)
 		let ret: unknown = null
 		try {
@@ -318,7 +313,7 @@ export class ConsolePseudoterminal
 				async () => {
 					const writers = terminals0.map(async terminal => {
 						const { buffer: { active }, cols, rows, options } = terminal,
-							start = this.positions.get(terminal) ?? deepFreeze({
+							start = this.#positions.get(terminal) ?? deepFreeze({
 								scroll: 0,
 								xx: active.cursorX,
 								yy: active.cursorY,
@@ -389,7 +384,7 @@ export class ConsolePseudoterminal
 							)}${ansi.erase.display()}${ret.buffer}${ansi.cursor
 								.position(1 + ret.cursorY, 1 + ret.cursorX)}`,
 						)
-						this.positions.set(terminal, deepFreeze({
+						this.#positions.set(terminal, deepFreeze({
 							scroll: ret.scroll,
 							xx: ret.startX,
 							yy: ret.startY,
@@ -421,12 +416,12 @@ export class ConsolePseudoterminal
 			async () => {
 				await Promise.allSettled(terminals0.map(async terminal => {
 					const { buffer: { active } } = terminal,
-						position = this.positions.get(terminal)
+						position = this.#positions.get(terminal)
 					await tWritePromise(terminal, `${ansi.cursor.position(
 						1 + (position?.yy ?? active.cursorY),
 						1 + (position?.xx ?? active.cursorX),
 					)}${text}`)
-					this.positions.set(terminal, deepFreeze({
+					this.#positions.set(terminal, deepFreeze({
 						scroll: 0,
 						xx: active.cursorX,
 						yy: active.cursorY,

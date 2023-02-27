@@ -329,12 +329,14 @@ export class TerminalTextArea implements IDisposable {
 		})
 	}
 
-	public async clear(): Promise<void> {
-		await this.lock.acquire(TerminalTextArea.writeLock, async () => {
+	public async clear(): Promise<typeof this["value"]> {
+		return this.lock.acquire(TerminalTextArea.writeLock, async () => {
+			const ret = this.value
 			this.terminal.reset()
 			clear(this.#widths)
 			this.#widths.push(0)
 			await this.#sync()
+			return ret
 		})
 	}
 
