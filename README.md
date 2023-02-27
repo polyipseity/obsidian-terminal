@@ -113,7 +113,7 @@ Translation files are under [`assets/locales/`](assets/locales/). Each locale ha
 To contribute translation for an existing locale, modify the files in the corresponding directory.
 
 For a new locale, create a new directory named with its language tag and copy [`assets/locales/en/translation.json`](assets/locales/en/translation.json) into it. Then, add an entry to [`assets/locales/en/language.json`](assets/locales/en/language.json) in this format:
-```JSON
+```JSONc
 {
 	// ...
 	"en": "English",
@@ -127,7 +127,7 @@ Sort the list of languages by the alphabetical order of their language tags. The
 When translating, keep in mind the following things:
 - Do not translate anything between `{{` and `}}` (`{{example}}`). They are __interpolations__ and will be replaced by localized strings at runtime.
 - Do not translate anything between `$t(` and `)` (`$t(example)`). They refer to other localized strings. To find the localized string being referred to, follow the path of the key. For example, the key `a.b.c` refers to:
-```JSON
+```JSONc
 {
 	// ...
 	"a": {
