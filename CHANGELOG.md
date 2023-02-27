@@ -8,6 +8,14 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Notices__
+- The minimum API version has been bumped to v1.1.13. Please update your app to the latest version. (`e2733c5c36003db5556819088b50bad29671d4e0`)
+
+__Features__
+- Developer console terminal is now interactive. You can evaluate code like the normal developer console now. (Spent too much time on this.) (`bcdd8dbff0d652c8eb9a389f734db2c3a5891323`...`e2d8690767f81958b1a0d95ac412a12ac3ab0c33`)
+- You can set custom title of the terminal from the shell (if your shell supports it). (`3718829159b1c5960dec430df78ed5d70c4a9abb`)
+- Four new options for 'New instance behavior'. They are 'New left tab', 'New left split', 'New right tab', and 'New right split'. (`bcdd8dbff0d652c8eb9a389f734db2c3a5891323`)
+
 __Improvements__
 - All settings should have an icon representing it. (`eb1a647d0336041a7f705a3476f18bd5ed738913`)
 - Improve find in terminal.
@@ -16,6 +24,9 @@ __Improvements__
   - Add ARIA labels. (`c747a490a158c7891effb24642d790ca58699de9`)
 - Improve working directory handling to reduce confusion like in GH#12. (`55b917052b371eb566976af7d13b6345c64554ef`, `985b6100ef14e9f0933de0859dd0e8872e217490`)
 - Add double confirm dialog hint. (`0f043376fb6f2528b826066128666baa855c774d`)
+- Make terminal resizing extremely responsive. (`73a7836522d56e92b064a76a09bf18fc87d7ec42`)
+- Find in terminal now has intro and outro transitions. (`bcdd8dbff0d652c8eb9a389f734db2c3a5891323`...`ef39cb1177af6cc108f8e61d179eff89056b48f8`)
+- Add 'Clear' button to terminal context menu. (`1a2f3104b6034065b1f7e1a0e5cd410254eef52c`)
 
 __Fixes__
 - Fix some translation strings. (`88cbcf603ff0429d26f1616b7af67bf4cf27f3f9`, `2a4a4cfe45f4ffd787feb134ef0545af7a832fb5`)
@@ -26,6 +37,8 @@ __Internals__
 - Load translations on demand. (`268c684ec97f858d5a6ef030130b834eda305442`)
 - Delay removing exit code temp file to print less warnings to the console. (`6923553979451e1da6200c7ac01e637f2f2563ae`)
 - Avoid using non-standard functions. (`44dcfaf89f7638e77e7e0c0306c12c14ac613e00`, `8de1c59e2e6ca6afebf4c7f0fd676077d1a07502`)
+- Only create one `ConsolePseudoterminal`. (`bd97d08b1186584d607a8530b116c1aad1d9a761`)
+- Use reference-counted `RefPseudoterminal` in preparation for duplicating terminals. (`02249373db897a683628cd8363199ba512d55686`)
 
 __Full changelog__: [`3.1.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.1.0...main)
 
