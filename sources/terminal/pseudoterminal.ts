@@ -36,7 +36,7 @@ import {
 	normalizeText,
 	writePromise as tWritePromise,
 } from "./util"
-import { isEmpty, noop, range } from "lodash"
+import { isEmpty, isUndefined, noop, range } from "lodash"
 import { notice2, printError } from "sources/utils/obsidian"
 import AsyncLock from "async-lock"
 import type { AsyncOrSync } from "ts-essentials"
@@ -205,6 +205,8 @@ export class ConsolePseudoterminal
 	protected static readonly syncLock = "sync"
 	protected readonly lock = new AsyncLock()
 	protected readonly buffer = new TerminalTextArea()
+	readonly #history = [""]
+	#historyIndex = 0
 	readonly #positions = new Map<Terminal, {
 		readonly scroll: number
 		readonly xx: number
@@ -240,6 +242,7 @@ export class ConsolePseudoterminal
 		terminal.loadAddon(new DisposerAddon(
 			() => { this.#positions.delete(terminal) },
 		))
+		const { buffer, lock, terminals } = this
 		let block = false
 		const disposer = new Functions(
 			{ async: false, settled: true },
@@ -249,29 +252,58 @@ export class ConsolePseudoterminal
 						block = false
 						return
 					}
-					let writing = true
-					const write = this.buffer.write(data)
-						.finally(() => { writing = false })
-						.then(async () => this.syncBuffer());
-					(async (): Promise<void> => {
-						try {
-							// eslint-disable-next-line no-unmodified-loop-condition
-							while (writing) {
-								// eslint-disable-next-line no-await-in-loop
-								await this.syncBuffer()
-							}
-						} catch (error) {
-							console.log(error)
+					await lock.acquire(ConsolePseudoterminal.syncLock, async () => {
+						let writing = true
+						const write = buffer.write(data)
+							.finally(() => { writing = false })
+							.then(async () => {
+								this.#history[this.#history.length - 1] = buffer.value.string
+								await this.syncBuffer(terminals, false)
+							})
+						// eslint-disable-next-line no-unmodified-loop-condition
+						while (writing) {
+							// eslint-disable-next-line no-await-in-loop
+							await this.syncBuffer(terminals, false)
 						}
-					})()
-					await write
+						await write
+					})
 				}),
 				terminal.onKey(({ domEvent }) => {
-					if (domEvent.key === "Enter" && isEmpty(getKeyModifiers(domEvent))) {
-						this.eval().catch(logError)
-						consumeEvent(domEvent)
-						block = true
+					if (!isEmpty(getKeyModifiers(domEvent))) { return }
+					const { key } = domEvent
+					switch (key) {
+						case "Enter":
+							this.eval().catch(logError)
+							break
+						case "ArrowUp":
+						case "ArrowDown":
+							if ((this.#history.at(-1) ?? "").includes("\n")) { return }
+							lock.acquire(ConsolePseudoterminal.syncLock, async () => {
+								if ((this.#history.at(-1) ?? "").includes("\n")) { return }
+								const { length } = this.#history
+								if (length <= 0) { return }
+								const text = this.#history.at(this.#historyIndex =
+									(this.#historyIndex + (key === "ArrowDown"
+										? 1
+										: -1)) % length)
+								if (isUndefined(text)) { return }
+								let writing = true
+								const write = buffer.setValue(text)
+									.finally(() => { writing = false })
+									.then(async () => this.syncBuffer(terminals, false))
+								// eslint-disable-next-line no-unmodified-loop-condition
+								while (writing) {
+									// eslint-disable-next-line no-await-in-loop
+									await this.syncBuffer(terminals, false)
+								}
+								await write
+							}).catch(logError)
+							break
+						default:
+							return
 					}
+					block = true
+					consumeEvent(domEvent)
 				}),
 			].map(disposer0 => () => { disposer0.dispose() }),
 		)
@@ -281,9 +313,15 @@ export class ConsolePseudoterminal
 	}
 
 	protected async eval(): Promise<void> {
-		const { buffer, terminals } = this,
-			{ string: code } = await buffer.clear()
-		await this.syncBuffer(terminals)
+		const { buffer, lock, terminals } = this,
+			code = await lock.acquire(ConsolePseudoterminal.syncLock, async () => {
+				const { string: ret } = await buffer.clear(),
+					{ length } = this.#history
+				this.#history.splice(length - 1, 1, ret, "")
+				this.#historyIndex = length
+				await this.syncBuffer(terminals, false)
+				return ret
+			})
 		console.log(code)
 		let ret: unknown = null
 		try {

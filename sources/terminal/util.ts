@@ -7,6 +7,7 @@ import {
 	type ITerminalInitOnlyOptions as TerminalOptionsInit,
 } from "xterm"
 import {
+	acquireConditionally,
 	cartesianProduct,
 	clear,
 	deepFreeze,
@@ -221,9 +222,9 @@ export class TerminalTextArea implements IDisposable {
 		return this.#value
 	}
 
-	public async write(data: string): Promise<void> {
+	public async write(data: string, lock = true): Promise<void> {
 		const splitters = [ESC, "\u007f", "\r"],
-			{ terminal, lock } = this,
+			{ terminal, lock: alock } = this,
 			{ buffer: { active } } = terminal,
 			split = (str: string): string[] => str.split(
 				new RegExp(
@@ -232,112 +233,131 @@ export class TerminalTextArea implements IDisposable {
 				),
 			),
 			data0 = split(data)
-		await lock.acquire(TerminalTextArea.writeLock, async () => {
-			for (let datum = data0.shift();
-				!isUndefined(datum);
-				datum = data0.shift()) {
-				const { cursorX, cursorY } = active,
-					lineWidth = this.#widths[cursorY] ?? 0,
-					line = active.getLine(cursorY)
-				switch (datum) {
-					case "": break
-					case ESC: {
-						// eslint-disable-next-line no-await-in-loop
-						await writePromise(terminal, datum)
-						const [seq] = data0
-						if (!isUndefined(seq)) {
-							this.#sequence = true
-							let consumed = 0
-							for (const char of seq) {
-								// eslint-disable-next-line no-await-in-loop
-								await writePromise(terminal, char)
-								consumed += char.length
-								// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-								if (!this.#sequence) { break }
+		await acquireConditionally(
+			alock,
+			TerminalTextArea.writeLock,
+			lock,
+			async () => {
+				for (let datum = data0.shift();
+					!isUndefined(datum);
+					datum = data0.shift()) {
+					const { cursorX, cursorY } = active,
+						lineWidth = this.#widths[cursorY] ?? 0,
+						line = active.getLine(cursorY)
+					switch (datum) {
+						case "": break
+						case ESC: {
+							// eslint-disable-next-line no-await-in-loop
+							await writePromise(terminal, datum)
+							const [seq] = data0
+							if (!isUndefined(seq)) {
+								this.#sequence = true
+								let consumed = 0
+								for (const char of seq) {
+									// eslint-disable-next-line no-await-in-loop
+									await writePromise(terminal, char)
+									consumed += char.length
+									// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+									if (!this.#sequence) { break }
+								}
+								this.#sequence = false
+								data0[0] = seq.slice(consumed)
 							}
-							this.#sequence = false
-							data0[0] = seq.slice(consumed)
+							break
 						}
-						break
-					}
-					case "\r": {
-						const rest =
-							line?.translateToString(false, cursorX, lineWidth) ?? ""
-						terminal.resize(terminal.cols, terminal.rows + 1)
-						// eslint-disable-next-line no-await-in-loop
-						await writePromise(
-							terminal,
-							`${ansi.erase.inLine()}${ansi.cursor.down()}${CSI}L`,
-						)
-						this.#widths[cursorY] = cursorX
-						insertAt(this.#widths, cursorY + 1, 0)
-						data0.unshift(...split(`${rest}${ansi.cursor
-							.horizontalAbsolute(1)}`))
-						break
-					}
-					case "\u007f": {
-						if (line) {
-							let width = 0
-							for (let xx = cursorX - 1, cell0 = line.getCell(xx, this.#cell);
-								width <= 0 && cell0;
-								cell0 = line.getCell(--xx, this.#cell)) {
-								width = cell0.getWidth()
-							}
-							if (width > 0) {
-								// eslint-disable-next-line no-await-in-loop
-								await writePromise(
-									terminal,
-									`${ansi.cursor.back(width)}${CSI}${width}P`,
-								)
-								this.#widths[cursorY] -= width
-							} else if (cursorY > 0) {
-								const
-									rest = line.translateToString(false, 0, lineWidth),
-									prev = this.#widths[cursorY - 1] ?? 0
-								// eslint-disable-next-line no-await-in-loop
-								await writePromise(
-									terminal,
-									`${CSI}M${ansi.cursor.up()}${ansi.cursor
-										.horizontalAbsolute(1 + prev)}`,
-								)
-								removeAt(this.#widths, cursorY)
-								data0.unshift(...split(`${rest}${ansi.cursor
-									.horizontalAbsolute(1 + prev)}`))
-							}
+						case "\r": {
+							const rest =
+								line?.translateToString(false, cursorX, lineWidth) ?? ""
+							terminal.resize(terminal.cols, terminal.rows + 1)
+							// eslint-disable-next-line no-await-in-loop
+							await writePromise(
+								terminal,
+								`${ansi.erase.inLine()}${ansi.cursor.down()}${CSI}L`,
+							)
+							this.#widths[cursorY] = cursorX
+							insertAt(this.#widths, cursorY + 1, 0)
+							data0.unshift(...split(`${rest}${ansi.cursor
+								.horizontalAbsolute(1)}`))
+							break
 						}
-						break
+						case "\u007f": {
+							if (line) {
+								let width = 0
+								for (let xx = cursorX - 1, cell0 = line.getCell(xx, this.#cell);
+									width <= 0 && cell0;
+									cell0 = line.getCell(--xx, this.#cell)) {
+									width = cell0.getWidth()
+								}
+								if (width > 0) {
+									// eslint-disable-next-line no-await-in-loop
+									await writePromise(
+										terminal,
+										`${ansi.cursor.back(width)}${CSI}${width}P`,
+									)
+									this.#widths[cursorY] -= width
+								} else if (cursorY > 0) {
+									const
+										rest = line.translateToString(false, 0, lineWidth),
+										prev = this.#widths[cursorY - 1] ?? 0
+									// eslint-disable-next-line no-await-in-loop
+									await writePromise(
+										terminal,
+										`${CSI}M${ansi.cursor.up()}${ansi.cursor
+											.horizontalAbsolute(1 + prev)}`,
+									)
+									removeAt(this.#widths, cursorY)
+									data0.unshift(...split(`${rest}${ansi.cursor
+										.horizontalAbsolute(1 + prev)}`))
+								}
+							}
+							break
+						}
+						default: {
+							const reserve = MAX_CHARACTER_WIDTH * datum.length
+							terminal.resize(terminal.cols + reserve, terminal.rows)
+							// eslint-disable-next-line no-await-in-loop
+							await writePromise(
+								terminal,
+								`${CSI}${reserve}@${datum}`,
+							)
+							this.#widths[cursorY] += reserve
+							const lossX = reserve - (active.cursorX - cursorX)
+							// eslint-disable-next-line no-await-in-loop
+							await writePromise(terminal, `${CSI}${lossX}P`)
+							this.#widths[cursorY] -= lossX
+							break
+						}
 					}
-					default: {
-						const reserve = MAX_CHARACTER_WIDTH * datum.length
-						terminal.resize(terminal.cols + reserve, terminal.rows)
-						// eslint-disable-next-line no-await-in-loop
-						await writePromise(
-							terminal,
-							`${CSI}${reserve}@${datum}`,
-						)
-						this.#widths[cursorY] += reserve
-						const lossX = reserve - (active.cursorX - cursorX)
-						// eslint-disable-next-line no-await-in-loop
-						await writePromise(terminal, `${CSI}${lossX}P`)
-						this.#widths[cursorY] -= lossX
-						break
-					}
+					// eslint-disable-next-line no-await-in-loop
+					await this.#sync()
 				}
-				// eslint-disable-next-line no-await-in-loop
-				await this.#sync()
-			}
+			},
+		)
+	}
+
+	public async setValue(value: string): Promise<void> {
+		const norm = normalizeText(value)
+			.replace(replaceAllRegex(NORMALIZED_LINE_FEED), "\r")
+		await this.lock.acquire(TerminalTextArea.writeLock, async () => {
+			await this.clear(false)
+			await this.write(norm, false)
 		})
 	}
 
-	public async clear(): Promise<typeof this["value"]> {
-		return this.lock.acquire(TerminalTextArea.writeLock, async () => {
-			const ret = this.value
-			this.terminal.reset()
-			clear(this.#widths)
-			this.#widths.push(0)
-			await this.#sync()
-			return ret
-		})
+	public async clear(lock = true): Promise<typeof this["value"]> {
+		return acquireConditionally(
+			this.lock,
+			TerminalTextArea.writeLock,
+			lock,
+			async () => {
+				const ret = this.value
+				this.terminal.reset()
+				clear(this.#widths)
+				this.#widths.push(0)
+				await this.#sync()
+				return ret
+			},
+		)
 	}
 
 	public dispose(): void {
