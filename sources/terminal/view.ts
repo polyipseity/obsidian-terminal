@@ -440,9 +440,7 @@ export class TerminalView extends ItemView {
 			cloneAsWritable(TerminalView.modifiers),
 			"`",
 			event => {
-				const emu = this.#emulator
-				if (!emu) { return }
-				emu.terminal.focus()
+				this.#emulator?.terminal.focus()
 				consumeEvent(event)
 			},
 		))
@@ -455,11 +453,11 @@ export class TerminalView extends ItemView {
 					typeof activeElement.blur === "function") {
 					try {
 						activeElement.blur()
-						consumeEvent(event)
 					} catch (error) {
 						console.debug(error)
 					}
 				}
+				consumeEvent(event)
 			},
 		))
 		this.registerScopeEvent(focusedScope.register(
@@ -474,11 +472,8 @@ export class TerminalView extends ItemView {
 			cloneAsWritable(TerminalView.modifiers),
 			"k",
 			event => {
-				const term = this.#emulator?.terminal
-				if (term) {
-					term.clear()
-					consumeEvent(event)
-				}
+				this.#emulator?.terminal.clear()
+				consumeEvent(event)
 			},
 		))
 
