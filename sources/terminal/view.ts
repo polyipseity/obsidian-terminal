@@ -29,6 +29,7 @@ import {
 	copyOnWrite,
 	createChildElement,
 	deepFreeze,
+	destroyWithOutro,
 	extname,
 	inSet,
 	logWarn,
@@ -281,7 +282,7 @@ export class TerminalView extends ItemView {
 	}
 
 	set #find(val: FindComponent | null) {
-		this.#find?.$destroy()
+		if (this.#find) { destroyWithOutro(this.#find) }
 		this.#find0 = val
 	}
 

@@ -1,3 +1,8 @@
+import {
+	check_outros as $checkOutros,
+	group_outros as $groupOutros,
+	transition_out as $transitionOut,
+} from "svelte/internal"
 import type { AsyncOrSync, DeepReadonly, DeepWritable } from "ts-essentials"
 import { type Contains, type Sized, simplifyType } from "./types"
 import { JSON_STRINGIFY_SPACE, SI_PREFIX_SCALE, UNDEFINED } from "sources/magic"
@@ -9,6 +14,7 @@ import {
 import { escapeRegExp, isEmpty, isUndefined, noop } from "lodash"
 import AsyncLock from "async-lock"
 import type { ChildProcess } from "node:child_process"
+import type { SvelteComponent } from "svelte"
 import type { Writable } from "node:stream"
 import { getSerialize } from "json-stringify-safe"
 
@@ -228,6 +234,23 @@ export function deepFreeze<T>(value: T): DeepReadonly<T> {
 		Object.values(value).forEach(deepFreeze)
 	}
 	return Object.freeze(value) as DeepReadonly<T>
+}
+
+// Feature request: https://github.com/sveltejs/svelte/issues/4056
+export function destroyWithOutro(self: SvelteComponent): void {
+	const { $$: { fragment } } = self
+	if (fragment !== false && fragment) {
+		try {
+			$groupOutros()
+			$transitionOut(fragment, 0, 0, () => { self.$destroy() })
+			$checkOutros()
+		} catch (error) {
+			console.error(error)
+			self.$destroy()
+		}
+	} else {
+		self.$destroy()
+	}
 }
 
 export function escapeQuerySelectorAttribute(value: string): string {
