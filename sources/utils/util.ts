@@ -363,6 +363,22 @@ export function isNullish<T>(value: Contains<T, null | undefined
 	return value === null || typeof value === "undefined"
 }
 
+export function lazyInit<T>(initializer: () => T): () => T {
+	let cache: {
+		readonly init: false
+		readonly value: null
+	} | {
+		readonly init: true
+		readonly value: T
+	} = deepFreeze({ init: false, value: null })
+	return () => {
+		const cache0 = cache.init
+			? cache
+			: cache = Object.freeze({ init: true, value: initializer() })
+		return cache0.value
+	}
+}
+
 export function logError(thing: unknown): void {
 	console.error(thing)
 }

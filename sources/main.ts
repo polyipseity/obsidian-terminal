@@ -9,6 +9,7 @@ import {
 	copyOnWriteAsync,
 	deepFreeze,
 	isNullish,
+	lazyInit,
 	logError,
 } from "./utils/util"
 import {
@@ -30,7 +31,6 @@ import { semVerString } from "./utils/types"
 export class TerminalPlugin extends Plugin {
 	public readonly version
 	public readonly log
-	public readonly console
 	public readonly language = new LanguageManager(this)
 	public readonly statusBarHider = new StatusBarHider(this)
 	public readonly saveSettings =
@@ -41,6 +41,10 @@ export class TerminalPlugin extends Plugin {
 			this.saveData(this.settings).then(resolve, reject)
 		}, SAVE_SETTINGS_TIMEOUT * SI_PREFIX_SCALE, false))
 
+	readonly #console = lazyInit(() => new RefPsuedoterminal(
+		new ConsolePseudoterminal(console, this.log),
+	))
+
 	readonly #onMutateSettings = new EventEmitterLite<readonly [Settings]>()
 	#settings: Settings = deepFreeze(Settings.fix(Settings.DEFAULT).value)
 
@@ -48,18 +52,18 @@ export class TerminalPlugin extends Plugin {
 		const { unpatch, log } = patch(app.workspace)
 		super(app, manifest)
 		this.register(unpatch)
-
-		this.register(async () => this.console.kill())
-		this.console = new RefPsuedoterminal(
-			new ConsolePseudoterminal(console, this.log = log),
-		)
-
+		this.log = log
 		try {
 			this.version = semVerString(manifest.version)
 		} catch (error) {
 			console.warn(error)
 			this.version = null
 		}
+		this.register(async () => this.console.kill())
+	}
+
+	public get console(): RefPsuedoterminal<ConsolePseudoterminal> {
+		return this.#console()
 	}
 
 	public get settings(): Settings {
