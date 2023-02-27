@@ -1,10 +1,5 @@
 import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
-import {
-	Functions,
-	deepFreeze,
-	replaceAllRegex,
-	spawnPromise,
-} from "../utils/util"
+import { Functions, deepFreeze, spawnPromise } from "../utils/util"
 import {
 	type ITerminalAddon,
 	type ITerminalInitOnlyOptions,
@@ -24,16 +19,11 @@ import type { WebglAddon } from "xterm-addon-webgl"
 import { asyncDebounce } from "sources/utils/obsidian"
 import { debounce } from "obsidian"
 import { launderUnchecked } from "sources/utils/types"
+import { writePromise } from "./util"
 
 const
 	childProcess =
 		dynamicRequire<typeof import("node:child_process")>("node:child_process")
-
-export function processText(text: string): string {
-	return text
-		.replace(replaceAllRegex("\r\n"), "\n")
-		.replace(replaceAllRegex("\n"), "\r\n")
-}
 
 export const SUPPORTS_EXTERNAL_TERMINAL_EMULATOR =
 	importable("node:child_process")
@@ -103,15 +93,16 @@ export class XtermTerminalEmulator<A> {
 			terminal.loadAddon(addon)
 		}
 		this.addons = addons0
+		let write = Promise.resolve()
 		if (state) {
 			terminal.resize(state.columns, state.rows)
-			terminal.write(state.data)
+			write = writePromise(terminal, state.data)
 		}
-		this.pseudoterminal = (async (): Promise<Pseudoterminal> => {
+		this.pseudoterminal = write.then(async () => {
 			const pty0 = await pseudoterminal(terminal, addons0)
 			await pty0.pipe(terminal)
 			return pty0
-		})()
+		})
 		this.pseudoterminal.then(async pty0 => pty0.onExit)
 			.finally(() => { this.#running = false })
 	}

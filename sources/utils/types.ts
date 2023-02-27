@@ -1,7 +1,12 @@
 import type { DeepReadonly, DeepWritable, Opaque } from "ts-essentials"
 import { SemVer } from "semver"
+import { isUndefined } from "lodash"
 
 export type AnyObject = Readonly<Record<number | string | symbol, unknown>>
+export type CodePoint =
+	Opaque<string, "2af98ef6-0537-4fd3-a1e1-269517bca44d"> & {
+		readonly codePointAt: (pos: 0) => number
+	}
 export type Contains<T, U> = T & U extends never ? false : true
 export type Exact<T, U> =
 	(<G>() => G extends T ? 1 : -1) extends
@@ -40,6 +45,13 @@ export function opaqueOrDefault<T, I extends string, D>(
 		console.debug(error)
 		return defaultValue
 	}
+}
+export function codePoint(value: string): CodePoint {
+	const cp = value.codePointAt(0)
+	if (isUndefined(cp) || String.fromCharCode(cp) !== value) {
+		throw new TypeError(value)
+	}
+	return value as CodePoint
 }
 export function semVerString(value: string): SemVerString {
 	return new SemVer(value).version as SemVerString

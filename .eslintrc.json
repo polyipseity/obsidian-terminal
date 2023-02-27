@@ -173,7 +173,8 @@
               1,
               10
             ],
-            "ignoreEnums": true
+            "ignoreEnums": true,
+            "ignoreReadonlyClassProperties": true
           }
         ],
         "@typescript-eslint/no-namespace": "off",

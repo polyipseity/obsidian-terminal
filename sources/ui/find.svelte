@@ -8,6 +8,7 @@
 	import { isEmpty } from "lodash";
 	import { onMount } from "svelte";
 	import { setIcon } from "obsidian";
+	import { slide } from "svelte/transition";
 </script>
 
 <script lang="typescript">
@@ -43,7 +44,7 @@
 	$: onParamsChanged(params);
 </script>
 
-<div class="document-search-container" bind:this={element}>
+<div class="document-search-container" bind:this={element} transition:slide>
 	<div class="document-search">
 		<div class="document-search-buttons">
 			<button

@@ -1,14 +1,25 @@
+import {
+	check_outros as $checkOutros,
+	group_outros as $groupOutros,
+	transition_out as $transitionOut,
+} from "svelte/internal"
 import type { AsyncOrSync, DeepReadonly, DeepWritable } from "ts-essentials"
-import { type Contains, type Sized, simplifyType } from "./types"
+import {
+	type CodePoint,
+	type Contains,
+	type Sized,
+	simplifyType,
+} from "./types"
 import { JSON_STRINGIFY_SPACE, SI_PREFIX_SCALE, UNDEFINED } from "sources/magic"
 import {
 	type PrimitiveTypeE,
 	type TypeofMapE,
 	genericTypeofGuardE,
 } from "./typeof"
-import { escapeRegExp, isEmpty, isUndefined, noop } from "lodash"
+import { escapeRegExp, isEmpty, isUndefined, noop, range } from "lodash"
 import AsyncLock from "async-lock"
 import type { ChildProcess } from "node:child_process"
+import type { SvelteComponent } from "svelte"
 import type { Writable } from "node:stream"
 import { getSerialize } from "json-stringify-safe"
 
@@ -128,6 +139,15 @@ export class Functions<
 	}
 }
 
+export async function acquireConditionally<T>(
+	lock: AsyncLock,
+	key: string[] | string,
+	condition: boolean,
+	fn: () => PromiseLike<T> | T,
+): Promise<T> {
+	return condition ? lock.acquire(key, fn) : fn()
+}
+
 export function anyToError(obj: unknown): Error {
 	return obj instanceof Error ? obj : new Error(String(obj))
 }
@@ -166,6 +186,15 @@ export function capitalize(
 	locales?: string[] | string,
 ): string {
 	return mapFirstCodePoint(first => first.toLocaleUpperCase(locales), str)
+}
+
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type, @typescript-eslint/explicit-module-boundary-types
+export function cartesianProduct<T extends readonly (readonly unknown[])[],
+>(...arrays: T) {
+	return deepFreeze(arrays.reduce((acc, arr) => acc
+		.flatMap(comb => arr.map(ele => [comb, ele].flat())), [[]])) as
+		readonly ({ readonly [I in keyof T]: T[I][number] } &
+		{ readonly length: T["length"] })[]
 }
 
 export function clear(self: unknown[]): void {
@@ -228,6 +257,23 @@ export function deepFreeze<T>(value: T): DeepReadonly<T> {
 		Object.values(value).forEach(deepFreeze)
 	}
 	return Object.freeze(value) as DeepReadonly<T>
+}
+
+// Feature request: https://github.com/sveltejs/svelte/issues/4056
+export function destroyWithOutro(self: SvelteComponent): void {
+	const { $$: { fragment } } = self
+	if (fragment !== false && fragment) {
+		try {
+			$groupOutros()
+			$transitionOut(fragment, 0, 0, () => { self.$destroy() })
+			$checkOutros()
+		} catch (error) {
+			console.error(error)
+			self.$destroy()
+		}
+	} else {
+		self.$destroy()
+	}
 }
 
 export function escapeQuerySelectorAttribute(value: string): string {
@@ -483,6 +529,17 @@ export function randomNotIn(
 	let ret = generator()
 	while (self.includes(ret)) { ret = generator() }
 	return ret
+}
+
+export function rangeCodePoint(
+	start: CodePoint,
+	end?: CodePoint,
+	step?: number,
+): readonly string[] {
+	return deepFreeze(
+		range(start.codePointAt(0), end?.codePointAt(0), step)
+			.map(cp => String.fromCodePoint(cp)),
+	)
 }
 
 export function remove<T>(self: T[], item: T): T | undefined {
