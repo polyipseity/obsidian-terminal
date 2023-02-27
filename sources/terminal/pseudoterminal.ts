@@ -341,7 +341,6 @@ export class ConsolePseudoterminal
 									{ buffer: { active: active0 } } = simulation,
 									startRowsRemaining = rows - 1 - start.yy,
 									startMarker = simulation.registerMarker(start.yy)
-								simulation.getSelection()
 								await tWritePromise(
 									simulation,
 									`${ansi.cursor.position(
