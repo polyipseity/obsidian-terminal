@@ -213,7 +213,10 @@ export class ConsolePseudoterminal
 		readonly yy: number
 	}>()
 
-	public constructor(protected readonly log: Log) {
+	public constructor(
+		protected readonly console: Console,
+		protected readonly log: Log,
+	) {
 		super()
 		this.onExit
 			.finally(log.logger.listen(async event => this.write([event])))
@@ -313,7 +316,7 @@ export class ConsolePseudoterminal
 	}
 
 	protected async eval(): Promise<void> {
-		const { buffer, lock, terminals } = this,
+		const { buffer, console, lock, terminals } = this,
 			code = await lock.acquire(ConsolePseudoterminal.syncLock, async () => {
 				const { string: ret } = await buffer.clear(),
 					{ length } = this.#history

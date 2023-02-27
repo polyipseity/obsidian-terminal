@@ -51,7 +51,7 @@ export class TerminalPlugin extends Plugin {
 
 		this.register(async () => this.console.kill())
 		this.console = new RefPsuedoterminal(
-			new ConsolePseudoterminal(this.log = log),
+			new ConsolePseudoterminal(console, this.log = log),
 		)
 
 		try {
