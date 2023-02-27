@@ -56,17 +56,18 @@ This file is automatically opened on first install. You can reopen it in setting
 	2. Terminal history will be restored next time Obsidian is opened.
 - Additional actions
 	- Includes
-		- Find in terminal: (1), (2)
-		- Restart terminal: (1), (2)
-		- Edit terminal: (1), (2)
-		- Save terminal history as file: (1), (2)
-		- Export, import, or edit settings: (3), (4)
-		- Open documentation: (3), (4)
+		- Find in terminal: (1), (4)
+		- Clear terminal: (4)
+		- Restart terminal: (1)
+		- Edit terminal: (1)
+		- Save terminal history as file: (1)
+		- Export, import, or edit settings: (2), (3)
+		- Open documentation: (2), (3)
 	- Available by
-		- (1) Right-click on terminal tab header
-		- (2) Right-click on `More options` button
-		- (3) Open settings
-		- (4) Command palette
+		- (1) Right-click on tab header/`More options`
+		- (2) Open settings
+		- (3) Open command palette
+		- (4) Use hotkeys
 
 ### Hotkeys
 
