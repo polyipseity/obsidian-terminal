@@ -2,7 +2,7 @@
 
 Integrate consoles, shells, and terminals inside [Obsidian](https://obsidian.md/).
 
-__[Features](#features) · [Installation](#installation) · [Usage](#usage) · [Todos](#todos)__
+__[Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing) · [Todos](#todos)__
 
 ![Trailer](assets/trailer.png)
 
@@ -101,6 +101,49 @@ __Terminal emulators__
 - Command Prompt: `cmd`
 - macOS Terminal: `/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal $PWD`
 - xterm: `xterm`
+
+## Contributing
+
+Contributions are welcome via pull requests!
+
+### Translating
+
+Translation files are under [`assets/locales/`](assets/locales/). Each locale has its own directory named with its corresponding __[IETF language tag](https://wikipedia.org/wiki/IETF_language_tag)__.
+
+To contribute translation for an existing locale, modify the files in the corresponding directory.
+
+For a new locale, create a new directory named with its language tag and copy [`assets/locales/en/translation.json`](assets/locales/en/translation.json) into it. Then, add an entry to [`assets/locales/en/language.json`](assets/locales/en/language.json) in this format:
+```JSON
+{
+	// ...
+	"en": "English",
+	"(your-language-tag)": "(Native name of your language)",
+	"uwu": "Uwu",
+	// ...
+}
+```
+Sort the list of languages by the alphabetical order of their language tags. Then modify the files in the new directory.
+
+When translating, keep in mind the following things:
+- Do not translate anything between `{{` and `}}` (`{{example}}`). They are __interpolations__ and will be replaced by localized strings at runtime.
+- Do not translate anything between `$t(` and `)` (`$t(example)`). They refer to other localized strings. To find the localized string being referred to, follow the path of the key. For example, the key `a.b.c` refers to:
+```JSON
+{
+	// ...
+	"a": {
+		// ...
+		"b": {
+			// ...
+			"c": "I am 'a.b.c'!",
+			// ...
+		},
+		// ...
+	},
+	// ...
+}
+```
+- The keys under `generic` are vocabularies. They can be referred in translation strings by `$t(generic.key)`. Refer to them as much as possible to standardize translations for vocabularies that appear in different places.
+- It is okay to move interpolations and references to other localized strings around to make the translation natural. It is also okay to not use some references used in the original translation. However, it is NOT okay to not use all interpolations.
 
 ## Todos
 
