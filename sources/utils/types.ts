@@ -1,6 +1,6 @@
 import type { DeepReadonly, DeepWritable, Opaque } from "ts-essentials"
 import { SemVer } from "semver"
-import { isUndefined } from "lodash"
+import { isUndefined } from "lodash-es"
 
 export type AnyObject = Readonly<Record<number | string | symbol, unknown>>
 export type CodePoint =

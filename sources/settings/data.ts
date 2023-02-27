@@ -27,7 +27,7 @@ import { NOTICE_NO_TIMEOUT } from "sources/magic"
 import { PROFILE_PRESETS } from "./profile-presets"
 import { Pseudoterminal } from "../terminal/pseudoterminal"
 import { RendererAddon } from "../terminal/emulator"
-import { isUndefined } from "lodash"
+import { isUndefined } from "lodash-es"
 
 export interface Settings {
 	readonly language: Settings.DefaultableLanguage

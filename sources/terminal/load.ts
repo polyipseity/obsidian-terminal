@@ -12,7 +12,7 @@ import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "../main"
 import { TerminalView } from "./view"
 import { UNDEFINED } from "sources/magic"
-import { isEmpty } from "lodash"
+import { isEmpty } from "lodash-es"
 
 export function loadTerminal(plugin: TerminalPlugin): void {
 	plugin.registerView(

@@ -45,7 +45,7 @@ import {
 	resetButton,
 	setTextToEnum,
 } from "./settings"
-import { identity, isUndefined } from "lodash"
+import { identity, isUndefined } from "lodash-es"
 import type { DeepWritable } from "ts-essentials"
 import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
 import { Pseudoterminal } from "sources/terminal/pseudoterminal"

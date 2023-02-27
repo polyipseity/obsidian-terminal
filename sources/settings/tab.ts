@@ -21,7 +21,7 @@ import {
 	setTextToEnum,
 	setTextToNumber,
 } from "../ui/settings"
-import { identity, isEmpty, size } from "lodash"
+import { identity, isEmpty, size } from "lodash-es"
 import type { DeepWritable } from "ts-essentials"
 import { LANGUAGES } from "assets/locales"
 import { Settings } from "./data"

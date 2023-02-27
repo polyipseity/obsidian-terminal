@@ -16,7 +16,7 @@ import {
 	type TypeofMapE,
 	genericTypeofGuardE,
 } from "./typeof"
-import { escapeRegExp, isEmpty, isUndefined, noop, range } from "lodash"
+import { escapeRegExp, isEmpty, isUndefined, noop, range } from "lodash-es"
 import AsyncLock from "async-lock"
 import type { ChildProcess } from "node:child_process"
 import type { SvelteComponent } from "svelte"

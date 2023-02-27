@@ -36,7 +36,7 @@ import {
 	normalizeText,
 	writePromise as tWritePromise,
 } from "./util"
-import { isEmpty, isUndefined, noop, range } from "lodash"
+import { isEmpty, isUndefined, noop, range } from "lodash-es"
 import { notice2, printError } from "sources/utils/obsidian"
 import AsyncLock from "async-lock"
 import type { AsyncOrSync } from "ts-essentials"

@@ -5,7 +5,7 @@
 	import { consumeEvent, getKeyModifiers } from "sources/utils/util";
 	import type { DeepWritable } from "ts-essentials";
 	import { t as i18t } from "i18next";
-	import { isEmpty } from "lodash";
+	import { isEmpty } from "lodash-es";
 	import { onMount } from "svelte";
 	import { setIcon } from "obsidian";
 	import { slide } from "svelte/transition";

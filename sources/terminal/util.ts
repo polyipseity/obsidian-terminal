@@ -16,7 +16,7 @@ import {
 	removeAt,
 	replaceAllRegex,
 } from "sources/utils/util"
-import { escapeRegExp, isUndefined, range } from "lodash"
+import { escapeRegExp, isUndefined, range } from "lodash-es"
 import AsyncLock from "async-lock"
 import ansi from "ansi-escape-sequences"
 import { codePoint } from "sources/utils/types"

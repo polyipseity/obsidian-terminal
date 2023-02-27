@@ -18,7 +18,7 @@ import { DialogModal } from "sources/ui/modals"
 import { SettingTab } from "./tab"
 import type { TerminalPlugin } from "sources/main"
 import deepEqual from "deep-equal"
-import { isEmpty } from "lodash"
+import { isEmpty } from "lodash-es"
 
 export function loadSettings(plugin: TerminalPlugin): void {
 	const { app, language } = plugin,
