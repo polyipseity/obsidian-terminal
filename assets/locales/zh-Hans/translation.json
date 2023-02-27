@@ -50,7 +50,7 @@
 				"Python-executable": "$t(generic.Python)$t(generic.executable)",
 				"Python-executable-check": "$t(generic.check)",
 				"Python-executable-checking": "$t(generic.check)中",
-				"Python-executable-description": "推荐$t(asset:magic.recommended-Python-version)或更高版本。于$t(generic.platforms.unix)$t(generic.spawn)$t(generic.profile-types.integrated)$t(generic.terminal)所需要的。清除$t(generic.text-field)以$t(generic.disable)$t(generic.Python)。",
+				"Python-executable-description": "推荐$t(asset:magic.recommended-Python-version)或更高版本。于$t(generic.platforms.unix)$t(generic.spawn)$t(generic.profile-types.integrated)$t(generic.terminal)所需要的。$t(generic.clear)$t(generic.text-field)以$t(generic.disable)$t(generic.Python)。",
 				"Python-executable-placeholder": "（已$t(generic.disable)）",
 				"arguments": "$t(generic.argument)",
 				"arguments-description": "$t(generic.list-description)",
@@ -100,6 +100,7 @@
 				"working-directory-placeholder": "（未定义）"
 			},
 			"menus": {
+				"clear": "$t(generic.clear)",
 				"edit": "$t(generic.edit)",
 				"find": "$t(generic.find)",
 				"restart": "$t(generic.restart)",
@@ -148,6 +149,7 @@
 		"behavior": "行为",
 		"cancel": "取消",
 		"check": "检查",
+		"clear": "清除",
 		"clipboard": "剪贴板",
 		"close": "关闭",
 		"command": "命令",

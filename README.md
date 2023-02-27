@@ -57,7 +57,7 @@ This file is automatically opened on first install. You can reopen it in setting
 - Additional actions
 	- Includes
 		- Find in terminal: (1), (4)
-		- Clear terminal: (4)
+		- Clear terminal: (1), (4)
 		- Restart terminal: (1)
 		- Edit terminal: (1)
 		- Save terminal history as file: (1)

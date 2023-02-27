@@ -360,6 +360,10 @@ export class TerminalView extends ItemView {
 				.setDisabled(this.#find !== null)
 				.onClick(() => { this.startFind() }))
 			.addItem(item => item
+				.setTitle(i18n.t("components.terminal.menus.clear"))
+				.setIcon(i18n.t("asset:components.terminal.menus.clear-icon"))
+				.onClick(() => { this.#emulator?.terminal.clear() }))
+			.addItem(item => item
 				.setTitle(i18n.t("components.terminal.menus.restart"))
 				.setIcon(i18n.t("asset:components.terminal.menus.restart-icon"))
 				.onClick(() => { this.startEmulator() }))

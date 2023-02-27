@@ -67,6 +67,7 @@
 				"working-directory-icon": "folder"
 			},
 			"menus": {
+				"clear-icon": "eraser",
 				"edit-icon": "$t(asset:generic.edit-icon)",
 				"find-icon": "search",
 				"restart-icon": "reset",
