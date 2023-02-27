@@ -204,6 +204,7 @@ export class TerminalView extends ItemView {
 	static #namespacedType: string
 	protected readonly scope = new Scope(this.app.scope)
 	protected readonly focusedScope = new Scope()
+	#title0 = ""
 	#emulator0: TerminalView.EMULATOR | null = null
 	#find0: FindComponent | null = null
 	#state = TerminalView.State.DEFAULT
@@ -229,11 +230,16 @@ export class TerminalView extends ItemView {
 		return this.#find0
 	}
 
+	get #title(): string {
+		return this.#title0
+	}
+
 	get #name(): string {
 		const { plugin, state } = this,
 			{ i18n } = plugin.language,
 			{ profile } = state,
 			{ name, type } = profile
+		if (this.#title) { return this.#title }
 		if (typeof name === "string" && name) { return name }
 		if ("executable" in profile) {
 			const { executable } = profile
@@ -283,6 +289,11 @@ export class TerminalView extends ItemView {
 	set #find(val: FindComponent | null) {
 		this.#find?.$destroy()
 		this.#find0 = val
+	}
+
+	set #title(value: string) {
+		this.#title0 = value
+		updateDisplayText(this.plugin, this)
 	}
 
 	public override async setState(
@@ -615,11 +626,12 @@ export class TerminalView extends ItemView {
 							},
 							{
 								disposer: new DisposerAddon(
+									() => { ele.remove() },
+									() => { this.#title = "" },
 									ele.onWindowMigrated(() => {
 										emulator.reopen()
 										emulator.resize(false).catch(logWarn)
 									}),
-									() => { ele.remove() },
 									() => { this.#find?.$set({ results: "" }) },
 								),
 								ligatures: new LigaturesAddon({}),
@@ -652,6 +664,8 @@ export class TerminalView extends ItemView {
 						})
 					terminal.onWriteParsed(requestSaveLayout)
 					terminal.onResize(requestSaveLayout)
+					terminal.onTitleChange(title => { this.#title = title })
+
 					terminal.unicode.activeVersion = "11"
 					disposer.push(plugin.on(
 						"mutate-settings",
@@ -681,6 +695,7 @@ export class TerminalView extends ItemView {
 								}),
 						})
 					})
+
 					emulator.resize().catch(logWarn)
 					onResize(ele, ent => {
 						if (ent.contentBoxSize
