@@ -89,6 +89,10 @@ export namespace Settings {
 	export const NEW_INSTANCE_BEHAVIORS = Object.freeze([
 		"replaceTab",
 		"newTab",
+		"newLeftTab",
+		"newLeftSplit",
+		"newRightTab",
+		"newRightSplit",
 		"newHorizontalSplit",
 		"newVerticalSplit",
 		"newWindow",

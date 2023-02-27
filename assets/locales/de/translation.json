@@ -335,6 +335,10 @@
 		"new-instance-behavior": "New $t(generic.instance) $t(generic.behavior)",
 		"new-instance-behaviors": {
 			"newHorizontalSplit": "New horizontal $t(generic.split)",
+			"newLeftSplit": "New left $t(generic.split)",
+			"newLeftTab": "New left $t(generic.tab)",
+			"newRightSplit": "New right $t(generic.split)",
+			"newRightTab": "New right $t(generic.tab)",
 			"newTab": "New $t(generic.tab)",
 			"newVerticalSplit": "New vertical $t(generic.split)",
 			"newWindow": "New $t(generic.window)",

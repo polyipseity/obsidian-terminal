@@ -56,6 +56,7 @@ export function spawnTerminal(
 						.getLeavesOfType(TerminalView.type.namespaced(plugin))
 						.at(-1)
 					if (existingLeaf) {
+						// Does not work for left and right leaf
 						workspace.setActiveLeaf(existingLeaf)
 						return workspace.getLeaf("tab")
 					}
@@ -65,6 +66,14 @@ export function spawnTerminal(
 						return workspace.getLeaf()
 					case "newTab":
 						return workspace.getLeaf("tab")
+					case "newLeftTab":
+						return workspace.getLeftLeaf(false)
+					case "newLeftSplit":
+						return workspace.getLeftLeaf(true)
+					case "newRightTab":
+						return workspace.getRightLeaf(false)
+					case "newRightSplit":
+						return workspace.getRightLeaf(true)
 					case "newHorizontalSplit":
 						return workspace.getLeaf("split", "horizontal")
 					case "newVerticalSplit":
