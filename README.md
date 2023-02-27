@@ -104,7 +104,7 @@ __Terminal emulators__
 
 ## Contributing
 
-Contributions are welcome via pull requests!
+Contributions are welcome!
 
 ### Translating
 
