@@ -8,6 +8,12 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Full changelog__: [`3.2.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.2.0...main)
+
+## 3.2.0 (2023-02-27)
+
+Emulating a text area in a terminal is insane...
+
 __Notices__
 - The minimum API version has been bumped to v1.1.13. Please update your app to the latest version. (`e2733c5c36003db5556819088b50bad29671d4e0`)
 
@@ -40,7 +46,7 @@ __Internals__
 - Only create one `ConsolePseudoterminal`. (`bd97d08b1186584d607a8530b116c1aad1d9a761`)
 - Use reference-counted `RefPseudoterminal` in preparation for duplicating terminals. (`02249373db897a683628cd8363199ba512d55686`)
 
-__Full changelog__: [`3.1.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.1.0...main)
+__Full changelog__: [`3.1.0...3.2.0`](https://github.com/polyipseity/obsidian-terminal/compare/3.1.0...3.2.0)
 
 ## 3.1.0 (2023-02-20)
 
