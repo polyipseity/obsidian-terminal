@@ -118,7 +118,7 @@ For a new locale, create a new directory named with its language tag and copy [`
 	// ...
 	"en": "English",
 	"(your-language-tag)": "(Native name of your language)",
-	"uwu": "Uwu",
+	"uwu": "Uwuish",
 	// ...
 }
 ```
@@ -126,15 +126,15 @@ Sort the list of languages by the alphabetical order of their language tags. The
 
 When translating, keep in mind the following things:
 - Do not translate anything between `{{` and `}}` (`{{example}}`). They are __interpolations__ and will be replaced by localized strings at runtime.
-- Do not translate anything between `$t(` and `)` (`$t(example)`). They refer to other localized strings. To find the localized string being referred to, follow the path of the key. For example, the key `a.b.c` refers to:
+- Do not translate anything between `$t(` and `)` (`$t(example)`). They refer to other localized strings. To find the localized string being referred to, follow the path of the key. For example, the key [`youtu.be./dQw4w9WgXcQ`](https://youtu.be./dQw4w9WgXcQ) refers to:
 ```JSONc
 {
 	// ...
-	"a": {
+	"youtu": {
 		// ...
-		"b": {
+		"be": {
 			// ...
-			"c": "I am 'a.b.c'!",
+			"/dQw4w9WgXcQ": "I am 'youtu.be./dQw4w9WgXcQ'!",
 			// ...
 		},
 		// ...
