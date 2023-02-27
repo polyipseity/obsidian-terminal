@@ -22,7 +22,7 @@ __Improvements__
   - Autofocus on the find input when you activate it. (`7d0c857e9bd68e4b15028dc0e5e9cc5e187ac5f5`)
   - Pressing `Esc` when focused on find in terminal closes it. (`2ce8bdcd182c3abaf20bddacf925a84693cb8e50`, `7f13dd47fd5dab814bf9028a12f5e91c2bbdf67d`)
   - Add ARIA labels. (`c747a490a158c7891effb24642d790ca58699de9`)
-- Improve working directory handling to reduce confusion like in GH#12. (`55b917052b371eb566976af7d13b6345c64554ef`, `985b6100ef14e9f0933de0859dd0e8872e217490`)
+- Improve working directory handling to reduce confusion like in [GH#12](https://github.com/polyipseity/obsidian-terminal/issues/12). (`55b917052b371eb566976af7d13b6345c64554ef`, `985b6100ef14e9f0933de0859dd0e8872e217490`)
 - Add double confirm dialog hint. (`0f043376fb6f2528b826066128666baa855c774d`)
 - Make terminal resizing extremely responsive. (`73a7836522d56e92b064a76a09bf18fc87d7ec42`)
 - Find in terminal now has intro and outro transitions. (`bcdd8dbff0d652c8eb9a389f734db2c3a5891323`...`ef39cb1177af6cc108f8e61d179eff89056b48f8`)
