@@ -312,13 +312,13 @@
 		"language-description": "仅适用於此$t(generic.plugin)。标有🚧的$t(generic.language)需要您帮助来翻译！",
 		"new-instance-behavior": "新$t(generic.instance)$t(generic.behavior)",
 		"new-instance-behaviors": {
-			"newHorizontalSplit": "新的水平$t(generic.split)",
+			"newHorizontalSplit": "新水平$t(generic.split)",
 			"newLeftSplit": "新左侧$t(generic.split)",
 			"newLeftTab": "新左侧$t(generic.tab)",
 			"newRightSplit": "新右侧$t(generic.split)",
 			"newRightTab": "新右侧$t(generic.tab)",
 			"newTab": "新$t(generic.tab)",
-			"newVerticalSplit": "新的垂直$t(generic.split)",
+			"newVerticalSplit": "新垂直$t(generic.split)",
 			"newWindow": "新$t(generic.window)",
 			"replaceTab": "替换$t(generic.tab)"
 		},
