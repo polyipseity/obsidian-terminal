@@ -173,9 +173,8 @@ export function addCommand(
 ): Command {
 	const { i18n } = plugin.language
 	let namer = name
-	return plugin.addCommand({
-		...command,
-		...{
+	return plugin.addCommand(Object.assign(
+		{
 			get name(): string { return namer() },
 			set name(format) {
 				namer = commandNamer(
@@ -189,7 +188,8 @@ export function addCommand(
 				)
 			},
 		} satisfies AddCommandPredefinedOptions,
-	})
+		command,
+	))
 }
 
 export function addRibbonIcon(
