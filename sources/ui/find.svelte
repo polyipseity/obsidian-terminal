@@ -109,14 +109,10 @@
 </div>
 
 <style>
-	.document-search-container {
-		margin: 0;
-	}
 	.document-search {
 		flex-wrap: wrap;
 	}
-
-	/* mobile */
+	/* .is-mobile */
 	button.mod-cta {
 		background-color: var(--interactive-accent) !important;
 		color: var(--text-on-accent) !important;
