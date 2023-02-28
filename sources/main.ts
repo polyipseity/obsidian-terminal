@@ -41,7 +41,7 @@ export class TerminalPlugin extends Plugin {
 			this.saveData(this.settings).then(resolve, reject)
 		}, SAVE_SETTINGS_TIMEOUT * SI_PREFIX_SCALE, false))
 
-	readonly #console = lazyInit(() => new RefPsuedoterminal(
+	readonly #consolePTY = lazyInit(() => new RefPsuedoterminal(
 		new ConsolePseudoterminal(console, this.log),
 	))
 
@@ -59,11 +59,11 @@ export class TerminalPlugin extends Plugin {
 			console.warn(error)
 			this.version = null
 		}
-		this.register(async () => this.console.kill())
+		this.register(async () => this.consolePTY.kill())
 	}
 
-	public get console(): RefPsuedoterminal<ConsolePseudoterminal> {
-		return this.#console()
+	public get consolePTY(): RefPsuedoterminal<ConsolePseudoterminal> {
+		return this.#consolePTY()
 	}
 
 	public get settings(): Settings {
