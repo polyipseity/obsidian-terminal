@@ -72,7 +72,7 @@ If you want to view the source, please visit the repository of this plugin.
 					preserveWhitespace: false,
 					varsReport: "full",
 				},
-				filterWarnings: () => true,
+				filterWarnings: lodashES.constant(true),
 				fromEntryFile: false,
 				include: /\.svelte$/u,
 				preprocess: [
@@ -105,23 +105,23 @@ If you want to view the source, please visit the repository of this plugin.
 if (production) {
 	try {
 		const { errors, warnings, metafile } = await build.rebuild()
-		if (typeof metafile !== "undefined") {
+		if (!lodashES.isUndefined(metafile)) {
 			console.log(await esbuild.analyzeMetafile(metafile, {
 				color: true,
 				verbose: true,
 			}))
 		}
-		if (!lodashES.isEmpty(warnings)) {
-			console.warn((await esbuild.formatMessages(warnings, {
-				color: true,
-				kind: "warning",
-			})).join("\n"))
-		}
-		if (!lodashES.isEmpty(errors)) {
-			console.error((await esbuild.formatMessages(errors, {
-				color: true,
-				kind: "error",
-			})).join("\n"))
+		for (const { data, kind, log } of [
+			{ data: warnings, kind: "warning", log: console.warn.bind(console) },
+			{ data: errors, kind: "error", log: console.error.bind(console) },
+		]) {
+			if (!lodashES.isEmpty(data)) {
+				// eslint-disable-next-line no-await-in-loop
+				log((await esbuild.formatMessages(data, {
+					color: true,
+					kind,
+				})).join("\n"))
+			}
 		}
 	} finally {
 		await build.dispose()
