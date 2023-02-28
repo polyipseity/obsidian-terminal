@@ -1,4 +1,11 @@
 import {
+	CursoredText,
+	NORMALIZED_LINE_FEED,
+	TerminalTextArea,
+	normalizeText,
+	writePromise as tWritePromise,
+} from "./util"
+import {
 	DEFAULT_ENCODING,
 	DEFAULT_PYTHONIOENCODING,
 	EXIT_SUCCESS,
@@ -30,13 +37,8 @@ import {
 	typedKeys,
 	writePromise,
 } from "../utils/util"
-import {
-	NORMALIZED_LINE_FEED,
-	TerminalTextArea,
-	normalizeText,
-	writePromise as tWritePromise,
-} from "./util"
-import { isEmpty, isUndefined, noop, range } from "lodash-es"
+import type { IMarker, Terminal } from "xterm"
+import { isEmpty, isUndefined, noop } from "lodash-es"
 import { notice2, printError } from "sources/utils/obsidian"
 import AsyncLock from "async-lock"
 import type { AsyncOrSync } from "ts-essentials"
@@ -46,7 +48,6 @@ import type { Log } from "sources/patches"
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
 } from "node:child_process"
-import { Terminal } from "xterm"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
 import ansi from "ansi-escape-sequences"
@@ -209,11 +210,7 @@ export class ConsolePseudoterminal
 	protected readonly buffer = new TerminalTextArea()
 	readonly #history = [""]
 	#historyIndex = 0
-	readonly #positions = new Map<Terminal, {
-		readonly scrollback: number
-		readonly xx: number
-		readonly yy: number
-	}>()
+	readonly #editors = new Map<Terminal, ConsolePseudoterminal.$Editor>()
 
 	public constructor(
 		protected readonly console: Console,
@@ -222,7 +219,7 @@ export class ConsolePseudoterminal
 		super()
 		this.onExit
 			.finally(log.logger.listen(async event => this.write([event])))
-			.finally(() => { this.#positions.clear() })
+			.finally(() => { this.#editors.forEach(editor => { editor.close() }) })
 			.finally(() => { this.buffer.dispose() })
 	}
 
@@ -245,7 +242,7 @@ export class ConsolePseudoterminal
 	public override async pipe(terminal: Terminal): Promise<void> {
 		await super.pipe(terminal)
 		terminal.loadAddon(new DisposerAddon(
-			() => { this.#positions.delete(terminal) },
+			() => { this.#setEditor(terminal) },
 		))
 		const { buffer, lock, terminals } = this
 		let block = false
@@ -310,15 +307,7 @@ export class ConsolePseudoterminal
 					block = true
 					consumeEvent(domEvent)
 				}),
-				terminal.onResize(() => {
-					const { buffer: { active: { cursorX, cursorY } } } = terminal,
-						prev = this.#positions.get(terminal)
-					this.#positions.set(terminal, deepFreeze({
-						scrollback: prev ? prev.scrollback - (cursorY - prev.yy) : 0,
-						xx: prev?.xx ?? cursorX,
-						yy: cursorY,
-					}))
-				}),
+				terminal.onResize(async () => this.syncBuffer([terminal])),
 			].map(disposer0 => () => { disposer0.dispose() }),
 		)
 		this.onExit.finally(() => { disposer.call() })
@@ -351,12 +340,7 @@ export class ConsolePseudoterminal
 		terminals: readonly Terminal[] = this.terminals,
 		lock = true,
 	): Promise<void> {
-		const terminals0 = [...terminals],
-			{ value: { string, cursor } } = this.buffer,
-			processed = [
-				normalizeText(string.slice(0, cursor)),
-				normalizeText(string.slice(cursor)),
-			] as const
+		const terminals0 = [...terminals]
 		return new Promise((resolve, reject) => {
 			acquireConditionally(
 				this.lock,
@@ -364,83 +348,41 @@ export class ConsolePseudoterminal
 				lock,
 				async () => {
 					const writers = terminals0.map(async terminal => {
-						const { buffer: { active }, cols, rows, options } = terminal,
-							start = this.#positions.get(terminal) ?? deepFreeze({
-								scrollback: 0,
-								xx: active.cursorX,
-								yy: active.cursorY,
-							}),
-							ret = await (async (): Promise<{
-								readonly buffer: string
-								readonly scrollback: number
-								readonly startX: number
-								readonly startY: number
-								readonly cursorX: number
-								readonly cursorY: number
-							}> => {
-								const
-									simulation = new Terminal({
-										...options,
-										cols,
-										rows,
-										scrollback: Infinity,
-									}),
-									{ buffer: { active: active0 } } = simulation,
-									startRowsRemaining = rows - 1 - start.yy,
-									startMarker = simulation.registerMarker(start.yy)
-								await tWritePromise(
-									simulation,
-									`${ansi.cursor.position(
-										1 + start.yy,
-										1 + start.xx,
-									)}${processed[0]}`,
-								)
-								const cursorMarker = simulation.registerMarker(),
-									{ cursorX, cursorY } = active0,
-									cursorRowsRemaining = rows - 1 - cursorY
-								await tWritePromise(simulation, processed[1])
-								const endMarker = simulation.registerMarker(),
-									newStartY = start.yy - (startMarker && endMarker
-										? Math.max(endMarker.line - startMarker.line -
-											startRowsRemaining, 0)
-										: 0),
-									newCursorY = cursorY - (cursorMarker && endMarker
-										? Math.max(endMarker.line - cursorMarker.line -
-											cursorRowsRemaining, 0)
-										: 0),
-									fromX = newStartY >= 0 ? start.xx : 0,
-									fromY = Math.max(newStartY, 0),
-									{ cursorX: toX, cursorY: toY, baseY } = active0
-								return deepFreeze({
-									buffer: range(fromY, toY + 1)
-										.map(yy => active0.getLine(baseY + yy)?.translateToString(
-											false,
-											yy === fromY ? fromX : 0,
-											yy === toY ? toX : cols,
-										) ?? "")
-										.join(NORMALIZED_LINE_FEED),
-									cursorX: newCursorY >= 0 ? cursorX : 0,
-									cursorY: Math.max(newCursorY, 0),
-									scrollback: Math.max(start.yy - newStartY, 0),
-									startX: fromX,
-									startY: fromY,
-								})
-							})()
+						const editor = this.#editors.get(terminal),
+							info = await CursoredText.info(
+								terminal,
+								this.buffer.value,
+								editor?.startX,
+							),
+							{ rows, buffer: { active } } = terminal,
+							{ baseY } = active,
+							startBaseY = editor?.startYMarker?.line ?? baseY,
+							lastRenderEndY = editor?.renderEndY ?? 0,
+							renderRows = Math.min(info.rows, rows),
+							renderStartY = info.rows - renderRows,
+							prerenderStartY = startBaseY + lastRenderEndY - baseY,
+							skipPreRenderRows = Math.max(-prerenderStartY, 0),
+							firstUp = renderRows - 1,
+							secondUp = info.rows - 1 - info.cursor[1]
 						await tWritePromise(
 							terminal,
-							`${ansi.cursor.position(rows)}${NORMALIZED_LINE_FEED.repeat(
-								Math.max(ret.scrollback - start.scrollback, 0),
-							)}${ansi.cursor.position(
-								1 + ret.startY,
-								1 + ret.startX,
-							)}${ansi.erase.display()}${ret.buffer}${ansi.cursor
-								.position(1 + ret.cursorY, 1 + ret.cursorX)}`,
+							`${ansi.cursor.position(
+								1 + prerenderStartY + skipPreRenderRows,
+								1 + (lastRenderEndY > 0 ? 0 : info.startX),
+							)}${ansi.erase.display()}${info.lines.slice(
+								lastRenderEndY + skipPreRenderRows,
+								info.rows,
+							).join(NORMALIZED_LINE_FEED)}${ansi.cursor.horizontalAbsolute(
+								1 + (renderStartY > 0 ? 0 : info.startX),
+							)}${firstUp > 0 ? ansi.cursor.up(firstUp) : ""
+							}${ansi.erase.display()}${info.lines.slice(
+								renderStartY,
+								info.rows,
+							).join(NORMALIZED_LINE_FEED)}${ansi.cursor.horizontalAbsolute(
+								1 + (info.cursor[1] < renderStartY ? 0 : info.cursor[0]),
+							)}${secondUp > 0 ? ansi.cursor.up(secondUp) : ""}`,
 						)
-						this.#positions.set(terminal, deepFreeze({
-							scrollback: Math.max(ret.scrollback - ret.startY, 0),
-							xx: ret.startX,
-							yy: ret.startY,
-						}))
+						if (editor) { editor.renderEndY = info.rows - 1 }
 					})
 					resolve(Promise.all(writers).then(noop))
 					await Promise.allSettled(writers)
@@ -468,20 +410,43 @@ export class ConsolePseudoterminal
 			async () => {
 				await Promise.allSettled(terminals0.map(async terminal => {
 					const { buffer: { active } } = terminal,
-						position = this.#positions.get(terminal)
+						editor = this.#editors.get(terminal),
+						{ baseY } = active,
+						startBaseY = editor?.startYMarker?.line ?? baseY + active.cursorX
 					await tWritePromise(terminal, `${ansi.cursor.position(
-						1 + (position?.yy ?? active.cursorY),
-						1 + (position?.xx ?? active.cursorX),
-					)}${text}`)
-					this.#positions.set(terminal, deepFreeze({
-						scrollback: 0,
-						xx: active.cursorX,
-						yy: active.cursorY,
-					}))
+						1 + (startBaseY - baseY),
+						1,
+					)}${ansi.erase.display()}${text}`)
+					this.#setEditor(terminal, {
+						close() { this.startYMarker?.dispose() },
+						renderEndY: 0,
+						startX: active.cursorX,
+						startYMarker: terminal.registerMarker(),
+					})
 				}))
 				await this.syncBuffer(terminals0, false)
 			},
 		)
+	}
+
+	#setEditor(
+		terminal: Terminal,
+		editor?: ConsolePseudoterminal.$Editor,
+	): void {
+		this.#editors.get(terminal)?.close()
+		if (editor) {
+			this.#editors.set(terminal, editor)
+		} else {
+			this.#editors.delete(terminal)
+		}
+	}
+}
+export namespace ConsolePseudoterminal {
+	export interface $Editor {
+		readonly startX: number
+		readonly startYMarker: IMarker | undefined
+		renderEndY: number
+		readonly close: () => void
 	}
 }
 

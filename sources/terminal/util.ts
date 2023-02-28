@@ -159,10 +159,7 @@ export class TerminalTextArea implements IDisposable {
 	readonly #cell
 	#sequence = false
 	readonly #widths = [0]
-	#value: {
-		readonly string: string
-		readonly cursor: number
-	} = deepFreeze({ cursor: 0, string: "" })
+	#value: CursoredText = deepFreeze({ cursor: 0, string: "" })
 
 	readonly #cursor = {
 		xx: 0,
@@ -215,10 +212,7 @@ export class TerminalTextArea implements IDisposable {
 		}
 	}
 
-	public get value(): {
-		readonly string: string
-		readonly cursor: number
-	} {
+	public get value(): CursoredText {
 		return this.#value
 	}
 
@@ -418,4 +412,58 @@ export namespace TerminalTextArea {
 		readonly [K in ("cols" | "rows")]: InitialOptions[K]
 	}
 	export type Options = Omit<InitialOptions, keyof PredefinedOptions>
+}
+
+export interface CursoredText {
+	readonly string: string
+	readonly cursor: number
+}
+export namespace CursoredText {
+	export interface Info {
+		readonly lines: readonly string[]
+		readonly cols: number
+		readonly rows: number
+		readonly cursor: readonly [x: number, y: number]
+		readonly startX: number
+		readonly endX: number
+	}
+	export async function info(
+		terminal: Terminal,
+		text: CursoredText,
+		startX = 0,
+	): Promise<Info> {
+		const { options, cols } = terminal,
+			{ string, cursor } = text,
+			before = normalizeText(string.slice(0, cursor)),
+			after = normalizeText(string.slice(cursor)),
+			simulation = new Terminal({
+				...options,
+				cols,
+				rows: 1,
+				scrollback: Infinity,
+			}),
+			{ buffer: { active } } = simulation,
+			{ baseY: startBaseY } = active
+		await writePromise(
+			simulation,
+			`${ansi.cursor.horizontalAbsolute(1 + startX)}${before}`,
+		)
+		const { cursorX, baseY: cursorBaseY } = active
+		await writePromise(simulation, after)
+		const { cursorX: endX, baseY: endBaseY } = active
+		return deepFreeze({
+			cols,
+			cursor: [cursorX, cursorBaseY - startBaseY],
+			endX,
+			lines: range(startBaseY, endBaseY + 1)
+				.map(yy => active.getLine(yy)
+					?.translateToString(
+						true,
+						yy === startBaseY ? startX : 0,
+						yy === endBaseY ? endX : cols,
+					) ?? ""),
+			rows: endBaseY - startBaseY + 1,
+			startX,
+		})
+	}
 }
