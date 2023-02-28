@@ -598,7 +598,6 @@ export class SettingTab extends PluginSettingTab {
 					unregister()
 				}
 			})
-			plugin.register(unregister)
 		})
 	}
 

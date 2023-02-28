@@ -331,15 +331,8 @@ export function notice(
 	if (!plugin) { return ret }
 	const unreg = plugin.language.onChangeLanguage
 		.listen(() => ret.setMessage(message()))
-	try {
-		if (timeoutMs === 0) {
-			plugin.register(unreg)
-		} else {
-			self.setTimeout(unreg, timeoutMs)
-		}
-	} catch (error) {
-		console.warn(error)
-		unreg()
+	if (timeoutMs > 0) {
+		self.setTimeout(unreg, timeoutMs)
 	}
 	return ret
 }
