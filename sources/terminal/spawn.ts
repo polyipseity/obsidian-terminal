@@ -48,7 +48,8 @@ export function spawnTerminal(
 	(async (): Promise<void> => {
 		try {
 			const { app } = plugin,
-				{ workspace } = app
+				{ workspace } = app,
+				{ leftSplit, rightSplit } = workspace
 			// eslint-disable-next-line consistent-return
 			await ((): WorkspaceLeaf => {
 				if (plugin.settings.createInstanceNearExistingOnes) {
@@ -56,7 +57,13 @@ export function spawnTerminal(
 						.getLeavesOfType(TerminalView.type.namespaced(plugin))
 						.at(-1)
 					if (existingLeaf) {
-						// Does not work for left and right leaf
+						const root = existingLeaf.getRoot()
+						if (root === leftSplit) {
+							return workspace.getLeftLeaf(false)
+						}
+						if (root === rightSplit) {
+							return workspace.getRightLeaf(false)
+						}
 						workspace.setActiveLeaf(existingLeaf)
 						return workspace.getLeaf("tab")
 					}
