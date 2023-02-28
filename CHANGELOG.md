@@ -11,6 +11,9 @@ This file is automatically opened on update. You can reopen it in settings or co
 __Improvements__
 - Rewrite developer console paging algorithm. It should fix most (if not all) bugs with it, including resizing. (`8a94ef19610e2d4b689dde4ae5bc5843d55b264f`)
 
+__Fixes__
+- Fix creating instances near existing ones in left and right leaves. (`f055a3b8e77e0349eacbf66a55a21f7784280061`)
+
 __Full changelog__: [`3.2.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.2.0...main)
 
 ## 3.2.0 (2023-02-27)
