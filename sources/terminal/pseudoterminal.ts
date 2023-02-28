@@ -222,9 +222,8 @@ export class ConsolePseudoterminal
 			.finally(() => {
 				new Functions(
 					{ async: false, settled: true },
-					...[...this.#editors.values()]
-						.map(editor => (): void => { editor.close() }),
-					() => { this.#editors.clear() },
+					...[...this.#editors.keys()]
+						.map(terminal => (): void => { this.#setEditor(terminal) }),
 				).call()
 			})
 			.finally(() => { this.buffer.dispose() })
