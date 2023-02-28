@@ -837,7 +837,7 @@ export class ProfileListModal
 								if (isUndefined(id)) {
 									dataKeys.set(
 										profile,
-										id = randomNotIn(Array.from(dataKeys.values()), keygen),
+										id = randomNotIn([...dataKeys.values()], keygen),
 									)
 								}
 								return [id, typedStructuredClone(profile)]
