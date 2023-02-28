@@ -219,7 +219,14 @@ export class ConsolePseudoterminal
 		super()
 		this.onExit
 			.finally(log.logger.listen(async event => this.write([event])))
-			.finally(() => { this.#editors.forEach(editor => { editor.close() }) })
+			.finally(() => {
+				new Functions(
+					{ async: false, settled: true },
+					...[...this.#editors.values()]
+						.map(editor => (): void => { editor.close() }),
+					() => { this.#editors.clear() },
+				).call()
+			})
 			.finally(() => { this.buffer.dispose() })
 	}
 
