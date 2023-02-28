@@ -280,7 +280,7 @@ export function commandNamer(
 }
 
 export function openExternal(url?: URL | string): Window | null {
-	return self.open(url, "_blank", "noreferrer")
+	return open(url, "_blank", "noreferrer")
 }
 
 export function printMalformedData(
