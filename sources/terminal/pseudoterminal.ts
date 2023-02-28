@@ -252,7 +252,8 @@ export class ConsolePseudoterminal
 			() => { this.#setEditor(terminal) },
 		))
 		const { buffer, lock, terminals } = this
-		let block = false
+		let block = false,
+			resizing = false
 		const disposer = new Functions(
 			{ async: false, settled: true },
 			...[
@@ -314,7 +315,13 @@ export class ConsolePseudoterminal
 					block = true
 					consumeEvent(domEvent)
 				}),
-				terminal.onResize(async () => this.syncBuffer([terminal])),
+				terminal.onResize(() => {
+					if (resizing) { return }
+					resizing = true
+					this.syncBuffer([terminal])
+						.finally(() => { resizing = false })
+						.catch(logError)
+				}),
 			].map(disposer0 => () => { disposer0.dispose() }),
 		)
 		this.onExit.finally(() => { disposer.call() })
