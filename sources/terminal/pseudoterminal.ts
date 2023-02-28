@@ -210,7 +210,7 @@ export class ConsolePseudoterminal
 	readonly #history = [""]
 	#historyIndex = 0
 	readonly #positions = new Map<Terminal, {
-		readonly scroll: number
+		readonly scrollback: number
 		readonly xx: number
 		readonly yy: number
 	}>()
@@ -310,6 +310,15 @@ export class ConsolePseudoterminal
 					block = true
 					consumeEvent(domEvent)
 				}),
+				terminal.onResize(() => {
+					const { buffer: { active: { cursorX, cursorY } } } = terminal,
+						prev = this.#positions.get(terminal)
+					this.#positions.set(terminal, deepFreeze({
+						scrollback: prev ? prev.scrollback - (cursorY - prev.yy) : 0,
+						xx: prev?.xx ?? cursorX,
+						yy: cursorY,
+					}))
+				}),
 			].map(disposer0 => () => { disposer0.dispose() }),
 		)
 		this.onExit.finally(() => { disposer.call() })
@@ -357,13 +366,13 @@ export class ConsolePseudoterminal
 					const writers = terminals0.map(async terminal => {
 						const { buffer: { active }, cols, rows, options } = terminal,
 							start = this.#positions.get(terminal) ?? deepFreeze({
-								scroll: 0,
+								scrollback: 0,
 								xx: active.cursorX,
 								yy: active.cursorY,
 							}),
 							ret = await (async (): Promise<{
 								readonly buffer: string
-								readonly scroll: number
+								readonly scrollback: number
 								readonly startX: number
 								readonly startY: number
 								readonly cursorX: number
@@ -412,7 +421,7 @@ export class ConsolePseudoterminal
 										.join(NORMALIZED_LINE_FEED),
 									cursorX: newCursorY >= 0 ? cursorX : 0,
 									cursorY: Math.max(newCursorY, 0),
-									scroll: Math.max(start.yy - newStartY, 0),
+									scrollback: Math.max(start.yy - newStartY, 0),
 									startX: fromX,
 									startY: fromY,
 								})
@@ -420,7 +429,7 @@ export class ConsolePseudoterminal
 						await tWritePromise(
 							terminal,
 							`${ansi.cursor.position(rows)}${NORMALIZED_LINE_FEED.repeat(
-								Math.max(ret.scroll - start.scroll, 0),
+								Math.max(ret.scrollback - start.scrollback, 0),
 							)}${ansi.cursor.position(
 								1 + ret.startY,
 								1 + ret.startX,
@@ -428,7 +437,7 @@ export class ConsolePseudoterminal
 								.position(1 + ret.cursorY, 1 + ret.cursorX)}`,
 						)
 						this.#positions.set(terminal, deepFreeze({
-							scroll: ret.scroll,
+							scrollback: ret.scrollback,
 							xx: ret.startX,
 							yy: ret.startY,
 						}))
@@ -465,7 +474,7 @@ export class ConsolePseudoterminal
 						1 + (position?.xx ?? active.cursorX),
 					)}${text}`)
 					this.#positions.set(terminal, deepFreeze({
-						scroll: 0,
+						scrollback: 0,
 						xx: active.cursorX,
 						yy: active.cursorY,
 					}))
