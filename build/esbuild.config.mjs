@@ -98,9 +98,7 @@ If you want to view the source, please visit the repository of this plugin.
 				],
 			}),
 		],
-		sourcemap: production
-			? false
-			: "inline",
+		sourcemap: production ? false : "inline",
 		sourcesContent: true,
 		target: "ES2018",
 		treeShaking: true,
@@ -114,17 +112,19 @@ if (production) {
 				verbose: true,
 			}))
 		}
-		for (const { data, kind, log } of [
+		for await (const logging of [
 			{ data: warnings, kind: "warning", log: console.warn.bind(console) },
 			{ data: errors, kind: "error", log: console.error.bind(console) },
-		]) {
-			if (!lodashES.isEmpty(data)) {
-				// eslint-disable-next-line no-await-in-loop
-				log((await esbuild.formatMessages(data, {
+		]
+			.filter(({ data }) => !lodashES.isEmpty(data))
+			.map(async ({ data, kind, log }) => {
+				const message = (await esbuild.formatMessages(data, {
 					color: true,
 					kind,
-				})).join("\n"))
-			}
+				})).join("\n")
+				return () => log(message)
+			})) {
+			logging()
 		}
 	} finally {
 		await build.dispose()
