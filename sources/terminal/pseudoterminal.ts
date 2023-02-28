@@ -383,7 +383,7 @@ export class ConsolePseudoterminal
 										...options,
 										cols,
 										rows,
-										scrollback: 0,
+										scrollback: Infinity,
 									}),
 									{ buffer: { active: active0 } } = simulation,
 									startRowsRemaining = rows - 1 - start.yy,
@@ -410,10 +410,10 @@ export class ConsolePseudoterminal
 										: 0),
 									fromX = newStartY >= 0 ? start.xx : 0,
 									fromY = Math.max(newStartY, 0),
-									{ cursorX: toX, cursorY: toY } = active0
+									{ cursorX: toX, cursorY: toY, baseY } = active0
 								return deepFreeze({
 									buffer: range(fromY, toY + 1)
-										.map(yy => active0.getLine(yy)?.translateToString(
+										.map(yy => active0.getLine(baseY + yy)?.translateToString(
 											false,
 											yy === fromY ? fromX : 0,
 											yy === toY ? toX : cols,
@@ -437,7 +437,7 @@ export class ConsolePseudoterminal
 								.position(1 + ret.cursorY, 1 + ret.cursorX)}`,
 						)
 						this.#positions.set(terminal, deepFreeze({
-							scrollback: ret.scrollback,
+							scrollback: Math.max(ret.scrollback - ret.startY, 0),
 							xx: ret.startX,
 							yy: ret.startY,
 						}))

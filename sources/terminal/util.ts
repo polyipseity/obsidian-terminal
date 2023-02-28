@@ -380,25 +380,23 @@ export class TerminalTextArea implements IDisposable {
 		let yy = 0
 		for (const width of this.#widths) {
 			const line = active.getLine(yy)
-			if (line) {
-				if (yy === cursorY) {
-					const direction = cursorX - this.#cursor.xx < 0 ? -1 : 1
-					for (let cell = line.getCell(cursorX, this.#cell);
-						cell && cell.getWidth() <= 0;
-						cell = line.getCell(cursorX += direction, this.#cell)) {
-						// NOOP
-					}
-					values[0].push(line.translateToString(false, 0, cursorX))
-					values[1].push(line.translateToString(false, cursorX, width))
-					// eslint-disable-next-line no-await-in-loop
-					await writePromise(
-						terminal,
-						ansi.cursor.horizontalAbsolute(1 + cursorX),
-					)
-				} else {
-					values[yy < cursorY ? 0 : 1]
-						.push(line.translateToString(false, 0, width))
+			if (line && yy === cursorY) {
+				const direction = cursorX - this.#cursor.xx < 0 ? -1 : 1
+				for (let cell = line.getCell(cursorX, this.#cell);
+					cell && cell.getWidth() <= 0;
+					cell = line.getCell(cursorX += direction, this.#cell)) {
+					// NOOP
 				}
+				values[0].push(line.translateToString(false, 0, cursorX))
+				values[1].push(line.translateToString(false, cursorX, width))
+				// eslint-disable-next-line no-await-in-loop
+				await writePromise(
+					terminal,
+					ansi.cursor.horizontalAbsolute(1 + cursorX),
+				)
+			} else {
+				values[cursorY > yy ? 0 : 1]
+					.push(line?.translateToString(false, 0, width) ?? "")
 			}
 			++yy
 		}
