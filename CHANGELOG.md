@@ -8,6 +8,9 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Features__
+- Add Windows Subsystem for Linux preset as suggested in [GH#14](https://github.com/polyipseity/obsidian-terminal/issues/14). (`7a787996ddf96403ee29dfb13c0f9a9961853474`..`720388c0fdf0833137df479e43f24524939252c2`)
+
 __Improvements__
 - Improve startup time significantly by initializing developer console on demand. (`c023f15e48c04cda8ecd3e4a4cf9f258e86f4a5e`)
 - Stablize CSS class names for custom Svelte components. This should make it way easier to maintain custom CSS for them. (`d9e306563c8b8396c79c4b57e69287af45b604b3`)
