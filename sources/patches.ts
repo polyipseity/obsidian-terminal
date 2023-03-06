@@ -49,9 +49,23 @@ function patchConsole(console: Console, log: Log): () => void {
 	const consolePatch = (
 		type: "debug" | "error" | "info" | "warn",
 		proto: (...data: unknown[]) => void,
-	) => function fn(this: Console, ...data: unknown[]): void {
-		proto.apply(this, data)
-		log.logger.emit({ data, type }).catch(noop)
+	): (this: Console, ...data: unknown[]) => void => {
+		let recursive = false
+		return function fn(this: Console, ...data: unknown[]): void {
+			if (recursive) { return }
+			recursive = true
+			try {
+				try {
+					log.logger.emit({ data, type }).catch(noop)
+				} catch (error) {
+					console.error(error)
+				} finally {
+					proto.apply(this, data)
+				}
+			} finally {
+				recursive = false
+			}
+		}
 	}
 	return around(console, {
 		debug(proto) { return consolePatch("debug", proto) },

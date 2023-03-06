@@ -72,32 +72,40 @@ export class UpdatableUI {
 					): Setting {
 						if (recording) {
 							return proto.call(this, component => {
-								components.push(component)
 								cb(component)
+								try {
+									components.push(component)
+								} catch (error) {
+									console.error(error)
+								}
 							})
 						}
 						const comp = components[index++ % components.length]
 						if (!comp) { throw new Error(index.toString()) }
-						comp.setDisabled(false)
-						if ("onChange" in comp && typeof comp.onChange === "function") {
-							try {
-								comp.onChange((): void => { })
-							} catch (error) {
-								console.error(error)
+						try {
+							comp.setDisabled(false)
+							if ("onChange" in comp && typeof comp.onChange === "function") {
+								try {
+									comp.onChange((): void => { })
+								} catch (error) {
+									console.error(error)
+								}
 							}
-						}
-						if ("removeCta" in comp && typeof comp.removeCta === "function") {
-							try {
-								comp.removeCta()
-							} catch (error) {
-								console.error(error)
+							if ("removeCta" in comp && typeof comp.removeCta === "function") {
+								try {
+									comp.removeCta()
+								} catch (error) {
+									console.error(error)
+								}
 							}
-						}
-						if (comp instanceof ButtonComponent) {
-							comp.buttonEl.classList.remove(DOMClasses.MOD_WARNING)
-						}
-						if (comp instanceof DropdownComponent) {
-							comp.selectEl.replaceChildren()
+							if (comp instanceof ButtonComponent) {
+								comp.buttonEl.classList.remove(DOMClasses.MOD_WARNING)
+							}
+							if (comp instanceof DropdownComponent) {
+								comp.selectEl.replaceChildren()
+							}
+						} catch (error) {
+							console.error(error)
 						}
 						cb(comp)
 						return this
