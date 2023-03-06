@@ -122,7 +122,7 @@ For a new locale, create a new directory named with its language tag and copy [`
 	// ...
 }
 ```
-Sort the list of languages by the alphabetical order of their language tags. Then modify the files in the new directory.
+Sort the list of languages by the alphabetical order of their language tags. Then modify the files in the new directory. There will be errors in [`assets/locales.ts`](assets/locales.ts), which you can ignore and I will fix them for you. You are welcome to fix them yourself if you know TypeScript.
 
 When translating, keep in mind the following things:
 - Do not translate anything between `{{` and `}}` (`{{example}}`). They are __interpolations__ and will be replaced by localized strings at runtime.
