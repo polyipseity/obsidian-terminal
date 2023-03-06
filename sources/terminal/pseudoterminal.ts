@@ -9,6 +9,7 @@ import {
 	DEFAULT_ENCODING,
 	DEFAULT_PYTHONIOENCODING,
 	EXIT_SUCCESS,
+	MAX_LOCK_PENDING,
 	SI_PREFIX_SCALE,
 	TERMINAL_EXIT_CLEANUP_DELAY,
 	TERMINAL_RESIZER_WATCHDOG_INTERVAL,
@@ -163,7 +164,7 @@ export class TextPseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
 	protected static readonly syncLock = "sync"
-	protected readonly lock = new AsyncLock()
+	protected readonly lock = new AsyncLock({ maxPending: MAX_LOCK_PENDING })
 	#text: string
 
 	public constructor(text = "") {
@@ -206,7 +207,7 @@ export class ConsolePseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
 	protected static readonly syncLock = "sync"
-	protected readonly lock = new AsyncLock()
+	protected readonly lock = new AsyncLock({ maxPending: MAX_LOCK_PENDING })
 	protected readonly buffer = new TerminalTextArea()
 	readonly #history = [""]
 	#historyIndex = 0

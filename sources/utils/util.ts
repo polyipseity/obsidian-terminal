@@ -10,7 +10,12 @@ import {
 	type Sized,
 	simplifyType,
 } from "./types"
-import { JSON_STRINGIFY_SPACE, SI_PREFIX_SCALE, UNDEFINED } from "sources/magic"
+import {
+	JSON_STRINGIFY_SPACE,
+	MAX_LOCK_PENDING,
+	SI_PREFIX_SCALE,
+	UNDEFINED,
+} from "sources/magic"
 import {
 	type PrimitiveTypeE,
 	type TypeofMapE,
@@ -51,7 +56,7 @@ export const PLATFORM = ((): Platform => {
 
 export class EventEmitterLite<A extends readonly unknown[]> {
 	protected static readonly emitLock = "emit"
-	protected readonly lock = new AsyncLock()
+	protected readonly lock = new AsyncLock({ maxPending: MAX_LOCK_PENDING })
 	readonly #listeners: ((...args: A) => unknown)[] = []
 
 	public async emit(...args: A): Promise<void> {

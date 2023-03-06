@@ -18,6 +18,7 @@ import {
 } from "sources/utils/util"
 import { escapeRegExp, isUndefined, range } from "lodash-es"
 import AsyncLock from "async-lock"
+import { MAX_LOCK_PENDING } from "sources/magic"
 import ansi from "ansi-escape-sequences"
 import { codePoint } from "sources/utils/types"
 import { Set as valueSet } from "immutable"
@@ -155,7 +156,7 @@ export class TerminalTextArea implements IDisposable {
 	})
 
 	public readonly terminal
-	protected readonly lock = new AsyncLock()
+	protected readonly lock = new AsyncLock({ maxPending: MAX_LOCK_PENDING })
 	readonly #cell
 	#sequence = false
 	readonly #widths = [0]
