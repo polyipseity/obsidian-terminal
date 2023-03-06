@@ -8,6 +8,9 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Internals__
+- Make monkey patches more resilient to errors. (`af35b0176e1f11e32be5764ff17f93a2a01e8f7f`)
+
 __Full changelog__: [`3.3.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.3.0...main)
 
 ## 3.3.0 (2023-03-06)
