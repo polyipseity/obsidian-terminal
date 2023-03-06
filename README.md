@@ -94,7 +94,7 @@ __Shells__
 - Command Prompt: `cmd`
 - Dash: `dash`
 - PowerShell: `pwsh`
-- Windows Subsystem for Linux: `wsl -d <distribution name>`
+- Windows Subsystem for Linux: `bash` or `wsl -d <distribution name>`
 - Z shell: `zsh`
 
 __Terminal emulators__
