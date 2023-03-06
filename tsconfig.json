@@ -90,7 +90,7 @@
       "node_modules/@types/",
     ],
     "useDefineForClassFields": true,
-    "verbatimModuleSyntax": true,
+    // "verbatimModuleSyntax": true, // Add me when 'esbuild-svelte' is updated.
   },
   "exclude": [],
   "extends": "@tsconfig/node16-strictest/tsconfig.json",
