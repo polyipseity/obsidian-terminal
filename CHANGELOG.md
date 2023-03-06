@@ -9,6 +9,8 @@ This file is automatically opened on update. You can reopen it in settings or co
 ## Unreleased
 
 __Improvements__
+- Improve startup time significantly by initializing developer console on demand. (`c023f15e48c04cda8ecd3e4a4cf9f258e86f4a5e`)
+- Stablize CSS class names for custom Svelte components. This should make it way easier to maintain custom CSS for them. (`d9e306563c8b8396c79c4b57e69287af45b604b3`)
 - Rewrite developer console paging algorithm. It should fix most (if not all) bugs with it, including resizing. (`8a94ef19610e2d4b689dde4ae5bc5843d55b264f`)
 
 __Fixes__
