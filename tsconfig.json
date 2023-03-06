@@ -112,7 +112,7 @@
   },
   "typeAcquisition": {
     "enable": true,
-    // "include": [],
+    "include": [],
     "exclude": [],
     "disableFilenameBasedTypeAcquisition": false,
   },
