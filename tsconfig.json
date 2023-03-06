@@ -24,7 +24,7 @@
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
     "importHelpers": true,
-    "importsNotUsedAsValues": "remove", // Remove me
+    "importsNotUsedAsValues": "remove", // Remove me when '@tsconfig/node16-strictest' is updated.
     "incremental": true,
     "inlineSourceMap": true,
     "inlineSources": true,
