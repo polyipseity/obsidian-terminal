@@ -24,11 +24,10 @@
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
     "importHelpers": true,
-    "importsNotUsedAsValues": "error",
+    "importsNotUsedAsValues": "remove", // Remove me
     "incremental": true,
     "inlineSourceMap": true,
     "inlineSources": true,
-    "isolatedModules": true,
     "jsx": "react",
     "lib": [
       "DOM",
@@ -74,7 +73,6 @@
       },
     ],
     "preserveConstEnums": true,
-    "preserveValueImports": false,
     "pretty": true,
     "removeComments": true,
     "resolveJsonModule": true,
@@ -92,6 +90,7 @@
       "node_modules/@types/",
     ],
     "useDefineForClassFields": true,
+    "verbatimModuleSyntax": true,
   },
   "exclude": [],
   "extends": "@tsconfig/node16-strictest/tsconfig.json",
