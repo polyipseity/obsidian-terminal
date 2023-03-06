@@ -197,7 +197,8 @@
 			"darwin": "\u200bmacOS",
 			"linux": "Linux",
 			"unix": "Unix",
-			"win32": "Microsoft Windows"
+			"win32": "Microsoft Windows",
+			"win32-short": "Windows"
 		},
 		"plugin": "插件",
 		"preset": "预设",
@@ -265,6 +266,7 @@
 		"shIntegrated": "sh：$t(generic.profile-types.integrated)",
 		"win32ExternalDefault": "$t(generic.platforms.win32)$t(generic.default)：$t(generic.profile-types.external)",
 		"win32IntegratedDefault": "$t(generic.platforms.win32)$t(generic.default)：$t(generic.profile-types.integrated)",
+		"wslIntegrated": "适用于$t(generic.platforms.linux)的$t(generic.platforms.win32-short)子系统：$t(generic.profile-types.integrated)",
 		"zshIntegrated": "zsh：$t(generic.profile-types.integrated)"
 	},
 	"ribbons": {

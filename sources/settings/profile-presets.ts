@@ -19,6 +19,7 @@ export interface ProfilePresets extends ExternalDefaults, IntegratedDefaults {
 	readonly dashIntegrated: Settings.Profile.Integrated
 	readonly pwshIntegrated: Settings.Profile.Integrated
 	readonly shIntegrated: Settings.Profile.Integrated
+	readonly wslIntegrated: Settings.Profile.Integrated
 	readonly zshIntegrated: Settings.Profile.Integrated
 }
 export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
@@ -124,6 +125,15 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		type: "integrated",
 		useWin32Conhost: true,
 	},
+	wslIntegrated: {
+		args: [],
+		executable: "C:\\Windows\\System32\\bash.exe",
+		name: "",
+		platforms: { win32: true },
+		pythonExecutable: "python3",
+		type: "integrated",
+		useWin32Conhost: true,
+	},
 	zshIntegrated: {
 		args: [],
 		executable: "/bin/zsh",
@@ -142,6 +152,7 @@ export type ProfilePresetKeys = readonly [
 	"developerConsole",
 	"pwshIntegrated",
 	"shIntegrated",
+	"wslIntegrated",
 	"zshIntegrated",
 	"darwinExternalDefault",
 	"darwinIntegratedDefault",

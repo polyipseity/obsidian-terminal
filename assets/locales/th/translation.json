@@ -216,7 +216,8 @@
 			"darwin": "\u200bmacOS",
 			"linux": "Linux",
 			"unix": "Unix",
-			"win32": "Microsoft Windows"
+			"win32": "Microsoft Windows",
+			"win32-short": "Windows"
 		},
 		"plugin": "plugin",
 		"preset": "preset",
@@ -289,6 +290,7 @@
 		"shIntegrated": "sh: $t(generic.profile-types.integrated, capitalize)",
 		"win32ExternalDefault": "$t(generic.platforms.win32, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
 		"win32IntegratedDefault": "$t(generic.platforms.win32, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",
+		"wslIntegrated": "$t(generic.platforms.win32-short, capitalize) Subsystem for $t(generic.platforms.linux): $t(generic.profile-types.integrated, capitalize)",
 		"zshIntegrated": "zsh: $t(generic.profile-types.integrated, capitalize)"
 	},
 	"ribbons": {
