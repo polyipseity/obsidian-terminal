@@ -5,7 +5,7 @@ import {
 	type ValueComponent,
 } from "obsidian"
 import {
-	CHECK_EXECUTABLE_TIMEOUT,
+	CHECK_EXECUTABLE_WAIT,
 	DEFAULT_PYTHONIOENCODING,
 	DISABLED_TOOLTIP,
 	DOMClasses,
@@ -693,7 +693,7 @@ export class ProfileModal extends Modal {
 																// eslint-disable-next-line @typescript-eslint/naming-convention
 																PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
 															},
-															timeout: CHECK_EXECUTABLE_TIMEOUT *
+															timeout: CHECK_EXECUTABLE_WAIT *
 																SI_PREFIX_SCALE,
 															windowsHide: true,
 														},

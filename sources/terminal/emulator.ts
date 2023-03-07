@@ -9,7 +9,7 @@ import {
 import {
 	SI_PREFIX_SCALE,
 	TERMINAL_EMULATOR_RESIZE_WAIT,
-	TERMINAL_PTY_RESIZE_TIMEOUT,
+	TERMINAL_PTY_RESIZE_WAIT,
 } from "../magic"
 import { dynamicRequire, importable } from "../imports"
 import type { AsyncOrSync } from "ts-essentials"
@@ -84,7 +84,7 @@ export class XtermTerminalEmulator<A> {
 				console.debug(error)
 			}
 		})())
-	}, TERMINAL_PTY_RESIZE_TIMEOUT * SI_PREFIX_SCALE))
+	}, TERMINAL_PTY_RESIZE_WAIT * SI_PREFIX_SCALE))
 
 	#running = true
 

@@ -14,7 +14,7 @@ import {
 } from "./utils/util"
 import {
 	JSON_STRINGIFY_SPACE,
-	SAVE_SETTINGS_TIMEOUT,
+	SAVE_SETTINGS_WAIT,
 	SI_PREFIX_SCALE,
 } from "./magic"
 import { asyncDebounce, printMalformedData } from "./utils/obsidian"
@@ -38,7 +38,7 @@ export class TerminalPlugin extends Plugin {
 		resolve: (value: AsyncOrSync<void>) => void,
 	) => {
 		resolve(this.saveData(this.settings))
-	}, SAVE_SETTINGS_TIMEOUT * SI_PREFIX_SCALE))
+	}, SAVE_SETTINGS_WAIT * SI_PREFIX_SCALE))
 
 	readonly #consolePTY = lazyInit(() => new RefPsuedoterminal(
 		new ConsolePseudoterminal(console, this.log),

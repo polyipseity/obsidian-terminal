@@ -1,5 +1,5 @@
 import {
-	DOUBLE_ACTION_TIMEOUT,
+	DOUBLE_ACTION_WAIT,
 	FileExtensions,
 	JSON_STRINGIFY_SPACE,
 } from "sources/magic"
@@ -75,7 +75,7 @@ export function loadSettings(plugin: TerminalPlugin): void {
 							close()
 							process()
 						},
-						doubleConfirmTimeout: DOUBLE_ACTION_TIMEOUT,
+						doubleConfirmTimeout: DOUBLE_ACTION_WAIT,
 						draw(ui, element): void {
 							ui.new(() => createChildElement(element, "div"), ele => {
 								ele.textContent =

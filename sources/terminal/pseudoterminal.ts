@@ -11,8 +11,8 @@ import {
 	EXIT_SUCCESS,
 	MAX_LOCK_PENDING,
 	SI_PREFIX_SCALE,
-	TERMINAL_EXIT_CLEANUP_DELAY,
-	TERMINAL_RESIZER_WATCHDOG_INTERVAL,
+	TERMINAL_EXIT_CLEANUP_WAIT,
+	TERMINAL_RESIZER_WATCHDOG_WAIT,
 	UNDEFINED,
 	UNHANDLED_REJECTION_MESSAGE,
 } from "../magic"
@@ -571,7 +571,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 												writePromise(resizer0.stdin, "\n")
 													.catch(error => { console.debug(error) })
 											},
-											TERMINAL_RESIZER_WATCHDOG_INTERVAL * SI_PREFIX_SCALE,
+											TERMINAL_RESIZER_WATCHDOG_WAIT * SI_PREFIX_SCALE,
 										)
 										resizer0.once(
 											"exit",
@@ -624,7 +624,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 							} finally {
 								(async (): Promise<void> => {
 									try {
-										await sleep2(TERMINAL_EXIT_CLEANUP_DELAY)
+										await sleep2(TERMINAL_EXIT_CLEANUP_WAIT)
 										codeTmp.removeCallback()
 									} catch (error) { console.warn(error) }
 								})()
