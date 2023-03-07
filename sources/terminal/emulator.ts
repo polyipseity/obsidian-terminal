@@ -6,7 +6,11 @@ import {
 	type ITerminalOptions,
 	Terminal,
 } from "xterm"
-import { SI_PREFIX_SCALE, TERMINAL_RESIZE_TIMEOUT } from "../magic"
+import {
+	SI_PREFIX_SCALE,
+	TERMINAL_EMULATOR_RESIZE_WAIT,
+	TERMINAL_PTY_RESIZE_TIMEOUT,
+} from "../magic"
 import { dynamicRequire, importable } from "../imports"
 import type { AsyncOrSync } from "ts-essentials"
 import type { CanvasAddon } from "xterm-addon-canvas"
@@ -60,7 +64,7 @@ export class XtermTerminalEmulator<A> {
 		} catch (error) {
 			reject(error)
 		}
-	}, TERMINAL_RESIZE_TIMEOUT * SI_PREFIX_SCALE))
+	}, TERMINAL_EMULATOR_RESIZE_WAIT * SI_PREFIX_SCALE))
 
 	protected readonly resizePTY = asyncDebounce(throttle((
 		resolve: (value: AsyncOrSync<void>) => void,
@@ -80,7 +84,7 @@ export class XtermTerminalEmulator<A> {
 				console.debug(error)
 			}
 		})())
-	}, TERMINAL_RESIZE_TIMEOUT * SI_PREFIX_SCALE))
+	}, TERMINAL_PTY_RESIZE_TIMEOUT * SI_PREFIX_SCALE))
 
 	#running = true
 
