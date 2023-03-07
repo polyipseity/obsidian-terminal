@@ -8,6 +8,9 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Improvements__
+- Throttle terminal resizing to reduce flickering. (`04899b5f6ae3eef1a4561ba022db5ebbab9f785f`..`f947c780c7c38f8bb4e2f02c163de0b72024dfe8`)
+
 __Internals__
 - Make monkey patches more resilient to errors. (`af35b0176e1f11e32be5764ff17f93a2a01e8f7f`)
 
