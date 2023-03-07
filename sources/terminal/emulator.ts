@@ -50,12 +50,12 @@ export class XtermTerminalEmulator<A> {
 	public readonly pseudoterminal
 	protected readonly resize0 = asyncDebounce(throttle((
 		resolve: (value: AsyncOrSync<void>) => void,
-		reject: (reason?: unknown) => void,
+		_reject: (reason?: unknown) => void,
 		columns: number,
 		rows: number,
 		mustResizePseudoterminal: boolean,
 	) => {
-		(async (): Promise<void> => {
+		resolve((async (): Promise<void> => {
 			try {
 				const pty = await this.pseudoterminal
 				if (pty.resize) {
@@ -65,7 +65,7 @@ export class XtermTerminalEmulator<A> {
 				if (mustResizePseudoterminal) { throw error }
 				console.debug(error)
 			}
-		})().then(resolve, reject)
+		})())
 	}, TERMINAL_RESIZE_TIMEOUT * SI_PREFIX_SCALE))
 
 	#running = true

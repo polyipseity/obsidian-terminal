@@ -1,4 +1,5 @@
 import { type App, Plugin, type PluginManifest } from "obsidian"
+import type { AsyncOrSync, DeepWritable } from "ts-essentials"
 import {
 	ConsolePseudoterminal,
 	RefPsuedoterminal,
@@ -17,7 +18,6 @@ import {
 	SI_PREFIX_SCALE,
 } from "./magic"
 import { asyncDebounce, printMalformedData } from "./utils/obsidian"
-import type { DeepWritable } from "ts-essentials"
 import { LanguageManager } from "./i18n"
 import { Settings } from "./settings/data"
 import { StatusBarHider } from "./status-bar"
@@ -35,10 +35,9 @@ export class TerminalPlugin extends Plugin {
 	public readonly language = new LanguageManager(this)
 	public readonly statusBarHider = new StatusBarHider(this)
 	public readonly saveSettings = asyncDebounce(throttle((
-		resolve: () => void,
-		reject: (reason?: unknown) => void,
+		resolve: (value: AsyncOrSync<void>) => void,
 	) => {
-		this.saveData(this.settings).then(resolve, reject)
+		resolve(this.saveData(this.settings))
 	}, SAVE_SETTINGS_TIMEOUT * SI_PREFIX_SCALE))
 
 	readonly #consolePTY = lazyInit(() => new RefPsuedoterminal(
