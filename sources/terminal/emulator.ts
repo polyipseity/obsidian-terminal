@@ -48,7 +48,21 @@ export class XtermTerminalEmulator<A> {
 	public readonly terminal
 	public readonly addons
 	public readonly pseudoterminal
-	protected readonly resize0 = asyncDebounce(throttle((
+	protected readonly resizeEmulator = asyncDebounce(throttle((
+		resolve: (value: AsyncOrSync<void>) => void,
+		reject: (reason?: unknown) => void,
+		columns: number,
+		rows: number,
+	) => {
+		try {
+			this.terminal.resize(columns, rows)
+			resolve()
+		} catch (error) {
+			reject(error)
+		}
+	}, TERMINAL_RESIZE_TIMEOUT * SI_PREFIX_SCALE))
+
+	protected readonly resizePTY = asyncDebounce(throttle((
 		resolve: (value: AsyncOrSync<void>) => void,
 		_reject: (reason?: unknown) => void,
 		columns: number,
@@ -120,14 +134,16 @@ export class XtermTerminalEmulator<A> {
 	}
 
 	public async resize(mustResizePseudoterminal = true): Promise<void> {
-		const { addons, terminal, resize0 } = this,
+		const { addons, resizeEmulator, resizePTY } = this,
 			{ fit } = addons,
 			dim = fit.proposeDimensions()
 		if (dim) {
 			const { cols, rows } = dim
 			if (isFinite(cols) && isFinite(rows)) {
-				terminal.resize(cols, rows)
-				await resize0(cols, rows, mustResizePseudoterminal)
+				await Promise.all([
+					resizeEmulator(cols, rows),
+					resizePTY(cols, rows, mustResizePseudoterminal),
+				])
 			}
 		}
 	}
