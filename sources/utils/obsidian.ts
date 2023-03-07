@@ -3,7 +3,6 @@ import {
 	type BaseComponent,
 	ButtonComponent,
 	type Command,
-	type Debouncer,
 	DropdownComponent,
 	type FrontMatterCache,
 	Notice,
@@ -25,6 +24,7 @@ import {
 } from "./util"
 import type { AsyncOrSync } from "ts-essentials"
 import { DEFAULT_LANGUAGE } from "assets/locales"
+import type { DebouncedFunc } from "lodash-es"
 import type { TerminalPlugin } from "sources/main"
 import { around } from "monkey-around"
 
@@ -238,14 +238,11 @@ export function addRibbonIcon(
 }
 
 export function asyncDebounce<
-	A extends readonly unknown[],
-	R,
-	R0,
-// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
->(debouncer: R0 extends void ? Debouncer<[
-	(value: AsyncOrSync<R>) => void,
-	(reason?: unknown) => void,
-	...A], R0> : never): (...args: A) => Promise<R> {
+	A extends readonly unknown[], R,
+>(func: DebouncedFunc<(
+	resolve: (value: AsyncOrSync<R>) => void,
+	reject: (reason?: unknown) => void,
+	...args: A) => void>): (...args: A) => Promise<R> {
 	const promises: {
 		readonly resolve: (value: AsyncOrSync<R>) => void
 		readonly reject: (reason?: unknown) => void
@@ -253,7 +250,7 @@ export function asyncDebounce<
 	return async (...args: A): Promise<R> =>
 		new Promise((resolve, reject) => {
 			promises.push({ reject, resolve })
-			debouncer(value => {
+			func(value => {
 				for (const promise of promises.splice(0)) {
 					promise.resolve(value)
 				}

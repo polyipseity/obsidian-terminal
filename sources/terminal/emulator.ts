@@ -17,8 +17,8 @@ import { SerializeAddon } from "xterm-addon-serialize"
 import type { TerminalPlugin } from "../main"
 import type { WebglAddon } from "xterm-addon-webgl"
 import { asyncDebounce } from "sources/utils/obsidian"
-import { debounce } from "obsidian"
 import { launderUnchecked } from "sources/utils/types"
+import { throttle } from "lodash-es"
 import { writePromise } from "./util"
 
 const
@@ -48,7 +48,7 @@ export class XtermTerminalEmulator<A> {
 	public readonly terminal
 	public readonly addons
 	public readonly pseudoterminal
-	protected readonly resize0 = asyncDebounce(debounce((
+	protected readonly resize0 = asyncDebounce(throttle((
 		resolve: (value: AsyncOrSync<void>) => void,
 		reject: (reason?: unknown) => void,
 		columns: number,
@@ -66,7 +66,7 @@ export class XtermTerminalEmulator<A> {
 				console.debug(error)
 			}
 		})().then(resolve, reject)
-	}, TERMINAL_RESIZE_TIMEOUT * SI_PREFIX_SCALE, false))
+	}, TERMINAL_RESIZE_TIMEOUT * SI_PREFIX_SCALE))
 
 	#running = true
 
