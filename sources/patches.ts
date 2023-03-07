@@ -48,10 +48,10 @@ function newLog(): Log {
 function patchConsole(console: Console, log: Log): () => void {
 	const consolePatch = (
 		type: "debug" | "error" | "info" | "warn",
-		proto: (...data: unknown[]) => void,
-	): (this: Console, ...data: unknown[]) => void => {
+		proto: (...data: readonly unknown[]) => void,
+	): (this: Console, ...data: readonly unknown[]) => void => {
 		let recursive = false
-		return function fn(this: Console, ...data: unknown[]): void {
+		return function fn(this: Console, ...data: readonly unknown[]): void {
 			if (recursive) { return }
 			recursive = true
 			try {
@@ -60,7 +60,7 @@ function patchConsole(console: Console, log: Log): () => void {
 				} catch (error) {
 					console.error(error)
 				} finally {
-					proto.apply(this, data)
+					proto.call(this, ...data)
 				}
 			} finally {
 				recursive = false
