@@ -1,4 +1,4 @@
-# Terminal for Obsidian ![release](https://img.shields.io/github/v/release/polyipseity/obsidian-terminal) ![Obsidian downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%238b6cef&label=downloads&query=%24%5B%22terminal%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json)
+# Terminal for Obsidian ![release](https://img.shields.io/github/v/release/polyipseity/obsidian-terminal) ![Obsidian downloads](https://img.shields.io/badge/dynamic/json?logo=obsidian&color=%238b6cef&label=downloads&query=%24%5B%22terminal%22%5D.downloads&url=https%3A%2F%2Fraw.githubusercontent.com%2Fobsidianmd%2Fobsidian-releases%2Fmaster%2Fcommunity-plugin-stats.json) ![Python](https://img.shields.io/badge/Python-≥3.10-gold?labelColor=blue)
 
 Integrate consoles, shells, and terminals inside [Obsidian](https://obsidian.md/).
 
