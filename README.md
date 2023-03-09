@@ -97,6 +97,7 @@ __Shells__
 - Bourne shell: `sh`
 - Command Prompt: `cmd`
 - Dash: `dash`
+- Git Bash: `<Git installation>\bin\bash.exe` (e.g. `C:\Program Files\Git\bin\bash.exe`)
 - PowerShell: `pwsh`
 - Windows Subsystem for Linux: `bash` or `wsl -d <distribution name>`
 - Z shell: `zsh`
