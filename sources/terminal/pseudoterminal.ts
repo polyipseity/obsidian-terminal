@@ -59,7 +59,8 @@ import win32ResizerPy from "./win32_resizer.py"
 const
 	childProcess =
 		dynamicRequire<typeof import("node:child_process")>("node:child_process"),
-	fs = dynamicRequire<typeof import("node:fs")>("node:fs"),
+	fsPromises =
+		dynamicRequire<typeof import("node:fs/promises")>("node:fs/promises"),
 	process = dynamicRequire<typeof import("node:process")>("node:process"),
 	tmp = dynamicRequire<typeof import("tmp")>("tmp")
 
@@ -611,10 +612,10 @@ class WindowsPseudoterminal implements Pseudoterminal {
 						resolve((async (): Promise<NodeJS.Signals | number> => {
 							try {
 								const termCode = parseInt(
-									(await fs).readFileSync(
+									(await (await fsPromises).readFile(
 										codeTmp.name,
 										{ encoding: DEFAULT_ENCODING, flag: "r" },
-									).trim(),
+									)).trim(),
 									10,
 								)
 								return isNaN(termCode) ? conCode ?? signal ?? NaN : termCode
