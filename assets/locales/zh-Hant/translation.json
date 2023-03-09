@@ -260,6 +260,7 @@
 		"dashIntegrated": "dash：$t(generic.profile-types.integrated)",
 		"developerConsole": "$t(generic.profile-types.developerConsole)",
 		"empty": "$t(generic.profile-types.)",
+		"gitBashIntegrated": "Git Bash: $t(generic.profile-types.integrated)",
 		"linuxExternalDefault": "$t(generic.platforms.linux)$t(generic.default)：$t(generic.profile-types.external)",
 		"linuxIntegratedDefault": "$t(generic.platforms.linux)$t(generic.default)：$t(generic.profile-types.integrated)",
 		"pwshIntegrated": "pwsh：$t(generic.profile-types.integrated)",

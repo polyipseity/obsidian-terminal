@@ -18,6 +18,7 @@ export interface ProfilePresets extends ExternalDefaults, IntegratedDefaults {
 	readonly cmdIntegrated: Settings.Profile.Integrated
 	readonly bashIntegrated: Settings.Profile.Integrated
 	readonly dashIntegrated: Settings.Profile.Integrated
+	readonly gitBashIntegrated: Settings.Profile.Integrated
 	readonly pwshIntegrated: Settings.Profile.Integrated
 	readonly shIntegrated: Settings.Profile.Integrated
 	readonly wslIntegrated: Settings.Profile.Integrated
@@ -75,6 +76,15 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 	empty: {
 		name: "",
 		type: "",
+	},
+	gitBashIntegrated: {
+		args: [],
+		executable: "C:\\Program Files\\Git\\bin\\bash.exe",
+		name: "",
+		platforms: { win32: true },
+		pythonExecutable: "python3",
+		type: "integrated",
+		useWin32Conhost: true,
 	},
 	linuxExternalDefault: {
 		args: [],
@@ -151,6 +161,7 @@ export type ProfilePresetKeys = readonly [
 	"bashIntegrated",
 	"dashIntegrated",
 	"developerConsole",
+	"gitBashIntegrated",
 	"pwshIntegrated",
 	"shIntegrated",
 	"wslIntegrated",

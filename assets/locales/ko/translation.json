@@ -284,6 +284,7 @@
 		"dashIntegrated": "dash: $t(generic.profile-types.integrated, capitalize)",
 		"developerConsole": "$t(generic.profile-types.developerConsole)",
 		"empty": "$t(generic.profile-types., capitalize)",
+		"gitBashIntegrated": "Git Bash: $t(generic.profile-types.integrated, capitalize)",
 		"linuxExternalDefault": "$t(generic.platforms.linux, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
 		"linuxIntegratedDefault": "$t(generic.platforms.linux, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",
 		"pwshIntegrated": "pwsh: $t(generic.profile-types.integrated, capitalize)",
