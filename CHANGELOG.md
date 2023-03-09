@@ -8,6 +8,9 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Features__
+- Add Git Bash preset. Helps with [GH#15](https://github.com/polyipseity/obsidian-terminal/issues/15). (`4b2b63cf2ab0477a4dcd22e78db7e4103c6b0d8c`..`d9543e88c407b19180a3f25371de7391f0160857`)
+
 __Improvements__
 - Throttle terminal resizing to reduce flickering. (`04899b5f6ae3eef1a4561ba022db5ebbab9f785f`..`f947c780c7c38f8bb4e2f02c163de0b72024dfe8`)
 
