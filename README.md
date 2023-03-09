@@ -29,6 +29,10 @@ This file is automatically opened on first install. You can reopen it in setting
 1. Install plugin.
 	- Community plugins
 		1. [Install](https://obsidian.md/plugins?id=terminal) from community plugins directly.
+	- Building (bleeding edge)
+		1. Install npm.
+		2. Run `npm install`.
+		3. Run `npm run obsidian:install <vault directory>`.
 	- Manual
 		1. Create directory `terminal` under `.obsidian/plugins` of your vault.
 		2. Place `manifest.json`, `main.js`, and `styles.css` from the [latest release](https://github.com/polyipseity/obsidian-terminal/releases/latest) into the directory.

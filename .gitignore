@@ -23,4 +23,5 @@ data.json
 
 # custom
 .eslintcache
+/.obsidian/
 .tsbuildinfo
