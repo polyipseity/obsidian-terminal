@@ -29,7 +29,7 @@ await Promise.all([
 		"versions.json",
 		JSON.stringify(await (async () => {
 			const versions =
-				JSON.parse(await readFile("verisons.json", { encoding: "utf-8" })),
+				JSON.parse(await readFile("versions.json", { encoding: "utf-8" })),
 				pack = await aPack
 			versions[pack.version] = pack.obsidian.minAppVersion
 			return versions
