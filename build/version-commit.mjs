@@ -33,9 +33,10 @@ ret = await execFileP(
 log(ret)
 check(ret)
 
-ret = await execFileP("git", ["tag", "--sign", "--force", "--file=-", tag], {
-	encoding: "utf-8",
-	input: tagMessage,
-})
+ret = await execFileP(
+	"git",
+	["tag", "--sign", "--force", `--message=${tagMessage}`, tag],
+	{ encoding: "utf-8" },
+)
 log(ret)
 check(ret)
