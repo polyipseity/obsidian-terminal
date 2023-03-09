@@ -1,4 +1,7 @@
-import { spawnSync } from "node:child_process"
+import { execFile } from "node:child_process"
+import { promisify } from "node:util"
+
+const execFileP = promisify(execFile)
 
 function check(ret) {
 	if (typeof ret.error !== "undefined") {
@@ -10,11 +13,11 @@ function log(ret) {
 	console.error(ret.stderr)
 }
 
-let ret = spawnSync("git", ["tag", "--points-at"], { encoding: "utf-8" })
+let ret = await execFileP("git", ["tag", "--points-at"], { encoding: "utf-8" })
 check(ret)
 const [tag] = ret.stdout.split("\n", 1)
 
-ret = spawnSync(
+ret = await execFileP(
 	"git",
 	["tag", "--list", "--format=%(contents:subject)\n%(contents:body)", tag],
 	{ encoding: "utf-8" },
@@ -22,7 +25,7 @@ ret = spawnSync(
 check(ret)
 const tagMessage = ret.stdout.trim()
 
-ret = spawnSync(
+ret = await execFileP(
 	"git",
 	["commit", "--amend", "--no-edit", "--gpg-sign", "--signoff"],
 	{ encoding: "utf-8" },
@@ -30,7 +33,7 @@ ret = spawnSync(
 log(ret)
 check(ret)
 
-ret = spawnSync("git", ["tag", "--sign", "--force", "--file=-", tag], {
+ret = await execFileP("git", ["tag", "--sign", "--force", "--file=-", tag], {
 	encoding: "utf-8",
 	input: tagMessage,
 })
