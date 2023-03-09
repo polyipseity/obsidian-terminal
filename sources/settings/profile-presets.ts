@@ -1,6 +1,7 @@
 import { deepFreeze, typedKeys } from "sources/utils/util"
 import type { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import type { Settings } from "./data"
+import { WINDOWS_CMD_PATH } from "sources/magic"
 
 type ExternalDefaults = {
 	readonly [_ in `${Pseudoterminal.SupportedPlatforms[number]
@@ -34,7 +35,7 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 	},
 	cmdIntegrated: {
 		args: [],
-		executable: "C:\\Windows\\System32\\cmd.exe",
+		executable: WINDOWS_CMD_PATH,
 		name: "",
 		platforms: { win32: true },
 		pythonExecutable: "python3",
@@ -111,14 +112,14 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 	},
 	win32ExternalDefault: {
 		args: [],
-		executable: "C:\\Windows\\System32\\cmd.exe",
+		executable: WINDOWS_CMD_PATH,
 		name: "",
 		platforms: { win32: true },
 		type: "external",
 	},
 	win32IntegratedDefault: {
 		args: [],
-		executable: "C:\\Windows\\System32\\cmd.exe",
+		executable: WINDOWS_CMD_PATH,
 		name: "",
 		platforms: { win32: true },
 		pythonExecutable: "python3",

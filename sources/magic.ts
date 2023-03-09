@@ -22,7 +22,9 @@ export const
 	TERMINAL_SEARCH_RESULTS_LIMIT = 999,
 	// eslint-disable-next-line no-void
 	UNDEFINED = void 0,
-	UNHANDLED_REJECTION_MESSAGE = "Uncaught (in promise)"
+	UNHANDLED_REJECTION_MESSAGE = "Uncaught (in promise)",
+	WINDOWS_CMD_PATH = "C:\\Windows\\System32\\cmd.exe",
+	WINDOWS_CONHOST_PATH = "C:\\Windows\\System32\\conhost.exe"
 
 export namespace DOMClasses {
 	export const

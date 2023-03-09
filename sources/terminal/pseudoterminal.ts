@@ -15,6 +15,8 @@ import {
 	TERMINAL_RESIZER_WATCHDOG_WAIT,
 	UNDEFINED,
 	UNHANDLED_REJECTION_MESSAGE,
+	WINDOWS_CMD_PATH,
+	WINDOWS_CONHOST_PATH,
 } from "../magic"
 import {
 	Functions,
@@ -541,9 +543,9 @@ class WindowsPseudoterminal implements Pseudoterminal {
 						const
 							cmd = Object.freeze([
 								...conhost
-									? ["C:\\Windows\\System32\\conhost.exe"] as const
+									? [WINDOWS_CONHOST_PATH] as const
 									: [] as const,
-								"C:\\Windows\\System32\\cmd.exe",
+								WINDOWS_CMD_PATH,
 								"/C",
 								`${WindowsPseudoterminal.escapeArgument(executable)} ${(
 									args ?? [])
