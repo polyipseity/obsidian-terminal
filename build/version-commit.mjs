@@ -2,7 +2,12 @@ import { readFile, writeFile } from "node:fs/promises"
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 
-const execFileP = promisify(execFile)
+const
+	TRIM_END_FILES = Object.freeze([
+		"package-lock.json",
+		"package.json",
+	]),
+	execFileP = promisify(execFile)
 async function run(...args) {
 	const { stdout, stderr } = await execFileP(...args)
 	if (stdout) {
@@ -36,7 +41,7 @@ const [{ tag, tagMessage }] = await Promise.all([
 			)).trim(),
 		}
 	})(),
-	...["package-lock.json", "package.json"]
+	...TRIM_END_FILES
 		.map(async file => writeFile(
 			file,
 			(await readFile(file, { encoding: "utf-8" })).trimEnd(),
