@@ -129,9 +129,9 @@ export class TerminalPlugin extends Plugin {
 				await Promise.all([
 					Promise.resolve().then(() => { this.statusBarHider.load() }),
 					Promise.resolve().then(() => { loadSettings(this) }),
-					Promise.resolve().then(async () => {
+					(async (): Promise<void> => {
 						loadDocumentation(this, isNullish(await loaded))
-					}),
+					})(),
 					Promise.resolve().then(() => { loadTerminal(this) }),
 				])
 			} catch (error) {
