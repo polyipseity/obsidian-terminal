@@ -41,12 +41,19 @@ const [{ tag, tagMessage }] = await Promise.all([
 			)).trim(),
 		}
 	})(),
-	...TRIM_END_FILES
-		.map(async file => writeFile(
-			file,
-			(await readFile(file, { encoding: "utf-8" })).trimEnd(),
+	(async () => {
+		await Promise.all(TRIM_END_FILES
+			.map(async file => writeFile(
+				file,
+				(await readFile(file, { encoding: "utf-8" })).trimEnd(),
+				{ encoding: "utf-8" },
+			)))
+		await run(
+			"git",
+			["add", ...TRIM_END_FILES],
 			{ encoding: "utf-8" },
-		)),
+		)
+	})(),
 ])
 await run(
 	"git",
