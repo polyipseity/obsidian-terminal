@@ -18,6 +18,7 @@ import {
 	SI_PREFIX_SCALE,
 } from "./magic"
 import { asyncDebounce, printMalformedData } from "./utils/obsidian"
+import { constant, throttle } from "lodash-es"
 import { LanguageManager } from "./i18n"
 import { Settings } from "./settings/data"
 import { StatusBarHider } from "./status-bar"
@@ -27,7 +28,6 @@ import { loadSettings } from "./settings/load"
 import { loadTerminal } from "./terminal/load"
 import { patch } from "./patches"
 import { semVerString } from "./utils/types"
-import { throttle } from "lodash-es"
 
 export class TerminalPlugin extends Plugin {
 	public readonly version
@@ -119,7 +119,7 @@ export class TerminalPlugin extends Plugin {
 				await Promise.all([
 					this.mutateSettings(async settings => this.loadSettings(
 						settings,
-						async () => loaded,
+						constant(loaded),
 					))
 						.then(() => { this.saveSettings().catch(logError) }),
 					this.language.load(),
