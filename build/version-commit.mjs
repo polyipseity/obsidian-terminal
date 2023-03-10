@@ -2,41 +2,36 @@ import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 
 const execFileP = promisify(execFile)
-
-function check(ret) {
-	if (typeof ret.error !== "undefined") {
-		throw ret.error
+async function run(...args) {
+	const { stdout, stderr } = await execFileP(...args)
+	if (stdout) {
+		console.log(stdout)
 	}
+	if (stderr) {
+		console.error(stderr)
+		throw new Error(stderr)
+	}
+	return stdout
 }
-function log(ret) {
-	console.log(ret.stdout)
-	console.error(ret.stderr)
-}
 
-let ret = await execFileP("git", ["tag", "--points-at"], { encoding: "utf-8" })
-check(ret)
-const [tag] = ret.stdout.split("\n", 1)
-
-ret = await execFileP(
-	"git",
-	["tag", "--list", "--format=%(contents:subject)\n%(contents:body)", tag],
-	{ encoding: "utf-8" },
-)
-check(ret)
-const tagMessage = ret.stdout.trim()
-
-ret = await execFileP(
+const
+	tag = (await run(
+		"git",
+		["tag", "--points-at"],
+		{ encoding: "utf-8" },
+	)).split("\n", 1)[0].trim(),
+	tagMessage = (await run(
+		"git",
+		["tag", "--list", "--format=%(contents:subject)\n%(contents:body)", tag],
+		{ encoding: "utf-8" },
+	)).trim()
+await run(
 	"git",
 	["commit", "--amend", "--no-edit", "--gpg-sign", "--signoff"],
 	{ encoding: "utf-8" },
 )
-log(ret)
-check(ret)
-
-ret = await execFileP(
+await run(
 	"git",
 	["tag", "--sign", "--force", `--message=${tagMessage}`, tag],
 	{ encoding: "utf-8" },
 )
-log(ret)
-check(ret)
