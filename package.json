@@ -16,11 +16,10 @@
 	"private": true,
 	"main": "main.js",
 	"scripts": {
-		"build": "tsc -noEmit && npm run lint && npm run build:force",
+		"build": "npm run lint && npm run build:force",
 		"build:force": "npm run dev production",
-		"check": "tsc --noEmit",
 		"dev": "node build/esbuild.config.mjs",
-		"lint": "eslint --cache --ignore-pattern \"*.svelte\" .",
+		"lint": "tsc -noEmit && eslint --cache --ignore-pattern \"*.svelte\" .",
 		"lint:fix": "eslint --cache --fix --ignore-pattern \"*.svelte\" .",
 		"obsidian:install": "npm run build && node build/obsidian-install.mjs",
 		"obsidian:install:force": "npm run build:force && node build/obsidian-install.mjs",
