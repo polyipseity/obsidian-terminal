@@ -29,13 +29,14 @@ This file is automatically opened on first install. You can reopen it in setting
 1. Install plugin.
 	- Community plugins
 		1. Install the [plugin](https://obsidian.md/plugins?id=terminal) from community plugins directly.
-	- Building (bleeding edge)
-		1. Install [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).
-		2. Run `npm install`.
-		3. Run `npm run obsidian:install <vault directory>`.
 	- Manual
 		1. Create directory `terminal` under `.obsidian/plugins` of your vault.
 		2. Place `manifest.json`, `main.js`, and `styles.css` from the [latest release](https://github.com/polyipseity/obsidian-terminal/releases/latest) into the directory.
+	- Building (bleeding edge)
+		1. Clone this repository, including its submodules.
+		2. Install [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).
+		3. Run `npm install` in the root directory.
+		4. Run `npm run obsidian:install <vault directory>` in the root directory.
 2. (optional for Windows, recommended) Install Python and dependencies.
 	1. Install [Python](https://www.python.org/downloads/) 3.10/+.
 	2. (Windows only) Run `pip3 install psutil pywinctl`.
