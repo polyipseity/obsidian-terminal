@@ -24,7 +24,7 @@
 		"obsidian:install": "npm run build && node build/obsidian-install.mjs",
 		"obsidian:install:force": "npm run build:force && node build/obsidian-install.mjs",
 		"postversion": "node build/version-post.mjs",
-		"version": "node build/version.mjs && git add manifest.json versions.json"
+		"version": "node build/version.mjs"
 	},
 	"dependencies": {
 		"ansi-escape-sequences": "6.2.1",

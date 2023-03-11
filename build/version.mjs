@@ -1,4 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises"
+import { execute } from "./util.mjs"
 
 const MANIFEST_MAP =
 	Object.freeze({
@@ -37,3 +38,8 @@ await Promise.all([
 		{ encoding: "utf-8" },
 	),
 ])
+await execute(
+	"git",
+	["add", "manifest.json", "versions.json"],
+	{ encoding: "utf-8" },
+)
