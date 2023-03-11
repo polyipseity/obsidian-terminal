@@ -1,10 +1,10 @@
+import { PATHS, execute } from "./util.mjs"
 import { readFile, writeFile } from "node:fs/promises"
-import { execute } from "./util.mjs"
 
 const
 	TRIM_END_FILES = Object.freeze([
-		"package-lock.json",
-		"package.json",
+		PATHS.package,
+		PATHS.packageLock,
 	]),
 	[{ tag, tagMessage }] = await Promise.all([
 		(async () => {

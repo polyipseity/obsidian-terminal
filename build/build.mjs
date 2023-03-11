@@ -1,3 +1,4 @@
+import { PATHS } from "./util.mjs"
 import builtins from "builtin-modules"
 import esbuild from "esbuild"
 import lodashES from "lodash-es"
@@ -47,7 +48,7 @@ If you want to view the source, please visit the repository of this plugin.
 		logLimit: 0,
 		metafile: true,
 		minify: production,
-		outfile: "main.js",
+		outfile: PATHS.main,
 		platform: "browser",
 		plugins: [
 			sveltePlugin({

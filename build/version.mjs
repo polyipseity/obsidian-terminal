@@ -1,5 +1,5 @@
+import { PATHS, execute } from "./util.mjs"
 import { readFile, writeFile } from "node:fs/promises"
-import { execute } from "./util.mjs"
 
 const MANIFEST_MAP =
 	Object.freeze({
@@ -7,15 +7,15 @@ const MANIFEST_MAP =
 		description: "description",
 		version: "version",
 	}),
-	aPack = readFile("package.json", "utf-8").then(data => JSON.parse(data))
+	aPackage = readFile(PATHS.package, "utf-8").then(data => JSON.parse(data))
 
 await Promise.all([
 	writeFile(
-		"manifest.json",
+		PATHS.manifest,
 		JSON.stringify(await (async () => {
 			const manifest =
-				JSON.parse(await readFile("manifest.json", { encoding: "utf-8" })),
-				pack = await aPack
+				JSON.parse(await readFile(PATHS.manifest, { encoding: "utf-8" })),
+				pack = await aPackage
 			for (const [key, value] of Object.entries(MANIFEST_MAP)) {
 				manifest[key] = pack[value]
 			}
@@ -27,11 +27,11 @@ await Promise.all([
 		{ encoding: "utf-8" },
 	),
 	writeFile(
-		"versions.json",
+		PATHS.versions,
 		JSON.stringify(await (async () => {
 			const versions =
-				JSON.parse(await readFile("versions.json", { encoding: "utf-8" })),
-				pack = await aPack
+				JSON.parse(await readFile(PATHS.versions, { encoding: "utf-8" })),
+				pack = await aPackage
 			versions[pack.version] = pack.obsidian.minAppVersion
 			return versions
 		})(), null, "\t"),
@@ -40,6 +40,6 @@ await Promise.all([
 ])
 await execute(
 	"git",
-	["add", "manifest.json", "versions.json"],
+	["add", PATHS.manifest, PATHS.versions],
 	{ encoding: "utf-8" },
 )
