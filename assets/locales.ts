@@ -38,111 +38,50 @@ export const FORMATTERS: Readonly<Record<string, (
 	uncapitalize: lng => value => uncapitalize(String(value), lng),
 } as const)
 
+function resource<T>(importer: () => PromiseLike<{
+	// eslint-disable-next-line @typescript-eslint/no-magic-numbers
+	readonly default: Parameters<typeof sync<T>>[0]
+}>): { readonly [DEFAULT_NAMESPACE]: () => Promise<T> } {
+	return { [DEFAULT_NAMESPACE]: async () => sync((await importer()).default) }
+}
 // Add those with ✅ in https://github.com/obsidianmd/obsidian-translations#existing-languages
 export const RESOURCES = deepFreeze({
-	am: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/am/translation.json")).default),
-	},
-	cs: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/cs/translation.json")).default),
-	},
-	da: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/da/translation.json")).default),
-	},
-	de: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/de/translation.json")).default),
-	},
+	am: resource(async () => import("assets/locales/am/translation.json")),
+	cs: resource(async () => import("assets/locales/cs/translation.json")),
+	da: resource(async () => import("assets/locales/da/translation.json")),
+	de: resource(async () => import("assets/locales/de/translation.json")),
 	en: {
 		[DEFAULT_NAMESPACE]: async () =>
 			sync((await import("assets/locales/en/translation.json")).default),
-		asset: async () =>
-			(await import("assets/locales/en/asset.json")).default,
+		asset: async () => (await import("assets/locales/en/asset.json")).default,
 		language: async () =>
 			(await import("assets/locales/en/language.json")).default,
 	},
-	es: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/es/translation.json")).default),
-	},
-	fa: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/fa/translation.json")).default),
-	},
-	fr: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/fr/translation.json")).default),
-	},
-	id: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/id/translation.json")).default),
-	},
-	it: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/it/translation.json")).default),
-	},
-	ja: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/ja/translation.json")).default),
-	},
-	ko: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/ko/translation.json")).default),
-	},
-	nl: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/nl/translation.json")).default),
-	},
-	no: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/no/translation.json")).default),
-	},
-	pl: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/pl/translation.json")).default),
-	},
-	pt: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/pt/translation.json")).default),
-	},
+	es: resource(async () => import("assets/locales/es/translation.json")),
+	fa: resource(async () => import("assets/locales/fa/translation.json")),
+	fr: resource(async () => import("assets/locales/fr/translation.json")),
+	id: resource(async () => import("assets/locales/id/translation.json")),
+	it: resource(async () => import("assets/locales/it/translation.json")),
+	ja: resource(async () => import("assets/locales/ja/translation.json")),
+	ko: resource(async () => import("assets/locales/ko/translation.json")),
+	nl: resource(async () => import("assets/locales/nl/translation.json")),
+	no: resource(async () => import("assets/locales/no/translation.json")),
+	pl: resource(async () => import("assets/locales/pl/translation.json")),
+	pt: resource(async () => import("assets/locales/pt/translation.json")),
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	"pt-BR": {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/pt-BR/translation.json")).default),
-	},
-	ro: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/ro/translation.json")).default),
-	},
-	ru: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/ru/translation.json")).default),
-	},
-	sq: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/sq/translation.json")).default),
-	},
-	th: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/th/translation.json")).default),
-	},
-	tr: {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/tr/translation.json")).default),
-	},
+	"pt-BR": resource(async () =>
+		import("assets/locales/pt-BR/translation.json")),
+	ro: resource(async () => import("assets/locales/ro/translation.json")),
+	ru: resource(async () => import("assets/locales/ru/translation.json")),
+	sq: resource(async () => import("assets/locales/sq/translation.json")),
+	th: resource(async () => import("assets/locales/th/translation.json")),
+	tr: resource(async () => import("assets/locales/tr/translation.json")),
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	"zh-Hans": {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/zh-Hans/translation.json")).default),
-	},
+	"zh-Hans": resource(async () =>
+		import("assets/locales/zh-Hans/translation.json")),
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	"zh-Hant": {
-		[DEFAULT_NAMESPACE]: async () =>
-			sync((await import("assets/locales/zh-Hant/translation.json")).default),
-	},
+	"zh-Hant": resource(async () =>
+		import("assets/locales/zh-Hant/translation.json")),
 } as const)
 export type DefaultResources = {
 	[K in
