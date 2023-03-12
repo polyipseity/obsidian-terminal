@@ -178,7 +178,6 @@ export type Languages = readonly [
 	"zh-Hans",
 	"zh-Hant",
 ]
-export const LANGUAGES = typedKeys<Languages>()(RESOURCES) satisfies
-	readonly (keyof Awaited<ReturnType<
-		typeof RESOURCES[typeof DEFAULT_LANGUAGE]["language"]
-	>>)[]
+export const LANGUAGES = typedKeys<keyof Awaited<ReturnType<
+	typeof RESOURCES[typeof DEFAULT_LANGUAGE]["language"]
+>> extends Languages[number] ? Languages : never>()(RESOURCES)
