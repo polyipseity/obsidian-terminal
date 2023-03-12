@@ -336,7 +336,7 @@
 		},
 		"language": "$t(generic.language, capitalize)",
 		"language-default": "$t(generic.use, capitalize) $t(generic.app) $t(generic.setting)",
-		"language-description": "Applies to this $t(generic.plugin) only. $t(generic.language_other) with 🚧 need your help with translation!",
+		"language-description": "Applies to this $t(generic.plugin) only. $t(generic.language_other, capitalize) with 🚧 need your help with translation!",
 		"new-instance-behavior": "New $t(generic.instance) $t(generic.behavior)",
 		"new-instance-behaviors": {
 			"newHorizontalSplit": "New horizontal $t(generic.split)",
