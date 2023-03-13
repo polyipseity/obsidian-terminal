@@ -19,7 +19,7 @@ This file is automatically opened on first install. You can reopen it in setting
 - Start external terminals from Obsidian.
 - Integrate terminals into Obsidian.
 - Supports multiple terminal profiles.
-- Has builtin hotkeys.
+- Has built-in hotkeys.
 - Automatically save and restore integrated terminal history.
 - Find in terminal.
 - Save terminal history as file.
