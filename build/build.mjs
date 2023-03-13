@@ -4,6 +4,8 @@ import { PATHS } from "./util.mjs"
 import { argv } from "node:process"
 import builtinModules from "builtin-modules"
 import esbuildSvelte from "esbuild-svelte"
+import lzString from "lz-string"
+import { readFile } from "node:fs/promises"
 import sveltePreprocess from "svelte-preprocess"
 
 const ARGV_PRODUCTION = 2,
@@ -42,6 +44,19 @@ If you want to view the source, please visit the repository of this plugin.
 		outfile: PATHS.main,
 		platform: "browser",
 		plugins: [
+			{
+				name: "compress-json",
+				setup(build) {
+					build.onLoad({ filter: /\.json$/u }, async args => ({
+						contents: `
+import { decompressFromBase64 } from "lz-string"
+export default JSON.parse(decompressFromBase64(\`${lzString.compressToBase64(
+							await readFile(args.path, { encoding: "utf-8" }),
+						)}\`))`,
+						loader: "js",
+					}))
+				},
+			},
 			esbuildSvelte({
 				cache: "overzealous",
 				compilerOptions: {
