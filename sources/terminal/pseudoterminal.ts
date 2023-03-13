@@ -46,7 +46,7 @@ import { notice2, printError } from "sources/utils/obsidian"
 import AsyncLock from "async-lock"
 import type { AsyncOrSync } from "ts-essentials"
 import { DisposerAddon } from "./emulator"
-import type { FileResultNoFd } from "tmp"
+import type { FileResult } from "tmp-promise"
 import type { Log } from "sources/patches"
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
@@ -64,7 +64,7 @@ const
 	fsPromises =
 		dynamicRequire<typeof import("node:fs/promises")>("node:fs/promises"),
 	process = dynamicRequire<typeof import("node:process")>("node:process"),
-	tmp = dynamicRequire<typeof import("tmp")>("tmp")
+	tmpPromise = dynamicRequire<typeof import("tmp-promise")>("tmp-promise")
 
 async function clearTerminal(terminal: Terminal, keep = false): Promise<void> {
 	const { rows } = terminal
@@ -533,24 +533,13 @@ class WindowsPseudoterminal implements Pseudoterminal {
 			})(),
 			shell = (async (): Promise<readonly [
 				PipedChildProcess,
-				FileResultNoFd,
+				FileResult,
 				typeof resizerInitial,
 			]> => {
 				const resizer = await resizerInitial.catch(() => null)
 				try {
-					const codeTmp = await tmp.then(async tmp0 =>
-						new Promise<FileResultNoFd>((resolve, reject) => {
-							tmp0.file(
-								{ discardDescriptor: true },
-								(err, name, _0, removeCallback) => {
-									if (err) {
-										reject(err)
-										return
-									}
-									resolve({ name, removeCallback })
-								},
-							)
-						}))
+					const codeTmp = await (await tmpPromise)
+						.file({ discardDescriptor: true })
 					try {
 						const
 							cmd = Object.freeze([
@@ -564,7 +553,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 									.map(arg => WindowsPseudoterminal.escapeArgument(arg))
 									.join(" ")
 								} & call echo %^ERRORLEVEL% >${WindowsPseudoterminal
-									.escapeArgument(codeTmp.name)}`,
+									.escapeArgument(codeTmp.path)}`,
 							] as const),
 							ret = await spawnPromise(async () => (await childProcess).spawn(
 								cmd[0],
@@ -609,7 +598,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 							}),
 						]
 					} catch (error) {
-						codeTmp.removeCallback()
+						await codeTmp.cleanup()
 						throw error
 					}
 				} catch (error) {
@@ -627,7 +616,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 							try {
 								const termCode = parseInt(
 									(await (await fsPromises).readFile(
-										codeTmp.name,
+										codeTmp.path,
 										{ encoding: DEFAULT_ENCODING, flag: "r" },
 									)).trim(),
 									10,
@@ -640,7 +629,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 								(async (): Promise<void> => {
 									try {
 										await sleep2(TERMINAL_EXIT_CLEANUP_WAIT)
-										codeTmp.removeCallback()
+										await codeTmp.cleanup()
 									} catch (error) { console.warn(error) }
 								})()
 							}

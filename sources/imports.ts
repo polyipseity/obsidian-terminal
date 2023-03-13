@@ -3,9 +3,10 @@ import { deepFreeze, inSet, isNullish, typedKeys } from "./utils/util"
 
 const
 	BUNDLE = deepFreeze({
-		tmp: (): unknown => require("tmp"),
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		"tmp-promise": (): unknown => require("tmp-promise"),
 	} as const),
-	MODULES = typedKeys<readonly ["tmp"]>()(BUNDLE)
+	MODULES = typedKeys<readonly ["tmp-promise"]>()(BUNDLE)
 
 export async function dynamicRequire<T>(module: string): Promise<T> {
 	return Promise.resolve()
