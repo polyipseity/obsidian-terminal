@@ -2,6 +2,7 @@ import { analyzeMetafile, context, formatMessages } from "esbuild"
 import { constant, isEmpty, isUndefined, kebabCase } from "lodash-es"
 import { PATHS } from "./util.mjs"
 import { argv } from "node:process"
+import builtins from "builtin-modules"
 import esbuildSvelte from "esbuild-svelte"
 import sveltePreprocess from "svelte-preprocess"
 
@@ -21,9 +22,19 @@ If you want to view the source, please visit the repository of this plugin.
 		external: [
 			"electron",
 			"obsidian",
-			"@codemirror/*",
-			"@lezer/*",
+			"@codemirror/autocomplete",
+			"@codemirror/collab",
+			"@codemirror/commands",
+			"@codemirror/language",
+			"@codemirror/lint",
+			"@codemirror/search",
+			"@codemirror/state",
+			"@codemirror/view",
+			"@lezer/common",
+			"@lezer/highlight",
+			"@lezer/lr",
 			"node:*",
+			...builtins,
 		],
 		footer: { js: COMMENT },
 		format: "cjs",
