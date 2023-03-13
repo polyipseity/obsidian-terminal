@@ -1,5 +1,4 @@
 import { PATHS } from "./util.mjs"
-import builtins from "builtin-modules"
 import esbuild from "esbuild"
 import lodashES from "lodash-es"
 import process from "node:process"
@@ -22,19 +21,9 @@ If you want to view the source, please visit the repository of this plugin.
 		external: [
 			"electron",
 			"obsidian",
-			"@codemirror/autocomplete",
-			"@codemirror/collab",
-			"@codemirror/commands",
-			"@codemirror/language",
-			"@codemirror/lint",
-			"@codemirror/search",
-			"@codemirror/state",
-			"@codemirror/view",
-			"@lezer/common",
-			"@lezer/highlight",
-			"@lezer/lr",
+			"@codemirror/*",
+			"@lezer/*",
 			"node:*",
-			...builtins,
 		],
 		footer: { js: COMMENT },
 		format: "cjs",
