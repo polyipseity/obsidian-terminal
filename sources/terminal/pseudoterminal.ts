@@ -538,7 +538,19 @@ class WindowsPseudoterminal implements Pseudoterminal {
 			]> => {
 				const resizer = await resizerInitial.catch(() => null)
 				try {
-					const codeTmp = (await tmp).fileSync({ discardDescriptor: true })
+					const codeTmp = await tmp.then(async tmp0 =>
+						new Promise<FileResultNoFd>((resolve, reject) => {
+							tmp0.file(
+								{ discardDescriptor: true },
+								(err, name, _0, removeCallback) => {
+									if (err) {
+										reject(err)
+										return
+									}
+									resolve({ name, removeCallback })
+								},
+							)
+						}))
 					try {
 						const
 							cmd = Object.freeze([
