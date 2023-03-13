@@ -53,8 +53,8 @@ If you want to view the source, please visit the repository of this plugin.
 						const compressed = lzString.compressToBase64(data)
 						return {
 							contents: `
-import { decompressFromBase64 } from "lz-string"
-export default JSON.parse(decompressFromBase64("${compressed}"))`,
+import { decompressFromBase64 as decompress } from "lz-string"
+export default JSON.parse(decompress(\`${compressed}\`))`,
 							loader: "js",
 						}
 					})
