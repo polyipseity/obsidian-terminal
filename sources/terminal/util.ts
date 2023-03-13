@@ -6,12 +6,14 @@ import {
 	type ITerminalOptions as TerminalOptions,
 	type ITerminalInitOnlyOptions as TerminalOptionsInit,
 } from "xterm"
+import { type Set as ValueSet, Set as valueSet } from "immutable"
 import {
 	acquireConditionally,
 	cartesianProduct,
 	clear,
 	deepFreeze,
 	insertAt,
+	lazyInit,
 	rangeCodePoint,
 	removeAt,
 	replaceAllRegex,
@@ -21,7 +23,6 @@ import AsyncLock from "async-lock"
 import { MAX_LOCK_PENDING } from "sources/magic"
 import ansi from "ansi-escape-sequences"
 import { codePoint } from "sources/utils/types"
-import { Set as valueSet } from "immutable"
 
 type IFunctionIdentifier0 = DeepReadonly<DeepRequired<IFunctionIdentifier>>
 export const ESCAPE_SEQUENCE_INTRODUCER = "\u001b"
@@ -31,40 +32,60 @@ const CSI = CONTROL_SEQUENCE_INTRODUCER
 export const DEVICE_CONTROL_STRING = `${ESC}P`
 export const OPERATING_SYSTEM_COMMAND = `${ESC}]`
 export const
-	FUNCTION_IDENTIFIER_PREFIXES = deepFreeze([
-		"",
-		...rangeCodePoint(codePoint("\x3c"), codePoint("\x40")),
-	] as const),
-	FUNCTION_IDENTIFIER_INTERMEDIATES = deepFreeze([
-		"",
-		...rangeCodePoint(codePoint("\x20"), codePoint("\x30")),
-	] as const),
-	FUNCTION_IDENTIFIER_FINAL = deepFreeze({
-		"long": rangeCodePoint(codePoint("\x30"), codePoint("\x7f")),
-		"short": rangeCodePoint(codePoint("\x40"), codePoint("\x7f")),
-	} as const),
-	ALL_CSI_IDENTIFIERS = valueSet<IFunctionIdentifier0>(cartesianProduct(
-		FUNCTION_IDENTIFIER_PREFIXES,
-		FUNCTION_IDENTIFIER_INTERMEDIATES,
-		FUNCTION_IDENTIFIER_INTERMEDIATES,
-		FUNCTION_IDENTIFIER_FINAL.short,
-	).map(([prefix, intermediates0, intermediates1, final]) => ({
-		final,
-		intermediates: `${intermediates0}${intermediates1}`,
-		prefix,
-	} as const))),
-	ALL_DCS_IDENTIFIERS = ALL_CSI_IDENTIFIERS,
-	ALL_ESC_IDENTIFIERS = valueSet<IFunctionIdentifier0>(cartesianProduct(
-		FUNCTION_IDENTIFIER_INTERMEDIATES,
-		FUNCTION_IDENTIFIER_INTERMEDIATES,
-		FUNCTION_IDENTIFIER_FINAL.long,
-	).map(([intermediates0, intermediates1, final]) => ({
-		final,
-		intermediates: `${intermediates0}${intermediates1}`,
-		prefix: "",
-	} as const))),
-	// eslint-disable-next-line @typescript-eslint/no-magic-numbers
-	MOST_OSC_IDENTIFIERS = valueSet(range(2022)),
+	// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+	IDENTIFIERS = (() => {
+		const ret = {
+			get csi(): ValueSet<IFunctionIdentifier0> { throw new TypeError() },
+			get dcs(): ValueSet<IFunctionIdentifier0> { return this.csi },
+			get esc(): ValueSet<IFunctionIdentifier0> { throw new TypeError() },
+			finalLong: rangeCodePoint(codePoint("\x30"), codePoint("\x7f")),
+			finalShort: rangeCodePoint(codePoint("\x40"), codePoint("\x7f")),
+			intermediates: deepFreeze([
+				"",
+				...rangeCodePoint(codePoint("\x20"), codePoint("\x30")),
+			] as const),
+			get osc(): ValueSet<number> { throw new TypeError() },
+			prefixes: deepFreeze([
+				"",
+				...rangeCodePoint(codePoint("\x3c"), codePoint("\x40")),
+			] as const),
+		}
+		Object.defineProperties(ret, {
+			csi: {
+				enumerable: true,
+				get: lazyInit(() =>
+					valueSet<IFunctionIdentifier0>(cartesianProduct(
+						ret.prefixes,
+						ret.intermediates,
+						ret.intermediates,
+						ret.finalShort,
+					).map(([prefix, intermediates0, intermediates1, final]) => ({
+						final,
+						intermediates: `${intermediates0}${intermediates1}`,
+						prefix,
+					})))),
+			},
+			esc: {
+				enumerable: true,
+				get: lazyInit(() =>
+					valueSet<IFunctionIdentifier0>(cartesianProduct(
+						ret.intermediates,
+						ret.intermediates,
+						ret.finalLong,
+					).map(([intermediates0, intermediates1, final]) => ({
+						final,
+						intermediates: `${intermediates0}${intermediates1}`,
+						prefix: "",
+					})))),
+			},
+			osc: {
+				enumerable: true,
+				// eslint-disable-next-line @typescript-eslint/no-magic-numbers
+				get: lazyInit(() => valueSet(range(2022))),
+			},
+		})
+		return Object.freeze(ret)
+	})(),
 	MAX_CHARACTER_WIDTH = 2,
 	NORMALIZED_LINE_FEED = "\r\n"
 
@@ -152,7 +173,7 @@ export class TerminalTextArea implements IDisposable {
 			{ "final": "_", intermediates: "", prefix: "" },
 		]),
 		// eslint-disable-next-line @typescript-eslint/no-magic-numbers
-		osc: valueSet<number>([0, 1, 2, 4, 8, 10, 11, 12, 104, 110, 111, 112]),
+		osc: valueSet([0, 1, 2, 4, 8, 10, 11, 12, 104, 110, 111, 112]),
 	})
 
 	public readonly terminal
@@ -187,25 +208,25 @@ export class TerminalTextArea implements IDisposable {
 					cancel ? trueHandler : falseHandler
 			})()
 		this.#cell = buffer.active.getNullCell()
-		for (const id of ALL_CSI_IDENTIFIERS) {
+		for (const id of IDENTIFIERS.csi) {
 			parser.registerCsiHandler(
 				id,
 				handler(TerminalTextArea.allowedIdentifiers.csi.has(id)),
 			)
 		}
-		for (const id of ALL_DCS_IDENTIFIERS) {
+		for (const id of IDENTIFIERS.dcs) {
 			parser.registerDcsHandler(
 				id,
 				handler(TerminalTextArea.allowedIdentifiers.dcs.has(id)),
 			)
 		}
-		for (const id of ALL_ESC_IDENTIFIERS) {
+		for (const id of IDENTIFIERS.esc) {
 			parser.registerEscHandler(
 				id,
 				handler(TerminalTextArea.allowedIdentifiers.esc.has(id)),
 			)
 		}
-		for (const id of MOST_OSC_IDENTIFIERS) {
+		for (const id of IDENTIFIERS.osc) {
 			parser.registerOscHandler(
 				id,
 				handler(TerminalTextArea.allowedIdentifiers.osc.has(id)),
