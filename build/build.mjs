@@ -50,9 +50,9 @@ If you want to view the source, please visit the repository of this plugin.
 					build.onLoad({ filter: /\.json$/u }, async args => ({
 						contents: `
 import { decompressFromBase64 } from "lz-string"
-export default JSON.parse(decompressFromBase64(\`${lzString.compressToBase64(
+export default JSON.parse(decompressFromBase64("${lzString.compressToBase64(
 							await readFile(args.path, { encoding: "utf-8" }),
-						)}\`))`,
+						)}"))`,
 						loader: "js",
 					}))
 				},
