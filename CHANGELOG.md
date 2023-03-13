@@ -14,6 +14,7 @@ __Features__
 __Improvements__
 - Throttle terminal resizing to reduce flickering. (`04899b5f6ae3eef1a4561ba022db5ebbab9f785f`..`f947c780c7c38f8bb4e2f02c163de0b72024dfe8`)
 - Compress JSON files, decreasing bundle size from ~1.8 MB to ~1.5 MB. (`ed2e4b671518ec79c6de8f11e3889cae574ea9cb`)
+- Reduce startup time by ~50%. (`fe93210ffd44ccf1b1e48d625963140f008fea83`)
 
 __Miscellaneous__
 - Add npm commands to install the plugin. (`854e1338072f325b6e450817b568244f89693dce`)
