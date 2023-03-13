@@ -57,7 +57,10 @@ const
 	childProcess =
 		dynamicRequire<typeof import("node:child_process")>("node:child_process"),
 	process = dynamicRequire<typeof import("node:process")>("node:process"),
-	util = dynamicRequire<typeof import("node:util")>("node:util")
+	util = dynamicRequire<typeof import("node:util")>("node:util"),
+	// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+	execFileP = (async () =>
+		(await util).promisify((await childProcess).execFile))()
 
 export function makeModalDynamicWidth(
 	ui: UpdatableUI,
@@ -683,21 +686,20 @@ export class ProfileModal extends Modal {
 										checkingPython = true;
 										(async (): Promise<void> => {
 											try {
-												const { stdout, stderr } = await (await util)
-													.promisify((await childProcess).execFile)(
-														profile.pythonExecutable,
-														["--version"],
-														{
-															env: {
-																...(await process).env,
-																// eslint-disable-next-line @typescript-eslint/naming-convention
-																PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
-															},
-															timeout: CHECK_EXECUTABLE_WAIT *
-																SI_PREFIX_SCALE,
-															windowsHide: true,
+												const { stdout, stderr } = await (await execFileP)(
+													profile.pythonExecutable,
+													["--version"],
+													{
+														env: {
+															...(await process).env,
+															// eslint-disable-next-line @typescript-eslint/naming-convention
+															PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
 														},
-													)
+														timeout: CHECK_EXECUTABLE_WAIT *
+															SI_PREFIX_SCALE,
+														windowsHide: true,
+													},
+												)
 												if (stdout) { console.log(stdout) }
 												if (stderr) { console.error(stderr) }
 												if (!stdout.includes(i18n
