@@ -1,8 +1,8 @@
-import { deepFreeze, typedKeys } from "sources/utils/util"
 import changelogMd from "CHANGELOG.md"
 import readmeMd from "README.md"
+import { typedKeys } from "sources/utils/util"
 
-export const DOCUMENTATIONS = deepFreeze({
+export const DOCUMENTATIONS = Object.freeze({
 	changelog: changelogMd,
 	readme: readmeMd,
 } as const)

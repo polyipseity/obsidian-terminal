@@ -82,10 +82,8 @@ export default PLazy.from(() =>
 								JSON.parse(data)
 								return {
 									contents: `
-import PLazy from "p-lazy"
 import { decompressFromBase64 as decompress } from "lz-string"
-export default PLazy.from(() =>
-	JSON.parse(decompress(${str(lzString.compressToBase64(data))})))
+export default JSON.parse(decompress(${str(lzString.compressToBase64(data))}))
 `,
 									loader: "js",
 								}
