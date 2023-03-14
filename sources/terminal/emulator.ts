@@ -1,9 +1,9 @@
 import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
 import { Functions, deepFreeze, spawnPromise } from "../utils/util"
-import {
-	type ITerminalAddon,
-	type ITerminalInitOnlyOptions,
-	type ITerminalOptions,
+import type {
+	ITerminalAddon,
+	ITerminalInitOnlyOptions,
+	ITerminalOptions,
 	Terminal,
 } from "xterm"
 import {
@@ -11,13 +11,11 @@ import {
 	TERMINAL_EMULATOR_RESIZE_WAIT,
 	TERMINAL_PTY_RESIZE_WAIT,
 } from "../magic"
-import { dynamicRequire, importable } from "../imports"
+import { dynamicRequire, dynamicRequireLazy, importable } from "../imports"
 import type { AsyncOrSync } from "ts-essentials"
 import type { CanvasAddon } from "xterm-addon-canvas"
 import type { ChildProcessByStdio } from "node:child_process"
-import { FitAddon } from "xterm-addon-fit"
 import type { Pseudoterminal } from "./pseudoterminal"
-import { SerializeAddon } from "xterm-addon-serialize"
 import type { TerminalPlugin } from "../main"
 import type { WebglAddon } from "xterm-addon-webgl"
 import { asyncDebounce } from "sources/utils/obsidian"
@@ -27,7 +25,13 @@ import { writePromise } from "./util"
 
 const
 	childProcess =
-		dynamicRequire<typeof import("node:child_process")>("node:child_process")
+		dynamicRequire<typeof import("node:child_process")>("node:child_process"),
+	xterm = dynamicRequireLazy<typeof import("xterm")>("xterm"),
+	xtermAddonFit =
+		dynamicRequireLazy<typeof import("xterm-addon-fit")>("xterm-addon-fit"),
+	xtermAddonSerialize =
+		dynamicRequireLazy<typeof import("xterm-addon-serialize")>(
+			"xterm-addon-serialize")
 
 export const SUPPORTS_EXTERNAL_TERMINAL_EMULATOR =
 	importable("node:child_process")
@@ -99,13 +103,13 @@ export class XtermTerminalEmulator<A> {
 		options?: ITerminalInitOnlyOptions & ITerminalOptions,
 		addons?: A,
 	) {
-		this.terminal = new Terminal(options)
+		this.terminal = new (xterm().Terminal)(options)
 		const { terminal } = this
 		terminal.open(element)
 		// eslint-disable-next-line prefer-object-spread
 		const addons0 = Object.assign({
-			fit: new FitAddon(),
-			serialize: new SerializeAddon(),
+			fit: new (xtermAddonFit().FitAddon)(),
+			serialize: new (xtermAddonSerialize().SerializeAddon)(),
 		}, addons)
 		for (const addon of Object.values(addons0)) {
 			terminal.loadAddon(addon)

@@ -37,6 +37,7 @@
 		"lodash-es": "4.17.21",
 		"lz-string": "1.5.0",
 		"monkey-around": "2.3.0",
+		"p-lazy": "4.0.0",
 		"semver": "7.3.8",
 		"simple-icons": "8.6.0",
 		"tmp-promise": "3.0.3",

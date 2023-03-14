@@ -54,19 +54,35 @@ import {
 	writeStateCollabratively,
 } from "sources/utils/obsidian"
 import { linkSetting, resetButton } from "sources/ui/settings"
-import { CanvasAddon } from "xterm-addon-canvas"
 import type { DeepWritable } from "ts-essentials"
 import FindComponent from "../ui/find.svelte"
-import { LigaturesAddon } from "xterm-addon-ligatures"
-import { SearchAddon } from "xterm-addon-search"
+import type { LigaturesAddon } from "xterm-addon-ligatures"
+import type { SearchAddon } from "xterm-addon-search"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "../main"
 import { TextPseudoterminal } from "./pseudoterminal"
-import { Unicode11Addon } from "xterm-addon-unicode11"
-import { WebLinksAddon } from "xterm-addon-web-links"
-import { WebglAddon } from "xterm-addon-webgl"
+import type { Unicode11Addon } from "xterm-addon-unicode11"
+import type { WebLinksAddon } from "xterm-addon-web-links"
+import { dynamicRequireLazy } from "sources/imports"
 import { launderUnchecked } from "sources/utils/types"
 import { writePromise } from "./util"
+
+const
+	xtermAddonCanvas = dynamicRequireLazy<typeof import("xterm-addon-canvas")>(
+		"xterm-addon-canvas"),
+	xtermAddonLigatures =
+		dynamicRequireLazy<typeof import("xterm-addon-ligatures")>(
+			"xterm-addon-ligatures"),
+	xtermAddonSearch = dynamicRequireLazy<typeof import("xterm-addon-search")>(
+		"xterm-addon-search"),
+	xtermAddonUnicode11 =
+		dynamicRequireLazy<typeof import("xterm-addon-unicode11")>(
+			"xterm-addon-unicode11"),
+	xtermAddonWebLinks =
+		dynamicRequireLazy<typeof import("xterm-addon-web-links")>(
+			"xterm-addon-web-links"),
+	xtermAddonWebgl = dynamicRequireLazy<typeof import("xterm-addon-webgl")>(
+		"xterm-addon-webgl")
 
 class EditTerminalModal extends DialogModal {
 	protected readonly state
@@ -638,14 +654,17 @@ export class TerminalView extends ItemView {
 									}),
 									() => { this.#find?.$set({ results: "" }) },
 								),
-								ligatures: new LigaturesAddon({}),
+								ligatures: new (xtermAddonLigatures().LigaturesAddon)({}),
 								renderer: new RendererAddon(
-									() => new CanvasAddon(),
-									() => new WebglAddon(false),
+									() => new (xtermAddonCanvas().CanvasAddon)(),
+									() => new (xtermAddonWebgl().WebglAddon)(false),
 								),
-								search: new SearchAddon(),
-								unicode11: new Unicode11Addon(),
-								webLinks: new WebLinksAddon((_0, uri) => openExternal(uri), {}),
+								search: new (xtermAddonSearch().SearchAddon)(),
+								unicode11: new (xtermAddonUnicode11().Unicode11Addon)(),
+								webLinks: new (xtermAddonWebLinks().WebLinksAddon)(
+									(_0, uri) => openExternal(uri),
+									{},
+								),
 							},
 						),
 						{ pseudoterminal, terminal, addons } = emulator,

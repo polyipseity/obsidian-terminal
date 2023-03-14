@@ -1,10 +1,10 @@
 import type { DeepReadonly, DeepRequired } from "ts-essentials"
-import {
-	type IDisposable,
-	type IFunctionIdentifier,
+import type {
+	IDisposable,
+	IFunctionIdentifier,
 	Terminal,
-	type ITerminalOptions as TerminalOptions,
-	type ITerminalInitOnlyOptions as TerminalOptionsInit,
+	ITerminalOptions as TerminalOptions,
+	ITerminalInitOnlyOptions as TerminalOptionsInit,
 } from "xterm"
 import { type Set as ValueSet, Set as valueSet } from "immutable"
 import {
@@ -23,6 +23,9 @@ import AsyncLock from "async-lock"
 import { MAX_LOCK_PENDING } from "sources/magic"
 import ansi from "ansi-escape-sequences"
 import { codePoint } from "sources/utils/types"
+import { dynamicRequireLazy } from "sources/imports"
+
+const xterm = dynamicRequireLazy<typeof import("xterm")>("xterm")
 
 type IFunctionIdentifier0 = DeepReadonly<DeepRequired<IFunctionIdentifier>>
 export const ESCAPE_SEQUENCE_INTRODUCER = "\u001b"
@@ -188,7 +191,7 @@ export class TerminalTextArea implements IDisposable {
 	}
 
 	public constructor(options?: TerminalTextArea.Options) {
-		this.terminal = new Terminal({
+		this.terminal = new (xterm().Terminal)({
 			...options,
 			...{
 				cols: TerminalTextArea.margin,
@@ -458,7 +461,7 @@ export namespace CursoredText {
 			{ string, cursor } = text,
 			before = normalizeText(string.slice(0, cursor)),
 			after = normalizeText(string.slice(cursor)),
-			simulation = new Terminal({
+			simulation = new (xterm().Terminal)({
 				...options,
 				cols,
 				rows: 1,
