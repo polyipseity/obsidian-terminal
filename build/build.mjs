@@ -53,6 +53,12 @@ If you want to view the source, please visit the repository of this plugin.
 			{
 				name: "compress-json",
 				setup(build) {
+					function str(string) {
+						if (typeof string !== "string") {
+							throw new TypeError(string)
+						}
+						return `\`${string.replace(/(?<char>`|\\|\$)/ug, "\\$<char>")}\``
+					}
 					const loaders = { ".json": "json", ...build.initialOptions.loader }
 					for (const [ext, loader] of Object.entries(loaders)) {
 						const filter = () => new RegExp(`${escapeRegExp(ext)}$`, "u")
@@ -62,7 +68,7 @@ If you want to view the source, please visit the repository of this plugin.
 								return {
 									contents: `
 import { decompressFromBase64 as decompress } from "lz-string"
-export default decompress("${lzString.compressToBase64(data)}")
+export default decompress(${str(lzString.compressToBase64(data))})
 `,
 									loader: "js",
 								}
@@ -74,7 +80,7 @@ export default decompress("${lzString.compressToBase64(data)}")
 								return {
 									contents: `
 import { decompressFromBase64 as decompress } from "lz-string"
-export default JSON.parse(decompress("${lzString.compressToBase64(data)}"))
+export default JSON.parse(decompress(${str(lzString.compressToBase64(data))}))
 `,
 									loader: "js",
 								}
