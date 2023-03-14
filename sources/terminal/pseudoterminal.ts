@@ -501,15 +501,19 @@ class WindowsPseudoterminal implements Pseudoterminal {
 					return null
 				}
 				const ret = await spawnPromise(async () =>
-					(await childProcess).spawn(pythonExecutable, ["-c", win32ResizerPy], {
-						env: {
-							...(await process).env,
-							// eslint-disable-next-line @typescript-eslint/naming-convention
-							PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
+					(await childProcess).spawn(
+						pythonExecutable,
+						["-c", await win32ResizerPy],
+						{
+							env: {
+								...(await process).env,
+								// eslint-disable-next-line @typescript-eslint/naming-convention
+								PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
+							},
+							stdio: ["pipe", "pipe", "pipe"],
+							windowsHide: true,
 						},
-						stdio: ["pipe", "pipe", "pipe"],
-						windowsHide: true,
-					}))
+					))
 				try {
 					ret.once("exit", (code, signal) => {
 						if (code !== 0) {
@@ -715,7 +719,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 			if (isNonNullish(terminal)) { env["TERM"] = terminal }
 			return (await childProcess).spawn(
 				pythonExecutable,
-				["-c", unixPseudoterminalPy, executable].concat(args ?? []),
+				["-c", await unixPseudoterminalPy, executable].concat(args ?? []),
 				{
 					cwd: cwd ?? UNDEFINED,
 					env,

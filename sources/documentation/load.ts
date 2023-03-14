@@ -52,7 +52,7 @@ export function openDocumentation(
 				state: newCollabrativeState(plugin, new Map([
 					[
 						DocumentationMarkdownView.type, {
-							data: DOCUMENTATIONS[key],
+							data: await DOCUMENTATIONS[key],
 							displayTextI18nKey: `documentations.${key}`,
 							iconI18nKey: `asset:documentations.${key}-icon`,
 						} satisfies DocumentationMarkdownView.State,

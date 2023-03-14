@@ -40,8 +40,8 @@ If you want to view the source, please visit the repository of this plugin.
 		jsx: "transform",
 		legalComments: "inline",
 		loader: {
-			".md": "text",
-			".py": "text",
+			".md": "compressed-text",
+			".py": "compressed-text",
 		},
 		logLevel: "info",
 		logLimit: 0,
@@ -51,7 +51,7 @@ If you want to view the source, please visit the repository of this plugin.
 		platform: "browser",
 		plugins: [
 			{
-				name: "compress-json",
+				name: "compress",
 				setup(build) {
 					function str(string) {
 						if (typeof string !== "string") {
@@ -59,33 +59,40 @@ If you want to view the source, please visit the repository of this plugin.
 						}
 						return `\`${string.replace(/(?<char>`|\\|\$)/ug, "\\$<char>")}\``
 					}
-					const loaders = { ".json": "json", ...build.initialOptions.loader }
+					const { initialOptions: { loader: loaders } } = build
 					for (const [ext, loader] of Object.entries(loaders)) {
 						const filter = () => new RegExp(`${escapeRegExp(ext)}$`, "u")
-						if (loader === "text") {
+						if (loader === "compressed-text") {
 							build.onLoad({ filter: filter() }, async args => {
 								const data = await readFile(args.path, { encoding: "utf-8" })
 								return {
 									contents: `
+import PLazy from "p-lazy"
 import { decompressFromBase64 as decompress } from "lz-string"
-export default decompress(${str(lzString.compressToBase64(data))})
+export default PLazy.from(() =>
+	decompress(${str(lzString.compressToBase64(data))}))
 `,
 									loader: "js",
 								}
 							})
-						} else if (loader === "json") {
+						} else if (loader === "compressed-json") {
 							build.onLoad({ filter: filter() }, async args => {
 								const data = await readFile(args.path, { encoding: "utf-8" })
 								JSON.parse(data)
 								return {
 									contents: `
+import PLazy from "p-lazy"
 import { decompressFromBase64 as decompress } from "lz-string"
-export default JSON.parse(decompress(${str(lzString.compressToBase64(data))}))
+export default PLazy.from(() =>
+	JSON.parse(decompress(${str(lzString.compressToBase64(data))})))
 `,
 									loader: "js",
 								}
 							})
+						} else {
+							continue
 						}
+						loaders[ext] = "empty"
 					}
 				},
 			},

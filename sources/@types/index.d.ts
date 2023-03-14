@@ -2,10 +2,10 @@
 /// <reference types="svelte" />
 
 declare module "*.md" {
-	const value: string
+	const value: PromiseLike<string>
 	export default value
 }
 declare module "*.py" {
-	const value: string
+	const value: PromiseLike<string>
 	export default value
 }
