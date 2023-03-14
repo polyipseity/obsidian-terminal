@@ -13,13 +13,17 @@ export const PATHS = Object.freeze({
 	versions: "versions.json",
 })
 export async function execute(...args) {
-	const { stdout, stderr } = await execFileP(...args)
+	const process = execFileP(...args),
+		{ stdout, stderr } = await process
 	if (stdout) {
 		console.log(stdout)
 	}
 	if (stderr) {
 		console.error(stderr)
-		throw new Error(stderr)
+	}
+	const { exitCode } = process.child
+	if (exitCode !== 0) {
+		throw new Error(String(exitCode))
 	}
 	return stdout
 }
