@@ -207,13 +207,9 @@ export function clear(self: unknown[]): void {
 }
 
 export function clearProperties(self: object): void {
-	for (const prop of Object.getOwnPropertyNames(self)) {
+	for (const key of Reflect.ownKeys(self)) {
 		// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-		delete self[prop as keyof typeof self]
-	}
-	for (const prop of Object.getOwnPropertySymbols(self)) {
-		// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-		delete self[prop as keyof typeof self]
+		delete self[key as keyof typeof self]
 	}
 }
 
@@ -259,7 +255,12 @@ export function createChildElement<K extends keyof HTMLElementTagNameMap>(
 
 export function deepFreeze<T>(value: T): DeepReadonly<T> {
 	if (typeof value === "object" && value) {
-		Object.values(value).forEach(deepFreeze)
+		for (const subkey of Reflect.ownKeys(value)) {
+			const subvalue = value[subkey as keyof typeof value]
+			if (typeof subvalue === "object" || typeof subvalue === "function") {
+				deepFreeze(subvalue)
+			}
+		}
 	}
 	return Object.freeze(value) as DeepReadonly<T>
 }
