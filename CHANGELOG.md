@@ -8,6 +8,12 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Full changelog__: [`3.4.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.4.0...main)
+
+## 3.4.0 (2023-03-14)
+
+This update focuses on performance of plugin loading. The loading time has been decreased significantly, making it more viable for slow platforms (like mobile).
+
 __Features__
 - Add Git Bash preset. Helps with [GH#15](https://github.com/polyipseity/obsidian-terminal/issues/15). (`4b2b63cf2ab0477a4dcd22e78db7e4103c6b0d8c`..`d9543e88c407b19180a3f25371de7391f0160857`)
 
@@ -22,7 +28,7 @@ __Miscellaneous__
 __Internals__
 - Make monkey patches more resilient to errors. (`af35b0176e1f11e32be5764ff17f93a2a01e8f7f`)
 
-__Full changelog__: [`3.3.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.3.0...main)
+__Full changelog__: [`3.3.0...3.4.0`](https://github.com/polyipseity/obsidian-terminal/compare/3.3.0...3.4.0)
 
 ## 3.3.0 (2023-03-06)
 
