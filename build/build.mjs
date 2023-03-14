@@ -28,11 +28,11 @@ If you want to view the source, please visit the repository of this plugin.
 		drop: [],
 		entryPoints: ["sources/main.ts"],
 		external: [
-			"electron",
-			"obsidian",
 			"@codemirror/*",
 			"@lezer/*",
+			"electron",
 			"node:*",
+			"obsidian",
 			...builtinModules,
 		],
 		footer: { js: COMMENT },
