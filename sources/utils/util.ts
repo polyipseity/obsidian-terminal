@@ -254,11 +254,17 @@ export function createChildElement<K extends keyof HTMLElementTagNameMap>(
 }
 
 export function deepFreeze<T>(value: T): DeepReadonly<T> {
+	return deepFreeze0(value, new WeakSet())
+}
+function deepFreeze0<T>(value: T, freezing: WeakSet<object>): DeepReadonly<T> {
 	if (typeof value === "object" && value) {
+		freezing.add(value)
 		for (const subkey of Reflect.ownKeys(value)) {
 			const subvalue = value[subkey as keyof typeof value]
-			if (typeof subvalue === "object" || typeof subvalue === "function") {
-				deepFreeze(subvalue)
+			if ((typeof subvalue === "object" || typeof subvalue === "function") &&
+				subvalue &&
+				!freezing.has(subvalue)) {
+				deepFreeze0(subvalue, freezing)
 			}
 		}
 	}
