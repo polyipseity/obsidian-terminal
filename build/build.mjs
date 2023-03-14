@@ -1,5 +1,11 @@
 import { analyzeMetafile, context, formatMessages } from "esbuild"
-import { constant, isEmpty, isUndefined, kebabCase } from "lodash-es"
+import {
+	constant,
+	escapeRegExp,
+	isEmpty,
+	isUndefined,
+	kebabCase,
+} from "lodash-es"
 import { PATHS } from "./util.mjs"
 import { argv } from "node:process"
 import builtinModules from "builtin-modules"
@@ -47,17 +53,34 @@ If you want to view the source, please visit the repository of this plugin.
 			{
 				name: "compress-json",
 				setup(build) {
-					build.onLoad({ filter: /\.json$/u }, async args => {
-						const data = await readFile(args.path, { encoding: "utf-8" })
-						JSON.parse(data)
-						const compressed = lzString.compressToBase64(data)
-						return {
-							contents: `
+					const loaders = { ".json": "json", ...build.initialOptions.loader }
+					for (const [ext, loader] of Object.entries(loaders)) {
+						const filter = () => new RegExp(`${escapeRegExp(ext)}$`, "u")
+						if (loader === "text") {
+							build.onLoad({ filter: filter() }, async args => {
+								const data = await readFile(args.path, { encoding: "utf-8" })
+								return {
+									contents: `
 import { decompressFromBase64 as decompress } from "lz-string"
-export default JSON.parse(decompress(\`${compressed}\`))`,
-							loader: "js",
+export default decompress("${lzString.compressToBase64(data)}")
+`,
+									loader: "js",
+								}
+							})
+						} else if (loader === "json") {
+							build.onLoad({ filter: filter() }, async args => {
+								const data = await readFile(args.path, { encoding: "utf-8" })
+								JSON.parse(data)
+								return {
+									contents: `
+import { decompressFromBase64 as decompress } from "lz-string"
+export default JSON.parse(decompress("${lzString.compressToBase64(data)}"))
+`,
+									loader: "js",
+								}
+							})
 						}
-					})
+					}
 				},
 			},
 			esbuildSvelte({
