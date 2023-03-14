@@ -8,9 +8,9 @@ import {
 	newCollabrativeState,
 	printError,
 } from "sources/utils/obsidian"
+import { anyToError, logError } from "sources/utils/util"
 import { DocumentationMarkdownView } from "./view"
 import type { TerminalPlugin } from "sources/main"
-import { anyToError } from "sources/utils/util"
 import { lt } from "semver"
 
 export function loadDocumentation(
@@ -61,10 +61,10 @@ export function openDocumentation(
 				type: DocumentationMarkdownView.type.namespaced(plugin),
 			})
 			if (key === "changelog" && version !== null) {
-				await plugin.mutateSettings(settings => {
+				plugin.mutateSettings(settings => {
 					settings.lastReadChangelogVersion = version
-				})
-				await plugin.saveSettings()
+				}).then(async () => plugin.saveSettings())
+					.catch(logError)
 			}
 		} catch (error) {
 			printError(

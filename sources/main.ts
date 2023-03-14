@@ -120,8 +120,7 @@ export class TerminalPlugin extends Plugin {
 					this.mutateSettings(async settings => this.loadSettings(
 						settings,
 						constant(loaded),
-					))
-						.then(() => { this.saveSettings().catch(logError) }),
+					)).then(() => { this.saveSettings().catch(logError) }),
 					this.language.load(),
 					Promise.resolve().then(() => { loadIcons(this) }),
 				])
