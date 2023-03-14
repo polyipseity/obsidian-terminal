@@ -40,6 +40,7 @@ If you want to view the source, please visit the repository of this plugin.
 		jsx: "transform",
 		legalComments: "inline",
 		loader: {
+			".json": "compressed-json",
 			".md": "compressed-text",
 			".py": "compressed-text",
 		},
@@ -59,7 +60,7 @@ If you want to view the source, please visit the repository of this plugin.
 						}
 						return `\`${string.replace(/(?<char>`|\\|\$)/ug, "\\$<char>")}\``
 					}
-					const { initialOptions: { loader: loaders } } = build
+					const loaders = build.initialOptions.loader ?? {}
 					for (const [ext, loader] of Object.entries(loaders)) {
 						const filter = () => new RegExp(`${escapeRegExp(ext)}$`, "u")
 						if (loader === "compressed-text") {
