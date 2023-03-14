@@ -8,6 +8,9 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Fixes__
+- Fix error opening documentation. (`df085f2a505983592f7d50e31bdc3d52a89f29f3`)
+
 __Full changelog__: [`3.4.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.4.0...main)
 
 ## 3.4.0 (2023-03-14)
