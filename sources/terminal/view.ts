@@ -517,22 +517,26 @@ export class TerminalView extends ItemView {
 					const func = direction === Direction.next
 						? finder.findNext.bind(finder)
 						: finder.findPrevious.bind(finder)
-					func(
-						params.findText,
-						{
-							caseSensitive: params.caseSensitive,
-							decorations: {
-								activeMatchColorOverviewRuler: "#00000000",
-								matchOverviewRuler: "#00000000",
+					let empty = params.findText === ""
+					try {
+						func(
+							params.findText,
+							{
+								caseSensitive: params.caseSensitive,
+								decorations: {
+									activeMatchColorOverviewRuler: "#00000000",
+									matchOverviewRuler: "#00000000",
+								},
+								incremental,
+								regex: params.regex,
+								wholeWord: params.wholeWord,
 							},
-							incremental,
-							regex: params.regex,
-							wholeWord: params.wholeWord,
-						},
-					)
-					if (params.findText === "") {
-						this.#find?.$set({ results: "" })
+						)
+					} catch (error) {
+						console.debug(error)
+						empty = true
 					}
+					if (empty) { this.#find?.$set({ results: "" }) }
 				},
 				optional: { anchor?: Element } = {},
 				{ firstElementChild } = contentEl
