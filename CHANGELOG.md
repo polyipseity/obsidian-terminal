@@ -8,6 +8,9 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Fixes__
+- Fix invalid regex crashing find in terminal. (`9da6bb9494fa0079fb1b60a8140277e1dbff9860`)
+
 __Full changelog__: [`3.4.1...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.4.1...main)
 
 ## 3.4.1 (2023-03-14)
