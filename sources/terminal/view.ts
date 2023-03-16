@@ -9,7 +9,6 @@ import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
 import {
 	ItemView,
 	type Menu,
-	type Modifier,
 	Scope,
 	type ViewStateResult,
 	type WorkspaceLeaf,
@@ -216,8 +215,9 @@ class EditTerminalModal extends DialogModal {
 export class TerminalView extends ItemView {
 	public static readonly type = new UnnamespacedID("terminal")
 	public static readonly divClass = TerminalView.type
-	protected static readonly modifiers: readonly Modifier[] =
-		PLATFORM === "darwin" ? ["Meta"] : ["Ctrl", "Shift"]
+	protected static readonly modifiers = deepFreeze(PLATFORM === "darwin"
+		? ["Meta"] as const
+		: ["Ctrl", "Shift"] as const)
 
 	static #namespacedType: string
 	protected readonly scope = new Scope(this.app.scope)
