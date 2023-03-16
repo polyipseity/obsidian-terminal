@@ -224,10 +224,11 @@ export type ProfilePresetKeys = readonly [
 	"zshIntegrated",
 
 	"darwinExternalDefault",
-	"darwinIntegratedDefault",
 	"linuxExternalDefault",
-	"linuxIntegratedDefault",
 	"win32ExternalDefault",
+
+	"darwinIntegratedDefault",
+	"linuxIntegratedDefault",
 	"win32IntegratedDefault",
 ]
 export const PROFILE_PRESET_KEYS =
