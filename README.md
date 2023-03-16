@@ -107,8 +107,8 @@ __Terminal emulators__
 - Command Prompt: `cmd`
 - GNOME Terminal: `gnome-terminal`
 - Konsole: `konsole`
+- Terminal (macOS): `/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal $PWD`
 - Windows Terminal: `wt`
-- macOS Terminal: `/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal $PWD`
 - xterm: `xterm`
 
 ## Contributing
