@@ -105,6 +105,8 @@ __Shells__
 
 __Terminal emulators__
 - Command Prompt: `cmd`
+- GNOME Terminal: `gnome-terminal`
+- Konsole: `konsole`
 - Windows Terminal: `wt`
 - macOS Terminal: `/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal $PWD`
 - xterm: `xterm`
