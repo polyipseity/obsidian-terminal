@@ -105,6 +105,7 @@ __Shells__
 
 __Terminal emulators__
 - Command Prompt: `cmd`
+- Windows Terminal: `wt`
 - macOS Terminal: `/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal $PWD`
 - xterm: `xterm`
 
