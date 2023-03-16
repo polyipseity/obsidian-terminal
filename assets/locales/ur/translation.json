@@ -278,6 +278,7 @@
 	},
 	"profile-presets": {
 		"bashIntegrated": "bash: $t(generic.profile-types.integrated, capitalize)",
+		"cmdExternal": "cmd: $t(generic.profile-types.external, capitalize)",
 		"cmdIntegrated": "cmd: $t(generic.profile-types.integrated, capitalize)",
 		"darwinExternalDefault": "$t(generic.platforms.darwin, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
 		"darwinIntegratedDefault": "$t(generic.platforms.darwin, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",
@@ -285,13 +286,18 @@
 		"developerConsole": "$t(generic.profile-types.developerConsole)",
 		"empty": "$t(generic.profile-types., capitalize)",
 		"gitBashIntegrated": "Git Bash: $t(generic.profile-types.integrated, capitalize)",
+		"gnomeTerminalExternal": "GNOME $t(generic.terminal, capitalize): $t(generic.profile-types.external, capitalize)",
+		"konsoleExternal": "Konsole: $t(generic.profile-types.external, capitalize)",
 		"linuxExternalDefault": "$t(generic.platforms.linux, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
 		"linuxIntegratedDefault": "$t(generic.platforms.linux, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",
 		"pwshIntegrated": "pwsh: $t(generic.profile-types.integrated, capitalize)",
 		"shIntegrated": "sh: $t(generic.profile-types.integrated, capitalize)",
+		"terminalMacOSExternal": "$t(generic.terminal, capitalize) ($t(generic.platforms.darwin, capitalize)): $t(generic.profile-types.external, capitalize)",
 		"win32ExternalDefault": "$t(generic.platforms.win32, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
 		"win32IntegratedDefault": "$t(generic.platforms.win32, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",
 		"wslIntegrated": "$t(generic.platforms.win32-short, capitalize) Subsystem for $t(generic.platforms.linux, capitalize): $t(generic.profile-types.integrated, capitalize)",
+		"wtExternal": "$t(generic.platforms.win32-short, capitalize) $t(generic.terminal, capitalize): $t(generic.profile-types.external, capitalize)",
+		"xtermExternal": "xterm: $t(generic.profile-types.external, capitalize)",
 		"zshIntegrated": "zsh: $t(generic.profile-types.integrated, capitalize)"
 	},
 	"ribbons": {

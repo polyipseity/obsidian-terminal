@@ -254,6 +254,7 @@
 	},
 	"profile-presets": {
 		"bashIntegrated": "bash：$t(generic.profile-types.integrated)",
+		"cmdExternal": "cmd：$t(generic.profile-types.external)",
 		"cmdIntegrated": "cmd：$t(generic.profile-types.integrated)",
 		"darwinExternalDefault": "$t(generic.platforms.darwin)$t(generic.default)：$t(generic.profile-types.external)",
 		"darwinIntegratedDefault": "$t(generic.platforms.darwin)$t(generic.default)：$t(generic.profile-types.integrated)",
@@ -261,13 +262,18 @@
 		"developerConsole": "$t(generic.profile-types.developerConsole)",
 		"empty": "$t(generic.profile-types.)",
 		"gitBashIntegrated": "Git Bash：$t(generic.profile-types.integrated)",
+		"gnomeTerminalExternal": "GNOME$t(generic.terminal)：$t(generic.profile-types.external)",
+		"konsoleExternal": "Konsole：$t(generic.profile-types.external)",
 		"linuxExternalDefault": "$t(generic.platforms.linux)$t(generic.default)：$t(generic.profile-types.external)",
 		"linuxIntegratedDefault": "$t(generic.platforms.linux)$t(generic.default)：$t(generic.profile-types.integrated)",
 		"pwshIntegrated": "pwsh：$t(generic.profile-types.integrated)",
 		"shIntegrated": "sh：$t(generic.profile-types.integrated)",
+		"terminalMacOSExternal": "$t(generic.terminal)（$t(generic.platforms.darwin)）：$t(generic.profile-types.external)",
 		"win32ExternalDefault": "$t(generic.platforms.win32)$t(generic.default)：$t(generic.profile-types.external)",
 		"win32IntegratedDefault": "$t(generic.platforms.win32)$t(generic.default)：$t(generic.profile-types.integrated)",
 		"wslIntegrated": "适用于$t(generic.platforms.linux)的$t(generic.platforms.win32-short)子系统：$t(generic.profile-types.integrated)",
+		"wtExternal": "$t(generic.platforms.win32-short)$t(generic.terminal)：$t(generic.profile-types.external)",
+		"xtermExternal": "xterm：$t(generic.profile-types.external)",
 		"zshIntegrated": "zsh：$t(generic.profile-types.integrated)"
 	},
 	"ribbons": {

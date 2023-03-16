@@ -1,7 +1,7 @@
+import { TERMINAL_MACOS_PATH, WINDOWS_CMD_PATH } from "sources/magic"
 import { deepFreeze, typedKeys } from "sources/utils/util"
 import type { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import type { Settings } from "./data"
-import { WINDOWS_CMD_PATH } from "sources/magic"
 
 type ExternalDefaults = {
 	readonly [_ in `${Pseudoterminal.SupportedPlatforms[number]
@@ -15,8 +15,15 @@ export interface ProfilePresets extends ExternalDefaults, IntegratedDefaults {
 	readonly empty: Settings.Profile.Empty
 	readonly developerConsole: Settings.Profile.DeveloperConsole
 
-	readonly cmdIntegrated: Settings.Profile.Integrated
+	readonly cmdExternal: Settings.Profile.External
+	readonly gnomeTerminalExternal: Settings.Profile.External
+	readonly konsoleExternal: Settings.Profile.External
+	readonly terminalMacOSExternal: Settings.Profile.External
+	readonly wtExternal: Settings.Profile.External
+	readonly xtermExternal: Settings.Profile.External
+
 	readonly bashIntegrated: Settings.Profile.Integrated
+	readonly cmdIntegrated: Settings.Profile.Integrated
 	readonly dashIntegrated: Settings.Profile.Integrated
 	readonly gitBashIntegrated: Settings.Profile.Integrated
 	readonly pwshIntegrated: Settings.Profile.Integrated
@@ -34,6 +41,13 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		type: "integrated",
 		useWin32Conhost: true,
 	},
+	cmdExternal: {
+		args: [],
+		executable: WINDOWS_CMD_PATH,
+		name: "",
+		platforms: { win32: true },
+		type: "external",
+	},
 	cmdIntegrated: {
 		args: [],
 		executable: WINDOWS_CMD_PATH,
@@ -45,8 +59,7 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 	},
 	darwinExternalDefault: {
 		args: ["$PWD"],
-		executable:
-			"/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal",
+		executable: TERMINAL_MACOS_PATH,
 		name: "",
 		platforms: { darwin: true },
 		type: "external",
@@ -86,6 +99,20 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		type: "integrated",
 		useWin32Conhost: true,
 	},
+	gnomeTerminalExternal: {
+		args: [],
+		executable: "gnome-terminal",
+		name: "",
+		platforms: { linux: true },
+		type: "external",
+	},
+	konsoleExternal: {
+		args: [],
+		executable: "konsole",
+		name: "",
+		platforms: { linux: true },
+		type: "external",
+	},
 	linuxExternalDefault: {
 		args: [],
 		executable: "xterm",
@@ -120,6 +147,13 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		type: "integrated",
 		useWin32Conhost: true,
 	},
+	terminalMacOSExternal: {
+		args: [],
+		executable: TERMINAL_MACOS_PATH,
+		name: "",
+		platforms: { darwin: true },
+		type: "external",
+	},
 	win32ExternalDefault: {
 		args: [],
 		executable: WINDOWS_CMD_PATH,
@@ -145,6 +179,20 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		type: "integrated",
 		useWin32Conhost: true,
 	},
+	wtExternal: {
+		args: [],
+		executable: "wt",
+		name: "",
+		platforms: { win32: true },
+		type: "external",
+	},
+	xtermExternal: {
+		args: [],
+		executable: "xterm",
+		name: "",
+		platforms: { darwin: true, linux: true },
+		type: "external",
+	},
 	zshIntegrated: {
 		args: [],
 		executable: "/bin/zsh",
@@ -157,15 +205,24 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 } as const)
 export type ProfilePresetKeys = readonly [
 	"empty",
-	"cmdIntegrated",
-	"bashIntegrated",
-	"dashIntegrated",
 	"developerConsole",
+
+	"cmdExternal",
+	"gnomeTerminalExternal",
+	"konsoleExternal",
+	"terminalMacOSExternal",
+	"wtExternal",
+	"xtermExternal",
+
+	"bashIntegrated",
+	"cmdIntegrated",
+	"dashIntegrated",
 	"gitBashIntegrated",
 	"pwshIntegrated",
 	"shIntegrated",
 	"wslIntegrated",
 	"zshIntegrated",
+
 	"darwinExternalDefault",
 	"darwinIntegratedDefault",
 	"linuxExternalDefault",

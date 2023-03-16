@@ -17,6 +17,8 @@ export const
 		"SIGTERM",
 	] as const),
 	TERMINAL_EXIT_CLEANUP_WAIT = 5,
+	TERMINAL_MACOS_PATH =
+		"/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal",
 	TERMINAL_PTY_RESIZE_WAIT = 0.5,
 	TERMINAL_RESIZER_WATCHDOG_WAIT = 0.5,
 	TERMINAL_SEARCH_RESULTS_LIMIT = 999,
