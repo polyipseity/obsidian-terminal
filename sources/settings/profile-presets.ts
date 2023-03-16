@@ -1,17 +1,9 @@
-import { TERMINAL_MACOS_PATH, WINDOWS_CMD_PATH } from "sources/magic"
 import { deepFreeze, typedKeys } from "sources/utils/util"
 import type { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import type { Settings } from "./data"
+import { WINDOWS_CMD_PATH } from "sources/magic"
 
-type ExternalDefaults = {
-	readonly [_ in `${Pseudoterminal.SupportedPlatforms[number]
-	}ExternalDefault`]: Settings.Profile.External
-}
-type IntegratedDefaults = {
-	readonly [_ in `${Pseudoterminal.SupportedPlatforms[number]
-	}IntegratedDefault`]: Settings.Profile.Integrated
-}
-export interface ProfilePresets extends ExternalDefaults, IntegratedDefaults {
+export interface ProfilePresets0 {
 	readonly empty: Settings.Profile.Empty
 	readonly developerConsole: Settings.Profile.DeveloperConsole
 
@@ -31,7 +23,17 @@ export interface ProfilePresets extends ExternalDefaults, IntegratedDefaults {
 	readonly wslIntegrated: Settings.Profile.Integrated
 	readonly zshIntegrated: Settings.Profile.Integrated
 }
-export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
+type ExternalDefaults = {
+	readonly [_ in `${Pseudoterminal.SupportedPlatforms[number]
+	}ExternalDefault`]: Settings.Profile.External
+}
+type IntegratedDefaults = {
+	readonly [_ in `${Pseudoterminal.SupportedPlatforms[number]
+	}IntegratedDefault`]: Settings.Profile.Integrated
+}
+export interface ProfilePresets
+	extends ProfilePresets0, ExternalDefaults, IntegratedDefaults { }
+const PROFILE_PRESETS0 = deepFreeze({
 	bashIntegrated: {
 		args: [],
 		executable: "/bin/bash",
@@ -53,22 +55,6 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		executable: WINDOWS_CMD_PATH,
 		name: "",
 		platforms: { win32: true },
-		pythonExecutable: "python3",
-		type: "integrated",
-		useWin32Conhost: true,
-	},
-	darwinExternalDefault: {
-		args: ["$PWD"],
-		executable: TERMINAL_MACOS_PATH,
-		name: "",
-		platforms: { darwin: true },
-		type: "external",
-	},
-	darwinIntegratedDefault: {
-		args: [],
-		executable: "/bin/zsh",
-		name: "",
-		platforms: { darwin: true },
 		pythonExecutable: "python3",
 		type: "integrated",
 		useWin32Conhost: true,
@@ -113,22 +99,6 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		platforms: { linux: true },
 		type: "external",
 	},
-	linuxExternalDefault: {
-		args: [],
-		executable: "xterm",
-		name: "",
-		platforms: { linux: true },
-		type: "external",
-	},
-	linuxIntegratedDefault: {
-		args: [],
-		executable: "/bin/sh",
-		name: "",
-		platforms: { linux: true },
-		pythonExecutable: "python3",
-		type: "integrated",
-		useWin32Conhost: true,
-	},
 	pwshIntegrated: {
 		args: [],
 		executable: "pwsh",
@@ -149,26 +119,11 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 	},
 	terminalMacOSExternal: {
 		args: [],
-		executable: TERMINAL_MACOS_PATH,
+		executable:
+			"/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal",
 		name: "",
 		platforms: { darwin: true },
 		type: "external",
-	},
-	win32ExternalDefault: {
-		args: [],
-		executable: WINDOWS_CMD_PATH,
-		name: "",
-		platforms: { win32: true },
-		type: "external",
-	},
-	win32IntegratedDefault: {
-		args: [],
-		executable: WINDOWS_CMD_PATH,
-		name: "",
-		platforms: { win32: true },
-		pythonExecutable: "python3",
-		type: "integrated",
-		useWin32Conhost: true,
 	},
 	wslIntegrated: {
 		args: [],
@@ -202,7 +157,34 @@ export const PROFILE_PRESETS: ProfilePresets = deepFreeze({
 		type: "integrated",
 		useWin32Conhost: true,
 	},
-} as const)
+} as const satisfies ProfilePresets0)
+export const PROFILE_PRESETS = deepFreeze({
+	...PROFILE_PRESETS0,
+	darwinExternalDefault: {
+		...PROFILE_PRESETS0.terminalMacOSExternal,
+		platforms: { darwin: true },
+	},
+	darwinIntegratedDefault: {
+		...PROFILE_PRESETS0.zshIntegrated,
+		platforms: { darwin: true },
+	},
+	linuxExternalDefault: {
+		...PROFILE_PRESETS0.xtermExternal,
+		platforms: { linux: true },
+	},
+	linuxIntegratedDefault: {
+		...PROFILE_PRESETS0.shIntegrated,
+		platforms: { linux: true },
+	},
+	win32ExternalDefault: {
+		...PROFILE_PRESETS0.cmdExternal,
+		platforms: { win32: true },
+	},
+	win32IntegratedDefault: {
+		...PROFILE_PRESETS0.cmdIntegrated,
+		platforms: { win32: true },
+	},
+} as const satisfies ProfilePresets)
 export type ProfilePresetKeys = readonly [
 	"empty",
 	"developerConsole",
