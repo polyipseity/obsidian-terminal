@@ -100,7 +100,7 @@ __Shells__
 - Dash: `dash`
 - Git Bash: `<Git installation>\bin\bash.exe` (e.g. `C:\Program Files\Git\bin\bash.exe`)
 - PowerShell: `pwsh`
-- Windows Subsystem for Linux: `bash` or `wsl -d <distribution name>`
+- Windows Subsystem for Linux: `wsl` or `wsl -d <distribution name>`
 - Z shell: `zsh`
 
 __Terminal emulators__

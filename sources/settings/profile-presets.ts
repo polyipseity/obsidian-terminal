@@ -127,7 +127,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 	},
 	wslIntegrated: {
 		args: [],
-		executable: "C:\\Windows\\System32\\bash.exe",
+		executable: "C:\\Windows\\System32\\wsl.exe",
 		name: "",
 		platforms: { win32: true },
 		pythonExecutable: "python3",
