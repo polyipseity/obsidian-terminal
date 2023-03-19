@@ -362,13 +362,15 @@ export function instanceOf<T extends Node | UIEvent>(
 	if (self instanceof type) { return true }
 	const { name } = type,
 		typeMain: unknown = Reflect.get(window, name)
-	if (typeMain instanceof Function && self instanceof typeMain) { return true }
+	if (typeof typeMain === "function" &&
+		self instanceof typeMain) { return true }
 	const
 		win = "ownerDocument" in self
 			? self.ownerDocument?.defaultView
 			: self.view,
 		typeWin: unknown = win ? Reflect.get(win, name) : null
-	if (typeWin instanceof Function && self instanceof typeWin) { return true }
+	if (typeof typeWin === "function" &&
+		self instanceof typeWin) { return true }
 	return false
 }
 
