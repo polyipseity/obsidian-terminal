@@ -412,6 +412,103 @@ export function lazyInit<T>(initializer: () => T): () => T {
 	}
 }
 
+export function lazyProxy<T extends object>(initializer: () => T): T {
+	const lazy = lazyInit(initializer),
+		functions = new Map(),
+		proxy = new Proxy(lazy, {
+			apply(target, thisArg, argArray): unknown {
+				return Reflect.apply(
+					// eslint-disable-next-line @typescript-eslint/ban-types
+					target() as Function,
+					thisArg === target ? target() : thisArg,
+					argArray,
+				)
+			},
+			construct(target, argArray, newTarget): object {
+				return Reflect.construct(
+					// eslint-disable-next-line @typescript-eslint/ban-types
+					target() as Function,
+					argArray,
+					// eslint-disable-next-line @typescript-eslint/ban-types
+					newTarget === target ? target() as Function : newTarget,
+				) as object
+			},
+			defineProperty(target, property, attributes): boolean {
+				return Reflect.defineProperty(target(), property, attributes)
+			},
+			deleteProperty(target, property): boolean {
+				return Reflect.deleteProperty(target(), property)
+			},
+			get(target, property, receiver): unknown {
+				const ret = Reflect.get(
+					target(),
+					property,
+					receiver === target ? target() : receiver,
+				)
+				if (typeof ret === "function") {
+					const ret0 = ret
+					// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+					return functions.get(ret) ?? (() => {
+						function fn(
+							this: unknown,
+							...args: readonly unknown[]
+						): unknown {
+							// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition, @typescript-eslint/strict-boolean-expressions
+							if (new.target) {
+								return Reflect.construct(
+									ret0,
+									args,
+									new.target === fn ? ret0 : new.target,
+								)
+							}
+							return Reflect.apply(
+								ret0,
+								this === proxy ? target() : this,
+								args,
+							)
+						}
+						functions.set(ret, fn)
+						return fn
+					})()
+				}
+				return ret
+			},
+			getOwnPropertyDescriptor(
+				target,
+				property,
+			): PropertyDescriptor | undefined {
+				return Reflect.getOwnPropertyDescriptor(target(), property)
+			},
+			getPrototypeOf(target): object | null {
+				return Reflect.getPrototypeOf(target())
+			},
+			has(target, property): boolean {
+				return Reflect.has(target(), property)
+			},
+			isExtensible(target): boolean {
+				return Reflect.isExtensible(target())
+			},
+			ownKeys(target): ArrayLike<string | symbol> {
+				return Reflect.ownKeys(target())
+			},
+			preventExtensions(target): boolean {
+				return Reflect.preventExtensions(target())
+			},
+			set(target, property, newValue, receiver): boolean {
+				return Reflect.set(
+					target(),
+					property,
+					newValue,
+					receiver === target ? target() : receiver,
+				)
+			},
+			setPrototypeOf(target, proto): boolean {
+				return Reflect.setPrototypeOf(target(), proto)
+			},
+		} satisfies Required<ProxyHandler<typeof lazy>>)
+	return proxy as T
+}
+
 export function logError(thing: unknown): void {
 	console.error(thing)
 }

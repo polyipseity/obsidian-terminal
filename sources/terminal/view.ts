@@ -655,14 +655,14 @@ export class TerminalView extends ItemView {
 									}),
 									() => { this.#find?.$set({ results: "" }) },
 								),
-								ligatures: new (xtermAddonLigatures().LigaturesAddon)({}),
+								ligatures: new xtermAddonLigatures.LigaturesAddon({}),
 								renderer: new RendererAddon(
-									() => new (xtermAddonCanvas().CanvasAddon)(),
-									() => new (xtermAddonWebgl().WebglAddon)(false),
+									() => new xtermAddonCanvas.CanvasAddon(),
+									() => new xtermAddonWebgl.WebglAddon(false),
 								),
-								search: new (xtermAddonSearch().SearchAddon)(),
-								unicode11: new (xtermAddonUnicode11().Unicode11Addon)(),
-								webLinks: new (xtermAddonWebLinks().WebLinksAddon)(
+								search: new xtermAddonSearch.SearchAddon(),
+								unicode11: new xtermAddonUnicode11.Unicode11Addon(),
+								webLinks: new xtermAddonWebLinks.WebLinksAddon(
 									(_0, uri) => openExternal(uri),
 									{},
 								),

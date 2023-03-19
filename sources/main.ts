@@ -9,7 +9,7 @@ import {
 	copyOnWriteAsync,
 	deepFreeze,
 	isNullish,
-	lazyInit,
+	lazyProxy,
 	logError,
 } from "./utils/util"
 import {
@@ -34,15 +34,15 @@ export class TerminalPlugin extends Plugin {
 	public readonly log
 	public readonly language = new LanguageManager(this)
 	public readonly statusBarHider = new StatusBarHider(this)
+	public readonly consolePTY = lazyProxy(() => new RefPsuedoterminal(
+		new ConsolePseudoterminal(console, this.log),
+	))
+
 	public readonly saveSettings = asyncDebounce(throttle((
 		resolve: (value: AsyncOrSync<void>) => void,
 	) => {
 		resolve(this.saveData(this.settings))
 	}, SAVE_SETTINGS_WAIT * SI_PREFIX_SCALE))
-
-	readonly #consolePTY = lazyInit(() => new RefPsuedoterminal(
-		new ConsolePseudoterminal(console, this.log),
-	))
 
 	readonly #onMutateSettings = new EventEmitterLite<readonly [Settings]>()
 	#settings: Settings = deepFreeze(Settings.fix(Settings.DEFAULT).value)
@@ -59,10 +59,6 @@ export class TerminalPlugin extends Plugin {
 			this.version = null
 		}
 		this.register(async () => this.consolePTY.kill())
-	}
-
-	public get consolePTY(): RefPsuedoterminal<ConsolePseudoterminal> {
-		return this.#consolePTY()
 	}
 
 	public get settings(): Settings {

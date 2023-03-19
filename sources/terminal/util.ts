@@ -6,14 +6,13 @@ import type {
 	ITerminalOptions as TerminalOptions,
 	ITerminalInitOnlyOptions as TerminalOptionsInit,
 } from "xterm"
-import { type Set as ValueSet, Set as valueSet } from "immutable"
 import {
 	acquireConditionally,
 	cartesianProduct,
 	clear,
 	deepFreeze,
 	insertAt,
-	lazyInit,
+	lazyProxy,
 	rangeCodePoint,
 	removeAt,
 	replaceAllRegex,
@@ -24,6 +23,7 @@ import { MAX_LOCK_PENDING } from "sources/magic"
 import ansi from "ansi-escape-sequences"
 import { codePoint } from "sources/utils/types"
 import { dynamicRequireLazy } from "sources/imports"
+import { Set as valueSet } from "immutable"
 
 const xterm = dynamicRequireLazy<typeof import("xterm")>("xterm")
 
@@ -32,63 +32,44 @@ export const ESCAPE_SEQUENCE_INTRODUCER = "\u001b"
 const ESC = ESCAPE_SEQUENCE_INTRODUCER
 export const CONTROL_SEQUENCE_INTRODUCER = `${ESC}[`
 const CSI = CONTROL_SEQUENCE_INTRODUCER
-export const DEVICE_CONTROL_STRING = `${ESC}P`
-export const OPERATING_SYSTEM_COMMAND = `${ESC}]`
 export const
-	// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-	IDENTIFIERS = (() => {
-		const ret = {
-			get csi(): ValueSet<IFunctionIdentifier0> { throw new TypeError() },
-			get dcs(): ValueSet<IFunctionIdentifier0> { return this.csi },
-			get esc(): ValueSet<IFunctionIdentifier0> { throw new TypeError() },
-			finalLong: rangeCodePoint(codePoint("\x30"), codePoint("\x7f")),
-			finalShort: rangeCodePoint(codePoint("\x40"), codePoint("\x7f")),
-			intermediates: deepFreeze([
-				"",
-				...rangeCodePoint(codePoint("\x20"), codePoint("\x30")),
-			] as const),
-			get osc(): ValueSet<number> { throw new TypeError() },
-			prefixes: deepFreeze([
-				"",
-				...rangeCodePoint(codePoint("\x3c"), codePoint("\x40")),
-			] as const),
-		}
-		Object.defineProperties(ret, {
-			csi: {
-				enumerable: true,
-				get: lazyInit(() =>
-					valueSet<IFunctionIdentifier0>(cartesianProduct(
-						ret.prefixes,
-						ret.intermediates,
-						ret.intermediates,
-						ret.finalShort,
-					).map(([prefix, intermediates0, intermediates1, final]) => ({
-						final,
-						intermediates: `${intermediates0}${intermediates1}`,
-						prefix,
-					})))),
-			},
-			esc: {
-				enumerable: true,
-				get: lazyInit(() =>
-					valueSet<IFunctionIdentifier0>(cartesianProduct(
-						ret.intermediates,
-						ret.intermediates,
-						ret.finalLong,
-					).map(([intermediates0, intermediates1, final]) => ({
-						final,
-						intermediates: `${intermediates0}${intermediates1}`,
-						prefix: "",
-					})))),
-			},
-			osc: {
-				enumerable: true,
-				// eslint-disable-next-line @typescript-eslint/no-magic-numbers
-				get: lazyInit(() => valueSet(range(2022))),
-			},
-		})
-		return Object.freeze(ret)
-	})(),
+	DEVICE_CONTROL_STRING = `${ESC}P`,
+	OPERATING_SYSTEM_COMMAND = `${ESC}]`,
+	PREFIX_IDENTIFIERS = deepFreeze([
+		"",
+		...rangeCodePoint(codePoint("\x3c"), codePoint("\x40")),
+	] as const),
+	INTERMEDIATES_IDENTIFIERS = deepFreeze([
+		"",
+		...rangeCodePoint(codePoint("\x20"), codePoint("\x30")),
+	] as const),
+	LONG_FINAL_IDENTIFIERS = rangeCodePoint(codePoint("\x30"), codePoint("\x7f")),
+	SHORT_FINAL_IDENTIFIERS =
+		rangeCodePoint(codePoint("\x40"), codePoint("\x7f")),
+	CSI_IDENTIFIERS = lazyProxy(() =>
+		valueSet<IFunctionIdentifier0>(cartesianProduct(
+			PREFIX_IDENTIFIERS,
+			INTERMEDIATES_IDENTIFIERS,
+			INTERMEDIATES_IDENTIFIERS,
+			SHORT_FINAL_IDENTIFIERS,
+		).map(([prefix, intermediates0, intermediates1, final]) => ({
+			final,
+			intermediates: `${intermediates0}${intermediates1}`,
+			prefix,
+		})))),
+	DCS_IDENTIFIERS = CSI_IDENTIFIERS,
+	ESC_IDENTIFIERS = lazyProxy(() =>
+		valueSet<IFunctionIdentifier0>(cartesianProduct(
+			INTERMEDIATES_IDENTIFIERS,
+			INTERMEDIATES_IDENTIFIERS,
+			LONG_FINAL_IDENTIFIERS,
+		).map(([intermediates0, intermediates1, final]) => ({
+			final,
+			intermediates: `${intermediates0}${intermediates1}`,
+			prefix: "",
+		})))),
+	// eslint-disable-next-line @typescript-eslint/no-magic-numbers
+	OSC_IDENTIFIERS = lazyProxy(() => valueSet(range(2022))),
 	MAX_CHARACTER_WIDTH = 2,
 	NORMALIZED_LINE_FEED = "\r\n"
 
@@ -191,7 +172,7 @@ export class TerminalTextArea implements IDisposable {
 	}
 
 	public constructor(options?: TerminalTextArea.Options) {
-		this.terminal = new (xterm().Terminal)({
+		this.terminal = new xterm.Terminal({
 			...options,
 			...{
 				cols: TerminalTextArea.margin,
@@ -211,25 +192,25 @@ export class TerminalTextArea implements IDisposable {
 					cancel ? trueHandler : falseHandler
 			})()
 		this.#cell = buffer.active.getNullCell()
-		for (const id of IDENTIFIERS.csi) {
+		for (const id of CSI_IDENTIFIERS) {
 			parser.registerCsiHandler(
 				id,
 				handler(TerminalTextArea.allowedIdentifiers.csi.has(id)),
 			)
 		}
-		for (const id of IDENTIFIERS.dcs) {
+		for (const id of DCS_IDENTIFIERS) {
 			parser.registerDcsHandler(
 				id,
 				handler(TerminalTextArea.allowedIdentifiers.dcs.has(id)),
 			)
 		}
-		for (const id of IDENTIFIERS.esc) {
+		for (const id of ESC_IDENTIFIERS) {
 			parser.registerEscHandler(
 				id,
 				handler(TerminalTextArea.allowedIdentifiers.esc.has(id)),
 			)
 		}
-		for (const id of IDENTIFIERS.osc) {
+		for (const id of OSC_IDENTIFIERS) {
 			parser.registerOscHandler(
 				id,
 				handler(TerminalTextArea.allowedIdentifiers.osc.has(id)),
@@ -461,7 +442,7 @@ export namespace CursoredText {
 			{ string, cursor } = text,
 			before = normalizeText(string.slice(0, cursor)),
 			after = normalizeText(string.slice(cursor)),
-			simulation = new (xterm().Terminal)({
+			simulation = new xterm.Terminal({
 				...options,
 				cols,
 				rows: 1,

@@ -103,13 +103,13 @@ export class XtermTerminalEmulator<A> {
 		options?: ITerminalInitOnlyOptions & ITerminalOptions,
 		addons?: A,
 	) {
-		this.terminal = new (xterm().Terminal)(options)
+		this.terminal = new xterm.Terminal(options)
 		const { terminal } = this
 		terminal.open(element)
 		// eslint-disable-next-line prefer-object-spread
 		const addons0 = Object.assign({
-			fit: new (xtermAddonFit().FitAddon)(),
-			serialize: new (xtermAddonSerialize().SerializeAddon)(),
+			fit: new xtermAddonFit.FitAddon(),
+			serialize: new xtermAddonSerialize.SerializeAddon(),
 		}, addons)
 		for (const addon of Object.values(addons0)) {
 			terminal.loadAddon(addon)

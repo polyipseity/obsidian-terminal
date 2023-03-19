@@ -1,5 +1,11 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-import { deepFreeze, inSet, isNullish, lazyInit, typedKeys } from "./utils/util"
+import {
+	deepFreeze,
+	inSet,
+	isNullish,
+	lazyProxy,
+	typedKeys,
+} from "./utils/util"
 import PLazy from "p-lazy"
 
 const
@@ -43,8 +49,8 @@ export function dynamicRequire<T>(module: string): PLazy<T> {
 	return PLazy.from(() => dynamicRequireSync(module) as T)
 }
 
-export function dynamicRequireLazy<T>(module: string): () => T {
-	return lazyInit(() => dynamicRequireSync(module) as T)
+export function dynamicRequireLazy<T extends object>(module: string): T {
+	return lazyProxy(() => dynamicRequireSync(module) as T)
 }
 
 export function dynamicRequireSync(module: string): unknown {
