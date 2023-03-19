@@ -60,7 +60,7 @@ function patchConsole(console: Console, log: Log): () => void {
 				} catch (error) {
 					console.error(error)
 				} finally {
-					proto.call(this, ...data)
+					Reflect.apply(proto, this, data)
 				}
 			} finally {
 				recursive = false
