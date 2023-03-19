@@ -31,6 +31,7 @@ import {
 	destroyWithOutro,
 	extname,
 	inSet,
+	instanceOf,
 	logWarn,
 	onResize,
 	onVisible,
@@ -469,13 +470,9 @@ export class TerminalView extends ItemView {
 			"`",
 			event => {
 				const { activeElement } = contentEl.ownerDocument
-				if (activeElement && "blur" in activeElement &&
-					typeof activeElement.blur === "function") {
-					try {
-						activeElement.blur()
-					} catch (error) {
-						console.debug(error)
-					}
+				if (instanceOf(activeElement, HTMLElement) ||
+					instanceOf(activeElement, SVGElement)) {
+					activeElement.blur()
 				}
 				consumeEvent(event)
 			},

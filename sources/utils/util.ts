@@ -6,6 +6,7 @@ import {
 import type { AsyncOrSync, DeepReadonly, DeepWritable } from "ts-essentials"
 import {
 	type CodePoint,
+	type Constructor,
 	type Contains,
 	type Sized,
 	simplifyType,
@@ -351,6 +352,24 @@ export function insertAt<T>(
 	...items: readonly T[]
 ): void {
 	self.splice(index, 0, ...items)
+}
+
+export function instanceOf<T extends Node | UIEvent>(
+	self: Node | UIEvent | null | undefined,
+	type: Constructor<T>,
+): self is T {
+	if (!self) { return false }
+	if (self instanceof type) { return true }
+	const { name } = type,
+		typeMain: unknown = Reflect.get(window, name)
+	if (typeMain instanceof Function && self instanceof typeMain) { return true }
+	const
+		win = "ownerDocument" in self
+			? self.ownerDocument?.defaultView
+			: self.view,
+		typeWin: unknown = win ? Reflect.get(win, name) : null
+	if (typeWin instanceof Function && self instanceof typeWin) { return true }
+	return false
 }
 
 export function isHomogenousArray<T extends PrimitiveTypeE>(

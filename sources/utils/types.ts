@@ -7,6 +7,7 @@ export type CodePoint =
 	Opaque<string, "2af98ef6-0537-4fd3-a1e1-269517bca44d"> & {
 		readonly codePointAt: (pos: 0) => number
 	}
+export type Constructor<T> = new (...args: readonly unknown[]) => T
 export type Contains<T, U> = T & U extends never ? false : true
 export type Exact<T, U> =
 	(<G>() => G extends T ? 1 : -1) extends
