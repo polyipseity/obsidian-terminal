@@ -149,6 +149,7 @@
 		"language-icon": "languages",
 		"new-instance-behavior-icon": "plus",
 		"notice-timeout-icon": "timer",
+		"pin-new-instance-icon": "pin",
 		"preferred-renderer-icon": "brush",
 		"profiles-icon": "$t(asset:generic.profile-icon)",
 		"profiles-edit-icon": "$t(asset:generic.edit-list-icon)"

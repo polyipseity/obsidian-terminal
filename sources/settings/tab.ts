@@ -467,6 +467,25 @@ export class SettingTab extends PluginSettingTab {
 			})
 			.newSetting(containerEl, setting => {
 				setting
+					.setName(i18n.t("settings.pin-new-instance"))
+					.addToggle(linkSetting(
+						() => plugin.settings.pinNewInstance,
+						async value => plugin.mutateSettings(settingsM => {
+							settingsM.pinNewInstance = value
+						}),
+						() => { this.postMutate() },
+					))
+					.addExtraButton(resetButton(
+						i18n.t("asset:settings.pin-new-instance-icon"),
+						i18n.t("settings.reset"),
+						async () => plugin.mutateSettings(settingsM => {
+							settingsM.pinNewInstance = Settings.DEFAULT.pinNewInstance
+						}),
+						() => { this.postMutate() },
+					))
+			})
+			.newSetting(containerEl, setting => {
+				setting
 					.setName(i18n.t("settings.hide-status-bar"))
 					.addDropdown(linkSetting(
 						(): string => plugin.settings.hideStatusBar,

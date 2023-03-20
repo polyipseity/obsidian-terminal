@@ -36,6 +36,7 @@ export interface Settings {
 	readonly profiles: Settings.Profiles
 	readonly newInstanceBehavior: Settings.NewInstanceBehavior
 	readonly createInstanceNearExistingOnes: boolean
+	readonly pinNewInstance: boolean
 	readonly hideStatusBar: Settings.HideStatusBarOption
 	readonly noticeTimeout: number
 	readonly errorNoticeTimeout: number
@@ -70,6 +71,7 @@ export namespace Settings {
 		language: "",
 		newInstanceBehavior: "newHorizontalSplit",
 		noticeTimeout: 5,
+		pinNewInstance: true,
 		preferredRenderer: "webgl",
 		profiles: Object.fromEntries(([
 			"darwinExternalDefault",
@@ -429,6 +431,12 @@ export namespace Settings {
 				unc,
 				"noticeTimeout",
 				["number"],
+			),
+			pinNewInstance: fixTyped(
+				DEFAULT,
+				unc,
+				"pinNewInstance",
+				["boolean"],
 			),
 			preferredRenderer: fixInSet(
 				DEFAULT,

@@ -192,6 +192,7 @@
 		"open": "开啟",
 		"ordinal": "第{{count, number}}",
 		"overwrite": "覆盖",
+		"pin": "锁定",
 		"platform": "平台",
 		"platforms": {
 			"darwin": "\u200bmacOS",
@@ -333,6 +334,7 @@
 		},
 		"notice-timeout": "$t(generic.notice)$t(generic.timeout)（s）",
 		"notice-timeout-description": "设为0 s是无$t(generic.timeout)。设为负数以$t(generic.disable)$t(generic.notice)。",
+		"pin-new-instance": "$t(generic.pin)新$t(generic.instance)",
 		"preferred-renderer": "首选$t(generic.renderer)",
 		"preferred-renderer-options": "$t(generic.renderers.{{type}})",
 		"profile-list": {

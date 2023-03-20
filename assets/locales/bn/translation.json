@@ -211,6 +211,7 @@
 		"ordinal_other": "{{count, number}}th",
 		"ordinal_two": "{{count, number}}nd",
 		"overwrite": "overwrite",
+		"pin": "pin",
 		"platform": "platform",
 		"platforms": {
 			"darwin": "\u200bmacOS",
@@ -357,6 +358,7 @@
 		},
 		"notice-timeout": "$t(generic.notice, capitalize) $t(generic.timeout) (s)",
 		"notice-timeout-description": "Set to 0 s for no $t(generic.timeout). Set to negative to $t(generic.disable) $t(generic.notice).",
+		"pin-new-instance": "$t(generic.pin, capitalize) new $t(generic.instance)",
 		"preferred-renderer": "Preferred $t(generic.renderer)",
 		"preferred-renderer-options": "$t(generic.renderers.{{type}}, capitalize)",
 		"profile-list": {
