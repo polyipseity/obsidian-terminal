@@ -11,7 +11,7 @@ import {
 import { anyToError, logError } from "sources/utils/util"
 import { DocumentationMarkdownView } from "./view"
 import type { TerminalPlugin } from "sources/main"
-import { lt } from "semver"
+import semverLt from "semver/functions/lt"
 
 export function loadDocumentation(
 	plugin: TerminalPlugin,
@@ -32,7 +32,7 @@ export function loadDocumentation(
 	}
 	if (readme) { openDocumentation(plugin, "readme", false) }
 	if (version !== null &&
-		lt(plugin.settings.lastReadChangelogVersion, version)) {
+		semverLt(plugin.settings.lastReadChangelogVersion, version)) {
 		openDocumentation(plugin, "changelog", false)
 	}
 }

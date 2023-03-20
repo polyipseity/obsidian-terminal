@@ -31,7 +31,6 @@ import {
 	PROFILE_PRESETS,
 	PROFILE_PRESET_ORDERED_KEYS,
 } from "sources/settings/profile-presets"
-import { SemVer, coerce } from "semver"
 import {
 	UpdatableUI,
 	notice2,
@@ -49,9 +48,11 @@ import { identity, isUndefined } from "lodash-es"
 import type { DeepWritable } from "ts-essentials"
 import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
 import { Pseudoterminal } from "sources/terminal/pseudoterminal"
+import SemVer from "semver/classes/semver"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "sources/main"
 import { dynamicRequire } from "sources/imports"
+import semverCoerce from "semver/functions/coerce"
 
 const
 	childProcess =
@@ -710,7 +711,7 @@ export class ProfileModal extends Modal {
 													() => i18n.t("notices.Python-version-is", {
 														interpolation: { escapeValue: false },
 														version: new SemVer(
-															coerce(stdout, { loose: true }) ?? stdout,
+															semverCoerce(stdout, { loose: true }) ?? stdout,
 															{ loose: true },
 														).version,
 													}),

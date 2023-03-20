@@ -1,5 +1,5 @@
 import type { DeepReadonly, DeepWritable, Opaque } from "ts-essentials"
-import { SemVer } from "semver"
+import SemVer from "semver/classes/semver"
 import { isUndefined } from "lodash-es"
 
 export type AnyObject = Readonly<Record<number | string | symbol, unknown>>

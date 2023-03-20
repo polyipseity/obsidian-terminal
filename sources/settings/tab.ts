@@ -26,8 +26,8 @@ import type { DeepWritable } from "ts-essentials"
 import { LANGUAGES } from "assets/locales"
 import { Settings } from "./data"
 import type { TerminalPlugin } from "../main"
-import { lt } from "semver"
 import { openDocumentation } from "sources/documentation/load"
+import semverLt from "semver/functions/lt"
 
 export class EditSettingsModal extends Modal {
 	protected readonly modalUI = new UpdatableUI()
@@ -238,7 +238,7 @@ export class SettingTab extends PluginSettingTab {
 								closeSetting(containerEl)
 							})
 						if (version === null ||
-							lt(plugin.settings.lastReadChangelogVersion, version)) {
+							semverLt(plugin.settings.lastReadChangelogVersion, version)) {
 							button.setCta()
 						}
 					})
