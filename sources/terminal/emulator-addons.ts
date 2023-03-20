@@ -1,7 +1,14 @@
+import {
+	Functions,
+	consumeEvent,
+	isNonNullish,
+	logError,
+	replaceAllRegex,
+} from "../utils/util"
 import type { ITerminalAddon, Terminal } from "xterm"
 import type { CanvasAddon } from "xterm-addon-canvas"
-import { Functions } from "../utils/util"
 import type { WebglAddon } from "xterm-addon-webgl"
+import { writePromise } from "./util"
 
 export class DisposerAddon extends Functions implements ITerminalAddon {
 	public constructor(...args: readonly (() => void)[]) {
@@ -14,6 +21,39 @@ export class DisposerAddon extends Functions implements ITerminalAddon {
 
 	public dispose(): void {
 		this.call()
+	}
+}
+
+export class DragAndDropAddon implements ITerminalAddon {
+	readonly #disposer = new DisposerAddon()
+
+	public constructor(protected readonly element: HTMLElement) { }
+
+	public activate(terminal: Terminal): void {
+		const { element } = this,
+			drop = (event: DragEvent): void => {
+				const data = Array.from(event.dataTransfer?.files ?? [])
+					.map(file => file.path)
+					.filter(isNonNullish)
+					.map(path => path.replace(replaceAllRegex("\""), "\\\""))
+					.map(path => path.includes(" ") ? `"${path}"` : path)
+					.join(" ")
+				if (data) {
+					writePromise(terminal, data).catch(logError)
+					consumeEvent(event)
+				}
+			},
+			dragover = consumeEvent
+		this.#disposer.push(
+			() => { element.removeEventListener("dragover", dragover) },
+			() => { element.removeEventListener("drop", drop) },
+		)
+		element.addEventListener("drop", drop)
+		element.addEventListener("dragover", dragover)
+	}
+
+	public dispose(): void {
+		this.#disposer.dispose()
 	}
 }
 

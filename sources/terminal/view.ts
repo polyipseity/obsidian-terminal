@@ -1,6 +1,10 @@
 import { DialogModal, ProfileModal } from "sources/ui/modals"
 import { Direction, type Params } from "../ui/find"
-import { DisposerAddon, RendererAddon } from "./emulator-addons"
+import {
+	DisposerAddon,
+	DragAndDropAddon,
+	RendererAddon,
+} from "./emulator-addons"
 import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
 import {
 	ItemView,
@@ -652,6 +656,7 @@ export class TerminalView extends ItemView {
 									}),
 									() => { this.#find?.$set({ results: "" }) },
 								),
+								dragAndDrop: new DragAndDropAddon(ele),
 								ligatures: new xtermAddonLigatures.LigaturesAddon({}),
 								renderer: new RendererAddon(
 									() => new xtermAddonCanvas.CanvasAddon(),
@@ -738,6 +743,7 @@ export namespace TerminalView {
 	export type EMULATOR = XtermTerminalEmulator<Addons>
 	export interface Addons {
 		readonly disposer: DisposerAddon
+		readonly dragAndDrop: DragAndDropAddon
 		readonly ligatures: LigaturesAddon
 		readonly renderer: RendererAddon
 		readonly search: SearchAddon
