@@ -8,6 +8,10 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Full changelog__: [`3.5.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.5.0...main)
+
+## 3.5.0 (2023-03-20)
+
 __Features__
 - Add 6 external profile presets. Helps with [GH#16](https://github.com/polyipseity/obsidian-terminal/issues/16). (`c9a51249d35fe429d5cc4eb8a307612177de896e`)
 - Automatically pin new terminal tabs to avoid accidentally terminating terminals. Configurable in settings. (`beb24cc25802750b1681358e42fd74ccbe51f83a`)
@@ -16,7 +20,7 @@ __Features__
 __Fixes__
 - Fix invalid regex crashing find in terminal. (`9da6bb9494fa0079fb1b60a8140277e1dbff9860`)
 
-__Full changelog__: [`3.4.1...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.4.1...main)
+__Full changelog__: [`3.4.1...3.5.0`](https://github.com/polyipseity/obsidian-terminal/compare/3.4.1...3.5.0)
 
 ## 3.4.1 (2023-03-14)
 
