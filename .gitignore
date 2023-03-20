@@ -22,6 +22,6 @@ data.json
 .DS_Store
 
 # custom
-.eslintcache
+/.eslintcache
 /.obsidian/
-.tsbuildinfo
+/.tsbuildinfo
