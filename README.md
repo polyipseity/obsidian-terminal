@@ -1,5 +1,6 @@
-# Terminal for Obsidian ![release](https://img.shields.io/github/v/release/polyipseity/obsidian-terminal) ![Obsidian downloads](https://img.shields.io/badge/dynamic/json?logo=Obsidian&color=%238b6cef&label=downloads&query=terminal.downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json) ![Python](https://img.shields.io/badge/Python-≥3.10-gold?labelColor=blue&logo=Python&logoColor=white)
+# Terminal for Obsidian [![release](https://img.shields.io/github/v/release/polyipseity/obsidian-terminal)][latest release] [![Obsidian downloads](https://img.shields.io/badge/dynamic/json?logo=Obsidian&color=%238b6cef&label=downloads&query=terminal.downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json)][community plugin] [![Python](https://img.shields.io/badge/Python-≥3.10-gold?labelColor=blue&logo=Python&logoColor=white)][Python]
 
+[Python]: https://www.python.org/downloads/
 [community plugin]: https://obsidian.md/plugins?id=terminal
 [latest release]: https://github.com/polyipseity/obsidian-terminal/releases/latest
 [repository]: https://github.com/polyipseity/obsidian-terminal
@@ -42,7 +43,7 @@ This file is automatically opened on first install. You can reopen it in setting
 		3. Run `npm install` in the root directory.
 		4. Run `npm run obsidian:install <vault directory>` in the root directory.
 2. (optional for Windows, recommended) Install Python and dependencies.
-	1. Install [Python](https://www.python.org/downloads/) 3.10/+.
+	1. Install [Python] 3.10/+.
 	2. (Windows only) Run `pip3 install psutil pywinctl`.
 	3. Configure Python executable in plugin settings.
 3. Enable plugin.
