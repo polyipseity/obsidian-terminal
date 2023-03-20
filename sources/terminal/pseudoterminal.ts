@@ -45,7 +45,7 @@ import { isEmpty, isUndefined, noop } from "lodash-es"
 import { notice2, printError } from "sources/utils/obsidian"
 import AsyncLock from "async-lock"
 import type { AsyncOrSync } from "ts-essentials"
-import { DisposerAddon } from "./emulator"
+import { DisposerAddon } from "./emulator-addons"
 import type { FileResult } from "tmp-promise"
 import type { Log } from "sources/patches"
 import type {

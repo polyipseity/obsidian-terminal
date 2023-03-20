@@ -1,10 +1,6 @@
 import { DialogModal, ProfileModal } from "sources/ui/modals"
 import { Direction, type Params } from "../ui/find"
-import {
-	DisposerAddon,
-	RendererAddon,
-	XtermTerminalEmulator,
-} from "./emulator"
+import { DisposerAddon, RendererAddon } from "./emulator-addons"
 import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
 import {
 	ItemView,
@@ -63,6 +59,7 @@ import type { TerminalPlugin } from "../main"
 import { TextPseudoterminal } from "./pseudoterminal"
 import type { Unicode11Addon } from "xterm-addon-unicode11"
 import type { WebLinksAddon } from "xterm-addon-web-links"
+import { XtermTerminalEmulator } from "./emulator"
 import { dynamicRequireLazy } from "sources/imports"
 import { launderUnchecked } from "sources/utils/types"
 import { writePromise } from "./util"
