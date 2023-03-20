@@ -6,12 +6,12 @@ import {
 	isUndefined,
 	kebabCase,
 } from "lodash-es"
+import { readFile, writeFile } from "node:fs/promises"
 import { PATHS } from "./util.mjs"
 import { argv } from "node:process"
 import builtinModules from "builtin-modules"
 import esbuildSvelte from "esbuild-svelte"
 import lzString from "lz-string"
-import { readFile } from "node:fs/promises"
 import sveltePreprocess from "svelte-preprocess"
 
 const ARGV_PRODUCTION = 2,
@@ -153,26 +153,37 @@ if (DEV) {
 } else {
 	try {
 		const { errors, warnings, metafile } = await BUILD.rebuild()
-		if (!isUndefined(metafile)) {
-			console.log(await analyzeMetafile(metafile, {
-				color: true,
-				verbose: true,
-			}))
-		}
-		for await (const logging of [
-			{ data: warnings, kind: "warning", log: console.warn.bind(console) },
-			{ data: errors, kind: "error", log: console.error.bind(console) },
-		]
-			.filter(({ data }) => !isEmpty(data))
-			.map(async ({ data, kind, log }) => {
-				const message = (await formatMessages(data, {
-					color: true,
-					kind,
-				})).join("\n")
-				return () => log(message)
-			})) {
-			logging()
-		}
+		await Promise.all([
+			(async () => {
+				if (!isUndefined(metafile)) {
+					console.log(await analyzeMetafile(metafile, {
+						color: true,
+						verbose: true,
+					}))
+				}
+				for await (const logging of [
+					{ data: warnings, kind: "warning", log: console.warn.bind(console) },
+					{ data: errors, kind: "error", log: console.error.bind(console) },
+				]
+					.filter(({ data }) => !isEmpty(data))
+					.map(async ({ data, kind, log }) => {
+						const message = (await formatMessages(data, {
+							color: true,
+							kind,
+						})).join("\n")
+						return () => log(message)
+					})) {
+					logging()
+				}
+			})(),
+			isUndefined(metafile)
+				? null
+				: writeFile(
+					PATHS.metafile,
+					JSON.stringify(metafile, null, "\t"),
+					{ encoding: "utf-8" },
+				),
+		])
 	} finally {
 		await BUILD.dispose()
 	}

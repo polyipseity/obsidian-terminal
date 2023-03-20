@@ -23,5 +23,6 @@ data.json
 
 # custom
 /.eslintcache
+/metafile.json
 /.obsidian/
 /.tsbuildinfo

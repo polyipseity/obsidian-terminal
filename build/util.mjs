@@ -6,6 +6,7 @@ const execFileP = promisify(execFile)
 export const PATHS = Object.freeze({
 	main: "main.js",
 	manifest: "manifest.json",
+	metafile: "metafile.json",
 	obsidianPlugins: ".obsidian/plugins",
 	"package": "package.json",
 	packageLock: "package-lock.json",
