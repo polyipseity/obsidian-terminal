@@ -1,5 +1,9 @@
 # Terminal for Obsidian ![release](https://img.shields.io/github/v/release/polyipseity/obsidian-terminal) ![Obsidian downloads](https://img.shields.io/badge/dynamic/json?logo=Obsidian&color=%238b6cef&label=downloads&query=terminal.downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json) ![Python](https://img.shields.io/badge/Python-≥3.10-gold?labelColor=blue&logo=Python&logoColor=white)
 
+[community plugin]: https://obsidian.md/plugins?id=terminal
+[latest release]: https://github.com/polyipseity/obsidian-terminal/releases/latest
+[repository]: https://github.com/polyipseity/obsidian-terminal
+
 Integrate consoles, shells, and terminals inside [Obsidian](https://obsidian.md/).
 
 __[Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing)__
@@ -10,9 +14,9 @@ For first time users, read the [installation](#installation) section first!
 
 This file is automatically opened on first install. You can reopen it in settings or command palette.
 
-- Repository: https://github.com/polyipseity/obsidian-terminal
+- [Repository]
 - Changelog: [CHANGELOG.md](CHANGELOG.md)
-- Community plugin: https://obsidian.md/plugins?id=terminal
+- [Community plugin]
 
 ## Features
 
@@ -28,10 +32,10 @@ This file is automatically opened on first install. You can reopen it in setting
 
 1. Install plugin.
 	- Community plugins
-		1. Install the [plugin](https://obsidian.md/plugins?id=terminal) from community plugins directly.
+		1. Install the [plugin][community plugin] from community plugins directly.
 	- Manual
 		1. Create directory `terminal` under `.obsidian/plugins` of your vault.
-		2. Place `manifest.json`, `main.js`, and `styles.css` from the [latest release](https://github.com/polyipseity/obsidian-terminal/releases/latest) into the directory.
+		2. Place `manifest.json`, `main.js`, and `styles.css` from the [latest release] into the directory.
 	- Building (bleeding edge)
 		1. Clone this repository, including its submodules.
 		2. Install [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).
