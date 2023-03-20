@@ -2,13 +2,11 @@ import {
 	Functions,
 	consumeEvent,
 	isNonNullish,
-	logError,
 	replaceAllRegex,
 } from "../utils/util"
 import type { ITerminalAddon, Terminal } from "xterm"
 import type { CanvasAddon } from "xterm-addon-canvas"
 import type { WebglAddon } from "xterm-addon-webgl"
-import { writePromise } from "./util"
 
 export class DisposerAddon extends Functions implements ITerminalAddon {
 	public constructor(...args: readonly (() => void)[]) {
@@ -39,7 +37,7 @@ export class DragAndDropAddon implements ITerminalAddon {
 					.map(path => path.includes(" ") ? `"${path}"` : path)
 					.join(" ")
 				if (data) {
-					writePromise(terminal, data).catch(logError)
+					terminal.paste(data)
 					consumeEvent(event)
 				}
 			},
