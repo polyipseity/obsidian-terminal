@@ -11,6 +11,7 @@ This file is automatically opened on update. You can reopen it in settings or co
 __Features__
 - Add 6 external profile presets. Helps with [GH#16](https://github.com/polyipseity/obsidian-terminal/issues/16). (`c9a51249d35fe429d5cc4eb8a307612177de896e`)
 - Automatically pin new terminal tabs to avoid accidentally terminating terminals. Configurable in settings. (`beb24cc25802750b1681358e42fd74ccbe51f83a`)
+- Add support for dragging and dropping files into the terminal to paste their filepaths. See [GH#16](https://github.com/polyipseity/obsidian-terminal/issues/16). (`7c5e4617072d1b77a7d9f11b0e886c8e9d051f91`)
 
 __Fixes__
 - Fix invalid regex crashing find in terminal. (`9da6bb9494fa0079fb1b60a8140277e1dbff9860`)
