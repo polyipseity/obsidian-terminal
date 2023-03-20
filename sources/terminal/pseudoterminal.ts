@@ -1,11 +1,4 @@
 import {
-	CursoredText,
-	NORMALIZED_LINE_FEED,
-	TerminalTextArea,
-	normalizeText,
-	writePromise as tWritePromise,
-} from "./util"
-import {
 	DEFAULT_ENCODING,
 	DEFAULT_PYTHONIOENCODING,
 	EXIT_SUCCESS,
@@ -24,9 +17,7 @@ import {
 	acquireConditionally,
 	anyToError,
 	clear,
-	consumeEvent,
 	deepFreeze,
-	getKeyModifiers,
 	inSet,
 	isNonNullish,
 	isNullish,
@@ -41,7 +32,11 @@ import {
 	writePromise,
 } from "../utils/util"
 import type { IMarker, Terminal } from "xterm"
-import { isEmpty, isUndefined, noop } from "lodash-es"
+import {
+	NORMALIZED_LINE_FEED,
+	normalizeText,
+	writePromise as tWritePromise,
+} from "./util"
 import { notice2, printError } from "sources/utils/obsidian"
 import AsyncLock from "async-lock"
 import type { AsyncOrSync } from "ts-essentials"
@@ -51,10 +46,12 @@ import type { Log } from "sources/patches"
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
 } from "node:child_process"
+import { Readline } from "xterm-readline"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
 import ansi from "ansi-escape-sequences"
 import { dynamicRequire } from "../imports"
+import { noop } from "lodash-es"
 import unixPseudoterminalPy from "./unix_pseudoterminal.py"
 import win32ResizerPy from "./win32_resizer.py"
 
@@ -211,10 +208,7 @@ export class ConsolePseudoterminal
 	implements Pseudoterminal {
 	protected static readonly syncLock = "sync"
 	protected readonly lock = new AsyncLock({ maxPending: MAX_LOCK_PENDING })
-	protected readonly buffer = new TerminalTextArea()
-	readonly #history = [""]
-	#historyIndex = 0
-	readonly #editors = new Map<Terminal, ConsolePseudoterminal.$Editor>()
+	readonly #readlines = new Map<Terminal, Readline>()
 
 	public constructor(
 		protected readonly console: Console,
@@ -226,11 +220,11 @@ export class ConsolePseudoterminal
 			.finally(() => {
 				new Functions(
 					{ async: false, settled: true },
-					...[...this.#editors.keys()]
-						.map(terminal => (): void => { this.#setEditor(terminal) }),
+					...[...this.#readlines.values()]
+						.map(readline => (): void => { readline.dispose() }),
+					() => { this.#readlines.clear() },
 				).call()
 			})
-			.finally(() => { this.buffer.dispose() })
 	}
 
 	// eslint-disable-next-line consistent-return
@@ -251,161 +245,37 @@ export class ConsolePseudoterminal
 
 	public override async pipe(terminal: Terminal): Promise<void> {
 		await super.pipe(terminal)
+		const readline = new Readline()
 		terminal.loadAddon(new DisposerAddon(
-			() => { this.#setEditor(terminal) },
+			() => { this.#readlines.delete(terminal) },
 		))
-		const { buffer, lock, terminals } = this
-		let block = false,
-			resizing = false
-		const disposer = new Functions(
-			{ async: false, settled: true },
-			...[
-				terminal.onData(async data => {
-					if (block) {
-						block = false
-						return
-					}
-					await lock.acquire(ConsolePseudoterminal.syncLock, async () => {
-						let writing = true
-						const write = buffer.write(data)
-							.finally(() => { writing = false })
-							.then(async () => {
-								this.#history[this.#history.length - 1] = buffer.value.string
-								await this.syncBuffer(terminals, false)
-							})
-						// eslint-disable-next-line no-unmodified-loop-condition
-						while (writing) {
-							// eslint-disable-next-line no-await-in-loop
-							await this.syncBuffer(terminals, false)
-						}
-						await write
-					})
-				}),
-				terminal.onKey(({ domEvent }) => {
-					if (!isEmpty(getKeyModifiers(domEvent))) { return }
-					const { key } = domEvent
-					switch (key) {
-						case "Enter":
-							this.eval().catch(logError)
-							break
-						case "ArrowUp":
-						case "ArrowDown":
-							if ((this.#history.at(-1) ?? "").includes("\n")) { return }
-							lock.acquire(ConsolePseudoterminal.syncLock, async () => {
-								if ((this.#history.at(-1) ?? "").includes("\n")) { return }
-								const { length } = this.#history
-								if (length <= 0) { return }
-								const text = this.#history.at(this.#historyIndex =
-									(this.#historyIndex + (key === "ArrowDown"
-										? 1
-										: -1)) % length)
-								if (isUndefined(text)) { return }
-								let writing = true
-								const write = buffer.setValue(text)
-									.finally(() => { writing = false })
-									.then(async () => this.syncBuffer(terminals, false))
-								// eslint-disable-next-line no-unmodified-loop-condition
-								while (writing) {
-									// eslint-disable-next-line no-await-in-loop
-									await this.syncBuffer(terminals, false)
-								}
-								await write
-							}).catch(logError)
-							break
-						default:
-							return
-					}
-					block = true
-					consumeEvent(domEvent)
-				}),
-				terminal.onResize(() => {
-					if (resizing) { return }
-					resizing = true
-					this.syncBuffer([terminal])
-						.finally(() => { resizing = false })
-						.catch(logError)
-				}),
-			].map(disposer0 => () => { disposer0.dispose() }),
-		)
-		this.onExit.finally(() => { disposer.call() })
-		await clearTerminal(terminal)
+		this.#readlines.set(terminal, readline)
+		terminal.loadAddon(readline)
+		readline.tty().clearScreen()
 		await this.write(this.log.history, [terminal])
+		this.repl(terminal, readline)
 	}
 
-	protected async eval(): Promise<void> {
-		const { buffer, console, lock, terminals } = this,
-			code = await lock.acquire(ConsolePseudoterminal.syncLock, async () => {
-				const { string: ret } = await buffer.clear(),
-					{ length } = this.#history
-				this.#history.splice(length - 1, 1, ret, "")
-				this.#historyIndex = length
-				await this.syncBuffer(terminals, false)
-				return ret
+	protected repl(terminal: Terminal, readline: Readline): void {
+		const { console } = this
+		readline.read("> ")
+			.then(code => {
+				console.log(code)
+				let ret: unknown = null
+				try {
+					ret = self.eval(code)
+				} catch (error) {
+					console.error(error)
+					return
+				}
+				console.log(ret)
 			})
-		console.log(code)
-		let ret: unknown = null
-		try {
-			ret = self.eval(code)
-		} catch (error) {
-			console.error(error)
-			return
-		}
-		console.log(ret)
-	}
-
-	protected async syncBuffer(
-		terminals: readonly Terminal[] = this.terminals,
-		lock = true,
-	): Promise<void> {
-		const terminals0 = [...terminals]
-		return new Promise((resolve, reject) => {
-			acquireConditionally(
-				this.lock,
-				ConsolePseudoterminal.syncLock,
-				lock,
-				async () => {
-					const writers = terminals0.map(async terminal => {
-						const editor = this.#editors.get(terminal),
-							info = await CursoredText.info(
-								terminal,
-								this.buffer.value,
-								editor?.startX,
-							),
-							{ rows, buffer: { active } } = terminal,
-							{ baseY } = active,
-							startBaseY = editor?.startYMarker?.line ?? baseY,
-							lastRenderEndY = editor?.renderEndY ?? 0,
-							renderRows = Math.min(info.rows, rows),
-							renderStartY = info.rows - renderRows,
-							prerenderStartY = startBaseY + lastRenderEndY - baseY,
-							skipPreRenderRows = Math.max(-prerenderStartY, 0),
-							firstUp = renderRows - 1,
-							secondUp = info.rows - 1 - info.cursor[1]
-						await tWritePromise(
-							terminal,
-							`${ansi.cursor.position(
-								1 + prerenderStartY + skipPreRenderRows,
-								1 + (lastRenderEndY > 0 ? 0 : info.startX),
-							)}${ansi.erase.display()}${info.lines.slice(
-								lastRenderEndY + skipPreRenderRows,
-								info.rows,
-							).join(NORMALIZED_LINE_FEED)}${ansi.cursor.horizontalAbsolute(
-								1 + (renderStartY > 0 ? 0 : info.startX),
-							)}${firstUp > 0 ? ansi.cursor.up(firstUp) : ""
-							}${ansi.erase.display()}${info.lines.slice(
-								renderStartY,
-								info.rows,
-							).join(NORMALIZED_LINE_FEED)}${ansi.cursor.horizontalAbsolute(
-								1 + (info.cursor[1] < renderStartY ? 0 : info.cursor[0]),
-							)}${secondUp > 0 ? ansi.cursor.up(secondUp) : ""}`,
-						)
-						if (editor) { editor.renderEndY = info.rows - 1 }
-					})
-					resolve(Promise.all(writers).then(noop))
-					await Promise.allSettled(writers)
-				},
-			).catch(reject)
-		})
+			.then(() => {
+				const readline0 = this.#readlines.get(terminal)
+				if (!readline0) { return }
+				this.repl(terminal, readline0)
+			})
+			.catch(logError)
 	}
 
 	protected async write(
@@ -420,42 +290,22 @@ export class ConsolePseudoterminal
 					replaceAllRegex(NORMALIZED_LINE_FEED),
 					`${NORMALIZED_LINE_FEED}${ansi.erase.inLine()}`,
 				)}${NORMALIZED_LINE_FEED}`
-		await acquireConditionally(
-			this.lock,
-			ConsolePseudoterminal.syncLock,
-			lock,
-			async () => {
-				await Promise.allSettled(terminals0.map(async terminal => {
-					const { buffer: { active } } = terminal,
-						editor = this.#editors.get(terminal),
-						{ baseY } = active,
-						startBaseY = editor?.startYMarker?.line ?? baseY + active.cursorX
-					await tWritePromise(terminal, `${ansi.cursor.position(
-						1 + (startBaseY - baseY),
-						1,
-					)}${ansi.erase.display()}${text}`)
-					this.#setEditor(terminal, {
-						close() { this.startYMarker?.dispose() },
-						renderEndY: 0,
-						startX: active.cursorX,
-						startYMarker: terminal.registerMarker(),
-					})
-				}))
-				await this.syncBuffer(terminals0, false)
-			},
-		)
-	}
-
-	#setEditor(
-		terminal: Terminal,
-		editor?: ConsolePseudoterminal.$Editor,
-	): void {
-		this.#editors.get(terminal)?.close()
-		if (editor) {
-			this.#editors.set(terminal, editor)
-		} else {
-			this.#editors.delete(terminal)
-		}
+		await new Promise((resolve, reject) => {
+			acquireConditionally(
+				this.lock,
+				ConsolePseudoterminal.syncLock,
+				lock,
+				async () => {
+					const writers = terminals0
+						.map(terminal => this.#readlines.get(terminal))
+						.filter(isNonNullish)
+						.map(async readline => Promise.resolve()
+							.then(() => { readline.write(text) }))
+					resolve(Promise.all(writers))
+					await Promise.allSettled(writers)
+				},
+			).catch(reject)
+		})
 	}
 }
 export namespace ConsolePseudoterminal {
