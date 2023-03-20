@@ -2,7 +2,7 @@
 
 Integrate consoles, shells, and terminals inside [Obsidian](https://obsidian.md/).
 
-__[Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing) · [Todos](#todos)__
+__[Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing)__
 
 ![Trailer](assets/trailer.png)
 
@@ -153,12 +153,3 @@ When translating, keep in mind the following things:
 ```
 - The keys under `generic` are vocabularies. They can be referred in translation strings by `$t(generic.key)`. Refer to them as much as possible to standardize translations for vocabularies that appear in different places.
 - It is okay to move interpolations and references to other localized strings around to make the translation natural. It is also okay to not use some references used in the original translation. However, it is NOT okay to not use all interpolations.
-
-## Todos
-
-- Add setting for successful exit codes.
-- Add terminal restoring options.
-- Color console log.
-- Add terminal style options.
-- Check whether the terminal looks okay in light theme.
-- Add connecting to remote shells. It should also be available on mobile.
