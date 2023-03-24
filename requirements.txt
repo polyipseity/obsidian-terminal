@@ -1,4 +1,4 @@
 --index-url https://pypi.org/simple/
 
-psutil
-pywinctl
+psutil>=5.9.4
+pywinctl>=0.0.42
