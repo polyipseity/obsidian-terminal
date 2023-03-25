@@ -725,7 +725,7 @@ export class TerminalView extends ItemView {
 					emulator.resize().catch(logWarn)
 					onResize(ele, ent => {
 						if (ent.contentBoxSize
-							.some(size => size.blockSize <= 0 || size.inlineSize <= 0)) {
+							.every(size => size.blockSize <= 0 || size.inlineSize <= 0)) {
 							return
 						}
 						emulator.resize(false).catch(logWarn)
