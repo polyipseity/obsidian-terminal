@@ -622,7 +622,7 @@ export function multireplace(
 
 export function onResize(
 	element: Element,
-	callback: (entry: ResizeObserverEntry) => unknown,
+	callback: (entry: ResizeObserverEntry) => void,
 ): ResizeObserver {
 	const ret = new (element.ownerDocument.defaultView ?? self)
 		.ResizeObserver(ents => {
@@ -635,7 +635,7 @@ export function onResize(
 
 export function onVisible(
 	element: Element,
-	callback: (entry: IntersectionObserverEntry) => unknown,
+	callback: (entry: IntersectionObserverEntry) => void,
 	transient = false,
 ): IntersectionObserver {
 	const ret = new (element.ownerDocument.defaultView ?? self)
