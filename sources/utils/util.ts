@@ -623,13 +623,12 @@ export function multireplace(
 export function onResize(
 	element: Element,
 	callback: (entry: ResizeObserverEntry) => unknown,
-): ResizeObserver | null {
-	const view = element.ownerDocument.defaultView
-	if (!view) { return null }
-	const ret = new view.ResizeObserver(ents => {
-		const ent = ents.at(-1)
-		if (ent) { callback(ent) }
-	})
+): ResizeObserver {
+	const ret = new (element.ownerDocument.defaultView ?? self)
+		.ResizeObserver(ents => {
+			const ent = ents.at(-1)
+			if (ent) { callback(ent) }
+		})
 	ret.observe(element)
 	return ret
 }
@@ -638,19 +637,18 @@ export function onVisible(
 	element: Element,
 	callback: (entry: IntersectionObserverEntry) => unknown,
 	transient = false,
-): IntersectionObserver | null {
-	const view = element.ownerDocument.defaultView
-	if (!view) { return null }
-	const ret = new view.IntersectionObserver(ents => {
-		for (const ent of transient
-			? ents.reverse()
-			: [ents.at(-1) ?? { isIntersecting: false }]) {
-			if (ent.isIntersecting) {
-				callback(ent)
-				break
+): IntersectionObserver {
+	const ret = new (element.ownerDocument.defaultView ?? self)
+		.IntersectionObserver(ents => {
+			for (const ent of transient
+				? ents.reverse()
+				: [ents.at(-1) ?? { isIntersecting: false }]) {
+				if (ent.isIntersecting) {
+					callback(ent)
+					break
+				}
 			}
-		}
-	})
+		})
 	ret.observe(element)
 	return ret
 }

@@ -732,7 +732,7 @@ export class TerminalView extends ItemView {
 					})
 					this.#emulator = emulator
 				} finally {
-					obsr?.disconnect()
+					obsr.disconnect()
 				}
 			})
 		})
