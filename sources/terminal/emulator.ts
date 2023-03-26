@@ -9,13 +9,12 @@ import {
 	TERMINAL_EMULATOR_RESIZE_WAIT,
 	TERMINAL_PTY_RESIZE_WAIT,
 } from "../magic"
-import { deepFreeze, spawnPromise } from "../utils/util"
+import { asyncDebounce, deepFreeze, spawnPromise } from "../utils/util"
 import { dynamicRequire, dynamicRequireLazy, importable } from "../imports"
 import type { AsyncOrSync } from "ts-essentials"
 import type { ChildProcessByStdio } from "node:child_process"
 import type { Pseudoterminal } from "./pseudoterminal"
 import type { TerminalPlugin } from "../main"
-import { asyncDebounce } from "sources/utils/obsidian"
 import { launderUnchecked } from "sources/utils/types"
 import { throttle } from "lodash-es"
 import { writePromise } from "./util"

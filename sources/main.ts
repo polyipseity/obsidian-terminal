@@ -6,6 +6,7 @@ import {
 } from "./terminal/pseudoterminal"
 import {
 	EventEmitterLite,
+	asyncDebounce,
 	copyOnWriteAsync,
 	deepFreeze,
 	isNullish,
@@ -17,7 +18,6 @@ import {
 	SAVE_SETTINGS_WAIT,
 	SI_PREFIX_SCALE,
 } from "./magic"
-import { asyncDebounce, printMalformedData } from "./utils/obsidian"
 import { constant, throttle } from "lodash-es"
 import { LanguageManager } from "./i18n"
 import { Settings } from "./settings/data"
@@ -27,6 +27,7 @@ import { loadIcons } from "./icons"
 import { loadSettings } from "./settings/load"
 import { loadTerminal } from "./terminal/load"
 import { patch } from "./patches"
+import { printMalformedData } from "./utils/obsidian"
 import { semVerString } from "./utils/types"
 
 export class TerminalPlugin extends Plugin {

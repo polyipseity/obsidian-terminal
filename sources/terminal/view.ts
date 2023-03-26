@@ -35,7 +35,9 @@ import {
 	logWarn,
 	onResize,
 	onVisible,
+	openExternal,
 	randomNotIn,
+	saveFile,
 	typedStructuredClone,
 } from "../utils/util"
 import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
@@ -43,11 +45,9 @@ import {
 	UnnamespacedID,
 	newCollabrativeState,
 	notice2,
-	openExternal,
 	printError,
 	printMalformedData,
 	readStateCollabratively,
-	saveFile,
 	updateDisplayText,
 	usePrivateAPI,
 	useSettings,

@@ -12,6 +12,14 @@ import {
 	simplifyType,
 } from "./types"
 import {
+	type DebouncedFunc,
+	escapeRegExp,
+	isEmpty,
+	isUndefined,
+	noop,
+	range,
+} from "lodash-es"
+import {
 	JSON_STRINGIFY_SPACE,
 	MAX_LOCK_PENDING,
 	SI_PREFIX_SCALE,
@@ -22,7 +30,6 @@ import {
 	type TypeofMapE,
 	genericTypeofGuardE,
 } from "./typeof"
-import { escapeRegExp, isEmpty, isUndefined, noop, range } from "lodash-es"
 import AsyncLock from "async-lock"
 import type { ChildProcess } from "node:child_process"
 import type { SvelteComponent } from "svelte"
@@ -156,6 +163,31 @@ export async function acquireConditionally<T>(
 
 export function anyToError(obj: unknown): Error {
 	return obj instanceof Error ? obj : new Error(String(obj))
+}
+
+export function asyncDebounce<
+	A extends readonly unknown[], R,
+>(func: DebouncedFunc<(
+	resolve: (value: AsyncOrSync<R>) => void,
+	reject: (reason?: unknown) => void,
+	...args: A) => void>): (...args: A) => Promise<R> {
+	const promises: {
+		readonly resolve: (value: AsyncOrSync<R>) => void
+		readonly reject: (reason?: unknown) => void
+	}[] = []
+	return async (...args: A): Promise<R> =>
+		new Promise((resolve, reject) => {
+			promises.push({ reject, resolve })
+			func(value => {
+				for (const promise of promises.splice(0)) {
+					promise.resolve(value)
+				}
+			}, error => {
+				for (const promise of promises.splice(0)) {
+					promise.reject(error)
+				}
+			}, ...args)
+		})
 }
 
 export function basename(path: string, ext = ""): string {
@@ -653,6 +685,10 @@ export function onVisible(
 	return ret
 }
 
+export function openExternal(url?: URL | string): Window | null {
+	return open(url, "_blank", "noreferrer")
+}
+
 export async function promisePromise<T>(): Promise<{
 	readonly promise: Promise<T>
 	readonly resolve: (value: AsyncOrSync<T>) => void
@@ -696,6 +732,24 @@ export function removeAt<T>(self: T[], index: number): T | undefined {
 
 export function replaceAllRegex(string: string): RegExp {
 	return new RegExp(escapeRegExp(string), "ug")
+}
+
+export function saveFile(
+	document: Document,
+	text: string,
+	type = "text/plain; charset=UTF-8;",
+	filename = "",
+): void {
+	const ele = document.createElement("a")
+	ele.target = "_blank"
+	ele.download = filename
+	const url = URL.createObjectURL(new Blob([text], { type }))
+	try {
+		ele.href = url
+		ele.click()
+	} finally {
+		URL.revokeObjectURL(url)
+	}
 }
 
 export async function sleep2(timeInSeconds: number): Promise<void> {

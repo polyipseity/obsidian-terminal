@@ -22,9 +22,7 @@ import {
 	replaceAllRegex,
 	typedStructuredClone,
 } from "./util"
-import type { AsyncOrSync } from "ts-essentials"
 import { DEFAULT_LANGUAGE } from "assets/locales"
-import type { DebouncedFunc } from "lodash-es"
 import type { TerminalPlugin } from "sources/main"
 import { around } from "monkey-around"
 
@@ -237,31 +235,6 @@ export function addRibbonIcon(
 	)
 }
 
-export function asyncDebounce<
-	A extends readonly unknown[], R,
->(func: DebouncedFunc<(
-	resolve: (value: AsyncOrSync<R>) => void,
-	reject: (reason?: unknown) => void,
-	...args: A) => void>): (...args: A) => Promise<R> {
-	const promises: {
-		readonly resolve: (value: AsyncOrSync<R>) => void
-		readonly reject: (reason?: unknown) => void
-	}[] = []
-	return async (...args: A): Promise<R> =>
-		new Promise((resolve, reject) => {
-			promises.push({ reject, resolve })
-			func(value => {
-				for (const promise of promises.splice(0)) {
-					promise.resolve(value)
-				}
-			}, error => {
-				for (const promise of promises.splice(0)) {
-					promise.reject(error)
-				}
-			}, ...args)
-		})
-}
-
 export function cleanFrontmatterCache(
 	cache?: FrontMatterCache,
 ): Readonly<Record<string, unknown>> {
@@ -282,10 +255,6 @@ export function commandNamer(
 		[cmd]: cmdNamer(),
 		[defaultPluginName]: pluginNamer(),
 	})
-}
-
-export function openExternal(url?: URL | string): Window | null {
-	return open(url, "_blank", "noreferrer")
 }
 
 export function printMalformedData(
@@ -370,24 +339,6 @@ export function readStateCollabratively(
 	state: unknown,
 ): unknown {
 	return launderUnchecked<AnyObject>(state)[implType]
-}
-
-export function saveFile(
-	document: Document,
-	text: string,
-	type = "text/plain; charset=UTF-8;",
-	filename = "",
-): void {
-	const ele = document.createElement("a")
-	ele.target = "_blank"
-	ele.download = filename
-	const url = URL.createObjectURL(new Blob([text], { type }))
-	try {
-		ele.href = url
-		ele.click()
-	} finally {
-		URL.revokeObjectURL(url)
-	}
 }
 
 export function updateDisplayText(plugin: TerminalPlugin, view: View): void {
