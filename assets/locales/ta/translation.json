@@ -284,7 +284,7 @@
 		"darwinExternalDefault": "$t(generic.platforms.darwin, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
 		"darwinIntegratedDefault": "$t(generic.platforms.darwin, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",
 		"dashIntegrated": "dash: $t(generic.profile-types.integrated, capitalize)",
-		"developerConsole": "$t(generic.profile-types.developerConsole)",
+		"developerConsole": "$t(generic.profile-types.developerConsole, capitalize)",
 		"empty": "$t(generic.profile-types., capitalize)",
 		"gitBashIntegrated": "Git Bash: $t(generic.profile-types.integrated, capitalize)",
 		"gnomeTerminalExternal": "GNOME $t(generic.terminal, capitalize): $t(generic.profile-types.external, capitalize)",
