@@ -108,12 +108,13 @@ export class LanguageManager {
 
 	public async load(): Promise<void> {
 		this.#i18n = await I18N
-		await this.changeLanguage(this.language)
-		this.plugin.register(this.plugin.on(
+		const { plugin, language } = this
+		plugin.register(plugin.on(
 			"mutate-settings",
 			settings => settings.language,
 			async cur => this.changeLanguage(cur),
 		))
+		await this.changeLanguage(language)
 	}
 
 	protected async changeLanguage(language: string): Promise<void> {

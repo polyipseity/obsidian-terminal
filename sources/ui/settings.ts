@@ -4,7 +4,7 @@ import type {
 	ExtraButtonComponent,
 	ValueComponent,
 } from "obsidian"
-import { inSet, unexpected } from "sources/utils/util"
+import { inSet, instanceOf, unexpected } from "sources/utils/util"
 import { DOMClasses } from "sources/magic"
 import type { Sized } from "sources/utils/types"
 
@@ -13,9 +13,8 @@ export function closeSetting(container: HTMLElement): void {
 	while (element && !element.classList.contains(DOMClasses.MODAL)) {
 		element = element.parentElement
 	}
-	element
-		?.querySelector<HTMLElement>(`.${DOMClasses.MODAL_CLOSE_BUTTON}`)
-		?.click()
+	const close = element?.querySelector(`.${DOMClasses.MODAL_CLOSE_BUTTON}`)
+	if (instanceOf(close, HTMLElement)) { close.click() }
 }
 
 export interface ComponentAction<C, V> {
