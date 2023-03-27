@@ -1,22 +1,25 @@
 # Terminal for Obsidian [![release](https://img.shields.io/github/v/release/polyipseity/obsidian-terminal)][latest release] [![Obsidian downloads](https://img.shields.io/badge/dynamic/json?logo=Obsidian&color=%238b6cef&label=downloads&query=terminal.downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json)][community plugin] [![Python](https://img.shields.io/badge/Python-≥3.10-gold?labelColor=blue&logo=Python&logoColor=white)][Python]
 
-[Python]: https://www.python.org/downloads/
+[Obsidian]: https://obsidian.md/
+[Python]: https://python.org/downloads/
+[changelog]: https://github.com/polyipseity/obsidian-terminal/blob/main/CHANGELOG.md
 [community plugin]: https://obsidian.md/plugins?id=terminal
 [latest release]: https://github.com/polyipseity/obsidian-terminal/releases/latest
 [repository]: https://github.com/polyipseity/obsidian-terminal
+[trailer]: https://raw.githubusercontent.com/polyipseity/obsidian-terminal/main/assets/trailer.png
 
-Integrate consoles, shells, and terminals inside [Obsidian](https://obsidian.md/).
+Integrate consoles, shells, and terminals inside [Obsidian].
 
 __[Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing)__
 
-![Trailer](assets/trailer.png)
+![Trailer]
 
 For first time users, read the [installation](#installation) section first!
 
 This file is automatically opened on first install. You can reopen it in settings or command palette.
 
 - [Repository]
-- Changelog: [CHANGELOG.md](CHANGELOG.md)
+- [Changelog]
 - [Community plugin]
 
 ## Features
