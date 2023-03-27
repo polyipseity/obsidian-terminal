@@ -121,7 +121,6 @@
 		"overwrite-existing-frontmatter": "$t(generic.overwrite)$t(generic.exist)的$t(generic.frontmatter)？"
 	},
 	"errors": {
-		"cannot-find-status-bar": "找不到$t(generic.status-bar)",
 		"error-checking-Python": "$t(generic.check)$t(generic.Python)時出錯",
 		"error-exporting-settings": "$t(generic.export)$t(generic.setting)時出錯",
 		"error-importing-settings": "$t(generic.import)$t(generic.setting)時出錯",

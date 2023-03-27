@@ -124,7 +124,6 @@
 		"readme": "$t(generic.documentations.readme, capitalize)"
 	},
 	"errors": {
-		"cannot-find-status-bar": "Cannot find $t(generic.status-bar)",
 		"error-checking-Python": "Error $t(generic.check_gerund) $t(generic.Python)",
 		"error-exporting-settings": "Error $t(generic.export_gerund) $t(generic.setting_other)",
 		"error-importing-settings": "Error $t(generic.import_gerund) $t(generic.setting_other)",

@@ -226,3 +226,7 @@ svg.svg-icon[class*="terminal:"] {
 	fill: none;
 	stroke: currentColor;
 }
+
+.terminal\:hide-status-bar {
+	display: none;
+}

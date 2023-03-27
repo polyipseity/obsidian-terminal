@@ -121,7 +121,6 @@
 		"readme": "$t(generic.documentations.readme)"
 	},
 	"errors": {
-		"cannot-find-status-bar": "找不到$t(generic.status-bar)",
 		"error-checking-Python": "$t(generic.check)$t(generic.Python)时出错",
 		"error-exporting-settings": "$t(generic.export)$t(generic.setting)时出错",
 		"error-importing-settings": "$t(generic.import)$t(generic.setting)时出错",
