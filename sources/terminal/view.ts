@@ -37,7 +37,6 @@ import {
 	onVisible,
 	openExternal,
 	randomNotIn,
-	saveFile,
 	typedStructuredClone,
 } from "../utils/util"
 import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
@@ -66,6 +65,7 @@ import type { WebLinksAddon } from "xterm-addon-web-links"
 import { XtermTerminalEmulator } from "./emulator"
 import { dynamicRequireLazy } from "sources/imports"
 import { launderUnchecked } from "sources/utils/types"
+import { saveAs } from "file-saver"
 import { writePromise } from "./util"
 
 const
@@ -368,7 +368,7 @@ export class TerminalView extends ItemView {
 
 	public override onPaneMenu(menu: Menu, source: string): void {
 		super.onPaneMenu(menu, source)
-		const { plugin, leaf, containerEl } = this,
+		const { plugin, leaf } = this,
 			{ i18n } = plugin.language
 		menu
 			.addSeparator()
@@ -410,15 +410,10 @@ export class TerminalView extends ItemView {
 				.onClick(() => {
 					const ser = this.#emulator?.addons.serialize
 					if (!ser) { return }
-					saveFile(
-						containerEl.ownerDocument,
-						ser.serializeAsHTML({
-							includeGlobalBackground: false,
-							onlySelection: false,
-						}),
-						"text/html; charset=UTF-8;",
-						`${this.#name}.html`,
-					)
+					saveAs(ser.serializeAsHTML({
+						includeGlobalBackground: false,
+						onlySelection: false,
+					}), `${this.#name}.html`)
 				}))
 	}
 

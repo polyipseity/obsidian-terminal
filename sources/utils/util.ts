@@ -734,24 +734,6 @@ export function replaceAllRegex(string: string): RegExp {
 	return new RegExp(escapeRegExp(string), "ug")
 }
 
-export function saveFile(
-	document: Document,
-	text: string,
-	type = "text/plain; charset=UTF-8;",
-	filename = "",
-): void {
-	const ele = document.createElement("a")
-	ele.target = "_blank"
-	ele.download = filename
-	const url = URL.createObjectURL(new Blob([text], { type }))
-	try {
-		ele.href = url
-		ele.click()
-	} finally {
-		URL.revokeObjectURL(url)
-	}
-}
-
 export async function sleep2(timeInSeconds: number): Promise<void> {
 	return new Promise(resolve => {
 		self.setTimeout(resolve, timeInSeconds * SI_PREFIX_SCALE)
