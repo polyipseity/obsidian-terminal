@@ -1,3 +1,10 @@
+import {
+	DEFAULT_ENCODING,
+	JSON_STRINGIFY_SPACE,
+	TERMINAL_EXIT_SUCCESS,
+	TERMINAL_SEARCH_RESULTS_LIMIT,
+	UNDEFINED,
+} from "../magic"
 import { DialogModal, ProfileModal } from "sources/ui/modals"
 import { Direction, type Params } from "../ui/find"
 import {
@@ -13,12 +20,6 @@ import {
 	type ViewStateResult,
 	type WorkspaceLeaf,
 } from "obsidian"
-import {
-	JSON_STRINGIFY_SPACE,
-	TERMINAL_EXIT_SUCCESS,
-	TERMINAL_SEARCH_RESULTS_LIMIT,
-	UNDEFINED,
-} from "../magic"
 import {
 	PLATFORM,
 	anyToError,
@@ -410,10 +411,15 @@ export class TerminalView extends ItemView {
 				.onClick(() => {
 					const ser = this.#emulator?.addons.serialize
 					if (!ser) { return }
-					saveAs(ser.serializeAsHTML({
-						includeGlobalBackground: false,
-						onlySelection: false,
-					}), `${this.#name}.html`)
+					saveAs(
+						new Blob([
+							ser.serializeAsHTML({
+								includeGlobalBackground: false,
+								onlySelection: false,
+							}),
+						], { type: `text/html; charset=${DEFAULT_ENCODING};` }),
+						`${this.#name}.html`,
+					)
 				}))
 	}
 
