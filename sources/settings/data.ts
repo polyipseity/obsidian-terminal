@@ -17,7 +17,6 @@ import {
 	markFixed,
 } from "sources/ui/fixers"
 import {
-	type Platform,
 	cloneAsWritable,
 	deepFreeze,
 	inSet,
@@ -25,6 +24,7 @@ import {
 import { LANGUAGES } from "assets/locales"
 import { NOTICE_NO_TIMEOUT } from "sources/magic"
 import { PROFILE_PRESETS } from "./profile-presets"
+import type { Platform } from "../utils/platforms"
 import { Pseudoterminal } from "../terminal/pseudoterminal"
 import { RendererAddon } from "../terminal/emulator-addons"
 import { isUndefined } from "lodash-es"
@@ -132,7 +132,7 @@ export namespace Settings {
 		export function defaultOfType<T extends Type>(
 			type: T,
 			profiles: Profiles,
-			platform?: Platform,
+			platform?: Platform.All,
 		): Typed<T> | null {
 			for (const profile of Object.values(profiles)) {
 				if (isType(type, profile) &&
@@ -144,7 +144,7 @@ export namespace Settings {
 		}
 		export function isCompatible(
 			profile: Profile,
-			platform: Platform,
+			platform: Platform.All,
 		): boolean {
 			if (!("platforms" in profile)) { return true }
 			const platforms = launderUnchecked<AnyObject>(profile.platforms),

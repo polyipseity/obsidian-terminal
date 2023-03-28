@@ -20,7 +20,6 @@ import {
 } from "../magic"
 import {
 	Functions,
-	PLATFORM,
 	acquireConditionally,
 	anyToError,
 	clear,
@@ -51,6 +50,7 @@ import type { Log } from "sources/patches"
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
 } from "node:child_process"
+import { Platform } from "sources/utils/platforms"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
 import ansi from "ansi-escape-sequences"
@@ -787,7 +787,7 @@ export namespace Pseudoterminal {
 	export const SUPPORTED_PLATFORMS =
 		typedKeys<SupportedPlatforms>()(PLATFORM_PSEUDOTERMINALS)
 	export const PLATFORM_PSEUDOTERMINAL =
-		inSet(SUPPORTED_PLATFORMS, PLATFORM)
-			? PLATFORM_PSEUDOTERMINALS[PLATFORM]
+		inSet(SUPPORTED_PLATFORMS, Platform.CURRENT0)
+			? PLATFORM_PSEUDOTERMINALS[Platform.CURRENT0]
 			: null
 }

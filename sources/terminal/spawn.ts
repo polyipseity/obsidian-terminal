@@ -1,5 +1,5 @@
 import { FuzzySuggestModal, type WorkspaceLeaf } from "obsidian"
-import { PLATFORM } from "sources/utils/util"
+import { Platform } from "sources/utils/platforms"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "sources/main"
 import { TerminalView } from "./view"
@@ -21,7 +21,7 @@ export class SelectProfileModal
 	public override getItemText(item: Settings.Profile.Entry): string {
 		return this.plugin.language.i18n.t(
 			`components.select-profile.item-text-${Settings.Profile
-				.isCompatible(item[1], PLATFORM)
+				.isCompatible(item[1], Platform.CURRENT)
 				? ""
 				: "incompatible"}`,
 			{

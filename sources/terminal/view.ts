@@ -20,8 +20,20 @@ import {
 	type ViewStateResult,
 	type WorkspaceLeaf,
 } from "obsidian"
+import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
 import {
-	PLATFORM,
+	UnnamespacedID,
+	newCollabrativeState,
+	notice2,
+	printError,
+	printMalformedData,
+	readStateCollabratively,
+	updateDisplayText,
+	usePrivateAPI,
+	useSettings,
+	writeStateCollabratively,
+} from "sources/utils/obsidian"
+import {
 	anyToError,
 	basename,
 	cloneAsWritable,
@@ -40,23 +52,11 @@ import {
 	randomNotIn,
 	typedStructuredClone,
 } from "../utils/util"
-import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
-import {
-	UnnamespacedID,
-	newCollabrativeState,
-	notice2,
-	printError,
-	printMalformedData,
-	readStateCollabratively,
-	updateDisplayText,
-	usePrivateAPI,
-	useSettings,
-	writeStateCollabratively,
-} from "sources/utils/obsidian"
 import { linkSetting, resetButton } from "sources/ui/settings"
 import type { DeepWritable } from "ts-essentials"
 import FindComponent from "../ui/find.svelte"
 import type { LigaturesAddon } from "xterm-addon-ligatures"
+import { Platform } from "../utils/platforms"
 import type { SearchAddon } from "xterm-addon-search"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "../main"
@@ -166,7 +166,7 @@ class EditTerminalModal extends DialogModal {
 												entry[0],
 												// eslint-disable-next-line max-len
 												i18n.t(`components.terminal.edit-modal.profile-name-${Settings
-													.Profile.isCompatible(entry[1], PLATFORM)
+													.Profile.isCompatible(entry[1], Platform.CURRENT)
 													? ""
 													: "incompatible"}`, {
 													info: Settings.Profile.info(entry),
@@ -218,7 +218,7 @@ class EditTerminalModal extends DialogModal {
 export class TerminalView extends ItemView {
 	public static readonly type = new UnnamespacedID("terminal")
 	public static readonly divClass = TerminalView.type
-	protected static readonly modifiers = deepFreeze(PLATFORM === "darwin"
+	protected static readonly modifiers = deepFreeze(Platform.CURRENT === "darwin"
 		? ["Meta"] as const
 		: ["Ctrl", "Shift"] as const)
 

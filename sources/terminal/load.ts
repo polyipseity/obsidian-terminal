@@ -4,10 +4,11 @@ import {
 	type MenuItem,
 	TFolder,
 } from "obsidian"
-import { PLATFORM, deepFreeze, isNonNullish } from "../utils/util"
 import { SelectProfileModal, spawnTerminal } from "./spawn"
 import { addCommand, addRibbonIcon, notice2 } from "sources/utils/obsidian"
+import { deepFreeze, isNonNullish } from "../utils/util"
 import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
+import { Platform } from "sources/utils/platforms"
 import { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "../main"
 import { TerminalView } from "./view"
@@ -36,7 +37,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 				const ret = Settings.Profile.defaultOfType(
 					type,
 					plugin.settings.profiles,
-					PLATFORM,
+					Platform.CURRENT,
 				)
 				if (!ret) {
 					notice2(

@@ -1,9 +1,5 @@
 import { type AnyObject, launderUnchecked } from "sources/utils/types"
 import {
-	PLATFORM,
-	deepFreeze,
-} from "sources/utils/util"
-import {
 	Pseudoterminal,
 	RefPsuedoterminal,
 	TextPseudoterminal,
@@ -13,9 +9,11 @@ import {
 	spawnExternalTerminalEmulator,
 } from "../terminal/emulator"
 import type { AsyncOrSync } from "ts-essentials"
+import { Platform } from "sources/utils/platforms"
 import type { Settings } from "sources/settings/data"
 import type { TerminalPlugin } from "sources/main"
 import { UNDEFINED } from "sources/magic"
+import { deepFreeze } from "sources/utils/util"
 
 export interface OpenOptions {
 	readonly cwd?: string | null
@@ -82,7 +80,7 @@ export const PROFILE_PROPERTIES: {
 					executable,
 					pythonExecutable,
 				} = profile,
-				supported = launderUnchecked<AnyObject>(platforms)[PLATFORM]
+				supported = launderUnchecked<AnyObject>(platforms)[Platform.CURRENT]
 			if (typeof supported !== "boolean" || !supported) { return null }
 			return new RefPsuedoterminal(
 				new Pseudoterminal.PLATFORM_PSEUDOTERMINAL(plugin, {

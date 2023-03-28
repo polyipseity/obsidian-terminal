@@ -39,28 +39,6 @@ import { getSerialize } from "json-stringify-safe"
 export type KeyModifier = "Alt" | "Ctrl" | "Meta" | "Shift"
 export const EMPTY_OBJECT: Readonly<Record<number | string | symbol, never>> =
 	deepFreeze({})
-export const PLATFORMS =
-	deepFreeze(["android", "darwin", "ios", "linux", "unknown", "win32"] as const)
-export type Platform = typeof PLATFORMS[number]
-export const PLATFORM = ((): Platform => {
-	const { userAgent } = navigator
-	if (userAgent.includes("like Mac")) {
-		return "ios"
-	}
-	if (userAgent.includes("Android")) {
-		return "android"
-	}
-	if (userAgent.includes("Mac")) {
-		return "darwin"
-	}
-	if (userAgent.includes("Win")) {
-		return "win32"
-	}
-	if (userAgent.includes("Linux") || userAgent.includes("X11")) {
-		return "linux"
-	}
-	return "unknown"
-})()
 
 export class EventEmitterLite<A extends readonly unknown[]> {
 	protected static readonly emitLock = "emit"

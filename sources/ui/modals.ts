@@ -13,7 +13,17 @@ import {
 	SI_PREFIX_SCALE,
 } from "sources/magic"
 import {
-	PLATFORM,
+	PROFILE_PRESETS,
+	PROFILE_PRESET_ORDERED_KEYS,
+} from "sources/settings/profile-presets"
+import {
+	UpdatableUI,
+	notice2,
+	printError,
+	useSettings,
+	useSubsettings,
+} from "sources/utils/obsidian"
+import {
 	anyToError,
 	bracket,
 	clearProperties,
@@ -28,17 +38,6 @@ import {
 	unexpected,
 } from "sources/utils/util"
 import {
-	PROFILE_PRESETS,
-	PROFILE_PRESET_ORDERED_KEYS,
-} from "sources/settings/profile-presets"
-import {
-	UpdatableUI,
-	notice2,
-	printError,
-	useSettings,
-	useSubsettings,
-} from "sources/utils/obsidian"
-import {
 	dropdownSelect,
 	linkSetting,
 	resetButton,
@@ -47,6 +46,7 @@ import {
 import { identity, isUndefined } from "lodash-es"
 import type { DeepWritable } from "ts-essentials"
 import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
+import { Platform } from "sources/utils/platforms"
 import { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import SemVer from "semver/classes/semver"
 import { Settings } from "sources/settings/data"
@@ -627,7 +627,7 @@ export class ProfileModal extends Modal {
 							}))
 							.setDesc(i18n
 								.t(`components.profile.platform-description-${platform ===
-									PLATFORM
+									Platform.CURRENT
 									? "current"
 									: ""}`))
 							.addToggle(linkSetting(
@@ -850,7 +850,7 @@ export class ProfileListModal
 				descriptor: options?.descriptor ?? ((profile): string => {
 					const id = dataKeys.get(profile) ?? ""
 					return i18n.t(`components.profile-list.descriptor-${Settings
-						.Profile.isCompatible(profile, PLATFORM)
+						.Profile.isCompatible(profile, Platform.CURRENT)
 						? ""
 						: "incompatible"}`, {
 						info: Settings.Profile.info([id, profile]),
@@ -860,7 +860,7 @@ export class ProfileListModal
 				namer: options?.namer ?? ((profile): string => {
 					const id = dataKeys.get(profile) ?? ""
 					return i18n.t(`components.profile-list.namer-${Settings
-						.Profile.isCompatible(profile, PLATFORM)
+						.Profile.isCompatible(profile, Platform.CURRENT)
 						? ""
 						: "incompatible"}`, {
 						info: Settings.Profile.info([id, profile]),
