@@ -7,7 +7,7 @@ import type {
 import SemVer from "semver/classes/semver"
 import { isUndefined } from "lodash-es"
 
-export type AnyObject = Readonly<Record<number | string | symbol, unknown>>
+export type AnyObject = Readonly<Record<keyof any, unknown>>
 export type CodePoint =
 	Opaque<string, "2af98ef6-0537-4fd3-a1e1-269517bca44d"> & {
 		readonly codePointAt: (pos: 0) => number

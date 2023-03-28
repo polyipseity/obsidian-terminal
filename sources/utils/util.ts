@@ -37,7 +37,7 @@ import type { Writable } from "node:stream"
 import { getSerialize } from "json-stringify-safe"
 
 export type KeyModifier = "Alt" | "Ctrl" | "Meta" | "Shift"
-export const EMPTY_OBJECT: Readonly<Record<number | string | symbol, never>> =
+export const EMPTY_OBJECT: Readonly<Record<keyof any, never>> =
 	deepFreeze({})
 
 export class EventEmitterLite<A extends readonly unknown[]> {
@@ -335,7 +335,7 @@ export async function spawnPromise<T extends ChildProcess>(spawn: (
 	})
 }
 
-export function typedKeys<T extends readonly (number | string | symbol)[]>() {
+export function typedKeys<T extends readonly (keyof any)[]>() {
 	return <O extends (keyof O extends T[number] ? {
 		readonly [_ in T[number]]: unknown
 	} : never)>(obj: O): Readonly<T> =>

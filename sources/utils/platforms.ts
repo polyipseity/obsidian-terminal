@@ -1,11 +1,10 @@
 import type { Opaque } from "ts-essentials"
-import { deepFreeze } from "./util"
 
 export namespace Platform {
 	export const
-		DESKTOP = deepFreeze(["darwin", "linux", "win32"] as const),
-		MOBILE = deepFreeze(["android", "ios"] as const),
-		ALL = deepFreeze([...DESKTOP, ...MOBILE, "unknown"] as const)
+		DESKTOP = Object.freeze(["darwin", "linux", "win32"] as const),
+		MOBILE = Object.freeze(["android", "ios"] as const),
+		ALL = Object.freeze([...DESKTOP, ...MOBILE, "unknown"] as const)
 	export type Desktop = typeof DESKTOP[number]
 	export type Mobile = typeof MOBILE[number]
 	export type All = typeof ALL[number]
