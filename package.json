@@ -27,6 +27,7 @@
 		"version": "node build/version.mjs"
 	},
 	"dependencies": {
+		"@capacitor/filesystem": "4.1.4",
 		"ansi-escape-sequences": "6.2.1",
 		"async-lock": "1.4.0",
 		"deep-equal": "2.2.0",

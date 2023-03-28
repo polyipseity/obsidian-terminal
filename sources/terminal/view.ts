@@ -7,6 +7,7 @@ import {
 } from "../magic"
 import { DialogModal, ProfileModal } from "sources/ui/modals"
 import { Direction, type Params } from "../ui/find"
+import { Directory, Encoding, Filesystem } from "@capacitor/filesystem"
 import {
 	DisposerAddon,
 	DragAndDropAddon,
@@ -369,7 +370,7 @@ export class TerminalView extends ItemView {
 
 	public override onPaneMenu(menu: Menu, source: string): void {
 		super.onPaneMenu(menu, source)
-		const { plugin, leaf } = this,
+		const { plugin, leaf, app } = this,
 			{ i18n } = plugin.language
 		menu
 			.addSeparator()
@@ -408,17 +409,30 @@ export class TerminalView extends ItemView {
 				.setTitle(i18n.t("components.terminal.menus.save-as-HTML"))
 				.setIcon(i18n.t("asset:components.terminal.menus.save-as-HTML-icon"))
 				.setDisabled(!this.#emulator?.addons.serialize)
-				.onClick(() => {
+				.onClick(async () => {
 					const ser = this.#emulator?.addons.serialize
 					if (!ser) { return }
+					const filename = `${this.#name}.html`,
+						data = ser.serializeAsHTML({
+							includeGlobalBackground: false,
+							onlySelection: false,
+						})
+					if (inSet(Platform.MOBILE, Platform.CURRENT)) {
+						await app.vault.adapter.fs.open<typeof Platform.CURRENT>(
+							(await Filesystem.writeFile({
+								data,
+								directory: Directory.Cache,
+								encoding: Encoding.UTF8,
+								path: filename,
+							})).uri,
+						)
+						return
+					}
 					saveAs(
-						new Blob([
-							ser.serializeAsHTML({
-								includeGlobalBackground: false,
-								onlySelection: false,
-							}),
-						], { type: `text/html; charset=${DEFAULT_ENCODING};` }),
-						`${this.#name}.html`,
+						new Blob([data], {
+							type: `text/html; charset=${DEFAULT_ENCODING};`,
+						}),
+						filename,
 					)
 				}))
 	}
