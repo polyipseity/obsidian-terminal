@@ -10,6 +10,9 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Fixes__
+- mobile: Fix 'Save to HTML'. It no longer does nothing on Android and soft locks Obsidian on iOS. (`b1201a089a3f3447e09249651434995b11bb283b`)
+
 __Features__
 - The latest commit for the plugin can now be installed using [Obsidian42 - BRAT](https://obsidian.md/plugins?id=obsidian42-brat). (`5f263690e80d6298eb02ffade41a10beedd4ce1f`..`bda61d4ee1a82c7b9694912ae0353e178f0f0756`)
 
