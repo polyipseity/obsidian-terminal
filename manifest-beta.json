@@ -1,10 +1,10 @@
 {
+	"author": "polyipseity",
+	"description": "Integrate consoles, shells, and terminals inside Obsidian.",
+	"version": "latest",
 	"id": "terminal",
 	"name": "Terminal",
-	"version": "latest",
 	"minAppVersion": "1.1.13",
-	"description": "Integrate consoles, shells, and terminals inside Obsidian.",
-	"author": "polyipseity",
 	"authorUrl": "",
 	"fundingUrl": {},
 	"isDesktopOnly": false
