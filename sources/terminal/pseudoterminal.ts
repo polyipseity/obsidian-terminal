@@ -54,6 +54,7 @@ import { Platform } from "sources/utils/platforms"
 import type { TerminalPlugin } from "../main"
 import type { Writable } from "node:stream"
 import ansi from "ansi-escape-sequences"
+import { deopaque } from "sources/utils/types"
 import { dynamicRequire } from "../imports"
 import unixPseudoterminalPy from "./unix_pseudoterminal.py"
 import win32ResizerPy from "./win32_resizer.py"
@@ -787,7 +788,7 @@ export namespace Pseudoterminal {
 	export const SUPPORTED_PLATFORMS =
 		typedKeys<SupportedPlatforms>()(PLATFORM_PSEUDOTERMINALS)
 	export const PLATFORM_PSEUDOTERMINAL =
-		inSet(SUPPORTED_PLATFORMS, Platform.CURRENT0)
-			? PLATFORM_PSEUDOTERMINALS[Platform.CURRENT0]
+		inSet(SUPPORTED_PLATFORMS, Platform.CURRENT)
+			? PLATFORM_PSEUDOTERMINALS[deopaque(Platform.CURRENT)]
 			: null
 }

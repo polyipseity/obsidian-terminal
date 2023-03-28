@@ -11,7 +11,7 @@ export namespace Platform {
 	export type All = typeof ALL[number]
 	export type Current =
 		Opaque<All, "387823d1-e81d-4ed2-8148-4023aeae81a6">
-	export const CURRENT0 = ((): All => {
+	export const CURRENT = ((): All => {
 		const { userAgent } = navigator
 		if (userAgent.includes("like Mac")) {
 			return "ios"
@@ -29,6 +29,5 @@ export namespace Platform {
 			return "linux"
 		}
 		return "unknown"
-	})()
-	export const CURRENT = CURRENT0 as Current
+	})() as Current
 }

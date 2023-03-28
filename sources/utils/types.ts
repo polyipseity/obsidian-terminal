@@ -1,4 +1,9 @@
-import type { DeepReadonly, DeepWritable, Opaque } from "ts-essentials"
+import type {
+	DeepReadonly,
+	DeepWritable,
+	Opaque,
+	WithOpaque,
+} from "ts-essentials"
 import SemVer from "semver/classes/semver"
 import { isUndefined } from "lodash-es"
 
@@ -9,6 +14,8 @@ export type CodePoint =
 	}
 export type Constructor<T> = new (...args: readonly unknown[]) => T
 export type Contains<T, U> = T & U extends never ? false : true
+export type Deopaque<T> = T extends WithOpaque<infer U>
+	? T extends Opaque<infer V, U> ? V : never : never
 export type Exact<T, U> =
 	(<G>() => G extends T ? 1 : -1) extends
 	(<G>() => G extends U ? 1 : -1) ? true : false
@@ -26,6 +33,10 @@ export function contravariant<T>(value: readonly T[]): readonly T[] {
 
 export function correctType(value: Window): Window & typeof globalThis {
 	return value as Window & typeof globalThis
+}
+
+export function deopaque<T>(value: T): Deopaque<T> {
+	return value as Deopaque<T>
 }
 
 export function launderUnchecked<T extends object>(value: unknown): Unchecked<T
