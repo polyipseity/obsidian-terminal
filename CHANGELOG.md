@@ -10,6 +10,10 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Full changelog__: [`3.5.1...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.5.1...main)
+
+## 3.5.1 (2023-03-28)
+
 __Fixes__
 - mobile: Fix 'Save to HTML'. It no longer does nothing on Android and soft locks Obsidian on iOS. (`b1201a089a3f3447e09249651434995b11bb283b`)
 
@@ -19,7 +23,7 @@ __Features__
 __Improvements__
 - Use CSS to hide the status bar, making the hiding customizable. (`84c55993db3d3e8a86d283e83df0c58dfa4d8eaf`)
 
-__Full changelog__: [`3.5.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.5.0...main)
+__Full changelog__: [`3.5.0...3.5.1`](https://github.com/polyipseity/obsidian-terminal/compare/3.5.0...3.5.1)
 
 ## 3.5.0 (2023-03-20)
 
