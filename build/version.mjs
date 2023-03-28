@@ -33,7 +33,7 @@ await Promise.all([
 		])
 	})(),
 	(async () => {
-		const [versions, pack] = await Promise.all([aPackage, aVersions])
+		const [pack, versions] = await Promise.all([aPackage, aVersions])
 		versions[pack.version] = pack.obsidian.minAppVersion
 		await writeFile(
 			PATHS.versions,
