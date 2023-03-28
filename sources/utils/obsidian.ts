@@ -3,6 +3,7 @@ import {
 	type BaseComponent,
 	ButtonComponent,
 	type Command,
+	type DataAdapter,
 	DropdownComponent,
 	type FrontMatterCache,
 	Notice,
@@ -12,19 +13,23 @@ import {
 	View,
 } from "obsidian"
 import { DOMClasses, NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
+import { Directory, Encoding, Filesystem } from "@capacitor/filesystem"
 import {
 	EMPTY_OBJECT,
 	Functions,
 	clear,
 	createChildElement,
 	deepFreeze,
+	inSet,
 	multireplace,
 	replaceAllRegex,
 	typedStructuredClone,
 } from "./util"
 import { DEFAULT_LANGUAGE } from "assets/locales"
+import { Platform } from "./platforms"
 import type { TerminalPlugin } from "sources/main"
 import { around } from "monkey-around"
+import { saveAs } from "file-saver"
 
 export class UpdatableUI {
 	readonly #updaters = new Functions({ async: false })
@@ -339,6 +344,24 @@ export function readStateCollabratively(
 	state: unknown,
 ): unknown {
 	return launderUnchecked<AnyObject>(state)[implType]
+}
+
+export async function saveFileAs(
+	adapter: DataAdapter,
+	data: File,
+): Promise<void> {
+	if (inSet(Platform.MOBILE, Platform.CURRENT)) {
+		await adapter.fs.open<typeof Platform.CURRENT>(
+			(await Filesystem.writeFile({
+				data: await data.text(),
+				directory: Directory.Cache,
+				encoding: Encoding.UTF8,
+				path: data.name,
+			})).uri,
+		)
+		return
+	}
+	saveAs(data)
 }
 
 export function updateDisplayText(plugin: TerminalPlugin, view: View): void {

@@ -7,7 +7,6 @@ import {
 } from "../magic"
 import { DialogModal, ProfileModal } from "sources/ui/modals"
 import { Direction, type Params } from "../ui/find"
-import { Directory, Encoding, Filesystem } from "@capacitor/filesystem"
 import {
 	DisposerAddon,
 	DragAndDropAddon,
@@ -29,6 +28,7 @@ import {
 	printError,
 	printMalformedData,
 	readStateCollabratively,
+	saveFileAs,
 	updateDisplayText,
 	usePrivateAPI,
 	useSettings,
@@ -67,7 +67,6 @@ import type { WebLinksAddon } from "xterm-addon-web-links"
 import { XtermTerminalEmulator } from "./emulator"
 import { dynamicRequireLazy } from "sources/imports"
 import { launderUnchecked } from "sources/utils/types"
-import { saveAs } from "file-saver"
 import { writePromise } from "./util"
 
 const
@@ -370,7 +369,7 @@ export class TerminalView extends ItemView {
 
 	public override onPaneMenu(menu: Menu, source: string): void {
 		super.onPaneMenu(menu, source)
-		const { plugin, leaf, app } = this,
+		const { plugin, leaf, app: { vault: { adapter } } } = this,
 			{ i18n } = plugin.language
 		menu
 			.addSeparator()
@@ -412,27 +411,18 @@ export class TerminalView extends ItemView {
 				.onClick(async () => {
 					const ser = this.#emulator?.addons.serialize
 					if (!ser) { return }
-					const filename = `${this.#name}.html`,
-						data = ser.serializeAsHTML({
-							includeGlobalBackground: false,
-							onlySelection: false,
-						})
-					if (inSet(Platform.MOBILE, Platform.CURRENT)) {
-						await app.vault.adapter.fs.open<typeof Platform.CURRENT>(
-							(await Filesystem.writeFile({
-								data,
-								directory: Directory.Cache,
-								encoding: Encoding.UTF8,
-								path: filename,
-							})).uri,
-						)
-						return
-					}
-					saveAs(
-						new Blob([data], {
-							type: `text/html; charset=${DEFAULT_ENCODING};`,
-						}),
-						filename,
+					await saveFileAs(
+						adapter,
+						new File(
+							[
+								ser.serializeAsHTML({
+									includeGlobalBackground: false,
+									onlySelection: false,
+								}),
+							],
+							`${this.#name}.html`,
+							{ type: `text/html; charset=${DEFAULT_ENCODING};` },
+						),
 					)
 				}))
 	}
