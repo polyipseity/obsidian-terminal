@@ -40,11 +40,13 @@ This file is automatically opened on first install. You can reopen it in setting
 	- Manual
 		1. Create directory `terminal` under `.obsidian/plugins` of your vault.
 		2. Place `manifest.json`, `main.js`, and `styles.css` from the [latest release] into the directory.
-	- Building (bleeding edge)
+	- Building (latest)
 		1. Clone this repository, including its submodules.
 		2. Install [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).
 		3. Run `npm install` in the root directory.
 		4. Run `npm run obsidian:install <vault directory>` in the root directory.
+	- [Obsidian42 - BRAT](https://obsidian.md/plugins?id=obsidian42-brat) (latest)
+		- See [their readme](https://github.com/TfTHacker/obsidian42-brat#readme).
 2. (optional for Windows, recommended) Install Python and dependencies.
 	1. Install [Python] 3.10/+.
 	2. (Windows only) Run `pip3 install psutil pywinctl`.
