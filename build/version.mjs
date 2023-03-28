@@ -1,27 +1,36 @@
 import { PATHS, execute } from "./util.mjs"
 import { readFile, writeFile } from "node:fs/promises"
 
-const MANIFEST_MAP =
-	Object.freeze({
+const
+	MANIFEST_MAP = Object.freeze({
 		author: "author",
 		description: "description",
 		version: "version",
 	}),
+	BETA_MANIFEST = Object.freeze({ version: "latest" }),
 	aPackage = readFile(PATHS.package, "utf-8").then(data => JSON.parse(data)),
 	aVersions = readFile(PATHS.versions, "utf-8").then(data => JSON.parse(data))
 
 await Promise.all([
 	(async () => {
-		const pack = await aPackage
-		await writeFile(
-			PATHS.manifest,
-			JSON.stringify({
+		const pack = await aPackage,
+			manifest = {
 				...Object.fromEntries(Object.entries(MANIFEST_MAP)
 					.map(([key, value]) => [key, pack[value]])),
 				...pack.obsidian,
-			}, null, "\t"),
-			{ encoding: "utf-8" },
-		)
+			}
+		await Promise.all([
+			writeFile(
+				PATHS.manifest,
+				JSON.stringify(manifest, null, "\t"),
+				{ encoding: "utf-8" },
+			),
+			writeFile(
+				PATHS.manifestBeta,
+				JSON.stringify({ ...manifest, ...BETA_MANIFEST }, null, "\t"),
+				{ encoding: "utf-8" },
+			),
+		])
 	})(),
 	(async () => {
 		const [versions, pack] = await Promise.all([aPackage, aVersions])
@@ -35,6 +44,6 @@ await Promise.all([
 ])
 await execute(
 	"git",
-	["add", PATHS.manifest, PATHS.versions],
+	["add", PATHS.manifest, PATHS.manifestBeta, PATHS.versions],
 	{ encoding: "utf-8" },
 )
