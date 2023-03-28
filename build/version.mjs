@@ -10,7 +10,7 @@ const MANIFEST_MAP =
 	aPackage = readFile(PATHS.package, "utf-8").then(data => JSON.parse(data))
 
 await Promise.all([
-	writeFile(
+	(async () => writeFile(
 		PATHS.manifest,
 		JSON.stringify(await (async () => {
 			const manifest =
@@ -25,8 +25,8 @@ await Promise.all([
 			return manifest
 		})(), null, "\t"),
 		{ encoding: "utf-8" },
-	),
-	writeFile(
+	))(),
+	(async () => writeFile(
 		PATHS.versions,
 		JSON.stringify(await (async () => {
 			const versions =
@@ -36,7 +36,7 @@ await Promise.all([
 			return versions
 		})(), null, "\t"),
 		{ encoding: "utf-8" },
-	),
+	))(),
 ])
 await execute(
 	"git",
