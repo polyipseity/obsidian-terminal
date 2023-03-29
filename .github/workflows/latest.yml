@@ -16,11 +16,13 @@ jobs:
         node-version: 16
     - run: npm install
     - run: npm run build
-    - run: |
+    - name: Package release
+      run: |
         mkdir '${{vars.ID}}'
         cp LICENSE.txt README.md manifest.json main.js requirements.txt styles.css '${{vars.ID}}'
         zip -r '${{vars.ID}}.zip' '${{vars.ID}}'
     - uses: softprops/action-gh-release@v1
+      if: ${{github.ref == 'refs/tags/latest'}}
       with:
         append_body: true
         fail_on_unmatched_files: true
