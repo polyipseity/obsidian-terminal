@@ -20,7 +20,7 @@ jobs:
         mkdir '${{vars.ID}}'
         cp LICENSE.txt README.md manifest.json main.js requirements.txt styles.css '${{vars.ID}}'
         zip -r '${{vars.ID}}.zip' '${{vars.ID}}'
-    - uses: softprops/action-gh-release@v0
+    - uses: softprops/action-gh-release@v1
       with:
         append_body: true
         fail_on_unmatched_files: true
