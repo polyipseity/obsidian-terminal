@@ -1,6 +1,6 @@
 jobs:
   build:
-    permissions:
+    permissions: {}
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -33,4 +33,4 @@ on:
     tags:
     - latest
   workflow_dispatch:
-permissions:
+permissions: {}
