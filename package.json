@@ -55,7 +55,11 @@
 		"xterm-addon-webgl": "0.14.0"
 	},
 	"devDependencies": {
-		"@tsconfig/node16-strictest": "1.0.4",
+		"@tsconfig/esm": "1.0.2",
+		"@tsconfig/node16": "1.0.3",
+		"@tsconfig/recommended": "1.0.2",
+		"@tsconfig/strictest": "2.0.0",
+		"@tsconfig/svelte": "4.0.1",
 		"@types/ansi-escape-sequences": "~4.0.0",
 		"@types/async-lock": "~1.4.0",
 		"@types/deep-equal": "~1.0.1",

@@ -24,7 +24,6 @@
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
     "importHelpers": true,
-    "importsNotUsedAsValues": "remove", // Remove me when '@tsconfig/node16-strictest' is updated.
     "incremental": true,
     "inlineSourceMap": true,
     "inlineSources": true,
@@ -93,7 +92,13 @@
     "verbatimModuleSyntax": true,
   },
   "exclude": [],
-  "extends": "@tsconfig/node16-strictest/tsconfig.json",
+  "extends": [
+    "@tsconfig/recommended/tsconfig.json",
+    "@tsconfig/strictest/tsconfig.json",
+    "@tsconfig/node16/tsconfig.json",
+    "@tsconfig/svelte/tsconfig.json",
+    "@tsconfig/esm/tsconfig.json"
+  ],
   "include": [
     "CHANGELOG.md",
     "README.md",
