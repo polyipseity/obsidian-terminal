@@ -1,10 +1,6 @@
-on:
-  push:
-    tags:
-    - latest
-  workflow_dispatch:
 jobs:
   build:
+    permissions:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -21,8 +17,8 @@ jobs:
         mkdir '${{vars.ID}}'
         cp LICENSE.txt README.md manifest.json main.js requirements.txt styles.css '${{vars.ID}}'
         zip -r '${{vars.ID}}.zip' '${{vars.ID}}'
-    - uses: softprops/action-gh-release@v1
-      if: ${{github.ref == 'refs/tags/latest'}}
+    - if: ${{github.ref == 'refs/tags/latest'}}
+      uses: softprops/action-gh-release@v1
       with:
         append_body: true
         fail_on_unmatched_files: true
@@ -32,3 +28,9 @@ jobs:
           styles.css
           ${{vars.ID}}.zip
         prerelease: true
+on:
+  push:
+    tags:
+    - latest
+  workflow_dispatch:
+permissions:
