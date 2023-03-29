@@ -1,0 +1,32 @@
+on:
+  push:
+    tags:
+    - latest
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - uses: actions/setup-node@v3
+      with:
+        cache: npm
+        node-version: 16
+    - run: npm install
+    - run: npm run build
+    - run: |
+        mkdir '${{vars.ID}}'
+        cp LICENSE.txt README.md manifest.json main.js requirements.txt styles.css '${{vars.ID}}'
+        zip -r '${{vars.ID}}.zip' '${{vars.ID}}'
+    - uses: softprops/action-gh-release@v0
+      with:
+        append_body: true
+        fail_on_unmatched_files: true
+        files: |
+          manifest.json
+          main.js
+          styles.css
+          ${{vars.ID}}.zip
+        prerelease: true
