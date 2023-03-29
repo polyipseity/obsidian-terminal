@@ -92,8 +92,6 @@
     "verbatimModuleSyntax": true,
   },
   "exclude": [],
-  /*
-  pending https://github.com/dividab/tsconfig-paths/pull/245
   "extends": [
     "@tsconfig/recommended/tsconfig.json",
     "@tsconfig/strictest/tsconfig.json",
@@ -101,7 +99,6 @@
     "@tsconfig/svelte/tsconfig.json",
     "@tsconfig/esm/tsconfig.json"
   ],
-  */
   "include": [
     "CHANGELOG.md",
     "README.md",
