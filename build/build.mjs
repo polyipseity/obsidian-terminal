@@ -1,3 +1,4 @@
+import { PATHS, PLUGIN_ID } from "./util.mjs"
 import { analyzeMetafile, context, formatMessages } from "esbuild"
 import {
 	constant,
@@ -7,7 +8,6 @@ import {
 	kebabCase,
 } from "lodash-es"
 import { readFile, writeFile } from "node:fs/promises"
-import { PATHS } from "./util.mjs"
 import { argv } from "node:process"
 import builtinModules from "builtin-modules"
 import esbuildSvelte from "esbuild-svelte"
@@ -17,6 +17,7 @@ import sveltePreprocess from "svelte-preprocess"
 const ARGV_PRODUCTION = 2,
 	COMMENT = "// repository: https://github.com/polyipseity/obsidian-terminal",
 	DEV = argv[ARGV_PRODUCTION] === "dev",
+	PLUGIN_ID0 = await PLUGIN_ID,
 	BUILD = await context({
 		alias: {},
 		banner: { js: COMMENT },
@@ -98,7 +99,7 @@ export default JSON.parse(decompress(${str(lzString.compressToBase64(data))}))
 					accessors: false,
 					css: "injected",
 					cssHash({ name }) {
-						return `terminal-svelte-${kebabCase(name)}`
+						return `${PLUGIN_ID0}-svelte-${kebabCase(name)}`
 					},
 					customElement: false,
 					dev: DEV,

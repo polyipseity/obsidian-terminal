@@ -1,10 +1,9 @@
-import { copyFile, mkdir, readFile } from "node:fs/promises"
-import { PATHS } from "./util.mjs"
+import { PATHS, PLUGIN_ID } from "./util.mjs"
+import { copyFile, mkdir } from "node:fs/promises"
 import { argv } from "node:process"
 
 const ARGV_DESTINATION = 2,
-	DESTINATION_PREFIX = `${PATHS.obsidianPlugins}/${JSON
-		.parse(await readFile(PATHS.manifest, { encoding: "utf-8" })).id}`,
+	DESTINATION_PREFIX = `${PATHS.obsidianPlugins}/${await PLUGIN_ID}`,
 	DESTINATION = `${argv[ARGV_DESTINATION] ?? "."}/${DESTINATION_PREFIX}`
 
 await mkdir(DESTINATION, { recursive: true })
