@@ -206,13 +206,13 @@
 
 /* end of xterm styles */
 
-.workspace-leaf-content[data-type="terminal:terminal"] .view-content {
+.workspace-leaf-content[data-type=terminal\:terminal] .view-content {
 	overflow: clip;
 	display: flex;
 	flex-direction: column;
 }
 
-.is-phone .workspace-leaf-content[data-type="terminal:terminal"] .view-content {
+.is-phone .workspace-leaf-content[data-type=terminal\:terminal] .view-content {
 	padding-bottom: max(var(--size-4-4), calc(var(--icon-l) + var(--size-4-2) + max(var(--size-4-2), var(--safe-area-inset-bottom))));
 }
 
@@ -222,7 +222,7 @@
 	min-height: 0;
 }
 
-svg.svg-icon[class*="terminal:"] {
+svg.svg-icon[class*=terminal\:] {
 	fill: none;
 	stroke: currentColor;
 }
