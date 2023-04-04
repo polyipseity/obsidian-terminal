@@ -10,6 +10,10 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Full changelog__: [`3.6.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.6.0...main)
+
+## 3.6.0 (2023-04-04)
+
 __Features__
 - Add 'root directory' button next to working directory when editing a terminal view. (`4991ccb8548b3034f8f753924f1fbd95523259be`)
 - Add 'focus on new instance' setting. (`c7db57e1328da5883a3587d0d812905bc30f58e1`)
@@ -19,7 +23,7 @@ __Features__
 __Improvements__
 - Developer console history can be kept now. (`7ced419b9762ff92a28cadf0355a54f0200b6209`)
 
-__Full changelog__: [`3.5.1...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.5.1...main)
+__Full changelog__: [`3.5.1...3.6.0`](https://github.com/polyipseity/obsidian-terminal/compare/3.5.1...3.6.0)
 
 ## 3.5.1 (2023-03-28)
 
