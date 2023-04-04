@@ -12,14 +12,15 @@ import {
 	DragAndDropAddon,
 	RendererAddon,
 } from "./emulator-addons"
-import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
 import {
+	FileSystemAdapter,
 	ItemView,
 	type Menu,
 	Scope,
 	type ViewStateResult,
 	type WorkspaceLeaf,
 } from "obsidian"
+import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
 import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
 import {
 	UnnamespacedID,
@@ -109,7 +110,7 @@ class EditTerminalModal extends DialogModal {
 		super.onOpen()
 		const { plugin, ui, protostate, state } = this,
 			{ element: listEl, remover: listElRemover } = useSettings(this.contentEl),
-			{ language } = plugin,
+			{ language, app: { vault: { adapter } } } = plugin,
 			{ i18n } = language
 		ui.finally(listElRemover)
 			.finally(language.onChangeLanguage.listen(() => { ui.update() }))
@@ -118,7 +119,7 @@ class EditTerminalModal extends DialogModal {
 					.setName(i18n.t("components.terminal.edit-modal.working-directory"))
 					.addText(linkSetting(
 						() => state.cwd ?? "",
-						value => { state.cwd = value === "" ? null : value },
+						value => { state.cwd = value || null },
 						() => { this.postMutate() },
 						{
 							post: component => {
@@ -129,6 +130,16 @@ class EditTerminalModal extends DialogModal {
 							},
 						},
 					))
+					.addButton(button => button
+						.setIcon(i18n
+							.t("asset:components.terminal.edit-modal.root-directory-icon"))
+						.setTooltip(i18n.t("components.terminal.edit-modal.root-directory"))
+						.onClick(() => {
+							state.cwd = adapter instanceof FileSystemAdapter
+								? adapter.getBasePath()
+								: null
+							this.postMutate()
+						}))
 					.addExtraButton(resetButton(
 						i18n
 							.t("asset:components.terminal.edit-modal.working-directory-icon"),

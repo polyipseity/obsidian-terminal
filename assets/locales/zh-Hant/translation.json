@@ -95,6 +95,7 @@
 				"profile-name-incompatible": "（$t(generic.incompatible)）$t(components.terminal.edit-modal.profile-name-)",
 				"profile-placeholder": "$t(components.profile.preset-placeholder)",
 				"reset": "$t(generic.reset)",
+				"root-directory": "$t(generic.root-directory)",
 				"title": "$t(generic.edit)$t(generic.terminal)",
 				"working-directory": "$t(generic.working-directory)",
 				"working-directory-placeholder": "（未定義）"

@@ -64,6 +64,7 @@
 			"edit-modal": {
 				"profile-icon": "$t(asset:generic.profile-icon)",
 				"profile-edit-icon": "$t(asset:generic.edit-icon)",
+				"root-directory-icon": "$t(asset:generic.root-directory-icon)",
 				"working-directory-icon": "folder"
 			},
 			"menus": {
@@ -111,7 +112,8 @@
 			"invalid-icon": "x-circle",
 			"select-icon": "text-cursor-input"
 		},
-		"remove-icon": "minus"
+		"remove-icon": "minus",
+		"root-directory-icon": "folder-tree"
 	},
 	"magic": {
 		"Python-version-magic": "Python ",

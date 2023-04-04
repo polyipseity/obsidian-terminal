@@ -98,6 +98,7 @@
 				"profile-name-incompatible": "($t(generic.incompatible, capitalize)) $t(components.terminal.edit-modal.profile-name-)",
 				"profile-placeholder": "$t(components.profile.preset-placeholder)",
 				"reset": "$t(generic.reset, capitalize)",
+				"root-directory": "$t(generic.root-directory, capitalize)",
 				"title": "$t(generic.edit, capitalize) $t(generic.terminal)",
 				"working-directory": "$t(generic.working-directory, capitalize)",
 				"working-directory-placeholder": "(Undefined)"
