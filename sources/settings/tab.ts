@@ -467,6 +467,25 @@ export class SettingTab extends PluginSettingTab {
 			})
 			.newSetting(containerEl, setting => {
 				setting
+					.setName(i18n.t("settings.focus-on-new-instance"))
+					.addToggle(linkSetting(
+						() => plugin.settings.focusOnNewInstance,
+						async value => plugin.mutateSettings(settingsM => {
+							settingsM.focusOnNewInstance = value
+						}),
+						() => { this.postMutate() },
+					))
+					.addExtraButton(resetButton(
+						i18n.t("asset:settings.focus-on-new-instance-icon"),
+						i18n.t("settings.reset"),
+						async () => plugin.mutateSettings(settingsM => {
+							settingsM.focusOnNewInstance = Settings.DEFAULT.focusOnNewInstance
+						}),
+						() => { this.postMutate() },
+					))
+			})
+			.newSetting(containerEl, setting => {
+				setting
 					.setName(i18n.t("settings.pin-new-instance"))
 					.addToggle(linkSetting(
 						() => plugin.settings.pinNewInstance,

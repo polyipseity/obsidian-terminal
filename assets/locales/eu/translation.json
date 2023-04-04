@@ -190,6 +190,8 @@
 			"HTML": "HTML"
 		},
 		"find": "find",
+		"focus": "focus",
+		"focus_past": "focused",
 		"frontmatter": "frontmatter",
 		"import": "import",
 		"import_gerund": "importing",
@@ -334,11 +336,12 @@
 		},
 		"error-notice-timeout": "Error $t(generic.notice) $t(generic.timeout) (s)",
 		"error-notice-timeout-description": "$t(settings.notice-timeout-description)",
+		"focus-on-new-instance": "$t(generic.focus, capitalize) on new $t(generic.instance)",
 		"hide-status-bar": "Hide $t(generic.status-bar)",
 		"hide-status-bar-options": {
 			"never": "Never",
 			"always": "Always",
-			"focused": "When $t(generic.terminal) is focused",
+			"focused": "When $t(generic.terminal) is $t(generic.focus_past)",
 			"running": "When $t(generic.terminal) is running"
 		},
 		"language": "$t(generic.language, capitalize)",

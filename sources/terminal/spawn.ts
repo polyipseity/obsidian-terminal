@@ -54,6 +54,7 @@ export function spawnTerminal(
 						TerminalView.type,
 						{
 							cwd: cwd ?? null,
+							focus: plugin.settings.focusOnNewInstance,
 							profile,
 							serial: null,
 						} satisfies TerminalView.State,

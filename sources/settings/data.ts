@@ -36,6 +36,7 @@ export interface Settings {
 	readonly profiles: Settings.Profiles
 	readonly newInstanceBehavior: Settings.NewInstanceBehavior
 	readonly createInstanceNearExistingOnes: boolean
+	readonly focusOnNewInstance: boolean
 	readonly pinNewInstance: boolean
 	readonly hideStatusBar: Settings.HideStatusBarOption
 	readonly noticeTimeout: number
@@ -67,6 +68,7 @@ export namespace Settings {
 		addToContextMenu: true,
 		createInstanceNearExistingOnes: true,
 		errorNoticeTimeout: NOTICE_NO_TIMEOUT,
+		focusOnNewInstance: true,
 		hideStatusBar: "focused",
 		language: "",
 		newInstanceBehavior: "newHorizontalSplit",
@@ -402,6 +404,12 @@ export namespace Settings {
 				unc,
 				"errorNoticeTimeout",
 				["number"],
+			),
+			focusOnNewInstance: fixTyped(
+				DEFAULT,
+				unc,
+				"focusOnNewInstance",
+				["boolean"],
 			),
 			hideStatusBar: fixInSet(
 				DEFAULT,

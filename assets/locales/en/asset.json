@@ -147,6 +147,7 @@
 			"import-from-clipboard-icon": "$t(asset:generic.input-from-clipboard-icon)"
 		},
 		"error-notice-timeout-icon": "$t(asset:settings.notice-timeout-icon)",
+		"focus-on-new-instance-icon": "focus",
 		"hide-status-bar-icon": "eye-off",
 		"language-icon": "languages",
 		"new-instance-behavior-icon": "plus",

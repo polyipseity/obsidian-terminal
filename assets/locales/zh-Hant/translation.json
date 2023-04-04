@@ -179,6 +179,7 @@
 			"HTML": "超文件標示語言"
 		},
 		"find": "搜尋",
+		"focus": "聚焦",
 		"frontmatter": "前文",
 		"import": "導入",
 		"incompatible": "不$t(generic.compatible)",
@@ -310,11 +311,12 @@
 		},
 		"error-notice-timeout": "錯誤$t(generic.notice)$t(generic.timeout)（s）",
 		"error-notice-timeout-description": "$t(settings.notice-timeout-description)",
+		"focus-on-new-instance": "$t(generic.focus)新$t(generic.instance)",
 		"hide-status-bar": "隱藏$t(generic.status-bar)",
 		"hide-status-bar-options": {
 			"never": "從不",
 			"always": "總是",
-			"focused": "當聚焦$t(generic.terminal)時",
+			"focused": "當$t(generic.focus)$t(generic.terminal)時",
 			"running": "當執行$t(generic.terminal)時"
 		},
 		"language": "$t(generic.language)",

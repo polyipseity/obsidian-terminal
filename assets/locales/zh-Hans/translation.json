@@ -179,6 +179,7 @@
 			"HTML": "超文本标记语言"
 		},
 		"find": "搜索",
+		"focus": "聚焦",
 		"frontmatter": "前文",
 		"import": "导入",
 		"incompatible": "不$t(generic.compatible)",
@@ -310,11 +311,12 @@
 		},
 		"error-notice-timeout": "错误$t(generic.notice)$t(generic.timeout)（s）",
 		"error-notice-timeout-description": "$t(settings.notice-timeout-description)",
+		"focus-on-new-instance": "$t(generic.focus)新$t(generic.instance)",
 		"hide-status-bar": "隐藏$t(generic.status-bar)",
 		"hide-status-bar-options": {
 			"never": "从不",
 			"always": "总是",
-			"focused": "当聚焦$t(generic.terminal)时",
+			"focused": "当$t(generic.focus)$t(generic.terminal)时",
 			"running": "当执行$t(generic.terminal)时"
 		},
 		"language": "$t(generic.language)",

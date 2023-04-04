@@ -340,8 +340,10 @@ export class TerminalView extends ItemView {
 			{ value, valid } = TerminalView.State.fix(ownState)
 		if (!valid) { printMalformedData(plugin, ownState, value) }
 		await super.setState(state, result)
+		const { focus } = value
+		value.focus = false
 		this.state = value
-		this.startEmulator()
+		this.startEmulator(focus)
 		usePrivateAPI(plugin, () => { result.history = true }, () => { })
 	}
 
@@ -415,7 +417,7 @@ export class TerminalView extends ItemView {
 			.addItem(item => item
 				.setTitle(i18n.t("components.terminal.menus.restart"))
 				.setIcon(i18n.t("asset:components.terminal.menus.restart-icon"))
-				.onClick(() => { this.startEmulator() }))
+				.onClick(() => { this.startEmulator(true) }))
 			.addSeparator()
 			.addItem(item => item
 				.setTitle(i18n.t("components.terminal.menus.save-as-HTML"))
@@ -578,7 +580,7 @@ export class TerminalView extends ItemView {
 		this.#find["focus"]()
 	}
 
-	protected startEmulator(): void {
+	protected startEmulator(focus: boolean): void {
 		const { contentEl, plugin, leaf, state, app } = this,
 			{ profile, cwd, serial } = state,
 			{ language } = plugin,
@@ -749,6 +751,7 @@ export class TerminalView extends ItemView {
 						emulator.resize(false).catch(logWarn)
 					})
 					this.#emulator = emulator
+					if (focus) { terminal.focus() }
 				} finally {
 					obsr.disconnect()
 				}
@@ -772,10 +775,12 @@ export namespace TerminalView {
 		readonly profile: Settings.Profile
 		readonly cwd: string | null
 		readonly serial: XtermTerminalEmulator.State | null
+		readonly focus: boolean
 	}
 	export namespace State {
 		export const DEFAULT: State = deepFreeze({
 			cwd: null,
+			focus: false,
 			profile: Settings.Profile.DEFAULTS.invalid,
 			serial: null,
 		} as const)
@@ -783,6 +788,7 @@ export namespace TerminalView {
 			const unc = launderUnchecked<State>(self)
 			return markFixed(self, {
 				cwd: fixTyped(DEFAULT, unc, "cwd", ["string", "null"]),
+				focus: fixTyped(DEFAULT, unc, "focus", ["boolean"]),
 				profile: Settings.Profile.fix(unc.profile).value,
 				serial: unc.serial === null
 					? null
