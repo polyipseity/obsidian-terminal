@@ -12,6 +12,7 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 __Features__
 - Add 'root directory' button next to working directory when editing a terminal view. (`4991ccb8548b3034f8f753924f1fbd95523259be`)
+- Add 'focus on new instance' setting. (`c7db57e1328da5883a3587d0d812905bc30f58e1`)
 
 __Full changelog__: [`3.5.1...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.5.1...main)
 
