@@ -374,18 +374,15 @@ export class TerminalView extends ItemView {
 		menu
 			.addSeparator()
 			.addItem(item => item
-				.setTitle(i18n.t("components.terminal.menus.find"))
-				.setIcon(i18n.t("asset:components.terminal.menus.find-icon"))
-				.setDisabled(this.#find !== null)
-				.onClick(() => { this.startFind() }))
-			.addItem(item => item
 				.setTitle(i18n.t("components.terminal.menus.clear"))
 				.setIcon(i18n.t("asset:components.terminal.menus.clear-icon"))
 				.onClick(() => { this.#emulator?.terminal.clear() }))
 			.addItem(item => item
-				.setTitle(i18n.t("components.terminal.menus.restart"))
-				.setIcon(i18n.t("asset:components.terminal.menus.restart-icon"))
-				.onClick(() => { this.startEmulator() }))
+				.setTitle(i18n.t("components.terminal.menus.find"))
+				.setIcon(i18n.t("asset:components.terminal.menus.find-icon"))
+				.setDisabled(this.#find !== null)
+				.onClick(() => { this.startFind() }))
+			.addSeparator()
 			.addItem(item => item
 				.setTitle(i18n.t("components.terminal.menus.edit"))
 				.setIcon(i18n.t("asset:components.terminal.menus.edit-icon"))
@@ -404,6 +401,11 @@ export class TerminalView extends ItemView {
 						}),
 					).open()
 				}))
+			.addItem(item => item
+				.setTitle(i18n.t("components.terminal.menus.restart"))
+				.setIcon(i18n.t("asset:components.terminal.menus.restart-icon"))
+				.onClick(() => { this.startEmulator() }))
+			.addSeparator()
 			.addItem(item => item
 				.setTitle(i18n.t("components.terminal.menus.save-as-HTML"))
 				.setIcon(i18n.t("asset:components.terminal.menus.save-as-HTML-icon"))
