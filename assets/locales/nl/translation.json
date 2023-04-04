@@ -73,6 +73,9 @@
 			"preset-placeholder": "($t(generic.custom, capitalize))",
 			"reset": "$t(generic.reset, capitalize)",
 			"restore-history": "$t(generic.restore, capitalize) $t(generic.history)",
+			"success-exit-codes": "Success $t(generic.exit) codes",
+			"success-exit-codes-description": "$t(generic.list-description, capitalize)",
+			"success-exit-codes-edit": "$t(generic.edit, capitalize)",
 			"title": "{{name}}",
 			"type": "$t(generic.type, capitalize)",
 			"type-options": "$t(generic.profile-types.{{type}}, capitalize)"

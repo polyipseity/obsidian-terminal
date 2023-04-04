@@ -1,7 +1,7 @@
 import {
 	DEFAULT_ENCODING,
+	DEFAULT_SUCCESS_EXIT_CODES,
 	JSON_STRINGIFY_SPACE,
-	TERMINAL_EXIT_SUCCESS,
 	TERMINAL_SEARCH_RESULTS_LIMIT,
 	UNDEFINED,
 } from "../magic"
@@ -45,7 +45,6 @@ import {
 	deepFreeze,
 	destroyWithOutro,
 	extname,
-	inSet,
 	instanceOf,
 	logWarn,
 	onResize,
@@ -619,8 +618,7 @@ export class TerminalView extends ItemView {
 				try {
 					noticeSpawn()
 					const
-						serial0 = typeof profile.restoreHistory !== "boolean" ||
-							profile.restoreHistory
+						serial0 = profile.type === "invalid" || profile.restoreHistory
 							? serial
 							: null,
 						emulator = new TerminalView.EMULATOR(
@@ -703,7 +701,9 @@ export class TerminalView extends ItemView {
 									code,
 									interpolation: { escapeValue: false },
 								}),
-								inSet(TERMINAL_EXIT_SUCCESS, code)
+								(profile.type === "invalid"
+									? DEFAULT_SUCCESS_EXIT_CODES
+									: profile.successExitCodes).includes(code.toString())
 									? plugin.settings.noticeTimeout
 									: plugin.settings.errorNoticeTimeout,
 								plugin,

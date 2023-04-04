@@ -8,6 +8,7 @@ import {
 	opaqueOrDefault,
 	semVerString,
 } from "sources/utils/types"
+import { DEFAULT_SUCCESS_EXIT_CODES, NOTICE_NO_TIMEOUT } from "sources/magic"
 import type { DeepRequired, DeepWritable, MarkOptional } from "ts-essentials"
 import {
 	type Fixed,
@@ -22,7 +23,6 @@ import {
 	inSet,
 } from "../utils/util"
 import { LANGUAGES } from "assets/locales"
-import { NOTICE_NO_TIMEOUT } from "sources/magic"
 import { PROFILE_PRESETS } from "./profile-presets"
 import type { Platform } from "../utils/platforms"
 import { Pseudoterminal } from "../terminal/pseudoterminal"
@@ -186,6 +186,7 @@ export namespace Settings {
 			readonly type: Type
 			readonly name: string
 			readonly restoreHistory: boolean
+			readonly successExitCodes: readonly string[]
 		}
 		export interface Empty extends Base {
 			readonly type: ""
@@ -219,6 +220,7 @@ export namespace Settings {
 			developerConsole: {
 				name: "",
 				restoreHistory: true,
+				successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
 				type: "developerConsole",
 			},
 			external: {
@@ -231,6 +233,7 @@ export namespace Settings {
 					win32: false,
 				},
 				restoreHistory: true,
+				successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
 				type: "external",
 			},
 			integrated: {
@@ -244,6 +247,7 @@ export namespace Settings {
 				},
 				pythonExecutable: "",
 				restoreHistory: true,
+				successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
 				type: "integrated",
 				useWin32Conhost: true,
 			},
@@ -294,6 +298,12 @@ export namespace Settings {
 								"restoreHistory",
 								["boolean"],
 							),
+							successExitCodes: fixArray(
+								DEFAULTS[type],
+								unc,
+								"successExitCodes",
+								["string"],
+							),
 							type,
 						} satisfies Typed<typeof type>
 					}
@@ -310,6 +320,12 @@ export namespace Settings {
 								unc,
 								"restoreHistory",
 								["boolean"],
+							),
+							successExitCodes: fixArray(
+								DEFAULTS[type],
+								unc,
+								"successExitCodes",
+								["string"],
 							),
 							type,
 						} satisfies Typed<typeof type>
@@ -344,6 +360,12 @@ export namespace Settings {
 								unc,
 								"restoreHistory",
 								["boolean"],
+							),
+							successExitCodes: fixArray(
+								DEFAULTS[type],
+								unc,
+								"successExitCodes",
+								["string"],
 							),
 							type,
 						} satisfies Typed<typeof type>
@@ -384,6 +406,12 @@ export namespace Settings {
 								unc,
 								"restoreHistory",
 								["boolean"],
+							),
+							successExitCodes: fixArray(
+								DEFAULTS[type],
+								unc,
+								"successExitCodes",
+								["string"],
 							),
 							type,
 							useWin32Conhost: fixTyped(

@@ -55,6 +55,8 @@
 			"platform-icon": "$t(asset:generic.platforms.{{type}}-icon)",
 			"preset-icon": "$t(asset:generic.profile-icon)",
 			"restore-history-icon": "history",
+			"success-exit-codes-edit-icon": "$t(asset:generic.edit-list-icon)",
+			"success-exit-codes-icon": "log-out",
 			"type-icon": "type"
 		},
 		"profile-list": {

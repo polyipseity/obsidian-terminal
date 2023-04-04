@@ -70,6 +70,9 @@
 			"preset-placeholder": "($t(generic.custom))",
 			"reset": "$t(generic.reset)",
 			"restore-history": "$t(generic.restore)$t(generic.history)",
+			"success-exit-codes": "成功$t(generic.exit)代碼",
+			"success-exit-codes-description": "$t(generic.list-description)",
+			"success-exit-codes-edit": "$t(generic.edit)",
 			"title": "{{name}}",
 			"type": "$t(generic.type)",
 			"type-options": "$t(generic.profile-types.{{type}})"
