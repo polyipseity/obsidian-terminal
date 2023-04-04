@@ -72,6 +72,7 @@
 			"preset": "$t(generic.preset, capitalize)",
 			"preset-placeholder": "($t(generic.custom, capitalize))",
 			"reset": "$t(generic.reset, capitalize)",
+			"restore-history": "$t(generic.restore, capitalize) $t(generic.history)",
 			"title": "{{name}}",
 			"type": "$t(generic.type, capitalize)",
 			"type-options": "$t(generic.profile-types.{{type}}, capitalize)"
@@ -113,7 +114,7 @@
 			"name": {
 				"profile-type": "$t(generic.profile-types.{{type}}, capitalize)"
 			},
-			"restored-history": "\r\n * Restored history at {{datetime, datetime(dateStyle: full, timeStyle: full)}}\r\n\r\n",
+			"restored-history": "\r\n * $t(generic.restore_past, capitalize) $t(generic.history) at {{datetime, datetime(dateStyle: full, timeStyle: full)}}\r\n\r\n",
 			"unsupported-profile": "Unsupported $t(generic.profile):\r\n{{profile}}\r\n"
 		}
 	},
@@ -193,6 +194,7 @@
 		"focus": "focus",
 		"focus_past": "focused",
 		"frontmatter": "frontmatter",
+		"history": "history",
 		"import": "import",
 		"import_gerund": "importing",
 		"incompatible": "incompatible",
@@ -244,6 +246,8 @@
 		},
 		"reset": "reset",
 		"restart": "restart",
+		"restore": "restore",
+		"restore_past": "restored",
 		"retry": "retry",
 		"root-directory": "root $t(generic.directory)",
 		"save": "save",

@@ -69,6 +69,7 @@
 			"preset": "$t(generic.preset)",
 			"preset-placeholder": "($t(generic.custom))",
 			"reset": "$t(generic.reset)",
+			"restore-history": "$t(generic.restore)$t(generic.history)",
 			"title": "{{name}}",
 			"type": "$t(generic.type)",
 			"type-options": "$t(generic.profile-types.{{type}})"
@@ -110,7 +111,7 @@
 			"name": {
 				"profile-type": "$t(generic.profile-types.{{type}})"
 			},
-			"restored-history": "\r\n * 已还原于{{datetime, datetime(dateStyle: full, timeStyle: full)}}的历史\r\n\r\n",
+			"restored-history": "\r\n * 已$t(generic.restore)于{{datetime, datetime(dateStyle: full, timeStyle: full)}}的$t(generic.history)\r\n\r\n",
 			"unsupported-profile": "不支持的$t(generic.profile)：\r\n{{profile}}\r\n"
 		}
 	},
@@ -181,6 +182,7 @@
 		"find": "搜索",
 		"focus": "聚焦",
 		"frontmatter": "前文",
+		"history": "历史",
 		"import": "导入",
 		"incompatible": "不$t(generic.compatible)",
 		"instance": "个体",
@@ -222,6 +224,7 @@
 		},
 		"reset": "重设",
 		"restart": "重启",
+		"restore": "还原",
 		"retry": "重试",
 		"root-directory": "根$t(generic.directory)",
 		"save": "储存",

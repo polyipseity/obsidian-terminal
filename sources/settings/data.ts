@@ -185,6 +185,7 @@ export namespace Settings {
 		interface Base {
 			readonly type: Type
 			readonly name: string
+			readonly restoreHistory: boolean
 		}
 		export interface Empty extends Base {
 			readonly type: ""
@@ -217,6 +218,7 @@ export namespace Settings {
 			"": PROFILE_PRESETS.empty,
 			developerConsole: {
 				name: "",
+				restoreHistory: true,
 				type: "developerConsole",
 			},
 			external: {
@@ -228,6 +230,7 @@ export namespace Settings {
 					linux: false,
 					win32: false,
 				},
+				restoreHistory: true,
 				type: "external",
 			},
 			integrated: {
@@ -240,6 +243,7 @@ export namespace Settings {
 					win32: false,
 				},
 				pythonExecutable: "",
+				restoreHistory: true,
 				type: "integrated",
 				useWin32Conhost: true,
 			},
@@ -284,6 +288,12 @@ export namespace Settings {
 								"name",
 								["string"],
 							),
+							restoreHistory: fixTyped(
+								DEFAULTS[type],
+								unc,
+								"restoreHistory",
+								["boolean"],
+							),
 							type,
 						} satisfies Typed<typeof type>
 					}
@@ -294,6 +304,12 @@ export namespace Settings {
 								unc,
 								"name",
 								["string"],
+							),
+							restoreHistory: fixTyped(
+								DEFAULTS[type],
+								unc,
+								"restoreHistory",
+								["boolean"],
 							),
 							type,
 						} satisfies Typed<typeof type>
@@ -322,6 +338,12 @@ export namespace Settings {
 								DEFAULTS[type].platforms,
 								unc["platforms"] ?? {},
 								Pseudoterminal.SUPPORTED_PLATFORMS,
+							),
+							restoreHistory: fixTyped(
+								DEFAULTS[type],
+								unc,
+								"restoreHistory",
+								["boolean"],
 							),
 							type,
 						} satisfies Typed<typeof type>
@@ -356,6 +378,12 @@ export namespace Settings {
 								unc,
 								"pythonExecutable",
 								["string"],
+							),
+							restoreHistory: fixTyped(
+								DEFAULTS[type],
+								unc,
+								"restoreHistory",
+								["boolean"],
 							),
 							type,
 							useWin32Conhost: fixTyped(

@@ -548,6 +548,41 @@ export class ProfileModal extends Modal {
 			profile = data,
 			{ i18n } = plugin.language
 		ui.destroy()
+		if (profile.type === "invalid") {
+			ui.newSetting(element, setting => {
+				setting
+					.setName(i18n.t(`components.profile.${profile.type}.data`))
+					.addTextArea(textArea => textArea
+						.setValue(JSON.stringify(profile, null, JSON_STRINGIFY_SPACE))
+						.setDisabled(true))
+					.addExtraButton(resetButton(
+						i18n.t(`asset:components.profile.${profile.type}.data-icon`),
+						DISABLED_TOOLTIP,
+						unexpected,
+						unexpected,
+						{ post(component) { component.setDisabled(true) } },
+					))
+			})
+			return
+		}
+		ui.newSetting(element, setting => {
+			setting
+				.setName(i18n.t("components.profile.restore-history"))
+				.addToggle(linkSetting(
+					() => profile.restoreHistory,
+					value => { profile.restoreHistory = value },
+					async () => this.postMutate(),
+				))
+				.addExtraButton(resetButton(
+					i18n.t("asset:components.profile.restore-history-icon"),
+					i18n.t("components.profile.reset"),
+					() => {
+						profile.restoreHistory =
+							Settings.Profile.DEFAULTS[profile.type].restoreHistory
+					},
+					async () => this.postMutate(),
+				))
+		})
 		switch (profile.type) {
 			case "": {
 				break
@@ -768,23 +803,6 @@ export class ProfileModal extends Modal {
 							))
 					})
 				}
-				break
-			}
-			case "invalid": {
-				ui.newSetting(element, setting => {
-					setting
-						.setName(i18n.t(`components.profile.${profile.type}.data`))
-						.addTextArea(textArea => textArea
-							.setValue(JSON.stringify(profile, null, JSON_STRINGIFY_SPACE))
-							.setDisabled(true))
-						.addExtraButton(resetButton(
-							i18n.t(`asset:components.profile.${profile.type}.data-icon`),
-							DISABLED_TOOLTIP,
-							unexpected,
-							unexpected,
-							{ post(component) { component.setDisabled(true) } },
-						))
-				})
 				break
 			}
 			// No default

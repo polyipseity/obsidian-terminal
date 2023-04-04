@@ -54,6 +54,7 @@
 			"name-icon": "text-cursor-input",
 			"platform-icon": "$t(asset:generic.platforms.{{type}}-icon)",
 			"preset-icon": "$t(asset:generic.profile-icon)",
+			"restore-history-icon": "history",
 			"type-icon": "type"
 		},
 		"profile-list": {

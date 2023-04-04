@@ -619,11 +619,15 @@ export class TerminalView extends ItemView {
 				try {
 					noticeSpawn()
 					const
+						serial0 = typeof profile.restoreHistory !== "boolean" ||
+							profile.restoreHistory
+							? serial
+							: null,
 						emulator = new TerminalView.EMULATOR(
 							plugin,
 							ele,
 							async terminal => {
-								if (serial) {
+								if (serial0) {
 									await writePromise(
 										terminal,
 										i18n.t(
@@ -662,7 +666,7 @@ export class TerminalView extends ItemView {
 								}))
 								return pty
 							},
-							serial ?? UNDEFINED,
+							serial0 ?? UNDEFINED,
 							{
 								allowProposedApi: true,
 							},
