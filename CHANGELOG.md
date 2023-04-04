@@ -13,6 +13,7 @@ This file is automatically opened on update. You can reopen it in settings or co
 __Features__
 - Add 'root directory' button next to working directory when editing a terminal view. (`4991ccb8548b3034f8f753924f1fbd95523259be`)
 - Add 'focus on new instance' setting. (`c7db57e1328da5883a3587d0d812905bc30f58e1`)
+- Add 'restore history' profile setting. (`c1b3a69dbd71d7fecc080e5b6791b81260dc6ccf`)
 
 __Improvements__
 - Developer console history can be kept now. (`7ced419b9762ff92a28cadf0355a54f0200b6209`)
