@@ -779,4 +779,51 @@ export namespace TerminalView {
 			})
 		}
 	}
+	export function getLeaf(plugin: TerminalPlugin): WorkspaceLeaf {
+		// eslint-disable-next-line consistent-return
+		const leaf = ((): WorkspaceLeaf => {
+			const { app: { workspace } } = plugin,
+				{ leftSplit, rightSplit } = workspace
+			if (plugin.settings.createInstanceNearExistingOnes) {
+				const existingLeaf = workspace
+					// eslint-disable-next-line @typescript-eslint/no-unnecessary-qualifier
+					.getLeavesOfType(TerminalView.type.namespaced(plugin))
+					.at(-1)
+				if (existingLeaf) {
+					const root = existingLeaf.getRoot()
+					if (root === leftSplit) {
+						return workspace.getLeftLeaf(false)
+					}
+					if (root === rightSplit) {
+						return workspace.getRightLeaf(false)
+					}
+					workspace.setActiveLeaf(existingLeaf)
+					return workspace.getLeaf("tab")
+				}
+			}
+			switch (plugin.settings.newInstanceBehavior) {
+				case "replaceTab":
+					return workspace.getLeaf()
+				case "newTab":
+					return workspace.getLeaf("tab")
+				case "newLeftTab":
+					return workspace.getLeftLeaf(false)
+				case "newLeftSplit":
+					return workspace.getLeftLeaf(true)
+				case "newRightTab":
+					return workspace.getRightLeaf(false)
+				case "newRightSplit":
+					return workspace.getRightLeaf(true)
+				case "newHorizontalSplit":
+					return workspace.getLeaf("split", "horizontal")
+				case "newVerticalSplit":
+					return workspace.getLeaf("split", "vertical")
+				case "newWindow":
+					return workspace.getLeaf("window")
+				// No default
+			}
+		})()
+		leaf.setPinned(plugin.settings.pinNewInstance)
+		return leaf
+	}
 }
