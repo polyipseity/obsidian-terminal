@@ -10,6 +10,9 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Features__
+- Add 'root directory' button next to working directory when editing a terminal view. (`4991ccb8548b3034f8f753924f1fbd95523259be`)
+
 __Full changelog__: [`3.5.1...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.5.1...main)
 
 ## 3.5.1 (2023-03-28)
