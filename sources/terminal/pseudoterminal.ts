@@ -14,7 +14,6 @@ import {
 	TERMINAL_EXIT_CLEANUP_WAIT,
 	TERMINAL_RESIZER_WATCHDOG_WAIT,
 	UNDEFINED,
-	UNHANDLED_REJECTION_MESSAGE,
 	WINDOWS_CMD_PATH,
 	WINDOWS_CONHOST_PATH,
 } from "../magic"
@@ -245,7 +244,7 @@ export class ConsolePseudoterminal
 			case "windowError":
 				return logFormat(event.data.message, event.data)
 			case "unhandledRejection":
-				return logFormat(UNHANDLED_REJECTION_MESSAGE, event.data)
+				return logFormat(event.data)
 			// No default
 		}
 	}
