@@ -328,7 +328,7 @@ export class ConsolePseudoterminal
 			].map(disposer0 => () => { disposer0.dispose() }),
 		)
 		this.onExit.finally(() => { disposer.call() })
-		await clearTerminal(terminal)
+		await clearTerminal(terminal, true)
 		await this.write(this.log.history, [terminal])
 	}
 
