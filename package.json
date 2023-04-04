@@ -89,5 +89,8 @@
 		"authorUrl": "",
 		"fundingUrl": {},
 		"isDesktopOnly": false
+	},
+	"overrides": {
+		"tsconfig-paths": "^4.0.0"
 	}
 }
