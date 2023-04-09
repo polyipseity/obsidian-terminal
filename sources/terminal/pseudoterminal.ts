@@ -209,6 +209,13 @@ export class TextPseudoterminal
 export class ConsolePseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
+	public static readonly colors = deepFreeze({
+		debug: "blue",
+		error: "red",
+		info: "white",
+		warn: "yellow",
+	} as const satisfies Readonly<Record<string, ansi.Style>>)
+
 	protected static readonly syncLock = "sync"
 	protected readonly lock = new AsyncLock({ maxPending: MAX_LOCK_PENDING })
 	protected readonly buffer = new TerminalTextArea()
@@ -233,20 +240,29 @@ export class ConsolePseudoterminal
 			.finally(() => { this.buffer.dispose() })
 	}
 
-	// eslint-disable-next-line consistent-return
 	protected static format(event: Log.Event): string {
-		switch (event.type) {
+		const { data, type } = event,
+			styles: ansi.Style[] = []
+		let msg = ""
+		switch (type) {
 			case "debug":
 			case "error":
 			case "info":
 			case "warn":
-				return logFormat(...event.data)
+				msg = logFormat(...data)
+				styles.push(ConsolePseudoterminal.colors[type])
+				break
 			case "windowError":
-				return logFormat(event.data.message, event.data)
+				msg = logFormat(data.message, data)
+				styles.push(ConsolePseudoterminal.colors.error)
+				break
 			case "unhandledRejection":
-				return logFormat(event.data)
+				msg = logFormat(data)
+				styles.push(ConsolePseudoterminal.colors.error)
+				break
 			// No default
 		}
+		return `${ansi.styles(styles)}${msg}${ansi.style.reset}`
 	}
 
 	public override async pipe(terminal: Terminal): Promise<void> {
