@@ -12,6 +12,7 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 __Features__
 - Add 3 profile presets: 'powershell: External', 'powershell: Integrated', and 'pwsh: External'. `powershell` stands for Windows PowerShell while `pwsh` stands for PowerShell Core. (`1767d2d9f80a269ba24eecd0c45fd8bf0ed9050c`)
+- Color messages in developer console. (`107826a45b255367f336e00e0cb518f1851a8306`)
 
 __Full changelog__: [`3.6.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.6.0...main)
 
