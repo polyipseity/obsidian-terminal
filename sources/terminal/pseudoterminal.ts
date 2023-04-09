@@ -217,6 +217,7 @@ export class ConsolePseudoterminal
 	} as const satisfies Readonly<Record<string, ansi.Style>>)
 
 	protected static readonly syncLock = "sync"
+	static readonly #formatCache = new WeakMap<Log.Event, string>()
 	protected readonly lock = new AsyncLock({ maxPending: MAX_LOCK_PENDING })
 	protected readonly buffer = new TerminalTextArea()
 	readonly #history = [""]
@@ -241,28 +242,33 @@ export class ConsolePseudoterminal
 	}
 
 	protected static format(event: Log.Event): string {
-		const { data, type } = event,
-			styles: ansi.Style[] = []
-		let msg = ""
-		switch (type) {
-			case "debug":
-			case "error":
-			case "info":
-			case "warn":
-				msg = logFormat(...data)
-				styles.push(ConsolePseudoterminal.colors[type])
-				break
-			case "windowError":
-				msg = logFormat(data.message, data)
-				styles.push(ConsolePseudoterminal.colors.error)
-				break
-			case "unhandledRejection":
-				msg = logFormat(data)
-				styles.push(ConsolePseudoterminal.colors.error)
-				break
-			// No default
+		let ret = this.#formatCache.get(event)
+		if (isUndefined(ret)) {
+			const { data, type } = event,
+				styles: ansi.Style[] = []
+			let msg = ""
+			switch (type) {
+				case "debug":
+				case "error":
+				case "info":
+				case "warn":
+					msg = logFormat(...data)
+					styles.push(ConsolePseudoterminal.colors[type])
+					break
+				case "windowError":
+					msg = logFormat(data.message, data)
+					styles.push(ConsolePseudoterminal.colors.error)
+					break
+				case "unhandledRejection":
+					msg = logFormat(data)
+					styles.push(ConsolePseudoterminal.colors.error)
+					break
+				// No default
+			}
+			this.#formatCache.set(event, ret =
+				`${ansi.styles(styles)}${msg}${ansi.style.reset}`)
 		}
-		return `${ansi.styles(styles)}${msg}${ansi.style.reset}`
+		return ret
 	}
 
 	public override async pipe(terminal: Terminal): Promise<void> {
