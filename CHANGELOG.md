@@ -16,6 +16,7 @@ __Features__
 
 __Improvements__
 - Speed up (re)starting a new developer console significantly. (`5a407cc9ed9b3e985f63d56aa7aed4a3b17e33ae`)
+- Improve developer console messages significantly. (`e6b5ae83c448398105ec11444722852a6a1b11b4`)
 
 __Full changelog__: [`3.6.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.6.0...main)
 
