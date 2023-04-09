@@ -10,6 +10,8 @@ export interface ProfilePresets0 {
 	readonly cmdExternal: Settings.Profile.External
 	readonly gnomeTerminalExternal: Settings.Profile.External
 	readonly konsoleExternal: Settings.Profile.External
+	readonly powershellExternal: Settings.Profile.External
+	readonly pwshExternal: Settings.Profile.External
 	readonly terminalMacOSExternal: Settings.Profile.External
 	readonly wtExternal: Settings.Profile.External
 	readonly xtermExternal: Settings.Profile.External
@@ -18,6 +20,7 @@ export interface ProfilePresets0 {
 	readonly cmdIntegrated: Settings.Profile.Integrated
 	readonly dashIntegrated: Settings.Profile.Integrated
 	readonly gitBashIntegrated: Settings.Profile.Integrated
+	readonly powershellIntegrated: Settings.Profile.Integrated
 	readonly pwshIntegrated: Settings.Profile.Integrated
 	readonly shIntegrated: Settings.Profile.Integrated
 	readonly wslIntegrated: Settings.Profile.Integrated
@@ -113,6 +116,35 @@ const PROFILE_PRESETS0 = deepFreeze({
 		executable: "konsole",
 		name: "",
 		platforms: { linux: true },
+		restoreHistory: true,
+		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		type: "external",
+	},
+	powershellExternal: {
+		args: [],
+		executable: "powershell",
+		name: "",
+		platforms: { win32: true },
+		restoreHistory: true,
+		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		type: "external",
+	},
+	powershellIntegrated: {
+		args: [],
+		executable: "powershell",
+		name: "",
+		platforms: { win32: true },
+		pythonExecutable: "python3",
+		restoreHistory: true,
+		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		type: "integrated",
+		useWin32Conhost: true,
+	},
+	pwshExternal: {
+		args: [],
+		executable: "pwsh",
+		name: "",
+		platforms: { darwin: true, linux: true, win32: true },
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
 		type: "external",
@@ -224,6 +256,8 @@ export type ProfilePresetKeys = readonly [
 	"cmdExternal",
 	"gnomeTerminalExternal",
 	"konsoleExternal",
+	"powershellExternal",
+	"pwshExternal",
 	"terminalMacOSExternal",
 	"wtExternal",
 	"xtermExternal",
@@ -232,6 +266,7 @@ export type ProfilePresetKeys = readonly [
 	"cmdIntegrated",
 	"dashIntegrated",
 	"gitBashIntegrated",
+	"powershellIntegrated",
 	"pwshIntegrated",
 	"shIntegrated",
 	"wslIntegrated",
