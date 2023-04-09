@@ -109,7 +109,8 @@ __Shells__
 - Command Prompt: `cmd`
 - Dash: `dash`
 - Git Bash: `<Git installation>\bin\bash.exe` (e.g. `C:\Program Files\Git\bin\bash.exe`)
-- PowerShell: `pwsh`
+- PowerShell Core: `pwsh`
+- Windows PowerShell: `powershell`
 - Windows Subsystem for Linux: `wsl` or `wsl -d <distribution name>`
 - Z shell: `zsh`
 
