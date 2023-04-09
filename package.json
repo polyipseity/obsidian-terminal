@@ -72,14 +72,14 @@
 		"builtin-modules": "^3.3.0",
 		"esbuild": "^0.17.15",
 		"esbuild-svelte": "^0.7.3",
-		"eslint-import-resolver-typescript": "^3.5.4",
+		"eslint-import-resolver-typescript": "^3.5.5",
 		"eslint-plugin-import": "^2.27.5",
 		"eslint-plugin-svelte3": "^4.0.0",
 		"obsidian": "file:build/obsidian",
 		"svelte": "^3.58.0",
 		"svelte-preprocess": "^5.0.3",
 		"tslib": "^2.5.0",
-		"typescript": "^5.0.3",
+		"typescript": "^5.0.4",
 		"typescript-svelte-plugin": "^0.3.22"
 	},
 	"obsidian": {
