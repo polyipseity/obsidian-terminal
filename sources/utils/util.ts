@@ -20,7 +20,6 @@ import {
 	range,
 } from "lodash-es"
 import {
-	JSON_STRINGIFY_SPACE,
 	MAX_LOCK_PENDING,
 	SI_PREFIX_SCALE,
 	UNDEFINED,
@@ -30,11 +29,11 @@ import {
 	type TypeofMapE,
 	genericTypeofGuardE,
 } from "./typeof"
+import inspect, { type Options } from "browser-util-inspect"
 import AsyncLock from "async-lock"
 import type { ChildProcess } from "node:child_process"
 import type { SvelteComponent } from "svelte"
 import type { Writable } from "node:stream"
-import { getSerialize } from "json-stringify-safe"
 
 export type KeyModifier = "Alt" | "Ctrl" | "Meta" | "Shift"
 export const EMPTY_OBJECT: Readonly<Record<keyof any, never>> =
@@ -523,22 +522,19 @@ export function logError(thing: unknown): void {
 	console.error(thing)
 }
 
-export function logFormat(...args: readonly unknown[]): string {
+export function logFormat(
+	options: Options,
+	...args: readonly unknown[]
+): string {
 	if (isEmpty(args)) { return "" }
 	const
 		stringify0 = (param: unknown): string => {
-			if (typeof param === "object" && typeof param !== "function") {
-				try {
-					return JSON.stringify(
-						param,
-						getSerialize(bigIntReplacer()),
-						JSON_STRINGIFY_SPACE,
-					)
-				} catch {
-					// NOOP
-				}
+			try {
+				return inspect(param, options)
+			} catch {
+				// Do not log
+				return String(param)
 			}
-			return String(param)
 		},
 		[format, ...rest] = args
 	if (typeof format === "string") {

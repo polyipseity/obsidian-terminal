@@ -39,6 +39,7 @@ import {
 	writePromise,
 } from "../utils/util"
 import type { IMarker, Terminal } from "xterm"
+import type { Options, StyleType } from "browser-util-inspect"
 import { isEmpty, isUndefined, noop } from "lodash-es"
 import { notice2, printError } from "sources/utils/obsidian"
 import AsyncLock from "async-lock"
@@ -241,32 +242,69 @@ export class ConsolePseudoterminal
 			.finally(() => { this.buffer.dispose() })
 	}
 
+	public static options(styles: readonly ansi.Style[]): Options {
+		const stylizer: {
+			readonly [_ in StyleType]: readonly ansi.Style[]
+		} = deepFreeze({
+			"boolean": [...styles, "yellow"],
+			date: [...styles, "magenta"],
+			name: [...styles],
+			"null": [...styles, "bold"],
+			number: [...styles, "yellow"],
+			regexp: [...styles, "red"],
+			special: [...styles, "cyan"],
+			string: [...styles, "green"],
+			undefined: [...styles, "grey"],
+		} as const)
+		return deepFreeze({
+			colors: false,
+			customInspect: true,
+			depth: 0,
+			showHidden: true,
+			stylize(str, styleType) {
+				return `${ansi.styles(stylizer[styleType])}${str}${ansi.style
+					.reset}${ansi.styles(styles)}`
+			},
+		})
+	}
+
 	protected static format(event: Log.Event): string {
 		let ret = this.#formatCache.get(event)
 		if (isUndefined(ret)) {
-			const { data, type } = event,
+			const { colors } = ConsolePseudoterminal,
+				{ data, type } = event,
 				styles: ansi.Style[] = []
-			let msg = ""
 			switch (type) {
 				case "debug":
 				case "error":
 				case "info":
 				case "warn":
-					msg = logFormat(...data)
-					styles.push(ConsolePseudoterminal.colors[type])
+					styles.push(colors[type])
+					ret = logFormat(
+						ConsolePseudoterminal.options(styles),
+						...data,
+					)
 					break
 				case "windowError":
-					msg = logFormat(data.message, data)
-					styles.push(ConsolePseudoterminal.colors.error)
+					styles.push(colors.error)
+					ret = logFormat(
+						ConsolePseudoterminal.options(styles),
+						data.message,
+						data,
+					)
 					break
 				case "unhandledRejection":
-					msg = logFormat(data)
-					styles.push(ConsolePseudoterminal.colors.error)
+					styles.push(colors.error)
+					ret = logFormat(
+						ConsolePseudoterminal.options(styles),
+						data.reason,
+						data,
+					)
 					break
 				// No default
 			}
 			this.#formatCache.set(event, ret =
-				`${ansi.styles(styles)}${msg}${ansi.style.reset}`)
+				`${ansi.styles(styles)}${ret}${ansi.style.reset}`)
 		}
 		return ret
 	}
