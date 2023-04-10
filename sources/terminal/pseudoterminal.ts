@@ -488,7 +488,7 @@ export class ConsolePseudoterminal
 					const { buffer: { active } } = terminal,
 						editor = this.#editors.get(terminal),
 						{ baseY } = active,
-						startBaseY = editor?.startYMarker?.line ?? baseY + active.cursorX
+						startBaseY = editor?.startYMarker?.line ?? baseY + active.cursorY
 					await tWritePromise(terminal, `${ansi.cursor.position(
 						1 + (startBaseY - baseY),
 						1,
