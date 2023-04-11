@@ -3,9 +3,9 @@ import { readFile, writeFile } from "node:fs/promises"
 
 const
 	MANIFEST_MAP = Object.freeze({
-		author: "author",
-		description: "description",
-		version: "version",
+		author: pack => pack.author,
+		description: pack => pack.description,
+		version: pack => `v${pack.version}`,
 	}),
 	BETA_MANIFEST = Object.freeze({ version: "latest" }),
 	aPackage = readFile(PATHS.package, "utf-8").then(data => JSON.parse(data)),
@@ -16,7 +16,7 @@ await Promise.all([
 		const pack = await aPackage,
 			manifest = {
 				...Object.fromEntries(Object.entries(MANIFEST_MAP)
-					.map(([key, value]) => [key, pack[value]])),
+					.map(([key, value]) => [key, value(pack)])),
 				...pack.obsidian,
 			}
 		await Promise.all([
@@ -34,7 +34,7 @@ await Promise.all([
 	})(),
 	(async () => {
 		const [pack, versions] = await Promise.all([aPackage, aVersions])
-		versions[pack.version] = pack.obsidian.minAppVersion
+		versions[MANIFEST_MAP.version(pack)] = pack.obsidian.minAppVersion
 		await writeFile(
 			PATHS.versions,
 			JSON.stringify(versions, null, "\t"),
