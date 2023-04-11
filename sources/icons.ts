@@ -1,7 +1,7 @@
 import { ClipboardPaste, createElement } from "lucide"
-import { type Plugin, addIcon, getIcon } from "obsidian"
+import { type Plugin, getIcon } from "obsidian"
+import { UnnamespacedID, addIcon } from "./utils/obsidian"
 import { siLinux, siMacos, siWindows } from "simple-icons"
-import { UnnamespacedID } from "./utils/obsidian"
 
 export function loadIcons(plugin: Plugin): void {
 	for (const [key, value] of Object.entries({
@@ -12,7 +12,7 @@ export function loadIcons(plugin: Plugin): void {
 			const icon = createElement(value)
 			icon.setAttribute("width", "100")
 			icon.setAttribute("height", "100")
-			addIcon(key, icon.outerHTML)
+			plugin.register(addIcon(key, icon.outerHTML))
 		}
 	}
 	for (const [key, value] of Object.entries({
@@ -20,6 +20,9 @@ export function loadIcons(plugin: Plugin): void {
 		macos: siMacos,
 		windows: siWindows,
 	})) {
-		addIcon(new UnnamespacedID(key).namespaced(plugin), value.svg)
+		plugin.register(addIcon(
+			new UnnamespacedID(key).namespaced(plugin),
+			value.svg,
+		))
 	}
 }

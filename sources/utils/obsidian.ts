@@ -11,6 +11,8 @@ import {
 	type PluginManifest,
 	Setting,
 	View,
+	addIcon as addIcon0,
+	removeIcon,
 } from "obsidian"
 import { DOMClasses, NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem"
@@ -201,6 +203,14 @@ export function addCommand(
 		} satisfies AddCommandPredefinedOptions,
 		command,
 	))
+}
+
+export function addIcon(
+	id: string,
+	content: string,
+): () => void {
+	addIcon0(id, content)
+	return () => { removeIcon(id) }
 }
 
 export function addRibbonIcon(
