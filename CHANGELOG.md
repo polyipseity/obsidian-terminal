@@ -10,6 +10,10 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Full changelog__: [`3.7.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.7.0...main)
+
+## 3.7.0 (2023-04-11)
+
 __Features__
 - Add 3 profile presets: 'powershell: External', 'powershell: Integrated', and 'pwsh: External'. `powershell` stands for Windows PowerShell while `pwsh` stands for PowerShell Core. (`1767d2d9f80a269ba24eecd0c45fd8bf0ed9050c`)
 - Color messages in developer console. (`107826a45b255367f336e00e0cb518f1851a8306`)
@@ -18,7 +22,7 @@ __Improvements__
 - Speed up (re)starting a new developer console significantly. (`5a407cc9ed9b3e985f63d56aa7aed4a3b17e33ae`)
 - Improve developer console messages significantly. (`e6b5ae83c448398105ec11444722852a6a1b11b4`)
 
-__Full changelog__: [`3.6.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.6.0...main)
+__Full changelog__: [`3.6.0...3.7.0`](https://github.com/polyipseity/obsidian-terminal/compare/3.6.0...3.7.0)
 
 ## 3.6.0 (2023-04-04)
 
