@@ -246,15 +246,15 @@ export class ConsolePseudoterminal
 		const stylizer: {
 			readonly [_ in StyleType]: readonly ansi.Style[]
 		} = deepFreeze({
-			"boolean": [...styles, "yellow"],
-			date: [...styles, "magenta"],
-			name: [...styles],
-			"null": [...styles, "bold"],
-			number: [...styles, "yellow"],
-			regexp: [...styles, "red"],
-			special: [...styles, "cyan"],
-			string: [...styles, "green"],
-			undefined: [...styles, "grey"],
+			"boolean": ["yellow"],
+			date: ["magenta"],
+			name: [],
+			"null": ["bold"],
+			number: ["yellow"],
+			regexp: ["red"],
+			special: ["cyan"],
+			string: ["green"],
+			undefined: ["grey"],
 		} as const)
 		return deepFreeze({
 			colors: false,
