@@ -1,7 +1,7 @@
 {
 	"author": "polyipseity",
 	"description": "Integrate consoles, shells, and terminals inside Obsidian.",
-	"version": "3.7.0",
+	"version": "v3.7.1",
 	"id": "terminal",
 	"name": "Terminal",
 	"minAppVersion": "1.1.13",
