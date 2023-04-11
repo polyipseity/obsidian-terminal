@@ -10,14 +10,7 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
-__Full changelog__: [`v3.7.1...main`](https://github.com/polyipseity/obsidian-terminal/compare/v3.7.1...main)
-
-## v3.7.1 (2023-04-11)
-
-__Internals__
-- Add `v` to version prefix. (`1b12d91c5684a4c01699b718ea17a6e0f5cff7e3`)
-
-__Full changelog__: [`3.7.0...v3.7.1`](https://github.com/polyipseity/obsidian-terminal/compare/3.7.0...v3.7.1)
+__Full changelog__: [`3.7.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.7.0...main)
 
 ## 3.7.0 (2023-04-11)
 
