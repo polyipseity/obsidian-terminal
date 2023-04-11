@@ -94,7 +94,7 @@
 		},
 		"edit-icon": "edit",
 		"edit-list-icon": "list",
-		"input-from-clipboard-icon": "clipboard",
+		"input-from-clipboard-icon": "clipboard-paste",
 		"input-from-file-icon": "file-output",
 		"load-icon": "loader",
 		"next-icon": "arrow-down",
