@@ -1,7 +1,7 @@
 {
 	"name": "obsidian-terminal",
 	"displayName": "Obsidian Terminal",
-	"version": "3.6.0",
+	"version": "3.7.0",
 	"author": "polyipseity",
 	"license": "AGPL-3.0-or-later",
 	"description": "Integrate consoles, shells, and terminals inside Obsidian.",
