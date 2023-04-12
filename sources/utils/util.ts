@@ -191,8 +191,9 @@ export function bracket<T>(self: readonly T[], index: number): {
 	readonly valid: true
 	readonly value: T
 } {
-	return Object.freeze(index in self
-		? { valid: true, value: self[index] as T }
+	const proof = typedIn(self, index)
+	return Object.freeze(proof
+		? { valid: true, value: proof() }
 		: { valid: false })
 }
 
@@ -217,9 +218,9 @@ export function clear(self: unknown[]): void {
 }
 
 export function clearProperties(self: object): void {
-	for (const key of Reflect.ownKeys(self)) {
+	for (const key of typedOwnKeys(self)) {
 		// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-		delete self[key as keyof typeof self]
+		delete self[key]
 	}
 }
 
@@ -269,8 +270,8 @@ export function deepFreeze<T>(value: T): DeepReadonly<T> {
 function deepFreeze0<T>(value: T, freezing: WeakSet<object>): DeepReadonly<T> {
 	if (typeof value === "object" && value) {
 		freezing.add(value)
-		for (const subkey of Reflect.ownKeys(value)) {
-			const subvalue = value[subkey as keyof typeof value]
+		for (const subkey of typedOwnKeys(value)) {
+			const subvalue = value[subkey]
 			if ((typeof subvalue === "object" || typeof subvalue === "function") &&
 				subvalue &&
 				!freezing.has(subvalue)) {
@@ -332,6 +333,22 @@ export async function spawnPromise<T extends ChildProcess>(spawn: (
 		ret.once("spawn", () => { resolve(ret) })
 			.once("error", reject)
 	})
+}
+
+export function typedIn<T extends object, K extends keyof any>(
+	self: T,
+	value: K,
+): (() => T[K & keyof T]) | null {
+	if (value in self) {
+		return () => self[value as K & keyof T]
+	}
+	return null
+}
+
+export function typedOwnKeys<T extends object>(
+	self: T,
+): (keyof T & (string | symbol))[] {
+	return Reflect.ownKeys(self) as (keyof T & (string | symbol))[]
 }
 
 export function typedKeys<T extends readonly (keyof any)[]>() {
@@ -421,26 +438,38 @@ export function lazyInit<T>(initializer: () => T): () => T {
 	}
 }
 
-export function lazyProxy<T extends object>(initializer: () => T): T {
+// eslint-disable-next-line @typescript-eslint/ban-types
+export function lazyProxy<T extends Function | object>(
+	initializer: () => T,
+): T {
 	const lazy = lazyInit(initializer),
 		functions = new Map(),
 		proxy = new Proxy(lazy, {
 			apply(target, thisArg, argArray): unknown {
+				const target0 = target()
+				if (typeof target0 !== "function") {
+					throw new TypeError(String(target0))
+				}
 				return Reflect.apply(
-					// eslint-disable-next-line @typescript-eslint/ban-types
-					target() as Function,
+					target0,
 					thisArg === target ? target() : thisArg,
 					argArray,
 				)
 			},
 			construct(target, argArray, newTarget): object {
-				return Reflect.construct(
-					// eslint-disable-next-line @typescript-eslint/ban-types
-					target() as Function,
+				const target0 = target()
+				if (typeof target0 !== "function") {
+					throw new TypeError(String(target0))
+				}
+				const ret: unknown = Reflect.construct(
+					target0,
 					argArray,
-					// eslint-disable-next-line @typescript-eslint/ban-types
-					newTarget === target ? target() as Function : newTarget,
-				) as object
+					newTarget === target ? target0 : newTarget,
+				)
+				if ((typeof ret === "object" || typeof ret === "function") && ret) {
+					return ret
+				}
+				throw new TypeError(String(ret))
 			},
 			defineProperty(target, property, attributes): boolean {
 				return Reflect.defineProperty(target(), property, attributes)

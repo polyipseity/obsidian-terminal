@@ -7,7 +7,7 @@ import {
 	RESOURCES,
 	RETURN_NULL,
 } from "assets/locales"
-import { EventEmitterLite, anyToError, inSet } from "./utils/util"
+import { EventEmitterLite, anyToError, inSet, typedIn } from "./utils/util"
 import i18next, { createInstance, type i18n } from "i18next"
 import type { TerminalPlugin } from "./main"
 import { moment } from "obsidian"
@@ -69,10 +69,9 @@ export const I18N = (async (): Promise<i18n> => {
 			namespace: string,
 		) => {
 			if (inSet(LANGUAGES, language)) {
-				const lngRes = RESOURCES[language]
-				if (namespace in lngRes) {
-					return lngRes[namespace as keyof typeof lngRes]()
-				}
+				const lngRes = RESOURCES[language],
+					res = typedIn(lngRes, namespace)
+				if (res) { return res()() }
 			}
 			return null
 		}))

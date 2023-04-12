@@ -52,7 +52,6 @@ import type {
 } from "node:child_process"
 import { Platform } from "sources/utils/platforms"
 import type { TerminalPlugin } from "../main"
-import type { Writable } from "node:stream"
 import ansi from "ansi-escape-sequences"
 import { deopaque } from "sources/utils/types"
 import { dynamicRequire } from "../imports"
@@ -65,6 +64,7 @@ const
 	fsPromises =
 		dynamicRequire<typeof import("node:fs/promises")>("node:fs/promises"),
 	process = dynamicRequire<typeof import("node:process")>("node:process"),
+	stream = dynamicRequire<typeof import("node:stream")>("node:stream"),
 	tmpPromise = dynamicRequire<typeof import("tmp-promise")>("tmp-promise")
 
 async function clearTerminal(terminal: Terminal, keep = false): Promise<void> {
@@ -751,6 +751,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 }
 
 class UnixPseudoterminal implements Pseudoterminal {
+	static readonly #cmdio = 3
 	public readonly shell
 	public readonly onExit
 
@@ -828,11 +829,11 @@ class UnixPseudoterminal implements Pseudoterminal {
 	}
 
 	public async resize(columns: number, rows: number): Promise<void> {
-		const CMDIO = 3
-		await writePromise(
-			(await this.shell).stdio[CMDIO] as Writable,
-			`${columns}x${rows}\n`,
-		)
+		const cmdio = (await this.shell).stdio[UnixPseudoterminal.#cmdio]
+		if (!(cmdio instanceof (await stream).Writable)) {
+			throw new TypeError(String(cmdio))
+		}
+		await writePromise(cmdio, `${columns}x${rows}\n`)
 	}
 }
 
