@@ -52,7 +52,7 @@
 					params.caseSensitive ? " mod-cta" : ""
 				}`}
 				aria-label={i18n("components.find.case-sensitive")}
-				on:click={() => {
+				on:click|preventDefault|stopPropagation={() => {
 					params.caseSensitive = !params.caseSensitive;
 				}}
 				use:setIcon={i18n("asset:components.find.case-sensitive-icon")}
@@ -60,7 +60,7 @@
 			<button
 				class={`document-search-button${params.wholeWord ? " mod-cta" : ""}`}
 				aria-label={i18n("components.find.whole-word")}
-				on:click={() => {
+				on:click|preventDefault|stopPropagation={() => {
 					params.wholeWord = !params.wholeWord;
 				}}
 				use:setIcon={i18n("asset:components.find.whole-word-icon")}
@@ -68,7 +68,7 @@
 			<button
 				class={`document-search-button${params.regex ? " mod-cta" : ""}`}
 				aria-label={i18n("components.find.regex")}
-				on:click={() => {
+				on:click|preventDefault|stopPropagation={() => {
 					params.regex = !params.regex;
 				}}
 				use:setIcon={i18n("asset:components.find.regex-icon")}
@@ -85,7 +85,7 @@
 			<button
 				class="document-search-button"
 				aria-label={i18n("components.find.previous")}
-				on:click={() => {
+				on:click|preventDefault|stopPropagation={() => {
 					onFind(Direction.previous, params);
 				}}
 				use:setIcon={i18n("asset:components.find.previous-icon")}
@@ -93,7 +93,7 @@
 			<button
 				class="document-search-button"
 				aria-label={i18n("components.find.next")}
-				on:click={() => {
+				on:click|preventDefault|stopPropagation={() => {
 					onFind(Direction.next, params);
 				}}
 				use:setIcon={i18n("asset:components.find.next-icon")}
@@ -102,7 +102,7 @@
 			<button
 				class="document-search-close-button"
 				aria-label={i18n("components.find.close")}
-				on:click={onClose}
+				on:click|preventDefault|stopPropagation={onClose}
 			/>
 		</div>
 	</div>
