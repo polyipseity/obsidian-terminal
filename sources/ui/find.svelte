@@ -2,11 +2,10 @@
 
 <script context="module" lang="typescript">
 	import { Direction, type Params } from "./find";
-	import { consumeEvent, getKeyModifiers } from "sources/utils/util";
 	import type { DeepWritable } from "ts-essentials";
+	import { getKeyModifiers } from "sources/utils/util";
 	import { t as i18t } from "i18next";
 	import { isEmpty } from "lodash-es";
-	import { onMount } from "svelte";
 	import { setIcon } from "obsidian";
 	import { slide } from "svelte/transition";
 </script>
@@ -24,7 +23,6 @@
 	export let onParamsChanged = (_params: Params): void => {};
 	export let results = "";
 
-	let element: HTMLElement | null = null;
 	let inputElement: HTMLElement | null = null;
 	export function focus() {
 		inputElement?.focus();
@@ -33,18 +31,18 @@
 		inputElement?.blur();
 	}
 
-	onMount(() => {
-		element?.addEventListener("keydown", (event) => {
-			if (event.key === "Escape" && isEmpty(getKeyModifiers(event))) {
-				onClose();
-				consumeEvent(event);
-			}
-		});
-	});
 	$: onParamsChanged(params);
 </script>
 
-<div class="document-search-container" bind:this={element} transition:slide>
+<div
+	class="document-search-container"
+	transition:slide
+	on:keydown|preventDefault|stopPropagation={(event) => {
+		if (event.key === "Escape" && isEmpty(getKeyModifiers(event))) {
+			onClose();
+		}
+	}}
+>
 	<div class="document-search">
 		<div class="document-search-buttons">
 			<button
