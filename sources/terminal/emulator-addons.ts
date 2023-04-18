@@ -30,16 +30,13 @@ export class DragAndDropAddon implements ITerminalAddon {
 	public activate(terminal: Terminal): void {
 		const { element } = this,
 			drop = (event: DragEvent): void => {
-				const data = Array.from(event.dataTransfer?.files ?? [])
+				terminal.paste(Array.from(event.dataTransfer?.files ?? [])
 					.map(file => file.path)
 					.filter(isNonNullish)
 					.map(path => path.replace(replaceAllRegex("\""), "\\\""))
 					.map(path => path.includes(" ") ? `"${path}"` : path)
-					.join(" ")
-				if (data) {
-					terminal.paste(data)
-					consumeEvent(event)
-				}
+					.join(" "))
+				consumeEvent(event)
 			},
 			dragover = consumeEvent
 		this.#disposer.push(
