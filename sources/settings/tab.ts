@@ -5,7 +5,7 @@ import {
 	makeModalDynamicWidth,
 } from "sources/ui/modals"
 import { Modal, PluginSettingTab } from "obsidian"
-import { UpdatableUI, useSettings } from "sources/utils/obsidian"
+import { UpdatableUI, statusUI, useSettings } from "sources/utils/obsidian"
 import {
 	clearProperties,
 	cloneAsWritable,
@@ -49,7 +49,7 @@ export class EditSettingsModal extends Modal {
 
 	public override onOpen(): void {
 		super.onOpen()
-		const { modalUI, ui, modalEl, titleEl, plugin, data, protodata } = this,
+		const { modalUI, ui, modalEl, titleEl, plugin, protodata } = this,
 			{ element: listEl, remover: listElRemover } = useSettings(this.contentEl),
 			{ language } = plugin,
 			{ i18n, onChangeLanguage } = language
@@ -60,19 +60,10 @@ export class EditSettingsModal extends Modal {
 		modalUI.new(() => titleEl, ele => {
 			ele.textContent = i18n.t("settings.edit-settings.title")
 		}, ele => { ele.textContent = null })
-		let errorEl: HTMLElement = listEl.ownerDocument.createElement("a")
-		const resetDataText = (): void => {
-			this.#dataText = JSON.stringify(data, null, JSON_STRINGIFY_SPACE)
-			errorEl.textContent = null
-			ui.update()
-		}
-		ui.finally(resetDataText)
-			.new(() => {
-				errorEl = createChildElement(listEl, "div", ele => {
-					ele.classList.add(DOMClasses.MOD_WARNING)
-				})
-				return errorEl
-			})
+		const errorEl = statusUI(ui, createChildElement(listEl, "div", ele => {
+			ele.classList.add(DOMClasses.MOD_WARNING)
+		}))
+		ui.finally(() => { this.#resetDataText() })
 			.newSetting(listEl, setting => {
 				setting
 					.setName(i18n.t("settings.edit-settings.export"))
@@ -83,11 +74,12 @@ export class EditSettingsModal extends Modal {
 						.onClick(async () => {
 							try {
 								await navigator.clipboard.writeText(this.#dataText)
-								errorEl.textContent = null
 							} catch (error) {
 								console.debug(error)
-								errorEl.textContent = String(error)
+								errorEl.report(error)
+								return
 							}
+							errorEl.report()
 						}))
 			})
 			.newSetting(listEl, setting => {
@@ -105,13 +97,13 @@ export class EditSettingsModal extends Modal {
 									throw new Error(i18n.t("errors.malformed-data"))
 								}
 								this.replaceData(parsed)
-								errorEl.textContent = null
 							} catch (error) {
 								console.debug(error)
-								errorEl.textContent = String(error)
+								errorEl.report(error)
 								return
 							}
-							resetDataText()
+							errorEl.report()
+							this.#resetDataText()
 							await this.postMutate()
 						}))
 			})
@@ -128,12 +120,12 @@ export class EditSettingsModal extends Modal {
 									throw new Error(i18n.t("errors.malformed-data"))
 								}
 								this.replaceData(parsed)
-								errorEl.textContent = null
 							} catch (error) {
 								console.debug(error)
-								errorEl.textContent = String(error)
+								errorEl.report(error)
 								return
 							}
+							errorEl.report()
 							await this.postMutate()
 						},
 					))
@@ -142,7 +134,7 @@ export class EditSettingsModal extends Modal {
 						i18n.t("settings.reset"),
 						() => { this.replaceData(cloneAsWritable(protodata)) },
 						async () => {
-							resetDataText()
+							this.#resetDataText()
 							await this.postMutate()
 						},
 					))
@@ -166,6 +158,10 @@ export class EditSettingsModal extends Modal {
 	protected replaceData(data: DeepWritable<typeof this.data>): void {
 		clearProperties(this.data)
 		Object.assign(this.data, data)
+	}
+
+	#resetDataText(): void {
+		this.#dataText = JSON.stringify(this.data, null, JSON_STRINGIFY_SPACE)
 	}
 }
 

@@ -27,6 +27,7 @@ import {
 	replaceAllRegex,
 	typedStructuredClone,
 } from "./util"
+import { constant, isUndefined } from "lodash-es"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import { Platform } from "./platforms"
 import type { TerminalPlugin } from "sources/main"
@@ -164,6 +165,17 @@ export class UpdatableUI {
 		this.#finalizers.transform(self => self.splice(0)).call()
 		clear(this.#updaters)
 	}
+}
+
+export function statusUI(ui: UpdatableUI, element: HTMLElement): {
+	readonly report: (status?: unknown) => void
+} {
+	ui.new(constant(element), () => { }, () => { element.textContent = null })
+	return deepFreeze({
+		report(status?: unknown) {
+			element.textContent = isUndefined(status) ? null : String(status)
+		},
+	})
 }
 
 export class UnnamespacedID<V extends string> {
