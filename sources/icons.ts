@@ -8,12 +8,14 @@ export function loadIcons(plugin: Plugin): void {
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		"clipboard-paste": ClipboardPaste,
 	})) {
-		if (!getIcon(key)) {
-			const icon = createElement(value)
-			icon.setAttribute("width", "100")
-			icon.setAttribute("height", "100")
-			plugin.register(addIcon(key, icon.outerHTML))
+		if (getIcon(key)) {
+			console.warn(key)
+			continue
 		}
+		const icon = createElement(value)
+		icon.setAttribute("width", "100")
+		icon.setAttribute("height", "100")
+		plugin.register(addIcon(key, icon.outerHTML))
 	}
 	for (const [key, value] of Object.entries({
 		linux: siLinux,
