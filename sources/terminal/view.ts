@@ -687,7 +687,7 @@ export class TerminalView extends ItemView {
 								search: new xtermAddonSearch.SearchAddon(),
 								unicode11: new xtermAddonUnicode11.Unicode11Addon(),
 								webLinks: new xtermAddonWebLinks.WebLinksAddon(
-									(_0, uri) => openExternal(uri),
+									(event, uri) => openExternal(event.view ?? self, uri),
 									{},
 								),
 							},

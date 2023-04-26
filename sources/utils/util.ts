@@ -381,22 +381,22 @@ export function insertAt<T>(
 }
 
 export function instanceOf<T extends Node | UIEvent>(
-	self: Node | UIEvent | null | undefined,
+	self0: Node | UIEvent | null | undefined,
 	type: Constructor<T>,
-): self is T {
-	if (!self) { return false }
-	if (self instanceof type) { return true }
+): self0 is T {
+	if (!self0) { return false }
+	if (self0 instanceof type) { return true }
 	const { name } = type,
-		typeMain: unknown = Reflect.get(window, name)
+		typeMain: unknown = Reflect.get(self, name)
 	if (typeof typeMain === "function" &&
-		self instanceof typeMain) { return true }
+		self0 instanceof typeMain) { return true }
 	const
-		win = "ownerDocument" in self
-			? self.ownerDocument?.defaultView
-			: self.view,
+		win = "ownerDocument" in self0
+			? self0.ownerDocument?.defaultView
+			: self0.view,
 		typeWin: unknown = win ? Reflect.get(win, name) : null
 	if (typeof typeWin === "function" &&
-		self instanceof typeWin) { return true }
+		self0 instanceof typeWin) { return true }
 	return false
 }
 
@@ -688,8 +688,8 @@ export function onVisible(
 	return ret
 }
 
-export function openExternal(url?: URL | string): Window | null {
-	return open(url, "_blank", "noreferrer")
+export function openExternal(self: Window, url?: URL | string): Window | null {
+	return self.open(url, "_blank", "noreferrer")
 }
 
 export async function promisePromise<T>(): Promise<{
@@ -706,11 +706,11 @@ export async function promisePromise<T>(): Promise<{
 }
 
 export function randomNotIn(
-	self: readonly string[],
-	generator = (): string => crypto.randomUUID(),
+	self0: readonly string[],
+	generator = (): string => self.crypto.randomUUID(),
 ): string {
 	let ret = generator()
-	while (self.includes(ret)) { ret = generator() }
+	while (self0.includes(ret)) { ret = generator() }
 	return ret
 }
 

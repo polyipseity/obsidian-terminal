@@ -147,7 +147,7 @@ export function patch(workspace: Workspace): {
 				})
 		})
 		unpatchers.push(() => { workspace.offref(windowWindowPatch) })
-		unpatchers.push(patchWindow(window, log))
+		unpatchers.push(patchWindow(self, log))
 		return Object.freeze({
 			log,
 			unpatch() { unpatchers.call() },

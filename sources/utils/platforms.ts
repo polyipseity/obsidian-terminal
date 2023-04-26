@@ -11,7 +11,7 @@ export namespace Platform {
 	export type Current =
 		Opaque<All, "387823d1-e81d-4ed2-8148-4023aeae81a6">
 	export const CURRENT = ((): All => {
-		const { userAgent } = navigator
+		const { userAgent } = self.navigator
 		if (userAgent.includes("like Mac")) {
 			return "ios"
 		}

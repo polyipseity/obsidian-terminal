@@ -6,7 +6,7 @@ import { remove } from "./utils/util"
 export function statusBar(callback?: (
 	element: Element) => void): Element | null {
 	// Okay to use `document` as it only exists on the main one
-	const ret = document.querySelector(`.${DOMClasses.STATUS_BAR}`)
+	const ret = self.document.querySelector(`.${DOMClasses.STATUS_BAR}`)
 	if (ret && callback) { callback(ret) }
 	return ret
 }

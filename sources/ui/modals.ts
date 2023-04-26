@@ -866,7 +866,7 @@ export class ProfileListModal
 			dataW = cloneAsWritable(data),
 			dataKeys = new Map(dataW.map(([key, value]) => [value, key])),
 			callback = options?.callback ?? ((): void => { }),
-			keygen = options?.keygen ?? ((): string => crypto.randomUUID())
+			keygen = options?.keygen ?? ((): string => self.crypto.randomUUID())
 		super(
 			plugin,
 			(setting, editable, getter, setter) => {
