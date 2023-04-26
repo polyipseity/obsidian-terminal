@@ -31,8 +31,8 @@
 		},
 		"profile": {
 			"external": {
-				"arguments-icon": "$t(asset:components.profile.generic.arguments-icon)",
 				"arguments-edit-icon": "$t(asset:generic.edit-list-icon)",
+				"arguments-icon": "$t(asset:components.profile.generic.arguments-icon)",
 				"executable-icon": "$t(asset:components.profile.generic.executable-icon)"
 			},
 			"generic": {
@@ -40,11 +40,11 @@
 				"executable-icon": "file-terminal"
 			},
 			"integrated": {
-				"Python-executable-icon": "file-cog",
 				"Python-executable-check-icon": "file-check",
 				"Python-executable-checking-icon": "$t(asset:generic.load-icon)",
-				"arguments-icon": "$t(asset:components.profile.generic.arguments-icon)",
+				"Python-executable-icon": "file-cog",
 				"arguments-edit-icon": "$t(asset:generic.edit-list-icon)",
+				"arguments-icon": "$t(asset:components.profile.generic.arguments-icon)",
 				"executable-icon": "$t(asset:components.profile.generic.executable-icon)",
 				"use-win32-conhost-icon": "code"
 			},
@@ -63,13 +63,13 @@
 			"edit-icon": "$t(asset:generic.edit-icon)"
 		},
 		"terminal": {
-			"icon": "terminal",
 			"edit-modal": {
-				"profile-icon": "$t(asset:generic.profile-icon)",
 				"profile-edit-icon": "$t(asset:generic.edit-icon)",
+				"profile-icon": "$t(asset:generic.profile-icon)",
 				"root-directory-icon": "$t(asset:generic.root-directory-icon)",
 				"working-directory-icon": "folder"
 			},
+			"icon": "terminal",
 			"menus": {
 				"clear-icon": "eraser",
 				"edit-icon": "$t(asset:generic.edit-icon)",
@@ -126,8 +126,8 @@
 		"open-terminal-icon": "$t(asset:generic.profile-types.{{type}}-icon)"
 	},
 	"ribbons": {
-		"open-terminal-id": "Open terminal",
-		"open-terminal-icon": "terminal-square"
+		"open-terminal-icon": "terminal-square",
+		"open-terminal-id": "Open terminal"
 	},
 	"settings": {
 		"add-to-command-icon": "terminal",
@@ -157,7 +157,7 @@
 		"notice-timeout-icon": "timer",
 		"pin-new-instance-icon": "pin",
 		"preferred-renderer-icon": "brush",
-		"profiles-icon": "$t(asset:generic.profile-icon)",
-		"profiles-edit-icon": "$t(asset:generic.edit-list-icon)"
+		"profiles-edit-icon": "$t(asset:generic.edit-list-icon)",
+		"profiles-icon": "$t(asset:generic.profile-icon)"
 	}
 }

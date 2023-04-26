@@ -118,22 +118,22 @@
 			"unsupported-profile": "不支持的$t(generic.profile)：\r\n{{profile}}\r\n"
 		}
 	},
+	"dialogs": {
+		"overwrite-existing-frontmatter": "$t(generic.overwrite)$t(generic.exist)的$t(generic.frontmatter)？"
+	},
 	"documentations": {
 		"changelog": "$t(generic.documentations.changelog)",
 		"readme": "$t(generic.documentations.readme)"
-	},
-	"dialogs": {
-		"overwrite-existing-frontmatter": "$t(generic.overwrite)$t(generic.exist)的$t(generic.frontmatter)？"
 	},
 	"errors": {
 		"error-checking-Python": "$t(generic.check)$t(generic.Python)時出錯",
 		"error-exporting-settings": "$t(generic.export)$t(generic.setting)時出錯",
 		"error-importing-settings": "$t(generic.import)$t(generic.setting)時出錯",
+		"error-killing-pseudoterminal": "終止$t(generic.pseudoterminal)時出錯",
 		"error-opening-documentation": "$t(generic.open)$t(generic.documentation)時出錯",
 		"error-processing-frontmatter": "處理$t(generic.frontmatter)時出錯：{{file.path}}",
-		"error-spawning-terminal": "$t(generic.spawn)$t(generic.terminal)時出錯",
 		"error-spawning-resizer": "$t(generic.spawn)$t(generic.terminal-resizer)時出錯",
-		"error-killing-pseudoterminal": "終止$t(generic.pseudoterminal)時出錯",
+		"error-spawning-terminal": "$t(generic.spawn)$t(generic.terminal)時出錯",
 		"malformed-data": "$t(generic.data)格式不正確",
 		"missing-interpolation": "名稱為「{{name}}」的缺少插值被替換為「{{value}}」：{{text}}",
 		"missing-translation": "鍵為「{{key}}」的缺少翻譯被替換為「{{value}}」",
@@ -201,7 +201,7 @@
 		"pin": "釘選",
 		"platform": "平台",
 		"platforms": {
-			"darwin": "\u200bmacOS",
+			"darwin": "​macOS",
 			"linux": "Linux",
 			"unix": "Unix",
 			"win32": "Microsoft Windows",
@@ -323,9 +323,9 @@
 		"focus-on-new-instance": "$t(generic.focus)新$t(generic.instance)",
 		"hide-status-bar": "隱藏$t(generic.status-bar)",
 		"hide-status-bar-options": {
-			"never": "從不",
 			"always": "總是",
 			"focused": "當$t(generic.focus)$t(generic.terminal)時",
+			"never": "從不",
 			"running": "當執行$t(generic.terminal)時"
 		},
 		"language": "$t(generic.language)",

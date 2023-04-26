@@ -61,8 +61,8 @@
         "@typescript-eslint/consistent-type-imports": [
           "error",
           {
-            "prefer": "type-imports",
-            "disallowTypeAnnotations": false
+            "disallowTypeAnnotations": false,
+            "prefer": "type-imports"
           }
         ],
         "@typescript-eslint/explicit-module-boundary-types": [
@@ -89,59 +89,59 @@
               "delimiter": "none",
               "requireLast": false
             },
+            "multilineDetection": "brackets",
             "singleline": {
               "delimiter": "semi",
               "requireLast": false
-            },
-            "multilineDetection": "brackets"
+            }
           }
         ],
         "@typescript-eslint/naming-convention": [
           "error",
           {
-            "selector": "default",
             "format": [
               "camelCase"
-            ]
+            ],
+            "selector": "default"
           },
           {
-            "selector": "variable",
             "format": [
               "camelCase",
               "UPPER_CASE"
-            ]
+            ],
+            "selector": "variable"
           },
           {
-            "selector": "parameter",
             "format": [
               "camelCase"
             ],
-            "leadingUnderscore": "allow"
+            "leadingUnderscore": "allow",
+            "selector": "parameter"
           },
           {
-            "selector": "memberLike",
             "format": [
               "camelCase"
             ],
-            "leadingUnderscore": "allowDouble"
+            "leadingUnderscore": "allowDouble",
+            "selector": "memberLike"
           },
           {
-            "selector": "memberLike",
+            "format": [
+              "camelCase"
+            ],
             "modifiers": [
               "private"
             ],
-            "format": [
-              "camelCase"
-            ],
             "prefix": [
               "#"
-            ]
+            ],
+            "selector": "memberLike"
           },
           {
-            "selector": "typeLike",
             "format": [
               "PascalCase"
-            ]
+            ],
+            "selector": "typeLike"
           }
         ],
         "@typescript-eslint/no-empty-function": [
@@ -217,8 +217,8 @@
           "error",
           {
             "anonymous": "never",
-            "named": "never",
-            "asyncArrow": "always"
+            "asyncArrow": "always",
+            "named": "never"
           }
         ]
       }
@@ -229,11 +229,6 @@
       ],
       "processor": "svelte3/svelte3",
       "rules": {
-        "arrow-parens": [
-          "error",
-          "always"
-        ],
-        "semi": "off",
         "@typescript-eslint/explicit-function-return-type": "off",
         "@typescript-eslint/semi": [
           "error",
@@ -241,7 +236,12 @@
           {
             "omitLastInOneLineBlock": false
           }
-        ]
+        ],
+        "arrow-parens": [
+          "error",
+          "always"
+        ],
+        "semi": "off"
       }
     }
   ],
@@ -322,12 +322,12 @@
       "error",
       {
         "code": 80,
-        "tabWidth": 2,
         "ignorePattern": "eslint-disable",
-        "ignoreUrls": true,
+        "ignoreRegExpLiterals": false,
         "ignoreStrings": false,
         "ignoreTemplateLiterals": false,
-        "ignoreRegExpLiterals": false
+        "ignoreUrls": true,
+        "tabWidth": 2
       }
     ],
     "max-lines": "off",
@@ -578,8 +578,8 @@
       "as-needed",
       {
         "keywords": true,
-        "unnecessary": true,
-        "numbers": true
+        "numbers": true,
+        "unnecessary": true
       }
     ],
     "semi": [
@@ -594,8 +594,8 @@
       "error",
       {
         "anonymous": "never",
-        "named": "never",
-        "asyncArrow": "always"
+        "asyncArrow": "always",
+        "named": "never"
       }
     ]
   },

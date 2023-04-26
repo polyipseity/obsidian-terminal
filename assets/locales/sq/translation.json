@@ -132,11 +132,11 @@
 		"error-checking-Python": "Error $t(generic.check_gerund) $t(generic.Python)",
 		"error-exporting-settings": "Error $t(generic.export_gerund) $t(generic.setting_other)",
 		"error-importing-settings": "Error $t(generic.import_gerund) $t(generic.setting_other)",
+		"error-killing-pseudoterminal": "Error killing $t(generic.pseudoterminal)",
 		"error-opening-documentation": "Error $t(generic.open_gerund) $t(generic.documentation)",
 		"error-processing-frontmatter": "Error processing $t(generic.frontmatter): {{file.path}}",
-		"error-spawning-terminal": "Error $t(generic.spawn_gerund) $t(generic.terminal)",
 		"error-spawning-resizer": "Error $t(generic.spawn_gerund) $t(generic.terminal-resizer)",
-		"error-killing-pseudoterminal": "Error killing $t(generic.pseudoterminal)",
+		"error-spawning-terminal": "Error $t(generic.spawn_gerund) $t(generic.terminal)",
 		"malformed-data": "Malformed $t(generic.data)",
 		"missing-interpolation": "Missing interpolation of name '{{name}}' is replaced by '{{value}}': {{text}}",
 		"missing-translation": "Missing translation of key '{{key}}' is replaced by '{{value}}'",
@@ -221,7 +221,7 @@
 		"pin": "pin",
 		"platform": "platform",
 		"platforms": {
-			"darwin": "\u200bmacOS",
+			"darwin": "​macOS",
 			"linux": "Linux",
 			"unix": "Unix",
 			"win32": "Microsoft Windows",
@@ -349,9 +349,9 @@
 		"focus-on-new-instance": "$t(generic.focus, capitalize) on new $t(generic.instance)",
 		"hide-status-bar": "Hide $t(generic.status-bar)",
 		"hide-status-bar-options": {
-			"never": "Never",
 			"always": "Always",
 			"focused": "When $t(generic.terminal) is $t(generic.focus_past)",
+			"never": "Never",
 			"running": "When $t(generic.terminal) is running"
 		},
 		"language": "$t(generic.language, capitalize)",

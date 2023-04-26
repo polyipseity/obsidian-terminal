@@ -129,11 +129,11 @@
 		"error-checking-Python": "$t(generic.check)$t(generic.Python)时出错",
 		"error-exporting-settings": "$t(generic.export)$t(generic.setting)时出错",
 		"error-importing-settings": "$t(generic.import)$t(generic.setting)时出错",
+		"error-killing-pseudoterminal": "终止$t(generic.pseudoterminal)时出错",
 		"error-opening-documentation": "$t(generic.open)$t(generic.documentation)时出错",
 		"error-processing-frontmatter": "处理$t(generic.frontmatter)时出错：{{file.path}}",
-		"error-spawning-terminal": "$t(generic.spawn)$t(generic.terminal)时出错",
 		"error-spawning-resizer": "$t(generic.spawn)$t(generic.terminal-resizer)时出错",
-		"error-killing-pseudoterminal": "终止$t(generic.pseudoterminal)时出错",
+		"error-spawning-terminal": "$t(generic.spawn)$t(generic.terminal)时出错",
 		"malformed-data": "$t(generic.data)格式不正确",
 		"missing-interpolation": "名称为「{{name}}」的缺少插值被替换为「{{value}}」：{{text}}",
 		"missing-translation": "键为「{{key}}」的缺少翻译被替换为「{{value}}」",
@@ -201,7 +201,7 @@
 		"pin": "锁定",
 		"platform": "平台",
 		"platforms": {
-			"darwin": "\u200bmacOS",
+			"darwin": "​macOS",
 			"linux": "Linux",
 			"unix": "Unix",
 			"win32": "Microsoft Windows",
@@ -323,9 +323,9 @@
 		"focus-on-new-instance": "$t(generic.focus)新$t(generic.instance)",
 		"hide-status-bar": "隐藏$t(generic.status-bar)",
 		"hide-status-bar-options": {
-			"never": "从不",
 			"always": "总是",
 			"focused": "当$t(generic.focus)$t(generic.terminal)时",
+			"never": "从不",
 			"running": "当执行$t(generic.terminal)时"
 		},
 		"language": "$t(generic.language)",

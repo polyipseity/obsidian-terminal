@@ -1,31 +1,5 @@
 {
-	"name": "obsidian-terminal",
-	"displayName": "Obsidian Terminal",
-	"version": "3.7.0",
 	"author": "polyipseity",
-	"license": "AGPL-3.0-or-later",
-	"description": "Integrate consoles, shells, and terminals inside Obsidian.",
-	"keywords": [
-		"console",
-		"obsidian",
-		"plugin",
-		"shell",
-		"terminal",
-		"terminal emulator"
-	],
-	"private": true,
-	"main": "main.js",
-	"scripts": {
-		"check": "tsc -noEmit && eslint --cache --ignore-pattern \"*.svelte\" .",
-		"build": "npm run check && npm run build:force",
-		"build:force": "node build/build.mjs",
-		"dev": "npm run build:force dev",
-		"fix": "eslint --fix --cache --ignore-pattern \"*.svelte\" .",
-		"obsidian:install": "npm run build && node build/obsidian-install.mjs",
-		"obsidian:install:force": "npm run build:force && node build/obsidian-install.mjs",
-		"postversion": "node build/version-post.mjs",
-		"version": "node build/version.mjs"
-	},
 	"dependencies": {
 		"@capacitor/filesystem": "^4.1.4",
 		"ansi-escape-sequences": "^6.2.1",
@@ -55,6 +29,7 @@
 		"xterm-addon-web-links": "^0.8.0",
 		"xterm-addon-webgl": "^0.14.0"
 	},
+	"description": "Integrate consoles, shells, and terminals inside Obsidian.",
 	"devDependencies": {
 		"@tsconfig/esm": "^1.0.2",
 		"@tsconfig/node16": "^1.0.3",
@@ -83,15 +58,40 @@
 		"typescript": "^5.0.4",
 		"typescript-svelte-plugin": "^0.3.22"
 	},
+	"displayName": "Obsidian Terminal",
+	"keywords": [
+		"console",
+		"obsidian",
+		"plugin",
+		"shell",
+		"terminal",
+		"terminal emulator"
+	],
+	"license": "AGPL-3.0-or-later",
+	"main": "main.js",
+	"name": "obsidian-terminal",
 	"obsidian": {
-		"id": "terminal",
-		"name": "Terminal",
-		"minAppVersion": "1.1.13",
 		"authorUrl": "",
 		"fundingUrl": {},
-		"isDesktopOnly": false
+		"id": "terminal",
+		"isDesktopOnly": false,
+		"minAppVersion": "1.1.13",
+		"name": "Terminal"
 	},
 	"overrides": {
 		"tsconfig-paths": "^4.0.0"
-	}
+	},
+	"private": true,
+	"scripts": {
+		"build": "npm run check && npm run build:force",
+		"build:force": "node build/build.mjs",
+		"check": "tsc -noEmit && eslint --cache --ignore-pattern \"*.svelte\" .",
+		"dev": "npm run build:force dev",
+		"fix": "eslint --fix --cache --ignore-pattern \"*.svelte\" .",
+		"obsidian:install": "npm run build && node build/obsidian-install.mjs",
+		"obsidian:install:force": "npm run build:force && node build/obsidian-install.mjs",
+		"postversion": "node build/version-post.mjs",
+		"version": "node build/version.mjs"
+	},
+	"version": "3.7.0"
 }
