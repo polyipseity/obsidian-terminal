@@ -29,7 +29,7 @@ export function loadSettings(plugin: TerminalPlugin): void {
 		callback() {
 			(async (): Promise<void> => {
 				try {
-					await navigator.clipboard.writeText(JSON.stringify(
+					await self.activeWindow.navigator.clipboard.writeText(JSON.stringify(
 						plugin.settings,
 						null,
 						JSON_STRINGIFY_SPACE,
@@ -99,8 +99,9 @@ export function loadSettings(plugin: TerminalPlugin): void {
 				try {
 					await plugin.mutateSettings(async settings =>
 						plugin.loadSettings(settings, async () => {
-							const ret: unknown =
-								JSON.parse(await navigator.clipboard.readText())
+							const ret: unknown = JSON.parse(
+								await self.activeWindow.navigator.clipboard.readText(),
+							)
 							return ret
 						}))
 					plugin.saveSettings().catch(logError)

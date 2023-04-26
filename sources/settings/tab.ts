@@ -11,6 +11,7 @@ import {
 	cloneAsWritable,
 	createChildElement,
 	logError,
+	requireNonNullish,
 	typedStructuredClone,
 	unexpected,
 } from "../utils/util"
@@ -73,7 +74,9 @@ export class EditSettingsModal extends Modal {
 						.setTooltip(i18n.t("settings.edit-settings.export-to-clipboard"))
 						.onClick(async () => {
 							try {
-								await navigator.clipboard.writeText(this.#dataText)
+								await requireNonNullish(
+									button.buttonEl.ownerDocument.defaultView,
+								).navigator.clipboard.writeText(this.#dataText)
 							} catch (error) {
 								console.debug(error)
 								errorEl.report(error)
@@ -92,7 +95,11 @@ export class EditSettingsModal extends Modal {
 						.onClick(async () => {
 							try {
 								const { value: parsed, valid } =
-									Settings.fix(JSON.parse(await navigator.clipboard.readText()))
+									Settings.fix(JSON.parse(
+										await requireNonNullish(
+											button.buttonEl.ownerDocument.defaultView,
+										).navigator.clipboard.readText(),
+									))
 								if (!valid) {
 									throw new Error(i18n.t("errors.malformed-data"))
 								}

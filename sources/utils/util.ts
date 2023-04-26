@@ -737,6 +737,12 @@ export function replaceAllRegex(string: string): RegExp {
 	return new RegExp(escapeRegExp(string), "ug")
 }
 
+export function requireNonNullish<T>(value: Contains<T, null | undefined
+> extends true ? T : never): NonNullable<T> {
+	if (isNonNullish(value)) { return value }
+	throw new Error()
+}
+
 export async function sleep2(timeInSeconds: number): Promise<void> {
 	return new Promise(resolve => {
 		self.setTimeout(resolve, timeInSeconds * SI_PREFIX_SCALE)
