@@ -10,6 +10,9 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Improvements__
+- Improve the icon for `whole words` in find in terminal. (`dfb3da51878bd8b7e9004afffc9097e3e01c79a8`)
+
 __Full changelog__: [`3.7.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.7.0...main)
 
 ## 3.7.0 (2023-04-11)
