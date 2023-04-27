@@ -23,11 +23,11 @@
 			"remove-icon": "$t(asset:generic.remove-icon)"
 		},
 		"find": {
-			"case-sensitive-icon": "uppercase-lowercase-a",
+			"case-sensitive-icon": "case-sensitive",
 			"next-icon": "$t(asset:generic.next-icon)",
 			"previous-icon": "$t(asset:generic.previous-icon)",
 			"regex-icon": "regex",
-			"whole-word-icon": "align-horizontal-space-around"
+			"whole-word-icon": "whole-word"
 		},
 		"profile": {
 			"external": {
