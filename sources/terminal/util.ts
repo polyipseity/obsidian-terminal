@@ -28,13 +28,13 @@ import { Set as valueSet } from "immutable"
 const xterm = dynamicRequireLazy<typeof import("xterm")>("xterm")
 
 type IFunctionIdentifier0 = DeepReadonly<DeepRequired<IFunctionIdentifier>>
-export const ESCAPE_SEQUENCE_INTRODUCER = "\u001b"
+export const ESCAPE_SEQUENCE_INTRODUCER = "\u001b" as const
 const ESC = ESCAPE_SEQUENCE_INTRODUCER
-export const CONTROL_SEQUENCE_INTRODUCER = `${ESC}[`
+export const CONTROL_SEQUENCE_INTRODUCER = `${ESC}[` as const
 const CSI = CONTROL_SEQUENCE_INTRODUCER
 export const
-	DEVICE_CONTROL_STRING = `${ESC}P`,
-	OPERATING_SYSTEM_COMMAND = `${ESC}]`,
+	DEVICE_CONTROL_STRING = `${ESC}P` as const,
+	OPERATING_SYSTEM_COMMAND = `${ESC}]` as const,
 	PREFIX_IDENTIFIERS = deepFreeze([
 		"",
 		...rangeCodePoint(codePoint("\x3c"), codePoint("\x40")),
