@@ -20,6 +20,7 @@ __Fixes__
 
 __Improvements__
 - Improve the icon for `whole words` in find in terminal. (`dfb3da51878bd8b7e9004afffc9097e3e01c79a8`)
+- Decrease loading time by ~20%. (`c4ea4912e5f9b412d31df70b3881570a47faebae`)
 
 __Full changelog__: [`3.7.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.7.0...main)
 
