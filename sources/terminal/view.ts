@@ -1,6 +1,7 @@
 import {
 	DEFAULT_ENCODING,
 	DEFAULT_SUCCESS_EXIT_CODES,
+	DOMClasses,
 	JSON_STRINGIFY_SPACE,
 	TERMINAL_SEARCH_RESULTS_LIMIT,
 	UNDEFINED,
@@ -226,8 +227,9 @@ class EditTerminalModal extends DialogModal {
 }
 
 export class TerminalView extends ItemView {
-	public static readonly type = new UnnamespacedID("terminal")
-	public static readonly divClass = TerminalView.type
+	public static readonly type =
+		new UnnamespacedID(DOMClasses.Namespaced.TERMINAL)
+
 	protected static readonly modifiers = deepFreeze(Platform.CURRENT === "darwin"
 		? ["Meta"] as const
 		: ["Ctrl", "Shift"] as const)
@@ -613,7 +615,7 @@ export class TerminalView extends ItemView {
 			return
 		}
 		createChildElement(contentEl, "div", ele => {
-			ele.classList.add(TerminalView.divClass.namespaced(plugin))
+			ele.classList.add(TerminalView.type.namespaced(plugin))
 			const obsr = onVisible(ele, () => {
 				try {
 					noticeSpawn()

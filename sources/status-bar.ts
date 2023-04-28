@@ -12,7 +12,9 @@ export function statusBar(callback?: (
 }
 
 export class StatusBarHider {
-	public static readonly class = new UnnamespacedID("hide-status-bar")
+	public static readonly class =
+		new UnnamespacedID(DOMClasses.Namespaced.HIDE_STATUS_BAR)
+
 	readonly #hiders: (() => boolean)[] = []
 
 	public constructor(protected readonly plugin: TerminalPlugin) { }

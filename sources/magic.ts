@@ -35,6 +35,11 @@ export namespace DOMClasses {
 		VERTICAL_TAB_CONTENT = "vertical-tab-content",
 		VERTICAL_TAB_CONTENT_CONTAINER = "vertical-tab-content-container",
 		VIEW_HEADER_TITLE = "view-header-title"
+	export namespace Namespaced {
+		export const
+			HIDE_STATUS_BAR = "hide-status-bar",
+			TERMINAL = "terminal"
+	}
 }
 
 export namespace FileExtensions {
