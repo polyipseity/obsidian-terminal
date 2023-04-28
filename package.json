@@ -38,6 +38,7 @@
 		"@tsconfig/svelte": "^4.0.1",
 		"@types/ansi-escape-sequences": "^4.0.0",
 		"@types/async-lock": "^1.4.0",
+		"@types/browser-util-inspect": "^0.2.0",
 		"@types/deep-equal": "^1.0.1",
 		"@types/file-saver": "^2.0.5",
 		"@types/json-stringify-safe": "^5.0.0",

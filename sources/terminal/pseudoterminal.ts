@@ -1,4 +1,5 @@
 import {
+	CONTROL_SEQUENCE_INTRODUCER as CSI,
 	CursoredText,
 	NORMALIZED_LINE_FEED,
 	TerminalTextArea,
@@ -39,7 +40,7 @@ import {
 	writePromise,
 } from "../utils/util"
 import type { IMarker, Terminal } from "xterm"
-import type { Options, StyleType } from "browser-util-inspect"
+import inspect, { type Options } from "browser-util-inspect"
 import { isEmpty, isUndefined, noop } from "lodash-es"
 import { notice2, printError } from "sources/utils/obsidian"
 import AsyncLock from "async-lock"
@@ -243,27 +244,17 @@ export class ConsolePseudoterminal
 	}
 
 	public static options(styles: readonly ansi.Style[]): Options {
-		const stylizer: {
-			readonly [_ in StyleType]: readonly ansi.Style[]
-		} = deepFreeze({
-			"boolean": ["yellow"],
-			date: ["magenta"],
-			name: [],
-			"null": ["bold"],
-			number: ["yellow"],
-			regexp: ["red"],
-			special: ["cyan"],
-			string: ["green"],
-			undefined: ["grey"],
-		} as const)
 		return deepFreeze({
-			colors: false,
 			customInspect: true,
 			depth: 0,
 			showHidden: true,
 			stylize(str, styleType) {
-				return `${ansi.styles(stylizer[styleType])}${str}${ansi.style
-					.reset}${ansi.styles(styles)}`
+				const { [styleType]: style } = inspect.styles
+				if (style) {
+					const { [style]: [apply, undo] } = inspect.colors
+					return `${CSI}${apply}m${str}${CSI}${undo}m${ansi.styles(styles)}`
+				}
+				return str
 			},
 		})
 	}
