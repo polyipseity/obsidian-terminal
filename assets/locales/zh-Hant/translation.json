@@ -208,7 +208,7 @@
 		"pin": "釘選",
 		"platform": "平台",
 		"platforms": {
-			"darwin": "​macOS",
+			"darwin": "\u200bmacOS",
 			"linux": "Linux",
 			"unix": "Unix",
 			"win32": "Microsoft Windows",
