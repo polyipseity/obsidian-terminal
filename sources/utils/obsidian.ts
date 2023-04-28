@@ -17,7 +17,6 @@ import {
 import { DOMClasses, NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem"
 import {
-	EMPTY_OBJECT,
 	Functions,
 	clear,
 	createChildElement,
@@ -279,7 +278,7 @@ export function awaitCSS(plugin: Plugin, element: HTMLElement): void {
 export function cleanFrontmatterCache(
 	cache?: FrontMatterCache,
 ): Readonly<Record<string, unknown>> {
-	if (!cache) { return EMPTY_OBJECT }
+	if (!cache) { return deepFreeze({}) }
 	const ret = typedStructuredClone<Partial<typeof cache>>(cache)
 	delete ret.position
 	return deepFreeze(ret)

@@ -37,8 +37,6 @@ import type { SvelteComponent } from "svelte"
 import type { Writable } from "node:stream"
 
 export type KeyModifier = "Alt" | "Ctrl" | "Meta" | "Shift"
-export const EMPTY_OBJECT: Readonly<Record<keyof any, never>> =
-	deepFreeze({})
 
 export class EventEmitterLite<A extends readonly unknown[]> {
 	protected static readonly emitLock = "emit"
