@@ -206,6 +206,10 @@
 
 /* end of xterm styles */
 
+.terminal\:await-css {
+	display: unset !important;
+}
+
 .workspace-leaf-content[data-type=terminal\:terminal] .view-content {
 	overflow: clip;
 	display: flex;

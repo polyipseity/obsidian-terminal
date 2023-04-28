@@ -24,6 +24,7 @@ import {
 	deepFreeze,
 	inSet,
 	multireplace,
+	onVisible,
 	replaceAllRegex,
 	typedStructuredClone,
 } from "./util"
@@ -260,6 +261,19 @@ export function addRibbonIcon(
 		},
 		() => { plugin.addRibbonIcon(icon, id, callback) },
 	)
+}
+
+export function awaitCSS(plugin: Plugin, element: HTMLElement): void {
+	const { classList, style, style: { display } } = element,
+		id = new UnnamespacedID(DOMClasses.Namespaced.AWAIT_CSS).namespaced(plugin)
+	style.display = "none"
+	const obsr = onVisible(element, () => {
+		try {
+			style.display = display
+			classList.remove(id)
+		} finally { obsr.disconnect() }
+	})
+	classList.add(id)
 }
 
 export function cleanFrontmatterCache(

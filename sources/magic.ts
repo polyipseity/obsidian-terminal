@@ -37,6 +37,7 @@ export namespace DOMClasses {
 		VIEW_HEADER_TITLE = "view-header-title"
 	export namespace Namespaced {
 		export const
+			AWAIT_CSS = "await-css",
 			HIDE_STATUS_BAR = "hide-status-bar",
 			TERMINAL = "terminal"
 	}

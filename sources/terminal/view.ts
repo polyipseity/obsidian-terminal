@@ -25,6 +25,7 @@ import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
 import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
 import {
 	UnnamespacedID,
+	awaitCSS,
 	newCollabrativeState,
 	notice2,
 	printError,
@@ -615,6 +616,7 @@ export class TerminalView extends ItemView {
 			return
 		}
 		createChildElement(contentEl, "div", ele => {
+			awaitCSS(plugin, ele)
 			ele.classList.add(TerminalView.type.namespaced(plugin))
 			const obsr = onVisible(ele, () => {
 				try {
