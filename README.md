@@ -122,6 +122,10 @@ __Terminal emulators__
 - Windows Terminal: `wt`
 - xterm: `xterm`
 
+### Miscellaneous
+
+This plugin patches `require` so that `require("obsidian")` works in the developer console.
+
 ## Contributing
 
 Contributions are welcome!

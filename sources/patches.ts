@@ -2,6 +2,7 @@ import { EventEmitterLite, Functions, deepFreeze } from "./utils/util"
 import type { Workspace } from "obsidian"
 import { around } from "monkey-around"
 import { correctType } from "./utils/types"
+import { dynamicRequireSync } from "./imports"
 import { noop } from "ts-essentials"
 
 export interface Log {
@@ -133,30 +134,72 @@ function patchLogging(
 	}
 }
 
+function patchRequire(self: typeof globalThis): () => void {
+	return around(self, {
+		require(proto) {
+			return Object.assign(function fn(this: typeof self, id: string): unknown {
+				try {
+					return proto.call(this, id)
+				} catch (error) {
+					self.console.debug(error)
+					return dynamicRequireSync(id)
+				}
+			}, proto)
+		},
+		toString(proto) {
+			return function fn(this: typeof self, ...args) {
+				return proto.apply(this, args)
+			}
+		},
+	})
+}
+
+function patchWindows(
+	workspace: Workspace,
+	patcher: (
+		self: Window & typeof globalThis,
+	) => (self: Window & typeof globalThis) => void,
+): () => void {
+	const ret = new Functions({ async: false, settled: true })
+	try {
+		const oner = workspace.on("window-open", window => {
+			const win0 = correctType(window.win),
+				unpatch = patcher(win0)
+			try {
+				const offer = workspace.on("window-close", window0 => {
+					if (window0 !== window) { return }
+					try { unpatch(win0) } finally { workspace.offref(offer) }
+				})
+			} catch (error) {
+				unpatch(win0)
+				throw error
+			}
+		})
+		ret.push(() => { workspace.offref(oner) })
+		const unpatch = patcher(self)
+		ret.push(() => { unpatch(self) })
+		return () => { ret.call() }
+	} catch (error) {
+		ret.call()
+		throw error
+	}
+}
+
 export function patch(workspace: Workspace): {
 	readonly unpatch: () => void
 	readonly log: Log
 } {
-	const unpatchers = new Functions({ async: false, settled: true })
+	const unpatch = new Functions({ async: false, settled: true })
 	try {
-		const log = newLog(),
-			windowConsolePatch = workspace.on("window-open", window => {
-				const unpatch = patchLogging(correctType(window.win), log),
-					off = workspace.on("window-close", window0 => {
-						if (window !== window0) { return }
-						try {
-							unpatch()
-						} finally { workspace.offref(off) }
-					})
-			})
-		unpatchers.push(() => { workspace.offref(windowConsolePatch) })
-		unpatchers.push(patchLogging(self, log))
+		const log = newLog()
+		unpatch.push(patchWindows(workspace, self => patchLogging(self, log)))
+		unpatch.push(patchWindows(workspace, patchRequire))
 		return Object.freeze({
 			log,
-			unpatch() { unpatchers.call() },
+			unpatch() { unpatch.call() },
 		})
 	} catch (error) {
-		unpatchers.call()
+		unpatch.call()
 		throw error
 	}
 }
