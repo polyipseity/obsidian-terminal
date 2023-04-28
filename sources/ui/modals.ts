@@ -20,6 +20,7 @@ import {
 	UpdatableUI,
 	notice2,
 	printError,
+	statusUI,
 	useSettings,
 	useSubsettings,
 } from "sources/utils/obsidian"
@@ -33,18 +34,20 @@ import {
 	deepFreeze,
 	randomNotIn,
 	removeAt,
+	requireNonNil,
 	swap,
 	typedStructuredClone,
 	unexpected,
 } from "sources/utils/util"
+import { constant, identity, isUndefined } from "lodash-es"
 import {
 	dropdownSelect,
 	linkSetting,
 	resetButton,
 	setTextToEnum,
 } from "./settings"
-import { identity, isUndefined } from "lodash-es"
 import type { DeepWritable } from "ts-essentials"
+import type { Fixed } from "./fixers"
 import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
 import { Platform } from "sources/utils/platforms"
 import { Pseudoterminal } from "sources/terminal/pseudoterminal"
@@ -172,7 +175,7 @@ export class ListModal<T> extends Modal {
 			.finally(onChangeLanguage.listen(() => { ui.update() }))
 		if (this.#dynamicWidth) { makeModalDynamicWidth(modalUI, modalEl) }
 		if (title) {
-			modalUI.new(() => titleEl, ele => {
+			modalUI.new(constant(titleEl), ele => {
 				ele.textContent = title()
 			}, ele => { ele.textContent = null })
 		}
@@ -371,6 +374,160 @@ export namespace ListModal {
 	}
 }
 
+export class EditDataModal<T extends object> extends Modal {
+	protected readonly modalUI = new UpdatableUI()
+	protected readonly ui = new UpdatableUI()
+	protected readonly data
+	#dataText
+	readonly #callback
+	readonly #title
+
+	public constructor(
+		protected readonly plugin: TerminalPlugin,
+		protected readonly protodata: T,
+		protected readonly fixer: (data: unknown) => Fixed<T>,
+		options?: EditDataModal.Options<T>,
+	) {
+		super(plugin.app)
+		this.data = cloneAsWritable(protodata)
+		this.#dataText = JSON.stringify(this.data, null, JSON_STRINGIFY_SPACE)
+		this.#callback = options?.callback ?? ((): void => { })
+		this.#title = options?.title
+	}
+
+	public override onOpen(): void {
+		super.onOpen()
+		const { modalUI, ui, modalEl, titleEl, plugin, protodata, fixer } = this,
+			{ element: listEl, remover: listElRemover } = useSettings(this.contentEl),
+			{ language } = plugin,
+			{ i18n, onChangeLanguage } = language,
+			title = this.#title
+		modalUI.finally(onChangeLanguage.listen(() => { modalUI.update() }))
+		ui.finally(listElRemover)
+			.finally(onChangeLanguage.listen(() => { ui.update() }))
+		makeModalDynamicWidth(modalUI, modalEl)
+		if (title) {
+			modalUI.new(constant(titleEl), ele => {
+				ele.textContent = title()
+			}, ele => { ele.textContent = null })
+		}
+		const errorEl = statusUI(ui, createChildElement(listEl, "div", ele => {
+			ele.classList.add(DOMClasses.MOD_WARNING)
+		}))
+		ui.finally(() => { this.#resetDataText() })
+			.newSetting(listEl, setting => {
+				setting
+					.setName(i18n.t("components.edit-data.export"))
+					.addButton(button => button
+						.setIcon(i18n
+							.t("asset:components.edit-data.export-to-clipboard-icon"))
+						.setTooltip(i18n.t("components.edit-data.export-to-clipboard"))
+						.onClick(async () => {
+							try {
+								await requireNonNil(
+									button.buttonEl.ownerDocument.defaultView,
+								).navigator.clipboard.writeText(this.#dataText)
+							} catch (error) {
+								self.console.debug(error)
+								errorEl.report(error)
+								return
+							}
+							errorEl.report()
+						}))
+			})
+			.newSetting(listEl, setting => {
+				setting
+					.setName(i18n.t("components.edit-data.import"))
+					.addButton(button => button
+						.setIcon(i18n
+							.t("asset:components.edit-data.import-from-clipboard-icon"))
+						.setTooltip(i18n.t("components.edit-data.import-from-clipboard"))
+						.onClick(async () => {
+							try {
+								const { value: parsed, valid } =
+									fixer(JSON.parse(
+										await requireNonNil(
+											button.buttonEl.ownerDocument.defaultView,
+										).navigator.clipboard.readText(),
+									))
+								if (!valid) {
+									throw new Error(i18n.t("errors.malformed-data"))
+								}
+								this.replaceData(parsed)
+							} catch (error) {
+								self.console.debug(error)
+								errorEl.report(error)
+								return
+							}
+							errorEl.report()
+							this.#resetDataText()
+							await this.postMutate()
+						}))
+			})
+			.newSetting(listEl, setting => {
+				setting
+					.setName(i18n.t("components.edit-data.data"))
+					.addTextArea(linkSetting(
+						() => this.#dataText,
+						value => { this.#dataText = value },
+						async value => {
+							try {
+								const { value: parsed, valid } = fixer(JSON.parse(value))
+								if (!valid) {
+									throw new Error(i18n.t("errors.malformed-data"))
+								}
+								this.replaceData(parsed)
+							} catch (error) {
+								self.console.debug(error)
+								errorEl.report(error)
+								return
+							}
+							errorEl.report()
+							await this.postMutate()
+						},
+					))
+					.addExtraButton(resetButton(
+						i18n.t("asset:components.edit-data.data-icon"),
+						i18n.t("components.edit-data.reset"),
+						() => { this.replaceData(cloneAsWritable(protodata)) },
+						async () => {
+							this.#resetDataText()
+							await this.postMutate()
+						},
+					))
+			})
+	}
+
+	public override onClose(): void {
+		super.onClose()
+		this.modalUI.destroy()
+		this.ui.destroy()
+	}
+
+	protected async postMutate(): Promise<void> {
+		const { data, modalUI, ui } = this,
+			cb = this.#callback(typedStructuredClone(data))
+		modalUI.update()
+		ui.update()
+		await cb
+	}
+
+	protected replaceData(data: typeof this.data): void {
+		clearProperties(this.data)
+		Object.assign(this.data, data)
+	}
+
+	#resetDataText(): void {
+		this.#dataText = JSON.stringify(this.data, null, JSON_STRINGIFY_SPACE)
+	}
+}
+export namespace EditDataModal {
+	export interface Options<T> {
+		readonly callback?: (data: DeepWritable<T>) => unknown
+		readonly title?: () => string
+	}
+}
+
 export class ProfileModal extends Modal {
 	protected readonly modalUI = new UpdatableUI()
 	protected readonly ui = new UpdatableUI()
@@ -446,7 +603,7 @@ export class ProfileModal extends Modal {
 						async () => {
 							const preset = this.#presets[this.#preset]
 							if (!preset) { return }
-							this.replaceData(cloneAsWritable(preset.value))
+							this.replaceData(cloneAsWritable(preset.value), true)
 							this.#setupTypedUI()
 							keepPreset = true
 							await this.postMutate()
@@ -478,7 +635,7 @@ export class ProfileModal extends Modal {
 							Settings.Profile.TYPES,
 							value => {
 								this.replaceData(cloneAsWritable(Settings.Profile
-									.DEFAULTS[value]))
+									.DEFAULTS[value]), true)
 							},
 						),
 						async () => {
@@ -509,6 +666,32 @@ export class ProfileModal extends Modal {
 						{ post(component) { component.setDisabled(true) } },
 					))
 			})
+			.newSetting(listEl, setting => {
+				setting
+					.setName(i18n.t("components.profile.data"))
+					.addButton(button => {
+						button
+							.setIcon(i18n.t("asset:components.profile.data-icon"))
+							.setTooltip(i18n.t("components.profile.data-edit"))
+							.onClick(() => {
+								new EditDataModal(
+									plugin,
+									profile,
+									Settings.Profile.fix,
+									{
+										callback: async (profileM): Promise<void> => {
+											this.replaceData(profileM)
+											this.#setupTypedUI()
+											await this.postMutate()
+										},
+										title(): string {
+											return i18n.t("components.profile.data")
+										},
+									},
+								).open()
+							})
+					})
+			})
 			.embed(() => {
 				const typedUI = new UpdatableUI(),
 					ele = useSubsettings(listEl)
@@ -534,13 +717,15 @@ export class ProfileModal extends Modal {
 		await cb
 	}
 
-	protected replaceData(profile: DeepWritable<Settings.Profile>): void {
+	protected replaceData(
+		profile: DeepWritable<Settings.Profile>,
+		keepName = false,
+	): void {
 		const { data } = this,
 			{ name } = data
 		clearProperties(data)
-		Object.assign(data, profile, {
-			name,
-		})
+		Object.assign(data, profile)
+		if (keepName) { data.name = name }
 	}
 
 	protected setupTypedUI(ui: UpdatableUI, element: HTMLElement): void {
@@ -548,23 +733,7 @@ export class ProfileModal extends Modal {
 			profile = data,
 			{ i18n } = plugin.language
 		ui.destroy()
-		if (profile.type === "invalid") {
-			ui.newSetting(element, setting => {
-				setting
-					.setName(i18n.t(`components.profile.${profile.type}.data`))
-					.addTextArea(textArea => textArea
-						.setValue(JSON.stringify(profile, null, JSON_STRINGIFY_SPACE))
-						.setDisabled(true))
-					.addExtraButton(resetButton(
-						i18n.t(`asset:components.profile.${profile.type}.data-icon`),
-						DISABLED_TOOLTIP,
-						unexpected,
-						unexpected,
-						{ post(component) { component.setDisabled(true) } },
-					))
-			})
-			return
-		}
+		if (profile.type === "invalid") { return }
 		ui.newSetting(element, setting => {
 			setting
 				.setName(i18n.t("components.profile.restore-history"))
@@ -1003,7 +1172,7 @@ export class DialogModal extends Modal {
 		ui.finally(onChangeLanguage.listen(() => { ui.update() }))
 		if (this.#dynamicWidth) { makeModalDynamicWidth(modalUI, modalEl) }
 		if (title) {
-			modalUI.new(() => titleEl, ele => {
+			modalUI.new(constant(titleEl), ele => {
 				ele.textContent = title()
 			}, ele => { ele.textContent = null })
 		}

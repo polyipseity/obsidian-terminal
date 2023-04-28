@@ -19,6 +19,14 @@
 		"dropdown": {
 			"placeholder": "（未選擇）"
 		},
+		"edit-data": {
+			"data": "$t(generic.data)",
+			"export": "$t(generic.export)",
+			"export-to-clipboard": "$t(generic.export)到$t(generic.clipboard)",
+			"import": "$t(generic.import)",
+			"import-from-clipboard": "從$t(generic.import)$t(generic.import)",
+			"reset": "$t(generic.reset)"
+		},
 		"editable-list": {
 			"append": "後置",
 			"move-down": "下移",
@@ -40,6 +48,8 @@
 			"whole-word": "全字"
 		},
 		"profile": {
+			"data": "$t(generic.data)",
+			"data-edit": "$t(generic.edit)",
 			"external": {
 				"arguments": "$t(generic.argument)",
 				"arguments-description": "$t(generic.list-description)",
@@ -58,9 +68,6 @@
 				"executable": "$t(generic.executable)",
 				"use-win32-conhost": "$t(generic.use)$t(generic.platforms.win32)「conhost.exe」",
 				"use-win32-conhost-description": "如果執行「conhost.exe」沒有創建視窗，請$t(generic.disable)。無保證這會起作用。"
-			},
-			"invalid": {
-				"data": "$t(generic.data)"
 			},
 			"name": "$t(generic.name)",
 			"platform": "$t(generic.platforms.{{type}})",
@@ -309,14 +316,6 @@
 		"documentations": {
 			"changelog": "$t(generic.documentations.changelog)",
 			"readme": "$t(generic.documentations.readme)"
-		},
-		"edit-settings": {
-			"data": "$t(generic.data)",
-			"export": "$t(generic.export)",
-			"export-to-clipboard": "$t(generic.export)到$t(generic.clipboard)",
-			"import": "$t(generic.import)",
-			"import-from-clipboard": "從$t(generic.import)$t(generic.import)",
-			"title": "$t(generic.edit)"
 		},
 		"error-notice-timeout": "錯誤$t(generic.notice)$t(generic.timeout)（s）",
 		"error-notice-timeout-description": "$t(settings.notice-timeout-description)",

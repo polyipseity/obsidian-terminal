@@ -19,6 +19,14 @@
 		"dropdown": {
 			"placeholder": "(Unselected)"
 		},
+		"edit-data": {
+			"data": "$t(generic.data, capitalize)",
+			"export": "$t(generic.export, capitalize)",
+			"export-to-clipboard": "$t(generic.export, capitalize) to $t(generic.clipboard)",
+			"import": "$t(generic.import, capitalize)",
+			"import-from-clipboard": "$t(generic.import, capitalize) from $t(generic.clipboard)",
+			"reset": "$t(generic.reset, capitalize)"
+		},
 		"editable-list": {
 			"append": "Append",
 			"move-down": "Move down",
@@ -43,6 +51,8 @@
 			"whole-word": "Whole word"
 		},
 		"profile": {
+			"data": "$t(generic.data, capitalize)",
+			"data-edit": "$t(generic.edit, capitalize)",
 			"external": {
 				"arguments": "$t(generic.argument_other, capitalize)",
 				"arguments-description": "$t(generic.list-description, capitalize)",
@@ -61,9 +71,6 @@
 				"executable": "$t(generic.executable, capitalize)",
 				"use-win32-conhost": "$t(generic.use, capitalize) $t(generic.platforms.win32) 'conhost.exe'",
 				"use-win32-conhost-description": "$t(generic.disable, capitalize) if running 'conhost.exe' does not create a window. No guarantees this will work."
-			},
-			"invalid": {
-				"data": "$t(generic.data, capitalize)"
 			},
 			"name": "$t(generic.name, capitalize)",
 			"platform": "$t(generic.platforms.{{type}}, capitalize)",
@@ -335,14 +342,6 @@
 		"documentations": {
 			"changelog": "$t(generic.documentations.changelog, capitalize)",
 			"readme": "$t(generic.documentations.readme, capitalize)"
-		},
-		"edit-settings": {
-			"data": "$t(generic.data, capitalize)",
-			"export": "$t(generic.export, capitalize)",
-			"export-to-clipboard": "$t(generic.export, capitalize) to $t(generic.clipboard)",
-			"import": "$t(generic.import, capitalize)",
-			"import-from-clipboard": "$t(generic.import, capitalize) from $t(generic.clipboard)",
-			"title": "$t(generic.edit, capitalize)"
 		},
 		"error-notice-timeout": "Error $t(generic.notice) $t(generic.timeout) (s)",
 		"error-notice-timeout-description": "$t(settings.notice-timeout-description)",

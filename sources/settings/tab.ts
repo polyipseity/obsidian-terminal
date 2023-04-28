@@ -1,18 +1,12 @@
-import { DOMClasses, JSON_STRINGIFY_SPACE } from "sources/magic"
 import {
+	EditDataModal,
 	ListModal,
 	ProfileListModal,
-	makeModalDynamicWidth,
 } from "sources/ui/modals"
-import { Modal, PluginSettingTab } from "obsidian"
-import { UpdatableUI, statusUI, useSettings } from "sources/utils/obsidian"
 import {
-	clearProperties,
 	cloneAsWritable,
 	createChildElement,
 	logError,
-	requireNonNil,
-	typedStructuredClone,
 	unexpected,
 } from "../utils/util"
 import {
@@ -23,154 +17,13 @@ import {
 	setTextToNumber,
 } from "../ui/settings"
 import { identity, isEmpty, size } from "lodash-es"
-import type { DeepWritable } from "ts-essentials"
 import { LANGUAGES } from "assets/locales"
+import { PluginSettingTab } from "obsidian"
 import { Settings } from "./data"
 import type { TerminalPlugin } from "../main"
+import { UpdatableUI } from "sources/utils/obsidian"
 import { openDocumentation } from "sources/documentation/load"
 import semverLt from "semver/functions/lt"
-
-export class EditSettingsModal extends Modal {
-	protected readonly modalUI = new UpdatableUI()
-	protected readonly ui = new UpdatableUI()
-	protected readonly data
-	#dataText
-	readonly #callback
-
-	public constructor(
-		protected readonly plugin: TerminalPlugin,
-		protected readonly protodata: Settings,
-		callback?: (data: DeepWritable<typeof protodata>) => unknown,
-	) {
-		super(plugin.app)
-		this.data = cloneAsWritable(protodata)
-		this.#dataText = JSON.stringify(this.data, null, JSON_STRINGIFY_SPACE)
-		this.#callback = callback ?? ((): void => { })
-	}
-
-	public override onOpen(): void {
-		super.onOpen()
-		const { modalUI, ui, modalEl, titleEl, plugin, protodata } = this,
-			{ element: listEl, remover: listElRemover } = useSettings(this.contentEl),
-			{ language } = plugin,
-			{ i18n, onChangeLanguage } = language
-		modalUI.finally(onChangeLanguage.listen(() => { modalUI.update() }))
-		ui.finally(listElRemover)
-			.finally(onChangeLanguage.listen(() => { ui.update() }))
-		makeModalDynamicWidth(modalUI, modalEl)
-		modalUI.new(() => titleEl, ele => {
-			ele.textContent = i18n.t("settings.edit-settings.title")
-		}, ele => { ele.textContent = null })
-		const errorEl = statusUI(ui, createChildElement(listEl, "div", ele => {
-			ele.classList.add(DOMClasses.MOD_WARNING)
-		}))
-		ui.finally(() => { this.#resetDataText() })
-			.newSetting(listEl, setting => {
-				setting
-					.setName(i18n.t("settings.edit-settings.export"))
-					.addButton(button => button
-						.setIcon(i18n
-							.t("asset:settings.edit-settings.export-to-clipboard-icon"))
-						.setTooltip(i18n.t("settings.edit-settings.export-to-clipboard"))
-						.onClick(async () => {
-							try {
-								await requireNonNil(
-									button.buttonEl.ownerDocument.defaultView,
-								).navigator.clipboard.writeText(this.#dataText)
-							} catch (error) {
-								self.console.debug(error)
-								errorEl.report(error)
-								return
-							}
-							errorEl.report()
-						}))
-			})
-			.newSetting(listEl, setting => {
-				setting
-					.setName(i18n.t("settings.edit-settings.import"))
-					.addButton(button => button
-						.setIcon(i18n
-							.t("asset:settings.edit-settings.import-from-clipboard-icon"))
-						.setTooltip(i18n.t("settings.edit-settings.import-from-clipboard"))
-						.onClick(async () => {
-							try {
-								const { value: parsed, valid } =
-									Settings.fix(JSON.parse(
-										await requireNonNil(
-											button.buttonEl.ownerDocument.defaultView,
-										).navigator.clipboard.readText(),
-									))
-								if (!valid) {
-									throw new Error(i18n.t("errors.malformed-data"))
-								}
-								this.replaceData(parsed)
-							} catch (error) {
-								self.console.debug(error)
-								errorEl.report(error)
-								return
-							}
-							errorEl.report()
-							this.#resetDataText()
-							await this.postMutate()
-						}))
-			})
-			.newSetting(listEl, setting => {
-				setting
-					.setName(i18n.t("settings.edit-settings.data"))
-					.addTextArea(linkSetting(
-						() => this.#dataText,
-						value => { this.#dataText = value },
-						async value => {
-							try {
-								const { value: parsed, valid } = Settings.fix(JSON.parse(value))
-								if (!valid) {
-									throw new Error(i18n.t("errors.malformed-data"))
-								}
-								this.replaceData(parsed)
-							} catch (error) {
-								self.console.debug(error)
-								errorEl.report(error)
-								return
-							}
-							errorEl.report()
-							await this.postMutate()
-						},
-					))
-					.addExtraButton(resetButton(
-						i18n.t("asset:settings.edit-settings.data-icon"),
-						i18n.t("settings.reset"),
-						() => { this.replaceData(cloneAsWritable(protodata)) },
-						async () => {
-							this.#resetDataText()
-							await this.postMutate()
-						},
-					))
-			})
-	}
-
-	public override onClose(): void {
-		super.onClose()
-		this.modalUI.destroy()
-		this.ui.destroy()
-	}
-
-	protected async postMutate(): Promise<void> {
-		const { data, modalUI, ui } = this,
-			cb = this.#callback(typedStructuredClone(data))
-		modalUI.update()
-		ui.update()
-		await cb
-	}
-
-	protected replaceData(data: DeepWritable<typeof this.data>): void {
-		clearProperties(this.data)
-		Object.assign(this.data, data)
-	}
-
-	#resetDataText(): void {
-		this.#dataText = JSON.stringify(this.data, null, JSON_STRINGIFY_SPACE)
-	}
-}
 
 export class SettingTab extends PluginSettingTab {
 	protected readonly ui = new UpdatableUI()
@@ -256,14 +109,20 @@ export class SettingTab extends PluginSettingTab {
 							.setIcon(i18n.t("asset:settings.all-settings-actions.edit-icon"))
 							.setTooltip(i18n.t("settings.all-settings-actions.edit"))
 							.onClick(() => {
-								new EditSettingsModal(
+								new EditDataModal(
 									plugin,
 									plugin.settings,
-									async settings => {
-										await plugin.mutateSettings(settingsM => {
-											Object.assign(settingsM, settings)
-										})
-										this.postMutate()
+									Settings.fix,
+									{
+										callback: async (settings): Promise<void> => {
+											await plugin.mutateSettings(settingsM => {
+												Object.assign(settingsM, settings)
+											})
+											this.postMutate()
+										},
+										title(): string {
+											return i18n.t("settings.all-settings")
+										},
 									},
 								).open()
 							})

@@ -15,6 +15,11 @@
 			"cancel-icon": "$t(asset:generic.cancel-icon)",
 			"confirm-icon": "$t(asset:generic.confirm-icon)"
 		},
+		"edit-data": {
+			"data-icon": "$t(asset:generic.data-icon)",
+			"export-to-clipboard-icon": "$t(asset:generic.output-to-clipboard-icon)",
+			"import-from-clipboard-icon": "$t(asset:generic.input-from-clipboard-icon)"
+		},
 		"editable-list": {
 			"append-icon": "$t(asset:generic.add-icon)",
 			"move-down-icon": "$t(asset:generic.next-icon)",
@@ -30,6 +35,7 @@
 			"whole-word-icon": "whole-word"
 		},
 		"profile": {
+			"data-icon": "$t(asset:generic.data-icon)",
 			"external": {
 				"arguments-edit-icon": "$t(asset:generic.edit-list-icon)",
 				"arguments-icon": "$t(asset:components.profile.generic.arguments-icon)",
@@ -47,9 +53,6 @@
 				"arguments-icon": "$t(asset:components.profile.generic.arguments-icon)",
 				"executable-icon": "$t(asset:components.profile.generic.executable-icon)",
 				"use-win32-conhost-icon": "code"
-			},
-			"invalid": {
-				"data-icon": "$t(asset:generic.data-icon)"
 			},
 			"name-icon": "text-cursor-input",
 			"platform-icon": "$t(asset:generic.platforms.{{type}}-icon)",
@@ -143,11 +146,6 @@
 		"documentations": {
 			"changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
 			"readme-icon": "$t(asset:generic.documentations.readme-icon)"
-		},
-		"edit-settings": {
-			"data-icon": "$t(asset:generic.data-icon)",
-			"export-to-clipboard-icon": "$t(asset:generic.output-to-clipboard-icon)",
-			"import-from-clipboard-icon": "$t(asset:generic.input-from-clipboard-icon)"
 		},
 		"error-notice-timeout-icon": "$t(asset:settings.notice-timeout-icon)",
 		"focus-on-new-instance-icon": "focus",
