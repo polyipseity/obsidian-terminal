@@ -67,6 +67,7 @@ import { TextPseudoterminal } from "./pseudoterminal"
 import type { Unicode11Addon } from "xterm-addon-unicode11"
 import type { WebLinksAddon } from "xterm-addon-web-links"
 import { XtermTerminalEmulator } from "./emulator"
+import { cloneDeep } from "lodash-es"
 import { dynamicRequireLazy } from "sources/imports"
 import { launderUnchecked } from "sources/utils/types"
 import { writePromise } from "./util"
@@ -670,6 +671,9 @@ export class TerminalView extends ItemView {
 							},
 							serial0 ?? UNDEFINED,
 							{
+								...profile.type === "invalid"
+									? {}
+									: cloneAsWritable(profile.terminalOptions, cloneDeep),
 								allowProposedApi: true,
 							},
 							{

@@ -3,9 +3,24 @@ import {
 	DEFAULT_SUCCESS_EXIT_CODES,
 	WINDOWS_CMD_PATH,
 } from "sources/magic"
-import { deepFreeze, typedKeys } from "sources/utils/util"
+import type { IBufferRange, ILinkHandler, ITheme, IWindowOptions } from "xterm"
+import { deepFreeze, openExternal, typedKeys } from "sources/utils/util"
 import type { Pseudoterminal } from "sources/terminal/pseudoterminal"
 import type { Settings } from "./data"
+
+export const
+	DEFAULT_LINK_HANDLER: ILinkHandler = deepFreeze({
+		activate(_0, text, _2) { openExternal(self, text) },
+	}),
+	DEFAULT_TERMINAL_OPTIONS: Settings.Profile.TerminalOptions =
+		deepFreeze({}),
+	DEFAULT_THEME: ITheme = deepFreeze({}),
+	DEFAULT_WINDOW_OPTIONS: IWindowOptions = deepFreeze({})
+export type LinkHandlerFunc = (
+	event: MouseEvent,
+	text: string,
+	range: IBufferRange,
+) => void
 
 export interface ProfilePresets0 {
 	readonly empty: Settings.Profile.Empty
@@ -49,6 +64,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		pythonExecutable: DEFAULT_PYTHON_EXECUTABLE,
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "integrated",
 		useWin32Conhost: true,
 	},
@@ -59,6 +75,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		platforms: { win32: true },
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "external",
 	},
 	cmdIntegrated: {
@@ -69,6 +86,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		pythonExecutable: DEFAULT_PYTHON_EXECUTABLE,
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "integrated",
 		useWin32Conhost: true,
 	},
@@ -80,6 +98,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		pythonExecutable: DEFAULT_PYTHON_EXECUTABLE,
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "integrated",
 		useWin32Conhost: true,
 	},
@@ -87,12 +106,14 @@ const PROFILE_PRESETS0 = deepFreeze({
 		name: "",
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "developerConsole",
 	},
 	empty: {
 		name: "",
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "",
 	},
 	gitBashIntegrated: {
@@ -103,6 +124,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		pythonExecutable: DEFAULT_PYTHON_EXECUTABLE,
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "integrated",
 		useWin32Conhost: true,
 	},
@@ -113,6 +135,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		platforms: { linux: true },
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "external",
 	},
 	konsoleExternal: {
@@ -122,6 +145,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		platforms: { linux: true },
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "external",
 	},
 	powershellExternal: {
@@ -131,6 +155,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		platforms: { win32: true },
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "external",
 	},
 	powershellIntegrated: {
@@ -141,6 +166,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		pythonExecutable: DEFAULT_PYTHON_EXECUTABLE,
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "integrated",
 		useWin32Conhost: true,
 	},
@@ -151,6 +177,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		platforms: { darwin: true, linux: true, win32: true },
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "external",
 	},
 	pwshIntegrated: {
@@ -161,6 +188,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		pythonExecutable: DEFAULT_PYTHON_EXECUTABLE,
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "integrated",
 		useWin32Conhost: true,
 	},
@@ -172,6 +200,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		pythonExecutable: DEFAULT_PYTHON_EXECUTABLE,
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "integrated",
 		useWin32Conhost: true,
 	},
@@ -183,6 +212,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		platforms: { darwin: true },
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "external",
 	},
 	wslIntegrated: {
@@ -193,6 +223,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		pythonExecutable: DEFAULT_PYTHON_EXECUTABLE,
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "integrated",
 		useWin32Conhost: true,
 	},
@@ -203,6 +234,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		platforms: { win32: true },
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "external",
 	},
 	xtermExternal: {
@@ -212,6 +244,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		platforms: { darwin: true, linux: true },
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "external",
 	},
 	zshIntegrated: {
@@ -222,6 +255,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		pythonExecutable: DEFAULT_PYTHON_EXECUTABLE,
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 		type: "integrated",
 		useWin32Conhost: true,
 	},

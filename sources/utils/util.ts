@@ -223,9 +223,12 @@ export function clearProperties(self: object): void {
 	}
 }
 
-export function cloneAsWritable<T>(obj: T): DeepWritable<T> {
+export function cloneAsWritable<T>(
+	obj: T,
+	cloner: <V>(value: V) => V = typedStructuredClone,
+): DeepWritable<T> {
 	// `readonly` is fake at runtime
-	return typedStructuredClone(obj) as DeepWritable<T>
+	return cloner(obj) as DeepWritable<T>
 }
 
 export function consumeEvent(event: Event): void {

@@ -8,8 +8,26 @@ import {
 	opaqueOrDefault,
 	semVerString,
 } from "sources/utils/types"
-import { DEFAULT_SUCCESS_EXIT_CODES, NOTICE_NO_TIMEOUT } from "sources/magic"
-import type { DeepRequired, DeepWritable, MarkOptional } from "ts-essentials"
+import {
+	DEFAULT_LINK_HANDLER,
+	DEFAULT_TERMINAL_OPTIONS,
+	DEFAULT_THEME,
+	DEFAULT_WINDOW_OPTIONS,
+	type LinkHandlerFunc,
+	PROFILE_PRESETS,
+} from "./profile-presets"
+import {
+	DEFAULT_SUCCESS_EXIT_CODES,
+	NOTICE_NO_TIMEOUT,
+	UNDEFINED,
+} from "sources/magic"
+import type {
+	DeepReadonly,
+	DeepRequired,
+	DeepUndefinable,
+	DeepWritable,
+	MarkOptional,
+} from "ts-essentials"
 import {
 	type Fixed,
 	fixArray,
@@ -17,17 +35,24 @@ import {
 	fixTyped,
 	markFixed,
 } from "sources/ui/fixers"
+import type {
+	FontWeight,
+	ILinkHandler,
+	ITerminalOptions,
+	ITheme,
+	IWindowOptions,
+} from "xterm"
 import {
 	cloneAsWritable,
 	deepFreeze,
 	inSet,
+	isHomogenousArray,
 } from "../utils/util"
+import { isUndefined, omitBy } from "lodash-es"
 import { LANGUAGES } from "assets/locales"
-import { PROFILE_PRESETS } from "./profile-presets"
 import type { Platform } from "../utils/platforms"
 import { Pseudoterminal } from "../terminal/pseudoterminal"
 import { RendererAddon } from "../terminal/emulator-addons"
-import { isUndefined } from "lodash-es"
 
 export interface Settings {
 	readonly language: Settings.DefaultableLanguage
@@ -187,6 +212,7 @@ export namespace Settings {
 			readonly name: string
 			readonly restoreHistory: boolean
 			readonly successExitCodes: readonly string[]
+			readonly terminalOptions: TerminalOptions
 		}
 		export interface Empty extends Base {
 			readonly type: ""
@@ -213,7 +239,8 @@ export namespace Settings {
 			readonly useWin32Conhost: boolean
 		}
 		export const DEFAULTS: {
-			readonly [key in Type]: DeepRequired<Typed<key>>
+			readonly [key in Type]: DeepRequired<Omit<Typed<key>, "terminalOptions">>
+			& Typed<key>
 		} = deepFreeze({
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			"": PROFILE_PRESETS.empty,
@@ -221,6 +248,7 @@ export namespace Settings {
 				name: "",
 				restoreHistory: true,
 				successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+				terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 				type: "developerConsole",
 			},
 			external: {
@@ -234,6 +262,7 @@ export namespace Settings {
 				},
 				restoreHistory: true,
 				successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+				terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 				type: "external",
 			},
 			integrated: {
@@ -248,6 +277,7 @@ export namespace Settings {
 				pythonExecutable: "",
 				restoreHistory: true,
 				successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+				terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 				type: "integrated",
 				useWin32Conhost: true,
 			},
@@ -304,6 +334,7 @@ export namespace Settings {
 								"successExitCodes",
 								["string"],
 							),
+							terminalOptions: fixTerminalOptions(unc["terminalOptions"]).value,
 							type,
 						} satisfies Typed<typeof type>
 					}
@@ -327,6 +358,7 @@ export namespace Settings {
 								"successExitCodes",
 								["string"],
 							),
+							terminalOptions: fixTerminalOptions(unc["terminalOptions"]).value,
 							type,
 						} satisfies Typed<typeof type>
 					}
@@ -367,6 +399,7 @@ export namespace Settings {
 								"successExitCodes",
 								["string"],
 							),
+							terminalOptions: fixTerminalOptions(unc["terminalOptions"]).value,
 							type,
 						} satisfies Typed<typeof type>
 					}
@@ -413,6 +446,7 @@ export namespace Settings {
 								"successExitCodes",
 								["string"],
 							),
+							terminalOptions: fixTerminalOptions(unc["terminalOptions"]).value,
 							type,
 							useWin32Conhost: fixTyped(
 								DEFAULTS[type],
@@ -431,6 +465,563 @@ export namespace Settings {
 					// No default
 				}
 			})())
+		}
+
+		export type TerminalOptions = DeepReadonly<ITerminalOptions>
+		const FONT_WEIGHTS = Object.freeze([
+			"100",
+			"200",
+			"300",
+			"400",
+			"500",
+			"600",
+			"700",
+			"800",
+			"900",
+			"bold",
+			"normal",
+		] as const) satisfies readonly FontWeight[]
+		export function fixTerminalOptions(self: unknown): Fixed<TerminalOptions> {
+			const unc = launderUnchecked<TerminalOptions>(self)
+			return markFixed(self, omitBy({
+				allowProposedApi: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"allowProposedApi",
+					["undefined", "boolean"],
+				),
+				allowTransparency: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"allowTransparency",
+					["undefined", "boolean"],
+				),
+				altClickMovesCursor: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"altClickMovesCursor",
+					["undefined", "boolean"],
+				),
+				convertEol: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"convertEol",
+					["undefined", "boolean"],
+				),
+				cursorBlink: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"cursorBlink",
+					["undefined", "boolean"],
+				),
+				cursorStyle: fixInSet(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"cursorStyle",
+					[UNDEFINED, "bar", "block", "underline"] as const,
+				),
+				cursorWidth: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"cursorWidth",
+					["undefined", "number"],
+				),
+				customGlyphs: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"customGlyphs",
+					["undefined", "boolean"],
+				),
+				disableStdin: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"disableStdin",
+					["undefined", "boolean"],
+				),
+				drawBoldTextInBrightColors: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"drawBoldTextInBrightColors",
+					["undefined", "boolean"],
+				),
+				fastScrollModifier: fixInSet(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"fastScrollModifier",
+					[UNDEFINED, "alt", "ctrl", "none", "shift"] as const,
+				),
+				fastScrollSensitivity: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"fastScrollSensitivity",
+					["undefined", "number"],
+				),
+				fontFamily: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"fontFamily",
+					["undefined", "string"],
+				),
+				fontSize: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"fontSize",
+					["undefined", "number"],
+				),
+				fontWeight: ((): FontWeight | undefined => {
+					const ret = fixTyped(
+						DEFAULT_TERMINAL_OPTIONS,
+						unc,
+						"fontWeight",
+						["undefined", "number", "string"],
+					)
+					return typeof ret === "string"
+						? fixInSet(
+							DEFAULT_TERMINAL_OPTIONS,
+							unc,
+							"fontWeight",
+							FONT_WEIGHTS,
+						)
+						: ret
+				})(),
+				fontWeightBold: ((): FontWeight | undefined => {
+					const ret = fixTyped(
+						DEFAULT_TERMINAL_OPTIONS,
+						unc,
+						"fontWeightBold",
+						["undefined", "number", "string"],
+					)
+					return typeof ret === "string"
+						? fixInSet(
+							DEFAULT_TERMINAL_OPTIONS,
+							unc,
+							"fontWeightBold",
+							FONT_WEIGHTS,
+						)
+						: ret
+				})(),
+				letterSpacing: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"letterSpacing",
+					["undefined", "number"],
+				),
+				lineHeight: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"lineHeight",
+					["undefined", "number"],
+				),
+				linkHandler: isUndefined(unc.linkHandler)
+					? unc.linkHandler
+					: ((): ILinkHandler => {
+						const unc2 = launderUnchecked<ILinkHandler>(unc.linkHandler),
+							ret = {
+								activate: fixTyped(
+									DEFAULT_LINK_HANDLER,
+									unc2,
+									"activate",
+									["function"],
+								) as LinkHandlerFunc,
+								allowNonHttpProtocols: fixTyped(
+									DEFAULT_LINK_HANDLER,
+									unc2,
+									"allowNonHttpProtocols",
+									["undefined", "boolean"],
+								),
+								hover: fixTyped(
+									DEFAULT_LINK_HANDLER,
+									unc2,
+									"hover",
+									["undefined", "function"],
+								) as LinkHandlerFunc | undefined,
+								leave: fixTyped(
+									DEFAULT_LINK_HANDLER,
+									unc2,
+									"leave",
+									["undefined", "function"],
+								) as LinkHandlerFunc | undefined,
+							} satisfies Required<DeepUndefinable<ILinkHandler>>
+						return {
+							...omitBy(ret, isUndefined),
+							activate: ret.activate,
+						}
+					})(),
+				logLevel: fixInSet(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"logLevel",
+					[UNDEFINED, "debug", "error", "info", "off", "warn"] as const,
+				),
+				macOptionClickForcesSelection: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"macOptionClickForcesSelection",
+					["undefined", "boolean"],
+				),
+				macOptionIsMeta: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"macOptionIsMeta",
+					["undefined", "boolean"],
+				),
+				minimumContrastRatio: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"minimumContrastRatio",
+					["undefined", "number"],
+				),
+				overviewRulerWidth: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"overviewRulerWidth",
+					["undefined", "number"],
+				),
+				rightClickSelectsWord: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"rightClickSelectsWord",
+					["undefined", "boolean"],
+				),
+				screenReaderMode: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"screenReaderMode",
+					["undefined", "boolean"],
+				),
+				scrollOnUserInput: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"scrollOnUserInput",
+					["undefined", "boolean"],
+				),
+				scrollSensitivity: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"scrollSensitivity",
+					["undefined", "number"],
+				),
+				scrollback: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"scrollback",
+					["undefined", "number"],
+				),
+				smoothScrollDuration: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"smoothScrollDuration",
+					["undefined", "number"],
+				),
+				tabStopWidth: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"tabStopWidth",
+					["undefined", "number"],
+				),
+				theme: isUndefined(unc.theme)
+					? unc.theme
+					: ((): ITheme => {
+						const unc2 = launderUnchecked<ITheme>(unc.theme),
+							ret = {
+								background: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"background",
+									["undefined", "string"],
+								),
+								black: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"black",
+									["undefined", "string"],
+								),
+								blue: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"blue",
+									["undefined", "string"],
+								),
+								brightBlack: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"brightBlack",
+									["undefined", "string"],
+								),
+								brightBlue: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"brightBlue",
+									["undefined", "string"],
+								),
+								brightCyan: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"brightCyan",
+									["undefined", "string"],
+								),
+								brightGreen: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"brightGreen",
+									["undefined", "string"],
+								),
+								brightMagenta: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"brightMagenta",
+									["undefined", "string"],
+								),
+								brightRed: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"brightRed",
+									["undefined", "string"],
+								),
+								brightWhite: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"brightWhite",
+									["undefined", "string"],
+								),
+								brightYellow: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"brightYellow",
+									["undefined", "string"],
+								),
+								cursor: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"cursor",
+									["undefined", "string"],
+								),
+								cursorAccent: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"cursorAccent",
+									["undefined", "string"],
+								),
+								cyan: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"cyan",
+									["undefined", "string"],
+								),
+								extendedAnsi: isUndefined(unc2.extendedAnsi) ||
+									isHomogenousArray(["string"], unc2.extendedAnsi)
+									? unc2.extendedAnsi
+									: DEFAULT_THEME.extendedAnsi,
+								foreground: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"foreground",
+									["undefined", "string"],
+								),
+								green: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"green",
+									["undefined", "string"],
+								),
+								magenta: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"magenta",
+									["undefined", "string"],
+								),
+								red: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"red",
+									["undefined", "string"],
+								),
+								selectionBackground: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"selectionBackground",
+									["undefined", "string"],
+								),
+								selectionForeground: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"selectionForeground",
+									["undefined", "string"],
+								),
+								selectionInactiveBackground: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"selectionInactiveBackground",
+									["undefined", "string"],
+								),
+								white: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"white",
+									["undefined", "string"],
+								),
+								yellow: fixTyped(
+									DEFAULT_THEME,
+									unc2,
+									"yellow",
+									["undefined", "string"],
+								),
+							} satisfies Required<DeepUndefinable<ITheme>>
+						return omitBy(ret, isUndefined)
+					})(),
+				windowOptions: isUndefined(unc.windowOptions)
+					? unc.windowOptions
+					: ((): IWindowOptions => {
+						const unc2 = launderUnchecked<IWindowOptions>(unc.windowOptions),
+							ret = {
+								fullscreenWin: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"fullscreenWin",
+									["undefined", "boolean"],
+								),
+								getCellSizePixels: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"getCellSizePixels",
+									["undefined", "boolean"],
+								),
+								getIconTitle: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"getIconTitle",
+									["undefined", "boolean"],
+								),
+								getScreenSizeChars: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"getScreenSizeChars",
+									["undefined", "boolean"],
+								),
+								getScreenSizePixels: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"getScreenSizePixels",
+									["undefined", "boolean"],
+								),
+								getWinPosition: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"getWinPosition",
+									["undefined", "boolean"],
+								),
+								getWinSizeChars: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"getWinSizeChars",
+									["undefined", "boolean"],
+								),
+								getWinSizePixels: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"getWinSizePixels",
+									["undefined", "boolean"],
+								),
+								getWinState: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"getWinState",
+									["undefined", "boolean"],
+								),
+								getWinTitle: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"getWinTitle",
+									["undefined", "boolean"],
+								),
+								lowerWin: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"lowerWin",
+									["undefined", "boolean"],
+								),
+								maximizeWin: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"maximizeWin",
+									["undefined", "boolean"],
+								),
+								minimizeWin: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"minimizeWin",
+									["undefined", "boolean"],
+								),
+								popTitle: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"popTitle",
+									["undefined", "boolean"],
+								),
+								pushTitle: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"pushTitle",
+									["undefined", "boolean"],
+								),
+								raiseWin: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"raiseWin",
+									["undefined", "boolean"],
+								),
+								refreshWin: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"refreshWin",
+									["undefined", "boolean"],
+								),
+								restoreWin: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"restoreWin",
+									["undefined", "boolean"],
+								),
+								setWinLines: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"setWinLines",
+									["undefined", "boolean"],
+								),
+								setWinPosition: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"setWinPosition",
+									["undefined", "boolean"],
+								),
+								setWinSizeChars: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"setWinSizeChars",
+									["undefined", "boolean"],
+								),
+								setWinSizePixels: fixTyped(
+									DEFAULT_WINDOW_OPTIONS,
+									unc2,
+									"setWinSizePixels",
+									["undefined", "boolean"],
+								),
+							} satisfies Required<DeepUndefinable<IWindowOptions>>
+						return omitBy(ret, isUndefined)
+					})(),
+				windowsMode: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"windowsMode",
+					["undefined", "boolean"],
+				),
+				wordSeparator: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"wordSeparator",
+					["undefined", "string"],
+				),
+			} satisfies Required<DeepUndefinable<TerminalOptions>>, isUndefined))
 		}
 	}
 
