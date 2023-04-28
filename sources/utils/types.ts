@@ -54,7 +54,7 @@ export function opaqueOrDefault<T, I extends string, D>(
 	try {
 		return type(value)
 	} catch (error) {
-		console.debug(error)
+		self.console.debug(error)
 		return defaultValue
 	}
 }

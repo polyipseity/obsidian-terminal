@@ -33,11 +33,11 @@ export const I18N = (async (): Promise<i18n> => {
 			initImmediate: true,
 			missingInterpolationHandler(text, value: RegExpExecArray) {
 				if (missingInterpolationHandlerReentrant) {
-					console.warn(value, text)
+					self.console.warn(value, text)
 				} else {
 					missingInterpolationHandlerReentrant = true
 					try {
-						console.warn(ret.t("errors.missing-interpolation", {
+						self.console.warn(ret.t("errors.missing-interpolation", {
 							interpolation: { escapeValue: false },
 							name: value[1],
 							text,
@@ -53,9 +53,9 @@ export const I18N = (async (): Promise<i18n> => {
 			ns: NAMESPACES,
 			parseMissingKeyHandler(key, defaultValue) {
 				if (key === missingTranslationKey) {
-					console.warn(key, defaultValue)
+					self.console.warn(key, defaultValue)
 				} else {
-					console.warn(ret.t(missingTranslationKey, {
+					self.console.warn(ret.t(missingTranslationKey, {
 						interpolation: { escapeValue: false },
 						key,
 						value: defaultValue ?? key,

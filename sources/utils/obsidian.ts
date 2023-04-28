@@ -82,7 +82,7 @@ export class UpdatableUI {
 								try {
 									components.push(component)
 								} catch (error) {
-									console.error(error)
+									self.console.error(error)
 								}
 							})
 						}
@@ -94,14 +94,14 @@ export class UpdatableUI {
 								try {
 									comp.onChange((): void => { })
 								} catch (error) {
-									console.error(error)
+									self.console.error(error)
 								}
 							}
 							if ("removeCta" in comp && typeof comp.removeCta === "function") {
 								try {
 									comp.removeCta()
 								} catch (error) {
-									console.error(error)
+									self.console.error(error)
 								}
 							}
 							if (comp instanceof ButtonComponent) {
@@ -111,7 +111,7 @@ export class UpdatableUI {
 								comp.selectEl.replaceChildren()
 							}
 						} catch (error) {
-							console.error(error)
+							self.console.error(error)
 						}
 						cb(comp)
 						return this
@@ -294,11 +294,11 @@ export function printMalformedData(
 			try {
 				return typedStructuredClone(thing)
 			} catch (error) {
-				console.warn(error)
+				self.console.warn(error)
 				return thing
 			}
 		}
-	console.error(
+	self.console.error(
 		i18n.t("errors.malformed-data"),
 		tryClone(actual),
 		tryClone(expected),
@@ -353,7 +353,7 @@ export function printError(
 	message = (): string => "",
 	plugin?: TerminalPlugin,
 ): void {
-	console.error(`${message()}\n`, error)
+	self.console.error(`${message()}\n`, error)
 	notice2(
 		() => `${message()}\n${error.name}: ${error.message}`,
 		plugin?.settings.errorNoticeTimeout ?? NOTICE_NO_TIMEOUT,
@@ -414,7 +414,10 @@ export function usePrivateAPI<R>(
 	try {
 		return func()
 	} catch (error) {
-		console.warn(plugin.language.i18n.t("errors.private-API-changed"), error)
+		self.console.warn(
+			plugin.language.i18n.t("errors.private-API-changed"),
+			error,
+		)
 		return fallback(error)
 	}
 }

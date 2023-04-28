@@ -43,7 +43,7 @@ export async function spawnExternalTerminalEmulator(
 			shell: true,
 			stdio: ["ignore", "ignore", "ignore"],
 		}))
-	try { ret.unref() } catch (error) { console.warn(error) }
+	try { ret.unref() } catch (error) { self.console.warn(error) }
 	return ret
 }
 
@@ -81,7 +81,7 @@ export class XtermTerminalEmulator<A> {
 				}
 			} catch (error) {
 				if (mustResizePseudoterminal) { throw error }
-				console.debug(error)
+				self.console.debug(error)
 			}
 		})())
 	}, TERMINAL_PTY_RESIZE_WAIT * SI_PREFIX_SCALE))
@@ -132,7 +132,7 @@ export class XtermTerminalEmulator<A> {
 			}
 		} catch (error) {
 			if (mustClosePseudoterminal) { throw error }
-			console.debug(error)
+			self.console.debug(error)
 		}
 		this.terminal.dispose()
 	}

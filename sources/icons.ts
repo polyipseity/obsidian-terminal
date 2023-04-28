@@ -13,7 +13,7 @@ export function loadIcons(plugin: Plugin): void {
 		"whole-word": WholeWord,
 	})) {
 		if (getIcon(key)) {
-			console.warn(key)
+			self.console.warn(key)
 			continue
 		}
 		const icon = createElement(value)

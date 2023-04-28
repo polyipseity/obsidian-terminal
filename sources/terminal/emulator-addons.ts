@@ -75,7 +75,7 @@ export class RendererAddon implements ITerminalAddon {
 					term.loadAddon(this.renderer = renderer0)
 					break
 				} catch (error) {
-					console.warn(error)
+					self.console.warn(error)
 					this.use("dom")
 				}
 				break
@@ -91,7 +91,7 @@ export class RendererAddon implements ITerminalAddon {
 						})
 					term.loadAddon(this.renderer = renderer0)
 				} catch (error) {
-					console.warn(error)
+					self.console.warn(error)
 					this.use("canvas")
 				}
 				break

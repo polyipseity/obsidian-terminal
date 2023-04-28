@@ -550,7 +550,7 @@ export class TerminalView extends ItemView {
 							},
 						)
 					} catch (error) {
-						console.debug(error)
+						self.console.debug(error)
 						empty = true
 					}
 					if (empty) { this.#find?.$set({ results: "" }) }

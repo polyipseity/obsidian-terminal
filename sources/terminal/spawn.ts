@@ -63,7 +63,7 @@ export function spawnTerminal(
 				type: TerminalView.type.namespaced(plugin),
 			})
 		} catch (error) {
-			console.error(error)
+			self.console.error(error)
 		}
 	})()
 }

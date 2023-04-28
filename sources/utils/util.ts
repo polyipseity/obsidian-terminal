@@ -121,7 +121,7 @@ export class Functions<
 				try {
 					func.call(thisArg, ...args)
 				} catch (error) {
-					console.error(error)
+					self.console.error(error)
 				}
 			}
 			: (func): void => { func.call(thisArg, ...args) })
@@ -283,19 +283,19 @@ function deepFreeze0<T>(value: T, freezing: WeakSet<object>): DeepReadonly<T> {
 }
 
 // Feature request: https://github.com/sveltejs/svelte/issues/4056
-export function destroyWithOutro(self: SvelteComponent): void {
-	const { $$: { fragment } } = self
+export function destroyWithOutro(self0: SvelteComponent): void {
+	const { $$: { fragment } } = self0
 	if (fragment !== false && fragment) {
 		try {
 			$groupOutros()
-			$transitionOut(fragment, 0, 0, () => { self.$destroy() })
+			$transitionOut(fragment, 0, 0, () => { self0.$destroy() })
 			$checkOutros()
 		} catch (error) {
-			console.error(error)
-			self.$destroy()
+			self.console.error(error)
+			self0.$destroy()
 		}
 	} else {
-		self.$destroy()
+		self0.$destroy()
 	}
 }
 
@@ -547,7 +547,7 @@ export function lazyProxy<T extends Function | object>(
 	return proxy as T
 }
 
-export function logError(thing: unknown): void {
+export function logError(thing: unknown, { console } = self): void {
 	console.error(thing)
 }
 
@@ -629,7 +629,7 @@ export function logFormat(
 	return args.map(stringify0).join(" ")
 }
 
-export function logWarn(thing: unknown): void {
+export function logWarn(thing: unknown, { console } = self): void {
 	console.warn(thing)
 }
 

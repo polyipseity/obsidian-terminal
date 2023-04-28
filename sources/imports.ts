@@ -68,7 +68,7 @@ export function importable(module: string): boolean {
 		dynamicRequireSync(module)
 		return true
 	} catch (error) {
-		console.debug(error)
+		self.console.debug(error)
 		return false
 	}
 }

@@ -580,9 +580,9 @@ class WindowsPseudoterminal implements Pseudoterminal {
 							)
 						}
 					}).stderr.on("data", (chunk: Buffer | string) => {
-						console.error(chunk.toString(DEFAULT_ENCODING))
+						self.console.error(chunk.toString(DEFAULT_ENCODING))
 					})
-				} catch (error) { console.warn(error) }
+				} catch (error) { self.console.warn(error) }
 				return ret
 			})(),
 			shell = (async (): Promise<readonly [
@@ -627,7 +627,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 										const watchdog = self.setInterval(
 											() => {
 												writePromise(resizer0.stdin, "\n")
-													.catch(error => { console.debug(error) })
+													.catch(error => { self.console.debug(error) })
 											},
 											TERMINAL_RESIZER_WATCHDOG_WAIT * SI_PREFIX_SCALE,
 										)
@@ -677,14 +677,14 @@ class WindowsPseudoterminal implements Pseudoterminal {
 								)
 								return isNaN(termCode) ? conCode ?? signal ?? NaN : termCode
 							} catch (error) {
-								console.debug(error)
+								self.console.debug(error)
 								return conCode ?? signal ?? NaN
 							} finally {
 								(async (): Promise<void> => {
 									try {
 										await sleep2(TERMINAL_EXIT_CLEANUP_WAIT)
 										await codeTmp.cleanup()
-									} catch (error) { console.warn(error) }
+									} catch (error) { self.console.warn(error) }
 								})()
 							}
 						})())
@@ -781,9 +781,9 @@ class UnixPseudoterminal implements Pseudoterminal {
 		}).then(ret => {
 			try {
 				ret.stderr.on("data", (chunk: Buffer | string) => {
-					console.error(chunk.toString(DEFAULT_ENCODING))
+					self.console.error(chunk.toString(DEFAULT_ENCODING))
 				})
-			} catch (error) { console.warn(error) }
+			} catch (error) { self.console.warn(error) }
 			return ret
 		})
 		this.onExit = this.shell

@@ -78,7 +78,7 @@ export class EditSettingsModal extends Modal {
 									button.buttonEl.ownerDocument.defaultView,
 								).navigator.clipboard.writeText(this.#dataText)
 							} catch (error) {
-								console.debug(error)
+								self.console.debug(error)
 								errorEl.report(error)
 								return
 							}
@@ -105,7 +105,7 @@ export class EditSettingsModal extends Modal {
 								}
 								this.replaceData(parsed)
 							} catch (error) {
-								console.debug(error)
+								self.console.debug(error)
 								errorEl.report(error)
 								return
 							}
@@ -128,7 +128,7 @@ export class EditSettingsModal extends Modal {
 								}
 								this.replaceData(parsed)
 							} catch (error) {
-								console.debug(error)
+								self.console.debug(error)
 								errorEl.report(error)
 								return
 							}

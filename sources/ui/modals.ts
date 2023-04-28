@@ -777,8 +777,8 @@ export class ProfileModal extends Modal {
 														windowsHide: true,
 													},
 												)
-												if (stdout) { console.log(stdout) }
-												if (stderr) { console.error(stderr) }
+												if (stdout) { self.console.log(stdout) }
+												if (stderr) { self.console.error(stderr) }
 												if (!stdout.includes(i18n
 													.t("asset:magic.Python-version-magic"))) {
 													throw new Error(i18n.t("errors.not-Python"))
@@ -1067,7 +1067,7 @@ export class DialogModal extends Modal {
 			try {
 				await this.cancel(this.#close)
 			} catch (error) {
-				console.error(error)
+				self.console.error(error)
 			}
 		})()
 	}

@@ -36,7 +36,7 @@ export class TerminalPlugin extends Plugin {
 	public readonly language = new LanguageManager(this)
 	public readonly statusBarHider = new StatusBarHider(this)
 	public readonly consolePTY = lazyProxy(() => new RefPsuedoterminal(
-		new ConsolePseudoterminal(console, this.log),
+		new ConsolePseudoterminal(self.console, this.log),
 	))
 
 	public readonly saveSettings = asyncDebounce(throttle((
@@ -56,7 +56,7 @@ export class TerminalPlugin extends Plugin {
 		try {
 			this.version = semVerString(manifest.version)
 		} catch (error) {
-			console.warn(error)
+			self.console.warn(error)
 			this.version = null
 		}
 		this.register(async () => this.consolePTY.kill())
@@ -131,7 +131,7 @@ export class TerminalPlugin extends Plugin {
 					Promise.resolve().then(() => { loadTerminal(this) }),
 				])
 			} catch (error) {
-				console.error(error)
+				self.console.error(error)
 			}
 		})()
 	}
