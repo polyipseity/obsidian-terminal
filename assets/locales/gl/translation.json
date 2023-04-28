@@ -27,18 +27,6 @@
 			"import-from-clipboard": "$t(generic.import, capitalize) from $t(generic.clipboard)",
 			"reset": "$t(generic.reset, capitalize)"
 		},
-		"editable-list": {
-			"append": "Append",
-			"move-down": "Move down",
-			"move-up": "Move up",
-			"name_few": "$t(generic.ordinal_few, capitalize)",
-			"name_one": "$t(generic.ordinal_one, capitalize)",
-			"name_other": "$t(generic.ordinal_other, capitalize)",
-			"name_two": "$t(generic.ordinal_two, capitalize)",
-			"prepend": "Prepend",
-			"preset-placeholder": "$t(components.dropdown.placeholder)",
-			"remove": "Remove"
-		},
 		"find": {
 			"case-sensitive": "Case sensitive",
 			"close": "$t(generic.close, capitalize)",
@@ -49,6 +37,18 @@
 			"results": "{{index, number}}/{{count, number}}",
 			"too-many-results": "?/{{limit, number}}+",
 			"whole-word": "Whole word"
+		},
+		"list": {
+			"append": "Append",
+			"move-down": "Move down",
+			"move-up": "Move up",
+			"name_few": "$t(generic.ordinal_few, capitalize)",
+			"name_one": "$t(generic.ordinal_one, capitalize)",
+			"name_other": "$t(generic.ordinal_other, capitalize)",
+			"name_two": "$t(generic.ordinal_two, capitalize)",
+			"prepend": "Prepend",
+			"preset-placeholder": "$t(components.dropdown.placeholder)",
+			"remove": "Remove"
 		},
 		"profile": {
 			"data": "$t(generic.data, capitalize)",

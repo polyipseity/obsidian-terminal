@@ -27,15 +27,6 @@
 			"import-from-clipboard": "從$t(generic.import)$t(generic.import)",
 			"reset": "$t(generic.reset)"
 		},
-		"editable-list": {
-			"append": "後置",
-			"move-down": "下移",
-			"move-up": "上移",
-			"name": "$t(generic.ordinal)",
-			"prepend": "前置",
-			"preset-placeholder": "$t(components.dropdown.placeholder)",
-			"remove": "刪除"
-		},
 		"find": {
 			"case-sensitive": "區分大小寫",
 			"close": "$t(generic.close)",
@@ -46,6 +37,15 @@
 			"results": "{{index, number}}/{{count, number}}",
 			"too-many-results": "?/{{limit, number}}+",
 			"whole-word": "全字"
+		},
+		"list": {
+			"append": "後置",
+			"move-down": "下移",
+			"move-up": "上移",
+			"name": "$t(generic.ordinal)",
+			"prepend": "前置",
+			"preset-placeholder": "$t(components.dropdown.placeholder)",
+			"remove": "刪除"
 		},
 		"profile": {
 			"data": "$t(generic.data)",

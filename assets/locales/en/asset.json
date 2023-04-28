@@ -20,19 +20,19 @@
 			"export-to-clipboard-icon": "$t(asset:generic.output-to-clipboard-icon)",
 			"import-from-clipboard-icon": "$t(asset:generic.input-from-clipboard-icon)"
 		},
-		"editable-list": {
-			"append-icon": "$t(asset:generic.add-icon)",
-			"move-down-icon": "$t(asset:generic.next-icon)",
-			"move-up-icon": "$t(asset:generic.previous-icon)",
-			"prepend-icon": "$t(asset:generic.add-icon)",
-			"remove-icon": "$t(asset:generic.remove-icon)"
-		},
 		"find": {
 			"case-sensitive-icon": "case-sensitive",
 			"next-icon": "$t(asset:generic.next-icon)",
 			"previous-icon": "$t(asset:generic.previous-icon)",
 			"regex-icon": "regex",
 			"whole-word-icon": "whole-word"
+		},
+		"list": {
+			"append-icon": "$t(asset:generic.add-icon)",
+			"move-down-icon": "$t(asset:generic.next-icon)",
+			"move-up-icon": "$t(asset:generic.previous-icon)",
+			"prepend-icon": "$t(asset:generic.add-icon)",
+			"remove-icon": "$t(asset:generic.remove-icon)"
 		},
 		"profile": {
 			"data-icon": "$t(asset:generic.data-icon)",

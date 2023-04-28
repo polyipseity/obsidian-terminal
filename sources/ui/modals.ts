@@ -116,7 +116,7 @@ export class ListModal<T> extends Modal {
 		this.#title = options?.title
 		this.#description = options?.description
 		this.#namer = options?.namer ?? ((_0, index): string =>
-			i18n.t("components.editable-list.name", {
+			i18n.t("components.list.name", {
 				count: index + 1,
 				interpolation: { escapeValue: false },
 				ordinal: true,
@@ -124,7 +124,7 @@ export class ListModal<T> extends Modal {
 		this.#descriptor = options?.descriptor ?? ((): string => "")
 		this.#presets = options?.presets
 		this.#presetPlaceholder = options?.presetPlaceholder ?? ((): string =>
-			i18n.t("components.editable-list.preset-placeholder"))
+			i18n.t("components.list.preset-placeholder"))
 		this.#dynamicWidth = options?.dynamicWidth ?? false
 	}
 
@@ -191,7 +191,7 @@ export class ListModal<T> extends Modal {
 			}
 			if (presets) {
 				setting
-					.setName(i18n.t("components.editable-list.prepend"))
+					.setName(i18n.t("components.list.prepend"))
 					.addDropdown(dropdownSelect(
 						presetPlaceholder("prepend"),
 						presets,
@@ -202,7 +202,7 @@ export class ListModal<T> extends Modal {
 						},
 					))
 					.addExtraButton(resetButton(
-						i18n.t("asset:components.editable-list.prepend-icon"),
+						i18n.t("asset:components.list.prepend-icon"),
 						DISABLED_TOOLTIP,
 						unexpected,
 						unexpected,
@@ -211,11 +211,11 @@ export class ListModal<T> extends Modal {
 				return
 			}
 			setting
-				.setName(i18n.t("components.editable-list.prepend"))
+				.setName(i18n.t("components.list.prepend"))
 				.addButton(button => {
 					button
-						.setIcon(i18n.t("asset:components.editable-list.prepend-icon"))
-						.setTooltip(i18n.t("components.editable-list.prepend"))
+						.setIcon(i18n.t("asset:components.list.prepend-icon"))
+						.setTooltip(i18n.t("components.list.prepend"))
 						.onClick(async () => {
 							data.unshift(placeholder())
 							this.#setupListSubUI()
@@ -237,7 +237,7 @@ export class ListModal<T> extends Modal {
 				}
 				if (presets) {
 					setting
-						.setName(i18n.t("components.editable-list.append"))
+						.setName(i18n.t("components.list.append"))
 						.addDropdown(dropdownSelect(
 							presetPlaceholder("append"),
 							presets,
@@ -248,7 +248,7 @@ export class ListModal<T> extends Modal {
 							},
 						))
 						.addExtraButton(resetButton(
-							i18n.t("asset:components.editable-list.append-icon"),
+							i18n.t("asset:components.list.append-icon"),
 							DISABLED_TOOLTIP,
 							unexpected,
 							unexpected,
@@ -257,10 +257,10 @@ export class ListModal<T> extends Modal {
 					return
 				}
 				setting
-					.setName(i18n.t("components.editable-list.append"))
+					.setName(i18n.t("components.list.append"))
 					.addButton(button => button
-						.setIcon(i18n.t("asset:components.editable-list.append-icon"))
-						.setTooltip(i18n.t("components.editable-list.append"))
+						.setIcon(i18n.t("asset:components.list.append-icon"))
+						.setTooltip(i18n.t("components.list.append"))
 						.onClick(async () => {
 							data.push(placeholder())
 							this.#setupListSubUI()
@@ -309,8 +309,8 @@ export class ListModal<T> extends Modal {
 				if (editables.includes("remove")) {
 					setting
 						.addButton(button => button
-							.setTooltip(i18n.t("components.editable-list.remove"))
-							.setIcon(i18n.t("asset:components.editable-list.remove-icon"))
+							.setTooltip(i18n.t("components.list.remove"))
+							.setIcon(i18n.t("asset:components.list.remove-icon"))
 							.onClick(async () => {
 								removeAt(data, index)
 								this.#setupListSubUI()
@@ -319,8 +319,8 @@ export class ListModal<T> extends Modal {
 				}
 				if (editables.includes("moveUp")) {
 					setting.addExtraButton(button => button
-						.setTooltip(i18n.t("components.editable-list.move-up"))
-						.setIcon(i18n.t("asset:components.editable-list.move-up-icon"))
+						.setTooltip(i18n.t("components.list.move-up"))
+						.setIcon(i18n.t("asset:components.list.move-up-icon"))
 						.onClick(async () => {
 							if (index <= 0) { return }
 							swap(data, index - 1, index)
@@ -330,8 +330,8 @@ export class ListModal<T> extends Modal {
 				}
 				if (editables.includes("moveDown")) {
 					setting.addExtraButton(button => button
-						.setTooltip(i18n.t("components.editable-list.move-down"))
-						.setIcon(i18n.t("asset:components.editable-list.move-down-icon"))
+						.setTooltip(i18n.t("components.list.move-down"))
+						.setIcon(i18n.t("asset:components.list.move-down-icon"))
 						.onClick(async () => {
 							if (index >= data.length - 1) { return }
 							swap(data, index, index + 1)
