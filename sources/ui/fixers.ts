@@ -5,7 +5,7 @@ import {
 	primitiveOfE,
 } from "sources/utils/typeof"
 import type { Sized, Unchecked } from "sources/utils/types"
-import { inSet, isHomogenousArray } from "sources/utils/util"
+import { inSet, isHomogenousArray, lazyInit } from "sources/utils/util"
 import type { DeepWritable } from "ts-essentials"
 import deepEqual from "deep-equal"
 
@@ -18,8 +18,10 @@ export function markFixed<T>(
 	unchecked: unknown,
 	fixed: DeepWritable<T>,
 ): Fixed<T> {
+	const validator =
+		lazyInit(() => deepEqual(unchecked, fixed, { strict: true }))
 	return Object.freeze({
-		valid: deepEqual(unchecked, fixed, { strict: true }),
+		get valid() { return validator() },
 		value: fixed,
 	})
 }
