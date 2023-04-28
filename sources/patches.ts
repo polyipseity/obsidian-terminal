@@ -45,7 +45,7 @@ function newLog(): Log {
 	return ret
 }
 
-function patchConsole(console: Console, log: Log): () => void {
+function patchLoggingConsole(console: Console, log: Log): () => void {
 	const consolePatch = (
 		type: "debug" | "error" | "info" | "warn",
 		proto: (...data: readonly unknown[]) => void,
@@ -75,7 +75,7 @@ function patchConsole(console: Console, log: Log): () => void {
 	})
 }
 
-function patchWindow(self: Window, log: Log): () => void {
+function patchLoggingWindow(self: Window, log: Log): () => void {
 	const
 		onWindowError = (error: ErrorEvent): void => {
 			log.logger.emit({
@@ -118,6 +118,21 @@ function patchWindow(self: Window, log: Log): () => void {
 	}
 }
 
+function patchLogging(
+	self: Window & typeof globalThis,
+	log: Log,
+): () => void {
+	const ret = new Functions({ async: false, settled: true })
+	try {
+		ret.push(patchLoggingConsole(self.console, log))
+		ret.push(patchLoggingWindow(self, log))
+		return () => { ret.call() }
+	} catch (error) {
+		ret.call()
+		throw error
+	}
+}
+
 export function patch(workspace: Workspace): {
 	readonly unpatch: () => void
 	readonly log: Log
@@ -126,7 +141,7 @@ export function patch(workspace: Workspace): {
 	try {
 		const log = newLog(),
 			windowConsolePatch = workspace.on("window-open", window => {
-				const unpatch = patchConsole(correctType(window.win).console, log),
+				const unpatch = patchLogging(correctType(window.win), log),
 					off = workspace.on("window-close", window0 => {
 						if (window !== window0) { return }
 						try {
@@ -135,19 +150,7 @@ export function patch(workspace: Workspace): {
 					})
 			})
 		unpatchers.push(() => { workspace.offref(windowConsolePatch) })
-		unpatchers.push(patchConsole(console, log))
-
-		const windowWindowPatch = workspace.on("window-open", window => {
-			const unpatch = patchWindow(window.win, log),
-				off = workspace.on("window-close", window0 => {
-					if (window !== window0) { return }
-					try {
-						unpatch()
-					} finally { workspace.offref(off) }
-				})
-		})
-		unpatchers.push(() => { workspace.offref(windowWindowPatch) })
-		unpatchers.push(patchWindow(self, log))
+		unpatchers.push(patchLogging(self, log))
 		return Object.freeze({
 			log,
 			unpatch() { unpatchers.call() },
