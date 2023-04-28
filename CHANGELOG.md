@@ -12,6 +12,8 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 __Features__
 - Patch `require` so that `require("obsidian")` works in the developer console. (`89cf2cc34a64f8cd373c8e3dd8da1e7b3f020f5c`)
+- Add internal support for custom terminal options. (`80df07f698450947b04ef2f5b69e11ce52f5d9dc`)
+- Add raw data editing for profiles like the one for settings. You can use this to configure terminal options (refer to [`xterm.js` documentation](https://github.com/xtermjs/xterm.js/blob/2fdb46919ce7a329afe65fe69bcf948d310a2b8a/typings/xterm.d.ts#L26)). An UI for terminal options will be added shortly. (`fbe2de717c5e46436c929240c8450839139ce7c1`)
 
 __Fixes__
 - Fix re-enabling plugin overwriting history due to unloaded CSS. (`e02e43918c82dcb8f9641dc2ca2be208e23a3caa`)
