@@ -15,6 +15,7 @@ import {
 	type DebouncedFunc,
 	escapeRegExp,
 	isEmpty,
+	isNil,
 	isUndefined,
 	noop,
 	range,
@@ -408,18 +409,10 @@ export function isHomogenousArray<T extends PrimitiveTypeE>(
 	return value.every(element => genericTypeofGuardE(types, element))
 }
 
-export function isNonNullish<T>(value: Contains<T, null | undefined
+export function isNonNil<T>(value: Contains<T, null | undefined
 > extends true ? T : never): value is Contains<T, null | undefined
 > extends true ? NonNullable<T> : never {
-	return !isNullish(value)
-}
-
-export function isNullish<T>(value: Contains<T, null | undefined
-> extends true ? T : never): value is
-	Contains<T, null | undefined
-	> extends true ? T & null | T & undefined : never {
-	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-	return value === null || typeof value === "undefined"
+	return !isNil(value)
 }
 
 export function lazyInit<T>(initializer: () => T): () => T {
@@ -737,9 +730,9 @@ export function replaceAllRegex(string: string): RegExp {
 	return new RegExp(escapeRegExp(string), "ug")
 }
 
-export function requireNonNullish<T>(value: Contains<T, null | undefined
+export function requireNonNil<T>(value: Contains<T, null | undefined
 > extends true ? T : never): NonNullable<T> {
-	if (isNonNullish(value)) { return value }
+	if (isNonNil(value)) { return value }
 	throw new Error()
 }
 

@@ -6,7 +6,7 @@ import {
 } from "obsidian"
 import { SelectProfileModal, spawnTerminal } from "./spawn"
 import { addCommand, addRibbonIcon, notice2 } from "sources/utils/obsidian"
-import { deepFreeze, isNonNullish } from "../utils/util"
+import { deepFreeze, isNonNil } from "../utils/util"
 import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
 import { Platform } from "sources/utils/platforms"
 import { Settings } from "sources/settings/data"
@@ -136,7 +136,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 		menu.addSeparator()
 		const items = PROFILE_TYPES
 			.map(type => contextMenu(type, folder))
-			.filter(isNonNullish)
+			.filter(isNonNil)
 		if (!isEmpty(items)) {
 			menu.addSeparator()
 			items.forEach(item => menu.addItem(item))
@@ -155,7 +155,7 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 			menu.addSeparator()
 			const items = PROFILE_TYPES
 				.map(type => contextMenu(type, parent))
-				.filter(isNonNullish)
+				.filter(isNonNil)
 			if (!isEmpty(items)) {
 				menu.addSeparator()
 				items.forEach(item => menu.addItem(item))

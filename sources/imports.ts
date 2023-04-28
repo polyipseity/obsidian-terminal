@@ -2,11 +2,11 @@
 import {
 	deepFreeze,
 	inSet,
-	isNullish,
 	lazyProxy,
 	typedKeys,
 } from "./utils/util"
 import PLazy from "p-lazy"
+import { isNil } from "lodash-es"
 
 const
 	// Needed for bundler
@@ -57,9 +57,7 @@ export function dynamicRequireSync(module: string): unknown {
 	const ret: unknown = inSet(MODULES, module)
 		? BUNDLE[module]()
 		: require(module)
-	if (isNullish(ret)) {
-		throw new Error(module)
-	}
+	if (isNil(ret)) { throw new Error(module) }
 	return ret
 }
 

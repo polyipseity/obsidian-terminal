@@ -27,8 +27,6 @@ import {
 	deepFreeze,
 	getKeyModifiers,
 	inSet,
-	isNonNullish,
-	isNullish,
 	logError,
 	logFormat,
 	promisePromise,
@@ -41,7 +39,7 @@ import {
 } from "../utils/util"
 import type { IMarker, Terminal } from "xterm"
 import inspect, { type Options } from "browser-util-inspect"
-import { isEmpty, isUndefined, noop } from "lodash-es"
+import { isEmpty, isNil, isUndefined, noop } from "lodash-es"
 import { notice2, printError } from "sources/utils/obsidian"
 import AsyncLock from "async-lock"
 import type { AsyncOrSync } from "ts-essentials"
@@ -547,9 +545,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 			{ language } = plugin,
 			{ i18n } = language,
 			resizerInitial = (async (): Promise<PipedChildProcess | null> => {
-				if (isNullish(pythonExecutable)) {
-					return null
-				}
+				if (isNil(pythonExecutable)) { return null }
 				const ret = await spawnPromise(async () =>
 					(await childProcess).spawn(
 						pythonExecutable,
@@ -758,7 +754,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 	) {
 		const { language } = plugin
 		this.shell = spawnPromise(async () => {
-			if (isNullish(pythonExecutable)) {
+			if (isNil(pythonExecutable)) {
 				throw new Error(language
 					.i18n.t("errors.no-Python-to-spawn-Unix-pseudoterminal"))
 			}
@@ -767,7 +763,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 				// eslint-disable-next-line @typescript-eslint/naming-convention
 				PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
 			}
-			if (isNonNullish(terminal)) { env["TERM"] = terminal }
+			if (!isNil(terminal)) { env["TERM"] = terminal }
 			return (await childProcess).spawn(
 				pythonExecutable,
 				["-c", await unixPseudoterminalPy, executable].concat(args ?? []),

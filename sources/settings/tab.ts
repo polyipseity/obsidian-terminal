@@ -11,7 +11,7 @@ import {
 	cloneAsWritable,
 	createChildElement,
 	logError,
-	requireNonNullish,
+	requireNonNil,
 	typedStructuredClone,
 	unexpected,
 } from "../utils/util"
@@ -74,7 +74,7 @@ export class EditSettingsModal extends Modal {
 						.setTooltip(i18n.t("settings.edit-settings.export-to-clipboard"))
 						.onClick(async () => {
 							try {
-								await requireNonNullish(
+								await requireNonNil(
 									button.buttonEl.ownerDocument.defaultView,
 								).navigator.clipboard.writeText(this.#dataText)
 							} catch (error) {
@@ -96,7 +96,7 @@ export class EditSettingsModal extends Modal {
 							try {
 								const { value: parsed, valid } =
 									Settings.fix(JSON.parse(
-										await requireNonNullish(
+										await requireNonNil(
 											button.buttonEl.ownerDocument.defaultView,
 										).navigator.clipboard.readText(),
 									))

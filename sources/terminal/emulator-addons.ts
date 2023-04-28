@@ -1,7 +1,7 @@
 import {
 	Functions,
 	consumeEvent,
-	isNonNullish,
+	isNonNil,
 	replaceAllRegex,
 } from "../utils/util"
 import type { ITerminalAddon, Terminal } from "xterm"
@@ -32,7 +32,7 @@ export class DragAndDropAddon implements ITerminalAddon {
 			drop = (event: DragEvent): void => {
 				terminal.paste(Array.from(event.dataTransfer?.files ?? [])
 					.map(file => file.path)
-					.filter(isNonNullish)
+					.filter(isNonNil)
 					.map(path => path.replace(replaceAllRegex("\""), "\\\""))
 					.map(path => path.includes(" ") ? `"${path}"` : path)
 					.join(" "))

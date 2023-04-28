@@ -9,7 +9,6 @@ import {
 	asyncDebounce,
 	copyOnWriteAsync,
 	deepFreeze,
-	isNullish,
 	lazyProxy,
 	logError,
 } from "./utils/util"
@@ -18,7 +17,7 @@ import {
 	SAVE_SETTINGS_WAIT,
 	SI_PREFIX_SCALE,
 } from "./magic"
-import { constant, throttle } from "lodash-es"
+import { constant, isNil, throttle } from "lodash-es"
 import { LanguageManager } from "./i18n"
 import { Settings } from "./settings/data"
 import { StatusBarHider } from "./status-bar"
@@ -79,7 +78,7 @@ export class TerminalPlugin extends Plugin {
 		const loaded: unknown = await loader(),
 			{ value, valid } = Settings.fix(loaded)
 		Object.assign(settings, value)
-		if (!isNullish(loaded) && !valid) {
+		if (!isNil(loaded) && !valid) {
 			printMalformedData(this, loaded, value)
 			settings.recovery[new Date().toISOString()] =
 				JSON.stringify(loaded, null, JSON_STRINGIFY_SPACE)
@@ -126,7 +125,7 @@ export class TerminalPlugin extends Plugin {
 					Promise.resolve().then(() => { this.statusBarHider.load() }),
 					Promise.resolve().then(() => { loadSettings(this) }),
 					(async (): Promise<void> => {
-						loadDocumentation(this, isNullish(await loaded))
+						loadDocumentation(this, isNil(await loaded))
 					})(),
 					Promise.resolve().then(() => { loadTerminal(this) }),
 				])
