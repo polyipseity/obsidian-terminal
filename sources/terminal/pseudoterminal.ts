@@ -245,7 +245,7 @@ export class ConsolePseudoterminal
 
 	public static options(styles: readonly ansi.Style[]): Options {
 		return deepFreeze({
-			customInspect: true,
+			customInspect: false,
 			depth: 0,
 			showHidden: true,
 			stylize(str, styleType) {
