@@ -1,3 +1,4 @@
+import { type AnyObject, deopaque, launderUnchecked } from "sources/utils/types"
 import {
 	CONTROL_SEQUENCE_INTRODUCER as CSI,
 	CursoredText,
@@ -18,6 +19,7 @@ import {
 	WINDOWS_CMD_PATH,
 	WINDOWS_CONHOST_PATH,
 } from "../magic"
+import { type ExtendNode, parse } from "acorn"
 import {
 	Functions,
 	acquireConditionally,
@@ -50,9 +52,9 @@ import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
 } from "node:child_process"
 import { Platform } from "sources/utils/platforms"
+import type { Program } from "estree"
 import type { TerminalPlugin } from "../main"
 import ansi from "ansi-escape-sequences"
-import { deopaque } from "sources/utils/types"
 import { dynamicRequire } from "../imports"
 import unixPseudoterminalPy from "./unix_pseudoterminal.py"
 import win32ResizerPy from "./win32_resizer.py"
@@ -391,14 +393,66 @@ export class ConsolePseudoterminal
 				return ret
 			})
 		console.log(code)
-		let ret: unknown = null
+		const ast = ((): ExtendNode<Program> | null => {
+			try {
+				return parse(code, {
+					allowAwaitOutsideFunction: true,
+					allowHashBang: true,
+					allowImportExportEverywhere: false,
+					allowReserved: true,
+					allowReturnOutsideFunction: false,
+					allowSuperOutsideMethod: false,
+					ecmaVersion: "latest",
+					locations: false,
+					preserveParens: true,
+					ranges: false,
+					sourceType: "script",
+				})
+			} catch (error) {
+				console.error(error)
+				return null
+			}
+		})()
+		if (!ast) { return }
+		const lastStmt = ast.body.at(-1),
+			code2 = lastStmt
+				? `${code.slice(0, lastStmt.start)}export default ${code
+					.slice(lastStmt.start)}`
+				: "",
+			url = URL.createObjectURL(new Blob(
+				[code],
+				{ type: "text/javascript" },
+			))
 		try {
-			ret = self.eval(code)
-		} catch (error) {
-			console.error(error)
-			return
-		}
-		console.log(ret)
+			const url2 = code2 && URL.createObjectURL(new Blob(
+				[code2],
+				{ type: "text/javascript" },
+			))
+			try {
+				const [success, ret] = await (
+					async (): Promise<[false] | [true, unknown]> => {
+						if (url2) {
+							try {
+								return [true, await import(url2)]
+							} catch (error) {
+								if (!(error instanceof SyntaxError)) {
+									console.error(error)
+									return [false]
+								}
+								console.debug(error)
+							}
+						}
+						try {
+							return [true, await import(url)]
+						} catch (error) {
+							console.error(error)
+							return [false]
+						}
+					})()
+				if (!success) { return }
+				console.log(launderUnchecked<AnyObject>(ret)["default"])
+			} finally { if (url2) { URL.revokeObjectURL(url2) } }
+		} finally { URL.revokeObjectURL(url) }
 	}
 
 	protected async syncBuffer(

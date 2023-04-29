@@ -2,6 +2,7 @@
 	"author": "polyipseity",
 	"dependencies": {
 		"@capacitor/filesystem": "^4.1.4",
+		"acorn": "^8.8.2",
 		"ansi-escape-sequences": "^6.2.1",
 		"async-lock": "^1.4.0",
 		"browser-util-inspect": "^0.2.0",
@@ -40,6 +41,7 @@
 		"@types/async-lock": "^1.4.0",
 		"@types/browser-util-inspect": "^0.2.0",
 		"@types/deep-equal": "^1.0.1",
+		"@types/estree": "^1.0.1",
 		"@types/file-saver": "^2.0.5",
 		"@types/json-stringify-safe": "^5.0.0",
 		"@types/lodash-es": "^4.17.7",
