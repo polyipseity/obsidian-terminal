@@ -27,5 +27,6 @@ node_modules
 /.tsbuildinfo
 /data.json
 /main.js
+/main.js.json
 /metafile.json
 /styles.css

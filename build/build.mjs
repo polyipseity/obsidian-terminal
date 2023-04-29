@@ -12,11 +12,13 @@ import { argv } from "node:process"
 import builtinModules from "builtin-modules"
 import esbuildSvelte from "esbuild-svelte"
 import lzString from "lz-string"
+import { minify } from "terser"
 import sveltePreprocess from "svelte-preprocess"
 
 const ARGV_PRODUCTION = 2,
 	COMMENT = "// repository: https://github.com/polyipseity/obsidian-terminal",
 	DEV = argv[ARGV_PRODUCTION] === "dev",
+	ECMA_TARGET = "2018",
 	PLUGIN_ID0 = await PLUGIN_ID,
 	BUILD = await context({
 		alias: {},
@@ -143,7 +145,7 @@ export default JSON.parse(decompress(${str(lzString.compressToBase64(data))}))
 		],
 		sourcemap: DEV ? "inline" : false,
 		sourcesContent: true,
-		target: "ES2018",
+		target: `ES${ECMA_TARGET}`,
 		treeShaking: true,
 	})
 if (DEV) {
@@ -185,4 +187,68 @@ if (DEV) {
 	} finally {
 		await BUILD.dispose()
 	}
+	await Promise.all([PATHS.main]
+		.map(async path => {
+			const
+				[data, cache] = await Promise.all([
+					readFile(path, { encoding: "utf-8" }),
+					(async () =>
+						JSON.parse(await readFile(`${path}.json`, {
+							encoding: "utf-8",
+							flag: "a+",
+						}) || "{}")
+					)(),
+				]),
+				{ code } = await minify(
+					data,
+					{
+						compress: {
+							arguments: true,
+							// eslint-disable-next-line camelcase
+							booleans_as_integers: false,
+							ecma: ECMA_TARGET,
+							module: true,
+							passes: 2,
+							// eslint-disable-next-line camelcase
+							pure_getters: true,
+							toplevel: true,
+							unsafe: true,
+							// eslint-disable-next-line camelcase
+							unsafe_Function: true,
+							// eslint-disable-next-line camelcase
+							unsafe_arrows: false,
+							// eslint-disable-next-line camelcase
+							unsafe_comps: true,
+							// eslint-disable-next-line camelcase
+							unsafe_math: true,
+							// eslint-disable-next-line camelcase
+							unsafe_methods: true,
+							// eslint-disable-next-line camelcase
+							unsafe_proto: true,
+							// eslint-disable-next-line camelcase
+							unsafe_regexp: true,
+							// eslint-disable-next-line camelcase
+							unsafe_symbols: true,
+							// eslint-disable-next-line camelcase
+							unsafe_undefined: true,
+						},
+						ecma: ECMA_TARGET,
+						mangle: {
+							eval: true,
+							module: true,
+							toplevel: true,
+						},
+						module: true,
+						nameCache: cache,
+						toplevel: true,
+					},
+				)
+			if (!code) {
+				throw new Error(path)
+			}
+			await Promise.all([
+				writeFile(path, code, { encoding: "utf-8" }),
+				writeFile(`${path}.json`, JSON.stringify(cache), { encoding: "utf-8" }),
+			])
+		}))
 }
