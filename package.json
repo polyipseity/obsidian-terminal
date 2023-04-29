@@ -55,7 +55,6 @@
 		"obsidian": "file:build/obsidian",
 		"svelte": "^3.58.0",
 		"svelte-preprocess": "^5.0.3",
-		"terser": "^5.17.1",
 		"tslib": "^2.5.0",
 		"typescript": "^5.0.4",
 		"typescript-svelte-plugin": "^0.3.22"
