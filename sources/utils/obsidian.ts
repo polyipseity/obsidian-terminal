@@ -262,7 +262,10 @@ export function addRibbonIcon(
 	)
 }
 
-export function awaitCSS(plugin: Plugin, element: HTMLElement): void {
+export function awaitCSS(
+	plugin: Plugin | PluginManifest,
+	element: HTMLElement,
+): void {
 	const { classList, style, style: { display } } = element,
 		id = new UnnamespacedID(DOMClasses.Namespaced.AWAIT_CSS).namespaced(plugin)
 	style.display = "none"

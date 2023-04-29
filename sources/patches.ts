@@ -5,9 +5,17 @@ import { correctType } from "./utils/types"
 import { dynamicRequireSync } from "./imports"
 import { noop } from "ts-essentials"
 
-export interface Log {
-	readonly logger: EventEmitterLite<readonly [Log.Event]>
-	readonly history: readonly Log.Event[]
+export class Log {
+	public readonly logger = new EventEmitterLite<readonly [Log.Event]>()
+	readonly #history: Log.Event[] = []
+
+	public constructor() {
+		this.logger.listen(event => this.#history.push(event))
+	}
+
+	public get history(): readonly Log.Event[] {
+		return this.#history
+	}
 }
 export namespace Log {
 	export type Event = { readonly type: Event.Type } & (
@@ -34,16 +42,6 @@ export namespace Log {
 		export type Type = typeof TYPES[number]
 		export type Typed<T extends Type> = Event & { readonly type: T }
 	}
-}
-
-function newLog(): Log {
-	const history: Log.Event[] = [],
-		ret: Log = Object.freeze({
-			history,
-			logger: new EventEmitterLite<readonly [Log.Event]>(),
-		})
-	ret.logger.listen(event => history.push(event))
-	return ret
 }
 
 function patchLoggingConsole(console: Console, log: Log): () => void {
@@ -191,7 +189,7 @@ export function patch(workspace: Workspace): {
 } {
 	const unpatch = new Functions({ async: false, settled: true })
 	try {
-		const log = newLog()
+		const log = new Log()
 		unpatch.push(patchWindows(workspace, self => patchLogging(self, log)))
 		unpatch.push(patchWindows(workspace, patchRequire))
 		return Object.freeze({
