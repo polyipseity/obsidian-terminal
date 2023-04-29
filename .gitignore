@@ -10,19 +10,22 @@ node_modules
 
 # Don't include the compiled main.js file in the repo.
 # They should be uploaded to GitHub releases instead.
-main.js
+# main.js
 
 # Exclude sourcemaps
 *.map
 
 # obsidian
-data.json
+# data.json
 
 # Exclude macOS Finder (System Explorer) View States
 .DS_Store
 
 # custom
 /.eslintcache
-/metafile.json
 /.obsidian/
 /.tsbuildinfo
+/data.json
+/main.js
+/metafile.json
+/styles.css

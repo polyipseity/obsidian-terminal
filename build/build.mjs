@@ -24,7 +24,7 @@ const ARGV_PRODUCTION = 2,
 		bundle: true,
 		color: true,
 		drop: [],
-		entryPoints: ["sources/main.ts"],
+		entryPoints: ["sources/main.ts", "sources/styles.css"],
 		external: [
 			"@codemirror/*",
 			"@lezer/*",
@@ -46,7 +46,7 @@ const ARGV_PRODUCTION = 2,
 		logLimit: 0,
 		metafile: true,
 		minify: !DEV,
-		outfile: PATHS.main,
+		outdir: PATHS.outDir,
 		platform: "browser",
 		plugins: [
 			{

@@ -3,18 +3,20 @@ import { execFile } from "child_process"
 import { promisify } from "util"
 import { readFile } from "fs/promises"
 
-const execFileP = promisify(execFile)
+const execFileP = promisify(execFile),
+	OUTDIR = "."
 
 export const
 	PATHS = Object.freeze({
-		main: "main.js",
+		main: `${OUTDIR}/main.js`,
 		manifest: "manifest.json",
 		manifestBeta: "manifest-beta.json",
 		metafile: "metafile.json",
 		obsidianPlugins: ".obsidian/plugins",
+		outDir: OUTDIR,
 		"package": "package.json",
 		packageLock: "package-lock.json",
-		styles: "styles.css",
+		styles: `${OUTDIR}/styles.css`,
 		versions: "versions.json",
 	}),
 	PLUGIN_ID = PLazy.from(async () =>
