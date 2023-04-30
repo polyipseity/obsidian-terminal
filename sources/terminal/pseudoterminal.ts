@@ -439,7 +439,7 @@ export class ConsolePseudoterminal
 									console.error(error)
 									return [false]
 								}
-								console.debug(error)
+								self.console.debug(error)
 							}
 						}
 						try {
