@@ -33,7 +33,6 @@ import {
 	readStateCollabratively,
 	saveFileAs,
 	updateDisplayText,
-	usePrivateAPI,
 	useSettings,
 	writeStateCollabratively,
 } from "sources/utils/obsidian"
@@ -70,6 +69,7 @@ import { XtermTerminalEmulator } from "./emulator"
 import { cloneDeep } from "lodash-es"
 import { dynamicRequireLazy } from "sources/imports"
 import { launderUnchecked } from "sources/utils/types"
+import { revealPrivate } from "sources/utils/obsidian-private"
 import { writePromise } from "./util"
 
 const
@@ -347,7 +347,9 @@ export class TerminalView extends ItemView {
 		value.focus = false
 		this.state = value
 		this.startEmulator(focus)
-		usePrivateAPI(plugin, () => { result.history = true }, () => { })
+		revealPrivate(plugin, [result] as const, result0 => {
+			result0.history = true
+		}, _0 => { })
 	}
 
 	public override getState(): unknown {
@@ -430,6 +432,7 @@ export class TerminalView extends ItemView {
 					const ser = this.#emulator?.addons.serialize
 					if (!ser) { return }
 					await saveFileAs(
+						plugin,
 						adapter,
 						new File(
 							[

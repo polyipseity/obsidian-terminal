@@ -32,6 +32,7 @@ import { DEFAULT_LANGUAGE } from "assets/locales"
 import { Platform } from "./platforms"
 import type { TerminalPlugin } from "sources/main"
 import { around } from "monkey-around"
+import { revealPrivate } from "./obsidian-private"
 import { saveAs } from "file-saver"
 
 export class UpdatableUI {
@@ -232,16 +233,15 @@ export function addRibbonIcon(
 	title: () => string,
 	callback: (event: MouseEvent) => unknown,
 ): void {
-	const { app, language } = plugin,
-		{ workspace } = app,
-		{ leftRibbon } = workspace
-	usePrivateAPI(
+	const { app: { workspace: { leftRibbon } }, language } = plugin
+	revealPrivate(
 		plugin,
-		() => {
+		[leftRibbon] as const,
+		leftRibbon0 => {
 			const ribbon = (): readonly [ele: HTMLElement, title: string] => {
 				const title0 = title()
 				return Object.freeze([
-					leftRibbon.addRibbonItemButton(
+					leftRibbon0.addRibbonItemButton(
 						new UnnamespacedID(id).namespaced(plugin),
 						icon,
 						title0,
@@ -251,14 +251,14 @@ export function addRibbonIcon(
 			}
 			let [ele, title0] = ribbon()
 			plugin.register(() => {
-				leftRibbon.removeRibbonAction(title0)
+				leftRibbon0.removeRibbonAction(title0)
 				ele.remove()
 			})
 			plugin.register(language.onChangeLanguage.listen(() => {
 				ele.replaceWith(([ele, title0] = ribbon())[0])
 			}))
 		},
-		() => { plugin.addRibbonIcon(icon, id, callback) },
+		_0 => { plugin.addRibbonIcon(icon, id, callback) },
 	)
 }
 
@@ -385,26 +385,29 @@ export function readStateCollabratively(
 }
 
 export async function saveFileAs(
+	plugin: TerminalPlugin,
 	adapter: DataAdapter,
 	data: File,
 ): Promise<void> {
 	if (inSet(Platform.MOBILE, Platform.CURRENT)) {
-		await adapter.fs.open<typeof Platform.CURRENT>(
-			(await Filesystem.writeFile({
-				data: await data.text(),
-				directory: Directory.Cache,
-				encoding: Encoding.UTF8,
-				path: data.name,
-			})).uri,
-		)
+		await revealPrivate(plugin, [adapter] as const, async ({ fs }) => {
+			await fs.open<typeof Platform.CURRENT>(
+				(await Filesystem.writeFile({
+					data: await data.text(),
+					directory: Directory.Cache,
+					encoding: Encoding.UTF8,
+					path: data.name,
+				})).uri,
+			)
+		}, async _0 => { })
 		return
 	}
 	saveAs(data)
 }
 
 export function updateDisplayText(plugin: TerminalPlugin, view: View): void {
-	usePrivateAPI(plugin, () => {
-		const { containerEl, leaf } = view,
+	revealPrivate(plugin, [view.leaf] as const, leaf => {
+		const { containerEl } = view,
 			{ tabHeaderEl, tabHeaderInnerTitleEl } = leaf,
 			text = view.getDisplayText(),
 			viewHeaderEl =
@@ -419,23 +422,7 @@ export function updateDisplayText(plugin: TerminalPlugin, view: View): void {
 			ownerDocument.title =
 				ownerDocument.title.replace(replaceAllRegex(oldText), text)
 		}
-	}, () => { })
-}
-
-export function usePrivateAPI<R>(
-	plugin: TerminalPlugin,
-	func: () => R,
-	fallback: (error: unknown) => R,
-): R {
-	try {
-		return func()
-	} catch (error) {
-		self.console.warn(
-			plugin.language.i18n.t("errors.private-API-changed"),
-			error,
-		)
-		return fallback(error)
-	}
+	}, _0 => { })
 }
 
 export function useSettings(element: HTMLElement): {
