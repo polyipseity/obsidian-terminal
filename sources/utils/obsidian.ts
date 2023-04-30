@@ -28,11 +28,11 @@ import {
 	typedStructuredClone,
 } from "./util"
 import { constant, isUndefined } from "lodash-es"
+import { revealPrivate, revealPrivateAsync } from "./obsidian-private"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import { Platform } from "./platforms"
 import type { TerminalPlugin } from "sources/main"
 import { around } from "monkey-around"
-import { revealPrivate } from "./obsidian-private"
 import { saveAs } from "file-saver"
 
 export class UpdatableUI {
@@ -390,7 +390,7 @@ export async function saveFileAs(
 	data: File,
 ): Promise<void> {
 	if (inSet(Platform.MOBILE, Platform.CURRENT)) {
-		await revealPrivate(plugin, [adapter] as const, async ({ fs }) => {
+		await revealPrivateAsync(plugin, [adapter] as const, async ({ fs }) => {
 			await fs.open<typeof Platform.CURRENT>(
 				(await Filesystem.writeFile({
 					data: await data.text(),

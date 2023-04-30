@@ -30,9 +30,11 @@ export function revealPrivate<R, const As extends readonly unknown[]>(
 	args: true extends {
 		readonly [A in keyof As]: IsNever<RevealPrivate<As[A]>>
 	}[number] ? never : Sized<As>,
-	func: (...args: { readonly [A in keyof As]: RevealPrivate<As[A]> }) => R,
-	fallback: (error: unknown, ...args: As) => R,
-): R {
+	func: (...args: { readonly [A in keyof As]: RevealPrivate<As[A]> }) =>
+		R extends PromiseLike<unknown> ? never : R,
+	fallback: (error: unknown, ...args: As) =>
+		R extends PromiseLike<unknown> ? never : R,
+): R extends PromiseLike<unknown> ? never : R {
 	try {
 		return func(...args as { readonly [A in keyof As]: RevealPrivate<As[A]> })
 	} catch (error) {
@@ -41,6 +43,26 @@ export function revealPrivate<R, const As extends readonly unknown[]>(
 			error,
 		)
 		return fallback(error, ...args)
+	}
+}
+export async function revealPrivateAsync<R extends PromiseLike<unknown>,
+	const As extends readonly unknown[]>(
+		plugin: TerminalPlugin,
+		args: true extends {
+			readonly [A in keyof As]: IsNever<RevealPrivate<As[A]>>
+		}[number] ? never : Sized<As>,
+		func: (...args: { readonly [A in keyof As]: RevealPrivate<As[A]> }) => R,
+		fallback: (error: unknown, ...args: As) => R,
+	): Promise<Awaited<R>> {
+	try {
+		return await func(...args as
+			{ readonly [A in keyof As]: RevealPrivate<As[A]> })
+	} catch (error) {
+		self.console.warn(
+			plugin.language.i18n.t("errors.private-API-changed"),
+			error,
+		)
+		return await fallback(error, ...args)
 	}
 }
 export type RevealPrivate<T> =
