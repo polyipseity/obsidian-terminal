@@ -1,4 +1,3 @@
-import { type AnyObject, deopaque, launderUnchecked } from "sources/utils/types"
 import {
 	CONTROL_SEQUENCE_INTRODUCER as CSI,
 	CursoredText,
@@ -37,6 +36,7 @@ import {
 	sleep2,
 	spawnPromise,
 	typedKeys,
+	typedOwnKeys,
 	writePromise,
 } from "../utils/util"
 import type { IMarker, Terminal } from "xterm"
@@ -55,6 +55,7 @@ import { Platform } from "sources/utils/platforms"
 import type { Program } from "estree"
 import type { TerminalPlugin } from "../main"
 import ansi from "ansi-escape-sequences"
+import { deopaque } from "sources/utils/types"
 import { dynamicRequire } from "../imports"
 import unixPseudoterminalPy from "./unix_pseudoterminal.py"
 import win32ResizerPy from "./win32_resizer.py"
@@ -406,7 +407,7 @@ export class ConsolePseudoterminal
 					locations: false,
 					preserveParens: true,
 					ranges: false,
-					sourceType: "script",
+					sourceType: "module",
 				})
 			} catch (error) {
 				console.error(error)
@@ -430,7 +431,10 @@ export class ConsolePseudoterminal
 			))
 			try {
 				const [success, ret] = await (
-					async (): Promise<[false] | [true, unknown]> => {
+					async (): Promise<[false] | [true, {
+						readonly [_: keyof any]: unknown
+						readonly default?: unknown
+					}]> => {
 						if (url2) {
 							try {
 								return [true, await import(url2)]
@@ -450,7 +454,18 @@ export class ConsolePseudoterminal
 						}
 					})()
 				if (!success) { return }
-				console.log(launderUnchecked<AnyObject>(ret)["default"])
+				console.log(ret.default)
+				for (const key of typedOwnKeys(ret)) {
+					if (key === "default" || key === Symbol.toStringTag) { continue }
+					try {
+						Object.defineProperty(self, key, {
+							configurable: true,
+							enumerable: true,
+							value: ret[key],
+							writable: true,
+						})
+					} catch (error) { self.console.warn(error) }
+				}
 			} finally { if (url2) { URL.revokeObjectURL(url2) } }
 		} finally { URL.revokeObjectURL(url) }
 	}
