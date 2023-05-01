@@ -416,8 +416,8 @@ export class ConsolePseudoterminal
 		if (!ast) { return }
 		const lastStmt = ast.body.at(-1),
 			code2 = lastStmt
-				? `${code.slice(0, lastStmt.start)}export default ${code
-					.slice(lastStmt.start)}`
+				? `${code.slice(0, lastStmt.start)}export default (${code
+					.slice(lastStmt.start)})`
 				: "",
 			url = URL.createObjectURL(new Blob(
 				[code],
