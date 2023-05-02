@@ -356,7 +356,7 @@ export namespace ListModal {
 	] as const)
 	export interface Options<T> {
 		readonly callback?: (data_: T[]) => unknown
-		readonly editables?: typeof EDITABLES
+		readonly editables?: readonly typeof EDITABLES[number][]
 		readonly title?: () => string
 		readonly description?: () => string
 		readonly namer?: (value: T, index: number, data: readonly T[]) => string
