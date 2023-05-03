@@ -1,6 +1,7 @@
 import {
 	Functions,
 	consumeEvent,
+	deepFreeze,
 	isNonNil,
 	replaceAllRegex,
 } from "../utils/util"
@@ -111,6 +112,6 @@ export class RendererAddon implements ITerminalAddon {
 }
 export namespace RendererAddon {
 	export const RENDERER_OPTIONS =
-		Object.freeze(["dom", "canvas", "webgl"] as const)
+		deepFreeze(["dom", "canvas", "webgl"] as const)
 	export type RendererOption = typeof RENDERER_OPTIONS[number]
 }

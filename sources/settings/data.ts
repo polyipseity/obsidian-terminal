@@ -111,11 +111,10 @@ export namespace Settings {
 		] as const).map(key => [key, PROFILE_PRESETS[key]])),
 	} as const)
 
-	export const DEFAULTABLE_LANGUAGES =
-		Object.freeze(["", ...LANGUAGES] as const)
+	export const DEFAULTABLE_LANGUAGES = deepFreeze(["", ...LANGUAGES] as const)
 	export type DefaultableLanguage = typeof DEFAULTABLE_LANGUAGES[number]
 
-	export const NEW_INSTANCE_BEHAVIORS = Object.freeze([
+	export const NEW_INSTANCE_BEHAVIORS = deepFreeze([
 		"replaceTab",
 		"newTab",
 		"newLeftTab",
@@ -129,7 +128,7 @@ export namespace Settings {
 	export type NewInstanceBehavior = typeof NEW_INSTANCE_BEHAVIORS[number]
 
 	export const HIDE_STATUS_BAR_OPTIONS =
-		Object.freeze(["never", "always", "focused", "running"] as const)
+		deepFreeze(["never", "always", "focused", "running"] as const)
 	export type HideStatusBarOption = typeof HIDE_STATUS_BAR_OPTIONS[number]
 
 	export const PREFERRED_RENDERER_OPTIONS = RendererAddon.RENDERER_OPTIONS
@@ -146,14 +145,13 @@ export namespace Settings {
 	export type Profiles = Readonly<Record<string, Profile>>
 	export namespace Profile {
 		export type Entry = readonly [key: string, value: Profile]
-		export const TYPES =
-			Object.freeze([
-				"",
-				"invalid",
-				"developerConsole",
-				"external",
-				"integrated",
-			] as const)
+		export const TYPES = deepFreeze([
+			"",
+			"invalid",
+			"developerConsole",
+			"external",
+			"integrated",
+		] as const)
 		export type Type = typeof TYPES[number]
 		export type Typed<T extends Type> = Profile & { readonly type: T }
 		export function defaultOfType<T extends Type>(
@@ -468,7 +466,7 @@ export namespace Settings {
 		}
 
 		export type TerminalOptions = DeepReadonly<ITerminalOptions>
-		const FONT_WEIGHTS = Object.freeze([
+		const FONT_WEIGHTS = deepFreeze([
 			"100",
 			"200",
 			"300",

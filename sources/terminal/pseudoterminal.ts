@@ -661,7 +661,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 						.file({ discardDescriptor: true })
 					try {
 						const
-							cmd = Object.freeze([
+							cmd = deepFreeze([
 								...conhost
 									? [WINDOWS_CONHOST_PATH] as const
 									: [] as const,
