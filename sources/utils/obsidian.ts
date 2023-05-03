@@ -28,7 +28,7 @@ import {
 	typedStructuredClone,
 } from "./util"
 import { constant, isUndefined } from "lodash-es"
-import { revealPrivate, revealPrivateAsync } from "./obsidian-private"
+import { revealPrivate, revealPrivateAsync } from "./private"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import { Platform } from "./platforms"
 import type { TerminalPlugin } from "sources/main"

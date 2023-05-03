@@ -69,7 +69,7 @@ import { XtermTerminalEmulator } from "./emulator"
 import { cloneDeep } from "lodash-es"
 import { dynamicRequireLazy } from "sources/imports"
 import { launderUnchecked } from "sources/utils/types"
-import { revealPrivate } from "sources/utils/obsidian-private"
+import { revealPrivate } from "sources/utils/private"
 import { writePromise } from "./util"
 
 const

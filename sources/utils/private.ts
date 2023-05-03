@@ -1,6 +1,9 @@
-/* eslint-disable @typescript-eslint/no-empty-interface */
-import type { Platform } from "./platforms"
 import type { TerminalPlugin } from "sources/main"
+
+declare const PRIVATE: unique symbol
+export interface Private<T> { readonly [PRIVATE]: T }
+export type RevealPrivate<T extends Private<unknown>> =
+	Omit<T, typeof PRIVATE> & T[typeof PRIVATE]
 
 export function revealPrivate<const As extends readonly Private<unknown>[], R>(
 	plugin: TerminalPlugin,
@@ -42,46 +45,4 @@ export async function revealPrivateAsync<
 		)
 		return await fallback(error, ...args)
 	}
-}
-
-declare const PRIVATE: unique symbol
-interface Private<T> {
-	readonly [PRIVATE]: T
-}
-export type RevealPrivate<T extends {
-	readonly [PRIVATE]: unknown
-}> = Omit<T, typeof PRIVATE> & T[typeof PRIVATE]
-declare module "obsidian" {
-	interface DataAdapter extends Private<$DataAdapter> { }
-	interface ViewStateResult extends Private<$ViewStateResult> { }
-	interface WorkspaceLeaf extends Private<$WorkspaceLeaf> { }
-	interface WorkspaceRibbon extends Private<$WorkspaceRibbon> { }
-}
-
-interface $DataAdapter {
-	readonly fs: {
-		readonly open: <T extends Platform.Current>(
-			path: T extends Platform.Mobile ? string : never,
-		) => T extends Platform.Mobile ? PromiseLike<void> : never
-	}
-}
-
-interface $ViewStateResult {
-	history: boolean
-}
-
-interface $WorkspaceLeaf {
-	readonly tabHeaderEl: HTMLElement
-	readonly tabHeaderInnerIconEl: HTMLElement
-	readonly tabHeaderInnerTitleEl: HTMLElement
-}
-
-interface $WorkspaceRibbon {
-	readonly addRibbonItemButton: (
-		id: string,
-		icon: string,
-		title: string,
-		callback: (event: MouseEvent) => unknown,
-	) => HTMLElement
-	readonly removeRibbonAction: (title: string) => void
 }
