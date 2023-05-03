@@ -38,11 +38,11 @@ export const
 	PREFIX_IDENTIFIERS = deepFreeze([
 		"",
 		...rangeCodePoint(codePoint("\x3c"), codePoint("\x40")),
-	] as const),
+	]),
 	INTERMEDIATES_IDENTIFIERS = deepFreeze([
 		"",
 		...rangeCodePoint(codePoint("\x20"), codePoint("\x30")),
-	] as const),
+	]),
 	LONG_FINAL_IDENTIFIERS = rangeCodePoint(codePoint("\x30"), codePoint("\x7f")),
 	SHORT_FINAL_IDENTIFIERS =
 		rangeCodePoint(codePoint("\x40"), codePoint("\x7f")),

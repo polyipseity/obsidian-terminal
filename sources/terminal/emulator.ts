@@ -180,7 +180,7 @@ export namespace XtermTerminalEmulator {
 			columns: 1,
 			data: "",
 			rows: 1,
-		} as const)
+		})
 		export function fix(self: unknown): Fixed<State> {
 			const unc = launderUnchecked<State>(self)
 			return markFixed(self, {

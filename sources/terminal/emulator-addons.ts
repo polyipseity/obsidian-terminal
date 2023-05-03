@@ -111,7 +111,6 @@ export class RendererAddon implements ITerminalAddon {
 	}
 }
 export namespace RendererAddon {
-	export const RENDERER_OPTIONS =
-		deepFreeze(["dom", "canvas", "webgl"] as const)
+	export const RENDERER_OPTIONS = deepFreeze(["dom", "canvas", "webgl"])
 	export type RendererOption = typeof RENDERER_OPTIONS[number]
 }

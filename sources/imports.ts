@@ -30,7 +30,7 @@ const
 		"xterm-addon-web-links": (): unknown => require("xterm-addon-web-links"),
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		"xterm-addon-webgl": (): unknown => require("xterm-addon-webgl"),
-	} as const),
+	}),
 	MODULES = typedKeys<readonly [
 		"tmp-promise",
 		"xterm",

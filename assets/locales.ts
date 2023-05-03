@@ -29,14 +29,14 @@ export const FALLBACK_LANGUAGES = deepFreeze({
 	"zh-CN": ["zh-Hans", "zh", DEFAULT_LANGUAGE],
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	"zh-TW": ["zh-Hant", "zh", DEFAULT_LANGUAGE],
-} as const)
+})
 export const FORMATTERS: Readonly<Record<string, (
 	lng?: string,
 	options?: unknown,
 ) => (value: unknown) => string>> = deepFreeze({
 	capitalize: lng => value => capitalize(String(value), lng),
 	uncapitalize: lng => value => uncapitalize(String(value), lng),
-} as const)
+})
 
 function resource<T>(importer: () => PromiseLike<{
 	// eslint-disable-next-line @typescript-eslint/no-magic-numbers
@@ -107,7 +107,7 @@ export const RESOURCES = deepFreeze({
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	"zh-Hant": resource(async () =>
 		import("assets/locales/zh-Hant/translation.json")),
-} as const)
+})
 export type DefaultResources = {
 	[K in
 	keyof typeof RESOURCES[

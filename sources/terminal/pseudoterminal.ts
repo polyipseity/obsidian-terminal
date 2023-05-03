@@ -217,7 +217,7 @@ export class ConsolePseudoterminal
 		error: "red",
 		info: "white",
 		warn: "yellow",
-	} as const satisfies Readonly<Record<string, ansi.Style>>)
+	}) satisfies Record<string, ansi.Style>
 
 	protected static readonly syncLock = "sync"
 	static readonly #formatCache = new WeakMap<Log.Event, string>()
@@ -673,7 +673,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 									.join(" ")
 								} & call echo %^ERRORLEVEL% >${WindowsPseudoterminal
 									.escapeArgument(codeTmp.path)}`,
-							] as const),
+							]),
 							ret = await spawnPromise(async () => (await childProcess).spawn(
 								cmd[0],
 								cmd.slice(1),
@@ -898,7 +898,7 @@ export namespace Pseudoterminal {
 		darwin: UnixPseudoterminal,
 		linux: UnixPseudoterminal,
 		win32: WindowsPseudoterminal,
-	} as const)
+	})
 	export type SupportedPlatforms = readonly ["darwin", "linux", "win32"]
 	export const SUPPORTED_PLATFORMS =
 		typedKeys<SupportedPlatforms>()(PLATFORM_PSEUDOTERMINALS)

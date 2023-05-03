@@ -107,7 +107,7 @@ export namespace DocumentationMarkdownView {
 			data: "",
 			displayTextI18nKey: null,
 			iconI18nKey: null,
-		} as const)
+		})
 		export function fix(self: unknown): Fixed<State> {
 			const unc = launderUnchecked<State>(self)
 			return markFixed(self, {

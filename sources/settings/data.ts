@@ -76,7 +76,7 @@ export namespace Settings {
 	export const optionals = deepFreeze([
 		"lastReadChangelogVersion",
 		"recovery",
-	] as const) satisfies readonly (keyof Settings)[]
+	]) satisfies readonly (keyof Settings)[]
 	export type Optionals = typeof optionals[number]
 	export type Persistent = Omit<Settings, Optionals>
 	export function persistent(settings: Settings): Persistent {
@@ -109,9 +109,9 @@ export namespace Settings {
 			"win32ExternalDefault",
 			"win32IntegratedDefault",
 		] as const).map(key => [key, PROFILE_PRESETS[key]])),
-	} as const)
+	})
 
-	export const DEFAULTABLE_LANGUAGES = deepFreeze(["", ...LANGUAGES] as const)
+	export const DEFAULTABLE_LANGUAGES = deepFreeze(["", ...LANGUAGES])
 	export type DefaultableLanguage = typeof DEFAULTABLE_LANGUAGES[number]
 
 	export const NEW_INSTANCE_BEHAVIORS = deepFreeze([
@@ -124,11 +124,11 @@ export namespace Settings {
 		"newHorizontalSplit",
 		"newVerticalSplit",
 		"newWindow",
-	] as const)
+	])
 	export type NewInstanceBehavior = typeof NEW_INSTANCE_BEHAVIORS[number]
 
 	export const HIDE_STATUS_BAR_OPTIONS =
-		deepFreeze(["never", "always", "focused", "running"] as const)
+		deepFreeze(["never", "always", "focused", "running"])
 	export type HideStatusBarOption = typeof HIDE_STATUS_BAR_OPTIONS[number]
 
 	export const PREFERRED_RENDERER_OPTIONS = RendererAddon.RENDERER_OPTIONS
@@ -151,7 +151,7 @@ export namespace Settings {
 			"developerConsole",
 			"external",
 			"integrated",
-		] as const)
+		])
 		export type Type = typeof TYPES[number]
 		export type Typed<T extends Type> = Profile & { readonly type: T }
 		export function defaultOfType<T extends Type>(
@@ -282,7 +282,7 @@ export namespace Settings {
 			invalid: {
 				type: "invalid",
 			},
-		} as const)
+		})
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		export function fix(self: unknown): Fixed<Profile> {
@@ -478,7 +478,7 @@ export namespace Settings {
 			"900",
 			"bold",
 			"normal",
-		] as const) satisfies readonly FontWeight[]
+		]) satisfies readonly FontWeight[]
 		export function fixTerminalOptions(self: unknown): Fixed<TerminalOptions> {
 			const unc = launderUnchecked<TerminalOptions>(self)
 			return markFixed(self, omitBy({

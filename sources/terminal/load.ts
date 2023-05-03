@@ -24,11 +24,11 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 	const
 		PROFILE_TYPES = deepFreeze((["select", "integrated", "external"] as const)
 			.filter(type => type === "select" || PROFILE_PROPERTIES[type].available)),
-		CWD_TYPES = deepFreeze(["", "root", "current"] as const),
+		CWD_TYPES = deepFreeze(["", "root", "current"]),
 		EXCLUDED_TYPES = deepFreeze([
 			{ cwd: "", profile: "integrated" },
 			{ cwd: "", profile: "external" },
-		] as const),
+		]),
 		{ app, language } = plugin,
 		{ workspace } = app,
 		{ i18n } = language,

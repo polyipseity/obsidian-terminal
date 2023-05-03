@@ -259,7 +259,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		type: "integrated",
 		useWin32Conhost: true,
 	},
-} as const satisfies ProfilePresets0)
+}) satisfies ProfilePresets0
 export const PROFILE_PRESETS = deepFreeze({
 	...PROFILE_PRESETS0,
 	darwinExternalDefault: {
@@ -286,7 +286,7 @@ export const PROFILE_PRESETS = deepFreeze({
 		...PROFILE_PRESETS0.cmdIntegrated,
 		platforms: { win32: true },
 	},
-} as const satisfies ProfilePresets)
+}) satisfies ProfilePresets
 export type ProfilePresetKeys = readonly [
 	"empty",
 	"developerConsole",

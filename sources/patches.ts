@@ -38,7 +38,7 @@ export namespace Log {
 			"debug",
 			"windowError",
 			"unhandledRejection",
-		] as const)
+		])
 		export type Type = typeof TYPES[number]
 		export type Typed<T extends Type> = Event & { readonly type: T }
 	}

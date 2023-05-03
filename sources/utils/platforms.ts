@@ -3,9 +3,9 @@ import { deepFreeze } from "./util"
 
 export namespace Platform {
 	export const
-		DESKTOP = deepFreeze(["darwin", "linux", "win32"] as const),
-		MOBILE = deepFreeze(["android", "ios"] as const),
-		ALL = deepFreeze([...DESKTOP, ...MOBILE, "unknown"] as const)
+		DESKTOP = deepFreeze(["darwin", "linux", "win32"]),
+		MOBILE = deepFreeze(["android", "ios"]),
+		ALL = deepFreeze([...DESKTOP, ...MOBILE, "unknown"])
 	export type Desktop = typeof DESKTOP[number]
 	export type Mobile = typeof MOBILE[number]
 	export type All = typeof ALL[number]

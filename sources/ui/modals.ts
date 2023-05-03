@@ -353,7 +353,7 @@ export namespace ListModal {
 		"remove",
 		"moveUp",
 		"moveDown",
-	] as const)
+	])
 	export interface Options<T> {
 		readonly callback?: (data_: T[]) => unknown
 		readonly editables?: readonly typeof EDITABLES[number][]

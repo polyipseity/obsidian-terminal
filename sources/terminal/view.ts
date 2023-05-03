@@ -233,8 +233,8 @@ export class TerminalView extends ItemView {
 		new UnnamespacedID(DOMClasses.Namespaced.TERMINAL)
 
 	protected static readonly modifiers = deepFreeze(Platform.CURRENT === "darwin"
-		? ["Meta"] as const
-		: ["Ctrl", "Shift"] as const)
+		? ["Meta"]
+		: ["Ctrl", "Shift"])
 
 	static #namespacedType: string
 	protected readonly scope = new Scope(this.app.scope)
@@ -798,7 +798,7 @@ export namespace TerminalView {
 			focus: false,
 			profile: Settings.Profile.DEFAULTS.invalid,
 			serial: null,
-		} as const)
+		})
 		export function fix(self: unknown): Fixed<State> {
 			const unc = launderUnchecked<State>(self)
 			return markFixed(self, {

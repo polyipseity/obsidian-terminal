@@ -101,7 +101,7 @@ export const PROFILE_PROPERTIES: {
 		opener() { return null },
 		valid: false,
 	},
-} as const)
+})
 
 export function openProfile<T extends Settings.Profile.Type>(
 	plugin: TerminalPlugin,

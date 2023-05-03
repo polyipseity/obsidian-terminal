@@ -266,7 +266,7 @@ export function createChildElement<K extends keyof HTMLElementTagNameMap>(
 	return ret
 }
 
-export function deepFreeze<T>(value: T): DeepReadonly<T> {
+export function deepFreeze<const T>(value: T): DeepReadonly<T> {
 	return deepFreeze0(value, new WeakSet())
 }
 function deepFreeze0<T>(value: T, freezing: WeakSet<object>): DeepReadonly<T> {
