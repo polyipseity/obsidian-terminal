@@ -236,7 +236,7 @@ export function addRibbonIcon(
 	const { app: { workspace: { leftRibbon } }, language } = plugin
 	revealPrivate(
 		plugin,
-		[leftRibbon] as const,
+		[leftRibbon],
 		leftRibbon0 => {
 			const ribbon = (): readonly [ele: HTMLElement, title: string] => {
 				const title0 = title()
@@ -390,7 +390,7 @@ export async function saveFileAs(
 	data: File,
 ): Promise<void> {
 	if (inSet(Platform.MOBILE, Platform.CURRENT)) {
-		await revealPrivateAsync(plugin, [adapter] as const, async ({ fs }) => {
+		await revealPrivateAsync(plugin, [adapter], async ({ fs }) => {
 			await fs.open<typeof Platform.CURRENT>(
 				(await Filesystem.writeFile({
 					data: await data.text(),
@@ -406,7 +406,7 @@ export async function saveFileAs(
 }
 
 export function updateDisplayText(plugin: TerminalPlugin, view: View): void {
-	revealPrivate(plugin, [view.leaf] as const, leaf => {
+	revealPrivate(plugin, [view.leaf], leaf => {
 		const { containerEl } = view,
 			{ tabHeaderEl, tabHeaderInnerTitleEl } = leaf,
 			text = view.getDisplayText(),

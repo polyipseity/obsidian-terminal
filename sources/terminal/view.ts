@@ -347,7 +347,7 @@ export class TerminalView extends ItemView {
 		value.focus = false
 		this.state = value
 		this.startEmulator(focus)
-		revealPrivate(plugin, [result] as const, result0 => {
+		revealPrivate(plugin, [result], result0 => {
 			result0.history = true
 		}, _0 => { })
 	}
