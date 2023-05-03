@@ -423,11 +423,11 @@ export function lazyInit<T>(initializer: () => T): () => T {
 	} | {
 		readonly init: true
 		readonly value: T
-	} = deepFreeze({ init: false, value: null })
+	} = { init: false, value: null }
 	return () => {
 		const cache0 = cache.init
 			? cache
-			: cache = Object.freeze({ init: true, value: initializer() })
+			: cache = { init: true, value: initializer() }
 		return cache0.value
 	}
 }
