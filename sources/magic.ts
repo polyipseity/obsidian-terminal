@@ -10,7 +10,7 @@ export const
 		EXIT_SUCCESS.toString(),
 		"SIGINT",
 		"SIGTERM",
-	] as const),
+	]),
 	JSON_STRINGIFY_SPACE = "\t",
 	MAX_LOCK_PENDING = 1000,
 	NOTICE_NO_TIMEOUT = 0,

@@ -34,7 +34,7 @@ export const PRIMITIVE_TYPES = Object.freeze([
 	"undefined",
 	"function",
 	"object",
-] as const) satisfies readonly PrimitiveType[]
+]) satisfies readonly PrimitiveType[]
 
 export function genericTypeofGuard<T extends PrimitiveType>(
 	types: readonly T[],
@@ -56,7 +56,7 @@ export type PrimitiveTypeE = keyof TypeofMapE
 export const PRIMITIVE_TYPES_E = Object.freeze([
 	...PRIMITIVE_TYPES,
 	"null",
-] as const) satisfies readonly PrimitiveTypeE[]
+]) satisfies readonly PrimitiveTypeE[]
 
 export function typeofE(value: unknown): PrimitiveTypeE {
 	return value === null ? "null" : typeof value
