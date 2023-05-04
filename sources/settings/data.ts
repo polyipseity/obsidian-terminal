@@ -516,7 +516,7 @@ export namespace Settings {
 					DEFAULT_TERMINAL_OPTIONS,
 					unc,
 					"cursorStyle",
-					[UNDEFINED, "bar", "block", "underline"] as const,
+					[UNDEFINED, "bar", "block", "underline"],
 				),
 				cursorWidth: fixTyped(
 					DEFAULT_TERMINAL_OPTIONS,
@@ -546,7 +546,7 @@ export namespace Settings {
 					DEFAULT_TERMINAL_OPTIONS,
 					unc,
 					"fastScrollModifier",
-					[UNDEFINED, "alt", "ctrl", "none", "shift"] as const,
+					[UNDEFINED, "alt", "ctrl", "none", "shift"],
 				),
 				fastScrollSensitivity: fixTyped(
 					DEFAULT_TERMINAL_OPTIONS,
@@ -649,7 +649,7 @@ export namespace Settings {
 					DEFAULT_TERMINAL_OPTIONS,
 					unc,
 					"logLevel",
-					[UNDEFINED, "debug", "error", "info", "off", "warn"] as const,
+					[UNDEFINED, "debug", "error", "info", "off", "warn"],
 				),
 				macOptionClickForcesSelection: fixTyped(
 					DEFAULT_TERMINAL_OPTIONS,
