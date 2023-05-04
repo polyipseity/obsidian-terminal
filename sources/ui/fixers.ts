@@ -4,7 +4,7 @@ import {
 	genericTypeofGuardE,
 	primitiveOfE,
 } from "sources/utils/typeof"
-import type { Sized, Unchecked } from "sources/utils/types"
+import type { ReadonlyTuple, Unchecked } from "sources/utils/types"
 import { inSet, isHomogenousArray, lazyInit } from "sources/utils/util"
 import type { DeepWritable } from "ts-essentials"
 import deepEqual from "deep-equal"
@@ -54,11 +54,11 @@ export function fixArray<S,
 	return default1.map(primitiveOfE)
 }
 
-export function fixInSet<S, K extends keyof S, Vs extends readonly S[K][]>(
+export function fixInSet<S, K extends keyof S, const Vs extends ReadonlyTuple>(
 	defaults: S,
 	from: Unchecked<S>,
 	key: K,
-	set: Sized<Vs>,
+	set: Vs,
 ): Vs[number] {
 	const val = from[key]
 	return inSet(set, val) ? val : defaults[key]

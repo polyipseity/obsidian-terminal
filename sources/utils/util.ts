@@ -8,7 +8,8 @@ import {
 	type CodePoint,
 	type Constructor,
 	type Contains,
-	type Sized,
+	type ReadonlyTuple,
+	contravariant,
 	simplifyType,
 } from "./types"
 import {
@@ -367,11 +368,11 @@ export function typedStructuredClone<T>(
 	return structuredClone(value, transfer) as T
 }
 
-export function inSet<T extends readonly unknown[]>(
-	set: Sized<T>,
+export function inSet<const T extends ReadonlyTuple>(
+	set: T,
 	obj: unknown,
 ): obj is T[number] {
-	return set.includes(obj)
+	return contravariant(set).includes(obj)
 }
 
 export function insertAt<T>(

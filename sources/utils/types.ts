@@ -19,10 +19,10 @@ export type Deopaque<T> = T extends WithOpaque<infer U>
 export type Exact<T, U> =
 	(<G>() => G extends T ? 1 : -1) extends
 	(<G>() => G extends U ? 1 : -1) ? true : false
+export type ReadonlyTuple<Type = unknown> =
+	readonly [] | readonly [Type, ...Type[]]
 export type SemVerString =
 	Opaque<string, "fec54e0c-8342-4418-bc4b-57ea4d92c3d4">
-export type Sized<T extends readonly unknown[]> =
-	number extends T["length"] ? never : T
 export type Unchecked<T> = { readonly [_ in keyof T]?: unknown }
 
 export const NULL_SEM_VER_STRING = semVerString("0.0.0")

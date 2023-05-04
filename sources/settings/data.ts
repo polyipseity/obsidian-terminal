@@ -1,8 +1,8 @@
 import {
 	type AnyObject,
 	NULL_SEM_VER_STRING,
+	type ReadonlyTuple,
 	type SemVerString,
-	type Sized,
 	type Unchecked,
 	launderUnchecked,
 	opaqueOrDefault,
@@ -289,11 +289,11 @@ export namespace Settings {
 			const unc = launderUnchecked<Invalid>(self),
 				fixPlatforms = <
 					V extends Platforms<Vs[number]>,
-					Vs extends readonly string[],
+					const Vs extends ReadonlyTuple<string>,
 				>(
 					defaults: V,
 					from: Unchecked<V>,
-					set: Sized<Vs>,
+					set: Vs,
 				): Platforms<Vs[number]> => {
 					const ret2: { [_ in Vs[number]]?: boolean } = {}
 					for (const platform0 of set) {

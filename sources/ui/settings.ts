@@ -6,7 +6,7 @@ import type {
 } from "obsidian"
 import { inSet, instanceOf, unexpected } from "sources/utils/util"
 import { DOMClasses } from "sources/magic"
-import type { Sized } from "sources/utils/types"
+import type { ReadonlyTuple } from "sources/utils/types"
 
 export function closeSetting(container: HTMLElement): void {
 	let element: HTMLElement | null = container
@@ -53,11 +53,11 @@ export function linkSetting<
 }
 
 export function setTextToEnum<
-	Es extends readonly V[],
+	const Es extends ReadonlyTuple<V>,
 	V,
 	C extends ValueComponent<V>,
 >(
-	enums: Sized<Es>,
+	enums: Es,
 	setter: (value: Es[number], component: C, getter: () => V) => unknown,
 ) {
 	return async (
