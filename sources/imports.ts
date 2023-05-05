@@ -44,21 +44,20 @@ const
 		"xterm-addon-webgl",
 	]>()(BUNDLE)
 
-// eslint-disable-next-line @typescript-eslint/promise-function-async
-export function dynamicRequire<T>(module: string): PLazy<T> {
-	return PLazy.from(() => dynamicRequireSync(module) as T)
+export async function dynamicRequire<T>(module: string): Promise<T> {
+	return PLazy.from(() => dynamicRequireSync(module))
 }
 
 export function dynamicRequireLazy<T extends object>(module: string): T {
-	return lazyProxy(() => dynamicRequireSync(module) as T)
+	return lazyProxy(() => dynamicRequireSync(module))
 }
 
-export function dynamicRequireSync(module: string): unknown {
+export function dynamicRequireSync<T>(module: string): T {
 	const ret: unknown = inSet(MODULES, module)
 		? BUNDLE[module]()
 		: require(module)
 	if (isNil(ret)) { throw new Error(module) }
-	return ret
+	return ret as T
 }
 
 export function importable(module: string): boolean {
