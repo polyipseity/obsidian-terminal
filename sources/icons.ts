@@ -1,17 +1,10 @@
-import { CaseSensitive, ClipboardPaste, WholeWord, createElement } from "lucide"
 import { type Plugin, getIcon } from "obsidian"
 import { UnnamespacedID, addIcon } from "./utils/obsidian"
 import { siLinux, siMacos, siWindows } from "simple-icons"
+import { createElement } from "lucide"
 
 export function loadIcons(plugin: Plugin): void {
-	for (const [key, value] of Object.entries({
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		"case-sensitive": CaseSensitive,
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		"clipboard-paste": ClipboardPaste,
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		"whole-word": WholeWord,
-	})) {
+	for (const [key, value] of Object.entries<never>({})) {
 		if (getIcon(key)) {
 			self.console.warn(key)
 			continue
