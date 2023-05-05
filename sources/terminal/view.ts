@@ -31,7 +31,6 @@ import {
 	printError,
 	printMalformedData,
 	readStateCollabratively,
-	registerKey,
 	saveFileAs,
 	updateDisplayText,
 	useSettings,
@@ -252,6 +251,43 @@ export class TerminalView extends ItemView {
 		TerminalView.#namespacedType = TerminalView.type.namespaced(plugin)
 		super(leaf)
 		this.navigation = true
+		const { scope, focusedScope } = this
+		scope.register(
+			cloneAsWritable(TerminalView.modifiers),
+			"`",
+			event => {
+				this.#emulator?.terminal.focus()
+				consumeEvent(event)
+			},
+		)
+		focusedScope.register(
+			cloneAsWritable(TerminalView.modifiers),
+			"`",
+			event => {
+				const { contentEl: { ownerDocument: { activeElement } } } = this
+				if (instanceOf(activeElement, HTMLElement) ||
+					instanceOf(activeElement, SVGElement)) {
+					activeElement.blur()
+				}
+				consumeEvent(event)
+			},
+		)
+		focusedScope.register(
+			cloneAsWritable(TerminalView.modifiers),
+			"f",
+			event => {
+				this.startFind()
+				consumeEvent(event)
+			},
+		)
+		focusedScope.register(
+			cloneAsWritable(TerminalView.modifiers),
+			"k",
+			event => {
+				this.#emulator?.terminal.clear()
+				consumeEvent(event)
+			},
+		)
 	}
 
 	protected get state(): TerminalView.State {
@@ -484,47 +520,6 @@ export class TerminalView extends ItemView {
 		if (contentEl.contains(contentEl.ownerDocument.activeElement)) {
 			keymap.pushScope(focusedScope)
 		}
-
-		this.register(registerKey(
-			scope,
-			cloneAsWritable(TerminalView.modifiers),
-			"`",
-			event => {
-				this.#emulator?.terminal.focus()
-				consumeEvent(event)
-			},
-		))
-		this.register(registerKey(
-			focusedScope,
-			cloneAsWritable(TerminalView.modifiers),
-			"`",
-			event => {
-				const { activeElement } = contentEl.ownerDocument
-				if (instanceOf(activeElement, HTMLElement) ||
-					instanceOf(activeElement, SVGElement)) {
-					activeElement.blur()
-				}
-				consumeEvent(event)
-			},
-		))
-		this.register(registerKey(
-			focusedScope,
-			cloneAsWritable(TerminalView.modifiers),
-			"f",
-			event => {
-				this.startFind()
-				consumeEvent(event)
-			},
-		))
-		this.register(registerKey(
-			focusedScope,
-			cloneAsWritable(TerminalView.modifiers),
-			"k",
-			event => {
-				this.#emulator?.terminal.clear()
-				consumeEvent(event)
-			},
-		))
 
 		this.register(statusBarHider.hide(() => this.#hidesStatusBar))
 		this.register(() => { this.#emulator = null })
