@@ -168,3 +168,18 @@ When translating, keep in mind the following things:
 ```
 - The keys under `generic` are vocabularies. They can be referred in translation strings by `$t(generic.key)`. Refer to them as much as possible to standardize translations for vocabularies that appear in different places.
 - It is okay to move interpolations and references to other localized strings around to make the translation natural. It is also okay to not use some references used in the original translation. However, it is NOT okay to not use all interpolations.
+
+## Security
+
+We hope that there will never be any security vulnerabilities, but unfortunately it does happen. Please [report](#reporting-a-vulnerability) them!
+
+### Supported versions
+
+| Version | Supported |
+|-|-|
+| latest | ✅ |
+| outdated | ❌ |
+
+### Reporting a vulnerability
+
+Please report a vulerability by opening an new issue. We will get back to you as soon as possible.
