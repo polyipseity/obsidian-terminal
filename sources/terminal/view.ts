@@ -252,42 +252,26 @@ export class TerminalView extends ItemView {
 		super(leaf)
 		this.navigation = true
 		const { scope, focusedScope } = this
-		scope.register(
-			cloneAsWritable(TerminalView.modifiers),
-			"`",
-			event => {
-				this.#emulator?.terminal.focus()
-				consumeEvent(event)
-			},
-		)
-		focusedScope.register(
-			cloneAsWritable(TerminalView.modifiers),
-			"`",
-			event => {
-				const { contentEl: { ownerDocument: { activeElement } } } = this
-				if (instanceOf(activeElement, HTMLElement) ||
-					instanceOf(activeElement, SVGElement)) {
-					activeElement.blur()
-				}
-				consumeEvent(event)
-			},
-		)
-		focusedScope.register(
-			cloneAsWritable(TerminalView.modifiers),
-			"f",
-			event => {
-				this.startFind()
-				consumeEvent(event)
-			},
-		)
-		focusedScope.register(
-			cloneAsWritable(TerminalView.modifiers),
-			"k",
-			event => {
-				this.#emulator?.terminal.clear()
-				consumeEvent(event)
-			},
-		)
+		scope.register(TerminalView.modifiers, "`", event => {
+			this.#emulator?.terminal.focus()
+			consumeEvent(event)
+		})
+		focusedScope.register(TerminalView.modifiers, "`", event => {
+			const { contentEl: { ownerDocument: { activeElement } } } = this
+			if (instanceOf(activeElement, HTMLElement) ||
+				instanceOf(activeElement, SVGElement)) {
+				activeElement.blur()
+			}
+			consumeEvent(event)
+		})
+		focusedScope.register(TerminalView.modifiers, "f", event => {
+			this.startFind()
+			consumeEvent(event)
+		})
+		focusedScope.register(TerminalView.modifiers, "k", event => {
+			this.#emulator?.terminal.clear()
+			consumeEvent(event)
+		})
 	}
 
 	protected get state(): TerminalView.State {

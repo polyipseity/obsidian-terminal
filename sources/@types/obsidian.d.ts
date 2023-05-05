@@ -4,6 +4,14 @@ import type { Private } from "sources/utils/private"
 
 declare module "obsidian" {
 	interface DataAdapter extends Private<$DataAdapter> { }
+	interface Scope {
+		// eslint-disable-next-line @typescript-eslint/method-signature-style
+		register(
+			modifiers: readonly Modifier[],
+			key: string | null,
+			func: KeymapEventListener,
+		): KeymapEventHandler
+	}
 	interface ViewStateResult extends Private<$ViewStateResult> { }
 	interface WorkspaceLeaf extends Private<$WorkspaceLeaf> { }
 	interface WorkspaceRibbon extends Private<$WorkspaceRibbon> { }
