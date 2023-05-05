@@ -1,6 +1,5 @@
 import {
 	DEFAULT_NAMESPACE,
-	type DefaultResources,
 	FALLBACK_LANGUAGES,
 	FORMATTERS, LANGUAGES,
 	NAMESPACES,
@@ -13,14 +12,6 @@ import type { TerminalPlugin } from "./main"
 import { moment } from "obsidian"
 import { printError } from "./utils/obsidian"
 import resourcesToBackend from "i18next-resources-to-backend"
-
-declare module "i18next" {
-	interface CustomTypeOptions {
-		readonly defaultNS: typeof DEFAULT_NAMESPACE
-		readonly resources: DefaultResources
-		readonly returnNull: typeof RETURN_NULL
-	}
-}
 
 export const I18N = (async (): Promise<i18n> => {
 	try {
