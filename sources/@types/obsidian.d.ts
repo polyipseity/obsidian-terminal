@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-empty-interface */
-import "obsidian"
 import type { Private } from "sources/utils/private"
 
 declare module "obsidian" {

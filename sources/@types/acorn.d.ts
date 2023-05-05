@@ -1,4 +1,3 @@
-import "acorn"
 import type estree from "estree"
 
 declare module "acorn" {
