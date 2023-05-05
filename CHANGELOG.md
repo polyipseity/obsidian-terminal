@@ -10,6 +10,8 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+- The minimum Obsidian version has been increased to v1.2.5. (`dbc26a396f3d97cb625e577d10ebc537f5548493`)
+
 __Features__
 - Implement top-level ``await`` in the developer console. (`7d2219e9bceef8459504c820099ff3c61bd737bd`)
 
