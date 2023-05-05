@@ -31,6 +31,7 @@ import {
 	printError,
 	printMalformedData,
 	readStateCollabratively,
+	registerKey,
 	saveFileAs,
 	updateDisplayText,
 	useSettings,
@@ -484,7 +485,8 @@ export class TerminalView extends ItemView {
 			keymap.pushScope(focusedScope)
 		}
 
-		this.registerScopeEvent(scope.register(
+		this.register(registerKey(
+			scope,
 			cloneAsWritable(TerminalView.modifiers),
 			"`",
 			event => {
@@ -492,7 +494,8 @@ export class TerminalView extends ItemView {
 				consumeEvent(event)
 			},
 		))
-		this.registerScopeEvent(focusedScope.register(
+		this.register(registerKey(
+			focusedScope,
 			cloneAsWritable(TerminalView.modifiers),
 			"`",
 			event => {
@@ -504,7 +507,8 @@ export class TerminalView extends ItemView {
 				consumeEvent(event)
 			},
 		))
-		this.registerScopeEvent(focusedScope.register(
+		this.register(registerKey(
+			focusedScope,
 			cloneAsWritable(TerminalView.modifiers),
 			"f",
 			event => {
@@ -512,7 +516,8 @@ export class TerminalView extends ItemView {
 				consumeEvent(event)
 			},
 		))
-		this.registerScopeEvent(focusedScope.register(
+		this.register(registerKey(
+			focusedScope,
 			cloneAsWritable(TerminalView.modifiers),
 			"k",
 			event => {

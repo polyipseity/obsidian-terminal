@@ -9,6 +9,7 @@ import {
 	Notice,
 	Plugin,
 	type PluginManifest,
+	type Scope,
 	Setting,
 	View,
 	addIcon as addIcon0,
@@ -375,6 +376,14 @@ export function printError(
 		plugin?.settings.errorNoticeTimeout ?? NOTICE_NO_TIMEOUT,
 		plugin,
 	)
+}
+
+export function registerKey(
+	self: Scope,
+	...args: Parameters<Scope["register"]>
+): () => void {
+	const handle = self.register(...args)
+	return () => { self.unregister(handle) }
 }
 
 export function readStateCollabratively(
