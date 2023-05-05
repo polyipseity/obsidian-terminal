@@ -78,7 +78,7 @@
 		"fundingUrl": {},
 		"id": "terminal",
 		"isDesktopOnly": false,
-		"minAppVersion": "1.1.13",
+		"minAppVersion": "1.2.5",
 		"name": "Terminal"
 	},
 	"overrides": {
