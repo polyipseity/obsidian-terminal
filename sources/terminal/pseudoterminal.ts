@@ -45,6 +45,7 @@ import { isEmpty, isNil, isUndefined, noop } from "lodash-es"
 import { notice2, printError } from "sources/utils/obsidian"
 import AsyncLock from "async-lock"
 import type { AsyncOrSync } from "ts-essentials"
+import type { DeveloperConsoleContext } from "obsidian-terminal"
 import { DisposerAddon } from "./emulator-addons"
 import type { FileResult } from "tmp-promise"
 import type { Log } from "sources/patches"
@@ -220,9 +221,12 @@ export class DeveloperConsolePseudoterminal
 	}) satisfies Record<string, ansi.Style>
 
 	protected static readonly syncLock = "sync"
-	static readonly #formatCache = new WeakMap<Log.Event, string>()
+	protected static readonly contextVar = "$$"
+	protected readonly context: DeveloperConsoleContext
+
 	protected readonly lock = new AsyncLock({ maxPending: MAX_LOCK_PENDING })
 	protected readonly buffer = new TerminalTextArea()
+	readonly #formatCache = new WeakMap<Log.Event, string>()
 	readonly #history = [""]
 	#historyIndex = 0
 	readonly #editors =
@@ -233,6 +237,11 @@ export class DeveloperConsolePseudoterminal
 		protected readonly log: Log,
 	) {
 		super()
+		const { terminals } = this
+		this.context = Object.seal({
+			depth: 0,
+			get terminals() { return terminals },
+		})
 		this.onExit
 			.finally(log.logger.listen(async event => this.write([event])))
 			.finally(() => {
@@ -243,63 +252,6 @@ export class DeveloperConsolePseudoterminal
 				).call()
 			})
 			.finally(() => { this.buffer.dispose() })
-	}
-
-	public static options(styles: readonly ansi.Style[]): Options {
-		return deepFreeze({
-			customInspect: false,
-			depth: 0,
-			showHidden: true,
-			stylize(str, styleType) {
-				const { [styleType]: style } = inspect.styles
-				if (style) {
-					const { [style]: [apply, undo] } = inspect.colors
-					return `${CSI}${apply}m${str}${CSI}${undo}m${ansi.styles(styles)}`
-				}
-				return str
-			},
-		})
-	}
-
-	protected static format(event: Log.Event): string {
-		let ret = this.#formatCache.get(event)
-		if (isUndefined(ret)) {
-			const { colors } = DeveloperConsolePseudoterminal,
-				{ data, type } = event,
-				styles: ansi.Style[] = []
-			switch (type) {
-				case "debug":
-				case "error":
-				case "info":
-				case "warn":
-					styles.push(colors[type])
-					ret = logFormat(
-						DeveloperConsolePseudoterminal.options(styles),
-						...data,
-					)
-					break
-				case "windowError":
-					styles.push(colors.error)
-					ret = logFormat(
-						DeveloperConsolePseudoterminal.options(styles),
-						data.message,
-						data,
-					)
-					break
-				case "unhandledRejection":
-					styles.push(colors.error)
-					ret = logFormat(
-						DeveloperConsolePseudoterminal.options(styles),
-						data.reason,
-						data,
-					)
-					break
-				// No default
-			}
-			this.#formatCache.set(event, ret =
-				`${ansi.styles(styles)}${ret}${ansi.style.reset}`)
-		}
-		return ret
 	}
 
 	public override async pipe(terminal: Terminal): Promise<void> {
@@ -390,6 +342,91 @@ export class DeveloperConsolePseudoterminal
 		await this.write(this.log.history, [terminal])
 	}
 
+	protected format(event: Log.Event): string {
+		let ret = this.#formatCache.get(event)
+		if (isUndefined(ret)) {
+			const { colors } = DeveloperConsolePseudoterminal,
+				{ data, type } = event,
+				styles: ansi.Style[] = []
+			switch (type) {
+				case "debug":
+				case "error":
+				case "info":
+				case "warn":
+					styles.push(colors[type])
+					ret = logFormat(this.options(styles), ...data)
+					break
+				case "windowError":
+					styles.push(colors.error)
+					ret = logFormat(this.options(styles), data.message, data)
+					break
+				case "unhandledRejection":
+					styles.push(colors.error)
+					ret = logFormat(this.options(styles), data.reason, data)
+					break
+				// No default
+			}
+			this.#formatCache.set(event, ret =
+				`${ansi.styles(styles)}${ret}${ansi.style.reset}`)
+		}
+		return ret
+	}
+
+	protected compile(code: string): readonly [() => void, string] {
+		const { context } = this
+		let symbolKey: string | null = null
+		while (symbolKey === null || Symbol.for(symbolKey) in self) {
+			symbolKey = self.crypto.randomUUID()
+		}
+		const symbol = Symbol.for(symbolKey),
+			cleanup = new Functions({ async: false, settled: true })
+		try {
+			cleanup.push(() => {
+				if (!Reflect.deleteProperty(self, symbol)) {
+					throw new TypeError(symbol.toString())
+				}
+			})
+			Object.defineProperty(self, symbol, {
+				configurable: true,
+				enumerable: false,
+				value: context,
+				writable: false,
+			})
+			const url = URL.createObjectURL(new Blob(
+				[
+					[
+						`var ${DeveloperConsolePseudoterminal
+							.contextVar} = self[Symbol.for("${symbolKey}")]`,
+						code,
+					].join(";"),
+				],
+				{ type: "text/javascript" },
+			))
+			cleanup.push(() => { URL.revokeObjectURL(url) })
+			return deepFreeze([(): void => { cleanup.call() }, url])
+		} catch (error) {
+			cleanup.call()
+			throw error
+		}
+	}
+
+	protected options(styles: readonly ansi.Style[]): Options {
+		const { context: { depth } } = this
+		return deepFreeze({
+			customInspect: false,
+			depth,
+			showHidden: true,
+			stylize(str, styleType) {
+				const { [styleType]: style } = inspect.styles
+				if (style) {
+					const { [style]: [apply, undo] } = inspect.colors
+					return `${CSI}${apply}m${str}${CSI}${undo}m${ansi.styles(styles)}`
+				}
+				return str
+			},
+		})
+	}
+
 	protected async eval(): Promise<void> {
 		const { buffer, console, lock, terminals } = this,
 			code = await lock.acquire(
@@ -430,15 +467,11 @@ export class DeveloperConsolePseudoterminal
 				? `${code.slice(0, lastStmt.start)}export default (${code
 					.slice(lastStmt.start)})`
 				: "",
-			url = URL.createObjectURL(new Blob(
-				[code],
-				{ type: "text/javascript" },
-			))
+			[cleanup, url] = this.compile(code)
 		try {
-			const url2 = code2 && URL.createObjectURL(new Blob(
-				[code2],
-				{ type: "text/javascript" },
-			))
+			const [cleanup2, url2] = code2
+				? this.compile(code2)
+				: [(): void => { }, ""]
 			try {
 				const [success, ret] = await (
 					async (): Promise<[false] | [true, {
@@ -476,8 +509,8 @@ export class DeveloperConsolePseudoterminal
 						})
 					} catch (error) { self.console.warn(error) }
 				}
-			} finally { if (url2) { URL.revokeObjectURL(url2) } }
-		} finally { URL.revokeObjectURL(url) }
+			} finally { cleanup2() }
+		} finally { cleanup() }
 	}
 
 	protected async syncBuffer(
@@ -542,7 +575,7 @@ export class DeveloperConsolePseudoterminal
 	): Promise<void> {
 		const terminals0 = [...terminals],
 			text = `${ansi.erase.inLine() + normalizeText(events
-				.map(event => DeveloperConsolePseudoterminal.format(event)).join("\n"))
+				.map(event => this.format(event)).join("\n"))
 				.replace(
 					replaceAllRegex(NORMALIZED_LINE_FEED),
 					`${NORMALIZED_LINE_FEED}${ansi.erase.inLine()}`,
