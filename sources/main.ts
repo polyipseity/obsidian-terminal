@@ -1,7 +1,7 @@
 import { type App, Plugin, type PluginManifest } from "obsidian"
 import type { AsyncOrSync, DeepWritable } from "ts-essentials"
 import {
-	ConsolePseudoterminal,
+	DeveloperConsolePseudoterminal,
 	RefPsuedoterminal,
 } from "./terminal/pseudoterminal"
 import {
@@ -34,8 +34,8 @@ export class TerminalPlugin extends Plugin {
 	public readonly log
 	public readonly language = new LanguageManager(this)
 	public readonly statusBarHider = new StatusBarHider(this)
-	public readonly consolePTY = lazyProxy(() => new RefPsuedoterminal(
-		new ConsolePseudoterminal(self.console, this.log),
+	public readonly developerConsolePTY = lazyProxy(() => new RefPsuedoterminal(
+		new DeveloperConsolePseudoterminal(self.console, this.log),
 	))
 
 	public readonly saveSettings = asyncDebounce(throttle((
@@ -58,7 +58,7 @@ export class TerminalPlugin extends Plugin {
 			self.console.warn(error)
 			this.version = null
 		}
-		this.register(async () => this.consolePTY.kill())
+		this.register(async () => this.developerConsolePTY.kill())
 	}
 
 	public get settings(): Settings {

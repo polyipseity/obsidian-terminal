@@ -43,7 +43,7 @@ export const PROFILE_PROPERTIES: {
 	developerConsole: {
 		available: true,
 		integratable: true,
-		opener(plugin: TerminalPlugin) { return plugin.consolePTY.dup() },
+		opener(plugin: TerminalPlugin) { return plugin.developerConsolePTY.dup() },
 		valid: true,
 	},
 	external: {

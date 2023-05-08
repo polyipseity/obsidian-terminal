@@ -209,7 +209,7 @@ export class TextPseudoterminal
 	}
 }
 
-export class ConsolePseudoterminal
+export class DeveloperConsolePseudoterminal
 	extends PseudoPseudoterminal
 	implements Pseudoterminal {
 	public static readonly colors = deepFreeze({
@@ -225,7 +225,8 @@ export class ConsolePseudoterminal
 	protected readonly buffer = new TerminalTextArea()
 	readonly #history = [""]
 	#historyIndex = 0
-	readonly #editors = new Map<Terminal, ConsolePseudoterminal.$Editor>()
+	readonly #editors =
+		new Map<Terminal, DeveloperConsolePseudoterminal.$Editor>()
 
 	public constructor(
 		protected readonly console: Console,
@@ -263,7 +264,7 @@ export class ConsolePseudoterminal
 	protected static format(event: Log.Event): string {
 		let ret = this.#formatCache.get(event)
 		if (isUndefined(ret)) {
-			const { colors } = ConsolePseudoterminal,
+			const { colors } = DeveloperConsolePseudoterminal,
 				{ data, type } = event,
 				styles: ansi.Style[] = []
 			switch (type) {
@@ -273,14 +274,14 @@ export class ConsolePseudoterminal
 				case "warn":
 					styles.push(colors[type])
 					ret = logFormat(
-						ConsolePseudoterminal.options(styles),
+						DeveloperConsolePseudoterminal.options(styles),
 						...data,
 					)
 					break
 				case "windowError":
 					styles.push(colors.error)
 					ret = logFormat(
-						ConsolePseudoterminal.options(styles),
+						DeveloperConsolePseudoterminal.options(styles),
 						data.message,
 						data,
 					)
@@ -288,7 +289,7 @@ export class ConsolePseudoterminal
 				case "unhandledRejection":
 					styles.push(colors.error)
 					ret = logFormat(
-						ConsolePseudoterminal.options(styles),
+						DeveloperConsolePseudoterminal.options(styles),
 						data.reason,
 						data,
 					)
@@ -317,21 +318,24 @@ export class ConsolePseudoterminal
 						block = false
 						return
 					}
-					await lock.acquire(ConsolePseudoterminal.syncLock, async () => {
-						let writing = true
-						const write = buffer.write(data)
-							.finally(() => { writing = false })
-							.then(async () => {
-								this.#history[this.#history.length - 1] = buffer.value.string
+					await lock.acquire(
+						DeveloperConsolePseudoterminal.syncLock,
+						async () => {
+							let writing = true
+							const write = buffer.write(data)
+								.finally(() => { writing = false })
+								.then(async () => {
+									this.#history[this.#history.length - 1] = buffer.value.string
+									await this.syncBuffer(terminals, false)
+								})
+							// eslint-disable-next-line no-unmodified-loop-condition
+							while (writing) {
+								// eslint-disable-next-line no-await-in-loop
 								await this.syncBuffer(terminals, false)
-							})
-						// eslint-disable-next-line no-unmodified-loop-condition
-						while (writing) {
-							// eslint-disable-next-line no-await-in-loop
-							await this.syncBuffer(terminals, false)
-						}
-						await write
-					})
+							}
+							await write
+						},
+					)
 				}),
 				terminal.onKey(({ domEvent }) => {
 					if (!isEmpty(getKeyModifiers(domEvent))) { return }
@@ -343,26 +347,29 @@ export class ConsolePseudoterminal
 						case "ArrowUp":
 						case "ArrowDown":
 							if ((this.#history.at(-1) ?? "").includes("\n")) { return }
-							lock.acquire(ConsolePseudoterminal.syncLock, async () => {
-								if ((this.#history.at(-1) ?? "").includes("\n")) { return }
-								const { length } = this.#history
-								if (length <= 0) { return }
-								const text = this.#history.at(this.#historyIndex =
-									(this.#historyIndex + (key === "ArrowDown"
-										? 1
-										: -1)) % length)
-								if (isUndefined(text)) { return }
-								let writing = true
-								const write = buffer.setValue(text)
-									.finally(() => { writing = false })
-									.then(async () => this.syncBuffer(terminals, false))
-								// eslint-disable-next-line no-unmodified-loop-condition
-								while (writing) {
-									// eslint-disable-next-line no-await-in-loop
-									await this.syncBuffer(terminals, false)
-								}
-								await write
-							}).catch(logError)
+							lock.acquire(
+								DeveloperConsolePseudoterminal.syncLock,
+								async () => {
+									if ((this.#history.at(-1) ?? "").includes("\n")) { return }
+									const { length } = this.#history
+									if (length <= 0) { return }
+									const text = this.#history.at(this.#historyIndex =
+										(this.#historyIndex + (key === "ArrowDown"
+											? 1
+											: -1)) % length)
+									if (isUndefined(text)) { return }
+									let writing = true
+									const write = buffer.setValue(text)
+										.finally(() => { writing = false })
+										.then(async () => this.syncBuffer(terminals, false))
+									// eslint-disable-next-line no-unmodified-loop-condition
+									while (writing) {
+										// eslint-disable-next-line no-await-in-loop
+										await this.syncBuffer(terminals, false)
+									}
+									await write
+								},
+							).catch(logError)
 							break
 						default:
 							return
@@ -385,14 +392,17 @@ export class ConsolePseudoterminal
 
 	protected async eval(): Promise<void> {
 		const { buffer, console, lock, terminals } = this,
-			code = await lock.acquire(ConsolePseudoterminal.syncLock, async () => {
-				const { string: ret } = await buffer.clear(),
-					{ length } = this.#history
-				this.#history.splice(length - 1, 1, ret, "")
-				this.#historyIndex = length
-				await this.syncBuffer(terminals, false)
-				return ret
-			})
+			code = await lock.acquire(
+				DeveloperConsolePseudoterminal.syncLock,
+				async () => {
+					const { string: ret } = await buffer.clear(),
+						{ length } = this.#history
+					this.#history.splice(length - 1, 1, ret, "")
+					this.#historyIndex = length
+					await this.syncBuffer(terminals, false)
+					return ret
+				},
+			)
 		console.log(code)
 		const ast = ((): ExtendNode<Program> | null => {
 			try {
@@ -478,7 +488,7 @@ export class ConsolePseudoterminal
 		return new Promise((resolve, reject) => {
 			acquireConditionally(
 				this.lock,
-				ConsolePseudoterminal.syncLock,
+				DeveloperConsolePseudoterminal.syncLock,
 				lock,
 				async () => {
 					const writers = terminals0.map(async terminal => {
@@ -532,14 +542,14 @@ export class ConsolePseudoterminal
 	): Promise<void> {
 		const terminals0 = [...terminals],
 			text = `${ansi.erase.inLine() + normalizeText(events
-				.map(event => ConsolePseudoterminal.format(event)).join("\n"))
+				.map(event => DeveloperConsolePseudoterminal.format(event)).join("\n"))
 				.replace(
 					replaceAllRegex(NORMALIZED_LINE_FEED),
 					`${NORMALIZED_LINE_FEED}${ansi.erase.inLine()}`,
 				)}${NORMALIZED_LINE_FEED}`
 		await acquireConditionally(
 			this.lock,
-			ConsolePseudoterminal.syncLock,
+			DeveloperConsolePseudoterminal.syncLock,
 			lock,
 			async () => {
 				await Promise.allSettled(terminals0.map(async terminal => {
@@ -565,7 +575,7 @@ export class ConsolePseudoterminal
 
 	#setEditor(
 		terminal: Terminal,
-		editor?: ConsolePseudoterminal.$Editor,
+		editor?: DeveloperConsolePseudoterminal.$Editor,
 	): void {
 		this.#editors.get(terminal)?.close()
 		if (editor) {
@@ -575,7 +585,7 @@ export class ConsolePseudoterminal
 		}
 	}
 }
-export namespace ConsolePseudoterminal {
+export namespace DeveloperConsolePseudoterminal {
 	export interface $Editor {
 		readonly startX: number
 		readonly startYMarker: IMarker | undefined
