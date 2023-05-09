@@ -3,9 +3,12 @@ import { readFile, writeFile } from "node:fs/promises"
 
 const
 	MANIFEST_MAP = Object.freeze({
-		author: pack => pack.author,
-		description: pack => pack.description,
-		version: pack => pack.version,
+		author: ({ author }) => author,
+		description: ({ description }) => description,
+		fundingUrl: ({ funding }) => funding
+			? Object.fromEntries(funding.map(({ type, url }) => [type, url]))
+			: null,
+		version: ({ version }) => version,
 	}),
 	BETA_MANIFEST = Object.freeze({ version: "latest" }),
 	aPackage = readFile(PATHS.package, "utf-8").then(data => JSON.parse(data)),
@@ -16,7 +19,8 @@ await Promise.all([
 		const pack = await aPackage,
 			manifest = {
 				...Object.fromEntries(Object.entries(MANIFEST_MAP)
-					.map(([key, value]) => [key, value(pack)])),
+					.map(([key, value]) => [key, value(pack)]))
+					.filter(([, value]) => value),
 				...pack.obsidian,
 			}
 		await Promise.all([
