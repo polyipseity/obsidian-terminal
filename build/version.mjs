@@ -19,8 +19,8 @@ await Promise.all([
 		const pack = await aPackage,
 			manifest = {
 				...Object.fromEntries(Object.entries(MANIFEST_MAP)
-					.map(([key, value]) => [key, value(pack)]))
-					.filter(([, value]) => value),
+					.map(([key, value]) => [key, value(pack)])
+					.filter(([, value]) => value)),
 				...pack.obsidian,
 			}
 		await Promise.all([
