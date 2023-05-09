@@ -1,5 +1,7 @@
 # Terminal for Obsidian [![release](https://img.shields.io/github/v/release/polyipseity/obsidian-terminal)][latest release] [![Obsidian downloads](https://img.shields.io/badge/dynamic/json?logo=Obsidian&color=%238b6cef&label=downloads&query=terminal.downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json)][community plugin] [![Python](https://img.shields.io/badge/Python-≥3.10-gold?labelColor=blue&logo=Python&logoColor=white)][Python]
 
+[Buy Me a Coffee]: https://buymeacoffee.com/polyipseity
+[Buy Me a Coffee/embed]: https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=polyipseity&button_colour=40DCA5&font_colour=ffffff&font_family=Lato&outline_colour=000000&coffee_colour=FFDD00
 [Obsidian]: https://obsidian.md/
 [Python]: https://python.org/downloads/
 [changelog]: https://github.com/polyipseity/obsidian-terminal/blob/main/CHANGELOG.md
@@ -9,6 +11,8 @@
 [trailer]: https://raw.githubusercontent.com/polyipseity/obsidian-terminal/main/assets/trailer.png
 
 Integrate consoles, shells, and terminals inside [Obsidian].
+
+[![Buy Me a Coffee/embed]][Buy Me a Coffee]
 
 __[Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing)__
 

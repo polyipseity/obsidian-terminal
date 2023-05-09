@@ -1,6 +1,10 @@
 # Changelog for Terminal
 
+[Buy Me a Coffee]: https://buymeacoffee.com/polyipseity
+[Buy Me a Coffee/embed]: https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=polyipseity&button_colour=40DCA5&font_colour=ffffff&font_family=Lato&outline_colour=000000&coffee_colour=FFDD00
 [readme]: https://github.com/polyipseity/obsidian-terminal/blob/main/README.md
+
+[![Buy Me a Coffee/embed]][Buy Me a Coffee]
 
 Versions are ordered by recency.
 
@@ -11,6 +15,7 @@ This file is automatically opened on update. You can reopen it in settings or co
 ## Unreleased
 
 - The minimum Obsidian version has been increased to v1.2.5. (`dbc26a396f3d97cb625e577d10ebc537f5548493`)
+- Add donation options. (`15ef8207a3df00b23fc54d1a75ec842925f602ef`..`58df51d64977e93cd98b44f58f0f246e37953214`)
 
 __Features__
 - Implement top-level `await` in the developer console. (`7d2219e9bceef8459504c820099ff3c61bd737bd`)
