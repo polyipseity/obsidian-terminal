@@ -10,6 +10,7 @@ import {
 	updateDisplayText,
 	writeStateCollabratively,
 } from "sources/utils/obsidian"
+import type { NamespacedTranslationKey } from "sources/i18n"
 import type { TerminalPlugin } from "sources/main"
 import { deepFreeze } from "sources/utils/util"
 import { launderUnchecked } from "sources/utils/types"
@@ -43,19 +44,19 @@ export class DocumentationMarkdownView extends MarkdownView {
 	}
 
 	public override getDisplayText(): string {
-		const { plugin, state } = this,
-			{ displayTextI18nKey } = state
-		return displayTextI18nKey === null
-			? super.getDisplayText()
-			: plugin.language.i18n.t(displayTextI18nKey as any)
+		const {
+			plugin: { language: { i18n } },
+			state: { displayTextI18nKey: key },
+		} = this
+		return key === null ? super.getDisplayText() : String(i18n.t(key))
 	}
 
 	public override getIcon(): string {
-		const { plugin, state } = this,
-			{ iconI18nKey } = state
-		return iconI18nKey === null
-			? super.getIcon()
-			: plugin.language.i18n.t(iconI18nKey as any)
+		const {
+			plugin: { language: { i18n } },
+			state: { iconI18nKey: key },
+		} = this
+		return key === null ? super.getIcon() : String(i18n.t(key))
 	}
 
 	public override async setState(
@@ -99,8 +100,8 @@ export class DocumentationMarkdownView extends MarkdownView {
 export namespace DocumentationMarkdownView {
 	export interface State {
 		readonly data: string
-		readonly displayTextI18nKey: string | null
-		readonly iconI18nKey: string | null
+		readonly displayTextI18nKey: NamespacedTranslationKey | null
+		readonly iconI18nKey: NamespacedTranslationKey | null
 	}
 	export namespace State {
 		export const DEFAULT: State = deepFreeze({
@@ -117,13 +118,13 @@ export namespace DocumentationMarkdownView {
 					unc,
 					"displayTextI18nKey",
 					["string", "null"],
-				),
+				) as NamespacedTranslationKey,
 				iconI18nKey: fixTyped(
 					DEFAULT,
 					unc,
 					"iconI18nKey",
 					["string", "null"],
-				),
+				) as NamespacedTranslationKey,
 			})
 		}
 	}

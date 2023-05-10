@@ -7,11 +7,19 @@ import {
 	RETURN_NULL,
 } from "assets/locales"
 import { EventEmitterLite, anyToError, inSet, typedIn } from "./utils/util"
-import i18next, { createInstance, type i18n } from "i18next"
+import i18next, {
+	type TFuncKey,
+	type TypeOptions,
+	createInstance,
+	type i18n,
+} from "i18next"
 import type { TerminalPlugin } from "./main"
 import { moment } from "obsidian"
 import { printError } from "./utils/obsidian"
 import resourcesToBackend from "i18next-resources-to-backend"
+
+export type NamespacedTranslationKey =
+	TFuncKey<(keyof TypeOptions["resources"])[]>
 
 export const I18N = (async (): Promise<i18n> => {
 	try {
