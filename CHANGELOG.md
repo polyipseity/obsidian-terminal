@@ -22,6 +22,9 @@ __Features__
 - Inject context variable `$$` into the developer console. It can be used to dynamically change terminal options. The API is available in [`sources/@types/obsidian-terminal.d.ts#DeveloperConsoleContext`](sources/%40types/obsidian-terminal.d.ts). (`557fd14fc31f0da351d1690852d387f2fd600fac`)
 - Add setting `Open changelog on update`. (`881f39889974a543bac876f933e1e330bfff6f27`)
 
+__Improvements__
+- Cleanup documentation view. Extra useless functions are removed. (`7c3e4dae5112f6d95780c610219a3c5dd4098364`)
+
 __Full changelog__: [`3.8.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.8.0...main)
 
 ## 3.8.0 (2023-04-29)
