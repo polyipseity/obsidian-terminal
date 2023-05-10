@@ -10,7 +10,7 @@ declare module "obsidian-terminal" {
 	interface DeveloperConsoleContext {
 
 		/**
-		 * Depth to expanded nested objects up to
+		 * Depth to expanded nested objects up to.
 		 *
 		 * @default 0
 		 */
