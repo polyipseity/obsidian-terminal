@@ -27,7 +27,7 @@ import {
 	replaceAllRegex,
 	typedStructuredClone,
 } from "./util"
-import { constant, isUndefined } from "lodash-es"
+import { cloneDeep, constant, isUndefined } from "lodash-es"
 import { revealPrivate, revealPrivateAsync } from "./private"
 import { DEFAULT_LANGUAGE } from "assets/locales"
 import { Platform } from "./platforms"
@@ -308,7 +308,7 @@ export function printMalformedData(
 	const { i18n } = plugin.language,
 		tryClone = (thing: unknown): unknown => {
 			try {
-				return typedStructuredClone(thing)
+				return cloneDeep(thing)
 			} catch (error) {
 				self.console.warn(error)
 				return thing
