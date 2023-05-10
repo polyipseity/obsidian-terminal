@@ -28,10 +28,12 @@ export const
 
 export namespace DOMClasses {
 	export const
+		LUCIDE_HEART = "lucide-heart",
 		MOD_WARNING = "mod-warning",
 		MODAL = "modal",
 		MODAL_CLOSE_BUTTON = "modal-close-button",
 		STATUS_BAR = "status-bar",
+		SVG_ICON = "svg-icon",
 		VERTICAL_TAB_CONTENT = "vertical-tab-content",
 		VERTICAL_TAB_CONTENT_CONTAINER = "vertical-tab-content-container",
 		VIEW_HEADER_TITLE = "view-header-title"

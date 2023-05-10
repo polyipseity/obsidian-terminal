@@ -185,8 +185,10 @@
 		"documentation": "documentation",
 		"documentations": {
 			"changelog": "changelog",
+			"donate": "$t(generic.donate)",
 			"readme": "readme"
 		},
+		"donate": "donate",
 		"edit": "Edit",
 		"executable": "executable",
 		"exist": "exist",
@@ -341,6 +343,7 @@
 		"documentation": "$t(generic.documentation, capitalize)",
 		"documentations": {
 			"changelog": "$t(generic.documentations.changelog, capitalize)",
+			"donate": "$t(generic.documentations.donate, capitalize)",
 			"readme": "$t(generic.documentations.readme, capitalize)"
 		},
 		"error-notice-timeout": "Error $t(generic.notice) $t(generic.timeout) (s)",

@@ -178,8 +178,10 @@
 		"documentation": "文档",
 		"documentations": {
 			"changelog": "更改日志",
+			"donate": "$t(generic.donate)",
 			"readme": "自述文件"
 		},
+		"donate": "捐赠",
 		"edit": "编辑",
 		"executable": "可执行文件",
 		"exist": "存在",
@@ -315,6 +317,7 @@
 		"documentation": "$t(generic.documentation)",
 		"documentations": {
 			"changelog": "$t(generic.documentations.changelog)",
+			"donate": "$t(generic.documentations.donate)",
 			"readme": "$t(generic.documentations.readme)"
 		},
 		"error-notice-timeout": "错误$t(generic.notice)$t(generic.timeout)（s）",

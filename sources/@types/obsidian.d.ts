@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-empty-interface */
+import type { PluginManifest, SettingTab } from "obsidian"
 import type { Private } from "sources/utils/private"
 
 declare module "obsidian" {
+	interface App extends Private<$App> { }
 	interface DataAdapter extends Private<$DataAdapter> { }
 	interface Scope {
 		// eslint-disable-next-line @typescript-eslint/method-signature-style
@@ -14,6 +16,18 @@ declare module "obsidian" {
 	interface ViewStateResult extends Private<$ViewStateResult> { }
 	interface WorkspaceLeaf extends Private<$WorkspaceLeaf> { }
 	interface WorkspaceRibbon extends Private<$WorkspaceRibbon> { }
+}
+
+interface $App {
+	readonly setting: readonly {
+		readonly settingTabs: readonly (SettingTab & ({
+			readonly id: "community-plugins"
+			readonly renderInstalledPlugin: (
+				manifest: PluginManifest,
+				element: HTMLElement
+			) => void
+		} | { readonly id: unique symbol }))[]
+	}
 }
 
 interface $DataAdapter {
