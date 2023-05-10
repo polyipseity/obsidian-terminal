@@ -31,6 +31,7 @@ import {
 	printError,
 	printMalformedData,
 	readStateCollabratively,
+	recordViewStateHistory,
 	saveFileAs,
 	updateDisplayText,
 	useSettings,
@@ -69,7 +70,6 @@ import { XtermTerminalEmulator } from "./emulator"
 import { cloneDeep } from "lodash-es"
 import { dynamicRequireLazy } from "sources/imports"
 import { launderUnchecked } from "sources/utils/types"
-import { revealPrivate } from "sources/utils/private"
 import { writePromise } from "./util"
 
 const
@@ -368,9 +368,7 @@ export class TerminalView extends ItemView {
 		value.focus = false
 		this.state = value
 		this.startEmulator(focus)
-		revealPrivate(plugin, [result], result0 => {
-			result0.history = true
-		}, _0 => { })
+		recordViewStateHistory(plugin, result)
 	}
 
 	public override getState(): unknown {
@@ -402,7 +400,6 @@ export class TerminalView extends ItemView {
 	}
 
 	public getViewType(): string {
-		// Workaround: super() calls this method
 		return TerminalView.#namespacedType
 	}
 

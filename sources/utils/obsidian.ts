@@ -11,6 +11,7 @@ import {
 	type PluginManifest,
 	Setting,
 	View,
+	type ViewStateResult,
 	addIcon as addIcon0,
 	removeIcon,
 } from "obsidian"
@@ -382,6 +383,15 @@ export function readStateCollabratively(
 	state: unknown,
 ): unknown {
 	return launderUnchecked<AnyObject>(state)[implType]
+}
+
+export function recordViewStateHistory(
+	plugin: TerminalPlugin,
+	result: ViewStateResult,
+): void {
+	revealPrivate(plugin, [result], result0 => {
+		result0.history = true
+	}, _0 => { })
 }
 
 export async function saveFileAs(
