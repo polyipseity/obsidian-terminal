@@ -5,6 +5,7 @@
 		"import-settings-clipboard": "$t(generic.import, capitalize) $t(generic.setting_other) from $t(generic.clipboard)",
 		"import-settings-current-file": "$t(generic.import, capitalize) $t(generic.setting_other) from $t(generic.current-file)",
 		"open-documentation-changelog": "$t(generic.open, capitalize) $t(generic.documentations.changelog)",
+		"open-documentation-donate": "$t(generic.open, capitalize) $t(generic.documentations.donate)",
 		"open-documentation-readme": "$t(generic.open, capitalize) $t(generic.documentations.readme)",
 		"open-terminal-": "$t(generic.open, capitalize) $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
 		"open-terminal-current": "$t(generic.open, capitalize) $t(generic.current-directory) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",

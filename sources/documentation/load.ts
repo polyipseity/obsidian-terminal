@@ -3,11 +3,7 @@ import {
 	DOCUMENTATION_KEYS,
 	type DocumentationKeys,
 } from "./documentations"
-import {
-	addCommand,
-	newCollabrativeState,
-	printError,
-} from "sources/utils/obsidian"
+import { addCommand, printError } from "sources/utils/obsidian"
 import { anyToError, logError } from "sources/utils/util"
 import { DocumentationMarkdownView } from "./view"
 import type { TerminalPlugin } from "sources/main"
@@ -43,24 +39,10 @@ export function openDocumentation(
 	key: DocumentationKeys[number],
 	active = true,
 ): void {
-	const { app, language, version } = plugin,
-		{ workspace } = app,
-		{ i18n } = language
-	workspace.onLayoutReady(async () => {
+	const { version, language: { i18n } } = plugin;
+	(async (): Promise<void> => {
 		try {
-			await workspace.getLeaf("tab").setViewState({
-				active,
-				state: newCollabrativeState(plugin, new Map([
-					[
-						DocumentationMarkdownView.type, {
-							data: await DOCUMENTATIONS[key],
-							displayTextI18nKey: `translation:generic.documentations.${key}`,
-							iconI18nKey: `asset:generic.documentations.${key}-icon`,
-						} satisfies DocumentationMarkdownView.State,
-					],
-				])),
-				type: DocumentationMarkdownView.type.namespaced(plugin),
-			})
+			await DOCUMENTATIONS[key](plugin, active)
 			if (key === "changelog" && version !== null) {
 				plugin.mutateSettings(settings => {
 					settings.lastReadChangelogVersion = version
@@ -74,5 +56,5 @@ export function openDocumentation(
 				plugin,
 			)
 		}
-	})
+	})()
 }

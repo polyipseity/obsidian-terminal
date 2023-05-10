@@ -3,9 +3,7 @@ import {
 	ListModal,
 	ProfileListModal,
 } from "sources/ui/modals"
-import { UpdatableUI, printError } from "sources/utils/obsidian"
 import {
-	anyToError,
 	cloneAsWritable,
 	createChildElement,
 	logError,
@@ -19,13 +17,12 @@ import {
 	setTextToNumber,
 } from "../ui/settings"
 import { identity, isEmpty, size } from "lodash-es"
-import { DOMClasses } from "sources/magic"
 import { LANGUAGES } from "assets/locales"
 import { PluginSettingTab } from "obsidian"
 import { Settings } from "./data"
 import type { TerminalPlugin } from "../main"
+import { UpdatableUI } from "sources/utils/obsidian"
 import { openDocumentation } from "sources/documentation/load"
-import { revealPrivate } from "sources/utils/private"
 import semverLt from "semver/functions/lt"
 
 export class SettingTab extends PluginSettingTab {
@@ -34,8 +31,8 @@ export class SettingTab extends PluginSettingTab {
 
 	public constructor(protected readonly plugin: TerminalPlugin) {
 		super(plugin.app, plugin)
-		const { containerEl, ui, app } = this,
-			{ language: { i18n, onChangeLanguage }, version, manifest } = plugin
+		const { containerEl, ui } = this,
+			{ language: { i18n, onChangeLanguage }, version } = plugin
 		plugin.register(() => { ui.destroy() })
 		ui.finally(onChangeLanguage.listen(() => { this.ui.update() }))
 			.new(() => createChildElement(containerEl, "h1"), ele => {
@@ -84,28 +81,8 @@ export class SettingTab extends PluginSettingTab {
 						.setTooltip(i18n.t("settings.documentations.donate"))
 						.setCta()
 						.onClick(() => {
-							revealPrivate(plugin, [app], app0 => {
-								const { setting: { settingTabs } } = app0
-								for (const tab of settingTabs) {
-									const { id, containerEl: { ownerDocument } } = tab
-									if (id !== "community-plugins") { continue }
-									const div = ownerDocument.createElement("div")
-									tab.renderInstalledPlugin(manifest, div)
-									const element = div.querySelector(
-										`.${DOMClasses.SVG_ICON}.${DOMClasses.LUCIDE_HEART}`,
-									)?.parentElement
-									if (!element) { throw new Error(String(div)) }
-									element.click()
-									return
-								}
-								throw new Error(settingTabs.toString())
-							}, error => {
-								printError(
-									anyToError(error),
-									() => i18n.t("errors.error-opening-documentation"),
-									plugin,
-								)
-							})
+							openDocumentation(plugin, "donate")
+							closeSetting(containerEl)
 						}))
 					.addButton(button => button
 						.setIcon(i18n.t("asset:settings.documentations.readme-icon"))

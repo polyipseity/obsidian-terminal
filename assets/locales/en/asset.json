@@ -5,6 +5,7 @@
 		"import-settings-clipboard-icon": "$t(asset:generic.input-from-clipboard-icon)",
 		"import-settings-current-file-icon": "$t(asset:generic.input-from-file-icon)",
 		"open-documentation-changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
+		"open-documentation-donate-icon": "$t(asset:generic.documentations.donate-icon)",
 		"open-documentation-readme-icon": "$t(asset:generic.documentations.readme-icon)",
 		"open-terminal--icon": "command",
 		"open-terminal-current-icon": "file-terminal",

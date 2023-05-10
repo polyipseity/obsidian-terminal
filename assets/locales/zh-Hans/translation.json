@@ -5,6 +5,7 @@
 		"import-settings-clipboard": "从$t(generic.clipboard)$t(generic.import)$t(generic.setting)",
 		"import-settings-current-file": "从$t(generic.current-file)$t(generic.import)$t(generic.setting)",
 		"open-documentation-changelog": "$t(generic.open)$t(generic.documentations.changelog)",
+		"open-documentation-donate": "$t(generic.open)$t(generic.documentations.donate)",
 		"open-documentation-readme": "$t(generic.open)$t(generic.documentations.readme)",
 		"open-terminal-": "$t(generic.open)$t(generic.terminal)：$t(generic.profile-types.{{type}})",
 		"open-terminal-current": "在$t(generic.terminal)$t(generic.open)$t(generic.current-directory)：$t(generic.profile-types.{{type}})",
