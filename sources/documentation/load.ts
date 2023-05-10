@@ -32,6 +32,7 @@ export function loadDocumentation(
 	}
 	if (readme) { openDocumentation(plugin, "readme", false) }
 	if (version !== null &&
+		plugin.settings.openChangelogOnUpdate &&
 		semverLt(plugin.settings.lastReadChangelogVersion, version)) {
 		openDocumentation(plugin, "changelog", false)
 	}

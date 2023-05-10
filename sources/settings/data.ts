@@ -56,6 +56,7 @@ import { RendererAddon } from "../terminal/emulator-addons"
 
 export interface Settings {
 	readonly language: Settings.DefaultableLanguage
+	readonly openChangelogOnUpdate: boolean
 	readonly addToCommand: boolean
 	readonly addToContextMenu: boolean
 	readonly profiles: Settings.Profiles
@@ -98,6 +99,7 @@ export namespace Settings {
 		language: "",
 		newInstanceBehavior: "newHorizontalSplit",
 		noticeTimeout: 5,
+		openChangelogOnUpdate: true,
 		pinNewInstance: true,
 		preferredRenderer: "webgl",
 		profiles: Object.fromEntries(([
@@ -1084,6 +1086,12 @@ export namespace Settings {
 				unc,
 				"noticeTimeout",
 				["number"],
+			),
+			openChangelogOnUpdate: fixTyped(
+				DEFAULT,
+				unc,
+				"openChangelogOnUpdate",
+				["boolean"],
 			),
 			pinNewInstance: fixTyped(
 				DEFAULT,

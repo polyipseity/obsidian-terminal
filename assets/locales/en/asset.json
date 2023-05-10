@@ -155,6 +155,7 @@
 		"language-icon": "languages",
 		"new-instance-behavior-icon": "plus",
 		"notice-timeout-icon": "timer",
+		"open-changelog-on-update-icon": "$t(asset:generic.documentations.changelog-icon)",
 		"pin-new-instance-icon": "pin",
 		"preferred-renderer-icon": "brush",
 		"profiles-edit-icon": "$t(asset:generic.edit-list-icon)",

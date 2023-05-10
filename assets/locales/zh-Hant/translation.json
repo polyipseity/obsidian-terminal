@@ -347,6 +347,7 @@
 		},
 		"notice-timeout": "$t(generic.notice)$t(generic.timeout)（s）",
 		"notice-timeout-description": "設為0 s是無$t(generic.timeout)。設為負數以$t(generic.disable)$t(generic.notice)。",
+		"open-changelog-on-update": "更新時$t(generic.open)$t(generic.documentations.changelog)",
 		"pin-new-instance": "$t(generic.pin)新$t(generic.instance)",
 		"preferred-renderer": "首選$t(generic.renderer)",
 		"preferred-renderer-options": "$t(generic.renderers.{{type}})",

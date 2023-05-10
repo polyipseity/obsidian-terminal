@@ -8,7 +8,7 @@
 
 Versions are ordered by recency.
 
-This file is automatically opened on update. You can reopen it in settings or command palette.
+This file is automatically opened on update. You can reopen it in settings or command palette. The auto-open behavior can be toggled in settings.
 
 - [Readme]
 

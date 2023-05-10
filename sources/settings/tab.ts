@@ -230,6 +230,26 @@ export class SettingTab extends PluginSettingTab {
 			})
 			.newSetting(containerEl, setting => {
 				setting
+					.setName(i18n.t("settings.open-changelog-on-update"))
+					.addToggle(linkSetting(
+						() => plugin.settings.openChangelogOnUpdate,
+						async value => plugin.mutateSettings(settingsM => {
+							settingsM.openChangelogOnUpdate = value
+						}),
+						() => { this.postMutate() },
+					))
+					.addExtraButton(resetButton(
+						i18n.t("asset:settings.open-changelog-on-update-icon"),
+						i18n.t("settings.reset"),
+						async () => plugin.mutateSettings(settingsM => {
+							settingsM.openChangelogOnUpdate =
+								Settings.DEFAULT.openChangelogOnUpdate
+						}),
+						() => { this.postMutate() },
+					))
+			})
+			.newSetting(containerEl, setting => {
+				setting
 					.setName(i18n.t("settings.add-to-command"))
 					.addToggle(linkSetting(
 						() => plugin.settings.addToCommand,
