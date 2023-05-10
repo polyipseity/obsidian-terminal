@@ -14,6 +14,10 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Full changelog__: [`3.9.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.9.0...main)
+
+## 3.9.0 (2023-05-10)
+
 - The minimum Obsidian version has been increased to v1.2.5. (`dbc26a396f3d97cb625e577d10ebc537f5548493`)
 - Add donation options. (`15ef8207a3df00b23fc54d1a75ec842925f602ef`..`58df51d64977e93cd98b44f58f0f246e37953214`, `b59e915611f2ce6de83f5eab68165ac06726bcdc`, `420ee154c526298387fb52fb4c40b432486793b3`)
 
@@ -25,7 +29,7 @@ __Features__
 __Improvements__
 - Cleanup documentation view. Extra useless functions are removed. (`7c3e4dae5112f6d95780c610219a3c5dd4098364`)
 
-__Full changelog__: [`3.8.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.8.0...main)
+__Full changelog__: [`3.8.0...3.9.0`](https://github.com/polyipseity/obsidian-terminal/compare/3.8.0...3.9.0)
 
 ## 3.8.0 (2023-04-29)
 
