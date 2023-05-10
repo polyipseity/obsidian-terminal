@@ -20,6 +20,7 @@ This file is automatically opened on update. You can reopen it in settings or co
 __Features__
 - Implement top-level `await` in the developer console. (`7d2219e9bceef8459504c820099ff3c61bd737bd`)
 - Inject context variable `$$` into the developer console. It can be used to dynamically change terminal options. The API is available in [`sources/@types/obsidian-terminal.d.ts#DeveloperConsoleContext`](sources/%40types/obsidian-terminal.d.ts). (`557fd14fc31f0da351d1690852d387f2fd600fac`)
+- Add setting `Open changelog on update`. (`881f39889974a543bac876f933e1e330bfff6f27`)
 
 __Full changelog__: [`3.8.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.8.0...main)
 
