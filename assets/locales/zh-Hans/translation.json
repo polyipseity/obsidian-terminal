@@ -128,10 +128,6 @@
 	"dialogs": {
 		"overwrite-existing-frontmatter": "$t(generic.overwrite)$t(generic.exist)的$t(generic.frontmatter)？"
 	},
-	"documentations": {
-		"changelog": "$t(generic.documentations.changelog)",
-		"readme": "$t(generic.documentations.readme)"
-	},
 	"errors": {
 		"error-checking-Python": "$t(generic.check)$t(generic.Python)时出错",
 		"error-exporting-settings": "$t(generic.export)$t(generic.setting)时出错",

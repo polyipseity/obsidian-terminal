@@ -131,10 +131,6 @@
 	"dialogs": {
 		"overwrite-existing-frontmatter": "$t(generic.overwrite, capitalize) $t(generic.exist_gerund) $t(generic.frontmatter)?"
 	},
-	"documentations": {
-		"changelog": "$t(generic.documentations.changelog, capitalize)",
-		"readme": "$t(generic.documentations.readme, capitalize)"
-	},
 	"errors": {
 		"error-checking-Python": "Error $t(generic.check_gerund) $t(generic.Python)",
 		"error-exporting-settings": "Error $t(generic.export_gerund) $t(generic.setting_other)",

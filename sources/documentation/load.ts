@@ -54,8 +54,8 @@ export function openDocumentation(
 					[
 						DocumentationMarkdownView.type, {
 							data: await DOCUMENTATIONS[key],
-							displayTextI18nKey: `documentations.${key}`,
-							iconI18nKey: `asset:documentations.${key}-icon`,
+							displayTextI18nKey: `generic.documentations.${key}`,
+							iconI18nKey: `asset:generic.documentations.${key}-icon`,
 						} satisfies DocumentationMarkdownView.State,
 					],
 				])),
