@@ -105,5 +105,5 @@
 		"postversion": "node build/version-post.mjs",
 		"version": "node build/version.mjs"
 	},
-	"version": "3.8.0"
+	"version": "3.9.0"
 }
