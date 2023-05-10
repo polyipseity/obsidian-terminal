@@ -372,7 +372,7 @@ export function printError(
 	self.console.error(`${message()}\n`, error)
 	notice2(
 		() => `${message()}\n${error.name}: ${error.message}`,
-		plugin?.settings.errorNoticeTimeout ?? NOTICE_NO_TIMEOUT,
+		plugin?.settings.errorNoticeTimeout,
 		plugin,
 	)
 }
