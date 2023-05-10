@@ -15,7 +15,7 @@ This file is automatically opened on update. You can reopen it in settings or co
 ## Unreleased
 
 - The minimum Obsidian version has been increased to v1.2.5. (`dbc26a396f3d97cb625e577d10ebc537f5548493`)
-- Add donation options. (`15ef8207a3df00b23fc54d1a75ec842925f602ef`..`58df51d64977e93cd98b44f58f0f246e37953214`, `b59e915611f2ce6de83f5eab68165ac06726bcdc`)
+- Add donation options. (`15ef8207a3df00b23fc54d1a75ec842925f602ef`..`58df51d64977e93cd98b44f58f0f246e37953214`, `b59e915611f2ce6de83f5eab68165ac06726bcdc`, `420ee154c526298387fb52fb4c40b432486793b3`)
 
 __Features__
 - Implement top-level `await` in the developer console. (`7d2219e9bceef8459504c820099ff3c61bd737bd`)
