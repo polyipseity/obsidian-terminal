@@ -118,13 +118,13 @@ export namespace DocumentationMarkdownView {
 					unc,
 					"displayTextI18nKey",
 					["string", "null"],
-				) as NamespacedTranslationKey,
+				) as NamespacedTranslationKey | null,
 				iconI18nKey: fixTyped(
 					DEFAULT,
 					unc,
 					"iconI18nKey",
 					["string", "null"],
-				) as NamespacedTranslationKey,
+				) as NamespacedTranslationKey | null,
 			})
 		}
 	}
