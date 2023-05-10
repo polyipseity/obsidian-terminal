@@ -1,23 +1,28 @@
 import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
 import {
-	MarkdownView,
+	ItemView,
+	MarkdownRenderer,
 	type ViewStateResult,
 	type WorkspaceLeaf,
 } from "obsidian"
 import {
 	UnnamespacedID,
+	printMalformedData,
 	readStateCollabratively,
+	recordViewStateHistory,
 	updateDisplayText,
 	writeStateCollabratively,
 } from "sources/utils/obsidian"
+import { capitalize, createChildElement, deepFreeze } from "sources/utils/util"
+import { DOMClasses } from "sources/magic"
 import type { NamespacedTranslationKey } from "sources/i18n"
 import type { TerminalPlugin } from "sources/main"
-import { deepFreeze } from "sources/utils/util"
 import { launderUnchecked } from "sources/utils/types"
 
-export class DocumentationMarkdownView extends MarkdownView {
+export class DocumentationMarkdownView extends ItemView {
 	public static readonly type = new UnnamespacedID("documentation")
 	static #namespacedType: string
+	protected readonly element
 	#state = DocumentationMarkdownView.State.DEFAULT
 
 	public constructor(
@@ -27,7 +32,28 @@ export class DocumentationMarkdownView extends MarkdownView {
 		DocumentationMarkdownView.#namespacedType =
 			DocumentationMarkdownView.type.namespaced(plugin)
 		super(leaf)
-		this.allowNoFile = true
+		const { contentEl } = this
+		this.navigation = true
+		this.element = createChildElement(
+			createChildElement(contentEl, "div", element => {
+				element.classList.add(
+					DOMClasses.ALLOW_FOLD_HEADINGS,
+					DOMClasses.ALLOW_FOLD_LISTS,
+					DOMClasses.IS_READABLE_LINE_WIDTH,
+					DOMClasses.MARKDOWN_PREVIEW_VIEW,
+					DOMClasses.MARKDOWN_RENDERED,
+					DOMClasses.NODE_INSERT_EVENT,
+					DOMClasses.SHOW_INDENTATION_GUIDE,
+				)
+			}),
+			"div",
+			element => {
+				element.classList.add(
+					DOMClasses.MARKDOWN_PREVIEW_SECTION,
+					DOMClasses.MARKDOWN_PREVIEW_SIZER,
+				)
+			},
+		)
 	}
 
 	protected get state(): DocumentationMarkdownView.State {
@@ -45,10 +71,10 @@ export class DocumentationMarkdownView extends MarkdownView {
 
 	public override getDisplayText(): string {
 		const {
-			plugin: { language: { i18n } },
+			plugin: { language: { i18n, language } },
 			state: { displayTextI18nKey: key },
 		} = this
-		return key === null ? super.getDisplayText() : String(i18n.t(key))
+		return key === null ? "" : capitalize(String(i18n.t(key)), language)
 	}
 
 	public override getIcon(): string {
@@ -63,22 +89,18 @@ export class DocumentationMarkdownView extends MarkdownView {
 		state: unknown,
 		result: ViewStateResult,
 	): Promise<void> {
-		const { plugin, app } = this,
+		const { plugin, element } = this,
 			ownState = readStateCollabratively(
 				DocumentationMarkdownView.type.namespaced(plugin),
 				state,
 			),
 			{ value, valid } = DocumentationMarkdownView.State.fix(ownState)
-		if (!valid) {
-			await app.workspace.getLeaf("tab").setViewState({
-				state,
-				type: super.getViewType(),
-			})
-			return
-		}
+		if (!valid) { printMalformedData(plugin, ownState, value) }
 		await super.setState(state, result)
+		const { data } = value
 		this.state = value
-		this.setViewData(value.data, true)
+		await MarkdownRenderer.renderMarkdown(data, element, "", this)
+		recordViewStateHistory(plugin, result)
 	}
 
 	public override getState(): unknown {
@@ -91,8 +113,8 @@ export class DocumentationMarkdownView extends MarkdownView {
 
 	protected override async onOpen(): Promise<void> {
 		await super.onOpen()
-		const { plugin } = this
-		this.register(plugin.language.onChangeLanguage.listen(() => {
+		const { plugin, plugin: { language: { onChangeLanguage } } } = this
+		this.register(onChangeLanguage.listen(() => {
 			updateDisplayText(plugin, this)
 		}))
 	}
