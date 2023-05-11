@@ -1,0 +1,14 @@
+{
+	"author": "polyipseity",
+	"description": "Integrate consoles, shells, and terminals inside Obsidian.",
+	"fundingUrl": {
+		"Buy Me a Coffee": "https://buymeacoffee.com/polyipseity",
+		"GitHub Sponsors": "https://github.com/sponsors/polyipseity"
+	},
+	"version": "3.9.0",
+	"authorUrl": "",
+	"id": "terminal",
+	"isDesktopOnly": false,
+	"minAppVersion": "1.2.5",
+	"name": "Terminal"
+}

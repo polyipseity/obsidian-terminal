@@ -1,0 +1,161 @@
+{
+	"commands": {
+		"export-settings-clipboard-icon": "$t(asset:generic.output-to-clipboard-icon)",
+		"export-settings-current-file-icon": "$t(asset:generic.output-to-file-icon)",
+		"import-settings-clipboard-icon": "$t(asset:generic.input-from-clipboard-icon)",
+		"import-settings-current-file-icon": "$t(asset:generic.input-from-file-icon)",
+		"open-documentation-changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
+		"open-documentation-donate-icon": "$t(asset:generic.documentations.donate-icon)",
+		"open-documentation-readme-icon": "$t(asset:generic.documentations.readme-icon)",
+		"open-terminal--icon": "command",
+		"open-terminal-current-icon": "file-terminal",
+		"open-terminal-root-icon": "terminal"
+	},
+	"components": {
+		"dialog": {
+			"cancel-icon": "$t(asset:generic.cancel-icon)",
+			"confirm-icon": "$t(asset:generic.confirm-icon)"
+		},
+		"edit-data": {
+			"data-icon": "$t(asset:generic.data-icon)",
+			"export-to-clipboard-icon": "$t(asset:generic.output-to-clipboard-icon)",
+			"import-from-clipboard-icon": "$t(asset:generic.input-from-clipboard-icon)"
+		},
+		"find": {
+			"case-sensitive-icon": "case-sensitive",
+			"next-icon": "$t(asset:generic.next-icon)",
+			"previous-icon": "$t(asset:generic.previous-icon)",
+			"regex-icon": "regex",
+			"whole-word-icon": "whole-word"
+		},
+		"list": {
+			"append-icon": "$t(asset:generic.add-icon)",
+			"move-down-icon": "$t(asset:generic.next-icon)",
+			"move-up-icon": "$t(asset:generic.previous-icon)",
+			"prepend-icon": "$t(asset:generic.add-icon)",
+			"remove-icon": "$t(asset:generic.remove-icon)"
+		},
+		"profile": {
+			"data-icon": "$t(asset:generic.data-icon)",
+			"external": {
+				"arguments-edit-icon": "$t(asset:generic.edit-list-icon)",
+				"arguments-icon": "$t(asset:components.profile.generic.arguments-icon)",
+				"executable-icon": "$t(asset:components.profile.generic.executable-icon)"
+			},
+			"generic": {
+				"arguments-icon": "form-input",
+				"executable-icon": "file-terminal"
+			},
+			"integrated": {
+				"Python-executable-check-icon": "file-check",
+				"Python-executable-checking-icon": "$t(asset:generic.load-icon)",
+				"Python-executable-icon": "file-cog",
+				"arguments-edit-icon": "$t(asset:generic.edit-list-icon)",
+				"arguments-icon": "$t(asset:components.profile.generic.arguments-icon)",
+				"executable-icon": "$t(asset:components.profile.generic.executable-icon)",
+				"use-win32-conhost-icon": "code"
+			},
+			"name-icon": "text-cursor-input",
+			"platform-icon": "$t(asset:generic.platforms.{{type}}-icon)",
+			"preset-icon": "$t(asset:generic.profile-icon)",
+			"restore-history-icon": "history",
+			"success-exit-codes-edit-icon": "$t(asset:generic.edit-list-icon)",
+			"success-exit-codes-icon": "log-out",
+			"type-icon": "type"
+		},
+		"profile-list": {
+			"edit-icon": "$t(asset:generic.edit-icon)"
+		},
+		"terminal": {
+			"edit-modal": {
+				"profile-edit-icon": "$t(asset:generic.edit-icon)",
+				"profile-icon": "$t(asset:generic.profile-icon)",
+				"root-directory-icon": "$t(asset:generic.root-directory-icon)",
+				"working-directory-icon": "folder"
+			},
+			"icon": "terminal",
+			"menus": {
+				"clear-icon": "eraser",
+				"edit-icon": "$t(asset:generic.edit-icon)",
+				"find-icon": "search",
+				"restart-icon": "reset",
+				"save-as-HTML-icon": "save"
+			}
+		}
+	},
+	"generic": {
+		"add-icon": "plus",
+		"cancel-icon": "x",
+		"confirm-icon": "check",
+		"data-icon": "curly-braces",
+		"documentations": {
+			"changelog-icon": "file-text",
+			"donate-icon": "heart",
+			"readme-icon": "file-question"
+		},
+		"edit-icon": "edit",
+		"edit-list-icon": "list",
+		"input-from-clipboard-icon": "clipboard-paste",
+		"input-from-file-icon": "file-output",
+		"load-icon": "loader",
+		"next-icon": "arrow-down",
+		"output-to-clipboard-icon": "clipboard-copy",
+		"output-to-file-icon": "file-input",
+		"platforms": {
+			"darwin-icon": "terminal:macos",
+			"linux-icon": "terminal:linux",
+			"win32-icon": "terminal:windows"
+		},
+		"previous-icon": "arrow-up",
+		"profile-icon": "terminal-square",
+		"profile-types": {
+			"-icon": "square",
+			"developerConsole-icon": "curly-braces",
+			"external-icon": "terminal-square",
+			"integrated-icon": "terminal",
+			"invalid-icon": "x-circle",
+			"select-icon": "text-cursor-input"
+		},
+		"remove-icon": "minus",
+		"root-directory-icon": "folder-tree"
+	},
+	"magic": {
+		"Python-version-magic": "Python ",
+		"recommended-Python-version": "3.10.0"
+	},
+	"menus": {
+		"open-terminal-icon": "$t(asset:generic.profile-types.{{type}}-icon)"
+	},
+	"ribbons": {
+		"open-terminal-icon": "terminal-square",
+		"open-terminal-id": "Open terminal"
+	},
+	"settings": {
+		"add-to-command-icon": "terminal",
+		"add-to-context-menu-icon": "menu",
+		"all-settings-actions": {
+			"edit-icon": "file-edit",
+			"recover-icon": "file-x",
+			"reload-icon": "$t(asset:generic.load-icon)",
+			"reset-icon": "reset",
+			"undo-icon": "undo"
+		},
+		"create-instance-near-existing-ones-icon": "plus",
+		"documentations": {
+			"changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
+			"donate-icon": "$t(asset:generic.documentations.donate-icon)",
+			"readme-icon": "$t(asset:generic.documentations.readme-icon)"
+		},
+		"error-notice-timeout-icon": "$t(asset:settings.notice-timeout-icon)",
+		"focus-on-new-instance-icon": "focus",
+		"hide-status-bar-icon": "eye-off",
+		"language-icon": "languages",
+		"new-instance-behavior-icon": "plus",
+		"notice-timeout-icon": "timer",
+		"open-changelog-on-update-icon": "$t(asset:generic.documentations.changelog-icon)",
+		"pin-new-instance-icon": "pin",
+		"preferred-renderer-icon": "brush",
+		"profiles-edit-icon": "$t(asset:generic.edit-list-icon)",
+		"profiles-icon": "$t(asset:generic.profile-icon)"
+	}
+}
