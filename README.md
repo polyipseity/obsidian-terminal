@@ -136,6 +136,22 @@ In the developer console, a context variable `$$` is passed into the code, which
 
 Contributions are welcome!
 
+### Todos
+
+The todos here, ordered alphabetically, are things planned for the plugin. There are no guarantees that they will be completed. However, we are likely to accept contributions for them.
+
+- Connect to remote shells.
+- Copy terminal tabs.
+- Create ad-hoc profile in `Open terminal: Select`.
+- Edit profile before opening terminal in `Open terminal: Select` when a modifier key is pressed.
+- External link confirmation.
+- Filter console log by severity in the developer console.
+- Fix broken section links in builtin documentations.
+- Indicate that the terminal resizer has crashed or is disabled.
+- Shared terminal tabs.
+- Theme settings UI.
+- Vim mode switch.
+
 ### Translating
 
 Translation files are under [`assets/locales/`](assets/locales/). Each locale has its own directory named with its corresponding __[IETF language tag](https://wikipedia.org/wiki/IETF_language_tag)__.
