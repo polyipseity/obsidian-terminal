@@ -31,8 +31,8 @@ import {
 import { cloneDeep, constant, isUndefined } from "lodash-es"
 import { revealPrivate, revealPrivateAsync } from "./private"
 import { DEFAULT_LANGUAGE } from "assets/locales"
+import type { PLACEHOLDERPlugin } from "sources/main"
 import { Platform } from "./platforms"
-import type { TerminalPlugin } from "sources/main"
 import { around } from "monkey-around"
 import { saveAs } from "file-saver"
 
@@ -194,7 +194,7 @@ type AddCommandPredefinedOptions = {
 	readonly [K in "name"]: Command[K]
 }
 export function addCommand(
-	plugin: TerminalPlugin,
+	plugin: PLACEHOLDERPlugin,
 	name: () => string,
 	command: Readonly<Omit<Command, keyof AddCommandPredefinedOptions>>,
 ): Command {
@@ -228,7 +228,7 @@ export function addIcon(
 }
 
 export function addRibbonIcon(
-	plugin: TerminalPlugin,
+	plugin: PLACEHOLDERPlugin,
 	id: string,
 	icon: string,
 	title: () => string,
@@ -302,7 +302,7 @@ export function commandNamer(
 }
 
 export function printMalformedData(
-	plugin: TerminalPlugin,
+	plugin: PLACEHOLDERPlugin,
 	actual: unknown,
 	expected?: unknown,
 ): void {
@@ -342,7 +342,7 @@ export function newCollabrativeState(
 export function notice(
 	message: () => DocumentFragment | string,
 	timeout: number = NOTICE_NO_TIMEOUT,
-	plugin?: TerminalPlugin,
+	plugin?: PLACEHOLDERPlugin,
 ): Notice {
 	const timeoutMs = SI_PREFIX_SCALE * Math.max(timeout, 0),
 		ret = new Notice(message(), timeoutMs)
@@ -358,7 +358,7 @@ export function notice(
 export function notice2(
 	message: () => DocumentFragment | string,
 	timeout = NOTICE_NO_TIMEOUT,
-	plugin?: TerminalPlugin,
+	plugin?: PLACEHOLDERPlugin,
 ): void {
 	if (timeout >= 0) {
 		notice(message, timeout, plugin)
@@ -368,7 +368,7 @@ export function notice2(
 export function printError(
 	error: Error,
 	message = (): string => "",
-	plugin?: TerminalPlugin,
+	plugin?: PLACEHOLDERPlugin,
 ): void {
 	self.console.error(`${message()}\n`, error)
 	notice2(
@@ -386,7 +386,7 @@ export function readStateCollabratively(
 }
 
 export function recordViewStateHistory(
-	plugin: TerminalPlugin,
+	plugin: PLACEHOLDERPlugin,
 	result: ViewStateResult,
 ): void {
 	revealPrivate(plugin, [result], result0 => {
@@ -395,7 +395,7 @@ export function recordViewStateHistory(
 }
 
 export async function saveFileAs(
-	plugin: TerminalPlugin,
+	plugin: PLACEHOLDERPlugin,
 	adapter: DataAdapter,
 	data: File,
 ): Promise<void> {
@@ -415,7 +415,7 @@ export async function saveFileAs(
 	saveAs(data)
 }
 
-export function updateDisplayText(plugin: TerminalPlugin, view: View): void {
+export function updateDisplayText(plugin: PLACEHOLDERPlugin, view: View): void {
 	revealPrivate(plugin, [view.leaf], leaf => {
 		const { containerEl } = view,
 			{ tabHeaderEl, tabHeaderInnerTitleEl } = leaf,

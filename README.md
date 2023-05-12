@@ -1,16 +1,17 @@
-# Terminal for Obsidian [![release](https://img.shields.io/github/v/release/polyipseity/obsidian-terminal)][latest release] [![Obsidian downloads](https://img.shields.io/badge/dynamic/json?logo=Obsidian&color=%238b6cef&label=downloads&query=terminal.downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json)][community plugin] [![Python](https://img.shields.io/badge/Python-≥3.10-gold?labelColor=blue&logo=Python&logoColor=white)][Python]
+# PLACEHOLDER for Obsidian [![release](https://img.shields.io/github/v/release/polyipseity/obsidian-plugin-template)][latest release] [![Obsidian downloads](https://img.shields.io/badge/dynamic/json?logo=Obsidian&color=%238b6cef&label=downloads&query=PLACEHOLDER.downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json)][community plugin]
+
+To apply this template, replace all occurences of `PLACEHOLDER` and `obsidian-plugin-template`.
 
 [Buy Me a Coffee]: https://buymeacoffee.com/polyipseity
 [Buy Me a Coffee/embed]: https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=polyipseity&button_colour=40DCA5&font_colour=ffffff&font_family=Lato&outline_colour=000000&coffee_colour=FFDD00
 [Obsidian]: https://obsidian.md/
-[Python]: https://python.org/downloads/
-[changelog]: https://github.com/polyipseity/obsidian-terminal/blob/main/CHANGELOG.md
-[community plugin]: https://obsidian.md/plugins?id=terminal
-[latest release]: https://github.com/polyipseity/obsidian-terminal/releases/latest
-[repository]: https://github.com/polyipseity/obsidian-terminal
-[trailer]: https://raw.githubusercontent.com/polyipseity/obsidian-terminal/main/assets/trailer.png
+[changelog]: https://github.com/polyipseity/obsidian-plugin-template/blob/main/CHANGELOG.md
+[community plugin]: https://obsidian.md/plugins?id=PLACEHOLDER
+[latest release]: https://github.com/polyipseity/obsidian-plugin-template/releases/latest
+[repository]: https://github.com/polyipseity/obsidian-plugin-template
+[trailer]: https://raw.githubusercontent.com/polyipseity/obsidian-plugin-template/main/assets/trailer.png
 
-Integrate consoles, shells, and terminals inside [Obsidian].
+PLACEHOLDER
 
 [![Buy Me a Coffee/embed]][Buy Me a Coffee]
 
@@ -28,13 +29,7 @@ This file is automatically opened on first install. You can reopen it in setting
 
 ## Features
 
-- Start external terminals from Obsidian.
-- Integrate terminals into Obsidian.
-- Supports multiple terminal profiles.
-- Has built-in hotkeys.
-- Automatically save and restore integrated terminal history.
-- Find in terminal.
-- Save terminal history as file.
+- PLACEHOLDER
 
 ## Installation
 
@@ -42,7 +37,7 @@ This file is automatically opened on first install. You can reopen it in setting
 	- Community plugins
 		1. Install the [plugin][community plugin] from community plugins directly.
 	- Manual
-		1. Create directory `terminal` under `.obsidian/plugins` of your vault.
+		1. Create directory `PLACEHOLDER` under `.obsidian/plugins` of your vault.
 		2. Place `manifest.json`, `main.js`, and `styles.css` from the [latest release] into the directory.
 	- Building (latest)
 		1. Clone this repository, including its submodules.
@@ -51,86 +46,12 @@ This file is automatically opened on first install. You can reopen it in setting
 		4. Run `npm run obsidian:install <vault directory>` in the root directory.
 	- [Obsidian42 - BRAT](https://obsidian.md/plugins?id=obsidian42-brat) (latest)
 		- See [their readme](https://github.com/TfTHacker/obsidian42-brat#readme).
-2. (optional for Windows, recommended) Install Python and dependencies.
-	1. Install [Python] 3.10/+.
-	2. (Windows only) Run `pip3 install psutil pywinctl`.
-	3. Configure Python executable in plugin settings.
-3. Enable plugin.
-4. (optional) Configure plugin settings.
+2. Enable plugin.
+3. (optional) Configure plugin settings.
 
 ## Usage
 
-- To start a new external or integrated terminal
-	- Ribbon
-		1. Click on the `Open terminal` ribbon.
-		2. Choose the desired profile.
-	- Context menu
-		1. Right-click on files, folders, or tab headers.
-		2. Choose the desired action (and profile).
-	- Command palette
-		1. Press `Ctrl+P` or click on the `Open command palette` ribbon next to the left window border.
-		2. Choose the desired action (and profile).
-- To save and restore integrated terminal history
-	1. Keep the terminal open when exiting Obsidian.
-	2. Terminal history will be restored next time Obsidian is opened.
-- Additional actions
-	- Includes
-		- Find in terminal: (1), (4)
-		- Clear terminal: (1), (4)
-		- Restart terminal: (1)
-		- Edit terminal: (1)
-		- Save terminal history as file: (1)
-		- Export, import, or edit settings: (2), (3)
-		- Open documentation: (2), (3)
-	- Available by
-		- (1) Right-click on tab header/`More options`
-		- (2) Open settings
-		- (3) Open command palette
-		- (4) Use hotkeys
-
-### Hotkeys
-
-__Terminal tab is focused__
-- Focus terminal: `Ctrl`+`Shift`+`` ` ``, `Command`+`` ` `` (macOS)
-- Inherit from app hotkeys
-
-__Terminal is focused__
-- Focus terminal tab/Unfocus terminal: `Ctrl`+`Shift`+`` ` ``, `Command`+`` ` `` (macOS)
-- Clear terminal: `Ctrl`+`Shift`+`K`, `Command`+`K` (macOS)
-- Find in terminal: `Ctrl`+`Shift`+`F`, `Command`+`F` (macOS)
-
-### Profiles
-
-This plugin comes with several profile presets that you can reference.
-
-When setting up a terminal profile, you need to distinguish between shells and terminal emulators. (Search online if needed.) Generally, integrated profiles only work with shells while external ones only work with terminal emulators.
-
-#### Examples
-
-__Shells__
-- Bash: `bash`
-- Bourne shell: `sh`
-- Command Prompt: `cmd`
-- Dash: `dash`
-- Git Bash: `<Git installation>\bin\bash.exe` (e.g. `C:\Program Files\Git\bin\bash.exe`)
-- PowerShell Core: `pwsh`
-- Windows PowerShell: `powershell`
-- Windows Subsystem for Linux: `wsl` or `wsl -d <distribution name>`
-- Z shell: `zsh`
-
-__Terminal emulators__
-- Command Prompt: `cmd`
-- GNOME Terminal: `gnome-terminal`
-- Konsole: `konsole`
-- Terminal (macOS): `/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal $PWD`
-- Windows Terminal: `wt`
-- xterm: `xterm`
-
-### Miscellaneous
-
-This plugin patches `require` so that `require("obsidian")` works in the developer console.
-
-In the developer console, a context variable `$$` is passed into the code, which can be used to dynamically change terminal options. The API is available in [`sources/@types/obsidian-terminal.d.ts#DeveloperConsoleContext`](sources/%40types/obsidian-terminal.d.ts).
+- PLACEHOLDER
 
 ## Contributing
 
@@ -140,17 +61,7 @@ Contributions are welcome!
 
 The todos here, ordered alphabetically, are things planned for the plugin. There are no guarantees that they will be completed. However, we are likely to accept contributions for them.
 
-- Connect to remote shells.
-- Copy terminal tabs.
-- Create ad-hoc profile in `Open terminal: Select`.
-- Edit profile before opening terminal in `Open terminal: Select` when a modifier key is pressed.
-- External link confirmation.
-- Filter console log by severity in the developer console.
-- Fix broken section links in builtin documentations.
-- Indicate that the terminal resizer has crashed or is disabled.
-- Shared terminal tabs.
-- Theme settings UI.
-- Vim mode switch.
+- PLACEHOLDER
 
 ### Translating
 

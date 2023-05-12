@@ -1,7 +1,6 @@
 import {
 	EditDataModal,
 	ListModal,
-	ProfileListModal,
 } from "sources/ui/modals"
 import {
 	cloneAsWritable,
@@ -16,11 +15,11 @@ import {
 	setTextToEnum,
 	setTextToNumber,
 } from "../ui/settings"
-import { identity, isEmpty, size } from "lodash-es"
+import { identity, isEmpty } from "lodash-es"
 import { LANGUAGES } from "assets/locales"
+import type { PLACEHOLDERPlugin } from "../main"
 import { PluginSettingTab } from "obsidian"
 import { Settings } from "./data"
-import type { TerminalPlugin } from "../main"
 import { UpdatableUI } from "sources/utils/obsidian"
 import { openDocumentation } from "sources/documentation/load"
 import semverLt from "semver/functions/lt"
@@ -29,7 +28,7 @@ export class SettingTab extends PluginSettingTab {
 	protected readonly ui = new UpdatableUI()
 	#onMutate = this.snapshot()
 
-	public constructor(protected readonly plugin: TerminalPlugin) {
+	public constructor(protected readonly plugin: PLACEHOLDERPlugin) {
 		super(plugin.app, plugin)
 		const { containerEl, ui } = this,
 			{ language: { i18n, onChangeLanguage }, version } = plugin
@@ -227,206 +226,6 @@ export class SettingTab extends PluginSettingTab {
 			})
 			.newSetting(containerEl, setting => {
 				setting
-					.setName(i18n.t("settings.add-to-command"))
-					.addToggle(linkSetting(
-						() => plugin.settings.addToCommand,
-						async value => plugin
-							.mutateSettings(settingsM => { settingsM.addToCommand = value }),
-						() => { this.postMutate() },
-					))
-					.addExtraButton(resetButton(
-						i18n.t("asset:settings.add-to-command-icon"),
-						i18n.t("settings.reset"),
-						async () => plugin
-							.mutateSettings(settingsM => {
-								settingsM.addToCommand = Settings.DEFAULT.addToCommand
-							}),
-						() => { this.postMutate() },
-					))
-			})
-			.newSetting(containerEl, setting => {
-				setting
-					.setName(i18n.t("settings.add-to-context-menu"))
-					.addToggle(linkSetting(
-						() => plugin.settings.addToContextMenu,
-						async value => plugin.mutateSettings(settingsM => {
-							settingsM.addToContextMenu = value
-						}),
-						() => { this.postMutate() },
-					))
-					.addExtraButton(resetButton(
-						i18n.t("asset:settings.add-to-context-menu-icon"),
-						i18n.t("settings.reset"),
-						async () => plugin
-							.mutateSettings(settingsM => {
-								settingsM.addToContextMenu = Settings.DEFAULT.addToContextMenu
-							}),
-						() => { this.postMutate() },
-					))
-			})
-			.newSetting(containerEl, setting => {
-				setting
-					.setName(i18n.t("settings.profiles"))
-					.setDesc(i18n.t("settings.profiles-description", {
-						count: size(plugin.settings.profiles),
-						interpolation: { escapeValue: false },
-					}))
-					.addButton(button => button
-						.setIcon(i18n.t("asset:settings.profiles-edit-icon"))
-						.setTooltip(i18n.t("settings.profiles-edit"))
-						.onClick(() => {
-							new ProfileListModal(
-								plugin,
-								Object.entries(plugin.settings.profiles),
-								{
-									callback: async (data): Promise<void> => {
-										await plugin.mutateSettings(settingsM => {
-											settingsM.profiles = Object.fromEntries(data)
-										})
-										this.postMutate()
-									},
-									description: (): string =>
-										i18n.t("settings.profile-list.description"),
-								},
-							).open()
-						}))
-					.addExtraButton(resetButton(
-						i18n.t("asset:settings.profiles-icon"),
-						i18n.t("settings.reset"),
-						async () => plugin.mutateSettings(settingsM => {
-							settingsM.profiles = cloneAsWritable(Settings.DEFAULT.profiles)
-						}),
-						() => { this.postMutate() },
-					))
-			})
-			.newSetting(containerEl, setting => {
-				setting
-					.setName(i18n.t("settings.new-instance-behavior"))
-					.addDropdown(linkSetting(
-						(): string => plugin.settings.newInstanceBehavior,
-						setTextToEnum(
-							Settings.NEW_INSTANCE_BEHAVIORS,
-							async value => plugin.mutateSettings(settingsM => {
-								settingsM.newInstanceBehavior = value
-							}),
-						),
-						() => { this.postMutate() },
-						{
-							pre: dropdown => {
-								dropdown
-									.addOptions(Object.fromEntries(Settings.NEW_INSTANCE_BEHAVIORS
-										.map(value => [
-											value,
-											i18n.t(`settings.new-instance-behaviors.${value}`),
-										])))
-							},
-						},
-					))
-					.addExtraButton(resetButton(
-						i18n.t("asset:settings.new-instance-behavior-icon"),
-						i18n.t("settings.reset"),
-						async () => plugin.mutateSettings(settingsM => {
-							settingsM.newInstanceBehavior =
-								Settings.DEFAULT.newInstanceBehavior
-						}),
-						() => { this.postMutate() },
-					))
-			})
-			.newSetting(containerEl, setting => {
-				setting
-					.setName(i18n.t("settings.create-instance-near-existing-ones"))
-					.setDesc(i18n
-						.t("settings.create-instance-near-existing-ones-description"))
-					.addToggle(linkSetting(
-						() => plugin.settings.createInstanceNearExistingOnes,
-						async value => plugin.mutateSettings(settingsM => {
-							settingsM.createInstanceNearExistingOnes = value
-						}),
-						() => { this.postMutate() },
-					))
-					.addExtraButton(resetButton(
-						i18n.t("asset:settings.create-instance-near-existing-ones-icon"),
-						i18n.t("settings.reset"),
-						async () => plugin.mutateSettings(settingsM => {
-							settingsM.createInstanceNearExistingOnes =
-								Settings.DEFAULT.createInstanceNearExistingOnes
-						}),
-						() => { this.postMutate() },
-					))
-			})
-			.newSetting(containerEl, setting => {
-				setting
-					.setName(i18n.t("settings.focus-on-new-instance"))
-					.addToggle(linkSetting(
-						() => plugin.settings.focusOnNewInstance,
-						async value => plugin.mutateSettings(settingsM => {
-							settingsM.focusOnNewInstance = value
-						}),
-						() => { this.postMutate() },
-					))
-					.addExtraButton(resetButton(
-						i18n.t("asset:settings.focus-on-new-instance-icon"),
-						i18n.t("settings.reset"),
-						async () => plugin.mutateSettings(settingsM => {
-							settingsM.focusOnNewInstance = Settings.DEFAULT.focusOnNewInstance
-						}),
-						() => { this.postMutate() },
-					))
-			})
-			.newSetting(containerEl, setting => {
-				setting
-					.setName(i18n.t("settings.pin-new-instance"))
-					.addToggle(linkSetting(
-						() => plugin.settings.pinNewInstance,
-						async value => plugin.mutateSettings(settingsM => {
-							settingsM.pinNewInstance = value
-						}),
-						() => { this.postMutate() },
-					))
-					.addExtraButton(resetButton(
-						i18n.t("asset:settings.pin-new-instance-icon"),
-						i18n.t("settings.reset"),
-						async () => plugin.mutateSettings(settingsM => {
-							settingsM.pinNewInstance = Settings.DEFAULT.pinNewInstance
-						}),
-						() => { this.postMutate() },
-					))
-			})
-			.newSetting(containerEl, setting => {
-				setting
-					.setName(i18n.t("settings.hide-status-bar"))
-					.addDropdown(linkSetting(
-						(): string => plugin.settings.hideStatusBar,
-						setTextToEnum(
-							Settings.HIDE_STATUS_BAR_OPTIONS,
-							async value => plugin.mutateSettings(settingsM => {
-								settingsM.hideStatusBar = value
-							}),
-						),
-						() => { this.postMutate() },
-						{
-							pre: dropdown => {
-								dropdown
-									.addOptions(Object
-										.fromEntries(Settings.HIDE_STATUS_BAR_OPTIONS
-											.map(value => [
-												value,
-												i18n.t(`settings.hide-status-bar-options.${value}`),
-											])))
-							},
-						},
-					))
-					.addExtraButton(resetButton(
-						i18n.t("asset:settings.hide-status-bar-icon"),
-						i18n.t("settings.reset"),
-						async () => plugin.mutateSettings(settingsM => {
-							settingsM.hideStatusBar = Settings.DEFAULT.hideStatusBar
-						}),
-						() => { this.postMutate() },
-					))
-			})
-			.newSetting(containerEl, setting => {
-				setting
 					.setName(i18n.t("settings.notice-timeout"))
 					.setDesc(i18n.t("settings.notice-timeout-description"))
 					.addText(linkSetting(
@@ -462,45 +261,6 @@ export class SettingTab extends PluginSettingTab {
 						i18n.t("settings.reset"),
 						async () => plugin.mutateSettings(settingsM => {
 							settingsM.errorNoticeTimeout = Settings.DEFAULT.errorNoticeTimeout
-						}),
-						() => { this.postMutate() },
-					))
-			})
-			.new(() => createChildElement(containerEl, "h2"), ele => {
-				ele.textContent = i18n.t("settings.advanced-settings")
-			})
-			.newSetting(containerEl, setting => {
-				setting
-					.setName(i18n.t("settings.preferred-renderer"))
-					.addDropdown(linkSetting(
-						(): string => plugin.settings.preferredRenderer,
-						setTextToEnum(
-							Settings.PREFERRED_RENDERER_OPTIONS,
-							async value => plugin.mutateSettings(settingsM => {
-								settingsM.preferredRenderer = value
-							}),
-						),
-						() => { this.postMutate() },
-						{
-							pre: dropdown => {
-								dropdown
-									.addOptions(Object
-										.fromEntries(Settings.PREFERRED_RENDERER_OPTIONS
-											.map(type => [
-												type,
-												i18n.t("settings.preferred-renderer-options", {
-													interpolation: { escapeValue: false },
-													type,
-												}),
-											])))
-							},
-						},
-					))
-					.addExtraButton(resetButton(
-						i18n.t("asset:settings.preferred-renderer-icon"),
-						i18n.t("settings.reset"),
-						async () => plugin.mutateSettings(settingsM => {
-							settingsM.preferredRenderer = Settings.DEFAULT.preferredRenderer
 						}),
 						() => { this.postMutate() },
 					))

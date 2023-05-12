@@ -6,10 +6,7 @@
 		"import-settings-current-file": "$t(generic.import, capitalize) $t(generic.setting_other) from $t(generic.current-file)",
 		"open-documentation-changelog": "$t(generic.open, capitalize) $t(generic.documentations.changelog)",
 		"open-documentation-donate": "$t(generic.open, capitalize) $t(generic.documentations.donate)",
-		"open-documentation-readme": "$t(generic.open, capitalize) $t(generic.documentations.readme)",
-		"open-terminal-": "$t(generic.open, capitalize) $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
-		"open-terminal-current": "$t(generic.open, capitalize) $t(generic.current-directory) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
-		"open-terminal-root": "$t(generic.open, capitalize) $t(generic.root-directory) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)"
+		"open-documentation-readme": "$t(generic.open, capitalize) $t(generic.documentations.readme)"
 	},
 	"components": {
 		"dialog": {
@@ -28,17 +25,6 @@
 			"import-from-clipboard": "$t(generic.import, capitalize) from $t(generic.clipboard)",
 			"reset": "$t(generic.reset, capitalize)"
 		},
-		"find": {
-			"case-sensitive": "Case sensitive",
-			"close": "$t(generic.close, capitalize)",
-			"input-placeholder": "$t(generic.find, capitalize)",
-			"next": "Next",
-			"previous": "Previous",
-			"regex": "Regex",
-			"results": "{{index, number}}/{{count, number}}",
-			"too-many-results": "?/{{limit, number}}+",
-			"whole-word": "Whole word"
-		},
 		"list": {
 			"append": "Append",
 			"move-down": "Move down",
@@ -50,135 +36,34 @@
 			"prepend": "Prepend",
 			"preset-placeholder": "$t(components.dropdown.placeholder)",
 			"remove": "Remove"
-		},
-		"profile": {
-			"data": "$t(generic.data, capitalize)",
-			"data-edit": "$t(generic.edit, capitalize)",
-			"external": {
-				"arguments": "$t(generic.argument_other, capitalize)",
-				"arguments-description": "$t(generic.list-description, capitalize)",
-				"arguments-edit": "$t(generic.edit, capitalize)",
-				"executable": "$t(generic.executable, capitalize)"
-			},
-			"integrated": {
-				"Python-executable": "$t(generic.Python, capitalize) $t(generic.executable)",
-				"Python-executable-check": "$t(generic.check, capitalize)",
-				"Python-executable-checking": "$t(generic.check_gerund, capitalize)",
-				"Python-executable-description": "Recommend $t(asset:magic.recommended-Python-version) or up. Required on $t(generic.platforms.unix) to $t(generic.spawn) $t(generic.profile-types.integrated) $t(generic.terminal). $t(generic.clear, capitalize) $t(generic.text-field) to $t(generic.disable) $t(generic.Python).",
-				"Python-executable-placeholder": "($t(generic.disable_past, capitalize))",
-				"arguments": "$t(generic.argument_other, capitalize)",
-				"arguments-description": "$t(generic.list-description, capitalize)",
-				"arguments-edit": "$t(generic.edit, capitalize)",
-				"executable": "$t(generic.executable, capitalize)",
-				"use-win32-conhost": "$t(generic.use, capitalize) $t(generic.platforms.win32) 'conhost.exe'",
-				"use-win32-conhost-description": "$t(generic.disable, capitalize) if running 'conhost.exe' does not create a window. No guarantees this will work."
-			},
-			"name": "$t(generic.name, capitalize)",
-			"platform": "$t(generic.platforms.{{type}}, capitalize)",
-			"platform-description-": "",
-			"platform-description-current": "Current $t(generic.platform)",
-			"preset": "$t(generic.preset, capitalize)",
-			"preset-placeholder": "($t(generic.custom, capitalize))",
-			"reset": "$t(generic.reset, capitalize)",
-			"restore-history": "$t(generic.restore, capitalize) $t(generic.history)",
-			"success-exit-codes": "Success $t(generic.exit) codes",
-			"success-exit-codes-description": "$t(generic.list-description, capitalize)",
-			"success-exit-codes-edit": "$t(generic.edit, capitalize)",
-			"title": "{{name}}",
-			"type": "$t(generic.type, capitalize)",
-			"type-options": "$t(generic.profile-types.{{type}}, capitalize)"
-		},
-		"profile-list": {
-			"descriptor-": "{{info.id}}",
-			"descriptor-incompatible": "($t(generic.incompatible, capitalize)) $t(components.profile-list.descriptor-)",
-			"edit": "$t(generic.edit, capitalize)",
-			"namer-": "{{info.name}}",
-			"namer-incompatible": "$t(components.profile-list.namer-)",
-			"preset-placeholder": "$t(components.dropdown.placeholder)",
-			"title": "$t(generic.profile_other, capitalize)"
-		},
-		"select-profile": {
-			"item-text-": "$t(profile-name-formats.long)",
-			"item-text-incompatible": "($t(generic.incompatible, capitalize)) $t(components.select-profile.item-text-)"
-		},
-		"terminal": {
-			"display-name": "$t(generic.terminal, capitalize): {{name}}",
-			"edit-modal": {
-				"profile": "$t(generic.profile, capitalize)",
-				"profile-edit": "$t(generic.edit, capitalize)",
-				"profile-name-": "$t(profile-name-formats.short)",
-				"profile-name-incompatible": "($t(generic.incompatible, capitalize)) $t(components.terminal.edit-modal.profile-name-)",
-				"profile-placeholder": "$t(components.profile.preset-placeholder)",
-				"reset": "$t(generic.reset, capitalize)",
-				"root-directory": "$t(generic.root-directory, capitalize)",
-				"title": "$t(generic.edit, capitalize) $t(generic.terminal)",
-				"working-directory": "$t(generic.working-directory, capitalize)",
-				"working-directory-placeholder": "(Undefined)"
-			},
-			"menus": {
-				"clear": "$t(generic.clear, capitalize)",
-				"edit": "$t(generic.edit, capitalize)",
-				"find": "$t(generic.find, capitalize)",
-				"restart": "$t(generic.restart, capitalize)",
-				"save-as-HTML": "$t(generic.save, capitalize) as $t(generic.file-extensions.HTML)"
-			},
-			"name": {
-				"profile-type": "$t(generic.profile-types.{{type}}, capitalize)"
-			},
-			"restored-history": "\r\n * $t(generic.restore_past, capitalize) $t(generic.history) at {{datetime, datetime(dateStyle: full, timeStyle: full)}}\r\n\r\n",
-			"unsupported-profile": "Unsupported $t(generic.profile):\r\n{{profile}}\r\n"
 		}
 	},
 	"dialogs": {
 		"overwrite-existing-frontmatter": "$t(generic.overwrite, capitalize) $t(generic.exist_gerund) $t(generic.frontmatter)?"
 	},
 	"errors": {
-		"error-checking-Python": "Error $t(generic.check_gerund) $t(generic.Python)",
 		"error-exporting-settings": "Error $t(generic.export_gerund) $t(generic.setting_other)",
 		"error-importing-settings": "Error $t(generic.import_gerund) $t(generic.setting_other)",
-		"error-killing-pseudoterminal": "Error killing $t(generic.pseudoterminal)",
 		"error-opening-documentation": "Error $t(generic.open_gerund) $t(generic.documentation)",
 		"error-processing-frontmatter": "Error processing $t(generic.frontmatter): {{file.path}}",
-		"error-spawning-resizer": "Error $t(generic.spawn_gerund) $t(generic.terminal-resizer)",
-		"error-spawning-terminal": "Error $t(generic.spawn_gerund) $t(generic.terminal)",
 		"malformed-data": "Malformed $t(generic.data)",
 		"missing-interpolation": "Missing interpolation of name '{{name}}' is replaced by '{{value}}': {{text}}",
 		"missing-translation": "Missing translation of key '{{key}}' is replaced by '{{value}}'",
-		"no-Python-to-spawn-Unix-pseudoterminal": "No $t(generic.Python) to $t(generic.spawn) $t(generic.platforms.unix) $t(generic.pseudoterminal)",
-		"not-Python": "Not $t(generic.Python)",
 		"private-API-changed": "Private $t(generic.API) changed",
-		"resizer-disabled": "$t(generic.terminal-resizer, capitalize) $t(generic.disable_past)",
-		"resizer-exited-unexpectedly": "$t(generic.terminal-resizer, capitalize) $t(generic.exit_past) unexpectedly: {{code}}",
 		"retry-outdated-frontmatter": "Please $t(generic.retry) as $t(generic.frontmatter) was updated in the $t(generic.background)"
 	},
 	"generic": {
 		"API": "API",
-		"Python": "Python",
 		"app": "app",
-		"argument": "$t(generic.argument_one)",
-		"argument_one": "argument",
-		"argument_other": "arguments",
 		"background": "background",
-		"behavior": "behavior",
 		"cancel": "cancel",
-		"check": "check",
-		"check_gerund": "checking",
-		"clear": "clear",
 		"clipboard": "clipboard",
-		"close": "close",
 		"command": "command",
-		"command-palette": "command palette",
-		"compatible": "compatible",
+		"command-palette": "$t(generic.command) palette",
 		"confirm": "confirm",
-		"context-menu": "context menu",
-		"current-directory": "current $t(generic.directory)",
 		"current-file": "current $t(generic.file)",
-		"custom": "custom",
 		"data": "data",
-		"default": "default",
-		"directory": "directory",
 		"disable": "disable",
-		"disable_past": "disabled",
 		"documentation": "documentation",
 		"documentations": {
 			"changelog": "changelog",
@@ -186,36 +71,18 @@
 			"readme": "readme"
 		},
 		"donate": "donate",
-		"edit": "Edit",
-		"executable": "executable",
+		"edit": "edit",
 		"exist": "exist",
 		"exist_gerund": "existing",
-		"exist_singular": "exists",
-		"exit": "exit",
-		"exit_past": "exited",
 		"export": "export",
 		"export_gerund": "exporting",
 		"file": "file",
-		"file-extensions": {
-			"HTML": "HTML"
-		},
-		"find": "find",
-		"focus": "focus",
-		"focus_past": "focused",
 		"frontmatter": "frontmatter",
-		"history": "history",
 		"import": "import",
 		"import_gerund": "importing",
-		"incompatible": "incompatible",
-		"instance": "instance",
 		"language": "$t(generic.language_one)",
 		"language_one": "language",
 		"language_other": "languages",
-		"list": "list",
-		"list-description_one": "There is {{count, number}} item.",
-		"list-description_other": "There are {{count, number}} items.",
-		"list-description_zero": "There are no items.",
-		"name": "name",
 		"notice": "notice",
 		"open": "open",
 		"open_gerund": "opening",
@@ -224,108 +91,17 @@
 		"ordinal_other": "{{count, number}}th",
 		"ordinal_two": "{{count, number}}nd",
 		"overwrite": "overwrite",
-		"pin": "pin",
-		"platform": "platform",
-		"platforms": {
-			"darwin": "\u200bmacOS",
-			"linux": "Linux",
-			"unix": "Unix",
-			"win32": "Microsoft Windows",
-			"win32-short": "Windows"
-		},
 		"plugin": "plugin",
-		"preset": "preset",
-		"profile": "$t(generic.profile_one)",
-		"profile-types": {
-			"": "empty",
-			"developerConsole": "developer console",
-			"external": "external",
-			"integrated": "integrated",
-			"invalid": "invalid",
-			"select": "select"
-		},
-		"profile_one": "profile",
-		"profile_other": "profiles",
-		"pseudoterminal": "pseudoterminal",
-		"renderer": "renderer",
-		"renderers": {
-			"canvas": "canvas",
-			"dom": "DOM",
-			"webgl": "WebGL"
-		},
 		"reset": "reset",
-		"restart": "restart",
-		"restore": "restore",
-		"restore_past": "restored",
 		"retry": "retry",
-		"root-directory": "root $t(generic.directory)",
-		"save": "save",
 		"setting": "$t(generic.setting_one)",
 		"setting_one": "setting",
 		"setting_other": "settings",
-		"spawn": "spawn",
-		"spawn_gerund": "spawning",
-		"split": "split",
-		"status-bar": "status bar",
-		"tab": "tab",
-		"terminal": "terminal",
-		"terminal-resizer": "$t(generic.terminal) resizer",
-		"text-field": "text field",
 		"timeout": "timeout",
-		"true": "true",
-		"type": "type",
-		"use": "use",
-		"window": "window",
-		"working-directory": "working $t(generic.directory)"
+		"use": "use"
 	},
-	"menus": {
-		"open-terminal": "$t(generic.open, capitalize) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)"
-	},
-	"name": "$t(generic.terminal, capitalize)",
-	"notices": {
-		"Python-version-is": "$t(generic.Python, capitalize) version is {{version}}",
-		"no-default-profile": "No $t(generic.default) $t(generic.profile) for $t(generic.type) '$t(generic.profile-types.{{type}}, capitalize)'",
-		"spawning-terminal": "$t(generic.spawn_gerund, capitalize) $t(generic.terminal): {{name}}",
-		"terminal-exited": "$t(generic.terminal, capitalize) $t(generic.exit_past): {{code}}"
-	},
-	"profile-name-formats": {
-		"long": "\"{{info.name}}\". $t(generic.profile-types.{{info.profile.type}}, capitalize). {{info.id}}.",
-		"short": "\"{{info.nameOrID}}\". $t(generic.profile-types.{{info.profile.type}}, capitalize)."
-	},
-	"profile-presets": {
-		"bashIntegrated": "bash: $t(generic.profile-types.integrated, capitalize)",
-		"cmdExternal": "cmd: $t(generic.profile-types.external, capitalize)",
-		"cmdIntegrated": "cmd: $t(generic.profile-types.integrated, capitalize)",
-		"darwinExternalDefault": "$t(generic.platforms.darwin, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
-		"darwinIntegratedDefault": "$t(generic.platforms.darwin, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",
-		"dashIntegrated": "dash: $t(generic.profile-types.integrated, capitalize)",
-		"developerConsole": "$t(generic.profile-types.developerConsole, capitalize)",
-		"empty": "$t(generic.profile-types., capitalize)",
-		"gitBashIntegrated": "Git Bash: $t(generic.profile-types.integrated, capitalize)",
-		"gnomeTerminalExternal": "GNOME $t(generic.terminal, capitalize): $t(generic.profile-types.external, capitalize)",
-		"konsoleExternal": "Konsole: $t(generic.profile-types.external, capitalize)",
-		"linuxExternalDefault": "$t(generic.platforms.linux, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
-		"linuxIntegratedDefault": "$t(generic.platforms.linux, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",
-		"powershellExternal": "powershell: $t(generic.profile-types.external, capitalize)",
-		"powershellIntegrated": "powershell: $t(generic.profile-types.integrated, capitalize)",
-		"pwshExternal": "pwsh: $t(generic.profile-types.external, capitalize)",
-		"pwshIntegrated": "pwsh: $t(generic.profile-types.integrated, capitalize)",
-		"shIntegrated": "sh: $t(generic.profile-types.integrated, capitalize)",
-		"terminalMacOSExternal": "$t(generic.terminal, capitalize) ($t(generic.platforms.darwin, capitalize)): $t(generic.profile-types.external, capitalize)",
-		"win32ExternalDefault": "$t(generic.platforms.win32, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
-		"win32IntegratedDefault": "$t(generic.platforms.win32, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",
-		"wslIntegrated": "$t(generic.platforms.win32-short, capitalize) Subsystem for $t(generic.platforms.linux, capitalize): $t(generic.profile-types.integrated, capitalize)",
-		"wtExternal": "$t(generic.platforms.win32-short, capitalize) $t(generic.terminal, capitalize): $t(generic.profile-types.external, capitalize)",
-		"xtermExternal": "xterm: $t(generic.profile-types.external, capitalize)",
-		"zshIntegrated": "zsh: $t(generic.profile-types.integrated, capitalize)"
-	},
-	"ribbons": {
-		"open-terminal": "$t(generic.open, capitalize) $t(generic.terminal)"
-	},
+	"name": "PLACEHOLDER",
 	"settings": {
-		"add-to-command": "Add to $t(generic.command)",
-		"add-to-context-menu": "Add to $t(generic.context-menu)",
-		"advanced-settings": "Advanced $t(generic.setting_other)",
 		"all-settings": "All $t(generic.setting_other)",
 		"all-settings-actions": {
 			"edit": "$t(generic.edit, capitalize)",
@@ -334,8 +110,6 @@
 			"reset": "$t(generic.reset, capitalize)",
 			"undo": "Undo"
 		},
-		"create-instance-near-existing-ones": "Create $t(generic.instance) near $t(generic.exist_gerund) ones",
-		"create-instance-near-existing-ones-description": "Overrides '$t(settings.new-instance-behavior)' when $t(generic.instance) $t(generic.exist_singular) if $t(generic.true).",
 		"description": "To $t(generic.export) or $t(generic.import) $t(generic.setting_other), open '$t(settings.all-settings-actions.edit)' under '$t(settings.all-settings)' or $t(generic.use) the $t(generic.command-palette).",
 		"documentation": "$t(generic.documentation, capitalize)",
 		"documentations": {
@@ -345,41 +119,12 @@
 		},
 		"error-notice-timeout": "Error $t(generic.notice) $t(generic.timeout) (s)",
 		"error-notice-timeout-description": "$t(settings.notice-timeout-description)",
-		"focus-on-new-instance": "$t(generic.focus, capitalize) on new $t(generic.instance)",
-		"hide-status-bar": "Hide $t(generic.status-bar)",
-		"hide-status-bar-options": {
-			"always": "Always",
-			"focused": "When $t(generic.terminal) is $t(generic.focus_past)",
-			"never": "Never",
-			"running": "When $t(generic.terminal) is running"
-		},
 		"language": "$t(generic.language, capitalize)",
 		"language-default": "$t(generic.use, capitalize) $t(generic.app) $t(generic.setting)",
 		"language-description": "Applies to this $t(generic.plugin) only. $t(generic.language_other, capitalize) with 🚧 need your help with translation!",
-		"new-instance-behavior": "New $t(generic.instance) $t(generic.behavior)",
-		"new-instance-behaviors": {
-			"newHorizontalSplit": "New horizontal $t(generic.split)",
-			"newLeftSplit": "New left $t(generic.split)",
-			"newLeftTab": "New left $t(generic.tab)",
-			"newRightSplit": "New right $t(generic.split)",
-			"newRightTab": "New right $t(generic.tab)",
-			"newTab": "New $t(generic.tab)",
-			"newVerticalSplit": "New vertical $t(generic.split)",
-			"newWindow": "New $t(generic.window)",
-			"replaceTab": "Replace $t(generic.tab)"
-		},
 		"notice-timeout": "$t(generic.notice, capitalize) $t(generic.timeout) (s)",
 		"notice-timeout-description": "Set to 0 s for no $t(generic.timeout). Set to negative to $t(generic.disable) $t(generic.notice).",
 		"open-changelog-on-update": "$t(generic.open, capitalize) $t(generic.documentations.changelog) on update",
-		"pin-new-instance": "$t(generic.pin, capitalize) new $t(generic.instance)",
-		"preferred-renderer": "Preferred $t(generic.renderer)",
-		"preferred-renderer-options": "$t(generic.renderers.{{type}}, capitalize)",
-		"profile-list": {
-			"description": "The first $t(generic.compatible) $t(generic.profile) in the $t(generic.list) is the $t(generic.default) for its $t(generic.terminal) $t(generic.type)."
-		},
-		"profiles": "$t(generic.profile_other, capitalize)",
-		"profiles-description": "$t(generic.list-description, capitalize)",
-		"profiles-edit": "$t(generic.edit, capitalize)",
 		"reset": "$t(generic.reset, capitalize)"
 	}
 }

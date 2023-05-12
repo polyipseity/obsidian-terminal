@@ -15,12 +15,12 @@ import {
 	logError,
 } from "sources/utils/util"
 import { DialogModal } from "sources/ui/modals"
+import type { PLACEHOLDERPlugin } from "sources/main"
 import { SettingTab } from "./tab"
-import type { TerminalPlugin } from "sources/main"
 import deepEqual from "deep-equal"
 import { isEmpty } from "lodash-es"
 
-export function loadSettings(plugin: TerminalPlugin): void {
+export function loadSettings(plugin: PLACEHOLDERPlugin): void {
 	const { app, language } = plugin,
 		{ workspace, metadataCache, fileManager } = app,
 		{ i18n } = language

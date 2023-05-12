@@ -1,15 +1,10 @@
 import { type App, Plugin, type PluginManifest } from "obsidian"
 import type { AsyncOrSync, DeepWritable } from "ts-essentials"
 import {
-	DeveloperConsolePseudoterminal,
-	RefPsuedoterminal,
-} from "./terminal/pseudoterminal"
-import {
 	EventEmitterLite,
 	asyncDebounce,
 	copyOnWriteAsync,
 	deepFreeze,
-	lazyProxy,
 	logError,
 } from "./utils/util"
 import {
@@ -24,19 +19,13 @@ import { StatusBarHider } from "./status-bar"
 import { loadDocumentation } from "./documentation/load"
 import { loadIcons } from "./icons"
 import { loadSettings } from "./settings/load"
-import { loadTerminal } from "./terminal/load"
-import { patch } from "./patches"
 import { printMalformedData } from "./utils/obsidian"
 import { semVerString } from "./utils/types"
 
-export class TerminalPlugin extends Plugin {
+export class PLACEHOLDERPlugin extends Plugin {
 	public readonly version
-	public readonly log
 	public readonly language = new LanguageManager(this)
 	public readonly statusBarHider = new StatusBarHider(this)
-	public readonly developerConsolePTY = lazyProxy(() => new RefPsuedoterminal(
-		new DeveloperConsolePseudoterminal(self.console, this.log),
-	))
 
 	public readonly saveSettings = asyncDebounce(throttle((
 		resolve: (value: AsyncOrSync<void>) => void,
@@ -48,17 +37,13 @@ export class TerminalPlugin extends Plugin {
 	#settings: Settings = deepFreeze(Settings.fix(Settings.DEFAULT).value)
 
 	public constructor(app: App, manifest: PluginManifest) {
-		const { unpatch, log } = patch(app.workspace)
 		super(app, manifest)
-		this.register(unpatch)
-		this.log = log
 		try {
 			this.version = semVerString(manifest.version)
 		} catch (error) {
 			self.console.warn(error)
 			this.version = null
 		}
-		this.register(async () => this.developerConsolePTY.kill())
 	}
 
 	public get settings(): Settings {
@@ -127,7 +112,6 @@ export class TerminalPlugin extends Plugin {
 					(async (): Promise<void> => {
 						loadDocumentation(this, isNil(await loaded))
 					})(),
-					Promise.resolve().then(() => { loadTerminal(this) }),
 				])
 			} catch (error) {
 				self.console.error(error)
@@ -136,4 +120,4 @@ export class TerminalPlugin extends Plugin {
 	}
 }
 // Needed for loading
-export default TerminalPlugin
+export default PLACEHOLDERPlugin

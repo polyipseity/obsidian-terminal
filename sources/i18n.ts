@@ -13,7 +13,7 @@ import i18next, {
 	createInstance,
 	type i18n,
 } from "i18next"
-import type { TerminalPlugin } from "./main"
+import type { PLACEHOLDERPlugin } from "./main"
 import { moment } from "obsidian"
 import { printError } from "./utils/obsidian"
 import resourcesToBackend from "i18next-resources-to-backend"
@@ -90,7 +90,7 @@ export const I18N = (async (): Promise<i18n> => {
 export class LanguageManager {
 	public readonly onChangeLanguage = new EventEmitterLite<readonly [string]>()
 	#i18n = i18next
-	public constructor(protected readonly plugin: TerminalPlugin) { }
+	public constructor(protected readonly plugin: PLACEHOLDERPlugin) { }
 
 	public get i18n(): i18n {
 		return this.#i18n

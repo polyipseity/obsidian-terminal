@@ -16,7 +16,7 @@ import {
 import { capitalize, createChildElement, deepFreeze } from "sources/utils/util"
 import { DOMClasses } from "sources/magic"
 import type { NamespacedTranslationKey } from "sources/i18n"
-import type { TerminalPlugin } from "sources/main"
+import type { PLACEHOLDERPlugin } from "sources/main"
 import { launderUnchecked } from "sources/utils/types"
 
 export class DocumentationMarkdownView extends ItemView {
@@ -26,7 +26,7 @@ export class DocumentationMarkdownView extends ItemView {
 	#state = DocumentationMarkdownView.State.DEFAULT
 
 	public constructor(
-		protected readonly plugin: TerminalPlugin,
+		protected readonly plugin: PLACEHOLDERPlugin,
 		leaf: WorkspaceLeaf,
 	) {
 		DocumentationMarkdownView.#namespacedType =

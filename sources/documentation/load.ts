@@ -6,11 +6,11 @@ import {
 import { addCommand, printError } from "sources/utils/obsidian"
 import { anyToError, logError } from "sources/utils/util"
 import { DocumentationMarkdownView } from "./view"
-import type { TerminalPlugin } from "sources/main"
+import type { PLACEHOLDERPlugin } from "sources/main"
 import semverLt from "semver/functions/lt"
 
 export function loadDocumentation(
-	plugin: TerminalPlugin,
+	plugin: PLACEHOLDERPlugin,
 	readme = false,
 ): void {
 	const { language, version } = plugin,
@@ -35,7 +35,7 @@ export function loadDocumentation(
 }
 
 export function openDocumentation(
-	plugin: TerminalPlugin,
+	plugin: PLACEHOLDERPlugin,
 	key: DocumentationKeys[number],
 	active = true,
 ): void {

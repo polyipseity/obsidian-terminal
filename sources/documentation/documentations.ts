@@ -1,21 +1,21 @@
 import { deepFreeze, typedKeys } from "sources/utils/util"
 import { DOMClasses } from "sources/magic"
 import { DocumentationMarkdownView } from "./view"
-import type { TerminalPlugin } from "sources/main"
+import type { PLACEHOLDERPlugin } from "sources/main"
 import changelogMd from "CHANGELOG.md"
 import { newCollabrativeState } from "sources/utils/obsidian"
 import readmeMd from "README.md"
 import { revealPrivate } from "sources/utils/private"
 
 export const DOCUMENTATIONS = deepFreeze({
-	async changelog(plugin: TerminalPlugin, active: boolean) {
+	async changelog(plugin: PLACEHOLDERPlugin, active: boolean) {
 		await openMarkdown(plugin, active, {
 			data: await changelogMd,
 			displayTextI18nKey: "translation:generic.documentations.changelog",
 			iconI18nKey: "asset:generic.documentations.changelog-icon",
 		})
 	},
-	donate(plugin: TerminalPlugin) {
+	donate(plugin: PLACEHOLDERPlugin) {
 		const { app, manifest } = plugin
 		revealPrivate(plugin, [app], app0 => {
 			const { setting: { settingTabs } } = app0
@@ -34,7 +34,7 @@ export const DOCUMENTATIONS = deepFreeze({
 			throw new Error(settingTabs.toString())
 		}, error => { throw error })
 	},
-	async readme(plugin: TerminalPlugin, active: boolean) {
+	async readme(plugin: PLACEHOLDERPlugin, active: boolean) {
 		await openMarkdown(plugin, active, {
 			data: await readmeMd,
 			displayTextI18nKey: "translation:generic.documentations.readme",
@@ -46,7 +46,7 @@ export type DocumentationKeys = readonly ["changelog", "donate", "readme"]
 export const DOCUMENTATION_KEYS = typedKeys<DocumentationKeys>()(DOCUMENTATIONS)
 
 async function openMarkdown(
-	plugin: TerminalPlugin,
+	plugin: PLACEHOLDERPlugin,
 	active: boolean,
 	state: DocumentationMarkdownView.State,
 ): Promise<void> {

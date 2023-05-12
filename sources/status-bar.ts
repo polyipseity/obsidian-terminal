@@ -1,5 +1,5 @@
 import { DOMClasses } from "./magic"
-import type { TerminalPlugin } from "./main"
+import type { PLACEHOLDERPlugin } from "./main"
 import { UnnamespacedID } from "./utils/obsidian"
 import { remove } from "./utils/util"
 
@@ -17,15 +17,10 @@ export class StatusBarHider {
 
 	readonly #hiders: (() => boolean)[] = []
 
-	public constructor(protected readonly plugin: TerminalPlugin) { }
+	public constructor(protected readonly plugin: PLACEHOLDERPlugin) { }
 
 	public load(): void {
 		const { plugin } = this
-		plugin.register(plugin.on(
-			"mutate-settings",
-			settings => settings.hideStatusBar,
-			() => { this.update() },
-		))
 		plugin.app.workspace.onLayoutReady(() => { this.update() })
 	}
 
@@ -41,8 +36,7 @@ export class StatusBarHider {
 	public update(): void {
 		statusBar(div => {
 			const { plugin } = this
-			if (plugin.settings.hideStatusBar === "always" ||
-				this.#hiders.some(hider0 => hider0())) {
+			if (this.#hiders.some(hider0 => hider0())) {
 				div.classList.add(StatusBarHider.class.namespaced(plugin))
 			} else {
 				div.classList.remove(StatusBarHider.class.namespaced(plugin))
