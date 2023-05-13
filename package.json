@@ -26,7 +26,7 @@
 		"eslint-import-resolver-typescript": "^3.5.5",
 		"eslint-plugin-import": "^2.27.5",
 		"eslint-plugin-svelte3": "^4.0.0",
-		"obsidian": "file:build/obsidian",
+		"obsidian": "^1.2.5",
 		"svelte": "^3.59.1",
 		"svelte-preprocess": "^5.0.3",
 		"tslib": "^2.5.0",
@@ -52,7 +52,7 @@
 		"authorUrl": "PLACEHOLDER",
 		"id": "PLACEHOLDER",
 		"isDesktopOnly": false,
-		"minAppVersion": "1.2.5",
+		"minAppVersion": "PLACEHOLDER",
 		"name": "PLACEHOLDER"
 	},
 	"overrides": {
@@ -73,7 +73,6 @@
 	},
 	"version": "0.0.0",
 	"workspaces": [
-		"build/obsidian",
 		"build/obsidian-plugin-library"
 	]
 }
