@@ -11,7 +11,7 @@ To apply this template, replace all occurences of `PLACEHOLDER` and `obsidian-pl
 
 PLACEHOLDER
 
-__[Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing)__
+__[Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing) · [Security](#security)__
 
 ![Trailer]
 
