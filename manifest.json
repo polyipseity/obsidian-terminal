@@ -1,14 +1,13 @@
 {
-	"author": "polyipseity",
+	"author": "PLACEHOLDER",
 	"description": "PLACEHOLDER",
 	"fundingUrl": {
-		"Buy Me a Coffee": "https://buymeacoffee.com/polyipseity",
-		"GitHub Sponsors": "https://github.com/sponsors/polyipseity"
+		"PLACEHOLDER": "PLACEHOLDER"
 	},
 	"version": "0.0.0",
-	"authorUrl": "https://github.com/polyipseity",
+	"authorUrl": "PLACEHOLDER",
 	"id": "PLACEHOLDER",
 	"isDesktopOnly": false,
-	"minAppVersion": "1.2.5",
+	"minAppVersion": "PLACEHOLDER",
 	"name": "PLACEHOLDER"
 }
