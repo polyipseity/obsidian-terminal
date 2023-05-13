@@ -5,10 +5,10 @@ import {
 	registerSettingsCommands,
 	resetButton,
 } from "obsidian-plugin-library"
-import type { PLACEHOLDERPlugin } from "./main"
-import { Settings } from "./settings-data"
-import type { loadDocumentations } from "./documentations"
-import semverLt from "semver/functions/lt"
+import type { PLACEHOLDERPlugin } from "./main.js"
+import { Settings } from "./settings-data.js"
+import type { loadDocumentations } from "./documentations.js"
+import semverLt from "semver/functions/lt.js"
 
 export class SettingTab extends AdvancedSettingTab<Settings> {
 	public constructor(

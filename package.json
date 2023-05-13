@@ -71,6 +71,7 @@
 		"prepare": "npm run build:force --workspaces --if-present",
 		"version": "node build/version.mjs"
 	},
+	"type": "module",
 	"version": "0.0.0",
 	"workspaces": [
 		"build/obsidian-plugin-library"

@@ -34,7 +34,7 @@
     "maxNodeModuleJsDepth": 0,
     "module": "ESNext",
     "moduleDetection": "force",
-    "moduleResolution": "node",
+    "moduleResolution": "nodenext",
     "moduleSuffixes": [
       ""
     ],

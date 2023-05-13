@@ -7,12 +7,12 @@ import {
 	createI18n,
 	semVerString,
 } from "obsidian-plugin-library"
-import { PluginLocales } from "../assets/locales"
-import { Settings } from "./settings-data"
+import { PluginLocales } from "../assets/locales.js"
+import { Settings } from "./settings-data.js"
 import { isNil } from "lodash-es"
-import { loadDocumentations } from "./documentations"
-import { loadIcons } from "./icons"
-import { loadSettings } from "./settings"
+import { loadDocumentations } from "./documentations.js"
+import { loadIcons } from "./icons.js"
+import { loadSettings } from "./settings.js"
 
 export class PLACEHOLDERPlugin
 	extends Plugin
