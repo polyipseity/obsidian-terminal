@@ -12,6 +12,7 @@
 		"lucide": "^0.214.0",
 		"lz-string": "^1.5.0",
 		"monkey-around": "^2.3.0",
+		"obsidian-plugin-library": "file:build/obsidian-plugin-library",
 		"p-lazy": "^4.0.0",
 		"semver": "^7.5.0",
 		"ts-essentials": "^9.3.2"
@@ -78,12 +79,17 @@
 		"build": "npm run check && npm run build:force",
 		"build:force": "node build/build.mjs",
 		"check": "tsc -noEmit && eslint --cache --ignore-pattern \"*.svelte\" .",
-		"dev": "npm run build:force dev",
+		"dev": "npm run build:force -- dev",
 		"fix": "eslint --fix --cache --ignore-pattern \"*.svelte\" .",
 		"obsidian:install": "npm run build && node build/obsidian-install.mjs",
 		"obsidian:install:force": "npm run build:force && node build/obsidian-install.mjs",
 		"postversion": "node build/version-post.mjs",
+		"prepare": "npm run build:force --workspaces --if-present",
 		"version": "node build/version.mjs"
 	},
-	"version": "0.0.0"
+	"version": "0.0.0",
+	"workspaces": [
+		"build/obsidian",
+		"build/obsidian-plugin-library"
+	]
 }
