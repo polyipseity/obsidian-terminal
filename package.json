@@ -71,6 +71,8 @@
 		"prepare": "npm run build:force --workspaces --if-present",
 		"version": "node build/version.mjs"
 	},
+	"sideEffects": false,
+	"style": "styles.css",
 	"type": "module",
 	"version": "0.0.0",
 	"workspaces": [
