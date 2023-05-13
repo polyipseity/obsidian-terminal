@@ -9,7 +9,8 @@
     "assumeChangesOnlyAffectDirectDependencies": false,
     "checkJs": true,
     "composite": false,
-    "declaration": false,
+    "declaration": true,
+    "declarationMap": true,
     "disableReferencedProjectLoad": true,
     "disableSizeLimit": false,
     "disableSolutionSearching": false,
@@ -38,7 +39,7 @@
     "moduleSuffixes": [
       ""
     ],
-    "noEmit": true,
+    "noEmit": false,
     "noEmitHelpers": false,
     "noEmitOnError": false,
     "noErrorTruncation": true,
