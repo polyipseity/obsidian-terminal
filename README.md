@@ -2,6 +2,8 @@
 
 To apply this template, replace all occurences of `PLACEHOLDER` and `obsidian-plugin-template`.
 
+[Buy Me a Coffee]: https://buymeacoffee.com/polyipseity
+[Buy Me a Coffee/embed]: https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=polyipseity&button_colour=40DCA5&font_colour=ffffff&font_family=Lato&outline_colour=000000&coffee_colour=FFDD00
 [Obsidian]: https://obsidian.md/
 [changelog]: https://github.com/polyipseity/obsidian-plugin-template/blob/main/CHANGELOG.md
 [community plugin]: https://obsidian.md/plugins?id=PLACEHOLDER
@@ -10,6 +12,8 @@ To apply this template, replace all occurences of `PLACEHOLDER` and `obsidian-pl
 [trailer]: https://raw.githubusercontent.com/polyipseity/obsidian-plugin-template/main/assets/trailer.png
 
 PLACEHOLDER
+
+[![Buy Me a Coffee/embed]][Buy Me a Coffee]
 
 __[Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing)__
 

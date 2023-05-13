@@ -1,5 +1,5 @@
 {
-	"author": "PLACEHOLDER",
+	"author": "polyipseity",
 	"dependencies": {
 		"lodash-es": "^4.17.21",
 		"lz-string": "^1.5.0",
@@ -36,8 +36,12 @@
 	"displayName": "PLACEHOLDER",
 	"funding": [
 		{
-			"type": "PLACEHOLDER",
-			"url": "PLACEHOLDER"
+			"type": "Buy Me a Coffee",
+			"url": "https://buymeacoffee.com/polyipseity"
+		},
+		{
+			"type": "GitHub Sponsors",
+			"url": "https://github.com/sponsors/polyipseity"
 		}
 	],
 	"keywords": [
@@ -49,7 +53,7 @@
 	"main": "main.js",
 	"name": "PLACEHOLDER",
 	"obsidian": {
-		"authorUrl": "PLACEHOLDER",
+		"authorUrl": "https://github.com/polyipseity",
 		"id": "PLACEHOLDER",
 		"isDesktopOnly": false,
 		"minAppVersion": "1.2.5",
