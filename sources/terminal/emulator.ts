@@ -1,36 +1,46 @@
-import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
+import {
+	type Fixed,
+	SI_PREFIX_SCALE,
+	asyncDebounce,
+	deepFreeze,
+	dynamicRequire,
+	dynamicRequireLazy,
+	fixTyped,
+	importable,
+	launderUnchecked,
+	markFixed,
+} from "obsidian-plugin-library"
 import type {
 	ITerminalInitOnlyOptions,
 	ITerminalOptions,
 	Terminal,
 } from "xterm"
 import {
-	SI_PREFIX_SCALE,
 	TERMINAL_EMULATOR_RESIZE_WAIT,
 	TERMINAL_PTY_RESIZE_WAIT,
 } from "../magic"
-import { asyncDebounce, deepFreeze, spawnPromise } from "../utils/util"
-import { dynamicRequire, dynamicRequireLazy, importable } from "../import"
 import type { AsyncOrSync } from "ts-essentials"
+import { BUNDLE } from "../import"
 import type { ChildProcessByStdio } from "node:child_process"
 import type { Pseudoterminal } from "./pseudoterminal"
 import type { TerminalPlugin } from "../main"
-import { launderUnchecked } from "sources/utils/types"
+import { spawnPromise } from "../util"
 import { throttle } from "lodash-es"
 import { writePromise } from "./util"
 
 const
-	childProcess =
-		dynamicRequire<typeof import("node:child_process")>("node:child_process"),
-	xterm = dynamicRequireLazy<typeof import("xterm")>("xterm"),
-	xtermAddonFit =
-		dynamicRequireLazy<typeof import("xterm-addon-fit")>("xterm-addon-fit"),
+	childProcess = dynamicRequire<typeof import("node:child_process")
+	>(BUNDLE, "node:child_process"),
+	xterm = dynamicRequireLazy<typeof import("xterm")
+	>(BUNDLE, "xterm"),
+	xtermAddonFit = dynamicRequireLazy<typeof import("xterm-addon-fit")
+	>(BUNDLE, "xterm-addon-fit"),
 	xtermAddonSerialize =
-		dynamicRequireLazy<typeof import("xterm-addon-serialize")>(
-			"xterm-addon-serialize")
+		dynamicRequireLazy<typeof import("xterm-addon-serialize")
+		>(BUNDLE, "xterm-addon-serialize")
 
 export const SUPPORTS_EXTERNAL_TERMINAL_EMULATOR =
-	importable("node:child_process")
+	importable(BUNDLE, "node:child_process")
 export async function spawnExternalTerminalEmulator(
 	executable: string,
 	args?: readonly string[],

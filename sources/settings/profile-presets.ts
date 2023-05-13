@@ -2,11 +2,11 @@ import {
 	DEFAULT_PYTHON_EXECUTABLE,
 	DEFAULT_SUCCESS_EXIT_CODES,
 	WINDOWS_CMD_PATH,
-} from "sources/magic"
+} from "../magic"
 import type { IBufferRange, ILinkHandler, ITheme, IWindowOptions } from "xterm"
-import { deepFreeze, openExternal, typedKeys } from "sources/utils/util"
-import type { Pseudoterminal } from "sources/terminal/pseudoterminal"
-import type { Settings } from "./data"
+import { deepFreeze, openExternal, typedKeys } from "obsidian-plugin-library"
+import type { Pseudoterminal } from "../terminal/pseudoterminal"
+import type { Settings } from "../settings-data"
 
 export const
 	DEFAULT_LINK_HANDLER: ILinkHandler = deepFreeze({

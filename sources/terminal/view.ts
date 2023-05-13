@@ -1,12 +1,49 @@
 import {
 	DEFAULT_ENCODING,
 	DEFAULT_SUCCESS_EXIT_CODES,
-	DOMClasses,
-	JSON_STRINGIFY_SPACE,
+	DOMClasses2,
 	TERMINAL_SEARCH_RESULTS_LIMIT,
 	UNDEFINED,
 } from "../magic"
-import { DialogModal, ProfileModal } from "sources/ui/modals"
+import {
+	DialogModal,
+	type Fixed,
+	JSON_STRINGIFY_SPACE,
+	Platform,
+	UnnamespacedID,
+	anyToError,
+	awaitCSS,
+	basename,
+	cloneAsWritable,
+	consumeEvent,
+	copyOnWrite,
+	createChildElement,
+	deepFreeze,
+	destroyWithOutro,
+	dynamicRequireLazy,
+	extname,
+	fixTyped,
+	instanceOf,
+	launderUnchecked,
+	linkSetting,
+	logWarn,
+	markFixed,
+	newCollabrativeState,
+	notice2,
+	onResize,
+	onVisible,
+	openExternal,
+	printError,
+	printMalformedData,
+	randomNotIn,
+	readStateCollabratively,
+	recordViewStateHistory,
+	resetButton,
+	saveFileAs,
+	updateDisplayText,
+	useSettings,
+	writeStateCollabratively,
+} from "obsidian-plugin-library"
 import { Direction, type Params } from "../ui/find"
 import {
 	DisposerAddon,
@@ -21,73 +58,37 @@ import {
 	type ViewStateResult,
 	type WorkspaceLeaf,
 } from "obsidian"
-import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
 import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
-import {
-	UnnamespacedID,
-	awaitCSS,
-	newCollabrativeState,
-	notice2,
-	printError,
-	printMalformedData,
-	readStateCollabratively,
-	recordViewStateHistory,
-	saveFileAs,
-	updateDisplayText,
-	useSettings,
-	writeStateCollabratively,
-} from "sources/utils/obsidian"
-import {
-	anyToError,
-	basename,
-	cloneAsWritable,
-	consumeEvent,
-	copyOnWrite,
-	createChildElement,
-	deepFreeze,
-	destroyWithOutro,
-	extname,
-	instanceOf,
-	logWarn,
-	onResize,
-	onVisible,
-	openExternal,
-	randomNotIn,
-	typedStructuredClone,
-} from "../utils/util"
-import { linkSetting, resetButton } from "sources/ui/settings"
+import { BUNDLE } from "../import"
 import type { DeepWritable } from "ts-essentials"
 import FindComponent from "../ui/find.svelte"
 import type { LigaturesAddon } from "xterm-addon-ligatures"
-import { Platform } from "../utils/platforms"
+import { ProfileModal } from "../modals"
 import type { SearchAddon } from "xterm-addon-search"
-import { Settings } from "sources/settings/data"
+import { Settings } from "../settings-data"
 import type { TerminalPlugin } from "../main"
 import { TextPseudoterminal } from "./pseudoterminal"
 import type { Unicode11Addon } from "xterm-addon-unicode11"
 import type { WebLinksAddon } from "xterm-addon-web-links"
 import { XtermTerminalEmulator } from "./emulator"
 import { cloneDeep } from "lodash-es"
-import { dynamicRequireLazy } from "sources/imports"
-import { launderUnchecked } from "sources/utils/types"
 import { writePromise } from "./util"
 
 const
-	xtermAddonCanvas = dynamicRequireLazy<typeof import("xterm-addon-canvas")>(
-		"xterm-addon-canvas"),
+	xtermAddonCanvas = dynamicRequireLazy<typeof import("xterm-addon-canvas")
+	>(BUNDLE, "xterm-addon-canvas"),
 	xtermAddonLigatures =
-		dynamicRequireLazy<typeof import("xterm-addon-ligatures")>(
-			"xterm-addon-ligatures"),
-	xtermAddonSearch = dynamicRequireLazy<typeof import("xterm-addon-search")>(
-		"xterm-addon-search"),
+		dynamicRequireLazy<typeof import("xterm-addon-ligatures")
+		>(BUNDLE, "xterm-addon-ligatures"),
+	xtermAddonSearch = dynamicRequireLazy<typeof import("xterm-addon-search")
+	>(BUNDLE, "xterm-addon-search"),
 	xtermAddonUnicode11 =
-		dynamicRequireLazy<typeof import("xterm-addon-unicode11")>(
-			"xterm-addon-unicode11"),
-	xtermAddonWebLinks =
-		dynamicRequireLazy<typeof import("xterm-addon-web-links")>(
-			"xterm-addon-web-links"),
-	xtermAddonWebgl = dynamicRequireLazy<typeof import("xterm-addon-webgl")>(
-		"xterm-addon-webgl")
+		dynamicRequireLazy<typeof import("xterm-addon-unicode11")
+		>(BUNDLE, "xterm-addon-unicode11"),
+	xtermAddonWebLinks = dynamicRequireLazy<typeof import("xterm-addon-web-links")
+	>(BUNDLE, "xterm-addon-web-links"),
+	xtermAddonWebgl = dynamicRequireLazy<typeof import("xterm-addon-webgl")
+	>(BUNDLE, "xterm-addon-webgl")
 
 class EditTerminalModal extends DialogModal {
 	protected readonly state
@@ -95,12 +96,12 @@ class EditTerminalModal extends DialogModal {
 	readonly #confirm
 
 	public constructor(
-		plugin: TerminalPlugin,
+		protected override readonly context: TerminalPlugin,
 		protected readonly protostate: TerminalView.State,
 		confirm: (state_: DeepWritable<typeof protostate>) => unknown,
 	) {
-		const { i18n } = plugin.language
-		super(plugin, {
+		const { language: { i18n } } = context
+		super(context, {
 			dynamicWidth: true,
 			title: () => i18n.t("components.terminal.edit-modal.title"),
 		})
@@ -110,12 +111,22 @@ class EditTerminalModal extends DialogModal {
 
 	public override onOpen(): void {
 		super.onOpen()
-		const { plugin, ui, protostate, state } = this,
-			{ element: listEl, remover: listElRemover } = useSettings(this.contentEl),
-			{ language, app: { vault: { adapter } } } = plugin,
-			{ i18n } = language
+		const
+			{
+				context,
+				context: {
+					settings,
+					language: { onChangeLanguage },
+					language: { i18n },
+					app: { vault: { adapter } },
+				},
+				ui,
+				protostate,
+				state,
+			} = this,
+			{ element: listEl, remover: listElRemover } = useSettings(this.contentEl)
 		ui.finally(listElRemover)
-			.finally(language.onChangeLanguage.listen(() => { ui.update() }))
+			.finally(onChangeLanguage.listen(() => { ui.update() }))
 			.newSetting(listEl, setting => {
 				setting
 					.setName(i18n.t("components.terminal.edit-modal.working-directory"))
@@ -151,7 +162,7 @@ class EditTerminalModal extends DialogModal {
 					))
 			})
 			.newSetting(listEl, setting => {
-				const { profiles } = plugin.settings,
+				const { profiles } = settings.copy,
 					unselected = randomNotIn(Object.keys(profiles))
 				setting
 					.setName(i18n.t("components.terminal.edit-modal.profile"))
@@ -195,7 +206,7 @@ class EditTerminalModal extends DialogModal {
 						.setTooltip(i18n.t("components.terminal.edit-modal.profile-edit"))
 						.onClick(() => {
 							new ProfileModal(
-								plugin,
+								context,
 								state.profile,
 								profile0 => {
 									this.#profile = null
@@ -217,7 +228,7 @@ class EditTerminalModal extends DialogModal {
 	}
 
 	protected override async confirm(close: () => void): Promise<void> {
-		await this.#confirm(typedStructuredClone(this.state))
+		await this.#confirm(cloneAsWritable(this.state))
 		await super.confirm(close)
 	}
 
@@ -230,7 +241,7 @@ class EditTerminalModal extends DialogModal {
 
 export class TerminalView extends ItemView {
 	public static readonly type =
-		new UnnamespacedID(DOMClasses.Namespaced.TERMINAL)
+		new UnnamespacedID(DOMClasses2.Namespaced.TERMINAL)
 
 	protected static readonly modifiers = deepFreeze(Platform.CURRENT === "darwin"
 		? ["Meta"]
@@ -245,10 +256,10 @@ export class TerminalView extends ItemView {
 	#state = TerminalView.State.DEFAULT
 
 	public constructor(
-		protected readonly plugin: TerminalPlugin,
+		protected readonly context: TerminalPlugin,
 		leaf: WorkspaceLeaf,
 	) {
-		TerminalView.#namespacedType = TerminalView.type.namespaced(plugin)
+		TerminalView.#namespacedType = TerminalView.type.namespaced(context)
 		super(leaf)
 		this.navigation = true
 		const { scope, focusedScope } = this
@@ -291,7 +302,7 @@ export class TerminalView extends ItemView {
 	}
 
 	get #name(): string {
-		const { plugin, state } = this,
+		const { context: plugin, state } = this,
 			{ i18n } = plugin.language,
 			{ profile } = state,
 			{ name, type } = profile
@@ -311,8 +322,8 @@ export class TerminalView extends ItemView {
 
 	// eslint-disable-next-line consistent-return
 	get #hidesStatusBar(): boolean {
-		const { plugin, contentEl } = this
-		switch (plugin.settings.hideStatusBar) {
+		const { context: { settings }, contentEl } = this
+		switch (settings.copy.hideStatusBar) {
 			case "focused":
 				return contentEl.contains(contentEl.ownerDocument.activeElement)
 			case "running":
@@ -326,11 +337,11 @@ export class TerminalView extends ItemView {
 
 	protected set state(value: TerminalView.State) {
 		this.#state = value
-		updateDisplayText(this.plugin, this)
+		updateDisplayText(this.context, this)
 	}
 
 	set #emulator(val: TerminalView.EMULATOR | null) {
-		const { plugin } = this
+		const { context: plugin } = this
 		this.#emulator0?.close(false).catch(error => {
 			printError(
 				anyToError(error),
@@ -349,14 +360,14 @@ export class TerminalView extends ItemView {
 
 	set #title(value: string) {
 		this.#title0 = value
-		updateDisplayText(this.plugin, this)
+		updateDisplayText(this.context, this)
 	}
 
 	public override async setState(
 		state: unknown,
 		result: ViewStateResult,
 	): Promise<void> {
-		const { plugin } = this,
+		const { context: plugin } = this,
 			ownState = readStateCollabratively(
 				TerminalView.type.namespaced(plugin),
 				state,
@@ -378,13 +389,13 @@ export class TerminalView extends ItemView {
 		}
 		return writeStateCollabratively(
 			super.getState(),
-			TerminalView.type.namespaced(this.plugin),
+			TerminalView.type.namespaced(this.context),
 			this.state,
 		)
 	}
 
 	public getDisplayText(): string {
-		return this.plugin.language
+		return this.context.language
 			.i18n.t(
 				`components.${TerminalView.type.id}.display-name`,
 				{
@@ -395,7 +406,7 @@ export class TerminalView extends ItemView {
 	}
 
 	public override getIcon(): string {
-		return this.plugin.language
+		return this.context.language
 			.i18n.t(`asset:components.${TerminalView.type.id}.icon`)
 	}
 
@@ -405,7 +416,7 @@ export class TerminalView extends ItemView {
 
 	public override onPaneMenu(menu: Menu, source: string): void {
 		super.onPaneMenu(menu, source)
-		const { plugin, leaf, app: { vault: { adapter } } } = this,
+		const { context: plugin, leaf, app: { vault: { adapter } } } = this,
 			{ i18n } = plugin.language
 		menu
 			.addSeparator()
@@ -468,13 +479,13 @@ export class TerminalView extends ItemView {
 
 	protected override async onOpen(): Promise<void> {
 		await super.onOpen()
-		const { plugin, focusedScope, contentEl, containerEl, scope, app } = this,
-			{ language, statusBarHider } = plugin,
+		const { context, focusedScope, contentEl, containerEl, scope, app } = this,
+			{ language, statusBarHider } = context,
 			{ i18n } = language,
 			{ keymap } = app
 
 		this.register(language.onChangeLanguage.listen(() => {
-			updateDisplayText(plugin, this)
+			updateDisplayText(context, this)
 			this.#find?.$set({ i18n: i18n.t })
 		}))
 
@@ -507,7 +518,7 @@ export class TerminalView extends ItemView {
 	}
 
 	protected startFind(): void {
-		const { plugin, contentEl } = this,
+		const { context: plugin, contentEl } = this,
 			{ language } = plugin,
 			{ i18n } = language
 		if (!this.#find) {
@@ -568,12 +579,15 @@ export class TerminalView extends ItemView {
 	}
 
 	protected startEmulator(focus: boolean): void {
-		const { contentEl, plugin, leaf, state, app } = this,
-			{ profile, cwd, serial } = state,
-			{ language } = plugin,
-			{ i18n } = language,
-			{ workspace } = app,
-			{ requestSaveLayout } = workspace,
+		const
+			{
+				contentEl,
+				context,
+				context: { language: { onChangeLanguage, i18n }, settings },
+				leaf,
+				state: { profile, cwd, serial },
+				app: { workspace: { requestSaveLayout } },
+			} = this,
 			noticeSpawn = (): void => {
 				notice2(
 					() => i18n.t(
@@ -583,26 +597,26 @@ export class TerminalView extends ItemView {
 							name: this.#name,
 						},
 					),
-					plugin.settings.noticeTimeout,
-					plugin,
+					settings.copy.noticeTimeout,
+					context,
 				)
 			}
 		if (!PROFILE_PROPERTIES[profile.type].integratable) {
 			(async (): Promise<void> => {
 				try {
 					noticeSpawn()
-					await openProfile(plugin, profile, { cwd })
+					await openProfile(context, profile, { cwd })
 				} catch (error) {
 					printError(anyToError(error), () =>
-						i18n.t("errors.error-spawning-terminal"), plugin)
+						i18n.t("errors.error-spawning-terminal"), context)
 				}
 			})()
 			leaf.detach()
 			return
 		}
 		createChildElement(contentEl, "div", ele => {
-			awaitCSS(plugin, ele)
-			ele.classList.add(TerminalView.type.namespaced(plugin))
+			awaitCSS(ele)
+			ele.classList.add(TerminalView.type.namespaced(context))
 			const obsr = onVisible(ele, () => {
 				try {
 					noticeSpawn()
@@ -611,7 +625,7 @@ export class TerminalView extends ItemView {
 							? serial
 							: null,
 						emulator = new TerminalView.EMULATOR(
-							plugin,
+							context,
 							ele,
 							async terminal => {
 								if (serial0) {
@@ -626,7 +640,7 @@ export class TerminalView extends ItemView {
 										),
 									)
 								}
-								const ret = await openProfile(plugin, profile, {
+								const ret = await openProfile(context, profile, {
 									cwd,
 									terminal: TerminalView.EMULATOR.type,
 								})
@@ -640,7 +654,7 @@ export class TerminalView extends ItemView {
 											JSON_STRINGIFY_SPACE,
 										),
 									}))
-								pty.onExit.finally(language.onChangeLanguage.listen(() => {
+								pty.onExit.finally(onChangeLanguage.listen(() => {
 									pty.text =
 										i18n.t("components.terminal.unsupported-profile", {
 											interpolation: { escapeValue: false },
@@ -696,25 +710,25 @@ export class TerminalView extends ItemView {
 								(profile.type === "invalid"
 									? DEFAULT_SUCCESS_EXIT_CODES
 									: profile.successExitCodes).includes(code.toString())
-									? plugin.settings.noticeTimeout
-									: plugin.settings.errorNoticeTimeout,
-								plugin,
+									? settings.copy.noticeTimeout
+									: settings.copy.errorNoticeTimeout,
+								context,
 							)
 						}, error => {
 							printError(anyToError(error), () =>
-								i18n.t("errors.error-spawning-terminal"), plugin)
+								i18n.t("errors.error-spawning-terminal"), context)
 						})
 					terminal.onWriteParsed(requestSaveLayout)
 					terminal.onResize(requestSaveLayout)
 					terminal.onTitleChange(title => { this.#title = title })
 
 					terminal.unicode.activeVersion = "11"
-					disposer.push(plugin.on(
+					disposer.push(settings.on(
 						"mutate-settings",
 						settings0 => settings0.preferredRenderer,
 						cur => { renderer.use(cur) },
 					))
-					renderer.use(plugin.settings.preferredRenderer)
+					renderer.use(settings.copy.preferredRenderer)
 					search.onDidChangeResults(results => {
 						if (results) {
 							const { resultIndex, resultCount } = results
@@ -792,51 +806,54 @@ export namespace TerminalView {
 			})
 		}
 	}
-	export function getLeaf(plugin: TerminalPlugin): WorkspaceLeaf {
-		// eslint-disable-next-line consistent-return
-		const leaf = ((): WorkspaceLeaf => {
-			const { app: { workspace } } = plugin,
-				{ leftSplit, rightSplit } = workspace
-			if (plugin.settings.createInstanceNearExistingOnes) {
-				const existingLeaf = workspace
-					// eslint-disable-next-line @typescript-eslint/no-unnecessary-qualifier
-					.getLeavesOfType(TerminalView.type.namespaced(plugin))
-					.at(-1)
-				if (existingLeaf) {
-					const root = existingLeaf.getRoot()
-					if (root === leftSplit) {
-						return workspace.getLeftLeaf(false)
+	export function getLeaf(context: TerminalPlugin): WorkspaceLeaf {
+		const
+			{
+				app: { workspace, workspace: { leftSplit, rightSplit } },
+				settings,
+			} = context,
+			// eslint-disable-next-line consistent-return
+			leaf = ((): WorkspaceLeaf => {
+				if (settings.copy.createInstanceNearExistingOnes) {
+					const existingLeaf = workspace
+						// eslint-disable-next-line @typescript-eslint/no-unnecessary-qualifier
+						.getLeavesOfType(TerminalView.type.namespaced(context))
+						.at(-1)
+					if (existingLeaf) {
+						const root = existingLeaf.getRoot()
+						if (root === leftSplit) {
+							return workspace.getLeftLeaf(false)
+						}
+						if (root === rightSplit) {
+							return workspace.getRightLeaf(false)
+						}
+						workspace.setActiveLeaf(existingLeaf)
+						return workspace.getLeaf("tab")
 					}
-					if (root === rightSplit) {
-						return workspace.getRightLeaf(false)
-					}
-					workspace.setActiveLeaf(existingLeaf)
-					return workspace.getLeaf("tab")
 				}
-			}
-			switch (plugin.settings.newInstanceBehavior) {
-				case "replaceTab":
-					return workspace.getLeaf()
-				case "newTab":
-					return workspace.getLeaf("tab")
-				case "newLeftTab":
-					return workspace.getLeftLeaf(false)
-				case "newLeftSplit":
-					return workspace.getLeftLeaf(true)
-				case "newRightTab":
-					return workspace.getRightLeaf(false)
-				case "newRightSplit":
-					return workspace.getRightLeaf(true)
-				case "newHorizontalSplit":
-					return workspace.getLeaf("split", "horizontal")
-				case "newVerticalSplit":
-					return workspace.getLeaf("split", "vertical")
-				case "newWindow":
-					return workspace.getLeaf("window")
-				// No default
-			}
-		})()
-		leaf.setPinned(plugin.settings.pinNewInstance)
+				switch (settings.copy.newInstanceBehavior) {
+					case "replaceTab":
+						return workspace.getLeaf()
+					case "newTab":
+						return workspace.getLeaf("tab")
+					case "newLeftTab":
+						return workspace.getLeftLeaf(false)
+					case "newLeftSplit":
+						return workspace.getLeftLeaf(true)
+					case "newRightTab":
+						return workspace.getRightLeaf(false)
+					case "newRightSplit":
+						return workspace.getRightLeaf(true)
+					case "newHorizontalSplit":
+						return workspace.getLeaf("split", "horizontal")
+					case "newVerticalSplit":
+						return workspace.getLeaf("split", "vertical")
+					case "newWindow":
+						return workspace.getLeaf("window")
+					// No default
+				}
+			})()
+		leaf.setPinned(settings.copy.pinNewInstance)
 		return leaf
 	}
 }

@@ -4,23 +4,27 @@ import {
 	type MenuItem,
 	TFolder,
 } from "obsidian"
+import {
+	Platform,
+	addCommand,
+	addRibbonIcon,
+	deepFreeze,
+	isNonNil,
+	notice2,
+} from "obsidian-plugin-library"
 import { SelectProfileModal, spawnTerminal } from "./spawn"
-import { addCommand, addRibbonIcon, notice2 } from "sources/utils/obsidian"
-import { deepFreeze, isNonNil } from "../utils/util"
-import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
-import { Platform } from "sources/utils/platforms"
-import { Settings } from "sources/settings/data"
+import { PROFILE_PROPERTIES } from "../settings/profile-properties"
+import { Settings } from "../settings-data"
 import type { TerminalPlugin } from "../main"
 import { TerminalView } from "./view"
-import { UNDEFINED } from "sources/magic"
+import { UNDEFINED } from "../magic"
 import { isEmpty } from "lodash-es"
 
-export function loadTerminal(plugin: TerminalPlugin): void {
-	plugin.registerView(
-		TerminalView.type.namespaced(plugin),
-		leaf => new TerminalView(plugin, leaf),
+export function loadTerminal(context: TerminalPlugin): void {
+	context.registerView(
+		TerminalView.type.namespaced(context),
+		leaf => new TerminalView(context, leaf),
 	)
-
 	const
 		PROFILE_TYPES = deepFreeze((["select", "integrated", "external"] as const)
 			.filter(type => type === "select" || PROFILE_PROPERTIES[type].available)),
@@ -29,14 +33,12 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 			{ cwd: "", profile: "integrated" },
 			{ cwd: "", profile: "external" },
 		]),
-		{ app, language } = plugin,
-		{ workspace } = app,
-		{ i18n } = language,
+		{ app: { vault, workspace }, language: { i18n }, settings } = context,
 		defaultProfile =
 			(type: Settings.Profile.Type): Settings.Profile | null => {
 				const ret = Settings.Profile.defaultOfType(
 					type,
-					plugin.settings.profiles,
+					settings.copy.profiles,
 					Platform.CURRENT,
 				)
 				if (!ret) {
@@ -45,14 +47,14 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 							interpolation: { escapeValue: false },
 							type,
 						}),
-						plugin.settings.errorNoticeTimeout,
-						plugin,
+						settings.copy.errorNoticeTimeout,
+						context,
 					)
 				}
 				return ret
 			},
-		adapter = app.vault.adapter instanceof FileSystemAdapter
-			? app.vault.adapter
+		adapter = vault.adapter instanceof FileSystemAdapter
+			? vault.adapter
 			: null,
 		contextMenu = (
 			type: Settings.Profile.Type | "select",
@@ -74,13 +76,13 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 					}))
 					.onClick(() => {
 						if (type === "select") {
-							new SelectProfileModal(plugin, cwd0).open()
+							new SelectProfileModal(context, cwd0).open()
 							return
 						}
 						const profile = defaultProfile(type)
 						if (!profile) { return }
 						spawnTerminal(
-							plugin,
+							context,
 							profile,
 							cwd0,
 						)
@@ -111,24 +113,24 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 			if (cwd0 === null) { return false }
 			if (!checking) {
 				if (type === "select") {
-					new SelectProfileModal(plugin, cwd0).open()
+					new SelectProfileModal(context, cwd0).open()
 					return true
 				}
 				const profile = defaultProfile(type)
-				if (profile) { spawnTerminal(plugin, profile, cwd0) }
+				if (profile) { spawnTerminal(context, profile, cwd0) }
 			}
 			return true
 		}
 
 	addRibbonIcon(
-		plugin,
+		context,
 		i18n.t("asset:ribbons.open-terminal-id"),
 		i18n.t("asset:ribbons.open-terminal-icon"),
 		() => i18n.t("ribbons.open-terminal"),
-		() => { new SelectProfileModal(plugin, adapter?.getBasePath()).open() },
+		() => { new SelectProfileModal(context, adapter?.getBasePath()).open() },
 	)
-	plugin.registerEvent(workspace.on("file-menu", (menu, file) => {
-		if (!plugin.settings.addToContextMenu) {
+	context.registerEvent(workspace.on("file-menu", (menu, file) => {
+		if (!settings.copy.addToContextMenu) {
 			return
 		}
 		const folder = file instanceof TFolder ? file : file.parent
@@ -142,11 +144,11 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 			items.forEach(item => menu.addItem(item))
 		}
 	}))
-	plugin.registerEvent(workspace.on(
+	context.registerEvent(workspace.on(
 		"editor-menu",
 		(menu, _0, info) => {
 			const { file } = info
-			if (!plugin.settings.addToContextMenu ||
+			if (!settings.copy.addToContextMenu ||
 				info instanceof MarkdownView ||
 				!file?.parent) {
 				return
@@ -170,14 +172,14 @@ export function loadTerminal(plugin: TerminalPlugin): void {
 				continue
 			}
 			addCommand(
-				plugin,
+				context,
 				() => i18n.t(`commands.open-terminal-${cwd}`, {
 					interpolation: { escapeValue: false },
 					type,
 				}),
 				{
 					checkCallback(checking) {
-						if (!plugin.settings.addToCommand) { return false }
+						if (!settings.copy.addToCommand) { return false }
 						return command(type, cwd)(checking)
 					},
 					icon: i18n.t(`asset:commands.open-terminal-${cwd}-icon`),

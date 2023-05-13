@@ -9,7 +9,7 @@ import {
 	typedKeys,
 } from "obsidian-plugin-library"
 import { DOMClasses2 } from "./magic"
-import type { PLACEHOLDERPlugin } from "./main"
+import type { TerminalPlugin } from "./main"
 import changelogMd from "../CHANGELOG.md"
 import readmeMd from "../README.md"
 import semverLt from "semver/functions/lt"
@@ -54,7 +54,7 @@ export const DOCUMENTATION_KEYS = typedKeys<DocumentationKeys>()(DOCUMENTATIONS)
 
 class Loaded0 {
 	public constructor(
-		public readonly context: PLACEHOLDERPlugin,
+		public readonly context: TerminalPlugin,
 		public readonly docMdView: DocumentationMarkdownView.Registered,
 	) { }
 
@@ -84,7 +84,7 @@ class Loaded0 {
 	}
 }
 export function loadDocumentations(
-	context: PLACEHOLDERPlugin,
+	context: TerminalPlugin,
 	readme = false,
 ): loadDocumentations.Loaded {
 	const { version, language: { i18n }, settings } = context,

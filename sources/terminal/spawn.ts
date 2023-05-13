@@ -1,25 +1,24 @@
+import { Platform, newCollabrativeState } from "obsidian-plugin-library"
 import { FuzzySuggestModal } from "obsidian"
-import { Platform } from "sources/utils/platforms"
-import { Settings } from "sources/settings/data"
-import type { TerminalPlugin } from "sources/main"
+import { Settings } from "../settings-data"
+import type { TerminalPlugin } from "../main"
 import { TerminalView } from "./view"
-import { newCollabrativeState } from "sources/utils/obsidian"
 
 export class SelectProfileModal
 	extends FuzzySuggestModal<Settings.Profile.Entry> {
 	public constructor(
-		protected readonly plugin: TerminalPlugin,
+		protected readonly context: TerminalPlugin,
 		protected readonly cwd?: string,
 	) {
-		super(plugin.app)
+		super(context.app)
 	}
 
 	public override getItems(): Settings.Profile.Entry[] {
-		return Object.entries(this.plugin.settings.profiles)
+		return Object.entries(this.context.settings.copy.profiles)
 	}
 
 	public override getItemText(item: Settings.Profile.Entry): string {
-		return this.plugin.language.i18n.t(
+		return this.context.language.i18n.t(
 			`components.select-profile.item-text-${Settings.Profile
 				.isCompatible(item[1], Platform.CURRENT)
 				? ""
@@ -35,32 +34,32 @@ export class SelectProfileModal
 		[, profile]: Settings.Profile.Entry,
 		_evt: KeyboardEvent | MouseEvent,
 	): void {
-		const { plugin, cwd } = this
+		const { context: plugin, cwd } = this
 		spawnTerminal(plugin, profile, cwd)
 	}
 }
 
 export function spawnTerminal(
-	plugin: TerminalPlugin,
+	context: TerminalPlugin,
 	profile: Settings.Profile,
 	cwd?: string,
 ): void {
 	(async (): Promise<void> => {
 		try {
-			await TerminalView.getLeaf(plugin).setViewState({
+			await TerminalView.getLeaf(context).setViewState({
 				active: true,
-				state: newCollabrativeState(plugin, new Map([
+				state: newCollabrativeState(context, new Map([
 					[
 						TerminalView.type,
 						{
 							cwd: cwd ?? null,
-							focus: plugin.settings.focusOnNewInstance,
+							focus: context.settings.copy.focusOnNewInstance,
 							profile,
 							serial: null,
 						} satisfies TerminalView.State,
 					],
 				])),
-				type: TerminalView.type.namespaced(plugin),
+				type: TerminalView.type.namespaced(context),
 			})
 		} catch (error) {
 			self.console.error(error)

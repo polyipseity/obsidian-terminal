@@ -11,7 +11,6 @@ import {
 	DEFAULT_PYTHONIOENCODING,
 	EXIT_SUCCESS,
 	MAX_LOCK_PENDING,
-	SI_PREFIX_SCALE,
 	TERMINAL_EXIT_CLEANUP_WAIT,
 	TERMINAL_RESIZER_WATCHDOG_WAIT,
 	UNDEFINED,
@@ -21,54 +20,59 @@ import {
 import { type ExtendNode, parse } from "acorn"
 import {
 	Functions,
+	Platform,
+	SI_PREFIX_SCALE,
 	acquireConditionally,
 	anyToError,
 	clear,
 	consumeEvent,
 	deepFreeze,
+	deopaque,
+	dynamicRequire,
 	getKeyModifiers,
 	inSet,
 	logError,
 	logFormat,
+	notice2,
+	printError,
 	promisePromise,
 	remove,
 	replaceAllRegex,
 	sleep2,
-	spawnPromise,
 	typedKeys,
 	typedOwnKeys,
-	writePromise,
-} from "../utils/util"
+} from "obsidian-plugin-library"
 import type { IMarker, Terminal } from "xterm"
 import inspect, { type Options } from "browser-util-inspect"
 import { isEmpty, isNil, isUndefined, noop } from "lodash-es"
-import { notice2, printError } from "sources/utils/obsidian"
+import { spawnPromise, writePromise } from "../util"
 import AsyncLock from "async-lock"
 import type { AsyncOrSync } from "ts-essentials"
+import { BUNDLE } from "../import"
 import type { DeveloperConsoleContext } from "obsidian-terminal"
 import { DisposerAddon } from "./emulator-addons"
 import type { FileResult } from "tmp-promise"
-import type { Log } from "sources/patches"
+import type { Log } from "../patches"
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
 } from "node:child_process"
-import { Platform } from "sources/utils/platforms"
 import type { Program } from "estree"
 import type { TerminalPlugin } from "../main"
 import ansi from "ansi-escape-sequences"
-import { deopaque } from "sources/utils/types"
-import { dynamicRequire } from "../import"
 import unixPseudoterminalPy from "./unix_pseudoterminal.py"
 import win32ResizerPy from "./win32_resizer.py"
 
 const
-	childProcess =
-		dynamicRequire<typeof import("node:child_process")>("node:child_process"),
-	fsPromises =
-		dynamicRequire<typeof import("node:fs/promises")>("node:fs/promises"),
-	process = dynamicRequire<typeof import("node:process")>("node:process"),
-	stream = dynamicRequire<typeof import("node:stream")>("node:stream"),
-	tmpPromise = dynamicRequire<typeof import("tmp-promise")>("tmp-promise")
+	childProcess = dynamicRequire<typeof import("node:child_process")
+	>(BUNDLE, "node:child_process"),
+	fsPromises = dynamicRequire<typeof import("node:fs/promises")
+	>(BUNDLE, "node:fs/promises"),
+	process = dynamicRequire<typeof import("node:process")
+	>(BUNDLE, "node:process"),
+	stream = dynamicRequire<typeof import("node:stream")
+	>(BUNDLE, "node:stream"),
+	tmpPromise = dynamicRequire<typeof import("tmp-promise")
+	>(BUNDLE, "tmp-promise")
 
 async function clearTerminal(terminal: Terminal, keep = false): Promise<void> {
 	const { rows } = terminal
@@ -643,7 +647,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 	protected readonly resizer
 
 	public constructor(
-		protected readonly plugin: TerminalPlugin,
+		protected readonly context: TerminalPlugin,
 		{
 			args,
 			cwd,
@@ -654,8 +658,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 	) {
 		this.conhost = useWin32Conhost ?? false
 		const { conhost } = this,
-			{ language } = plugin,
-			{ i18n } = language,
+			{ language: { i18n }, settings } = context,
 			resizerInitial = (async (): Promise<PipedChildProcess | null> => {
 				if (isNil(pythonExecutable)) { return null }
 				const ret = await spawnPromise(async () =>
@@ -683,8 +686,8 @@ class WindowsPseudoterminal implements Pseudoterminal {
 										interpolation: { escapeValue: false },
 									},
 								),
-								plugin.settings.errorNoticeTimeout,
-								plugin,
+								settings.copy.errorNoticeTimeout,
+								context,
 							)
 						}
 					}).stderr.on("data", (chunk: Buffer | string) => {
@@ -754,7 +757,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 								printError(
 									error0,
 									() => i18n.t("errors.error-spawning-resizer"),
-									plugin,
+									context,
 								)
 								throw error0
 							}),
@@ -812,13 +815,13 @@ class WindowsPseudoterminal implements Pseudoterminal {
 
 	public async kill(): Promise<void> {
 		if (!(await this.shell).kill()) {
-			throw new Error(this.plugin.language
+			throw new Error(this.context.language
 				.i18n.t("errors.error-killing-pseudoterminal"))
 		}
 	}
 
 	public async resize(columns: number, rows: number): Promise<void> {
-		const { resizer, plugin } = this,
+		const { resizer, context: plugin } = this,
 			resizer0 = await resizer
 		if (!resizer0) {
 			throw new Error(plugin.language.i18n.t("errors.resizer-disabled"))

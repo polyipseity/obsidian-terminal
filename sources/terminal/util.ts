@@ -10,22 +10,24 @@ import {
 	acquireConditionally,
 	cartesianProduct,
 	clear,
+	codePoint,
 	deepFreeze,
+	dynamicRequireLazy,
 	insertAt,
 	lazyProxy,
 	rangeCodePoint,
 	removeAt,
 	replaceAllRegex,
-} from "sources/utils/util"
+} from "obsidian-plugin-library"
 import { escapeRegExp, isUndefined, range } from "lodash-es"
 import AsyncLock from "async-lock"
-import { MAX_LOCK_PENDING } from "sources/magic"
+import { BUNDLE } from "../import"
+import { MAX_LOCK_PENDING } from "../magic"
 import ansi from "ansi-escape-sequences"
-import { codePoint } from "sources/utils/types"
-import { dynamicRequireLazy } from "sources/imports"
 import { Set as valueSet } from "immutable"
 
-const xterm = dynamicRequireLazy<typeof import("xterm")>("xterm")
+const xterm = dynamicRequireLazy<typeof import("xterm")
+>(BUNDLE, "xterm")
 
 type IFunctionIdentifier0 = DeepReadonly<DeepRequired<IFunctionIdentifier>>
 export const ESCAPE_SEQUENCE_INTRODUCER = "\u001b" as const

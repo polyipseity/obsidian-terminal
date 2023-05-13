@@ -1,6 +1,9 @@
 import { type Plugin, getIcon } from "obsidian"
-import { UnnamespacedID, addIcon } from "./utils/obsidian"
-import { registerIcon, registerLucideIcon } from "obsidian-plugin-library"
+import {
+	UnnamespacedID,
+	registerIcon,
+	registerLucideIcon,
+} from "obsidian-plugin-library"
 import { siLinux, siMacos, siWindows } from "simple-icons"
 
 export function loadIcons(context: Plugin): void {
@@ -17,8 +20,8 @@ export function loadIcons(context: Plugin): void {
 		windows: siWindows,
 	})) {
 		registerIcon(
-			plugin,
-			new UnnamespacedID(key).namespaced(plugin),
+			context,
+			new UnnamespacedID(key).namespaced(context),
 			value.svg,
 		)
 	}

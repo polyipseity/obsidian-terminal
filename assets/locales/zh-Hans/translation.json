@@ -129,6 +129,7 @@
 		},
 		"donate": "捐赠",
 		"executable": "可执行文件",
+		"exist": "存在",
 		"exit": "退出",
 		"file-extensions": {
 			"HTML": "超文本标记语言"

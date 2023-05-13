@@ -3,7 +3,7 @@
 <script context="module" lang="typescript">
 	import { Direction, type Params } from "./find";
 	import type { DeepWritable } from "ts-essentials";
-	import { getKeyModifiers } from "sources/utils/util";
+	import { getKeyModifiers } from "obsidian-plugin-library";
 	import { t as i18t } from "i18next";
 	import { isEmpty } from "lodash-es";
 	import { setIcon } from "obsidian";

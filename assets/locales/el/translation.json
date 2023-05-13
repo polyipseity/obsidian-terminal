@@ -133,6 +133,7 @@
 		},
 		"donate": "donate",
 		"executable": "executable",
+		"exist": "exist",
 		"exist_singular": "exists",
 		"exit": "exit",
 		"exit_past": "exited",

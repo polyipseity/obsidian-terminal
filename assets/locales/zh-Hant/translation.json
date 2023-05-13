@@ -129,6 +129,7 @@
 		},
 		"donate": "贊助",
 		"executable": "執行檔",
+		"exist": "存在",
 		"exit": "退出",
 		"file-extensions": {
 			"HTML": "超文件標示語言"

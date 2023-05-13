@@ -1,67 +1,50 @@
 import {
-	type ButtonComponent,
-	Modal,
-	type Setting,
-	type ValueComponent,
-} from "obsidian"
-import {
 	CHECK_EXECUTABLE_WAIT,
 	DEFAULT_PYTHONIOENCODING,
+} from "./magic"
+import {
 	DISABLED_TOOLTIP,
-	DOMClasses,
-	JSON_STRINGIFY_SPACE,
+	EditDataModal,
+	ListModal,
+	Platform,
 	SI_PREFIX_SCALE,
-} from "sources/magic"
+	UpdatableUI,
+	anyToError,
+	clearProperties,
+	cloneAsWritable,
+	dynamicRequire,
+	linkSetting,
+	notice2,
+	printError,
+	randomNotIn,
+	resetButton,
+	setTextToEnum,
+	unexpected,
+	useSettings,
+	useSubsettings,
+} from "obsidian-plugin-library"
 import {
 	PROFILE_PRESETS,
 	PROFILE_PRESET_ORDERED_KEYS,
-} from "sources/settings/profile-presets"
-import {
-	UpdatableUI,
-	notice2,
-	printError,
-	statusUI,
-	useSettings,
-	useSubsettings,
-} from "sources/utils/obsidian"
-import {
-	anyToError,
-	bracket,
-	clearProperties,
-	cloneAsWritable,
-	consumeEvent,
-	createChildElement,
-	deepFreeze,
-	randomNotIn,
-	removeAt,
-	requireNonNil,
-	swap,
-	typedStructuredClone,
-	unexpected,
-} from "sources/utils/util"
-import { constant, identity, isUndefined } from "lodash-es"
-import {
-	dropdownSelect,
-	linkSetting,
-	resetButton,
-	setTextToEnum,
-} from "./settings"
+} from "./settings/profile-presets"
+import { identity, isUndefined } from "lodash-es"
+import { BUNDLE } from "./import"
 import type { DeepWritable } from "ts-essentials"
-import type { Fixed } from "./fixers"
-import { PROFILE_PROPERTIES } from "sources/settings/profile-properties"
-import { Platform } from "sources/utils/platforms"
-import { Pseudoterminal } from "sources/terminal/pseudoterminal"
+import { Modal } from "obsidian"
+import { PROFILE_PROPERTIES } from "./settings/profile-properties"
+import { Pseudoterminal } from "./terminal/pseudoterminal"
 import SemVer from "semver/classes/semver"
-import { Settings } from "sources/settings/data"
-import type { TerminalPlugin } from "sources/main"
-import { dynamicRequire } from "sources/imports"
+import { Settings } from "./settings-data"
+import type { TerminalPlugin } from "./main"
 import semverCoerce from "semver/functions/coerce"
 
 const
-	childProcess =
-		dynamicRequire<typeof import("node:child_process")>("node:child_process"),
-	process = dynamicRequire<typeof import("node:process")>("node:process"),
-	util = dynamicRequire<typeof import("node:util")>("node:util"),
+	childProcess = dynamicRequire<typeof import("node:child_process")
+	>(BUNDLE, "node:child_process"),
+	process = dynamicRequire<typeof import("node:process")
+	>(BUNDLE, "node:process"),
+	util = dynamicRequire<typeof import("node:util")
+	>(BUNDLE, "node:util"),
 	// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 	execFileP = (async () =>
 		(await util).promisify((await childProcess).execFile))()
@@ -75,7 +58,7 @@ export class ProfileModal extends Modal {
 	#preset = NaN
 
 	public constructor(
-		protected readonly plugin: TerminalPlugin,
+		protected readonly context: TerminalPlugin,
 		data: Settings.Profile,
 		callback: (data_: DeepWritable<typeof data>) => unknown,
 		presets: readonly {
@@ -84,12 +67,12 @@ export class ProfileModal extends Modal {
 		}[] = PROFILE_PRESET_ORDERED_KEYS
 			.map(key => ({
 				get name(): string {
-					return plugin.language.i18n.t(`profile-presets.${key}`)
+					return context.language.i18n.t(`profile-presets.${key}`)
 				},
 				value: PROFILE_PRESETS[key],
 			})),
 	) {
-		super(plugin.app)
+		super(context.app)
 		this.data = cloneAsWritable(data)
 		this.#callback = callback
 		this.#presets = presets
@@ -97,10 +80,10 @@ export class ProfileModal extends Modal {
 
 	public override onOpen(): void {
 		super.onOpen()
-		const { plugin, ui, data, titleEl, modalUI } = this,
+		const { context, ui, data, titleEl, modalUI } = this,
 			{ element: listEl, remover: listElRemover } = useSettings(this.contentEl),
 			profile = data,
-			{ language } = plugin,
+			{ language } = context,
 			{ i18n, onChangeLanguage } = language
 		modalUI.new(() => titleEl, ele => {
 			ele.textContent = i18n.t("components.profile.title", {
@@ -213,7 +196,7 @@ export class ProfileModal extends Modal {
 							.setTooltip(i18n.t("components.profile.data-edit"))
 							.onClick(() => {
 								new EditDataModal(
-									plugin,
+									context,
 									profile,
 									Settings.Profile.fix,
 									{
@@ -249,7 +232,7 @@ export class ProfileModal extends Modal {
 
 	protected async postMutate(): Promise<void> {
 		const { data, modalUI, ui } = this,
-			cb = this.#callback(typedStructuredClone(data))
+			cb = this.#callback(cloneAsWritable(data))
 		modalUI.update()
 		ui.update()
 		await cb
@@ -267,9 +250,9 @@ export class ProfileModal extends Modal {
 	}
 
 	protected setupTypedUI(ui: UpdatableUI, element: HTMLElement): void {
-		const { plugin, data } = this,
+		const { context, context: { settings }, data } = this,
 			profile = data,
-			{ i18n } = plugin.language
+			{ i18n } = context.language
 		ui.destroy()
 		if (profile.type === "invalid") { return }
 		ui.newSetting(element, setting => {
@@ -302,7 +285,7 @@ export class ProfileModal extends Modal {
 					.setTooltip(i18n.t("components.profile.success-exit-codes-edit"))
 					.onClick(() => {
 						new ListModal(
-							plugin,
+							context,
 							ListModal.stringInputter({
 								back: identity<string>,
 								forth: identity,
@@ -373,7 +356,7 @@ export class ProfileModal extends Modal {
 								.t(`components.profile.${profile.type}.arguments-edit`))
 							.onClick(() => {
 								new ListModal(
-									plugin,
+									context,
 									ListModal.stringInputter({
 										back: identity<string>,
 										forth: identity,
@@ -498,14 +481,14 @@ export class ProfileModal extends Modal {
 															{ loose: true },
 														).version,
 													}),
-													plugin.settings.noticeTimeout,
-													plugin,
+													settings.copy.noticeTimeout,
+													context,
 												)
 											} catch (error) {
 												printError(
 													anyToError(error),
 													() => i18n.t("errors.error-checking-Python"),
-													plugin,
+													context,
 												)
 											} finally {
 												checkingPython = false
@@ -609,7 +592,7 @@ export class ProfileListModal
 										id = randomNotIn([...dataKeys.values()], keygen),
 									)
 								}
-								return [id, typedStructuredClone(profile)]
+								return [id, cloneAsWritable(profile)]
 							}))
 					},
 				} satisfies ProfileListModal.PredefinedOptions,

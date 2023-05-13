@@ -1,8 +1,13 @@
-import { EventEmitterLite, Functions, deepFreeze } from "./utils/util"
+import {
+	EventEmitterLite,
+	Functions,
+	correctType,
+	deepFreeze,
+	dynamicRequireSync,
+} from "obsidian-plugin-library"
+import { BUNDLE } from "./import"
 import type { Workspace } from "obsidian"
 import { around } from "monkey-around"
-import { correctType } from "./utils/types"
-import { dynamicRequireSync } from "./import"
 import { noop } from "ts-essentials"
 
 export class Log {
@@ -140,7 +145,7 @@ function patchRequire(self: typeof globalThis): () => void {
 					return proto.call(this, id)
 				} catch (error) {
 					self.console.debug(error)
-					return dynamicRequireSync(id)
+					return dynamicRequireSync(BUNDLE, id)
 				}
 			}, proto)
 		},

@@ -40,6 +40,7 @@ const ARGV_PRODUCTION = 2,
 		loader: {
 			".json": "compressed-json",
 			".md": "compressed-text",
+			".py": "compressed-text",
 		},
 		logLevel: "info",
 		logLimit: 0,

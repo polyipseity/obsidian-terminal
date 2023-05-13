@@ -1,4 +1,9 @@
-import { type AnyObject, launderUnchecked } from "sources/utils/types"
+import {
+	type AnyObject,
+	Platform,
+	deepFreeze,
+	launderUnchecked,
+} from "obsidian-plugin-library"
 import {
 	Pseudoterminal,
 	RefPsuedoterminal,
@@ -9,11 +14,9 @@ import {
 	spawnExternalTerminalEmulator,
 } from "../terminal/emulator"
 import type { AsyncOrSync } from "ts-essentials"
-import { Platform } from "sources/utils/platforms"
-import type { Settings } from "sources/settings/data"
-import type { TerminalPlugin } from "sources/main"
-import { UNDEFINED } from "sources/magic"
-import { deepFreeze } from "sources/utils/util"
+import type { Settings } from "../settings-data"
+import type { TerminalPlugin } from "../main"
+import { UNDEFINED } from "../magic"
 
 export interface OpenOptions {
 	readonly cwd?: string | null
