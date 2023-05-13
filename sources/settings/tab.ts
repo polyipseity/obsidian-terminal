@@ -1,7 +1,7 @@
 import {
 	EditDataModal,
 	ListModal,
-} from "sources/ui/modals"
+} from "../ui/modals"
 import {
 	cloneAsWritable,
 	createChildElement,
@@ -16,12 +16,12 @@ import {
 	setTextToNumber,
 } from "../ui/settings"
 import { identity, isEmpty } from "lodash-es"
-import { LANGUAGES } from "assets/locales"
+import { LANGUAGES } from "../../assets/locales"
 import type { PLACEHOLDERPlugin } from "../main"
 import { PluginSettingTab } from "obsidian"
 import { Settings } from "./data"
-import { UpdatableUI } from "sources/utils/obsidian"
-import { openDocumentation } from "sources/documentation/load"
+import { UpdatableUI } from "../utils/obsidian"
+import { openDocumentation } from "../documentation/load"
 import semverLt from "semver/functions/lt"
 
 export class SettingTab extends PluginSettingTab {

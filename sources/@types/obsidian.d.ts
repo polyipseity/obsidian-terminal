@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-empty-interface */
 import type { PluginManifest, SettingTab } from "obsidian"
-import type { Private } from "sources/utils/private"
+import type { Private } from "../utils/private"
 
 declare module "obsidian" {
 	interface App extends Private<$App> { }

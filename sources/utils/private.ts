@@ -1,4 +1,4 @@
-import type { PLACEHOLDERPlugin } from "sources/main"
+import type { PLACEHOLDERPlugin } from "../main"
 
 declare const PRIVATE: unique symbol
 export interface Private<T> { readonly [PRIVATE]: T }

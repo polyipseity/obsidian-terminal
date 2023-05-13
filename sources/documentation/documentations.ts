@@ -1,11 +1,11 @@
-import { deepFreeze, typedKeys } from "sources/utils/util"
-import { DOMClasses } from "sources/magic"
+import { deepFreeze, typedKeys } from "../utils/util"
+import { DOMClasses } from "../magic"
 import { DocumentationMarkdownView } from "./view"
-import type { PLACEHOLDERPlugin } from "sources/main"
-import changelogMd from "CHANGELOG.md"
-import { newCollabrativeState } from "sources/utils/obsidian"
-import readmeMd from "README.md"
-import { revealPrivate } from "sources/utils/private"
+import type { PLACEHOLDERPlugin } from "../main"
+import changelogMd from "../../CHANGELOG.md"
+import { newCollabrativeState } from "../utils/obsidian"
+import readmeMd from "../../README.md"
+import { revealPrivate } from "../utils/private"
 
 export const DOCUMENTATIONS = deepFreeze({
 	async changelog(plugin: PLACEHOLDERPlugin, active: boolean) {

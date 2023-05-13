@@ -15,7 +15,7 @@ import {
 	addIcon as addIcon0,
 	removeIcon,
 } from "obsidian"
-import { DOMClasses, NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "sources/magic"
+import { DOMClasses, NOTICE_NO_TIMEOUT, SI_PREFIX_SCALE } from "../magic"
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem"
 import {
 	Functions,
@@ -30,8 +30,8 @@ import {
 } from "./util"
 import { cloneDeep, constant, isUndefined } from "lodash-es"
 import { revealPrivate, revealPrivateAsync } from "./private"
-import { DEFAULT_LANGUAGE } from "assets/locales"
-import type { PLACEHOLDERPlugin } from "sources/main"
+import { DEFAULT_LANGUAGE } from "../../assets/locales"
+import type { PLACEHOLDERPlugin } from "../main"
 import { Platform } from "./platforms"
 import { around } from "monkey-around"
 import { saveAs } from "file-saver"

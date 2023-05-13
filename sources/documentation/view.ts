@@ -1,4 +1,4 @@
-import { type Fixed, fixTyped, markFixed } from "sources/ui/fixers"
+import { type Fixed, fixTyped, markFixed } from "../ui/fixers"
 import {
 	ItemView,
 	MarkdownRenderer,
@@ -12,12 +12,12 @@ import {
 	recordViewStateHistory,
 	updateDisplayText,
 	writeStateCollabratively,
-} from "sources/utils/obsidian"
-import { capitalize, createChildElement, deepFreeze } from "sources/utils/util"
-import { DOMClasses } from "sources/magic"
-import type { NamespacedTranslationKey } from "sources/i18n"
-import type { PLACEHOLDERPlugin } from "sources/main"
-import { launderUnchecked } from "sources/utils/types"
+} from "../utils/obsidian"
+import { capitalize, createChildElement, deepFreeze } from "../utils/util"
+import { DOMClasses } from "../magic"
+import type { NamespacedTranslationKey } from "../i18n"
+import type { PLACEHOLDERPlugin } from "../main"
+import { launderUnchecked } from "../utils/types"
 
 export class DocumentationMarkdownView extends ItemView {
 	public static readonly type = new UnnamespacedID("documentation")

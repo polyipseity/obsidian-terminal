@@ -3,25 +3,25 @@ import {
 	fixInSet,
 	fixTyped,
 	markFixed,
-} from "sources/ui/fixers"
+} from "../ui/fixers"
 import {
 	NULL_SEM_VER_STRING,
 	type SemVerString,
 	launderUnchecked,
 	opaqueOrDefault,
 	semVerString,
-} from "sources/utils/types"
+} from "../utils/types"
 import {
 	cloneAsWritable,
 	deepFreeze,
 } from "../utils/util"
-import { LANGUAGES } from "assets/locales"
+import { LANGUAGES } from "../../assets/locales"
 import type {
 	MarkOptional,
 } from "ts-essentials"
 import {
 	NOTICE_NO_TIMEOUT,
-} from "sources/magic"
+} from "../magic"
 
 export interface Settings {
 	readonly language: Settings.DefaultableLanguage

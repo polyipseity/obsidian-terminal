@@ -25,7 +25,7 @@ import {
 	MAX_LOCK_PENDING,
 	SI_PREFIX_SCALE,
 	UNDEFINED,
-} from "sources/magic"
+} from "../magic"
 import {
 	type PrimitiveTypeE,
 	type TypeofMapE,

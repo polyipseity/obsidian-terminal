@@ -3,9 +3,9 @@ import {
 	type PrimitiveOfE,
 	genericTypeofGuardE,
 	primitiveOfE,
-} from "sources/utils/typeof"
-import type { ReadonlyTuple, Unchecked } from "sources/utils/types"
-import { inSet, isHomogenousArray, lazyInit } from "sources/utils/util"
+} from "../utils/typeof"
+import type { ReadonlyTuple, Unchecked } from "../utils/types"
+import { inSet, isHomogenousArray, lazyInit } from "../utils/util"
 import type { DeepWritable } from "ts-essentials"
 import deepEqual from "deep-equal"
 

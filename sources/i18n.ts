@@ -5,7 +5,7 @@ import {
 	NAMESPACES,
 	RESOURCES,
 	RETURN_NULL,
-} from "assets/locales"
+} from "../assets/locales"
 import { EventEmitterLite, anyToError, inSet, typedIn } from "./utils/util"
 import i18next, {
 	type TFuncKey,

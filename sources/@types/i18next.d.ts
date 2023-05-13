@@ -2,7 +2,7 @@ import type {
 	DEFAULT_NAMESPACE,
 	DefaultResources,
 	RETURN_NULL,
-} from "assets/locales"
+} from "../../assets/locales"
 
 declare module "i18next" {
 	interface CustomTypeOptions {

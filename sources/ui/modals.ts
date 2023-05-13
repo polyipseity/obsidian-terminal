@@ -9,13 +9,13 @@ import {
 	DOMClasses,
 	JSON_STRINGIFY_SPACE,
 	SI_PREFIX_SCALE,
-} from "sources/magic"
+} from "../magic"
 import {
 	UpdatableUI,
 	statusUI,
 	useSettings,
 	useSubsettings,
-} from "sources/utils/obsidian"
+} from "../utils/obsidian"
 import {
 	bracket,
 	clearProperties,
@@ -28,7 +28,7 @@ import {
 	swap,
 	typedStructuredClone,
 	unexpected,
-} from "sources/utils/util"
+} from "../utils/util"
 import {
 	dropdownSelect,
 	linkSetting,
@@ -36,7 +36,7 @@ import {
 } from "./settings"
 import type { DeepWritable } from "ts-essentials"
 import type { Fixed } from "./fixers"
-import type { PLACEHOLDERPlugin } from "sources/main"
+import type { PLACEHOLDERPlugin } from "../main"
 import { constant } from "lodash-es"
 
 export function makeModalDynamicWidth(

@@ -3,10 +3,10 @@ import {
 	DOCUMENTATION_KEYS,
 	type DocumentationKeys,
 } from "./documentations"
-import { addCommand, printError } from "sources/utils/obsidian"
-import { anyToError, logError } from "sources/utils/util"
+import { addCommand, printError } from "../utils/obsidian"
+import { anyToError, logError } from "../utils/util"
 import { DocumentationMarkdownView } from "./view"
-import type { PLACEHOLDERPlugin } from "sources/main"
+import type { PLACEHOLDERPlugin } from "../main"
 import semverLt from "semver/functions/lt"
 
 export function loadDocumentation(

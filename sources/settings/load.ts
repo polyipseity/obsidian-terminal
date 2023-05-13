@@ -2,20 +2,20 @@ import {
 	DOUBLE_ACTION_WAIT,
 	FileExtensions,
 	JSON_STRINGIFY_SPACE,
-} from "sources/magic"
+} from "../magic"
 import {
 	addCommand,
 	cleanFrontmatterCache,
 	printError,
-} from "sources/utils/obsidian"
+} from "../utils/obsidian"
 import {
 	anyToError,
 	clearProperties,
 	createChildElement,
 	logError,
-} from "sources/utils/util"
-import { DialogModal } from "sources/ui/modals"
-import type { PLACEHOLDERPlugin } from "sources/main"
+} from "../utils/util"
+import { DialogModal } from "../ui/modals"
+import type { PLACEHOLDERPlugin } from "../main"
 import { SettingTab } from "./tab"
 import deepEqual from "deep-equal"
 import { isEmpty } from "lodash-es"
