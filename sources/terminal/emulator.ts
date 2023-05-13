@@ -10,7 +10,7 @@ import {
 	TERMINAL_PTY_RESIZE_WAIT,
 } from "../magic"
 import { asyncDebounce, deepFreeze, spawnPromise } from "../utils/util"
-import { dynamicRequire, dynamicRequireLazy, importable } from "../imports"
+import { dynamicRequire, dynamicRequireLazy, importable } from "../import"
 import type { AsyncOrSync } from "ts-essentials"
 import type { ChildProcessByStdio } from "node:child_process"
 import type { Pseudoterminal } from "./pseudoterminal"

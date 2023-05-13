@@ -2,7 +2,7 @@ import { EventEmitterLite, Functions, deepFreeze } from "./utils/util"
 import type { Workspace } from "obsidian"
 import { around } from "monkey-around"
 import { correctType } from "./utils/types"
-import { dynamicRequireSync } from "./imports"
+import { dynamicRequireSync } from "./import"
 import { noop } from "ts-essentials"
 
 export class Log {

@@ -57,7 +57,7 @@ import type { Program } from "estree"
 import type { TerminalPlugin } from "../main"
 import ansi from "ansi-escape-sequences"
 import { deopaque } from "sources/utils/types"
-import { dynamicRequire } from "../imports"
+import { dynamicRequire } from "../import"
 import unixPseudoterminalPy from "./unix_pseudoterminal.py"
 import win32ResizerPy from "./win32_resizer.py"
 

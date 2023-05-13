@@ -7,7 +7,6 @@
     "allowUnusedLabels": false,
     "alwaysStrict": true,
     "assumeChangesOnlyAffectDirectDependencies": false,
-    "baseUrl": "./",
     "checkJs": true,
     "composite": false,
     "declaration": false,
