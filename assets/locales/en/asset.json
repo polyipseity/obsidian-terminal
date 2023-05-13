@@ -1,66 +1,22 @@
 {
 	"commands": {
-		"export-settings-clipboard-icon": "$t(asset:generic.output-to-clipboard-icon)",
-		"export-settings-current-file-icon": "$t(asset:generic.output-to-file-icon)",
-		"import-settings-clipboard-icon": "$t(asset:generic.input-from-clipboard-icon)",
-		"import-settings-current-file-icon": "$t(asset:generic.input-from-file-icon)",
 		"open-documentation-changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
 		"open-documentation-donate-icon": "$t(asset:generic.documentations.donate-icon)",
 		"open-documentation-readme-icon": "$t(asset:generic.documentations.readme-icon)"
 	},
-	"components": {
-		"dialog": {
-			"cancel-icon": "$t(asset:generic.cancel-icon)",
-			"confirm-icon": "$t(asset:generic.confirm-icon)"
-		},
-		"edit-data": {
-			"data-icon": "$t(asset:generic.data-icon)",
-			"export-to-clipboard-icon": "$t(asset:generic.output-to-clipboard-icon)",
-			"import-from-clipboard-icon": "$t(asset:generic.input-from-clipboard-icon)"
-		},
-		"list": {
-			"append-icon": "$t(asset:generic.add-icon)",
-			"move-down-icon": "$t(asset:generic.next-icon)",
-			"move-up-icon": "$t(asset:generic.previous-icon)",
-			"prepend-icon": "$t(asset:generic.add-icon)",
-			"remove-icon": "$t(asset:generic.remove-icon)"
-		}
-	},
 	"generic": {
-		"add-icon": "plus",
-		"cancel-icon": "x",
-		"confirm-icon": "check",
-		"data-icon": "curly-braces",
 		"documentations": {
 			"changelog-icon": "file-text",
 			"donate-icon": "heart",
 			"readme-icon": "file-question"
-		},
-		"input-from-clipboard-icon": "clipboard-paste",
-		"input-from-file-icon": "file-output",
-		"load-icon": "loader",
-		"next-icon": "arrow-down",
-		"output-to-clipboard-icon": "clipboard-copy",
-		"output-to-file-icon": "file-input",
-		"previous-icon": "arrow-up",
-		"remove-icon": "minus"
+		}
 	},
 	"settings": {
-		"all-settings-actions": {
-			"edit-icon": "file-edit",
-			"recover-icon": "file-x",
-			"reload-icon": "$t(asset:generic.load-icon)",
-			"reset-icon": "reset",
-			"undo-icon": "undo"
-		},
 		"documentations": {
 			"changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
 			"donate-icon": "$t(asset:generic.documentations.donate-icon)",
 			"readme-icon": "$t(asset:generic.documentations.readme-icon)"
 		},
-		"error-notice-timeout-icon": "$t(asset:settings.notice-timeout-icon)",
-		"language-icon": "languages",
-		"notice-timeout-icon": "timer",
 		"open-changelog-on-update-icon": "$t(asset:generic.documentations.changelog-icon)"
 	}
 }

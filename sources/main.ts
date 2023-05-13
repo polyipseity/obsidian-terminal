@@ -1,40 +1,25 @@
 import { type App, Plugin, type PluginManifest } from "obsidian"
-import type { AsyncOrSync, DeepWritable } from "ts-essentials"
 import {
-	EventEmitterLite,
-	asyncDebounce,
-	copyOnWriteAsync,
-	deepFreeze,
-	logError,
-} from "./utils/util"
-import {
-	JSON_STRINGIFY_SPACE,
-	SAVE_SETTINGS_WAIT,
-	SI_PREFIX_SCALE,
-} from "./magic"
-import { constant, isNil, throttle } from "lodash-es"
-import { LanguageManager } from "./i18n"
-import { Settings } from "./settings/data"
-import { StatusBarHider } from "./status-bar"
-import { loadDocumentation } from "./documentation/load"
+	LanguageManager,
+	type PluginContext,
+	SettingsManager,
+	StatusBarHider,
+	createI18n,
+	semVerString,
+} from "obsidian-plugin-library"
+import { Settings, loadSettings } from "./settings"
+import { PluginLocales } from "../assets/locales"
+import { isNil } from "lodash-es"
+import { loadDocumentations } from "./documentations"
 import { loadIcons } from "./icons"
-import { loadSettings } from "./settings/load"
-import { printMalformedData } from "./utils/obsidian"
-import { semVerString } from "./utils/types"
 
-export class PLACEHOLDERPlugin extends Plugin {
+export class PLACEHOLDERPlugin
+	extends Plugin
+	implements PluginContext<Settings> {
 	public readonly version
-	public readonly language = new LanguageManager(this)
+	public readonly settings: SettingsManager<Settings>
+	public readonly language: LanguageManager
 	public readonly statusBarHider = new StatusBarHider(this)
-
-	public readonly saveSettings = asyncDebounce(throttle((
-		resolve: (value: AsyncOrSync<void>) => void,
-	) => {
-		resolve(this.saveData(this.settings))
-	}, SAVE_SETTINGS_WAIT * SI_PREFIX_SCALE))
-
-	readonly #onMutateSettings = new EventEmitterLite<readonly [Settings]>()
-	#settings: Settings = deepFreeze(Settings.fix(Settings.DEFAULT).value)
 
 	public constructor(app: App, manifest: PluginManifest) {
 		super(app, manifest)
@@ -44,73 +29,46 @@ export class PLACEHOLDERPlugin extends Plugin {
 			self.console.warn(error)
 			this.version = null
 		}
+		this.settings = new SettingsManager(
+			this,
+			Settings.fix(Settings.DEFAULT).value,
+			Settings.fix,
+		)
+		this.language = new LanguageManager(
+			this,
+			async () => createI18n(
+				PluginLocales.RESOURCES,
+				PluginLocales.FORMATTERS,
+				{
+					defaultNS: PluginLocales.DEFAULT_NAMESPACE,
+					fallbackLng: PluginLocales.FALLBACK_LANGUAGES,
+					returnNull: PluginLocales.RETURN_NULL,
+				},
+			),
+		)
 	}
 
-	public get settings(): Settings {
-		return this.#settings
-	}
-
-	public async mutateSettings(mutator: (
-		settings: DeepWritable<Settings>) => unknown): Promise<void> {
-		await this.#onMutateSettings.emit(this.#settings =
-			await copyOnWriteAsync(this.#settings, mutator))
-	}
-
-	public async loadSettings(
-		settings: DeepWritable<Settings>,
-		loader: () => unknown = async (): Promise<unknown> => this.loadData(),
-	): Promise<void> {
-		const loaded: unknown = await loader(),
-			{ value, valid } = Settings.fix(loaded)
-		Object.assign(settings, value)
-		if (!isNil(loaded) && !valid) {
-			printMalformedData(this, loaded, value)
-			settings.recovery[new Date().toISOString()] =
-				JSON.stringify(loaded, null, JSON_STRINGIFY_SPACE)
-		}
-	}
-
-	public on<T>(
-		_event: "mutate-settings",
-		accessor: (settings: Settings) => T,
-		callback: (
-			cur: T,
-			prev: T,
-			settings: Settings,
-		) => unknown,
-	): () => void {
-		let prev = accessor(this.settings)
-		return this.#onMutateSettings
-			.listen(async (settings: Settings): Promise<void> => {
-				const cur = accessor(settings),
-					prev0 = prev
-				if (prev0 !== cur) {
-					prev = cur
-					await callback(cur, prev0, settings)
-				}
+	public displayName(unlocalized = false): string {
+		return unlocalized
+			? this.language.i18n.t("name", {
+				interpolation: { escapeValue: false },
+				lng: PluginLocales.DEFAULT_LANGUAGE,
 			})
+			: this.language.i18n.t("name")
 	}
 
 	public override onload(): void {
-		super.onload();
+		const loaded: Promise<unknown> = this.loadData()
+		super.onload()
+		const { language, settings } = this;
 		(async (): Promise<void> => {
 			try {
-				const loaded: Promise<unknown> = this.loadData()
-				// Initialization
+				await Promise.all([language.onLoaded, settings.onLoaded])
 				await Promise.all([
-					this.mutateSettings(async settings => this.loadSettings(
-						settings,
-						constant(loaded),
-					)).then(() => { this.saveSettings().catch(logError) }),
-					this.language.load(),
 					Promise.resolve().then(() => { loadIcons(this) }),
-				])
-				// Modules
-				await Promise.all([
-					Promise.resolve().then(() => { this.statusBarHider.load() }),
-					Promise.resolve().then(() => { loadSettings(this) }),
 					(async (): Promise<void> => {
-						loadDocumentation(this, isNil(await loaded))
+						const docs = loadDocumentations(this, isNil(await loaded))
+						loadSettings(this, docs)
 					})(),
 				])
 			} catch (error) {

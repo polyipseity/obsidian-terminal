@@ -1,116 +1,26 @@
 {
 	"commands": {
-		"export-settings-clipboard": "$t(generic.export)$t(generic.setting)到$t(generic.clipboard)",
-		"export-settings-current-file": "$t(generic.export)$t(generic.setting)到$t(generic.current-file)",
-		"import-settings-clipboard": "從$t(generic.clipboard)$t(generic.import)$t(generic.setting)",
-		"import-settings-current-file": "從$t(generic.current-file)$t(generic.import)$t(generic.setting)",
 		"open-documentation-changelog": "$t(generic.open)$t(generic.documentations.changelog)",
 		"open-documentation-donate": "$t(generic.open)$t(generic.documentations.donate)",
 		"open-documentation-readme": "$t(generic.open)$t(generic.documentations.readme)"
 	},
-	"components": {
-		"dialog": {
-			"cancel": "$t(generic.cancel)",
-			"confirm": "$t(generic.confirm)",
-			"double-confirm-hint": "按<Enter>兩次$t(generic.confirm)。"
-		},
-		"dropdown": {
-			"placeholder": "（未選擇）"
-		},
-		"edit-data": {
-			"data": "$t(generic.data)",
-			"export": "$t(generic.export)",
-			"export-to-clipboard": "$t(generic.export)到$t(generic.clipboard)",
-			"import": "$t(generic.import)",
-			"import-from-clipboard": "從$t(generic.import)$t(generic.import)",
-			"reset": "$t(generic.reset)"
-		},
-		"list": {
-			"append": "後置",
-			"move-down": "下移",
-			"move-up": "上移",
-			"name": "$t(generic.ordinal)",
-			"prepend": "前置",
-			"preset-placeholder": "$t(components.dropdown.placeholder)",
-			"remove": "刪除"
-		}
-	},
-	"dialogs": {
-		"overwrite-existing-frontmatter": "$t(generic.overwrite)$t(generic.exist)的$t(generic.frontmatter)？"
-	},
-	"errors": {
-		"error-exporting-settings": "$t(generic.export)$t(generic.setting)時出錯",
-		"error-importing-settings": "$t(generic.import)$t(generic.setting)時出錯",
-		"error-opening-documentation": "$t(generic.open)$t(generic.documentation)時出錯",
-		"error-processing-frontmatter": "處理$t(generic.frontmatter)時出錯：{{file.path}}",
-		"malformed-data": "$t(generic.data)格式不正確",
-		"missing-interpolation": "名稱為「{{name}}」的缺少插值被替換為「{{value}}」：{{text}}",
-		"missing-translation": "鍵為「{{key}}」的缺少翻譯被替換為「{{value}}」",
-		"private-API-changed": "私有$t(generic.API)改變了",
-		"retry-outdated-frontmatter": "請$t(generic.retry)，因為$t(generic.frontmatter)在$t(generic.background)更新了"
-	},
 	"generic": {
-		"API": "應用程序接口",
-		"app": "應用程式",
-		"background": "後台",
-		"cancel": "取消",
-		"clipboard": "剪貼板",
-		"command": "命令",
-		"command-palette": "$t(generic.command)面板",
-		"confirm": "確認",
-		"current-file": "目前$t(generic.file)",
-		"data": "數據",
-		"disable": "禁用",
 		"documentation": "文檔",
 		"documentations": {
 			"changelog": "變更日誌",
 			"donate": "$t(generic.donate)",
 			"readme": "自述文件"
 		},
-		"donate": "贊助",
-		"edit": "編輯",
-		"exist": "存在",
-		"export": "導出",
-		"file": "檔案",
-		"frontmatter": "前文",
-		"import": "導入",
-		"language": "語言",
-		"notice": "通知",
-		"open": "開啟",
-		"ordinal": "第{{count, number}}",
-		"overwrite": "覆蓋",
-		"plugin": "外掛程式",
-		"reset": "重設",
-		"retry": "重試",
-		"setting": "設置",
-		"timeout": "超時",
-		"use": "使用"
+		"donate": "贊助"
 	},
 	"name": "PLACEHOLDER",
 	"settings": {
-		"all-settings": "所有$t(generic.setting)",
-		"all-settings-actions": {
-			"edit": "$t(generic.edit)",
-			"recover": "復原",
-			"reload": "重新加載",
-			"reset": "$t(generic.reset)",
-			"undo": "復原"
-		},
-		"description": "$t(generic.open)「$t(settings.all-settings)」下的「$t(settings.all-settings-actions.edit)」或$t(generic.use)$t(generic.command-palette)以$t(generic.export)或$t(generic.import)$t(generic.setting)。",
 		"documentation": "$t(generic.documentation)",
 		"documentations": {
 			"changelog": "$t(generic.documentations.changelog)",
 			"donate": "$t(generic.documentations.donate)",
 			"readme": "$t(generic.documentations.readme)"
 		},
-		"error-notice-timeout": "錯誤$t(generic.notice)$t(generic.timeout)（s）",
-		"error-notice-timeout-description": "$t(settings.notice-timeout-description)",
-		"language": "$t(generic.language)",
-		"language-default": "$t(generic.use)$t(generic.app)$t(generic.setting)",
-		"language-description": "僅適用於此$t(generic.plugin)。標有🚧的$t(generic.language)需要您幫助來翻譯！",
-		"notice-timeout": "$t(generic.notice)$t(generic.timeout)（s）",
-		"notice-timeout-description": "設為0 s是無$t(generic.timeout)。設為負數以$t(generic.disable)$t(generic.notice)。",
-		"open-changelog-on-update": "更新時$t(generic.open)$t(generic.documentations.changelog)",
-		"reset": "$t(generic.reset)"
+		"open-changelog-on-update": "更新時$t(generic.open)$t(generic.documentations.changelog)"
 	}
 }

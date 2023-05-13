@@ -1,130 +1,26 @@
 {
 	"commands": {
-		"export-settings-clipboard": "$t(generic.export, capitalize) $t(generic.setting_other) to $t(generic.clipboard)",
-		"export-settings-current-file": "$t(generic.export, capitalize) $t(generic.setting_other) to $t(generic.current-file)",
-		"import-settings-clipboard": "$t(generic.import, capitalize) $t(generic.setting_other) from $t(generic.clipboard)",
-		"import-settings-current-file": "$t(generic.import, capitalize) $t(generic.setting_other) from $t(generic.current-file)",
 		"open-documentation-changelog": "$t(generic.open, capitalize) $t(generic.documentations.changelog)",
 		"open-documentation-donate": "$t(generic.open, capitalize) $t(generic.documentations.donate)",
 		"open-documentation-readme": "$t(generic.open, capitalize) $t(generic.documentations.readme)"
 	},
-	"components": {
-		"dialog": {
-			"cancel": "$t(generic.cancel, capitalize)",
-			"confirm": "$t(generic.confirm, capitalize)",
-			"double-confirm-hint": "Press <Enter> twice to $t(generic.confirm)."
-		},
-		"dropdown": {
-			"placeholder": "(Unselected)"
-		},
-		"edit-data": {
-			"data": "$t(generic.data, capitalize)",
-			"export": "$t(generic.export, capitalize)",
-			"export-to-clipboard": "$t(generic.export, capitalize) to $t(generic.clipboard)",
-			"import": "$t(generic.import, capitalize)",
-			"import-from-clipboard": "$t(generic.import, capitalize) from $t(generic.clipboard)",
-			"reset": "$t(generic.reset, capitalize)"
-		},
-		"list": {
-			"append": "Append",
-			"move-down": "Move down",
-			"move-up": "Move up",
-			"name_few": "$t(generic.ordinal_few, capitalize)",
-			"name_one": "$t(generic.ordinal_one, capitalize)",
-			"name_other": "$t(generic.ordinal_other, capitalize)",
-			"name_two": "$t(generic.ordinal_two, capitalize)",
-			"prepend": "Prepend",
-			"preset-placeholder": "$t(components.dropdown.placeholder)",
-			"remove": "Remove"
-		}
-	},
-	"dialogs": {
-		"overwrite-existing-frontmatter": "$t(generic.overwrite, capitalize) $t(generic.exist_gerund) $t(generic.frontmatter)?"
-	},
-	"errors": {
-		"error-exporting-settings": "Error $t(generic.export_gerund) $t(generic.setting_other)",
-		"error-importing-settings": "Error $t(generic.import_gerund) $t(generic.setting_other)",
-		"error-opening-documentation": "Error $t(generic.open_gerund) $t(generic.documentation)",
-		"error-processing-frontmatter": "Error processing $t(generic.frontmatter): {{file.path}}",
-		"malformed-data": "Malformed $t(generic.data)",
-		"missing-interpolation": "Missing interpolation of name '{{name}}' is replaced by '{{value}}': {{text}}",
-		"missing-translation": "Missing translation of key '{{key}}' is replaced by '{{value}}'",
-		"private-API-changed": "Private $t(generic.API) changed",
-		"retry-outdated-frontmatter": "Please $t(generic.retry) as $t(generic.frontmatter) was updated in the $t(generic.background)"
-	},
 	"generic": {
-		"API": "API",
-		"app": "app",
-		"background": "background",
-		"cancel": "cancel",
-		"clipboard": "clipboard",
-		"command": "command",
-		"command-palette": "$t(generic.command) palette",
-		"confirm": "confirm",
-		"current-file": "current $t(generic.file)",
-		"data": "data",
-		"disable": "disable",
 		"documentation": "documentation",
 		"documentations": {
 			"changelog": "changelog",
 			"donate": "$t(generic.donate)",
 			"readme": "readme"
 		},
-		"donate": "donate",
-		"edit": "edit",
-		"exist": "exist",
-		"exist_gerund": "existing",
-		"export": "export",
-		"export_gerund": "exporting",
-		"file": "file",
-		"frontmatter": "frontmatter",
-		"import": "import",
-		"import_gerund": "importing",
-		"language": "$t(generic.language_one)",
-		"language_one": "language",
-		"language_other": "languages",
-		"notice": "notice",
-		"open": "open",
-		"open_gerund": "opening",
-		"ordinal_few": "{{count, number}}rd",
-		"ordinal_one": "{{count, number}}st",
-		"ordinal_other": "{{count, number}}th",
-		"ordinal_two": "{{count, number}}nd",
-		"overwrite": "overwrite",
-		"plugin": "plugin",
-		"reset": "reset",
-		"retry": "retry",
-		"setting": "$t(generic.setting_one)",
-		"setting_one": "setting",
-		"setting_other": "settings",
-		"timeout": "timeout",
-		"use": "use"
+		"donate": "donate"
 	},
 	"name": "PLACEHOLDER",
 	"settings": {
-		"all-settings": "All $t(generic.setting_other)",
-		"all-settings-actions": {
-			"edit": "$t(generic.edit, capitalize)",
-			"recover": "Recover",
-			"reload": "Reload",
-			"reset": "$t(generic.reset, capitalize)",
-			"undo": "Undo"
-		},
-		"description": "To $t(generic.export) or $t(generic.import) $t(generic.setting_other), open '$t(settings.all-settings-actions.edit)' under '$t(settings.all-settings)' or $t(generic.use) the $t(generic.command-palette).",
 		"documentation": "$t(generic.documentation, capitalize)",
 		"documentations": {
 			"changelog": "$t(generic.documentations.changelog, capitalize)",
 			"donate": "$t(generic.documentations.donate, capitalize)",
 			"readme": "$t(generic.documentations.readme, capitalize)"
 		},
-		"error-notice-timeout": "Error $t(generic.notice) $t(generic.timeout) (s)",
-		"error-notice-timeout-description": "$t(settings.notice-timeout-description)",
-		"language": "$t(generic.language, capitalize)",
-		"language-default": "$t(generic.use, capitalize) $t(generic.app) $t(generic.setting)",
-		"language-description": "Applies to this $t(generic.plugin) only. $t(generic.language_other, capitalize) with 🚧 need your help with translation!",
-		"notice-timeout": "$t(generic.notice, capitalize) $t(generic.timeout) (s)",
-		"notice-timeout-description": "Set to 0 s for no $t(generic.timeout). Set to negative to $t(generic.disable) $t(generic.notice).",
-		"open-changelog-on-update": "$t(generic.open, capitalize) $t(generic.documentations.changelog) on update",
-		"reset": "$t(generic.reset, capitalize)"
+		"open-changelog-on-update": "$t(generic.open, capitalize) $t(generic.documentations.changelog) on update"
 	}
 }
