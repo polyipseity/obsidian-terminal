@@ -61,8 +61,8 @@ const ARGV_PRODUCTION = 2,
 					for (const [ext, loader] of Object.entries(loaders)) {
 						const filter = () => new RegExp(`${escapeRegExp(ext)}$`, "u")
 						if (loader === "compressed-text") {
-							build.onLoad({ filter: filter() }, async args => {
-								const data = await readFile(args.path, { encoding: "utf-8" })
+							build.onLoad({ filter: filter() }, async ({ path }) => {
+								const data = await readFile(path, { encoding: "utf-8" })
 								return {
 									contents: `
 import PLazy from "p-lazy"
@@ -74,8 +74,8 @@ export default PLazy.from(() =>
 								}
 							})
 						} else if (loader === "compressed-json") {
-							build.onLoad({ filter: filter() }, async args => {
-								const data = await readFile(args.path, { encoding: "utf-8" })
+							build.onLoad({ filter: filter() }, async ({ path }) => {
+								const data = await readFile(path, { encoding: "utf-8" })
 								JSON.parse(data)
 								return {
 									contents: `
