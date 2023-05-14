@@ -2,7 +2,7 @@ import { type App, Plugin, type PluginManifest } from "obsidian"
 import {
 	DeveloperConsolePseudoterminal,
 	RefPsuedoterminal,
-} from "./terminal/pseudoterminal"
+} from "./terminal/pseudoterminal.js"
 import {
 	LanguageManager,
 	type PluginContext,
@@ -12,14 +12,14 @@ import {
 	lazyProxy,
 	semVerString,
 } from "obsidian-plugin-library"
-import { PluginLocales } from "../assets/locales"
-import { Settings } from "./settings-data"
+import { PluginLocales } from "../assets/locales.js"
+import { Settings } from "./settings-data.js"
 import { isNil } from "lodash-es"
-import { loadDocumentations } from "./documentations"
-import { loadIcons } from "./icons"
-import { loadSettings } from "./settings"
-import { loadTerminal } from "./terminal/load"
-import { patch } from "./patches"
+import { loadDocumentations } from "./documentations.js"
+import { loadIcons } from "./icons.js"
+import { loadSettings } from "./settings.js"
+import { loadTerminal } from "./terminal/load.js"
+import { patch } from "./patches.js"
 
 export class TerminalPlugin
 	extends Plugin

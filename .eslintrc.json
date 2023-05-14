@@ -490,10 +490,7 @@
       "error",
       {
         "amd": true,
-        "commonjs": true,
-        "ignore": [
-          "\\.md$"
-        ]
+        "commonjs": true
       }
     ],
     "indent": [

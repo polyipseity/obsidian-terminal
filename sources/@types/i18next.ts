@@ -1,4 +1,4 @@
-import type { PluginLocales } from "../../assets/locales"
+import type { PluginLocales } from "../../assets/locales.js"
 
 declare module "i18next" {
 	interface CustomTypeOptions {

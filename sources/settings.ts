@@ -8,11 +8,11 @@ import {
 	resetButton,
 	setTextToEnum,
 } from "obsidian-plugin-library"
-import { ProfileListModal } from "./modals"
-import { Settings } from "./settings-data"
-import type { TerminalPlugin } from "./main"
-import type { loadDocumentations } from "./documentations"
-import semverLt from "semver/functions/lt"
+import { ProfileListModal } from "./modals.js"
+import { Settings } from "./settings-data.js"
+import type { TerminalPlugin } from "./main.js"
+import type { loadDocumentations } from "./documentations.js"
+import semverLt from "semver/functions/lt.js"
 import { size } from "lodash-es"
 
 export class SettingTab extends AdvancedSettingTab<Settings> {

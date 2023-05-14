@@ -27,11 +27,11 @@ import {
 	DEFAULT_WINDOW_OPTIONS,
 	type LinkHandlerFunc,
 	PROFILE_PRESETS,
-} from "./settings/profile-presets"
+} from "./settings/profile-presets.js"
 import {
 	DEFAULT_SUCCESS_EXIT_CODES,
 	UNDEFINED,
-} from "./magic"
+} from "./magic.js"
 import type {
 	DeepReadonly,
 	DeepRequired,
@@ -47,9 +47,9 @@ import type {
 	IWindowOptions,
 } from "xterm"
 import { isUndefined, omitBy } from "lodash-es"
-import { PluginLocales } from "../assets/locales"
-import { Pseudoterminal } from "./terminal/pseudoterminal"
-import { RendererAddon } from "./terminal/emulator-addons"
+import { PluginLocales } from "../assets/locales.js"
+import { Pseudoterminal } from "./terminal/pseudoterminal.js"
+import { RendererAddon } from "./terminal/emulator-addons.js"
 
 export interface Settings extends PluginContext.Settings {
 	readonly language: Settings.DefaultableLanguage
@@ -130,8 +130,6 @@ export namespace Settings {
 
 	export const PREFERRED_RENDERER_OPTIONS = RendererAddon.RENDERER_OPTIONS
 	export type PreferredRendererOption = RendererAddon.RendererOption
-
-	export type Recovery = Readonly<Record<string, string>>
 
 	export type Profile =
 		Profile.DeveloperConsole |
