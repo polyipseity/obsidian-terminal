@@ -6,7 +6,7 @@
 		"immutable": "^4.3.0",
 		"lodash-es": "^4.17.21",
 		"obsidian": "^1.2.5",
-		"obsidian-plugin-library": "^0.0.0",
+		"obsidian-plugin-library": "^1.0.5",
 		"semver": "^7.5.0",
 		"simple-icons": "^8.13.0",
 		"tmp-promise": "^3.0.3",
