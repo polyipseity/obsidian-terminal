@@ -146,43 +146,56 @@ export default JSON.parse(decompress(${str(lzString.compressToBase64(data))}))
 		target: "ES2018",
 		treeShaking: true,
 	})
-if (DEV) {
-	await BUILD.watch({})
-} else {
+
+async function esbuild() {
 	try {
-		const { errors, warnings, metafile } = await BUILD.rebuild()
-		await Promise.all([
-			(async () => {
-				if (!isUndefined(metafile)) {
-					console.log(await analyzeMetafile(metafile, {
-						color: true,
-						verbose: true,
-					}))
-				}
-				for await (const logging of [
-					{ data: warnings, kind: "warning", log: console.warn.bind(console) },
-					{ data: errors, kind: "error", log: console.error.bind(console) },
-				]
-					.filter(({ data }) => !isEmpty(data))
-					.map(async ({ data, kind, log }) => {
-						const message = (await formatMessages(data, {
+		if (DEV) {
+			await BUILD.watch({})
+		} else {
+			// Await https://github.com/evanw/esbuild/issues/2886
+			const { errors, warnings, metafile } = await BUILD.rebuild()
+			await Promise.all([
+				(async () => {
+					if (!isUndefined(metafile)) {
+						console.log(await analyzeMetafile(metafile, {
 							color: true,
-							kind,
-						})).join("\n")
-						return () => log(message)
-					})) {
-					logging()
-				}
-			})(),
-			isUndefined(metafile)
-				? null
-				: writeFile(
-					PATHS.metafile,
-					JSON.stringify(metafile, null, "\t"),
-					{ encoding: "utf-8" },
-				),
-		])
+							verbose: true,
+						}))
+					}
+					for await (const logging of [
+						{
+							data: warnings,
+							kind: "warning",
+							log: console.warn.bind(console),
+						},
+						{
+							data: errors,
+							kind: "error",
+							log: console.error.bind(console),
+						},
+					]
+						.filter(({ data }) => !isEmpty(data))
+						.map(async ({ data, kind, log }) => {
+							const message = (await formatMessages(data, {
+								color: true,
+								kind,
+							})).join("\n")
+							return () => log(message)
+						})) {
+						logging()
+					}
+				})(),
+				isUndefined(metafile)
+					? null
+					: writeFile(
+						PATHS.metafile,
+						JSON.stringify(metafile, null, "\t"),
+						{ encoding: "utf-8" },
+					),
+			])
+		}
 	} finally {
 		await BUILD.dispose()
 	}
 }
+await esbuild()
