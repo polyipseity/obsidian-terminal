@@ -8,17 +8,6 @@
 		"open-terminal-root": "在$t(generic.terminal)$t(generic.open)$t(generic.root-directory)：$t(generic.profile-types.{{type}})"
 	},
 	"components": {
-		"find": {
-			"case-sensitive": "区分大小写",
-			"close": "$t(generic.close)",
-			"input-placeholder": "$t(generic.find)",
-			"next": "下一个",
-			"previous": "上一个",
-			"regex": "正则表达式",
-			"results": "{{index, number}}/{{count, number}}",
-			"too-many-results": "?/{{limit, number}}+",
-			"whole-word": "全字"
-		},
 		"profile": {
 			"data": "$t(generic.data)",
 			"data-edit": "$t(generic.edit)",
@@ -113,7 +102,6 @@
 		"behavior": "行为",
 		"check": "检查",
 		"clear": "清除",
-		"close": "关闭",
 		"compatible": "兼容",
 		"context-menu": "右键选单",
 		"current-directory": "目前$t(generic.directory)",
@@ -134,7 +122,6 @@
 		"file-extensions": {
 			"HTML": "超文本标记语言"
 		},
-		"find": "搜索",
 		"focus": "聚焦",
 		"history": "历史",
 		"incompatible": "不$t(generic.compatible)",

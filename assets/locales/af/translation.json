@@ -8,17 +8,6 @@
 		"open-terminal-root": "$t(generic.open, capitalize) $t(generic.root-directory) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)"
 	},
 	"components": {
-		"find": {
-			"case-sensitive": "Case sensitive",
-			"close": "$t(generic.close, capitalize)",
-			"input-placeholder": "$t(generic.find, capitalize)",
-			"next": "Next",
-			"previous": "Previous",
-			"regex": "Regex",
-			"results": "{{index, number}}/{{count, number}}",
-			"too-many-results": "?/{{limit, number}}+",
-			"whole-word": "Whole word"
-		},
 		"profile": {
 			"data": "$t(generic.data, capitalize)",
 			"data-edit": "$t(generic.edit, capitalize)",
@@ -116,7 +105,6 @@
 		"check": "check",
 		"check_gerund": "checking",
 		"clear": "clear",
-		"close": "close",
 		"compatible": "compatible",
 		"context-menu": "context menu",
 		"current-directory": "current $t(generic.directory)",
@@ -140,7 +128,6 @@
 		"file-extensions": {
 			"HTML": "HTML"
 		},
-		"find": "find",
 		"focus": "focus",
 		"focus_past": "focused",
 		"history": "history",

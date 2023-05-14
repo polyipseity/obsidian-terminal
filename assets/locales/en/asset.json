@@ -8,13 +8,6 @@
 		"open-terminal-root-icon": "terminal"
 	},
 	"components": {
-		"find": {
-			"case-sensitive-icon": "case-sensitive",
-			"next-icon": "$t(asset:generic.next-icon)",
-			"previous-icon": "$t(asset:generic.previous-icon)",
-			"regex-icon": "regex",
-			"whole-word-icon": "whole-word"
-		},
 		"profile": {
 			"data-icon": "$t(asset:generic.data-icon)",
 			"external": {

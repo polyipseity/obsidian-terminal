@@ -7,6 +7,8 @@ import {
 } from "../magic.js"
 import {
 	DialogModal,
+	FindComponent,
+	type FindComponent$,
 	type Fixed,
 	JSON_STRINGIFY_SPACE,
 	Platform,
@@ -43,7 +45,6 @@ import {
 	useSettings,
 	writeStateCollabratively,
 } from "obsidian-plugin-library"
-import { Direction, type Params } from "../ui/find.js"
 import {
 	DisposerAddon,
 	DragAndDropAddon,
@@ -63,7 +64,6 @@ import {
 } from "../settings/profile-properties.js"
 import { BUNDLE } from "../import.js"
 import type { DeepWritable } from "ts-essentials"
-import FindComponent from "../ui/find.svelte"
 import type { LigaturesAddon } from "xterm-addon-ligatures"
 import { ProfileModal } from "../modals.js"
 import type { SearchAddon } from "xterm-addon-search"
@@ -526,13 +526,13 @@ export class TerminalView extends ItemView {
 		if (!this.#find) {
 			const
 				onFind = (
-					direction: Direction,
-					params: Params,
+					direction: FindComponent$.Direction,
+					params: FindComponent$.Params,
 					incremental = false,
 				): void => {
 					const finder = this.#emulator?.addons.search
 					if (!finder) { return }
-					const func = direction === Direction.next
+					const func = direction === "next"
 						? finder.findNext.bind(finder)
 						: finder.findPrevious.bind(finder)
 					let empty = params.findText === ""
@@ -567,9 +567,9 @@ export class TerminalView extends ItemView {
 					i18n: i18n.t,
 					onClose: (): void => { this.#find = null },
 					onFind,
-					onParamsChanged: (params: Params): void => {
+					onParamsChanged: (params: FindComponent$.Params): void => {
 						this.#emulator?.addons.search.clearDecorations()
-						onFind(Direction.previous, params)
+						onFind("previous", params)
 					},
 				},
 				target: contentEl,
