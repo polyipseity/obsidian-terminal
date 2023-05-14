@@ -8,11 +8,11 @@ import {
 	revealPrivate,
 	typedKeys,
 } from "obsidian-plugin-library"
-import { DOMClasses2 } from "./magic"
-import type { PLACEHOLDERPlugin } from "./main"
+import { DOMClasses2 } from "./magic.js"
+import type { PLACEHOLDERPlugin } from "./main.js"
 import changelogMd from "../CHANGELOG.md"
 import readmeMd from "../README.md"
-import semverLt from "semver/functions/lt"
+import semverLt from "semver/functions/lt.js"
 
 export const DOCUMENTATIONS = deepFreeze({
 	async changelog(view: DocumentationMarkdownView.Registered, active: boolean) {

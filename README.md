@@ -15,7 +15,7 @@ PLACEHOLDER
 
 [![Buy Me a Coffee/embed]][Buy Me a Coffee]
 
-__[Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing)__
+__[Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing) · [Security](#security)__
 
 ![Trailer]
 

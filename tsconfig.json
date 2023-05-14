@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "allowArbitraryExtensions": true,
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "allowUmdGlobalAccess": false,
@@ -9,7 +10,8 @@
     "assumeChangesOnlyAffectDirectDependencies": false,
     "checkJs": true,
     "composite": false,
-    "declaration": false,
+    "declaration": true,
+    "declarationMap": true,
     "disableReferencedProjectLoad": true,
     "disableSizeLimit": false,
     "disableSolutionSearching": false,
@@ -34,11 +36,11 @@
     "maxNodeModuleJsDepth": 0,
     "module": "ESNext",
     "moduleDetection": "force",
-    "moduleResolution": "node",
+    "moduleResolution": "nodenext",
     "moduleSuffixes": [
       ""
     ],
-    "noEmit": true,
+    "noEmit": false,
     "noEmitHelpers": false,
     "noEmitOnError": false,
     "noErrorTruncation": true,

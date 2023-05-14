@@ -13,21 +13,17 @@ jobs:
         node-version: '*'
     - run: npm install
     - run: npm run build
-    - name: Package release
-      run: |
-        mkdir '${{vars.ID}}'
-        cp LICENSE.txt README.md manifest.json main.js requirements.txt styles.css '${{vars.ID}}'
-        zip -r '${{vars.ID}}.zip' '${{vars.ID}}'
+    - run: npm pack --pack-destination=.github
     - if: ${{github.ref == 'refs/tags/latest'}}
       uses: softprops/action-gh-release@v1
       with:
         append_body: true
         fail_on_unmatched_files: true
         files: |
-          manifest.json
+          .github/*.tgz
           main.js
+          manifest.json
           styles.css
-          ${{vars.ID}}.zip
         prerelease: true
 on:
   push:

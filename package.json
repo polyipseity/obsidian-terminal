@@ -3,7 +3,8 @@
 	"dependencies": {
 		"lodash-es": "^4.17.21",
 		"lz-string": "^1.5.0",
-		"obsidian-plugin-library": "file:build/obsidian-plugin-library",
+		"obsidian": "^1.2.5",
+		"obsidian-plugin-library": "^0.0.0",
 		"p-lazy": "^4.0.0",
 		"semver": "^7.5.0",
 		"ts-essentials": "^9.3.2"
@@ -26,7 +27,6 @@
 		"eslint-import-resolver-typescript": "^3.5.5",
 		"eslint-plugin-import": "^2.27.5",
 		"eslint-plugin-svelte3": "^4.0.0",
-		"obsidian": "file:build/obsidian",
 		"svelte": "^3.59.1",
 		"svelte-preprocess": "^5.0.3",
 		"tslib": "^2.5.0",
@@ -34,6 +34,11 @@
 		"typescript-svelte-plugin": "^0.3.25"
 	},
 	"displayName": "PLACEHOLDER",
+	"files": [
+		"main.json",
+		"manifest.json",
+		"styles.css"
+	],
 	"funding": [
 		{
 			"type": "Buy Me a Coffee",
@@ -60,6 +65,7 @@
 		"name": "PLACEHOLDER"
 	},
 	"overrides": {
+		"obsidian": "$obsidian",
 		"tsconfig-paths": "^4.0.0"
 	},
 	"private": true,
@@ -75,6 +81,9 @@
 		"prepare": "npm run build:force --workspaces --if-present",
 		"version": "node build/version.mjs"
 	},
+	"sideEffects": false,
+	"style": "styles.css",
+	"type": "module",
 	"version": "0.0.0",
 	"workspaces": [
 		"build/obsidian",

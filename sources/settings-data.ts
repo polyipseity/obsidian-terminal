@@ -14,7 +14,7 @@ import {
 	semVerString,
 } from "obsidian-plugin-library"
 import type { MarkOptional } from "ts-essentials"
-import { PluginLocales } from "../assets/locales"
+import { PluginLocales } from "../assets/locales.js"
 
 export interface Settings extends PluginContext.Settings {
 	readonly language: Settings.DefaultableLanguage
@@ -48,8 +48,6 @@ export namespace Settings {
 	export const DEFAULTABLE_LANGUAGES =
 		deepFreeze(["", ...PluginLocales.LANGUAGES])
 	export type DefaultableLanguage = typeof DEFAULTABLE_LANGUAGES[number]
-
-	export type Recovery = Readonly<Record<string, string>>
 
 	export function fix(self: unknown): Fixed<Settings> {
 		const unc = launderUnchecked<Settings>(self)
