@@ -3,7 +3,7 @@
 	"dependencies": {
 		"lodash-es": "^4.17.21",
 		"obsidian": "^1.2.5",
-		"obsidian-plugin-library": "^0.0.0",
+		"obsidian-plugin-library": "^1.0.5",
 		"semver": "^7.5.0",
 		"ts-essentials": "^9.3.2"
 	},
