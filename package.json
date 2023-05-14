@@ -35,7 +35,7 @@
 	},
 	"displayName": "PLACEHOLDER",
 	"files": [
-		"main.json",
+		"main.js",
 		"manifest.json",
 		"styles.css"
 	],
