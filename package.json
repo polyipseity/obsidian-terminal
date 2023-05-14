@@ -50,7 +50,7 @@
 		"plugin",
 		"PLACEHOLDER"
 	],
-	"license": "AGPL-3.0-or-later",
+	"license": "MIT",
 	"main": "main.js",
 	"name": "PLACEHOLDER",
 	"obsidian": {
