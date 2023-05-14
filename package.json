@@ -61,6 +61,7 @@
 		"name": "PLACEHOLDER"
 	},
 	"overrides": {
+		"obsidian": "$obsidian",
 		"tsconfig-paths": "^4.0.0"
 	},
 	"private": true,
