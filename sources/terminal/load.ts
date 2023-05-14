@@ -13,7 +13,7 @@ import {
 	notice2,
 } from "obsidian-plugin-library"
 import { SelectProfileModal, spawnTerminal } from "./spawn.js"
-import { PROFILE_PROPERTIES } from "../settings/profile-properties.js"
+import { PROFILE_PROPERTIES } from "./profile-properties.js"
 import { Settings } from "../settings-data.js"
 import type { TerminalPlugin } from "../main.js"
 import { TerminalView } from "./view.js"

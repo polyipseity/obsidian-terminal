@@ -8,11 +8,11 @@ import {
 	Pseudoterminal,
 	RefPsuedoterminal,
 	TextPseudoterminal,
-} from "../terminal/pseudoterminal.js"
+} from "./pseudoterminal.js"
 import {
 	SUPPORTS_EXTERNAL_TERMINAL_EMULATOR,
 	spawnExternalTerminalEmulator,
-} from "../terminal/emulator.js"
+} from "./emulator.js"
 import type { AsyncOrSync } from "ts-essentials"
 import type { Settings } from "../settings-data.js"
 import type { TerminalPlugin } from "../main.js"

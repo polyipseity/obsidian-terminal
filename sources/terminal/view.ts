@@ -61,7 +61,7 @@ import {
 import {
 	PROFILE_PROPERTIES,
 	openProfile,
-} from "../settings/profile-properties.js"
+} from "./profile-properties.js"
 import { BUNDLE } from "../import.js"
 import type { DeepWritable } from "ts-essentials"
 import type { LigaturesAddon } from "xterm-addon-ligatures"

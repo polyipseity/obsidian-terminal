@@ -26,12 +26,12 @@ import {
 import {
 	PROFILE_PRESETS,
 	PROFILE_PRESET_ORDERED_KEYS,
-} from "./settings/profile-presets.js"
+} from "./terminal/profile-presets.js"
 import { identity, isUndefined } from "lodash-es"
 import { BUNDLE } from "./import.js"
 import type { DeepWritable } from "ts-essentials"
 import { Modal } from "obsidian"
-import { PROFILE_PROPERTIES } from "./settings/profile-properties.js"
+import { PROFILE_PROPERTIES } from "./terminal/profile-properties.js"
 import { Pseudoterminal } from "./terminal/pseudoterminal.js"
 import SemVer from "semver/classes/semver.js"
 import { Settings } from "./settings-data.js"

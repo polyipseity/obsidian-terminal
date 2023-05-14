@@ -27,7 +27,7 @@ import {
 	DEFAULT_WINDOW_OPTIONS,
 	type LinkHandlerFunc,
 	PROFILE_PRESETS,
-} from "./settings/profile-presets.js"
+} from "./terminal/profile-presets.js"
 import {
 	DEFAULT_SUCCESS_EXIT_CODES,
 	UNDEFINED,

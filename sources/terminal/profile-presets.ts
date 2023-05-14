@@ -5,7 +5,7 @@ import {
 } from "../magic.js"
 import type { IBufferRange, ILinkHandler, ITheme, IWindowOptions } from "xterm"
 import { deepFreeze, openExternal, typedKeys } from "obsidian-plugin-library"
-import type { Pseudoterminal } from "../terminal/pseudoterminal.js"
+import type { Pseudoterminal } from "./pseudoterminal.js"
 import type { Settings } from "../settings-data.js"
 
 export const
