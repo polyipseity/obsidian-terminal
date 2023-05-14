@@ -68,11 +68,13 @@
 	],
 	"keywords": [
 		"console",
+		"console-emulator",
 		"obsidian",
+		"obsidian-plugin",
 		"plugin",
 		"shell",
 		"terminal",
-		"terminal emulator"
+		"terminal-emulator"
 	],
 	"license": "AGPL-3.0-or-later",
 	"main": "main.js",
