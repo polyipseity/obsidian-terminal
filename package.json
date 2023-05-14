@@ -72,6 +72,7 @@
 		"obsidian-plugin",
 		"plugin",
 		"shell",
+		"shell-emulator",
 		"terminal",
 		"terminal-emulator"
 	],
