@@ -1,18 +1,12 @@
 import { PATHS, PLUGIN_ID } from "./util.mjs"
 import { analyzeMetafile, context, formatMessages } from "esbuild"
-import {
-	constant,
-	escapeRegExp,
-	isEmpty,
-	isUndefined,
-	kebabCase,
-} from "lodash-es"
-import { readFile, writeFile } from "node:fs/promises"
+import { constant, isEmpty, isUndefined, kebabCase } from "lodash-es"
 import { argv } from "node:process"
 import builtinModules from "builtin-modules"
+import esbuildCompress from "esbuild-compress"
 import esbuildSvelte from "esbuild-svelte"
-import lzString from "lz-string"
 import sveltePreprocess from "svelte-preprocess"
+import { writeFile } from "node:fs/promises"
 
 const ARGV_PRODUCTION = 2,
 	COMMENT = "// repository: https://github.com/polyipseity/obsidian-terminal",
@@ -49,50 +43,9 @@ const ARGV_PRODUCTION = 2,
 		outdir: PATHS.outDir,
 		platform: "browser",
 		plugins: [
-			{
-				name: "compress",
-				setup(build) {
-					function str(string) {
-						if (typeof string !== "string") {
-							throw new TypeError(string)
-						}
-						return `\`${string.replace(/(?<char>`|\\|\$)/ug, "\\$<char>")}\``
-					}
-					const loaders = build.initialOptions.loader ?? {}
-					for (const [ext, loader] of Object.entries(loaders)) {
-						const filter = () => new RegExp(`${escapeRegExp(ext)}$`, "u")
-						if (loader === "compressed-text") {
-							build.onLoad({ filter: filter() }, async ({ path }) => {
-								const data = await readFile(path, { encoding: "utf-8" })
-								return {
-									contents: `
-import PLazy from "p-lazy"
-import { decompressFromBase64 as decompress } from "lz-string"
-export default PLazy.from(() =>
-	decompress(${str(lzString.compressToBase64(data))}))
-`,
-									loader: "js",
-								}
-							})
-						} else if (loader === "compressed-json") {
-							build.onLoad({ filter: filter() }, async ({ path }) => {
-								const data = await readFile(path, { encoding: "utf-8" })
-								JSON.parse(data)
-								return {
-									contents: `
-import { decompressFromBase64 as decompress } from "lz-string"
-export default JSON.parse(decompress(${str(lzString.compressToBase64(data))}))
-`,
-									loader: "js",
-								}
-							})
-						} else {
-							continue
-						}
-						loaders[ext] = "empty"
-					}
-				},
-			},
+			esbuildCompress({
+				lazy: true,
+			}),
 			esbuildSvelte({
 				cache: "overzealous",
 				compilerOptions: {
