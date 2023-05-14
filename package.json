@@ -45,9 +45,10 @@
 		}
 	],
 	"keywords": [
+		"PLACEHOLDER",
 		"obsidian",
-		"plugin",
-		"PLACEHOLDER"
+		"obsidian-plugin",
+		"plugin"
 	],
 	"license": "MIT",
 	"main": "main.js",
