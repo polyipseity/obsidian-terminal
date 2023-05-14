@@ -34,6 +34,11 @@
 		"typescript-svelte-plugin": "^0.3.25"
 	},
 	"displayName": "PLACEHOLDER",
+	"files": [
+		"main.json",
+		"manifest.json",
+		"styles.css"
+	],
 	"funding": [
 		{
 			"type": "PLACEHOLDER",
