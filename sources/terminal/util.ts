@@ -21,8 +21,8 @@ import {
 } from "obsidian-plugin-library"
 import { escapeRegExp, isUndefined, range } from "lodash-es"
 import AsyncLock from "async-lock"
-import { BUNDLE } from "../import"
-import { MAX_LOCK_PENDING } from "../magic"
+import { BUNDLE } from "../import.js"
+import { MAX_LOCK_PENDING } from "../magic.js"
 import ansi from "ansi-escape-sequences"
 import { Set as valueSet } from "immutable"
 

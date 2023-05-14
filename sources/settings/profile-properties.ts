@@ -8,15 +8,15 @@ import {
 	Pseudoterminal,
 	RefPsuedoterminal,
 	TextPseudoterminal,
-} from "../terminal/pseudoterminal"
+} from "../terminal/pseudoterminal.js"
 import {
 	SUPPORTS_EXTERNAL_TERMINAL_EMULATOR,
 	spawnExternalTerminalEmulator,
-} from "../terminal/emulator"
+} from "../terminal/emulator.js"
 import type { AsyncOrSync } from "ts-essentials"
-import type { Settings } from "../settings-data"
-import type { TerminalPlugin } from "../main"
-import { UNDEFINED } from "../magic"
+import type { Settings } from "../settings-data.js"
+import type { TerminalPlugin } from "../main.js"
+import { UNDEFINED } from "../magic.js"
 
 export interface OpenOptions {
 	readonly cwd?: string | null

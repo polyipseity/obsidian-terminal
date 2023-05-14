@@ -1,7 +1,7 @@
 import {
 	CHECK_EXECUTABLE_WAIT,
 	DEFAULT_PYTHONIOENCODING,
-} from "./magic"
+} from "./magic.js"
 import {
 	DISABLED_TOOLTIP,
 	EditDataModal,
@@ -26,17 +26,17 @@ import {
 import {
 	PROFILE_PRESETS,
 	PROFILE_PRESET_ORDERED_KEYS,
-} from "./settings/profile-presets"
+} from "./settings/profile-presets.js"
 import { identity, isUndefined } from "lodash-es"
-import { BUNDLE } from "./import"
+import { BUNDLE } from "./import.js"
 import type { DeepWritable } from "ts-essentials"
 import { Modal } from "obsidian"
-import { PROFILE_PROPERTIES } from "./settings/profile-properties"
-import { Pseudoterminal } from "./terminal/pseudoterminal"
-import SemVer from "semver/classes/semver"
-import { Settings } from "./settings-data"
-import type { TerminalPlugin } from "./main"
-import semverCoerce from "semver/functions/coerce"
+import { PROFILE_PROPERTIES } from "./settings/profile-properties.js"
+import { Pseudoterminal } from "./terminal/pseudoterminal.js"
+import SemVer from "semver/classes/semver.js"
+import { Settings } from "./settings-data.js"
+import type { TerminalPlugin } from "./main.js"
+import semverCoerce from "semver/functions/coerce.js"
 
 const
 	childProcess = dynamicRequire<typeof import("node:child_process")

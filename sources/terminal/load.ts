@@ -12,12 +12,12 @@ import {
 	isNonNil,
 	notice2,
 } from "obsidian-plugin-library"
-import { SelectProfileModal, spawnTerminal } from "./spawn"
-import { PROFILE_PROPERTIES } from "../settings/profile-properties"
-import { Settings } from "../settings-data"
-import type { TerminalPlugin } from "../main"
-import { TerminalView } from "./view"
-import { UNDEFINED } from "../magic"
+import { SelectProfileModal, spawnTerminal } from "./spawn.js"
+import { PROFILE_PROPERTIES } from "../settings/profile-properties.js"
+import { Settings } from "../settings-data.js"
+import type { TerminalPlugin } from "../main.js"
+import { TerminalView } from "./view.js"
+import { UNDEFINED } from "../magic.js"
 import { isEmpty } from "lodash-es"
 
 export function loadTerminal(context: TerminalPlugin): void {

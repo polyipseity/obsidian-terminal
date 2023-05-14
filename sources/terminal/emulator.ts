@@ -18,15 +18,15 @@ import type {
 import {
 	TERMINAL_EMULATOR_RESIZE_WAIT,
 	TERMINAL_PTY_RESIZE_WAIT,
-} from "../magic"
+} from "../magic.js"
 import type { AsyncOrSync } from "ts-essentials"
-import { BUNDLE } from "../import"
+import { BUNDLE } from "../import.js"
 import type { ChildProcessByStdio } from "node:child_process"
-import type { Pseudoterminal } from "./pseudoterminal"
-import type { TerminalPlugin } from "../main"
-import { spawnPromise } from "../util"
+import type { Pseudoterminal } from "./pseudoterminal.js"
+import type { TerminalPlugin } from "../main.js"
+import { spawnPromise } from "../util.js"
 import { throttle } from "lodash-es"
-import { writePromise } from "./util"
+import { writePromise } from "./util.js"
 
 const
 	childProcess = dynamicRequire<typeof import("node:child_process")

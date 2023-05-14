@@ -5,7 +5,7 @@ import {
 	deepFreeze,
 	dynamicRequireSync,
 } from "obsidian-plugin-library"
-import { BUNDLE } from "./import"
+import { BUNDLE } from "./import.js"
 import type { Workspace } from "obsidian"
 import { around } from "monkey-around"
 import { noop } from "ts-essentials"

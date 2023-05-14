@@ -4,7 +4,7 @@ import {
 	DOMClasses2,
 	TERMINAL_SEARCH_RESULTS_LIMIT,
 	UNDEFINED,
-} from "../magic"
+} from "../magic.js"
 import {
 	DialogModal,
 	type Fixed,
@@ -31,7 +31,6 @@ import {
 	newCollabrativeState,
 	notice2,
 	onResize,
-	onVisible,
 	openExternal,
 	printError,
 	printMalformedData,
@@ -44,12 +43,12 @@ import {
 	useSettings,
 	writeStateCollabratively,
 } from "obsidian-plugin-library"
-import { Direction, type Params } from "../ui/find"
+import { Direction, type Params } from "../ui/find.js"
 import {
 	DisposerAddon,
 	DragAndDropAddon,
 	RendererAddon,
-} from "./emulator-addons"
+} from "./emulator-addons.js"
 import {
 	FileSystemAdapter,
 	ItemView,
@@ -58,21 +57,24 @@ import {
 	type ViewStateResult,
 	type WorkspaceLeaf,
 } from "obsidian"
-import { PROFILE_PROPERTIES, openProfile } from "../settings/profile-properties"
-import { BUNDLE } from "../import"
+import {
+	PROFILE_PROPERTIES,
+	openProfile,
+} from "../settings/profile-properties.js"
+import { BUNDLE } from "../import.js"
 import type { DeepWritable } from "ts-essentials"
 import FindComponent from "../ui/find.svelte"
 import type { LigaturesAddon } from "xterm-addon-ligatures"
-import { ProfileModal } from "../modals"
+import { ProfileModal } from "../modals.js"
 import type { SearchAddon } from "xterm-addon-search"
-import { Settings } from "../settings-data"
-import type { TerminalPlugin } from "../main"
-import { TextPseudoterminal } from "./pseudoterminal"
+import { Settings } from "../settings-data.js"
+import type { TerminalPlugin } from "../main.js"
+import { TextPseudoterminal } from "./pseudoterminal.js"
 import type { Unicode11Addon } from "xterm-addon-unicode11"
 import type { WebLinksAddon } from "xterm-addon-web-links"
-import { XtermTerminalEmulator } from "./emulator"
+import { XtermTerminalEmulator } from "./emulator.js"
 import { cloneDeep } from "lodash-es"
-import { writePromise } from "./util"
+import { writePromise } from "./util.js"
 
 const
 	xtermAddonCanvas = dynamicRequireLazy<typeof import("xterm-addon-canvas")
@@ -615,10 +617,10 @@ export class TerminalView extends ItemView {
 			return
 		}
 		createChildElement(contentEl, "div", ele => {
-			awaitCSS(ele)
-			ele.classList.add(TerminalView.type.namespaced(context))
-			const obsr = onVisible(ele, () => {
+			ele.classList.add(TerminalView.type.namespaced(context));
+			(async (): Promise<void> => {
 				try {
+					await awaitCSS(ele)
 					noticeSpawn()
 					const
 						serial0 = profile.type === "invalid" || profile.restoreHistory
@@ -762,10 +764,10 @@ export class TerminalView extends ItemView {
 					})
 					this.#emulator = emulator
 					if (focus) { terminal.focus() }
-				} finally {
-					obsr.disconnect()
+				} catch (error) {
+					self.console.error(error)
 				}
-			})
+			})()
 		})
 	}
 }

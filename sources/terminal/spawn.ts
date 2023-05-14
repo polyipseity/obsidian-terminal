@@ -1,8 +1,8 @@
 import { Platform, newCollabrativeState } from "obsidian-plugin-library"
 import { FuzzySuggestModal } from "obsidian"
-import { Settings } from "../settings-data"
-import type { TerminalPlugin } from "../main"
-import { TerminalView } from "./view"
+import { Settings } from "../settings-data.js"
+import type { TerminalPlugin } from "../main.js"
+import { TerminalView } from "./view.js"
 
 export class SelectProfileModal
 	extends FuzzySuggestModal<Settings.Profile.Entry> {

@@ -5,7 +5,7 @@ import {
 	TerminalTextArea,
 	normalizeText,
 	writePromise as tWritePromise,
-} from "./util"
+} from "./util.js"
 import {
 	DEFAULT_ENCODING,
 	DEFAULT_PYTHONIOENCODING,
@@ -16,7 +16,7 @@ import {
 	UNDEFINED,
 	WINDOWS_CMD_PATH,
 	WINDOWS_CONHOST_PATH,
-} from "../magic"
+} from "../magic.js"
 import { type ExtendNode, parse } from "acorn"
 import {
 	Functions,
@@ -45,19 +45,19 @@ import {
 import type { IMarker, Terminal } from "xterm"
 import inspect, { type Options } from "browser-util-inspect"
 import { isEmpty, isNil, isUndefined, noop } from "lodash-es"
-import { spawnPromise, writePromise } from "../util"
+import { spawnPromise, writePromise } from "../util.js"
 import AsyncLock from "async-lock"
 import type { AsyncOrSync } from "ts-essentials"
-import { BUNDLE } from "../import"
+import { BUNDLE } from "../import.js"
 import type { DeveloperConsoleContext } from "obsidian-terminal"
-import { DisposerAddon } from "./emulator-addons"
+import { DisposerAddon } from "./emulator-addons.js"
 import type { FileResult } from "tmp-promise"
-import type { Log } from "../patches"
+import type { Log } from "../patches.js"
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
 } from "node:child_process"
 import type { Program } from "estree"
-import type { TerminalPlugin } from "../main"
+import type { TerminalPlugin } from "../main.js"
 import ansi from "ansi-escape-sequences"
 import unixPseudoterminalPy from "./unix_pseudoterminal.py"
 import win32ResizerPy from "./win32_resizer.py"
