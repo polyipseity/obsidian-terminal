@@ -1,3 +1,4 @@
+import type { } from "i18next"
 import type { PluginLocales } from "../../assets/locales.js"
 
 declare module "i18next" {
