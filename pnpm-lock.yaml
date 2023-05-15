@@ -1,6 +1,7 @@
 lockfileVersion: '6.0'
 
 overrides:
+  obsidian: ^1.2.5
   tsconfig-paths: ^4.0.0
 
 importers:
