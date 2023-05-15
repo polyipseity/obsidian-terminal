@@ -68,6 +68,7 @@
 		"name": "PLACEHOLDER"
 	},
 	"overrides": {
+		"obsidian": "$obsidian",
 		"tsconfig-paths": "^4.0.0"
 	},
 	"pnpm": {
@@ -94,8 +95,6 @@
 	"type": "module",
 	"version": "0.0.0",
 	"workspaces": [
-		"build/esbuild-compress",
-		"build/obsidian",
-		"build/obsidian-plugin-library"
+		"build/*"
 	]
 }
