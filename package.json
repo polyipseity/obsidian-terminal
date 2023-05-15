@@ -10,7 +10,7 @@
 		"lodash-es": "^4.17.21",
 		"monkey-around": "^2.3.0",
 		"obsidian": "^1.2.5",
-		"obsidian-plugin-library": "^1.0.8",
+		"obsidian-plugin-library": "^1.0.9",
 		"semver": "^7.5.0",
 		"simple-icons": "^8.13.0",
 		"tmp-promise": "^3.0.3",
