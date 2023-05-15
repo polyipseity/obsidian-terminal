@@ -16,7 +16,7 @@ importers:
         version: 4.17.21
       obsidian:
         specifier: ^1.2.5
-        version: link:build/obsidian-plugin-library/build/obsidian
+        version: 1.2.5(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)
       obsidian-plugin-library:
         specifier: ^1.0.8
         version: link:build/obsidian-plugin-library
@@ -65,7 +65,7 @@ importers:
         version: 0.17.19
       esbuild-compress:
         specifier: ^1.1.5
-        version: link:build/obsidian-plugin-library/build/esbuild-compress
+        version: link:build/esbuild-compress
       esbuild-svelte:
         specifier: ^0.7.3
         version: 0.7.3(esbuild@0.17.19)(svelte@3.59.1)
@@ -171,7 +171,7 @@ importers:
         version: 2.3.0
       obsidian:
         specifier: ^1.2.5
-        version: link:build/obsidian
+        version: 1.2.5(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)
       p-lazy:
         specifier: ^4.0.0
         version: 4.0.0
@@ -232,7 +232,7 @@ importers:
         version: 0.17.19
       esbuild-compress:
         specifier: ^1.1.5
-        version: link:build/esbuild-compress
+        version: link:../esbuild-compress
       esbuild-node-externals:
         specifier: ^1.7.0
         version: 1.7.0(esbuild@0.17.19)
@@ -269,43 +269,6 @@ importers:
       typescript-svelte-plugin:
         specifier: ^0.3.25
         version: 0.3.25(svelte@3.59.1)(typescript@5.0.4)
-
-  build/obsidian-plugin-library/build/esbuild-compress:
-    dependencies:
-      esbuild:
-        specifier: ^0.17.19
-        version: 0.17.19
-      import-meta-resolve:
-        specifier: ^3.0.0
-        version: 3.0.0
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.21
-      lz-string:
-        specifier: ^1.5.0
-        version: 1.5.0
-      p-lazy:
-        specifier: ^4.0.0
-        version: 4.0.0
-    devDependencies:
-      '@types/node':
-        specifier: ^20.1.4
-        version: 20.1.4
-
-  build/obsidian-plugin-library/build/obsidian:
-    dependencies:
-      '@codemirror/state':
-        specifier: ^6.0.0
-        version: 6.0.0
-      '@codemirror/view':
-        specifier: ^6.0.0
-        version: 6.0.0
-      '@types/codemirror':
-        specifier: 0.0.108
-        version: 0.0.108
-      moment:
-        specifier: 2.29.4
-        version: 2.29.4
 
 packages:
 
@@ -2254,6 +2217,18 @@ packages:
       define-properties: 1.2.0
       es-abstract: 1.21.2
     dev: true
+
+  /obsidian@1.2.5(@codemirror/state@6.0.0)(@codemirror/view@6.0.0):
+    resolution: {integrity: sha512-RKN4W3PaHsoWwlNRg1SV+iJssQ5vnQYzsCSfmFAUHvA8Q8nzk4pW3HGWXSvor3ZM532KECljG86lEx02OvBwpA==}
+    peerDependencies:
+      '@codemirror/state': ^6.0.0
+      '@codemirror/view': ^6.0.0
+    dependencies:
+      '@codemirror/state': 6.0.0
+      '@codemirror/view': 6.0.0
+      '@types/codemirror': 0.0.108
+      moment: 2.29.4
+    dev: false
 
   /once@1.4.0:
     resolution: {integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==}
