@@ -121,8 +121,6 @@
 	"type": "module",
 	"version": "3.9.0",
 	"workspaces": [
-		"build/esbuild-compress",
-		"build/obsidian",
-		"build/obsidian-plugin-library"
+		"build/*"
 	]
 }
