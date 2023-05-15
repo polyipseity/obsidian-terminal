@@ -113,7 +113,7 @@
 		"obsidian:install": "npm run build && node build/obsidian-install.mjs",
 		"obsidian:install:force": "npm run build:force && node build/obsidian-install.mjs",
 		"postversion": "node build/version-post.mjs",
-		"prepare": "npm run build:force --workspaces --if-present",
+		"prepare": "npm run build:force --workspace=obsidian-plugin-library --if-present",
 		"version": "node build/version.mjs"
 	},
 	"sideEffects": false,
