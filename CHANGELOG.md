@@ -14,4 +14,4 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
-__Full changelog__: [`PLACEHOLDER...main`](https://github.com/polyipseity/obsidian-plugin-template/compare/PLACEHOLDER...main)
+__Full changelog__: [`758424a8d4174f67fc20bdd308060db168eeec34...main`](https://github.com/polyipseity/obsidian-plugin-template/compare/758424a8d4174f67fc20bdd308060db168eeec34...main)
