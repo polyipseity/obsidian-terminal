@@ -18,7 +18,7 @@ importers:
         specifier: ^1.2.5
         version: 1.2.5(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)
       obsidian-plugin-library:
-        specifier: ^1.0.8
+        specifier: ^1.0.9
         version: link:build/obsidian-plugin-library
       semver:
         specifier: ^7.5.0
@@ -254,6 +254,9 @@ importers:
       typescript-svelte-plugin:
         specifier: ^0.3.25
         version: 0.3.25(svelte@3.59.1)(typescript@5.0.4)
+      which:
+        specifier: ^3.0.1
+        version: 3.0.1
 
 packages:
 
@@ -2788,6 +2791,14 @@ packages:
   /which@2.0.2:
     resolution: {integrity: sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==}
     engines: {node: '>= 8'}
+    hasBin: true
+    dependencies:
+      isexe: 2.0.0
+    dev: true
+
+  /which@3.0.1:
+    resolution: {integrity: sha512-XA1b62dzQzLfaEOSQFTCOd5KFf/1VSzZo7/7TUjnya6u0vGGKzU96UQBZTAThCb2j4/xjBAyii1OhRLJEivHvg==}
+    engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
     hasBin: true
     dependencies:
       isexe: 2.0.0
