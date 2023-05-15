@@ -40,7 +40,7 @@ jobs:
       with:
         cache: pnpm
         node-version: '*'
-    - run: pnpm ci
+    - run: pnpm install
     - run: pnpm build
 on:
   push:
