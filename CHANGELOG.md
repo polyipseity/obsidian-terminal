@@ -16,6 +16,7 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 __Improvements__
 - Large refactoring of the code base. There may (or may not) be new bugs. (`8f910b554e97d2bb819575b59f9af3b85c8ac7b0`..`1a6476a9b67beb1083b7cabaf4a9d0782c7f49e2`)
+- Add support for `pnpm`. (`ed08a97ee2f50bd1869580f8b9f46e945be80093`..`621e8b56b91c5570fa7f628a27b6a7a6834c2b50`)
 
 __Full changelog__: [`3.9.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.9.0...main)
 
