@@ -8,6 +8,7 @@ To apply this template, replace all occurences of `PLACEHOLDER` and `obsidian-pl
 [changelog]: https://github.com/polyipseity/obsidian-plugin-template/blob/main/CHANGELOG.md
 [community plugin]: https://obsidian.md/plugins?id=PLACEHOLDER
 [latest release]: https://github.com/polyipseity/obsidian-plugin-template/releases/latest
+[plugin library]: https://github.com/polyipseity/obsidian-plugin-library
 [repository]: https://github.com/polyipseity/obsidian-plugin-template
 [trailer]: https://raw.githubusercontent.com/polyipseity/obsidian-plugin-template/main/assets/trailer.png
 
@@ -65,7 +66,7 @@ The todos here, ordered alphabetically, are things planned for the plugin. There
 
 ### Translating
 
-Translation files are under [`assets/locales/`](assets/locales/). Each locale has its own directory named with its corresponding __[IETF language tag](https://wikipedia.org/wiki/IETF_language_tag)__.
+Translation files are under [`assets/locales/`](assets/locales/). Each locale has its own directory named with its corresponding __[IETF language tag](https://wikipedia.org/wiki/IETF_language_tag)__. Some translation keys are missing here and instead located at [`obsidian-plugin-library`][plugin library].
 
 To contribute translation for an existing locale, modify the files in the corresponding directory.
 
