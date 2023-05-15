@@ -23,9 +23,12 @@
 		"esbuild": "^0.17.19",
 		"esbuild-compress": "^1.1.5",
 		"esbuild-svelte": "^0.7.3",
+		"eslint": "^8.40.0",
 		"eslint-import-resolver-typescript": "^3.5.5",
 		"eslint-plugin-import": "^2.27.5",
 		"eslint-plugin-svelte3": "^4.0.0",
+		"i18next": "^22.4.15",
+		"p-lazy": "^4.0.0",
 		"svelte": "^3.59.1",
 		"svelte-preprocess": "^5.0.3",
 		"tslib": "^2.5.0",
@@ -62,6 +65,11 @@
 	},
 	"overrides": {
 		"tsconfig-paths": "^4.0.0"
+	},
+	"pnpm": {
+		"overrides": {
+			"tsconfig-paths": "^4.0.0"
+		}
 	},
 	"private": true,
 	"scripts": {

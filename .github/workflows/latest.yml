@@ -27,6 +27,21 @@ jobs:
           manifest.json
           styles.css
         prerelease: true
+  build-pnpm:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - uses: pnpm/action-setup@v2
+      with:
+        version: '*'
+    - uses: actions/setup-node@v3
+      with:
+        cache: pnpm
+        node-version: '*'
+    - run: pnpm install
+    - run: pnpm build
 on:
   push:
     tags:
