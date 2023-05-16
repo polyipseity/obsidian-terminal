@@ -8,6 +8,7 @@ To apply this template, replace all occurences of `PLACEHOLDER` and `obsidian-pl
 [changelog]: https://github.com/polyipseity/obsidian-plugin-template/blob/main/CHANGELOG.md
 [community plugin]: https://obsidian.md/plugins?id=PLACEHOLDER
 [latest release]: https://github.com/polyipseity/obsidian-plugin-template/releases/latest
+[other things]: https://github.com/polyipseity/obsidian-plugin-template
 [plugin library]: https://github.com/polyipseity/obsidian-plugin-library
 [repository]: https://github.com/polyipseity/obsidian-plugin-template
 [trailer]: https://raw.githubusercontent.com/polyipseity/obsidian-plugin-template/main/assets/trailer.png
@@ -16,17 +17,13 @@ PLACEHOLDER
 
 [![Buy Me a Coffee/embed]][Buy Me a Coffee]
 
-__[Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing) · [Security](#security)__
+__[Repository] · [Changelog] · [Community plugin] · [Other things] · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing) · [Security](#security)__
 
 ![Trailer]
 
 For first time users, read the [installation](#installation) section first!
 
 This file is automatically opened on first install. You can reopen it in settings or command palette.
-
-- [Repository]
-- [Changelog]
-- [Community plugin]
 
 ## Features
 
