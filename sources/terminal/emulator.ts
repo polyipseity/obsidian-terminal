@@ -23,7 +23,6 @@ import type { AsyncOrSync } from "ts-essentials"
 import { BUNDLE } from "../import.js"
 import type { ChildProcessByStdio } from "node:child_process"
 import type { Pseudoterminal } from "./pseudoterminal.js"
-import type { TerminalPlugin } from "../main.js"
 import { spawnPromise } from "../util.js"
 import { throttle } from "lodash-es"
 import { writePromise } from "./util.js"
@@ -99,7 +98,6 @@ export class XtermTerminalEmulator<A> {
 	#running = true
 
 	public constructor(
-		protected readonly context: TerminalPlugin,
 		protected readonly element: HTMLElement,
 		pseudoterminal: (
 			terminal: Terminal,

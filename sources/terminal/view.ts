@@ -627,7 +627,6 @@ export class TerminalView extends ItemView {
 							? serial
 							: null,
 						emulator = new TerminalView.EMULATOR(
-							context,
 							ele,
 							async terminal => {
 								if (serial0) {
