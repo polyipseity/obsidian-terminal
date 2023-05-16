@@ -435,9 +435,7 @@
     "extraFileExtensions": [
       ".svelte"
     ],
-    "project": [
-      "tsconfig.json"
-    ],
+    "project": true,
     "sourceType": "module"
   },
   "plugins": [
