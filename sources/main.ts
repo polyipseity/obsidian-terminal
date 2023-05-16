@@ -59,12 +59,12 @@ export class PLACEHOLDERPlugin
 	}
 
 	public override onload(): void {
-		const loaded: Promise<unknown> = this.loadData()
 		super.onload()
 		const { language, settings } = this;
 		(async (): Promise<void> => {
 			try {
-				await Promise.all([language.onLoaded, settings.onLoaded])
+				const [loaded] =
+					await Promise.all([settings.onLoaded, language.onLoaded])
 				await Promise.all([
 					Promise.resolve().then(() => { loadIcons(this) }),
 					(async (): Promise<void> => {
