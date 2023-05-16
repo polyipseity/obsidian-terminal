@@ -12,17 +12,13 @@ To apply this template, replace all occurences of `PLACEHOLDER` and `obsidian-pl
 
 PLACEHOLDER
 
-__[Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing) · [Security](#security)__
+__[Repository] · [Changelog] · [Community plugin] · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing) · [Security](#security)__
 
 ![Trailer]
 
 For first time users, read the [installation](#installation) section first!
 
 This file is automatically opened on first install. You can reopen it in settings or command palette.
-
-- [Repository]
-- [Changelog]
-- [Community plugin]
 
 ## Features
 
