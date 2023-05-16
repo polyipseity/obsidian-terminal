@@ -18,7 +18,7 @@ importers:
         specifier: ^1.2.5
         version: link:build/obsidian
       obsidian-plugin-library:
-        specifier: ^1.0.9
+        specifier: ^1.1.0
         version: link:build/obsidian-plugin-library
       semver:
         specifier: ^7.5.0
