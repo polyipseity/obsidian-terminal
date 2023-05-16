@@ -548,24 +548,24 @@ export class ProfileListModal
 	protected readonly dataKeys
 
 	public constructor(
-		plugin: TerminalPlugin,
+		context: TerminalPlugin,
 		data: readonly Settings.Profile.Entry[],
 		options?: ProfileListModal.Options,
 	) {
-		const { i18n } = plugin.language,
+		const { i18n } = context.language,
 			dataW = cloneAsWritable(data),
 			dataKeys = new Map(dataW.map(([key, value]) => [value, key])),
 			callback = options?.callback ?? ((): void => { }),
 			keygen = options?.keygen ?? ((): string => self.crypto.randomUUID())
 		super(
-			plugin,
+			context,
 			(setting, editable, getter, setter) => {
 				setting.addButton(button => button
 					.setIcon(i18n.t("asset:components.profile-list.edit-icon"))
 					.setTooltip(i18n.t("components.profile-list.edit"))
 					.onClick(() => {
 						new ProfileModal(
-							plugin,
+							context,
 							getter(),
 							async value => {
 								await setter(item => {
@@ -621,7 +621,7 @@ export class ProfileListModal
 				presets: options?.presets ?? PROFILE_PRESET_ORDERED_KEYS
 					.map(key => ({
 						get name(): string {
-							return plugin.language.i18n.t(`profile-presets.${key}`)
+							return context.language.i18n.t(`profile-presets.${key}`)
 						},
 						get value(): DeepWritable<Settings.Profile> {
 							return cloneAsWritable(PROFILE_PRESETS[key])

@@ -28,7 +28,7 @@ export const PROFILE_PROPERTIES: {
 		readonly valid: boolean
 		readonly integratable: boolean
 		readonly opener: (
-			plugin: TerminalPlugin,
+			context: TerminalPlugin,
 			profile: Settings.Profile.Typed<key>,
 			options?: OpenOptions,
 		) => AsyncOrSync<RefPsuedoterminal<Pseudoterminal> | null>
@@ -46,14 +46,16 @@ export const PROFILE_PROPERTIES: {
 	developerConsole: {
 		available: true,
 		integratable: true,
-		opener(plugin: TerminalPlugin) { return plugin.developerConsolePTY.dup() },
+		opener(context: TerminalPlugin) {
+			return context.developerConsolePTY.dup()
+		},
 		valid: true,
 	},
 	external: {
 		available: SUPPORTS_EXTERNAL_TERMINAL_EMULATOR,
 		integratable: false,
 		async opener(
-			_plugin: TerminalPlugin,
+			_context: TerminalPlugin,
 			profile: Settings.Profile.Typed<"external">,
 			options?: OpenOptions,
 		) {
@@ -70,7 +72,7 @@ export const PROFILE_PROPERTIES: {
 		available: Pseudoterminal.PLATFORM_PSEUDOTERMINAL !== null,
 		integratable: true,
 		opener(
-			plugin: TerminalPlugin,
+			context: TerminalPlugin,
 			profile: Settings.Profile.Typed<"integrated">,
 			options?: OpenOptions,
 		) {
@@ -86,7 +88,7 @@ export const PROFILE_PROPERTIES: {
 				supported = launderUnchecked<AnyObject>(platforms)[Platform.CURRENT]
 			if (typeof supported !== "boolean" || !supported) { return null }
 			return new RefPsuedoterminal(
-				new Pseudoterminal.PLATFORM_PSEUDOTERMINAL(plugin, {
+				new Pseudoterminal.PLATFORM_PSEUDOTERMINAL(context, {
 					args,
 					cwd: options?.cwd ?? null,
 					executable,
@@ -107,10 +109,10 @@ export const PROFILE_PROPERTIES: {
 })
 
 export function openProfile<T extends Settings.Profile.Type>(
-	plugin: TerminalPlugin,
+	context: TerminalPlugin,
 	profile: Settings.Profile.Typed<T>,
 	options?: OpenOptions,
 ): AsyncOrSync<RefPsuedoterminal<Pseudoterminal> | null> {
 	const type0: T = profile.type
-	return PROFILE_PROPERTIES[type0].opener(plugin, profile, options)
+	return PROFILE_PROPERTIES[type0].opener(context, profile, options)
 }

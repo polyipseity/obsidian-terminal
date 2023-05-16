@@ -858,7 +858,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 	public readonly onExit
 
 	public constructor(
-		protected readonly plugin: TerminalPlugin,
+		protected readonly context: TerminalPlugin,
 		{
 			args,
 			cwd,
@@ -867,7 +867,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 			pythonExecutable,
 		}: ShellPseudoterminalArguments,
 	) {
-		const { language } = plugin
+		const { language } = context
 		this.shell = spawnPromise(async () => {
 			if (isNil(pythonExecutable)) {
 				throw new Error(language
@@ -908,7 +908,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 
 	public async kill(): Promise<void> {
 		if (!(await this.shell).kill()) {
-			throw new Error(this.plugin.language
+			throw new Error(this.context.language
 				.i18n.t("errors.error-killing-pseudoterminal"))
 		}
 	}

@@ -99,7 +99,7 @@ export class XtermTerminalEmulator<A> {
 	#running = true
 
 	public constructor(
-		protected readonly plugin: TerminalPlugin,
+		protected readonly context: TerminalPlugin,
 		protected readonly element: HTMLElement,
 		pseudoterminal: (
 			terminal: Terminal,
