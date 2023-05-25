@@ -14,12 +14,16 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Full changelog__: [`3.9.1...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.9.1...main)
+
+## 3.9.1 (2023-05-25)
+
 __Improvements__
 - Large refactoring of the code base. There may (or may not) be new bugs. (`8f910b554e97d2bb819575b59f9af3b85c8ac7b0`..`1a6476a9b67beb1083b7cabaf4a9d0782c7f49e2`)
 - Add support for `pnpm`. (`ed08a97ee2f50bd1869580f8b9f46e945be80093`..`621e8b56b91c5570fa7f628a27b6a7a6834c2b50`)
 - Remove confusing "Malformed data" notice. Fixes [GH#19](https://github.com/polyipseity/obsidian-terminal/issues/19). (`4d8a0fa459c5d982160bdfedc5e09ac9f9dd19f3`)
 
-__Full changelog__: [`3.9.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.9.0...main)
+__Full changelog__: [`3.9.0...3.9.1`](https://github.com/polyipseity/obsidian-terminal/compare/3.9.0...3.9.1)
 
 ## 3.9.0 (2023-05-10)
 
