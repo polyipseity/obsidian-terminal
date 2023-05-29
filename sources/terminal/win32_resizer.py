@@ -1,129 +1,152 @@
 # -*- coding: UTF-8 -*-
 # dependencies: psutil, pywinctl
 
-import contextlib as _contextlib
-import itertools as _itertools
-import psutil as _psutil
-import pywinctl as _pywinctl
-import pywintypes as _pywintypes
+from contextlib import contextmanager as _contextmanager
+from itertools import chain as _chain
+from psutil import Process as _Process
+from pywinctl import (
+    BaseWindow as _BaseWindow,
+    Window as _Window,
+    getAllWindows as _getAllWindows,
+)
 import sys as _sys
-import time as _time
-import typing as _typing
-import win32api as _win32api
-import win32con as _win32con
-import win32console as _win32console
-import win32file as _win32file
-import win32gui as _win32gui
-import win32process as _win32process
-
-
-@_typing.final
-class PyCOORDType(_typing.Protocol):
-    @property
-    def X(self) -> int:
-        ...
-
-    @property
-    def Y(self) -> int:
-        ...
-
-
-@_typing.final
-class PySMALL_RECTType(_typing.Protocol):
-    @property
-    def Left(self) -> int:
-        ...
-
-    @property
-    def Top(self) -> int:
-        ...
-
-    @property
-    def Right(self) -> int:
-        ...
-
-    @property
-    def Bottom(self) -> int:
-        ...
-
-
-@_typing.final
-class PyConsoleScreenBufferInfo(_typing.TypedDict):
-    Size: PyCOORDType
-    CursorPosition: PyCOORDType
-    Attributes: int
-    Window: PySMALL_RECTType
-    MaximumWindowSize: PyCOORDType
-
-
-_WIN32CONSOLE_ATTACH_CONSOLE = _typing.cast(
-    _typing.Callable[[int], None],
-    _win32console.AttachConsole,  # type: ignore
-)
-_WIN32CONSOLE_PY_COORD_TYPE = _typing.cast(
-    _typing.Callable[[int, int], _win32console.PyCOORDType],
-    _win32console.PyCOORDType,
-)
-_WIN32CONSOLE_PY_CONSOLE_SCREEN_BUFFER_TYPE = _typing.cast(
-    _typing.Callable[[_typing.Any], _win32console.PyConsoleScreenBufferType],
-    _win32console.PyConsoleScreenBufferType,
-)
-_WIN32CONSOLE_PY_CONSOLE_SCREEN_BUFFER_TYPE_GET_CONSOLE_SCREEN_BUFFER_INFO = _typing.cast(
-    _typing.Callable[
-        [_win32console.PyConsoleScreenBufferType], PyConsoleScreenBufferInfo
-    ],
-    _win32console.PyConsoleScreenBufferType.GetConsoleScreenBufferInfo,  # type: ignore
-)
-_WIN32CONSOLE_PY_CONSOLE_SCREEN_BUFFER_TYPE_SET_CONSOLE_WINDOW_INFO = _typing.cast(
-    _typing.Callable[
-        [_win32console.PyConsoleScreenBufferType, bool, _win32console.PySMALL_RECTType],
-        None,
-    ],
-    _win32console.PyConsoleScreenBufferType.SetConsoleWindowInfo,  # type: ignore
-)
-_WIN32CONSOLE_PY_SMALL_RECT_TYPE = _typing.cast(
-    _typing.Callable[[int, int, int, int], _win32console.PySMALL_RECTType],
-    _win32console.PySMALL_RECTType,
+from time import sleep as _sleep
+from typing import (
+    Any as _Any,
+    Callable as _Callable,
+    Generator as _Generator,
+    Protocol as _Protocol,
+    TypedDict as _TypedDict,
+    cast as _cast,
+    final as _final,
 )
 
 if _sys.platform == "win32":
-    LOOKUP_RETRY_INTERVAL = 1
-    LOOKUP_RETRIES = 10
-    RESIZE_ITERATIONS = 2
+    from pywintypes import error as _error
+    from win32api import SetConsoleCtrlHandler as _SetConsoleCtrlHandler
+    from win32con import (
+        CTRL_BREAK_EVENT as _CTRL_BREAK_EVENT,
+        CTRL_CLOSE_EVENT as _CTRL_CLOSE_EVENT,
+        CTRL_C_EVENT as _CTRL_C_EVENT,
+        FILE_SHARE_WRITE as _FILE_SHARE_WRITE,
+        GENERIC_READ as _GENERIC_READ,
+        GENERIC_WRITE as _GENERIC_WRITE,
+        OPEN_EXISTING as _OPEN_EXISTING,
+        SWP_NOACTIVATE as _SWP_NOACTIVATE,
+        SWP_NOREDRAW as _SWP_NOREDRAW,
+        SWP_NOZORDER as _SWP_NOZORDER,
+    )
+    from win32console import (
+        AttachConsole as _AttachConsole,  # type: ignore
+        FreeConsole as _FreeConsole,
+        PyCOORDType as _PyCOORDType,
+        PySMALL_RECTType as _PySMALL_RECTType,
+        PyConsoleScreenBufferType as _PyConsoleScreenBufferType,
+    )
+    from win32file import CreateFile as _CreateFile
+    from win32gui import SetWindowPos as _SetWindowPos
+    from win32process import GetWindowThreadProcessId as _GetWindowThreadProcessId
+
+    @_final
+    class _PyCOORDType0(_Protocol):
+        @property
+        def X(self) -> int:
+            ...
+
+        @property
+        def Y(self) -> int:
+            ...
+
+    @_final
+    class _PySMALL_RECTType0(_Protocol):
+        @property
+        def Left(self) -> int:
+            ...
+
+        @property
+        def Top(self) -> int:
+            ...
+
+        @property
+        def Right(self) -> int:
+            ...
+
+        @property
+        def Bottom(self) -> int:
+            ...
+
+    @_final
+    class _PyConsoleScreenBufferInfo(_TypedDict):
+        Size: _PyCOORDType0
+        CursorPosition: _PyCOORDType0
+        Attributes: int
+        Window: _PySMALL_RECTType0
+        MaximumWindowSize: _PyCOORDType0
+
+    _ATTACH_CONSOLE = _cast(
+        _Callable[[int], None],
+        _AttachConsole,
+    )
+    _PY_COORD_TYPE = _cast(
+        _Callable[[int, int], _PyCOORDType],
+        _PyCOORDType,
+    )
+    _PY_CONSOLE_SCREEN_BUFFER_TYPE = _cast(
+        _Callable[[_Any], _PyConsoleScreenBufferType],
+        _PyConsoleScreenBufferType,
+    )
+    _GET_CONSOLE_SCREEN_BUFFER_INFO = _cast(
+        _Callable[[_PyConsoleScreenBufferType], _PyConsoleScreenBufferInfo],
+        _PyConsoleScreenBufferType.GetConsoleScreenBufferInfo,  # type: ignore
+    )
+    _SET_CONSOLE_WINDOW_INFO = _cast(
+        _Callable[
+            [_PyConsoleScreenBufferType, bool, _PySMALL_RECTType],
+            None,
+        ],
+        _PyConsoleScreenBufferType.SetConsoleWindowInfo,  # type: ignore
+    )
+    _PY_SMALL_RECT_TYPE = _cast(
+        _Callable[[int, int, int, int], _PySMALL_RECTType],
+        _PySMALL_RECTType,
+    )
+    _LOOKUP_RETRY_INTERVAL = 1
+    _LOOKUP_RETRIES = 10
+    _RESIZE_ITERATIONS = 2
 
     def main():
         pid = int(input("PID: "))
         print(f"received: {pid}")
-        proc = _psutil.Process(pid)
+        proc = _Process(pid)
         procs = {}
         windows = ()
-        for tries in range(LOOKUP_RETRIES):
+        for tries in range(_LOOKUP_RETRIES):
             procs = {
                 proc.pid: proc
-                for proc in _itertools.chain((proc,), proc.children(recursive=True))
+                for proc in _chain((proc,), proc.children(recursive=True))
             }
             print(f"process(es) (try {tries + 1}): {procs}")
-            windows = _pywinctl.getAllWindows()
+            windows = _getAllWindows()
             print(f"window(s) (try {tries + 1}): {windows}")
             for win in windows:
                 win_pid = win_to_pid(win)
                 if win_pid in procs:
                     resizer(procs[win_pid], win)
                     return
-            _time.sleep(LOOKUP_RETRY_INTERVAL)
+            _sleep(_LOOKUP_RETRY_INTERVAL)
         raise LookupError(procs, windows)
 
-    def win_to_pid(window: _pywinctl.Window):
-        return _win32process.GetWindowThreadProcessId(window.getHandle())[1]
+    def win_to_pid(window: _Window):
+        return _GetWindowThreadProcessId(window.getHandle())[1]
 
-    def resizer(process: _psutil.Process, window: _pywinctl.BaseWindow):
+    def resizer(process: _Process, window: _BaseWindow):
         print(f"window: {window}")
         writer = resizer_writer(process, window)
         next(writer)
         for size in resizer_reader(process):
             writer.send(size)
 
-    def resizer_reader(process: _psutil.Process):
+    def resizer_reader(process: _Process):
         while True:
             size0 = ""
             while not size0:  # stdin watchdog triggers this loop
@@ -135,53 +158,51 @@ if _sys.platform == "win32":
             yield rows, columns
 
     def resizer_writer(
-        process: _psutil.Process, window: _pywinctl.BaseWindow
-    ) -> _typing.Generator[None, tuple[int, int], None]:
+        process: _Process, window: _BaseWindow
+    ) -> _Generator[None, tuple[int, int], None]:
         window.hide(True)
 
-        def ignore_error(func: _typing.Callable[[], None]):
+        def ignore_error(func: _Callable[[], None]):
             try:
                 func()
-            except _pywintypes.error:
+            except _error:
                 pass
 
-        @_contextlib.contextmanager
+        @_contextmanager
         def attach_console(pid: int):
             try:
-                _WIN32CONSOLE_ATTACH_CONSOLE(pid)
-                yield _WIN32CONSOLE_PY_CONSOLE_SCREEN_BUFFER_TYPE(
-                    _win32file.CreateFile(
+                _ATTACH_CONSOLE(pid)
+                yield _PY_CONSOLE_SCREEN_BUFFER_TYPE(
+                    _CreateFile(
                         "CONOUT$",
-                        _win32file.GENERIC_READ | _win32file.GENERIC_WRITE,
-                        _win32file.FILE_SHARE_WRITE,
+                        _GENERIC_READ | _GENERIC_WRITE,
+                        _FILE_SHARE_WRITE,
                         None,
-                        _win32file.OPEN_EXISTING,
+                        _OPEN_EXISTING,
                         0,
                         None,
                     )  # GetStdHandle gives the piped handle instead of the console handle
                 )
             finally:
-                _win32console.FreeConsole()
+                _FreeConsole()
 
         def console_ctrl_handler(event: int):
             if event in (
-                _win32con.CTRL_C_EVENT,
-                _win32con.CTRL_BREAK_EVENT,
-                _win32con.CTRL_CLOSE_EVENT,
+                _CTRL_C_EVENT,
+                _CTRL_BREAK_EVENT,
+                _CTRL_CLOSE_EVENT,
             ):
                 return True
             return False
 
-        _win32console.FreeConsole()
+        _FreeConsole()
         with attach_console(process.pid) as console:
-            _win32api.SetConsoleCtrlHandler(console_ctrl_handler, True)
+            _SetConsoleCtrlHandler(console_ctrl_handler, True)
             while True:
                 columns, rows = yield
                 # iterate to resize accurately
-                for iter in range(RESIZE_ITERATIONS):
-                    info = _WIN32CONSOLE_PY_CONSOLE_SCREEN_BUFFER_TYPE_GET_CONSOLE_SCREEN_BUFFER_INFO(
-                        console
-                    )
+                for iter in range(_RESIZE_ITERATIONS):
+                    info = _GET_CONSOLE_SCREEN_BUFFER_INFO(console)
                     old_rect = window.getClientFrame()
                     old_actual_rect = window.size
                     old_cols = info["Window"].Right - info["Window"].Left + 1
@@ -199,36 +220,30 @@ if _sys.platform == "win32":
                     print(f"pixel size (iteration {iter + 1}): {size}")
                     setters = [
                         # almost accurate, works for alternate screen buffer
-                        lambda: _win32gui.SetWindowPos(
-                            _typing.cast(int, window.getHandle()),
+                        lambda: _SetWindowPos(
+                            _cast(int, window.getHandle()),
                             None,
                             0,
                             0,
                             *size,
-                            _win32con.SWP_NOACTIVATE
-                            | _win32con.SWP_NOREDRAW
-                            | _win32con.SWP_NOZORDER,
+                            _SWP_NOACTIVATE | _SWP_NOREDRAW | _SWP_NOZORDER,
                         ),
                         # accurate, SetConsoleWindowInfo does not work for alternate screen buffer
-                        lambda: _WIN32CONSOLE_PY_CONSOLE_SCREEN_BUFFER_TYPE_SET_CONSOLE_WINDOW_INFO(
+                        lambda: _SET_CONSOLE_WINDOW_INFO(
                             console,
                             True,
-                            _WIN32CONSOLE_PY_SMALL_RECT_TYPE(
-                                0, 0, columns - 1, old_rows - 1
-                            ),
+                            _PY_SMALL_RECT_TYPE(0, 0, columns - 1, old_rows - 1),
                         ),
                         lambda: console.SetConsoleScreenBufferSize(
-                            _WIN32CONSOLE_PY_COORD_TYPE(columns, old_rows)
+                            _PY_COORD_TYPE(columns, old_rows)
                         ),
-                        lambda: _WIN32CONSOLE_PY_CONSOLE_SCREEN_BUFFER_TYPE_SET_CONSOLE_WINDOW_INFO(
+                        lambda: _SET_CONSOLE_WINDOW_INFO(
                             console,
                             True,
-                            _WIN32CONSOLE_PY_SMALL_RECT_TYPE(
-                                0, 0, columns - 1, rows - 1
-                            ),
+                            _PY_SMALL_RECT_TYPE(0, 0, columns - 1, rows - 1),
                         ),
                         lambda: console.SetConsoleScreenBufferSize(
-                            _WIN32CONSOLE_PY_COORD_TYPE(columns, rows)
+                            _PY_COORD_TYPE(columns, rows)
                         ),
                     ]
                     if old_cols < columns:
