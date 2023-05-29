@@ -10,20 +10,23 @@ import sys as _sys
 import termios as _termios
 import typing as _typing
 
+_PTY_FORK = _typing.cast(
+    _typing.Callable[[], tuple[int, int]],
+    _pty.fork,  # type: ignore
+)
+
 if _sys.platform != "win32":
     CHUNK_SIZE = 1024
     STDIN = _sys.stdin.fileno()
     STDOUT = _sys.stdout.fileno()
     CMDIO = 3
 
-    def main() -> _typing.NoReturn:
-        pid: int
-        pty_fd: int
-        pid, pty_fd = _pty.fork()  # type: ignore
+    def main():
+        pid, pty_fd = _PTY_FORK()
         if pid == 0:
             _os.execvp(_sys.argv[1], _sys.argv[1:])
 
-        def write_all(fd: int, data: bytes) -> None:
+        def write_all(fd: int, data: bytes):
             while data:
                 data = data[_os.write(fd, data) :]
 
@@ -55,10 +58,7 @@ if _sys.platform != "win32":
                     selector.unregister(CMDIO)
                     return
                 for line in data.decode("UTF-8", "strict").splitlines():
-                    rows, columns = _typing.cast(
-                        tuple[int, int],
-                        tuple(int(ss.strip()) for ss in line.split("x", 2)),
-                    )
+                    rows, columns = (int(ss.strip()) for ss in line.split("x", 2))
                     _fcntl.ioctl(
                         pty_fd,
                         _termios.TIOCSWINSZ,
@@ -76,7 +76,7 @@ if _sys.platform != "win32":
 
 else:
 
-    def main() -> _typing.NoReturn:
+    def main():
         raise NotImplementedError(_sys.platform)
 
 
