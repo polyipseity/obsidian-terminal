@@ -141,6 +141,7 @@ The todos here, ordered alphabetically, are things planned for the plugin. There
 - Connect to remote shells.
 - Copy terminal tabs.
 - Create ad-hoc profile in `Open terminal: Select`.
+- Detect sandboxed environment and notify users.
 - Edit profile before opening terminal in `Open terminal: Select` when a modifier key is pressed.
 - External link confirmation.
 - Filter console log by severity in the developer console.
