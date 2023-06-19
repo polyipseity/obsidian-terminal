@@ -1,6 +1,4 @@
 # -*- coding: UTF-8 -*-
-# dependencies: psutil, pywinctl
-
 from contextlib import contextmanager as _contextmanager
 from itertools import chain as _chain
 from psutil import Process as _Process
