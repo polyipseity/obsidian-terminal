@@ -1,7 +1,3 @@
-[submodule "esbuild-compress"]
-	path = build/esbuild-compress
-	url = https://github.com/polyipseity/esbuild-compress.git
-	branch = main
 [submodule "obsidian"]
 	path = build/obsidian
 	url = ../obsidian-api.git
