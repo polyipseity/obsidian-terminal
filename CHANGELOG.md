@@ -14,6 +14,10 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Improvements__
+- Improve Python code. (`977dd978b3acb3ae272407d9112f1c88433f0c4a`, `1757d54dee038cb35f8aca4e3e44b601d3ac6c4e`, `5d7c6a92aee1a7c07c88da611d457ec6bd00becd`)
+- Update npm packages to remove vulnerabilities. (`5d7c6a92aee1a7c07c88da611d457ec6bd00becd`..`aa2e327b6abdf91f93f8bb7c9db7e00d52a829b7`)
+
 __Full changelog__: [`3.9.1...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.9.1...main)
 
 ## 3.9.1 (2023-05-25)
