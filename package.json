@@ -119,7 +119,7 @@
 	"sideEffects": false,
 	"style": "styles.css",
 	"type": "module",
-	"version": "3.9.1",
+	"version": "3.9.2",
 	"workspaces": [
 		"build/*"
 	]
