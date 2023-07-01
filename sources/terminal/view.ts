@@ -730,27 +730,21 @@ export class TerminalView extends ItemView {
 						cur => { renderer.use(cur) },
 					))
 					renderer.use(settings.copy.preferredRenderer)
-					search.onDidChangeResults(results => {
-						const { resultIndex, resultCount } = results
-						if (resultIndex === -1) {
-							this.#find?.$set({
-								results: i18n
-									.t("components.find.too-many-results", {
-										interpolation: { escapeValue: false },
-										limit: TERMINAL_SEARCH_RESULTS_LIMIT,
-									}),
-							})
-							return
-						}
-						this.#find?.$set({
-							results: i18n.t("components.find.results", {
-								interpolation: { escapeValue: false },
-								replace: {
-									count: resultCount,
-									index: resultIndex + 1,
-								},
-							}),
-						})
+					search.onDidChangeResults(results0 => {
+						const { resultIndex, resultCount } = results0,
+							results = resultIndex === -1
+								? i18n.t("components.find.too-many-results", {
+									interpolation: { escapeValue: false },
+									limit: TERMINAL_SEARCH_RESULTS_LIMIT,
+								})
+								: i18n.t("components.find.results", {
+									interpolation: { escapeValue: false },
+									replace: {
+										count: resultCount,
+										index: resultIndex + 1,
+									},
+								})
+						this.#find?.$set({ results })
 					})
 
 					emulator.resize().catch(logWarn)
