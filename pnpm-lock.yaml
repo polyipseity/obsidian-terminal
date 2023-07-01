@@ -100,43 +100,6 @@ importers:
         specifier: ^0.3.27
         version: 0.3.27(svelte@3.59.2)(typescript@5.1.6)
 
-  build/esbuild-compress:
-    dependencies:
-      esbuild:
-        specifier: ^0.17.19
-        version: 0.17.19
-      import-meta-resolve:
-        specifier: ^3.0.0
-        version: 3.0.0
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.21
-      lz-string:
-        specifier: ^1.5.0
-        version: 1.5.0
-      p-lazy:
-        specifier: ^4.0.0
-        version: 4.0.0
-    devDependencies:
-      '@types/node':
-        specifier: ^20.1.4
-        version: 20.1.4
-
-  build/obsidian:
-    dependencies:
-      '@codemirror/state':
-        specifier: ^6.0.0
-        version: 6.0.0
-      '@codemirror/view':
-        specifier: ^6.0.0
-        version: 6.0.0
-      '@types/codemirror':
-        specifier: 0.0.108
-        version: 0.0.108
-      moment:
-        specifier: 2.29.4
-        version: 2.29.4
-
   build/obsidian:
     dependencies:
       '@codemirror/state':
