@@ -1,7 +1,7 @@
 lockfileVersion: '6.0'
 
 overrides:
-  obsidian: ^1.2.8
+  obsidian: ^1.2.5
   tsconfig-paths: ^4.0.0
 
 importers:
@@ -15,10 +15,10 @@ importers:
         specifier: ^4.17.21
         version: 4.17.21
       obsidian:
-        specifier: ^1.2.8
+        specifier: ^1.2.5
         version: 1.2.8(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)
       obsidian-plugin-library:
-        specifier: ^1.4.0
+        specifier: ^1.4.1
         version: link:build/obsidian-plugin-library
       semver:
         specifier: ^7.5.3
@@ -133,7 +133,7 @@ importers:
         specifier: ^2.3.0
         version: 2.3.0
       obsidian:
-        specifier: ^1.2.8
+        specifier: ^1.2.5
         version: 1.2.8(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)
       p-lazy:
         specifier: ^4.0.0
