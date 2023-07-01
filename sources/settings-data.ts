@@ -24,6 +24,7 @@ import {
 	DEFAULT_LINK_HANDLER,
 	DEFAULT_TERMINAL_OPTIONS,
 	DEFAULT_THEME,
+	DEFAULT_WINDOWS_PTY,
 	DEFAULT_WINDOW_OPTIONS,
 	type LinkHandlerFunc,
 	PROFILE_PRESETS,
@@ -45,6 +46,7 @@ import type {
 	ITerminalOptions,
 	ITheme,
 	IWindowOptions,
+	IWindowsPty,
 } from "xterm"
 import { isUndefined, omitBy } from "lodash-es"
 import { PluginLocales } from "../assets/locales.js"
@@ -1008,6 +1010,26 @@ export namespace Settings {
 					"windowsMode",
 					["undefined", "boolean"],
 				),
+				windowsPty: isUndefined(unc.windowsPty)
+					? unc.windowsPty
+					: ((): IWindowsPty => {
+						const unc2 = launderUnchecked<IWindowsPty>(unc.windowsPty),
+							ret = {
+								backend: fixInSet(
+									DEFAULT_WINDOWS_PTY,
+									unc2,
+									"backend",
+									[UNDEFINED, "conpty", "winpty"],
+								),
+								buildNumber: fixTyped(
+									DEFAULT_WINDOWS_PTY,
+									unc2,
+									"buildNumber",
+									["undefined", "number"],
+								),
+							} satisfies Required<DeepUndefinable<IWindowsPty>>
+						return omitBy(ret, isUndefined)
+					})(),
 				wordSeparator: fixTyped(
 					DEFAULT_TERMINAL_OPTIONS,
 					unc,

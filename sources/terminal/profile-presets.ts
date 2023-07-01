@@ -3,7 +3,13 @@ import {
 	DEFAULT_SUCCESS_EXIT_CODES,
 	WINDOWS_CMD_PATH,
 } from "../magic.js"
-import type { IBufferRange, ILinkHandler, ITheme, IWindowOptions } from "xterm"
+import type {
+	IBufferRange,
+	ILinkHandler,
+	ITheme,
+	IWindowOptions,
+	IWindowsPty,
+} from "xterm"
 import { deepFreeze, openExternal, typedKeys } from "obsidian-plugin-library"
 import type { Pseudoterminal } from "./pseudoterminal.js"
 import type { Settings } from "../settings-data.js"
@@ -15,7 +21,8 @@ export const
 	DEFAULT_TERMINAL_OPTIONS: Settings.Profile.TerminalOptions =
 		deepFreeze({}),
 	DEFAULT_THEME: ITheme = deepFreeze({}),
-	DEFAULT_WINDOW_OPTIONS: IWindowOptions = deepFreeze({})
+	DEFAULT_WINDOW_OPTIONS: IWindowOptions = deepFreeze({}),
+	DEFAULT_WINDOWS_PTY: IWindowsPty = deepFreeze({})
 export type LinkHandlerFunc = (
 	event: MouseEvent,
 	text: string,
