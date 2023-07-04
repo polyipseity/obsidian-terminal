@@ -17,16 +17,10 @@ jobs:
         npm pack --pack-destination=.github
         for file in .github/*.tgz; do mv "$file" "${file%-*}.tgz"; done
     - if: ${{github.ref == 'refs/tags/latest'}}
-      uses: softprops/action-gh-release@v1
-      with:
-        append_body: true
-        fail_on_unmatched_files: true
-        files: |
-          .github/*.tgz
-          main.js
-          manifest.json
-          styles.css
-        prerelease: true
+      env:
+        GH_TOKEN: ${{github.token}}
+      run: |
+        gh release upload latest .github/*.tgz main.js manifest.json styles.css --clobber
   build-pnpm:
     runs-on: ubuntu-latest
     steps:
