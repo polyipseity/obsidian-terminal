@@ -2,7 +2,6 @@ import {
 	DEFAULT_ENCODING,
 	DEFAULT_SUCCESS_EXIT_CODES,
 	DOMClasses2,
-	TERMINAL_SEARCH_RESULTS_LIMIT,
 	UNDEFINED,
 } from "../magic.js"
 import {
@@ -732,10 +731,10 @@ export class TerminalView extends ItemView {
 					renderer.use(settings.copy.preferredRenderer)
 					search.onDidChangeResults(results0 => {
 						const { resultIndex, resultCount } = results0,
-							results = resultIndex === -1
+							results = resultIndex === -1 && resultCount > 0
 								? i18n.t("components.find.too-many-results", {
 									interpolation: { escapeValue: false },
-									limit: TERMINAL_SEARCH_RESULTS_LIMIT,
+									limit: resultCount - 1,
 								})
 								: i18n.t("components.find.results", {
 									interpolation: { escapeValue: false },
