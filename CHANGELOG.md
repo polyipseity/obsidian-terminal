@@ -18,6 +18,9 @@ __Fixes__
 - Fix typing into the find textbox not working. (`629143c952181524a886b07b4602290a207bf1fa`)
 - Fix wrong find results when no matches. (`691f1a2aa8dc759486f610ea3e7a7f83bc7e865a`)
 
+__Improvements__
+- Show when the profile is invalid in the `Type` setting. (`46c8598cb2e14dafd1e6266366e6479cb10e036c`)
+
 __Full changelog__: [`3.9.2...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.9.2...main)
 
 ## 3.9.2 (2023-07-01)
