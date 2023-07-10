@@ -18,7 +18,7 @@ importers:
         specifier: ^1.2.5
         version: 1.2.8(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)
       obsidian-plugin-library:
-        specifier: ^1.4.2
+        specifier: ^1.5.0
         version: link:build/obsidian-plugin-library
       semver:
         specifier: ^7.5.3
