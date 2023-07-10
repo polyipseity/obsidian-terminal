@@ -14,6 +14,10 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Full changelog__: [`3.10.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.10.0...main)
+
+## 3.10.0 (2023-07-10)
+
 __Features__
 - Add font terminal options. Closes [GH#20](https://github.com/polyipseity/obsidian-terminal/issues/20). (`ed9077348755cc863958a39a5cf45d4b55720d0d`..`f3145847ff37a438e090e33d399943e4461ad381`)
 
@@ -24,7 +28,7 @@ __Fixes__
 __Improvements__
 - Show when the profile is invalid in the `Type` setting. (`46c8598cb2e14dafd1e6266366e6479cb10e036c`)
 
-__Full changelog__: [`3.9.2...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.9.2...main)
+__Full changelog__: [`3.9.2...3.10.0`](https://github.com/polyipseity/obsidian-terminal/compare/3.9.2...3.10.0)
 
 ## 3.9.2 (2023-07-01)
 
