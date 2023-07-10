@@ -117,7 +117,6 @@ class EditTerminalModal extends DialogModal {
 				context,
 				context: {
 					settings,
-					language: { onChangeLanguage },
 					language: { i18n },
 					app: { vault: { adapter } },
 				},
@@ -127,7 +126,6 @@ class EditTerminalModal extends DialogModal {
 			} = this,
 			{ element: listEl, remover: listElRemover } = useSettings(this.contentEl)
 		ui.finally(listElRemover)
-			.finally(onChangeLanguage.listen(() => { ui.update() }))
 			.newSetting(listEl, setting => {
 				setting
 					.setName(i18n.t("components.terminal.edit-modal.working-directory"))

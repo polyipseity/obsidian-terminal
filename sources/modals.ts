@@ -86,13 +86,14 @@ export class ProfileModal extends Modal {
 			profile = data,
 			{ language } = context,
 			{ i18n, onChangeLanguage } = language
-		modalUI.new(() => titleEl, ele => {
-			ele.textContent = i18n.t("components.profile.title", {
-				interpolation: { escapeValue: false },
-				name: Settings.Profile.name(profile),
-				profile,
-			})
-		}, ele => { ele.textContent = null })
+		modalUI.finally(onChangeLanguage.listen(() => { modalUI.update() }))
+			.new(() => titleEl, ele => {
+				ele.textContent = i18n.t("components.profile.title", {
+					interpolation: { escapeValue: false },
+					name: Settings.Profile.name(profile),
+					profile,
+				})
+			}, ele => { ele.textContent = null })
 		ui.finally(listElRemover)
 			.finally(onChangeLanguage.listen(() => { ui.update() }))
 		let keepPreset = false
