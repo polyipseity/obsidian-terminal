@@ -33,6 +33,7 @@ This file is automatically opened on first install. You can reopen it in setting
 - Automatically save and restore integrated terminal history.
 - Find in terminal.
 - Save terminal history as file.
+- Customize terminal appearance.
 
 ## Installation
 
@@ -148,7 +149,6 @@ The todos here, ordered alphabetically, are things planned for the plugin. There
 - Fix broken section links in builtin documentations.
 - Indicate that the terminal resizer has crashed or is disabled.
 - Shared terminal tabs.
-- Theme settings UI.
 - Vim mode switch.
 
 ### Translating
