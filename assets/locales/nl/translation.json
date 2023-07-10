@@ -41,6 +41,8 @@
 			"success-exit-codes": "Success $t(generic.exit) codes",
 			"success-exit-codes-description": "$t(generic.list-description, capitalize)",
 			"success-exit-codes-edit": "$t(generic.edit, capitalize)",
+			"terminal-options": "$t(generic.terminal-option_other, capitalize)",
+			"terminal-options-edit": "$t(generic.edit, capitalize)",
 			"title": "{{name}}",
 			"type": "$t(generic.type, capitalize)",
 			"type-options": "$t(generic.profile-types.{{type}}, capitalize)"
@@ -70,7 +72,7 @@
 				"root-directory": "$t(generic.root-directory, capitalize)",
 				"title": "$t(generic.edit, capitalize) $t(generic.terminal)",
 				"working-directory": "$t(generic.working-directory, capitalize)",
-				"working-directory-placeholder": "(Undefined)"
+				"working-directory-placeholder": "($t(generic.undefined, capitalize))"
 			},
 			"menus": {
 				"clear": "$t(generic.clear, capitalize)",
@@ -84,6 +86,17 @@
 			},
 			"restored-history": "\r\n * $t(generic.restore_past, capitalize) $t(generic.history) at {{datetime, datetime(dateStyle: full, timeStyle: full)}}\r\n\r\n",
 			"unsupported-profile": "Unsupported $t(generic.profile):\r\n{{profile}}\r\n"
+		},
+		"terminal-options": {
+			"bold-font-weight": "Bold $t(generic.font-weight)",
+			"description-html": "See <a aria-label=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" class=\"external-link\" data-tooltip-position=\"top\" href=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" rel=\"noopener\" target=\"_blank\"><code>ITerminalOptions</code></a> for all $t(generic.option_other).",
+			"font-family": "$t(generic.font, capitalize) family",
+			"font-size": "$t(generic.font, capitalize) size",
+			"font-weight": "$t(generic.font-weight, capitalize)",
+			"invalid-description": "$t(generic.invalid, capitalize)",
+			"title": "$t(generic.terminal-option_other, capitalize)",
+			"undefine": "$t(generic.undefine, capitalize)",
+			"undefined-placeholder": "($t(generic.undefined, capitalize))"
 		}
 	},
 	"errors": {
@@ -130,14 +143,19 @@
 		},
 		"focus": "focus",
 		"focus_past": "focused",
+		"font": "font",
+		"font-weight": "$t(generic.font) weight",
 		"history": "history",
 		"incompatible": "incompatible",
 		"instance": "instance",
+		"invalid": "invalid",
 		"list": "list",
 		"list-description_one": "There is {{count, number}} item.",
 		"list-description_other": "There are {{count, number}} items.",
 		"list-description_zero": "There are no items.",
 		"name": "name",
+		"option": "option",
+		"option_other": "options",
 		"pin": "pin",
 		"platform": "platform",
 		"platforms": {
@@ -154,7 +172,7 @@
 			"developerConsole": "developer console",
 			"external": "external",
 			"integrated": "integrated",
-			"invalid": "invalid",
+			"invalid": "$t(generic.invalid)",
 			"select": "select"
 		},
 		"profile_one": "profile",
@@ -177,10 +195,14 @@
 		"status-bar": "status bar",
 		"tab": "tab",
 		"terminal": "terminal",
+		"terminal-option": "$t(generic.terminal) $t(generic.option)",
+		"terminal-option_other": "$t(generic.terminal) $t(generic.option_other)",
 		"terminal-resizer": "$t(generic.terminal) resizer",
 		"text-field": "text field",
 		"true": "true",
 		"type": "type",
+		"undefine": "undefine",
+		"undefined": "undefined",
 		"window": "window",
 		"working-directory": "working $t(generic.directory)"
 	},

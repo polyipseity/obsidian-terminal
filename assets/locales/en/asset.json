@@ -34,6 +34,8 @@
 			"restore-history-icon": "history",
 			"success-exit-codes-edit-icon": "$t(asset:generic.edit-list-icon)",
 			"success-exit-codes-icon": "log-out",
+			"terminal-options-edit-icon": "$t(asset:generic.edit-icon)",
+			"terminal-options-icon": "$t(asset:generic.terminal-icon)",
 			"type-icon": "type"
 		},
 		"profile-list": {
@@ -54,6 +56,13 @@
 				"restart-icon": "reset",
 				"save-as-HTML-icon": "save"
 			}
+		},
+		"terminal-options": {
+			"bold-font-weight-icon": "$t(asset:components.terminal-options.font-weight-icon)",
+			"font-family-icon": "type",
+			"font-size-icon": "scaling",
+			"font-weight-icon": "dumbbell",
+			"undefine-icon": "x"
 		}
 	},
 	"generic": {

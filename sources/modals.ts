@@ -3,15 +3,26 @@ import {
 	DEFAULT_PYTHONIOENCODING,
 } from "./magic.js"
 import {
+	DEFAULT_TERMINAL_OPTIONS,
+	PROFILE_PRESETS,
+	PROFILE_PRESET_ORDERED_KEYS,
+} from "./terminal/profile-presets.js"
+import {
 	DISABLED_TOOLTIP,
+	DOMClasses,
 	EditDataModal,
 	ListModal,
 	Platform,
 	SI_PREFIX_SCALE,
+	type StatusUI,
 	UpdatableUI,
 	anyToError,
+	assignExact,
 	clearProperties,
 	cloneAsWritable,
+	composeSetters,
+	createChildElement,
+	createDocumentFragment,
 	dynamicRequire,
 	escapeQuerySelectorAttribute,
 	linkSetting,
@@ -20,18 +31,15 @@ import {
 	randomNotIn,
 	resetButton,
 	setTextToEnum,
+	setTextToNumber,
 	unexpected,
 	useSettings,
 	useSubsettings,
 } from "obsidian-plugin-library"
-import {
-	PROFILE_PRESETS,
-	PROFILE_PRESET_ORDERED_KEYS,
-} from "./terminal/profile-presets.js"
-import { identity, isUndefined } from "lodash-es"
+import { Modal, type Setting } from "obsidian"
+import { constant, identity, isUndefined } from "lodash-es"
 import { BUNDLE } from "./import.js"
 import type { DeepWritable } from "ts-essentials"
-import { Modal } from "obsidian"
 import { PROFILE_PROPERTIES } from "./terminal/profile-properties.js"
 import { Pseudoterminal } from "./terminal/pseudoterminal.js"
 import SemVer from "semver/classes/semver.js"
@@ -49,6 +57,253 @@ const
 	// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 	execFileP = (async () =>
 		(await util).promisify((await childProcess).execFile))()
+
+export class TerminalOptionsModal
+	extends EditDataModal<Settings.Profile.TerminalOptions> {
+	public constructor(
+		context: TerminalPlugin,
+		data: Settings.Profile.TerminalOptions,
+		options?: TerminalOptionsModal.Options,
+	) {
+		const { language: { i18n } } = context
+		super(context, data, Settings.Profile.fixTerminalOptions, {
+			...options,
+			elements: ["data"],
+			title: () => i18n.t("components.terminal-options.title"),
+		})
+	}
+
+	protected override draw(
+		ui: UpdatableUI,
+		element: HTMLElement,
+		errorEl: StatusUI,
+	): void {
+		const { context: { language: { i18n } }, data } = this,
+			temp = new WeakMap<Setting, string>()
+		ui
+			.new(() => createChildElement(element, "div"), ele => {
+				ele.innerHTML = i18n.t("components.terminal-options.description-html")
+			}, ele => { ele.remove() })
+			.newSetting(element, setting => {
+				setting
+					.setName(i18n.t("components.terminal-options.font-family"))
+					.addText(linkSetting(
+						() => data.fontFamily ?? "",
+						value => { data.fontFamily = value },
+						async () => this.postMutate2(errorEl),
+						{
+							post(component) {
+								if (isUndefined(data.fontFamily)) {
+									component.setPlaceholder(i18n
+										.t("components.terminal-options.undefined-placeholder"))
+								}
+							},
+						},
+					))
+					.addButton(button => button
+						.setIcon(i18n.t("asset:components.terminal-options.undefine-icon"))
+						.setTooltip(i18n.t("components.terminal-options.undefine"))
+						.onClick(async () => {
+							delete data.fontFamily
+							await this.postMutate2(errorEl)
+						}))
+					.addExtraButton(resetButton(
+						i18n.t("asset:components.terminal-options.font-family-icon"),
+						i18n.t("components.edit-data.reset"),
+						() => {
+							assignExact(
+								data,
+								"fontFamily",
+								DEFAULT_TERMINAL_OPTIONS.fontFamily,
+							)
+						},
+						async () => this.postMutate2(errorEl),
+					))
+			})
+			.newSetting(element, setting => {
+				setting
+					.setName(i18n.t("components.terminal-options.font-size"))
+					.addText(linkSetting(
+						() => data.fontSize?.toString() ?? "",
+						composeSetters(
+							value => {
+								if (value) { return false }
+								delete data.fontSize
+								return true
+							},
+							setTextToNumber(value => { data.fontSize = value }),
+						),
+						async () => this.postMutate2(errorEl),
+						{
+							post(component) {
+								component.setPlaceholder(i18n
+									.t("components.terminal-options.undefined-placeholder"))
+							},
+						},
+					))
+					.addButton(button => button
+						.setIcon(i18n.t("asset:components.terminal-options.undefine-icon"))
+						.setTooltip(i18n.t("components.terminal-options.undefine"))
+						.onClick(async () => {
+							delete data.fontSize
+							await this.postMutate2(errorEl)
+						}))
+					.addExtraButton(resetButton(
+						i18n.t("asset:components.terminal-options.font-size-icon"),
+						i18n.t("components.edit-data.reset"),
+						() => {
+							assignExact(
+								data,
+								"fontSize",
+								DEFAULT_TERMINAL_OPTIONS.fontSize,
+							)
+						},
+						async () => this.postMutate2(errorEl),
+					))
+			})
+			.newSetting(element, setting => {
+				setting
+					.setName(i18n.t("components.terminal-options.font-weight"))
+					.setDesc(temp.has(setting)
+						? createDocumentFragment(setting.settingEl.ownerDocument, frag => {
+							createChildElement(frag, "span", ele => {
+								ele.classList.add(DOMClasses.MOD_WARNING)
+								ele.textContent = i18n
+									.t("components.terminal-options.invalid-description")
+							})
+						})
+						: "")
+					.addText(linkSetting(
+						() => temp.get(setting) ?? data.fontWeight?.toString() ?? "",
+						composeSetters(
+							() => {
+								temp.delete(setting)
+								return false
+							},
+							value => {
+								if (value) { return false }
+								delete data.fontWeight
+								return true
+							},
+							setTextToNumber(value => { data.fontWeight = value }),
+							setTextToEnum(
+								Settings.Profile.TerminalOptions.FONT_WEIGHTS,
+								value => { data.fontWeight = value },
+							),
+							value => {
+								temp.set(setting, value)
+								return true
+							},
+						),
+						async () => this.postMutate2(errorEl),
+						{
+							post(component) {
+								component.setPlaceholder(i18n
+									.t("components.terminal-options.undefined-placeholder"))
+							},
+						},
+					))
+					.addButton(button => button
+						.setIcon(i18n.t("asset:components.terminal-options.undefine-icon"))
+						.setTooltip(i18n.t("components.terminal-options.undefine"))
+						.onClick(async () => {
+							delete data.fontWeight
+							temp.delete(setting)
+							await this.postMutate2(errorEl)
+						}))
+					.addExtraButton(resetButton(
+						i18n.t("asset:components.terminal-options.font-weight-icon"),
+						i18n.t("components.edit-data.reset"),
+						() => {
+							assignExact(
+								data,
+								"fontWeight",
+								DEFAULT_TERMINAL_OPTIONS.fontWeight,
+							)
+							temp.delete(setting)
+						},
+						async () => this.postMutate2(errorEl),
+					))
+			})
+			.newSetting(element, setting => {
+				setting
+					.setName(i18n.t("components.terminal-options.bold-font-weight"))
+					.setDesc(temp.has(setting)
+						? createDocumentFragment(setting.settingEl.ownerDocument, frag => {
+							createChildElement(frag, "span", ele => {
+								ele.classList.add(DOMClasses.MOD_WARNING)
+								ele.textContent = i18n
+									.t("components.terminal-options.invalid-description")
+							})
+						})
+						: "")
+					.addText(linkSetting(
+						() => temp.get(setting) ?? data.fontWeightBold?.toString() ?? "",
+						composeSetters(
+							() => {
+								temp.delete(setting)
+								return false
+							},
+							value => {
+								if (value) { return false }
+								delete data.fontWeightBold
+								return true
+							},
+							setTextToNumber(value => { data.fontWeightBold = value }),
+							setTextToEnum(
+								Settings.Profile.TerminalOptions.FONT_WEIGHTS,
+								value => { data.fontWeightBold = value },
+							),
+							value => {
+								temp.set(setting, value)
+								return true
+							},
+						),
+						async () => this.postMutate2(errorEl),
+						{
+							post(component) {
+								component.setPlaceholder(i18n
+									.t("components.terminal-options.undefined-placeholder"))
+							},
+						},
+					))
+					.addButton(button => button
+						.setIcon(i18n.t("asset:components.terminal-options.undefine-icon"))
+						.setTooltip(i18n.t("components.terminal-options.undefine"))
+						.onClick(async () => {
+							delete data.fontWeightBold
+							temp.delete(setting)
+							await this.postMutate2(errorEl)
+						}))
+					.addExtraButton(resetButton(
+						i18n.t("asset:components.terminal-options.bold-font-weight-icon"),
+						i18n.t("components.edit-data.reset"),
+						() => {
+							assignExact(
+								data,
+								"fontWeightBold",
+								DEFAULT_TERMINAL_OPTIONS.fontWeightBold,
+							)
+							temp.delete(setting)
+						},
+						async () => this.postMutate2(errorEl),
+					))
+			})
+		super.draw(ui, element, errorEl)
+	}
+
+	protected async postMutate2(errorEl: StatusUI): Promise<void> {
+		errorEl.report()
+		await this.postMutate()
+	}
+}
+export namespace TerminalOptionsModal {
+	type InitialOptions = EditDataModal.Options<Settings.Profile.TerminalOptions>
+	export type PredefinedOptions = {
+		readonly [K in never]: InitialOptions[K]
+	}
+	export type Options = Omit<InitialOptions, keyof PredefinedOptions>
+}
 
 export class ProfileModal extends Modal {
 	protected readonly modalUI = new UpdatableUI()
@@ -87,7 +342,7 @@ export class ProfileModal extends Modal {
 			{ language } = context,
 			{ i18n, onChangeLanguage } = language
 		modalUI.finally(onChangeLanguage.listen(() => { modalUI.update() }))
-			.new(() => titleEl, ele => {
+			.new(constant(titleEl), ele => {
 				ele.textContent = i18n.t("components.profile.title", {
 					interpolation: { escapeValue: false },
 					name: Settings.Profile.name(profile),
@@ -280,6 +535,35 @@ export class ProfileModal extends Modal {
 					() => {
 						profile.restoreHistory =
 							Settings.Profile.DEFAULTS[profile.type].restoreHistory
+					},
+					async () => this.postMutate(),
+				))
+		}).newSetting(element, setting => {
+			setting
+				.setName(i18n.t("components.profile.terminal-options"))
+				.addButton(button => button
+					.setIcon(i18n
+						.t("asset:components.profile.terminal-options-edit-icon"))
+					.setTooltip(i18n.t("components.profile.terminal-options-edit"))
+					.onClick(() => {
+						new TerminalOptionsModal(
+							context,
+							profile.terminalOptions,
+							{
+								callback: async (value): Promise<void> => {
+									profile.terminalOptions = value
+									await this.postMutate()
+								},
+							},
+						).open()
+					}))
+				.addExtraButton(resetButton(
+					i18n.t("asset:components.profile.terminal-options-icon"),
+					i18n.t("components.profile.reset"),
+					() => {
+						profile.terminalOptions =
+							cloneAsWritable(Settings.Profile.DEFAULTS[profile.type]
+								.terminalOptions)
 					},
 					async () => this.postMutate(),
 				))

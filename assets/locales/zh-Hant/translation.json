@@ -41,6 +41,8 @@
 			"success-exit-codes": "成功$t(generic.exit)代碼",
 			"success-exit-codes-description": "$t(generic.list-description)",
 			"success-exit-codes-edit": "$t(generic.edit)",
+			"terminal-options": "$t(generic.terminal-option)",
+			"terminal-options-edit": "$t(generic.edit)",
 			"title": "{{name}}",
 			"type": "$t(generic.type)",
 			"type-options": "$t(generic.profile-types.{{type}})"
@@ -70,7 +72,7 @@
 				"root-directory": "$t(generic.root-directory)",
 				"title": "$t(generic.edit)$t(generic.terminal)",
 				"working-directory": "$t(generic.working-directory)",
-				"working-directory-placeholder": "（未定義）"
+				"working-directory-placeholder": "（$t(generic.undefined)）"
 			},
 			"menus": {
 				"clear": "$t(generic.clear)",
@@ -84,6 +86,17 @@
 			},
 			"restored-history": "\r\n * 已$t(generic.restore)於{{datetime, datetime(dateStyle: full, timeStyle: full)}}的$t(generic.history)\r\n\r\n",
 			"unsupported-profile": "不支持的$t(generic.profile)：\r\n{{profile}}\r\n"
+		},
+		"terminal-options": {
+			"bold-font-weight": "粗體$t(generic.font-weight)",
+			"description-html": "請參閱<a aria-label=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" class=\"external-link\" data-tooltip-position=\"top\" href=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" rel=\"noopener\" target=\"_blank\"><code>ITerminalOptions</code></a>了解所有$t(generic.option)。",
+			"font-family": "$t(generic.font)系列",
+			"font-size": "$t(generic.font)大小",
+			"font-weight": "$t(generic.font-weight)",
+			"invalid-description": "$t(generic.invalid)",
+			"title": "$t(generic.terminal-option)",
+			"undefine": "$t(generic.undefine)",
+			"undefined-placeholder": "（$t(generic.undefined)）"
 		}
 	},
 	"errors": {
@@ -123,13 +136,17 @@
 			"HTML": "超文件標示語言"
 		},
 		"focus": "聚焦",
+		"font": "字體",
+		"font-weight": "$t(generic.font)粗細",
 		"history": "歷史",
 		"incompatible": "不$t(generic.compatible)",
 		"instance": "個體",
+		"invalid": "無效",
 		"list": "列表",
 		"list-description_other": "有{{count, number}}項項目。",
 		"list-description_zero": "沒有項目。",
 		"name": "名稱",
+		"option": "選項",
 		"pin": "釘選",
 		"platform": "平台",
 		"platforms": {
@@ -146,7 +163,7 @@
 			"developerConsole": "開發者控制台",
 			"external": "外部",
 			"integrated": "整合式",
-			"invalid": "無效",
+			"invalid": "$t(generic.invalid)",
 			"select": "選擇"
 		},
 		"pseudoterminal": "偽終端",
@@ -165,10 +182,13 @@
 		"status-bar": "狀態欄",
 		"tab": "分頁",
 		"terminal": "終端",
+		"terminal-option": "$t(generic.terminal)$t(generic.option)",
 		"terminal-resizer": "$t(generic.terminal)縮放程式",
 		"text-field": "文字域",
 		"true": "真",
 		"type": "類型",
+		"undefine": "取消定義",
+		"undefined": "未定義",
 		"window": "視窗",
 		"working-directory": "工作$t(generic.directory)"
 	},
