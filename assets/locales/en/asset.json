@@ -4,8 +4,8 @@
 		"open-documentation-donate-icon": "$t(asset:generic.documentations.donate-icon)",
 		"open-documentation-readme-icon": "$t(asset:generic.documentations.readme-icon)",
 		"open-terminal--icon": "command",
-		"open-terminal-current-icon": "file-terminal",
-		"open-terminal-root-icon": "terminal"
+		"open-terminal-current-icon": "$t(asset:generic.terminal-file-icon)",
+		"open-terminal-root-icon": "$t(asset:generic.terminal-icon)"
 	},
 	"components": {
 		"profile": {
@@ -17,7 +17,7 @@
 			},
 			"generic": {
 				"arguments-icon": "form-input",
-				"executable-icon": "file-terminal"
+				"executable-icon": "$t(asset:generic.terminal-file-icon)"
 			},
 			"integrated": {
 				"Python-executable-check-icon": "file-check",
@@ -46,7 +46,7 @@
 				"root-directory-icon": "$t(asset:generic.root-directory-icon)",
 				"working-directory-icon": "folder"
 			},
-			"icon": "terminal",
+			"icon": "$t(asset:generic.terminal-icon)",
 			"menus": {
 				"clear-icon": "eraser",
 				"edit-icon": "$t(asset:generic.edit-icon)",
@@ -69,16 +69,19 @@
 			"linux-icon": "terminal:linux",
 			"win32-icon": "terminal:windows"
 		},
-		"profile-icon": "terminal-square",
+		"profile-icon": "$t(asset:generic.terminal-alt-icon)",
 		"profile-types": {
 			"-icon": "square",
 			"developerConsole-icon": "curly-braces",
-			"external-icon": "terminal-square",
-			"integrated-icon": "terminal",
+			"external-icon": "$t(asset:generic.terminal-alt-icon)",
+			"integrated-icon": "$t(asset:generic.terminal-icon)",
 			"invalid-icon": "x-circle",
 			"select-icon": "text-cursor-input"
 		},
-		"root-directory-icon": "folder-tree"
+		"root-directory-icon": "folder-tree",
+		"terminal-alt-icon": "terminal-square",
+		"terminal-file-icon": "file-terminal",
+		"terminal-icon": "terminal"
 	},
 	"magic": {
 		"Python-version-magic": "Python ",
@@ -88,11 +91,11 @@
 		"open-terminal-icon": "$t(asset:generic.profile-types.{{type}}-icon)"
 	},
 	"ribbons": {
-		"open-terminal-icon": "terminal-square",
+		"open-terminal-icon": "$t(asset:generic.terminal-alt-icon)",
 		"open-terminal-id": "Open terminal"
 	},
 	"settings": {
-		"add-to-command-icon": "terminal",
+		"add-to-command-icon": "$t(asset:generic.terminal-icon)",
 		"add-to-context-menu-icon": "menu",
 		"create-instance-near-existing-ones-icon": "plus",
 		"documentations": {
