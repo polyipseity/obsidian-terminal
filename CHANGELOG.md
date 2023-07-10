@@ -14,6 +14,9 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+__Features__
+- Add font terminal options. Closes [GH#20](https://github.com/polyipseity/obsidian-terminal/issues/20). (`ed9077348755cc863958a39a5cf45d4b55720d0d`..`f3145847ff37a438e090e33d399943e4461ad381`)
+
 __Fixes__
 - Fix typing into the find textbox not working. (`629143c952181524a886b07b4602290a207bf1fa`)
 - Fix wrong find results when no matches. (`691f1a2aa8dc759486f610ea3e7a7f83bc7e865a`)
