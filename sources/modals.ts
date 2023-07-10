@@ -13,6 +13,7 @@ import {
 	clearProperties,
 	cloneAsWritable,
 	dynamicRequire,
+	escapeQuerySelectorAttribute,
 	linkSetting,
 	notice2,
 	printError,
@@ -168,7 +169,6 @@ export class ProfileModal extends Modal {
 								dropdown
 									.addOptions(Object
 										.fromEntries(Settings.Profile.TYPES
-											.filter(type => PROFILE_PROPERTIES[type].valid)
 											.map(type => [
 												type,
 												i18n.t("components.profile.type-options", {
@@ -176,6 +176,16 @@ export class ProfileModal extends Modal {
 													type,
 												}),
 											])))
+								for (const opt of Settings.Profile.TYPES
+									.filter(type => !PROFILE_PROPERTIES[type].valid)
+									.flatMap(type => Array.from(
+										dropdown.selectEl.querySelectorAll<HTMLOptionElement>(
+											`option[value="${escapeQuerySelectorAttribute(type)}"]`,
+										),
+									))) {
+									opt.hidden = true
+									opt.disabled = true
+								}
 							},
 						},
 					))
