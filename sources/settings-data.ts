@@ -463,19 +463,21 @@ export namespace Settings {
 		}
 
 		export type TerminalOptions = DeepReadonly<ITerminalOptions>
-		const FONT_WEIGHTS = deepFreeze([
-			"100",
-			"200",
-			"300",
-			"400",
-			"500",
-			"600",
-			"700",
-			"800",
-			"900",
-			"bold",
-			"normal",
-		]) satisfies readonly FontWeight[]
+		export namespace TerminalOptions {
+			export const FONT_WEIGHTS = deepFreeze([
+				"100",
+				"200",
+				"300",
+				"400",
+				"500",
+				"600",
+				"700",
+				"800",
+				"900",
+				"bold",
+				"normal",
+			]) satisfies readonly FontWeight[]
+		}
 		export function fixTerminalOptions(self: unknown): Fixed<TerminalOptions> {
 			const unc = launderUnchecked<TerminalOptions>(self)
 			return markFixed(self, omitBy({
@@ -575,7 +577,7 @@ export namespace Settings {
 							DEFAULT_TERMINAL_OPTIONS,
 							unc,
 							"fontWeight",
-							FONT_WEIGHTS,
+							TerminalOptions.FONT_WEIGHTS,
 						)
 						: ret
 				})(),
@@ -591,7 +593,7 @@ export namespace Settings {
 							DEFAULT_TERMINAL_OPTIONS,
 							unc,
 							"fontWeightBold",
-							FONT_WEIGHTS,
+							TerminalOptions.FONT_WEIGHTS,
 						)
 						: ret
 				})(),
