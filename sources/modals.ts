@@ -521,94 +521,97 @@ export class ProfileModal extends Modal {
 			{ i18n } = context.language
 		ui.destroy()
 		if (profile.type === "invalid") { return }
-		ui.newSetting(element, setting => {
-			setting
-				.setName(i18n.t("components.profile.restore-history"))
-				.addToggle(linkSetting(
-					() => profile.restoreHistory,
-					value => { profile.restoreHistory = value },
-					async () => this.postMutate(),
-				))
-				.addExtraButton(resetButton(
-					i18n.t("asset:components.profile.restore-history-icon"),
-					i18n.t("components.profile.reset"),
-					() => {
-						profile.restoreHistory =
-							Settings.Profile.DEFAULTS[profile.type].restoreHistory
-					},
-					async () => this.postMutate(),
-				))
-		}).newSetting(element, setting => {
-			setting
-				.setName(i18n.t("components.profile.terminal-options"))
-				.addButton(button => button
-					.setIcon(i18n
-						.t("asset:components.profile.terminal-options-edit-icon"))
-					.setTooltip(i18n.t("components.profile.terminal-options-edit"))
-					.onClick(() => {
-						new TerminalOptionsModal(
-							context,
-							profile.terminalOptions,
-							{
-								callback: async (value): Promise<void> => {
-									profile.terminalOptions = value
-									await this.postMutate()
+		ui
+			.newSetting(element, setting => {
+				setting
+					.setName(i18n.t("components.profile.restore-history"))
+					.addToggle(linkSetting(
+						() => profile.restoreHistory,
+						value => { profile.restoreHistory = value },
+						async () => this.postMutate(),
+					))
+					.addExtraButton(resetButton(
+						i18n.t("asset:components.profile.restore-history-icon"),
+						i18n.t("components.profile.reset"),
+						() => {
+							profile.restoreHistory =
+								Settings.Profile.DEFAULTS[profile.type].restoreHistory
+						},
+						async () => this.postMutate(),
+					))
+			})
+			.newSetting(element, setting => {
+				setting
+					.setName(i18n.t("components.profile.terminal-options"))
+					.addButton(button => button
+						.setIcon(i18n
+							.t("asset:components.profile.terminal-options-edit-icon"))
+						.setTooltip(i18n.t("components.profile.terminal-options-edit"))
+						.onClick(() => {
+							new TerminalOptionsModal(
+								context,
+								profile.terminalOptions,
+								{
+									callback: async (value): Promise<void> => {
+										profile.terminalOptions = value
+										await this.postMutate()
+									},
 								},
-							},
-						).open()
+							).open()
+						}))
+					.addExtraButton(resetButton(
+						i18n.t("asset:components.profile.terminal-options-icon"),
+						i18n.t("components.profile.reset"),
+						() => {
+							profile.terminalOptions =
+								cloneAsWritable(Settings.Profile.DEFAULTS[profile.type]
+									.terminalOptions)
+						},
+						async () => this.postMutate(),
+					))
+			})
+			.newSetting(element, setting => {
+				setting
+					.setName(i18n.t("components.profile.success-exit-codes"))
+					.setDesc(i18n.t("components.profile.success-exit-codes-description", {
+						count: profile.successExitCodes.length,
+						interpolation: { escapeValue: false },
 					}))
-				.addExtraButton(resetButton(
-					i18n.t("asset:components.profile.terminal-options-icon"),
-					i18n.t("components.profile.reset"),
-					() => {
-						profile.terminalOptions =
-							cloneAsWritable(Settings.Profile.DEFAULTS[profile.type]
-								.terminalOptions)
-					},
-					async () => this.postMutate(),
-				))
-		}).newSetting(element, setting => {
-			setting
-				.setName(i18n.t("components.profile.success-exit-codes"))
-				.setDesc(i18n.t("components.profile.success-exit-codes-description", {
-					count: profile.successExitCodes.length,
-					interpolation: { escapeValue: false },
-				}))
-				.addButton(button => button
-					.setIcon(i18n
-						.t("asset:components.profile.success-exit-codes-edit-icon"))
-					.setTooltip(i18n.t("components.profile.success-exit-codes-edit"))
-					.onClick(() => {
-						new ListModal(
-							context,
-							ListModal.stringInputter({
-								back: identity<string>,
-								forth: identity,
-							}),
-							() => "",
-							profile.successExitCodes,
-							{
-								callback: async (value): Promise<void> => {
-									profile.successExitCodes = value
-									await this.postMutate()
+					.addButton(button => button
+						.setIcon(i18n
+							.t("asset:components.profile.success-exit-codes-edit-icon"))
+						.setTooltip(i18n.t("components.profile.success-exit-codes-edit"))
+						.onClick(() => {
+							new ListModal(
+								context,
+								ListModal.stringInputter({
+									back: identity<string>,
+									forth: identity,
+								}),
+								() => "",
+								profile.successExitCodes,
+								{
+									callback: async (value): Promise<void> => {
+										profile.successExitCodes = value
+										await this.postMutate()
+									},
+									dynamicWidth: true,
+									title: () =>
+										i18n.t("components.profile.success-exit-codes"),
 								},
-								dynamicWidth: true,
-								title: () =>
-									i18n.t("components.profile.success-exit-codes"),
-							},
-						).open()
-					}))
-				.addExtraButton(resetButton(
-					i18n.t("asset:components.profile.success-exit-codes-icon"),
-					i18n.t("components.profile.reset"),
-					() => {
-						profile.successExitCodes =
-							cloneAsWritable(Settings.Profile.DEFAULTS[profile.type]
-								.successExitCodes)
-					},
-					async () => this.postMutate(),
-				))
-		})
+							).open()
+						}))
+					.addExtraButton(resetButton(
+						i18n.t("asset:components.profile.success-exit-codes-icon"),
+						i18n.t("components.profile.reset"),
+						() => {
+							profile.successExitCodes =
+								cloneAsWritable(Settings.Profile.DEFAULTS[profile.type]
+									.successExitCodes)
+						},
+						async () => this.postMutate(),
+					))
+			})
 		switch (profile.type) {
 			case "": {
 				break
