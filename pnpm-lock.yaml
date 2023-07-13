@@ -18,7 +18,7 @@ importers:
         version: 4.17.21
       obsidian:
         specifier: ^1.2.8
-        version: link:build/obsidian
+        version: 1.2.8(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)
       semver:
         specifier: ^7.5.3
         version: 7.5.3
@@ -26,6 +26,9 @@ importers:
         specifier: ^9.3.2
         version: 9.3.2(typescript@5.1.6)
     devDependencies:
+      '@polyipseity/obsidian':
+        specifier: ^1.2.8
+        version: 1.2.8(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)
       '@tsconfig/esm':
         specifier: ^1.0.4
         version: 1.0.4
@@ -99,157 +102,6 @@ importers:
         specifier: ^0.3.27
         version: 0.3.27(svelte@3.59.2)(typescript@5.1.6)
 
-  build/obsidian:
-    dependencies:
-      '@codemirror/state':
-        specifier: ^6.0.0
-        version: 6.0.0
-      '@codemirror/view':
-        specifier: ^6.0.0
-        version: 6.0.0
-      '@types/codemirror':
-        specifier: 0.0.108
-        version: 0.0.108
-      moment:
-        specifier: 2.29.4
-        version: 2.29.4
-
-  build/obsidian-plugin-library:
-    dependencies:
-      '@capacitor/filesystem':
-        specifier: ^5.0.5
-        version: 5.0.5(@capacitor/core@5.0.3)
-      async-lock:
-        specifier: ^1.4.0
-        version: 1.4.0
-      browser-util-inspect:
-        specifier: ^0.2.0
-        version: 0.2.0
-      deep-equal:
-        specifier: ^2.2.1
-        version: 2.2.1
-      file-saver:
-        specifier: ^2.0.5
-        version: 2.0.5
-      i18next:
-        specifier: ^23.2.6
-        version: 23.2.6
-      i18next-resources-to-backend:
-        specifier: ^1.1.4
-        version: 1.1.4
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.21
-      lucide:
-        specifier: ^0.257.0
-        version: 0.257.0
-      monkey-around:
-        specifier: ^2.3.0
-        version: 2.3.0
-      obsidian:
-        specifier: ^1.2.5
-        version: link:../obsidian
-      p-lazy:
-        specifier: ^4.0.0
-        version: 4.0.0
-      semver:
-        specifier: ^7.5.3
-        version: 7.5.3
-      ts-deepmerge:
-        specifier: ^6.1.0
-        version: 6.1.0
-      ts-essentials:
-        specifier: ^9.3.2
-        version: 9.3.2(typescript@5.1.6)
-    devDependencies:
-      '@tsconfig/esm':
-        specifier: ^1.0.4
-        version: 1.0.4
-      '@tsconfig/node16':
-        specifier: ^16.1.0
-        version: 16.1.0
-      '@tsconfig/recommended':
-        specifier: ^1.0.2
-        version: 1.0.2
-      '@tsconfig/strictest':
-        specifier: ^2.0.1
-        version: 2.0.1
-      '@tsconfig/svelte':
-        specifier: ^5.0.0
-        version: 5.0.0
-      '@types/async-lock':
-        specifier: ^1.4.0
-        version: 1.4.0
-      '@types/browser-util-inspect':
-        specifier: ^0.2.0
-        version: 0.2.0
-      '@types/deep-equal':
-        specifier: ^1.0.1
-        version: 1.0.1
-      '@types/file-saver':
-        specifier: ^2.0.5
-        version: 2.0.5
-      '@types/lodash-es':
-        specifier: ^4.17.7
-        version: 4.17.7
-      '@types/node':
-        specifier: ^20.3.3
-        version: 20.3.3
-      '@types/semver':
-        specifier: ^7.5.0
-        version: 7.5.0
-      '@typescript-eslint/eslint-plugin':
-        specifier: ^5.60.1
-        version: 5.60.1(@typescript-eslint/parser@5.60.1)(eslint@8.44.0)(typescript@5.1.6)
-      '@typescript-eslint/parser':
-        specifier: ^5.60.1
-        version: 5.60.1(eslint@8.44.0)(typescript@5.1.6)
-      esbuild:
-        specifier: ^0.18.11
-        version: 0.18.11
-      esbuild-compress:
-        specifier: ^1.2.1
-        version: 1.2.1(esbuild@0.18.11)
-      esbuild-node-externals:
-        specifier: ^1.8.0
-        version: 1.8.0(esbuild@0.18.11)
-      esbuild-plugin-copy:
-        specifier: ^2.1.1
-        version: 2.1.1(esbuild@0.18.11)
-      esbuild-svelte:
-        specifier: ^0.7.4
-        version: 0.7.4(esbuild@0.18.11)(svelte@3.59.2)
-      eslint:
-        specifier: ^8.44.0
-        version: 8.44.0
-      eslint-import-resolver-typescript:
-        specifier: ^3.5.5
-        version: 3.5.5(@typescript-eslint/parser@5.60.1)(eslint-plugin-import@2.27.5)(eslint@8.44.0)
-      eslint-plugin-import:
-        specifier: ^2.26.0
-        version: 2.27.5(@typescript-eslint/parser@5.60.1)(eslint-import-resolver-typescript@3.5.5)(eslint@8.44.0)
-      eslint-plugin-svelte3:
-        specifier: ^4.0.0
-        version: 4.0.0(eslint@8.44.0)(svelte@3.59.2)
-      svelte:
-        specifier: ^3.59.2
-        version: 3.59.2
-      svelte-preprocess:
-        specifier: ^5.0.4
-        version: 5.0.4(svelte@3.59.2)(typescript@5.1.6)
-      tslib:
-        specifier: ^2.6.0
-        version: 2.6.0
-      typescript:
-        specifier: ^5.1.6
-        version: 5.1.6
-      typescript-svelte-plugin:
-        specifier: ^0.3.27
-        version: 0.3.27(svelte@3.59.2)(typescript@5.1.6)
-      which:
-        specifier: ^3.0.1
-        version: 3.0.1
-
 packages:
 
   /@aashutoshrathi/word-wrap@1.2.6:
@@ -280,7 +132,6 @@ packages:
 
   /@codemirror/state@6.0.0:
     resolution: {integrity: sha512-UjP/jB2dz7B+1L+eiCm8YWhM1zBkFM2zUyp8hhtpvgmuOFmoWjwqHnICQmM34HNPBqMPcVY9ZcqJcOhDrB+dBQ==}
-    dev: false
 
   /@codemirror/view@6.0.0:
     resolution: {integrity: sha512-IdbZtg17jpLdNnetoPpSOMZNtsCEAexFNdG7tU6TlJkLQakaTNrzXiQEIx9oiZx3f1ql6Zbr8+qyLr/pkrmsng==}
@@ -288,7 +139,6 @@ packages:
       '@codemirror/state': 6.0.0
       style-mod: 4.0.3
       w3c-keyname: 2.2.6
-    dev: false
 
   /@esbuild/android-arm64@0.18.11:
     resolution: {integrity: sha512-snieiq75Z1z5LJX9cduSAjUr7vEI1OdlzFPMw0HH5YI7qQHDd3qs+WZoMrWYDsfRJSq36lIA6mfZBkvL46KoIw==}
@@ -607,6 +457,18 @@ packages:
       - typescript
     dev: false
 
+  /@polyipseity/obsidian@1.2.8(@codemirror/state@6.0.0)(@codemirror/view@6.0.0):
+    resolution: {integrity: sha512-rlXPpSAmZwxmcxsa163vl8eQMYq7gQwB+fx76NdvG3TC5ln7AG4uVRMfCyLfoePRYc8JxeJoUNujH0bgnePymA==}
+    peerDependencies:
+      '@codemirror/state': ^6.0.0
+      '@codemirror/view': ^6.0.0
+    dependencies:
+      '@codemirror/state': 6.0.0
+      '@codemirror/view': 6.0.0
+      '@types/codemirror': 0.0.108
+      moment: 2.29.4
+    dev: true
+
   /@tsconfig/esm@1.0.4:
     resolution: {integrity: sha512-bix9CWljCxyD06nGQRDYdmTw0wevvEDyrLKjbDocGV31JQYbfqqgMV1yFeJ9aDgorKQ9yDLrak8poiggsB5Liw==}
     dev: true
@@ -631,11 +493,9 @@ packages:
     resolution: {integrity: sha512-3FGFcus0P7C2UOGCNUVENqObEb4SFk+S8Dnxq7K6aIsLVs/vDtlangl3PEO0ykaKXyK56swVF6Nho7VsA44uhw==}
     dependencies:
       '@types/tern': 0.23.4
-    dev: false
 
   /@types/estree@1.0.1:
     resolution: {integrity: sha512-LG4opVs2ANWZ1TJoKc937iMmNstM/d0ae1vNbnBvBhqCSezgVUOzcLCqbI5elV8Vy6WKwKjaqR+zO9VKirBBCA==}
-    dev: false
 
   /@types/json-schema@7.0.11:
     resolution: {integrity: sha512-wOuvG1SN4Us4rez+tylwwwCV1psiNVOkJeM3AUWUNWg/jDQY2+HE/444y5gc+jBmRqASOm2Oeh5c1axHobwRKQ==}
@@ -667,7 +527,6 @@ packages:
     resolution: {integrity: sha512-JAUw1iXGO1qaWwEOzxTKJZ/5JxVeON9kvGZ/osgZaJImBnyjyn0cjovPsf6FNLmyGY8Vw9DoXZCMlfMkMwHRWg==}
     dependencies:
       '@types/estree': 1.0.1
-    dev: false
 
   /@typescript-eslint/eslint-plugin@5.60.1(@typescript-eslint/parser@5.60.1)(eslint@8.44.0)(typescript@5.1.6):
     resolution: {integrity: sha512-KSWsVvsJsLJv3c4e73y/Bzt7OpqMCADUO846bHcuWYSYM19bldbAeDv7dYyV0jwkbMfJ2XdlzwjhXtuD7OY6bw==}
@@ -2083,7 +1942,6 @@ packages:
 
   /moment@2.29.4:
     resolution: {integrity: sha512-5LC9SOxjSc2HF6vO2CyuTDNivEdoz2IvyJJGj6X8DJ0eFyfszE0QiEd+iXmBvUP3WHxSjFH/vIsA0EN00cgr8w==}
-    dev: false
 
   /monkey-around@2.3.0:
     resolution: {integrity: sha512-QWcCUWjqE/MCk9cXlSKZ1Qc486LD439xw/Ak8Nt6l2PuL9+yrc9TJakt7OHDuOqPRYY4nTWBAEFKn32PE/SfXA==}
@@ -2158,6 +2016,18 @@ packages:
       define-properties: 1.2.0
       es-abstract: 1.21.2
     dev: true
+
+  /obsidian@1.2.8(@codemirror/state@6.0.0)(@codemirror/view@6.0.0):
+    resolution: {integrity: sha512-HrC+feA8o0tXspj4lEAqxb1btwLwHD2oHXSwbbN+CdRHURqbCkuIDLld+nkuyJ1w1c9uvVDRVk8BoeOnWheOrQ==}
+    peerDependencies:
+      '@codemirror/state': ^6.0.0
+      '@codemirror/view': ^6.0.0
+    dependencies:
+      '@codemirror/state': 6.0.0
+      '@codemirror/view': 6.0.0
+      '@types/codemirror': 0.0.108
+      moment: 2.29.4
+    dev: false
 
   /once@1.4.0:
     resolution: {integrity: sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==}
@@ -2491,7 +2361,6 @@ packages:
 
   /style-mod@4.0.3:
     resolution: {integrity: sha512-78Jv8kYJdjbvRwwijtCevYADfsI0lGzYJe4mMFdceO8l75DFFDoqBhR1jVDicDRRaX4//g1u9wKeo+ztc2h1Rw==}
-    dev: false
 
   /supports-color@7.2.0:
     resolution: {integrity: sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==}
@@ -2694,7 +2563,6 @@ packages:
 
   /w3c-keyname@2.2.6:
     resolution: {integrity: sha512-f+fciywl1SJEniZHD6H+kUO8gOnwIr7f4ijKA6+ZvJFjeGi1r4PDLl53Ayud9O/rk64RqgoQine0feoeOU0kXg==}
-    dev: false
 
   /which-boxed-primitive@1.0.2:
     resolution: {integrity: sha512-bwZdv0AKLpplFY2KZRX6TvyuN7ojjr7lwkg6ml0roIy9YeuSr7JS372qlNW18UQYzgYK9ziGcerWqZOmEn9VNg==}
