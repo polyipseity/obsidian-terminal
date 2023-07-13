@@ -1,8 +1,0 @@
-[submodule "obsidian"]
-	path = build/obsidian
-	url = ../obsidian-api.git
-	branch = unaugmented/v1.2.5
-[submodule "obsidian-plugin-library"]
-	path = build/obsidian-plugin-library
-	url = ../obsidian-plugin-library.git
-	branch = main

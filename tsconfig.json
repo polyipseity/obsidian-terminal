@@ -57,7 +57,11 @@
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "paths": {},
+    "paths": {
+      "obsidian": [
+        "./node_modules/@polyipseity/obsidian/obsidian.d.ts"
+      ]
+    },
     "plugins": [
       {
         "enableForWorkspaceTypeScriptVersions": false,
@@ -77,7 +81,7 @@
     "removeComments": true,
     "resolveJsonModule": true,
     "rootDirs": [
-      "./"
+      "."
     ],
     "skipLibCheck": true,
     "sourceMap": false,

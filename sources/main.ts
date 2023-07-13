@@ -11,7 +11,7 @@ import {
 	createI18n,
 	lazyProxy,
 	semVerString,
-} from "obsidian-plugin-library"
+} from "@polyipseity/obsidian-plugin-library"
 import { PluginLocales } from "../assets/locales.js"
 import { Settings } from "./settings-data.js"
 import { isNil } from "lodash-es"

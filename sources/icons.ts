@@ -2,7 +2,7 @@ import {
 	UnnamespacedID,
 	registerIcon,
 	registerLucideIcon,
-} from "obsidian-plugin-library"
+} from "@polyipseity/obsidian-plugin-library"
 import { siLinux, siMacos, siWindows } from "simple-icons"
 import type { TerminalPlugin } from "./main.js"
 import { getIcon } from "obsidian"

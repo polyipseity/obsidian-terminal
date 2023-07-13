@@ -1,17 +1,20 @@
 {
 	"author": "polyipseity",
+	"bugs": {
+		"url": "https://github.com/polyipseity/PLACEHOLDER"
+	},
 	"dependencies": {
+		"@polyipseity/obsidian-plugin-library": "^1.6.0",
 		"acorn": "^8.9.0",
 		"ansi-escape-sequences": "^6.2.2",
 		"async-lock": "^1.4.0",
 		"browser-util-inspect": "^0.2.0",
-		"i18next": "^23.2.6",
+		"i18next": "^23.2.11",
 		"immutable": "^4.3.0",
 		"lodash-es": "^4.17.21",
 		"monkey-around": "^2.3.0",
-		"obsidian": "^1.2.5",
-		"obsidian-plugin-library": "^1.5.0",
-		"semver": "^7.5.3",
+		"obsidian": "^1.2.8",
+		"semver": "^7.5.4",
 		"simple-icons": "^9.3.0",
 		"tmp-promise": "^3.0.3",
 		"ts-essentials": "^9.3.2",
@@ -27,6 +30,7 @@
 	},
 	"description": "Integrate consoles, shells, and terminals inside Obsidian.",
 	"devDependencies": {
+		"@polyipseity/obsidian": "^1.2.8",
 		"@tsconfig/esm": "^1.0.4",
 		"@tsconfig/node16": "^16.1.0",
 		"@tsconfig/recommended": "^1.0.2",
@@ -37,24 +41,24 @@
 		"@types/browser-util-inspect": "^0.2.0",
 		"@types/estree": "^1.0.1",
 		"@types/lodash-es": "^4.17.7",
-		"@types/node": "^20.3.3",
+		"@types/node": "^20.4.2",
 		"@types/semver": "^7.5.0",
-		"@typescript-eslint/eslint-plugin": "^5.60.1",
-		"@typescript-eslint/parser": "^5.60.1",
+		"@typescript-eslint/eslint-plugin": "^6.0.0",
+		"@typescript-eslint/parser": "^6.0.0",
 		"builtin-modules": "^3.3.0",
-		"esbuild": "^0.18.11",
-		"esbuild-compress": "^1.2.1",
+		"esbuild": "^0.18.12",
+		"esbuild-compress": "^1.2.2",
 		"esbuild-svelte": "^0.7.4",
 		"eslint": "^8.44.0",
 		"eslint-import-resolver-typescript": "^3.5.5",
-		"eslint-plugin-import": "^2.26.0",
+		"eslint-plugin-import": "^2.27.5",
 		"eslint-plugin-svelte3": "^4.0.0",
 		"p-lazy": "^4.0.0",
 		"svelte": "^3.59.2",
 		"svelte-preprocess": "^5.0.4",
 		"tslib": "^2.6.0",
 		"typescript": "^5.1.6",
-		"typescript-svelte-plugin": "^0.3.27"
+		"typescript-svelte-plugin": "^0.3.29"
 	},
 	"displayName": "Obsidian Terminal",
 	"files": [
@@ -73,6 +77,7 @@
 			"url": "https://github.com/sponsors/polyipseity"
 		}
 	],
+	"homepage": "https://github.com/polyipseity/PLACEHOLDER#readme",
 	"keywords": [
 		"console",
 		"console-emulator",
@@ -99,11 +104,14 @@
 	},
 	"pnpm": {
 		"overrides": {
-			"obsidian": "$obsidian",
 			"tsconfig-paths": "^4.0.0"
 		}
 	},
 	"private": true,
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/polyipseity/PLACEHOLDER.git"
+	},
 	"scripts": {
 		"build": "npm run check && npm run build:force",
 		"build:force": "node build/build.mjs",
@@ -113,7 +121,6 @@
 		"obsidian:install": "npm run build && node build/obsidian-install.mjs",
 		"obsidian:install:force": "npm run build:force && node build/obsidian-install.mjs",
 		"postversion": "node build/version-post.mjs",
-		"prepare": "npm run build:force --workspace=obsidian-plugin-library --if-present",
 		"version": "node build/version.mjs"
 	},
 	"sideEffects": false,

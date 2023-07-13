@@ -7,7 +7,7 @@ import {
 	printError,
 	revealPrivate,
 	typedKeys,
-} from "obsidian-plugin-library"
+} from "@polyipseity/obsidian-plugin-library"
 import { DOMClasses2 } from "./magic.js"
 import type { TerminalPlugin } from "./main.js"
 import changelogMd from "../CHANGELOG.md"

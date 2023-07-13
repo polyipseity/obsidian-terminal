@@ -19,7 +19,7 @@ import {
 	markFixed,
 	opaqueOrDefault,
 	semVerString,
-} from "obsidian-plugin-library"
+} from "@polyipseity/obsidian-plugin-library"
 import {
 	DEFAULT_LINK_HANDLER,
 	DEFAULT_TERMINAL_OPTIONS,
