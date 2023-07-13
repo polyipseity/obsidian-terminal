@@ -4,10 +4,10 @@
 		"url": "PLACEHOLDER"
 	},
 	"dependencies": {
+		"@polyipseity/obsidian-plugin-library": "^1.6.0",
 		"i18next": "^23.2.11",
 		"lodash-es": "^4.17.21",
 		"obsidian": "^1.2.8",
-		"@polyipseity/obsidian-plugin-library": "^1.6.0",
 		"semver": "^7.5.4",
 		"ts-essentials": "^9.3.2"
 	},
