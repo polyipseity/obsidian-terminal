@@ -4,7 +4,7 @@ import {
 	linkSetting,
 	registerSettingsCommands,
 	resetButton,
-} from "obsidian-plugin-library"
+} from "@polyipseity/obsidian-plugin-library"
 import type { PLACEHOLDERPlugin } from "./main.js"
 import { Settings } from "./settings-data.js"
 import type { loadDocumentations } from "./documentations.js"
