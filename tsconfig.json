@@ -77,7 +77,7 @@
     "removeComments": true,
     "resolveJsonModule": true,
     "rootDirs": [
-      "./"
+      "."
     ],
     "skipLibCheck": true,
     "sourceMap": false,
