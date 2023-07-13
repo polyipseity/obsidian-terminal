@@ -7,130 +7,15 @@ importers:
 
   .:
     dependencies:
-      i18next:
-        specifier: ^23.2.11
-        version: 23.2.11
-      immutable:
-        specifier: ^4.3.0
-        version: 4.3.0
-      lodash-es:
-        specifier: ^4.17.21
-        version: 4.17.21
-      monkey-around:
-        specifier: ^2.3.0
-        version: 2.3.0
-      obsidian:
-        specifier: ^1.2.5
-        version: link:build/obsidian
-      obsidian-plugin-library:
-        specifier: ^1.5.0
-        version: link:build/obsidian-plugin-library
-      semver:
-        specifier: ^7.5.4
-        version: 7.5.4
-      simple-icons:
-        specifier: ^9.3.0
-        version: 9.3.0
-      tmp-promise:
-        specifier: ^3.0.3
-        version: 3.0.3
-      ts-essentials:
-        specifier: ^9.3.2
-        version: 9.3.2(typescript@5.1.6)
-    devDependencies:
-      '@tsconfig/esm':
-        specifier: ^1.0.4
-        version: 1.0.4
-      '@tsconfig/node16':
-        specifier: ^16.1.0
-        version: 16.1.0
-      '@tsconfig/recommended':
-        specifier: ^1.0.2
-        version: 1.0.2
-      '@tsconfig/strictest':
-        specifier: ^2.0.1
-        version: 2.0.1
-      '@tsconfig/svelte':
-        specifier: ^5.0.0
-        version: 5.0.0
-      '@types/lodash-es':
-        specifier: ^4.17.7
-        version: 4.17.7
-      '@types/node':
-        specifier: ^20.3.3
-        version: 20.3.3
-      '@types/semver':
-        specifier: ^7.5.0
-        version: 7.5.0
-      '@typescript-eslint/eslint-plugin':
-        specifier: ^5.60.1
-        version: 5.60.1(@typescript-eslint/parser@5.60.1)(eslint@8.44.0)(typescript@5.1.6)
-      '@typescript-eslint/parser':
-        specifier: ^5.60.1
-        version: 5.60.1(eslint@8.44.0)(typescript@5.1.6)
-      builtin-modules:
-        specifier: ^3.3.0
-        version: 3.3.0
-      esbuild:
-        specifier: ^0.18.11
-        version: 0.18.11
-      esbuild-compress:
-        specifier: ^1.2.1
-        version: 1.2.1(esbuild@0.18.11)
-      esbuild-svelte:
-        specifier: ^0.7.4
-        version: 0.7.4(esbuild@0.18.11)(svelte@3.59.2)
-      eslint:
-        specifier: ^8.44.0
-        version: 8.44.0
-      eslint-import-resolver-typescript:
-        specifier: ^3.5.5
-        version: 3.5.5(@typescript-eslint/parser@5.60.1)(eslint-plugin-import@2.27.5)(eslint@8.44.0)
-      eslint-plugin-import:
-        specifier: ^2.26.0
-        version: 2.27.5(@typescript-eslint/parser@5.60.1)(eslint-import-resolver-typescript@3.5.5)(eslint@8.44.0)
-      eslint-plugin-svelte3:
-        specifier: ^4.0.0
-        version: 4.0.0(eslint@8.44.0)(svelte@3.59.2)
-      p-lazy:
-        specifier: ^4.0.0
-        version: 4.0.0
-      svelte:
-        specifier: ^3.59.2
-        version: 3.59.2
-      svelte-preprocess:
-        specifier: ^5.0.4
-        version: 5.0.4(svelte@3.59.2)(typescript@5.1.6)
-      tslib:
-        specifier: ^2.6.0
-        version: 2.6.0
-      typescript:
-        specifier: ^5.1.6
-        version: 5.1.6
-      typescript-svelte-plugin:
-        specifier: ^0.3.27
-        version: 0.3.27(svelte@3.59.2)(typescript@5.1.6)
-
-  build/obsidian:
-    dependencies:
-      '@codemirror/state':
-        specifier: ^6.0.0
-        version: 6.0.0
-      '@codemirror/view':
-        specifier: ^6.0.0
-        version: 6.0.0
-      '@types/codemirror':
-        specifier: 0.0.108
-        version: 0.0.108
-      moment:
-        specifier: 2.29.4
-        version: 2.29.4
-
-  build/obsidian-plugin-library:
-    dependencies:
-      '@capacitor/filesystem':
-        specifier: ^5.0.5
-        version: 5.0.5(@capacitor/core@5.0.3)
+      '@polyipseity/obsidian-plugin-library':
+        specifier: ^1.6.0
+        version: 1.6.0(@capacitor/core@5.2.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(typescript@5.1.6)
+      acorn:
+        specifier: ^8.10.0
+        version: 8.10.0
+      ansi-escape-sequences:
+        specifier: ^6.2.2
+        version: 6.2.2
       async-lock:
         specifier: ^1.4.0
         version: 1.4.0
@@ -141,11 +26,14 @@ importers:
         specifier: ^23.2.11
         version: 23.2.11
       immutable:
-        specifier: ^4.3.0
-        version: 4.3.0
+        specifier: ^4.3.1
+        version: 4.3.1
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
+      monkey-around:
+        specifier: ^2.3.0
+        version: 2.3.0
       obsidian:
         specifier: ^1.2.8
         version: 1.2.8(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)
@@ -153,8 +41,8 @@ importers:
         specifier: ^7.5.4
         version: 7.5.4
       simple-icons:
-        specifier: ^9.3.0
-        version: 9.3.0
+        specifier: ^9.5.0
+        version: 9.5.0
       tmp-promise:
         specifier: ^3.0.3
         version: 3.0.3
@@ -274,8 +162,8 @@ importers:
         specifier: ^5.1.6
         version: 5.1.6
       typescript-svelte-plugin:
-        specifier: ^0.3.27
-        version: 0.3.27(svelte@3.59.2)(typescript@5.1.6)
+        specifier: ^0.3.29
+        version: 0.3.29(svelte@3.59.2)(typescript@5.1.6)
 
 packages:
 
@@ -668,6 +556,14 @@ packages:
     resolution: {integrity: sha512-y9KJUf19SBowoaqhWdQNnErxFMNsKbuair2i3SGv5Su1ExLPAJz37iPXLHKIFQGYkHGxsSe45rNt8ZekXxJwUw==}
     dev: true
 
+  /@types/async-lock@1.4.0:
+    resolution: {integrity: sha512-2+rYSaWrpdbQG3SA0LmMT6YxWLrI81AqpMlSkw3QtFc2HGDufkweQSn30Eiev7x9LL0oyFrBqk1PXOnB9IEgKg==}
+    dev: true
+
+  /@types/browser-util-inspect@0.2.0:
+    resolution: {integrity: sha512-tNM9Y3oqYcRbux7HXxYq3GpAqjfpe7nZFLK13i/pp9q6FpbxIuW4CzVavxWzJqmgkBSCGbpxUbRRVN+PVuBy9A==}
+    dev: true
+
   /@types/codemirror@0.0.108:
     resolution: {integrity: sha512-3FGFcus0P7C2UOGCNUVENqObEb4SFk+S8Dnxq7K6aIsLVs/vDtlangl3PEO0ykaKXyK56swVF6Nho7VsA44uhw==}
     dependencies:
@@ -675,10 +571,6 @@ packages:
 
   /@types/estree@1.0.1:
     resolution: {integrity: sha512-LG4opVs2ANWZ1TJoKc937iMmNstM/d0ae1vNbnBvBhqCSezgVUOzcLCqbI5elV8Vy6WKwKjaqR+zO9VKirBBCA==}
-
-  /@types/file-saver@2.0.5:
-    resolution: {integrity: sha512-zv9kNf3keYegP5oThGLaPk8E081DFDuwfqjtiTzm6PoxChdJ1raSuADf2YGCVIyrSynLrgc8JWv296s7Q7pQSQ==}
-    dev: true
 
   /@types/json-schema@7.0.11:
     resolution: {integrity: sha512-wOuvG1SN4Us4rez+tylwwwCV1psiNVOkJeM3AUWUNWg/jDQY2+HE/444y5gc+jBmRqASOm2Oeh5c1axHobwRKQ==}
@@ -845,16 +737,16 @@ packages:
       eslint-visitor-keys: 3.4.1
     dev: true
 
-  /acorn-jsx@5.3.2(acorn@8.9.0):
+  /acorn-jsx@5.3.2(acorn@8.10.0):
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
     peerDependencies:
       acorn: ^6.0.0 || ^7.0.0 || ^8.0.0
     dependencies:
-      acorn: 8.9.0
+      acorn: 8.10.0
     dev: true
 
-  /acorn@8.9.0:
-    resolution: {integrity: sha512-jaVNAFBHNLXspO543WnNNPZFRtavh3skAkITqD0/2aeMkKZTN+254PyhwxFYrk3vQ1xfY+2wbesJMs/JC8/PwQ==}
+  /acorn@8.10.0:
+    resolution: {integrity: sha512-F0SAmZ8iUtS//m8DmCTA0jlh6TDKkHQyK6xc6V4KDTyZKA9dnvX9/3sRTVQrWm79glUAZbnmmNcdYwUIHWVybw==}
     engines: {node: '>=0.4.0'}
     hasBin: true
 
@@ -1473,8 +1365,8 @@ packages:
     resolution: {integrity: sha512-1FH/IiruXZ84tpUlm0aCUEwMl2Ho5ilqVh0VvQXw+byAz/4SAciyHLlfmL5WYqsvD38oymdUwBss0LtK8m4s/A==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
     dependencies:
-      acorn: 8.9.0
-      acorn-jsx: 5.3.2(acorn@8.9.0)
+      acorn: 8.10.0
+      acorn-jsx: 5.3.2(acorn@8.10.0)
       eslint-visitor-keys: 3.4.1
     dev: true
 
@@ -1628,7 +1520,6 @@ packages:
 
   /fs.realpath@1.0.0:
     resolution: {integrity: sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==}
-    dev: true
 
   /function-bind@1.1.1:
     resolution: {integrity: sha512-yIovAzMX49sF8Yl58fSCWJ5svSLuaibPxXQJFLmBObTuCr0Mf1KiPopGM9NiFjiYBCbfaa2Fh6breQ6ANVTI0A==}
@@ -1814,8 +1705,8 @@ packages:
     engines: {node: '>= 4'}
     dev: true
 
-  /immutable@4.3.0:
-    resolution: {integrity: sha512-0AOCmOip+xgJwEVTQj1EfiDDOkPmuyllDuTuEX+DDXUgapLAsBIfkg3sxCYyCEA8mQqZrrxPUGjcOQ2JS3WLkg==}
+  /immutable@4.3.1:
+    resolution: {integrity: sha512-lj9cnmB/kVS0QHsJnYKD1uo3o39nrbKxszjnqS9Fr6NB7bZzW45U6WSGBPKXDL/CvDKqDNPA4r3DoDQ8GTxo2A==}
     dev: false
 
   /import-fresh@3.3.0:
@@ -2485,8 +2376,8 @@ packages:
     resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
     dev: true
 
-  /simple-icons@9.3.0:
-    resolution: {integrity: sha512-T6x3teIpPdMc8nibYvE56Va1eF+l8Puk//1YYtCxQP4wbGRzYxgwZTl18YCjoFLnu/0exehwyR2hMEFZV3lflg==}
+  /simple-icons@9.5.0:
+    resolution: {integrity: sha512-FEtVYBJgsQb+Oz2f6DBbPipOl/9QVAEPvxZj1bllsoRsYL2LfufvhPDSLUdmpClUUDW5UjphBoEwBQvqJ1p3lg==}
     engines: {node: '>=0.12.18'}
     dev: false
 
