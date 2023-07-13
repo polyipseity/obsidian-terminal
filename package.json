@@ -82,7 +82,7 @@
 	"private": true,
 	"repository": {
 		"type": "git",
-		"url": "PLACEHOLDER"
+		"url": "git+https://github.com/polyipseity/PLACEHOLDER.git"
 	},
 	"scripts": {
 		"build": "npm run check && npm run build:force",
