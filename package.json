@@ -96,7 +96,7 @@
 		"authorUrl": "https://github.com/polyipseity",
 		"id": "terminal",
 		"isDesktopOnly": false,
-		"minAppVersion": "1.2.5",
+		"minAppVersion": "1.2.8",
 		"name": "Terminal"
 	},
 	"overrides": {
