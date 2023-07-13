@@ -76,6 +76,10 @@
 		}
 	},
 	"private": true,
+	"repository": {
+		"type": "git",
+		"url": "PLACEHOLDER"
+	},
 	"scripts": {
 		"build": "npm run check && npm run build:force",
 		"build:force": "node build/build.mjs",
