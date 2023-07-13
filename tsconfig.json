@@ -57,11 +57,7 @@
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "paths": {
-      "obsidian": [
-        "./node_modules/@polyipseity/obsidian/obsidian.d.ts"
-      ]
-    },
+    "paths": {},
     "plugins": [
       {
         "enableForWorkspaceTypeScriptVersions": false,
