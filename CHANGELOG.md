@@ -14,6 +14,8 @@ This file is automatically opened on update. You can reopen it in settings or co
 
 ## Unreleased
 
+- Upgrade minimum Obsidian version to v1.2.8. (`85d498d7cecf28b07e0562c4d9c1c793bf0344c0`)
+
 __Full changelog__: [`3.10.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.10.0...main)
 
 ## 3.10.0 (2023-07-10)
