@@ -4,7 +4,7 @@ import {
 	mergeResources,
 	syncLocale,
 	typedKeys,
-} from "obsidian-plugin-library"
+} from "@polyipseity/obsidian-plugin-library"
 import type en from "./locales/en/translation.json"
 
 export namespace PluginLocales {

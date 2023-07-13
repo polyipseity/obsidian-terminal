@@ -6,13 +6,14 @@
 	"dependencies": {
 		"i18next": "^23.2.6",
 		"lodash-es": "^4.17.21",
-		"obsidian": "^1.2.5",
-		"obsidian-plugin-library": "^1.5.0",
+		"obsidian": "^1.2.8",
+		"@polyipseity/obsidian-plugin-library": "^1.5.0",
 		"semver": "^7.5.3",
 		"ts-essentials": "^9.3.2"
 	},
 	"description": "PLACEHOLDER",
 	"devDependencies": {
+		"@polyipseity/obsidian": "^1.2.8",
 		"@tsconfig/esm": "^1.0.4",
 		"@tsconfig/node16": "^16.1.0",
 		"@tsconfig/recommended": "^1.0.2",
@@ -72,7 +73,6 @@
 	},
 	"pnpm": {
 		"overrides": {
-			"obsidian": "$obsidian",
 			"tsconfig-paths": "^4.0.0"
 		}
 	},
@@ -86,7 +86,6 @@
 		"obsidian:install": "npm run build && node build/obsidian-install.mjs",
 		"obsidian:install:force": "npm run build:force && node build/obsidian-install.mjs",
 		"postversion": "node build/version-post.mjs",
-		"prepare": "npm run build:force --workspace=obsidian-plugin-library --if-present",
 		"version": "node build/version.mjs"
 	},
 	"sideEffects": false,

@@ -12,7 +12,7 @@ import {
 	markFixed,
 	opaqueOrDefault,
 	semVerString,
-} from "obsidian-plugin-library"
+} from "@polyipseity/obsidian-plugin-library"
 import type { MarkOptional } from "ts-essentials"
 import { PluginLocales } from "../assets/locales.js"
 
