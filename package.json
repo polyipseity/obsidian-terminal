@@ -1,5 +1,8 @@
 {
 	"author": "PLACEHOLDER",
+	"bugs": {
+		"url": "PLACEHOLDER"
+	},
 	"dependencies": {
 		"i18next": "^23.2.6",
 		"lodash-es": "^4.17.21",
@@ -47,6 +50,7 @@
 			"url": "PLACEHOLDER"
 		}
 	],
+	"homepage": "PLACEHOLDER",
 	"keywords": [
 		"PLACEHOLDER",
 		"obsidian",
