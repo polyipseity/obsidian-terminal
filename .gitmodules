@@ -1,4 +1,0 @@
-[submodule "obsidian-plugin-library"]
-	path = build/obsidian-plugin-library
-	url = ../obsidian-plugin-library.git
-	branch = main
