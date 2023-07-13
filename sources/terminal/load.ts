@@ -11,7 +11,7 @@ import {
 	deepFreeze,
 	isNonNil,
 	notice2,
-} from "obsidian-plugin-library"
+} from "@polyipseity/obsidian-plugin-library"
 import { SelectProfileModal, spawnTerminal } from "./spawn.js"
 import { PROFILE_PROPERTIES } from "./profile-properties.js"
 import { Settings } from "../settings-data.js"

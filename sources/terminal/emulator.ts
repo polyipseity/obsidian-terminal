@@ -9,7 +9,7 @@ import {
 	importable,
 	launderUnchecked,
 	markFixed,
-} from "obsidian-plugin-library"
+} from "@polyipseity/obsidian-plugin-library"
 import type {
 	ITerminalInitOnlyOptions,
 	ITerminalOptions,

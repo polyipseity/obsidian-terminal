@@ -35,7 +35,7 @@ import {
 	unexpected,
 	useSettings,
 	useSubsettings,
-} from "obsidian-plugin-library"
+} from "@polyipseity/obsidian-plugin-library"
 import { Modal, type Setting } from "obsidian"
 import { constant, identity, isUndefined } from "lodash-es"
 import { BUNDLE } from "./import.js"

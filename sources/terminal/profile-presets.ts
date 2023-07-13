@@ -10,7 +10,11 @@ import type {
 	IWindowOptions,
 	IWindowsPty,
 } from "xterm"
-import { deepFreeze, openExternal, typedKeys } from "obsidian-plugin-library"
+import {
+	deepFreeze,
+	openExternal,
+	typedKeys,
+} from "@polyipseity/obsidian-plugin-library"
 import type { Pseudoterminal } from "./pseudoterminal.js"
 import type { Settings } from "../settings-data.js"
 

@@ -4,7 +4,7 @@ import {
 	deepFreeze,
 	isNonNil,
 	replaceAllRegex,
-} from "obsidian-plugin-library"
+} from "@polyipseity/obsidian-plugin-library"
 import type { ITerminalAddon, Terminal } from "xterm"
 import type { CanvasAddon } from "xterm-addon-canvas"
 import type { WebglAddon } from "xterm-addon-webgl"

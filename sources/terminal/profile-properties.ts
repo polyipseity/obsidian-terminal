@@ -3,7 +3,7 @@ import {
 	Platform,
 	deepFreeze,
 	launderUnchecked,
-} from "obsidian-plugin-library"
+} from "@polyipseity/obsidian-plugin-library"
 import {
 	Pseudoterminal,
 	RefPsuedoterminal,

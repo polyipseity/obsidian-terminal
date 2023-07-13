@@ -41,7 +41,7 @@ import {
 	sleep2,
 	typedKeys,
 	typedOwnKeys,
-} from "obsidian-plugin-library"
+} from "@polyipseity/obsidian-plugin-library"
 import type { IMarker, Terminal } from "xterm"
 import inspect, { type Options } from "browser-util-inspect"
 import { isEmpty, isNil, isUndefined, noop } from "lodash-es"

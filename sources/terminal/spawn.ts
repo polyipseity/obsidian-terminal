@@ -1,4 +1,7 @@
-import { Platform, newCollabrativeState } from "obsidian-plugin-library"
+import {
+	Platform,
+	newCollabrativeState,
+} from "@polyipseity/obsidian-plugin-library"
 import { FuzzySuggestModal } from "obsidian"
 import { Settings } from "../settings-data.js"
 import type { TerminalPlugin } from "../main.js"

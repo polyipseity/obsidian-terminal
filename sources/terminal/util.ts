@@ -18,7 +18,7 @@ import {
 	rangeCodePoint,
 	removeAt,
 	replaceAllRegex,
-} from "obsidian-plugin-library"
+} from "@polyipseity/obsidian-plugin-library"
 import { escapeRegExp, isUndefined, range } from "lodash-es"
 import AsyncLock from "async-lock"
 import { BUNDLE } from "../import.js"

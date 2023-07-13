@@ -2,7 +2,7 @@
 import {
 	deepFreeze,
 	typedKeys,
-} from "obsidian-plugin-library"
+} from "@polyipseity/obsidian-plugin-library"
 
 export const
 	// Needed for bundler

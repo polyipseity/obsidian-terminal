@@ -40,10 +40,10 @@ import {
 	recordViewStateHistory,
 	resetButton,
 	saveFileAs,
-	updateDisplayText,
+	updateView,
 	useSettings,
 	writeStateCollabratively,
-} from "obsidian-plugin-library"
+} from "@polyipseity/obsidian-plugin-library"
 import {
 	DisposerAddon,
 	DragAndDropAddon,
@@ -336,7 +336,7 @@ export class TerminalView extends ItemView {
 
 	protected set state(value: TerminalView.State) {
 		this.#state = value
-		updateDisplayText(this.context, this)
+		updateView(this.context, this)
 	}
 
 	set #emulator(val: TerminalView.EMULATOR | null) {
@@ -359,7 +359,7 @@ export class TerminalView extends ItemView {
 
 	set #title(value: string) {
 		this.#title0 = value
-		updateDisplayText(this.context, this)
+		updateView(this.context, this)
 	}
 
 	public override async setState(
@@ -484,7 +484,7 @@ export class TerminalView extends ItemView {
 			{ keymap } = app
 
 		this.register(language.onChangeLanguage.listen(() => {
-			updateDisplayText(context, this)
+			updateView(context, this)
 			this.#find?.$set({ i18n: i18n.t })
 		}))
 

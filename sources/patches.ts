@@ -4,7 +4,7 @@ import {
 	correctType,
 	deepFreeze,
 	dynamicRequireSync,
-} from "obsidian-plugin-library"
+} from "@polyipseity/obsidian-plugin-library"
 import { BUNDLE } from "./import.js"
 import type { Workspace } from "obsidian"
 import { around } from "monkey-around"
