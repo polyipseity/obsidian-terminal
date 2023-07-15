@@ -30,6 +30,7 @@ import {
 	deepFreeze,
 	deopaque,
 	dynamicRequire,
+	escapeJavaScriptString,
 	getKeyModifiers,
 	inSet,
 	logFormat,
@@ -239,7 +240,7 @@ export class DeveloperConsolePseudoterminal
 		new Map<Terminal, DeveloperConsolePseudoterminal.$Editor>()
 
 	public constructor(
-		protected readonly console: Console,
+		protected readonly self0: () => Window & typeof globalThis,
 		protected readonly log: Log,
 	) {
 		super()
@@ -383,21 +384,24 @@ export class DeveloperConsolePseudoterminal
 		return ret
 	}
 
-	protected compile(code: string): readonly [() => void, string] {
+	protected compile(
+		self0: Window & typeof globalThis,
+		code: string,
+	): readonly [() => void, string] {
 		const { context } = this
 		let symbolKey: string | null = null
-		while (symbolKey === null || Symbol.for(symbolKey) in self) {
-			symbolKey = self.crypto.randomUUID()
-		}
+		do {
+			symbolKey = self0.crypto.randomUUID()
+		} while (Symbol.for(symbolKey) in self0)
 		const symbol = Symbol.for(symbolKey),
 			cleanup = new Functions({ async: false, settled: true })
 		try {
 			cleanup.push(() => {
-				if (!Reflect.deleteProperty(self, symbol)) {
+				if (!Reflect.deleteProperty(self0, symbol)) {
 					throw new TypeError(symbol.toString())
 				}
 			})
-			Object.defineProperty(self, symbol, {
+			Object.defineProperty(self0, symbol, {
 				configurable: true,
 				enumerable: false,
 				value: context,
@@ -439,7 +443,8 @@ export class DeveloperConsolePseudoterminal
 	}
 
 	protected async eval(): Promise<void> {
-		const { buffer, console, lock, terminals } = this,
+		const { buffer, lock, self0, terminals } = this,
+			self1 = self0(),
 			code = await lock.acquire(
 				DeveloperConsolePseudoterminal.syncLock,
 				async () => {
@@ -451,7 +456,7 @@ export class DeveloperConsolePseudoterminal
 					return ret
 				},
 			)
-		console.log(code)
+		self1.console.log(code)
 		const ast = ((): ExtendNode<Program> | null => {
 			try {
 				return parse(code, {
@@ -468,7 +473,7 @@ export class DeveloperConsolePseudoterminal
 					sourceType: "module",
 				})
 			} catch (error) {
-				console.error(error)
+				self1.console.error(error)
 				return null
 			}
 		})()
@@ -478,10 +483,10 @@ export class DeveloperConsolePseudoterminal
 				? `${code.slice(0, lastStmt.start)}export default (${code
 					.slice(lastStmt.start)})`
 				: "",
-			[cleanup, url] = this.compile(code)
+			[cleanup, url] = this.compile(self1, code)
 		try {
 			const [cleanup2, url2] = code2
-				? this.compile(code2)
+				? this.compile(self1, code2)
 				: [(): void => { }, ""]
 			try {
 				const [success, ret] = await (
@@ -491,34 +496,40 @@ export class DeveloperConsolePseudoterminal
 					}]> => {
 						if (url2) {
 							try {
-								return [true, await import(url2)]
+								return [
+									true,
+									await self1.eval(`import(${escapeJavaScriptString(url2)})`),
+								]
 							} catch (error) {
 								if (!(error instanceof SyntaxError)) {
-									console.error(error)
+									self1.console.error(error)
 									return [false]
 								}
-								self.console.debug(error)
+								self1.console.debug(error)
 							}
 						}
 						try {
-							return [true, await import(url)]
+							return [
+								true,
+								await self1.eval(`import(${escapeJavaScriptString(url)})`),
+							]
 						} catch (error) {
-							console.error(error)
+							self1.console.error(error)
 							return [false]
 						}
 					})()
 				if (!success) { return }
-				console.log(ret.default)
+				self1.console.log(ret.default)
 				for (const key of typedOwnKeys(ret)) {
 					if (key === "default" || key === Symbol.toStringTag) { continue }
 					try {
-						Object.defineProperty(self, key, {
+						Object.defineProperty(self1, key, {
 							configurable: true,
 							enumerable: true,
 							value: ret[key],
 							writable: true,
 						})
-					} catch (error) { self.console.warn(error) }
+					} catch (error) { self1.console.warn(error) }
 				}
 			} finally { cleanup2() }
 		} finally { cleanup() }
