@@ -14,6 +14,7 @@ import {
 	UnnamespacedID,
 	activeSelf,
 	anyToError,
+	assignExact,
 	awaitCSS,
 	basename,
 	cloneAsWritable,
@@ -553,11 +554,8 @@ export class TerminalView extends ItemView {
 					}
 					if (empty) { this.#find?.$set({ results: "" }) }
 				},
-				optional: { anchor?: Element } = {},
-				{ firstElementChild } = contentEl
-			if (firstElementChild) {
-				optional.anchor = firstElementChild
-			}
+				optional: { anchor?: Element } = {}
+			assignExact(optional, "anchor", contentEl.firstElementChild ?? UNDEFINED)
 			this.#find = new FindComponent({
 				intro: true,
 				props: {
