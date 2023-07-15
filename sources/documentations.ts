@@ -3,7 +3,6 @@ import {
 	addCommand,
 	anyToError,
 	deepFreeze,
-	logError,
 	printError,
 	revealPrivate,
 	typedKeys,
@@ -71,7 +70,7 @@ class Loaded0 {
 					settings.mutate(settingsM => {
 						settingsM.lastReadChangelogVersion = version
 					}).then(async () => settings.write())
-						.catch(logError)
+						.catch(error => { self.console.error(error) })
 				}
 			} catch (error) {
 				printError(

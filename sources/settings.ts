@@ -12,12 +12,18 @@ import semverLt from "semver/functions/lt.js"
 
 export class SettingTab extends AdvancedSettingTab<Settings> {
 	public constructor(
-		context: PLACEHOLDERPlugin,
-		docs: loadDocumentations.Loaded,
-	) {
-		super(context)
-		const { containerEl, ui } = this,
-			{ language: { i18n }, settings, version } = context
+		protected override readonly context: PLACEHOLDERPlugin,
+		protected readonly docs: loadDocumentations.Loaded,
+	) { super(context) }
+
+	protected override onLoad(): void {
+		super.onLoad()
+		const {
+			containerEl,
+			context: { language: { i18n }, settings, version },
+			docs,
+			ui,
+		} = this
 		this.newTitleWidget()
 		this.newDescriptionWidget()
 		this.newLanguageWidget(
