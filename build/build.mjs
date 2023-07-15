@@ -29,6 +29,7 @@ const ARGV_PRODUCTION = 2,
 		],
 		footer: { js: COMMENT },
 		format: "cjs",
+		inject: ["@polyipseity/obsidian-plugin-library/inject"],
 		jsx: "transform",
 		legalComments: "inline",
 		loader: {
