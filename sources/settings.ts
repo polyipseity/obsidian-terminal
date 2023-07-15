@@ -61,7 +61,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 							closeSetting(containerEl)
 						})
 					if (version === null ||
-						semverLt(settings.copy.lastReadChangelogVersion, version)) {
+						semverLt(settings.value.lastReadChangelogVersion, version)) {
 						button.setCta()
 					}
 				})
@@ -74,7 +74,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 			setting
 				.setName(i18n.t("settings.open-changelog-on-update"))
 				.addToggle(linkSetting(
-					() => settings.copy.openChangelogOnUpdate,
+					() => settings.value.openChangelogOnUpdate,
 					async value => settings.mutate(settingsM => {
 						settingsM.openChangelogOnUpdate = value
 					}),
@@ -94,7 +94,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 	}
 
 	protected override snapshot0(): Partial<Settings> {
-		return Settings.persistent(this.context.settings.copy)
+		return Settings.persistent(this.context.settings.value)
 	}
 }
 

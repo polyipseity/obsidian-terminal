@@ -100,8 +100,8 @@ export function loadDocumentations(
 	}
 	if (readme) { ret.open("readme", false) }
 	if (version !== null &&
-		settings.copy.openChangelogOnUpdate &&
-		semverLt(settings.copy.lastReadChangelogVersion, version)) {
+		settings.value.openChangelogOnUpdate &&
+		semverLt(settings.value.lastReadChangelogVersion, version)) {
 		ret.open("changelog", false)
 	}
 	return ret

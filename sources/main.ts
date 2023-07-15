@@ -49,11 +49,11 @@ export class PLACEHOLDERPlugin
 
 	public displayName(unlocalized = false): string {
 		return unlocalized
-			? this.language.i18n.t("name", {
+			? this.language.value.t("name", {
 				interpolation: { escapeValue: false },
 				lng: PluginLocales.DEFAULT_LANGUAGE,
 			})
-			: this.language.i18n.t("name")
+			: this.language.value.t("name")
 	}
 
 	public override onload(): void {
