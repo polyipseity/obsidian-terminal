@@ -11,6 +11,7 @@ import type {
 	IWindowsPty,
 } from "xterm"
 import {
+	activeSelf,
 	deepFreeze,
 	openExternal,
 	typedKeys,
@@ -20,7 +21,7 @@ import type { Settings } from "../settings-data.js"
 
 export const
 	DEFAULT_LINK_HANDLER: ILinkHandler = deepFreeze({
-		activate(_0, text, _2) { openExternal(self, text) },
+		activate(event, text, _2) { openExternal(activeSelf(event), text) },
 	}),
 	DEFAULT_TERMINAL_OPTIONS: Settings.Profile.TerminalOptions =
 		deepFreeze({}),

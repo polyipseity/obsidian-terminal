@@ -16,6 +16,7 @@ import {
 	SI_PREFIX_SCALE,
 	type StatusUI,
 	UpdatableUI,
+	activeSelf,
 	anyToError,
 	assignExact,
 	clearProperties,
@@ -740,7 +741,8 @@ export class ProfileModal extends Modal {
 								},
 							))
 							.addButton(button => {
-								const i18nVariant = checkingPython ? "ing" : ""
+								const { buttonEl } = button,
+									i18nVariant = checkingPython ? "ing" : ""
 								button
 									.setIcon(i18n.t(`asset:components.profile.${profile
 										.type}.Python-executable-check${i18nVariant}-icon`))
@@ -765,8 +767,12 @@ export class ProfileModal extends Modal {
 														windowsHide: true,
 													},
 												)
-												if (stdout) { self.console.log(stdout) }
-												if (stderr) { self.console.error(stderr) }
+												if (stdout) {
+													activeSelf(buttonEl).console.log(stdout)
+												}
+												if (stderr) {
+													activeSelf(buttonEl).console.error(stderr)
+												}
 												if (!stdout.includes(i18n
 													.t("asset:magic.Python-version-magic"))) {
 													throw new Error(i18n.t("errors.not-Python"))

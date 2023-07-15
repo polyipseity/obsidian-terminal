@@ -23,6 +23,7 @@ import {
 	Platform,
 	SI_PREFIX_SCALE,
 	acquireConditionally,
+	activeSelf,
 	anyToError,
 	clear,
 	consumeEvent,
@@ -31,7 +32,6 @@ import {
 	dynamicRequire,
 	getKeyModifiers,
 	inSet,
-	logError,
 	logFormat,
 	notice2,
 	printError,
@@ -188,7 +188,9 @@ export class TextPseudoterminal
 	}
 
 	public set text(value: string) {
-		this.rewrite(normalizeText(this.#text = value)).catch(logError)
+		this.rewrite(normalizeText(this.#text = value)).catch(error => {
+			self.console.error(error)
+		})
 	}
 
 	public override async pipe(terminal: Terminal): Promise<void> {
@@ -295,6 +297,9 @@ export class DeveloperConsolePseudoterminal
 				}),
 				terminal.onKey(({ domEvent }) => {
 					if (!isEmpty(getKeyModifiers(domEvent))) { return }
+					function logError(error: unknown): void {
+						activeSelf(domEvent).console.error(error)
+					}
 					const { key } = domEvent
 					switch (key) {
 						case "Enter":
@@ -338,7 +343,9 @@ export class DeveloperConsolePseudoterminal
 					resizing = true
 					this.syncBuffer([terminal])
 						.finally(() => { resizing = false })
-						.catch(logError)
+						.catch(error => {
+							activeSelf(terminal.element).console.error(error)
+						})
 				}),
 			].map(disposer0 => () => { disposer0.dispose() }),
 		)
@@ -837,7 +844,9 @@ class WindowsPseudoterminal implements Pseudoterminal {
 					init = true
 					return
 				}
-				tWritePromise(terminal, chunk).catch(logError)
+				tWritePromise(terminal, chunk).catch(error => {
+					activeSelf(terminal.element).console.error(error)
+				})
 			}
 		await clearTerminal(terminal, true)
 		terminal.loadAddon(new DisposerAddon(
@@ -916,7 +925,9 @@ class UnixPseudoterminal implements Pseudoterminal {
 	public async pipe(terminal: Terminal): Promise<void> {
 		const shell = await this.shell,
 			reader = (chunk: Buffer | string): void => {
-				tWritePromise(terminal, chunk).catch(logError)
+				tWritePromise(terminal, chunk).catch(error => {
+					activeSelf(terminal.element).console.error(error)
+				})
 			}
 		await clearTerminal(terminal, true)
 		terminal.loadAddon(new DisposerAddon(

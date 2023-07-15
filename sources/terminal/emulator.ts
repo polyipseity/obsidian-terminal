@@ -1,6 +1,7 @@
 import {
 	type Fixed,
 	SI_PREFIX_SCALE,
+	activeSelf,
 	asyncDebounce,
 	deepFreeze,
 	dynamicRequire,
@@ -90,7 +91,7 @@ export class XtermTerminalEmulator<A> {
 				}
 			} catch (error) {
 				if (mustResizePseudoterminal) { throw error }
-				self.console.debug(error)
+				activeSelf(this.terminal.element).console.debug(error)
 			}
 		})())
 	}, TERMINAL_PTY_RESIZE_WAIT * SI_PREFIX_SCALE))
@@ -140,7 +141,7 @@ export class XtermTerminalEmulator<A> {
 			}
 		} catch (error) {
 			if (mustClosePseudoterminal) { throw error }
-			self.console.debug(error)
+			activeSelf(this.terminal.element).console.debug(error)
 		}
 		this.terminal.dispose()
 	}
@@ -189,9 +190,9 @@ export namespace XtermTerminalEmulator {
 			data: "",
 			rows: 1,
 		})
-		export function fix(self: unknown): Fixed<State> {
-			const unc = launderUnchecked<State>(self)
-			return markFixed(self, {
+		export function fix(self0: unknown): Fixed<State> {
+			const unc = launderUnchecked<State>(self0)
+			return markFixed(self0, {
 				columns: fixTyped(DEFAULT, unc, "columns", ["number"]),
 				data: fixTyped(DEFAULT, unc, "data", ["string"]),
 				rows: fixTyped(DEFAULT, unc, "rows", ["number"]),

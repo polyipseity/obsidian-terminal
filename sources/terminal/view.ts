@@ -12,6 +12,7 @@ import {
 	JSON_STRINGIFY_SPACE,
 	Platform,
 	UnnamespacedID,
+	activeSelf,
 	anyToError,
 	awaitCSS,
 	basename,
@@ -27,7 +28,6 @@ import {
 	instanceOf,
 	launderUnchecked,
 	linkSetting,
-	logWarn,
 	markFixed,
 	newCollabrativeState,
 	notice2,
@@ -548,7 +548,7 @@ export class TerminalView extends ItemView {
 							},
 						)
 					} catch (error) {
-						self.console.debug(error)
+						activeSelf(contentEl).console.debug(error)
 						empty = true
 					}
 					if (empty) { this.#find?.$set({ results: "" }) }
@@ -614,6 +614,9 @@ export class TerminalView extends ItemView {
 			return
 		}
 		createChildElement(contentEl, "div", ele => {
+			function warn(error: unknown): void {
+				activeSelf(ele).console.warn(error)
+			}
 			ele.classList.add(TerminalView.type.namespaced(context));
 			(async (): Promise<void> => {
 				try {
@@ -678,7 +681,7 @@ export class TerminalView extends ItemView {
 									() => { this.#title = "" },
 									ele.onWindowMigrated(() => {
 										emulator.reopen()
-										emulator.resize(false).catch(logWarn)
+										emulator.resize(false).catch(warn)
 									}),
 									() => { this.#find?.$set({ results: "" }) },
 								),
@@ -691,7 +694,7 @@ export class TerminalView extends ItemView {
 								search: new xtermAddonSearch.SearchAddon(),
 								unicode11: new xtermAddonUnicode11.Unicode11Addon(),
 								webLinks: new xtermAddonWebLinks.WebLinksAddon(
-									(event, uri) => openExternal(event.view ?? self, uri),
+									(event, uri) => openExternal(activeSelf(event), uri),
 									{},
 								),
 							},
@@ -744,18 +747,18 @@ export class TerminalView extends ItemView {
 						this.#find?.$set({ results })
 					})
 
-					emulator.resize().catch(logWarn)
+					emulator.resize().catch(warn)
 					onResize(ele, ent => {
 						if (ent.contentBoxSize
 							.every(size => size.blockSize <= 0 || size.inlineSize <= 0)) {
 							return
 						}
-						emulator.resize(false).catch(logWarn)
+						emulator.resize(false).catch(warn)
 					})
 					this.#emulator = emulator
 					if (focus) { terminal.focus() }
 				} catch (error) {
-					self.console.error(error)
+					activeSelf(ele).console.error(error)
 				}
 			})()
 		})
@@ -786,9 +789,9 @@ export namespace TerminalView {
 			profile: Settings.Profile.DEFAULTS.invalid,
 			serial: null,
 		})
-		export function fix(self: unknown): Fixed<State> {
-			const unc = launderUnchecked<State>(self)
-			return markFixed(self, {
+		export function fix(self0: unknown): Fixed<State> {
+			const unc = launderUnchecked<State>(self0)
+			return markFixed(self0, {
 				cwd: fixTyped(DEFAULT, unc, "cwd", ["string", "null"]),
 				focus: fixTyped(DEFAULT, unc, "focus", ["boolean"]),
 				profile: Settings.Profile.fix(unc.profile).value,

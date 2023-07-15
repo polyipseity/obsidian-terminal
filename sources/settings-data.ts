@@ -282,8 +282,8 @@ export namespace Settings {
 		})
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
-		export function fix(self: unknown): Fixed<Profile> {
-			const unc = launderUnchecked<Invalid>(self),
+		export function fix(self0: unknown): Fixed<Profile> {
+			const unc = launderUnchecked<Invalid>(self0),
 				fixPlatforms = <
 					V extends Platforms<Vs[number]>,
 					const Vs extends ReadonlyTuple<string>,
@@ -304,7 +304,7 @@ export namespace Settings {
 					return ret2
 				}
 			// eslint-disable-next-line consistent-return
-			return markFixed(self, ((): DeepWritable<Profile> => {
+			return markFixed(self0, ((): DeepWritable<Profile> => {
 				const type = inSet(TYPES, unc.type)
 					? unc.type
 					: "invalid"
@@ -478,9 +478,9 @@ export namespace Settings {
 				"normal",
 			]) satisfies readonly FontWeight[]
 		}
-		export function fixTerminalOptions(self: unknown): Fixed<TerminalOptions> {
-			const unc = launderUnchecked<TerminalOptions>(self)
-			return markFixed(self, omitBy({
+		export function fixTerminalOptions(self0: unknown): Fixed<TerminalOptions> {
+			const unc = launderUnchecked<TerminalOptions>(self0)
+			return markFixed(self0, omitBy({
 				allowProposedApi: fixTyped(
 					DEFAULT_TERMINAL_OPTIONS,
 					unc,

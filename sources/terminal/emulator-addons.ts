@@ -1,5 +1,6 @@
 import {
 	Functions,
+	activeSelf,
 	consumeEvent,
 	deepFreeze,
 	isNonNil,
@@ -65,6 +66,7 @@ export class RendererAddon implements ITerminalAddon {
 	public use(renderer: RendererAddon.RendererOption): void {
 		const term = this.#terminal
 		if (!term) { return }
+		const { element } = term
 		this.renderer?.dispose()
 		switch (renderer) {
 			case "dom":
@@ -76,7 +78,7 @@ export class RendererAddon implements ITerminalAddon {
 					term.loadAddon(this.renderer = renderer0)
 					break
 				} catch (error) {
-					self.console.warn(error)
+					activeSelf(element).console.warn(error)
 					this.use("dom")
 				}
 				break
@@ -92,7 +94,7 @@ export class RendererAddon implements ITerminalAddon {
 						})
 					term.loadAddon(this.renderer = renderer0)
 				} catch (error) {
-					self.console.warn(error)
+					activeSelf(element).console.warn(error)
 					this.use("canvas")
 				}
 				break

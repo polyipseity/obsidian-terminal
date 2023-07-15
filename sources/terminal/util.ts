@@ -82,10 +82,10 @@ export function normalizeText(text: string): string {
 }
 
 export async function writePromise(
-	self: Terminal,
+	self0: Terminal,
 	data: Uint8Array | string,
 ): Promise<void> {
-	return new Promise(resolve => { self.write(data, resolve) })
+	return new Promise(resolve => { self0.write(data, resolve) })
 }
 
 export class TerminalTextArea implements IDisposable {

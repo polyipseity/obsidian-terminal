@@ -8,6 +8,7 @@ import {
 	type PluginContext,
 	SettingsManager,
 	StatusBarHider,
+	activeSelf,
 	createI18n,
 	lazyProxy,
 	semVerString,
@@ -30,7 +31,7 @@ export class TerminalPlugin
 	public readonly language: LanguageManager
 	public readonly statusBarHider = new StatusBarHider(this)
 	public readonly developerConsolePTY = lazyProxy(() => new RefPsuedoterminal(
-		new DeveloperConsolePseudoterminal(self.console, this.log),
+		new DeveloperConsolePseudoterminal(activeSelf, this.log),
 	))
 
 	public constructor(app: App, manifest: PluginManifest) {

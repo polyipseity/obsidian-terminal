@@ -83,7 +83,7 @@ function patchLoggingConsole(console: Console, log: Log): () => void {
 	})
 }
 
-function patchLoggingWindow(self: Window, log: Log): () => void {
+function patchLoggingWindow(self0: Window, log: Log): () => void {
 	const
 		onWindowError = (error: ErrorEvent): void => {
 			log.logger.emit({
@@ -100,10 +100,10 @@ function patchLoggingWindow(self: Window, log: Log): () => void {
 		ret = new Functions(
 			{ async: false, settled: true },
 			() => {
-				self.removeEventListener("error", onWindowError, { capture: true })
+				self0.removeEventListener("error", onWindowError, { capture: true })
 			},
 			() => {
-				self.removeEventListener(
+				self0.removeEventListener(
 					"unhandledrejection",
 					onUnhandledRejection,
 					{ capture: true },
@@ -111,11 +111,11 @@ function patchLoggingWindow(self: Window, log: Log): () => void {
 			},
 		)
 	try {
-		self.addEventListener("error", onWindowError, {
+		self0.addEventListener("error", onWindowError, {
 			capture: true,
 			passive: true,
 		})
-		self.addEventListener("unhandledrejection", onUnhandledRejection, {
+		self0.addEventListener("unhandledrejection", onUnhandledRejection, {
 			capture: true,
 			passive: true,
 		})
@@ -127,13 +127,13 @@ function patchLoggingWindow(self: Window, log: Log): () => void {
 }
 
 function patchLogging(
-	self: Window & typeof globalThis,
+	self0: Window & typeof globalThis,
 	log: Log,
 ): () => void {
 	const ret = new Functions({ async: false, settled: true })
 	try {
-		ret.push(patchLoggingConsole(self.console, log))
-		ret.push(patchLoggingWindow(self, log))
+		ret.push(patchLoggingConsole(self0.console, log))
+		ret.push(patchLoggingWindow(self0, log))
 		return () => { ret.call() }
 	} catch (error) {
 		ret.call()
@@ -141,14 +141,17 @@ function patchLogging(
 	}
 }
 
-function patchRequire(self: typeof globalThis): () => void {
-	return around(self, {
+function patchRequire(self0: typeof globalThis): () => void {
+	return around(self0, {
 		require(proto) {
-			return Object.assign(function fn(this: typeof self, id: string): unknown {
+			return Object.assign(function fn(
+				this: typeof self0,
+				id: string,
+			): unknown {
 				try {
 					return proto.call(this, id)
 				} catch (error) {
-					self.console.debug(error)
+					self0.console.debug(error)
 					return dynamicRequireSync(BUNDLE, id)
 				}
 			}, proto)
@@ -160,8 +163,8 @@ function patchRequire(self: typeof globalThis): () => void {
 function patchWindows(
 	workspace: Workspace,
 	patcher: (
-		self: Window & typeof globalThis,
-	) => (self: Window & typeof globalThis) => void,
+		self0: Window & typeof globalThis,
+	) => (self0: Window & typeof globalThis) => void,
 ): () => void {
 	const ret = new Functions({ async: false, settled: true })
 	try {
@@ -195,7 +198,7 @@ export function patch(workspace: Workspace): {
 	const unpatch = new Functions({ async: false, settled: true })
 	try {
 		const log = new Log()
-		unpatch.push(patchWindows(workspace, self => patchLogging(self, log)))
+		unpatch.push(patchWindows(workspace, self0 => patchLogging(self0, log)))
 		unpatch.push(patchWindows(workspace, patchRequire))
 		return Object.freeze({
 			log,
