@@ -1,13 +1,14 @@
+import type { App, Workspace } from "obsidian"
 import {
 	EventEmitterLite,
 	Functions,
+	ResourceComponent,
 	aroundIdentityFactory,
 	correctType,
 	deepFreeze,
 	dynamicRequireSync,
 } from "@polyipseity/obsidian-plugin-library"
 import { BUNDLE } from "./import.js"
-import type { Workspace } from "obsidian"
 import { around } from "monkey-around"
 import { noop } from "ts-essentials"
 
@@ -191,13 +192,16 @@ function patchWindows(
 	}
 }
 
-export function patch(workspace: Workspace): {
-	readonly unpatch: () => void
+export interface EarlyPatch {
 	readonly log: Log
+}
+function patch(app: App): EarlyPatch & {
+	readonly unpatch: () => void
 } {
 	const unpatch = new Functions({ async: false, settled: true })
 	try {
-		const log = new Log()
+		const { workspace } = app,
+			log = new Log()
 		unpatch.push(patchWindows(workspace, self0 => patchLogging(self0, log)))
 		unpatch.push(patchWindows(workspace, patchRequire))
 		return Object.freeze({
@@ -207,5 +211,26 @@ export function patch(workspace: Workspace): {
 	} catch (error) {
 		unpatch.call()
 		throw error
+	}
+}
+
+export class EarlyPatchManager extends ResourceComponent<EarlyPatch> {
+	#loaded = false
+
+	public constructor(
+		protected readonly app: App,
+	) { super() }
+
+	public override load(): void {
+		if (this.#loaded) { return }
+		super.load()
+		this.register(() => { this.#loaded = false })
+		this.#loaded = true
+	}
+
+	protected override load0(): EarlyPatch {
+		const ret = patch(this.app)
+		this.register(ret.unpatch)
+		return ret
 	}
 }

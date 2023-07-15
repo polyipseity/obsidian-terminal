@@ -21,6 +21,7 @@ import { type ExtendNode, parse } from "acorn"
 import {
 	Functions,
 	Platform,
+	ResourceComponent,
 	SI_PREFIX_SCALE,
 	acquireConditionally,
 	activeSelf,
@@ -33,6 +34,7 @@ import {
 	escapeJavaScriptString,
 	getKeyModifiers,
 	inSet,
+	lazyProxy,
 	logFormat,
 	notice2,
 	printError,
@@ -646,6 +648,22 @@ export namespace DeveloperConsolePseudoterminal {
 		readonly startYMarker: IMarker | undefined
 		renderEndY: number
 		readonly close: () => void
+	}
+	export class Manager extends ResourceComponent<Manager.Type> {
+		public constructor(protected readonly context: TerminalPlugin) { super() }
+
+		protected override async load0(): Promise<Manager.Type> {
+			const { context: { earlyPatch: { onLoaded } } } = this,
+				{ log } = await onLoaded,
+				ret = lazyProxy(() => new RefPsuedoterminal(
+					new DeveloperConsolePseudoterminal(activeSelf, log),
+				))
+			this.register(async () => ret.kill())
+			return ret
+		}
+	}
+	export namespace Manager {
+		export type Type = RefPsuedoterminal<DeveloperConsolePseudoterminal>
 	}
 }
 

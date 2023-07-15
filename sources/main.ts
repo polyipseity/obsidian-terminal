@@ -1,19 +1,15 @@
 import { type App, Plugin, type PluginManifest } from "obsidian"
 import {
-	DeveloperConsolePseudoterminal,
-	RefPsuedoterminal,
-} from "./terminal/pseudoterminal.js"
-import {
 	LanguageManager,
 	type PluginContext,
 	SI_PREFIX_SCALE,
 	SettingsManager,
 	StatusBarHider,
-	activeSelf,
 	createI18n,
-	lazyProxy,
 	semVerString,
 } from "@polyipseity/obsidian-plugin-library"
+import { DeveloperConsolePseudoterminal } from "./terminal/pseudoterminal.js"
+import { EarlyPatchManager } from "./patches.js"
 import { PLUGIN_UNLOAD_DELAY } from "./magic.js"
 import { PluginLocales } from "../assets/locales.js"
 import { Settings } from "./settings-data.js"
@@ -22,25 +18,23 @@ import { loadDocumentations } from "./documentations.js"
 import { loadIcons } from "./icons.js"
 import { loadSettings } from "./settings.js"
 import { loadTerminal } from "./terminal/load.js"
-import { patch } from "./patches.js"
 
 export class TerminalPlugin
 	extends Plugin
 	implements PluginContext<Settings> {
 	public readonly version
-	public readonly log
 	public readonly settings: SettingsManager<Settings>
 	public readonly language: LanguageManager
 	public readonly statusBarHider = new StatusBarHider(this)
-	public readonly developerConsolePTY = lazyProxy(() => new RefPsuedoterminal(
-		new DeveloperConsolePseudoterminal(activeSelf, this.log),
-	))
+	public readonly earlyPatch
+	public readonly developerConsolePTY =
+		new DeveloperConsolePseudoterminal.Manager(this)
 
 	public constructor(app: App, manifest: PluginManifest) {
-		const { unpatch, log } = patch(app.workspace)
+		const earlyPatch = new EarlyPatchManager(app)
+		earlyPatch.load()
 		super(app, manifest)
-		this.register(unpatch)
-		this.log = log
+		this.earlyPatch = earlyPatch
 		try {
 			this.version = semVerString(manifest.version)
 		} catch (error) {
@@ -60,7 +54,6 @@ export class TerminalPlugin
 				},
 			),
 		)
-		this.register(async () => this.developerConsolePTY.kill())
 	}
 
 	public displayName(unlocalized = false): string {
