@@ -6,6 +6,7 @@ import {
 import {
 	LanguageManager,
 	type PluginContext,
+	SI_PREFIX_SCALE,
 	SettingsManager,
 	StatusBarHider,
 	activeSelf,
@@ -13,6 +14,7 @@ import {
 	lazyProxy,
 	semVerString,
 } from "@polyipseity/obsidian-plugin-library"
+import { PLUGIN_UNLOAD_DELAY } from "./magic.js"
 import { PluginLocales } from "../assets/locales.js"
 import { Settings } from "./settings-data.js"
 import { isNil } from "lodash-es"
@@ -45,11 +47,7 @@ export class TerminalPlugin
 			self.console.warn(error)
 			this.version = null
 		}
-		this.settings = new SettingsManager(
-			this,
-			Settings.fix(Settings.DEFAULT).value,
-			Settings.fix,
-		)
+		this.settings = new SettingsManager(this, Settings.fix)
 		this.language = new LanguageManager(
 			this,
 			async () => createI18n(
@@ -67,20 +65,38 @@ export class TerminalPlugin
 
 	public displayName(unlocalized = false): string {
 		return unlocalized
-			? this.language.i18n.t("name", {
+			? this.language.value.t("name", {
 				interpolation: { escapeValue: false },
 				lng: PluginLocales.DEFAULT_LANGUAGE,
 			})
-			: this.language.i18n.t("name")
+			: this.language.value.t("name")
 	}
 
 	public override onload(): void {
 		super.onload()
-		const { language, settings, statusBarHider } = this;
+		// Delay unloading as there are Obsidian unload tasks that cannot be awaited
+		for (const child of [
+			this.settings,
+			this.language,
+		]) {
+			child.unload()
+			this.register(() => {
+				const id = self.setTimeout(() => {
+					child.unload()
+				}, PLUGIN_UNLOAD_DELAY * SI_PREFIX_SCALE)
+				child.register(() => { self.clearTimeout(id) })
+			})
+			child.load()
+		}
+		for (const child of [this.statusBarHider]) {
+			this.register(() => { child.unload() })
+			child.load()
+		}
 		(async (): Promise<void> => {
 			try {
-				const [loaded] =
-					await Promise.all([settings.onLoaded, language.onLoaded])
+				const loaded: unknown = await this.loadData(),
+					{ language, statusBarHider, settings } = this
+				await Promise.all([settings.onLoaded, language.onLoaded])
 				await Promise.all([
 					Promise.resolve().then(() => { loadIcons(this) }),
 					Promise.resolve().then(() => {
