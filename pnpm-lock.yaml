@@ -8,8 +8,8 @@ importers:
   .:
     dependencies:
       '@polyipseity/obsidian-plugin-library':
-        specifier: ^1.6.0
-        version: 1.6.0(@capacitor/core@5.2.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(typescript@5.1.6)
+        specifier: ^1.7.0
+        version: 1.7.0(@capacitor/core@5.2.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(typescript@5.1.6)
       i18next:
         specifier: ^23.2.11
         version: 23.2.11
@@ -431,8 +431,8 @@ packages:
       tslib: 2.6.0
     dev: true
 
-  /@polyipseity/obsidian-plugin-library@1.6.0(@capacitor/core@5.2.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(typescript@5.1.6):
-    resolution: {integrity: sha512-4f10LGGk+PO3zwgaOO92anJsok9ZHBXIAoqFFzllT7JXVtzVZOwKbeHUxIujxijYOnVs53LPB5Z25dhiMySEhA==}
+  /@polyipseity/obsidian-plugin-library@1.7.0(@capacitor/core@5.2.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(typescript@5.1.6):
+    resolution: {integrity: sha512-MdHPCSK+gwQUATt55Pc3Js2SS0ZuresoHgkVagnlIAfRdb0wF+RI54UGTAKOiv90HAFdEW2Oquaodi7AMOPpbw==}
     dependencies:
       '@capacitor/filesystem': 5.1.0(@capacitor/core@5.2.0)
       async-lock: 1.4.0
