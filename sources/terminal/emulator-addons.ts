@@ -15,7 +15,7 @@ export class DisposerAddon extends Functions implements ITerminalAddon {
 	}
 
 	public activate(_terminal: Terminal): void {
-		// NOOP
+		// Noop
 	}
 
 	public dispose(): void {

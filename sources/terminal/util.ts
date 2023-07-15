@@ -387,7 +387,7 @@ export class TerminalTextArea implements IDisposable {
 				for (let cell = line.getCell(cursorX, this.#cell);
 					cell && cell.getWidth() <= 0;
 					cell = line.getCell(cursorX += direction, this.#cell)) {
-					// NOOP
+					// Noop
 				}
 				values[0].push(line.translateToString(false, 0, cursorX))
 				values[1].push(line.translateToString(false, cursorX, width))
