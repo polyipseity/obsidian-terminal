@@ -1,6 +1,7 @@
 import {
 	EventEmitterLite,
 	Functions,
+	aroundIdentityFactory,
 	correctType,
 	deepFreeze,
 	dynamicRequireSync,
@@ -52,10 +53,13 @@ export namespace Log {
 function patchLoggingConsole(console: Console, log: Log): () => void {
 	const consolePatch = (
 		type: "debug" | "error" | "info" | "warn",
-		proto: (...data: readonly unknown[]) => void,
-	): (this: Console, ...data: readonly unknown[]) => void => {
+		proto: (this: typeof console, ...data: readonly unknown[]) => void,
+	): typeof proto => {
 		let recursive = false
-		return function fn(this: Console, ...data: readonly unknown[]): void {
+		return function fn(
+			this: typeof console,
+			...data: readonly unknown[]
+		): void {
 			if (recursive) { return }
 			recursive = true
 			try {
@@ -149,11 +153,7 @@ function patchRequire(self: typeof globalThis): () => void {
 				}
 			}, proto)
 		},
-		toString(proto) {
-			return function fn(this: typeof self, ...args) {
-				return proto.apply(this, args)
-			}
-		},
+		toString: aroundIdentityFactory(),
 	})
 }
 
