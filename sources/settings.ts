@@ -25,7 +25,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 		super.onLoad()
 		const {
 			containerEl,
-			context: { language: { i18n }, settings, version },
+			context, context: { language: { i18n }, settings, version },
 			docs,
 			ui,
 		} = this
