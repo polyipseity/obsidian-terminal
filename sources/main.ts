@@ -67,10 +67,9 @@ export class PLACEHOLDERPlugin
 					await Promise.all([settings.onLoaded, language.onLoaded])
 				await Promise.all([
 					Promise.resolve().then(() => { loadIcons(this) }),
-					(async (): Promise<void> => {
-						const docs = loadDocumentations(this, isNil(loaded))
-						loadSettings(this, docs)
-					})(),
+					Promise.resolve().then(() => {
+						loadSettings(this, loadDocumentations(this, isNil(loaded)))
+					}),
 				])
 			} catch (error) {
 				self.console.error(error)
