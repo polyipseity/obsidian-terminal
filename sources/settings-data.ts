@@ -49,9 +49,9 @@ export namespace Settings {
 		deepFreeze(["", ...PluginLocales.LANGUAGES])
 	export type DefaultableLanguage = typeof DEFAULTABLE_LANGUAGES[number]
 
-	export function fix(self: unknown): Fixed<Settings> {
-		const unc = launderUnchecked<Settings>(self)
-		return markFixed(self, {
+	export function fix(self0: unknown): Fixed<Settings> {
+		const unc = launderUnchecked<Settings>(self0)
+		return markFixed(self0, {
 			errorNoticeTimeout: fixTyped(
 				DEFAULT,
 				unc,
