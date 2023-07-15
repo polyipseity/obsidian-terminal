@@ -60,7 +60,7 @@ class Loaded0 {
 	public open(key: DocumentationKeys[number], active = true): void {
 		const {
 			context,
-			context: { version, settings, language: { i18n } },
+			context: { version, settings, language: { value: i18n } },
 			docMdView,
 		} = this;
 		(async (): Promise<void> => {
@@ -86,7 +86,7 @@ export function loadDocumentations(
 	context: PLACEHOLDERPlugin,
 	readme = false,
 ): loadDocumentations.Loaded {
-	const { version, language: { i18n }, settings } = context,
+	const { version, language: { value: i18n }, settings } = context,
 		ret = new Loaded0(
 			context,
 			DocumentationMarkdownView.register(context),
