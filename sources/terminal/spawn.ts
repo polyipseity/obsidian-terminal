@@ -17,11 +17,11 @@ export class SelectProfileModal
 	}
 
 	public override getItems(): Settings.Profile.Entry[] {
-		return Object.entries(this.context.settings.copy.profiles)
+		return Object.entries(this.context.settings.value.profiles)
 	}
 
 	public override getItemText(item: Settings.Profile.Entry): string {
-		return this.context.language.i18n.t(
+		return this.context.language.value.t(
 			`components.select-profile.item-text-${Settings.Profile
 				.isCompatible(item[1], Platform.CURRENT)
 				? ""
@@ -56,7 +56,7 @@ export function spawnTerminal(
 						TerminalView.type,
 						{
 							cwd: cwd ?? null,
-							focus: context.settings.copy.focusOnNewInstance,
+							focus: context.settings.value.focusOnNewInstance,
 							profile,
 							serial: null,
 						} satisfies TerminalView.State,

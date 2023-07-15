@@ -98,7 +98,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 			setting
 				.setName(i18n.t("settings.add-to-command"))
 				.addToggle(linkSetting(
-					() => settings.copy.addToCommand,
+					() => settings.value.addToCommand,
 					async value => settings
 						.mutate(settingsM => { settingsM.addToCommand = value }),
 					() => { this.postMutate() },
@@ -116,7 +116,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 				setting
 					.setName(i18n.t("settings.add-to-context-menu"))
 					.addToggle(linkSetting(
-						() => settings.copy.addToContextMenu,
+						() => settings.value.addToContextMenu,
 						async value => settings.mutate(settingsM => {
 							settingsM.addToContextMenu = value
 						}),
@@ -135,7 +135,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 				setting
 					.setName(i18n.t("settings.profiles"))
 					.setDesc(i18n.t("settings.profiles-description", {
-						count: size(settings.copy.profiles),
+						count: size(settings.value.profiles),
 						interpolation: { escapeValue: false },
 					}))
 					.addButton(button => button
@@ -144,7 +144,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 						.onClick(() => {
 							new ProfileListModal(
 								context,
-								Object.entries(settings.copy.profiles),
+								Object.entries(settings.value.profiles),
 								{
 									callback: async (data): Promise<void> => {
 										await settings.mutate(settingsM => {
@@ -170,7 +170,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 				setting
 					.setName(i18n.t("settings.new-instance-behavior"))
 					.addDropdown(linkSetting(
-						(): string => settings.copy.newInstanceBehavior,
+						(): string => settings.value.newInstanceBehavior,
 						setTextToEnum(
 							Settings.NEW_INSTANCE_BEHAVIORS,
 							async value => settings.mutate(settingsM => {
@@ -205,7 +205,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 					.setDesc(i18n
 						.t("settings.create-instance-near-existing-ones-description"))
 					.addToggle(linkSetting(
-						() => settings.copy.createInstanceNearExistingOnes,
+						() => settings.value.createInstanceNearExistingOnes,
 						async value => settings.mutate(settingsM => {
 							settingsM.createInstanceNearExistingOnes = value
 						}),
@@ -225,7 +225,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 				setting
 					.setName(i18n.t("settings.focus-on-new-instance"))
 					.addToggle(linkSetting(
-						() => settings.copy.focusOnNewInstance,
+						() => settings.value.focusOnNewInstance,
 						async value => settings.mutate(settingsM => {
 							settingsM.focusOnNewInstance = value
 						}),
@@ -244,7 +244,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 				setting
 					.setName(i18n.t("settings.pin-new-instance"))
 					.addToggle(linkSetting(
-						() => settings.copy.pinNewInstance,
+						() => settings.value.pinNewInstance,
 						async value => settings.mutate(settingsM => {
 							settingsM.pinNewInstance = value
 						}),
@@ -263,7 +263,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 				setting
 					.setName(i18n.t("settings.hide-status-bar"))
 					.addDropdown(linkSetting(
-						(): string => settings.copy.hideStatusBar,
+						(): string => settings.value.hideStatusBar,
 						setTextToEnum(
 							Settings.HIDE_STATUS_BAR_OPTIONS,
 							async value => settings.mutate(settingsM => {
@@ -300,7 +300,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 				setting
 					.setName(i18n.t("settings.preferred-renderer"))
 					.addDropdown(linkSetting(
-						(): string => settings.copy.preferredRenderer,
+						(): string => settings.value.preferredRenderer,
 						setTextToEnum(
 							Settings.PREFERRED_RENDERER_OPTIONS,
 							async value => settings.mutate(settingsM => {

@@ -694,7 +694,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 	) {
 		this.conhost = useWin32Conhost ?? false
 		const { conhost } = this,
-			{ language: { i18n }, settings } = context,
+			{ language: { value: i18n }, settings } = context,
 			resizerInitial = (async (): Promise<PipedChildProcess | null> => {
 				if (isNil(pythonExecutable)) { return null }
 				const ret = await spawnPromise(async () =>
@@ -722,7 +722,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 										interpolation: { escapeValue: false },
 									},
 								),
-								settings.copy.errorNoticeTimeout,
+								settings.value.errorNoticeTimeout,
 								context,
 							)
 						}
@@ -852,7 +852,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 	public async kill(): Promise<void> {
 		if (!(await this.shell).kill()) {
 			throw new Error(this.context.language
-				.i18n.t("errors.error-killing-pseudoterminal"))
+				.value.t("errors.error-killing-pseudoterminal"))
 		}
 	}
 
@@ -860,7 +860,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 		const { resizer, context: plugin } = this,
 			resizer0 = await resizer
 		if (!resizer0) {
-			throw new Error(plugin.language.i18n.t("errors.resizer-disabled"))
+			throw new Error(plugin.language.value.t("errors.resizer-disabled"))
 		}
 		await writePromise(resizer0.stdin, `${columns}x${rows}\n`)
 	}
@@ -909,7 +909,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 		this.shell = spawnPromise(async () => {
 			if (isNil(pythonExecutable)) {
 				throw new Error(language
-					.i18n.t("errors.no-Python-to-spawn-Unix-pseudoterminal"))
+					.value.t("errors.no-Python-to-spawn-Unix-pseudoterminal"))
 			}
 			const env: NodeJS.ProcessEnv = {
 				...(await process).env,
@@ -947,7 +947,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 	public async kill(): Promise<void> {
 		if (!(await this.shell).kill()) {
 			throw new Error(this.context.language
-				.i18n.t("errors.error-killing-pseudoterminal"))
+				.value.t("errors.error-killing-pseudoterminal"))
 		}
 	}
 

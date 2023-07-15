@@ -103,7 +103,7 @@ export class TerminalPlugin
 							() => { statusBarHider.update() },
 						))
 						statusBarHider.hide(() =>
-							settings.copy.hideStatusBar === "always")
+							settings.value.hideStatusBar === "always")
 					}),
 				])
 			} catch (error) {

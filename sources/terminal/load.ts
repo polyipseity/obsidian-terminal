@@ -33,12 +33,16 @@ export function loadTerminal(context: TerminalPlugin): void {
 			{ cwd: "", profile: "integrated" },
 			{ cwd: "", profile: "external" },
 		]),
-		{ app: { vault, workspace }, language: { i18n }, settings } = context,
+		{
+			app: { vault, workspace },
+			language: { value: i18n },
+			settings,
+		} = context,
 		defaultProfile =
 			(type: Settings.Profile.Type): Settings.Profile | null => {
 				const ret = Settings.Profile.defaultOfType(
 					type,
-					settings.copy.profiles,
+					settings.value.profiles,
 					Platform.CURRENT,
 				)
 				if (!ret) {
@@ -47,7 +51,7 @@ export function loadTerminal(context: TerminalPlugin): void {
 							interpolation: { escapeValue: false },
 							type,
 						}),
-						settings.copy.errorNoticeTimeout,
+						settings.value.errorNoticeTimeout,
 						context,
 					)
 				}
@@ -130,7 +134,7 @@ export function loadTerminal(context: TerminalPlugin): void {
 		() => { new SelectProfileModal(context, adapter?.getBasePath()).open() },
 	)
 	context.registerEvent(workspace.on("file-menu", (menu, file) => {
-		if (!settings.copy.addToContextMenu) {
+		if (!settings.value.addToContextMenu) {
 			return
 		}
 		const folder = file instanceof TFolder ? file : file.parent
@@ -148,7 +152,7 @@ export function loadTerminal(context: TerminalPlugin): void {
 		"editor-menu",
 		(menu, _0, info) => {
 			const { file } = info
-			if (!settings.copy.addToContextMenu ||
+			if (!settings.value.addToContextMenu ||
 				info instanceof MarkdownView ||
 				!file?.parent) {
 				return
@@ -179,7 +183,7 @@ export function loadTerminal(context: TerminalPlugin): void {
 				}),
 				{
 					checkCallback(checking) {
-						if (!settings.copy.addToCommand) { return false }
+						if (!settings.value.addToCommand) { return false }
 						return command(type, cwd)(checking)
 					},
 					icon: i18n.t(`asset:commands.open-terminal-${cwd}-icon`),

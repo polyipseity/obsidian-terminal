@@ -66,7 +66,7 @@ export class TerminalOptionsModal
 		data: Settings.Profile.TerminalOptions,
 		options?: TerminalOptionsModal.Options,
 	) {
-		const { language: { i18n } } = context
+		const { language: { value: i18n } } = context
 		super(context, data, Settings.Profile.fixTerminalOptions, {
 			...options,
 			elements: ["data"],
@@ -79,7 +79,7 @@ export class TerminalOptionsModal
 		element: HTMLElement,
 		errorEl: StatusUI,
 	): void {
-		const { context: { language: { i18n } }, data } = this,
+		const { context: { language: { value: i18n } }, data } = this,
 			temp = new WeakMap<Setting, string>()
 		ui
 			.new(() => createChildElement(element, "div"), ele => {
@@ -324,7 +324,7 @@ export class ProfileModal extends Modal {
 		}[] = PROFILE_PRESET_ORDERED_KEYS
 			.map(key => ({
 				get name(): string {
-					return context.language.i18n.t(`profile-presets.${key}`)
+					return context.language.value.t(`profile-presets.${key}`)
 				},
 				value: PROFILE_PRESETS[key],
 			})),
@@ -341,7 +341,7 @@ export class ProfileModal extends Modal {
 			{ element: listEl, remover: listElRemover } = useSettings(this.contentEl),
 			profile = data,
 			{ language } = context,
-			{ i18n, onChangeLanguage } = language
+			{ value: i18n, onChangeLanguage } = language
 		modalUI.finally(onChangeLanguage.listen(() => { modalUI.update() }))
 			.new(constant(titleEl), ele => {
 				ele.textContent = i18n.t("components.profile.title", {
@@ -519,7 +519,7 @@ export class ProfileModal extends Modal {
 	protected setupTypedUI(ui: UpdatableUI, element: HTMLElement): void {
 		const { context, context: { settings }, data } = this,
 			profile = data,
-			{ i18n } = context.language
+			{ value: i18n } = context.language
 		ui.destroy()
 		if (profile.type === "invalid") { return }
 		ui
@@ -785,7 +785,7 @@ export class ProfileModal extends Modal {
 															{ loose: true },
 														).version,
 													}),
-													settings.copy.noticeTimeout,
+													settings.value.noticeTimeout,
 													context,
 												)
 											} catch (error) {
@@ -856,7 +856,7 @@ export class ProfileListModal
 		data: readonly Settings.Profile.Entry[],
 		options?: ProfileListModal.Options,
 	) {
-		const { i18n } = context.language,
+		const { value: i18n } = context.language,
 			dataW = cloneAsWritable(data),
 			dataKeys = new Map(dataW.map(([key, value]) => [value, key])),
 			callback = options?.callback ?? ((): void => { }),
@@ -925,7 +925,7 @@ export class ProfileListModal
 				presets: options?.presets ?? PROFILE_PRESET_ORDERED_KEYS
 					.map(key => ({
 						get name(): string {
-							return context.language.i18n.t(`profile-presets.${key}`)
+							return context.language.value.t(`profile-presets.${key}`)
 						},
 						get value(): DeepWritable<Settings.Profile> {
 							return cloneAsWritable(PROFILE_PRESETS[key])

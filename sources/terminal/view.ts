@@ -102,7 +102,7 @@ class EditTerminalModal extends DialogModal {
 		protected readonly protostate: TerminalView.State,
 		confirm: (state_: DeepWritable<typeof protostate>) => unknown,
 	) {
-		const { language: { i18n } } = context
+		const { language: { value: i18n } } = context
 		super(context, {
 			dynamicWidth: true,
 			title: () => i18n.t("components.terminal.edit-modal.title"),
@@ -118,7 +118,7 @@ class EditTerminalModal extends DialogModal {
 				context,
 				context: {
 					settings,
-					language: { i18n },
+					language: { value: i18n },
 					app: { vault: { adapter } },
 				},
 				ui,
@@ -162,7 +162,7 @@ class EditTerminalModal extends DialogModal {
 					))
 			})
 			.newSetting(listEl, setting => {
-				const { profiles } = settings.copy,
+				const { profiles } = settings.value,
 					unselected = randomNotIn(Object.keys(profiles))
 				setting
 					.setName(i18n.t("components.terminal.edit-modal.profile"))
@@ -303,7 +303,7 @@ export class TerminalView extends ItemView {
 
 	get #name(): string {
 		const { context: plugin, state } = this,
-			{ i18n } = plugin.language,
+			{ value: i18n } = plugin.language,
 			{ profile } = state,
 			{ name, type } = profile
 		if (this.#title) { return this.#title }
@@ -323,7 +323,7 @@ export class TerminalView extends ItemView {
 	// eslint-disable-next-line consistent-return
 	get #hidesStatusBar(): boolean {
 		const { context: { settings }, contentEl } = this
-		switch (settings.copy.hideStatusBar) {
+		switch (settings.value.hideStatusBar) {
 			case "focused":
 				return contentEl.contains(contentEl.ownerDocument.activeElement)
 			case "running":
@@ -346,7 +346,7 @@ export class TerminalView extends ItemView {
 			printError(
 				anyToError(error),
 				() => plugin.language
-					.i18n.t("errors.error-killing-pseudoterminal"),
+					.value.t("errors.error-killing-pseudoterminal"),
 				plugin,
 			)
 		})
@@ -396,7 +396,7 @@ export class TerminalView extends ItemView {
 
 	public getDisplayText(): string {
 		return this.context.language
-			.i18n.t(
+			.value.t(
 				`components.${TerminalView.type.id}.display-name`,
 				{
 					interpolation: { escapeValue: false },
@@ -407,7 +407,7 @@ export class TerminalView extends ItemView {
 
 	public override getIcon(): string {
 		return this.context.language
-			.i18n.t(`asset:components.${TerminalView.type.id}.icon`)
+			.value.t(`asset:components.${TerminalView.type.id}.icon`)
 	}
 
 	public getViewType(): string {
@@ -417,7 +417,7 @@ export class TerminalView extends ItemView {
 	public override onPaneMenu(menu: Menu, source: string): void {
 		super.onPaneMenu(menu, source)
 		const { context: plugin, leaf, app: { vault: { adapter } } } = this,
-			{ i18n } = plugin.language
+			{ value: i18n } = plugin.language
 		menu
 			.addSeparator()
 			.addItem(item => item
@@ -481,7 +481,7 @@ export class TerminalView extends ItemView {
 		await super.onOpen()
 		const { context, focusedScope, contentEl, containerEl, scope, app } = this,
 			{ language, statusBarHider } = context,
-			{ i18n } = language,
+			{ value: i18n } = language,
 			{ keymap } = app
 
 		this.register(language.onChangeLanguage.listen(() => {
@@ -520,7 +520,7 @@ export class TerminalView extends ItemView {
 	protected startFind(): void {
 		const { context: plugin, contentEl } = this,
 			{ language } = plugin,
-			{ i18n } = language
+			{ value: i18n } = language
 		if (!this.#find) {
 			const
 				onFind = (
@@ -580,7 +580,7 @@ export class TerminalView extends ItemView {
 			{
 				contentEl,
 				context,
-				context: { language: { onChangeLanguage, i18n }, settings },
+				context: { language: { onChangeLanguage, value: i18n }, settings },
 				leaf,
 				state: { profile, cwd, serial },
 				app: { workspace: { requestSaveLayout } },
@@ -594,7 +594,7 @@ export class TerminalView extends ItemView {
 							name: this.#name,
 						},
 					),
-					settings.copy.noticeTimeout,
+					settings.value.noticeTimeout,
 					context,
 				)
 			}
@@ -709,8 +709,8 @@ export class TerminalView extends ItemView {
 								(profile.type === "invalid"
 									? DEFAULT_SUCCESS_EXIT_CODES
 									: profile.successExitCodes).includes(code.toString())
-									? settings.copy.noticeTimeout
-									: settings.copy.errorNoticeTimeout,
+									? settings.value.noticeTimeout
+									: settings.value.errorNoticeTimeout,
 								context,
 							)
 						}, error => {
@@ -727,7 +727,7 @@ export class TerminalView extends ItemView {
 						settings0 => settings0.preferredRenderer,
 						cur => { renderer.use(cur) },
 					))
-					renderer.use(settings.copy.preferredRenderer)
+					renderer.use(settings.value.preferredRenderer)
 					search.onDidChangeResults(results0 => {
 						const { resultIndex, resultCount } = results0,
 							results = resultIndex === -1 && resultCount > 0
@@ -807,7 +807,7 @@ export namespace TerminalView {
 			} = context,
 			// eslint-disable-next-line consistent-return
 			leaf = ((): WorkspaceLeaf => {
-				if (settings.copy.createInstanceNearExistingOnes) {
+				if (settings.value.createInstanceNearExistingOnes) {
 					const existingLeaf = workspace
 						// eslint-disable-next-line @typescript-eslint/no-unnecessary-qualifier
 						.getLeavesOfType(TerminalView.type.namespaced(context))
@@ -824,7 +824,7 @@ export namespace TerminalView {
 						return workspace.getLeaf("tab")
 					}
 				}
-				switch (settings.copy.newInstanceBehavior) {
+				switch (settings.value.newInstanceBehavior) {
 					case "replaceTab":
 						return workspace.getLeaf()
 					case "newTab":
@@ -846,7 +846,7 @@ export namespace TerminalView {
 					// No default
 				}
 			})()
-		leaf.setPinned(settings.copy.pinNewInstance)
+		leaf.setPinned(settings.value.pinNewInstance)
 		return leaf
 	}
 }
