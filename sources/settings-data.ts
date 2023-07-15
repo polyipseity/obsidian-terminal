@@ -1041,9 +1041,9 @@ export namespace Settings {
 			} satisfies Required<DeepUndefinable<TerminalOptions>>, isUndefined))
 		}
 	}
-	export function fix(self: unknown): Fixed<Settings> {
-		const unc = launderUnchecked<Settings>(self)
-		return markFixed(self, {
+	export function fix(self0: unknown): Fixed<Settings> {
+		const unc = launderUnchecked<Settings>(self0)
+		return markFixed(self0, {
 			addToCommand: fixTyped(
 				DEFAULT,
 				unc,

@@ -17,12 +17,18 @@ import { size } from "lodash-es"
 
 export class SettingTab extends AdvancedSettingTab<Settings> {
 	public constructor(
-		context: TerminalPlugin,
-		docs: loadDocumentations.Loaded,
-	) {
-		super(context)
-		const { containerEl, ui } = this,
-			{ language: { i18n }, settings, version } = context
+		protected override readonly context: TerminalPlugin,
+		protected readonly docs: loadDocumentations.Loaded,
+	) { super(context) }
+
+	protected override onLoad(): void {
+		super.onLoad()
+		const {
+			containerEl,
+			context: { language: { i18n }, settings, version },
+			docs,
+			ui,
+		} = this
 		this.newTitleWidget()
 		this.newDescriptionWidget()
 		this.newLanguageWidget(
