@@ -811,7 +811,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 							} finally {
 								(async (): Promise<void> => {
 									try {
-										await sleep2(TERMINAL_EXIT_CLEANUP_WAIT)
+										await sleep2(self, TERMINAL_EXIT_CLEANUP_WAIT)
 										await codeTmp.cleanup()
 									} catch (error) { self.console.warn(error) }
 								})()
