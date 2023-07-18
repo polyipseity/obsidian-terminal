@@ -132,9 +132,7 @@ dist
 # }
 
 # self {
-/.eslintcache
 /.obsidian/
-/.tsbuildinfo
 /data.json
 /main.js
 /metafile.json
