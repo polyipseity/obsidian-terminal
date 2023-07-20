@@ -92,8 +92,11 @@ export class TerminalPlugin
 		(async (): Promise<void> => {
 			try {
 				const loaded: unknown = await this.loadData(),
-					{ language, statusBarHider, settings } = this
-				await Promise.all([settings.onLoaded, language.onLoaded])
+					{ language, settings, statusBarHider } = this
+				await Promise.all([
+					language.onLoaded,
+					settings.onLoaded,
+				])
 				await Promise.all([
 					Promise.resolve().then(() => { loadIcons(this) }),
 					Promise.resolve().then(() => {
