@@ -20,6 +20,8 @@ __Fixes__
 - Fix the command to export settings to clipboard. (`993dff6c94b7e70e53c42afdad3fa8e56324a3aa`)
 - Fix lifecycle management. (`993dff6c94b7e70e53c42afdad3fa8e56324a3aa`, `46771b52d6db6c1523a959d8204bc921bd7121ca`, `30377ac69a596a1e38fab881510f840fe66a5afc`)
 - Fix terminal throttling. (`993dff6c94b7e70e53c42afdad3fa8e56324a3aa`, `279c7ff8ca187e4efdb583cbac4a1d931c93713e`..`bcd569e156a7637a90e7cfbd8cba3610ef6752d6`)
+- Fix `updateView` not updating the inner title. (`45603f33109f10be0bc7c040fa1addc42153d92f`)
+- Fix failing to load the plugin if settings are malformed. (`45603f33109f10be0bc7c040fa1addc42153d92f`)
 
 __Full changelog__: [`3.10.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.10.0...main)
 
