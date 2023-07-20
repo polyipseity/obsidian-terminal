@@ -80,7 +80,10 @@ export class PLACEHOLDERPlugin
 			try {
 				const loaded: unknown = await this.loadData(),
 					{ language, settings } = this
-				await Promise.all([settings.onLoaded, language.onLoaded])
+				await Promise.all([
+					language.onLoaded,
+					settings.onLoaded,
+				])
 				await Promise.all([
 					Promise.resolve().then(() => { loadIcons(this) }),
 					Promise.resolve().then(() => {
