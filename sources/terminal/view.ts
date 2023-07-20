@@ -653,17 +653,18 @@ export class TerminalView extends ItemView {
 											JSON_STRINGIFY_SPACE,
 										),
 									}))
-								pty.onExit.finally(onChangeLanguage.listen(() => {
-									pty.text =
-										i18n.t("components.terminal.unsupported-profile", {
-											interpolation: { escapeValue: false },
-											profile: JSON.stringify(
-												profile,
-												null,
-												JSON_STRINGIFY_SPACE,
-											),
-										})
-								}))
+								pty.onExit.catch(() => { })
+									.finally(onChangeLanguage.listen(() => {
+										pty.text =
+											i18n.t("components.terminal.unsupported-profile", {
+												interpolation: { escapeValue: false },
+												profile: JSON.stringify(
+													profile,
+													null,
+													JSON_STRINGIFY_SPACE,
+												),
+											})
+									}))
 								return pty
 							},
 							serial0 ?? UNDEFINED,

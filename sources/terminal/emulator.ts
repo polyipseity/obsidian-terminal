@@ -130,7 +130,7 @@ export class XtermTerminalEmulator<A> {
 			await pty0.pipe(terminal)
 			return pty0
 		})
-		this.pseudoterminal.then(async pty0 => pty0.onExit)
+		this.pseudoterminal.then(async pty0 => pty0.onExit).catch(() => { })
 			.finally(() => { this.#running = false })
 	}
 
