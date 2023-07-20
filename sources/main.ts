@@ -81,7 +81,11 @@ export class TerminalPlugin
 			})
 			child.load()
 		}
-		for (const child of [this.statusBarHider]) {
+		for (const child of [
+			this.statusBarHider,
+			this.earlyPatch,
+			this.developerConsolePTY,
+		]) {
 			this.register(() => { child.unload() })
 			child.load()
 		}
