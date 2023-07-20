@@ -4,7 +4,7 @@
 		"url": "https://github.com/polyipseity/PLACEHOLDER"
 	},
 	"dependencies": {
-		"@polyipseity/obsidian-plugin-library": "^1.9.0",
+		"@polyipseity/obsidian-plugin-library": "^1.10.0",
 		"i18next": "^23.2.11",
 		"lodash-es": "^4.17.21",
 		"obsidian": "^1.2.8",
@@ -22,10 +22,10 @@
 		"@types/lodash-es": "^4.17.8",
 		"@types/node": "^20.4.2",
 		"@types/semver": "^7.5.0",
-		"@typescript-eslint/eslint-plugin": "^6.0.0",
-		"@typescript-eslint/parser": "^6.0.0",
+		"@typescript-eslint/eslint-plugin": "^6.1.0",
+		"@typescript-eslint/parser": "^6.1.0",
 		"builtin-modules": "^3.3.0",
-		"esbuild": "^0.18.13",
+		"esbuild": "^0.18.15",
 		"esbuild-compress": "^1.2.2",
 		"esbuild-svelte": "^0.7.4",
 		"eslint": "^8.45.0",
