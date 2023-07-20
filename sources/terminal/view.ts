@@ -722,8 +722,7 @@ export class TerminalView extends ItemView {
 					terminal.onTitleChange(title => { this.#title = title })
 
 					terminal.unicode.activeVersion = "11"
-					disposer.push(settings.on(
-						"mutate-settings",
+					disposer.push(settings.onMutate(
 						settings0 => settings0.preferredRenderer,
 						cur => { renderer.use(cur) },
 					))

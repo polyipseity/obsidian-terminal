@@ -101,8 +101,7 @@ export class TerminalPlugin
 					}),
 					Promise.resolve().then(() => { loadTerminal(this) }),
 					Promise.resolve().then(() => {
-						this.register(settings.on(
-							"mutate-settings",
+						this.register(settings.onMutate(
 							settings0 => settings0.hideStatusBar,
 							() => { statusBarHider.update() },
 						))
