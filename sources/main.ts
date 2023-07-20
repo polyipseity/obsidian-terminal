@@ -20,8 +20,8 @@ export class PLACEHOLDERPlugin
 	extends Plugin
 	implements PluginContext<Settings> {
 	public readonly version
-	public readonly settings: SettingsManager<Settings>
 	public readonly language: LanguageManager
+	public readonly settings: SettingsManager<Settings>
 	public readonly statusBarHider = new StatusBarHider(this)
 
 	public constructor(app: App, manifest: PluginManifest) {
@@ -32,7 +32,6 @@ export class PLACEHOLDERPlugin
 			self.console.warn(error)
 			this.version = null
 		}
-		this.settings = new SettingsManager(this, Settings.fix)
 		this.language = new LanguageManager(
 			this,
 			async () => createI18n(
@@ -45,6 +44,7 @@ export class PLACEHOLDERPlugin
 				},
 			),
 		)
+		this.settings = new SettingsManager(this, Settings.fix)
 	}
 
 	public displayName(unlocalized = false): string {
@@ -60,8 +60,8 @@ export class PLACEHOLDERPlugin
 		super.onload()
 		// Delay unloading as there are Obsidian unload tasks that cannot be awaited
 		for (const child of [
-			this.settings,
 			this.language,
+			this.settings,
 		]) {
 			child.unload()
 			this.register(() => {
