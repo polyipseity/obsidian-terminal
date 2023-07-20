@@ -20,7 +20,6 @@ __Fixes__
 - Fix the command to export settings to clipboard. (`993dff6c94b7e70e53c42afdad3fa8e56324a3aa`)
 - Fix lifecycle management. (`993dff6c94b7e70e53c42afdad3fa8e56324a3aa`, `46771b52d6db6c1523a959d8204bc921bd7121ca`, `30377ac69a596a1e38fab881510f840fe66a5afc`)
 - Fix terminal throttling. (`993dff6c94b7e70e53c42afdad3fa8e56324a3aa`, `279c7ff8ca187e4efdb583cbac4a1d931c93713e`..`bcd569e156a7637a90e7cfbd8cba3610ef6752d6`)
-- Replace `self` with `activeSelf`. (`18c69697f0a687f6335b0cf992a24f7b27d79f80`)
 
 __Full changelog__: [`3.10.0...main`](https://github.com/polyipseity/obsidian-terminal/compare/3.10.0...main)
 
