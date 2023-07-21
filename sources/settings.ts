@@ -294,7 +294,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 			})
 		this.newNoticeTimeoutWidget(Settings.DEFAULT)
 		ui.new(() => createChildElement(containerEl, "h2"), ele => {
-			ele.textContent = i18n.t("settings.advanced-settings")
+			ele.textContent = i18n.t("settings.advanced")
 		})
 			.newSetting(containerEl, setting => {
 				setting

@@ -239,7 +239,7 @@
 	"settings": {
 		"add-to-command": "加入至$t(generic.command)",
 		"add-to-context-menu": "加入至$t(generic.context-menu)",
-		"advanced-settings": "高級$t(generic.setting)",
+		"advanced": "高級",
 		"create-instance-near-existing-ones": "在$t(generic.exist)$t(generic.instance)附近創建$t(generic.instance)",
 		"create-instance-near-existing-ones-description": "如果為$t(generic.true)，則在$t(generic.instance)$t(generic.exist)時覆蓋「$t(settings.new-instance-behavior)」。",
 		"documentation": "$t(generic.documentation)",

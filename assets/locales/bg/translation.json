@@ -253,7 +253,7 @@
 	"settings": {
 		"add-to-command": "Add to $t(generic.command)",
 		"add-to-context-menu": "Add to $t(generic.context-menu)",
-		"advanced-settings": "Advanced $t(generic.setting_other)",
+		"advanced": "Advanced",
 		"create-instance-near-existing-ones": "Create $t(generic.instance) near $t(generic.exist_gerund) ones",
 		"create-instance-near-existing-ones-description": "Overrides '$t(settings.new-instance-behavior)' when $t(generic.instance) $t(generic.exist_singular) if $t(generic.true).",
 		"documentation": "$t(generic.documentation, capitalize)",
