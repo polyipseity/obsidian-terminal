@@ -24,7 +24,6 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 			docs,
 			ui,
 		} = this
-		this.newTitleWidget()
 		this.newDescriptionWidget()
 		this.newLanguageWidget(
 			Settings.DEFAULTABLE_LANGUAGES,
