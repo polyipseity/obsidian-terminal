@@ -257,6 +257,7 @@
 			"never": "从不",
 			"running": "当执行$t(generic.terminal)时"
 		},
+		"interface": "界面",
 		"new-instance-behavior": "新$t(generic.instance)$t(generic.behavior)",
 		"new-instance-behaviors": {
 			"newHorizontalSplit": "新水平$t(generic.split)",

@@ -271,6 +271,7 @@
 			"never": "Never",
 			"running": "When $t(generic.terminal) is running"
 		},
+		"interface": "Interface",
 		"new-instance-behavior": "New $t(generic.instance) $t(generic.behavior)",
 		"new-instance-behaviors": {
 			"newHorizontalSplit": "New horizontal $t(generic.split)",
