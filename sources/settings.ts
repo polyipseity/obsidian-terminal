@@ -66,6 +66,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 			Settings.DEFAULT,
 			Settings.fix,
 		)
+		this.newSectionWidget(() => i18n.t("settings.interface"))
 		ui.newSetting(containerEl, setting => {
 			setting
 				.setName(i18n.t("settings.open-changelog-on-update"))
