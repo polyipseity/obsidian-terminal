@@ -34,7 +34,7 @@ import {
 	escapeJavaScriptString,
 	getKeyModifiers,
 	inSet,
-	lazyProxy,
+	lazyInit,
 	logFormat,
 	notice2,
 	printError,
@@ -655,15 +655,16 @@ export namespace DeveloperConsolePseudoterminal {
 		protected override async load0(): Promise<Manager.Type> {
 			const { context: { earlyPatch: { onLoaded } } } = this,
 				{ log } = await onLoaded,
-				ret = lazyProxy(() => new RefPsuedoterminal(
+				ret = lazyInit(() => new RefPsuedoterminal(
 					new DeveloperConsolePseudoterminal(activeSelf, log),
 				))
-			this.register(async () => ret.kill())
+			this.register(async () => ret().kill())
+			// Cannot use `lazyProxy`, the below `return` accesses `ret.then`
 			return ret
 		}
 	}
 	export namespace Manager {
-		export type Type = RefPsuedoterminal<DeveloperConsolePseudoterminal>
+		export type Type = () => RefPsuedoterminal<DeveloperConsolePseudoterminal>
 	}
 }
 

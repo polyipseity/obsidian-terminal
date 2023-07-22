@@ -47,7 +47,7 @@ export const PROFILE_PROPERTIES: {
 		available: true,
 		integratable: true,
 		async opener(context: TerminalPlugin) {
-			return (await context.developerConsolePTY.onLoaded).dup()
+			return (await context.developerConsolePTY.onLoaded)().dup()
 		},
 		valid: true,
 	},
