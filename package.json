@@ -4,7 +4,7 @@
 		"url": "PLACEHOLDER"
 	},
 	"dependencies": {
-		"@polyipseity/obsidian-plugin-library": "^1.11.1",
+		"@polyipseity/obsidian-plugin-library": "^1.11.2",
 		"i18next": "^23.2.11",
 		"lodash-es": "^4.17.21",
 		"obsidian": "^1.2.8",
@@ -19,7 +19,7 @@
 		"@tsconfig/strictest": "^2.0.1",
 		"@tsconfig/svelte": "^5.0.0",
 		"@types/lodash-es": "^4.17.8",
-		"@types/node": "^20.4.2",
+		"@types/node": "^20.4.3",
 		"@types/semver": "^7.5.0",
 		"@typescript-eslint/eslint-plugin": "^6.1.0",
 		"@typescript-eslint/parser": "^6.1.0",
