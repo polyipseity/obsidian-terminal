@@ -128,7 +128,7 @@
 	"sideEffects": false,
 	"style": "styles.css",
 	"type": "module",
-	"version": "3.10.0",
+	"version": "3.11.0",
 	"workspaces": [
 		".",
 		"build/*"
