@@ -55,6 +55,7 @@ import { RendererAddon } from "./terminal/emulator-addons.js"
 
 export interface Settings extends PluginContext.Settings {
 	readonly language: Settings.DefaultableLanguage
+
 	readonly openChangelogOnUpdate: boolean
 	readonly addToCommand: boolean
 	readonly addToContextMenu: boolean
