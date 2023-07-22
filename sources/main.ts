@@ -9,7 +9,7 @@ import {
 	semVerString,
 } from "@polyipseity/obsidian-plugin-library"
 import { DeveloperConsolePseudoterminal } from "./terminal/pseudoterminal.js"
-import { EarlyPatchManager } from "./patches.js"
+import { EarlyPatchManager } from "./patch.js"
 import { PLUGIN_UNLOAD_DELAY } from "./magic.js"
 import { PluginLocales } from "../assets/locales.js"
 import { Settings } from "./settings-data.js"

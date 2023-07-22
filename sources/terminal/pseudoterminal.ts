@@ -55,7 +55,7 @@ import { BUNDLE } from "../import.js"
 import type { DeveloperConsoleContext } from "obsidian-terminal"
 import { DisposerAddon } from "./emulator-addons.js"
 import type { FileResult } from "tmp-promise"
-import type { Log } from "../patches.js"
+import type { Log } from "../patch.js"
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
 } from "node:child_process"
