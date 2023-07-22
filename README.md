@@ -28,8 +28,9 @@ This file is automatically opened on first install. You can reopen it in setting
 
 - Start external terminals from Obsidian.
 - Integrate terminals into Obsidian.
+- Has an emulated developer console usable on all platforms.
 - Supports multiple terminal profiles.
-- Has built-in hotkeys.
+- Has built-in keyboard shortcuts.
 - Automatically save and restore integrated terminal history.
 - Find in terminal.
 - Save terminal history as file.
@@ -85,13 +86,13 @@ This file is automatically opened on first install. You can reopen it in setting
 		- (1) Right-click on tab header/`More options`
 		- (2) Open settings
 		- (3) Open command palette
-		- (4) Use hotkeys
+		- (4) Use keyboard shortcuts
 
-### Hotkeys
+### Keyboard shortcuts
 
 __Terminal tab is focused__
 - Focus terminal: `Ctrl`+`Shift`+`` ` ``, `Command`+`` ` `` (macOS)
-- Inherit from app hotkeys
+- Inherits global keyboard shortcuts
 
 __Terminal is focused__
 - Focus terminal tab/Unfocus terminal: `Ctrl`+`Shift`+`` ` ``, `Command`+`` ` `` (macOS)
