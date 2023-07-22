@@ -45,7 +45,7 @@ const ARGV_PRODUCTION = 2,
 		platform: "browser",
 		plugins: [
 			esbuildPluginGlobals({
-				i18next: "i18next",
+				// Cannot use `i18next` because it is too outdated to have formatters
 				moment: "moment",
 			}),
 			esbuildCompress({
