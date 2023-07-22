@@ -1,6 +1,3 @@
-import type { } from "i18next"
-import type { PluginLocales } from "../../assets/locales.js"
-
 declare module "i18next" {
 	interface CustomTypeOptions {
 		readonly defaultNS: typeof PluginLocales.DEFAULT_NAMESPACE
@@ -8,3 +5,5 @@ declare module "i18next" {
 		readonly returnNull: typeof PluginLocales.RETURN_NULL
 	}
 }
+import type { } from "i18next"
+import type { PluginLocales } from "../../assets/locales.js"
