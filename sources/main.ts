@@ -66,7 +66,6 @@ export class TerminalPlugin
 	}
 
 	public override onload(): void {
-		super.onload()
 		// Delay unloading as there are Obsidian unload tasks that cannot be awaited
 		for (const child of [
 			this.language,
