@@ -1,5 +1,6 @@
 {
 	"commands": {
+		"open-developer-console-icon": "$t(asset:generic.profile-types.developerConsole-icon)",
 		"open-documentation-changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
 		"open-documentation-donate-icon": "$t(asset:generic.documentations.donate-icon)",
 		"open-documentation-readme-icon": "$t(asset:generic.documentations.readme-icon)",
