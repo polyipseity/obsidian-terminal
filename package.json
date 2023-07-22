@@ -4,7 +4,7 @@
 		"url": "https://github.com/polyipseity/PLACEHOLDER"
 	},
 	"dependencies": {
-		"@polyipseity/obsidian-plugin-library": "^1.12.1",
+		"@polyipseity/obsidian-plugin-library": "^1.13.0",
 		"acorn": "^8.10.0",
 		"ansi-escape-sequences": "^6.2.2",
 		"async-lock": "^1.4.0",
