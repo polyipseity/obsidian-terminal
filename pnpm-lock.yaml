@@ -8,8 +8,8 @@ importers:
   .:
     dependencies:
       '@polyipseity/obsidian-plugin-library':
-        specifier: ^1.11.1
-        version: 1.11.1(@capacitor/core@5.2.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(typescript@5.1.6)
+        specifier: ^1.11.3
+        version: 1.11.3(@capacitor/core@5.2.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(typescript@5.1.6)
       acorn:
         specifier: ^8.10.0
         version: 8.10.0
@@ -111,8 +111,8 @@ importers:
         specifier: ^4.17.8
         version: 4.17.8
       '@types/node':
-        specifier: ^20.4.2
-        version: 20.4.2
+        specifier: ^20.4.3
+        version: 20.4.3
       '@types/semver':
         specifier: ^7.5.0
         version: 7.5.0
@@ -131,6 +131,9 @@ importers:
       esbuild-compress:
         specifier: ^1.2.2
         version: 1.2.2(esbuild@0.18.15)
+      esbuild-plugin-globals:
+        specifier: ^0.2.0
+        version: 0.2.0
       esbuild-svelte:
         specifier: ^0.7.4
         version: 0.7.4(esbuild@0.18.15)(svelte@3.59.2)
@@ -185,8 +188,8 @@ packages:
       tslib: 2.6.0
     dev: false
 
-  /@capacitor/filesystem@5.1.0(@capacitor/core@5.2.0):
-    resolution: {integrity: sha512-w0IaIvi/DIK1K4vOF8xnWavVcRRJ+auDE4HEh4iJ9wTdB+BrQSsQ6YMLVJn3rB6WlBG40CiBVuBc7+fl8y3zgw==}
+  /@capacitor/filesystem@5.1.1(@capacitor/core@5.2.0):
+    resolution: {integrity: sha512-wq55joyYocsYI0f0UNoDE9TPxI0n4fx+PmejGR5JOYFzrnU8DqcSJ9EREAYAkkoOrmQHrB1vuN9F79XC0PuADw==}
     peerDependencies:
       '@capacitor/core': ^5.1.1
     dependencies:
@@ -495,10 +498,10 @@ packages:
       tslib: 2.6.0
     dev: true
 
-  /@polyipseity/obsidian-plugin-library@1.11.1(@capacitor/core@5.2.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(typescript@5.1.6):
-    resolution: {integrity: sha512-n/AxEu80FAKkvVlLOyVvWF/YvzZJ8R1cJMKCTRwKQriHahPi9t87S+9WXXxFWIqRR3BKmr8sSs3N7ONXA6pL1Q==}
+  /@polyipseity/obsidian-plugin-library@1.11.3(@capacitor/core@5.2.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(typescript@5.1.6):
+    resolution: {integrity: sha512-6OnsMjYzD6E7j30MY4q5JQHdjJD9/Ezwaywp2pK5fmnBrHF8yc65FuJWgfF73xH5TSuZUjfK5rBUO4CZSjxE6w==}
     dependencies:
-      '@capacitor/filesystem': 5.1.0(@capacitor/core@5.2.0)
+      '@capacitor/filesystem': 5.1.1(@capacitor/core@5.2.0)
       async-lock: 1.4.0
       browser-util-inspect: 0.2.0
       deep-equal: 2.2.2
@@ -506,12 +509,12 @@ packages:
       i18next: 23.2.11
       i18next-resources-to-backend: 1.1.4
       lodash-es: 4.17.21
-      lucide: 0.260.0
+      lucide: 0.263.0
       monkey-around: 2.3.0
       obsidian: 1.2.8(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)
       p-lazy: 4.0.0
       semver: 7.5.4
-      ts-deepmerge: 6.1.0
+      ts-deepmerge: 6.2.0
       ts-essentials: 9.3.2(typescript@5.1.6)
     transitivePeerDependencies:
       - '@capacitor/core'
@@ -586,8 +589,8 @@ packages:
     resolution: {integrity: sha512-r22s9tAS7imvBt2lyHC9B8AGwWnXaYb1tY09oyLkXDs4vArpYJzw09nj8MLx5VfciBPGIb+ZwG0ssYnEPJxn/g==}
     dev: true
 
-  /@types/node@20.4.2:
-    resolution: {integrity: sha512-Dd0BYtWgnWJKwO1jkmTrzofjK2QXXcai0dmtzvIBhcA+RsG5h8R3xlyta0kGOZRNfL9GuRtb1knmPEhQrePCEw==}
+  /@types/node@20.4.3:
+    resolution: {integrity: sha512-Yu3+r4Mn/iY6Mf0aihncZQ1qOjOUrCiodbHHY1hds5O+7BbKp9t+Li7zLO13zO8j9L2C6euz8xsYQP0rjGvVXw==}
     dev: true
 
   /@types/pug@2.0.6:
@@ -1135,6 +1138,11 @@ packages:
       lodash-es: 4.17.21
       lz-string: 1.5.0
       p-lazy: 4.0.0
+    dev: true
+
+  /esbuild-plugin-globals@0.2.0:
+    resolution: {integrity: sha512-y+6utQVWrETQWs0J8EGLV5gEOP59mmjX+fKWoQHn4TYwFMaj0FxQYflc566tHuokBCzl+uNW2iIlM1o1jfNy6w==}
+    engines: {node: '>=7'}
     dev: true
 
   /esbuild-svelte@0.7.4(esbuild@0.18.15)(svelte@3.59.2):
@@ -1957,8 +1965,8 @@ packages:
     dependencies:
       yallist: 4.0.0
 
-  /lucide@0.260.0:
-    resolution: {integrity: sha512-g1tIDZXrKLFwbD2gBsZ/qO9S4ts0ENVXmgbfBsXqxgslN48bkTRa86LaKbHb76dieYWslpS2DfnEPj7hdYMXnQ==}
+  /lucide@0.263.0:
+    resolution: {integrity: sha512-Z3CXtFWyZdPDG8i5TOZjP0dXfVK1T6tUdoAFdsdWW32HAJJ0eErN3frh2rt366qaM7fApduNpzCZJqlIdoAjsQ==}
     dev: false
 
   /lz-string@1.5.0:
@@ -2580,8 +2588,8 @@ packages:
       typescript: 5.1.6
     dev: true
 
-  /ts-deepmerge@6.1.0:
-    resolution: {integrity: sha512-YVJBhdIwYAZv6QoYz/mihpgbv+r0+QfQazTcSS6WXhQkbCxjTRoV+IOLtyArtz3au7xb+fPQVp1d7o5Qw1f1fg==}
+  /ts-deepmerge@6.2.0:
+    resolution: {integrity: sha512-2qxI/FZVDPbzh63GwWIZYE7daWKtwXZYuyc8YNq0iTmMUwn4mL0jRLsp6hfFlgbdRSR4x2ppe+E86FnvEpN7Nw==}
     engines: {node: '>=14.13.1'}
     dev: false
 
