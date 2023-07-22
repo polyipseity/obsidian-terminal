@@ -39,10 +39,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 					.setIcon(i18n.t("asset:settings.documentations.donate-icon"))
 					.setTooltip(i18n.t("settings.documentations.donate"))
 					.setCta()
-					.onClick(() => {
-						docs.open("donate")
-						closeSetting(containerEl)
-					}))
+					.onClick(() => { docs.open("donate") }))
 				.addButton(button => button
 					.setIcon(i18n.t("asset:settings.documentations.readme-icon"))
 					.setTooltip(i18n.t("settings.documentations.readme"))
