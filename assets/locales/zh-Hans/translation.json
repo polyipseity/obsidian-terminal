@@ -21,6 +21,7 @@
 			"donate": "$t(generic.documentations.donate)",
 			"readme": "$t(generic.documentations.readme)"
 		},
+		"interface": "界面",
 		"open-changelog-on-update": "更新时$t(generic.open)$t(generic.documentations.changelog)"
 	}
 }

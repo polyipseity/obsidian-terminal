@@ -21,6 +21,7 @@
 			"donate": "$t(generic.documentations.donate, capitalize)",
 			"readme": "$t(generic.documentations.readme, capitalize)"
 		},
+		"interface": "Interface",
 		"open-changelog-on-update": "$t(generic.open, capitalize) $t(generic.documentations.changelog) on update"
 	}
 }
