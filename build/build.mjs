@@ -4,6 +4,7 @@ import { constant, isEmpty, isUndefined, kebabCase } from "lodash-es"
 import { argv } from "node:process"
 import builtinModules from "builtin-modules"
 import esbuildCompress from "esbuild-compress"
+import esbuildPluginGlobals from "esbuild-plugin-globals"
 import esbuildSvelte from "esbuild-svelte"
 import sveltePreprocess from "svelte-preprocess"
 import { writeFile } from "node:fs/promises"
@@ -43,6 +44,10 @@ const ARGV_PRODUCTION = 2,
 		outdir: PATHS.outDir,
 		platform: "browser",
 		plugins: [
+			esbuildPluginGlobals({
+				// Cannot use `i18next` because it is too outdated to have formatters
+				moment: "moment",
+			}),
 			esbuildCompress({
 				lazy: true,
 			}),
