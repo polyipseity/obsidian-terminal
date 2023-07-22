@@ -55,15 +55,16 @@ import { RendererAddon } from "./terminal/emulator-addons.js"
 
 export interface Settings extends PluginContext.Settings {
 	readonly language: Settings.DefaultableLanguage
-
-	readonly openChangelogOnUpdate: boolean
 	readonly addToCommand: boolean
 	readonly addToContextMenu: boolean
 	readonly profiles: Settings.Profiles
+
 	readonly newInstanceBehavior: Settings.NewInstanceBehavior
 	readonly createInstanceNearExistingOnes: boolean
 	readonly focusOnNewInstance: boolean
 	readonly pinNewInstance: boolean
+
+	readonly openChangelogOnUpdate: boolean
 	readonly hideStatusBar: Settings.HideStatusBarOption
 
 	readonly preferredRenderer: Settings.PreferredRendererOption

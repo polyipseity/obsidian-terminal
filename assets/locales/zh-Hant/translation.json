@@ -257,6 +257,7 @@
 			"never": "從不",
 			"running": "當執行$t(generic.terminal)時"
 		},
+		"instancing": "$t(generic.instance)",
 		"interface": "界面",
 		"new-instance-behavior": "新$t(generic.instance)$t(generic.behavior)",
 		"new-instance-behaviors": {

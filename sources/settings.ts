@@ -2,7 +2,6 @@ import {
 	AdvancedSettingTab,
 	cloneAsWritable,
 	closeSetting,
-	createChildElement,
 	linkSetting,
 	registerSettingsCommands,
 	resetButton,
@@ -71,27 +70,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 			Settings.DEFAULT,
 			Settings.fix,
 		)
-		this.newSectionWidget(() => i18n.t("settings.interface"))
 		ui.newSetting(containerEl, setting => {
-			setting
-				.setName(i18n.t("settings.open-changelog-on-update"))
-				.addToggle(linkSetting(
-					() => settings.value.openChangelogOnUpdate,
-					async value => settings.mutate(settingsM => {
-						settingsM.openChangelogOnUpdate = value
-					}),
-					() => { this.postMutate() },
-				))
-				.addExtraButton(resetButton(
-					i18n.t("asset:settings.open-changelog-on-update-icon"),
-					i18n.t("settings.reset"),
-					async () => settings.mutate(settingsM => {
-						settingsM.openChangelogOnUpdate =
-							Settings.DEFAULT.openChangelogOnUpdate
-					}),
-					() => { this.postMutate() },
-				))
-		}).newSetting(containerEl, setting => {
 			setting
 				.setName(i18n.t("settings.add-to-command"))
 				.addToggle(linkSetting(
@@ -163,6 +142,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 						() => { this.postMutate() },
 					))
 			})
+		this.newSectionWidget(() => i18n.t("settings.instancing"))
+		ui
 			.newSetting(containerEl, setting => {
 				setting
 					.setName(i18n.t("settings.new-instance-behavior"))
@@ -256,7 +237,28 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 						() => { this.postMutate() },
 					))
 			})
+		this.newSectionWidget(() => i18n.t("settings.interface"))
+		ui
 			.newSetting(containerEl, setting => {
+				setting
+					.setName(i18n.t("settings.open-changelog-on-update"))
+					.addToggle(linkSetting(
+						() => settings.value.openChangelogOnUpdate,
+						async value => settings.mutate(settingsM => {
+							settingsM.openChangelogOnUpdate = value
+						}),
+						() => { this.postMutate() },
+					))
+					.addExtraButton(resetButton(
+						i18n.t("asset:settings.open-changelog-on-update-icon"),
+						i18n.t("settings.reset"),
+						async () => settings.mutate(settingsM => {
+							settingsM.openChangelogOnUpdate =
+								Settings.DEFAULT.openChangelogOnUpdate
+						}),
+						() => { this.postMutate() },
+					))
+			}).newSetting(containerEl, setting => {
 				setting
 					.setName(i18n.t("settings.hide-status-bar"))
 					.addDropdown(linkSetting(
@@ -290,9 +292,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 					))
 			})
 		this.newNoticeTimeoutWidget(Settings.DEFAULT)
-		ui.new(() => createChildElement(containerEl, "h2"), ele => {
-			ele.textContent = i18n.t("settings.advanced")
-		})
+		this.newSectionWidget(() => i18n.t("settings.advanced"))
+		ui
 			.newSetting(containerEl, setting => {
 				setting
 					.setName(i18n.t("settings.preferred-renderer"))
