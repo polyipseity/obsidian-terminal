@@ -1,13 +1,13 @@
-import type { App, Workspace } from "obsidian"
 import {
 	EventEmitterLite,
 	Functions,
 	ResourceComponent,
 	aroundIdentityFactory,
-	correctType,
 	deepFreeze,
 	dynamicRequireSync,
+	patchWindows,
 } from "@polyipseity/obsidian-plugin-library"
+import type { App } from "obsidian"
 import { BUNDLE } from "./import.js"
 import { around } from "monkey-around"
 import { noop } from "ts-essentials"
@@ -159,37 +159,6 @@ function patchRequire(self0: typeof globalThis): () => void {
 		},
 		toString: aroundIdentityFactory(),
 	})
-}
-
-function patchWindows(
-	workspace: Workspace,
-	patcher: (
-		self0: Window & typeof globalThis,
-	) => (self0: Window & typeof globalThis) => void,
-): () => void {
-	const ret = new Functions({ async: false, settled: true })
-	try {
-		const oner = workspace.on("window-open", window => {
-			const win0 = correctType(window.win),
-				unpatch = patcher(win0)
-			try {
-				const offer = workspace.on("window-close", window0 => {
-					if (window0 !== window) { return }
-					try { unpatch(win0) } finally { workspace.offref(offer) }
-				})
-			} catch (error) {
-				unpatch(win0)
-				throw error
-			}
-		})
-		ret.push(() => { workspace.offref(oner) })
-		const unpatch = patcher(self)
-		ret.push(() => { unpatch(self) })
-		return () => { ret.call() }
-	} catch (error) {
-		ret.call()
-		throw error
-	}
 }
 
 export interface EarlyPatch {
