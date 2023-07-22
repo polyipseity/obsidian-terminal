@@ -67,6 +67,7 @@ export interface Settings extends PluginContext.Settings {
 	readonly openChangelogOnUpdate: boolean
 	readonly hideStatusBar: Settings.HideStatusBarOption
 
+	readonly exposeInternalModules: boolean
 	readonly preferredRenderer: Settings.PreferredRendererOption
 
 	readonly lastReadChangelogVersion: SemVerString
@@ -92,6 +93,7 @@ export namespace Settings {
 		addToContextMenu: true,
 		createInstanceNearExistingOnes: true,
 		errorNoticeTimeout: NOTICE_NO_TIMEOUT,
+		exposeInternalModules: true,
 		focusOnNewInstance: true,
 		hideStatusBar: "focused",
 		language: "",
@@ -1069,6 +1071,12 @@ export namespace Settings {
 				unc,
 				"errorNoticeTimeout",
 				["number"],
+			),
+			exposeInternalModules: fixTyped(
+				DEFAULT,
+				unc,
+				"exposeInternalModules",
+				["boolean"],
 			),
 			focusOnNewInstance: fixTyped(
 				DEFAULT,

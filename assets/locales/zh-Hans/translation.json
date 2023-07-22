@@ -249,6 +249,8 @@
 			"donate": "$t(generic.documentations.donate)",
 			"readme": "$t(generic.documentations.readme)"
 		},
+		"expose-internal-modules": "公开内部模块",
+		"expose-internal-modules-description-html": "<code>obsidian</code>、<code>@codemirror/*</code>、<code>@lezer/*</code>……",
 		"focus-on-new-instance": "$t(generic.focus)新$t(generic.instance)",
 		"hide-status-bar": "隐藏$t(generic.status-bar)",
 		"hide-status-bar-options": {

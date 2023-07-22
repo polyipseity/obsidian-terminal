@@ -264,6 +264,8 @@
 			"donate": "$t(generic.documentations.donate, capitalize)",
 			"readme": "$t(generic.documentations.readme, capitalize)"
 		},
+		"expose-internal-modules": "Expose internal modules",
+		"expose-internal-modules-description-html": "<code>obsidian</code>, <code>@codemirror/*</code>, <code>@lezer/*</code>…",
 		"focus-on-new-instance": "$t(generic.focus, capitalize) on new $t(generic.instance)",
 		"hide-status-bar": "Hide $t(generic.status-bar)",
 		"hide-status-bar-options": {

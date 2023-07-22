@@ -8,7 +8,7 @@ import {
 	patchWindows,
 } from "@polyipseity/obsidian-plugin-library"
 import type { App } from "obsidian"
-import { BUNDLE } from "./import.js"
+import type { TerminalPlugin } from "./main.js"
 import { around } from "monkey-around"
 import { noop } from "ts-essentials"
 
@@ -142,29 +142,10 @@ function patchLogging(
 	}
 }
 
-function patchRequire(self0: typeof globalThis): () => void {
-	return around(self0, {
-		require(proto) {
-			return Object.assign(function fn(
-				this: typeof self0,
-				id: string,
-			): unknown {
-				try {
-					return proto.call(this, id)
-				} catch (error) {
-					self0.console.debug(error)
-					return dynamicRequireSync(BUNDLE, id)
-				}
-			}, proto)
-		},
-		toString: aroundIdentityFactory(),
-	})
-}
-
 export interface EarlyPatch {
 	readonly log: Log
 }
-function patch(app: App): EarlyPatch & {
+function earlyPatch(app: App): EarlyPatch & {
 	readonly unpatch: () => void
 } {
 	const unpatch = new Functions({ async: false, settled: true })
@@ -172,7 +153,6 @@ function patch(app: App): EarlyPatch & {
 		const { workspace } = app,
 			log = new Log()
 		unpatch.push(patchWindows(workspace, self0 => patchLogging(self0, log)))
-		unpatch.push(patchWindows(workspace, patchRequire))
 		return Object.freeze({
 			log,
 			unpatch() { unpatch.call() },
@@ -198,8 +178,38 @@ export class EarlyPatchManager extends ResourceComponent<EarlyPatch> {
 	}
 
 	protected override load0(): EarlyPatch {
-		const ret = patch(this.app)
+		const ret = earlyPatch(this.app)
 		this.register(ret.unpatch)
 		return ret
 	}
+}
+
+function patchRequire(
+	context: TerminalPlugin,
+	self0: typeof globalThis,
+): () => void {
+	const { settings } = context
+	return around(self0, {
+		require(proto) {
+			return Object.assign(function fn(
+				this: typeof self0,
+				id: string,
+			): unknown {
+				try {
+					return proto.call(this, id)
+				} catch (error) {
+					if (!settings.value.exposeInternalModules) { throw error }
+					self0.console.debug(error)
+					return dynamicRequireSync({}, id)
+				}
+			}, proto)
+		},
+		toString: aroundIdentityFactory(),
+	})
+}
+
+export function loadPatch(context: TerminalPlugin): void {
+	const { app: { workspace } } = context
+	context.register(patchWindows(workspace, self0 =>
+		patchRequire(context, self0)))
 }

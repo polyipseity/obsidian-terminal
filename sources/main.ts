@@ -1,4 +1,5 @@
 import { type App, Plugin, type PluginManifest } from "obsidian"
+import { EarlyPatchManager, loadPatch } from "./patch.js"
 import {
 	LanguageManager,
 	type PluginContext,
@@ -9,7 +10,6 @@ import {
 	semVerString,
 } from "@polyipseity/obsidian-plugin-library"
 import { DeveloperConsolePseudoterminal } from "./terminal/pseudoterminal.js"
-import { EarlyPatchManager } from "./patch.js"
 import { PLUGIN_UNLOAD_DELAY } from "./magic.js"
 import { PluginLocales } from "../assets/locales.js"
 import { Settings } from "./settings-data.js"
@@ -97,6 +97,7 @@ export class TerminalPlugin
 					settings.onLoaded,
 				])
 				await Promise.all([
+					Promise.resolve().then(() => { loadPatch(this) }),
 					Promise.resolve().then(() => { loadIcons(this) }),
 					Promise.resolve().then(() => {
 						loadSettings(this, loadDocumentations(this, isNil(loaded)))

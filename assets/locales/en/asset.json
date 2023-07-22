@@ -113,6 +113,7 @@
 			"donate-icon": "$t(asset:generic.documentations.donate-icon)",
 			"readme-icon": "$t(asset:generic.documentations.readme-icon)"
 		},
+		"expose-internal-modules-icon": "puzzle",
 		"focus-on-new-instance-icon": "focus",
 		"hide-status-bar-icon": "eye-off",
 		"new-instance-behavior-icon": "plus",
