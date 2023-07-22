@@ -83,7 +83,7 @@ export class TerminalOptionsModal
 			temp = new WeakMap<Setting, string>()
 		ui
 			.new(() => createChildElement(element, "div"), ele => {
-				ele.innerHTML = i18n.t("components.terminal-options.description-html")
+				ele.innerHTML = i18n.t("components.terminal-options.description-HTML")
 			}, ele => { ele.remove() })
 			.newSetting(element, setting => {
 				setting

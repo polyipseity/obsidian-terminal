@@ -303,7 +303,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 					.setDesc(createDocumentFragment(settingEl.ownerDocument, frag => {
 						createChildElement(frag, "span", ele => {
 							ele.innerHTML = i18n
-								.t("settings.expose-internal-modules-description-html")
+								.t("settings.expose-internal-modules-description-HTML")
 						})
 					}))
 					.addToggle(linkSetting(

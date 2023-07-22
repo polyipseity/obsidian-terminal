@@ -90,7 +90,7 @@
 		},
 		"terminal-options": {
 			"bold-font-weight": "粗體$t(generic.font-weight)",
-			"description-html": "請參閱<a aria-label=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" class=\"external-link\" data-tooltip-position=\"top\" href=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" rel=\"noopener\" target=\"_blank\"><code>ITerminalOptions</code></a>了解所有$t(generic.option)。",
+			"description-HTML": "請參閱<a aria-label=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" class=\"external-link\" data-tooltip-position=\"top\" href=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" rel=\"noopener\" target=\"_blank\"><code>ITerminalOptions</code></a>了解所有$t(generic.option)。",
 			"font-family": "$t(generic.font)系列",
 			"font-size": "$t(generic.font)大小",
 			"font-weight": "$t(generic.font-weight)",
@@ -250,7 +250,7 @@
 			"readme": "$t(generic.documentations.readme)"
 		},
 		"expose-internal-modules": "公開內部模塊",
-		"expose-internal-modules-description-html": "<code>obsidian</code>、<code>@codemirror/*</code>、<code>@lezer/*</code>……",
+		"expose-internal-modules-description-HTML": "<code>obsidian</code>、<code>@codemirror/*</code>、<code>@lezer/*</code>……",
 		"focus-on-new-instance": "$t(generic.focus)新$t(generic.instance)",
 		"hide-status-bar": "隱藏$t(generic.status-bar)",
 		"hide-status-bar-options": {

@@ -90,7 +90,7 @@
 		},
 		"terminal-options": {
 			"bold-font-weight": "Bold $t(generic.font-weight)",
-			"description-html": "See <a aria-label=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" class=\"external-link\" data-tooltip-position=\"top\" href=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" rel=\"noopener\" target=\"_blank\"><code>ITerminalOptions</code></a> for all $t(generic.option_other).",
+			"description-HTML": "See <a aria-label=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" class=\"external-link\" data-tooltip-position=\"top\" href=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" rel=\"noopener\" target=\"_blank\"><code>ITerminalOptions</code></a> for all $t(generic.option_other).",
 			"font-family": "$t(generic.font, capitalize) family",
 			"font-size": "$t(generic.font, capitalize) size",
 			"font-weight": "$t(generic.font-weight, capitalize)",
@@ -265,7 +265,7 @@
 			"readme": "$t(generic.documentations.readme, capitalize)"
 		},
 		"expose-internal-modules": "Expose internal modules",
-		"expose-internal-modules-description-html": "<code>obsidian</code>, <code>@codemirror/*</code>, <code>@lezer/*</code>…",
+		"expose-internal-modules-description-HTML": "<code>obsidian</code>, <code>@codemirror/*</code>, <code>@lezer/*</code>…",
 		"focus-on-new-instance": "$t(generic.focus, capitalize) on new $t(generic.instance)",
 		"hide-status-bar": "Hide $t(generic.status-bar)",
 		"hide-status-bar-options": {
