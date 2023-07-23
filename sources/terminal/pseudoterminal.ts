@@ -31,7 +31,6 @@ import {
 	deepFreeze,
 	deopaque,
 	dynamicRequire,
-	escapeJavaScriptString,
 	getKeyModifiers,
 	inSet,
 	lazyInit,
@@ -385,42 +384,6 @@ export class DeveloperConsolePseudoterminal
 		return ret
 	}
 
-	protected compile(
-		self0: Window & typeof globalThis,
-		code: string,
-	): readonly [() => void, string] {
-		const { context } = this
-		let symbolKey: string | null = null
-		do {
-			symbolKey = self0.crypto.randomUUID()
-		} while (Symbol.for(symbolKey) in self0)
-		const symbol = Symbol.for(symbolKey),
-			cleanup = new Functions({ async: false, settled: true })
-		try {
-			cleanup.push(() => { Reflect.deleteProperty(self0, symbol) })
-			Object.defineProperty(self0, symbol, {
-				configurable: true,
-				enumerable: false,
-				value: context,
-				writable: false,
-			})
-			return deepFreeze([
-				(): void => { cleanup.call() },
-				`new (async function() { }).constructor(${escapeJavaScriptString(
-					DeveloperConsolePseudoterminal.contextVar,
-				)}, ${escapeJavaScriptString(code)})((function(symbol) {
-				"use strict"
-				const ret = self[symbol]
-				delete self[symbol]
-				return ret
-			})(Symbol.for(${escapeJavaScriptString(symbolKey)})))`,
-			])
-		} catch (error) {
-			cleanup.call()
-			throw error
-		}
-	}
-
 	protected options(styles: readonly ansi.Style[]): Options {
 		const { context: { depth } } = this
 		return deepFreeze({
@@ -439,7 +402,7 @@ export class DeveloperConsolePseudoterminal
 	}
 
 	protected async eval(): Promise<void> {
-		const { buffer, lock, self0, terminals } = this,
+		const { buffer, context, lock, self0, terminals } = this,
 			self1 = self0(),
 			code = await lock.acquire(
 				DeveloperConsolePseudoterminal.syncLock,
@@ -479,41 +442,44 @@ export class DeveloperConsolePseudoterminal
 				? `${code.slice(0, lastStmt.start)}return [(${code
 					.slice(lastStmt.start)})]`
 				: "",
-			[cleanup, compiled] = this.compile(self1, code)
-		try {
-			const [cleanup2, compiled2] = code2
-				? this.compile(self1, code2)
-				: [(): void => { }, ""]
-			try {
-				const ret = await (
-					async (): Promise<[] | [unknown] | null> => {
-						if (compiled2) {
-							try {
-								const ret2: unknown = await self1.eval(compiled2)
-								if (!Array.isArray(ret2) || ret2.length !== 1) {
-									throw new Error(String(ret2))
-								}
-								return [ret2[0]]
-							} catch (error) {
-								if (!(error instanceof SyntaxError)) {
-									self1.console.error(error)
-									return null
-								}
-								self1.console.debug(error)
-							}
-						}
+			evaluate = async (script: string): Promise<unknown> => {
+				const ctor = self1.eval("(async function() {}).constructor") as new (
+					argument: string,
+					body: string,
+				) => ($$: typeof context) => Promise<unknown>
+				// eslint-disable-next-line new-cap
+				return new ctor(
+					DeveloperConsolePseudoterminal.contextVar,
+					script,
+				)(context)
+			},
+			ret = await (
+				async (): Promise<[] | [unknown] | null> => {
+					if (code2) {
 						try {
-							await self1.eval(compiled)
-							return []
+							const ret2: unknown = await evaluate(code2)
+							if (!Array.isArray(ret2) || ret2.length !== 1) {
+								throw new Error(String(ret2))
+							}
+							return [ret2[0]]
 						} catch (error) {
-							self1.console.error(error)
-							return null
+							if (!(error instanceof SyntaxError)) {
+								self1.console.error(error)
+								return null
+							}
+							self1.console.debug(error)
 						}
-					})()
-				if (!ret) { return }
-				self1.console.log(ret[0])
-			} finally { cleanup2() }
-		} finally { cleanup() }
+					}
+					try {
+						await evaluate(code)
+						return []
+					} catch (error) {
+						self1.console.error(error)
+						return null
+					}
+				})()
+		if (!ret) { return }
+		self1.console.log(ret[0])
 	}
 
 	protected async syncBuffer(
