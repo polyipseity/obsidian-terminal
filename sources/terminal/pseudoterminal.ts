@@ -26,6 +26,7 @@ import {
 	acquireConditionally,
 	activeSelf,
 	anyToError,
+	asyncFunction,
 	clear,
 	consumeEvent,
 	deepFreeze,
@@ -443,10 +444,7 @@ export class DeveloperConsolePseudoterminal
 					.slice(lastStmt.start)})]`
 				: "",
 			evaluate = async (script: string): Promise<unknown> => {
-				const ctor = self1.eval("(async function() {}).constructor") as new (
-					argument: string,
-					body: string,
-				) => ($$: typeof context) => Promise<unknown>
+				const ctor = asyncFunction(self1)
 				// eslint-disable-next-line new-cap
 				return new ctor(
 					DeveloperConsolePseudoterminal.contextVar,
