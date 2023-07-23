@@ -43,7 +43,6 @@ import {
 	replaceAllRegex,
 	sleep2,
 	typedKeys,
-	typedOwnKeys,
 } from "@polyipseity/obsidian-plugin-library"
 import type { IMarker, Terminal } from "xterm"
 import inspect, { type Options } from "browser-util-inspect"
@@ -398,29 +397,24 @@ export class DeveloperConsolePseudoterminal
 		const symbol = Symbol.for(symbolKey),
 			cleanup = new Functions({ async: false, settled: true })
 		try {
-			cleanup.push(() => {
-				if (!Reflect.deleteProperty(self0, symbol)) {
-					throw new TypeError(symbol.toString())
-				}
-			})
+			cleanup.push(() => { Reflect.deleteProperty(self0, symbol) })
 			Object.defineProperty(self0, symbol, {
 				configurable: true,
 				enumerable: false,
 				value: context,
 				writable: false,
 			})
-			const url = URL.createObjectURL(new Blob(
-				[
-					[
-						`var ${DeveloperConsolePseudoterminal
-							.contextVar} = self[Symbol.for("${symbolKey}")]`,
-						code,
-					].join(";"),
-				],
-				{ type: "text/javascript" },
-			))
-			cleanup.push(() => { URL.revokeObjectURL(url) })
-			return deepFreeze([(): void => { cleanup.call() }, url])
+			return deepFreeze([
+				(): void => { cleanup.call() },
+				`new (async function() { }).constructor(${escapeJavaScriptString(
+					DeveloperConsolePseudoterminal.contextVar,
+				)}, ${escapeJavaScriptString(code)})((function(symbol) {
+				"use strict"
+				const ret = self[symbol]
+				delete self[symbol]
+				return ret
+			})(Symbol.for(${escapeJavaScriptString(symbolKey)})))`,
+			])
 		} catch (error) {
 			cleanup.call()
 			throw error
@@ -482,57 +476,42 @@ export class DeveloperConsolePseudoterminal
 		if (!ast) { return }
 		const lastStmt = ast.body.at(-1),
 			code2 = lastStmt
-				? `${code.slice(0, lastStmt.start)}export default (${code
-					.slice(lastStmt.start)})`
+				? `${code.slice(0, lastStmt.start)}return [(${code
+					.slice(lastStmt.start)})]`
 				: "",
-			[cleanup, url] = this.compile(self1, code)
+			[cleanup, compiled] = this.compile(self1, code)
 		try {
-			const [cleanup2, url2] = code2
+			const [cleanup2, compiled2] = code2
 				? this.compile(self1, code2)
 				: [(): void => { }, ""]
 			try {
-				const [success, ret] = await (
-					async (): Promise<[false] | [true, {
-						readonly [_: keyof any]: unknown
-						readonly default?: unknown
-					}]> => {
-						if (url2) {
+				const ret = await (
+					async (): Promise<[] | [unknown] | null> => {
+						if (compiled2) {
 							try {
-								return [
-									true,
-									await self1.eval(`import(${escapeJavaScriptString(url2)})`),
-								]
+								const ret2: unknown = await self1.eval(compiled2)
+								if (!Array.isArray(ret2) || ret2.length !== 1) {
+									throw new Error(String(ret2))
+								}
+								return [ret2[0]]
 							} catch (error) {
 								if (!(error instanceof SyntaxError)) {
 									self1.console.error(error)
-									return [false]
+									return null
 								}
 								self1.console.debug(error)
 							}
 						}
 						try {
-							return [
-								true,
-								await self1.eval(`import(${escapeJavaScriptString(url)})`),
-							]
+							await self1.eval(compiled)
+							return []
 						} catch (error) {
 							self1.console.error(error)
-							return [false]
+							return null
 						}
 					})()
-				if (!success) { return }
-				self1.console.log(ret.default)
-				for (const key of typedOwnKeys(ret)) {
-					if (key === "default" || key === Symbol.toStringTag) { continue }
-					try {
-						Object.defineProperty(self1, key, {
-							configurable: true,
-							enumerable: true,
-							value: ret[key],
-							writable: true,
-						})
-					} catch (error) { self1.console.warn(error) }
-				}
+				if (!ret) { return }
+				self1.console.log(ret[0])
 			} finally { cleanup2() }
 		} finally { cleanup() }
 	}
