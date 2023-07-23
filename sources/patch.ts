@@ -192,15 +192,15 @@ function patchRequire(
 	return around(self0, {
 		require(proto) {
 			return Object.assign(function fn(
-				this: typeof self0,
-				id: string,
-			): unknown {
+				this: typeof self0 | undefined,
+				...args: Parameters<typeof proto>
+			): ReturnType<typeof proto> {
 				try {
-					return proto.call(this, id)
+					return proto.apply(this, args)
 				} catch (error) {
 					if (!settings.value.exposeInternalModules) { throw error }
 					self0.console.debug(error)
-					return dynamicRequireSync({}, id)
+					return dynamicRequireSync({}, ...args)
 				}
 			}, proto)
 		},
