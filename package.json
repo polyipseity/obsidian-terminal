@@ -41,7 +41,6 @@
 		"typescript": "^5.1.6",
 		"typescript-svelte-plugin": "^0.3.29"
 	},
-	"displayName": "PLACEHOLDER",
 	"files": [
 		"main.js",
 		"manifest.json",
