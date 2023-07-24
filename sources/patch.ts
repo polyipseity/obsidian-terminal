@@ -191,7 +191,7 @@ function patchRequire(
 	const { settings } = context
 	return around(self0, {
 		require(proto) {
-			return Object.assign(function fn(
+			return function fn(
 				this: typeof self0 | undefined,
 				...args: Parameters<typeof proto>
 			): ReturnType<typeof proto> {
@@ -202,7 +202,7 @@ function patchRequire(
 					self0.console.debug(error)
 					return dynamicRequireSync({}, ...args)
 				}
-			}) as NodeRequire
+			} as NodeRequire
 		},
 		toString: aroundIdentityFactory(),
 	})
