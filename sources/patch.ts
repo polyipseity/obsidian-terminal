@@ -202,7 +202,7 @@ function patchRequire(
 					self0.console.debug(error)
 					return dynamicRequireSync({}, ...args)
 				}
-			}, proto)
+			}) as NodeRequire
 		},
 		toString: aroundIdentityFactory(),
 	})
