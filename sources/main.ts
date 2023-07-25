@@ -13,7 +13,6 @@ import { PluginLocales } from "../assets/locales.js"
 import { Settings } from "./settings-data.js"
 import { isNil } from "lodash-es"
 import { loadDocumentations } from "./documentations.js"
-import { loadIcons } from "./icons.js"
 import { loadSettings } from "./settings.js"
 
 export class PLACEHOLDERPlugin
@@ -84,7 +83,6 @@ export class PLACEHOLDERPlugin
 					settings.onLoaded,
 				])
 				await Promise.all([
-					Promise.resolve().then(() => { loadIcons(this) }),
 					Promise.resolve().then(() => {
 						loadSettings(this, loadDocumentations(this, isNil(loaded)))
 					}),
