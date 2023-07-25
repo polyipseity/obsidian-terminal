@@ -1,5 +1,14 @@
 # obsidian-terminal
 
+## 3.11.1
+
+### Patch Changes
+
+- 8bdd430: Make the `require` patch more compatible with other `require` patches.
+- 7155fd4: Simplify `DeveloperConsolePseudoterminal#eval` even further.
+- 0a3e545: Fixes significant regression of plugin loading performance.
+- d7918a9: Simplify code for evaluating code inputted via the developer console pseudoterminal.
+
 ## 3.11.0
 
 ### Minor Changes
