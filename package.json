@@ -8,7 +8,6 @@
 		"i18next": "^23.2.11",
 		"lodash-es": "^4.17.21",
 		"obsidian": "^1.2.8",
-		"semver": "^7.5.4",
 		"ts-essentials": "^9.3.2"
 	},
 	"description": "PLACEHOLDER",
@@ -19,7 +18,6 @@
 		"@tsconfig/node16": "^16.1.0",
 		"@tsconfig/recommended": "^1.0.2",
 		"@tsconfig/strictest": "^2.0.1",
-		"@tsconfig/svelte": "^5.0.0",
 		"@types/lodash-es": "^4.17.8",
 		"@types/node": "^20.4.4",
 		"@types/semver": "^7.5.0",
@@ -29,17 +27,12 @@
 		"esbuild": "^0.18.16",
 		"esbuild-compress": "^1.2.2",
 		"esbuild-plugin-globals": "^0.2.0",
-		"esbuild-svelte": "^0.7.4",
 		"eslint": "^8.45.0",
 		"eslint-import-resolver-typescript": "^3.5.5",
 		"eslint-plugin-import": "^2.27.5",
-		"eslint-plugin-svelte3": "^4.0.0",
 		"p-lazy": "^4.0.0",
-		"svelte": "^3.59.2",
-		"svelte-preprocess": "^5.0.4",
 		"tslib": "^2.6.0",
-		"typescript": "^5.1.6",
-		"typescript-svelte-plugin": "^0.3.29"
+		"typescript": "^5.1.6"
 	},
 	"files": [
 		"main.js",
@@ -89,9 +82,9 @@
 	"scripts": {
 		"build": "npm run check && npm run build:force",
 		"build:force": "node build/build.mjs",
-		"check": "tsc --noEmit && eslint --cache --ignore-pattern \"*.svelte\" .",
+		"check": "tsc --noEmit && eslint --cache .",
 		"dev": "npm run build:force -- dev",
-		"fix": "eslint --fix --cache --ignore-pattern \"*.svelte\" .",
+		"fix": "eslint --fix --cache .",
 		"obsidian:install": "npm run build && node build/obsidian-install.mjs",
 		"obsidian:install:force": "npm run build:force && node build/obsidian-install.mjs",
 		"postversion": "node build/version-post.mjs",
