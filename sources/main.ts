@@ -5,6 +5,7 @@ import {
 	type PluginContext,
 	SI_PREFIX_SCALE,
 	SettingsManager,
+	StatusBarHider,
 	createI18n,
 	semVerString,
 } from "@polyipseity/obsidian-plugin-library"
@@ -14,6 +15,7 @@ import { PluginLocales } from "../assets/locales.js"
 import { Settings } from "./settings-data.js"
 import { isNil } from "lodash-es"
 import { loadDocumentations } from "./documentations.js"
+import { loadIcons } from "./icons.js"
 import { loadSettings } from "./settings.js"
 import { loadTerminal } from "./terminal/load.js"
 
@@ -75,9 +77,12 @@ export class TerminalPlugin
 						statusBarHider,
 						settings,
 					} = this,
-					earlyChildren = [language, settings],
+					earlyChildren = [earlyPatch, language, settings],
 					// Placeholder to resolve merge conflicts more easily
-					children = [earlyPatch, developerConsolePTY, statusBarHider]
+					children = [
+						developerConsolePTY,
+						statusBarHider,
+					]
 				for (const child of earlyChildren) { child.unload() }
 				for (const child of earlyChildren) {
 					// Delay unloading as there are unload tasks that cannot be awaited
