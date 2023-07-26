@@ -4,7 +4,6 @@ import {
 	type PluginContext,
 	SI_PREFIX_SCALE,
 	SettingsManager,
-	StatusBarHider,
 	createI18n,
 	semVerString,
 } from "@polyipseity/obsidian-plugin-library"
@@ -21,7 +20,6 @@ export class PLACEHOLDERPlugin
 	public readonly version
 	public readonly language: LanguageManager
 	public readonly settings: SettingsManager<Settings>
-	public readonly statusBarHider = new StatusBarHider(this)
 
 	public constructor(app: App, manifest: PluginManifest) {
 		super(app, manifest)
@@ -59,9 +57,10 @@ export class PLACEHOLDERPlugin
 		(async (): Promise<void> => {
 			try {
 				const loaded: unknown = await this.loadData(),
-					{ language, statusBarHider, settings } = this,
+					{ language, settings } = this,
 					earlyChildren = [language, settings],
-					children = [statusBarHider]
+					// Placeholder to resolve merge conflicts more easily
+					children: never[] = []
 				for (const child of earlyChildren) { child.unload() }
 				for (const child of earlyChildren) {
 					// Delay unloading as there are unload tasks that cannot be awaited
