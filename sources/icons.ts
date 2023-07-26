@@ -1,20 +1,11 @@
 import {
 	UnnamespacedID,
 	registerIcon,
-	registerLucideIcon,
 } from "@polyipseity/obsidian-plugin-library"
 import { siLinux, siMacos, siWindows } from "simple-icons"
 import type { TerminalPlugin } from "./main.js"
-import { getIcon } from "obsidian"
 
 export function loadIcons(context: TerminalPlugin): void {
-	for (const [key, value] of Object.entries<never>({})) {
-		if (getIcon(key)) {
-			self.console.warn(key)
-			continue
-		}
-		registerLucideIcon(context, key, value)
-	}
 	for (const [key, value] of Object.entries({
 		linux: siLinux,
 		macos: siMacos,

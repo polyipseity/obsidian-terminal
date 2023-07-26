@@ -70,10 +70,6 @@
       {
         "enableForWorkspaceTypeScriptVersions": false,
         "name": "typescript-styled-plugin"
-      },
-      {
-        "enableForWorkspaceTypeScriptVersions": false,
-        "name": "typescript-svelte-plugin"
       }
     ],
     "preserveConstEnums": true,
@@ -98,7 +94,6 @@
     "@tsconfig/recommended/tsconfig.json",
     "@tsconfig/strictest/tsconfig.json",
     "@tsconfig/node16/tsconfig.json",
-    "@tsconfig/svelte/tsconfig.json",
     "@tsconfig/esm/tsconfig.json"
   ],
   "include": [

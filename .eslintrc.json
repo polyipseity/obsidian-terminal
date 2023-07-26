@@ -223,8 +223,7 @@
         "*.ts",
         "*.mts",
         "*.cts",
-        "*.tsx",
-        "*.svelte"
+        "*.tsx"
       ],
       "parser": "@typescript-eslint/parser",
       "rules": {
@@ -404,27 +403,6 @@
           }
         ]
       }
-    },
-    {
-      "files": [
-        "*.svelte"
-      ],
-      "processor": "svelte3/svelte3",
-      "rules": {
-        "@typescript-eslint/explicit-function-return-type": "off",
-        "@typescript-eslint/semi": [
-          "error",
-          "always",
-          {
-            "omitLastInOneLineBlock": false
-          }
-        ],
-        "arrow-parens": [
-          "error",
-          "always"
-        ],
-        "semi": "off"
-      }
     }
   ],
   "parser": "espree",
@@ -432,15 +410,12 @@
     "allowReserved": false,
     "ecmaFeatures": {},
     "ecmaVersion": "latest",
-    "extraFileExtensions": [
-      ".svelte"
-    ],
+    "extraFileExtensions": [],
     "project": true,
     "sourceType": "module"
   },
   "plugins": [
-    "@typescript-eslint",
-    "svelte3"
+    "@typescript-eslint"
   ],
   "reportUnusedDisableDirectives": true,
   "root": true,
@@ -784,7 +759,6 @@
     "import/resolver": {
       "node": true,
       "typescript": true
-    },
-    "svelte3/typescript": true
+    }
   }
 }
