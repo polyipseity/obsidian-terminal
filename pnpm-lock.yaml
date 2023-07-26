@@ -7,73 +7,73 @@ dependencies:
   '@polyipseity/obsidian-plugin-library':
     specifier: ^1.14.0
     version: 1.14.0(@capacitor/core@5.2.2)(@codemirror/state@6.2.1)(@codemirror/view@6.15.3)(typescript@5.1.6)
-      acorn:
-        specifier: ^8.10.0
-        version: 8.10.0
-      ansi-escape-sequences:
-        specifier: ^6.2.2
-        version: 6.2.2
-      async-lock:
-        specifier: ^1.4.0
-        version: 1.4.0
-      browser-util-inspect:
-        specifier: ^0.2.0
-        version: 0.2.0
+  acorn:
+    specifier: ^8.10.0
+    version: 8.10.0
+  ansi-escape-sequences:
+    specifier: ^6.2.2
+    version: 6.2.2
+  async-lock:
+    specifier: ^1.4.0
+    version: 1.4.0
+  browser-util-inspect:
+    specifier: ^0.2.0
+    version: 0.2.0
   i18next:
     specifier: ^23.2.11
     version: 23.2.11
-      immutable:
-        specifier: ^4.3.1
-        version: 4.3.1
+  immutable:
+    specifier: ^4.3.1
+    version: 4.3.1
   lodash-es:
     specifier: ^4.17.21
     version: 4.17.21
-      monkey-around:
-        specifier: ^2.3.0
-        version: 2.3.0
+  monkey-around:
+    specifier: ^2.3.0
+    version: 2.3.0
   obsidian:
     specifier: ^1.2.8
     version: 1.2.8(@codemirror/state@6.2.1)(@codemirror/view@6.15.3)
   semver:
     specifier: ^7.5.4
     version: 7.5.4
-      simple-icons:
-        specifier: ^9.5.0
-        version: 9.5.0
-      tmp-promise:
-        specifier: ^3.0.3
-        version: 3.0.3
+  simple-icons:
+    specifier: ^9.5.0
+    version: 9.5.0
+  tmp-promise:
+    specifier: ^3.0.3
+    version: 3.0.3
   ts-essentials:
     specifier: ^9.3.2
     version: 9.3.2(typescript@5.1.6)
+  xterm:
+    specifier: ^5.2.1
+    version: 5.2.1
+  xterm-addon-canvas:
+    specifier: ^0.4.0
+    version: 0.4.0(xterm@5.2.1)
+  xterm-addon-fit:
+    specifier: ^0.7.0
+    version: 0.7.0(xterm@5.2.1)
+  xterm-addon-ligatures:
+    specifier: ^0.6.0
+    version: 0.6.0(xterm@5.2.1)
+  xterm-addon-search:
+    specifier: ^0.12.0
+    version: 0.12.0(xterm@5.2.1)
+  xterm-addon-serialize:
+    specifier: ^0.10.0
+    version: 0.10.0(xterm@5.2.1)
+  xterm-addon-unicode11:
+    specifier: ^0.5.0
+    version: 0.5.0(xterm@5.2.1)
+  xterm-addon-web-links:
+    specifier: ^0.8.0
+    version: 0.8.0(xterm@5.2.1)
+  xterm-addon-webgl:
+    specifier: ^0.15.0
+    version: 0.15.0(xterm@5.2.1)
 
-      xterm:
-        specifier: ^5.2.1
-        version: 5.2.1
-      xterm-addon-canvas:
-        specifier: ^0.4.0
-        version: 0.4.0(xterm@5.2.1)
-      xterm-addon-fit:
-        specifier: ^0.7.0
-        version: 0.7.0(xterm@5.2.1)
-      xterm-addon-ligatures:
-        specifier: ^0.6.0
-        version: 0.6.0(xterm@5.2.1)
-      xterm-addon-search:
-        specifier: ^0.12.0
-        version: 0.12.0(xterm@5.2.1)
-      xterm-addon-serialize:
-        specifier: ^0.10.0
-        version: 0.10.0(xterm@5.2.1)
-      xterm-addon-unicode11:
-        specifier: ^0.5.0
-        version: 0.5.0(xterm@5.2.1)
-      xterm-addon-web-links:
-        specifier: ^0.8.0
-        version: 0.8.0(xterm@5.2.1)
-      xterm-addon-webgl:
-        specifier: ^0.15.0
-        version: 0.15.0(xterm@5.2.1)
 devDependencies:
   '@changesets/cli':
     specifier: ^2.26.2
@@ -93,18 +93,18 @@ devDependencies:
   '@tsconfig/strictest':
     specifier: ^2.0.1
     version: 2.0.1
-      '@types/ansi-escape-sequences':
-        specifier: ^4.0.0
-        version: 4.0.0
-      '@types/async-lock':
-        specifier: ^1.4.0
-        version: 1.4.0
-      '@types/browser-util-inspect':
-        specifier: ^0.2.0
-        version: 0.2.0
-      '@types/estree':
-        specifier: ^1.0.1
-        version: 1.0.1
+  '@types/ansi-escape-sequences':
+    specifier: ^4.0.0
+    version: 4.0.0
+  '@types/async-lock':
+    specifier: ^1.4.0
+    version: 1.4.0
+  '@types/browser-util-inspect':
+    specifier: ^0.2.0
+    version: 0.2.0
+  '@types/estree':
+    specifier: ^1.0.1
+    version: 1.0.1
   '@types/lodash-es':
     specifier: ^4.17.8
     version: 4.17.8
