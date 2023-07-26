@@ -56,32 +56,25 @@ export class PLACEHOLDERPlugin
 	}
 
 	public override onload(): void {
-		// Delay unloading as there are Obsidian unload tasks that cannot be awaited
-		for (const child of [
-			this.language,
-			this.settings,
-		]) {
-			child.unload()
-			this.register(() => {
-				const id = self.setTimeout(() => {
-					child.unload()
-				}, PLUGIN_UNLOAD_DELAY * SI_PREFIX_SCALE)
-				child.register(() => { self.clearTimeout(id) })
-			})
-			child.load()
-		}
-		for (const child of [this.statusBarHider]) {
-			this.register(() => { child.unload() })
-			child.load()
-		}
 		(async (): Promise<void> => {
 			try {
 				const loaded: unknown = await this.loadData(),
-					{ language, settings } = this
-				await Promise.all([
-					language.onLoaded,
-					settings.onLoaded,
-				])
+					{ language, statusBarHider, settings } = this,
+					earlyChildren = [language, settings],
+					children = [statusBarHider]
+				for (const child of earlyChildren) { child.unload() }
+				for (const child of earlyChildren) {
+					// Delay unloading as there are unload tasks that cannot be awaited
+					this.register(() => {
+						const id = self.setTimeout(() => {
+							child.unload()
+						}, PLUGIN_UNLOAD_DELAY * SI_PREFIX_SCALE)
+						child.register(() => { self.clearTimeout(id) })
+					})
+					child.load()
+				}
+				await Promise.all(earlyChildren.map(async child => child.onLoaded))
+				for (const child of children) { this.addChild(child) }
 				await Promise.all([
 					Promise.resolve().then(() => {
 						loadSettings(this, loadDocumentations(this, isNil(loaded)))
