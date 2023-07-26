@@ -57,7 +57,10 @@ export class PLACEHOLDERPlugin
 		(async (): Promise<void> => {
 			try {
 				const loaded: unknown = await this.loadData(),
-					{ language, settings } = this,
+					{
+						language,
+						settings,
+					} = this,
 					earlyChildren = [language, settings],
 					// Placeholder to resolve merge conflicts more easily
 					children: never[] = []
