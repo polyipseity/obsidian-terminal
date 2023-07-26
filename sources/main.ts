@@ -4,7 +4,6 @@ import {
 	type PluginContext,
 	SI_PREFIX_SCALE,
 	SettingsManager,
-	StatusBarHider,
 	createI18n,
 	semVerString,
 } from "@polyipseity/obsidian-plugin-library"
@@ -13,7 +12,6 @@ import { PluginLocales } from "../assets/locales.js"
 import { Settings } from "./settings-data.js"
 import { isNil } from "lodash-es"
 import { loadDocumentations } from "./documentations.js"
-import { loadIcons } from "./icons.js"
 import { loadSettings } from "./settings.js"
 
 export class PLACEHOLDERPlugin
@@ -22,7 +20,6 @@ export class PLACEHOLDERPlugin
 	public readonly version
 	public readonly language: LanguageManager
 	public readonly settings: SettingsManager<Settings>
-	public readonly statusBarHider = new StatusBarHider(this)
 
 	public constructor(app: App, manifest: PluginManifest) {
 		super(app, manifest)
@@ -57,34 +54,27 @@ export class PLACEHOLDERPlugin
 	}
 
 	public override onload(): void {
-		// Delay unloading as there are Obsidian unload tasks that cannot be awaited
-		for (const child of [
-			this.language,
-			this.settings,
-		]) {
-			child.unload()
-			this.register(() => {
-				const id = self.setTimeout(() => {
-					child.unload()
-				}, PLUGIN_UNLOAD_DELAY * SI_PREFIX_SCALE)
-				child.register(() => { self.clearTimeout(id) })
-			})
-			child.load()
-		}
-		for (const child of [this.statusBarHider]) {
-			this.register(() => { child.unload() })
-			child.load()
-		}
 		(async (): Promise<void> => {
 			try {
 				const loaded: unknown = await this.loadData(),
-					{ language, settings } = this
+					{ language, settings } = this,
+					earlyChildren = [language, settings],
+					// Placeholder to resolve merge conflicts more easily
+					children: never[] = []
+				for (const child of earlyChildren) { child.unload() }
+				for (const child of earlyChildren) {
+					// Delay unloading as there are unload tasks that cannot be awaited
+					this.register(() => {
+						const id = self.setTimeout(() => {
+							child.unload()
+						}, PLUGIN_UNLOAD_DELAY * SI_PREFIX_SCALE)
+						child.register(() => { self.clearTimeout(id) })
+					})
+					child.load()
+				}
+				await Promise.all(earlyChildren.map(async child => child.onLoaded))
+				for (const child of children) { this.addChild(child) }
 				await Promise.all([
-					language.onLoaded,
-					settings.onLoaded,
-				])
-				await Promise.all([
-					Promise.resolve().then(() => { loadIcons(this) }),
 					Promise.resolve().then(() => {
 						loadSettings(this, loadDocumentations(this, isNil(loaded)))
 					}),
