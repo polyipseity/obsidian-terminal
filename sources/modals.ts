@@ -137,6 +137,7 @@ export class TerminalOptionsModal
 						async () => this.postMutate2(errorEl),
 						{
 							post(component) {
+								component.inputEl.type = "number"
 								component.setPlaceholder(i18n
 									.t("components.terminal-options.undefined-placeholder"))
 							},
