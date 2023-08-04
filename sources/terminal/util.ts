@@ -8,6 +8,7 @@ import type {
 } from "xterm"
 import {
 	acquireConditionally,
+	alternativeRegExp,
 	cartesianProduct,
 	clear,
 	codePoint,
@@ -19,7 +20,7 @@ import {
 	removeAt,
 	replaceAllRegex,
 } from "@polyipseity/obsidian-plugin-library"
-import { escapeRegExp, isUndefined, range } from "lodash-es"
+import { isUndefined, range } from "lodash-es"
 import AsyncLock from "async-lock"
 import { BUNDLE } from "../import.js"
 import { MAX_LOCK_PENDING } from "../magic.js"
@@ -90,6 +91,7 @@ export async function writePromise(
 
 export class TerminalTextArea implements IDisposable {
 	protected static readonly margin = MAX_CHARACTER_WIDTH
+	protected static readonly splitters = alternativeRegExp([ESC, "\u007f", "\r"])
 	protected static readonly writeLock = "write"
 	// See https://xtermjs.org/docs/api/vtfeatures/
 	protected static readonly allowedIdentifiers = deepFreeze({
@@ -225,15 +227,9 @@ export class TerminalTextArea implements IDisposable {
 	}
 
 	public async write(data: string, lock = true): Promise<void> {
-		const splitters = [ESC, "\u007f", "\r"],
-			{ terminal, lock: alock } = this,
+		const { terminal, lock: alock } = this,
 			{ buffer: { active } } = terminal,
-			split = (str: string): string[] => str.split(
-				new RegExp(
-					`(${splitters.map(escapeRegExp).join("|")})`,
-					"ug",
-				),
-			),
+			split = (str: string): string[] => str.split(TerminalTextArea.splitters),
 			data0 = split(data)
 		await acquireConditionally(
 			alock,
