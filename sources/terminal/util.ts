@@ -91,7 +91,11 @@ export async function writePromise(
 
 export class TerminalTextArea implements IDisposable {
 	protected static readonly margin = MAX_CHARACTER_WIDTH
-	protected static readonly splitters = alternativeRegExp([ESC, "\u007f", "\r"])
+	protected static readonly splitters = new RegExp(
+		`(${alternativeRegExp([ESC, "\u007f", "\r"]).source})`,
+		"u",
+	)
+
 	protected static readonly writeLock = "write"
 	// See https://xtermjs.org/docs/api/vtfeatures/
 	protected static readonly allowedIdentifiers = deepFreeze({
