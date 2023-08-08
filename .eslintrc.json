@@ -235,6 +235,12 @@
             "allowSingleLine": true
           }
         ],
+        "@typescript-eslint/class-methods-use-this": [
+          "error",
+          {
+            "ignoreClassesThatImplementAnInterface": true
+          }
+        ],
         "@typescript-eslint/comma-dangle": [
           "error",
           "always-multiline"
