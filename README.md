@@ -151,7 +151,6 @@ The todos here, ordered alphabetically, are things planned for the plugin. There
 - Indicate that the terminal resizer has crashed or is disabled.
 - Shared terminal tabs.
 - Vim mode switch.
-- Generate source maps.
 
 ### Translating
 

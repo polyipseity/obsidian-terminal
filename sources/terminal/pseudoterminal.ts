@@ -27,6 +27,7 @@ import {
 	activeSelf,
 	anyToError,
 	asyncFunction,
+	attachFunctionSourceMap,
 	clear,
 	consumeEvent,
 	deepFreeze,
@@ -58,6 +59,7 @@ import type { Log } from "../patch.js"
 import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
 } from "node:child_process"
+import type { Position } from "source-map"
 import type { Program } from "estree"
 import type { TerminalPlugin } from "../main.js"
 import ansi from "ansi-escape-sequences"
@@ -427,7 +429,7 @@ export class DeveloperConsolePseudoterminal
 					allowReturnOutsideFunction: false,
 					allowSuperOutsideMethod: false,
 					ecmaVersion: "latest",
-					locations: false,
+					locations: true,
 					preserveParens: true,
 					ranges: false,
 					sourceType: "module",
@@ -439,43 +441,74 @@ export class DeveloperConsolePseudoterminal
 		})()
 		if (!ast) { return }
 		const lastStmt = ast.body.at(-1),
-			code2 = lastStmt
+			codeRet = lastStmt
 				? `${code.slice(0, lastStmt.start)}return [(${code
 					.slice(lastStmt.start)})]`
 				: "",
-			evaluate = async (script: string): Promise<unknown> => {
-				const ctor = asyncFunction(self1)
-				// eslint-disable-next-line new-cap
-				return new ctor(
-					DeveloperConsolePseudoterminal.contextVar,
-					script,
-				)(context)
-			},
-			ret = await (
-				async (): Promise<[] | [unknown] | null> => {
-					if (code2) {
-						try {
-							const ret2: unknown = await evaluate(code2)
-							if (!Array.isArray(ret2) || ret2.length !== 1) {
-								throw new Error(String(ret2))
-							}
-							return [ret2[0]]
-						} catch (error) {
-							if (!(error instanceof SyntaxError)) {
-								self1.console.error(error)
-								return null
-							}
-							self1.console.debug(error)
-						}
-					}
+			lastStmtLoc = lastStmt?.loc,
+			codeRetDeletions: Position[] = []
+		if (lastStmtLoc) {
+			const { start, end } = lastStmtLoc
+			let column = 0
+			// eslint-disable-next-line no-empty-pattern
+			for (const { } of "return [(") {
+				codeRetDeletions.push({
+					column: start.column + column,
+					line: start.line,
+				})
+				++column
+			}
+			if (start.line !== end.line) {
+				column = 0
+			}
+			// eslint-disable-next-line no-empty-pattern
+			for (const { } of ")]") {
+				codeRetDeletions.push({
+					column: end.column + column,
+					line: end.line,
+				})
+				++column
+			}
+		}
+		async function evaluate(
+			script: string,
+			deletions: readonly Position[] = [],
+		): Promise<unknown> {
+			const ctor = asyncFunction(self1)
+			// eslint-disable-next-line new-cap
+			return new ctor(
+				DeveloperConsolePseudoterminal.contextVar,
+				attachFunctionSourceMap(ctor, script, {
+					deletions,
+					source: "<stdin>",
+				}),
+			)(context)
+		}
+		const ret = await (
+			async (): Promise<[] | [unknown] | null> => {
+				if (codeRet) {
 					try {
-						await evaluate(code)
-						return []
+						const ret2: unknown = await evaluate(codeRet, codeRetDeletions)
+						if (!Array.isArray(ret2) || ret2.length !== 1) {
+							throw new Error(String(ret2))
+						}
+						return [ret2[0]]
 					} catch (error) {
-						self1.console.error(error)
-						return null
+						if (!(error instanceof SyntaxError)) {
+							self1.console.error(error)
+							return null
+						}
+						self1.console.debug(error)
 					}
-				})()
+				}
+				try {
+					await evaluate(code)
+					return []
+				} catch (error) {
+					self1.console.error(error)
+					return null
+				}
+			})()
 		if (!ret) { return }
 		self1.console.log(ret[0])
 	}

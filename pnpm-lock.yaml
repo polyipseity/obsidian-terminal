@@ -47,6 +47,9 @@ importers:
       simple-icons:
         specifier: ^9.9.0
         version: 9.9.0
+      source-map:
+        specifier: ^0.7.4
+        version: 0.7.4
       tmp-promise:
         specifier: ^3.0.3
         version: 3.0.3
