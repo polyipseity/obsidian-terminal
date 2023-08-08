@@ -30,8 +30,8 @@ importers:
         specifier: ^23.4.3
         version: 23.4.3
       immutable:
-        specifier: ^4.3.1
-        version: 4.3.1
+        specifier: ^4.3.2
+        version: 4.3.2
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
@@ -45,8 +45,8 @@ importers:
         specifier: ^7.5.4
         version: 7.5.4
       simple-icons:
-        specifier: ^9.5.0
-        version: 9.5.0
+        specifier: ^9.9.0
+        version: 9.9.0
       tmp-promise:
         specifier: ^3.0.3
         version: 3.0.3
@@ -106,8 +106,8 @@ importers:
         specifier: ^1.4.0
         version: 1.4.0
       '@types/browser-util-inspect':
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^0.2.1
+        version: 0.2.1
       '@types/estree':
         specifier: ^1.0.1
         version: 1.0.1
@@ -771,8 +771,8 @@ packages:
     resolution: {integrity: sha512-2+rYSaWrpdbQG3SA0LmMT6YxWLrI81AqpMlSkw3QtFc2HGDufkweQSn30Eiev7x9LL0oyFrBqk1PXOnB9IEgKg==}
     dev: true
 
-  /@types/browser-util-inspect@0.2.0:
-    resolution: {integrity: sha512-tNM9Y3oqYcRbux7HXxYq3GpAqjfpe7nZFLK13i/pp9q6FpbxIuW4CzVavxWzJqmgkBSCGbpxUbRRVN+PVuBy9A==}
+  /@types/browser-util-inspect@0.2.1:
+    resolution: {integrity: sha512-elwTwQw+CCa+Ir3CUuLikop24S2fwQDIW1+2Vmyc4wj31OeNONdJtZeqP5LsBIZy4uB+N0WFycNoslkqBR1u9Q==}
     dev: true
 
   /@types/codemirror@0.0.108:
@@ -2177,8 +2177,8 @@ packages:
     engines: {node: '>= 4'}
     dev: true
 
-  /immutable@4.3.1:
-    resolution: {integrity: sha512-lj9cnmB/kVS0QHsJnYKD1uo3o39nrbKxszjnqS9Fr6NB7bZzW45U6WSGBPKXDL/CvDKqDNPA4r3DoDQ8GTxo2A==}
+  /immutable@4.3.2:
+    resolution: {integrity: sha512-oGXzbEDem9OOpDWZu88jGiYCvIsLHMvGw+8OXlpsvTFvIQplQbjg1B1cvKg8f7Hoch6+NGjpPsH1Fr+Mc2D1aA==}
     dev: false
 
   /import-fresh@3.3.0:
@@ -3139,8 +3139,8 @@ packages:
     resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
     dev: true
 
-  /simple-icons@9.5.0:
-    resolution: {integrity: sha512-FEtVYBJgsQb+Oz2f6DBbPipOl/9QVAEPvxZj1bllsoRsYL2LfufvhPDSLUdmpClUUDW5UjphBoEwBQvqJ1p3lg==}
+  /simple-icons@9.9.0:
+    resolution: {integrity: sha512-1Pe4iLuEdUfFP60pgdBl9CzDiKK7gYlIMmnEPr8G9+pYXR4lZRkGta4UapbXcN1g3oGy1FM3HdRT+0tXaDhzIw==}
     engines: {node: '>=0.12.18'}
     dev: false
 
