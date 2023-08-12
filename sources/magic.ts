@@ -15,8 +15,6 @@ export const
 	TERMINAL_EXIT_CLEANUP_WAIT = 5,
 	TERMINAL_PTY_RESIZE_WAIT = 0.5,
 	TERMINAL_RESIZER_WATCHDOG_WAIT = 0.5,
-	// eslint-disable-next-line no-void
-	UNDEFINED = void 0,
 	WINDOWS_CMD_PATH = "C:\\Windows\\System32\\cmd.exe",
 	WINDOWS_CONHOST_PATH = "C:\\Windows\\System32\\conhost.exe"
 

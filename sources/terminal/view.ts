@@ -2,7 +2,6 @@ import {
 	DEFAULT_ENCODING,
 	DEFAULT_SUCCESS_EXIT_CODES,
 	DOMClasses2,
-	UNDEFINED,
 } from "../magic.js"
 import {
 	DialogModal,
@@ -555,7 +554,7 @@ export class TerminalView extends ItemView {
 					if (empty) { this.#find?.$set({ results: "" }) }
 				},
 				optional: { anchor?: Element } = {}
-			assignExact(optional, "anchor", contentEl.firstElementChild ?? UNDEFINED)
+			assignExact(optional, "anchor", contentEl.firstElementChild ?? void 0)
 			this.#find = new FindComponent({
 				intro: true,
 				props: {
@@ -602,7 +601,7 @@ export class TerminalView extends ItemView {
 			(async (): Promise<void> => {
 				try {
 					noticeSpawn()
-					await openProfile(context, profile, { cwd })
+					await openProfile(context, profile, { cwd: cwd ?? void 0 })
 				} catch (error) {
 					printError(anyToError(error), () =>
 						i18n.t("errors.error-spawning-terminal"), context)
@@ -640,7 +639,7 @@ export class TerminalView extends ItemView {
 									)
 								}
 								const ret = await openProfile(context, profile, {
-									cwd,
+									cwd: cwd ?? void 0,
 									terminal: TerminalView.EMULATOR.type,
 								})
 								if (ret) { return ret }
@@ -667,7 +666,7 @@ export class TerminalView extends ItemView {
 									}))
 								return pty
 							},
-							serial0 ?? UNDEFINED,
+							serial0 ?? void 0,
 							{
 								...profile.type === "invalid"
 									? {}

@@ -16,11 +16,10 @@ import {
 import type { AsyncOrSync } from "ts-essentials"
 import type { Settings } from "../settings-data.js"
 import type { TerminalPlugin } from "../main.js"
-import { UNDEFINED } from "../magic.js"
 
 export interface OpenOptions {
-	readonly cwd?: string | null
-	readonly terminal?: string | null
+	readonly cwd?: string | undefined
+	readonly terminal?: string | undefined
 }
 export const PROFILE_PROPERTIES: {
 	readonly [key in Settings.Profile.Type]: {
@@ -62,7 +61,7 @@ export const PROFILE_PROPERTIES: {
 			await spawnExternalTerminalEmulator(
 				profile.executable,
 				profile.args,
-				options?.cwd ?? UNDEFINED,
+				options?.cwd,
 			)
 			return null
 		},
@@ -90,10 +89,10 @@ export const PROFILE_PROPERTIES: {
 			return new RefPsuedoterminal(
 				new Pseudoterminal.PLATFORM_PSEUDOTERMINAL(context, {
 					args,
-					cwd: options?.cwd ?? null,
+					cwd: options?.cwd,
 					executable,
-					pythonExecutable: pythonExecutable || null,
-					terminal: options?.terminal ?? null,
+					pythonExecutable: pythonExecutable || void 0,
+					terminal: options?.terminal,
 					useWin32Conhost,
 				}),
 			)

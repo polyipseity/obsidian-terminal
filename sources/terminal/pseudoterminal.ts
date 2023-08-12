@@ -13,7 +13,6 @@ import {
 	MAX_LOCK_PENDING,
 	TERMINAL_EXIT_CLEANUP_WAIT,
 	TERMINAL_RESIZER_WATCHDOG_WAIT,
-	UNDEFINED,
 	WINDOWS_CMD_PATH,
 	WINDOWS_CONHOST_PATH,
 } from "../magic.js"
@@ -142,10 +141,7 @@ export class RefPsuedoterminal<T extends Pseudoterminal,
 
 	public resize(columns: number, rows: number): AsyncOrSync<void> {
 		const { delegate } = this
-		if (delegate.resize) {
-			return delegate.resize(columns, rows)
-		}
-		return UNDEFINED
+		return delegate.resize && delegate.resize(columns, rows)
 	}
 }
 
@@ -646,11 +642,11 @@ export namespace DeveloperConsolePseudoterminal {
 
 export interface ShellPseudoterminalArguments {
 	readonly executable: string
-	readonly cwd?: URL | string | null
-	readonly args?: readonly string[] | null
-	readonly terminal?: string | null
-	readonly pythonExecutable?: string | null
-	readonly useWin32Conhost?: boolean | null
+	readonly cwd?: URL | string | undefined
+	readonly args?: readonly string[] | undefined
+	readonly terminal?: string | undefined
+	readonly pythonExecutable?: string | undefined
+	readonly useWin32Conhost?: boolean | undefined
 }
 
 class WindowsPseudoterminal implements Pseudoterminal {
@@ -737,7 +733,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 								cmd[0],
 								cmd.slice(1),
 								{
-									cwd: cwd ?? UNDEFINED,
+									cwd,
 									stdio: ["pipe", "pipe", "pipe"],
 									windowsHide: !resizer,
 									windowsVerbatimArguments: true,
@@ -898,7 +894,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 				pythonExecutable,
 				["-c", await unixPseudoterminalPy, executable].concat(args ?? []),
 				{
-					cwd: cwd ?? UNDEFINED,
+					cwd,
 					env,
 					stdio: ["pipe", "pipe", "pipe", "pipe"],
 					windowsHide: true,

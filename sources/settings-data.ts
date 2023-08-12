@@ -29,10 +29,6 @@ import {
 	type LinkHandlerFunc,
 	PROFILE_PRESETS,
 } from "./terminal/profile-presets.js"
-import {
-	DEFAULT_SUCCESS_EXIT_CODES,
-	UNDEFINED,
-} from "./magic.js"
 import type {
 	DeepReadonly,
 	DeepRequired,
@@ -49,6 +45,7 @@ import type {
 	IWindowsPty,
 } from "xterm"
 import { isUndefined, omitBy } from "lodash-es"
+import { DEFAULT_SUCCESS_EXIT_CODES } from "./magic.js"
 import { PluginLocales } from "../assets/locales.js"
 import { Pseudoterminal } from "./terminal/pseudoterminal.js"
 import { RendererAddon } from "./terminal/emulator-addons.js"
@@ -519,7 +516,7 @@ export namespace Settings {
 					DEFAULT_TERMINAL_OPTIONS,
 					unc,
 					"cursorStyle",
-					[UNDEFINED, "bar", "block", "underline"],
+					[void 0, "bar", "block", "underline"],
 				),
 				cursorWidth: fixTyped(
 					DEFAULT_TERMINAL_OPTIONS,
@@ -549,7 +546,7 @@ export namespace Settings {
 					DEFAULT_TERMINAL_OPTIONS,
 					unc,
 					"fastScrollModifier",
-					[UNDEFINED, "alt", "ctrl", "none", "shift"],
+					[void 0, "alt", "ctrl", "none", "shift"],
 				),
 				fastScrollSensitivity: fixTyped(
 					DEFAULT_TERMINAL_OPTIONS,
@@ -652,7 +649,7 @@ export namespace Settings {
 					DEFAULT_TERMINAL_OPTIONS,
 					unc,
 					"logLevel",
-					[UNDEFINED, "debug", "error", "info", "off", "warn"],
+					[void 0, "debug", "error", "info", "off", "warn"],
 				),
 				macOptionClickForcesSelection: fixTyped(
 					DEFAULT_TERMINAL_OPTIONS,
@@ -1025,7 +1022,7 @@ export namespace Settings {
 									DEFAULT_WINDOWS_PTY,
 									unc2,
 									"backend",
-									[UNDEFINED, "conpty", "winpty"],
+									[void 0, "conpty", "winpty"],
 								),
 								buildNumber: fixTyped(
 									DEFAULT_WINDOWS_PTY,

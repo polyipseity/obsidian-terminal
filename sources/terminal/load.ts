@@ -17,7 +17,6 @@ import { PROFILE_PROPERTIES } from "./profile-properties.js"
 import { Settings } from "../settings-data.js"
 import type { TerminalPlugin } from "../main.js"
 import { TerminalView } from "./view.js"
-import { UNDEFINED } from "../magic.js"
 import { isEmpty } from "lodash-es"
 
 export function loadTerminal(context: TerminalPlugin): void {
@@ -99,7 +98,7 @@ export function loadTerminal(context: TerminalPlugin): void {
 		) => (checking: boolean) => {
 			// eslint-disable-next-line consistent-return
 			const cwd0 = ((): string | null | undefined => {
-				if (!cwd) { return UNDEFINED }
+				if (!cwd) { return void 0 }
 				if (!adapter) { return null }
 				switch (cwd) {
 					case "root":
