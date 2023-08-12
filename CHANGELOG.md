@@ -1,5 +1,11 @@
 # obsidian-terminal
 
+## 3.12.0
+
+### Minor Changes
+
+- eab5420: Implement source mapping. Inputs are mapped to `<stdin>`.
+
 ## 3.11.1
 
 ### Patch Changes
