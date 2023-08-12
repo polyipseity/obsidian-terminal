@@ -62,6 +62,7 @@ import {
 	PROFILE_PROPERTIES,
 	openProfile,
 } from "./profile-properties.js"
+import { cloneDeep, noop } from "lodash-es"
 import { BUNDLE } from "../import.js"
 import type { DeepWritable } from "ts-essentials"
 import type { LigaturesAddon } from "xterm-addon-ligatures"
@@ -73,7 +74,6 @@ import { TextPseudoterminal } from "./pseudoterminal.js"
 import type { Unicode11Addon } from "xterm-addon-unicode11"
 import type { WebLinksAddon } from "xterm-addon-web-links"
 import { XtermTerminalEmulator } from "./emulator.js"
-import { cloneDeep } from "lodash-es"
 import { writePromise } from "./util.js"
 
 const
@@ -653,7 +653,7 @@ export class TerminalView extends ItemView {
 											JSON_STRINGIFY_SPACE,
 										),
 									}))
-								pty.onExit.catch(() => { })
+								pty.onExit.catch(noop)
 									.finally(onChangeLanguage.listen(() => {
 										pty.text =
 											i18n.t("components.terminal.unsupported-profile", {

@@ -20,12 +20,12 @@ import {
 	TERMINAL_EMULATOR_RESIZE_WAIT,
 	TERMINAL_PTY_RESIZE_WAIT,
 } from "../magic.js"
+import { noop, throttle } from "lodash-es"
 import type { AsyncOrSync } from "ts-essentials"
 import { BUNDLE } from "../import.js"
 import type { ChildProcessByStdio } from "node:child_process"
 import type { Pseudoterminal } from "./pseudoterminal.js"
 import { spawnPromise } from "../util.js"
-import { throttle } from "lodash-es"
 import { writePromise } from "./util.js"
 
 const
@@ -130,7 +130,7 @@ export class XtermTerminalEmulator<A> {
 			await pty0.pipe(terminal)
 			return pty0
 		})
-		this.pseudoterminal.then(async pty0 => pty0.onExit).catch(() => { })
+		this.pseudoterminal.then(async pty0 => pty0.onExit).catch(noop)
 			.finally(() => { this.#running = false })
 	}
 

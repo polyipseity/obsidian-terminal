@@ -10,7 +10,7 @@ import {
 import type { App } from "obsidian"
 import type { TerminalPlugin } from "./main.js"
 import { around } from "monkey-around"
-import { noop } from "ts-essentials"
+import { noop } from "lodash-es"
 
 export class Log {
 	public readonly logger = new EventEmitterLite<readonly [Log.Event]>()

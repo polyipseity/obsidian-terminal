@@ -252,7 +252,7 @@ export class DeveloperConsolePseudoterminal
 			depth: 0,
 			get terminals() { return terminals },
 		})
-		this.onExit.catch(() => { })
+		this.onExit.catch(noop)
 			.finally(log.logger.listen(async event => this.write([event])))
 			.finally(() => {
 				new Functions(
@@ -353,7 +353,7 @@ export class DeveloperConsolePseudoterminal
 				}),
 			].map(disposer0 => () => { disposer0.dispose() }),
 		)
-		this.onExit.catch(() => { }).finally(() => { disposer.call() })
+		this.onExit.catch(noop).finally(() => { disposer.call() })
 		await this.write(this.log.history, [terminal])
 	}
 
@@ -863,7 +863,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 		shell.stderr.on("data", reader)
 		const writer =
 			terminal.onData(async data => writePromise(shell.stdin, data))
-		this.onExit.catch(() => { }).finally(() => { writer.dispose() })
+		this.onExit.catch(noop).finally(() => { writer.dispose() })
 	}
 }
 
@@ -944,7 +944,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 		shell.stderr.on("data", reader)
 		const writer =
 			terminal.onData(async data => writePromise(shell.stdin, data))
-		this.onExit.catch(() => { }).finally(() => { writer.dispose() })
+		this.onExit.catch(noop).finally(() => { writer.dispose() })
 	}
 
 	public async resize(columns: number, rows: number): Promise<void> {
