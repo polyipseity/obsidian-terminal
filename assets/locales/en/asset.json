@@ -72,8 +72,6 @@
 			"donate-icon": "heart",
 			"readme-icon": "file-question"
 		},
-		"edit-icon": "edit",
-		"edit-list-icon": "list",
 		"platforms": {
 			"darwin-icon": "terminal:macos",
 			"linux-icon": "terminal:linux",
