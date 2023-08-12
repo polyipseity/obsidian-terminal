@@ -38,7 +38,7 @@ import {
 	useSubsettings,
 } from "@polyipseity/obsidian-plugin-library"
 import { Modal, type Setting } from "obsidian"
-import { constant, identity, isUndefined } from "lodash-es"
+import { constant, identity, isUndefined, noop } from "lodash-es"
 import { BUNDLE } from "./import.js"
 import type { DeepWritable } from "ts-essentials"
 import { PROFILE_PROPERTIES } from "./terminal/profile-properties.js"
@@ -314,6 +314,7 @@ export class ProfileModal extends Modal {
 	readonly #callback
 	readonly #presets
 	#preset = NaN
+	#setupTypedUI = noop
 
 	public constructor(
 		protected readonly context: TerminalPlugin,
@@ -489,7 +490,7 @@ export class ProfileModal extends Modal {
 				}
 				this.#setupTypedUI()
 				return typedUI
-			}, null, () => { this.#setupTypedUI = (): void => { } })
+			}, null, () => { this.#setupTypedUI = noop })
 	}
 
 	public override onClose(): void {
@@ -844,8 +845,6 @@ export class ProfileModal extends Modal {
 			// No default
 		}
 	}
-
-	#setupTypedUI = (): void => { }
 }
 
 export class ProfileListModal
