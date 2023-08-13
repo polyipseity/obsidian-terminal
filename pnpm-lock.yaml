@@ -12,8 +12,8 @@ importers:
   .:
     dependencies:
       '@polyipseity/obsidian-plugin-library':
-        specifier: ^1.15.1
-        version: 1.15.1(@capacitor/core@5.2.2)(@codemirror/state@6.2.1)(@codemirror/view@6.16.0)(typescript@5.1.6)
+        specifier: ^1.15.2
+        version: 1.15.2(@capacitor/core@5.2.2)(@codemirror/state@6.2.1)(@codemirror/view@6.16.0)(typescript@5.1.6)
       acorn:
         specifier: ^8.10.0
         version: 8.10.0
@@ -699,8 +699,8 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@polyipseity/obsidian-plugin-library@1.15.1(@capacitor/core@5.2.2)(@codemirror/state@6.2.1)(@codemirror/view@6.16.0)(typescript@5.1.6):
-    resolution: {integrity: sha512-CscTpsgSEjV7FTD2+V9no872YnzNcaQ3G+qgewoUhOiyo3G9KqLBXn7/5GOohzvfgUyOZJZTD+A9JHeCGiPBfA==}
+  /@polyipseity/obsidian-plugin-library@1.15.2(@capacitor/core@5.2.2)(@codemirror/state@6.2.1)(@codemirror/view@6.16.0)(typescript@5.1.6):
+    resolution: {integrity: sha512-3dSfjD7q+9z1+YeCY8r+gXL9I1TlJrODPvcoXLxlq+Y1nMq/UQsnsY514m5cwOAufVYEm3XMiGDsRNxv4Ld2GQ==}
     dependencies:
       '@capacitor/filesystem': 5.1.2(@capacitor/core@5.2.2)
       async-lock: 1.4.0
