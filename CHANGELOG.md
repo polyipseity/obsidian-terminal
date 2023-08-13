@@ -1,5 +1,11 @@
 # obsidian-terminal
 
+## 3.12.1
+
+### Patch Changes
+
+- 9441f4b: Fix plugin potentially failing to load. This may happen if `Community plugins > Debug startup time` is disabled. When it is disabled, Obsidian removes source maps, which erraneously removes JavaScript strings intentionally containinig source map-like content.
+
 ## 3.12.0
 
 ### Minor Changes
