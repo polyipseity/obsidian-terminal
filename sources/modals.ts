@@ -587,8 +587,8 @@ export class ProfileModal extends Modal {
 						.onClick(() => {
 							new ListModal(
 								context,
-								ListModal.stringInputter({
-									back: identity<string>,
+								ListModal.stringInputter<string>({
+									back: identity,
 									forth: identity,
 								}),
 								() => "",
@@ -658,8 +658,8 @@ export class ProfileModal extends Modal {
 							.onClick(() => {
 								new ListModal(
 									context,
-									ListModal.stringInputter({
-										back: identity<string>,
+									ListModal.stringInputter<string>({
+										back: identity,
 										forth: identity,
 									}),
 									() => "",
