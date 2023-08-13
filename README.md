@@ -130,7 +130,7 @@ __Terminal emulators__
 
 This plugin patches `require` so that `require("obsidian")` and other Obsidian modules work in the developer console. It is toggleable as `Expose internal modules` in settings.
 
-In the developer console, a context variable `$$` is passed into the code, which can be used to dynamically change terminal options. The API is available in [`sources/@types/obsidian-terminal.d.ts#DeveloperConsoleContext`](sources/%40types/obsidian-terminal.d.ts).
+In the developer console, a context variable `$$` is passed into the code, which can be used to dynamically change terminal options. The API is available in [`sources/@types/obsidian-terminal.ts#DeveloperConsoleContext`](sources/%40types/obsidian-terminal.ts).
 
 ## Contributing
 

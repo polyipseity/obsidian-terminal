@@ -2,7 +2,6 @@
  * Public API for `obsidian-terminal`.
  */
 declare module "obsidian-terminal" {
-	import type { Terminal } from "xterm"
 
 	/**
 	 * Type of `$$` in the developer console.
@@ -22,3 +21,5 @@ declare module "obsidian-terminal" {
 		readonly terminals: readonly Terminal[]
 	}
 }
+import type { } from "obsidian-terminal"
+import type { Terminal } from "xterm"
