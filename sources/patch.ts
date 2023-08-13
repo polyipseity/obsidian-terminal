@@ -52,24 +52,24 @@ export namespace Log {
 }
 
 function patchLoggingConsole(console: Console, log: Log): () => void {
-	const consolePatch = (
-		type: "debug" | "error" | "info" | "warn",
-		proto: (this: typeof console, ...data: readonly unknown[]) => void,
-	): typeof proto => {
+	function consolePatch<const T extends "debug" | "error" | "info" | "warn">(
+		type: T,
+		proto: typeof console[T],
+	): typeof proto {
 		let recursive = false
 		return function fn(
 			this: typeof console,
-			...data: readonly unknown[]
+			...args: Parameters<typeof proto>
 		): void {
 			if (recursive) { return }
 			recursive = true
 			try {
 				try {
-					log.logger.emit({ data, type }).catch(noop)
+					log.logger.emit({ data: args, type }).catch(noop)
 				} catch (error) {
-					console.error(error)
+					this.error(error)
 				} finally {
-					Reflect.apply(proto, this, data)
+					proto.apply(this, args)
 				}
 			} finally {
 				recursive = false
