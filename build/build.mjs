@@ -5,6 +5,7 @@ import { argv } from "node:process"
 import builtinModules from "builtin-modules"
 import esbuildCompress from "esbuild-compress"
 import esbuildPluginGlobals from "esbuild-plugin-globals"
+import esbuildPluginTextReplace from "esbuild-plugin-text-replace"
 import { writeFile } from "node:fs/promises"
 
 const ARGV_PRODUCTION = 2,
@@ -47,6 +48,15 @@ const ARGV_PRODUCTION = 2,
 			}),
 			esbuildCompress({
 				lazy: true,
+			}),
+			esbuildPluginTextReplace({
+				include: /obsidian-plugin-library.*\.js$/u,
+				pattern: [
+					[
+						/\/\/(?<c>[@#]) sourceMappingURL=/gu,
+						"//$1 sourceMappingURL= ",
+					],
+				],
 			}),
 		],
 		sourcemap: DEV ? "inline" : false,
