@@ -241,6 +241,7 @@ export class DeveloperConsolePseudoterminal
 	public constructor(
 		protected readonly self0: () => Window & typeof globalThis,
 		protected readonly log: Log,
+		protected readonly sourceRoot = "",
 	) {
 		super()
 		const { terminals } = this
@@ -401,7 +402,7 @@ export class DeveloperConsolePseudoterminal
 	}
 
 	protected async eval(): Promise<void> {
-		const { buffer, context, lock, self0, terminals } = this,
+		const { buffer, context, lock, self0, sourceRoot, terminals } = this,
 			self1 = self0(),
 			code = await lock.acquire(
 				DeveloperConsolePseudoterminal.syncLock,
@@ -476,7 +477,8 @@ export class DeveloperConsolePseudoterminal
 				DeveloperConsolePseudoterminal.contextVar,
 				attachFunctionSourceMap(ctor, script, {
 					deletions,
-					source: "<stdin>",
+					file: "<stdin>",
+					sourceRoot: `${sourceRoot}${sourceRoot && "/"}<stdin>`,
 				}),
 			)(context)
 		}
@@ -625,10 +627,10 @@ export namespace DeveloperConsolePseudoterminal {
 		public constructor(protected readonly context: TerminalPlugin) { super() }
 
 		protected override async load0(): Promise<Manager.Type> {
-			const { context: { earlyPatch: { onLoaded } } } = this,
+			const { context: { earlyPatch: { onLoaded }, manifest: { id } } } = this,
 				{ log } = await onLoaded,
 				ret = lazyInit(() => new RefPsuedoterminal(
-					new DeveloperConsolePseudoterminal(activeSelf, log),
+					new DeveloperConsolePseudoterminal(activeSelf, log, `plugin:${id}`),
 				))
 			this.register(async () => ret().kill())
 			// Cannot use `lazyProxy`, the below `return` accesses `ret.then`
