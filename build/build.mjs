@@ -81,7 +81,7 @@ async function esbuild() {
 			const { errors, warnings, metafile } = await BUILD.rebuild()
 			await Promise.all([
 				(async () => {
-					if (metafile !== void 0) {
+					if (metafile) {
 						console.log(await analyzeMetafile(metafile, {
 							color: true,
 							verbose: true,
@@ -110,13 +110,15 @@ async function esbuild() {
 						logging()
 					}
 				})(),
-				metafile === void 0
-					? null
-					: writeFile(
-						PATHS.metafile,
-						JSON.stringify(metafile, null, "\t"),
-						{ encoding: "utf-8" },
-					),
+				...metafile
+					? [
+						writeFile(
+							PATHS.metafile,
+							JSON.stringify(metafile, null, "\t"),
+							{ encoding: "utf-8" },
+						),
+					]
+					: [],
 			])
 		} finally {
 			await BUILD.dispose()
