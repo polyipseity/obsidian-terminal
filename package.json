@@ -15,7 +15,7 @@
 		"monkey-around": "^2.3.0",
 		"obsidian": "^1.2.8",
 		"semver": "^7.5.4",
-		"simple-icons": "^9.9.0",
+		"simple-icons": "^9.10.0",
 		"source-map": "^0.7.4",
 		"tmp-promise": "^3.0.3",
 		"ts-essentials": "^9.3.2",
