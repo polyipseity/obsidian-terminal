@@ -9,8 +9,8 @@ import {
 	createI18n,
 	semVerString,
 } from "@polyipseity/obsidian-plugin-library"
+import { MAX_HISTORY, PLUGIN_UNLOAD_DELAY } from "./magic.js"
 import { DeveloperConsolePseudoterminal } from "./terminal/pseudoterminal.js"
-import { PLUGIN_UNLOAD_DELAY } from "./magic.js"
 import { PluginLocales } from "../assets/locales.js"
 import { Settings } from "./settings-data.js"
 import { isNil } from "lodash-es"
@@ -32,7 +32,7 @@ export class TerminalPlugin
 	public readonly statusBarHider = new StatusBarHider(this)
 
 	public constructor(app: App, manifest: PluginManifest) {
-		const earlyPatch = new EarlyPatchManager(app)
+		const earlyPatch = new EarlyPatchManager(app, { maxHistory: MAX_HISTORY })
 		earlyPatch.load()
 		super(app, manifest)
 		this.earlyPatch = earlyPatch

@@ -16,8 +16,12 @@ export class Log {
 	public readonly logger = new EventEmitterLite<readonly [Log.Event]>()
 	readonly #history: Log.Event[] = []
 
-	public constructor() {
-		this.logger.listen(event => this.#history.push(event))
+	public constructor(protected readonly maxHistory = NaN) {
+		this.logger.listen(event => {
+			const his = this.#history
+			his.push(event)
+			his.splice(0, his.length - maxHistory)
+		})
 	}
 
 	public get history(): readonly Log.Event[] {
@@ -145,13 +149,13 @@ function patchLogging(
 export interface EarlyPatch {
 	readonly log: Log
 }
-function earlyPatch(app: App): EarlyPatch & {
-	readonly unpatch: () => void
-} {
+function earlyPatch(app: App, options?: {
+	readonly maxHistory?: number | undefined
+}): EarlyPatch & { readonly unpatch: () => void } {
 	const unpatch = new Functions({ async: false, settled: true })
 	try {
 		const { workspace } = app,
-			log = new Log()
+			log = new Log(options?.maxHistory)
 		unpatch.push(patchWindows(workspace, self0 => patchLogging(self0, log)))
 		return Object.freeze({
 			log,
@@ -168,6 +172,8 @@ export class EarlyPatchManager extends ResourceComponent<EarlyPatch> {
 
 	public constructor(
 		protected readonly app: App,
+		// eslint-disable-next-line @typescript-eslint/no-magic-numbers
+		protected readonly options?: Parameters<typeof earlyPatch>[1],
 	) { super() }
 
 	public override load(): void {
@@ -178,7 +184,7 @@ export class EarlyPatchManager extends ResourceComponent<EarlyPatch> {
 	}
 
 	protected override load0(): EarlyPatch {
-		const ret = earlyPatch(this.app)
+		const ret = earlyPatch(this.app, this.options)
 		this.register(ret.unpatch)
 		return ret
 	}
