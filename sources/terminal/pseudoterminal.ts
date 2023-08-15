@@ -427,7 +427,7 @@ export class DeveloperConsolePseudoterminal
 					allowSuperOutsideMethod: false,
 					ecmaVersion: "latest",
 					locations: true,
-					preserveParens: true,
+					preserveParens: false,
 					ranges: false,
 					sourceType: "module",
 				})
