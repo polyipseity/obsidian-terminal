@@ -31,10 +31,7 @@ const ARGV_PRODUCTION = 2,
 		inject: ["@polyipseity/obsidian-plugin-library/inject"],
 		jsx: "transform",
 		legalComments: "inline",
-		loader: {
-			".json": "compressed-json",
-			".md": "compressed-text",
-		},
+		loader: {},
 		logLevel: "info",
 		logLimit: 0,
 		metafile: true,
@@ -47,7 +44,17 @@ const ARGV_PRODUCTION = 2,
 				moment: "moment",
 			}),
 			esbuildCompress({
-				lazy: true,
+				compressors: [
+					{
+						filter: /.json$/u,
+						loader: "json",
+					},
+					{
+						filter: /.md$/u,
+						lazy: true,
+						loader: "text",
+					},
+				],
 			}),
 			esbuildPluginTextReplace({
 				include: /obsidian-plugin-library.*\.js$/u,
