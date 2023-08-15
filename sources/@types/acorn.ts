@@ -7,7 +7,7 @@ declare module "acorn" {
 				end: number
 			} : unknown)
 		& { [K in keyof T]: T[K] extends object ? ExtendNode<T[K]> : T[K] }
-	function parse(s: string, o: Options): ExtendNode<estree.Program>
+	function parse(s: string, o: Options): ExtendNode<estree.Program> & Node
 }
-import type { Options } from "acorn"
+import type { Node, Options } from "acorn"
 import type estree from "estree"
