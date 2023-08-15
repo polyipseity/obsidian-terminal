@@ -1,11 +1,11 @@
 import { analyzeMetafile, context, formatMessages } from "esbuild"
-import { isEmpty, isUndefined } from "lodash-es"
 import { PATHS } from "./util.mjs"
 import { argv } from "node:process"
 import builtinModules from "builtin-modules"
 import esbuildCompress from "esbuild-compress"
 import esbuildPluginGlobals from "esbuild-plugin-globals"
 import esbuildPluginTextReplace from "esbuild-plugin-text-replace"
+import { isEmpty } from "lodash-es"
 import { writeFile } from "node:fs/promises"
 
 const ARGV_PRODUCTION = 2,
@@ -81,7 +81,7 @@ async function esbuild() {
 			const { errors, warnings, metafile } = await BUILD.rebuild()
 			await Promise.all([
 				(async () => {
-					if (!isUndefined(metafile)) {
+					if (metafile !== void 0) {
 						console.log(await analyzeMetafile(metafile, {
 							color: true,
 							verbose: true,
@@ -110,7 +110,7 @@ async function esbuild() {
 						logging()
 					}
 				})(),
-				isUndefined(metafile)
+				metafile === void 0
 					? null
 					: writeFile(
 						PATHS.metafile,
