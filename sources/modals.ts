@@ -38,7 +38,7 @@ import {
 	useSubsettings,
 } from "@polyipseity/obsidian-plugin-library"
 import { Modal, type Setting } from "obsidian"
-import { constant, identity, isUndefined, noop } from "lodash-es"
+import { constant, identity, noop } from "lodash-es"
 import { BUNDLE } from "./import.js"
 import type { DeepWritable } from "ts-essentials"
 import { PROFILE_PROPERTIES } from "./terminal/profile-properties.js"
@@ -94,7 +94,7 @@ export class TerminalOptionsModal
 						async () => this.postMutate2(errorEl),
 						{
 							post(component) {
-								if (isUndefined(data.fontFamily)) {
+								if (data.fontFamily === void 0) {
 									component.setPlaceholder(i18n
 										.t("components.terminal-options.undefined-placeholder"))
 								}
@@ -890,7 +890,7 @@ export class ProfileListModal
 						await callback(data0
 							.map(profile => {
 								let id = dataKeys.get(profile)
-								if (isUndefined(id)) {
+								if (id === void 0) {
 									dataKeys.set(
 										profile,
 										id = randomNotIn([...dataKeys.values()], keygen),

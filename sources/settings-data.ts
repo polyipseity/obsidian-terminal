@@ -159,7 +159,7 @@ export namespace Settings {
 		): Typed<T> | null {
 			for (const profile of Object.values(profiles)) {
 				if (isType(type, profile) &&
-					(isUndefined(platform) || isCompatible(profile, platform))) {
+					(platform === void 0 || isCompatible(profile, platform))) {
 					return profile
 				}
 			}
@@ -610,7 +610,7 @@ export namespace Settings {
 					"lineHeight",
 					["undefined", "number"],
 				),
-				linkHandler: isUndefined(unc.linkHandler)
+				linkHandler: unc.linkHandler === void 0
 					? unc.linkHandler
 					: ((): ILinkHandler => {
 						const unc2 = launderUnchecked<ILinkHandler>(unc.linkHandler),
@@ -717,7 +717,7 @@ export namespace Settings {
 					"tabStopWidth",
 					["undefined", "number"],
 				),
-				theme: isUndefined(unc.theme)
+				theme: unc.theme === void 0
 					? unc.theme
 					: ((): ITheme => {
 						const unc2 = launderUnchecked<ITheme>(unc.theme),
@@ -806,7 +806,7 @@ export namespace Settings {
 									"cyan",
 									["undefined", "string"],
 								),
-								extendedAnsi: isUndefined(unc2.extendedAnsi) ||
+								extendedAnsi: unc2.extendedAnsi === void 0 ||
 									isHomogenousArray(["string"], unc2.extendedAnsi)
 									? unc2.extendedAnsi
 									: DEFAULT_THEME.extendedAnsi,
@@ -867,7 +867,7 @@ export namespace Settings {
 							} satisfies Required<DeepUndefinable<ITheme>>
 						return omitBy(ret, isUndefined)
 					})(),
-				windowOptions: isUndefined(unc.windowOptions)
+				windowOptions: unc.windowOptions === void 0
 					? unc.windowOptions
 					: ((): IWindowOptions => {
 						const unc2 = launderUnchecked<IWindowOptions>(unc.windowOptions),
@@ -1013,7 +1013,7 @@ export namespace Settings {
 					"windowsMode",
 					["undefined", "boolean"],
 				),
-				windowsPty: isUndefined(unc.windowsPty)
+				windowsPty: unc.windowsPty === void 0
 					? unc.windowsPty
 					: ((): IWindowsPty => {
 						const unc2 = launderUnchecked<IWindowsPty>(unc.windowsPty),

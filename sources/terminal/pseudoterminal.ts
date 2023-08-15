@@ -46,7 +46,7 @@ import {
 } from "@polyipseity/obsidian-plugin-library"
 import type { IMarker, Terminal } from "xterm"
 import inspect, { type Options } from "browser-util-inspect"
-import { isEmpty, isNil, isUndefined, noop } from "lodash-es"
+import { isEmpty, isNil, noop } from "lodash-es"
 import { spawnPromise, writePromise } from "../util.js"
 import AsyncLock from "async-lock"
 import type { AsyncOrSync } from "ts-essentials"
@@ -319,7 +319,7 @@ export class DeveloperConsolePseudoterminal
 										(this.#historyIndex + (key === "ArrowDown"
 											? 1
 											: -1)) % length)
-									if (isUndefined(text)) { return }
+									if (text === void 0) { return }
 									let writing = true
 									const write = buffer.setValue(text)
 										.finally(() => { writing = false })
@@ -356,7 +356,7 @@ export class DeveloperConsolePseudoterminal
 
 	protected format(event: Log.Event): string {
 		let ret = this.#formatCache.get(event)
-		if (isUndefined(ret)) {
+		if (ret === void 0) {
 			const { colors } = DeveloperConsolePseudoterminal,
 				{ data, type } = event,
 				styles: ansi.Style[] = []

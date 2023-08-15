@@ -20,11 +20,11 @@ import {
 	removeAt,
 	replaceAllRegex,
 } from "@polyipseity/obsidian-plugin-library"
-import { isUndefined, range } from "lodash-es"
 import AsyncLock from "async-lock"
 import { BUNDLE } from "../import.js"
 import { MAX_LOCK_PENDING } from "../magic.js"
 import ansi from "ansi-escape-sequences"
+import { range } from "lodash-es"
 import { Set as valueSet } from "immutable"
 
 const xterm = dynamicRequireLazy<typeof import("xterm")
@@ -241,7 +241,7 @@ export class TerminalTextArea implements IDisposable {
 			lock,
 			async () => {
 				for (let datum = data0.shift();
-					!isUndefined(datum);
+					datum !== void 0;
 					datum = data0.shift()) {
 					const { cursorX, cursorY } = active,
 						lineWidth = this.#widths[cursorY] ?? 0,
@@ -252,7 +252,7 @@ export class TerminalTextArea implements IDisposable {
 							// eslint-disable-next-line no-await-in-loop
 							await writePromise(terminal, datum)
 							const [seq] = data0
-							if (!isUndefined(seq)) {
+							if (seq !== void 0) {
 								this.#sequence = true
 								let consumed = 0
 								for (const char of seq) {
