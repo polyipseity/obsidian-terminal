@@ -46,11 +46,11 @@ const ARGV_PRODUCTION = 2,
 			esbuildCompress({
 				compressors: [
 					{
-						filter: /.json$/u,
+						filter: /\.json$/u,
 						loader: "json",
 					},
 					{
-						filter: /.md$/u,
+						filter: /\.md$/u,
 						lazy: true,
 						loader: "text",
 					},
