@@ -107,7 +107,8 @@ export namespace Settings {
 			"linuxIntegratedDefault",
 			"win32ExternalDefault",
 			"win32IntegratedDefault",
-		] as const).map(key => [key, PROFILE_PRESETS[key]])),
+		] satisfies readonly (keyof typeof PROFILE_PRESETS)[])
+			.map(key => [key, PROFILE_PRESETS[key]])),
 	})
 
 	export const DEFAULTABLE_LANGUAGES =

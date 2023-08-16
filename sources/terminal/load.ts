@@ -25,7 +25,11 @@ export function loadTerminal(context: TerminalPlugin): void {
 		leaf => new TerminalView(context, leaf),
 	)
 	const
-		PROFILE_TYPES = deepFreeze((["select", "integrated", "external"] as const)
+		PROFILE_TYPES = deepFreeze(([
+			"select",
+			"integrated",
+			"external",
+		] satisfies readonly (keyof typeof PROFILE_PROPERTIES | "select")[])
 			.filter(type => type === "select" || PROFILE_PROPERTIES[type].available)),
 		CWD_TYPES = deepFreeze(["", "root", "current"]),
 		EXCLUDED_TYPES = deepFreeze([
