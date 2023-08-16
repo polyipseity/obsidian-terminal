@@ -719,7 +719,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 					try {
 						const
 							cmd = deepFreeze([
-								...conhost ? [WINDOWS_CONHOST_PATH] : [],
+								...conhost ? [WINDOWS_CONHOST_PATH] as const : [] as const,
 								WINDOWS_CMD_PATH,
 								"/C",
 								`${WindowsPseudoterminal.escapeArgument(executable)} ${(
