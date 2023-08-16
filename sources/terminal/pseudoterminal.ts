@@ -429,7 +429,7 @@ export class DeveloperConsolePseudoterminal
 					locations: true,
 					preserveParens: false,
 					ranges: false,
-					sourceType: "module",
+					sourceType: "script",
 				})
 			} catch (error) {
 				self1.console.error(error)
