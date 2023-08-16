@@ -12,8 +12,8 @@ importers:
   .:
     dependencies:
       '@polyipseity/obsidian-plugin-library':
-        specifier: ^1.16.0
-        version: 1.16.0(@capacitor/core@5.2.2)(@codemirror/state@6.2.1)(@codemirror/view@6.16.0)(typescript@5.1.6)
+        specifier: ^1.17.0
+        version: 1.17.0(@capacitor/core@5.2.2)(@codemirror/state@6.2.1)(@codemirror/view@6.16.0)(esbuild@0.19.2)(typescript@5.1.6)
       acorn:
         specifier: ^8.10.0
         version: 8.10.0
@@ -412,7 +412,6 @@ packages:
     cpu: [arm64]
     os: [android]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/android-arm@0.19.2:
@@ -421,7 +420,6 @@ packages:
     cpu: [arm]
     os: [android]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/android-x64@0.19.2:
@@ -430,7 +428,6 @@ packages:
     cpu: [x64]
     os: [android]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/darwin-arm64@0.19.2:
@@ -439,7 +436,6 @@ packages:
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/darwin-x64@0.19.2:
@@ -448,7 +444,6 @@ packages:
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/freebsd-arm64@0.19.2:
@@ -457,7 +452,6 @@ packages:
     cpu: [arm64]
     os: [freebsd]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/freebsd-x64@0.19.2:
@@ -466,7 +460,6 @@ packages:
     cpu: [x64]
     os: [freebsd]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/linux-arm64@0.19.2:
@@ -475,7 +468,6 @@ packages:
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/linux-arm@0.19.2:
@@ -484,7 +476,6 @@ packages:
     cpu: [arm]
     os: [linux]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/linux-ia32@0.19.2:
@@ -493,7 +484,6 @@ packages:
     cpu: [ia32]
     os: [linux]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/linux-loong64@0.19.2:
@@ -502,7 +492,6 @@ packages:
     cpu: [loong64]
     os: [linux]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/linux-mips64el@0.19.2:
@@ -511,7 +500,6 @@ packages:
     cpu: [mips64el]
     os: [linux]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/linux-ppc64@0.19.2:
@@ -520,7 +508,6 @@ packages:
     cpu: [ppc64]
     os: [linux]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/linux-riscv64@0.19.2:
@@ -529,7 +516,6 @@ packages:
     cpu: [riscv64]
     os: [linux]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/linux-s390x@0.19.2:
@@ -538,7 +524,6 @@ packages:
     cpu: [s390x]
     os: [linux]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/linux-x64@0.19.2:
@@ -547,7 +532,6 @@ packages:
     cpu: [x64]
     os: [linux]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/netbsd-x64@0.19.2:
@@ -556,7 +540,6 @@ packages:
     cpu: [x64]
     os: [netbsd]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/openbsd-x64@0.19.2:
@@ -565,7 +548,6 @@ packages:
     cpu: [x64]
     os: [openbsd]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/sunos-x64@0.19.2:
@@ -574,7 +556,6 @@ packages:
     cpu: [x64]
     os: [sunos]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/win32-arm64@0.19.2:
@@ -583,7 +564,6 @@ packages:
     cpu: [arm64]
     os: [win32]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/win32-ia32@0.19.2:
@@ -592,7 +572,6 @@ packages:
     cpu: [ia32]
     os: [win32]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@esbuild/win32-x64@0.19.2:
@@ -601,7 +580,6 @@ packages:
     cpu: [x64]
     os: [win32]
     requiresBuild: true
-    dev: true
     optional: true
 
   /@eslint-community/eslint-utils@4.4.0(eslint@8.47.0):
@@ -718,8 +696,13 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@polyipseity/obsidian-plugin-library@1.16.0(@capacitor/core@5.2.2)(@codemirror/state@6.2.1)(@codemirror/view@6.16.0)(typescript@5.1.6):
-    resolution: {integrity: sha512-0Io8dYE08wagQj2aUevyWVxEnRTeBVkBO6twnCXLzZPQHWeWvw0gzp4hRt6Pa8TQbECZWvfUPFWvKDrgRq8viA==}
+  /@polyipseity/obsidian-plugin-library@1.17.0(@capacitor/core@5.2.2)(@codemirror/state@6.2.1)(@codemirror/view@6.16.0)(esbuild@0.19.2)(typescript@5.1.6):
+    resolution: {integrity: sha512-sAqQftzFzZANIuug+eWXfFwpbFpsa3PFAiBqAvXbKMh1il/Bpb/gLjfjlk5rfFO+cr9Z6Y74KNadI2l5nONwxA==}
+    peerDependencies:
+      esbuild: '>=0.17.0'
+    peerDependenciesMeta:
+      esbuild:
+        optional: true
     dependencies:
       '@capacitor/filesystem': 5.1.2(@capacitor/core@5.2.2)
       '@jridgewell/trace-mapping': 0.3.19
@@ -727,11 +710,14 @@ packages:
       browser-util-inspect: 0.2.0
       convert-source-map: 2.0.0
       deep-equal: 2.2.2
+      esbuild: 0.19.2
       file-saver: 2.0.5
       i18next: 23.4.4
       i18next-resources-to-backend: 1.1.4
+      import-meta-resolve: 3.0.0
       lodash-es: 4.17.21
       lucide: 0.268.0
+      lz-string: 1.5.0
       monkey-around: 2.3.0
       obsidian: 1.2.8(@codemirror/state@6.2.1)(@codemirror/view@6.16.0)
       p-lazy: 4.0.0
@@ -1563,7 +1549,6 @@ packages:
       '@esbuild/win32-arm64': 0.19.2
       '@esbuild/win32-ia32': 0.19.2
       '@esbuild/win32-x64': 0.19.2
-    dev: true
 
   /escalade@3.1.1:
     resolution: {integrity: sha512-k0er2gUkLf8O0zKJiAhmkTnJlTvINGv7ygDNPbeIsX/TJjGJZHuh9B2UxbsaEkmlEo9MfhrSzmhIlhRlI2GXnw==}
@@ -2119,7 +2104,6 @@ packages:
 
   /import-meta-resolve@3.0.0:
     resolution: {integrity: sha512-4IwhLhNNA8yy445rPjD/lWh++7hMDOml2eHtd58eG7h+qK3EryMuuRbsHGPikCoAgIkkDnckKfWSk2iDla/ejg==}
-    dev: true
 
   /imurmurhash@0.1.4:
     resolution: {integrity: sha512-JmXMZ6wuvDmLiHEml9ykzqO6lwFbof0GG4IkcGaENdCRDDmMVnny7s5HsIgHCbaq0w2MyPhDqkhTUgS2LU2PHA==}
@@ -2439,7 +2423,6 @@ packages:
   /lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
     hasBin: true
-    dev: true
 
   /map-obj@1.0.1:
     resolution: {integrity: sha512-7N/q3lyZ+LVCp7PzuxrJr4KMbBE2hW7BT7YNia330OFxIf4d3r5zVpicP2650l7CPN6RM9zOJRl3NGpqSiw3Eg==}
