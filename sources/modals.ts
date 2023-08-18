@@ -56,8 +56,10 @@ const
 	util = dynamicRequire<typeof import("node:util")
 	>(BUNDLE, "node:util"),
 	// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-	execFileP = (async () =>
-		(await util).promisify((await childProcess).execFile))()
+	execFileP = (async () => {
+		const [childProcess2, util2] = await Promise.all([childProcess, util])
+		return util2.promisify(childProcess2.execFile)
+	})()
 
 export class TerminalOptionsModal
 	extends EditDataModal<Settings.Profile.TerminalOptions> {
@@ -755,20 +757,22 @@ export class ProfileModal extends Modal {
 										checkingPython = true;
 										(async (): Promise<void> => {
 											try {
-												const { stdout, stderr } = await (await execFileP)(
-													profile.pythonExecutable,
-													["--version"],
-													{
-														env: {
-															...(await process).env,
-															// eslint-disable-next-line @typescript-eslint/naming-convention
-															PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
+												const [execFileP2, process2] =
+													await Promise.all([execFileP, process]),
+													{ stdout, stderr } = await execFileP2(
+														profile.pythonExecutable,
+														["--version"],
+														{
+															env: {
+																...process2.env,
+																// eslint-disable-next-line @typescript-eslint/naming-convention
+																PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
+															},
+															timeout: CHECK_EXECUTABLE_WAIT *
+																SI_PREFIX_SCALE,
+															windowsHide: true,
 														},
-														timeout: CHECK_EXECUTABLE_WAIT *
-															SI_PREFIX_SCALE,
-														windowsHide: true,
-													},
-												)
+													)
 												if (stdout) {
 													activeSelf(buttonEl).console.log(stdout)
 												}

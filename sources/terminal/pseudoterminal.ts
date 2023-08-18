@@ -672,20 +672,22 @@ class WindowsPseudoterminal implements Pseudoterminal {
 			{ language: { value: i18n }, settings } = context,
 			resizerInitial = (async (): Promise<PipedChildProcess | null> => {
 				if (isNil(pythonExecutable)) { return null }
-				const ret = await spawnPromise(async () =>
-					(await childProcess).spawn(
-						pythonExecutable,
-						["-c", await win32ResizerPy],
-						{
-							env: {
-								...(await process).env,
-								// eslint-disable-next-line @typescript-eslint/naming-convention
-								PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
+				const [childProcess2, process2, win32ResizerPy2] =
+					await Promise.all([childProcess, process, win32ResizerPy]),
+					ret = await spawnPromise(() =>
+						childProcess2.spawn(
+							pythonExecutable,
+							["-c", win32ResizerPy2],
+							{
+								env: {
+									...process2.env,
+									// eslint-disable-next-line @typescript-eslint/naming-convention
+									PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
+								},
+								stdio: ["pipe", "pipe", "pipe"],
+								windowsHide: true,
 							},
-							stdio: ["pipe", "pipe", "pipe"],
-							windowsHide: true,
-						},
-					))
+						))
 				try {
 					ret.once("exit", (code, signal) => {
 						if (code !== 0) {
@@ -714,8 +716,9 @@ class WindowsPseudoterminal implements Pseudoterminal {
 			]> => {
 				const resizer = await resizerInitial.catch(() => null)
 				try {
-					const codeTmp = await (await tmpPromise)
-						.file({ discardDescriptor: true })
+					const [childProcess2, tmpPromise2] =
+						await Promise.all([childProcess, tmpPromise]),
+						codeTmp = await tmpPromise2.file({ discardDescriptor: true })
 					try {
 						const
 							cmd = deepFreeze([
@@ -729,7 +732,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 								} & call echo %^ERRORLEVEL% >${WindowsPseudoterminal
 									.escapeArgument(codeTmp.path)}`,
 							]),
-							ret = await spawnPromise(async () => (await childProcess).spawn(
+							ret = await spawnPromise(() => childProcess2.spawn(
 								cmd[0],
 								cmd.slice(1),
 								{
@@ -788,13 +791,14 @@ class WindowsPseudoterminal implements Pseudoterminal {
 					shell0.once("exit", (conCode, signal) => {
 						resolve((async (): Promise<NodeJS.Signals | number> => {
 							try {
-								const termCode = parseInt(
-									(await (await fsPromises).readFile(
-										codeTmp.path,
-										{ encoding: DEFAULT_ENCODING, flag: "r" },
-									)).trim(),
-									10,
-								)
+								const fsPromises2 = await fsPromises,
+									termCode = parseInt(
+										(await fsPromises2.readFile(
+											codeTmp.path,
+											{ encoding: DEFAULT_ENCODING, flag: "r" },
+										)).trim(),
+										10,
+									)
 								return isNaN(termCode) ? conCode ?? signal ?? NaN : termCode
 							} catch (error) {
 								self.console.debug(error)
@@ -884,15 +888,17 @@ class UnixPseudoterminal implements Pseudoterminal {
 				throw new Error(language
 					.value.t("errors.no-Python-to-spawn-Unix-pseudoterminal"))
 			}
-			const env: NodeJS.ProcessEnv = {
-				...(await process).env,
-				// eslint-disable-next-line @typescript-eslint/naming-convention
-				PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
-			}
+			const [childProcess2, process2, unixPseudoterminalPy2] =
+				await Promise.all([childProcess, process, unixPseudoterminalPy]),
+				env: NodeJS.ProcessEnv = {
+					...process2.env,
+					// eslint-disable-next-line @typescript-eslint/naming-convention
+					PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
+				}
 			if (!isNil(terminal)) { env["TERM"] = terminal }
-			return (await childProcess).spawn(
+			return childProcess2.spawn(
 				pythonExecutable,
-				["-c", await unixPseudoterminalPy, executable].concat(args ?? []),
+				["-c", unixPseudoterminalPy2, executable].concat(args ?? []),
 				{
 					cwd,
 					env,
@@ -944,8 +950,9 @@ class UnixPseudoterminal implements Pseudoterminal {
 	}
 
 	public async resize(columns: number, rows: number): Promise<void> {
-		const cmdio = (await this.shell).stdio[UnixPseudoterminal.#cmdio]
-		if (!(cmdio instanceof (await stream).Writable)) {
+		const [shell, stream2] = await Promise.all([this.shell, stream]),
+			cmdio = shell.stdio[UnixPseudoterminal.#cmdio]
+		if (!(cmdio instanceof stream2.Writable)) {
 			throw new TypeError(String(cmdio))
 		}
 		await writePromise(cmdio, `${columns}x${rows}\n`)

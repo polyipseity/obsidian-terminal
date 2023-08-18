@@ -46,13 +46,14 @@ export async function spawnExternalTerminalEmulator(
 	args?: readonly string[],
 	cwd?: string,
 ): Promise<ChildProcessByStdio<null, null, null>> {
-	const ret = await spawnPromise(async () =>
-		(await childProcess).spawn(executable, args ?? [], {
-			cwd,
-			detached: true,
-			shell: true,
-			stdio: ["ignore", "ignore", "ignore"],
-		}))
+	const childProcess2 = await childProcess,
+		ret = await spawnPromise(() =>
+			childProcess2.spawn(executable, args ?? [], {
+				cwd,
+				detached: true,
+				shell: true,
+				stdio: ["ignore", "ignore", "ignore"],
+			}))
 	try { ret.unref() } catch (error) { self.console.warn(error) }
 	return ret
 }

@@ -620,13 +620,30 @@ export class TerminalView extends ItemView {
 					await awaitCSS(ele)
 					noticeSpawn()
 					const
+						[
+							// eslint-disable-next-line @typescript-eslint/naming-convention
+							{ CanvasAddon },
+							// eslint-disable-next-line @typescript-eslint/naming-convention
+							{ LigaturesAddon },
+							// eslint-disable-next-line @typescript-eslint/naming-convention
+							{ SearchAddon },
+							// eslint-disable-next-line @typescript-eslint/naming-convention
+							{ Unicode11Addon },
+							// eslint-disable-next-line @typescript-eslint/naming-convention
+							{ WebLinksAddon },
+							// eslint-disable-next-line @typescript-eslint/naming-convention
+							{ WebglAddon },
+						] = await Promise.all([
+							xtermAddonCanvas,
+							xtermAddonLigatures,
+							xtermAddonSearch,
+							xtermAddonUnicode11,
+							xtermAddonWebLinks,
+							xtermAddonWebgl,
+						]),
 						serial0 = profile.type === "invalid" || profile.restoreHistory
 							? serial
 							: null,
-						// eslint-disable-next-line @typescript-eslint/naming-convention
-						{ CanvasAddon } = await xtermAddonCanvas,
-						// eslint-disable-next-line @typescript-eslint/naming-convention
-						{ WebglAddon } = await xtermAddonWebgl,
 						emulator = new TerminalView.EMULATOR(
 							ele,
 							async terminal => {
@@ -688,14 +705,14 @@ export class TerminalView extends ItemView {
 									() => { this.#find?.$set({ results: "" }) },
 								),
 								dragAndDrop: new DragAndDropAddon(ele),
-								ligatures: new (await xtermAddonLigatures).LigaturesAddon({}),
+								ligatures: new LigaturesAddon({}),
 								renderer: new RendererAddon(
 									() => new CanvasAddon(),
 									() => new WebglAddon(false),
 								),
-								search: new (await xtermAddonSearch).SearchAddon(),
-								unicode11: new (await xtermAddonUnicode11).Unicode11Addon(),
-								webLinks: new (await xtermAddonWebLinks).WebLinksAddon(
+								search: new SearchAddon(),
+								unicode11: new Unicode11Addon(),
+								webLinks: new WebLinksAddon(
 									(event, uri) => openExternal(activeSelf(event), uri),
 									{},
 								),
