@@ -22,7 +22,7 @@ import {
 	createChildElement,
 	deepFreeze,
 	destroyWithOutro,
-	dynamicRequireLazy,
+	dynamicRequire,
 	extname,
 	fixTyped,
 	instanceOf,
@@ -76,19 +76,19 @@ import { XtermTerminalEmulator } from "./emulator.js"
 import { writePromise } from "./util.js"
 
 const
-	xtermAddonCanvas = dynamicRequireLazy<typeof import("xterm-addon-canvas")
+	xtermAddonCanvas = dynamicRequire<typeof import("xterm-addon-canvas")
 	>(BUNDLE, "xterm-addon-canvas"),
 	xtermAddonLigatures =
-		dynamicRequireLazy<typeof import("xterm-addon-ligatures")
+		dynamicRequire<typeof import("xterm-addon-ligatures")
 		>(BUNDLE, "xterm-addon-ligatures"),
-	xtermAddonSearch = dynamicRequireLazy<typeof import("xterm-addon-search")
+	xtermAddonSearch = dynamicRequire<typeof import("xterm-addon-search")
 	>(BUNDLE, "xterm-addon-search"),
 	xtermAddonUnicode11 =
-		dynamicRequireLazy<typeof import("xterm-addon-unicode11")
+		dynamicRequire<typeof import("xterm-addon-unicode11")
 		>(BUNDLE, "xterm-addon-unicode11"),
-	xtermAddonWebLinks = dynamicRequireLazy<typeof import("xterm-addon-web-links")
+	xtermAddonWebLinks = dynamicRequire<typeof import("xterm-addon-web-links")
 	>(BUNDLE, "xterm-addon-web-links"),
-	xtermAddonWebgl = dynamicRequireLazy<typeof import("xterm-addon-webgl")
+	xtermAddonWebgl = dynamicRequire<typeof import("xterm-addon-webgl")
 	>(BUNDLE, "xterm-addon-webgl")
 
 class EditTerminalModal extends DialogModal {
@@ -623,6 +623,10 @@ export class TerminalView extends ItemView {
 						serial0 = profile.type === "invalid" || profile.restoreHistory
 							? serial
 							: null,
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						{ CanvasAddon } = await xtermAddonCanvas,
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						{ WebglAddon } = await xtermAddonWebgl,
 						emulator = new TerminalView.EMULATOR(
 							ele,
 							async terminal => {
@@ -684,14 +688,14 @@ export class TerminalView extends ItemView {
 									() => { this.#find?.$set({ results: "" }) },
 								),
 								dragAndDrop: new DragAndDropAddon(ele),
-								ligatures: new xtermAddonLigatures.LigaturesAddon({}),
+								ligatures: new (await xtermAddonLigatures).LigaturesAddon({}),
 								renderer: new RendererAddon(
-									() => new xtermAddonCanvas.CanvasAddon(),
-									() => new xtermAddonWebgl.WebglAddon(false),
+									() => new CanvasAddon(),
+									() => new WebglAddon(false),
 								),
-								search: new xtermAddonSearch.SearchAddon(),
-								unicode11: new xtermAddonUnicode11.Unicode11Addon(),
-								webLinks: new xtermAddonWebLinks.WebLinksAddon(
+								search: new (await xtermAddonSearch).SearchAddon(),
+								unicode11: new (await xtermAddonUnicode11).Unicode11Addon(),
+								webLinks: new (await xtermAddonWebLinks).WebLinksAddon(
 									(event, uri) => openExternal(activeSelf(event), uri),
 									{},
 								),
