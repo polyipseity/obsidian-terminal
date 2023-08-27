@@ -1,5 +1,13 @@
 # obsidian-terminal
 
+## 3.12.2
+
+### Patch Changes
+
+- 7981fe3: Prefix source map location with plugin ID.
+- 8452b18: Respect existing source maps when source mapping.
+- 9751bc9: Limit console history to 1024 entries.
+
 ## 3.12.1
 
 ### Patch Changes
