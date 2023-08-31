@@ -2,11 +2,7 @@
 from contextlib import contextmanager as _contextmanager
 from itertools import chain as _chain
 from psutil import Process as _Process
-from pywinctl import (
-    BaseWindow as _BaseWindow,
-    Window as _Window,
-    getAllWindows as _getAllWindows,
-)
+from pywinctl import Window as _Window, getAllWindows as _getAllWindows
 import sys as _sys
 from time import sleep as _sleep
 from typing import (
@@ -137,7 +133,7 @@ if _sys.platform == "win32":
     def win_to_pid(window: _Window):
         return _GetWindowThreadProcessId(window.getHandle())[1]
 
-    def resizer(process: _Process, window: _BaseWindow):
+    def resizer(process: _Process, window: _Window):
         print(f"window: {window}")
         writer = resizer_writer(process, window)
         next(writer)
@@ -156,7 +152,7 @@ if _sys.platform == "win32":
             yield rows, columns
 
     def resizer_writer(
-        process: _Process, window: _BaseWindow
+        process: _Process, window: _Window
     ) -> _Generator[None, tuple[int, int], None]:
         window.hide(True)
 
