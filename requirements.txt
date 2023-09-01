@@ -2,3 +2,4 @@
 
 psutil>=5.9.5
 pywinctl>=0.0.50
+typing_extensions>=4.7.1
