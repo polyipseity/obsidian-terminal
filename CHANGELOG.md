@@ -1,5 +1,11 @@
 # obsidian-terminal
 
+## 3.12.3
+
+### Patch Changes
+
+- 01942f8: Fix Python resizer not working with the latest Python packages.
+
 ## 3.12.2
 
 ### Patch Changes
