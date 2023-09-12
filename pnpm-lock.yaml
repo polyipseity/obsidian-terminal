@@ -12,8 +12,8 @@ importers:
   .:
     dependencies:
       '@polyipseity/obsidian-plugin-library':
-        specifier: ^1.18.1
-        version: 1.18.1(@capacitor/core@5.2.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(esbuild@0.19.2)(typescript@5.2.2)
+        specifier: ^1.19.0
+        version: 1.19.0(@capacitor/core@5.2.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(esbuild@0.19.2)(typescript@5.2.2)
       i18next:
         specifier: ^23.5.1
         version: 23.5.1
@@ -625,8 +625,8 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@polyipseity/obsidian-plugin-library@1.18.1(@capacitor/core@5.2.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(esbuild@0.19.2)(typescript@5.2.2):
-    resolution: {integrity: sha512-EGwLWDcwoJNWXaTJGzDGJwbXteNepA2Z4mnLteDkVz95PCeDm96M8fRYFTflRoM3OzyZIP+KiRkAzqDL0Vu1OQ==}
+  /@polyipseity/obsidian-plugin-library@1.19.0(@capacitor/core@5.2.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(esbuild@0.19.2)(typescript@5.2.2):
+    resolution: {integrity: sha512-KpMCgQZoUNgVIWI8xprJxi+/lbziN1FhuxetLBh3K3KXx9b9i7UurM5gXZQUPFMChzsfEtUnOEgTigA2tM8xNg==}
     peerDependencies:
       esbuild: '>=0.17.0'
     peerDependenciesMeta:
