@@ -27,7 +27,6 @@ import {
 	DEFAULT_THEME,
 	DEFAULT_WINDOWS_PTY,
 	DEFAULT_WINDOW_OPTIONS,
-	type LinkHandlerFunc,
 	PROFILE_PRESETS,
 } from "./terminal/profile-presets.js"
 import type {
@@ -635,7 +634,7 @@ export namespace Settings {
 									unc2,
 									"activate",
 									["function"],
-								) as LinkHandlerFunc,
+								) as ILinkHandler["activate"],
 								allowNonHttpProtocols: fixTyped(
 									DEFAULT_LINK_HANDLER,
 									unc2,
@@ -647,13 +646,13 @@ export namespace Settings {
 									unc2,
 									"hover",
 									["undefined", "function"],
-								) as LinkHandlerFunc | undefined,
+								) as ILinkHandler["hover"],
 								leave: fixTyped(
 									DEFAULT_LINK_HANDLER,
 									unc2,
 									"leave",
 									["undefined", "function"],
-								) as LinkHandlerFunc | undefined,
+								) as ILinkHandler["leave"],
 							} satisfies Required<DeepUndefinable<ILinkHandler>>
 						return {
 							...omitBy(ret, isUndefined),

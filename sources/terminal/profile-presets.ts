@@ -4,7 +4,6 @@ import {
 	WINDOWS_CMD_PATH,
 } from "../magic.js"
 import type {
-	IBufferRange,
 	ILinkHandler,
 	ILogger,
 	ITheme,
@@ -46,11 +45,6 @@ export const
 	DEFAULT_THEME: ITheme = deepFreeze({}),
 	DEFAULT_WINDOW_OPTIONS: IWindowOptions = deepFreeze({}),
 	DEFAULT_WINDOWS_PTY: IWindowsPty = deepFreeze({})
-export type LinkHandlerFunc = (
-	event: MouseEvent,
-	text: string,
-	range: IBufferRange,
-) => void
 
 export interface ProfilePresets0 {
 	readonly empty: Settings.Profile.Empty
