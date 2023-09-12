@@ -81,10 +81,10 @@ function patchLoggingConsole(console: Console, log: Log): () => void {
 		}
 	}
 	return around(console, {
-		debug(proto) { return consolePatch("debug", proto) },
-		error(proto) { return consolePatch("error", proto) },
-		log(proto) { return consolePatch("info", proto) },
-		warn(proto) { return consolePatch("warn", proto) },
+		debug(next) { return consolePatch("debug", next) },
+		error(next) { return consolePatch("error", next) },
+		log(next) { return consolePatch("info", next) },
+		warn(next) { return consolePatch("warn", next) },
 	})
 }
 
@@ -196,13 +196,13 @@ function patchRequire(
 ): () => void {
 	const { settings } = context
 	return around(self0, {
-		require(proto) {
+		require(next) {
 			return function fn(
 				this: typeof self0 | undefined,
-				...args: Parameters<typeof proto>
-			): ReturnType<typeof proto> {
+				...args: Parameters<typeof next>
+			): ReturnType<typeof next> {
 				try {
-					return proto.apply(this, args)
+					return next.apply(this, args)
 				} catch (error) {
 					if (!settings.value.exposeInternalModules) { throw error }
 					self0.console.debug(error)
