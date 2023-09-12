@@ -6,6 +6,7 @@ import {
 import type {
 	IBufferRange,
 	ILinkHandler,
+	ILogger,
 	ITheme,
 	IWindowOptions,
 	IWindowsPty,
@@ -22,6 +23,23 @@ import type { Settings } from "../settings-data.js"
 export const
 	DEFAULT_LINK_HANDLER: ILinkHandler = deepFreeze({
 		activate(event, text, _2) { openExternal(activeSelf(event), text) },
+	}),
+	DEFAULT_LOGGER: ILogger = deepFreeze({
+		debug(message, ...args: readonly unknown[]) {
+			self.console.debug(message, ...args)
+		},
+		error(message, ...args: readonly unknown[]) {
+			self.console.error(message, ...args)
+		},
+		info(message, ...args: readonly unknown[]) {
+			self.console.info(message, ...args)
+		},
+		trace(message, ...args: readonly unknown[]) {
+			self.console.trace(message, ...args)
+		},
+		warn(message, ...args: readonly unknown[]) {
+			self.console.warn(message, ...args)
+		},
 	}),
 	DEFAULT_TERMINAL_OPTIONS: Settings.Profile.TerminalOptions =
 		deepFreeze({}),

@@ -22,6 +22,7 @@ import {
 } from "@polyipseity/obsidian-plugin-library"
 import {
 	DEFAULT_LINK_HANDLER,
+	DEFAULT_LOGGER,
 	DEFAULT_TERMINAL_OPTIONS,
 	DEFAULT_THEME,
 	DEFAULT_WINDOWS_PTY,
@@ -39,6 +40,7 @@ import type {
 import type {
 	FontWeight,
 	ILinkHandler,
+	ILogger,
 	ITerminalOptions,
 	ITheme,
 	IWindowOptions,
@@ -513,6 +515,12 @@ export namespace Settings {
 					"cursorBlink",
 					["undefined", "boolean"],
 				),
+				cursorInactiveStyle: fixInSet(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"cursorInactiveStyle",
+					[void 0, "bar", "block", "none", "outline", "underline"],
+				),
 				cursorStyle: fixInSet(
 					DEFAULT_TERMINAL_OPTIONS,
 					unc,
@@ -599,6 +607,12 @@ export namespace Settings {
 						)
 						: ret
 				})(),
+				ignoreBracketedPasteMode: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"ignoreBracketedPasteMode",
+					["undefined", "boolean"],
+				),
 				letterSpacing: fixTyped(
 					DEFAULT_TERMINAL_OPTIONS,
 					unc,
@@ -652,6 +666,51 @@ export namespace Settings {
 					"logLevel",
 					[void 0, "debug", "error", "info", "off", "warn"],
 				),
+				logger: unc.logger === void 0
+					? unc.logger
+					: ((): ILogger => {
+						const unc2 = launderUnchecked<ILogger>(unc.logger),
+							ret = {
+								debug: fixTyped(
+									DEFAULT_LOGGER,
+									unc2,
+									"debug",
+									["function"],
+								) as ILogger["debug"],
+								error: fixTyped(
+									DEFAULT_LOGGER,
+									unc2,
+									"error",
+									["function"],
+								) as ILogger["error"],
+								info: fixTyped(
+									DEFAULT_LOGGER,
+									unc2,
+									"info",
+									["function"],
+								) as ILogger["info"],
+								trace: fixTyped(
+									DEFAULT_LOGGER,
+									unc2,
+									"trace",
+									["function"],
+								) as ILogger["trace"],
+								warn: fixTyped(
+									DEFAULT_LOGGER,
+									unc2,
+									"warn",
+									["function"],
+								) as ILogger["warn"],
+							} satisfies Required<DeepUndefinable<ILogger>>
+						return {
+							...omitBy(ret, isUndefined),
+							debug: ret.debug,
+							error: ret.error,
+							info: ret.info,
+							trace: ret.trace,
+							warn: ret.warn,
+						}
+					})(),
 				macOptionClickForcesSelection: fixTyped(
 					DEFAULT_TERMINAL_OPTIONS,
 					unc,
