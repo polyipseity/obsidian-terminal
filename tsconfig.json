@@ -93,8 +93,7 @@
   "extends": [
     "@tsconfig/recommended/tsconfig.json",
     "@tsconfig/strictest/tsconfig.json",
-    "@tsconfig/node16/tsconfig.json",
-    "@tsconfig/esm/tsconfig.json"
+    "@tsconfig/node16/tsconfig.json"
   ],
   "include": [
     "CHANGELOG.md",
