@@ -45,8 +45,8 @@ importers:
         specifier: ^7.5.4
         version: 7.5.4
       simple-icons:
-        specifier: ^9.12.0
-        version: 9.12.0
+        specifier: ^9.14.0
+        version: 9.14.0
       source-map:
         specifier: ^0.7.4
         version: 0.7.4
@@ -57,32 +57,32 @@ importers:
         specifier: ^9.4.0
         version: 9.4.0(typescript@5.2.2)
       xterm:
-        specifier: ^5.2.1
-        version: 5.2.1
+        specifier: ^5.3.0
+        version: 5.3.0
       xterm-addon-canvas:
-        specifier: ^0.4.0
-        version: 0.4.0(xterm@5.2.1)
-      xterm-addon-fit:
-        specifier: ^0.7.0
-        version: 0.7.0(xterm@5.2.1)
-      xterm-addon-ligatures:
-        specifier: ^0.6.0
-        version: 0.6.0(xterm@5.2.1)
-      xterm-addon-search:
-        specifier: ^0.12.0
-        version: 0.12.0(xterm@5.2.1)
-      xterm-addon-serialize:
-        specifier: ^0.10.0
-        version: 0.10.0(xterm@5.2.1)
-      xterm-addon-unicode11:
         specifier: ^0.5.0
-        version: 0.5.0(xterm@5.2.1)
-      xterm-addon-web-links:
+        version: 0.5.0(xterm@5.3.0)
+      xterm-addon-fit:
         specifier: ^0.8.0
-        version: 0.8.0(xterm@5.2.1)
+        version: 0.8.0(xterm@5.3.0)
+      xterm-addon-ligatures:
+        specifier: ^0.7.0
+        version: 0.7.0(xterm@5.3.0)
+      xterm-addon-search:
+        specifier: ^0.13.0
+        version: 0.13.0(xterm@5.3.0)
+      xterm-addon-serialize:
+        specifier: ^0.11.0
+        version: 0.11.0(xterm@5.3.0)
+      xterm-addon-unicode11:
+        specifier: ^0.6.0
+        version: 0.6.0(xterm@5.3.0)
+      xterm-addon-web-links:
+        specifier: ^0.9.0
+        version: 0.9.0(xterm@5.3.0)
       xterm-addon-webgl:
-        specifier: ^0.15.0
-        version: 0.15.0(xterm@5.2.1)
+        specifier: ^0.16.0
+        version: 0.16.0(xterm@5.3.0)
     devDependencies:
       '@changesets/cli':
         specifier: ^2.26.2
@@ -2933,8 +2933,8 @@ packages:
     resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
     dev: true
 
-  /simple-icons@9.12.0:
-    resolution: {integrity: sha512-ATl97JnoUvjNRlQzqJAtMaH0P5aCf1fAF5vQddpWG/dxisrSwyIInQ88pdEL0a5m8llEJnDU5xo4TEj9fyx2fA==}
+  /simple-icons@9.14.0:
+    resolution: {integrity: sha512-8nBO/v1y2p4uQX0lpqrBqBAhbx0GlLVYUb904vrsLxLylYkFQMrlPjTYSFI7d9TaY5kUpoDlqC+/9ojyKDZI9g==}
     engines: {node: '>=0.12.18'}
     dev: false
 
@@ -3381,75 +3381,75 @@ packages:
   /wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
-  /xterm-addon-canvas@0.4.0(xterm@5.2.1):
-    resolution: {integrity: sha512-iTC8CdjX9+hGX7jiEuiDMXzHsY/FKJdVnbjep5xjRXNu7RKOk15xuecIkJ7HZORqMVPpr4DGS3jyd9XUoBuxqw==}
+  /xterm-addon-canvas@0.5.0(xterm@5.3.0):
+    resolution: {integrity: sha512-QOo/eZCMrCleAgMimfdbaZCgmQRWOml63Ued6RwQ+UTPvQj3Av9QKx3xksmyYrDGRO/AVRXa9oNuzlYvLdmoLQ==}
     peerDependencies:
       xterm: ^5.0.0
     dependencies:
-      xterm: 5.2.1
+      xterm: 5.3.0
     dev: false
 
-  /xterm-addon-fit@0.7.0(xterm@5.2.1):
-    resolution: {integrity: sha512-tQgHGoHqRTgeROPnvmtEJywLKoC/V9eNs4bLLz7iyJr1aW/QFzRwfd3MGiJ6odJd9xEfxcW36/xRU47JkD5NKQ==}
+  /xterm-addon-fit@0.8.0(xterm@5.3.0):
+    resolution: {integrity: sha512-yj3Np7XlvxxhYF/EJ7p3KHaMt6OdwQ+HDu573Vx1lRXsVxOcnVJs51RgjZOouIZOczTsskaS+CpXspK81/DLqw==}
     peerDependencies:
       xterm: ^5.0.0
     dependencies:
-      xterm: 5.2.1
+      xterm: 5.3.0
     dev: false
 
-  /xterm-addon-ligatures@0.6.0(xterm@5.2.1):
-    resolution: {integrity: sha512-DxiYCXXYEpnwr8li4/QhG64exjrLX1nHBfNNfrQgx5e8Z9tK2SjWKpxI6PZEy++8+YdL1F7VjWI4aKOaDt2VVw==}
+  /xterm-addon-ligatures@0.7.0(xterm@5.3.0):
+    resolution: {integrity: sha512-5HXKCN5vB8KkqLIloItZkYAwMWF4Y2yOQsc4oFUXOjV3GnZskZpH0W+8rJH+80wxLNym7OMpdmg3a/Vd/+owDg==}
     engines: {node: '>8.0.0'}
     peerDependencies:
       xterm: ^5.0.0
     dependencies:
       font-finder: 1.1.0
       font-ligatures: 1.4.1
-      xterm: 5.2.1
+      xterm: 5.3.0
     dev: false
 
-  /xterm-addon-search@0.12.0(xterm@5.2.1):
-    resolution: {integrity: sha512-hXAuO7Ts2+Jf9K8mZrUx8IFd7c/Flgks/jyqA1L4reymyfmXtcsd+WDLel8R9Tgy2CLyKABVBP09/Ua/FmXcvg==}
+  /xterm-addon-search@0.13.0(xterm@5.3.0):
+    resolution: {integrity: sha512-sDUwG4CnqxUjSEFh676DlS3gsh3XYCzAvBPSvJ5OPgF3MRL3iHLPfsb06doRicLC2xXNpeG2cWk8x1qpESWJMA==}
     peerDependencies:
       xterm: ^5.0.0
     dependencies:
-      xterm: 5.2.1
+      xterm: 5.3.0
     dev: false
 
-  /xterm-addon-serialize@0.10.0(xterm@5.2.1):
-    resolution: {integrity: sha512-Syp9eSBypn70iAczcJ+kAi0foQIepAvFS6x53JwI4XylTBHn87Ep9fovslhwmUV3rwH2yMnpdDjXH5W/whx2lA==}
+  /xterm-addon-serialize@0.11.0(xterm@5.3.0):
+    resolution: {integrity: sha512-2CNDnmLdLkNWfsxNFkGsI5FE9W/BbsMzeOrbu59yNqH9L6k1gmL+Ab6VXxEp2NQUJSzaiqi6t0nFR5k5EDkVIg==}
     peerDependencies:
       xterm: ^5.0.0
     dependencies:
-      xterm: 5.2.1
+      xterm: 5.3.0
     dev: false
 
-  /xterm-addon-unicode11@0.5.0(xterm@5.2.1):
-    resolution: {integrity: sha512-Jm4/g4QiTxiKiTbYICQgC791ubhIZyoIwxAIgOW8z8HWFNY+lwk+dwaKEaEeGBfM48Vk8fklsUW9u/PlenYEBg==}
+  /xterm-addon-unicode11@0.6.0(xterm@5.3.0):
+    resolution: {integrity: sha512-5pkb8YoS/deRtNqQRw8t640mu+Ga8B2MG3RXGQu0bwgcfr8XiXIRI880TWM49ICAHhTmnOLPzIIBIjEnCq7k2A==}
     peerDependencies:
       xterm: ^5.0.0
     dependencies:
-      xterm: 5.2.1
+      xterm: 5.3.0
     dev: false
 
-  /xterm-addon-web-links@0.8.0(xterm@5.2.1):
-    resolution: {integrity: sha512-J4tKngmIu20ytX9SEJjAP3UGksah7iALqBtfTwT9ZnmFHVplCumYQsUJfKuS+JwMhjsjH61YXfndenLNvjRrEw==}
+  /xterm-addon-web-links@0.9.0(xterm@5.3.0):
+    resolution: {integrity: sha512-LIzi4jBbPlrKMZF3ihoyqayWyTXAwGfu4yprz1aK2p71e9UKXN6RRzVONR0L+Zd+Ik5tPVI9bwp9e8fDTQh49Q==}
     peerDependencies:
       xterm: ^5.0.0
     dependencies:
-      xterm: 5.2.1
+      xterm: 5.3.0
     dev: false
 
-  /xterm-addon-webgl@0.15.0(xterm@5.2.1):
-    resolution: {integrity: sha512-ZLcqogMFHr4g/YRhcCh3xE8tTklnyut/M+O/XhVsFBRB/YCvYhPdLQ5/AQk54V0wjWAQpa8CF3W8DVR9OqyMCg==}
+  /xterm-addon-webgl@0.16.0(xterm@5.3.0):
+    resolution: {integrity: sha512-E8cq1AiqNOv0M/FghPT+zPAEnvIQRDbAbkb04rRYSxUym69elPWVJ4sv22FCLBqM/3LcrmBLl/pELnBebVFKgA==}
     peerDependencies:
       xterm: ^5.0.0
     dependencies:
-      xterm: 5.2.1
+      xterm: 5.3.0
     dev: false
 
-  /xterm@5.2.1:
-    resolution: {integrity: sha512-cs5Y1fFevgcdoh2hJROMVIWwoBHD80P1fIP79gopLHJIE4kTzzblanoivxTiQ4+92YM9IxS36H1q0MxIJXQBcA==}
+  /xterm@5.3.0:
+    resolution: {integrity: sha512-8QqjlekLUFTrU6x7xck1MsPzPA571K5zNqWm0M0oroYEWVOptZ0+ubQSkQ3uxIEhcIHRujJy6emDWX4A7qyFzg==}
     dev: false
 
   /y18n@4.0.3:
