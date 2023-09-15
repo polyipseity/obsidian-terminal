@@ -6,13 +6,14 @@ import {
 	SI_PREFIX_SCALE,
 	SettingsManager,
 	StatusBarHider,
+	StorageSettingsManager,
 	createI18n,
 	semVerString,
 } from "@polyipseity/obsidian-plugin-library"
+import { LocalSettings, Settings } from "./settings-data.js"
 import { MAX_HISTORY, PLUGIN_UNLOAD_DELAY } from "./magic.js"
 import { DeveloperConsolePseudoterminal } from "./terminal/pseudoterminal.js"
 import { PluginLocales } from "../assets/locales.js"
-import { Settings } from "./settings-data.js"
 import { isNil } from "lodash-es"
 import { loadDocumentations } from "./documentations.js"
 import { loadIcons } from "./icons.js"
@@ -21,9 +22,10 @@ import { loadTerminal } from "./terminal/load.js"
 
 export class TerminalPlugin
 	extends Plugin
-	implements PluginContext<Settings> {
+	implements PluginContext<Settings, LocalSettings> {
 	public readonly version
 	public readonly language: LanguageManager
+	public readonly localSettings: StorageSettingsManager<LocalSettings>
 	public readonly settings: SettingsManager<Settings>
 	public readonly developerConsolePTY =
 		new DeveloperConsolePseudoterminal.Manager(this)
@@ -54,6 +56,7 @@ export class TerminalPlugin
 				},
 			),
 		)
+		this.localSettings = new StorageSettingsManager(this, LocalSettings.fix)
 		this.settings = new SettingsManager(this, Settings.fix)
 	}
 
@@ -74,10 +77,11 @@ export class TerminalPlugin
 						developerConsolePTY,
 						earlyPatch,
 						language,
+						localSettings,
 						statusBarHider,
 						settings,
 					} = this,
-					earlyChildren = [earlyPatch, language, settings],
+					earlyChildren = [earlyPatch, language, localSettings, settings],
 					// Placeholder to resolve merge conflicts more easily
 					children = [
 						developerConsolePTY,

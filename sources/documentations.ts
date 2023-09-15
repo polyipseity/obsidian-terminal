@@ -1,5 +1,6 @@
 import {
 	DocumentationMarkdownView,
+	StorageSettingsManager,
 	addCommand,
 	anyToError,
 	deepFreeze,
@@ -60,16 +61,16 @@ class Loaded0 {
 	public open(key: DocumentationKeys[number], active = true): void {
 		const {
 			context,
-			context: { version, settings, language: { value: i18n } },
+			context: { version, language: { value: i18n }, localSettings },
 			docMdView,
 		} = this;
 		(async (): Promise<void> => {
 			try {
 				await DOCUMENTATIONS[key](docMdView, active)
 				if (key === "changelog" && version !== null) {
-					settings.mutate(settingsM => {
-						settingsM.lastReadChangelogVersion = version
-					}).then(async () => settings.write())
+					localSettings.mutate(lsm => {
+						lsm.lastReadChangelogVersion = version
+					}).then(async () => localSettings.write())
 						.catch(error => { self.console.error(error) })
 				}
 			} catch (error) {
@@ -86,7 +87,13 @@ export function loadDocumentations(
 	context: TerminalPlugin,
 	readme = false,
 ): loadDocumentations.Loaded {
-	const { version, language: { value: i18n }, settings } = context,
+	const
+		{
+			version,
+			language: { value: i18n },
+			localSettings,
+			settings,
+		} = context,
 		ret = new Loaded0(
 			context,
 			DocumentationMarkdownView.register(context),
@@ -101,7 +108,8 @@ export function loadDocumentations(
 	if (readme) { ret.open("readme", false) }
 	if (version !== null &&
 		settings.value.openChangelogOnUpdate &&
-		semverLt(settings.value.lastReadChangelogVersion, version)) {
+		!StorageSettingsManager.hasFailed(localSettings.value) &&
+		semverLt(localSettings.value.lastReadChangelogVersion, version)) {
 		ret.open("changelog", false)
 	}
 	return ret

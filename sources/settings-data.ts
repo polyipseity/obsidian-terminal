@@ -4,7 +4,7 @@ import {
 	NOTICE_NO_TIMEOUT,
 	NULL_SEM_VER_STRING,
 	type Platform,
-	type PluginContext,
+	PluginContext,
 	type ReadonlyTuple,
 	type SemVerString,
 	type Unchecked,
@@ -51,6 +51,23 @@ import { PluginLocales } from "../assets/locales.js"
 import { Pseudoterminal } from "./terminal/pseudoterminal.js"
 import { RendererAddon } from "./terminal/emulator-addons.js"
 
+export interface LocalSettings extends PluginContext.LocalSettings {
+	readonly lastReadChangelogVersion: SemVerString
+}
+export namespace LocalSettings {
+	export function fix(self0: unknown): Fixed<LocalSettings> {
+		const unc = launderUnchecked<LocalSettings>(self0)
+		return markFixed(self0, {
+			...PluginContext.LocalSettings.fix(self0).value,
+			lastReadChangelogVersion: opaqueOrDefault(
+				semVerString,
+				String(unc.lastReadChangelogVersion),
+				NULL_SEM_VER_STRING,
+			),
+		})
+	}
+}
+
 export interface Settings extends PluginContext.Settings {
 	readonly language: Settings.DefaultableLanguage
 	readonly addToCommand: boolean
@@ -67,14 +84,9 @@ export interface Settings extends PluginContext.Settings {
 
 	readonly exposeInternalModules: boolean
 	readonly preferredRenderer: Settings.PreferredRendererOption
-
-	readonly lastReadChangelogVersion: SemVerString
 }
 export namespace Settings {
-	export const optionals = deepFreeze([
-		"lastReadChangelogVersion",
-		"recovery",
-	]) satisfies readonly (keyof Settings)[]
+	export const optionals = deepFreeze([]) satisfies readonly (keyof Settings)[]
 	export type Optionals = typeof optionals[number]
 	export type Persistent = Omit<Settings, Optionals>
 	export function persistent(settings: Settings): Persistent {
@@ -115,7 +127,6 @@ export namespace Settings {
 	export const DEFAULTABLE_LANGUAGES =
 		deepFreeze(["", ...PluginLocales.LANGUAGES])
 	export type DefaultableLanguage = typeof DEFAULTABLE_LANGUAGES[number]
-
 	export const NEW_INSTANCE_BEHAVIORS = deepFreeze([
 		"replaceTab",
 		"newTab",
@@ -1104,6 +1115,7 @@ export namespace Settings {
 	export function fix(self0: unknown): Fixed<Settings> {
 		const unc = launderUnchecked<Settings>(self0)
 		return markFixed(self0, {
+			...PluginContext.Settings.fix(self0).value,
 			addToCommand: fixTyped(
 				DEFAULT,
 				unc,
@@ -1152,11 +1164,6 @@ export namespace Settings {
 				"language",
 				DEFAULTABLE_LANGUAGES,
 			),
-			lastReadChangelogVersion: opaqueOrDefault(
-				semVerString,
-				String(unc.lastReadChangelogVersion),
-				NULL_SEM_VER_STRING,
-			),
 			newInstanceBehavior: fixInSet(
 				DEFAULT,
 				unc,
@@ -1196,9 +1203,6 @@ export namespace Settings {
 				}
 				return cloneAsWritable(defaults2)
 			})(),
-			recovery: Object.fromEntries(Object
-				.entries(launderUnchecked(unc.recovery))
-				.map(([key, value]) => [key, String(value)])),
 		})
 	}
 }
