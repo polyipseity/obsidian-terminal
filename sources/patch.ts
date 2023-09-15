@@ -206,7 +206,7 @@ function patchRequire(
 				} catch (error) {
 					if (!settings.value.exposeInternalModules) { throw error }
 					self0.console.debug(error)
-					return dynamicRequireSync({}, ...args)
+					return dynamicRequireSync(new Map(), ...args)
 				}
 			} as NodeRequire
 		},
