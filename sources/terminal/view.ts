@@ -18,7 +18,6 @@ import {
 	basename,
 	cloneAsWritable,
 	consumeEvent,
-	copyOnWrite,
 	createChildElement,
 	deepFreeze,
 	destroyWithOutro,
@@ -335,6 +334,12 @@ export class TerminalView extends ItemView {
 	}
 
 	protected set state(value: TerminalView.State) {
+		Object.defineProperty(value, "serial", {
+			configurable: false,
+			enumerable: true,
+			get: (): TerminalView.State["serial"] =>
+				this.#emulator?.serialize() ?? null,
+		})
 		this.#state = value
 		updateView(this.context, this)
 	}
@@ -382,10 +387,6 @@ export class TerminalView extends ItemView {
 	}
 
 	public override getState(): unknown {
-		const serial = this.#emulator?.serialize()
-		if (serial) {
-			this.state = copyOnWrite(this.state, state => { state.serial = serial })
-		}
 		return writeStateCollabratively(
 			super.getState(),
 			TerminalView.type.namespaced(this.context),
