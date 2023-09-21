@@ -509,6 +509,12 @@
     "no-confusing-arrow": "off",
     "no-console": "off",
     "no-continue": "off",
+    "no-inline-comments": [
+      "error",
+      {
+        "ignorePattern": "^ @__PURE__ $"
+      }
+    ],
     "no-magic-numbers": [
       "error",
       {
