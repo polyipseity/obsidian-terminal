@@ -334,13 +334,12 @@ export class TerminalView extends ItemView {
 	}
 
 	protected set state(value: TerminalView.State) {
-		Object.defineProperty(value, "serial", {
+		this.#state = Object.defineProperty(value, "serial", {
 			configurable: false,
 			enumerable: true,
 			get: (): TerminalView.State["serial"] =>
 				this.#emulator?.serialize() ?? null,
 		})
-		this.#state = value
 		updateView(this.context, this)
 	}
 
