@@ -496,7 +496,7 @@ export class DeveloperConsolePseudoterminal
 							self1.console.error(error)
 							return null
 						}
-						self1.console.debug(error)
+						/* @__PURE__ */ self1.console.debug(error)
 					}
 				}
 				try {
@@ -750,7 +750,9 @@ class WindowsPseudoterminal implements Pseudoterminal {
 										const watchdog = self.setInterval(
 											() => {
 												writePromise(resizer0.stdin, "\n")
-													.catch(error => { self.console.debug(error) })
+													.catch(error => {
+														/* @__PURE__ */ self.console.debug(error)
+													})
 											},
 											TERMINAL_RESIZER_WATCHDOG_WAIT * SI_PREFIX_SCALE,
 										)
@@ -801,7 +803,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 									)
 								return isNaN(termCode) ? conCode ?? signal ?? NaN : termCode
 							} catch (error) {
-								self.console.debug(error)
+								/* @__PURE__ */ self.console.debug(error)
 								return conCode ?? signal ?? NaN
 							} finally {
 								(async (): Promise<void> => {

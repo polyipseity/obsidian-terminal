@@ -92,7 +92,7 @@ export class XtermTerminalEmulator<A> {
 				}
 			} catch (error) {
 				if (mustResizePseudoterminal) { throw error }
-				activeSelf(this.terminal.element).console.debug(error)
+				/* @__PURE__ */ activeSelf(this.terminal.element).console.debug(error)
 			}
 		})())
 	}, TERMINAL_PTY_RESIZE_WAIT * SI_PREFIX_SCALE))
@@ -142,7 +142,7 @@ export class XtermTerminalEmulator<A> {
 			}
 		} catch (error) {
 			if (mustClosePseudoterminal) { throw error }
-			activeSelf(this.terminal.element).console.debug(error)
+			/* @__PURE__ */ activeSelf(this.terminal.element).console.debug(error)
 		}
 		this.terminal.dispose()
 	}

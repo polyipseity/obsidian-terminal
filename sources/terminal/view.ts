@@ -548,7 +548,7 @@ export class TerminalView extends ItemView {
 							},
 						)
 					} catch (error) {
-						activeSelf(contentEl).console.debug(error)
+						/* @__PURE__ */ activeSelf(contentEl).console.debug(error)
 						empty = true
 					}
 					if (empty) { this.#find?.$set({ results: "" }) }
