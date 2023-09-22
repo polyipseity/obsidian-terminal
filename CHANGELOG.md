@@ -2,6 +2,8 @@
 
 ## 3.13.0
 
+Debloating `data.json` and bugfixes.
+
 ### Minor Changes
 
 - 9afd2d0: Move settings `recovery` and `lastReadChangelogVersion` to `localStorage`. (6d612c570926387ee6b5991475cb993517a39d45)
@@ -9,7 +11,7 @@
 ### Patch Changes
 
 - 0879e6d: Fix `layout-change` loop freezing Obsidian if another plugin calls `getViewState` in a `layout-change` listener. An example is `obsidian-image-toolkit` (https://github.com/sissilab/obsidian-image-toolkit/blob/c59bfa18c5cdb267a5f5a62637ff8e3b663cbb0f/src/main.ts#L39-L55). Fixes [GH#26](https://github.com/polyipseity/obsidian-terminal/issues/26).
-- e0b40c0: Fix caret scrolling the editor to make itself invisible every second. (0879e6d0a8a6c1eebef730376bd7df58fdfba4a5)
+- e0b40c0: Fix caret scrolling the editor to make itself visible every second. (0879e6d0a8a6c1eebef730376bd7df58fdfba4a5)
 - 14bfcb1: Remove debug statements. (+f9fc1874e2c0b0b6c486ae6a13e52bf09cef588d)
 
 ## 3.12.3
