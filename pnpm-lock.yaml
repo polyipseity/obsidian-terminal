@@ -45,8 +45,8 @@ importers:
         specifier: ^7.5.4
         version: 7.5.4
       simple-icons:
-        specifier: ^9.14.0
-        version: 9.14.0
+        specifier: ^9.15.0
+        version: 9.15.0
       source-map:
         specifier: ^0.7.4
         version: 0.7.4
@@ -106,8 +106,8 @@ importers:
         specifier: ^1.4.0
         version: 1.4.0
       '@types/browser-util-inspect':
-        specifier: ^0.2.1
-        version: 0.2.1
+        specifier: ^0.2.2
+        version: 0.2.2
       '@types/estree':
         specifier: ^1.0.1
         version: 1.0.1
@@ -762,8 +762,8 @@ packages:
     resolution: {integrity: sha512-2+rYSaWrpdbQG3SA0LmMT6YxWLrI81AqpMlSkw3QtFc2HGDufkweQSn30Eiev7x9LL0oyFrBqk1PXOnB9IEgKg==}
     dev: true
 
-  /@types/browser-util-inspect@0.2.1:
-    resolution: {integrity: sha512-elwTwQw+CCa+Ir3CUuLikop24S2fwQDIW1+2Vmyc4wj31OeNONdJtZeqP5LsBIZy4uB+N0WFycNoslkqBR1u9Q==}
+  /@types/browser-util-inspect@0.2.2:
+    resolution: {integrity: sha512-JTfgEA1hErP6f7ONmngL4INr0/BcaccmsKjiBimSHcZUKjJ1EpJ1vB4hni84j0QhL8oVrLWdo4r3EsdVoGw3Rg==}
     dev: true
 
   /@types/codemirror@0.0.108:
@@ -2933,8 +2933,8 @@ packages:
     resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
     dev: true
 
-  /simple-icons@9.14.0:
-    resolution: {integrity: sha512-8nBO/v1y2p4uQX0lpqrBqBAhbx0GlLVYUb904vrsLxLylYkFQMrlPjTYSFI7d9TaY5kUpoDlqC+/9ojyKDZI9g==}
+  /simple-icons@9.15.0:
+    resolution: {integrity: sha512-76lKUjLHV5xQmNd5uglZitthQjY+Y15e+sKsryEk4Xo9OXmC1E1trBNC5Q4R2FHkHu8lAUhW7Up0mCcG6e0Nqg==}
     engines: {node: '>=0.12.18'}
     dev: false
 
