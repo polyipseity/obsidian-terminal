@@ -4,7 +4,7 @@
 		"url": "PLACEHOLDER"
 	},
 	"dependencies": {
-		"@polyipseity/obsidian-plugin-library": "^1.23.0",
+		"@polyipseity/obsidian-plugin-library": "^1.23.2",
 		"i18next": "^23.5.1",
 		"lodash-es": "^4.17.21",
 		"obsidian": "^1.2.8",
