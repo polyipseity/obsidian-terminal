@@ -229,7 +229,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		useWin32Conhost: true,
 	},
 	terminalMacOSExternal: {
-		args: [],
+		args: ["\"$PWD\""],
 		executable:
 			"/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal",
 		name: "",
