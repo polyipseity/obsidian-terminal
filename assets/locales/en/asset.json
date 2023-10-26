@@ -91,10 +91,6 @@
 		"terminal-file-icon": "file-terminal",
 		"terminal-icon": "terminal"
 	},
-	"magic": {
-		"Python-version-magic": "Python ",
-		"recommended-Python-version": "3.10.0"
-	},
 	"menus": {
 		"open-terminal-icon": "$t(asset:generic.profile-types.{{type}}-icon)"
 	},

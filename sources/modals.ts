@@ -1,6 +1,7 @@
 import {
 	CHECK_EXECUTABLE_WAIT,
 	DEFAULT_PYTHONIOENCODING,
+	PYTHON_REQUIREMENTS,
 } from "./magic.js"
 import {
 	DEFAULT_TERMINAL_OPTIONS,
@@ -26,6 +27,7 @@ import {
 	createDocumentFragment,
 	dynamicRequire,
 	escapeQuerySelectorAttribute,
+	inSet,
 	linkSetting,
 	notice2,
 	printError,
@@ -46,6 +48,7 @@ import { Pseudoterminal } from "./terminal/pseudoterminal.js"
 import SemVer from "semver/classes/semver.js"
 import { Settings } from "./settings-data.js"
 import type { TerminalPlugin } from "./main.js"
+import getPackageVersion from "./get-package-version.py"
 import semverCoerce from "semver/functions/coerce.js"
 
 const
@@ -728,7 +731,10 @@ export class ProfileModal extends Modal {
 							.setName(i18n
 								.t(`components.profile.${profile.type}.Python-executable`))
 							.setDesc(i18n.t(`components.profile.${profile
-								.type}.Python-executable-description`))
+								.type}.Python-executable-description`, {
+								interpolation: { escapeValue: false },
+								version: PYTHON_REQUIREMENTS.Python.version,
+							}))
 							.addText(linkSetting(
 								() => profile.pythonExecutable,
 								value => {
@@ -757,8 +763,10 @@ export class ProfileModal extends Modal {
 										checkingPython = true;
 										(async (): Promise<void> => {
 											try {
-												const [execFileP2, process2] =
-													await Promise.all([execFileP, process]),
+												const [execFileP2, process2, getPackageVersion2] =
+													await Promise.all(
+														[execFileP, process, getPackageVersion],
+													),
 													{ stdout, stderr } = await execFileP2(
 														profile.pythonExecutable,
 														["--version"],
@@ -779,18 +787,72 @@ export class ProfileModal extends Modal {
 												if (stderr) {
 													activeSelf(buttonEl).console.error(stderr)
 												}
-												if (!stdout.includes(i18n
-													.t("asset:magic.Python-version-magic"))) {
+												if (!stdout.trimStart().startsWith("Python ")) {
 													throw new Error(i18n.t("errors.not-Python"))
 												}
+												const msgs = await Promise.all(
+													Object.entries(PYTHON_REQUIREMENTS)
+														.filter(([, { platforms }]) =>
+															inSet(platforms, Platform.CURRENT))
+														.map(async ([name, { version: req }]) => {
+															let ver: SemVer | null = null
+															try {
+																if (name === "Python") {
+																	ver = new SemVer(
+																		semverCoerce(stdout, { loose: true }) ??
+																		stdout,
+																		{ loose: true },
+																	)
+																} else {
+																	const {
+																		stdout: stdout2, stderr: stderr2,
+																	} = await execFileP2(
+																		profile.pythonExecutable,
+																		["-c", getPackageVersion2, name],
+																		{
+																			env: {
+																				...process2.env,
+																				// eslint-disable-next-line @typescript-eslint/naming-convention
+																				PYTHONIOENCODING:
+																					DEFAULT_PYTHONIOENCODING,
+																			},
+																			timeout: CHECK_EXECUTABLE_WAIT *
+																				SI_PREFIX_SCALE,
+																			windowsHide: true,
+																		},
+																	)
+																	if (stdout2) {
+																		activeSelf(buttonEl).console.log(stdout2)
+																	}
+																	if (stderr2) {
+																		activeSelf(buttonEl).console.error(stderr2)
+																	}
+																	ver = new SemVer(
+																		semverCoerce(stdout2, { loose: true }) ??
+																		stdout2,
+																		{ loose: true },
+																	)
+																}
+															} catch (error) {
+																/* @__PURE__ */ activeSelf(buttonEl)
+																	.console.debug(error)
+															}
+															const variant = (ver?.compare(req) ?? -1) >= 0
+																? ""
+																: "unsatisfied"
+															return () => i18n.t(
+																`notices.Python-status-entry-${variant}`,
+																{
+																	interpolation: { escapeValue: false },
+																	name,
+																	requirement: `>=${req.version}`,
+																	version: ver?.version ?? "",
+																},
+															)
+														}),
+												)
 												notice2(
-													() => i18n.t("notices.Python-version-is", {
-														interpolation: { escapeValue: false },
-														version: new SemVer(
-															semverCoerce(stdout, { loose: true }) ?? stdout,
-															{ loose: true },
-														).version,
-													}),
+													() => msgs.map(msg => msg()).join("\n"),
 													settings.value.noticeTimeout,
 													context,
 												)

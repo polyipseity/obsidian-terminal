@@ -22,7 +22,7 @@
 				"Python-executable": "$t(generic.Python)$t(generic.executable)",
 				"Python-executable-check": "$t(generic.check)",
 				"Python-executable-checking": "$t(generic.check)中",
-				"Python-executable-description": "推荐$t(asset:magic.recommended-Python-version)或更高版本。于$t(generic.platforms.unix)$t(generic.spawn)$t(generic.profile-types.integrated)$t(generic.terminal)所需要的。$t(generic.clear)$t(generic.text-field)以$t(generic.disable)$t(generic.Python)。",
+				"Python-executable-description": "推荐{{version}}或更高版本。于$t(generic.platforms.unix)$t(generic.spawn)$t(generic.profile-types.integrated)$t(generic.terminal)所需要的。$t(generic.clear)$t(generic.text-field)以$t(generic.disable)$t(generic.Python)。",
 				"Python-executable-placeholder": "（已$t(generic.disable)）",
 				"arguments": "$t(generic.argument)",
 				"arguments-description": "$t(generic.list-description)",
@@ -195,7 +195,8 @@
 	},
 	"name": "$t(generic.terminal)",
 	"notices": {
-		"Python-version-is": "$t(generic.Python)版本为{{version}}",
+		"Python-status-entry-": "{{name}}：{{version}}（满足：{{requirement}}）",
+		"Python-status-entry-unsatisfied": "{{name}}：{{version}}（未满足：{{requirement}}）",
 		"no-default-profile": "没有$t(generic.type)「$t(generic.profile-types.{{type}})」的$t(generic.default)$t(generic.profile)",
 		"spawning-terminal": "$t(generic.terminal)$t(generic.spawn)中：{{name}}",
 		"terminal-exited": "$t(generic.terminal)已$t(generic.exit)：{{code}}"

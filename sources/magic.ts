@@ -1,3 +1,6 @@
+import { Platform } from "@polyipseity/obsidian-plugin-library"
+import { SemVer, satisfies } from "semver"
+
 export const
 	CHECK_EXECUTABLE_WAIT = 5,
 	DEFAULT_ENCODING = "utf-8",
@@ -12,6 +15,18 @@ export const
 	MAX_HISTORY = 1024,
 	MAX_LOCK_PENDING = Infinity,
 	PLUGIN_UNLOAD_DELAY = 10,
+	PYTHON_REQUIREMENTS = Object.freeze({
+		// Update `README.md`, `magic.ts`, and `requirements.txt` together.
+		// eslint-disable-next-line @typescript-eslint/naming-convention
+		Python: { platforms: Platform.DESKTOP, version: new SemVer("3.10.0") },
+		psutil: { platforms: ["win32"], version: new SemVer("5.9.5") },
+		pywinctl: { platforms: ["win32"], version: new SemVer("0.0.50") },
+		// eslint-disable-next-line @typescript-eslint/naming-convention, camelcase
+		typing_extensions: { platforms: ["win32"], version: new SemVer("4.7.1") },
+	}) satisfies Readonly<Record<string, {
+		readonly platforms: readonly Platform.All[]
+		readonly version: SemVer
+	}>>,
 	TERMINAL_EMULATOR_RESIZE_WAIT = 0.1,
 	TERMINAL_EXIT_CLEANUP_WAIT = 5,
 	TERMINAL_PTY_RESIZE_WAIT = 0.5,

@@ -22,7 +22,7 @@
 				"Python-executable": "$t(generic.Python, capitalize) $t(generic.executable)",
 				"Python-executable-check": "$t(generic.check, capitalize)",
 				"Python-executable-checking": "$t(generic.check_gerund, capitalize)",
-				"Python-executable-description": "Recommend $t(asset:magic.recommended-Python-version) or up. Required on $t(generic.platforms.unix) to $t(generic.spawn) $t(generic.profile-types.integrated) $t(generic.terminal). $t(generic.clear, capitalize) $t(generic.text-field) to $t(generic.disable) $t(generic.Python).",
+				"Python-executable-description": "Recommend {{version}} or up. Required on $t(generic.platforms.unix) to $t(generic.spawn) $t(generic.profile-types.integrated) $t(generic.terminal). $t(generic.clear, capitalize) $t(generic.text-field) to $t(generic.disable) $t(generic.Python).",
 				"Python-executable-placeholder": "($t(generic.disable_past, capitalize))",
 				"arguments": "$t(generic.argument_other, capitalize)",
 				"arguments-description": "$t(generic.list-description, capitalize)",
@@ -209,7 +209,8 @@
 	},
 	"name": "$t(generic.terminal, capitalize)",
 	"notices": {
-		"Python-version-is": "$t(generic.Python, capitalize) version is {{version}}",
+		"Python-status-entry-": "{{name}}: {{version}} (satisfied: {{requirement}})",
+		"Python-status-entry-unsatisfied": "{{name}}: {{version}} (unsatisfied: {{requirement}})",
 		"no-default-profile": "No $t(generic.default) $t(generic.profile) for $t(generic.type) '$t(generic.profile-types.{{type}}, capitalize)'",
 		"spawning-terminal": "$t(generic.spawn_gerund, capitalize) $t(generic.terminal): {{name}}",
 		"terminal-exited": "$t(generic.terminal, capitalize) $t(generic.exit_past): {{code}}"

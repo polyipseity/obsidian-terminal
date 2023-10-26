@@ -53,8 +53,8 @@ This file is automatically opened on first install. You can reopen it in setting
 		- See [their readme](https://github.com/TfTHacker/obsidian42-brat#readme).
 2. (optional for Windows, recommended) Install Python and dependencies.
 	1. Install [Python] 3.10/+.
-	2. (Windows only) Run `pip3 install psutil==5.9.5 pywinctl==0.0.50 typing_extensions==4.7.1`.
-	3. Configure Python executable in plugin settings.
+	2. (Windows only) Run `pip3 install psutil==5.9.5 pywinctl==0.0.50 typing_extensions==4.7.1`. <!-- Update `README.md`, `magic.ts`, and `requirements.txt` together. -->
+	3. Configure Python executable in plugin settings. Press the "Check" button to validate the Python configuration.
 3. Enable plugin.
 4. (optional) Configure plugin settings.
 
