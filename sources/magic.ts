@@ -1,4 +1,4 @@
-import { Platform } from "@polyipseity/obsidian-plugin-library"
+import { Platform, deepFreeze } from "@polyipseity/obsidian-plugin-library"
 import { SemVer } from "semver"
 
 export const
@@ -7,7 +7,7 @@ export const
 	DEFAULT_PYTHON_EXECUTABLE = "python3",
 	DEFAULT_PYTHONIOENCODING = `${DEFAULT_ENCODING}:backslashreplace`,
 	EXIT_SUCCESS = 0,
-	DEFAULT_SUCCESS_EXIT_CODES = Object.freeze([
+	DEFAULT_SUCCESS_EXIT_CODES = deepFreeze([
 		EXIT_SUCCESS.toString(),
 		"SIGINT",
 		"SIGTERM",
@@ -15,7 +15,7 @@ export const
 	MAX_HISTORY = 1024,
 	MAX_LOCK_PENDING = Infinity,
 	PLUGIN_UNLOAD_DELAY = 10,
-	PYTHON_REQUIREMENTS = Object.freeze({
+	PYTHON_REQUIREMENTS = deepFreeze({
 		// Update `README.md`, `magic.ts`, and `requirements.txt` together.
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		Python: { platforms: Platform.DESKTOP, version: new SemVer("3.10.0") },
