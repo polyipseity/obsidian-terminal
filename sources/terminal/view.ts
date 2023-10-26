@@ -261,11 +261,12 @@ export class TerminalView extends ItemView {
 		super(leaf)
 		this.navigation = true
 		const { scope, focusedScope } = this
-		scope.register(TerminalView.modifiers, "`", event => {
+		// Meta + ` does not work well on macOS.
+		scope.register(["Ctrl", "Shift"], "`", event => {
 			this.#emulator?.terminal.focus()
 			consumeEvent(event)
 		})
-		focusedScope.register(TerminalView.modifiers, "`", event => {
+		focusedScope.register(["Ctrl", "Shift"], "`", event => {
 			const { contentEl: { ownerDocument: { activeElement } } } = this
 			if (instanceOf(activeElement, HTMLElement) ||
 				instanceOf(activeElement, SVGElement)) {
