@@ -1,5 +1,5 @@
 import { Platform } from "@polyipseity/obsidian-plugin-library"
-import { SemVer, satisfies } from "semver"
+import { SemVer } from "semver"
 
 export const
 	CHECK_EXECUTABLE_WAIT = 5,
