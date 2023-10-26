@@ -52,6 +52,7 @@ export interface ProfilePresets0 {
 
 	readonly cmdExternal: Settings.Profile.External
 	readonly gnomeTerminalExternal: Settings.Profile.External
+	readonly iTerm2External: Settings.Profile.External
 	readonly konsoleExternal: Settings.Profile.External
 	readonly powershellExternal: Settings.Profile.External
 	readonly pwshExternal: Settings.Profile.External
@@ -157,6 +158,17 @@ const PROFILE_PRESETS0 = deepFreeze({
 		executable: "gnome-terminal",
 		name: "",
 		platforms: { linux: true },
+		restoreHistory: true,
+		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
+		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
+		type: "external",
+	},
+	iTerm2External: {
+		args: ["\"$PWD\""],
+		executable:
+			"/Applications/iTerm.app/Contents/MacOS/iTerm2",
+		name: "",
+		platforms: { darwin: true },
 		restoreHistory: true,
 		successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
 		terminalOptions: DEFAULT_TERMINAL_OPTIONS,
@@ -317,6 +329,7 @@ export type ProfilePresetKeys = readonly [
 
 	"cmdExternal",
 	"gnomeTerminalExternal",
+	"iTerm2External",
 	"konsoleExternal",
 	"powershellExternal",
 	"pwshExternal",

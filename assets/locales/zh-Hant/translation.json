@@ -216,6 +216,7 @@
 		"empty": "$t(generic.profile-types.)",
 		"gitBashIntegrated": "Git Bash：$t(generic.profile-types.integrated)",
 		"gnomeTerminalExternal": "GNOME$t(generic.terminal)：$t(generic.profile-types.external)",
+		"iTerm2External": "iTerm2：$t(generic.profile-types.external, capitalize)",
 		"konsoleExternal": "Konsole：$t(generic.profile-types.external)",
 		"linuxExternalDefault": "$t(generic.platforms.linux)$t(generic.default)：$t(generic.profile-types.external)",
 		"linuxIntegratedDefault": "$t(generic.platforms.linux)$t(generic.default)：$t(generic.profile-types.integrated)",

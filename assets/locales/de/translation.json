@@ -230,6 +230,7 @@
 		"empty": "$t(generic.profile-types., capitalize)",
 		"gitBashIntegrated": "Git Bash: $t(generic.profile-types.integrated, capitalize)",
 		"gnomeTerminalExternal": "GNOME $t(generic.terminal, capitalize): $t(generic.profile-types.external, capitalize)",
+		"iTerm2External": "iTerm2: $t(generic.profile-types.external, capitalize)",
 		"konsoleExternal": "Konsole: $t(generic.profile-types.external, capitalize)",
 		"linuxExternalDefault": "$t(generic.platforms.linux, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
 		"linuxIntegratedDefault": "$t(generic.platforms.linux, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",

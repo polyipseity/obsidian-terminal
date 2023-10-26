@@ -124,6 +124,7 @@ __Terminal emulators__
 - Konsole: `konsole`
 - Terminal (macOS): `/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal "$PWD"`
 - Windows Terminal: `wt`
+- iTerm2: `/Applications/iTerm.app/Contents/MacOS/iTerm2 "$PWD"`
 - xterm: `xterm`
 
 ### Miscellaneous
