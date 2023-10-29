@@ -1,5 +1,18 @@
 # obsidian-terminal
 
+## 3.14.0
+
+### Minor Changes
+
+- 20cd669: Check Python and package versions as well after pressing the "Check" button in the "Python executable" settings. Resolves [GH#22](https://github.com/polyipseity/obsidian-terminal/issues/22).
+- 9a2a89b: Change focus and defocus hotkey to `Ctrl`+`Shift`+`` ` `` for macOS as well. Fixes [GH#31](https://github.com/polyipseity/obsidian-terminal/issues/31).
+
+### Patch Changes
+
+- 959915a: Add profile preset `iTerm2: External`. Helps with [GH#32](https://github.com/polyipseity/obsidian-terminal/issues/32).
+- 30198e0: Fix the macOS terminal profiles not setting the cwd properly. To fix your macOS terminal profiles, add `"$PWD"` (including `"`) as the only argument of the profile.
+- a619365: Fix terminal finder broken when its width is small. (34e11eaf89813215290a25daf76c680be53dff1f)
+
 ## 3.13.0
 
 Debloating `data.json` and bugfixes.
