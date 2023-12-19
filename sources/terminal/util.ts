@@ -20,6 +20,7 @@ import {
 	removeAt,
 	replaceAllRegex,
 } from "@polyipseity/obsidian-plugin-library"
+// eslint-disable-next-line @typescript-eslint/naming-convention
 import AsyncLock from "async-lock"
 import { BUNDLE } from "../import.js"
 import { MAX_LOCK_PENDING } from "../magic.js"

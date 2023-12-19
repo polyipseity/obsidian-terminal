@@ -45,6 +45,7 @@ import { BUNDLE } from "./import.js"
 import type { DeepWritable } from "ts-essentials"
 import { PROFILE_PROPERTIES } from "./terminal/profile-properties.js"
 import { Pseudoterminal } from "./terminal/pseudoterminal.js"
+// eslint-disable-next-line @typescript-eslint/naming-convention
 import SemVer from "semver/classes/semver.js"
 import { Settings } from "./settings-data.js"
 import type { TerminalPlugin } from "./main.js"

@@ -410,6 +410,7 @@ export class TerminalView extends ItemView {
 			.value.t(`asset:components.${TerminalView.type.id}.icon`)
 	}
 
+	// eslint-disable-next-line @typescript-eslint/class-methods-use-this
 	public getViewType(): string {
 		return TerminalView.#namespacedType
 	}

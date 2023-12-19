@@ -48,6 +48,7 @@ import type { IMarker, Terminal } from "xterm"
 import inspect, { type Options } from "browser-util-inspect"
 import { isEmpty, isNil, noop } from "lodash-es"
 import { spawnPromise, writePromise } from "../util.js"
+// eslint-disable-next-line @typescript-eslint/naming-convention
 import AsyncLock from "async-lock"
 import type { AsyncOrSync } from "ts-essentials"
 import { BUNDLE } from "../import.js"
@@ -82,7 +83,7 @@ async function clearTerminal(terminal: Terminal, keep = false): Promise<void> {
 	await tWritePromise(
 		terminal,
 		`${keep
-			? `${NORMALIZED_LINE_FEED.repeat(Math.max(rows - 1, 0))}`
+			? NORMALIZED_LINE_FEED.repeat(Math.max(rows - 1, 0))
 			// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 			: ""}${ansi.erase.display(keep ? 2 : 3)}${ansi.cursor.position()}`,
 	)
