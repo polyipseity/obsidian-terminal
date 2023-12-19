@@ -31,7 +31,7 @@ importers:
         specifier: ^2.26.2
         version: 2.26.2
       '@polyipseity/obsidian':
-        specifier: ^1.2.8
+        specifier: ~1.2.8
         version: 1.2.8(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)
       '@tsconfig/node16':
         specifier: ^16.1.1
