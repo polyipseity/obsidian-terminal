@@ -62,13 +62,9 @@
 		"minAppVersion": "PLACEHOLDER",
 		"name": "PLACEHOLDER"
 	},
-	"overrides": {
-		"tsconfig-paths": "^4.0.0"
-	},
+	"overrides": {},
 	"pnpm": {
-		"overrides": {
-			"tsconfig-paths": "^4.0.0"
-		}
+		"overrides": {}
 	},
 	"private": true,
 	"repository": {
