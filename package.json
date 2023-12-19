@@ -7,7 +7,7 @@
 		"@polyipseity/obsidian-plugin-library": "^1.24.0",
 		"i18next": "^23.5.1",
 		"lodash-es": "^4.17.21",
-		"obsidian": "^1.2.8",
+		"obsidian": "~1.2.8",
 		"semver": "^7.5.4",
 		"ts-essentials": "^9.4.0"
 	},
@@ -67,13 +67,9 @@
 		"minAppVersion": "1.2.8",
 		"name": "PLACEHOLDER"
 	},
-	"overrides": {
-		"tsconfig-paths": "^4.0.0"
-	},
+	"overrides": {},
 	"pnpm": {
-		"overrides": {
-			"tsconfig-paths": "^4.0.0"
-		}
+		"overrides": {}
 	},
 	"private": true,
 	"repository": {
