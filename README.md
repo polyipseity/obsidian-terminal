@@ -137,7 +137,9 @@ The full API is available from [`sources/@types/obsidian-terminal.ts`](sources/%
 
 ### Troubleshooting
 
-- Why do Obsidian hotkeys not work?
+- Is the plugin useful on mobile?
+	- Compared to on desktop, it is much less useful. The only use for it for now is opening a developer console on mobile.
+- Why do hotkeys not work?
 	- If the terminal is in focus, all Obsidian hotkeys are disabled so that you can type special characters into the terminal. You can unfocus the terminal by pressing `Ctrl`+`Shift`+`` ` ``, then you can use Obsidian hotkeys again.
 
 ## Contributing
