@@ -135,6 +135,11 @@ In the developer console, a context variable `$$` is passed into the code, which
 
 The full API is available from [`sources/@types/obsidian-terminal.ts`](sources/%40types/obsidian-terminal.ts).
 
+### Troubleshooting
+
+- Why do Obsidian hotkeys not work?
+	- If the terminal is in focus, all Obsidian hotkeys are disabled so that you can type special characters into the terminal. You can unfocus the terminal by pressing `Ctrl`+`Shift`+`` ` ``, then you can use Obsidian hotkeys again.
+
 ## Contributing
 
 Contributions are welcome!
