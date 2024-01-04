@@ -1,1 +1,1 @@
-# PLACEHOLDER
+# PLACEHOLDER <!-- markdownlint-disable MD024 -->
