@@ -39,62 +39,66 @@ This file is automatically opened on first install. You can reopen it in setting
 ## Installation
 
 1. Install plugin.
-	- Community plugins
-		1. Install the [plugin][community plugin] from community plugins directly.
-	- Manual
-		1. Create directory `terminal` under `.obsidian/plugins` of your vault.
-		2. Place `manifest.json`, `main.js`, and `styles.css` from the [latest release] into the directory.
-	- Building (latest)
-		1. Clone this repository, including its submodules.
-		2. Install [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).
-		3. Run `npm install` in the root directory.
-		4. Run `npm run obsidian:install <vault directory>` in the root directory.
-	- [Obsidian42 - BRAT](https://obsidian.md/plugins?id=obsidian42-brat) (latest)
-		- See [their readme](https://github.com/TfTHacker/obsidian42-brat#readme).
+    - Community plugins
+        1. Install the [plugin][community plugin] from community plugins directly.
+    - Manual
+        1. Create directory `terminal` under `.obsidian/plugins` of your vault.
+        2. Place `manifest.json`, `main.js`, and `styles.css` from the [latest release] into the directory.
+    - Building (latest)
+        1. Clone this repository, including its submodules.
+        2. Install [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).
+        3. Run `npm install` in the root directory.
+        4. Run `npm run obsidian:install <vault directory>` in the root directory.
+    - [Obsidian42 - BRAT](https://obsidian.md/plugins?id=obsidian42-brat) (latest)
+        - See [their readme](https://github.com/TfTHacker/obsidian42-brat#readme).
 2. (optional for Windows, recommended) Install Python and dependencies.
-	1. Install [Python] 3.10/+.
-	2. (Windows only) Run `pip3 install psutil==5.9.5 pywinctl==0.0.50 typing_extensions==4.7.1`. <!-- Update `README.md`, `magic.ts`, and `requirements.txt` together. -->
-	3. Configure Python executable in plugin settings. Press the "Check" button to validate the Python configuration.
+    1. Install [Python] 3.10/+.
+    2. (Windows only) Run `pip3 install psutil==5.9.5 pywinctl==0.0.50 typing_extensions==4.7.1`. <!-- Update `README.md`, `magic.ts`, and `requirements.txt` together. -->
+    3. Configure Python executable in plugin settings. Press the "Check" button to validate the Python configuration.
 3. Enable plugin.
 4. (optional) Configure plugin settings.
 
 ## Usage
 
 - To start a new external or integrated terminal
-	- Ribbon
-		1. Click on the `Open terminal` ribbon.
-		2. Choose the desired profile.
-	- Context menu
-		1. Right-click on files, folders, or tab headers.
-		2. Choose the desired action (and profile).
-	- Command palette
-		1. Press `Ctrl`+`P` or click on the `Open command palette` ribbon next to the left window border.
-		2. Choose the desired action (and profile).
+  - Ribbon
+        1. Click on the `Open terminal` ribbon.
+        2. Choose the desired profile.
+  - Context menu
+        1. Right-click on files, folders, or tab headers.
+        2. Choose the desired action (and profile).
+  - Command palette
+        1. Press `Ctrl`+`P` or click on the `Open command palette` ribbon next to the left window border.
+        2. Choose the desired action (and profile).
 - To save and restore integrated terminal history
-	1. Keep the terminal open when exiting Obsidian.
-	2. Terminal history will be restored next time Obsidian is opened.
+    1. Keep the terminal open when exiting Obsidian.
+    2. Terminal history will be restored next time Obsidian is opened.
 - Additional actions
-	- Includes
-		- Find in terminal: (1), (4)
-		- Clear terminal: (1), (4)
-		- Restart terminal: (1)
-		- Edit terminal: (1)
-		- Save terminal history as file: (1)
-		- Export, import, or edit settings: (2), (3)
-		- Open documentation: (2), (3)
-	- Available by
-		- (1) Right-click on tab header/`More options`
-		- (2) Open settings
-		- (3) Open command palette
-		- (4) Use keyboard shortcuts
+  - Includes
+    - Find in terminal: (1), (4)
+    - Clear terminal: (1), (4)
+    - Restart terminal: (1)
+    - Edit terminal: (1)
+    - Save terminal history as file: (1)
+    - Export, import, or edit settings: (2), (3)
+    - Open documentation: (2), (3)
+  - Available by
+    - (1) Right-click on tab header/`More options`
+    - (2) Open settings
+    - (3) Open command palette
+    - (4) Use keyboard shortcuts
 
 ### Keyboard shortcuts
 
+<!-- markdownlint-disable-next-line MD036 -->
 __Terminal tab is focused__
+
 - Focus terminal: `Ctrl`+`Shift`+`` ` ``
 - Inherits global keyboard shortcuts
 
+<!-- markdownlint-disable-next-line MD036 -->
 __Terminal is focused__
+
 - Focus terminal tab/Unfocus terminal: `Ctrl`+`Shift`+`` ` ``
 - Clear terminal: `Ctrl`+`Shift`+`K`, `Command`+`K` (macOS)
 - Find in terminal: `Ctrl`+`Shift`+`F`, `Command`+`F` (macOS)
@@ -107,7 +111,9 @@ When setting up a terminal profile, you need to distinguish between shells and t
 
 #### Examples
 
+<!-- markdownlint-disable-next-line MD036 -->
 __Shells__
+
 - Bash: `bash`
 - Bourne shell: `sh`
 - Command Prompt: `cmd`
@@ -118,7 +124,9 @@ __Shells__
 - Windows Subsystem for Linux: `wsl` or `wsl -d <distribution name>`
 - Z shell: `zsh`
 
+<!-- markdownlint-disable-next-line MD036 -->
 __Terminal emulators__
+
 - Command Prompt: `cmd`
 - GNOME Terminal: `gnome-terminal`
 - Konsole: `konsole`
@@ -138,9 +146,9 @@ The full API is available from [`sources/@types/obsidian-terminal.ts`](sources/%
 ### Troubleshooting
 
 - Is the plugin useful on mobile?
-	- Compared to on desktop, it is much less useful. The only use for it for now is opening a developer console on mobile.
+  - Compared to on desktop, it is much less useful. The only use for it for now is opening a developer console on mobile.
 - Why do hotkeys not work?
-	- If the terminal is in focus, all Obsidian hotkeys are disabled so that you can type special characters into the terminal. You can unfocus the terminal by pressing `Ctrl`+`Shift`+`` ` ``, then you can use Obsidian hotkeys again.
+  - If the terminal is in focus, all Obsidian hotkeys are disabled so that you can type special characters into the terminal. You can unfocus the terminal by pressing `Ctrl`+`Shift`+`` ` ``, then you can use Obsidian hotkeys again.
 
 ## Contributing
 
@@ -169,35 +177,40 @@ Translation files are under [`assets/locales/`](assets/locales/). Each locale ha
 To contribute translation for an existing locale, modify the files in the corresponding directory.
 
 For a new locale, create a new directory named with its language tag and copy [`assets/locales/en/translation.json`](assets/locales/en/translation.json) into it. Then, add an entry to [`assets/locales/en/language.json`](assets/locales/en/language.json) in this format:
+
 ```JSONc
 {
-	// ...
-	"en": "English",
-	"(your-language-tag)": "(Native name of your language)",
-	"uwu": "Uwuish",
-	// ...
+    // ...
+    "en": "English",
+    "(your-language-tag)": "(Native name of your language)",
+    "uwu": "Uwuish",
+    // ...
 }
 ```
+
 Sort the list of languages by the alphabetical order of their language tags. Then modify the files in the new directory. There will be errors in [`assets/locales.ts`](assets/locales.ts), which you can ignore and we will fix them for you. You are welcome to fix them yourself if you know TypeScript.
 
 When translating, keep in mind the following things:
+
 - Do not translate anything between `{{` and `}}` (`{{example}}`). They are __interpolations__ and will be replaced by localized strings at runtime.
 - Do not translate anything between `$t(` and `)` (`$t(example)`). They refer to other localized strings. To find the localized string being referred to, follow the path of the key, which is separated by dots (`.`). For example, the key [`youtu.be./dQw4w9WgXcQ`](https://youtu.be./dQw4w9WgXcQ) refers to:
+
 ```JSONc
 {
-	// ...
-	"youtu": {
-		// ...
-		"be": {
-			// ...
-			"/dQw4w9WgXcQ": "I am 'youtu.be./dQw4w9WgXcQ'!",
-			// ...
-		},
-		// ...
-	},
-	// ...
+    // ...
+    "youtu": {
+        // ...
+        "be": {
+            // ...
+            "/dQw4w9WgXcQ": "I am 'youtu.be./dQw4w9WgXcQ'!",
+            // ...
+        },
+        // ...
+    },
+    // ...
 }
 ```
+
 - The keys under `generic` are vocabularies. They can be referred in translation strings by `$t(generic.key)`. Refer to them as much as possible to standardize translations for vocabularies that appear in different places.
 - It is okay to move interpolations and references to other localized strings around to make the translation natural. It is also okay to not use some references used in the original translation. However, it is NOT okay to not use all interpolations.
 
