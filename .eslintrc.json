@@ -410,6 +410,19 @@
           }
         ]
       }
+    },
+    {
+      "files": [
+        "*.md"
+      ],
+      "parser": "eslint-plugin-markdownlint/parser",
+      "extends": [
+        "plugin:markdownlint/recommended"
+      ],
+      "rules": {
+        "max-len": "off",
+        "markdownlint/md013": "off"
+      }
     }
   ],
   "parser": "espree",
