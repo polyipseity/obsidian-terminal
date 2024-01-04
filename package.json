@@ -30,6 +30,7 @@
 		"eslint": "^8.56.0",
 		"eslint-import-resolver-typescript": "^3.6.1",
 		"eslint-plugin-import": "^2.29.1",
+		"eslint-plugin-markdownlint": "^0.5.0",
 		"p-lazy": "^4.0.0",
 		"tslib": "^2.6.2",
 		"typescript": "^5.3.3"
