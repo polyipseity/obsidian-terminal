@@ -1,5 +1,5 @@
 jobs:
-  build:
+  release-latest:
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -20,22 +20,7 @@ jobs:
       env:
         GH_TOKEN: ${{github.token}}
       run: |
-        gh release upload latest .github/*.tgz main.js manifest.json styles.css --clobber
-  build-pnpm:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: recursive
-    - uses: pnpm/action-setup@v2
-      with:
-        version: '*'
-    - uses: actions/setup-node@v3
-      with:
-        cache: pnpm
-        node-version: '*'
-    - run: pnpm install
-    - run: pnpm build
+        gh release upload latest .github/*.tgz --clobber
 on:
   push:
     tags:
