@@ -1,0 +1,33 @@
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - uses: actions/setup-node@v3
+      with:
+        cache: npm
+        node-version: '*'
+    - run: npm ci
+    - run: npm run build
+  build-pnpm:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - uses: pnpm/action-setup@v2
+      with:
+        version: '*'
+    - uses: actions/setup-node@v3
+      with:
+        cache: pnpm
+        node-version: '*'
+    - run: pnpm install
+    - run: pnpm build
+on:
+  pull_request_target:
+  push:
+  workflow_dispatch:
+permissions: {}
