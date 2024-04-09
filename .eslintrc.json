@@ -488,7 +488,10 @@
     ],
     "indent": [
       "error",
-      "tab"
+      "tab",
+      {
+        "SwitchCase": 1
+      }
     ],
     "linebreak-style": "off",
     "max-classes-per-file": "off",
@@ -775,14 +778,7 @@
       }
     ],
     "sort-vars": "off",
-    "space-before-function-paren": [
-      "error",
-      {
-        "anonymous": "never",
-        "asyncArrow": "always",
-        "named": "never"
-      }
-    ]
+    "space-before-function-paren": "off"
   },
   "settings": {
     "import/resolver": {
