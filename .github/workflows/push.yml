@@ -11,6 +11,7 @@ jobs:
         node-version: '*'
     - run: npm ci
     - run: npm run build
+
   build-pnpm:
     runs-on: ubuntu-latest
     steps:
@@ -26,8 +27,14 @@ jobs:
         node-version: '*'
     - run: pnpm install
     - run: pnpm build
+
 on:
-  pull_request_target:
+  pull_request:
+    branches:
+    - main
   push:
+    branches:
+    - main
   workflow_dispatch:
+
 permissions: {}

@@ -71,7 +71,7 @@ class Loaded0 {
 					localSettings.mutate(lsm => {
 						lsm.lastReadChangelogVersion = version
 					}).then(async () => localSettings.write())
-						.catch(error => { self.console.error(error) })
+						.catch((error: unknown) => { self.console.error(error) })
 				}
 			} catch (error) {
 				printError(
