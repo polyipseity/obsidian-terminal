@@ -11,30 +11,57 @@ importers:
       '@polyipseity/obsidian-plugin-library':
         specifier: ^1.24.0
         version: 1.24.0(@capacitor/core@5.2.2)(@codemirror/state@6.2.1)(@codemirror/view@6.16.0)(esbuild@0.20.2)(typescript@5.4.4)
+      '@xterm/addon-canvas':
+        specifier: ^0.7.0
+        version: 0.7.0(@xterm/xterm@5.5.0)
+      '@xterm/addon-fit':
+        specifier: ^0.10.0
+        version: 0.10.0(@xterm/xterm@5.5.0)
+      '@xterm/addon-ligatures':
+        specifier: ^0.9.0
+        version: 0.9.0(@xterm/xterm@5.5.0)
+      '@xterm/addon-search':
+        specifier: ^0.15.0
+        version: 0.15.0(@xterm/xterm@5.5.0)
+      '@xterm/addon-serialize':
+        specifier: ^0.13.0
+        version: 0.13.0(@xterm/xterm@5.5.0)
+      '@xterm/addon-unicode11':
+        specifier: ^0.8.0
+        version: 0.8.0(@xterm/xterm@5.5.0)
+      '@xterm/addon-web-links':
+        specifier: ^0.11.0
+        version: 0.11.0(@xterm/xterm@5.5.0)
+      '@xterm/addon-webgl':
+        specifier: ^0.18.0
+        version: 0.18.0(@xterm/xterm@5.5.0)
+      '@xterm/xterm':
+        specifier: ^5.5.0
+        version: 5.5.0
       acorn:
-        specifier: ^8.10.0
-        version: 8.10.0
+        specifier: ^8.11.3
+        version: 8.11.3
       ansi-escape-sequences:
         specifier: ^6.2.2
         version: 6.2.2
       async-lock:
-        specifier: ^1.4.0
-        version: 1.4.0
+        specifier: ^1.4.1
+        version: 1.4.1
       browser-util-inspect:
         specifier: ^0.2.0
         version: 0.2.0
       i18next:
-        specifier: ^23.11.0
-        version: 23.11.0
+        specifier: ^23.11.1
+        version: 23.11.1
       immutable:
-        specifier: ^4.3.4
-        version: 4.3.4
+        specifier: ^4.3.5
+        version: 4.3.5
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
       monkey-around:
-        specifier: ^2.3.0
-        version: 2.3.0
+        specifier: ^3.0.0
+        version: 3.0.0
       obsidian:
         specifier: ~1.2.8
         version: 1.2.8(@codemirror/state@6.2.1)(@codemirror/view@6.16.0)
@@ -42,8 +69,8 @@ importers:
         specifier: ^7.6.0
         version: 7.6.0
       simple-icons:
-        specifier: ^9.15.0
-        version: 9.15.0
+        specifier: ^11.12.0
+        version: 11.12.0
       source-map:
         specifier: ^0.7.4
         version: 0.7.4
@@ -53,33 +80,6 @@ importers:
       ts-essentials:
         specifier: ^9.4.2
         version: 9.4.2(typescript@5.4.4)
-      xterm:
-        specifier: ^5.3.0
-        version: 5.3.0
-      xterm-addon-canvas:
-        specifier: ^0.5.0
-        version: 0.5.0(xterm@5.3.0)
-      xterm-addon-fit:
-        specifier: ^0.8.0
-        version: 0.8.0(xterm@5.3.0)
-      xterm-addon-ligatures:
-        specifier: ^0.7.0
-        version: 0.7.0(xterm@5.3.0)
-      xterm-addon-search:
-        specifier: ^0.13.0
-        version: 0.13.0(xterm@5.3.0)
-      xterm-addon-serialize:
-        specifier: ^0.11.0
-        version: 0.11.0(xterm@5.3.0)
-      xterm-addon-unicode11:
-        specifier: ^0.6.0
-        version: 0.6.0(xterm@5.3.0)
-      xterm-addon-web-links:
-        specifier: ^0.9.0
-        version: 0.9.0(xterm@5.3.0)
-      xterm-addon-webgl:
-        specifier: ^0.16.0
-        version: 0.16.0(xterm@5.3.0)
     devDependencies:
       '@changesets/cli':
         specifier: ^2.27.1
@@ -97,17 +97,17 @@ importers:
         specifier: ^2.0.5
         version: 2.0.5
       '@types/ansi-escape-sequences':
-        specifier: ^4.0.0
-        version: 4.0.0
+        specifier: ^4.0.4
+        version: 4.0.4
       '@types/async-lock':
-        specifier: ^1.4.0
-        version: 1.4.0
+        specifier: ^1.4.2
+        version: 1.4.2
       '@types/browser-util-inspect':
-        specifier: ^0.2.2
-        version: 0.2.2
+        specifier: ^0.2.4
+        version: 0.2.4
       '@types/estree':
-        specifier: ^1.0.1
-        version: 1.0.1
+        specifier: ^1.0.5
+        version: 1.0.5
       '@types/lodash-es':
         specifier: ^4.17.12
         version: 4.17.12
@@ -608,7 +608,7 @@ packages:
       ajv: 6.12.6
       debug: 4.3.4
       espree: 9.6.1
-      globals: 13.24.0
+      globals: 13.20.0
       ignore: 5.3.1
       import-fresh: 3.3.0
       js-yaml: 4.1.0
@@ -710,13 +710,13 @@ packages:
     dependencies:
       '@capacitor/filesystem': 5.2.0(@capacitor/core@5.2.2)
       '@jridgewell/trace-mapping': 0.3.19
-      async-lock: 1.4.0
+      async-lock: 1.4.1
       browser-util-inspect: 0.2.0
       convert-source-map: 2.0.0
       deep-equal: 2.2.2
       esbuild: 0.20.2
       file-saver: 2.0.5
-      i18next: 23.11.0
+      i18next: 23.11.1
       i18next-resources-to-backend: 1.1.4
       import-meta-resolve: 3.0.0
       lodash-es: 4.17.21
@@ -762,28 +762,16 @@ packages:
     resolution: {integrity: sha512-ec4tjL2Rr0pkZ5hww65c+EEPYwxOi4Ryv+0MtjeaSQRJyq322Q27eOQiFbuNgw2hpL4hB1/W/HBGk3VKS43osg==}
     dev: true
 
-  /@types/ansi-escape-sequences@4.0.0:
-    resolution: {integrity: sha512-y9KJUf19SBowoaqhWdQNnErxFMNsKbuair2i3SGv5Su1ExLPAJz37iPXLHKIFQGYkHGxsSe45rNt8ZekXxJwUw==}
+  /@types/ansi-escape-sequences@4.0.4:
+    resolution: {integrity: sha512-pyFROz12oSAohhiOAQER+/6rxYgnmr4FYyU3oyuClfd9O9n4+6SBsfC8ZNNtnbRgIgwjDdRbL8i7kvzbN0LVYg==}
     dev: true
 
-  /@types/async-lock@1.4.0:
-    resolution: {integrity: sha512-2+rYSaWrpdbQG3SA0LmMT6YxWLrI81AqpMlSkw3QtFc2HGDufkweQSn30Eiev7x9LL0oyFrBqk1PXOnB9IEgKg==}
+  /@types/async-lock@1.4.2:
+    resolution: {integrity: sha512-HlZ6Dcr205BmNhwkdXqrg2vkFMN2PluI7Lgr8In3B3wE5PiQHhjRqtW/lGdVU9gw+sM0JcIDx2AN+cW8oSWIcw==}
     dev: true
 
-  /@types/browser-util-inspect@0.2.2:
-    resolution: {integrity: sha512-JTfgEA1hErP6f7ONmngL4INr0/BcaccmsKjiBimSHcZUKjJ1EpJ1vB4hni84j0QhL8oVrLWdo4r3EsdVoGw3Rg==}
-    dev: true
-
-  /@types/ansi-escape-sequences@4.0.0:
-    resolution: {integrity: sha512-y9KJUf19SBowoaqhWdQNnErxFMNsKbuair2i3SGv5Su1ExLPAJz37iPXLHKIFQGYkHGxsSe45rNt8ZekXxJwUw==}
-    dev: true
-
-  /@types/async-lock@1.4.0:
-    resolution: {integrity: sha512-2+rYSaWrpdbQG3SA0LmMT6YxWLrI81AqpMlSkw3QtFc2HGDufkweQSn30Eiev7x9LL0oyFrBqk1PXOnB9IEgKg==}
-    dev: true
-
-  /@types/browser-util-inspect@0.2.2:
-    resolution: {integrity: sha512-JTfgEA1hErP6f7ONmngL4INr0/BcaccmsKjiBimSHcZUKjJ1EpJ1vB4hni84j0QhL8oVrLWdo4r3EsdVoGw3Rg==}
+  /@types/browser-util-inspect@0.2.4:
+    resolution: {integrity: sha512-m4JohXh9JmxXT3dn4TAnAVquJqSiQMPahKNTfO++ZpZ75AB3aMOmDOCDnFvAPvkG13TzStqJDQRgao4CQvIIZw==}
     dev: true
 
   /@types/codemirror@0.0.108:
@@ -791,8 +779,8 @@ packages:
     dependencies:
       '@types/tern': 0.23.4
 
-  /@types/estree@1.0.1:
-    resolution: {integrity: sha512-LG4opVs2ANWZ1TJoKc937iMmNstM/d0ae1vNbnBvBhqCSezgVUOzcLCqbI5elV8Vy6WKwKjaqR+zO9VKirBBCA==}
+  /@types/estree@1.0.5:
+    resolution: {integrity: sha512-/kYRxGDLWzHOB7q+wtSUQlFrtcdUccpfy+X+9iMBpHK8QLLhx2wIPYuS5DYtR9Wa/YlZAbIovy7qVdB1Aq6Lyw==}
 
   /@types/json-schema@7.0.15:
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
@@ -837,7 +825,7 @@ packages:
   /@types/tern@0.23.4:
     resolution: {integrity: sha512-JAUw1iXGO1qaWwEOzxTKJZ/5JxVeON9kvGZ/osgZaJImBnyjyn0cjovPsf6FNLmyGY8Vw9DoXZCMlfMkMwHRWg==}
     dependencies:
-      '@types/estree': 1.0.1
+      '@types/estree': 1.0.5
 
   /@typescript-eslint/eslint-plugin@7.6.0(@typescript-eslint/parser@7.6.0)(eslint@8.57.0)(typescript@5.4.4):
     resolution: {integrity: sha512-gKmTNwZnblUdnTIJu3e9kmeRRzV2j1a/LUO27KNNAnIC5zjy1aSvXSRp4rVNlmAoHlQ7HzX42NbKpcSr4jF80A==}
@@ -974,6 +962,77 @@ packages:
   /@ungap/structured-clone@1.2.0:
     resolution: {integrity: sha512-zuVdFrMJiuCDQUMCzQaD6KL28MjnqqN8XnAqiEq9PNm/hCPTSGfrXCOfwj1ow4LFb/tNymJPwsNbVePc1xFqrQ==}
     dev: true
+
+  /@xterm/addon-canvas@0.7.0(@xterm/xterm@5.5.0):
+    resolution: {integrity: sha512-LF5LYcfvefJuJ7QotNRdRSPc9YASAVDeoT5uyXS/nZshZXjYplGXRECBGiznwvhNL2I8bq1Lf5MzRwstsYQ2Iw==}
+    peerDependencies:
+      '@xterm/xterm': ^5.0.0
+    dependencies:
+      '@xterm/xterm': 5.5.0
+    dev: false
+
+  /@xterm/addon-fit@0.10.0(@xterm/xterm@5.5.0):
+    resolution: {integrity: sha512-UFYkDm4HUahf2lnEyHvio51TNGiLK66mqP2JoATy7hRZeXaGMRDr00JiSF7m63vR5WKATF605yEggJKsw0JpMQ==}
+    peerDependencies:
+      '@xterm/xterm': ^5.0.0
+    dependencies:
+      '@xterm/xterm': 5.5.0
+    dev: false
+
+  /@xterm/addon-ligatures@0.9.0(@xterm/xterm@5.5.0):
+    resolution: {integrity: sha512-zVV1AHV1SIm/rdzR5VDPyg+qUnR1SjH4H75iXiB7r6YDa1yEHIqc/EwnUIwz+yeeZozkh8hjbH80L7luEgtxtQ==}
+    engines: {node: '>8.0.0'}
+    peerDependencies:
+      '@xterm/xterm': ^5.0.0
+    dependencies:
+      '@xterm/xterm': 5.5.0
+      font-finder: 1.1.0
+      font-ligatures: 1.4.1
+    dev: false
+
+  /@xterm/addon-search@0.15.0(@xterm/xterm@5.5.0):
+    resolution: {integrity: sha512-ZBZKLQ+EuKE83CqCmSSz5y1tx+aNOCUaA7dm6emgOX+8J9H1FWXZyrKfzjwzV+V14TV3xToz1goIeRhXBS5qjg==}
+    peerDependencies:
+      '@xterm/xterm': ^5.0.0
+    dependencies:
+      '@xterm/xterm': 5.5.0
+    dev: false
+
+  /@xterm/addon-serialize@0.13.0(@xterm/xterm@5.5.0):
+    resolution: {integrity: sha512-kGs8o6LWAmN1l2NpMp01/YkpxbmO4UrfWybeGu79Khw5K9+Krp7XhXbBTOTc3GJRRhd6EmILjpR8k5+odY39YQ==}
+    peerDependencies:
+      '@xterm/xterm': ^5.0.0
+    dependencies:
+      '@xterm/xterm': 5.5.0
+    dev: false
+
+  /@xterm/addon-unicode11@0.8.0(@xterm/xterm@5.5.0):
+    resolution: {integrity: sha512-LxinXu8SC4OmVa6FhgwsVCBZbr8WoSGzBl2+vqe8WcQ6hb1r6Gj9P99qTNdPiFPh4Ceiu2pC8xukZ6+2nnh49Q==}
+    peerDependencies:
+      '@xterm/xterm': ^5.0.0
+    dependencies:
+      '@xterm/xterm': 5.5.0
+    dev: false
+
+  /@xterm/addon-web-links@0.11.0(@xterm/xterm@5.5.0):
+    resolution: {integrity: sha512-nIHQ38pQI+a5kXnRaTgwqSHnX7KE6+4SVoceompgHL26unAxdfP6IPqUTSYPQgSwM56hsElfoNrrW5V7BUED/Q==}
+    peerDependencies:
+      '@xterm/xterm': ^5.0.0
+    dependencies:
+      '@xterm/xterm': 5.5.0
+    dev: false
+
+  /@xterm/addon-webgl@0.18.0(@xterm/xterm@5.5.0):
+    resolution: {integrity: sha512-xCnfMBTI+/HKPdRnSOHaJDRqEpq2Ugy8LEj9GiY4J3zJObo3joylIFaMvzBwbYRg8zLtkO0KQaStCeSfoaI2/w==}
+    peerDependencies:
+      '@xterm/xterm': ^5.0.0
+    dependencies:
+      '@xterm/xterm': 5.5.0
+    dev: false
+
+  /@xterm/xterm@5.5.0:
+    resolution: {integrity: sha512-hqJHYaQb5OptNunnyAnkHyM8aCjZ1MEIDTQu1iIbbTD/xops91NB5yq1ZK/dC2JDbVWtF23zUtl9JE2NqwT87A==}
+    dev: false
 
   /acorn-jsx@5.3.2(acorn@8.11.3):
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
@@ -1113,8 +1172,8 @@ packages:
     engines: {node: '>=0.10.0'}
     dev: true
 
-  /async-lock@1.4.0:
-    resolution: {integrity: sha512-coglx5yIWuetakm3/1dsX9hxCNox22h7+V80RQOu2XUUMidtArxKoZoOtHUPuR84SycKTXzgGzAUR5hJxujyJQ==}
+  /async-lock@1.4.1:
+    resolution: {integrity: sha512-Az2ZTpuytrtqENulXwO3GGv1Bztugx6TT37NIo7imr/Qo0gsYiGtSdBa2B6fsXhTpVZDNfu1Qn3pk531e3q+nQ==}
     dev: false
 
   /available-typed-arrays@1.0.5:
@@ -1136,12 +1195,6 @@ packages:
     dependencies:
       balanced-match: 1.0.2
       concat-map: 0.0.1
-
-  /brace-expansion@2.0.1:
-    resolution: {integrity: sha512-XnAIvQ8eM+kC6aULx6wuQiwVsnzsi9d3WxzV3FpWTGA19F621kwdbsAcFKXgKUHZWsy+mY6iL1sHTxWEFCytDA==}
-    dependencies:
-      balanced-match: 1.0.2
-    dev: true
 
   /brace-expansion@2.0.1:
     resolution: {integrity: sha512-XnAIvQ8eM+kC6aULx6wuQiwVsnzsi9d3WxzV3FpWTGA19F621kwdbsAcFKXgKUHZWsy+mY6iL1sHTxWEFCytDA==}
@@ -1750,7 +1803,7 @@ packages:
       file-entry-cache: 6.0.1
       find-up: 5.0.0
       glob-parent: 6.0.2
-      globals: 13.24.0
+      globals: 13.20.0
       graphemer: 1.4.0
       ignore: 5.3.1
       imurmurhash: 0.1.4
@@ -1854,7 +1907,7 @@ packages:
     resolution: {integrity: sha512-7Gps/XWymbLk2QLYK4NzpMOrYjMhdIxXuIvy2QBsLE6ljuodKvdkWs/cpyJJ3CVIVpH0Oi1Hvg1ovbMzLdFBBg==}
     engines: {node: ^10.12.0 || >=12.0.0}
     dependencies:
-      flat-cache: 3.2.0
+      flat-cache: 3.0.4
     dev: true
 
   /file-saver@2.0.5:
@@ -1891,17 +1944,16 @@ packages:
       pkg-dir: 4.2.0
     dev: true
 
-  /flat-cache@3.2.0:
-    resolution: {integrity: sha512-CYcENa+FtcUKLmhhqyctpclsq7QF38pKjZHsGNiSQF5r4FtoKDWabFDl3hzaEQMvT1LHEysw5twgLvpYYb4vbw==}
+  /flat-cache@3.0.4:
+    resolution: {integrity: sha512-dm9s5Pw7Jc0GvMYbshN6zchCA9RgQlzzEZX3vylR9IqFfS8XciblUXOKfW6SiuJ0e13eDYZoZV5wdrev7P3Nwg==}
     engines: {node: ^10.12.0 || >=12.0.0}
     dependencies:
-      flatted: 3.3.1
-      keyv: 4.5.4
+      flatted: 3.2.7
       rimraf: 3.0.2
     dev: true
 
-  /flatted@3.3.1:
-    resolution: {integrity: sha512-X8cqMLLie7KsNUDSdzeN8FYK9rEt4Dt67OsG/DNGnYTSDBG4uFAJFBnUeiV+zCVAvwFy56IjM9sH51jVaEhNxw==}
+  /flatted@3.2.7:
+    resolution: {integrity: sha512-5nqDSxl8nn5BSNxyR3n4I6eDmbolI6WT+QqR547RwxQapgjQBmtktdP+HTBb/a/zLsbzERTONyUB5pefh5TtjQ==}
     dev: true
 
   /font-finder@1.1.0:
@@ -2019,8 +2071,8 @@ packages:
       once: 1.4.0
       path-is-absolute: 1.0.1
 
-  /globals@13.24.0:
-    resolution: {integrity: sha512-AhO5QUcj8llrbG09iWhPU2B204J1xnPeL8kQmVorSsy+Sjj1sk8gIyh6cUocGmH4L0UuhAJy+hJMRA4mgA4mFQ==}
+  /globals@13.20.0:
+    resolution: {integrity: sha512-Qg5QtVkCy/kv3FUSlu4ukeZDVf9ee0iXLAUYX13gbR17bnejFTzr4iS9bY7kwCf1NztRNm1t91fjOiyx4CSwPQ==}
     engines: {node: '>=8'}
     dependencies:
       type-fest: 0.20.2
@@ -2126,8 +2178,8 @@ packages:
       '@babel/runtime': 7.23.6
     dev: false
 
-  /i18next@23.11.0:
-    resolution: {integrity: sha512-VwFtlgy2LDbY0Qs6VfekIm6mv5/JmSJrtBf4aszl7Vby8+GcBlri0/7dkMZXmzTfiBMPUPBOmYCdQK7K4emkGQ==}
+  /i18next@23.11.1:
+    resolution: {integrity: sha512-mXw4A24BiPZKRsbb9ewgSvjYd6fxFCNwJyfK6nYfSTIAX2GkCWcb598m3DFkDZmqADatvuASrKo6qwORz3VwTQ==}
     dependencies:
       '@babel/runtime': 7.23.6
     dev: false
@@ -2144,8 +2196,8 @@ packages:
     engines: {node: '>= 4'}
     dev: true
 
-  /immutable@4.3.4:
-    resolution: {integrity: sha512-fsXeu4J4i6WNWSikpI88v/PcVflZz+6kMhUfIwc5SY+poQRPnaf5V7qds6SUyUN3cVxEzuCab7QIoLOQ+DQ1wA==}
+  /immutable@4.3.5:
+    resolution: {integrity: sha512-8eabxkth9gZatlwl5TBuJnCsoTADlL6ftEr7A4qgdaTsPyreilDSnUk57SO+jfKcNtxPa22U5KK6DSeAYhpBJw==}
     dev: false
 
   /import-fresh@3.3.0:
@@ -2369,10 +2421,6 @@ packages:
       argparse: 2.0.1
     dev: true
 
-  /json-buffer@3.0.1:
-    resolution: {integrity: sha512-4bV5BfR2mqfQTJm+V5tPPdf+ZpuhiIvTuAB5g8kcrXOZpTT/QwwVRWBywX1ozr6lEuPdbHxwaJlm9G6mI2sfSQ==}
-    dev: true
-
   /json-parse-even-better-errors@2.3.1:
     resolution: {integrity: sha512-xyFwyhro/JEof6Ghe2iz2NcXoj2sloNsWr/XsERDK/oiPCfaNhl5ONfp+jQdAZRQQ0IJWNzH9zIZF7li91kh2w==}
     dev: true
@@ -2396,12 +2444,6 @@ packages:
     resolution: {integrity: sha512-m6F1R3z8jjlf2imQHS2Qez5sjKWQzbuuhuJ/FKYFRZvPE3PuHcSMVZzfsLhGVOkfd20obL5SWEBew5ShlquNxg==}
     optionalDependencies:
       graceful-fs: 4.2.11
-    dev: true
-
-  /keyv@4.5.4:
-    resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
-    dependencies:
-      json-buffer: 3.0.1
     dev: true
 
   /kind-of@6.0.3:
@@ -2573,13 +2615,6 @@ packages:
       brace-expansion: 2.0.1
     dev: true
 
-  /minimatch@9.0.4:
-    resolution: {integrity: sha512-KqWh+VchfxcMNRAJjj2tnsSJdNbHsVgnkBhTNrW7AjVo6OvLtxw8zfT9oLw1JSohlFzJ8jCoTgaoXvJ+kHt6fw==}
-    engines: {node: '>=16 || 14 >=14.17'}
-    dependencies:
-      brace-expansion: 2.0.1
-    dev: true
-
   /minimist-options@4.1.0:
     resolution: {integrity: sha512-Q4r8ghd80yhO/0j1O3B2BjweX3fiHg9cdOwjJd2J76Q135c+NDxGCqdYKQ1SKBuFfgWbAUzBfvYjPUEeNgqN1A==}
     engines: {node: '>= 6'}
@@ -2603,6 +2638,10 @@ packages:
 
   /monkey-around@2.3.0:
     resolution: {integrity: sha512-QWcCUWjqE/MCk9cXlSKZ1Qc486LD439xw/Ak8Nt6l2PuL9+yrc9TJakt7OHDuOqPRYY4nTWBAEFKn32PE/SfXA==}
+    dev: false
+
+  /monkey-around@3.0.0:
+    resolution: {integrity: sha512-jL6uY2lEAoaHxZep1cNRkCZjoIWY4g5VYCjriEWmcyHU7w8NU1+JH57xE251UVTohK0lCxMjv0ZV4ByDLIXEpw==}
     dev: false
 
   /ms@2.1.2:
@@ -3047,8 +3086,8 @@ packages:
     resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
     dev: true
 
-  /simple-icons@9.15.0:
-    resolution: {integrity: sha512-76lKUjLHV5xQmNd5uglZitthQjY+Y15e+sKsryEk4Xo9OXmC1E1trBNC5Q4R2FHkHu8lAUhW7Up0mCcG6e0Nqg==}
+  /simple-icons@11.12.0:
+    resolution: {integrity: sha512-atQCGhobuIrxTd4rDGYCip/OZwIW4FYX3PRt4BXAZcbIW71hktvX4sF620T2QJyQsNLAYo3QpiHh8ey2IseA/g==}
     engines: {node: '>=0.12.18'}
     dev: false
 
@@ -3502,77 +3541,6 @@ packages:
 
   /wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
-
-  /xterm-addon-canvas@0.5.0(xterm@5.3.0):
-    resolution: {integrity: sha512-QOo/eZCMrCleAgMimfdbaZCgmQRWOml63Ued6RwQ+UTPvQj3Av9QKx3xksmyYrDGRO/AVRXa9oNuzlYvLdmoLQ==}
-    peerDependencies:
-      xterm: ^5.0.0
-    dependencies:
-      xterm: 5.3.0
-    dev: false
-
-  /xterm-addon-fit@0.8.0(xterm@5.3.0):
-    resolution: {integrity: sha512-yj3Np7XlvxxhYF/EJ7p3KHaMt6OdwQ+HDu573Vx1lRXsVxOcnVJs51RgjZOouIZOczTsskaS+CpXspK81/DLqw==}
-    peerDependencies:
-      xterm: ^5.0.0
-    dependencies:
-      xterm: 5.3.0
-    dev: false
-
-  /xterm-addon-ligatures@0.7.0(xterm@5.3.0):
-    resolution: {integrity: sha512-5HXKCN5vB8KkqLIloItZkYAwMWF4Y2yOQsc4oFUXOjV3GnZskZpH0W+8rJH+80wxLNym7OMpdmg3a/Vd/+owDg==}
-    engines: {node: '>8.0.0'}
-    peerDependencies:
-      xterm: ^5.0.0
-    dependencies:
-      font-finder: 1.1.0
-      font-ligatures: 1.4.1
-      xterm: 5.3.0
-    dev: false
-
-  /xterm-addon-search@0.13.0(xterm@5.3.0):
-    resolution: {integrity: sha512-sDUwG4CnqxUjSEFh676DlS3gsh3XYCzAvBPSvJ5OPgF3MRL3iHLPfsb06doRicLC2xXNpeG2cWk8x1qpESWJMA==}
-    peerDependencies:
-      xterm: ^5.0.0
-    dependencies:
-      xterm: 5.3.0
-    dev: false
-
-  /xterm-addon-serialize@0.11.0(xterm@5.3.0):
-    resolution: {integrity: sha512-2CNDnmLdLkNWfsxNFkGsI5FE9W/BbsMzeOrbu59yNqH9L6k1gmL+Ab6VXxEp2NQUJSzaiqi6t0nFR5k5EDkVIg==}
-    peerDependencies:
-      xterm: ^5.0.0
-    dependencies:
-      xterm: 5.3.0
-    dev: false
-
-  /xterm-addon-unicode11@0.6.0(xterm@5.3.0):
-    resolution: {integrity: sha512-5pkb8YoS/deRtNqQRw8t640mu+Ga8B2MG3RXGQu0bwgcfr8XiXIRI880TWM49ICAHhTmnOLPzIIBIjEnCq7k2A==}
-    peerDependencies:
-      xterm: ^5.0.0
-    dependencies:
-      xterm: 5.3.0
-    dev: false
-
-  /xterm-addon-web-links@0.9.0(xterm@5.3.0):
-    resolution: {integrity: sha512-LIzi4jBbPlrKMZF3ihoyqayWyTXAwGfu4yprz1aK2p71e9UKXN6RRzVONR0L+Zd+Ik5tPVI9bwp9e8fDTQh49Q==}
-    peerDependencies:
-      xterm: ^5.0.0
-    dependencies:
-      xterm: 5.3.0
-    dev: false
-
-  /xterm-addon-webgl@0.16.0(xterm@5.3.0):
-    resolution: {integrity: sha512-E8cq1AiqNOv0M/FghPT+zPAEnvIQRDbAbkb04rRYSxUym69elPWVJ4sv22FCLBqM/3LcrmBLl/pELnBebVFKgA==}
-    peerDependencies:
-      xterm: ^5.0.0
-    dependencies:
-      xterm: 5.3.0
-    dev: false
-
-  /xterm@5.3.0:
-    resolution: {integrity: sha512-8QqjlekLUFTrU6x7xck1MsPzPA571K5zNqWm0M0oroYEWVOptZ0+ubQSkQ3uxIEhcIHRujJy6emDWX4A7qyFzg==}
-    dev: false
 
   /y18n@4.0.3:
     resolution: {integrity: sha512-JKhqTOwSrqNA1NY5lSztJ1GrBiUodLMmIZuLiDaMRJ+itFd+ABVE8XBjOvIWL+rSqNDC74LCSFmlb/U4UZ4hJQ==}
