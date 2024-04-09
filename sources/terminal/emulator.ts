@@ -15,7 +15,7 @@ import type {
 	ITerminalInitOnlyOptions,
 	ITerminalOptions,
 	Terminal,
-} from "xterm"
+} from "@xterm/xterm"
 import {
 	TERMINAL_EMULATOR_RESIZE_WAIT,
 	TERMINAL_PTY_RESIZE_WAIT,
@@ -29,15 +29,18 @@ import { spawnPromise } from "../util.js"
 import { writePromise } from "./util.js"
 
 const
-	childProcess = dynamicRequire<typeof import("node:child_process")
-	>(BUNDLE, "node:child_process"),
-	xterm = dynamicRequireLazy<typeof import("xterm")
-	>(BUNDLE, "xterm"),
-	xtermAddonFit = dynamicRequireLazy<typeof import("xterm-addon-fit")
-	>(BUNDLE, "xterm-addon-fit"),
+	childProcess =
+		dynamicRequire<typeof import("node:child_process")>(
+			BUNDLE, "node:child_process"),
+	xterm =
+		dynamicRequireLazy<typeof import("@xterm/xterm")>(
+			BUNDLE, "@xterm/xterm"),
+	xtermAddonFit =
+		dynamicRequireLazy<typeof import("@xterm/addon-fit")>(
+			BUNDLE, "@xterm/addon-fit"),
 	xtermAddonSerialize =
-		dynamicRequireLazy<typeof import("xterm-addon-serialize")
-		>(BUNDLE, "xterm-addon-serialize")
+		dynamicRequireLazy<typeof import("@xterm/addon-serialize")>(
+			BUNDLE, "@xterm/addon-serialize")
 
 export const SUPPORTS_EXTERNAL_TERMINAL_EMULATOR =
 	importable(BUNDLE, "node:child_process")
@@ -131,7 +134,8 @@ export class XtermTerminalEmulator<A> {
 			await pty0.pipe(terminal)
 			return pty0
 		})
-		this.pseudoterminal.then(async pty0 => pty0.onExit).catch(noop)
+		this.pseudoterminal.then(async pty0 => pty0.onExit)
+			.catch(noop satisfies () => unknown as () => unknown)
 			.finally(() => { this.#running = false })
 	}
 

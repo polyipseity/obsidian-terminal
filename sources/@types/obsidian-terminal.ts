@@ -22,4 +22,4 @@ declare module "obsidian-terminal" {
 	}
 }
 import type { } from "obsidian-terminal"
-import type { Terminal } from "xterm"
+import type { Terminal } from "@xterm/xterm"

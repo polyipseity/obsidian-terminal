@@ -53,12 +53,15 @@ import getPackageVersion from "./get-package-version.py"
 import semverCoerce from "semver/functions/coerce.js"
 
 const
-	childProcess = dynamicRequire<typeof import("node:child_process")
-	>(BUNDLE, "node:child_process"),
-	process = dynamicRequire<typeof import("node:process")
-	>(BUNDLE, "node:process"),
-	util = dynamicRequire<typeof import("node:util")
-	>(BUNDLE, "node:util"),
+	childProcess =
+		dynamicRequire<typeof import("node:child_process")>(
+			BUNDLE, "node:child_process"),
+	process =
+		dynamicRequire<typeof import("node:process")>(
+			BUNDLE, "node:process"),
+	util =
+		dynamicRequire<typeof import("node:util")>(
+			BUNDLE, "node:util"),
 	// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 	execFileP = (async () => {
 		const [childProcess2, util2] = await Promise.all([childProcess, util])

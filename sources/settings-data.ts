@@ -44,7 +44,7 @@ import type {
 	ITheme,
 	IWindowOptions,
 	IWindowsPty,
-} from "xterm"
+} from "@xterm/xterm"
 import { isUndefined, omitBy } from "lodash-es"
 import { DEFAULT_SUCCESS_EXIT_CODES } from "./magic.js"
 import { PluginLocales } from "../assets/locales.js"
@@ -301,11 +301,7 @@ export namespace Settings {
 				fixPlatforms = <
 					V extends Platforms<Vs[number]>,
 					const Vs extends ReadonlyTuple<string>,
-				>(
-					defaults: V,
-					from: Unchecked<V>,
-					set: Vs,
-				): Platforms<Vs[number]> => {
+				>(defaults: V, from: Unchecked<V>, set: Vs): Platforms<Vs[number]> => {
 					const ret2: { [_ in Vs[number]]?: boolean } = {}
 					for (const platform0 of set) {
 						const platform: Vs[number] = platform0
@@ -317,7 +313,7 @@ export namespace Settings {
 					}
 					return ret2
 				}
-			// eslint-disable-next-line consistent-return
+			// eslint-disable-next-line @typescript-eslint/consistent-return
 			return markFixed(self0, ((): DeepWritable<Profile> => {
 				const type = inSet(TYPES, unc.type)
 					? unc.type
@@ -555,6 +551,8 @@ export namespace Settings {
 					"disableStdin",
 					["undefined", "boolean"],
 				),
+				// Do not expose `documentOverride`.
+				documentOverride: null,
 				drawBoldTextInBrightColors: fixTyped(
 					DEFAULT_TERMINAL_OPTIONS,
 					unc,
@@ -744,6 +742,12 @@ export namespace Settings {
 					unc,
 					"overviewRulerWidth",
 					["undefined", "number"],
+				),
+				rescaleOverlappingGlyphs: fixTyped(
+					DEFAULT_TERMINAL_OPTIONS,
+					unc,
+					"rescaleOverlappingGlyphs",
+					["undefined", "boolean"],
 				),
 				rightClickSelectsWord: fixTyped(
 					DEFAULT_TERMINAL_OPTIONS,

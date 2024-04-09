@@ -9,7 +9,7 @@ import type {
 	ITheme,
 	IWindowOptions,
 	IWindowsPty,
-} from "xterm"
+} from "@xterm/xterm"
 import {
 	activeSelf,
 	deepFreeze,

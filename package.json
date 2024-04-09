@@ -39,7 +39,6 @@
 		"@types/ansi-escape-sequences": "^4.0.4",
 		"@types/async-lock": "^1.4.2",
 		"@types/browser-util-inspect": "^0.2.4",
-		"@types/estree": "^1.0.5",
 		"@types/lodash-es": "^4.17.12",
 		"@types/node": "^20.12.6",
 		"@types/semver": "^7.5.8",

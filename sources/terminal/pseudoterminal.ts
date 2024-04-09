@@ -16,7 +16,6 @@ import {
 	WINDOWS_CMD_PATH,
 	WINDOWS_CONHOST_PATH,
 } from "../magic.js"
-import { type ExtendNode, parse } from "acorn"
 import {
 	Functions,
 	Platform,
@@ -44,7 +43,8 @@ import {
 	sleep2,
 	typedKeys,
 } from "@polyipseity/obsidian-plugin-library"
-import type { IMarker, Terminal } from "xterm"
+import type { IMarker, Terminal } from "@xterm/xterm"
+import { type Program, parse } from "acorn"
 import inspect, { type Options } from "browser-util-inspect"
 import { isEmpty, isNil, noop } from "lodash-es"
 import { spawnPromise, writePromise } from "../util.js"
@@ -60,23 +60,27 @@ import type {
 	ChildProcessWithoutNullStreams as PipedChildProcess,
 } from "node:child_process"
 import type { Position } from "source-map"
-import type { Program } from "estree"
 import type { TerminalPlugin } from "../main.js"
 import ansi from "ansi-escape-sequences"
 import unixPseudoterminalPy from "./unix_pseudoterminal.py"
 import win32ResizerPy from "./win32_resizer.py"
 
 const
-	childProcess = dynamicRequire<typeof import("node:child_process")
-	>(BUNDLE, "node:child_process"),
-	fsPromises = dynamicRequire<typeof import("node:fs/promises")
-	>(BUNDLE, "node:fs/promises"),
-	process = dynamicRequire<typeof import("node:process")
-	>(BUNDLE, "node:process"),
-	stream = dynamicRequire<typeof import("node:stream")
-	>(BUNDLE, "node:stream"),
-	tmpPromise = dynamicRequire<typeof import("tmp-promise")
-	>(BUNDLE, "tmp-promise")
+	childProcess =
+		dynamicRequire<typeof import("node:child_process")>(
+			BUNDLE, "node:child_process"),
+	fsPromises =
+		dynamicRequire<typeof import("node:fs/promises")>(
+			BUNDLE, "node:fs/promises"),
+	process =
+		dynamicRequire<typeof import("node:process")>(
+			BUNDLE, "node:process"),
+	stream =
+		dynamicRequire<typeof import("node:stream")>(
+			BUNDLE, "node:stream"),
+	tmpPromise =
+		dynamicRequire<typeof import("tmp-promise")>(
+			BUNDLE, "tmp-promise")
 
 async function clearTerminal(terminal: Terminal, keep = false): Promise<void> {
 	const { rows } = terminal
@@ -189,7 +193,7 @@ export class TextPseudoterminal
 	}
 
 	public set text(value: string) {
-		this.rewrite(normalizeText(this.#text = value)).catch(error => {
+		this.rewrite(normalizeText(this.#text = value)).catch((error: unknown) => {
 			self.console.error(error)
 		})
 	}
@@ -204,7 +208,7 @@ export class TextPseudoterminal
 		terminals: readonly Terminal[] = this.terminals,
 	): Promise<void> {
 		const terminals0 = [...terminals]
-		return new Promise((resolve, reject) => {
+		return new Promise((resolve, reject: (reason?: unknown) => void) => {
 			this.lock.acquire(TextPseudoterminal.syncLock, async () => {
 				const writers = terminals0.map(async terminal => {
 					await clearTerminal(terminal)
@@ -250,7 +254,7 @@ export class DeveloperConsolePseudoterminal
 			depth: 0,
 			get terminals() { return terminals },
 		})
-		this.onExit.catch(noop)
+		this.onExit.catch(noop satisfies () => unknown as () => unknown)
 			.finally(log.logger.listen(async event => this.write([event])))
 			.finally(() => {
 				new Functions(
@@ -345,13 +349,15 @@ export class DeveloperConsolePseudoterminal
 					resizing = true
 					this.syncBuffer([terminal])
 						.finally(() => { resizing = false })
-						.catch(error => {
+						.catch((error: unknown) => {
 							activeSelf(terminal.element).console.error(error)
 						})
 				}),
 			].map(disposer0 => () => { disposer0.dispose() }),
 		)
-		this.onExit.catch(noop).finally(() => { disposer.call() })
+		this.onExit
+			.catch(noop satisfies () => unknown as () => unknown)
+			.finally(() => { disposer.call() })
 		await this.write(this.log.history, [terminal])
 	}
 
@@ -417,7 +423,7 @@ export class DeveloperConsolePseudoterminal
 				},
 			)
 		self1.console.log(code)
-		const ast = ((): ExtendNode<Program> | null => {
+		const ast = ((): Program | null => {
 			try {
 				return parse(code, {
 					allowAwaitOutsideFunction: true,
@@ -517,7 +523,7 @@ export class DeveloperConsolePseudoterminal
 		lock = true,
 	): Promise<void> {
 		const terminals0 = [...terminals]
-		return new Promise((resolve, reject) => {
+		return new Promise((resolve, reject: (reason?: unknown) => void) => {
 			acquireConditionally(
 				this.lock,
 				DeveloperConsolePseudoterminal.syncLock,
@@ -751,7 +757,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 										const watchdog = self.setInterval(
 											() => {
 												writePromise(resizer0.stdin, "\n")
-													.catch(error => {
+													.catch((error: unknown) => {
 														/* @__PURE__ */ self.console.debug(error)
 													})
 											},
@@ -767,7 +773,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 									}
 								}
 								return resizer0
-							}).catch(error => {
+							}).catch((error: unknown) => {
 								const error0 = anyToError(error)
 								printError(
 									error0,
@@ -853,7 +859,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 					init = true
 					return
 				}
-				tWritePromise(terminal, chunk).catch(error => {
+				tWritePromise(terminal, chunk).catch((error: unknown) => {
 					activeSelf(terminal.element).console.error(error)
 				})
 			}
@@ -866,7 +872,8 @@ class WindowsPseudoterminal implements Pseudoterminal {
 		shell.stderr.on("data", reader)
 		const writer =
 			terminal.onData(async data => writePromise(shell.stdin, data))
-		this.onExit.catch(noop).finally(() => { writer.dispose() })
+		this.onExit.catch(noop satisfies () => unknown as () => unknown)
+			.finally(() => { writer.dispose() })
 	}
 }
 
@@ -936,7 +943,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 	public async pipe(terminal: Terminal): Promise<void> {
 		const shell = await this.shell,
 			reader = (chunk: Buffer | string): void => {
-				tWritePromise(terminal, chunk).catch(error => {
+				tWritePromise(terminal, chunk).catch((error: unknown) => {
 					activeSelf(terminal.element).console.error(error)
 				})
 			}
@@ -949,7 +956,8 @@ class UnixPseudoterminal implements Pseudoterminal {
 		shell.stderr.on("data", reader)
 		const writer =
 			terminal.onData(async data => writePromise(shell.stdin, data))
-		this.onExit.catch(noop).finally(() => { writer.dispose() })
+		this.onExit.catch(noop satisfies () => unknown as () => unknown)
+			.finally(() => { writer.dispose() })
 	}
 
 	public async resize(columns: number, rows: number): Promise<void> {

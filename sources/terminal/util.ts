@@ -5,7 +5,7 @@ import type {
 	Terminal,
 	ITerminalOptions as TerminalOptions,
 	ITerminalInitOnlyOptions as TerminalOptionsInit,
-} from "xterm"
+} from "@xterm/xterm"
 import {
 	acquireConditionally,
 	alternativeRegExp,
@@ -28,8 +28,10 @@ import ansi from "ansi-escape-sequences"
 import { range } from "lodash-es"
 import { Set as valueSet } from "immutable"
 
-const xterm = dynamicRequireLazy<typeof import("xterm")
->(BUNDLE, "xterm")
+const
+	xterm =
+		dynamicRequireLazy<typeof import("@xterm/xterm")>(
+			BUNDLE, "@xterm/xterm")
 
 type IFunctionIdentifier0 = DeepReadonly<DeepRequired<IFunctionIdentifier>>
 export const ESCAPE_SEQUENCE_INTRODUCER = "\u001b"

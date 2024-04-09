@@ -63,32 +63,36 @@ import {
 import { cloneDeep, noop } from "lodash-es"
 import { BUNDLE } from "../import.js"
 import type { DeepWritable } from "ts-essentials"
-import type { LigaturesAddon } from "xterm-addon-ligatures"
+import type { LigaturesAddon } from "@xterm/addon-ligatures"
 import { ProfileModal } from "../modals.js"
-import type { SearchAddon } from "xterm-addon-search"
+import type { SearchAddon } from "@xterm/addon-search"
 import { Settings } from "../settings-data.js"
 import type { TerminalPlugin } from "../main.js"
 import { TextPseudoterminal } from "./pseudoterminal.js"
-import type { Unicode11Addon } from "xterm-addon-unicode11"
-import type { WebLinksAddon } from "xterm-addon-web-links"
+import type { Unicode11Addon } from "@xterm/addon-unicode11"
+import type { WebLinksAddon } from "@xterm/addon-web-links"
 import { XtermTerminalEmulator } from "./emulator.js"
 import { writePromise } from "./util.js"
 
 const
-	xtermAddonCanvas = dynamicRequire<typeof import("xterm-addon-canvas")
-	>(BUNDLE, "xterm-addon-canvas"),
+	xtermAddonCanvas =
+		dynamicRequire<typeof import("@xterm/addon-canvas")>(
+			BUNDLE, "@xterm/addon-canvas"),
 	xtermAddonLigatures =
-		dynamicRequire<typeof import("xterm-addon-ligatures")
-		>(BUNDLE, "xterm-addon-ligatures"),
-	xtermAddonSearch = dynamicRequire<typeof import("xterm-addon-search")
-	>(BUNDLE, "xterm-addon-search"),
+		dynamicRequire<typeof import("@xterm/addon-ligatures")>(
+			BUNDLE, "@xterm/addon-ligatures"),
+	xtermAddonSearch =
+		dynamicRequire<typeof import("@xterm/addon-search")>(
+			BUNDLE, "@xterm/addon-search"),
 	xtermAddonUnicode11 =
-		dynamicRequire<typeof import("xterm-addon-unicode11")
-		>(BUNDLE, "xterm-addon-unicode11"),
-	xtermAddonWebLinks = dynamicRequire<typeof import("xterm-addon-web-links")
-	>(BUNDLE, "xterm-addon-web-links"),
-	xtermAddonWebgl = dynamicRequire<typeof import("xterm-addon-webgl")
-	>(BUNDLE, "xterm-addon-webgl")
+		dynamicRequire<typeof import("@xterm/addon-unicode11")>(
+			BUNDLE, "@xterm/addon-unicode11"),
+	xtermAddonWebLinks =
+		dynamicRequire<typeof import("@xterm/addon-web-links")>(
+			BUNDLE, "@xterm/addon-web-links"),
+	xtermAddonWebgl =
+		dynamicRequire<typeof import("@xterm/addon-webgl")>(
+			BUNDLE, "@xterm/addon-webgl")
 
 class EditTerminalModal extends DialogModal {
 	protected readonly state
@@ -319,7 +323,7 @@ export class TerminalView extends ItemView {
 		})
 	}
 
-	// eslint-disable-next-line consistent-return
+	// eslint-disable-next-line @typescript-eslint/consistent-return
 	get #hidesStatusBar(): boolean {
 		const { context: { settings }, contentEl } = this
 		switch (settings.value.hideStatusBar) {
@@ -346,7 +350,7 @@ export class TerminalView extends ItemView {
 
 	set #emulator(val: TerminalView.EMULATOR | null) {
 		const { context: plugin } = this
-		this.#emulator0?.close(false).catch(error => {
+		this.#emulator0?.close(false).catch((error: unknown) => {
 			printError(
 				anyToError(error),
 				() => plugin.language
@@ -675,7 +679,7 @@ export class TerminalView extends ItemView {
 											JSON_STRINGIFY_SPACE,
 										),
 									}))
-								pty.onExit.catch(noop)
+								pty.onExit.catch(noop satisfies () => unknown as () => unknown)
 									.finally(onChangeLanguage.listen(() => {
 										pty.text =
 											i18n.t("components.terminal.unsupported-profile", {
@@ -827,11 +831,10 @@ export namespace TerminalView {
 				app: { workspace, workspace: { leftSplit, rightSplit } },
 				settings,
 			} = context,
-			// eslint-disable-next-line consistent-return
+			// eslint-disable-next-line @typescript-eslint/consistent-return
 			leaf = ((): WorkspaceLeaf => {
 				if (settings.value.createInstanceNearExistingOnes) {
 					const existingLeaf = workspace
-						// eslint-disable-next-line @typescript-eslint/no-unnecessary-qualifier
 						.getLeavesOfType(TerminalView.type.namespaced(context))
 						.at(-1)
 					if (existingLeaf) {

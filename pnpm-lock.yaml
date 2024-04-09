@@ -105,9 +105,6 @@ importers:
       '@types/browser-util-inspect':
         specifier: ^0.2.4
         version: 0.2.4
-      '@types/estree':
-        specifier: ^1.0.5
-        version: 1.0.5
       '@types/lodash-es':
         specifier: ^4.17.12
         version: 4.17.12
