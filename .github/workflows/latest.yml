@@ -21,9 +21,11 @@ jobs:
         GH_TOKEN: ${{github.token}}
       run: |
         gh release upload latest .github/*.tgz main.js manifest.json styles.css --clobber
+
 on:
   push:
     tags:
     - latest
   workflow_dispatch:
+
 permissions: {}
