@@ -1,7 +1,7 @@
 import { analyzeMetafile, context, formatMessages } from "esbuild"
 import { PATHS } from "./util.mjs"
 import { argv } from "node:process"
-import builtinModules from "builtin-modules"
+import builtinModules from "builtin-modules" // eslint-disable-line import/default, import/namespace
 import esbuildCompress from "esbuild-compress"
 import esbuildObsidianCompress from
 	"@polyipseity/obsidian-plugin-library/esbuild-compress"
