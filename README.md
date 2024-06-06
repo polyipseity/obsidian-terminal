@@ -106,6 +106,15 @@ __Terminal is focused__
 - Find: `Ctrl`+`Shift`+`F`, `Command`+`F` (Apple)
 - Toggle focus: `Ctrl`+`Shift`+`` ` ``
 
+### Theming
+
+Theming is possible. However, there is no user-friendly interface for now.
+
+1. Open the profile editing modal.
+2. Click on the `Edit` button labeled `Data`. It should open up a new modal in which there is a large textbox.
+3. Notice `terminalOptions` in the text area labeled `Data`. Refer to the [`xterm.js` documentation](https://github.com/xtermjs/xterm.js/blob/master/typings/xterm.d.ts#L26) (`ITerminalOptions`) to set the options.
+4. Save the profile. Changes apply on next terminal start.
+
 ### Profiles
 
 This plugin comes with several profile presets that you can reference.
