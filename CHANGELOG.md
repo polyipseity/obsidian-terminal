@@ -1,5 +1,16 @@
 # obsidian-terminal <!-- markdownlint-disable MD024 -->
 
+## 3.15.0
+
+### Minor Changes
+
+- d6c3203: Add keyboard shortcut for closing the terminal. Fixes [GH#37](https://github.com/polyipseity/obsidian-terminal/issues/37).
+- 66177c1: Add option `Intercept logging`. Fixes [GH#38](https://github.com/polyipseity/obsidian-terminal/issues/38).
+
+### Patch Changes
+
+- 88f22cf: (63711193053ae1b850d816b84244f9152b53a407) Fix requiring `@capacitor`.
+
 ## 3.14.0
 
 ### Minor Changes
