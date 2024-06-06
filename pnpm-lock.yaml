@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@polyipseity/obsidian-plugin-library':
-        specifier: ^1.25.0
-        version: 1.25.0(@capacitor/core@6.0.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(esbuild@0.21.4)(typescript@5.4.5)
+        specifier: ^1.25.1
+        version: 1.25.1(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(esbuild@0.21.4)(typescript@5.4.5)
       i18next:
         specifier: ^23.11.5
         version: 23.11.5
@@ -644,14 +644,15 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@polyipseity/obsidian-plugin-library@1.25.0(@capacitor/core@6.0.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(esbuild@0.21.4)(typescript@5.4.5):
-    resolution: {integrity: sha512-95KyYI/wHShwYPmCxxvlo1+O5hA5Jkd33tGXR78/iWlOsB7Ph5V05kgX/v7EznMaCyf5Wrmv65fRxbtDl21EAA==}
+  /@polyipseity/obsidian-plugin-library@1.25.1(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(esbuild@0.21.4)(typescript@5.4.5):
+    resolution: {integrity: sha512-PiTwUM1b8BSKON+lcuxzIfzcFZ4ctoDBq0j0XteJwiJtM2nyxMC6SKaPz7ZNMnBpmWnFRElrggxsEc39w9wgvA==}
     peerDependencies:
       esbuild: '>=0.17.0'
     peerDependenciesMeta:
       esbuild:
         optional: true
     dependencies:
+      '@capacitor/core': 6.0.0
       '@capacitor/filesystem': 6.0.0(@capacitor/core@6.0.0)
       '@jridgewell/trace-mapping': 0.3.25
       async-lock: 1.4.1
@@ -677,7 +678,6 @@ packages:
       ts-deepmerge: 7.0.0
       ts-essentials: 10.0.0(typescript@5.4.5)
     transitivePeerDependencies:
-      - '@capacitor/core'
       - '@codemirror/state'
       - '@codemirror/view'
       - typescript
