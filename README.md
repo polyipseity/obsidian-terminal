@@ -100,8 +100,8 @@ __Terminal tab is focused__
 __Terminal is focused__
 
 - Focus terminal tab/Unfocus terminal: `Ctrl`+`Shift`+`` ` ``
-- Clear terminal: `Ctrl`+`Shift`+`K`, `Command`+`K` (macOS)
-- Find in terminal: `Ctrl`+`Shift`+`F`, `Command`+`F` (macOS)
+- Clear terminal: `Ctrl`+`Shift`+`K`, `Command`+`K` (iOS, iPadOS, macOS)
+- Find in terminal: `Ctrl`+`Shift`+`F`, `Command`+`F` (iOS, iPadOS, macOS)
 
 ### Profiles
 
