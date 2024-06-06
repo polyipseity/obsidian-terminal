@@ -90,18 +90,21 @@ This file is automatically opened on first install. You can reopen it in setting
 
 ### Keyboard shortcuts
 
+The keyboard shortcuts are not customizable for now.
+
 <!-- markdownlint-disable-next-line MD036 -->
 __Terminal tab is focused__
 
-- Focus terminal: `Ctrl`+`Shift`+`` ` ``
+- Focus: `Ctrl`+`Shift`+`` ` ``
 - Inherits global keyboard shortcuts
 
 <!-- markdownlint-disable-next-line MD036 -->
 __Terminal is focused__
 
-- Focus terminal tab/Unfocus terminal: `Ctrl`+`Shift`+`` ` ``
-- Clear terminal: `Ctrl`+`Shift`+`K`, `Command`+`K` (iOS, iPadOS, macOS)
-- Find in terminal: `Ctrl`+`Shift`+`F`, `Command`+`F` (iOS, iPadOS, macOS)
+- Clear: `Ctrl`+`Shift`+`K`, `Command`+`K` (Apple)
+- Close: `Ctrl`+`Shift`+`W`, `Command`+`W` (Apple)
+- Find: `Ctrl`+`Shift`+`F`, `Command`+`F` (Apple)
+- Toggle focus: `Ctrl`+`Shift`+`` ` ``
 
 ### Profiles
 

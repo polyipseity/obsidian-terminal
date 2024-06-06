@@ -245,9 +245,13 @@ export class TerminalView extends ItemView {
 	public static readonly type =
 		new UnnamespacedID(DOMClasses2.Namespaced.TERMINAL)
 
-	protected static readonly modifiers = deepFreeze(Platform.CURRENT === "darwin"
-		? ["Meta"]
-		: ["Ctrl", "Shift"])
+	protected static readonly modifiers = deepFreeze(
+		(["darwin", "ios"] satisfies readonly Platform.All[
+		] as readonly Platform.All[])
+			.includes(Platform.CURRENT)
+			? ["Meta"]
+			: ["Ctrl", "Shift"],
+	)
 
 	static #namespacedType: string
 	protected readonly scope = new Scope(this.app.scope)
@@ -285,6 +289,9 @@ export class TerminalView extends ItemView {
 		focusedScope.register(TerminalView.modifiers, "k", event => {
 			this.#emulator?.terminal.clear()
 			consumeEvent(event)
+		})
+		focusedScope.register(TerminalView.modifiers, "w", () => {
+			this.leaf.detach()
 		})
 	}
 
