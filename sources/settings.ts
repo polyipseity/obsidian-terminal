@@ -326,6 +326,26 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 			})
 			.newSetting(containerEl, setting => {
 				setting
+					.setName(i18n.t("settings.intercept-logging"))
+					.addToggle(linkSetting(
+						() => settings.value.interceptLogging,
+						async value => settings.mutate(settingsM => {
+							settingsM.interceptLogging = value
+						}),
+						() => { this.postMutate() },
+					))
+					.addExtraButton(resetButton(
+						i18n.t("asset:settings.intercept-logging-icon"),
+						i18n.t("settings.reset"),
+						async () => settings.mutate(settingsM => {
+							settingsM.interceptLogging =
+								Settings.DEFAULT.interceptLogging
+						}),
+						() => { this.postMutate() },
+					))
+			})
+			.newSetting(containerEl, setting => {
+				setting
 					.setName(i18n.t("settings.preferred-renderer"))
 					.addDropdown(linkSetting(
 						(): string => settings.value.preferredRenderer,

@@ -101,6 +101,14 @@ export class TerminalPlugin
 				await Promise.all(earlyChildren.map(async child => child.onLoaded))
 				for (const child of children) { this.addChild(child) }
 				await Promise.all([
+					Promise.resolve().then(() => {
+						settings.onMutate(
+							settings0 => settings0.interceptLogging,
+							cur => { this.earlyPatch.value.enableLoggingPatch(cur) },
+						)
+						this.earlyPatch.value
+							.enableLoggingPatch(settings.value.interceptLogging)
+					}),
 					Promise.resolve().then(() => { loadPatch(this) }),
 					Promise.resolve().then(() => { loadIcons(this) }),
 					Promise.resolve().then(() => {

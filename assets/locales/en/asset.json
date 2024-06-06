@@ -110,6 +110,7 @@
 		"expose-internal-modules-icon": "puzzle",
 		"focus-on-new-instance-icon": "focus",
 		"hide-status-bar-icon": "eye-off",
+		"intercept-logging-icon": "scroll-text",
 		"new-instance-behavior-icon": "plus",
 		"open-changelog-on-update-icon": "$t(asset:generic.documentations.changelog-icon)",
 		"pin-new-instance-icon": "pin",

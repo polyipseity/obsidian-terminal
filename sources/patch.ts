@@ -149,6 +149,7 @@ function patchLogging(
 
 export interface EarlyPatch {
 	readonly log: Log
+	readonly enableLoggingPatch: (enable: boolean) => void
 }
 function earlyPatch(app: App, options?: {
 	readonly maxHistory?: number | undefined
@@ -157,8 +158,26 @@ function earlyPatch(app: App, options?: {
 	try {
 		const { workspace } = app,
 			log = new Log(options?.maxHistory)
-		unpatch.push(patchWindows(workspace, self0 => patchLogging(self0, log)))
+		let loggingPatch: (() => void) | null = null
+
+		unpatch.push(() => { if (loggingPatch) { loggingPatch() } })
+		loggingPatch = patchWindows(workspace, self0 => patchLogging(self0, log))
+
 		return Object.freeze({
+			enableLoggingPatch(enable: boolean) {
+				if (enable) {
+					if (loggingPatch) { return }
+					loggingPatch =
+						patchWindows(workspace, self0 => patchLogging(self0, this.log))
+					return
+				}
+				if (!loggingPatch) { return }
+				try {
+					loggingPatch()
+				} finally {
+					loggingPatch = null
+				}
+			},
 			log,
 			unpatch() { unpatch.call() },
 		})

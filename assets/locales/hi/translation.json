@@ -273,6 +273,7 @@
 			"running": "When $t(generic.terminal) is running"
 		},
 		"instancing": "$t(generic.instance_gerund, capitalize)",
+		"intercept-logging": "Intercept logging",
 		"interface": "Interface",
 		"new-instance-behavior": "New $t(generic.instance) $t(generic.behavior)",
 		"new-instance-behaviors": {

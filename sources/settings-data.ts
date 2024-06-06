@@ -83,6 +83,7 @@ export interface Settings extends PluginContext.Settings {
 	readonly hideStatusBar: Settings.HideStatusBarOption
 
 	readonly exposeInternalModules: boolean
+	readonly interceptLogging: boolean
 	readonly preferredRenderer: Settings.PreferredRendererOption
 }
 export namespace Settings {
@@ -106,6 +107,7 @@ export namespace Settings {
 		exposeInternalModules: true,
 		focusOnNewInstance: true,
 		hideStatusBar: "focused",
+		interceptLogging: true,
 		language: "",
 		newInstanceBehavior: "newHorizontalSplit",
 		noticeTimeout: 5,
@@ -1161,6 +1163,12 @@ export namespace Settings {
 				unc,
 				"hideStatusBar",
 				HIDE_STATUS_BAR_OPTIONS,
+			),
+			interceptLogging: fixTyped(
+				DEFAULT,
+				unc,
+				"interceptLogging",
+				["boolean"],
 			),
 			language: fixInSet(
 				DEFAULT,
