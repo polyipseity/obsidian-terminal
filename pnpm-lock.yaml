@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@polyipseity/obsidian-plugin-library':
-        specifier: ^1.24.0
-        version: 1.24.0(@capacitor/core@5.2.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(esbuild@0.21.4)(typescript@5.4.5)
+        specifier: ^1.25.0
+        version: 1.25.0(@capacitor/core@6.0.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(esbuild@0.21.4)(typescript@5.4.5)
       i18next:
         specifier: ^23.11.5
         version: 23.11.5
@@ -125,18 +125,18 @@ packages:
     dependencies:
       regenerator-runtime: 0.14.1
 
-  /@capacitor/core@5.2.0:
-    resolution: {integrity: sha512-OQB33JCYzL9P8y4QcjKO+wt8dvh7CoQxbA1wvvAmdPO6M7FESxS7InO0wKWhgIXgW1GZRAri2NGYcxdvbazVKA==}
+  /@capacitor/core@6.0.0:
+    resolution: {integrity: sha512-NvxIQsJcMiIV+Le1DilR2GGyQQbDInfXK1UywGROQ5mycdFlW5XoAPZ+MKnFGB123RoEgE3uhDGgwTXUmSlX9A==}
     dependencies:
       tslib: 2.6.3
     dev: false
 
-  /@capacitor/filesystem@5.1.4(@capacitor/core@5.2.0):
-    resolution: {integrity: sha512-10EM1KvFMs+pTzxkcflspzxBWcX9sOnS9nTP5Afjr5hn4OxLrwTFySw2Z12Uv6jdN4OnhY3jXtDKXPljXvXILg==}
+  /@capacitor/filesystem@6.0.0(@capacitor/core@6.0.0):
+    resolution: {integrity: sha512-GnC4CBfky7fvG9zSV/aQnZaGs6ZJ90AaQorr53z81ArTCqcrSUeBMuCxWmvti9HrdXLhBavyA1UOjvRGObOFjg==}
     peerDependencies:
-      '@capacitor/core': ^5.1.1
+      '@capacitor/core': ^6.0.0
     dependencies:
-      '@capacitor/core': 5.2.0
+      '@capacitor/core': 6.0.0
     dev: false
 
   /@changesets/apply-release-plan@7.0.3:
@@ -595,8 +595,8 @@ packages:
     resolution: {integrity: sha512-eF2rxCRulEKXHTRiDrDy6erMYWqNw4LPdQ8UQA4huuxaQsVeRPFl2oM8oDGxMFhJUWZf9McpLtJasDDZb/Bpeg==}
     dev: false
 
-  /@jridgewell/trace-mapping@0.3.19:
-    resolution: {integrity: sha512-kf37QtfW+Hwx/buWGMPcR60iF9ziHa6r/CZJIHbmcm4+0qrXiVdxegAH0F6yddEVQ7zdkjcGCgCzUu+BcbhQxw==}
+  /@jridgewell/trace-mapping@0.3.25:
+    resolution: {integrity: sha512-vNk6aEwybGtawWmy/PzwnGDOjCkLWSD2wqvjGGAgOAwCGWySYXfYoxt00IJkTF+8Lb57DwOb3Aa0o9CApepiYQ==}
     dependencies:
       '@jridgewell/resolve-uri': 3.1.1
       '@jridgewell/sourcemap-codec': 1.4.15
@@ -643,37 +643,38 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@polyipseity/obsidian-plugin-library@1.24.0(@capacitor/core@5.2.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(esbuild@0.21.4)(typescript@5.4.5):
-    resolution: {integrity: sha512-eQhJVwcf/bwn/bL/+Hq0ey8zd5vIj+POtDK736LMkb5HXhAWk6FHtGyud4t9ZgNxrx0nDKpd2gUdSPjWMKse7g==}
+  /@polyipseity/obsidian-plugin-library@1.25.0(@capacitor/core@6.0.0)(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)(esbuild@0.21.4)(typescript@5.4.5):
+    resolution: {integrity: sha512-95KyYI/wHShwYPmCxxvlo1+O5hA5Jkd33tGXR78/iWlOsB7Ph5V05kgX/v7EznMaCyf5Wrmv65fRxbtDl21EAA==}
     peerDependencies:
       esbuild: '>=0.17.0'
     peerDependenciesMeta:
       esbuild:
         optional: true
     dependencies:
-      '@capacitor/filesystem': 5.1.4(@capacitor/core@5.2.0)
-      '@jridgewell/trace-mapping': 0.3.19
-      async-lock: 1.4.0
+      '@capacitor/filesystem': 6.0.0(@capacitor/core@6.0.0)
+      '@jridgewell/trace-mapping': 0.3.25
+      async-lock: 1.4.1
       browser-util-inspect: 0.2.0
       convert-source-map: 2.0.0
-      deep-equal: 2.2.2
+      deep-equal: 2.2.3
       esbuild: 0.21.4
       file-saver: 2.0.5
       i18next: 23.11.5
-      i18next-resources-to-backend: 1.1.4
-      import-meta-resolve: 3.0.0
+      i18next-resources-to-backend: 1.2.1
+      import-meta-resolve: 4.1.0
       lodash-es: 4.17.21
-      lucide: 0.279.0
+      lucide: 0.383.0
       lz-string: 1.5.0
-      moment: 2.29.4
-      monkey-around: 2.3.0
+      moment: 2.30.1
+      monkey-around: 3.0.0
       obsidian: 1.2.8(@codemirror/state@6.0.0)(@codemirror/view@6.0.0)
       p-lazy: 4.0.0
       semver: 7.6.2
+      shq: 1.0.3
       source-map: 0.7.4
       svelte: 3.59.2
-      ts-deepmerge: 6.2.0
-      ts-essentials: 9.4.2(typescript@5.4.5)
+      ts-deepmerge: 7.0.0
+      ts-essentials: 10.0.0(typescript@5.4.5)
     transitivePeerDependencies:
       - '@capacitor/core'
       - '@codemirror/state'
@@ -1004,8 +1005,8 @@ packages:
     engines: {node: '>=0.10.0'}
     dev: true
 
-  /async-lock@1.4.0:
-    resolution: {integrity: sha512-coglx5yIWuetakm3/1dsX9hxCNox22h7+V80RQOu2XUUMidtArxKoZoOtHUPuR84SycKTXzgGzAUR5hJxujyJQ==}
+  /async-lock@1.4.1:
+    resolution: {integrity: sha512-Az2ZTpuytrtqENulXwO3GGv1Bztugx6TT37NIo7imr/Qo0gsYiGtSdBa2B6fsXhTpVZDNfu1Qn3pk531e3q+nQ==}
     dev: false
 
   /available-typed-arrays@1.0.5:
@@ -1241,8 +1242,9 @@ packages:
     engines: {node: '>=0.10.0'}
     dev: true
 
-  /deep-equal@2.2.2:
-    resolution: {integrity: sha512-xjVyBf0w5vH0I42jdAZzOKVldmPgSulmiyPRywoyq7HXC9qdgo17kxJE+rdnif5Tz6+pIrpJI8dCpMNLIGkUiA==}
+  /deep-equal@2.2.3:
+    resolution: {integrity: sha512-ZIwpnevOurS8bpT4192sqAowWM76JDKSHYzMLty3BZGSswgq6pBaH3DhCSW5xVAZICZyKdOBPjwww5wfgT/6PA==}
+    engines: {node: '>= 0.4'}
     dependencies:
       array-buffer-byte-length: 1.0.0
       call-bind: 1.0.5
@@ -1994,8 +1996,8 @@ packages:
     resolution: {integrity: sha512-UNopramDEhHJD+VR+ehk8rOslwSfByxPIZyJRfV739NDhN5LF1fa1MqnzKm2lGTQRjNrjK19Q5fhkgIfjlVUKw==}
     dev: true
 
-  /i18next-resources-to-backend@1.1.4:
-    resolution: {integrity: sha512-hMyr9AOmIea17AOaVe1srNxK/l3mbk81P7Uf3fdcjlw3ehZy3UNTd0OP3EEi6yu4J02kf9jzhCcjokz6AFlEOg==}
+  /i18next-resources-to-backend@1.2.1:
+    resolution: {integrity: sha512-okHbVA+HZ7n1/76MsfhPqDou0fptl2dAlhRDu2ideXloRRduzHsqDOznJBef+R3DFZnbvWoBW+KxJ7fnFjd6Yw==}
     dependencies:
       '@babel/runtime': 7.23.6
     dev: false
@@ -2028,6 +2030,11 @@ packages:
 
   /import-meta-resolve@3.0.0:
     resolution: {integrity: sha512-4IwhLhNNA8yy445rPjD/lWh++7hMDOml2eHtd58eG7h+qK3EryMuuRbsHGPikCoAgIkkDnckKfWSk2iDla/ejg==}
+    dev: true
+
+  /import-meta-resolve@4.1.0:
+    resolution: {integrity: sha512-I6fiaX09Xivtk+THaMfAwnA3MVA5Big1WHF1Dfx9hFuvNIWpXnorlkzhcQf6ehrqQiiZECRt1poOAkPmer3ruw==}
+    dev: false
 
   /imurmurhash@0.1.4:
     resolution: {integrity: sha512-JmXMZ6wuvDmLiHEml9ykzqO6lwFbof0GG4IkcGaENdCRDDmMVnny7s5HsIgHCbaq0w2MyPhDqkhTUgS2LU2PHA==}
@@ -2347,8 +2354,8 @@ packages:
       yallist: 2.1.2
     dev: true
 
-  /lucide@0.279.0:
-    resolution: {integrity: sha512-Q8ijuBexemRGqLj9iH/c+uIg4H1LyTUAHS3NbpD5se8gRr1RY8446ZxlGlRk1hEVYULZqF7Bhw75SGVEkHKUTg==}
+  /lucide@0.383.0:
+    resolution: {integrity: sha512-9hmwt/UPcfxUh2cVWBV9vOagFsWPFQsGUkp2XBlwFmMX6zoj3TLrs+HknihuSotnHuWB9pvhm+XUB7C5DOINRQ==}
     dev: false
 
   /lz-string@1.5.0:
@@ -2464,8 +2471,12 @@ packages:
     resolution: {integrity: sha512-5LC9SOxjSc2HF6vO2CyuTDNivEdoz2IvyJJGj6X8DJ0eFyfszE0QiEd+iXmBvUP3WHxSjFH/vIsA0EN00cgr8w==}
     dev: false
 
-  /monkey-around@2.3.0:
-    resolution: {integrity: sha512-QWcCUWjqE/MCk9cXlSKZ1Qc486LD439xw/Ak8Nt6l2PuL9+yrc9TJakt7OHDuOqPRYY4nTWBAEFKn32PE/SfXA==}
+  /moment@2.30.1:
+    resolution: {integrity: sha512-uEmtNhbDOrWPFS+hdjFCBfy9f2YoyzRpwcl+DqpC6taX21FzsTLQVbMV/W7PzNSX6x/bhC1zA3c2UQ5NzH6how==}
+    dev: false
+
+  /monkey-around@3.0.0:
+    resolution: {integrity: sha512-jL6uY2lEAoaHxZep1cNRkCZjoIWY4g5VYCjriEWmcyHU7w8NU1+JH57xE251UVTohK0lCxMjv0ZV4ByDLIXEpw==}
     dev: false
 
   /ms@2.1.2:
@@ -2907,6 +2918,10 @@ packages:
     engines: {node: '>=8'}
     dev: true
 
+  /shq@1.0.3:
+    resolution: {integrity: sha512-1XtfCjwPTIA7E/5gvoRbgVyHpeHcLGcleGrTZIaiqGKDelycbna9BYriq0vSmbRNuew94v83909xRvL/AMuoUw==}
+    dev: false
+
   /side-channel@1.0.4:
     resolution: {integrity: sha512-q5XPytqFEIKHkGdiMIrY10mvLRvnQh42/+GoBlFW3b2LXLE2xxJpZFdm94we0BaoV3RwJyGqg5wS7epxTv0Zvw==}
     dependencies:
@@ -3115,8 +3130,8 @@ packages:
       typescript: 5.4.5
     dev: true
 
-  /ts-deepmerge@6.2.0:
-    resolution: {integrity: sha512-2qxI/FZVDPbzh63GwWIZYE7daWKtwXZYuyc8YNq0iTmMUwn4mL0jRLsp6hfFlgbdRSR4x2ppe+E86FnvEpN7Nw==}
+  /ts-deepmerge@7.0.0:
+    resolution: {integrity: sha512-WZ/iAJrKDhdINv1WG6KZIGHrZDar6VfhftG1QJFpVbOYZMYJLJOvZOo1amictRXVdBXZIgBHKswMTXzElngprA==}
     engines: {node: '>=14.13.1'}
     dev: false
 
@@ -3124,17 +3139,6 @@ packages:
     resolution: {integrity: sha512-77FHNJEyysF9+1s4G6eejuA1lxw7uMchT3ZPy3CIbh7GIunffpshtM8pTe5G6N5dpOzNevqRHew859ceLWVBfw==}
     peerDependencies:
       typescript: '>=4.5.0'
-    peerDependenciesMeta:
-      typescript:
-        optional: true
-    dependencies:
-      typescript: 5.4.5
-    dev: false
-
-  /ts-essentials@9.4.2(typescript@5.4.5):
-    resolution: {integrity: sha512-mB/cDhOvD7pg3YCLk2rOtejHjjdSi9in/IBYE13S+8WA5FBSraYf4V/ws55uvs0IvQ/l0wBOlXy5yBNZ9Bl8ZQ==}
-    peerDependencies:
-      typescript: '>=4.1.0'
     peerDependenciesMeta:
       typescript:
         optional: true
