@@ -99,7 +99,7 @@ export function loadTerminal(context: TerminalPlugin): void {
 		command = (
 			type: Settings.Profile.Type | "select",
 			cwd: typeof CWD_TYPES[number],
-		) => (checking: boolean) => {
+		) => (checking: boolean): boolean => {
 			// eslint-disable-next-line @typescript-eslint/consistent-return
 			const cwd0 = ((): string | null | undefined => {
 				if (!cwd) { return void 0 }

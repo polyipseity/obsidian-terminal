@@ -608,7 +608,7 @@ export class ProfileModal extends Modal {
 										await this.postMutate()
 									},
 									dynamicWidth: true,
-									title: () =>
+									title: (): string =>
 										i18n.t("components.profile.success-exit-codes"),
 								},
 							).open()
@@ -679,7 +679,7 @@ export class ProfileModal extends Modal {
 											await this.postMutate()
 										},
 										dynamicWidth: true,
-										title: () =>
+										title: (): string =>
 											i18n.t(`components.profile.${profile.type}.arguments`),
 									},
 								).open()
@@ -844,7 +844,7 @@ export class ProfileModal extends Modal {
 															const variant = (ver?.compare(req) ?? -1) >= 0
 																? ""
 																: "unsatisfied"
-															return () => i18n.t(
+															return (): string => i18n.t(
 																`notices.Python-status-entry-${variant}`,
 																{
 																	interpolation: { escapeValue: false },

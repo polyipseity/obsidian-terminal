@@ -353,7 +353,7 @@ export class DeveloperConsolePseudoterminal
 							activeSelf(terminal.element).console.error(error)
 						})
 				}),
-			].map(disposer0 => () => { disposer0.dispose() }),
+			].map(disposer0 => (): void => { disposer0.dispose() }),
 		)
 		this.onExit
 			.catch(noop satisfies () => unknown as () => unknown)
