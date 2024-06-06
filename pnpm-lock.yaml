@@ -54,8 +54,8 @@ importers:
         specifier: ^23.11.5
         version: 23.11.5
       immutable:
-        specifier: ^4.3.5
-        version: 4.3.5
+        specifier: ^4.3.6
+        version: 4.3.6
       lodash-es:
         specifier: ^4.17.21
         version: 4.17.21
@@ -69,8 +69,8 @@ importers:
         specifier: ^7.6.2
         version: 7.6.2
       simple-icons:
-        specifier: ^11.12.0
-        version: 11.12.0
+        specifier: ^12.1.0
+        version: 12.1.0
       source-map:
         specifier: ^0.7.4
         version: 0.7.4
@@ -2196,8 +2196,8 @@ packages:
     engines: {node: '>= 4'}
     dev: true
 
-  /immutable@4.3.5:
-    resolution: {integrity: sha512-8eabxkth9gZatlwl5TBuJnCsoTADlL6ftEr7A4qgdaTsPyreilDSnUk57SO+jfKcNtxPa22U5KK6DSeAYhpBJw==}
+  /immutable@4.3.6:
+    resolution: {integrity: sha512-Ju0+lEMyzMVZarkTn/gqRpdqd5dOPaz1mCZ0SH3JV6iFw81PldE/PEB1hWVEA288HPt4WXW8O7AWxB10M+03QQ==}
     dev: false
 
   /import-fresh@3.3.0:
@@ -3093,8 +3093,8 @@ packages:
     resolution: {integrity: sha512-wnD2ZE+l+SPC/uoS0vXeE9L1+0wuaMqKlfz9AMUo38JsyLSBWSFcHR1Rri62LZc12vLr1gb3jl7iwQhgwpAbGQ==}
     dev: true
 
-  /simple-icons@11.12.0:
-    resolution: {integrity: sha512-atQCGhobuIrxTd4rDGYCip/OZwIW4FYX3PRt4BXAZcbIW71hktvX4sF620T2QJyQsNLAYo3QpiHh8ey2IseA/g==}
+  /simple-icons@12.1.0:
+    resolution: {integrity: sha512-oN9buzOhIMFm6QhnwR/PS4XCF1B++toVupcz0DSTPjZXYtPzOH6Aos8Qz7SjLeXw7rvEiNOXyuiaIMVL9V1tMQ==}
     engines: {node: '>=0.12.18'}
     dev: false
 
