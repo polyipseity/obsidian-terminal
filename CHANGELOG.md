@@ -77,8 +77,7 @@ Debloating `data.json` and bugfixes.
 
 - Upgrade minimum Obsidian version to v1.2.8. (`85d498d7cecf28b07e0562c4d9c1c793bf0344c0`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Fixes**
+#### Fixes
 
 - Fix the command to export settings to clipboard. (`993dff6c94b7e70e53c42afdad3fa8e56324a3aa`)
 - Fix lifecycle management. (`993dff6c94b7e70e53c42afdad3fa8e56324a3aa`, `46771b52d6db6c1523a959d8204bc921bd7121ca`, `30377ac69a596a1e38fab881510f840fe66a5afc`)
@@ -90,19 +89,16 @@ Debloating `data.json` and bugfixes.
 
 ## 3.10.0 (2023-07-10)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Features**
+### Features
 
 - Add font terminal options. Closes [GH#20](https://github.com/polyipseity/obsidian-terminal/issues/20). (`ed9077348755cc863958a39a5cf45d4b55720d0d`..`f3145847ff37a438e090e33d399943e4461ad381`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Fixes**
+### Fixes
 
 - Fix typing into the find textbox not working. (`629143c952181524a886b07b4602290a207bf1fa`)
 - Fix wrong find results when no matches. (`691f1a2aa8dc759486f610ea3e7a7f83bc7e865a`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Improvements**
+### Improvements
 
 - Show when the profile is invalid in the `Type` setting. (`46c8598cb2e14dafd1e6266366e6479cb10e036c`)
 
@@ -110,8 +106,7 @@ Debloating `data.json` and bugfixes.
 
 ## 3.9.2 (2023-07-01)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Improvements**
+### Improvements
 
 - Improve Python code. (`977dd978b3acb3ae272407d9112f1c88433f0c4a`, `1757d54dee038cb35f8aca4e3e44b601d3ac6c4e`, `5d7c6a92aee1a7c07c88da611d457ec6bd00becd`)
 - Update npm packages to remove vulnerabilities. (`5d7c6a92aee1a7c07c88da611d457ec6bd00becd`..`aa2e327b6abdf91f93f8bb7c9db7e00d52a829b7`)
@@ -120,8 +115,7 @@ Debloating `data.json` and bugfixes.
 
 ## 3.9.1 (2023-05-25)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Improvements**
+### Improvements
 
 - Large refactoring of the code base. There may (or may not) be new bugs. (`8f910b554e97d2bb819575b59f9af3b85c8ac7b0`..`1a6476a9b67beb1083b7cabaf4a9d0782c7f49e2`)
 - Add support for `pnpm`. (`ed08a97ee2f50bd1869580f8b9f46e945be80093`..`621e8b56b91c5570fa7f628a27b6a7a6834c2b50`)
@@ -134,15 +128,13 @@ Debloating `data.json` and bugfixes.
 - The minimum Obsidian version has been increased to v1.2.5. (`dbc26a396f3d97cb625e577d10ebc537f5548493`)
 - Add donation options. (`15ef8207a3df00b23fc54d1a75ec842925f602ef`..`58df51d64977e93cd98b44f58f0f246e37953214`, `b59e915611f2ce6de83f5eab68165ac06726bcdc`, `420ee154c526298387fb52fb4c40b432486793b3`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Features**
+### Features
 
 - Implement top-level `await` in the developer console. (`7d2219e9bceef8459504c820099ff3c61bd737bd`)
 - Inject context variable `$$` into the developer console. It can be used to dynamically change terminal options. The API is available in [`sources/@types/obsidian-terminal.d.ts#DeveloperConsoleContext`](sources/%40types/obsidian-terminal.d.ts). (`557fd14fc31f0da351d1690852d387f2fd600fac`)
 - Add setting `Open changelog on update`. (`881f39889974a543bac876f933e1e330bfff6f27`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Improvements**
+### Improvements
 
 - Cleanup documentation view. Extra useless functions are removed. (`7c3e4dae5112f6d95780c610219a3c5dd4098364`)
 
@@ -150,20 +142,17 @@ Debloating `data.json` and bugfixes.
 
 ## 3.8.0 (2023-04-29)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Features**
+### Features
 
 - Patch `require` so that `require("obsidian")` works in the developer console. (`89cf2cc34a64f8cd373c8e3dd8da1e7b3f020f5c`)
 - Add internal support for custom terminal options. (`80df07f698450947b04ef2f5b69e11ce52f5d9dc`)
 - Add raw data editing for profiles like the one for settings. You can use this to configure terminal options (refer to [`xterm.js` documentation](https://github.com/xtermjs/xterm.js/blob/2fdb46919ce7a329afe65fe69bcf948d310a2b8a/typings/xterm.d.ts#L26)). An UI for terminal options will be added shortly. Address [GH#11](https://github.com/polyipseity/obsidian-terminal/issues/11) and [GH#16](https://github.com/polyipseity/obsidian-terminal/issues/16). (`fbe2de717c5e46436c929240c8450839139ce7c1`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Fixes**
+### Fixes
 
 - Fix re-enabling plugin overwriting history due to unloaded CSS. (`e02e43918c82dcb8f9641dc2ca2be208e23a3caa`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Improvements**
+### Improvements
 
 - Improve the icon for `whole words` in find in terminal. (`dfb3da51878bd8b7e9004afffc9097e3e01c79a8`)
 - Decrease loading time by ~20%. (`c4ea4912e5f9b412d31df70b3881570a47faebae`)
@@ -172,14 +161,12 @@ Debloating `data.json` and bugfixes.
 
 ## 3.7.0 (2023-04-11)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Features**
+### Features
 
 - Add 3 profile presets: 'powershell: External', 'powershell: Integrated', and 'pwsh: External'. `powershell` stands for Windows PowerShell while `pwsh` stands for PowerShell Core. (`1767d2d9f80a269ba24eecd0c45fd8bf0ed9050c`)
 - Color messages in developer console. (`107826a45b255367f336e00e0cb518f1851a8306`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Improvements**
+### Improvements
 
 - Speed up (re)starting a new developer console significantly. (`5a407cc9ed9b3e985f63d56aa7aed4a3b17e33ae`)
 - Improve developer console messages significantly. (`e6b5ae83c448398105ec11444722852a6a1b11b4`)
@@ -188,16 +175,14 @@ Debloating `data.json` and bugfixes.
 
 ## 3.6.0 (2023-04-04)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Features**
+### Features
 
 - Add 'root directory' button next to working directory when editing a terminal view. (`4991ccb8548b3034f8f753924f1fbd95523259be`)
 - Add 'focus on new instance' setting. (`c7db57e1328da5883a3587d0d812905bc30f58e1`)
 - Add 'restore history' profile setting. (`c1b3a69dbd71d7fecc080e5b6791b81260dc6ccf`)
 - Add 'success exit codes' profile setting. (`3d9aaca914837df324200307e634d1f7f4cd42da`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Improvements**
+### Improvements
 
 - Developer console history can be kept now. (`7ced419b9762ff92a28cadf0355a54f0200b6209`)
 
@@ -205,18 +190,15 @@ Debloating `data.json` and bugfixes.
 
 ## 3.5.1 (2023-03-28)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Fixes**
+### Fixes
 
 - mobile: Fix 'Save to HTML'. It no longer does nothing on Android and soft locks Obsidian on iOS. (`b1201a089a3f3447e09249651434995b11bb283b`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Features**
+### Features
 
 - The latest commit for the plugin can now be installed using [Obsidian42 - BRAT](https://obsidian.md/plugins?id=obsidian42-brat). (`5f263690e80d6298eb02ffade41a10beedd4ce1f`..`bda61d4ee1a82c7b9694912ae0353e178f0f0756`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Improvements**
+### Improvements
 
 - Use CSS to hide the status bar, making the hiding customizable. (`84c55993db3d3e8a86d283e83df0c58dfa4d8eaf`)
 
@@ -224,15 +206,13 @@ Debloating `data.json` and bugfixes.
 
 ## 3.5.0 (2023-03-20)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Features**
+### Features
 
 - Add 6 external profile presets. Helps with [GH#16](https://github.com/polyipseity/obsidian-terminal/issues/16). (`c9a51249d35fe429d5cc4eb8a307612177de896e`)
 - Automatically pin new terminal tabs to avoid accidentally terminating terminals. Configurable in settings. (`beb24cc25802750b1681358e42fd74ccbe51f83a`)
 - Add support for dragging and dropping files into the terminal to paste their filepaths. See [GH#16](https://github.com/polyipseity/obsidian-terminal/issues/16). (`7c5e4617072d1b77a7d9f11b0e886c8e9d051f91`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Fixes**
+### Fixes
 
 - Fix invalid regex crashing find in terminal. (`9da6bb9494fa0079fb1b60a8140277e1dbff9860`)
 
@@ -240,8 +220,7 @@ Debloating `data.json` and bugfixes.
 
 ## 3.4.1 (2023-03-14)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Fixes**
+### Fixes
 
 - Fix error opening documentation. (`df085f2a505983592f7d50e31bdc3d52a89f29f3`)
 
@@ -251,25 +230,21 @@ Debloating `data.json` and bugfixes.
 
 This update focuses on performance of plugin loading. The loading time has been decreased significantly, making it more viable for slow platforms (like mobile).
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Features**
+### Features
 
 - Add Git Bash preset. Helps with [GH#15](https://github.com/polyipseity/obsidian-terminal/issues/15). (`4b2b63cf2ab0477a4dcd22e78db7e4103c6b0d8c`..`d9543e88c407b19180a3f25371de7391f0160857`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Improvements**
+### Improvements
 
 - Throttle terminal resizing to reduce flickering. (`04899b5f6ae3eef1a4561ba022db5ebbab9f785f`..`f947c780c7c38f8bb4e2f02c163de0b72024dfe8`)
 - Compress JSON and text files, decreasing bundle size from ~1.8 MB to ~1.45 MB. (`ed2e4b671518ec79c6de8f11e3889cae574ea9cb`, `1e98d9429e788e472dc83caa61824a1338e54586`)
 - Reduce startup time by ~80%. (`fe93210ffd44ccf1b1e48d625963140f008fea83`, `a199af9baf212a419d3ff503878bd6b835e762f4`..`ddd3f3a16e67d29b4ba3a07beeeae05cfcb36fc4`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Miscellaneous**
+### Miscellaneous
 
 - Add npm commands to install the plugin. (`854e1338072f325b6e450817b568244f89693dce`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Internals**
+### Internals
 
 - Make monkey patches more resilient to errors. (`af35b0176e1f11e32be5764ff17f93a2a01e8f7f`)
 
@@ -279,20 +254,17 @@ This update focuses on performance of plugin loading. The loading time has been 
 
 Just a small release to push out the unpublished changes.
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Features**
+### Features
 
 - Add Windows Subsystem for Linux preset as suggested in [GH#14](https://github.com/polyipseity/obsidian-terminal/issues/14). (`7a787996ddf96403ee29dfb13c0f9a9961853474`..`720388c0fdf0833137df479e43f24524939252c2`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Improvements**
+### Improvements
 
 - Improve startup time significantly by initializing developer console on demand. (`c023f15e48c04cda8ecd3e4a4cf9f258e86f4a5e`)
 - Stablize CSS class names for custom Svelte components. This should make it way easier to maintain custom CSS for them. (`d9e306563c8b8396c79c4b57e69287af45b604b3`)
 - Rewrite developer console paging algorithm. It should fix most (if not all) bugs with it, including resizing. (`8a94ef19610e2d4b689dde4ae5bc5843d55b264f`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Fixes**
+### Fixes
 
 - Fix creating instances near existing ones in left and right leaves. (`f055a3b8e77e0349eacbf66a55a21f7784280061`)
 
@@ -302,20 +274,17 @@ Just a small release to push out the unpublished changes.
 
 Emulating a text area in a terminal is insane...
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Notices**
+### Notices
 
 - The minimum API version has been bumped to v1.1.13. Please update your app to the latest version. (`e2733c5c36003db5556819088b50bad29671d4e0`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Features**
+### Features
 
 - Developer console terminal is now interactive. You can evaluate code like the normal developer console now. (Spent too much time on this.) (`bcdd8dbff0d652c8eb9a389f734db2c3a5891323`...`e2d8690767f81958b1a0d95ac412a12ac3ab0c33`)
 - You can set custom title of the terminal from the shell (if your shell supports it). (`3718829159b1c5960dec430df78ed5d70c4a9abb`)
 - Four new options for 'New instance behavior'. They are 'New left tab', 'New left split', 'New right tab', and 'New right split'. (`bcdd8dbff0d652c8eb9a389f734db2c3a5891323`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Improvements**
+### Improvements
 
 - All settings should have an icon representing it. (`eb1a647d0336041a7f705a3476f18bd5ed738913`)
 - Improve find in terminal.
@@ -328,15 +297,13 @@ Emulating a text area in a terminal is insane...
 - Find in terminal now has intro and outro transitions. (`bcdd8dbff0d652c8eb9a389f734db2c3a5891323`...`ef39cb1177af6cc108f8e61d179eff89056b48f8`)
 - Add 'Clear' button to terminal context menu. (`1a2f3104b6034065b1f7e1a0e5cd410254eef52c`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Fixes**
+### Fixes
 
 - Fix some translation strings. (`88cbcf603ff0429d26f1616b7af67bf4cf27f3f9`, `2a4a4cfe45f4ffd787feb134ef0545af7a832fb5`)
 - Unfocusing terminal also works when find in terminal is focused. (`f7cde90970128bd4bbf1578fb2e1d3249451a628`)
 - Improve compatibility with pop-out windows. (`798b2988875e0688f7602efb20fbd6702edf00f9`..`59955f4ee1e9102dd956537464e53b88cc1a6d12`, `f38d0082a0fc9cccbb75c7383aa6c35810b1e9b8`..`7b8364086873ebeee11fd506c2f139708be6e740`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Internals**
+### Internals
 
 - Load translations on demand. (`268c684ec97f858d5a6ef030130b834eda305442`)
 - Delay removing exit code temp file to print less warnings to the console. (`6923553979451e1da6200c7ac01e637f2f2563ae`)
@@ -350,14 +317,12 @@ Emulating a text area in a terminal is insane...
 
 This update focuses on quality of life improvements.
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Notices**
+### Notices
 
 - You can actually download the plugin on mobile now. Somehow this has not been caught for a long time.
 - Settings will probably be broken again. The plugin will attempt to fix it without changing it as much as possible. In case it goes wrong, you can recover the previous setting from the plugin itself now.
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Features**
+### Features
 
 - Add settings recovery. It can recover settings that are valid JSON but not completely valid for plugin settings (like settings from a previous version). (`a8d702240730e4a50c22787b718409a948dd0bca`)
 - Add importing settings and exporting settings from the command palette. Using a file requires navigating to a markdown file first. (`e76949eb6694fcc4655a3b0d269116e199dc17b1`)
@@ -371,8 +336,7 @@ This update focuses on quality of life improvements.
 - Add Python executable checking button in profile settings. It checks and prints the version in a notice. Could help with GH#9. (`dce6ead590417c2df470f327388f8f67bae2f5a5`..`1521bd5fd5d59012f94ca35aeb21e48c0c9b9929`)
 - Open readme on first install of the plugin. (`0e89d05b0269f9e912094f3364a33f6a1f65b3e6`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Improvements**
+### Improvements
 
 - Improve typing negative numbers in settings. (`e89f36a8f957524b685452d4c7cd1221e1595839`)
 - Make settings UI &lt;Tab&gt;-friendly. (`196f1230e0e3e8a2411318d822fbf2f94880a81e`..`19c3fa8cc3f34e00fc874bcbbafe96ab1466c4ea`)
@@ -381,8 +345,7 @@ This update focuses on quality of life improvements.
 - No more empty terminal tab name (`Terminal:`). (`535aa52a46fe67ffed93cd84d7903bfe1442c493`)
 - More information about profiles are displayed. (`eb73553fb53e8292b9e73088567bc1dfcc61f322`, `8b45a6e420a1b3130351c964f3240c5cbecd398c`..`5f59ab6d60d51635214f54123e34d61b7aa87cc3`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Fixes**
+### Fixes
 
 - Fix a setting reset button. (`555001371e16562bb34a92291571d1d2f82d5b7e`)
 - Mobile: Fix unclickable modal close button. (`e9fc80f68a353bb1c60d29c45ccd5f5baaf058ac`)
@@ -392,8 +355,7 @@ This update focuses on quality of life improvements.
 - Windows: Fix pressing &lt;Ctrl+C&gt; exiting the terminal resizer. (`5bff3f0749f16be80bfeb8a3ba903b0f8c6f79c4`)
 - Mobile: Fix bottom of terminal view covered by navbar. (`3230ca61defe56429358fcf368fade77abb6991d`, `dc875923e67300e2a0826d4e9332c51c2f42c19b`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Internals**
+### Internals
 
 - Improve UI code using `UpdatableUI`.
 - Potentially invalid data are validated. If invalid, they are fixed and logged. (`ad9e9bf0c2def5e4bcb999fdff05b776e988d11b`, `1d4cc6abd5ab0bba1a74d9c7aa1854d5e949aecf`, `d6c1b5b298114cd267e2d7101a053e2dfb60a1e1`)
@@ -401,8 +363,7 @@ This update focuses on quality of life improvements.
 - Handle missing translation keys and interpolation. (`575cbfeb4293f7d602124f6470f5fb95ccf3b99c`)
 - Improve plugin loading. (`71f2e948c8dcee77ced2f772aeac204ab7f8dcf5`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Miscellaneous**
+### Miscellaneous
 
 - Change license from "MIT" to "AGPL-3.0-or-later". (`77d9d9477b0dc1d56ab3b0cd36d3ba53ef5e52ff`)
 - Improve documentation. Closes GH#4 and GH#6. (`57a85254e1fd7bf9ed5a6feab08784b26d983090`, `25df148d992056b8378ff42d459120f4c48b52f3`)
@@ -413,14 +374,12 @@ This update focuses on quality of life improvements.
 
 A major version bump as there are many shiny new features this time! ✨
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Notices**
+### Notices
 
 - Please reconfigure your settings. Old settings will likely be overwritten.
 - Now usable and useful on mobile! (You can only open developer console, however...)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Features**
+### Features
 
 - Implement terminal profiles! Comes with several presets. (`dda444885bd032fc4c85e9d9b95ace90be706d68`)
 - Implement editing arguments. (`dda444885bd032fc4c85e9d9b95ace90be706d68`)
@@ -431,8 +390,7 @@ A major version bump as there are many shiny new features this time! ✨
 - New terminal type: Console. It prints messages from the developer console. Works on mobile. (`3619f5865d054269819095cbad912184377e66e8`)
 - Implement editing terminal. You can change terminal profile and working directory. (`c9909513604d5b2b2f15cbe9dbeb9936a7c85018`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Fixes**
+### Fixes
 
 - Fix unable to find after terminal restart. (`5586baa16320da28acb6c3a64f4b73c58e760013`)
 - Fix escaping arguments. (`a4fd03d737fe86b1d2ccd9bb59aa0429445a4fb0`)
@@ -440,8 +398,7 @@ A major version bump as there are many shiny new features this time! ✨
 - Fix updating terminal tab name. (`1e7adcc23abeef98fb96ac587aaf4912209af10d`)
 - Fix find in terminal styling on mobile. (`7de6c2a69715882e076fae5b42940daa7c28add6`..`35e8e5f6fdeb90986b193a4bfcab952788faa1ff`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Internals**
+### Internals
 
 - Improve code, as always.
 - Improve build scripts.
@@ -453,24 +410,21 @@ A major version bump as there are many shiny new features this time! ✨
 
 ## 2.11.0 (2023-01-28)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Features**
+### Features
 
 - Add GPU acceleration! Now scrolling the terminal is super smooth. (`078c36818bfbb038501bd4302e5c45ead53f12ba`)
 - Improve settings UI. (`e3790ae02a7839aca2ef8659a16fcacebbc02d52`)
 - Add setting to specify terminal renderer. (related to GPU acceleration) (`e029c710f3cda5b9dd209c517702ad1360754f20`)
 - Add find in terminal function! Right-click terminal tab header to access it. (`925328b32c11470ae195b5061afe05b84d0f0d1b`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Fixes**
+### Fixes
 
 - Fix unable to unfocus from terminal. (`22cd684673b69860f442d86cac5d2ae9546c85a2`)
 - Fix reset all settings not resetting all settings. Again... (`270530dde452ef0db5a0bf5ee813dc6d7072fa79`)
 - Decrease the chance that the terminal resizer fails to initialize. (`ba9c34f4be014d641670ba1b01d53ec6d1723c18`, `781a4ec764628439aca519d7cc31e69f84e7f00e`)
 - Improve accuracy of terminal resizer. (`76c85dffda284e95a1deb234198bbf4db2e7fb8a`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Internals**
+### Internals
 
 - Housekeeping.
 - Handle more uncaught errors.
@@ -483,8 +437,7 @@ A major version bump as there are many shiny new features this time! ✨
 
 ## 2.10.0 (2023-01-23)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Notices**
+### Notices
 
 - Updating the plugin starting from this version to a newer version will no longer close all active terminal views. (Does not include updating from a previous version to this version.)
 - Please reset your settings and reconfigure it.
@@ -494,8 +447,7 @@ A major version bump as there are many shiny new features this time! ✨
 - mobile: You can only change settings on mobile for now.
 - Hint: There are hidden settings to set the launching arguments in `.obsidian/plugins/terminal/data.json`. Search for `intArgs` and `extArgs`. I still need to figure out how to present the hidden settings in the settings UI well.
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Features**
+### Features
 
 - Terminal view no longer closes when the underlying process terminates. (`934eb24e2c7106e1122c8c29e4160ca5d55749ef`)
 - Add terminal restoration message in the format of `* Restored history at (time)`. (`5dd1efb5709af6d5f7dae7ee5d4b813fc4156612`)
@@ -503,8 +455,7 @@ A major version bump as there are many shiny new features this time! ✨
 - Add settings to disable annoying notices. (`602954ee0ee619368ffb770310262656ee1a1551`)
 - Add settings to specify external terminal separately. (`a80466f309483f6971c29b85d5825449ab93c448`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Fixes**
+### Fixes
 
 - Terminal view persists when updating the plugin. (`934eb24e2c7106e1122c8c29e4160ca5d55749ef`)
 - Windows: Pressing `Ctrl-C` will no longer close the resizer sometimes. (`fc95167374d3174ce94ce47ecc8bb41709b2c535`)
@@ -513,8 +464,7 @@ A major version bump as there are many shiny new features this time! ✨
 - (See notices) Linux, macOS: Fix external terminal not opening by separating external and internal terminal executable. (`a80466f309483f6971c29b85d5825449ab93c448`)
 - (See notices) macOS: Fix external terminal not starting in the specified cwd. Might not work with non-default terminals. (`0b66970f065160e713067bb930bedf97f7f71793`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Internals**
+### Internals
 
 - Housekeeping.
 - Refactor terminal files.
@@ -528,29 +478,25 @@ A major version bump as there are many shiny new features this time! ✨
 
 After lots of hard work, v2.9.0 is finally ready! 😅
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Fixes**
+### Fixes
 
 - Fix integrated terminals on Linux and macOS (more generally, Unix). Python 3.10/+ is required but Python packages `psutil` and `pywinctl` are no longer required on Unix platforms. This should address the problem with integrated terminals of [GH#2](https://github.com/polyipseity/obsidian-terminal/issues/2). (`7812e8f148a0f52c2f576dded17266de07e3cebc`..`5dbea610f75dbadce28d54b90c8549fb6c24fc6e`)
 - Change default Python executable to `python3` to avoid starting Python 2. (`ba931427b1e5e2dd4a716ff90946e7a855eb5aea`)
 - Fix error handling. (`905d52e06eb83c6f915c9bb4fa4fcb2afece7327`..`8ac982e97ab32249135ffe36cc7ffc03548af059`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Internals**
+### Internals
 
 - Validate language files. (`e919a7cf4fa165a92dc9c91f40f448ef9ae999c5`..`29fdad08527e7b798277d0aed4b231aedf77105e`)
 - Housekeeping.
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Miscellaneous**
+### Miscellaneous
 
 - Allow plugin to be enabled on mobile. It does nothing though. (`cb40072e533b1dc20d441485817bced1b49b55ea`..`b400a4412f29fda901e579b7b2968305579ac4f1`)
 - Add all languages available in Obsidian (untranslated except for 2). (`29fdad08527e7b798277d0aed4b231aedf77105e`)
 - Update translations.
 - Update `README.md`.
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Known bugs**
+### Known bugs
 
 - Opening external terminals is still broken on Linux and macOS.
 
@@ -558,8 +504,7 @@ After lots of hard work, v2.9.0 is finally ready! 😅
 
 ## 2.8.1 (2023-01-14)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Fixes**
+### Fixes
 
 - Fix failing to load plugin. (`fc07030d02699323f103b9609590ca5f6d6245ef`)
 - Housekeeping.
@@ -568,20 +513,17 @@ After lots of hard work, v2.9.0 is finally ready! 😅
 
 ## 2.8.0 (2023-01-14)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Features**
+### Features
 
 - Add 2 new plugin settings.
   - Hide status bar (`86c6602bd2b6b2e93f13e182ae11daa413a28cf3`)
   - Enable Windows 'conhost.exe' workaround (`e2710eca0e38570e812cd7beb467b71223a4696c`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Improvements**
+### Improvements
 
 - Log error and notify user if terminal resizer fails to start. (`5be0367243ad9a4655f9b09575d6a17ee317a707`)
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Fixes**
+### Fixes
 
 - Fix terminal not starting if terminal resizer fails to start. (`459ac226e08bc8898885731a41de6406af10c322`)
 - Fix text escaping unnecessarily in notice messages. (`0dc8152517d29f896021beeafd355c4f2b8d2907`)
@@ -596,21 +538,18 @@ You can now get the plugin here instead: <https://obsidian.md/plugins?id=termina
 
 No, there is no celebration for this. 😞
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Features**
+### Features
 
 - Add setting to configure or disable Python terminal resizer.
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Fixes**
+### Fixes
 
 - Fix integrated terminal not resizing when the terminal is not focused.
 - Fix integrated terminal window not hidden when Python terminal resizer is unavailable.
 - Fix potential issues with `cmd.exe` argument escaping.
 - Housekeeping.
 
-<!-- markdownlint-disable-next-line MD036 -->
-**Others**
+### Others
 
 - The view type of terminal is changed from `terminal:terminal-view` to `terminal:terminal`. Existing views will break unless you know how to modify `.obsidian/workspace.json` to fix it.
 - Improve `README.md` significantly.
