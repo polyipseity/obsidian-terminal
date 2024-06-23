@@ -1,5 +1,11 @@
 # obsidian-terminal <!-- markdownlint-disable MD024 -->
 
+## 3.15.1
+
+### Patch Changes
+
+- 82ec350: Fix default terminal options not setting `documentOverride` to `null`.
+
 ## 3.15.0
 
 ### Minor Changes
