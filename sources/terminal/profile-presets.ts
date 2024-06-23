@@ -41,7 +41,7 @@ export const
 		},
 	}),
 	DEFAULT_TERMINAL_OPTIONS: Settings.Profile.TerminalOptions =
-		deepFreeze({}),
+		deepFreeze({ documentOverride: null }),
 	DEFAULT_THEME: ITheme = deepFreeze({}),
 	DEFAULT_WINDOW_OPTIONS: IWindowOptions = deepFreeze({}),
 	DEFAULT_WINDOWS_PTY: IWindowsPty = deepFreeze({})
