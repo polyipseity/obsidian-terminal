@@ -13,7 +13,6 @@ import {
 	MAX_LOCK_PENDING,
 	TERMINAL_EXIT_CLEANUP_WAIT,
 	TERMINAL_RESIZER_WATCHDOG_WAIT,
-	WINDOWS_CMD_PATH,
 	WINDOWS_CONHOST_PATH,
 } from "../magic.js"
 import {
@@ -723,34 +722,51 @@ class WindowsPseudoterminal implements Pseudoterminal {
 			]> => {
 				const resizer = await resizerInitial.catch(() => null)
 				try {
-					const [childProcess2, tmpPromise2] =
-						await Promise.all([childProcess, tmpPromise]),
-						codeTmp = await tmpPromise2.file({ discardDescriptor: true })
+					const [childProcess2, fsPromises2, tmpPromise2] =
+						await Promise.all([childProcess, fsPromises, tmpPromise]),
+						inOutTmp = await tmpPromise2.file({
+							discardDescriptor: true,
+							postfix: ".bat",
+						})
 					try {
+						/*
+						 * The command is written to a file because...
+						 * `conhost.exe` "helpfully" escapes the arguments.
+						 * 
+						 * <https://github.com/microsoft/terminal/blob/cb48babe9dfee5c3e830644eb7ee48f4116d3c47/src/host/ConsoleArguments.cpp#L34>
+						 */
+						const inOutTmpEsc =
+							WindowsPseudoterminal.escapeArgument(inOutTmp.path)
+						/*
+						 * The last command is a one-liner to prevent
+						 * "Terminate batch job (Y/N)?" from terminating
+						 * writing the exit code.
+						 */
+						await fsPromises2.writeFile(
+							inOutTmp.path,
+							`@echo off\r\nsetlocal EnableDelayedExpansion\r\n${[
+								executable,
+								...args ?? [],
+							].map(arg => WindowsPseudoterminal.escapeArgument(arg))
+								.join(" ")} & echo !ERRORLEVEL! > ${inOutTmpEsc}`,
+							{ encoding: DEFAULT_ENCODING, flag: "w" },
+						)
 						const
-							cmd = deepFreeze([
-								...conhost ? [WINDOWS_CONHOST_PATH] as const : [] as const,
-								WINDOWS_CMD_PATH,
-								"/C",
-								`${WindowsPseudoterminal.escapeArgument(executable)} ${(
-									args ?? [])
-									.map(arg => WindowsPseudoterminal.escapeArgument(arg))
-									.join(" ")
-								} & call echo %^ERRORLEVEL% >${WindowsPseudoterminal
-									.escapeArgument(codeTmp.path)}`,
-							]),
+							cmd = deepFreeze(conhost
+								? [WINDOWS_CONHOST_PATH, inOutTmp.path]
+								: [inOutTmp.path]),
 							ret = await spawnPromise(() => childProcess2.spawn(
 								cmd[0],
 								cmd.slice(1),
 								{
 									cwd,
+									shell: !conhost,
 									stdio: ["pipe", "pipe", "pipe"],
 									windowsHide: !resizer,
-									windowsVerbatimArguments: true,
 								},
 							))
 						return [
-							ret, codeTmp, resizerInitial.then(async resizer0 => {
+							ret, inOutTmp, resizerInitial.then(async resizer0 => {
 								if (resizer0) {
 									try {
 										await writePromise(resizer0.stdin, `${ret.pid ?? -1}\n`)
@@ -784,7 +800,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 							}),
 						]
 					} catch (error) {
-						await codeTmp.cleanup()
+						await inOutTmp.cleanup()
 						throw error
 					}
 				} catch (error) {
@@ -795,7 +811,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 		this.resizer = shell.then(async ([, , resizer]) => resizer)
 		this.shell = shell.then(([shell0]) => shell0)
 		this.onExit = shell
-			.then(async ([shell0, codeTmp]) =>
+			.then(async ([shell0, inOutTmp]) =>
 				new Promise<NodeJS.Signals | number>(resolve => {
 					shell0.once("exit", (conCode, signal) => {
 						resolve((async (): Promise<NodeJS.Signals | number> => {
@@ -803,7 +819,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 								const fsPromises2 = await fsPromises,
 									termCode = parseInt(
 										(await fsPromises2.readFile(
-											codeTmp.path,
+											inOutTmp.path,
 											{ encoding: DEFAULT_ENCODING, flag: "r" },
 										)).trim(),
 										10,
@@ -816,7 +832,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 								(async (): Promise<void> => {
 									try {
 										await sleep2(self, TERMINAL_EXIT_CLEANUP_WAIT)
-										await codeTmp.cleanup()
+										await inOutTmp.cleanup()
 									} catch (error) { self.console.warn(error) }
 								})()
 							}
@@ -825,13 +841,14 @@ class WindowsPseudoterminal implements Pseudoterminal {
 				}))
 	}
 
-	protected static escapeArgument(arg: string, shell = false): string {
-		const ret = `"${arg.replace(replaceAllRegex("\""), "\\\"")}"`
-		return shell ? ret.replace(/(?<meta>[()%!^"<>&|])/ug, "^$<meta>") : ret
+	protected static escapeArgument(arg: string): string {
+		const ret = `"${arg.replace(replaceAllRegex('"'), '"""')}"`
+		// Replace 2: ret.replace(/(?<meta>[()%!^"<>&|])/ug, "^$<meta>")
+		return ret
 
 		/*
-		 * Replace 1: quote argument
-		 * Replace 2: escape cmd.exe metacharacters
+		 * Replace 1: quote argument, https://stackoverflow.com/a/15262019
+		 * Replace 2: escape cmd.exe metacharacters, https://stackoverflow.com/a/38766899
 		 */
 	}
 
