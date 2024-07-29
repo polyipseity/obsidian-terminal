@@ -1,4 +1,3 @@
-# -*- coding: UTF-8 -*-
 from importlib.metadata import PackageNotFoundError as _Pkg404Err, version as _ver
 from sys import argv as _argv
 from typing import Sequence as _Seq

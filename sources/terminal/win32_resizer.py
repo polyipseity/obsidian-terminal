@@ -1,4 +1,3 @@
-# -*- coding: UTF-8 -*-
 from contextlib import contextmanager as _contextmanager
 from itertools import chain as _chain
 from psutil import Process as _Process
@@ -44,30 +43,24 @@ if _sys.platform == "win32":
     @_final
     class _PyCOORDType0(_Protocol):
         @property
-        def X(self) -> int:
-            ...
+        def X(self) -> int: ...
 
         @property
-        def Y(self) -> int:
-            ...
+        def Y(self) -> int: ...
 
     @_final
     class _PySMALL_RECTType0(_Protocol):
         @property
-        def Left(self) -> int:
-            ...
+        def Left(self) -> int: ...
 
         @property
-        def Top(self) -> int:
-            ...
+        def Top(self) -> int: ...
 
         @property
-        def Right(self) -> int:
-            ...
+        def Right(self) -> int: ...
 
         @property
-        def Bottom(self) -> int:
-            ...
+        def Bottom(self) -> int: ...
 
     @_final
     class _PyConsoleScreenBufferInfo(_TypedDict):

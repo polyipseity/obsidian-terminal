@@ -1,4 +1,3 @@
-# -*- coding: UTF-8 -*-
 from os import (
     execvp as _execvp,
     read as _read,
