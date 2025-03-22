@@ -7,7 +7,7 @@
 		"@polyipseity/obsidian-plugin-library": "^1.26.0",
 		"i18next": "^24.2.3",
 		"lodash-es": "^4.17.21",
-		"obsidian": "~1.2.8",
+		"obsidian": "~1.4.11",
 		"semver": "^7.7.1",
 		"ts-essentials": "^10.0.4"
 	},
