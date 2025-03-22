@@ -31,7 +31,7 @@
 		"tmp-promise": "^3.0.3",
 		"ts-essentials": "^10.0.4"
 	},
-	"description": "Integrate consoles, shells, and terminals inside Obsidian.",
+	"description": "Integrate consoles, shells, and terminals.",
 	"devDependencies": {
 		"@changesets/cli": "^2.28.1",
 		"@eslint/compat": "^1.2.7",
