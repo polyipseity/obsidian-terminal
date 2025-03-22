@@ -4,11 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  braces@<3.0.3: '>=3.0.3'
-  micromatch@<4.0.8: '>=4.0.8'
-  '@babel/runtime@<7.26.10': '>=7.26.10'
-
 importers:
 
   .:
