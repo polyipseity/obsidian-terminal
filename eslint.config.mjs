@@ -7,7 +7,9 @@ import globals from "globals"
 import js from "@eslint/js"
 import markdownlintParser from "eslint-plugin-markdownlint/parser.js"
 import path from "node:path"
+// eslint-disable-next-line capitalized-comments
 // import svelte from "eslint-plugin-svelte"
+// eslint-disable-next-line capitalized-comments
 // import svelteParser from "svelte-eslint-parser"
 import tsParser from "@typescript-eslint/parser"
 import typescriptEslint from "@typescript-eslint/eslint-plugin"
@@ -52,6 +54,7 @@ export default defineConfig([
 		},
 		plugins: {
 			"@typescript-eslint": typescriptEslint,
+			// eslint-disable-next-line capitalized-comments
 			// svelte,
 		},
 		rules: {
