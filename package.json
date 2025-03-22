@@ -65,7 +65,7 @@
 		"authorUrl": "PLACEHOLDER",
 		"id": "PLACEHOLDER",
 		"isDesktopOnly": false,
-		"minAppVersion": "PLACEHOLDER",
+		"minAppVersion": "1.4.11",
 		"name": "PLACEHOLDER"
 	},
 	"overrides": {},
