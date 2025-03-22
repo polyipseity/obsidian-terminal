@@ -43,7 +43,7 @@ const
 	])
 await execute(
 	"git",
-	["commit", "--amend", "--no-edit", "--gpg-sign", "--signoff"],
+	["commit", "--amend", "--no-edit", "--gpg-sign"],
 	{ encoding: "utf-8" },
 )
 await execute(
