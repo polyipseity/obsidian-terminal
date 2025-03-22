@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@polyipseity/obsidian-plugin-library':
-        specifier: ^1.27.0
-        version: 1.27.0(@codemirror/state@6.2.1)(@codemirror/view@6.16.0)(esbuild@0.25.1)(typescript@5.8.2)
+        specifier: ^1.28.0
+        version: 1.28.0(@codemirror/state@6.2.1)(@codemirror/view@6.16.0)(esbuild@0.25.1)(typescript@5.8.2)
       '@xterm/addon-canvas':
         specifier: ^0.7.0
         version: 0.7.0(@xterm/xterm@5.5.0)
@@ -823,8 +823,8 @@ packages:
       fastq: 1.15.0
     dev: true
 
-  /@polyipseity/obsidian-plugin-library@1.27.0(@codemirror/state@6.2.1)(@codemirror/view@6.16.0)(esbuild@0.25.1)(typescript@5.8.2):
-    resolution: {integrity: sha512-u0VNU9m8BY+ncqQ7LKingCd2abm5CB2pOtl/qn0T7BXbnlh9NiR+dNtcAYRDsPnVg5Hr47/CPn0af2hWuYDHEw==}
+  /@polyipseity/obsidian-plugin-library@1.28.0(@codemirror/state@6.2.1)(@codemirror/view@6.16.0)(esbuild@0.25.1)(typescript@5.8.2):
+    resolution: {integrity: sha512-SgAYhDSgMW9XQ+ZNDJB1g14qFnhqOkK09aMqpNWaz77MTZnnB1urpK6lCg6fq35xtO8UwQIUIpjFvbWadkRahA==}
     peerDependencies:
       esbuild: '>=0.17.0'
     peerDependenciesMeta:
@@ -2654,7 +2654,6 @@ packages:
     resolution: {integrity: sha512-7bVbi0huj/wrIAOzb8U1aszg9kdi3KN/CyU19CTI7tAoZYEZoL9yCDXpbXN+uPsuWnP02cyug1gleqq+TU+YCA==}
     engines: {node: '>= 0.4'}
     dependencies:
-      call-bind: 1.0.8
       call-bound: 1.0.4
       has-tostringtag: 1.0.2
     dev: false

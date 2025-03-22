@@ -576,10 +576,11 @@ export class TerminalView extends ItemView {
 			this.#find = mount(FindComponent, {
 				intro: true,
 				props: {
+					focused: true,
 					i18n: i18n.t,
-					onClose: (): void => { this.#find = null },
+					onClose: () => { this.#find = null },
 					onFind,
-					onParamsChanged: (params: FindComponent$.Params): void => {
+					onParamsChanged: (params: FindComponent$.Params) => {
 						this.#emulator?.addons.search.clearDecorations()
 						onFind("previous", params)
 					},
@@ -588,7 +589,6 @@ export class TerminalView extends ItemView {
 				...optional,
 			})
 		}
-
 		this.#find.focus()
 	}
 
