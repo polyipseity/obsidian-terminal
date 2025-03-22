@@ -40,6 +40,7 @@ import {
 	remove,
 	replaceAllRegex,
 	sleep2,
+	toJSONOrString,
 	typedKeys,
 } from "@polyipseity/obsidian-plugin-library"
 import type { IMarker, Terminal } from "@xterm/xterm"
@@ -118,7 +119,7 @@ export class RefPsuedoterminal<T extends Pseudoterminal,
 		}
 		this.delegate.onExit.then(
 			async ret => { (await this.#exit).resolve(ret) },
-			async error => { (await this.#exit).reject(error) },
+			async (error: unknown) => { (await this.#exit).reject(error) },
 		)
 		++this.#ref[0]
 	}
@@ -981,7 +982,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 		const [shell, stream2] = await Promise.all([this.shell, stream]),
 			cmdio = shell.stdio[UnixPseudoterminal.#cmdio]
 		if (!(cmdio instanceof stream2.Writable)) {
-			throw new TypeError(String(cmdio))
+			throw new TypeError(toJSONOrString(cmdio))
 		}
 		await writePromise(cmdio, `${columns}x${rows}\n`)
 	}

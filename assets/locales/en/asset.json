@@ -75,7 +75,7 @@
 		"platforms": {
 			"darwin-icon": "terminal:macos",
 			"linux-icon": "terminal:linux",
-			"win32-icon": "terminal:windows"
+			"win32-icon": "grid-2x2"
 		},
 		"profile-icon": "$t(asset:generic.terminal-alt-icon)",
 		"profile-types": {

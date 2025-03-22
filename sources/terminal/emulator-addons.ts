@@ -15,6 +15,7 @@ export class DisposerAddon extends Functions implements ITerminalAddon {
 		super({ async: false, settled: true }, ...args)
 	}
 
+	// eslint-disable-next-line @typescript-eslint/class-methods-use-this
 	public activate(_terminal: Terminal): void {
 		// Noop
 	}

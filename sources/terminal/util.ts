@@ -247,7 +247,8 @@ export class TerminalTextArea implements IDisposable {
 					datum !== void 0;
 					datum = data0.shift()) {
 					const { cursorX, cursorY } = active,
-						lineWidth = this.#widths[cursorY] ?? 0,
+						// eslint-disable-next-line no-multi-assign
+						lineWidth = this.#widths[cursorY] ??= 0,
 						line = active.getLine(cursorY)
 					switch (datum) {
 						case "": break

@@ -217,7 +217,8 @@ export namespace Settings {
 				profile,
 			})
 		}
-		export type Platforms<T extends string> = { readonly [_ in T]?: boolean }
+		export type Platforms<T extends string> =
+			Readonly<Partial<Record<T, boolean>>>
 		interface Base {
 			readonly type: Type
 			readonly name: string
@@ -304,7 +305,7 @@ export namespace Settings {
 					V extends Platforms<Vs[number]>,
 					const Vs extends ReadonlyTuple<string>,
 				>(defaults: V, from: Unchecked<V>, set: Vs): Platforms<Vs[number]> => {
-					const ret2: { [_ in Vs[number]]?: boolean } = {}
+					const ret2: Partial<Record<Vs[number], boolean>> = {}
 					for (const platform0 of set) {
 						const platform: Vs[number] = platform0
 						if (!(platform in from)) { continue }
@@ -641,6 +642,7 @@ export namespace Settings {
 						: ((): ILinkHandler => {
 							const unc2 = launderUnchecked<ILinkHandler>(unc.linkHandler),
 								ret = {
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 									activate: fixTyped(
 										DEFAULT_LINK_HANDLER,
 										unc2,
@@ -653,12 +655,14 @@ export namespace Settings {
 										"allowNonHttpProtocols",
 										["undefined", "boolean"],
 									),
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 									hover: fixTyped(
 										DEFAULT_LINK_HANDLER,
 										unc2,
 										"hover",
 										["undefined", "function"],
 									) as ILinkHandler["hover"],
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 									leave: fixTyped(
 										DEFAULT_LINK_HANDLER,
 										unc2,
@@ -682,30 +686,35 @@ export namespace Settings {
 						: ((): ILogger => {
 							const unc2 = launderUnchecked<ILogger>(unc.logger),
 								ret = {
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 									debug: fixTyped(
 										DEFAULT_LOGGER,
 										unc2,
 										"debug",
 										["function"],
 									) as ILogger["debug"],
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 									error: fixTyped(
 										DEFAULT_LOGGER,
 										unc2,
 										"error",
 										["function"],
 									) as ILogger["error"],
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 									info: fixTyped(
 										DEFAULT_LOGGER,
 										unc2,
 										"info",
 										["function"],
 									) as ILogger["info"],
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 									trace: fixTyped(
 										DEFAULT_LOGGER,
 										unc2,
 										"trace",
 										["function"],
 									) as ILogger["trace"],
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 									warn: fixTyped(
 										DEFAULT_LOGGER,
 										unc2,

@@ -70,14 +70,14 @@ export interface ProfilePresets0 {
 	readonly wslIntegrated: Settings.Profile.Integrated
 	readonly zshIntegrated: Settings.Profile.Integrated
 }
-type ExternalDefaults = {
-	readonly [_ in `${Pseudoterminal.SupportedPlatforms[number]
-	}ExternalDefault`]: Settings.Profile.External
-}
-type IntegratedDefaults = {
-	readonly [_ in `${Pseudoterminal.SupportedPlatforms[number]
-	}IntegratedDefault`]: Settings.Profile.Integrated
-}
+type ExternalDefaults = Readonly<
+Record<`${Pseudoterminal.SupportedPlatforms[number]
+	}ExternalDefault`, Settings.Profile.External>
+	>
+type IntegratedDefaults = Readonly<
+Record<`${Pseudoterminal.SupportedPlatforms[number]
+	}IntegratedDefault`, Settings.Profile.Integrated>
+>
 export interface ProfilePresets
 	extends ProfilePresets0, ExternalDefaults, IntegratedDefaults { }
 const PROFILE_PRESETS0 = deepFreeze({

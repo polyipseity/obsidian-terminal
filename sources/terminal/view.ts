@@ -20,7 +20,6 @@ import {
 	consumeEvent,
 	createChildElement,
 	deepFreeze,
-	destroyWithOutro,
 	dynamicRequire,
 	extname,
 	fixTyped,
@@ -61,6 +60,7 @@ import {
 	openProfile,
 } from "./profile-properties.js"
 import { cloneDeep, noop } from "lodash-es"
+import { mount, unmount } from "svelte"
 import { BUNDLE } from "../import.js"
 import type { DeepWritable } from "ts-essentials"
 import type { LigaturesAddon } from "@xterm/addon-ligatures"
@@ -258,7 +258,7 @@ export class TerminalView extends ItemView {
 	protected readonly focusedScope = new Scope()
 	#title0 = ""
 	#emulator0: TerminalView.EMULATOR | null = null
-	#find0: FindComponent | null = null
+	#find0: ReturnType<typeof FindComponent> | null = null
 	#state = TerminalView.State.DEFAULT
 
 	public constructor(
@@ -303,7 +303,7 @@ export class TerminalView extends ItemView {
 		return this.#emulator0
 	}
 
-	get #find(): FindComponent | null {
+	get #find(): ReturnType<typeof FindComponent> | null {
 		return this.#find0
 	}
 
@@ -368,8 +368,13 @@ export class TerminalView extends ItemView {
 		this.#emulator0 = val
 	}
 
-	set #find(val: FindComponent | null) {
-		if (this.#find) { destroyWithOutro(this.#find) }
+	set #find(val: ReturnType<typeof FindComponent> | null) {
+		if (this.#find) {
+			unmount(this.#find, { outro: true })
+				.catch((error: unknown) => {
+					activeSelf(this.contentEl).console.warn(error)
+				})
+		}
 		this.#find0 = val
 	}
 
@@ -498,7 +503,7 @@ export class TerminalView extends ItemView {
 
 		this.register(language.onChangeLanguage.listen(() => {
 			updateView(context, this)
-			this.#find?.$set({ i18n: i18n.t })
+			this.#find?.setI18n(i18n.t)
 		}))
 
 		this.register(() => { keymap.popScope(scope) })
@@ -564,11 +569,11 @@ export class TerminalView extends ItemView {
 						/* @__PURE__ */ activeSelf(contentEl).console.debug(error)
 						empty = true
 					}
-					if (empty) { this.#find?.$set({ results: "" }) }
+					if (empty) { this.#find?.setResults("") }
 				},
 				optional: { anchor?: Element } = {}
 			assignExact(optional, "anchor", contentEl.firstElementChild ?? void 0)
-			this.#find = new FindComponent({
+			this.#find = mount(FindComponent, {
 				intro: true,
 				props: {
 					i18n: i18n.t,
@@ -583,8 +588,8 @@ export class TerminalView extends ItemView {
 				...optional,
 			})
 		}
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-		this.#find["focus"]()
+
+		this.#find.focus()
 	}
 
 	protected startEmulator(focus: boolean): void {
@@ -715,7 +720,7 @@ export class TerminalView extends ItemView {
 										emulator.reopen()
 										emulator.resize(false).catch(warn)
 									}),
-									() => { this.#find?.$set({ results: "" }) },
+									() => { this.#find?.setResults("") },
 								),
 								dragAndDrop: new DragAndDropAddon(ele),
 								ligatures: new LigaturesAddon({}),
@@ -747,7 +752,7 @@ export class TerminalView extends ItemView {
 									: settings.value.errorNoticeTimeout,
 								context,
 							)
-						}, error => {
+						}, (error: unknown) => {
 							printError(anyToError(error), () =>
 								i18n.t("errors.error-spawning-terminal"), context)
 						})
@@ -775,7 +780,7 @@ export class TerminalView extends ItemView {
 										index: resultIndex + 1,
 									},
 								})
-						this.#find?.$set({ results })
+						this.#find?.setResults(results)
 					})
 
 					emulator.resize().catch(warn)

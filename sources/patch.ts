@@ -192,7 +192,6 @@ export class EarlyPatchManager extends ResourceComponent<EarlyPatch> {
 
 	public constructor(
 		protected readonly app: App,
-		// eslint-disable-next-line @typescript-eslint/no-magic-numbers
 		protected readonly options?: Parameters<typeof earlyPatch>[1],
 	) { super() }
 
@@ -217,6 +216,7 @@ function patchRequire(
 	const { settings } = context
 	return around(self0, {
 		require(next) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
 			return function fn(
 				this: typeof self0 | undefined,
 				...args: Parameters<typeof next>
@@ -228,7 +228,7 @@ function patchRequire(
 					/* @__PURE__ */ self0.console.debug(error)
 					return dynamicRequireSync(new Map(), ...args)
 				}
-			} as NodeRequire
+			} as NodeJS.Require
 		},
 		toString: aroundIdentityFactory(),
 	})
