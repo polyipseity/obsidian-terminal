@@ -6,6 +6,7 @@ import {
 	deepFreeze,
 	printError,
 	revealPrivate,
+	toJSONOrString,
 	typedKeys,
 } from "@polyipseity/obsidian-plugin-library"
 import { DOMClasses2 } from "./magic.js"
@@ -34,11 +35,11 @@ export const DOCUMENTATIONS = deepFreeze({
 				const element = div.querySelector(
 					`.${DOMClasses2.SVG_ICON}.${DOMClasses2.LUCIDE_HEART}`,
 				)?.parentElement
-				if (!element) { throw new Error(String(div)) }
+				if (!element) { throw new Error(toJSONOrString(div)) }
 				element.click()
 				return
 			}
-			throw new Error(settingTabs.toString())
+			throw new Error(toJSONOrString(settingTabs))
 		}, error => { throw error })
 	},
 	async readme(view: DocumentationMarkdownView.Registered, active: boolean) {
