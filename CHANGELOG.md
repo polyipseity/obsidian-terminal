@@ -1,5 +1,16 @@
 # obsidian-terminal <!-- markdownlint-disable MD024 -->
 
+## 3.16.0
+
+### Minor Changes
+
+- 8e35613: Update template, and Obsidian API to 1.4.11.
+
+### Patch Changes
+
+- 0869147: Use a script to launch the terminal instead of via the command line. This may help with escaping arguments. (Escaping quotes on Windows is a clusterfuck...) Partially fixes [GH#41](https://github.com/polyipseity/obsidian-terminal/issues/41).
+- f17338f: Update dependencies.
+
 ## 3.15.1
 
 ### Patch Changes
