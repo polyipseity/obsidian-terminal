@@ -17,7 +17,7 @@ const ARGV_PRODUCTION = 2,
 		bundle: true,
 		color: true,
 		drop: [],
-		entryPoints: ["sources/main.ts", "sources/styles.css"],
+		entryPoints: ["src/main.ts", "src/styles.css"],
 		external: [
 			"@codemirror/*",
 			"@lezer/*",
