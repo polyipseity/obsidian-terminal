@@ -99,7 +99,7 @@
     "CHANGELOG.md",
     "README.md",
     "assets/**/*",
-    "sources/**/*"
+    "src/**/*"
   ],
   "references": [],
   "typeAcquisition": {

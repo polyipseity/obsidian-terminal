@@ -17,7 +17,7 @@ const ARGV_PRODUCTION = 2,
 		bundle: true,
 		color: true,
 		drop: [],
-		entryPoints: ["sources/main.ts", "sources/styles.css"],
+		entryPoints: ["src/main.ts", "src/styles.css"],
 		external: [
 			"@codemirror/*",
 			"@lezer/*",
@@ -46,18 +46,18 @@ const ARGV_PRODUCTION = 2,
 			esbuildCompress({
 				compressors: [
 					{
-						filter: /\.json$/u,
+						filter: /\.json$/, // eslint-disable-line require-unicode-regexp
 						loader: "json",
 					},
 					{
-						filter: /\.(?:md|py)$/u,
+						filter: /\.(?:md|py)$/, // eslint-disable-line require-unicode-regexp
 						lazy: true,
 						loader: "text",
 					},
 				],
 			}),
 			esbuildPluginTextReplace({
-				include: /obsidian-plugin-library.*\.js$/u,
+				include: /obsidian-plugin-library.*\.js$/, // eslint-disable-line require-unicode-regexp
 				pattern: [
 					[
 						/\/\/(?<c>[@#]) sourceMappingURL=/gu,
