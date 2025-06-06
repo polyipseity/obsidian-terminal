@@ -46,11 +46,11 @@ const ARGV_PRODUCTION = 2,
 			esbuildCompress({
 				compressors: [
 					{
-						filter: /\.json$/u,
+						filter: /\.json$/, // eslint-disable-line require-unicode-regexp
 						loader: "json",
 					},
 					{
-						filter: /\.md$/u,
+						filter: /\.md$/, // eslint-disable-line require-unicode-regexp
 						lazy: true,
 						loader: "text",
 					},
