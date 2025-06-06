@@ -57,7 +57,7 @@ const ARGV_PRODUCTION = 2,
 				],
 			}),
 			esbuildPluginTextReplace({
-				include: /obsidian-plugin-library.*\.js$/u,
+				include: /obsidian-plugin-library.*\.js$/, // eslint-disable-line require-unicode-regexp
 				pattern: [
 					[
 						/\/\/(?<c>[@#]) sourceMappingURL=/gu,
