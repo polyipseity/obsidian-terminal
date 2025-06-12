@@ -847,7 +847,7 @@ export namespace TerminalView {
 			leaf = ((): WorkspaceLeaf => {
 				if (settings.value.createInstanceNearExistingOnes) {
 					const existingLeaves = workspace
-						.getLeavesOfType(TerminalView.type.namespaced(context)),
+							.getLeavesOfType(TerminalView.type.namespaced(context)),
 						existingLeaf = existingLeaves[existingLeaves.length - 1]
 					if (existingLeaf) {
 						const root = existingLeaf.getRoot()

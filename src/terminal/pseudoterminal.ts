@@ -313,14 +313,18 @@ export class DeveloperConsolePseudoterminal
 							break
 						case "ArrowUp":
 						case "ArrowDown":
-							if ((this.#history[this.#history.length - 1] ?? "").includes("\n")) { return }
+							if ((this.#history[this.#history.length - 1] ?? "")
+								.includes("\n")) { return }
 							lock.acquire(
 								DeveloperConsolePseudoterminal.syncLock,
 								async () => {
 									const { length } = this.#history
-									if (length <= 0 || this.#history[length - 1]?.includes("\n")) { return }
+									if (length <= 0
+										|| (this.#history[length - 1] ?? "").includes("\n")) {
+										return
+									}
 									this.#historyIndex += length + (key === "ArrowDown" ? 1 : -1)
-									this.#historyIndex %= length;
+									this.#historyIndex %= length
 									const text = this.#history[this.#historyIndex]
 									if (text === void 0) { return }
 									let writing = true
