@@ -313,17 +313,15 @@ export class DeveloperConsolePseudoterminal
 							break
 						case "ArrowUp":
 						case "ArrowDown":
-							if ((this.#history.at(-1) ?? "").includes("\n")) { return }
+							if ((this.#history[this.#history.length - 1] ?? "").includes("\n")) { return }
 							lock.acquire(
 								DeveloperConsolePseudoterminal.syncLock,
 								async () => {
-									if ((this.#history.at(-1) ?? "").includes("\n")) { return }
 									const { length } = this.#history
-									if (length <= 0) { return }
-									const text = this.#history.at(this.#historyIndex =
-										(this.#historyIndex + (key === "ArrowDown"
-											? 1
-											: -1)) % length)
+									if (length <= 0 || this.#history[length - 1]?.includes("\n")) { return }
+									this.#historyIndex += length + (key === "ArrowDown" ? 1 : -1)
+									this.#historyIndex %= length;
+									const text = this.#history[this.#historyIndex]
 									if (text === void 0) { return }
 									let writing = true
 									const write = buffer.setValue(text)
@@ -444,7 +442,7 @@ export class DeveloperConsolePseudoterminal
 			}
 		})()
 		if (!ast) { return }
-		const lastStmt = ast.body.at(-1),
+		const lastStmt = ast.body[ast.body.length - 1],
 			codeRet = lastStmt
 				? `${code.slice(0, lastStmt.start)}return [(${code
 					.slice(lastStmt.start)})]`

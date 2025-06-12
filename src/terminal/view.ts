@@ -846,9 +846,9 @@ export namespace TerminalView {
 			// eslint-disable-next-line @typescript-eslint/consistent-return
 			leaf = ((): WorkspaceLeaf => {
 				if (settings.value.createInstanceNearExistingOnes) {
-					const existingLeaf = workspace
-						.getLeavesOfType(TerminalView.type.namespaced(context))
-						.at(-1)
+					const existingLeaves = workspace
+						.getLeavesOfType(TerminalView.type.namespaced(context)),
+						existingLeaf = existingLeaves[existingLeaves.length - 1]
 					if (existingLeaf) {
 						const root = existingLeaf.getRoot()
 						if (root === leftSplit) {
