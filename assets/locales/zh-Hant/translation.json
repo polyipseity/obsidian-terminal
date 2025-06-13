@@ -39,6 +39,7 @@
 			"preset-placeholder": "($t(generic.custom))",
 			"reset": "$t(generic.reset)",
 			"restore-history": "$t(generic.restore)$t(generic.history)",
+			"restore-history-description-HTML": "如果$t(generic.enable)，$t(generic.history)$t(generic.save)於<code>.obsidian/workspace.json</code>。",
 			"success-exit-codes": "成功$t(generic.exit)代碼",
 			"success-exit-codes-description": "$t(generic.list-description)",
 			"success-exit-codes-edit": "$t(generic.edit)",
@@ -130,6 +131,7 @@
 			"readme": "自述文件"
 		},
 		"donate": "贊助",
+		"enable": "啟用",
 		"executable": "執行檔",
 		"exist": "存在",
 		"exit": "退出",

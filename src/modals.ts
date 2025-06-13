@@ -535,8 +535,15 @@ export class ProfileModal extends Modal {
 		if (profile.type === "invalid") { return }
 		ui
 			.newSetting(element, setting => {
+				const { settingEl } = setting
 				setting
 					.setName(i18n.t("components.profile.restore-history"))
+					.setDesc(createDocumentFragment(settingEl.ownerDocument, frag => {
+						createChildElement(frag, "span", ele => {
+							ele.innerHTML = i18n
+								.t("components.profile.restore-history-description-HTML")
+						})
+					}))
 					.addToggle(linkSetting(
 						() => profile.restoreHistory,
 						value => { profile.restoreHistory = value },
