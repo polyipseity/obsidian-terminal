@@ -346,12 +346,19 @@ export class TerminalView extends ItemView {
 	}
 
 	protected set state(value: TerminalView.State) {
-		let cachedSerial = value.serial
-		this.#state = Object.defineProperty(value, "serial", {
+		const value2 = cloneAsWritable(value)
+		let cachedSerial = value2.serial
+		this.#state = Object.defineProperty(value2, "serial", {
 			configurable: false,
 			enumerable: true,
-			get: (): TerminalView.State["serial"] =>
-				cachedSerial = this.#emulator?.serialize() ?? cachedSerial,
+			get: (): TerminalView.State["serial"] => {
+				// Cache the serial regardless if the serial needs to be saved.
+				cachedSerial = this.#emulator?.serialize() ?? cachedSerial
+				return value2.profile.type !== "invalid"
+					&& value2.profile.restoreHistory
+					? cachedSerial
+					: null
+			},
 		})
 		updateView(this.context, this)
 	}
@@ -660,13 +667,10 @@ export class TerminalView extends ItemView {
 							xtermAddonWebLinks,
 							xtermAddonWebgl,
 						]),
-						serial0 = profile.type === "invalid" || profile.restoreHistory
-							? serial
-							: null,
 						emulator = new TerminalView.EMULATOR(
 							ele,
 							async terminal => {
-								if (serial0) {
+								if (serial) {
 									await writePromise(
 										terminal,
 										i18n.t(
@@ -706,7 +710,7 @@ export class TerminalView extends ItemView {
 									}))
 								return pty
 							},
-							serial0 ?? void 0,
+							serial ?? void 0,
 							{
 								...profile.type === "invalid"
 									? {}
@@ -848,7 +852,7 @@ export namespace TerminalView {
 			leaf = ((): WorkspaceLeaf => {
 				if (settings.value.createInstanceNearExistingOnes) {
 					const existingLeaves = workspace
-						.getLeavesOfType(TerminalView.type.namespaced(context)),
+							.getLeavesOfType(TerminalView.type.namespaced(context)),
 						existingLeaf = existingLeaves[existingLeaves.length - 1]
 					if (existingLeaf) {
 						const root = existingLeaf.getRoot()
