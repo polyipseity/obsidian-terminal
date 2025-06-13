@@ -23,7 +23,7 @@
 				"Python-executable-check": "$t(generic.check, capitalize)",
 				"Python-executable-checking": "$t(generic.check_gerund, capitalize)",
 				"Python-executable-description": "Recommend {{version}} or up. Required on $t(generic.platforms.unix) to $t(generic.spawn) $t(generic.profile-types.integrated) $t(generic.terminal). $t(generic.clear, capitalize) $t(generic.text-field) to $t(generic.disable) $t(generic.Python).",
-				"Python-executable-placeholder": "($t(generic.disable_past, capitalize))",
+				"Python-executable-placeholder": "($t(generic.disable_past-participle, capitalize))",
 				"arguments": "$t(generic.argument_other, capitalize)",
 				"arguments-description": "$t(generic.list-description, capitalize)",
 				"arguments-edit": "$t(generic.edit, capitalize)",
@@ -107,7 +107,7 @@
 		"error-spawning-terminal": "Error $t(generic.spawn_gerund) $t(generic.terminal)",
 		"no-Python-to-spawn-Unix-pseudoterminal": "No $t(generic.Python) to $t(generic.spawn) $t(generic.platforms.unix) $t(generic.pseudoterminal)",
 		"not-Python": "Not $t(generic.Python)",
-		"resizer-disabled": "$t(generic.terminal-resizer, capitalize) $t(generic.disable_past)",
+		"resizer-disabled": "$t(generic.terminal-resizer, capitalize) $t(generic.disable_past-participle)",
 		"resizer-exited-unexpectedly": "$t(generic.terminal-resizer, capitalize) $t(generic.exit_past) unexpectedly: {{code}}"
 	},
 	"generic": {
@@ -126,7 +126,7 @@
 		"default": "default",
 		"directory": "directory",
 		"disable": "disable",
-		"disable_past": "disabled",
+		"disable_past-participle": "disabled",
 		"documentation": "documentation",
 		"documentations": {
 			"changelog": "changelog",
@@ -143,7 +143,7 @@
 			"HTML": "HTML"
 		},
 		"focus": "focus",
-		"focus_past": "focused",
+		"focus_past-participle": "focused",
 		"font": "font",
 		"font-weight": "$t(generic.font) weight",
 		"history": "history",
@@ -268,7 +268,7 @@
 		"hide-status-bar": "Hide $t(generic.status-bar)",
 		"hide-status-bar-options": {
 			"always": "Always",
-			"focused": "When $t(generic.terminal) is $t(generic.focus_past)",
+			"focused": "When $t(generic.terminal) is $t(generic.focus_past-participle)",
 			"never": "Never",
 			"running": "When $t(generic.terminal) is running"
 		},
