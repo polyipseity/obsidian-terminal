@@ -1,5 +1,11 @@
 # obsidian-terminal <!-- markdownlint-disable MD024 -->
 
+## 3.17.1
+
+### Patch Changes
+
+- 83328b6: Re-release of v3.17.0 to fix plugin loading error.
+
 ## 3.17.0
 
 ### Minor Changes
