@@ -1,5 +1,16 @@
 # obsidian-terminal <!-- markdownlint-disable MD024 -->
 
+## 3.17.0
+
+### Minor Changes
+
+- 38188e8: Do not save terminal history by default. Fixes [GH#48](https://github.com/polyipseity/obsidian-terminal/issues/48).
+- f783af0: Do not save terminal history if restore history is disabled. Fixes [GH#48](https://github.com/polyipseity/obsidian-terminal/issues/48).
+
+### Patch Changes
+
+- 58324a0: Fix terminal history not being restored across Obsidian restarts.
+
 ## 3.16.0
 
 ### Minor Changes
