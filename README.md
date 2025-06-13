@@ -153,7 +153,7 @@ This plugin patches `require` so that `require("obsidian")` and other Obsidian m
 
 In the developer console, a context variable `$$` is passed into the code, which can be used to dynamically change terminal options.
 
-The full API is available from [`sources/@types/obsidian-terminal.ts`](sources/%40types/obsidian-terminal.ts).
+The full API is available from [`src/@types/obsidian-terminal.ts`](src/%40types/obsidian-terminal.ts).
 
 ### Troubleshooting
 
