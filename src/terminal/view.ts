@@ -346,11 +346,12 @@ export class TerminalView extends ItemView {
 	}
 
 	protected set state(value: TerminalView.State) {
+		let cachedSerial = value.serial
 		this.#state = Object.defineProperty(value, "serial", {
 			configurable: false,
 			enumerable: true,
 			get: (): TerminalView.State["serial"] =>
-				this.#emulator?.serialize() ?? null,
+				cachedSerial = this.#emulator?.serialize() ?? cachedSerial,
 		})
 		updateView(this.context, this)
 	}
@@ -847,7 +848,7 @@ export namespace TerminalView {
 			leaf = ((): WorkspaceLeaf => {
 				if (settings.value.createInstanceNearExistingOnes) {
 					const existingLeaves = workspace
-							.getLeavesOfType(TerminalView.type.namespaced(context)),
+						.getLeavesOfType(TerminalView.type.namespaced(context)),
 						existingLeaf = existingLeaves[existingLeaves.length - 1]
 					if (existingLeaf) {
 						const root = existingLeaf.getRoot()
