@@ -249,4 +249,4 @@ We hope that there will never be any security vulnerabilities, but unfortunately
 
 ### Reporting a vulnerability
 
-Please report a vulerability by opening an new issue. We will get back to you as soon as possible.
+Please report a vulnerability by opening an new issue. We will get back to you as soon as possible.
