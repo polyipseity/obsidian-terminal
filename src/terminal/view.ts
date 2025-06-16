@@ -12,12 +12,12 @@ import {
 	Platform,
 	UnnamespacedID,
 	activeSelf,
+	addCommand,
 	anyToError,
 	assignExact,
 	awaitCSS,
 	basename,
 	cloneAsWritable,
-	consumeEvent,
 	createChildElement,
 	deepFreeze,
 	dynamicRequire,
@@ -28,6 +28,7 @@ import {
 	linkSetting,
 	markFixed,
 	newCollabrativeState,
+	newHotkeyListener,
 	notice2,
 	onResize,
 	openExternal,
@@ -245,17 +246,10 @@ export class TerminalView extends ItemView {
 	public static readonly type =
 		new UnnamespacedID(DOMClasses2.Namespaced.TERMINAL)
 
-	protected static readonly modifiers = deepFreeze(
-		(["darwin", "ios"] satisfies readonly Platform.All[
-		] as readonly Platform.All[])
-			.includes(Platform.CURRENT)
-			? ["Meta"]
-			: ["Ctrl", "Shift"],
-	)
+	protected static lastFocusTimes = new Map<TerminalView, number>()
+	protected static readonly focusedScope = new Scope()
 
 	static #namespacedType: string
-	protected readonly scope = new Scope(this.app.scope)
-	protected readonly focusedScope = new Scope()
 	#title0 = ""
 	#emulator0: TerminalView.EMULATOR | null = null
 	#find0: ReturnType<typeof FindComponent> | null = null
@@ -265,58 +259,37 @@ export class TerminalView extends ItemView {
 		protected readonly context: TerminalPlugin,
 		leaf: WorkspaceLeaf,
 	) {
-		TerminalView.#namespacedType = TerminalView.type.namespaced(context)
 		super(leaf)
 		this.navigation = true
-		const { scope, focusedScope } = this
-		// Meta + ` does not work well on macOS.
-		scope.register(["Ctrl", "Shift"], "`", event => {
-			this.#emulator?.terminal.focus()
-			consumeEvent(event)
-		})
-		focusedScope.register(["Ctrl", "Shift"], "`", event => {
-			const { contentEl: { ownerDocument: { activeElement } } } = this
-			if (instanceOf(activeElement, HTMLElement) ||
-				instanceOf(activeElement, SVGElement)) {
-				activeElement.blur()
-			}
-			consumeEvent(event)
-		})
-		focusedScope.register(TerminalView.modifiers, "f", event => {
-			this.startFind()
-			consumeEvent(event)
-		})
-		focusedScope.register(TerminalView.modifiers, "k", event => {
-			this.#emulator?.terminal.clear()
-			consumeEvent(event)
-		})
-		focusedScope.register(TerminalView.modifiers, "w", () => {
-			this.leaf.detach()
-		})
+	}
+
+	protected get isFocused(): boolean {
+		const { contentEl } = this
+		return contentEl.contains(contentEl.ownerDocument.activeElement)
 	}
 
 	protected get state(): TerminalView.State {
 		return this.#state
 	}
 
-	get #emulator(): TerminalView.EMULATOR | null {
+	protected get emulator(): TerminalView.EMULATOR | null {
 		return this.#emulator0
 	}
 
-	get #find(): ReturnType<typeof FindComponent> | null {
+	protected get find(): ReturnType<typeof FindComponent> | null {
 		return this.#find0
 	}
 
-	get #title(): string {
+	protected get title(): string {
 		return this.#title0
 	}
 
-	get #name(): string {
+	protected get name(): string {
 		const { context: plugin, state } = this,
 			{ value: i18n } = plugin.language,
 			{ profile } = state,
 			{ name, type } = profile
-		if (this.#title) { return this.#title }
+		if (this.title) { return this.title }
 		if (typeof name === "string" && name) { return name }
 		if ("executable" in profile) {
 			const { executable } = profile
@@ -331,11 +304,11 @@ export class TerminalView extends ItemView {
 	}
 
 	// eslint-disable-next-line @typescript-eslint/consistent-return
-	get #hidesStatusBar(): boolean {
-		const { context: { settings }, contentEl } = this
+	protected get hidesStatusBar(): boolean {
+		const { context: { settings } } = this
 		switch (settings.value.hideStatusBar) {
 			case "focused":
-				return contentEl.contains(contentEl.ownerDocument.activeElement)
+				return this.isFocused
 			case "running":
 				return true
 			case "always":
@@ -353,7 +326,7 @@ export class TerminalView extends ItemView {
 			enumerable: true,
 			get: (): TerminalView.State["serial"] => {
 				// Cache the serial regardless if the serial needs to be saved.
-				cachedSerial = this.#emulator?.serialize() ?? cachedSerial
+				cachedSerial = this.emulator?.serialize() ?? cachedSerial
 				return value2.profile.type !== "invalid"
 					&& value2.profile.restoreHistory
 					? cachedSerial
@@ -363,7 +336,7 @@ export class TerminalView extends ItemView {
 		updateView(this.context, this)
 	}
 
-	set #emulator(val: TerminalView.EMULATOR | null) {
+	protected set emulator(val: TerminalView.EMULATOR | null) {
 		const { context: plugin } = this
 		this.#emulator0?.close(false).catch((error: unknown) => {
 			printError(
@@ -376,9 +349,9 @@ export class TerminalView extends ItemView {
 		this.#emulator0 = val
 	}
 
-	set #find(val: ReturnType<typeof FindComponent> | null) {
-		if (this.#find) {
-			unmount(this.#find, { outro: true })
+	protected set find(val: ReturnType<typeof FindComponent> | null) {
+		if (this.find) {
+			unmount(this.find, { outro: true })
 				.catch((error: unknown) => {
 					activeSelf(this.contentEl).console.warn(error)
 				})
@@ -386,9 +359,110 @@ export class TerminalView extends ItemView {
 		this.#find0 = val
 	}
 
-	set #title(value: string) {
+	protected set title(value: string) {
 		this.#title0 = value
 		updateView(this.context, this)
+	}
+
+	public static load(context: TerminalPlugin): void {
+		const { language: { value: i18n } } = context
+		this.#namespacedType = this.type.namespaced(context)
+		context.registerView(
+			TerminalView.type.namespaced(context),
+			leaf => new TerminalView(context, leaf),
+		)
+
+		const withLastFocusedView = (
+			callback: (checking: boolean, view: TerminalView) => boolean,
+			focused: readonly boolean[] = [true],
+		): (checking: boolean) => boolean => checking => {
+			let lastFocusTime = null, lastFocus = null
+			for (const [view, time] of this.lastFocusTimes.entries()) {
+				if (lastFocusTime !== null && lastFocusTime >= time) { continue }
+				lastFocusTime = time
+				lastFocus = view
+			}
+			if (!lastFocus || !focused.includes(lastFocus.isFocused)) { return false }
+			return callback(checking, lastFocus)
+		}
+		addCommand(context, () => i18n.t("commands.focus-on-last-terminal"), {
+			checkCallback: withLastFocusedView((checking, view) => {
+				if (!checking) { view.focus() }
+				return true
+			}, [false]),
+			hotkeys: [],
+			icon: i18n.t("asset:commands.focus-on-last-terminal-icon"),
+			id: "focus-on-last-terminal",
+		})
+		const focusedScopeIDs = new Set([
+				addCommand(
+					context,
+					() => i18n.t("commands.toggle-focus-on-last-terminal"),
+					{
+						checkCallback: withLastFocusedView((checking, view) => {
+							if (!checking) {
+								if (view.isFocused) { view.unfocus() } else { view.focus() }
+							}
+							return true
+						}, [false, true]),
+						// Meta + ` does not work well on macOS.
+						hotkeys: [{
+							key: "`",
+							modifiers: ["Ctrl", "Shift"],
+						}],
+						icon: i18n.t("asset:commands.toggle-focus-on-last-terminal-icon"),
+						id: "toggle-focus-on-last-terminal",
+					},
+				).id,
+				addCommand(context, () => i18n.t("commands.unfocus-terminal"), {
+					checkCallback: withLastFocusedView((checking, view) => {
+						if (!checking) { view.unfocus() }
+						return true
+					}),
+					hotkeys: [],
+					icon: i18n.t("asset:commands.unfocus-terminal-icon"),
+					id: "unfocus-terminal",
+				}).id,
+				addCommand(context, () => i18n.t("commands.clear-terminal"), {
+					checkCallback: withLastFocusedView((checking, view) => {
+						if (!checking) { view.emulator?.terminal.clear() }
+						return true
+					}),
+					hotkeys: [{
+						key: "k",
+						modifiers: ["Mod", "Shift"],
+					}],
+					icon: i18n.t("asset:commands.clear-terminal-icon"),
+					id: "clear-terminal",
+				}).id,
+				addCommand(context, () => i18n.t("commands.close-terminal"), {
+					checkCallback: withLastFocusedView((checking, view) => {
+						if (!checking) { view.leaf.detach() }
+						return true
+					}),
+					hotkeys: [{
+						key: "w",
+						modifiers: ["Mod", "Shift"],
+					}],
+					icon: i18n.t("asset:commands.close-terminal-icon"),
+					id: "close-terminal",
+				}).id,
+				addCommand(context, () => i18n.t("commands.find-in-terminal"), {
+					checkCallback: withLastFocusedView((checking, view) => {
+						if (!checking) { view.startFind() }
+						return true
+					}),
+					hotkeys: [{
+						key: "f",
+						modifiers: ["Mod", "Shift"],
+					}],
+					icon: i18n.t("asset:commands.find-in-terminal-icon"),
+					id: "find-in-terminal",
+				}).id,
+			]),
+			handler = this.focusedScope
+				.register(null, null, newHotkeyListener(context, focusedScopeIDs))
+		context.register(() => { this.focusedScope.unregister(handler) })
 	}
 
 	public override async setState(
@@ -424,7 +498,7 @@ export class TerminalView extends ItemView {
 				`components.${TerminalView.type.id}.display-name`,
 				{
 					interpolation: { escapeValue: false },
-					name: this.#name,
+					name: this.name,
 				},
 			)
 	}
@@ -448,11 +522,11 @@ export class TerminalView extends ItemView {
 			.addItem(item => item
 				.setTitle(i18n.t("components.terminal.menus.clear"))
 				.setIcon(i18n.t("asset:components.terminal.menus.clear-icon"))
-				.onClick(() => { this.#emulator?.terminal.clear() }))
+				.onClick(() => { this.emulator?.terminal.clear() }))
 			.addItem(item => item
 				.setTitle(i18n.t("components.terminal.menus.find"))
 				.setIcon(i18n.t("asset:components.terminal.menus.find-icon"))
-				.setDisabled(this.#find !== null)
+				.setDisabled(this.find !== null)
 				.onClick(() => { this.startFind() }))
 			.addSeparator()
 			.addItem(item => item
@@ -481,9 +555,9 @@ export class TerminalView extends ItemView {
 			.addItem(item => item
 				.setTitle(i18n.t("components.terminal.menus.save-as-HTML"))
 				.setIcon(i18n.t("asset:components.terminal.menus.save-as-HTML-icon"))
-				.setDisabled(!this.#emulator?.addons.serialize)
+				.setDisabled(!this.emulator?.addons.serialize)
 				.onClick(async () => {
-					const ser = this.#emulator?.addons.serialize
+					const ser = this.emulator?.addons.serialize
 					if (!ser) { return }
 					await saveFileAs(
 						plugin,
@@ -495,65 +569,74 @@ export class TerminalView extends ItemView {
 									onlySelection: false,
 								}),
 							],
-							`${this.#name}.html`,
+							`${this.name}.html`,
 							{ type: `text/html; charset=${DEFAULT_ENCODING};` },
 						),
 					)
 				}))
 	}
 
+	protected focus(): void {
+		const { app, emulator, leaf } = this
+		app.workspace.revealLeaf(leaf)
+		emulator?.terminal.focus()
+	}
+
+	protected unfocus(): void {
+		const { contentEl: { ownerDocument: { activeElement } } } = this
+		if (instanceOf(activeElement, HTMLElement) ||
+			instanceOf(activeElement, SVGElement)) {
+			activeElement.blur()
+		}
+	}
+
 	protected override async onOpen(): Promise<void> {
 		await super.onOpen()
-		const { context, focusedScope, contentEl, containerEl, scope, app } = this,
+		const { focusedScope } = TerminalView,
+			{ context, contentEl, app } = this,
 			{ language, statusBarHider } = context,
 			{ value: i18n } = language,
 			{ keymap } = app
 
 		this.register(language.onChangeLanguage.listen(() => {
 			updateView(context, this)
-			this.#find?.setI18n(i18n.t)
+			this.find?.setI18n(i18n.t)
 		}))
 
-		this.register(() => { keymap.popScope(scope) })
-		this.registerDomEvent(containerEl, "focusout", () => {
-			keymap.popScope(scope)
-		}, { passive: true })
-		this.registerDomEvent(containerEl, "focusin", () => {
-			keymap.pushScope(scope)
-		}, { capture: true, passive: true })
-		if (containerEl.contains(containerEl.ownerDocument.activeElement)) {
-			keymap.pushScope(scope)
-		}
-
-		this.register(() => { keymap.popScope(focusedScope) })
+		this.register(() => {
+			keymap.popScope(focusedScope)
+			TerminalView.lastFocusTimes.delete(this)
+		})
 		this.registerDomEvent(contentEl, "focusout", () => {
 			keymap.popScope(focusedScope)
 			statusBarHider.update()
 		}, { passive: true })
 		this.registerDomEvent(contentEl, "focusin", () => {
+			TerminalView.lastFocusTimes.set(this, Date.now())
 			keymap.pushScope(focusedScope)
 			statusBarHider.update()
 		}, { capture: true, passive: true })
-		if (contentEl.contains(contentEl.ownerDocument.activeElement)) {
+		TerminalView.lastFocusTimes.set(this, Date.now())
+		if (this.isFocused) {
 			keymap.pushScope(focusedScope)
 		}
 
-		this.register(statusBarHider.hide(() => this.#hidesStatusBar))
-		this.register(() => { this.#emulator = null })
+		this.register(statusBarHider.hide(() => this.hidesStatusBar))
+		this.register(() => { this.emulator = null })
 	}
 
 	protected startFind(): void {
 		const { context: plugin, contentEl } = this,
 			{ language } = plugin,
 			{ value: i18n } = language
-		if (!this.#find) {
+		if (!this.find) {
 			const
 				onFind = (
 					direction: FindComponent$.Direction,
 					params: FindComponent$.Params,
 					incremental = false,
 				): void => {
-					const finder = this.#emulator?.addons.search
+					const finder = this.emulator?.addons.search
 					if (!finder) { return }
 					const func = direction === "next"
 						? finder.findNext.bind(finder)
@@ -577,19 +660,19 @@ export class TerminalView extends ItemView {
 						/* @__PURE__ */ activeSelf(contentEl).console.debug(error)
 						empty = true
 					}
-					if (empty) { this.#find?.setResults("") }
+					if (empty) { this.find?.setResults("") }
 				},
 				optional: { anchor?: Element } = {}
 			assignExact(optional, "anchor", contentEl.firstElementChild ?? void 0)
-			this.#find = mount(FindComponent, {
+			this.find = mount(FindComponent, {
 				intro: true,
 				props: {
 					focused: true,
 					i18n: i18n.t,
-					onClose: () => { this.#find = null },
+					onClose: () => { this.find = null },
 					onFind,
 					onParamsChanged: (params: FindComponent$.Params) => {
-						this.#emulator?.addons.search.clearDecorations()
+						this.emulator?.addons.search.clearDecorations()
 						onFind("previous", params)
 					},
 				},
@@ -597,7 +680,7 @@ export class TerminalView extends ItemView {
 				...optional,
 			})
 		}
-		this.#find.focus()
+		this.find.focus()
 	}
 
 	protected startEmulator(focus: boolean): void {
@@ -616,7 +699,7 @@ export class TerminalView extends ItemView {
 						"notices.spawning-terminal",
 						{
 							interpolation: { escapeValue: false },
-							name: this.#name,
+							name: this.name,
 						},
 					),
 					settings.value.noticeTimeout,
@@ -720,12 +803,12 @@ export class TerminalView extends ItemView {
 							{
 								disposer: new DisposerAddon(
 									() => { ele.remove() },
-									() => { this.#title = "" },
+									() => { this.title = "" },
 									ele.onWindowMigrated(() => {
 										emulator.reopen()
 										emulator.resize(false).catch(warn)
 									}),
-									() => { this.#find?.setResults("") },
+									() => { this.find?.setResults("") },
 								),
 								dragAndDrop: new DragAndDropAddon(ele),
 								ligatures: new LigaturesAddon({}),
@@ -763,7 +846,7 @@ export class TerminalView extends ItemView {
 						})
 					terminal.onWriteParsed(requestSaveLayout)
 					terminal.onResize(requestSaveLayout)
-					terminal.onTitleChange(title => { this.#title = title })
+					terminal.onTitleChange(title => { this.title = title })
 
 					terminal.unicode.activeVersion = "11"
 					disposer.push(settings.onMutate(
@@ -785,7 +868,7 @@ export class TerminalView extends ItemView {
 										index: resultIndex + 1,
 									},
 								})
-						this.#find?.setResults(results)
+						this.find?.setResults(results)
 					})
 
 					emulator.resize().catch(warn)
@@ -796,7 +879,7 @@ export class TerminalView extends ItemView {
 						}
 						emulator.resize(false).catch(warn)
 					})
-					this.#emulator = emulator
+					this.emulator = emulator
 					if (focus) { terminal.focus() }
 				} catch (error) {
 					activeSelf(ele).console.error(error)

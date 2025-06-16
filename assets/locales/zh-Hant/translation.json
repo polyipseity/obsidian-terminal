@@ -1,12 +1,18 @@
 {
 	"commands": {
+		"clear-terminal": "$t(generic.clear)$t(generic.terminal)",
+		"close-terminal": "$t(generic.close)$t(generic.terminal)",
+		"find-in-terminal": "於$t(generic.terminal)$t(generic.find)",
+		"focus-on-last-terminal": "$t(generic.focus)於上一個$t(generic.terminal)",
 		"open-developer-console": "$t(generic.open)$t(generic.profile-types.developerConsole)",
 		"open-documentation-changelog": "$t(generic.open)$t(generic.documentations.changelog)",
 		"open-documentation-donate": "$t(generic.open)$t(generic.documentations.donate)",
 		"open-documentation-readme": "$t(generic.open)$t(generic.documentations.readme)",
 		"open-terminal-": "$t(generic.open)$t(generic.terminal)：$t(generic.profile-types.{{type}})",
 		"open-terminal-current": "在$t(generic.terminal)$t(generic.open)$t(generic.current-directory)：$t(generic.profile-types.{{type}})",
-		"open-terminal-root": "在$t(generic.terminal)$t(generic.open)$t(generic.root-directory)：$t(generic.profile-types.{{type}})"
+		"open-terminal-root": "在$t(generic.terminal)$t(generic.open)$t(generic.root-directory)：$t(generic.profile-types.{{type}})",
+		"toggle-focus-on-last-terminal": "$t(generic.toggle)$t(generic.focus)於上一個$t(generic.terminal)",
+		"unfocus-terminal": "$t(generic.unfocus)$t(generic.terminal)"
 	},
 	"components": {
 		"profile": {
@@ -117,6 +123,7 @@
 		"behavior": "行為",
 		"check": "檢查",
 		"clear": "清除",
+		"close": "關閉",
 		"compatible": "兼容",
 		"context-menu": "右鍵選單",
 		"current-directory": "目前$t(generic.directory)",
@@ -185,10 +192,12 @@
 		"terminal-option": "$t(generic.terminal)$t(generic.option)",
 		"terminal-resizer": "$t(generic.terminal)縮放程式",
 		"text-field": "文字域",
+		"toggle": "切換",
 		"true": "真",
 		"type": "類型",
 		"undefine": "取消定義",
 		"undefined": "未定義",
+		"unfocus": "取消聚焦",
 		"window": "視窗",
 		"working-directory": "工作$t(generic.directory)"
 	},

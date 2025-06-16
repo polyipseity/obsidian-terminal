@@ -90,21 +90,24 @@ This file is automatically opened on first install. You can reopen it in setting
 
 ### Keyboard shortcuts
 
-The keyboard shortcuts are not customizable for now.
+The keyboard shortcuts can be customizable in hotkeys.
 
 <!-- markdownlint-disable-next-line MD036 -->
-__Terminal tab is focused__
+__Global__
 
-- Focus: `Ctrl`+`Shift`+`` ` ``
-- Inherits global keyboard shortcuts
+- Toggle focus on last terminal: `Ctrl`+`Shift`+`` ` ``
+  - Focus on last terminal: \(unbound; useful if you want separate keys for focus and unfocus\)
 
 <!-- markdownlint-disable-next-line MD036 -->
 __Terminal is focused__
 
-- Clear: `Ctrl`+`Shift`+`K`, `Command`+`K` (Apple)
-- Close: `Ctrl`+`Shift`+`W`, `Command`+`W` (Apple)
-- Find: `Ctrl`+`Shift`+`F`, `Command`+`F` (Apple)
-- Toggle focus: `Ctrl`+`Shift`+`` ` ``
+When a terminal is focused, other keyboard shortcuts \(including Obsidian and plugin hotkeys\) are disabled. Only the following keyboard shortcuts work. Thus you can ignore Obsidian complaining about conflicting keys for the following keyboard shortcuts.
+
+- Clear terminal: `Ctrl`+`Shift`+`K`, `Command`+`Shift`+`K` \(Apple\)
+- Close terminal: `Ctrl`+`Shift`+`W`, `Command`+`Shift`+`W` \(Apple\)
+- Find in terminal: `Ctrl`+`Shift`+`F`, `Command`+`Shift`+`F` \(Apple\)
+- Toggle focus on last terminal: `Ctrl`+`Shift`+`` ` `` \(same as above\)
+  - Unfocus terminal: \(unbound; useful if you want separate keys for focus and unfocus\)
 
 ### Theming
 

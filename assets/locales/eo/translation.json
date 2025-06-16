@@ -1,12 +1,18 @@
 {
 	"commands": {
+		"clear-terminal": "$t(generic.clear, capitalize) $t(generic.terminal)",
+		"close-terminal": "$t(generic.close, capitalize) $t(generic.terminal)",
+		"find-in-terminal": "$t(generic.find, capitalize) in $t(generic.terminal)",
+		"focus-on-last-terminal": "$t(generic.focus, capitalize) on last $t(generic.terminal)",
 		"open-developer-console": "$t(generic.open, capitalize) $t(generic.profile-types.developerConsole)",
 		"open-documentation-changelog": "$t(generic.open, capitalize) $t(generic.documentations.changelog)",
 		"open-documentation-donate": "$t(generic.open, capitalize) $t(generic.documentations.donate)",
 		"open-documentation-readme": "$t(generic.open, capitalize) $t(generic.documentations.readme)",
 		"open-terminal-": "$t(generic.open, capitalize) $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
 		"open-terminal-current": "$t(generic.open, capitalize) $t(generic.current-directory) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
-		"open-terminal-root": "$t(generic.open, capitalize) $t(generic.root-directory) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)"
+		"open-terminal-root": "$t(generic.open, capitalize) $t(generic.root-directory) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
+		"toggle-focus-on-last-terminal": "$t(generic.toggle, capitalize) $t(generic.focus) on last $t(generic.terminal)",
+		"unfocus-terminal": "$t(generic.unfocus, capitalize) $t(generic.terminal)"
 	},
 	"components": {
 		"profile": {
@@ -120,6 +126,7 @@
 		"check": "check",
 		"check_gerund": "checking",
 		"clear": "clear",
+		"close": "close",
 		"compatible": "compatible",
 		"context-menu": "context menu",
 		"current-directory": "current $t(generic.directory)",
@@ -201,10 +208,12 @@
 		"terminal-option_other": "$t(generic.terminal) $t(generic.option_other)",
 		"terminal-resizer": "$t(generic.terminal) resizer",
 		"text-field": "text field",
+		"toggle": "toggle",
 		"true": "true",
 		"type": "type",
 		"undefine": "undefine",
 		"undefined": "undefined",
+		"unfocus": "unfocus",
 		"window": "window",
 		"working-directory": "working $t(generic.directory)"
 	},

@@ -1,12 +1,18 @@
 {
 	"commands": {
+		"clear-terminal-icon": "$t(asset:generic.actions.clear-icon)",
+		"close-terminal-icon": "$t(asset:generic.actions.close-icon)",
+		"find-in-terminal-icon": "$t(asset:generic.actions.find-icon)",
+		"focus-on-last-terminal-icon": "$t(asset:generic.actions.focus-icon)",
 		"open-developer-console-icon": "$t(asset:generic.profile-types.developerConsole-icon)",
 		"open-documentation-changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
 		"open-documentation-donate-icon": "$t(asset:generic.documentations.donate-icon)",
 		"open-documentation-readme-icon": "$t(asset:generic.documentations.readme-icon)",
 		"open-terminal--icon": "command",
 		"open-terminal-current-icon": "$t(asset:generic.terminal-file-icon)",
-		"open-terminal-root-icon": "$t(asset:generic.terminal-icon)"
+		"open-terminal-root-icon": "$t(asset:generic.terminal-icon)",
+		"toggle-focus-on-last-terminal-icon": "$t(asset:generic.actions.focus-icon)",
+		"unfocus-terminal-icon": "$t(asset:generic.actions.unfocus-icon)"
 	},
 	"components": {
 		"profile": {
@@ -51,11 +57,11 @@
 			},
 			"icon": "$t(asset:generic.terminal-icon)",
 			"menus": {
-				"clear-icon": "eraser",
-				"edit-icon": "$t(asset:generic.edit-icon)",
-				"find-icon": "search",
-				"restart-icon": "reset",
-				"save-as-HTML-icon": "save"
+				"clear-icon": "$t(asset:generic.actions.clear-icon)",
+				"edit-icon": "$t(asset:generic.actions.edit-icon)",
+				"find-icon": "$t(asset:generic.actions.find-icon)",
+				"restart-icon": "$t(asset:generic.actions.restart-icon)",
+				"save-as-HTML-icon": "$t(asset:generic.actions.save-icon)"
 			}
 		},
 		"terminal-options": {
@@ -67,6 +73,16 @@
 		}
 	},
 	"generic": {
+		"actions": {
+			"clear-icon": "eraser",
+			"close-icon": "x",
+			"edit-icon": "$t(asset:generic.edit-icon)",
+			"find-icon": "search",
+			"focus-icon": "focus",
+			"restart-icon": "reset",
+			"save-icon": "save",
+			"unfocus-icon": "minimize"
+		},
 		"documentations": {
 			"changelog-icon": "file-text",
 			"donate-icon": "heart",
@@ -108,7 +124,7 @@
 			"readme-icon": "$t(asset:generic.documentations.readme-icon)"
 		},
 		"expose-internal-modules-icon": "puzzle",
-		"focus-on-new-instance-icon": "focus",
+		"focus-on-new-instance-icon": "$t(asset:generic.actions.focus-icon)",
 		"hide-status-bar-icon": "eye-off",
 		"intercept-logging-icon": "scroll-text",
 		"new-instance-behavior-icon": "plus",

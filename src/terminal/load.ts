@@ -20,10 +20,7 @@ import { TerminalView } from "./view.js"
 import { isEmpty } from "lodash-es"
 
 export function loadTerminal(context: TerminalPlugin): void {
-	context.registerView(
-		TerminalView.type.namespaced(context),
-		leaf => new TerminalView(context, leaf),
-	)
+	TerminalView.load(context)
 	const
 		PROFILE_TYPES = deepFreeze(([
 			"select",
