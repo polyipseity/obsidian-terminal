@@ -90,7 +90,7 @@ This file is automatically opened on first install. You can reopen it in setting
 
 ### Keyboard shortcuts
 
-The keyboard shortcuts can be customizable in hotkeys.
+The keyboard shortcuts can be customized in hotkeys settings.
 
 <!-- markdownlint-disable-next-line MD036 -->
 __Global__
