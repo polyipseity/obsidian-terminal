@@ -1,6 +1,6 @@
 # PLACEHOLDER for Obsidian [![release](https://img.shields.io/github/v/release/polyipseity/obsidian-plugin-template)][latest release] [![Obsidian downloads](https://img.shields.io/badge/dynamic/json?logo=Obsidian&color=%238b6cef&label=downloads&query=$["PLACEHOLDER"].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json)][community plugin]
 
-To apply this [Obsidian] plugin template, replace all occurences of `PLACEHOLDER` and `obsidian-plugin-template`.
+To apply this [Obsidian] plugin template, replace all occurrences of `PLACEHOLDER` and `obsidian-plugin-template`.
 
 [Buy Me a Coffee]: https://buymeacoffee.com/polyipseity
 [Buy Me a Coffee/embed]: https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=polyipseity&button_colour=40DCA5&font_colour=ffffff&font_family=Lato&outline_colour=000000&coffee_colour=FFDD00
@@ -128,4 +128,4 @@ We hope that there will never be any security vulnerabilities, but unfortunately
 
 ### Reporting a vulnerability
 
-Please report a vulerability by opening an new issue. We will get back to you as soon as possible.
+Please report a vulnerability by opening an new issue. We will get back to you as soon as possible.
