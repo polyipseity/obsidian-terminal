@@ -4,6 +4,7 @@ import {
 	LanguageManager,
 	type PluginContext,
 	SI_PREFIX_SCALE,
+	type SemVerString,
 	SettingsManager,
 	StatusBarHider,
 	StorageSettingsManager,
@@ -23,7 +24,7 @@ import { loadTerminal } from "./terminal/load.js"
 export class TerminalPlugin
 	extends Plugin
 	implements PluginContext<Settings, LocalSettings> {
-	public readonly version
+	public readonly version: SemVerString | null
 	public readonly language: LanguageManager
 	public readonly localSettings: StorageSettingsManager<LocalSettings>
 	public readonly settings: SettingsManager<Settings>
