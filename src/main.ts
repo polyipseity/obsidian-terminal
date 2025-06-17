@@ -3,6 +3,7 @@ import {
 	LanguageManager,
 	type PluginContext,
 	SI_PREFIX_SCALE,
+	type SemVerString,
 	SettingsManager,
 	StorageSettingsManager,
 	createI18n,
@@ -18,7 +19,7 @@ import { loadSettings } from "./settings.js"
 export class PLACEHOLDERPlugin
 	extends Plugin
 	implements PluginContext<Settings, LocalSettings> {
-	public readonly version
+	public readonly version: SemVerString | null
 	public readonly language: LanguageManager
 	public readonly localSettings: StorageSettingsManager<LocalSettings>
 	public readonly settings: SettingsManager<Settings>
