@@ -1,5 +1,6 @@
 import {
 	Platform,
+	getDefaultSuggestModalInstructions,
 	newCollabrativeState,
 } from "@polyipseity/obsidian-plugin-library"
 import { FuzzySuggestModal } from "obsidian"
@@ -14,6 +15,7 @@ export class SelectProfileModal
 		protected readonly cwd?: string,
 	) {
 		super(context.app)
+		this.setInstructions(getDefaultSuggestModalInstructions(context))
 	}
 
 	public override getItems(): Settings.Profile.Entry[] {

@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@polyipseity/obsidian-plugin-library':
-        specifier: ^1.30.0
-        version: 1.30.0(@codemirror/state@6.5.2)(@codemirror/view@6.37.1)(esbuild@0.25.5)(typescript@5.8.3)
+        specifier: ^1.31.0
+        version: 1.31.0(@codemirror/state@6.5.2)(@codemirror/view@6.37.1)(esbuild@0.25.5)(typescript@5.8.3)
       '@xterm/addon-canvas':
         specifier: ^0.7.0
         version: 0.7.0(@xterm/xterm@5.5.0)
@@ -533,8 +533,8 @@ packages:
     resolution: {integrity: sha512-YLT9Zo3oNPJoBjBc4q8G2mjU4tqIbf5CEOORbUUr48dCD9q3umJ3IPlVqOqDakPfd2HuwccBaqlGhN4Gmr5OWg==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
 
-  '@polyipseity/obsidian-plugin-library@1.30.0':
-    resolution: {integrity: sha512-E1LL2SeUd5RL3wkglhZEgSitC03GSg+zbri2R0oOziWgACIN+ZKQLABJfYKtcDZKmJkWibDxrs3GqT2VZ2Ks9A==}
+  '@polyipseity/obsidian-plugin-library@1.31.0':
+    resolution: {integrity: sha512-IOfqFmgpyc+d8vWlR5EmLnI76fNT17Vfb15Yzb9TIuPcSaFd7PBBexQkQ/9BgaB4hHmrPD3WEGmLLITWLbiOHg==}
     peerDependencies:
       esbuild: '>=0.17.0'
     peerDependenciesMeta:
@@ -2684,7 +2684,7 @@ snapshots:
 
   '@pkgr/core@0.2.7': {}
 
-  '@polyipseity/obsidian-plugin-library@1.30.0(@codemirror/state@6.5.2)(@codemirror/view@6.37.1)(esbuild@0.25.5)(typescript@5.8.3)':
+  '@polyipseity/obsidian-plugin-library@1.31.0(@codemirror/state@6.5.2)(@codemirror/view@6.37.1)(esbuild@0.25.5)(typescript@5.8.3)':
     dependencies:
       '@capacitor/core': 7.3.0
       '@capacitor/filesystem': 7.1.1(@capacitor/core@7.3.0)
