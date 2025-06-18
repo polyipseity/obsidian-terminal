@@ -88,7 +88,7 @@ export function loadTerminal(context: TerminalPlugin): void {
 						spawnTerminal(
 							context,
 							profile,
-							cwd0,
+							{ cwd: cwd0 },
 						)
 					})
 			}
@@ -121,7 +121,7 @@ export function loadTerminal(context: TerminalPlugin): void {
 					return true
 				}
 				const profile = defaultProfile(type)
-				if (profile) { spawnTerminal(context, profile, cwd0) }
+				if (profile) { spawnTerminal(context, profile, { cwd: cwd0 }) }
 			}
 			return true
 		}

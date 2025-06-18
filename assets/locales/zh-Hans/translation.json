@@ -65,6 +65,10 @@
 			"title": "$t(generic.profile)"
 		},
 		"select-profile": {
+			"instructions": {
+				"edit-before-use": "ctrl ↵",
+				"edit-before-use-purpose": "$t(generic.edit)前$t(generic.edit)"
+			},
 			"item-text-": "$t(profile-name-formats.long)",
 			"item-text-incompatible": "（$t(generic.incompatible)）$t(components.select-profile.item-text-)"
 		},

@@ -66,10 +66,12 @@ This file is automatically opened on first install. You can reopen it in setting
       2. Choose the desired profile.
   - Context menu
       1. Right-click on files, folders, or tab headers.
-      2. Choose the desired action (and profile).
+      2. Choose the desired action \(and profile\).
   - Command palette
       1. Press `Ctrl`+`P` or click on the `Open command palette` ribbon next to the left window border.
-      2. Choose the desired action (and profile).
+      2. Choose the desired action \(and profile\).
+  - Select profile modal
+      1. Choose the desired profile. Press `Ctrl` to edit the profile before use.
 - To save and restore integrated terminal history
     1. Keep the terminal open when exiting Obsidian.
     2. Terminal history will be restored next time Obsidian is opened.
@@ -187,7 +189,6 @@ The todos here, ordered alphabetically, are things planned for the plugin. There
 - Copy terminal tabs.
 - Create ad-hoc profile in `Open terminal: Select`.
 - Detect sandboxed environment and notify users.
-- Edit profile before opening terminal in `Open terminal: Select` when a modifier key is pressed.
 - External link confirmation.
 - Filter console log by severity in the developer console.
 - Fix broken section links in builtin documentations.

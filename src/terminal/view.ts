@@ -95,7 +95,7 @@ const
 		dynamicRequire<typeof import("@xterm/addon-webgl")>(
 			BUNDLE, "@xterm/addon-webgl")
 
-class EditTerminalModal extends DialogModal {
+export class EditTerminalModal extends DialogModal {
 	protected readonly state
 	#profile: string | null = null
 	readonly #confirm
@@ -515,8 +515,8 @@ export class TerminalView extends ItemView {
 
 	public override onPaneMenu(menu: Menu, source: string): void {
 		super.onPaneMenu(menu, source)
-		const { context: plugin, leaf, app: { vault: { adapter } } } = this,
-			{ value: i18n } = plugin.language
+		const { context, context: { language: { value: i18n } },
+			leaf, app: { vault: { adapter } } } = this
 		menu
 			.addSeparator()
 			.addItem(item => item
@@ -534,17 +534,10 @@ export class TerminalView extends ItemView {
 				.setIcon(i18n.t("asset:components.terminal.menus.edit-icon"))
 				.onClick(() => {
 					new EditTerminalModal(
-						plugin,
+						context,
 						this.state,
-						async state => leaf.setViewState({
-							state: newCollabrativeState(plugin, new Map([
-								[
-									TerminalView.type,
-									state satisfies TerminalView.State,
-								],
-							])),
-							type: this.getViewType(),
-						}),
+						async state =>
+							TerminalView.spawn(context, state, leaf, this.getViewType()),
 					).open()
 				}))
 			.addItem(item => item
@@ -560,7 +553,7 @@ export class TerminalView extends ItemView {
 					const ser = this.emulator?.addons.serialize
 					if (!ser) { return }
 					await saveFileAs(
-						plugin,
+						context,
 						adapter,
 						new File(
 							[
@@ -973,5 +966,22 @@ export namespace TerminalView {
 			})()
 		leaf.setPinned(settings.value.pinNewInstance)
 		return leaf
+	}
+	export async function spawn(
+		context: TerminalPlugin,
+		state: State,
+		leaf?: WorkspaceLeaf,
+		type: string = TerminalView.type.namespaced(context),
+	): Promise<void> {
+		await (leaf ?? getLeaf(context)).setViewState({
+			active: true,
+			state: newCollabrativeState(context, new Map([
+				[
+					TerminalView.type,
+					state,
+				],
+			])),
+			type,
+		})
 	}
 }

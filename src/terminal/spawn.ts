@@ -1,12 +1,13 @@
+import { EditTerminalModal, TerminalView } from "./view.js"
 import {
 	Platform,
 	getDefaultSuggestModalInstructions,
-	newCollabrativeState,
+	revealPrivate,
 } from "@polyipseity/obsidian-plugin-library"
 import { FuzzySuggestModal } from "obsidian"
 import { Settings } from "../settings-data.js"
 import type { TerminalPlugin } from "../main.js"
-import { TerminalView } from "./view.js"
+import { noop } from "lodash-es"
 
 export class SelectProfileModal
 	extends FuzzySuggestModal<Settings.Profile.Entry> {
@@ -15,7 +16,30 @@ export class SelectProfileModal
 		protected readonly cwd?: string,
 	) {
 		super(context.app)
-		this.setInstructions(getDefaultSuggestModalInstructions(context))
+		const { language: { value: i18n } } = context,
+			instructions = getDefaultSuggestModalInstructions(context)
+		this.setInstructions([
+			...instructions.slice(0, -1),
+			{
+				get command(): string {
+					return i18n
+						.t("components.select-profile.instructions.edit-before-use")
+				},
+				get purpose(): string {
+					return i18n
+
+						.t("components.select-profile.instructions.edit-before-use-purpose")
+				},
+			},
+			...instructions.slice(-1),
+		])
+		this.scope.register(null, "Enter", (evt): boolean => {
+			if (evt.isComposing) {return true}
+			revealPrivate(context, [this], this0 => {
+				this0.selectActiveSuggestion(evt)
+			}, noop)
+			return false
+		})
 	}
 
 	public override getItems(): Settings.Profile.Entry[] {
@@ -37,35 +61,42 @@ export class SelectProfileModal
 
 	public override onChooseItem(
 		[, profile]: Settings.Profile.Entry,
-		_evt: KeyboardEvent | MouseEvent,
+		evt: KeyboardEvent | MouseEvent,
 	): void {
 		const { context: plugin, cwd } = this
-		spawnTerminal(plugin, profile, cwd)
+		spawnTerminal(
+			plugin,
+			profile,
+			{ cwd, edit: evt.getModifierState("Control") },
+		)
 	}
 }
 
 export function spawnTerminal(
 	context: TerminalPlugin,
 	profile: Settings.Profile,
-	cwd?: string,
+	options: {
+		readonly cwd?: string | undefined,
+		readonly edit?: boolean | undefined,
+	} = {},
 ): void {
+	const state: TerminalView.State = {
+		cwd: options.cwd ?? null,
+		focus: context.settings.value.focusOnNewInstance,
+		profile,
+		serial: null,
+	}
+	if (options.edit ?? false) {
+		new EditTerminalModal(
+			context,
+			state,
+			async state2 => TerminalView.spawn(context, state2),
+		).open()
+		return
+	}
 	(async (): Promise<void> => {
 		try {
-			await TerminalView.getLeaf(context).setViewState({
-				active: true,
-				state: newCollabrativeState(context, new Map([
-					[
-						TerminalView.type,
-						{
-							cwd: cwd ?? null,
-							focus: context.settings.value.focusOnNewInstance,
-							profile,
-							serial: null,
-						} satisfies TerminalView.State,
-					],
-				])),
-				type: TerminalView.type.namespaced(context),
-			})
+			await TerminalView.spawn(context, state)
 		} catch (error) {
 			self.console.error(error)
 		}

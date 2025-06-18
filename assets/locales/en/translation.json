@@ -65,6 +65,10 @@
 			"title": "$t(generic.profile_other, capitalize)"
 		},
 		"select-profile": {
+			"instructions": {
+				"edit-before-use": "ctrl ↵",
+				"edit-before-use-purpose": "to $t(generic.edit) before $t(generic.use)"
+			},
 			"item-text-": "$t(profile-name-formats.long)",
 			"item-text-incompatible": "($t(generic.incompatible, capitalize)) $t(components.select-profile.item-text-)"
 		},
@@ -167,7 +171,7 @@
 		"pin": "pin",
 		"platform": "platform",
 		"platforms": {
-			"darwin": "\u200bmacOS",
+			"darwin": "​macOS",
 			"linux": "Linux",
 			"unix": "Unix",
 			"win32": "Microsoft Windows",
