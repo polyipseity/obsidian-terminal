@@ -1,5 +1,16 @@
 # obsidian-terminal <!-- markdownlint-disable MD024 -->
 
+## 3.18.0
+
+### Minor Changes
+
+- 5fe79df: Make terminal hotkeys customizable. Default keyboard shortcuts have changed.
+- 680139b: Press "Ctrl" to edit before use in select profile modal.
+
+### Patch Changes
+
+- 612d42f: Add instructions in select profile modal.
+
 ## 3.17.1
 
 ### Patch Changes
