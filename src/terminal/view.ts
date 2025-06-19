@@ -390,7 +390,7 @@ export class TerminalView extends ItemView {
 				if (!checking) { view.focus() }
 				return true
 			}, [false]),
-			hotkeys: [],
+			// No hotkeys: hotkeys: [],
 			icon: i18n.t("asset:commands.focus-on-last-terminal-icon"),
 			id: "focus-on-last-terminal",
 		})
@@ -419,7 +419,7 @@ export class TerminalView extends ItemView {
 						if (!checking) { view.unfocus() }
 						return true
 					}),
-					hotkeys: [],
+					// No hotkeys: hotkeys: [],
 					icon: i18n.t("asset:commands.unfocus-terminal-icon"),
 					id: "unfocus-terminal",
 				}).id,
