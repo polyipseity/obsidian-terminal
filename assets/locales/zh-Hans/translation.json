@@ -88,6 +88,7 @@
 			},
 			"menus": {
 				"clear": "$t(generic.clear)",
+				"copy": "$t(generic.copy)",
 				"edit": "$t(generic.edit)",
 				"find": "$t(generic.find)",
 				"restart": "$t(generic.restart)",
@@ -130,6 +131,7 @@
 		"close": "关闭",
 		"compatible": "兼容",
 		"context-menu": "右键选单",
+		"copy": "复制",
 		"current-directory": "目前$t(generic.directory)",
 		"custom": "自定义",
 		"default": "默认",

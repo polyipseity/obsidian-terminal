@@ -88,6 +88,7 @@
 			},
 			"menus": {
 				"clear": "$t(generic.clear, capitalize)",
+				"copy": "$t(generic.copy, capitalize)",
 				"edit": "$t(generic.edit, capitalize)",
 				"find": "$t(generic.find, capitalize)",
 				"restart": "$t(generic.restart, capitalize)",
@@ -133,6 +134,7 @@
 		"close": "close",
 		"compatible": "compatible",
 		"context-menu": "context menu",
+		"copy": "copy",
 		"current-directory": "current $t(generic.directory)",
 		"custom": "custom",
 		"default": "default",

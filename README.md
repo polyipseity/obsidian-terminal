@@ -77,18 +77,19 @@ This file is automatically opened on first install. You can reopen it in setting
     2. Terminal history will be restored next time Obsidian is opened.
 - Additional actions
   - Includes
-    - Find in terminal: (1), (4)
-    - Clear terminal: (1), (4)
-    - Restart terminal: (1)
-    - Edit terminal: (1)
-    - Save terminal history as file: (1)
-    - Export, import, or edit settings: (2), (3)
-    - Open documentation: (2), (3)
+    - Clear terminal: \(1\), \(4\)
+    - Copy terminal: \(1\)
+    - Edit terminal: \(1\)
+    - Export, import, or edit settings: \(2\), \(3\)
+    - Find in terminal: \(1\), \(4\)
+    - Open documentation: \(2\), \(3\)
+    - Restart terminal: \(1\)
+    - Save terminal history: \(1\)
   - Available by
-    - (1) Right-click on tab header/`More options`
-    - (2) Open settings
-    - (3) Open command palette
-    - (4) Use keyboard shortcuts
+    - \(1\) Right-click on tab header/`More options`
+    - \(2\) Open settings
+    - \(3\) Open command palette
+    - \(4\) Use keyboard shortcuts
 
 ### Keyboard shortcuts
 
@@ -186,7 +187,6 @@ This is an example change. ([GH#1](https://github.com/ghost/example/pull/1) by [
 The todos here, ordered alphabetically, are things planned for the plugin. There are no guarantees that they will be completed. However, we are likely to accept contributions for them.
 
 - Connect to remote shells.
-- Copy terminal tabs.
 - Create ad-hoc profile in `Open terminal: Select`.
 - Detect sandboxed environment and notify users.
 - External link confirmation.

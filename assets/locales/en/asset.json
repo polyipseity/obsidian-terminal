@@ -58,6 +58,7 @@
 			"icon": "$t(asset:generic.terminal-icon)",
 			"menus": {
 				"clear-icon": "$t(asset:generic.actions.clear-icon)",
+				"copy-icon": "$t(asset:generic.actions.copy-icon)",
 				"edit-icon": "$t(asset:generic.actions.edit-icon)",
 				"find-icon": "$t(asset:generic.actions.find-icon)",
 				"restart-icon": "$t(asset:generic.actions.restart-icon)",
@@ -76,6 +77,7 @@
 		"actions": {
 			"clear-icon": "eraser",
 			"close-icon": "x",
+			"copy-icon": "copy",
 			"edit-icon": "$t(asset:generic.edit-icon)",
 			"find-icon": "search",
 			"focus-icon": "focus",

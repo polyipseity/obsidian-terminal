@@ -530,6 +530,16 @@ export class TerminalView extends ItemView {
 				.onClick(() => { this.startFind() }))
 			.addSeparator()
 			.addItem(item => item
+				.setTitle(i18n.t("components.terminal.menus.copy"))
+				.setIcon(i18n.t("asset:components.terminal.menus.copy-icon"))
+				.onClick(async () =>
+					TerminalView.spawn(
+						context,
+						this.state,
+						TerminalView.getLeaf(context, this.leaf),
+						this.getViewType(),
+					)))
+			.addItem(item => item
 				.setTitle(i18n.t("components.terminal.menus.edit"))
 				.setIcon(i18n.t("asset:components.terminal.menus.edit-icon"))
 				.onClick(() => {
@@ -918,18 +928,21 @@ export namespace TerminalView {
 			})
 		}
 	}
-	export function getLeaf(context: TerminalPlugin): WorkspaceLeaf {
+	export function getLeaf(
+		context: TerminalPlugin,
+		leaf?: WorkspaceLeaf,
+	): WorkspaceLeaf {
 		const
 			{
 				app: { workspace, workspace: { leftSplit, rightSplit } },
 				settings,
 			} = context,
 			// eslint-disable-next-line @typescript-eslint/consistent-return
-			leaf = ((): WorkspaceLeaf => {
+			newLeaf = ((): WorkspaceLeaf => {
 				if (settings.value.createInstanceNearExistingOnes) {
 					const existingLeaves = workspace
 							.getLeavesOfType(TerminalView.type.namespaced(context)),
-						existingLeaf = existingLeaves[existingLeaves.length - 1]
+						existingLeaf = leaf ?? existingLeaves[existingLeaves.length - 1]
 					if (existingLeaf) {
 						const root = existingLeaf.getRoot()
 						if (root === leftSplit) {
@@ -964,8 +977,8 @@ export namespace TerminalView {
 					// No default
 				}
 			})()
-		leaf.setPinned(settings.value.pinNewInstance)
-		return leaf
+		newLeaf.setPinned(settings.value.pinNewInstance)
+		return newLeaf
 	}
 	export async function spawn(
 		context: TerminalPlugin,
