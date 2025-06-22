@@ -35,7 +35,7 @@
 				"arguments-edit": "$t(generic.edit)",
 				"executable": "$t(generic.executable)",
 				"use-win32-conhost": "$t(generic.use)$t(generic.platforms.win32)「conhost.exe」",
-				"use-win32-conhost-description": "如果执行「conhost.exe」没有创建视窗，请$t(generic.disable)。无保证这会起作用。"
+				"use-win32-conhost-description": "如果执行「conhost.exe」没有创建视窗，请$t(generic.disable)。不保证这会起作用。"
 			},
 			"name": "$t(generic.name)",
 			"platform": "$t(generic.platforms.{{type}})",
@@ -130,7 +130,7 @@
 		"clear": "清除",
 		"close": "关闭",
 		"compatible": "兼容",
-		"context-menu": "右键选单",
+		"context-menu": "右键菜单",
 		"copy": "复制",
 		"current-directory": "目前$t(generic.directory)",
 		"custom": "自定义",
@@ -139,9 +139,9 @@
 		"disable": "禁用",
 		"documentation": "文档",
 		"documentations": {
-			"changelog": "更改日志",
+			"changelog": "更新日志",
 			"donate": "$t(generic.donate)",
-			"readme": "自述文件"
+			"readme": "readme"
 		},
 		"donate": "捐赠",
 		"enable": "启用",
@@ -149,14 +149,14 @@
 		"exist": "存在",
 		"exit": "退出",
 		"file-extensions": {
-			"HTML": "超文本标记语言"
+			"HTML": "HTML"
 		},
 		"focus": "聚焦",
 		"font": "字体",
 		"font-weight": "$t(generic.font)粗细",
 		"history": "历史",
 		"incompatible": "不$t(generic.compatible)",
-		"instance": "个体",
+		"instance": "实例",
 		"invalid": "无效",
 		"name": "名称",
 		"option": "选项",
@@ -182,21 +182,21 @@
 		"pseudoterminal": "伪终端",
 		"renderer": "渲染器",
 		"renderers": {
-			"canvas": "画布",
-			"dom": "文件物件模型",
+			"canvas": "Canvas",
+			"dom": "DOM",
 			"webgl": "WebGL"
 		},
 		"restart": "重启",
 		"restore": "还原",
 		"root-directory": "根$t(generic.directory)",
 		"save": "储存",
-		"spawn": "啟动",
+		"spawn": "启动",
 		"split": "分屏",
 		"status-bar": "状态栏",
 		"tab": "标签页",
 		"terminal": "终端",
 		"terminal-option": "$t(generic.terminal)$t(generic.option)",
-		"terminal-resizer": "$t(generic.terminal)缩放迸程",
+		"terminal-resizer": "$t(generic.terminal)缩放器",
 		"text-field": "文本框",
 		"toggle": "切换",
 		"true": "真",
@@ -265,7 +265,7 @@
 			"donate": "$t(generic.documentations.donate)",
 			"readme": "$t(generic.documentations.readme)"
 		},
-		"expose-internal-modules": "公开内部模块",
+		"expose-internal-modules": "显示内部模块",
 		"expose-internal-modules-description-HTML": "<code>obsidian</code>、<code>@codemirror/*</code>、<code>@lezer/*</code>……",
 		"focus-on-new-instance": "$t(generic.focus)新$t(generic.instance)",
 		"hide-status-bar": "隐藏$t(generic.status-bar)",
@@ -290,7 +290,7 @@
 			"newWindow": "新$t(generic.window)",
 			"replaceTab": "替换$t(generic.tab)"
 		},
-		"open-changelog-on-update": "更新时$t(generic.open)$t(generic.documentations.changelog)",
+		"open-changelog-on-update": "$t(generic.open)$t(generic.documentations.changelog)更新中",
 		"pin-new-instance": "$t(generic.pin)新$t(generic.instance)",
 		"preferred-renderer": "首选$t(generic.renderer)",
 		"preferred-renderer-options": "$t(generic.renderers.{{type}})",
