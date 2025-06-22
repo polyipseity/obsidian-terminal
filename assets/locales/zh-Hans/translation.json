@@ -182,8 +182,8 @@
 		"pseudoterminal": "伪终端",
 		"renderer": "渲染器",
 		"renderers": {
-			"canvas": "canvas",
-			"dom": "dom",
+			"canvas": "Canvas",
+			"dom": "DOM",
 			"webgl": "WebGL"
 		},
 		"restart": "重启",

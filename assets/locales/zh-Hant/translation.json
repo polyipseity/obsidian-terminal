@@ -139,9 +139,9 @@
 		"disable": "禁用",
 		"documentation": "文檔",
 		"documentations": {
-			"changelog": "變更日誌",
+			"changelog": "更新日誌",
 			"donate": "$t(generic.donate)",
-			"readme": "自述文件"
+			"readme": "readme"
 		},
 		"donate": "贊助",
 		"enable": "啟用",
@@ -149,7 +149,7 @@
 		"exist": "存在",
 		"exit": "退出",
 		"file-extensions": {
-			"HTML": "超文件標示語言"
+			"HTML": "HTML"
 		},
 		"focus": "聚焦",
 		"font": "字體",
@@ -182,8 +182,8 @@
 		"pseudoterminal": "偽終端",
 		"renderer": "渲染器",
 		"renderers": {
-			"canvas": "畫布",
-			"dom": "文件物件模型",
+			"canvas": "Canvas",
+			"dom": "DOM",
 			"webgl": "WebGL"
 		},
 		"restart": "重啟",
@@ -196,7 +196,7 @@
 		"tab": "分頁",
 		"terminal": "終端",
 		"terminal-option": "$t(generic.terminal)$t(generic.option)",
-		"terminal-resizer": "$t(generic.terminal)縮放程式",
+		"terminal-resizer": "$t(generic.terminal)縮放器",
 		"text-field": "文字域",
 		"toggle": "切換",
 		"true": "真",
@@ -265,7 +265,7 @@
 			"donate": "$t(generic.documentations.donate)",
 			"readme": "$t(generic.documentations.readme)"
 		},
-		"expose-internal-modules": "公開內部模塊",
+		"expose-internal-modules": "顯示內部模塊",
 		"expose-internal-modules-description-HTML": "<code>obsidian</code>、<code>@codemirror/*</code>、<code>@lezer/*</code>……",
 		"focus-on-new-instance": "$t(generic.focus)新$t(generic.instance)",
 		"hide-status-bar": "隱藏$t(generic.status-bar)",
