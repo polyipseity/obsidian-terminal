@@ -35,7 +35,7 @@
 				"arguments-edit": "$t(generic.edit)",
 				"executable": "$t(generic.executable)",
 				"use-win32-conhost": "$t(generic.use)$t(generic.platforms.win32)「conhost.exe」",
-				"use-win32-conhost-description": "如果執行「conhost.exe」沒有創建視窗，請$t(generic.disable)。無保證這會起作用。"
+				"use-win32-conhost-description": "如果執行「conhost.exe」沒有創建視窗，請$t(generic.disable)。不保證這會起作用。"
 			},
 			"name": "$t(generic.name)",
 			"platform": "$t(generic.platforms.{{type}})",
