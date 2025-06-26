@@ -10,7 +10,7 @@ import type { TerminalPlugin } from "../main.js"
 import { noop } from "lodash-es"
 
 export class SelectProfileModal
-	extends FuzzySuggestModal<Settings.Profile.Entry> {
+	extends FuzzySuggestModal<Settings.Profile.Entry | null> {
 	public constructor(
 		protected readonly context: TerminalPlugin,
 		protected readonly cwd?: string,
@@ -34,7 +34,7 @@ export class SelectProfileModal
 			...instructions.slice(-1),
 		])
 		this.scope.register(null, "Enter", (evt): boolean => {
-			if (evt.isComposing) {return true}
+			if (evt.isComposing) { return true }
 			revealPrivate(context, [this], this0 => {
 				this0.selectActiveSuggestion(evt)
 			}, noop)
@@ -42,12 +42,16 @@ export class SelectProfileModal
 		})
 	}
 
-	public override getItems(): Settings.Profile.Entry[] {
-		return Object.entries(this.context.settings.value.profiles)
+	public override getItems(): (Settings.Profile.Entry | null)[] {
+		return [null, ...Object.entries(this.context.settings.value.profiles)]
 	}
 
-	public override getItemText(item: Settings.Profile.Entry): string {
-		return this.context.language.value.t(
+	public override getItemText(item: Settings.Profile.Entry | null): string {
+		const { context: { language: { value: i18n } } } = this
+		if (item === null) {
+			return i18n.t("components.select-profile.item-text-temporary")
+		}
+		return i18n.t(
 			`components.select-profile.item-text-${Settings.Profile
 				.isCompatible(item[1], Platform.CURRENT)
 				? ""
@@ -60,14 +64,14 @@ export class SelectProfileModal
 	}
 
 	public override onChooseItem(
-		[, profile]: Settings.Profile.Entry,
+		entry: Settings.Profile.Entry | null,
 		evt: KeyboardEvent | MouseEvent,
 	): void {
 		const { context: plugin, cwd } = this
 		spawnTerminal(
 			plugin,
-			profile,
-			{ cwd, edit: evt.getModifierState("Control") },
+			entry?.[1] ?? Settings.Profile.DEFAULTS[""],
+			{ cwd, edit: entry === null || evt.getModifierState("Control") },
 		)
 	}
 }

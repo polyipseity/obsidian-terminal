@@ -70,7 +70,8 @@
 				"edit-before-use-purpose": "to $t(generic.edit) before $t(generic.use)"
 			},
 			"item-text-": "$t(profile-name-formats.long)",
-			"item-text-incompatible": "($t(generic.incompatible, capitalize)) $t(components.select-profile.item-text-)"
+			"item-text-incompatible": "($t(generic.incompatible, capitalize)) $t(components.select-profile.item-text-)",
+			"item-text-temporary": "($t(generic.temporary, capitalize) $t(generic.profile))"
 		},
 		"terminal": {
 			"display-name": "$t(generic.terminal, capitalize): {{name}}",
@@ -209,6 +210,7 @@
 		"split": "split",
 		"status-bar": "status bar",
 		"tab": "tab",
+		"temporary": "temporary",
 		"terminal": "terminal",
 		"terminal-option": "$t(generic.terminal) $t(generic.option)",
 		"terminal-option_other": "$t(generic.terminal) $t(generic.option_other)",

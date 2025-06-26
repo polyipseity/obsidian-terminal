@@ -71,7 +71,7 @@ This file is automatically opened on first install. You can reopen it in setting
       1. Press `Ctrl`+`P` or click on the `Open command palette` ribbon next to the left window border.
       2. Choose the desired action \(and profile\).
   - Select profile modal
-      1. Choose the desired profile. Press `Ctrl` to edit the profile before use.
+      1. Choose the desired profile. Press `Ctrl` to edit the profile before use. The item `(Temporary profile)` starts a terminal with a temporary profile.
 - To save and restore integrated terminal history
     1. Keep the terminal open when exiting Obsidian.
     2. Terminal history will be restored next time Obsidian is opened.
@@ -187,7 +187,6 @@ This is an example change. ([GH#1](https://github.com/ghost/example/pull/1) by [
 The todos here, ordered alphabetically, are things planned for the plugin. There are no guarantees that they will be completed. However, we are likely to accept contributions for them.
 
 - Connect to remote shells.
-- Create ad-hoc profile in `Open terminal: Select`.
 - Detect sandboxed environment and notify users.
 - External link confirmation.
 - Filter console log by severity in the developer console.

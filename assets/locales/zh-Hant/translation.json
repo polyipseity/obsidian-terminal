@@ -70,7 +70,8 @@
 				"edit-before-use-purpose": "$t(generic.edit)前$t(generic.use)"
 			},
 			"item-text-": "$t(profile-name-formats.long)",
-			"item-text-incompatible": "（$t(generic.incompatible)）$t(components.select-profile.item-text-)"
+			"item-text-incompatible": "（$t(generic.incompatible)）$t(components.select-profile.item-text-)",
+			"item-text-temporary": "（$t(generic.temporary)$t(generic.profile）"
 		},
 		"terminal": {
 			"display-name": "$t(generic.terminal)：{{name}}",
@@ -194,6 +195,7 @@
 		"split": "分割",
 		"status-bar": "狀態欄",
 		"tab": "分頁",
+		"temporary": "臨時",
 		"terminal": "終端",
 		"terminal-option": "$t(generic.terminal)$t(generic.option)",
 		"terminal-resizer": "$t(generic.terminal)縮放器",

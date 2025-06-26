@@ -70,7 +70,8 @@
 				"edit-before-use-purpose": "$t(generic.edit)前$t(generic.edit)"
 			},
 			"item-text-": "$t(profile-name-formats.long)",
-			"item-text-incompatible": "（$t(generic.incompatible)）$t(components.select-profile.item-text-)"
+			"item-text-incompatible": "（$t(generic.incompatible)）$t(components.select-profile.item-text-)",
+			"item-text-temporary": "（$t(generic.temporary)$t(generic.profile）"
 		},
 		"terminal": {
 			"display-name": "$t(generic.terminal)：{{name}}",
@@ -194,6 +195,7 @@
 		"split": "分屏",
 		"status-bar": "状态栏",
 		"tab": "标签页",
+		"temporary": "临时",
 		"terminal": "终端",
 		"terminal-option": "$t(generic.terminal)$t(generic.option)",
 		"terminal-resizer": "$t(generic.terminal)缩放器",
