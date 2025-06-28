@@ -27,7 +27,7 @@ import {
 	launderUnchecked,
 	linkSetting,
 	markFixed,
-	newCollabrativeState,
+	newCollaborativeState,
 	newHotkeyListener,
 	notice2,
 	onResize,
@@ -35,13 +35,13 @@ import {
 	printError,
 	printMalformedData,
 	randomNotIn,
-	readStateCollabratively,
+	readStateCollaboratively,
 	recordViewStateHistory,
 	resetButton,
 	saveFileAs,
 	updateView,
 	useSettings,
-	writeStateCollabratively,
+	writeStateCollaboratively,
 } from "@polyipseity/obsidian-plugin-library"
 import {
 	DisposerAddon,
@@ -470,7 +470,7 @@ export class TerminalView extends ItemView {
 		result: ViewStateResult,
 	): Promise<void> {
 		const { context: plugin } = this,
-			ownState = readStateCollabratively(
+			ownState = readStateCollaboratively(
 				TerminalView.type.namespaced(plugin),
 				state,
 			),
@@ -485,7 +485,7 @@ export class TerminalView extends ItemView {
 	}
 
 	public override getState(): unknown {
-		return writeStateCollabratively(
+		return writeStateCollaboratively(
 			super.getState(),
 			TerminalView.type.namespaced(this.context),
 			this.state,
@@ -988,7 +988,7 @@ export namespace TerminalView {
 	): Promise<void> {
 		await (leaf ?? getLeaf(context)).setViewState({
 			active: true,
-			state: newCollabrativeState(context, new Map([
+			state: newCollaborativeState(context, new Map([
 				[
 					TerminalView.type,
 					state,

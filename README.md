@@ -190,7 +190,6 @@ The todos here, ordered alphabetically, are things planned for the plugin. There
 - Detect sandboxed environment and notify users.
 - External link confirmation.
 - Filter console log by severity in the developer console.
-- Fix broken section links in builtin documentations.
 - Indicate that the terminal resizer has crashed or is disabled.
 - Shared terminal tabs.
 - Vim mode switch.
