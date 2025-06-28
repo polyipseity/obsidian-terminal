@@ -1,5 +1,17 @@
 # obsidian-terminal <!-- markdownlint-disable MD024 -->
 
+## 3.19.0
+
+### Minor Changes
+
+- 2eb93aa: Add temporary profile to select profile modal.
+- 384c2d8: Add "Copy" to pane menu to copy the terminal tab.
+
+### Patch Changes
+
+- e9bd36e: Update `translation.json`. ([GH#49](https://github.com/polyipseity/obsidian-terminal/pull/49) by [@cuberwu](https://github.com/cuberwu))
+- 99313ca: Fix broken section links in builtin documentation.
+
 ## 3.18.0
 
 ### Minor Changes
