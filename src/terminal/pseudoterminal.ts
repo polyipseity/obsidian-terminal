@@ -34,6 +34,7 @@ import {
 	inSet,
 	lazyInit,
 	logFormat,
+	multireplace,
 	notice2,
 	printError,
 	promisePromise,
@@ -739,7 +740,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
 						 * <https://github.com/microsoft/terminal/blob/cb48babe9dfee5c3e830644eb7ee48f4116d3c47/src/host/ConsoleArguments.cpp#L34>
 						 */
 						const inOutTmpEsc =
-							WindowsPseudoterminal.escapeArgument(inOutTmp.path)
+							WindowsPseudoterminal.escapeArgumentForBat(inOutTmp.path)
 						/*
 						 * The last command is a one-liner to prevent
 						 * "Terminate batch job (Y/N)?" from terminating
@@ -747,10 +748,10 @@ class WindowsPseudoterminal implements Pseudoterminal {
 						 */
 						await fsPromises2.writeFile(
 							inOutTmp.path,
-							`@echo off\r\nsetlocal EnableDelayedExpansion\r\n${[
+							`@echo off\r\nsetlocal EnableDelayedExpansion\r\nset q=\\"\r\n${[
 								executable,
 								...args ?? [],
-							].map(arg => WindowsPseudoterminal.escapeArgument(arg))
+							].map(arg => WindowsPseudoterminal.escapeArgumentForBat(arg))
 								.join(" ")} & echo !ERRORLEVEL! > ${inOutTmpEsc}`,
 							{ encoding: DEFAULT_ENCODING, flag: "w" },
 						)
@@ -844,14 +845,21 @@ class WindowsPseudoterminal implements Pseudoterminal {
 				}))
 	}
 
-	protected static escapeArgument(arg: string): string {
-		const ret = `"${arg.replace(replaceAllRegex('"'), '"""')}"`
-		// Replace 2: ret.replace(/(?<meta>[()%!^"<>&|])/ug, "^$<meta>")
-		return ret
+	protected static escapeArgumentForBat(arg: string, quoteVar = "!q!"): string {
+		return `"${multireplace(arg, new Map([
+			["^", "^^"],
+			["!", "^!"],
+			["%", "%%"],
+			["\"", quoteVar],
+		]))}"`
 
 		/*
-		 * Replace 1: quote argument, https://stackoverflow.com/a/15262019
-		 * Replace 2: escape cmd.exe metacharacters, https://stackoverflow.com/a/38766899
+		 * Clusterfuck: <https://stackoverflow.com/a/31413730>
+		 *
+		 * 1. use `^` to escape `^` and `!`: <https://stackoverflow.com/a/5620353>
+		 * 2. use `%` to escape `%`: <https://stackoverflow.com/a/31413730>
+		 * 3. use `!q!` to replace `"`": <https://stackoverflow.com/a/31413730>
+		 * 4. enclose the argument in double quotes
 		 */
 	}
 
