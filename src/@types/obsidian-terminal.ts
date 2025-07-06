@@ -16,6 +16,20 @@ declare module "obsidian-terminal" {
 		depth: number
 
 		/**
+		 * Console history.
+		 *
+		 * The current command is added before its execution.
+		 */
+		readonly history: readonly string[]
+
+		/**
+		 * Console results and errors. Can be cleared.
+		 *
+		 * Result of the current command is added after its execution.
+		 */
+		readonly results: unknown[]
+
+		/**
 		 * Terminals connected to the developer console.
 		 */
 		readonly terminals: readonly Terminal[]

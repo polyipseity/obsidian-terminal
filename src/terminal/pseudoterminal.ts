@@ -241,6 +241,7 @@ export class DeveloperConsolePseudoterminal
 	readonly #formatCache = new WeakMap<Log.Event, string>()
 	readonly #history = [""]
 	#historyIndex = 0
+	readonly #results: unknown[] = []
 	readonly #editors =
 		new Map<Terminal, DeveloperConsolePseudoterminal.$Editor>()
 
@@ -250,10 +251,15 @@ export class DeveloperConsolePseudoterminal
 		protected readonly sourceRoot = "",
 	) {
 		super()
-		const { terminals } = this
+		const { terminals } = this,
+			history = this.#history,
+			results = this.#results
 		this.context = Object.seal({
 			depth: 0,
-			get terminals() { return terminals },
+			get history() { return history.slice(0, -1) },
+			// Modifiable.
+			get results() { return results },
+			get terminals() { return [...terminals] },
 		})
 		this.onExit.catch(noop satisfies () => unknown as () => unknown)
 			.finally(log.logger.listen(async event => this.write([event])))
@@ -413,6 +419,7 @@ export class DeveloperConsolePseudoterminal
 
 	protected async eval(): Promise<void> {
 		const { buffer, context, lock, self0, sourceRoot, terminals } = this,
+			results = this.#results,
 			self1 = self0(),
 			code = await lock.acquire(
 				DeveloperConsolePseudoterminal.syncLock,
@@ -492,33 +499,34 @@ export class DeveloperConsolePseudoterminal
 				}),
 			)(context)
 		}
-		const ret = await (
-			async (): Promise<[] | [unknown] | null> => {
+		const [hasError, ret] = await (
+			async (): Promise<[boolean, unknown]> => {
 				if (codeRet) {
 					try {
 						const ret2: unknown = await evaluate(codeRet, codeRetDeletions)
 						if (!Array.isArray(ret2) || ret2.length !== 1) {
 							throw new Error(String(ret2))
 						}
-						return [ret2[0]]
+						return [false, ret2[0]]
 					} catch (error) {
 						if (!(error instanceof SyntaxError)) {
 							self1.console.error(error)
-							return null
+							return [true, error]
 						}
 						/* @__PURE__ */ self1.console.debug(error)
 					}
 				}
 				try {
-					await evaluate(code)
-					return []
+					// Cannot grab the result.
+					return [false, await evaluate(code)]
 				} catch (error) {
 					self1.console.error(error)
-					return null
+					return [true, error]
 				}
 			})()
-		if (!ret) { return }
-		self1.console.log(ret[0])
+		results.push(ret)
+		if (hasError) { return }
+		self1.console.log(ret)
 	}
 
 	protected async syncBuffer(
