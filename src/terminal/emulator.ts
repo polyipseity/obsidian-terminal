@@ -66,6 +66,7 @@ export class XtermTerminalEmulator<A> {
 	public readonly terminal
 	public readonly addons
 	public readonly pseudoterminal
+	
 	protected readonly resizeEmulator = asyncDebounce(throttle((
 		resolve: (value: AsyncOrSync<void>) => void,
 		reject: (reason?: unknown) => void,
@@ -168,7 +169,7 @@ export class XtermTerminalEmulator<A> {
 
 	public reopen(): void {
 		const { element, terminal } = this
-		terminal.element?.remove()
+		// Unnecessary: terminal.element?.remove()
 		terminal.open(element)
 	}
 

@@ -26,7 +26,7 @@ export class DisposerAddon extends Functions implements ITerminalAddon {
 }
 
 export class DragAndDropAddon implements ITerminalAddon {
-	readonly #disposer = new DisposerAddon()
+	readonly #disposer = new Functions({ async: false, settled: true })
 
 	public constructor(protected readonly element: HTMLElement) { }
 
@@ -51,7 +51,7 @@ export class DragAndDropAddon implements ITerminalAddon {
 	}
 
 	public dispose(): void {
-		this.#disposer.dispose()
+		this.#disposer.call()
 	}
 }
 
