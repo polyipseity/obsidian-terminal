@@ -9,6 +9,7 @@ import {
 import type { ITerminalAddon, Terminal } from "@xterm/xterm"
 import type { CanvasAddon } from "@xterm/addon-canvas"
 import type { WebglAddon } from "@xterm/addon-webgl"
+import { constant } from "lodash-es"
 
 export class DisposerAddon extends Functions implements ITerminalAddon {
 	public constructor(...args: readonly (() => void)[]) {
@@ -116,4 +117,44 @@ export class RendererAddon implements ITerminalAddon {
 export namespace RendererAddon {
 	export const RENDERER_OPTIONS = deepFreeze(["dom", "canvas", "webgl"])
 	export type RendererOption = typeof RENDERER_OPTIONS[number]
+}
+
+export class RightClickClipboardAddon implements ITerminalAddon {
+	readonly #disposer = new Functions({ async: false, settled: true })
+
+	public constructor(
+		protected readonly enabled: () => boolean = constant(true),
+	) { }
+
+
+	public activate(terminal: Terminal): void {
+		const { element } = terminal
+		if (!element) { throw new Error() }
+		const contextMenuListener = (ev: MouseEvent): void => {
+			if (!this.enabled()) { return }
+			(async (): Promise<void> => {
+				try {
+					if (terminal.hasSelection()) {
+						await activeSelf(element).navigator.clipboard
+							.writeText(terminal.getSelection())
+						terminal.clearSelection()
+					} else {
+						terminal.paste(await activeSelf(element).navigator.clipboard
+							.readText())
+					}
+				} catch (error) {
+					activeSelf(element).console.error(error)
+				}
+			})()
+			consumeEvent(ev)
+		}
+		this.#disposer.push(() => {
+			element.removeEventListener("contextmenu", contextMenuListener)
+		})
+		element.addEventListener("contextmenu", contextMenuListener)
+	}
+
+	public dispose(): void {
+		this.#disposer.call()
+	}
 }
