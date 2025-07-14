@@ -47,7 +47,7 @@ import {
 	DisposerAddon,
 	DragAndDropAddon,
 	RendererAddon,
-	RightClickClipboardAddon,
+	RightClickActionAddon,
 } from "./emulator-addons.js"
 import {
 	FileSystemAdapter,
@@ -820,7 +820,7 @@ export class TerminalView extends ItemView {
 									() => new CanvasAddon(),
 									() => new WebglAddon(false),
 								),
-								rightClickClipboard: new RightClickClipboardAddon(),
+								rightClickAction: new RightClickActionAddon(),
 								search: new SearchAddon(),
 								unicode11: new Unicode11Addon(),
 								webLinks: new WebLinksAddon(
@@ -901,7 +901,7 @@ export namespace TerminalView {
 		readonly dragAndDrop: DragAndDropAddon
 		readonly ligatures: LigaturesAddon
 		readonly renderer: RendererAddon
-		readonly rightClickClipboard: RightClickClipboardAddon
+		readonly rightClickAction: RightClickActionAddon
 		readonly search: SearchAddon
 		readonly unicode11: Unicode11Addon
 		readonly webLinks: WebLinksAddon

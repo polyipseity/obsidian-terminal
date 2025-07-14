@@ -119,7 +119,7 @@ export namespace RendererAddon {
 	export type RendererOption = typeof RENDERER_OPTIONS[number]
 }
 
-export class RightClickClipboardAddon implements ITerminalAddon {
+export class RightClickActionAddon implements ITerminalAddon {
 	readonly #disposer = new Functions({ async: false, settled: true })
 
 	public constructor(
