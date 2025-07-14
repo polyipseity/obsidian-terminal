@@ -123,24 +123,36 @@ export class RightClickActionAddon implements ITerminalAddon {
 	readonly #disposer = new Functions({ async: false, settled: true })
 
 	public constructor(
-		protected readonly enabled: () => boolean = constant(true),
+		protected readonly action: () => RightClickActionAddon.Action =
+		constant("default"),
 	) { }
-
 
 	public activate(terminal: Terminal): void {
 		const { element } = terminal
 		if (!element) { throw new Error() }
 		const contextMenuListener = (ev: MouseEvent): void => {
-			if (!this.enabled()) { return }
+			const action = this.action()
+			if (action === "default") { return }
 			(async (): Promise<void> => {
 				try {
-					if (terminal.hasSelection()) {
-						await activeSelf(element).navigator.clipboard
-							.writeText(terminal.getSelection())
-						terminal.clearSelection()
-					} else {
-						terminal.paste(await activeSelf(element).navigator.clipboard
-							.readText())
+					// eslint-disable-next-line default-case
+					switch (action) {
+						case "nothing":
+							// How to send right click to the terminal?
+							break
+						// @ts-expect-error: fallthrough
+						case "copyPaste":
+							if (terminal.hasSelection()) {
+								await activeSelf(element).navigator.clipboard
+									.writeText(terminal.getSelection())
+								terminal.clearSelection()
+								break
+							}
+						// eslint-disable-next-line no-fallthrough
+						case "paste":
+							terminal.paste(await activeSelf(element).navigator.clipboard
+								.readText())
+							break
 					}
 				} catch (error) {
 					activeSelf(element).console.error(error)
@@ -157,4 +169,10 @@ export class RightClickActionAddon implements ITerminalAddon {
 	public dispose(): void {
 		this.#disposer.call()
 	}
+}
+export namespace RightClickActionAddon {
+	export const ACTIONS = deepFreeze([
+		"copyPaste", "default", "nothing", "paste",
+	])
+	export type Action = typeof ACTIONS[number]
 }

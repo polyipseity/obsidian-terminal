@@ -45,11 +45,14 @@ import type {
 	IWindowOptions,
 	IWindowsPty,
 } from "@xterm/xterm"
+import {
+	RendererAddon,
+	RightClickActionAddon,
+} from "./terminal/emulator-addons.js"
 import { isUndefined, omitBy } from "lodash-es"
 import { DEFAULT_SUCCESS_EXIT_CODES } from "./magic.js"
 import { PluginLocales } from "../assets/locales.js"
 import { Pseudoterminal } from "./terminal/pseudoterminal.js"
-import { RendererAddon } from "./terminal/emulator-addons.js"
 
 export interface LocalSettings extends PluginContext.LocalSettings {
 	readonly lastReadChangelogVersion: SemVerString
@@ -223,6 +226,7 @@ export namespace Settings {
 			readonly type: Type
 			readonly name: string
 			readonly restoreHistory: boolean
+			readonly rightClickAction: RightClickActionAddon.Action
 			readonly successExitCodes: readonly string[]
 			readonly terminalOptions: TerminalOptions
 		}
@@ -259,6 +263,7 @@ export namespace Settings {
 			developerConsole: {
 				name: "",
 				restoreHistory: false,
+				rightClickAction: "copyPaste",
 				successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
 				terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 				type: "developerConsole",
@@ -273,6 +278,7 @@ export namespace Settings {
 					win32: false,
 				},
 				restoreHistory: false,
+				rightClickAction: "copyPaste",
 				successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
 				terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 				type: "external",
@@ -288,6 +294,7 @@ export namespace Settings {
 				},
 				pythonExecutable: "",
 				restoreHistory: false,
+				rightClickAction: "copyPaste",
 				successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
 				terminalOptions: DEFAULT_TERMINAL_OPTIONS,
 				type: "integrated",
@@ -336,6 +343,12 @@ export namespace Settings {
 								"restoreHistory",
 								["boolean"],
 							),
+							rightClickAction: fixInSet(
+								DEFAULTS[type],
+								unc,
+								"rightClickAction",
+								RightClickActionAddon.ACTIONS,
+							),
 							successExitCodes: fixArray(
 								DEFAULTS[type],
 								unc,
@@ -359,6 +372,12 @@ export namespace Settings {
 								unc,
 								"restoreHistory",
 								["boolean"],
+							),
+							rightClickAction: fixInSet(
+								DEFAULTS[type],
+								unc,
+								"rightClickAction",
+								RightClickActionAddon.ACTIONS,
 							),
 							successExitCodes: fixArray(
 								DEFAULTS[type],
@@ -400,6 +419,12 @@ export namespace Settings {
 								unc,
 								"restoreHistory",
 								["boolean"],
+							),
+							rightClickAction: fixInSet(
+								DEFAULTS[type],
+								unc,
+								"rightClickAction",
+								RightClickActionAddon.ACTIONS,
 							),
 							successExitCodes: fixArray(
 								DEFAULTS[type],
@@ -447,6 +472,12 @@ export namespace Settings {
 								unc,
 								"restoreHistory",
 								["boolean"],
+							),
+							rightClickAction: fixInSet(
+								DEFAULTS[type],
+								unc,
+								"rightClickAction",
+								RightClickActionAddon.ACTIONS,
 							),
 							successExitCodes: fixArray(
 								DEFAULTS[type],
