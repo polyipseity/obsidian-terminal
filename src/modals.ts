@@ -49,7 +49,7 @@ import { Pseudoterminal } from "./terminal/pseudoterminal.js"
 import SemVer from "semver/classes/semver.js"
 import { Settings } from "./settings-data.js"
 import type { TerminalPlugin } from "./main.js"
-import getPackageVersion from "./get-package-version.py"
+import getPackageVersion from "./get_package_version.py"
 import semverCoerce from "semver/functions/coerce.js"
 
 const
