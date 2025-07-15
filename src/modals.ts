@@ -418,55 +418,6 @@ export class ProfileModal extends Modal {
 			})
 			.newSetting(listEl, setting => {
 				setting
-					.setName(i18n.t("components.profile.type"))
-					.addDropdown(linkSetting(
-						(): string => profile.type,
-						setTextToEnum(
-							Settings.Profile.TYPES,
-							value => {
-								this.replaceData(cloneAsWritable(Settings.Profile
-									.DEFAULTS[value]), true)
-							},
-						),
-						async () => {
-							this.#setupTypedUI()
-							await this.postMutate()
-						},
-						{
-							pre: dropdown => {
-								dropdown
-									.addOptions(Object
-										.fromEntries(Settings.Profile.TYPES
-											.map(type => [
-												type,
-												i18n.t("components.profile.type-options", {
-													interpolation: { escapeValue: false },
-													type,
-												}),
-											])))
-								for (const opt of Settings.Profile.TYPES
-									.filter(type => !PROFILE_PROPERTIES[type].valid)
-									.flatMap(type => Array.from(
-										dropdown.selectEl.querySelectorAll<HTMLOptionElement>(
-											`option[value="${escapeQuerySelectorAttribute(type)}"]`,
-										),
-									))) {
-									opt.hidden = true
-									opt.disabled = true
-								}
-							},
-						},
-					))
-					.addExtraButton(resetButton(
-						i18n.t("asset:components.profile.type-icon"),
-						DISABLED_TOOLTIP,
-						unexpected,
-						unexpected,
-						{ post(component) { component.setDisabled(true) } },
-					))
-			})
-			.newSetting(listEl, setting => {
-				setting
 					.setName(i18n.t("components.profile.data"))
 					.addButton(button => {
 						button
@@ -532,33 +483,57 @@ export class ProfileModal extends Modal {
 			profile = data,
 			{ value: i18n } = context.language
 		ui.destroy()
+		ui.newSetting(element, setting => {
+			setting
+				.setName(i18n.t("components.profile.type"))
+				.addDropdown(linkSetting(
+					(): string => profile.type,
+					setTextToEnum(
+						Settings.Profile.TYPES,
+						value => {
+							this.replaceData(cloneAsWritable(Settings.Profile
+								.DEFAULTS[value]), true)
+						},
+					),
+					async () => {
+						this.#setupTypedUI()
+						await this.postMutate()
+					},
+					{
+						pre: dropdown => {
+							dropdown
+								.addOptions(Object
+									.fromEntries(Settings.Profile.TYPES
+										.map(type => [
+											type,
+											i18n.t("components.profile.type-options", {
+												interpolation: { escapeValue: false },
+												type,
+											}),
+										])))
+							for (const opt of Settings.Profile.TYPES
+								.filter(type => !PROFILE_PROPERTIES[type].valid)
+								.flatMap(type => Array.from(
+									dropdown.selectEl.querySelectorAll<HTMLOptionElement>(
+										`option[value="${escapeQuerySelectorAttribute(type)}"]`,
+									),
+								))) {
+								opt.hidden = true
+								opt.disabled = true
+							}
+						},
+					},
+				))
+				.addExtraButton(resetButton(
+					i18n.t("asset:components.profile.type-icon"),
+					DISABLED_TOOLTIP,
+					unexpected,
+					unexpected,
+					{ post(component) { component.setDisabled(true) } },
+				))
+		})
 		if (profile.type === "invalid") { return }
 		ui
-			.newSetting(element, setting => {
-				const { settingEl } = setting
-				setting
-					.setName(i18n.t("components.profile.restore-history"))
-					.setDesc(createDocumentFragment(settingEl.ownerDocument, frag => {
-						createChildElement(frag, "span", ele => {
-							ele.innerHTML = i18n
-								.t("components.profile.restore-history-description-HTML")
-						})
-					}))
-					.addToggle(linkSetting(
-						() => profile.restoreHistory,
-						value => { profile.restoreHistory = value },
-						async () => this.postMutate(),
-					))
-					.addExtraButton(resetButton(
-						i18n.t("asset:components.profile.restore-history-icon"),
-						i18n.t("components.profile.reset"),
-						() => {
-							profile.restoreHistory =
-								Settings.Profile.DEFAULTS[profile.type].restoreHistory
-						},
-						async () => this.postMutate(),
-					))
-			})
 			.newSetting(element, setting => {
 				setting
 					.setName(i18n.t("components.profile.terminal-options"))
@@ -585,6 +560,31 @@ export class ProfileModal extends Modal {
 							profile.terminalOptions =
 								cloneAsWritable(Settings.Profile.DEFAULTS[profile.type]
 									.terminalOptions)
+						},
+						async () => this.postMutate(),
+					))
+			})
+			.newSetting(element, setting => {
+				const { settingEl } = setting
+				setting
+					.setName(i18n.t("components.profile.restore-history"))
+					.setDesc(createDocumentFragment(settingEl.ownerDocument, frag => {
+						createChildElement(frag, "span", ele => {
+							ele.innerHTML = i18n
+								.t("components.profile.restore-history-description-HTML")
+						})
+					}))
+					.addToggle(linkSetting(
+						() => profile.restoreHistory,
+						value => { profile.restoreHistory = value },
+						async () => this.postMutate(),
+					))
+					.addExtraButton(resetButton(
+						i18n.t("asset:components.profile.restore-history-icon"),
+						i18n.t("components.profile.reset"),
+						() => {
+							profile.restoreHistory =
+								Settings.Profile.DEFAULTS[profile.type].restoreHistory
 						},
 						async () => this.postMutate(),
 					))
