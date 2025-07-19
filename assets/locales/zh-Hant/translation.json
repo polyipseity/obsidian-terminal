@@ -7,9 +7,9 @@
 	"generic": {
 		"documentation": "文檔",
 		"documentations": {
-			"changelog": "變更日誌",
+			"changelog": "更新日誌",
 			"donate": "$t(generic.donate)",
-			"readme": "自述文件"
+			"readme": "readme"
 		},
 		"donate": "贊助"
 	},
