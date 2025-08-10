@@ -147,7 +147,7 @@ export class RefPsuedoterminal<T extends Pseudoterminal,
 
 	public resize(columns: number, rows: number): AsyncOrSync<void> {
 		const { delegate } = this
-		return delegate.resize && delegate.resize(columns, rows)
+		return delegate.resize?.(columns, rows)
 	}
 }
 
