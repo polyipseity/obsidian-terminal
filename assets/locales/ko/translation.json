@@ -1,18 +1,18 @@
 {
 	"commands": {
-		"clear-terminal": "$t(generic.clear, capitalize) $t(generic.terminal)",
-		"close-terminal": "$t(generic.close, capitalize) $t(generic.terminal)",
+		"clear-terminal": "$t(generic.terminal, capitalize) $t(generic.clear)",
+		"close-terminal": "$t(generic.terminal, capitalize) $t(generic.close)",
 		"find-in-terminal": "$t(generic.terminal)에서 $t(generic.find, capitalize)",
 		"focus-on-last-terminal": "마지막 $t(generic.terminal)에 $t(generic.focus, capitalize)",
-		"open-developer-console": "$t(generic.profile-types.developerConsole, capitalize) $t(generic.open, capitalize)",
-		"open-documentation-changelog": "$t(generic.documentations.changelog, capitalize) $t(generic.open, capitalize)",
-		"open-documentation-donate": "$t(generic.documentations.donate, capitalize) $t(generic.open, capitalize)",
-		"open-documentation-readme": "$t(generic.documentations.readme, capitalize) $t(generic.open, capitalize)",
-		"open-terminal-": "$t(generic.terminal, capitalize) $t(generic.open, capitalize): $t(generic.profile-types.{{type}}, capitalize)",
-		"open-terminal-current": "$t(generic.current-directory)에서 $t(generic.terminal, capitalize) $t(generic.open, capitalize): $t(generic.profile-types.{{type}}, capitalize)",
-		"open-terminal-root": "$t(generic.root-directory)에서 $t(generic.terminal, capitalize) $t(generic.open, capitalize): $t(generic.profile-types.{{type}}, capitalize)",
-		"toggle-focus-on-last-terminal": "마지막 $t(generic.terminal)의 $t(generic.focus) $t(generic.toggle, capitalize)",
-		"unfocus-terminal": "$t(generic.terminal, capitalize) $t(generic.unfocus, capitalize)"
+		"open-developer-console": "$t(generic.profile-types.developerConsole, capitalize) $t(generic.open)",
+		"open-documentation-changelog": "$t(generic.documentations.changelog, capitalize) $t(generic.open)",
+		"open-documentation-donate": "$t(generic.documentations.donate, capitalize) $t(generic.open)",
+		"open-documentation-readme": "$t(generic.documentations.readme, capitalize) $t(generic.open)",
+		"open-terminal-": "$t(generic.terminal, capitalize) $t(generic.open): $t(generic.profile-types.{{type}}, capitalize)",
+		"open-terminal-current": "$t(generic.current-directory)에서 $t(generic.terminal, capitalize) $t(generic.open): $t(generic.profile-types.{{type}}, capitalize)",
+		"open-terminal-root": "$t(generic.root-directory)에서 $t(generic.terminal, capitalize) $t(generic.open): $t(generic.profile-types.{{type}}, capitalize)",
+		"toggle-focus-on-last-terminal": "마지막 $t(generic.terminal)의 $t(generic.focus) $t(generic.toggle)",
+		"unfocus-terminal": "$t(generic.terminal, capitalize) $t(generic.unfocus)"
 	},
 	"components": {
 		"profile": {
@@ -28,13 +28,13 @@
 				"Python-executable": "$t(generic.Python, capitalize) $t(generic.executable)",
 				"Python-executable-check": "$t(generic.check, capitalize)",
 				"Python-executable-checking": "$t(generic.check_gerund, capitalize)",
-				"Python-executable-description": "{{version}} 이상을 권장합니다. $t(generic.platforms.unix)에서 $t(generic.profile-types.integrated) $t(generic.terminal)을 $t(generic.spawn)하기 위해 필요합니다. $t(generic.text-field)를 $t(generic.clear)하여 $t(generic.Python)을 $t(generic.disable)할 수 있습니다.",
+				"Python-executable-description": "{{version}} 이상을 권장합니다. $t(generic.platforms.unix)에서 $t(generic.profile-types.integrated) $t(generic.terminal)을 실행하려면 필요합니다. $t(generic.text-field)를 비워두면 $t(generic.Python)을 사용하지 않을 수 있습니다.",
 				"Python-executable-placeholder": "($t(generic.disable_past-participle, capitalize))",
 				"arguments": "$t(generic.argument_other, capitalize)",
 				"arguments-description": "$t(generic.list-description, capitalize)",
 				"arguments-edit": "$t(generic.edit, capitalize)",
 				"executable": "$t(generic.executable, capitalize)",
-				"use-win32-conhost": "$t(generic.platforms.win32) 'conhost.exe' $t(generic.use, capitalize)",
+				"use-win32-conhost": "$t(generic.platforms.win32) 'conhost.exe' $t(generic.use)",
 				"use-win32-conhost-description": "'conhost.exe'를 실행해도 창이 생성되지 않는 경우 $t(generic.disable)하세요. 작동한다는 보장은 없습니다."
 			},
 			"name": "$t(generic.name, capitalize)",
@@ -103,7 +103,7 @@
 		},
 		"terminal-options": {
 			"bold-font-weight": "굵은 $t(generic.font-weight)",
-			"description-HTML": "모든 $t(generic.option_other)에 대해서는 <a aria-label=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" class=\"external-link\" data-tooltip-position=\"top\" href=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" rel=\"noopener\" target=\"_blank\"><code>ITerminalOptions</code></a>를 참조하세요.",
+			"description-HTML": "모든 $t(generic.option_other)에 대한 자세한 내용은 <a aria-label=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" class=\"external-link\" data-tooltip-position=\"top\" href=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" rel=\"noopener\" target=\"_blank\"><code>ITerminalOptions</code></a> 문서를 참조하세요.",
 			"font-family": "$t(generic.font, capitalize) 패밀리",
 			"font-size": "$t(generic.font, capitalize) 크기",
 			"font-weight": "$t(generic.font-weight, capitalize)",
@@ -114,14 +114,14 @@
 		}
 	},
 	"errors": {
-		"error-checking-Python": "$t(generic.Python) $t(generic.check_gerund) 오류",
-		"error-killing-pseudoterminal": "$t(generic.pseudoterminal) 종료 오류",
-		"error-spawning-resizer": "$t(generic.terminal-resizer) $t(generic.spawn_gerund) 오류",
-		"error-spawning-terminal": "$t(generic.terminal) $t(generic.spawn_gerund) 오류",
-		"no-Python-to-spawn-Unix-pseudoterminal": "$t(generic.platforms.unix) $t(generic.pseudoterminal)을 $t(generic.spawn)할 $t(generic.Python)이 없습니다",
+		"error-checking-Python": "$t(generic.Python) $t(generic.check_gerund) 중 오류 발생",
+		"error-killing-pseudoterminal": "$t(generic.pseudoterminal) 종료 중 오류 발생",
+		"error-spawning-resizer": "$t(generic.terminal-resizer) $t(generic.spawn_gerund) 중 오류 발생",
+		"error-spawning-terminal": "$t(generic.terminal) $t(generic.spawn_gerund) 중 오류 발생",
+		"no-Python-to-spawn-Unix-pseudoterminal": "$t(generic.platforms.unix) $t(generic.pseudoterminal)을 실행할 $t(generic.Python)이 설치되어 있지 않습니다",
 		"not-Python": "$t(generic.Python)이 아닙니다",
 		"resizer-disabled": "$t(generic.terminal-resizer, capitalize) $t(generic.disable_past-participle)",
-		"resizer-exited-unexpectedly": "$t(generic.terminal-resizer, capitalize) 예기치 않게 $t(generic.exit_past): {{code}}"
+		"resizer-exited-unexpectedly": "$t(generic.terminal-resizer, capitalize) 예기치 않게 종료됨: {{code}}"
 	},
 	"generic": {
 		"Python": "Python",
@@ -130,7 +130,7 @@
 		"argument_other": "인수들",
 		"behavior": "동작",
 		"check": "확인",
-		"check_gerund": "확인 중",
+		"check_gerund": "확인",
 		"clear": "지우기",
 		"close": "닫기",
 		"compatible": "호환",
@@ -192,7 +192,7 @@
 		},
 		"profile_one": "프로필",
 		"profile_other": "프로필들",
-		"pseudoterminal": "가상 터미널",
+		"pseudoterminal": "의사 터미널",
 		"renderer": "렌더러",
 		"renderers": {
 			"canvas": "Canvas",
@@ -205,8 +205,8 @@
 		"root-directory": "루트 $t(generic.directory)",
 		"save": "저장",
 		"save_past-participle": "저장됨",
-		"spawn": "생성",
-		"spawn_gerund": "생성 중",
+		"spawn": "실행",
+		"spawn_gerund": "실행",
 		"split": "분할",
 		"status-bar": "상태 표시줄",
 		"tab": "탭",
@@ -214,7 +214,7 @@
 		"terminal": "터미널",
 		"terminal-option": "$t(generic.terminal) $t(generic.option)",
 		"terminal-option_other": "$t(generic.terminal) $t(generic.option_other)",
-		"terminal-resizer": "$t(generic.terminal) 크기 조정기",
+		"terminal-resizer": "$t(generic.terminal) 리사이저",
 		"text-field": "텍스트 필드",
 		"toggle": "전환",
 		"true": "참",
@@ -230,15 +230,15 @@
 	},
 	"name": "$t(generic.terminal, capitalize)",
 	"notices": {
-		"Python-status-entry-": "{{name}}: {{version}} (충족: {{requirement}})",
-		"Python-status-entry-unsatisfied": "{{name}}: {{version}} (미충족: {{requirement}})",
-		"no-default-profile": "'$t(generic.profile-types.{{type}}, capitalize)' $t(generic.type)에 대한 $t(generic.default) $t(generic.profile)이 없습니다",
-		"spawning-terminal": "$t(generic.terminal, capitalize) $t(generic.spawn_gerund): {{name}}",
+		"Python-status-entry-": "{{name}}: {{version}} (요구사항 충족: {{requirement}})",
+		"Python-status-entry-unsatisfied": "{{name}}: {{version}} (요구사항 미충족: {{requirement}})",
+		"no-default-profile": "'$t(generic.profile-types.{{type}}, capitalize)' $t(generic.type)에 대한 $t(generic.default) $t(generic.profile)이 설정되지 않았습니다",
+		"spawning-terminal": "$t(generic.terminal, capitalize) $t(generic.spawn_gerund) 중: {{name}}",
 		"terminal-exited": "$t(generic.terminal, capitalize) $t(generic.exit_past): {{code}}"
 	},
 	"profile-name-formats": {
-		"long": "\"{{info.name}}\". $t(generic.profile-types.{{info.profile.type}}, capitalize). {{info.id}}.",
-		"short": "\"{{info.nameOrID}}\". $t(generic.profile-types.{{info.profile.type}}, capitalize)."
+		"long": "\"{{info.name}}\" - $t(generic.profile-types.{{info.profile.type}}, capitalize) 프로필 (ID: {{info.id}})",
+		"short": "\"{{info.nameOrID}}\" - $t(generic.profile-types.{{info.profile.type}}, capitalize) 프로필"
 	},
 	"profile-presets": {
 		"bashIntegrated": "bash: $t(generic.profile-types.integrated, capitalize)",
@@ -263,7 +263,7 @@
 		"terminalMacOSExternal": "$t(generic.terminal, capitalize) ($t(generic.platforms.darwin, capitalize)): $t(generic.profile-types.external, capitalize)",
 		"win32ExternalDefault": "$t(generic.platforms.win32, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
 		"win32IntegratedDefault": "$t(generic.platforms.win32, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",
-		"wslIntegrated": "$t(generic.platforms.linux, capitalize)용 $t(generic.platforms.win32-short, capitalize) 하위 시스템: $t(generic.profile-types.integrated, capitalize)",
+		"wslIntegrated": "$t(generic.platforms.win32-short, capitalize)용 $t(generic.platforms.linux, capitalize) 하위 시스템: $t(generic.profile-types.integrated, capitalize)",
 		"wtExternal": "$t(generic.platforms.win32-short, capitalize) $t(generic.terminal, capitalize): $t(generic.profile-types.external, capitalize)",
 		"xtermExternal": "xterm: $t(generic.profile-types.external, capitalize)",
 		"zshIntegrated": "zsh: $t(generic.profile-types.integrated, capitalize)"
@@ -276,15 +276,15 @@
 		"add-to-context-menu": "$t(generic.context-menu)에 추가",
 		"advanced": "고급",
 		"create-instance-near-existing-ones": "기존 인스턴스 근처에 $t(generic.instance) 생성",
-		"create-instance-near-existing-ones-description": "$t(generic.instance)가 $t(generic.exist_singular)인 경우 '$t(settings.new-instance-behavior)'를 재정의합니다 ($t(generic.true)인 경우).",
+		"create-instance-near-existing-ones-description": "$t(generic.instance)가 이미 $t(generic.exist_singular)하는 경우 '$t(settings.new-instance-behavior)' 설정을 재정의합니다 ($t(generic.true)로 설정된 경우).",
 		"documentation": "$t(generic.documentation, capitalize)",
 		"documentations": {
 			"changelog": "$t(generic.documentations.changelog, capitalize)",
 			"donate": "$t(generic.documentations.donate, capitalize)",
 			"readme": "$t(generic.documentations.readme, capitalize)"
 		},
-		"expose-internal-modules": "내부 모듈 노출",
-		"expose-internal-modules-description-HTML": "<code>obsidian</code>, <code>@codemirror/*</code>, <code>@lezer/*</code>…",
+		"expose-internal-modules": "내부 모듈 공개",
+		"expose-internal-modules-description-HTML": "<code>obsidian</code>, <code>@codemirror/*</code>, <code>@lezer/*</code> 등의 모듈을 공개합니다.",
 		"focus-on-new-instance": "새 $t(generic.instance)에 $t(generic.focus)",
 		"hide-status-bar": "$t(generic.status-bar) 숨기기",
 		"hide-status-bar-options": {
@@ -313,7 +313,7 @@
 		"preferred-renderer": "선호 $t(generic.renderer)",
 		"preferred-renderer-options": "$t(generic.renderers.{{type}}, capitalize)",
 		"profile-list": {
-			"description": "$t(generic.list)에서 첫 번째 $t(generic.compatible) $t(generic.profile)이 해당 $t(generic.terminal) $t(generic.type)의 $t(generic.default)입니다."
+			"description": "목록에서 첫 번째 $t(generic.compatible) $t(generic.profile)이 해당 $t(generic.terminal) $t(generic.type)의 $t(generic.default)로 설정됩니다."
 		},
 		"profiles": "$t(generic.profile_other, capitalize)",
 		"profiles-description": "$t(generic.list-description, capitalize)",
