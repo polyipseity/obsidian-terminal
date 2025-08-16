@@ -120,6 +120,7 @@ export namespace PluginLocales {
 			[DEFAULT_NAMESPACE]: async () =>
 				sync((await import("./locales/ja/translation.json")).default),
 		},
+		// eslint-disable-next-line @typescript-eslint/naming-convention
 		ko: {
 			[DEFAULT_NAMESPACE]: async () =>
 				sync((await import("./locales/ko/translation.json")).default),
