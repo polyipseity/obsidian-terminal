@@ -1,5 +1,19 @@
 # obsidian-terminal <!-- markdownlint-disable MD024 -->
 
+## 3.20.0
+
+### Minor Changes
+
+- abd992c: Add Korean translation support for the terminal plugin. ([GH#55](https://github.com/polyipseity/obsidian-terminal/pull/55) by [@BongSangKim](https://github.com/BongSangKim))
+- 2824807: Add `$.history` and `$.results` in `DeveloperConsoleContext`.
+- 8438d3a: Add right click to copy or paste.
+- 5a8d545: Allow customizing right click action.
+
+### Patch Changes
+
+- c5c31ee: Fix escaping on Windows once and for all. Fixes [GH#41](https://github.com/polyipseity/obsidian-terminal/issues/41).
+- d8b26e5: Fix terminal disappearing after moving to a new window.
+
 ## 3.19.0
 
 ### Minor Changes
