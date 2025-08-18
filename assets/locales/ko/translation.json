@@ -1,68 +1,68 @@
 {
 	"commands": {
-		"clear-terminal": "$t(generic.terminal, capitalize) $t(generic.clear)",
-		"close-terminal": "$t(generic.terminal, capitalize) $t(generic.close)",
-		"find-in-terminal": "$t(generic.terminal)에서 $t(generic.find, capitalize)",
-		"focus-on-last-terminal": "마지막 $t(generic.terminal)에 $t(generic.focus, capitalize)",
-		"open-developer-console": "$t(generic.profile-types.developerConsole, capitalize) $t(generic.open)",
-		"open-documentation-changelog": "$t(generic.documentations.changelog, capitalize) $t(generic.open)",
-		"open-documentation-donate": "$t(generic.documentations.donate, capitalize) $t(generic.open)",
-		"open-documentation-readme": "$t(generic.documentations.readme, capitalize) $t(generic.open)",
-		"open-terminal-": "$t(generic.terminal, capitalize) $t(generic.open): $t(generic.profile-types.{{type}}, capitalize)",
-		"open-terminal-current": "$t(generic.current-directory)에서 $t(generic.terminal, capitalize) $t(generic.open): $t(generic.profile-types.{{type}}, capitalize)",
-		"open-terminal-root": "$t(generic.root-directory)에서 $t(generic.terminal, capitalize) $t(generic.open): $t(generic.profile-types.{{type}}, capitalize)",
+		"clear-terminal": "$t(generic.terminal) $t(generic.clear)",
+		"close-terminal": "$t(generic.terminal) $t(generic.close)",
+		"find-in-terminal": "$t(generic.terminal)에서 $t(generic.find)",
+		"focus-on-last-terminal": "마지막 $t(generic.terminal)에 $t(generic.focus)",
+		"open-developer-console": "$t(generic.profile-types.developerConsole) $t(generic.open)",
+		"open-documentation-changelog": "$t(generic.documentations.changelog) $t(generic.open)",
+		"open-documentation-donate": "$t(generic.documentations.donate) $t(generic.open)",
+		"open-documentation-readme": "$t(generic.documentations.readme) $t(generic.open)",
+		"open-terminal-": "$t(generic.terminal) $t(generic.open): $t(generic.profile-types.{{type}})",
+		"open-terminal-current": "$t(generic.current-directory)에서 $t(generic.terminal) $t(generic.open): $t(generic.profile-types.{{type}})",
+		"open-terminal-root": "$t(generic.root-directory)에서 $t(generic.terminal) $t(generic.open): $t(generic.profile-types.{{type}})",
 		"toggle-focus-on-last-terminal": "마지막 $t(generic.terminal)의 $t(generic.focus) $t(generic.toggle)",
-		"unfocus-terminal": "$t(generic.terminal, capitalize) $t(generic.unfocus)"
+		"unfocus-terminal": "$t(generic.terminal) $t(generic.unfocus)"
 	},
 	"components": {
 		"profile": {
-			"data": "$t(generic.data, capitalize)",
-			"data-edit": "$t(generic.edit, capitalize)",
+			"data": "$t(generic.data)",
+			"data-edit": "$t(generic.edit)",
 			"external": {
-				"arguments": "$t(generic.argument_other, capitalize)",
-				"arguments-description": "$t(generic.list-description, capitalize)",
-				"arguments-edit": "$t(generic.edit, capitalize)",
-				"executable": "$t(generic.executable, capitalize)"
+				"arguments": "$t(generic.argument_other)",
+				"arguments-description": "$t(generic.list-description)",
+				"arguments-edit": "$t(generic.edit)",
+				"executable": "$t(generic.executable)"
 			},
 			"integrated": {
-				"Python-executable": "$t(generic.Python, capitalize) $t(generic.executable)",
-				"Python-executable-check": "$t(generic.check, capitalize)",
-				"Python-executable-checking": "$t(generic.check_gerund, capitalize)",
+				"Python-executable": "$t(generic.Python) $t(generic.executable)",
+				"Python-executable-check": "$t(generic.check)",
+				"Python-executable-checking": "$t(generic.check_gerund)",
 				"Python-executable-description": "{{version}} 이상을 권장합니다. $t(generic.platforms.unix)에서 $t(generic.profile-types.integrated) $t(generic.terminal)을 실행하려면 필요합니다. $t(generic.text-field)를 비워두면 $t(generic.Python)을 사용하지 않을 수 있습니다.",
-				"Python-executable-placeholder": "($t(generic.disable_past-participle, capitalize))",
-				"arguments": "$t(generic.argument_other, capitalize)",
-				"arguments-description": "$t(generic.list-description, capitalize)",
-				"arguments-edit": "$t(generic.edit, capitalize)",
-				"executable": "$t(generic.executable, capitalize)",
+				"Python-executable-placeholder": "($t(generic.disable_past-participle))",
+				"arguments": "$t(generic.argument_other)",
+				"arguments-description": "$t(generic.list-description)",
+				"arguments-edit": "$t(generic.edit)",
+				"executable": "$t(generic.executable)",
 				"use-win32-conhost": "$t(generic.platforms.win32) 'conhost.exe' $t(generic.use)",
 				"use-win32-conhost-description": "'conhost.exe'를 실행해도 창이 생성되지 않는 경우 $t(generic.disable)하세요. 작동한다는 보장은 없습니다."
 			},
-			"name": "$t(generic.name, capitalize)",
-			"platform": "$t(generic.platforms.{{type}}, capitalize)",
+			"name": "$t(generic.name)",
+			"platform": "$t(generic.platforms.{{type}})",
 			"platform-description-": "",
 			"platform-description-current": "현재 $t(generic.platform)",
-			"preset": "$t(generic.preset, capitalize)",
-			"preset-placeholder": "($t(generic.custom, capitalize))",
-			"reset": "$t(generic.reset, capitalize)",
-			"restore-history": "$t(generic.history, capitalize) $t(generic.restore)",
+			"preset": "$t(generic.preset)",
+			"preset-placeholder": "($t(generic.custom))",
+			"reset": "$t(generic.reset)",
+			"restore-history": "$t(generic.history) $t(generic.restore)",
 			"restore-history-description-HTML": "$t(generic.enable_past-participle)된 경우 $t(generic.history)가 <code>.obsidian/workspace.json</code>에 $t(generic.save_past-participle)됩니다.",
 			"success-exit-codes": "성공 $t(generic.exit) 코드",
-			"success-exit-codes-description": "$t(generic.list-description, capitalize)",
-			"success-exit-codes-edit": "$t(generic.edit, capitalize)",
-			"terminal-options": "$t(generic.terminal-option_other, capitalize)",
-			"terminal-options-edit": "$t(generic.edit, capitalize)",
+			"success-exit-codes-description": "$t(generic.list-description)",
+			"success-exit-codes-edit": "$t(generic.edit)",
+			"terminal-options": "$t(generic.terminal-option_other)",
+			"terminal-options-edit": "$t(generic.edit)",
 			"title": "{{name}}",
-			"type": "$t(generic.type, capitalize)",
-			"type-options": "$t(generic.profile-types.{{type}}, capitalize)"
+			"type": "$t(generic.type)",
+			"type-options": "$t(generic.profile-types.{{type}})"
 		},
 		"profile-list": {
 			"descriptor-": "{{info.id}}",
-			"descriptor-incompatible": "($t(generic.incompatible, capitalize)) $t(components.profile-list.descriptor-)",
-			"edit": "$t(generic.edit, capitalize)",
+			"descriptor-incompatible": "($t(generic.incompatible)) $t(components.profile-list.descriptor-)",
+			"edit": "$t(generic.edit)",
 			"namer-": "{{info.name}}",
 			"namer-incompatible": "$t(components.profile-list.namer-)",
 			"preset-placeholder": "$t(components.dropdown.placeholder)",
-			"title": "$t(generic.profile_other, capitalize)"
+			"title": "$t(generic.profile_other)"
 		},
 		"select-profile": {
 			"instructions": {
@@ -70,47 +70,47 @@
 				"edit-before-use-purpose": "$t(generic.use)하기 전에 $t(generic.edit)"
 			},
 			"item-text-": "$t(profile-name-formats.long)",
-			"item-text-incompatible": "($t(generic.incompatible, capitalize)) $t(components.select-profile.item-text-)",
-			"item-text-temporary": "($t(generic.temporary, capitalize) $t(generic.profile))"
+			"item-text-incompatible": "($t(generic.incompatible)) $t(components.select-profile.item-text-)",
+			"item-text-temporary": "($t(generic.temporary) $t(generic.profile))"
 		},
 		"terminal": {
-			"display-name": "$t(generic.terminal, capitalize): {{name}}",
+			"display-name": "$t(generic.terminal): {{name}}",
 			"edit-modal": {
-				"profile": "$t(generic.profile, capitalize)",
-				"profile-edit": "$t(generic.edit, capitalize)",
+				"profile": "$t(generic.profile)",
+				"profile-edit": "$t(generic.edit)",
 				"profile-name-": "$t(profile-name-formats.short)",
-				"profile-name-incompatible": "($t(generic.incompatible, capitalize)) $t(components.terminal.edit-modal.profile-name-)",
+				"profile-name-incompatible": "($t(generic.incompatible)) $t(components.terminal.edit-modal.profile-name-)",
 				"profile-placeholder": "$t(components.profile.preset-placeholder)",
-				"reset": "$t(generic.reset, capitalize)",
-				"root-directory": "$t(generic.root-directory, capitalize)",
-				"title": "$t(generic.terminal, capitalize) $t(generic.edit)",
-				"working-directory": "$t(generic.working-directory, capitalize)",
-				"working-directory-placeholder": "($t(generic.undefined, capitalize))"
+				"reset": "$t(generic.reset)",
+				"root-directory": "$t(generic.root-directory)",
+				"title": "$t(generic.terminal) $t(generic.edit)",
+				"working-directory": "$t(generic.working-directory)",
+				"working-directory-placeholder": "($t(generic.undefined))"
 			},
 			"menus": {
-				"clear": "$t(generic.clear, capitalize)",
-				"copy": "$t(generic.copy, capitalize)",
-				"edit": "$t(generic.edit, capitalize)",
-				"find": "$t(generic.find, capitalize)",
-				"restart": "$t(generic.restart, capitalize)",
-				"save-as-HTML": "$t(generic.file-extensions.HTML)로 $t(generic.save, capitalize)"
+				"clear": "$t(generic.clear)",
+				"copy": "$t(generic.copy)",
+				"edit": "$t(generic.edit)",
+				"find": "$t(generic.find)",
+				"restart": "$t(generic.restart)",
+				"save-as-HTML": "$t(generic.file-extensions.HTML)로 $t(generic.save)"
 			},
 			"name": {
-				"profile-type": "$t(generic.profile-types.{{type}}, capitalize)"
+				"profile-type": "$t(generic.profile-types.{{type}})"
 			},
-			"restored-history": "\r\n * {{datetime, datetime(dateStyle: full, timeStyle: full)}}에 $t(generic.history) $t(generic.restore_past, capitalize)\r\n\r\n",
+			"restored-history": "\r\n * {{datetime, datetime(dateStyle: full, timeStyle: full)}}에 $t(generic.history) $t(generic.restore_past)\r\n\r\n",
 			"unsupported-profile": "지원되지 않는 $t(generic.profile):\r\n{{profile}}\r\n"
 		},
 		"terminal-options": {
 			"bold-font-weight": "굵은 $t(generic.font-weight)",
 			"description-HTML": "모든 $t(generic.option_other)에 대한 자세한 내용은 <a aria-label=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" class=\"external-link\" data-tooltip-position=\"top\" href=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" rel=\"noopener\" target=\"_blank\"><code>ITerminalOptions</code></a> 문서를 참조하세요.",
-			"font-family": "$t(generic.font, capitalize) 패밀리",
-			"font-size": "$t(generic.font, capitalize) 크기",
-			"font-weight": "$t(generic.font-weight, capitalize)",
-			"invalid-description": "$t(generic.invalid, capitalize)",
-			"title": "$t(generic.terminal-option_other, capitalize)",
-			"undefine": "$t(generic.undefine, capitalize)",
-			"undefined-placeholder": "($t(generic.undefined, capitalize))"
+			"font-family": "$t(generic.font) 패밀리",
+			"font-size": "$t(generic.font) 크기",
+			"font-weight": "$t(generic.font-weight)",
+			"invalid-description": "$t(generic.invalid)",
+			"title": "$t(generic.terminal-option_other)",
+			"undefine": "$t(generic.undefine)",
+			"undefined-placeholder": "($t(generic.undefined))"
 		}
 	},
 	"errors": {
@@ -120,8 +120,8 @@
 		"error-spawning-terminal": "$t(generic.terminal) $t(generic.spawn_gerund) 중 오류 발생",
 		"no-Python-to-spawn-Unix-pseudoterminal": "$t(generic.platforms.unix) $t(generic.pseudoterminal)을 실행할 $t(generic.Python)이 설치되어 있지 않습니다",
 		"not-Python": "$t(generic.Python)이 아닙니다",
-		"resizer-disabled": "$t(generic.terminal-resizer, capitalize) $t(generic.disable_past-participle)",
-		"resizer-exited-unexpectedly": "$t(generic.terminal-resizer, capitalize) 예기치 않게 종료됨: {{code}}"
+		"resizer-disabled": "$t(generic.terminal-resizer) $t(generic.disable_past-participle)",
+		"resizer-exited-unexpectedly": "$t(generic.terminal-resizer) 예기치 않게 종료됨: {{code}}"
 	},
 	"generic": {
 		"Python": "Python",
@@ -226,50 +226,50 @@
 		"working-directory": "작업 $t(generic.directory)"
 	},
 	"menus": {
-		"open-terminal": "$t(generic.terminal)에서 $t(generic.open): $t(generic.profile-types.{{type}}, capitalize)"
+		"open-terminal": "$t(generic.terminal)에서 $t(generic.open): $t(generic.profile-types.{{type}})"
 	},
-	"name": "$t(generic.terminal, capitalize)",
+	"name": "$t(generic.terminal)",
 	"notices": {
 		"Python-status-entry-": "{{name}}: {{version}} (요구사항 충족: {{requirement}})",
 		"Python-status-entry-unsatisfied": "{{name}}: {{version}} (요구사항 미충족: {{requirement}})",
-		"no-default-profile": "'$t(generic.profile-types.{{type}}, capitalize)' $t(generic.type)에 대한 $t(generic.default) $t(generic.profile)이 설정되지 않았습니다",
-		"spawning-terminal": "$t(generic.terminal, capitalize) $t(generic.spawn_gerund) 중: {{name}}",
-		"terminal-exited": "$t(generic.terminal, capitalize) $t(generic.exit_past): {{code}}"
+		"no-default-profile": "'$t(generic.profile-types.{{type}})' $t(generic.type)에 대한 $t(generic.default) $t(generic.profile)이 설정되지 않았습니다",
+		"spawning-terminal": "$t(generic.terminal) $t(generic.spawn_gerund) 중: {{name}}",
+		"terminal-exited": "$t(generic.terminal) $t(generic.exit_past): {{code}}"
 	},
 	"profile-name-formats": {
-		"long": "\"{{info.name}}\" - $t(generic.profile-types.{{info.profile.type}}, capitalize) 프로필 (ID: {{info.id}})",
-		"short": "\"{{info.nameOrID}}\" - $t(generic.profile-types.{{info.profile.type}}, capitalize) 프로필"
+		"long": "\"{{info.name}}\" - $t(generic.profile-types.{{info.profile.type}}) 프로필 (ID: {{info.id}})",
+		"short": "\"{{info.nameOrID}}\" - $t(generic.profile-types.{{info.profile.type}}) 프로필"
 	},
 	"profile-presets": {
-		"bashIntegrated": "bash: $t(generic.profile-types.integrated, capitalize)",
-		"cmdExternal": "cmd: $t(generic.profile-types.external, capitalize)",
-		"cmdIntegrated": "cmd: $t(generic.profile-types.integrated, capitalize)",
-		"darwinExternalDefault": "$t(generic.platforms.darwin, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
-		"darwinIntegratedDefault": "$t(generic.platforms.darwin, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",
-		"dashIntegrated": "dash: $t(generic.profile-types.integrated, capitalize)",
-		"developerConsole": "$t(generic.profile-types.developerConsole, capitalize)",
-		"empty": "$t(generic.profile-types., capitalize)",
-		"gitBashIntegrated": "Git Bash: $t(generic.profile-types.integrated, capitalize)",
-		"gnomeTerminalExternal": "GNOME $t(generic.terminal, capitalize): $t(generic.profile-types.external, capitalize)",
-		"iTerm2External": "iTerm2: $t(generic.profile-types.external, capitalize)",
-		"konsoleExternal": "Konsole: $t(generic.profile-types.external, capitalize)",
-		"linuxExternalDefault": "$t(generic.platforms.linux, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
-		"linuxIntegratedDefault": "$t(generic.platforms.linux, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",
-		"powershellExternal": "powershell: $t(generic.profile-types.external, capitalize)",
-		"powershellIntegrated": "powershell: $t(generic.profile-types.integrated, capitalize)",
-		"pwshExternal": "pwsh: $t(generic.profile-types.external, capitalize)",
-		"pwshIntegrated": "pwsh: $t(generic.profile-types.integrated, capitalize)",
-		"shIntegrated": "sh: $t(generic.profile-types.integrated, capitalize)",
-		"terminalMacOSExternal": "$t(generic.terminal, capitalize) ($t(generic.platforms.darwin, capitalize)): $t(generic.profile-types.external, capitalize)",
-		"win32ExternalDefault": "$t(generic.platforms.win32, capitalize) $t(generic.default): $t(generic.profile-types.external, capitalize)",
-		"win32IntegratedDefault": "$t(generic.platforms.win32, capitalize) $t(generic.default): $t(generic.profile-types.integrated, capitalize)",
-		"wslIntegrated": "$t(generic.platforms.win32-short, capitalize)용 $t(generic.platforms.linux, capitalize) 하위 시스템: $t(generic.profile-types.integrated, capitalize)",
-		"wtExternal": "$t(generic.platforms.win32-short, capitalize) $t(generic.terminal, capitalize): $t(generic.profile-types.external, capitalize)",
-		"xtermExternal": "xterm: $t(generic.profile-types.external, capitalize)",
-		"zshIntegrated": "zsh: $t(generic.profile-types.integrated, capitalize)"
+		"bashIntegrated": "bash: $t(generic.profile-types.integrated)",
+		"cmdExternal": "cmd: $t(generic.profile-types.external)",
+		"cmdIntegrated": "cmd: $t(generic.profile-types.integrated)",
+		"darwinExternalDefault": "$t(generic.platforms.darwin) $t(generic.default): $t(generic.profile-types.external)",
+		"darwinIntegratedDefault": "$t(generic.platforms.darwin) $t(generic.default): $t(generic.profile-types.integrated)",
+		"dashIntegrated": "dash: $t(generic.profile-types.integrated)",
+		"developerConsole": "$t(generic.profile-types.developerConsole)",
+		"empty": "$t(generic.profile-types.)",
+		"gitBashIntegrated": "Git Bash: $t(generic.profile-types.integrated)",
+		"gnomeTerminalExternal": "GNOME $t(generic.terminal): $t(generic.profile-types.external)",
+		"iTerm2External": "iTerm2: $t(generic.profile-types.external)",
+		"konsoleExternal": "Konsole: $t(generic.profile-types.external)",
+		"linuxExternalDefault": "$t(generic.platforms.linux) $t(generic.default): $t(generic.profile-types.external)",
+		"linuxIntegratedDefault": "$t(generic.platforms.linux) $t(generic.default): $t(generic.profile-types.integrated)",
+		"powershellExternal": "powershell: $t(generic.profile-types.external)",
+		"powershellIntegrated": "powershell: $t(generic.profile-types.integrated)",
+		"pwshExternal": "pwsh: $t(generic.profile-types.external)",
+		"pwshIntegrated": "pwsh: $t(generic.profile-types.integrated)",
+		"shIntegrated": "sh: $t(generic.profile-types.integrated)",
+		"terminalMacOSExternal": "$t(generic.terminal) ($t(generic.platforms.darwin)): $t(generic.profile-types.external)",
+		"win32ExternalDefault": "$t(generic.platforms.win32) $t(generic.default): $t(generic.profile-types.external)",
+		"win32IntegratedDefault": "$t(generic.platforms.win32) $t(generic.default): $t(generic.profile-types.integrated)",
+		"wslIntegrated": "$t(generic.platforms.win32-short)용 $t(generic.platforms.linux) 하위 시스템: $t(generic.profile-types.integrated)",
+		"wtExternal": "$t(generic.platforms.win32-short) $t(generic.terminal): $t(generic.profile-types.external)",
+		"xtermExternal": "xterm: $t(generic.profile-types.external)",
+		"zshIntegrated": "zsh: $t(generic.profile-types.integrated)"
 	},
 	"ribbons": {
-		"open-terminal": "$t(generic.terminal, capitalize) $t(generic.open)"
+		"open-terminal": "$t(generic.terminal) $t(generic.open)"
 	},
 	"settings": {
 		"add-to-command": "$t(generic.command)에 추가",
@@ -277,11 +277,11 @@
 		"advanced": "고급",
 		"create-instance-near-existing-ones": "기존 인스턴스 근처에 $t(generic.instance) 생성",
 		"create-instance-near-existing-ones-description": "$t(generic.instance)가 이미 $t(generic.exist_singular)하는 경우 '$t(settings.new-instance-behavior)' 설정을 재정의합니다 ($t(generic.true)로 설정된 경우).",
-		"documentation": "$t(generic.documentation, capitalize)",
+		"documentation": "$t(generic.documentation)",
 		"documentations": {
-			"changelog": "$t(generic.documentations.changelog, capitalize)",
-			"donate": "$t(generic.documentations.donate, capitalize)",
-			"readme": "$t(generic.documentations.readme, capitalize)"
+			"changelog": "$t(generic.documentations.changelog)",
+			"donate": "$t(generic.documentations.donate)",
+			"readme": "$t(generic.documentations.readme)"
 		},
 		"expose-internal-modules": "내부 모듈 공개",
 		"expose-internal-modules-description-HTML": "<code>obsidian</code>, <code>@codemirror/*</code>, <code>@lezer/*</code> 등의 모듈을 공개합니다.",
@@ -293,7 +293,7 @@
 			"never": "절대",
 			"running": "$t(generic.terminal)이 실행 중인 경우"
 		},
-		"instancing": "$t(generic.instance_gerund, capitalize)",
+		"instancing": "$t(generic.instance_gerund)",
 		"intercept-logging": "로깅 가로채기",
 		"interface": "인터페이스",
 		"new-instance-behavior": "새 $t(generic.instance) $t(generic.behavior)",
@@ -311,12 +311,12 @@
 		"open-changelog-on-update": "업데이트 시 $t(generic.documentations.changelog) $t(generic.open)",
 		"pin-new-instance": "새 $t(generic.instance) $t(generic.pin)",
 		"preferred-renderer": "선호 $t(generic.renderer)",
-		"preferred-renderer-options": "$t(generic.renderers.{{type}}, capitalize)",
+		"preferred-renderer-options": "$t(generic.renderers.{{type}})",
 		"profile-list": {
 			"description": "목록에서 첫 번째 $t(generic.compatible) $t(generic.profile)이 해당 $t(generic.terminal) $t(generic.type)의 $t(generic.default)로 설정됩니다."
 		},
-		"profiles": "$t(generic.profile_other, capitalize)",
-		"profiles-description": "$t(generic.list-description, capitalize)",
-		"profiles-edit": "$t(generic.edit, capitalize)"
+		"profiles": "$t(generic.profile_other)",
+		"profiles-description": "$t(generic.list-description)",
+		"profiles-edit": "$t(generic.edit)"
 	}
 }
