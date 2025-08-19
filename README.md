@@ -6,13 +6,12 @@ To apply this [Obsidian] plugin template, replace all occurrences of `PLACEHOLDE
 [changelog]: https://github.com/polyipseity/obsidian-plugin-template/blob/main/CHANGELOG.md
 [community plugin]: https://obsidian.md/plugins?id=PLACEHOLDER
 [latest release]: https://github.com/polyipseity/obsidian-plugin-template/releases/latest
-[other things]: https://github.com/polyipseity/obsidian-plugin-template
 [repository]: https://github.com/polyipseity/obsidian-plugin-template
 [trailer]: https://raw.githubusercontent.com/polyipseity/obsidian-plugin-template/main/assets/trailer.png
 
 PLACEHOLDER
 
-__[Repository] · [Changelog] · [Community plugin] · [Other things] · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing) · [Security](#security)__
+__[Repository] · [Changelog] · [Community plugin] · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing) · [Security](#security)__
 
 ![Trailer]
 
