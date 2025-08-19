@@ -8,15 +8,15 @@ To apply this [Obsidian] plugin template, replace all occurrences of `PLACEHOLDE
 [changelog]: https://github.com/polyipseity/obsidian-plugin-template/blob/main/CHANGELOG.md
 [community plugin]: https://obsidian.md/plugins?id=PLACEHOLDER
 [latest release]: https://github.com/polyipseity/obsidian-plugin-template/releases/latest
-[other things]: https://github.com/polyipseity/obsidian-monorepo
 [repository]: https://github.com/polyipseity/obsidian-plugin-template
 [trailer]: https://raw.githubusercontent.com/polyipseity/obsidian-plugin-template/main/assets/trailer.png
+[related]: https://github.com/polyipseity/obsidian-monorepo
 
 PLACEHOLDER
 
 [![Buy Me a Coffee/embed]][Buy Me a Coffee]
 
-__[Repository] · [Changelog] · [Community plugin] · [Other things] · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing) · [Security](#security)__
+__[Repository] · [Changelog] · [Community plugin] · [Related] · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing) · [Security](#security)__
 
 ![Trailer]
 
