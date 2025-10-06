@@ -120,6 +120,55 @@ Theming is possible. However, there is no user-friendly interface for now.
 3. Notice `terminalOptions` in the text area labeled `Data`. Refer to the [`xterm.js` documentation](https://github.com/xtermjs/xterm.js/blob/master/typings/xterm.d.ts#L26) (`ITerminalOptions`) to set the options. Nested objects may need to be used.
 4. Save the profile. Changes should apply immediately.
 
+#### Common Customizations
+
+##### Font Configuration
+
+To customize the terminal font family and weight, add the following properties to `terminalOptions`:
+
+```json
+"terminalOptions": {
+  "documentOverride": null,
+  "fontFamily": "FiraCode Nerd Font Mono, Consolas, monospace",
+  "fontWeight": "400",
+  "fontWeightBold": "700"
+}
+```
+
+Available font options:
+- `fontFamily`: CSS font-family string with fallback fonts (e.g., `"JetBrains Mono, Courier New, monospace"`)
+- `fontWeight`: Font weight for regular text. Accepts `"normal"`, `"bold"`, or numeric values `"100"`-`"900"` (default: `"400"`)
+- `fontWeightBold`: Font weight for bold text (default: `"700"`)
+- `fontSize`: Font size in pixels (e.g., `14`)
+
+**Note:** After modifying font settings, you may need to restart Obsidian for changes to take effect. For terminals, monospaced fonts are recommended to ensure proper character alignment.
+
+##### Other Appearance Options
+
+Additional `terminalOptions` you can customize (refer to [xterm.js ITerminalOptions](https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/) for complete list):
+
+- `cursorBlink`: Enable cursor blinking (`true` or `false`)
+- `cursorStyle`: Cursor style (`"block"`, `"underline"`, or `"bar"`)
+- `theme`: Color theme object with properties like `background`, `foreground`, `cursor`, etc.
+
+Example with multiple customizations:
+
+```json
+"terminalOptions": {
+  "documentOverride": null,
+  "fontFamily": "FiraCode Nerd Font Mono, monospace",
+  "fontSize": 14,
+  "fontWeight": "400",
+  "fontWeightBold": "700",
+  "cursorBlink": true,
+  "cursorStyle": "block",
+  "theme": {
+    "background": "#1e1e1e",
+    "foreground": "#d4d4d4"
+  }
+}
+```
+
 ### Profiles
 
 This plugin comes with several profile presets that you can reference.
