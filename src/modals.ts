@@ -348,6 +348,14 @@ export class ProfileModal extends Modal {
 
 	public override onOpen(): void {
 		super.onOpen()
+
+		this.modalEl.style.width = "80vw"
+		this.modalEl.style.maxWidth = "900px"
+		this.modalEl.style.minWidth = "600px"
+		this.contentEl.style.width = "80vw"
+		this.contentEl.style.maxWidth = "900px"
+		this.contentEl.style.minWidth = "600px"
+
 		const { context, ui, data, titleEl, modalUI } = this,
 			{ element: listEl, remover: listElRemover } = useSettings(this.contentEl),
 			profile = data,
