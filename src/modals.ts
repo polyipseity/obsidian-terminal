@@ -1014,6 +1014,14 @@ export class ProfileListModal
 		)
 		this.dataKeys = dataKeys
 	}
+
+	public override onOpen(): void {
+		super.onOpen()
+		this.modalEl.style.width = "80vw"
+		this.modalEl.style.maxWidth = "900px"
+		this.modalEl.style.minWidth = "600px"
+		this.contentEl.style.width = "100%"
+	}
 }
 export namespace ProfileListModal {
 	type InitialOptions = ListModal.Options<DeepWritable<Settings.Profile>>
