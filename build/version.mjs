@@ -10,7 +10,7 @@ const
 			: null,
 		version: ({ version }) => version,
 	}),
-	BETA_MANIFEST = Object.freeze({ version: "latest" }),
+	BETA_MANIFEST = Object.freeze({ version: "rolling" }),
 	aPackage = readFile(PATHS.package, "utf-8").then(data => JSON.parse(data)),
 	aVersions = readFile(PATHS.versions, "utf-8").then(data => JSON.parse(data))
 
