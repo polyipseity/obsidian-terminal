@@ -108,7 +108,6 @@ export class EditTerminalModal extends DialogModal {
 	) {
 		const { language: { value: i18n } } = context
 		super(context, {
-			dynamicWidth: true,
 			title: () => i18n.t("components.terminal.edit-modal.title"),
 		})
 		this.state = cloneAsWritable(protostate)

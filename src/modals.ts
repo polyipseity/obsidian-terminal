@@ -348,14 +348,6 @@ export class ProfileModal extends Modal {
 
 	public override onOpen(): void {
 		super.onOpen()
-
-		this.modalEl.style.width = "80vw"
-		this.modalEl.style.maxWidth = "900px"
-		this.modalEl.style.minWidth = "600px"
-		this.contentEl.style.width = "80vw"
-		this.contentEl.style.maxWidth = "900px"
-		this.contentEl.style.minWidth = "600px"
-
 		const { context, ui, data, titleEl, modalUI } = this,
 			{ element: listEl, remover: listElRemover } = useSettings(this.contentEl),
 			profile = data,
@@ -622,7 +614,6 @@ export class ProfileModal extends Modal {
 										profile.successExitCodes = value
 										await this.postMutate()
 									},
-									dynamicWidth: true,
 									title: (): string =>
 										i18n.t("components.profile.success-exit-codes"),
 								},
@@ -693,7 +684,6 @@ export class ProfileModal extends Modal {
 											profile.args = value
 											await this.postMutate()
 										},
-										dynamicWidth: true,
 										title: (): string =>
 											i18n.t(`components.profile.${profile.type}.arguments`),
 									},
@@ -1021,14 +1011,6 @@ export class ProfileListModal
 			},
 		)
 		this.dataKeys = dataKeys
-	}
-
-	public override onOpen(): void {
-		super.onOpen()
-		this.modalEl.style.width = "80vw"
-		this.modalEl.style.maxWidth = "900px"
-		this.modalEl.style.minWidth = "600px"
-		this.contentEl.style.width = "100%"
 	}
 }
 export namespace ProfileListModal {
