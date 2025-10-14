@@ -31,12 +31,12 @@ This file is automatically opened on first install. You can reopen it in setting
     - Manual
         1. Create directory `PLACEHOLDER` under `.obsidian/plugins` of your vault.
         2. Place `manifest.json`, `main.js`, and `styles.css` from the [latest release] into the directory.
-    - Building (latest)
+    - Building (rolling)
         1. Clone this repository, including its submodules.
         2. Install [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).
         3. Run `npm install` in the root directory.
         4. Run `npm run obsidian:install <vault directory>` in the root directory.
-    - [Obsidian42 - BRAT](https://obsidian.md/plugins?id=obsidian42-brat) (latest)
+    - [Obsidian42 - BRAT](https://obsidian.md/plugins?id=obsidian42-brat) (rolling)
         - See [their readme](https://github.com/TfTHacker/obsidian42-brat#readme).
 2. Enable plugin.
 3. (optional) Configure plugin settings.
@@ -75,10 +75,11 @@ We hope that there will never be any security vulnerabilities, but unfortunately
 
 ### Supported versions
 
-| Version | Supported |
-|-|-|
-| latest | ✅ |
-| outdated | ❌ |
+| Version  | Supported |
+| -------- | --------- |
+| rolling  | ✅        |
+| latest   | ✅        |
+| outdated | ❌        |
 
 ### Reporting a vulnerability
 

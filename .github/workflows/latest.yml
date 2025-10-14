@@ -1,5 +1,5 @@
 jobs:
-  release-latest:
+  release-rolling:
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -16,16 +16,16 @@ jobs:
     - run: |
         npm pack --pack-destination=.github
         for file in .github/*.tgz; do mv "$file" "${file%-*}.tgz"; done
-    - if: ${{github.ref == 'refs/tags/latest'}}
+    - if: ${{github.ref == 'refs/tags/rolling'}}
       env:
         GH_TOKEN: ${{github.token}}
       run: |
-        gh release upload latest .github/*.tgz main.js manifest.json styles.css --clobber
+        gh release upload rolling .github/*.tgz main.js manifest.json styles.css --clobber
 
 on:
   push:
     tags:
-    - latest
+    - rolling
   workflow_dispatch:
 
 permissions: {}
