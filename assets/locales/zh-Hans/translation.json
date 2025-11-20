@@ -71,7 +71,7 @@
 			},
 			"item-text-": "$t(profile-name-formats.long)",
 			"item-text-incompatible": "（$t(generic.incompatible)）$t(components.select-profile.item-text-)",
-			"item-text-temporary": "（$t(generic.temporary)$t(generic.profile）"
+			"item-text-temporary": "（$t(generic.temporary)$t(generic.profile)）"
 		},
 		"terminal": {
 			"display-name": "$t(generic.terminal)：{{name}}",
