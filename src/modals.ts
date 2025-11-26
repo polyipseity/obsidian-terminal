@@ -614,7 +614,6 @@ export class ProfileModal extends Modal {
 										profile.successExitCodes = value
 										await this.postMutate()
 									},
-									dynamicWidth: true,
 									title: (): string =>
 										i18n.t("components.profile.success-exit-codes"),
 								},
@@ -685,7 +684,6 @@ export class ProfileModal extends Modal {
 											profile.args = value
 											await this.postMutate()
 										},
-										dynamicWidth: true,
 										title: (): string =>
 											i18n.t(`components.profile.${profile.type}.arguments`),
 									},
