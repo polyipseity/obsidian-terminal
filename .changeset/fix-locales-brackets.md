@@ -2,7 +2,7 @@
 "@polyipseity/obsidian-terminal": patch
 ---
 
-Fix invalid JSON in translation files:
+Fix invalid JSON in translation files: ([GH#66](https://github.com/polyipseity/obsidian-terminal/pull/66) by [@HNIdesu](https://github.com/HNIdesu))
 
 - `assets/locales/zh-Hans/translation.json`
 - `assets/locales/zh-Hant/translation.json`
