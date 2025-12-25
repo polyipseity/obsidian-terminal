@@ -216,8 +216,12 @@ export class XtermTerminalEmulator<A> {
 	public serialize(): XtermTerminalEmulator.State {
 		const { active } = this.terminal.buffer
 		const viewportY = active.viewportY
-		// User is at bottom if viewport is at or past the last visible line
-		const wasAtBottom = viewportY >= active.baseY - this.terminal.rows + 1
+
+		// Only consider "at bottom" if there's actually scrollable content
+		// This prevents false positives in initial/empty state where baseY < rows
+		const hasScrollableContent = active.baseY >= this.terminal.rows
+		const isAtBottomPosition = viewportY >= active.baseY - this.terminal.rows + 1
+		const wasAtBottom = hasScrollableContent && isAtBottomPosition
 
 		return deepFreeze({
 			columns: this.terminal.cols,
