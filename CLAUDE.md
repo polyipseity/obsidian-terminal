@@ -265,3 +265,83 @@ Localization files: `assets/locales/{lang}/translation.json`
 - Uses i18next for translations
 - Asset keys in separate `asset.json` files (icons, etc.)
 - Language strings in `language.json`
+
+## Testing Recommendations
+
+Currently, this project does not have a test infrastructure. For future improvements, consider adding:
+
+### Recommended Test Framework
+- **Vitest** or **Jest** with TypeScript support
+- `@testing-library` for UI component testing
+- Mock xterm.js Terminal and Buffer APIs
+
+### Critical Test Cases for Scroll Position Fix
+
+**Edge Cases for viewportY Restoration:**
+```typescript
+// Test 1: Restoring viewportY = 0 (should not scroll)
+test('viewportY restoration skips when at top', () => {
+    const state = { columns: 80, rows: 24, data: 'test\n', viewportY: 0, wasAtBottom: false }
+    // Assert: no scrollToLine() call
+})
+
+// Test 2: Restoring with empty buffer
+test('viewportY restoration handles empty buffer', () => {
+    const state = { columns: 80, rows: 24, data: '', viewportY: 5, wasAtBottom: false }
+    // Assert: viewportY clamped to 0
+})
+
+// Test 3: Restoring with viewportY larger than buffer
+test('viewportY restoration clamps out-of-bounds values', () => {
+    const state = { columns: 80, rows: 24, data: 'line1\nline2\n', viewportY: 9999, wasAtBottom: false }
+    // Assert: viewportY clamped to maxScrollY
+})
+
+// Test 4: Restoring with negative viewportY
+test('viewportY restoration clamps negative values', () => {
+    const state = { columns: 80, rows: 24, data: 'test\n', viewportY: -10, wasAtBottom: false }
+    // Assert: viewportY clamped to 0
+})
+
+// Test 5: Auto-scroll behavior preservation
+test('wasAtBottom flag restores auto-scroll behavior', () => {
+    const state = { columns: 80, rows: 24, data: 'test\n', viewportY: 0, wasAtBottom: true }
+    // Assert: scrollToBottom() called instead of scrollToLine()
+})
+
+// Test 6: Multiple serialization cycles preserve position
+test('multiple save/restore cycles maintain scroll position', () => {
+    const emulator = createEmulator()
+    emulator.terminal.scrollToLine(10, true)
+    const state1 = emulator.serialize()
+    const restored = createEmulator(state1)
+    const state2 = restored.serialize()
+    // Assert: state1.viewportY === state2.viewportY
+})
+```
+
+### Debug Mode Testing
+
+Enable debug logging in development:
+```javascript
+// In browser console or localStorage
+localStorage.setItem('terminal-debug', 'true')
+```
+
+This will log:
+- Saved viewportY values during serialization
+- Restoration attempts with current buffer state
+- Bounds clamping operations
+- Auto-scroll behavior triggers
+
+### Manual Testing Checklist
+
+When testing scroll position fixes:
+1. Run long command: `find / -name "*.txt" 2>/dev/null`
+2. Scroll up mid-execution
+3. Switch to another pane/tab (triggers state save)
+4. Switch back (triggers state restore)
+5. Verify: Scroll position maintained
+6. Test at bottom: Should auto-scroll with new output
+7. Test at top: Should stay at top
+8. Test mid-scroll: Should stay at exact position

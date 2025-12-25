@@ -131,7 +131,42 @@ export class XtermTerminalEmulator<A> {
 			write = writePromise(terminal, state.data).then(() => {
 				// Restore scroll position after data is written
 				if (state.viewportY !== undefined && state.viewportY !== 0) {
-					terminal.scrollToLine(state.viewportY, true)
+					const { active } = terminal.buffer
+
+					// Debug logging for scroll restoration (enable with localStorage.setItem('terminal-debug', 'true'))
+					const debugEnabled = /* @__PURE__ */ activeSelf(element)
+						.localStorage.getItem('terminal-debug') === 'true'
+
+					if (debugEnabled) {
+						/* @__PURE__ */ activeSelf(element).console.debug('[Terminal] Restoring scroll position:', {
+							savedViewportY: state.viewportY,
+							currentBaseY: active.baseY,
+							rows: terminal.rows,
+							wasAtBottom: state.wasAtBottom,
+						})
+					}
+
+					// If user was at bottom, restore auto-scroll behavior
+					if (state.wasAtBottom) {
+						terminal.scrollToBottom()
+						if (debugEnabled) {
+							/* @__PURE__ */ activeSelf(element).console.debug('[Terminal] Restored to bottom (auto-scroll enabled)')
+						}
+					} else {
+						// User was scrolled up - restore exact position with bounds checking
+						const maxScrollY = Math.max(0, active.baseY - terminal.rows + 1)
+						const safeViewportY = Math.min(Math.max(0, state.viewportY), maxScrollY)
+
+						if (debugEnabled && safeViewportY !== state.viewportY) {
+							/* @__PURE__ */ activeSelf(element).console.debug('[Terminal] Clamped viewportY:', {
+								original: state.viewportY,
+								clamped: safeViewportY,
+								maxScrollY,
+							})
+						}
+
+						terminal.scrollToLine(safeViewportY, true)
+					}
 				}
 			})
 		}
@@ -179,6 +214,11 @@ export class XtermTerminalEmulator<A> {
 	}
 
 	public serialize(): XtermTerminalEmulator.State {
+		const { active } = this.terminal.buffer
+		const viewportY = active.viewportY
+		// User is at bottom if viewport is at or past the last visible line
+		const wasAtBottom = viewportY >= active.baseY - this.terminal.rows + 1
+
 		return deepFreeze({
 			columns: this.terminal.cols,
 			data: this.addons.serialize.serialize({
@@ -186,7 +226,8 @@ export class XtermTerminalEmulator<A> {
 				excludeModes: true,
 			}),
 			rows: this.terminal.rows,
-			viewportY: this.terminal.buffer.active.viewportY,
+			viewportY,
+			wasAtBottom,
 		})
 	}
 }
@@ -196,6 +237,7 @@ export namespace XtermTerminalEmulator {
 		readonly rows: number
 		readonly data: string
 		readonly viewportY: number
+		readonly wasAtBottom: boolean
 	}
 	export namespace State {
 		export const DEFAULT: State = deepFreeze({
@@ -203,6 +245,7 @@ export namespace XtermTerminalEmulator {
 			data: "",
 			rows: 1,
 			viewportY: 0,
+			wasAtBottom: false,
 		})
 		export function fix(self0: unknown): Fixed<State> {
 			const unc = launderUnchecked<State>(self0)
@@ -211,6 +254,7 @@ export namespace XtermTerminalEmulator {
 				data: fixTyped(DEFAULT, unc, "data", ["string"]),
 				rows: fixTyped(DEFAULT, unc, "rows", ["number"]),
 				viewportY: fixTyped(DEFAULT, unc, "viewportY", ["number"]),
+				wasAtBottom: fixTyped(DEFAULT, unc, "wasAtBottom", ["boolean"]),
 			})
 		}
 	}
