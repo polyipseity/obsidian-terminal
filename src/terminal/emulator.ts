@@ -128,7 +128,12 @@ export class XtermTerminalEmulator<A> {
 		let write = Promise.resolve()
 		if (state) {
 			terminal.resize(state.columns, state.rows)
-			write = writePromise(terminal, state.data)
+			write = writePromise(terminal, state.data).then(() => {
+				// Restore scroll position after data is written
+				if (state.viewportY !== undefined && state.viewportY !== 0) {
+					terminal.scrollToLine(state.viewportY, true)
+				}
+			})
 		}
 		this.pseudoterminal = write.then(async () => {
 			const pty0 = await pseudoterminal(terminal, addons0)
@@ -181,6 +186,7 @@ export class XtermTerminalEmulator<A> {
 				excludeModes: true,
 			}),
 			rows: this.terminal.rows,
+			viewportY: this.terminal.buffer.active.viewportY,
 		})
 	}
 }
@@ -189,12 +195,14 @@ export namespace XtermTerminalEmulator {
 		readonly columns: number
 		readonly rows: number
 		readonly data: string
+		readonly viewportY: number
 	}
 	export namespace State {
 		export const DEFAULT: State = deepFreeze({
 			columns: 1,
 			data: "",
 			rows: 1,
+			viewportY: 0,
 		})
 		export function fix(self0: unknown): Fixed<State> {
 			const unc = launderUnchecked<State>(self0)
@@ -202,6 +210,7 @@ export namespace XtermTerminalEmulator {
 				columns: fixTyped(DEFAULT, unc, "columns", ["number"]),
 				data: fixTyped(DEFAULT, unc, "data", ["string"]),
 				rows: fixTyped(DEFAULT, unc, "rows", ["number"]),
+				viewportY: fixTyped(DEFAULT, unc, "viewportY", ["number"]),
 			})
 		}
 	}
