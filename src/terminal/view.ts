@@ -802,6 +802,52 @@ export class TerminalView extends ItemView {
 									? {}
 									: cloneAsWritable(profile.terminalOptions, cloneDeep),
 								allowProposedApi: true,
+								...((): {
+									readonly theme?: {
+										readonly background?: string
+										readonly foreground?: string
+										readonly cursor?: string
+										readonly selectionBackground?: string
+									}
+								} => {
+									if (profile.type !== "invalid" &&
+										profile.mirrorObsidianBackground) {
+										const style = activeSelf(contentEl)
+											.getComputedStyle(contentEl.ownerDocument.body)
+										const bgColor = style
+											.getPropertyValue("--background-primary").trim()
+										const isLightBg = ((): boolean => {
+											const match = bgColor.match(/\d+/gu)
+											if (match && match.length >= 3) {
+												const [r, g, b] = match.map(Number)
+												return (0.299 * r + 0.587 * g + 0.114 * b) > 128
+											}
+											return false
+										})()
+										const fgColor = style
+											.getPropertyValue("--text-normal").trim() ||
+											style.color ||
+											(isLightBg ? "#000000" : "#ffffff")
+										const accentColor = style
+											.getPropertyValue("--interactive-accent").trim()
+										const selectionColor = style
+											.getPropertyValue("--text-selection").trim()
+										if (bgColor || fgColor) {
+											return {
+												theme: {
+													...profile.terminalOptions.theme,
+													...bgColor && { background: bgColor },
+													...fgColor && { foreground: fgColor },
+													...accentColor && { cursor: accentColor },
+													...selectionColor && {
+														selectionBackground: selectionColor,
+													},
+												},
+											}
+										}
+									}
+									return {}
+								})(),
 							},
 							{
 								disposer: new DisposerAddon(
@@ -863,6 +909,47 @@ export class TerminalView extends ItemView {
 						cur => { renderer.use(cur) },
 					))
 					renderer.use(settings.value.preferredRenderer)
+					if (profile.type !== "invalid" &&
+						profile.mirrorObsidianBackground) {
+						const updateThemeColors = (): void => {
+							const style = activeSelf(contentEl)
+								.getComputedStyle(contentEl.ownerDocument.body)
+							const bgColor = style
+								.getPropertyValue("--background-primary").trim()
+							const isLightBg = ((): boolean => {
+								const match = bgColor.match(/\d+/gu)
+								if (match && match.length >= 3) {
+									const [r, g, b] = match.map(Number)
+									return (0.299 * r + 0.587 * g + 0.114 * b) > 128
+								}
+								return false
+							})()
+							const fgColor = style
+								.getPropertyValue("--text-normal").trim() ||
+								style.color ||
+								(isLightBg ? "#000000" : "#ffffff")
+							const accentColor = style
+								.getPropertyValue("--interactive-accent").trim()
+							const selectionColor = style
+								.getPropertyValue("--text-selection").trim()
+							if (bgColor || fgColor) {
+								terminal.options.theme = {
+									...terminal.options.theme,
+									...bgColor && { background: bgColor },
+									...fgColor && { foreground: fgColor },
+									...accentColor && { cursor: accentColor },
+									...selectionColor && {
+										selectionBackground: selectionColor,
+									},
+								}
+							}
+						}
+						const eventRef = context.app.workspace.on(
+							"css-change",
+							updateThemeColors,
+						)
+						context.registerEvent(eventRef)
+					}
 					search.onDidChangeResults(results0 => {
 						const { resultIndex, resultCount } = results0,
 							results = resultIndex === -1 && resultCount > 0

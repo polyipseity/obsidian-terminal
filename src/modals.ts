@@ -591,6 +591,26 @@ export class ProfileModal extends Modal {
 			})
 			.newSetting(element, setting => {
 				setting
+					.setName(i18n.t("components.profile.mirror-obsidian-background"))
+					.setDesc(i18n
+						.t("components.profile.mirror-obsidian-background-description"))
+					.addToggle(linkSetting(
+						() => profile.mirrorObsidianBackground,
+						value => { profile.mirrorObsidianBackground = value },
+						async () => this.postMutate(),
+					))
+					.addExtraButton(resetButton(
+						i18n.t("asset:components.profile.mirror-obsidian-background-icon"),
+						i18n.t("components.profile.reset"),
+						() => {
+							profile.mirrorObsidianBackground =
+								Settings.Profile.DEFAULTS[profile.type].mirrorObsidianBackground
+						},
+						async () => this.postMutate(),
+					))
+			})
+			.newSetting(element, setting => {
+				setting
 					.setName(i18n.t("components.profile.success-exit-codes"))
 					.setDesc(i18n.t("components.profile.success-exit-codes-description", {
 						count: profile.successExitCodes.length,

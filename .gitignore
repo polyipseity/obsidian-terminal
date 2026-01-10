@@ -137,4 +137,16 @@ dist
 /main.js
 /metafile.json
 /styles.css
+
+# Compiled TypeScript output in src/
+src/**/*.js
+src/**/*.d.ts
+!src/@types/**
+
+# Generated locale files
+assets/locales.js
+assets/locales.d.ts
+
+# Declaration map files
+**/*.d.ts.map
 # }
