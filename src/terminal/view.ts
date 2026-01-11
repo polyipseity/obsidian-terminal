@@ -817,9 +817,22 @@ export class TerminalView extends ItemView {
 										const bgColor = style
 											.getPropertyValue("--background-primary").trim()
 										const isLightBg = ((): boolean => {
-											const match = bgColor.match(/\d+/gu)
-											if (match && match.length >= 3) {
-												const [r, g, b] = match.map(Number)
+											// Handle hex color (#fff or #ffffff)
+											const hexMatch = bgColor.match(/^#([0-9a-f]{3,6})$/iu)
+											if (hexMatch) {
+												let hex = hexMatch[1]
+												if (hex.length === 3) {
+													hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2]
+												}
+												const r = parseInt(hex.slice(0, 2), 16)
+												const g = parseInt(hex.slice(2, 4), 16)
+												const b = parseInt(hex.slice(4, 6), 16)
+												return (0.299 * r + 0.587 * g + 0.114 * b) > 128
+											}
+											// Handle rgb() format
+											const rgbMatch = bgColor.match(/\d+/gu)
+											if (rgbMatch && rgbMatch.length >= 3) {
+												const [r, g, b] = rgbMatch.map(Number)
 												return (0.299 * r + 0.587 * g + 0.114 * b) > 128
 											}
 											return false
@@ -830,8 +843,8 @@ export class TerminalView extends ItemView {
 											(isLightBg ? "#000000" : "#ffffff")
 										const accentColor = style
 											.getPropertyValue("--interactive-accent").trim()
-										const selectionColor = style
-											.getPropertyValue("--text-selection").trim()
+										const selectionColor =
+											isLightBg ? "rgba(0, 0, 0, 0.3)" : "rgba(255, 255, 255, 0.3)"
 										if (bgColor || fgColor) {
 											return {
 												theme: {
@@ -839,9 +852,7 @@ export class TerminalView extends ItemView {
 													...bgColor && { background: bgColor },
 													...fgColor && { foreground: fgColor },
 													...accentColor && { cursor: accentColor },
-													...selectionColor && {
-														selectionBackground: selectionColor,
-													},
+													selectionBackground: selectionColor,
 												},
 											}
 										}
@@ -917,9 +928,22 @@ export class TerminalView extends ItemView {
 							const bgColor = style
 								.getPropertyValue("--background-primary").trim()
 							const isLightBg = ((): boolean => {
-								const match = bgColor.match(/\d+/gu)
-								if (match && match.length >= 3) {
-									const [r, g, b] = match.map(Number)
+								// Handle hex color (#fff or #ffffff)
+								const hexMatch = bgColor.match(/^#([0-9a-f]{3,6})$/iu)
+								if (hexMatch) {
+									let hex = hexMatch[1]
+									if (hex.length === 3) {
+										hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2]
+									}
+									const r = parseInt(hex.slice(0, 2), 16)
+									const g = parseInt(hex.slice(2, 4), 16)
+									const b = parseInt(hex.slice(4, 6), 16)
+									return (0.299 * r + 0.587 * g + 0.114 * b) > 128
+								}
+								// Handle rgb() format
+								const rgbMatch = bgColor.match(/\d+/gu)
+								if (rgbMatch && rgbMatch.length >= 3) {
+									const [r, g, b] = rgbMatch.map(Number)
 									return (0.299 * r + 0.587 * g + 0.114 * b) > 128
 								}
 								return false
@@ -930,17 +954,15 @@ export class TerminalView extends ItemView {
 								(isLightBg ? "#000000" : "#ffffff")
 							const accentColor = style
 								.getPropertyValue("--interactive-accent").trim()
-							const selectionColor = style
-								.getPropertyValue("--text-selection").trim()
+							const selectionColor =
+								isLightBg ? "rgba(0, 0, 0, 0.3)" : "rgba(255, 255, 255, 0.3)"
 							if (bgColor || fgColor) {
 								terminal.options.theme = {
 									...terminal.options.theme,
 									...bgColor && { background: bgColor },
 									...fgColor && { foreground: fgColor },
 									...accentColor && { cursor: accentColor },
-									...selectionColor && {
-										selectionBackground: selectionColor,
-									},
+									selectionBackground: selectionColor,
 								}
 							}
 						}
