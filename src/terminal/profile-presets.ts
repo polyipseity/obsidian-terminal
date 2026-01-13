@@ -303,7 +303,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		type: "external",
 	},
 	zshIntegrated: {
-		args: [],
+		args: ["-l"],
 		executable: "/bin/zsh",
 		name: "",
 		platforms: { darwin: true, linux: true },
