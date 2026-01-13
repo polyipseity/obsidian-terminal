@@ -43,7 +43,11 @@ export class SelectProfileModal
 	}
 
 	public override getItems(): (Settings.Profile.Entry | null)[] {
-		return [null, ...Object.entries(this.context.settings.value.profiles)]
+		return [
+			null,
+			...Object.entries(this.context.settings.value.profiles)
+				.filter(([, profile]) => Settings.Profile.isCompatible(profile, Platform.CURRENT)),
+		]
 	}
 
 	public override getItemText(item: Settings.Profile.Entry | null): string {
