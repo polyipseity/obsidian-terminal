@@ -82,7 +82,7 @@ export interface ProfilePresets
 	extends ProfilePresets0, ExternalDefaults, IntegratedDefaults { }
 const PROFILE_PRESETS0 = deepFreeze({
 	bashIntegrated: {
-		args: [],
+		args: ["--login"],
 		executable: "/bin/bash",
 		followTheme: true,
 		name: "",
@@ -154,7 +154,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		type: "",
 	},
 	gitBashIntegrated: {
-		args: [],
+		args: ["--login"],
 		executable: "C:\\Program Files\\Git\\bin\\bash.exe",
 		followTheme: true,
 		name: "",
@@ -322,7 +322,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		type: "external",
 	},
 	zshIntegrated: {
-		args: [],
+		args: ["--login"],
 		executable: "/bin/zsh",
 		followTheme: true,
 		name: "",

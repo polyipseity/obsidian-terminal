@@ -43,7 +43,17 @@ export class SelectProfileModal
 	}
 
 	public override getItems(): (Settings.Profile.Entry | null)[] {
-		return [null, ...Object.entries(this.context.settings.value.profiles)]
+		return [
+			null,
+			...Object.entries(this.context.settings.value.profiles)
+				/*
+				Platform filtering: Filter profiles in the selection modal to
+				show only profiles compatible with the current platform
+				(macOS/Windows/Linux), improving UX by hiding incompatible options.
+				*/
+				.filter(([, profile]) =>
+					Settings.Profile.isCompatible(profile, Platform.CURRENT)),
+		]
 	}
 
 	public override getItemText(item: Settings.Profile.Entry | null): string {
