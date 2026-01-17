@@ -24,6 +24,7 @@
 				"arguments-edit": "$t(generic.edit)",
 				"executable": "$t(generic.executable)"
 			},
+			"follow-theme": "$t(generic.follow)$t(generic.theme)",
 			"integrated": {
 				"Python-executable": "$t(generic.Python)$t(generic.executable)",
 				"Python-executable-check": "$t(generic.check)",
@@ -153,6 +154,7 @@
 			"HTML": "HTML"
 		},
 		"focus": "聚焦",
+		"follow": "跟隨",
 		"font": "字體",
 		"font-weight": "$t(generic.font)粗細",
 		"history": "歷史",
@@ -200,6 +202,7 @@
 		"terminal-option": "$t(generic.terminal)$t(generic.option)",
 		"terminal-resizer": "$t(generic.terminal)縮放器",
 		"text-field": "文字域",
+		"theme": "主題",
 		"toggle": "切換",
 		"true": "真",
 		"type": "類型",

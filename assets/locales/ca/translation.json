@@ -24,6 +24,7 @@
 				"arguments-edit": "$t(generic.edit, capitalize)",
 				"executable": "$t(generic.executable, capitalize)"
 			},
+			"follow-theme": "$t(generic.follow, capitalize) $t(generic.theme)",
 			"integrated": {
 				"Python-executable": "$t(generic.Python, capitalize) $t(generic.executable)",
 				"Python-executable-check": "$t(generic.check, capitalize)",
@@ -161,6 +162,7 @@
 		},
 		"focus": "focus",
 		"focus_past-participle": "focused",
+		"follow": "follow",
 		"font": "font",
 		"font-weight": "$t(generic.font) weight",
 		"history": "history",
@@ -216,6 +218,7 @@
 		"terminal-option_other": "$t(generic.terminal) $t(generic.option_other)",
 		"terminal-resizer": "$t(generic.terminal) resizer",
 		"text-field": "text field",
+		"theme": "theme",
 		"toggle": "toggle",
 		"true": "true",
 		"type": "type",

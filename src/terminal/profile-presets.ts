@@ -71,12 +71,12 @@ export interface ProfilePresets0 {
 	readonly zshIntegrated: Settings.Profile.Integrated
 }
 type ExternalDefaults = Readonly<
-Record<`${Pseudoterminal.SupportedPlatforms[number]
-	}ExternalDefault`, Settings.Profile.External>
-	>
+	Record<`${Pseudoterminal.SupportedPlatforms[number]
+		}ExternalDefault`, Settings.Profile.External>
+>
 type IntegratedDefaults = Readonly<
-Record<`${Pseudoterminal.SupportedPlatforms[number]
-	}IntegratedDefault`, Settings.Profile.Integrated>
+	Record<`${Pseudoterminal.SupportedPlatforms[number]
+		}IntegratedDefault`, Settings.Profile.Integrated>
 >
 export interface ProfilePresets
 	extends ProfilePresets0, ExternalDefaults, IntegratedDefaults { }
@@ -84,6 +84,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 	bashIntegrated: {
 		args: [],
 		executable: "/bin/bash",
+		followTheme: true,
 		name: "",
 		platforms: { darwin: true, linux: true },
 		pythonExecutable: DEFAULT_PYTHON_EXECUTABLE,
@@ -97,6 +98,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 	cmdExternal: {
 		args: [],
 		executable: WINDOWS_CMD_PATH,
+		followTheme: true,
 		name: "",
 		platforms: { win32: true },
 		restoreHistory: false,
@@ -108,6 +110,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 	cmdIntegrated: {
 		args: [],
 		executable: WINDOWS_CMD_PATH,
+		followTheme: true,
 		name: "",
 		platforms: { win32: true },
 		pythonExecutable: DEFAULT_PYTHON_EXECUTABLE,
@@ -121,6 +124,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 	dashIntegrated: {
 		args: [],
 		executable: "/bin/dash",
+		followTheme: true,
 		name: "",
 		platforms: { darwin: true, linux: true },
 		pythonExecutable: DEFAULT_PYTHON_EXECUTABLE,
@@ -132,6 +136,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		useWin32Conhost: true,
 	},
 	developerConsole: {
+		followTheme: true,
 		name: "",
 		restoreHistory: false,
 		rightClickAction: "copyPaste",
@@ -140,6 +145,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		type: "developerConsole",
 	},
 	empty: {
+		followTheme: true,
 		name: "",
 		restoreHistory: false,
 		rightClickAction: "copyPaste",
@@ -150,6 +156,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 	gitBashIntegrated: {
 		args: [],
 		executable: "C:\\Program Files\\Git\\bin\\bash.exe",
+		followTheme: true,
 		name: "",
 		platforms: { win32: true },
 		pythonExecutable: DEFAULT_PYTHON_EXECUTABLE,
@@ -163,6 +170,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 	gnomeTerminalExternal: {
 		args: [],
 		executable: "gnome-terminal",
+		followTheme: true,
 		name: "",
 		platforms: { linux: true },
 		restoreHistory: false,
@@ -175,6 +183,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		args: ["\"$PWD\""],
 		executable:
 			"/Applications/iTerm.app/Contents/MacOS/iTerm2",
+		followTheme: true,
 		name: "",
 		platforms: { darwin: true },
 		restoreHistory: false,
@@ -186,6 +195,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 	konsoleExternal: {
 		args: [],
 		executable: "konsole",
+		followTheme: true,
 		name: "",
 		platforms: { linux: true },
 		restoreHistory: false,
@@ -197,6 +207,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 	powershellExternal: {
 		args: [],
 		executable: "powershell",
+		followTheme: true,
 		name: "",
 		platforms: { win32: true },
 		restoreHistory: false,
@@ -208,6 +219,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 	powershellIntegrated: {
 		args: [],
 		executable: "powershell",
+		followTheme: true,
 		name: "",
 		platforms: { win32: true },
 		pythonExecutable: DEFAULT_PYTHON_EXECUTABLE,
@@ -221,6 +233,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 	pwshExternal: {
 		args: [],
 		executable: "pwsh",
+		followTheme: true,
 		name: "",
 		platforms: { darwin: true, linux: true, win32: true },
 		restoreHistory: false,
@@ -232,6 +245,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 	pwshIntegrated: {
 		args: [],
 		executable: "pwsh",
+		followTheme: true,
 		name: "",
 		platforms: { darwin: true, linux: true, win32: true },
 		pythonExecutable: DEFAULT_PYTHON_EXECUTABLE,
@@ -245,6 +259,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 	shIntegrated: {
 		args: [],
 		executable: "/bin/sh",
+		followTheme: true,
 		name: "",
 		platforms: { darwin: true, linux: true },
 		pythonExecutable: DEFAULT_PYTHON_EXECUTABLE,
@@ -259,6 +274,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		args: ["\"$PWD\""],
 		executable:
 			"/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal",
+		followTheme: true,
 		name: "",
 		platforms: { darwin: true },
 		restoreHistory: false,
@@ -270,6 +286,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 	wslIntegrated: {
 		args: [],
 		executable: "C:\\Windows\\System32\\wsl.exe",
+		followTheme: true,
 		name: "",
 		platforms: { win32: true },
 		pythonExecutable: DEFAULT_PYTHON_EXECUTABLE,
@@ -283,6 +300,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 	wtExternal: {
 		args: [],
 		executable: "wt",
+		followTheme: true,
 		name: "",
 		platforms: { win32: true },
 		restoreHistory: false,
@@ -294,6 +312,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 	xtermExternal: {
 		args: [],
 		executable: "xterm",
+		followTheme: true,
 		name: "",
 		platforms: { darwin: true, linux: true },
 		restoreHistory: false,
@@ -305,6 +324,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 	zshIntegrated: {
 		args: [],
 		executable: "/bin/zsh",
+		followTheme: true,
 		name: "",
 		platforms: { darwin: true, linux: true },
 		pythonExecutable: DEFAULT_PYTHON_EXECUTABLE,

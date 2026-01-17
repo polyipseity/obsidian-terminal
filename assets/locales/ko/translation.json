@@ -24,6 +24,7 @@
 				"arguments-edit": "$t(generic.edit)",
 				"executable": "$t(generic.executable)"
 			},
+			"follow-theme": "$t(generic.follow, capitalize) $t(generic.theme)",
 			"integrated": {
 				"Python-executable": "$t(generic.Python) $t(generic.executable)",
 				"Python-executable-check": "$t(generic.check)",
@@ -161,6 +162,7 @@
 		},
 		"focus": "포커스",
 		"focus_past-participle": "포커스됨",
+		"follow": "follow",
 		"font": "글꼴",
 		"font-weight": "$t(generic.font) 굵기",
 		"history": "기록",
@@ -174,7 +176,7 @@
 		"pin": "고정",
 		"platform": "플랫폼",
 		"platforms": {
-			"darwin": "​macOS",
+			"darwin": "\u200bmacOS",
 			"linux": "Linux",
 			"unix": "Unix",
 			"win32": "Microsoft Windows",
@@ -216,6 +218,7 @@
 		"terminal-option_other": "$t(generic.terminal) $t(generic.option_other)",
 		"terminal-resizer": "$t(generic.terminal) 리사이저",
 		"text-field": "텍스트 필드",
+		"theme": "theme",
 		"toggle": "전환",
 		"true": "참",
 		"type": "유형",

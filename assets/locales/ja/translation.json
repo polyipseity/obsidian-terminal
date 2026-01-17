@@ -24,6 +24,7 @@
 				"arguments-edit": "$t(generic.edit)",
 				"executable": "$t(generic.executable)"
 			},
+			"follow-theme": "$t(generic.follow, capitalize) $t(generic.theme)",
 			"integrated": {
 				"Python-executable": "$t(generic.Python)$t(generic.executable)",
 				"Python-executable-check": "$t(generic.check)",
@@ -161,6 +162,7 @@
 		},
 		"focus": "フォーカス",
 		"focus_past-participle": "フォーカス中",
+		"follow": "follow",
 		"font": "フォント",
 		"font-weight": "$t(generic.font)の太さ",
 		"history": "履歴",
@@ -216,6 +218,7 @@
 		"terminal-option_other": "$t(generic.terminal)$t(generic.option_other)",
 		"terminal-resizer": "$t(generic.terminal)リサイザー",
 		"text-field": "テキストフィールド",
+		"theme": "theme",
 		"toggle": "切り替え",
 		"true": "true",
 		"type": "タイプ",

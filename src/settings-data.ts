@@ -225,6 +225,7 @@ export namespace Settings {
 		interface Base {
 			readonly type: Type
 			readonly name: string
+			readonly followTheme: boolean
 			readonly restoreHistory: boolean
 			readonly rightClickAction: RightClickActionAddon.Action
 			readonly successExitCodes: readonly string[]
@@ -261,6 +262,7 @@ export namespace Settings {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			"": PROFILE_PRESETS.empty,
 			developerConsole: {
+				followTheme: true,
 				name: "",
 				restoreHistory: false,
 				rightClickAction: "copyPaste",
@@ -271,6 +273,7 @@ export namespace Settings {
 			external: {
 				args: [],
 				executable: "",
+				followTheme: true,
 				name: "",
 				platforms: {
 					darwin: false,
@@ -286,6 +289,7 @@ export namespace Settings {
 			integrated: {
 				args: [],
 				executable: "",
+				followTheme: true,
 				name: "",
 				platforms: {
 					darwin: false,
@@ -331,6 +335,12 @@ export namespace Settings {
 				switch (type) {
 					case "": {
 						return {
+							followTheme: fixTyped(
+								DEFAULTS[type],
+								unc,
+								"followTheme",
+								["boolean"],
+							),
 							name: fixTyped(
 								DEFAULTS[type],
 								unc,
@@ -361,6 +371,12 @@ export namespace Settings {
 					}
 					case "developerConsole": {
 						return {
+							followTheme: fixTyped(
+								DEFAULTS[type],
+								unc,
+								"followTheme",
+								["boolean"],
+							),
 							name: fixTyped(
 								DEFAULTS[type],
 								unc,
@@ -402,6 +418,12 @@ export namespace Settings {
 								unc,
 								"executable",
 								["string"],
+							),
+							followTheme: fixTyped(
+								DEFAULTS[type],
+								unc,
+								"followTheme",
+								["boolean"],
 							),
 							name: fixTyped(
 								DEFAULTS[type],
@@ -449,6 +471,12 @@ export namespace Settings {
 								unc,
 								"executable",
 								["string"],
+							),
+							followTheme: fixTyped(
+								DEFAULTS[type],
+								unc,
+								"followTheme",
+								["boolean"],
 							),
 							name: fixTyped(
 								DEFAULTS[type],

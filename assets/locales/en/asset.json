@@ -22,10 +22,12 @@
 				"arguments-icon": "$t(asset:components.profile.generic.arguments-icon)",
 				"executable-icon": "$t(asset:components.profile.generic.executable-icon)"
 			},
+			"follow-theme-icon": "palette",
 			"generic": {
 				"arguments-icon": "form-input",
 				"executable-icon": "$t(asset:generic.terminal-file-icon)"
 			},
+			"follow-theme": "$t(generic.follow, capitalize) $t(generic.theme)",
 			"integrated": {
 				"Python-executable-check-icon": "file-check",
 				"Python-executable-checking-icon": "$t(asset:generic.load-icon)",
