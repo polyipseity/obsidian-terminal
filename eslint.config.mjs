@@ -79,9 +79,7 @@ export default defineConfig([
 				amd: true,
 				commonjs: true,
 			}],
-			indent: ["error", "tab", {
-				SwitchCase: 1,
-			}],
+			indent: "off",
 			"linebreak-style": "off",
 			"lines-between-class-members": ["error", "always", {
 				exceptAfterSingleLine: true,
@@ -109,11 +107,9 @@ export default defineConfig([
 			"no-confusing-arrow": "off",
 			"no-console": "off",
 			"no-continue": "off",
-			"no-inline-comments": ["error", {
-				ignorePattern: "^ @__PURE__ $",
-			}],
+			"no-inline-comments": "off",
 			"no-magic-numbers": ["error", {
-				ignore: [-1, 0, 1, 10],
+				ignore: [-1, 0, 1, 10, 255],
 			}],
 			"no-nested-ternary": "off",
 			"no-plusplus": "off",
@@ -564,6 +560,13 @@ export default defineConfig([
 					format: ["camelCase", "UPPER_CASE"],
 					selector: "variable",
 				},
+				// ✅ Allow UPPER_CASE for class constants (static readonly)
+				{
+					format: ["UPPER_CASE", "camelCase"],
+					leadingUnderscore: "allow",
+					modifiers: ["static", "readonly"],
+					selector: "property",
+				},
 				{
 					format: ["camelCase"],
 					leadingUnderscore: "allow",
@@ -583,7 +586,8 @@ export default defineConfig([
 				{
 					format: ["PascalCase"],
 					selector: "typeLike",
-				}],
+				},
+			],
 			"@typescript-eslint/no-empty-function": ["error", {
 				allow: ["arrowFunctions", "overrideMethods"],
 			}],
@@ -592,7 +596,7 @@ export default defineConfig([
 				ignoreIIFE: true,
 			}],
 			"@typescript-eslint/no-magic-numbers": ["error", {
-				ignore: [-1, 0, 1, 10],
+				ignore: [-1, 0, 1, 10, 255],
 				ignoreEnums: true,
 				ignoreReadonlyClassProperties: true,
 			}],

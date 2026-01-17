@@ -816,7 +816,7 @@ export class TerminalView extends ItemView {
 								),
 								dragAndDrop: new DragAndDropAddon(ele),
 								followTheme: new FollowThemeAddon(ele, workspace, {
-									enabled() {
+									enabled(): boolean {
 										return profile.type === "invalid" || profile.followTheme
 									},
 								}),
