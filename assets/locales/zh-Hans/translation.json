@@ -1,308 +1,308 @@
 {
-  "commands": {
-    "clear-terminal": "$t(generic.clear)$t(generic.terminal)",
-    "close-terminal": "$t(generic.close)$t(generic.terminal)",
-    "find-in-terminal": "于$t(generic.terminal)$t(generic.find)",
-    "focus-on-last-terminal": "$t(generic.focus)于上一个$t(generic.terminal)",
-    "open-developer-console": "$t(generic.open)$t(generic.profile-types.developerConsole)",
-    "open-documentation-changelog": "$t(generic.open)$t(generic.documentations.changelog)",
-    "open-documentation-donate": "$t(generic.open)$t(generic.documentations.donate)",
-    "open-documentation-readme": "$t(generic.open)$t(generic.documentations.readme)",
-    "open-terminal-": "$t(generic.open)$t(generic.terminal)：$t(generic.profile-types.{{type}})",
-    "open-terminal-current": "在$t(generic.terminal)$t(generic.open)$t(generic.current-directory)：$t(generic.profile-types.{{type}})",
-    "open-terminal-root": "在$t(generic.terminal)$t(generic.open)$t(generic.root-directory)：$t(generic.profile-types.{{type}})",
-    "toggle-focus-on-last-terminal": "$t(generic.toggle)$t(generic.focus)于上一个$t(generic.terminal)",
-    "unfocus-terminal": "$t(generic.unfocus)$t(generic.terminal)"
-  },
-  "components": {
-    "profile": {
-      "data": "$t(generic.data)",
-      "data-edit": "$t(generic.edit)",
-      "external": {
-        "arguments": "$t(generic.argument)",
-        "arguments-description": "$t(generic.list-description)",
-        "arguments-edit": "$t(generic.edit)",
-        "executable": "$t(generic.executable)"
-      },
-      "integrated": {
-        "Python-executable": "$t(generic.Python)$t(generic.executable)",
-        "Python-executable-check": "$t(generic.check)",
-        "Python-executable-checking": "$t(generic.check)中",
-        "Python-executable-description": "推荐{{version}}或更高版本。于$t(generic.platforms.unix)$t(generic.spawn)$t(generic.profile-types.integrated)$t(generic.terminal)所需要的。$t(generic.clear)$t(generic.text-field)以$t(generic.disable)$t(generic.Python)。",
-        "Python-executable-placeholder": "（已$t(generic.disable)）",
-        "arguments": "$t(generic.argument)",
-        "arguments-description": "$t(generic.list-description)",
-        "arguments-edit": "$t(generic.edit)",
-        "executable": "$t(generic.executable)",
-        "use-win32-conhost": "$t(generic.use)$t(generic.platforms.win32)「conhost.exe」",
-        "use-win32-conhost-description": "如果执行「conhost.exe」没有创建视窗，请$t(generic.disable)。不保证这会起作用。"
-      },
-      "name": "$t(generic.name)",
-      "platform": "$t(generic.platforms.{{type}})",
-      "platform-description-": "",
-      "platform-description-current": "目前$t(generic.platform)",
-      "preset": "$t(generic.preset)",
-      "preset-placeholder": "($t(generic.custom))",
-      "reset": "$t(generic.reset)",
-      "restore-history": "$t(generic.restore)$t(generic.history)",
-      "restore-history-description-HTML": "如果$t(generic.enable)，$t(generic.history)$t(generic.save)于<code>.obsidian/workspace.json</code>。",
-      "success-exit-codes": "成功$t(generic.exit)代码",
-      "success-exit-codes-description": "$t(generic.list-description)",
-      "success-exit-codes-edit": "$t(generic.edit)",
-      "terminal-options": "$t(generic.terminal-option)",
-      "terminal-options-edit": "$t(generic.edit)",
-      "title": "{{name}}",
-      "type": "$t(generic.type)",
-      "type-options": "$t(generic.profile-types.{{type}})",
-      "mirror-obsidian-background": "Mirror Obsidian background",
-      "mirror-obsidian-background-description": "Use Obsidian's background color for the terminal. Auto-updates when theme changes."
-    },
-    "profile-list": {
-      "descriptor-": "{{info.id}}",
-      "descriptor-incompatible": "（$t(generic.incompatible)）$t(components.profile-list.descriptor-)",
-      "edit": "$t(generic.edit)",
-      "namer-": "{{info.name}}",
-      "namer-incompatible": "$t(components.profile-list.namer-)",
-      "preset-placeholder": "$t(components.dropdown.placeholder)",
-      "title": "$t(generic.profile)"
-    },
-    "select-profile": {
-      "instructions": {
-        "edit-before-use": "ctrl ↵",
-        "edit-before-use-purpose": "$t(generic.edit)前$t(generic.edit)"
-      },
-      "item-text-": "$t(profile-name-formats.long)",
-      "item-text-incompatible": "（$t(generic.incompatible)）$t(components.select-profile.item-text-)",
-      "item-text-temporary": "（$t(generic.temporary)$t(generic.profile)）"
-    },
-    "terminal": {
-      "display-name": "$t(generic.terminal)：{{name}}",
-      "edit-modal": {
-        "profile": "$t(generic.profile)",
-        "profile-edit": "$t(generic.edit)",
-        "profile-name-": "$t(profile-name-formats.short)",
-        "profile-name-incompatible": "（$t(generic.incompatible)）$t(components.terminal.edit-modal.profile-name-)",
-        "profile-placeholder": "$t(components.profile.preset-placeholder)",
-        "reset": "$t(generic.reset)",
-        "root-directory": "$t(generic.root-directory)",
-        "title": "$t(generic.edit)$t(generic.terminal)",
-        "working-directory": "$t(generic.working-directory)",
-        "working-directory-placeholder": "（$t(generic.undefined)）"
-      },
-      "menus": {
-        "clear": "$t(generic.clear)",
-        "copy": "$t(generic.copy)",
-        "edit": "$t(generic.edit)",
-        "find": "$t(generic.find)",
-        "restart": "$t(generic.restart)",
-        "save-as-HTML": "$t(generic.save)为$t(generic.file-extensions.HTML)"
-      },
-      "name": {
-        "profile-type": "$t(generic.profile-types.{{type}})"
-      },
-      "restored-history": "\r\n * 已$t(generic.restore)于{{datetime, datetime(dateStyle: full, timeStyle: full)}}的$t(generic.history)\r\n\r\n",
-      "unsupported-profile": "不支持的$t(generic.profile)：\r\n{{profile}}\r\n"
-    },
-    "terminal-options": {
-      "bold-font-weight": "粗体$t(generic.font-weight)",
-      "description-HTML": "请参阅<a aria-label=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" class=\"external-link\" data-tooltip-position=\"top\" href=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" rel=\"noopener\" target=\"_blank\"><code>ITerminalOptions</code></a>了解所有$t(generic.option)。",
-      "font-family": "$t(generic.font)系列",
-      "font-size": "$t(generic.font)大小",
-      "font-weight": "$t(generic.font-weight)",
-      "invalid-description": "$t(generic.invalid)",
-      "title": "$t(generic.terminal-option)",
-      "undefine": "$t(generic.undefine)",
-      "undefined-placeholder": "（$t(generic.undefined)）"
-    }
-  },
-  "errors": {
-    "error-checking-Python": "$t(generic.check)$t(generic.Python)时出错",
-    "error-killing-pseudoterminal": "终止$t(generic.pseudoterminal)时出错",
-    "error-spawning-resizer": "$t(generic.spawn)$t(generic.terminal-resizer)时出错",
-    "error-spawning-terminal": "$t(generic.spawn)$t(generic.terminal)时出错",
-    "no-Python-to-spawn-Unix-pseudoterminal": "没有$t(generic.Python)来$t(generic.spawn)$t(generic.platforms.unix)$t(generic.pseudoterminal)",
-    "not-Python": "不是$t(generic.Python)",
-    "resizer-disabled": "$t(generic.terminal-resizer)已$t(generic.disable)",
-    "resizer-exited-unexpectedly": "$t(generic.terminal-resizer)意外$t(generic.exit)：{{code}}"
-  },
-  "generic": {
-    "Python": "Python",
-    "argument": "参数",
-    "behavior": "行为",
-    "check": "检查",
-    "clear": "清除",
-    "close": "关闭",
-    "compatible": "兼容",
-    "context-menu": "右键菜单",
-    "copy": "复制",
-    "current-directory": "目前$t(generic.directory)",
-    "custom": "自定义",
-    "default": "默认",
-    "directory": "目录",
-    "disable": "禁用",
-    "documentation": "文档",
-    "documentations": {
-      "changelog": "更新日志",
-      "donate": "$t(generic.donate)",
-      "readme": "readme"
-    },
-    "donate": "捐赠",
-    "enable": "启用",
-    "executable": "可执行文件",
-    "exist": "存在",
-    "exit": "退出",
-    "file-extensions": {
-      "HTML": "HTML"
-    },
-    "focus": "聚焦",
-    "font": "字体",
-    "font-weight": "$t(generic.font)粗细",
-    "history": "历史",
-    "incompatible": "不$t(generic.compatible)",
-    "instance": "实例",
-    "invalid": "无效",
-    "name": "名称",
-    "option": "选项",
-    "pin": "锁定",
-    "platform": "平台",
-    "platforms": {
-      "darwin": "​macOS",
-      "linux": "Linux",
-      "unix": "Unix",
-      "win32": "Microsoft Windows",
-      "win32-short": "Windows"
-    },
-    "preset": "预设",
-    "profile": "配置",
-    "profile-types": {
-      "": "空白",
-      "developerConsole": "开发者控制台",
-      "external": "外部",
-      "integrated": "整合式",
-      "invalid": "$t(generic.invalid)",
-      "select": "选择"
-    },
-    "pseudoterminal": "伪终端",
-    "renderer": "渲染器",
-    "renderers": {
-      "canvas": "Canvas",
-      "dom": "DOM",
-      "webgl": "WebGL"
-    },
-    "restart": "重启",
-    "restore": "还原",
-    "root-directory": "根$t(generic.directory)",
-    "save": "储存",
-    "spawn": "启动",
-    "split": "分屏",
-    "status-bar": "状态栏",
-    "tab": "标签页",
-    "temporary": "临时",
-    "terminal": "终端",
-    "terminal-option": "$t(generic.terminal)$t(generic.option)",
-    "terminal-resizer": "$t(generic.terminal)缩放器",
-    "text-field": "文本框",
-    "toggle": "切换",
-    "true": "真",
-    "type": "类型",
-    "undefine": "取消定义",
-    "undefined": "未定义",
-    "unfocus": "取消聚焦",
-    "window": "窗口",
-    "working-directory": "工作$t(generic.directory)"
-  },
-  "menus": {
-    "open-terminal": "在$t(generic.terminal)$t(generic.open)：$t(generic.profile-types.{{type}})"
-  },
-  "name": "$t(generic.terminal)",
-  "notices": {
-    "Python-status-entry-": "{{name}}：{{version}}（满足：{{requirement}}）",
-    "Python-status-entry-unsatisfied": "{{name}}：{{version}}（未满足：{{requirement}}）",
-    "no-default-profile": "没有$t(generic.type)「$t(generic.profile-types.{{type}})」的$t(generic.default)$t(generic.profile)",
-    "spawning-terminal": "$t(generic.terminal)$t(generic.spawn)中：{{name}}",
-    "terminal-exited": "$t(generic.terminal)已$t(generic.exit)：{{code}}"
-  },
-  "profile-name-formats": {
-    "long": "\"{{info.name}}\". $t(generic.profile-types.{{info.profile.type}}). {{info.id}}.",
-    "short": "\"{{info.nameOrID}}\". $t(generic.profile-types.{{info.profile.type}})."
-  },
-  "profile-presets": {
-    "bashIntegrated": "bash：$t(generic.profile-types.integrated)",
-    "cmdExternal": "cmd：$t(generic.profile-types.external)",
-    "cmdIntegrated": "cmd：$t(generic.profile-types.integrated)",
-    "darwinExternalDefault": "$t(generic.platforms.darwin)$t(generic.default)：$t(generic.profile-types.external)",
-    "darwinIntegratedDefault": "$t(generic.platforms.darwin)$t(generic.default)：$t(generic.profile-types.integrated)",
-    "dashIntegrated": "dash：$t(generic.profile-types.integrated)",
-    "developerConsole": "$t(generic.profile-types.developerConsole)",
-    "empty": "$t(generic.profile-types.)",
-    "gitBashIntegrated": "Git Bash：$t(generic.profile-types.integrated)",
-    "gnomeTerminalExternal": "GNOME$t(generic.terminal)：$t(generic.profile-types.external)",
-    "iTerm2External": "iTerm2：$t(generic.profile-types.external, capitalize)",
-    "konsoleExternal": "Konsole：$t(generic.profile-types.external)",
-    "linuxExternalDefault": "$t(generic.platforms.linux)$t(generic.default)：$t(generic.profile-types.external)",
-    "linuxIntegratedDefault": "$t(generic.platforms.linux)$t(generic.default)：$t(generic.profile-types.integrated)",
-    "powershellExternal": "powershell：$t(generic.profile-types.external)",
-    "powershellIntegrated": "powershell：$t(generic.profile-types.integrated)",
-    "pwshExternal": "pwsh：$t(generic.profile-types.external)",
-    "pwshIntegrated": "pwsh：$t(generic.profile-types.integrated)",
-    "shIntegrated": "sh：$t(generic.profile-types.integrated)",
-    "terminalMacOSExternal": "$t(generic.terminal)（$t(generic.platforms.darwin)）：$t(generic.profile-types.external)",
-    "win32ExternalDefault": "$t(generic.platforms.win32)$t(generic.default)：$t(generic.profile-types.external)",
-    "win32IntegratedDefault": "$t(generic.platforms.win32)$t(generic.default)：$t(generic.profile-types.integrated)",
-    "wslIntegrated": "适用于$t(generic.platforms.linux)的$t(generic.platforms.win32-short)子系统：$t(generic.profile-types.integrated)",
-    "wtExternal": "$t(generic.platforms.win32-short)$t(generic.terminal)：$t(generic.profile-types.external)",
-    "xtermExternal": "xterm：$t(generic.profile-types.external)",
-    "zshIntegrated": "zsh：$t(generic.profile-types.integrated)"
-  },
-  "ribbons": {
-    "open-terminal": "$t(generic.open)$t(generic.terminal)"
-  },
-  "settings": {
-    "add-to-command": "加入至$t(generic.command)",
-    "add-to-context-menu": "加入至$t(generic.context-menu)",
-    "advanced": "高级",
-    "create-instance-near-existing-ones": "在$t(generic.exist)$t(generic.instance)附近创建$t(generic.instance)",
-    "create-instance-near-existing-ones-description": "如果为$t(generic.true)，则在$t(generic.instance)$t(generic.exist)时覆盖「$t(settings.new-instance-behavior)」。",
-    "documentation": "$t(generic.documentation)",
-    "documentations": {
-      "changelog": "$t(generic.documentations.changelog)",
-      "donate": "$t(generic.documentations.donate)",
-      "readme": "$t(generic.documentations.readme)"
-    },
-    "expose-internal-modules": "显示内部模块",
-    "expose-internal-modules-description-HTML": "<code>obsidian</code>、<code>@codemirror/*</code>、<code>@lezer/*</code>……",
-    "focus-on-new-instance": "$t(generic.focus)新$t(generic.instance)",
-    "hide-status-bar": "隐藏$t(generic.status-bar)",
-    "hide-status-bar-options": {
-      "always": "总是",
-      "focused": "当$t(generic.focus)$t(generic.terminal)时",
-      "never": "从不",
-      "running": "当执行$t(generic.terminal)时"
-    },
-    "instancing": "$t(generic.instance)",
-    "intercept-logging": "拦截记录",
-    "interface": "界面",
-    "new-instance-behavior": "新$t(generic.instance)$t(generic.behavior)",
-    "new-instance-behaviors": {
-      "newHorizontalSplit": "新水平$t(generic.split)",
-      "newLeftSplit": "新左侧$t(generic.split)",
-      "newLeftTab": "新左侧$t(generic.tab)",
-      "newRightSplit": "新右侧$t(generic.split)",
-      "newRightTab": "新右侧$t(generic.tab)",
-      "newTab": "新$t(generic.tab)",
-      "newVerticalSplit": "新垂直$t(generic.split)",
-      "newWindow": "新$t(generic.window)",
-      "replaceTab": "替换$t(generic.tab)"
-    },
-    "open-changelog-on-update": "$t(generic.open)$t(generic.documentations.changelog)更新中",
-    "pin-new-instance": "$t(generic.pin)新$t(generic.instance)",
-    "preferred-renderer": "首选$t(generic.renderer)",
-    "preferred-renderer-options": "$t(generic.renderers.{{type}})",
-    "profile-list": {
-      "description": "$t(generic.list)中第一个$t(generic.compatible)的$t(generic.profile)是其$t(generic.terminal)$t(generic.type)的$t(generic.default)。"
-    },
-    "profiles": "$t(generic.profile)",
-    "profiles-description": "$t(generic.list-description)",
-    "profiles-edit": "$t(generic.edit)"
-  }
+	"commands": {
+		"clear-terminal": "$t(generic.clear)$t(generic.terminal)",
+		"close-terminal": "$t(generic.close)$t(generic.terminal)",
+		"find-in-terminal": "于$t(generic.terminal)$t(generic.find)",
+		"focus-on-last-terminal": "$t(generic.focus)于上一个$t(generic.terminal)",
+		"open-developer-console": "$t(generic.open)$t(generic.profile-types.developerConsole)",
+		"open-documentation-changelog": "$t(generic.open)$t(generic.documentations.changelog)",
+		"open-documentation-donate": "$t(generic.open)$t(generic.documentations.donate)",
+		"open-documentation-readme": "$t(generic.open)$t(generic.documentations.readme)",
+		"open-terminal-": "$t(generic.open)$t(generic.terminal)：$t(generic.profile-types.{{type}})",
+		"open-terminal-current": "在$t(generic.terminal)$t(generic.open)$t(generic.current-directory)：$t(generic.profile-types.{{type}})",
+		"open-terminal-root": "在$t(generic.terminal)$t(generic.open)$t(generic.root-directory)：$t(generic.profile-types.{{type}})",
+		"toggle-focus-on-last-terminal": "$t(generic.toggle)$t(generic.focus)于上一个$t(generic.terminal)",
+		"unfocus-terminal": "$t(generic.unfocus)$t(generic.terminal)"
+	},
+	"components": {
+		"profile": {
+			"data": "$t(generic.data)",
+			"data-edit": "$t(generic.edit)",
+			"external": {
+				"arguments": "$t(generic.argument)",
+				"arguments-description": "$t(generic.list-description)",
+				"arguments-edit": "$t(generic.edit)",
+				"executable": "$t(generic.executable)"
+			},
+			"integrated": {
+				"Python-executable": "$t(generic.Python)$t(generic.executable)",
+				"Python-executable-check": "$t(generic.check)",
+				"Python-executable-checking": "$t(generic.check)中",
+				"Python-executable-description": "推荐{{version}}或更高版本。于$t(generic.platforms.unix)$t(generic.spawn)$t(generic.profile-types.integrated)$t(generic.terminal)所需要的。$t(generic.clear)$t(generic.text-field)以$t(generic.disable)$t(generic.Python)。",
+				"Python-executable-placeholder": "（已$t(generic.disable)）",
+				"arguments": "$t(generic.argument)",
+				"arguments-description": "$t(generic.list-description)",
+				"arguments-edit": "$t(generic.edit)",
+				"executable": "$t(generic.executable)",
+				"use-win32-conhost": "$t(generic.use)$t(generic.platforms.win32)「conhost.exe」",
+				"use-win32-conhost-description": "如果执行「conhost.exe」没有创建视窗，请$t(generic.disable)。不保证这会起作用。"
+			},
+			"name": "$t(generic.name)",
+			"platform": "$t(generic.platforms.{{type}})",
+			"platform-description-": "",
+			"platform-description-current": "目前$t(generic.platform)",
+			"preset": "$t(generic.preset)",
+			"preset-placeholder": "($t(generic.custom))",
+			"reset": "$t(generic.reset)",
+			"restore-history": "$t(generic.restore)$t(generic.history)",
+			"restore-history-description-HTML": "如果$t(generic.enable)，$t(generic.history)$t(generic.save)于<code>.obsidian/workspace.json</code>。",
+			"success-exit-codes": "成功$t(generic.exit)代码",
+			"success-exit-codes-description": "$t(generic.list-description)",
+			"success-exit-codes-edit": "$t(generic.edit)",
+			"terminal-options": "$t(generic.terminal-option)",
+			"terminal-options-edit": "$t(generic.edit)",
+			"title": "{{name}}",
+			"type": "$t(generic.type)",
+			"type-options": "$t(generic.profile-types.{{type}})",
+			"mirror-obsidian-background": "Mirror Obsidian background",
+			"mirror-obsidian-background-description": "Use Obsidian's background color for the terminal. Auto-updates when theme changes."
+		},
+		"profile-list": {
+			"descriptor-": "{{info.id}}",
+			"descriptor-incompatible": "（$t(generic.incompatible)）$t(components.profile-list.descriptor-)",
+			"edit": "$t(generic.edit)",
+			"namer-": "{{info.name}}",
+			"namer-incompatible": "$t(components.profile-list.namer-)",
+			"preset-placeholder": "$t(components.dropdown.placeholder)",
+			"title": "$t(generic.profile)"
+		},
+		"select-profile": {
+			"instructions": {
+				"edit-before-use": "ctrl ↵",
+				"edit-before-use-purpose": "$t(generic.edit)前$t(generic.edit)"
+			},
+			"item-text-": "$t(profile-name-formats.long)",
+			"item-text-incompatible": "（$t(generic.incompatible)）$t(components.select-profile.item-text-)",
+			"item-text-temporary": "（$t(generic.temporary)$t(generic.profile)）"
+		},
+		"terminal": {
+			"display-name": "$t(generic.terminal)：{{name}}",
+			"edit-modal": {
+				"profile": "$t(generic.profile)",
+				"profile-edit": "$t(generic.edit)",
+				"profile-name-": "$t(profile-name-formats.short)",
+				"profile-name-incompatible": "（$t(generic.incompatible)）$t(components.terminal.edit-modal.profile-name-)",
+				"profile-placeholder": "$t(components.profile.preset-placeholder)",
+				"reset": "$t(generic.reset)",
+				"root-directory": "$t(generic.root-directory)",
+				"title": "$t(generic.edit)$t(generic.terminal)",
+				"working-directory": "$t(generic.working-directory)",
+				"working-directory-placeholder": "（$t(generic.undefined)）"
+			},
+			"menus": {
+				"clear": "$t(generic.clear)",
+				"copy": "$t(generic.copy)",
+				"edit": "$t(generic.edit)",
+				"find": "$t(generic.find)",
+				"restart": "$t(generic.restart)",
+				"save-as-HTML": "$t(generic.save)为$t(generic.file-extensions.HTML)"
+			},
+			"name": {
+				"profile-type": "$t(generic.profile-types.{{type}})"
+			},
+			"restored-history": "\r\n * 已$t(generic.restore)于{{datetime, datetime(dateStyle: full, timeStyle: full)}}的$t(generic.history)\r\n\r\n",
+			"unsupported-profile": "不支持的$t(generic.profile)：\r\n{{profile}}\r\n"
+		},
+		"terminal-options": {
+			"bold-font-weight": "粗体$t(generic.font-weight)",
+			"description-HTML": "请参阅<a aria-label=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" class=\"external-link\" data-tooltip-position=\"top\" href=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" rel=\"noopener\" target=\"_blank\"><code>ITerminalOptions</code></a>了解所有$t(generic.option)。",
+			"font-family": "$t(generic.font)系列",
+			"font-size": "$t(generic.font)大小",
+			"font-weight": "$t(generic.font-weight)",
+			"invalid-description": "$t(generic.invalid)",
+			"title": "$t(generic.terminal-option)",
+			"undefine": "$t(generic.undefine)",
+			"undefined-placeholder": "（$t(generic.undefined)）"
+		}
+	},
+	"errors": {
+		"error-checking-Python": "$t(generic.check)$t(generic.Python)时出错",
+		"error-killing-pseudoterminal": "终止$t(generic.pseudoterminal)时出错",
+		"error-spawning-resizer": "$t(generic.spawn)$t(generic.terminal-resizer)时出错",
+		"error-spawning-terminal": "$t(generic.spawn)$t(generic.terminal)时出错",
+		"no-Python-to-spawn-Unix-pseudoterminal": "没有$t(generic.Python)来$t(generic.spawn)$t(generic.platforms.unix)$t(generic.pseudoterminal)",
+		"not-Python": "不是$t(generic.Python)",
+		"resizer-disabled": "$t(generic.terminal-resizer)已$t(generic.disable)",
+		"resizer-exited-unexpectedly": "$t(generic.terminal-resizer)意外$t(generic.exit)：{{code}}"
+	},
+	"generic": {
+		"Python": "Python",
+		"argument": "参数",
+		"behavior": "行为",
+		"check": "检查",
+		"clear": "清除",
+		"close": "关闭",
+		"compatible": "兼容",
+		"context-menu": "右键菜单",
+		"copy": "复制",
+		"current-directory": "目前$t(generic.directory)",
+		"custom": "自定义",
+		"default": "默认",
+		"directory": "目录",
+		"disable": "禁用",
+		"documentation": "文档",
+		"documentations": {
+			"changelog": "更新日志",
+			"donate": "$t(generic.donate)",
+			"readme": "readme"
+		},
+		"donate": "捐赠",
+		"enable": "启用",
+		"executable": "可执行文件",
+		"exist": "存在",
+		"exit": "退出",
+		"file-extensions": {
+			"HTML": "HTML"
+		},
+		"focus": "聚焦",
+		"font": "字体",
+		"font-weight": "$t(generic.font)粗细",
+		"history": "历史",
+		"incompatible": "不$t(generic.compatible)",
+		"instance": "实例",
+		"invalid": "无效",
+		"name": "名称",
+		"option": "选项",
+		"pin": "锁定",
+		"platform": "平台",
+		"platforms": {
+			"darwin": "​macOS",
+			"linux": "Linux",
+			"unix": "Unix",
+			"win32": "Microsoft Windows",
+			"win32-short": "Windows"
+		},
+		"preset": "预设",
+		"profile": "配置",
+		"profile-types": {
+			"": "空白",
+			"developerConsole": "开发者控制台",
+			"external": "外部",
+			"integrated": "整合式",
+			"invalid": "$t(generic.invalid)",
+			"select": "选择"
+		},
+		"pseudoterminal": "伪终端",
+		"renderer": "渲染器",
+		"renderers": {
+			"canvas": "Canvas",
+			"dom": "DOM",
+			"webgl": "WebGL"
+		},
+		"restart": "重启",
+		"restore": "还原",
+		"root-directory": "根$t(generic.directory)",
+		"save": "储存",
+		"spawn": "启动",
+		"split": "分屏",
+		"status-bar": "状态栏",
+		"tab": "标签页",
+		"temporary": "临时",
+		"terminal": "终端",
+		"terminal-option": "$t(generic.terminal)$t(generic.option)",
+		"terminal-resizer": "$t(generic.terminal)缩放器",
+		"text-field": "文本框",
+		"toggle": "切换",
+		"true": "真",
+		"type": "类型",
+		"undefine": "取消定义",
+		"undefined": "未定义",
+		"unfocus": "取消聚焦",
+		"window": "窗口",
+		"working-directory": "工作$t(generic.directory)"
+	},
+	"menus": {
+		"open-terminal": "在$t(generic.terminal)$t(generic.open)：$t(generic.profile-types.{{type}})"
+	},
+	"name": "$t(generic.terminal)",
+	"notices": {
+		"Python-status-entry-": "{{name}}：{{version}}（满足：{{requirement}}）",
+		"Python-status-entry-unsatisfied": "{{name}}：{{version}}（未满足：{{requirement}}）",
+		"no-default-profile": "没有$t(generic.type)「$t(generic.profile-types.{{type}})」的$t(generic.default)$t(generic.profile)",
+		"spawning-terminal": "$t(generic.terminal)$t(generic.spawn)中：{{name}}",
+		"terminal-exited": "$t(generic.terminal)已$t(generic.exit)：{{code}}"
+	},
+	"profile-name-formats": {
+		"long": "\"{{info.name}}\". $t(generic.profile-types.{{info.profile.type}}). {{info.id}}.",
+		"short": "\"{{info.nameOrID}}\". $t(generic.profile-types.{{info.profile.type}})."
+	},
+	"profile-presets": {
+		"bashIntegrated": "bash：$t(generic.profile-types.integrated)",
+		"cmdExternal": "cmd：$t(generic.profile-types.external)",
+		"cmdIntegrated": "cmd：$t(generic.profile-types.integrated)",
+		"darwinExternalDefault": "$t(generic.platforms.darwin)$t(generic.default)：$t(generic.profile-types.external)",
+		"darwinIntegratedDefault": "$t(generic.platforms.darwin)$t(generic.default)：$t(generic.profile-types.integrated)",
+		"dashIntegrated": "dash：$t(generic.profile-types.integrated)",
+		"developerConsole": "$t(generic.profile-types.developerConsole)",
+		"empty": "$t(generic.profile-types.)",
+		"gitBashIntegrated": "Git Bash：$t(generic.profile-types.integrated)",
+		"gnomeTerminalExternal": "GNOME$t(generic.terminal)：$t(generic.profile-types.external)",
+		"iTerm2External": "iTerm2：$t(generic.profile-types.external, capitalize)",
+		"konsoleExternal": "Konsole：$t(generic.profile-types.external)",
+		"linuxExternalDefault": "$t(generic.platforms.linux)$t(generic.default)：$t(generic.profile-types.external)",
+		"linuxIntegratedDefault": "$t(generic.platforms.linux)$t(generic.default)：$t(generic.profile-types.integrated)",
+		"powershellExternal": "powershell：$t(generic.profile-types.external)",
+		"powershellIntegrated": "powershell：$t(generic.profile-types.integrated)",
+		"pwshExternal": "pwsh：$t(generic.profile-types.external)",
+		"pwshIntegrated": "pwsh：$t(generic.profile-types.integrated)",
+		"shIntegrated": "sh：$t(generic.profile-types.integrated)",
+		"terminalMacOSExternal": "$t(generic.terminal)（$t(generic.platforms.darwin)）：$t(generic.profile-types.external)",
+		"win32ExternalDefault": "$t(generic.platforms.win32)$t(generic.default)：$t(generic.profile-types.external)",
+		"win32IntegratedDefault": "$t(generic.platforms.win32)$t(generic.default)：$t(generic.profile-types.integrated)",
+		"wslIntegrated": "适用于$t(generic.platforms.linux)的$t(generic.platforms.win32-short)子系统：$t(generic.profile-types.integrated)",
+		"wtExternal": "$t(generic.platforms.win32-short)$t(generic.terminal)：$t(generic.profile-types.external)",
+		"xtermExternal": "xterm：$t(generic.profile-types.external)",
+		"zshIntegrated": "zsh：$t(generic.profile-types.integrated)"
+	},
+	"ribbons": {
+		"open-terminal": "$t(generic.open)$t(generic.terminal)"
+	},
+	"settings": {
+		"add-to-command": "加入至$t(generic.command)",
+		"add-to-context-menu": "加入至$t(generic.context-menu)",
+		"advanced": "高级",
+		"create-instance-near-existing-ones": "在$t(generic.exist)$t(generic.instance)附近创建$t(generic.instance)",
+		"create-instance-near-existing-ones-description": "如果为$t(generic.true)，则在$t(generic.instance)$t(generic.exist)时覆盖「$t(settings.new-instance-behavior)」。",
+		"documentation": "$t(generic.documentation)",
+		"documentations": {
+			"changelog": "$t(generic.documentations.changelog)",
+			"donate": "$t(generic.documentations.donate)",
+			"readme": "$t(generic.documentations.readme)"
+		},
+		"expose-internal-modules": "显示内部模块",
+		"expose-internal-modules-description-HTML": "<code>obsidian</code>、<code>@codemirror/*</code>、<code>@lezer/*</code>……",
+		"focus-on-new-instance": "$t(generic.focus)新$t(generic.instance)",
+		"hide-status-bar": "隐藏$t(generic.status-bar)",
+		"hide-status-bar-options": {
+			"always": "总是",
+			"focused": "当$t(generic.focus)$t(generic.terminal)时",
+			"never": "从不",
+			"running": "当执行$t(generic.terminal)时"
+		},
+		"instancing": "$t(generic.instance)",
+		"intercept-logging": "拦截记录",
+		"interface": "界面",
+		"new-instance-behavior": "新$t(generic.instance)$t(generic.behavior)",
+		"new-instance-behaviors": {
+			"newHorizontalSplit": "新水平$t(generic.split)",
+			"newLeftSplit": "新左侧$t(generic.split)",
+			"newLeftTab": "新左侧$t(generic.tab)",
+			"newRightSplit": "新右侧$t(generic.split)",
+			"newRightTab": "新右侧$t(generic.tab)",
+			"newTab": "新$t(generic.tab)",
+			"newVerticalSplit": "新垂直$t(generic.split)",
+			"newWindow": "新$t(generic.window)",
+			"replaceTab": "替换$t(generic.tab)"
+		},
+		"open-changelog-on-update": "$t(generic.open)$t(generic.documentations.changelog)更新中",
+		"pin-new-instance": "$t(generic.pin)新$t(generic.instance)",
+		"preferred-renderer": "首选$t(generic.renderer)",
+		"preferred-renderer-options": "$t(generic.renderers.{{type}})",
+		"profile-list": {
+			"description": "$t(generic.list)中第一个$t(generic.compatible)的$t(generic.profile)是其$t(generic.terminal)$t(generic.type)的$t(generic.default)。"
+		},
+		"profiles": "$t(generic.profile)",
+		"profiles-description": "$t(generic.list-description)",
+		"profiles-edit": "$t(generic.edit)"
+	}
 }
