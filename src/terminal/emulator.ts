@@ -133,37 +133,13 @@ export class XtermTerminalEmulator<A> {
 				if (state.viewportY !== undefined && state.viewportY !== 0) {
 					const { active } = terminal.buffer
 
-					// Debug logging for scroll restoration (enable with localStorage.setItem('terminal-debug', 'true'))
-					const debugEnabled = /* @__PURE__ */ activeSelf(element)
-						.localStorage.getItem('terminal-debug') === 'true'
-
-					if (debugEnabled) {
-						/* @__PURE__ */ activeSelf(element).console.debug('[Terminal] Restoring scroll position:', {
-						savedViewportY: state.viewportY,
-						currentBaseY: active.baseY,
-						rows: terminal.rows,
-						wasAtBottom: state.wasAtBottom,
-					})
-					}
-
 					// If user was at bottom, restore auto-scroll behavior
 					if (state.wasAtBottom) {
 						terminal.scrollToBottom()
-						if (debugEnabled) {
-							/* @__PURE__ */ activeSelf(element).console.debug('[Terminal] Restored to bottom (auto-scroll enabled)')
-						}
 					} else {
 						// User was scrolled up - restore exact position with bounds checking
 						const maxScrollY = Math.max(0, active.baseY - terminal.rows + 1)
 						const safeViewportY = Math.min(Math.max(0, state.viewportY), maxScrollY)
-
-						if (debugEnabled && safeViewportY !== state.viewportY) {
-							/* @__PURE__ */ activeSelf(element).console.debug('[Terminal] Clamped viewportY:', {
-							original: state.viewportY,
-							clamped: safeViewportY,
-							maxScrollY,
-						})
-						}
 
 						terminal.scrollToLine(safeViewportY, true)
 					}

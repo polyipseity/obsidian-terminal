@@ -349,22 +349,6 @@ test('multiple save/restore cycles maintain scroll position', () => {
 })
 ```
 
-### Debug Mode Testing
-
-Enable debug logging in development:
-
-```javascript
-// In browser console or localStorage
-localStorage.setItem('terminal-debug', 'true')
-```
-
-This will log:
-
-- Saved viewportY values during serialization
-- Restoration attempts with current buffer state
-- Bounds clamping operations
-- Auto-scroll behavior triggers
-
 ### Manual Testing Checklist
 
 When testing scroll position fixes:
