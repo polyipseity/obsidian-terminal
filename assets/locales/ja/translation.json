@@ -176,7 +176,7 @@
 		"pin": "ピン留め",
 		"platform": "プラットフォーム",
 		"platforms": {
-			"darwin": "​macOS",
+			"darwin": "\u200bmacOS",
 			"linux": "Linux",
 			"unix": "Unix",
 			"win32": "Microsoft Windows",

@@ -176,7 +176,7 @@
 		"pin": "고정",
 		"platform": "플랫폼",
 		"platforms": {
-			"darwin": "​macOS",
+			"darwin": "\u200bmacOS",
 			"linux": "Linux",
 			"unix": "Unix",
 			"win32": "Microsoft Windows",
