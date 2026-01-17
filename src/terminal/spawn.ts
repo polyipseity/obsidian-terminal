@@ -46,7 +46,13 @@ export class SelectProfileModal
 		return [
 			null,
 			...Object.entries(this.context.settings.value.profiles)
-				.filter(([, profile]) => Settings.Profile.isCompatible(profile, Platform.CURRENT)),
+				/*
+				Platform filtering: Filter profiles in the selection modal to
+				show only profiles compatible with the current platform
+				(macOS/Windows/Linux), improving UX by hiding incompatible options.
+				*/
+				.filter(([, profile]) =>
+					Settings.Profile.isCompatible(profile, Platform.CURRENT)),
 		]
 	}
 
