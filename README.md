@@ -131,15 +131,15 @@ When setting up a terminal profile, you need to distinguish between shells and t
 <!-- markdownlint-disable-next-line MD036 -->
 __Shells__
 
-- Bash: `bash`
+- Bash: `bash --login`
 - Bourne shell: `sh`
 - Command Prompt: `cmd`
 - Dash: `dash`
-- Git Bash: `<Git installation>\bin\bash.exe` (e.g. `C:\Program Files\Git\bin\bash.exe`)
+- Git Bash: `<Git installation>\bin\bash.exe --login` (e.g. `C:\Program Files\Git\bin\bash.exe`)
 - PowerShell Core: `pwsh`
 - Windows PowerShell: `powershell`
 - Windows Subsystem for Linux: `wsl` or `wsl -d <distribution name>`
-- Z shell: `zsh`
+- Z shell: `zsh --login`
 
 <!-- markdownlint-disable-next-line MD036 -->
 __Terminal emulators__
