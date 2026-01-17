@@ -24,6 +24,7 @@
 				"arguments-edit": "$t(generic.edit)",
 				"executable": "$t(generic.executable)"
 			},
+			"follow-theme": "$t(generic.follow, capitalize) $t(generic.theme)",
 			"integrated": {
 				"Python-executable": "$t(generic.Python) $t(generic.executable)",
 				"Python-executable-check": "$t(generic.check)",
@@ -53,9 +54,7 @@
 			"terminal-options-edit": "$t(generic.edit)",
 			"title": "{{name}}",
 			"type": "$t(generic.type)",
-			"type-options": "$t(generic.profile-types.{{type}})",
-			"mirror-obsidian-background": "Mirror Obsidian background",
-			"mirror-obsidian-background-description": "Use Obsidian's background color for the terminal. Auto-updates when theme changes."
+			"type-options": "$t(generic.profile-types.{{type}})"
 		},
 		"profile-list": {
 			"descriptor-": "{{info.id}}",
@@ -163,6 +162,7 @@
 		},
 		"focus": "포커스",
 		"focus_past-participle": "포커스됨",
+		"follow": "follow",
 		"font": "글꼴",
 		"font-weight": "$t(generic.font) 굵기",
 		"history": "기록",
@@ -218,6 +218,7 @@
 		"terminal-option_other": "$t(generic.terminal) $t(generic.option_other)",
 		"terminal-resizer": "$t(generic.terminal) 리사이저",
 		"text-field": "텍스트 필드",
+		"theme": "theme",
 		"toggle": "전환",
 		"true": "참",
 		"type": "유형",

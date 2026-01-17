@@ -24,6 +24,7 @@
 				"arguments-edit": "$t(generic.edit, capitalize)",
 				"executable": "$t(generic.executable, capitalize)"
 			},
+			"follow-theme": "$t(generic.follow, capitalize) $t(generic.theme)",
 			"integrated": {
 				"Python-executable": "$t(generic.Python, capitalize) $t(generic.executable)",
 				"Python-executable-check": "$t(generic.check, capitalize)",
@@ -46,8 +47,6 @@
 			"reset": "$t(generic.reset, capitalize)",
 			"restore-history": "$t(generic.restore, capitalize) $t(generic.history)",
 			"restore-history-description-HTML": "If $t(generic.enable_past-participle), $t(generic.history) is $t(generic.save_past-participle) to <code>.obsidian/workspace.json</code>.",
-			"mirror-obsidian-background": "Mirror Obsidian theme",
-			"mirror-obsidian-background-description": "Use Obsidian color scheme for the terminal. Auto-updates when theme changes.",
 			"success-exit-codes": "Success $t(generic.exit) codes",
 			"success-exit-codes-description": "$t(generic.list-description, capitalize)",
 			"success-exit-codes-edit": "$t(generic.edit, capitalize)",
@@ -163,6 +162,7 @@
 		},
 		"focus": "focus",
 		"focus_past-participle": "focused",
+		"follow": "follow",
 		"font": "font",
 		"font-weight": "$t(generic.font) weight",
 		"history": "history",
@@ -218,6 +218,7 @@
 		"terminal-option_other": "$t(generic.terminal) $t(generic.option_other)",
 		"terminal-resizer": "$t(generic.terminal) resizer",
 		"text-field": "text field",
+		"theme": "theme",
 		"toggle": "toggle",
 		"true": "true",
 		"type": "type",

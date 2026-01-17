@@ -22,10 +22,12 @@
 				"arguments-icon": "$t(asset:components.profile.generic.arguments-icon)",
 				"executable-icon": "$t(asset:components.profile.generic.executable-icon)"
 			},
+			"follow-theme-icon": "palette",
 			"generic": {
 				"arguments-icon": "form-input",
 				"executable-icon": "$t(asset:generic.terminal-file-icon)"
 			},
+			"follow-theme": "$t(generic.follow, capitalize) $t(generic.theme)",
 			"integrated": {
 				"Python-executable-check-icon": "file-check",
 				"Python-executable-checking-icon": "$t(asset:generic.load-icon)",
@@ -39,7 +41,6 @@
 			"platform-icon": "$t(asset:generic.platforms.{{type}}-icon)",
 			"preset-icon": "$t(asset:generic.profile-icon)",
 			"restore-history-icon": "history",
-			"mirror-obsidian-background-icon": "palette",
 			"success-exit-codes-edit-icon": "$t(asset:generic.edit-list-icon)",
 			"success-exit-codes-icon": "log-out",
 			"terminal-options-edit-icon": "$t(asset:generic.edit-icon)",

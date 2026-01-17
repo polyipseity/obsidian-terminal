@@ -565,6 +565,24 @@ export class ProfileModal extends Modal {
 					))
 			})
 			.newSetting(element, setting => {
+				setting
+					.setName(i18n.t("components.profile.follow-theme"))
+					.addToggle(linkSetting(
+						() => profile.followTheme,
+						value => { profile.followTheme = value },
+						async () => this.postMutate(),
+					))
+					.addExtraButton(resetButton(
+						i18n.t("asset:components.profile.follow-theme-icon"),
+						i18n.t("components.profile.reset"),
+						() => {
+							profile.followTheme =
+								Settings.Profile.DEFAULTS[profile.type].followTheme
+						},
+						async () => this.postMutate(),
+					))
+			})
+			.newSetting(element, setting => {
 				const { settingEl } = setting
 				setting
 					.setName(i18n.t("components.profile.restore-history"))
@@ -585,26 +603,6 @@ export class ProfileModal extends Modal {
 						() => {
 							profile.restoreHistory =
 								Settings.Profile.DEFAULTS[profile.type].restoreHistory
-						},
-						async () => this.postMutate(),
-					))
-			})
-			.newSetting(element, setting => {
-				setting
-					.setName(i18n.t("components.profile.mirror-obsidian-background"))
-					.setDesc(i18n
-						.t("components.profile.mirror-obsidian-background-description"))
-					.addToggle(linkSetting(
-						() => profile.followTheme,
-						value => { profile.followTheme = value },
-						async () => this.postMutate(),
-					))
-					.addExtraButton(resetButton(
-						i18n.t("asset:components.profile.mirror-obsidian-background-icon"),
-						i18n.t("components.profile.reset"),
-						() => {
-							profile.followTheme =
-								Settings.Profile.DEFAULTS[profile.type].followTheme
 						},
 						async () => this.postMutate(),
 					))
