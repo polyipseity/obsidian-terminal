@@ -1,5 +1,29 @@
 # obsidian-terminal <!-- markdownlint-disable MD024 -->
 
+## 3.21.0
+
+### Minor Changes
+
+- 51872cb: Add a new "Follow theme" option that makes the terminal automatically match Obsidian's colors and update when switching themes. ([GH#74](https://github.com/polyipseity/obsidian-terminal/pull/74) by [@davidszp](https://github.com/davidszp))
+- 7fe1a14: Start integrated `zsh`, `bash`, and Git Bash sessions as login shells so user config files load properly and PATH behaves as expected. ([GH#75](https://github.com/polyipseity/obsidian-terminal/pull/75) by [@liuhedev](https://github.com/liuhedev))
+- 7fe1a14: Improve the profile picker by showing only terminal profiles compatible with your current OS, reducing clutter and avoiding unusable options. ([GH#75](https://github.com/polyipseity/obsidian-terminal/pull/75) by [@liuhedev](https://github.com/liuhedev))
+- 5486c6a: Preserve terminal scroll position across state saves and tab switches by adding a single `scrollLine` field with a bottom sentinel. ([GH#71](https://github.com/polyipseity/obsidian-terminal/pull/71) by [@mokasz](https://github.com/mokasz))
+
+### Patch Changes
+
+- 6a6dbd8: Add Japanese translation ([GH#68](https://github.com/polyipseity/obsidian-terminal/pull/68) by [@oimus1976](https://github.com/oimus1976))
+
+  Added Japanese translation file and updated locales configuration.
+
+- 39f6fd5: Fix invalid JSON in translation files: ([GH#66](https://github.com/polyipseity/obsidian-terminal/pull/66) by [@HNIdesu](https://github.com/HNIdesu))
+
+  - `assets/locales/zh-Hans/translation.json`
+  - `assets/locales/zh-Hant/translation.json`
+
+  The entry `components.select-profile.item-text-temporary` contained unmatched brackets, which caused parsing errors and broke localization loading. This patch corrects the brackets so the JSON validates properly.
+
+- eae27fd: Widen modals to ensure they are usable on all themes by disabling `dynamicWidth`. This makes the profile editor and list modals have a width that can be set by theme CSS. ([GH#60](https://github.com/polyipseity/obsidian-terminal/pull/60) by [@haydenholligan](https://github.com/haydenholligan))
+
 ## 3.20.0
 
 ### Minor Changes
