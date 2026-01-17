@@ -86,7 +86,7 @@ npm run obsidian:install:force
 - `XtermTerminalEmulator.State` interface stores:
   - `columns`, `rows`: Terminal dimensions
   - `data`: Serialized buffer content (via SerializeAddon)
-  - `viewportY`: Scroll position (critical for scroll bug fix)
+  - `scrollLine`: Scroll position (critical for scroll bug fix)
 - Serialization: `serialize()` method called during view state save
 - Restoration: Constructor accepts state, calls `writePromise()` + `scrollToLine()`
 
@@ -96,7 +96,7 @@ npm run obsidian:install:force
 User action → TerminalView.setState() → State deserialization
            → startEmulator() → XtermTerminalEmulator constructor
            → Terminal initialization → State restoration
-           → scrollToLine(state.viewportY) [if viewportY != 0]
+           → scrollToLine(state.scrollLine) [if scrollLine != 0]
 ```
 
 ### Profile System
@@ -123,13 +123,13 @@ Profile properties in `src/terminal/profile-properties.ts`:
 
 ### Critical Bug Fix: Scroll Position Preservation
 
-**Problem:** viewportY not saved/restored, causing scroll to jump to top during long output.
+**Problem:** scrollLine not saved/restored, causing scroll to jump to top during long output.
 
 **Solution implemented in `src/terminal/emulator.ts`:**
 
-1. Added `viewportY: number` to `State` interface (line 193)
-2. Capture in `serialize()`: `viewportY: this.terminal.buffer.active.viewportY` (line 184)
-3. Restore in constructor after data write: `terminal.scrollToLine(state.viewportY, true)` (line 134)
+1. Added `scrollLine: number` to `State` interface (line 193)
+2. Capture in `serialize()`: `scrollLine: this.terminal.buffer.active.scrollLine` (line 184)
+3. Restore in constructor after data write: `terminal.scrollToLine(state.scrollLine, true)` (line 134)
 
 **Testing scroll fix:**
 
@@ -177,7 +177,7 @@ src/
 
 **Key APIs used:**
 
-- `terminal.buffer.active.viewportY` - Current scroll position
+- `terminal.buffer.active.scrollLine` - Current scroll position
 - `terminal.scrollToLine(line, disableSmoothScroll)` - Scroll to absolute line
 - `terminal.onWriteParsed()` - Trigger on content update
 - `terminal.onResize()` - Handle dimension changes
@@ -186,7 +186,7 @@ src/
 **Viewport synchronization:**
 
 - xterm.js manages internal `Viewport` class (`src/browser/Viewport.ts` in xterm.js)
-- Our plugin must preserve `viewportY` across serialization cycles
+- Our plugin must preserve `scrollLine` across serialization cycles
 - Restore after data write to prevent scroll position loss
 
 ## Development Patterns
@@ -305,36 +305,36 @@ Currently, this project does not have a test infrastructure. For future improvem
 
 ### Critical Test Cases for Scroll Position Fix
 
-**Edge Cases for viewportY Restoration:**
+**Edge Cases for scrollLine Restoration:**
 
 ```typescript
-// Test 1: Restoring viewportY = 0 (should not scroll)
-test('viewportY restoration skips when at top', () => {
-    const state = { columns: 80, rows: 24, data: 'test\n', viewportY: 0, wasAtBottom: false }
+// Test 1: Restoring scrollLine = 0 (should not scroll)
+test('scrollLine restoration skips when at top', () => {
+    const state = { columns: 80, rows: 24, data: 'test\n', scrollLine: 0, wasAtBottom: false }
     // Assert: no scrollToLine() call
 })
 
 // Test 2: Restoring with empty buffer
-test('viewportY restoration handles empty buffer', () => {
-    const state = { columns: 80, rows: 24, data: '', viewportY: 5, wasAtBottom: false }
-    // Assert: viewportY clamped to 0
+test('scrollLine restoration handles empty buffer', () => {
+    const state = { columns: 80, rows: 24, data: '', scrollLine: 5, wasAtBottom: false }
+    // Assert: scrollLine clamped to 0
 })
 
-// Test 3: Restoring with viewportY larger than buffer
-test('viewportY restoration clamps out-of-bounds values', () => {
-    const state = { columns: 80, rows: 24, data: 'line1\nline2\n', viewportY: 9999, wasAtBottom: false }
-    // Assert: viewportY clamped to maxScrollY
+// Test 3: Restoring with scrollLine larger than buffer
+test('scrollLine restoration clamps out-of-bounds values', () => {
+    const state = { columns: 80, rows: 24, data: 'line1\nline2\n', scrollLine: 9999, wasAtBottom: false }
+    // Assert: scrollLine clamped to maxScrollY
 })
 
-// Test 4: Restoring with negative viewportY
-test('viewportY restoration clamps negative values', () => {
-    const state = { columns: 80, rows: 24, data: 'test\n', viewportY: -10, wasAtBottom: false }
-    // Assert: viewportY clamped to 0
+// Test 4: Restoring with negative scrollLine
+test('scrollLine restoration clamps negative values', () => {
+    const state = { columns: 80, rows: 24, data: 'test\n', scrollLine: -10, wasAtBottom: false }
+    // Assert: scrollLine clamped to 0
 })
 
 // Test 5: Auto-scroll behavior preservation
 test('wasAtBottom flag restores auto-scroll behavior', () => {
-    const state = { columns: 80, rows: 24, data: 'test\n', viewportY: 0, wasAtBottom: true }
+    const state = { columns: 80, rows: 24, data: 'test\n', scrollLine: 0, wasAtBottom: true }
     // Assert: scrollToBottom() called instead of scrollToLine()
 })
 
@@ -345,7 +345,7 @@ test('multiple save/restore cycles maintain scroll position', () => {
     const state1 = emulator.serialize()
     const restored = createEmulator(state1)
     const state2 = restored.serialize()
-    // Assert: state1.viewportY === state2.viewportY
+    // Assert: state1.scrollLine === state2.scrollLine
 })
 ```
 

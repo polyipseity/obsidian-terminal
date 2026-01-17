@@ -130,7 +130,7 @@ export class XtermTerminalEmulator<A> {
 			terminal.resize(state.columns, state.rows)
 			write = writePromise(terminal, state.data).then(() => {
 				// Restore scroll position after data is written
-				if (state.viewportY !== undefined && state.viewportY !== 0) {
+				if (state.scrollLine !== undefined && state.scrollLine !== 0) {
 					const { active } = terminal.buffer
 
 					// If user was at bottom, restore auto-scroll behavior
@@ -139,9 +139,9 @@ export class XtermTerminalEmulator<A> {
 					} else {
 						// User was scrolled up - restore exact position with bounds checking
 						const maxScrollY = Math.max(0, active.baseY - terminal.rows + 1)
-						const safeViewportY = Math.min(Math.max(0, state.viewportY), maxScrollY)
+						const safeScrollLine = Math.min(Math.max(0, state.scrollLine), maxScrollY)
 
-						terminal.scrollToLine(safeViewportY, true)
+						terminal.scrollToLine(safeScrollLine, true)
 					}
 				}
 			})
@@ -191,12 +191,12 @@ export class XtermTerminalEmulator<A> {
 
 	public serialize(): XtermTerminalEmulator.State {
 		const { active } = this.terminal.buffer
-		const viewportY = active.viewportY
+		const scrollLine = active.viewportY
 
 		// Only consider "at bottom" if there's actually scrollable content
 		// This prevents false positives in initial/empty state where baseY < rows
 		const hasScrollableContent = active.baseY >= this.terminal.rows
-		const isAtBottomPosition = viewportY >= active.baseY - this.terminal.rows + 1
+		const isAtBottomPosition = scrollLine >= active.baseY - this.terminal.rows + 1
 		const wasAtBottom = hasScrollableContent && isAtBottomPosition
 
 		return deepFreeze({
@@ -206,7 +206,7 @@ export class XtermTerminalEmulator<A> {
 				excludeModes: true,
 			}),
 			rows: this.terminal.rows,
-			viewportY,
+			scrollLine,
 			wasAtBottom,
 		})
 	}
@@ -216,7 +216,7 @@ export namespace XtermTerminalEmulator {
 		readonly columns: number
 		readonly rows: number
 		readonly data: string
-		readonly viewportY: number
+		readonly scrollLine: number
 		readonly wasAtBottom: boolean
 	}
 	export namespace State {
@@ -224,7 +224,7 @@ export namespace XtermTerminalEmulator {
 			columns: 1,
 			data: "",
 			rows: 1,
-			viewportY: 0,
+			scrollLine: 0,
 			wasAtBottom: false,
 		})
 		export function fix(self0: unknown): Fixed<State> {
@@ -233,7 +233,7 @@ export namespace XtermTerminalEmulator {
 				columns: fixTyped(DEFAULT, unc, "columns", ["number"]),
 				data: fixTyped(DEFAULT, unc, "data", ["string"]),
 				rows: fixTyped(DEFAULT, unc, "rows", ["number"]),
-				viewportY: fixTyped(DEFAULT, unc, "viewportY", ["number"]),
+				scrollLine: fixTyped(DEFAULT, unc, "scrollLine", ["number"]),
 				wasAtBottom: fixTyped(DEFAULT, unc, "wasAtBottom", ["boolean"]),
 			})
 		}

@@ -20,13 +20,13 @@
 
 **Expected Behavior**: Scroll position should be maintained when user scrolls up during command execution.
 
-**Actual Behavior**: Scroll position resets to viewportY = 0 (top of buffer).
+**Actual Behavior**: Scroll position resets to scrollLine = 0 (top of buffer).
 
 ## Root Cause Analysis
 
 The bug was caused by incomplete state serialization in `XtermTerminalEmulator`:
 
-1. **Missing State Field**: The `XtermTerminalEmulator.State` interface did not include the `viewportY` field to track scroll position
+1. **Missing State Field**: The `XtermTerminalEmulator.State` interface did not include the `scrollLine` field to track scroll position
 2. **Incomplete Serialization**: The `serialize()` method only saved `columns`, `rows`, and `data` - but NOT the scroll position
 3. **No Restoration Logic**: The constructor did not restore scroll position after writing terminal data
 
@@ -38,14 +38,14 @@ This meant that whenever the terminal state was serialized and restored (during 
 
 **File**: `src/terminal/emulator.ts`
 
-#### 1. Added `viewportY` to State Interface (line 198)
+#### 1. Added `scrollLine` to State Interface (line 198)
 
 ```typescript
 export interface State {
     readonly columns: number
     readonly rows: number
     readonly data: string
-    readonly viewportY: number  // NEW: Track scroll position
+    readonly scrollLine: number  // NEW: Track scroll position
 }
 ```
 
@@ -60,7 +60,7 @@ public serialize(): XtermTerminalEmulator.State {
             excludeModes: true,
         }),
         rows: this.terminal.rows,
-        viewportY: this.terminal.buffer.active.viewportY,  // NEW: Capture current scroll position
+        scrollLine: this.terminal.buffer.active.scrollLine,  // NEW: Capture current scroll position
     })
 }
 ```
@@ -72,8 +72,8 @@ if (state) {
     terminal.resize(state.columns, state.rows)
     write = writePromise(terminal, state.data).then(() => {
         // NEW: Restore scroll position after data is written
-        if (state.viewportY !== undefined && state.viewportY !== 0) {
-            terminal.scrollToLine(state.viewportY, true)
+        if (state.scrollLine !== undefined && state.scrollLine !== 0) {
+            terminal.scrollToLine(state.scrollLine, true)
         }
     })
 }
@@ -81,7 +81,7 @@ if (state) {
 
 **Key Implementation Details**:
 
-- Uses xterm.js official API: `terminal.buffer.active.viewportY` for reading scroll position
+- Uses xterm.js official API: `terminal.buffer.active.scrollLine` for reading scroll position
 - Uses `terminal.scrollToLine(line, disableSmoothScroll)` for restoration
 - Restoration happens AFTER buffer data is written (in Promise chain) to ensure correct timing
 - Uses `disableSmoothScroll: true` parameter for instant scroll without animation
@@ -93,7 +93,7 @@ export const DEFAULT: State = deepFreeze({
     columns: 1,
     data: "",
     rows: 1,
-    viewportY: 0,  // NEW: Default scroll position at top
+    scrollLine: 0,  // NEW: Default scroll position at top
 })
 ```
 
@@ -106,7 +106,7 @@ export function fix(self0: unknown): Fixed<State> {
         columns: fixTyped(DEFAULT, unc, "columns", ["number"]),
         data: fixTyped(DEFAULT, unc, "data", ["string"]),
         rows: fixTyped(DEFAULT, unc, "rows", ["number"]),
-        viewportY: fixTyped(DEFAULT, unc, "viewportY", ["number"]),  // NEW
+        scrollLine: fixTyped(DEFAULT, unc, "scrollLine", ["number"]),  // NEW
     })
 }
 ```
@@ -139,7 +139,7 @@ find / -name "*.txt" 2>/dev/null
 
 - Start new command while scrolled to bottom
 - ✅ Expected: Auto-scroll continues for new output
-- ✅ Actual: Auto-scroll works correctly (viewportY follows baseY)
+- ✅ Actual: Auto-scroll works correctly (scrollLine follows baseY)
 
 **Test 4: Tab Switching**
 
@@ -160,7 +160,7 @@ find / -name "*.txt" 2>/dev/null
 
 ### xterm.js APIs Used
 
-- **`terminal.buffer.active.viewportY`**: Property that returns the current scroll position (line number of the top visible line)
+- **`terminal.buffer.active.scrollLine`**: Property that returns the current scroll position (line number of the top visible line)
 - **`terminal.scrollToLine(line: number, disableSmoothScroll?: boolean)`**: Scrolls the viewport to an absolute line index
 - **`terminal.buffer.active.baseY`**: Property that returns the line number of the bottom of the buffer
 
@@ -187,12 +187,12 @@ Fixes scroll position jumping to top when user scrolls up during
 long-running commands that produce continuous output.
 
 Changes:
-- Add viewportY field to XtermTerminalEmulator.State interface
+- Add scrollLine field to XtermTerminalEmulator.State interface
 - Capture scroll position in serialize() method
 - Restore scroll position in constructor after data write
 - Update State.DEFAULT and State.fix() validation
 
-The fix uses xterm.js official APIs (buffer.active.viewportY and
+The fix uses xterm.js official APIs (buffer.active.scrollLine and
 scrollToLine) to properly persist and restore viewport position
 across state serialization cycles.
 
@@ -239,15 +239,15 @@ Terminal scroll position jumps to the top (oldest history) during long-running c
 
 ## Root Cause
 
-The `XtermTerminalEmulator.State` interface was missing the `viewportY` field to track scroll position. During state serialization/deserialization cycles (which happen during buffer updates), the scroll position was lost, causing the viewport to reset to the default position.
+The `XtermTerminalEmulator.State` interface was missing the `scrollLine` field to track scroll position. During state serialization/deserialization cycles (which happen during buffer updates), the scroll position was lost, causing the viewport to reset to the default position.
 
 ## Solution
 
 Added scroll position persistence to the terminal emulator state management:
 
-1. Added `viewportY: number` to `State` interface
-2. Modified `serialize()` to capture `terminal.buffer.active.viewportY`
-3. Modified constructor to restore position using `terminal.scrollToLine(state.viewportY, true)` after data write
+1. Added `scrollLine: number` to `State` interface
+2. Modified `serialize()` to capture `terminal.buffer.active.scrollLine`
+3. Modified constructor to restore position using `terminal.scrollToLine(state.scrollLine, true)` after data write
 
 The fix uses official xterm.js APIs and restores position in the correct timing (after buffer data is written).
 
@@ -280,6 +280,6 @@ Similar to xterm.js Issue #1265 (scroll position reset on DOM detachment, fixed 
 
 - The fix is minimal and focused - only touches the state persistence layer
 - No changes to xterm.js library itself (uses existing APIs)
-- Backwards compatible: Old state without viewportY will default to 0 (top)
-- No performance impact: viewportY is a simple number field
+- Backwards compatible: Old state without scrollLine will default to 0 (top)
+- No performance impact: scrollLine is a simple number field
 - The implementation follows the existing code patterns in the project
