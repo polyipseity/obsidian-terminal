@@ -7,9 +7,9 @@ import {
 	replaceAllRegex,
 } from "@polyipseity/obsidian-plugin-library"
 import type { ITerminalAddon, ITheme, Terminal } from "@xterm/xterm"
+import { constant, isUndefined } from "lodash-es"
 import type { CanvasAddon } from "@xterm/addon-canvas"
 import type { WebglAddon } from "@xterm/addon-webgl"
-import { constant, isUndefined } from "lodash-es"
 import type { Workspace } from "obsidian"
 
 export class DisposerAddon extends Functions implements ITerminalAddon {
@@ -107,13 +107,13 @@ export class FollowThemeAddon implements ITerminalAddon {
 
 	public activate(terminal: Terminal): void {
 		const update = (): void => {
-			if (this.opts.enabled && !this.opts.enabled()) return
+			if (this.opts.enabled && !this.opts.enabled()) { return }
 			const next = this.#computeTheme()
-			if (!next) return
+			if (!next) { return }
 
 			// No-op if unchanged
 			const key = this.#themeKey(next)
-			if (key === this.#lastThemeKey) return
+			if (key === this.#lastThemeKey) { return }
 			this.#lastThemeKey = key
 
 			// Use existing way of setting options (no setOption)
@@ -139,7 +139,7 @@ export class FollowThemeAddon implements ITerminalAddon {
 
 		// Keep in sync with app CSS/theme changes (no throttling)
 		const ref = this.workspace.on('css-change', update)
-		this.#disposer.push(() => this.workspace.offref(ref))
+		this.#disposer.push(() => { this.workspace.offref(ref) })
 	}
 
 	public dispose(): void {
@@ -151,51 +151,51 @@ export class FollowThemeAddon implements ITerminalAddon {
 	 * nothing useful is computed.
 	 */
 	#computeTheme(): ITheme | null {
-		const doc = this.element.ownerDocument
-		const win = doc.defaultView!
-		const body = doc.body
+		const doc = this.element.ownerDocument,
+			win = doc.defaultView!,
+			{ body } = doc,
 
-		const bgVar = this.opts.bgVar ?? '--background-primary'
-		const fgVar = this.opts.fgVar ?? '--text-normal'
-		const accentVar = this.opts.accentVar ?? '--interactive-accent'
+			bgVar = this.opts.bgVar ?? '--background-primary',
+			fgVar = this.opts.fgVar ?? '--text-normal',
+			accentVar = this.opts.accentVar ?? '--interactive-accent',
 
-		// Resolve CSS variables to final, computed css color strings
-		const bgStr = this.#resolveCssColor(bgVar, body)?.trim() ?? ''
-		const fgVarStr = this.#resolveCssColor(fgVar, body)?.trim() ?? ''
-		const accentStr = this.#resolveCssColor(accentVar, body)?.trim() ?? ''
+			// Resolve CSS variables to final, computed css color strings
+			bgStr = this.#resolveCssColor(bgVar, body)?.trim() ?? '',
+			fgVarStr = this.#resolveCssColor(fgVar, body)?.trim() ?? '',
+			accentStr = this.#resolveCssColor(accentVar, body)?.trim() ?? '',
 
-		const computedBodyColor = win.getComputedStyle(body).color
+			computedBodyColor = win.getComputedStyle(body).color,
 
-		const bg = this.#toRGBA(bgStr) ?? null
-		if (!bg) return null // cannot theme without background
+			bg = this.#toRGBA(bgStr) ?? null
+		if (!bg) { return null } // Cannot theme without background
 
-		const explicitFg = this.#toRGBA(fgVarStr) ?? this.#toRGBA(computedBodyColor)
-		const autoFg = this.#bestOf([this.#rgb(0, 0, 0), this.#rgb(255, 255, 255)], bg)
-		const fg = explicitFg ?? autoFg
+		const explicitFg = this.#toRGBA(fgVarStr) ?? this.#toRGBA(computedBodyColor),
+			autoFg = this.#bestOf([this.#rgb(0, 0, 0), this.#rgb(255, 255, 255)], bg),
+			fg = explicitFg ?? autoFg,
 
-		// Cursor: try accent first but ensure minimum contrast
-		const minCursorContrast = this.opts.minCursorContrast ?? 3
-		const cursorCandidates: FollowThemeAddon.RGBA[] = [
-			this.#toRGBA(accentStr),
-			fg,
-			this.#rgb(0, 0, 0),
-			this.#rgb(255, 255, 255),
-		].filter(Boolean) as FollowThemeAddon.RGBA[]
-		const cursor =
-			this.#bestMeetingContrast(cursorCandidates, bg, minCursorContrast) ??
-			this.#bestOf(cursorCandidates, bg)
+			// Cursor: try accent first but ensure minimum contrast
+			minCursorContrast = this.opts.minCursorContrast ?? 3,
+			cursorCandidates: FollowThemeAddon.RGBA[] = [
+				this.#toRGBA(accentStr),
+				fg,
+				this.#rgb(0, 0, 0),
+				this.#rgb(255, 255, 255),
+			].filter(Boolean) as FollowThemeAddon.RGBA[],
+			cursor =
+				this.#bestMeetingContrast(cursorCandidates, bg, minCursorContrast) ??
+				this.#bestOf(cursorCandidates, bg),
 
-		// Selection: overlay high-contrast color over background
-		const alpha = Math.min(1, Math.max(0, this.opts.selectionAlpha ?? 0.3))
-		const overlayBase = this.#bestOf([this.#rgb(0, 0, 0), this.#rgb(255, 255, 255)], bg)
-		const selection = this.#mix(overlayBase, bg, alpha)
+			// Selection: overlay high-contrast color over background
+			alpha = Math.min(1, Math.max(0, this.opts.selectionAlpha ?? 0.3)),
+			overlayBase = this.#bestOf([this.#rgb(0, 0, 0), this.#rgb(255, 255, 255)], bg),
+			selection = this.#mix(overlayBase, bg, alpha),
 
-		const theme: ITheme = {
-			background: this.#toCss(bg),
-			foreground: this.#toCss(fg),
-			cursor: this.#toCss(cursor),
-			selectionBackground: this.#toCss(selection),
-		}
+			theme: ITheme = {
+				background: this.#toCss(bg),
+				foreground: this.#toCss(fg),
+				cursor: this.#toCss(cursor),
+				selectionBackground: this.#toCss(selection),
+			}
 
 		return theme
 	}
@@ -207,10 +207,10 @@ export class FollowThemeAddon implements ITerminalAddon {
 	 * even if it is defined via nested var() indirections.
 	 */
 	#resolveCssColor(varName: string, attachTo: HTMLElement): string | null {
-		const doc = attachTo.ownerDocument
-		const win = doc.defaultView!
+		const doc = attachTo.ownerDocument,
+			win = doc.defaultView!,
 
-		const raw = win.getComputedStyle(attachTo).getPropertyValue(varName)
+			raw = win.getComputedStyle(attachTo).getPropertyValue(varName)
 		if (raw && !raw.includes('var(')) {
 			return raw
 		}
@@ -237,21 +237,21 @@ export class FollowThemeAddon implements ITerminalAddon {
 
 	/** Parse any CSS color the browser understands into FollowThemeAddon.RGBA, or null */
 	#toRGBA(input: string | null | undefined): FollowThemeAddon.RGBA | null {
-		if (!input) return null
-		const doc = this.element.ownerDocument
-		const win = doc.defaultView!
-		const span = doc.createElement('span')
+		if (!input) { return null }
+		const doc = this.element.ownerDocument,
+			win = doc.defaultView!,
+			span = doc.createElement('span')
 		span.style.color = ''
 		span.style.color = input
-		if (!span.style.color) return null
+		if (!span.style.color) { return null }
 		doc.body.appendChild(span)
 		const cs = win.getComputedStyle(span).color // 'rgb(r,g,b)' or 'FollowThemeAddon.RGBA(r,g,b,a)'
 		span.remove()
 
 		const m = cs.match(/\d+(\.\d+)?/g)
-		if (!m) return null
+		if (!m) { return null }
 		const [r, g, b, a] = m.map(Number)
-		if (isUndefined(r) || isUndefined(g) || isUndefined(b)) return null
+		if (isUndefined(r) || isUndefined(g) || isUndefined(b)) { return null }
 		return { r, g, b, a: a ?? 1 }
 	}
 
@@ -266,17 +266,17 @@ export class FollowThemeAddon implements ITerminalAddon {
 	#lum(c: FollowThemeAddon.RGBA): number {
 		const toLin = (v: number) => {
 			v /= 255
-			return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
-		}
-		const r = toLin(c.r), g = toLin(c.g), b = toLin(c.b)
+			return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+		},
+			r = toLin(c.r), g = toLin(c.g), b = toLin(c.b)
 		return 0.2126 * r + 0.7152 * g + 0.0722 * b
 	}
 
 	/** Contrast ratio per WCAG between two colors */
 	#contrast(a: FollowThemeAddon.RGBA, b: FollowThemeAddon.RGBA): number {
-		const L1 = this.#lum(a)
-		const L2 = this.#lum(b)
-		const [hi, lo] = L1 >= L2 ? [L1, L2] : [L2, L1]
+		const L1 = this.#lum(a),
+			L2 = this.#lum(b),
+			[hi, lo] = L1 >= L2 ? [L1, L2] : [L2, L1]
 		return (hi + 0.05) / (lo + 0.05)
 	}
 
@@ -287,18 +287,18 @@ export class FollowThemeAddon implements ITerminalAddon {
 			r: base.r * (1 - a) + top.r * a,
 			g: base.g * (1 - a) + top.g * a,
 			b: base.b * (1 - a) + top.b * a,
-			a: 1, // terminal selection background is rendered as opaque color
+			a: 1, // Terminal selection background is rendered as opaque color
 		}
 	}
 
 	/** Pick color with highest contrast vs bg */
 	#bestOf(
 		candidates: readonly FollowThemeAddon.RGBA[],
-		bg: FollowThemeAddon.RGBA
+		bg: FollowThemeAddon.RGBA,
 	): FollowThemeAddon.RGBA {
 		return candidates.reduce((best, current) => {
-			const bestC = this.#contrast(best, bg)
-			const curC = this.#contrast(current, bg)
+			const bestC = this.#contrast(best, bg),
+				curC = this.#contrast(current, bg)
 			return curC > bestC ? current : best
 		})
 	}
@@ -306,7 +306,7 @@ export class FollowThemeAddon implements ITerminalAddon {
 	/** First candidate that meets min contrast, else null */
 	#bestMeetingContrast(candidates: FollowThemeAddon.RGBA[], bg: FollowThemeAddon.RGBA, min: number): FollowThemeAddon.RGBA | null {
 		for (const c of candidates) {
-			if (this.#contrast(c, bg) >= min) return c
+			if (this.#contrast(c, bg) >= min) { return c }
 		}
 		return null
 	}
