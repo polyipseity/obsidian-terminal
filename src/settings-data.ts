@@ -262,7 +262,7 @@ export namespace Settings {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			"": PROFILE_PRESETS.empty,
 			developerConsole: {
-				followTheme: false,
+				followTheme: true,
 				name: "",
 				restoreHistory: false,
 				rightClickAction: "copyPaste",
@@ -273,7 +273,7 @@ export namespace Settings {
 			external: {
 				args: [],
 				executable: "",
-				followTheme: false,
+				followTheme: true,
 				name: "",
 				platforms: {
 					darwin: false,
@@ -289,7 +289,7 @@ export namespace Settings {
 			integrated: {
 				args: [],
 				executable: "",
-				followTheme: false,
+				followTheme: true,
 				name: "",
 				platforms: {
 					darwin: false,
