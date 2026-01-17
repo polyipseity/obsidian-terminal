@@ -225,7 +225,7 @@ export namespace Settings {
 		interface Base {
 			readonly type: Type
 			readonly name: string
-			readonly mirrorObsidianBackground: boolean
+			readonly followTheme: boolean
 			readonly restoreHistory: boolean
 			readonly rightClickAction: RightClickActionAddon.Action
 			readonly successExitCodes: readonly string[]
@@ -262,7 +262,7 @@ export namespace Settings {
 			// eslint-disable-next-line @typescript-eslint/naming-convention
 			"": PROFILE_PRESETS.empty,
 			developerConsole: {
-				mirrorObsidianBackground: false,
+				followTheme: false,
 				name: "",
 				restoreHistory: false,
 				rightClickAction: "copyPaste",
@@ -273,7 +273,7 @@ export namespace Settings {
 			external: {
 				args: [],
 				executable: "",
-				mirrorObsidianBackground: false,
+				followTheme: false,
 				name: "",
 				platforms: {
 					darwin: false,
@@ -289,7 +289,7 @@ export namespace Settings {
 			integrated: {
 				args: [],
 				executable: "",
-				mirrorObsidianBackground: false,
+				followTheme: false,
 				name: "",
 				platforms: {
 					darwin: false,
@@ -335,10 +335,10 @@ export namespace Settings {
 				switch (type) {
 					case "": {
 						return {
-							mirrorObsidianBackground: fixTyped(
+							followTheme: fixTyped(
 								DEFAULTS[type],
 								unc,
-								"mirrorObsidianBackground",
+								"followTheme",
 								["boolean"],
 							),
 							name: fixTyped(
@@ -371,10 +371,10 @@ export namespace Settings {
 					}
 					case "developerConsole": {
 						return {
-							mirrorObsidianBackground: fixTyped(
+							followTheme: fixTyped(
 								DEFAULTS[type],
 								unc,
-								"mirrorObsidianBackground",
+								"followTheme",
 								["boolean"],
 							),
 							name: fixTyped(
@@ -419,10 +419,10 @@ export namespace Settings {
 								"executable",
 								["string"],
 							),
-							mirrorObsidianBackground: fixTyped(
+							followTheme: fixTyped(
 								DEFAULTS[type],
 								unc,
-								"mirrorObsidianBackground",
+								"followTheme",
 								["boolean"],
 							),
 							name: fixTyped(
@@ -472,10 +472,10 @@ export namespace Settings {
 								"executable",
 								["string"],
 							),
-							mirrorObsidianBackground: fixTyped(
+							followTheme: fixTyped(
 								DEFAULTS[type],
 								unc,
-								"mirrorObsidianBackground",
+								"followTheme",
 								["boolean"],
 							),
 							name: fixTyped(

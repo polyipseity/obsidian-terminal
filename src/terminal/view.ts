@@ -395,71 +395,71 @@ export class TerminalView extends ItemView {
 			id: "focus-on-last-terminal",
 		})
 		const focusedScopeIDs = new Set([
-				addCommand(
-					context,
-					() => i18n.t("commands.toggle-focus-on-last-terminal"),
-					{
-						checkCallback: withLastFocusedView((checking, view) => {
-							if (!checking) {
-								if (view.isFocused) { view.unfocus() } else { view.focus() }
-							}
-							return true
-						}, [false, true]),
-						// Meta + ` does not work well on macOS.
-						hotkeys: [{
-							key: "`",
-							modifiers: ["Ctrl", "Shift"],
-						}],
-						icon: i18n.t("asset:commands.toggle-focus-on-last-terminal-icon"),
-						id: "toggle-focus-on-last-terminal",
-					},
-				).id,
-				addCommand(context, () => i18n.t("commands.unfocus-terminal"), {
+			addCommand(
+				context,
+				() => i18n.t("commands.toggle-focus-on-last-terminal"),
+				{
 					checkCallback: withLastFocusedView((checking, view) => {
-						if (!checking) { view.unfocus() }
+						if (!checking) {
+							if (view.isFocused) { view.unfocus() } else { view.focus() }
+						}
 						return true
-					}),
-					// No hotkeys: hotkeys: [],
-					icon: i18n.t("asset:commands.unfocus-terminal-icon"),
-					id: "unfocus-terminal",
-				}).id,
-				addCommand(context, () => i18n.t("commands.clear-terminal"), {
-					checkCallback: withLastFocusedView((checking, view) => {
-						if (!checking) { view.emulator?.terminal.clear() }
-						return true
-					}),
+					}, [false, true]),
+					// Meta + ` does not work well on macOS.
 					hotkeys: [{
-						key: "k",
-						modifiers: ["Mod", "Shift"],
+						key: "`",
+						modifiers: ["Ctrl", "Shift"],
 					}],
-					icon: i18n.t("asset:commands.clear-terminal-icon"),
-					id: "clear-terminal",
-				}).id,
-				addCommand(context, () => i18n.t("commands.close-terminal"), {
-					checkCallback: withLastFocusedView((checking, view) => {
-						if (!checking) { view.leaf.detach() }
-						return true
-					}),
-					hotkeys: [{
-						key: "w",
-						modifiers: ["Mod", "Shift"],
-					}],
-					icon: i18n.t("asset:commands.close-terminal-icon"),
-					id: "close-terminal",
-				}).id,
-				addCommand(context, () => i18n.t("commands.find-in-terminal"), {
-					checkCallback: withLastFocusedView((checking, view) => {
-						if (!checking) { view.startFind() }
-						return true
-					}),
-					hotkeys: [{
-						key: "f",
-						modifiers: ["Mod", "Shift"],
-					}],
-					icon: i18n.t("asset:commands.find-in-terminal-icon"),
-					id: "find-in-terminal",
-				}).id,
-			]),
+					icon: i18n.t("asset:commands.toggle-focus-on-last-terminal-icon"),
+					id: "toggle-focus-on-last-terminal",
+				},
+			).id,
+			addCommand(context, () => i18n.t("commands.unfocus-terminal"), {
+				checkCallback: withLastFocusedView((checking, view) => {
+					if (!checking) { view.unfocus() }
+					return true
+				}),
+				// No hotkeys: hotkeys: [],
+				icon: i18n.t("asset:commands.unfocus-terminal-icon"),
+				id: "unfocus-terminal",
+			}).id,
+			addCommand(context, () => i18n.t("commands.clear-terminal"), {
+				checkCallback: withLastFocusedView((checking, view) => {
+					if (!checking) { view.emulator?.terminal.clear() }
+					return true
+				}),
+				hotkeys: [{
+					key: "k",
+					modifiers: ["Mod", "Shift"],
+				}],
+				icon: i18n.t("asset:commands.clear-terminal-icon"),
+				id: "clear-terminal",
+			}).id,
+			addCommand(context, () => i18n.t("commands.close-terminal"), {
+				checkCallback: withLastFocusedView((checking, view) => {
+					if (!checking) { view.leaf.detach() }
+					return true
+				}),
+				hotkeys: [{
+					key: "w",
+					modifiers: ["Mod", "Shift"],
+				}],
+				icon: i18n.t("asset:commands.close-terminal-icon"),
+				id: "close-terminal",
+			}).id,
+			addCommand(context, () => i18n.t("commands.find-in-terminal"), {
+				checkCallback: withLastFocusedView((checking, view) => {
+					if (!checking) { view.startFind() }
+					return true
+				}),
+				hotkeys: [{
+					key: "f",
+					modifiers: ["Mod", "Shift"],
+				}],
+				icon: i18n.t("asset:commands.find-in-terminal-icon"),
+				id: "find-in-terminal",
+			}).id,
+		]),
 			handler = this.focusedScope
 				.register(null, null, newHotkeyListener(context, focusedScopeIDs))
 		context.register(() => { this.focusedScope.unregister(handler) })
@@ -811,7 +811,7 @@ export class TerminalView extends ItemView {
 									}
 								} => {
 									if (profile.type !== "invalid" &&
-										profile.mirrorObsidianBackground) {
+										profile.followTheme) {
 										const style = activeSelf(contentEl)
 											.getComputedStyle(contentEl.ownerDocument.body)
 										const bgColor = style
@@ -921,7 +921,7 @@ export class TerminalView extends ItemView {
 					))
 					renderer.use(settings.value.preferredRenderer)
 					if (profile.type !== "invalid" &&
-						profile.mirrorObsidianBackground) {
+						profile.followTheme) {
 						const updateThemeColors = (): void => {
 							const style = activeSelf(contentEl)
 								.getComputedStyle(contentEl.ownerDocument.body)
@@ -1057,7 +1057,7 @@ export namespace TerminalView {
 			newLeaf = ((): WorkspaceLeaf => {
 				if (settings.value.createInstanceNearExistingOnes) {
 					const existingLeaves = workspace
-							.getLeavesOfType(TerminalView.type.namespaced(context)),
+						.getLeavesOfType(TerminalView.type.namespaced(context)),
 						existingLeaf = leaf ?? existingLeaves[existingLeaves.length - 1]
 					if (existingLeaf) {
 						const root = existingLeaf.getRoot()

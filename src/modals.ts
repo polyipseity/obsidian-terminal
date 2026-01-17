@@ -595,16 +595,16 @@ export class ProfileModal extends Modal {
 					.setDesc(i18n
 						.t("components.profile.mirror-obsidian-background-description"))
 					.addToggle(linkSetting(
-						() => profile.mirrorObsidianBackground,
-						value => { profile.mirrorObsidianBackground = value },
+						() => profile.followTheme,
+						value => { profile.followTheme = value },
 						async () => this.postMutate(),
 					))
 					.addExtraButton(resetButton(
 						i18n.t("asset:components.profile.mirror-obsidian-background-icon"),
 						i18n.t("components.profile.reset"),
 						() => {
-							profile.mirrorObsidianBackground =
-								Settings.Profile.DEFAULTS[profile.type].mirrorObsidianBackground
+							profile.followTheme =
+								Settings.Profile.DEFAULTS[profile.type].followTheme
 						},
 						async () => this.postMutate(),
 					))
