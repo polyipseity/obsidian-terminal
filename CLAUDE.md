@@ -49,7 +49,7 @@ npm run obsidian:install:force
 
 ### Core Components Layer Structure
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │ Obsidian Plugin (src/main.ts)                          │
 │ - Lifecycle management, command registration           │
@@ -92,7 +92,7 @@ npm run obsidian:install:force
 
 **View State Flow:**
 
-```
+```text
 User action → TerminalView.setState() → State deserialization
            → startEmulator() → XtermTerminalEmulator constructor
            → Terminal initialization → State restoration
@@ -144,7 +144,7 @@ Scroll up during execution - position should be maintained.
 
 ## Source Structure
 
-```
+```text
 src/
 ├── @types/              # TypeScript definitions
 │   ├── obsidian-terminal.ts    # Public API types

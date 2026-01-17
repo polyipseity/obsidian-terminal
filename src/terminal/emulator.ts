@@ -131,14 +131,16 @@ export class XtermTerminalEmulator<A> {
 			write = writePromise(terminal, state.data).then(() => {
 				// Restore scroll position after data is written
 				// If user was at bottom, restore auto-scroll behavior
-				if (state.scrollLine === XtermTerminalEmulator.State.SCROLL_LINE_BOTTOM) {
+				if (state.scrollLine ===
+					XtermTerminalEmulator.State.SCROLL_LINE_BOTTOM) {
 					terminal.scrollToBottom()
-					return;
+					return
 				}
 				// User was scrolled up - restore exact position with bounds checking
-				const { active } = terminal.buffer
-				const maxScrollY = Math.max(0, active.baseY - terminal.rows + 1)
-				const safeScrollLine = Math.min(Math.max(0, state.scrollLine), maxScrollY)
+				const { active } = terminal.buffer,
+					maxScrollY = Math.max(0, active.baseY - terminal.rows + 1),
+					safeScrollLine =
+						Math.min(Math.max(0, state.scrollLine), maxScrollY)
 				terminal.scrollToLine(safeScrollLine)
 			})
 		}
@@ -191,8 +193,8 @@ export class XtermTerminalEmulator<A> {
 
 		// Only consider "at bottom" if there's actually scrollable content
 		// This prevents false positives in initial/empty state where baseY < rows
-		const hasScrollableContent = active.baseY >= this.terminal.rows
-		const isAtBottomPosition = scrollLine >= active.baseY - this.terminal.rows + 1
+		const hasScrollableContent = active.baseY >= this.terminal.rows,
+			isAtBottomPosition = scrollLine >= active.baseY - this.terminal.rows + 1
 		if (hasScrollableContent && isAtBottomPosition) {
 			scrollLine = XtermTerminalEmulator.State.SCROLL_LINE_BOTTOM
 		}
@@ -213,10 +215,11 @@ export namespace XtermTerminalEmulator {
 		readonly columns: number
 		readonly rows: number
 		readonly data: string
+		// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 		readonly scrollLine: typeof State['SCROLL_LINE_BOTTOM'] | number
 	}
 	export namespace State {
-		export const SCROLL_LINE_BOTTOM = -1;
+		export const SCROLL_LINE_BOTTOM = -1
 		export const DEFAULT: State = deepFreeze({
 			columns: 1,
 			data: "",

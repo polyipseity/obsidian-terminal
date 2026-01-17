@@ -115,6 +115,7 @@ export function fix(self0: unknown): Fixed<State> {
 
 ### Manual Test Cases
 
+<!-- markdownlint-disable-next-line MD036 -->
 **Test 1: Long-running Command with Scroll**
 
 ```bash
@@ -125,6 +126,7 @@ for i in {1..1000}; do echo "Line $i"; sleep 0.01; done
 - ✅ Expected: Position maintained at line ~500
 - ✅ Actual: Position successfully maintained
 
+<!-- markdownlint-disable-next-line MD036 -->
 **Test 2: File Search with Scroll**
 
 ```bash
@@ -135,12 +137,14 @@ find / -name "*.txt" 2>/dev/null
 - ✅ Expected: Position maintained
 - ✅ Actual: Position successfully maintained
 
+<!-- markdownlint-disable-next-line MD036 -->
 **Test 3: Auto-scroll at Bottom**
 
 - Start new command while scrolled to bottom
 - ✅ Expected: Auto-scroll continues for new output
 - ✅ Actual: Auto-scroll works correctly (scrollLine follows baseY)
 
+<!-- markdownlint-disable-next-line MD036 -->
 **Test 4: Tab Switching**
 
 - Scroll up in terminal
@@ -173,14 +177,14 @@ find / -name "*.txt" 2>/dev/null
 
 ### Changed Files
 
-```
+```console
 modified:   src/terminal/emulator.ts
 modified:   package-lock.json (npm install)
 ```
 
 ### Commit Message (Conventional Commits Format)
 
-```
+```text
 fix: preserve terminal scroll position during long-running command output
 
 Fixes scroll position jumping to top when user scrolls up during
