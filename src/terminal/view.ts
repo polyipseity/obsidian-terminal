@@ -46,6 +46,7 @@ import {
 import {
 	DisposerAddon,
 	DragAndDropAddon,
+	FollowThemeAddon,
 	RendererAddon,
 	RightClickActionAddon,
 } from "./emulator-addons.js"
@@ -694,7 +695,7 @@ export class TerminalView extends ItemView {
 				context: { language: { onChangeLanguage, value: i18n }, settings },
 				leaf,
 				state: { profile, cwd, serial },
-				app: { workspace: { requestSaveLayout } },
+				app: { workspace, workspace: { requestSaveLayout } },
 			} = this,
 			noticeSpawn = (): void => {
 				notice2(
@@ -798,67 +799,10 @@ export class TerminalView extends ItemView {
 							},
 							serial ?? void 0,
 							{
+								allowProposedApi: true,
 								...profile.type === "invalid"
 									? {}
 									: cloneAsWritable(profile.terminalOptions, cloneDeep),
-								allowProposedApi: true,
-								...((): {
-									readonly theme?: {
-										readonly background?: string
-										readonly foreground?: string
-										readonly cursor?: string
-										readonly selectionBackground?: string
-									}
-								} => {
-									if (profile.type !== "invalid" &&
-										profile.followTheme) {
-										const style = activeSelf(contentEl)
-											.getComputedStyle(contentEl.ownerDocument.body)
-										const bgColor = style
-											.getPropertyValue("--background-primary").trim()
-										const isLightBg = ((): boolean => {
-											// Handle hex color (#fff or #ffffff)
-											const hexMatch = bgColor.match(/^#([0-9a-f]{3,6})$/iu)
-											if (hexMatch) {
-												let hex = hexMatch[1]
-												if (hex.length === 3) {
-													hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2]
-												}
-												const r = parseInt(hex.slice(0, 2), 16)
-												const g = parseInt(hex.slice(2, 4), 16)
-												const b = parseInt(hex.slice(4, 6), 16)
-												return (0.299 * r + 0.587 * g + 0.114 * b) > 128
-											}
-											// Handle rgb() format
-											const rgbMatch = bgColor.match(/\d+/gu)
-											if (rgbMatch && rgbMatch.length >= 3) {
-												const [r, g, b] = rgbMatch.map(Number)
-												return (0.299 * r + 0.587 * g + 0.114 * b) > 128
-											}
-											return false
-										})()
-										const fgColor = style
-											.getPropertyValue("--text-normal").trim() ||
-											style.color ||
-											(isLightBg ? "#000000" : "#ffffff")
-										const accentColor = style
-											.getPropertyValue("--interactive-accent").trim()
-										const selectionColor =
-											isLightBg ? "rgba(0, 0, 0, 0.3)" : "rgba(255, 255, 255, 0.3)"
-										if (bgColor || fgColor) {
-											return {
-												theme: {
-													...profile.terminalOptions.theme,
-													...bgColor && { background: bgColor },
-													...fgColor && { foreground: fgColor },
-													...accentColor && { cursor: accentColor },
-													selectionBackground: selectionColor,
-												},
-											}
-										}
-									}
-									return {}
-								})(),
 							},
 							{
 								disposer: new DisposerAddon(
@@ -871,6 +815,7 @@ export class TerminalView extends ItemView {
 									() => { this.find?.setResults("") },
 								),
 								dragAndDrop: new DragAndDropAddon(ele),
+								followTheme: new FollowThemeAddon(ele, workspace, () => profile.type === "invalid" || profile.followTheme),
 								ligatures: new LigaturesAddon({}),
 								renderer: new RendererAddon(
 									() => new CanvasAddon(),
@@ -920,58 +865,6 @@ export class TerminalView extends ItemView {
 						cur => { renderer.use(cur) },
 					))
 					renderer.use(settings.value.preferredRenderer)
-					if (profile.type !== "invalid" &&
-						profile.followTheme) {
-						const updateThemeColors = (): void => {
-							const style = activeSelf(contentEl)
-								.getComputedStyle(contentEl.ownerDocument.body)
-							const bgColor = style
-								.getPropertyValue("--background-primary").trim()
-							const isLightBg = ((): boolean => {
-								// Handle hex color (#fff or #ffffff)
-								const hexMatch = bgColor.match(/^#([0-9a-f]{3,6})$/iu)
-								if (hexMatch) {
-									let hex = hexMatch[1]
-									if (hex.length === 3) {
-										hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2]
-									}
-									const r = parseInt(hex.slice(0, 2), 16)
-									const g = parseInt(hex.slice(2, 4), 16)
-									const b = parseInt(hex.slice(4, 6), 16)
-									return (0.299 * r + 0.587 * g + 0.114 * b) > 128
-								}
-								// Handle rgb() format
-								const rgbMatch = bgColor.match(/\d+/gu)
-								if (rgbMatch && rgbMatch.length >= 3) {
-									const [r, g, b] = rgbMatch.map(Number)
-									return (0.299 * r + 0.587 * g + 0.114 * b) > 128
-								}
-								return false
-							})()
-							const fgColor = style
-								.getPropertyValue("--text-normal").trim() ||
-								style.color ||
-								(isLightBg ? "#000000" : "#ffffff")
-							const accentColor = style
-								.getPropertyValue("--interactive-accent").trim()
-							const selectionColor =
-								isLightBg ? "rgba(0, 0, 0, 0.3)" : "rgba(255, 255, 255, 0.3)"
-							if (bgColor || fgColor) {
-								terminal.options.theme = {
-									...terminal.options.theme,
-									...bgColor && { background: bgColor },
-									...fgColor && { foreground: fgColor },
-									...accentColor && { cursor: accentColor },
-									selectionBackground: selectionColor,
-								}
-							}
-						}
-						const eventRef = context.app.workspace.on(
-							"css-change",
-							updateThemeColors,
-						)
-						context.registerEvent(eventRef)
-					}
 					search.onDidChangeResults(results0 => {
 						const { resultIndex, resultCount } = results0,
 							results = resultIndex === -1 && resultCount > 0
@@ -1012,6 +905,7 @@ export namespace TerminalView {
 	export interface Addons {
 		readonly disposer: DisposerAddon
 		readonly dragAndDrop: DragAndDropAddon
+		readonly followTheme: FollowThemeAddon
 		readonly ligatures: LigaturesAddon
 		readonly renderer: RendererAddon
 		readonly rightClickAction: RightClickActionAddon
