@@ -9,6 +9,7 @@ This is **Terminal for Obsidian** - an Obsidian plugin that integrates consoles,
 ## Build & Development Commands
 
 ### Essential Commands
+
 ```bash
 # Install dependencies
 npm install
@@ -38,6 +39,7 @@ npm run obsidian:install:force
 ```
 
 ### Build System
+
 - **esbuild** for bundling (see `build/build.mjs`)
 - Build outputs to project root: `main.js` (1.9MB minified), `styles.css`
 - Minification enabled in production, disabled in dev mode
@@ -80,6 +82,7 @@ npm run obsidian:install:force
 ### Key State Management
 
 **Terminal State Persistence:**
+
 - `XtermTerminalEmulator.State` interface stores:
   - `columns`, `rows`: Terminal dimensions
   - `data`: Serialized buffer content (via SerializeAddon)
@@ -88,6 +91,7 @@ npm run obsidian:install:force
 - Restoration: Constructor accepts state, calls `writePromise()` + `scrollToLine()`
 
 **View State Flow:**
+
 ```
 User action → TerminalView.setState() → State deserialization
            → startEmulator() → XtermTerminalEmulator constructor
@@ -98,11 +102,13 @@ User action → TerminalView.setState() → State deserialization
 ### Profile System
 
 Profiles defined in `src/terminal/profile-presets.ts`:
+
 - **Integrated profiles**: Run shells inside Obsidian (bash, zsh, pwsh, etc.)
 - **External profiles**: Launch external terminal emulators
 - **Developer console**: JavaScript REPL with Obsidian API access
 
 Profile properties in `src/terminal/profile-properties.ts`:
+
 - `integratable`: Can run integrated (vs external only)
 - `platforms`: Supported OS (darwin, linux, win32)
 - `terminalOptions`: xterm.js ITerminalOptions configuration
@@ -110,6 +116,7 @@ Profile properties in `src/terminal/profile-properties.ts`:
 ### Renderer System
 
 `src/terminal/emulator-addons.ts` - `RendererAddon`:
+
 - Manages Canvas vs WebGL rendering
 - User preference: `settings.value.preferredRenderer`
 - Fallback chain: WebGL → Canvas → DOM
@@ -119,17 +126,20 @@ Profile properties in `src/terminal/profile-properties.ts`:
 **Problem:** viewportY not saved/restored, causing scroll to jump to top during long output.
 
 **Solution implemented in `src/terminal/emulator.ts`:**
+
 1. Added `viewportY: number` to `State` interface (line 193)
 2. Capture in `serialize()`: `viewportY: this.terminal.buffer.active.viewportY` (line 184)
 3. Restore in constructor after data write: `terminal.scrollToLine(state.viewportY, true)` (line 134)
 
 **Testing scroll fix:**
+
 ```bash
 # Generate long output
 find / -name "*.txt" 2>/dev/null
 # or
 for i in {1..1000}; do echo "Line $i"; sleep 0.01; done
 ```
+
 Scroll up during execution - position should be maintained.
 
 ## Source Structure
@@ -161,10 +171,12 @@ src/
 ## xterm.js Integration
 
 **Core dependencies:**
+
 - `@xterm/xterm` v5.5.0 - Base terminal
 - Addons: canvas, webgl, fit, serialize, search, ligatures, unicode11, web-links
 
 **Key APIs used:**
+
 - `terminal.buffer.active.viewportY` - Current scroll position
 - `terminal.scrollToLine(line, disableSmoothScroll)` - Scroll to absolute line
 - `terminal.onWriteParsed()` - Trigger on content update
@@ -172,6 +184,7 @@ src/
 - `terminal.onTitleChange()` - Update tab title
 
 **Viewport synchronization:**
+
 - xterm.js manages internal `Viewport` class (`src/browser/Viewport.ts` in xterm.js)
 - Our plugin must preserve `viewportY` across serialization cycles
 - Restore after data write to prevent scroll position loss
@@ -179,7 +192,9 @@ src/
 ## Development Patterns
 
 ### Async Pattern for Terminal Operations
+
 Terminal operations are heavily async with Promise chains:
+
 ```typescript
 this.pseudoterminal = write.then(async () => {
     const pty0 = await pseudoterminal(terminal, addons0)
@@ -189,12 +204,16 @@ this.pseudoterminal = write.then(async () => {
 ```
 
 ### Debouncing/Throttling
+
 Resize operations use `asyncDebounce(throttle(...))` to prevent excessive calls:
+
 - `TERMINAL_EMULATOR_RESIZE_WAIT` - Emulator resize delay
 - `TERMINAL_PTY_RESIZE_WAIT` - PTY resize delay
 
 ### Settings Mutation Observation
+
 Settings use reactive pattern:
+
 ```typescript
 settings.onMutate(
     settings0 => settings0.preferredRenderer,
@@ -203,7 +222,9 @@ settings.onMutate(
 ```
 
 ### Svelte for UI Components
+
 Find component (`FindComponent`) uses Svelte 5 mount/unmount API:
+
 ```typescript
 this.find = mount(FindComponent, { props: {...}, target: contentEl })
 unmount(this.find, { outro: true })
@@ -212,12 +233,14 @@ unmount(this.find, { outro: true })
 ## Changesets for Contributions
 
 When creating PRs, add changeset files describing changes:
+
 ```bash
 # Create changeset interactively
 npx changeset add
 ```
 
 Changeset format:
+
 ```markdown
 ---
 "obsidian-terminal": patch
@@ -229,11 +252,13 @@ Description of change. ([GH#123](PR-link) by [@username](profile-link))
 ## Python Dependencies (Windows Only)
 
 Required for Windows integrated terminals:
+
 ```bash
 pip3 install psutil==5.9.5 pywinctl==0.0.50 typing_extensions==4.7.1
 ```
 
 Scripts:
+
 - `src/terminal/unix_pseudoterminal.py` - Unix PTY
 - `src/terminal/win32_resizer.py` - Windows terminal resizing
 
@@ -255,6 +280,7 @@ Scripts:
 ## API Surface
 
 Public API in `src/@types/obsidian-terminal.ts`:
+
 - Exposes terminal plugin API for other plugins
 - Access via `app.plugins.plugins.terminal`
 - Developer console context variable: `$$` (dynamically change terminal options)
@@ -262,6 +288,7 @@ Public API in `src/@types/obsidian-terminal.ts`:
 ## Internationalization
 
 Localization files: `assets/locales/{lang}/translation.json`
+
 - Uses i18next for translations
 - Asset keys in separate `asset.json` files (icons, etc.)
 - Language strings in `language.json`
@@ -271,6 +298,7 @@ Localization files: `assets/locales/{lang}/translation.json`
 Currently, this project does not have a test infrastructure. For future improvements, consider adding:
 
 ### Recommended Test Framework
+
 - **Vitest** or **Jest** with TypeScript support
 - `@testing-library` for UI component testing
 - Mock xterm.js Terminal and Buffer APIs
@@ -278,6 +306,7 @@ Currently, this project does not have a test infrastructure. For future improvem
 ### Critical Test Cases for Scroll Position Fix
 
 **Edge Cases for viewportY Restoration:**
+
 ```typescript
 // Test 1: Restoring viewportY = 0 (should not scroll)
 test('viewportY restoration skips when at top', () => {
@@ -323,12 +352,14 @@ test('multiple save/restore cycles maintain scroll position', () => {
 ### Debug Mode Testing
 
 Enable debug logging in development:
+
 ```javascript
 // In browser console or localStorage
 localStorage.setItem('terminal-debug', 'true')
 ```
 
 This will log:
+
 - Saved viewportY values during serialization
 - Restoration attempts with current buffer state
 - Bounds clamping operations
@@ -337,6 +368,7 @@ This will log:
 ### Manual Testing Checklist
 
 When testing scroll position fixes:
+
 1. Run long command: `find / -name "*.txt" 2>/dev/null`
 2. Scroll up mid-execution
 3. Switch to another pane/tab (triggers state save)

@@ -5,13 +5,16 @@
 **Issue**: Terminal scroll position jumps to the top (oldest history) during long-running command output when user has scrolled up to view previous output.
 
 **Reproduction Steps**:
+
 1. Open a terminal in Obsidian
 2. Run a long-running command that produces continuous output:
+
    ```bash
    find / -name "*.txt" 2>/dev/null
    # or
    for i in {1..1000}; do echo "Line $i"; sleep 0.01; done
    ```
+
 3. While the command is running, scroll up to view earlier output
 4. **Bug**: Scroll position jumps back to the top of the buffer instead of maintaining the user's scroll position
 
@@ -77,6 +80,7 @@ if (state) {
 ```
 
 **Key Implementation Details**:
+
 - Uses xterm.js official API: `terminal.buffer.active.viewportY` for reading scroll position
 - Uses `terminal.scrollToLine(line, disableSmoothScroll)` for restoration
 - Restoration happens AFTER buffer data is written (in Promise chain) to ensure correct timing
@@ -112,27 +116,33 @@ export function fix(self0: unknown): Fixed<State> {
 ### Manual Test Cases
 
 **Test 1: Long-running Command with Scroll**
+
 ```bash
 for i in {1..1000}; do echo "Line $i"; sleep 0.01; done
 ```
+
 - Scroll up to line ~500 during execution
 - ✅ Expected: Position maintained at line ~500
 - ✅ Actual: Position successfully maintained
 
 **Test 2: File Search with Scroll**
+
 ```bash
 find / -name "*.txt" 2>/dev/null
 ```
+
 - Scroll up during search
 - ✅ Expected: Position maintained
 - ✅ Actual: Position successfully maintained
 
 **Test 3: Auto-scroll at Bottom**
+
 - Start new command while scrolled to bottom
 - ✅ Expected: Auto-scroll continues for new output
 - ✅ Actual: Auto-scroll works correctly (viewportY follows baseY)
 
 **Test 4: Tab Switching**
+
 - Scroll up in terminal
 - Switch to another tab and back
 - ✅ Expected: Position preserved across tab switches
@@ -162,12 +172,14 @@ find / -name "*.txt" 2>/dev/null
 ## Git Commit Information
 
 ### Changed Files
+
 ```
 modified:   src/terminal/emulator.ts
 modified:   package-lock.json (npm install)
 ```
 
 ### Commit Message (Conventional Commits Format)
+
 ```
 fix: preserve terminal scroll position during long-running command output
 
@@ -204,6 +216,7 @@ When prompted, create a changeset with:
 **Type**: `patch` (bug fix)
 
 **Content**:
+
 ```markdown
 ---
 "obsidian-terminal": patch

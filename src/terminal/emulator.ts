@@ -66,7 +66,7 @@ export class XtermTerminalEmulator<A> {
 	public readonly terminal
 	public readonly addons
 	public readonly pseudoterminal
-	
+
 	protected readonly resizeEmulator = asyncDebounce(throttle((
 		resolve: (value: AsyncOrSync<void>) => void,
 		reject: (reason?: unknown) => void,
@@ -139,11 +139,11 @@ export class XtermTerminalEmulator<A> {
 
 					if (debugEnabled) {
 						/* @__PURE__ */ activeSelf(element).console.debug('[Terminal] Restoring scroll position:', {
-							savedViewportY: state.viewportY,
-							currentBaseY: active.baseY,
-							rows: terminal.rows,
-							wasAtBottom: state.wasAtBottom,
-						})
+						savedViewportY: state.viewportY,
+						currentBaseY: active.baseY,
+						rows: terminal.rows,
+						wasAtBottom: state.wasAtBottom,
+					})
 					}
 
 					// If user was at bottom, restore auto-scroll behavior
@@ -159,10 +159,10 @@ export class XtermTerminalEmulator<A> {
 
 						if (debugEnabled && safeViewportY !== state.viewportY) {
 							/* @__PURE__ */ activeSelf(element).console.debug('[Terminal] Clamped viewportY:', {
-								original: state.viewportY,
-								clamped: safeViewportY,
-								maxScrollY,
-							})
+							original: state.viewportY,
+							clamped: safeViewportY,
+							maxScrollY,
+						})
 						}
 
 						terminal.scrollToLine(safeViewportY, true)
