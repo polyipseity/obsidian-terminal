@@ -815,7 +815,11 @@ export class TerminalView extends ItemView {
 									() => { this.find?.setResults("") },
 								),
 								dragAndDrop: new DragAndDropAddon(ele),
-								followTheme: new FollowThemeAddon(ele, workspace, () => profile.type === "invalid" || profile.followTheme),
+								followTheme: new FollowThemeAddon(ele, workspace, {
+									enabled() {
+										return profile.type === "invalid" || profile.followTheme
+									},
+								}),
 								ligatures: new LigaturesAddon({}),
 								renderer: new RendererAddon(
 									() => new CanvasAddon(),
