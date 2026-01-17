@@ -82,7 +82,7 @@ export interface ProfilePresets
 	extends ProfilePresets0, ExternalDefaults, IntegratedDefaults { }
 const PROFILE_PRESETS0 = deepFreeze({
 	bashIntegrated: {
-		args: ["-l"],
+		args: ["--login"],
 		executable: "/bin/bash",
 		name: "",
 		platforms: { darwin: true, linux: true },
@@ -303,7 +303,7 @@ const PROFILE_PRESETS0 = deepFreeze({
 		type: "external",
 	},
 	zshIntegrated: {
-		args: ["-l"],
+		args: ["--login"],
 		executable: "/bin/zsh",
 		name: "",
 		platforms: { darwin: true, linux: true },
