@@ -1,16 +1,19 @@
 import {
 	Functions,
+	type PluginContext,
 	activeSelf,
 	consumeEvent,
 	deepFreeze,
 	isNonNil,
 	replaceAllRegex,
+	revealPrivate,
 } from "@polyipseity/obsidian-plugin-library"
 import type { ITerminalAddon, ITheme, Terminal } from "@xterm/xterm"
 import { constant, isUndefined } from "lodash-es"
 import type { CanvasAddon } from "@xterm/addon-canvas"
 import type { WebglAddon } from "@xterm/addon-webgl"
-import type { Workspace } from "obsidian"
+import { around } from "monkey-around"
+import { noop } from "ts-essentials"
 
 export class DisposerAddon extends Functions implements ITerminalAddon {
 	public constructor(...args: readonly (() => void)[]) {
@@ -155,8 +158,8 @@ export class FollowThemeAddon implements ITerminalAddon {
 	#lastThemeKey = ''
 
 	public constructor(
+		protected readonly context: PluginContext,
 		protected readonly element: HTMLElement,
-		protected readonly workspace: Workspace,
 		protected readonly opts: FollowThemeAddon.Options = {},
 	) { }
 
@@ -191,13 +194,14 @@ export class FollowThemeAddon implements ITerminalAddon {
 		probe.style.pointerEvents = 'none'
 		probe.style.visibility = 'hidden'
 		probe.style.backgroundColor = `var(${varName})`
-		attachTo.appendChild(probe)
-		let resolved
-		try {
-			resolved = view?.getComputedStyle(probe).backgroundColor ?? ''
-		} finally {
-			probe.remove()
-		}
+		const resolved = ((): string => {
+			attachTo.appendChild(probe)
+			try {
+				return view?.getComputedStyle(probe).backgroundColor ?? ''
+			} finally {
+				probe.remove()
+			}
+		})()
 
 		return resolved === '' ? null : resolved
 	}
@@ -348,10 +352,28 @@ export class FollowThemeAddon implements ITerminalAddon {
 		// Initial apply
 		update()
 
-		// Keep in sync with app CSS/theme changes (no throttling)
-		// Obsidian already takes care of system-level theme changes
-		const ref = this.workspace.on('css-change', update)
-		this.#disposer.push(() => { this.workspace.offref(ref) })
+		const { app, app: { workspace } } = this.context,
+
+			// Keep in sync with app CSS/theme changes (no throttling)
+			// Obsidian already takes care of system-level theme changes
+			ref = workspace.on('css-change', update)
+		this.#disposer.push(() => { workspace.offref(ref) })
+
+		revealPrivate(this.context, [app], app2 => {
+			// Patch app.setAccentColor to invoke update after it runs
+			const unpatchSetAccent = around(app2, {
+				setAccentColor(next) {
+					return function patched(
+						this: typeof app,
+						...args: Parameters<typeof next>
+					): ReturnType<typeof next> {
+						next.apply(this, args)
+						update()
+					}
+				},
+			})
+			this.#disposer.push(unpatchSetAccent)
+		}, noop)
 	}
 
 	public dispose(): void {
@@ -471,18 +493,19 @@ export class FollowThemeAddon implements ITerminalAddon {
 			return null
 		}
 
-		doc.body.appendChild(span)
-		let colorStr
-		try {
-			colorStr = view.getComputedStyle(span).color
-		} finally {
-			span.remove()
-		}
+		const colorStr = ((): string => {
+			doc.body.appendChild(span)
+			try {
+				return view.getComputedStyle(span).color
+			} finally {
+				span.remove()
+			}
+		})(),
 
-		// Extract numeric channels with named groups
-		const RGBA_REGEX =
-			// eslint-disable-next-line max-len
-			/rgba?\s*\(\s*(?<red>\d+(?:\.\d+)?)\s*,\s*(?<green>\d+(?:\.\d+)?)\s*,\s*(?<blue>\d+(?:\.\d+)?)\s*(?:,\s*(?<alpha>\d+(?:\.\d+)?)\s*)?\)/iu,
+			// Extract numeric channels with named groups
+			RGBA_REGEX =
+				// eslint-disable-next-line max-len
+				/rgba?\s*\(\s*(?<red>\d+(?:\.\d+)?)\s*,\s*(?<green>\d+(?:\.\d+)?)\s*,\s*(?<blue>\d+(?:\.\d+)?)\s*(?:,\s*(?<alpha>\d+(?:\.\d+)?)\s*)?\)/iu,
 			match = RGBA_REGEX.exec(colorStr)
 
 		if (!match?.groups) {

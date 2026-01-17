@@ -695,7 +695,7 @@ export class TerminalView extends ItemView {
 				context: { language: { onChangeLanguage, value: i18n }, settings },
 				leaf,
 				state: { profile, cwd, serial },
-				app: { workspace, workspace: { requestSaveLayout } },
+				app: { workspace: { requestSaveLayout } },
 			} = this,
 			noticeSpawn = (): void => {
 				notice2(
@@ -815,7 +815,7 @@ export class TerminalView extends ItemView {
 									() => { this.find?.setResults("") },
 								),
 								dragAndDrop: new DragAndDropAddon(ele),
-								followTheme: new FollowThemeAddon(ele, workspace, {
+								followTheme: new FollowThemeAddon(context, ele, {
 									enabled(): boolean {
 										return profile.type === "invalid" || profile.followTheme
 									},
