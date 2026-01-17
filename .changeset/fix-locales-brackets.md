@@ -1,5 +1,5 @@
 ---
-"@polyipseity/obsidian-terminal": patch
+"obsidian-terminal": patch
 ---
 
 Fix invalid JSON in translation files: ([GH#66](https://github.com/polyipseity/obsidian-terminal/pull/66) by [@HNIdesu](https://github.com/HNIdesu))
