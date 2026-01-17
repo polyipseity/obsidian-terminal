@@ -310,31 +310,31 @@ Currently, this project does not have a test infrastructure. For future improvem
 ```typescript
 // Test 1: Restoring scrollLine = 0 (should not scroll)
 test('scrollLine restoration skips when at top', () => {
-    const state = { columns: 80, rows: 24, data: 'test\n', scrollLine: 0, wasAtBottom: false }
+    const state = { columns: 80, rows: 24, data: 'test\n', scrollLine: 0 }
     // Assert: no scrollToLine() call
 })
 
 // Test 2: Restoring with empty buffer
 test('scrollLine restoration handles empty buffer', () => {
-    const state = { columns: 80, rows: 24, data: '', scrollLine: 5, wasAtBottom: false }
+    const state = { columns: 80, rows: 24, data: '', scrollLine: 5 }
     // Assert: scrollLine clamped to 0
 })
 
 // Test 3: Restoring with scrollLine larger than buffer
 test('scrollLine restoration clamps out-of-bounds values', () => {
-    const state = { columns: 80, rows: 24, data: 'line1\nline2\n', scrollLine: 9999, wasAtBottom: false }
+    const state = { columns: 80, rows: 24, data: 'line1\nline2\n', scrollLine: 9999 }
     // Assert: scrollLine clamped to maxScrollY
 })
 
 // Test 4: Restoring with negative scrollLine
 test('scrollLine restoration clamps negative values', () => {
-    const state = { columns: 80, rows: 24, data: 'test\n', scrollLine: -10, wasAtBottom: false }
+    const state = { columns: 80, rows: 24, data: 'test\n', scrollLine: -10 }
     // Assert: scrollLine clamped to 0
 })
 
 // Test 5: Auto-scroll behavior preservation
 test('wasAtBottom flag restores auto-scroll behavior', () => {
-    const state = { columns: 80, rows: 24, data: 'test\n', scrollLine: 0, wasAtBottom: true }
+    const state = { columns: 80, rows: 24, data: 'test\n', scrollLine: -1 }
     // Assert: scrollToBottom() called instead of scrollToLine()
 })
 

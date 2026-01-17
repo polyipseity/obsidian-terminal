@@ -130,20 +130,16 @@ export class XtermTerminalEmulator<A> {
 			terminal.resize(state.columns, state.rows)
 			write = writePromise(terminal, state.data).then(() => {
 				// Restore scroll position after data is written
-				if (state.scrollLine !== undefined && state.scrollLine !== 0) {
-					const { active } = terminal.buffer
-
-					// If user was at bottom, restore auto-scroll behavior
-					if (state.wasAtBottom) {
-						terminal.scrollToBottom()
-					} else {
-						// User was scrolled up - restore exact position with bounds checking
-						const maxScrollY = Math.max(0, active.baseY - terminal.rows + 1)
-						const safeScrollLine = Math.min(Math.max(0, state.scrollLine), maxScrollY)
-
-						terminal.scrollToLine(safeScrollLine, true)
-					}
+				// If user was at bottom, restore auto-scroll behavior
+				if (state.scrollLine === XtermTerminalEmulator.State.SCROLL_LINE_BOTTOM) {
+					terminal.scrollToBottom()
+					return;
 				}
+				// User was scrolled up - restore exact position with bounds checking
+				const { active } = terminal.buffer
+				const maxScrollY = Math.max(0, active.baseY - terminal.rows + 1)
+				const safeScrollLine = Math.min(Math.max(0, state.scrollLine), maxScrollY)
+				terminal.scrollToLine(safeScrollLine)
 			})
 		}
 		this.pseudoterminal = write.then(async () => {
@@ -191,13 +187,15 @@ export class XtermTerminalEmulator<A> {
 
 	public serialize(): XtermTerminalEmulator.State {
 		const { active } = this.terminal.buffer
-		const scrollLine = active.viewportY
+		let scrollLine = active.viewportY
 
 		// Only consider "at bottom" if there's actually scrollable content
 		// This prevents false positives in initial/empty state where baseY < rows
 		const hasScrollableContent = active.baseY >= this.terminal.rows
 		const isAtBottomPosition = scrollLine >= active.baseY - this.terminal.rows + 1
-		const wasAtBottom = hasScrollableContent && isAtBottomPosition
+		if (hasScrollableContent && isAtBottomPosition) {
+			scrollLine = XtermTerminalEmulator.State.SCROLL_LINE_BOTTOM
+		}
 
 		return deepFreeze({
 			columns: this.terminal.cols,
@@ -207,7 +205,6 @@ export class XtermTerminalEmulator<A> {
 			}),
 			rows: this.terminal.rows,
 			scrollLine,
-			wasAtBottom,
 		})
 	}
 }
@@ -216,16 +213,15 @@ export namespace XtermTerminalEmulator {
 		readonly columns: number
 		readonly rows: number
 		readonly data: string
-		readonly scrollLine: number
-		readonly wasAtBottom: boolean
+		readonly scrollLine: typeof State['SCROLL_LINE_BOTTOM'] | number
 	}
 	export namespace State {
+		export const SCROLL_LINE_BOTTOM = -1;
 		export const DEFAULT: State = deepFreeze({
 			columns: 1,
 			data: "",
 			rows: 1,
-			scrollLine: 0,
-			wasAtBottom: false,
+			scrollLine: SCROLL_LINE_BOTTOM,
 		})
 		export function fix(self0: unknown): Fixed<State> {
 			const unc = launderUnchecked<State>(self0)
@@ -234,7 +230,6 @@ export namespace XtermTerminalEmulator {
 				data: fixTyped(DEFAULT, unc, "data", ["string"]),
 				rows: fixTyped(DEFAULT, unc, "rows", ["number"]),
 				scrollLine: fixTyped(DEFAULT, unc, "scrollLine", ["number"]),
-				wasAtBottom: fixTyped(DEFAULT, unc, "wasAtBottom", ["boolean"]),
 			})
 		}
 	}

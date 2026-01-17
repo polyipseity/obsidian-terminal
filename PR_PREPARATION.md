@@ -93,7 +93,7 @@ export const DEFAULT: State = deepFreeze({
     columns: 1,
     data: "",
     rows: 1,
-    scrollLine: 0,  // NEW: Default scroll position at top
+    scrollLine: SCROLL_LINE_BOTTOM,  // NEW: Default scroll position at bottom, -1
 })
 ```
 
