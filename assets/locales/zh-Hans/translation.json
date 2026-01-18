@@ -166,7 +166,7 @@
 		"pin": "锁定",
 		"platform": "平台",
 		"platforms": {
-			"darwin": "\u200bmacOS",
+			"darwin": "macOS",
 			"linux": "Linux",
 			"unix": "Unix",
 			"win32": "Microsoft Windows",
