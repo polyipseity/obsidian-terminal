@@ -224,8 +224,8 @@
 		"terminal-exited": "$t(generic.terminal)已$t(generic.exit)：{{code}}"
 	},
 	"profile-name-formats": {
-		"long": "\"{{info.name}}\". $t(generic.profile-types.{{info.profile.type}}). {{info.id}}.",
-		"short": "\"{{info.nameOrID}}\". $t(generic.profile-types.{{info.profile.type}})."
+		"long": "$t(generic.profile-types.{{info.profile.type}})：{{info.nameOrID}}（{{info.id}}）",
+		"short": "$t(generic.profile-types.{{info.profile.type}})：{{info.nameOrID}}"
 	},
 	"profile-presets": {
 		"bashIntegrated": "bash：$t(generic.profile-types.integrated)",

@@ -240,8 +240,8 @@
 		"terminal-exited": "$t(generic.terminal, capitalize) $t(generic.exit_past): {{code}}"
 	},
 	"profile-name-formats": {
-		"long": "\"{{info.name}}\". $t(generic.profile-types.{{info.profile.type}}, capitalize). {{info.id}}.",
-		"short": "\"{{info.nameOrID}}\". $t(generic.profile-types.{{info.profile.type}}, capitalize)."
+		"long": "$t(generic.profile-types.{{info.profile.type}}, capitalize): {{info.nameOrID}} ({{info.id}})",
+		"short": "$t(generic.profile-types.{{info.profile.type}}, capitalize): {{info.nameOrID}}"
 	},
 	"profile-presets": {
 		"bashIntegrated": "bash: $t(generic.profile-types.integrated, capitalize)",
