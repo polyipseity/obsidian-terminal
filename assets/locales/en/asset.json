@@ -137,6 +137,6 @@
     "preferred-renderer-icon": "brush",
     "profiles-edit-icon": "$t(asset:generic.edit-list-icon)",
     "profiles-icon": "$t(asset:generic.profile-icon)",
-		"ribbon-profile-icon": "lucide-terminal-square"
+		"ribbon-profile-icon": "$t(asset:generic.terminal-alt-icon)"
   }
 }
