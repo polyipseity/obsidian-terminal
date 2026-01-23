@@ -136,6 +136,7 @@
     "pin-new-instance-icon": "pin",
     "preferred-renderer-icon": "brush",
     "profiles-edit-icon": "$t(asset:generic.edit-list-icon)",
-    "profiles-icon": "$t(asset:generic.profile-icon)"
+    "profiles-icon": "$t(asset:generic.profile-icon)",
+		"ribbon-profile-icon": "lucide-terminal-square"
   }
 }
