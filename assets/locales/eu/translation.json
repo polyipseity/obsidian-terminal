@@ -5,6 +5,7 @@
     "find-in-terminal": "$t(generic.find, capitalize) in $t(generic.terminal)",
     "focus-on-last-terminal": "$t(generic.focus, capitalize) on last $t(generic.terminal)",
     "open-developer-console": "$t(generic.open, capitalize) $t(generic.profile-types.developerConsole)",
+		"open-terminal-ribbon-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.ribbon-profile)",
     "open-documentation-changelog": "$t(generic.open, capitalize) $t(generic.documentations.changelog)",
     "open-documentation-donate": "$t(generic.open, capitalize) $t(generic.documentations.donate)",
     "open-documentation-readme": "$t(generic.open, capitalize) $t(generic.documentations.readme)",
