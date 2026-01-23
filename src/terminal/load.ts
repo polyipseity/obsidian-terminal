@@ -131,7 +131,17 @@ export function loadTerminal(context: TerminalPlugin): void {
 		i18n.t("asset:ribbons.open-terminal-id"),
 		i18n.t("asset:ribbons.open-terminal-icon"),
 		() => i18n.t("ribbons.open-terminal"),
-		() => { new SelectProfileModal(context, adapter?.getBasePath()).open() },
+		() => {
+			const { ribbonProfile, profiles } = settings.value
+			if (ribbonProfile && profiles[ribbonProfile]) {
+				const profile = profiles[ribbonProfile]
+				if (Settings.Profile.isCompatible(profile, Platform.CURRENT)) {
+					spawnTerminal(context, profile, { cwd: adapter?.getBasePath() })
+					return
+				}
+			}
+			new SelectProfileModal(context, adapter?.getBasePath()).open()
+		},
 	)
 	context.registerEvent(workspace.on("file-menu", (menu, file) => {
 		if (!settings.value.addToContextMenu) {
