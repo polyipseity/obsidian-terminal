@@ -249,6 +249,7 @@ export class TerminalView extends ItemView {
 
 	protected static lastFocusTimes = new Map<TerminalView, number>()
 	protected static readonly focusedScope = new Scope()
+	protected static lastNonTerminalLeaf: WorkspaceLeaf | null = null
 
 	static #namespacedType: string
 	#title0 = ""
@@ -366,12 +367,20 @@ export class TerminalView extends ItemView {
 	}
 
 	public static load(context: TerminalPlugin): void {
-		const { language: { value: i18n } } = context
+		const { language: { value: i18n }, app: { workspace } } = context
 		this.#namespacedType = this.type.namespaced(context)
 		context.registerView(
 			TerminalView.type.namespaced(context),
 			leaf => new TerminalView(context, leaf),
 		)
+
+		// Track the last non-terminal leaf for restoring focus on unfocus
+		const namespacedType = this.#namespacedType
+		context.registerEvent(workspace.on("active-leaf-change", leaf => {
+			if (leaf && leaf.view.getViewType() !== namespacedType) {
+				this.lastNonTerminalLeaf = leaf
+			}
+		}))
 
 		const withLastFocusedView = (
 			callback: (checking: boolean, view: TerminalView) => boolean,
@@ -587,6 +596,14 @@ export class TerminalView extends ItemView {
 	}
 
 	protected unfocus(): void {
+		const { lastNonTerminalLeaf } = TerminalView,
+			{ app: { workspace } } = this
+		// Try to restore focus to the last non-terminal leaf
+		if (lastNonTerminalLeaf && workspace.getLeavesOfType(lastNonTerminalLeaf.view.getViewType()).includes(lastNonTerminalLeaf)) {
+			workspace.setActiveLeaf(lastNonTerminalLeaf, { focus: true })
+			return
+		}
+		// Fallback: just blur the active element
 		const { contentEl: { ownerDocument: { activeElement } } } = this
 		if (instanceOf(activeElement, HTMLElement) ||
 			instanceOf(activeElement, SVGElement)) {
