@@ -24,9 +24,10 @@ agent: agent
    - Inspect Command 1 output and repository conventions (CONTRIBUTING.md, `.github/`, `package.json`, `commitlint`, `.husky`, `CHANGELOG.md`, etc.).
    - Produce a commit message with:
      - Short subject (~50 chars)
-     - Optional body (~72 chars/line, bullets allowed)
+     - Optional body (each line **must be wrapped to 72 characters or fewer**; bullets allowed)
      - Footer (BREAKING CHANGE / Refs / Ticket), including `${input:extra}` if provided
-   - Prefer tooling-enforced rules. If unsure, default to Conventional Commits.
+   - **If the commit is rejected by commitlint due to line length or other formatting, rewrap and retry until the commit passes.**
+   - Prefer tooling-enforced rules. If unsure, default to Conventional Commits. **Strictly enforce commit header and body line length (72 chars max) as required by commitlint.**
    - Do not show the proposed commit message to the user for confirmation before creating the commit. Proceed automatically to creating the commit using best-effort defaults and available context.
 
 3. **Create the commit**
