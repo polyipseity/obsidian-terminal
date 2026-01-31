@@ -13,6 +13,8 @@ name: Commit message lint
 
 on:
   push:
+    tags-ignore:
+      - "**" # Ignore tag pushes
   pull_request:
   workflow_dispatch:
 
