@@ -17,14 +17,16 @@ This guide provides clear, actionable instructions for AI coding agents working 
 
 ## 2. Developer Workflows
 
+> **Note:** Always prefer `pnpm` over `npm` if possible. Use `pnpm` for all commands unless you have a specific reason to use `npm`. Both are shown below for compatibility.
+
 - **Build:**
-  - `npm install` — install dependencies
-  - `npm run build` — production build (runs checks, then builds)
-  - `npm run dev` — development build (watch mode)
-  - `npm run obsidian:install <vault>` — install plugin to vault
+  - `pnpm install` (preferred) or `npm install` — install dependencies
+  - `pnpm build` (preferred) or `npm run build` — production build (runs checks, then builds)
+  - `pnpm dev` (preferred) or `npm run dev` — development build (watch mode)
+  - `pnpm obsidian:install <vault>` (preferred) or `npm run obsidian:install <vault>` — install plugin to vault
 - **Lint/Typecheck:**
-  - `npm run check` — TypeScript & ESLint
-  - `npm run fix` — auto-fix lint issues
+  - `pnpm check` (preferred) or `npm run check` — TypeScript & ESLint
+  - `pnpm fix` (preferred) or `npm run fix` — auto-fix lint issues
 - **Versioning:**
   - Use `changesets` for every PR (see `README.md`)
 - **Localization:**
@@ -62,6 +64,9 @@ This guide provides clear, actionable instructions for AI coding agents working 
 **Build Script Usage:**
 
 ```sh
+# Preferred
+pnpm obsidian:install D:/path/to/vault
+# Or (if pnpm is not available)
 npm run obsidian:install D:/path/to/vault
 ```
 

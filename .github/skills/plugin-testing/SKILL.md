@@ -5,12 +5,14 @@ description: Skill for testing Obsidian plugin features in obsidian-plugin-templ
 
 # Plugin Testing Skill — obsidian-plugin-template
 
+> **Note:** Always prefer `pnpm` over `npm` if possible. Use `pnpm` for all commands unless you have a specific reason to use `npm`. Both are shown below for compatibility.
+
 Use this skill to guide both automated and manual testing of Obsidian plugin features. Ensure all tests reflect real plugin usage and production-like conditions.
 
 ## Key Testing Principles
 
-- Always build the plugin before testing (`npm run build`).
-- Use the install script to deploy to a test vault (`npm run obsidian:install <vault>`).
+- Always build the plugin before testing (`pnpm build` (preferred) or `npm run build`).
+- Use the install script to deploy to a test vault (`pnpm obsidian:install <vault>` (preferred) or `npm run obsidian:install <vault>`).
 - Test settings UI for load, save, and persistence.
 - Validate localization for all supported languages.
 - Confirm plugin lifecycle events (load/unload) work as expected.
@@ -18,9 +20,9 @@ Use this skill to guide both automated and manual testing of Obsidian plugin fea
 ## Example Test Workflow
 
 1. **Build:**
-	- Run: `npm run build`
+	- Run: `pnpm build` (preferred) or `npm run build`
 2. **Install:**
-	- Run: `npm run obsidian:install <vault directory>`
+	- Run: `pnpm obsidian:install <vault directory>` (preferred) or `npm run obsidian:install <vault directory>`
 3. **Settings UI:**
 	- Open plugin settings in Obsidian
 	- Change and save settings; reload plugin and verify persistence
