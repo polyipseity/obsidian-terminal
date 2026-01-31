@@ -29,6 +29,7 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
+          version: '*'
           cache: true
 
       - name: "Install dependencies with pnpm"
