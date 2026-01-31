@@ -88,6 +88,7 @@ Use as: `i18n.t("welcome", { user: "Alice" })`
 
 - [.github/instructions/typescript.instructions.md](.github/instructions/typescript.instructions.md) — TypeScript standards
 - [.github/instructions/localization.instructions.md](.github/instructions/localization.instructions.md) — Localization rules
+- [.github/instructions/commit-message.md](.github/instructions/commit-message.md) — Commit message convention
 - [.github/skills/plugin-testing/SKILL.md](.github/skills/plugin-testing/SKILL.md) — Plugin testing skill
 
 ---
