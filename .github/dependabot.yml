@@ -13,7 +13,7 @@ updates:
       prefix-development: "chore"
       include: "scope"
     groups:
-      all-dependencies:
+      github-actions:
         patterns:
           - "*"
 
@@ -27,6 +27,6 @@ updates:
       prefix-development: "chore"
       include: "scope"
     groups:
-      all-dependencies:
+      npm:
         patterns:
           - "*"
