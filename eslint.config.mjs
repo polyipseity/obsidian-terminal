@@ -58,20 +58,9 @@ export default defineConfig([
 			// svelte,
 		},
 		rules: {
-			"array-element-newline": ["error", "consistent"],
-			"arrow-parens": ["error", "as-needed"],
-			"brace-style": ["error", "1tbs", {
-				allowSingleLine: true,
-			}],
+			// Formatting rules removed: handled by Prettier
 			"class-methods-use-this": "off",
-			"comma-dangle": ["error", "always-multiline"],
-			"dot-location": ["error", "property"],
-			"func-style": ["error", "declaration", {
-				allowArrowFunctions: true,
-			}],
-			"function-call-argument-newline": ["error", "consistent"],
-			"function-paren-newline": ["error", "multiline-arguments"],
-			"generator-star-spacing": ["error", "after"],
+			// Formatting rules removed: handled by Prettier
 			"grouped-accessor-pairs": "off",
 			"implicit-arrow-linebreak": "off",
 			"import/no-cycle": "error",
@@ -79,42 +68,21 @@ export default defineConfig([
 				amd: true,
 				commonjs: true,
 			}],
-			indent: ["error", "tab", {
-				SwitchCase: 1,
-			}],
-			"linebreak-style": "off",
-			"lines-between-class-members": ["error", "always", {
-				exceptAfterSingleLine: true,
-			}],
+			// Formatting rules removed: handled by Prettier
 			"max-classes-per-file": "off",
 			"max-depth": "off",
-			"max-len": ["error", {
-				code: 80,
-				ignorePattern: "eslint-disable",
-				ignoreRegExpLiterals: false,
-				ignoreStrings: false,
-				ignoreTemplateLiterals: false,
-				ignoreUrls: true,
-				tabWidth: 2,
-			}],
+			// Formatting rules removed: handled by Prettier
 			"max-lines": "off",
 			"max-lines-per-function": "off",
 			"max-params": "off",
 			"max-statements": "off",
 			"max-statements-per-line": "off",
-			"multiline-ternary": ["error", "always-multiline"],
-			"new-cap": ["error", {
-				properties: false,
-			}],
+			// Formatting rules removed: handled by Prettier
 			"no-confusing-arrow": "off",
 			"no-console": "off",
 			"no-continue": "off",
-			"no-inline-comments": ["error", {
-				ignorePattern: "^ @__PURE__ $",
-			}],
-			"no-magic-numbers": ["error", {
-				ignore: [-1, 0, 1, 10],
-			}],
+			// Formatting rules removed: handled by Prettier
+			// Formatting rules removed: handled by Prettier
 			"no-nested-ternary": "off",
 			"no-plusplus": "off",
 			"no-restricted-globals": [
@@ -297,34 +265,13 @@ export default defineConfig([
 				"webkitStorageInfo",
 				"window",
 			],
-			"no-tabs": ["error", {
-				allowIndentationTabs: true,
-			}],
+			// Formatting rules removed: handled by Prettier
 			"no-ternary": "off",
 			"no-underscore-dangle": ["error", {
 				allowAfterThis: true,
 			}],
 			"no-void": ["off"],
-			"object-curly-spacing": ["error", "always"],
-			"object-property-newline": ["error", {
-				allowAllPropertiesOnSameLine: true,
-			}],
-			"one-var": ["error", "consecutive"],
-			"padded-blocks": ["error", "never"],
-			"quote-props": ["error", "as-needed", {
-				keywords: true,
-				numbers: true,
-				unnecessary: true,
-			}],
-			semi: ["error", "never", {
-				beforeStatementContinuationChars: "always",
-			}],
-			"sort-vars": "off",
-			"space-before-function-paren": ["error", {
-				anonymous: "never",
-				asyncArrow: "always",
-				named: "never",
-			}],
+			// Formatting rules removed: handled by Prettier
 		},
 		settings: {
 			"import/resolver": {

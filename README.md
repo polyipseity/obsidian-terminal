@@ -65,6 +65,8 @@ This is an example change. ([GH#1](https://github.com/ghost/example/pull/1) by [
 
 This project uses the following tools to ensure code and commit quality:
 
+- __ESLint__: Linting for TypeScript/JavaScript. Run with `pnpm run check` (lint only) or `pnpm run fix` (auto-fix lint issues).
+- __Prettier__: Code formatting. Run with `pnpm run format` (format all files) or `pnpm run format:check` (check formatting only).
 - __markdownlint__: Lints Markdown files. Run with `pnpm run markdownlint` or auto-fix with `pnpm run markdownlint:fix`.
 - __commitlint__: Enforces conventional commit messages. Used automatically on commit via Husky.
 - __husky__: Manages Git hooks. Pre-commit runs `lint-staged` and pre-push runs commitlint.
@@ -78,12 +80,19 @@ To set up locally:
 
 You can manually run:
 
+- `pnpm run check` — lint all code (no formatting)
+- `pnpm run fix` — auto-fix lint issues (no formatting)
+- `pnpm run format` — format all code with Prettier
+- `pnpm run format:check` — check formatting with Prettier
 - `pnpm run markdownlint` — check all Markdown files
 - `pnpm run markdownlint:fix` — auto-fix Markdown files
 - `pnpm run commitlint` — check commit messages in range
 
 Configuration files:
 
+- `.eslintrc.*` or `eslint.config.mjs` — ESLint rules
+- `.prettierrc` — Prettier rules
+- `.prettierignore` — Prettier ignore patterns
 - `.markdownlint.json` — markdownlint rules
 - `.commitlintrc.js` — commitlint config
 - `.husky/` — Git hooks
