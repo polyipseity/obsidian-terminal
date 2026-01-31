@@ -16,12 +16,12 @@ description: Rules for translation and localization files
 ## Do / Don't
 
 - **Do:**
-	- Follow the structure and keys in the English source files
-	- Keep placeholders and references unchanged
-	- Review [assets/locales/README.md](../../assets/locales/README.md) for conventions
+  - Follow the structure and keys in the English source files
+  - Keep placeholders and references unchanged
+  - Review [assets/locales/README.md](../../assets/locales/README.md) for conventions
 - **Don't:**
-	- Translate or alter `{{...}}` or `$t(...)`
-	- Add new keys without updating the English source
+  - Translate or alter `{{...}}` or `$t(...)`
+  - Add new keys without updating the English source
 
 ## References
 

@@ -20,16 +20,16 @@ Use this skill to guide both automated and manual testing of Obsidian plugin fea
 ## Example Test Workflow
 
 1. **Build:**
-	- Run: `pnpm build` (preferred) or `npm run build`
+    - Run: `pnpm build` (preferred) or `npm run build`
 2. **Install:**
-	- Run: `pnpm obsidian:install <vault directory>` (preferred) or `npm run obsidian:install <vault directory>`
+    - Run: `pnpm obsidian:install <vault directory>` (preferred) or `npm run obsidian:install <vault directory>`
 3. **Settings UI:**
-	- Open plugin settings in Obsidian
-	- Change and save settings; reload plugin and verify persistence
+    - Open plugin settings in Obsidian
+    - Change and save settings; reload plugin and verify persistence
 4. **Localization:**
-	- Switch Obsidian language; verify all UI text updates accordingly
+    - Switch Obsidian language; verify all UI text updates accordingly
 5. **Lifecycle:**
-	- Reload or disable/enable the plugin; ensure all managers register/unload cleanly
+    - Reload or disable/enable the plugin; ensure all managers register/unload cleanly
 
 ## References
 

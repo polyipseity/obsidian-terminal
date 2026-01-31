@@ -17,13 +17,13 @@ description: Guidelines for TypeScript files in obsidian-plugin-template
 ## Do / Don't
 
 - **Do:**
-	- Use explicit types everywhere possible
-	- Keep code modular and maintainable
-	- Document complex logic with comments
+  - Use explicit types everywhere possible
+  - Keep code modular and maintainable
+  - Document complex logic with comments
 - **Don't:**
-	- Use `any` or unsafe casts
-	- Hardcode translation strings; always use `$t()`
-	- Bypass `.fix()` for settings objects
+  - Use `any` or unsafe casts
+  - Hardcode translation strings; always use `$t()`
+  - Bypass `.fix()` for settings objects
 
 ## References
 
