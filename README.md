@@ -49,6 +49,8 @@ This file is automatically opened on first install. You can reopen it in setting
 
 Contributions are welcome!
 
+### Changesets
+
 This project uses [`changesets`](https://github.com/changesets/changesets) to manage the changelog. When creating a pull request, please [add a changeset](https://github.com/changesets/changesets/blob/main/docs/intro-to-using-changesets.md#adding-changesets) describing the changes. Add multiple changesets if your pull request changes several things. End each changeset with `([PR number](PR link) by [author username](author link))`. For example, the newly created file under the directory `.changeset` should look like:
 
 ```Markdown
@@ -58,6 +60,33 @@ This project uses [`changesets`](https://github.com/changesets/changesets) to ma
 
 This is an example change. ([GH#1](https://github.com/ghost/example/pull/1) by [@ghost](https://github.com/ghost))
 ```
+
+### Linting, Commit, and Hooks
+
+This project uses the following tools to ensure code and commit quality:
+
+- __markdownlint__: Lints Markdown files. Run with `pnpm run markdownlint` or auto-fix with `pnpm run markdownlint:fix`.
+- __commitlint__: Enforces conventional commit messages. Used automatically on commit via Husky.
+- __husky__: Manages Git hooks. Pre-commit runs `lint-staged` and pre-push runs commitlint.
+- __lint-staged__: Runs linters on staged files. Markdown files are auto-fixed before commit.
+
+To set up locally:
+
+1. Run `pnpm install` to install dependencies and set up hooks.
+2. On commit, staged Markdown files will be linted and auto-fixed.
+3. Commit messages are checked for conventional format.
+
+You can manually run:
+
+- `pnpm run markdownlint` — check all Markdown files
+- `pnpm run markdownlint:fix` — auto-fix Markdown files
+- `pnpm run commitlint` — check commit messages in range
+
+Configuration files:
+
+- `.markdownlint.json` — markdownlint rules
+- `.commitlintrc.js` — commitlint config
+- `.husky/` — Git hooks
 
 ### Todos
 

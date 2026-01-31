@@ -1,0 +1,81 @@
+# GitHub Actions Workflow: Markdownlint
+#
+# This workflow runs markdownlint on all Markdown files in the repository to ensure consistent formatting and style.
+#
+# Rationale for using 'ubuntu-slim':
+# - 'ubuntu-slim' is chosen for its minimal footprint, reducing download and setup time in CI.
+# - It contains only essential packages, improving security and speeding up job execution.
+# - All required tools for markdownlint are available or easily installed on this base image.
+# - Using a slim image keeps CI resource usage efficient and avoids unnecessary dependencies.
+
+name: Markdown lint
+
+on:
+  push:
+    paths:
+      - "**/*.md" # all markdown files in the repo
+      - ".github/workflows/markdownlint.yml" # re-run when this workflow file changes
+      - ".markdownlint.jsonc" # markdownlint config (jsonc) influences linting rules
+      - ".markdownlint.json" # alternative json config file name
+      - ".markdownlint-cli2.mjs" # programmatic config (enables gitignore)
+      - ".markdownlint-cli2.jsonc" # alternate cli2 config filename
+      - "**/.markdownlint.jsonc" # markdownlint config (jsonc) influences linting rules (recursive)
+      - "**/.markdownlint.json" # alternative json config file name (recursive)
+      - "**/.markdownlint-cli2.mjs" # programmatic config (enables gitignore) (recursive)
+      - "**/.markdownlint-cli2.jsonc" # alternate cli2 config filename (recursive)
+      - "**/package.json" # scripts or config in package.json can change the lint command (recursive)
+      - "**/pnpm-lock.yaml" # dependency changes may alter linting behavior or versions (recursive)
+  pull_request:
+    paths:
+      - "**/*.md" # all markdown files in the repo
+      - ".github/workflows/markdownlint.yml" # re-run when this workflow file changes
+      - ".markdownlint.jsonc" # markdownlint config (jsonc) influences linting rules
+      - ".markdownlint.json" # alternative json config file name
+      - ".markdownlint-cli2.mjs" # programmatic config (enables gitignore)
+      - ".markdownlint-cli2.jsonc" # alternate cli2 config filename
+      - "**/.markdownlint.jsonc" # markdownlint config (jsonc) influences linting rules (recursive)
+      - "**/.markdownlint.json" # alternative json config file name (recursive)
+      - "**/.markdownlint-cli2.mjs" # programmatic config (enables gitignore) (recursive)
+      - "**/.markdownlint-cli2.jsonc" # alternate cli2 config filename (recursive)
+      - "**/package.json" # scripts or config in package.json can change the lint command (recursive)
+      - "**/pnpm-lock.yaml" # dependency changes may alter linting behavior or versions (recursive)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  markdownlint:
+    runs-on: ubuntu-slim
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v3
+        name: Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "*"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint Markdown
+        run: pnpm run markdownlint

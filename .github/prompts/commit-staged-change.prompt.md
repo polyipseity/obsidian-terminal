@@ -28,7 +28,7 @@ When run, perform the task using exactly two shell commands: one to read the sta
     - Otherwise, present the exact Command 2 you will run; the IDE will request approval and execute it. The agent MUST NOT ask the user to grant approval itself. Command 2 must be a single compound command that creates the commit from stdin and prints the new SHA. Example:
 
         ```shell
-        git commit --no-verify --file - <<'MSG'
+        git commit --file - <<'MSG'
         <full commit message>
         MSG
         && git rev-parse HEAD
