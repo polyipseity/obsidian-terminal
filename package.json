@@ -103,7 +103,7 @@
 		"obsidian:install": "npm run build && node build/obsidian-install.mjs",
 		"obsidian:install:force": "npm run build:force && node build/obsidian-install.mjs",
 		"postversion": "node build/version-post.mjs",
-		"prepare": "husky install",
+		"prepare": "husky",
 		"version": "node build/version.mjs"
 	},
 	"sideEffects": false,
