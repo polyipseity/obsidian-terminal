@@ -1,0 +1,35 @@
+---
+name: plugin-testing
+description: Skill for testing Obsidian plugin features in obsidian-plugin-template. Use for automated, manual, and integration test workflows specific to Obsidian plugins.
+---
+
+# Plugin Testing Skill — obsidian-plugin-template
+
+Use this skill to guide both automated and manual testing of Obsidian plugin features. Ensure all tests reflect real plugin usage and production-like conditions.
+
+## Key Testing Principles
+
+- Always build the plugin before testing (`npm run build`).
+- Use the install script to deploy to a test vault (`npm run obsidian:install <vault>`).
+- Test settings UI for load, save, and persistence.
+- Validate localization for all supported languages.
+- Confirm plugin lifecycle events (load/unload) work as expected.
+
+## Example Test Workflow
+
+1. **Build:**
+	- Run: `npm run build`
+2. **Install:**
+	- Run: `npm run obsidian:install <vault directory>`
+3. **Settings UI:**
+	- Open plugin settings in Obsidian
+	- Change and save settings; reload plugin and verify persistence
+4. **Localization:**
+	- Switch Obsidian language; verify all UI text updates accordingly
+5. **Lifecycle:**
+	- Reload or disable/enable the plugin; ensure all managers register/unload cleanly
+
+## References
+
+- See [src/main.ts](../../../src/main.ts) for plugin entry and lifecycle
+- For integration, ensure settings and localization are loaded as in production
