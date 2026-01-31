@@ -35,14 +35,26 @@ This guide provides clear, actionable instructions for AI coding agents working 
 
 ## 3. Coding Conventions
 
-- **TypeScript:** Strictest config (`tsconfig.json`)
-- **ESLint:** Custom config (`eslint.config.mjs`), ignores build/output
-- **Settings:** All settings objects use `.fix()` for validation/normalization
-- **Localization:** Reference keys via `$t(key)`, use `{{key}}` for interpolation
-- **Commit Messages:**
-  - All commit messages **must** follow the Conventional Commits standard.
-  - **Body lines must be wrapped at 100 characters** (enforced by commitlint/husky).
-  - See `.github/instructions/commit-message.instructions.md` for up-to-date rules and examples.
+ **Commit Messages:**
+
+- All commit messages **must** follow the Conventional Commits standard.
+- **Header must be ≤ 100 characters.**
+- **Body lines must be hard-wrapped at 100 characters** (enforced by commitlint/husky).
+- See `.github/instructions/commit-message.instructions.md` for up-to-date rules and examples.
+- All agents and contributors must comply; see `.github/instructions/commit-message.md` for agent summary.
+
+  **Example (compliant):**
+
+  ```text
+  refactor(eslint): remove @eslint/compat, eslintrc, js; update Prettier rules
+
+  - Removed @eslint/compat, @eslint/eslintrc, @eslint/js from config and lockfiles
+  - Updated Prettier to v3 and adjusted markdownlint config for new plugin
+  - Cleaned up ESLint overrides and Svelte linting comments
+
+  Refs: lint config modernization
+  ```
+
 - **Lifecycle:** Register/unload all major managers in `PLACEHOLDERPlugin.onload()`
 
 ## 4. Integration Points

@@ -40,20 +40,22 @@ Refs: dependabot config improvement
 ## Linting
 
 - All commit messages are checked by `commitlint` and `husky`.
+- **Header must be ≤ 100 characters.**
 - **Body lines must be hard-wrapped at 100 characters or less.**
-- Example (correct):
+- All agents and contributors must comply; see `AGENTS.md` for enforcement policy.
+- Example (compliant):
 
- ```text
- chore(workflows): update CI
-
- - Add explicit 'version: *' to pnpm/action-setup in ci.yml, markdownlint.yml,
-  and release-rolling.yml
- - Ensures consistent pnpm version resolution and avoids future breaking changes
+  ```text
+  refactor(eslint): remove @eslint/compat, eslintrc, js; update Prettier rules
   
- Refs: workflow maintenance
- ```
+  - Removed @eslint/compat, @eslint/eslintrc, @eslint/js from config and lockfiles
+  - Updated Prettier to v3 and adjusted markdownlint config for new plugin
+  - Cleaned up ESLint overrides and Svelte linting comments
+  
+  Refs: lint config modernization
+  ```
 
-- See `.commitlintrc.js` for rules.
+- See `.commitlintrc.mjs` for rules.
 - See `AGENTS.md` for agent compliance requirements.
 
 ## References
