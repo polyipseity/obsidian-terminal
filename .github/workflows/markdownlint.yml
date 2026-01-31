@@ -51,6 +51,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "*"
+
       - name: Install pnpm
         uses: pnpm/action-setup@v3
         with:
@@ -68,11 +73,6 @@ jobs:
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "*"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
