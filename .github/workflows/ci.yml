@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-slim
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: "Install pnpm"
         uses: pnpm/action-setup@v4
@@ -39,10 +39,10 @@ jobs:
     runs-on: ubuntu-slim
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: "Setup Node.js for npm"
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "*"
           cache: "npm"
