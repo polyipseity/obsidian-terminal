@@ -12,6 +12,10 @@ updates:
       prefix: "build"
       prefix-development: "chore"
       include: "scope"
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
 
   # NPM & pnpm (package.json, pnpm-lock.yaml, etc.)
   - package-ecosystem: "npm"
@@ -22,3 +26,7 @@ updates:
       prefix: "build"
       prefix-development: "chore"
       include: "scope"
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
