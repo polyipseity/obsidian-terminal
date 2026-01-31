@@ -5,7 +5,7 @@ This project enforces Conventional Commits for all commits. Your commit message 
 ```text
 type(scope): short summary
 
-Optional body (wrap at 100 chars)
+Optional body (wrap at 100 chars, hard wrap required)
 
 Optional footer (BREAKING CHANGE, Refs, etc)
 ```
@@ -40,8 +40,21 @@ Refs: dependabot config improvement
 ## Linting
 
 - All commit messages are checked by `commitlint` and `husky`.
-- Body lines **must not exceed 100 characters**.
+- **Body lines must be hard-wrapped at 100 characters or less.**
+- Example (correct):
+
+ ```text
+ chore(workflows): update CI
+
+ - Add explicit 'version: *' to pnpm/action-setup in ci.yml, markdownlint.yml,
+  and release-rolling.yml
+ - Ensures consistent pnpm version resolution and avoids future breaking changes
+  
+ Refs: workflow maintenance
+ ```
+
 - See `.commitlintrc.js` for rules.
+- See `AGENTS.md` for agent compliance requirements.
 
 ## References
 

@@ -39,6 +39,10 @@ This guide provides clear, actionable instructions for AI coding agents working 
 - **ESLint:** Custom config (`eslint.config.mjs`), ignores build/output
 - **Settings:** All settings objects use `.fix()` for validation/normalization
 - **Localization:** Reference keys via `$t(key)`, use `{{key}}` for interpolation
+- **Commit Messages:**
+  - All commit messages **must** follow the Conventional Commits standard.
+  - **Body lines must be wrapped at 100 characters** (enforced by commitlint/husky).
+  - See `.github/instructions/commit-message.instructions.md` for up-to-date rules and examples.
 - **Lifecycle:** Register/unload all major managers in `PLACEHOLDERPlugin.onload()`
 
 ## 4. Integration Points
