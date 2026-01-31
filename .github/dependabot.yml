@@ -1,4 +1,4 @@
-# Dependabot configuration for obsidian-plugin-template
+# Dependabot configuration
 # See https://docs.github.com/en/code-security/supply-chain-security/keeping-your-dependencies-updated-automatically/configuration-options-for-dependency-updates
 
 version: 2
@@ -9,5 +9,6 @@ updates:
     schedule:
       interval: "monthly"
     commit-message:
-      prefix: "chore(deps)"
-      prefix-development: "chore(dev-deps)"
+      prefix: "build"
+      prefix-development: "chore"
+      include: "scope"
