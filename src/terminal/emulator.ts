@@ -116,6 +116,19 @@ export class XtermTerminalEmulator<A> {
 		this.terminal = new xterm.Terminal(options)
 		const { terminal } = this
 		terminal.open(element)
+		terminal.attachCustomKeyEventHandler(event => {
+			if (event.key === "Enter" && event.shiftKey) {
+				if (event.type === "keydown") {
+					// Send ESC + CR for Shift+Enter, matching what Claude Code
+					// And other TUI apps expect for modified Enter
+					terminal.input("\x1b\r")
+				}
+				// Block both keydown and keypress to prevent xterm
+				// From also sending a plain \r
+				return false
+			}
+			return true
+		})
 		// eslint-disable-next-line prefer-object-spread
 		const addons0 = Object.assign({
 			fit: new xtermAddonFit.FitAddon(),
