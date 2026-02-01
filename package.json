@@ -62,11 +62,6 @@
 		"plugin"
 	],
 	"license": "MIT",
-	"lint-staged": {
-		"**/*.{md,markdown}": [
-			"pnpm run markdownlint:fix"
-		]
-	},
 	"main": "main.js",
 	"name": "PLACEHOLDER",
 	"obsidian": {
