@@ -22,5 +22,5 @@ const MD_GLOB_KEY = `**/*.{${FILE_GLOBS.map((g) => g.replace("**/*.", "")).join(
 export default {
 	[MD_GLOB_KEY]: ["markdownlint-cli2 --fix"],
 	"**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}":
-		["prettier --write", "eslint --cache --fix"],
+		["eslint --cache --fix", "prettier --write"],
 };
