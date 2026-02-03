@@ -17,21 +17,52 @@ This guide provides clear, actionable instructions for AI coding agents working 
 
 ## 2. Developer Workflows
 
-> **Note:** Always prefer `pnpm` over `npm` if possible. Use `pnpm` for all commands unless you have a specific reason to use `npm`. Both are shown below for compatibility.
+> **Note:** Prefer `pnpm` for development workflows. Use `npm` only when `pnpm` is unavailable.
 
-- **Build:**
-  - `pnpm install` (preferred) or `npm install` — install dependencies
-  - `pnpm build` (preferred) or `npm run build` — production build (runs checks, then builds)
-  - `pnpm dev` (preferred) or `npm run dev` — development build (watch mode)
-  - `pnpm obsidian:install <vault>` (preferred) or `npm run obsidian:install <vault>` — install plugin to vault
-- **Lint/Typecheck:**
-  - `pnpm check` (preferred) or `npm run check` — TypeScript & ESLint
-  - `pnpm fix` (preferred) or `npm run fix` — auto-fix lint issues
-- **Versioning:**
-  - Use `changesets` for every PR (see `README.md`)
-- **Localization:**
-  - Add locale: copy `assets/locales/en/translation.json`, update `assets/locales/en/language.json`
-  - See `assets/locales/README.md` for conventions (never translate `{{...}}` or `$t(...)`)
+- **Setup**
+  - `pnpm install` — install dependencies and set up Git hooks (preferred).
+  - Fallback: `npm install` (only if pnpm is not available).
+
+- **Build & Install**
+  - `pnpm build` — production build (runs checks then builds).
+  - `pnpm dev` — development/watch build.
+  - `pnpm obsidian:install <vault>` — build and install the plugin to a vault.
+  - `pnpm run obsidian:install:force <vault>` — force install using `build:force` (skips format).
+
+- **Lint & Format**
+  - `pnpm run check` — eslint + prettier(check) + markdownlint.
+  - `pnpm run format` — eslint --fix, prettier --write, markdownlint --fix.
+
+- **Versioning**
+  - Use `changesets` for PRs; version lifecycle scripts are configured (`version` / `postversion`).
+
+- **Localization**
+  - Add locales by copying `assets/locales/en/translation.json` and updating `assets/locales/*/language.json` as needed. See `assets/locales/README.md` for conventions.
+
+---
+
+## Scripts (package.json) 🔧
+
+Quick reference for scripts in `package.json`. Use `pnpm` (preferred).
+
+- `build` — runs `format` then `build:force`.
+- `build:force` — runs `node build/build.mjs` (internal build implementation).
+- `build:dev` — runs `build:force` in dev mode (`pnpm run build:force -- dev`).
+- `obsidian:install` — runs `build` then `node build/obsidian-install.mjs` (install to vault).
+- `obsidian:install:force` — runs `build:force` then `node build/obsidian-install.mjs`.
+- `check` — runs `check:eslint`, `check:prettier`, `check:md`.
+- `check:eslint` — `eslint --cache . --max-warnings=0`.
+- `check:prettier` — `prettier --check .`.
+- `check:md` — `markdownlint-cli2`.
+- `format` — runs `format:eslint`, `format:prettier`, `format:md`.
+- `format:eslint` — `eslint --cache . --fix .`.
+- `format:prettier` — `prettier --write .`.
+- `format:md` — `markdownlint-cli2 --fix`.
+- `commitlint` — `commitlint --from=origin/main --to=HEAD`.
+- `prepare` — runs `husky` to set up Git hooks.
+- `version` / `postversion` — version lifecycle scripts (`node build/version.mjs`, `node build/version-post.mjs`).
+
+> CI tip: Use `pnpm install --frozen-lockfile` in CI for deterministic installs.
 
 ## 3. Coding Conventions
 

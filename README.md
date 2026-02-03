@@ -33,9 +33,9 @@ This file is automatically opened on first install. You can reopen it in setting
         2. Place `manifest.json`, `main.js`, and `styles.css` from the [latest release] into the directory.
     - Building (rolling)
         1. Clone this repository, including its submodules.
-        2. Install [npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm).
-        3. Run `npm install` in the root directory.
-        4. Run `npm run obsidian:install <vault directory>` in the root directory.
+        2. Install `pnpm` (preferred) or `npm`. See <https://pnpm.io/installation> for pnpm.
+        3. Run `pnpm install` in the root directory (`npm install` is an acceptable fallback).
+        4. Run `pnpm obsidian:install <vault directory>` in the root directory (`npm run obsidian:install <vault directory>` is an acceptable fallback).
     - [Obsidian42 - BRAT](https://obsidian.md/plugins?id=obsidian42-brat) (rolling)
         - See [their readme](https://github.com/TfTHacker/obsidian42-brat#readme).
 2. Enable plugin.
