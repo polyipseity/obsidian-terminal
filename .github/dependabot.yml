@@ -1,0 +1,32 @@
+# Dependabot configuration
+# See https://docs.github.com/en/code-security/supply-chain-security/keeping-your-dependencies-updated-automatically/configuration-options-for-dependency-updates
+
+version: 2
+updates:
+  # GitHub Actions (workflow dependencies)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "build"
+      prefix-development: "chore"
+      include: "scope"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # NPM & pnpm (package.json, pnpm-lock.yaml, etc.)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "build"
+      prefix-development: "chore"
+      include: "scope"
+    groups:
+      npm:
+        patterns:
+          - "*"
