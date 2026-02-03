@@ -1,2 +1,2 @@
-declare module "*.md" { }
-import type { } from "*.md"
+declare module "*.md" {}
+import type {} from "*.md";

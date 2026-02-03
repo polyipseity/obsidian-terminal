@@ -4,8 +4,8 @@ import {
 	mergeResources,
 	syncLocale,
 	typedKeys,
-} from "@polyipseity/obsidian-plugin-library"
-import type en from "./locales/en/translation.json"
+} from "@polyipseity/obsidian-plugin-library";
+import type en from "./locales/en/translation.json";
 
 export namespace PluginLocales {
 	export const {
@@ -14,8 +14,8 @@ export namespace PluginLocales {
 		FALLBACK_LANGUAGES,
 		FORMATTERS,
 		RETURN_NULL,
-	} = LibraryLocales
-	const sync = syncLocale<typeof en>()
+	} = LibraryLocales;
+	const sync = syncLocale<typeof en>();
 	export const RESOURCES = mergeResources(LibraryLocales.RESOURCES, {
 		af: {
 			[DEFAULT_NAMESPACE]: async () =>
@@ -156,7 +156,7 @@ export namespace PluginLocales {
 			[DEFAULT_NAMESPACE]: async () =>
 				sync((await import("./locales/pt/translation.json")).default),
 		},
-		// eslint-disable-next-line @typescript-eslint/naming-convention
+
 		"pt-BR": {
 			[DEFAULT_NAMESPACE]: async () =>
 				sync((await import("./locales/pt-BR/translation.json")).default),
@@ -209,21 +209,25 @@ export namespace PluginLocales {
 			[DEFAULT_NAMESPACE]: async () =>
 				sync((await import("./locales/ur/translation.json")).default),
 		},
-		// eslint-disable-next-line @typescript-eslint/naming-convention
+
 		"zh-Hans": {
 			[DEFAULT_NAMESPACE]: async () =>
 				sync((await import("./locales/zh-Hans/translation.json")).default),
 		},
-		// eslint-disable-next-line @typescript-eslint/naming-convention
+
 		"zh-Hant": {
 			[DEFAULT_NAMESPACE]: async () =>
 				sync((await import("./locales/zh-Hant/translation.json")).default),
 		},
-	})
-	export type Resources =
-		AwaitResources<typeof RESOURCES, typeof DEFAULT_LANGUAGE>
-	export type Namespaces = readonly ["translation", "language", "asset"]
-	export const NAMESPACES = typedKeys<Namespaces>()(RESOURCES[DEFAULT_LANGUAGE])
+	});
+	export type Resources = AwaitResources<
+		typeof RESOURCES,
+		typeof DEFAULT_LANGUAGE
+	>;
+	export type Namespaces = readonly ["translation", "language", "asset"];
+	export const NAMESPACES = typedKeys<Namespaces>()(
+		RESOURCES[DEFAULT_LANGUAGE]
+	);
 	export type Languages = readonly [
 		"af",
 		"am",
@@ -273,9 +277,14 @@ export namespace PluginLocales {
 		"uk",
 		"ur",
 		"zh-Hans",
-		"zh-Hant",
-	]
-	export const LANGUAGES = typedKeys<keyof Awaited<ReturnType<
-		typeof RESOURCES[typeof DEFAULT_LANGUAGE]["language"]
-	>> extends Languages[number] ? Languages : never>()(RESOURCES)
+		"zh-Hant"
+	];
+	export const LANGUAGES =
+		typedKeys<
+			keyof Awaited<
+				ReturnType<(typeof RESOURCES)[typeof DEFAULT_LANGUAGE]["language"]>
+			> extends Languages[number]
+				? Languages
+				: never
+		>()(RESOURCES);
 }

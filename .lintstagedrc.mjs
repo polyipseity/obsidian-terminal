@@ -1,9 +1,11 @@
-import { FILE_GLOBS } from './.markdownlint-cli2.mjs'
+import { FILE_GLOBS } from "./.markdownlint-cli2.mjs";
 
 /**
  * Convert `FILE_GLOBS` into a brace-style combined pattern.
  */
-const MD_GLOB_KEY = `**/*.{${FILE_GLOBS.map(g => g.replace('**/*.', '')).join(',')}}`
+const MD_GLOB_KEY = `**/*.{${FILE_GLOBS.map((g) => g.replace("**/*.", "")).join(
+	","
+)}}`;
 
 /**
  * @type {import('lint-staged').Configuration}
@@ -18,7 +20,7 @@ const MD_GLOB_KEY = `**/*.{${FILE_GLOBS.map(g => g.replace('**/*.', '')).join(',
  * package scripts when you intend to run the tool across the whole repository.
  */
 export default {
-  [MD_GLOB_KEY]: ['markdownlint-cli2 --fix'],
-  '**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}':
-    ['prettier --write', 'eslint --cache --fix'],
-}
+	[MD_GLOB_KEY]: ["markdownlint-cli2 --fix"],
+	"**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}":
+		["prettier --write", "eslint --cache --fix"],
+};
