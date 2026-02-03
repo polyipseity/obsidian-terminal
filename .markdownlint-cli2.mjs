@@ -1,22 +1,26 @@
-import config from './.markdownlint.json' with { type: 'json' };
+import config from './.markdownlint.json' with { type: 'json' }
 
+// Shared markdown file globs. Exported so other configs (for example,
+// lint-staged) can reuse the same list and avoid duplication.
+export const FILE_GLOBS = [
+	'**/*.md',
+	'**/*.mdoc',
+	'**/*.mdown',
+	'**/*.mdx',
+	'**/*.mkd',
+	'**/*.mkdn',
+	'**/*.markdown',
+	'**/*.rmd',
+]
+
+// Re-export the default object with the same shape as before but referencing
+// `FILE_GLOBS` for the `globs` property.
 export default {
-  // export the imported object as the `config` property so the loader
-  // matches the expected shape: { config: { ...rules }, ... }
-  config,
-  // List markdown file globs individually instead of using brace-style expansion.
-  // This ensures consistent matching across platforms and makes it easy to
-  // add or remove specific patterns in the future.
-  globs: [
-    "**/*.md",
-    "**/*.mdoc",
-    "**/*.mdown",
-    "**/*.mdx",
-    "**/*.mkd",
-    "**/*.mkdn",
-    "**/*.markdown",
-    "**/*.rmd"
-  ],
-  // Use repository gitignore to exclude files (faster for large trees)
-  gitignore: true
-};
+	config,
+	// List markdown file globs individually instead of using brace-style expansion.
+	// This ensures consistent matching across platforms and makes it easy to
+	// add or remove specific patterns in the future.
+	globs: FILE_GLOBS,
+	// Use repository gitignore to exclude files (faster for large trees)
+	gitignore: true,
+}
