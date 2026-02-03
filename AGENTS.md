@@ -51,11 +51,11 @@ Quick reference for scripts in `package.json`. Use `pnpm` (preferred).
 - `obsidian:install` — runs `build` then `node build/obsidian-install.mjs` (install to vault).
 - `obsidian:install:force` — runs `build:force` then `node build/obsidian-install.mjs`.
 - `check` — runs `check:eslint`, `check:prettier`, `check:md`.
-- `check:eslint` — `eslint --cache . --max-warnings=0`.
+- `check:eslint` — `eslint --cache --max-warnings=0`.
 - `check:prettier` — `prettier --check .`.
 - `check:md` — `markdownlint-cli2`.
 - `format` — runs `format:eslint`, `format:prettier`, `format:md`.
-- `format:eslint` — `eslint --cache . --fix .`.
+- `format:eslint` — `eslint --cache --fix`.
 - `format:prettier` — `prettier --write .`.
 - `format:md` — `markdownlint-cli2 --fix`.
 - `commitlint` — `commitlint --from=origin/main --to=HEAD`.
