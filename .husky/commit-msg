@@ -1,0 +1,2 @@
+# Validate commit message with commitlint
+pnpm exec -- commitlint --edit "$1"
