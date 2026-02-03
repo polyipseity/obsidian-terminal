@@ -1,43 +1,15 @@
-import { defineConfig } from "eslint/config"
+// @ts-check
+import eslint from "@eslint/js";
+import { defineConfig } from "eslint/config";
+import tseslint from "typescript-eslint";
+import { includeIgnoreFile } from "@eslint/compat";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-export default defineConfig([
-	{
-		extends: [
-			"eslint:recommended",
-			"plugin:@typescript-eslint/recommended",
-		],
-		files: ["**/*.{js,ts,jsx,tsx,mjs,cjs,mts,cts}"],
-		plugins: ["@typescript-eslint"],
-		languageOptions: {
-			parser: "@typescript-eslint/parser",
-			ecmaVersion: "latest",
-			sourceType: "module",
-		},
-	},
-	{
-		extends: ["plugin:markdownlint/recommended"],
-		files: ["**/*.md", ".changeset/**/*.md"],
-	},
-	/*
-	For Svelte linting, add to `devDependencies`:
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-	```JSON
-	"eslint-plugin-svelte": "^2.32.0",
-	"svelte-eslint-parser": "^0.33.0",
-	```
-
-	Then uncomment below to enable Svelte support.
-	*/
-	// {
-	// 	extends: [
-	// 		"plugin:svelte/recommended"
-	// 	],
-	// 	files: ["**/*.svelte"],
-	// 	languageOptions: {
-	// 		parser: "svelte-eslint-parser",
-	// 		parserOptions: {
-	// 			parser: "@typescript-eslint/parser",
-	// 		},
-	// 	},
-	// },
-])
+export default [
+	...defineConfig(eslint.configs.recommended, tseslint.configs.recommended),
+	includeIgnoreFile(path.join(__dirname, ".gitignore")),
+];
