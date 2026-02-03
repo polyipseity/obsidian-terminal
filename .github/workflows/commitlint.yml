@@ -6,8 +6,6 @@
 # - The `wagoid/commitlint-github-action` uses a Docker action image for linting.
 # - The `ubuntu-slim` runner does not include Docker, so it cannot pull and run Docker-based actions.
 # - Therefore, `ubuntu-latest` is required to ensure Docker is available and the action works correctly.
-#
-# For more details, see: https://github.com/actions/runner-images/issues/6775
 
 name: Commit message lint
 
