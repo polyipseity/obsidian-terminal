@@ -6,6 +6,7 @@ import { includeIgnoreFile } from "@eslint/compat";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import globals from "globals"; // provide Node/browser globals for file-level overrides
+import eslintConfigPrettier from "eslint-config-prettier/flat";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,4 +44,6 @@ export default defineConfig([
 			},
 		},
 	},
+	// Disable formatting-related rules that may conflict with Prettier
+	eslintConfigPrettier,
 ]);
