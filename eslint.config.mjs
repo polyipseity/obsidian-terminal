@@ -10,13 +10,24 @@ import globals from "globals"; // provide Node/browser globals for file-level ov
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export default [
-	...defineConfig(eslint.configs.recommended, tseslint.configs.recommended),
+export const FILE_GLOBS = [
+	"**/*.cjs",
+	"**/*.cts",
+	"**/*.d.ts",
+	"**/*.js",
+	"**/*.jsx",
+	"**/*.mjs",
+	"**/*.mts",
+	"**/*.ts",
+	"**/*.tsx",
+];
+
+export default defineConfig([
+	eslint.configs.recommended,
+	tseslint.configs.recommended,
 	includeIgnoreFile(path.join(__dirname, ".gitignore")),
 	{
-		rules: {
-			"@typescript-eslint/no-namespace": "off",
-		},
+		files: FILE_GLOBS,
 	},
 	// Build scripts run on Node.js — provide Node globals so `console` is defined
 	{
@@ -27,4 +38,4 @@ export default [
 			},
 		},
 	},
-];
+]);
