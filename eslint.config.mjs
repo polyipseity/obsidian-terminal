@@ -29,6 +29,11 @@ export default defineConfig([
 	{
 		files: FILE_GLOBS,
 	},
+	{
+		rules: {
+			"@typescript-eslint/no-namespace": "off",
+		},
+	},
 	// Build scripts run on Node.js — provide Node globals so `console` is defined
 	{
 		files: ["build/**"],
