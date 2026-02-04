@@ -35,9 +35,9 @@ export default defineConfig([
       "@typescript-eslint/no-namespace": "off",
     },
   },
-  // Build scripts run on Node.js — provide Node globals so `console` is defined
+  // Scripts run on Node.js — provide Node globals so `console` is defined
   {
-    files: ["build/**"],
+    files: ["scripts/**"],
     languageOptions: {
       globals: {
         ...globals.node,

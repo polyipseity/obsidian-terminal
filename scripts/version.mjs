@@ -13,7 +13,7 @@ const MANIFEST_MAP = Object.freeze({
   BETA_MANIFEST = Object.freeze({ version: "rolling" }),
   aPackage = readFile(PATHS.package, "utf-8").then((data) => JSON.parse(data)),
   aVersions = readFile(PATHS.versions, "utf-8").then((data) =>
-    JSON.parse(data),
+    JSON.parse(data)
   );
 
 await Promise.all([
@@ -23,7 +23,7 @@ await Promise.all([
         ...Object.fromEntries(
           Object.entries(MANIFEST_MAP)
             .map(([key, value]) => [key, value(pack)])
-            .filter(([, value]) => value),
+            .filter(([, value]) => value)
         ),
         ...pack.obsidian,
       };
@@ -36,7 +36,7 @@ await Promise.all([
         JSON.stringify({ ...manifest, ...BETA_MANIFEST }, null, "\t"),
         {
           encoding: "utf-8",
-        },
+        }
       ),
     ]);
   })(),
@@ -53,5 +53,5 @@ await execute(
   ["add", PATHS.manifest, PATHS.manifestBeta, PATHS.versions],
   {
     encoding: "utf-8",
-  },
+  }
 );
