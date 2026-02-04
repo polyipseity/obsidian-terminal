@@ -6,7 +6,7 @@
   "dependencies": {
     "@polyipseity/obsidian-plugin-library": "^1.33.0",
     "espree": "^11.1.0",
-    "i18next": "^25.8.0",
+    "i18next": "^25.8.1",
     "lodash-es": "^4.17.23",
     "obsidian": "~1.11.4",
     "semver": "^7.7.3",
@@ -15,8 +15,8 @@
   "description": "PLACEHOLDER",
   "devDependencies": {
     "@changesets/cli": "^2.29.8",
-    "@commitlint/cli": "^20.3.1",
-    "@commitlint/config-conventional": "^20.3.1",
+    "@commitlint/cli": "^20.4.1",
+    "@commitlint/config-conventional": "^20.4.1",
     "@eslint/compat": "^2.0.2",
     "@eslint/js": "^9.39.2",
     "@tsconfig/node16": "^16.1.8",
