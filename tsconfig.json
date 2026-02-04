@@ -53,9 +53,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "paths": {
-      "obsidian": [
-        "./node_modules/@polyipseity/obsidian/obsidian.d.ts"
-      ]
+      "obsidian": ["./node_modules/@polyipseity/obsidian/obsidian.d.ts"]
     },
     "plugins": [
       {

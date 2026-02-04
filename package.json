@@ -19,7 +19,7 @@
     "@commitlint/config-conventional": "^20.4.1",
     "@eslint/compat": "^2.0.2",
     "@eslint/js": "^9.39.2",
-		"@polyipseity/obsidian": "~1.4.11",
+    "@polyipseity/obsidian": "~1.4.11",
     "@tsconfig/node16": "^16.1.8",
     "@tsconfig/recommended": "^1.0.13",
     "@tsconfig/strictest": "^2.0.8",
@@ -51,10 +51,10 @@
   "funding": [
     {
       "type": "Buy Me a Coffee",
-			"url": "https://buymeacoffee.com/polyipseity"
-		},
-		{
-			"type": "GitHub Sponsors",
+      "url": "https://buymeacoffee.com/polyipseity"
+    },
+    {
+      "type": "GitHub Sponsors",
       "url": "https://github.com/sponsors/polyipseity"
     }
   ],
