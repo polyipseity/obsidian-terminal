@@ -12,38 +12,38 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export const FILE_GLOBS = [
-	"**/*.cjs",
-	"**/*.cts",
-	"**/*.d.ts",
-	"**/*.js",
-	"**/*.jsx",
-	"**/*.mjs",
-	"**/*.mts",
-	"**/*.ts",
-	"**/*.tsx",
+  "**/*.cjs",
+  "**/*.cts",
+  "**/*.d.ts",
+  "**/*.js",
+  "**/*.jsx",
+  "**/*.mjs",
+  "**/*.mts",
+  "**/*.ts",
+  "**/*.tsx",
 ];
 
 export default defineConfig([
-	eslint.configs.recommended,
-	tseslint.configs.recommended,
-	includeIgnoreFile(path.join(__dirname, ".gitignore")),
-	{
-		files: FILE_GLOBS,
-	},
-	{
-		rules: {
-			"@typescript-eslint/no-namespace": "off",
-		},
-	},
-	// Build scripts run on Node.js — provide Node globals so `console` is defined
-	{
-		files: ["build/**"],
-		languageOptions: {
-			globals: {
-				...globals.node,
-			},
-		},
-	},
-	// Disable formatting-related rules that may conflict with Prettier
-	eslintConfigPrettier,
+  eslint.configs.recommended,
+  tseslint.configs.recommended,
+  includeIgnoreFile(path.join(__dirname, ".gitignore")),
+  {
+    files: FILE_GLOBS,
+  },
+  {
+    rules: {
+      "@typescript-eslint/no-namespace": "off",
+    },
+  },
+  // Build scripts run on Node.js — provide Node globals so `console` is defined
+  {
+    files: ["build/**"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+  // Disable formatting-related rules that may conflict with Prettier
+  eslintConfigPrettier,
 ]);

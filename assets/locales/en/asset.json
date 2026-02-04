@@ -1,22 +1,22 @@
 {
-	"commands": {
-		"open-documentation-changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
-		"open-documentation-donate-icon": "$t(asset:generic.documentations.donate-icon)",
-		"open-documentation-readme-icon": "$t(asset:generic.documentations.readme-icon)"
-	},
-	"generic": {
-		"documentations": {
-			"changelog-icon": "file-text",
-			"donate-icon": "heart",
-			"readme-icon": "file-question"
-		}
-	},
-	"settings": {
-		"documentations": {
-			"changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
-			"donate-icon": "$t(asset:generic.documentations.donate-icon)",
-			"readme-icon": "$t(asset:generic.documentations.readme-icon)"
-		},
-		"open-changelog-on-update-icon": "$t(asset:generic.documentations.changelog-icon)"
-	}
+  "commands": {
+    "open-documentation-changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
+    "open-documentation-donate-icon": "$t(asset:generic.documentations.donate-icon)",
+    "open-documentation-readme-icon": "$t(asset:generic.documentations.readme-icon)"
+  },
+  "generic": {
+    "documentations": {
+      "changelog-icon": "file-text",
+      "donate-icon": "heart",
+      "readme-icon": "file-question"
+    }
+  },
+  "settings": {
+    "documentations": {
+      "changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
+      "donate-icon": "$t(asset:generic.documentations.donate-icon)",
+      "readme-icon": "$t(asset:generic.documentations.readme-icon)"
+    },
+    "open-changelog-on-update-icon": "$t(asset:generic.documentations.changelog-icon)"
+  }
 }

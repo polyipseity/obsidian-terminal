@@ -1,27 +1,27 @@
 {
-	"commands": {
-		"open-documentation-changelog": "$t(generic.open)$t(generic.documentations.changelog)",
-		"open-documentation-donate": "$t(generic.open)$t(generic.documentations.donate)",
-		"open-documentation-readme": "$t(generic.open)$t(generic.documentations.readme)"
-	},
-	"generic": {
-		"documentation": "文档",
-		"documentations": {
-			"changelog": "更新日志",
-			"donate": "$t(generic.donate)",
-			"readme": "readme"
-		},
-		"donate": "捐赠"
-	},
-	"name": "PLACEHOLDER",
-	"settings": {
-		"documentation": "$t(generic.documentation)",
-		"documentations": {
-			"changelog": "$t(generic.documentations.changelog)",
-			"donate": "$t(generic.documentations.donate)",
-			"readme": "$t(generic.documentations.readme)"
-		},
-		"interface": "界面",
-		"open-changelog-on-update": "$t(generic.open)$t(generic.documentations.changelog)更新中"
-	}
+  "commands": {
+    "open-documentation-changelog": "$t(generic.open)$t(generic.documentations.changelog)",
+    "open-documentation-donate": "$t(generic.open)$t(generic.documentations.donate)",
+    "open-documentation-readme": "$t(generic.open)$t(generic.documentations.readme)"
+  },
+  "generic": {
+    "documentation": "文档",
+    "documentations": {
+      "changelog": "更新日志",
+      "donate": "$t(generic.donate)",
+      "readme": "readme"
+    },
+    "donate": "捐赠"
+  },
+  "name": "PLACEHOLDER",
+  "settings": {
+    "documentation": "$t(generic.documentation)",
+    "documentations": {
+      "changelog": "$t(generic.documentations.changelog)",
+      "donate": "$t(generic.documentations.donate)",
+      "readme": "$t(generic.documentations.readme)"
+    },
+    "interface": "界面",
+    "open-changelog-on-update": "$t(generic.open)$t(generic.documentations.changelog)更新中"
+  }
 }

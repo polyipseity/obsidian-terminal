@@ -1,13 +1,13 @@
 {
-	"author": "PLACEHOLDER",
-	"description": "PLACEHOLDER",
-	"fundingUrl": {
-		"PLACEHOLDER": "PLACEHOLDER"
-	},
-	"version": "rolling",
-	"authorUrl": "PLACEHOLDER",
-	"id": "PLACEHOLDER",
-	"isDesktopOnly": false,
-	"minAppVersion": "1.4.11",
-	"name": "PLACEHOLDER"
+  "author": "PLACEHOLDER",
+  "description": "PLACEHOLDER",
+  "fundingUrl": {
+    "PLACEHOLDER": "PLACEHOLDER"
+  },
+  "version": "rolling",
+  "authorUrl": "PLACEHOLDER",
+  "id": "PLACEHOLDER",
+  "isDesktopOnly": false,
+  "minAppVersion": "1.4.11",
+  "name": "PLACEHOLDER"
 }
