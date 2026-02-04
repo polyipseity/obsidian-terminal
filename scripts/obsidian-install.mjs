@@ -9,6 +9,6 @@ const ARGV_DESTINATION = 2,
 await mkdir(DESTINATION, { recursive: true });
 await Promise.all(
   [PATHS.manifest, PATHS.main, PATHS.styles].map((file) =>
-    copyFile(file, `${DESTINATION}/${file}`)
-  )
+    copyFile(file, `${DESTINATION}/${file}`),
+  ),
 );

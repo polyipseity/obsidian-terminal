@@ -20,7 +20,7 @@ export const PATHS = Object.freeze({
   }),
   PLUGIN_ID = PLazy.from(
     async () =>
-      JSON.parse(await readFile(PATHS.manifest, { encoding: "utf-8" })).id
+      JSON.parse(await readFile(PATHS.manifest, { encoding: "utf-8" })).id,
   );
 
 export async function execute(...args) {

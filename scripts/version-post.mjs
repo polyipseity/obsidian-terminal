@@ -20,7 +20,7 @@ const TRIM_END_FILES = Object.freeze([PATHS.package, PATHS.packageLock]),
               "--format=%(contents:subject)\n%(contents:body)",
               tag0,
             ],
-            { encoding: "utf-8" }
+            { encoding: "utf-8" },
           )
         ).trim(),
       };
@@ -33,9 +33,9 @@ const TRIM_END_FILES = Object.freeze([PATHS.package, PATHS.packageLock]),
             (await readFile(file, { encoding: "utf-8" })).trimEnd(),
             {
               encoding: "utf-8",
-            }
-          )
-        )
+            },
+          ),
+        ),
       );
       await execute("git", ["add", ...TRIM_END_FILES], { encoding: "utf-8" });
     })(),
@@ -48,5 +48,5 @@ await execute(
   ["tag", "--sign", "--force", `--message=${tagMessage}`, tag],
   {
     encoding: "utf-8",
-  }
+  },
 );
