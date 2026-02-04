@@ -10,8 +10,8 @@ This guide provides clear, actionable instructions for AI coding agents working 
   - Settings: `src/settings.ts`, `src/settings-data.ts`
   - Localization: `assets/locales.ts`, per-locale JSON in `assets/locales/`
 - **Build System:**
-  - Custom scripts in `build/` (not webpack/rollup)
-  - Main: `build/build.mjs`, Install: `build/obsidian-install.mjs`
+  - Custom scripts in `scripts/` (not webpack/rollup)
+  - Main: `scripts/build.mjs`, Install: `scripts/obsidian-install.mjs`
 - **External Library:**
   - Uses `@polyipseity/obsidian-plugin-library` for context, i18n, settings, UI
 
@@ -46,10 +46,10 @@ This guide provides clear, actionable instructions for AI coding agents working 
 Quick reference for scripts in `package.json`. Use `pnpm` (preferred).
 
 - `build` — runs `format` then `build:force`.
-- `build:force` — runs `node build/build.mjs` (internal build implementation).
+- `build:force` — runs `node scripts/build.mjs` (internal build implementation).
 - `build:dev` — runs `build:force` in dev mode (`pnpm run build:force -- dev`).
-- `obsidian:install` — runs `build` then `node build/obsidian-install.mjs` (install to vault).
-- `obsidian:install:force` — runs `build:force` then `node build/obsidian-install.mjs`.
+- `obsidian:install` — runs `build` then `node scripts/obsidian-install.mjs` (install to vault).
+- `obsidian:install:force` — runs `build:force` then `node scripts/obsidian-install.mjs`.
 - `check` — runs `check:eslint`, `check:prettier`, `check:md`.
 - `check:eslint` — `eslint --cache --max-warnings=0`.
 - `check:prettier` — `prettier --check .`.
@@ -60,7 +60,7 @@ Quick reference for scripts in `package.json`. Use `pnpm` (preferred).
 - `format:md` — `markdownlint-cli2 --fix`.
 - `commitlint` — `commitlint --from=origin/main --to=HEAD`.
 - `prepare` — runs `husky` to set up Git hooks.
-- `version` / `postversion` — version lifecycle scripts (`node build/version.mjs`, `node build/version-post.mjs`).
+- `version` / `postversion` — version lifecycle scripts (`node scripts/version.mjs`, `node scripts/version-post.mjs`).
 
 > CI tip: Use `pnpm install --frozen-lockfile` in CI for deterministic installs.
 
@@ -99,7 +99,7 @@ Quick reference for scripts in `package.json`. Use `pnpm` (preferred).
 - `src/main.ts` — Plugin entry, lifecycle, context
 - `src/settings.ts` / `src/settings-data.ts` — Settings UI/data
 - `assets/locales.ts` / `assets/locales/` — Localization logic/files
-- `build/build.mjs` / `build/obsidian-install.mjs` — Build/install scripts
+- `scripts/build.mjs` / `scripts/obsidian-install.mjs` — Build/install scripts
 - `README.md` / `assets/locales/README.md` — Contributor/translation instructions
 - `.github/instructions/` — Task/file-specific instructions
 - `.github/skills/` — Agent skills for specialized workflows
