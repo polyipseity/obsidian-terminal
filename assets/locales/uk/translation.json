@@ -1,27 +1,27 @@
 {
-	"commands": {
-		"open-documentation-changelog": "$t(generic.open, capitalize) $t(generic.documentations.changelog)",
-		"open-documentation-donate": "$t(generic.open, capitalize) $t(generic.documentations.donate)",
-		"open-documentation-readme": "$t(generic.open, capitalize) $t(generic.documentations.readme)"
-	},
-	"generic": {
-		"documentation": "documentation",
-		"documentations": {
-			"changelog": "changelog",
-			"donate": "$t(generic.donate)",
-			"readme": "readme"
-		},
-		"donate": "donate"
-	},
-	"name": "PLACEHOLDER",
-	"settings": {
-		"documentation": "$t(generic.documentation, capitalize)",
-		"documentations": {
-			"changelog": "$t(generic.documentations.changelog, capitalize)",
-			"donate": "$t(generic.documentations.donate, capitalize)",
-			"readme": "$t(generic.documentations.readme, capitalize)"
-		},
-		"interface": "Interface",
-		"open-changelog-on-update": "$t(generic.open, capitalize) $t(generic.documentations.changelog) on update"
-	}
+  "commands": {
+    "open-documentation-changelog": "$t(generic.open, capitalize) $t(generic.documentations.changelog)",
+    "open-documentation-donate": "$t(generic.open, capitalize) $t(generic.documentations.donate)",
+    "open-documentation-readme": "$t(generic.open, capitalize) $t(generic.documentations.readme)"
+  },
+  "generic": {
+    "documentation": "documentation",
+    "documentations": {
+      "changelog": "changelog",
+      "donate": "$t(generic.donate)",
+      "readme": "readme"
+    },
+    "donate": "donate"
+  },
+  "name": "PLACEHOLDER",
+  "settings": {
+    "documentation": "$t(generic.documentation, capitalize)",
+    "documentations": {
+      "changelog": "$t(generic.documentations.changelog, capitalize)",
+      "donate": "$t(generic.documentations.donate, capitalize)",
+      "readme": "$t(generic.documentations.readme, capitalize)"
+    },
+    "interface": "Interface",
+    "open-changelog-on-update": "$t(generic.open, capitalize) $t(generic.documentations.changelog) on update"
+  }
 }

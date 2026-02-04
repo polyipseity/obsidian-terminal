@@ -1,4 +1,4 @@
 declare module "*.md" {
-	const value: PromiseLike<string>
-	export default value
+  const value: PromiseLike<string>;
+  export default value;
 }
