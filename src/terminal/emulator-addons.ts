@@ -701,6 +701,11 @@ export class MacOptionKeyAddon implements ITerminalAddon {
         return false; // Block to prevent any ESC sequence for modifier alone
       }
 
+      // Let Option+Enter pass through for apps like Claude Code that use it for newline
+      if (event.key === "Enter") {
+        return true;
+      }
+
       // The browser has already composed the character in event.key
       // (e.g., Option+2 → '@', Option+7 → '|' on Finnish keyboard)
       // Send this character directly to the terminal using xterm.js internal API
