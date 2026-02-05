@@ -313,6 +313,8 @@
     },
     "open-changelog-on-update": "$t(generic.open, capitalize) $t(generic.documentations.changelog) on update",
     "pin-new-instance": "$t(generic.pin, capitalize) new $t(generic.instance)",
+    "mac-option-key-passthrough": "Pass Option key to terminal (macOS)",
+    "mac-option-key-passthrough-description": "Allow Option+key combinations to reach the terminal for typing special characters (e.g., @ on Scandinavian/German keyboards). Only effective when the profile's macOptionIsMeta is disabled.",
     "preferred-renderer": "Preferred $t(generic.renderer)",
     "preferred-renderer-options": "$t(generic.renderers.{{type}}, capitalize)",
     "profile-list": {

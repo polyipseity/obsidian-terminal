@@ -47,6 +47,7 @@ import {
   DisposerAddon,
   DragAndDropAddon,
   FollowThemeAddon,
+  MacOptionKeyAddon,
   RendererAddon,
   RightClickActionAddon,
 } from "./emulator-addons.js";
@@ -979,6 +980,12 @@ export class TerminalView extends ItemView {
                   },
                 }),
                 ligatures: new LigaturesAddon({}),
+                macOptionKey: new MacOptionKeyAddon(
+                  () =>
+                    profile.type !== "invalid" &&
+                    profile.terminalOptions?.macOptionIsMeta === true,
+                  () => settings.value.macOptionKeyPassthrough,
+                ),
                 renderer: new RendererAddon(
                   () => new CanvasAddon(),
                   () => new WebglAddon(false),
@@ -1090,6 +1097,7 @@ export namespace TerminalView {
     readonly dragAndDrop: DragAndDropAddon;
     readonly followTheme: FollowThemeAddon;
     readonly ligatures: LigaturesAddon;
+    readonly macOptionKey: MacOptionKeyAddon;
     readonly renderer: RendererAddon;
     readonly rightClickAction: RightClickActionAddon;
     readonly search: SearchAddon;

@@ -651,3 +651,42 @@ export namespace RightClickActionAddon {
   ]);
   export type Action = (typeof ACTIONS)[number];
 }
+
+export class MacOptionKeyAddon implements ITerminalAddon {
+  readonly #disposer = new Functions({ async: false, settled: true });
+
+  public constructor(
+    protected readonly isMacOptionIsMeta: () => boolean,
+    protected readonly isPassthroughEnabled: () => boolean,
+  ) {}
+
+  public activate(terminal: Terminal): void {
+    const handler = (event: KeyboardEvent): boolean => {
+      // Only intercept on macOS when Option (altKey) is pressed
+      if (!event.altKey) {
+        return true;
+      }
+      // If macOptionIsMeta is true, let xterm handle it as Meta
+      if (this.isMacOptionIsMeta()) {
+        return true;
+      }
+      // If passthrough is disabled, don't stop propagation
+      if (!this.isPassthroughEnabled()) {
+        return true;
+      }
+      // Stop propagation to prevent Obsidian from intercepting the event
+      event.stopPropagation();
+      // Return true to let xterm.js process the key normally
+      return true;
+    };
+    terminal.attachCustomKeyEventHandler(handler);
+    this.#disposer.push(() => {
+      // xterm.js doesn't provide a way to remove the handler directly,
+      // but the terminal will be disposed when the addon is disposed
+    });
+  }
+
+  public dispose(): void {
+    this.#disposer.call();
+  }
+}
