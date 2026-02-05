@@ -51,7 +51,7 @@ export class TerminalPlugin
         defaultNS: PluginLocales.DEFAULT_NAMESPACE,
         fallbackLng: PluginLocales.FALLBACK_LANGUAGES,
         returnNull: PluginLocales.RETURN_NULL,
-      })
+      }),
     );
     this.localSettings = new StorageSettingsManager(this, LocalSettings.fix);
     this.settings = new SettingsManager(this, Settings.fix);
@@ -106,10 +106,10 @@ export class TerminalPlugin
               (settings0) => settings0.interceptLogging,
               (cur) => {
                 this.earlyPatch.value.enableLoggingPatch(cur);
-              }
+              },
             );
             this.earlyPatch.value.enableLoggingPatch(
-              settings.value.interceptLogging
+              settings.value.interceptLogging,
             );
           }),
           Promise.resolve().then(() => {
@@ -130,11 +130,11 @@ export class TerminalPlugin
                 (settings0) => settings0.hideStatusBar,
                 () => {
                   statusBarHider.update();
-                }
-              )
+                },
+              ),
             );
             statusBarHider.hide(
-              () => settings.value.hideStatusBar === "always"
+              () => settings.value.hideStatusBar === "always",
             );
           }),
         ]);

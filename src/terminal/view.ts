@@ -76,27 +76,27 @@ import { writePromise } from "./util.js";
 
 const xtermAddonCanvas = dynamicRequire<typeof import("@xterm/addon-canvas")>(
     BUNDLE,
-    "@xterm/addon-canvas"
+    "@xterm/addon-canvas",
   ),
   xtermAddonLigatures = dynamicRequire<typeof import("@xterm/addon-ligatures")>(
     BUNDLE,
-    "@xterm/addon-ligatures"
+    "@xterm/addon-ligatures",
   ),
   xtermAddonSearch = dynamicRequire<typeof import("@xterm/addon-search")>(
     BUNDLE,
-    "@xterm/addon-search"
+    "@xterm/addon-search",
   ),
   xtermAddonUnicode11 = dynamicRequire<typeof import("@xterm/addon-unicode11")>(
     BUNDLE,
-    "@xterm/addon-unicode11"
+    "@xterm/addon-unicode11",
   ),
   xtermAddonWebLinks = dynamicRequire<typeof import("@xterm/addon-web-links")>(
     BUNDLE,
-    "@xterm/addon-web-links"
+    "@xterm/addon-web-links",
   ),
   xtermAddonWebgl = dynamicRequire<typeof import("@xterm/addon-webgl")>(
     BUNDLE,
-    "@xterm/addon-webgl"
+    "@xterm/addon-webgl",
   );
 
 export class EditTerminalModal extends DialogModal {
@@ -107,7 +107,7 @@ export class EditTerminalModal extends DialogModal {
   public constructor(
     protected override readonly context: TerminalPlugin,
     protected readonly protostate: TerminalView.State,
-    confirm: (state_: DeepWritable<typeof protostate>) => unknown
+    confirm: (state_: DeepWritable<typeof protostate>) => unknown,
   ) {
     const {
       language: { value: i18n },
@@ -152,22 +152,22 @@ export class EditTerminalModal extends DialogModal {
                 post: (component) => {
                   component.setPlaceholder(
                     i18n.t(
-                      "components.terminal.edit-modal.working-directory-placeholder"
-                    )
+                      "components.terminal.edit-modal.working-directory-placeholder",
+                    ),
                   );
                 },
-              }
-            )
+              },
+            ),
           )
           .addButton((button) =>
             button
               .setIcon(
                 i18n.t(
-                  "asset:components.terminal.edit-modal.root-directory-icon"
-                )
+                  "asset:components.terminal.edit-modal.root-directory-icon",
+                ),
               )
               .setTooltip(
-                i18n.t("components.terminal.edit-modal.root-directory")
+                i18n.t("components.terminal.edit-modal.root-directory"),
               )
               .onClick(() => {
                 state.cwd =
@@ -175,12 +175,12 @@ export class EditTerminalModal extends DialogModal {
                     ? adapter.getBasePath()
                     : null;
                 this.postMutate();
-              })
+              }),
           )
           .addExtraButton(
             resetButton(
               i18n.t(
-                "asset:components.terminal.edit-modal.working-directory-icon"
+                "asset:components.terminal.edit-modal.working-directory-icon",
               ),
               i18n.t("components.terminal.edit-modal.reset"),
               () => {
@@ -188,8 +188,8 @@ export class EditTerminalModal extends DialogModal {
               },
               () => {
                 this.postMutate();
-              }
-            )
+              },
+            ),
           );
       })
       .newSetting(listEl, (setting) => {
@@ -218,8 +218,8 @@ export class EditTerminalModal extends DialogModal {
                     .addOption(
                       unselected,
                       i18n.t(
-                        "components.terminal.edit-modal.profile-placeholder"
-                      )
+                        "components.terminal.edit-modal.profile-placeholder",
+                      ),
                     )
                     .addOptions(
                       Object.fromEntries(
@@ -230,7 +230,7 @@ export class EditTerminalModal extends DialogModal {
                             `components.terminal.edit-modal.profile-name-${
                               Settings.Profile.isCompatible(
                                 entry[1],
-                                Platform.CURRENT
+                                Platform.CURRENT,
                               )
                                 ? ""
                                 : "incompatible"
@@ -238,19 +238,21 @@ export class EditTerminalModal extends DialogModal {
                             {
                               info: Settings.Profile.info(entry),
                               interpolation: { escapeValue: false },
-                            }
+                            },
                           ),
-                        ])
-                      )
+                        ]),
+                      ),
                     );
                 },
-              }
-            )
+              },
+            ),
           )
           .addButton((button) =>
             button
               .setIcon(
-                i18n.t("asset:components.terminal.edit-modal.profile-edit-icon")
+                i18n.t(
+                  "asset:components.terminal.edit-modal.profile-edit-icon",
+                ),
               )
               .setTooltip(i18n.t("components.terminal.edit-modal.profile-edit"))
               .onClick(() => {
@@ -259,7 +261,7 @@ export class EditTerminalModal extends DialogModal {
                   state.profile = profile0;
                   this.postMutate();
                 }).open();
-              })
+              }),
           )
           .addExtraButton(
             resetButton(
@@ -271,8 +273,8 @@ export class EditTerminalModal extends DialogModal {
               },
               () => {
                 this.postMutate();
-              }
-            )
+              },
+            ),
           );
       });
   }
@@ -291,7 +293,7 @@ export class EditTerminalModal extends DialogModal {
 
 export class TerminalView extends ItemView {
   public static readonly type = new UnnamespacedID(
-    DOMClasses2.Namespaced.TERMINAL
+    DOMClasses2.Namespaced.TERMINAL,
   );
 
   protected static lastFocusTimes = new Map<TerminalView, number>();
@@ -305,7 +307,7 @@ export class TerminalView extends ItemView {
 
   public constructor(
     protected readonly context: TerminalPlugin,
-    leaf: WorkspaceLeaf
+    leaf: WorkspaceLeaf,
   ) {
     super(leaf);
     this.navigation = true;
@@ -395,7 +397,7 @@ export class TerminalView extends ItemView {
       printError(
         anyToError(error),
         () => plugin.language.value.t("errors.error-killing-pseudoterminal"),
-        plugin
+        plugin,
       );
     });
     this.#emulator0 = val;
@@ -422,13 +424,13 @@ export class TerminalView extends ItemView {
     this.#namespacedType = this.type.namespaced(context);
     context.registerView(
       TerminalView.type.namespaced(context),
-      (leaf) => new TerminalView(context, leaf)
+      (leaf) => new TerminalView(context, leaf),
     );
 
     const withLastFocusedView =
       (
         callback: (checking: boolean, view: TerminalView) => boolean,
-        focused: readonly boolean[] = [true]
+        focused: readonly boolean[] = [true],
       ): ((checking: boolean) => boolean) =>
       (checking) => {
         let lastFocusTime = null,
@@ -453,7 +455,7 @@ export class TerminalView extends ItemView {
           }
           return true;
         },
-        [false]
+        [false],
       ),
       // No hotkeys: hotkeys: [],
       icon: i18n.t("asset:commands.focus-on-last-terminal-icon"),
@@ -475,7 +477,7 @@ export class TerminalView extends ItemView {
                 }
                 return true;
               },
-              [false, true]
+              [false, true],
             ),
             // Meta + ` does not work well on macOS.
             hotkeys: [
@@ -486,7 +488,7 @@ export class TerminalView extends ItemView {
             ],
             icon: i18n.t("asset:commands.toggle-focus-on-last-terminal-icon"),
             id: "toggle-focus-on-last-terminal",
-          }
+          },
         ).id,
         addCommand(context, () => i18n.t("commands.unfocus-terminal"), {
           checkCallback: withLastFocusedView((checking, view) => {
@@ -551,7 +553,7 @@ export class TerminalView extends ItemView {
       handler = this.focusedScope.register(
         null,
         null,
-        newHotkeyListener(context, focusedScopeIDs)
+        newHotkeyListener(context, focusedScopeIDs),
       );
     context.register(() => {
       this.focusedScope.unregister(handler);
@@ -560,12 +562,12 @@ export class TerminalView extends ItemView {
 
   public override async setState(
     state: unknown,
-    result: ViewStateResult
+    result: ViewStateResult,
   ): Promise<void> {
     const { context: plugin } = this,
       ownState = readStateCollaboratively(
         TerminalView.type.namespaced(plugin),
-        state
+        state,
       ),
       { value, valid } = TerminalView.State.fix(ownState);
     if (!valid) {
@@ -583,7 +585,7 @@ export class TerminalView extends ItemView {
     return writeStateCollaboratively(
       super.getState(),
       TerminalView.type.namespaced(this.context),
-      this.state
+      this.state,
     );
   }
 
@@ -593,13 +595,13 @@ export class TerminalView extends ItemView {
       {
         interpolation: { escapeValue: false },
         name: this.name,
-      }
+      },
     );
   }
 
   public override getIcon(): string {
     return this.context.language.value.t(
-      `asset:components.${TerminalView.type.id}.icon`
+      `asset:components.${TerminalView.type.id}.icon`,
     );
   }
 
@@ -627,7 +629,7 @@ export class TerminalView extends ItemView {
           .setIcon(i18n.t("asset:components.terminal.menus.clear-icon"))
           .onClick(() => {
             this.emulator?.terminal.clear();
-          })
+          }),
       )
       .addItem((item) =>
         item
@@ -636,7 +638,7 @@ export class TerminalView extends ItemView {
           .setDisabled(this.find !== null)
           .onClick(() => {
             this.startFind();
-          })
+          }),
       )
       .addSeparator()
       .addItem((item) =>
@@ -648,9 +650,9 @@ export class TerminalView extends ItemView {
               context,
               this.state,
               TerminalView.getLeaf(context, this.leaf),
-              this.getViewType()
-            )
-          )
+              this.getViewType(),
+            ),
+          ),
       )
       .addItem((item) =>
         item
@@ -658,9 +660,9 @@ export class TerminalView extends ItemView {
           .setIcon(i18n.t("asset:components.terminal.menus.edit-icon"))
           .onClick(() => {
             new EditTerminalModal(context, this.state, async (state) =>
-              TerminalView.spawn(context, state, leaf, this.getViewType())
+              TerminalView.spawn(context, state, leaf, this.getViewType()),
             ).open();
-          })
+          }),
       )
       .addItem((item) =>
         item
@@ -668,7 +670,7 @@ export class TerminalView extends ItemView {
           .setIcon(i18n.t("asset:components.terminal.menus.restart-icon"))
           .onClick(() => {
             this.startEmulator(true);
-          })
+          }),
       )
       .addSeparator()
       .addItem((item) =>
@@ -692,10 +694,10 @@ export class TerminalView extends ItemView {
                   }),
                 ],
                 `${this.name}.html`,
-                { type: `text/html; charset=${DEFAULT_ENCODING};` }
-              )
+                { type: `text/html; charset=${DEFAULT_ENCODING};` },
+              ),
             );
-          })
+          }),
       );
   }
 
@@ -731,7 +733,7 @@ export class TerminalView extends ItemView {
       language.onChangeLanguage.listen(() => {
         updateView(context, this);
         this.find?.setI18n(i18n.t);
-      })
+      }),
     );
 
     this.register(() => {
@@ -745,7 +747,7 @@ export class TerminalView extends ItemView {
         keymap.popScope(focusedScope);
         statusBarHider.update();
       },
-      { passive: true }
+      { passive: true },
     );
     this.registerDomEvent(
       contentEl,
@@ -755,7 +757,7 @@ export class TerminalView extends ItemView {
         keymap.pushScope(focusedScope);
         statusBarHider.update();
       },
-      { capture: true, passive: true }
+      { capture: true, passive: true },
     );
     TerminalView.lastFocusTimes.set(this, Date.now());
     if (this.isFocused) {
@@ -776,7 +778,7 @@ export class TerminalView extends ItemView {
       const onFind = (
           direction: FindComponent$.Direction,
           params: FindComponent$.Params,
-          incremental = false
+          incremental = false,
         ): void => {
           const finder = this.emulator?.addons.search;
           if (!finder) {
@@ -851,7 +853,7 @@ export class TerminalView extends ItemView {
               name: this.name,
             }),
           settings.value.noticeTimeout,
-          context
+          context,
         );
       };
     if (!PROFILE_PROPERTIES[profile.type].integratable) {
@@ -863,7 +865,7 @@ export class TerminalView extends ItemView {
           printError(
             anyToError(error),
             () => i18n.t("errors.error-spawning-terminal"),
-            context
+            context,
           );
         }
       })();
@@ -908,7 +910,7 @@ export class TerminalView extends ItemView {
                     i18n.t("components.terminal.restored-history", {
                       datetime: new Date(),
                       interpolation: { escapeValue: false },
-                    })
+                    }),
                   );
                 }
                 const ret = await openProfile(context, profile, {
@@ -924,9 +926,9 @@ export class TerminalView extends ItemView {
                     profile: JSON.stringify(
                       profile,
                       null,
-                      JSON_STRINGIFY_SPACE
+                      JSON_STRINGIFY_SPACE,
                     ),
-                  })
+                  }),
                 );
                 pty.onExit
                   .catch(noop satisfies () => unknown as () => unknown)
@@ -939,11 +941,11 @@ export class TerminalView extends ItemView {
                           profile: JSON.stringify(
                             profile,
                             null,
-                            JSON_STRINGIFY_SPACE
+                            JSON_STRINGIFY_SPACE,
                           ),
-                        }
+                        },
                       );
-                    })
+                    }),
                   );
                 return pty;
               },
@@ -968,7 +970,7 @@ export class TerminalView extends ItemView {
                   }),
                   () => {
                     this.find?.setResults("");
-                  }
+                  },
                 ),
                 dragAndDrop: new DragAndDropAddon(ele),
                 followTheme: new FollowThemeAddon(context, ele, {
@@ -979,21 +981,21 @@ export class TerminalView extends ItemView {
                 ligatures: new LigaturesAddon({}),
                 renderer: new RendererAddon(
                   () => new CanvasAddon(),
-                  () => new WebglAddon(false)
+                  () => new WebglAddon(false),
                 ),
                 rightClickAction: new RightClickActionAddon(
                   profile.type === "invalid"
                     ? void 0
                     : (): RightClickActionAddon.Action =>
-                        profile.rightClickAction
+                        profile.rightClickAction,
                 ),
                 search: new SearchAddon(),
                 unicode11: new Unicode11Addon(),
                 webLinks: new WebLinksAddon(
                   (event, uri) => openExternal(activeSelf(event), uri),
-                  {}
+                  {},
                 ),
-              }
+              },
             ),
             { pseudoterminal, terminal, addons } = emulator,
             { disposer, renderer, search } = addons;
@@ -1013,16 +1015,16 @@ export class TerminalView extends ItemView {
                   ).includes(code.toString())
                     ? settings.value.noticeTimeout
                     : settings.value.errorNoticeTimeout,
-                  context
+                  context,
                 );
               },
               (error: unknown) => {
                 printError(
                   anyToError(error),
                   () => i18n.t("errors.error-spawning-terminal"),
-                  context
+                  context,
                 );
-              }
+              },
             );
           terminal.onWriteParsed(requestSaveLayout);
           terminal.onResize(requestSaveLayout);
@@ -1036,8 +1038,8 @@ export class TerminalView extends ItemView {
               (settings0) => settings0.preferredRenderer,
               (cur) => {
                 renderer.use(cur);
-              }
-            )
+              },
+            ),
           );
           renderer.use(settings.value.preferredRenderer);
           search.onDidChangeResults((results0) => {
@@ -1062,7 +1064,7 @@ export class TerminalView extends ItemView {
           onResize(ele, (ent) => {
             if (
               ent.contentBoxSize.every(
-                (size) => size.blockSize <= 0 || size.inlineSize <= 0
+                (size) => size.blockSize <= 0 || size.inlineSize <= 0,
               )
             ) {
               return;
@@ -1122,7 +1124,7 @@ export namespace TerminalView {
   }
   export function getLeaf(
     context: TerminalPlugin,
-    leaf?: WorkspaceLeaf
+    leaf?: WorkspaceLeaf,
   ): WorkspaceLeaf {
     const {
         app: {
@@ -1134,7 +1136,7 @@ export namespace TerminalView {
       newLeaf = ((): WorkspaceLeaf => {
         if (settings.value.createInstanceNearExistingOnes) {
           const existingLeaves = workspace.getLeavesOfType(
-              TerminalView.type.namespaced(context)
+              TerminalView.type.namespaced(context),
             ),
             existingLeaf = leaf ?? existingLeaves[existingLeaves.length - 1];
           if (existingLeaf) {
@@ -1178,13 +1180,13 @@ export namespace TerminalView {
     context: TerminalPlugin,
     state: State,
     leaf?: WorkspaceLeaf,
-    type: string = TerminalView.type.namespaced(context)
+    type: string = TerminalView.type.namespaced(context),
   ): Promise<void> {
     await (leaf ?? getLeaf(context)).setViewState({
       active: true,
       state: newCollaborativeState(
         context,
-        new Map([[TerminalView.type, state]])
+        new Map([[TerminalView.type, state]]),
       ),
       type,
     });

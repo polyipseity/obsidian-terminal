@@ -30,7 +30,7 @@ import { Set as valueSet } from "immutable";
 
 const xterm = dynamicRequireLazy<typeof import("@xterm/xterm")>(
   BUNDLE,
-  "@xterm/xterm"
+  "@xterm/xterm",
 );
 
 type IFunctionIdentifier0 = DeepReadonly<DeepRequired<IFunctionIdentifier>>;
@@ -51,7 +51,7 @@ export const DEVICE_CONTROL_STRING = `${ESC}P`,
   LONG_FINAL_IDENTIFIERS = rangeCodePoint(codePoint("\x30"), codePoint("\x7f")),
   SHORT_FINAL_IDENTIFIERS = rangeCodePoint(
     codePoint("\x40"),
-    codePoint("\x7f")
+    codePoint("\x7f"),
   ),
   CSI_IDENTIFIERS = lazyProxy(() =>
     valueSet<IFunctionIdentifier0>(
@@ -59,13 +59,13 @@ export const DEVICE_CONTROL_STRING = `${ESC}P`,
         PREFIX_IDENTIFIERS,
         INTERMEDIATES_IDENTIFIERS,
         INTERMEDIATES_IDENTIFIERS,
-        SHORT_FINAL_IDENTIFIERS
+        SHORT_FINAL_IDENTIFIERS,
       ).map(([prefix, intermediates0, intermediates1, final]) => ({
         final,
         intermediates: `${intermediates0}${intermediates1}`,
         prefix,
-      }))
-    )
+      })),
+    ),
   ),
   DCS_IDENTIFIERS = CSI_IDENTIFIERS,
   ESC_IDENTIFIERS = lazyProxy(() =>
@@ -73,13 +73,13 @@ export const DEVICE_CONTROL_STRING = `${ESC}P`,
       cartesianProduct(
         INTERMEDIATES_IDENTIFIERS,
         INTERMEDIATES_IDENTIFIERS,
-        LONG_FINAL_IDENTIFIERS
+        LONG_FINAL_IDENTIFIERS,
       ).map(([intermediates0, intermediates1, final]) => ({
         final,
         intermediates: `${intermediates0}${intermediates1}`,
         prefix: "",
-      }))
-    )
+      })),
+    ),
   ),
   OSC_IDENTIFIERS = lazyProxy(() => valueSet(range(2022))),
   MAX_CHARACTER_WIDTH = 2,
@@ -93,7 +93,7 @@ export function normalizeText(text: string): string {
 
 export async function writePromise(
   self0: Terminal,
-  data: Uint8Array | string
+  data: Uint8Array | string,
 ): Promise<void> {
   return new Promise((resolve) => {
     self0.write(data, resolve);
@@ -104,7 +104,7 @@ export class TerminalTextArea implements IDisposable {
   protected static readonly margin = MAX_CHARACTER_WIDTH;
   protected static readonly splitters = new RegExp(
     `(${alternativeRegExp([ESC, "\u007f", "\r"]).source})`,
-    "u"
+    "u",
   );
 
   protected static readonly writeLock = "write";
@@ -215,25 +215,25 @@ export class TerminalTextArea implements IDisposable {
     for (const id of CSI_IDENTIFIERS) {
       parser.registerCsiHandler(
         id,
-        handler(TerminalTextArea.allowedIdentifiers.csi.has(id))
+        handler(TerminalTextArea.allowedIdentifiers.csi.has(id)),
       );
     }
     for (const id of DCS_IDENTIFIERS) {
       parser.registerDcsHandler(
         id,
-        handler(TerminalTextArea.allowedIdentifiers.dcs.has(id))
+        handler(TerminalTextArea.allowedIdentifiers.dcs.has(id)),
       );
     }
     for (const id of ESC_IDENTIFIERS) {
       parser.registerEscHandler(
         id,
-        handler(TerminalTextArea.allowedIdentifiers.esc.has(id))
+        handler(TerminalTextArea.allowedIdentifiers.esc.has(id)),
       );
     }
     for (const id of OSC_IDENTIFIERS) {
       parser.registerOscHandler(
         id,
-        handler(TerminalTextArea.allowedIdentifiers.osc.has(id))
+        handler(TerminalTextArea.allowedIdentifiers.osc.has(id)),
       );
     }
   }
@@ -291,12 +291,12 @@ export class TerminalTextArea implements IDisposable {
 
               await writePromise(
                 terminal,
-                `${ansi.erase.inLine()}${ansi.cursor.down()}${CSI}L`
+                `${ansi.erase.inLine()}${ansi.cursor.down()}${CSI}L`,
               );
               this.#widths[cursorY] = cursorX;
               insertAt(this.#widths, cursorY + 1, 0);
               data0.unshift(
-                ...split(`${rest}${ansi.cursor.horizontalAbsolute(1)}`)
+                ...split(`${rest}${ansi.cursor.horizontalAbsolute(1)}`),
               );
               break;
             }
@@ -313,7 +313,7 @@ export class TerminalTextArea implements IDisposable {
                 if (width > 0) {
                   await writePromise(
                     terminal,
-                    `${ansi.cursor.back(width)}${CSI}${width}P`
+                    `${ansi.cursor.back(width)}${CSI}${width}P`,
                   );
                   this.#widths[cursorY] -= width;
                 } else if (cursorY > 0) {
@@ -323,14 +323,14 @@ export class TerminalTextArea implements IDisposable {
                   await writePromise(
                     terminal,
                     `${CSI}M${ansi.cursor.up()}${ansi.cursor.horizontalAbsolute(
-                      1 + prev
-                    )}`
+                      1 + prev,
+                    )}`,
                   );
                   removeAt(this.#widths, cursorY);
                   data0.unshift(
                     ...split(
-                      `${rest}${ansi.cursor.horizontalAbsolute(1 + prev)}`
-                    )
+                      `${rest}${ansi.cursor.horizontalAbsolute(1 + prev)}`,
+                    ),
                   );
                 }
               }
@@ -352,14 +352,14 @@ export class TerminalTextArea implements IDisposable {
 
           await this.#sync();
         }
-      }
+      },
     );
   }
 
   public async setValue(value: string): Promise<void> {
     const norm = normalizeText(value).replace(
       replaceAllRegex(NORMALIZED_LINE_FEED),
-      "\r"
+      "\r",
     );
     await this.lock.acquire(TerminalTextArea.writeLock, async () => {
       await this.clear(false);
@@ -379,7 +379,7 @@ export class TerminalTextArea implements IDisposable {
         this.#widths.push(0);
         await this.#sync();
         return ret;
-      }
+      },
     );
   }
 
@@ -404,7 +404,7 @@ export class TerminalTextArea implements IDisposable {
     }
     await writePromise(
       terminal,
-      ansi.cursor.position(1 + cursorY, 1 + cursorX)
+      ansi.cursor.position(1 + cursorY, 1 + cursorX),
     );
     const values: readonly [before: string[], after: string[]] = [[], []];
     let yy = 0;
@@ -424,11 +424,11 @@ export class TerminalTextArea implements IDisposable {
 
         await writePromise(
           terminal,
-          ansi.cursor.horizontalAbsolute(1 + cursorX)
+          ansi.cursor.horizontalAbsolute(1 + cursorX),
         );
       } else {
         values[cursorY > yy ? 0 : 1].push(
-          line?.translateToString(false, 0, width) ?? ""
+          line?.translateToString(false, 0, width) ?? "",
         );
       }
       ++yy;
@@ -441,7 +441,7 @@ export class TerminalTextArea implements IDisposable {
     this.#cursor.xx = cursorX;
     terminal.resize(
       Math.max(...this.#widths) + TerminalTextArea.margin,
-      this.#widths.length + TerminalTextArea.margin
+      this.#widths.length + TerminalTextArea.margin,
     );
   }
 }
@@ -469,7 +469,7 @@ export namespace CursoredText {
   export async function info(
     terminal: Terminal,
     text: CursoredText,
-    startX = 0
+    startX = 0,
   ): Promise<Info> {
     const { options, cols } = terminal,
       { string, cursor } = text,
@@ -487,7 +487,7 @@ export namespace CursoredText {
       { baseY: startBaseY } = active;
     await writePromise(
       simulation,
-      `${ansi.cursor.horizontalAbsolute(1 + startX)}${before}`
+      `${ansi.cursor.horizontalAbsolute(1 + startX)}${before}`,
     );
     const { cursorX, baseY: cursorBaseY } = active;
     await writePromise(simulation, after);
@@ -503,8 +503,8 @@ export namespace CursoredText {
             ?.translateToString(
               true,
               yy === startBaseY ? startX : 0,
-              yy === endBaseY ? endX : cols
-            ) ?? ""
+              yy === endBaseY ? endX : cols,
+            ) ?? "",
       ),
       rows: endBaseY - startBaseY + 1,
       startX,

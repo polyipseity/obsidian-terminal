@@ -54,11 +54,11 @@ import semverCoerce from "semver/functions/coerce.js";
 
 const childProcess = dynamicRequire<typeof import("node:child_process")>(
     BUNDLE,
-    "node:child_process"
+    "node:child_process",
   ),
   process = dynamicRequire<typeof import("node:process")>(
     BUNDLE,
-    "node:process"
+    "node:process",
   ),
   util = dynamicRequire<typeof import("node:util")>(BUNDLE, "node:util"),
   execFileP = (async () => {
@@ -70,7 +70,7 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
   public constructor(
     context: TerminalPlugin,
     data: Settings.Profile.TerminalOptions,
-    options?: TerminalOptionsModal.Options
+    options?: TerminalOptionsModal.Options,
   ) {
     const {
       language: { value: i18n },
@@ -85,7 +85,7 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
   protected override draw(
     ui: UpdatableUI,
     element: HTMLElement,
-    errorEl: StatusUI
+    errorEl: StatusUI,
   ): void {
     const {
         context: {
@@ -101,7 +101,7 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
       },
       (ele) => {
         ele.remove();
-      }
+      },
     )
       .newSetting(element, (setting) => {
         setting
@@ -118,24 +118,24 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
                   if (data.fontFamily === void 0) {
                     component.setPlaceholder(
                       i18n.t(
-                        "components.terminal-options.undefined-placeholder"
-                      )
+                        "components.terminal-options.undefined-placeholder",
+                      ),
                     );
                   }
                 },
-              }
-            )
+              },
+            ),
           )
           .addButton((button) =>
             button
               .setIcon(
-                i18n.t("asset:components.terminal-options.undefine-icon")
+                i18n.t("asset:components.terminal-options.undefine-icon"),
               )
               .setTooltip(i18n.t("components.terminal-options.undefine"))
               .onClick(async () => {
                 delete data.fontFamily;
                 await this.postMutate2(errorEl);
-              })
+              }),
           )
           .addExtraButton(
             resetButton(
@@ -145,11 +145,11 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
                 assignExact(
                   data,
                   "fontFamily",
-                  DEFAULT_TERMINAL_OPTIONS.fontFamily
+                  DEFAULT_TERMINAL_OPTIONS.fontFamily,
                 );
               },
-              async () => this.postMutate2(errorEl)
-            )
+              async () => this.postMutate2(errorEl),
+            ),
           );
       })
       .newSetting(element, (setting) => {
@@ -168,29 +168,29 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
                 },
                 setTextToNumber((value) => {
                   data.fontSize = value;
-                })
+                }),
               ),
               async () => this.postMutate2(errorEl),
               {
                 post(component) {
                   component.inputEl.type = "number";
                   component.setPlaceholder(
-                    i18n.t("components.terminal-options.undefined-placeholder")
+                    i18n.t("components.terminal-options.undefined-placeholder"),
                   );
                 },
-              }
-            )
+              },
+            ),
           )
           .addButton((button) =>
             button
               .setIcon(
-                i18n.t("asset:components.terminal-options.undefine-icon")
+                i18n.t("asset:components.terminal-options.undefine-icon"),
               )
               .setTooltip(i18n.t("components.terminal-options.undefine"))
               .onClick(async () => {
                 delete data.fontSize;
                 await this.postMutate2(errorEl);
-              })
+              }),
           )
           .addExtraButton(
             resetButton(
@@ -200,11 +200,11 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
                 assignExact(
                   data,
                   "fontSize",
-                  DEFAULT_TERMINAL_OPTIONS.fontSize
+                  DEFAULT_TERMINAL_OPTIONS.fontSize,
                 );
               },
-              async () => this.postMutate2(errorEl)
-            )
+              async () => this.postMutate2(errorEl),
+            ),
           );
       })
       .newSetting(element, (setting) => {
@@ -218,12 +218,12 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
                     createChildElement(frag, "span", (ele) => {
                       ele.classList.add(DOMClasses.MOD_WARNING);
                       ele.textContent = i18n.t(
-                        "components.terminal-options.invalid-description"
+                        "components.terminal-options.invalid-description",
                       );
                     });
-                  }
+                  },
                 )
-              : ""
+              : "",
           )
           .addText(
             linkSetting(
@@ -247,34 +247,34 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
                   Settings.Profile.TerminalOptions.FONT_WEIGHTS,
                   (value) => {
                     data.fontWeight = value;
-                  }
+                  },
                 ),
                 (value) => {
                   temp.set(setting, value);
                   return true;
-                }
+                },
               ),
               async () => this.postMutate2(errorEl),
               {
                 post(component) {
                   component.setPlaceholder(
-                    i18n.t("components.terminal-options.undefined-placeholder")
+                    i18n.t("components.terminal-options.undefined-placeholder"),
                   );
                 },
-              }
-            )
+              },
+            ),
           )
           .addButton((button) =>
             button
               .setIcon(
-                i18n.t("asset:components.terminal-options.undefine-icon")
+                i18n.t("asset:components.terminal-options.undefine-icon"),
               )
               .setTooltip(i18n.t("components.terminal-options.undefine"))
               .onClick(async () => {
                 delete data.fontWeight;
                 temp.delete(setting);
                 await this.postMutate2(errorEl);
-              })
+              }),
           )
           .addExtraButton(
             resetButton(
@@ -284,12 +284,12 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
                 assignExact(
                   data,
                   "fontWeight",
-                  DEFAULT_TERMINAL_OPTIONS.fontWeight
+                  DEFAULT_TERMINAL_OPTIONS.fontWeight,
                 );
                 temp.delete(setting);
               },
-              async () => this.postMutate2(errorEl)
-            )
+              async () => this.postMutate2(errorEl),
+            ),
           );
       })
       .newSetting(element, (setting) => {
@@ -303,12 +303,12 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
                     createChildElement(frag, "span", (ele) => {
                       ele.classList.add(DOMClasses.MOD_WARNING);
                       ele.textContent = i18n.t(
-                        "components.terminal-options.invalid-description"
+                        "components.terminal-options.invalid-description",
                       );
                     });
-                  }
+                  },
                 )
-              : ""
+              : "",
           )
           .addText(
             linkSetting(
@@ -332,34 +332,34 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
                   Settings.Profile.TerminalOptions.FONT_WEIGHTS,
                   (value) => {
                     data.fontWeightBold = value;
-                  }
+                  },
                 ),
                 (value) => {
                   temp.set(setting, value);
                   return true;
-                }
+                },
               ),
               async () => this.postMutate2(errorEl),
               {
                 post(component) {
                   component.setPlaceholder(
-                    i18n.t("components.terminal-options.undefined-placeholder")
+                    i18n.t("components.terminal-options.undefined-placeholder"),
                   );
                 },
-              }
-            )
+              },
+            ),
           )
           .addButton((button) =>
             button
               .setIcon(
-                i18n.t("asset:components.terminal-options.undefine-icon")
+                i18n.t("asset:components.terminal-options.undefine-icon"),
               )
               .setTooltip(i18n.t("components.terminal-options.undefine"))
               .onClick(async () => {
                 delete data.fontWeightBold;
                 temp.delete(setting);
                 await this.postMutate2(errorEl);
-              })
+              }),
           )
           .addExtraButton(
             resetButton(
@@ -369,12 +369,12 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
                 assignExact(
                   data,
                   "fontWeightBold",
-                  DEFAULT_TERMINAL_OPTIONS.fontWeightBold
+                  DEFAULT_TERMINAL_OPTIONS.fontWeightBold,
                 );
                 temp.delete(setting);
               },
-              async () => this.postMutate2(errorEl)
-            )
+              async () => this.postMutate2(errorEl),
+            ),
           );
       });
     super.draw(ui, element, errorEl);
@@ -414,7 +414,7 @@ export class ProfileModal extends Modal {
         return context.language.value.t(`profile-presets.${key}`);
       },
       value: PROFILE_PRESETS[key],
-    }))
+    })),
   ) {
     super(context.app);
     this.data = cloneAsWritable(data);
@@ -433,7 +433,7 @@ export class ProfileModal extends Modal {
       .finally(
         onChangeLanguage.listen(() => {
           modalUI.update();
-        })
+        }),
       )
       .new(
         constant(titleEl),
@@ -446,12 +446,12 @@ export class ProfileModal extends Modal {
         },
         (ele) => {
           ele.textContent = null;
-        }
+        },
       );
     ui.finally(listElRemover).finally(
       onChangeLanguage.listen(() => {
         ui.update();
-      })
+      }),
     );
     let keepPreset = false;
     ui.newSetting(listEl, (setting) => {
@@ -463,8 +463,8 @@ export class ProfileModal extends Modal {
             (value) => {
               profile.name = value;
             },
-            async () => this.postMutate()
-          )
+            async () => this.postMutate(),
+          ),
         )
         .addExtraButton(
           resetButton(
@@ -473,8 +473,8 @@ export class ProfileModal extends Modal {
             () => {
               profile.name = Settings.Profile.DEFAULTS[profile.type].name;
             },
-            async () => this.postMutate()
-          )
+            async () => this.postMutate(),
+          ),
         );
     })
       .newSetting(listEl, (setting) => {
@@ -505,19 +505,19 @@ export class ProfileModal extends Modal {
                   component
                     .addOption(
                       NaN.toString(),
-                      i18n.t("components.profile.preset-placeholder")
+                      i18n.t("components.profile.preset-placeholder"),
                     )
                     .addOptions(
                       Object.fromEntries(
                         this.#presets.map((selection, index) => [
                           index,
                           selection.name,
-                        ])
-                      )
+                        ]),
+                      ),
                     );
                 },
-              }
-            )
+              },
+            ),
           )
           .addExtraButton(
             resetButton(
@@ -529,8 +529,8 @@ export class ProfileModal extends Modal {
                 post(component) {
                   component.setDisabled(true);
                 },
-              }
-            )
+              },
+            ),
           );
       })
       .newSetting(listEl, (setting) => {
@@ -567,7 +567,7 @@ export class ProfileModal extends Modal {
         null,
         () => {
           this.#setupTypedUI = noop;
-        }
+        },
       );
   }
 
@@ -587,7 +587,7 @@ export class ProfileModal extends Modal {
 
   protected replaceData(
     profile: DeepWritable<Settings.Profile>,
-    keepName = false
+    keepName = false,
   ): void {
     const { data } = this,
       { name } = data;
@@ -616,7 +616,7 @@ export class ProfileModal extends Modal {
             setTextToEnum(Settings.Profile.TYPES, (value) => {
               this.replaceData(
                 cloneAsWritable(Settings.Profile.DEFAULTS[value]),
-                true
+                true,
               );
             }),
             async () => {
@@ -633,24 +633,24 @@ export class ProfileModal extends Modal {
                         interpolation: { escapeValue: false },
                         type,
                       }),
-                    ])
-                  )
+                    ]),
+                  ),
                 );
                 for (const opt of Settings.Profile.TYPES.filter(
-                  (type) => !PROFILE_PROPERTIES[type].valid
+                  (type) => !PROFILE_PROPERTIES[type].valid,
                 ).flatMap((type) =>
                   Array.from(
                     dropdown.selectEl.querySelectorAll<HTMLOptionElement>(
-                      `option[value="${escapeQuerySelectorAttribute(type)}"]`
-                    )
-                  )
+                      `option[value="${escapeQuerySelectorAttribute(type)}"]`,
+                    ),
+                  ),
                 )) {
                   opt.hidden = true;
                   opt.disabled = true;
                 }
               },
-            }
-          )
+            },
+          ),
         )
         .addExtraButton(
           resetButton(
@@ -662,8 +662,8 @@ export class ProfileModal extends Modal {
               post(component) {
                 component.setDisabled(true);
               },
-            }
-          )
+            },
+          ),
         );
     });
     if (profile.type === "invalid") {
@@ -675,7 +675,7 @@ export class ProfileModal extends Modal {
         .addButton((button) =>
           button
             .setIcon(
-              i18n.t("asset:components.profile.terminal-options-edit-icon")
+              i18n.t("asset:components.profile.terminal-options-edit-icon"),
             )
             .setTooltip(i18n.t("components.profile.terminal-options-edit"))
             .onClick(() => {
@@ -685,7 +685,7 @@ export class ProfileModal extends Modal {
                   await this.postMutate();
                 },
               }).open();
-            })
+            }),
         )
         .addExtraButton(
           resetButton(
@@ -693,11 +693,11 @@ export class ProfileModal extends Modal {
             i18n.t("components.profile.reset"),
             () => {
               profile.terminalOptions = cloneAsWritable(
-                Settings.Profile.DEFAULTS[profile.type].terminalOptions
+                Settings.Profile.DEFAULTS[profile.type].terminalOptions,
               );
             },
-            async () => this.postMutate()
-          )
+            async () => this.postMutate(),
+          ),
         );
     })
       .newSetting(element, (setting) => {
@@ -709,8 +709,8 @@ export class ProfileModal extends Modal {
               (value) => {
                 profile.followTheme = value;
               },
-              async () => this.postMutate()
-            )
+              async () => this.postMutate(),
+            ),
           )
           .addExtraButton(
             resetButton(
@@ -720,8 +720,8 @@ export class ProfileModal extends Modal {
                 profile.followTheme =
                   Settings.Profile.DEFAULTS[profile.type].followTheme;
               },
-              async () => this.postMutate()
-            )
+              async () => this.postMutate(),
+            ),
           );
       })
       .newSetting(element, (setting) => {
@@ -732,10 +732,10 @@ export class ProfileModal extends Modal {
             createDocumentFragment(settingEl.ownerDocument, (frag) => {
               createChildElement(frag, "span", (ele) => {
                 ele.innerHTML = i18n.t(
-                  "components.profile.restore-history-description-HTML"
+                  "components.profile.restore-history-description-HTML",
                 );
               });
-            })
+            }),
           )
           .addToggle(
             linkSetting(
@@ -743,8 +743,8 @@ export class ProfileModal extends Modal {
               (value) => {
                 profile.restoreHistory = value;
               },
-              async () => this.postMutate()
-            )
+              async () => this.postMutate(),
+            ),
           )
           .addExtraButton(
             resetButton(
@@ -754,8 +754,8 @@ export class ProfileModal extends Modal {
                 profile.restoreHistory =
                   Settings.Profile.DEFAULTS[profile.type].restoreHistory;
               },
-              async () => this.postMutate()
-            )
+              async () => this.postMutate(),
+            ),
           );
       })
       .newSetting(element, (setting) => {
@@ -765,12 +765,12 @@ export class ProfileModal extends Modal {
             i18n.t("components.profile.success-exit-codes-description", {
               count: profile.successExitCodes.length,
               interpolation: { escapeValue: false },
-            })
+            }),
           )
           .addButton((button) =>
             button
               .setIcon(
-                i18n.t("asset:components.profile.success-exit-codes-edit-icon")
+                i18n.t("asset:components.profile.success-exit-codes-edit-icon"),
               )
               .setTooltip(i18n.t("components.profile.success-exit-codes-edit"))
               .onClick(() => {
@@ -789,9 +789,9 @@ export class ProfileModal extends Modal {
                     },
                     title: (): string =>
                       i18n.t("components.profile.success-exit-codes"),
-                  }
+                  },
                 ).open();
-              })
+              }),
           )
           .addExtraButton(
             resetButton(
@@ -799,11 +799,11 @@ export class ProfileModal extends Modal {
               i18n.t("components.profile.reset"),
               () => {
                 profile.successExitCodes = cloneAsWritable(
-                  Settings.Profile.DEFAULTS[profile.type].successExitCodes
+                  Settings.Profile.DEFAULTS[profile.type].successExitCodes,
                 );
               },
-              async () => this.postMutate()
-            )
+              async () => this.postMutate(),
+            ),
           );
       });
     switch (profile.type) {
@@ -824,21 +824,21 @@ export class ProfileModal extends Modal {
                 (value) => {
                   profile.executable = value;
                 },
-                async () => this.postMutate()
-              )
+                async () => this.postMutate(),
+              ),
             )
             .addExtraButton(
               resetButton(
                 i18n.t(
-                  `asset:components.profile.${profile.type}.executable-icon`
+                  `asset:components.profile.${profile.type}.executable-icon`,
                 ),
                 i18n.t("components.profile.reset"),
                 () => {
                   profile.executable =
                     Settings.Profile.DEFAULTS[profile.type].executable;
                 },
-                async () => this.postMutate()
-              )
+                async () => this.postMutate(),
+              ),
             );
         }).newSetting(element, (setting) => {
           setting
@@ -849,18 +849,18 @@ export class ProfileModal extends Modal {
                 {
                   count: profile.args.length,
                   interpolation: { escapeValue: false },
-                }
-              )
+                },
+              ),
             )
             .addButton((button) =>
               button
                 .setIcon(
                   i18n.t(
-                    `asset:components.profile.${profile.type}.arguments-edit-icon`
-                  )
+                    `asset:components.profile.${profile.type}.arguments-edit-icon`,
+                  ),
                 )
                 .setTooltip(
-                  i18n.t(`components.profile.${profile.type}.arguments-edit`)
+                  i18n.t(`components.profile.${profile.type}.arguments-edit`),
                 )
                 .onClick(() => {
                   new ListModal(
@@ -878,23 +878,23 @@ export class ProfileModal extends Modal {
                       },
                       title: (): string =>
                         i18n.t(`components.profile.${profile.type}.arguments`),
-                    }
+                    },
                   ).open();
-                })
+                }),
             )
             .addExtraButton(
               resetButton(
                 i18n.t(
-                  `asset:components.profile.${profile.type}.arguments-icon`
+                  `asset:components.profile.${profile.type}.arguments-icon`,
                 ),
                 i18n.t("components.profile.reset"),
                 () => {
                   profile.args = cloneAsWritable(
-                    Settings.Profile.DEFAULTS[profile.type].args
+                    Settings.Profile.DEFAULTS[profile.type].args,
                   );
                 },
-                async () => this.postMutate()
-              )
+                async () => this.postMutate(),
+              ),
             );
         });
         for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
@@ -904,14 +904,14 @@ export class ProfileModal extends Modal {
                 i18n.t("components.profile.platform", {
                   interpolation: { escapeValue: false },
                   type: platform,
-                })
+                }),
               )
               .setDesc(
                 i18n.t(
                   `components.profile.platform-description-${
                     platform === Platform.CURRENT ? "current" : ""
-                  }`
-                )
+                  }`,
+                ),
               )
               .addToggle(
                 linkSetting(
@@ -921,8 +921,8 @@ export class ProfileModal extends Modal {
                   (value) => {
                     profile.platforms[platform] = value;
                   },
-                  async () => this.postMutate()
-                )
+                  async () => this.postMutate(),
+                ),
               )
               .addExtraButton(
                 resetButton(
@@ -937,8 +937,8 @@ export class ProfileModal extends Modal {
                         platform
                       ];
                   },
-                  async () => this.postMutate()
-                )
+                  async () => this.postMutate(),
+                ),
               );
           });
         }
@@ -947,7 +947,7 @@ export class ProfileModal extends Modal {
           ui.newSetting(element, (setting) => {
             setting
               .setName(
-                i18n.t(`components.profile.${profile.type}.Python-executable`)
+                i18n.t(`components.profile.${profile.type}.Python-executable`),
               )
               .setDesc(
                 i18n.t(
@@ -955,8 +955,8 @@ export class ProfileModal extends Modal {
                   {
                     interpolation: { escapeValue: false },
                     version: PYTHON_REQUIREMENTS.Python.version,
-                  }
-                )
+                  },
+                ),
               )
               .addText(
                 linkSetting(
@@ -969,12 +969,12 @@ export class ProfileModal extends Modal {
                     post: (component) => {
                       component.setPlaceholder(
                         i18n.t(
-                          `components.profile.${profile.type}.Python-executable-placeholder`
-                        )
+                          `components.profile.${profile.type}.Python-executable-placeholder`,
+                        ),
                       );
                     },
-                  }
-                )
+                  },
+                ),
               )
               .addButton((button) => {
                 const { buttonEl } = button,
@@ -982,13 +982,13 @@ export class ProfileModal extends Modal {
                 button
                   .setIcon(
                     i18n.t(
-                      `asset:components.profile.${profile.type}.Python-executable-check${i18nVariant}-icon`
-                    )
+                      `asset:components.profile.${profile.type}.Python-executable-check${i18nVariant}-icon`,
+                    ),
                   )
                   .setTooltip(
                     i18n.t(
-                      `components.profile.${profile.type}.Python-executable-check${i18nVariant}`
-                    )
+                      `components.profile.${profile.type}.Python-executable-check${i18nVariant}`,
+                    ),
                   )
                   .onClick(() => {
                     if (checkingPython) {
@@ -1014,7 +1014,7 @@ export class ProfileModal extends Modal {
                               },
                               timeout: CHECK_EXECUTABLE_WAIT * SI_PREFIX_SCALE,
                               windowsHide: true,
-                            }
+                            },
                           );
                         if (stdout) {
                           activeSelf(buttonEl).console.log(stdout);
@@ -1028,7 +1028,7 @@ export class ProfileModal extends Modal {
                         const msgs = await Promise.all(
                           Object.entries(PYTHON_REQUIREMENTS)
                             .filter(([, { platforms }]) =>
-                              inSet(platforms, Platform.CURRENT)
+                              inSet(platforms, Platform.CURRENT),
                             )
                             .map(async ([name, { version: req }]) => {
                               let ver: SemVer | null = null;
@@ -1037,7 +1037,7 @@ export class ProfileModal extends Modal {
                                   ver = new SemVer(
                                     semverCoerce(stdout, { loose: true }) ??
                                       stdout,
-                                    { loose: true }
+                                    { loose: true },
                                   );
                                 } else {
                                   const { stdout: stdout2, stderr: stderr2 } =
@@ -1055,7 +1055,7 @@ export class ProfileModal extends Modal {
                                           CHECK_EXECUTABLE_WAIT *
                                           SI_PREFIX_SCALE,
                                         windowsHide: true,
-                                      }
+                                      },
                                     );
                                   if (stdout2) {
                                     activeSelf(buttonEl).console.log(stdout2);
@@ -1066,12 +1066,12 @@ export class ProfileModal extends Modal {
                                   ver = new SemVer(
                                     semverCoerce(stdout2, { loose: true }) ??
                                       stdout2,
-                                    { loose: true }
+                                    { loose: true },
                                   );
                                 }
                               } catch (error) {
                                 /* @__PURE__ */ activeSelf(
-                                  buttonEl
+                                  buttonEl,
                                 ).console.debug(error);
                               }
                               const variant =
@@ -1086,20 +1086,20 @@ export class ProfileModal extends Modal {
                                     name,
                                     requirement: `>=${req.version}`,
                                     version: ver?.version ?? "",
-                                  }
+                                  },
                                 );
-                            })
+                            }),
                         );
                         notice2(
                           () => msgs.map((msg) => msg()).join("\n"),
                           settings.value.noticeTimeout,
-                          context
+                          context,
                         );
                       } catch (error) {
                         printError(
                           anyToError(error),
                           () => i18n.t("errors.error-checking-Python"),
-                          context
+                          context,
                         );
                       } finally {
                         checkingPython = false;
@@ -1115,25 +1115,25 @@ export class ProfileModal extends Modal {
               .addExtraButton(
                 resetButton(
                   i18n.t(
-                    `asset:components.profile.${profile.type}.Python-executable-icon`
+                    `asset:components.profile.${profile.type}.Python-executable-icon`,
                   ),
                   i18n.t("components.profile.reset"),
                   () => {
                     profile.pythonExecutable =
                       Settings.Profile.DEFAULTS[profile.type].pythonExecutable;
                   },
-                  async () => this.postMutate()
-                )
+                  async () => this.postMutate(),
+                ),
               );
           }).newSetting(element, (setting) => {
             setting
               .setName(
-                i18n.t(`components.profile.${profile.type}.use-win32-conhost`)
+                i18n.t(`components.profile.${profile.type}.use-win32-conhost`),
               )
               .setDesc(
                 i18n.t(
-                  `components.profile.${profile.type}.use-win32-conhost-description`
-                )
+                  `components.profile.${profile.type}.use-win32-conhost-description`,
+                ),
               )
               .addToggle(
                 linkSetting(
@@ -1141,21 +1141,21 @@ export class ProfileModal extends Modal {
                   (value) => {
                     profile.useWin32Conhost = value;
                   },
-                  async () => this.postMutate()
-                )
+                  async () => this.postMutate(),
+                ),
               )
               .addExtraButton(
                 resetButton(
                   i18n.t(
-                    `asset:components.profile.${profile.type}.use-win32-conhost-icon`
+                    `asset:components.profile.${profile.type}.use-win32-conhost-icon`,
                   ),
                   i18n.t("components.profile.reset"),
                   () => {
                     profile.useWin32Conhost =
                       Settings.Profile.DEFAULTS[profile.type].useWin32Conhost;
                   },
-                  async () => this.postMutate()
-                )
+                  async () => this.postMutate(),
+                ),
               );
           });
         }
@@ -1174,7 +1174,7 @@ export class ProfileListModal extends ListModal<
   public constructor(
     context: TerminalPlugin,
     data: readonly Settings.Profile.Entry[],
-    options?: ProfileListModal.Options
+    options?: ProfileListModal.Options,
   ) {
     const { value: i18n } = context.language,
       dataW = cloneAsWritable(data),
@@ -1196,7 +1196,7 @@ export class ProfileListModal extends ListModal<
                 });
               }).open();
             })
-            .setDisabled(!editable)
+            .setDisabled(!editable),
         );
       },
       unexpected,
@@ -1211,11 +1211,11 @@ export class ProfileListModal extends ListModal<
                 if (id === void 0) {
                   dataKeys.set(
                     profile,
-                    (id = randomNotIn([...dataKeys.values()], keygen))
+                    (id = randomNotIn([...dataKeys.values()], keygen)),
                   );
                 }
                 return [id, cloneAsWritable(profile)];
-              })
+              }),
             );
           },
         } satisfies ProfileListModal.PredefinedOptions),
@@ -1232,7 +1232,7 @@ export class ProfileListModal extends ListModal<
               {
                 info: Settings.Profile.info([id, profile]),
                 interpolation: { escapeValue: false },
-              }
+              },
             );
           }),
         namer:
@@ -1248,7 +1248,7 @@ export class ProfileListModal extends ListModal<
               {
                 info: Settings.Profile.info([id, profile]),
                 interpolation: { escapeValue: false },
-              }
+              },
             );
           }),
         presetPlaceholder:
@@ -1267,7 +1267,7 @@ export class ProfileListModal extends ListModal<
         title:
           options?.title ??
           ((): string => i18n.t("components.profile-list.title")),
-      }
+      },
     );
     this.dataKeys = dataKeys;
   }
@@ -1277,10 +1277,12 @@ export namespace ProfileListModal {
   export type PredefinedOptions = {
     readonly [K in "callback"]: InitialOptions[K];
   };
-  export interface Options
-    extends Omit<InitialOptions, keyof PredefinedOptions> {
+  export interface Options extends Omit<
+    InitialOptions,
+    keyof PredefinedOptions
+  > {
     readonly callback?: (
-      data: DeepWritable<Settings.Profile.Entry>[]
+      data: DeepWritable<Settings.Profile.Entry>[],
     ) => unknown;
     readonly keygen?: () => string;
   }

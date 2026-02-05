@@ -86,9 +86,7 @@ type IntegratedDefaults = Readonly<
   >
 >;
 export interface ProfilePresets
-  extends ProfilePresets0,
-    ExternalDefaults,
-    IntegratedDefaults {}
+  extends ProfilePresets0, ExternalDefaults, IntegratedDefaults {}
 const PROFILE_PRESETS0 = deepFreeze({
   bashIntegrated: {
     args: ["--login"],
@@ -401,7 +399,7 @@ export type ProfilePresetKeys = readonly [
 
   "darwinIntegratedDefault",
   "linuxIntegratedDefault",
-  "win32IntegratedDefault"
+  "win32IntegratedDefault",
 ];
 export const PROFILE_PRESET_KEYS =
   typedKeys<ProfilePresetKeys>()(PROFILE_PRESETS);
@@ -413,5 +411,5 @@ export const PROFILE_PRESET_ORDERED_KEYS = deepFreeze(
       prev.push(cur);
     }
     return prev;
-  }, [])
+  }, []),
 );

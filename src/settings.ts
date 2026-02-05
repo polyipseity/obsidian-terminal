@@ -19,7 +19,7 @@ import { size } from "lodash-es";
 export class SettingTab extends AdvancedSettingTab<Settings> {
   public constructor(
     protected override readonly context: TerminalPlugin,
-    protected readonly docs: loadDocumentations.Loaded
+    protected readonly docs: loadDocumentations.Loaded,
   ) {
     super(context);
   }
@@ -45,7 +45,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
         language
           ? i18n.t(`language:${language}`)
           : i18n.t("settings.language-default"),
-      Settings.DEFAULT
+      Settings.DEFAULT,
     );
     ui.newSetting(containerEl, (setting) => {
       setting
@@ -57,7 +57,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
             .setCta()
             .onClick(() => {
               docs.open("donate");
-            })
+            }),
         )
         .addButton((button) =>
           button
@@ -67,7 +67,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
             .onClick(() => {
               docs.open("readme");
               closeSetting(containerEl);
-            })
+            }),
         )
         .addButton((button) => {
           button
@@ -98,8 +98,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               }),
             () => {
               this.postMutate();
-            }
-          )
+            },
+          ),
         )
         .addExtraButton(
           resetButton(
@@ -111,8 +111,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               }),
             () => {
               this.postMutate();
-            }
-          )
+            },
+          ),
         );
     })
       .newSetting(containerEl, (setting) => {
@@ -127,8 +127,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                 }),
               () => {
                 this.postMutate();
-              }
-            )
+              },
+            ),
           )
           .addExtraButton(
             resetButton(
@@ -141,8 +141,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                 }),
               () => {
                 this.postMutate();
-              }
-            )
+              },
+            ),
           );
       })
       .newSetting(containerEl, (setting) => {
@@ -152,7 +152,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
             i18n.t("settings.profiles-description", {
               count: size(settings.value.profiles),
               interpolation: { escapeValue: false },
-            })
+            }),
           )
           .addButton((button) =>
             button
@@ -171,9 +171,9 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                     },
                     description: (): string =>
                       i18n.t("settings.profile-list.description"),
-                  }
+                  },
                 ).open();
-              })
+              }),
           )
           .addExtraButton(
             resetButton(
@@ -182,13 +182,13 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               async () =>
                 settings.mutate((settingsM) => {
                   settingsM.profiles = cloneAsWritable(
-                    Settings.DEFAULT.profiles
+                    Settings.DEFAULT.profiles,
                   );
                 }),
               () => {
                 this.postMutate();
-              }
-            )
+              },
+            ),
           );
       });
     this.newSectionWidget(() => i18n.t("settings.instancing"));
@@ -201,7 +201,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
             setTextToEnum(Settings.NEW_INSTANCE_BEHAVIORS, async (value) =>
               settings.mutate((settingsM) => {
                 settingsM.newInstanceBehavior = value;
-              })
+              }),
             ),
             () => {
               this.postMutate();
@@ -213,12 +213,12 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                     Settings.NEW_INSTANCE_BEHAVIORS.map((value) => [
                       value,
                       i18n.t(`settings.new-instance-behaviors.${value}`),
-                    ])
-                  )
+                    ]),
+                  ),
                 );
               },
-            }
-          )
+            },
+          ),
         )
         .addExtraButton(
           resetButton(
@@ -231,15 +231,15 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               }),
             () => {
               this.postMutate();
-            }
-          )
+            },
+          ),
         );
     })
       .newSetting(containerEl, (setting) => {
         setting
           .setName(i18n.t("settings.create-instance-near-existing-ones"))
           .setDesc(
-            i18n.t("settings.create-instance-near-existing-ones-description")
+            i18n.t("settings.create-instance-near-existing-ones-description"),
           )
           .addToggle(
             linkSetting(
@@ -250,8 +250,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                 }),
               () => {
                 this.postMutate();
-              }
-            )
+              },
+            ),
           )
           .addExtraButton(
             resetButton(
@@ -264,8 +264,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                 }),
               () => {
                 this.postMutate();
-              }
-            )
+              },
+            ),
           );
       })
       .newSetting(containerEl, (setting) => {
@@ -280,8 +280,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                 }),
               () => {
                 this.postMutate();
-              }
-            )
+              },
+            ),
           )
           .addExtraButton(
             resetButton(
@@ -294,8 +294,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                 }),
               () => {
                 this.postMutate();
-              }
-            )
+              },
+            ),
           );
       })
       .newSetting(containerEl, (setting) => {
@@ -310,8 +310,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                 }),
               () => {
                 this.postMutate();
-              }
-            )
+              },
+            ),
           )
           .addExtraButton(
             resetButton(
@@ -323,8 +323,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                 }),
               () => {
                 this.postMutate();
-              }
-            )
+              },
+            ),
           );
       });
     this.newSectionWidget(() => i18n.t("settings.interface"));
@@ -340,8 +340,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               }),
             () => {
               this.postMutate();
-            }
-          )
+            },
+          ),
         )
         .addExtraButton(
           resetButton(
@@ -354,8 +354,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               }),
             () => {
               this.postMutate();
-            }
-          )
+            },
+          ),
         );
     }).newSetting(containerEl, (setting) => {
       setting
@@ -366,7 +366,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
             setTextToEnum(Settings.HIDE_STATUS_BAR_OPTIONS, async (value) =>
               settings.mutate((settingsM) => {
                 settingsM.hideStatusBar = value;
-              })
+              }),
             ),
             () => {
               this.postMutate();
@@ -378,12 +378,12 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                     Settings.HIDE_STATUS_BAR_OPTIONS.map((value) => [
                       value,
                       i18n.t(`settings.hide-status-bar-options.${value}`),
-                    ])
-                  )
+                    ]),
+                  ),
                 );
               },
-            }
-          )
+            },
+          ),
         )
         .addExtraButton(
           resetButton(
@@ -395,8 +395,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               }),
             () => {
               this.postMutate();
-            }
-          )
+            },
+          ),
         );
     });
     this.newNoticeTimeoutWidget(Settings.DEFAULT);
@@ -409,10 +409,10 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
           createDocumentFragment(settingEl.ownerDocument, (frag) => {
             createChildElement(frag, "span", (ele) => {
               ele.innerHTML = i18n.t(
-                "settings.expose-internal-modules-description-HTML"
+                "settings.expose-internal-modules-description-HTML",
               );
             });
-          })
+          }),
         )
         .addToggle(
           linkSetting(
@@ -423,8 +423,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               }),
             () => {
               this.postMutate();
-            }
-          )
+            },
+          ),
         )
         .addExtraButton(
           resetButton(
@@ -437,8 +437,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               }),
             () => {
               this.postMutate();
-            }
-          )
+            },
+          ),
         );
     })
       .newSetting(containerEl, (setting) => {
@@ -453,8 +453,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                 }),
               () => {
                 this.postMutate();
-              }
-            )
+              },
+            ),
           )
           .addExtraButton(
             resetButton(
@@ -467,8 +467,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                 }),
               () => {
                 this.postMutate();
-              }
-            )
+              },
+            ),
           );
       })
       .newSetting(containerEl, (setting) => {
@@ -482,7 +482,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                 async (value) =>
                   settings.mutate((settingsM) => {
                     settingsM.preferredRenderer = value;
-                  })
+                  }),
               ),
               () => {
                 this.postMutate();
@@ -497,12 +497,12 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                           interpolation: { escapeValue: false },
                           type,
                         }),
-                      ])
-                    )
+                      ]),
+                    ),
                   );
                 },
-              }
-            )
+              },
+            ),
           )
           .addExtraButton(
             resetButton(
@@ -515,8 +515,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                 }),
               () => {
                 this.postMutate();
-              }
-            )
+              },
+            ),
           );
       });
   }
@@ -528,7 +528,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 
 export function loadSettings(
   context: TerminalPlugin,
-  docs: loadDocumentations.Loaded
+  docs: loadDocumentations.Loaded,
 ): void {
   context.addSettingTab(new SettingTab(context, docs));
   registerSettingsCommands(context);

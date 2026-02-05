@@ -44,7 +44,7 @@ export class DragAndDropAddon implements ITerminalAddon {
             .filter(isNonNil)
             .map((path) => path.replace(replaceAllRegex('"'), '\\"'))
             .map((path) => (path.includes(" ") ? `"${path}"` : path))
-            .join(" ")
+            .join(" "),
         );
         consumeEvent(event);
       },
@@ -55,7 +55,7 @@ export class DragAndDropAddon implements ITerminalAddon {
       },
       () => {
         element.removeEventListener("drop", drop);
-      }
+      },
     );
     element.addEventListener("drop", drop);
     element.addEventListener("dragover", dragover);
@@ -166,7 +166,7 @@ export class FollowThemeAddon implements ITerminalAddon {
   public constructor(
     protected readonly context: PluginContext,
     protected readonly element: HTMLElement,
-    protected readonly opts: FollowThemeAddon.Options = {}
+    protected readonly opts: FollowThemeAddon.Options = {},
   ) {}
 
   // -------------------------------------------------------------------------
@@ -179,7 +179,7 @@ export class FollowThemeAddon implements ITerminalAddon {
    */
   static #resolveCssColor(
     varName: string,
-    attachTo: HTMLElement
+    attachTo: HTMLElement,
   ): string | null {
     const doc = attachTo.ownerDocument,
       view = doc.defaultView,
@@ -221,7 +221,7 @@ export class FollowThemeAddon implements ITerminalAddon {
     }
 
     const alpha = Number(
-      color.alpha.toFixed(FollowThemeAddon.#RGBA_ALPHA_DECIMALS)
+      color.alpha.toFixed(FollowThemeAddon.#RGBA_ALPHA_DECIMALS),
     );
 
     return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
@@ -251,7 +251,7 @@ export class FollowThemeAddon implements ITerminalAddon {
   /** Contrast ratio per WCAG between two colors */
   static #contrast(
     colorA: FollowThemeAddon.RGBA,
-    colorB: FollowThemeAddon.RGBA
+    colorB: FollowThemeAddon.RGBA,
   ): number {
     const lumA = FollowThemeAddon.#lum(colorA),
       lumB = FollowThemeAddon.#lum(colorB),
@@ -266,11 +266,11 @@ export class FollowThemeAddon implements ITerminalAddon {
   static #mix(
     top: FollowThemeAddon.RGBA,
     base: FollowThemeAddon.RGBA,
-    alpha: number
+    alpha: number,
   ): FollowThemeAddon.RGBA {
     const clamped = Math.min(
       FollowThemeAddon.#COLOR_ALPHA_MAX,
-      Math.max(FollowThemeAddon.#COLOR_ALPHA_MIN, alpha)
+      Math.max(FollowThemeAddon.#COLOR_ALPHA_MIN, alpha),
     );
 
     return {
@@ -284,7 +284,7 @@ export class FollowThemeAddon implements ITerminalAddon {
   /** Pick color with highest contrast vs bg */
   static #bestOf(
     candidates: readonly FollowThemeAddon.RGBA[],
-    bg: FollowThemeAddon.RGBA
+    bg: FollowThemeAddon.RGBA,
   ): FollowThemeAddon.RGBA {
     return candidates.reduce((best, current) => {
       const bestC = FollowThemeAddon.#contrast(best, bg),
@@ -297,7 +297,7 @@ export class FollowThemeAddon implements ITerminalAddon {
   static #bestMeetingContrast(
     candidates: FollowThemeAddon.RGBA[],
     bg: FollowThemeAddon.RGBA,
-    min: number
+    min: number,
   ): FollowThemeAddon.RGBA | null {
     for (const color of candidates) {
       if (FollowThemeAddon.#contrast(color, bg) >= min) {
@@ -381,7 +381,7 @@ export class FollowThemeAddon implements ITerminalAddon {
         });
         this.#disposer.push(unpatchSetAccent);
       },
-      noop
+      noop,
     );
   }
 
@@ -429,7 +429,7 @@ export class FollowThemeAddon implements ITerminalAddon {
         this.#toRGBA(fgVarStr) ?? this.#toRGBA(computedBodyColor),
       autoFg = FollowThemeAddon.#bestOf(
         [FollowThemeAddon.#COLOR_BLACK, FollowThemeAddon.#COLOR_WHITE],
-        bg
+        bg,
       ),
       fg = explicitFg ?? autoFg,
       // Cursor: try accent first but ensure minimum contrast
@@ -446,19 +446,19 @@ export class FollowThemeAddon implements ITerminalAddon {
         FollowThemeAddon.#bestMeetingContrast(
           cursorCandidates,
           bg,
-          minCursorContrast
+          minCursorContrast,
         ) ?? FollowThemeAddon.#bestOf(cursorCandidates, bg),
       // Selection: overlay high-contrast color over background
       alpha = Math.min(
         1,
         Math.max(
           0,
-          this.opts.selectionAlpha ?? FollowThemeAddon.#DEFAULT_SELECTION_ALPHA
-        )
+          this.opts.selectionAlpha ?? FollowThemeAddon.#DEFAULT_SELECTION_ALPHA,
+        ),
       ),
       overlayBase = FollowThemeAddon.#bestOf(
         [FollowThemeAddon.#COLOR_BLACK, FollowThemeAddon.#COLOR_WHITE],
-        bg
+        bg,
       ),
       selection = FollowThemeAddon.#mix(overlayBase, bg, alpha);
 
@@ -526,7 +526,7 @@ export class RendererAddon implements ITerminalAddon {
 
   public constructor(
     protected readonly canvasSupplier: () => CanvasAddon,
-    protected readonly webglSupplier: () => WebglAddon
+    protected readonly webglSupplier: () => WebglAddon,
   ) {}
 
   public use(renderer: RendererAddon.RendererOption): void {
@@ -590,8 +590,8 @@ export class RightClickActionAddon implements ITerminalAddon {
 
   public constructor(
     protected readonly action: () => RightClickActionAddon.Action = constant(
-      "default"
-    )
+      "default",
+    ),
   ) {}
 
   public activate(terminal: Terminal): void {
@@ -614,7 +614,7 @@ export class RightClickActionAddon implements ITerminalAddon {
             case "copyPaste":
               if (terminal.hasSelection()) {
                 await activeSelf(element).navigator.clipboard.writeText(
-                  terminal.getSelection()
+                  terminal.getSelection(),
                 );
                 terminal.clearSelection();
                 break;
@@ -622,7 +622,7 @@ export class RightClickActionAddon implements ITerminalAddon {
             // eslint-disable-next-line no-fallthrough
             case "paste":
               terminal.paste(
-                await activeSelf(element).navigator.clipboard.readText()
+                await activeSelf(element).navigator.clipboard.readText(),
               );
               break;
           }

@@ -12,7 +12,7 @@ import { noop } from "lodash-es";
 export class SelectProfileModal extends FuzzySuggestModal<Settings.Profile.Entry | null> {
   public constructor(
     protected readonly context: TerminalPlugin,
-    protected readonly cwd?: string
+    protected readonly cwd?: string,
   ) {
     super(context.app);
     const {
@@ -24,12 +24,12 @@ export class SelectProfileModal extends FuzzySuggestModal<Settings.Profile.Entry
       {
         get command(): string {
           return i18n.t(
-            "components.select-profile.instructions.edit-before-use"
+            "components.select-profile.instructions.edit-before-use",
           );
         },
         get purpose(): string {
           return i18n.t(
-            "components.select-profile.instructions.edit-before-use-purpose"
+            "components.select-profile.instructions.edit-before-use-purpose",
           );
         },
       },
@@ -45,7 +45,7 @@ export class SelectProfileModal extends FuzzySuggestModal<Settings.Profile.Entry
         (this0) => {
           this0.selectActiveSuggestion(evt);
         },
-        noop
+        noop,
       );
       return false;
     });
@@ -61,7 +61,7 @@ export class SelectProfileModal extends FuzzySuggestModal<Settings.Profile.Entry
 				(macOS/Windows/Linux), improving UX by hiding incompatible options.
 				*/
         .filter(([, profile]) =>
-          Settings.Profile.isCompatible(profile, Platform.CURRENT)
+          Settings.Profile.isCompatible(profile, Platform.CURRENT),
         ),
     ];
   }
@@ -84,13 +84,13 @@ export class SelectProfileModal extends FuzzySuggestModal<Settings.Profile.Entry
       {
         info: Settings.Profile.info(item),
         interpolation: { escapeValue: false },
-      }
+      },
     );
   }
 
   public override onChooseItem(
     entry: Settings.Profile.Entry | null,
-    evt: KeyboardEvent | MouseEvent
+    evt: KeyboardEvent | MouseEvent,
   ): void {
     const { context: plugin, cwd } = this;
     spawnTerminal(plugin, entry?.[1] ?? Settings.Profile.DEFAULTS[""], {
@@ -106,7 +106,7 @@ export function spawnTerminal(
   options: {
     readonly cwd?: string | undefined;
     readonly edit?: boolean | undefined;
-  } = {}
+  } = {},
 ): void {
   const state: TerminalView.State = {
     cwd: options.cwd ?? null,
@@ -116,7 +116,7 @@ export function spawnTerminal(
   };
   if (options.edit ?? false) {
     new EditTerminalModal(context, state, async (state2) =>
-      TerminalView.spawn(context, state2)
+      TerminalView.spawn(context, state2),
     ).open();
     return;
   }

@@ -3,7 +3,7 @@ import type { ChildProcess } from "node:child_process";
 import type { Writable } from "node:stream";
 
 export async function spawnPromise<T extends ChildProcess>(
-  spawn: () => AsyncOrSync<T>
+  spawn: () => AsyncOrSync<T>,
 ): Promise<T> {
   const ret = await spawn();
   return new Promise<T>((resolve, reject) => {
@@ -17,7 +17,7 @@ export async function spawnPromise<T extends ChildProcess>(
 
 export async function writePromise(
   stream: Writable,
-  chunk: unknown
+  chunk: unknown,
 ): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const written = stream.write(chunk, (error) => {

@@ -37,6 +37,6 @@ export const // Needed for bundler
         "@xterm/addon-web-links",
         "@xterm/addon-webgl",
         "@xterm/xterm",
-        "tmp-promise"
+        "tmp-promise",
       ]
     >()(BUNDLE0);

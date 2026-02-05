@@ -30,15 +30,15 @@ import { writePromise } from "./util.js";
 
 const childProcess = dynamicRequire<typeof import("node:child_process")>(
     BUNDLE,
-    "node:child_process"
+    "node:child_process",
   ),
   xterm = dynamicRequireLazy<typeof import("@xterm/xterm")>(
     BUNDLE,
-    "@xterm/xterm"
+    "@xterm/xterm",
   ),
   xtermAddonFit = dynamicRequireLazy<typeof import("@xterm/addon-fit")>(
     BUNDLE,
-    "@xterm/addon-fit"
+    "@xterm/addon-fit",
   ),
   xtermAddonSerialize = dynamicRequireLazy<
     typeof import("@xterm/addon-serialize")
@@ -46,12 +46,12 @@ const childProcess = dynamicRequire<typeof import("node:child_process")>(
 
 export const SUPPORTS_EXTERNAL_TERMINAL_EMULATOR = importable(
   BUNDLE,
-  "node:child_process"
+  "node:child_process",
 );
 export async function spawnExternalTerminalEmulator(
   executable: string,
   args?: readonly string[],
-  cwd?: string
+  cwd?: string,
 ): Promise<ChildProcessByStdio<null, null, null>> {
   const childProcess2 = await childProcess,
     ret = await spawnPromise(() =>
@@ -60,7 +60,7 @@ export async function spawnExternalTerminalEmulator(
         detached: true,
         shell: true,
         stdio: ["ignore", "ignore", "ignore"],
-      })
+      }),
     );
   try {
     ret.unref();
@@ -82,7 +82,7 @@ export class XtermTerminalEmulator<A> {
         resolve: (value: AsyncOrSync<void>) => void,
         reject: (reason?: unknown) => void,
         columns: number,
-        rows: number
+        rows: number,
       ) => {
         try {
           this.terminal.resize(columns, rows);
@@ -91,8 +91,8 @@ export class XtermTerminalEmulator<A> {
           reject(error);
         }
       },
-      TERMINAL_EMULATOR_RESIZE_WAIT * SI_PREFIX_SCALE
-    )
+      TERMINAL_EMULATOR_RESIZE_WAIT * SI_PREFIX_SCALE,
+    ),
   );
 
   protected readonly resizePTY = asyncDebounce(
@@ -102,7 +102,7 @@ export class XtermTerminalEmulator<A> {
         _reject: (reason?: unknown) => void,
         columns: number,
         rows: number,
-        mustResizePseudoterminal: boolean
+        mustResizePseudoterminal: boolean,
       ) => {
         resolve(
           (async (): Promise<void> => {
@@ -116,14 +116,14 @@ export class XtermTerminalEmulator<A> {
                 throw error;
               }
               /* @__PURE__ */ activeSelf(this.terminal.element).console.debug(
-                error
+                error,
               );
             }
-          })()
+          })(),
         );
       },
-      TERMINAL_PTY_RESIZE_WAIT * SI_PREFIX_SCALE
-    )
+      TERMINAL_PTY_RESIZE_WAIT * SI_PREFIX_SCALE,
+    ),
   );
 
   #running = true;
@@ -132,11 +132,11 @@ export class XtermTerminalEmulator<A> {
     protected readonly element: HTMLElement,
     pseudoterminal: (
       terminal: Terminal,
-      addons: XtermTerminalEmulator<A>["addons"]
+      addons: XtermTerminalEmulator<A>["addons"],
     ) => AsyncOrSync<Pseudoterminal>,
     state?: XtermTerminalEmulator.State,
     options?: ITerminalInitOnlyOptions & ITerminalOptions,
-    addons?: A
+    addons?: A,
   ) {
     this.terminal = new xterm.Terminal(options);
     const { terminal } = this;
@@ -147,7 +147,7 @@ export class XtermTerminalEmulator<A> {
         fit: new xtermAddonFit.FitAddon(),
         serialize: new xtermAddonSerialize.SerializeAddon(),
       },
-      addons
+      addons,
     );
     for (const addon of Object.values(addons0)) {
       terminal.loadAddon(addon);

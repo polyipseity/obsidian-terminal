@@ -13,7 +13,7 @@ export function loadIcons(context: TerminalPlugin): void {
     registerIcon(
       context,
       new UnnamespacedID(key).namespaced(context),
-      value.svg
+      value.svg,
     );
   }
 }

@@ -66,20 +66,20 @@ import win32ResizerPy from "./win32_resizer.py";
 
 const childProcess = dynamicRequire<typeof import("node:child_process")>(
     BUNDLE,
-    "node:child_process"
+    "node:child_process",
   ),
   fsPromises = dynamicRequire<typeof import("node:fs/promises")>(
     BUNDLE,
-    "node:fs/promises"
+    "node:fs/promises",
   ),
   process = dynamicRequire<typeof import("node:process")>(
     BUNDLE,
-    "node:process"
+    "node:process",
   ),
   stream = dynamicRequire<typeof import("node:stream")>(BUNDLE, "node:stream"),
   tmpPromise = dynamicRequire<typeof import("tmp-promise")>(
     BUNDLE,
-    "tmp-promise"
+    "tmp-promise",
   );
 
 async function clearTerminal(terminal: Terminal, keep = false): Promise<void> {
@@ -88,7 +88,7 @@ async function clearTerminal(terminal: Terminal, keep = false): Promise<void> {
     terminal,
     `${
       keep ? NORMALIZED_LINE_FEED.repeat(Math.max(rows - 1, 0)) : ""
-    }${ansi.erase.display(keep ? 2 : 3)}${ansi.cursor.position()}`
+    }${ansi.erase.display(keep ? 2 : 3)}${ansi.cursor.position()}`,
   );
 }
 
@@ -100,9 +100,9 @@ export interface Pseudoterminal {
   readonly resize?: (columns: number, rows: number) => AsyncOrSync<void>;
 }
 
-export class RefPsuedoterminal<T extends Pseudoterminal>
-  implements Pseudoterminal
-{
+export class RefPsuedoterminal<
+  T extends Pseudoterminal,
+> implements Pseudoterminal {
   public readonly onExit;
   protected readonly delegate: T;
   readonly #exit = promisePromise<NodeJS.Signals | number>();
@@ -123,7 +123,7 @@ export class RefPsuedoterminal<T extends Pseudoterminal>
       },
       async (error: unknown) => {
         (await this.#exit).reject(error);
-      }
+      },
     );
     ++this.#ref[0];
   }
@@ -182,7 +182,7 @@ abstract class PseudoPseudoterminal implements Pseudoterminal {
     terminal.loadAddon(
       new DisposerAddon(() => {
         remove(this.terminals, terminal);
-      })
+      }),
     );
     this.terminals.push(terminal);
   }
@@ -209,7 +209,7 @@ export class TextPseudoterminal
     this.rewrite(normalizeText((this.#text = value))).catch(
       (error: unknown) => {
         self.console.error(error);
-      }
+      },
     );
   }
 
@@ -220,7 +220,7 @@ export class TextPseudoterminal
 
   protected async rewrite(
     text: string,
-    terminals: readonly Terminal[] = this.terminals
+    terminals: readonly Terminal[] = this.terminals,
   ): Promise<void> {
     const terminals0 = [...terminals];
     return new Promise((resolve, reject: (reason?: unknown) => void) => {
@@ -267,7 +267,7 @@ export class DeveloperConsolePseudoterminal
   public constructor(
     protected readonly self0: () => Window & typeof globalThis,
     protected readonly log: Log,
-    protected readonly sourceRoot = ""
+    protected readonly sourceRoot = "",
   ) {
     super();
     const { terminals } = this,
@@ -294,7 +294,7 @@ export class DeveloperConsolePseudoterminal
           { async: false, settled: true },
           ...[...this.#editors.keys()].map((terminal) => (): void => {
             this.#setEditor(terminal);
-          })
+          }),
         ).call();
       })
       .finally(() => {
@@ -307,7 +307,7 @@ export class DeveloperConsolePseudoterminal
     terminal.loadAddon(
       new DisposerAddon(() => {
         this.#setEditor(terminal);
-      })
+      }),
     );
     const { buffer, lock, terminals } = this;
     let block = false,
@@ -338,7 +338,7 @@ export class DeveloperConsolePseudoterminal
                 await this.syncBuffer(terminals, false);
               }
               await write;
-            }
+            },
           );
         }),
         terminal.onKey(({ domEvent }) => {
@@ -411,7 +411,7 @@ export class DeveloperConsolePseudoterminal
         }),
       ].map((disposer0) => (): void => {
         disposer0.dispose();
-      })
+      }),
     );
     this.onExit
       .catch(noop satisfies () => unknown as () => unknown)
@@ -447,7 +447,7 @@ export class DeveloperConsolePseudoterminal
       }
       this.#formatCache.set(
         event,
-        (ret = `${ansi.styles(styles)}${ret}${ansi.style.reset}`)
+        (ret = `${ansi.styles(styles)}${ret}${ansi.style.reset}`),
       );
     }
     return ret;
@@ -487,7 +487,7 @@ export class DeveloperConsolePseudoterminal
           this.#historyIndex = length;
           await this.syncBuffer(terminals, false);
           return ret;
-        }
+        },
       );
     self1.console.log(code);
     const ast = ((): Program | null => {
@@ -516,7 +516,7 @@ export class DeveloperConsolePseudoterminal
     const lastStmt = ast.body[ast.body.length - 1],
       codeRet = lastStmt
         ? `${code.slice(0, lastStmt.start)}return [(${code.slice(
-            lastStmt.start
+            lastStmt.start,
           )})]`
         : "",
       lastStmtLoc = lastStmt?.loc,
@@ -546,7 +546,7 @@ export class DeveloperConsolePseudoterminal
     }
     async function evaluate(
       script: string,
-      deletions: readonly Position[] = []
+      deletions: readonly Position[] = [],
     ): Promise<unknown> {
       const ctor = asyncFunction(self1);
 
@@ -556,7 +556,7 @@ export class DeveloperConsolePseudoterminal
           deletions,
           file: "<stdin>",
           sourceRoot: `${sourceRoot}${sourceRoot && "/"}<stdin>`,
-        })
+        }),
       )(context);
     }
     const [hasError, ret] = await (async (): Promise<[boolean, unknown]> => {
@@ -592,7 +592,7 @@ export class DeveloperConsolePseudoterminal
 
   protected async syncBuffer(
     terminals: readonly Terminal[] = this.terminals,
-    lock = true
+    lock = true,
   ): Promise<void> {
     const terminals0 = [...terminals];
     return new Promise((resolve, reject: (reason?: unknown) => void) => {
@@ -606,7 +606,7 @@ export class DeveloperConsolePseudoterminal
               info = await CursoredText.info(
                 terminal,
                 this.buffer.value,
-                editor?.startX
+                editor?.startX,
               ),
               {
                 rows,
@@ -625,18 +625,18 @@ export class DeveloperConsolePseudoterminal
               terminal,
               `${ansi.cursor.position(
                 1 + prerenderStartY + skipPreRenderRows,
-                1 + (lastRenderEndY > 0 ? 0 : info.startX)
+                1 + (lastRenderEndY > 0 ? 0 : info.startX),
               )}${ansi.erase.display()}${info.lines
                 .slice(lastRenderEndY + skipPreRenderRows, info.rows)
                 .join(NORMALIZED_LINE_FEED)}${ansi.cursor.horizontalAbsolute(
-                1 + (renderStartY > 0 ? 0 : info.startX)
+                1 + (renderStartY > 0 ? 0 : info.startX),
               )}${
                 firstUp > 0 ? ansi.cursor.up(firstUp) : ""
               }${ansi.erase.display()}${info.lines
                 .slice(renderStartY, info.rows)
                 .join(NORMALIZED_LINE_FEED)}${ansi.cursor.horizontalAbsolute(
-                1 + (info.cursor[1] < renderStartY ? 0 : info.cursor[0])
-              )}${secondUp > 0 ? ansi.cursor.up(secondUp) : ""}`
+                1 + (info.cursor[1] < renderStartY ? 0 : info.cursor[0]),
+              )}${secondUp > 0 ? ansi.cursor.up(secondUp) : ""}`,
             );
             if (editor) {
               editor.renderEndY = info.rows - 1;
@@ -644,7 +644,7 @@ export class DeveloperConsolePseudoterminal
           });
           resolve(Promise.all(writers).then(noop));
           await Promise.allSettled(writers);
-        }
+        },
       ).catch(reject);
     });
   }
@@ -652,16 +652,16 @@ export class DeveloperConsolePseudoterminal
   protected async write(
     events: readonly Log.Event[],
     terminals: readonly Terminal[] = this.terminals,
-    lock = true
+    lock = true,
   ): Promise<void> {
     const terminals0 = [...terminals],
       text = `${
         ansi.erase.inLine() +
         normalizeText(
-          events.map((event) => this.format(event)).join("\n")
+          events.map((event) => this.format(event)).join("\n"),
         ).replace(
           replaceAllRegex(NORMALIZED_LINE_FEED),
-          `${NORMALIZED_LINE_FEED}${ansi.erase.inLine()}`
+          `${NORMALIZED_LINE_FEED}${ansi.erase.inLine()}`,
         )
       }${NORMALIZED_LINE_FEED}`;
     await acquireConditionally(
@@ -681,8 +681,8 @@ export class DeveloperConsolePseudoterminal
               terminal,
               `${ansi.cursor.position(
                 1 + (startBaseY - baseY),
-                1
-              )}${ansi.erase.display()}${text}`
+                1,
+              )}${ansi.erase.display()}${text}`,
             );
             this.#setEditor(terminal, {
               close() {
@@ -692,16 +692,16 @@ export class DeveloperConsolePseudoterminal
               startX: active.cursorX,
               startYMarker: terminal.registerMarker(),
             });
-          })
+          }),
         );
         await this.syncBuffer(terminals0, false);
-      }
+      },
     );
   }
 
   #setEditor(
     terminal: Terminal,
-    editor?: DeveloperConsolePseudoterminal.$Editor
+    editor?: DeveloperConsolePseudoterminal.$Editor,
   ): void {
     this.#editors.get(terminal)?.close();
     if (editor) {
@@ -737,9 +737,9 @@ export namespace DeveloperConsolePseudoterminal {
               new DeveloperConsolePseudoterminal(
                 activeSelf,
                 log,
-                `plugin:${id}`
-              )
-            )
+                `plugin:${id}`,
+              ),
+            ),
         );
       this.register(async () => ret().kill());
       // Cannot use `lazyProxy`, the below `return` accesses `ret.then`
@@ -774,7 +774,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
       executable,
       useWin32Conhost,
       pythonExecutable,
-    }: ShellPseudoterminalArguments
+    }: ShellPseudoterminalArguments,
   ) {
     this.conhost = useWin32Conhost ?? false;
     const { conhost } = this,
@@ -800,7 +800,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
               },
               stdio: ["pipe", "pipe", "pipe"],
               windowsHide: true,
-            })
+            }),
           );
         try {
           ret
@@ -813,7 +813,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
                       interpolation: { escapeValue: false },
                     }),
                   settings.value.errorNoticeTimeout,
-                  context
+                  context,
                 );
               }
             })
@@ -847,7 +847,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
              * <https://github.com/microsoft/terminal/blob/cb48babe9dfee5c3e830644eb7ee48f4116d3c47/src/host/ConsoleArguments.cpp#L34>
              */
             const inOutTmpEsc = WindowsPseudoterminal.escapeArgumentForBat(
-              inOutTmp.path
+              inOutTmp.path,
             );
             /*
              * The last command is a one-liner to prevent
@@ -862,12 +862,12 @@ class WindowsPseudoterminal implements Pseudoterminal {
               ]
                 .map((arg) => WindowsPseudoterminal.escapeArgumentForBat(arg))
                 .join(" ")} & echo !ERRORLEVEL! > ${inOutTmpEsc}`,
-              { encoding: DEFAULT_ENCODING, flag: "w" }
+              { encoding: DEFAULT_ENCODING, flag: "w" },
             );
             const cmd = deepFreeze(
                 conhost
                   ? [WINDOWS_CONHOST_PATH, inOutTmp.path]
-                  : [inOutTmp.path]
+                  : [inOutTmp.path],
               ),
               ret = await spawnPromise(() =>
                 childProcess2.spawn(cmd[0], cmd.slice(1), {
@@ -875,7 +875,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
                   shell: !conhost,
                   stdio: ["pipe", "pipe", "pipe"],
                   windowsHide: !resizer,
-                })
+                }),
               );
             return [
               ret,
@@ -889,7 +889,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
                         writePromise(resizer0.stdin, "\n").catch(
                           (error: unknown) => {
                             /* @__PURE__ */ self.console.debug(error);
-                          }
+                          },
                         );
                       }, TERMINAL_RESIZER_WATCHDOG_WAIT * SI_PREFIX_SCALE);
                       resizer0.once("exit", () => {
@@ -907,7 +907,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
                   printError(
                     error0,
                     () => i18n.t("errors.error-spawning-resizer"),
-                    context
+                    context,
                   );
                   throw error0;
                 }),
@@ -938,9 +938,11 @@ class WindowsPseudoterminal implements Pseudoterminal {
                           flag: "r",
                         })
                       ).trim(),
-                      10
+                      10,
                     );
-                  return isNaN(termCode) ? conCode ?? signal ?? NaN : termCode;
+                  return isNaN(termCode)
+                    ? (conCode ?? signal ?? NaN)
+                    : termCode;
                 } catch (error) {
                   /* @__PURE__ */ self.console.debug(error);
                   return conCode ?? signal ?? NaN;
@@ -954,10 +956,10 @@ class WindowsPseudoterminal implements Pseudoterminal {
                     }
                   })();
                 }
-              })()
+              })(),
             );
           });
-        })
+        }),
     );
   }
 
@@ -969,7 +971,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
         ["!", "^!"],
         ["%", "%%"],
         ['"', quoteVar],
-      ])
+      ]),
     )}"`;
 
     /*
@@ -985,7 +987,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
   public async kill(): Promise<void> {
     if (!(await this.shell).kill()) {
       throw new Error(
-        this.context.language.value.t("errors.error-killing-pseudoterminal")
+        this.context.language.value.t("errors.error-killing-pseudoterminal"),
       );
     }
   }
@@ -1019,13 +1021,13 @@ class WindowsPseudoterminal implements Pseudoterminal {
         },
         () => {
           shell.stderr.removeListener("data", reader);
-        }
-      )
+        },
+      ),
     );
     shell.stdout.on("data", reader);
     shell.stderr.on("data", reader);
     const writer = terminal.onData(async (data) =>
-      writePromise(shell.stdin, data)
+      writePromise(shell.stdin, data),
     );
     this.onExit
       .catch(noop satisfies () => unknown as () => unknown)
@@ -1048,13 +1050,13 @@ class UnixPseudoterminal implements Pseudoterminal {
       executable,
       terminal,
       pythonExecutable,
-    }: ShellPseudoterminalArguments
+    }: ShellPseudoterminalArguments,
   ) {
     const { language } = context;
     this.shell = spawnPromise(async () => {
       if (isNil(pythonExecutable)) {
         throw new Error(
-          language.value.t("errors.no-Python-to-spawn-Unix-pseudoterminal")
+          language.value.t("errors.no-Python-to-spawn-Unix-pseudoterminal"),
         );
       }
       const [childProcess2, process2, unixPseudoterminalPy2] =
@@ -1075,7 +1077,7 @@ class UnixPseudoterminal implements Pseudoterminal {
           env,
           stdio: ["pipe", "pipe", "pipe", "pipe"],
           windowsHide: true,
-        }
+        },
       );
     }).then((ret) => {
       try {
@@ -1093,14 +1095,14 @@ class UnixPseudoterminal implements Pseudoterminal {
           shell.once("exit", (code, signal) => {
             resolve(code ?? signal ?? NaN);
           });
-        })
+        }),
     );
   }
 
   public async kill(): Promise<void> {
     if (!(await this.shell).kill()) {
       throw new Error(
-        this.context.language.value.t("errors.error-killing-pseudoterminal")
+        this.context.language.value.t("errors.error-killing-pseudoterminal"),
       );
     }
   }
@@ -1120,13 +1122,13 @@ class UnixPseudoterminal implements Pseudoterminal {
         },
         () => {
           shell.stderr.removeListener("data", reader);
-        }
-      )
+        },
+      ),
     );
     shell.stdout.on("data", reader);
     shell.stderr.on("data", reader);
     const writer = terminal.onData(async (data) =>
-      writePromise(shell.stdin, data)
+      writePromise(shell.stdin, data),
     );
     this.onExit
       .catch(noop satisfies () => unknown as () => unknown)
@@ -1153,11 +1155,11 @@ export namespace Pseudoterminal {
   });
   export type SupportedPlatforms = readonly ["darwin", "linux", "win32"];
   export const SUPPORTED_PLATFORMS = typedKeys<SupportedPlatforms>()(
-    PLATFORM_PSEUDOTERMINALS
+    PLATFORM_PSEUDOTERMINALS,
   );
   export const PLATFORM_PSEUDOTERMINAL = inSet(
     SUPPORTED_PLATFORMS,
-    Platform.CURRENT
+    Platform.CURRENT,
   )
     ? PLATFORM_PSEUDOTERMINALS[deopaque(Platform.CURRENT)]
     : null;

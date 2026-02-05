@@ -83,7 +83,7 @@ async function esbuild() {
               await analyzeMetafile(metafile, {
                 color: true,
                 verbose: true,
-              })
+              }),
             );
           }
           for await (const logging of [

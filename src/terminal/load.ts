@@ -28,8 +28,8 @@ export function loadTerminal(context: TerminalPlugin): void {
           | "select"
         )[]
       ).filter(
-        (type) => type === "select" || PROFILE_PROPERTIES[type].available
-      )
+        (type) => type === "select" || PROFILE_PROPERTIES[type].available,
+      ),
     ),
     CWD_TYPES = deepFreeze(["", "root", "current"]),
     EXCLUDED_TYPES = deepFreeze([
@@ -45,7 +45,7 @@ export function loadTerminal(context: TerminalPlugin): void {
       const ret = Settings.Profile.defaultOfType(
         type,
         settings.value.profiles,
-        Platform.CURRENT
+        Platform.CURRENT,
       );
       if (!ret) {
         notice2(
@@ -55,7 +55,7 @@ export function loadTerminal(context: TerminalPlugin): void {
               type,
             }),
           settings.value.errorNoticeTimeout,
-          context
+          context,
         );
       }
       return ret;
@@ -63,7 +63,7 @@ export function loadTerminal(context: TerminalPlugin): void {
     adapter = vault.adapter instanceof FileSystemAdapter ? vault.adapter : null,
     contextMenu = (
       type: Settings.Profile.Type | "select",
-      cwd?: TFolder
+      cwd?: TFolder,
     ): ((item: MenuItem) => void) | null => {
       const cwd0 = cwd ? (adapter ? adapter.getFullPath(cwd.path) : null) : cwd;
       if (cwd0 === null) {
@@ -75,13 +75,13 @@ export function loadTerminal(context: TerminalPlugin): void {
             i18n.t("menus.open-terminal", {
               interpolation: { escapeValue: false },
               type,
-            })
+            }),
           )
           .setIcon(
             i18n.t("asset:menus.open-terminal-icon", {
               interpolation: { escapeValue: false },
               type,
-            })
+            }),
           )
           .onClick(() => {
             if (type === "select") {
@@ -99,7 +99,7 @@ export function loadTerminal(context: TerminalPlugin): void {
     command =
       (
         type: Settings.Profile.Type | "select",
-        cwd: (typeof CWD_TYPES)[number]
+        cwd: (typeof CWD_TYPES)[number],
       ) =>
       (checking: boolean): boolean => {
         const cwd0 = ((): string | null | undefined => {
@@ -145,7 +145,7 @@ export function loadTerminal(context: TerminalPlugin): void {
     () => i18n.t("ribbons.open-terminal"),
     () => {
       new SelectProfileModal(context, adapter?.getBasePath()).open();
-    }
+    },
   );
   context.registerEvent(
     workspace.on("file-menu", (menu, file) => {
@@ -158,13 +158,13 @@ export function loadTerminal(context: TerminalPlugin): void {
       }
       menu.addSeparator();
       const items = PROFILE_TYPES.map((type) =>
-        contextMenu(type, folder)
+        contextMenu(type, folder),
       ).filter(isNonNil);
       if (!isEmpty(items)) {
         menu.addSeparator();
         items.forEach((item) => menu.addItem(item));
       }
-    })
+    }),
   );
   context.registerEvent(
     workspace.on("editor-menu", (menu, _0, info) => {
@@ -179,13 +179,13 @@ export function loadTerminal(context: TerminalPlugin): void {
       const { parent } = file;
       menu.addSeparator();
       const items = PROFILE_TYPES.map((type) =>
-        contextMenu(type, parent)
+        contextMenu(type, parent),
       ).filter(isNonNil);
       if (!isEmpty(items)) {
         menu.addSeparator();
         items.forEach((item) => menu.addItem(item));
       }
-    })
+    }),
   );
   // Always register command for interop with other plugins
   addCommand(context, () => i18n.t("commands.open-developer-console"), {
@@ -208,7 +208,7 @@ export function loadTerminal(context: TerminalPlugin): void {
     for (const cwd of CWD_TYPES) {
       if (
         EXCLUDED_TYPES.some(
-          ({ cwd: cwd0, profile }) => cwd0 === cwd && profile === type
+          ({ cwd: cwd0, profile }) => cwd0 === cwd && profile === type,
         )
       ) {
         continue;
@@ -229,7 +229,7 @@ export function loadTerminal(context: TerminalPlugin): void {
           },
           icon: i18n.t(`asset:commands.open-terminal-${cwd}-icon`),
           id: `open-terminal.${type}.${cwd}`,
-        }
+        },
       );
     }
   }

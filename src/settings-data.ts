@@ -65,7 +65,7 @@ export namespace LocalSettings {
       lastReadChangelogVersion: opaqueOrDefault(
         semVerString,
         String(unc.lastReadChangelogVersion),
-        NULL_SEM_VER_STRING
+        NULL_SEM_VER_STRING,
       ),
     });
   }
@@ -127,7 +127,7 @@ export namespace Settings {
           "win32ExternalDefault",
           "win32IntegratedDefault",
         ] satisfies readonly (keyof typeof PROFILE_PRESETS)[]
-      ).map((key) => [key, PROFILE_PRESETS[key]])
+      ).map((key) => [key, PROFILE_PRESETS[key]]),
     ),
   });
 
@@ -181,7 +181,7 @@ export namespace Settings {
     export function defaultOfType<T extends Type>(
       type: T,
       profiles: Profiles,
-      platform?: Platform.All
+      platform?: Platform.All,
     ): Typed<T> | null {
       for (const profile of Object.values(profiles)) {
         if (
@@ -195,7 +195,7 @@ export namespace Settings {
     }
     export function isCompatible(
       profile: Profile,
-      platform: Platform.All
+      platform: Platform.All,
     ): boolean {
       if (!("platforms" in profile)) {
         return true;
@@ -209,7 +209,7 @@ export namespace Settings {
     }
     export function isType<T extends Type>(
       type: T,
-      profile: Profile
+      profile: Profile,
     ): profile is Typed<T> {
       return profile.type === type;
     }
@@ -329,11 +329,11 @@ export namespace Settings {
       const unc = launderUnchecked<Invalid>(self0),
         fixPlatforms = <
           V extends Platforms<Vs[number]>,
-          const Vs extends ReadonlyTuple<string>
+          const Vs extends ReadonlyTuple<string>,
         >(
           defaults: V,
           from: Unchecked<V>,
-          set: Vs
+          set: Vs,
         ): Platforms<Vs[number]> => {
           const ret2: Partial<Record<Vs[number], boolean>> = {};
           for (const platform0 of set) {
@@ -363,19 +363,19 @@ export namespace Settings {
                   DEFAULTS[type],
                   unc,
                   "restoreHistory",
-                  ["boolean"]
+                  ["boolean"],
                 ),
                 rightClickAction: fixInSet(
                   DEFAULTS[type],
                   unc,
                   "rightClickAction",
-                  RightClickActionAddon.ACTIONS
+                  RightClickActionAddon.ACTIONS,
                 ),
                 successExitCodes: fixArray(
                   DEFAULTS[type],
                   unc,
                   "successExitCodes",
-                  ["string"]
+                  ["string"],
                 ),
                 terminalOptions: fixTerminalOptions(unc["terminalOptions"])
                   .value,
@@ -392,19 +392,19 @@ export namespace Settings {
                   DEFAULTS[type],
                   unc,
                   "restoreHistory",
-                  ["boolean"]
+                  ["boolean"],
                 ),
                 rightClickAction: fixInSet(
                   DEFAULTS[type],
                   unc,
                   "rightClickAction",
-                  RightClickActionAddon.ACTIONS
+                  RightClickActionAddon.ACTIONS,
                 ),
                 successExitCodes: fixArray(
                   DEFAULTS[type],
                   unc,
                   "successExitCodes",
-                  ["string"]
+                  ["string"],
                 ),
                 terminalOptions: fixTerminalOptions(unc["terminalOptions"])
                   .value,
@@ -424,25 +424,25 @@ export namespace Settings {
                 platforms: fixPlatforms(
                   DEFAULTS[type].platforms,
                   unc["platforms"] ?? {},
-                  Pseudoterminal.SUPPORTED_PLATFORMS
+                  Pseudoterminal.SUPPORTED_PLATFORMS,
                 ),
                 restoreHistory: fixTyped(
                   DEFAULTS[type],
                   unc,
                   "restoreHistory",
-                  ["boolean"]
+                  ["boolean"],
                 ),
                 rightClickAction: fixInSet(
                   DEFAULTS[type],
                   unc,
                   "rightClickAction",
-                  RightClickActionAddon.ACTIONS
+                  RightClickActionAddon.ACTIONS,
                 ),
                 successExitCodes: fixArray(
                   DEFAULTS[type],
                   unc,
                   "successExitCodes",
-                  ["string"]
+                  ["string"],
                 ),
                 terminalOptions: fixTerminalOptions(unc["terminalOptions"])
                   .value,
@@ -462,31 +462,31 @@ export namespace Settings {
                 platforms: fixPlatforms(
                   DEFAULTS[type].platforms,
                   unc["platforms"] ?? {},
-                  Pseudoterminal.SUPPORTED_PLATFORMS
+                  Pseudoterminal.SUPPORTED_PLATFORMS,
                 ),
                 pythonExecutable: fixTyped(
                   DEFAULTS[type],
                   unc,
                   "pythonExecutable",
-                  ["string"]
+                  ["string"],
                 ),
                 restoreHistory: fixTyped(
                   DEFAULTS[type],
                   unc,
                   "restoreHistory",
-                  ["boolean"]
+                  ["boolean"],
                 ),
                 rightClickAction: fixInSet(
                   DEFAULTS[type],
                   unc,
                   "rightClickAction",
-                  RightClickActionAddon.ACTIONS
+                  RightClickActionAddon.ACTIONS,
                 ),
                 successExitCodes: fixArray(
                   DEFAULTS[type],
                   unc,
                   "successExitCodes",
-                  ["string"]
+                  ["string"],
                 ),
                 terminalOptions: fixTerminalOptions(unc["terminalOptions"])
                   .value,
@@ -495,7 +495,7 @@ export namespace Settings {
                   DEFAULTS[type],
                   unc,
                   "useWin32Conhost",
-                  ["boolean"]
+                  ["boolean"],
                 ),
               } satisfies Typed<typeof type>;
             }
@@ -507,7 +507,7 @@ export namespace Settings {
             }
             // No default
           }
-        })()
+        })(),
       );
     }
 
@@ -537,19 +537,19 @@ export namespace Settings {
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "allowProposedApi",
-            ["undefined", "boolean"]
+            ["undefined", "boolean"],
           ),
           allowTransparency: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "allowTransparency",
-            ["undefined", "boolean"]
+            ["undefined", "boolean"],
           ),
           altClickMovesCursor: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "altClickMovesCursor",
-            ["undefined", "boolean"]
+            ["undefined", "boolean"],
           ),
           convertEol: fixTyped(DEFAULT_TERMINAL_OPTIONS, unc, "convertEol", [
             "undefined",
@@ -563,7 +563,7 @@ export namespace Settings {
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "cursorInactiveStyle",
-            [void 0, "bar", "block", "none", "outline", "underline"]
+            [void 0, "bar", "block", "none", "outline", "underline"],
           ),
           cursorStyle: fixInSet(DEFAULT_TERMINAL_OPTIONS, unc, "cursorStyle", [
             void 0,
@@ -579,13 +579,13 @@ export namespace Settings {
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "customGlyphs",
-            ["undefined", "boolean"]
+            ["undefined", "boolean"],
           ),
           disableStdin: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "disableStdin",
-            ["undefined", "boolean"]
+            ["undefined", "boolean"],
           ),
           // Do not expose `documentOverride`
           documentOverride: void 0,
@@ -593,19 +593,19 @@ export namespace Settings {
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "drawBoldTextInBrightColors",
-            ["undefined", "boolean"]
+            ["undefined", "boolean"],
           ),
           fastScrollModifier: fixInSet(
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "fastScrollModifier",
-            [void 0, "alt", "ctrl", "none", "shift"]
+            [void 0, "alt", "ctrl", "none", "shift"],
           ),
           fastScrollSensitivity: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "fastScrollSensitivity",
-            ["undefined", "number"]
+            ["undefined", "number"],
           ),
           fontFamily: fixTyped(DEFAULT_TERMINAL_OPTIONS, unc, "fontFamily", [
             "undefined",
@@ -626,7 +626,7 @@ export namespace Settings {
                   DEFAULT_TERMINAL_OPTIONS,
                   unc,
                   "fontWeight",
-                  TerminalOptions.FONT_WEIGHTS
+                  TerminalOptions.FONT_WEIGHTS,
                 )
               : ret;
           })(),
@@ -635,14 +635,14 @@ export namespace Settings {
               DEFAULT_TERMINAL_OPTIONS,
               unc,
               "fontWeightBold",
-              ["undefined", "number", "string"]
+              ["undefined", "number", "string"],
             );
             return typeof ret === "string"
               ? fixInSet(
                   DEFAULT_TERMINAL_OPTIONS,
                   unc,
                   "fontWeightBold",
-                  TerminalOptions.FONT_WEIGHTS
+                  TerminalOptions.FONT_WEIGHTS,
                 )
               : ret;
           })(),
@@ -650,13 +650,13 @@ export namespace Settings {
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "ignoreBracketedPasteMode",
-            ["undefined", "boolean"]
+            ["undefined", "boolean"],
           ),
           letterSpacing: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "letterSpacing",
-            ["undefined", "number"]
+            ["undefined", "number"],
           ),
           lineHeight: fixTyped(DEFAULT_TERMINAL_OPTIONS, unc, "lineHeight", [
             "undefined",
@@ -672,13 +672,13 @@ export namespace Settings {
                         DEFAULT_LINK_HANDLER,
                         unc2,
                         "activate",
-                        ["function"]
+                        ["function"],
                       ) as ILinkHandler["activate"],
                       allowNonHttpProtocols: fixTyped(
                         DEFAULT_LINK_HANDLER,
                         unc2,
                         "allowNonHttpProtocols",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
 
                       hover: fixTyped(DEFAULT_LINK_HANDLER, unc2, "hover", [
@@ -743,55 +743,55 @@ export namespace Settings {
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "macOptionClickForcesSelection",
-            ["undefined", "boolean"]
+            ["undefined", "boolean"],
           ),
           macOptionIsMeta: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "macOptionIsMeta",
-            ["undefined", "boolean"]
+            ["undefined", "boolean"],
           ),
           minimumContrastRatio: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "minimumContrastRatio",
-            ["undefined", "number"]
+            ["undefined", "number"],
           ),
           overviewRulerWidth: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "overviewRulerWidth",
-            ["undefined", "number"]
+            ["undefined", "number"],
           ),
           rescaleOverlappingGlyphs: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "rescaleOverlappingGlyphs",
-            ["undefined", "boolean"]
+            ["undefined", "boolean"],
           ),
           rightClickSelectsWord: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "rightClickSelectsWord",
-            ["undefined", "boolean"]
+            ["undefined", "boolean"],
           ),
           screenReaderMode: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "screenReaderMode",
-            ["undefined", "boolean"]
+            ["undefined", "boolean"],
           ),
           scrollOnUserInput: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "scrollOnUserInput",
-            ["undefined", "boolean"]
+            ["undefined", "boolean"],
           ),
           scrollSensitivity: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "scrollSensitivity",
-            ["undefined", "number"]
+            ["undefined", "number"],
           ),
           scrollback: fixTyped(DEFAULT_TERMINAL_OPTIONS, unc, "scrollback", [
             "undefined",
@@ -801,13 +801,13 @@ export namespace Settings {
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "smoothScrollDuration",
-            ["undefined", "number"]
+            ["undefined", "number"],
           ),
           tabStopWidth: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "tabStopWidth",
-            ["undefined", "number"]
+            ["undefined", "number"],
           ),
           theme:
             unc.theme === void 0
@@ -831,7 +831,7 @@ export namespace Settings {
                         DEFAULT_THEME,
                         unc2,
                         "brightBlack",
-                        ["undefined", "string"]
+                        ["undefined", "string"],
                       ),
                       brightBlue: fixTyped(DEFAULT_THEME, unc2, "brightBlue", [
                         "undefined",
@@ -845,13 +845,13 @@ export namespace Settings {
                         DEFAULT_THEME,
                         unc2,
                         "brightGreen",
-                        ["undefined", "string"]
+                        ["undefined", "string"],
                       ),
                       brightMagenta: fixTyped(
                         DEFAULT_THEME,
                         unc2,
                         "brightMagenta",
-                        ["undefined", "string"]
+                        ["undefined", "string"],
                       ),
                       brightRed: fixTyped(DEFAULT_THEME, unc2, "brightRed", [
                         "undefined",
@@ -861,13 +861,13 @@ export namespace Settings {
                         DEFAULT_THEME,
                         unc2,
                         "brightWhite",
-                        ["undefined", "string"]
+                        ["undefined", "string"],
                       ),
                       brightYellow: fixTyped(
                         DEFAULT_THEME,
                         unc2,
                         "brightYellow",
-                        ["undefined", "string"]
+                        ["undefined", "string"],
                       ),
                       cursor: fixTyped(DEFAULT_THEME, unc2, "cursor", [
                         "undefined",
@@ -877,7 +877,7 @@ export namespace Settings {
                         DEFAULT_THEME,
                         unc2,
                         "cursorAccent",
-                        ["undefined", "string"]
+                        ["undefined", "string"],
                       ),
                       cyan: fixTyped(DEFAULT_THEME, unc2, "cyan", [
                         "undefined",
@@ -908,19 +908,19 @@ export namespace Settings {
                         DEFAULT_THEME,
                         unc2,
                         "selectionBackground",
-                        ["undefined", "string"]
+                        ["undefined", "string"],
                       ),
                       selectionForeground: fixTyped(
                         DEFAULT_THEME,
                         unc2,
                         "selectionForeground",
-                        ["undefined", "string"]
+                        ["undefined", "string"],
                       ),
                       selectionInactiveBackground: fixTyped(
                         DEFAULT_THEME,
                         unc2,
                         "selectionInactiveBackground",
-                        ["undefined", "string"]
+                        ["undefined", "string"],
                       ),
                       white: fixTyped(DEFAULT_THEME, unc2, "white", [
                         "undefined",
@@ -938,140 +938,140 @@ export namespace Settings {
               ? unc.windowOptions
               : ((): IWindowOptions => {
                   const unc2 = launderUnchecked<IWindowOptions>(
-                      unc.windowOptions
+                      unc.windowOptions,
                     ),
                     ret = {
                       fullscreenWin: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "fullscreenWin",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       getCellSizePixels: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "getCellSizePixels",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       getIconTitle: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "getIconTitle",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       getScreenSizeChars: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "getScreenSizeChars",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       getScreenSizePixels: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "getScreenSizePixels",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       getWinPosition: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "getWinPosition",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       getWinSizeChars: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "getWinSizeChars",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       getWinSizePixels: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "getWinSizePixels",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       getWinState: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "getWinState",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       getWinTitle: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "getWinTitle",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       lowerWin: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "lowerWin",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       maximizeWin: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "maximizeWin",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       minimizeWin: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "minimizeWin",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       popTitle: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "popTitle",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       pushTitle: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "pushTitle",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       raiseWin: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "raiseWin",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       refreshWin: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "refreshWin",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       restoreWin: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "restoreWin",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       setWinLines: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "setWinLines",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       setWinPosition: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "setWinPosition",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       setWinSizeChars: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "setWinSizeChars",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                       setWinSizePixels: fixTyped(
                         DEFAULT_WINDOW_OPTIONS,
                         unc2,
                         "setWinSizePixels",
-                        ["undefined", "boolean"]
+                        ["undefined", "boolean"],
                       ),
                     } satisfies Required<DeepUndefinable<IWindowOptions>>;
                   return omitBy(ret, isUndefined);
@@ -1095,7 +1095,7 @@ export namespace Settings {
                         DEFAULT_WINDOWS_PTY,
                         unc2,
                         "buildNumber",
-                        ["undefined", "number"]
+                        ["undefined", "number"],
                       ),
                     } satisfies Required<DeepUndefinable<IWindowsPty>>;
                   return omitBy(ret, isUndefined);
@@ -1104,7 +1104,7 @@ export namespace Settings {
             DEFAULT_TERMINAL_OPTIONS,
             unc,
             "wordSeparator",
-            ["undefined", "string"]
+            ["undefined", "string"],
           ),
         } satisfies Required<DeepUndefinable<TerminalOptions>>;
       return markFixed(self0, {
@@ -1123,7 +1123,7 @@ export namespace Settings {
         DEFAULT,
         unc,
         "createInstanceNearExistingOnes",
-        ["boolean"]
+        ["boolean"],
       ),
       errorNoticeTimeout: fixTyped(DEFAULT, unc, "errorNoticeTimeout", [
         "number",
@@ -1138,7 +1138,7 @@ export namespace Settings {
         DEFAULT,
         unc,
         "hideStatusBar",
-        HIDE_STATUS_BAR_OPTIONS
+        HIDE_STATUS_BAR_OPTIONS,
       ),
       interceptLogging: fixTyped(DEFAULT, unc, "interceptLogging", ["boolean"]),
       language: fixInSet(DEFAULT, unc, "language", DEFAULTABLE_LANGUAGES),
@@ -1146,7 +1146,7 @@ export namespace Settings {
         DEFAULT,
         unc,
         "newInstanceBehavior",
-        NEW_INSTANCE_BEHAVIORS
+        NEW_INSTANCE_BEHAVIORS,
       ),
       noticeTimeout: fixTyped(DEFAULT, unc, "noticeTimeout", ["number"]),
       openChangelogOnUpdate: fixTyped(DEFAULT, unc, "openChangelogOnUpdate", [
@@ -1157,7 +1157,7 @@ export namespace Settings {
         DEFAULT,
         unc,
         "preferredRenderer",
-        PREFERRED_RENDERER_OPTIONS
+        PREFERRED_RENDERER_OPTIONS,
       ),
       profiles: ((): DeepWritable<Profiles> => {
         const defaults2 = DEFAULT.profiles,
@@ -1167,7 +1167,7 @@ export namespace Settings {
             Object.entries(profiles).map(([id, profile]) => [
               id,
               Profile.fix(profile).value,
-            ])
+            ]),
           );
         }
         return cloneAsWritable(defaults2);

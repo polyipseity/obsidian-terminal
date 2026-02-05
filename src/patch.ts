@@ -60,7 +60,7 @@ export namespace Log {
 function patchLoggingConsole(console: Console, log: Log): () => void {
   function consolePatch<const T extends "debug" | "error" | "info" | "warn">(
     type: T,
-    proto: (typeof console)[T]
+    proto: (typeof console)[T],
   ): typeof proto {
     let recursive = false;
     return function fn(
@@ -128,7 +128,7 @@ function patchLoggingWindow(self0: Window, log: Log): () => void {
         self0.removeEventListener("unhandledrejection", onUnhandledRejection, {
           capture: true,
         });
-      }
+      },
     );
   try {
     self0.addEventListener("error", onWindowError, {
@@ -170,7 +170,7 @@ function earlyPatch(
   app: App,
   options?: {
     readonly maxHistory?: number | undefined;
-  }
+  },
 ): EarlyPatch & { readonly unpatch: () => void } {
   const unpatch = new Functions({ async: false, settled: true });
   try {
@@ -192,7 +192,7 @@ function earlyPatch(
             return;
           }
           loggingPatch = patchWindows(workspace, (self0) =>
-            patchLogging(self0, this.log)
+            patchLogging(self0, this.log),
           );
           return;
         }
@@ -221,7 +221,7 @@ export class EarlyPatchManager extends ResourceComponent<EarlyPatch> {
 
   public constructor(
     protected readonly app: App,
-    protected readonly options?: Parameters<typeof earlyPatch>[1]
+    protected readonly options?: Parameters<typeof earlyPatch>[1],
   ) {
     super();
   }
@@ -246,7 +246,7 @@ export class EarlyPatchManager extends ResourceComponent<EarlyPatch> {
 
 function patchRequire(
   context: TerminalPlugin,
-  self0: typeof globalThis
+  self0: typeof globalThis,
 ): () => void {
   const { settings } = context;
   return around(self0, {
@@ -275,6 +275,6 @@ export function loadPatch(context: TerminalPlugin): void {
     app: { workspace },
   } = context;
   context.register(
-    patchWindows(workspace, (self0) => patchRequire(context, self0))
+    patchWindows(workspace, (self0) => patchRequire(context, self0)),
   );
 }

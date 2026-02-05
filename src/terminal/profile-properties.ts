@@ -29,7 +29,7 @@ export const PROFILE_PROPERTIES: {
     readonly opener: (
       context: TerminalPlugin,
       profile: Settings.Profile.Typed<key>,
-      options?: OpenOptions
+      options?: OpenOptions,
     ) => AsyncOrSync<RefPsuedoterminal<Pseudoterminal> | null>;
   };
 } = deepFreeze({
@@ -55,12 +55,12 @@ export const PROFILE_PROPERTIES: {
     async opener(
       _context: TerminalPlugin,
       profile: Settings.Profile.Typed<"external">,
-      options?: OpenOptions
+      options?: OpenOptions,
     ) {
       await spawnExternalTerminalEmulator(
         profile.executable,
         profile.args,
-        options?.cwd
+        options?.cwd,
       );
       return null;
     },
@@ -72,7 +72,7 @@ export const PROFILE_PROPERTIES: {
     opener(
       context: TerminalPlugin,
       profile: Settings.Profile.Typed<"integrated">,
-      options?: OpenOptions
+      options?: OpenOptions,
     ) {
       if (!Pseudoterminal.PLATFORM_PSEUDOTERMINAL) {
         return null;
@@ -91,7 +91,7 @@ export const PROFILE_PROPERTIES: {
           pythonExecutable: pythonExecutable || void 0,
           terminal: options?.terminal,
           useWin32Conhost,
-        })
+        }),
       );
     },
     valid: true,
@@ -109,7 +109,7 @@ export const PROFILE_PROPERTIES: {
 export function openProfile<T extends Settings.Profile.Type>(
   context: TerminalPlugin,
   profile: Settings.Profile.Typed<T>,
-  options?: OpenOptions
+  options?: OpenOptions,
 ): AsyncOrSync<RefPsuedoterminal<Pseudoterminal> | null> {
   const type0: T = profile.type;
   return PROFILE_PROPERTIES[type0].opener(context, profile, options);
