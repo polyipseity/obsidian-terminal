@@ -1,5 +1,5 @@
 declare global {
-	interface File {
-		readonly path?: string | undefined
-	}
+  interface File {
+    readonly path?: string | undefined;
+  }
 }

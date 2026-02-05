@@ -9,8 +9,7 @@ import { isEmpty } from "lodash-es";
 import { writeFile } from "node:fs/promises";
 
 const ARGV_PRODUCTION = 2,
-  COMMENT =
-    "// repository: https://github.com/polyipseity/obsidian-terminal",
+  COMMENT = "// repository: https://github.com/polyipseity/obsidian-terminal",
   DEV = argv[ARGV_PRODUCTION] === "dev",
   BUILD = await context({
     alias: {},
@@ -84,7 +83,7 @@ async function esbuild() {
               await analyzeMetafile(metafile, {
                 color: true,
                 verbose: true,
-              }),
+              })
             );
           }
           for await (const logging of [

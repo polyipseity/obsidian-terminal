@@ -1,1 +1,1 @@
-declare module "obsidian-terminal" { }
+declare module "obsidian-terminal" {}

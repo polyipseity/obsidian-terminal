@@ -1,4 +1,4 @@
 declare module "*.md" {}
-declare module "*.py" { }
+declare module "*.py" {}
 import type {} from "*.md";
-import type { } from "*.py"
+import type {} from "*.py";

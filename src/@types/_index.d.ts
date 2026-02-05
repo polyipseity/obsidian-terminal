@@ -3,6 +3,6 @@ declare module "*.md" {
   export default value;
 }
 declare module "*.py" {
-	const value: PromiseLike<string>
-	export default value
+  const value: PromiseLike<string>;
+  export default value;
 }
