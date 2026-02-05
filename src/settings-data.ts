@@ -1,25 +1,25 @@
 import {
 	type AnyObject,
-	type Fixed,
-	NOTICE_NO_TIMEOUT,
-	NULL_SEM_VER_STRING,
+  type Fixed,
+  NOTICE_NO_TIMEOUT,
+  NULL_SEM_VER_STRING,
 	type Platform,
-	PluginContext,
+  PluginContext,
 	type ReadonlyTuple,
-	type SemVerString,
+  type SemVerString,
 	type Unchecked,
-	cloneAsWritable,
-	deepFreeze,
+  cloneAsWritable,
+  deepFreeze,
 	fixArray,
-	fixInSet,
-	fixTyped,
+  fixInSet,
+  fixTyped,
 	inSet,
 	isHomogenousArray,
-	launderUnchecked,
-	markFixed,
-	opaqueOrDefault,
-	semVerString,
-} from "@polyipseity/obsidian-plugin-library"
+  launderUnchecked,
+  markFixed,
+  opaqueOrDefault,
+  semVerString,
+} from "@polyipseity/obsidian-plugin-library";
 import {
 	DEFAULT_LINK_HANDLER,
 	DEFAULT_LOGGER,
@@ -35,7 +35,7 @@ import type {
 	DeepUndefinable,
 	DeepWritable,
 	MarkOptional,
-} from "ts-essentials"
+} from "ts-essentials";
 import type {
 	FontWeight,
 	ILinkHandler,
@@ -51,28 +51,28 @@ import {
 } from "./terminal/emulator-addons.js"
 import { isUndefined, omitBy } from "lodash-es"
 import { DEFAULT_SUCCESS_EXIT_CODES } from "./magic.js"
-import { PluginLocales } from "../assets/locales.js"
+import { PluginLocales } from "../assets/locales.js";
 import { Pseudoterminal } from "./terminal/pseudoterminal.js"
 
 export interface LocalSettings extends PluginContext.LocalSettings {
-	readonly lastReadChangelogVersion: SemVerString
+  readonly lastReadChangelogVersion: SemVerString;
 }
 export namespace LocalSettings {
-	export function fix(self0: unknown): Fixed<LocalSettings> {
-		const unc = launderUnchecked<LocalSettings>(self0)
-		return markFixed(self0, {
-			...PluginContext.LocalSettings.fix(self0).value,
-			lastReadChangelogVersion: opaqueOrDefault(
-				semVerString,
-				String(unc.lastReadChangelogVersion),
-				NULL_SEM_VER_STRING,
-			),
-		})
-	}
+  export function fix(self0: unknown): Fixed<LocalSettings> {
+    const unc = launderUnchecked<LocalSettings>(self0);
+    return markFixed(self0, {
+      ...PluginContext.LocalSettings.fix(self0).value,
+      lastReadChangelogVersion: opaqueOrDefault(
+        semVerString,
+        String(unc.lastReadChangelogVersion),
+        NULL_SEM_VER_STRING,
+      ),
+    });
+  }
 }
 
 export interface Settings extends PluginContext.Settings {
-	readonly language: Settings.DefaultableLanguage
+  readonly language: Settings.DefaultableLanguage;
 	readonly addToCommand: boolean
 	readonly addToContextMenu: boolean
 	readonly profiles: Settings.Profiles
@@ -82,7 +82,7 @@ export interface Settings extends PluginContext.Settings {
 	readonly focusOnNewInstance: boolean
 	readonly pinNewInstance: boolean
 
-	readonly openChangelogOnUpdate: boolean
+  readonly openChangelogOnUpdate: boolean;
 	readonly hideStatusBar: Settings.HideStatusBarOption
 
 	readonly exposeInternalModules: boolean
@@ -90,31 +90,30 @@ export interface Settings extends PluginContext.Settings {
 	readonly preferredRenderer: Settings.PreferredRendererOption
 }
 export namespace Settings {
-	export const optionals = deepFreeze([]) satisfies readonly (keyof Settings)[]
-	export type Optionals = typeof optionals[number]
-	export type Persistent = Omit<Settings, Optionals>
-	export function persistent(settings: Settings): Persistent {
-		const ret: MarkOptional<Settings, Optionals> = cloneAsWritable(settings)
-		for (const optional of optionals) {
-			// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-			delete ret[optional]
-		}
-		return ret
-	}
+  export const optionals = deepFreeze([]) satisfies readonly (keyof Settings)[];
+  export type Optionals = (typeof optionals)[number];
+  export type Persistent = Omit<Settings, Optionals>;
+  export function persistent(settings: Settings): Persistent {
+    const ret: MarkOptional<Settings, Optionals> = cloneAsWritable(settings);
+    for (const optional of optionals) {
+      delete ret[optional];
+    }
+    return ret;
+  }
 
-	export const DEFAULT: Persistent = deepFreeze({
+  export const DEFAULT: Persistent = deepFreeze({
 		addToCommand: true,
 		addToContextMenu: true,
 		createInstanceNearExistingOnes: true,
-		errorNoticeTimeout: NOTICE_NO_TIMEOUT,
+    errorNoticeTimeout: NOTICE_NO_TIMEOUT,
 		exposeInternalModules: true,
 		focusOnNewInstance: true,
 		hideStatusBar: "focused",
 		interceptLogging: true,
-		language: "",
+    language: "",
 		newInstanceBehavior: "newHorizontalSplit",
-		noticeTimeout: 5,
-		openChangelogOnUpdate: true,
+    noticeTimeout: 5,
+    openChangelogOnUpdate: true,
 		pinNewInstance: true,
 		preferredRenderer: "webgl",
 		profiles: Object.fromEntries(([
@@ -127,11 +126,13 @@ export namespace Settings {
 			"win32IntegratedDefault",
 		] satisfies readonly (keyof typeof PROFILE_PRESETS)[])
 			.map(key => [key, PROFILE_PRESETS[key]])),
-	})
+  });
 
-	export const DEFAULTABLE_LANGUAGES =
-		deepFreeze(["", ...PluginLocales.LANGUAGES])
-	export type DefaultableLanguage = typeof DEFAULTABLE_LANGUAGES[number]
+  export const DEFAULTABLE_LANGUAGES = deepFreeze([
+    "",
+    ...PluginLocales.LANGUAGES,
+  ]);
+  export type DefaultableLanguage = (typeof DEFAULTABLE_LANGUAGES)[number];
 	export const NEW_INSTANCE_BEHAVIORS = deepFreeze([
 		"replaceTab",
 		"newTab",
@@ -259,7 +260,7 @@ export namespace Settings {
 			readonly [key in Type]: DeepRequired<Omit<Typed<key>, "terminalOptions">>
 			& Typed<key>
 		} = deepFreeze({
-			// eslint-disable-next-line @typescript-eslint/naming-convention
+			 
 			"": PROFILE_PRESETS.empty,
 			developerConsole: {
 				followTheme: true,
@@ -309,7 +310,7 @@ export namespace Settings {
 			},
 		})
 
-		// eslint-disable-next-line @typescript-eslint/no-shadow
+		 
 		export function fix(self0: unknown): Fixed<Profile> {
 			const unc = launderUnchecked<Invalid>(self0),
 				fixPlatforms = <
@@ -327,7 +328,7 @@ export namespace Settings {
 					}
 					return ret2
 				}
-			// eslint-disable-next-line @typescript-eslint/consistent-return
+			 
 			return markFixed(self0, ((): DeepWritable<Profile> => {
 				const type = inSet(TYPES, unc.type)
 					? unc.type
@@ -701,7 +702,7 @@ export namespace Settings {
 						: ((): ILinkHandler => {
 							const unc2 = launderUnchecked<ILinkHandler>(unc.linkHandler),
 								ret = {
-									// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+									 
 									activate: fixTyped(
 										DEFAULT_LINK_HANDLER,
 										unc2,
@@ -714,14 +715,14 @@ export namespace Settings {
 										"allowNonHttpProtocols",
 										["undefined", "boolean"],
 									),
-									// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+									 
 									hover: fixTyped(
 										DEFAULT_LINK_HANDLER,
 										unc2,
 										"hover",
 										["undefined", "function"],
 									) as ILinkHandler["hover"],
-									// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+									 
 									leave: fixTyped(
 										DEFAULT_LINK_HANDLER,
 										unc2,
@@ -745,35 +746,35 @@ export namespace Settings {
 						: ((): ILogger => {
 							const unc2 = launderUnchecked<ILogger>(unc.logger),
 								ret = {
-									// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+									 
 									debug: fixTyped(
 										DEFAULT_LOGGER,
 										unc2,
 										"debug",
 										["function"],
 									) as ILogger["debug"],
-									// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+									 
 									error: fixTyped(
 										DEFAULT_LOGGER,
 										unc2,
 										"error",
 										["function"],
 									) as ILogger["error"],
-									// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+									 
 									info: fixTyped(
 										DEFAULT_LOGGER,
 										unc2,
 										"info",
 										["function"],
 									) as ILogger["info"],
-									// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+									 
 									trace: fixTyped(
 										DEFAULT_LOGGER,
 										unc2,
 										"trace",
 										["function"],
 									) as ILogger["trace"],
-									// eslint-disable-next-line @typescript-eslint/no-unsafe-type-assertion
+									 
 									warn: fixTyped(
 										DEFAULT_LOGGER,
 										unc2,
@@ -1191,10 +1192,10 @@ export namespace Settings {
 			})
 		}
 	}
-	export function fix(self0: unknown): Fixed<Settings> {
-		const unc = launderUnchecked<Settings>(self0)
-		return markFixed(self0, {
-			...PluginContext.Settings.fix(self0).value,
+  export function fix(self0: unknown): Fixed<Settings> {
+    const unc = launderUnchecked<Settings>(self0);
+    return markFixed(self0, {
+      ...PluginContext.Settings.fix(self0).value,
 			addToCommand: fixTyped(
 				DEFAULT,
 				unc,
@@ -1213,12 +1214,9 @@ export namespace Settings {
 				"createInstanceNearExistingOnes",
 				["boolean"],
 			),
-			errorNoticeTimeout: fixTyped(
-				DEFAULT,
-				unc,
-				"errorNoticeTimeout",
-				["number"],
-			),
+      errorNoticeTimeout: fixTyped(DEFAULT, unc, "errorNoticeTimeout", [
+        "number",
+      ]),
 			exposeInternalModules: fixTyped(
 				DEFAULT,
 				unc,
@@ -1243,30 +1241,17 @@ export namespace Settings {
 				"interceptLogging",
 				["boolean"],
 			),
-			language: fixInSet(
-				DEFAULT,
-				unc,
-				"language",
-				DEFAULTABLE_LANGUAGES,
-			),
+      language: fixInSet(DEFAULT, unc, "language", DEFAULTABLE_LANGUAGES),
 			newInstanceBehavior: fixInSet(
 				DEFAULT,
 				unc,
 				"newInstanceBehavior",
 				NEW_INSTANCE_BEHAVIORS,
 			),
-			noticeTimeout: fixTyped(
-				DEFAULT,
-				unc,
-				"noticeTimeout",
-				["number"],
-			),
-			openChangelogOnUpdate: fixTyped(
-				DEFAULT,
-				unc,
-				"openChangelogOnUpdate",
-				["boolean"],
-			),
+      noticeTimeout: fixTyped(DEFAULT, unc, "noticeTimeout", ["number"]),
+      openChangelogOnUpdate: fixTyped(DEFAULT, unc, "openChangelogOnUpdate", [
+        "boolean",
+      ]),
 			pinNewInstance: fixTyped(
 				DEFAULT,
 				unc,
@@ -1288,6 +1273,6 @@ export namespace Settings {
 				}
 				return cloneAsWritable(defaults2)
 			})(),
-		})
-	}
+    });
+  }
 }

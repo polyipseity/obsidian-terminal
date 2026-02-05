@@ -1,74 +1,70 @@
-import { type App, Plugin, type PluginManifest } from "obsidian"
+import { type App, Plugin, type PluginManifest } from "obsidian";
 import { EarlyPatchManager, loadPatch } from "./patch.js"
 import {
-	LanguageManager,
-	type PluginContext,
-	SI_PREFIX_SCALE,
-	type SemVerString,
-	SettingsManager,
+  LanguageManager,
+  type PluginContext,
+  SI_PREFIX_SCALE,
+  type SemVerString,
+  SettingsManager,
 	StatusBarHider,
-	StorageSettingsManager,
-	createI18n,
-	semVerString,
-} from "@polyipseity/obsidian-plugin-library"
-import { LocalSettings, Settings } from "./settings-data.js"
-import { MAX_HISTORY, PLUGIN_UNLOAD_DELAY } from "./magic.js"
+  StorageSettingsManager,
+  createI18n,
+  semVerString,
+} from "@polyipseity/obsidian-plugin-library";
+import { LocalSettings, Settings } from "./settings-data.js";
+import { MAX_HISTORY, PLUGIN_UNLOAD_DELAY } from "./magic.js";
 import { DeveloperConsolePseudoterminal } from "./terminal/pseudoterminal.js"
-import { PluginLocales } from "../assets/locales.js"
-import { isNil } from "lodash-es"
-import { loadDocumentations } from "./documentations.js"
+import { PluginLocales } from "../assets/locales.js";
+import { isNil } from "lodash-es";
+import { loadDocumentations } from "./documentations.js";
 import { loadIcons } from "./icons.js"
-import { loadSettings } from "./settings.js"
+import { loadSettings } from "./settings.js";
 import { loadTerminal } from "./terminal/load.js"
 
 export class TerminalPlugin
-	extends Plugin
-	implements PluginContext<Settings, LocalSettings> {
-	public readonly version: SemVerString | null
-	public readonly language: LanguageManager
-	public readonly localSettings: StorageSettingsManager<LocalSettings>
-	public readonly settings: SettingsManager<Settings>
+  extends Plugin
+  implements PluginContext<Settings, LocalSettings>
+{
+  public readonly version: SemVerString | null;
+  public readonly language: LanguageManager;
+  public readonly localSettings: StorageSettingsManager<LocalSettings>;
+  public readonly settings: SettingsManager<Settings>;
 	public readonly developerConsolePTY =
 		new DeveloperConsolePseudoterminal.Manager(this)
 
 	public readonly earlyPatch
 	public readonly statusBarHider = new StatusBarHider(this)
 
-	public constructor(app: App, manifest: PluginManifest) {
+  public constructor(app: App, manifest: PluginManifest) {
 		const earlyPatch = new EarlyPatchManager(app, { maxHistory: MAX_HISTORY })
 		earlyPatch.load()
-		super(app, manifest)
+    super(app, manifest);
 		this.earlyPatch = earlyPatch
-		try {
-			this.version = semVerString(manifest.version)
-		} catch (error) {
-			self.console.warn(error)
-			this.version = null
-		}
-		this.language = new LanguageManager(
-			this,
-			async () => createI18n(
-				PluginLocales.RESOURCES,
-				PluginLocales.FORMATTERS,
-				{
-					defaultNS: PluginLocales.DEFAULT_NAMESPACE,
-					fallbackLng: PluginLocales.FALLBACK_LANGUAGES,
-					returnNull: PluginLocales.RETURN_NULL,
-				},
-			),
-		)
-		this.localSettings = new StorageSettingsManager(this, LocalSettings.fix)
-		this.settings = new SettingsManager(this, Settings.fix)
-	}
+    try {
+      this.version = semVerString(manifest.version);
+    } catch (error) {
+      self.console.warn(error);
+      this.version = null;
+    }
+    this.language = new LanguageManager(this, async () =>
+      createI18n(PluginLocales.RESOURCES, PluginLocales.FORMATTERS, {
+        defaultNS: PluginLocales.DEFAULT_NAMESPACE,
+        fallbackLng: PluginLocales.FALLBACK_LANGUAGES,
+        returnNull: PluginLocales.RETURN_NULL,
+      }),
+    );
+    this.localSettings = new StorageSettingsManager(this, LocalSettings.fix);
+    this.settings = new SettingsManager(this, Settings.fix);
+  }
 
-	public displayName(unlocalized = false): string {
-		return unlocalized
-			? this.language.value.t("name", {
-				interpolation: { escapeValue: false },
-				lng: PluginLocales.DEFAULT_LANGUAGE,
-			})
-			: this.language.value.t("name")
-	}
+  public displayName(unlocalized = false): string {
+    return unlocalized
+      ? this.language.value.t("name", {
+          interpolation: { escapeValue: false },
+          lng: PluginLocales.DEFAULT_LANGUAGE,
+        })
+      : this.language.value.t("name");
+  }
 
 	public override onload(): void {
 		(async (): Promise<void> => {
@@ -132,4 +128,4 @@ export class TerminalPlugin
 	}
 }
 // Needed for loading
-export default TerminalPlugin
+export default TerminalPlugin;

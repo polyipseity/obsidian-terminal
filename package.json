@@ -1,145 +1,145 @@
 {
-	"author": "polyipseity",
-	"bugs": {
-		"url": "https://github.com/polyipseity/PLACEHOLDER"
-	},
-	"dependencies": {
-		"@polyipseity/obsidian-plugin-library": "^1.33.0",
-		"@xterm/addon-canvas": "^0.7.0",
-		"@xterm/addon-fit": "^0.10.0",
-		"@xterm/addon-ligatures": "^0.9.0",
-		"@xterm/addon-search": "^0.15.0",
-		"@xterm/addon-serialize": "^0.13.0",
-		"@xterm/addon-unicode11": "^0.8.0",
-		"@xterm/addon-web-links": "^0.11.0",
-		"@xterm/addon-webgl": "^0.18.0",
-		"@xterm/xterm": "^5.5.0",
-		"acorn": "^8.15.0",
-		"ansi-escape-sequences": "^6.2.4",
-		"async-lock": "^1.4.1",
-		"browser-util-inspect": "^0.2.0",
-		"espree": "^11.1.0",
-		"i18next": "^25.8.0",
-		"immutable": "^5.1.3",
-		"lodash-es": "^4.17.23",
-		"monkey-around": "^3.0.0",
-		"obsidian": "~1.4.11",
-		"semver": "^7.7.3",
-		"simple-icons": "^15.2.0",
-		"source-map": "^0.7.4",
-		"svelte": "^5.34.3",
-		"tmp-promise": "^3.0.3",
-		"ts-essentials": "^10.1.1"
-	},
-	"description": "Integrate consoles, shells, and terminals.",
-	"devDependencies": {
-		"@changesets/cli": "^2.29.8",
-		"@commitlint/cli": "^20.3.1",
-		"@commitlint/config-conventional": "^20.3.1",
-		"@eslint/compat": "^2.0.2",
-		"@eslint/js": "^9.39.2",
-		"@polyipseity/obsidian": "~1.4.11",
-		"@tsconfig/node16": "^16.1.8",
-		"@tsconfig/recommended": "^1.0.13",
-		"@tsconfig/strictest": "^2.0.8",
-		"@types/ansi-escape-sequences": "^4.0.4",
-		"@types/async-lock": "^1.4.2",
-		"@types/browser-util-inspect": "^0.2.4",
-		"@types/lodash-es": "^4.17.12",
-		"@types/node": "^25.1.0",
-		"@types/semver": "^7.7.1",
-		"builtin-modules": "^5.0.0",
-		"esbuild": "^0.27.2",
-		"esbuild-compress": "^2.0.2",
-		"esbuild-plugin-globals": "^0.2.0",
-		"esbuild-plugin-text-replace": "^1.3.0",
-		"eslint": "^9.39.2",
-		"globals": "^17.2.0",
-		"husky": "^9.1.7",
-		"lint-staged": "^16.2.7",
-		"markdownlint-cli2": "^0.20.0",
-		"p-lazy": "^5.0.0",
-		"prettier": "^3.2.5",
-		"tslib": "^2.8.1",
-		"typescript": "^5.9.3",
-		"typescript-eslint": "^8.54.0"
-	},
-	"files": [
-		"main.js",
-		"manifest.json",
-		"requirements.txt",
-		"styles.css"
-	],
-	"funding": [
-		{
-			"type": "Buy Me a Coffee",
-			"url": "https://buymeacoffee.com/polyipseity"
-		},
-		{
-			"type": "GitHub Sponsors",
-			"url": "https://github.com/sponsors/polyipseity"
-		}
-	],
-	"homepage": "https://github.com/polyipseity/PLACEHOLDER#readme",
-	"keywords": [
-		"console",
-		"console-emulator",
-		"obsidian",
-		"obsidian-plugin",
-		"plugin",
-		"shell",
-		"shell-emulator",
-		"terminal",
-		"terminal-emulator"
-	],
-	"license": "AGPL-3.0-or-later",
-	"main": "main.js",
-	"name": "obsidian-terminal",
-	"obsidian": {
-		"authorUrl": "https://github.com/polyipseity",
-		"id": "terminal",
-		"isDesktopOnly": false,
-		"minAppVersion": "1.4.11",
-		"name": "Terminal"
-	},
-	"overrides": {
-		"tmp": "^0.2.5"
-	},
-	"pnpm": {
-		"overrides": {
-			"tmp": "^0.2.5"
-		}
-	},
-	"private": true,
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/polyipseity/PLACEHOLDER.git"
-	},
-	"scripts": {
-		"build": "npm run check && npm run build:force",
-		"build:dev": "npm run build:force -- dev",
-		"build:force": "node build/build.mjs",
-		"check": "npm run check:eslint && npm run check:prettier && npm run check:md",
-		"check:eslint": "eslint --cache --max-warnings=0",
-		"check:md": "markdownlint-cli2",
-		"check:prettier": "prettier --check \"**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}\"",
-		"commitlint": "commitlint --from=origin/main --to=HEAD",
-		"format": "npm run format:eslint && npm run format:prettier && npm run format:md",
-		"format:eslint": "eslint --cache --fix",
-		"format:md": "markdownlint-cli2 --fix",
-		"format:prettier": "prettier --write \"**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}\"",
-		"obsidian:install": "npm run build && node build/obsidian-install.mjs",
-		"obsidian:install:force": "npm run build:force && node build/obsidian-install.mjs",
-		"postversion": "node build/version-post.mjs",
-		"prepare": "husky",
-		"version": "node build/version.mjs"
-	},
-	"sideEffects": false,
-	"style": "styles.css",
-	"type": "module",
-	"version": "3.21.0",
-	"workspaces": [
-		".",
-		"build/*"
-	]
+  "author": "polyipseity",
+  "bugs": {
+    "url": "https://github.com/polyipseity/PLACEHOLDER"
+  },
+  "dependencies": {
+    "@polyipseity/obsidian-plugin-library": "^1.33.0",
+    "@xterm/addon-canvas": "^0.7.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-ligatures": "^0.9.0",
+    "@xterm/addon-search": "^0.15.0",
+    "@xterm/addon-serialize": "^0.13.0",
+    "@xterm/addon-unicode11": "^0.8.0",
+    "@xterm/addon-web-links": "^0.11.0",
+    "@xterm/addon-webgl": "^0.18.0",
+    "@xterm/xterm": "^5.5.0",
+    "acorn": "^8.15.0",
+    "ansi-escape-sequences": "^6.2.4",
+    "async-lock": "^1.4.1",
+    "browser-util-inspect": "^0.2.0",
+    "espree": "^11.1.0",
+    "i18next": "^25.8.1",
+    "immutable": "^5.1.3",
+    "lodash-es": "^4.17.23",
+    "monkey-around": "^3.0.0",
+    "obsidian": "~1.4.11",
+    "semver": "^7.7.3",
+    "simple-icons": "^15.2.0",
+    "source-map": "^0.7.4",
+    "svelte": "^5.34.3",
+    "tmp-promise": "^3.0.3",
+    "ts-essentials": "^10.1.1"
+  },
+  "description": "Integrate consoles, shells, and terminals.",
+  "devDependencies": {
+    "@changesets/cli": "^2.29.8",
+    "@commitlint/cli": "^20.4.1",
+    "@commitlint/config-conventional": "^20.4.1",
+    "@eslint/compat": "^2.0.2",
+    "@eslint/js": "^9.39.2",
+    "@polyipseity/obsidian": "~1.4.11",
+    "@tsconfig/node16": "^16.1.8",
+    "@tsconfig/recommended": "^1.0.13",
+    "@tsconfig/strictest": "^2.0.8",
+    "@types/ansi-escape-sequences": "^4.0.4",
+    "@types/async-lock": "^1.4.2",
+    "@types/browser-util-inspect": "^0.2.4",
+    "@types/lodash-es": "^4.17.12",
+    "@types/node": "^25.1.0",
+    "@types/semver": "^7.7.1",
+    "builtin-modules": "^5.0.0",
+    "esbuild": "^0.27.2",
+    "esbuild-compress": "^2.0.2",
+    "esbuild-plugin-globals": "^0.2.0",
+    "esbuild-plugin-text-replace": "^1.3.0",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.2.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "markdownlint-cli2": "^0.20.0",
+    "p-lazy": "^5.0.0",
+    "prettier": "^3.2.5",
+    "tslib": "^2.8.1",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.54.0"
+  },
+  "files": [
+    "main.js",
+    "manifest.json",
+    "requirements.txt",
+    "styles.css"
+  ],
+  "funding": [
+    {
+      "type": "Buy Me a Coffee",
+      "url": "https://buymeacoffee.com/polyipseity"
+    },
+    {
+      "type": "GitHub Sponsors",
+      "url": "https://github.com/sponsors/polyipseity"
+    }
+  ],
+  "homepage": "https://github.com/polyipseity/PLACEHOLDER#readme",
+  "keywords": [
+    "console",
+    "console-emulator",
+    "obsidian",
+    "obsidian-plugin",
+    "plugin",
+    "shell",
+    "shell-emulator",
+    "terminal",
+    "terminal-emulator"
+  ],
+  "license": "AGPL-3.0-or-later",
+  "main": "main.js",
+  "name": "obsidian-terminal",
+  "obsidian": {
+    "authorUrl": "https://github.com/polyipseity",
+    "id": "terminal",
+    "isDesktopOnly": false,
+    "minAppVersion": "1.4.11",
+    "name": "Terminal"
+  },
+  "overrides": {
+    "tmp": "^0.2.5"
+  },
+  "pnpm": {
+    "overrides": {
+      "tmp": "^0.2.5"
+    }
+  },
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/polyipseity/PLACEHOLDER.git"
+  },
+  "scripts": {
+    "build": "npm run check && npm run build:force",
+    "build:dev": "npm run build:force -- dev",
+    "build:force": "node scripts/build.mjs",
+    "check": "npm run check:eslint && npm run check:md && npm run check:prettier",
+    "check:eslint": "eslint --cache --max-warnings=0",
+    "check:md": "markdownlint-cli2",
+    "check:prettier": "prettier --check \"**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}\"",
+    "commitlint": "commitlint --from=origin/main --to=HEAD",
+    "format": "npm run format:eslint && npm run format:md && npm run format:prettier",
+    "format:eslint": "eslint --cache --fix",
+    "format:md": "markdownlint-cli2 --fix",
+    "format:prettier": "prettier --write \"**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}\"",
+    "obsidian:install": "npm run build && node scripts/obsidian-install.mjs",
+    "obsidian:install:force": "npm run build:force && node scripts/obsidian-install.mjs",
+    "postversion": "node scripts/version-post.mjs",
+    "prepare": "husky",
+    "version": "node scripts/version.mjs"
+  },
+  "sideEffects": false,
+  "style": "styles.css",
+  "type": "module",
+  "version": "3.21.0",
+  "workspaces": [
+    "."
+  ]
 }

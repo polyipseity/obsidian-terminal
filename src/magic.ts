@@ -17,11 +17,11 @@ export const
 	PLUGIN_UNLOAD_DELAY = 10,
 	PYTHON_REQUIREMENTS = deepFreeze({
 		// Update `README.md`, `magic.ts`, and `requirements.txt` together.
-		// eslint-disable-next-line @typescript-eslint/naming-convention
+		 
 		Python: { platforms: Platform.DESKTOP, version: new SemVer("3.10.0") },
 		psutil: { platforms: ["win32"], version: new SemVer("5.9.5") },
 		pywinctl: { platforms: ["win32"], version: new SemVer("0.0.50") },
-		// eslint-disable-next-line @typescript-eslint/naming-convention, camelcase
+		 
 		typing_extensions: { platforms: ["win32"], version: new SemVer("4.7.1") },
 	}) satisfies Readonly<Record<string, {
 		readonly platforms: readonly Platform.All[]
@@ -35,9 +35,8 @@ export const
 	WINDOWS_CONHOST_PATH = "C:\\Windows\\System32\\conhost.exe"
 
 export namespace DOMClasses2 {
-	export const
-		LUCIDE_HEART = "lucide-heart",
-		SVG_ICON = "svg-icon"
+  export const LUCIDE_HEART = "lucide-heart",
+    SVG_ICON = "svg-icon";
 	export namespace Namespaced {
 		export const
 			TERMINAL = "terminal"

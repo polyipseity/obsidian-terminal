@@ -1,0 +1,11 @@
+# default {
+**/.git
+**/.svn
+**/.hg
+**/node_modules
+# }
+
+# custom {
+/package-lock.json
+/pnpm-lock.yaml
+# }

@@ -194,7 +194,7 @@ This project uses the following tools to ensure code and commit quality:
 - __husky__: Manages Git hooks. Pre-commit runs `lint-staged` and pre-push runs commitlint.
 - __lint-staged__: Runs linters on staged files. Markdown files are auto-fixed before commit.
 
-> **Lint-staged note:** The lint-staged configuration (`.lintstagedrc.mjs`) invokes formatter/linter binaries directly (for example `prettier --write`, `eslint --cache --fix`, `markdownlint-cli2 --fix`) so that the list of staged files is passed through to the tool. Invoking these via `npm run` would prevent lint-staged from forwarding filenames and cause the tool to operate on its default glob (or the entire repo). Use `pnpm run format` to format the entire repository when needed.
+> __Lint-staged note:__ The lint-staged configuration (`.lintstagedrc.mjs`) invokes formatter/linter binaries directly (for example `prettier --write`, `eslint --cache --fix`, `markdownlint-cli2 --fix`) so that the list of staged files is passed through to the tool. Invoking these via `npm run` would prevent lint-staged from forwarding filenames and cause the tool to operate on its default glob (or the entire repo). Use `pnpm run format` to format the entire repository when needed.
 
 To set up locally:
 

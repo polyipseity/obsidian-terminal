@@ -1,26 +1,28 @@
 import {
-	AdvancedSettingTab,
+  AdvancedSettingTab,
 	cloneAsWritable,
-	closeSetting,
+  closeSetting,
 	createChildElement,
 	createDocumentFragment,
-	linkSetting,
-	registerSettingsCommands,
-	resetButton,
+  linkSetting,
+  registerSettingsCommands,
+  resetButton,
 	setTextToEnum,
-} from "@polyipseity/obsidian-plugin-library"
-import { ProfileListModal } from "./modals.js"
-import { Settings } from "./settings-data.js"
+} from "@polyipseity/obsidian-plugin-library";
+import { ProfileListModal } from "./modals.js";
+import { Settings } from "./settings-data.js";
 import type { TerminalPlugin } from "./main.js"
-import type { loadDocumentations } from "./documentations.js"
-import semverLt from "semver/functions/lt.js"
+import type { loadDocumentations } from "./documentations.js";
+import semverLt from "semver/functions/lt.js";
 import { size } from "lodash-es"
 
 export class SettingTab extends AdvancedSettingTab<Settings> {
-	public constructor(
-		protected override readonly context: TerminalPlugin,
-		protected readonly docs: loadDocumentations.Loaded,
-	) { super(context) }
+  public constructor(
+    protected override readonly context: TerminalPlugin,
+    protected readonly docs: loadDocumentations.Loaded,
+  ) {
+    super(context);
+  }
 
 	protected override onLoad(): void {
 		super.onLoad()
@@ -382,15 +384,15 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 			})
 	}
 
-	protected override snapshot0(): Partial<Settings> {
-		return Settings.persistent(this.context.settings.value)
-	}
+  protected override snapshot0(): Partial<Settings> {
+    return Settings.persistent(this.context.settings.value);
+  }
 }
 
 export function loadSettings(
-	context: TerminalPlugin,
-	docs: loadDocumentations.Loaded,
+  context: TerminalPlugin,
+  docs: loadDocumentations.Loaded,
 ): void {
-	context.addSettingTab(new SettingTab(context, docs))
-	registerSettingsCommands(context)
+  context.addSettingTab(new SettingTab(context, docs));
+  registerSettingsCommands(context);
 }
