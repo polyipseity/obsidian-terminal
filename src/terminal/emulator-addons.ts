@@ -670,7 +670,6 @@ export class MacOptionKeyAddon implements ITerminalAddon {
 
   public constructor(
     protected readonly isMac: boolean,
-    protected readonly isMacOptionIsMeta: () => boolean,
     protected readonly isPassthroughEnabled: () => boolean,
   ) {}
 
@@ -681,12 +680,9 @@ export class MacOptionKeyAddon implements ITerminalAddon {
         return true;
       }
 
-      // Only intercept on Mac when passthrough is enabled and macOptionIsMeta is false
-      if (
-        !this.isMac ||
-        this.isMacOptionIsMeta() ||
-        !this.isPassthroughEnabled()
-      ) {
+      // Only intercept on Mac when passthrough is enabled
+      // (macOptionIsMeta is auto-disabled when passthrough is enabled)
+      if (!this.isMac || !this.isPassthroughEnabled()) {
         return true; // Let xterm.js handle normally
       }
 

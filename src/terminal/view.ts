@@ -986,9 +986,6 @@ export class TerminalView extends ItemView {
                 ligatures: new LigaturesAddon({}),
                 macOptionKey: new MacOptionKeyAddon(
                   Platform.CURRENT === "darwin",
-                  () =>
-                    profile.type !== "invalid" &&
-                    profile.terminalOptions?.macOptionIsMeta === true,
                   () => settings.value.macOptionKeyPassthrough,
                 ),
                 renderer: new RendererAddon(
