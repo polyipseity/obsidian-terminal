@@ -956,6 +956,10 @@ export class TerminalView extends ItemView {
                 ...(profile.type === "invalid"
                   ? {}
                   : cloneAsWritable(profile.terminalOptions, cloneDeep)),
+                ...(Platform.CURRENT === "darwin" &&
+                settings.value.macOptionKeyPassthrough
+                  ? { macOptionIsMeta: false }
+                  : {}),
               },
               {
                 disposer: new DisposerAddon(
