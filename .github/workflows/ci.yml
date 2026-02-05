@@ -20,36 +20,42 @@ jobs:
     name: "Build & Test (pnpm)"
     runs-on: ubuntu-slim
     steps:
-      - name: "Checkout repository"
+      - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: "Install pnpm"
+      - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: "*"
-          cache: true
+          run_install: false
 
-      - name: "Install dependencies with pnpm"
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "*"
+          cache: "pnpm"
+
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: "Build project with pnpm"
+      - name: Build project
         run: pnpm build
 
   build-npm:
     name: "Build & Test (npm)"
     runs-on: ubuntu-slim
     steps:
-      - name: "Checkout repository"
+      - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: "Setup Node.js for npm"
+      - name: Install Node.js
         uses: actions/setup-node@v6
         with:
           node-version: "*"
           cache: "npm"
 
-      - name: "Install dependencies with npm"
+      - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: "Build project with npm"
+      - name: Build project
         run: npm run build

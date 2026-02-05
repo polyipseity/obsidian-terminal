@@ -20,30 +20,36 @@ permissions:
 
 jobs:
   rolling-release:
-    name: "Publish Rolling Release"
+    name: Publish Rolling Release
     runs-on: ubuntu-slim
     steps:
-      - name: "Checkout repository"
+      - name: Checkout repository
         uses: actions/checkout@v6
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
           version: "*"
-          cache: true
+          run_install: false
 
-      - name: "Install dependencies with pnpm"
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "*"
+          cache: "pnpm"
+
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: "Build project with pnpm"
+      - name: Build project
         run: pnpm build
 
-      - name: "Pack plugin for release"
+      - name: Pack plugin for release
         run: |
           pnpm pack --pack-destination=.github
           for file in .github/*.tgz; do mv "$file" "${file%-*}.tgz"; done
 
-      - name: "Upload plugin to rolling release"
+      - name: Upload plugin to rolling release
         if: ${{github.ref == 'refs/tags/rolling'}}
         env:
           GH_TOKEN: ${{github.token}}
