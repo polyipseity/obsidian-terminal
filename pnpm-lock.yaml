@@ -16,7 +16,7 @@ importers:
         version: 1.33.0(@codemirror/state@6.5.2)(@codemirror/view@6.37.1)(esbuild@0.27.2)(typescript@5.9.3)
       '@xterm/addon-canvas':
         specifier: ^0.7.0
-        version: 0.7.0(@xterm/xterm@6.0.0)
+        version: 0.7.0(@xterm/xterm@5.5.0)
       '@xterm/addon-fit':
         specifier: ^0.11.0
         version: 0.11.0
@@ -39,8 +39,8 @@ importers:
         specifier: ^0.19.0
         version: 0.19.0
       '@xterm/xterm':
-        specifier: ^6.0.0
-        version: 6.0.0
+        specifier: ^5.5.0
+        version: 5.5.0
       acorn:
         specifier: ^8.15.0
         version: 8.15.0
@@ -786,8 +786,8 @@ packages:
   '@xterm/addon-webgl@0.19.0':
     resolution: {integrity: sha512-b3fMOsyLVuCeNJWxolACEUED0vm7qC0cy4wRvf3oURSzDTYVQiGPhTnhWZwIHdvC48Y+oLhvYXnY4XDXPoJo6A==}
 
-  '@xterm/xterm@6.0.0':
-    resolution: {integrity: sha512-TQwDdQGtwwDt+2cgKDLn0IRaSxYu1tSUjgKarSDkUM0ZNiSRXFpjxEsvc/Zgc5kq5omJ+V0a8/kIM2WD3sMOYg==}
+  '@xterm/xterm@5.5.0':
+    resolution: {integrity: sha512-hqJHYaQb5OptNunnyAnkHyM8aCjZ1MEIDTQu1iIbbTD/xops91NB5yq1ZK/dC2JDbVWtF23zUtl9JE2NqwT87A==}
 
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
@@ -3025,9 +3025,9 @@ snapshots:
       '@typescript-eslint/types': 8.54.0
       eslint-visitor-keys: 4.2.1
 
-  '@xterm/addon-canvas@0.7.0(@xterm/xterm@6.0.0)':
+  '@xterm/addon-canvas@0.7.0(@xterm/xterm@5.5.0)':
     dependencies:
-      '@xterm/xterm': 6.0.0
+      '@xterm/xterm': 5.5.0
 
   '@xterm/addon-fit@0.11.0': {}
 
@@ -3046,7 +3046,7 @@ snapshots:
 
   '@xterm/addon-webgl@0.19.0': {}
 
-  '@xterm/xterm@6.0.0': {}
+  '@xterm/xterm@5.5.0': {}
 
   acorn-jsx@5.3.2(acorn@8.15.0):
     dependencies:
