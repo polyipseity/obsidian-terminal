@@ -67,7 +67,7 @@ importers:
         specifier: ^7.7.1
         version: 7.7.1
       '@vitest/coverage-v8':
-        specifier: 4.0.18
+        specifier: ^4.0.18
         version: 4.0.18(vitest@4.0.18(@types/node@25.1.0)(jiti@2.6.1)(yaml@2.8.2))
       builtin-modules:
         specifier: ^5.0.0
