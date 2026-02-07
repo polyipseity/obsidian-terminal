@@ -64,6 +64,30 @@ Quick reference for scripts in `package.json`. Use `pnpm` (preferred).
 
 > CI tip: Use `pnpm install --frozen-lockfile` in CI for deterministic installs.
 
+## Testing ✅
+
+- **Test runner:** Vitest (fast, TypeScript support). Tests live under `tests/` and should be named `*.spec.ts` or `*.spec.js`.
+- **Config:** Minimal config is in `vitest.config.mts` (keep it small). Add inline comments to that file if you change test behavior or providers.
+- **Run locally:**
+  - Non-interactive / coverage: `pnpm test` or `npm run test` (runs `vitest run --coverage`).
+  - Interactive / watch: `pnpm run test:watch` or `npm run test:watch`.
+  - Coverage: `pnpm coverage` (runs `vitest run --coverage`).
+- **Git hooks & CI:**
+  - Pre-push: `.husky/pre-push` runs `npm run test` (equivalently `pnpm test`) — failing tests will block pushes.
+  - CI: both the `pnpm` and `npm` CI jobs run `pnpm test` / `npm run test` (non-interactive, coverage enabled).
+- **Guidelines for agents & contributors:**
+  - Add tests for new features and bug fixes; tests must be small, deterministic, and fast.
+  - Avoid network, filesystem access outside fixtures, or user vaults — mock external dependencies.
+  - For long-running or flaky tests, use a dedicated `integration` tag and add rationale to PR description; avoid adding flaky tests to the main suite.
+  - When changing test infra (adding coverage provider, changing runtime, altering hooks), update `AGENTS.md` with rationale and instructions so other agents can follow the new workflow.
+- **PR checklist (for agents):**
+  1. Add/modify tests to cover behavior changes.
+  2. Run `pnpm test -- --run` locally and ensure all tests pass.
+  3. Keep tests parallelizable and idempotent.
+  4. Document any infra changes in `AGENTS.md`.
+
+If you need help designing a test or mocking a dependency, ask for a short example to be added to `tests/fixtures/`.
+
 ## 3. Coding Conventions
 
  **Commit Messages:**
