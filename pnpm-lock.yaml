@@ -48,15 +48,6 @@ importers:
       '@eslint/js':
         specifier: ^9.39.2
         version: 9.39.2
-      '@tsconfig/node16':
-        specifier: ^16.1.8
-        version: 16.1.8
-      '@tsconfig/recommended':
-        specifier: ^1.0.13
-        version: 1.0.13
-      '@tsconfig/strictest':
-        specifier: ^2.0.8
-        version: 2.0.8
       '@types/lodash-es':
         specifier: ^4.17.12
         version: 4.17.12
@@ -706,15 +697,6 @@ packages:
     resolution: {integrity: sha512-esgN+54+q0NjB0Y/4BomT9samII7jGwNy/2a3wNZbT2A2RpmXsXwUt24LvLhx6jUq2gVk4cWEvcRO6MFQbOfNA==}
     peerDependencies:
       acorn: ^8.9.0
-
-  '@tsconfig/node16@16.1.8':
-    resolution: {integrity: sha512-T/CfdwFry660WjZor56z0F3pxeCllt8KOxWcHFW6ZEuULKUObTDEMdgtctyuJPxwqyWDsvHRfxHaJ4FIICyoqQ==}
-
-  '@tsconfig/recommended@1.0.13':
-    resolution: {integrity: sha512-sySRuBfMKyKO/j2ZAhR8kSembhjuPEV4Ra3AHtmWLq51+iGaudr45crPSzNC5b7/Ctrh9dfUpBuTlYrH6rM58Q==}
-
-  '@tsconfig/strictest@2.0.8':
-    resolution: {integrity: sha512-XnQ7vNz5HRN0r88GYf1J9JJjqtZPiHt2woGJOo2dYqyHGGcd6OLGqSlBB6p1j9mpzja6Oe5BoPqWmeDx6X9rLw==}
 
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
@@ -3124,12 +3106,6 @@ snapshots:
   '@sveltejs/acorn-typescript@1.0.8(acorn@8.15.0)':
     dependencies:
       acorn: 8.15.0
-
-  '@tsconfig/node16@16.1.8': {}
-
-  '@tsconfig/recommended@1.0.13': {}
-
-  '@tsconfig/strictest@2.0.8': {}
 
   '@types/chai@5.2.3':
     dependencies:
