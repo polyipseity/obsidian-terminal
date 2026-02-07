@@ -11,8 +11,10 @@ import { writeFile } from "node:fs/promises";
 const ARGV_PRODUCTION = 2,
   COMMENT =
     "// repository: https://github.com/polyipseity/obsidian-plugin-template",
-  DEV = argv[ARGV_PRODUCTION] === "dev",
-  BUILD = await context({
+  DEV = argv[ARGV_PRODUCTION] === "dev";
+
+async function esbuild() {
+  const build = await context({
     alias: {},
     banner: { js: COMMENT },
     bundle: true,
@@ -70,59 +72,59 @@ const ARGV_PRODUCTION = 2,
     treeShaking: true,
   });
 
-async function esbuild() {
   if (DEV) {
-    await BUILD.watch({});
-  } else {
-    try {
-      // Await https://github.com/evanw/esbuild/issues/2886
-      const { errors, warnings, metafile } = await BUILD.rebuild();
-      await Promise.all([
-        (async () => {
-          if (metafile) {
-            console.log(
-              await analyzeMetafile(metafile, {
+    await build.watch({});
+    return;
+  }
+  try {
+    // Await https://github.com/evanw/esbuild/issues/2886
+    const { errors, warnings, metafile } = await build.rebuild();
+    await Promise.all([
+      (async () => {
+        if (metafile) {
+          console.log(
+            await analyzeMetafile(metafile, {
+              color: true,
+              verbose: true,
+            }),
+          );
+        }
+        for await (const logging of [
+          {
+            data: warnings,
+            kind: "warning",
+            log: console.warn.bind(console),
+          },
+          {
+            data: errors,
+            kind: "error",
+            log: console.error.bind(console),
+          },
+        ]
+          .filter(({ data }) => !isEmpty(data))
+          .map(async ({ data, kind, log }) => {
+            const message = (
+              await formatMessages(data, {
                 color: true,
-                verbose: true,
-              }),
-            );
-          }
-          for await (const logging of [
-            {
-              data: warnings,
-              kind: "warning",
-              log: console.warn.bind(console),
-            },
-            {
-              data: errors,
-              kind: "error",
-              log: console.error.bind(console),
-            },
+                kind,
+              })
+            ).join("\n");
+            return () => log(message);
+          })) {
+          logging();
+        }
+      })(),
+      ...(metafile
+        ? [
+            writeFile(PATHS.metafile, JSON.stringify(metafile, null, "\t"), {
+              encoding: "utf-8",
+            }),
           ]
-            .filter(({ data }) => !isEmpty(data))
-            .map(async ({ data, kind, log }) => {
-              const message = (
-                await formatMessages(data, {
-                  color: true,
-                  kind,
-                })
-              ).join("\n");
-              return () => log(message);
-            })) {
-            logging();
-          }
-        })(),
-        ...(metafile
-          ? [
-              writeFile(PATHS.metafile, JSON.stringify(metafile, null, "\t"), {
-                encoding: "utf-8",
-              }),
-            ]
-          : []),
-      ]);
-    } finally {
-      await BUILD.dispose();
-    }
+        : []),
+    ]);
+  } finally {
+    await build.dispose();
   }
 }
+
 await esbuild();
