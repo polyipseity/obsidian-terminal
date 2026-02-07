@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-// Unit spec for scripts/util.mjs — prefer hermetic behavior and keep tests
+// Unit spec for scripts/utils.mjs — prefer hermetic behavior and keep tests
 // deterministic. Some tests use quick node child processes to exercise
 // `execute` but the module is imported per-test to keep state isolated.
 
@@ -13,7 +13,7 @@ function mktemp() {
   );
 }
 
-describe("scripts/util.mjs", () => {
+describe("scripts/utils.mjs", () => {
   let origCwd;
   beforeEach(() => {
     origCwd = process.cwd();
@@ -25,7 +25,7 @@ describe("scripts/util.mjs", () => {
   });
 
   it("has a frozen PATHS object with expected keys", async () => {
-    const { PATHS } = await import("../../scripts/util.mjs");
+    const { PATHS } = await import("../../scripts/utils.mjs");
     expect(Object.isFrozen(PATHS)).toBe(true);
     expect(PATHS).toHaveProperty("main");
     expect(PATHS).toHaveProperty("manifest");
@@ -33,7 +33,7 @@ describe("scripts/util.mjs", () => {
   });
 
   it("execute logs stdout and stderr and returns stdout on success", async () => {
-    const { execute } = await import("../../scripts/util.mjs");
+    const { execute } = await import("../../scripts/utils.mjs");
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -47,7 +47,7 @@ describe("scripts/util.mjs", () => {
   });
 
   it("execute throws when the child exits with non-zero exit code", async () => {
-    const { execute } = await import("../../scripts/util.mjs");
+    const { execute } = await import("../../scripts/utils.mjs");
     await expect(execute("node", ["-e", "process.exit(2)"])).rejects.toThrow();
   });
 
@@ -56,12 +56,12 @@ describe("scripts/util.mjs", () => {
     process.chdir(tmp);
     fs.writeFileSync("manifest.json", JSON.stringify({ id: "test-plugin" }));
 
-    const { PLUGIN_ID } = await import("../../scripts/util.mjs");
+    const { PLUGIN_ID } = await import("../../scripts/utils.mjs");
     const id = await PLUGIN_ID;
     expect(id).toBe("test-plugin");
   });
 
-  describe("scripts/util.mjs PLUGIN_ID and execute edge cases", () => {
+  describe("scripts/utils.mjs PLUGIN_ID and execute edge cases", () => {
     it("PLUGIN_ID caches its value after first resolution", async () => {
       const project = fs.mkdtempSync(path.join(os.tmpdir(), "plugin-id-proj-"));
       const manifestPath = path.join(project, "manifest.json");
@@ -71,7 +71,7 @@ describe("scripts/util.mjs", () => {
       try {
         process.chdir(project);
         vi.resetModules();
-        const { PLUGIN_ID } = await import("../../scripts/util.mjs");
+        const { PLUGIN_ID } = await import("../../scripts/utils.mjs");
 
         const first = await PLUGIN_ID;
         expect(first).toBe("first-id");
@@ -85,7 +85,7 @@ describe("scripts/util.mjs", () => {
     });
 
     it("execute throws when the child exits with non-zero exit code", async () => {
-      const { execute } = await import("../../scripts/util.mjs");
+      const { execute } = await import("../../scripts/utils.mjs");
       await expect(
         execute("node", [
           "-e",
@@ -95,9 +95,9 @@ describe("scripts/util.mjs", () => {
     });
   });
 
-  describe("scripts/util.mjs execute edge cases", () => {
+  describe("scripts/utils.mjs execute edge cases", () => {
     it("returns stdout when child writes only to stdout and logs nothing to stderr", async () => {
-      const { execute } = await import("../../scripts/util.mjs");
+      const { execute } = await import("../../scripts/utils.mjs");
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
       const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -114,7 +114,7 @@ describe("scripts/util.mjs", () => {
     });
 
     it("logs stderr when child writes only to stderr and returns empty stdout", async () => {
-      const { execute } = await import("../../scripts/util.mjs");
+      const { execute } = await import("../../scripts/utils.mjs");
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
       const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -131,7 +131,7 @@ describe("scripts/util.mjs", () => {
     });
 
     it("handles child that produces no output but exits successfully", async () => {
-      const { execute } = await import("../../scripts/util.mjs");
+      const { execute } = await import("../../scripts/utils.mjs");
       const out = await execute("node", ["-e", "process.exit(0)"]);
       expect(out).toBe("");
     });

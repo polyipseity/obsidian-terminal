@@ -35,7 +35,7 @@ describe("scripts/version.mjs", () => {
     });
 
     vi.resetModules();
-    vi.mock("../../scripts/util.mjs", () => ({
+    vi.mock("../../scripts/utils.mjs", () => ({
       PATHS: {
         main: "./main.js",
         manifest: "manifest.json",
@@ -83,7 +83,7 @@ describe("scripts/version.mjs", () => {
     writePackageAndVersions(project, { version: "2.0.0" });
 
     vi.resetModules();
-    vi.mock("../../scripts/util.mjs", () => ({
+    vi.mock("../../scripts/utils.mjs", () => ({
       PATHS: {
         main: "./main.js",
         manifest: "manifest.json",
@@ -137,7 +137,7 @@ describe("scripts/version.mjs", () => {
     );
 
     vi.resetModules();
-    vi.mock("../../scripts/util.mjs", () => ({
+    vi.mock("../../scripts/utils.mjs", () => ({
       PATHS: {
         main: "./main.js",
         manifest: "manifest.json",
@@ -191,7 +191,7 @@ describe("scripts/version.mjs", () => {
     );
 
     vi.resetModules();
-    vi.mock("../../scripts/util.mjs", () => ({
+    vi.mock("../../scripts/utils.mjs", () => ({
       PATHS: {
         main: "./main.js",
         manifest: "manifest.json",

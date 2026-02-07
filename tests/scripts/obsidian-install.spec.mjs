@@ -17,7 +17,7 @@ describe("scripts/obsidian-install.mjs", () => {
       throw new Error(`process.exit called with ${code}`);
     });
 
-    vi.doMock("../../scripts/util.mjs", () => ({
+    vi.doMock("../../scripts/utils.mjs", () => ({
       PATHS: { obsidianPlugins: ".obsidian/plugins" },
       PLUGIN_ID: Promise.reject(new Error("no manifest")),
     }));
@@ -41,7 +41,7 @@ describe("scripts/obsidian-install.mjs", () => {
       throw new Error(`process.exit called with ${code}`);
     });
 
-    vi.doMock("../../scripts/util.mjs", () => ({
+    vi.doMock("../../scripts/utils.mjs", () => ({
       PATHS: { obsidianPlugins: ".obsidian/plugins" },
       PLUGIN_ID: Promise.reject(new Error("missing manifest file")),
     }));

@@ -1,5 +1,5 @@
 import { analyzeMetafile, context, formatMessages } from "esbuild";
-import { PATHS } from "./util.mjs";
+import { PATHS } from "./utils.mjs";
 import { argv } from "node:process";
 import builtinModules from "builtin-modules";
 import esbuildCompress from "esbuild-compress";

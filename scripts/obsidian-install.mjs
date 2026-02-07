@@ -1,4 +1,4 @@
-import { PATHS, PLUGIN_ID } from "./util.mjs";
+import { PATHS, PLUGIN_ID } from "./utils.mjs";
 import { copyFile, mkdir } from "node:fs/promises";
 import { argv } from "node:process";
 
