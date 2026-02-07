@@ -100,7 +100,6 @@
     "format:prettier": "prettier --cache --write \"**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}\"",
     "obsidian:install": "npm run build && node scripts/obsidian-install.mjs",
     "obsidian:install:force": "npm run build:force && node scripts/obsidian-install.mjs",
-    "postversion": "node scripts/version-post.mjs",
     "prepare": "husky",
     "test": "npm run test:vitest",
     "test:vitest": "vitest run --coverage",
