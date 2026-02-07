@@ -73,6 +73,8 @@ Quick reference for scripts in `package.json`. Use `pnpm` (preferred).
 
   > Note: In JavaScript the extensions `*.spec` and `*.test` are tooling-equivalent; this project adopts the **semantic distinction** above to encourage appropriate test design (BDD for `spec`, TDD/integration for `test`).
 
+**Test path guidance:** When referencing package scripts from tests, prefer relative paths that resolve to the package-local `scripts/` directory (for example, `../../scripts/...` from `tests/scripts`) instead of using repository-root `scripts/` paths. This keeps tests package-scoped, hermetic, and easier to run in isolation.
+
 - **Config:** Minimal config is in `vitest.config.mts` and includes both `*.spec.*` and `*.test.*` globs; add inline comments to that file if you change test behavior or providers.
 
 - **Run locally:**
