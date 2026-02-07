@@ -28,13 +28,11 @@ describe("scripts/build.mjs", () => {
       analyzeMetafile: vi.fn().mockResolvedValue("ANALYSIS"),
       formatMessages: vi.fn().mockResolvedValue(["formatted error"]),
       context: vi.fn().mockResolvedValue({
-        rebuild: vi
-          .fn()
-          .mockResolvedValue({
-            errors: [fakeError],
-            warnings: [],
-            metafile: fakeMetafile,
-          }),
+        rebuild: vi.fn().mockResolvedValue({
+          errors: [fakeError],
+          warnings: [],
+          metafile: fakeMetafile,
+        }),
         dispose: vi.fn().mockResolvedValue(),
       }),
     }));
@@ -82,5 +80,38 @@ describe("scripts/build.mjs", () => {
     expect(watch).toHaveBeenCalled();
 
     process.argv[2] = undefined;
+  });
+
+  it("logs warnings when rebuild returns warnings and no metafile", async () => {
+    const project = fs.mkdtempSync(path.join(os.tmpdir(), "build-proj-"));
+    const fakeWarning = { text: "warn" };
+
+    const context = vi.fn().mockResolvedValue({
+      rebuild: vi.fn().mockResolvedValue({
+        errors: [],
+        warnings: [fakeWarning],
+        metafile: undefined,
+      }),
+      dispose: vi.fn().mockResolvedValue(),
+    });
+
+    const formatMessages = vi.fn().mockResolvedValue(["formatted warn"]);
+    const analyzeMetafile = vi.fn();
+
+    vi.doMock("esbuild", () => ({
+      analyzeMetafile,
+      formatMessages,
+      context,
+    }));
+
+    process.chdir(project);
+
+    await import("../../scripts/build.mjs");
+
+    const esbuild = await import("esbuild");
+    expect(esbuild.formatMessages).toHaveBeenCalled();
+    // formatMessages should be called with warnings and kind 'warning'
+    const calls = esbuild.formatMessages.mock.calls;
+    expect(calls.some((c) => c[1] && c[1].kind === "warning")).toBe(true);
   });
 });

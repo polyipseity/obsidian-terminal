@@ -135,5 +135,26 @@ describe("scripts/utils.mjs", () => {
       const out = await execute("node", ["-e", "process.exit(0)"]);
       expect(out).toBe("");
     });
+
+    it("throws Error(String(exitCode)) when execFile resolves and child.exitCode is non-zero", async () => {
+      vi.resetModules();
+      // Mock util.promisify to return a function whose Promise has a .child prop
+      vi.doMock("node:util", () => ({
+        promisify: () => () => {
+          const p = new Promise((resolve) =>
+            // resolve asynchronously to mimic real execFile behavior
+            setImmediate(() => resolve({ stdout: "stdout", stderr: "stderr" })),
+          );
+          p.child = { exitCode: 5 };
+          return p;
+        },
+      }));
+
+      // execFile itself isn't used by our mocked promisify, but provide it anyway
+      vi.doMock("node:child_process", () => ({ execFile: vi.fn() }));
+
+      const { execute } = await import("../../scripts/utils.mjs");
+      await expect(execute("cmd", ["arg"])).rejects.toThrow("5");
+    });
   });
 });
