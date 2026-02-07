@@ -14,8 +14,16 @@
 import { defineConfig } from "vitest/config";
 
 // Minimal config: only the test globs are required for this project
+// Naming convention and intent:
+// - Unit tests (BDD-style): `*.spec.{ts,js,mjs}` — focus on behavior; keep small and hermetic.
+// - Integration tests (TDD-style): `*.test.{ts,js,mjs}` — focus on integration and implementation verification.
+// Project convention: prefer **one test file per source file**. Tests should mirror the source
+// directory structure under `tests/unit/` for unit/spec tests or `tests/integration/` for
+// integration/test suites (e.g. `src/utils/foo.js` -> `tests/unit/utils/foo.spec.js`).
+// Only split test files in rare cases when a single file becomes unreasonably long.
+// Both `*.spec.*` and `*.test.*` are included below; run specific sets with the Vitest CLI if desired.
 export default defineConfig({
   test: {
-    include: ["tests/**/*.spec.{ts,js}"],
+    include: ["tests/**/*.spec.{ts,js,mjs}", "tests/**/*.test.{ts,js,mjs}"],
   },
 });

@@ -66,25 +66,37 @@ Quick reference for scripts in `package.json`. Use `pnpm` (preferred).
 
 ## Testing ✅
 
-- **Test runner:** Vitest (fast, TypeScript support). Tests live under `tests/` and should be named `*.spec.ts` or `*.spec.js`.
-- **Config:** Minimal config is in `vitest.config.mts` (keep it small). Add inline comments to that file if you change test behavior or providers.
+- **Test runner:** Vitest (fast, TypeScript support).
+- **Test file conventions and meaning:**
+  - `*.spec.{ts,js,mjs}` — **Unit tests (BDD-style)**: prefer a Behavior-Driven mindset; tests describe what the code should do, focus on small, isolated units, and should be fast and hermetic. Use `tests/unit/` when grouping unit tests.
+  - `*.test.{ts,js,mjs}` — **Integration tests (TDD-style)**: prefer a Test-Driven mindset for integration verification; tests exercise multiple units or real integrations (filesystem, build, etc.). Use `tests/integration/` when grouping integration tests.
+
+  > Note: In JavaScript the extensions `*.spec` and `*.test` are tooling-equivalent; this project adopts the **semantic distinction** above to encourage appropriate test design (BDD for `spec`, TDD/integration for `test`).
+
+- **Config:** Minimal config is in `vitest.config.mts` and includes both `*.spec.*` and `*.test.*` globs; add inline comments to that file if you change test behavior or providers.
+
 - **Run locally:**
-  - Non-interactive / coverage: `pnpm test` or `npm run test` (runs `vitest run --coverage`).
+  - Full (default): `pnpm test` / `npm run test` — runs both unit and integration tests with coverage.
+  - Unit-only (Vitest CLI): `pnpm exec vitest run "tests/**/*.spec.{js,ts,mjs}" --coverage` — fast, good for PR iteration.
+  - Integration-only (Vitest CLI): `pnpm exec vitest run "tests/**/*.test.{js,ts,mjs}" --coverage` — use for longer-running integration suites.
   - Interactive / watch: `pnpm run test:watch` or `npm run test:watch`.
-  - Coverage: `pnpm coverage` (runs `vitest run --coverage`).
+
 - **Git hooks & CI:**
   - Pre-push: `.husky/pre-push` runs `npm run test` (equivalently `pnpm test`) — failing tests will block pushes.
-  - CI: both the `pnpm` and `npm` CI jobs run `pnpm test` / `npm run test` (non-interactive, coverage enabled).
+  - CI: CI jobs run the full test suite (both unit and integration). If adding slow or flaky integration tests, mark them clearly (folder or filename) and justify in the PR description; prefer to keep the default suite fast.
+
 - **Guidelines for agents & contributors:**
-  - Add tests for new features and bug fixes; tests must be small, deterministic, and fast.
-  - Avoid network, filesystem access outside fixtures, or user vaults — mock external dependencies.
-  - For long-running or flaky tests, use a dedicated `integration` tag and add rationale to PR description; avoid adding flaky tests to the main suite.
-  - When changing test infra (adding coverage provider, changing runtime, altering hooks), update `AGENTS.md` with rationale and instructions so other agents can follow the new workflow.
+  - Unit tests must be deterministic and hermetic; mock external dependencies and avoid network I/O.
+  - Integration tests may use fixtures or local resources but must be isolated and documented.
+  - Keep tests small and focused — single assertion / behavior per test where reasonable.
+  - Test file structure: follow a **one test file per source file** convention. Place tests so they mirror the source directory structure under `tests/unit/` for unit (spec) tests or `tests/integration/` for integration (test) suites. Name tests after the source file, e.g., `src/utils/foo.js` -> `tests/unit/utils/foo.spec.js` (unit) or `tests/integration/utils/foo.test.js` (integration). Only split a test across multiple files if a single test file would be unreasonably large; document the reason in the test file header.
+  - When changing test infra (adding coverage providers, changing runtimes, or altering hooks), update `AGENTS.md` with rationale and practical instructions so other agents can follow the new workflow.
+
 - **PR checklist (for agents):**
-  1. Add/modify tests to cover behavior changes.
-  2. Run `pnpm test -- --run` locally and ensure all tests pass.
+  1. Add/modify tests to cover behavior changes and follow the **one test file per source file** convention.
+  2. Run `pnpm exec vitest run "tests/**/*.spec.{js,ts,mjs}"` locally for fast verification and `pnpm test` for the full suite.
   3. Keep tests parallelizable and idempotent.
-  4. Document any infra changes in `AGENTS.md`.
+  4. Document any infra changes in `AGENTS.md`.  
 
 If you need help designing a test or mocking a dependency, ask for a short example to be added to `tests/fixtures/`.
 

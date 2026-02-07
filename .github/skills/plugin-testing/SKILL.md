@@ -22,6 +22,29 @@ Use this skill to guide both automated and manual testing of Obsidian plugin fea
 - Validate localization for all supported languages.
 - Confirm plugin lifecycle events (load/unload) work as expected.
 
+## Test File Conventions
+
+- `*.spec.{ts,js,mjs}` — **Unit tests (BDD-style)**: focus on behaviour and small, isolated units. Prefer tests that are fast and hermetic.
+- `*.test.{ts,js,mjs}` — **Integration tests (TDD-style)**: focus on integration between components or with the environment; keep them well documented and isolated.
+
+Run unit-only suites with the Vitest CLI:
+
+```shell
+pnpm exec vitest run "tests/**/*.spec.{js,ts,mjs}" --coverage
+```
+
+And integration-only suites with:
+
+```shell
+pnpm exec vitest run "tests/**/*.test.{js,ts,mjs}" --coverage
+```
+
+## Test File Structure
+
+- Follow a **one test file per source file** rule: mirrors the source directory tree under `tests/unit/` (for `*.spec.*`) or `tests/integration/` (for `*.test.*`).
+- Keep names aligned with source files for discoverability: `src/path/to/module.js` -> `tests/unit/path/to/module.spec.js`.
+- If a test file would become unreasonably large, splitting is allowed but should be a rare exception; include a brief header comment explaining the reason and the mapping across split files.
+
 For the full list and usage of scripts, see the **Scripts (package.json)** section in `AGENTS.md`.
 
 ## Example Test Workflow
