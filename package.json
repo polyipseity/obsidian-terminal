@@ -106,7 +106,5 @@
   "style": "styles.css",
   "type": "module",
   "version": "0.0.0",
-  "workspaces": [
-    "."
-  ]
+  "workspaces": []
 }
