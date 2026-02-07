@@ -95,12 +95,12 @@
     "check": "npm run check:eslint && npm run check:md && npm run check:prettier",
     "check:eslint": "eslint --cache --max-warnings=0",
     "check:md": "markdownlint-cli2",
-    "check:prettier": "prettier --check \"**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}\"",
+    "check:prettier": "prettier --cache --check \"**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}\"",
     "commitlint": "commitlint --from=origin/main --to=HEAD",
     "format": "npm run format:eslint && npm run format:md && npm run format:prettier",
     "format:eslint": "eslint --cache --fix",
     "format:md": "markdownlint-cli2 --fix",
-    "format:prettier": "prettier --write \"**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}\"",
+    "format:prettier": "prettier --cache --write \"**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}\"",
     "obsidian:install": "npm run build && node scripts/obsidian-install.mjs",
     "obsidian:install:force": "npm run build:force && node scripts/obsidian-install.mjs",
     "postversion": "node scripts/version-post.mjs",
@@ -111,7 +111,5 @@
   "style": "styles.css",
   "type": "module",
   "version": "0.0.0",
-  "workspaces": [
-    "."
-  ]
+  "workspaces": []
 }
