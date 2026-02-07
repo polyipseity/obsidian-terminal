@@ -29,7 +29,7 @@ This guide provides clear, actionable instructions for AI coding agents working 
   - `pnpm obsidian:install <vault>` — build and install the plugin to a vault.
   - `pnpm run obsidian:install:force <vault>` — force install using `build:force` (skips format).
 
-- **Lint & Format**
+- Note: `scripts/obsidian-install.mjs` now fails gracefully when `manifest.json` is missing or invalid and prints a concise error message rather than emitting a full stack trace. This makes local tests and CI logs cleaner and eases assertions for failure cases.
   - `pnpm run check` — eslint + prettier(check) + markdownlint.
   - `pnpm run format` — eslint --fix, prettier --write, markdownlint --fix.
 
@@ -68,8 +68,8 @@ Quick reference for scripts in `package.json`. Use `pnpm` (preferred).
 
 - **Test runner:** Vitest (fast, TypeScript support).
 - **Test file conventions and meaning:**
-  - `*.spec.{ts,js,mjs}` — **Unit tests (BDD-style)**: prefer a Behavior-Driven mindset; tests describe what the code should do, focus on small, isolated units, and should be fast and hermetic. Use `tests/unit/` when grouping unit tests.
-  - `*.test.{ts,js,mjs}` — **Integration tests (TDD-style)**: prefer a Test-Driven mindset for integration verification; tests exercise multiple units or real integrations (filesystem, build, etc.). Use `tests/integration/` when grouping integration tests.
+  - `*.spec.{ts,js,mjs}` — **Unit tests (BDD-style)**: prefer a Behavior-Driven mindset; tests describe what the code should do, focus on small, isolated units, and should be fast and hermetic
+  - `*.test.{ts,js,mjs}` — **Integration tests (TDD-style)**: prefer a Test-Driven mindset for integration verification; tests exercise multiple units or real integrations (filesystem, build, etc.).
 
   > Note: In JavaScript the extensions `*.spec` and `*.test` are tooling-equivalent; this project adopts the **semantic distinction** above to encourage appropriate test design (BDD for `spec`, TDD/integration for `test`).
 
@@ -89,7 +89,7 @@ Quick reference for scripts in `package.json`. Use `pnpm` (preferred).
   - Unit tests must be deterministic and hermetic; mock external dependencies and avoid network I/O.
   - Integration tests may use fixtures or local resources but must be isolated and documented.
   - Keep tests small and focused — single assertion / behavior per test where reasonable.
-  - Test file structure: follow a **one test file per source file** convention. Place tests so they mirror the source directory structure under `tests/unit/` for unit (spec) tests or `tests/integration/` for integration (test) suites. Name tests after the source file, e.g., `src/utils/foo.js` -> `tests/unit/utils/foo.spec.js` (unit) or `tests/integration/utils/foo.test.js` (integration). Only split a test across multiple files if a single test file would be unreasonably large; document the reason in the test file header.
+  - Test file structure: follow a **one test file per source file** convention. Place tests so they mirror the source directory structure under `tests/` for both unit (spec) tests and integration (test) suites. Name tests after the source file, e.g., `src/utils/foo.js` -> `tests/utils/foo.spec.js` (unit and integration). Only split a test across multiple files if a single test file would be unreasonably large; document the reason in the test file header.
   - When changing test infra (adding coverage providers, changing runtimes, or altering hooks), update `AGENTS.md` with rationale and practical instructions so other agents can follow the new workflow.
 
 - **PR checklist (for agents):**

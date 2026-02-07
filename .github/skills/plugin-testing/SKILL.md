@@ -41,7 +41,7 @@ pnpm exec vitest run "tests/**/*.test.{js,ts,mjs}" --coverage
 
 ## Test File Structure
 
-- Follow a **one test file per source file** rule: mirrors the source directory tree under `tests/unit/` (for `*.spec.*`) or `tests/integration/` (for `*.test.*`).
+- Follow a **one test file per source file** rule: mirrors the source directory tree under `tests/` (for both `*.spec.*` and `*.test.*`). Prefer a single test file per source (either a `*.spec.*` unit test or a `*.test.*` integration test). If a source requires both unit and integration coverage, having both a `*.spec.*` and a `*.test.*` file is acceptable — treat them together as the logical "one test file" for that source and keep their locations aligned for discoverability.
 - Keep names aligned with source files for discoverability: `src/path/to/module.js` -> `tests/unit/path/to/module.spec.js`.
 - If a test file would become unreasonably large, splitting is allowed but should be a rare exception; include a brief header comment explaining the reason and the mapping across split files.
 
