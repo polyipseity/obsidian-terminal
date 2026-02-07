@@ -8,7 +8,7 @@
     "espree": "^11.1.0",
     "i18next": "^25.8.1",
     "lodash-es": "^4.17.23",
-    "obsidian": "~1.11.4",
+    "obsidian": "~1.4.11",
     "semver": "^7.7.3",
     "ts-essentials": "^10.1.1"
   },
@@ -20,12 +20,10 @@
     "@eslint/compat": "^2.0.2",
     "@eslint/js": "^9.39.2",
     "@polyipseity/obsidian": "~1.4.11",
-    "@tsconfig/node16": "^16.1.8",
-    "@tsconfig/recommended": "^1.0.13",
-    "@tsconfig/strictest": "^2.0.8",
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^25.1.0",
     "@types/semver": "^7.7.1",
+    "@vitest/coverage-v8": "^4.0.18",
     "builtin-modules": "^5.0.0",
     "esbuild": "^0.27.2",
     "esbuild-compress": "^2.0.2",
@@ -41,7 +39,8 @@
     "prettier": "^3.2.5",
     "tslib": "^2.8.1",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.54.0"
+    "typescript-eslint": "^8.54.0",
+    "vitest": "^4.0.18"
   },
   "files": [
     "main.js",
@@ -103,8 +102,10 @@
     "format:prettier": "prettier --cache --write \"**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}\"",
     "obsidian:install": "npm run build && node scripts/obsidian-install.mjs",
     "obsidian:install:force": "npm run build:force && node scripts/obsidian-install.mjs",
-    "postversion": "node scripts/version-post.mjs",
     "prepare": "husky",
+    "test": "npm run test:vitest",
+    "test:vitest": "vitest run --coverage",
+    "test:watch": "vitest",
     "version": "node scripts/version.mjs"
   },
   "sideEffects": false,

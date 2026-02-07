@@ -1,4 +1,4 @@
-import { PATHS, execute } from "./util.mjs";
+import { PATHS, execute } from "./utils.mjs";
 import { readFile, writeFile } from "node:fs/promises";
 
 const MANIFEST_MAP = Object.freeze({
