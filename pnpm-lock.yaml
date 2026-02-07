@@ -24,8 +24,8 @@ importers:
         specifier: ^4.17.23
         version: 4.17.23
       obsidian:
-        specifier: ~1.11.4
-        version: 1.11.4(@codemirror/state@6.5.2)(@codemirror/view@6.37.1)
+        specifier: ~1.4.11
+        version: 1.4.11(@codemirror/state@6.5.2)(@codemirror/view@6.37.1)
       semver:
         specifier: ^7.7.3
         version: 7.7.3
@@ -1919,12 +1919,6 @@ packages:
   object.assign@4.1.7:
     resolution: {integrity: sha512-nK28WOo+QIjBkDduTINE4JkF/UJJKyf2EJxvJKfblDpyg0Q+pkOHNTL0Qwy6NP6FhE/EnzV73BxxqcJaXY9anw==}
     engines: {node: '>= 0.4'}
-
-  obsidian@1.11.4:
-    resolution: {integrity: sha512-n0KD3S+VndgaByrEtEe8NELy0ya6/s+KZ7OcxA6xOm5NN4thxKpQjo6eqEudHEvfGCeT/TYToAKJzitQ1I3XTg==}
-    peerDependencies:
-      '@codemirror/state': 6.5.0
-      '@codemirror/view': 6.38.6
 
   obsidian@1.4.11:
     resolution: {integrity: sha512-BCVYTvaXxElJMl6MMbDdY/CGK+aq18SdtDY/7vH8v6BxCBQ6KF4kKxL0vG9UZ0o5qh139KpUoJHNm+6O5dllKA==}
@@ -4473,13 +4467,6 @@ snapshots:
       es-object-atoms: 1.1.1
       has-symbols: 1.1.0
       object-keys: 1.1.1
-
-  obsidian@1.11.4(@codemirror/state@6.5.2)(@codemirror/view@6.37.1):
-    dependencies:
-      '@codemirror/state': 6.5.2
-      '@codemirror/view': 6.37.1
-      '@types/codemirror': 5.60.8
-      moment: 2.29.4
 
   obsidian@1.4.11(@codemirror/state@6.5.2)(@codemirror/view@6.37.1):
     dependencies:
