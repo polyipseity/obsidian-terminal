@@ -39,11 +39,11 @@ const PRETTIER_GLOB_KEY = (() => {
  * list from the package manager, so tools will run on their default globs (or
  * the entire repo). To ensure formatters and linters operate only on staged
  * files, invoke the tool binaries directly in lint-staged (for example
- * `prettier --write`, `eslint --fix`, `markdownlint-cli2 --fix`). Use the
+ * `prettier --write`, `eslint --fix`, `markdownlint-cli2 --fix --no-globs`). Use the
  * package scripts when you intend to run the tool across the whole repository.
  */
 export default {
-  [MD_GLOB_KEY]: ["markdownlint-cli2 --fix"],
+  [MD_GLOB_KEY]: ["markdownlint-cli2 --fix --no-globs"],
   [ESLINT_GLOB_KEY]: ["eslint --fix", "prettier --write"],
   [PRETTIER_GLOB_KEY]: ["prettier --write"],
 };
