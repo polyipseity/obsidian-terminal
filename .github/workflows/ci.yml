@@ -35,8 +35,8 @@ jobs:
           node-version: "*"
           cache: "pnpm"
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install project
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Run tests
         run: pnpm test
@@ -57,7 +57,7 @@ jobs:
           node-version: "*"
           cache: "npm"
 
-      - name: Install dependencies
+      - name: Install project
         run: npm ci --ignore-scripts
 
       - name: Run tests
