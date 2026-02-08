@@ -8,12 +8,15 @@
 #
 # Jobs are named for clarity in the Actions UI. Each step is named for traceability.
 
-name: "CI: Build & Test (pnpm & npm)"
+name: "CI: Build & Test"
 
 on:
   pull_request:
   push:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-pnpm:
