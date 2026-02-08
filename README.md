@@ -95,7 +95,7 @@ Configuration files:
 - `.eslintrc.*` or `eslint.config.mjs` — ESLint rules
 - `.prettierrc` — Prettier rules
 - `.prettierignore` — Prettier ignore patterns
-- `.markdownlint.json` — markdownlint rules
+- `.markdownlint.jsonc` — markdownlint rules
 - `.commitlintrc.js` — commitlint config
 - `.husky/` — Git hooks
 
