@@ -32,3 +32,7 @@ description: Rules for translation and localization files
 ## References
 
 - See `assets/locales/README.md` and `src/main.ts` for examples of how `PluginLocales` are loaded and used.
+
+---
+
+**Template merge guidance:** Localization instructions in this template may be updated and merged into repositories created from this template. Downstream repositories should avoid broad edits to these template files where possible; instead, make minimal edits or add a separate repo-specific instruction file (for example, `.github/instructions/<your-repo>.localization.md`) to hold local guidance. This keeps template updates easy to merge and reduces conflicts.

@@ -30,3 +30,7 @@ This short guide contains focused rules and examples to help AI coding agents ma
 - When changing infra (build, tests, versioning), update `AGENTS.md` with concise rationale and local verification steps (include the exact commands you ran).
 
 If anything here is unclear or incomplete, open a short issue or suggest a direct edit to `AGENTS.md` so agents that follow can stay up to date.
+
+---
+
+**Template merge guidance:** This file is maintained in the template repository and may be periodically merged into downstream repositories created from this template. For downstream repositories, prefer making minimal edits to template instruction files and, when possible, add a new repo-specific instruction file (for example, `.github/instructions/<your-repo>.instructions.md`) to capture local agent rules. This approach reduces merge conflicts when upstream changes are applied; if you must change a template file, keep edits minimal and document the reason in `AGENTS.md` or link to a short issue in your repo.

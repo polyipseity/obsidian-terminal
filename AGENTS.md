@@ -169,6 +169,8 @@ Use as: `i18n.t("welcome", { user: "Alice" })`
 - Do NOT use `.github/copilot-instructions.md` in this project.
 - All coding standards, workflow rules, and agent skills must be documented and referenced from `AGENTS.md` only.
 
+- **Template merge guidance:** This repository is a template and its instruction files under `.github/instructions/` may be periodically merged into repositories created from this template. For downstream repositories, prefer making minimal edits to template instruction files and, whenever practical, add a new repo-specific instruction file (for example, `.github/instructions/<your-repo>.instructions.md`) to capture local overrides. Keeping template files minimally changed reduces merge conflicts when pulling upstream template changes; when a template file must be edited, document the rationale and link to a short issue or PR in your repository.
+
 ### Linked Instructions & Skills
 
 - [.github/instructions/typescript.instructions.md](.github/instructions/typescript.instructions.md) — TypeScript standards
