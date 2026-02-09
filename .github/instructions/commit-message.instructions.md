@@ -40,8 +40,8 @@ Refs: dependabot config improvement
 ## Linting
 
 - All commit messages are checked by `commitlint` and `husky`.
-- **Header must be ≤ 100 characters.**
-- **Body lines must be hard-wrapped at 100 characters or less.**
+- **Header should be ≤ 72 characters (use 72 as a human-friendly buffer; tooling still accepts up to 100).**
+- **Body lines must be hard-wrapped at 100 characters or less.** Prefer 72 for body lines intended for human readers.
 - All agents and contributors must comply; see `AGENTS.md` for enforcement policy.
 - Example (compliant):
 

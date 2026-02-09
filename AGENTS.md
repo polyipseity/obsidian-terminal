@@ -107,10 +107,10 @@ If you need help designing a test or mocking a dependency, ask for a short examp
  **Commit Messages:**
 
 - All commit messages **must** follow the Conventional Commits standard.
-- **Header must be ≤ 100 characters.**
-- **Body lines must be hard-wrapped at 100 characters** (enforced by commitlint/husky).
-- See `.github/instructions/commit-message.instructions.md` for up-to-date rules and examples.
-- All agents and contributors must comply; see `.github/instructions/commit-message.md` for agent summary.
+- **Header should be ≤ 72 characters (use 72 as a human-friendly buffer; tooling still accepts up to 100).**
+- **Body lines must be hard-wrapped at 100 characters** (enforced by commitlint/husky). Prefer 72 for messages intended for humans.
+- See `.github/instructions/commit-message.instructions.md` for up-to-date rules, examples, and a short agent-oriented summary.
+- Run `npm run commitlint` locally to validate message format before pushing; Husky will run checks on `prepare`/pre-push as configured.
 
   **Example (compliant):**
 
@@ -175,6 +175,27 @@ Use as: `i18n.t("welcome", { user: "Alice" })`
 - [.github/instructions/localization.instructions.md](.github/instructions/localization.instructions.md) — Localization rules
 - [.github/instructions/commit-message.md](.github/instructions/commit-message.md) — Commit message convention
 - [.github/skills/plugin-testing/SKILL.md](.github/skills/plugin-testing/SKILL.md) — Plugin testing skill
+- [.github/instructions/agents.instructions.md](.github/instructions/agents.instructions.md) — AI agent quick rules
+
+---
+
+## 8. For AI Coding Agents 🤖 🔍
+
+This section contains concise, actionable rules and project-specific examples to help AI agents be productive immediately.
+
+- Read this file first. When in doubt, follow concrete examples in `src/`, `scripts/`, and `tests/` rather than generic advice.
+- Start by inspecting `src/main.ts`, `src/settings-data.ts`, and `assets/locales.ts` to learn core patterns: Manager classes (LanguageManager, SettingsManager), `.fix()` validators, and `PluginLocales` usage.
+- Settings pattern: always prefer `.fix()` functions (see `Settings.fix`/`LocalSettings.fix`) to validate/normalize external inputs before persisting or mutating settings.
+- I18n: use `createI18n(PluginLocales.RESOURCES, ...)` and `language.value.t(...)` for translations. Never hardcode translatable strings—use existing translation keys in `assets/locales/`.
+- Build/Dev pattern: `scripts/build.mjs` uses esbuild `context()`; pass `dev` as argv[2] to enable watch mode. Tests mock `esbuild` in `tests/scripts/build.test.mjs`—use those tests as canonical examples for safe refactors.
+- Script behavior: `scripts/obsidian-install.mjs` exits 1 with a short error message when `manifest.json` is missing. Make changes in scripts with tests mirroring error conditions (see `tests/scripts/obsidian-install.test.mjs`).
+- Test conventions: `*.spec.*` = unit (fast, isolated); `*.test.*` = integration (may use filesystem or child processes). Follow the one-test-file-per-source-file convention and place tests under `tests/` mirroring `src/`.
+- Formatting & linting: run `pnpm run format` and `pnpm run check` before committing. CI uses `pnpm install --frozen-lockfile`.
+- Commit rules for agents: use Conventional Commits; run `npm run commitlint` locally when appropriate. Keep headers ≤100 chars and wrap bodies at 100 chars.
+- Localization rule for agents: when adding text keys, update `assets/locales/en/translation.json` first and add tests or localization notes. Follow `.github/instructions/localization.instructions.md`.
+- PR checklist (brief): add/modify tests, run `pnpm exec vitest run "tests/**/*.spec.{js,ts,mjs}"` locally for fast checks, run `pnpm run check`, add changeset when changing public API or version, and update `AGENTS.md` if you changed infra or agent-visible patterns.
+
+> Note: Keep suggestions and changes small and well-scoped. Prefer to add tests first for behavioral changes and follow the test naming conventions above.
 
 ---
 

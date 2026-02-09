@@ -9,22 +9,28 @@ description: Guidelines for TypeScript files in obsidian-plugin-template
 ## Core Rules
 
 - Use the strictest TypeScript configuration (`tsconfig.json`).
-- Validate and normalize all settings objects with `.fix()` methods.
-- Prefer type-safe patterns; **never** use `any` unless absolutely unavoidable.
-- Reference translation keys only via `$t(key)`; use `{{key}}` for interpolation.
-- Use project-specific managers (e.g., `LanguageManager`, `SettingsManager`) as in `src/main.ts`.
+- Validate and normalize all settings and local settings via `.fix()` functions (see `src/settings-data.ts`).
+- Prefer type-safe patterns; **never** use `any` unless there is no reasonable alternative and add a comment explaining why.
+- Reference translation keys via `language.value.t(...)` or `$t(key)` in UI code. Avoid hardcoding user-facing strings.
+- Use the project managers (`LanguageManager`, `SettingsManager`, `StorageSettingsManager`) as in `src/main.ts` to ensure consistent lifecycle and persistence behaviour.
+
+## Practical examples & reminders
+
+- When creating new settings, add a `fix()` entry and default in `Settings.DEFAULT` / `LocalSettings` and add a test that validates malformed data is corrected by `fix()`.
+- When writing UI code, prefer the i18n accessor from `context.language.value.t(...)` rather than importing `i18next` directly.
+- For lifecycle-sensitive managers, call `.load()` and ensure `.unload()` tasks are registered (see `PLACEHOLDERPlugin.onload()` pattern in `src/main.ts`).
 
 ## Do / Don't
 
 - **Do:**
-  - Use explicit types everywhere possible
-  - Keep code modular and maintainable
-  - Document complex logic with comments
+  - Use explicit types and `readonly` where appropriate
+  - Keep logic modular and add unit tests for transformation helpers
+  - Use `deepFreeze`/`markFixed`/`fixTyped` helpers available in `@polyipseity/obsidian-plugin-library`
 - **Don't:**
-  - Use `any` or unsafe casts
-  - Hardcode translation strings; always use `$t()`
-  - Bypass `.fix()` for settings objects
+  - Use `any` or unsafe casts without justification
+  - Hardcode translation strings; always prefer `language.value.t(...)`
+  - Bypass `.fix()` for persisted settings or local settings
 
 ## References
 
-- See [src/main.ts](../../src/main.ts) for manager usage patterns
+- See `src/main.ts` and `src/settings-data.ts` for canonical examples of manager usage, defaults, and `.fix()` patterns.
