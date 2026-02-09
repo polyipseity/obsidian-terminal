@@ -1,0 +1,12 @@
+{
+  "chat.tools.terminal.autoApprove": {
+    "/^npm\\s+run(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
+    "/^npx\\s+vitest(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
+    "/^pnpm\\s+exec\\s+tsc(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
+    "/^pnpm\\s+exec\\s+vitest(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
+    "/^pnpm\\s+run(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
+    "/^pnpm\\s+tsc(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
+    "/^pnpm\\s+vitest(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true
+  },
+  "markdown.validate.enabled": true
+}
