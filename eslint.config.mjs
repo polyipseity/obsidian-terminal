@@ -1,12 +1,12 @@
 // @ts-check
-import eslint from "@eslint/js";
+import eslintJs from "@eslint/js";
+import eslintTs from "typescript-eslint";
+import eslintPrettier from "eslint-config-prettier/flat";
 import { defineConfig } from "eslint/config";
-import tseslint from "typescript-eslint";
 import { includeIgnoreFile } from "@eslint/compat";
-import path from "node:path";
 import { fileURLToPath } from "node:url";
+import path from "node:path";
 import globals from "globals"; // provide Node/browser globals for file-level overrides
-import eslintConfigPrettier from "eslint-config-prettier/flat";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,8 +24,8 @@ export const FILE_GLOBS = [
 ];
 
 export default defineConfig([
-  eslint.configs.recommended,
-  tseslint.configs.recommended,
+  eslintJs.configs.recommended,
+  ...eslintTs.configs.strict,
   includeIgnoreFile(path.join(__dirname, ".gitignore")),
   {
     files: FILE_GLOBS,
@@ -37,7 +37,7 @@ export default defineConfig([
   },
   // Scripts run on Node.js — provide Node globals so `console` is defined
   {
-    files: ["scripts/**"],
+    files: ["scripts/**", "tests/scripts/**"],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -45,5 +45,5 @@ export default defineConfig([
     },
   },
   // Disable formatting-related rules that may conflict with Prettier
-  eslintConfigPrettier,
+  eslintPrettier,
 ]);

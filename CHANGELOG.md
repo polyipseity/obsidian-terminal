@@ -1,4 +1,4 @@
-# obsidian-terminal <!-- markdownlint-disable MD024 -->
+# obsidian-terminal <!-- markdownlint-disable-file MD024 -->
 
 ## 3.21.0
 

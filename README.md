@@ -217,9 +217,19 @@ Configuration files:
 - `.eslintrc.*` or `eslint.config.mjs` — ESLint rules
 - `.prettierrc` — Prettier rules
 - `.prettierignore` — Prettier ignore patterns
-- `.markdownlint.json` — markdownlint rules
+- `.markdownlint.jsonc` — markdownlint rules
 - `.commitlintrc.js` — commitlint config
 - `.husky/` — Git hooks
+
+### Testing
+
+This repository uses __Vitest__ for fast unit tests. Tests live under `tests/` and should be named `*.spec.ts` or `*.spec.js`.
+
+- Run locally (non-interactive, coverage): `pnpm test` or `npm run test` (runs `vitest run --coverage`).
+- Run locally (interactive / watch): `pnpm run test:watch` or `npm run test:watch`.
+- Git hooks: The pre-push hook runs `npm run test` (see `.husky/pre-push`) and will block pushes if tests fail; using `pnpm test` locally is equivalent.
+
+See `vitest.config.mts` for minimal config and further instructions.
 
 ### Todos
 
