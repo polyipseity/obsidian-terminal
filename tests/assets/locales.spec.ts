@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { PluginLocales } from "../../assets/locales.js";
-import { toRecord } from "../helpers.js";
 
 describe("PluginLocales", () => {
   it("exports defaults from library and namespaces", () => {
@@ -17,9 +16,7 @@ describe("PluginLocales", () => {
   it("provides en resources (translation, asset, language)", async () => {
     const enRes = PluginLocales.RESOURCES[PluginLocales.DEFAULT_LANGUAGE];
 
-    const translation = toRecord(
-      await enRes[PluginLocales.DEFAULT_NAMESPACE](),
-    );
+    const translation = await enRes[PluginLocales.DEFAULT_NAMESPACE]();
     expect(translation.name).toBe("PLACEHOLDER");
 
     const asset = await enRes.asset();
@@ -27,7 +24,7 @@ describe("PluginLocales", () => {
       "$t(asset:generic.documentations.readme-icon)",
     );
 
-    const language = toRecord(await enRes.language());
+    const language = await enRes.language();
     expect(language.en).toBe("English");
   });
 
@@ -50,7 +47,7 @@ describe("PluginLocales", () => {
 
     const results = await Promise.all(loaders);
     for (const r of results) {
-      const record = toRecord(r);
+      const record = r;
       expect(typeof record).toBe("object");
       expect(record).not.toBeNull();
     }
@@ -58,12 +55,12 @@ describe("PluginLocales", () => {
     // Sanity checks for special keys
     const ptBr = PluginLocales.RESOURCES["pt-BR"].translation;
     expect(typeof ptBr).toBe("function");
-    const ptBrRes = toRecord(await ptBr());
+    const ptBrRes = await ptBr();
     expect(typeof ptBrRes).toBe("object");
 
     const zhHans = PluginLocales.RESOURCES["zh-Hans"].translation;
     expect(typeof zhHans).toBe("function");
-    const zhHansRes = toRecord(await zhHans());
+    const zhHansRes = await zhHans();
     expect(typeof zhHansRes).toBe("object");
   });
 });
