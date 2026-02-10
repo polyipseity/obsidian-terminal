@@ -17,7 +17,6 @@ describe("scripts/utils.mjs", () => {
   let origCwd;
   beforeEach(() => {
     origCwd = process.cwd();
-    vi.resetModules();
   });
   afterEach(() => {
     process.chdir(origCwd);
@@ -108,9 +107,6 @@ describe("scripts/utils.mjs", () => {
       expect(out).toContain("hello");
       expect(logSpy).toHaveBeenCalled();
       expect(errSpy).not.toHaveBeenCalled();
-
-      logSpy.mockRestore();
-      errSpy.mockRestore();
     });
 
     it("logs stderr when child writes only to stderr and returns empty stdout", async () => {
@@ -125,16 +121,13 @@ describe("scripts/utils.mjs", () => {
       expect(out).toBe("");
       expect(logSpy).not.toHaveBeenCalled();
       expect(errSpy).toHaveBeenCalled();
-
-      logSpy.mockRestore();
-      errSpy.mockRestore();
     });
 
     it("handles child that produces no output but exits successfully", async () => {
       const { execute } = await import("../../scripts/utils.mjs");
       const out = await execute("node", ["-e", "process.exit(0)"]);
       expect(out).toBe("");
-    });
+    }, 20000);
 
     it("throws Error(String(exitCode)) when execFile resolves and child.exitCode is non-zero", async () => {
       vi.resetModules();

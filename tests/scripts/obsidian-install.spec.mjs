@@ -1,15 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 
 // Unit spec for scripts/obsidian-install.mjs — assert concise error output
 // when the manifest cannot be read. Uses module mocking and process.exit
 // interception to keep the test hermetic and fast.
 
 describe("scripts/obsidian-install.mjs", () => {
-  beforeEach(() => {
-    vi.resetModules();
-    vi.restoreAllMocks();
-  });
-
   it("prints concise error and exits non-zero when PLUGIN_ID rejects", async () => {
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const exitMock = vi.spyOn(process, "exit").mockImplementation((code) => {
@@ -30,9 +25,6 @@ describe("scripts/obsidian-install.mjs", () => {
     const msg = errSpy.mock.calls[0][0];
     expect(msg).toContain("Error reading manifest.json");
     expect(exitMock).toHaveBeenCalledWith(1);
-
-    errSpy.mockRestore();
-    exitMock.mockRestore();
   });
 
   it("does not print a full stack trace when manifest is missing", async () => {
@@ -57,8 +49,7 @@ describe("scripts/obsidian-install.mjs", () => {
     expect(msg).not.toContain("Error: Cannot find module");
     expect(msg.toLowerCase()).not.toContain("stack");
 
-    errSpy.mockRestore();
-    exitMock.mockRestore();
+    expect(exitMock).toHaveBeenCalledWith(1);
   });
 
   it("creates destination and copies manifest/main/styles when PLUGIN_ID resolves", async () => {
@@ -149,7 +140,10 @@ describe("scripts/obsidian-install.mjs", () => {
     const msgArg = errSpy.mock.calls[0][1];
     expect(String(msgArg)).toContain("[object Object]");
 
-    errSpy.mockRestore();
-    exitMock.mockRestore();
+    expect(exitMock).toHaveBeenCalledWith(1);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 });

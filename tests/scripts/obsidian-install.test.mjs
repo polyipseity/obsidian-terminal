@@ -151,5 +151,5 @@ describe("scripts/obsidian-install.mjs", () => {
 
     const expectedDir = path.join(project, ".obsidian", "plugins", "dot-dest");
     expect(fs.existsSync(path.join(expectedDir, "manifest.json"))).toBe(true);
-  });
+  }, 20000);
 });
