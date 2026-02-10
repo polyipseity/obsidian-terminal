@@ -11,8 +11,6 @@ describe("scripts/build.mjs", () => {
   let cwd;
   beforeEach(() => {
     cwd = process.cwd();
-    vi.resetModules();
-    vi.restoreAllMocks();
   });
   afterEach(() => {
     process.chdir(cwd);

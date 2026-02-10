@@ -104,7 +104,26 @@ If you need help designing a test or mocking a dependency, ask for a short examp
 
 ## 3. Coding Conventions
 
- **Commit Messages:**
+**TypeScript Types:**
+
+- Do **not** use the TypeScript `any` type. Prefer `unknown` over `any`. When accepting unknown inputs, validate or use type guards to narrow `unknown` before use. If `any` is truly unavoidable, document the reason and add tests that assert safety.
+- **Prefer `interface` for object shapes:** Prefer `interface Foo { ... }` rather than `type Foo = { ... }` for object-shaped declarations when possible. Interfaces are typically better for incremental TypeScript performance (caching and declaration merging) and work well with extension and declaration merging patterns.
+- When you need union, mapped, or conditional types, `type` aliases remain appropriate. Document non-trivial type-level logic with a brief comment so readers understand the intent and tradeoffs.
+
+Example:
+
+```ts
+// preferred for object shapes
+interface Settings {
+  openChangelogOnUpdate: boolean;
+  noticeTimeout: number;
+}
+
+// acceptable use of `type` for advanced type composition
+type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
+```
+
+**Commit Messages:**
 
 - All commit messages **must** follow the Conventional Commits standard.
 - **Header should be ≤ 72 characters (use 72 as a human-friendly buffer; tooling still accepts up to 100).**
@@ -169,14 +188,40 @@ Use as: `i18n.t("welcome", { user: "Alice" })`
 - Do NOT use `.github/copilot-instructions.md` in this project.
 - All coding standards, workflow rules, and agent skills must be documented and referenced from `AGENTS.md` only.
 
+### Imports & module-loading policy 🔗
+
+- **Always use top-level static imports** for modules and types where possible. Use `import` and `import type` at the top of the file (immediately following any brief file-level documentation header). Placing imports at the top helps TypeScript and tools perform accurate static analysis and keeps dependency graphs consistent.
+- **Placement rule (explicit):** imports should be placed **before any other executable code** in the file. They may appear after a short file-level doc-comment or header but not after code that executes at module load time.
+- **Dynamic imports:** use `await import(...)` only when necessary (for example, to isolate a module under test after `vi.resetModules()` or to load resources conditionally at runtime). When you use a dynamic import in tests or runtime code, add a short comment explaining why the dynamic import is required.
+- **Testing note:** tests may legitimately import modules dynamically to reset module cache, apply mocks, or mock resource imports. Prefer keeping `import type` (type-only imports) at the top of test files when types are required by the test.
+- **Avoid reassignment of imported bindings.** If you need to replace a function on an imported module for tests, prefer mutating the module object (e.g., `Object.assign(lib, { fn: myFn })`) rather than reassigning the imported binding itself.
+- **Document exceptions:** If you must deviate from these rules, add a brief justification in a code comment or the test file header so reviewers can understand the rationale.
+
+Example (imports and types):
+
+```ts
+/** File header doc comment allowed here */
+import type { Settings } from "../src/settings-data.js"; // type-only import at top
+import { loadSettings } from "../src/settings.js"; // runtime import at top
+
+// Avoid placing executable logic (e.g., side-effects) above imports.
+```
+
+Example (dynamic import justified in a test):
+
+```ts
+// Necessary for isolation after we set up mocks
+const { loadDocumentations } = await import("../../src/documentations.js");
+```
+
 - **Template merge guidance:** This repository is a template and its instruction files under `.github/instructions/` may be periodically merged into repositories created from this template. For downstream repositories, prefer making minimal edits to template instruction files and, whenever practical, add a new repo-specific instruction file (for example, `.github/instructions/<your-repo>.instructions.md`) to capture local overrides. Keeping template files minimally changed reduces merge conflicts when pulling upstream template changes; when a template file must be edited, document the rationale and link to a short issue or PR in your repository.
 
 ### Linked Instructions & Skills
 
-- [.github/instructions/typescript.instructions.md](.github/instructions/typescript.instructions.md) — TypeScript standards
-- [.github/instructions/localization.instructions.md](.github/instructions/localization.instructions.md) — Localization rules
-- [.github/instructions/commit-message.md](.github/instructions/commit-message.md) — Commit message convention
-- [.github/skills/plugin-testing/SKILL.md](.github/skills/plugin-testing/SKILL.md) — Plugin testing skill
+- [.github/instructions/typescript.instructions.md](./.github/instructions/typescript.instructions.md) — TypeScript standards
+- [.github/instructions/localization.instructions.md](./.github/instructions/localization.instructions.md) — Localization rules
+- [.github/instructions/commit-message.instructions.md](./.github/instructions/commit-message.instructions.md) — Commit message convention
+- [.github/skills/plugin-testing/SKILL.md](./.github/skills/plugin-testing/SKILL.md) — Plugin testing skill
 - [.github/instructions/agents.instructions.md](.github/instructions/agents.instructions.md) — AI agent quick rules
 
 ---

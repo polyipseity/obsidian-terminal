@@ -23,7 +23,10 @@ import { defineConfig } from "vitest/config";
 // Only split test files in rare cases when a single file becomes unreasonably long.
 // Both `*.spec.*` and `*.test.*` are included below; run specific sets with the Vitest CLI if desired.
 export default defineConfig({
+  // Treat markdown as assets so imports like `import md from "../README.md"` resolve to a string
+  assetsInclude: ["**/*.md"],
   test: {
     include: ["tests/**/*.spec.{ts,js,mjs}", "tests/**/*.test.{ts,js,mjs}"],
+    setupFiles: ["tests/setup.ts"],
   },
 });

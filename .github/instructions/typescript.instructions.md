@@ -10,7 +10,7 @@ description: Guidelines for TypeScript files in obsidian-plugin-template
 
 - Use the strictest TypeScript configuration (`tsconfig.json`).
 - Validate and normalize all settings and local settings via `.fix()` functions (see `src/settings-data.ts`).
-- Prefer type-safe patterns; **never** use `any` unless there is no reasonable alternative and add a comment explaining why.
+- Prefer type-safe patterns; **never** use the `any` type. **Prefer `unknown` over `any`.** When accepting unknown inputs, validate or narrow `unknown` with type guards or runtime validators before use. If `any` is truly unavoidable, document the reason and add a test asserting safety.
 - Reference translation keys via `language.value.t(...)` or `$t(key)` in UI code. Avoid hardcoding user-facing strings.
 - Use the project managers (`LanguageManager`, `SettingsManager`, `StorageSettingsManager`) as in `src/main.ts` to ensure consistent lifecycle and persistence behaviour.
 
@@ -27,7 +27,7 @@ description: Guidelines for TypeScript files in obsidian-plugin-template
   - Keep logic modular and add unit tests for transformation helpers
   - Use `deepFreeze`/`markFixed`/`fixTyped` helpers available in `@polyipseity/obsidian-plugin-library`
 - **Don't:**
-  - Use `any` or unsafe casts without justification
+  - Do not use `any` or unsafe casts. Prefer `unknown` and narrow via type guards or runtime validation.
   - Hardcode translation strings; always prefer `language.value.t(...)`
   - Bypass `.fix()` for persisted settings or local settings
 
