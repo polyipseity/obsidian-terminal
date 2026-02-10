@@ -49,7 +49,10 @@ export function makeMock<T>(base: T, overrides?: DeepPartial<T>): T {
  * This is the canonical factory for doc views used by tests.
  */
 export function makeDocView(overrides: Partial<DocView> = {}): DocView {
-  const base: DocView = { open: vi.fn(() => Promise.resolve()), context: {} };
+  const base: DocView = {
+    open: vi.fn().mockResolvedValue(undefined),
+    context: {},
+  };
   return makeMock<DocView>(base, overrides);
 }
 
@@ -98,29 +101,23 @@ export class AdvancedSettingTabMock {
 export function makePluginContext(
   overrides: DeepPartial<PLACEHOLDERPlugin> = {},
 ): PLACEHOLDERPlugin {
-  const base: PLACEHOLDERPlugin = {
+  const base = {
     version: null,
     language: { value: { t: (k: string) => k } },
     localSettings: {
       value: { lastReadChangelogVersion: "0.0.0" },
-      mutate: async (_fn: (ls: unknown) => void) => {
-        void _fn;
-        return Promise.resolve();
-      },
-      write: async () => Promise.resolve(),
+      mutate: vi.fn().mockResolvedValue(undefined),
+      write: vi.fn().mockResolvedValue(undefined),
     },
     settings: {
       value: { openChangelogOnUpdate: true },
-      mutate: async (_fn: (s: unknown) => void) => {
-        void _fn;
-        return Promise.resolve();
-      },
-      write: async () => Promise.resolve(),
+      mutate: vi.fn().mockResolvedValue(undefined),
+      write: vi.fn().mockResolvedValue(undefined),
     },
     addSettingTab: (_tab: unknown) => {
       void _tab;
     },
-  } as PLACEHOLDERPlugin;
+  } as unknown as PLACEHOLDERPlugin;
 
   return makeMock<PLACEHOLDERPlugin>(base, overrides);
 }
@@ -132,13 +129,10 @@ export function makePluginContext(
 export function makeLoadedDoc(
   overrides: Partial<loadDocumentations.Loaded> = {},
 ): loadDocumentations.Loaded {
-  const base: loadDocumentations.Loaded = {
-    open: (_k: unknown, _a?: unknown) => {
-      void _k;
-      void _a;
-    },
+  const base = {
+    open: vi.fn().mockResolvedValue(undefined),
     docMdView: makeDocView(),
-  } as loadDocumentations.Loaded;
+  } as unknown as loadDocumentations.Loaded;
 
   return makeMock<loadDocumentations.Loaded>(base, overrides);
 }
@@ -154,14 +148,14 @@ export function makeLocalSettingsManager(
 ): StorageSettingsManager<LocalSettings> {
   const m =
     mutate ??
-    (async (fn: (ls: unknown) => void) => {
+    (vi.fn().mockImplementation(async (fn: (ls: unknown) => void) => {
       fn({ lastReadChangelogVersion });
       return Promise.resolve();
-    });
+    }) as unknown as (fn: (ls: unknown) => void) => Promise<unknown>);
   const base: StorageSettingsManager<LocalSettings> = {
     value: { lastReadChangelogVersion },
     mutate: m,
-    write: vi.fn(() => Promise.resolve()),
+    write: vi.fn().mockResolvedValue(undefined),
   } as unknown as StorageSettingsManager<LocalSettings>;
 
   return makeMock<StorageSettingsManager<LocalSettings>>(base);

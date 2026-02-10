@@ -100,7 +100,7 @@ describe("SettingTab onLoad behavior", () => {
     };
 
     // Spy on closeSetting
-    const lib = await import("@polyipseity/obsidian-plugin-library");
+    const lib = vi.mocked(await import("@polyipseity/obsidian-plugin-library"));
     vi.spyOn(lib, "closeSetting").mockImplementation(() => {});
 
     // @ts-expect-error: protected

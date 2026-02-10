@@ -107,9 +107,6 @@ describe("scripts/utils.mjs", () => {
       expect(out).toContain("hello");
       expect(logSpy).toHaveBeenCalled();
       expect(errSpy).not.toHaveBeenCalled();
-
-      logSpy.mockRestore();
-      errSpy.mockRestore();
     });
 
     it("logs stderr when child writes only to stderr and returns empty stdout", async () => {
@@ -124,9 +121,6 @@ describe("scripts/utils.mjs", () => {
       expect(out).toBe("");
       expect(logSpy).not.toHaveBeenCalled();
       expect(errSpy).toHaveBeenCalled();
-
-      logSpy.mockRestore();
-      errSpy.mockRestore();
     });
 
     it("handles child that produces no output but exits successfully", async () => {

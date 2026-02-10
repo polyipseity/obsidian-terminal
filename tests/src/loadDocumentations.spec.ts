@@ -14,7 +14,7 @@ describe("loadDocumentations", () => {
   beforeEach(async () => {
     vi.resetModules();
     // ensure we can override DocumentationMarkdownView.register from the global mock
-    const lib = await import("@polyipseity/obsidian-plugin-library");
+    const lib = vi.mocked(await import("@polyipseity/obsidian-plugin-library"));
     // Reset register to a default that returns an object with open spy (which tests will override as needed)
     Object.assign(lib.DocumentationMarkdownView, {
       register: vi.fn(() => makeDocView()),
@@ -22,14 +22,11 @@ describe("loadDocumentations", () => {
   });
 
   it("registers commands for each documentation key and opens readme if readme arg true", async () => {
-    const openSpy = vi.fn(() => Promise.resolve());
+    const openSpy = vi.fn().mockResolvedValue(undefined);
     // Register a DocView whose `open` delegates to our spy
-    {
-      const lib = await import("@polyipseity/obsidian-plugin-library");
-      Object.assign(lib.DocumentationMarkdownView, {
-        register: vi.fn(() => makeDocView({ open: openSpy })),
-      });
-    }
+    await (
+      await import("../mocks/library.js")
+    ).overrideDocumentationRegister(makeDocView({ open: openSpy }));
 
     const { loadDocumentations } = await import("../../src/documentations.js");
 
@@ -55,13 +52,10 @@ describe("loadDocumentations", () => {
       __esModule: true,
     }));
 
-    const openSpy = vi.fn(() => Promise.resolve());
-    {
-      const lib = await import("@polyipseity/obsidian-plugin-library");
-      Object.assign(lib.DocumentationMarkdownView, {
-        register: vi.fn(() => makeDocView({ open: openSpy })),
-      });
-    }
+    const openSpy = vi.fn().mockResolvedValue(undefined);
+    await (
+      await import("../mocks/library.js")
+    ).overrideDocumentationRegister(makeDocView({ open: openSpy }));
 
     const { loadDocumentations } = await import("../../src/documentations.js");
 
@@ -95,11 +89,11 @@ describe("loadDocumentations", () => {
   });
 
   it("prints an error when a documentation open fails", async () => {
-    const openSpy = vi.fn(() => Promise.reject(new Error("boom")));
-    const lib = await import("@polyipseity/obsidian-plugin-library");
-    Object.assign(lib.DocumentationMarkdownView, {
-      register: vi.fn(() => makeDocView({ open: openSpy })),
-    });
+    const openSpy = vi.fn().mockRejectedValue(new Error("boom"));
+    await (
+      await import("../mocks/library.js")
+    ).overrideDocumentationRegister(makeDocView({ open: openSpy }));
+    const lib = vi.mocked(await import("@polyipseity/obsidian-plugin-library"));
     lib.printError = vi.fn();
 
     const { loadDocumentations } = await import("../../src/documentations.js");
@@ -123,13 +117,10 @@ describe("loadDocumentations", () => {
       __esModule: true,
     }));
 
-    const openSpy = vi.fn(() => Promise.resolve());
-    {
-      const lib = await import("@polyipseity/obsidian-plugin-library");
-      Object.assign(lib.DocumentationMarkdownView, {
-        register: vi.fn(() => makeDocView({ open: openSpy })),
-      });
-    }
+    const openSpy = vi.fn().mockResolvedValue(undefined);
+    await (
+      await import("../mocks/library.js")
+    ).overrideDocumentationRegister(makeDocView({ open: openSpy }));
 
     const { loadDocumentations } = await import("../../src/documentations.js");
 

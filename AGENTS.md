@@ -77,6 +77,22 @@ Quick reference for scripts in `package.json`. Use `pnpm` (preferred).
 
 - **Config:** Minimal config is in `vitest.config.mts` and includes both `*.spec.*` and `*.test.*` globs; add inline comments to that file if you change test behavior or providers.
 
+### Vitest / `vi` best practices (tests) ✅
+
+- Prefer `vi.fn()` for spies and stubs instead of inline functions so tests can inspect calls and reset behavior easily.
+  - For async behavior, prefer `vi.fn().mockResolvedValue(x)` or `vi.fn().mockRejectedValue(err)` over `() => Promise.resolve()` / `() => Promise.reject()` to make intent explicit and improve readability.
+- Use `vi.doMock` / `vi.mock` with `vi.resetModules()` to isolate module-level mocks. When restoring spies/mocks between tests use `vi.restoreAllMocks()` (commonly in an `afterEach`).
+- Use `vi.spyOn()` to observe calls to global objects (console, process) rather than reassigning globals directly.
+- For timer-based tests, prefer `vi.useFakeTimers()` and `vi.runAllTimers()` / `vi.advanceTimersByTime()` to make assertions deterministic.
+- Prefer `vi.mocked(...)` for typed module mocks where available to access typed members and avoid `any` casts.
+
+These conventions improve test clarity, make failures easier to diagnose, and keep suites hermetic and parallelizable.
+
+Helpful local resources:
+
+- `tests/README.md` — Examples and recommended patterns for `vi` usage (async stubs, fake timers, spying globals).
+- `tests/mocks/library.ts` — Helper utilities to obtain a typed mocked `@polyipseity/obsidian-plugin-library` and to override `DocumentationMarkdownView.register` in tests.
+
 - **Run locally:**
   - Full (default): `pnpm test` / `npm run test` — runs both unit and integration tests with coverage.
   - Unit-only (Vitest CLI): `pnpm exec vitest run "tests/**/*.spec.{js,ts,mjs}" --coverage` — fast, good for PR iteration.

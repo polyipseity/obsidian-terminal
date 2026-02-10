@@ -1,12 +1,12 @@
 /**
  * Tests for small test utilities in `tests/helpers.ts` — keep these fast and explicit.
  */
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { makeDocView, toRecord, makePluginContext } from "../helpers.js";
 
 describe("tests/helpers.ts utilities", () => {
   it("makeRegisteredDocView returns a view whose open delegates to provided spy", async () => {
-    const openSpy = vi.fn(() => Promise.resolve());
+    const openSpy = vi.fn().mockResolvedValue(undefined);
     const v = makeDocView({ open: openSpy });
     expect(typeof v.open).toBe("function");
     await v.open();
@@ -20,7 +20,7 @@ describe("tests/helpers.ts utilities", () => {
   });
 
   it("library mock helpers behave as expected (cloneAsWritable, fixInSet, fixTyped, revealPrivate)", async () => {
-    const lib = await import("@polyipseity/obsidian-plugin-library");
+    const lib = vi.mocked(await import("@polyipseity/obsidian-plugin-library"));
 
     // cloneAsWritable returns shallow clone for objects
     const src = { a: 1, b: 2 };
@@ -44,7 +44,7 @@ describe("tests/helpers.ts utilities", () => {
   });
 
   it("revealPrivate and revealPrivateAsync log and fallback on error", async () => {
-    const lib = await import("@polyipseity/obsidian-plugin-library");
+    const lib = vi.mocked(await import("@polyipseity/obsidian-plugin-library"));
     const ctx = makePluginContext();
     // Ensure `self` exists in the test environment (used by the mock)
     const _oldSelf = globalThis.self;
@@ -97,9 +97,11 @@ describe("tests/helpers.ts utilities", () => {
     );
     expect(r4).toBe("aok");
 
-    warnSpy.mockRestore();
-
     // Restore previous `self` binding if any to avoid polluting global state
     globalThis.self = _oldSelf;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 });

@@ -43,7 +43,7 @@ describe("scripts/build.mjs", () => {
       process.chdir(cwd);
     }
 
-    const esbuild = await import("esbuild");
+    const esbuild = vi.mocked(await import("esbuild"));
     const { rebuild: rebuildSpy, dispose: disposeSpy } =
       await esbuild.context.mock.results[0].value;
 
@@ -106,7 +106,7 @@ describe("scripts/build.mjs", () => {
 
     await import("../../scripts/build.mjs");
 
-    const esbuild = await import("esbuild");
+    const esbuild = vi.mocked(await import("esbuild"));
     expect(esbuild.formatMessages).toHaveBeenCalled();
     // formatMessages should be called with warnings and kind 'warning'
     const calls = esbuild.formatMessages.mock.calls;
