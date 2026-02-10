@@ -20,6 +20,7 @@ vi.doMock("@polyipseity/obsidian-plugin-library", () => ({
     register: (_ctx: unknown) => makeDocView(),
   },
 
+  // eslint-disable-next-line @typescript-eslint/no-extraneous-class
   SettingsManager: class {},
   NOTICE_NO_TIMEOUT: -1,
   NULL_SEM_VER_STRING: "0.0.0",
