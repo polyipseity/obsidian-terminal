@@ -64,6 +64,44 @@ vi.doMock("@polyipseity/obsidian-plugin-library", () => ({
     }
     return def[key];
   },
+  fixArray: (
+    def: Record<string, unknown>,
+    unc: Record<string, unknown> | undefined,
+    key: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _types: readonly unknown[],
+  ) => {
+    // If 'from' provides a valid homogenous array, return it (accept empty arrays)
+    if (unc && typeof unc === "object") {
+      const v = unc[key];
+      if (Array.isArray(v)) {
+        if (v.length === 0) return v;
+        const t0 = typeof v[0];
+        if (
+          (t0 === "string" || t0 === "number" || t0 === "boolean") &&
+          v.every((e) => typeof e === t0)
+        ) {
+          return v;
+        }
+      }
+    }
+
+    // Fall back to defaults. If the default isn't an array, mirror library by throwing
+    const default0 = def && typeof def === "object" ? def[key] : undefined;
+    if (!Array.isArray(default0)) {
+      throw new TypeError(String(default0));
+    }
+
+    // Map defaults to primitive values (approximation of `primitiveOfE`)
+    return default0.map((x) =>
+      x == null ||
+      typeof x === "string" ||
+      typeof x === "number" ||
+      typeof x === "boolean"
+        ? x
+        : String(x),
+    );
+  },
   launderUnchecked: (v: unknown) => (v == null ? {} : v),
   markFixed: (_orig: unknown, value: unknown) => ({ value }),
   opaqueOrDefault: (_parser: unknown, v: unknown, def: unknown) =>
