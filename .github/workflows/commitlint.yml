@@ -10,12 +10,12 @@
 name: Commit message lint
 
 on:
+  pull_request:
   push:
     branches:
       - "**" # Listen to pushes on all branches
     tags-ignore:
       - "**" # Ignore tag pushes
-  pull_request:
   workflow_dispatch:
 
 # Use concurrency to deduplicate runs.

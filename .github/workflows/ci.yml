@@ -13,6 +13,10 @@ name: "CI: Build & Test"
 on:
   pull_request:
   push:
+    branches:
+      - "**" # Listen to pushes on all branches
+    tags-ignore:
+      - "**" # Ignore tag pushes
   workflow_dispatch:
 
 # Use concurrency to deduplicate runs.
