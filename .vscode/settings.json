@@ -3,7 +3,10 @@
     "/^(?:npm\\s+exec|npx)\\s+(?:tsc|vitest)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
     "/^npm\\s+(?:build|check|format|run|test)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
     "/^pnpm(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*(?:\\s+exec)?\\s+(?:tsc|vitest)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
-    "/^pnpm(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+(?:build|check|commitlint|format|run|test)(?:[^\\s]*)?(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true
+    "/^pnpm(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+(?:build|check|commitlint|format|run|test)(?:[^\\s]*)?(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
+    "Pop-Location": true,
+    "Push-Location": true,
+    "Test-Path": true
   },
   "markdown.validate.enabled": true
 }
