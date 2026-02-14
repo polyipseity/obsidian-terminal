@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 import { describe, it, expect, vi, afterEach } from "vitest";
 
 // Unit spec for scripts/obsidian-install.mjs — assert concise error output

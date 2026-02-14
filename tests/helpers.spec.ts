@@ -2,7 +2,7 @@
  * Tests for small test utilities in `tests/helpers.ts` — keep these fast and explicit.
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { makeDocView, toRecord, makePluginContext } from "../helpers.js";
+import { makeDocView, makePluginContext } from "./helpers.js";
 
 describe("tests/helpers.ts utilities", () => {
   it("makeRegisteredDocView returns a view whose open delegates to provided spy", async () => {
@@ -28,19 +28,20 @@ describe("tests/helpers.ts utilities", () => {
     expect(cloned).toEqual(src);
     expect(cloned).not.toBe(src);
 
+    const def = { k: "a" };
     // fixInSet returns matching value if present in set
     const set = ["a", "b"] as const;
     // Use a local-typed shim of the mocked library functions to avoid heavy typing in tests
     const shim = lib;
 
-    expect(shim.fixInSet(toRecord({}), { k: "b" }, "k", set)).toBe("b");
+    expect(shim.fixInSet(def, { k: "b" }, "k", set)).toBe("b");
     // returns default when value not present
-    expect(shim.fixInSet(toRecord({}), { k: "z" }, "k", set)).toBe("a");
+    expect(shim.fixInSet(def, { k: "z" }, "k", set)).toBe("a");
 
     // fixTyped returns value when types match, otherwise default
-    const def = { k: 1 };
-    expect(shim.fixTyped(def, { k: 2 }, "k", [])).toBe(2);
-    expect(shim.fixTyped(def, { k: "x" }, "k", [])).toBe(1);
+    const def2 = { k: 1 };
+    expect(shim.fixTyped(def2, { k: 2 }, "k", ["number"])).toBe(2);
+    expect(shim.fixTyped(def2, { k: "x" }, "k", ["number"])).toBe(1);
   });
 
   it("revealPrivate and revealPrivateAsync log and fallback on error", async () => {

@@ -91,7 +91,6 @@ These conventions improve test clarity, make failures easier to diagnose, and ke
 Helpful local resources:
 
 - `tests/README.md` — Examples and recommended patterns for `vi` usage (async stubs, fake timers, spying globals).
-- `tests/mocks/library.ts` — Helper utilities to obtain a typed mocked `@polyipseity/obsidian-plugin-library` and to override `DocumentationMarkdownView.register` in tests.
 
 - **Run locally:**
   - Full (default): `pnpm test` / `npm run test` — runs both unit and integration tests with coverage.
