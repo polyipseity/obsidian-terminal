@@ -1200,13 +1200,14 @@ export class Component {
   }
 }
 
-export class ItemView {
+export class ItemView extends Component {
   leaf: WorkspaceLeaf;
   contentEl: HTMLElement;
   app: App;
   navigation = false;
 
   constructor(leaf?: WorkspaceLeaf) {
+    super();
     this.leaf = leaf ?? new WorkspaceLeaf();
     this.contentEl = document.createElement("div");
     this.app = getApp();
@@ -1743,6 +1744,19 @@ export function requestUrl(param: RequestUrlParam): RequestUrlResponsePromise {
 
 export const MarkdownRenderer = {
   renderMarkdown: async (
+    markdown: string,
+    el: HTMLElement,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _sourcePath: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _component: Component,
+  ): Promise<void> => {
+    el.textContent = markdown;
+  },
+  // Some environments/tests expect the newer `render(app, ...)` API —
+  // provide a thin shim so both signatures work in tests.
+  render: async (
+    _app: App,
     markdown: string,
     el: HTMLElement,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
