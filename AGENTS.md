@@ -122,6 +122,12 @@ If you need help designing a test or mocking a dependency, ask for a short examp
 **TypeScript Types:**
 
 - Do **not** use the TypeScript `any` type. Prefer `unknown` over `any`. When accepting unknown inputs, validate or use type guards to narrow `unknown` before use. If `any` is truly unavoidable, document the reason and add tests that assert safety.
+- **Never use `as` casting.** Avoid `value as Foo` in production code — prefer safe alternatives such as:
+  - runtime type guards (e.g. `function isFoo(v: unknown): v is Foo`) and narrowing checks;
+  - explicit generics / factory functions that preserve typing;
+  - returning `unknown` from untrusted boundaries and narrowing at the call site.
+  If a single `as` cast is unavoidable add a comment explaining why, and add a unit test that exercises the runtime assumptions.
+- **Make code type-checking friendly.** Prefer explicit types for exported APIs (return types and parameter types), keep public interfaces small and well-typed, prefer discriminated unions for runtime branching, and avoid deeply inferred/complex anonymous types at package boundaries. This makes `tsc` errors actionable and helps downstream consumers.
 - **Prefer `interface` for object shapes:** Prefer `interface Foo { ... }` rather than `type Foo = { ... }` for object-shaped declarations when possible. Interfaces are typically better for incremental TypeScript performance (caching and declaration merging) and work well with extension and declaration merging patterns.
 - When you need union, mapped, or conditional types, `type` aliases remain appropriate. Document non-trivial type-level logic with a brief comment so readers understand the intent and tradeoffs.
 
@@ -132,6 +138,16 @@ Example:
 interface Settings {
   openChangelogOnUpdate: boolean;
   noticeTimeout: number;
+}
+
+// prefer a type guard over `as` casting
+function isSettings(v: unknown): v is Settings {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    "openChangelogOnUpdate" in v &&
+    typeof (v as any).openChangelogOnUpdate === "boolean"
+  );
 }
 
 // acceptable use of `type` for advanced type composition
