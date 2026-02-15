@@ -5,7 +5,7 @@ import {
   TerminalTextArea,
   normalizeText,
   writePromise as tWritePromise,
-} from "./util.js";
+} from "./utils.js";
 import {
   DEFAULT_ENCODING,
   DEFAULT_PYTHONIOENCODING,
@@ -48,7 +48,7 @@ import type { IMarker, Terminal } from "@xterm/xterm";
 import { type Program, parse } from "acorn";
 import inspect, { type Options } from "browser-util-inspect";
 import { isEmpty, isNil, noop } from "lodash-es";
-import { spawnPromise, writePromise } from "../util.js";
+import { spawnPromise, writePromise } from "../utils.js";
 
 import AsyncLock from "async-lock";
 import type { AsyncOrSync } from "ts-essentials";

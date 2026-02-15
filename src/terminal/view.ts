@@ -72,7 +72,7 @@ import { TextPseudoterminal } from "./pseudoterminal.js";
 import type { Unicode11Addon } from "@xterm/addon-unicode11";
 import type { WebLinksAddon } from "@xterm/addon-web-links";
 import { XtermTerminalEmulator } from "./emulator.js";
-import { writePromise } from "./util.js";
+import { writePromise } from "./utils.js";
 
 const xtermAddonCanvas = dynamicRequire<typeof import("@xterm/addon-canvas")>(
     BUNDLE,

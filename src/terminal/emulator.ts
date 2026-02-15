@@ -25,8 +25,8 @@ import type { AsyncOrSync } from "ts-essentials";
 import { BUNDLE } from "../import.js";
 import type { ChildProcessByStdio } from "node:child_process";
 import type { Pseudoterminal } from "./pseudoterminal.js";
-import { spawnPromise } from "../util.js";
-import { writePromise } from "./util.js";
+import { spawnPromise } from "../utils.js";
+import { writePromise } from "./utils.js";
 
 const childProcess = dynamicRequire<typeof import("node:child_process")>(
     BUNDLE,
