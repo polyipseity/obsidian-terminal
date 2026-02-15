@@ -1624,11 +1624,13 @@ export class Notice {
 // ===== Utility Functions =====
 
 export function normalizePath(path: string): string {
-  return path
-    .replace(/\\/g, "/")
-    .replace(/\/+/g, "/")
-    .replace(/^\//, "")
-    .replace(/\/$/, "");
+  return (
+    path
+      .replace(/\\/g, "/")
+      .replace(/\/+/g, "/")
+      .replace(/^\//, "")
+      .replace(/\/$/, "") || "/"
+  );
 }
 
 export function stripHeading(heading: string): string {
@@ -1841,6 +1843,10 @@ export function getIcon(iconId: string): string | null {
 export function setIcon(el: HTMLElement, iconId: string): void {
   const svg = state.icons.get(iconId);
   if (svg) el.innerHTML = svg;
+}
+
+export function removeIcon(iconId: string): void {
+  state.icons.delete(iconId);
 }
 
 // ===== Test Helpers =====
