@@ -364,7 +364,7 @@ describe("Obsidian Mock", () => {
 
     it("parseYaml parses YAML strings", () => {
       const yaml = "key: value\nnumber: 42\n";
-      const parsed = parseYaml(yaml) as Record<string, unknown>;
+      const parsed = parseYaml(yaml);
       expect(parsed).toEqual({ key: "value", number: 42 });
     });
   });
@@ -475,6 +475,87 @@ describe("Obsidian Mock", () => {
       const metadata = getApp().metadataCache.getCache("note.md");
       expect(metadata?.headings?.[0]?.heading).toBe("Modified");
       expect(changeTriggered).toBe(true);
+    });
+  });
+
+  describe("FileManager.processFrontMatter()", () => {
+    it("passes an empty object for files without frontmatter and does not write when unchanged", async () => {
+      setVaultFiles({ "no-fm.md": "Body content" });
+      const vault = getVault();
+      const file = vault.getFileByPath("no-fm.md");
+      if (!file) throw new Error("setup failed");
+
+      let calledWith: Record<string, unknown> | null = null;
+      await getApp().fileManager.processFrontMatter(file, (fm) => {
+        calledWith = fm;
+      });
+
+      expect(calledWith).toEqual({});
+      expect(await vault.read("no-fm.md")).toBe("Body content");
+    });
+
+    it("adds frontmatter when processor mutates for files without frontmatter", async () => {
+      setVaultFiles({ "no-fm-2.md": "Body content" });
+      const vault = getVault();
+      const file = vault.getFileByPath("no-fm-2.md");
+      if (!file) throw new Error("setup failed");
+
+      await getApp().fileManager.processFrontMatter(file, (fm) => {
+        // mutate to trigger a write
+        fm.title = "New Title";
+      });
+
+      const content = await vault.read("no-fm-2.md");
+      const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+      expect(fmMatch).not.toBeNull();
+      if (!fmMatch || typeof fmMatch[1] !== "string")
+        throw new Error("frontmatter not found");
+      const parsed = parseYaml(fmMatch[1]);
+      expect(parsed.title).toBe("New Title");
+    });
+
+    it("does not overwrite malformed frontmatter when processor leaves it unchanged, but will replace it if processor mutates", async () => {
+      setVaultFiles({ "bad.md": "---\n:bad\n---\nBody" });
+      const vault = getVault();
+      const file = vault.getFileByPath("bad.md");
+      if (!file) throw new Error("setup failed");
+
+      // no-op processor: malformed frontmatter should remain unchanged
+      await getApp().fileManager.processFrontMatter(file, () => {});
+      expect(await vault.read("bad.md")).toContain(":bad");
+
+      // mutated processor: malformed frontmatter should be replaced
+      await getApp().fileManager.processFrontMatter(file, (fm) => {
+        fm.title = "Fixed";
+      });
+      const content = await vault.read("bad.md");
+      const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+      expect(fmMatch).not.toBeNull();
+      if (!fmMatch || typeof fmMatch[1] !== "string")
+        throw new Error("frontmatter not found");
+      const parsed = parseYaml(fmMatch[1]);
+      expect(parsed.title).toBe("Fixed");
+      expect(content).not.toContain(":bad");
+    });
+
+    it("updates existing frontmatter when processor mutates it", async () => {
+      setVaultFiles({ "exists.md": "---\ntitle: Old\n---\nBody" });
+      const vault = getVault();
+      const file = vault.getFileByPath("exists.md");
+      if (!file) throw new Error("setup failed");
+
+      await getApp().fileManager.processFrontMatter(file, (fm) => {
+        fm.title = "New";
+      });
+
+      const content = await vault.read("exists.md");
+      const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+      expect(fmMatch).not.toBeNull();
+      if (!fmMatch || typeof fmMatch[1] !== "string")
+        throw new Error("frontmatter not found");
+
+      const parsed = parseYaml(fmMatch[1]);
+      expect(parsed.title).toBe("New");
     });
   });
 

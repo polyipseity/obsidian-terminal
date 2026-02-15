@@ -12,11 +12,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 describe("scripts/build.mjs", () => {
   let cwd;
   beforeEach(() => {
+    vi.resetModules();
     cwd = process.cwd();
   });
   afterEach(() => {
     process.chdir(cwd);
     process.argv[2] = undefined;
+    vi.restoreAllMocks();
   });
 
   it("writes metafile and logs errors when rebuild returns errors and metafile", async () => {

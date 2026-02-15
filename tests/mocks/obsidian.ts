@@ -13,7 +13,7 @@ export interface FileStats {
   size: number;
 }
 
-export interface TFile {
+export interface TFile extends TAbstractFile {
   path: string;
   name: string;
   extension: string;
@@ -23,7 +23,7 @@ export interface TFile {
   vault: Vault;
 }
 
-export interface TFolder {
+export interface TFolder extends TAbstractFile {
   path: string;
   name: string;
   parent: TFolder | null;
@@ -104,20 +104,30 @@ export interface RequestUrlResponsePromise extends Promise<RequestUrlResponse> {
 
 // ===== Internal State =====
 
-const state = {
-  files: new Map<string, { content: string; stat: FileStats }>(),
-  editors: [] as Editor[],
-  icons: new Map<string, string>(),
-  requestHandler: null as
+const state: {
+  files: Map<string, { content: string; stat: FileStats }>;
+  editors: Editor[];
+  icons: Map<string, string>;
+  requestHandler:
     | ((param: RequestUrlParam) => Promise<RequestUrlResponse>)
-    | null,
-  requestStubs: [] as Array<{
+    | null;
+  requestStubs: {
     matcher: string | RegExp;
     response: RequestUrlResponse | (() => RequestUrlResponse);
-  }>,
-  requestCalls: [] as Array<{ url: string; param: RequestUrlParam }>,
+  }[];
+  requestCalls: { url: string; param: RequestUrlParam }[];
+  vaultConfig: Map<string, unknown>;
+  keymapScopes: Scope[];
+  pluginData: Map<Plugin, unknown>;
+} = {
+  files: new Map<string, { content: string; stat: FileStats }>(),
+  editors: [],
+  icons: new Map<string, string>(),
+  requestHandler: null,
+  requestStubs: [],
+  requestCalls: [],
   vaultConfig: new Map<string, unknown>(),
-  keymapScopes: [] as Scope[],
+  keymapScopes: [],
   pluginData: new Map<Plugin, unknown>(),
 };
 
@@ -174,13 +184,6 @@ export class Events {
 // ===== Vault =====
 
 export class Vault extends Events {
-  private fm: FileManager;
-
-  constructor() {
-    super();
-    this.fm = new FileManager(this);
-  }
-
   adapter = {
     getName: (): string => "mock-adapter",
     exists: async (path: string): Promise<boolean> =>
@@ -383,9 +386,9 @@ export class Vault extends Events {
     ctx?: unknown,
   ): EventRef;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   on(
     name: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     callback: (...args: any[]) => unknown,
     ctx?: unknown,
   ): EventRef {
@@ -428,8 +431,83 @@ export class FileManager {
     return `[[${file.path}${subpath ?? ""}${alias ? `|${alias}` : ""}]]`;
   }
 
+  /**
+   * Minimal implementation of FileManager.processFrontMatter used by library
+   * helpers. Calls the provided synchronous processor with the parsed frontmatter
+   * object and writes back the file when the processor mutates it.
+   */
+  async processFrontMatter(
+    file: TFile,
+    fn: (fm: Record<string, unknown>) => void,
+    // options ignored in the mock but accepted for signature parity
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _options?: unknown,
+  ): Promise<void> {
+    const content = await this.vault.read(file);
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+
+    // Parse original frontmatter when present; tolerate parse errors.
+    let originalFmObj: Record<string, unknown> | null = null;
+    let parseFailed = false;
+    if (fmMatch) {
+      try {
+        const parsed = parseYaml(fmMatch[1] ?? "");
+        // Treat non-object YAML results (strings, arrays, etc.) as parse failures
+        if (
+          typeof parsed === "object" &&
+          parsed !== null &&
+          !Array.isArray(parsed)
+        ) {
+          originalFmObj = parsed;
+        } else {
+          parseFailed = true;
+          originalFmObj = null;
+        }
+      } catch {
+        parseFailed = true;
+        originalFmObj = null;
+      }
+    }
+
+    // Start with a shallow clone of the original object (or empty when absent)
+    const currentFm: Record<string, unknown> = originalFmObj
+      ? JSON.parse(JSON.stringify(originalFmObj))
+      : {};
+
+    // Call the provided processor (synchronous in real API)
+    fn(currentFm);
+
+    // Determine whether the processor actually changed the frontmatter.
+    const fmIsEmpty = Object.keys(currentFm).length === 0;
+
+    // If there was no original frontmatter and processor left it empty -> no write
+    if (!fmMatch && fmIsEmpty) return;
+
+    // If original parsed successfully and objects are deeply equal -> no write
+    if (fmMatch && !parseFailed) {
+      if (JSON.stringify(originalFmObj) === JSON.stringify(currentFm)) return;
+    }
+
+    // If original was malformed and processor didn't change anything -> don't overwrite
+    if (fmMatch && parseFailed && fmIsEmpty) return;
+
+    // Otherwise serialize and write the updated frontmatter
+    const newFmRaw = stringifyYaml(currentFm ?? {}) ?? "";
+    const newFrontMatter = `---\n${newFmRaw}\n---`;
+    let newContent: string;
+    if (fmMatch) {
+      newContent = content.replace(/^---\n([\s\S]*?)\n---/, newFrontMatter);
+    } else {
+      newContent = `${newFrontMatter}\n${content}`;
+    }
+
+    if (newContent !== content) {
+      await this.vault.modify(file, newContent);
+    }
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  getNewFileParent(sourcePath: string): TFolder {
+  getNewFileParent(_sourcePath: string): TFolder {
     return this.vault.getRoot();
   }
 }
@@ -656,10 +734,7 @@ export class MetadataCache extends Events {
     const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
     if (frontmatterMatch) {
       try {
-        metadata.frontmatter = parseYaml(frontmatterMatch[1] ?? "") as Record<
-          string,
-          unknown
-        >;
+        metadata.frontmatter = parseYaml(frontmatterMatch[1] ?? "");
       } catch {
         metadata.frontmatter = {};
       }
@@ -1133,18 +1208,8 @@ export class ItemView {
 
   constructor(leaf?: WorkspaceLeaf) {
     this.leaf = leaf ?? new WorkspaceLeaf();
-    this.contentEl =
-      typeof document !== "undefined"
-        ? document.createElement("div")
-        : ({} as HTMLElement);
-    // `getApp` is defined later in this mock; at runtime tests import order ensures it exists
-    // so reference it lazily in constructor.
-    try {
-      this.app = getApp();
-    } catch {
-      // fallback for environments where getApp isn't available yet
-      this.app = null as unknown as App;
-    }
+    this.contentEl = document.createElement("div");
+    this.app = getApp();
   }
 
   getViewType(): string {
@@ -1187,6 +1252,13 @@ export class ButtonComponent {
     return this.value;
   }
 
+  // Add `setIcon` as a harmless alias to improve API fidelity for tests that
+  // call `setIcon(...)` (some package tests expect this chainable method).
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  setIcon(_icon?: string): this {
+    return this;
+  }
+
   setTooltip(tooltip: string): this {
     this.tooltip = tooltip;
     return this;
@@ -1219,6 +1291,11 @@ export class ButtonComponent {
     return this;
   }
 
+  // provide `getCta()` (tests use that name) as an alias to `isCta()`
+  getCta(): boolean {
+    return this.cta;
+  }
+
   isCta(): boolean {
     return this.cta;
   }
@@ -1237,10 +1314,61 @@ export class ButtonComponent {
     return this;
   }
 
+  // provide `click()` as an alias used by some tests
+  click(): void {
+    this.trigger();
+  }
+
   trigger(): void {
     if (!this.disabled) {
       this.clickHandler?.();
     }
+  }
+}
+
+// --------- Add a lightweight `Setting` helper used by plugin tests ---------
+export class Setting {
+  constructor(public capturedButtons?: ButtonComponent[]) {}
+
+  public setName(): this {
+    return this;
+  }
+  public setDesc(): this {
+    return this;
+  }
+  public setTooltip(): this {
+    return this;
+  }
+  public setDisabled(): this {
+    return this;
+  }
+
+  public addButton(cb: (b: ButtonComponent) => void): this {
+    const b = new ButtonComponent();
+    if (this.capturedButtons) this.capturedButtons.push(b);
+    cb(b);
+    return this;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public addToggle(_v: unknown): this {
+    return this;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public addDropdown(_v: unknown): this {
+    return this;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public addText(_v: unknown): this {
+    return this;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public addTextArea(_v: unknown): this {
+    return this;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public addExtraButton(_v: unknown): this {
+    return this;
   }
 }
 
@@ -1582,7 +1710,7 @@ export function requestUrl(param: RequestUrlParam): RequestUrlResponsePromise {
 
   const promise = fetch(param.url, {
     method: param.method,
-    body: param.body as BodyInit | undefined,
+    body: param.body,
     headers: param.headers,
   }).then(async (res) => {
     const text = await res.text();
@@ -1614,21 +1742,24 @@ export function requestUrl(param: RequestUrlParam): RequestUrlResponsePromise {
 // ===== Rendering Helpers (No-ops) =====
 
 export const MarkdownRenderer = {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   renderMarkdown: async (
     markdown: string,
     el: HTMLElement,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _sourcePath: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _component: Component,
   ): Promise<void> => {
     el.textContent = markdown;
   },
 };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function renderMath(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _el: HTMLElement,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _text: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _displayMode: boolean,
 ): Promise<void> {
   return Promise.resolve();
@@ -1656,7 +1787,7 @@ export { parseYaml, stringifyYaml };
 
 export function parseFrontMatterEntry(entry: string): Record<string, unknown> {
   try {
-    return parseYaml(entry) as Record<string, unknown>;
+    return parseYaml(entry);
   } catch {
     return {};
   }
@@ -1773,61 +1904,3 @@ export function spyRequests(): {
 } {
   return { calls: state.requestCalls };
 }
-
-// ===== Default Export =====
-
-const obsidianMock = {
-  App,
-  Plugin,
-  PluginSettingTab,
-  Vault,
-  FileManager,
-  Editor,
-  MetadataCache,
-  Workspace,
-  WorkspaceLeaf,
-  Keymap,
-  Scope,
-  Events,
-  Component,
-  ButtonComponent,
-  ToggleComponent,
-  TextComponent,
-  ColorComponent,
-  SliderComponent,
-  DropdownComponent,
-  Modal,
-  Notice,
-  MarkdownRenderer,
-  normalizePath,
-  stripHeading,
-  debounce,
-  prepareQuery,
-  prepareSimpleSearch,
-  prepareFuzzySearch,
-  request,
-  requestUrl,
-  renderMath,
-  loadMathJax,
-  loadMermaid,
-  loadPdfJs,
-  loadPrism,
-  parseYaml,
-  stringifyYaml,
-  parseFrontMatterEntry,
-  parseFrontMatterTags,
-  parseFrontMatterAliases,
-  addIcon,
-  getIcon,
-  setIcon,
-  reset,
-  setVaultFiles,
-  setRequestHandler,
-  setRequestResponse,
-  getApp,
-  getVault,
-  makeEditor,
-  spyRequests,
-};
-
-export default obsidianMock;
