@@ -10,5 +10,8 @@
     "Test-Path": true,
     "git rev-parse": true
   },
+  "files.associations": {
+    ".prettierignore": "ignore"
+  },
   "markdown.validate.enabled": true
 }
