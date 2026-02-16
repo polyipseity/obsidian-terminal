@@ -87,7 +87,7 @@ describe("Obsidian Mock", () => {
 
       expect(file.path).toBe("new.md");
       expect(await vault.read(file)).toBe("content");
-      expect(vault.adapter.exists("new.md")).resolves.toBe(true);
+      await expect(vault.adapter.exists("new.md")).resolves.toBe(true);
       expect(createTriggered).toBe(true);
     });
 

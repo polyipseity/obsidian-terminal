@@ -1,7 +1,7 @@
 /**
  * Unit tests for `src/settings-data.ts` — validate defaults and normalization helpers.
  */
-import { describe, it, expect } from "vitest";
+import { vi, describe, it, expect } from "vitest";
 import { Settings, LocalSettings } from "../../src/settings-data.js";
 
 describe("src/settings-data.ts", () => {
@@ -47,8 +47,16 @@ describe("src/settings-data.ts", () => {
   });
 
   it("LocalSettings.fix ensures lastReadChangelogVersion exists and is a string", () => {
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
     const fixed = LocalSettings.fix({});
     expect(fixed.value).toHaveProperty("lastReadChangelogVersion");
     expect(typeof fixed.value.lastReadChangelogVersion).toBe("string");
+
+    // semver parsing of an undefined value will be logged via opaqueOrDefault()
+    expect(debugSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("Invalid Version: undefined"),
+      }),
+    );
   });
 });
