@@ -1104,9 +1104,14 @@ export abstract class Plugin {
 export abstract class PluginSettingTab {
   app: App;
   plugin: Plugin;
+  // containerEl exists on the real API; the mock must provide it for UI tests
+  containerEl: HTMLElement;
+
   constructor(app: App, plugin: Plugin) {
     this.app = app;
     this.plugin = plugin;
+    // provide a real DOM element so tests can query/append children
+    this.containerEl = document.createElement("div");
   }
   abstract display(): void;
   hide(): void {}
