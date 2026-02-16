@@ -71,13 +71,9 @@
     "minAppVersion": "1.4.11",
     "name": "PLACEHOLDER"
   },
-  "overrides": {
-    "tmp": "^0.2.5"
-  },
+  "overrides": {},
   "pnpm": {
-    "overrides": {
-      "tmp": "^0.2.5"
-    }
+    "overrides": {}
   },
   "private": true,
   "repository": {
