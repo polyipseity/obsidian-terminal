@@ -98,6 +98,8 @@ Helpful local resources:
   - Integration-only (Vitest CLI): `pnpm exec vitest run "tests/**/*.test.{js,ts,mjs}" --coverage` — use for longer-running integration suites.
   - Interactive / watch: `pnpm run test:watch` or `npm run test:watch`.
 
+  > **Agent note — vitest CLI:** `vitest` without a subcommand defaults to interactive/watch mode. **Agents must never run Vitest in watch mode**; always use `vitest run <options>` or add the `--run` option so tests execute non-interactively (example: `pnpm exec vitest --run "tests/**/*.spec.{js,ts,mjs}"`).
+
 - **Git hooks & CI:**
   - Pre-push: `.husky/pre-push` runs `npm run test` (equivalently `pnpm test`) — failing tests will block pushes.
   - CI: CI jobs run the full test suite (both unit and integration). If adding slow or flaky integration tests, mark them clearly (folder or filename) and justify in the PR description; prefer to keep the default suite fast.
