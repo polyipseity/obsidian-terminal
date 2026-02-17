@@ -21,7 +21,7 @@ export const CHECK_EXECUTABLE_WAIT = 5,
     psutil: { platforms: ["win32"], version: new SemVer("5.9.5") },
     pywinctl: { platforms: ["win32"], version: new SemVer("0.0.50") },
 
-    typing_extensions: { platforms: ["win32"], version: new SemVer("4.15.0") },
+    typing_extensions: { platforms: ["win32"], version: new SemVer("4.7.1") },
   }) satisfies Readonly<
     Record<
       string,

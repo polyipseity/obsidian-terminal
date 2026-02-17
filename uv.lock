@@ -284,7 +284,7 @@ dev = [
 requires-dist = [
     { name = "psutil", specifier = "==5.9.5" },
     { name = "pywinctl", specifier = "==0.0.50" },
-    { name = "typing-extensions", specifier = "==4.15.0" },
+    { name = "typing-extensions", specifier = ">=4.7.1" },
 ]
 
 [package.metadata.requires-dev]
