@@ -86,9 +86,7 @@ type IntegratedDefaults = Readonly<
   >
 >;
 export interface ProfilePresets
-  extends ProfilePresets0,
-    ExternalDefaults,
-    IntegratedDefaults {}
+  extends ProfilePresets0, ExternalDefaults, IntegratedDefaults {}
 const PROFILE_PRESETS0 = deepFreeze({
   bashIntegrated: {
     args: ["--login"],

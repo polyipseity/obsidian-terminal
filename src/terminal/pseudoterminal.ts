@@ -100,9 +100,9 @@ export interface Pseudoterminal {
   readonly resize?: (columns: number, rows: number) => AsyncOrSync<void>;
 }
 
-export class RefPsuedoterminal<T extends Pseudoterminal>
-  implements Pseudoterminal
-{
+export class RefPsuedoterminal<
+  T extends Pseudoterminal,
+> implements Pseudoterminal {
   public readonly onExit;
   protected readonly delegate: T;
   readonly #exit = promisePromise<NodeJS.Signals | number>();
