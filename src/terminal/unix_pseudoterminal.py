@@ -11,6 +11,8 @@ import sys as _sys
 from sys import exit as _exit, stdin as _stdin, stdout as _stdout
 from typing import Callable as _Callable, cast as _cast
 
+__all__ = ("main",)
+
 if _sys.platform != "win32":
     from fcntl import ioctl as _ioctl
     import pty as _pty

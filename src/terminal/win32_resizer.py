@@ -14,6 +14,14 @@ from typing import (
     final as _final,
 )
 
+__all__ = (
+    "main",
+    "win_to_pid",
+    "resizer",
+    "resizer_reader",
+    "resizer_writer",
+)
+
 if _sys.platform == "win32":
     from pywintypes import error as _error
     from win32api import SetConsoleCtrlHandler as _SetConsoleCtrlHandler
