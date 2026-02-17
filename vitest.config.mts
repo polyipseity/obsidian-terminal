@@ -24,7 +24,7 @@ import { defineConfig } from "vitest/config";
 // Both `*.spec.*` and `*.test.*` are included below; run specific sets with the Vitest CLI if desired.
 export default defineConfig({
   // Treat markdown as assets so imports like `import md from "../README.md"` resolve to a string
-  assetsInclude: ["**/*.md"],
+  assetsInclude: ["**/*.md", "**/*.py"],
   // Resolve `obsidian` imports to our test mock so downstream packages (e.g.
   // `obsidian-plugin-library`) can be imported in node tests.
   resolve: {
