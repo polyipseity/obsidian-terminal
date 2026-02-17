@@ -6,21 +6,21 @@ size.  Most types and helpers are internal; the public API is listed in
 `__all__`.
 """
 
+import sys
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from itertools import chain
-from psutil import Process
-from pywinctl import Window, getAllWindows
-import sys
 from time import sleep
 from typing import (
     Any,
-    Callable,
-    Generator,
     Protocol,
     TypedDict,
     cast,
     final,
 )
+
+from psutil import Process
+from pywinctl import Window, getAllWindows
 
 __all__ = (
     "main",
@@ -35,8 +35,8 @@ if sys.platform == "win32":
     from win32api import SetConsoleCtrlHandler
     from win32con import (
         CTRL_BREAK_EVENT,
-        CTRL_CLOSE_EVENT,
         CTRL_C_EVENT,
+        CTRL_CLOSE_EVENT,
         FILE_SHARE_WRITE,
         GENERIC_READ,
         GENERIC_WRITE,
@@ -48,9 +48,9 @@ if sys.platform == "win32":
     from win32console import (
         AttachConsole,  # type: ignore
         FreeConsole,
+        PyConsoleScreenBufferType,
         PyCOORDType,
         PySMALL_RECTType,
-        PyConsoleScreenBufferType,
     )
     from win32file import CreateFile
     from win32gui import SetWindowPos
@@ -135,7 +135,7 @@ if sys.platform == "win32":
     _LOOKUP_RETRIES = 10
     _RESIZE_ITERATIONS = 2
 
-    def main():
+    def main() -> None:
         """Find the console window for a PID and resize it on demand.
 
         Prompts for a PID on stdin, looks up the process's window and runs the
@@ -264,7 +264,7 @@ if sys.platform == "win32":
                     setters = [
                         # almost accurate, works for alternate screen buffer
                         lambda: SetWindowPos(
-                            cast(int, window.getHandle()),
+                            window.getHandle(),
                             None,
                             0,
                             0,
@@ -295,11 +295,11 @@ if sys.platform == "win32":
                         setters[3], setters[4] = setters[4], setters[3]
                     for setter in setters:
                         ignore_error(setter)
-                print(f"resized")
+                print("resized")
 
 else:
 
-    def main():
+    def main() -> None:
         """Not implemented on non-Windows platforms."""
         raise NotImplementedError(sys.platform)
 

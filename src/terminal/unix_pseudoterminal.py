@@ -5,6 +5,8 @@ process on a pty, proxies stdin/stdout, and accepts control frames on a
 separate FD to update terminal window size.
 """
 
+import sys
+from collections.abc import Callable
 from os import (
     execvp,
     read,
@@ -12,17 +14,16 @@ from os import (
     waitstatus_to_exitcode,
     write,
 )
-from selectors import DefaultSelector, EVENT_READ
+from selectors import EVENT_READ, DefaultSelector
 from struct import pack
-import sys
 from sys import exit, stdin, stdout
-from typing import Callable, cast
+from typing import cast
 
 __all__ = ("main",)
 
 if sys.platform != "win32":
-    from fcntl import ioctl
     import pty
+    from fcntl import ioctl
     from termios import TIOCSWINSZ
 
     _FORK = cast(
@@ -34,7 +35,7 @@ if sys.platform != "win32":
     _STDOUT = stdout.fileno()
     _CMDIO = 3
 
-    def main():
+    def main() -> None:
         """Fork and proxy a child process on a pseudoterminal.
 
         The function forks; the child execs the requested program while the
@@ -108,7 +109,7 @@ if sys.platform != "win32":
 
 else:
 
-    def main():
+    def main() -> None:
         """Not available on Windows — resize proxy is POSIX-only here."""
         raise NotImplementedError(sys.platform)
 
