@@ -21,6 +21,7 @@ This short guide contains focused rules and examples to help AI coding agents ma
   - Unit tests: `*.spec.*` — fast, hermetic, BDD-style.
   - Integration tests: `*.test.*` — TDD-style; may use tmp dirs, child processes, or spawn/exec like `obsidian-install` tests.
   - Put tests under `tests/` mirroring `src/` layout. Follow the **one test file per source file** convention.
+  - **Agent note:** the `vitest` CLI defaults to interactive/watch mode when invoked without a subcommand. Agents must use `vitest run <options>` or append `--run` so tests run non-interactively.
 - Localization:
   - Add keys by editing `assets/locales/en/translation.json` first. Keep `{{...}}` and `$t(...)` intact and **do not** translate placeholders.
   - Add a test when adding user-facing strings (or a localization note) so translators and CI can detect missing or bad keys.

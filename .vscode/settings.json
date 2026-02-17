@@ -1,9 +1,18 @@
 {
   "chat.tools.terminal.autoApprove": {
-    "/^(?:npm\\s+exec|npx)\\s+(?:tsc|vitest)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
-    "/^npm\\s+(?:build|check|format|run|test)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
-    "/^pnpm(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*(?:\\s+exec)?\\s+(?:tsc|vitest)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
-    "/^pnpm(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+(?:build|check|commitlint|format|run|test)(?:[^\\s]*)?(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true
+    "/^(?:npm\\s+exec|npx)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+(?:commitlint|eslint|pyright|tsc|vitest)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
+    "/^npm\\s+(?:ci|help|install|test)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
+    "/^npm\\s+run(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+(?:build|check|commitlint|format|test)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
+    "/^pnpm(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*(?:\\s+exec)?(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+(?:commitlint|eslint|pyright|tsc|vitest)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
+    "/^pnpm(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+(?:help|run|build|check|commitlint|format|test)(?:[^\\s]*)?(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
+    "Out-Null": true,
+    "Pop-Location": true,
+    "Push-Location": true,
+    "Test-Path": true,
+    "git rev-parse": true
+  },
+  "files.associations": {
+    ".prettierignore": "ignore"
   },
   "markdown.validate.enabled": true
 }

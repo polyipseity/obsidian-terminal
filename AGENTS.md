@@ -91,13 +91,14 @@ These conventions improve test clarity, make failures easier to diagnose, and ke
 Helpful local resources:
 
 - `tests/README.md` — Examples and recommended patterns for `vi` usage (async stubs, fake timers, spying globals).
-- `tests/mocks/library.ts` — Helper utilities to obtain a typed mocked `@polyipseity/obsidian-plugin-library` and to override `DocumentationMarkdownView.register` in tests.
 
 - **Run locally:**
   - Full (default): `pnpm test` / `npm run test` — runs both unit and integration tests with coverage.
   - Unit-only (Vitest CLI): `pnpm exec vitest run "tests/**/*.spec.{js,ts,mjs}" --coverage` — fast, good for PR iteration.
   - Integration-only (Vitest CLI): `pnpm exec vitest run "tests/**/*.test.{js,ts,mjs}" --coverage` — use for longer-running integration suites.
   - Interactive / watch: `pnpm run test:watch` or `npm run test:watch`.
+
+  > **Agent note — vitest CLI:** `vitest` without a subcommand defaults to interactive/watch mode. **Agents must never run Vitest in watch mode**; always use `vitest run <options>` or add the `--run` option so tests execute non-interactively (example: `pnpm exec vitest --run "tests/**/*.spec.{js,ts,mjs}"`).
 
 - **Git hooks & CI:**
   - Pre-push: `.husky/pre-push` runs `npm run test` (equivalently `pnpm test`) — failing tests will block pushes.
@@ -123,6 +124,12 @@ If you need help designing a test or mocking a dependency, ask for a short examp
 **TypeScript Types:**
 
 - Do **not** use the TypeScript `any` type. Prefer `unknown` over `any`. When accepting unknown inputs, validate or use type guards to narrow `unknown` before use. If `any` is truly unavoidable, document the reason and add tests that assert safety.
+- **Never use `as` casting.** Avoid `value as Foo` in production code — prefer safe alternatives such as:
+  - runtime type guards (e.g. `function isFoo(v: unknown): v is Foo`) and narrowing checks;
+  - explicit generics / factory functions that preserve typing;
+  - returning `unknown` from untrusted boundaries and narrowing at the call site.
+  If a single `as` cast is unavoidable add a comment explaining why, and add a unit test that exercises the runtime assumptions.
+- **Make code type-checking friendly.** Prefer explicit types for exported APIs (return types and parameter types), keep public interfaces small and well-typed, prefer discriminated unions for runtime branching, and avoid deeply inferred/complex anonymous types at package boundaries. This makes `tsc` errors actionable and helps downstream consumers.
 - **Prefer `interface` for object shapes:** Prefer `interface Foo { ... }` rather than `type Foo = { ... }` for object-shaped declarations when possible. Interfaces are typically better for incremental TypeScript performance (caching and declaration merging) and work well with extension and declaration merging patterns.
 - When you need union, mapped, or conditional types, `type` aliases remain appropriate. Document non-trivial type-level logic with a brief comment so readers understand the intent and tradeoffs.
 
@@ -133,6 +140,16 @@ Example:
 interface Settings {
   openChangelogOnUpdate: boolean;
   noticeTimeout: number;
+}
+
+// prefer a type guard over `as` casting
+function isSettings(v: unknown): v is Settings {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    "openChangelogOnUpdate" in v &&
+    typeof (v as any).openChangelogOnUpdate === "boolean"
+  );
 }
 
 // acceptable use of `type` for advanced type composition

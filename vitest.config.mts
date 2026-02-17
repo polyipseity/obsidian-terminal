@@ -25,8 +25,25 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   // Treat markdown as assets so imports like `import md from "../README.md"` resolve to a string
   assetsInclude: ["**/*.md"],
+  // Resolve `obsidian` imports to our test mock so downstream packages (e.g.
+  // `obsidian-plugin-library`) can be imported in node tests.
+  resolve: {
+    alias: {
+      obsidian: new URL("./tests/mocks/obsidian.ts", import.meta.url).pathname,
+    },
+  },
   test: {
+    environment: "happy-dom",
     include: ["tests/**/*.spec.{ts,js,mjs}", "tests/**/*.test.{ts,js,mjs}"],
+    server: {
+      deps: {
+        inline: ["@polyipseity/obsidian-plugin-library"],
+      },
+    },
     setupFiles: ["tests/setup.ts"],
+    typecheck: {
+      enabled: true,
+      tsconfig: "tests/tsconfig.test.json",
+    },
   },
 });

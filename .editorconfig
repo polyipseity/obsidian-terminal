@@ -5,11 +5,11 @@ charset = utf-8
 insert_final_newline = true
 trim_trailing_whitespace = true
 
-[*.sh]
-end_of_line = lf
-
 [*.bat]
 end_of_line = crlf
 
 [*.ps1]
 end_of_line = crlf
+
+[*.sh]
+end_of_line = lf

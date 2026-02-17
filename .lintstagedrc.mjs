@@ -1,5 +1,5 @@
 import { FILE_GLOBS as ESLINT_FILE_GLOBS } from "./eslint.config.mjs";
-import { FILE_GLOBS as MD_FILE_GLOBS } from "./.markdownlint-cli2.mjs";
+import { FILE_GLOB as MD_FILE_GLOB } from "./.markdownlint-cli2.mjs";
 
 /**
  * Convert ESLint `FILE_GLOBS` into a brace-style combined pattern.
@@ -9,11 +9,10 @@ const ESLINT_GLOB_KEY = `**/*.{${ESLINT_FILE_GLOBS.map((g) =>
 ).join(",")}}`;
 
 /**
- * Convert `FILE_GLOBS` into a brace-style combined pattern.
+ * Convert `FILE_GLOB`, which uses globby/fast-glob style brace expansion,
+ * into a micromatch-compatible glob pattern that matches the same set of files.
  */
-const MD_GLOB_KEY = `**/*.{${MD_FILE_GLOBS.map((g) =>
-  g.replace("**/*.", ""),
-).join(",")}}`;
+const MD_GLOB_KEY = MD_FILE_GLOB;
 
 const ORIGINAL_PRETTIER_GLOB =
   "**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}";
