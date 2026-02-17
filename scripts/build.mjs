@@ -6,7 +6,7 @@ import esbuildCompress from "esbuild-compress";
 import esbuildPluginGlobals from "esbuild-plugin-globals";
 import esbuildPluginTextReplace from "esbuild-plugin-text-replace";
 import { isEmpty } from "lodash-es";
-import { writeFile } from "node:fs/promises";
+import { writeFile, rm } from "node:fs/promises";
 
 const ARGV_PRODUCTION = 2,
   COMMENT =
@@ -127,4 +127,26 @@ async function esbuild() {
   }
 }
 
+// remove previous build output before starting a new build
+try {
+  const results = await Promise.allSettled([
+    rm(PATHS.main, { force: true, recursive: true }),
+    rm(PATHS.styles, { force: true, recursive: true }),
+  ]);
+  const rejectedReasons = results
+    .filter((r) => r.status === "rejected")
+    .map((r) => r.reason);
+  if (rejectedReasons.length) {
+    // throw all errors together so callers can inspect each failure
+    throw new AggregateError(
+      rejectedReasons,
+      "Failed to remove previous build output (one or more errors)",
+    );
+  }
+} catch (err) {
+  console.warn(
+    "Failed to remove previous build output, proceeding anyway:",
+    err,
+  );
+}
 await esbuild();

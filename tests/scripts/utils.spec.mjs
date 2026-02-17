@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -146,8 +148,15 @@ describe("scripts/utils.mjs", () => {
       // execFile itself isn't used by our mocked promisify, but provide it anyway
       vi.doMock("node:child_process", () => ({ execFile: vi.fn() }));
 
+      // Prevent test output from printing to the terminal and assert it
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
       const { execute } = await import("../../scripts/utils.mjs");
       await expect(execute("cmd", ["arg"])).rejects.toThrow("5");
+
+      expect(logSpy).toHaveBeenCalledWith("stdout");
+      expect(errSpy).toHaveBeenCalledWith("stderr");
     });
   });
 });

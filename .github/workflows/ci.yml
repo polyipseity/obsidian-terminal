@@ -13,7 +13,21 @@ name: "CI: Build & Test"
 on:
   pull_request:
   push:
+    branches:
+      - "**" # Listen to pushes on all branches
+    tags-ignore:
+      - "**" # Ignore tag pushes
   workflow_dispatch:
+
+# Use concurrency to deduplicate runs.
+# - For pull requests: group by `pr-<number>` so multiple commits to the same PR
+#   cancel previous runs and only the latest is kept.
+# - For direct pushes: fall back to deduplicating by commit SHA so identical
+#   commits don't trigger multiple concurrent workflows.
+# - Include the `github.workflow` name in the group to avoid cross-workflow collisions.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.sha }}
+  cancel-in-progress: true
 
 permissions:
   contents: read

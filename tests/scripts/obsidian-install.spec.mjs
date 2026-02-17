@@ -1,10 +1,13 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+// @vitest-environment node
+
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Unit spec for scripts/obsidian-install.mjs — assert concise error output
 // when the manifest cannot be read. Uses module mocking and process.exit
 // interception to keep the test hermetic and fast.
 
 describe("scripts/obsidian-install.mjs", () => {
+  beforeEach(() => vi.resetModules());
   it("prints concise error and exits non-zero when PLUGIN_ID rejects", async () => {
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const exitMock = vi.spyOn(process, "exit").mockImplementation((code) => {

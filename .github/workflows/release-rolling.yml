@@ -15,6 +15,15 @@ on:
       - rolling
   workflow_dispatch:
 
+# Ensure only one instance of this workflow runs at any time across the repository.
+# - Use the workflow identifier (`github.workflow`) so the group is unique per workflow
+#   across the repository and does not require hardcoding.
+# - `cancel-in-progress: true` cancels any currently running instance so the newest
+#   run replaces older ones and always runs (useful for rolling releases).
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 

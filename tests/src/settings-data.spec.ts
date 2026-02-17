@@ -1,9 +1,8 @@
 /**
  * Unit tests for `src/settings-data.ts` — validate defaults and normalization helpers.
  */
-import { describe, it, expect } from "vitest";
+import { vi, describe, it, expect } from "vitest";
 import { Settings, LocalSettings } from "../../src/settings-data.js";
-import { toRecord } from "../helpers.js";
 
 describe("src/settings-data.ts", () => {
   it("Settings.DEFAULT has expected keys and types", () => {
@@ -27,10 +26,11 @@ describe("src/settings-data.ts", () => {
       extra: "present",
     };
     // Use toRecord to assert type for test ergonomics
-    const p = Settings.persistent(toRecord(sample));
+    const p = Settings.persistent(sample);
     expect(p).toHaveProperty("noticeTimeout");
     // ensure extra is still present because `optionals` is empty
-    expect(toRecord(p).extra).toBe("present");
+    expect(p).toHaveProperty("extra");
+    expect(p).property("extra").equals("present");
   });
 
   it("Settings.fix coerces bad typed values to defaults", () => {
@@ -47,8 +47,16 @@ describe("src/settings-data.ts", () => {
   });
 
   it("LocalSettings.fix ensures lastReadChangelogVersion exists and is a string", () => {
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
     const fixed = LocalSettings.fix({});
     expect(fixed.value).toHaveProperty("lastReadChangelogVersion");
     expect(typeof fixed.value.lastReadChangelogVersion).toBe("string");
+
+    // semver parsing of an undefined value will be logged via opaqueOrDefault()
+    expect(debugSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("Invalid Version: undefined"),
+      }),
+    );
   });
 });

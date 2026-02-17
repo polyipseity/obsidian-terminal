@@ -28,5 +28,5 @@
     "target": "ES2018"
   },
   "exclude": ["node_modules", "dist"],
-  "include": ["assets/**/*", "scripts/**/*", "src/**/*", "tests/**/*"]
+  "include": ["assets/**/*", "scripts/**/*", "src/**/*"]
 }
