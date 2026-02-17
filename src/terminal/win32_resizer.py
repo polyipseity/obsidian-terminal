@@ -1,17 +1,25 @@
-from contextlib import contextmanager as _contextmanager
-from itertools import chain as _chain
-from psutil import Process as _Process
-from pywinctl import Window as _Window, getAllWindows as _getAllWindows
-import sys as _sys
-from time import sleep as _sleep
+"""Windows helper to resize a console window for a process.
+
+This module contains utilities used by the plugin to locate a console
+window for a PID and resize the host window to match a requested terminal
+size.  Most types and helpers are internal; the public API is listed in
+`__all__`.
+"""
+
+from contextlib import contextmanager
+from itertools import chain
+from psutil import Process
+from pywinctl import Window, getAllWindows
+import sys
+from time import sleep
 from typing import (
-    Any as _Any,
-    Callable as _Callable,
-    Generator as _Generator,
-    Protocol as _Protocol,
-    TypedDict as _TypedDict,
-    cast as _cast,
-    final as _final,
+    Any,
+    Callable,
+    Generator,
+    Protocol,
+    TypedDict,
+    cast,
+    final,
 )
 
 __all__ = (
@@ -22,126 +30,158 @@ __all__ = (
     "resizer_writer",
 )
 
-if _sys.platform == "win32":
-    from pywintypes import error as _error
-    from win32api import SetConsoleCtrlHandler as _SetConsoleCtrlHandler
+if sys.platform == "win32":
+    from pywintypes import error
+    from win32api import SetConsoleCtrlHandler
     from win32con import (
-        CTRL_BREAK_EVENT as _CTRL_BREAK_EVENT,
-        CTRL_CLOSE_EVENT as _CTRL_CLOSE_EVENT,
-        CTRL_C_EVENT as _CTRL_C_EVENT,
-        FILE_SHARE_WRITE as _FILE_SHARE_WRITE,
-        GENERIC_READ as _GENERIC_READ,
-        GENERIC_WRITE as _GENERIC_WRITE,
-        OPEN_EXISTING as _OPEN_EXISTING,
-        SWP_NOACTIVATE as _SWP_NOACTIVATE,
-        SWP_NOREDRAW as _SWP_NOREDRAW,
-        SWP_NOZORDER as _SWP_NOZORDER,
+        CTRL_BREAK_EVENT,
+        CTRL_CLOSE_EVENT,
+        CTRL_C_EVENT,
+        FILE_SHARE_WRITE,
+        GENERIC_READ,
+        GENERIC_WRITE,
+        OPEN_EXISTING,
+        SWP_NOACTIVATE,
+        SWP_NOREDRAW,
+        SWP_NOZORDER,
     )
     from win32console import (
-        AttachConsole as _AttachConsole,  # type: ignore
-        FreeConsole as _FreeConsole,
-        PyCOORDType as _PyCOORDType,
-        PySMALL_RECTType as _PySMALL_RECTType,
-        PyConsoleScreenBufferType as _PyConsoleScreenBufferType,
+        AttachConsole,  # type: ignore
+        FreeConsole,
+        PyCOORDType,
+        PySMALL_RECTType,
+        PyConsoleScreenBufferType,
     )
-    from win32file import CreateFile as _CreateFile
-    from win32gui import SetWindowPos as _SetWindowPos
-    from win32process import GetWindowThreadProcessId as _GetWindowThreadProcessId
+    from win32file import CreateFile
+    from win32gui import SetWindowPos
+    from win32process import GetWindowThreadProcessId
 
-    @_final
-    class _PyCOORDType0(_Protocol):
-        @property
-        def X(self) -> int: ...
-
-        @property
-        def Y(self) -> int: ...
-
-    @_final
-    class _PySMALL_RECTType0(_Protocol):
-        @property
-        def Left(self) -> int: ...
+    @final
+    class _PyCOORDType0(Protocol):
+        """Protocol describing a coordinate type returned by win32 APIs."""
 
         @property
-        def Top(self) -> int: ...
+        def X(self) -> int:
+            """X coordinate (columns)."""
+            ...
 
         @property
-        def Right(self) -> int: ...
+        def Y(self) -> int:
+            """Y coordinate (rows)."""
+            ...
+
+    @final
+    class _PySMALL_RECTType0(Protocol):
+        """Protocol for a SMALL_RECT-like structure (window rectangle)."""
 
         @property
-        def Bottom(self) -> int: ...
+        def Left(self) -> int:
+            """Left edge (pixels)."""
+            ...
 
-    @_final
-    class _PyConsoleScreenBufferInfo(_TypedDict):
+        @property
+        def Top(self) -> int:
+            """Top edge (pixels)."""
+            ...
+
+        @property
+        def Right(self) -> int:
+            """Right edge (pixels)."""
+            ...
+
+        @property
+        def Bottom(self) -> int:
+            """Bottom edge (pixels)."""
+            ...
+
+    @final
+    class _PyConsoleScreenBufferInfo(TypedDict):
+        """TypedDict mirroring the console screen buffer info structure."""
+
         Size: _PyCOORDType0
         CursorPosition: _PyCOORDType0
         Attributes: int
         Window: _PySMALL_RECTType0
         MaximumWindowSize: _PyCOORDType0
 
-    _ATTACH_CONSOLE = _cast(
-        _Callable[[int], None],
-        _AttachConsole,
+    _ATTACH_CONSOLE = cast(
+        Callable[[int], None],
+        AttachConsole,
     )
-    _PY_COORD_TYPE = _cast(
-        _Callable[[int, int], _PyCOORDType],
-        _PyCOORDType,
+    _PY_COORD_TYPE = cast(
+        Callable[[int, int], PyCOORDType],
+        PyCOORDType,
     )
-    _PY_CONSOLE_SCREEN_BUFFER_TYPE = _cast(
-        _Callable[[_Any], _PyConsoleScreenBufferType],
-        _PyConsoleScreenBufferType,
+    _PY_CONSOLE_SCREEN_BUFFER_TYPE = cast(
+        Callable[[Any], PyConsoleScreenBufferType],
+        PyConsoleScreenBufferType,
     )
-    _GET_CONSOLE_SCREEN_BUFFER_INFO = _cast(
-        _Callable[[_PyConsoleScreenBufferType], _PyConsoleScreenBufferInfo],
-        _PyConsoleScreenBufferType.GetConsoleScreenBufferInfo,  # type: ignore
+    _GET_CONSOLE_SCREEN_BUFFER_INFO = cast(
+        Callable[[PyConsoleScreenBufferType], _PyConsoleScreenBufferInfo],
+        PyConsoleScreenBufferType.GetConsoleScreenBufferInfo,  # type: ignore
     )
-    _SET_CONSOLE_WINDOW_INFO = _cast(
-        _Callable[
-            [_PyConsoleScreenBufferType, bool, _PySMALL_RECTType],
+    _SET_CONSOLE_WINDOW_INFO = cast(
+        Callable[
+            [PyConsoleScreenBufferType, bool, PySMALL_RECTType],
             None,
         ],
-        _PyConsoleScreenBufferType.SetConsoleWindowInfo,  # type: ignore
+        PyConsoleScreenBufferType.SetConsoleWindowInfo,  # type: ignore
     )
-    _PY_SMALL_RECT_TYPE = _cast(
-        _Callable[[int, int, int, int], _PySMALL_RECTType],
-        _PySMALL_RECTType,
+    _PY_SMALL_RECT_TYPE = cast(
+        Callable[[int, int, int, int], PySMALL_RECTType],
+        PySMALL_RECTType,
     )
     _LOOKUP_RETRY_INTERVAL = 1
     _LOOKUP_RETRIES = 10
     _RESIZE_ITERATIONS = 2
 
     def main():
+        """Find the console window for a PID and resize it on demand.
+
+        Prompts for a PID on stdin, looks up the process's window and runs the
+        resizer loop to apply sizes received on stdin.
+        """
         pid = int(input("PID: "))
         print(f"received: {pid}")
-        proc = _Process(pid)
+        proc = Process(pid)
         procs = {}
         windows = ()
         for tries in range(_LOOKUP_RETRIES):
             procs = {
-                proc.pid: proc
-                for proc in _chain((proc,), proc.children(recursive=True))
+                proc.pid: proc for proc in chain((proc,), proc.children(recursive=True))
             }
             print(f"process(es) (try {tries + 1}): {procs}")
-            windows = _getAllWindows()
+            windows = getAllWindows()
             print(f"window(s) (try {tries + 1}): {windows}")
             for win in windows:
                 win_pid = win_to_pid(win)
                 if win_pid in procs:
                     resizer(procs[win_pid], win)
                     return
-            _sleep(_LOOKUP_RETRY_INTERVAL)
+            sleep(_LOOKUP_RETRY_INTERVAL)
         raise LookupError(procs, windows)
 
-    def win_to_pid(window: _Window):
-        return _GetWindowThreadProcessId(window.getHandle())[1]
+    def win_to_pid(window: Window):
+        """Return the process id that owns `window`."""
+        return GetWindowThreadProcessId(window.getHandle())[1]
 
-    def resizer(process: _Process, window: _Window):
+    def resizer(process: Process, window: Window):
+        """Drive the resizer coroutine for `process`/`window`.
+
+        Reads sizes from `resizer_reader` and sends them to the writer
+        coroutine returned by `resizer_writer`.
+        """
         print(f"window: {window}")
         writer = resizer_writer(process, window)
         next(writer)
         for size in resizer_reader(process):
             writer.send(size)
 
-    def resizer_reader(process: _Process):
+    def resizer_reader(process: Process):
+        """Read size strings from stdin and yield (rows, columns) tuples.
+
+        The reader waits for non-empty input lines of the form "<rows>x<cols>".
+        """
         while True:
             size0 = ""
             while not size0:  # stdin watchdog triggers this loop
@@ -153,46 +193,54 @@ if _sys.platform == "win32":
             yield rows, columns
 
     def resizer_writer(
-        process: _Process, window: _Window
-    ) -> _Generator[None, tuple[int, int], None]:
+        process: Process, window: Window
+    ) -> Generator[None, tuple[int, int], None]:
+        """Coroutine that receives (cols, rows) and resizes the host window.
+
+        Yields control to the caller to receive new sizes and applies a set
+        of setters to resize the native window / console buffer.
+        """
         window.hide(True)
 
-        def ignore_error(func: _Callable[[], None]):
+        def ignore_error(func: Callable[[], None]):
+            """Call `func()` and silently ignore pywin32 errors."""
             try:
                 func()
-            except _error:
+            except error:
                 pass
 
-        @_contextmanager
+        @contextmanager
         def attach_console(pid: int):
+            """Temporarily attach to `pid`'s console and yield its console handle."""
             try:
                 _ATTACH_CONSOLE(pid)
                 yield _PY_CONSOLE_SCREEN_BUFFER_TYPE(
-                    _CreateFile(
+                    CreateFile(
                         "CONOUT$",
-                        _GENERIC_READ | _GENERIC_WRITE,
-                        _FILE_SHARE_WRITE,
+                        GENERIC_READ | GENERIC_WRITE,
+                        FILE_SHARE_WRITE,
                         None,
-                        _OPEN_EXISTING,
+                        OPEN_EXISTING,
                         0,
                         None,
                     )  # GetStdHandle gives the piped handle instead of the console handle
                 )
             finally:
-                _FreeConsole()
+                FreeConsole()
 
         def console_ctrl_handler(event: int):
+            """Console control handler that ignores CTRL events."""
             if event in (
-                _CTRL_C_EVENT,
-                _CTRL_BREAK_EVENT,
-                _CTRL_CLOSE_EVENT,
+                CTRL_C_EVENT,
+                CTRL_BREAK_EVENT,
+                CTRL_CLOSE_EVENT,
             ):
                 return True
             return False
 
-        _FreeConsole()
+        FreeConsole()
         with attach_console(process.pid) as console:
-            _SetConsoleCtrlHandler(console_ctrl_handler, True)
+            SetConsoleCtrlHandler(console_ctrl_handler, True)
             while True:
                 columns, rows = yield
                 # iterate to resize accurately
@@ -215,13 +263,13 @@ if _sys.platform == "win32":
                     print(f"pixel size (iteration {iter + 1}): {size}")
                     setters = [
                         # almost accurate, works for alternate screen buffer
-                        lambda: _SetWindowPos(
-                            _cast(int, window.getHandle()),
+                        lambda: SetWindowPos(
+                            cast(int, window.getHandle()),
                             None,
                             0,
                             0,
                             *size,
-                            _SWP_NOACTIVATE | _SWP_NOREDRAW | _SWP_NOZORDER,
+                            SWP_NOACTIVATE | SWP_NOREDRAW | SWP_NOZORDER,
                         ),
                         # accurate, SetConsoleWindowInfo does not work for alternate screen buffer
                         lambda: _SET_CONSOLE_WINDOW_INFO(
@@ -252,7 +300,8 @@ if _sys.platform == "win32":
 else:
 
     def main():
-        raise NotImplementedError(_sys.platform)
+        """Not implemented on non-Windows platforms."""
+        raise NotImplementedError(sys.platform)
 
 
 if __name__ == "__main__":

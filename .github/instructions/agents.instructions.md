@@ -22,6 +22,11 @@ This short guide contains focused rules and examples to help AI coding agents ma
   - Integration tests: `*.test.*` — TDD-style; may use tmp dirs, child processes, or spawn/exec like `obsidian-install` tests.
   - Put tests under `tests/` mirroring `src/` layout. Follow the **one test file per source file** convention.
   - **Agent note:** the `vitest` CLI defaults to interactive/watch mode when invoked without a subcommand. Agents must use `vitest run <options>` or append `--run` so tests run non-interactively.
+- Python module exports:
+  - Every Python module must declare a top-level `__all__` tuple (even if empty). Use a `tuple` (not a `list`).
+  - Place the `__all__` assignment after top-level imports (tests enforce ordering).
+  - Do not hide imported names by aliasing them with a leading underscore solely to prevent export — rely on explicit `__all__` instead.
+  - When changing a module's public API, update or add tests in `tests/test_module_exports.py` (or add module-level tests) that document the expected exports.
 - Localization:
   - Add keys by editing `assets/locales/en/translation.json` first. Keep `{{...}}` and `$t(...)` intact and **do not** translate placeholders.
   - Add a test when adding user-facing strings (or a localization note) so translators and CI can detect missing or bad keys.

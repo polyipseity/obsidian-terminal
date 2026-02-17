@@ -1,47 +1,67 @@
+"""Unix PTY proxy used by the terminal plugin.
+
+This module implements a simple pseudoterminal bridge that spawns a child
+process on a pty, proxies stdin/stdout, and accepts control frames on a
+separate FD to update terminal window size.
+"""
+
 from os import (
-    execvp as _execvp,
-    read as _read,
-    waitpid as _waitpid,
-    waitstatus_to_exitcode as _ws_to_ec,
-    write as _write,
+    execvp,
+    read,
+    waitpid,
+    waitstatus_to_exitcode,
+    write,
 )
-from selectors import DefaultSelector as _DefaultSelector, EVENT_READ as _EVENT_READ
-from struct import pack as _pack
-import sys as _sys
-from sys import exit as _exit, stdin as _stdin, stdout as _stdout
-from typing import Callable as _Callable, cast as _cast
+from selectors import DefaultSelector, EVENT_READ
+from struct import pack
+import sys
+from sys import exit, stdin, stdout
+from typing import Callable, cast
 
 __all__ = ("main",)
 
-if _sys.platform != "win32":
-    from fcntl import ioctl as _ioctl
-    import pty as _pty
-    from termios import TIOCSWINSZ as _TIOCSWINSZ
+if sys.platform != "win32":
+    from fcntl import ioctl
+    import pty
+    from termios import TIOCSWINSZ
 
-    _FORK = _cast(
-        _Callable[[], tuple[int, int]],
-        _pty.fork,  # type: ignore
+    _FORK = cast(
+        Callable[[], tuple[int, int]],
+        pty.fork,  # type: ignore
     )
     _CHUNK_SIZE = 1024
-    _STDIN = _stdin.fileno()
-    _STDOUT = _stdout.fileno()
+    _STDIN = stdin.fileno()
+    _STDOUT = stdout.fileno()
     _CMDIO = 3
 
     def main():
+        """Fork and proxy a child process on a pseudoterminal.
+
+        The function forks; the child execs the requested program while the
+        parent proxies IO between the controlling terminal and the pty.
+        """
         pid, pty_fd = _FORK()
         if pid == 0:
-            _execvp(_sys.argv[1], _sys.argv[1:])
+            execvp(sys.argv[1], sys.argv[1:])
 
         def write_all(fd: int, data: bytes):
-            while data:
-                data = data[_write(fd, data) :]
+            """Write all bytes to `fd`, handling partial writes.
 
-        with _DefaultSelector() as selector:
+            Repeatedly call `write` until all data is written.
+            """
+            while data:
+                data = data[write(fd, data) :]
+
+        with DefaultSelector() as selector:
             running = True
 
             def pipe_pty():
+                """Read from the pty and forward bytes to stdout.
+
+                Signals when the child process has closed the pty.
+                """
                 try:
-                    data = _read(pty_fd, _CHUNK_SIZE)
+                    data = read(pty_fd, _CHUNK_SIZE)
                 except OSError:
                     data = b""
                 if not data:
@@ -52,38 +72,45 @@ if _sys.platform != "win32":
                 write_all(_STDOUT, data)
 
             def pipe_stdin():
-                data = _read(_STDIN, _CHUNK_SIZE)
+                """Read from stdin and forward input to the pty."""
+                data = read(_STDIN, _CHUNK_SIZE)
                 if not data:
                     selector.unregister(_STDIN)
                     return
                 write_all(pty_fd, data)
 
             def process_cmdio():
-                data = _read(_CMDIO, _CHUNK_SIZE)
+                """Process control I/O coming from the command FD.
+
+                Expects lines of the form "<rows>x<cols>" and applies a
+                TIOCSWINSZ ioctl to resize the pty.
+                """
+                data = read(_CMDIO, _CHUNK_SIZE)
                 if not data:
                     selector.unregister(_CMDIO)
                     return
                 for line in data.decode("UTF-8", "strict").splitlines():
                     rows, columns = (int(ss.strip()) for ss in line.split("x", 2))
-                    _ioctl(
+                    ioctl(
                         pty_fd,
-                        _TIOCSWINSZ,
-                        _pack("HHHH", columns, rows, 0, 0),
+                        TIOCSWINSZ,
+                        pack("HHHH", columns, rows, 0, 0),
                     )
 
-            selector.register(pty_fd, _EVENT_READ, pipe_pty)
-            selector.register(_STDIN, _EVENT_READ, pipe_stdin)
-            selector.register(_CMDIO, _EVENT_READ, process_cmdio)
+            selector.register(pty_fd, EVENT_READ, pipe_pty)
+            selector.register(_STDIN, EVENT_READ, pipe_stdin)
+            selector.register(_CMDIO, EVENT_READ, process_cmdio)
             while running:
                 for key, _ in selector.select():
                     key.data()
 
-        _exit(_ws_to_ec(_waitpid(pid, 0)[1]))
+        exit(waitstatus_to_exitcode(waitpid(pid, 0)[1]))
 
 else:
 
     def main():
-        raise NotImplementedError(_sys.platform)
+        """Not available on Windows — resize proxy is POSIX-only here."""
+        raise NotImplementedError(sys.platform)
 
 
 if __name__ == "__main__":

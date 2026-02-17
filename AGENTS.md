@@ -230,6 +230,8 @@ Use as: `i18n.t("welcome", { user: "Alice" })`
 - **Avoid reassignment of imported bindings.** If you need to replace a function on an imported module for tests, prefer mutating the module object (e.g., `Object.assign(lib, { fn: myFn })`) rather than reassigning the imported binding itself.
 - **Document exceptions:** If you must deviate from these rules, add a brief justification in a code comment or the test file header so reviewers can understand the rationale.
 
+- **Python modules & `__all__`:** Every Python module in this repository must declare a top-level `__all__` tuple (even if empty). Use a `tuple` (not a `list`) and place the assignment after top-level imports. Do not attempt to hide imported names by aliasing them with a leading underscore; explicit `__all__` controls the public surface. When changing module exports, add or update tests (see `tests/test_module_exports.py`) to reflect the new public API.
+
 Example (imports and types):
 
 ```ts
