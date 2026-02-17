@@ -47,7 +47,7 @@ jobs:
           run_install: false
 
       - name: Install Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "*"
           cache: "pnpm"
@@ -56,10 +56,10 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Run tests
-        run: pnpm test
+        run: pnpm run test
 
       - name: Build project
-        run: pnpm build
+        run: pnpm run build
 
   build-npm:
     name: "Build & Test (npm)"
