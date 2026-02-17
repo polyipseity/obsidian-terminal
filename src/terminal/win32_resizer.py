@@ -11,13 +11,7 @@ from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from itertools import chain
 from time import sleep
-from typing import (
-    Any,
-    Protocol,
-    TypedDict,
-    cast,
-    final,
-)
+from typing import TypedDict, cast, final
 
 from psutil import Process
 from pywinctl import Window, getAllWindows
@@ -29,6 +23,16 @@ __all__ = (
     "resizer_reader",
     "resizer_writer",
 )
+
+_LOOKUP_RETRY_INTERVAL = 1
+_LOOKUP_RETRIES = 10
+_RESIZE_ITERATIONS = 2
+
+
+def main() -> None:
+    """Not implemented on non-Windows platforms."""
+    raise NotImplementedError(sys.platform)
+
 
 if sys.platform == "win32":
     from pywintypes import error
@@ -46,7 +50,7 @@ if sys.platform == "win32":
         SWP_NOZORDER,
     )
     from win32console import (
-        AttachConsole,  # type: ignore
+        AttachConsole,  # type: ignore[reportUnknownVariableType]
         FreeConsole,
         PyConsoleScreenBufferType,
         PyCOORDType,
@@ -57,83 +61,30 @@ if sys.platform == "win32":
     from win32process import GetWindowThreadProcessId
 
     @final
-    class _PyCOORDType0(Protocol):
-        """Protocol describing a coordinate type returned by win32 APIs."""
-
-        @property
-        def X(self) -> int:
-            """X coordinate (columns)."""
-            ...
-
-        @property
-        def Y(self) -> int:
-            """Y coordinate (rows)."""
-            ...
-
-    @final
-    class _PySMALL_RECTType0(Protocol):
-        """Protocol for a SMALL_RECT-like structure (window rectangle)."""
-
-        @property
-        def Left(self) -> int:
-            """Left edge (pixels)."""
-            ...
-
-        @property
-        def Top(self) -> int:
-            """Top edge (pixels)."""
-            ...
-
-        @property
-        def Right(self) -> int:
-            """Right edge (pixels)."""
-            ...
-
-        @property
-        def Bottom(self) -> int:
-            """Bottom edge (pixels)."""
-            ...
-
-    @final
     class _PyConsoleScreenBufferInfo(TypedDict):
         """TypedDict mirroring the console screen buffer info structure."""
 
-        Size: _PyCOORDType0
-        CursorPosition: _PyCOORDType0
+        Size: PyCOORDType
+        CursorPosition: PyCOORDType
         Attributes: int
-        Window: _PySMALL_RECTType0
-        MaximumWindowSize: _PyCOORDType0
+        Window: PySMALL_RECTType
+        MaximumWindowSize: PyCOORDType
 
-    _ATTACH_CONSOLE = cast(
+    AttachConsole = cast(
         Callable[[int], None],
         AttachConsole,
     )
-    _PY_COORD_TYPE = cast(
-        Callable[[int, int], PyCOORDType],
-        PyCOORDType,
-    )
-    _PY_CONSOLE_SCREEN_BUFFER_TYPE = cast(
-        Callable[[Any], PyConsoleScreenBufferType],
-        PyConsoleScreenBufferType,
-    )
-    _GET_CONSOLE_SCREEN_BUFFER_INFO = cast(
+    GetConsoleScreenBufferInfo = cast(
         Callable[[PyConsoleScreenBufferType], _PyConsoleScreenBufferInfo],
-        PyConsoleScreenBufferType.GetConsoleScreenBufferInfo,  # type: ignore
+        PyConsoleScreenBufferType.GetConsoleScreenBufferInfo,  # type: ignore[reportUnknownMemberType]
     )
-    _SET_CONSOLE_WINDOW_INFO = cast(
+    SetConsoleWindowInfo = cast(
         Callable[
             [PyConsoleScreenBufferType, bool, PySMALL_RECTType],
             None,
         ],
-        PyConsoleScreenBufferType.SetConsoleWindowInfo,  # type: ignore
+        PyConsoleScreenBufferType.SetConsoleWindowInfo,  # type: ignore[reportUnknownMemberType]
     )
-    _PY_SMALL_RECT_TYPE = cast(
-        Callable[[int, int, int, int], PySMALL_RECTType],
-        PySMALL_RECTType,
-    )
-    _LOOKUP_RETRY_INTERVAL = 1
-    _LOOKUP_RETRIES = 10
-    _RESIZE_ITERATIONS = 2
 
     def main() -> None:
         """Find the console window for a PID and resize it on demand.
@@ -213,8 +164,8 @@ if sys.platform == "win32":
         def attach_console(pid: int):
             """Temporarily attach to `pid`'s console and yield its console handle."""
             try:
-                _ATTACH_CONSOLE(pid)
-                yield _PY_CONSOLE_SCREEN_BUFFER_TYPE(
+                AttachConsole(pid)
+                yield PyConsoleScreenBufferType(
                     CreateFile(
                         "CONOUT$",
                         GENERIC_READ | GENERIC_WRITE,
@@ -245,7 +196,7 @@ if sys.platform == "win32":
                 columns, rows = yield
                 # iterate to resize accurately
                 for iter in range(_RESIZE_ITERATIONS):
-                    info = _GET_CONSOLE_SCREEN_BUFFER_INFO(console)
+                    info = GetConsoleScreenBufferInfo(console)
                     old_rect = window.getClientFrame()
                     old_actual_rect = window.size
                     old_cols = info["Window"].Right - info["Window"].Left + 1
@@ -272,21 +223,21 @@ if sys.platform == "win32":
                             SWP_NOACTIVATE | SWP_NOREDRAW | SWP_NOZORDER,
                         ),
                         # accurate, SetConsoleWindowInfo does not work for alternate screen buffer
-                        lambda: _SET_CONSOLE_WINDOW_INFO(
+                        lambda: SetConsoleWindowInfo(
                             console,
                             True,
-                            _PY_SMALL_RECT_TYPE(0, 0, columns - 1, old_rows - 1),
+                            PySMALL_RECTType(0, 0, columns - 1, old_rows - 1),
                         ),
                         lambda: console.SetConsoleScreenBufferSize(
-                            _PY_COORD_TYPE(columns, old_rows)
+                            PyCOORDType(columns, old_rows)
                         ),
-                        lambda: _SET_CONSOLE_WINDOW_INFO(
+                        lambda: SetConsoleWindowInfo(
                             console,
                             True,
-                            _PY_SMALL_RECT_TYPE(0, 0, columns - 1, rows - 1),
+                            PySMALL_RECTType(0, 0, columns - 1, rows - 1),
                         ),
                         lambda: console.SetConsoleScreenBufferSize(
-                            _PY_COORD_TYPE(columns, rows)
+                            PyCOORDType(columns, rows)
                         ),
                     ]
                     if old_cols < columns:
@@ -296,12 +247,6 @@ if sys.platform == "win32":
                     for setter in setters:
                         ignore_error(setter)
                 print("resized")
-
-else:
-
-    def main() -> None:
-        """Not implemented on non-Windows platforms."""
-        raise NotImplementedError(sys.platform)
 
 
 if __name__ == "__main__":

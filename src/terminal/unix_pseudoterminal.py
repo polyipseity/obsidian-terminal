@@ -6,7 +6,6 @@ separate FD to update terminal window size.
 """
 
 import sys
-from collections.abc import Callable
 from os import (
     execvp,
     read,
@@ -17,23 +16,33 @@ from os import (
 from selectors import EVENT_READ, DefaultSelector
 from struct import pack
 from sys import exit, stdin, stdout
-from typing import cast
 
 __all__ = ("main",)
 
-if sys.platform != "win32":
-    import pty
-    from fcntl import ioctl
-    from termios import TIOCSWINSZ
+_CHUNK_SIZE = 1024
+_STDIN = stdin.fileno()
+_STDOUT = stdout.fileno()
+_CMDIO = 3
 
-    _FORK = cast(
-        Callable[[], tuple[int, int]],
-        pty.fork,  # type: ignore
-    )
-    _CHUNK_SIZE = 1024
-    _STDIN = stdin.fileno()
-    _STDOUT = stdout.fileno()
-    _CMDIO = 3
+
+def write_all(fd: int, data: bytes):
+    """Write all bytes to `fd`, handling partial writes.
+
+    Repeatedly call `write` until all data is written.
+    """
+    while data:
+        data = data[write(fd, data) :]
+
+
+def main() -> None:
+    """Not available on Windows — resize proxy is POSIX-only here."""
+    raise NotImplementedError(sys.platform)
+
+
+if sys.platform != "win32":
+    from fcntl import ioctl
+    from pty import fork
+    from termios import TIOCSWINSZ
 
     def main() -> None:
         """Fork and proxy a child process on a pseudoterminal.
@@ -41,17 +50,9 @@ if sys.platform != "win32":
         The function forks; the child execs the requested program while the
         parent proxies IO between the controlling terminal and the pty.
         """
-        pid, pty_fd = _FORK()
+        pid, pty_fd = fork()
         if pid == 0:
             execvp(sys.argv[1], sys.argv[1:])
-
-        def write_all(fd: int, data: bytes):
-            """Write all bytes to `fd`, handling partial writes.
-
-            Repeatedly call `write` until all data is written.
-            """
-            while data:
-                data = data[write(fd, data) :]
 
         with DefaultSelector() as selector:
             running = True
@@ -106,12 +107,6 @@ if sys.platform != "win32":
                     key.data()
 
         exit(waitstatus_to_exitcode(waitpid(pid, 0)[1]))
-
-else:
-
-    def main() -> None:
-        """Not available on Windows — resize proxy is POSIX-only here."""
-        raise NotImplementedError(sys.platform)
 
 
 if __name__ == "__main__":
