@@ -47,11 +47,19 @@ jobs:
           node-version: "*"
           cache: "pnpm"
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          version-file: "pyproject.toml"
+
+      - name: Install project
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          uv sync --locked --all-extras --dev
 
       - name: Build project
-        run: pnpm build
+        run: pnpm run build
 
       - name: Pack plugin for release
         run: |
