@@ -46,3 +46,10 @@ updates:
       uv:
         patterns:
           - "*"
+    ignore:
+      # Requires manual review and testing to update
+      - dependency-name: "psutil"
+        versions: [">5.9.5"]
+      # Requires manual review and testing to update
+      - dependency-name: "pywinctl"
+        versions: [">0.0.50"]

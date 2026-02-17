@@ -9,7 +9,7 @@ requires-python = ">=3.11.0"
 description = "Obsidian Terminal"
 license = {file = "LICENSE.txt"}
 readme = "README.md"
-# Update `README.md`, `magic.ts`, and `pyproject.toml` together.
+# Update `README.md`, `dependabot.yml`, `magic.ts`, and `pyproject.toml` together.
 dependencies = [
   "psutil==5.9.5",
   "pywinctl==0.0.50",
