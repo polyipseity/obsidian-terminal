@@ -5,6 +5,8 @@
     "/^npm\\s+run(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+(?:build|check|commitlint|format|test)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
     "/^pnpm(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*(?:\\s+exec)?(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+(?:commitlint|eslint|pyright|tsc|vitest)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
     "/^pnpm(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+(?:help|run|build|check|commitlint|format|test)(?:[^\\s]*)?(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
+    "/^uv\\s+run\\s+(?:pyright|pytest|ruff)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
+    "/^uv\\s+sync(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s*$/": true,
     "Out-Null": true,
     "Pop-Location": true,
     "Push-Location": true,
@@ -14,5 +16,7 @@
   "files.associations": {
     ".prettierignore": "ignore"
   },
-  "markdown.validate.enabled": true
+  "markdown.validate.enabled": true,
+  "python-envs.defaultEnvManager": "ms-python.python:venv",
+  "python-envs.pythonProjects": []
 }

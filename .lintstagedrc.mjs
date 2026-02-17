@@ -45,4 +45,11 @@ export default {
   [MD_GLOB_KEY]: ["markdownlint-cli2 --fix --no-globs"],
   [ESLINT_GLOB_KEY]: ["eslint --fix", "prettier --write"],
   [PRETTIER_GLOB_KEY]: ["prettier --write"],
+  "**/*.{py,pyi,pyw,pyx}": [
+    // Run pyright and each Python formatter as its own command so lint-staged appends
+    // the staged file list to each invocation (pyright, ruff).
+    "pyright",
+    "uv run --locked ruff check --fix",
+    "uv run --locked ruff format",
+  ],
 };

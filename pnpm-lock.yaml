@@ -168,6 +168,9 @@ importers:
       prettier:
         specifier: ^3.2.5
         version: 3.8.1
+      pyright:
+        specifier: ^1.1.408
+        version: 1.1.408
       tslib:
         specifier: ^2.8.1
         version: 2.8.1
@@ -2343,6 +2346,11 @@ packages:
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
+
+  pyright@1.1.408:
+    resolution: {integrity: sha512-N61pxaLLCsPcUuPPHMNIrGoZgGBgrbjBX5UqkaT5UV8NVZdL7ExsO6N3ectv1DzAUsLOzdlyqoYtX76u8eF4YA==}
+    engines: {node: '>=14.0.0'}
+    hasBin: true
 
   quansync@0.2.10:
     resolution: {integrity: sha512-t41VRkMYbkHyCYmOvx/6URnN80H7k4X0lLdBMGsz+maAwrJQYB1djpV6vHrQIBE0WBSGqhtEHrK9U3DWWH8v7A==}
@@ -5177,6 +5185,10 @@ snapshots:
   punycode.js@2.3.1: {}
 
   punycode@2.3.1: {}
+
+  pyright@1.1.408:
+    optionalDependencies:
+      fsevents: 2.3.3
 
   quansync@0.2.10: {}
 

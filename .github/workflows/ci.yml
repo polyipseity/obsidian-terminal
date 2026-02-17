@@ -52,14 +52,22 @@ jobs:
           node-version: "*"
           cache: "pnpm"
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          version-file: "pyproject.toml"
+
       - name: Install project
-        run: pnpm install --frozen-lockfile --ignore-scripts
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          uv sync --locked --all-extras --dev
 
       - name: Run tests
-        run: pnpm test
+        run: pnpm run test
 
       - name: Build project
-        run: pnpm build
+        run: pnpm run build
 
   build-npm:
     name: "Build & Test (npm)"
@@ -74,8 +82,16 @@ jobs:
           node-version: "*"
           cache: "npm"
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          version-file: "pyproject.toml"
+
       - name: Install project
-        run: npm ci --ignore-scripts
+        run: |
+          npm ci --ignore-scripts
+          uv sync --locked --all-extras --dev
 
       - name: Run tests
         run: npm run test
