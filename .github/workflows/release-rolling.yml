@@ -48,10 +48,10 @@ jobs:
           cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm run install --frozen-lockfile
 
       - name: Build project
-        run: pnpm build
+        run: pnpm run build
 
       - name: Pack plugin for release
         run: |
