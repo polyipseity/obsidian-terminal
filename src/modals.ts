@@ -1277,10 +1277,8 @@ export namespace ProfileListModal {
   export type PredefinedOptions = {
     readonly [K in "callback"]: InitialOptions[K];
   };
-  export interface Options extends Omit<
-    InitialOptions,
-    keyof PredefinedOptions
-  > {
+  export interface Options
+    extends Omit<InitialOptions, keyof PredefinedOptions> {
     readonly callback?: (
       data: DeepWritable<Settings.Profile.Entry>[],
     ) => unknown;
