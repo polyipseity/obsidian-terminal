@@ -30,3 +30,7 @@ updates:
       npm:
         patterns:
           - "*"
+    ignore:
+      # Ignore updates to obsidian beyond 1.4.11
+      - dependency-name: "obsidian"
+        versions: [">1.4.11"]
