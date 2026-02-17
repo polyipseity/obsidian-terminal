@@ -30,6 +30,10 @@ updates:
       npm:
         patterns:
           - "*"
+    ignore:
+      # Ignore updates to obsidian beyond 1.4.11
+      - dependency-name: "obsidian"
+        versions: [">1.4.11"]
 
   # Python (pyproject.toml - dependency-groups / project.optional-dependencies).
   # We manage Python dependencies with `uv` and commit `uv.lock` for reproducible installs.
