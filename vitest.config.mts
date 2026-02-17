@@ -41,5 +41,9 @@ export default defineConfig({
       },
     },
     setupFiles: ["tests/setup.ts"],
+    typecheck: {
+      enabled: true,
+      tsconfig: "tests/tsconfig.test.json",
+    },
   },
 });
