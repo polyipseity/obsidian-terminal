@@ -11,7 +11,11 @@
     "Pop-Location": true,
     "Push-Location": true,
     "Test-Path": true,
-    "git rev-parse": true
+    "git rev-parse": true,
+    "pyright": true,
+    "pytest": true,
+    "ruff": true,
+    "rumdl": true
   },
   "files.associations": {
     ".prettierignore": "ignore"
