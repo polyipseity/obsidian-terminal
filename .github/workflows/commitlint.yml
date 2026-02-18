@@ -1,11 +1,6 @@
 # Commit Message Lint Workflow
 #
 # This workflow lints commit messages on push, pull request, or manual dispatch.
-#
-# Rationale for using `ubuntu-latest` instead of `ubuntu-slim`:
-# - The `wagoid/commitlint-github-action` uses a Docker action image for linting.
-# - The `ubuntu-slim` runner does not include Docker, so it cannot pull and run Docker-based actions.
-# - Therefore, `ubuntu-latest` is required to ensure Docker is available and the action works correctly.
 
 name: Commit message lint
 
@@ -34,7 +29,7 @@ permissions:
 
 jobs:
   commitlint:
-    runs-on: ubuntu-latest # See rationale above
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
