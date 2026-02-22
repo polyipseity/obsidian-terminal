@@ -76,7 +76,7 @@ export interface Settings extends PluginContext.Settings {
   readonly addToCommand: boolean;
   readonly addToContextMenu: boolean;
   readonly profiles: Settings.Profiles;
-	readonly ribbonProfile: string;
+  readonly ribbonProfile: string;
 
   readonly newInstanceBehavior: Settings.NewInstanceBehavior;
   readonly createInstanceNearExistingOnes: boolean;
@@ -131,7 +131,7 @@ export namespace Settings {
         ] satisfies readonly (keyof typeof PROFILE_PRESETS)[]
       ).map((key) => [key, PROFILE_PRESETS[key]]),
     ),
-		ribbonProfile: "",
+    ribbonProfile: "",
   });
 
   export const DEFAULTABLE_LANGUAGES = deepFreeze([
@@ -1175,12 +1175,7 @@ export namespace Settings {
         }
         return cloneAsWritable(defaults2);
       })(),
-			ribbonProfile: fixTyped(
-				DEFAULT,
-				unc,
-				"ribbonProfile",
-				["string"],
-			),
+      ribbonProfile: fixTyped(DEFAULT, unc, "ribbonProfile", ["string"]),
     });
   }
 }

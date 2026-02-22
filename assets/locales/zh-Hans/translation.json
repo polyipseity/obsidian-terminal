@@ -5,7 +5,7 @@
     "find-in-terminal": "于$t(generic.terminal)$t(generic.find)",
     "focus-on-last-terminal": "$t(generic.focus)于上一个$t(generic.terminal)",
     "open-developer-console": "$t(generic.open)$t(generic.profile-types.developerConsole)",
-		"open-terminal-ribbon-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.ribbon-profile)",
+    "open-terminal-ribbon-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.ribbon-profile)",
     "open-documentation-changelog": "$t(generic.open)$t(generic.documentations.changelog)",
     "open-documentation-donate": "$t(generic.open)$t(generic.documentations.donate)",
     "open-documentation-readme": "$t(generic.open)$t(generic.documentations.readme)",
@@ -306,8 +306,8 @@
     "profiles": "$t(generic.profile)",
     "profiles-description": "$t(generic.list-description)",
     "profiles-edit": "$t(generic.edit)",
-		"ribbon-profile": "Ribbon profile",
-		"ribbon-profile-description": "Profile to open when clicking the ribbon icon. Leave empty to show profile selector.",
-		"ribbon-profile-select": "(Show profile selector)"
+    "ribbon-profile": "Ribbon profile",
+    "ribbon-profile-description": "Profile to open when clicking the ribbon icon. Leave empty to show profile selector.",
+    "ribbon-profile-select": "(Show profile selector)"
   }
 }

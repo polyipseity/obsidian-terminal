@@ -138,25 +138,25 @@ export function loadTerminal(context: TerminalPlugin): void {
         return true;
       };
 
-	const openRibbonProfile = (): void => {
-		const { ribbonProfile, profiles } = settings.value
-		if (ribbonProfile && profiles[ribbonProfile]) {
-			const profile = profiles[ribbonProfile]
-			if (Settings.Profile.isCompatible(profile, Platform.CURRENT)) {
-				spawnTerminal(context, profile, { cwd: adapter?.getBasePath() })
-				return
-			}
-		}
-		new SelectProfileModal(context, adapter?.getBasePath()).open()
-	}
+  const openRibbonProfile = (): void => {
+    const { ribbonProfile, profiles } = settings.value;
+    if (ribbonProfile && profiles[ribbonProfile]) {
+      const profile = profiles[ribbonProfile];
+      if (Settings.Profile.isCompatible(profile, Platform.CURRENT)) {
+        spawnTerminal(context, profile, { cwd: adapter?.getBasePath() });
+        return;
+      }
+    }
+    new SelectProfileModal(context, adapter?.getBasePath()).open();
+  };
 
-	addRibbonIcon(
-		context,
-		i18n.t("asset:ribbons.open-terminal-id"),
-		i18n.t("asset:ribbons.open-terminal-icon"),
-		() => i18n.t("ribbons.open-terminal"),
-		openRibbonProfile,
-	)
+  addRibbonIcon(
+    context,
+    i18n.t("asset:ribbons.open-terminal-id"),
+    i18n.t("asset:ribbons.open-terminal-icon"),
+    () => i18n.t("ribbons.open-terminal"),
+    openRibbonProfile,
+  );
   context.registerEvent(
     workspace.on("file-menu", (menu, file) => {
       if (!settings.value.addToContextMenu) {
@@ -214,17 +214,19 @@ export function loadTerminal(context: TerminalPlugin): void {
     icon: i18n.t("asset:commands.open-developer-console-icon"),
     id: "open-terminal.developerConsole",
   });
-	addCommand(context, () => i18n.t("commands.open-terminal-ribbon-profile"), {
-		checkCallback(checking) {
-			if (!settings.value.addToCommand) { return false }
-			if (!checking) {
-				openRibbonProfile()
-			}
-			return true
-		},
-		icon: i18n.t("asset:commands.open-terminal-ribbon-profile-icon"),
-		id: "open-terminal.ribbonProfile",
-	})
+  addCommand(context, () => i18n.t("commands.open-terminal-ribbon-profile"), {
+    checkCallback(checking) {
+      if (!settings.value.addToCommand) {
+        return false;
+      }
+      if (!checking) {
+        openRibbonProfile();
+      }
+      return true;
+    },
+    icon: i18n.t("asset:commands.open-terminal-ribbon-profile-icon"),
+    id: "open-terminal.ribbonProfile",
+  });
   for (const type of PROFILE_TYPES) {
     for (const cwd of CWD_TYPES) {
       if (

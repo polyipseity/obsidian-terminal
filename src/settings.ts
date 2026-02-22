@@ -1,6 +1,6 @@
 import {
   AdvancedSettingTab,
-	Platform,
+  Platform,
   cloneAsWritable,
   closeSetting,
   createChildElement,
@@ -193,40 +193,56 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
           );
       })
 
-			.newSetting(containerEl, setting => {
-				const profileEntries = Object.entries(settings.value.profiles)
-					.filter(([, profile]) =>
-						Settings.Profile.isCompatible(profile, Platform.CURRENT))
-				setting
-					.setName(i18n.t("settings.ribbon-profile"))
-					.setDesc(i18n.t("settings.ribbon-profile-description"))
-					.addDropdown(linkSetting(
-						(): string => settings.value.ribbonProfile,
-						async value => settings.mutate(settingsM => {
-							settingsM.ribbonProfile = value
-						}),
-						() => { this.postMutate() },
-						{
-							pre: dropdown => {
-								dropdown.addOption("", i18n.t("settings.ribbon-profile-select"))
-								dropdown.addOptions(Object.fromEntries(
-									profileEntries.map(([id, profile]) => [
-										id,
-										Settings.Profile.name(profile) || id,
-									]),
-								))
-							},
-						},
-					))
-					.addExtraButton(resetButton(
-						i18n.t("asset:settings.ribbon-profile-icon"),
-						i18n.t("settings.reset"),
-						async () => settings.mutate(settingsM => {
-							settingsM.ribbonProfile = Settings.DEFAULT.ribbonProfile
-						}),
-						() => { this.postMutate() },
-					))
-			});
+      .newSetting(containerEl, (setting) => {
+        const profileEntries = Object.entries(settings.value.profiles).filter(
+          ([, profile]) =>
+            Settings.Profile.isCompatible(profile, Platform.CURRENT),
+        );
+        setting
+          .setName(i18n.t("settings.ribbon-profile"))
+          .setDesc(i18n.t("settings.ribbon-profile-description"))
+          .addDropdown(
+            linkSetting(
+              (): string => settings.value.ribbonProfile,
+              async (value) =>
+                settings.mutate((settingsM) => {
+                  settingsM.ribbonProfile = value;
+                }),
+              () => {
+                this.postMutate();
+              },
+              {
+                pre: (dropdown) => {
+                  dropdown.addOption(
+                    "",
+                    i18n.t("settings.ribbon-profile-select"),
+                  );
+                  dropdown.addOptions(
+                    Object.fromEntries(
+                      profileEntries.map(([id, profile]) => [
+                        id,
+                        Settings.Profile.name(profile) || id,
+                      ]),
+                    ),
+                  );
+                },
+              },
+            ),
+          )
+          .addExtraButton(
+            resetButton(
+              i18n.t("asset:settings.ribbon-profile-icon"),
+              i18n.t("settings.reset"),
+              async () =>
+                settings.mutate((settingsM) => {
+                  settingsM.ribbonProfile = Settings.DEFAULT.ribbonProfile;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          );
+      });
     this.newSectionWidget(() => i18n.t("settings.instancing"));
     ui.newSetting(containerEl, (setting) => {
       setting
