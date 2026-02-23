@@ -5,7 +5,7 @@
     "find-in-terminal": "$t(generic.terminal)에서 $t(generic.find)",
     "focus-on-last-terminal": "마지막 $t(generic.terminal)에 $t(generic.focus)",
     "open-developer-console": "$t(generic.profile-types.developerConsole) $t(generic.open)",
-    "open-terminal-ribbon-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.ribbon-profile)",
+    "open-terminal-default-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.default-profile)",
     "open-documentation-changelog": "$t(generic.documentations.changelog) $t(generic.open)",
     "open-documentation-donate": "$t(generic.documentations.donate) $t(generic.open)",
     "open-documentation-readme": "$t(generic.documentations.readme) $t(generic.open)",

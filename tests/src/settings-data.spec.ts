@@ -59,4 +59,41 @@ describe("src/settings-data.ts", () => {
       }),
     );
   });
+
+  it("Settings.fix validates defaultProfile against available profiles", () => {
+    const baseProfiles = {
+      foo: Settings.Profile.DEFAULTS.external,
+      bar: Settings.Profile.DEFAULTS.integrated,
+    };
+    const good = Settings.fix({
+      profiles: baseProfiles,
+      defaultProfile: "foo",
+    });
+    expect(good.value.defaultProfile).toBe("foo");
+
+    const bad = Settings.fix({
+      profiles: baseProfiles,
+      defaultProfile: "doesnotexist",
+    });
+    expect(bad.value.defaultProfile).toBe(null);
+
+    // null should be preserved and empty-string coerced to null
+    const nullVal = Settings.fix({
+      profiles: baseProfiles,
+      defaultProfile: null,
+    });
+    expect(nullVal.value.defaultProfile).toBe(null);
+    const emptyString = Settings.fix({
+      profiles: baseProfiles,
+      defaultProfile: "",
+    });
+    expect(emptyString.value.defaultProfile).toBe(null); // empty string is not treated specially
+    // even when the input is wrong type, it should coerce to null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const alsoBad = Settings.fix({
+      profiles: baseProfiles,
+      defaultProfile: 123 as any,
+    });
+    expect(alsoBad.value.defaultProfile).toBe(null);
+  });
 });

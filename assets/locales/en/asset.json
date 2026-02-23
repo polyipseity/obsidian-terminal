@@ -10,7 +10,7 @@
     "open-documentation-readme-icon": "$t(asset:generic.documentations.readme-icon)",
     "open-terminal--icon": "command",
     "open-terminal-current-icon": "$t(asset:generic.terminal-file-icon)",
-    "open-terminal-ribbon-profile-icon": "$t(asset:generic.terminal-alt-icon)",
+    "open-terminal-default-icon": "$t(asset:generic.terminal-alt-icon)",
     "open-terminal-root-icon": "$t(asset:generic.terminal-icon)",
     "toggle-focus-on-last-terminal-icon": "$t(asset:generic.actions.focus-icon)",
     "unfocus-terminal-icon": "$t(asset:generic.actions.unfocus-icon)"
@@ -23,12 +23,12 @@
         "arguments-icon": "$t(asset:components.profile.generic.arguments-icon)",
         "executable-icon": "$t(asset:components.profile.generic.executable-icon)"
       },
+      "follow-theme": "$t(generic.follow, capitalize) $t(generic.theme)",
       "follow-theme-icon": "palette",
       "generic": {
         "arguments-icon": "form-input",
         "executable-icon": "$t(asset:generic.terminal-file-icon)"
       },
-      "follow-theme": "$t(generic.follow, capitalize) $t(generic.theme)",
       "integrated": {
         "Python-executable-check-icon": "file-check",
         "Python-executable-checking-icon": "$t(asset:generic.load-icon)",
@@ -123,6 +123,7 @@
     "add-to-command-icon": "$t(asset:generic.terminal-icon)",
     "add-to-context-menu-icon": "menu",
     "create-instance-near-existing-ones-icon": "plus",
+    "default-profile-icon": "$t(asset:generic.terminal-alt-icon)",
     "documentations": {
       "changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
       "donate-icon": "$t(asset:generic.documentations.donate-icon)",
@@ -137,7 +138,6 @@
     "pin-new-instance-icon": "pin",
     "preferred-renderer-icon": "brush",
     "profiles-edit-icon": "$t(asset:generic.edit-list-icon)",
-    "profiles-icon": "$t(asset:generic.profile-icon)",
-    "ribbon-profile-icon": "$t(asset:generic.terminal-alt-icon)"
+    "profiles-icon": "$t(asset:generic.profile-icon)"
   }
 }

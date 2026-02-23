@@ -192,50 +192,49 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
             ),
           );
       })
-
       .newSetting(containerEl, (setting) => {
         const profileEntries = Object.entries(settings.value.profiles).filter(
           ([, profile]) =>
             Settings.Profile.isCompatible(profile, Platform.CURRENT),
         );
         setting
-          .setName(i18n.t("settings.ribbon-profile"))
-          .setDesc(i18n.t("settings.ribbon-profile-description"))
+          .setName(i18n.t("settings.default-profile"))
+          .setDesc(i18n.t("settings.default-profile-description"))
           .addDropdown(
             linkSetting(
-              (): string => settings.value.ribbonProfile,
+              (): string => settings.value.defaultProfile ?? "",
               async (value) =>
                 settings.mutate((settingsM) => {
-                  settingsM.ribbonProfile = value;
+                  // Unfortunately we have to use the empty string as a sentinel value for "no default profile" because the dropdown component doesn't allow null/undefined values. So we have to coerce it back to null here.
+                  settingsM.defaultProfile =
+                    value === "" ? null : (value as Settings.DefaultProfile);
                 }),
               () => {
                 this.postMutate();
               },
               {
                 pre: (dropdown) => {
-                  dropdown.addOption(
-                    "",
-                    i18n.t("settings.ribbon-profile-select"),
-                  );
-                  dropdown.addOptions(
-                    Object.fromEntries(
-                      profileEntries.map(([id, profile]) => [
-                        id,
-                        Settings.Profile.name(profile) || id,
-                      ]),
-                    ),
-                  );
+                  dropdown
+                    .addOption("", i18n.t("components.dropdown.placeholder"))
+                    .addOptions(
+                      Object.fromEntries(
+                        profileEntries.map(([id, profile]) => [
+                          id,
+                          Settings.Profile.name(profile) || id,
+                        ]),
+                      ),
+                    );
                 },
               },
             ),
           )
           .addExtraButton(
             resetButton(
-              i18n.t("asset:settings.ribbon-profile-icon"),
+              i18n.t("asset:settings.default-profile-icon"),
               i18n.t("settings.reset"),
               async () =>
                 settings.mutate((settingsM) => {
-                  settingsM.ribbonProfile = Settings.DEFAULT.ribbonProfile;
+                  settingsM.defaultProfile = Settings.DEFAULT.defaultProfile;
                 }),
               () => {
                 this.postMutate();

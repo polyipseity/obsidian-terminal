@@ -138,16 +138,21 @@ export function loadTerminal(context: TerminalPlugin): void {
         return true;
       };
 
-  const openRibbonProfile = (): void => {
-    const { ribbonProfile, profiles } = settings.value;
-    if (ribbonProfile && profiles[ribbonProfile]) {
-      const profile = profiles[ribbonProfile];
+  const openDefaultProfile = (checking?: boolean): boolean => {
+    const { defaultProfile, profiles } = settings.value;
+    if (defaultProfile && profiles[defaultProfile]) {
+      const profile = profiles[defaultProfile];
       if (Settings.Profile.isCompatible(profile, Platform.CURRENT)) {
-        spawnTerminal(context, profile, { cwd: adapter?.getBasePath() });
-        return;
+        if (!checking) {
+          spawnTerminal(context, profile, { cwd: adapter?.getBasePath() });
+        }
+        return true;
       }
     }
-    new SelectProfileModal(context, adapter?.getBasePath()).open();
+    if (!checking) {
+      new SelectProfileModal(context, adapter?.getBasePath()).open();
+    }
+    return true;
   };
 
   addRibbonIcon(
@@ -155,7 +160,7 @@ export function loadTerminal(context: TerminalPlugin): void {
     i18n.t("asset:ribbons.open-terminal-id"),
     i18n.t("asset:ribbons.open-terminal-icon"),
     () => i18n.t("ribbons.open-terminal"),
-    openRibbonProfile,
+    () => openDefaultProfile(),
   );
   context.registerEvent(
     workspace.on("file-menu", (menu, file) => {
@@ -197,7 +202,20 @@ export function loadTerminal(context: TerminalPlugin): void {
       }
     }),
   );
-  // Always register command for interop with other plugins
+
+  /* Always register command for interop with other plugins */
+
+  addCommand(context, () => i18n.t("commands.open-terminal-default-profile"), {
+    checkCallback(checking) {
+      if (!settings.value.addToCommand) {
+        return false;
+      }
+      return openDefaultProfile(checking);
+    },
+    icon: i18n.t("asset:commands.open-terminal-default-icon"),
+    id: "open-terminal.default",
+  });
+
   addCommand(context, () => i18n.t("commands.open-developer-console"), {
     checkCallback(checking) {
       if (!settings.value.addToCommand) {
@@ -214,19 +232,7 @@ export function loadTerminal(context: TerminalPlugin): void {
     icon: i18n.t("asset:commands.open-developer-console-icon"),
     id: "open-terminal.developerConsole",
   });
-  addCommand(context, () => i18n.t("commands.open-terminal-ribbon-profile"), {
-    checkCallback(checking) {
-      if (!settings.value.addToCommand) {
-        return false;
-      }
-      if (!checking) {
-        openRibbonProfile();
-      }
-      return true;
-    },
-    icon: i18n.t("asset:commands.open-terminal-ribbon-profile-icon"),
-    id: "open-terminal.ribbonProfile",
-  });
+
   for (const type of PROFILE_TYPES) {
     for (const cwd of CWD_TYPES) {
       if (

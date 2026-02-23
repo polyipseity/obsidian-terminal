@@ -49,7 +49,7 @@ import {
   RendererAddon,
   RightClickActionAddon,
 } from "./terminal/emulator-addons.js";
-import { isUndefined, omitBy } from "lodash-es";
+import { isNil, isUndefined, omitBy } from "lodash-es";
 import { DEFAULT_SUCCESS_EXIT_CODES } from "./magic.js";
 import { PluginLocales } from "../assets/locales.js";
 import { Pseudoterminal } from "./terminal/pseudoterminal.js";
@@ -76,7 +76,7 @@ export interface Settings extends PluginContext.Settings {
   readonly addToCommand: boolean;
   readonly addToContextMenu: boolean;
   readonly profiles: Settings.Profiles;
-  readonly ribbonProfile: string;
+  readonly defaultProfile: Settings.DefaultProfile;
 
   readonly newInstanceBehavior: Settings.NewInstanceBehavior;
   readonly createInstanceNearExistingOnes: boolean;
@@ -91,6 +91,8 @@ export interface Settings extends PluginContext.Settings {
   readonly preferredRenderer: Settings.PreferredRendererOption;
 }
 export namespace Settings {
+  export type DefaultProfile = keyof Profiles | null;
+
   export const optionals = deepFreeze([]) satisfies readonly (keyof Settings)[];
   export type Optionals = (typeof optionals)[number];
   export type Persistent = Omit<Settings, Optionals>;
@@ -131,7 +133,7 @@ export namespace Settings {
         ] satisfies readonly (keyof typeof PROFILE_PRESETS)[]
       ).map((key) => [key, PROFILE_PRESETS[key]]),
     ),
-    ribbonProfile: "",
+    defaultProfile: null,
   });
 
   export const DEFAULTABLE_LANGUAGES = deepFreeze([
@@ -1118,7 +1120,24 @@ export namespace Settings {
   }
   export function fix(self0: unknown): Fixed<Settings> {
     const unc = launderUnchecked<Settings>(self0);
-    return markFixed(self0, {
+
+    // prepare profiles ahead of the main fixed object so defaultProfile
+    // validation can reference the fixed set.
+    const fixedProfiles: DeepWritable<Profiles> = (() => {
+      const defaults2 = DEFAULT.profiles,
+        { profiles } = unc;
+      if (typeof profiles === "object" && profiles) {
+        return Object.fromEntries(
+          Object.entries(profiles).map(([id, profile]) => [
+            id,
+            Profile.fix(profile).value,
+          ]),
+        );
+      }
+      return cloneAsWritable(defaults2);
+    })();
+
+    const fixed = {
       ...PluginContext.Settings.fix(self0).value,
       addToCommand: fixTyped(DEFAULT, unc, "addToCommand", ["boolean"]),
       addToContextMenu: fixTyped(DEFAULT, unc, "addToContextMenu", ["boolean"]),
@@ -1162,20 +1181,20 @@ export namespace Settings {
         "preferredRenderer",
         PREFERRED_RENDERER_OPTIONS,
       ),
-      profiles: ((): DeepWritable<Profiles> => {
-        const defaults2 = DEFAULT.profiles,
-          { profiles } = unc;
-        if (typeof profiles === "object" && profiles) {
-          return Object.fromEntries(
-            Object.entries(profiles).map(([id, profile]) => [
-              id,
-              Profile.fix(profile).value,
-            ]),
-          );
+      profiles: fixedProfiles,
+      // defaultProfile will be validated against fixedProfiles
+      defaultProfile: ((): Settings.DefaultProfile => {
+        const raw = unc.defaultProfile;
+        if (isNil(raw)) {
+          return null;
         }
-        return cloneAsWritable(defaults2);
+        const rp = String(raw);
+        if (rp && fixedProfiles[rp] !== undefined) {
+          return rp as Settings.DefaultProfile;
+        }
+        return null;
       })(),
-      ribbonProfile: fixTyped(DEFAULT, unc, "ribbonProfile", ["string"]),
-    });
+    };
+    return markFixed(self0, fixed);
   }
 }

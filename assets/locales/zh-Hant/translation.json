@@ -5,7 +5,7 @@
     "find-in-terminal": "於$t(generic.terminal)$t(generic.find)",
     "focus-on-last-terminal": "$t(generic.focus)於上一個$t(generic.terminal)",
     "open-developer-console": "$t(generic.open)$t(generic.profile-types.developerConsole)",
-    "open-terminal-ribbon-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.ribbon-profile)",
+    "open-terminal-default-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.default-profile)",
     "open-documentation-changelog": "$t(generic.open)$t(generic.documentations.changelog)",
     "open-documentation-donate": "$t(generic.open)$t(generic.documentations.donate)",
     "open-documentation-readme": "$t(generic.open)$t(generic.documentations.readme)",

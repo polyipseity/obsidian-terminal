@@ -62,7 +62,7 @@ This file is automatically opened on first install. You can reopen it in setting
 - To start a new external or integrated terminal
   - Ribbon
       1. Click on the `Open terminal` ribbon.
-      2. Choose the desired profile.
+      2. Opens the default terminal if you have set up one. Otherwise, choose the desired profile.
   - Context menu
       1. Right-click on files, folders, or tab headers.
       2. Choose the desired action \(and profile\).
