@@ -322,8 +322,7 @@
     "profiles": "$t(generic.profile_other, capitalize)",
     "profiles-description": "$t(generic.list-description, capitalize)",
     "profiles-edit": "$t(generic.edit, capitalize)",
-    "ribbon-profile": "Ribbon profile",
-    "ribbon-profile-description": "Profile to open when clicking the ribbon icon. Leave empty to show profile selector.",
-    "ribbon-profile-select": "(Show profile selector)"
+    "default-profile": "Default profile",
+    "default-profile-description": "Profile to open when clicking the ribbon icon. Leave empty to show profile selector."
   }
 }

@@ -306,8 +306,7 @@
     "profiles": "$t(generic.profile)",
     "profiles-description": "$t(generic.list-description)",
     "profiles-edit": "$t(generic.edit)",
-    "ribbon-profile": "Ribbon profile",
-    "ribbon-profile-description": "Profile to open when clicking the ribbon icon. Leave empty to show profile selector.",
-    "ribbon-profile-select": "(Show profile selector)"
+    "default-profile": "Default profile",
+    "default-profile-description": "Profile to open when clicking the ribbon icon. Leave empty to show profile selector."
   }
 }
