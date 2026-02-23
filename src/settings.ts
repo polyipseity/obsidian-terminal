@@ -193,10 +193,6 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
           );
       })
       .newSetting(containerEl, (setting) => {
-        const profileEntries = Object.entries(settings.value.profiles).filter(
-          ([, profile]) =>
-            Settings.Profile.isCompatible(profile, Platform.CURRENT),
-        );
         setting
           .setName(i18n.t("settings.default-profile"))
           .setDesc(i18n.t("settings.default-profile-description"))
@@ -218,23 +214,25 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                     .addOption("", i18n.t("components.dropdown.placeholder"))
                     .addOptions(
                       Object.fromEntries(
-                        profileEntries.map(([id, profile]) => [
-                          id,
-                          i18n.t(
-                            `settings.default-profile-name-${
-                              Settings.Profile.isCompatible(
-                                profile,
-                                Platform.CURRENT,
-                              )
-                                ? ""
-                                : "incompatible"
-                            }`,
-                            {
-                              info: Settings.Profile.info([id, profile]),
-                              interpolation: { escapeValue: false },
-                            },
-                          ),
-                        ]),
+                        Object.entries(settings.value.profiles).map(
+                          ([id, profile]) => [
+                            id,
+                            i18n.t(
+                              `settings.default-profile-name-${
+                                Settings.Profile.isCompatible(
+                                  profile,
+                                  Platform.CURRENT,
+                                )
+                                  ? ""
+                                  : "incompatible"
+                              }`,
+                              {
+                                info: Settings.Profile.info([id, profile]),
+                                interpolation: { escapeValue: false },
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     );
                 },
