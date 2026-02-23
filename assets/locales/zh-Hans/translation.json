@@ -5,7 +5,7 @@
     "find-in-terminal": "于$t(generic.terminal)$t(generic.find)",
     "focus-on-last-terminal": "$t(generic.focus)于上一个$t(generic.terminal)",
     "open-developer-console": "$t(generic.open)$t(generic.profile-types.developerConsole)",
-    "open-terminal-default-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.default-profile)",
+    "open-terminal-default-profile": "$t(generic.open)$t(generic.terminal)：$t(settings.default-profile)",
     "open-documentation-changelog": "$t(generic.open)$t(generic.documentations.changelog)",
     "open-documentation-donate": "$t(generic.open)$t(generic.documentations.donate)",
     "open-documentation-readme": "$t(generic.open)$t(generic.documentations.readme)",
@@ -306,9 +306,9 @@
     "profiles": "$t(generic.profile)",
     "profiles-description": "$t(generic.list-description)",
     "profiles-edit": "$t(generic.edit)",
-    "default-profile": "Default profile",
-    "default-profile-description": "Profile to open when clicking the ribbon icon. Leave empty to show profile selector.",
+    "default-profile": "默认$t(generic.profile)",
+    "default-profile-description": "点击侧边栏图标时要打开的$t(generic.profile)。留空以显示$t(generic.profile)选择器。",
     "default-profile-name-": "$t(profile-name-formats.short)",
-    "default-profile-name-incompatible": "($t(generic.incompatible, capitalize)) $t(settings.default-profile-name-)"
+    "default-profile-name-incompatible": "（$t(generic.incompatible)）$t(settings.default-profile-name-)"
   }
 }

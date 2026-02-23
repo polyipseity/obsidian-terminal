@@ -5,7 +5,7 @@
     "find-in-terminal": "於$t(generic.terminal)$t(generic.find)",
     "focus-on-last-terminal": "$t(generic.focus)於上一個$t(generic.terminal)",
     "open-developer-console": "$t(generic.open)$t(generic.profile-types.developerConsole)",
-    "open-terminal-default-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.default-profile)",
+    "open-terminal-default-profile": "$t(generic.open)$t(generic.terminal)：$t(settings.default-profile)",
     "open-documentation-changelog": "$t(generic.open)$t(generic.documentations.changelog)",
     "open-documentation-donate": "$t(generic.open)$t(generic.documentations.donate)",
     "open-documentation-readme": "$t(generic.open)$t(generic.documentations.readme)",
@@ -239,7 +239,7 @@
     "empty": "$t(generic.profile-types.)",
     "gitBashIntegrated": "Git Bash：$t(generic.profile-types.integrated)",
     "gnomeTerminalExternal": "GNOME$t(generic.terminal)：$t(generic.profile-types.external)",
-    "iTerm2External": "iTerm2：$t(generic.profile-types.external, capitalize)",
+    "iTerm2External": "iTerm2：$t(generic.profile-types.external)",
     "konsoleExternal": "Konsole：$t(generic.profile-types.external)",
     "linuxExternalDefault": "$t(generic.platforms.linux)$t(generic.default)：$t(generic.profile-types.external)",
     "linuxIntegratedDefault": "$t(generic.platforms.linux)$t(generic.default)：$t(generic.profile-types.integrated)",
@@ -306,9 +306,9 @@
     "profiles": "$t(generic.profile)",
     "profiles-description": "$t(generic.list-description)",
     "profiles-edit": "$t(generic.edit)",
-    "default-profile": "Default profile",
-    "default-profile-description": "Profile to open when clicking the ribbon icon. Leave empty to show profile selector.",
+    "default-profile": "預設$t(generic.profile)",
+    "default-profile-description": "點擊側邊欄圖示時要打開的$t(generic.profile)。留空以顯示$t(generic.profile)選擇器。",
     "default-profile-name-": "$t(profile-name-formats.short)",
-    "default-profile-name-incompatible": "($t(generic.incompatible, capitalize)) $t(settings.default-profile-name-)"
+    "default-profile-name-incompatible": "（$t(generic.incompatible)）$t(settings.default-profile-name-)"
   }
 }
