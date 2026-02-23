@@ -89,9 +89,9 @@ describe("src/settings-data.ts", () => {
     });
     expect(emptyString.value.defaultProfile).toBe(null); // empty string is not treated specially
     // even when the input is wrong type, it should coerce to null
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const alsoBad = Settings.fix({
       profiles: baseProfiles,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       defaultProfile: 123 as any,
     });
     expect(alsoBad.value.defaultProfile).toBe(null);
