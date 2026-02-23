@@ -220,7 +220,20 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                       Object.fromEntries(
                         profileEntries.map(([id, profile]) => [
                           id,
-                          Settings.Profile.name(profile) || id,
+                          i18n.t(
+                            `settings.default-profile-name-${
+                              Settings.Profile.isCompatible(
+                                profile,
+                                Platform.CURRENT,
+                              )
+                                ? ""
+                                : "incompatible"
+                            }`,
+                            {
+                              info: Settings.Profile.info([id, profile]),
+                              interpolation: { escapeValue: false },
+                            },
+                          ),
                         ]),
                       ),
                     );

@@ -307,6 +307,8 @@
     "profiles-description": "$t(generic.list-description)",
     "profiles-edit": "$t(generic.edit)",
     "default-profile": "Default profile",
-    "default-profile-description": "Profile to open when clicking the ribbon icon. Leave empty to show profile selector."
+    "default-profile-description": "Profile to open when clicking the ribbon icon. Leave empty to show profile selector.",
+    "default-profile-name-": "$t(profile-name-formats.short)",
+    "default-profile-name-incompatible": "($t(generic.incompatible, capitalize)) $t(settings.default-profile-name-)"
   }
 }
