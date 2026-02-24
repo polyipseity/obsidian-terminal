@@ -297,8 +297,8 @@ export class TerminalView extends ItemView {
   );
 
   protected static lastFocusTimes = new Map<TerminalView, number>();
+  protected static lastActiveOtherLeaf: WeakRef<WorkspaceLeaf> | null = null;
   protected static readonly focusedScope = new Scope();
-  protected static lastNonTerminalLeaf: WorkspaceLeaf | null = null;
 
   static #namespacedType: string;
   #title0 = "";
@@ -420,8 +420,8 @@ export class TerminalView extends ItemView {
 
   public static load(context: TerminalPlugin): void {
     const {
-      language: { value: i18n },
       app: { workspace },
+      language: { value: i18n },
     } = context;
     this.#namespacedType = this.type.namespaced(context);
     context.registerView(
@@ -430,11 +430,10 @@ export class TerminalView extends ItemView {
     );
 
     // Track the last non-terminal leaf for restoring focus on unfocus
-    const namespacedType = this.#namespacedType;
     context.registerEvent(
       workspace.on("active-leaf-change", (leaf) => {
-        if (leaf && leaf.view.getViewType() !== namespacedType) {
-          this.lastNonTerminalLeaf = leaf;
+        if (leaf && !(leaf.view instanceof TerminalView)) {
+          this.lastActiveOtherLeaf = new WeakRef(leaf);
         }
       }),
     );
@@ -720,20 +719,24 @@ export class TerminalView extends ItemView {
   }
 
   protected unfocus(): void {
-    const { lastNonTerminalLeaf } = TerminalView,
-      {
-        app: { workspace },
-      } = this;
+    const {
+      app: { workspace },
+    } = this;
+
     // Try to restore focus to the last non-terminal leaf
-    if (
-      lastNonTerminalLeaf &&
-      workspace
-        .getLeavesOfType(lastNonTerminalLeaf.view.getViewType())
-        .includes(lastNonTerminalLeaf)
-    ) {
-      workspace.setActiveLeaf(lastNonTerminalLeaf, { focus: true });
-      return;
+    const lastActiveOtherLeaf = TerminalView.lastActiveOtherLeaf?.deref();
+    if (lastActiveOtherLeaf) {
+      if (
+        workspace
+          .getLeavesOfType(lastActiveOtherLeaf.view.getViewType())
+          .includes(lastActiveOtherLeaf)
+      ) {
+        workspace.setActiveLeaf(lastActiveOtherLeaf, { focus: true });
+        return;
+      }
+      TerminalView.lastActiveOtherLeaf = null;
     }
+
     // Fallback: just blur the active element
     const {
       contentEl: {
