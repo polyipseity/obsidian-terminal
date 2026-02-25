@@ -461,6 +461,43 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
           ),
         );
     });
+    ui.newSetting(containerEl, (setting) => {
+      setting
+        .setName("Font Family")
+        .setDesc(
+          "Controls the terminal font family. Defaults to editor font family if left empty.",
+        )
+        .addText(
+          linkSetting(
+            () => settings.value.fontFamily,
+            async (value) =>
+              settings.mutate((settingsM) => {
+                settingsM.fontFamily = value;
+              }),
+            () => {
+              this.postMutate();
+            },
+            {
+              post: (component) => {
+                component.setPlaceholder("monospace");
+              },
+            },
+          ),
+        )
+        .addExtraButton(
+          resetButton(
+            "reset",
+            i18n.t("settings.reset"),
+            async () =>
+              settings.mutate((settingsM) => {
+                settingsM.fontFamily = Settings.DEFAULT.fontFamily;
+              }),
+            () => {
+              this.postMutate();
+            },
+          ),
+        );
+    });
     this.newNoticeTimeoutWidget(Settings.DEFAULT);
     this.newSectionWidget(() => i18n.t("settings.advanced"));
     ui.newSetting(containerEl, (setting) => {

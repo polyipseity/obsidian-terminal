@@ -83,6 +83,8 @@ export interface Settings extends PluginContext.Settings {
   readonly focusOnNewInstance: boolean;
   readonly pinNewInstance: boolean;
 
+  readonly fontFamily: string;
+
   readonly openChangelogOnUpdate: boolean;
   readonly hideStatusBar: Settings.HideStatusBarOption;
 
@@ -113,6 +115,7 @@ export namespace Settings {
     errorNoticeTimeout: NOTICE_NO_TIMEOUT,
     exposeInternalModules: true,
     focusOnNewInstance: true,
+    fontFamily: "",
     hideStatusBar: "focused",
     interceptLogging: true,
     language: "",
@@ -1158,6 +1161,7 @@ export namespace Settings {
       focusOnNewInstance: fixTyped(DEFAULT, unc, "focusOnNewInstance", [
         "boolean",
       ]),
+      fontFamily: fixTyped(DEFAULT, unc, "fontFamily", ["string"]),
       hideStatusBar: fixInSet(
         DEFAULT,
         unc,
