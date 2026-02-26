@@ -299,6 +299,8 @@
     "instancing": "$t(generic.instance_gerund, capitalize)",
     "intercept-logging": "Intercept logging",
     "interface": "Interface",
+    "macOS-option-key-passthrough": "macOS: Option key passthrough",
+    "macOS-option-key-passthrough-description": "Allow Option+key combinations to reach the terminal for typing special characters (e.g., @ on Scandinavian/German keyboards).",
     "new-instance-behavior": "New $t(generic.instance) $t(generic.behavior)",
     "new-instance-behaviors": {
       "newHorizontalSplit": "New horizontal $t(generic.split)",
@@ -313,8 +315,6 @@
     },
     "open-changelog-on-update": "$t(generic.open, capitalize) $t(generic.documentations.changelog) on update",
     "pin-new-instance": "$t(generic.pin, capitalize) new $t(generic.instance)",
-    "mac-option-key-passthrough": "Pass Option key to terminal (macOS)",
-    "mac-option-key-passthrough-description": "Allow Option+key combinations to reach the terminal for typing special characters (e.g., @ on Scandinavian/German keyboards). When enabled, automatically disables macOptionIsMeta for all profiles.",
     "preferred-renderer": "Preferred $t(generic.renderer)",
     "preferred-renderer-options": "$t(generic.renderers.{{type}}, capitalize)",
     "profile-list": {

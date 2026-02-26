@@ -473,6 +473,37 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
       })
       .newSetting(containerEl, (setting) => {
         setting
+          .setName(i18n.t("settings.macOS-option-key-passthrough"))
+          .setDesc(i18n.t("settings.macOS-option-key-passthrough-description"))
+          .addToggle(
+            linkSetting(
+              () => settings.value.macOSOptionKeyPassthrough,
+              async (value) =>
+                settings.mutate((settingsM) => {
+                  settingsM.macOSOptionKeyPassthrough = value;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          )
+          .addExtraButton(
+            resetButton(
+              i18n.t("asset:settings.macOS-option-key-passthrough-icon"),
+              i18n.t("settings.reset"),
+              async () =>
+                settings.mutate((settingsM) => {
+                  settingsM.macOSOptionKeyPassthrough =
+                    Settings.DEFAULT.macOSOptionKeyPassthrough;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          );
+      })
+      .newSetting(containerEl, (setting) => {
+        setting
           .setName(i18n.t("settings.preferred-renderer"))
           .addDropdown(
             linkSetting(
@@ -512,37 +543,6 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                 settings.mutate((settingsM) => {
                   settingsM.preferredRenderer =
                     Settings.DEFAULT.preferredRenderer;
-                }),
-              () => {
-                this.postMutate();
-              },
-            ),
-          );
-      })
-      .newSetting(containerEl, (setting) => {
-        setting
-          .setName(i18n.t("settings.mac-option-key-passthrough"))
-          .setDesc(i18n.t("settings.mac-option-key-passthrough-description"))
-          .addToggle(
-            linkSetting(
-              () => settings.value.macOSOptionKeyPassthrough,
-              async (value) =>
-                settings.mutate((settingsM) => {
-                  settingsM.macOSOptionKeyPassthrough = value;
-                }),
-              () => {
-                this.postMutate();
-              },
-            ),
-          )
-          .addExtraButton(
-            resetButton(
-              i18n.t("asset:settings.mac-option-key-passthrough-icon"),
-              i18n.t("settings.reset"),
-              async () =>
-                settings.mutate((settingsM) => {
-                  settingsM.macOSOptionKeyPassthrough =
-                    Settings.DEFAULT.macOSOptionKeyPassthrough;
                 }),
               () => {
                 this.postMutate();

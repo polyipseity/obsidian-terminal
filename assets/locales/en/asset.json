@@ -131,7 +131,7 @@
     "focus-on-new-instance-icon": "$t(asset:generic.actions.focus-icon)",
     "hide-status-bar-icon": "eye-off",
     "intercept-logging-icon": "scroll-text",
-    "mac-option-key-passthrough-icon": "keyboard",
+    "macOS-option-key-passthrough-icon": "option",
     "new-instance-behavior-icon": "plus",
     "open-changelog-on-update-icon": "$t(asset:generic.documentations.changelog-icon)",
     "pin-new-instance-icon": "pin",
