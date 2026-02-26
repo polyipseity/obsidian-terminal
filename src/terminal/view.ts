@@ -953,13 +953,10 @@ export class TerminalView extends ItemView {
               serial ?? void 0,
               {
                 allowProposedApi: true,
+                macOptionIsMeta: false, // `false` is the default value, but set it explicitly for `MacOSOptionKeyPassthroughAddon` to work just in case.
                 ...(profile.type === "invalid"
                   ? {}
                   : cloneAsWritable(profile.terminalOptions, cloneDeep)),
-                ...(Platform.CURRENT === "darwin" &&
-                settings.value.macOSOptionKeyPassthrough
-                  ? { macOptionIsMeta: false }
-                  : {}),
               },
               {
                 disposer: new DisposerAddon(
