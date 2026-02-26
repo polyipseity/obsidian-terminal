@@ -284,6 +284,8 @@
     "instancing": "$t(generic.instance)",
     "intercept-logging": "拦截记录",
     "interface": "界面",
+    "macOS-option-key-passthrough": "macOS：Option键穿透",
+    "macOS-option-key-passthrough-description": "允许Option+键组合传递到$t(generic.terminal)以输入特殊字符（例如，斯堪的纳维亚/德语键盘上的@）。",
     "new-instance-behavior": "新$t(generic.instance)$t(generic.behavior)",
     "new-instance-behaviors": {
       "newHorizontalSplit": "新水平$t(generic.split)",

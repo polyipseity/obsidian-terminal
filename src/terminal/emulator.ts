@@ -210,7 +210,14 @@ export class XtermTerminalEmulator<A> {
       }
       /* @__PURE__ */ activeSelf(this.terminal.element).console.debug(error);
     }
-    this.terminal.dispose();
+    try {
+      this.terminal.dispose();
+    } catch (error) {
+      // xterm.js can throw during internal addon disposal (e.g., WebGL addon
+      // accessing _isDisposed on undefined internal references). This is an
+      // xterm.js bug - suppress to avoid noisy console errors.
+      /* @__PURE__ */ activeSelf(this.terminal.element).console.debug(error);
+    }
   }
 
   public async resize(mustResizePseudoterminal = true): Promise<void> {

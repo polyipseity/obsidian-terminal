@@ -47,6 +47,7 @@ import {
   DisposerAddon,
   DragAndDropAddon,
   FollowThemeAddon,
+  MacOSOptionKeyPassthroughAddon,
   RendererAddon,
   RightClickActionAddon,
 } from "./emulator-addons.js";
@@ -59,7 +60,7 @@ import {
   type WorkspaceLeaf,
 } from "obsidian";
 import { PROFILE_PROPERTIES, openProfile } from "./profile-properties.js";
-import { cloneDeep, noop } from "lodash-es";
+import { cloneDeep, constant, noop } from "lodash-es";
 import { mount, unmount } from "svelte";
 import { BUNDLE } from "../import.js";
 import type { DeepWritable } from "ts-essentials";
@@ -982,6 +983,7 @@ export class TerminalView extends ItemView {
               serial ?? void 0,
               {
                 allowProposedApi: true,
+                macOptionIsMeta: false, // `false` is the default value, but set it explicitly for `MacOSOptionKeyPassthroughAddon` to work just in case.
                 ...(profile.type === "invalid"
                   ? {}
                   : cloneAsWritable(profile.terminalOptions, cloneDeep)),
@@ -1009,6 +1011,11 @@ export class TerminalView extends ItemView {
                   },
                 }),
                 ligatures: new LigaturesAddon({}),
+                macOptionKeyPassthrough: new MacOSOptionKeyPassthroughAddon(
+                  Platform.CURRENT === "darwin"
+                    ? () => settings.value.macOSOptionKeyPassthrough
+                    : constant(false),
+                ),
                 renderer: new RendererAddon(
                   () => new CanvasAddon(),
                   () => new WebglAddon(false),
@@ -1120,6 +1127,7 @@ export namespace TerminalView {
     readonly dragAndDrop: DragAndDropAddon;
     readonly followTheme: FollowThemeAddon;
     readonly ligatures: LigaturesAddon;
+    readonly macOptionKeyPassthrough: MacOSOptionKeyPassthroughAddon;
     readonly renderer: RendererAddon;
     readonly rightClickAction: RightClickActionAddon;
     readonly search: SearchAddon;

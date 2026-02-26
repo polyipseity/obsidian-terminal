@@ -651,3 +651,91 @@ export namespace RightClickActionAddon {
   ]);
   export type Action = (typeof ACTIONS)[number];
 }
+
+/**
+ * Addon to fix Option key handling on macOS for international keyboards.
+ *
+ * ROOT CAUSE: xterm.js has a known bug (issue #2831) where macOptionIsMeta: false
+ * is not properly respected. Even with the correct settings, xterm.js still sends
+ * ESC sequences instead of allowing the browser to compose special characters
+ * (e.g., Option+2 → @ on Finnish keyboards).
+ *
+ * This addon works around the bug by:
+ * 1. Intercepting Option+key events before xterm.js processes them
+ * 2. Sending the browser-composed character directly to the terminal
+ * 3. Returning false to prevent xterm.js from sending ESC sequences
+ */
+export class MacOSOptionKeyPassthroughAddon implements ITerminalAddon {
+  #isDisposed = false;
+
+  public constructor(protected readonly isPassthroughEnabled: () => boolean) {}
+
+  public activate(terminal: Terminal): void {
+    const handler = (event: KeyboardEvent): boolean => {
+      // Don't process events if addon is disposed
+      if (this.#isDisposed) {
+        return true;
+      }
+
+      // Only intercept on Mac when passthrough is enabled
+      // (macOptionIsMeta is auto-disabled when passthrough is enabled)
+      if (!this.isPassthroughEnabled()) {
+        return true; // Let xterm.js handle normally
+      }
+
+      // Only intercept Option+key (not Option alone, not with Cmd/Ctrl)
+      if (!event.altKey || event.metaKey || event.ctrlKey) {
+        return true;
+      }
+
+      // Only handle keydown events (not keyup)
+      if (event.type !== "keydown") {
+        return false; // Block keyup to prevent duplicate handling
+      }
+
+      // Ignore the Option key press itself
+      if (event.key === "Alt") {
+        return false; // Block to prevent any ESC sequence for modifier alone
+      }
+
+      // Let Option+Enter pass through for apps like Claude Code that use it for newline
+      if (event.key === "Enter") {
+        return true;
+      }
+
+      // The browser has already composed the character in event.key
+      // (e.g., Option+2 → '@', Option+7 → '|' on Finnish keyboard)
+      // Send this character directly to the terminal using xterm.js internal API
+      // NOTE: We access _core directly each time (not cached) to avoid holding
+      // references that become invalid during disposal
+      if (event.key.length === 1) {
+        const terminal2 = terminal as {
+          _core?: {
+            coreService?: {
+              triggerDataEvent: (data: string, wasUserInput: boolean) => void;
+            };
+          };
+        };
+        try {
+          const core = terminal2._core;
+          if (core?.coreService) {
+            core.coreService.triggerDataEvent(event.key, true);
+          }
+        } catch (error) {
+          // Terminal may be in an invalid state - log and ignore
+          /* @__PURE__ */ activeSelf(terminal.element).console.debug(error);
+        }
+      }
+
+      // Return false to prevent xterm.js from processing this event
+      // (which would incorrectly send ESC sequences due to bug #2831)
+      return false;
+    };
+
+    terminal.attachCustomKeyEventHandler(handler);
+  }
+
+  public dispose(): void {
+    this.#isDisposed = true;
+  }
+}
