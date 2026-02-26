@@ -299,6 +299,8 @@
     "instancing": "$t(generic.instance_gerund)",
     "intercept-logging": "ログを傍受する",
     "interface": "インターフェース",
+    "macOS-option-key-passthrough": "macOS: Option key passthrough",
+    "macOS-option-key-passthrough-description": "Allow Option+key combinations to reach the terminal for typing special characters (e.g., @ on Scandinavian/German keyboards).",
     "new-instance-behavior": "新規$t(generic.instance)の$t(generic.behavior)",
     "new-instance-behaviors": {
       "newHorizontalSplit": "新規水平$t(generic.split)",

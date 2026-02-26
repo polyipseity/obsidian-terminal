@@ -299,6 +299,8 @@
     "instancing": "$t(generic.instance_gerund)",
     "intercept-logging": "로깅 가로채기",
     "interface": "인터페이스",
+    "macOS-option-key-passthrough": "macOS: Option key passthrough",
+    "macOS-option-key-passthrough-description": "Allow Option+key combinations to reach the terminal for typing special characters (e.g., @ on Scandinavian/German keyboards).",
     "new-instance-behavior": "새 $t(generic.instance) $t(generic.behavior)",
     "new-instance-behaviors": {
       "newHorizontalSplit": "새 가로 $t(generic.split)",
