@@ -283,8 +283,8 @@
     "instancing": "$t(generic.instance)",
     "intercept-logging": "攔截記錄",
     "interface": "界面",
-    "macOS-option-key-passthrough": "macOS: Option key passthrough",
-    "macOS-option-key-passthrough-description": "Allow Option+key combinations to reach the terminal for typing special characters (e.g., @ on Scandinavian/German keyboards).",
+    "macOS-option-key-passthrough": "macOS：Option鍵穿透",
+    "macOS-option-key-passthrough-description": "允許Option+鍵組合傳遞到$t(generic.terminal)以輸入特殊字符（例如，斯堪的納維亞/德國鍵盤上的@）。",
     "new-instance-behavior": "新$t(generic.instance)$t(generic.behavior)",
     "new-instance-behaviors": {
       "newHorizontalSplit": "新水平$t(generic.split)",
