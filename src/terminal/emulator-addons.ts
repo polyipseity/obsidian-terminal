@@ -665,13 +665,10 @@ export namespace RightClickActionAddon {
  * 2. Sending the browser-composed character directly to the terminal
  * 3. Returning false to prevent xterm.js from sending ESC sequences
  */
-export class MacOptionKeyAddon implements ITerminalAddon {
+export class MacOSOptionKeyPassthroughAddon implements ITerminalAddon {
   #isDisposed = false;
 
-  public constructor(
-    protected readonly isMac: boolean,
-    protected readonly isPassthroughEnabled: () => boolean,
-  ) {}
+  public constructor(protected readonly isPassthroughEnabled: () => boolean) {}
 
   public activate(terminal: Terminal): void {
     const handler = (event: KeyboardEvent): boolean => {
@@ -682,7 +679,7 @@ export class MacOptionKeyAddon implements ITerminalAddon {
 
       // Only intercept on Mac when passthrough is enabled
       // (macOptionIsMeta is auto-disabled when passthrough is enabled)
-      if (!this.isMac || !this.isPassthroughEnabled()) {
+      if (!this.isPassthroughEnabled()) {
         return true; // Let xterm.js handle normally
       }
 
@@ -712,24 +709,21 @@ export class MacOptionKeyAddon implements ITerminalAddon {
       // NOTE: We access _core directly each time (not cached) to avoid holding
       // references that become invalid during disposal
       if (event.key.length === 1) {
+        const terminal2 = terminal as {
+          _core?: {
+            coreService?: {
+              triggerDataEvent: (data: string, wasUserInput: boolean) => void;
+            };
+          };
+        };
         try {
-          const core = (
-            terminal as unknown as {
-              _core?: {
-                coreService?: {
-                  triggerDataEvent: (
-                    data: string,
-                    wasUserInput: boolean,
-                  ) => void;
-                };
-              };
-            }
-          )._core;
+          const core = terminal2._core;
           if (core?.coreService) {
             core.coreService.triggerDataEvent(event.key, true);
           }
-        } catch {
-          // Terminal may be in an invalid state - silently ignore
+        } catch (error) {
+          // Terminal may be in an invalid state - log and ignore
+          /* @__PURE__ */ activeSelf(terminal.element).console.debug(error);
         }
       }
 

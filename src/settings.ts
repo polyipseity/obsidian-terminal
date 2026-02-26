@@ -525,10 +525,10 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
           .setDesc(i18n.t("settings.mac-option-key-passthrough-description"))
           .addToggle(
             linkSetting(
-              () => settings.value.macOptionKeyPassthrough,
+              () => settings.value.macOSOptionKeyPassthrough,
               async (value) =>
                 settings.mutate((settingsM) => {
-                  settingsM.macOptionKeyPassthrough = value;
+                  settingsM.macOSOptionKeyPassthrough = value;
                 }),
               () => {
                 this.postMutate();
@@ -541,8 +541,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               i18n.t("settings.reset"),
               async () =>
                 settings.mutate((settingsM) => {
-                  settingsM.macOptionKeyPassthrough =
-                    Settings.DEFAULT.macOptionKeyPassthrough;
+                  settingsM.macOSOptionKeyPassthrough =
+                    Settings.DEFAULT.macOSOptionKeyPassthrough;
                 }),
               () => {
                 this.postMutate();

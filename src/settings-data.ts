@@ -87,7 +87,7 @@ export interface Settings extends PluginContext.Settings {
 
   readonly exposeInternalModules: boolean;
   readonly interceptLogging: boolean;
-  readonly macOptionKeyPassthrough: boolean;
+  readonly macOSOptionKeyPassthrough: boolean;
   readonly preferredRenderer: Settings.PreferredRendererOption;
 }
 export namespace Settings {
@@ -112,7 +112,7 @@ export namespace Settings {
     hideStatusBar: "focused",
     interceptLogging: true,
     language: "",
-    macOptionKeyPassthrough: true,
+    macOSOptionKeyPassthrough: true,
     newInstanceBehavior: "newHorizontalSplit",
     noticeTimeout: 5,
     openChangelogOnUpdate: true,
@@ -1144,10 +1144,10 @@ export namespace Settings {
       ),
       interceptLogging: fixTyped(DEFAULT, unc, "interceptLogging", ["boolean"]),
       language: fixInSet(DEFAULT, unc, "language", DEFAULTABLE_LANGUAGES),
-      macOptionKeyPassthrough: fixTyped(
+      macOSOptionKeyPassthrough: fixTyped(
         DEFAULT,
         unc,
-        "macOptionKeyPassthrough",
+        "macOSOptionKeyPassthrough",
         ["boolean"],
       ),
       newInstanceBehavior: fixInSet(

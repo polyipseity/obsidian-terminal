@@ -47,7 +47,7 @@ import {
   DisposerAddon,
   DragAndDropAddon,
   FollowThemeAddon,
-  MacOptionKeyAddon,
+  MacOSOptionKeyPassthroughAddon,
   RendererAddon,
   RightClickActionAddon,
 } from "./emulator-addons.js";
@@ -60,7 +60,7 @@ import {
   type WorkspaceLeaf,
 } from "obsidian";
 import { PROFILE_PROPERTIES, openProfile } from "./profile-properties.js";
-import { cloneDeep, noop } from "lodash-es";
+import { cloneDeep, constant, noop } from "lodash-es";
 import { mount, unmount } from "svelte";
 import { BUNDLE } from "../import.js";
 import type { DeepWritable } from "ts-essentials";
@@ -957,7 +957,7 @@ export class TerminalView extends ItemView {
                   ? {}
                   : cloneAsWritable(profile.terminalOptions, cloneDeep)),
                 ...(Platform.CURRENT === "darwin" &&
-                settings.value.macOptionKeyPassthrough
+                settings.value.macOSOptionKeyPassthrough
                   ? { macOptionIsMeta: false }
                   : {}),
               },
@@ -984,9 +984,10 @@ export class TerminalView extends ItemView {
                   },
                 }),
                 ligatures: new LigaturesAddon({}),
-                macOptionKey: new MacOptionKeyAddon(
-                  Platform.CURRENT === "darwin",
-                  () => settings.value.macOptionKeyPassthrough,
+                macOptionKeyPassthrough: new MacOSOptionKeyPassthroughAddon(
+                  Platform.CURRENT === "darwin"
+                    ? () => settings.value.macOSOptionKeyPassthrough
+                    : constant(false),
                 ),
                 renderer: new RendererAddon(
                   () => new CanvasAddon(),
@@ -1099,7 +1100,7 @@ export namespace TerminalView {
     readonly dragAndDrop: DragAndDropAddon;
     readonly followTheme: FollowThemeAddon;
     readonly ligatures: LigaturesAddon;
-    readonly macOptionKey: MacOptionKeyAddon;
+    readonly macOptionKeyPassthrough: MacOSOptionKeyPassthroughAddon;
     readonly renderer: RendererAddon;
     readonly rightClickAction: RightClickActionAddon;
     readonly search: SearchAddon;
