@@ -90,6 +90,7 @@ export interface Settings extends PluginContext.Settings {
   readonly interceptLogging: boolean;
   readonly macOSOptionKeyPassthrough: boolean;
   readonly preferredRenderer: Settings.PreferredRendererOption;
+  readonly cleanTitle: boolean;
 }
 export namespace Settings {
   export type DefaultProfile = keyof Profiles | null;
@@ -109,6 +110,7 @@ export namespace Settings {
   export const DEFAULT: Persistent = deepFreeze({
     addToCommand: true,
     addToContextMenu: true,
+    cleanTitle: false,
     createInstanceNearExistingOnes: true,
     errorNoticeTimeout: NOTICE_NO_TIMEOUT,
     exposeInternalModules: true,
@@ -1143,6 +1145,7 @@ export namespace Settings {
       ...PluginContext.Settings.fix(self0).value,
       addToCommand: fixTyped(DEFAULT, unc, "addToCommand", ["boolean"]),
       addToContextMenu: fixTyped(DEFAULT, unc, "addToContextMenu", ["boolean"]),
+      cleanTitle: fixTyped(DEFAULT, unc, "cleanTitle", ["boolean"]),
       createInstanceNearExistingOnes: fixTyped(
         DEFAULT,
         unc,

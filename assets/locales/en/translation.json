@@ -64,16 +64,20 @@
       "namer-": "{{info.name}}",
       "namer-incompatible": "$t(components.profile-list.namer-)",
       "preset-placeholder": "$t(components.dropdown.placeholder)",
-      "title": "$t(generic.profile_other, capitalize)"
+      "title": "$t(generic.profile_other, capitalize)",
+      "default-indicator": "($t(generic.default))"
     },
     "select-profile": {
       "instructions": {
         "edit-before-use": "ctrl ↵",
-        "edit-before-use-purpose": "to $t(generic.edit) before $t(generic.use)"
+        "edit-before-use-purpose": "to $t(generic.edit) before $t(generic.use)",
+        "open-selector": "mod click",
+        "open-selector-purpose": "to $t(generic.open) $t(generic.profile) selector"
       },
       "item-text-": "$t(profile-name-formats.long)",
       "item-text-incompatible": "($t(generic.incompatible, capitalize)) $t(components.select-profile.item-text-)",
-      "item-text-temporary": "($t(generic.temporary, capitalize) $t(generic.profile))"
+      "item-text-temporary": "($t(generic.temporary, capitalize) $t(generic.profile))",
+      "item-text-default": "{{text}} ($t(generic.default))"
     },
     "terminal": {
       "display-name": "$t(generic.terminal, capitalize): {{name}}",
@@ -230,7 +234,9 @@
     "working-directory": "working $t(generic.directory)"
   },
   "menus": {
-    "open-terminal": "$t(generic.open, capitalize) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)"
+    "open-terminal": "$t(generic.open, capitalize) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
+    "open-terminal-default": "$t(generic.open, capitalize) $t(generic.default) $t(generic.terminal)",
+    "select-profile": "$t(generic.select, capitalize) $t(generic.profile)..."
   },
   "name": "$t(generic.terminal, capitalize)",
   "notices": {
@@ -273,13 +279,17 @@
     "zshIntegrated": "zsh: $t(generic.profile-types.integrated, capitalize)"
   },
   "ribbons": {
-    "open-terminal": "$t(generic.open, capitalize) $t(generic.terminal)"
+    "open-terminal": "$t(generic.open, capitalize) $t(generic.terminal)",
+    "open-terminal-default": "$t(generic.open, capitalize) $t(generic.terminal) ({{name}})"
   },
   "settings": {
     "add-to-command": "Add to $t(generic.command)",
     "add-to-context-menu": "Add to $t(generic.context-menu)",
     "advanced": "Advanced",
+    "clean-title": "Tab title",
+    "clean-title-description": "Show only the current directory in the terminal tab.",
     "create-instance-near-existing-ones": "Create $t(generic.instance) near $t(generic.exist_gerund) ones",
+
     "create-instance-near-existing-ones-description": "Overrides '$t(settings.new-instance-behavior)' when $t(generic.instance) $t(generic.exist_singular) if $t(generic.true).",
     "documentation": "$t(generic.documentation, capitalize)",
     "documentations": {
