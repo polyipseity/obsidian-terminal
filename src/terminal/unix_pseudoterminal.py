@@ -5,6 +5,8 @@ process on a pty, proxies stdin/stdout, and accepts control frames on a
 separate FD to update terminal window size.
 """
 
+from __future__ import annotations
+
 import sys
 from os import (
     execvp,
@@ -17,7 +19,6 @@ from selectors import EVENT_READ, BaseSelector, DefaultSelector
 from struct import pack
 from sys import exit, stdin, stdout
 from types import TracebackType
-from typing import Self
 
 __all__ = ("main",)
 
@@ -59,7 +60,7 @@ if sys.platform != "win32":
             self.fd = fd
             self.registered = False
 
-        def __enter__(self) -> Self:
+        def __enter__(self) -> _SelectorHandler:
             """Register the FD callback and return this manager."""
             self.selector.register(self.fd, EVENT_READ, self._on_read)
             self.registered = True
