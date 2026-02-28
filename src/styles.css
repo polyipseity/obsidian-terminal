@@ -1,3 +1,17 @@
 @import "@polyipseity/obsidian-plugin-library/style";
 @import "./terminal/emulator.css";
 @import "./terminal/view.css";
+
+.terminal-profile-add-button .setting-item-info {
+  display: none;
+}
+
+.terminal-profile-add-button .setting-item-control {
+  justify-content: flex-end;
+}
+
+.terminal-profile-add-button .setting-item-control .terminal-spacer,
+.terminal-profile-add-button .extra-setting-button.terminal-spacer {
+  visibility: hidden;
+  pointer-events: none;
+}
