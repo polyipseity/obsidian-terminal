@@ -14,6 +14,7 @@ import type { CanvasAddon } from "@xterm/addon-canvas";
 import type { WebglAddon } from "@xterm/addon-webgl";
 import { around } from "monkey-around";
 import { noop } from "ts-essentials";
+import { ESCAPE_SEQUENCE_INTRODUCER as ESC } from "./utils.js";
 
 export class DisposerAddon extends Functions implements ITerminalAddon {
   public constructor(...args: readonly (() => void)[]) {
@@ -677,6 +678,17 @@ export class MacOSOptionKeyPassthroughAddon implements ITerminalAddon {
         return true;
       }
 
+      // Shift+Enter — all platforms, unconditional
+      // Sends ESC+CR for TUI apps (Claude Code, etc.) that distinguish
+      // modified Enter from plain CR. Consolidated here from emulator.ts
+      // to avoid attachCustomKeyEventHandler conflict (last call wins).
+      if (event.key === "Enter" && event.shiftKey) {
+        if (event.type === "keydown") {
+          terminal.input(`${ESC}\r`);
+        }
+        return false;
+      }
+
       // Only intercept on Mac when passthrough is enabled
       // (macOptionIsMeta is auto-disabled when passthrough is enabled)
       if (!this.isPassthroughEnabled()) {
@@ -703,28 +715,30 @@ export class MacOSOptionKeyPassthroughAddon implements ITerminalAddon {
         return true;
       }
 
-      // The browser has already composed the character in event.key
+      // Option+Arrow word navigation
+      if (event.key === "ArrowLeft") {
+        terminal.input(`${ESC}b`); // backward-word
+        return false;
+      }
+      if (event.key === "ArrowRight") {
+        terminal.input(`${ESC}f`); // forward-word
+        return false;
+      }
+
+      // Option+Backspace/Delete word deletion
+      if (event.key === "Backspace") {
+        terminal.input(`${ESC}\x7f`); // backward-kill-word
+        return false;
+      }
+      if (event.key === "Delete") {
+        terminal.input(`${ESC}d`); // forward-kill-word
+        return false;
+      }
+
+      // Send the browser-composed character directly via the public API
       // (e.g., Option+2 → '@', Option+7 → '|' on Finnish keyboard)
-      // Send this character directly to the terminal using xterm.js internal API
-      // NOTE: We access _core directly each time (not cached) to avoid holding
-      // references that become invalid during disposal
       if (event.key.length === 1) {
-        const terminal2 = terminal as {
-          _core?: {
-            coreService?: {
-              triggerDataEvent: (data: string, wasUserInput: boolean) => void;
-            };
-          };
-        };
-        try {
-          const core = terminal2._core;
-          if (core?.coreService) {
-            core.coreService.triggerDataEvent(event.key, true);
-          }
-        } catch (error) {
-          // Terminal may be in an invalid state - log and ignore
-          /* @__PURE__ */ activeSelf(terminal.element).console.debug(error);
-        }
+        terminal.input(event.key);
       }
 
       // Return false to prevent xterm.js from processing this event
