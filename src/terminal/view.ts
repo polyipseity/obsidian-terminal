@@ -332,7 +332,7 @@ export class TerminalView extends ItemView {
     return this.#find0;
   }
 
-  protected get title(): string {
+  protected get terminalTitle(): string {
     return this.#title0;
   }
 
@@ -341,8 +341,29 @@ export class TerminalView extends ItemView {
       { value: i18n } = plugin.language,
       { profile } = state,
       { name, type } = profile;
-    if (this.title) {
-      return this.title;
+
+    let currentTitle = this.terminalTitle;
+
+    if (plugin.settings.value.cleanTitle && currentTitle) {
+      // 1. If it contains parentheses, take the content of the LAST one.
+      // This handles "Program (path/to/dir)" -> "path/to/dir"
+      const parenMatches = [...currentTitle.matchAll(/\(([^)]+)\)/g)];
+      if (parenMatches.length > 0) {
+        currentTitle = parenMatches[parenMatches.length - 1][1];
+      }
+
+      // 2. Split by path separators and take the last segment.
+      // This handles "user@host:dir", "/a/b/c", etc.
+      const segments = currentTitle.split(/[:/\\\\]/).filter((s) => s.trim());
+      if (segments.length > 0) {
+        currentTitle = segments[segments.length - 1];
+      }
+
+      currentTitle = currentTitle.trim();
+    }
+
+    if (currentTitle) {
+      return currentTitle;
     }
     if (typeof name === "string" && name) {
       return name;
@@ -602,6 +623,12 @@ export class TerminalView extends ItemView {
   }
 
   public getDisplayText(): string {
+    const {
+      context: { settings },
+    } = this;
+    if (settings.value.cleanTitle) {
+      return this.name;
+    }
     return this.context.language.value.t(
       `components.${TerminalView.type.id}.display-name`,
       {
@@ -1075,6 +1102,12 @@ export class TerminalView extends ItemView {
               (settings0) => settings0.preferredRenderer,
               (cur) => {
                 renderer.use(cur);
+              },
+            ),
+            settings.onMutate(
+              (settings0) => settings0.cleanTitle,
+              () => {
+                updateView(this.context, this);
               },
             ),
           );

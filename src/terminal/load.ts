@@ -61,6 +61,28 @@ export function loadTerminal(context: TerminalPlugin): void {
       return ret;
     },
     adapter = vault.adapter instanceof FileSystemAdapter ? vault.adapter : null,
+    defaultContextMenu = (cwd?: TFolder): ((item: MenuItem) => void) | null => {
+      const { defaultProfile, profiles } = settings.value;
+      if (defaultProfile === null || !profiles[defaultProfile]) {
+        return null;
+      }
+      const profile = profiles[defaultProfile];
+      if (!Settings.Profile.isCompatible(profile, Platform.CURRENT)) {
+        return null;
+      }
+      const cwd0 = cwd ? (adapter ? adapter.getFullPath(cwd.path) : null) : cwd;
+      if (cwd0 === null) {
+        return null;
+      }
+      return (item: MenuItem) => {
+        item
+          .setTitle(i18n.t("menus.open-terminal-default"))
+          .setIcon(i18n.t("asset:settings.default-profile-icon"))
+          .onClick(() => {
+            spawnTerminal(context, profile, { cwd: cwd0 });
+          });
+      };
+    },
     contextMenu = (
       type: Settings.Profile.Type | "select",
       cwd?: TFolder,
@@ -159,8 +181,25 @@ export function loadTerminal(context: TerminalPlugin): void {
     context,
     i18n.t("asset:ribbons.open-terminal-id"),
     i18n.t("asset:ribbons.open-terminal-icon"),
-    () => i18n.t("ribbons.open-terminal"),
-    () => openDefaultProfile(),
+    () => {
+      const { defaultProfile, profiles } = settings.value;
+      const profile =
+        defaultProfile !== null ? profiles[defaultProfile] : undefined;
+      if (profile && Settings.Profile.isCompatible(profile, Platform.CURRENT)) {
+        return i18n.t("ribbons.open-terminal-default", {
+          interpolation: { escapeValue: false },
+          name: Settings.Profile.name(profile),
+        });
+      }
+      return i18n.t("ribbons.open-terminal");
+    },
+    (evt) => {
+      if (evt.metaKey || evt.ctrlKey) {
+        new SelectProfileModal(context, adapter?.getBasePath()).open();
+        return;
+      }
+      openDefaultProfile();
+    },
   );
   context.registerEvent(
     workspace.on("file-menu", (menu, file) => {
@@ -172,6 +211,10 @@ export function loadTerminal(context: TerminalPlugin): void {
         return;
       }
       menu.addSeparator();
+      const defaultItem = defaultContextMenu(folder);
+      if (defaultItem) {
+        menu.addItem(defaultItem);
+      }
       const items = PROFILE_TYPES.map((type) =>
         contextMenu(type, folder),
       ).filter(isNonNil);
@@ -193,6 +236,10 @@ export function loadTerminal(context: TerminalPlugin): void {
       }
       const { parent } = file;
       menu.addSeparator();
+      const defaultItem = defaultContextMenu(parent);
+      if (defaultItem) {
+        menu.addItem(defaultItem);
+      }
       const items = PROFILE_TYPES.map((type) =>
         contextMenu(type, parent),
       ).filter(isNonNil);
