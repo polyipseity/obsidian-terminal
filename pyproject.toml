@@ -73,7 +73,7 @@ line-length = 88
 extend-select = ["I", "PLC0415"]
 
 [tool.uv]
-required-version = ">=0.10.0,<0.11.0"
+required-version = ">=0.9.0,<0.11.0"
 
 [tool.uv.build-backend]
 # Do not include any packages in the build, as this project is only a collection of tools and scripts.
