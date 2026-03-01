@@ -796,6 +796,22 @@ export class TerminalView extends ItemView {
     }
 
     this.register(statusBarHider.hide(() => this.hidesStatusBar));
+    this.register(
+      context.settings.onMutate(
+        (settings0: { fontFamily: string }) => settings0.fontFamily,
+        (cur: string) => {
+          const em = this.emulator;
+          if (em) {
+            const { profile } = this.state;
+            const profileFont =
+              profile.type !== "invalid"
+                ? profile.terminalOptions.fontFamily
+                : undefined;
+            em.terminal.options.fontFamily = cur || profileFont || undefined;
+          }
+        },
+      ),
+    );
     this.register(() => {
       this.emulator = null;
     });
@@ -987,6 +1003,12 @@ export class TerminalView extends ItemView {
                 ...(profile.type === "invalid"
                   ? {}
                   : cloneAsWritable(profile.terminalOptions, cloneDeep)),
+                ...(!settings.value.fontFamily
+                  ? {}
+                  : profile.type !== "invalid" &&
+                      profile.terminalOptions.fontFamily !== undefined
+                    ? {}
+                    : { fontFamily: settings.value.fontFamily }),
               },
               {
                 disposer: new DisposerAddon(
