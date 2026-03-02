@@ -10,6 +10,16 @@ External translation files:
 
 To translate all strings, you also need to translate the external translation files.
 
+## Scripts
+
+When adding or removing translation keys in `assets/locales/en/translation.json`, execute:
+
+```sh
+node scripts/sync-locale-keys.mjs
+```
+
+This updates all other translation files and sorts their keys alphabetically.
+
 ## Instructions
 
 Each locale has its own directory named with its corresponding __[IETF language tag](https://wikipedia.org/wiki/IETF_language_tag)__.
