@@ -5,12 +5,12 @@
     "find-in-terminal": "$t(generic.find, capitalize) in $t(generic.terminal)",
     "focus-on-last-terminal": "$t(generic.focus, capitalize) on last $t(generic.terminal)",
     "open-developer-console": "$t(generic.open, capitalize) $t(generic.profile-types.developerConsole)",
-    "open-terminal-default-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.default-profile)",
     "open-documentation-changelog": "$t(generic.open, capitalize) $t(generic.documentations.changelog)",
     "open-documentation-donate": "$t(generic.open, capitalize) $t(generic.documentations.donate)",
     "open-documentation-readme": "$t(generic.open, capitalize) $t(generic.documentations.readme)",
     "open-terminal-": "$t(generic.open, capitalize) $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
     "open-terminal-current": "$t(generic.open, capitalize) $t(generic.current-directory) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
+    "open-terminal-default-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.default-profile)",
     "open-terminal-root": "$t(generic.open, capitalize) $t(generic.root-directory) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
     "toggle-focus-on-last-terminal": "$t(generic.toggle, capitalize) $t(generic.focus) on last $t(generic.terminal)",
     "unfocus-terminal": "$t(generic.unfocus, capitalize) $t(generic.terminal)"
@@ -51,8 +51,8 @@
       "success-exit-codes": "Success $t(generic.exit) codes",
       "success-exit-codes-description": "$t(generic.list-description, capitalize)",
       "success-exit-codes-edit": "$t(generic.edit, capitalize)",
-      "terminal-options": "$t(generic.terminal-option_other, capitalize)",
-      "terminal-options-edit": "$t(generic.edit, capitalize)",
+      "terminal-options": "$t(settings.terminal-options)",
+      "terminal-options-edit": "$t(settings.terminal-options-edit)",
       "title": "{{name}}",
       "type": "$t(generic.type, capitalize)",
       "type-options": "$t(generic.profile-types.{{type}}, capitalize)"
@@ -281,6 +281,10 @@
     "advanced": "Advanced",
     "create-instance-near-existing-ones": "Create $t(generic.instance) near $t(generic.exist_gerund) ones",
     "create-instance-near-existing-ones-description": "Overrides '$t(settings.new-instance-behavior)' when $t(generic.instance) $t(generic.exist_singular) if $t(generic.true).",
+    "default-profile": "Default $t(generic.profile)",
+    "default-profile-description": "$t(generic.profile, capitalize) to open when clicking the ribbon icon. Leave empty to show $t(generic.profile) selector.",
+    "default-profile-name-": "$t(profile-name-formats.short)",
+    "default-profile-name-incompatible": "($t(generic.incompatible, capitalize)) $t(settings.default-profile-name-)",
     "documentation": "$t(generic.documentation, capitalize)",
     "documentations": {
       "changelog": "$t(generic.documentations.changelog, capitalize)",
@@ -318,15 +322,15 @@
     "pin-new-instance": "$t(generic.pin, capitalize) new $t(generic.instance)",
     "preferred-renderer": "Preferred $t(generic.renderer)",
     "preferred-renderer-options": "$t(generic.renderers.{{type}}, capitalize)",
+    "profile-defaults": "$t(generic.profile, capitalize) defaults",
+    "profile-defaults-description": "Default options for $t(generic.profile_other). Acts as a fallback for every $t(generic.profile) unless a $t(generic.profile) explicitly overrides them.",
     "profile-list": {
       "description": "The first $t(generic.compatible) $t(generic.profile) in the $t(generic.list) is the $t(generic.default) for its $t(generic.terminal) $t(generic.type)."
     },
     "profiles": "$t(generic.profile_other, capitalize)",
     "profiles-description": "$t(generic.list-description, capitalize)",
     "profiles-edit": "$t(generic.edit, capitalize)",
-    "default-profile": "Default $t(generic.profile)",
-    "default-profile-description": "$t(generic.profile, capitalize) to open when clicking the ribbon icon. Leave empty to show $t(generic.profile) selector.",
-    "default-profile-name-": "$t(profile-name-formats.short)",
-    "default-profile-name-incompatible": "($t(generic.incompatible, capitalize)) $t(settings.default-profile-name-)"
+    "terminal-options": "$t(generic.terminal-option_other, capitalize)",
+    "terminal-options-edit": "$t(generic.edit, capitalize)"
   }
 }

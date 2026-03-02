@@ -78,12 +78,13 @@ export interface Settings extends PluginContext.Settings {
   readonly profiles: Settings.Profiles;
   readonly defaultProfile: Settings.DefaultProfile;
 
+  // options applied to every terminal unless an individual profile overrides them
+  readonly terminalOptions: Settings.Profile.TerminalOptions;
+
   readonly newInstanceBehavior: Settings.NewInstanceBehavior;
   readonly createInstanceNearExistingOnes: boolean;
   readonly focusOnNewInstance: boolean;
   readonly pinNewInstance: boolean;
-
-  readonly fontFamily: string;
 
   readonly openChangelogOnUpdate: boolean;
   readonly hideStatusBar: Settings.HideStatusBarOption;
@@ -115,7 +116,6 @@ export namespace Settings {
     errorNoticeTimeout: NOTICE_NO_TIMEOUT,
     exposeInternalModules: true,
     focusOnNewInstance: true,
-    fontFamily: "",
     hideStatusBar: "focused",
     interceptLogging: true,
     language: "",
@@ -139,6 +139,7 @@ export namespace Settings {
       ).map((key) => [key, PROFILE_PRESETS[key]]),
     ),
     defaultProfile: null,
+    terminalOptions: DEFAULT_TERMINAL_OPTIONS,
   });
 
   export const DEFAULTABLE_LANGUAGES = deepFreeze([
@@ -1161,7 +1162,6 @@ export namespace Settings {
       focusOnNewInstance: fixTyped(DEFAULT, unc, "focusOnNewInstance", [
         "boolean",
       ]),
-      fontFamily: fixTyped(DEFAULT, unc, "fontFamily", ["string"]),
       hideStatusBar: fixInSet(
         DEFAULT,
         unc,
@@ -1206,6 +1206,9 @@ export namespace Settings {
         }
         return null;
       })(),
+      terminalOptions: Settings.Profile.fixTerminalOptions(
+        unc["terminalOptions"],
+      ).value,
     };
     return markFixed(self0, fixed);
   }

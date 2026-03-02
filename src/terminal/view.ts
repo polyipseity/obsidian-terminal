@@ -60,7 +60,7 @@ import {
   type WorkspaceLeaf,
 } from "obsidian";
 import { PROFILE_PROPERTIES, openProfile } from "./profile-properties.js";
-import { cloneDeep, constant, noop } from "lodash-es";
+import { constant, noop } from "lodash-es";
 import { mount, unmount } from "svelte";
 import { BUNDLE } from "../import.js";
 import type { DeepWritable } from "ts-essentials";
@@ -74,6 +74,7 @@ import type { Unicode11Addon } from "@xterm/addon-unicode11";
 import type { WebLinksAddon } from "@xterm/addon-web-links";
 import { XtermTerminalEmulator } from "./emulator.js";
 import { writePromise } from "./utils.js";
+import { mergeTerminalOptions } from "./options.js";
 
 const xtermAddonCanvas = dynamicRequire<typeof import("@xterm/addon-canvas")>(
     BUNDLE,
@@ -796,22 +797,6 @@ export class TerminalView extends ItemView {
     }
 
     this.register(statusBarHider.hide(() => this.hidesStatusBar));
-    this.register(
-      context.settings.onMutate(
-        (settings0: { fontFamily: string }) => settings0.fontFamily,
-        (cur: string) => {
-          const em = this.emulator;
-          if (em) {
-            const { profile } = this.state;
-            const profileFont =
-              profile.type !== "invalid"
-                ? profile.terminalOptions.fontFamily
-                : undefined;
-            em.terminal.options.fontFamily = cur || profileFont || undefined;
-          }
-        },
-      ),
-    );
     this.register(() => {
       this.emulator = null;
     });
@@ -997,19 +982,12 @@ export class TerminalView extends ItemView {
                 return pty;
               },
               serial ?? void 0,
-              {
-                allowProposedApi: true,
-                macOptionIsMeta: false, // `false` is the default value, but set it explicitly for `MacOSOptionKeyPassthroughAddon` to work just in case.
-                ...(profile.type === "invalid"
-                  ? {}
-                  : cloneAsWritable(profile.terminalOptions, cloneDeep)),
-                ...(!settings.value.fontFamily
-                  ? {}
-                  : profile.type !== "invalid" &&
-                      profile.terminalOptions.fontFamily !== undefined
-                    ? {}
-                    : { fontFamily: settings.value.fontFamily }),
-              },
+              mergeTerminalOptions(
+                profile.type === "invalid"
+                  ? Settings.Profile.DEFAULTS[""].terminalOptions
+                  : profile.terminalOptions,
+                settings.value.terminalOptions,
+              ),
               {
                 disposer: new DisposerAddon(
                   () => {

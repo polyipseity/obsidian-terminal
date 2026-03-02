@@ -10,6 +10,15 @@ describe("src/settings-data.ts", () => {
     expect(typeof Settings.DEFAULT.noticeTimeout).toBe("number");
     expect(Settings.DEFAULT).toHaveProperty("openChangelogOnUpdate");
     expect(typeof Settings.DEFAULT.openChangelogOnUpdate).toBe("boolean");
+    expect(Settings.DEFAULT).toHaveProperty("terminalOptions");
+    expect(typeof Settings.DEFAULT.terminalOptions).toBe("object");
+    // should at least include the documentOverride property from the preset
+    expect(
+      Object.prototype.hasOwnProperty.call(
+        Settings.DEFAULT.terminalOptions,
+        "documentOverride",
+      ),
+    ).toBe(true);
   });
 
   it("DEFAULTABLE_LANGUAGES includes empty string and is an array", () => {
@@ -34,16 +43,21 @@ describe("src/settings-data.ts", () => {
   });
 
   it("Settings.fix coerces bad typed values to defaults", () => {
-    // provide clearly wrong types
+    // provide clearly wrong types including terminalOptions
     const bad = {
       errorNoticeTimeout: "not-a-number",
       language: "invalid-language",
       noticeTimeout: "x",
       openChangelogOnUpdate: "truthy",
+      terminalOptions: "not-an-object",
     };
     const fixed = Settings.fix(bad);
     expect(typeof fixed.value.noticeTimeout).toBe("number");
     expect(typeof fixed.value.openChangelogOnUpdate).toBe("boolean");
+    // invalid options should be replaced with DEFAULT
+    expect(fixed.value.terminalOptions).toEqual(
+      Settings.DEFAULT.terminalOptions,
+    );
   });
 
   it("LocalSettings.fix ensures lastReadChangelogVersion exists and is a string", () => {
