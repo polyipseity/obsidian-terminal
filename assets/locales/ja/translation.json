@@ -5,12 +5,12 @@
     "find-in-terminal": "$t(generic.terminal)内を$t(generic.find)",
     "focus-on-last-terminal": "最後の$t(generic.terminal)に$t(generic.focus)",
     "open-developer-console": "$t(generic.profile-types.developerConsole)を$t(generic.open)",
-    "open-terminal-default-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.default-profile)",
     "open-documentation-changelog": "$t(generic.documentations.changelog)を$t(generic.open)",
     "open-documentation-donate": "$t(generic.documentations.donate)ページを$t(generic.open)",
     "open-documentation-readme": "$t(generic.documentations.readme)を$t(generic.open)",
     "open-terminal-": "$t(generic.terminal)を開く: $t(generic.profile-types.{{type}})",
     "open-terminal-current": "$t(generic.terminal)で$t(generic.current-directory)を開く: $t(generic.profile-types.{{type}})",
+    "open-terminal-default-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.default-profile)",
     "open-terminal-root": "$t(generic.terminal)で$t(generic.root-directory)を開く: $t(generic.profile-types.{{type}})",
     "toggle-focus-on-last-terminal": "最後の$t(generic.terminal)への$t(generic.focus)を$t(generic.toggle)",
     "unfocus-terminal": "$t(generic.terminal)の$t(generic.unfocus)"
@@ -281,6 +281,10 @@
     "advanced": "詳細設定",
     "create-instance-near-existing-ones": "$t(generic.exist_gerund)ものの近くに$t(generic.instance)を作成",
     "create-instance-near-existing-ones-description": "$t(generic.true)の場合、$t(generic.instance)が$t(generic.exist_singular)時に '$t(settings.new-instance-behavior)' を上書きします。",
+    "default-profile": "Default $t(generic.profile)",
+    "default-profile-description": "$t(generic.profile, capitalize) to open when clicking the ribbon icon. Leave empty to show $t(generic.profile) selector.",
+    "default-profile-name-": "$t(profile-name-formats.short)",
+    "default-profile-name-incompatible": "($t(generic.incompatible, capitalize)) $t(settings.default-profile-name-)",
     "documentation": "$t(generic.documentation)",
     "documentations": {
       "changelog": "$t(generic.documentations.changelog)",
@@ -318,15 +322,15 @@
     "pin-new-instance": "新規$t(generic.instance)を$t(generic.pin)する",
     "preferred-renderer": "優先する$t(generic.renderer)",
     "preferred-renderer-options": "$t(generic.renderers.{{type}})",
+    "profile-defaults": "$t(generic.profile, capitalize) defaults",
+    "profile-defaults-description": "Default options for $t(generic.profile_other). Acts as a fallback for every $t(generic.profile) unless a $t(generic.profile) explicitly overrides them.",
     "profile-list": {
       "description": "$t(generic.list)内の最初の$t(generic.compatible)$t(generic.profile)が、その$t(generic.terminal)$t(generic.type)の$t(generic.default)になります。"
     },
     "profiles": "$t(generic.profile_other)",
     "profiles-description": "$t(generic.list-description)",
     "profiles-edit": "$t(generic.edit)",
-    "default-profile": "Default $t(generic.profile)",
-    "default-profile-description": "$t(generic.profile, capitalize) to open when clicking the ribbon icon. Leave empty to show $t(generic.profile) selector.",
-    "default-profile-name-": "$t(profile-name-formats.short)",
-    "default-profile-name-incompatible": "($t(generic.incompatible, capitalize)) $t(settings.default-profile-name-)"
+    "terminal-options": "$t(generic.terminal-option_other, capitalize)",
+    "terminal-options-edit": "$t(generic.edit, capitalize)"
   }
 }

@@ -5,12 +5,12 @@
     "find-in-terminal": "于$t(generic.terminal)$t(generic.find)",
     "focus-on-last-terminal": "$t(generic.focus)于上一个$t(generic.terminal)",
     "open-developer-console": "$t(generic.open)$t(generic.profile-types.developerConsole)",
-    "open-terminal-default-profile": "$t(generic.open)$t(generic.terminal)：$t(settings.default-profile)",
     "open-documentation-changelog": "$t(generic.open)$t(generic.documentations.changelog)",
     "open-documentation-donate": "$t(generic.open)$t(generic.documentations.donate)",
     "open-documentation-readme": "$t(generic.open)$t(generic.documentations.readme)",
     "open-terminal-": "$t(generic.open)$t(generic.terminal)：$t(generic.profile-types.{{type}})",
     "open-terminal-current": "在$t(generic.terminal)$t(generic.open)$t(generic.current-directory)：$t(generic.profile-types.{{type}})",
+    "open-terminal-default-profile": "$t(generic.open)$t(generic.terminal)：$t(settings.default-profile)",
     "open-terminal-root": "在$t(generic.terminal)$t(generic.open)$t(generic.root-directory)：$t(generic.profile-types.{{type}})",
     "toggle-focus-on-last-terminal": "$t(generic.toggle)$t(generic.focus)于上一个$t(generic.terminal)",
     "unfocus-terminal": "$t(generic.unfocus)$t(generic.terminal)"
@@ -265,6 +265,10 @@
     "advanced": "高级",
     "create-instance-near-existing-ones": "在$t(generic.exist)$t(generic.instance)附近创建$t(generic.instance)",
     "create-instance-near-existing-ones-description": "如果为$t(generic.true)，则在$t(generic.instance)$t(generic.exist)时覆盖「$t(settings.new-instance-behavior)」。",
+    "default-profile": "默认$t(generic.profile)",
+    "default-profile-description": "点击侧边栏图标时要打开的$t(generic.profile)。留空以显示$t(generic.profile)选择器。",
+    "default-profile-name-": "$t(profile-name-formats.short)",
+    "default-profile-name-incompatible": "（$t(generic.incompatible)）$t(settings.default-profile-name-)",
     "documentation": "$t(generic.documentation)",
     "documentations": {
       "changelog": "$t(generic.documentations.changelog)",
@@ -302,15 +306,15 @@
     "pin-new-instance": "$t(generic.pin)新$t(generic.instance)",
     "preferred-renderer": "首选$t(generic.renderer)",
     "preferred-renderer-options": "$t(generic.renderers.{{type}})",
+    "profile-defaults": "$t(generic.profile)默认值",
+    "profile-defaults-description": "$t(generic.profile)的后备默认选项。特定$t(generic.profile)可以覆盖这些选项以满足特定需求。",
     "profile-list": {
       "description": "$t(generic.list)中第一个$t(generic.compatible)的$t(generic.profile)是其$t(generic.terminal)$t(generic.type)的$t(generic.default)。"
     },
     "profiles": "$t(generic.profile)",
     "profiles-description": "$t(generic.list-description)",
     "profiles-edit": "$t(generic.edit)",
-    "default-profile": "默认$t(generic.profile)",
-    "default-profile-description": "点击侧边栏图标时要打开的$t(generic.profile)。留空以显示$t(generic.profile)选择器。",
-    "default-profile-name-": "$t(profile-name-formats.short)",
-    "default-profile-name-incompatible": "（$t(generic.incompatible)）$t(settings.default-profile-name-)"
+    "terminal-options": "$t(generic.terminal-option_other, capitalize)",
+    "terminal-options-edit": "$t(generic.edit, capitalize)"
   }
 }
