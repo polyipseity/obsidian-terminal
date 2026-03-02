@@ -315,6 +315,7 @@
     "profiles-description": "$t(generic.list-description)",
     "profiles-edit": "$t(generic.edit)",
     "terminal-options": "$t(generic.terminal-option_other, capitalize)",
+    "terminal-options-description": "除非特定$t(generic.profile)明確覆蓋它們，否則它們會被淺合併到每個$t(generic.profile)中。",
     "terminal-options-edit": "$t(generic.edit, capitalize)"
   }
 }

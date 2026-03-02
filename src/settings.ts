@@ -405,6 +405,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
     );
     ui.newSetting(containerEl, (setting) => {
       setting
+        .setName(i18n.t("settings.terminal-options"))
+        .setDesc(i18n.t("settings.terminal-options-description"))
         .addButton((button) =>
           button
             .setIcon(i18n.t("asset:settings.terminal-options-edit-icon"))

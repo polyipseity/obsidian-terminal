@@ -331,6 +331,7 @@
     "profiles-description": "$t(generic.list-description, capitalize)",
     "profiles-edit": "$t(generic.edit, capitalize)",
     "terminal-options": "$t(generic.terminal-option_other, capitalize)",
+    "terminal-options-description": "Shallow-merged into every $t(generic.profile) unless a specific $t(generic.profile) explicitly overrides them.",
     "terminal-options-edit": "$t(generic.edit, capitalize)"
   }
 }
