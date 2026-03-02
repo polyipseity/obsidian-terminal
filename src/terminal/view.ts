@@ -69,12 +69,16 @@ import { ProfileModal } from "../modals.js";
 import type { SearchAddon } from "@xterm/addon-search";
 import { Settings } from "../settings-data.js";
 import type { TerminalPlugin } from "../main.js";
+import { Terminal, type ITerminalOptions } from "@xterm/xterm";
 import { TextPseudoterminal } from "./pseudoterminal.js";
 import type { Unicode11Addon } from "@xterm/addon-unicode11";
 import type { WebLinksAddon } from "@xterm/addon-web-links";
 import { XtermTerminalEmulator } from "./emulator.js";
 import { writePromise } from "./utils.js";
-import { mergeTerminalOptions } from "./options.js";
+import {
+  mergeTerminalOptions,
+  applyTerminalOptionDiffShallow,
+} from "./options.js";
 
 const xtermAddonCanvas = dynamicRequire<typeof import("@xterm/addon-canvas")>(
     BUNDLE,
@@ -933,6 +937,10 @@ export class TerminalView extends ItemView {
               xtermAddonWebLinks,
               xtermAddonWebgl,
             ]),
+            profileTerminalOptions =
+              profile.type === "invalid"
+                ? Settings.Profile.DEFAULTS[""].terminalOptions
+                : profile.terminalOptions,
             emulator = new TerminalView.EMULATOR(
               ele,
               async (terminal) => {
@@ -983,9 +991,7 @@ export class TerminalView extends ItemView {
               },
               serial ?? void 0,
               mergeTerminalOptions(
-                profile.type === "invalid"
-                  ? Settings.Profile.DEFAULTS[""].terminalOptions
-                  : profile.terminalOptions,
+                profileTerminalOptions,
                 settings.value.terminalOptions,
               ),
               {
@@ -1063,13 +1069,49 @@ export class TerminalView extends ItemView {
                 );
               },
             );
+          terminal.unicode.activeVersion = "11";
           terminal.onWriteParsed(requestSaveLayout);
           terminal.onResize(requestSaveLayout);
           terminal.onTitleChange((title) => {
             this.title = title;
           });
 
-          terminal.unicode.activeVersion = "11";
+          disposer.push(
+            settings.onMutate(
+              (settings0) => settings0.terminalOptions,
+              (cur, prev) => {
+                // When computing the merged options we want to see what
+                // xterm actually normalises the object to.  To do that we
+                // create short-lived Terminal instances with the merged
+                // settings, read back their `.options`, then dispose them
+                // immediately in a finally block so there's no residual
+                // DOM state.
+                const createMerged = (
+                  opts: Settings.Profile.TerminalOptions,
+                ): ITerminalOptions => {
+                  const merged = mergeTerminalOptions(
+                    profileTerminalOptions,
+                    opts,
+                  );
+                  const tmp = new Terminal(merged);
+                  try {
+                    return tmp.options;
+                  } finally {
+                    tmp.dispose();
+                  }
+                };
+
+                const prevMerged = createMerged(prev);
+                const curMerged = createMerged(cur);
+
+                // Only patch the terminal when something actually changed at the
+                // *first* level of the merged settings object.  The helper will
+                // perform a deep equality check per-key and update/delete values
+                // accordingly.
+                applyTerminalOptionDiffShallow(terminal, prevMerged, curMerged);
+              },
+            ),
+          );
           disposer.push(
             settings.onMutate(
               (settings0) => settings0.preferredRenderer,
