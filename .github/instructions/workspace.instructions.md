@@ -57,6 +57,7 @@ A single‑page, action‑oriented reference for AI agents. Keep this short; use
 ## Example agent prompts you can run now 🧭
 
 - "Add a unit test for `Settings.fix()` that verifies profile defaults; run `pnpm exec vitest run` and report failures."
+- "When adding or removing translation keys in `assets/locales/en/translation.json`, run `node scripts/sync-locale-keys.mjs` to propagate and sort them."
 - "Add a `dev` alias to `package.json` pointing to `build:dev`, update `AGENTS.md`, and add a test asserting `scripts.dev` exists."
 - "Add an integration test for `scripts/obsidian-install.mjs` to assert exit when `manifest.json` is missing."
 - "Add localization key `settings.example` to `assets/locales/en/translation.json` and a test verifying it exists."
