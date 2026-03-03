@@ -1326,16 +1326,15 @@ export class KeyMappingModal extends Modal {
       this.#renderRow(contentEl, idx);
     }
     new Setting(contentEl).addButton((btn) =>
-      btn
-        .setButtonText(i18n.t("components.key-mapping.add"))
-        .onClick(() => {
-          this.#mappings.push(cloneAsWritable(Settings.KeyMapping.DEFAULT));
-          this.#render();
-        }),
+      btn.setButtonText(i18n.t("components.key-mapping.add")).onClick(() => {
+        this.#mappings.push(cloneAsWritable(Settings.KeyMapping.DEFAULT));
+        this.#render();
+      }),
     );
   }
 
   #renderRow(container: HTMLElement, index: number): void {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- index always valid from #render loop
     const mapping = this.#mappings[index]!,
       { value: i18n } = this.#context.language,
       setting = new Setting(container);
@@ -1366,7 +1365,10 @@ export class KeyMappingModal extends Modal {
     // Action dropdown
     setting.addDropdown((dd) => {
       for (const action of Settings.KEY_MAPPING_ACTIONS) {
-        dd.addOption(action, i18n.t(`components.key-mapping.actions.${action}`));
+        dd.addOption(
+          action,
+          i18n.t(`components.key-mapping.actions.${action}`),
+        );
       }
       dd.setValue(mapping.action);
       dd.onChange((val) => {
