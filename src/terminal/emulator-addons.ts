@@ -667,75 +667,181 @@ export namespace RightClickActionAddon {
  */
 export class MacOSOptionKeyPassthroughAddon implements ITerminalAddon {
   #isDisposed = false;
+  #terminal: Terminal | null = null;
 
   public constructor(protected readonly isPassthroughEnabled: () => boolean) {}
 
   public activate(terminal: Terminal): void {
-    const handler = (event: KeyboardEvent): boolean => {
-      // Don't process events if addon is disposed
-      if (this.#isDisposed) {
-        return true;
-      }
+    this.#terminal = terminal;
+  }
 
-      // Only intercept on Mac when passthrough is enabled
-      // (macOptionIsMeta is auto-disabled when passthrough is enabled)
-      if (!this.isPassthroughEnabled()) {
-        return true; // Let xterm.js handle normally
-      }
+  /** Handle a macOS Option key event. Returns true to let xterm handle, false to block. */
+  public handleEvent(event: KeyboardEvent): boolean {
+    const terminal = this.#terminal;
 
-      // Only intercept Option+key (not Option alone, not with Cmd/Ctrl)
-      if (!event.altKey || event.metaKey || event.ctrlKey) {
-        return true;
-      }
+    // Don't process events if addon is disposed or not activated
+    if (!terminal || this.#isDisposed) {
+      return true;
+    }
 
-      // Only handle keydown events (not keyup)
-      if (event.type !== "keydown") {
-        return false; // Block keyup to prevent duplicate handling
-      }
+    // Only intercept on Mac when passthrough is enabled
+    // (macOptionIsMeta is auto-disabled when passthrough is enabled)
+    if (!this.isPassthroughEnabled()) {
+      return true; // Let xterm.js handle normally
+    }
 
-      // Ignore the Option key press itself
-      if (event.key === "Alt") {
-        return false; // Block to prevent any ESC sequence for modifier alone
-      }
+    // Only intercept Option+key (not Option alone, not with Cmd/Ctrl)
+    if (!event.altKey || event.metaKey || event.ctrlKey) {
+      return true;
+    }
 
-      // Let Option+Enter pass through for apps like Claude Code that use it for newline
-      if (event.key === "Enter") {
-        return true;
-      }
+    // Only handle keydown events (not keyup)
+    if (event.type !== "keydown") {
+      return false; // Block keyup to prevent duplicate handling
+    }
 
-      // The browser has already composed the character in event.key
-      // (e.g., Option+2 → '@', Option+7 → '|' on Finnish keyboard)
-      // Send this character directly to the terminal using xterm.js internal API
-      // NOTE: We access _core directly each time (not cached) to avoid holding
-      // references that become invalid during disposal
-      if (event.key.length === 1) {
-        const terminal2 = terminal as {
-          _core?: {
-            coreService?: {
-              triggerDataEvent: (data: string, wasUserInput: boolean) => void;
-            };
+    // Ignore the Option key press itself
+    if (event.key === "Alt") {
+      return false; // Block to prevent any ESC sequence for modifier alone
+    }
+
+    // Let Option+Enter pass through for apps like Claude Code that use it for newline
+    if (event.key === "Enter") {
+      return true;
+    }
+
+    // The browser has already composed the character in event.key
+    // (e.g., Option+2 → '@', Option+7 → '|' on Finnish keyboard)
+    // Send this character directly to the terminal using xterm.js internal API
+    // NOTE: We access _core directly each time (not cached) to avoid holding
+    // references that become invalid during disposal
+    if (event.key.length === 1) {
+      const terminal2 = terminal as {
+        _core?: {
+          coreService?: {
+            triggerDataEvent: (data: string, wasUserInput: boolean) => void;
           };
         };
-        try {
-          const core = terminal2._core;
-          if (core?.coreService) {
-            core.coreService.triggerDataEvent(event.key, true);
-          }
-        } catch (error) {
-          // Terminal may be in an invalid state - log and ignore
-          /* @__PURE__ */ activeSelf(terminal.element).console.debug(error);
+      };
+      try {
+        const core = terminal2._core;
+        if (core?.coreService) {
+          core.coreService.triggerDataEvent(event.key, true);
         }
+      } catch (error) {
+        // Terminal may be in an invalid state - log and ignore
+        /* @__PURE__ */ activeSelf(terminal.element).console.debug(error);
       }
+    }
 
-      // Return false to prevent xterm.js from processing this event
-      // (which would incorrectly send ESC sequences due to bug #2831)
-      return false;
-    };
-
-    terminal.attachCustomKeyEventHandler(handler);
+    // Return false to prevent xterm.js from processing this event
+    // (which would incorrectly send ESC sequences due to bug #2831)
+    return false;
   }
 
   public dispose(): void {
-    this.#isDisposed = true;
+    this.#isDisposed = false;
+    this.#terminal = null;
+  }
+}
+
+/** Local interface mirroring Settings.KeyMapping to avoid cross-layer import. */
+interface KeyMapping {
+  readonly key: string;
+  readonly ctrl: boolean;
+  readonly alt: boolean;
+  readonly meta: boolean;
+  readonly shift: boolean;
+  readonly action: string;
+  readonly actionArg: string;
+}
+
+/** Unified custom key event handler that consolidates all key interception. */
+export class KeyMappingAddon implements ITerminalAddon {
+  #terminal: Terminal | null = null;
+
+  public constructor(
+    protected readonly getMappings: () => readonly KeyMapping[],
+    protected readonly macOSAddon: MacOSOptionKeyPassthroughAddon,
+  ) {}
+
+  public activate(terminal: Terminal): void {
+    this.#terminal = terminal;
+    terminal.attachCustomKeyEventHandler((event) => this.#handleEvent(event));
+  }
+
+  public dispose(): void {
+    this.#terminal = null;
+  }
+
+  #handleEvent(event: KeyboardEvent): boolean {
+    const terminal = this.#terminal;
+    if (!terminal) {
+      return true;
+    }
+
+    // 1. User-defined key mappings (highest priority)
+    for (const mapping of this.getMappings()) {
+      if (this.#matches(event, mapping)) {
+        if (event.type === "keydown") {
+          this.#fire(terminal, mapping);
+        }
+        return false;
+      }
+    }
+
+    // 2. Built-in Shift+Enter → ESC+CR
+    if (event.key === "Enter" && event.shiftKey) {
+      if (event.type === "keydown") {
+        terminal.input("\x1b\r");
+      }
+      return false;
+    }
+
+    // 3. macOS Option key passthrough
+    return this.macOSAddon.handleEvent(event);
+  }
+
+  #matches(event: KeyboardEvent, mapping: KeyMapping): boolean {
+    return (
+      event.key === mapping.key &&
+      event.ctrlKey === mapping.ctrl &&
+      event.altKey === mapping.alt &&
+      event.metaKey === mapping.meta &&
+      event.shiftKey === mapping.shift
+    );
+  }
+
+  #fire(terminal: Terminal, mapping: KeyMapping): void {
+    switch (mapping.action) {
+      case "ignore":
+        break;
+      case "sendEscapeSequence":
+        terminal.input("\x1b" + mapping.actionArg);
+        break;
+      case "sendHexCode": {
+        const chars = mapping.actionArg
+          .trim()
+          .split(/\s+/)
+          .map((token) => parseInt(token, 16))
+          .filter((n) => !isNaN(n))
+          .map((n) => String.fromCharCode(n))
+          .join("");
+        if (chars) {
+          terminal.input(chars);
+        }
+        break;
+      }
+      case "sendText": {
+        const text = mapping.actionArg
+          .replace(/\\n/g, "\n")
+          .replace(/\\t/g, "\t")
+          .replace(/\\e/g, "\x1b")
+          .replace(/\\a/g, "\x07");
+        terminal.input(text);
+        break;
+      }
+      // No default
+    }
   }
 }

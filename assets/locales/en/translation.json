@@ -66,6 +66,23 @@
       "preset-placeholder": "$t(components.dropdown.placeholder)",
       "title": "$t(generic.profile_other, capitalize)"
     },
+    "key-mapping": {
+      "actions": {
+        "ignore": "Ignore",
+        "sendEscapeSequence": "Send Escape Sequence",
+        "sendHexCode": "Send Hex Code",
+        "sendText": "Send Text"
+      },
+      "add": "Add mapping",
+      "placeholders": {
+        "sendEscapeSequence": "e.g. [A",
+        "sendHexCode": "e.g. 0x02",
+        "sendText": "e.g. hello\\n"
+      },
+      "record": "Click to record",
+      "recording": "Press a key...",
+      "title": "Key Mappings"
+    },
     "select-profile": {
       "instructions": {
         "edit-before-use": "ctrl ↵",
@@ -304,6 +321,9 @@
     "instancing": "$t(generic.instance_gerund, capitalize)",
     "intercept-logging": "Intercept logging",
     "interface": "Interface",
+    "key-mappings": "Key mappings",
+    "key-mappings-description": "{{count}} mapping(s) defined",
+    "key-mappings-edit": "$t(generic.edit, capitalize)",
     "macOS-option-key-passthrough": "macOS: Option key passthrough",
     "macOS-option-key-passthrough-description": "Allow Option+key combinations to reach the terminal for typing special characters (e.g., @ on Scandinavian/German keyboards).",
     "new-instance-behavior": "New $t(generic.instance) $t(generic.behavior)",

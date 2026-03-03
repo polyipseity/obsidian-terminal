@@ -48,6 +48,7 @@ import {
   DisposerAddon,
   DragAndDropAddon,
   FollowThemeAddon,
+  KeyMappingAddon,
   MacOSOptionKeyPassthroughAddon,
   RendererAddon,
   RightClickActionAddon,
@@ -1011,53 +1012,62 @@ export class TerminalView extends ItemView {
                 profileTerminalOptions,
                 settings.value.terminalOptions,
               ),
-              {
-                disposer: new DisposerAddon(
-                  () => {
-                    ele.remove();
-                  },
-                  () => {
-                    this.title = "";
-                  },
-                  ele.onWindowMigrated(() => {
-                    emulator.reopen();
-                    emulator.resize(false).catch(warn);
+              (() => {
+                const macOptionKeyPassthrough =
+                  new MacOSOptionKeyPassthroughAddon(
+                    Platform.CURRENT === "darwin"
+                      ? () => settings.value.macOSOptionKeyPassthrough
+                      : constant(false),
+                  );
+                const keyMapping = new KeyMappingAddon(
+                  () => settings.value.keyMappings,
+                  macOptionKeyPassthrough,
+                );
+                return {
+                  disposer: new DisposerAddon(
+                    () => {
+                      ele.remove();
+                    },
+                    () => {
+                      this.title = "";
+                    },
+                    ele.onWindowMigrated(() => {
+                      emulator.reopen();
+                      emulator.resize(false).catch(warn);
+                    }),
+                    () => {
+                      if (this.find) {
+                        this.find[1].results = "";
+                      }
+                    },
+                  ),
+                  dragAndDrop: new DragAndDropAddon(ele),
+                  followTheme: new FollowThemeAddon(context, ele, {
+                    enabled(): boolean {
+                      return profile.type === "invalid" || profile.followTheme;
+                    },
                   }),
-                  () => {
-                    if (this.find) {
-                      this.find[1].results = "";
-                    }
-                  },
-                ),
-                dragAndDrop: new DragAndDropAddon(ele),
-                followTheme: new FollowThemeAddon(context, ele, {
-                  enabled(): boolean {
-                    return profile.type === "invalid" || profile.followTheme;
-                  },
-                }),
-                ligatures: new LigaturesAddon({}),
-                macOptionKeyPassthrough: new MacOSOptionKeyPassthroughAddon(
-                  Platform.CURRENT === "darwin"
-                    ? () => settings.value.macOSOptionKeyPassthrough
-                    : constant(false),
-                ),
-                renderer: new RendererAddon(
-                  () => new CanvasAddon(),
-                  () => new WebglAddon(false),
-                ),
-                rightClickAction: new RightClickActionAddon(
-                  profile.type === "invalid"
-                    ? void 0
-                    : (): RightClickActionAddon.Action =>
-                        profile.rightClickAction,
-                ),
-                search: new SearchAddon(),
-                unicode11: new Unicode11Addon(),
-                webLinks: new WebLinksAddon(
-                  (event, uri) => openExternal(activeSelf(event), uri),
-                  {},
-                ),
-              },
+                  keyMapping,
+                  ligatures: new LigaturesAddon({}),
+                  macOptionKeyPassthrough,
+                  renderer: new RendererAddon(
+                    () => new CanvasAddon(),
+                    () => new WebglAddon(false),
+                  ),
+                  rightClickAction: new RightClickActionAddon(
+                    profile.type === "invalid"
+                      ? void 0
+                      : (): RightClickActionAddon.Action =>
+                          profile.rightClickAction,
+                  ),
+                  search: new SearchAddon(),
+                  unicode11: new Unicode11Addon(),
+                  webLinks: new WebLinksAddon(
+                    (event, uri) => openExternal(activeSelf(event), uri),
+                    {},
+                  ),
+                };
+              })(),
             ),
             { pseudoterminal, terminal, addons } = emulator,
             { disposer, renderer, search } = addons;
@@ -1189,6 +1199,7 @@ export namespace TerminalView {
     readonly disposer: DisposerAddon;
     readonly dragAndDrop: DragAndDropAddon;
     readonly followTheme: FollowThemeAddon;
+    readonly keyMapping: KeyMappingAddon;
     readonly ligatures: LigaturesAddon;
     readonly macOptionKeyPassthrough: MacOSOptionKeyPassthroughAddon;
     readonly renderer: RendererAddon;
