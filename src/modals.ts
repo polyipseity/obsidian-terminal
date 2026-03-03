@@ -1406,20 +1406,14 @@ export class KeyMappingModal extends Modal {
     if (!mapping.key) {
       return i18n.t("components.key-mapping.record");
     }
-    const parts: string[] = [];
-    if (mapping.ctrl) {
-      parts.push("Ctrl");
-    }
-    if (mapping.alt) {
-      parts.push("Alt");
-    }
-    if (mapping.meta) {
-      parts.push("Meta");
-    }
-    if (mapping.shift) {
-      parts.push("Shift");
-    }
-    parts.push(mapping.key);
-    return parts.join("+");
+    return [
+      mapping.ctrl && "Ctrl",
+      mapping.alt && "Alt",
+      mapping.meta && "Meta",
+      mapping.shift && "Shift",
+      mapping.key,
+    ]
+      .filter(Boolean)
+      .join("+");
   }
 }

@@ -10,6 +10,7 @@ import {
 } from "@polyipseity/obsidian-plugin-library";
 import type { ITerminalAddon, ITheme, Terminal } from "@xterm/xterm";
 import { constant, isUndefined } from "lodash-es";
+import type { Settings } from "../settings-data.js";
 import type { CanvasAddon } from "@xterm/addon-canvas";
 import type { WebglAddon } from "@xterm/addon-webgl";
 import { around } from "monkey-around";
@@ -740,20 +741,9 @@ export class MacOSOptionKeyPassthroughAddon implements ITerminalAddon {
   }
 
   public dispose(): void {
-    this.#isDisposed = false;
+    this.#isDisposed = true;
     this.#terminal = null;
   }
-}
-
-/** Local interface mirroring Settings.KeyMapping to avoid cross-layer import. */
-interface KeyMapping {
-  readonly key: string;
-  readonly ctrl: boolean;
-  readonly alt: boolean;
-  readonly meta: boolean;
-  readonly shift: boolean;
-  readonly action: string;
-  readonly actionArg: string;
 }
 
 /** Unified custom key event handler that consolidates all key interception. */
@@ -761,7 +751,7 @@ export class KeyMappingAddon implements ITerminalAddon {
   #terminal: Terminal | null = null;
 
   public constructor(
-    protected readonly getMappings: () => readonly KeyMapping[],
+    protected readonly getMappings: () => readonly Settings.KeyMapping[],
     protected readonly macOSAddon: MacOSOptionKeyPassthroughAddon,
   ) {}
 
@@ -802,7 +792,7 @@ export class KeyMappingAddon implements ITerminalAddon {
     return this.macOSAddon.handleEvent(event);
   }
 
-  #matches(event: KeyboardEvent, mapping: KeyMapping): boolean {
+  #matches(event: KeyboardEvent, mapping: Settings.KeyMapping): boolean {
     return (
       event.key === mapping.key &&
       event.ctrlKey === mapping.ctrl &&
@@ -812,7 +802,7 @@ export class KeyMappingAddon implements ITerminalAddon {
     );
   }
 
-  #fire(terminal: Terminal, mapping: KeyMapping): void {
+  #fire(terminal: Terminal, mapping: Settings.KeyMapping): void {
     switch (mapping.action) {
       case "ignore":
         break;
