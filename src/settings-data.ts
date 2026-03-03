@@ -211,7 +211,97 @@ export namespace Settings {
         shift: fixTyped(DEFAULT, unc, "shift", ["boolean"]),
       });
     }
+
+    /** Check if two mappings have the same key combination. */
+    export function sameKey(a: KeyMapping, b: KeyMapping): boolean {
+      return (
+        a.key === b.key &&
+        a.ctrl === b.ctrl &&
+        a.alt === b.alt &&
+        a.meta === b.meta &&
+        a.shift === b.shift
+      );
+    }
   }
+
+  export const KEY_MAPPING_PRESETS = deepFreeze({
+    naturalTextEditing: [
+      // Option+Left → word backward
+      {
+        action: "sendEscapeSequence" as KeyMappingAction,
+        actionArg: "b",
+        alt: true,
+        ctrl: false,
+        key: "ArrowLeft",
+        meta: false,
+        shift: false,
+      },
+      // Option+Right → word forward
+      {
+        action: "sendEscapeSequence" as KeyMappingAction,
+        actionArg: "f",
+        alt: true,
+        ctrl: false,
+        key: "ArrowRight",
+        meta: false,
+        shift: false,
+      },
+      // Cmd+Left → beginning of line (Ctrl+A)
+      {
+        action: "sendHexCode" as KeyMappingAction,
+        actionArg: "01",
+        alt: false,
+        ctrl: false,
+        key: "ArrowLeft",
+        meta: true,
+        shift: false,
+      },
+      // Cmd+Right → end of line (Ctrl+E)
+      {
+        action: "sendHexCode" as KeyMappingAction,
+        actionArg: "05",
+        alt: false,
+        ctrl: false,
+        key: "ArrowRight",
+        meta: true,
+        shift: false,
+      },
+      // Option+Backspace → delete word backward (Ctrl+W)
+      {
+        action: "sendHexCode" as KeyMappingAction,
+        actionArg: "17",
+        alt: true,
+        ctrl: false,
+        key: "Backspace",
+        meta: false,
+        shift: false,
+      },
+      // Cmd+Backspace → delete to beginning of line (Ctrl+U)
+      {
+        action: "sendHexCode" as KeyMappingAction,
+        actionArg: "15",
+        alt: false,
+        ctrl: false,
+        key: "Backspace",
+        meta: true,
+        shift: false,
+      },
+      // Option+Delete → delete word forward (ESC d)
+      {
+        action: "sendEscapeSequence" as KeyMappingAction,
+        actionArg: "d",
+        alt: true,
+        ctrl: false,
+        key: "Delete",
+        meta: false,
+        shift: false,
+      },
+    ],
+  } as const satisfies Readonly<Record<string, readonly KeyMapping[]>>);
+  export type KeyMappingPreset = keyof typeof KEY_MAPPING_PRESETS;
+  export const KEY_MAPPING_PRESET_KEYS = Object.keys(
+    KEY_MAPPING_PRESETS,
+  ) as KeyMappingPreset[];
 
   export type Profile =
     | Profile.DeveloperConsole

@@ -74,10 +74,14 @@
         "sendText": "Send Text"
       },
       "add": "Add mapping",
+      "load-preset": "Load preset",
       "placeholders": {
         "sendEscapeSequence": "e.g. [A",
         "sendHexCode": "e.g. 0x02",
         "sendText": "e.g. hello\\n"
+      },
+      "presets": {
+        "naturalTextEditing": "Natural Text Editing (iTerm2)"
       },
       "record": "Click to record",
       "recording": "Press a key...",
