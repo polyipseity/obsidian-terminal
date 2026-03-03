@@ -70,7 +70,7 @@ Given a single required input `${input:bump}` indicating whether to bump `major`
 7. **Create the commit and tag**
    - If `${input:commitNow}` is `no`, skip committing and tagging and only present the commands that would be run.
 
-   - Otherwise, create the commit and an annotated tag. Use shell-safe here-doc formats for both shells:
+   - Otherwise, create the commit and an annotated, **signed if possible** tag. Many projects prefer tags signed with the user's GPG/SSH key; attempt a signed tag (`git tag -s`) first and fall back to unsigned (`-a`) only if the signing step fails due to missing keys. Use shell-safe here-doc formats for both shells and show both the commit and tagging commands.
 
      - PowerShell (Windows):
 
@@ -80,7 +80,8 @@ Given a single required input `${input:bump}` indicating whether to bump `major`
 
        <optional body wrapped to 72 chars>
        '@ | git commit --file=-) ; git rev-parse HEAD
-       git tag -a vX.Y.Z -m "vX.Y.Z"
+       # signed if possible, otherwise unsigned
+       git tag -s vX.Y.Z -m "vX.Y.Z" 2>$null -or git tag -a vX.Y.Z -m "vX.Y.Z"
        ```
 
      - Bash/zsh (Linux/macOS):
@@ -92,10 +93,11 @@ Given a single required input `${input:bump}` indicating whether to bump `major`
        <optional body wrapped to 72 chars>
        MSG
        ) && git rev-parse HEAD
-       git tag -a vX.Y.Z -m "vX.Y.Z"
+       # signed if possible, otherwise unsigned
+       git tag -s vX.Y.Z -m "vX.Y.Z" 2>/dev/null || git tag -a vX.Y.Z -m "vX.Y.Z"
        ```
 
-   - If tagging fails, report the error and do not remove the commit.
+   - If tagging fails (both attempts), report the error and do not remove the commit.
 
 8. **Output**
    - 1–2 line summary: previous version → new version, staged files.
@@ -110,6 +112,7 @@ Given a single required input `${input:bump}` indicating whether to bump `major`
 - Only stage and commit files that are directly affected by the version bump or by the project's version/regeneration script.
 - Prefer package-manager-native version commands (`npm`, `pnpm`, `yarn`, `bun`) but gracefully fall back to programmatic updates if needed.
 - If any command fails, report the error, show commands that were successfully run, and stop further destructive steps.
+- When creating a git tag, prefer a signed tag (`git tag -s`) and only fall back to unsigned if signing is unavailable.
 
 ## Inputs
 
