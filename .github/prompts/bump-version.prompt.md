@@ -27,22 +27,35 @@ Given a single required input `${input:bump}` indicating whether to bump `major`
 
    - Report the current version in the output.
 
-3. **Bump `package.json` version**
-   - Prefer using the repository's package manager to bump the version without creating a git tag. Detect lockfiles or common tools and prefer them in this order: `bun` (`bun.lock`), `pnpm` (`pnpm-lock.yaml`), `yarn` (`yarn.lock`), then `npm` (`package-lock.json`). Examples:
+   - At the same time, determine a few npm-related Git settings that will affect the bump:
+     1. Read `tag-version-prefix`/`tag-version-suffix` as described earlier. A robust implementation should check for their presence in configuration files (such as `.npmrc`) and treat an absent key as unspecified (default prefix "v"), while honouring an explicitly empty setting. You may also run `npm config get tag-version-prefix`/`tag-version-suffix` to see what npm would choose, but remember that those commands always emit a value (they default to "v" when no configuration exists), so the real decision must be based on whether the key is present at all versus present with an empty string.
+     2. Check the `sign-git-tag` and optionally `sign-git-commit` npm config values (`npm config get sign-git-tag`). If `sign-git-tag` is true, record that tags should be created with `-s` to produce a GPG/SSH signature. (Commit signing is controlled by Git configuration and the commit snippet below may pass `-S` if desired.)
+     3. You may still query `npm config get` for each value, but be aware that npm returns defaults for missing keys; preserve the distinction between unknown and explicitly empty as noted above.
+     4. Save all these resolved settings (prefix, suffix, signTag boolean, etc.) for use when constructing commit and tag commands.
 
-    ```shell
-    bun version --no-git-tag-version ${input:bump}
-    pnpm version --no-git-tag-version ${input:bump}
-    yarn version --no-git-tag-version --new-version ${input:bump}
-    npm version --no-git-tag-version ${input:bump}
-    ```
-  
+3. **Bump `package.json` version**
+   - Prefer using the repository's package manager to bump the version without creating a git tag. Detect lockfiles or common tools and prefer them in this order: `pnpm` (pnpm-lock.yaml), `yarn` (yarn.lock), then `npm` (package-lock.json). Examples:
+
+     - npm:
+
+       ```shell
+       npm --no-git-tag-version version ${input:bump}
+       ```
+
+     - pnpm:
+
+       ```shell
+       pnpm version --no-git-tag-version ${input:bump}
+       ```
+
+     - yarn (classic).
+
    - If the package manager command is not applicable or fails, fall back to updating `package.json` programmatically and writing the file.
 
 4. **Run project version/regeneration script (if present)**
    - Detect and run a version or regeneration step if the repository provides one, for example:
 
-     - If `package.json` includes a `version` script: `npm run version` (or the equivalent using bun/pnpm/yarn)
+     - If `package.json` includes a `version` script: `npm run version` (or the equivalent using pnpm/yarn)
      - If `scripts/version.mjs` exists: `node scripts/version.mjs`
 
    - The goal is to update any generated manifests/version maps the project uses. If no such script exists, skip this step.
@@ -70,34 +83,35 @@ Given a single required input `${input:bump}` indicating whether to bump `major`
 7. **Create the commit and tag**
    - If `${input:commitNow}` is `no`, skip committing and tagging and only present the commands that would be run.
 
-   - Otherwise, create the commit and an annotated, **signed if possible** tag. Many projects prefer tags signed with the user's GPG/SSH key; attempt a signed tag (`git tag -s`) first and fall back to unsigned (`-a`) only if the signing step fails due to missing keys. Use shell-safe here-doc formats for both shells and show both the commit and tagging commands.
+   - Otherwise, create the commit and an annotated tag. Before constructing the tag name, ensure you've already read the repository's npm configuration (from `.npmrc` or via `npm config get …`) and stored the `tag-version-prefix`/`tag-version-suffix` values. Use that information here when composing the tag string. Remember that an **absent key** means fallback to the default `"v"` prefix, whereas an **explicitly provided empty value** (even if `npm config get` returns `"v"` due to npm’s default) should be treated as the empty string and used accordingly.
+   - When preparing the Git commands, also consult the previously recorded `sign-git-tag` (and optionally `sign-git-commit`) flag. If tag signing is requested, include `-s` in the `git tag` invocation; the commit command may include `-S` or rely on the user's global Git signing settings. Signing is preferred when configured, matching the behaviour of npm's `sign-git-tag=true`.
+
+   - Use shell-safe here-doc formats for both shells when executing the commit and tag command:
 
      - PowerShell (Windows):
 
        ```powershell
        (@'
-       chore(release): vX.Y.Z
+       chore(release): ${TAG_PREFIX}X.Y.Z${TAG_SUFFIX}
 
        <optional body wrapped to 72 chars>
-       '@ | git commit --file=-) ; git rev-parse HEAD
-       # signed if possible, otherwise unsigned
-       git tag -s vX.Y.Z -m "vX.Y.Z" 2>$null -or git tag -a vX.Y.Z -m "vX.Y.Z"
+       '@ | git commit --file=- ${SIGN_FLAG}) ; git rev-parse HEAD
+       git tag -a ${TAG_SIGN_FLAG}${TAG_PREFIX}X.Y.Z${TAG_SUFFIX} -m "${TAG_PREFIX}X.Y.Z${TAG_SUFFIX}"
        ```
 
      - Bash/zsh (Linux/macOS):
 
        ```bash
        (git commit --file - <<'MSG'
-       chore(release): vX.Y.Z
+       chore(release): ${TAG_PREFIX}X.Y.Z${TAG_SUFFIX}
 
        <optional body wrapped to 72 chars>
        MSG
-       ) && git rev-parse HEAD
-       # signed if possible, otherwise unsigned
-       git tag -s vX.Y.Z -m "vX.Y.Z" 2>/dev/null || git tag -a vX.Y.Z -m "vX.Y.Z"
+       )${SIGN_FLAG:+ && git rev-parse HEAD}
+       git tag -a ${TAG_SIGN_FLAG}${TAG_PREFIX}X.Y.Z${TAG_SUFFIX} -m "${TAG_PREFIX}X.Y.Z${TAG_SUFFIX}"
        ```
 
-   - If tagging fails (both attempts), report the error and do not remove the commit.
+   - If tagging fails, report the error and do not remove the commit.
 
 8. **Output**
    - 1–2 line summary: previous version → new version, staged files.
@@ -110,9 +124,8 @@ Given a single required input `${input:bump}` indicating whether to bump `major`
 - Never ask for confirmation or clarification. Proceed automatically using best-effort defaults and available context.
 - Require `${input:bump}` to be explicitly provided and valid; do not guess which component to bump.
 - Only stage and commit files that are directly affected by the version bump or by the project's version/regeneration script.
-- Prefer package-manager-native version commands (`npm`, `pnpm`, `yarn`, `bun`) but gracefully fall back to programmatic updates if needed.
+- Prefer package-manager-native version commands (`npm`, `pnpm`, `yarn`) but gracefully fall back to programmatic updates if needed.
 - If any command fails, report the error, show commands that were successfully run, and stop further destructive steps.
-- When creating a git tag, prefer a signed tag (`git tag -s`) and only fall back to unsigned if signing is unavailable.
 
 ## Inputs
 
