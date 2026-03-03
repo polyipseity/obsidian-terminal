@@ -14,6 +14,7 @@ import type { ITerminalAddon, ITheme, Terminal } from "@xterm/xterm";
 import { constant, isUndefined } from "lodash-es";
 import { around } from "monkey-around";
 import { noop } from "ts-essentials";
+import type { Settings } from "../settings-data.js";
 import { ESCAPE_SEQUENCE_INTRODUCER as ESC } from "./utils.js";
 
 export class DisposerAddon extends Functions implements ITerminalAddon {
@@ -773,23 +774,12 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
   }
 }
 
-/** Local interface mirroring Settings.KeyMapping to avoid cross-layer import. */
-interface KeyMapping {
-  readonly key: string;
-  readonly ctrl: boolean;
-  readonly alt: boolean;
-  readonly meta: boolean;
-  readonly shift: boolean;
-  readonly action: string;
-  readonly actionArg: string;
-}
-
 /** Unified custom key event handler that consolidates all key interception. */
 export class KeyMappingAddon implements ITerminalAddon {
   #terminal: Terminal | null = null;
 
   public constructor(
-    protected readonly getMappings: () => readonly KeyMapping[],
+    protected readonly getMappings: () => readonly Settings.KeyMapping[],
     protected readonly macOSAddon: CustomKeyEventHandlerAddon,
   ) {}
 
@@ -831,7 +821,7 @@ export class KeyMappingAddon implements ITerminalAddon {
     return false;  // return this.macOSAddon.handle(event);
   }
 
-  #matches(event: KeyboardEvent, mapping: KeyMapping): boolean {
+  #matches(event: KeyboardEvent, mapping: Settings.KeyMapping): boolean {
     return (
       event.key === mapping.key &&
       event.ctrlKey === mapping.ctrl &&
@@ -841,7 +831,7 @@ export class KeyMappingAddon implements ITerminalAddon {
     );
   }
 
-  #fire(terminal: Terminal, mapping: KeyMapping): void {
+  #fire(terminal: Terminal, mapping: Settings.KeyMapping): void {
     switch (mapping.action) {
       case "ignore":
         break;
