@@ -8,10 +8,10 @@ import {
   replaceAllRegex,
   revealPrivate,
 } from "@polyipseity/obsidian-plugin-library";
-import type { ITerminalAddon, ITheme, Terminal } from "@xterm/xterm";
-import { constant, isUndefined } from "lodash-es";
 import type { CanvasAddon } from "@xterm/addon-canvas";
 import type { WebglAddon } from "@xterm/addon-webgl";
+import type { ITerminalAddon, ITheme, Terminal } from "@xterm/xterm";
+import { constant, isUndefined } from "lodash-es";
 import { around } from "monkey-around";
 import { noop } from "ts-essentials";
 import { ESCAPE_SEQUENCE_INTRODUCER as ESC } from "./utils.js";
@@ -685,14 +685,13 @@ export namespace RightClickActionAddon {
  * - **Option+Arrow/Backspace/Delete**: Word navigation and deletion sequences.
  */
 export class CustomKeyEventHandlerAddon implements ITerminalAddon {
-  #isDisposed = false;
+  protected terminal: Terminal | null = null;
 
   public constructor(protected readonly isPassthroughEnabled: () => boolean) {}
 
-  public activate(terminal: Terminal): void {
-    const handler = (event: KeyboardEvent): boolean => {
-      // Don't process events if addon is disposed
-      if (this.#isDisposed) {
+  protected handle(event: KeyboardEvent): boolean {
+      // Don't process events if addon is uninitialized or disposed
+      if (this.terminal === null) {
         return true;
       }
 
@@ -702,7 +701,7 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
       // to avoid attachCustomKeyEventHandler conflict (last call wins).
       if (event.key === "Enter" && event.shiftKey) {
         if (event.type === "keydown") {
-          terminal.input(`${ESC}\r`);
+          this.terminal.input(`${ESC}\r`);
         }
         return false;
       }
@@ -735,39 +734,143 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
 
       // Option+Arrow word navigation
       if (event.key === "ArrowLeft") {
-        terminal.input(`${ESC}b`); // backward-word
+        this.terminal.input(`${ESC}b`); // backward-word
         return false;
       }
       if (event.key === "ArrowRight") {
-        terminal.input(`${ESC}f`); // forward-word
+        this.terminal.input(`${ESC}f`); // forward-word
         return false;
       }
 
       // Option+Backspace/Delete word deletion
       if (event.key === "Backspace") {
-        terminal.input(`${ESC}\x7f`); // backward-kill-word
+        this.terminal.input(`${ESC}\x7f`); // backward-kill-word
         return false;
       }
       if (event.key === "Delete") {
-        terminal.input(`${ESC}d`); // forward-kill-word
+        this.terminal.input(`${ESC}d`); // forward-kill-word
         return false;
       }
 
       // Send the browser-composed character directly via the public API
       // (e.g., Option+2 → '@', Option+7 → '|' on Finnish keyboard)
       if (event.key.length === 1) {
-        terminal.input(event.key);
+        this.terminal.input(event.key);
       }
 
-      // Return false to prevent xterm.js from processing this event
-      // (which would incorrectly send ESC sequences due to bug #2831)
-      return false;
-    };
+    // Return false to prevent xterm.js from processing this event
+    // (which would incorrectly send ESC sequences due to bug #2831)
+    return false;
+  }
 
-    terminal.attachCustomKeyEventHandler(handler);
+  public activate(terminal: Terminal): void {
+    this.terminal = terminal;
+    terminal.attachCustomKeyEventHandler(this.handle.bind(this));
   }
 
   public dispose(): void {
-    this.#isDisposed = true;
+    this.terminal = null;
+  }
+}
+
+/** Local interface mirroring Settings.KeyMapping to avoid cross-layer import. */
+interface KeyMapping {
+  readonly key: string;
+  readonly ctrl: boolean;
+  readonly alt: boolean;
+  readonly meta: boolean;
+  readonly shift: boolean;
+  readonly action: string;
+  readonly actionArg: string;
+}
+
+/** Unified custom key event handler that consolidates all key interception. */
+export class KeyMappingAddon implements ITerminalAddon {
+  #terminal: Terminal | null = null;
+
+  public constructor(
+    protected readonly getMappings: () => readonly KeyMapping[],
+    protected readonly macOSAddon: CustomKeyEventHandlerAddon,
+  ) {}
+
+  public activate(terminal: Terminal): void {
+    this.#terminal = terminal;
+    terminal.attachCustomKeyEventHandler((event) => this.#handleEvent(event));
+  }
+
+  public dispose(): void {
+    this.#terminal = null;
+  }
+
+  #handleEvent(event: KeyboardEvent): boolean {
+    const terminal = this.#terminal;
+    if (!terminal) {
+      return true;
+    }
+
+    // 1. User-defined key mappings (highest priority)
+    for (const mapping of this.getMappings()) {
+      if (this.#matches(event, mapping)) {
+        if (event.type === "keydown") {
+          this.#fire(terminal, mapping);
+        }
+        return false;
+      }
+    }
+
+    // 2. Built-in Shift+Enter → ESC+CR
+    if (event.key === "Enter" && event.shiftKey) {
+      if (event.type === "keydown") {
+        terminal.input("\x1b\r");
+      }
+      return false;
+    }
+
+    // 3. macOS Option key passthrough
+    // TODO: merge conflict
+    return false;  // return this.macOSAddon.handle(event);
+  }
+
+  #matches(event: KeyboardEvent, mapping: KeyMapping): boolean {
+    return (
+      event.key === mapping.key &&
+      event.ctrlKey === mapping.ctrl &&
+      event.altKey === mapping.alt &&
+      event.metaKey === mapping.meta &&
+      event.shiftKey === mapping.shift
+    );
+  }
+
+  #fire(terminal: Terminal, mapping: KeyMapping): void {
+    switch (mapping.action) {
+      case "ignore":
+        break;
+      case "sendEscapeSequence":
+        terminal.input("\x1b" + mapping.actionArg);
+        break;
+      case "sendHexCode": {
+        const chars = mapping.actionArg
+          .trim()
+          .split(/\s+/)
+          .map((token) => parseInt(token, 16))
+          .filter((n) => !isNaN(n))
+          .map((n) => String.fromCharCode(n))
+          .join("");
+        if (chars) {
+          terminal.input(chars);
+        }
+        break;
+      }
+      case "sendText": {
+        const text = mapping.actionArg
+          .replace(/\\n/g, "\n")
+          .replace(/\\t/g, "\t")
+          .replace(/\\e/g, "\x1b")
+          .replace(/\\a/g, "\x07");
+        terminal.input(text);
+        break;
+      }
+      // No default
+    }
   }
 }

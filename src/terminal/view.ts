@@ -1,9 +1,4 @@
 import {
-  DEFAULT_ENCODING,
-  DEFAULT_SUCCESS_EXIT_CODES,
-  DOMClasses2,
-} from "../magic.js";
-import {
   DialogModal,
   FindComponent,
   type FindComponent$,
@@ -44,14 +39,12 @@ import {
   useSettings,
   writeStateCollaboratively,
 } from "@polyipseity/obsidian-plugin-library";
-import {
-  DisposerAddon,
-  DragAndDropAddon,
-  FollowThemeAddon,
-  CustomKeyEventHandlerAddon,
-  RendererAddon,
-  RightClickActionAddon,
-} from "./emulator-addons.js";
+import type { LigaturesAddon } from "@xterm/addon-ligatures";
+import type { SearchAddon } from "@xterm/addon-search";
+import type { Unicode11Addon } from "@xterm/addon-unicode11";
+import type { WebLinksAddon } from "@xterm/addon-web-links";
+import { type ITerminalOptions, Terminal } from "@xterm/xterm";
+import { constant, noop } from "lodash-es";
 import {
   FileSystemAdapter,
   ItemView,
@@ -60,26 +53,34 @@ import {
   type ViewStateResult,
   type WorkspaceLeaf,
 } from "obsidian";
-import { PROFILE_PROPERTIES, openProfile } from "./profile-properties.js";
-import { constant, noop } from "lodash-es";
 import { mount, unmount } from "svelte";
-import { BUNDLE } from "../import.js";
 import type { DeepWritable } from "ts-essentials";
-import type { LigaturesAddon } from "@xterm/addon-ligatures";
-import { ProfileModal } from "../modals.js";
-import type { SearchAddon } from "@xterm/addon-search";
-import { Settings } from "../settings-data.js";
-import type { TerminalPlugin } from "../main.js";
-import { Terminal, type ITerminalOptions } from "@xterm/xterm";
-import { TextPseudoterminal } from "./pseudoterminal.js";
-import type { Unicode11Addon } from "@xterm/addon-unicode11";
-import type { WebLinksAddon } from "@xterm/addon-web-links";
-import { XtermTerminalEmulator } from "./emulator.js";
-import { writePromise } from "./utils.js";
+import { BUNDLE } from "../import.js";
 import {
-  mergeTerminalOptions,
+  DEFAULT_ENCODING,
+  DEFAULT_SUCCESS_EXIT_CODES,
+  DOMClasses2,
+} from "../magic.js";
+import type { TerminalPlugin } from "../main.js";
+import { ProfileModal } from "../modals.js";
+import { Settings } from "../settings-data.js";
+import {
+  CustomKeyEventHandlerAddon,
+  DisposerAddon,
+  DragAndDropAddon,
+  FollowThemeAddon,
+  KeyMappingAddon,
+  RendererAddon,
+  RightClickActionAddon,
+} from "./emulator-addons.js";
+import { XtermTerminalEmulator } from "./emulator.js";
+import {
   applyTerminalOptionDiffShallow,
+  mergeTerminalOptions,
 } from "./options.js";
+import { PROFILE_PROPERTIES, openProfile } from "./profile-properties.js";
+import { TextPseudoterminal } from "./pseudoterminal.js";
+import { writePromise } from "./utils.js";
 
 const xtermAddonCanvas = dynamicRequire<typeof import("@xterm/addon-canvas")>(
     BUNDLE,
@@ -1250,6 +1251,7 @@ export namespace TerminalView {
     readonly disposer: DisposerAddon;
     readonly dragAndDrop: DragAndDropAddon;
     readonly followTheme: FollowThemeAddon;
+    readonly keyMapping: KeyMappingAddon;
     readonly ligatures: LigaturesAddon;
     readonly renderer: RendererAddon;
     readonly rightClickAction: RightClickActionAddon;
