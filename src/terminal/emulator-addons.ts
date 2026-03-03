@@ -677,6 +677,15 @@ export class MacOSOptionKeyPassthroughAddon implements ITerminalAddon {
         return true;
       }
 
+      // Shift+Enter → ESC+CR for TUI apps like Claude Code
+      // This must be handled regardless of passthrough setting
+      if (event.key === "Enter" && event.shiftKey) {
+        if (event.type === "keydown") {
+          terminal.input("\x1b\r");
+        }
+        return false;
+      }
+
       // Only intercept on Mac when passthrough is enabled
       // (macOptionIsMeta is auto-disabled when passthrough is enabled)
       if (!this.isPassthroughEnabled()) {
