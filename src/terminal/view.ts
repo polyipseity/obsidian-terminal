@@ -39,6 +39,7 @@ import {
   recordViewStateHistory,
   resetButton,
   saveFileAs,
+  svelteState,
   updateView,
   useSettings,
   writeStateCollaboratively,
@@ -309,7 +310,9 @@ export class TerminalView extends ItemView {
   static #namespacedType: string;
   #title0 = "";
   #emulator0: TerminalView.EMULATOR | null = null;
-  #find0: ReturnType<typeof FindComponent> | null = null;
+  #find0:
+    | readonly [ReturnType<typeof FindComponent>, FindComponent$.Props]
+    | null = null;
   #state = TerminalView.State.DEFAULT;
 
   public constructor(
@@ -333,7 +336,9 @@ export class TerminalView extends ItemView {
     return this.#emulator0;
   }
 
-  protected get find(): ReturnType<typeof FindComponent> | null {
+  protected get find():
+    | readonly [ReturnType<typeof FindComponent>, FindComponent$.Props]
+    | null {
     return this.#find0;
   }
 
@@ -410,9 +415,13 @@ export class TerminalView extends ItemView {
     this.#emulator0 = val;
   }
 
-  protected set find(val: ReturnType<typeof FindComponent> | null) {
+  protected set find(
+    val:
+      | readonly [ReturnType<typeof FindComponent>, FindComponent$.Props]
+      | null,
+  ) {
     if (this.find) {
-      unmount(this.find, { outro: true }).catch((error: unknown) => {
+      unmount(this.find[0], { outro: true }).catch((error: unknown) => {
         activeSelf(this.contentEl).console.warn(error);
       });
     }
@@ -768,7 +777,9 @@ export class TerminalView extends ItemView {
     this.register(
       language.onChangeLanguage.listen(() => {
         updateView(context, this);
-        this.find?.setI18n(i18n.t);
+        if (this.find) {
+          this.find[1].i18nt = i18n.t.bind(i18n); // `bind` to preserve the context for potential i18n features that rely on it
+        }
       }),
     );
 
@@ -841,30 +852,36 @@ export class TerminalView extends ItemView {
             empty = true;
           }
           if (empty) {
-            this.find?.setResults("");
+            if (this.find) {
+              this.find[1].results = "";
+            }
           }
         },
         optional: { anchor?: Element } = {};
       assignExact(optional, "anchor", contentEl.firstElementChild ?? void 0);
-      this.find = mount(FindComponent, {
-        intro: true,
-        props: {
-          focused: true,
-          i18n: i18n.t,
-          onClose: () => {
-            this.find = null;
-          },
-          onFind,
-          onParamsChanged: (params: FindComponent$.Params) => {
-            this.emulator?.addons.search.clearDecorations();
-            onFind("previous", params);
-          },
+      const props = svelteState({
+        focused: true,
+        i18nt: i18n.t.bind(i18n), // `bind` to preserve the context for potential i18n features that rely on it
+        onClose: () => {
+          this.find = null;
         },
-        target: contentEl,
-        ...optional,
+        onFind,
+        onParamsChanged: (params: FindComponent$.Params) => {
+          this.emulator?.addons.search.clearDecorations();
+          onFind("previous", params);
+        },
       });
+      this.find = [
+        mount(FindComponent, {
+          intro: true,
+          props,
+          target: contentEl,
+          ...optional,
+        }),
+        props,
+      ];
     }
-    this.find.focus();
+    this.find[0].focus();
   }
 
   protected startEmulator(focus: boolean): void {
@@ -1007,7 +1024,9 @@ export class TerminalView extends ItemView {
                     emulator.resize(false).catch(warn);
                   }),
                   () => {
-                    this.find?.setResults("");
+                    if (this.find) {
+                      this.find[1].results = "";
+                    }
                   },
                 ),
                 dragAndDrop: new DragAndDropAddon(ele),
@@ -1136,7 +1155,9 @@ export class TerminalView extends ItemView {
                         index: resultIndex + 1,
                       },
                     });
-            this.find?.setResults(results);
+            if (this.find) {
+              this.find[1].results = results;
+            }
           });
 
           emulator.resize().catch(warn);

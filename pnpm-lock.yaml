@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@polyipseity/obsidian-plugin-library':
-        specifier: ^1.35.0
-        version: 1.35.0(@codemirror/state@6.5.2)(@codemirror/view@6.37.1)(esbuild@0.27.3)(eslint@10.0.2(jiti@2.6.1))(typescript@5.9.3)
+        specifier: ^1.36.0
+        version: 1.36.0(@codemirror/state@6.5.2)(@codemirror/view@6.37.1)(esbuild@0.27.3)(eslint@10.0.2(jiti@2.6.1))(typescript@5.9.3)
       '@xterm/addon-canvas':
         specifier: ^0.7.0
         version: 0.7.0(@xterm/xterm@6.0.0)
@@ -677,8 +677,8 @@ packages:
     resolution: {integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==}
     engines: {node: '>= 8'}
 
-  '@polyipseity/obsidian-plugin-library@1.35.0':
-    resolution: {integrity: sha512-rPQ8pGHCNSxGt7nkZNKmxm83wYzptS2ftnTLgcLp+j9NGMp42J+SPDl8Kd+9xUZjnwNACI4qrkVq5U6mWmPKEA==}
+  '@polyipseity/obsidian-plugin-library@1.36.0':
+    resolution: {integrity: sha512-lqkCL3hWLmgcAOEXkOBw/6Gv9VT3jyHYbHT5/Z9uskpxsi8IFIPHGrlXWMGdmAGxZezpIk69lm+VSgjHuprKsw==}
     peerDependencies:
       esbuild: '>=0.17.0'
     peerDependenciesMeta:
@@ -1981,8 +1981,8 @@ packages:
     resolution: {integrity: sha512-Jo6dJ04CmSjuznwJSS3pUeWmd/H0ffTlkXXgwZi+eq1UCmqQwCh+eLsYOYCwY991i2Fah4h1BEMCx4qThGbsiA==}
     engines: {node: '>=10'}
 
-  lucide@0.563.0:
-    resolution: {integrity: sha512-2zBzDJ5n2Plj3d0ksj6h9TWPOSiKu9gtxJxnBAye11X/8gfWied6IYJn6ADYBp1NPoJmgpyOYP3wMrVx69+2AA==}
+  lucide@0.575.0:
+    resolution: {integrity: sha512-+xwqZpvrqPioU8bSH49zH2xARfnKyZgIjdnfbex0CrURB3q4wNFhinYN1Z9Q3lE16Q/6N9iEXnStvyS3c70RKw==}
 
   lz-string@1.5.0:
     resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
@@ -3345,7 +3345,7 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.19.1
 
-  '@polyipseity/obsidian-plugin-library@1.35.0(@codemirror/state@6.5.2)(@codemirror/view@6.37.1)(esbuild@0.27.3)(eslint@10.0.2(jiti@2.6.1))(typescript@5.9.3)':
+  '@polyipseity/obsidian-plugin-library@1.36.0(@codemirror/state@6.5.2)(@codemirror/view@6.37.1)(esbuild@0.27.3)(eslint@10.0.2(jiti@2.6.1))(typescript@5.9.3)':
     dependencies:
       '@capacitor/core': 8.0.2
       '@capacitor/filesystem': 8.1.0(@capacitor/core@8.0.2)
@@ -3359,9 +3359,9 @@ snapshots:
       file-saver: 2.0.5
       i18next: 25.8.13(typescript@5.9.3)
       i18next-resources-to-backend: 1.2.1
-      import-meta-resolve: 4.1.0
+      import-meta-resolve: 4.2.0
       lodash-es: 4.17.23
-      lucide: 0.563.0
+      lucide: 0.575.0
       lz-string: 1.5.0
       moment: 2.30.1
       monkey-around: 3.0.0
@@ -4691,7 +4691,7 @@ snapshots:
     dependencies:
       yallist: 4.0.0
 
-  lucide@0.563.0: {}
+  lucide@0.575.0: {}
 
   lz-string@1.5.0: {}
 
