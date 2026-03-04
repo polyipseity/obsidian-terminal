@@ -22,7 +22,11 @@ __all__ = ()
 """Glob patterns relative to the repository root. Only files matching an
 include pattern and no exclude pattern are considered candidates."""
 _GLOB_SPEC = """
-scripts/*
+scripts/*.bat
+scripts/*.cmd
+scripts/*.ps1
+scripts/*.py
+scripts/*.sh
 """
 
 
@@ -124,6 +128,12 @@ async def test_top_level_scripts_executable() -> None:
                 "100755",
                 "120000",
             ), f"unexpected mode {git_mode_str} for {entry}"
+            # regardless of platform, if the file is tracked as a regular file
+            # (not a symlink) then the git index must mark it as executable.
+            if not git_mode_str.startswith("12"):
+                assert git_mode_str.startswith("1007"), (
+                    f"{entry} is tracked but the git index does not mark it as executable"
+                )
 
         # Windows doesn't honor the executable bit; just skip without
         # emitting warnings. The earlier implementation warned, but the
@@ -132,17 +142,13 @@ async def test_top_level_scripts_executable() -> None:
             continue
 
         # on non-Windows platforms we insist on the bit being present and
-        # additionally that git considers the file executable.  The git
-        # check is a best-effort attempt because the file might not have
-        # been added yet (newly created in a test branch), so we only assert
-        # when ``git_mode_str`` is available.  Symlinks (mode 120000) are
-        # allowed by virtue of the above check; they do not have a separate
-        # executable bit of their own.
+        # additionally that git considers the file executable.  The git check
+        # above is a best-effort attempt because the file might not have been
+        # added yet (newly created in a test branch), so we only assert when
+        # ``git_mode_str`` is available.  Symlinks (mode 120000) are allowed by
+        # virtue of the above check; they do not have a separate executable bit
+        # of their own.
         assert is_exec, f"{entry} is not marked executable"
-        if git_mode_str is not None and not git_mode_str.startswith("12"):
-            assert git_mode_str.startswith("1007"), (
-                f"{entry} is tracked but the git index does not mark it as executable"
-            )
 
 
 @pytest.mark.anyio
