@@ -99,7 +99,7 @@ async def git_mode(path: Path) -> str | None:
         )
     except Exception:
         return None
-    out = proc.stdout.decode().strip()  # type: ignore[attr-defined]
+    out = proc.stdout.decode().strip()
     if not out:
         return None
     return out.split()[0]
