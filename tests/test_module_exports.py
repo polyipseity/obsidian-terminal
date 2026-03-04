@@ -1,7 +1,7 @@
 """Tests that every module declares a module-level `__all__` tuple.
 
 This test parses the AST of Python modules to avoid executing top-level code.
-It asserts that each `.py` file under `src/` and relevant `tests/` files
+It asserts that each `.py` file under `scripts/` and relevant `tests/` files
 contains a top-level assignment to `__all__` where the value is a `tuple`
 containing only string constants.
 
@@ -21,12 +21,12 @@ from anyio import Path
 
 __all__ = ()
 
-# keep ROOT as an anyio.Path instance (don't await resolve at import time)
+"""Repository root used by the __all__ compliance tests for path discovery."""
 ROOT = Path(".")
 
 
 async def _find_py_files() -> list[Path]:
-    """Return a sorted list of Python file paths under `src/` and `tests/`.
+    """Return a sorted list of Python file paths under `scripts/` and `tests/`.
 
     The helper parallels the module traversal used in repository checks and
     is deterministic (sorted) for consistent test output.
@@ -34,7 +34,7 @@ async def _find_py_files() -> list[Path]:
 
     files: list[Path] = []
 
-    async for path in (ROOT / "src").rglob("*.py"):
+    async for path in (ROOT / "scripts").rglob("*.py"):
         files.append(path)
     async for path in (ROOT / "tests").rglob("*.py"):
         files.append(path)

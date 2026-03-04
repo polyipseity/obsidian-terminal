@@ -1,13 +1,15 @@
-"""Tests that modules and exported public symbols include docstrings.
+"""Tests that modules, exported public symbols, and top-level variables include docstrings.
 
 This test parses modules' AST to avoid executing top-level code. It enforces
 that:
 
-- Every Python module under `src/` and `tests/` contains a non-empty
+- Every Python module under `scripts/` and `tests/` contains a non-empty
   module-level docstring.
 - Every exported function or class (listed in `__all__`) has a non-empty
-  docstring. Assignments/constants are not required to have individual
-  docstrings but should be documented in the module docstring.
+  docstring.
+- Every top-level variable (assignment/constant) has an individual docstring in
+  the form of a preceding string-literal expression statement, so constants and
+  configuration are documented close to their definitions.
 """
 
 import ast
@@ -18,19 +20,19 @@ from anyio import Path
 
 __all__ = ()
 
-# keep ROOT as an anyio.Path instance (don't await resolve at import time)
+"""Repository root used by the docstring compliance tests for path discovery."""
 ROOT = Path(".")
 
 
 async def _find_py_files() -> list[Path]:
-    """Return a sorted list of Python file paths under `src/` and `tests`.
+    """Return a sorted list of Python file paths under `scripts/` and `tests`.
 
     Mirrors the traversal used by other repository checks.
     """
 
     files: list[Path] = []
 
-    async for path in (ROOT / "src").rglob("*.py"):
+    async for path in (ROOT / "scripts").rglob("*.py"):
         files.append(path)
     async for path in (ROOT / "tests").rglob("*.py"):
         files.append(path)
@@ -99,9 +101,55 @@ def _find_def_node(node: ast.Module, name: str) -> ast.AST | None:
     return None
 
 
+def _iter_top_level_assignments(node: ast.Module) -> Iterator[tuple[str, int]]:
+    """Yield (variable name, statement index) for top-level assignments.
+
+    This covers both `Assign` and `AnnAssign` targets that bind a `Name` at
+    module scope. The special export-control variable `__all__` is excluded.
+    """
+
+    for idx, stmt in enumerate(node.body):
+        if isinstance(stmt, ast.Assign):
+            for target in stmt.targets:
+                if isinstance(target, ast.Name) and target.id != "__all__":
+                    yield target.id, idx
+        elif isinstance(stmt, ast.AnnAssign):
+            target = stmt.target
+            if isinstance(target, ast.Name) and target.id != "__all__":
+                yield target.id, idx
+
+
+def _get_assignment_docstring(node: ast.Module, stmt_index: int) -> str | None:
+    """Return the docstring for a top-level assignment, if present.
+
+    A variable's docstring is defined as the immediately preceding expression
+    statement whose value is a string literal. This mirrors how function and
+    class docstrings are represented in the AST.
+    """
+
+    if stmt_index == 0:
+        return None
+
+    prev_stmt = node.body[stmt_index - 1]
+    if (
+        isinstance(prev_stmt, ast.Expr)
+        and isinstance(prev_stmt.value, ast.Constant)
+        and isinstance(prev_stmt.value.value, str)
+    ):
+        doc = prev_stmt.value.value
+        return doc if doc.strip() else None
+
+    return None
+
+
 @pytest.mark.anyio
 async def test_modules_and_exported_objects_have_docstrings() -> None:
-    """Assert each module has a docstring and exported functions/classes have docstrings."""
+    """Assert each module and its exported/top-level objects have docstrings.
+
+    In addition to checking module-level and exported function/class docstrings,
+    this test asserts that every top-level variable has an individual docstring
+    given by a preceding string-literal expression statement.
+    """
 
     failures: list[str] = []
 
@@ -118,6 +166,15 @@ async def test_modules_and_exported_objects_have_docstrings() -> None:
         if not (isinstance(mod_doc, str) and mod_doc.strip()):
             failures.append(f"{path}: missing module-level docstring")
             continue
+
+        # ensure that every top-level assignment/constant has its own docstring
+        # represented as a preceding string-literal expression statement
+        for var_name, stmt_index in _iter_top_level_assignments(node):
+            doc = _get_assignment_docstring(node, stmt_index)
+            if doc is None:
+                failures.append(
+                    f"{path}: top-level variable {var_name!r} is missing a docstring"
+                )
 
         exported = _extract_all_tuple(node)
         if not exported:
@@ -141,11 +198,12 @@ async def test_modules_and_exported_objects_have_docstrings() -> None:
 
 @pytest.mark.anyio
 async def test_all_top_level_definitions_have_docstrings() -> None:
-    """Assert every top-level function/class has a docstring.
+    """Assert every top-level API surface is documented.
 
-    This enforces that all top-level `def`/`class` objects in modules
-    under `src/` and `tests/` include non-empty docstrings — private
-    and public symbols alike.
+    This enforces that all top-level `def`/`class` objects in modules under
+    `scripts/` and `tests/` include non-empty docstrings — private and public
+    symbols alike — and that every top-level variable has an individual
+    docstring in the form of a preceding string-literal expression.
     """
 
     failures: list[str] = []
@@ -166,6 +224,14 @@ async def test_all_top_level_definitions_have_docstrings() -> None:
                     failures.append(
                         f"{path}: top-level {name!r} is missing a docstring"
                     )
+
+        # ensure that every top-level assignment/constant has its own docstring
+        for var_name, stmt_index in _iter_top_level_assignments(node):
+            doc = _get_assignment_docstring(node, stmt_index)
+            if doc is None:
+                failures.append(
+                    f"{path}: top-level variable {var_name!r} is missing a docstring"
+                )
 
     if failures:
         raise AssertionError("Top-level docstring failures:\n" + "\n".join(failures))
@@ -194,7 +260,7 @@ async def test_all_defs_at_any_depth_have_docstrings() -> None:
     """Assert every function/class (at any nesting level) has a docstring.
 
     This enforces docstrings for class methods, nested (inner) functions,
-    and nested classes across `src/` and `tests/`. It applies to private and
+    and nested classes across `scripts/` and `tests/`. It applies to private and
     dunder names as well (per current request).
     """
 
