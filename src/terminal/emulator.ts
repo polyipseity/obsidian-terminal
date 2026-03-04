@@ -237,8 +237,22 @@ export class XtermTerminalEmulator<A> {
 
   public reopen(): void {
     const { element, terminal } = this;
+    // Save scroll position before reopening
+    const { active } = terminal.buffer,
+      savedScrollY = active.viewportY,
+      wasAtBottom =
+        savedScrollY >= active.baseY - terminal.rows + 1 &&
+        active.baseY >= terminal.rows;
     // Unnecessary: terminal.element?.remove()
     terminal.open(element);
+    // Restore scroll position after reopening
+    if (wasAtBottom) {
+      terminal.scrollToBottom();
+    } else {
+      const maxScrollY = Math.max(0, active.baseY - terminal.rows + 1),
+        safeScrollY = Math.min(Math.max(0, savedScrollY), maxScrollY);
+      terminal.scrollToLine(safeScrollY);
+    }
   }
 
   public serialize(): XtermTerminalEmulator.State {
