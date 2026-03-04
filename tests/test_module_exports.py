@@ -83,7 +83,7 @@ def _has_all_tuple(node: ast.Module) -> tuple[bool, str]:
     return False, "__all__ not found"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_all_tuple_present_and_is_tuple() -> None:
     """Assert that every module declares `__all__` as a tuple of strings.
 
@@ -111,7 +111,7 @@ async def test_all_tuple_present_and_is_tuple() -> None:
         raise AssertionError(f"__all__ compliance failures:\n{joined}")
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test___all___follows_top_level_imports() -> None:
     """Ensure `__all__` assignment appears after top-level imports.
 

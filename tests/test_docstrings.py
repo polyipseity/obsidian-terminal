@@ -99,7 +99,7 @@ def _find_def_node(node: ast.Module, name: str) -> ast.AST | None:
     return None
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_modules_and_exported_objects_have_docstrings() -> None:
     """Assert each module has a docstring and exported functions/classes have docstrings."""
 
@@ -139,7 +139,7 @@ async def test_modules_and_exported_objects_have_docstrings() -> None:
         raise AssertionError("Docstring compliance failures:\n" + "\n".join(failures))
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_all_top_level_definitions_have_docstrings() -> None:
     """Assert every top-level function/class has a docstring.
 
@@ -189,7 +189,7 @@ def _iter_function_and_class_nodes(
             yield from _iter_function_and_class_nodes(child)
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_all_defs_at_any_depth_have_docstrings() -> None:
     """Assert every function/class (at any nesting level) has a docstring.
 
