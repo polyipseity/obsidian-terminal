@@ -24,8 +24,13 @@ __all__ = (
     "resizer_writer",
 )
 
+"""Sleep interval (in seconds) between attempts to locate a console window."""
 _LOOKUP_RETRY_INTERVAL = 1
+
+"""Maximum number of lookup attempts before giving up on a console window."""
 _LOOKUP_RETRIES = 10
+
+"""Number of resize passes used to converge on the target terminal size."""
 _RESIZE_ITERATIONS = 2
 
 
