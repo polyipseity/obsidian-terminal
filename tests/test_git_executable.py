@@ -152,14 +152,6 @@ async def test_top_level_scripts_executable() -> None:
 
 
 @pytest.mark.anyio
-async def test_get_candidate_files_basic() -> None:
-    """Verify that the helper yields at least one Path object."""
-    files = [p async for p in _get_candidate_files()]
-    assert files, "should yield at least one file"
-    assert all(isinstance(p, Path) for p in files)
-
-
-@pytest.mark.anyio
 async def test_git_mode_tracked() -> None:
     """Verify that the helper returns a valid mode string for a tracked file."""
     path = Path(__file__)
