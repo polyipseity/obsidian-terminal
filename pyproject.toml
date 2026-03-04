@@ -24,6 +24,7 @@ repository = "https://github.com/polyipseity/obsidian-terminal.git"
 [dependency-groups]
 dev = [
   "anyio>=3.6.0",
+  "asyncer>=0.0.17",
   "hypothesis>=6.151.0",
   "pandas-stubs>=3.0.0",
   "pytest>=9.0.0",
