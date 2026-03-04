@@ -1,7 +1,7 @@
 """Tests that every module declares a module-level `__all__` tuple.
 
 This test parses the AST of Python modules to avoid executing top-level code.
-It asserts that each `.py` file under `scripts/` and relevant `tests/` files
+It asserts that each `.py` file under `src/`, `tests/`, and `scripts/` files
 contains a top-level assignment to `__all__` where the value is a `tuple`
 containing only string constants.
 
@@ -26,7 +26,7 @@ ROOT = Path(".")
 
 
 async def _find_py_files() -> list[Path]:
-    """Return a sorted list of Python file paths under `scripts/` and `tests/`.
+    """Return a sorted list of Python file paths under `src/`, `tests/`, and `scripts/`.
 
     The helper parallels the module traversal used in repository checks and
     is deterministic (sorted) for consistent test output.
@@ -34,9 +34,11 @@ async def _find_py_files() -> list[Path]:
 
     files: list[Path] = []
 
-    async for path in (ROOT / "scripts").rglob("*.py"):
+    async for path in (ROOT / "src").rglob("*.py"):
         files.append(path)
     async for path in (ROOT / "tests").rglob("*.py"):
+        files.append(path)
+    async for path in (ROOT / "scripts").rglob("*.py"):
         files.append(path)
     return sorted(files)
 

@@ -54,12 +54,15 @@ strictListInference = true
 strictSetInference = true
 
 [[tool.pyright.executionEnvironments]]
-extraPaths = ["src"]
+extraPaths = ["src", "."]
 reportPrivateUsage = "none"
 root = "tests"
 
 [[tool.pyright.executionEnvironments]]
 root = "src"
+
+[[tool.pyright.executionEnvironments]]
+root = "."
 
 [tool.pytest.ini_options]
 addopts = ["--cov=./", "--cov-report=term-missing", "--dist=loadscope", "-n=auto", "--strict-markers"]
