@@ -49,6 +49,7 @@
       "type-icon": "type"
     },
     "profile-list": {
+      "default-icon": "check",
       "edit-icon": "$t(asset:generic.edit-icon)"
     },
     "terminal": {
@@ -122,6 +123,7 @@
   "settings": {
     "add-to-command-icon": "$t(asset:generic.terminal-icon)",
     "add-to-context-menu-icon": "menu",
+    "clean-title-icon": "$t(asset:generic.actions.restart-icon)",
     "create-instance-near-existing-ones-icon": "plus",
     "default-profile-icon": "$t(asset:generic.terminal-alt-icon)",
     "documentations": {

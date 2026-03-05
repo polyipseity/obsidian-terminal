@@ -70,12 +70,13 @@ export class SelectProfileModal extends FuzzySuggestModal<Settings.Profile.Entry
     const {
       context: {
         language: { value: i18n },
+        settings,
       },
     } = this;
     if (item === null) {
       return i18n.t("components.select-profile.item-text-temporary");
     }
-    return i18n.t(
+    const text = i18n.t(
       `components.select-profile.item-text-${
         Settings.Profile.isCompatible(item[1], Platform.CURRENT)
           ? ""
@@ -86,6 +87,13 @@ export class SelectProfileModal extends FuzzySuggestModal<Settings.Profile.Entry
         interpolation: { escapeValue: false },
       },
     );
+    if (item[0] === settings.value.defaultProfile) {
+      return i18n.t("components.select-profile.item-text-default", {
+        text,
+        interpolation: { escapeValue: false },
+      });
+    }
+    return text;
   }
 
   public override onChooseItem(
