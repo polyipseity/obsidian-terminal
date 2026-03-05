@@ -5,12 +5,12 @@
     "find-in-terminal": "$t(generic.terminal)에서 $t(generic.find)",
     "focus-on-last-terminal": "마지막 $t(generic.terminal)에 $t(generic.focus)",
     "open-developer-console": "$t(generic.profile-types.developerConsole) $t(generic.open)",
-    "open-terminal-default-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.default-profile)",
     "open-documentation-changelog": "$t(generic.documentations.changelog) $t(generic.open)",
     "open-documentation-donate": "$t(generic.documentations.donate) $t(generic.open)",
     "open-documentation-readme": "$t(generic.documentations.readme) $t(generic.open)",
     "open-terminal-": "$t(generic.terminal) $t(generic.open): $t(generic.profile-types.{{type}})",
     "open-terminal-current": "$t(generic.current-directory)에서 $t(generic.terminal) $t(generic.open): $t(generic.profile-types.{{type}})",
+    "open-terminal-default-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.default-profile)",
     "open-terminal-root": "$t(generic.root-directory)에서 $t(generic.terminal) $t(generic.open): $t(generic.profile-types.{{type}})",
     "toggle-focus-on-last-terminal": "마지막 $t(generic.terminal)의 $t(generic.focus) $t(generic.toggle)",
     "unfocus-terminal": "$t(generic.terminal) $t(generic.unfocus)"
@@ -281,6 +281,10 @@
     "advanced": "고급",
     "create-instance-near-existing-ones": "기존 인스턴스 근처에 $t(generic.instance) 생성",
     "create-instance-near-existing-ones-description": "$t(generic.instance)가 이미 $t(generic.exist_singular)하는 경우 '$t(settings.new-instance-behavior)' 설정을 재정의합니다 ($t(generic.true)로 설정된 경우).",
+    "default-profile": "Default $t(generic.profile)",
+    "default-profile-description": "$t(generic.profile, capitalize) to open when clicking the ribbon icon. Leave empty to show $t(generic.profile) selector.",
+    "default-profile-name-": "$t(profile-name-formats.short)",
+    "default-profile-name-incompatible": "($t(generic.incompatible, capitalize)) $t(settings.default-profile-name-)",
     "documentation": "$t(generic.documentation)",
     "documentations": {
       "changelog": "$t(generic.documentations.changelog)",
@@ -318,15 +322,16 @@
     "pin-new-instance": "새 $t(generic.instance) $t(generic.pin)",
     "preferred-renderer": "선호 $t(generic.renderer)",
     "preferred-renderer-options": "$t(generic.renderers.{{type}})",
+    "profile-defaults": "$t(generic.profile, capitalize) defaults",
+    "profile-defaults-description": "Default options for $t(generic.profile_other). Acts as a fallback for every $t(generic.profile) unless a $t(generic.profile) explicitly overrides them.",
     "profile-list": {
       "description": "목록에서 첫 번째 $t(generic.compatible) $t(generic.profile)이 해당 $t(generic.terminal) $t(generic.type)의 $t(generic.default)로 설정됩니다."
     },
     "profiles": "$t(generic.profile_other)",
     "profiles-description": "$t(generic.list-description)",
     "profiles-edit": "$t(generic.edit)",
-    "default-profile": "Default $t(generic.profile)",
-    "default-profile-description": "$t(generic.profile, capitalize) to open when clicking the ribbon icon. Leave empty to show $t(generic.profile) selector.",
-    "default-profile-name-": "$t(profile-name-formats.short)",
-    "default-profile-name-incompatible": "($t(generic.incompatible, capitalize)) $t(settings.default-profile-name-)"
+    "terminal-options": "$t(generic.terminal-option_other, capitalize)",
+    "terminal-options-description": "Shallow-merged into every $t(generic.profile) unless a specific $t(generic.profile) explicitly overrides them.",
+    "terminal-options-edit": "$t(generic.edit, capitalize)"
   }
 }

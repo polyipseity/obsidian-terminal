@@ -50,6 +50,9 @@ updates:
       uv:
         patterns:
           - "*"
+    exclude-paths:
+      # wtf: <https://github.com/dependabot/dependabot-core/issues/13960>
+      - "LICENSE.txt"
     ignore:
       # Requires manual review and testing to update
       - dependency-name: "psutil"

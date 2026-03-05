@@ -118,6 +118,7 @@ Theming is possible. However, there is no user-friendly interface for now.
 1. Open the profile editing modal.
 2. Click on the `Edit` button labeled `Data`. It should open up a new modal in which there is a large textbox.
 3. Notice `terminalOptions` in the text area labeled `Data`. Refer to the [`xterm.js` documentation](https://github.com/xtermjs/xterm.js/blob/master/typings/xterm.d.ts#L26) (`ITerminalOptions`) to set the options. Nested objects may need to be used.
+   - You can also configure global defaults via the plugin settings page (see `Profile defaults`). Those options act as a fallback for every profile unless a profile explicitly overrides them.
 4. Save the profile. Changes should apply immediately.
 
 ### Profiles

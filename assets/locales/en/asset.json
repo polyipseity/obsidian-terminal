@@ -44,8 +44,8 @@
       "restore-history-icon": "history",
       "success-exit-codes-edit-icon": "$t(asset:generic.edit-list-icon)",
       "success-exit-codes-icon": "log-out",
-      "terminal-options-edit-icon": "$t(asset:generic.edit-icon)",
-      "terminal-options-icon": "$t(asset:generic.terminal-icon)",
+      "terminal-options-edit-icon": "$t(asset:settings.terminal-options-edit-icon)",
+      "terminal-options-icon": "$t(asset:settings.terminal-options-icon)",
       "type-icon": "type"
     },
     "profile-list": {
@@ -141,6 +141,8 @@
     "pin-new-instance-icon": "pin",
     "preferred-renderer-icon": "brush",
     "profiles-edit-icon": "$t(asset:generic.edit-list-icon)",
-    "profiles-icon": "$t(asset:generic.profile-icon)"
+    "profiles-icon": "$t(asset:generic.profile-icon)",
+    "terminal-options-edit-icon": "$t(asset:generic.edit-icon)",
+    "terminal-options-icon": "$t(asset:generic.terminal-icon)"
   }
 }

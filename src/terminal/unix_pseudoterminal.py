@@ -19,11 +19,19 @@ from sys import exit, stdin, stdout
 from types import TracebackType
 from typing import Self
 
+"""Public API of this module."""
 __all__ = ("main",)
 
+"""Chunk size in bytes used when reading from the PTY."""
 _CHUNK_SIZE = 1024
+
+"""File descriptor for stdin used by the PTY proxy."""
 _STDIN = stdin.fileno()
+
+"""File descriptor for stdout used by the PTY proxy."""
 _STDOUT = stdout.fileno()
+
+"""File descriptor that carries resize/control frames from the host."""
 _CMDIO = 3
 
 

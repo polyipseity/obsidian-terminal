@@ -78,6 +78,9 @@ export interface Settings extends PluginContext.Settings {
   readonly profiles: Settings.Profiles;
   readonly defaultProfile: Settings.DefaultProfile;
 
+  // options applied to every terminal unless an individual profile overrides them
+  readonly terminalOptions: Settings.Profile.TerminalOptions;
+
   readonly newInstanceBehavior: Settings.NewInstanceBehavior;
   readonly createInstanceNearExistingOnes: boolean;
   readonly focusOnNewInstance: boolean;
@@ -138,6 +141,7 @@ export namespace Settings {
       ).map((key) => [key, PROFILE_PRESETS[key]]),
     ),
     defaultProfile: null,
+    terminalOptions: DEFAULT_TERMINAL_OPTIONS,
   });
 
   export const DEFAULTABLE_LANGUAGES = deepFreeze([
@@ -1205,6 +1209,9 @@ export namespace Settings {
         }
         return null;
       })(),
+      terminalOptions: Settings.Profile.fixTerminalOptions(
+        unc["terminalOptions"],
+      ).value,
     };
     return markFixed(self0, fixed);
   }

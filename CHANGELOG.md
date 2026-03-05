@@ -1,5 +1,51 @@
 # obsidian-terminal <!-- markdownlint-disable-file MD024 -->
 
+## 3.22.0
+
+### Minor Changes
+
+- 7dd4079: Add Python packaging (`pyproject.toml`, `uv.lock`) and Python tests.
+  - Provide a reproducible Python environment for tests and tools.
+  - Add unit tests: `tests/test_docstrings.py` and
+    `tests/test_module_exports.py`.
+  - Ensure CI runs the new Python tests and update related files.
+
+- 64a2f23: Fix Option key for Scandinavian/German keyboards on macOS by adding macOptionKeyPassthrough setting. ([GH#92](https://github.com/polyipseity/obsidian-terminal/pull/92) by [@jsade](https://github.com/jsade))
+- 25a8a10: Introduce a new **global Font Family** setting that acts as a fallback for
+  all terminal profiles. Per‑profile `terminalOptions.fontFamily` still
+  overrides this value. Changes propagate immediately to any open terminal
+  instances. ([GH#102](https://github.com/polyipseity/obsidian-terminal/pull/102) by [@ChornyiDev](https://github.com/ChornyiDev))
+- 939b1bd: Add a new "Profile defaults" settings section and store global
+  `terminalOptions` that apply to every terminal instance unless a
+  profile overrides them. A modal is used for editing options, and real-time
+  updates propagate to open terminals. The previous single `fontFamily` setting
+  has been removed in favor of this more flexible system.
+- ab83e53: Refactor `src/terminal/unix_pseudoterminal.py` to replace ad-hoc selector callbacks
+  with small, well-documented context-manager handler classes and tighten type
+  annotations.
+  - Introduce `_SelectorHandler`, `_PipePty`, `_PipeStdin`, and `_ProcessCmdIO` to
+    centralize FD registration/unregistration and improve EOF handling.
+  - Add type hints, docstrings, and safer unregister logic — improves maintainability
+    and robustness without changing public behavior.
+
+- ee93ddb: Restore focus to previous non-terminal pane when unfocusing terminal.
+
+  When using the toggle focus hotkey or unfocus command, focus now returns to the last active non-terminal pane (e.g., your note) instead of just blurring the terminal. This improves the workflow when using the terminal in a side panel. ([GH#85](https://github.com/polyipseity/obsidian-terminal/pull/85) by [@Mendi23](https://github.com/Mendi23))
+
+- 54f5990: Add a default profile setting and command to open a selected profile directly from the ribbon button or command palette. ([GH#83](https://github.com/polyipseity/obsidian-terminal/pull/83) by [@archedark](https://github.com/archedark))
+
+### Patch Changes
+
+- c922f59: Fix profile name display in profile list
+
+  Updated `profile-name-formats` and `profile-list.namer-` in all translation files to use `{{info.nameOrID}}` for proper fallback to profile ID when name is empty. Improved format to "Type: Name" style for better readability. Resolves [GH#63](https://github.com/polyipseity/obsidian-terminal/issues/63).
+
+- 89eea3e: Added helper to apply shallow diffs to xterm options and wire live
+  updates when terminal options change. Includes tests.
+- 2d95186: Emit ESC+CR when the user presses Shift+Enter in the terminal emulator. This
+  matches the behavior expected by Claude Code and other TUI applications and
+  prevents modified enters from being interpreted as plain CR. ([GH#89](https://github.com/polyipseity/obsidian-terminal/pull/89) by [@davidszp](https://github.com/davidszp))
+
 ## 3.21.0
 
 ### Minor Changes
@@ -16,7 +62,6 @@
   Added Japanese translation file and updated locales configuration.
 
 - 39f6fd5: Fix invalid JSON in translation files: ([GH#66](https://github.com/polyipseity/obsidian-terminal/pull/66) by [@HNIdesu](https://github.com/HNIdesu))
-
   - `assets/locales/zh-Hans/translation.json`
   - `assets/locales/zh-Hant/translation.json`
 

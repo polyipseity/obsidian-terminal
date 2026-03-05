@@ -24,13 +24,15 @@ repository = "https://github.com/polyipseity/obsidian-terminal.git"
 [dependency-groups]
 dev = [
   "anyio>=3.6.0",
+  "asyncer>=0.0.17",
   "hypothesis>=6.151.0",
   "pandas-stubs>=3.0.0",
   "pytest>=9.0.0",
-  "pytest-asyncio>=1.3.0",
   "pytest-cov>=7.0.0",
   "pytest-xdist>=3.8.0",
   "ruff>=0.15.0",
+  "uvloop>=0.22.0; platform_system != 'Windows'",
+  "winloop>=0.5.0; platform_system == 'Windows'",
 ]
 
 [tool.pyright]
@@ -52,12 +54,15 @@ strictListInference = true
 strictSetInference = true
 
 [[tool.pyright.executionEnvironments]]
-extraPaths = ["src"]
+extraPaths = ["src", "."]
 reportPrivateUsage = "none"
 root = "tests"
 
 [[tool.pyright.executionEnvironments]]
 root = "src"
+
+[[tool.pyright.executionEnvironments]]
+root = "."
 
 [tool.pytest.ini_options]
 addopts = ["--cov=./", "--cov-report=term-missing", "--dist=loadscope", "-n=auto", "--strict-markers"]
@@ -73,7 +78,7 @@ line-length = 88
 extend-select = ["I", "PLC0415"]
 
 [tool.uv]
-required-version = ">=0.10.0,<0.11.0"
+required-version = ">=0.9.0,<0.11.0"
 
 [tool.uv.build-backend]
 # Do not include any packages in the build, as this project is only a collection of tools and scripts.

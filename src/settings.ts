@@ -8,13 +8,14 @@ import {
   registerSettingsCommands,
   resetButton,
   setTextToEnum,
+  DOMClasses,
 } from "@polyipseity/obsidian-plugin-library";
-import { ProfileListModal } from "./modals.js";
+import { ProfileListModal, TerminalOptionsModal } from "./modals.js";
 import { Settings } from "./settings-data.js";
 import type { TerminalPlugin } from "./main.js";
 import type { loadDocumentations } from "./documentations.js";
 import semverLt from "semver/functions/lt.js";
-import { size } from "lodash-es";
+import { cloneDeep, size } from "lodash-es";
 
 export class SettingTab extends AdvancedSettingTab<Settings> {
   public constructor(
@@ -190,6 +191,60 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
             ),
           );
       });
+
+    // profile defaults section
+    this.newSectionWidget(() => i18n.t("settings.profile-defaults"));
+    ui.new(
+      () => createChildElement(containerEl, "div"),
+      (ele) => {
+        ele.classList.add(DOMClasses.SETTING_ITEM);
+        ele.textContent = i18n.t("settings.profile-defaults-description");
+      },
+      (ele) => {
+        ele.remove();
+      },
+    );
+    ui.newSetting(containerEl, (setting) => {
+      setting
+        .setName(i18n.t("settings.terminal-options"))
+        .setDesc(i18n.t("settings.terminal-options-description"))
+        .addButton((button) =>
+          button
+            .setIcon(i18n.t("asset:settings.terminal-options-edit-icon"))
+            .setTooltip(i18n.t("settings.terminal-options-edit"))
+            .onClick(() => {
+              new TerminalOptionsModal(
+                context,
+                settings.value.terminalOptions,
+                {
+                  callback: async (value): Promise<void> => {
+                    await settings.mutate((settingsM) => {
+                      settingsM.terminalOptions = value;
+                    });
+                    this.postMutate();
+                  },
+                },
+              ).open();
+            }),
+        )
+        .addExtraButton(
+          resetButton(
+            i18n.t("asset:settings.terminal-options-icon"),
+            i18n.t("settings.reset"),
+            async () =>
+              settings.mutate((settingsM) => {
+                settingsM.terminalOptions = cloneAsWritable(
+                  Settings.DEFAULT.terminalOptions,
+                  cloneDeep,
+                );
+              }),
+            () => {
+              this.postMutate();
+            },
+          ),
+        );
+    });
+
     this.newSectionWidget(() => i18n.t("settings.instancing"));
     ui.newSetting(containerEl, (setting) => {
       setting
@@ -326,6 +381,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
             ),
           );
       });
+
     this.newSectionWidget(() => i18n.t("settings.interface"));
     ui.newSetting(containerEl, (setting) => {
       setting

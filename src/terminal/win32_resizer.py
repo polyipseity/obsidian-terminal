@@ -16,6 +16,7 @@ from typing import TypedDict, cast, final
 from psutil import Process
 from pywinctl import Window, getAllWindows
 
+"""Public API of this module."""
 __all__ = (
     "main",
     "win_to_pid",
@@ -24,8 +25,13 @@ __all__ = (
     "resizer_writer",
 )
 
+"""Sleep interval (in seconds) between attempts to locate a console window."""
 _LOOKUP_RETRY_INTERVAL = 1
+
+"""Maximum number of lookup attempts before giving up on a console window."""
 _LOOKUP_RETRIES = 10
+
+"""Number of resize passes used to converge on the target terminal size."""
 _RESIZE_ITERATIONS = 2
 
 
@@ -70,14 +76,17 @@ if sys.platform == "win32":
         Window: PySMALL_RECTType
         MaximumWindowSize: PyCOORDType
 
+    """AttachConsole from win32console, cast to the expected callable type."""
     AttachConsole = cast(
         Callable[[int], None],
         AttachConsole,
     )
+    """GetConsoleScreenBufferInfo from console buffer type, cast for type safety."""
     GetConsoleScreenBufferInfo = cast(
         Callable[[PyConsoleScreenBufferType], _PyConsoleScreenBufferInfo],
         PyConsoleScreenBufferType.GetConsoleScreenBufferInfo,  # type: ignore[reportUnknownMemberType]
     )
+    """SetConsoleWindowInfo from console buffer type, cast for type safety."""
     SetConsoleWindowInfo = cast(
         Callable[
             [PyConsoleScreenBufferType, bool, PySMALL_RECTType],

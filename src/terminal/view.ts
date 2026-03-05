@@ -39,6 +39,7 @@ import {
   recordViewStateHistory,
   resetButton,
   saveFileAs,
+  svelteState,
   updateView,
   useSettings,
   writeStateCollaboratively,
@@ -60,7 +61,7 @@ import {
   type WorkspaceLeaf,
 } from "obsidian";
 import { PROFILE_PROPERTIES, openProfile } from "./profile-properties.js";
-import { cloneDeep, constant, noop } from "lodash-es";
+import { constant, noop } from "lodash-es";
 import { mount, unmount } from "svelte";
 import { BUNDLE } from "../import.js";
 import type { DeepWritable } from "ts-essentials";
@@ -69,11 +70,16 @@ import { ProfileModal } from "../modals.js";
 import type { SearchAddon } from "@xterm/addon-search";
 import { Settings } from "../settings-data.js";
 import type { TerminalPlugin } from "../main.js";
+import { Terminal, type ITerminalOptions } from "@xterm/xterm";
 import { TextPseudoterminal } from "./pseudoterminal.js";
 import type { Unicode11Addon } from "@xterm/addon-unicode11";
 import type { WebLinksAddon } from "@xterm/addon-web-links";
 import { XtermTerminalEmulator } from "./emulator.js";
 import { writePromise } from "./utils.js";
+import {
+  mergeTerminalOptions,
+  applyTerminalOptionDiffShallow,
+} from "./options.js";
 
 const xtermAddonCanvas = dynamicRequire<typeof import("@xterm/addon-canvas")>(
     BUNDLE,
@@ -304,7 +310,9 @@ export class TerminalView extends ItemView {
   static #namespacedType: string;
   #title0 = "";
   #emulator0: TerminalView.EMULATOR | null = null;
-  #find0: ReturnType<typeof FindComponent> | null = null;
+  #find0:
+    | readonly [ReturnType<typeof FindComponent>, FindComponent$.Props]
+    | null = null;
   #state = TerminalView.State.DEFAULT;
 
   public constructor(
@@ -328,7 +336,9 @@ export class TerminalView extends ItemView {
     return this.#emulator0;
   }
 
-  protected get find(): ReturnType<typeof FindComponent> | null {
+  protected get find():
+    | readonly [ReturnType<typeof FindComponent>, FindComponent$.Props]
+    | null {
     return this.#find0;
   }
 
@@ -426,9 +436,13 @@ export class TerminalView extends ItemView {
     this.#emulator0 = val;
   }
 
-  protected set find(val: ReturnType<typeof FindComponent> | null) {
+  protected set find(
+    val:
+      | readonly [ReturnType<typeof FindComponent>, FindComponent$.Props]
+      | null,
+  ) {
     if (this.find) {
-      unmount(this.find, { outro: true }).catch((error: unknown) => {
+      unmount(this.find[0], { outro: true }).catch((error: unknown) => {
         activeSelf(this.contentEl).console.warn(error);
       });
     }
@@ -790,7 +804,9 @@ export class TerminalView extends ItemView {
     this.register(
       language.onChangeLanguage.listen(() => {
         updateView(context, this);
-        this.find?.setI18n(i18n.t);
+        if (this.find) {
+          this.find[1].i18nt = i18n.t.bind(i18n); // `bind` to preserve the context for potential i18n features that rely on it
+        }
       }),
     );
 
@@ -863,30 +879,36 @@ export class TerminalView extends ItemView {
             empty = true;
           }
           if (empty) {
-            this.find?.setResults("");
+            if (this.find) {
+              this.find[1].results = "";
+            }
           }
         },
         optional: { anchor?: Element } = {};
       assignExact(optional, "anchor", contentEl.firstElementChild ?? void 0);
-      this.find = mount(FindComponent, {
-        intro: true,
-        props: {
-          focused: true,
-          i18n: i18n.t,
-          onClose: () => {
-            this.find = null;
-          },
-          onFind,
-          onParamsChanged: (params: FindComponent$.Params) => {
-            this.emulator?.addons.search.clearDecorations();
-            onFind("previous", params);
-          },
+      const props = svelteState({
+        focused: true,
+        i18nt: i18n.t.bind(i18n), // `bind` to preserve the context for potential i18n features that rely on it
+        onClose: () => {
+          this.find = null;
         },
-        target: contentEl,
-        ...optional,
+        onFind,
+        onParamsChanged: (params: FindComponent$.Params) => {
+          this.emulator?.addons.search.clearDecorations();
+          onFind("previous", params);
+        },
       });
+      this.find = [
+        mount(FindComponent, {
+          intro: true,
+          props,
+          target: contentEl,
+          ...optional,
+        }),
+        props,
+      ];
     }
-    this.find.focus();
+    this.find[0].focus();
   }
 
   protected startEmulator(focus: boolean): void {
@@ -959,6 +981,10 @@ export class TerminalView extends ItemView {
               xtermAddonWebLinks,
               xtermAddonWebgl,
             ]),
+            profileTerminalOptions =
+              profile.type === "invalid"
+                ? Settings.Profile.DEFAULTS[""].terminalOptions
+                : profile.terminalOptions,
             emulator = new TerminalView.EMULATOR(
               ele,
               async (terminal) => {
@@ -1008,13 +1034,10 @@ export class TerminalView extends ItemView {
                 return pty;
               },
               serial ?? void 0,
-              {
-                allowProposedApi: true,
-                macOptionIsMeta: false, // `false` is the default value, but set it explicitly for `MacOSOptionKeyPassthroughAddon` to work just in case.
-                ...(profile.type === "invalid"
-                  ? {}
-                  : cloneAsWritable(profile.terminalOptions, cloneDeep)),
-              },
+              mergeTerminalOptions(
+                profileTerminalOptions,
+                settings.value.terminalOptions,
+              ),
               {
                 disposer: new DisposerAddon(
                   () => {
@@ -1028,7 +1051,9 @@ export class TerminalView extends ItemView {
                     emulator.resize(false).catch(warn);
                   }),
                   () => {
-                    this.find?.setResults("");
+                    if (this.find) {
+                      this.find[1].results = "";
+                    }
                   },
                 ),
                 dragAndDrop: new DragAndDropAddon(ele),
@@ -1090,13 +1115,49 @@ export class TerminalView extends ItemView {
                 );
               },
             );
+          terminal.unicode.activeVersion = "11";
           terminal.onWriteParsed(requestSaveLayout);
           terminal.onResize(requestSaveLayout);
           terminal.onTitleChange((title) => {
             this.title = title;
           });
 
-          terminal.unicode.activeVersion = "11";
+          disposer.push(
+            settings.onMutate(
+              (settings0) => settings0.terminalOptions,
+              (cur, prev) => {
+                // When computing the merged options we want to see what
+                // xterm actually normalises the object to.  To do that we
+                // create short-lived Terminal instances with the merged
+                // settings, read back their `.options`, then dispose them
+                // immediately in a finally block so there's no residual
+                // DOM state.
+                const createMerged = (
+                  opts: Settings.Profile.TerminalOptions,
+                ): ITerminalOptions => {
+                  const merged = mergeTerminalOptions(
+                    profileTerminalOptions,
+                    opts,
+                  );
+                  const tmp = new Terminal(merged);
+                  try {
+                    return tmp.options;
+                  } finally {
+                    tmp.dispose();
+                  }
+                };
+
+                const prevMerged = createMerged(prev);
+                const curMerged = createMerged(cur);
+
+                // Only patch the terminal when something actually changed at the
+                // *first* level of the merged settings object.  The helper will
+                // perform a deep equality check per-key and update/delete values
+                // accordingly.
+                applyTerminalOptionDiffShallow(terminal, prevMerged, curMerged);
+              },
+            ),
+          );
           disposer.push(
             settings.onMutate(
               (settings0) => settings0.preferredRenderer,
@@ -1127,7 +1188,9 @@ export class TerminalView extends ItemView {
                         index: resultIndex + 1,
                       },
                     });
-            this.find?.setResults(results);
+            if (this.find) {
+              this.find[1].results = results;
+            }
           });
 
           emulator.resize().catch(warn);
