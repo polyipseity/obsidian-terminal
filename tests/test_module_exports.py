@@ -19,6 +19,7 @@ import ast
 import pytest
 from anyio import Path
 
+"""Public API of this test module (empty)."""
 __all__ = ()
 
 """Repository root used by the __all__ compliance tests for path discovery."""

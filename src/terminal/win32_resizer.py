@@ -16,6 +16,7 @@ from typing import TypedDict, cast, final
 from psutil import Process
 from pywinctl import Window, getAllWindows
 
+"""Public API of this module."""
 __all__ = (
     "main",
     "win_to_pid",
@@ -75,14 +76,17 @@ if sys.platform == "win32":
         Window: PySMALL_RECTType
         MaximumWindowSize: PyCOORDType
 
+    """AttachConsole from win32console, cast to the expected callable type."""
     AttachConsole = cast(
         Callable[[int], None],
         AttachConsole,
     )
+    """GetConsoleScreenBufferInfo from console buffer type, cast for type safety."""
     GetConsoleScreenBufferInfo = cast(
         Callable[[PyConsoleScreenBufferType], _PyConsoleScreenBufferInfo],
         PyConsoleScreenBufferType.GetConsoleScreenBufferInfo,  # type: ignore[reportUnknownMemberType]
     )
+    """SetConsoleWindowInfo from console buffer type, cast for type safety."""
     SetConsoleWindowInfo = cast(
         Callable[
             [PyConsoleScreenBufferType, bool, PySMALL_RECTType],

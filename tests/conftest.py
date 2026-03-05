@@ -6,6 +6,7 @@ depend on the ``anyio_backend`` fixture or use ``@pytest.mark.anyio``.
 
 import pytest
 
+"""Public API of this test configuration module (empty)."""
 __all__ = ()
 
 

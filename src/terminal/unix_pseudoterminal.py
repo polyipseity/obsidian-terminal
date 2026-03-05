@@ -19,6 +19,7 @@ from sys import exit, stdin, stdout
 from types import TracebackType
 from typing import Self
 
+"""Public API of this module."""
 __all__ = ("main",)
 
 """Chunk size in bytes used when reading from the PTY."""
