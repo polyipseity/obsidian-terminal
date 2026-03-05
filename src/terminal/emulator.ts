@@ -237,15 +237,10 @@ export class XtermTerminalEmulator<A> {
 
   public reopen(): void {
     const { element, terminal } = this;
-    // Save scroll position before reopening
     const { active } = terminal.buffer,
       savedScrollY = active.viewportY,
-      wasAtBottom =
-        savedScrollY >= active.baseY - terminal.rows + 1 &&
-        active.baseY >= terminal.rows;
-    // Unnecessary: terminal.element?.remove()
+      wasAtBottom = savedScrollY >= active.baseY;
     terminal.open(element);
-    // Restore scroll position after reopening
     if (wasAtBottom) {
       terminal.scrollToBottom();
     } else {
