@@ -18,6 +18,7 @@ from collections.abc import Iterator
 import pytest
 from anyio import Path
 
+"""Public API of this test module (empty: no symbols are exported)."""
 __all__ = ()
 
 """Repository root used by the docstring compliance tests for path discovery."""
@@ -103,36 +104,75 @@ def _find_def_node(node: ast.Module, name: str) -> ast.AST | None:
     return None
 
 
-def _iter_top_level_assignments(node: ast.Module) -> Iterator[tuple[str, int]]:
-    """Yield (variable name, statement index) for top-level assignments.
+def _iter_assignments_in_body(
+    body: list[ast.stmt],
+) -> Iterator[tuple[str, list[ast.stmt], int]]:
+    """Yield (variable name, body, index) for assignments in body and nested blocks.
 
-    This covers both `Assign` and `AnnAssign` targets that bind a `Name` at
-    module scope. The special export-control variable `__all__` is excluded.
+    Recurses into If/For/While/With/Try/Match bodies (and orelse/finalbody etc.)
+    but does not recurse into FunctionDef or ClassDef, so only module-level and
+    control-flow-block-level assignments are included.
     """
-
-    for idx, stmt in enumerate(node.body):
+    for idx, stmt in enumerate(body):
         if isinstance(stmt, ast.Assign):
             for target in stmt.targets:
-                if isinstance(target, ast.Name) and target.id != "__all__":
-                    yield target.id, idx
+                if isinstance(target, ast.Name):
+                    yield target.id, body, idx
         elif isinstance(stmt, ast.AnnAssign):
             target = stmt.target
-            if isinstance(target, ast.Name) and target.id != "__all__":
-                yield target.id, idx
+            if isinstance(target, ast.Name):
+                yield target.id, body, idx
+        elif isinstance(stmt, ast.If):
+            yield from _iter_assignments_in_body(stmt.body)
+            if stmt.orelse:
+                yield from _iter_assignments_in_body(stmt.orelse)
+        elif isinstance(stmt, (ast.For, ast.AsyncFor)):
+            yield from _iter_assignments_in_body(stmt.body)
+            if stmt.orelse:
+                yield from _iter_assignments_in_body(stmt.orelse)
+        elif isinstance(stmt, ast.While):
+            yield from _iter_assignments_in_body(stmt.body)
+            if stmt.orelse:
+                yield from _iter_assignments_in_body(stmt.orelse)
+        elif isinstance(stmt, (ast.With, ast.AsyncWith)):
+            yield from _iter_assignments_in_body(stmt.body)
+        elif isinstance(stmt, ast.Try):
+            yield from _iter_assignments_in_body(stmt.body)
+            for handler in stmt.handlers:
+                yield from _iter_assignments_in_body(handler.body)
+            if stmt.orelse:
+                yield from _iter_assignments_in_body(stmt.orelse)
+            if stmt.finalbody:
+                yield from _iter_assignments_in_body(stmt.finalbody)
+        elif isinstance(stmt, ast.Match):
+            for case in stmt.cases:
+                yield from _iter_assignments_in_body(case.body)
+        # Do not recurse into FunctionDef, AsyncFunctionDef, ClassDef
 
 
-def _get_assignment_docstring(node: ast.Module, stmt_index: int) -> str | None:
-    """Return the docstring for a top-level assignment, if present.
+def _iter_top_level_assignments(
+    node: ast.Module,
+) -> Iterator[tuple[str, list[ast.stmt], int]]:
+    """Yield (variable name, body, index) for top-level assignments.
+
+    Includes assignments inside if/for/while/with/try/match (any nesting) as long
+    as they are not inside a def or class. Covers both `Assign` and `AnnAssign`
+    targets that bind a `Name`.
+    """
+    yield from _iter_assignments_in_body(node.body)
+
+
+def _get_assignment_docstring(body: list[ast.stmt], stmt_index: int) -> str | None:
+    """Return the docstring for an assignment in a body, if present.
 
     A variable's docstring is defined as the immediately preceding expression
-    statement whose value is a string literal. This mirrors how function and
-    class docstrings are represented in the AST.
+    statement in the same body whose value is a string literal. This mirrors
+    how function and class docstrings are represented in the AST.
     """
-
     if stmt_index == 0:
         return None
 
-    prev_stmt = node.body[stmt_index - 1]
+    prev_stmt = body[stmt_index - 1]
     if (
         isinstance(prev_stmt, ast.Expr)
         and isinstance(prev_stmt.value, ast.Constant)
@@ -171,8 +211,8 @@ async def test_modules_and_exported_objects_have_docstrings() -> None:
 
         # ensure that every top-level assignment/constant has its own docstring
         # represented as a preceding string-literal expression statement
-        for var_name, stmt_index in _iter_top_level_assignments(node):
-            doc = _get_assignment_docstring(node, stmt_index)
+        for var_name, body, stmt_index in _iter_top_level_assignments(node):
+            doc = _get_assignment_docstring(body, stmt_index)
             if doc is None:
                 failures.append(
                     f"{path}: top-level variable {var_name!r} is missing a docstring"
@@ -228,8 +268,8 @@ async def test_all_top_level_definitions_have_docstrings() -> None:
                     )
 
         # ensure that every top-level assignment/constant has its own docstring
-        for var_name, stmt_index in _iter_top_level_assignments(node):
-            doc = _get_assignment_docstring(node, stmt_index)
+        for var_name, body, stmt_index in _iter_top_level_assignments(node):
+            doc = _get_assignment_docstring(body, stmt_index)
             if doc is None:
                 failures.append(
                     f"{path}: top-level variable {var_name!r} is missing a docstring"
