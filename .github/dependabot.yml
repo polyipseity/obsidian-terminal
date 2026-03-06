@@ -17,6 +17,20 @@ updates:
         patterns:
           - "*"
 
+  # Git submodules (gitmodules)
+  - package-ecosystem: "gitsubmodule"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "build"
+      prefix-development: "chore"
+      include: "scope"
+    groups:
+      gitsubmodule:
+        patterns:
+          - "*"
+
   # NPM & pnpm (package.json, pnpm-lock.yaml, etc.)
   - package-ecosystem: "npm"
     directory: "/"

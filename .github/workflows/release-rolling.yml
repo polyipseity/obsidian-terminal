@@ -1,10 +1,6 @@
 # Release Workflow: Rolling Tag Build
 #
 # This workflow builds and publishes a rolling release when the `rolling` tag is pushed.
-# It uses the `ubuntu-slim` runner to reduce GitHub Actions billing costs while maintaining compatibility.
-#
-# Rationale: `ubuntu-slim` is chosen for its smaller image size, which speeds up job startup and reduces CI minutes billed.
-# This is especially important for open source projects with limited CI budgets.
 #
 # Jobs and steps are named for clarity in the Actions UI.
 
@@ -30,7 +26,7 @@ permissions:
 jobs:
   rolling-release:
     name: Publish Rolling Release
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6

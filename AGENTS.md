@@ -161,7 +161,7 @@ type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
 - All commit messages **must** follow the Conventional Commits standard.
 - **Header should be ≤ 72 characters (use 72 as a human-friendly buffer; tooling still accepts up to 100).**
 - **Body lines must be hard-wrapped at 100 characters** (enforced by commitlint/husky). Prefer 72 for messages intended for humans.
-- See `.github/instructions/commit-message.instructions.md` for up-to-date rules, examples, and a short agent-oriented summary.
+- See `.agents/instructions/commit-message.instructions.md` for up-to-date rules, examples, and a short agent-oriented summary.
 - Run `npm run commitlint` locally to validate message format before pushing; Husky will run checks on `prepare`/pre-push as configured.
 
   **Example (compliant):**
@@ -191,8 +191,8 @@ type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
 - `assets/locales.ts` / `assets/locales/` — Localization logic/files
 - `scripts/build.mjs` / `scripts/obsidian-install.mjs` — Build/install scripts
 - `README.md` / `assets/locales/README.md` — Contributor/translation instructions
-- `.github/instructions/` — Task/file-specific instructions
-- `.github/skills/` — Agent skills for specialized workflows
+- `.agents/instructions/` — Task/file-specific instructions
+- `.agents/skills/` — Agent skills for specialized workflows
 
 > **Never use `.github/copilot-instructions.md`. All agent instructions must be in `AGENTS.md` and referenced from here.**
 
@@ -247,15 +247,15 @@ Example (dynamic import justified in a test):
 const { loadDocumentations } = await import("../../src/documentations.js");
 ```
 
-- **Template merge guidance:** This repository is a template and its instruction files under `.github/instructions/` may be periodically merged into repositories created from this template. For downstream repositories, prefer making minimal edits to template instruction files and, whenever practical, add a new repo-specific instruction file (for example, `.github/instructions/<your-repo>.instructions.md`) to capture local overrides. Keeping template files minimally changed reduces merge conflicts when pulling upstream template changes; when a template file must be edited, document the rationale and link to a short issue or PR in your repository.
+- **Template merge guidance:** This repository is a template and its instruction files under `.agents/instructions/` may be periodically merged into repositories created from this template. For downstream repositories, prefer making minimal edits to template instruction files and, whenever practical, add a new repo-specific instruction file (for example, `.agents/instructions/<your-repo>.instructions.md`) to capture local overrides. Keeping template files minimally changed reduces merge conflicts when pulling upstream template changes; when a template file must be edited, document the rationale and link to a short issue or PR in your repository.
 
 ### Linked Instructions & Skills
 
-- [.github/instructions/typescript.instructions.md](./.github/instructions/typescript.instructions.md) — TypeScript standards
-- [.github/instructions/localization.instructions.md](./.github/instructions/localization.instructions.md) — Localization rules
-- [.github/instructions/commit-message.instructions.md](./.github/instructions/commit-message.instructions.md) — Commit message convention
-- [.github/skills/plugin-testing/SKILL.md](./.github/skills/plugin-testing/SKILL.md) — Plugin testing skill
-- [.github/instructions/agents.instructions.md](.github/instructions/agents.instructions.md) — AI agent quick rules
+- [.agents/instructions/typescript.instructions.md](./.agents/instructions/typescript.instructions.md) — TypeScript standards
+- [.agents/instructions/localization.instructions.md](./.agents/instructions/localization.instructions.md) — Localization rules
+- [.agents/instructions/commit-message.instructions.md](./.agents/instructions/commit-message.instructions.md) — Commit message convention
+- [.agents/skills/plugin-testing/SKILL.md](./.agents/skills/plugin-testing/SKILL.md) — Plugin testing skill
+- [.agents/instructions/agents.instructions.md](.agents/instructions/agents.instructions.md) — AI agent quick rules
 
 ---
 
@@ -272,7 +272,7 @@ This section contains concise, actionable rules and project-specific examples to
 - Test conventions: `*.spec.*` = unit (fast, isolated); `*.test.*` = integration (may use filesystem or child processes). Follow the one-test-file-per-source-file convention and place tests under `tests/` mirroring `src/`.
 - Formatting & linting: run `pnpm run format` and `pnpm run check` before committing. CI uses `pnpm install --frozen-lockfile`.
 - Commit rules for agents: use Conventional Commits; run `npm run commitlint` locally when appropriate. Keep headers ≤100 chars and wrap bodies at 100 chars.
-- Localization rule for agents: when adding text keys, update `assets/locales/en/translation.json` first and add tests or localization notes. Follow `.github/instructions/localization.instructions.md`.
+- Localization rule for agents: when adding text keys, update `assets/locales/en/translation.json` first and add tests or localization notes. Follow `.agents/instructions/localization.instructions.md`.
 - PR checklist (brief): add/modify tests, run `pnpm exec vitest run "tests/**/*.spec.{js,ts,mjs}"` locally for fast checks, run `pnpm run check`, add changeset when changing public API or version, and update `AGENTS.md` if you changed infra or agent-visible patterns.
 
 > Note: Keep suggestions and changes small and well-scoped. Prefer to add tests first for behavioral changes and follow the test naming conventions above.
