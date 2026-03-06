@@ -1055,7 +1055,10 @@ export class TerminalView extends ItemView {
                 unicode11: new Unicode11Addon(),
                 webLinks: new WebLinksAddon(
                   (event, uri) => openExternal(activeSelf(event), uri),
-                  {},
+                  {
+                    urlRegex:
+                      /(https?|HTTPS?|obsidian):[/]{0,2}[^\s"'!*(){}|\\^<>`]*[^\s"':,.!?{}|\\^~[\]`()<>]/,
+                  },
                 ),
               },
             ),
