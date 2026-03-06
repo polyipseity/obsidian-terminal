@@ -60,7 +60,7 @@ Refs: dependabot config improvement
 
 ---
 
-**Template merge guidance:** This instruction file is part of the template and may be propagated to repositories created from it. Downstream repositories should prefer minimal edits to this template file and, where repository-specific commit rules are needed, add a separate local instruction file (for example, `.github/instructions/<your-repo>.commit-message.md`) to hold deviations. Doing so reduces merge conflicts when template updates occur.
+**Template merge guidance:** This instruction file is part of the template and may be propagated to repositories created from it. Downstream repositories should prefer minimal edits to this template file and, where repository-specific commit rules are needed, add a separate local instruction file (for example, `.agents/instructions/<your-repo>.commit-message.md`) to hold deviations. Doing so reduces merge conflicts when template updates occur.
 
 ## References
 
