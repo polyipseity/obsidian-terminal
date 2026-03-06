@@ -21,7 +21,7 @@ agent: agent
    - Present the exact command to be run. If not executed, produce a best-effort commit message from available context and stop.
 
 2. **Compose commit message**
-   - Inspect Command 1 output and repository conventions (CONTRIBUTING.md, `.github/`, `package.json`, `commitlint`, `.husky`, `CHANGELOG.md`, etc.).
+   - Inspect Command 1 output and repository conventions (CONTRIBUTING.md, `.agents/`, `package.json`, `commitlint`, `.husky`, `CHANGELOG.md`, etc.).
    - Produce a commit message with:
      - Short subject (~50 chars)
      - Optional body (each line **must be wrapped to 72 characters or fewer**; bullets allowed)
