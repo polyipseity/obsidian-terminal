@@ -39,7 +39,7 @@ import {
   useSettings,
   useSubsettings,
 } from "@polyipseity/obsidian-plugin-library";
-import { Modal, type Setting } from "obsidian";
+import { Modal, Setting } from "obsidian";
 import { constant, identity, noop } from "lodash-es";
 import { BUNDLE } from "./import.js";
 import type { DeepWritable } from "ts-essentials";
@@ -1285,5 +1285,163 @@ export namespace ProfileListModal {
       data: DeepWritable<Settings.Profile.Entry>[],
     ) => unknown;
     readonly keygen?: () => string;
+  }
+}
+
+/** Modal for editing custom key mappings. */
+export class KeyMappingModal extends Modal {
+  readonly #context: TerminalPlugin;
+  readonly #mappings: DeepWritable<Settings.KeyMapping>[];
+  readonly #callback: (mappings: Settings.KeyMapping[]) => void;
+
+  public constructor(
+    context: TerminalPlugin,
+    mappings: readonly Settings.KeyMapping[],
+    callback: (mappings: Settings.KeyMapping[]) => void,
+  ) {
+    super(context.app);
+    this.#context = context;
+    this.#mappings = mappings.map((m) => cloneAsWritable(m));
+    this.#callback = callback;
+  }
+
+  public override onOpen(): void {
+    super.onOpen();
+    this.#render();
+  }
+
+  public override onClose(): void {
+    super.onClose();
+    this.#callback(this.#mappings);
+  }
+
+  #render(): void {
+    const { contentEl } = this,
+      { value: i18n } = this.#context.language;
+    contentEl.empty();
+    contentEl.createEl("h2", {
+      text: i18n.t("components.key-mapping.title"),
+    });
+    for (let idx = 0; idx < this.#mappings.length; idx++) {
+      this.#renderRow(contentEl, idx);
+    }
+    new Setting(contentEl)
+      .addButton((btn) =>
+        btn.setButtonText(i18n.t("components.key-mapping.add")).onClick(() => {
+          this.#mappings.push(cloneAsWritable(Settings.KeyMapping.DEFAULT));
+          this.#render();
+        }),
+      )
+      .addDropdown((dd) => {
+        dd.addOption("", i18n.t("components.key-mapping.load-preset"));
+        for (const key of Settings.KEY_MAPPING_PRESET_KEYS) {
+          dd.addOption(key, i18n.t(`components.key-mapping.presets.${key}`));
+        }
+        dd.onChange((val) => {
+          if (!val) {
+            return;
+          }
+          const preset =
+            Settings.KEY_MAPPING_PRESETS[val as Settings.KeyMappingPreset];
+          if (!preset) {
+            return;
+          }
+          for (const mapping of preset) {
+            if (
+              !this.#mappings.some((m) => Settings.KeyMapping.sameKey(m, mapping))
+            ) {
+              this.#mappings.push(cloneAsWritable(mapping));
+            }
+          }
+          dd.setValue("");
+          this.#render();
+        });
+      });
+  }
+
+  #renderRow(container: HTMLElement, index: number): void {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- index always valid from #render loop
+    const mapping = this.#mappings[index]!,
+      { value: i18n } = this.#context.language,
+      setting = new Setting(container);
+
+    // Shortcut label as the setting name (left side), clickable to re-record
+    setting.setName(KeyMappingModal.#formatShortcut(mapping, i18n));
+    setting.nameEl.style.cursor = "pointer";
+    setting.nameEl.addEventListener("click", () => {
+      setting.setName(i18n.t("components.key-mapping.recording"));
+      const MODIFIER_KEYS = new Set(["Meta", "Control", "Alt", "Shift"]);
+      const handler = (event: KeyboardEvent): void => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (MODIFIER_KEYS.has(event.key)) {
+          return;
+        }
+        mapping.key = event.key;
+        mapping.ctrl = event.ctrlKey;
+        mapping.alt = event.altKey;
+        mapping.meta = event.metaKey;
+        mapping.shift = event.shiftKey;
+        container.ownerDocument.removeEventListener("keydown", handler, true);
+        this.#render();
+      };
+      container.ownerDocument.addEventListener("keydown", handler, true);
+    });
+
+    // Action dropdown
+    setting.addDropdown((dd) => {
+      for (const action of Settings.KEY_MAPPING_ACTIONS) {
+        dd.addOption(
+          action,
+          i18n.t(`components.key-mapping.actions.${action}`),
+        );
+      }
+      dd.setValue(mapping.action);
+      dd.onChange((val) => {
+        mapping.action = val as Settings.KeyMappingAction;
+        this.#render();
+      });
+    });
+
+    // Value input (hidden for "ignore")
+    if (mapping.action !== "ignore") {
+      setting.addText((text) => {
+        text.setValue(mapping.actionArg);
+        text.setPlaceholder(
+          i18n.t(`components.key-mapping.placeholders.${mapping.action}`),
+        );
+        text.onChange((val) => {
+          mapping.actionArg = val;
+        });
+      });
+    }
+
+    // Delete button
+    setting.addButton((btn) => {
+      btn.setIcon(i18n.t("asset:components.key-mapping.delete-icon"));
+      btn.setTooltip(i18n.t("generic.close"));
+      btn.onClick(() => {
+        this.#mappings.splice(index, 1);
+        this.#render();
+      });
+    });
+  }
+
+  static #formatShortcut(
+    mapping: Settings.KeyMapping,
+    i18n: TerminalPlugin["language"]["value"],
+  ): string {
+    if (!mapping.key) {
+      return i18n.t("components.key-mapping.record");
+    }
+    return [
+      mapping.ctrl && "Ctrl",
+      mapping.alt && "Alt",
+      mapping.meta && "Meta",
+      mapping.shift && "Shift",
+      mapping.key,
+    ]
+      .filter(Boolean)
+      .join("+");
   }
 }
