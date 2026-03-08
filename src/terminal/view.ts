@@ -47,7 +47,7 @@ import {
   DisposerAddon,
   DragAndDropAddon,
   FollowThemeAddon,
-  MacOSOptionKeyPassthroughAddon,
+  CustomKeyEventHandlerAddon,
   RendererAddon,
   RightClickActionAddon,
 } from "./emulator-addons.js";
@@ -983,12 +983,17 @@ export class TerminalView extends ItemView {
               serial ?? void 0,
               {
                 allowProposedApi: true,
-                macOptionIsMeta: false, // `false` is the default value, but set it explicitly for `MacOSOptionKeyPassthroughAddon` to work just in case.
+                macOptionIsMeta: false, // `false` is the default value, but set it explicitly for `CustomKeyEventHandlerAddon` to work just in case.
                 ...(profile.type === "invalid"
                   ? {}
                   : cloneAsWritable(profile.terminalOptions, cloneDeep)),
               },
               {
+                customKeyEventHandler: new CustomKeyEventHandlerAddon(
+                  Platform.CURRENT === "darwin"
+                    ? () => settings.value.macOSOptionKeyPassthrough
+                    : constant(false),
+                ),
                 disposer: new DisposerAddon(
                   () => {
                     ele.remove();
@@ -1011,11 +1016,6 @@ export class TerminalView extends ItemView {
                   },
                 }),
                 ligatures: new LigaturesAddon({}),
-                macOptionKeyPassthrough: new MacOSOptionKeyPassthroughAddon(
-                  Platform.CURRENT === "darwin"
-                    ? () => settings.value.macOSOptionKeyPassthrough
-                    : constant(false),
-                ),
                 renderer: new RendererAddon(
                   () => new CanvasAddon(),
                   () => new WebglAddon(false),
@@ -1123,11 +1123,11 @@ export namespace TerminalView {
   export const EMULATOR = XtermTerminalEmulator<Addons>;
   export type EMULATOR = XtermTerminalEmulator<Addons>;
   export interface Addons {
+    readonly customKeyEventHandler: CustomKeyEventHandlerAddon;
     readonly disposer: DisposerAddon;
     readonly dragAndDrop: DragAndDropAddon;
     readonly followTheme: FollowThemeAddon;
     readonly ligatures: LigaturesAddon;
-    readonly macOptionKeyPassthrough: MacOSOptionKeyPassthroughAddon;
     readonly renderer: RendererAddon;
     readonly rightClickAction: RightClickActionAddon;
     readonly search: SearchAddon;

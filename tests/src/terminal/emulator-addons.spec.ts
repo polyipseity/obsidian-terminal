@@ -1,5 +1,5 @@
 /**
- * Unit tests for `MacOSOptionKeyPassthroughAddon` in `src/terminal/emulator-addons.ts`.
+ * Unit tests for `CustomKeyEventHandlerAddon` in `src/terminal/emulator-addons.ts`.
  *
  * Covers:
  * - Option+printable character passthrough (PR #92 behavior)
@@ -8,7 +8,8 @@
  * - Guard conditions (disposed, platform, setting, modifier combos)
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { MacOSOptionKeyPassthroughAddon } from "../../../src/terminal/emulator-addons.js";
+import { CustomKeyEventHandlerAddon } from "../../../src/terminal/emulator-addons.js";
+import type { Terminal } from "@xterm/xterm";
 
 /** Minimal mock Terminal with `input()` and `attachCustomKeyEventHandler()`. */
 function createMockTerminal() {
@@ -21,10 +22,10 @@ function createMockTerminal() {
       handler = fn;
     },
     element: document.createElement("div"),
-  };
+  } as unknown as Terminal;
 
   return {
-    terminal: terminal as unknown as import("@xterm/xterm").Terminal,
+    terminal: terminal,
     inputSpy,
     getHandler: () => {
       if (!handler) {
@@ -49,7 +50,7 @@ function fakeKeyEvent(
   } as unknown as KeyboardEvent;
 }
 
-describe("MacOSOptionKeyPassthroughAddon", () => {
+describe("CustomKeyEventHandlerAddon", () => {
   let inputSpy: ReturnType<typeof vi.fn>;
   let handler: (event: KeyboardEvent) => boolean;
 
@@ -57,7 +58,7 @@ describe("MacOSOptionKeyPassthroughAddon", () => {
   function setup(isEnabled = true) {
     const mock = createMockTerminal();
     inputSpy = mock.inputSpy;
-    const addon = new MacOSOptionKeyPassthroughAddon(() => isEnabled);
+    const addon = new CustomKeyEventHandlerAddon(() => isEnabled);
     addon.activate(mock.terminal);
     handler = mock.getHandler();
     return addon;

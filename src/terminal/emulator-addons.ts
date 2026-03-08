@@ -654,19 +654,18 @@ export namespace RightClickActionAddon {
 }
 
 /**
- * Addon to fix Option key handling on macOS for international keyboards.
+ * Addon that registers a custom key event handler with xterm.js.
  *
- * ROOT CAUSE: xterm.js has a known bug (issue #2831) where macOptionIsMeta: false
- * is not properly respected. Even with the correct settings, xterm.js still sends
- * ESC sequences instead of allowing the browser to compose special characters
- * (e.g., Option+2 → @ on Finnish keyboards).
- *
- * This addon works around the bug by:
- * 1. Intercepting Option+key events before xterm.js processes them
- * 2. Sending the browser-composed character directly to the terminal
- * 3. Returning false to prevent xterm.js from sending ESC sequences
+ * Handles:
+ * - **macOS Option key passthrough**: xterm.js has a known bug (issue #2831) where
+ *   macOptionIsMeta: false is not properly respected. This addon intercepts
+ *   Option+key events, sends the browser-composed character (e.g., Option+2 → @
+ *   on Finnish keyboards) via `terminal.input()`, and returns false to prevent
+ *   xterm.js from sending ESC sequences.
+ * - **Shift+Enter**: Sends ESC+CR for TUI apps that distinguish modified Enter.
+ * - **Option+Arrow/Backspace/Delete**: Word navigation and deletion sequences.
  */
-export class MacOSOptionKeyPassthroughAddon implements ITerminalAddon {
+export class CustomKeyEventHandlerAddon implements ITerminalAddon {
   #isDisposed = false;
 
   public constructor(protected readonly isPassthroughEnabled: () => boolean) {}
