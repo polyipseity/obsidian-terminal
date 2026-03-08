@@ -17,7 +17,7 @@ This guide provides clear, actionable instructions for AI coding agents working 
 
 ## 2. Developer Workflows
 
-> **Note:** Prefer `pnpm` for development workflows. Use `npm` only when `pnpm` is unavailable.
+> **Note:** **Always prefer `pnpm` over `npm`** for development workflows. Use `npm` only when `pnpm` is unavailable.
 
 - **Setup**
   - `pnpm install` — install dependencies and set up Git hooks (preferred).
@@ -52,7 +52,7 @@ This guide provides clear, actionable instructions for AI coding agents working 
 
 ## Scripts (package.json) 🔧
 
-Quick reference for scripts in `package.json`. Use `pnpm` (preferred).
+Quick reference for scripts in `package.json`. **Always prefer `pnpm` over `npm`.**
 
 - `build` — runs `format` then `build:force`.
 - `build:force` — runs `node scripts/build.mjs` (internal build implementation).
@@ -102,15 +102,15 @@ Helpful local resources:
 - `tests/README.md` — Examples and recommended patterns for `vi` usage (async stubs, fake timers, spying globals).
 
 - **Run locally:**
-  - Full (default): `pnpm test` / `npm run test` — runs both unit and integration tests with coverage.
+  - Full (default): `pnpm test` (prefer over `npm run test`) — runs both unit and integration tests with coverage.
   - Unit-only (Vitest CLI): `pnpm exec vitest run "tests/**/*.spec.{js,ts,mjs}" --coverage` — fast, good for PR iteration.
   - Integration-only (Vitest CLI): `pnpm exec vitest run "tests/**/*.test.{js,ts,mjs}" --coverage` — use for longer-running integration suites.
-  - Interactive / watch: `pnpm run test:watch` or `npm run test:watch`.
+  - Interactive / watch: `pnpm run test:watch` (prefer over `npm run test:watch`).
 
   > **Agent note — vitest CLI:** `vitest` without a subcommand defaults to interactive/watch mode. **Agents must never run Vitest in watch mode**; always use `vitest run <options>` or add the `--run` option so tests execute non-interactively (example: `pnpm exec vitest --run "tests/**/*.spec.{js,ts,mjs}"`).
 
 - **Git hooks & CI:**
-  - Pre-push: `.husky/pre-push` runs `npm run test` (equivalently `pnpm test`) — failing tests will block pushes.
+  - Pre-push: `.husky/pre-push` runs `pnpm test` (prefer over `npm run test`) — failing tests will block pushes.
   - CI: CI jobs run the full test suite (both unit and integration). If adding slow or flaky integration tests, mark them clearly (folder or filename) and justify in the PR description; prefer to keep the default suite fast.
 
 - **Guidelines for agents & contributors:**
@@ -171,7 +171,7 @@ type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
 - **Header should be ≤ 72 characters (use 72 as a human-friendly buffer; tooling still accepts up to 100).**
 - **Body lines must be hard-wrapped at 100 characters** (enforced by commitlint/husky). Prefer 72 for messages intended for humans.
 - See `.github/instructions/commit-message.instructions.md` for up-to-date rules, examples, and a short agent-oriented summary.
-- Run `npm run commitlint` locally to validate message format before pushing; Husky will run checks on `prepare`/pre-push as configured.
+- Run `pnpm run commitlint` (prefer over `npm run commitlint`) locally to validate message format before pushing; Husky will run checks on `prepare`/pre-push as configured.
 
   **Example (compliant):**
 
@@ -202,6 +202,8 @@ type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
 - `README.md` / `assets/locales/README.md` — Contributor/translation instructions
 - `.github/instructions/` — Task/file-specific instructions
 - `.github/skills/` — Agent skills for specialized workflows
+
+**Python version:** Runtime requirement is 3.9 or above. For development we use 3.9 (e.g. `.python-version`, Pyright `pythonVersion` in `pyproject.toml`; rationale: macOS ships 3.9 by default). When changing the minimum version, update: `README.md` (badge + install step), `src/magic.ts` (`PYTHON_REQUIREMENTS.Python.version`), `pyproject.toml` (`requires-python`). When changing the dev version, update `.python-version` and `pyproject.toml` `[tool.pyright] pythonVersion`.
 
 > **Never use `.github/copilot-instructions.md`. All agent instructions must be in `AGENTS.md` and referenced from here.**
 
@@ -275,6 +277,7 @@ const { loadDocumentations } = await import("../../src/documentations.js");
 
 This section contains concise, actionable rules and project-specific examples to help AI agents be productive immediately.
 
+- **Always prefer `pnpm` over `npm`** for all package-manager commands (install, run, exec, etc.). Use `npm` only when `pnpm` is unavailable.
 - Read this file first. When in doubt, follow concrete examples in `src/`, `scripts/`, and `tests/` rather than generic advice.
 - Start by inspecting `src/main.ts`, `src/settings-data.ts`, and `assets/locales.ts` to learn core patterns: Manager classes (LanguageManager, SettingsManager), `.fix()` validators, and `PluginLocales` usage.
 - Settings pattern: always prefer `.fix()` functions (see `Settings.fix`/`LocalSettings.fix`) to validate/normalize external inputs before persisting or mutating settings.
@@ -283,7 +286,7 @@ This section contains concise, actionable rules and project-specific examples to
 - Script behavior: `scripts/obsidian-install.mjs` exits 1 with a short error message when `manifest.json` is missing. Make changes in scripts with tests mirroring error conditions (see `tests/scripts/obsidian-install.test.mjs`).
 - Test conventions: `*.spec.*` = unit (fast, isolated); `*.test.*` = integration (may use filesystem or child processes). Follow the one-test-file-per-source-file convention and place tests under `tests/` mirroring `src/`.
 - Formatting & linting: run `pnpm run format` and `pnpm run check` before committing. CI uses `pnpm install --frozen-lockfile`.
-- Commit rules for agents: use Conventional Commits; run `npm run commitlint` locally when appropriate. Keep headers ≤100 chars and wrap bodies at 100 chars.
+- Commit rules for agents: use Conventional Commits; run `pnpm run commitlint` (prefer over npm) locally when appropriate. Keep headers ≤100 chars and wrap bodies at 100 chars.
 - Localization rule for agents: when adding text keys, update `assets/locales/en/translation.json` first and add tests or localization notes. Follow `.github/instructions/localization.instructions.md`.
 - PR checklist (brief): add/modify tests, run `pnpm exec vitest run "tests/**/*.spec.{js,ts,mjs}"` locally for fast checks, run `pnpm run check`, add changeset when changing public API or version, and update `AGENTS.md` if you changed infra or agent-visible patterns.
 
