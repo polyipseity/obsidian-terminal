@@ -1,4 +1,4 @@
-# Terminal for Obsidian [![release](https://img.shields.io/github/v/release/polyipseity/obsidian-terminal)][latest release] [![Obsidian downloads](https://img.shields.io/badge/dynamic/json?logo=Obsidian&color=%238b6cef&label=downloads&query=$["terminal"].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json)][community plugin] [![Python](https://img.shields.io/badge/Python-≥3.10-gold?labelColor=blue&logo=Python&logoColor=white)][Python]
+# Terminal for Obsidian [![release](https://img.shields.io/github/v/release/polyipseity/obsidian-terminal)][latest release] [![Obsidian downloads](https://img.shields.io/badge/dynamic/json?logo=Obsidian&color=%238b6cef&label=downloads&query=$["terminal"].downloads&url=https://raw.githubusercontent.com/obsidianmd/obsidian-releases/master/community-plugin-stats.json)][community plugin] [![Python](https://img.shields.io/badge/Python-≥3.9-gold?labelColor=blue&logo=Python&logoColor=white)][Python]
 
 [Buy Me a Coffee]: https://buymeacoffee.com/polyipseity
 [Buy Me a Coffee/embed]: https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=polyipseity&button_colour=40DCA5&font_colour=ffffff&font_family=Lato&outline_colour=000000&coffee_colour=FFDD00
@@ -51,7 +51,7 @@ This file is automatically opened on first install. You can reopen it in setting
     - [Obsidian42 - BRAT](https://obsidian.md/plugins?id=obsidian42-brat) (rolling)
         - See [their readme](https://github.com/TfTHacker/obsidian42-brat#readme).
 2. (optional for Windows, recommended) Install Python and dependencies.
-    1. Install [Python] 3.10/+.
+    1. Install [Python] 3.9 or above.
     2. (Windows only) Run `pip3 install psutil==5.9.5 pywinctl==0.0.50 typing_extensions==4.7.1`. <!-- Update `README.md`, `dependabot.yml`, `magic.ts`, and `pyproject.toml` together. -->
     3. Configure Python executable in profile settings. Press the "Check" button to validate the Python configuration. Each profile needs to be configured separately.
 3. Enable plugin.

@@ -8,6 +8,8 @@ exercise these helpers directly so that their behaviour is covered and type
 checked.
 """
 
+from __future__ import annotations
+
 import os
 import stat
 import subprocess

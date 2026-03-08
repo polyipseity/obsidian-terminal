@@ -15,9 +15,9 @@ export const CHECK_EXECUTABLE_WAIT = 5,
   MAX_LOCK_PENDING = Infinity,
   PLUGIN_UNLOAD_DELAY = 10,
   PYTHON_REQUIREMENTS = deepFreeze({
-    // Update `README.md`, `dependabot.yml`, `magic.ts`, and `pyproject.toml` together.
+    // Minimum Python version (3.9 or above). Update README.md, dependabot.yml, magic.ts, pyproject.toml together.
 
-    Python: { platforms: Platform.DESKTOP, version: new SemVer("3.10.0") },
+    Python: { platforms: Platform.DESKTOP, version: new SemVer("3.9.0") },
     psutil: { platforms: ["win32"], version: new SemVer("5.9.5") },
     pywinctl: { platforms: ["win32"], version: new SemVer("0.0.50") },
 

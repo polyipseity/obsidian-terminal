@@ -5,7 +5,8 @@ build-backend = "uv_build"
 [project]
 name = "obsidian-terminal-f9b1c3e0-fcc2-4914-9732-1867d920929b"
 version = "0.0.0"
-requires-python = ">=3.11.0"
+# Minimum Python version: 3.9 or above. Keep in sync with README, magic.ts.
+requires-python = ">=3.9.0"
 description = "Obsidian Terminal"
 license = {file = "LICENSE.txt"}
 readme = "README.md"
@@ -24,10 +25,10 @@ repository = "https://github.com/polyipseity/obsidian-terminal.git"
 [dependency-groups]
 dev = [
   "anyio>=3.6.0",
-  "asyncer>=0.0.17",
-  "hypothesis>=6.151.0",
-  "pandas-stubs>=3.0.0",
-  "pytest>=9.0.0",
+  "asyncer>=0.0.14",
+  "hypothesis>=6.141.0",
+  "pandas-stubs>=2.2.0",
+  "pytest>=8.4.0",
   "pytest-cov>=7.0.0",
   "pytest-xdist>=3.8.0",
   "ruff>=0.15.0",
@@ -46,7 +47,8 @@ typeCheckingMode = "strict"
 venv = ".venv"
 venvPath = "."
 pythonPlatform = "All"
-pythonVersion = "3.11"
+# Use 3.9 for development (macOS ships 3.9 by default); runtime allows 3.9 or above.
+pythonVersion = "3.9"
 deprecateTypingAliases = true
 enableReachabilityAnalysis = true
 strictDictionaryInference = true

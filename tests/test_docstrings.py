@@ -12,6 +12,8 @@ that:
   configuration are documented close to their definitions.
 """
 
+from __future__ import annotations
+
 import ast
 from collections.abc import Iterator
 
@@ -144,9 +146,10 @@ def _iter_assignments_in_body(
                 yield from _iter_assignments_in_body(stmt.orelse)
             if stmt.finalbody:
                 yield from _iter_assignments_in_body(stmt.finalbody)
-        elif isinstance(stmt, ast.Match):
-            for case in stmt.cases:
-                yield from _iter_assignments_in_body(case.body)
+        # `Match` is not supported in Python 3.9, so we skip it.
+        # elif isinstance(stmt, ast.Match):
+        #     for case in stmt.cases:
+        #         yield from _iter_assignments_in_body(case.body)
         # Do not recurse into FunctionDef, AsyncFunctionDef, ClassDef
 
 
