@@ -16,7 +16,7 @@ export function mergeTerminalOptions(
 ): DeepWritable<Settings.Profile.TerminalOptions> {
   return {
     allowProposedApi: true,
-    macOptionIsMeta: false, // `false` is the default value, but set it explicitly for `MacOSOptionKeyPassthroughAddon` to work just in case.
+    macOptionIsMeta: false, // `false` is the default value, but set it explicitly for `CustomKeyEventHandlerAddon` to work just in case.
     ...cloneAsWritable(globalOpts, cloneDeep),
     ...cloneAsWritable(profileOpts, cloneDeep),
   };
