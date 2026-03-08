@@ -10,6 +10,8 @@ that:
   docstrings but should be documented in the module docstring.
 """
 
+from __future__ import annotations
+
 import ast
 from collections.abc import Iterator
 
