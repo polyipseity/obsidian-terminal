@@ -1184,20 +1184,42 @@ export class ProfileListModal extends ListModal<
     super(
       context,
       (setting, editable, getter, setter) => {
-        setting.addButton((button) =>
-          button
-            .setIcon(i18n.t("asset:components.profile-list.edit-icon"))
-            .setTooltip(i18n.t("components.profile-list.edit"))
-            .onClick(() => {
-              new ProfileModal(context, getter(), async (value) => {
-                await setter((item) => {
-                  clearProperties(item);
-                  Object.assign(item, value);
-                });
-              }).open();
-            })
-            .setDisabled(!editable),
-        );
+        setting
+          .addButton((button) => {
+            const profile = getter(),
+              id = dataKeys.get(profile),
+              isDefault =
+                id !== void 0 && id === context.settings.value.defaultProfile;
+            button
+              .setIcon(i18n.t("asset:components.profile-list.default-icon"))
+              .setTooltip(i18n.t("components.profile-list.set-as-default"))
+              .onClick(async () => {
+                if (id !== void 0) {
+                  await context.settings.mutate((settingsM) => {
+                    settingsM.defaultProfile = id;
+                  });
+                  this.update();
+                }
+              })
+              .setDisabled(!editable || isDefault);
+            if (isDefault) {
+              button.setCta();
+            }
+          })
+          .addButton((button) =>
+            button
+              .setIcon(i18n.t("asset:components.profile-list.edit-icon"))
+              .setTooltip(i18n.t("components.profile-list.edit"))
+              .onClick(() => {
+                new ProfileModal(context, getter(), async (value) => {
+                  await setter((item) => {
+                    clearProperties(item);
+                    Object.assign(item, value);
+                  });
+                }).open();
+              })
+              .setDisabled(!editable),
+          );
       },
       unexpected,
       dataW.map(([, value]) => value),
@@ -1238,18 +1260,23 @@ export class ProfileListModal extends ListModal<
         namer:
           options?.namer ??
           ((profile): string => {
-            const id = dataKeys.get(profile) ?? "";
-            return i18n.t(
-              `components.profile-list.namer-${
-                Settings.Profile.isCompatible(profile, Platform.CURRENT)
-                  ? ""
-                  : "incompatible"
-              }`,
-              {
-                info: Settings.Profile.info([id, profile]),
-                interpolation: { escapeValue: false },
-              },
-            );
+            const id = dataKeys.get(profile) ?? "",
+              isDefault =
+                id !== "" && id === context.settings.value.defaultProfile,
+              name = i18n.t(
+                `components.profile-list.namer-${
+                  Settings.Profile.isCompatible(profile, Platform.CURRENT)
+                    ? ""
+                    : "incompatible"
+                }`,
+                {
+                  info: Settings.Profile.info([id, profile]),
+                  interpolation: { escapeValue: false },
+                },
+              );
+            return isDefault
+              ? `${name} ${i18n.t("components.profile-list.default-indicator")}`
+              : name;
           }),
         presetPlaceholder:
           options?.presetPlaceholder ??
