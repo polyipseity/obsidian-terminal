@@ -12,9 +12,13 @@ license = {file = "LICENSE.txt"}
 readme = "README.md"
 # Update `README.md`, `dependabot.yml`, `magic.ts`, and `pyproject.toml` together.
 dependencies = [
-  "psutil==5.9.5",
-  "pywinctl==0.0.50",
-  "typing_extensions>=4.7.1",
+  "anyio>=3.6.0",
+  "asyncer>=0.0.14",
+  "psutil==5.9.5",  # sync
+  "pywinctl==0.0.50",  # sync
+  "typing_extensions>=4.7.1",  # sync
+  "uvloop>=0.22.0; platform_system != 'Windows'",
+  "winloop>=0.5.0; platform_system == 'Windows'",
 ]
 
 [project.scripts]
@@ -24,16 +28,11 @@ repository = "https://github.com/polyipseity/obsidian-terminal.git"
 
 [dependency-groups]
 dev = [
-  "anyio>=3.6.0",
-  "asyncer>=0.0.14",
   "hypothesis>=6.141.0",
-  "pandas-stubs>=2.2.0",
   "pytest>=8.4.0",
   "pytest-cov>=7.0.0",
   "pytest-xdist>=3.8.0",
   "ruff>=0.15.0",
-  "uvloop>=0.22.0; platform_system != 'Windows'",
-  "winloop>=0.5.0; platform_system == 'Windows'",
 ]
 
 [tool.pyright]
@@ -68,7 +67,10 @@ root = "."
 
 [tool.pytest.ini_options]
 addopts = ["--cov=./", "--cov-report=term-missing", "--dist=loadscope", "-n=auto", "--strict-markers"]
-testpaths = ["tests"]
+testpaths = [
+  ".agents/skills/**/tests_*",
+  "tests",
+]
 python_files = "test_*.py"
 
 [tool.ruff]
