@@ -61,7 +61,7 @@ async def _get_candidate_files() -> AsyncIterator[Path]:
     yielded order preserves the first-match ordering from the include
     patterns.
     """
-    root = Path(__file__).parent.parent
+    root = Path(__file__).parent.parent  # repo root
     yielded: set[Path] = set()
 
     async def _iter_files(pattern: str) -> AsyncIterator[Path]:
@@ -89,7 +89,7 @@ async def git_mode(path: Path) -> str | None:
     file is not tracked at all the function returns ``None``.  We use
     ``anyio.run_process`` so that the helper is fully async-friendly.
     """
-    root = Path(__file__).parent.parent
+    root = Path(__file__).parent.parent  # repo root
     # git understands forward slashes even on Windows; convert to posix
     rel = path.relative_to(root).as_posix()
     try:

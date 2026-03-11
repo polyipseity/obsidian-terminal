@@ -4,6 +4,7 @@ These helpers exercise the fixtures defined in ``tests/conftest.py`` and
 provide a simple sanity check that the backend is configured as expected.
 """
 
+"""Public API of the anyio backend tests."""
 __all__ = ()
 
 

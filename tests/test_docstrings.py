@@ -15,7 +15,7 @@ that:
 from __future__ import annotations
 
 import ast
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 
 import pytest
 from anyio import Path
@@ -23,25 +23,66 @@ from anyio import Path
 """Public API of this test module (empty: no symbols are exported)."""
 __all__ = ()
 
-"""Repository root used by the docstring compliance tests for path discovery."""
-ROOT = Path(".")
+"""Glob patterns relative to the repository root. Only files matching an
+include pattern and no exclude pattern are considered candidates."""
+_GLOB_SPEC = """
+.agents/skills/**/*.py
+src/**/*.py
+tests/**/*.py
+scripts/**/*.py
+"""
+
+
+def _iter_glob_patterns(spec: str) -> Iterator[tuple[str, bool]]:
+    """Parse a gitignore-style, multi-line glob specification.
+
+    The ``spec`` string is interpreted as a sequence of lines applied from
+    top to bottom. Empty lines and lines starting with ``#`` are ignored.
+    Lines beginning with ``!`` are treated as exclusions.  The function
+    yields ``(pattern, is_exclude)`` pairs in the original order.
+    """
+    for raw in spec.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        is_exclude = line.startswith("!")
+        pattern = line[1:] if is_exclude else line
+        if not pattern:
+            continue
+        yield pattern, is_exclude
 
 
 async def _find_py_files() -> list[Path]:
-    """Return a sorted list of Python file paths under `src/`, `tests/`, and `scripts/`.
+    """Return sorted Python file paths matching ``_GLOB_SPEC``.
 
-    Mirrors the traversal used by other repository checks.
+    The helper is intentionally very similar to ``_get_candidate_files`` in
+    :mod:`tests.test_git_executable` with the only difference being that this
+    function returns a list instead of yielding an iterator.  Keeping the
+    implementations in each file avoids a separate shared module and is fine
+    per the refactoring instructions.
     """
+    root = Path(__file__).parent.parent  # repo root
+    yielded: set[Path] = set()
+    result: list[Path] = []
 
-    files: list[Path] = []
+    async def _iter_files(pattern: str) -> AsyncIterator[Path]:
+        """Yield all files matching the given glob pattern, relative to the repo root."""
+        async for p in root.glob(pattern):
+            if await p.is_file():
+                yield p
 
-    async for path in (ROOT / "src").rglob("*.py"):
-        files.append(path)
-    async for path in (ROOT / "tests").rglob("*.py"):
-        files.append(path)
-    async for path in (ROOT / "scripts").rglob("*.py"):
-        files.append(path)
-    return sorted(files)
+    for pattern, is_exclude in _iter_glob_patterns(_GLOB_SPEC):
+        if is_exclude:
+            async for p in root.glob(pattern):
+                yielded.discard(p)
+                if p in result:
+                    result.remove(p)
+        else:
+            async for p in _iter_files(pattern):
+                if p not in yielded:
+                    yielded.add(p)
+                    result.append(p)
+    return sorted(result)
 
 
 def _extract_all_tuple(node: ast.Module) -> tuple[str, ...] | None:
@@ -107,73 +148,99 @@ def _find_def_node(node: ast.Module, name: str) -> ast.AST | None:
 
 
 def _iter_assignments_in_body(
-    body: list[ast.stmt],
-) -> Iterator[tuple[str, list[ast.stmt], int]]:
-    """Yield (variable name, body, index) for assignments in body and nested blocks.
+    body: list[ast.stmt], is_module: bool = False
+) -> Iterator[tuple[str, list[ast.stmt], int, bool]]:
+    """Yield (variable name, body, index, is_module) for assignments.
 
-    Recurses into If/For/While/With/Try/Match bodies (and orelse/finalbody etc.)
-    but does not recurse into FunctionDef or ClassDef, so only module-level and
-    control-flow-block-level assignments are included.
+    ``is_module`` is True only when ``body`` is the top-level module body.
+    Nested blocks (if/for/while/with/try/match etc.) are visited recursively
+    with ``is_module`` forced to False.  This allows callers to distinguish
+    between the real module-level docstring and ordinary string literals used as
+    variable comments.
     """
     for idx, stmt in enumerate(body):
         if isinstance(stmt, ast.Assign):
             for target in stmt.targets:
                 if isinstance(target, ast.Name):
-                    yield target.id, body, idx
+                    yield target.id, body, idx, is_module
         elif isinstance(stmt, ast.AnnAssign):
             target = stmt.target
             if isinstance(target, ast.Name):
-                yield target.id, body, idx
+                yield target.id, body, idx, is_module
         elif isinstance(stmt, ast.If):
-            yield from _iter_assignments_in_body(stmt.body)
+            yield from _iter_assignments_in_body(stmt.body, False)
             if stmt.orelse:
-                yield from _iter_assignments_in_body(stmt.orelse)
+                yield from _iter_assignments_in_body(stmt.orelse, False)
         elif isinstance(stmt, (ast.For, ast.AsyncFor)):
-            yield from _iter_assignments_in_body(stmt.body)
+            yield from _iter_assignments_in_body(stmt.body, False)
             if stmt.orelse:
-                yield from _iter_assignments_in_body(stmt.orelse)
+                yield from _iter_assignments_in_body(stmt.orelse, False)
         elif isinstance(stmt, ast.While):
-            yield from _iter_assignments_in_body(stmt.body)
+            yield from _iter_assignments_in_body(stmt.body, False)
             if stmt.orelse:
-                yield from _iter_assignments_in_body(stmt.orelse)
+                yield from _iter_assignments_in_body(stmt.orelse, False)
         elif isinstance(stmt, (ast.With, ast.AsyncWith)):
-            yield from _iter_assignments_in_body(stmt.body)
+            yield from _iter_assignments_in_body(stmt.body, False)
         elif isinstance(stmt, ast.Try):
-            yield from _iter_assignments_in_body(stmt.body)
+            yield from _iter_assignments_in_body(stmt.body, False)
             for handler in stmt.handlers:
-                yield from _iter_assignments_in_body(handler.body)
+                yield from _iter_assignments_in_body(handler.body, False)
             if stmt.orelse:
-                yield from _iter_assignments_in_body(stmt.orelse)
+                yield from _iter_assignments_in_body(stmt.orelse, False)
             if stmt.finalbody:
-                yield from _iter_assignments_in_body(stmt.finalbody)
-        # `Match` is not supported in Python 3.9, so we skip it.
-        # elif isinstance(stmt, ast.Match):
-        #     for case in stmt.cases:
-        #         yield from _iter_assignments_in_body(case.body)
+                yield from _iter_assignments_in_body(stmt.finalbody, False)
+        # Note: match statements are not supported in Python 3.9 and were not added until 3.10, so we can skip them for now and add support if/when we drop 3.9 support.
+        """
+        elif isinstance(stmt, ast.Match):
+            for case in stmt.cases:
+                yield from _iter_assignments_in_body(case.body, False)
+        """
         # Do not recurse into FunctionDef, AsyncFunctionDef, ClassDef
 
 
 def _iter_top_level_assignments(
     node: ast.Module,
-) -> Iterator[tuple[str, list[ast.stmt], int]]:
-    """Yield (variable name, body, index) for top-level assignments.
+) -> Iterator[tuple[str, list[ast.stmt], int, bool]]:
+    """Yield (variable name, body, index, is_module) for top-level assignments.
 
-    Includes assignments inside if/for/while/with/try/match (any nesting) as long
-    as they are not inside a def or class. Covers both `Assign` and `AnnAssign`
-    targets that bind a `Name`.
+    The returned ``is_module`` flag is ``True`` only when the assignment occurs
+    directly in ``node.body`` (i.e. the true module scope).
     """
-    yield from _iter_assignments_in_body(node.body)
+    yield from _iter_assignments_in_body(node.body, True)
 
 
-def _get_assignment_docstring(body: list[ast.stmt], stmt_index: int) -> str | None:
+def _get_assignment_docstring(
+    body: list[ast.stmt],
+    stmt_index: int,
+    is_module: bool = False,
+) -> str | None:
     """Return the docstring for an assignment in a body, if present.
 
     A variable's docstring is defined as the immediately preceding expression
     statement in the same body whose value is a string literal. This mirrors
     how function and class docstrings are represented in the AST.
+
+    The ``is_module`` flag signals that ``body`` is the module's top-level
+    body.  When ``is_module`` is ``True`` we special‑case the first statement in
+    the file: if an assignment immediately follows a string-expression it is
+    considered part of the *module* docstring rather than the variable's own
+    docstring, regardless of the literal's contents.  This avoids relying on
+    comparing text (which could differ after normalization) and correctly
+    handles files where the first docstring is followed by ``__all__`` or a
+    function definition.
     """
     if stmt_index == 0:
         return None
+
+    # first-statement check for module-level bodies
+    if is_module and stmt_index == 1:
+        prev_stmt = body[0]
+        if (
+            isinstance(prev_stmt, ast.Expr)
+            and isinstance(prev_stmt.value, ast.Constant)
+            and isinstance(prev_stmt.value.value, str)
+        ):
+            return None
 
     prev_stmt = body[stmt_index - 1]
     if (
@@ -182,9 +249,76 @@ def _get_assignment_docstring(body: list[ast.stmt], stmt_index: int) -> str | No
         and isinstance(prev_stmt.value.value, str)
     ):
         doc = prev_stmt.value.value
-        return doc if doc.strip() else None
+        if not doc.strip():
+            return None
+        return doc
 
     return None
+
+
+# regression test for special-case behavior described in the issue
+
+
+def test_assignment_immediately_after_module_docstring_is_ignored() -> None:
+    """Assignment right after module docstring should not be treated as documented.
+
+    Covers the specific AST-position rule; a sibling test handles the same case
+    with a function definition.
+    """
+    src = '"""module doc"""\nFOO = 1\n'
+    node = ast.parse(src)
+    assignments = list(_iter_top_level_assignments(node))
+    assert assignments == [("FOO", node.body, 1, True)]
+
+    # module-level special case
+    assert _get_assignment_docstring(node.body, 1, is_module=True) is None
+    # non-module behaviour still returns the literal
+    assert _get_assignment_docstring(node.body, 1, is_module=False) == "module doc"
+
+
+def test_def_immediately_after_module_docstring_is_flagged() -> None:
+    """Ensure a function defined right after the module docstring is *not*
+    treated as having that docstring.
+
+    The first test above covered assignments; this one verifies that the same
+    problematic layout doesn't trick the function-checking logic.  Future
+    refactors should keep this behaviour.
+    """
+    src = '"""module doc"""\ndef foo():\n    pass\n'
+    node = ast.parse(src)
+    # foo should be the second statement; ast.get_docstring must return None
+    func = node.body[1]
+    assert isinstance(func, ast.FunctionDef)
+    assert ast.get_docstring(func) is None
+
+    # also verify the exported-object path behaves correctly
+    src2 = '"""module doc"""\ndef foo():\n    pass\n__all__ = ("foo",)\n'
+    node2 = ast.parse(src2)
+    def_node = _find_def_node(node2, "foo")
+    assert isinstance(def_node, ast.FunctionDef)
+    assert ast.get_docstring(def_node) is None
+
+
+def test_shebang_and_assignment_are_ignored() -> None:
+    """A shebang line before the module docstring should not affect detection.
+
+    There used to be a bug where the shebang counted as a statement and the
+    docstring was mis‑attributed to subsequent variables.
+    """
+    src = '#!/usr/bin/env python\n"""module doc"""\nFOO = 1\n'
+    node = ast.parse(src)
+    assignments = list(_iter_top_level_assignments(node))
+    assert assignments == [("FOO", node.body, 1, True)]
+    assert _get_assignment_docstring(node.body, 1, is_module=True) is None
+
+
+def test_shebang_and_def_are_flagged() -> None:
+    """Function after a shebang+module docstring should still have no doc."""
+    src = '#!/usr/bin/env python\n"""module doc"""\ndef foo():\n    pass\n'
+    node = ast.parse(src)
+    func = node.body[1]
+    assert isinstance(func, ast.FunctionDef)
+    assert ast.get_docstring(func) is None
 
 
 @pytest.mark.anyio
@@ -214,8 +348,8 @@ async def test_modules_and_exported_objects_have_docstrings() -> None:
 
         # ensure that every top-level assignment/constant has its own docstring
         # represented as a preceding string-literal expression statement
-        for var_name, body, stmt_index in _iter_top_level_assignments(node):
-            doc = _get_assignment_docstring(body, stmt_index)
+        for var_name, body, stmt_index, is_module in _iter_top_level_assignments(node):
+            doc = _get_assignment_docstring(body, stmt_index, is_module=is_module)
             if doc is None:
                 failures.append(
                     f"{path}: top-level variable {var_name!r} is missing a docstring"
@@ -271,8 +405,8 @@ async def test_all_top_level_definitions_have_docstrings() -> None:
                     )
 
         # ensure that every top-level assignment/constant has its own docstring
-        for var_name, body, stmt_index in _iter_top_level_assignments(node):
-            doc = _get_assignment_docstring(body, stmt_index)
+        for var_name, body, stmt_index, is_module in _iter_top_level_assignments(node):
+            doc = _get_assignment_docstring(body, stmt_index, is_module=is_module)
             if doc is None:
                 failures.append(
                     f"{path}: top-level variable {var_name!r} is missing a docstring"
