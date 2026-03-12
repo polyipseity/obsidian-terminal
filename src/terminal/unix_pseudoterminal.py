@@ -5,6 +5,8 @@ process on a pty, proxies stdin/stdout, and accepts control frames on a
 separate FD to update terminal window size.
 """
 
+from __future__ import annotations
+
 import sys
 from os import (
     execvp,
@@ -17,13 +19,20 @@ from selectors import EVENT_READ, BaseSelector, DefaultSelector
 from struct import pack
 from sys import exit, stdin, stdout
 from types import TracebackType
-from typing import Self
 
+"""Public API of this module."""
 __all__ = ("main",)
 
+"""Chunk size in bytes used when reading from the PTY."""
 _CHUNK_SIZE = 1024
+
+"""File descriptor for stdin used by the PTY proxy."""
 _STDIN = stdin.fileno()
+
+"""File descriptor for stdout used by the PTY proxy."""
 _STDOUT = stdout.fileno()
+
+"""File descriptor that carries resize/control frames from the host."""
 _CMDIO = 3
 
 
@@ -59,7 +68,7 @@ if sys.platform != "win32":
             self.fd = fd
             self.registered = False
 
-        def __enter__(self) -> Self:
+        def __enter__(self) -> _SelectorHandler:
             """Register the FD callback and return this manager."""
             self.selector.register(self.fd, EVENT_READ, self._on_read)
             self.registered = True

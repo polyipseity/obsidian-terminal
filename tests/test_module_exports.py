@@ -1,7 +1,7 @@
 """Tests that every module declares a module-level `__all__` tuple.
 
 This test parses the AST of Python modules to avoid executing top-level code.
-It asserts that each `.py` file under `src/` and relevant `tests/` files
+It asserts that each `.py` file under `src/`, `tests/`, and `scripts/` files
 contains a top-level assignment to `__all__` where the value is a `tuple`
 containing only string constants.
 
@@ -15,30 +15,71 @@ surface self-documenting and avoid accidental exports.
 """
 
 import ast
+from collections.abc import AsyncIterator, Iterator
 
 import pytest
 from anyio import Path
 
+"""Public API of this test module (empty)."""
 __all__ = ()
 
-# keep ROOT as an anyio.Path instance (don't await resolve at import time)
-ROOT = Path(".")
+"""Glob patterns relative to the repository root. Only files matching an
+include pattern and no exclude pattern are considered candidates."""
+_GLOB_SPEC = """
+.agents/skills/**/*.py
+src/**/*.py
+tests/**/*.py
+scripts/**/*.py
+"""
+
+
+def _iter_glob_patterns(spec: str) -> Iterator[tuple[str, bool]]:
+    """Parse a gitignore-style, multi-line glob specification.
+
+    The ``spec`` string is interpreted as a sequence of lines applied from
+    top to bottom. Empty lines and lines starting with ``#`` are ignored.
+    Lines beginning with ``!`` are treated as exclusions.  The function
+    yields ``(pattern, is_exclude)`` pairs in the original order.
+    """
+    for raw in spec.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        is_exclude = line.startswith("!")
+        pattern = line[1:] if is_exclude else line
+        if not pattern:
+            continue
+        yield pattern, is_exclude
 
 
 async def _find_py_files() -> list[Path]:
-    """Return a sorted list of Python file paths under `src/` and `tests/`.
+    """Return sorted Python file paths matching ``_GLOB_SPEC``.
 
-    The helper parallels the module traversal used in repository checks and
-    is deterministic (sorted) for consistent test output.
+    This mirrors the implementation used in ``test_docstrings`` and
+    ``test_git_executable`` so that all three modules share the same logic.
     """
+    root = Path(__file__).parent.parent  # repo root
+    yielded: set[Path] = set()
+    result: list[Path] = []
 
-    files: list[Path] = []
+    async def _iter_files(pattern: str) -> AsyncIterator[Path]:
+        """Yield all files matching the given glob pattern, relative to the repo root."""
+        async for p in root.glob(pattern):
+            if await p.is_file():
+                yield p
 
-    async for path in (ROOT / "src").rglob("*.py"):
-        files.append(path)
-    async for path in (ROOT / "tests").rglob("*.py"):
-        files.append(path)
-    return sorted(files)
+    for pattern, is_exclude in _iter_glob_patterns(_GLOB_SPEC):
+        if is_exclude:
+            async for p in root.glob(pattern):
+                yielded.discard(p)
+                if p in result:
+                    result.remove(p)
+        else:
+            async for p in _iter_files(pattern):
+                if p not in yielded:
+                    yielded.add(p)
+                    result.append(p)
+    return sorted(result)
 
 
 def _has_all_tuple(node: ast.Module) -> tuple[bool, str]:
@@ -83,7 +124,7 @@ def _has_all_tuple(node: ast.Module) -> tuple[bool, str]:
     return False, "__all__ not found"
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_all_tuple_present_and_is_tuple() -> None:
     """Assert that every module declares `__all__` as a tuple of strings.
 
@@ -111,7 +152,7 @@ async def test_all_tuple_present_and_is_tuple() -> None:
         raise AssertionError(f"__all__ compliance failures:\n{joined}")
 
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test___all___follows_top_level_imports() -> None:
     """Ensure `__all__` assignment appears after top-level imports.
 

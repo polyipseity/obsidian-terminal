@@ -15,6 +15,7 @@ import type { CanvasAddon } from "@xterm/addon-canvas";
 import type { WebglAddon } from "@xterm/addon-webgl";
 import { around } from "monkey-around";
 import { noop } from "ts-essentials";
+import { ESCAPE_SEQUENCE_INTRODUCER as ESC } from "./utils.js";
 
 export class DisposerAddon extends Functions implements ITerminalAddon {
   public constructor(...args: readonly (() => void)[]) {
@@ -654,19 +655,18 @@ export namespace RightClickActionAddon {
 }
 
 /**
- * Addon to fix Option key handling on macOS for international keyboards.
+ * Addon that registers a custom key event handler with xterm.js.
  *
- * ROOT CAUSE: xterm.js has a known bug (issue #2831) where macOptionIsMeta: false
- * is not properly respected. Even with the correct settings, xterm.js still sends
- * ESC sequences instead of allowing the browser to compose special characters
- * (e.g., Option+2 → @ on Finnish keyboards).
- *
- * This addon works around the bug by:
- * 1. Intercepting Option+key events before xterm.js processes them
- * 2. Sending the browser-composed character directly to the terminal
- * 3. Returning false to prevent xterm.js from sending ESC sequences
+ * Handles:
+ * - **macOS Option key passthrough**: xterm.js has a known bug (issue #2831) where
+ *   macOptionIsMeta: false is not properly respected. This addon intercepts
+ *   Option+key events, sends the browser-composed character (e.g., Option+2 → @
+ *   on Finnish keyboards) via `terminal.input()`, and returns false to prevent
+ *   xterm.js from sending ESC sequences.
+ * - **Shift+Enter**: Sends ESC+CR for TUI apps that distinguish modified Enter.
+ * - **Option+Arrow/Backspace/Delete**: Word navigation and deletion sequences.
  */
-export class MacOSOptionKeyPassthroughAddon implements ITerminalAddon {
+export class CustomKeyEventHandlerAddon implements ITerminalAddon {
   #isDisposed = false;
   #terminal: Terminal | null = null;
 
@@ -676,7 +676,7 @@ export class MacOSOptionKeyPassthroughAddon implements ITerminalAddon {
     this.#terminal = terminal;
   }
 
-  /** Handle a macOS Option key event. Returns true to let xterm handle, false to block. */
+  /** Handle a key event. Returns true to let xterm handle, false to block. */
   public handleEvent(event: KeyboardEvent): boolean {
     const terminal = this.#terminal;
 
@@ -685,13 +685,23 @@ export class MacOSOptionKeyPassthroughAddon implements ITerminalAddon {
       return true;
     }
 
+    // Shift+Enter — all platforms, unconditional
+    // Sends ESC+CR for TUI apps (Claude Code, etc.) that distinguish
+    // modified Enter from plain CR.
+    if (event.key === "Enter" && event.shiftKey) {
+      if (event.type === "keydown") {
+        terminal.input(`${ESC}\r`);
+      }
+      return false;
+    }
+
     // Only intercept on Mac when passthrough is enabled
     // (macOptionIsMeta is auto-disabled when passthrough is enabled)
     if (!this.isPassthroughEnabled()) {
       return true; // Let xterm.js handle normally
     }
 
-    // Only intercept Option+key (not Option alone, not with Cmd/Ctrl)
+    // Only handle Option+key (not Option alone, not with Cmd/Ctrl)
     if (!event.altKey || event.metaKey || event.ctrlKey) {
       return true;
     }
@@ -711,28 +721,30 @@ export class MacOSOptionKeyPassthroughAddon implements ITerminalAddon {
       return true;
     }
 
-    // The browser has already composed the character in event.key
+    // Option+Arrow word navigation
+    if (event.key === "ArrowLeft") {
+      terminal.input(`${ESC}b`); // backward-word
+      return false;
+    }
+    if (event.key === "ArrowRight") {
+      terminal.input(`${ESC}f`); // forward-word
+      return false;
+    }
+
+    // Option+Backspace/Delete word deletion
+    if (event.key === "Backspace") {
+      terminal.input(`${ESC}\x7f`); // backward-kill-word
+      return false;
+    }
+    if (event.key === "Delete") {
+      terminal.input(`${ESC}d`); // forward-kill-word
+      return false;
+    }
+
+    // Send the browser-composed character directly via the public API
     // (e.g., Option+2 → '@', Option+7 → '|' on Finnish keyboard)
-    // Send this character directly to the terminal using xterm.js internal API
-    // NOTE: We access _core directly each time (not cached) to avoid holding
-    // references that become invalid during disposal
     if (event.key.length === 1) {
-      const terminal2 = terminal as {
-        _core?: {
-          coreService?: {
-            triggerDataEvent: (data: string, wasUserInput: boolean) => void;
-          };
-        };
-      };
-      try {
-        const core = terminal2._core;
-        if (core?.coreService) {
-          core.coreService.triggerDataEvent(event.key, true);
-        }
-      } catch (error) {
-        // Terminal may be in an invalid state - log and ignore
-        /* @__PURE__ */ activeSelf(terminal.element).console.debug(error);
-      }
+      terminal.input(event.key);
     }
 
     // Return false to prevent xterm.js from processing this event
@@ -752,7 +764,7 @@ export class KeyMappingAddon implements ITerminalAddon {
 
   public constructor(
     protected readonly getMappings: () => readonly Settings.KeyMapping[],
-    protected readonly macOSAddon: MacOSOptionKeyPassthroughAddon,
+    protected readonly customKeyEventHandler: CustomKeyEventHandlerAddon,
   ) {}
 
   public activate(terminal: Terminal): void {
@@ -764,6 +776,7 @@ export class KeyMappingAddon implements ITerminalAddon {
     this.#terminal = null;
   }
 
+  /** Dispatch key events through user mappings, then built-in handlers. */
   #handleEvent(event: KeyboardEvent): boolean {
     const terminal = this.#terminal;
     if (!terminal) {
@@ -780,16 +793,8 @@ export class KeyMappingAddon implements ITerminalAddon {
       }
     }
 
-    // 2. Built-in Shift+Enter → ESC+CR
-    if (event.key === "Enter" && event.shiftKey) {
-      if (event.type === "keydown") {
-        terminal.input("\x1b\r");
-      }
-      return false;
-    }
-
-    // 3. macOS Option key passthrough
-    return this.macOSAddon.handleEvent(event);
+    // 2. Delegate to CustomKeyEventHandlerAddon (Shift+Enter, macOS Option key, etc.)
+    return this.customKeyEventHandler.handleEvent(event);
   }
 
   #matches(event: KeyboardEvent, mapping: Settings.KeyMapping): boolean {

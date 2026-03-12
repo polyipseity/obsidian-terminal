@@ -37,4 +37,4 @@ description: Guidelines for TypeScript files in obsidian-plugin-template
 
 ---
 
-**Template merge guidance:** This instruction file is maintained in the template and may be merged into repositories generated from the template. If you need repository-specific TypeScript guidance, prefer creating a new local instruction file (for example, `.github/instructions/<your-repo>.typescript.md`) or make minimal, well-documented edits to this file. This practice reduces conflicts when upstream template changes are merged into downstream repositories.
+**Template merge guidance:** This instruction file is maintained in the template and may be merged into repositories generated from the template. If you need repository-specific TypeScript guidance, prefer creating a new local instruction file (for example, `.agents/instructions/<your-repo>.typescript.md`) or make minimal, well-documented edits to this file. This practice reduces conflicts when upstream template changes are merged into downstream repositories.

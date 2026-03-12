@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from importlib.metadata import PackageNotFoundError, version
 from sys import argv
 
+"""Public API of this module."""
 __all__ = ("main",)
 
 

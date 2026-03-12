@@ -48,8 +48,8 @@ import {
   DisposerAddon,
   DragAndDropAddon,
   FollowThemeAddon,
+  CustomKeyEventHandlerAddon,
   KeyMappingAddon,
-  MacOSOptionKeyPassthroughAddon,
   RendererAddon,
   RightClickActionAddon,
 } from "./emulator-addons.js";
@@ -1013,17 +1013,17 @@ export class TerminalView extends ItemView {
                 settings.value.terminalOptions,
               ),
               (() => {
-                const macOptionKeyPassthrough =
-                  new MacOSOptionKeyPassthroughAddon(
-                    Platform.CURRENT === "darwin"
-                      ? () => settings.value.macOSOptionKeyPassthrough
-                      : constant(false),
-                  );
+                const customKeyEventHandler = new CustomKeyEventHandlerAddon(
+                  Platform.CURRENT === "darwin"
+                    ? () => settings.value.macOSOptionKeyPassthrough
+                    : constant(false),
+                );
                 const keyMapping = new KeyMappingAddon(
                   () => settings.value.keyMappings,
-                  macOptionKeyPassthrough,
+                  customKeyEventHandler,
                 );
                 return {
+                  customKeyEventHandler,
                   disposer: new DisposerAddon(
                     () => {
                       ele.remove();
@@ -1049,7 +1049,6 @@ export class TerminalView extends ItemView {
                   }),
                   keyMapping,
                   ligatures: new LigaturesAddon({}),
-                  macOptionKeyPassthrough,
                   renderer: new RendererAddon(
                     () => new CanvasAddon(),
                     () => new WebglAddon(false),
@@ -1064,7 +1063,15 @@ export class TerminalView extends ItemView {
                   unicode11: new Unicode11Addon(),
                   webLinks: new WebLinksAddon(
                     (event, uri) => openExternal(activeSelf(event), uri),
-                    {},
+                    {
+                      /*
+                      ref: <https://github.com/xtermjs/xterm.js/blob/fb25eb8f79fd223acef90828dc2990bb7e196a1d/addons/addon-web-links/src/WebLinksAddon.ts#L10-L21>
+
+                      const strictUrlRegex = /(https?|HTTPS?):[/]{2}[^\s"'!*(){}|\\\^<>`]*[^\s"':,.!?{}|\\\^~\[\]`()<>]/;
+                      */
+                      urlRegex:
+                        /(https?|HTTPS?|obsidian|OBSIDIAN):[/]{2}[^\s"'!*(){}|\\^<>`]*[^\s"':,.!?{}|\\^~[\]`()<>]/,
+                    },
                   ),
                 };
               })(),
@@ -1196,12 +1203,12 @@ export namespace TerminalView {
   export const EMULATOR = XtermTerminalEmulator<Addons>;
   export type EMULATOR = XtermTerminalEmulator<Addons>;
   export interface Addons {
+    readonly customKeyEventHandler: CustomKeyEventHandlerAddon;
     readonly disposer: DisposerAddon;
     readonly dragAndDrop: DragAndDropAddon;
     readonly followTheme: FollowThemeAddon;
     readonly keyMapping: KeyMappingAddon;
     readonly ligatures: LigaturesAddon;
-    readonly macOptionKeyPassthrough: MacOSOptionKeyPassthroughAddon;
     readonly renderer: RendererAddon;
     readonly rightClickAction: RightClickActionAddon;
     readonly search: SearchAddon;

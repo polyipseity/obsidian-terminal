@@ -27,6 +27,12 @@ Given a single required input `${input:bump}` indicating whether to bump `major`
 
    - Report the current version in the output.
 
+   - At the same time, determine a few npm-related Git settings that will affect the bump:
+     1. Read `tag-version-prefix`/`tag-version-suffix` as described earlier. A robust implementation should check for their presence in configuration files (such as `.npmrc`) and treat an absent key as unspecified (default prefix "v"), while honouring an explicitly empty setting. You may also run `npm config get tag-version-prefix`/`tag-version-suffix` to see what npm would choose, but remember that those commands always emit a value (they default to "v" when no configuration exists), so the real decision must be based on whether the key is present at all versus present with an empty string.
+     2. Check the `sign-git-tag` and optionally `sign-git-commit` npm config values (`npm config get sign-git-tag`). If `sign-git-tag` is true, record that tags should be created with `-s` to produce a GPG/SSH signature. (Commit signing is controlled by Git configuration and the commit snippet below may pass `-S` if desired.)
+     3. You may still query `npm config get` for each value, but be aware that npm returns defaults for missing keys; preserve the distinction between unknown and explicitly empty as noted above.
+     4. Save all these resolved settings (prefix, suffix, signTag boolean, etc.) for use when constructing commit and tag commands.
+
 3. **Bump `package.json` version**
    - Prefer using the repository's package manager to bump the version without creating a git tag. Detect lockfiles or common tools and prefer them in this order: `pnpm` (pnpm-lock.yaml), `yarn` (yarn.lock), then `npm` (package-lock.json). Examples:
 
@@ -77,29 +83,32 @@ Given a single required input `${input:bump}` indicating whether to bump `major`
 7. **Create the commit and tag**
    - If `${input:commitNow}` is `no`, skip committing and tagging and only present the commands that would be run.
 
-   - Otherwise, create the commit and an annotated tag. Use shell-safe here-doc formats for both shells:
+   - Otherwise, create the commit and an annotated tag. Before constructing the tag name, ensure you've already read the repository's npm configuration (from `.npmrc` or via `npm config get …`) and stored the `tag-version-prefix`/`tag-version-suffix` values. Use that information here when composing the tag string. Remember that an **absent key** means fallback to the default `"v"` prefix, whereas an **explicitly provided empty value** (even if `npm config get` returns `"v"` due to npm’s default) should be treated as the empty string and used accordingly.
+   - When preparing the Git commands, also consult the previously recorded `sign-git-tag` (and optionally `sign-git-commit`) flag. If tag signing is requested, include `-s` in the `git tag` invocation; the commit command may include `-S` or rely on the user's global Git signing settings. Signing is preferred when configured, matching the behaviour of npm's `sign-git-tag=true`.
+
+   - Use shell-safe here-doc formats for both shells when executing the commit and tag command:
 
      - PowerShell (Windows):
 
        ```powershell
        (@'
-       chore(release): vX.Y.Z
+       chore(release): ${TAG_PREFIX}X.Y.Z${TAG_SUFFIX}
 
        <optional body wrapped to 72 chars>
-       '@ | git commit --file=-) ; git rev-parse HEAD
-       git tag -a vX.Y.Z -m "vX.Y.Z"
+       '@ | git commit --file=- ${SIGN_FLAG}) ; git rev-parse HEAD
+       git tag -a ${TAG_SIGN_FLAG}${TAG_PREFIX}X.Y.Z${TAG_SUFFIX} -m "${TAG_PREFIX}X.Y.Z${TAG_SUFFIX}"
        ```
 
      - Bash/zsh (Linux/macOS):
 
        ```bash
        (git commit --file - <<'MSG'
-       chore(release): vX.Y.Z
+       chore(release): ${TAG_PREFIX}X.Y.Z${TAG_SUFFIX}
 
        <optional body wrapped to 72 chars>
        MSG
-       ) && git rev-parse HEAD
-       git tag -a vX.Y.Z -m "vX.Y.Z"
+       )${SIGN_FLAG:+ && git rev-parse HEAD}
+       git tag -a ${TAG_SIGN_FLAG}${TAG_PREFIX}X.Y.Z${TAG_SUFFIX} -m "${TAG_PREFIX}X.Y.Z${TAG_SUFFIX}"
        ```
 
    - If tagging fails, report the error and do not remove the commit.
