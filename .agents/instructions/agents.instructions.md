@@ -31,7 +31,7 @@ This short guide contains focused rules and examples to help AI coding agents ma
   - Add keys by editing `assets/locales/en/translation.json` first. Keep `{{...}}` and `$t(...)` intact and **do not** translate placeholders.
   - Add a test when adding user-facing strings (or a localization note) so translators and CI can detect missing or bad keys.
 - Committing & PRs:
-  - Use Conventional Commits. Run `npm run commitlint` locally to validate. Aim for header ≤72 chars (tools still accept 100 — use 72 as a human buffer) and wrap body lines at 100 chars. Prefer 72 for readability.
+  - Use Conventional Commits. Run `bun run commitlint` locally to validate. Aim for header ≤72 chars (tools still accept 100 — use 72 as a human buffer) and wrap body lines at 100 chars. Prefer 72 for readability.
   - Add a changeset for public API or release-impacting changes.
 - When changing infra (build, tests, versioning), update `AGENTS.md` with concise rationale and local verification steps (include the exact commands you ran).
 

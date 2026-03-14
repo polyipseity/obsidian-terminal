@@ -25,41 +25,33 @@ permissions:
 
 jobs:
   rolling-release:
-    name: Publish Rolling Release
+    name: "Publish Rolling Release"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: "*"
-          run_install: false
-
-      - name: Install Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "*"
-          cache: "pnpm"
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
 
       - name: Install project
         run: |
-          pnpm install --frozen-lockfile --ignore-scripts
+          bun install --frozen-lockfile --ignore-scripts
           uv sync --locked --all-extras --dev
 
       - name: Build project
-        run: pnpm run build
+        run: bun run build
 
-      - name: Pack plugin for release
+      - name: Pack release
         run: |
-          pnpm pack --pack-destination=.github
+          bun pm pack --destination=.github
+          # Strip the version suffix (e.g. `-1.2.3`) so the rolling release artifact has a stable name.
           for file in .github/*.tgz; do mv "$file" "${file%-*}.tgz"; done
 
-      - name: Upload plugin to rolling release
+      - name: Upload release
         if: ${{github.ref == 'refs/tags/rolling'}}
         env:
           GH_TOKEN: ${{github.token}}

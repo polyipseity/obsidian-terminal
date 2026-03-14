@@ -34,10 +34,10 @@ const PRETTIER_GLOB_KEY = (() => {
  *
  * Note: lint-staged supplies a list of staged filenames to each command it
  * runs. Commands invoked through package manager scripts (for example
- * `npm run <script>` or `pnpm run <script>`) do not receive that filename
- * list from the package manager, so tools will run on their default globs (or
- * the entire repo). To ensure formatters and linters operate only on staged
- * files, invoke the tool binaries directly in lint-staged (for example
+ * `bun run <script>`) do not receive that filename list from the package manager,
+ * so tools will run on their default globs (or the entire repo). To ensure
+ * formatters and linters operate only on staged files, invoke the tool binaries
+ * directly in lint-staged (for example
  * `prettier --write`, `eslint --fix`, `markdownlint-cli2 --fix --no-globs`). Use the
  * package scripts when you intend to run the tool across the whole repository.
  */
