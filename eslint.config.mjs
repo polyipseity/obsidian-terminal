@@ -31,6 +31,11 @@ export default defineConfig([
     files: FILE_GLOBS,
   },
   {
+    languageOptions: {
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
     rules: {
       "@typescript-eslint/no-namespace": "off",
     },
