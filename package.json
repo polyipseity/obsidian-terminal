@@ -130,7 +130,7 @@
     "format:py": "uv run --locked ruff check --fix && uv run --locked ruff format && pyright",
     "obsidian:install": "bun run build && node scripts/obsidian-install.mjs",
     "obsidian:install:force": "bun run build:force && node scripts/obsidian-install.mjs",
-    "prepare": "bun x --package if-ci -- if-not-ci uv sync --all-extras --dev && bun x --package if-ci -- if-not-ci husky",
+    "prepare": "(uv sync --all-extras --dev || true) && bun x --package if-ci -- if-not-ci husky",
     "test": "bun run test:py && bun run test:vitest",
     "test:py": "uv run --locked pytest",
     "test:vitest": "vitest run --coverage",
