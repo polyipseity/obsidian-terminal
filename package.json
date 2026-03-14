@@ -93,7 +93,7 @@
     "format:prettier": "prettier --cache --write \"**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}\"",
     "obsidian:install": "bun run build && node scripts/obsidian-install.mjs",
     "obsidian:install:force": "bun run build:force && node scripts/obsidian-install.mjs",
-    "prepare": "husky",
+    "prepare": "husky || true",
     "test": "bun run test:vitest",
     "test:vitest": "vitest run --coverage",
     "test:watch": "vitest",
