@@ -31,11 +31,11 @@ This guide provides clear, actionable instructions for AI coding agents working 
 ### Agent quick-start (AI agents)
 
 - Quick commands (exact):
-  - `pnpm install` — install dependencies (preferred)
-  - `pnpm run build:dev` — development / watch build
-  - `pnpm build` — production build (runs checks then builds)
-  - `pnpm exec vitest run "tests/**/*.spec.{js,ts,mjs}"` — run unit tests (non-interactive)
-  - `pnpm test` — run full test suite
+  - `bun install` — install dependencies (preferred)
+  - `bun run build:dev` — development / watch build
+  - `bun run build` — production build (runs checks then builds)
+  - `bun exec vitest run "tests/**/*.spec.{js,ts,mjs}"` — run unit tests (non-interactive)
+  - `bun test` — run full test suite
 
 - Read first: `AGENTS.md`, `src/main.ts`, `src/settings-data.ts`, `src/settings.ts`, `src/terminal/load.ts`, `assets/locales.ts`, `scripts/build.mjs`, `vitest.config.mts`
 - Note: `scripts/obsidian-install.mjs` now fails gracefully when `manifest.json` is missing or invalid and prints a concise error message rather than emitting a full stack trace. This makes local tests and CI logs cleaner and eases assertions for failure cases.
@@ -275,7 +275,7 @@ const { loadDocumentations } = await import("../../src/documentations.js");
 
 This section contains concise, actionable rules and project-specific examples to help AI agents be productive immediately.
 
-- **Always prefer `pnpm` over `npm`** for all package-manager commands (install, run, exec, etc.). Use `npm` only when `pnpm` is unavailable.
+- **Always prefer `bun`** for all package-manager commands (install, run, exec, etc.).
 - Read this file first. When in doubt, follow concrete examples in `src/`, `scripts/`, and `tests/` rather than generic advice.
 - Start by inspecting `src/main.ts`, `src/settings-data.ts`, and `assets/locales.ts` to learn core patterns: Manager classes (LanguageManager, SettingsManager), `.fix()` validators, and `PluginLocales` usage.
 - Settings pattern: always prefer `.fix()` functions (see `Settings.fix`/`LocalSettings.fix`) to validate/normalize external inputs before persisting or mutating settings.
