@@ -24,7 +24,7 @@
  * `path` modules.  It deliberately avoids mutating the English file and
  * ignores directories that lack a `translation.json`.
  *
- * This script is intended to be run manually (or via an npm script) whenever
+ * This script is intended to be run manually (or via a bun script) whenever
  * translation keys are added or modified.  It is *not* run as part of the
  * build pipeline, but keeping it in `scripts/` and referenced in the repo
  * documentation makes it a formal part of our workflow.
