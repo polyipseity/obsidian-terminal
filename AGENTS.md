@@ -203,7 +203,7 @@ type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
 - `.agents/instructions/` — Task/file-specific instructions
 - `.agents/skills/` — Agent skills for specialized workflows
 
-**Python version:** Runtime requirement is 3.9 or above. For development we use 3.9 (e.g. `.python-version`, Pyright `pythonVersion` in `pyproject.toml`; rationale: macOS ships 3.9 by default). When changing the minimum version, update: `README.md` (badge + install step), `src/magic.ts` (`PYTHON_REQUIREMENTS.Python.version`), `pyproject.toml` (`requires-python`). When changing the dev version, update `.python-version` and `pyproject.toml` `[tool.pyright] pythonVersion`.
+**Python version:** Runtime requirement is 3.9 or above. For development we use 3.9 (e.g. `.python-versions`, Pyright `pythonVersion` in `pyproject.toml`; rationale: macOS ships 3.9 by default). When changing the minimum version, update: `README.md` (badge + install step), `src/magic.ts` (`PYTHON_REQUIREMENTS.Python.version`), `pyproject.toml` (`requires-python`). When changing the dev version, update `.python-versions` and `pyproject.toml` `[tool.pyright] pythonVersion`.
 
 > **Never use `.github/copilot-instructions.md`. All agent instructions must be in `AGENTS.md` and referenced from here.**
 
