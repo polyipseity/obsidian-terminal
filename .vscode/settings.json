@@ -14,5 +14,10 @@
   "files.associations": {
     ".prettierignore": "ignore"
   },
+  "json.schemaDownload.trustedDomains": {
+    "https://models.dev/model-schema.json": true,
+    "https://opencode.ai/config.json": true,
+    "https://raw.githubusercontent.com/DavidAnson/markdownlint/main/schema/markdownlint-config-schema.json": true
+  },
   "markdown.validate.enabled": true
 }
