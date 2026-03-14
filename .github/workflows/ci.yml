@@ -1,8 +1,15 @@
-# CI Workflow: Build & Test (pnpm & npm)
+# CI: Build & Test
 #
-# This workflow runs build and test jobs for both pnpm and npm package managers.
+# Purpose:
+#   - Run repository checks: setup, install, test, and build.
+#   - Ensure a minimal, reproducible environment for quick CI feedback.
 #
-# Jobs are named for clarity in the Actions UI. Each step is named for traceability.
+# Triggers:
+#   - push, pull_request, workflow_dispatch
+#
+# Security & reproducibility notes:
+#   - Use least-privilege permissions (contents: read) and pin action versions where appropriate.
+#   - Use local caches to speed builds and reduce external load.
 
 name: "CI: Build & Test"
 
@@ -29,52 +36,22 @@ permissions:
   contents: read
 
 jobs:
-  build-pnpm:
-    name: "Build & Test (pnpm)"
+  build:
+    name: "Build & Test"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: "*"
-          run_install: false
-
-      - name: Install Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "*"
-          cache: "pnpm"
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Install project
-        run: pnpm install --frozen-lockfile --ignore-scripts
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
 
       - name: Run tests
-        run: pnpm run test
+        run: bun run test
 
       - name: Build project
-        run: pnpm run build
-
-  build-npm:
-    name: "Build & Test (npm)"
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Install Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "*"
-          cache: "npm"
-
-      - name: Install project
-        run: npm ci --ignore-scripts
-
-      - name: Run tests
-        run: npm run test
-
-      - name: Build project
-        run: npm run build
+        run: bun run build

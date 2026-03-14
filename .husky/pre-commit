@@ -1,2 +1,2 @@
 #!/usr/bin/env sh
-npx --no-install -- lint-staged
+bun x --no-install -- lint-staged

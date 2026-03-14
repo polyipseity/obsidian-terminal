@@ -72,31 +72,29 @@
     "name": "PLACEHOLDER"
   },
   "overrides": {},
-  "pnpm": {
-    "overrides": {}
-  },
+  "packageManager": "bun@1.3.10",
   "private": true,
   "repository": {
     "type": "git",
     "url": "PLACEHOLDER"
   },
   "scripts": {
-    "build": "npm run check && npm run build:force",
-    "build:dev": "npm run build:force -- dev",
+    "build": "bun run check && bun run build:force",
+    "build:dev": "bun run build:force -- dev",
     "build:force": "node scripts/build.mjs",
-    "check": "npm run check:eslint && npm run check:md && npm run check:prettier",
+    "check": "bun run check:eslint && bun run check:md && bun run check:prettier",
     "check:eslint": "eslint --cache --max-warnings=0",
     "check:md": "markdownlint-cli2",
     "check:prettier": "prettier --cache --check \"**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}\"",
     "commitlint": "commitlint --from=origin/main --to=HEAD",
-    "format": "npm run format:eslint && npm run format:md && npm run format:prettier",
+    "format": "bun run format:eslint && bun run format:md && bun run format:prettier",
     "format:eslint": "eslint --cache --fix",
     "format:md": "markdownlint-cli2 --fix",
     "format:prettier": "prettier --cache --write \"**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}\"",
-    "obsidian:install": "npm run build && node scripts/obsidian-install.mjs",
-    "obsidian:install:force": "npm run build:force && node scripts/obsidian-install.mjs",
+    "obsidian:install": "bun run build && node scripts/obsidian-install.mjs",
+    "obsidian:install:force": "bun run build:force && node scripts/obsidian-install.mjs",
     "prepare": "husky",
-    "test": "npm run test:vitest",
+    "test": "bun run test:vitest",
     "test:vitest": "vitest run --coverage",
     "test:watch": "vitest",
     "version": "node scripts/version.mjs"
