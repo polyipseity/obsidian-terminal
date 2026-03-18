@@ -262,4 +262,20 @@ export function loadTerminal(context: TerminalPlugin): void {
       );
     }
   }
+
+  // Track the active note so terminal tools (e.g. Claude Code) can read it
+  if (adapter) {
+    context.registerEvent(
+      workspace.on("active-leaf-change", () => {
+        const file = workspace.getActiveFile();
+        if (file) {
+          vault.adapter
+            .write(".obsidian/active-note.txt", file.path)
+            .catch(() => {
+              /* best-effort */
+            });
+        }
+      }),
+    );
+  }
 }
