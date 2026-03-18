@@ -45,9 +45,9 @@ This file is automatically opened on first install. You can reopen it in setting
         2. Place `manifest.json`, `main.js`, and `styles.css` from the [latest release] into the directory.
     - Building (rolling)
         1. Clone this repository, including its submodules.
-        2. Install `pnpm` (preferred) or `npm`. See <https://pnpm.io/installation> for pnpm.
-        3. Run `pnpm install` in the root directory (`npm install` is an acceptable fallback).
-        4. Run `pnpm obsidian:install <vault directory>` in the root directory (`npm run obsidian:install <vault directory>` is an acceptable fallback).
+        2. Install `bun`. See <https://bun.sh> for installation.
+        3. Run `bun install` in the root directory.
+        4. Run `bun run obsidian:install <vault directory>` in the root directory.
     - [Obsidian42 - BRAT](https://obsidian.md/plugins?id=obsidian42-brat) (rolling)
         - See [their readme](https://github.com/TfTHacker/obsidian42-brat#readme).
 2. (optional for Windows, recommended) Install Python and dependencies.
@@ -188,30 +188,30 @@ This is an example change. ([GH#1](https://github.com/ghost/example/pull/1) by [
 
 This project uses the following tools to ensure code and commit quality:
 
-- __ESLint__: Linting for TypeScript/JavaScript. Run with `pnpm run check` (lint only) or `pnpm run fix` (auto-fix lint issues).
-- __Prettier__: Code formatting. Run with `pnpm run format` (format all files) or `pnpm run format:check` (check formatting only).
-- __markdownlint__: Lints Markdown files. Run with `pnpm run markdownlint` or auto-fix with `pnpm run markdownlint:fix`.
+- __ESLint__: Linting for TypeScript/JavaScript. Run with `bun run check` (lint only) or `bun run fix` (auto-fix lint issues).
+- __Prettier__: Code formatting. Run with `bun run format` (format all files) or `bun run format:check` (check formatting only).
+- __markdownlint__: Lints Markdown files. Run with `bun run markdownlint` or auto-fix with `bun run markdownlint:fix`.
 - __commitlint__: Enforces conventional commit messages. Used automatically on commit via Husky.
 - __husky__: Manages Git hooks. Pre-commit runs `lint-staged` and pre-push runs commitlint.
 - __lint-staged__: Runs linters on staged files. Markdown files are auto-fixed before commit.
 
-> __Lint-staged note:__ The lint-staged configuration (`.lintstagedrc.mjs`) invokes formatter/linter binaries directly (for example `prettier --write`, `eslint --cache --fix`, `markdownlint-cli2 --fix`) so that the list of staged files is passed through to the tool. Invoking these via `npm run` would prevent lint-staged from forwarding filenames and cause the tool to operate on its default glob (or the entire repo). Use `pnpm run format` to format the entire repository when needed.
+> __Lint-staged note:__ The lint-staged configuration (`.lintstagedrc.mjs`) invokes formatter/linter binaries directly (for example `prettier --write`, `eslint --cache --fix`, `markdownlint-cli2 --fix`) so that the list of staged files is passed through to the tool. Invoking these via `bun run` would prevent lint-staged from forwarding filenames and cause the tool to operate on its default glob (or the entire repo). Use `bun run format` to format the entire repository when needed.
 
 To set up locally:
 
-1. Run `pnpm install` to install dependencies and set up hooks.
+1. Run `bun install` to install dependencies and set up hooks.
 2. On commit, staged Markdown files will be linted and auto-fixed.
 3. Commit messages are checked for conventional format.
 
 You can manually run:
 
-- `pnpm run check` — lint all code (no formatting)
-- `pnpm run fix` — auto-fix lint issues (no formatting)
-- `pnpm run format` — format all code with Prettier
-- `pnpm run format:check` — check formatting with Prettier
-- `pnpm run markdownlint` — check all Markdown files
-- `pnpm run markdownlint:fix` — auto-fix Markdown files
-- `pnpm run commitlint` — check commit messages in range
+- `bun run check` — lint all code (no formatting)
+- `bun run fix` — auto-fix lint issues (no formatting)
+- `bun run format` — format all code with Prettier
+- `bun run format:check` — check formatting with Prettier
+- `bun run markdownlint` — check all Markdown files
+- `bun run markdownlint:fix` — auto-fix Markdown files
+- `bun run commitlint` — check commit messages in range
 
 Configuration files:
 
@@ -226,9 +226,9 @@ Configuration files:
 
 This repository uses __Vitest__ for fast unit tests. Tests live under `tests/` and should be named `*.spec.ts` or `*.spec.js`.
 
-- Run locally (non-interactive, coverage): `pnpm test` or `npm run test` (runs `vitest run --coverage`).
-- Run locally (interactive / watch): `pnpm run test:watch` or `npm run test:watch`.
-- Git hooks: The pre-push hook runs `npm run test` (see `.husky/pre-push`) and will block pushes if tests fail; using `pnpm test` locally is equivalent.
+- Run locally (non-interactive, coverage): `bun run test` (runs `vitest run --coverage`).
+- Run locally (interactive / watch): `bun run test:watch`.
+- Git hooks: The pre-push hook runs `bun run test` (see `.husky/pre-push`) and will block pushes if tests fail.
 
 See `vitest.config.mts` for minimal config and further instructions.
 

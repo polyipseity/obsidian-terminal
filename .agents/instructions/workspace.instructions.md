@@ -15,16 +15,16 @@ A single‑page, action‑oriented reference for AI agents. Keep this short; use
 
 ## Quick start (exact commands) ▶️
 
-- Install deps (preferred): `pnpm install`
-- Dev / watch build: `pnpm run build:dev`
-- Production build: `pnpm build`
+- Install deps (preferred): `bun install`
+- Dev / watch build: `bun run build:dev`
+- Production build: `bun run build`
 - Run unit tests (non-interactive):
-  `pnpm exec vitest run "tests/**/*.spec.{js,ts,mjs}" --coverage`
-- Run full test suite: `pnpm test`
-- Install to Obsidian vault: `pnpm run obsidian:install <VAULT_PATH>`
-- Lint & format checks: `pnpm run check` / `pnpm run format`
+  `bun exec vitest run "tests/**/*.spec.{js,ts,mjs}" --coverage`
+- Run full test suite: `bun test`
+- Install to Obsidian vault: `bun run obsidian:install <VAULT_PATH>`
+- Lint & format checks: `bun run check` / `bun run format`
 
-> Agent note: always use `vitest run` (avoid default/watch mode). Use `pnpm` where possible.
+> Agent note: always use `vitest run` (avoid default/watch mode). Use `bun` where possible.
 
 ## Read‑first files (top priority) 📚
 
@@ -46,17 +46,17 @@ A single‑page, action‑oriented reference for AI agents. Keep this short; use
 
 ## Common pitfalls & environment notes ⚠️
 
-- Preferred package manager: `pnpm` (CI: `pnpm install --frozen-lockfile`). Use `npm` only as a fallback.
+- Preferred package manager: `bun` (CI: `bun install --frozen-lockfile`).
 - Vitest defaults to watch; **do not** run Vitest without `run`/`--run` in automated agent flows.
 - `scripts/obsidian-install.mjs` exits non‑zero (concise message) if `manifest.json` is missing — tests rely on this.
-- Python checks require `uv` and Python 3.11+ for some tasks used by `pnpm test`.
+- Python checks require `uv` and Python 3.9+ for some tasks used by `bun test`.
 - Localization rule: add keys to `assets/locales/en/translation.json` first and add tests to verify resources.
 - Python modules: each must declare a top‑level `__all__` tuple.
-- Commit messages: Conventional Commits; header ≤72 chars; run `npm run commitlint`.
+- Commit messages: Conventional Commits; header ≤72 chars; run `bun run commitlint`.
 
 ## Example agent prompts you can run now 🧭
 
-- "Add a unit test for `Settings.fix()` that verifies profile defaults; run `pnpm exec vitest run` and report failures."
+- "Add a unit test for `Settings.fix()` that verifies profile defaults; run `bun exec vitest run` and report failures."
 - "When adding or removing translation keys in `assets/locales/en/translation.json`, run `node scripts/sync-locale-keys.mjs` to propagate and sort them."
 - "Add a `dev` alias to `package.json` pointing to `build:dev`, update `AGENTS.md`, and add a test asserting `scripts.dev` exists."
 - "Add an integration test for `scripts/obsidian-install.mjs` to assert exit when `manifest.json` is missing."
@@ -68,7 +68,7 @@ A single‑page, action‑oriented reference for AI agents. Keep this short; use
 - Example runnable checks to implement for prompts in this file:
   - `tests/workspace-instructions.spec.ts` — assert the instruction file exists and contains the example prompts (keeps prompts actionable).
   - Add unit tests under `tests/src/` for behavioral prompts (for example, a `Settings.fix()` test when adding or changing settings behaviour).
-  - Add script checks under `tests/scripts/` for npm script changes (for example, assert `package.json` contains `scripts.dev`).
+  - Add script checks under `tests/scripts/` for script changes (for example, assert `package.json` contains `scripts.dev`).
 - CI policy: include runnable checks in the main test suite so example prompts remain verifiable and kept up-to-date.
 
 ## Suggested next agent‑customizations (short) 🔧

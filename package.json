@@ -56,6 +56,7 @@
     "globals": "^17.4.0",
     "happy-dom": "^20.8.3",
     "husky": "^9.1.7",
+    "if-ci": "^3.0.0",
     "lint-staged": "^16.3.2",
     "markdownlint-cli2": "^0.21.0",
     "p-lazy": "^5.0.0",
@@ -105,38 +106,32 @@
     "minAppVersion": "1.4.11",
     "name": "Terminal"
   },
-  "overrides": {
-    "@xterm/addon-canvas": {
-      "@xterm/xterm": "^6.0.0"
-    }
-  },
-  "pnpm": {
-    "overrides": {}
-  },
+  "overrides": {},
+  "packageManager": "bun@1.3.10",
   "private": true,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/polyipseity/PLACEHOLDER.git"
   },
   "scripts": {
-    "build": "npm run check && npm run build:force",
-    "build:dev": "npm run build:force -- dev",
+    "build": "bun run check && bun run build:force",
+    "build:dev": "bun run build:force -- dev",
     "build:force": "node scripts/build.mjs",
-    "check": "npm run check:eslint && npm run check:md && npm run check:prettier && npm run check:py",
+    "check": "bun run check:eslint && bun run check:md && bun run check:prettier && bun run check:py",
     "check:eslint": "eslint --cache --max-warnings=0",
     "check:md": "markdownlint-cli2",
     "check:prettier": "prettier --cache --check \"**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}\"",
     "check:py": "uv run --locked ruff check && uv run --locked ruff format --check && pyright",
     "commitlint": "commitlint --from=origin/main --to=HEAD",
-    "format": "npm run format:eslint && npm run format:md && npm run format:prettier && npm run format:py",
+    "format": "bun run format:eslint && bun run format:md && bun run format:prettier && bun run format:py",
     "format:eslint": "eslint --cache --fix",
     "format:md": "markdownlint-cli2 --fix",
     "format:prettier": "prettier --cache --write \"**/*.{astro,cjs,css,csv,gql,graphql,hbs,html,js,jsx,json,json5,jsonc,jsonl,less,mjs,pcss,sass,scss,svelte,styl,ts,tsx,vue,xml,yaml,yml}\"",
     "format:py": "uv run --locked ruff check --fix && uv run --locked ruff format && pyright",
-    "obsidian:install": "npm run build && node scripts/obsidian-install.mjs",
-    "obsidian:install:force": "npm run build:force && node scripts/obsidian-install.mjs",
-    "prepare": "uv sync --all-extras --dev && husky",
-    "test": "npm run test:py && npm run test:vitest",
+    "obsidian:install": "bun run build && node scripts/obsidian-install.mjs",
+    "obsidian:install:force": "bun run build:force && node scripts/obsidian-install.mjs",
+    "prepare": "(uv sync --all-extras --dev || true) && bun x --package if-ci -- if-not-ci husky",
+    "test": "bun run test:py && bun run test:vitest",
     "test:py": "uv run --locked pytest",
     "test:vitest": "vitest run --coverage",
     "test:watch": "vitest",

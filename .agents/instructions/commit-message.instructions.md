@@ -29,10 +29,10 @@ Optional footer (BREAKING CHANGE, Refs, etc)
 ## Examples
 
 ```text
-fix(dependabot): split update groups for github-actions and npm
+fix(dependabot): split update groups for github-actions and bun
 
 - Change dependabot group name from 'all-dependencies' to 'github-actions'.
-- Change dependabot group name from 'all-dependencies' to 'npm'.
+- Change dependabot group name from 'all-dependencies' to 'bun'.
 
 Refs: dependabot config improvement
 ```
