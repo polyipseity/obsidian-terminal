@@ -10,6 +10,7 @@ import {
 } from "@polyipseity/obsidian-plugin-library";
 import type { ITerminalAddon, ITheme, Terminal } from "@xterm/xterm";
 import { constant, isUndefined } from "lodash-es";
+import type { Settings } from "../settings-data.js";
 import type { CanvasAddon } from "@xterm/addon-canvas";
 import type { WebglAddon } from "@xterm/addon-webgl";
 import { around } from "monkey-around";
@@ -667,88 +668,175 @@ export namespace RightClickActionAddon {
  */
 export class CustomKeyEventHandlerAddon implements ITerminalAddon {
   #isDisposed = false;
+  #terminal: Terminal | null = null;
 
   public constructor(protected readonly isPassthroughEnabled: () => boolean) {}
 
   public activate(terminal: Terminal): void {
-    const handler = (event: KeyboardEvent): boolean => {
-      // Don't process events if addon is disposed
-      if (this.#isDisposed) {
-        return true;
-      }
+    this.#terminal = terminal;
+  }
 
-      // Shift+Enter — all platforms, unconditional
-      // Sends ESC+CR for TUI apps (Claude Code, etc.) that distinguish
-      // modified Enter from plain CR. Consolidated here from emulator.ts
-      // to avoid attachCustomKeyEventHandler conflict (last call wins).
-      if (event.key === "Enter" && event.shiftKey) {
-        if (event.type === "keydown") {
-          terminal.input(`${ESC}\r`);
-        }
-        return false;
-      }
+  /** Handle a key event. Returns true to let xterm handle, false to block. */
+  public handleEvent(event: KeyboardEvent): boolean {
+    const terminal = this.#terminal;
 
-      // Only intercept on Mac when passthrough is enabled
-      // (macOptionIsMeta is auto-disabled when passthrough is enabled)
-      if (!this.isPassthroughEnabled()) {
-        return true; // Let xterm.js handle normally
-      }
+    // Don't process events if addon is disposed or not activated
+    if (!terminal || this.#isDisposed) {
+      return true;
+    }
 
-      // Only intercept Option+key (not Option alone, not with Cmd/Ctrl)
-      if (!event.altKey || event.metaKey || event.ctrlKey) {
-        return true;
+    // Shift+Enter — all platforms, unconditional
+    // Sends ESC+CR for TUI apps (Claude Code, etc.) that distinguish
+    // modified Enter from plain CR.
+    if (event.key === "Enter" && event.shiftKey) {
+      if (event.type === "keydown") {
+        terminal.input(`${ESC}\r`);
       }
-
-      // Only handle keydown events (not keyup)
-      if (event.type !== "keydown") {
-        return false; // Block keyup to prevent duplicate handling
-      }
-
-      // Ignore the Option key press itself
-      if (event.key === "Alt") {
-        return false; // Block to prevent any ESC sequence for modifier alone
-      }
-
-      // Let Option+Enter pass through for apps like Claude Code that use it for newline
-      if (event.key === "Enter") {
-        return true;
-      }
-
-      // Option+Arrow word navigation
-      if (event.key === "ArrowLeft") {
-        terminal.input(`${ESC}b`); // backward-word
-        return false;
-      }
-      if (event.key === "ArrowRight") {
-        terminal.input(`${ESC}f`); // forward-word
-        return false;
-      }
-
-      // Option+Backspace/Delete word deletion
-      if (event.key === "Backspace") {
-        terminal.input(`${ESC}\x7f`); // backward-kill-word
-        return false;
-      }
-      if (event.key === "Delete") {
-        terminal.input(`${ESC}d`); // forward-kill-word
-        return false;
-      }
-
-      // Send the browser-composed character directly via the public API
-      // (e.g., Option+2 → '@', Option+7 → '|' on Finnish keyboard)
-      if (event.key.length === 1) {
-        terminal.input(event.key);
-      }
-
-      // Return false to prevent xterm.js from processing this event
-      // (which would incorrectly send ESC sequences due to bug #2831)
       return false;
-    };
+    }
 
-    terminal.attachCustomKeyEventHandler(handler);
+    // Only intercept on Mac when passthrough is enabled
+    // (macOptionIsMeta is auto-disabled when passthrough is enabled)
+    if (!this.isPassthroughEnabled()) {
+      return true; // Let xterm.js handle normally
+    }
+
+    // Only handle Option+key (not Option alone, not with Cmd/Ctrl)
+    if (!event.altKey || event.metaKey || event.ctrlKey) {
+      return true;
+    }
+
+    // Only handle keydown events (not keyup)
+    if (event.type !== "keydown") {
+      return false; // Block keyup to prevent duplicate handling
+    }
+
+    // Ignore the Option key press itself
+    if (event.key === "Alt") {
+      return false; // Block to prevent any ESC sequence for modifier alone
+    }
+
+    // Let Option+Enter pass through for apps like Claude Code that use it for newline
+    if (event.key === "Enter") {
+      return true;
+    }
+
+    // Option+Arrow word navigation
+    if (event.key === "ArrowLeft") {
+      terminal.input(`${ESC}b`); // backward-word
+      return false;
+    }
+    if (event.key === "ArrowRight") {
+      terminal.input(`${ESC}f`); // forward-word
+      return false;
+    }
+
+    // Option+Backspace/Delete word deletion
+    if (event.key === "Backspace") {
+      terminal.input(`${ESC}\x7f`); // backward-kill-word
+      return false;
+    }
+    if (event.key === "Delete") {
+      terminal.input(`${ESC}d`); // forward-kill-word
+      return false;
+    }
+
+    // Send the browser-composed character directly via the public API
+    // (e.g., Option+2 → '@', Option+7 → '|' on Finnish keyboard)
+    if (event.key.length === 1) {
+      terminal.input(event.key);
+    }
+
+    // Return false to prevent xterm.js from processing this event
+    // (which would incorrectly send ESC sequences due to bug #2831)
+    return false;
   }
 
   public dispose(): void {
     this.#isDisposed = true;
+    this.#terminal = null;
+  }
+}
+
+/** Unified custom key event handler that consolidates all key interception. */
+export class KeyMappingAddon implements ITerminalAddon {
+  #terminal: Terminal | null = null;
+
+  public constructor(
+    protected readonly getMappings: () => readonly Settings.KeyMapping[],
+    protected readonly customKeyEventHandler: CustomKeyEventHandlerAddon,
+  ) {}
+
+  public activate(terminal: Terminal): void {
+    this.#terminal = terminal;
+    terminal.attachCustomKeyEventHandler((event) => this.#handleEvent(event));
+  }
+
+  public dispose(): void {
+    this.#terminal = null;
+  }
+
+  /** Dispatch key events through user mappings, then built-in handlers. */
+  #handleEvent(event: KeyboardEvent): boolean {
+    const terminal = this.#terminal;
+    if (!terminal) {
+      return true;
+    }
+
+    // 1. User-defined key mappings (highest priority)
+    for (const mapping of this.getMappings()) {
+      if (this.#matches(event, mapping)) {
+        if (event.type === "keydown") {
+          this.#fire(terminal, mapping);
+        }
+        return false;
+      }
+    }
+
+    // 2. Delegate to CustomKeyEventHandlerAddon (Shift+Enter, macOS Option key, etc.)
+    return this.customKeyEventHandler.handleEvent(event);
+  }
+
+  #matches(event: KeyboardEvent, mapping: Settings.KeyMapping): boolean {
+    return (
+      event.key === mapping.key &&
+      event.ctrlKey === mapping.ctrl &&
+      event.altKey === mapping.alt &&
+      event.metaKey === mapping.meta &&
+      event.shiftKey === mapping.shift
+    );
+  }
+
+  #fire(terminal: Terminal, mapping: Settings.KeyMapping): void {
+    switch (mapping.action) {
+      case "ignore":
+        break;
+      case "sendEscapeSequence":
+        terminal.input("\x1b" + mapping.actionArg);
+        break;
+      case "sendHexCode": {
+        const chars = mapping.actionArg
+          .trim()
+          .split(/\s+/)
+          .map((token) => parseInt(token, 16))
+          .filter((n) => !isNaN(n))
+          .map((n) => String.fromCharCode(n))
+          .join("");
+        if (chars) {
+          terminal.input(chars);
+        }
+        break;
+      }
+      case "sendText": {
+        const text = mapping.actionArg
+          .replace(/\\n/g, "\n")
+          .replace(/\\t/g, "\t")
+          .replace(/\\e/g, "\x1b")
+          .replace(/\\a/g, "\x07");
+        terminal.input(text);
+        break;
+      }
+      // No default
+    }
   }
 }

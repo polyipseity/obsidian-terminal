@@ -49,6 +49,7 @@ import {
   DragAndDropAddon,
   FollowThemeAddon,
   CustomKeyEventHandlerAddon,
+  KeyMappingAddon,
   RendererAddon,
   RightClickActionAddon,
 } from "./emulator-addons.js";
@@ -1011,61 +1012,69 @@ export class TerminalView extends ItemView {
                 profileTerminalOptions,
                 settings.value.terminalOptions,
               ),
-              {
-                customKeyEventHandler: new CustomKeyEventHandlerAddon(
+              (() => {
+                const customKeyEventHandler = new CustomKeyEventHandlerAddon(
                   Platform.CURRENT === "darwin"
                     ? () => settings.value.macOSOptionKeyPassthrough
                     : constant(false),
-                ),
-                disposer: new DisposerAddon(
-                  () => {
-                    ele.remove();
-                  },
-                  () => {
-                    this.title = "";
-                  },
-                  ele.onWindowMigrated(() => {
-                    emulator.reopen();
-                    emulator.resize(false).catch(warn);
+                );
+                const keyMapping = new KeyMappingAddon(
+                  () => settings.value.keyMappings,
+                  customKeyEventHandler,
+                );
+                return {
+                  customKeyEventHandler,
+                  disposer: new DisposerAddon(
+                    () => {
+                      ele.remove();
+                    },
+                    () => {
+                      this.title = "";
+                    },
+                    ele.onWindowMigrated(() => {
+                      emulator.reopen();
+                      emulator.resize(false).catch(warn);
+                    }),
+                    () => {
+                      if (this.find) {
+                        this.find[1].results = "";
+                      }
+                    },
+                  ),
+                  dragAndDrop: new DragAndDropAddon(ele),
+                  followTheme: new FollowThemeAddon(context, ele, {
+                    enabled(): boolean {
+                      return profile.type === "invalid" || profile.followTheme;
+                    },
                   }),
-                  () => {
-                    if (this.find) {
-                      this.find[1].results = "";
-                    }
-                  },
-                ),
-                dragAndDrop: new DragAndDropAddon(ele),
-                followTheme: new FollowThemeAddon(context, ele, {
-                  enabled(): boolean {
-                    return profile.type === "invalid" || profile.followTheme;
-                  },
-                }),
-                ligatures: new LigaturesAddon({}),
-                renderer: new RendererAddon(
-                  () => new CanvasAddon(),
-                  () => new WebglAddon(false),
-                ),
-                rightClickAction: new RightClickActionAddon(
-                  profile.type === "invalid"
-                    ? void 0
-                    : (): RightClickActionAddon.Action =>
-                        profile.rightClickAction,
-                ),
-                search: new SearchAddon(),
-                unicode11: new Unicode11Addon(),
-                webLinks: new WebLinksAddon(
-                  (event, uri) => openExternal(activeSelf(event), uri),
-                  {
-                    /*
-                    ref: <https://github.com/xtermjs/xterm.js/blob/fb25eb8f79fd223acef90828dc2990bb7e196a1d/addons/addon-web-links/src/WebLinksAddon.ts#L10-L21>
+                  keyMapping,
+                  ligatures: new LigaturesAddon({}),
+                  renderer: new RendererAddon(
+                    () => new CanvasAddon(),
+                    () => new WebglAddon(false),
+                  ),
+                  rightClickAction: new RightClickActionAddon(
+                    profile.type === "invalid"
+                      ? void 0
+                      : (): RightClickActionAddon.Action =>
+                          profile.rightClickAction,
+                  ),
+                  search: new SearchAddon(),
+                  unicode11: new Unicode11Addon(),
+                  webLinks: new WebLinksAddon(
+                    (event, uri) => openExternal(activeSelf(event), uri),
+                    {
+                      /*
+                      ref: <https://github.com/xtermjs/xterm.js/blob/fb25eb8f79fd223acef90828dc2990bb7e196a1d/addons/addon-web-links/src/WebLinksAddon.ts#L10-L21>
 
-                    const strictUrlRegex = /(https?|HTTPS?):[/]{2}[^\s"'!*(){}|\\\^<>`]*[^\s"':,.!?{}|\\\^~\[\]`()<>]/;
-                    */
-                    urlRegex:
-                      /(https?|HTTPS?|obsidian|OBSIDIAN):[/]{2}[^\s"'!*(){}|\\^<>`]*[^\s"':,.!?{}|\\^~[\]`()<>]/,
-                  },
-                ),
-              },
+                      const strictUrlRegex = /(https?|HTTPS?):[/]{2}[^\s"'!*(){}|\\\^<>`]*[^\s"':,.!?{}|\\\^~\[\]`()<>]/;
+                      */
+                      urlRegex:
+                        /(https?|HTTPS?|obsidian|OBSIDIAN):[/]{2}[^\s"'!*(){}|\\^<>`]*[^\s"':,.!?{}|\\^~[\]`()<>]/,
+                    },
+                  ),
+                };
+              })(),
             ),
             { pseudoterminal, terminal, addons } = emulator,
             { disposer, renderer, search } = addons;
@@ -1198,6 +1207,7 @@ export namespace TerminalView {
     readonly disposer: DisposerAddon;
     readonly dragAndDrop: DragAndDropAddon;
     readonly followTheme: FollowThemeAddon;
+    readonly keyMapping: KeyMappingAddon;
     readonly ligatures: LigaturesAddon;
     readonly renderer: RendererAddon;
     readonly rightClickAction: RightClickActionAddon;
