@@ -1,3 +1,9 @@
 #!/usr/bin/env sh
 bun run -- test
-git push --force origin rolling
+
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+DEFAULT_BRANCH=$(git rev-parse --abbrev-ref origin/HEAD | sed 's@origin/@@')
+
+if [ "$CURRENT_BRANCH" = "$DEFAULT_BRANCH" ]; then
+    git push --force origin rolling
+fi
