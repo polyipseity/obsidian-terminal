@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [".agents/instructions/**/*.md"],
+  "skills": {
+    "paths": [".agents/skills"]
+  },
+  "watcher": {
+    "ignore": [
+      ".git/**",
+      ".pytest_cache/**",
+      ".husky/_/**",
+      ".hypothesis/**",
+      ".ruff_cache/**",
+      ".venv/**",
+      "__pycache__/**",
+      "dist/**",
+      "node_modules/**",
+      "bun.lock",
+      "package-lock.json",
+      "pnpm-lock.yaml",
+      "uv.lock",
+      "yarn.lock"
+    ]
+  }
+}
