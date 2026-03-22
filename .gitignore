@@ -1,4 +1,4 @@
-# https://github.com/github/gitignore/blob/1d4e709db80b4481888076b1f256a7e87eb84105/Node.gitignore {
+# <https://github.com/github/gitignore/blob/1d4e709db80b4481888076b1f256a7e87eb84105/Node.gitignore> {
 # Logs
 logs
 *.log
@@ -131,7 +131,7 @@ dist
 .pnp.*
 # }
 
-# https://github.com/github/gitignore/blob/33243d9491911332228307c915ff95707791a91f/Python.gitignore {
+# <https://github.com/github/gitignore/blob/33243d9491911332228307c915ff95707791a91f/Python.gitignore> {
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
