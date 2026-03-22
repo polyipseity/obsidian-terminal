@@ -2,7 +2,6 @@
 name: bump-version
 description: Bump the project version (major|minor|patch), run any version/regeneration script, and create a release commit and tag.
 argument-hint: Required `bump=major|minor|patch`. Optional `commitNow=no` to skip committing and tagging.
-agent: agent
 ---
 
 # Bump Version and Commit
