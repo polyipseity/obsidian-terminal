@@ -1,9 +1,7 @@
 #!/usr/bin/env sh
-bun run -- test
-
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 DEFAULT_BRANCH=$(git rev-parse --abbrev-ref origin/HEAD | sed 's@origin/@@')
 
 if [ "$CURRENT_BRANCH" = "$DEFAULT_BRANCH" ]; then
-    git push --no-verify --force origin rolling
+    git tag --force --sign rolling --message rolling
 fi

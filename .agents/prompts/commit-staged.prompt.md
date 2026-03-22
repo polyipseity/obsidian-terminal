@@ -2,7 +2,6 @@
 name: commit-staged
 description: Produce a commit message for the currently staged changes and commit by default.
 argument-hint: Optional extras (e.g., ticket=ABC-123). To skip committing, pass `commitNow=no`.
-agent: agent
 ---
 
 # Commit Staged Change
