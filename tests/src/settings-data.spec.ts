@@ -110,4 +110,34 @@ describe("src/settings-data.ts", () => {
     });
     expect(alsoBad.value.defaultProfile).toBe(null);
   });
+
+  describe("Settings.Profile.defaultEntryOfType", () => {
+    it("returns [key, profile] tuple for matching profile", () => {
+      const profiles: Settings.Profiles = {
+        abc123: {
+          ...Settings.Profile.DEFAULTS.integrated,
+          type: "integrated",
+        } as Settings.Profile,
+        def456: {
+          ...Settings.Profile.DEFAULTS.developerConsole,
+          type: "developerConsole",
+        } as Settings.Profile,
+      };
+      const result = Settings.Profile.defaultEntryOfType(
+        "integrated",
+        profiles,
+      );
+      expect(result).not.toBeNull();
+      const [key, profile] = result ?? ["", {} as Settings.Profile];
+      expect(key).toBe("abc123");
+      expect(profile.type).toBe("integrated");
+    });
+
+    it("returns null when no profile matches", () => {
+      const profiles: Settings.Profiles = {};
+      expect(
+        Settings.Profile.defaultEntryOfType("integrated", profiles),
+      ).toBeNull();
+    });
+  });
 });
