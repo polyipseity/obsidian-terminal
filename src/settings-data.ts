@@ -93,6 +93,7 @@ export interface Settings extends PluginContext.Settings {
   readonly interceptLogging: boolean;
   readonly macOSOptionKeyPassthrough: boolean;
   readonly preferredRenderer: Settings.PreferredRendererOption;
+  readonly keyMappings: readonly Settings.KeyMapping[];
 }
 export namespace Settings {
   export type DefaultProfile = keyof Profiles | null;
@@ -118,6 +119,7 @@ export namespace Settings {
     focusOnNewInstance: true,
     hideStatusBar: "focused",
     interceptLogging: true,
+    keyMappings: [],
     language: "",
     macOSOptionKeyPassthrough: true,
     newInstanceBehavior: "newHorizontalSplit",
@@ -170,6 +172,136 @@ export namespace Settings {
 
   export const PREFERRED_RENDERER_OPTIONS = RendererAddon.RENDERER_OPTIONS;
   export type PreferredRendererOption = RendererAddon.RendererOption;
+
+  export const KEY_MAPPING_ACTIONS = deepFreeze([
+    "ignore",
+    "sendEscapeSequence",
+    "sendHexCode",
+    "sendText",
+  ] as const);
+  export type KeyMappingAction = (typeof KEY_MAPPING_ACTIONS)[number];
+  export interface KeyMapping {
+    readonly key: string;
+    readonly ctrl: boolean;
+    readonly alt: boolean;
+    readonly meta: boolean;
+    readonly shift: boolean;
+    readonly action: KeyMappingAction;
+    readonly actionArg: string;
+  }
+  export namespace KeyMapping {
+    export const DEFAULT: KeyMapping = deepFreeze({
+      action: "ignore" as KeyMappingAction,
+      actionArg: "",
+      alt: false,
+      ctrl: false,
+      key: "",
+      meta: false,
+      shift: false,
+    });
+    export function fix(self0: unknown): Fixed<KeyMapping> {
+      const unc = launderUnchecked<KeyMapping>(self0);
+      return markFixed(self0, {
+        action: fixInSet(DEFAULT, unc, "action", KEY_MAPPING_ACTIONS),
+        actionArg: fixTyped(DEFAULT, unc, "actionArg", ["string"]),
+        alt: fixTyped(DEFAULT, unc, "alt", ["boolean"]),
+        ctrl: fixTyped(DEFAULT, unc, "ctrl", ["boolean"]),
+        key: fixTyped(DEFAULT, unc, "key", ["string"]),
+        meta: fixTyped(DEFAULT, unc, "meta", ["boolean"]),
+        shift: fixTyped(DEFAULT, unc, "shift", ["boolean"]),
+      });
+    }
+
+    /** Check if two mappings have the same key combination. */
+    export function sameKey(a: KeyMapping, b: KeyMapping): boolean {
+      return (
+        a.key === b.key &&
+        a.ctrl === b.ctrl &&
+        a.alt === b.alt &&
+        a.meta === b.meta &&
+        a.shift === b.shift
+      );
+    }
+  }
+
+  export const KEY_MAPPING_PRESETS = deepFreeze({
+    naturalTextEditing: [
+      // Option+Left → word backward
+      {
+        action: "sendEscapeSequence" as KeyMappingAction,
+        actionArg: "b",
+        alt: true,
+        ctrl: false,
+        key: "ArrowLeft",
+        meta: false,
+        shift: false,
+      },
+      // Option+Right → word forward
+      {
+        action: "sendEscapeSequence" as KeyMappingAction,
+        actionArg: "f",
+        alt: true,
+        ctrl: false,
+        key: "ArrowRight",
+        meta: false,
+        shift: false,
+      },
+      // Cmd+Left → beginning of line (Ctrl+A)
+      {
+        action: "sendHexCode" as KeyMappingAction,
+        actionArg: "01",
+        alt: false,
+        ctrl: false,
+        key: "ArrowLeft",
+        meta: true,
+        shift: false,
+      },
+      // Cmd+Right → end of line (Ctrl+E)
+      {
+        action: "sendHexCode" as KeyMappingAction,
+        actionArg: "05",
+        alt: false,
+        ctrl: false,
+        key: "ArrowRight",
+        meta: true,
+        shift: false,
+      },
+      // Option+Backspace → delete word backward (Ctrl+W)
+      {
+        action: "sendHexCode" as KeyMappingAction,
+        actionArg: "17",
+        alt: true,
+        ctrl: false,
+        key: "Backspace",
+        meta: false,
+        shift: false,
+      },
+      // Cmd+Backspace → delete to beginning of line (Ctrl+U)
+      {
+        action: "sendHexCode" as KeyMappingAction,
+        actionArg: "15",
+        alt: false,
+        ctrl: false,
+        key: "Backspace",
+        meta: true,
+        shift: false,
+      },
+      // Option+Delete → delete word forward (ESC d)
+      {
+        action: "sendEscapeSequence" as KeyMappingAction,
+        actionArg: "d",
+        alt: true,
+        ctrl: false,
+        key: "Delete",
+        meta: false,
+        shift: false,
+      },
+    ],
+  } as const satisfies Readonly<Record<string, readonly KeyMapping[]>>);
+  export type KeyMappingPreset = keyof typeof KEY_MAPPING_PRESETS;
+  export const KEY_MAPPING_PRESET_KEYS = Object.keys(
+    KEY_MAPPING_PRESETS,
+  ) as KeyMappingPreset[];
 
   export type Profile =
     | Profile.DeveloperConsole
@@ -1169,6 +1301,13 @@ export namespace Settings {
         HIDE_STATUS_BAR_OPTIONS,
       ),
       interceptLogging: fixTyped(DEFAULT, unc, "interceptLogging", ["boolean"]),
+      keyMappings: ((): readonly KeyMapping[] => {
+        const { keyMappings } = unc;
+        if (Array.isArray(keyMappings)) {
+          return keyMappings.map((m: unknown) => KeyMapping.fix(m).value);
+        }
+        return [];
+      })(),
       language: fixInSet(DEFAULT, unc, "language", DEFAULTABLE_LANGUAGES),
       macOSOptionKeyPassthrough: fixTyped(
         DEFAULT,

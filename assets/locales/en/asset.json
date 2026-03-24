@@ -51,6 +51,9 @@
     "profile-list": {
       "edit-icon": "$t(asset:generic.edit-icon)"
     },
+    "key-mapping": {
+      "delete-icon": "trash"
+    },
     "terminal": {
       "edit-modal": {
         "profile-edit-icon": "$t(asset:generic.edit-icon)",
@@ -133,6 +136,8 @@
     "focus-on-new-instance-icon": "$t(asset:generic.actions.focus-icon)",
     "hide-status-bar-icon": "eye-off",
     "intercept-logging-icon": "scroll-text",
+    "key-mappings-edit-icon": "keyboard",
+    "key-mappings-icon": "keyboard",
     "macOS-option-key-passthrough-icon": "option",
     "new-instance-behavior-icon": "plus",
     "open-changelog-on-update-icon": "$t(asset:generic.documentations.changelog-icon)",

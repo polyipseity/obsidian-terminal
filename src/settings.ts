@@ -11,7 +11,11 @@ import {
   setTextToEnum,
   DOMClasses,
 } from "@polyipseity/obsidian-plugin-library";
-import { ProfileListModal, TerminalOptionsModal } from "./modals.js";
+import {
+  KeyMappingModal,
+  ProfileListModal,
+  TerminalOptionsModal,
+} from "./modals.js";
 import { Settings } from "./settings-data.js";
 import type { TerminalPlugin } from "./main.js";
 import type { loadDocumentations } from "./documentations.js";
@@ -613,6 +617,46 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                 settings.mutate((settingsM) => {
                   settingsM.macOSOptionKeyPassthrough =
                     Settings.DEFAULT.macOSOptionKeyPassthrough;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          );
+      })
+      .newSetting(containerEl, (setting) => {
+        setting
+          .setName(i18n.t("settings.key-mappings"))
+          .setDesc(
+            i18n.t("settings.key-mappings-description", {
+              count: settings.value.keyMappings.length,
+              interpolation: { escapeValue: false },
+            }),
+          )
+          .addButton((button) =>
+            button
+              .setIcon(i18n.t("asset:settings.key-mappings-edit-icon"))
+              .setTooltip(i18n.t("settings.key-mappings-edit"))
+              .onClick(() => {
+                new KeyMappingModal(
+                  context,
+                  settings.value.keyMappings,
+                  async (data): Promise<void> => {
+                    await settings.mutate((settingsM) => {
+                      settingsM.keyMappings = data;
+                    });
+                    this.postMutate();
+                  },
+                ).open();
+              }),
+          )
+          .addExtraButton(
+            resetButton(
+              i18n.t("asset:settings.key-mappings-icon"),
+              i18n.t("settings.reset"),
+              async () =>
+                settings.mutate((settingsM) => {
+                  settingsM.keyMappings = [];
                 }),
               () => {
                 this.postMutate();
