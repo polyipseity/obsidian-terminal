@@ -163,6 +163,7 @@ export class FollowThemeAddon implements ITerminalAddon {
 
   readonly #disposer = new Functions({ async: false, settled: true });
   #lastThemeKey = "";
+  #terminal: Terminal | null = null;
 
   public constructor(
     protected readonly context: PluginContext,
@@ -322,44 +323,22 @@ export class FollowThemeAddon implements ITerminalAddon {
   // -------------------------------------------------------------------------
 
   public activate(terminal: Terminal): void {
-    const update = (): void => {
-      // When provided, only apply if enabled() returns true
-      if (typeof this.opts.enabled === "function" && !this.opts.enabled()) {
-        return;
-      }
-
-      const next = this.#computeTheme();
-      if (next === null) {
-        return;
-      }
-
-      // No-op if unchanged
-      const key = FollowThemeAddon.#themeKey(next);
-      if (key === this.#lastThemeKey) {
-        return;
-      }
-      this.#lastThemeKey = key;
-
-      // Ensure a new object so the terminal notices the change
-      terminal.options.theme = {
-        ...(terminal.options.theme ?? {}),
-        background: next.background,
-        cursor: next.cursor,
-        foreground: next.foreground,
-        selectionBackground: next.selectionBackground,
-      };
-    };
-
-    // Initial apply
-    update();
+    this.#terminal = terminal;
+    this.#update();
 
     const {
         app,
         app: { workspace },
       } = this.context,
+      // Arrow closure captures the addon's `this` lexically so that
+      // the patched function (where `this` is the app) can still reach
+      // the private #update method without aliasing `this`.
+      doUpdate = (): void => {
+        this.#update();
+      },
       // Keep in sync with app CSS/theme changes (no throttling)
       // Obsidian already takes care of system-level theme changes
-      ref = workspace.on("css-change", update);
+      ref = workspace.on("css-change", doUpdate);
     this.#disposer.push(() => {
       workspace.offref(ref);
     });
@@ -368,7 +347,7 @@ export class FollowThemeAddon implements ITerminalAddon {
       this.context,
       [app],
       (app2) => {
-        // Patch app.setAccentColor to invoke update after it runs
+        // Patch app.setAccentColor to invoke #update after it runs
         const unpatchSetAccent = around(app2, {
           setAccentColor(next) {
             return function patched(
@@ -376,7 +355,7 @@ export class FollowThemeAddon implements ITerminalAddon {
               ...args: Parameters<typeof next>
             ): ReturnType<typeof next> {
               next.apply(this, args);
-              update();
+              doUpdate();
             };
           },
         });
@@ -386,13 +365,53 @@ export class FollowThemeAddon implements ITerminalAddon {
     );
   }
 
+  public refresh(force = false): void {
+    if (force) {
+      this.#lastThemeKey = "";
+    }
+    this.#update();
+  }
+
   public dispose(): void {
     this.#disposer.call();
+    this.#terminal = null;
   }
 
   // -------------------------------------------------------------------------
   // Private instance methods (after public members)
   // -------------------------------------------------------------------------
+
+  #update(): void {
+    if (this.#terminal === null) {
+      return;
+    }
+
+    // When provided, only apply if enabled() returns true
+    if (typeof this.opts.enabled === "function" && !this.opts.enabled()) {
+      return;
+    }
+
+    const next = this.#computeTheme();
+    if (next === null) {
+      return;
+    }
+
+    // No-op if unchanged
+    const key = FollowThemeAddon.#themeKey(next);
+    if (key === this.#lastThemeKey) {
+      return;
+    }
+    this.#lastThemeKey = key;
+
+    // Ensure a new object so the terminal notices the change
+    this.#terminal.options.theme = {
+      ...(this.#terminal.options.theme ?? {}),
+      background: next.background,
+      cursor: next.cursor,
+      foreground: next.foreground,
+      selectionBackground: next.selectionBackground,
+    };
+  }
 
   /**
    * Derive an xterm theme from host CSS variables. Returns `null` if

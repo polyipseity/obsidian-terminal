@@ -211,10 +211,12 @@ export class EditTerminalModal extends DialogModal {
                 const profile0 = profiles[value];
                 if (!profile0) {
                   this.#profile = null;
+                  this.state.profileSourceId = null;
                   return;
                 }
                 this.#profile = value;
                 this.state.profile = cloneAsWritable(profile0);
+                this.state.profileSourceId = value;
               },
               () => {
                 this.postMutate();
@@ -266,6 +268,7 @@ export class EditTerminalModal extends DialogModal {
                 new ProfileModal(context, state.profile, (profile0) => {
                   this.#profile = null;
                   state.profile = profile0;
+                  state.profileSourceId = null;
                   this.postMutate();
                 }).open();
               }),
@@ -277,6 +280,7 @@ export class EditTerminalModal extends DialogModal {
               () => {
                 this.#profile = null;
                 state.profile = cloneAsWritable(protostate.profile);
+                state.profileSourceId = protostate.profileSourceId;
               },
               () => {
                 this.postMutate();
@@ -1036,7 +1040,14 @@ export class TerminalView extends ItemView {
                 ),
                 dragAndDrop: new DragAndDropAddon(ele),
                 followTheme: new FollowThemeAddon(context, ele, {
-                  enabled(): boolean {
+                  enabled: (): boolean => {
+                    const { profileSourceId } = this.state;
+                    if (profileSourceId !== null) {
+                      const live = settings.value.profiles[profileSourceId];
+                      if (live) {
+                        return live.type === "invalid" || live.followTheme;
+                      }
+                    }
                     return profile.type === "invalid" || profile.followTheme;
                   },
                 }),
@@ -1105,37 +1116,78 @@ export class TerminalView extends ItemView {
 
           disposer.push(
             settings.onMutate(
-              (settings0) => settings0.terminalOptions,
-              (cur, prev) => {
-                // When computing the merged options we want to see what
-                // xterm actually normalises the object to.  To do that we
-                // create short-lived Terminal instances with the merged
-                // settings, read back their `.options`, then dispose them
-                // immediately in a finally block so there's no residual
-                // DOM state.
-                const createMerged = (
-                  opts: Settings.Profile.TerminalOptions,
-                ): ITerminalOptions => {
-                  const merged = mergeTerminalOptions(
-                    profileTerminalOptions,
-                    opts,
-                  );
-                  const tmp = new Terminal(merged);
-                  try {
-                    return tmp.options;
-                  } finally {
-                    tmp.dispose();
-                  }
+              (s) => {
+                const { profileSourceId } = this.state;
+                const liveProfile =
+                  profileSourceId !== null ? s.profiles[profileSourceId] : null;
+                return {
+                  globalOptions: s.terminalOptions,
+                  profileOptions:
+                    liveProfile && liveProfile.type !== "invalid"
+                      ? liveProfile.terminalOptions
+                      : null,
+                  followTheme: liveProfile
+                    ? liveProfile.type === "invalid" || liveProfile.followTheme
+                    : null,
                 };
+              },
+              (cur, prev) => {
+                if (
+                  cur.globalOptions !== prev.globalOptions ||
+                  cur.profileOptions !== prev.profileOptions
+                ) {
+                  // When computing the merged options we want to see what
+                  // xterm actually normalises the object to.  To do that we
+                  // create short-lived Terminal instances with the merged
+                  // settings, read back their `.options`, then dispose them
+                  // immediately in a finally block so there's no residual
+                  // DOM state.
+                  const createMergedWith = (
+                    profileOpts: Settings.Profile.TerminalOptions,
+                    globalOpts: Settings.Profile.TerminalOptions,
+                  ): ITerminalOptions => {
+                    const merged = mergeTerminalOptions(
+                      profileOpts,
+                      globalOpts,
+                    );
+                    const tmp = new Terminal(merged);
+                    try {
+                      return tmp.options;
+                    } finally {
+                      tmp.dispose();
+                    }
+                  };
 
-                const prevMerged = createMerged(prev);
-                const curMerged = createMerged(cur);
+                  const prevProfileOpts =
+                    prev.profileOptions ?? profileTerminalOptions;
+                  const curProfileOpts =
+                    cur.profileOptions ?? profileTerminalOptions;
+                  const prevMerged = createMergedWith(
+                    prevProfileOpts,
+                    prev.globalOptions,
+                  );
+                  const curMerged = createMergedWith(
+                    curProfileOpts,
+                    cur.globalOptions,
+                  );
 
-                // Only patch the terminal when something actually changed at the
-                // *first* level of the merged settings object.  The helper will
-                // perform a deep equality check per-key and update/delete values
-                // accordingly.
-                applyTerminalOptionDiffShallow(terminal, prevMerged, curMerged);
+                  // Only patch the terminal when something actually changed at
+                  // the *first* level of the merged settings object.  The helper
+                  // will perform a deep equality check per-key and update/delete
+                  // values accordingly.
+                  applyTerminalOptionDiffShallow(
+                    terminal,
+                    prevMerged,
+                    curMerged,
+                  );
+                }
+                if (
+                  cur.followTheme !== prev.followTheme ||
+                  cur.globalOptions !== prev.globalOptions ||
+                  cur.profileOptions !== prev.profileOptions
+                ) {
+                  emulator.addons.followTheme.refresh(true);
+                }
               },
             ),
           );
@@ -1207,6 +1259,7 @@ export namespace TerminalView {
   }
   export interface State {
     readonly profile: Settings.Profile;
+    readonly profileSourceId: string | null;
     readonly cwd: string | null;
     readonly serial: XtermTerminalEmulator.State | null;
     readonly focus: boolean;
@@ -1216,6 +1269,7 @@ export namespace TerminalView {
       cwd: null,
       focus: false,
       profile: Settings.Profile.DEFAULTS.invalid,
+      profileSourceId: null,
       serial: null,
     });
     export function fix(self0: unknown): Fixed<State> {
@@ -1224,6 +1278,10 @@ export namespace TerminalView {
         cwd: fixTyped(DEFAULT, unc, "cwd", ["string", "null"]),
         focus: fixTyped(DEFAULT, unc, "focus", ["boolean"]),
         profile: Settings.Profile.fix(unc.profile).value,
+        profileSourceId: fixTyped(DEFAULT, unc, "profileSourceId", [
+          "string",
+          "null",
+        ]),
         serial:
           unc.serial === null
             ? null

@@ -96,6 +96,7 @@ export class SelectProfileModal extends FuzzySuggestModal<Settings.Profile.Entry
     spawnTerminal(plugin, entry?.[1] ?? Settings.Profile.DEFAULTS[""], {
       cwd,
       edit: entry === null || evt.getModifierState("Control"),
+      profileSourceId: entry?.[0] ?? null,
     });
   }
 }
@@ -106,12 +107,14 @@ export function spawnTerminal(
   options: {
     readonly cwd?: string | undefined;
     readonly edit?: boolean | undefined;
+    readonly profileSourceId?: string | null;
   } = {},
 ): void {
   const state: TerminalView.State = {
     cwd: options.cwd ?? null,
     focus: context.settings.value.focusOnNewInstance,
     profile,
+    profileSourceId: options.profileSourceId ?? null,
     serial: null,
   };
   if (options.edit ?? false) {

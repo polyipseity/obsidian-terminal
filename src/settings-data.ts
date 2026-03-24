@@ -194,12 +194,19 @@ export namespace Settings {
       profiles: Profiles,
       platform?: Platform.All,
     ): Typed<T> | null {
-      for (const profile of Object.values(profiles)) {
+      return defaultEntryOfType(type, profiles, platform)?.[1] ?? null;
+    }
+    export function defaultEntryOfType<T extends Type>(
+      type: T,
+      profiles: Profiles,
+      platform?: Platform.All,
+    ): readonly [string, Typed<T>] | null {
+      for (const [key, profile] of Object.entries(profiles)) {
         if (
           isType(type, profile) &&
           (platform === void 0 || isCompatible(profile, platform))
         ) {
-          return profile;
+          return [key, profile];
         }
       }
       return null;

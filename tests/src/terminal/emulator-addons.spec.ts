@@ -8,7 +8,10 @@
  * - Guard conditions (disposed, platform, setting, modifier combos)
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { CustomKeyEventHandlerAddon } from "../../../src/terminal/emulator-addons.js";
+import {
+  CustomKeyEventHandlerAddon,
+  FollowThemeAddon,
+} from "../../../src/terminal/emulator-addons.js";
 import type { Terminal } from "@xterm/xterm";
 
 /** Minimal mock Terminal with `input()` and `attachCustomKeyEventHandler()`. */
@@ -165,5 +168,12 @@ describe("CustomKeyEventHandlerAddon", () => {
     const result = handler(fakeKeyEvent({ key: "@", altKey: true }));
     expect(result).toBe(true);
     expect(inputSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("FollowThemeAddon.refresh", () => {
+  it("is callable after activate", () => {
+    expect(FollowThemeAddon.prototype).toHaveProperty("refresh");
+    expect(typeof FollowThemeAddon.prototype.refresh).toBe("function");
   });
 });

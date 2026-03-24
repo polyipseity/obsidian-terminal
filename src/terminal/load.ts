@@ -41,8 +41,10 @@ export function loadTerminal(context: TerminalPlugin): void {
       language: { value: i18n },
       settings,
     } = context,
-    defaultProfile = (type: Settings.Profile.Type): Settings.Profile | null => {
-      const ret = Settings.Profile.defaultOfType(
+    defaultProfile = (
+      type: Settings.Profile.Type,
+    ): readonly [string, Settings.Profile] | null => {
+      const ret = Settings.Profile.defaultEntryOfType(
         type,
         settings.value.profiles,
         Platform.CURRENT,
@@ -88,11 +90,14 @@ export function loadTerminal(context: TerminalPlugin): void {
               new SelectProfileModal(context, cwd0).open();
               return;
             }
-            const profile = defaultProfile(type);
-            if (!profile) {
+            const entry = defaultProfile(type);
+            if (!entry) {
               return;
             }
-            spawnTerminal(context, profile, { cwd: cwd0 });
+            spawnTerminal(context, entry[1], {
+              cwd: cwd0,
+              profileSourceId: entry[0],
+            });
           });
       };
     },
@@ -130,9 +135,12 @@ export function loadTerminal(context: TerminalPlugin): void {
             new SelectProfileModal(context, cwd0).open();
             return true;
           }
-          const profile = defaultProfile(type);
-          if (profile) {
-            spawnTerminal(context, profile, { cwd: cwd0 });
+          const entry = defaultProfile(type);
+          if (entry) {
+            spawnTerminal(context, entry[1], {
+              cwd: cwd0,
+              profileSourceId: entry[0],
+            });
           }
         }
         return true;
@@ -144,7 +152,10 @@ export function loadTerminal(context: TerminalPlugin): void {
       const profile = profiles[defaultProfile];
       if (Settings.Profile.isCompatible(profile, Platform.CURRENT)) {
         if (!checking) {
-          spawnTerminal(context, profile, { cwd: adapter?.getBasePath() });
+          spawnTerminal(context, profile, {
+            cwd: adapter?.getBasePath(),
+            profileSourceId: defaultProfile,
+          });
         }
         return true;
       }
@@ -222,9 +233,9 @@ export function loadTerminal(context: TerminalPlugin): void {
         return false;
       }
       if (!checking) {
-        const prof = defaultProfile("developerConsole");
-        if (prof) {
-          spawnTerminal(context, prof);
+        const entry = defaultProfile("developerConsole");
+        if (entry) {
+          spawnTerminal(context, entry[1], { profileSourceId: entry[0] });
         }
       }
       return true;
