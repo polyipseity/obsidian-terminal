@@ -12,6 +12,7 @@
     "open-terminal-current": "$t(generic.terminal)で$t(generic.current-directory)を開く: $t(generic.profile-types.{{type}})",
     "open-terminal-default-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.default-profile)",
     "open-terminal-root": "$t(generic.terminal)で$t(generic.root-directory)を開く: $t(generic.profile-types.{{type}})",
+    "rename-terminal": "$t(generic.rename, capitalize) $t(generic.terminal)",
     "toggle-focus-on-last-terminal": "最後の$t(generic.terminal)への$t(generic.focus)を$t(generic.toggle)",
     "unfocus-terminal": "$t(generic.terminal)の$t(generic.unfocus)"
   },
@@ -94,6 +95,8 @@
         "copy": "$t(generic.copy)",
         "edit": "$t(generic.edit)",
         "find": "$t(generic.find)",
+        "rename": "$t(generic.rename, capitalize)",
+        "rename-prompt": "$t(generic.rename, capitalize) $t(generic.terminal)",
         "restart": "$t(generic.restart)",
         "save-as-HTML": "$t(generic.file-extensions.HTML)として$t(generic.save)"
       },
@@ -196,6 +199,7 @@
     "profile_one": "プロファイル",
     "profile_other": "プロファイル",
     "pseudoterminal": "擬似ターミナル",
+    "rename": "rename",
     "renderer": "レンダラー",
     "renderers": {
       "canvas": "canvas",

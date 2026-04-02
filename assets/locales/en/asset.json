@@ -13,6 +13,7 @@
     "open-terminal-default-icon": "$t(asset:generic.terminal-alt-icon)",
     "open-terminal-root-icon": "$t(asset:generic.terminal-icon)",
     "toggle-focus-on-last-terminal-icon": "$t(asset:generic.actions.focus-icon)",
+    "rename-terminal-icon": "$t(asset:generic.actions.rename-icon)",
     "unfocus-terminal-icon": "$t(asset:generic.actions.unfocus-icon)"
   },
   "components": {
@@ -64,6 +65,7 @@
         "copy-icon": "$t(asset:generic.actions.copy-icon)",
         "edit-icon": "$t(asset:generic.actions.edit-icon)",
         "find-icon": "$t(asset:generic.actions.find-icon)",
+        "rename-icon": "$t(asset:generic.actions.rename-icon)",
         "restart-icon": "$t(asset:generic.actions.restart-icon)",
         "save-as-HTML-icon": "$t(asset:generic.actions.save-icon)"
       }
@@ -84,6 +86,7 @@
       "edit-icon": "$t(asset:generic.edit-icon)",
       "find-icon": "search",
       "focus-icon": "focus",
+      "rename-icon": "pencil",
       "restart-icon": "reset",
       "save-icon": "save",
       "unfocus-icon": "minimize"

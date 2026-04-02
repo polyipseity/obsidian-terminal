@@ -12,6 +12,7 @@
     "open-terminal-current": "$t(generic.open, capitalize) $t(generic.current-directory) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
     "open-terminal-default-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.default-profile)",
     "open-terminal-root": "$t(generic.open, capitalize) $t(generic.root-directory) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
+    "rename-terminal": "$t(generic.rename, capitalize) $t(generic.terminal)",
     "toggle-focus-on-last-terminal": "$t(generic.toggle, capitalize) $t(generic.focus) on last $t(generic.terminal)",
     "unfocus-terminal": "$t(generic.unfocus, capitalize) $t(generic.terminal)"
   },
@@ -94,6 +95,8 @@
         "copy": "$t(generic.copy, capitalize)",
         "edit": "$t(generic.edit, capitalize)",
         "find": "$t(generic.find, capitalize)",
+        "rename": "$t(generic.rename, capitalize)",
+        "rename-prompt": "$t(generic.rename, capitalize) $t(generic.terminal)",
         "restart": "$t(generic.restart, capitalize)",
         "save-as-HTML": "$t(generic.save, capitalize) as $t(generic.file-extensions.HTML)"
       },
@@ -196,6 +199,7 @@
     "profile_one": "profile",
     "profile_other": "profiles",
     "pseudoterminal": "pseudoterminal",
+    "rename": "rename",
     "renderer": "renderer",
     "renderers": {
       "canvas": "canvas",
