@@ -82,6 +82,31 @@ const childProcess = dynamicRequire<typeof import("node:child_process")>(
     "tmp-promise",
   );
 
+/** Keys that belong to the parent app or multiplexer and should not leak
+ *  into the embedded PTY. Their presence causes tools (e.g. Claude Code) to
+ *  misdetect the terminal environment and enable incompatible rendering. */
+const SANITIZED_ENV_KEYS: ReadonlySet<string> = new Set([
+  "TMUX",
+  "STY",
+  "TERM_PROGRAM",
+  "TERM_PROGRAM_VERSION",
+]);
+const SANITIZED_ENV_PREFIXES: readonly string[] = ["VSCODE_", "ZED_"];
+
+function sanitizedEnv(base: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {};
+  for (const [key, value] of Object.entries(base)) {
+    if (
+      SANITIZED_ENV_KEYS.has(key) ||
+      SANITIZED_ENV_PREFIXES.some((p) => key.startsWith(p))
+    ) {
+      continue;
+    }
+    env[key] = value;
+  }
+  return env;
+}
+
 async function clearTerminal(terminal: Terminal, keep = false): Promise<void> {
   const { rows } = terminal;
   await tWritePromise(
@@ -794,9 +819,10 @@ class WindowsPseudoterminal implements Pseudoterminal {
           ret = await spawnPromise(() =>
             childProcess2.spawn(pythonExecutable, ["-c", win32ResizerPy2], {
               env: {
-                ...process2.env,
+                ...sanitizedEnv(process2.env),
 
                 PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
+                TERM_PROGRAM: "obsidian-terminal",
               },
               stdio: ["pipe", "pipe", "pipe"],
               windowsHide: true,
@@ -1062,9 +1088,10 @@ class UnixPseudoterminal implements Pseudoterminal {
       const [childProcess2, process2, unixPseudoterminalPy2] =
           await Promise.all([childProcess, process, unixPseudoterminalPy]),
         env: NodeJS.ProcessEnv = {
-          ...process2.env,
+          ...sanitizedEnv(process2.env),
 
           PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
+          TERM_PROGRAM: "obsidian-terminal",
         };
       if (!isNil(terminal)) {
         env["TERM"] = terminal;
