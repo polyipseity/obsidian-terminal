@@ -856,11 +856,13 @@ class WindowsPseudoterminal implements Pseudoterminal {
       > => {
         const resizer = await resizerInitial.catch(() => null);
         try {
-          const [childProcess2, fsPromises2, tmpPromise2] = await Promise.all([
-              childProcess,
-              fsPromises,
-              tmpPromise,
-            ]),
+          const [childProcess2, fsPromises2, tmpPromise2, process2b] =
+              await Promise.all([
+                childProcess,
+                fsPromises,
+                tmpPromise,
+                process,
+              ]),
             inOutTmp = await tmpPromise2.file({
               discardDescriptor: true,
               postfix: ".bat",
@@ -895,9 +897,14 @@ class WindowsPseudoterminal implements Pseudoterminal {
                   ? [WINDOWS_CONHOST_PATH, inOutTmp.path]
                   : [inOutTmp.path],
               ),
+              shellEnv: NodeJS.ProcessEnv = {
+                ...sanitizedEnv(process2b.env),
+                TERM_PROGRAM: "obsidian-terminal",
+              },
               ret = await spawnPromise(() =>
                 childProcess2.spawn(cmd[0], cmd.slice(1), {
                   cwd,
+                  env: shellEnv,
                   shell: !conhost,
                   stdio: ["pipe", "pipe", "pipe"],
                   windowsHide: !resizer,
