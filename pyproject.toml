@@ -55,8 +55,6 @@ extend-select = ["I", "PLC0415"]
 [tool.ty.environment]
 python-version = "3.9"  # Use 3.9 for development as macOS ships it by default
 python-platform = "all"
-root = [".", "src", "tests"]
-extra-paths = ["typings"]
 
 [tool.ty.rules]
 all = "error"
