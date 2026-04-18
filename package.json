@@ -18,7 +18,6 @@
     "ansi-escape-sequences": "^6.2.4",
     "async-lock": "^1.4.1",
     "browser-util-inspect": "^0.2.0",
-    "espree": "^11.2.0",
     "i18next": "^25.8.14",
     "immutable": "^5.1.5",
     "lodash-es": "^4.17.23",
