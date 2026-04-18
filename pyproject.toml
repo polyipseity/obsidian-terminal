@@ -33,37 +33,8 @@ dev = [
   "pytest-cov>=7.0.0",
   "pytest-xdist>=3.8.0",
   "ruff>=0.15.0",
+  "ty>=0.0.31",
 ]
-
-[tool.pyright]
-exclude = [
-  "**/node_modules",
-  "**/__pycache__",
-  "**/.*",
-  ".venv",
-]
-typeCheckingMode = "strict"
-venv = ".venv"
-venvPath = "."
-pythonPlatform = "All"
-# Use 3.9 for development (macOS ships 3.9 by default); runtime allows 3.9 or above.
-pythonVersion = "3.9"
-deprecateTypingAliases = true
-enableReachabilityAnalysis = true
-strictDictionaryInference = true
-strictListInference = true
-strictSetInference = true
-
-[[tool.pyright.executionEnvironments]]
-extraPaths = ["src", "."]
-reportPrivateUsage = "none"
-root = "tests"
-
-[[tool.pyright.executionEnvironments]]
-root = "src"
-
-[[tool.pyright.executionEnvironments]]
-root = "."
 
 [tool.pytest.ini_options]
 addopts = ["--cov=./", "--cov-report=term-missing", "--dist=loadscope", "-n=auto", "--strict-markers"]
@@ -80,6 +51,24 @@ line-length = 88
 # Enable Pylint-derived rule that disallows imports outside module top-level
 # (import-outside-top-level / PLC0415). Ruff 0.12.0+ provides this rule.
 extend-select = ["I", "PLC0415"]
+
+[tool.ty.environment]
+python-version = "3.9"  # Use 3.9 for development as macOS ships it by default
+python-platform = "all"
+root = [".", "src", "tests"]
+extra-paths = ["typings"]
+
+[tool.ty.rules]
+all = "error"
+
+[tool.ty.src]
+exclude = [
+  "**/node_modules",
+  "**/__pycache__",
+  "**/.*",
+  ".venv",
+  # self
+]
 
 [tool.uv]
 required-version = ">=0.9.0,<0.11.0"

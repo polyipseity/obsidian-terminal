@@ -124,7 +124,7 @@ Helpful local resources:
   1. Add/modify tests to cover behavior changes and follow the **one test file per source file** convention.
   2. Run `bun x vitest run "tests/**/*.spec.{js,ts,mjs}"` locally for fast verification and `bun run test` for the full suite.
   3. Keep tests parallelizable and idempotent.
-  4. Document any infra changes in `AGENTS.md`.  
+  4. Document any infra changes in `AGENTS.md`.
 
 If you need help designing a test or mocking a dependency, ask for a short example to be added to `tests/fixtures/`.
 
@@ -137,7 +137,7 @@ If you need help designing a test or mocking a dependency, ask for a short examp
   - runtime type guards (e.g. `function isFoo(v: unknown): v is Foo`) and narrowing checks;
   - explicit generics / factory functions that preserve typing;
   - returning `unknown` from untrusted boundaries and narrowing at the call site.
-  If a single `as` cast is unavoidable add a comment explaining why, and add a unit test that exercises the runtime assumptions.
+    If a single `as` cast is unavoidable add a comment explaining why, and add a unit test that exercises the runtime assumptions.
 - **Make code type-checking friendly.** Prefer explicit types for exported APIs (return types and parameter types), keep public interfaces small and well-typed, prefer discriminated unions for runtime branching, and avoid deeply inferred/complex anonymous types at package boundaries. This makes `tsc` errors actionable and helps downstream consumers.
 - **Prefer `interface` for object shapes:** Prefer `interface Foo { ... }` rather than `type Foo = { ... }` for object-shaped declarations when possible. Interfaces are typically better for incremental TypeScript performance (caching and declaration merging) and work well with extension and declaration merging patterns.
 - When you need union, mapped, or conditional types, `type` aliases remain appropriate. Document non-trivial type-level logic with a brief comment so readers understand the intent and tradeoffs.
@@ -203,7 +203,7 @@ type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
 - `.agents/instructions/` — Task/file-specific instructions
 - `.agents/skills/` — Agent skills for specialized workflows
 
-**Python version:** Runtime requirement is 3.9 or above. For development we use 3.9 (e.g. `.python-versions`, Pyright `pythonVersion` in `pyproject.toml`; rationale: macOS ships 3.9 by default). When changing the minimum version, update: `README.md` (badge + install step), `src/magic.ts` (`PYTHON_REQUIREMENTS.Python.version`), `pyproject.toml` (`requires-python`). When changing the dev version, update `.python-versions` and `pyproject.toml` `[tool.pyright] pythonVersion`.
+**Python version:** Runtime requirement is 3.9 or above. For development we use 3.9 (e.g. `.python-versions`, Ty in `pyproject.toml`; rationale: macOS ships 3.9 by default). When changing the minimum version, update: `README.md` (badge + install step), `src/magic.ts` (`PYTHON_REQUIREMENTS.Python.version`), `pyproject.toml` (`requires-python`). When changing the dev version, update `.python-versions`.
 
 > **Never use `.github/copilot-instructions.md`. All agent instructions must be in `AGENTS.md` and referenced from here.**
 
