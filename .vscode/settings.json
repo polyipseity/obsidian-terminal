@@ -1,14 +1,14 @@
 {
   "chat.tools.terminal.autoApprove": {
-    "/^(?:bunx|npm\\s+exec|npx|pnpx)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+(?:commitlint|eslint|markdownlint-cli2|prettier|pyright|tsc|vitest)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*$/": true,
+    "/^(?:bunx|npm\\s+exec|npx|pnpx)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+(?:commitlint|eslint|markdownlint-cli2|prettier|tsc|vitest)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*$/": true,
     "/^(?:bun|npm|pnpm)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+(?:ci|help|install|test)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*$/": true,
-    "/^(?:bun|pnpm)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*(?:\\s+exec|\\s+x)?(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+(?:commitlint|eslint|markdownlint-cli2|prettier|pyright|tsc|vitest)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*$/": true,
+    "/^(?:bun|pnpm)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*(?:\\s+exec|\\s+x)?(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+(?:commitlint|eslint|markdownlint-cli2|prettier|tsc|vitest)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*$/": true,
     "/^(?:bun|pnpm)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*(?:\\s+run)?\\s+(?:build|check|commitlint|format|test)(?::[^\\s]*)?(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*$/": true,
     "/^npm\\s+run(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+(?:build|check|commitlint|format|test)(?::[^\\s]*)?(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*$/": true,
-    "/^python(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+-m\\s+(?:pyright|pytest|ruff|rumdl)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*$/": true,
+    "/^python(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+-m\\s+(?:pytest|ruff|rumdl|ty)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*$/": true,
     "/^python(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+['\"]?(?:\\.[/\\\\])*\\.agents[/\\\\]skills(?:[/\\\\][^/\\\\'\"]+?)*\\.py['\"]?(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*$/": true,
     "/^uv\\s+(?:lock|sync)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*$/": true,
-    "/^uv\\s+run(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+(?:pyright|pytest|ruff|rumdl)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*$/": true,
+    "/^uv\\s+run(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+(?:pytest|ruff|rumdl|ty)(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*$/": true,
     "/^uv\\s+run(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*\\s+['\"]?(?:\\.[/\\\\])*\\.agents[/\\\\]skills(?:[/\\\\][^/\\\\'\"]+?)*\\.py['\"]?(?:\\s+(?:--?[\\w-]+(?:=[^\\s]+)?|[^\\s]+))*$/": true,
     "ConvertFrom-Json": true,
     "ForEach-Object": true,
@@ -21,10 +21,10 @@
     "git rev-parse": true,
     "i": true,
     "i++": true,
-    "pyright": true,
     "pytest": true,
     "ruff": true,
     "rumdl": true,
+    "ty": true,
     "type": true
   },
   "files.associations": {
