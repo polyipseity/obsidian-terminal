@@ -34,6 +34,7 @@ dev = [
   "pytest-xdist>=3.8.0",
   "ruff>=0.15.0",
   "ty>=0.0.31",
+  "types-pywin32>=311.0.0",
 ]
 
 [tool.pytest.ini_options]
@@ -51,6 +52,8 @@ line-length = 88
 # Enable Pylint-derived rule that disallows imports outside module top-level
 # (import-outside-top-level / PLC0415). Ruff 0.12.0+ provides this rule.
 extend-select = ["I", "PLC0415"]
+
+[tool.ty.analysis]
 
 [tool.ty.environment]
 python-version = "3.9"  # Use 3.9 for development as macOS ships it by default

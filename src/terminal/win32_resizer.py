@@ -11,7 +11,6 @@ from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from itertools import chain
 from time import sleep
-from typing import TypedDict, cast, final
 
 from psutil import Process
 from pywinctl import Window, getAllWindows
@@ -56,7 +55,7 @@ if sys.platform == "win32":
         SWP_NOZORDER,
     )
     from win32console import (
-        AttachConsole,  # type: ignore[reportUnknownVariableType]
+        AttachConsole,
         FreeConsole,
         PyConsoleScreenBufferType,
         PyCOORDType,
@@ -65,35 +64,6 @@ if sys.platform == "win32":
     from win32file import CreateFile
     from win32gui import SetWindowPos
     from win32process import GetWindowThreadProcessId
-
-    @final
-    class _PyConsoleScreenBufferInfo(TypedDict):
-        """TypedDict mirroring the console screen buffer info structure."""
-
-        Size: PyCOORDType
-        CursorPosition: PyCOORDType
-        Attributes: int
-        Window: PySMALL_RECTType
-        MaximumWindowSize: PyCOORDType
-
-    """AttachConsole from win32console, cast to the expected callable type."""
-    AttachConsole = cast(
-        Callable[[int], None],
-        AttachConsole,
-    )
-    """GetConsoleScreenBufferInfo from console buffer type, cast for type safety."""
-    GetConsoleScreenBufferInfo = cast(
-        Callable[[PyConsoleScreenBufferType], _PyConsoleScreenBufferInfo],
-        PyConsoleScreenBufferType.GetConsoleScreenBufferInfo,  # type: ignore[reportUnknownMemberType]
-    )
-    """SetConsoleWindowInfo from console buffer type, cast for type safety."""
-    SetConsoleWindowInfo = cast(
-        Callable[
-            [PyConsoleScreenBufferType, bool, PySMALL_RECTType],
-            None,
-        ],
-        PyConsoleScreenBufferType.SetConsoleWindowInfo,  # type: ignore[reportUnknownMemberType]
-    )
 
     def main() -> None:
         """Find the console window for a PID and resize it on demand.
@@ -123,7 +93,9 @@ if sys.platform == "win32":
 
     def win_to_pid(window: Window):
         """Return the process id that owns `window`."""
-        return GetWindowThreadProcessId(window.getHandle())[1]
+        handle = window.getHandle()
+        assert isinstance(handle, int)  # `int` on Windows
+        return GetWindowThreadProcessId(handle)[1]
 
     def resizer(process: Process, window: Window):
         """Drive the resizer coroutine for `process`/`window`.
@@ -205,7 +177,7 @@ if sys.platform == "win32":
                 columns, rows = yield
                 # iterate to resize accurately
                 for iter in range(_RESIZE_ITERATIONS):
-                    info = GetConsoleScreenBufferInfo(console)
+                    info = console.GetConsoleScreenBufferInfo()
                     old_rect = window.getClientFrame()
                     old_actual_rect = window.size
                     old_cols = info["Window"].Right - info["Window"].Left + 1
@@ -221,10 +193,12 @@ if sys.platform == "win32":
                         - old_height,
                     )
                     print(f"pixel size (iteration {iter + 1}): {size}")
+                    handle = window.getHandle()
+                    assert isinstance(handle, int)  # `int` on Windows
                     setters = [
                         # almost accurate, works for alternate screen buffer
                         lambda: SetWindowPos(
-                            window.getHandle(),
+                            handle,
                             None,
                             0,
                             0,
@@ -232,16 +206,14 @@ if sys.platform == "win32":
                             SWP_NOACTIVATE | SWP_NOREDRAW | SWP_NOZORDER,
                         ),
                         # accurate, SetConsoleWindowInfo does not work for alternate screen buffer
-                        lambda: SetConsoleWindowInfo(
-                            console,
+                        lambda: console.SetConsoleWindowInfo(
                             True,
                             PySMALL_RECTType(0, 0, columns - 1, old_rows - 1),
                         ),
                         lambda: console.SetConsoleScreenBufferSize(
                             PyCOORDType(columns, old_rows)
                         ),
-                        lambda: SetConsoleWindowInfo(
-                            console,
+                        lambda: console.SetConsoleWindowInfo(
                             True,
                             PySMALL_RECTType(0, 0, columns - 1, rows - 1),
                         ),

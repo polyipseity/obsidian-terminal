@@ -51,9 +51,9 @@ def main() -> None:
 
 
 if sys.platform != "win32":
-    from fcntl import ioctl
-    from pty import fork
-    from termios import TIOCSWINSZ
+    from fcntl import ioctl  # ty: ignore[possibly-missing-import]
+    from pty import fork  # ty: ignore[possibly-missing-import]
+    from termios import TIOCSWINSZ  # ty: ignore[possibly-missing-import]
 
     class _SelectorHandler:
         """Base context-manager that registers a read-callback for an FD.
