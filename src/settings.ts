@@ -622,6 +622,37 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
       })
       .newSetting(containerEl, (setting) => {
         setting
+          .setName(i18n.t("settings.intercept-keys-when-focused"))
+          .setDesc(i18n.t("settings.intercept-keys-when-focused-description"))
+          .addToggle(
+            linkSetting(
+              () => settings.value.interceptKeysWhenFocused,
+              async (value) =>
+                settings.mutate((settingsM) => {
+                  settingsM.interceptKeysWhenFocused = value;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          )
+          .addExtraButton(
+            resetButton(
+              i18n.t("asset:settings.intercept-keys-when-focused-icon"),
+              i18n.t("settings.reset"),
+              async () =>
+                settings.mutate((settingsM) => {
+                  settingsM.interceptKeysWhenFocused =
+                    Settings.DEFAULT.interceptKeysWhenFocused;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          );
+      })
+      .newSetting(containerEl, (setting) => {
+        setting
           .setName(i18n.t("settings.preferred-renderer"))
           .addDropdown(
             linkSetting(

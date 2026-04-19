@@ -774,7 +774,7 @@ export class TerminalView extends ItemView {
     await super.onOpen();
     const { focusedScope } = TerminalView,
       { context, contentEl, app } = this,
-      { language, statusBarHider } = context,
+      { language, settings, statusBarHider } = context,
       { value: i18n } = language,
       { keymap } = app;
 
@@ -805,15 +805,28 @@ export class TerminalView extends ItemView {
       "focusin",
       () => {
         TerminalView.lastFocusTimes.set(this, Date.now());
-        keymap.pushScope(focusedScope);
+        if (settings.value.interceptKeysWhenFocused) {
+          keymap.pushScope(focusedScope);
+        }
         statusBarHider.update();
       },
       { capture: true, passive: true },
     );
     TerminalView.lastFocusTimes.set(this, Date.now());
-    if (this.isFocused) {
+    if (this.isFocused && settings.value.interceptKeysWhenFocused) {
       keymap.pushScope(focusedScope);
     }
+    this.register(
+      settings.onMutate(
+        (s) => s.interceptKeysWhenFocused,
+        (cur) => {
+          keymap.popScope(focusedScope);
+          if (cur && this.isFocused) {
+            keymap.pushScope(focusedScope);
+          }
+        },
+      ),
+    );
 
     this.register(statusBarHider.hide(() => this.hidesStatusBar));
     this.register(() => {
