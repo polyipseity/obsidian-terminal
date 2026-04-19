@@ -13,6 +13,7 @@
     "ms-python.python",
     "ms-toolsai.jupyter",
     "redhat.vscode-yaml",
+    "sst-dev.opencode-v2",
     "streetsidesoftware.code-spell-checker",
     "tamasfe.even-better-toml"
   ]

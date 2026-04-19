@@ -27,6 +27,25 @@
     "ty": true,
     "type": true
   },
+  "editor.codeActionsOnSave": {
+    "source.fixAll.sortJSON": "explicit",
+    "source.organizeImports": "explicit",
+    "source.sort.json": "explicit"
+  },
+  "editor.formatOnSave": true,
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+  "eslint.workingDirectories": [
+    {
+      "mode": "auto"
+    }
+  ],
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
   "files.associations": {
     ".prettierignore": "ignore"
   },
