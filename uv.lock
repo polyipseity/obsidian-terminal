@@ -419,7 +419,7 @@ wheels = [
 [[package]]
 name = "obsidian-terminal-f9b1c3e0-fcc2-4914-9732-1867d920929b"
 version = "0.0.0"
-source = { editable = "." }
+source = { virtual = "." }
 dependencies = [
     { name = "anyio" },
     { name = "asyncer", version = "0.0.14", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
