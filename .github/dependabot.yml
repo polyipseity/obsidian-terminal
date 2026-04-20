@@ -16,6 +16,10 @@ updates:
       bun:
         patterns:
           - "*"
+      bun-security:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
     ignore:
       # Ignore updates to obsidian beyond 1.4.11
       - dependency-name: "obsidian"
@@ -36,6 +40,10 @@ updates:
       github-actions:
         patterns:
           - "*"
+      github-actions-security:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
 
   # Git submodules (gitmodules)
   - package-ecosystem: "gitsubmodule"
@@ -50,6 +58,10 @@ updates:
       gitsubmodule:
         patterns:
           - "*"
+      gitsubmodule-security:
+        applies-to: "security-updates"
+        patterns:
+          - "*"
 
   # Python (pyproject.toml)
   - package-ecosystem: "uv"
@@ -62,6 +74,10 @@ updates:
       include: "scope"
     groups:
       uv:
+        patterns:
+          - "*"
+      uv-security:
+        applies-to: "security-updates"
         patterns:
           - "*"
     exclude-paths:
