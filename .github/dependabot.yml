@@ -20,6 +20,8 @@ updates:
         applies-to: "security-updates"
         patterns:
           - "*"
+    cooldown:
+      default-days: 5
     ignore:
       # Ignore updates to obsidian beyond 1.4.11
       - dependency-name: "obsidian"
@@ -44,6 +46,8 @@ updates:
         applies-to: "security-updates"
         patterns:
           - "*"
+    cooldown:
+      default-days: 5
 
   # Git submodules (gitmodules)
   - package-ecosystem: "gitsubmodule"
@@ -62,6 +66,8 @@ updates:
         applies-to: "security-updates"
         patterns:
           - "*"
+    cooldown:
+      default-days: 5
 
   # Python (pyproject.toml)
   - package-ecosystem: "uv"
@@ -80,6 +86,8 @@ updates:
         applies-to: "security-updates"
         patterns:
           - "*"
+    cooldown:
+      default-days: 5
     exclude-paths:
       # wtf: <https://github.com/dependabot/dependabot-core/issues/13960>
       - "LICENSE.txt"
