@@ -40,7 +40,7 @@ jobs:
       - name: Install project
         run: |
           bun install --frozen-lockfile --ignore-scripts
-          uv sync --locked --all-extras --dev
+          uv sync --locked
 
       - name: Build project
         run: bun run build
