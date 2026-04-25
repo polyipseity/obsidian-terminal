@@ -42,6 +42,8 @@ This guide provides clear, actionable instructions for AI coding agents working 
   - `bun run check` — eslint + prettier(check) + markdownlint.
   - `bun run format` — eslint --fix, prettier --write, markdownlint --fix.
 
+  - Python environment / `uv` usage: This package follows the workspace convention of adding `uvloop` extras to `tool.uv.default-groups`. Run `uv sync` locally to install dev and platform event-loop extras; CI should use `uv sync --locked`. Avoid `--all-extras` / `--dev` flags.
+
 - **Versioning**
   - Use `changesets` for PRs; version lifecycle scripts are configured (`version` / `postversion`).
 
