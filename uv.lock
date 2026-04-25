@@ -427,6 +427,10 @@ dependencies = [
     { name = "psutil" },
     { name = "pywinctl" },
     { name = "typing-extensions" },
+]
+
+[package.optional-dependencies]
+uvloop = [
     { name = "uvloop", marker = "sys_platform != 'win32'" },
     { name = "winloop", marker = "sys_platform == 'win32'" },
 ]
@@ -444,6 +448,9 @@ dev = [
     { name = "types-pywin32", version = "311.0.0.20251008", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "types-pywin32", version = "311.0.0.20260408", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
 ]
+uvloop = [
+    { name = "obsidian-terminal-f9b1c3e0-fcc2-4914-9732-1867d920929b", extra = ["uvloop"] },
+]
 
 [package.metadata]
 requires-dist = [
@@ -452,9 +459,10 @@ requires-dist = [
     { name = "psutil", specifier = "==5.9.5" },
     { name = "pywinctl", specifier = "==0.0.50" },
     { name = "typing-extensions", specifier = ">=4.7.1" },
-    { name = "uvloop", marker = "sys_platform != 'win32'", specifier = ">=0.22.0" },
-    { name = "winloop", marker = "sys_platform == 'win32'", specifier = ">=0.5.0" },
+    { name = "uvloop", marker = "sys_platform != 'win32' and extra == 'uvloop'", specifier = ">=0.22.0" },
+    { name = "winloop", marker = "sys_platform == 'win32' and extra == 'uvloop'", specifier = ">=0.5.0" },
 ]
+provides-extras = ["uvloop"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -466,6 +474,7 @@ dev = [
     { name = "ty", specifier = ">=0.0.31" },
     { name = "types-pywin32", specifier = ">=311.0.0" },
 ]
+uvloop = [{ name = "obsidian-terminal-f9b1c3e0-fcc2-4914-9732-1867d920929b", extras = ["uvloop"] }]
 
 [[package]]
 name = "packaging"
