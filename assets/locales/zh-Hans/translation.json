@@ -12,6 +12,7 @@
     "open-terminal-current": "在$t(generic.terminal)$t(generic.open)$t(generic.current-directory)：$t(generic.profile-types.{{type}})",
     "open-terminal-default-profile": "$t(generic.open)$t(generic.terminal)：$t(settings.default-profile)",
     "open-terminal-root": "在$t(generic.terminal)$t(generic.open)$t(generic.root-directory)：$t(generic.profile-types.{{type}})",
+    "rename-terminal": "$t(generic.rename, capitalize) $t(generic.terminal)",
     "toggle-focus-on-last-terminal": "$t(generic.toggle)$t(generic.focus)于上一个$t(generic.terminal)",
     "unfocus-terminal": "$t(generic.unfocus)$t(generic.terminal)"
   },
@@ -94,6 +95,8 @@
         "copy": "$t(generic.copy)",
         "edit": "$t(generic.edit)",
         "find": "$t(generic.find)",
+        "rename": "$t(generic.rename, capitalize)",
+        "rename-prompt": "$t(generic.rename, capitalize) $t(generic.terminal)",
         "restart": "$t(generic.restart)",
         "save-as-HTML": "$t(generic.save)为$t(generic.file-extensions.HTML)"
       },
@@ -184,6 +187,7 @@
       "select": "选择"
     },
     "pseudoterminal": "伪终端",
+    "rename": "rename",
     "renderer": "渲染器",
     "renderers": {
       "canvas": "Canvas",

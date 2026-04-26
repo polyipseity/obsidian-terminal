@@ -12,6 +12,7 @@
     "open-terminal-current": "$t(generic.current-directory)에서 $t(generic.terminal) $t(generic.open): $t(generic.profile-types.{{type}})",
     "open-terminal-default-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.default-profile)",
     "open-terminal-root": "$t(generic.root-directory)에서 $t(generic.terminal) $t(generic.open): $t(generic.profile-types.{{type}})",
+    "rename-terminal": "$t(generic.rename, capitalize) $t(generic.terminal)",
     "toggle-focus-on-last-terminal": "마지막 $t(generic.terminal)의 $t(generic.focus) $t(generic.toggle)",
     "unfocus-terminal": "$t(generic.terminal) $t(generic.unfocus)"
   },
@@ -94,6 +95,8 @@
         "copy": "$t(generic.copy)",
         "edit": "$t(generic.edit)",
         "find": "$t(generic.find)",
+        "rename": "$t(generic.rename, capitalize)",
+        "rename-prompt": "$t(generic.rename, capitalize) $t(generic.terminal)",
         "restart": "$t(generic.restart)",
         "save-as-HTML": "$t(generic.file-extensions.HTML)로 $t(generic.save)"
       },
@@ -196,6 +199,7 @@
     "profile_one": "프로필",
     "profile_other": "프로필들",
     "pseudoterminal": "의사 터미널",
+    "rename": "rename",
     "renderer": "렌더러",
     "renderers": {
       "canvas": "Canvas",
