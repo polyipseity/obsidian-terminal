@@ -105,6 +105,8 @@ __Terminal is focused__
 
 When a terminal is focused, other keyboard shortcuts \(including Obsidian and plugin hotkeys\) are disabled. Only the following keyboard shortcuts work. Thus you can ignore Obsidian complaining about conflicting keys for the following keyboard shortcuts.
 
+This behavior can be turned off via the `Intercept keys when terminal is focused` setting; when disabled, Obsidian hotkeys keep working while the terminal has focus.
+
 - Clear terminal: `Ctrl`+`Shift`+`K`, `Command`+`Shift`+`K` \(Apple\)
 - Close terminal: `Ctrl`+`Shift`+`W`, `Command`+`Shift`+`W` \(Apple\)
 - Find in terminal: `Ctrl`+`Shift`+`F`, `Command`+`Shift`+`F` \(Apple\)
@@ -166,7 +168,7 @@ The full API is available from [`src/@types/obsidian-terminal.ts`](src/%40types/
 - Is the plugin useful on mobile?
   - Compared to on desktop, it is much less useful. The only use for it for now is opening a developer console on mobile.
 - Why do hotkeys not work?
-  - If the terminal is in focus, all Obsidian hotkeys are disabled so that you can type special characters into the terminal. You can unfocus the terminal by pressing `Ctrl`+`Shift`+`` ` ``, then you can use Obsidian hotkeys again.
+  - If the terminal is in focus, all Obsidian hotkeys are disabled so that you can type special characters into the terminal. You can unfocus the terminal by pressing `Ctrl`+`Shift`+`` ` ``, then you can use Obsidian hotkeys again. Alternatively, disable the `Intercept keys when terminal is focused` setting to keep Obsidian hotkeys working while the terminal has focus.
 
 ## Contributing
 

@@ -302,6 +302,8 @@
       "running": "When $t(generic.terminal) is running"
     },
     "instancing": "$t(generic.instance_gerund, capitalize)",
+    "intercept-keys-when-focused": "Intercept keys when terminal is focused",
+    "intercept-keys-when-focused-description": "When enabled, keyboard shortcuts are routed to terminal-specific commands while the terminal is focused, and most Obsidian hotkeys are suppressed. Disable to let Obsidian hotkeys continue to work while typing in the terminal.",
     "intercept-logging": "Intercept logging",
     "interface": "Interface",
     "macOS-option-key-passthrough": "macOS: Option key passthrough",

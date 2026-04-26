@@ -132,6 +132,7 @@
     "expose-internal-modules-icon": "puzzle",
     "focus-on-new-instance-icon": "$t(asset:generic.actions.focus-icon)",
     "hide-status-bar-icon": "eye-off",
+    "intercept-keys-when-focused-icon": "keyboard",
     "intercept-logging-icon": "scroll-text",
     "macOS-option-key-passthrough-icon": "option",
     "new-instance-behavior-icon": "plus",
