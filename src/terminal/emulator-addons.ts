@@ -37,11 +37,20 @@ export class DragAndDropAddon implements ITerminalAddon {
   public constructor(protected readonly element: HTMLElement) {}
 
   public activate(terminal: Terminal): void {
+    // Electron 32+ removed `File.path`. Use `webUtils.getPathForFile()` and
+    // fall back to the legacy property for older builds.
+    const electron = (globalThis as { require?: (id: string) => unknown })
+      .require?.("electron") as
+      | { webUtils?: { getPathForFile?: (f: File) => string } }
+      | undefined;
+    const getFilePath = (file: File): string | undefined =>
+      electron?.webUtils?.getPathForFile?.(file) ??
+      (file as File & { path?: string }).path;
     const { element } = this,
       drop = (event: DragEvent): void => {
         terminal.paste(
           Array.from(event.dataTransfer?.files ?? [])
-            .map((file) => file.path)
+            .map(getFilePath)
             .filter(isNonNil)
             .map((path) => path.replace(replaceAllRegex('"'), '\\"'))
             .map((path) => (path.includes(" ") ? `"${path}"` : path))
