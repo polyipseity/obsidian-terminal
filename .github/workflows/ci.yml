@@ -48,6 +48,8 @@ jobs:
 
       - name: Setup uv
         uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57
+        with:
+          resolution-strategy: "lowest"
 
       - name: Install project
         run: |
