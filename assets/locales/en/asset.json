@@ -49,6 +49,7 @@
       "type-icon": "type"
     },
     "profile-list": {
+      "default-icon": "star",
       "edit-icon": "$t(asset:generic.edit-icon)",
       "mark-as-default-icon": "star"
     },

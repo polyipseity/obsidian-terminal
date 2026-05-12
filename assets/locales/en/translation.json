@@ -231,7 +231,8 @@
     "working-directory": "working $t(generic.directory)"
   },
   "menus": {
-    "open-terminal": "$t(generic.open, capitalize) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)"
+    "open-terminal": "$t(generic.open, capitalize) in $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
+    "open-terminal-default": "$t(generic.open, capitalize) in $t(generic.terminal): $t(generic.default)"
   },
   "name": "$t(generic.terminal, capitalize)",
   "notices": {
@@ -274,7 +275,8 @@
     "zshIntegrated": "zsh: $t(generic.profile-types.integrated, capitalize)"
   },
   "ribbons": {
-    "open-terminal": "$t(generic.open, capitalize) $t(generic.terminal)"
+    "open-terminal": "$t(generic.open, capitalize) $t(generic.terminal)",
+    "open-terminal-default": "$t(generic.open, capitalize) $t(generic.terminal): {{name}}"
   },
   "settings": {
     "add-to-command": "Add to $t(generic.command)",
