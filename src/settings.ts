@@ -149,6 +149,36 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
       })
       .newSetting(containerEl, (setting) => {
         setting
+          .setName(i18n.t("settings.clean-tab-title"))
+          .setDesc(i18n.t("settings.clean-tab-title-description"))
+          .addToggle(
+            linkSetting(
+              () => settings.value.cleanTabTitle,
+              async (value) =>
+                settings.mutate((settingsM) => {
+                  settingsM.cleanTabTitle = value;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          )
+          .addExtraButton(
+            resetButton(
+              i18n.t("asset:settings.clean-tab-title-icon"),
+              i18n.t("settings.reset"),
+              async () =>
+                settings.mutate((settingsM) => {
+                  settingsM.cleanTabTitle = Settings.DEFAULT.cleanTabTitle;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          );
+      })
+      .newSetting(containerEl, (setting) => {
+        setting
           .setName(i18n.t("settings.profiles"))
           .setDesc(
             i18n.t("settings.profiles-description", {

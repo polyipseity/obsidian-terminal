@@ -353,9 +353,15 @@ export class TerminalView extends ItemView {
   protected get name(): string {
     const { context: plugin, state } = this,
       { value: i18n } = plugin.language,
-      { profile } = state,
-      { name, type } = profile;
+      { profile } = state;
+    const { name, type } = profile;
     if (this.title) {
+      if (plugin.settings.value.cleanTabTitle) {
+        // Extract content from parentheses first, then take the last path segment
+        const match = this.title.match(/\(([^)]*)\)/);
+        const content = match ? match[1] : this.title;
+        return content.split(/[\\/]/).pop() || this.title;
+      }
       return this.title;
     }
     if (typeof name === "string" && name) {
@@ -1193,9 +1199,9 @@ export class TerminalView extends ItemView {
           );
           disposer.push(
             settings.onMutate(
-              (settings0) => settings0.preferredRenderer,
-              (cur) => {
-                renderer.use(cur);
+              (s) => s.cleanTabTitle,
+              () => {
+                leaf.updateHeader();
               },
             ),
           );
