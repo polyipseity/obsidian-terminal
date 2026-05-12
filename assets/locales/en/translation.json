@@ -61,6 +61,7 @@
       "descriptor-": "{{info.id}}",
       "descriptor-incompatible": "($t(generic.incompatible, capitalize)) $t(components.profile-list.descriptor-)",
       "edit": "$t(generic.edit, capitalize)",
+      "mark-as-default": "Mark as $t(generic.default, capitalize)",
       "namer-": "{{info.name}}",
       "namer-incompatible": "$t(components.profile-list.namer-)",
       "preset-placeholder": "$t(components.dropdown.placeholder)",

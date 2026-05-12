@@ -1,6 +1,5 @@
 import {
   AdvancedSettingTab,
-  Platform,
   cloneAsWritable,
   closeSetting,
   createChildElement,
@@ -203,6 +202,13 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                     },
                     description: (): string =>
                       i18n.t("settings.profile-list.description"),
+                    onMarkAsDefault: async (profileId): Promise<void> => {
+                      await settings.mutate((settingsM) => {
+                        settingsM.defaultProfile =
+                          profileId as Settings.DefaultProfile;
+                      });
+                      this.postMutate();
+                    },
                   },
                 ).open();
               }),
@@ -216,67 +222,6 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                   settingsM.profiles = cloneAsWritable(
                     Settings.DEFAULT.profiles,
                   );
-                }),
-              () => {
-                this.postMutate();
-              },
-            ),
-          );
-      })
-      .newSetting(containerEl, (setting) => {
-        setting
-          .setName(i18n.t("settings.default-profile"))
-          .setDesc(i18n.t("settings.default-profile-description"))
-          .addDropdown(
-            linkSetting(
-              (): string => settings.value.defaultProfile ?? "",
-              async (value) =>
-                settings.mutate((settingsM) => {
-                  // Unfortunately we have to use the empty string as a sentinel value for "no default profile" because the dropdown component doesn't allow null/undefined values. So we have to coerce it back to null here.
-                  settingsM.defaultProfile =
-                    value === "" ? null : (value as Settings.DefaultProfile);
-                }),
-              () => {
-                this.postMutate();
-              },
-              {
-                pre: (dropdown) => {
-                  dropdown
-                    .addOption("", i18n.t("components.dropdown.placeholder"))
-                    .addOptions(
-                      Object.fromEntries(
-                        Object.entries(settings.value.profiles).map(
-                          ([id, profile]) => [
-                            id,
-                            i18n.t(
-                              `settings.default-profile-name-${
-                                Settings.Profile.isCompatible(
-                                  profile,
-                                  Platform.CURRENT,
-                                )
-                                  ? ""
-                                  : "incompatible"
-                              }`,
-                              {
-                                info: Settings.Profile.info([id, profile]),
-                                interpolation: { escapeValue: false },
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                },
-              },
-            ),
-          )
-          .addExtraButton(
-            resetButton(
-              i18n.t("asset:settings.default-profile-icon"),
-              i18n.t("settings.reset"),
-              async () =>
-                settings.mutate((settingsM) => {
-                  settingsM.defaultProfile = Settings.DEFAULT.defaultProfile;
                 }),
               () => {
                 this.postMutate();

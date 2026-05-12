@@ -1180,7 +1180,8 @@ export class ProfileListModal extends ListModal<
       dataW = cloneAsWritable(data),
       dataKeys = new Map(dataW.map(([key, value]) => [value, key])),
       callback = options?.callback ?? ((): void => {}),
-      keygen = options?.keygen ?? ((): string => self.crypto.randomUUID());
+      keygen = options?.keygen ?? ((): string => self.crypto.randomUUID()),
+      onMarkAsDefault = options?.onMarkAsDefault ?? ((): void => {});
     super(
       context,
       (setting, editable, getter, setter) => {
@@ -1197,6 +1198,19 @@ export class ProfileListModal extends ListModal<
               }).open();
             })
             .setDisabled(!editable),
+        );
+        setting.addButton((button) =>
+          button
+            .setIcon(
+              i18n.t("asset:components.profile-list.mark-as-default-icon"),
+            )
+            .setTooltip(i18n.t("components.profile-list.mark-as-default"))
+            .onClick(() => {
+              const profileId = dataKeys.get(getter());
+              if (profileId !== void 0) {
+                void onMarkAsDefault(profileId);
+              }
+            }),
         );
       },
       unexpected,
@@ -1285,5 +1299,6 @@ export namespace ProfileListModal {
       data: DeepWritable<Settings.Profile.Entry>[],
     ) => unknown;
     readonly keygen?: () => string;
+    readonly onMarkAsDefault?: (profileId: string) => unknown;
   }
 }
