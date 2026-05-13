@@ -4,18 +4,18 @@ import {
   closeSetting,
   createChildElement,
   createDocumentFragment,
+  DOMClasses,
   linkSetting,
   registerSettingsCommands,
   resetButton,
   setTextToEnum,
-  DOMClasses,
 } from "@polyipseity/obsidian-plugin-library";
+import { cloneDeep, size } from "lodash-es";
+import semverLt from "semver/functions/lt.js";
+import type { loadDocumentations } from "./documentations.js";
+import type { TerminalPlugin } from "./main.js";
 import { ProfileListModal, TerminalOptionsModal } from "./modals.js";
 import { Settings } from "./settings-data.js";
-import type { TerminalPlugin } from "./main.js";
-import type { loadDocumentations } from "./documentations.js";
-import semverLt from "semver/functions/lt.js";
-import { cloneDeep, size } from "lodash-es";
 
 export class SettingTab extends AdvancedSettingTab<Settings> {
   public constructor(
@@ -162,23 +162,20 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               .onClick(() => {
                 new ProfileListModal(
                   context,
-                  Object.entries(settings.value.profiles),
+                  {
+                    defaultProfile: settings.value.defaultProfile,
+                    entries: Object.entries(settings.value.profiles),
+                  },
                   {
                     callback: async (data): Promise<void> => {
                       await settings.mutate((settingsM) => {
-                        settingsM.profiles = Object.fromEntries(data);
+                        settingsM.profiles = Object.fromEntries(data.entries);
+                        settingsM.defaultProfile = data.defaultProfile;
                       });
                       this.postMutate();
                     },
                     description: (): string =>
                       i18n.t("settings.profile-list.description"),
-                    onMarkAsDefault: async (profileId): Promise<void> => {
-                      await settings.mutate((settingsM) => {
-                        settingsM.defaultProfile =
-                          profileId as Settings.DefaultProfile;
-                      });
-                      this.postMutate();
-                    },
                   },
                 ).open();
               }),

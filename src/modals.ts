@@ -1,14 +1,4 @@
 import {
-  CHECK_EXECUTABLE_WAIT,
-  DEFAULT_PYTHONIOENCODING,
-  PYTHON_REQUIREMENTS,
-} from "./magic.js";
-import {
-  DEFAULT_TERMINAL_OPTIONS,
-  PROFILE_PRESETS,
-  PROFILE_PRESET_ORDERED_KEYS,
-} from "./terminal/profile-presets.js";
-import {
   DISABLED_TOOLTIP,
   DOMClasses,
   EditDataModal,
@@ -39,18 +29,28 @@ import {
   useSettings,
   useSubsettings,
 } from "@polyipseity/obsidian-plugin-library";
-import { Modal, type Setting } from "obsidian";
 import { constant, identity, noop } from "lodash-es";
-import { BUNDLE } from "./import.js";
+import { Modal, type Setting } from "obsidian";
 import type { DeepWritable } from "ts-essentials";
+import { BUNDLE } from "./import.js";
+import {
+  CHECK_EXECUTABLE_WAIT,
+  DEFAULT_PYTHONIOENCODING,
+  PYTHON_REQUIREMENTS,
+} from "./magic.js";
+import {
+  DEFAULT_TERMINAL_OPTIONS,
+  PROFILE_PRESETS,
+  PROFILE_PRESET_ORDERED_KEYS,
+} from "./terminal/profile-presets.js";
 import { PROFILE_PROPERTIES } from "./terminal/profile-properties.js";
 import { Pseudoterminal } from "./terminal/pseudoterminal.js";
 
 import SemVer from "semver/classes/semver.js";
-import { Settings } from "./settings-data.js";
-import type { TerminalPlugin } from "./main.js";
-import getPackageVersion from "./get_package_version.py";
 import semverCoerce from "semver/functions/coerce.js";
+import getPackageVersion from "./get_package_version.py";
+import type { TerminalPlugin } from "./main.js";
+import { Settings } from "./settings-data.js";
 
 const childProcess = dynamicRequire<typeof import("node:child_process")>(
     BUNDLE,
@@ -1169,22 +1169,50 @@ export class ProfileModal extends Modal {
 export class ProfileListModal extends ListModal<
   DeepWritable<Settings.Profile>
 > {
-  protected readonly dataKeys;
+  protected readonly dataProfileList: DeepWritable<
+    Omit<ProfileListModal.Data, "entries">
+  >;
+  protected readonly entryKeys;
 
   public constructor(
     context: TerminalPlugin,
-    data: readonly Settings.Profile.Entry[],
+    data: ProfileListModal.Data,
     options?: ProfileListModal.Options,
   ) {
     const { value: i18n } = context.language,
       dataW = cloneAsWritable(data),
-      dataKeys = new Map(dataW.map(([key, value]) => [value, key])),
+      entryKeys = new Map(dataW.entries.map(([key, value]) => [value, key])),
       callback = options?.callback ?? ((): void => {}),
-      keygen = options?.keygen ?? ((): string => self.crypto.randomUUID()),
-      onMarkAsDefault = options?.onMarkAsDefault ?? ((): void => {});
+      keygen = options?.keygen ?? ((): string => self.crypto.randomUUID());
     super(
       context,
       (setting, editable, getter, setter) => {
+        const profileId = entryKeys.get(getter());
+        setting.addButton((button) => {
+          const btn = button
+            .setIcon(
+              i18n.t("asset:components.profile-list.mark-as-default-icon"),
+            )
+            .setTooltip(i18n.t("components.profile-list.mark-as-default"))
+            .onClick(async () => {
+              await setter((item) => {
+                const id = entryKeys.get(item);
+                if (id === void 0) {
+                  return;
+                }
+                if (id === this.dataProfileList.defaultProfile) {
+                  // Unset default profile if it's already the default
+                  this.dataProfileList.defaultProfile = null;
+                  return;
+                }
+                // Set the default profile to the clicked profile
+                this.dataProfileList.defaultProfile = id;
+              });
+            });
+          if (profileId === this.dataProfileList.defaultProfile) {
+            btn.setCta();
+          }
+        });
         setting.addButton((button) =>
           button
             .setIcon(i18n.t("asset:components.profile-list.edit-icon"))
@@ -1199,44 +1227,32 @@ export class ProfileListModal extends ListModal<
             })
             .setDisabled(!editable),
         );
-        setting.addButton((button) =>
-          button
-            .setIcon(
-              i18n.t("asset:components.profile-list.mark-as-default-icon"),
-            )
-            .setTooltip(i18n.t("components.profile-list.mark-as-default"))
-            .onClick(() => {
-              const profileId = dataKeys.get(getter());
-              if (profileId !== void 0) {
-                void onMarkAsDefault(profileId);
-              }
-            }),
-        );
       },
       unexpected,
-      dataW.map(([, value]) => value),
+      dataW.entries.map(([, value]) => value),
       {
         ...options,
         ...({
-          async callback(data0): Promise<void> {
-            await callback(
-              data0.map((profile) => {
-                let id = dataKeys.get(profile);
+          callback: async (data0): Promise<void> => {
+            await callback({
+              ...this.dataProfileList,
+              entries: data0.map((profile) => {
+                let id = entryKeys.get(profile);
                 if (id === void 0) {
-                  dataKeys.set(
+                  entryKeys.set(
                     profile,
-                    (id = randomNotIn([...dataKeys.values()], keygen)),
+                    (id = randomNotIn([...entryKeys.values()], keygen)),
                   );
                 }
                 return [id, cloneAsWritable(profile)];
               }),
-            );
+            });
           },
         } satisfies ProfileListModal.PredefinedOptions),
         descriptor:
           options?.descriptor ??
           ((profile): string => {
-            const id = dataKeys.get(profile) ?? "";
+            const id = entryKeys.get(profile) ?? "";
             return i18n.t(
               `components.profile-list.descriptor-${
                 Settings.Profile.isCompatible(profile, Platform.CURRENT)
@@ -1252,7 +1268,7 @@ export class ProfileListModal extends ListModal<
         namer:
           options?.namer ??
           ((profile): string => {
-            const id = dataKeys.get(profile) ?? "";
+            const id = entryKeys.get(profile) ?? "";
             return i18n.t(
               `components.profile-list.namer-${
                 Settings.Profile.isCompatible(profile, Platform.CURRENT)
@@ -1283,10 +1299,16 @@ export class ProfileListModal extends ListModal<
           ((): string => i18n.t("components.profile-list.title")),
       },
     );
-    this.dataKeys = dataKeys;
+    this.dataProfileList = dataW;
+    this.entryKeys = entryKeys;
   }
 }
 export namespace ProfileListModal {
+  export interface Data {
+    readonly defaultProfile: Settings.DefaultProfile;
+    readonly entries: readonly Settings.Profile.Entry[];
+  }
+
   type InitialOptions = ListModal.Options<DeepWritable<Settings.Profile>>;
   export type PredefinedOptions = {
     readonly [K in "callback"]: InitialOptions[K];
@@ -1295,10 +1317,7 @@ export namespace ProfileListModal {
     InitialOptions,
     keyof PredefinedOptions
   > {
-    readonly callback?: (
-      data: DeepWritable<Settings.Profile.Entry>[],
-    ) => unknown;
+    readonly callback?: (data: DeepWritable<Data>) => unknown;
     readonly keygen?: () => string;
-    readonly onMarkAsDefault?: (profileId: string) => unknown;
   }
 }
