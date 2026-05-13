@@ -4,7 +4,7 @@
     "url": "https://github.com/polyipseity/PLACEHOLDER"
   },
   "dependencies": {
-    "@polyipseity/obsidian-plugin-library": "^1.36.1",
+    "@polyipseity/obsidian-plugin-library": "file:./vendor/obsidian-plugin-library",
     "@xterm/addon-canvas": "^0.7.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-ligatures": "^0.10.0",
@@ -128,6 +128,7 @@
     "format:py": "uv run --locked ruff check --fix && uv run --locked ruff format && uv run --locked ty check",
     "obsidian:install": "bun run build && node scripts/obsidian-install.mjs",
     "obsidian:install:force": "bun run build:force && node scripts/obsidian-install.mjs",
+    "postinstall": "cd vendor/obsidian-plugin-library && bun install --frozen-lockfile --ignore-scripts && bun run build:force && cd ../..",
     "prepare": "(uv sync || true) && bun x --package if-ci -- if-not-ci husky",
     "test": "bun run test:py && bun run test:vitest",
     "test:py": "uv run --locked pytest",

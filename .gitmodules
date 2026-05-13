@@ -1,0 +1,4 @@
+[submodule "vendor/obsidian-plugin-library"]
+	path = vendor/obsidian-plugin-library
+	url = ../obsidian-plugin-library.git
+	branch = main
