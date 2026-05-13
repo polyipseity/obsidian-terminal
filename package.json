@@ -138,7 +138,7 @@
   "sideEffects": false,
   "style": "styles.css",
   "type": "module",
-  "version": "3.23.0",
+  "version": "3.24.0",
   "workspaces": [
     "."
   ]
