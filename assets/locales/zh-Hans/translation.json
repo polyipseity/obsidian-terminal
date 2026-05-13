@@ -215,8 +215,7 @@
     "working-directory": "工作$t(generic.directory)"
   },
   "menus": {
-    "open-terminal": "在$t(generic.terminal)$t(generic.open)：$t(generic.profile-types.{{type}})",
-    "open-terminal-default": "在$t(generic.terminal)$t(generic.open)：$t(generic.default)"
+    "open-terminal": "在$t(generic.terminal)$t(generic.open)：$t(generic.profile-types.{{type}})"
   },
   "name": "$t(generic.terminal)",
   "notices": {
@@ -260,7 +259,7 @@
   },
   "ribbons": {
     "open-terminal": "$t(generic.open)$t(generic.terminal)",
-    "open-terminal-default": "$t(generic.open)$t(generic.terminal)：{{name}}"
+    "open-terminal-default": "$t(generic.open)$t(generic.terminal)：{{info.nameOrID}}"
   },
   "settings": {
     "add-to-command": "加入至$t(generic.command)",

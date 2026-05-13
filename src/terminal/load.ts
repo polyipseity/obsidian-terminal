@@ -199,13 +199,12 @@ export function loadTerminal(context: TerminalPlugin): void {
     i18n.t("asset:ribbons.open-terminal-id"),
     i18n.t("asset:ribbons.open-terminal-icon"),
     () => {
-      const { defaultProfile, profiles } = settings.value;
-      const profile =
-        defaultProfile !== null ? profiles[defaultProfile] : undefined;
-      if (profile && Settings.Profile.isCompatible(profile, Platform.CURRENT)) {
+      const entry = getDefaultProfile();
+      if (entry) {
+        // TODO: Modify `addRibbonIcon` to support dynamic titles not based on language changes.
         return i18n.t("ribbons.open-terminal-default", {
           interpolation: { escapeValue: false },
-          name: Settings.Profile.name(profile),
+          info: Settings.Profile.info(entry),
         });
       }
       return i18n.t("ribbons.open-terminal");

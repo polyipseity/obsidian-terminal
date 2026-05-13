@@ -231,8 +231,7 @@
     "working-directory": "작업 $t(generic.directory)"
   },
   "menus": {
-    "open-terminal": "$t(generic.terminal)에서 $t(generic.open): $t(generic.profile-types.{{type}})",
-    "open-terminal-default": "$t(generic.open, capitalize) in $t(generic.terminal): $t(generic.default)"
+    "open-terminal": "$t(generic.terminal)에서 $t(generic.open): $t(generic.profile-types.{{type}})"
   },
   "name": "$t(generic.terminal)",
   "notices": {
@@ -276,7 +275,7 @@
   },
   "ribbons": {
     "open-terminal": "$t(generic.terminal) $t(generic.open)",
-    "open-terminal-default": "$t(generic.open, capitalize) $t(generic.terminal): {{name}}"
+    "open-terminal-default": "$t(generic.open, capitalize) $t(generic.terminal): {{info.nameOrID}}"
   },
   "settings": {
     "add-to-command": "$t(generic.command)에 추가",
