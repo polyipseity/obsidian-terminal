@@ -124,7 +124,6 @@
   "settings": {
     "add-to-command-icon": "$t(asset:generic.terminal-icon)",
     "add-to-context-menu-icon": "menu",
-    "clean-tab-title-icon": "square-check",
     "create-instance-near-existing-ones-icon": "plus",
     "default-profile-icon": "$t(asset:generic.terminal-alt-icon)",
     "documentations": {

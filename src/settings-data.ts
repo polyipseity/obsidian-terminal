@@ -75,7 +75,6 @@ export interface Settings extends PluginContext.Settings {
   readonly language: Settings.DefaultableLanguage;
   readonly addToCommand: boolean;
   readonly addToContextMenu: boolean;
-  readonly cleanTabTitle: boolean;
   readonly profiles: Settings.Profiles;
   readonly defaultProfile: Settings.DefaultProfile;
 
@@ -113,7 +112,6 @@ export namespace Settings {
   export const DEFAULT: Persistent = deepFreeze({
     addToCommand: true,
     addToContextMenu: true,
-    cleanTabTitle: false,
     createInstanceNearExistingOnes: true,
     errorNoticeTimeout: NOTICE_NO_TIMEOUT,
     exposeInternalModules: true,
@@ -1156,7 +1154,6 @@ export namespace Settings {
       ...PluginContext.Settings.fix(self0).value,
       addToCommand: fixTyped(DEFAULT, unc, "addToCommand", ["boolean"]),
       addToContextMenu: fixTyped(DEFAULT, unc, "addToContextMenu", ["boolean"]),
-      cleanTabTitle: fixTyped(DEFAULT, unc, "cleanTabTitle", ["boolean"]),
       createInstanceNearExistingOnes: fixTyped(
         DEFAULT,
         unc,
