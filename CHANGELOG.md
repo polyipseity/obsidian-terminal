@@ -1,5 +1,37 @@
 # obsidian-terminal <!-- markdownlint-disable-file MD024 -->
 
+## 3.24.0
+
+### Minor Changes
+
+- 1d94d0f: Consolidate terminal command and menu registration: add "default" to PROFILE_TYPES
+  for unified handling of default profiles alongside other profile types. Extract
+  helper functions (`openSelectProfile`, `openDefaultOrSelectProfile`,
+  `openDefaultProfileOfType`) to reduce duplication and improve code clarity.
+  Remove separate `defaultContextMenu` function and deduplicate profile lookup
+  logic into `getDefaultProfile` and `getDefaultProfileOfType`.
+- e09b3b1: Simplify CWD command types: remove empty string from CWD_TYPES and EXCLUDED_TYPES filter. Removes the `open-terminal-` translation key for the empty working directory option.
+- 15e8bfd: Restore standalone "Default profile" dropdown setting in the settings tab for
+  direct profile selection. Provides an alternative to managing default profiles
+  through the profile list modal, allowing users to quickly set or clear the
+  default profile without opening the profile management dialog.
+- 689b9fb: Enhance ribbon icon and context menus with default profile and modifier-key support. Ribbon tooltip now displays the default profile name when configured. Holding Ctrl or Meta while clicking the ribbon opens the profile selector instead of the default profile. File and editor context menus now include a direct 'Open in Terminal: Default' option when a default profile exists.
+  ([GH#108](https://github.com/polyipseity/obsidian-terminal/pull/108) by [@taisau](https://github.com/taisau))
+- 83ff482: Override WebLinksAddon's default regex so `obsidian://` URIs (in addition to
+  `https?://`) are recognized as clickable links in the terminal view.
+
+  The addon's built-in pattern from v0.12.0 only covered http(s), which meant
+  custom-protocol links were ignored. This wider regex keeps existing behavior
+  for standard URLs while fixing #88. ([GH#114](https://github.com/polyipseity/obsidian-terminal/pull/114) by [@joe-king-sh](https://github.com/joe-king-sh))
+
+### Patch Changes
+
+- 4abb2c9: Fix terminal theme not updating on existing terminals when the Obsidian
+  theme or accent color changes (#124, #135). Threads `profileSourceId`
+  through terminal state so the `onMutate` watcher can react to live
+  profile changes and trigger `FollowThemeAddon.refresh()`.
+  ([GH#136](https://github.com/polyipseity/obsidian-terminal/pull/136) by [@janah01](https://github.com/janah01))
+
 ## 3.23.0
 
 ### Minor Changes
