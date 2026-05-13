@@ -1,4 +1,14 @@
 import {
+  CHECK_EXECUTABLE_WAIT,
+  DEFAULT_PYTHONIOENCODING,
+  PYTHON_REQUIREMENTS,
+} from "./magic.js";
+import {
+  DEFAULT_TERMINAL_OPTIONS,
+  PROFILE_PRESETS,
+  PROFILE_PRESET_ORDERED_KEYS,
+} from "./terminal/profile-presets.js";
+import {
   DISABLED_TOOLTIP,
   DOMClasses,
   EditDataModal,
@@ -10,6 +20,7 @@ import {
   activeSelf,
   anyToError,
   assignExact,
+  bracket,
   clearProperties,
   cloneAsWritable,
   composeSetters,
@@ -22,35 +33,27 @@ import {
   notice2,
   printError,
   randomNotIn,
+  removeAt,
   resetButton,
   setTextToEnum,
   setTextToNumber,
+  swap,
   unexpected,
   useSettings,
   useSubsettings,
 } from "@polyipseity/obsidian-plugin-library";
+import { App, FuzzySuggestModal, Modal, type Setting } from "obsidian";
 import { constant, identity, noop } from "lodash-es";
-import { Modal, type Setting } from "obsidian";
-import type { DeepWritable } from "ts-essentials";
 import { BUNDLE } from "./import.js";
-import {
-  CHECK_EXECUTABLE_WAIT,
-  DEFAULT_PYTHONIOENCODING,
-  PYTHON_REQUIREMENTS,
-} from "./magic.js";
-import {
-  DEFAULT_TERMINAL_OPTIONS,
-  PROFILE_PRESETS,
-  PROFILE_PRESET_ORDERED_KEYS,
-} from "./terminal/profile-presets.js";
+import type { DeepWritable } from "ts-essentials";
 import { PROFILE_PROPERTIES } from "./terminal/profile-properties.js";
 import { Pseudoterminal } from "./terminal/pseudoterminal.js";
 
 import SemVer from "semver/classes/semver.js";
-import semverCoerce from "semver/functions/coerce.js";
-import getPackageVersion from "./get_package_version.py";
-import type { TerminalPlugin } from "./main.js";
 import { Settings } from "./settings-data.js";
+import type { TerminalPlugin } from "./main.js";
+import getPackageVersion from "./get_package_version.py";
+import semverCoerce from "semver/functions/coerce.js";
 
 const childProcess = dynamicRequire<typeof import("node:child_process")>(
     BUNDLE,
@@ -1166,54 +1169,136 @@ export class ProfileModal extends Modal {
   }
 }
 
+class ProfilePresetSuggestModal extends FuzzySuggestModal<{
+  readonly name: string;
+  readonly value: DeepWritable<Settings.Profile>;
+}> {
+  public constructor(
+    app: App,
+    private readonly presets: readonly {
+      readonly name: string;
+      readonly value: DeepWritable<Settings.Profile>;
+    }[],
+    private readonly callback: (
+      preset: DeepWritable<Settings.Profile>,
+    ) => unknown,
+  ) {
+    super(app);
+  }
+
+  public override getItems(): readonly {
+    readonly name: string;
+    readonly value: DeepWritable<Settings.Profile>;
+  }[] {
+    return this.presets;
+  }
+
+  public override getItemText(item: { readonly name: string }): string {
+    return item.name;
+  }
+
+  public override onChooseItem(item: {
+    readonly value: DeepWritable<Settings.Profile>;
+  }): void {
+    this.callback(item.value);
+  }
+}
+
 export class ProfileListModal extends ListModal<
   DeepWritable<Settings.Profile>
 > {
-  protected readonly dataProfileList: DeepWritable<
-    Omit<ProfileListModal.Data, "entries">
-  >;
-  protected readonly entryKeys;
+  protected readonly dataKeys;
+  #refreshCustom: () => void = (): void => {};
+  readonly #inputterCustom;
+  readonly #namerCustom;
+  readonly #descriptorCustom;
+  readonly #editablesCustom;
+  readonly #presetsCustom;
 
   public constructor(
     context: TerminalPlugin,
-    data: ProfileListModal.Data,
+    data: readonly Settings.Profile.Entry[],
     options?: ProfileListModal.Options,
   ) {
     const { value: i18n } = context.language,
       dataW = cloneAsWritable(data),
-      entryKeys = new Map(dataW.entries.map(([key, value]) => [value, key])),
+      dataKeys = new Map(dataW.map(([key, value]) => [value, key])),
       callback = options?.callback ?? ((): void => {}),
       keygen = options?.keygen ?? ((): string => self.crypto.randomUUID());
-    super(
-      context,
-      (setting, editable, getter, setter) => {
-        const profileId = entryKeys.get(getter());
-        setting.addButton((button) => {
-          const btn = button
-            .setIcon(
-              i18n.t("asset:components.profile-list.mark-as-default-icon"),
-            )
-            .setTooltip(i18n.t("components.profile-list.mark-as-default"))
+
+    const namerCustom =
+      options?.namer ??
+      ((profile): string => {
+        const id = dataKeys.get(profile) ?? "",
+          isDefault = id !== "" && id === context.settings.value.defaultProfile,
+          name = i18n.t(
+            `components.profile-list.namer-${
+              Settings.Profile.isCompatible(profile, Platform.CURRENT)
+                ? ""
+                : "incompatible"
+            }`,
+            {
+              info: Settings.Profile.info([id, profile]),
+              interpolation: { escapeValue: false },
+            },
+          );
+        return isDefault
+          ? `${name} ${i18n.t("components.profile-list.default-indicator")}`
+          : name;
+      });
+
+    const descriptorCustom =
+      options?.descriptor ??
+      ((profile): string => {
+        const id = dataKeys.get(profile) ?? "";
+        return i18n.t(
+          `components.profile-list.descriptor-${
+            Settings.Profile.isCompatible(profile, Platform.CURRENT)
+              ? ""
+              : "incompatible"
+          }`,
+          {
+            info: Settings.Profile.info([id, profile]),
+            interpolation: { escapeValue: false },
+          },
+        );
+      });
+
+    const inputterCustom = (
+      setting: Setting,
+      editable: boolean,
+      getter: () => DeepWritable<Settings.Profile>,
+      setter: (
+        setter: (
+          item: DeepWritable<Settings.Profile>,
+          index: number,
+          data: DeepWritable<Settings.Profile>[],
+        ) => unknown,
+      ) => unknown,
+    ): void => {
+      setting
+        .addButton((button) => {
+          const profile = getter(),
+            id = dataKeys.get(profile),
+            isDefault =
+              id !== void 0 && id === context.settings.value.defaultProfile;
+          button
+            .setIcon(i18n.t("asset:components.profile-list.default-icon"))
+            .setTooltip(i18n.t("components.profile-list.set-as-default"))
             .onClick(async () => {
-              await setter((item) => {
-                const id = entryKeys.get(item);
-                if (id === void 0) {
-                  return;
-                }
-                if (id === this.dataProfileList.defaultProfile) {
-                  // Unset default profile if it's already the default
-                  this.dataProfileList.defaultProfile = null;
-                  return;
-                }
-                // Set the default profile to the clicked profile
-                this.dataProfileList.defaultProfile = id;
-              });
-            });
-          if (profileId === this.dataProfileList.defaultProfile) {
-            btn.setCta();
+              if (id !== void 0) {
+                await context.settings.mutate((settingsM) => {
+                  settingsM.defaultProfile = id;
+                });
+                await this.postMutate();
+              }
+            })
+            .setDisabled(!editable || isDefault);
+          if (isDefault) {
+            button.setCta();
           }
-        });
-        setting.addButton((button) =>
+        })
+        .addButton((button) => {
           button
             .setIcon(i18n.t("asset:components.profile-list.edit-icon"))
             .setTooltip(i18n.t("components.profile-list.edit"))
@@ -1225,90 +1310,178 @@ export class ProfileListModal extends ListModal<
                 });
               }).open();
             })
-            .setDisabled(!editable),
-        );
-      },
+            .setDisabled(!editable);
+        });
+    };
+
+    const editablesCustom = (options?.editables ?? ListModal.EDITABLES).filter(
+      (e) => e !== "prepend" && e !== "append",
+    );
+
+    const presetsCustom =
+      options?.presets ??
+      PROFILE_PRESET_ORDERED_KEYS.map((key) => ({
+        get name(): string {
+          return context.language.value.t(`profile-presets.${key}`);
+        },
+        get value(): DeepWritable<Settings.Profile> {
+          return cloneAsWritable(PROFILE_PRESETS[key]);
+        },
+      }));
+
+    super(
+      context,
+      inputterCustom,
       unexpected,
-      dataW.entries.map(([, value]) => value),
+      dataW.map(([, value]) => value),
       {
         ...options,
-        ...({
-          callback: async (data0): Promise<void> => {
-            await callback({
-              ...this.dataProfileList,
-              entries: data0.map((profile) => {
-                let id = entryKeys.get(profile);
-                if (id === void 0) {
-                  entryKeys.set(
-                    profile,
-                    (id = randomNotIn([...entryKeys.values()], keygen)),
-                  );
-                }
-                return [id, cloneAsWritable(profile)];
-              }),
-            });
-          },
-        } satisfies ProfileListModal.PredefinedOptions),
-        descriptor:
-          options?.descriptor ??
-          ((profile): string => {
-            const id = entryKeys.get(profile) ?? "";
-            return i18n.t(
-              `components.profile-list.descriptor-${
-                Settings.Profile.isCompatible(profile, Platform.CURRENT)
-                  ? ""
-                  : "incompatible"
-              }`,
-              {
-                info: Settings.Profile.info([id, profile]),
-                interpolation: { escapeValue: false },
-              },
-            );
-          }),
-        namer:
-          options?.namer ??
-          ((profile): string => {
-            const id = entryKeys.get(profile) ?? "";
-            return i18n.t(
-              `components.profile-list.namer-${
-                Settings.Profile.isCompatible(profile, Platform.CURRENT)
-                  ? ""
-                  : "incompatible"
-              }`,
-              {
-                info: Settings.Profile.info([id, profile]),
-                interpolation: { escapeValue: false },
-              },
-            );
-          }),
+        descriptor: descriptorCustom,
+        editables: editablesCustom,
+        namer: namerCustom,
+        presets: presetsCustom,
+        async callback(data0): Promise<void> {
+          await callback(
+            data0.map((profile) => {
+              let id = dataKeys.get(profile);
+              if (id === void 0) {
+                dataKeys.set(
+                  profile,
+                  (id = randomNotIn([...dataKeys.values()], keygen)),
+                );
+              }
+              return [id, cloneAsWritable(profile)];
+            }),
+          );
+        },
         presetPlaceholder:
           options?.presetPlaceholder ??
           ((): string => i18n.t("components.profile-list.preset-placeholder")),
-        presets:
-          options?.presets ??
-          PROFILE_PRESET_ORDERED_KEYS.map((key) => ({
-            get name(): string {
-              return context.language.value.t(`profile-presets.${key}`);
-            },
-            get value(): DeepWritable<Settings.Profile> {
-              return cloneAsWritable(PROFILE_PRESETS[key]);
-            },
-          })),
         title:
           options?.title ??
           ((): string => i18n.t("components.profile-list.title")),
       },
     );
-    this.dataProfileList = dataW;
-    this.entryKeys = entryKeys;
+    this.dataKeys = dataKeys;
+    this.#inputterCustom = inputterCustom;
+    this.#namerCustom = namerCustom;
+    this.#descriptorCustom = descriptorCustom;
+    this.#editablesCustom = editablesCustom;
+    this.#presetsCustom = presetsCustom;
+  }
+
+  protected override setupListSubUI(
+    ui: UpdatableUI,
+    element: HTMLElement,
+  ): void {
+    this.#refreshCustom = (): void => this.setupListSubUI(ui, element);
+    const { context, data } = this,
+      { value: i18n } = context.language;
+    ui.destroy();
+
+    ui.newSetting(element, (setting) => {
+      setting.settingEl.addClass("terminal-profile-add-button");
+      setting.addButton((button) => {
+        button.buttonEl.addClass("terminal-spacer");
+      });
+      setting.addButton((button) => {
+        button.buttonEl.addClass("terminal-spacer");
+      });
+      setting.addButton((button) => {
+        button
+          .setIcon("plus")
+          .setTooltip(i18n.t("components.profile-list.preset-placeholder"))
+          .onClick(() => this.#openPresetSuggestModal(true));
+      });
+      setting.addExtraButton((button) => {
+        button.extraSettingsEl.addClass("terminal-spacer");
+      });
+      setting.addExtraButton((button) => {
+        button.extraSettingsEl.addClass("terminal-spacer");
+      });
+    });
+
+    for (const [index] of data.entries()) {
+      ui.newSetting(element, (setting) => {
+        const { valid, value: item } = bracket(data, index);
+        if (!valid) {
+          throw new Error(index.toString());
+        }
+        setting
+          .setName(this.#namerCustom(item, index, data))
+          .setDesc(this.#descriptorCustom(item, index, data));
+        this.#inputterCustom(
+          setting,
+          this.#editablesCustom.includes("edit"),
+          () => item,
+          async (setter) => {
+            await setter(item, index, data);
+            await this.postMutate();
+          },
+        );
+        if (this.#editablesCustom.includes("remove")) {
+          setting.addButton((button) =>
+            button
+              .setTooltip(i18n.t("components.list.remove"))
+              .setIcon(i18n.t("asset:components.list.remove-icon"))
+              .onClick(async () => {
+                removeAt(data, index);
+                this.#refreshCustom();
+                await this.postMutate();
+              }),
+          );
+        }
+        if (this.#editablesCustom.includes("moveUp")) {
+          setting.addExtraButton((button) =>
+            button
+              .setTooltip(i18n.t("components.list.move-up"))
+              .setIcon(i18n.t("asset:components.list.move-up-icon"))
+              .onClick(async () => {
+                if (index <= 0) {
+                  return;
+                }
+                swap(data, index - 1, index);
+                this.#refreshCustom();
+                await this.postMutate();
+              }),
+          );
+        }
+        if (this.#editablesCustom.includes("moveDown")) {
+          setting.addExtraButton((button) =>
+            button
+              .setTooltip(i18n.t("components.list.move-down"))
+              .setIcon(i18n.t("asset:components.list.move-down-icon"))
+              .onClick(async () => {
+                if (index >= data.length - 1) {
+                  return;
+                }
+                swap(data, index, index + 1);
+                this.#refreshCustom();
+                await this.postMutate();
+              }),
+          );
+        }
+      });
+    }
+  }
+
+  #openPresetSuggestModal(prepend: boolean): void {
+    new ProfilePresetSuggestModal(
+      this.app,
+      this.#presetsCustom,
+      async (preset) => {
+        if (prepend) {
+          this.data.unshift(preset);
+        } else {
+          this.data.push(preset);
+        }
+        this.#refreshCustom();
+        await this.postMutate();
+      },
+    ).open();
   }
 }
 export namespace ProfileListModal {
-  export interface Data {
-    readonly defaultProfile: Settings.DefaultProfile;
-    readonly entries: readonly Settings.Profile.Entry[];
-  }
-
   type InitialOptions = ListModal.Options<DeepWritable<Settings.Profile>>;
   export type PredefinedOptions = {
     readonly [K in "callback"]: InitialOptions[K];
@@ -1317,7 +1490,9 @@ export namespace ProfileListModal {
     InitialOptions,
     keyof PredefinedOptions
   > {
-    readonly callback?: (data: DeepWritable<Data>) => unknown;
+    readonly callback?: (
+      data: DeepWritable<Settings.Profile.Entry>[],
+    ) => unknown;
     readonly keygen?: () => string;
   }
 }
