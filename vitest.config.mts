@@ -33,6 +33,9 @@ export default defineConfig({
     },
   },
   test: {
+    coverage: {
+      provider: "istanbul", // istanbul is agnostic of engine
+    },
     environment: "happy-dom",
     include: ["tests/**/*.spec.{ts,js,mjs}", "tests/**/*.test.{ts,js,mjs}"],
     server: {
