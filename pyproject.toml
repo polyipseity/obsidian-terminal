@@ -54,6 +54,7 @@ testpaths = [".agents/skills/**/tests_*", "tests"]
 python_files = "test_*.py"
 
 [tool.ruff]
+extend-exclude = ["vendor"]
 line-length = 88
 
 [tool.ruff.lint]
@@ -76,6 +77,7 @@ exclude = [
   "**/__pycache__",
   "**/.*",
   ".venv",
+  "vendor",
   # self
 ]
 
