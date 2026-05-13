@@ -61,6 +61,7 @@
       "descriptor-": "{{info.id}}",
       "descriptor-incompatible": "（$t(generic.incompatible)）$t(components.profile-list.descriptor-)",
       "edit": "$t(generic.edit)",
+      "mark-as-default": "標記為$t(generic.default)",
       "namer-": "{{info.name}}",
       "namer-incompatible": "$t(components.profile-list.namer-)",
       "preset-placeholder": "$t(components.dropdown.placeholder)",
@@ -214,7 +215,8 @@
     "working-directory": "工作$t(generic.directory)"
   },
   "menus": {
-    "open-terminal": "在$t(generic.terminal)$t(generic.open)：$t(generic.profile-types.{{type}})"
+    "open-terminal": "在$t(generic.terminal)$t(generic.open)：$t(generic.profile-types.{{type}})",
+    "open-terminal-default": "在$t(generic.terminal)$t(generic.open)：$t(generic.default)"
   },
   "name": "$t(generic.terminal)",
   "notices": {
@@ -257,7 +259,8 @@
     "zshIntegrated": "zsh：$t(generic.profile-types.integrated)"
   },
   "ribbons": {
-    "open-terminal": "$t(generic.open)$t(generic.terminal)"
+    "open-terminal": "$t(generic.open)$t(generic.terminal)",
+    "open-terminal-default": "$t(generic.open)$t(generic.terminal)：{{name}}"
   },
   "settings": {
     "add-to-command": "加入至$t(generic.command)",

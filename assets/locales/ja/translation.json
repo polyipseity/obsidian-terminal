@@ -61,6 +61,7 @@
       "descriptor-": "{{info.id}}",
       "descriptor-incompatible": "($t(generic.incompatible)) $t(components.profile-list.descriptor-)",
       "edit": "$t(generic.edit)",
+      "mark-as-default": "Mark as $t(generic.default)",
       "namer-": "{{info.name}}",
       "namer-incompatible": "$t(components.profile-list.namer-)",
       "preset-placeholder": "$t(components.dropdown.placeholder)",
@@ -230,7 +231,8 @@
     "working-directory": "作業$t(generic.directory)"
   },
   "menus": {
-    "open-terminal": "$t(generic.terminal)で開く: $t(generic.profile-types.{{type}})"
+    "open-terminal": "$t(generic.terminal)で開く: $t(generic.profile-types.{{type}})",
+    "open-terminal-default": "$t(generic.open, capitalize) in $t(generic.terminal): $t(generic.default)"
   },
   "name": "$t(generic.terminal)",
   "notices": {
@@ -273,7 +275,8 @@
     "zshIntegrated": "zsh: $t(generic.profile-types.integrated)"
   },
   "ribbons": {
-    "open-terminal": "$t(generic.terminal)を開く"
+    "open-terminal": "$t(generic.terminal)を開く",
+    "open-terminal-default": "$t(generic.open, capitalize) $t(generic.terminal): {{name}}"
   },
   "settings": {
     "add-to-command": "$t(generic.command)に追加",
