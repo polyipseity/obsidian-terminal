@@ -6,6 +6,7 @@ import {
   createDocumentFragment,
   DOMClasses,
   linkSetting,
+  Platform,
   registerSettingsCommands,
   resetButton,
   setTextToEnum,
@@ -86,6 +87,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
           }
         });
     });
+    this.newAllSettingsWidget(Settings.DEFAULT, Settings.fix);
     ui.newSetting(containerEl, (setting) => {
       setting
         .setName(i18n.t("settings.add-to-command"))
@@ -173,6 +175,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                       });
                       this.postMutate();
                     },
+                    description: (): string =>
+                      i18n.t("settings.profile-list.description"),
                   },
                 ).open();
               }),
@@ -186,6 +190,67 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                   settingsM.profiles = cloneAsWritable(
                     Settings.DEFAULT.profiles,
                   );
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          );
+      })
+      .newSetting(containerEl, (setting) => {
+        setting
+          .setName(i18n.t("settings.default-profile"))
+          .setDesc(i18n.t("settings.default-profile-description"))
+          .addDropdown(
+            linkSetting(
+              (): string => settings.value.defaultProfile ?? "",
+              async (value) =>
+                settings.mutate((settingsM) => {
+                  // Unfortunately we have to use the empty string as a sentinel value for "no default profile" because the dropdown component doesn't allow null/undefined values. So we have to coerce it back to null here.
+                  settingsM.defaultProfile =
+                    value === "" ? null : (value as Settings.DefaultProfile);
+                }),
+              () => {
+                this.postMutate();
+              },
+              {
+                pre: (dropdown) => {
+                  dropdown
+                    .addOption("", i18n.t("components.dropdown.placeholder"))
+                    .addOptions(
+                      Object.fromEntries(
+                        Object.entries(settings.value.profiles).map(
+                          ([id, profile]) => [
+                            id,
+                            i18n.t(
+                              `settings.default-profile-name-${
+                                Settings.Profile.isCompatible(
+                                  profile,
+                                  Platform.CURRENT,
+                                )
+                                  ? ""
+                                  : "incompatible"
+                              }`,
+                              {
+                                info: Settings.Profile.info([id, profile]),
+                                interpolation: { escapeValue: false },
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                },
+              },
+            ),
+          )
+          .addExtraButton(
+            resetButton(
+              i18n.t("asset:settings.default-profile-icon"),
+              i18n.t("settings.reset"),
+              async () =>
+                settings.mutate((settingsM) => {
+                  settingsM.defaultProfile = Settings.DEFAULT.defaultProfile;
                 }),
               () => {
                 this.postMutate();
@@ -387,14 +452,13 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
     this.newSectionWidget(() => i18n.t("settings.interface"));
     ui.newSetting(containerEl, (setting) => {
       setting
-        .setName(i18n.t("settings.clean-title"))
-        .setDesc(i18n.t("settings.clean-title-description"))
+        .setName(i18n.t("settings.open-changelog-on-update"))
         .addToggle(
           linkSetting(
-            () => settings.value.cleanTitle,
+            () => settings.value.openChangelogOnUpdate,
             async (value) =>
               settings.mutate((settingsM) => {
-                settingsM.cleanTitle = value;
+                settingsM.openChangelogOnUpdate = value;
               }),
             () => {
               this.postMutate();
@@ -403,90 +467,60 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
         )
         .addExtraButton(
           resetButton(
-            i18n.t("asset:settings.clean-title-icon"),
+            i18n.t("asset:settings.open-changelog-on-update-icon"),
             i18n.t("settings.reset"),
             async () =>
               settings.mutate((settingsM) => {
-                settingsM.cleanTitle = Settings.DEFAULT.cleanTitle;
+                settingsM.openChangelogOnUpdate =
+                  Settings.DEFAULT.openChangelogOnUpdate;
               }),
             () => {
               this.postMutate();
             },
           ),
         );
-    })
-      .newSetting(containerEl, (setting) => {
-        setting
-          .setName(i18n.t("settings.open-changelog-on-update"))
-          .addToggle(
-            linkSetting(
-              () => settings.value.openChangelogOnUpdate,
-              async (value) =>
-                settings.mutate((settingsM) => {
-                  settingsM.openChangelogOnUpdate = value;
-                }),
-              () => {
-                this.postMutate();
-              },
+    }).newSetting(containerEl, (setting) => {
+      setting
+        .setName(i18n.t("settings.hide-status-bar"))
+        .addDropdown(
+          linkSetting(
+            (): string => settings.value.hideStatusBar,
+            setTextToEnum(Settings.HIDE_STATUS_BAR_OPTIONS, async (value) =>
+              settings.mutate((settingsM) => {
+                settingsM.hideStatusBar = value;
+              }),
             ),
-          )
-          .addExtraButton(
-            resetButton(
-              i18n.t("asset:settings.open-changelog-on-update-icon"),
-              i18n.t("settings.reset"),
-              async () =>
-                settings.mutate((settingsM) => {
-                  settingsM.openChangelogOnUpdate =
-                    Settings.DEFAULT.openChangelogOnUpdate;
-                }),
-              () => {
-                this.postMutate();
+            () => {
+              this.postMutate();
+            },
+            {
+              pre: (dropdown) => {
+                dropdown.addOptions(
+                  Object.fromEntries(
+                    Settings.HIDE_STATUS_BAR_OPTIONS.map((value) => [
+                      value,
+                      i18n.t(`settings.hide-status-bar-options.${value}`),
+                    ]),
+                  ),
+                );
               },
-            ),
-          );
-      })
-      .newSetting(containerEl, (setting) => {
-        setting
-          .setName(i18n.t("settings.hide-status-bar"))
-          .addDropdown(
-            linkSetting(
-              (): string => settings.value.hideStatusBar,
-              setTextToEnum(Settings.HIDE_STATUS_BAR_OPTIONS, async (value) =>
-                settings.mutate((settingsM) => {
-                  settingsM.hideStatusBar = value;
-                }),
-              ),
-              () => {
-                this.postMutate();
-              },
-              {
-                pre: (dropdown) => {
-                  dropdown.addOptions(
-                    Object.fromEntries(
-                      Settings.HIDE_STATUS_BAR_OPTIONS.map((value) => [
-                        value,
-                        i18n.t(`settings.hide-status-bar-options.${value}`),
-                      ]),
-                    ),
-                  );
-                },
-              },
-            ),
-          )
-          .addExtraButton(
-            resetButton(
-              i18n.t("asset:settings.hide-status-bar-icon"),
-              i18n.t("settings.reset"),
-              async () =>
-                settings.mutate((settingsM) => {
-                  settingsM.hideStatusBar = Settings.DEFAULT.hideStatusBar;
-                }),
-              () => {
-                this.postMutate();
-              },
-            ),
-          );
-      });
+            },
+          ),
+        )
+        .addExtraButton(
+          resetButton(
+            i18n.t("asset:settings.hide-status-bar-icon"),
+            i18n.t("settings.reset"),
+            async () =>
+              settings.mutate((settingsM) => {
+                settingsM.hideStatusBar = Settings.DEFAULT.hideStatusBar;
+              }),
+            () => {
+              this.postMutate();
+            },
+          ),
+        );
+    });
     this.newNoticeTimeoutWidget(Settings.DEFAULT);
     this.newSectionWidget(() => i18n.t("settings.advanced"));
     ui.newSetting(containerEl, (setting) => {

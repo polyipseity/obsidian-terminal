@@ -2,6 +2,10 @@
 "obsidian-terminal": minor
 ---
 
-Clean up profile management list UI and add preset selection modal
+Refactor profile list modal to use base ListModal class ([GH#109](https://github.com/polyipseity/obsidian-terminal/pull/109) by [@taisau](https://github.com/taisau))
 
-Replaced the "Prepend" and "Append" dropdowns in the Profile Management modal with a single "+" button at the top for a cleaner look. The new button opens a selection list (Suggest Modal) for choosing profile presets. Improved the visual alignment of action buttons and fixed a bug where newly added profiles were not immediately reflected in the modal view.
+Refactored ProfileListModal to extend the base ListModal class instead of
+reimplementing list UI logic, reducing code duplication and improving
+maintainability. The modal now integrates seamlessly with the library's
+generic list modal framework while preserving profile-specific UI features
+like preset selection and default profile management.

@@ -63,7 +63,6 @@
       "mark-as-default": "標記為$t(generic.default)",
       "namer-": "{{info.name}}",
       "namer-incompatible": "$t(components.profile-list.namer-)",
-      "preset-placeholder": "$t(components.dropdown.placeholder)",
       "title": "$t(generic.profile)"
     },
     "select-profile": {
