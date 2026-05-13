@@ -8,7 +8,6 @@
     "open-documentation-changelog": "$t(generic.documentations.changelog) $t(generic.open)",
     "open-documentation-donate": "$t(generic.documentations.donate) $t(generic.open)",
     "open-documentation-readme": "$t(generic.documentations.readme) $t(generic.open)",
-    "open-terminal-": "$t(generic.terminal) $t(generic.open): $t(generic.profile-types.{{type}})",
     "open-terminal-current": "$t(generic.current-directory)에서 $t(generic.terminal) $t(generic.open): $t(generic.profile-types.{{type}})",
     "open-terminal-default-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.default-profile)",
     "open-terminal-root": "$t(generic.root-directory)에서 $t(generic.terminal) $t(generic.open): $t(generic.profile-types.{{type}})",

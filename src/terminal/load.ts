@@ -31,11 +31,7 @@ export function loadTerminal(context: TerminalPlugin): void {
         (type) => type === "select" || PROFILE_PROPERTIES[type].available,
       ),
     ),
-    CWD_TYPES = deepFreeze(["", "root", "current"]),
-    EXCLUDED_TYPES = deepFreeze([
-      { cwd: "", profile: "integrated" },
-      { cwd: "", profile: "external" },
-    ]),
+    CWD_TYPES = deepFreeze(["root", "current"]),
     {
       app: { vault, workspace },
       language: { value: i18n },
@@ -293,13 +289,6 @@ export function loadTerminal(context: TerminalPlugin): void {
 
   for (const type of PROFILE_TYPES) {
     for (const cwd of CWD_TYPES) {
-      if (
-        EXCLUDED_TYPES.some(
-          ({ cwd: cwd0, profile }) => cwd0 === cwd && profile === type,
-        )
-      ) {
-        continue;
-      }
       addCommand(
         context,
         () =>
