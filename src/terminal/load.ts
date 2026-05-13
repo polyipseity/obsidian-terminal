@@ -158,7 +158,7 @@ export function loadTerminal(context: TerminalPlugin): void {
             interpolation: { escapeValue: false },
             type: "default",
           }),
-        settings.value.errorNoticeTimeout,
+        settings.value.noticeTimeout,
         context,
       );
     }
@@ -185,7 +185,7 @@ export function loadTerminal(context: TerminalPlugin): void {
             interpolation: { escapeValue: false },
             type,
           }),
-        settings.value.errorNoticeTimeout,
+        settings.value.noticeTimeout,
         context,
       );
     }
