@@ -8,9 +8,7 @@
     "open-documentation-changelog-icon": "$t(asset:generic.documentations.changelog-icon)",
     "open-documentation-donate-icon": "$t(asset:generic.documentations.donate-icon)",
     "open-documentation-readme-icon": "$t(asset:generic.documentations.readme-icon)",
-    "open-terminal--icon": "command",
     "open-terminal-current-icon": "$t(asset:generic.terminal-file-icon)",
-    "open-terminal-default-icon": "$t(asset:generic.terminal-alt-icon)",
     "open-terminal-root-icon": "$t(asset:generic.terminal-icon)",
     "toggle-focus-on-last-terminal-icon": "$t(asset:generic.actions.focus-icon)",
     "unfocus-terminal-icon": "$t(asset:generic.actions.unfocus-icon)"
@@ -103,6 +101,7 @@
     "profile-icon": "$t(asset:generic.terminal-alt-icon)",
     "profile-types": {
       "-icon": "square",
+      "default-icon": "star",
       "developerConsole-icon": "curly-braces",
       "external-icon": "$t(asset:generic.terminal-alt-icon)",
       "integrated-icon": "$t(asset:generic.terminal-icon)",

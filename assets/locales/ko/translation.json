@@ -187,6 +187,7 @@
     "profile": "$t(generic.profile_one)",
     "profile-types": {
       "": "빈",
+      "default": "$t(generic.default)",
       "developerConsole": "개발자 콘솔",
       "external": "외부",
       "integrated": "통합",

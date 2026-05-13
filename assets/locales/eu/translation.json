@@ -187,6 +187,7 @@
     "profile": "$t(generic.profile_one)",
     "profile-types": {
       "": "empty",
+      "default": "$t(generic.default)",
       "developerConsole": "developer console",
       "external": "external",
       "integrated": "integrated",

@@ -1,10 +1,4 @@
 import {
-  FileSystemAdapter,
-  MarkdownView,
-  type MenuItem,
-  TFolder,
-} from "obsidian";
-import {
   Platform,
   addCommand,
   addRibbonIcon,
@@ -12,23 +6,33 @@ import {
   isNonNil,
   notice2,
 } from "@polyipseity/obsidian-plugin-library";
-import { SelectProfileModal, spawnTerminal } from "./spawn.js";
-import { PROFILE_PROPERTIES } from "./profile-properties.js";
-import { Settings } from "../settings-data.js";
-import type { TerminalPlugin } from "../main.js";
-import { TerminalView } from "./view.js";
 import { isEmpty } from "lodash-es";
+import {
+  FileSystemAdapter,
+  MarkdownView,
+  type MenuItem,
+  TFolder,
+} from "obsidian";
+import type { TerminalPlugin } from "../main.js";
+import { Settings } from "../settings-data.js";
+import { PROFILE_PROPERTIES } from "./profile-properties.js";
+import { SelectProfileModal, spawnTerminal } from "./spawn.js";
+import { TerminalView } from "./view.js";
 
 export function loadTerminal(context: TerminalPlugin): void {
   TerminalView.load(context);
   const PROFILE_TYPES = deepFreeze(
       (
-        ["select", "integrated", "external"] satisfies readonly (
-          | keyof typeof PROFILE_PROPERTIES
+        ["default", "external", "integrated", "select"] satisfies readonly (
+          | "default"
           | "select"
+          | keyof typeof PROFILE_PROPERTIES
         )[]
       ).filter(
-        (type) => type === "select" || PROFILE_PROPERTIES[type].available,
+        (type) =>
+          type === "default" ||
+          type === "select" ||
+          PROFILE_PROPERTIES[type].available,
       ),
     ),
     CWD_TYPES = deepFreeze(["root", "current"]),
@@ -37,52 +41,31 @@ export function loadTerminal(context: TerminalPlugin): void {
       language: { value: i18n },
       settings,
     } = context,
-    defaultProfile = (
+    getDefaultProfile = (): readonly [string, Settings.Profile] | null => {
+      const { defaultProfile, profiles } = settings.value;
+      if (defaultProfile) {
+        const profile = profiles[defaultProfile];
+        if (
+          profile &&
+          Settings.Profile.isCompatible(profile, Platform.CURRENT)
+        ) {
+          return [defaultProfile, profile];
+        }
+      }
+      return null;
+    },
+    getDefaultProfileOfType = (
       type: Settings.Profile.Type,
     ): readonly [string, Settings.Profile] | null => {
-      const ret = Settings.Profile.defaultEntryOfType(
+      return Settings.Profile.defaultEntryOfType(
         type,
         settings.value.profiles,
         Platform.CURRENT,
       );
-      if (!ret) {
-        notice2(
-          () =>
-            i18n.t("notices.no-default-profile", {
-              interpolation: { escapeValue: false },
-              type,
-            }),
-          settings.value.errorNoticeTimeout,
-          context,
-        );
-      }
-      return ret;
     },
     adapter = vault.adapter instanceof FileSystemAdapter ? vault.adapter : null,
-    defaultContextMenu = (cwd?: TFolder): ((item: MenuItem) => void) | null => {
-      const { defaultProfile, profiles } = settings.value;
-      if (defaultProfile === null || !profiles[defaultProfile]) {
-        return null;
-      }
-      const profile = profiles[defaultProfile];
-      if (!Settings.Profile.isCompatible(profile, Platform.CURRENT)) {
-        return null;
-      }
-      const cwd0 = cwd ? (adapter ? adapter.getFullPath(cwd.path) : null) : cwd;
-      if (cwd0 === null) {
-        return null;
-      }
-      return (item: MenuItem) => {
-        item
-          .setTitle(i18n.t("menus.open-terminal-default"))
-          .setIcon(i18n.t("asset:components.profile-list.default-icon"))
-          .onClick(() => {
-            spawnTerminal(context, profile, { cwd: cwd0 });
-          });
-      };
-    },
     contextMenu = (
-      type: Settings.Profile.Type | "select",
+      type: (typeof PROFILE_TYPES)[number],
       cwd?: TFolder,
     ): ((item: MenuItem) => void) | null => {
       const cwd0 = cwd ? (adapter ? adapter.getFullPath(cwd.path) : null) : cwd;
@@ -104,26 +87,20 @@ export function loadTerminal(context: TerminalPlugin): void {
             }),
           )
           .onClick(() => {
+            if (type === "default") {
+              openDefaultOrSelectProfile(cwd0);
+              return;
+            }
             if (type === "select") {
-              new SelectProfileModal(context, cwd0).open();
+              openSelectProfile(cwd0);
               return;
             }
-            const entry = defaultProfile(type);
-            if (!entry) {
-              return;
-            }
-            spawnTerminal(context, entry[1], {
-              cwd: cwd0,
-              profileSourceId: entry[0],
-            });
+            openDefaultProfileOfType(type, cwd0);
           });
       };
     },
     command =
-      (
-        type: Settings.Profile.Type | "select",
-        cwd: (typeof CWD_TYPES)[number],
-      ) =>
+      (type: (typeof PROFILE_TYPES)[number], cwd: (typeof CWD_TYPES)[number]) =>
       (checking: boolean): boolean => {
         const cwd0 = ((): string | null | undefined => {
           if (!cwd) {
@@ -145,44 +122,77 @@ export function loadTerminal(context: TerminalPlugin): void {
             // No default
           }
         })();
-        if (cwd0 === null) {
-          return false;
-        }
-        if (!checking) {
-          if (type === "select") {
-            new SelectProfileModal(context, cwd0).open();
-            return true;
-          }
-          const entry = defaultProfile(type);
-          if (entry) {
-            spawnTerminal(context, entry[1], {
-              cwd: cwd0,
-              profileSourceId: entry[0],
-            });
-          }
-        }
-        return true;
+        if (cwd0 === null) return false;
+        if (type === "default")
+          return openDefaultOrSelectProfile(cwd0, checking);
+        if (type === "select") return openSelectProfile(cwd0, checking);
+        return openDefaultProfileOfType(type, cwd0, checking);
       };
 
-  const openDefaultProfile = (checking?: boolean): boolean => {
-    const { defaultProfile, profiles } = settings.value;
-    if (defaultProfile && profiles[defaultProfile]) {
-      const profile = profiles[defaultProfile];
-      if (Settings.Profile.isCompatible(profile, Platform.CURRENT)) {
-        if (!checking) {
-          spawnTerminal(context, profile, {
-            cwd: adapter?.getBasePath(),
-            profileSourceId: defaultProfile,
-          });
-        }
-        return true;
-      }
-    }
+  const openSelectProfile = (cwd?: string, checking?: boolean): boolean => {
     if (!checking) {
-      new SelectProfileModal(context, adapter?.getBasePath()).open();
+      new SelectProfileModal(context, cwd).open();
     }
     return true;
   };
+
+  const openDefaultOrSelectProfile = (
+    cwd?: string,
+    checking?: boolean,
+  ): boolean => {
+    const entry = getDefaultProfile();
+    if (entry) {
+      if (!checking) {
+        const [defaultProfileId, profile] = entry;
+        spawnTerminal(context, profile, {
+          cwd,
+          profileSourceId: defaultProfileId,
+        });
+      }
+      return true;
+    }
+    if (!checking) {
+      notice2(
+        () =>
+          i18n.t("notices.no-default-profile", {
+            interpolation: { escapeValue: false },
+            type: "default",
+          }),
+        settings.value.errorNoticeTimeout,
+        context,
+      );
+    }
+    return openSelectProfile(cwd, checking);
+  };
+
+  const openDefaultProfileOfType = (
+    type: Settings.Profile.Type,
+    cwd?: string,
+    checking?: boolean,
+  ): boolean => {
+    const entry = getDefaultProfileOfType(type);
+    if (entry) {
+      if (!checking) {
+        const [id, profile] = entry;
+        spawnTerminal(context, profile, { cwd, profileSourceId: id });
+      }
+      return true;
+    }
+    if (!checking) {
+      notice2(
+        () =>
+          i18n.t("notices.no-default-profile", {
+            interpolation: { escapeValue: false },
+            type,
+          }),
+        settings.value.errorNoticeTimeout,
+        context,
+      );
+    }
+    return true;
+  };
+
+  /* Register ribbon icons */
 
   addRibbonIcon(
     context,
@@ -201,13 +211,16 @@ export function loadTerminal(context: TerminalPlugin): void {
       return i18n.t("ribbons.open-terminal");
     },
     (evt) => {
-      if (evt.metaKey || evt.ctrlKey) {
-        new SelectProfileModal(context, adapter?.getBasePath()).open();
+      if (evt.ctrlKey || evt.metaKey) {
+        openSelectProfile(adapter?.getBasePath());
         return;
       }
-      openDefaultProfile();
+      openDefaultOrSelectProfile(adapter?.getBasePath());
     },
   );
+
+  /* Register context menu items */
+
   context.registerEvent(
     workspace.on("file-menu", (menu, file) => {
       if (!settings.value.addToContextMenu) {
@@ -216,11 +229,6 @@ export function loadTerminal(context: TerminalPlugin): void {
       const folder = file instanceof TFolder ? file : file.parent;
       if (!folder) {
         return;
-      }
-      menu.addSeparator();
-      const defaultItem = defaultContextMenu(folder);
-      if (defaultItem) {
-        menu.addItem(defaultItem);
       }
       const items = PROFILE_TYPES.map((type) =>
         contextMenu(type, folder),
@@ -242,11 +250,6 @@ export function loadTerminal(context: TerminalPlugin): void {
         return;
       }
       const { parent } = file;
-      menu.addSeparator();
-      const defaultItem = defaultContextMenu(parent);
-      if (defaultItem) {
-        menu.addItem(defaultItem);
-      }
       const items = PROFILE_TYPES.map((type) =>
         contextMenu(type, parent),
       ).filter(isNonNil);
@@ -259,29 +262,12 @@ export function loadTerminal(context: TerminalPlugin): void {
 
   /* Always register command for interop with other plugins */
 
-  addCommand(context, () => i18n.t("commands.open-terminal-default-profile"), {
-    checkCallback(checking) {
-      if (!settings.value.addToCommand) {
-        return false;
-      }
-      return openDefaultProfile(checking);
-    },
-    icon: i18n.t("asset:commands.open-terminal-default-icon"),
-    id: "open-terminal.default",
-  });
-
   addCommand(context, () => i18n.t("commands.open-developer-console"), {
     checkCallback(checking) {
       if (!settings.value.addToCommand) {
         return false;
       }
-      if (!checking) {
-        const entry = defaultProfile("developerConsole");
-        if (entry) {
-          spawnTerminal(context, entry[1], { profileSourceId: entry[0] });
-        }
-      }
-      return true;
+      return openDefaultProfileOfType("developerConsole", void 0, checking);
     },
     icon: i18n.t("asset:commands.open-developer-console-icon"),
     id: "open-terminal.developerConsole",

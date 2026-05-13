@@ -177,6 +177,7 @@
     "profile": "配置",
     "profile-types": {
       "": "空白",
+      "default": "$t(generic.default)",
       "developerConsole": "開發者控制台",
       "external": "外部",
       "integrated": "整合式",
