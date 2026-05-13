@@ -1584,6 +1584,22 @@ export class Modal extends Component {
   onClose(): void {}
 }
 
+export abstract class SuggestModal<T> extends Modal {
+  abstract getItems(): T[];
+  abstract getItemText(item: T): string;
+  abstract onChooseItem(item: T, evt?: KeyboardEvent | MouseEvent): void;
+
+  open(): void {
+    super.open();
+  }
+}
+
+export abstract class FuzzySuggestModal<T> extends SuggestModal<T> {
+  abstract getItems(): T[];
+  abstract getItemText(item: T): string;
+  abstract onChooseItem(item: T, evt?: KeyboardEvent | MouseEvent): void;
+}
+
 export class Notice {
   private message: string | DocumentFragment;
   private duration: number;
