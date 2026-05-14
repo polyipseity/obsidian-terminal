@@ -69,7 +69,6 @@ import {
   DisposerAddon,
   DragAndDropAddon,
   FollowThemeAddon,
-  KeyMappingAddon,
   RendererAddon,
   RightClickActionAddon,
 } from "./emulator-addons.js";
@@ -964,6 +963,8 @@ export class TerminalView extends ItemView {
                 ? Settings.Profile.DEFAULTS[""].terminalOptions
                 : profile.terminalOptions,
             customKeyEventHandler = new CustomKeyEventHandlerAddon(
+              () => settings.value.keyMappings,
+              Platform.CURRENT,
               Platform.CURRENT === "darwin"
                 ? () => settings.value.macOSOptionKeyPassthrough
                 : constant(false),
@@ -1053,11 +1054,6 @@ export class TerminalView extends ItemView {
                     return profile.type === "invalid" || profile.followTheme;
                   },
                 }),
-                keyMapping: new KeyMappingAddon(
-                  () => settings.value.keyMappings,
-                  customKeyEventHandler,
-                  Platform.CURRENT,
-                ),
                 ligatures: new LigaturesAddon({}),
                 renderer: new RendererAddon(
                   () => new CanvasAddon(),
@@ -1257,7 +1253,6 @@ export namespace TerminalView {
     readonly disposer: DisposerAddon;
     readonly dragAndDrop: DragAndDropAddon;
     readonly followTheme: FollowThemeAddon;
-    readonly keyMapping: KeyMappingAddon;
     readonly ligatures: LigaturesAddon;
     readonly renderer: RendererAddon;
     readonly rightClickAction: RightClickActionAddon;

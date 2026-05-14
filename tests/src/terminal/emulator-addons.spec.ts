@@ -4,7 +4,7 @@
  * Covers:
  * - Option+printable character passthrough (PR #92 behavior)
  * - Option+Arrow/Backspace/Delete: blocked by this addon but ESC sequences
- *   are now injected by `KeyMappingAddon` default mappings, not here
+ *   are injected by the constructor-provided key mappings, not here
  * - Shift+Enter ESC+CR injection (consolidated from emulator.ts)
  * - Guard conditions (disposed, platform, setting, modifier combos)
  */
@@ -59,10 +59,18 @@ describe("CustomKeyEventHandlerAddon", () => {
   let handler: (event: KeyboardEvent) => boolean;
 
   /** Helper: activate addon with passthrough enabled and return handler. */
-  function setup(isEnabled = true) {
+  function setup(
+    isEnabled = true,
+    getMappings: () => readonly import("../../../src/settings-data.js").Settings.KeyMapping[] = () => [],
+    currentPlatform = "darwin",
+  ) {
     const mock = createMockTerminal();
     inputSpy = mock.inputSpy;
-    const addon = new CustomKeyEventHandlerAddon(() => isEnabled);
+    const addon = new CustomKeyEventHandlerAddon(
+      getMappings,
+      currentPlatform,
+      () => isEnabled,
+    );
     addon.activate(mock.terminal);
     handler = mock.getHandler();
     return addon;
@@ -88,29 +96,29 @@ describe("CustomKeyEventHandlerAddon", () => {
     expect(inputSpy).not.toHaveBeenCalled();
   });
 
-  // === Option+Arrow word navigation (ESC sequences now injected by KeyMappingAddon defaults) ===
+  // === Option+Arrow word navigation (ESC sequences injected by constructor-provided key mappings) ===
 
-  it("blocks Option+Left without injecting sequence (KeyMappingAddon handles it)", () => {
+  it("blocks Option+Left without injecting sequence (no matching mapping)", () => {
     const result = handler(fakeKeyEvent({ key: "ArrowLeft", altKey: true }));
     expect(result).toBe(false);
     expect(inputSpy).not.toHaveBeenCalled();
   });
 
-  it("blocks Option+Right without injecting sequence (KeyMappingAddon handles it)", () => {
+  it("blocks Option+Right without injecting sequence (no matching mapping)", () => {
     const result = handler(fakeKeyEvent({ key: "ArrowRight", altKey: true }));
     expect(result).toBe(false);
     expect(inputSpy).not.toHaveBeenCalled();
   });
 
-  // === Option+Backspace/Delete word deletion (ESC sequences now injected by KeyMappingAddon defaults) ===
+  // === Option+Backspace/Delete word deletion (ESC sequences injected by constructor-provided key mappings) ===
 
-  it("blocks Option+Backspace without injecting sequence (KeyMappingAddon handles it)", () => {
+  it("blocks Option+Backspace without injecting sequence (no matching mapping)", () => {
     const result = handler(fakeKeyEvent({ key: "Backspace", altKey: true }));
     expect(result).toBe(false);
     expect(inputSpy).not.toHaveBeenCalled();
   });
 
-  it("blocks Option+Delete without injecting sequence (KeyMappingAddon handles it)", () => {
+  it("blocks Option+Delete without injecting sequence (no matching mapping)", () => {
     const result = handler(fakeKeyEvent({ key: "Delete", altKey: true }));
     expect(result).toBe(false);
     expect(inputSpy).not.toHaveBeenCalled();

@@ -674,35 +674,65 @@ export namespace RightClickActionAddon {
 }
 
 /**
- * Addon that registers a custom key event handler with xterm.js.
+ * Unified custom key event handler addon that consolidates all key interception.
  *
- * Handles:
- * - **macOS Option key passthrough**: xterm.js has a known bug (issue #2831) where
- *   macOptionIsMeta: false is not properly respected. This addon intercepts
- *   Option+key events, sends the browser-composed character (e.g., Option+2 → @
- *   on Finnish keyboards) via `terminal.input()`, and returns false to prevent
- *   xterm.js from sending ESC sequences.
+ * Handles (in priority order):
+ * - **User-defined key mappings**: platform-filtered mappings from settings fire
+ *   their configured action and suppress further processing.
  * - **Shift+Enter**: Sends ESC+CR for TUI apps that distinguish modified Enter.
- * - **Option+Arrow/Backspace/Delete**: Word navigation and deletion sequences.
+ * - **macOS Option key passthrough**: xterm.js has a known bug (issue #2831) where
+ *   macOptionIsMeta: false is not properly respected. When passthrough is enabled,
+ *   this addon intercepts Option+key events, sends the browser-composed character
+ *   (e.g., Option+2 → @ on Finnish keyboards) via `terminal.input()`, and returns
+ *   false to prevent xterm.js from sending ESC sequences.
  */
 export class CustomKeyEventHandlerAddon implements ITerminalAddon {
-  protected terminal: Terminal | null = null;
+  #terminal: Terminal | null = null;
 
-  public constructor(protected readonly isPassthroughEnabled: () => boolean) {}
+  public constructor(
+    protected readonly getMappings: () => readonly Settings.KeyMapping[],
+    protected readonly currentPlatform: string,
+    protected readonly isPassthroughEnabled: () => boolean,
+  ) {}
 
-  protected handle(event: KeyboardEvent): boolean {
-    // Don't process events if addon is uninitialized or disposed
-    if (this.terminal === null) {
+  public activate(terminal: Terminal): void {
+    this.#terminal = terminal;
+    terminal.attachCustomKeyEventHandler((event) => this.#handleEvent(event));
+  }
+
+  public dispose(): void {
+    this.#terminal = null;
+  }
+
+  #handleEvent(event: KeyboardEvent): boolean {
+    const terminal = this.#terminal;
+
+    // Guard: addon uninitialized or disposed
+    if (!terminal) {
       return true;
+    }
+
+    // Block during IME composition
+    if (event.isComposing) {
+      return true;
+    }
+
+    // User-defined key mappings (highest priority, platform-filtered)
+    for (const mapping of this.getMappings()) {
+      if (this.#matches(event, mapping)) {
+        if (event.type === "keydown") {
+          this.#fire(terminal, mapping);
+        }
+        return false;
+      }
     }
 
     // Shift+Enter — all platforms, unconditional
     // Sends ESC+CR for TUI apps (Claude Code, etc.) that distinguish
-    // modified Enter from plain CR. Consolidated here from emulator.ts
-    // to avoid attachCustomKeyEventHandler conflict (last call wins).
+    // modified Enter from plain CR.
     if (event.key === "Enter" && event.shiftKey) {
       if (event.type === "keydown") {
-        this.terminal.input(`${ESC}\r`);
+        terminal.input(`${ESC}\r`);
       }
       return false;
     }
@@ -736,66 +766,12 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
     // Send the browser-composed character directly via the public API
     // (e.g., Option+2 → '@', Option+7 → '|' on Finnish keyboard)
     if (event.key.length === 1) {
-      this.terminal.input(event.key);
+      terminal.input(event.key);
     }
 
     // Return false to prevent xterm.js from processing this event
     // (which would incorrectly send ESC sequences due to bug #2831)
     return false;
-  }
-
-  public activate(terminal: Terminal): void {
-    this.terminal = terminal;
-    terminal.attachCustomKeyEventHandler(this.handle.bind(this));
-  }
-
-  public dispose(): void {
-    this.terminal = null;
-  }
-}
-
-/** Unified custom key event handler that consolidates all key interception. */
-export class KeyMappingAddon implements ITerminalAddon {
-  #terminal: Terminal | null = null;
-
-  public constructor(
-    protected readonly getMappings: () => readonly Settings.KeyMapping[],
-    protected readonly macOSAddon: CustomKeyEventHandlerAddon,
-    protected readonly currentPlatform: string,
-  ) {}
-
-  public activate(terminal: Terminal): void {
-    this.#terminal = terminal;
-    terminal.attachCustomKeyEventHandler((event) => this.#handleEvent(event));
-  }
-
-  public dispose(): void {
-    this.#terminal = null;
-  }
-
-  #handleEvent(event: KeyboardEvent): boolean {
-    const terminal = this.#terminal;
-    if (!terminal) {
-      return true;
-    }
-
-    // Block during IME composition
-    if (event.isComposing) {
-      return true;
-    }
-
-    // 1. User-defined key mappings (highest priority)
-    for (const mapping of this.getMappings()) {
-      if (this.#matches(event, mapping)) {
-        if (event.type === "keydown") {
-          this.#fire(terminal, mapping);
-        }
-        return false;
-      }
-    }
-
-    // 2. macOS Option key passthrough
-    return this.macOSAddon.handle(event);
   }
 
   #matches(event: KeyboardEvent, mapping: Settings.KeyMapping): boolean {
