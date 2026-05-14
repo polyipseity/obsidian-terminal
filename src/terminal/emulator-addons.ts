@@ -808,14 +808,6 @@ export class KeyMappingAddon implements ITerminalAddon {
       }
     }
 
-    // 2. Built-in Shift+Enter → ESC+CR
-    if (event.key === "Enter" && event.shiftKey) {
-      if (event.type === "keydown") {
-        terminal.input("\x1b\r");
-      }
-      return false;
-    }
-
     // 3. macOS Option key passthrough
     // TODO: merge conflict
     return false; // return this.macOSAddon.handle(event);
