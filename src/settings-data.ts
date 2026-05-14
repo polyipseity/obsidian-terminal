@@ -122,7 +122,7 @@ export namespace Settings {
     keyMappings: [
       // Option+Left → word backward
       {
-        action: "sendEscapeSequence" as KeyMappingAction,
+        action: "sendEscapeSequence",
         actionArg: "b",
         alt: true,
         ctrl: false,
@@ -132,7 +132,7 @@ export namespace Settings {
       },
       // Option+Right → word forward
       {
-        action: "sendEscapeSequence" as KeyMappingAction,
+        action: "sendEscapeSequence",
         actionArg: "f",
         alt: true,
         ctrl: false,
@@ -142,7 +142,7 @@ export namespace Settings {
       },
       // Cmd+Left → beginning of line (Ctrl+A)
       {
-        action: "sendHexCode" as KeyMappingAction,
+        action: "sendHexCode",
         actionArg: "01",
         alt: false,
         ctrl: false,
@@ -152,7 +152,7 @@ export namespace Settings {
       },
       // Cmd+Right → end of line (Ctrl+E)
       {
-        action: "sendHexCode" as KeyMappingAction,
+        action: "sendHexCode",
         actionArg: "05",
         alt: false,
         ctrl: false,
@@ -162,7 +162,7 @@ export namespace Settings {
       },
       // Option+Backspace → delete word backward (Ctrl+W)
       {
-        action: "sendHexCode" as KeyMappingAction,
+        action: "sendHexCode",
         actionArg: "17",
         alt: true,
         ctrl: false,
@@ -172,7 +172,7 @@ export namespace Settings {
       },
       // Cmd+Backspace → delete to beginning of line (Ctrl+U)
       {
-        action: "sendHexCode" as KeyMappingAction,
+        action: "sendHexCode",
         actionArg: "15",
         alt: false,
         ctrl: false,
@@ -182,7 +182,7 @@ export namespace Settings {
       },
       // Option+Delete → delete word forward (ESC d)
       {
-        action: "sendEscapeSequence" as KeyMappingAction,
+        action: "sendEscapeSequence",
         actionArg: "d",
         alt: true,
         ctrl: false,
@@ -251,6 +251,12 @@ export namespace Settings {
     "sendText",
   ] as const);
   export type KeyMappingAction = (typeof KEY_MAPPING_ACTIONS)[number];
+  export function isKeyMappingAction(
+    value: unknown,
+  ): value is KeyMappingAction {
+    return inSet(KEY_MAPPING_ACTIONS, value);
+  }
+  /** Represents a single keyboard mapping (singular). Collection of these is `keyMappings`. */
   export interface KeyMapping {
     readonly key: string;
     readonly ctrl: boolean;
@@ -262,7 +268,7 @@ export namespace Settings {
   }
   export namespace KeyMapping {
     export const DEFAULT: KeyMapping = deepFreeze({
-      action: "ignore" as KeyMappingAction,
+      action: "ignore",
       actionArg: "",
       alt: false,
       ctrl: false,

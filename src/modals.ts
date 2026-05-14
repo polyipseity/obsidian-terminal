@@ -1410,7 +1410,13 @@ export class KeyMappingModal extends Modal {
       }
       dd.setValue(mapping.action);
       dd.onChange((val) => {
-        mapping.action = val as Settings.KeyMappingAction;
+        // Validate value is a valid action before assignment
+        if (Settings.isKeyMappingAction(val)) {
+          mapping.action = val;
+        } else {
+          // Fallback to default if invalid
+          mapping.action = "ignore";
+        }
         this.#render();
       });
     });

@@ -72,8 +72,8 @@
         "sendHexCode": "Send hex code",
         "sendText": "Send text"
       },
-      "add": "Add $t(generic.keymap)",
-      "delete": "Delete $t(generic.keymap)",
+      "add": "Add $t(generic.keymapping)",
+      "delete": "Delete $t(generic.keymapping)",
       "placeholders": {
         "sendEscapeSequence": "e.g. b",
         "sendHexCode": "e.g. 01 0d",
@@ -81,7 +81,7 @@
       },
       "record": "Click to record",
       "recording": "Press a key...",
-      "title": "$t(generic.keymap_other, capitalize)"
+      "title": "$t(generic.keymapping_other, capitalize)"
     },
     "select-profile": {
       "instructions": {
@@ -189,9 +189,12 @@
     "instance_gerund": "instancing",
     "invalid": "invalid",
     "key": "key",
-    "keymap": "$t(generic.keymap_one)",
-    "keymap_one": "keymap",
-    "keymap_other": "keymaps",
+    "keymapping": "$t(generic.keymapping_one)",
+    "keymapping_one": "keymapping",
+    "keymapping_other": "keymappings",
+    "keymap": "$t(generic.keymapping_other, capitalize)",
+    "keymap_one": "keymapping",
+    "keymap_other": "keymappings",
     "name": "name",
     "option": "option",
     "option_other": "options",
@@ -327,8 +330,8 @@
     "instancing": "$t(generic.instance_gerund, capitalize)",
     "intercept-logging": "Intercept logging",
     "interface": "Interface",
-    "keymaps": "$t(generic.keymap_other, capitalize)",
-    "keymaps-description": "{{count}} $t(generic.keymap_one)",
+    "keymaps": "$t(generic.keymapping_other, capitalize)",
+    "keymaps-description": "{{count}} $t(generic.keymapping_one)",
     "keymaps-edit": "$t(generic.edit, capitalize)",
     "macOS-option-key-passthrough": "macOS: Option key passthrough",
     "macOS-option-key-passthrough-description": "$t(generic.enable, capitalize) Option+key combinations to reach the $t(generic.terminal) for typing special characters (e.g., @ on Scandinavian/German keyboards).",
