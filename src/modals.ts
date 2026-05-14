@@ -1366,40 +1366,12 @@ export class KeyMappingModal extends Modal {
     for (let idx = 0; idx < this.#mappings.length; idx++) {
       this.#renderRow(contentEl, idx);
     }
-    new Setting(contentEl)
-      .addButton((btn) =>
-        btn.setButtonText(i18n.t("components.keymap.add")).onClick(() => {
-          this.#mappings.push(cloneAsWritable(Settings.KeyMapping.DEFAULT));
-          this.#render();
-        }),
-      )
-      .addDropdown((dd) => {
-        dd.addOption("", i18n.t("components.keymap.load-preset"));
-        for (const key of Settings.KEY_MAPPING_PRESET_KEYS) {
-          dd.addOption(key, i18n.t(`components.keymap.presets.${key}`));
-        }
-        dd.onChange((val) => {
-          if (!val) {
-            return;
-          }
-          const preset =
-            Settings.KEY_MAPPING_PRESETS[val as Settings.KeyMappingPreset];
-          if (!preset) {
-            return;
-          }
-          for (const mapping of preset) {
-            if (
-              !this.#mappings.some((m) =>
-                Settings.KeyMapping.sameKey(m, mapping),
-              )
-            ) {
-              this.#mappings.push(cloneAsWritable(mapping));
-            }
-          }
-          dd.setValue("");
-          this.#render();
-        });
-      });
+    new Setting(contentEl).addButton((btn) =>
+      btn.setButtonText(i18n.t("components.keymap.add")).onClick(() => {
+        this.#mappings.push(cloneAsWritable(Settings.KeyMapping.DEFAULT));
+        this.#render();
+      }),
+    );
   }
 
   #renderRow(container: HTMLElement, index: number): void {

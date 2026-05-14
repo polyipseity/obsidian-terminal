@@ -74,14 +74,10 @@
       },
       "add": "$t(generic.add, capitalize) $t(generic.keymap)",
       "delete": "$t(generic.delete, capitalize) $t(generic.keymap)",
-      "load-preset": "Load preset",
       "placeholders": {
         "sendEscapeSequence": "e.g. b",
         "sendHexCode": "e.g. 01 0d",
         "sendText": "e.g. hello"
-      },
-      "presets": {
-        "naturalTextEditing": "Natural Text Editing (iTerm2)"
       },
       "record": "Click to record",
       "recording": "Press a key...",
