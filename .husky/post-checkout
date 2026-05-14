@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+# Configure rolling tag to allow force updates during fetch
+# This ensures 'git fetch' can update the rolling tag without user intervention
+
+ROLLING_REFSPEC=$(git config --local --get-all remote.origin.fetch | grep -c '^+refs/tags/rolling:' || true)
+
+if [ "$ROLLING_REFSPEC" -eq 0 ]; then
+    git config --local --add remote.origin.fetch '+refs/tags/rolling:refs/tags/rolling'
+fi
