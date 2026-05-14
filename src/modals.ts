@@ -1361,22 +1361,22 @@ export class KeyMappingModal extends Modal {
       { value: i18n } = this.#context.language;
     contentEl.empty();
     contentEl.createEl("h2", {
-      text: i18n.t("components.key-mapping.title"),
+      text: i18n.t("components.keymap.title"),
     });
     for (let idx = 0; idx < this.#mappings.length; idx++) {
       this.#renderRow(contentEl, idx);
     }
     new Setting(contentEl)
       .addButton((btn) =>
-        btn.setButtonText(i18n.t("components.key-mapping.add")).onClick(() => {
+        btn.setButtonText(i18n.t("components.keymap.add")).onClick(() => {
           this.#mappings.push(cloneAsWritable(Settings.KeyMapping.DEFAULT));
           this.#render();
         }),
       )
       .addDropdown((dd) => {
-        dd.addOption("", i18n.t("components.key-mapping.load-preset"));
+        dd.addOption("", i18n.t("components.keymap.load-preset"));
         for (const key of Settings.KEY_MAPPING_PRESET_KEYS) {
-          dd.addOption(key, i18n.t(`components.key-mapping.presets.${key}`));
+          dd.addOption(key, i18n.t(`components.keymap.presets.${key}`));
         }
         dd.onChange((val) => {
           if (!val) {
@@ -1412,7 +1412,7 @@ export class KeyMappingModal extends Modal {
     setting.setName(KeyMappingModal.#formatShortcut(mapping, i18n));
     setting.nameEl.style.cursor = "pointer";
     setting.nameEl.addEventListener("click", () => {
-      setting.setName(i18n.t("components.key-mapping.recording"));
+      setting.setName(i18n.t("components.keymap.recording"));
       const MODIFIER_KEYS = new Set(["Meta", "Control", "Alt", "Shift"]);
       const handler = (event: KeyboardEvent): void => {
         event.preventDefault();
@@ -1434,10 +1434,7 @@ export class KeyMappingModal extends Modal {
     // Action dropdown
     setting.addDropdown((dd) => {
       for (const action of Settings.KEY_MAPPING_ACTIONS) {
-        dd.addOption(
-          action,
-          i18n.t(`components.key-mapping.actions.${action}`),
-        );
+        dd.addOption(action, i18n.t(`components.keymap.actions.${action}`));
       }
       dd.setValue(mapping.action);
       dd.onChange((val) => {
@@ -1451,7 +1448,7 @@ export class KeyMappingModal extends Modal {
       setting.addText((text) => {
         text.setValue(mapping.actionArg);
         text.setPlaceholder(
-          i18n.t(`components.key-mapping.placeholders.${mapping.action}`),
+          i18n.t(`components.keymap.placeholders.${mapping.action}`),
         );
         text.onChange((val) => {
           mapping.actionArg = val;
@@ -1461,8 +1458,8 @@ export class KeyMappingModal extends Modal {
 
     // Delete button
     setting.addButton((btn) => {
-      btn.setIcon(i18n.t("asset:components.key-mapping.delete-icon"));
-      btn.setTooltip(i18n.t("generic.close"));
+      btn.setIcon(i18n.t("asset:components.keymap.delete-icon"));
+      btn.setTooltip(i18n.t("components.keymap.delete"));
       btn.onClick(() => {
         this.#mappings.splice(index, 1);
         this.#render();
@@ -1475,7 +1472,7 @@ export class KeyMappingModal extends Modal {
     i18n: TerminalPlugin["language"]["value"],
   ): string {
     if (!mapping.key) {
-      return i18n.t("components.key-mapping.record");
+      return i18n.t("components.keymap.record");
     }
     return [
       mapping.ctrl && "Ctrl",

@@ -65,26 +65,27 @@
       "namer-incompatible": "$t(components.profile-list.namer-)",
       "title": "$t(generic.profile_other, capitalize)"
     },
-    "key-mapping": {
+    "keymap": {
       "actions": {
         "ignore": "Ignore",
-        "sendEscapeSequence": "Send Escape Sequence",
-        "sendHexCode": "Send Hex Code",
-        "sendText": "Send Text"
+        "sendEscapeSequence": "Send escape sequence",
+        "sendHexCode": "Send hex code",
+        "sendText": "Send text"
       },
-      "add": "Add mapping",
+      "add": "$t(generic.add, capitalize) $t(generic.keymap)",
+      "delete": "$t(generic.delete, capitalize) $t(generic.keymap)",
       "load-preset": "Load preset",
       "placeholders": {
-        "sendEscapeSequence": "e.g. [A",
-        "sendHexCode": "e.g. 0x02",
-        "sendText": "e.g. hello\\n"
+        "sendEscapeSequence": "e.g. b",
+        "sendHexCode": "e.g. 01 0d",
+        "sendText": "e.g. hello"
       },
       "presets": {
         "naturalTextEditing": "Natural Text Editing (iTerm2)"
       },
       "record": "Click to record",
       "recording": "Press a key...",
-      "title": "Key Mappings"
+      "title": "$t(generic.key, capitalize) $t(generic.keymap_other)"
     },
     "select-profile": {
       "instructions": {
@@ -191,6 +192,9 @@
     "instance": "instance",
     "instance_gerund": "instancing",
     "invalid": "invalid",
+    "keymap": "$t(generic.keymap_one)",
+    "keymap_one": "keymap",
+    "keymap_other": "keymaps",
     "name": "name",
     "option": "option",
     "option_other": "options",
@@ -326,11 +330,11 @@
     "instancing": "$t(generic.instance_gerund, capitalize)",
     "intercept-logging": "Intercept logging",
     "interface": "Interface",
-    "key-mappings": "Key mappings",
-    "key-mappings-description": "{{count}} mapping(s) defined",
-    "key-mappings-edit": "$t(generic.edit, capitalize)",
+    "keymaps": "$t(generic.key, capitalize) $t(generic.keymap_other)",
+    "keymaps-description": "{{count}} $t(generic.keymap_one)",
+    "keymaps-edit": "$t(generic.edit, capitalize)",
     "macOS-option-key-passthrough": "macOS: Option key passthrough",
-    "macOS-option-key-passthrough-description": "Allow Option+key combinations to reach the terminal for typing special characters (e.g., @ on Scandinavian/German keyboards).",
+    "macOS-option-key-passthrough-description": "$t(generic.enable, capitalize) Option+key combinations to reach the $t(generic.terminal) for typing special characters (e.g., @ on Scandinavian/German keyboards).",
     "new-instance-behavior": "New $t(generic.instance) $t(generic.behavior)",
     "new-instance-behaviors": {
       "newHorizontalSplit": "New horizontal $t(generic.split)",

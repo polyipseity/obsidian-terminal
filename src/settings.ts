@@ -630,17 +630,17 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
       })
       .newSetting(containerEl, (setting) => {
         setting
-          .setName(i18n.t("settings.key-mappings"))
+          .setName(i18n.t("settings.keymaps"))
           .setDesc(
-            i18n.t("settings.key-mappings-description", {
+            i18n.t("settings.keymaps-description", {
               count: settings.value.keyMappings.length,
               interpolation: { escapeValue: false },
             }),
           )
           .addButton((button) =>
             button
-              .setIcon(i18n.t("asset:settings.key-mappings-edit-icon"))
-              .setTooltip(i18n.t("settings.key-mappings-edit"))
+              .setIcon(i18n.t("asset:settings.keymaps-edit-icon"))
+              .setTooltip(i18n.t("settings.keymaps-edit"))
               .onClick(() => {
                 new KeyMappingModal(
                   context,
@@ -656,7 +656,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
           )
           .addExtraButton(
             resetButton(
-              i18n.t("asset:settings.key-mappings-icon"),
+              i18n.t("asset:settings.keymaps-icon"),
               i18n.t("settings.reset"),
               async () =>
                 settings.mutate((settingsM) => {
