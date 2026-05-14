@@ -85,7 +85,7 @@
       },
       "record": "Click to record",
       "recording": "Press a key...",
-      "title": "$t(generic.key, capitalize) $t(generic.keymap_other)"
+      "title": "$t(generic.keymap_other, capitalize)"
     },
     "select-profile": {
       "instructions": {
@@ -330,7 +330,7 @@
     "instancing": "$t(generic.instance_gerund, capitalize)",
     "intercept-logging": "Intercept logging",
     "interface": "Interface",
-    "keymaps": "$t(generic.key, capitalize) $t(generic.keymap_other)",
+    "keymaps": "$t(generic.keymap_other, capitalize)",
     "keymaps-description": "{{count}} $t(generic.keymap_one)",
     "keymaps-edit": "$t(generic.edit, capitalize)",
     "macOS-option-key-passthrough": "macOS: Option key passthrough",
