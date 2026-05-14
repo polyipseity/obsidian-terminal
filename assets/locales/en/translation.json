@@ -72,8 +72,8 @@
         "sendHexCode": "Send hex code",
         "sendText": "Send text"
       },
-      "add": "$t(generic.add, capitalize) $t(generic.keymap)",
-      "delete": "$t(generic.delete, capitalize) $t(generic.keymap)",
+      "add": "Add $t(generic.keymap)",
+      "delete": "Delete $t(generic.keymap)",
       "placeholders": {
         "sendEscapeSequence": "e.g. b",
         "sendHexCode": "e.g. 01 0d",
@@ -188,6 +188,7 @@
     "instance": "instance",
     "instance_gerund": "instancing",
     "invalid": "invalid",
+    "key": "key",
     "keymap": "$t(generic.keymap_one)",
     "keymap_one": "keymap",
     "keymap_other": "keymaps",
