@@ -194,7 +194,7 @@ export function loadTerminal(context: TerminalPlugin): void {
 
   /* Register ribbon icons */
 
-  addRibbonIcon(
+  const openTerminal = addRibbonIcon(
     context,
     i18n.t("asset:ribbons.open-terminal-id"),
     i18n.t("asset:ribbons.open-terminal-icon"),
@@ -216,6 +216,12 @@ export function loadTerminal(context: TerminalPlugin): void {
       }
       openDefaultOrSelectProfile(adapter?.getBasePath());
     },
+  );
+  context.register(
+    settings.onMutate(
+      (settings) => settings.defaultProfile,
+      openTerminal.reload,
+    ),
   );
 
   /* Register context menu items */
