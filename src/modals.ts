@@ -1389,7 +1389,9 @@ export class KeyMappingModal extends Modal {
           }
           for (const mapping of preset) {
             if (
-              !this.#mappings.some((m) => Settings.KeyMapping.sameKey(m, mapping))
+              !this.#mappings.some((m) =>
+                Settings.KeyMapping.sameKey(m, mapping),
+              )
             ) {
               this.#mappings.push(cloneAsWritable(mapping));
             }

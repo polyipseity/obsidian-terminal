@@ -691,73 +691,73 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
   public constructor(protected readonly isPassthroughEnabled: () => boolean) {}
 
   protected handle(event: KeyboardEvent): boolean {
-      // Don't process events if addon is uninitialized or disposed
-      if (this.terminal === null) {
-        return true;
-      }
+    // Don't process events if addon is uninitialized or disposed
+    if (this.terminal === null) {
+      return true;
+    }
 
-      // Shift+Enter — all platforms, unconditional
-      // Sends ESC+CR for TUI apps (Claude Code, etc.) that distinguish
-      // modified Enter from plain CR. Consolidated here from emulator.ts
-      // to avoid attachCustomKeyEventHandler conflict (last call wins).
-      if (event.key === "Enter" && event.shiftKey) {
-        if (event.type === "keydown") {
-          this.terminal.input(`${ESC}\r`);
-        }
-        return false;
+    // Shift+Enter — all platforms, unconditional
+    // Sends ESC+CR for TUI apps (Claude Code, etc.) that distinguish
+    // modified Enter from plain CR. Consolidated here from emulator.ts
+    // to avoid attachCustomKeyEventHandler conflict (last call wins).
+    if (event.key === "Enter" && event.shiftKey) {
+      if (event.type === "keydown") {
+        this.terminal.input(`${ESC}\r`);
       }
+      return false;
+    }
 
-      // Only intercept on Mac when passthrough is enabled
-      // (macOptionIsMeta is auto-disabled when passthrough is enabled)
-      if (!this.isPassthroughEnabled()) {
-        return true; // Let xterm.js handle normally
-      }
+    // Only intercept on Mac when passthrough is enabled
+    // (macOptionIsMeta is auto-disabled when passthrough is enabled)
+    if (!this.isPassthroughEnabled()) {
+      return true; // Let xterm.js handle normally
+    }
 
-      // Only intercept Option+key (not Option alone, not with Cmd/Ctrl)
-      if (!event.altKey || event.metaKey || event.ctrlKey) {
-        return true;
-      }
+    // Only intercept Option+key (not Option alone, not with Cmd/Ctrl)
+    if (!event.altKey || event.metaKey || event.ctrlKey) {
+      return true;
+    }
 
-      // Only handle keydown events (not keyup)
-      if (event.type !== "keydown") {
-        return false; // Block keyup to prevent duplicate handling
-      }
+    // Only handle keydown events (not keyup)
+    if (event.type !== "keydown") {
+      return false; // Block keyup to prevent duplicate handling
+    }
 
-      // Ignore the Option key press itself
-      if (event.key === "Alt") {
-        return false; // Block to prevent any ESC sequence for modifier alone
-      }
+    // Ignore the Option key press itself
+    if (event.key === "Alt") {
+      return false; // Block to prevent any ESC sequence for modifier alone
+    }
 
-      // Let Option+Enter pass through for apps like Claude Code that use it for newline
-      if (event.key === "Enter") {
-        return true;
-      }
+    // Let Option+Enter pass through for apps like Claude Code that use it for newline
+    if (event.key === "Enter") {
+      return true;
+    }
 
-      // Option+Arrow word navigation
-      if (event.key === "ArrowLeft") {
-        this.terminal.input(`${ESC}b`); // backward-word
-        return false;
-      }
-      if (event.key === "ArrowRight") {
-        this.terminal.input(`${ESC}f`); // forward-word
-        return false;
-      }
+    // Option+Arrow word navigation
+    if (event.key === "ArrowLeft") {
+      this.terminal.input(`${ESC}b`); // backward-word
+      return false;
+    }
+    if (event.key === "ArrowRight") {
+      this.terminal.input(`${ESC}f`); // forward-word
+      return false;
+    }
 
-      // Option+Backspace/Delete word deletion
-      if (event.key === "Backspace") {
-        this.terminal.input(`${ESC}\x7f`); // backward-kill-word
-        return false;
-      }
-      if (event.key === "Delete") {
-        this.terminal.input(`${ESC}d`); // forward-kill-word
-        return false;
-      }
+    // Option+Backspace/Delete word deletion
+    if (event.key === "Backspace") {
+      this.terminal.input(`${ESC}\x7f`); // backward-kill-word
+      return false;
+    }
+    if (event.key === "Delete") {
+      this.terminal.input(`${ESC}d`); // forward-kill-word
+      return false;
+    }
 
-      // Send the browser-composed character directly via the public API
-      // (e.g., Option+2 → '@', Option+7 → '|' on Finnish keyboard)
-      if (event.key.length === 1) {
-        this.terminal.input(event.key);
-      }
+    // Send the browser-composed character directly via the public API
+    // (e.g., Option+2 → '@', Option+7 → '|' on Finnish keyboard)
+    if (event.key.length === 1) {
+      this.terminal.input(event.key);
+    }
 
     // Return false to prevent xterm.js from processing this event
     // (which would incorrectly send ESC sequences due to bug #2831)
@@ -818,7 +818,7 @@ export class KeyMappingAddon implements ITerminalAddon {
 
     // 3. macOS Option key passthrough
     // TODO: merge conflict
-    return false;  // return this.macOSAddon.handle(event);
+    return false; // return this.macOSAddon.handle(event);
   }
 
   #matches(event: KeyboardEvent, mapping: Settings.KeyMapping): boolean {
