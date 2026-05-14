@@ -3,7 +3,8 @@
  *
  * Covers:
  * - Option+printable character passthrough (PR #92 behavior)
- * - Option+Arrow/Backspace/Delete navigation sequences (new)
+ * - Option+Arrow/Backspace/Delete: blocked by this addon but ESC sequences
+ *   are now injected by `KeyMappingAddon` default mappings, not here
  * - Shift+Enter ESC+CR injection (consolidated from emulator.ts)
  * - Guard conditions (disposed, platform, setting, modifier combos)
  */
@@ -87,32 +88,32 @@ describe("CustomKeyEventHandlerAddon", () => {
     expect(inputSpy).not.toHaveBeenCalled();
   });
 
-  // === Option+Arrow word navigation ===
+  // === Option+Arrow word navigation (ESC sequences now injected by KeyMappingAddon defaults) ===
 
-  it("sends ESC+b for Option+Left (backward-word)", () => {
+  it("blocks Option+Left without injecting sequence (KeyMappingAddon handles it)", () => {
     const result = handler(fakeKeyEvent({ key: "ArrowLeft", altKey: true }));
     expect(result).toBe(false);
-    expect(inputSpy).toHaveBeenCalledWith("\x1bb");
+    expect(inputSpy).not.toHaveBeenCalled();
   });
 
-  it("sends ESC+f for Option+Right (forward-word)", () => {
+  it("blocks Option+Right without injecting sequence (KeyMappingAddon handles it)", () => {
     const result = handler(fakeKeyEvent({ key: "ArrowRight", altKey: true }));
     expect(result).toBe(false);
-    expect(inputSpy).toHaveBeenCalledWith("\x1bf");
+    expect(inputSpy).not.toHaveBeenCalled();
   });
 
-  // === Option+Backspace/Delete word deletion ===
+  // === Option+Backspace/Delete word deletion (ESC sequences now injected by KeyMappingAddon defaults) ===
 
-  it("sends ESC+DEL for Option+Backspace (backward-kill-word)", () => {
+  it("blocks Option+Backspace without injecting sequence (KeyMappingAddon handles it)", () => {
     const result = handler(fakeKeyEvent({ key: "Backspace", altKey: true }));
     expect(result).toBe(false);
-    expect(inputSpy).toHaveBeenCalledWith("\x1b\x7f");
+    expect(inputSpy).not.toHaveBeenCalled();
   });
 
-  it("sends ESC+d for Option+Delete (forward-kill-word)", () => {
+  it("blocks Option+Delete without injecting sequence (KeyMappingAddon handles it)", () => {
     const result = handler(fakeKeyEvent({ key: "Delete", altKey: true }));
     expect(result).toBe(false);
-    expect(inputSpy).toHaveBeenCalledWith("\x1bd");
+    expect(inputSpy).not.toHaveBeenCalled();
   });
 
   // === Guard conditions ===

@@ -79,6 +79,11 @@
         "sendHexCode": "e.g. 01 0d",
         "sendText": "e.g. hello"
       },
+      "platform": "$t(generic.platform, capitalize)",
+      "platform-options-": "All $t(generic.platform_other)",
+      "platform-options-darwin": "$t(generic.platforms.darwin)",
+      "platform-options-linux": "$t(generic.platforms.linux)",
+      "platform-options-win32": "$t(generic.platforms.win32)",
       "record": "Click to record",
       "recording": "Press a key...",
       "title": "$t(generic.keymapping_other, capitalize)"
@@ -200,6 +205,7 @@
     "option_other": "options",
     "pin": "pin",
     "platform": "platform",
+    "platform_other": "platforms",
     "platforms": {
       "darwin": "macOS",
       "linux": "Linux",

@@ -963,6 +963,11 @@ export class TerminalView extends ItemView {
               profile.type === "invalid"
                 ? Settings.Profile.DEFAULTS[""].terminalOptions
                 : profile.terminalOptions,
+            customKeyEventHandler = new CustomKeyEventHandlerAddon(
+              Platform.CURRENT === "darwin"
+                ? () => settings.value.macOSOptionKeyPassthrough
+                : constant(false),
+            ),
             emulator = new TerminalView.EMULATOR(
               ele,
               async (terminal) => {
@@ -1017,11 +1022,7 @@ export class TerminalView extends ItemView {
                 settings.value.terminalOptions,
               ),
               {
-                customKeyEventHandler: new CustomKeyEventHandlerAddon(
-                  Platform.CURRENT === "darwin"
-                    ? () => settings.value.macOSOptionKeyPassthrough
-                    : constant(false),
-                ),
+                customKeyEventHandler,
                 disposer: new DisposerAddon(
                   () => {
                     ele.remove();
@@ -1052,6 +1053,11 @@ export class TerminalView extends ItemView {
                     return profile.type === "invalid" || profile.followTheme;
                   },
                 }),
+                keyMapping: new KeyMappingAddon(
+                  () => settings.value.keyMappings,
+                  customKeyEventHandler,
+                  Platform.CURRENT,
+                ),
                 ligatures: new LigaturesAddon({}),
                 renderer: new RendererAddon(
                   () => new CanvasAddon(),

@@ -733,26 +733,6 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
       return true;
     }
 
-    // Option+Arrow word navigation
-    if (event.key === "ArrowLeft") {
-      this.terminal.input(`${ESC}b`); // backward-word
-      return false;
-    }
-    if (event.key === "ArrowRight") {
-      this.terminal.input(`${ESC}f`); // forward-word
-      return false;
-    }
-
-    // Option+Backspace/Delete word deletion
-    if (event.key === "Backspace") {
-      this.terminal.input(`${ESC}\x7f`); // backward-kill-word
-      return false;
-    }
-    if (event.key === "Delete") {
-      this.terminal.input(`${ESC}d`); // forward-kill-word
-      return false;
-    }
-
     // Send the browser-composed character directly via the public API
     // (e.g., Option+2 → '@', Option+7 → '|' on Finnish keyboard)
     if (event.key.length === 1) {
@@ -781,6 +761,7 @@ export class KeyMappingAddon implements ITerminalAddon {
   public constructor(
     protected readonly getMappings: () => readonly Settings.KeyMapping[],
     protected readonly macOSAddon: CustomKeyEventHandlerAddon,
+    protected readonly currentPlatform: string,
   ) {}
 
   public activate(terminal: Terminal): void {
@@ -798,6 +779,11 @@ export class KeyMappingAddon implements ITerminalAddon {
       return true;
     }
 
+    // Block during IME composition
+    if (event.isComposing) {
+      return true;
+    }
+
     // 1. User-defined key mappings (highest priority)
     for (const mapping of this.getMappings()) {
       if (this.#matches(event, mapping)) {
@@ -808,12 +794,18 @@ export class KeyMappingAddon implements ITerminalAddon {
       }
     }
 
-    // 3. macOS Option key passthrough
-    // TODO: merge conflict
-    return false; // return this.macOSAddon.handle(event);
+    // 2. macOS Option key passthrough
+    return this.macOSAddon.handle(event);
   }
 
   #matches(event: KeyboardEvent, mapping: Settings.KeyMapping): boolean {
+    // Skip mappings that don't match the current platform
+    if (
+      mapping.platform !== undefined &&
+      mapping.platform !== this.currentPlatform
+    ) {
+      return false;
+    }
     return (
       event.key === mapping.key &&
       event.ctrlKey === mapping.ctrl &&

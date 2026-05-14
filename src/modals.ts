@@ -1421,6 +1421,26 @@ export class KeyMappingModal extends Modal {
       });
     });
 
+    // Platform dropdown
+    setting.addDropdown((dd) => {
+      dd.addOption("", i18n.t("components.keymap.platform-options-"));
+      for (const platform of Settings.KEY_MAPPING_PLATFORMS) {
+        dd.addOption(
+          platform,
+          i18n.t(`components.keymap.platform-options-${platform}`),
+        );
+      }
+      dd.setValue(mapping.platform ?? "");
+      dd.onChange((val) => {
+        mapping.platform =
+          val === ""
+            ? void 0
+            : Settings.isKeyMappingPlatform(val)
+              ? val
+              : void 0;
+      });
+    });
+
     // Value input (hidden for "ignore")
     if (mapping.action !== "ignore") {
       setting.addText((text) => {
@@ -1452,7 +1472,7 @@ export class KeyMappingModal extends Modal {
     if (!mapping.key) {
       return i18n.t("components.keymap.record");
     }
-    return [
+    const shortcut = [
       mapping.ctrl && "Ctrl",
       mapping.alt && "Alt",
       mapping.meta && "Meta",
@@ -1461,5 +1481,9 @@ export class KeyMappingModal extends Modal {
     ]
       .filter(Boolean)
       .join("+");
+    if (mapping.platform !== undefined) {
+      return `${i18n.t(`generic.platforms.${mapping.platform}`)}: ${shortcut}`;
+    }
+    return shortcut;
   }
 }

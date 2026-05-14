@@ -128,6 +128,7 @@ export namespace Settings {
         ctrl: false,
         key: "ArrowLeft",
         meta: false,
+        platform: "darwin",
         shift: false,
       },
       // Option+Right → word forward
@@ -138,6 +139,7 @@ export namespace Settings {
         ctrl: false,
         key: "ArrowRight",
         meta: false,
+        platform: "darwin",
         shift: false,
       },
       // Cmd+Left → beginning of line (Ctrl+A)
@@ -148,6 +150,7 @@ export namespace Settings {
         ctrl: false,
         key: "ArrowLeft",
         meta: true,
+        platform: "darwin",
         shift: false,
       },
       // Cmd+Right → end of line (Ctrl+E)
@@ -158,6 +161,7 @@ export namespace Settings {
         ctrl: false,
         key: "ArrowRight",
         meta: true,
+        platform: "darwin",
         shift: false,
       },
       // Option+Backspace → delete word backward (Ctrl+W)
@@ -168,6 +172,7 @@ export namespace Settings {
         ctrl: false,
         key: "Backspace",
         meta: false,
+        platform: "darwin",
         shift: false,
       },
       // Cmd+Backspace → delete to beginning of line (Ctrl+U)
@@ -178,6 +183,7 @@ export namespace Settings {
         ctrl: false,
         key: "Backspace",
         meta: true,
+        platform: "darwin",
         shift: false,
       },
       // Option+Delete → delete word forward (ESC d)
@@ -188,6 +194,7 @@ export namespace Settings {
         ctrl: false,
         key: "Delete",
         meta: false,
+        platform: "darwin",
         shift: false,
       },
     ],
@@ -256,12 +263,20 @@ export namespace Settings {
   ): value is KeyMappingAction {
     return inSet(KEY_MAPPING_ACTIONS, value);
   }
+  export const KEY_MAPPING_PLATFORMS = Pseudoterminal.SUPPORTED_PLATFORMS;
+  export type KeyMappingPlatform = (typeof KEY_MAPPING_PLATFORMS)[number];
+  export function isKeyMappingPlatform(
+    value: unknown,
+  ): value is KeyMappingPlatform {
+    return inSet(KEY_MAPPING_PLATFORMS, value);
+  }
   /** Represents a single keyboard mapping (singular). Collection of these is `keyMappings`. */
   export interface KeyMapping {
     readonly key: string;
     readonly ctrl: boolean;
     readonly alt: boolean;
     readonly meta: boolean;
+    readonly platform?: KeyMappingPlatform;
     readonly shift: boolean;
     readonly action: KeyMappingAction;
     readonly actionArg: string;
@@ -274,6 +289,7 @@ export namespace Settings {
       ctrl: false,
       key: "",
       meta: false,
+      platform: void 0,
       shift: false,
     });
     export function fix(self0: unknown): Fixed<KeyMapping> {
@@ -285,6 +301,10 @@ export namespace Settings {
         ctrl: fixTyped(DEFAULT, unc, "ctrl", ["boolean"]),
         key: fixTyped(DEFAULT, unc, "key", ["string"]),
         meta: fixTyped(DEFAULT, unc, "meta", ["boolean"]),
+        platform: fixInSet(DEFAULT, unc, "platform", [
+          void 0,
+          ...KEY_MAPPING_PLATFORMS,
+        ]),
         shift: fixTyped(DEFAULT, unc, "shift", ["boolean"]),
       });
     }
