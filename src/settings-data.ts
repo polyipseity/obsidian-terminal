@@ -197,6 +197,20 @@ export namespace Settings {
         platform: "darwin",
         shift: false,
       },
+      // Shift+Enter → ESC CR — all platforms.
+      // Many TUI apps (e.g., Claude Code) distinguish Shift+Enter from plain
+      // Enter; this sends the standard "modified CR" sequence ESC \r (\x1b\r).
+      // Remove or override this entry if you need a different behaviour.
+      {
+        action: "sendEscapeSequence",
+        actionArg: "\r",
+        alt: false,
+        ctrl: false,
+        key: "Enter",
+        meta: false,
+        platform: void 0,
+        shift: true,
+      },
     ],
     language: "",
     macOSOptionKeyPassthrough: true,
@@ -251,8 +265,22 @@ export namespace Settings {
   export const PREFERRED_RENDERER_OPTIONS = RendererAddon.RENDERER_OPTIONS;
   export type PreferredRendererOption = RendererAddon.RendererOption;
 
+  /**
+   * All valid actions for a {@link KeyMapping}.
+   *
+   * - `"ignore"` — suppress the event; send nothing.
+   * - `"passthrough"` — yield to xterm.js; the event is processed as if no
+   *   mapping matched. Useful for explicitly opting out of a default mapping
+   *   for a specific key combination without deleting the default entry.
+   * - `"sendEscapeSequence"` — send `ESC` followed by {@link KeyMapping.actionArg}.
+   * - `"sendHexCode"` — send bytes specified as space-separated hex codes in
+   *   {@link KeyMapping.actionArg} (e.g., `"01 0d"`).
+   * - `"sendText"` — send {@link KeyMapping.actionArg} as-is, with `\\n`, `\\t`,
+   *   `\\e`, and `\\a` interpreted as their control characters.
+   */
   export const KEY_MAPPING_ACTIONS = deepFreeze([
     "ignore",
+    "passthrough",
     "sendEscapeSequence",
     "sendHexCode",
     "sendText",
@@ -309,14 +337,31 @@ export namespace Settings {
       });
     }
 
-    /** Check if two mappings have the same key combination. */
-    export function sameKey(a: KeyMapping, b: KeyMapping): boolean {
+    /**
+     * Returns `true` when two mappings can conflict at runtime — that is,
+     * when they share the same key combination AND their platform restrictions
+     * overlap.
+     *
+     * Two entries with the same key combination but different, non-overlapping
+     * platforms (e.g., one `"darwin"` and one `"linux"`) will never both fire
+     * for the same event, so they do **not** conflict. An entry with
+     * `platform: undefined` (all platforms) overlaps with every other entry.
+     *
+     * Use this instead of a plain key-equality check to avoid false positives
+     * when detecting duplicates in the keyMappings list.
+     */
+    export function conflictsKey(a: KeyMapping, b: KeyMapping): boolean {
       return (
         a.key === b.key &&
         a.ctrl === b.ctrl &&
         a.alt === b.alt &&
         a.meta === b.meta &&
-        a.shift === b.shift
+        a.shift === b.shift &&
+        // Platforms overlap when either entry is all-platform (undefined) or
+        // both entries target the same specific platform.
+        (a.platform === undefined ||
+          b.platform === undefined ||
+          a.platform === b.platform)
       );
     }
   }

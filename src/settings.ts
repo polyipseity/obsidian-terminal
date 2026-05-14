@@ -637,6 +637,12 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
             ),
           );
       })
+      // Note: macOSOptionKeyPassthrough is intentionally shown on all platforms
+      // (not just darwin) so users can pre-configure the setting before
+      // switching to macOS.  The toggle has no effect at runtime on non-macOS
+      // platforms (view.ts passes constant(false) for isPassthroughEnabled
+      // when Platform.CURRENT !== "darwin").  The setting description explains
+      // this behaviour to the user.
       .newSetting(containerEl, (setting) => {
         setting
           .setName(i18n.t("settings.macOS-option-key-passthrough"))

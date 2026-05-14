@@ -68,6 +68,7 @@
     "keymap": {
       "actions": {
         "ignore": "Ignore",
+        "passthrough": "Pass through",
         "sendEscapeSequence": "Send escape sequence",
         "sendHexCode": "Send hex code",
         "sendText": "Send text"
@@ -340,7 +341,7 @@
     "keymap-description": "$t(generic.keymapping_other, capitalize)",
     "keymap-edit": "$t(generic.edit, capitalize)",
     "macOS-option-key-passthrough": "macOS: Option key passthrough",
-    "macOS-option-key-passthrough-description": "$t(generic.enable, capitalize) Option+key combinations to reach the $t(generic.terminal) for typing special characters (e.g., @ on Scandinavian/German keyboards).",
+    "macOS-option-key-passthrough-description": "When enabled, Option+character key combinations (e.g., Option+2 → @ on Scandinavian/German keyboards) are sent to the $t(generic.terminal) as the browser-composed character instead of an ESC sequence. This works around a known xterm.js bug (#2831). Only takes effect on macOS; the setting is visible on all platforms so it can be pre-configured before switching.",
     "new-instance-behavior": "New $t(generic.instance) $t(generic.behavior)",
     "new-instance-behaviors": {
       "newHorizontalSplit": "New horizontal $t(generic.split)",

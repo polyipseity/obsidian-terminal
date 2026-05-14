@@ -15,7 +15,6 @@ import { constant, isUndefined } from "lodash-es";
 import { around } from "monkey-around";
 import { noop } from "ts-essentials";
 import type { Settings } from "../settings-data.js";
-import { ESCAPE_SEQUENCE_INTRODUCER as ESC } from "./utils.js";
 
 export class DisposerAddon extends Functions implements ITerminalAddon {
   public constructor(...args: readonly (() => void)[]) {
@@ -676,15 +675,34 @@ export namespace RightClickActionAddon {
 /**
  * Unified custom key event handler addon that consolidates all key interception.
  *
- * Handles (in priority order):
- * - **User-defined key mappings**: platform-filtered mappings from settings fire
- *   their configured action and suppress further processing.
- * - **Shift+Enter**: Sends ESC+CR for TUI apps that distinguish modified Enter.
- * - **macOS Option key passthrough**: xterm.js has a known bug (issue #2831) where
- *   macOptionIsMeta: false is not properly respected. When passthrough is enabled,
- *   this addon intercepts Option+key events, sends the browser-composed character
- *   (e.g., Option+2 → @ on Finnish keyboards) via `terminal.input()`, and returns
- *   false to prevent xterm.js from sending ESC sequences.
+ * The pipeline (in priority order):
+ *
+ * 1. **IME guard** — events fired during IME composition are passed through
+ *    unchanged so the input method can operate unimpeded.
+ *
+ * 2. **Key mappings** — the user-defined (and built-in default) ordered list
+ *    from `Settings.keyMappings` is checked; the first match wins:
+ *    - `"ignore"` — suppress the event, send nothing.
+ *    - `"passthrough"` — yield to xterm.js as if no mapping matched; useful
+ *      for explicitly opting out of a default mapping for a specific combo.
+ *    - `"sendEscapeSequence"` / `"sendHexCode"` / `"sendText"` — fire the
+ *      configured output and suppress the event.
+ *    Each mapping can be restricted to a specific platform via its `platform`
+ *    field; `undefined` means all platforms.
+ *
+ * 3. **macOS Option key passthrough** (enabled by `isPassthroughEnabled`):
+ *    xterm.js issue #2831 — when `macOptionIsMeta` is `false`, xterm still
+ *    fires ESC sequences for single-character Option+key events on macOS.
+ *    When passthrough is enabled this stage intercepts those events, re-emits
+ *    the browser-composed character (e.g., Option+2 → `@` on Finnish
+ *    keyboards) via `terminal.input()`, and returns `false` to prevent xterm
+ *    from also sending an ESC sequence.
+ *    Internal rules of this stage (not user-configurable because they are
+ *    correctness rules of the workaround, not preferences):
+ *    - Option key alone → suppressed (prevents a stray bare ESC).
+ *    - Option + single-character key → re-emit composed char, suppress event.
+ *    - All other Option+key (Enter, function keys, arrows not covered by a
+ *      mapping, etc.) → passed through to xterm unchanged.
  */
 export class CustomKeyEventHandlerAddon implements ITerminalAddon {
   #terminal: Terminal | null = null;
@@ -712,66 +730,67 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
       return true;
     }
 
-    // Block during IME composition
+    // Block during IME composition so the input method operates unimpeded.
     if (event.isComposing) {
       return true;
     }
 
-    // User-defined key mappings (highest priority, platform-filtered)
+    // --- Stage 1: key mappings ---
+    // Walk the ordered list; first match wins.
     for (const mapping of this.getMappings()) {
       if (this.#matches(event, mapping)) {
+        if (mapping.action === "passthrough") {
+          // Yield to xterm for both keydown and keyup; behave as if no
+          // mapping existed for this combination.
+          return true;
+        }
         if (event.type === "keydown") {
           this.#fire(terminal, mapping);
         }
+        // Suppress both keydown and keyup so xterm never sees this event.
         return false;
       }
     }
 
-    // Shift+Enter — all platforms, unconditional
-    // Sends ESC+CR for TUI apps (Claude Code, etc.) that distinguish
-    // modified Enter from plain CR.
-    if (event.key === "Enter" && event.shiftKey) {
-      if (event.type === "keydown") {
-        terminal.input(`${ESC}\r`);
-      }
-      return false;
-    }
+    // --- Stage 2: macOS Option key passthrough ---
+    // Workaround for xterm.js issue #2831: even with macOptionIsMeta: false,
+    // xterm fires ESC sequences for single-character Option+key events on macOS.
+    // When passthrough is enabled we intercept those events, re-emit the
+    // browser-composed character, and block xterm from processing them.
 
-    // Only intercept on Mac when passthrough is enabled
-    // (macOptionIsMeta is auto-disabled when passthrough is enabled)
+    // Only active when explicitly enabled (set to constant(false) on non-macOS
+    // in view.ts so this stage is effectively a no-op outside darwin).
     if (!this.isPassthroughEnabled()) {
-      return true; // Let xterm.js handle normally
+      return true;
     }
 
-    // Only intercept Option+key (not Option alone, not with Cmd/Ctrl)
+    // Only relevant for Option+key. Events that also carry Cmd or Ctrl are not
+    // affected by the Option-composition bug and should reach xterm normally.
     if (!event.altKey || event.metaKey || event.ctrlKey) {
       return true;
     }
 
-    // Only handle keydown events (not keyup)
-    if (event.type !== "keydown") {
-      return false; // Block keyup to prevent duplicate handling
-    }
-
-    // Ignore the Option key press itself
+    // Option key alone: suppress to prevent a stray bare ESC sequence that
+    // some xterm builds fire for the modifier press/release itself.
     if (event.key === "Alt") {
-      return false; // Block to prevent any ESC sequence for modifier alone
+      return false;
     }
 
-    // Let Option+Enter pass through for apps like Claude Code that use it for newline
-    if (event.key === "Enter") {
-      return true;
-    }
-
-    // Send the browser-composed character directly via the public API
-    // (e.g., Option+2 → '@', Option+7 → '|' on Finnish keyboard)
+    // Single-character keys (e.g., Option+2 → '@' on Finnish keyboard):
+    // re-emit the browser-composed character and suppress the original event.
+    // Both keydown and keyup are suppressed to avoid duplicate output.
     if (event.key.length === 1) {
-      terminal.input(event.key);
+      if (event.type === "keydown") {
+        terminal.input(event.key);
+      }
+      return false;
     }
 
-    // Return false to prevent xterm.js from processing this event
-    // (which would incorrectly send ESC sequences due to bug #2831)
-    return false;
+    // All other Option+key events (Enter, function keys, arrows not matched by
+    // a key mapping, etc.): pass through to xterm unchanged.
+    // These multi-character key names are not subject to the #2831 composition
+    // bug, so xterm can handle them correctly without interception.
+    return true;
   }
 
   #matches(event: KeyboardEvent, mapping: Settings.KeyMapping): boolean {
@@ -791,14 +810,27 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
     );
   }
 
+  /**
+   * Execute the action configured for a matched mapping.
+   *
+   * Note: `"passthrough"` is handled before this method is called in
+   * `#handleEvent()` (it returns `true` immediately), so `#fire()` will never
+   * receive a `"passthrough"` mapping in practice.  The case is listed here
+   * for exhaustiveness and to make the intent explicit.
+   */
   #fire(terminal: Terminal, mapping: Settings.KeyMapping): void {
     switch (mapping.action) {
       case "ignore":
+      case "passthrough":
+        // "ignore"      — suppress the event, send nothing.
+        // "passthrough" — handled before #fire() is called; listed for exhaustiveness.
         break;
       case "sendEscapeSequence":
+        // Send ESC (\x1b) followed by actionArg verbatim.
         terminal.input("\x1b" + mapping.actionArg);
         break;
       case "sendHexCode": {
+        // actionArg is space-separated hex bytes, e.g. "01 0d".
         const chars = mapping.actionArg
           .trim()
           .split(/\s+/)
@@ -812,6 +844,8 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
         break;
       }
       case "sendText": {
+        // actionArg is sent as-is; escape sequences \\n, \\t, \\e, \\a are
+        // interpreted as their corresponding control characters.
         const text = mapping.actionArg
           .replace(/\\n/g, "\n")
           .replace(/\\t/g, "\t")

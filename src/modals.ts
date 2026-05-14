@@ -1441,8 +1441,8 @@ export class KeyMappingModal extends Modal {
       });
     });
 
-    // Value input (hidden for "ignore")
-    if (mapping.action !== "ignore") {
+    // Value input (hidden for actions that take no argument: "ignore", "passthrough")
+    if (mapping.action !== "ignore" && mapping.action !== "passthrough") {
       setting.addText((text) => {
         text.setValue(mapping.actionArg);
         text.setPlaceholder(
