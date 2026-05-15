@@ -51,7 +51,8 @@
       "edit-icon": "$t(asset:generic.edit-icon)",
       "mark-as-default-icon": "star"
     },
-    "keymap": {
+    "keymapping": {
+      "add-icon": "$t(asset:generic.add-icon)",
       "delete-icon": "trash"
     },
     "terminal": {
@@ -137,8 +138,8 @@
     "focus-on-new-instance-icon": "$t(asset:generic.actions.focus-icon)",
     "hide-status-bar-icon": "eye-off",
     "intercept-logging-icon": "scroll-text",
-    "keymap-edit-icon": "keyboard",
-    "keymap-icon": "keyboard",
+    "keymappings-edit-icon": "keyboard",
+    "keymappings-icon": "keyboard",
     "macOS-option-key-passthrough-icon": "option",
     "new-instance-behavior-icon": "plus",
     "open-changelog-on-update-icon": "$t(asset:generic.documentations.changelog-icon)",

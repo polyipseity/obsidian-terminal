@@ -65,10 +65,10 @@
       "namer-incompatible": "$t(components.profile-list.namer-)",
       "title": "$t(generic.profile_other, capitalize)"
     },
-    "keymap": {
+    "keymapping": {
       "actions": {
         "ignore": "Ignore",
-        "passthrough": "Pass through",
+        "passthrough": "Passthrough",
         "sendEscapeSequence": "Send escape sequence",
         "sendHexCode": "Send hex code",
         "sendText": "Send text"
@@ -198,9 +198,6 @@
     "keymapping": "$t(generic.keymapping_one)",
     "keymapping_one": "keymapping",
     "keymapping_other": "keymappings",
-    "keymap": "$t(generic.keymapping_other, capitalize)",
-    "keymap_one": "keymapping",
-    "keymap_other": "keymappings",
     "name": "name",
     "option": "option",
     "option_other": "options",
@@ -337,9 +334,9 @@
     "instancing": "$t(generic.instance_gerund, capitalize)",
     "intercept-logging": "Intercept logging",
     "interface": "Interface",
-    "keymap": "$t(generic.keymap, capitalize)",
-    "keymap-description": "$t(generic.keymapping_other, capitalize)",
-    "keymap-edit": "$t(generic.edit, capitalize)",
+    "keymappings": "$t(generic.keymapping_other, capitalize)",
+    "keymappings-description": "Custom keyboard shortcuts sent to the $t(generic.terminal). Each keymapping binds a key combination (with optional modifier keys and platform filter) to an action such as sending an escape sequence, raw text, or a hex code. Keymappings are checked before the $t(generic.terminal) sees the key event; the first matching keymapping wins.",
+    "keymappings-edit": "$t(generic.edit, capitalize)",
     "macOS-option-key-passthrough": "macOS: Option key passthrough",
     "macOS-option-key-passthrough-description": "When enabled, Option+character key combinations (e.g., Option+2 → @ on Scandinavian/German keyboards) are sent to the $t(generic.terminal) as the browser-composed character instead of an ESC sequence. This works around a known xterm.js bug (#2831). Only takes effect on macOS; the setting is visible on all platforms so it can be pre-configured before switching.",
     "new-instance-behavior": "New $t(generic.instance) $t(generic.behavior)",

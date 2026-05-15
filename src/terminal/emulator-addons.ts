@@ -680,8 +680,8 @@ export namespace RightClickActionAddon {
  * 1. **IME guard** — events fired during IME composition are passed through
  *    unchanged so the input method can operate unimpeded.
  *
- * 2. **Key mappings** — the user-defined (and built-in default) ordered list
- *    from `Settings.keyMappings` is checked; the first match wins:
+ * 2. **Keymappings** — the user-defined (and built-in default) ordered list
+ *    from `Settings.keymappings` is checked; the first match wins:
  *    - `"ignore"` — suppress the event, send nothing.
  *    - `"passthrough"` — yield to xterm.js as if no mapping matched; useful
  *      for explicitly opting out of a default mapping for a specific combo.
@@ -708,7 +708,7 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
   #terminal: Terminal | null = null;
 
   public constructor(
-    protected readonly getMappings: () => readonly Settings.KeyMapping[],
+    protected readonly getMappings: () => readonly Settings.Keymapping[],
     protected readonly currentPlatform: string,
     protected readonly isPassthroughEnabled: () => boolean,
   ) {}
@@ -735,7 +735,7 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
       return true;
     }
 
-    // --- Stage 1: key mappings ---
+    // --- Stage 1: keymappings ---
     // Walk the ordered list; first match wins.
     for (const mapping of this.getMappings()) {
       if (this.#matches(event, mapping)) {
@@ -787,13 +787,13 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
     }
 
     // All other Option+key events (Enter, function keys, arrows not matched by
-    // a key mapping, etc.): pass through to xterm unchanged.
+    // a keymapping, etc.): pass through to xterm unchanged.
     // These multi-character key names are not subject to the #2831 composition
     // bug, so xterm can handle them correctly without interception.
     return true;
   }
 
-  #matches(event: KeyboardEvent, mapping: Settings.KeyMapping): boolean {
+  #matches(event: KeyboardEvent, mapping: Settings.Keymapping): boolean {
     // Skip mappings that don't match the current platform
     if (
       mapping.platform !== undefined &&
@@ -818,7 +818,7 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
    * receive a `"passthrough"` mapping in practice.  The case is listed here
    * for exhaustiveness and to make the intent explicit.
    */
-  #fire(terminal: Terminal, mapping: Settings.KeyMapping): void {
+  #fire(terminal: Terminal, mapping: Settings.Keymapping): void {
     switch (mapping.action) {
       case "ignore":
       case "passthrough":

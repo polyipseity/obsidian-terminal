@@ -963,7 +963,7 @@ export class TerminalView extends ItemView {
                 ? Settings.Profile.DEFAULTS[""].terminalOptions
                 : profile.terminalOptions,
             customKeyEventHandler = new CustomKeyEventHandlerAddon(
-              () => settings.value.keyMappings,
+              () => settings.value.keymappings,
               Platform.CURRENT,
               Platform.CURRENT === "darwin"
                 ? () => settings.value.macOSOptionKeyPassthrough

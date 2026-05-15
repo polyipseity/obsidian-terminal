@@ -1329,16 +1329,16 @@ export namespace ProfileListModal {
   }
 }
 
-/** Modal for editing custom key mappings. */
-export class KeyMappingModal extends Modal {
+/** Modal for editing custom keymappings. */
+export class KeymappingsModal extends Modal {
   readonly #context: TerminalPlugin;
-  readonly #mappings: DeepWritable<Settings.KeyMapping>[];
-  readonly #callback: (mappings: Settings.KeyMapping[]) => void;
+  readonly #mappings: DeepWritable<Settings.Keymapping>[];
+  readonly #callback: (mappings: Settings.Keymapping[]) => void;
 
   public constructor(
     context: TerminalPlugin,
-    mappings: readonly Settings.KeyMapping[],
-    callback: (mappings: Settings.KeyMapping[]) => void,
+    mappings: readonly Settings.Keymapping[],
+    callback: (mappings: Settings.Keymapping[]) => void,
   ) {
     super(context.app);
     this.#context = context;
@@ -1361,16 +1361,19 @@ export class KeyMappingModal extends Modal {
       { value: i18n } = this.#context.language;
     contentEl.empty();
     contentEl.createEl("h2", {
-      text: i18n.t("components.keymap.title"),
+      text: i18n.t("components.keymapping.title"),
     });
     for (let idx = 0; idx < this.#mappings.length; idx++) {
       this.#renderRow(contentEl, idx);
     }
     new Setting(contentEl).addButton((btn) =>
-      btn.setButtonText(i18n.t("components.keymap.add")).onClick(() => {
-        this.#mappings.push(cloneAsWritable(Settings.KeyMapping.DEFAULT));
-        this.#render();
-      }),
+      btn
+        .setIcon(i18n.t("asset:components.keymapping.add-icon"))
+        .setTooltip(i18n.t("components.keymapping.add"))
+        .onClick(() => {
+          this.#mappings.push(cloneAsWritable(Settings.Keymapping.DEFAULT));
+          this.#render();
+        }),
     );
   }
 
@@ -1381,10 +1384,10 @@ export class KeyMappingModal extends Modal {
       setting = new Setting(container);
 
     // Shortcut label as the setting name (left side), clickable to re-record
-    setting.setName(KeyMappingModal.#formatShortcut(mapping, i18n));
+    setting.setName(KeymappingsModal.#formatShortcut(mapping, i18n));
     setting.nameEl.style.cursor = "pointer";
     setting.nameEl.addEventListener("click", () => {
-      setting.setName(i18n.t("components.keymap.recording"));
+      setting.setName(i18n.t("components.keymapping.recording"));
       const MODIFIER_KEYS = new Set(["Meta", "Control", "Alt", "Shift"]);
       const handler = (event: KeyboardEvent): void => {
         event.preventDefault();
@@ -1406,12 +1409,12 @@ export class KeyMappingModal extends Modal {
     // Action dropdown
     setting.addDropdown((dd) => {
       for (const action of Settings.KEY_MAPPING_ACTIONS) {
-        dd.addOption(action, i18n.t(`components.keymap.actions.${action}`));
+        dd.addOption(action, i18n.t(`components.keymapping.actions.${action}`));
       }
       dd.setValue(mapping.action);
       dd.onChange((val) => {
         // Validate value is a valid action before assignment
-        if (Settings.isKeyMappingAction(val)) {
+        if (Settings.isKeymappingAction(val)) {
           mapping.action = val;
         } else {
           // Fallback to default if invalid
@@ -1423,11 +1426,11 @@ export class KeyMappingModal extends Modal {
 
     // Platform dropdown
     setting.addDropdown((dd) => {
-      dd.addOption("", i18n.t("components.keymap.platform-options-"));
+      dd.addOption("", i18n.t("components.keymapping.platform-options-"));
       for (const platform of Settings.KEY_MAPPING_PLATFORMS) {
         dd.addOption(
           platform,
-          i18n.t(`components.keymap.platform-options-${platform}`),
+          i18n.t(`components.keymapping.platform-options-${platform}`),
         );
       }
       dd.setValue(mapping.platform ?? "");
@@ -1435,7 +1438,7 @@ export class KeyMappingModal extends Modal {
         mapping.platform =
           val === ""
             ? void 0
-            : Settings.isKeyMappingPlatform(val)
+            : Settings.isKeymappingPlatform(val)
               ? val
               : void 0;
       });
@@ -1446,7 +1449,7 @@ export class KeyMappingModal extends Modal {
       setting.addText((text) => {
         text.setValue(mapping.actionArg);
         text.setPlaceholder(
-          i18n.t(`components.keymap.placeholders.${mapping.action}`),
+          i18n.t(`components.keymapping.placeholders.${mapping.action}`),
         );
         text.onChange((val) => {
           mapping.actionArg = val;
@@ -1456,8 +1459,8 @@ export class KeyMappingModal extends Modal {
 
     // Delete button
     setting.addButton((btn) => {
-      btn.setIcon(i18n.t("asset:components.keymap.delete-icon"));
-      btn.setTooltip(i18n.t("components.keymap.delete"));
+      btn.setIcon(i18n.t("asset:components.keymapping.delete-icon"));
+      btn.setTooltip(i18n.t("components.keymapping.delete"));
       btn.onClick(() => {
         this.#mappings.splice(index, 1);
         this.#render();
@@ -1466,11 +1469,11 @@ export class KeyMappingModal extends Modal {
   }
 
   static #formatShortcut(
-    mapping: Settings.KeyMapping,
+    mapping: Settings.Keymapping,
     i18n: TerminalPlugin["language"]["value"],
   ): string {
     if (!mapping.key) {
-      return i18n.t("components.keymap.record");
+      return i18n.t("components.keymapping.record");
     }
     const shortcut = [
       mapping.ctrl && "Ctrl",

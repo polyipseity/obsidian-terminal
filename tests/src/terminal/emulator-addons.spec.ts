@@ -4,18 +4,18 @@
  * Covers:
  * - Option+printable character passthrough (macOS xterm bug #2831 workaround)
  * - Option+non-character keys (arrows, function keys, Enter) now pass through
- *   to xterm when no key mapping matches — the old suppression was a bug
- * - Key mapping actions including the new "passthrough" action
- * - Shift+Enter ESC+CR injection via default key mapping (not hardcoded)
+ *   to xterm when no keymapping matches — the old suppression was a bug
+ * - Keymapping actions including the new "passthrough" action
+ * - Shift+Enter ESC+CR injection via default keymapping (not hardcoded)
  * - Guard conditions (disposed, platform, setting, modifier combos)
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Terminal } from "@xterm/xterm";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Settings } from "../../../src/settings-data.js";
 import {
   CustomKeyEventHandlerAddon,
   FollowThemeAddon,
 } from "../../../src/terminal/emulator-addons.js";
-import type { Terminal } from "@xterm/xterm";
-import type { Settings } from "../../../src/settings-data.js";
 
 /** Minimal mock Terminal with `input()` and `attachCustomKeyEventHandler()`. */
 function createMockTerminal() {
@@ -58,7 +58,7 @@ function fakeKeyEvent(
 }
 
 /** The built-in Shift+Enter → ESC CR mapping (platform-agnostic default). */
-const SHIFT_ENTER_MAPPING: Settings.KeyMapping = {
+const SHIFT_ENTER_MAPPING: Settings.Keymapping = {
   action: "sendEscapeSequence",
   actionArg: "\r",
   alt: false,
@@ -76,7 +76,7 @@ describe("CustomKeyEventHandlerAddon", () => {
   /** Helper: activate addon with passthrough enabled and return handler. */
   function setup(
     isEnabled = true,
-    getMappings: () => readonly Settings.KeyMapping[] = () => [],
+    getMappings: () => readonly Settings.Keymapping[] = () => [],
     currentPlatform = "darwin",
   ) {
     const mock = createMockTerminal();
@@ -114,7 +114,7 @@ describe("CustomKeyEventHandlerAddon", () => {
   // === Option+non-character keys pass through when no mapping matches ===
   // These were previously suppressed (a bug: non-char Option+keys like arrows
   // and function keys are not affected by xterm bug #2831 and should reach
-  // xterm normally when no key mapping covers them).
+  // xterm normally when no keymapping covers them).
 
   it("passes through Option+Left to xterm when no mapping matches", () => {
     const result = handler(fakeKeyEvent({ key: "ArrowLeft", altKey: true }));
@@ -189,7 +189,7 @@ describe("CustomKeyEventHandlerAddon", () => {
     expect(inputSpy).not.toHaveBeenCalled();
   });
 
-  // === Key mapping actions ===
+  // === Keymapping actions ===
 
   it("'ignore' action suppresses the event and sends nothing", () => {
     setup(false, () => [
@@ -249,7 +249,7 @@ describe("CustomKeyEventHandlerAddon", () => {
     expect(inputSpy).toHaveBeenCalledWith("\x1bb");
   });
 
-  // === Shift+Enter (now provided via key mapping, not hardcoded) ===
+  // === Shift+Enter (now provided via keymapping, not hardcoded) ===
 
   it("Shift+Enter sends ESC+CR when the default mapping is provided", () => {
     // Passthrough disabled; Shift+Enter is handled by the mapping in Stage 1.
@@ -269,7 +269,7 @@ describe("CustomKeyEventHandlerAddon", () => {
   });
 
   it("Shift+Enter passes through when no mapping is configured", () => {
-    // With no keyMappings and passthrough disabled, Shift+Enter is not handled
+    // With no keymappings and passthrough disabled, Shift+Enter is not handled
     // by either stage and falls through to xterm.
     setup(false);
     const result = handler(fakeKeyEvent({ key: "Enter", shiftKey: true }));

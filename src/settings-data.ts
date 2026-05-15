@@ -20,22 +20,6 @@ import {
   opaqueOrDefault,
   semVerString,
 } from "@polyipseity/obsidian-plugin-library";
-import {
-  DEFAULT_LINK_HANDLER,
-  DEFAULT_LOGGER,
-  DEFAULT_TERMINAL_OPTIONS,
-  DEFAULT_THEME,
-  DEFAULT_WINDOWS_PTY,
-  DEFAULT_WINDOW_OPTIONS,
-  PROFILE_PRESETS,
-} from "./terminal/profile-presets.js";
-import type {
-  DeepReadonly,
-  DeepRequired,
-  DeepUndefinable,
-  DeepWritable,
-  MarkOptional,
-} from "ts-essentials";
 import type {
   FontWeight,
   ILinkHandler,
@@ -45,13 +29,29 @@ import type {
   IWindowOptions,
   IWindowsPty,
 } from "@xterm/xterm";
+import { isNil, isUndefined, omitBy } from "lodash-es";
+import type {
+  DeepReadonly,
+  DeepRequired,
+  DeepUndefinable,
+  DeepWritable,
+  MarkOptional,
+} from "ts-essentials";
+import { PluginLocales } from "../assets/locales.js";
+import { DEFAULT_SUCCESS_EXIT_CODES } from "./magic.js";
 import {
   RendererAddon,
   RightClickActionAddon,
 } from "./terminal/emulator-addons.js";
-import { isNil, isUndefined, omitBy } from "lodash-es";
-import { DEFAULT_SUCCESS_EXIT_CODES } from "./magic.js";
-import { PluginLocales } from "../assets/locales.js";
+import {
+  DEFAULT_LINK_HANDLER,
+  DEFAULT_LOGGER,
+  DEFAULT_TERMINAL_OPTIONS,
+  DEFAULT_THEME,
+  DEFAULT_WINDOWS_PTY,
+  DEFAULT_WINDOW_OPTIONS,
+  PROFILE_PRESETS,
+} from "./terminal/profile-presets.js";
 import { Pseudoterminal } from "./terminal/pseudoterminal.js";
 
 export interface LocalSettings extends PluginContext.LocalSettings {
@@ -93,7 +93,7 @@ export interface Settings extends PluginContext.Settings {
   readonly interceptLogging: boolean;
   readonly macOSOptionKeyPassthrough: boolean;
   readonly preferredRenderer: Settings.PreferredRendererOption;
-  readonly keyMappings: readonly Settings.KeyMapping[];
+  readonly keymappings: readonly Settings.Keymapping[];
 }
 export namespace Settings {
   export type DefaultProfile = keyof Profiles | null;
@@ -119,7 +119,7 @@ export namespace Settings {
     focusOnNewInstance: true,
     hideStatusBar: "focused",
     interceptLogging: true,
-    keyMappings: [
+    keymappings: [
       // Option+Left → word backward
       {
         action: "sendEscapeSequence",
@@ -266,16 +266,16 @@ export namespace Settings {
   export type PreferredRendererOption = RendererAddon.RendererOption;
 
   /**
-   * All valid actions for a {@link KeyMapping}.
+   * All valid actions for a {@link Keymapping}.
    *
    * - `"ignore"` — suppress the event; send nothing.
    * - `"passthrough"` — yield to xterm.js; the event is processed as if no
    *   mapping matched. Useful for explicitly opting out of a default mapping
    *   for a specific key combination without deleting the default entry.
-   * - `"sendEscapeSequence"` — send `ESC` followed by {@link KeyMapping.actionArg}.
+   * - `"sendEscapeSequence"` — send `ESC` followed by {@link Keymapping.actionArg}.
    * - `"sendHexCode"` — send bytes specified as space-separated hex codes in
-   *   {@link KeyMapping.actionArg} (e.g., `"01 0d"`).
-   * - `"sendText"` — send {@link KeyMapping.actionArg} as-is, with `\\n`, `\\t`,
+   *   {@link Keymapping.actionArg} (e.g., `"01 0d"`).
+   * - `"sendText"` — send {@link Keymapping.actionArg} as-is, with `\\n`, `\\t`,
    *   `\\e`, and `\\a` interpreted as their control characters.
    */
   export const KEY_MAPPING_ACTIONS = deepFreeze([
@@ -285,32 +285,32 @@ export namespace Settings {
     "sendHexCode",
     "sendText",
   ] as const);
-  export type KeyMappingAction = (typeof KEY_MAPPING_ACTIONS)[number];
-  export function isKeyMappingAction(
+  export type KeymappingAction = (typeof KEY_MAPPING_ACTIONS)[number];
+  export function isKeymappingAction(
     value: unknown,
-  ): value is KeyMappingAction {
+  ): value is KeymappingAction {
     return inSet(KEY_MAPPING_ACTIONS, value);
   }
   export const KEY_MAPPING_PLATFORMS = Pseudoterminal.SUPPORTED_PLATFORMS;
-  export type KeyMappingPlatform = (typeof KEY_MAPPING_PLATFORMS)[number];
-  export function isKeyMappingPlatform(
+  export type KeymappingPlatform = (typeof KEY_MAPPING_PLATFORMS)[number];
+  export function isKeymappingPlatform(
     value: unknown,
-  ): value is KeyMappingPlatform {
+  ): value is KeymappingPlatform {
     return inSet(KEY_MAPPING_PLATFORMS, value);
   }
-  /** Represents a single keyboard mapping (singular). Collection of these is `keyMappings`. */
-  export interface KeyMapping {
+  /** Represents a single keyboard mapping (singular). Collection of these is `keymappings`. */
+  export interface Keymapping {
     readonly key: string;
     readonly ctrl: boolean;
     readonly alt: boolean;
     readonly meta: boolean;
-    readonly platform?: KeyMappingPlatform;
+    readonly platform?: KeymappingPlatform;
     readonly shift: boolean;
-    readonly action: KeyMappingAction;
+    readonly action: KeymappingAction;
     readonly actionArg: string;
   }
-  export namespace KeyMapping {
-    export const DEFAULT: KeyMapping = deepFreeze({
+  export namespace Keymapping {
+    export const DEFAULT: Keymapping = deepFreeze({
       action: "ignore",
       actionArg: "",
       alt: false,
@@ -320,8 +320,8 @@ export namespace Settings {
       platform: void 0,
       shift: false,
     });
-    export function fix(self0: unknown): Fixed<KeyMapping> {
-      const unc = launderUnchecked<KeyMapping>(self0);
+    export function fix(self0: unknown): Fixed<Keymapping> {
+      const unc = launderUnchecked<Keymapping>(self0);
       return markFixed(self0, {
         action: fixInSet(DEFAULT, unc, "action", KEY_MAPPING_ACTIONS),
         actionArg: fixTyped(DEFAULT, unc, "actionArg", ["string"]),
@@ -348,9 +348,9 @@ export namespace Settings {
      * `platform: undefined` (all platforms) overlaps with every other entry.
      *
      * Use this instead of a plain key-equality check to avoid false positives
-     * when detecting duplicates in the keyMappings list.
+     * when detecting duplicates in the keymappings list.
      */
-    export function conflictsKey(a: KeyMapping, b: KeyMapping): boolean {
+    export function conflictsKey(a: Keymapping, b: Keymapping): boolean {
       return (
         a.key === b.key &&
         a.ctrl === b.ctrl &&
@@ -1371,10 +1371,10 @@ export namespace Settings {
         HIDE_STATUS_BAR_OPTIONS,
       ),
       interceptLogging: fixTyped(DEFAULT, unc, "interceptLogging", ["boolean"]),
-      keyMappings: ((): readonly KeyMapping[] => {
-        const { keyMappings } = unc;
-        if (Array.isArray(keyMappings)) {
-          return keyMappings.map((m: unknown) => KeyMapping.fix(m).value);
+      keymappings: ((): readonly Keymapping[] => {
+        const { keymappings } = unc;
+        if (Array.isArray(keymappings)) {
+          return keymappings.map((m: unknown) => Keymapping.fix(m).value);
         }
         return [];
       })(),

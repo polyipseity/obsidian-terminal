@@ -16,7 +16,7 @@ import semverLt from "semver/functions/lt.js";
 import type { loadDocumentations } from "./documentations.js";
 import type { TerminalPlugin } from "./main.js";
 import {
-  KeyMappingModal,
+  KeymappingsModal,
   ProfileListModal,
   TerminalOptionsModal,
 } from "./modals.js";
@@ -264,24 +264,24 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
       })
       .newSetting(containerEl, (setting) => {
         setting
-          .setName(i18n.t("settings.keymap"))
+          .setName(i18n.t("settings.keymappings"))
           .setDesc(
-            i18n.t("settings.keymap-description", {
-              count: settings.value.keyMappings.length,
+            i18n.t("settings.keymappings-description", {
+              count: settings.value.keymappings.length,
               interpolation: { escapeValue: false },
             }),
           )
           .addButton((button) =>
             button
-              .setIcon(i18n.t("asset:settings.keymap-edit-icon"))
-              .setTooltip(i18n.t("settings.keymap-edit"))
+              .setIcon(i18n.t("asset:settings.keymappings-edit-icon"))
+              .setTooltip(i18n.t("settings.keymappings-edit"))
               .onClick(() => {
-                new KeyMappingModal(
+                new KeymappingsModal(
                   context,
-                  settings.value.keyMappings,
+                  settings.value.keymappings,
                   async (data): Promise<void> => {
                     await settings.mutate((settingsM) => {
-                      settingsM.keyMappings = data;
+                      settingsM.keymappings = data;
                     });
                     this.postMutate();
                   },
@@ -290,11 +290,11 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
           )
           .addExtraButton(
             resetButton(
-              i18n.t("asset:settings.keymap-icon"),
+              i18n.t("asset:settings.keymappings-icon"),
               i18n.t("settings.reset"),
               async () =>
                 settings.mutate((settingsM) => {
-                  settingsM.keyMappings = [];
+                  settingsM.keymappings = [];
                 }),
               () => {
                 this.postMutate();
