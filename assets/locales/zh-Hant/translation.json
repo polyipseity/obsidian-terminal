@@ -15,6 +15,30 @@
     "unfocus-terminal": "$t(generic.unfocus)$t(generic.terminal)"
   },
   "components": {
+    "keymappings": {
+      "action": "動作",
+      "actions": {
+        "ignore": "忽略",
+        "passthrough": "穿透",
+        "sendEscapeSequence": "傳送跳脫序列",
+        "sendHexCode": "傳送十六進位代碼",
+        "sendText": "傳送文字"
+      },
+      "edit": "$t(generic.edit, capitalize)",
+      "placeholders": {
+        "sendEscapeSequence": "例如 b",
+        "sendHexCode": "例如 01 0d",
+        "sendText": "例如 hello"
+      },
+      "platform": "$t(generic.platform, capitalize)",
+      "platform-options-": "所有平台",
+      "platform-options-darwin": "$t(generic.platforms.darwin)",
+      "platform-options-linux": "$t(generic.platforms.linux)",
+      "platform-options-win32": "$t(generic.platforms.win32)",
+      "record": "點擊錄製",
+      "recording": "按任意鍵⋯⋯",
+      "title": "$t(generic.keymapping_other, capitalize)"
+    },
     "profile": {
       "data": "$t(generic.data)",
       "data-edit": "$t(generic.edit)",
@@ -161,6 +185,8 @@
     "incompatible": "不$t(generic.compatible)",
     "instance": "個體",
     "invalid": "無效",
+    "key": "按鍵",
+    "keymapping": "按鍵映射",
     "name": "名稱",
     "option": "選項",
     "pin": "釘選",
@@ -289,8 +315,11 @@
     "instancing": "$t(generic.instance)",
     "intercept-logging": "攔截記錄",
     "interface": "界面",
+    "keymappings": "$t(generic.keymapping_other, capitalize)",
+    "keymappings-description": "在$t(generic.terminal)之前攔截的自訂按鍵綁定。每條記錄將按鍵組合（可選平台篩選器）映射到一個動作——跳脫序列、原始文字或十六進位代碼。第一條符合的記錄優先。例如：內建的 Shift+Enter → ESC+CR 可讓 TUI 程式區分 Enter（提交）與 Shift+Enter（換行）。",
+    "keymappings-edit": "$t(generic.edit, capitalize)",
     "macOS-option-key-passthrough": "macOS：Option鍵穿透",
-    "macOS-option-key-passthrough-description": "允許Option+鍵組合傳遞到$t(generic.terminal)以輸入特殊字符（例如，斯堪的納維亞/德國鍵盤上的@）。",
+    "macOS-option-key-passthrough-description": "將 Option+鍵 以合成字符形式（例如，斯堪的納維亞/德國鍵盤上 Option+2 → @）傳送到$t(generic.terminal)，而非 ESC 序列，以規避 xterm.js 缺陷 #2831。僅在 macOS 上生效；對所有平台可見，以便預先配置。",
     "new-instance-behavior": "新$t(generic.instance)$t(generic.behavior)",
     "new-instance-behaviors": {
       "newHorizontalSplit": "新水平$t(generic.split)",

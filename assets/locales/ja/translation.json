@@ -15,6 +15,30 @@
     "unfocus-terminal": "$t(generic.terminal)の$t(generic.unfocus)"
   },
   "components": {
+    "keymappings": {
+      "action": "Action",
+      "actions": {
+        "ignore": "Ignore",
+        "passthrough": "Passthrough",
+        "sendEscapeSequence": "Send escape sequence",
+        "sendHexCode": "Send hex code",
+        "sendText": "Send text"
+      },
+      "edit": "$t(generic.edit, capitalize)",
+      "placeholders": {
+        "sendEscapeSequence": "e.g. b",
+        "sendHexCode": "e.g. 01 0d",
+        "sendText": "e.g. hello"
+      },
+      "platform": "$t(generic.platform, capitalize)",
+      "platform-options-": "All $t(generic.platform_other)",
+      "platform-options-darwin": "$t(generic.platforms.darwin)",
+      "platform-options-linux": "$t(generic.platforms.linux)",
+      "platform-options-win32": "$t(generic.platforms.win32)",
+      "record": "Click to record",
+      "recording": "Press a key...",
+      "title": "$t(generic.keymapping_other, capitalize)"
+    },
     "profile": {
       "data": "$t(generic.data)",
       "data-edit": "$t(generic.edit)",
@@ -170,6 +194,8 @@
     "instance": "インスタンス",
     "instance_gerund": "インスタンス化",
     "invalid": "無効",
+    "key": "key",
+    "keymapping": "keymapping",
     "name": "名前",
     "option": "オプション",
     "option_other": "オプション",
@@ -305,8 +331,11 @@
     "instancing": "$t(generic.instance_gerund)",
     "intercept-logging": "ログを傍受する",
     "interface": "インターフェース",
+    "keymappings": "$t(generic.keymapping_other, capitalize)",
+    "keymappings-description": "Custom key bindings intercepted before the $t(generic.terminal). Each entry maps a key combo (with optional platform filter) to an action: escape sequence, raw text, or hex code. First matching entry wins. Example: the built-in Shift+Enter → ESC+CR lets TUI programs distinguish Enter (submit) from Shift+Enter (newline).",
+    "keymappings-edit": "$t(generic.edit, capitalize)",
     "macOS-option-key-passthrough": "macOS: Option key passthrough",
-    "macOS-option-key-passthrough-description": "Allow Option+key combinations to reach the terminal for typing special characters (e.g., @ on Scandinavian/German keyboards).",
+    "macOS-option-key-passthrough-description": "Sends Option+key as the composed character (e.g., Option+2 → @ on Scandinavian/German keyboards) instead of an ESC sequence, working around xterm.js bug #2831. Only active on macOS; visible on all platforms for pre-configuration.",
     "new-instance-behavior": "新規$t(generic.instance)の$t(generic.behavior)",
     "new-instance-behaviors": {
       "newHorizontalSplit": "新規水平$t(generic.split)",
