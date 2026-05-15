@@ -53,7 +53,8 @@
     },
     "keymapping": {
       "add-icon": "$t(asset:generic.add-icon)",
-      "delete-icon": "trash"
+      "delete-icon": "trash",
+      "edit-icon": "$t(asset:generic.edit-icon)"
     },
     "terminal": {
       "edit-modal": {

@@ -73,8 +73,10 @@
         "sendHexCode": "Send hex code",
         "sendText": "Send text"
       },
+      "action": "Action",
       "add": "Add",
       "delete": "Delete",
+      "edit": "$t(generic.edit, capitalize)",
       "placeholders": {
         "sendEscapeSequence": "e.g. b",
         "sendHexCode": "e.g. 01 0d",
