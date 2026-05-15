@@ -120,6 +120,20 @@ export namespace Settings {
     hideStatusBar: "focused",
     interceptLogging: true,
     keymappings: [
+      // Shift+Enter → ESC CR — all platforms.
+      // Many TUI apps (e.g., Claude Code) distinguish Shift+Enter from plain
+      // Enter; this sends the standard "modified CR" sequence ESC \r (\x1b\r).
+      // Remove or override this entry if you need a different behaviour.
+      {
+        action: "sendEscapeSequence",
+        actionArg: "\r",
+        alt: false,
+        ctrl: false,
+        key: "Enter",
+        meta: false,
+        platform: null,
+        shift: true,
+      },
       // Option+Left → word backward
       {
         action: "sendEscapeSequence",
@@ -196,20 +210,6 @@ export namespace Settings {
         meta: false,
         platform: "darwin",
         shift: false,
-      },
-      // Shift+Enter → ESC CR — all platforms.
-      // Many TUI apps (e.g., Claude Code) distinguish Shift+Enter from plain
-      // Enter; this sends the standard "modified CR" sequence ESC \r (\x1b\r).
-      // Remove or override this entry if you need a different behaviour.
-      {
-        action: "sendEscapeSequence",
-        actionArg: "\r",
-        alt: false,
-        ctrl: false,
-        key: "Enter",
-        meta: false,
-        platform: void 0,
-        shift: true,
       },
     ],
     language: "",
@@ -291,7 +291,10 @@ export namespace Settings {
   ): value is KeymappingAction {
     return inSet(KEY_MAPPING_ACTIONS, value);
   }
-  export const KEY_MAPPING_PLATFORMS = Pseudoterminal.SUPPORTED_PLATFORMS;
+  export const KEY_MAPPING_PLATFORMS = [
+    null,
+    ...Pseudoterminal.SUPPORTED_PLATFORMS,
+  ] as const;
   export type KeymappingPlatform = (typeof KEY_MAPPING_PLATFORMS)[number];
   export function isKeymappingPlatform(
     value: unknown,
@@ -304,7 +307,7 @@ export namespace Settings {
     readonly ctrl: boolean;
     readonly alt: boolean;
     readonly meta: boolean;
-    readonly platform?: KeymappingPlatform;
+    readonly platform: KeymappingPlatform;
     readonly shift: boolean;
     readonly action: KeymappingAction;
     readonly actionArg: string;
@@ -317,7 +320,7 @@ export namespace Settings {
       ctrl: false,
       key: "",
       meta: false,
-      platform: void 0,
+      platform: null,
       shift: false,
     });
     export function fix(self0: unknown): Fixed<Keymapping> {
@@ -329,10 +332,7 @@ export namespace Settings {
         ctrl: fixTyped(DEFAULT, unc, "ctrl", ["boolean"]),
         key: fixTyped(DEFAULT, unc, "key", ["string"]),
         meta: fixTyped(DEFAULT, unc, "meta", ["boolean"]),
-        platform: fixInSet(DEFAULT, unc, "platform", [
-          void 0,
-          ...KEY_MAPPING_PLATFORMS,
-        ]),
+        platform: fixInSet(DEFAULT, unc, "platform", KEY_MAPPING_PLATFORMS),
         shift: fixTyped(DEFAULT, unc, "shift", ["boolean"]),
       });
     }
@@ -357,10 +357,10 @@ export namespace Settings {
         a.alt === b.alt &&
         a.meta === b.meta &&
         a.shift === b.shift &&
-        // Platforms overlap when either entry is all-platform (undefined) or
+        // Platforms overlap when either entry is all-platform (null) or
         // both entries target the same specific platform.
-        (a.platform === undefined ||
-          b.platform === undefined ||
+        (a.platform === null ||
+          b.platform === null ||
           a.platform === b.platform)
       );
     }
@@ -1371,12 +1371,12 @@ export namespace Settings {
         HIDE_STATUS_BAR_OPTIONS,
       ),
       interceptLogging: fixTyped(DEFAULT, unc, "interceptLogging", ["boolean"]),
-      keymappings: ((): readonly Keymapping[] => {
+      keymappings: (() => {
         const { keymappings } = unc;
         if (Array.isArray(keymappings)) {
           return keymappings.map((m: unknown) => Keymapping.fix(m).value);
         }
-        return DEFAULT.keymappings;
+        return cloneAsWritable(DEFAULT.keymappings);
       })(),
       language: fixInSet(DEFAULT, unc, "language", DEFAULTABLE_LANGUAGES),
       macOSOptionKeyPassthrough: fixTyped(

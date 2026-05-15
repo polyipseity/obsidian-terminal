@@ -794,7 +794,7 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
   #matches(event: KeyboardEvent, mapping: Settings.Keymapping): boolean {
     // Skip mappings that don't match the current platform
     if (
-      mapping.platform !== undefined &&
+      mapping.platform !== null &&
       mapping.platform !== this.currentPlatform
     ) {
       return false;

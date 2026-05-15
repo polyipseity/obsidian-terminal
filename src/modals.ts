@@ -13,6 +13,7 @@ import {
   clearProperties,
   cloneAsWritable,
   composeSetters,
+  consumeEvent,
   createChildElement,
   createDocumentFragment,
   dynamicRequire,
@@ -1230,9 +1231,10 @@ export class ProfileListModal extends ListModal<
           }
           button.onClick(() => {
             new ProfileModal(context, refs.getter(), async (value) => {
-              await refs.setter((item) => {
+              await refs.setter(async (item) => {
                 clearProperties(item);
                 Object.assign(item, value);
+                await this.postMutate();
               });
             }).open();
           });
@@ -1356,32 +1358,35 @@ export class KeymappingEditModal extends Modal {
       { language } = context,
       { value: i18n, onChangeLanguage } = language;
 
-    const startRecording = (): void => {
+    const startRecording = async (): Promise<void> => {
       if (this.#recordHandler !== null) {
         return;
       }
       const handler = (event: KeyboardEvent): void => {
-        const MODIFIER_KEYS = new Set(["Meta", "Control", "Alt", "Shift"]);
-        event.preventDefault();
-        event.stopPropagation();
-        if (MODIFIER_KEYS.has(event.key)) {
+        consumeEvent(event);
+        if (["Meta", "Control", "Alt", "Shift"].includes(event.key)) {
           return;
         }
+        this.#stopRecording();
+
         data.key = event.key;
         data.ctrl = event.ctrlKey;
         data.alt = event.altKey;
         data.meta = event.metaKey;
         data.shift = event.shiftKey;
-        this.#stopRecording();
-        modalUI.update();
-        ui.update();
-        void this.postMutate();
+        (async () => {
+          try {
+            await this.postMutate();
+          } catch (error) {
+            activeSelf(event).console.error(error);
+          }
+        })();
       };
       this.#recordHandler = handler;
       this.#recordDoc = doc;
       doc.addEventListener("keydown", handler, true);
-      modalUI.update();
       ui.update();
+      modalUI.update();
     };
 
     modalUI
@@ -1395,7 +1400,7 @@ export class KeymappingEditModal extends Modal {
         (ele) => {
           ele.textContent =
             this.#recordHandler !== null
-              ? i18n.t("components.keymapping.recording")
+              ? i18n.t("components.keymappings.recording")
               : KeymappingEditModal.formatShortcut(data, i18n);
         },
         (ele) => {
@@ -1412,28 +1417,26 @@ export class KeymappingEditModal extends Modal {
     ui.newSetting(listEl, (setting) => {
       const isRecording = this.#recordHandler !== null;
       setting
-        .setName(i18n.t("components.keymapping.record"))
+        .setName(i18n.t("components.keymappings.record"))
         .setDesc(
           isRecording
-            ? i18n.t("components.keymapping.recording")
+            ? i18n.t("components.keymappings.recording")
             : KeymappingEditModal.formatShortcut(data, i18n),
         )
         .addButton((button) => {
           button
-            .setIcon(i18n.t("asset:components.keymapping.add-icon"))
+            .setIcon(i18n.t("asset:components.keymappings.add-icon"))
             .setTooltip(
               isRecording
-                ? i18n.t("components.keymapping.recording")
-                : i18n.t("components.keymapping.record"),
+                ? i18n.t("components.keymappings.recording")
+                : i18n.t("components.keymappings.record"),
             )
             .onClick(() => {
               if (isRecording) {
                 this.#stopRecording();
-                modalUI.update();
-                ui.update();
-              } else {
-                startRecording();
+                return;
               }
+              startRecording();
             });
           if (isRecording) {
             button.setCta();
@@ -1444,23 +1447,20 @@ export class KeymappingEditModal extends Modal {
     // Action dropdown
     ui.newSetting(listEl, (setting) => {
       setting
-        .setName(i18n.t("components.keymapping.action"))
+        .setName(i18n.t("components.keymappings.action"))
         .addDropdown((dd) => {
           for (const action of Settings.KEY_MAPPING_ACTIONS) {
             dd.addOption(
               action,
-              i18n.t(`components.keymapping.actions.${action}`),
+              i18n.t(`components.keymappings.actions.${action}`),
             );
           }
           dd.setValue(data.action);
-          dd.onChange((val) => {
-            if (Settings.isKeymappingAction(val)) {
-              data.action = val;
-            } else {
-              data.action = Settings.Keymapping.DEFAULT.action;
-            }
-            ui.update();
-            void this.postMutate();
+          dd.onChange(async (val) => {
+            data.action = Settings.isKeymappingAction(val)
+              ? val
+              : Settings.Keymapping.DEFAULT.action;
+            await this.postMutate();
           });
         });
     });
@@ -1468,46 +1468,47 @@ export class KeymappingEditModal extends Modal {
     // Platform dropdown
     ui.newSetting(listEl, (setting) => {
       setting
-        .setName(i18n.t("components.keymapping.platform"))
+        .setName(i18n.t("components.keymappings.platform"))
         .addDropdown((dd) => {
-          dd.addOption("", i18n.t("components.keymapping.platform-options-"));
+          dd.addOption("", i18n.t("components.keymappings.platform-options-"));
           for (const platform of Settings.KEY_MAPPING_PLATFORMS) {
             dd.addOption(
-              platform,
-              i18n.t(`components.keymapping.platform-options-${platform}`),
+              platform ?? "",
+              i18n.t(
+                `components.keymappings.platform-options-${platform ?? ""}`,
+              ),
             );
           }
           dd.setValue(data.platform ?? "");
-          dd.onChange((val) => {
-            data.platform =
-              val === ""
-                ? void 0
-                : Settings.isKeymappingPlatform(val)
-                  ? val
-                  : void 0;
-            void this.postMutate();
+          dd.onChange(async (val) => {
+            const val2 = val === "" ? null : val;
+            data.platform = Settings.isKeymappingPlatform(val2)
+              ? val2
+              : Settings.Keymapping.DEFAULT.platform;
+            await this.postMutate();
           });
         });
     });
 
     // Arg text input — shown only for actions that take an argument
     ui.newSetting(listEl, (setting) => {
-      const needsArg =
-        data.action !== "ignore" && data.action !== "passthrough";
-      setting.settingEl.style.display = needsArg ? "" : "none";
-      if (!needsArg) {
-        return;
-      }
-      setting.addText((text) => {
-        text
-          .setValue(data.actionArg)
-          .setPlaceholder(
-            i18n.t(`components.keymapping.placeholders.${data.action}`),
-          )
-          .onChange((val) => {
-            data.actionArg = val;
-            void this.postMutate();
-          });
+      const action = inSet(
+        ["sendEscapeSequence", "sendHexCode", "sendText"],
+        data.action,
+      )
+        ? data.action
+        : null;
+      setting.settingEl.style.display = action === null ? "none" : "";
+      // `newSetting` does not support conditionally adding components
+      setting.addTextArea((text) => {
+        text.setValue(data.actionArg).onChange(async (val) => {
+          data.actionArg = val;
+          await this.postMutate();
+        });
+        if (action === null) return;
+        text.setPlaceholder(
+          i18n.t(`components.keymappings.placeholders.${action}`),
+        );
       });
     });
   }
@@ -1528,6 +1529,8 @@ export class KeymappingEditModal extends Modal {
     recordDoc.removeEventListener("keydown", recordHandler, true);
     this.#recordHandler = null;
     this.#recordDoc = null;
+    this.modalUI.update();
+    this.ui.update();
   }
 
   protected async postMutate(): Promise<void> {
@@ -1543,7 +1546,7 @@ export class KeymappingEditModal extends Modal {
     i18n: TerminalPlugin["language"]["value"],
   ): string {
     if (!mapping.key) {
-      return i18n.t("components.keymapping.record");
+      return i18n.t("components.keymappings.record");
     }
     const shortcut = [
       mapping.ctrl && "Ctrl",
@@ -1554,7 +1557,7 @@ export class KeymappingEditModal extends Modal {
     ]
       .filter(Boolean)
       .join("+");
-    if (mapping.platform !== undefined) {
+    if (mapping.platform !== null) {
       return `${i18n.t(`generic.platforms.${mapping.platform}`)}: ${shortcut}`;
     }
     return shortcut;
@@ -1567,8 +1570,8 @@ export class KeymappingsModal extends ListModal<
 > {
   public constructor(
     context: TerminalPlugin,
-    mappings: readonly Settings.Keymapping[],
-    callback: (mappings: readonly Settings.Keymapping[]) => unknown,
+    keymappings: Settings.Keymapping[],
+    callback: (keymappings: DeepWritable<Settings.Keymapping>[]) => unknown,
   ) {
     const { value: i18n } = context.language;
     super(
@@ -1576,8 +1579,8 @@ export class KeymappingsModal extends ListModal<
       (setting, editable, refs) => {
         setting.addButton((button) => {
           button
-            .setIcon(i18n.t("asset:components.keymapping.edit-icon"))
-            .setTooltip(i18n.t("components.keymapping.edit"))
+            .setIcon(i18n.t("asset:components.keymappings.edit-icon"))
+            .setTooltip(i18n.t("components.keymappings.edit"))
             .setDisabled(!editable);
           if (!refs) {
             button.buttonEl.style.visibility = "hidden";
@@ -1585,25 +1588,26 @@ export class KeymappingsModal extends ListModal<
           }
           button.onClick(() => {
             new KeymappingEditModal(context, refs.getter(), async (value) => {
-              await refs.setter((item) => {
+              await refs.setter(async (item) => {
                 clearProperties(item);
                 Object.assign(item, value);
+                await this.postMutate();
               });
             }).open();
           });
         });
       },
       () => cloneAsWritable(Settings.Keymapping.DEFAULT),
-      mappings.map((m) => cloneAsWritable(m)),
+      cloneAsWritable(keymappings),
       {
         callback: async (data): Promise<void> => {
-          await callback(data);
+          await callback(cloneAsWritable(data));
         },
         descriptor: (mapping): string =>
-          i18n.t(`components.keymapping.actions.${mapping.action}`),
+          i18n.t(`components.keymappings.actions.${mapping.action}`),
         namer: (mapping): string =>
           KeymappingEditModal.formatShortcut(mapping, i18n),
-        title: (): string => i18n.t("components.keymapping.title"),
+        title: (): string => i18n.t("components.keymappings.title"),
       },
     );
   }

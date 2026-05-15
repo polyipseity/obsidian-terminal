@@ -3,6 +3,7 @@ import {
   addCommand,
   addRibbonIcon,
   deepFreeze,
+  inSet,
   isNonNil,
   notice2,
 } from "@polyipseity/obsidian-plugin-library";
@@ -30,8 +31,7 @@ export function loadTerminal(context: TerminalPlugin): void {
         )[]
       ).filter(
         (type) =>
-          type === "default" ||
-          type === "select" ||
+          inSet(["default", "select"], type) ||
           PROFILE_PROPERTIES[type].available,
       ),
     ),

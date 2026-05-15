@@ -294,7 +294,9 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               i18n.t("settings.reset"),
               async () =>
                 settings.mutate((settingsM) => {
-                  settingsM.keymappings = [];
+                  settingsM.keymappings = cloneAsWritable(
+                    Settings.DEFAULT.keymappings,
+                  );
                 }),
               () => {
                 this.postMutate();

@@ -65,7 +65,7 @@
       "namer-incompatible": "$t(components.profile-list.namer-)",
       "title": "$t(generic.profile_other, capitalize)"
     },
-    "keymapping": {
+    "keymappings": {
       "actions": {
         "ignore": "Ignore",
         "passthrough": "Passthrough",
@@ -74,8 +74,6 @@
         "sendText": "Send text"
       },
       "action": "Action",
-      "add": "Add",
-      "delete": "Delete",
       "edit": "$t(generic.edit, capitalize)",
       "placeholders": {
         "sendEscapeSequence": "e.g. b",
