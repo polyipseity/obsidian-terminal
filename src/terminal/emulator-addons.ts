@@ -708,8 +708,8 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
   #terminal: Terminal | null = null;
 
   public constructor(
-    protected readonly getMappings: () => readonly Settings.Keymapping[],
     protected readonly currentPlatform: string,
+    protected readonly getKeymappings: () => readonly Settings.Keymapping[],
     protected readonly isPassthroughEnabled: () => boolean,
   ) {}
 
@@ -737,15 +737,10 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
 
     // --- Stage 1: keymappings ---
     // Walk the ordered list; first match wins.
-    for (const mapping of this.getMappings()) {
+    for (const mapping of this.getKeymappings()) {
       if (this.#matches(event, mapping)) {
-        if (mapping.action === "passthrough") {
-          // Yield to xterm for both keydown and keyup; behave as if no
-          // mapping existed for this combination.
-          return true;
-        }
         if (event.type === "keydown") {
-          this.#fire(terminal, mapping);
+          return this.#fire(terminal, mapping);
         }
         // Suppress both keydown and keyup so xterm never sees this event.
         return false;
@@ -758,9 +753,8 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
     // When passthrough is enabled we intercept those events, re-emit the
     // browser-composed character, and block xterm from processing them.
 
-    // Only active when explicitly enabled (set to constant(false) on non-macOS
-    // in view.ts so this stage is effectively a no-op outside darwin).
-    if (!this.isPassthroughEnabled()) {
+    // Only active when explicitly enabled on macOS.
+    if (this.currentPlatform !== "darwin" || !this.isPassthroughEnabled()) {
       return true;
     }
 
@@ -811,20 +805,18 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
   }
 
   /**
-   * Execute the action configured for a matched mapping.
-   *
-   * Note: `"passthrough"` is handled before this method is called in
-   * `#handleEvent()` (it returns `true` immediately), so `#fire()` will never
-   * receive a `"passthrough"` mapping in practice.  The case is listed here
-   * for exhaustiveness and to make the intent explicit.
+   * Execute the action configured for a matched mapping. Returns `true` if
+   * the event should be passed through to xterm after firing the action, or
+   * `false` if the event should be suppressed.
    */
-  #fire(terminal: Terminal, mapping: Settings.Keymapping): void {
+  #fire(terminal: Terminal, mapping: Settings.Keymapping): boolean {
     switch (mapping.action) {
       case "ignore":
-      case "passthrough":
-        // "ignore"      — suppress the event, send nothing.
-        // "passthrough" — handled before #fire() is called; listed for exhaustiveness.
+        // Suppress the event, send nothing.
         break;
+      case "passthrough":
+        // Handled before #fire() is called.
+        return true;
       case "sendEscapeSequence":
         // Send ESC (\x1b) followed by actionArg verbatim.
         terminal.input("\x1b" + mapping.actionArg);
@@ -856,5 +848,6 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
       }
       // No default
     }
+    return false;
   }
 }

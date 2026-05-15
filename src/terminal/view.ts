@@ -44,7 +44,7 @@ import type { SearchAddon } from "@xterm/addon-search";
 import type { Unicode11Addon } from "@xterm/addon-unicode11";
 import type { WebLinksAddon } from "@xterm/addon-web-links";
 import { type ITerminalOptions, Terminal } from "@xterm/xterm";
-import { constant, noop } from "lodash-es";
+import { noop } from "lodash-es";
 import {
   FileSystemAdapter,
   ItemView,
@@ -963,11 +963,9 @@ export class TerminalView extends ItemView {
                 ? Settings.Profile.DEFAULTS[""].terminalOptions
                 : profile.terminalOptions,
             customKeyEventHandler = new CustomKeyEventHandlerAddon(
-              () => settings.value.keymappings,
               Platform.CURRENT,
-              Platform.CURRENT === "darwin"
-                ? () => settings.value.macOSOptionKeyPassthrough
-                : constant(false),
+              () => settings.value.keymappings,
+              () => settings.value.macOSOptionKeyPassthrough,
             ),
             emulator = new TerminalView.EMULATOR(
               ele,
