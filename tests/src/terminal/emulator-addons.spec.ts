@@ -82,8 +82,8 @@ describe("CustomKeyEventHandlerAddon", () => {
     const mock = createMockTerminal();
     inputSpy = mock.inputSpy;
     const addon = new CustomKeyEventHandlerAddon(
-      getMappings,
       currentPlatform,
+      getMappings,
       () => isEnabled,
     );
     addon.activate(mock.terminal);

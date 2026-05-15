@@ -1376,7 +1376,7 @@ export namespace Settings {
         if (Array.isArray(keymappings)) {
           return keymappings.map((m: unknown) => Keymapping.fix(m).value);
         }
-        return [];
+        return DEFAULT.keymappings;
       })(),
       language: fixInSet(DEFAULT, unc, "language", DEFAULTABLE_LANGUAGES),
       macOSOptionKeyPassthrough: fixTyped(

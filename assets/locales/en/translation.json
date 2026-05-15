@@ -335,7 +335,7 @@
     "intercept-logging": "Intercept logging",
     "interface": "Interface",
     "keymappings": "$t(generic.keymapping_other, capitalize)",
-    "keymappings-description": "Custom keyboard shortcuts sent to the $t(generic.terminal). Each keymapping binds a key combination (with optional modifier keys and platform filter) to an action such as sending an escape sequence, raw text, or a hex code. Keymappings are checked before the $t(generic.terminal) sees the key event; the first matching keymapping wins.",
+    "keymappings-description": "Custom keyboard shortcuts sent to the $t(generic.terminal). Each keymapping binds a key combination (with optional modifier keys and platform filter) to an action such as sending an escape sequence, raw text, or a hex code. Keymappings are checked before the $t(generic.terminal) sees the key event; the first matching keymapping wins. For example, the default Shift+Enter mapping sends ESC+CR, which lets TUI programs distinguish a submission (Enter) from a newline (Shift+Enter).",
     "keymappings-edit": "$t(generic.edit, capitalize)",
     "macOS-option-key-passthrough": "macOS: Option key passthrough",
     "macOS-option-key-passthrough-description": "When enabled, Option+character key combinations (e.g., Option+2 → @ on Scandinavian/German keyboards) are sent to the $t(generic.terminal) as the browser-composed character instead of an ESC sequence. This works around a known xterm.js bug (#2831). Only takes effect on macOS; the setting is visible on all platforms so it can be pre-configured before switching.",

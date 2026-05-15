@@ -739,10 +739,14 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
     // Walk the ordered list; first match wins.
     for (const mapping of this.getKeymappings()) {
       if (this.#matches(event, mapping)) {
+        // passthrough yields to xterm for both keydown and keyup.
+        if (mapping.action === "passthrough") {
+          return true;
+        }
         if (event.type === "keydown") {
           return this.#fire(terminal, mapping);
         }
-        // Suppress both keydown and keyup so xterm never sees this event.
+        // Suppress keyup for all other actions so xterm never sees this event.
         return false;
       }
     }
