@@ -138,7 +138,7 @@
     "focus-on-new-instance-icon": "$t(asset:generic.actions.focus-icon)",
     "hide-status-bar-icon": "eye-off",
     "intercept-logging-icon": "scroll-text",
-    "keymappings-edit-icon": "keyboard",
+    "keymappings-edit-icon": "$t(asset:generic.edit-list-icon)",
     "keymappings-icon": "keyboard",
     "macOS-option-key-passthrough-icon": "option",
     "new-instance-behavior-icon": "plus",

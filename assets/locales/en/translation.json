@@ -73,8 +73,8 @@
         "sendHexCode": "Send hex code",
         "sendText": "Send text"
       },
-      "add": "Add $t(generic.keymapping)",
-      "delete": "Delete $t(generic.keymapping)",
+      "add": "Add",
+      "delete": "Delete",
       "placeholders": {
         "sendEscapeSequence": "e.g. b",
         "sendHexCode": "e.g. 01 0d",
