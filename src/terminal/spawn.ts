@@ -116,6 +116,7 @@ export function spawnTerminal(
     profile,
     profileSourceId: options.profileSourceId ?? null,
     serial: null,
+    userTitle: "",
   };
   if (options.edit ?? false) {
     new EditTerminalModal(context, state, async (state2) =>

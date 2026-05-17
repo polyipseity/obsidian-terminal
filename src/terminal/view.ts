@@ -1355,7 +1355,7 @@ export namespace TerminalView {
           unc.serial === null
             ? null
             : XtermTerminalEmulator.State.fix(unc.serial).value,
-        userTitle: fixTyped(DEFAULT, unc, "userTitle", ["string", "null"]),
+        userTitle: fixTyped(DEFAULT, unc, "userTitle", ["string"]),
       });
     }
   }
