@@ -1,9 +1,11 @@
 import {
   DocumentationMarkdownView,
   StorageSettingsManager,
+  activeSelf,
   addCommand,
   anyToError,
   deepFreeze,
+  openExternal,
   printError,
   revealPrivate,
   toJSONOrString,
@@ -14,6 +16,15 @@ import type { TerminalPlugin } from "./main.js";
 import changelogMd from "../CHANGELOG.md";
 import readmeMd from "../README.md";
 import semverLt from "semver/functions/lt.js";
+
+export function donationUrls(
+  donationUrl: string | Record<string, string> | undefined,
+): readonly string[] {
+  if (typeof donationUrl === "string") {
+    return [donationUrl];
+  }
+  return donationUrl ? Object.values(donationUrl) : [];
+}
 
 export const DOCUMENTATIONS = deepFreeze({
   async changelog(view: DocumentationMarkdownView.Registered, active: boolean) {
@@ -57,7 +68,11 @@ export const DOCUMENTATIONS = deepFreeze({
         throw new Error(toJSONOrString(settingTabs));
       },
       (error) => {
-        throw error;
+        const [url] = donationUrls(manifest.fundingUrl);
+        if (!url) {
+          throw error;
+        }
+        openExternal(activeSelf(), url);
       },
     );
   },

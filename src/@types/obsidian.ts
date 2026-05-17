@@ -3,6 +3,9 @@ declare module "obsidian" {
   interface App extends Private<$App, PrivateKey> {}
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   interface SuggestModal<T> extends Private<$SuggestModal, PrivateKey> {}
+  interface PluginManifest {
+    readonly fundingUrl?: string | Record<string, string>;
+  }
 }
 import type {} from "obsidian";
 import type { Private } from "@polyipseity/obsidian-plugin-library";
