@@ -42,9 +42,9 @@ import { Settings } from "../../../src/settings-data.js";
 describe("src/terminal/view.ts", () => {
   describe("TerminalView.State", () => {
     describe("State.DEFAULT", () => {
-      it("includes userTitle set to null", () => {
+      it("includes userTitle set to empty string", () => {
         expect(TerminalView.State.DEFAULT).toHaveProperty("userTitle");
-        expect(TerminalView.State.DEFAULT.userTitle).toBeNull();
+        expect(TerminalView.State.DEFAULT.userTitle).toBe("");
       });
 
       it("preserves existing default fields", () => {
@@ -68,7 +68,7 @@ describe("src/terminal/view.ts", () => {
         expect(fixed.value.userTitle).toBe("My Custom Terminal");
       });
 
-      it("coerces missing userTitle to null", () => {
+      it("coerces missing userTitle to empty string", () => {
         const input = {
           profile: Settings.Profile.DEFAULTS.integrated,
           cwd: null,
@@ -76,10 +76,10 @@ describe("src/terminal/view.ts", () => {
           focus: false,
         };
         const fixed = TerminalView.State.fix(input);
-        expect(fixed.value.userTitle).toBeNull();
+        expect(fixed.value.userTitle).toBe("");
       });
 
-      it("coerces non-string userTitle to null", () => {
+      it("coerces non-string userTitle to empty string", () => {
         const input = {
           profile: Settings.Profile.DEFAULTS.integrated,
           cwd: null,
@@ -88,10 +88,10 @@ describe("src/terminal/view.ts", () => {
           userTitle: 42,
         };
         const fixed = TerminalView.State.fix(input);
-        expect(fixed.value.userTitle).toBeNull();
+        expect(fixed.value.userTitle).toBe("");
       });
 
-      it("coerces boolean userTitle to null", () => {
+      it("coerces boolean userTitle to empty string", () => {
         const input = {
           profile: Settings.Profile.DEFAULTS.integrated,
           cwd: null,
@@ -100,7 +100,7 @@ describe("src/terminal/view.ts", () => {
           userTitle: true,
         };
         const fixed = TerminalView.State.fix(input);
-        expect(fixed.value.userTitle).toBeNull();
+        expect(fixed.value.userTitle).toBe("");
       });
 
       it("preserves null userTitle", () => {

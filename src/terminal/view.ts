@@ -351,13 +351,18 @@ export class TerminalView extends ItemView {
   }
 
   protected get name(): string {
+    const { state } = this;
+    if (state.userTitle) {
+      return state.userTitle;
+    }
+    return this.nameGenerated;
+  }
+
+  protected get nameGenerated(): string {
     const { context: plugin, state } = this,
       { value: i18n } = plugin.language,
       { profile } = state,
       { name, type } = profile;
-    if (typeof state.userTitle === "string" && state.userTitle) {
-      return state.userTitle;
-    }
     if (this.title) {
       return this.title;
     }
@@ -582,6 +587,19 @@ export class TerminalView extends ItemView {
           icon: i18n.t("asset:commands.find-in-terminal-icon"),
           id: "find-in-terminal",
         }).id,
+        addCommand(context, () => i18n.t("commands.rename-terminal"), {
+          checkCallback: withLastFocusedView(
+            (checking, view) => {
+              if (!checking) {
+                view.openRenameDialog();
+              }
+              return true;
+            },
+            [false, true],
+          ),
+          icon: i18n.t("asset:commands.rename-terminal-icon"),
+          id: "rename-terminal",
+        }).id,
       ]),
       handler = this.focusedScope.register(
         null,
@@ -590,19 +608,6 @@ export class TerminalView extends ItemView {
       );
     context.register(() => {
       this.focusedScope.unregister(handler);
-    });
-    addCommand(context, () => i18n.t("commands.rename-terminal"), {
-      checkCallback: withLastFocusedView(
-        (checking, view) => {
-          if (!checking) {
-            view.renameTerminal();
-          }
-          return true;
-        },
-        [false, true],
-      ),
-      icon: i18n.t("asset:commands.rename-terminal-icon"),
-      id: "rename-terminal",
     });
   }
 
@@ -723,7 +728,7 @@ export class TerminalView extends ItemView {
           .setTitle(i18n.t("components.terminal.menus.rename"))
           .setIcon(i18n.t("asset:components.terminal.menus.rename-icon"))
           .onClick(() => {
-            this.renameTerminal();
+            this.openRenameDialog();
           }),
       )
       .addSeparator()
@@ -794,37 +799,35 @@ export class TerminalView extends ItemView {
     }
   }
 
-  protected renameTerminal(): void {
-    const { context, state } = this,
+  protected openRenameDialog(): void {
+    const { context, nameGenerated, state } = this,
       {
         language: { value: i18n },
       } = context;
-    let newTitle = state.userTitle ?? "";
+    let userTitle = state.userTitle;
     new DialogModal(context, {
       confirm: (close) => {
-        const trimmed = newTitle.trim();
-        const updated = cloneAsWritable(state);
-        updated.userTitle = trimmed || null;
-        this.state = updated;
         close();
+        const state = cloneAsWritable(this.state);
+        state.userTitle = userTitle.trim();
+        this.state = state;
       },
-      draw: (_ui, contentEl) => {
-        const { element: listEl } = useSettings(contentEl);
-        const input = listEl.createEl("input", {
-          attr: {
-            placeholder: this.name,
-            type: "text",
-            value: newTitle,
-          },
+      draw(ui, contentEl) {
+        ui.newSetting(contentEl, (setting) => {
+          const titleInput = setting.addText((component) => {
+            component
+              .setValue(userTitle)
+              .setPlaceholder(nameGenerated)
+              .onChange((value) => {
+                userTitle = value;
+              });
+          });
+          titleInput.controlEl.focus();
         });
-        input.addClass("rename-terminal-input");
-        input.style.width = "100%";
-        input.addEventListener("input", () => {
-          newTitle = input.value;
-        });
-        input.focus();
       },
-      title: () => i18n.t("components.terminal.menus.rename-prompt"),
+      title() {
+        return i18n.t("components.terminal.menus.rename-prompt");
+      },
     }).open();
   }
 
@@ -1322,7 +1325,7 @@ export namespace TerminalView {
     readonly cwd: string | null;
     readonly serial: XtermTerminalEmulator.State | null;
     readonly focus: boolean;
-    readonly userTitle: string | null;
+    readonly userTitle: string;
   }
   export namespace State {
     export const DEFAULT: State = deepFreeze({
@@ -1331,7 +1334,7 @@ export namespace TerminalView {
       profile: Settings.Profile.DEFAULTS.invalid,
       profileSourceId: null,
       serial: null,
-      userTitle: null,
+      userTitle: "",
     });
     export function fix(self0: unknown): Fixed<State> {
       const unc = launderUnchecked<State>(self0);
