@@ -103,7 +103,7 @@ describe("src/terminal/view.ts", () => {
         expect(fixed.value.userTitle).toBe("");
       });
 
-      it("preserves null userTitle", () => {
+      it("coerces null userTitle to empty string", () => {
         const input = {
           profile: Settings.Profile.DEFAULTS.integrated,
           cwd: null,
@@ -112,7 +112,7 @@ describe("src/terminal/view.ts", () => {
           userTitle: null,
         };
         const fixed = TerminalView.State.fix(input);
-        expect(fixed.value.userTitle).toBeNull();
+        expect(fixed.value.userTitle).toBe("");
       });
 
       it("preserves empty string userTitle", () => {

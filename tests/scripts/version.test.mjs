@@ -5,6 +5,22 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it, expect, vi } from "vitest";
 
+vi.mock("../../scripts/utils.mjs", () => ({
+  PATHS: {
+    main: "./main.js",
+    manifest: "manifest.json",
+    manifestBeta: "manifest-beta.json",
+    metafile: "metafile.json",
+    obsidianPlugins: ".obsidian/plugins",
+    outDir: ".",
+    package: "package.json",
+    packageLock: "package-lock.json",
+    styles: "styles.css",
+    versions: "versions.json",
+  },
+  execute: vi.fn().mockResolvedValue(""),
+}));
+
 // Integration tests for scripts/version.mjs (mirrors top-level behaviour)
 // See AGENTS.md (Testing section) — this is an integration test and uses
 // jest-like isolation by resetting modules and providing mocks.
@@ -37,21 +53,6 @@ describe("scripts/version.mjs", () => {
     });
 
     vi.resetModules();
-    vi.mock("../../scripts/utils.mjs", () => ({
-      PATHS: {
-        main: "./main.js",
-        manifest: "manifest.json",
-        manifestBeta: "manifest-beta.json",
-        metafile: "metafile.json",
-        obsidianPlugins: ".obsidian/plugins",
-        outDir: ".",
-        package: "package.json",
-        packageLock: "package-lock.json",
-        styles: "styles.css",
-        versions: "versions.json",
-      },
-      execute: vi.fn().mockResolvedValue(""),
-    }));
 
     const cwd = process.cwd();
     process.chdir(project);
@@ -85,21 +86,6 @@ describe("scripts/version.mjs", () => {
     writePackageAndVersions(project, { version: "2.0.0" });
 
     vi.resetModules();
-    vi.mock("../../scripts/utils.mjs", () => ({
-      PATHS: {
-        main: "./main.js",
-        manifest: "manifest.json",
-        manifestBeta: "manifest-beta.json",
-        metafile: "metafile.json",
-        obsidianPlugins: ".obsidian/plugins",
-        outDir: ".",
-        package: "package.json",
-        packageLock: "package-lock.json",
-        styles: "styles.css",
-        versions: "versions.json",
-      },
-      execute: vi.fn().mockResolvedValue(""),
-    }));
 
     const cwd = process.cwd();
     process.chdir(project);
@@ -139,21 +125,6 @@ describe("scripts/version.mjs", () => {
     );
 
     vi.resetModules();
-    vi.mock("../../scripts/utils.mjs", () => ({
-      PATHS: {
-        main: "./main.js",
-        manifest: "manifest.json",
-        manifestBeta: "manifest-beta.json",
-        metafile: "metafile.json",
-        obsidianPlugins: ".obsidian/plugins",
-        outDir: ".",
-        package: "package.json",
-        packageLock: "package-lock.json",
-        styles: "styles.css",
-        versions: "versions.json",
-      },
-      execute: vi.fn().mockResolvedValue(""),
-    }));
 
     const cwd = process.cwd();
     try {
@@ -193,21 +164,6 @@ describe("scripts/version.mjs", () => {
     );
 
     vi.resetModules();
-    vi.mock("../../scripts/utils.mjs", () => ({
-      PATHS: {
-        main: "./main.js",
-        manifest: "manifest.json",
-        manifestBeta: "manifest-beta.json",
-        metafile: "metafile.json",
-        obsidianPlugins: ".obsidian/plugins",
-        outDir: ".",
-        package: "package.json",
-        packageLock: "package-lock.json",
-        styles: "styles.css",
-        versions: "versions.json",
-      },
-      execute: vi.fn().mockResolvedValue(""),
-    }));
 
     const cwd = process.cwd();
     try {
