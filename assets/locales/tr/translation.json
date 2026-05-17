@@ -100,7 +100,7 @@
       "item-text-temporary": "($t(generic.temporary, capitalize) $t(generic.profile))"
     },
     "terminal": {
-      "display-name": "$t(generic.terminal, capitalize): {{name}}",
+      "display-name": "$t(generic.terminal, capitalize): {{title}}",
       "edit-modal": {
         "profile": "$t(generic.profile, capitalize)",
         "profile-edit": "$t(generic.edit, capitalize)",
@@ -267,7 +267,7 @@
     "Python-status-entry-": "{{name}}: {{version}} (satisfied: {{requirement}})",
     "Python-status-entry-unsatisfied": "{{name}}: {{version}} (unsatisfied: {{requirement}})",
     "no-default-profile": "No $t(generic.default) $t(generic.profile) for $t(generic.type) '$t(generic.profile-types.{{type}}, capitalize)'",
-    "spawning-terminal": "$t(generic.spawn_gerund, capitalize) $t(generic.terminal): {{name}}",
+    "spawning-terminal": "$t(generic.spawn_gerund, capitalize) $t(generic.terminal): {{title}}",
     "terminal-exited": "$t(generic.terminal, capitalize) $t(generic.exit_past): {{code}}"
   },
   "profile-name-formats": {

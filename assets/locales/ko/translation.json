@@ -100,7 +100,7 @@
       "item-text-temporary": "($t(generic.temporary) $t(generic.profile))"
     },
     "terminal": {
-      "display-name": "$t(generic.terminal): {{name}}",
+      "display-name": "$t(generic.terminal): {{title}}",
       "edit-modal": {
         "profile": "$t(generic.profile)",
         "profile-edit": "$t(generic.edit)",
@@ -267,7 +267,7 @@
     "Python-status-entry-": "{{name}}: {{version}} (요구사항 충족: {{requirement}})",
     "Python-status-entry-unsatisfied": "{{name}}: {{version}} (요구사항 미충족: {{requirement}})",
     "no-default-profile": "'$t(generic.profile-types.{{type}})' $t(generic.type)에 대한 $t(generic.default) $t(generic.profile)이 설정되지 않았습니다",
-    "spawning-terminal": "$t(generic.terminal) $t(generic.spawn_gerund) 중: {{name}}",
+    "spawning-terminal": "$t(generic.terminal) $t(generic.spawn_gerund) 중: {{title}}",
     "terminal-exited": "$t(generic.terminal) $t(generic.exit_past): {{code}}"
   },
   "profile-name-formats": {

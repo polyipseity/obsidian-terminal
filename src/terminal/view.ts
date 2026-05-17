@@ -312,7 +312,7 @@ export class TerminalView extends ItemView {
   protected static readonly focusedScope = new Scope();
 
   static #namespacedType: string;
-  #title0 = "";
+  #rawTitle0 = "";
   #emulator0: TerminalView.EMULATOR | null = null;
   #find0:
     | readonly [ReturnType<typeof FindComponent>, FindComponent$.Props]
@@ -346,25 +346,25 @@ export class TerminalView extends ItemView {
     return this.#find0;
   }
 
-  protected get title(): string {
-    return this.#title0;
+  protected get rawTitle(): string {
+    return this.#rawTitle0;
   }
 
-  protected get name(): string {
+  protected get title(): string {
     const { state } = this;
     if (state.userTitle) {
       return state.userTitle;
     }
-    return this.nameGenerated;
+    return this.titleGenerated;
   }
 
-  protected get nameGenerated(): string {
+  protected get titleGenerated(): string {
     const { context: plugin, state } = this,
       { value: i18n } = plugin.language,
       { profile } = state,
       { name, type } = profile;
-    if (this.title) {
-      return this.title;
+    if (this.rawTitle) {
+      return this.rawTitle;
     }
     if (typeof name === "string" && name) {
       return name;
@@ -440,8 +440,8 @@ export class TerminalView extends ItemView {
     this.#find0 = val;
   }
 
-  protected set title(value: string) {
-    this.#title0 = value;
+  protected set rawTitle(value: string) {
+    this.#rawTitle0 = value;
     updateView(this.context, this);
   }
 
@@ -645,7 +645,7 @@ export class TerminalView extends ItemView {
       `components.${TerminalView.type.id}.display-name`,
       {
         interpolation: { escapeValue: false },
-        name: this.name,
+        title: this.title,
       },
     );
   }
@@ -752,7 +752,7 @@ export class TerminalView extends ItemView {
                     onlySelection: false,
                   }),
                 ],
-                `${this.name}.html`,
+                `${this.title}.html`,
                 { type: `text/html; charset=${DEFAULT_ENCODING};` },
               ),
             );
@@ -800,7 +800,7 @@ export class TerminalView extends ItemView {
   }
 
   protected openRenameDialog(): void {
-    const { context, nameGenerated, state } = this,
+    const { context, titleGenerated, state } = this,
       {
         language: { value: i18n },
       } = context;
@@ -817,7 +817,7 @@ export class TerminalView extends ItemView {
           const titleInput = setting.addText((component) => {
             component
               .setValue(userTitle)
-              .setPlaceholder(nameGenerated)
+              .setPlaceholder(titleGenerated)
               .onChange((value) => {
                 userTitle = value;
               });
@@ -968,7 +968,7 @@ export class TerminalView extends ItemView {
           () =>
             i18n.t("notices.spawning-terminal", {
               interpolation: { escapeValue: false },
-              name: this.name,
+              title: this.title,
             }),
           settings.value.noticeTimeout,
           context,
@@ -1088,7 +1088,7 @@ export class TerminalView extends ItemView {
                     ele.remove();
                   },
                   () => {
-                    this.title = "";
+                    this.rawTitle = "";
                   },
                   ele.onWindowMigrated(() => {
                     emulator.reopen();
@@ -1173,7 +1173,7 @@ export class TerminalView extends ItemView {
           terminal.onWriteParsed(requestSaveLayout);
           terminal.onResize(requestSaveLayout);
           terminal.onTitleChange((title) => {
-            this.title = title;
+            this.rawTitle = title;
           });
 
           disposer.push(

@@ -100,7 +100,7 @@
       "item-text-temporary": "（$t(generic.temporary)$t(generic.profile)）"
     },
     "terminal": {
-      "display-name": "$t(generic.terminal)：{{name}}",
+      "display-name": "$t(generic.terminal)：{{title}}",
       "edit-modal": {
         "profile": "$t(generic.profile)",
         "profile-edit": "$t(generic.edit)",
@@ -251,7 +251,7 @@
     "Python-status-entry-": "{{name}}：{{version}}（滿足：{{requirement}}）",
     "Python-status-entry-unsatisfied": "{{name}}：{{version}}（未滿足：{{requirement}}）",
     "no-default-profile": "沒有$t(generic.type)「$t(generic.profile-types.{{type}})」的$t(generic.default)$t(generic.profile)",
-    "spawning-terminal": "$t(generic.terminal)$t(generic.spawn)中：{{name}}",
+    "spawning-terminal": "$t(generic.terminal)$t(generic.spawn)中：{{title}}",
     "terminal-exited": "$t(generic.terminal)已$t(generic.exit)：{{code}}"
   },
   "profile-name-formats": {
