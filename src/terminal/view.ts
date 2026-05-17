@@ -814,7 +814,7 @@ export class TerminalView extends ItemView {
       },
       draw(ui, contentEl) {
         ui.newSetting(contentEl, (setting) => {
-          const titleInput = setting.addText((component) => {
+          const { controlEl } = setting.addText((component) => {
             component
               .setValue(userTitle)
               .setPlaceholder(titleGenerated)
@@ -822,7 +822,12 @@ export class TerminalView extends ItemView {
                 userTitle = value;
               });
           });
-          titleInput.controlEl.focus();
+          controlEl.style.width = "100%";
+          controlEl
+            .querySelectorAll<HTMLInputElement>(":scope > input")
+            .forEach((input) => {
+              input.style.width = "100%";
+            });
         });
       },
       title() {
