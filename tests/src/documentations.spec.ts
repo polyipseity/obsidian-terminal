@@ -130,22 +130,25 @@ describe("src/documentations.ts", () => {
       const clickSpy = vi.spyOn(heartButton, "click");
 
       expect(() => {
-        DOCUMENTATIONS.donate({
-          context: {
-            app: {
-              setting: {
-                settingTabs: [
-                  {
-                    id: "community-plugins",
-                    containerEl: self.document.createElement("div"),
-                    installedPlugins: { listEl },
-                  },
-                ],
+        DOCUMENTATIONS.donate(
+          {
+            context: {
+              app: {
+                setting: {
+                  settingTabs: [
+                    {
+                      id: "community-plugins",
+                      containerEl: self.document.createElement("div"),
+                      installedPlugins: { listEl },
+                    },
+                  ],
+                },
               },
+              manifest: { name: "Terminal", fundingUrl: {} },
             },
-            manifest: { name: "Terminal", fundingUrl: {} },
-          },
-        } as unknown as Parameters<typeof DOCUMENTATIONS.donate>[0]);
+          } as unknown as Parameters<typeof DOCUMENTATIONS.donate>[0],
+          { active: true, event: null },
+        );
       }).not.toThrow();
 
       expect(clickSpy).toHaveBeenCalledTimes(1);
@@ -164,25 +167,28 @@ describe("src/documentations.ts", () => {
       const clickSpy = vi.spyOn(heartButton, "click");
 
       expect(() => {
-        DOCUMENTATIONS.donate({
-          context: {
-            app: {
-              setting: {
-                settingTabs: [
-                  {
-                    id: "community-plugins",
-                    containerEl: self.document.createElement("div"),
-                    installedPlugins: {
-                      listEl: null as unknown as HTMLElement,
-                      containerEl: pluginsContainerEl,
+        DOCUMENTATIONS.donate(
+          {
+            context: {
+              app: {
+                setting: {
+                  settingTabs: [
+                    {
+                      id: "community-plugins",
+                      containerEl: self.document.createElement("div"),
+                      installedPlugins: {
+                        listEl: null as unknown as HTMLElement,
+                        containerEl: pluginsContainerEl,
+                      },
                     },
-                  },
-                ],
+                  ],
+                },
               },
+              manifest: { name: "Terminal", fundingUrl: {} },
             },
-            manifest: { name: "Terminal", fundingUrl: {} },
-          },
-        } as unknown as Parameters<typeof DOCUMENTATIONS.donate>[0]);
+          } as unknown as Parameters<typeof DOCUMENTATIONS.donate>[0],
+          { active: true, event: null },
+        );
       }).not.toThrow();
 
       expect(clickSpy).toHaveBeenCalledTimes(1);
@@ -200,6 +206,7 @@ describe("src/documentations.ts", () => {
             "Sponsor A": "https://example.com/donate-a",
             "Sponsor B": "https://example.com/donate-b",
           }),
+          { active: true, event: null },
         );
       }).not.toThrow();
 
@@ -217,7 +224,10 @@ describe("src/documentations.ts", () => {
       const warnSpy = vi.spyOn(self.console, "warn");
 
       expect(() => {
-        DOCUMENTATIONS.donate(brokenDonateView(undefined));
+        DOCUMENTATIONS.donate(brokenDonateView(undefined), {
+          active: true,
+          event: null,
+        });
       }).toThrow("addSetting");
       expect(openExternalSpy).not.toHaveBeenCalled();
       // One warning from the primary listEl path before the deprecated fallback
@@ -242,12 +252,15 @@ describe("src/documentations.ts", () => {
       };
 
       expect(() => {
-        DOCUMENTATIONS.donate({
-          context: {
-            app: { setting: { settingTabs: [communityPluginsTab] } },
-            manifest: { fundingUrl: "https://example.com/donate" },
-          },
-        } as unknown as Parameters<typeof DOCUMENTATIONS.donate>[0]);
+        DOCUMENTATIONS.donate(
+          {
+            context: {
+              app: { setting: { settingTabs: [communityPluginsTab] } },
+              manifest: { fundingUrl: "https://example.com/donate" },
+            },
+          } as unknown as Parameters<typeof DOCUMENTATIONS.donate>[0],
+          { active: true, event: null },
+        );
       }).not.toThrow();
 
       // First warn: primary listEl path. Second warn: deprecated path also fails.

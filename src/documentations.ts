@@ -11,21 +11,28 @@ import {
   toJSONOrString,
   typedKeys,
 } from "@polyipseity/obsidian-plugin-library";
-import { DOMClasses2 } from "./magic.js";
-import type { TerminalPlugin } from "./main.js";
+import semverLt from "semver/functions/lt.js";
+import { MarkOptional } from "ts-essentials";
 import changelogMd from "../CHANGELOG.md";
 import readmeMd from "../README.md";
-import semverLt from "semver/functions/lt.js";
+import { DOMClasses2 } from "./magic.js";
+import type { TerminalPlugin } from "./main.js";
 
 export const DOCUMENTATIONS = deepFreeze({
-  async changelog(view: DocumentationMarkdownView.Registered, active: boolean) {
-    await view.open(active, {
+  async changelog(
+    view: DocumentationMarkdownView.Registered,
+    opts: DocumentationOpenOptions,
+  ) {
+    await view.open(opts.active, {
       data: await changelogMd,
       displayTextI18nKey: "translation:generic.documentations.changelog",
       iconI18nKey: "asset:generic.documentations.changelog-icon",
     });
   },
-  donate(view: DocumentationMarkdownView.Registered) {
+  donate(
+    view: DocumentationMarkdownView.Registered,
+    opts: DocumentationOpenOptions,
+  ) {
     const {
       context,
       context: { app, manifest },
@@ -98,12 +105,15 @@ export const DOCUMENTATIONS = deepFreeze({
         if (url === null) {
           throw error;
         }
-        openExternal(activeSelf(), url);
+        openExternal(activeSelf(opts.event), url);
       },
     );
   },
-  async readme(view: DocumentationMarkdownView.Registered, active: boolean) {
-    await view.open(active, {
+  async readme(
+    view: DocumentationMarkdownView.Registered,
+    opts: DocumentationOpenOptions,
+  ) {
+    await view.open(opts.active, {
       data: await readmeMd,
       displayTextI18nKey: "translation:generic.documentations.readme",
       iconI18nKey: "asset:generic.documentations.readme-icon",
@@ -113,6 +123,10 @@ export const DOCUMENTATIONS = deepFreeze({
 export type DocumentationKeys = readonly ["changelog", "donate", "readme"];
 export const DOCUMENTATION_KEYS =
   typedKeys<DocumentationKeys>()(DOCUMENTATIONS);
+export interface DocumentationOpenOptions {
+  readonly active: boolean;
+  readonly event: UIEvent | null;
+}
 
 class Loaded0 {
   public constructor(
@@ -120,7 +134,14 @@ class Loaded0 {
     public readonly docMdView: DocumentationMarkdownView.Registered,
   ) {}
 
-  public open(key: DocumentationKeys[number], active = true): void {
+  public open(
+    key: DocumentationKeys[number],
+    opts: MarkOptional<
+      DocumentationOpenOptions,
+      keyof DocumentationOpenOptions
+    > = {},
+  ): void {
+    const { active = true, event = null } = opts;
     const {
       context,
       context: {
@@ -132,7 +153,7 @@ class Loaded0 {
     } = this;
     (async (): Promise<void> => {
       try {
-        await DOCUMENTATIONS[key](docMdView, active);
+        await DOCUMENTATIONS[key](docMdView, { active, event });
         if (key === "changelog" && version !== null) {
           localSettings
             .mutate((lsm) => {
@@ -174,7 +195,7 @@ export function loadDocumentations(
     });
   }
   if (readme) {
-    ret.open("readme", false);
+    ret.open("readme", { active: false });
   }
   if (
     version !== null &&
@@ -182,7 +203,7 @@ export function loadDocumentations(
     !StorageSettingsManager.hasFailed(localSettings.value) &&
     semverLt(localSettings.value.lastReadChangelogVersion, version)
   ) {
-    ret.open("changelog", false);
+    ret.open("changelog", { active: false });
   }
   return ret;
 }
