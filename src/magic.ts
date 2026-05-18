@@ -40,6 +40,8 @@ export const CHECK_EXECUTABLE_WAIT = 5,
 
 export namespace DOMClasses2 {
   export const LUCIDE_HEART = "lucide-heart",
+    SETTING_ITEM = "setting-item",
+    SETTING_ITEM_NAME = "setting-item-name",
     SVG_ICON = "svg-icon";
   export namespace Namespaced {
     export const TERMINAL = "terminal";

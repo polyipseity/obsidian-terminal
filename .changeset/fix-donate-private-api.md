@@ -2,4 +2,4 @@
 "obsidian-terminal": patch
 ---
 
-Fix the donate button and the "open documentation (donate)" command throwing "Error opening documentation" (`TypeError: Cannot read properties of undefined (reading 'addSetting')`) on Obsidian 1.12.7+. Obsidian changed the internal `renderInstalledPlugin` API the plugin relied on to trigger the donation link. `donate()` now falls back to opening the manifest donation URL directly via `openExternal` when the private rendering path is unavailable, so donating works regardless of Obsidian-side private API changes. ([GH#157](https://github.com/polyipseity/obsidian-terminal/issues/157))
+Fix the donate button and "open documentation (donate)" command failing with an error on Obsidian 1.12.7+ due to a private API change. The plugin now finds the donation button directly from the community plugins list and falls back to opening the donation URL when that is not possible. ([GH#157](https://github.com/polyipseity/obsidian-terminal/issues/157) by [@janah01](https://github.com/janah01))
