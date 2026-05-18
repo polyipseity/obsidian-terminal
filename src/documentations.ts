@@ -1,9 +1,11 @@
 import {
   DocumentationMarkdownView,
   StorageSettingsManager,
+  activeSelf,
   addCommand,
   anyToError,
   deepFreeze,
+  openExternal,
   printError,
   revealPrivate,
   toJSONOrString,
@@ -37,19 +39,50 @@ export const DOCUMENTATIONS = deepFreeze({
         } = app0;
         for (const tab of settingTabs) {
           const {
-            id,
             containerEl: { ownerDocument },
+            id,
+            installedPlugins,
           } = tab;
           if (id !== "community-plugins") {
             continue;
           }
-          const div = ownerDocument.createElement("div");
-          tab.renderInstalledPlugin(manifest, div);
-          const element = div.querySelector(
-            `.${DOMClasses2.SVG_ICON}.${DOMClasses2.LUCIDE_HEART}`,
-          )?.parentElement;
+
+          // Find the donate button in the already-rendered installed plugins list:
+          // locate this plugin's row by matching the name from the manifest, then
+          // get the heart icon's parent element (the clickable button) and click it.
+          // Note: `textContent` is `string | null` so both `?.` are required;
+          // `querySelector` can also return `null` so `?.parentElement` is needed too.
+          let div = installedPlugins.listEl ?? installedPlugins.containerEl;
+          let element = [
+            ...(div?.querySelectorAll(`.${DOMClasses2.SETTING_ITEM}`) ?? []),
+          ]
+            .find(
+              (item) =>
+                item
+                  .querySelector(`.${DOMClasses2.SETTING_ITEM_NAME}`)
+                  ?.textContent?.trim() === manifest.name,
+            )
+            ?.querySelector(
+              `.${DOMClasses2.SVG_ICON}.${DOMClasses2.LUCIDE_HEART}`,
+            )?.parentElement;
           if (!element) {
-            throw new Error(toJSONOrString(div));
+            activeSelf(ownerDocument).console.warn(toJSONOrString(div));
+
+            // Deprecated: older versions of Obsidian (pre-1.12.7) exposed
+            // `renderInstalledPlugin`, which rendered each plugin's UI into a
+            // caller-supplied detached element; the heart icon was then queried from
+            // that subtree and clicked. This API was removed in Obsidian 1.12.7.
+            div = ownerDocument.createElement("div");
+            tab.renderInstalledPlugin(manifest, div);
+            element = div.querySelector(
+              `.${DOMClasses2.SVG_ICON}.${DOMClasses2.LUCIDE_HEART}`,
+            )?.parentElement;
+            if (!element) {
+              activeSelf(ownerDocument).console.warn(toJSONOrString(div));
+            }
+          }
+          if (!element) {
+            throw new Error(toJSONOrString(tab));
           }
           element.click();
           return;
@@ -57,7 +90,15 @@ export const DOCUMENTATIONS = deepFreeze({
         throw new Error(toJSONOrString(settingTabs));
       },
       (error) => {
-        throw error;
+        const { fundingUrl } = manifest;
+        const url =
+          typeof fundingUrl === "string"
+            ? fundingUrl
+            : (Object.values(fundingUrl ?? {})[0] ?? null);
+        if (url === null) {
+          throw error;
+        }
+        openExternal(activeSelf(), url);
       },
     );
   },
