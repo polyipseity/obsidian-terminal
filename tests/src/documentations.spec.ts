@@ -2,7 +2,6 @@
  * Unit tests for `src/documentations.ts`.
  *
  * Covers:
- * - `donationUrls()` normalizes `manifest.fundingUrl` (string | record | nullish).
  * - `DOCUMENTATIONS.donate()` clicks the heart button when the plugin row is
  *   found via `installedPlugins.listEl` (primary path, Obsidian 1.12.7+).
  * - `DOCUMENTATIONS.donate()` clicks the heart button when the plugin row is
@@ -60,7 +59,7 @@ vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => {
   };
 });
 
-import { donationUrls, DOCUMENTATIONS } from "../../src/documentations.js";
+import { DOCUMENTATIONS } from "../../src/documentations.js";
 
 /**
  * Build a minimal DOM structure matching the installed-plugins list layout:
@@ -116,39 +115,6 @@ function brokenDonateView(
 }
 
 describe("src/documentations.ts", () => {
-  describe("donationUrls()", () => {
-    it("wraps a single string URL", () => {
-      expect(donationUrls("https://example.com/donate")).toEqual([
-        "https://example.com/donate",
-      ]);
-    });
-
-    it("returns the values of a label->url record in order", () => {
-      expect(
-        donationUrls({
-          "Sponsor A": "https://example.com/donate-a",
-          "Sponsor B": "https://example.com/donate-b",
-        }),
-      ).toEqual([
-        "https://example.com/donate-a",
-        "https://example.com/donate-b",
-      ]);
-    });
-
-    it("returns an empty array for undefined", () => {
-      expect(donationUrls(undefined)).toEqual([]);
-    });
-
-    it("returns an empty array for an empty record", () => {
-      expect(donationUrls({})).toEqual([]);
-    });
-
-    // Empty strings pass through; `donate()` guards against them with `!url`.
-    it("preserves an empty string", () => {
-      expect(donationUrls("")).toEqual([""]);
-    });
-  });
-
   describe("DOCUMENTATIONS.donate()", () => {
     afterEach(() => {
       vi.restoreAllMocks();
@@ -251,7 +217,7 @@ describe("src/documentations.ts", () => {
       const warnSpy = vi.spyOn(self.console, "warn");
 
       expect(() => {
-        DOCUMENTATIONS.donate(brokenDonateView(""));
+        DOCUMENTATIONS.donate(brokenDonateView(undefined));
       }).toThrow("addSetting");
       expect(openExternalSpy).not.toHaveBeenCalled();
       // One warning from the primary listEl path before the deprecated fallback

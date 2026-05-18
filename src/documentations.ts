@@ -17,15 +17,6 @@ import changelogMd from "../CHANGELOG.md";
 import readmeMd from "../README.md";
 import semverLt from "semver/functions/lt.js";
 
-export function donationUrls(
-  donationUrl: string | Record<string, string> | undefined,
-): readonly string[] {
-  if (typeof donationUrl === "string") {
-    return [donationUrl];
-  }
-  return donationUrl ? Object.values(donationUrl) : [];
-}
-
 export const DOCUMENTATIONS = deepFreeze({
   async changelog(view: DocumentationMarkdownView.Registered, active: boolean) {
     await view.open(active, {
@@ -99,8 +90,12 @@ export const DOCUMENTATIONS = deepFreeze({
         throw new Error(toJSONOrString(settingTabs));
       },
       (error) => {
-        const [url] = donationUrls(manifest.fundingUrl);
-        if (!url) {
+        const { fundingUrl } = manifest;
+        const url =
+          typeof fundingUrl === "string"
+            ? fundingUrl
+            : (Object.values(fundingUrl ?? {})[0] ?? null);
+        if (url === null) {
           throw error;
         }
         openExternal(activeSelf(), url);
