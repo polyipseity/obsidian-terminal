@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 
 /**
  * These tests validate the regex patterns and parsing logic used in
- * `resolveSystemPath()` (pseudoterminal.ts) against realistic OS output.
+ * `resolveSystemPath()` (environment.ts) against realistic OS output.
  *
  * The functions under test are private, so we replicate the exact parsing
  * code here. Any change to the source patterns must be reflected here.
