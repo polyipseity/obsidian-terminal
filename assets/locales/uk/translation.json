@@ -8,14 +8,38 @@
     "open-documentation-changelog": "$t(generic.open, capitalize) $t(generic.documentations.changelog)",
     "open-documentation-donate": "$t(generic.open, capitalize) $t(generic.documentations.donate)",
     "open-documentation-readme": "$t(generic.open, capitalize) $t(generic.documentations.readme)",
-    "open-terminal-": "$t(generic.open, capitalize) $t(generic.terminal): $t(generic.profile-types.{{type}}, capitalize)",
     "open-terminal-current": "$t(generic.open, capitalize) $t(generic.current-directory) у терміналі: $t(generic.profile-types.{{type}}, capitalize)",
     "open-terminal-default-profile": "$t(generic.open, capitalize) $t(generic.terminal): $t(settings.default-profile)",
     "open-terminal-root": "$t(generic.open, capitalize) $t(generic.root-directory) у терміналі: $t(generic.profile-types.{{type}}, capitalize)",
+    "rename-terminal": "$t(generic.rename, capitalize) $t(generic.terminal)",
     "toggle-focus-on-last-terminal": "Переключити фокус на останньому терміналі",
     "unfocus-terminal": "Зняти фокус із термінала"
   },
   "components": {
+    "keymappings": {
+      "action": "Action",
+      "actions": {
+        "ignore": "Ignore",
+        "passthrough": "Passthrough",
+        "sendEscapeSequence": "Send escape sequence",
+        "sendHexCode": "Send hex code",
+        "sendText": "Send text"
+      },
+      "edit": "$t(generic.edit, capitalize)",
+      "placeholders": {
+        "sendEscapeSequence": "e.g. b",
+        "sendHexCode": "e.g. 01 0d",
+        "sendText": "e.g. hello"
+      },
+      "platform": "$t(generic.platform, capitalize)",
+      "platform-options-": "All $t(generic.platform_other)",
+      "platform-options-darwin": "$t(generic.platforms.darwin)",
+      "platform-options-linux": "$t(generic.platforms.linux)",
+      "platform-options-win32": "$t(generic.platforms.win32)",
+      "record": "Click to record",
+      "recording": "Press a key...",
+      "title": "$t(generic.keymapping_other, capitalize)"
+    },
     "profile": {
       "data": "$t(generic.data, capitalize)",
       "data-edit": "$t(generic.edit, capitalize)",
@@ -61,9 +85,9 @@
       "descriptor-": "{{info.id}}",
       "descriptor-incompatible": "($t(generic.incompatible, capitalize)) $t(components.profile-list.descriptor-)",
       "edit": "$t(generic.edit, capitalize)",
+      "mark-as-default": "Mark as $t(generic.default)",
       "namer-": "{{info.name}}",
       "namer-incompatible": "$t(components.profile-list.namer-)",
-      "preset-placeholder": "$t(components.dropdown.placeholder)",
       "title": "$t(generic.profile_other, capitalize)"
     },
     "select-profile": {
@@ -94,6 +118,8 @@
         "copy": "$t(generic.copy, capitalize)",
         "edit": "$t(generic.edit, capitalize)",
         "find": "$t(generic.find, capitalize)",
+        "rename": "$t(generic.rename, capitalize)",
+        "rename-prompt": "$t(generic.rename, capitalize) $t(generic.terminal)",
         "restart": "$t(generic.restart, capitalize)",
         "save-as-HTML": "$t(generic.save, capitalize) як $t(generic.file-extensions.HTML)"
       },
@@ -171,6 +197,8 @@
     "instance": "екземпляр",
     "instance_gerund": "створення екземпляра",
     "invalid": "недійсний",
+    "key": "key",
+    "keymapping": "keymapping",
     "name": "назва",
     "option": "параметр",
     "option_other": "параметри",
@@ -187,6 +215,7 @@
     "profile": "$t(generic.profile_one)",
     "profile-types": {
       "": "порожній",
+      "default": "$t(generic.default)",
       "developerConsole": "консоль розробника",
       "external": "зовнішній",
       "integrated": "інтегрований",
@@ -196,6 +225,7 @@
     "profile_one": "профіль",
     "profile_other": "профілі",
     "pseudoterminal": "псевдотермінал",
+    "rename": "rename",
     "renderer": "рендерер",
     "renderers": {
       "canvas": "canvas",
@@ -273,7 +303,8 @@
     "zshIntegrated": "zsh: $t(generic.profile-types.integrated, capitalize)"
   },
   "ribbons": {
-    "open-terminal": "$t(generic.open, capitalize) $t(generic.terminal)"
+    "open-terminal": "$t(generic.open, capitalize) $t(generic.terminal)",
+    "open-terminal-default": "$t(generic.open, capitalize) $t(generic.terminal): {{info.nameOrID}}"
   },
   "settings": {
     "add-to-command": "Додати до команд",
@@ -304,6 +335,9 @@
     "instancing": "$t(generic.instance_gerund, capitalize)",
     "intercept-logging": "Перехоплення логів",
     "interface": "Інтерфейс",
+    "keymappings": "$t(generic.keymapping_other, capitalize)",
+    "keymappings-description": "Custom key bindings intercepted before the $t(generic.terminal). Each entry maps a key combo (with optional platform filter) to an action: escape sequence, raw text, or hex code. First matching entry wins. Example: the built-in Shift+Enter → ESC+CR lets TUI programs distinguish Enter (submit) from Shift+Enter (newline).",
+    "keymappings-edit": "$t(generic.edit, capitalize)",
     "macOS-option-key-passthrough": "macOS: Пропуск клавіші Option",
     "macOS-option-key-passthrough-description": "Дозволити комбінації Option+клавіша досягати термінала для введення спеціальних символів.",
     "new-instance-behavior": "Поведінка нового екземпляра",
