@@ -1470,7 +1470,6 @@ export class KeymappingEditModal extends Modal {
       setting
         .setName(i18n.t("components.keymappings.platform"))
         .addDropdown((dd) => {
-          dd.addOption("", i18n.t("components.keymappings.platform-options-"));
           for (const platform of Settings.KEY_MAPPING_PLATFORMS) {
             dd.addOption(
               platform ?? "",
@@ -1490,25 +1489,61 @@ export class KeymappingEditModal extends Modal {
         });
     });
 
-    // Arg text input — shown only for actions that take an argument
+    // Arg input — shown only for actions that take an argument
+    // Always create both number and text inputs; hide one based on action type.
+    // This ensures the input component type cannot change when action changes.
     ui.newSetting(listEl, (setting) => {
-      const action = inSet(
-        ["sendEscapeSequence", "sendHexCode", "sendText"],
-        data.action,
-      )
-        ? data.action
-        : null;
-      setting.settingEl.style.display = action === null ? "none" : "";
-      // `newSetting` does not support conditionally adding components
-      setting.addTextArea((text) => {
-        text.setValue(data.actionArg).onChange(async (val) => {
-          data.actionArg = val;
-          await this.postMutate();
-        });
-        if (action === null) return;
+      const argType = Settings.ACTION_ARG_TYPES[data.action];
+      setting.settingEl.style.display = argType === null ? "none" : "";
+
+      // Number input for numeric actions (scrollLines, scrollPages)
+      setting.addText((text) => {
+        // Hide/show based on action type
+        text.inputEl.style.display = argType === "number" ? "" : "none";
+
         text.setPlaceholder(
-          i18n.t(`components.keymappings.placeholders.${action}`),
+          i18n.t(`components.keymappings.placeholders.${data.action}`),
         );
+        text.inputEl.type = "number";
+        text.inputEl.step = "1";
+
+        // Display current value if it's a number, else empty
+        const numValue = data.actionArg;
+        if (typeof numValue === "number") {
+          text.setValue(String(numValue));
+          text.onChange(async (val) => {
+            const parsed = parseInt(val, 10);
+            if (!Settings.Keymapping.isValidActionArg("number", parsed)) {
+              text.setValue(String(data.actionArg));
+              return;
+            }
+            data.actionArg = parsed;
+            await this.postMutate();
+          });
+        }
+      });
+
+      // Text area for string actions (sendEscapeSequence, sendHexCode, sendText)
+      setting.addTextArea((text) => {
+        // Hide/show based on action type
+        text.inputEl.style.display = argType === "string" ? "" : "none";
+
+        text.setPlaceholder(
+          i18n.t(`components.keymappings.placeholders.${data.action}`),
+        );
+
+        // Display current value if it's a string, else empty
+        const strValue = data.actionArg;
+        if (typeof strValue === "string") {
+          text.setValue(strValue);
+          text.onChange(async (val) => {
+            if (!Settings.Keymapping.isValidActionArg("string", val)) {
+              text.setValue(data.actionArg);
+              return;
+            }
+            await this.postMutate();
+          });
+        }
       });
     });
   }
