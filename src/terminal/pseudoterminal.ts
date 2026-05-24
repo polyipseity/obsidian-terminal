@@ -53,7 +53,7 @@ import AsyncLock from "async-lock";
 import type { AsyncOrSync } from "ts-essentials";
 import { BUNDLE } from "../import.js";
 import type { DeveloperConsoleContext } from "obsidian-terminal";
-import { applyFixedPtyEnv, sanitizedEnv } from "./environment.js";
+import { applyFixedEnv, sanitizeEnv } from "./environment.js";
 import { DisposerAddon } from "./emulator-addons.js";
 import type { FileResult } from "tmp-promise";
 import type { Log } from "../patch.js";
@@ -791,12 +791,9 @@ class WindowsPseudoterminal implements Pseudoterminal {
             process,
             win32ResizerPy,
           ]),
-          resizerEnv: NodeJS.ProcessEnv = applyFixedPtyEnv(
-            await sanitizedEnv(process2.env),
-          ),
-          ret = await spawnPromise(() =>
+          ret = await spawnPromise(async () =>
             childProcess2.spawn(pythonExecutable, ["-c", win32ResizerPy2], {
-              env: resizerEnv,
+              env: applyFixedEnv(await sanitizeEnv(process2.env)),
               stdio: ["pipe", "pipe", "pipe"],
               windowsHide: true,
             }),
@@ -870,13 +867,10 @@ class WindowsPseudoterminal implements Pseudoterminal {
                   ? [WINDOWS_CONHOST_PATH, inOutTmp.path]
                   : [inOutTmp.path],
               ),
-              shellEnv: NodeJS.ProcessEnv = applyFixedPtyEnv(
-                await sanitizedEnv(process2.env),
-              ),
-              ret = await spawnPromise(() =>
+              ret = await spawnPromise(async () =>
                 childProcess2.spawn(cmd[0], cmd.slice(1), {
                   cwd,
-                  env: shellEnv,
+                  env: applyFixedEnv(await sanitizeEnv(process2.env)),
                   shell: !conhost,
                   stdio: ["pipe", "pipe", "pipe"],
                   windowsHide: !resizer,
@@ -1066,9 +1060,7 @@ class UnixPseudoterminal implements Pseudoterminal {
       }
       const [childProcess2, process2, unixPseudoterminalPy2] =
           await Promise.all([childProcess, process, unixPseudoterminalPy]),
-        env: NodeJS.ProcessEnv = applyFixedPtyEnv(
-          await sanitizedEnv(process2.env),
-        );
+        env = applyFixedEnv(await sanitizeEnv(process2.env));
       if (!isNil(terminal)) {
         env["TERM"] = terminal;
       }

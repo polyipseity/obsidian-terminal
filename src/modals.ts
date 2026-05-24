@@ -34,11 +34,7 @@ import { constant, identity, noop } from "lodash-es";
 import { Modal, Setting } from "obsidian";
 import type { DeepWritable } from "ts-essentials";
 import { BUNDLE } from "./import.js";
-import {
-  CHECK_EXECUTABLE_WAIT,
-  DEFAULT_PYTHONIOENCODING,
-  PYTHON_REQUIREMENTS,
-} from "./magic.js";
+import { CHECK_EXECUTABLE_WAIT, PYTHON_REQUIREMENTS } from "./magic.js";
 import {
   DEFAULT_TERMINAL_OPTIONS,
   PROFILE_PRESETS,
@@ -46,6 +42,7 @@ import {
 } from "./terminal/profile-presets.js";
 import { PROFILE_PROPERTIES } from "./terminal/profile-properties.js";
 import { Pseudoterminal } from "./terminal/pseudoterminal.js";
+import { applyFixedEnv, sanitizeEnv } from "./terminal/environment.js";
 
 import SemVer from "semver/classes/semver.js";
 import semverCoerce from "semver/functions/coerce.js";
@@ -1004,15 +1001,12 @@ export class ProfileModal extends Modal {
                               process,
                               getPackageVersion,
                             ]),
+                          env = applyFixedEnv(await sanitizeEnv(process2.env)),
                           { stdout, stderr } = await execFileP2(
                             profile.pythonExecutable,
                             ["--version"],
                             {
-                              env: {
-                                ...process2.env,
-
-                                PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
-                              },
+                              env,
                               timeout: CHECK_EXECUTABLE_WAIT * SI_PREFIX_SCALE,
                               windowsHide: true,
                             },
@@ -1046,12 +1040,7 @@ export class ProfileModal extends Modal {
                                       profile.pythonExecutable,
                                       ["-c", getPackageVersion2, name],
                                       {
-                                        env: {
-                                          ...process2.env,
-
-                                          PYTHONIOENCODING:
-                                            DEFAULT_PYTHONIOENCODING,
-                                        },
+                                        env,
                                         timeout:
                                           CHECK_EXECUTABLE_WAIT *
                                           SI_PREFIX_SCALE,

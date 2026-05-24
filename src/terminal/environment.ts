@@ -31,22 +31,28 @@ export const SANITIZED_ENV_KEYS: ReadonlySet<string> = new Set([
 ]);
 export const SANITIZED_ENV_PREFIXES: readonly string[] = ["VSCODE_", "ZED_"];
 
-/** Fixed environment variables applied to all PTY environments.
+/** Fixed environment variables applied to all spawned processes.
  *  - `COLORTERM`: advertises true-color (24-bit) support so tools that
  *    probe this variable (e.g. Claude Code, neovim) use full color output.
  *  - `TERM_PROGRAM`: identifies the terminal as obsidian-terminal.
  *  - `PYTHONIOENCODING`: ensures UTF-8 output with safe fallback handling */
-export const FIXED_PTY_ENV: Readonly<Record<string, string>> = {
+export const FIXED_ENV: Readonly<Record<string, string>> = {
   COLORTERM: "truecolor",
   TERM_PROGRAM: "obsidian-terminal",
   PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
 };
 
-/** Applies fixed PTY environment variables to a sanitized environment.
- *  @param env the sanitized environment to augment
+/** Environment for system PATH discovery on macOS.
+ *  Empty PATH ensures path_helper returns only system entries. */
+export const DARWIN_PATH_HELPER_ENV: Readonly<Record<string, string>> = {
+  PATH: "",
+};
+
+/** Applies fixed environment variables to a process environment.
+ *  @param env the environment to augment
  *  @returns the same env object with fixed vars merged in */
-export function applyFixedPtyEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  return Object.assign(env, FIXED_PTY_ENV);
+export function applyFixedEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return Object.assign(env, FIXED_ENV);
 }
 
 /** Parses the output of `/usr/libexec/path_helper -s` on macOS.
@@ -116,6 +122,7 @@ const getSystemPath = lazyInit(() => resolveSystemPath());
 
 async function resolveSystemPath(): Promise<string[]> {
   const platform = deopaque(Platform.CURRENT);
+  const process2 = await process;
   try {
     if (platform === "darwin") {
       // path_helper reads /etc/paths and /etc/paths.d/* (SIP-protected).
@@ -126,7 +133,7 @@ async function resolveSystemPath(): Promise<string[]> {
         childProcess2,
         "/usr/libexec/path_helper",
         ["-s"],
-        { PATH: "" },
+        DARWIN_PATH_HELPER_ENV,
       );
       return parseDarwinPathHelper(output);
     }
@@ -147,7 +154,12 @@ async function resolveSystemPath(): Promise<string[]> {
       }
       // Fall back to getconf PATH (POSIX, always available)
       try {
-        const output = await execToString(childProcess2, "getconf", ["PATH"]);
+        const output = await execToString(
+          childProcess2,
+          "getconf",
+          ["PATH"],
+          process2.env,
+        );
         const entries = parseGetconfOutput(output);
         if (entries.length > 0) {
           return entries;
@@ -159,23 +171,25 @@ async function resolveSystemPath(): Promise<string[]> {
     }
     if (platform === "win32") {
       // Merge System and User PATH from the registry
-      const [childProcess2, process2] = await Promise.all([
-        childProcess,
-        process,
-      ]);
+      const childProcess2 = await childProcess;
       const [systemOut, userOut] = await Promise.all([
-        execToString(childProcess2, "reg", [
-          "query",
-          "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment",
-          "/v",
-          "Path",
-        ]).catch(() => ""),
-        execToString(childProcess2, "reg", [
-          "query",
-          "HKCU\\Environment",
-          "/v",
-          "Path",
-        ]).catch(() => ""),
+        execToString(
+          childProcess2,
+          "reg",
+          [
+            "query",
+            "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment",
+            "/v",
+            "Path",
+          ],
+          process2.env,
+        ).catch(() => ""),
+        execToString(
+          childProcess2,
+          "reg",
+          ["query", "HKCU\\Environment", "/v", "Path"],
+          process2.env,
+        ).catch(() => ""),
       ]);
       return [
         ...parseWindowsRegistryPath(systemOut),
@@ -192,7 +206,7 @@ async function execToString(
   cp: typeof import("node:child_process"),
   cmd: string,
   args: string[],
-  env?: NodeJS.ProcessEnv,
+  env: NodeJS.ProcessEnv,
 ): Promise<string> {
   const proc = await spawnPromise(() =>
     cp.spawn(cmd, args, {
@@ -213,7 +227,7 @@ async function execToString(
   });
 }
 
-export async function sanitizedEnv(
+export async function sanitizeEnv(
   base: NodeJS.ProcessEnv,
 ): Promise<NodeJS.ProcessEnv> {
   const env: NodeJS.ProcessEnv = {};
