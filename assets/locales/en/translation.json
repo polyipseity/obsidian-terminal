@@ -70,6 +70,10 @@
       "actions": {
         "ignore": "Ignore",
         "passthrough": "Passthrough",
+        "scrollLines": "Scroll lines",
+        "scrollPages": "Scroll pages",
+        "scrollToBottom": "Scroll to bottom",
+        "scrollToTop": "Scroll to top",
         "sendEscapeSequence": "Send escape sequence",
         "sendHexCode": "Send hex code",
         "sendText": "Send text"
@@ -77,6 +81,12 @@
       "action": "Action",
       "edit": "$t(generic.edit, capitalize)",
       "placeholders": {
+        "ignore": "",
+        "passthrough": "",
+        "scrollLines": "e.g. -3",
+        "scrollPages": "e.g. -1",
+        "scrollToBottom": "",
+        "scrollToTop": "",
         "sendEscapeSequence": "e.g. b",
         "sendHexCode": "e.g. 01 0d",
         "sendText": "e.g. hello"

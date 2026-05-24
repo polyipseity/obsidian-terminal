@@ -21,12 +21,22 @@
       "actions": {
         "ignore": "忽略",
         "passthrough": "穿透",
+        "scrollLines": "捲動行數",
+        "scrollPages": "捲動頁數",
+        "scrollToBottom": "捲動至底部",
+        "scrollToTop": "捲動至頂部",
         "sendEscapeSequence": "傳送跳脫序列",
         "sendHexCode": "傳送十六進位代碼",
         "sendText": "傳送文字"
       },
       "edit": "$t(generic.edit, capitalize)",
       "placeholders": {
+        "ignore": "",
+        "passthrough": "",
+        "scrollLines": "例如 -3",
+        "scrollPages": "例如 -1",
+        "scrollToBottom": "",
+        "scrollToTop": "",
         "sendEscapeSequence": "例如 b",
         "sendHexCode": "例如 01 0d",
         "sendText": "例如 hello"
