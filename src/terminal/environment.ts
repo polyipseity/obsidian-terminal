@@ -5,7 +5,11 @@ import {
   lazyInit,
 } from "@polyipseity/obsidian-plugin-library";
 
-import { DEFAULT_PYTHONIOENCODING } from "../magic.js";
+import {
+  DEFAULT_PYTHONIOENCODING,
+  TERM_PROGRAM,
+  TERM_PROGRAM_VERSION,
+} from "../magic.js";
 import { BUNDLE } from "../import.js";
 import { spawnPromise } from "../utils.js";
 
@@ -38,9 +42,9 @@ export const SANITIZED_ENV_PREFIXES: readonly string[] = ["VSCODE_", "ZED_"];
  *    Claude Code, neovim, and many TUIs probe this to enable full-color output.
  *  - `TERM: "xterm-256color"`: indicates 256-color xterm-compatible terminal support
  *    for Unix/Linux shells and terminal applications.
- *  - `TERM_PROGRAM: "obsidian-terminal"`: identifies this as obsidian-terminal,
+ *  - `TERM_PROGRAM`: identifies this as obsidian-terminal,
  *    replacing parent terminal identification (e.g., "iTerm", "vscode").
- *  - `TERM_PROGRAM_VERSION: "1.0.0"`: version identifier for compatibility checks.
+ *  - `TERM_PROGRAM_VERSION`: version identifier for compatibility checks.
  *
  *  Encoding:
  *  - `PYTHONIOENCODING`: ensures Python UTF-8 output with safe fallback handling.
@@ -49,23 +53,16 @@ export const FIXED_ENV: Readonly<Record<string, string>> = {
   COLORTERM: "truecolor",
   PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
   TERM: "xterm-256color",
-  TERM_PROGRAM: "obsidian-terminal",
-  TERM_PROGRAM_VERSION: "1.0.0",
+  TERM_PROGRAM,
+  TERM_PROGRAM_VERSION,
 };
 
 /** Fixed environment variables for external terminal emulators.
  *
- *  Only includes universal variables safe for any external terminal:
- *  - `COLORTERM: "truecolor"`: advertises true-color support.
- *  - `PYTHONIOENCODING`: ensures Python UTF-8 output.
- *
- *  Terminal-specific variables (TERM, TERM_PROGRAM) are intentionally excluded
- *  so the external terminal's native identification is preserved.
+ *  Currently empty as a placeholder. External terminals should use
+ *  the system's inherited environment without plugin-specific overrides.
  */
-export const FIXED_ENV_EXTERNAL: Readonly<Record<string, string>> = {
-  COLORTERM: "truecolor",
-  PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
-};
+export const FIXED_ENV_EXTERNAL: Readonly<Record<string, string>> = {};
 
 /** Environment for system PATH discovery on macOS.
  *  Empty PATH ensures path_helper returns only system entries. */

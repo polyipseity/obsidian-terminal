@@ -35,6 +35,8 @@ export const CHECK_EXECUTABLE_WAIT = 5,
   TERMINAL_EXIT_CLEANUP_WAIT = 5,
   TERMINAL_PTY_RESIZE_WAIT = 0.5,
   TERMINAL_RESIZER_WATCHDOG_WAIT = 0.5,
+  TERM_PROGRAM = "obsidian-terminal",
+  TERM_PROGRAM_VERSION = "0.0.0",
   WINDOWS_CMD_PATH = "C:\\Windows\\System32\\cmd.exe",
   WINDOWS_CONHOST_PATH = "C:\\Windows\\System32\\conhost.exe";
 
