@@ -28,12 +28,12 @@ await Promise.all([
         ...pack.obsidian,
       };
     await Promise.all([
-      writeFile(PATHS.manifest, JSON.stringify(manifest, null, "\t"), {
+      writeFile(PATHS.manifest, JSON.stringify(manifest, null, "  "), {
         encoding: "utf-8",
       }),
       writeFile(
         PATHS.manifestBeta,
-        JSON.stringify({ ...manifest, ...BETA_MANIFEST }, null, "\t"),
+        JSON.stringify({ ...manifest, ...BETA_MANIFEST }, null, "  "),
         {
           encoding: "utf-8",
         },
@@ -43,7 +43,7 @@ await Promise.all([
   (async () => {
     const [pack, versions] = await Promise.all([aPackage, aVersions]);
     versions[MANIFEST_MAP.version(pack)] = pack.obsidian.minAppVersion;
-    await writeFile(PATHS.versions, JSON.stringify(versions, null, "\t"), {
+    await writeFile(PATHS.versions, JSON.stringify(versions, null, "  "), {
       encoding: "utf-8",
     });
   })(),
