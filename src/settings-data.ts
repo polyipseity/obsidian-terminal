@@ -134,6 +134,52 @@ export namespace Settings {
         platform: null,
         shift: true,
       },
+      // Shift+Page Up → scroll viewport one page up — all platforms.
+      // Works even when a shell is running (keymapping intercepts before xterm
+      // sends the key to the PTY).
+      {
+        action: "scrollPages",
+        actionArg: -1,
+        alt: false,
+        ctrl: false,
+        key: "PageUp",
+        meta: false,
+        platform: null,
+        shift: true,
+      },
+      // Shift+Page Down → scroll viewport one page down — all platforms.
+      {
+        action: "scrollPages",
+        actionArg: 1,
+        alt: false,
+        ctrl: false,
+        key: "PageDown",
+        meta: false,
+        platform: null,
+        shift: true,
+      },
+      // Shift+Home → scroll viewport to the top — all platforms.
+      {
+        action: "scrollToTop",
+        actionArg: null,
+        alt: false,
+        ctrl: false,
+        key: "Home",
+        meta: false,
+        platform: null,
+        shift: true,
+      },
+      // Shift+End → scroll viewport to the bottom — all platforms.
+      {
+        action: "scrollToBottom",
+        actionArg: null,
+        alt: false,
+        ctrl: false,
+        key: "End",
+        meta: false,
+        platform: null,
+        shift: true,
+      },
       // Option+Left → word backward
       {
         action: "sendEscapeSequence",
@@ -272,6 +318,14 @@ export namespace Settings {
    * - `"passthrough"` — yield to xterm.js; the event is processed as if no
    *   mapping matched. Useful for explicitly opting out of a default mapping
    *   for a specific key combination without deleting the default entry.
+   * - `"scrollLines"` — scroll the terminal viewport by the number of lines
+   *   given in {@link Keymapping.actionArg} (negative = up, positive = down).
+   *   Defaults to 1 if the arg is absent or non-numeric.
+   * - `"scrollPages"` — scroll the terminal viewport by the number of pages
+   *   given in {@link Keymapping.actionArg} (negative = up, positive = down).
+   *   Defaults to 1 if the arg is absent or non-numeric.
+   * - `"scrollToBottom"` — scroll the terminal viewport to the bottom.
+   * - `"scrollToTop"` — scroll the terminal viewport to the top.
    * - `"sendEscapeSequence"` — send `ESC` followed by {@link Keymapping.actionArg}.
    * - `"sendHexCode"` — send bytes specified as space-separated hex codes in
    *   {@link Keymapping.actionArg} (e.g., `"01 0d"`).
@@ -281,11 +335,30 @@ export namespace Settings {
   export const KEY_MAPPING_ACTIONS = deepFreeze([
     "ignore",
     "passthrough",
+    "scrollLines",
+    "scrollPages",
+    "scrollToBottom",
+    "scrollToTop",
     "sendEscapeSequence",
     "sendHexCode",
     "sendText",
   ] as const);
   export type KeymappingAction = (typeof KEY_MAPPING_ACTIONS)[number];
+
+  /** Maps action types to their actionArg input type (or null if no arg needed). */
+  export const ACTION_ARG_TYPES = deepFreeze({
+    ignore: null,
+    passthrough: null,
+    scrollLines: "number",
+    scrollPages: "number",
+    scrollToBottom: null,
+    scrollToTop: null,
+    sendEscapeSequence: "string",
+    sendHexCode: "string",
+    sendText: "string",
+  } as const satisfies Record<KeymappingAction, "number" | "string" | null>);
+  export type ActionArgType = (typeof ACTION_ARG_TYPES)[KeymappingAction];
+
   export function isKeymappingAction(
     value: unknown,
   ): value is KeymappingAction {
@@ -301,33 +374,109 @@ export namespace Settings {
   ): value is KeymappingPlatform {
     return inSet(KEY_MAPPING_PLATFORMS, value);
   }
+
   /** Represents a single keyboard mapping (singular). Collection of these is `keymappings`. */
-  export interface Keymapping {
+  export type Keymapping = {
     readonly key: string;
     readonly ctrl: boolean;
     readonly alt: boolean;
     readonly meta: boolean;
     readonly platform: KeymappingPlatform;
     readonly shift: boolean;
-    readonly action: KeymappingAction;
-    readonly actionArg: string;
-  }
+  } & (
+    | {
+        readonly action:
+          | "ignore"
+          | "passthrough"
+          | "scrollToBottom"
+          | "scrollToTop";
+        readonly actionArg: null;
+      }
+    | {
+        readonly action: "scrollLines" | "scrollPages";
+        readonly actionArg: number;
+      }
+    | {
+        readonly action: "sendEscapeSequence" | "sendHexCode" | "sendText";
+        readonly actionArg: string;
+      }
+  );
+
   export namespace Keymapping {
-    export const DEFAULT: Keymapping = deepFreeze({
+    export const DEFAULT = deepFreeze({
       action: "ignore",
-      actionArg: "",
+      actionArg: null,
       alt: false,
       ctrl: false,
       key: "",
       meta: false,
       platform: null,
       shift: false,
-    });
+    }) satisfies Keymapping;
+
+    export function isValidActionArg<
+      const T extends (typeof ACTION_ARG_TYPES)[keyof typeof ACTION_ARG_TYPES],
+    >(
+      type: T,
+      value: unknown,
+    ): value is T extends null
+      ? null
+      : T extends "number"
+        ? number
+        : T extends "string"
+          ? string
+          : never {
+      switch (type) {
+        case null:
+          return value === null;
+        case "number":
+          return typeof value === "number" && isFinite(value);
+        case "string":
+          return typeof value === "string";
+      }
+    }
+
     export function fix(self0: unknown): Fixed<Keymapping> {
       const unc = launderUnchecked<Keymapping>(self0);
+
+      const action = fixInSet(DEFAULT, unc, "action", KEY_MAPPING_ACTIONS);
+      const actionObject = (function () {
+        switch (action) {
+          case "ignore":
+          case "passthrough":
+          case "scrollToBottom":
+          case "scrollToTop": {
+            ACTION_ARG_TYPES[action] satisfies null; // Assert correct type for `actionArg`
+            let actionArg = fixTyped(DEFAULT, unc, "actionArg", ["null"]);
+            if (!isValidActionArg(ACTION_ARG_TYPES[action], actionArg)) {
+              actionArg = null;
+            }
+            return { action, actionArg };
+          }
+          case "scrollLines":
+          case "scrollPages": {
+            ACTION_ARG_TYPES[action] satisfies "number"; // Assert correct type for `actionArg`
+            let actionArg = fixTyped(DEFAULT, unc, "actionArg", ["number"]);
+            if (!isValidActionArg(ACTION_ARG_TYPES[action], actionArg)) {
+              actionArg = 1;
+            }
+            return { action, actionArg };
+          }
+          case "sendEscapeSequence":
+          case "sendHexCode":
+          case "sendText": {
+            ACTION_ARG_TYPES[action] satisfies "string"; // Assert correct type for `actionArg`
+            let actionArg = fixTyped(DEFAULT, unc, "actionArg", ["string"]);
+            if (!isValidActionArg(ACTION_ARG_TYPES[action], actionArg)) {
+              actionArg = "";
+            }
+            return { action, actionArg };
+          }
+        }
+      })();
+
       return markFixed(self0, {
-        action: fixInSet(DEFAULT, unc, "action", KEY_MAPPING_ACTIONS),
-        actionArg: fixTyped(DEFAULT, unc, "actionArg", ["string"]),
+        ...actionObject,
         alt: fixTyped(DEFAULT, unc, "alt", ["boolean"]),
         ctrl: fixTyped(DEFAULT, unc, "ctrl", ["boolean"]),
         key: fixTyped(DEFAULT, unc, "key", ["string"]),
