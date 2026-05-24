@@ -833,7 +833,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
       > => {
         const resizer = await resizerInitial.catch(() => null);
         try {
-          const [childProcess2, shellProcess, fsPromises2, tmpPromise2] =
+          const [childProcess2, process2, fsPromises2, tmpPromise2] =
               await Promise.all([
                 childProcess,
                 process,
@@ -875,7 +875,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
                   : [inOutTmp.path],
               ),
               shellEnv: NodeJS.ProcessEnv = {
-                ...(await sanitizedEnv(shellProcess.env)),
+                ...(await sanitizedEnv(process2.env)),
                 TERM_PROGRAM: "obsidian-terminal",
               },
               ret = await spawnPromise(() =>

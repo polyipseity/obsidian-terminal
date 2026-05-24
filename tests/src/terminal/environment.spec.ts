@@ -1,19 +1,16 @@
-import { describe, it, expect } from "vitest";
-
-/**
- * These tests validate the regex patterns and parsing logic used in
- * `resolveSystemPath()` (environment.ts) against realistic OS output.
- *
- * The functions under test are private, so we replicate the exact parsing
- * code here. Any change to the source patterns must be reflected here.
- */
+import { describe, expect, it } from "vitest";
+import {
+  SANITIZED_ENV_KEYS,
+  SANITIZED_ENV_PREFIXES,
+  expandWindowsVars,
+  mergePathEntries,
+  parseDarwinPathHelper,
+  parseEtcEnvironment,
+  parseGetconfOutput,
+  parseWindowsRegistryPath,
+} from "../../../src/terminal/environment.js";
 
 // ── macOS: path_helper output ────────────────────────────────────────────
-
-function parseDarwinPathHelper(output: string): string[] {
-  const match = output.match(/PATH="([^"]*)"/);
-  return match?.[1]?.split(":").filter(Boolean) ?? [];
-}
 
 describe("parseDarwinPathHelper", () => {
   it("parses standard path_helper -s output", () => {
@@ -59,15 +56,10 @@ describe("parseDarwinPathHelper", () => {
 
 // ── Linux: /etc/environment ──────────────────────────────────────────────
 
-function parseLinuxEtcEnvironment(content: string): string[] {
-  const match = content.match(/^PATH="?([^"\n]*)"?/m);
-  return match?.[1]?.split(":").filter(Boolean) ?? [];
-}
-
-describe("parseLinuxEtcEnvironment", () => {
+describe("parseEtcEnvironment", () => {
   it("parses quoted PATH from Ubuntu/Debian /etc/environment", () => {
     const content = `PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"\n`;
-    expect(parseLinuxEtcEnvironment(content)).toEqual([
+    expect(parseEtcEnvironment(content)).toEqual([
       "/usr/local/sbin",
       "/usr/local/bin",
       "/usr/sbin",
@@ -82,7 +74,7 @@ describe("parseLinuxEtcEnvironment", () => {
 
   it("parses unquoted PATH", () => {
     const content = `PATH=/usr/local/bin:/usr/bin:/bin\n`;
-    expect(parseLinuxEtcEnvironment(content)).toEqual([
+    expect(parseEtcEnvironment(content)).toEqual([
       "/usr/local/bin",
       "/usr/bin",
       "/bin",
@@ -91,7 +83,7 @@ describe("parseLinuxEtcEnvironment", () => {
 
   it("extracts PATH when other env vars are present", () => {
     const content = `LANG=en_US.UTF-8\nPATH="/usr/local/bin:/usr/bin"\nLOGNAME=foo\n`;
-    expect(parseLinuxEtcEnvironment(content)).toEqual([
+    expect(parseEtcEnvironment(content)).toEqual([
       "/usr/local/bin",
       "/usr/bin",
     ]);
@@ -99,53 +91,40 @@ describe("parseLinuxEtcEnvironment", () => {
 
   it("returns empty array when PATH is missing", () => {
     const content = `LANG=en_US.UTF-8\nLOGNAME=foo\n`;
-    expect(parseLinuxEtcEnvironment(content)).toEqual([]);
+    expect(parseEtcEnvironment(content)).toEqual([]);
   });
 
   it("returns empty array for empty string", () => {
-    expect(parseLinuxEtcEnvironment("")).toEqual([]);
+    expect(parseEtcEnvironment("")).toEqual([]);
   });
 
   it("handles PATH at the first line", () => {
     const content = `PATH="/usr/bin:/bin"\nLANG=en_US.UTF-8\n`;
-    expect(parseLinuxEtcEnvironment(content)).toEqual(["/usr/bin", "/bin"]);
+    expect(parseEtcEnvironment(content)).toEqual(["/usr/bin", "/bin"]);
   });
 });
 
 // ── Linux: getconf PATH fallback ─────────────────────────────────────────
 
-function parseGetconfPath(output: string): string[] {
-  return output.trim().split(":").filter(Boolean);
-}
-
-describe("parseGetconfPath", () => {
+describe("parseGetconfOutput", () => {
   it("parses standard getconf PATH output", () => {
-    expect(parseGetconfPath("/usr/bin:/bin\n")).toEqual(["/usr/bin", "/bin"]);
+    expect(parseGetconfOutput("/usr/bin:/bin\n")).toEqual(["/usr/bin", "/bin"]);
   });
 
   it("handles trailing newline and spaces", () => {
-    expect(parseGetconfPath("  /usr/bin:/bin  \n")).toEqual([
+    expect(parseGetconfOutput("  /usr/bin:/bin  \n")).toEqual([
       "/usr/bin",
       "/bin",
     ]);
   });
 
   it("returns empty array for blank output", () => {
-    expect(parseGetconfPath("")).toEqual([]);
-    expect(parseGetconfPath("  \n")).toEqual([]);
+    expect(parseGetconfOutput("")).toEqual([]);
+    expect(parseGetconfOutput("  \n")).toEqual([]);
   });
 });
 
 // ── Windows: registry query output ───────────────────────────────────────
-
-function parseWindowsRegistryPath(out: string): string[] {
-  const match = out.match(/Path\s+REG_(?:SZ|EXPAND_SZ)\s+(.+)/i);
-  return match?.[1]?.trim().split(";").filter(Boolean) ?? [];
-}
-
-function expandWindowsVars(p: string, env: Record<string, string>): string {
-  return p.replace(/%([^%]+)%/g, (_, key: string) => env[key] ?? "");
-}
 
 describe("parseWindowsRegistryPath", () => {
   it("parses REG_EXPAND_SZ system PATH", () => {
@@ -234,25 +213,6 @@ describe("expandWindowsVars", () => {
 
 // ── PATH merging logic ───────────────────────────────────────────────────
 
-function mergePathEntries(
-  current: string[],
-  system: string[],
-  caseInsensitive: boolean,
-): string[] {
-  const entries = [...current];
-  const entrySet = caseInsensitive
-    ? new Set(entries.map((e) => e.toLowerCase()))
-    : new Set(entries);
-  for (const entry of system) {
-    const check = caseInsensitive ? entry.toLowerCase() : entry;
-    if (!entrySet.has(check)) {
-      entries.push(entry);
-      entrySet.add(check);
-    }
-  }
-  return entries;
-}
-
 describe("mergePathEntries", () => {
   it("appends missing entries", () => {
     expect(
@@ -291,14 +251,6 @@ describe("mergePathEntries", () => {
 });
 
 // ── env sanitization ─────────────────────────────────────────────────────
-
-const SANITIZED_ENV_KEYS = new Set([
-  "TMUX",
-  "STY",
-  "TERM_PROGRAM",
-  "TERM_PROGRAM_VERSION",
-]);
-const SANITIZED_ENV_PREFIXES = ["VSCODE_", "ZED_"];
 
 function shouldSanitize(key: string): boolean {
   return (

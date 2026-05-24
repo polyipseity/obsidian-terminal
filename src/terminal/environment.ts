@@ -2,9 +2,11 @@ import {
   Platform,
   deopaque,
   dynamicRequire,
+  lazyInit,
 } from "@polyipseity/obsidian-plugin-library";
 
 import { BUNDLE } from "../import.js";
+import { spawnPromise } from "../utils.js";
 
 const childProcess = dynamicRequire<typeof import("node:child_process")>(
     BUNDLE,
@@ -30,7 +32,61 @@ export const SANITIZED_ENV_KEYS: ReadonlySet<string> = new Set([
 ]);
 export const SANITIZED_ENV_PREFIXES: readonly string[] = ["VSCODE_", "ZED_"];
 
-/** Lazily resolved system PATH queried from the OS.
+/** Parses the output of `/usr/libexec/path_helper -s` on macOS.
+ *  Output format: `PATH="entry1:entry2:..."; export PATH;` */
+export function parseDarwinPathHelper(output: string): string[] {
+  const match = output.match(/PATH="([^"]*)"/);
+  return match?.[1]?.split(":").filter(Boolean) ?? [];
+}
+
+/** Parses a `PATH` entry from `/etc/environment` (Debian/Ubuntu/PAM-based distros). */
+export function parseEtcEnvironment(content: string): string[] {
+  const match = content.match(/^PATH="?([^"\n]*)"?/m);
+  return match?.[1]?.split(":").filter(Boolean) ?? [];
+}
+
+/** Parses the output of `getconf PATH` (POSIX fallback). */
+export function parseGetconfOutput(output: string): string[] {
+  return output.trim().split(":").filter(Boolean);
+}
+
+/** Parses `PATH` entries from `reg query` output on Windows.
+ *  Handles both `REG_SZ` and `REG_EXPAND_SZ` value types. */
+export function parseWindowsRegistryPath(output: string): string[] {
+  const match = output.match(/Path\s+REG_(?:SZ|EXPAND_SZ)\s+(.+)/i);
+  return match?.[1]?.trim().split(";").filter(Boolean) ?? [];
+}
+
+/** Expands `%VAR%` patterns in a Windows path string using the given environment. */
+export function expandWindowsVars(
+  path: string,
+  env: NodeJS.ProcessEnv,
+): string {
+  return path.replace(/%([^%]+)%/g, (_, key: string) => env[key] ?? "");
+}
+
+/** Merges `system` PATH entries into `current`, skipping duplicates.
+ *  When `caseInsensitive` is `true` (Windows), comparison folds to lower-case. */
+export function mergePathEntries(
+  current: readonly string[],
+  system: readonly string[],
+  caseInsensitive: boolean,
+): string[] {
+  const entries = [...current];
+  const entrySet = caseInsensitive
+    ? new Set(entries.map((e) => e.toLowerCase()))
+    : new Set(entries);
+  for (const entry of system) {
+    const check = caseInsensitive ? entry.toLowerCase() : entry;
+    if (!entrySet.has(check)) {
+      entries.push(entry);
+      entrySet.add(check);
+    }
+  }
+  return entries;
+}
+
+/** Lazily resolves the system PATH on first call.
  *
  *  GUI apps (Obsidian via Finder / Start Menu) often inherit a minimal PATH
  *  that is missing entries the user expects in a terminal.  We query the
@@ -39,43 +95,33 @@ export const SANITIZED_ENV_PREFIXES: readonly string[] = ["VSCODE_", "ZED_"];
  *  - macOS:   /usr/libexec/path_helper -s  (reads /etc/paths + /etc/paths.d/*)
  *  - Linux:   reads /etc/environment (the PAM default)
  *  - Windows: reg query of the System + User PATH from the registry */
-let systemPathPromise: Promise<string[]> | null = null;
-
-function getSystemPath(): Promise<string[]> {
-  if (!systemPathPromise) {
-    systemPathPromise = resolveSystemPath();
-  }
-  return systemPathPromise;
-}
+const getSystemPath = lazyInit(() => resolveSystemPath());
 
 async function resolveSystemPath(): Promise<string[]> {
   const platform = deopaque(Platform.CURRENT);
   try {
-    const [childProcess2, process2] = await Promise.all([
-      childProcess,
-      process,
-    ]);
     if (platform === "darwin") {
       // path_helper reads /etc/paths and /etc/paths.d/* (SIP-protected).
       // Call with empty PATH so it returns only system entries, not whatever
       // Obsidian inherited.
+      const childProcess2 = await childProcess;
       const output = await execToString(
         childProcess2,
         "/usr/libexec/path_helper",
         ["-s"],
         { PATH: "" },
       );
-      // Output format: PATH="entry1:entry2:..."; export PATH;
-      const match = output.match(/PATH="([^"]*)"/);
-      return match?.[1]?.split(":").filter(Boolean) ?? [];
+      return parseDarwinPathHelper(output);
     }
     if (platform === "linux") {
       // Try /etc/environment first (Debian/Ubuntu/PAM-based distros)
-      const fsPromises2 = await fsPromises;
+      const [childProcess2, fsPromises2] = await Promise.all([
+        childProcess,
+        fsPromises,
+      ]);
       try {
         const content = await fsPromises2.readFile("/etc/environment", "utf-8");
-        const match = content.match(/^PATH="?([^"\n]*)"?/m);
-        const entries = match?.[1]?.split(":").filter(Boolean) ?? [];
+        const entries = parseEtcEnvironment(content);
         if (entries.length > 0) {
           return entries;
         }
@@ -85,7 +131,7 @@ async function resolveSystemPath(): Promise<string[]> {
       // Fall back to getconf PATH (POSIX, always available)
       try {
         const output = await execToString(childProcess2, "getconf", ["PATH"]);
-        const entries = output.trim().split(":").filter(Boolean);
+        const entries = parseGetconfOutput(output);
         if (entries.length > 0) {
           return entries;
         }
@@ -96,6 +142,10 @@ async function resolveSystemPath(): Promise<string[]> {
     }
     if (platform === "win32") {
       // Merge System and User PATH from the registry
+      const [childProcess2, process2] = await Promise.all([
+        childProcess,
+        process,
+      ]);
       const [systemOut, userOut] = await Promise.all([
         execToString(childProcess2, "reg", [
           "query",
@@ -110,16 +160,10 @@ async function resolveSystemPath(): Promise<string[]> {
           "Path",
         ]).catch(() => ""),
       ]);
-      const extract = (out: string): string[] => {
-        // reg output: "    Path    REG_SZ    value" or REG_EXPAND_SZ
-        const match = out.match(/Path\s+REG_(?:SZ|EXPAND_SZ)\s+(.+)/i);
-        return match?.[1]?.trim().split(";").filter(Boolean) ?? [];
-      };
-      // Expand %SystemRoot% and similar using the current process env
-      const expand = (p: string): string =>
-        p.replace(/%([^%]+)%/g, (_, key: string) => process2.env[key] ?? "");
-      const entries = [...extract(systemOut), ...extract(userOut)].map(expand);
-      return entries;
+      return [
+        ...parseWindowsRegistryPath(systemOut),
+        ...parseWindowsRegistryPath(userOut),
+      ].map((p) => expandWindowsVars(p, process2.env));
     }
   } catch {
     // If anything fails, the shell's own init files will still rebuild PATH.
@@ -133,18 +177,19 @@ async function execToString(
   args: string[],
   env?: NodeJS.ProcessEnv,
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const proc = cp.spawn(cmd, args, {
-      ...(env ? { env } : {}),
+  const proc = await spawnPromise(() =>
+    cp.spawn(cmd, args, {
+      env,
       stdio: ["ignore", "pipe", "ignore"],
       timeout: 5000,
       windowsHide: true,
-    });
+    }),
+  );
+  return new Promise((resolve) => {
     let out = "";
     proc.stdout.on("data", (chunk: Buffer | string) => {
       out += chunk.toString();
     });
-    proc.once("error", reject);
     proc.once("close", () => {
       resolve(out);
     });
@@ -173,21 +218,10 @@ export async function sanitizedEnv(
     : "PATH";
   const currentPath = env[pathKey] ?? "";
   const entries = currentPath.split(sep).filter(Boolean);
-  const entrySet = isWin
-    ? new Set(entries.map((e) => e.toLowerCase()))
-    : new Set(entries);
   const systemEntries = await getSystemPath();
-  let modified = false;
-  for (const entry of systemEntries) {
-    const check = isWin ? entry.toLowerCase() : entry;
-    if (!entrySet.has(check)) {
-      entries.push(entry);
-      entrySet.add(check);
-      modified = true;
-    }
-  }
-  if (modified) {
-    env[pathKey] = entries.join(sep);
+  const merged = mergePathEntries(entries, systemEntries, isWin);
+  if (merged.length > entries.length) {
+    env[pathKey] = merged.join(sep);
   }
   return env;
 }
