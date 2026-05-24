@@ -24,6 +24,7 @@ const childProcess = dynamicRequire<typeof import("node:child_process")>(
 
 export const SANITIZED_ENV_KEYS: ReadonlySet<string> = new Set([
   "TMUX",
+  "TMUX_PANE",
   "STY",
   "TERM_PROGRAM",
   "TERM_PROGRAM_VERSION",
@@ -31,9 +32,12 @@ export const SANITIZED_ENV_KEYS: ReadonlySet<string> = new Set([
 export const SANITIZED_ENV_PREFIXES: readonly string[] = ["VSCODE_", "ZED_"];
 
 /** Fixed environment variables applied to all PTY environments.
- *  - `TERM_PROGRAM`: identifies the terminal as obsidian-terminal
+ *  - `COLORTERM`: advertises true-color (24-bit) support so tools that
+ *    probe this variable (e.g. Claude Code, neovim) use full color output.
+ *  - `TERM_PROGRAM`: identifies the terminal as obsidian-terminal.
  *  - `PYTHONIOENCODING`: ensures UTF-8 output with safe fallback handling */
 export const FIXED_PTY_ENV: Readonly<Record<string, string>> = {
+  COLORTERM: "truecolor",
   TERM_PROGRAM: "obsidian-terminal",
   PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
 };
