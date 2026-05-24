@@ -739,12 +739,13 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
     // Walk the ordered list; first match wins.
     for (const mapping of this.getKeymappings()) {
       if (this.#matches(event, mapping)) {
-        // passthrough yields to xterm for both keydown and keyup.
-        if (mapping.action === "passthrough") {
-          return true;
-        }
         if (event.type === "keydown") {
           return this.#fire(terminal, mapping);
+        }
+        // For keyup: only suppress if the action is not passthrough.
+        // Passthrough should let both keydown and keyup reach xterm.
+        if (mapping.action === "passthrough") {
+          return true;
         }
         // Suppress keyup for all other actions so xterm never sees this event.
         return false;
@@ -819,10 +820,26 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
         // Suppress the event, send nothing.
         break;
       case "passthrough":
-        // Handled before #fire() is called.
+        // Yield to xterm.js as if no mapping matched.
         return true;
+      case "scrollLines": {
+        // actionArg is a number; scroll that many lines (negative = up).
+        terminal.scrollLines(mapping.actionArg);
+        break;
+      }
+      case "scrollPages": {
+        // actionArg is a number; scroll that many pages (negative = up).
+        terminal.scrollPages(mapping.actionArg);
+        break;
+      }
+      case "scrollToBottom":
+        terminal.scrollToBottom();
+        break;
+      case "scrollToTop":
+        terminal.scrollToTop();
+        break;
       case "sendEscapeSequence":
-        // Send ESC (\x1b) followed by actionArg verbatim.
+        // Send ESC (\x1b) followed by actionArg.
         terminal.input("\x1b" + mapping.actionArg);
         break;
       case "sendHexCode": {
@@ -853,5 +870,41 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
       // No default
     }
     return false;
+  }
+}
+
+/**
+ * Addon that scrolls to bottom when alt-screen mode exits.
+ *
+ * This ensures that after full-screen TUIs (e.g., Claude Code, vim, less)
+ * close and exit alt-screen mode, the normal buffer is displayed at the bottom
+ * of the viewport rather than at a possibly stale scroll position.
+ */
+export class AltScreenExitAddon implements ITerminalAddon {
+  readonly #disposer = new Functions({ async: false, settled: true });
+
+  public activate(terminal: Terminal): void {
+    // Register a CSI handler for "?1049l" (alt-screen exit sequence).
+    // When this sequence is received, schedule a scrollToBottom() via setTimeout(0)
+    // to defer the scroll until after xterm has finished processing the buffer switch.
+    const handler = terminal.parser.registerCsiHandler(
+      { prefix: "?", final: "l" },
+      (params) => {
+        if (params[0] === 1049) {
+          setTimeout(() => {
+            terminal.scrollToBottom();
+          }, 0);
+        }
+        // Return false so xterm still processes the sequence normally.
+        return false;
+      },
+    );
+    this.#disposer.push(() => {
+      handler.dispose();
+    });
+  }
+
+  public dispose(): void {
+    this.#disposer.call();
   }
 }
