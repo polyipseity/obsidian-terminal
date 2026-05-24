@@ -53,6 +53,20 @@ export const FIXED_ENV: Readonly<Record<string, string>> = {
   TERM_PROGRAM_VERSION: "1.0.0",
 };
 
+/** Fixed environment variables for external terminal emulators.
+ *
+ *  Only includes universal variables safe for any external terminal:
+ *  - `COLORTERM: "truecolor"`: advertises true-color support.
+ *  - `PYTHONIOENCODING`: ensures Python UTF-8 output.
+ *
+ *  Terminal-specific variables (TERM, TERM_PROGRAM) are intentionally excluded
+ *  so the external terminal's native identification is preserved.
+ */
+export const FIXED_ENV_EXTERNAL: Readonly<Record<string, string>> = {
+  COLORTERM: "truecolor",
+  PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
+};
+
 /** Environment for system PATH discovery on macOS.
  *  Empty PATH ensures path_helper returns only system entries. */
 export const DARWIN_PATH_HELPER_ENV: Readonly<Record<string, string>> = {
@@ -64,6 +78,15 @@ export const DARWIN_PATH_HELPER_ENV: Readonly<Record<string, string>> = {
  *  @returns the same env object with fixed vars merged in */
 export function applyFixedEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return Object.assign(env, FIXED_ENV);
+}
+
+/** Applies external terminal fixed environment variables to a process environment.
+ *  @param env the environment to augment
+ *  @returns the same env object with external fixed vars merged in */
+export function applyFixedEnvExternal(
+  env: NodeJS.ProcessEnv,
+): NodeJS.ProcessEnv {
+  return Object.assign(env, FIXED_ENV_EXTERNAL);
 }
 
 /** Parses the output of `/usr/libexec/path_helper -s` on macOS.

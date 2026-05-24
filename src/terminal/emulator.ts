@@ -27,7 +27,7 @@ import type { ChildProcessByStdio } from "node:child_process";
 import type { Pseudoterminal } from "./pseudoterminal.js";
 import { spawnPromise } from "../utils.js";
 import { writePromise } from "./utils.js";
-import { applyFixedEnv, sanitizeEnv } from "./environment.js";
+import { applyFixedEnvExternal, sanitizeEnv } from "./environment.js";
 
 const childProcess = dynamicRequire<typeof import("node:child_process")>(
     BUNDLE,
@@ -63,7 +63,7 @@ export async function spawnExternalTerminalEmulator(
     childProcess2.spawn(executable, args ?? [], {
       cwd,
       detached: true,
-      env: applyFixedEnv(await sanitizeEnv(process2.env)),
+      env: applyFixedEnvExternal(await sanitizeEnv(process2.env)),
       shell: true,
       stdio: ["ignore", "ignore", "ignore"],
     }),
