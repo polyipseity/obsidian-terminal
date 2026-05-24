@@ -1,5 +1,64 @@
 # obsidian-terminal <!-- markdownlint-disable-file MD024 -->
 
+## 3.25.0
+
+### Minor Changes
+
+- 21bc805: Add custom keymappings system for iTerm2-style key remapping. Users can define key combos and what the terminal sends when pressed (ignore, passthrough, escape sequence, hex code, or text), with optional per-platform targeting (macOS, Linux, Windows, or all platforms). Ships with built-in default mappings: standard scroll keys (Page Up/Down, Home/End for viewport navigation) on all platforms, macOS Natural Text Editing bindings (Option+Arrow word navigation, Option+Backspace word deletion, etc.), and a Shift+Enter → ESC CR mapping for all platforms (useful for TUI apps such as Claude Code). The reset button restores these factory defaults rather than clearing all mappings. Also fixes a bug where two `attachCustomKeyEventHandler` calls silently overwrote each other, and a bug where the passthrough action did not suppress the corresponding keyup event. ([GH#118](https://github.com/polyipseity/obsidian-terminal/pull/118) by [@ryanbbrown](https://github.com/ryanbbrown))
+- 7f8be34: Add Ukrainian localization. ([GH#160](https://github.com/polyipseity/obsidian-terminal/pull/160) by [@Xarakternuk](https://github.com/Xarakternuk))
+- d671acd: Refactor profile list modal to use base ListModal class ([GH#109](https://github.com/polyipseity/obsidian-terminal/pull/109) by [@taisau](https://github.com/taisau))
+
+  Refactored ProfileListModal to extend the base ListModal class instead of
+  reimplementing list UI logic, reducing code duplication and improving
+  maintainability. The modal now integrates seamlessly with the library's
+  generic list modal framework while preserving profile-specific UI features
+  like preset selection and default profile management.
+
+- 63dd9e1: Add scroll action keybindings (scrollLines, scrollPages, scrollToTop, scrollToBottom)
+- 0f61c86: Add manual tab rename via pane context menu and command palette.
+
+  Terminal tabs previously showed only the static profile name, making
+  multiple sessions indistinguishable. Users can now right-click a
+  terminal tab and choose "Rename", or invoke the "Rename Terminal"
+  command, to set a custom title that persists across sessions. Clearing
+  the title restores the automatic name (profile name, executable, or
+  shell-set title). Fixes [GH#94](https://github.com/polyipseity/obsidian-terminal/issues/94). ([GH#141](https://github.com/polyipseity/obsidian-terminal/pull/141) by [@niwo-gh](https://github.com/niwo-gh))
+
+- 2096c16: Add AltScreenExitAddon to auto-scroll when exiting alt-screen mode
+
+### Patch Changes
+
+- 272e8b8: Ensure all executable spawn calls use consistent environment variable handling for better PATH inheritance. Fixes external terminal emulator spawning (was completely missing environment), improves system PATH discovery commands (`getconf`, `reg`) which were passed empty environment, and unifies environment handling across all spawn contexts. Renames `sanitizedEnv()` → `sanitizeEnv()`, `applyFixedPtyEnv()` → `applyFixedEnv()`, and `FIXED_PTY_ENV` → `FIXED_ENV` for clarity and consistency since these apply to all spawned processes, not just PTY.
+- 850db0a: Add translations for scroll action keybindings in all languages
+- 83a0f6b: Fix the donate button and "open documentation (donate)" command failing with an error on Obsidian 1.12.7+ due to a private API change. The plugin now finds the donation button directly from the community plugins list and falls back to opening the donation URL when that is not possible. ([GH#157](https://github.com/polyipseity/obsidian-terminal/issues/157) by [@janah01](https://github.com/janah01))
+- 30caf9d: Resolve system PATH and sanitize inherited environment variables for embedded terminals. Fixes missing user-installed tools (in `/usr/local/bin`, `/opt/homebrew/bin`, Windows user Python, etc.) that fail with "command not found" inside the integrated terminal when Obsidian is launched via Finder, Start Menu, or desktop launcher. Also prevents terminal misdetection by tools like Claude Code that triggered scroll-to-top issues during streaming. ([#144](https://github.com/polyipseity/obsidian-terminal/pull/144) by [@ahmadelafify](https://github.com/ahmadelafify))
+
+  On first PTY spawn, queries the canonical system PATH from the OS (`/usr/libexec/path_helper` on macOS, `/etc/environment` with `getconf` fallback on Linux, registry `HKLM`+`HKCU` on Windows) and merges missing entries into the PTY environment. Strips parent-app variables (`TMUX`, `STY`, `TERM_PROGRAM`, `VSCODE_*`, `ZED_*`) that cause misdetection, and sets `TERM_PROGRAM=obsidian-terminal` on all spawn contexts (Unix PTY, Windows shell, Windows resizer).
+
+- dcac2c2: Fix scroll viewport reset during AI coding agent streaming output. Fixes [GH#70](https://github.com/polyipseity/obsidian-terminal/issues/70). (Hopefully?)
+
+  Adds `SynchronizedOutputScrollAddon` to address the scroll yank caused by AI
+  coding agents (pi, Claude Code) that use DEC 2026 synchronized output blocks
+  with `\x1b[2J` (clear-screen) inside each redraw frame.
+
+  xterm.js 6.x buffers row renders during a synchronized output block but does
+  not guard `ydisp`. When the terminal buffer is full and the user is scrolled
+  up, `Buffer.scroll()` decrements `ydisp` on every scroll call during content
+  writes — the render at block-end sees this drifted value and paints "topmost
+  content" for one frame (scroll yank).
+
+  The addon saves `viewportY` and `baseY` at block entry (`\x1b[?2026h`) and
+  restores the equivalent position at block exit (`\x1b[?2026l`) via
+  `queueMicrotask`. Microtasks run after all synchronous processing in the
+  current task but before the next animation frame, so the ydisp correction
+  lands before xterm's buffered render fires and no visible flash occurs.
+
+  Workaround for xterm.js [#5801](https://github.com/xtermjs/xterm.js/issues/5801)
+  (partially addressed in xterm.js [#5770](https://github.com/xtermjs/xterm.js/pull/5770)
+  targeting 7.x, not yet available in the 6.x release line used by this plugin).
+
+- 706d22e: Reload ribbon icon when default profile changes
+
 ## 3.24.0
 
 ### Minor Changes
