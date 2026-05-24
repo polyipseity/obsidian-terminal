@@ -134,9 +134,7 @@ export namespace Settings {
         platform: null,
         shift: true,
       },
-      // Shift+Page Up → scroll viewport one page up — all platforms.
-      // Works even when a shell is running (keymapping intercepts before xterm
-      // sends the key to the PTY).
+      // Page Up → scroll viewport one page up — all platforms.
       {
         action: "scrollPages",
         actionArg: -1,
@@ -145,9 +143,9 @@ export namespace Settings {
         key: "PageUp",
         meta: false,
         platform: null,
-        shift: true,
+        shift: false,
       },
-      // Shift+Page Down → scroll viewport one page down — all platforms.
+      // Page Down → scroll viewport one page down — all platforms.
       {
         action: "scrollPages",
         actionArg: 1,
@@ -156,9 +154,9 @@ export namespace Settings {
         key: "PageDown",
         meta: false,
         platform: null,
-        shift: true,
+        shift: false,
       },
-      // Shift+Home → scroll viewport to the top — all platforms.
+      // Home → scroll viewport to the top — all platforms.
       {
         action: "scrollToTop",
         actionArg: null,
@@ -167,9 +165,9 @@ export namespace Settings {
         key: "Home",
         meta: false,
         platform: null,
-        shift: true,
+        shift: false,
       },
-      // Shift+End → scroll viewport to the bottom — all platforms.
+      // End → scroll viewport to the bottom — all platforms.
       {
         action: "scrollToBottom",
         actionArg: null,
@@ -178,7 +176,7 @@ export namespace Settings {
         key: "End",
         meta: false,
         platform: null,
-        shift: true,
+        shift: false,
       },
       // Option+Left → word backward
       {
