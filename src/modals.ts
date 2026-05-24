@@ -1530,6 +1530,7 @@ export class KeymappingEditModal extends Modal {
               text.setValue(data.actionArg);
               return;
             }
+            data.actionArg = val;
             await this.postMutate();
           });
         }
