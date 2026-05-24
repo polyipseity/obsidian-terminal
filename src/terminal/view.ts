@@ -71,6 +71,7 @@ import {
   FollowThemeAddon,
   RendererAddon,
   RightClickActionAddon,
+  AltScreenExitAddon,
 } from "./emulator-addons.js";
 import { XtermTerminalEmulator } from "./emulator.js";
 import {
@@ -1087,6 +1088,7 @@ export class TerminalView extends ItemView {
                 settings.value.terminalOptions,
               ),
               {
+                altScreenExit: new AltScreenExitAddon(),
                 customKeyEventHandler,
                 disposer: new DisposerAddon(
                   () => {
@@ -1313,6 +1315,7 @@ export namespace TerminalView {
   export const EMULATOR = XtermTerminalEmulator<Addons>;
   export type EMULATOR = XtermTerminalEmulator<Addons>;
   export interface Addons {
+    readonly altScreenExit: AltScreenExitAddon;
     readonly customKeyEventHandler: CustomKeyEventHandlerAddon;
     readonly disposer: DisposerAddon;
     readonly dragAndDrop: DragAndDropAddon;
