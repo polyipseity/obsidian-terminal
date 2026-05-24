@@ -19,7 +19,6 @@ import type { TerminalPlugin } from "../main.js";
 
 export interface OpenOptions {
   readonly cwd?: string | undefined;
-  readonly terminal?: string | undefined;
 }
 export const PROFILE_PROPERTIES: {
   readonly [key in Settings.Profile.Type]: {

@@ -1048,7 +1048,6 @@ export class TerminalView extends ItemView {
                 }
                 const ret = await openProfile(context, profile, {
                   cwd: cwd ?? void 0,
-                  terminal: TerminalView.EMULATOR.type,
                 });
                 if (ret) {
                   return ret;

@@ -755,7 +755,6 @@ export interface ShellPseudoterminalArguments {
   readonly executable: string;
   readonly cwd?: URL | string | undefined;
   readonly args?: readonly string[] | undefined;
-  readonly terminal?: string | undefined;
   readonly pythonExecutable?: string | undefined;
   readonly useWin32Conhost?: boolean | undefined;
 }
@@ -1043,13 +1042,7 @@ class UnixPseudoterminal implements Pseudoterminal {
 
   public constructor(
     protected readonly context: TerminalPlugin,
-    {
-      args,
-      cwd,
-      executable,
-      terminal,
-      pythonExecutable,
-    }: ShellPseudoterminalArguments,
+    { args, cwd, executable, pythonExecutable }: ShellPseudoterminalArguments,
   ) {
     const { language } = context;
     this.shell = spawnPromise(async () => {
@@ -1059,17 +1052,13 @@ class UnixPseudoterminal implements Pseudoterminal {
         );
       }
       const [childProcess2, process2, unixPseudoterminalPy2] =
-          await Promise.all([childProcess, process, unixPseudoterminalPy]),
-        env = applyFixedEnv(await sanitizeEnv(process2.env));
-      if (!isNil(terminal)) {
-        env["TERM"] = terminal;
-      }
+        await Promise.all([childProcess, process, unixPseudoterminalPy]);
       return childProcess2.spawn(
         pythonExecutable,
         ["-c", unixPseudoterminalPy2, executable].concat(args ?? []),
         {
           cwd,
-          env,
+          env: applyFixedEnv(await sanitizeEnv(process2.env)),
           stdio: ["pipe", "pipe", "pipe", "pipe"],
           windowsHide: true,
         },

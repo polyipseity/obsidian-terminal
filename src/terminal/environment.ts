@@ -34,10 +34,12 @@ export const SANITIZED_ENV_PREFIXES: readonly string[] = ["VSCODE_", "ZED_"];
 /** Fixed environment variables applied to all spawned processes.
  *  - `COLORTERM`: advertises true-color (24-bit) support so tools that
  *    probe this variable (e.g. Claude Code, neovim) use full color output.
+ *  - `TERM`: indicates 256-color xterm-compatible terminal support for Unix/Linux shells.
  *  - `TERM_PROGRAM`: identifies the terminal as obsidian-terminal.
  *  - `PYTHONIOENCODING`: ensures UTF-8 output with safe fallback handling */
 export const FIXED_ENV: Readonly<Record<string, string>> = {
   COLORTERM: "truecolor",
+  TERM: "xterm-256color",
   TERM_PROGRAM: "obsidian-terminal",
   PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
 };
