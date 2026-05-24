@@ -8,7 +8,6 @@ import {
 } from "./utils.js";
 import {
   DEFAULT_ENCODING,
-  DEFAULT_PYTHONIOENCODING,
   EXIT_SUCCESS,
   MAX_LOCK_PENDING,
   TERMINAL_EXIT_CLEANUP_WAIT,
@@ -54,6 +53,7 @@ import AsyncLock from "async-lock";
 import type { AsyncOrSync } from "ts-essentials";
 import { BUNDLE } from "../import.js";
 import type { DeveloperConsoleContext } from "obsidian-terminal";
+import { applyFixedPtyEnv, sanitizedEnv } from "./environment.js";
 import { DisposerAddon } from "./emulator-addons.js";
 import type { FileResult } from "tmp-promise";
 import type { Log } from "../patch.js";
@@ -791,13 +791,12 @@ class WindowsPseudoterminal implements Pseudoterminal {
             process,
             win32ResizerPy,
           ]),
+          resizerEnv: NodeJS.ProcessEnv = applyFixedPtyEnv(
+            await sanitizedEnv(process2.env),
+          ),
           ret = await spawnPromise(() =>
             childProcess2.spawn(pythonExecutable, ["-c", win32ResizerPy2], {
-              env: {
-                ...process2.env,
-
-                PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
-              },
+              env: resizerEnv,
               stdio: ["pipe", "pipe", "pipe"],
               windowsHide: true,
             }),
@@ -830,11 +829,13 @@ class WindowsPseudoterminal implements Pseudoterminal {
       > => {
         const resizer = await resizerInitial.catch(() => null);
         try {
-          const [childProcess2, fsPromises2, tmpPromise2] = await Promise.all([
-              childProcess,
-              fsPromises,
-              tmpPromise,
-            ]),
+          const [childProcess2, process2, fsPromises2, tmpPromise2] =
+              await Promise.all([
+                childProcess,
+                process,
+                fsPromises,
+                tmpPromise,
+              ]),
             inOutTmp = await tmpPromise2.file({
               discardDescriptor: true,
               postfix: ".bat",
@@ -869,9 +870,13 @@ class WindowsPseudoterminal implements Pseudoterminal {
                   ? [WINDOWS_CONHOST_PATH, inOutTmp.path]
                   : [inOutTmp.path],
               ),
+              shellEnv: NodeJS.ProcessEnv = applyFixedPtyEnv(
+                await sanitizedEnv(process2.env),
+              ),
               ret = await spawnPromise(() =>
                 childProcess2.spawn(cmd[0], cmd.slice(1), {
                   cwd,
+                  env: shellEnv,
                   shell: !conhost,
                   stdio: ["pipe", "pipe", "pipe"],
                   windowsHide: !resizer,
@@ -1061,11 +1066,9 @@ class UnixPseudoterminal implements Pseudoterminal {
       }
       const [childProcess2, process2, unixPseudoterminalPy2] =
           await Promise.all([childProcess, process, unixPseudoterminalPy]),
-        env: NodeJS.ProcessEnv = {
-          ...process2.env,
-
-          PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
-        };
+        env: NodeJS.ProcessEnv = applyFixedPtyEnv(
+          await sanitizedEnv(process2.env),
+        );
       if (!isNil(terminal)) {
         env["TERM"] = terminal;
       }
