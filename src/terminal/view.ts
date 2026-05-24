@@ -65,13 +65,14 @@ import type { TerminalPlugin } from "../main.js";
 import { ProfileModal } from "../modals.js";
 import { Settings } from "../settings-data.js";
 import {
+  AltScreenExitAddon,
   CustomKeyEventHandlerAddon,
   DisposerAddon,
   DragAndDropAddon,
   FollowThemeAddon,
   RendererAddon,
   RightClickActionAddon,
-  AltScreenExitAddon,
+  SynchronizedOutputScrollAddon,
 } from "./emulator-addons.js";
 import { XtermTerminalEmulator } from "./emulator.js";
 import {
@@ -1089,6 +1090,7 @@ export class TerminalView extends ItemView {
               {
                 altScreenExit: new AltScreenExitAddon(),
                 customKeyEventHandler,
+                synchronizedOutputScroll: new SynchronizedOutputScrollAddon(),
                 disposer: new DisposerAddon(
                   () => {
                     ele.remove();
@@ -1323,6 +1325,7 @@ export namespace TerminalView {
     readonly renderer: RendererAddon;
     readonly rightClickAction: RightClickActionAddon;
     readonly search: SearchAddon;
+    readonly synchronizedOutputScroll: SynchronizedOutputScrollAddon;
     readonly unicode11: Unicode11Addon;
     readonly webLinks: WebLinksAddon;
   }

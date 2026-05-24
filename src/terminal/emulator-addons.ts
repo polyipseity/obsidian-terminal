@@ -908,3 +908,95 @@ export class AltScreenExitAddon implements ITerminalAddon {
     this.#disposer.call();
   }
 }
+
+/**
+ * Addon that preserves the scroll position across DEC 2026 synchronized output
+ * blocks (begin: `\x1b[?2026h`, end: `\x1b[?2026l`).
+ *
+ * AI coding agents (e.g., pi, Claude Code) use synchronized output with ED2
+ * (`\x1b[2J`) inside each block to atomically redraw their TUI. This causes
+ * xterm.js to reset `viewportY` on every redraw cycle, producing scroll
+ * flicker and yanking the user's viewport unexpectedly.
+ *
+ * This addon saves `viewportY` and `baseY` at the start of each sync block and
+ * restores the equivalent scroll position after the block ends:
+ * - If the user was at the bottom, `scrollToBottom()` is called.
+ * - If the user was scrolled up, the position is restored adjusted for any
+ *   growth in `baseY` caused by ED2 pushing old screen content into scrollback.
+ *
+ * Workaround for xterm.js issue #5801 (fixed in upstream 7.x, not yet
+ * available in the 6.x release line used by this plugin).
+ */
+export class SynchronizedOutputScrollAddon implements ITerminalAddon {
+  readonly #disposer = new Functions({ async: false, settled: true });
+
+  public activate(terminal: Terminal): void {
+    let syncDepth = 0;
+    let savedViewportY = 0;
+    let savedBaseY = 0;
+    let savedAtBottom = false;
+
+    // Register handler for ?2026h (begin synchronized output).
+    // On the outermost entry, snapshot the current scroll state so it can be
+    // restored when the block ends.
+    const beginHandler = terminal.parser.registerCsiHandler(
+      { prefix: "?", final: "h" },
+      (params) => {
+        if (params[0] === 2026) {
+          if (syncDepth === 0) {
+            const { active } = terminal.buffer;
+            savedViewportY = active.viewportY;
+            savedBaseY = active.baseY;
+            savedAtBottom = active.viewportY >= active.baseY;
+          }
+          syncDepth++;
+        }
+        // Return false so xterm still processes the sequence normally.
+        return false;
+      },
+    );
+
+    // Register handler for ?2026l (end synchronized output).
+    // On the outermost exit, restore the saved scroll position after a tick so
+    // that xterm has finished applying the buffered output.
+    const endHandler = terminal.parser.registerCsiHandler(
+      { prefix: "?", final: "l" },
+      (params) => {
+        if (params[0] === 2026 && syncDepth > 0) {
+          syncDepth--;
+          if (syncDepth === 0) {
+            const vY = savedViewportY;
+            const bY = savedBaseY;
+            const atBottom = savedAtBottom;
+            setTimeout(() => {
+              if (atBottom) {
+                terminal.scrollToBottom();
+              } else {
+                const { active } = terminal.buffer;
+                // Adjust for baseY growth: ED2 pushes old screen rows into
+                // scrollback, incrementing baseY. Preserve the user's distance
+                // from the top of scrollback by shifting viewportY by the same
+                // delta.
+                const delta = active.baseY - bY;
+                terminal.scrollToLine(
+                  Math.min(Math.max(0, vY + delta), active.baseY),
+                );
+              }
+            }, 0);
+          }
+        }
+        // Return false so xterm still processes the sequence normally.
+        return false;
+      },
+    );
+
+    this.#disposer.push(() => {
+      beginHandler.dispose();
+      endHandler.dispose();
+    });
+  }
+
+  public dispose(): void {
+    this.#disposer.call();
+  }
+}

@@ -53,6 +53,17 @@ A single‑page, action‑oriented reference for AI agents. Keep this short; use
 - Localization rule: add keys to `assets/locales/en/translation.json` first and add tests to verify resources.
 - Python modules: each must declare a top‑level `__all__` tuple.
 - Commit messages: Conventional Commits; header ≤72 chars; run `bun run commitlint`.
+- **Subprocess spawning:** always sanitize the environment before spawning — use
+  `applyFixedEnv(await sanitizeEnv(process2.env))` (`src/terminal/environment.ts`).
+  Never pass `process.env` directly. Strips `TMUX`, `TMUX_PANE`, `STY`,
+  `TERM_PROGRAM`, `TERM_PROGRAM_VERSION`, `VSCODE_*`, `ZED_*` so tools like Claude
+  Code do not misdetect their environment. `shell: true` is used **only** in
+  `spawnExternalTerminalEmulator()` — all other spawns must omit it.
+- **xterm.js scroll workaround (issue #5801):** `SynchronizedOutputScrollAddon`
+  (`src/terminal/emulator-addons.ts`) preserves `viewportY` across DEC 2026
+  synchronized output blocks. AI coding agents (pi, Claude Code) use
+  `\x1b[?2026h`/`\x1b[2J`/`\x1b[?2026l` for atomic redraws; without the addon,
+  each `\x1b[2J` inside a sync block resets the viewport. Do not remove this addon.
 
 ## Example agent prompts you can run now 🧭
 

@@ -8,13 +8,16 @@
  * - Keymapping actions including the new "passthrough" action
  * - Shift+Enter ESC+CR injection via default keymapping (not hardcoded)
  * - Guard conditions (disposed, platform, setting, modifier combos)
+ * - SynchronizedOutputScrollAddon: scroll position preservation across DEC 2026
+ *   synchronized output blocks (xterm.js issue #5801 workaround)
  */
-import type { Terminal } from "@xterm/xterm";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { IDisposable, Terminal } from "@xterm/xterm";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Settings } from "../../../src/settings-data.js";
 import {
   CustomKeyEventHandlerAddon,
   FollowThemeAddon,
+  SynchronizedOutputScrollAddon,
 } from "../../../src/terminal/emulator-addons.js";
 
 /** Minimal mock Terminal with `input()` and `attachCustomKeyEventHandler()`. */
@@ -338,5 +341,228 @@ describe("FollowThemeAddon.refresh", () => {
   it("is callable after activate", () => {
     expect(FollowThemeAddon.prototype).toHaveProperty("refresh");
     expect(typeof FollowThemeAddon.prototype.refresh).toBe("function");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SynchronizedOutputScrollAddon
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal mock Terminal for SynchronizedOutputScrollAddon tests.
+ *
+ * Captures CSI handlers registered via `parser.registerCsiHandler()` keyed by
+ * `"<prefix><final>"` so tests can fire them directly, simulating xterm.js
+ * dispatching the DEC 2026 begin/end synchronized-output sequences.
+ */
+function createSyncMockTerminal(
+  initialViewportY = 0,
+  initialBaseY = 0,
+): {
+  terminal: Terminal;
+  scrollToBottomSpy: ReturnType<typeof vi.fn>;
+  scrollToLineSpy: ReturnType<typeof vi.fn>;
+  setBuffer: (viewportY: number, baseY: number) => void;
+  triggerCsi: (prefix: string, final: string, params: number[]) => void;
+} {
+  const handlers: Record<
+    string,
+    Array<(params: { [index: number]: number }) => boolean>
+  > = {};
+
+  const scrollToBottomSpy = vi.fn();
+  const scrollToLineSpy = vi.fn();
+
+  let viewportY = initialViewportY;
+  let baseY = initialBaseY;
+
+  const terminal = {
+    parser: {
+      registerCsiHandler(
+        id: { prefix?: string; final: string },
+        handler: (params: { [index: number]: number }) => boolean,
+      ): IDisposable {
+        const key = `${id.prefix ?? ""}${id.final}`;
+        const bucket = (handlers[key] ??= []);
+        bucket.push(handler);
+        return { dispose: vi.fn() };
+      },
+    },
+    buffer: {
+      get active() {
+        return { viewportY, baseY };
+      },
+    },
+    scrollToBottom: scrollToBottomSpy,
+    scrollToLine: scrollToLineSpy,
+  } as unknown as Terminal;
+
+  return {
+    terminal,
+    scrollToBottomSpy,
+    scrollToLineSpy,
+    setBuffer(vY: number, bY: number) {
+      viewportY = vY;
+      baseY = bY;
+    },
+    triggerCsi(prefix: string, final: string, params: number[]) {
+      const key = `${prefix}${final}`;
+      for (const h of handlers[key] ?? []) {
+        h(params as unknown as { [index: number]: number });
+      }
+    },
+  };
+}
+
+describe("SynchronizedOutputScrollAddon", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("calls scrollToBottom() after sync block when user was at bottom", () => {
+    vi.useFakeTimers();
+    // viewportY == baseY → at bottom
+    const { terminal, scrollToBottomSpy, triggerCsi } = createSyncMockTerminal(
+      10,
+      10,
+    );
+    const addon = new SynchronizedOutputScrollAddon();
+    addon.activate(terminal);
+
+    // Begin sync block
+    triggerCsi("?", "h", [2026]);
+    // End sync block
+    triggerCsi("?", "l", [2026]);
+
+    expect(scrollToBottomSpy).not.toHaveBeenCalled();
+    vi.runAllTimers();
+    expect(scrollToBottomSpy).toHaveBeenCalledOnce();
+  });
+
+  it("calls scrollToLine() with delta-adjusted position when user was scrolled up", () => {
+    vi.useFakeTimers();
+    // viewportY(5) < baseY(10) → scrolled up 5 lines from bottom page
+    const mock = createSyncMockTerminal(5, 10);
+    const addon = new SynchronizedOutputScrollAddon();
+    addon.activate(mock.terminal);
+
+    // Begin sync; simulate ED2 growing baseY by 20 during the block
+    mock.triggerCsi("?", "h", [2026]);
+    mock.setBuffer(30, 30); // after ED2 + redraw: baseY grew from 10 → 30
+    mock.triggerCsi("?", "l", [2026]);
+
+    vi.runAllTimers();
+    // Expected: viewportY 5 + delta(20) = 25, clamped to baseY(30)
+    expect(mock.scrollToLineSpy).toHaveBeenCalledWith(25);
+    expect(mock.scrollToBottomSpy).not.toHaveBeenCalled();
+  });
+
+  it("clamps restored viewportY to [0, baseY]", () => {
+    vi.useFakeTimers();
+    // viewportY(3) < baseY(5) → scrolled up
+    const mock = createSyncMockTerminal(3, 5);
+    const addon = new SynchronizedOutputScrollAddon();
+    addon.activate(mock.terminal);
+
+    mock.triggerCsi("?", "h", [2026]);
+    // baseY shrinks (unlikely but defensive): 5 → 0
+    mock.setBuffer(0, 0);
+    mock.triggerCsi("?", "l", [2026]);
+
+    vi.runAllTimers();
+    // vY(3) + delta(-5) = -2 → clamped to 0
+    expect(mock.scrollToLineSpy).toHaveBeenCalledWith(0);
+  });
+
+  it("only snapshots scroll state at the outermost sync block entry (nested blocks)", () => {
+    vi.useFakeTimers();
+    // At bottom
+    const mock = createSyncMockTerminal(10, 10);
+    const addon = new SynchronizedOutputScrollAddon();
+    addon.activate(mock.terminal);
+
+    // Outer begin
+    mock.triggerCsi("?", "h", [2026]);
+    // Inner begin (depth becomes 2 — state must NOT be re-snapshotted here)
+    mock.setBuffer(5, 10); // simulate state change before inner begin
+    mock.triggerCsi("?", "h", [2026]);
+    // Inner end (depth back to 1 — must NOT restore yet)
+    mock.triggerCsi("?", "l", [2026]);
+    vi.runAllTimers();
+    expect(mock.scrollToBottomSpy).not.toHaveBeenCalled();
+
+    // Outer end (depth back to 0 — must restore now)
+    mock.setBuffer(10, 10);
+    mock.triggerCsi("?", "l", [2026]);
+    vi.runAllTimers();
+    // Original snapshot was atBottom=true (viewportY 10 >= baseY 10)
+    expect(mock.scrollToBottomSpy).toHaveBeenCalledOnce();
+  });
+
+  it("ignores ?2026l without a preceding ?2026h", () => {
+    vi.useFakeTimers();
+    const { terminal, scrollToBottomSpy, scrollToLineSpy, triggerCsi } =
+      createSyncMockTerminal(0, 0);
+    const addon = new SynchronizedOutputScrollAddon();
+    addon.activate(terminal);
+
+    // End without begin — must be a no-op
+    triggerCsi("?", "l", [2026]);
+    vi.runAllTimers();
+    expect(scrollToBottomSpy).not.toHaveBeenCalled();
+    expect(scrollToLineSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not interfere with unrelated CSI ?h/?l sequences", () => {
+    vi.useFakeTimers();
+    const { terminal, scrollToBottomSpy, scrollToLineSpy, triggerCsi } =
+      createSyncMockTerminal(10, 10);
+    const addon = new SynchronizedOutputScrollAddon();
+    addon.activate(terminal);
+
+    // ?1049h / ?1049l are alt-screen sequences — must be ignored
+    triggerCsi("?", "h", [1049]);
+    triggerCsi("?", "l", [1049]);
+    vi.runAllTimers();
+    expect(scrollToBottomSpy).not.toHaveBeenCalled();
+    expect(scrollToLineSpy).not.toHaveBeenCalled();
+  });
+
+  it("returns false from both handlers so xterm processes sequences normally", () => {
+    const { terminal } = createSyncMockTerminal(0, 0);
+
+    // Capture return values by overriding triggerCsi to return them
+    const returnVals: boolean[] = [];
+    const origHandlers: Record<
+      string,
+      Array<(params: { [index: number]: number }) => boolean>
+    > = {};
+    const patchedTerminal = {
+      ...terminal,
+      parser: {
+        registerCsiHandler(
+          id: { prefix?: string; final: string },
+          handler: (params: { [index: number]: number }) => boolean,
+        ): IDisposable {
+          const key = `${id.prefix ?? ""}${id.final}`;
+          const bucket = (origHandlers[key] ??= []);
+          bucket.push(handler);
+          return { dispose: vi.fn() };
+        },
+      },
+    } as unknown as Terminal;
+
+    const addon = new SynchronizedOutputScrollAddon();
+    addon.activate(patchedTerminal);
+
+    const fakeParams = [2026] as unknown as { [index: number]: number };
+    for (const h of origHandlers["?h"] ?? []) {
+      returnVals.push(h(fakeParams));
+    }
+    for (const h of origHandlers["?l"] ?? []) {
+      returnVals.push(h(fakeParams));
+    }
+    expect(returnVals).toEqual([false, false]);
   });
 });
