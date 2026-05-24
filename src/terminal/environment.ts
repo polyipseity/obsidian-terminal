@@ -32,16 +32,36 @@ export const SANITIZED_ENV_KEYS: ReadonlySet<string> = new Set([
 export const SANITIZED_ENV_PREFIXES: readonly string[] = ["VSCODE_", "ZED_"];
 
 /** Fixed environment variables applied to all spawned processes.
- *  - `COLORTERM`: advertises true-color (24-bit) support so tools that
- *    probe this variable (e.g. Claude Code, neovim) use full color output.
- *  - `TERM`: indicates 256-color xterm-compatible terminal support for Unix/Linux shells.
- *  - `TERM_PROGRAM`: identifies the terminal as obsidian-terminal.
- *  - `PYTHONIOENCODING`: ensures UTF-8 output with safe fallback handling */
+ *
+ *  Terminal/UI capabilities:
+ *  - `COLORTERM: "truecolor"`: advertises true-color (24-bit) support; tools like
+ *    Claude Code, neovim, and many TUIs probe this to enable full-color output.
+ *  - `TERM: "xterm-256color"`: indicates 256-color xterm-compatible terminal support
+ *    for Unix/Linux shells and terminal applications.
+ *  - `TERM_PROGRAM: "obsidian-terminal"`: identifies this as obsidian-terminal,
+ *    replacing parent terminal identification (e.g., "iTerm", "vscode").
+ *  - `TERM_PROGRAM_VERSION: "1.0.0"`: version identifier for compatibility checks.
+ *
+ *  Language/encoding:
+ *  - `LANG: "C.UTF-8"`: ensures UTF-8 locale for proper Unicode/text handling;
+ *    "C.UTF-8" is POSIX-portable and works across all systems.
+ *  - `LC_ALL: "C.UTF-8"`: overrides all locale categories, ensuring consistent
+ *    Unicode support for sorting, collation, and numeric formatting.
+ *  - `PYTHONIOENCODING`: ensures Python UTF-8 output with safe fallback handling.
+ *
+ *  Behavior:
+ *  - `NODE_ENV: "production"`: signals tools that this is a production environment
+ *    (no debug output, optimized behavior).
+ */
 export const FIXED_ENV: Readonly<Record<string, string>> = {
   COLORTERM: "truecolor",
+  LANG: "C.UTF-8",
+  LC_ALL: "C.UTF-8",
+  NODE_ENV: "production",
+  PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
   TERM: "xterm-256color",
   TERM_PROGRAM: "obsidian-terminal",
-  PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
+  TERM_PROGRAM_VERSION: "1.0.0",
 };
 
 /** Environment for system PATH discovery on macOS.
