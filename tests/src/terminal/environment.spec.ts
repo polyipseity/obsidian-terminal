@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   SANITIZED_ENV_KEYS,
   SANITIZED_ENV_PREFIXES,
+  applyProfileEnv,
   expandWindowsVars,
   mergePathEntries,
   parseDarwinPathHelper,
+  parseEnvironment,
   parseEtcEnvironment,
   parseGetconfOutput,
   parseWindowsRegistryPath,
@@ -277,4 +279,59 @@ describe("env key sanitization", () => {
   it("keeps HOME", () => expect(shouldSanitize("HOME")).toBe(false));
   it("keeps TERM", () => expect(shouldSanitize("TERM")).toBe(false));
   it("keeps SHELL", () => expect(shouldSanitize("SHELL")).toBe(false));
+});
+
+// ── profile environment variables ──────────────────────────────────────────
+
+describe("parseEnvironment", () => {
+  it("parses KEY=value lines", () => {
+    expect(parseEnvironment(["FOO=bar", "BAZ=qux"])).toEqual({
+      BAZ: "qux",
+      FOO: "bar",
+    });
+  });
+
+  it("keeps everything after the first '=' as the value", () => {
+    expect(parseEnvironment(["URL=https://example.com/?a=b"])).toEqual({
+      URL: "https://example.com/?a=b",
+    });
+  });
+
+  it("allows empty values", () => {
+    expect(parseEnvironment(["EMPTY="])).toEqual({ EMPTY: "" });
+  });
+
+  it("trims whitespace around the key", () => {
+    expect(parseEnvironment(["  FOO =bar"])).toEqual({ FOO: "bar" });
+  });
+
+  it("ignores blank lines and lines without '='", () => {
+    expect(parseEnvironment(["", "noequals", "FOO=bar"])).toEqual({
+      FOO: "bar",
+    });
+  });
+
+  it("ignores lines starting with '='", () => {
+    expect(parseEnvironment(["=value"])).toEqual({});
+  });
+
+  it("returns an empty record for no entries", () => {
+    expect(parseEnvironment([])).toEqual({});
+  });
+});
+
+describe("applyProfileEnv", () => {
+  it("merges parsed entries onto the env, overriding existing keys", () => {
+    const env = { FOO: "old", PATH: "/usr/bin" };
+    expect(applyProfileEnv(env, ["FOO=new", "BAR=baz"])).toEqual({
+      BAR: "baz",
+      FOO: "new",
+      PATH: "/usr/bin",
+    });
+  });
+
+  it("leaves the env unchanged when there are no entries", () => {
+    const env = { PATH: "/usr/bin" };
+    expect(applyProfileEnv(env, [])).toEqual({ PATH: "/usr/bin" });
+  });
 });

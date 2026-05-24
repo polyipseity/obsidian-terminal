@@ -620,12 +620,14 @@ export namespace Settings {
       readonly type: "external";
       readonly executable: string;
       readonly args: readonly string[];
+      readonly environment: readonly string[];
       readonly platforms: Platforms<Pseudoterminal.SupportedPlatforms[number]>;
     }
     export interface Integrated extends Base {
       readonly type: "integrated";
       readonly executable: string;
       readonly args: readonly string[];
+      readonly environment: readonly string[];
       readonly platforms: Platforms<Pseudoterminal.SupportedPlatforms[number]>;
       readonly pythonExecutable: string;
       readonly useWin32Conhost: boolean;
@@ -648,6 +650,7 @@ export namespace Settings {
       },
       external: {
         args: [],
+        environment: [],
         executable: "",
         followTheme: true,
         name: "",
@@ -664,6 +667,7 @@ export namespace Settings {
       },
       integrated: {
         args: [],
+        environment: [],
         executable: "",
         followTheme: true,
         name: "",
@@ -774,6 +778,9 @@ export namespace Settings {
             case "external": {
               return {
                 args: fixArray(DEFAULTS[type], unc, "args", ["string"]),
+                environment: fixArray(DEFAULTS[type], unc, "environment", [
+                  "string",
+                ]),
                 executable: fixTyped(DEFAULTS[type], unc, "executable", [
                   "string",
                 ]),
@@ -812,6 +819,9 @@ export namespace Settings {
             case "integrated": {
               return {
                 args: fixArray(DEFAULTS[type], unc, "args", ["string"]),
+                environment: fixArray(DEFAULTS[type], unc, "environment", [
+                  "string",
+                ]),
                 executable: fixTyped(DEFAULTS[type], unc, "executable", [
                   "string",
                 ]),

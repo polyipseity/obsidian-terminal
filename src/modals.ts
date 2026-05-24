@@ -895,6 +895,65 @@ export class ProfileModal extends Modal {
               ),
             );
         });
+        ui.newSetting(element, (setting) => {
+          setting
+            .setName(i18n.t(`components.profile.${profile.type}.environment`))
+            .setDesc(
+              i18n.t(
+                `components.profile.${profile.type}.environment-description`,
+                {
+                  count: profile.environment.length,
+                  interpolation: { escapeValue: false },
+                },
+              ),
+            )
+            .addButton((button) =>
+              button
+                .setIcon(
+                  i18n.t(
+                    `asset:components.profile.${profile.type}.arguments-edit-icon`,
+                  ),
+                )
+                .setTooltip(
+                  i18n.t(`components.profile.${profile.type}.environment-edit`),
+                )
+                .onClick(() => {
+                  new ListModal(
+                    context,
+                    ListModal.stringInputter<string>({
+                      back: identity,
+                      forth: identity,
+                    }),
+                    () => "",
+                    profile.environment,
+                    {
+                      callback: async (value): Promise<void> => {
+                        profile.environment = value;
+                        await this.postMutate();
+                      },
+                      title: (): string =>
+                        i18n.t(
+                          `components.profile.${profile.type}.environment`,
+                        ),
+                    },
+                  ).open();
+                }),
+            )
+            .addExtraButton(
+              resetButton(
+                i18n.t(
+                  `asset:components.profile.${profile.type}.arguments-icon`,
+                ),
+                i18n.t("components.profile.reset"),
+                () => {
+                  profile.environment = cloneAsWritable(
+                    Settings.Profile.DEFAULTS[profile.type].environment,
+                  );
+                },
+                async () => this.postMutate(),
+              ),
+            );
+        });
         for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
           ui.newSetting(element, (setting) => {
             setting

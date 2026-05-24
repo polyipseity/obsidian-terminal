@@ -258,6 +258,35 @@ async function execToString(
   });
 }
 
+/** Parses `KEY=value` lines into an environment record.
+ *  Blank lines and lines without `=` are ignored; the key is everything before
+ *  the first `=`, and surrounding whitespace on the key is trimmed. */
+export function parseEnvironment(
+  lines: readonly string[],
+): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const line of lines) {
+    const index = line.indexOf("=");
+    if (index <= 0) {
+      continue;
+    }
+    const key = line.slice(0, index).trim();
+    if (key) {
+      env[key] = line.slice(index + 1);
+    }
+  }
+  return env;
+}
+
+/** Merges user-defined `KEY=value` entries into an environment.
+ *  Returns the same env object with the parsed entries applied on top. */
+export function applyProfileEnv(
+  env: NodeJS.ProcessEnv,
+  lines: readonly string[],
+): NodeJS.ProcessEnv {
+  return Object.assign(env, parseEnvironment(lines));
+}
+
 export async function sanitizeEnv(
   base: NodeJS.ProcessEnv,
 ): Promise<NodeJS.ProcessEnv> {

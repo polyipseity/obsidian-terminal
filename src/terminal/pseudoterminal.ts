@@ -53,7 +53,11 @@ import AsyncLock from "async-lock";
 import type { AsyncOrSync } from "ts-essentials";
 import { BUNDLE } from "../import.js";
 import type { DeveloperConsoleContext } from "obsidian-terminal";
-import { applyFixedEnv, sanitizeEnv } from "./environment.js";
+import {
+  applyFixedEnv,
+  applyProfileEnv,
+  sanitizeEnv,
+} from "./environment.js";
 import { DisposerAddon } from "./emulator-addons.js";
 import type { FileResult } from "tmp-promise";
 import type { Log } from "../patch.js";
@@ -755,6 +759,8 @@ export interface ShellPseudoterminalArguments {
   readonly executable: string;
   readonly cwd?: URL | string | undefined;
   readonly args?: readonly string[] | undefined;
+  readonly environment?: readonly string[] | undefined;
+  readonly terminal?: string | undefined;
   readonly pythonExecutable?: string | undefined;
   readonly useWin32Conhost?: boolean | undefined;
 }
@@ -770,6 +776,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
     {
       args,
       cwd,
+      environment,
       executable,
       useWin32Conhost,
       pythonExecutable,
@@ -866,10 +873,14 @@ class WindowsPseudoterminal implements Pseudoterminal {
                   ? [WINDOWS_CONHOST_PATH, inOutTmp.path]
                   : [inOutTmp.path],
               ),
-              ret = await spawnPromise(async () =>
+              shellEnv: NodeJS.ProcessEnv = applyProfileEnv(
+                applyFixedEnv(await sanitizeEnv(process2.env)),
+                environment ?? [],
+              ),
+              ret = await spawnPromise(() =>
                 childProcess2.spawn(cmd[0], cmd.slice(1), {
                   cwd,
-                  env: applyFixedEnv(await sanitizeEnv(process2.env)),
+                  env: shellEnv,
                   shell: !conhost,
                   stdio: ["pipe", "pipe", "pipe"],
                   windowsHide: !resizer,
@@ -1042,7 +1053,14 @@ class UnixPseudoterminal implements Pseudoterminal {
 
   public constructor(
     protected readonly context: TerminalPlugin,
-    { args, cwd, executable, pythonExecutable }: ShellPseudoterminalArguments,
+    {
+      args,
+      cwd,
+      environment,
+      executable,
+      terminal,
+      pythonExecutable,
+    }: ShellPseudoterminalArguments,
   ) {
     const { language } = context;
     this.shell = spawnPromise(async () => {
@@ -1052,13 +1070,20 @@ class UnixPseudoterminal implements Pseudoterminal {
         );
       }
       const [childProcess2, process2, unixPseudoterminalPy2] =
-        await Promise.all([childProcess, process, unixPseudoterminalPy]);
+          await Promise.all([childProcess, process, unixPseudoterminalPy]),
+        env: NodeJS.ProcessEnv = applyProfileEnv(
+          applyFixedEnv(await sanitizeEnv(process2.env)),
+          environment ?? [],
+        );
+      if (!isNil(terminal)) {
+        env["TERM"] = terminal;
+      }
       return childProcess2.spawn(
         pythonExecutable,
         ["-c", unixPseudoterminalPy2, executable].concat(args ?? []),
         {
           cwd,
-          env: applyFixedEnv(await sanitizeEnv(process2.env)),
+          env,
           stdio: ["pipe", "pipe", "pipe", "pipe"],
           windowsHide: true,
         },

@@ -23,6 +23,9 @@
         "arguments": "$t(generic.argument_other, capitalize)",
         "arguments-description": "$t(generic.list-description, capitalize)",
         "arguments-edit": "$t(generic.edit, capitalize)",
+        "environment": "$t(generic.environment-variable_other, capitalize)",
+        "environment-description": "$t(generic.list-description, capitalize) Each entry is a 'KEY=value' pair.",
+        "environment-edit": "$t(generic.edit, capitalize)",
         "executable": "$t(generic.executable, capitalize)"
       },
       "follow-theme": "$t(generic.follow, capitalize) $t(generic.theme)",
@@ -35,6 +38,9 @@
         "arguments": "$t(generic.argument_other, capitalize)",
         "arguments-description": "$t(generic.list-description, capitalize)",
         "arguments-edit": "$t(generic.edit, capitalize)",
+        "environment": "$t(generic.environment-variable_other, capitalize)",
+        "environment-description": "$t(generic.list-description, capitalize) Each entry is a 'KEY=value' pair.",
+        "environment-edit": "$t(generic.edit, capitalize)",
         "executable": "$t(generic.executable, capitalize)",
         "use-win32-conhost": "$t(generic.use, capitalize) $t(generic.platforms.win32) 'conhost.exe'",
         "use-win32-conhost-description": "$t(generic.disable, capitalize) if running 'conhost.exe' does not create a window. No guarantees this will work."
@@ -189,6 +195,8 @@
     "donate": "donate",
     "enable": "enable",
     "enable_past-participle": "enabled",
+    "environment-variable_one": "environment variable",
+    "environment-variable_other": "environment variables",
     "executable": "executable",
     "exist": "exist",
     "exist_singular": "exists",

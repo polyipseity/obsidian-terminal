@@ -76,8 +76,14 @@ export const PROFILE_PROPERTIES: {
       if (!Pseudoterminal.PLATFORM_PSEUDOTERMINAL) {
         return null;
       }
-      const { args, platforms, useWin32Conhost, executable, pythonExecutable } =
-          profile,
+      const {
+          args,
+          environment,
+          platforms,
+          useWin32Conhost,
+          executable,
+          pythonExecutable,
+        } = profile,
         supported = launderUnchecked<AnyObject>(platforms)[Platform.CURRENT];
       if (typeof supported !== "boolean" || !supported) {
         return null;
@@ -86,6 +92,7 @@ export const PROFILE_PROPERTIES: {
         new Pseudoterminal.PLATFORM_PSEUDOTERMINAL(context, {
           args,
           cwd: options?.cwd,
+          environment,
           executable,
           pythonExecutable: pythonExecutable || void 0,
           terminal: options?.terminal,

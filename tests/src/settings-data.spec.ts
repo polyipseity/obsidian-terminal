@@ -74,6 +74,28 @@ describe("src/settings-data.ts", () => {
     );
   });
 
+  it("Profile.DEFAULTS exposes an empty environment for shell profiles", () => {
+    expect(Settings.Profile.DEFAULTS.external.environment).toEqual([]);
+    expect(Settings.Profile.DEFAULTS.integrated.environment).toEqual([]);
+  });
+
+  it("Profile.fix coerces a bad environment to the empty default", () => {
+    const external = Settings.Profile.fix({
+      type: "external",
+      environment: "not-an-array",
+    }).value;
+    expect(external.type).toBe("external");
+    expect((external as Settings.Profile.External).environment).toEqual([]);
+
+    const integrated = Settings.Profile.fix({
+      type: "integrated",
+      environment: ["FOO=bar"],
+    }).value;
+    expect((integrated as Settings.Profile.Integrated).environment).toEqual([
+      "FOO=bar",
+    ]);
+  });
+
   it("Settings.fix validates defaultProfile against available profiles", () => {
     const baseProfiles = {
       foo: Settings.Profile.DEFAULTS.external,
