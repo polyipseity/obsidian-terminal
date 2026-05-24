@@ -9,9 +9,7 @@
  * - Shift+Enter ESC+CR injection via default keymapping (not hardcoded)
  * - Guard conditions (disposed, platform, setting, modifier combos)
  * - SynchronizedOutputScrollAddon: scroll position preservation across DEC 2026
- *   synchronized output blocks (xterm.js issue #5801 workaround)
- * - SynchronizedOutputScrollAddon: ED2 (\x1b[2J) suppression inside sync blocks
- *   to eliminate screen flicker (screen-clear flash before redrawn content)
+ *   synchronized output blocks via queueMicrotask (xterm.js issue #5801 workaround)
  */
 import type { IDisposable, Terminal } from "@xterm/xterm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -418,12 +416,10 @@ function createSyncMockTerminal(
 
 describe("SynchronizedOutputScrollAddon", () => {
   afterEach(() => {
-    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
-  it("calls scrollToBottom() after sync block when user was at bottom", () => {
-    vi.useFakeTimers();
+  it("calls scrollToBottom() after sync block when user was at bottom", async () => {
     // viewportY == baseY → at bottom
     const { terminal, scrollToBottomSpy, triggerCsi } = createSyncMockTerminal(
       10,
@@ -438,12 +434,11 @@ describe("SynchronizedOutputScrollAddon", () => {
     triggerCsi("?", "l", [2026]);
 
     expect(scrollToBottomSpy).not.toHaveBeenCalled();
-    vi.runAllTimers();
+    await Promise.resolve();
     expect(scrollToBottomSpy).toHaveBeenCalledOnce();
   });
 
-  it("calls scrollToLine() with delta-adjusted position when user was scrolled up", () => {
-    vi.useFakeTimers();
+  it("calls scrollToLine() with delta-adjusted position when user was scrolled up", async () => {
     // viewportY(5) < baseY(10) → scrolled up 5 lines from bottom page
     const mock = createSyncMockTerminal(5, 10);
     const addon = new SynchronizedOutputScrollAddon();
@@ -454,14 +449,13 @@ describe("SynchronizedOutputScrollAddon", () => {
     mock.setBuffer(30, 30); // after ED2 + redraw: baseY grew from 10 → 30
     mock.triggerCsi("?", "l", [2026]);
 
-    vi.runAllTimers();
+    await Promise.resolve();
     // Expected: viewportY 5 + delta(20) = 25, clamped to baseY(30)
     expect(mock.scrollToLineSpy).toHaveBeenCalledWith(25);
     expect(mock.scrollToBottomSpy).not.toHaveBeenCalled();
   });
 
-  it("clamps restored viewportY to [0, baseY]", () => {
-    vi.useFakeTimers();
+  it("clamps restored viewportY to [0, baseY]", async () => {
     // viewportY(3) < baseY(5) → scrolled up
     const mock = createSyncMockTerminal(3, 5);
     const addon = new SynchronizedOutputScrollAddon();
@@ -472,13 +466,12 @@ describe("SynchronizedOutputScrollAddon", () => {
     mock.setBuffer(0, 0);
     mock.triggerCsi("?", "l", [2026]);
 
-    vi.runAllTimers();
+    await Promise.resolve();
     // vY(3) + delta(-5) = -2 → clamped to 0
     expect(mock.scrollToLineSpy).toHaveBeenCalledWith(0);
   });
 
-  it("only snapshots scroll state at the outermost sync block entry (nested blocks)", () => {
-    vi.useFakeTimers();
+  it("only snapshots scroll state at the outermost sync block entry (nested blocks)", async () => {
     // At bottom
     const mock = createSyncMockTerminal(10, 10);
     const addon = new SynchronizedOutputScrollAddon();
@@ -491,19 +484,18 @@ describe("SynchronizedOutputScrollAddon", () => {
     mock.triggerCsi("?", "h", [2026]);
     // Inner end (depth back to 1 — must NOT restore yet)
     mock.triggerCsi("?", "l", [2026]);
-    vi.runAllTimers();
+    await Promise.resolve();
     expect(mock.scrollToBottomSpy).not.toHaveBeenCalled();
 
     // Outer end (depth back to 0 — must restore now)
     mock.setBuffer(10, 10);
     mock.triggerCsi("?", "l", [2026]);
-    vi.runAllTimers();
+    await Promise.resolve();
     // Original snapshot was atBottom=true (viewportY 10 >= baseY 10)
     expect(mock.scrollToBottomSpy).toHaveBeenCalledOnce();
   });
 
-  it("ignores ?2026l without a preceding ?2026h", () => {
-    vi.useFakeTimers();
+  it("ignores ?2026l without a preceding ?2026h", async () => {
     const { terminal, scrollToBottomSpy, scrollToLineSpy, triggerCsi } =
       createSyncMockTerminal(0, 0);
     const addon = new SynchronizedOutputScrollAddon();
@@ -511,13 +503,12 @@ describe("SynchronizedOutputScrollAddon", () => {
 
     // End without begin — must be a no-op
     triggerCsi("?", "l", [2026]);
-    vi.runAllTimers();
+    await Promise.resolve();
     expect(scrollToBottomSpy).not.toHaveBeenCalled();
     expect(scrollToLineSpy).not.toHaveBeenCalled();
   });
 
-  it("does not interfere with unrelated CSI ?h/?l sequences", () => {
-    vi.useFakeTimers();
+  it("does not interfere with unrelated CSI ?h/?l sequences", async () => {
     const { terminal, scrollToBottomSpy, scrollToLineSpy, triggerCsi } =
       createSyncMockTerminal(10, 10);
     const addon = new SynchronizedOutputScrollAddon();
@@ -526,7 +517,7 @@ describe("SynchronizedOutputScrollAddon", () => {
     // ?1049h / ?1049l are alt-screen sequences — must be ignored
     triggerCsi("?", "h", [1049]);
     triggerCsi("?", "l", [1049]);
-    vi.runAllTimers();
+    await Promise.resolve();
     expect(scrollToBottomSpy).not.toHaveBeenCalled();
     expect(scrollToLineSpy).not.toHaveBeenCalled();
   });
@@ -566,40 +557,5 @@ describe("SynchronizedOutputScrollAddon", () => {
       returnVals.push(h(fakeParams));
     }
     expect(returnVals).toEqual([false, false]);
-  });
-
-  // === ED2 suppression (flicker fix) ===
-
-  it("suppresses ED2 (\\x1b[2J) inside a sync block — returns true", () => {
-    const { terminal, triggerCsi } = createSyncMockTerminal(10, 10);
-    const addon = new SynchronizedOutputScrollAddon();
-    addon.activate(terminal);
-
-    // Open a sync block; ED2 inside must be suppressed to prevent blank-screen flash.
-    triggerCsi("?", "h", [2026]);
-    const results = triggerCsi("", "J", [2]);
-    expect(results).toEqual([true]);
-  });
-
-  it("does not suppress ED2 outside a sync block — returns false", () => {
-    const { terminal, triggerCsi } = createSyncMockTerminal(10, 10);
-    const addon = new SynchronizedOutputScrollAddon();
-    addon.activate(terminal);
-
-    // No sync block open — ED2 must pass through to xterm normally.
-    const results = triggerCsi("", "J", [2]);
-    expect(results).toEqual([false]);
-  });
-
-  it("does not suppress ED0, ED1, ED3 inside a sync block — returns false", () => {
-    const { terminal, triggerCsi } = createSyncMockTerminal(10, 10);
-    const addon = new SynchronizedOutputScrollAddon();
-    addon.activate(terminal);
-
-    triggerCsi("?", "h", [2026]);
-    // Only ED2 (full clear) should be suppressed; other erase modes must pass through.
-    expect(triggerCsi("", "J", [0])).toEqual([false]); // erase to end of screen
-    expect(triggerCsi("", "J", [1])).toEqual([false]); // erase to beginning
-    expect(triggerCsi("", "J", [3])).toEqual([false]); // erase scrollback
   });
 });
