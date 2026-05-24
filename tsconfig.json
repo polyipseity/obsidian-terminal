@@ -2,17 +2,14 @@
   "compilerOptions": {
     "allowArbitraryExtensions": true,
     "allowJs": true,
-    "alwaysStrict": true,
     "declaration": true,
     "declarationMap": true,
     "esModuleInterop": true,
-    "lib": ["DOM", "ES2024"],
-    "module": "NodeNext",
+    "lib": ["dom", "es2024"],
+    "module": "nodenext",
     "moduleResolution": "nodenext",
     "noFallthroughCasesInSwitch": true,
-    "noImplicitAny": true,
     "noImplicitReturns": true,
-    "noImplicitThis": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
@@ -25,7 +22,8 @@
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
-    "target": "ES2018"
+    "target": "es2018",
+    "types": ["node"]
   },
   "exclude": ["node_modules", "dist"],
   "include": ["assets/**/*", "scripts/**/*", "src/**/*"]
