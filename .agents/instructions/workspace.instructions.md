@@ -59,11 +59,13 @@ A single‑page, action‑oriented reference for AI agents. Keep this short; use
   `TERM_PROGRAM`, `TERM_PROGRAM_VERSION`, `VSCODE_*`, `ZED_*` so tools like Claude
   Code do not misdetect their environment. `shell: true` is used **only** in
   `spawnExternalTerminalEmulator()` — all other spawns must omit it.
-- **xterm.js scroll workaround (issue #5801):** `SynchronizedOutputScrollAddon`
+- **xterm.js scroll/flicker workaround (issue #5801):** `SynchronizedOutputScrollAddon`
   (`src/terminal/emulator-addons.ts`) preserves `viewportY` across DEC 2026
-  synchronized output blocks. AI coding agents (pi, Claude Code) use
-  `\x1b[?2026h`/`\x1b[2J`/`\x1b[?2026l` for atomic redraws; without the addon,
-  each `\x1b[2J` inside a sync block resets the viewport. Do not remove this addon.
+  synchronized output blocks and suppresses ED2 (`\x1b[2J`) inside those blocks.
+  AI coding agents (pi, Claude Code) use `\x1b[?2026h`/`\x1b[2J`/`\x1b[?2026l`
+  for atomic redraws; without the addon, each `\x1b[2J` inside a sync block
+  resets the viewport (scroll yank) and paints a blank canvas before the new
+  content arrives (screen flicker). Do not remove this addon.
 
 ## Example agent prompts you can run now 🧭
 

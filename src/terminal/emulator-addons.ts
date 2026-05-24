@@ -911,18 +911,26 @@ export class AltScreenExitAddon implements ITerminalAddon {
 
 /**
  * Addon that preserves the scroll position across DEC 2026 synchronized output
- * blocks (begin: `\x1b[?2026h`, end: `\x1b[?2026l`).
+ * blocks (begin: `\x1b[?2026h`, end: `\x1b[?2026l`), and suppresses ED2
+ * (`\x1b[2J`) inside those blocks to eliminate screen flicker.
  *
  * AI coding agents (e.g., pi, Claude Code) use synchronized output with ED2
  * (`\x1b[2J`) inside each block to atomically redraw their TUI. This causes
- * xterm.js to reset `viewportY` on every redraw cycle, producing scroll
- * flicker and yanking the user's viewport unexpectedly.
+ * two visible artefacts in xterm.js 6.x:
  *
- * This addon saves `viewportY` and `baseY` at the start of each sync block and
- * restores the equivalent scroll position after the block ends:
- * - If the user was at the bottom, `scrollToBottom()` is called.
- * - If the user was scrolled up, the position is restored adjusted for any
- *   growth in `baseY` caused by ED2 pushing old screen content into scrollback.
+ * 1. **Scroll yank:** `\x1b[2J` resets `viewportY`, yanking the viewport to
+ *    the bottom on every redraw frame.
+ * 2. **Screen flicker:** the canvas paints the cleared (blank) buffer before
+ *    the new content arrives, producing a visible blank flash.
+ *
+ * This addon addresses both:
+ * - Scroll preservation: saves `viewportY` and `baseY` at block entry and
+ *   restores the equivalent position on exit via `setTimeout(0)`, adjusting
+ *   for `baseY` growth caused by ED2 pushing screen rows into scrollback.
+ * - Flicker suppression: registers a CSI J handler that intercepts ED2 inside
+ *   sync blocks and returns `true` (suppress) so xterm skips the blank-screen
+ *   paint. AI agents always follow ED2 with a full redraw, so the suppression
+ *   is transparent to the user.
  *
  * Workaround for xterm.js issue #5801 (fixed in upstream 7.x, not yet
  * available in the 6.x release line used by this plugin).
@@ -990,9 +998,28 @@ export class SynchronizedOutputScrollAddon implements ITerminalAddon {
       },
     );
 
+    // Register handler for CSI J (Erase in Display / ED).
+    // While inside a synchronized-output block, suppress ED2 (\x1b[2J) so the
+    // xterm.js canvas does not paint a blank screen between the clear and the
+    // redrawn content (screen flicker). ED2 is always followed immediately by
+    // fresh content from the agent, so suppressing it is safe.
+    // Other ED variants (0 = to end, 1 = to start, 3 = scrollback) pass through.
+    const eraseHandler = terminal.parser.registerCsiHandler(
+      { final: "J" },
+      (params) => {
+        if (syncDepth > 0 && params[0] === 2) {
+          // Suppress: inside a sync block; full-screen clear will be immediately
+          // followed by a complete redraw from the agent.
+          return true;
+        }
+        return false;
+      },
+    );
+
     this.#disposer.push(() => {
       beginHandler.dispose();
       endHandler.dispose();
+      eraseHandler.dispose();
     });
   }
 

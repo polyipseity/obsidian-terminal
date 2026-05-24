@@ -10,6 +10,8 @@
  * - Guard conditions (disposed, platform, setting, modifier combos)
  * - SynchronizedOutputScrollAddon: scroll position preservation across DEC 2026
  *   synchronized output blocks (xterm.js issue #5801 workaround)
+ * - SynchronizedOutputScrollAddon: ED2 (\x1b[2J) suppression inside sync blocks
+ *   to eliminate screen flicker (screen-clear flash before redrawn content)
  */
 import type { IDisposable, Terminal } from "@xterm/xterm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -363,7 +365,7 @@ function createSyncMockTerminal(
   scrollToBottomSpy: ReturnType<typeof vi.fn>;
   scrollToLineSpy: ReturnType<typeof vi.fn>;
   setBuffer: (viewportY: number, baseY: number) => void;
-  triggerCsi: (prefix: string, final: string, params: number[]) => void;
+  triggerCsi: (prefix: string, final: string, params: number[]) => boolean[];
 } {
   const handlers: Record<
     string,
@@ -405,11 +407,11 @@ function createSyncMockTerminal(
       viewportY = vY;
       baseY = bY;
     },
-    triggerCsi(prefix: string, final: string, params: number[]) {
+    triggerCsi(prefix: string, final: string, params: number[]): boolean[] {
       const key = `${prefix}${final}`;
-      for (const h of handlers[key] ?? []) {
-        h(params as unknown as { [index: number]: number });
-      }
+      return (handlers[key] ?? []).map((h) =>
+        h(params as unknown as { [index: number]: number }),
+      );
     },
   };
 }
@@ -564,5 +566,40 @@ describe("SynchronizedOutputScrollAddon", () => {
       returnVals.push(h(fakeParams));
     }
     expect(returnVals).toEqual([false, false]);
+  });
+
+  // === ED2 suppression (flicker fix) ===
+
+  it("suppresses ED2 (\\x1b[2J) inside a sync block — returns true", () => {
+    const { terminal, triggerCsi } = createSyncMockTerminal(10, 10);
+    const addon = new SynchronizedOutputScrollAddon();
+    addon.activate(terminal);
+
+    // Open a sync block; ED2 inside must be suppressed to prevent blank-screen flash.
+    triggerCsi("?", "h", [2026]);
+    const results = triggerCsi("", "J", [2]);
+    expect(results).toEqual([true]);
+  });
+
+  it("does not suppress ED2 outside a sync block — returns false", () => {
+    const { terminal, triggerCsi } = createSyncMockTerminal(10, 10);
+    const addon = new SynchronizedOutputScrollAddon();
+    addon.activate(terminal);
+
+    // No sync block open — ED2 must pass through to xterm normally.
+    const results = triggerCsi("", "J", [2]);
+    expect(results).toEqual([false]);
+  });
+
+  it("does not suppress ED0, ED1, ED3 inside a sync block — returns false", () => {
+    const { terminal, triggerCsi } = createSyncMockTerminal(10, 10);
+    const addon = new SynchronizedOutputScrollAddon();
+    addon.activate(terminal);
+
+    triggerCsi("?", "h", [2026]);
+    // Only ED2 (full clear) should be suppressed; other erase modes must pass through.
+    expect(triggerCsi("", "J", [0])).toEqual([false]); // erase to end of screen
+    expect(triggerCsi("", "J", [1])).toEqual([false]); // erase to beginning
+    expect(triggerCsi("", "J", [3])).toEqual([false]); // erase scrollback
   });
 });
