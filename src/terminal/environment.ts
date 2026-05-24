@@ -5,6 +5,7 @@ import {
   lazyInit,
 } from "@polyipseity/obsidian-plugin-library";
 
+import { DEFAULT_PYTHONIOENCODING } from "../magic.js";
 import { BUNDLE } from "../import.js";
 import { spawnPromise } from "../utils.js";
 
@@ -21,9 +22,6 @@ const childProcess = dynamicRequire<typeof import("node:child_process")>(
     "node:process",
   );
 
-/** Keys that belong to the parent app or multiplexer and should not leak
- *  into the embedded PTY. Their presence causes tools (e.g. Claude Code) to
- *  misdetect the terminal environment and enable incompatible rendering. */
 export const SANITIZED_ENV_KEYS: ReadonlySet<string> = new Set([
   "TMUX",
   "STY",
@@ -31,6 +29,21 @@ export const SANITIZED_ENV_KEYS: ReadonlySet<string> = new Set([
   "TERM_PROGRAM_VERSION",
 ]);
 export const SANITIZED_ENV_PREFIXES: readonly string[] = ["VSCODE_", "ZED_"];
+
+/** Fixed environment variables applied to all PTY environments.
+ *  - `TERM_PROGRAM`: identifies the terminal as obsidian-terminal
+ *  - `PYTHONIOENCODING`: ensures UTF-8 output with safe fallback handling */
+export const FIXED_PTY_ENV: Readonly<Record<string, string>> = {
+  TERM_PROGRAM: "obsidian-terminal",
+  PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
+};
+
+/** Applies fixed PTY environment variables to a sanitized environment.
+ *  @param env the sanitized environment to augment
+ *  @returns the same env object with fixed vars merged in */
+export function applyFixedPtyEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return Object.assign(env, FIXED_PTY_ENV);
+}
 
 /** Parses the output of `/usr/libexec/path_helper -s` on macOS.
  *  Output format: `PATH="entry1:entry2:..."; export PATH;` */

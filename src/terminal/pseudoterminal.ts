@@ -8,7 +8,6 @@ import {
 } from "./utils.js";
 import {
   DEFAULT_ENCODING,
-  DEFAULT_PYTHONIOENCODING,
   EXIT_SUCCESS,
   MAX_LOCK_PENDING,
   TERMINAL_EXIT_CLEANUP_WAIT,
@@ -54,7 +53,7 @@ import AsyncLock from "async-lock";
 import type { AsyncOrSync } from "ts-essentials";
 import { BUNDLE } from "../import.js";
 import type { DeveloperConsoleContext } from "obsidian-terminal";
-import { sanitizedEnv } from "./environment.js";
+import { applyFixedPtyEnv, sanitizedEnv } from "./environment.js";
 import { DisposerAddon } from "./emulator-addons.js";
 import type { FileResult } from "tmp-promise";
 import type { Log } from "../patch.js";
@@ -792,12 +791,9 @@ class WindowsPseudoterminal implements Pseudoterminal {
             process,
             win32ResizerPy,
           ]),
-          resizerEnv: NodeJS.ProcessEnv = {
-            ...(await sanitizedEnv(process2.env)),
-
-            PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
-            TERM_PROGRAM: "obsidian-terminal",
-          },
+          resizerEnv: NodeJS.ProcessEnv = applyFixedPtyEnv(
+            await sanitizedEnv(process2.env),
+          ),
           ret = await spawnPromise(() =>
             childProcess2.spawn(pythonExecutable, ["-c", win32ResizerPy2], {
               env: resizerEnv,
@@ -874,10 +870,9 @@ class WindowsPseudoterminal implements Pseudoterminal {
                   ? [WINDOWS_CONHOST_PATH, inOutTmp.path]
                   : [inOutTmp.path],
               ),
-              shellEnv: NodeJS.ProcessEnv = {
-                ...(await sanitizedEnv(process2.env)),
-                TERM_PROGRAM: "obsidian-terminal",
-              },
+              shellEnv: NodeJS.ProcessEnv = applyFixedPtyEnv(
+                await sanitizedEnv(process2.env),
+              ),
               ret = await spawnPromise(() =>
                 childProcess2.spawn(cmd[0], cmd.slice(1), {
                   cwd,
@@ -1071,12 +1066,9 @@ class UnixPseudoterminal implements Pseudoterminal {
       }
       const [childProcess2, process2, unixPseudoterminalPy2] =
           await Promise.all([childProcess, process, unixPseudoterminalPy]),
-        env: NodeJS.ProcessEnv = {
-          ...(await sanitizedEnv(process2.env)),
-
-          PYTHONIOENCODING: DEFAULT_PYTHONIOENCODING,
-          TERM_PROGRAM: "obsidian-terminal",
-        };
+        env: NodeJS.ProcessEnv = applyFixedPtyEnv(
+          await sanitizedEnv(process2.env),
+        );
       if (!isNil(terminal)) {
         env["TERM"] = terminal;
       }
