@@ -4,6 +4,7 @@ import {
   activeSelf,
   consumeEvent,
   deepFreeze,
+  dynamicRequire,
   isNonNil,
   replaceAllRegex,
   revealPrivate,
@@ -15,6 +16,9 @@ import { constant, isUndefined } from "lodash-es";
 import { around } from "monkey-around";
 import { noop } from "ts-essentials";
 import type { Settings } from "../settings-data.js";
+import { BUNDLE } from "../import.js";
+
+const electron = dynamicRequire<typeof import("electron")>(BUNDLE, "electron");
 
 export class DisposerAddon extends Functions implements ITerminalAddon {
   public constructor(...args: readonly (() => void)[]) {
@@ -37,17 +41,49 @@ export class DragAndDropAddon implements ITerminalAddon {
   public constructor(protected readonly element: HTMLElement) {}
 
   public activate(terminal: Terminal): void {
-    // Electron 32+ removed `File.path`. Use `webUtils.getPathForFile()` and
-    // fall back to the legacy property for older builds.
-    const electron = (globalThis as { require?: (id: string) => unknown })
-      .require?.("electron") as
-      | { webUtils?: { getPathForFile?: (f: File) => string } }
-      | undefined;
-    const getFilePath = (file: File): string | undefined =>
-      electron?.webUtils?.getPathForFile?.(file) ??
-      (file as File & { path?: string }).path;
-    const { element } = this,
-      drop = (event: DragEvent): void => {
+    const { element } = this;
+
+    // Asynchronously load Electron's webUtils API for file path resolution.
+    // This is available in Electron 30+. We load it asynchronously to:
+    // 1. Avoid blocking the terminal initialization
+    // 2. Gracefully handle cases where Electron is unavailable (e.g.,
+    //    running in non-Electron environments or sandboxed contexts)
+    (async (): Promise<void> => {
+      let electron2 = null;
+      try {
+        // Dynamically load the electron module using dynamicRequire with the
+        // configured BUNDLE. This ensures safe loading in both development and
+        // production builds, respecting the plugin's module bundling strategy.
+        electron2 = await electron;
+      } catch (error) {
+        // Electron module failed to load. This is expected in non-Electron
+        // environments. Log at debug level to avoid console spam.
+        // The fallback to File.path will be used if available.
+        /* @__PURE__ */ activeSelf(element).console.debug(error);
+      }
+
+      const getFilePath = (file: File): string | undefined => {
+        // Priority order for file path extraction:
+        // 1. Electron 30+ webUtils.getPathForFile() - recommended, handles edge cases
+        // 2. Catch any errors from getPathForFile() - some paths may fail
+        // 3. Fall back to deprecated File.path - available in Electron < 32
+        if (electron2?.webUtils?.getPathForFile) {
+          try {
+            return electron2.webUtils.getPathForFile(file);
+          } catch (error) {
+            // getPathForFile() failed for this specific file.
+            // This can happen with certain file types or in special contexts.
+            // Log the error and continue with the fallback.
+            /* @__PURE__ */ activeSelf(element).console.warn(error);
+          }
+        }
+        // Fallback to legacy File.path property (Electron < 32).
+        // This property is non-standard and removed in Electron 32+, but provides
+        // compatibility with older versions that may not have webUtils.
+        return file.path;
+      };
+
+      const drop = (event: DragEvent): void => {
         terminal.paste(
           Array.from(event.dataTransfer?.files ?? [])
             .map(getFilePath)
@@ -57,18 +93,27 @@ export class DragAndDropAddon implements ITerminalAddon {
             .join(" "),
         );
         consumeEvent(event);
-      },
-      dragover = consumeEvent;
-    this.#disposer.push(
-      () => {
-        element.removeEventListener("dragover", dragover);
-      },
-      () => {
-        element.removeEventListener("drop", drop);
-      },
-    );
-    element.addEventListener("drop", drop);
-    element.addEventListener("dragover", dragover);
+      };
+
+      // dragover handler - needed to enable the drop target
+      const dragover = consumeEvent;
+
+      // Register event listeners and store cleanup functions.
+      // Both listeners are removed when the addon is disposed to prevent memory leaks.
+      this.#disposer.push(
+        () => {
+          element.removeEventListener("dragover", dragover);
+        },
+        () => {
+          element.removeEventListener("drop", drop);
+        },
+      );
+      element.addEventListener("drop", drop);
+      element.addEventListener("dragover", dragover);
+    })().catch((error) => {
+      // Log errors from the async initialization to help with debugging.
+      activeSelf(element).console.error(error);
+    });
   }
 
   public dispose(): void {
