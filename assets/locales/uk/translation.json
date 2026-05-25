@@ -61,15 +61,15 @@
       },
       "follow-theme": "$t(generic.follow, capitalize) $t(generic.theme)",
       "integrated": {
+        "arguments": "$t(generic.argument_other, capitalize)",
+        "arguments-description": "$t(generic.list-description, capitalize)",
+        "arguments-edit": "$t(generic.edit, capitalize)",
+        "executable": "$t(generic.executable, capitalize)",
         "Python-executable": "$t(generic.Python, capitalize): виконуваний файл",
         "Python-executable-check": "$t(generic.check, capitalize)",
         "Python-executable-checking": "$t(generic.check_gerund, capitalize)",
         "Python-executable-description": "Рекомендується {{version}} або вище. Необхідно на $t(generic.platforms.unix) для $t(generic.spawn) $t(generic.profile-types.integrated) $t(generic.terminal). $t(generic.clear, capitalize) $t(generic.text-field), щоб $t(generic.disable) $t(generic.Python).",
         "Python-executable-placeholder": "($t(generic.disable_past-participle, capitalize))",
-        "arguments": "$t(generic.argument_other, capitalize)",
-        "arguments-description": "$t(generic.list-description, capitalize)",
-        "arguments-edit": "$t(generic.edit, capitalize)",
-        "executable": "$t(generic.executable, capitalize)",
         "use-win32-conhost": "$t(generic.use, capitalize) $t(generic.platforms.win32) 'conhost.exe'",
         "use-win32-conhost-description": "$t(generic.disable, capitalize), якщо запуск 'conhost.exe' не створює вікно. Без гарантій працездатності."
       },
@@ -162,7 +162,6 @@
     "resizer-exited-unexpectedly": "Ресайзер термінала $t(generic.exit_past) неочікувано: {{code}}"
   },
   "generic": {
-    "Python": "Python",
     "argument": "аргумент",
     "argument_one": "аргумент",
     "argument_other": "аргументи",
@@ -206,6 +205,7 @@
     "incompatible": "несумісний",
     "instance": "екземпляр",
     "instance_gerund": "створення екземпляра",
+    "intercept": "intercept",
     "invalid": "недійсний",
     "key": "key",
     "keymapping": "keymapping",
@@ -223,6 +223,8 @@
     },
     "preset": "пресет",
     "profile": "$t(generic.profile_one)",
+    "profile_one": "профіль",
+    "profile_other": "профілі",
     "profile-types": {
       "": "порожній",
       "default": "$t(generic.default)",
@@ -232,9 +234,8 @@
       "invalid": "$t(generic.invalid)",
       "select": "вибрати"
     },
-    "profile_one": "профіль",
-    "profile_other": "профілі",
     "pseudoterminal": "псевдотермінал",
+    "Python": "Python",
     "rename": "rename",
     "renderer": "рендерер",
     "renderers": {
@@ -274,9 +275,9 @@
   },
   "name": "$t(generic.terminal, capitalize)",
   "notices": {
+    "no-default-profile": "Немає стандартного профілю для типу '$t(generic.profile-types.{{type}}, capitalize)'",
     "Python-status-entry-": "{{name}}: {{version}} (задовольняє: {{requirement}})",
     "Python-status-entry-unsatisfied": "{{name}}: {{version}} (не задовольняє: {{requirement}})",
-    "no-default-profile": "Немає стандартного профілю для типу '$t(generic.profile-types.{{type}}, capitalize)'",
     "spawning-terminal": "$t(generic.spawn_gerund, capitalize) $t(generic.terminal): {{title}}",
     "terminal-exited": "$t(generic.terminal, capitalize) $t(generic.exit_past): {{code}}"
   },
@@ -343,6 +344,8 @@
       "running": "Коли термінал запущений"
     },
     "instancing": "$t(generic.instance_gerund, capitalize)",
+    "intercept-keys-when-focused": "$t(generic.intercept, capitalize) keys when $t(generic.terminal) is $t(generic.focus_past-participle)",
+    "intercept-keys-when-focused-description": "When enabled, keyboard shortcuts are routed to $t(generic.terminal)-specific commands while the $t(generic.terminal) is $t(generic.focus_past-participle), and most Obsidian hotkeys are suppressed. Disable to let Obsidian hotkeys continue to work while typing in the $t(generic.terminal).",
     "intercept-logging": "Перехоплення логів",
     "interface": "Інтерфейс",
     "keymappings": "$t(generic.keymapping_other, capitalize)",

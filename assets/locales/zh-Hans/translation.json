@@ -197,6 +197,7 @@
     "history": "历史",
     "incompatible": "不$t(generic.compatible)",
     "instance": "实例",
+    "intercept": "拦截",
     "invalid": "无效",
     "key": "按键",
     "keymapping": "按键映射",
@@ -327,6 +328,8 @@
       "running": "当执行$t(generic.terminal)时"
     },
     "instancing": "$t(generic.instance)",
+    "intercept-keys-when-focused": "$t(generic.intercept)$t(generic.terminal)获得焦点时的按键",
+    "intercept-keys-when-focused-description": "启用此项后，当$t(generic.terminal)获得焦点时，按键将优先路由至$t(generic.terminal)命令，大部分 Obsidian 快捷键会被禁用。禁用此项可在$t(generic.terminal)获得焦点时继续使用 Obsidian 快捷键。",
     "intercept-logging": "拦截记录",
     "interface": "界面",
     "keymappings": "$t(generic.keymapping_other, capitalize)",
