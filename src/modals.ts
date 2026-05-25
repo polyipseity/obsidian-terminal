@@ -1595,7 +1595,7 @@ export class KeymappingsModal extends ListModal<
 > {
   public constructor(
     context: TerminalPlugin,
-    keymappings: Settings.Keymapping[],
+    keymappings: readonly Settings.Keymapping[],
     callback: (keymappings: DeepWritable<Settings.Keymapping>[]) => unknown,
   ) {
     const { value: i18n } = context.language;
