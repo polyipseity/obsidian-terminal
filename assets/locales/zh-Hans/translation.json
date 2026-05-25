@@ -332,6 +332,7 @@
     "intercept-keys-when-focused-description": "启用此项后，当$t(generic.terminal)获得焦点时，按键将优先路由至$t(generic.terminal)命令，大部分 Obsidian 快捷键会被禁用。禁用此项可在$t(generic.terminal)获得焦点时继续使用 Obsidian 快捷键。",
     "intercept-logging": "拦截记录",
     "interface": "界面",
+    "keyboard": "键盘",
     "keymappings": "$t(generic.keymapping_other, capitalize)",
     "keymappings-description": "在$t(generic.terminal)之前拦截的自定义按键绑定。每条记录将按键组合（可选平台过滤器）映射到一个动作——转义序列、原始文本或十六进制代码。第一条匹配的记录优先。例如：内置的 Shift+Enter → ESC+CR 可让 TUI 程序区分 Enter（提交）与 Shift+Enter（换行）。",
     "keymappings-edit": "$t(generic.edit, capitalize)",
