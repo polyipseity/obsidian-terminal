@@ -170,6 +170,7 @@
     "incompatible": "비호환",
     "instance": "인스턴스",
     "instance_gerund": "인스턴스 생성",
+    "intercept": "intercept",
     "invalid": "유효하지 않음",
     "name": "이름",
     "option": "옵션",
@@ -302,6 +303,8 @@
       "running": "$t(generic.terminal)이 실행 중인 경우"
     },
     "instancing": "$t(generic.instance_gerund)",
+    "intercept-keys-when-focused": "$t(generic.intercept, capitalize) keys when $t(generic.terminal) is $t(generic.focus_past-participle)",
+    "intercept-keys-when-focused-description": "When enabled, keyboard shortcuts are routed to $t(generic.terminal)-specific commands while the $t(generic.terminal) is $t(generic.focus_past-participle), and most Obsidian hotkeys are suppressed. Disable to let Obsidian hotkeys continue to work while typing in the $t(generic.terminal).",
     "intercept-logging": "로깅 가로채기",
     "interface": "인터페이스",
     "macOS-option-key-passthrough": "macOS: Option key passthrough",

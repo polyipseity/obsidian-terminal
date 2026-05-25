@@ -161,6 +161,7 @@
     "history": "歷史",
     "incompatible": "不$t(generic.compatible)",
     "instance": "個體",
+    "intercept": "攔截",
     "invalid": "無效",
     "name": "名稱",
     "option": "選項",
@@ -286,6 +287,8 @@
       "running": "當執行$t(generic.terminal)時"
     },
     "instancing": "$t(generic.instance)",
+    "intercept-keys-when-focused": "$t(generic.intercept)$t(generic.terminal)獲得焦點時的按鍵",
+    "intercept-keys-when-focused-description": "啟用此項後，當$t(generic.terminal)獲得焦點時，按鍵將優先路由至$t(generic.terminal)命令，大部份 Obsidian 快捷鍵會被停用。停用此項可在$t(generic.terminal)獲得焦點時繼續使用 Obsidian 快捷鍵。",
     "intercept-logging": "攔截記錄",
     "interface": "界面",
     "macOS-option-key-passthrough": "macOS：Option鍵穿透",
