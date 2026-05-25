@@ -261,50 +261,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               },
             ),
           );
-      })
-      .newSetting(containerEl, (setting) => {
-        setting
-          .setName(i18n.t("settings.keymappings"))
-          .setDesc(
-            i18n.t("settings.keymappings-description", {
-              count: settings.value.keymappings.length,
-              interpolation: { escapeValue: false },
-            }),
-          )
-          .addButton((button) =>
-            button
-              .setIcon(i18n.t("asset:settings.keymappings-edit-icon"))
-              .setTooltip(i18n.t("settings.keymappings-edit"))
-              .onClick(() => {
-                new KeymappingsModal(
-                  context,
-                  settings.value.keymappings,
-                  async (data): Promise<void> => {
-                    await settings.mutate((settingsM) => {
-                      settingsM.keymappings = data;
-                    });
-                    this.postMutate();
-                  },
-                ).open();
-              }),
-          )
-          .addExtraButton(
-            resetButton(
-              i18n.t("asset:settings.keymappings-icon"),
-              i18n.t("settings.reset"),
-              async () =>
-                settings.mutate((settingsM) => {
-                  settingsM.keymappings = cloneAsWritable(
-                    Settings.DEFAULT.keymappings,
-                  );
-                }),
-              () => {
-                this.postMutate();
-              },
-            ),
-          );
       });
-
     // profile defaults section
     this.newSectionWidget(() => i18n.t("settings.profile-defaults"));
     ui.new(
@@ -357,6 +314,119 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
           ),
         );
     });
+
+    // keyboard section
+    this.newSectionWidget(() => i18n.t("settings.keyboard"));
+    ui.newSetting(containerEl, (setting) => {
+      setting
+        .setName(i18n.t("settings.intercept-keys-when-focused"))
+        .setDesc(i18n.t("settings.intercept-keys-when-focused-description"))
+        .addToggle(
+          linkSetting(
+            () => settings.value.interceptKeysWhenFocused,
+            async (value) =>
+              settings.mutate((settingsM) => {
+                settingsM.interceptKeysWhenFocused = value;
+              }),
+            () => {
+              this.postMutate();
+            },
+          ),
+        )
+        .addExtraButton(
+          resetButton(
+            i18n.t("asset:settings.intercept-keys-when-focused-icon"),
+            i18n.t("settings.reset"),
+            async () =>
+              settings.mutate((settingsM) => {
+                settingsM.interceptKeysWhenFocused =
+                  Settings.DEFAULT.interceptKeysWhenFocused;
+              }),
+            () => {
+              this.postMutate();
+            },
+          ),
+        );
+    })
+      .newSetting(containerEl, (setting) => {
+        setting
+          .setName(i18n.t("settings.keymappings"))
+          .setDesc(
+            i18n.t("settings.keymappings-description", {
+              count: settings.value.keymappings.length,
+              interpolation: { escapeValue: false },
+            }),
+          )
+          .addButton((button) =>
+            button
+              .setIcon(i18n.t("asset:settings.keymappings-edit-icon"))
+              .setTooltip(i18n.t("settings.keymappings-edit"))
+              .onClick(() => {
+                new KeymappingsModal(
+                  context,
+                  settings.value.keymappings,
+                  async (data): Promise<void> => {
+                    await settings.mutate((settingsM) => {
+                      settingsM.keymappings = data;
+                    });
+                    this.postMutate();
+                  },
+                ).open();
+              }),
+          )
+          .addExtraButton(
+            resetButton(
+              i18n.t("asset:settings.keymappings-icon"),
+              i18n.t("settings.reset"),
+              async () =>
+                settings.mutate((settingsM) => {
+                  settingsM.keymappings = cloneAsWritable(
+                    Settings.DEFAULT.keymappings,
+                  );
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          );
+      })
+      // Note: macOSOptionKeyPassthrough is intentionally shown on all platforms
+      // (not just darwin) so users can pre-configure the setting before
+      // switching to macOS.  The toggle has no effect at runtime on non-macOS
+      // platforms (view.ts passes constant(false) for isPassthroughEnabled
+      // when Platform.CURRENT !== "darwin").  The setting description explains
+      // this behaviour to the user.
+      .newSetting(containerEl, (setting) => {
+        setting
+          .setName(i18n.t("settings.macOS-option-key-passthrough"))
+          .setDesc(i18n.t("settings.macOS-option-key-passthrough-description"))
+          .addToggle(
+            linkSetting(
+              () => settings.value.macOSOptionKeyPassthrough,
+              async (value) =>
+                settings.mutate((settingsM) => {
+                  settingsM.macOSOptionKeyPassthrough = value;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          )
+          .addExtraButton(
+            resetButton(
+              i18n.t("asset:settings.macOS-option-key-passthrough-icon"),
+              i18n.t("settings.reset"),
+              async () =>
+                settings.mutate((settingsM) => {
+                  settingsM.macOSOptionKeyPassthrough =
+                    Settings.DEFAULT.macOSOptionKeyPassthrough;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          );
+      });
 
     this.newSectionWidget(() => i18n.t("settings.instancing"));
     ui.newSetting(containerEl, (setting) => {
@@ -632,74 +702,6 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                 settings.mutate((settingsM) => {
                   settingsM.interceptLogging =
                     Settings.DEFAULT.interceptLogging;
-                }),
-              () => {
-                this.postMutate();
-              },
-            ),
-          );
-      })
-      // Note: macOSOptionKeyPassthrough is intentionally shown on all platforms
-      // (not just darwin) so users can pre-configure the setting before
-      // switching to macOS.  The toggle has no effect at runtime on non-macOS
-      // platforms (view.ts passes constant(false) for isPassthroughEnabled
-      // when Platform.CURRENT !== "darwin").  The setting description explains
-      // this behaviour to the user.
-      .newSetting(containerEl, (setting) => {
-        setting
-          .setName(i18n.t("settings.macOS-option-key-passthrough"))
-          .setDesc(i18n.t("settings.macOS-option-key-passthrough-description"))
-          .addToggle(
-            linkSetting(
-              () => settings.value.macOSOptionKeyPassthrough,
-              async (value) =>
-                settings.mutate((settingsM) => {
-                  settingsM.macOSOptionKeyPassthrough = value;
-                }),
-              () => {
-                this.postMutate();
-              },
-            ),
-          )
-          .addExtraButton(
-            resetButton(
-              i18n.t("asset:settings.macOS-option-key-passthrough-icon"),
-              i18n.t("settings.reset"),
-              async () =>
-                settings.mutate((settingsM) => {
-                  settingsM.macOSOptionKeyPassthrough =
-                    Settings.DEFAULT.macOSOptionKeyPassthrough;
-                }),
-              () => {
-                this.postMutate();
-              },
-            ),
-          );
-      })
-      .newSetting(containerEl, (setting) => {
-        setting
-          .setName(i18n.t("settings.intercept-keys-when-focused"))
-          .setDesc(i18n.t("settings.intercept-keys-when-focused-description"))
-          .addToggle(
-            linkSetting(
-              () => settings.value.interceptKeysWhenFocused,
-              async (value) =>
-                settings.mutate((settingsM) => {
-                  settingsM.interceptKeysWhenFocused = value;
-                }),
-              () => {
-                this.postMutate();
-              },
-            ),
-          )
-          .addExtraButton(
-            resetButton(
-              i18n.t("asset:settings.intercept-keys-when-focused-icon"),
-              i18n.t("settings.reset"),
-              async () =>
-                settings.mutate((settingsM) => {
-                  settingsM.interceptKeysWhenFocused =
-                    Settings.DEFAULT.interceptKeysWhenFocused;
                 }),
               () => {
                 this.postMutate();
