@@ -15,10 +15,11 @@ import type { ITerminalAddon, ITheme, Terminal } from "@xterm/xterm";
 import { constant, isUndefined } from "lodash-es";
 import { around } from "monkey-around";
 import { noop } from "ts-essentials";
-import type { Settings } from "../settings-data.js";
 import { BUNDLE } from "../import.js";
+import type { Settings } from "../settings-data.js";
 
 const electron = dynamicRequire<typeof import("electron")>(BUNDLE, "electron");
+/* @__PURE__ */ electron.catch(noop); // Prevent unhandled rejections from `dynamicRequire` in tests.
 
 export class DisposerAddon extends Functions implements ITerminalAddon {
   public constructor(...args: readonly (() => void)[]) {
