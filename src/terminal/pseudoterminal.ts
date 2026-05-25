@@ -53,11 +53,7 @@ import AsyncLock from "async-lock";
 import type { AsyncOrSync } from "ts-essentials";
 import { BUNDLE } from "../import.js";
 import type { DeveloperConsoleContext } from "obsidian-terminal";
-import {
-  applyFixedEnv,
-  applyProfileEnv,
-  sanitizeEnv,
-} from "./environment.js";
+import { applyFixedEnv, applyProfileEnv, sanitizeEnv } from "./environment.js";
 import { DisposerAddon } from "./emulator-addons.js";
 import type { FileResult } from "tmp-promise";
 import type { Log } from "../patch.js";
