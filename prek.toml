@@ -1,7 +1,8 @@
-# Markdown linting using rumdl (high-performance Rust linter). These hooks
-# use the official pre-commit bridge which installs rumdl into an isolated
-# environment automatically. Keep `.markdownlint.jsonc` for compatibility;
-# rumdl auto-discovers and can import markdownlint configs via `rumdl import`.
+# Prek native configuration: preferred as the canonical configuration for pre-commit-style hooks.
+# Prek is a Rust-based, drop-in replacement for pre-commit with support for TOML config.
+# Configuration mirrors project conventions: baseline checks, formatting, linting, and CI validation.
+# For details on prek, see: https://prek.j178.dev/
+# Note: `prek` can also read `.pre-commit-config.yaml` for compatibility, but `prek.toml` is preferred.
 
 default_install_hook_types = [
   "commit-msg",
@@ -105,6 +106,8 @@ hooks = [
   { id = "test-bun", name = "test with Bun", entry = "bun run test", language = "system", pass_filenames = false, always_run = true, stages = [
     "pre-push",
   ] },
+  # Lint and auto-fix ESLint-targeted files.
+  { id = "eslint-fix", name = "ESLint fix", entry = "bun x --no-install -- eslint --fix", language = "system", files = "\\.(cjs|cts|d\\.ts|js|jsx|mjs|mts|ts|tsx)$" },
   # Configure rolling tag to allow force updates during fetch
   # Ensures 'git fetch' can update the rolling tag without user intervention
   { id = "git-rolling-refspec-config", name = "configure rolling refspec", entry = "bun run scripts/git-rolling-refspec-config", language = "system", pass_filenames = false, always_run = true, stages = [
