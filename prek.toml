@@ -1,0 +1,121 @@
+# Markdown linting using rumdl (high-performance Rust linter). These hooks
+# use the official pre-commit bridge which installs rumdl into an isolated
+# environment automatically. Keep `.markdownlint.jsonc` for compatibility;
+# rumdl auto-discovers and can import markdownlint configs via `rumdl import`.
+
+default_install_hook_types = [
+  "commit-msg",
+  "post-checkout",
+  "post-commit",
+  "pre-commit",
+  "pre-push",
+]
+default_stages = ["pre-commit"]
+
+[[repos]]
+repo = "https://github.com/pre-commit/pre-commit-hooks.git"
+rev = "3e8a8703264a2f4a69428a0aa4dcb512790b2c8c"
+# Notes:
+# - These hooks are a recommended baseline. If a particular hook is undesired (for example, forbidding
+#   submodules in a repository that intentionally uses them), remove or configure that hook in `prek.toml`.
+# - Keep hook repositories pinned (set `rev`) to an explicit commit hash to ensure reproducible behaviour.
+hooks = [
+  { id = "check-case-conflict" },
+  { id = "check-executables-have-shebangs", exclude = "\\.(bat|cmd|ps1|psd1|psm1|vbs|wsf|wsh)$" },
+  { id = "check-illegal-windows-names" },
+  { id = "check-merge-conflict" },
+  { id = "check-shebang-scripts-are-executable" },
+  { id = "check-symlinks" },
+  { id = "destroyed-symlinks" },
+  { id = "detect-private-key" },
+  { id = "end-of-file-fixer" },
+  { id = "fix-byte-order-marker" },
+  { id = "name-tests-test", args = [
+    "--pytest-test-first",
+  ] },
+  # Preserve markdown hard line breaks (common in docs)
+  { id = "trailing-whitespace", args = [
+    "--markdown-linebreak-ext=md,mdoc,mdown,mdx,mkd,mkdn,markdown,rmd",
+  ] },
+]
+
+# Commit message linting using commitlint (Node.js). This uses
+# the commitlint-pre-commit-hook bridge so it runs as a commit-msg hook.
+# Note: Node.js must be available on developer machines to run this hook.
+[[repos]]
+repo = "https://github.com/alessandrojcm/commitlint-pre-commit-hook.git"
+rev = "3b48bd150c62d95642df393f7c64af62d82e16e7"
+hooks = [
+  { id = "commitlint", stages = [
+    "commit-msg",
+  ], additional_dependencies = [
+    "@commitlint/config-conventional",
+  ] },
+]
+
+[[repos]]
+repo = "https://github.com/python-jsonschema/check-jsonschema.git"
+rev = "7ef03ac2e60d02f7dc93ca9f898698c0588803c7"
+hooks = [{ id = "check-dependabot" }, { id = "check-github-workflows" }]
+
+# Markdown linting using markdownlint-cli.
+[[repos]]
+repo = "https://github.com/igorshubovych/markdownlint-cli.git"
+rev = "e72a3ca1632f0b11a07d171449fe447a7ff6795e"
+hooks = [{ id = "markdownlint", args = ["--fix"] }]
+
+[[repos]]
+repo = "https://github.com/astral-sh/uv-pre-commit.git"
+rev = "92791afd0b37b081bdc48d250ecc6aed11b6beac"
+hooks = [{ id = "uv-lock" }]
+
+[[repos]]
+repo = "https://github.com/astral-sh/ruff-pre-commit.git"
+rev = "0470f7c8a653e950f7cc5a653204ceb3fde4c02a"
+hooks = [{ id = "ruff-check", args = ["--fix"] }, { id = "ruff-format" }]
+
+[[repos]]
+repo = "local"
+hooks = [
+  # Format code files with Prettier.
+  { id = "prettier-write", name = "Prettier write", entry = "bun x --no-install -- prettier --write", language = "system", types_or = [
+    "astro",
+    "javascript",
+    "jsx",
+    "json",
+    "json5",
+    "ts",
+    "tsx",
+    "vue",
+    "css",
+    "scss",
+    "sass",
+    "less",
+    "html",
+    "yaml",
+    "graphql",
+  ] },
+  # Type checkers need global context, not individual files
+  { id = "ty-check", name = "ty check", entry = "uv run --locked ty check", language = "system", types_or = [
+    "cython",
+    "pyi",
+    "python",
+  ], pass_filenames = false, always_run = true },
+  # Run all tests, not just those with changed files
+  { id = "test-bun", name = "test with Bun", entry = "bun run test", language = "system", pass_filenames = false, always_run = true, stages = [
+    "pre-push",
+  ] },
+  # Configure rolling tag to allow force updates during fetch
+  # Ensures 'git fetch' can update the rolling tag without user intervention
+  { id = "git-rolling-refspec-config", name = "configure rolling refspec", entry = "bun run scripts/git-rolling-refspec-config", language = "system", pass_filenames = false, always_run = true, stages = [
+    "post-checkout",
+  ] },
+  # Create/update rolling tag on default branch after commit
+  { id = "git-rolling-tag-create", name = "create rolling tag", entry = "bun run scripts/git-rolling-tag-create", language = "system", pass_filenames = false, always_run = true, stages = [
+    "post-commit",
+  ] },
+  # Push rolling tag to origin on default branch
+  { id = "git-rolling-tag-push", name = "push rolling tag", entry = "bun run scripts/git-rolling-tag-push", language = "system", pass_filenames = false, always_run = true, stages = [
+    "pre-push",
+  ] },
+]

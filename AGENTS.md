@@ -70,7 +70,7 @@ Quick reference for scripts in `package.json`. Use `bun` (preferred).
 - `format:prettier` — `prettier --write .`.
 - `format:md` — `markdownlint-cli2 --fix`.
 - `commitlint` — `commitlint --from=origin/main --to=HEAD`.
-- `prepare` — runs `husky` to set up Git hooks.
+- `prepare` — runs `prek install` to set up Git hooks.
 - `version` / `postversion` — version lifecycle scripts (`node scripts/version.mjs`, `node scripts/version-post.mjs`).
 
 > CI tip: Use `bun install --frozen-lockfile` in CI for deterministic installs.
@@ -112,7 +112,7 @@ Helpful local resources:
   > **Agent note — vitest CLI:** `vitest` without a subcommand defaults to interactive/watch mode. **Agents must never run Vitest in watch mode**; always use `vitest run <options>` or add the `--run` option so tests execute non-interactively (example: `bun x vitest --run "tests/**/*.spec.{js,ts,mjs}"`).
 
 - **Git hooks & CI:**
-  - Pre-push: `.husky/pre-push` runs `bun run test` — failing tests will block pushes.
+  - Pre-push: `prek` `pre-push` runs `bun run test` — failing tests will block pushes.
   - CI: CI jobs run the full test suite (both unit and integration). If adding slow or flaky integration tests, mark them clearly (folder or filename) and justify in the PR description; prefer to keep the default suite fast.
 
 - **Guidelines for agents & contributors:**
@@ -171,9 +171,9 @@ type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
 
 - All commit messages **must** follow the Conventional Commits standard.
 - **Header should be ≤ 72 characters (use 72 as a human-friendly buffer; tooling still accepts up to 100).**
-- **Body lines must be hard-wrapped at 100 characters** (enforced by commitlint/husky). Prefer 72 for messages intended for humans.
+- **Body lines must be hard-wrapped at 100 characters** (enforced by commitlint/prek). Prefer 72 for messages intended for humans.
 - See `.agents/instructions/commit-message.instructions.md` for up-to-date rules, examples, and a short agent-oriented summary.
-- Run `bun run commitlint` locally to validate message format before pushing; Husky will run checks on `prepare`/pre-push as configured.
+- Run `bun run commitlint` locally to validate message format before pushing; prek will run checks on `prepare`/pre-push as configured.
 
   **Example (compliant):**
 
