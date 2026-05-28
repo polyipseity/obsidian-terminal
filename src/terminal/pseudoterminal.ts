@@ -872,9 +872,9 @@ class WindowsPseudoterminal implements Pseudoterminal {
                 childProcess2.spawn(cmd[0], cmd.slice(1), {
                   cwd,
                   env: applyProfileEnv(
-                applyFixedEnv(await sanitizeEnv(process2.env)),
-                environment ?? [],
-              ),
+                    applyFixedEnv(await sanitizeEnv(process2.env)),
+                    environment ?? [],
+                  ),
                   shell: !conhost,
                   stdio: ["pipe", "pipe", "pipe"],
                   windowsHide: !resizer,
@@ -1063,16 +1063,16 @@ class UnixPseudoterminal implements Pseudoterminal {
         );
       }
       const [childProcess2, process2, unixPseudoterminalPy2] =
-          await Promise.all([childProcess, process, unixPseudoterminalPy]);
+        await Promise.all([childProcess, process, unixPseudoterminalPy]);
       return childProcess2.spawn(
         pythonExecutable,
         ["-c", unixPseudoterminalPy2, executable].concat(args ?? []),
         {
           cwd,
           env: applyProfileEnv(
-          applyFixedEnv(await sanitizeEnv(process2.env)),
-          environment ?? [],
-        ),
+            applyFixedEnv(await sanitizeEnv(process2.env)),
+            environment ?? [],
+          ),
           stdio: ["pipe", "pipe", "pipe", "pipe"],
           windowsHide: true,
         },
