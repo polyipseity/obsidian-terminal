@@ -918,19 +918,65 @@ export class ProfileModal extends Modal {
                   i18n.t(`components.profile.${profile.type}.environment-edit`),
                 )
                 .onClick(() => {
-                  new ListModal(
+                  const envPair = (
+                    k: string,
+                    v: string,
+                  ): readonly [string, string] => [k, v];
+                  new ListModal<readonly [string, string]>(
                     context,
-                    ListModal.stringInputter<string>({
-                      back: identity,
-                      forth: identity,
-                    }),
-                    () => "",
+                    (setting, editable, refs) => {
+                      setting.addTextArea((textArea) => {
+                        textArea
+                          .setPlaceholder(
+                            i18n.t(
+                              `components.profile.${profile.type}.environment-key-placeholder`,
+                            ),
+                          )
+                          .setDisabled(!editable);
+                        if (!refs) {
+                          textArea.inputEl.style.visibility = "hidden";
+                          return;
+                        }
+                        textArea
+                          .setValue(refs.getter()[0])
+                          .onChange((value) => {
+                            refs.setter((item, index, data) => {
+                              data[index] = envPair(value, item[1]);
+                            });
+                          });
+                      });
+                      setting.addTextArea((textArea) => {
+                        textArea
+                          .setPlaceholder(
+                            i18n.t(
+                              `components.profile.${profile.type}.environment-value-placeholder`,
+                            ),
+                          )
+                          .setDisabled(!editable);
+                        if (!refs) {
+                          textArea.inputEl.style.visibility = "hidden";
+                          return;
+                        }
+                        textArea
+                          .setValue(refs.getter()[1])
+                          .onChange((value) => {
+                            refs.setter((item, index, data) => {
+                              data[index] = envPair(item[0], value);
+                            });
+                          });
+                      });
+                    },
+                    (): readonly [string, string] => ["", ""],
                     profile.environment,
                     {
                       callback: async (value): Promise<void> => {
                         profile.environment = value;
                         await this.postMutate();
                       },
+                      description: (): string =>
+                        i18n.t(
+                          `components.profile.${profile.type}.environment-list-description`,
+                        ),
                       title: (): string =>
                         i18n.t(
                           `components.profile.${profile.type}.environment`,

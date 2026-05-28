@@ -755,7 +755,7 @@ export interface ShellPseudoterminalArguments {
   readonly executable: string;
   readonly cwd?: URL | string | undefined;
   readonly args?: readonly string[] | undefined;
-  readonly environment?: readonly string[] | undefined;
+  readonly environment?: readonly (readonly [string, string])[] | undefined;
   readonly terminal?: string | undefined;
   readonly pythonExecutable?: string | undefined;
   readonly useWin32Conhost?: boolean | undefined;

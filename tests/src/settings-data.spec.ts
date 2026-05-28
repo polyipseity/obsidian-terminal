@@ -89,10 +89,22 @@ describe("src/settings-data.ts", () => {
 
     const integrated = Settings.Profile.fix({
       type: "integrated",
-      environment: ["FOO=bar"],
+      environment: [["FOO", "bar"]],
     }).value;
     expect((integrated as Settings.Profile.Integrated).environment).toEqual([
-      "FOO=bar",
+      ["FOO", "bar"],
+    ]);
+  });
+
+  it("Profile.fix drops invalid environment entries silently", () => {
+    // Old string format entries and malformed entries should be dropped,
+    // not crash the fix function.
+    const result = Settings.Profile.fix({
+      type: "external",
+      environment: ["FOO=bar", ["KEY", "value"], [42, "value"], ["KEY"]],
+    }).value;
+    expect((result as Settings.Profile.External).environment).toEqual([
+      ["KEY", "value"],
     ]);
   });
 

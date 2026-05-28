@@ -258,33 +258,54 @@ async function execToString(
   });
 }
 
-/** Parses `KEY=value` lines into an environment record.
- *  Blank lines and lines without `=` are ignored; the key is everything before
- *  the first `=`, and surrounding whitespace on the key is trimmed. */
+/** Converts `[key, value]` pairs into an environment record.
+ *  Keys are trimmed of surrounding whitespace; pairs with blank keys are
+ *  ignored.  When duplicate keys are present the last one wins (consistent
+ *  with `Object.fromEntries` semantics). */
 export function parseEnvironment(
-  lines: readonly string[],
+  pairs: readonly (readonly [string, string])[],
 ): Record<string, string> {
-  const env: Record<string, string> = {};
-  for (const line of lines) {
-    const index = line.indexOf("=");
-    if (index <= 0) {
-      continue;
-    }
-    const key = line.slice(0, index).trim();
-    if (key) {
-      env[key] = line.slice(index + 1);
+  const trimmed: [string, string][] = [];
+  for (const [key, value] of pairs) {
+    const k = key.trim();
+    if (k) {
+      trimmed.push([k, value]);
     }
   }
-  return env;
+  return Object.fromEntries(trimmed);
 }
 
-/** Merges user-defined `KEY=value` entries into an environment.
- *  Returns the same env object with the parsed entries applied on top. */
+/** Merges user-defined `[key, value]` pairs into an environment.
+ *
+ *  On Windows (and any platform where environment variable names are
+ *  case-insensitive), any existing key in `env` that matches a user-defined
+ *  key case-insensitively is removed *before* the new entries are applied.
+ *  This is necessary because Node.js does not deduplicate case-insensitive
+ *  keys when constructing the environment block for a child process; Windows
+ *  would otherwise use the first occurrence and the user's value would be
+ *  shadowed.
+ *
+ *  Returns the same `env` object with the entries applied on top. */
 export function applyProfileEnv(
   env: NodeJS.ProcessEnv,
-  lines: readonly string[],
+  pairs: readonly (readonly [string, string])[],
 ): NodeJS.ProcessEnv {
-  return Object.assign(env, parseEnvironment(lines));
+  const userEnv = parseEnvironment(pairs);
+  const userKeys = Object.keys(userEnv);
+  if (userKeys.length === 0) {
+    return env;
+  }
+  const isWin = Platform.CURRENT === "win32";
+  if (isWin) {
+    const upperKeys = new Set(userKeys.map((k) => k.toUpperCase()));
+    for (const key of Object.keys(env)) {
+      if (upperKeys.has(key.toUpperCase())) {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete env[key];
+      }
+    }
+  }
+  return Object.assign(env, userEnv);
 }
 
 export async function sanitizeEnv(

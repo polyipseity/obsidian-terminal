@@ -284,35 +284,41 @@ describe("env key sanitization", () => {
 // ── profile environment variables ──────────────────────────────────────────
 
 describe("parseEnvironment", () => {
-  it("parses KEY=value lines", () => {
-    expect(parseEnvironment(["FOO=bar", "BAZ=qux"])).toEqual({
-      BAZ: "qux",
-      FOO: "bar",
-    });
+  it("converts [key, value] pairs into a record", () => {
+    expect(
+      parseEnvironment([
+        ["FOO", "bar"],
+        ["BAZ", "qux"],
+      ]),
+    ).toEqual({ BAZ: "qux", FOO: "bar" });
   });
 
-  it("keeps everything after the first '=' as the value", () => {
-    expect(parseEnvironment(["URL=https://example.com/?a=b"])).toEqual({
+  it("allows values that contain '='", () => {
+    expect(parseEnvironment([["URL", "https://example.com/?a=b"]])).toEqual({
       URL: "https://example.com/?a=b",
     });
   });
 
   it("allows empty values", () => {
-    expect(parseEnvironment(["EMPTY="])).toEqual({ EMPTY: "" });
+    expect(parseEnvironment([["EMPTY", ""]])).toEqual({ EMPTY: "" });
   });
 
   it("trims whitespace around the key", () => {
-    expect(parseEnvironment(["  FOO =bar"])).toEqual({ FOO: "bar" });
+    expect(parseEnvironment([[" FOO ", "bar"]])).toEqual({ FOO: "bar" });
   });
 
-  it("ignores blank lines and lines without '='", () => {
-    expect(parseEnvironment(["", "noequals", "FOO=bar"])).toEqual({
-      FOO: "bar",
-    });
+  it("drops entries with a blank key", () => {
+    expect(parseEnvironment([["", "value"]])).toEqual({});
+    expect(parseEnvironment([["  ", "value"]])).toEqual({});
   });
 
-  it("ignores lines starting with '='", () => {
-    expect(parseEnvironment(["=value"])).toEqual({});
+  it("last duplicate key wins (Object.fromEntries semantics)", () => {
+    expect(
+      parseEnvironment([
+        ["FOO", "first"],
+        ["FOO", "last"],
+      ]),
+    ).toEqual({ FOO: "last" });
   });
 
   it("returns an empty record for no entries", () => {
@@ -323,7 +329,12 @@ describe("parseEnvironment", () => {
 describe("applyProfileEnv", () => {
   it("merges parsed entries onto the env, overriding existing keys", () => {
     const env = { FOO: "old", PATH: "/usr/bin" };
-    expect(applyProfileEnv(env, ["FOO=new", "BAR=baz"])).toEqual({
+    expect(
+      applyProfileEnv(env, [
+        ["FOO", "new"],
+        ["BAR", "baz"],
+      ]),
+    ).toEqual({
       BAR: "baz",
       FOO: "new",
       PATH: "/usr/bin",
@@ -333,5 +344,14 @@ describe("applyProfileEnv", () => {
   it("leaves the env unchanged when there are no entries", () => {
     const env = { PATH: "/usr/bin" };
     expect(applyProfileEnv(env, [])).toEqual({ PATH: "/usr/bin" });
+  });
+
+  it("applies the user's value regardless of existing key case on the current platform", () => {
+    // On any platform the user-defined value must end up in the result.
+    // On Windows the old lower-case key would additionally be removed first;
+    // on other platforms both keys may coexist in the object.
+    const env: NodeJS.ProcessEnv = { FOO: "old" };
+    const result = applyProfileEnv(env, [["FOO", "new"]]);
+    expect(result["FOO"]).toBe("new");
   });
 });
