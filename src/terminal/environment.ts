@@ -277,8 +277,7 @@ export function applyProfileEnv(
   if (userKeys.length === 0) {
     return env;
   }
-  const isWin = Platform.CURRENT === "win32";
-  if (isWin) {
+  if (Platform.CURRENT === "win32") {
     const upperKeys = new Set(userKeys.map((k) => k.toUpperCase()));
     for (const key of Object.keys(env)) {
       if (upperKeys.has(key.toUpperCase())) {

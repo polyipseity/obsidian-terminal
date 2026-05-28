@@ -306,7 +306,7 @@ describe("applyProfileEnv", () => {
     // On any platform the user-defined value must end up in the result.
     // On Windows the old lower-case key would additionally be removed first;
     // on other platforms both keys may coexist in the object.
-    const env: NodeJS.ProcessEnv = { FOO: "old" };
+    const env = { FOO: "old" };
     const result = applyProfileEnv(env, [["FOO", "new"]]);
     expect(result["FOO"]).toBe("new");
   });

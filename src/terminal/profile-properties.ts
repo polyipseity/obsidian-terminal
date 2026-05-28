@@ -95,7 +95,6 @@ export const PROFILE_PROPERTIES: {
           environment,
           executable,
           pythonExecutable: pythonExecutable || void 0,
-          terminal: options?.terminal,
           useWin32Conhost,
         }),
       );
