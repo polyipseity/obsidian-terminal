@@ -49,17 +49,24 @@ export const SUPPORTS_EXTERNAL_TERMINAL_EMULATOR = importable(
   BUNDLE,
   "node:child_process",
 );
+
+export interface ExternalTerminalSpawnOptions {
+  readonly cwd?: string | undefined;
+  readonly environment?: readonly (readonly [string, string])[] | undefined;
+}
+
 export async function spawnExternalTerminalEmulator(
   executable: string,
   args?: readonly string[],
-  cwd?: string,
+  options: ExternalTerminalSpawnOptions = {},
 ): Promise<ChildProcessByStdio<null, null, null>> {
+  const { cwd, environment } = options;
   const childProcess2 = await childProcess;
   const ret = await spawnPromise(async () =>
     childProcess2.spawn(executable, args ?? [], {
       cwd,
       detached: true,
-      env: await applyEnv({ fixed: "external" }),
+      env: await applyEnv({ fixed: "external", profile: environment }),
       shell: true,
       stdio: ["ignore", "ignore", "ignore"],
     }),

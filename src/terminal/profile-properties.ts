@@ -4,18 +4,18 @@ import {
   deepFreeze,
   launderUnchecked,
 } from "@polyipseity/obsidian-plugin-library";
+import type { AsyncOrSync } from "ts-essentials";
+import type { TerminalPlugin } from "../main.js";
+import type { Settings } from "../settings-data.js";
+import {
+  SUPPORTS_EXTERNAL_TERMINAL_EMULATOR,
+  spawnExternalTerminalEmulator,
+} from "./emulator.js";
 import {
   Pseudoterminal,
   RefPsuedoterminal,
   TextPseudoterminal,
 } from "./pseudoterminal.js";
-import {
-  SUPPORTS_EXTERNAL_TERMINAL_EMULATOR,
-  spawnExternalTerminalEmulator,
-} from "./emulator.js";
-import type { AsyncOrSync } from "ts-essentials";
-import type { Settings } from "../settings-data.js";
-import type { TerminalPlugin } from "../main.js";
 
 export interface OpenOptions {
   readonly cwd?: string | undefined;
@@ -56,11 +56,10 @@ export const PROFILE_PROPERTIES: {
       profile: Settings.Profile.Typed<"external">,
       options?: OpenOptions,
     ) {
-      await spawnExternalTerminalEmulator(
-        profile.executable,
-        profile.args,
-        options?.cwd,
-      );
+      await spawnExternalTerminalEmulator(profile.executable, profile.args, {
+        cwd: options?.cwd,
+        environment: profile.environment,
+      });
       return null;
     },
     valid: true,

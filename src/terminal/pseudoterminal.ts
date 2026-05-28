@@ -864,7 +864,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
               ret = await spawnPromise(async () =>
                 childProcess2.spawn(cmd[0], cmd.slice(1), {
                   cwd,
-                  env: await applyEnv({ profile: environment ?? [] }),
+                  env: await applyEnv({ profile: environment }),
                   shell: !conhost,
                   stdio: ["pipe", "pipe", "pipe"],
                   windowsHide: !resizer,
@@ -1061,7 +1061,7 @@ class UnixPseudoterminal implements Pseudoterminal {
         ["-c", unixPseudoterminalPy2, executable].concat(args ?? []),
         {
           cwd,
-          env: await applyEnv({ profile: environment ?? [] }),
+          env: await applyEnv({ profile: environment }),
           stdio: ["pipe", "pipe", "pipe", "pipe"],
           windowsHide: true,
         },
