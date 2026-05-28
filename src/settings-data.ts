@@ -701,16 +701,14 @@ export namespace Settings {
       }
       const result: (readonly [string, string])[] = [];
       for (const entry of val) {
-        if (!Array.isArray(entry) || entry.length < 2) {
+        if (!Array.isArray(entry)) {
           continue;
         }
-        const k: unknown = entry[0];
-        const v: unknown = entry[1];
+        const [k, v] = entry;
         if (typeof k !== "string" || typeof v !== "string") {
           continue;
         }
-        const pair: readonly [string, string] = [k, v];
-        result.push(pair);
+        result.push([k, v] as const);
       }
       return result;
     }

@@ -258,39 +258,21 @@ async function execToString(
   });
 }
 
-/** Converts `[key, value]` pairs into an environment record.
- *  Keys are trimmed of surrounding whitespace; pairs with blank keys are
- *  ignored.  When duplicate keys are present the last one wins (consistent
- *  with `Object.fromEntries` semantics). */
-export function parseEnvironment(
-  pairs: readonly (readonly [string, string])[],
-): Record<string, string> {
-  const trimmed: [string, string][] = [];
-  for (const [key, value] of pairs) {
-    const k = key.trim();
-    if (k) {
-      trimmed.push([k, value]);
-    }
-  }
-  return Object.fromEntries(trimmed);
-}
-
 /** Merges user-defined `[key, value]` pairs into an environment.
  *
  *  On Windows (and any platform where environment variable names are
  *  case-insensitive), any existing key in `env` that matches a user-defined
  *  key case-insensitively is removed *before* the new entries are applied.
- *  This is necessary because Node.js does not deduplicate case-insensitive
- *  keys when constructing the environment block for a child process; Windows
- *  would otherwise use the first occurrence and the user's value would be
- *  shadowed.
+ *  This is necessary because Node.js lexicographically sorts env keys and
+ *  passes only the first case-insensitive match to the child process; without
+ *  the removal the user-defined value could be shadowed.
  *
  *  Returns the same `env` object with the entries applied on top. */
 export function applyProfileEnv(
   env: NodeJS.ProcessEnv,
   pairs: readonly (readonly [string, string])[],
 ): NodeJS.ProcessEnv {
-  const userEnv = parseEnvironment(pairs);
+  const userEnv = Object.fromEntries(pairs);
   const userKeys = Object.keys(userEnv);
   if (userKeys.length === 0) {
     return env;

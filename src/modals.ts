@@ -918,10 +918,6 @@ export class ProfileModal extends Modal {
                   i18n.t(`components.profile.${profile.type}.environment-edit`),
                 )
                 .onClick(() => {
-                  const envPair = (
-                    k: string,
-                    v: string,
-                  ): readonly [string, string] => [k, v];
                   new ListModal<readonly [string, string]>(
                     context,
                     (setting, editable, refs) => {
@@ -941,7 +937,7 @@ export class ProfileModal extends Modal {
                           .setValue(refs.getter()[0])
                           .onChange((value) => {
                             refs.setter((item, index, data) => {
-                              data[index] = envPair(value, item[1]);
+                              data[index] = [value, item[1]] as const;
                             });
                           });
                       });
@@ -961,12 +957,12 @@ export class ProfileModal extends Modal {
                           .setValue(refs.getter()[1])
                           .onChange((value) => {
                             refs.setter((item, index, data) => {
-                              data[index] = envPair(item[0], value);
+                              data[index] = [item[0], value] as const;
                             });
                           });
                       });
                     },
-                    (): readonly [string, string] => ["", ""],
+                    () => ["", ""] as const,
                     profile.environment,
                     {
                       callback: async (value): Promise<void> => {

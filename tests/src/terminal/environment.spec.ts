@@ -6,7 +6,6 @@ import {
   expandWindowsVars,
   mergePathEntries,
   parseDarwinPathHelper,
-  parseEnvironment,
   parseEtcEnvironment,
   parseGetconfOutput,
   parseWindowsRegistryPath,
@@ -282,49 +281,6 @@ describe("env key sanitization", () => {
 });
 
 // ── profile environment variables ──────────────────────────────────────────
-
-describe("parseEnvironment", () => {
-  it("converts [key, value] pairs into a record", () => {
-    expect(
-      parseEnvironment([
-        ["FOO", "bar"],
-        ["BAZ", "qux"],
-      ]),
-    ).toEqual({ BAZ: "qux", FOO: "bar" });
-  });
-
-  it("allows values that contain '='", () => {
-    expect(parseEnvironment([["URL", "https://example.com/?a=b"]])).toEqual({
-      URL: "https://example.com/?a=b",
-    });
-  });
-
-  it("allows empty values", () => {
-    expect(parseEnvironment([["EMPTY", ""]])).toEqual({ EMPTY: "" });
-  });
-
-  it("trims whitespace around the key", () => {
-    expect(parseEnvironment([[" FOO ", "bar"]])).toEqual({ FOO: "bar" });
-  });
-
-  it("drops entries with a blank key", () => {
-    expect(parseEnvironment([["", "value"]])).toEqual({});
-    expect(parseEnvironment([["  ", "value"]])).toEqual({});
-  });
-
-  it("last duplicate key wins (Object.fromEntries semantics)", () => {
-    expect(
-      parseEnvironment([
-        ["FOO", "first"],
-        ["FOO", "last"],
-      ]),
-    ).toEqual({ FOO: "last" });
-  });
-
-  it("returns an empty record for no entries", () => {
-    expect(parseEnvironment([])).toEqual({});
-  });
-});
 
 describe("applyProfileEnv", () => {
   it("merges parsed entries onto the env, overriding existing keys", () => {
