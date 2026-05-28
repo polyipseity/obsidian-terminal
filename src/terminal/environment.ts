@@ -5,12 +5,12 @@ import {
   lazyInit,
 } from "@polyipseity/obsidian-plugin-library";
 
+import { BUNDLE } from "../import.js";
 import {
   DEFAULT_PYTHONIOENCODING,
   TERM_PROGRAM,
   TERM_PROGRAM_VERSION,
 } from "../magic.js";
-import { BUNDLE } from "../import.js";
 import { spawnPromise } from "../utils.js";
 
 const childProcess = dynamicRequire<typeof import("node:child_process")>(
@@ -70,20 +70,14 @@ export const DARWIN_PATH_HELPER_ENV: Readonly<Record<string, string>> = {
   PATH: "",
 };
 
-/** Applies fixed environment variables to a process environment.
- *  @param env the environment to augment
- *  @returns the same env object with fixed vars merged in */
-export function applyFixedEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  return Object.assign(env, FIXED_ENV);
-}
-
-/** Applies external terminal fixed environment variables to a process environment.
- *  @param env the environment to augment
- *  @returns the same env object with external fixed vars merged in */
-export function applyFixedEnvExternal(
-  env: NodeJS.ProcessEnv,
-): NodeJS.ProcessEnv {
-  return Object.assign(env, FIXED_ENV_EXTERNAL);
+/** Options for {@link applyEnv}. */
+export interface ApplyEnvOptions {
+  /** Base environment to start from. Defaults to `process.env` if not provided. */
+  base?: NodeJS.ProcessEnv;
+  /** User-defined profile environment variable entries to apply. */
+  profile?: readonly (readonly [string, string])[];
+  /** Fixed variable mode. `"default"` applies terminal capabilities. */
+  fixed?: "default" | "external";
 }
 
 /** Parses the output of `/usr/libexec/path_helper -s` on macOS.
@@ -258,27 +252,25 @@ async function execToString(
   });
 }
 
-/** Merges user-defined `[key, value]` pairs into an environment.
+/** Merges `[key, value]` pairs into an environment.
  *
  *  On Windows (and any platform where environment variable names are
- *  case-insensitive), any existing key in `env` that matches a user-defined
+ *  case-insensitive), any existing key in `env` that matches an incoming
  *  key case-insensitively is removed *before* the new entries are applied.
  *  This is necessary because Node.js lexicographically sorts env keys and
  *  passes only the first case-insensitive match to the child process; without
- *  the removal the user-defined value could be shadowed.
+ *  the removal the new value could be shadowed.
  *
  *  Returns the same `env` object with the entries applied on top. */
-export function applyProfileEnv(
+function mergeEnvPairs(
   env: NodeJS.ProcessEnv,
   pairs: readonly (readonly [string, string])[],
 ): NodeJS.ProcessEnv {
-  const userEnv = Object.fromEntries(pairs);
-  const userKeys = Object.keys(userEnv);
-  if (userKeys.length === 0) {
+  if (pairs.length === 0) {
     return env;
   }
   if (Platform.CURRENT === "win32") {
-    const upperKeys = new Set(userKeys.map((k) => k.toUpperCase()));
+    const upperKeys = new Set(pairs.map(([k]) => k.toUpperCase()));
     for (const key of Object.keys(env)) {
       if (upperKeys.has(key.toUpperCase())) {
         // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
@@ -286,10 +278,13 @@ export function applyProfileEnv(
       }
     }
   }
-  return Object.assign(env, userEnv);
+  for (const [key, value] of pairs) {
+    env[key] = value;
+  }
+  return env;
 }
 
-export async function sanitizeEnv(
+async function sanitizeEnv(
   base: NodeJS.ProcessEnv,
 ): Promise<NodeJS.ProcessEnv> {
   const env: NodeJS.ProcessEnv = {};
@@ -316,5 +311,25 @@ export async function sanitizeEnv(
   if (merged.length > entries.length) {
     env[pathKey] = merged.join(sep);
   }
+  return env;
+}
+
+/** Applies environment transformations: sanitization, fixed vars, and user profile.
+ *
+ *  Combines sanitizing (removing terminal/IDE environment leakage), applying
+ *  fixed capabilities (COLORTERM, TERM, PYTHONIOENCODING), and merging user-defined
+ *  profile variables into a single operation.
+ *
+ *  @param options sanitization and environment configuration
+ *  @returns sanitized and augmented environment */
+export async function applyEnv(
+  options: ApplyEnvOptions = {},
+): Promise<NodeJS.ProcessEnv> {
+  const base = options.base ?? (await process).env;
+  const env = await sanitizeEnv(base);
+  const fixedEnv =
+    options.fixed === "external" ? FIXED_ENV_EXTERNAL : FIXED_ENV;
+  mergeEnvPairs(env, Object.entries(fixedEnv));
+  mergeEnvPairs(env, options.profile ?? []);
   return env;
 }

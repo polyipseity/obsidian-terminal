@@ -35,6 +35,7 @@ import { Modal, Setting } from "obsidian";
 import type { DeepWritable } from "ts-essentials";
 import { BUNDLE } from "./import.js";
 import { CHECK_EXECUTABLE_WAIT, PYTHON_REQUIREMENTS } from "./magic.js";
+import { applyEnv } from "./terminal/environment.js";
 import {
   DEFAULT_TERMINAL_OPTIONS,
   PROFILE_PRESETS,
@@ -42,7 +43,6 @@ import {
 } from "./terminal/profile-presets.js";
 import { PROFILE_PROPERTIES } from "./terminal/profile-properties.js";
 import { Pseudoterminal } from "./terminal/pseudoterminal.js";
-import { applyFixedEnv, sanitizeEnv } from "./terminal/environment.js";
 
 import SemVer from "semver/classes/semver.js";
 import semverCoerce from "semver/functions/coerce.js";
@@ -53,10 +53,6 @@ import { Settings } from "./settings-data.js";
 const childProcess = dynamicRequire<typeof import("node:child_process")>(
     BUNDLE,
     "node:child_process",
-  ),
-  process = dynamicRequire<typeof import("node:process")>(
-    BUNDLE,
-    "node:process",
   ),
   util = dynamicRequire<typeof import("node:util")>(BUNDLE, "node:util"),
   execFileP = (async () => {
@@ -1096,13 +1092,9 @@ export class ProfileModal extends Modal {
                     checkingPython = true;
                     (async (): Promise<void> => {
                       try {
-                        const [execFileP2, process2, getPackageVersion2] =
-                            await Promise.all([
-                              execFileP,
-                              process,
-                              getPackageVersion,
-                            ]),
-                          env = applyFixedEnv(await sanitizeEnv(process2.env)),
+                        const [execFileP2, getPackageVersion2] =
+                            await Promise.all([execFileP, getPackageVersion]),
+                          env = await applyEnv(),
                           { stdout, stderr } = await execFileP2(
                             profile.pythonExecutable,
                             ["--version"],

@@ -16,26 +16,22 @@ import type {
   ITerminalOptions,
   Terminal,
 } from "@xterm/xterm";
+import { noop, throttle } from "lodash-es";
+import type { ChildProcessByStdio } from "node:child_process";
+import type { AsyncOrSync } from "ts-essentials";
+import { BUNDLE } from "../import.js";
 import {
   TERMINAL_EMULATOR_RESIZE_WAIT,
   TERMINAL_PTY_RESIZE_WAIT,
 } from "../magic.js";
-import { noop, throttle } from "lodash-es";
-import type { AsyncOrSync } from "ts-essentials";
-import { BUNDLE } from "../import.js";
-import type { ChildProcessByStdio } from "node:child_process";
-import type { Pseudoterminal } from "./pseudoterminal.js";
 import { spawnPromise } from "../utils.js";
+import { applyEnv } from "./environment.js";
+import type { Pseudoterminal } from "./pseudoterminal.js";
 import { writePromise } from "./utils.js";
-import { applyFixedEnvExternal, sanitizeEnv } from "./environment.js";
 
 const childProcess = dynamicRequire<typeof import("node:child_process")>(
     BUNDLE,
     "node:child_process",
-  ),
-  process = dynamicRequire<typeof import("node:process")>(
-    BUNDLE,
-    "node:process",
   ),
   xterm = dynamicRequireLazy<typeof import("@xterm/xterm")>(
     BUNDLE,
@@ -58,12 +54,12 @@ export async function spawnExternalTerminalEmulator(
   args?: readonly string[],
   cwd?: string,
 ): Promise<ChildProcessByStdio<null, null, null>> {
-  const [childProcess2, process2] = await Promise.all([childProcess, process]);
+  const childProcess2 = await childProcess;
   const ret = await spawnPromise(async () =>
     childProcess2.spawn(executable, args ?? [], {
       cwd,
       detached: true,
-      env: applyFixedEnvExternal(await sanitizeEnv(process2.env)),
+      env: await applyEnv({ fixed: "external" }),
       shell: true,
       stdio: ["ignore", "ignore", "ignore"],
     }),

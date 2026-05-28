@@ -60,7 +60,7 @@ import { BUNDLE } from "../import.js";
 import type { TerminalPlugin } from "../main.js";
 import type { Log } from "../patch.js";
 import { DisposerAddon } from "./emulator-addons.js";
-import { applyFixedEnv, applyProfileEnv, sanitizeEnv } from "./environment.js";
+import { applyEnv } from "./environment.js";
 import unixPseudoterminalPy from "./unix_pseudoterminal.py";
 import win32ResizerPy from "./win32_resizer.py";
 
@@ -71,10 +71,6 @@ const childProcess = dynamicRequire<typeof import("node:child_process")>(
   fsPromises = dynamicRequire<typeof import("node:fs/promises")>(
     BUNDLE,
     "node:fs/promises",
-  ),
-  process = dynamicRequire<typeof import("node:process")>(
-    BUNDLE,
-    "node:process",
   ),
   stream = dynamicRequire<typeof import("node:stream")>(BUNDLE, "node:stream"),
   tmpPromise = dynamicRequire<typeof import("tmp-promise")>(
@@ -787,14 +783,13 @@ class WindowsPseudoterminal implements Pseudoterminal {
         if (isNil(pythonExecutable)) {
           return null;
         }
-        const [childProcess2, process2, win32ResizerPy2] = await Promise.all([
+        const [childProcess2, win32ResizerPy2] = await Promise.all([
             childProcess,
-            process,
             win32ResizerPy,
           ]),
           ret = await spawnPromise(async () =>
             childProcess2.spawn(pythonExecutable, ["-c", win32ResizerPy2], {
-              env: applyFixedEnv(await sanitizeEnv(process2.env)),
+              env: await applyEnv(),
               stdio: ["pipe", "pipe", "pipe"],
               windowsHide: true,
             }),
@@ -827,13 +822,11 @@ class WindowsPseudoterminal implements Pseudoterminal {
       > => {
         const resizer = await resizerInitial.catch(() => null);
         try {
-          const [childProcess2, process2, fsPromises2, tmpPromise2] =
-              await Promise.all([
-                childProcess,
-                process,
-                fsPromises,
-                tmpPromise,
-              ]),
+          const [childProcess2, fsPromises2, tmpPromise2] = await Promise.all([
+              childProcess,
+              fsPromises,
+              tmpPromise,
+            ]),
             inOutTmp = await tmpPromise2.file({
               discardDescriptor: true,
               postfix: ".bat",
@@ -871,10 +864,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
               ret = await spawnPromise(async () =>
                 childProcess2.spawn(cmd[0], cmd.slice(1), {
                   cwd,
-                  env: applyProfileEnv(
-                    applyFixedEnv(await sanitizeEnv(process2.env)),
-                    environment ?? [],
-                  ),
+                  env: await applyEnv({ profile: environment ?? [] }),
                   shell: !conhost,
                   stdio: ["pipe", "pipe", "pipe"],
                   windowsHide: !resizer,
@@ -1062,17 +1052,16 @@ class UnixPseudoterminal implements Pseudoterminal {
           language.value.t("errors.no-Python-to-spawn-Unix-pseudoterminal"),
         );
       }
-      const [childProcess2, process2, unixPseudoterminalPy2] =
-        await Promise.all([childProcess, process, unixPseudoterminalPy]);
+      const [childProcess2, unixPseudoterminalPy2] = await Promise.all([
+        childProcess,
+        unixPseudoterminalPy,
+      ]);
       return childProcess2.spawn(
         pythonExecutable,
         ["-c", unixPseudoterminalPy2, executable].concat(args ?? []),
         {
           cwd,
-          env: applyProfileEnv(
-            applyFixedEnv(await sanitizeEnv(process2.env)),
-            environment ?? [],
-          ),
+          env: await applyEnv({ profile: environment ?? [] }),
           stdio: ["pipe", "pipe", "pipe", "pipe"],
           windowsHide: true,
         },

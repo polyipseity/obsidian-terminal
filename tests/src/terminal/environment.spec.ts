@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   SANITIZED_ENV_KEYS,
   SANITIZED_ENV_PREFIXES,
-  applyProfileEnv,
+  applyEnv,
   expandWindowsVars,
   mergePathEntries,
   parseDarwinPathHelper,
@@ -282,32 +282,48 @@ describe("env key sanitization", () => {
 
 // ── profile environment variables ──────────────────────────────────────────
 
-describe("applyProfileEnv", () => {
-  it("merges parsed entries onto the env, overriding existing keys", () => {
-    const env = { FOO: "old", PATH: "/usr/bin" };
-    expect(
-      applyProfileEnv(env, [
+describe("applyEnv profile option", () => {
+  it("merges parsed entries onto the env, overriding existing keys", async () => {
+    const result = await applyEnv({
+      base: { FOO: "old" },
+      profile: [
         ["FOO", "new"],
         ["BAR", "baz"],
-      ]),
-    ).toEqual({
-      BAR: "baz",
-      FOO: "new",
-      PATH: "/usr/bin",
+      ],
     });
+    expect(result["FOO"]).toBe("new");
+    expect(result["BAR"]).toBe("baz");
   });
 
-  it("leaves the env unchanged when there are no entries", () => {
-    const env = { PATH: "/usr/bin" };
-    expect(applyProfileEnv(env, [])).toEqual({ PATH: "/usr/bin" });
+  it("leaves relevant keys unchanged when there are no entries", async () => {
+    const result = await applyEnv({
+      base: { FOO: "old" },
+      profile: [],
+    });
+    expect(result["FOO"]).toBe("old");
+    expect(result["BAR"]).toBeUndefined();
   });
 
-  it("applies the user's value regardless of existing key case on the current platform", () => {
+  it("applies the user's value regardless of existing key case on the current platform", async () => {
     // On any platform the user-defined value must end up in the result.
     // On Windows the old lower-case key would additionally be removed first;
     // on other platforms both keys may coexist in the object.
-    const env = { FOO: "old" };
-    const result = applyProfileEnv(env, [["FOO", "new"]]);
+    const result = await applyEnv({
+      base: { foo: "old" },
+      profile: [["FOO", "new"]],
+    });
     expect(result["FOO"]).toBe("new");
+  });
+});
+
+describe("applyEnv fixed option", () => {
+  it("uses default fixed capabilities when omitted", async () => {
+    const result = await applyEnv({ base: {} });
+    expect(result["COLORTERM"]).toBe("truecolor");
+  });
+
+  it("supports external fixed mode", async () => {
+    const result = await applyEnv({ base: {}, fixed: "external" });
+    expect(result["COLORTERM"]).toBeUndefined();
   });
 });
