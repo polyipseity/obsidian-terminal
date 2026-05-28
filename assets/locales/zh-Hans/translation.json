@@ -57,19 +57,31 @@
         "arguments": "$t(generic.argument)",
         "arguments-description": "$t(generic.list-description)",
         "arguments-edit": "$t(generic.edit)",
+        "environment": "$t(generic.environment-variable_other, capitalize)",
+        "environment-description": "$t(generic.list-description, capitalize)",
+        "environment-edit": "$t(generic.edit, capitalize)",
+        "environment-key-placeholder": "键",
+        "environment-list-description": "对于重复的键，以最后一项为准。键和值中的前后空白会按原样保留。在$t(generic.platforms.win32)上，变量名不区分大小写；在应用这些条目前，会先移除名称与任一条目键名大小写不敏感匹配的现有变量。这是因为 Node.js 会按字典序排序环境变量键，并且只将第一个大小写不敏感匹配项传递给子进程。",
+        "environment-value-placeholder": "值",
         "executable": "$t(generic.executable)"
       },
       "follow-theme": "$t(generic.follow)$t(generic.theme)",
       "integrated": {
+        "arguments": "$t(generic.argument)",
+        "arguments-description": "$t(generic.list-description)",
+        "arguments-edit": "$t(generic.edit)",
+        "environment": "$t(generic.environment-variable_other, capitalize)",
+        "environment-description": "$t(generic.list-description, capitalize)",
+        "environment-edit": "$t(generic.edit, capitalize)",
+        "environment-key-placeholder": "键",
+        "environment-list-description": "对于重复的键，以最后一项为准。键和值中的前后空白会按原样保留。在$t(generic.platforms.win32)上，变量名不区分大小写；在应用这些条目前，会先移除名称与任一条目键名大小写不敏感匹配的现有变量。这是因为 Node.js 会按字典序排序环境变量键，并且只将第一个大小写不敏感匹配项传递给子进程。",
+        "environment-value-placeholder": "值",
+        "executable": "$t(generic.executable)",
         "Python-executable": "$t(generic.Python)$t(generic.executable)",
         "Python-executable-check": "$t(generic.check)",
         "Python-executable-checking": "$t(generic.check)中",
         "Python-executable-description": "推荐{{version}}或更高版本。于$t(generic.platforms.unix)$t(generic.spawn)$t(generic.profile-types.integrated)$t(generic.terminal)所需要的。$t(generic.clear)$t(generic.text-field)以$t(generic.disable)$t(generic.Python)。",
         "Python-executable-placeholder": "（已$t(generic.disable)）",
-        "arguments": "$t(generic.argument)",
-        "arguments-description": "$t(generic.list-description)",
-        "arguments-edit": "$t(generic.edit)",
-        "executable": "$t(generic.executable)",
         "use-win32-conhost": "$t(generic.use)$t(generic.platforms.win32)「conhost.exe」",
         "use-win32-conhost-description": "如果执行「conhost.exe」没有创建视窗，请$t(generic.disable)。不保证这会起作用。"
       },
@@ -162,7 +174,6 @@
     "resizer-exited-unexpectedly": "$t(generic.terminal-resizer)意外$t(generic.exit)：{{code}}"
   },
   "generic": {
-    "Python": "Python",
     "argument": "参数",
     "behavior": "行为",
     "check": "检查",
@@ -184,6 +195,7 @@
     },
     "donate": "捐赠",
     "enable": "启用",
+    "environment-variable": "环境变量",
     "executable": "可执行文件",
     "exist": "存在",
     "exit": "退出",
@@ -224,6 +236,7 @@
       "select": "选择"
     },
     "pseudoterminal": "伪终端",
+    "Python": "Python",
     "rename": "rename",
     "renderer": "渲染器",
     "renderers": {
@@ -259,9 +272,9 @@
   },
   "name": "$t(generic.terminal)",
   "notices": {
+    "no-default-profile": "没有$t(generic.type)「$t(generic.profile-types.{{type}})」的$t(generic.default)$t(generic.profile)",
     "Python-status-entry-": "{{name}}：{{version}}（满足：{{requirement}}）",
     "Python-status-entry-unsatisfied": "{{name}}：{{version}}（未满足：{{requirement}}）",
-    "no-default-profile": "没有$t(generic.type)「$t(generic.profile-types.{{type}})」的$t(generic.default)$t(generic.profile)",
     "spawning-terminal": "$t(generic.terminal)$t(generic.spawn)中：{{title}}",
     "terminal-exited": "$t(generic.terminal)已$t(generic.exit)：{{code}}"
   },
