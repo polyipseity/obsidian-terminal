@@ -895,6 +895,107 @@ export class ProfileModal extends Modal {
               ),
             );
         });
+        ui.newSetting(element, (setting) => {
+          setting
+            .setName(i18n.t(`components.profile.${profile.type}.environment`))
+            .setDesc(
+              i18n.t(
+                `components.profile.${profile.type}.environment-description`,
+                {
+                  count: profile.environment.length,
+                  interpolation: { escapeValue: false },
+                },
+              ),
+            )
+            .addButton((button) =>
+              button
+                .setIcon(
+                  i18n.t(
+                    `asset:components.profile.${profile.type}.arguments-edit-icon`,
+                  ),
+                )
+                .setTooltip(
+                  i18n.t(`components.profile.${profile.type}.environment-edit`),
+                )
+                .onClick(() => {
+                  new ListModal<readonly [string, string]>(
+                    context,
+                    (setting, editable, refs) => {
+                      setting.addTextArea((textArea) => {
+                        textArea
+                          .setPlaceholder(
+                            i18n.t(
+                              `components.profile.${profile.type}.environment-key-placeholder`,
+                            ),
+                          )
+                          .setDisabled(!editable);
+                        if (!refs) {
+                          textArea.inputEl.style.visibility = "hidden";
+                          return;
+                        }
+                        textArea
+                          .setValue(refs.getter()[0])
+                          .onChange((value) => {
+                            refs.setter((item, index, data) => {
+                              data[index] = [value, item[1]] as const;
+                            });
+                          });
+                      });
+                      setting.addTextArea((textArea) => {
+                        textArea
+                          .setPlaceholder(
+                            i18n.t(
+                              `components.profile.${profile.type}.environment-value-placeholder`,
+                            ),
+                          )
+                          .setDisabled(!editable);
+                        if (!refs) {
+                          textArea.inputEl.style.visibility = "hidden";
+                          return;
+                        }
+                        textArea
+                          .setValue(refs.getter()[1])
+                          .onChange((value) => {
+                            refs.setter((item, index, data) => {
+                              data[index] = [item[0], value] as const;
+                            });
+                          });
+                      });
+                    },
+                    () => ["", ""] as const,
+                    profile.environment,
+                    {
+                      callback: async (value): Promise<void> => {
+                        profile.environment = value;
+                        await this.postMutate();
+                      },
+                      description: (): string =>
+                        i18n.t(
+                          `components.profile.${profile.type}.environment-list-description`,
+                        ),
+                      title: (): string =>
+                        i18n.t(
+                          `components.profile.${profile.type}.environment`,
+                        ),
+                    },
+                  ).open();
+                }),
+            )
+            .addExtraButton(
+              resetButton(
+                i18n.t(
+                  `asset:components.profile.${profile.type}.arguments-icon`,
+                ),
+                i18n.t("components.profile.reset"),
+                () => {
+                  profile.environment = cloneAsWritable(
+                    Settings.Profile.DEFAULTS[profile.type].environment,
+                  );
+                },
+                async () => this.postMutate(),
+              ),
+            );
+        });
         for (const platform of Pseudoterminal.SUPPORTED_PLATFORMS) {
           ui.newSetting(element, (setting) => {
             setting

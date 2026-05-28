@@ -258,6 +258,37 @@ async function execToString(
   });
 }
 
+/** Merges user-defined `[key, value]` pairs into an environment.
+ *
+ *  On Windows (and any platform where environment variable names are
+ *  case-insensitive), any existing key in `env` that matches a user-defined
+ *  key case-insensitively is removed *before* the new entries are applied.
+ *  This is necessary because Node.js lexicographically sorts env keys and
+ *  passes only the first case-insensitive match to the child process; without
+ *  the removal the user-defined value could be shadowed.
+ *
+ *  Returns the same `env` object with the entries applied on top. */
+export function applyProfileEnv(
+  env: NodeJS.ProcessEnv,
+  pairs: readonly (readonly [string, string])[],
+): NodeJS.ProcessEnv {
+  const userEnv = Object.fromEntries(pairs);
+  const userKeys = Object.keys(userEnv);
+  if (userKeys.length === 0) {
+    return env;
+  }
+  if (Platform.CURRENT === "win32") {
+    const upperKeys = new Set(userKeys.map((k) => k.toUpperCase()));
+    for (const key of Object.keys(env)) {
+      if (upperKeys.has(key.toUpperCase())) {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete env[key];
+      }
+    }
+  }
+  return Object.assign(env, userEnv);
+}
+
 export async function sanitizeEnv(
   base: NodeJS.ProcessEnv,
 ): Promise<NodeJS.ProcessEnv> {

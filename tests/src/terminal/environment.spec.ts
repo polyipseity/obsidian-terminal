@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   SANITIZED_ENV_KEYS,
   SANITIZED_ENV_PREFIXES,
+  applyProfileEnv,
   expandWindowsVars,
   mergePathEntries,
   parseDarwinPathHelper,
@@ -277,4 +278,36 @@ describe("env key sanitization", () => {
   it("keeps HOME", () => expect(shouldSanitize("HOME")).toBe(false));
   it("keeps TERM", () => expect(shouldSanitize("TERM")).toBe(false));
   it("keeps SHELL", () => expect(shouldSanitize("SHELL")).toBe(false));
+});
+
+// ── profile environment variables ──────────────────────────────────────────
+
+describe("applyProfileEnv", () => {
+  it("merges parsed entries onto the env, overriding existing keys", () => {
+    const env = { FOO: "old", PATH: "/usr/bin" };
+    expect(
+      applyProfileEnv(env, [
+        ["FOO", "new"],
+        ["BAR", "baz"],
+      ]),
+    ).toEqual({
+      BAR: "baz",
+      FOO: "new",
+      PATH: "/usr/bin",
+    });
+  });
+
+  it("leaves the env unchanged when there are no entries", () => {
+    const env = { PATH: "/usr/bin" };
+    expect(applyProfileEnv(env, [])).toEqual({ PATH: "/usr/bin" });
+  });
+
+  it("applies the user's value regardless of existing key case on the current platform", () => {
+    // On any platform the user-defined value must end up in the result.
+    // On Windows the old lower-case key would additionally be removed first;
+    // on other platforms both keys may coexist in the object.
+    const env = { FOO: "old" };
+    const result = applyProfileEnv(env, [["FOO", "new"]]);
+    expect(result["FOO"]).toBe("new");
+  });
 });

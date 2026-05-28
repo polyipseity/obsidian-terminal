@@ -1,20 +1,4 @@
 import {
-  CONTROL_SEQUENCE_INTRODUCER as CSI,
-  CursoredText,
-  NORMALIZED_LINE_FEED,
-  TerminalTextArea,
-  normalizeText,
-  writePromise as tWritePromise,
-} from "./utils.js";
-import {
-  DEFAULT_ENCODING,
-  EXIT_SUCCESS,
-  MAX_LOCK_PENDING,
-  TERMINAL_EXIT_CLEANUP_WAIT,
-  TERMINAL_RESIZER_WATCHDOG_WAIT,
-  WINDOWS_CONHOST_PATH,
-} from "../magic.js";
-import {
   Functions,
   Platform,
   ResourceComponent,
@@ -47,20 +31,36 @@ import type { IMarker, Terminal } from "@xterm/xterm";
 import { type Program, parse } from "acorn";
 import inspect, { type Options } from "browser-util-inspect";
 import { isEmpty, isNil, noop } from "lodash-es";
+import {
+  DEFAULT_ENCODING,
+  EXIT_SUCCESS,
+  MAX_LOCK_PENDING,
+  TERMINAL_EXIT_CLEANUP_WAIT,
+  TERMINAL_RESIZER_WATCHDOG_WAIT,
+  WINDOWS_CONHOST_PATH,
+} from "../magic.js";
 import { spawnPromise, writePromise } from "../utils.js";
+import {
+  CONTROL_SEQUENCE_INTRODUCER as CSI,
+  CursoredText,
+  NORMALIZED_LINE_FEED,
+  TerminalTextArea,
+  normalizeText,
+  writePromise as tWritePromise,
+} from "./utils.js";
 
+import ansi from "ansi-escape-sequences";
 import AsyncLock from "async-lock";
+import type { ChildProcessWithoutNullStreams as PipedChildProcess } from "node:child_process";
+import type { DeveloperConsoleContext } from "obsidian-terminal";
+import type { Position } from "source-map";
+import type { FileResult } from "tmp-promise";
 import type { AsyncOrSync } from "ts-essentials";
 import { BUNDLE } from "../import.js";
-import type { DeveloperConsoleContext } from "obsidian-terminal";
-import { applyFixedEnv, sanitizeEnv } from "./environment.js";
-import { DisposerAddon } from "./emulator-addons.js";
-import type { FileResult } from "tmp-promise";
-import type { Log } from "../patch.js";
-import type { ChildProcessWithoutNullStreams as PipedChildProcess } from "node:child_process";
-import type { Position } from "source-map";
 import type { TerminalPlugin } from "../main.js";
-import ansi from "ansi-escape-sequences";
+import type { Log } from "../patch.js";
+import { DisposerAddon } from "./emulator-addons.js";
+import { applyFixedEnv, applyProfileEnv, sanitizeEnv } from "./environment.js";
 import unixPseudoterminalPy from "./unix_pseudoterminal.py";
 import win32ResizerPy from "./win32_resizer.py";
 
@@ -755,6 +755,7 @@ export interface ShellPseudoterminalArguments {
   readonly executable: string;
   readonly cwd?: URL | string | undefined;
   readonly args?: readonly string[] | undefined;
+  readonly environment?: readonly (readonly [string, string])[] | undefined;
   readonly pythonExecutable?: string | undefined;
   readonly useWin32Conhost?: boolean | undefined;
 }
@@ -770,6 +771,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
     {
       args,
       cwd,
+      environment,
       executable,
       useWin32Conhost,
       pythonExecutable,
@@ -869,7 +871,10 @@ class WindowsPseudoterminal implements Pseudoterminal {
               ret = await spawnPromise(async () =>
                 childProcess2.spawn(cmd[0], cmd.slice(1), {
                   cwd,
-                  env: applyFixedEnv(await sanitizeEnv(process2.env)),
+                  env: applyProfileEnv(
+                applyFixedEnv(await sanitizeEnv(process2.env)),
+                environment ?? [],
+              ),
                   shell: !conhost,
                   stdio: ["pipe", "pipe", "pipe"],
                   windowsHide: !resizer,
@@ -1042,7 +1047,13 @@ class UnixPseudoterminal implements Pseudoterminal {
 
   public constructor(
     protected readonly context: TerminalPlugin,
-    { args, cwd, executable, pythonExecutable }: ShellPseudoterminalArguments,
+    {
+      args,
+      cwd,
+      environment,
+      executable,
+      pythonExecutable,
+    }: ShellPseudoterminalArguments,
   ) {
     const { language } = context;
     this.shell = spawnPromise(async () => {
@@ -1052,13 +1063,16 @@ class UnixPseudoterminal implements Pseudoterminal {
         );
       }
       const [childProcess2, process2, unixPseudoterminalPy2] =
-        await Promise.all([childProcess, process, unixPseudoterminalPy]);
+          await Promise.all([childProcess, process, unixPseudoterminalPy]);
       return childProcess2.spawn(
         pythonExecutable,
         ["-c", unixPseudoterminalPy2, executable].concat(args ?? []),
         {
           cwd,
-          env: applyFixedEnv(await sanitizeEnv(process2.env)),
+          env: applyProfileEnv(
+          applyFixedEnv(await sanitizeEnv(process2.env)),
+          environment ?? [],
+        ),
           stdio: ["pipe", "pipe", "pipe", "pipe"],
           windowsHide: true,
         },

@@ -622,12 +622,14 @@ export namespace Settings {
       readonly type: "external";
       readonly executable: string;
       readonly args: readonly string[];
+      readonly environment: readonly (readonly [string, string])[];
       readonly platforms: Platforms<Pseudoterminal.SupportedPlatforms[number]>;
     }
     export interface Integrated extends Base {
       readonly type: "integrated";
       readonly executable: string;
       readonly args: readonly string[];
+      readonly environment: readonly (readonly [string, string])[];
       readonly platforms: Platforms<Pseudoterminal.SupportedPlatforms[number]>;
       readonly pythonExecutable: string;
       readonly useWin32Conhost: boolean;
@@ -650,6 +652,7 @@ export namespace Settings {
       },
       external: {
         args: [],
+        environment: [],
         executable: "",
         followTheme: true,
         name: "",
@@ -666,6 +669,7 @@ export namespace Settings {
       },
       integrated: {
         args: [],
+        environment: [],
         executable: "",
         followTheme: true,
         name: "",
@@ -686,6 +690,30 @@ export namespace Settings {
         type: "invalid",
       },
     });
+
+    /** Validates and normalises an `environment` field from persisted data.
+     *  Each element must be a two-element `[string, string]` array; invalid
+     *  elements are silently dropped rather than falling the whole array back
+     *  to the default. */
+    function fixEnvironment(
+      val: unknown,
+    ): readonly (readonly [string, string])[] {
+      if (!Array.isArray(val)) {
+        return [];
+      }
+      const result: (readonly [string, string])[] = [];
+      for (const entry of val) {
+        if (!Array.isArray(entry)) {
+          continue;
+        }
+        const [k, v] = entry;
+        if (typeof k !== "string" || typeof v !== "string") {
+          continue;
+        }
+        result.push([k, v] as const);
+      }
+      return result;
+    }
 
     export function fix(self0: unknown): Fixed<Profile> {
       const unc = launderUnchecked<Invalid>(self0),
@@ -776,6 +804,7 @@ export namespace Settings {
             case "external": {
               return {
                 args: fixArray(DEFAULTS[type], unc, "args", ["string"]),
+                environment: fixEnvironment(unc["environment"]),
                 executable: fixTyped(DEFAULTS[type], unc, "executable", [
                   "string",
                 ]),
@@ -814,6 +843,7 @@ export namespace Settings {
             case "integrated": {
               return {
                 args: fixArray(DEFAULTS[type], unc, "args", ["string"]),
+                environment: fixEnvironment(unc["environment"]),
                 executable: fixTyped(DEFAULTS[type], unc, "executable", [
                   "string",
                 ]),
