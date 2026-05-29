@@ -59,11 +59,11 @@ repo = "https://github.com/python-jsonschema/check-jsonschema.git"
 rev = "7ef03ac2e60d02f7dc93ca9f898698c0588803c7"
 hooks = [{ id = "check-dependabot" }, { id = "check-github-workflows" }]
 
-# Markdown linting using markdownlint-cli.
+# Markdown linting using markdownlint-cli2.
 [[repos]]
-repo = "https://github.com/igorshubovych/markdownlint-cli.git"
-rev = "e72a3ca1632f0b11a07d171449fe447a7ff6795e"
-hooks = [{ id = "markdownlint", args = ["--fix"] }]
+repo = "https://github.com/DavidAnson/markdownlint-cli2.git"
+rev = "996abf60411a8d954288ac9856aae7602b80cbda"
+hooks = [{ id = "markdownlint-cli2", args = ["--fix"] }]
 
 [[repos]]
 repo = "https://github.com/astral-sh/uv-pre-commit.git"
