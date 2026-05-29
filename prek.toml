@@ -8,6 +8,7 @@ default_install_hook_types = [
   "commit-msg",
   "post-checkout",
   "post-commit",
+  "post-merge",
   "pre-commit",
   "pre-push",
 ]
@@ -112,6 +113,7 @@ hooks = [
   # Ensures 'git fetch' can update the rolling tag without user intervention
   { id = "git-rolling-refspec-config", name = "configure rolling refspec", entry = "bun run scripts/git-rolling-refspec-config", language = "system", pass_filenames = false, always_run = true, stages = [
     "post-checkout",
+    "post-merge",
   ] },
   # Create/update rolling tag on default branch after commit
   { id = "git-rolling-tag-create", name = "create rolling tag", entry = "bun run scripts/git-rolling-tag-create", language = "system", pass_filenames = false, always_run = true, stages = [
