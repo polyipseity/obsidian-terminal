@@ -17,9 +17,11 @@ from os import (
     write,
 )
 from selectors import EVENT_READ, BaseSelector, DefaultSelector
+from signal import SIGINT, SIGTERM, signal
 from struct import pack
 from sys import exit, stdin, stdout
-from types import TracebackType
+from time import sleep
+from types import FrameType, TracebackType
 
 """Public API of this module."""
 __all__ = ("main",)
@@ -37,7 +39,7 @@ _STDOUT = stdout.fileno()
 _CMDIO = 3
 
 
-def write_all(fd: int, data: bytes):
+def write_all(fd: int, data: bytes) -> None:
     """Write all bytes to `fd`, handling partial writes.
 
     Repeatedly call `write` until all data is written.
@@ -64,8 +66,43 @@ def main() -> None:
 
 if sys.platform != "win32":
     from fcntl import ioctl  # ty: ignore[possibly-missing-import]
+    from os import getpgid, getppid, killpg  # ty: ignore[possibly-missing-import]
     from pty import fork  # ty: ignore[possibly-missing-import]
+    from signal import SIGHUP, SIGKILL  # ty: ignore[possibly-missing-import]
     from termios import TIOCSWINSZ  # ty: ignore[possibly-missing-import]
+
+    """Selector timeout used to periodically check parent process liveness."""
+    _SELECT_TIMEOUT_SECONDS = 0.5
+
+    """Signal grace timings for child process-group termination escalation."""
+    _TERMINATION_SEQUENCE = (
+        (SIGHUP, 1.0),
+        (SIGTERM, 1.0),
+        (SIGKILL, 0.0),  # No grace period after SIGKILL since it's not catchable.
+    )
+
+    def terminate_process_group(pid: int) -> None:
+        """Best-effort termination of the child process group for `pid`.
+
+        The child created via ``pty.fork()`` runs in its own session/process group,
+        so terminating the proxy process alone does not guarantee the shell tree
+        exits. This helper escalates from ``SIGHUP`` to ``SIGTERM`` and then
+        ``SIGKILL`` with short grace delays.
+        """
+        try:
+            pgid = getpgid(pid)
+        except ProcessLookupError:
+            return
+
+        for sig, wait_seconds in _TERMINATION_SEQUENCE:
+            try:
+                killpg(pgid, sig)
+            except ProcessLookupError:
+                return
+            # Give the process group a brief grace window between escalation
+            # steps to exit cleanly before sending a stronger signal.
+            if wait_seconds > 0:
+                sleep(wait_seconds)
 
     class _SelectorHandler:
         """Base context-manager that registers a read-callback for an FD.
@@ -176,15 +213,47 @@ if sys.platform != "win32":
         if pid == 0:
             execvp(sys.argv[1], sys.argv[1:])
 
-        with DefaultSelector() as selector:
-            with (
-                _PipePty(selector, pty_fd) as pipe_pty,
-                _PipeStdin(selector, pty_fd) as _pipe_stdin,
-                _ProcessCmdIO(selector, pty_fd) as _process_cmdio,
-            ):
-                while pipe_pty.registered:
-                    for key, _ in selector.select():
-                        key.data()
+        shutdown_requested = False
+
+        def request_shutdown(_signal_number: int, _frame: FrameType | None) -> None:
+            """Mark the proxy for graceful shutdown on external signals."""
+            nonlocal shutdown_requested
+            shutdown_requested = True
+
+        old_sigint = signal(SIGINT, request_shutdown)
+        old_sigterm = signal(SIGTERM, request_shutdown)
+        try:
+            with DefaultSelector() as selector:
+                with (
+                    _PipePty(selector, pty_fd) as pipe_pty,
+                    _PipeStdin(selector, pty_fd) as pipe_stdin,
+                    _ProcessCmdIO(selector, pty_fd) as process_cmdio,
+                ):
+                    # Keep proxying while all host-facing pipes are alive and
+                    # no explicit shutdown signal has been requested.
+                    while (
+                        pipe_pty.registered
+                        and pipe_stdin.registered
+                        and process_cmdio.registered
+                        and not shutdown_requested
+                    ):
+                        for key, _ in selector.select(_SELECT_TIMEOUT_SECONDS):
+                            key.data()
+                        if getppid() == 1:
+                            shutdown_requested = True
+
+                    host_disconnected = (
+                        not pipe_stdin.registered or not process_cmdio.registered
+                    )
+                    # If host side is gone (or we got SIGINT/SIGTERM), tear
+                    # down the child session proactively to avoid orphans.
+                    if pipe_pty.registered and (
+                        host_disconnected or shutdown_requested
+                    ):
+                        terminate_process_group(pid)
+        finally:
+            signal(SIGINT, old_sigint)
+            signal(SIGTERM, old_sigterm)
 
         exit(waitstatus_to_exitcode(waitpid(pid, 0)[1]))
 
