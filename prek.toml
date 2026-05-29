@@ -111,16 +111,16 @@ hooks = [
   { id = "eslint-fix", name = "ESLint fix", entry = "bun x --no-install -- eslint --fix", language = "system", files = "\\.(cjs|cts|d\\.ts|js|jsx|mjs|mts|ts|tsx)$" },
   # Configure rolling tag to allow force updates during fetch
   # Ensures 'git fetch' can update the rolling tag without user intervention
-  { id = "git-rolling-refspec-config", name = "configure rolling refspec", entry = "bun run scripts/git-rolling-refspec-config", language = "system", pass_filenames = false, always_run = true, stages = [
+  { id = "git-rolling-refspec-config", name = "configure rolling refspec", entry = "bun run scripts/git-rolling-refspec-config.mjs", language = "system", pass_filenames = false, always_run = true, stages = [
     "post-checkout",
     "post-merge",
   ] },
   # Create/update rolling tag on default branch after commit
-  { id = "git-rolling-tag-create", name = "create rolling tag", entry = "bun run scripts/git-rolling-tag-create", language = "system", pass_filenames = false, always_run = true, stages = [
+  { id = "git-rolling-tag-create", name = "create rolling tag", entry = "bun run scripts/git-rolling-tag-create.mjs", language = "system", pass_filenames = false, always_run = true, stages = [
     "post-commit",
   ] },
   # Push rolling tag to origin on default branch
-  { id = "git-rolling-tag-push", name = "push rolling tag", entry = "bun run scripts/git-rolling-tag-push", language = "system", pass_filenames = false, always_run = true, stages = [
+  { id = "git-rolling-tag-push", name = "push rolling tag", entry = "bun run scripts/git-rolling-tag-push.mjs", language = "system", pass_filenames = false, always_run = true, stages = [
     "pre-push",
   ] },
 ]
