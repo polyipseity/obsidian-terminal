@@ -8,6 +8,7 @@ separate FD to update terminal window size.
 from __future__ import annotations
 
 import sys
+from contextlib import suppress
 from os import (
     execvp,
     read,
@@ -43,6 +44,17 @@ def write_all(fd: int, data: bytes):
     """
     while data:
         data = data[write(fd, data) :]
+
+
+def _read_or_eof(fd: int) -> bytes:
+    """Read a chunk from `fd` and normalize read errors to EOF bytes.
+
+    The PTY proxy treats transient read failures the same as stream closure to
+    simplify shutdown behavior across all pipes.
+    """
+    with suppress(OSError):
+        return read(fd, _CHUNK_SIZE)
+    return b""
 
 
 def main() -> None:
@@ -82,10 +94,8 @@ if sys.platform != "win32":
         ) -> None:
             """Unregister the FD if still registered."""
             if self.registered:
-                try:
+                with suppress(Exception):
                     self.selector.unregister(self.fd)
-                except Exception:
-                    pass
                 self.registered = False
 
         def _on_read(self) -> None:
@@ -95,10 +105,8 @@ if sys.platform != "win32":
         def _unregister(self) -> None:
             """Safely unregister and mark as not registered."""
             if self.registered:
-                try:
+                with suppress(Exception):
                     self.selector.unregister(self.fd)
-                except Exception:
-                    pass
                 self.registered = False
 
     class _PipePty(_SelectorHandler):
@@ -110,10 +118,7 @@ if sys.platform != "win32":
 
         def _on_read(self) -> None:
             """Read from the PTY and forward bytes to stdout; stop on EOF."""
-            try:
-                data = read(self.fd, _CHUNK_SIZE)
-            except OSError:
-                data = b""
+            data = _read_or_eof(self.fd)
             if not data:
                 self._unregister()
                 return
@@ -129,10 +134,7 @@ if sys.platform != "win32":
 
         def _on_read(self) -> None:
             """Read from stdin and forward bytes to the PTY; unregister on EOF."""
-            try:
-                data = read(self.fd, _CHUNK_SIZE)
-            except OSError:
-                data = b""
+            data = _read_or_eof(self.fd)
             if not data:
                 self._unregister()
                 return
@@ -152,10 +154,7 @@ if sys.platform != "win32":
             Expected input: lines like "<rows>x<cols>"; each line triggers an
             ioctl(TIOCSWINSZ) on the PTY.
             """
-            try:
-                data = read(self.fd, _CHUNK_SIZE)
-            except OSError:
-                data = b""
+            data = _read_or_eof(self.fd)
             if not data:
                 self._unregister()
                 return
