@@ -1,5 +1,18 @@
 # obsidian-terminal <!-- markdownlint-disable-file MD024 -->
 
+## 3.26.0
+
+### Minor Changes
+
+- 8852382: Add setting to toggle key interception when terminal is focused, allowing Obsidian hotkeys to work normally while the terminal has focus. Defaults to enabled to preserve existing behavior. ([GH#146](https://github.com/polyipseity/obsidian-terminal/pull/146) by [@ahalekelly](https://github.com/ahalekelly))
+- 5f70efd: Add a per-profile setting to define environment variables for external and integrated terminal profiles. Each entry is a `[key, value]` pair and is merged into the spawned shell's environment. On Windows, existing variables whose names match an entry's key case-insensitively are removed before the entries are applied. Fixes [GH#93](https://github.com/polyipseity/obsidian-terminal/issues/93). ([GH#161](https://github.com/polyipseity/obsidian-terminal/pull/161) by [@SAY-5](https://github.com/SAY-5))
+
+### Patch Changes
+
+- 8f9e2d3: Fix file drop handling by using Electron's webUtils.getPathForFile API with proper error handling. Fixes [GH#113](https://github.com/polyipseity/obsidian-terminal/issues/113). ([GH#152](https://github.com/polyipseity/obsidian-terminal/pull/152) by [@erickpinos](https://github.com/erickpinos))
+- 28ef330: Fix integrated Unix PTY proxy shutdown so child shells/processes do not remain orphaned when the host disconnects (for example, when closing a pane or quitting Obsidian). The proxy now exits when host pipes close, handles shutdown signals gracefully, and tears down the child process group before final wait. Fixes [GH#162](https://github.com/polyipseity/obsidian-terminal/issues/162). Thanks [@bfeeny](https://github.com/bfeeny) for the report.
+- 9457001: Reorganize keyboard settings into a dedicated "Keyboard" section. Moves intercept keys, keymappings, and macOS Option key passthrough settings to a new section between Profile defaults and Instancing, improving settings organization and discoverability.
+
 ## 3.25.0
 
 ### Minor Changes
