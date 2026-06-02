@@ -24,7 +24,7 @@
     "monkey-around": "^3.0.0",
     "obsidian": "~1.4.11",
     "semver": "^7.7.4",
-    "simple-icons": "^16.18.1",
+    "simple-icons": "^16.21.0",
     "source-map": "^0.7.4",
     "svelte": "^5.55.5",
     "tmp-promise": "^3.0.3",

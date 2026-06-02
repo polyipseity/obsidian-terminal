@@ -25,7 +25,7 @@
         "monkey-around": "^3.0.0",
         "obsidian": "~1.4.11",
         "semver": "^7.7.4",
-        "simple-icons": "^16.18.1",
+        "simple-icons": "^16.21.0",
         "source-map": "^0.7.4",
         "svelte": "^5.55.5",
         "tmp-promise": "^3.0.3",
@@ -1224,7 +1224,7 @@
 
     "signal-exit": ["signal-exit@4.1.0", "", {}, "sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw=="],
 
-    "simple-icons": ["simple-icons@16.19.0", "", {}, "sha512-muxcz/FDvWFPrKJdsjaz79qsBjtZeVKUVIFl7wLVOwb+yqAag8FPe8+hFlMVRnmAXYQIm4eUDDm2+dhOj0cFgQ=="],
+    "simple-icons": ["simple-icons@16.21.0", "", {}, "sha512-kH6LEx5yvBGVNaVrHnZ7D17G16CmmHiI8DD7MwIwgnWmDFTiFu4PhFZLNdV6bMGr61qbHMMTXLoo/T6C25dMGA=="],
 
     "slash": ["slash@5.1.0", "", {}, "sha512-ZA6oR3T/pEyuqwMgAKT0/hAv8oAXckzbkmR0UkUosQ+Mc4RxGoJkRmwHgHufaenlyAgE1Mxgpdcrf75y6XcnDg=="],
 
