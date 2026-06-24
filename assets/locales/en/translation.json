@@ -361,6 +361,8 @@
       "never": "Never",
       "running": "When $t(generic.terminal) is running"
     },
+    "hide-terminal-tab-prefix": "Hide Terminal: prefix in tab title",
+    "hide-terminal-tab-prefix-description": "When enabled, terminal tabs show only the session name (e.g. bash) instead of Terminal: bash. The terminal icon still identifies the tab type.",
     "instancing": "$t(generic.instance_gerund, capitalize)",
     "intercept-keys-when-focused": "$t(generic.intercept, capitalize) keys when $t(generic.terminal) is $t(generic.focus_past-participle)",
     "intercept-keys-when-focused-description": "When enabled, keyboard shortcuts are routed to $t(generic.terminal)-specific commands while the $t(generic.terminal) is $t(generic.focus_past-participle), and most Obsidian hotkeys are suppressed. Disable to let Obsidian hotkeys continue to work while typing in the $t(generic.terminal).",

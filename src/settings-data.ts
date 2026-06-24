@@ -86,6 +86,7 @@ export interface Settings extends PluginContext.Settings {
   readonly focusOnNewInstance: boolean;
   readonly pinNewInstance: boolean;
 
+  readonly hideTerminalTabPrefix: boolean;
   readonly openChangelogOnUpdate: boolean;
   readonly hideStatusBar: Settings.HideStatusBarOption;
 
@@ -119,6 +120,7 @@ export namespace Settings {
     exposeInternalModules: true,
     focusOnNewInstance: true,
     hideStatusBar: "focused",
+    hideTerminalTabPrefix: false,
     interceptKeysWhenFocused: true,
     interceptLogging: true,
     keymappings: [
@@ -1549,6 +1551,9 @@ export namespace Settings {
         "hideStatusBar",
         HIDE_STATUS_BAR_OPTIONS,
       ),
+      hideTerminalTabPrefix: fixTyped(DEFAULT, unc, "hideTerminalTabPrefix", [
+        "boolean",
+      ]),
       interceptKeysWhenFocused: fixTyped(
         DEFAULT,
         unc,

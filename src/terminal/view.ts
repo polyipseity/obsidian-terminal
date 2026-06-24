@@ -643,6 +643,9 @@ export class TerminalView extends ItemView {
   }
 
   public getDisplayText(): string {
+    if (this.context.settings.value.hideTerminalTabPrefix) {
+      return this.title;
+    }
     return this.context.language.value.t(
       `components.${TerminalView.type.id}.display-name`,
       {

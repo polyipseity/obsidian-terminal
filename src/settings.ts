@@ -595,48 +595,80 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
             },
           ),
         );
-    }).newSetting(containerEl, (setting) => {
-      setting
-        .setName(i18n.t("settings.hide-status-bar"))
-        .addDropdown(
-          linkSetting(
-            (): string => settings.value.hideStatusBar,
-            setTextToEnum(Settings.HIDE_STATUS_BAR_OPTIONS, async (value) =>
-              settings.mutate((settingsM) => {
-                settingsM.hideStatusBar = value;
-              }),
-            ),
-            () => {
-              this.postMutate();
-            },
-            {
-              pre: (dropdown) => {
-                dropdown.addOptions(
-                  Object.fromEntries(
-                    Settings.HIDE_STATUS_BAR_OPTIONS.map((value) => [
-                      value,
-                      i18n.t(`settings.hide-status-bar-options.${value}`),
-                    ]),
-                  ),
-                );
+    })
+      .newSetting(containerEl, (setting) => {
+        setting
+          .setName(i18n.t("settings.hide-status-bar"))
+          .addDropdown(
+            linkSetting(
+              (): string => settings.value.hideStatusBar,
+              setTextToEnum(Settings.HIDE_STATUS_BAR_OPTIONS, async (value) =>
+                settings.mutate((settingsM) => {
+                  settingsM.hideStatusBar = value;
+                }),
+              ),
+              () => {
+                this.postMutate();
               },
-            },
-          ),
-        )
-        .addExtraButton(
-          resetButton(
-            i18n.t("asset:settings.hide-status-bar-icon"),
-            i18n.t("settings.reset"),
-            async () =>
-              settings.mutate((settingsM) => {
-                settingsM.hideStatusBar = Settings.DEFAULT.hideStatusBar;
-              }),
-            () => {
-              this.postMutate();
-            },
-          ),
-        );
-    });
+              {
+                pre: (dropdown) => {
+                  dropdown.addOptions(
+                    Object.fromEntries(
+                      Settings.HIDE_STATUS_BAR_OPTIONS.map((value) => [
+                        value,
+                        i18n.t(`settings.hide-status-bar-options.${value}`),
+                      ]),
+                    ),
+                  );
+                },
+              },
+            ),
+          )
+          .addExtraButton(
+            resetButton(
+              i18n.t("asset:settings.hide-status-bar-icon"),
+              i18n.t("settings.reset"),
+              async () =>
+                settings.mutate((settingsM) => {
+                  settingsM.hideStatusBar = Settings.DEFAULT.hideStatusBar;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          );
+      })
+      .newSetting(containerEl, (setting) => {
+        setting
+          .setName(i18n.t("settings.hide-terminal-tab-prefix"))
+          .setDesc(i18n.t("settings.hide-terminal-tab-prefix-description"))
+          .addToggle(
+            linkSetting(
+              () => settings.value.hideTerminalTabPrefix,
+              async (value) =>
+                settings.mutate((settingsM) => {
+                  settingsM.hideTerminalTabPrefix = value;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          )
+          .addExtraButton(
+            resetButton(
+              i18n.t("asset:settings.hide-terminal-tab-prefix-icon"),
+              i18n.t("settings.reset"),
+              async () =>
+                settings.mutate((settingsM) => {
+                  settingsM.hideTerminalTabPrefix =
+                    Settings.DEFAULT.hideTerminalTabPrefix;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          );
+      });
     this.newNoticeTimeoutWidget(Settings.DEFAULT);
     this.newSectionWidget(() => i18n.t("settings.advanced"));
     ui.newSetting(containerEl, (setting) => {
