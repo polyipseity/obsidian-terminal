@@ -11,7 +11,7 @@ import {
 } from "@polyipseity/obsidian-plugin-library";
 import type { CanvasAddon } from "@xterm/addon-canvas";
 import type { WebglAddon } from "@xterm/addon-webgl";
-import type { ITerminalAddon, ITheme, Terminal } from "@xterm/xterm";
+import type { ILink, ITerminalAddon, ITheme, Terminal } from "@xterm/xterm";
 import { constant, isUndefined } from "lodash-es";
 import { around } from "monkey-around";
 import { noop } from "ts-essentials";
@@ -1057,4 +1057,139 @@ export class SynchronizedOutputScrollAddon implements ITerminalAddon {
   public dispose(): void {
     this.#disposer.call();
   }
+}
+
+// Detects vault-relative .md file paths in the terminal and opens them in
+// Obsidian's viewer on click, instead of the system default application.
+//
+// Supports two path formats that appear in terminal output:
+//   1. Parenthesized (may contain spaces): (wiki/goals/My File.md)
+//   2. Bare paths (no spaces):             wiki/some/file.md
+export class VaultFileLinksAddon implements ITerminalAddon {
+  readonly #disposer = new Functions({ async: false, settled: true });
+
+  // Parenthesized paths: (path/to/file.md) — spaces inside are allowed
+  static readonly #PAREN_REGEX = /\(([^)\n]+\.md)\)/g;
+
+  // Bare space-free paths: path/to/file.md
+  static readonly #BARE_REGEX =
+    /(?:^|[\s"'])([^\s"'()[\]{}<>|\\:]+\.md)(?=[\s"'()[\]{}<>|\\:,;]|$)/gm;
+
+  public constructor(protected readonly context: PluginContext) {}
+
+  public activate(terminal: Terminal): void {
+    const {
+      context: { app },
+    } = this;
+
+    const disposable = terminal.registerLinkProvider({
+      provideLinks(
+        bufferLineNumber: number,
+        callback: (links: ILink[] | undefined) => void,
+      ): void {
+        // getLine uses 0-based index; bufferLineNumber is 1-based
+        const line = terminal.buffer.active.getLine(bufferLineNumber - 1);
+        if (!line) {
+          callback(undefined);
+          return;
+        }
+
+        const lineText = line.translateToString(true);
+        const links: ILink[] = [];
+
+        const addLink = (filePath: string, textStart: number): void => {
+          const file = app.vault.getFileByPath(filePath);
+          if (!file) {
+            return;
+          }
+          const startX = visualColumn(lineText, textStart) + 1;
+          const endX = visualColumn(lineText, textStart + filePath.length);
+          links.push({
+            range: {
+              end: { x: endX, y: bufferLineNumber },
+              start: { x: startX, y: bufferLineNumber },
+            },
+            text: filePath,
+            activate(_event: MouseEvent, text: string): void {
+              const vaultFile = app.vault.getFileByPath(text);
+              if (!vaultFile) {
+                return;
+              }
+              app.workspace
+                .getLeaf(false)
+                .openFile(vaultFile)
+                .catch((error: unknown) => {
+                  activeSelf(terminal.element).console.error(error);
+                });
+            },
+          });
+        };
+
+        for (const match of lineText.matchAll(
+          VaultFileLinksAddon.#PAREN_REGEX,
+        )) {
+          if (match[1] !== undefined && match.index !== undefined) {
+            addLink(match[1], match.index + 1); // +1 skips the opening `(`
+          }
+        }
+
+        for (const match of lineText.matchAll(
+          VaultFileLinksAddon.#BARE_REGEX,
+        )) {
+          if (match[1] !== undefined && match.index !== undefined) {
+            const prefixLen = match[0].length - match[1].length;
+            addLink(match[1], match.index + prefixLen);
+          }
+        }
+
+        callback(links.length > 0 ? links : undefined);
+      },
+    });
+
+    this.#disposer.push(() => {
+      disposable.dispose();
+    });
+  }
+
+  public dispose(): void {
+    this.#disposer.call();
+  }
+}
+
+// Converts a string character index to a 0-based visual terminal column,
+// counting double-width CJK characters as 2 columns.
+function visualColumn(text: string, charIndex: number): number {
+  let col = 0;
+  for (let i = 0; i < charIndex && i < text.length; ) {
+    const cp = text.codePointAt(i) ?? 0;
+    col += isCjkDoubleWidth(cp) ? 2 : 1;
+    i += cp > 0xffff ? 2 : 1;
+  }
+  return col;
+}
+
+function isCjkDoubleWidth(cp: number): boolean {
+  return (
+    (cp >= 0x1100 && cp <= 0x115f) || // Hangul Jamo
+    cp === 0x2329 ||
+    cp === 0x232a ||
+    (cp >= 0x2e80 && cp <= 0x303e) || // CJK Radicals Supplement
+    (cp >= 0x3040 && cp <= 0x33ff) || // Japanese kana + CJK compat
+    (cp >= 0x3400 && cp <= 0x4dbf) || // CJK Extension A
+    (cp >= 0x4e00 && cp <= 0xa4cf) || // CJK Unified + Yi
+    (cp >= 0xa960 && cp <= 0xa97f) || // Hangul Jamo Extended-A
+    (cp >= 0xac00 && cp <= 0xd7af) || // Hangul Syllables
+    (cp >= 0xd7b0 && cp <= 0xd7ff) || // Hangul Jamo Extended-B
+    (cp >= 0xf900 && cp <= 0xfaff) || // CJK Compatibility Ideographs
+    (cp >= 0xfe10 && cp <= 0xfe19) || // Vertical Forms
+    (cp >= 0xfe30 && cp <= 0xfe6f) || // CJK Compatibility Forms
+    (cp >= 0xff00 && cp <= 0xff60) || // Fullwidth Latin + Halfwidth Katakana
+    (cp >= 0xffe0 && cp <= 0xffe6) || // Fullwidth Signs
+    (cp >= 0x1b000 && cp <= 0x1b77f) || // Kana Supplement
+    (cp >= 0x1f300 && cp <= 0x1f9ff) || // Misc Symbols & Pictographs
+    (cp >= 0x20000 && cp <= 0x2a6df) || // CJK Extension B
+    (cp >= 0x2a700 && cp <= 0x2ceaf) || // CJK Extension C/D/E
+    (cp >= 0x2ceb0 && cp <= 0x2ebef) || // CJK Extension F
+    (cp >= 0x30000 && cp <= 0x3134f) // CJK Extension G
+  );
 }

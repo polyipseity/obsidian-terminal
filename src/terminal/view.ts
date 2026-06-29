@@ -73,6 +73,7 @@ import {
   RendererAddon,
   RightClickActionAddon,
   SynchronizedOutputScrollAddon,
+  VaultFileLinksAddon,
 } from "./emulator-addons.js";
 import { XtermTerminalEmulator } from "./emulator.js";
 import {
@@ -1147,6 +1148,7 @@ export class TerminalView extends ItemView {
                 ),
                 search: new SearchAddon(),
                 unicode11: new Unicode11Addon(),
+                vaultFileLinks: new VaultFileLinksAddon(context),
                 webLinks: new WebLinksAddon(
                   (event, uri) => openExternal(activeSelf(event), uri),
                   {
@@ -1340,6 +1342,7 @@ export namespace TerminalView {
     readonly search: SearchAddon;
     readonly synchronizedOutputScroll: SynchronizedOutputScrollAddon;
     readonly unicode11: Unicode11Addon;
+    readonly vaultFileLinks: VaultFileLinksAddon;
     readonly webLinks: WebLinksAddon;
   }
   export interface State {
