@@ -64,7 +64,7 @@ hooks = [{ id = "check-dependabot" }, { id = "check-github-workflows" }]
 [[repos]]
 repo = "https://github.com/DavidAnson/markdownlint-cli2.git"
 rev = "996abf60411a8d954288ac9856aae7602b80cbda"
-hooks = [{ id = "markdownlint-cli2", args = ["--fix"] }]
+hooks = [{ id = "markdownlint-cli2", args = ["--fix", "--no-globs"] }]
 
 [[repos]]
 repo = "https://github.com/astral-sh/uv-pre-commit.git"
