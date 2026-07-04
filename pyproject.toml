@@ -1,5 +1,5 @@
 [build-system]
-requires = ["uv_build>=0.11.0,<0.12"]
+requires = ["uv_build>=0.11.25,<0.12"]
 build-backend = "uv_build"
 
 [project]
@@ -37,7 +37,7 @@ dev = [
   "pytest-cov>=7.0.0",
   "pytest-xdist>=3.8.0",
   "ruff>=0.15.20",
-  "ty>=0.0.54",
+  "ty>=0.0.55",
   "types-pywin32>=311.0.0",
 ]
 uvloop = ["obsidian-terminal-f9b1c3e0-fcc2-4914-9732-1867d920929b[uvloop]"]
