@@ -23,6 +23,8 @@ from sys import exit, stdin, stdout
 from time import sleep
 from types import FrameType, TracebackType
 
+from typing_extensions import override
+
 """Public API of this module."""
 __all__ = ("main",)
 
@@ -153,6 +155,7 @@ if sys.platform != "win32":
             """Initialize the PTY->stdout handler."""
             super().__init__(selector, pty_fd)
 
+        @override
         def _on_read(self) -> None:
             """Read from the PTY and forward bytes to stdout; stop on EOF."""
             data = _read_or_eof(self.fd)
@@ -169,6 +172,7 @@ if sys.platform != "win32":
             super().__init__(selector, _STDIN)
             self.pty_fd = pty_fd
 
+        @override
         def _on_read(self) -> None:
             """Read from stdin and forward bytes to the PTY; unregister on EOF."""
             data = _read_or_eof(self.fd)
@@ -185,6 +189,7 @@ if sys.platform != "win32":
             super().__init__(selector, _CMDIO)
             self.pty_fd = pty_fd
 
+        @override
         def _on_read(self) -> None:
             """Read control frames from the command FD and apply window size.
 
