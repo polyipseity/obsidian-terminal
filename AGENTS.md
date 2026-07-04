@@ -267,6 +267,7 @@ const { loadDocumentations } = await import("../../src/documentations.js");
 
 - [.agents/instructions/typescript.instructions.md](./.agents/instructions/typescript.instructions.md) — TypeScript standards
 - [.agents/instructions/localization.instructions.md](./.agents/instructions/localization.instructions.md) — Localization rules
+- [.agents/instructions/github-references.instructions.md](./.agents/instructions/github-references.instructions.md) — GitHub issue/PR referencing conventions
 - [.agents/instructions/commit-message.instructions.md](./.agents/instructions/commit-message.instructions.md) — Commit message convention
 - [.agents/skills/plugin-testing/SKILL.md](./.agents/skills/plugin-testing/SKILL.md) — Plugin testing skill
 - [.agents/instructions/agents.instructions.md](.agents/instructions/agents.instructions.md) — AI agent quick rules
