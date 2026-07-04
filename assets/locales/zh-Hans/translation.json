@@ -340,7 +340,7 @@
       "never": "从不",
       "running": "当执行$t(generic.terminal)时"
     },
-    "inputs": "Inputs",
+    "inputs": "输入",
     "instancing": "$t(generic.instance)",
     "intercept-keys-when-focused": "$t(generic.intercept)$t(generic.terminal)获得焦点时的按键",
     "intercept-keys-when-focused-description": "启用此项后，当$t(generic.terminal)获得焦点时，按键将优先路由至$t(generic.terminal)命令，大部分 Obsidian 快捷键会被禁用。禁用此项可在$t(generic.terminal)获得焦点时继续使用 Obsidian 快捷键。",
@@ -375,12 +375,12 @@
     "profiles": "$t(generic.profile)",
     "profiles-description": "$t(generic.list-description)",
     "profiles-edit": "$t(generic.edit)",
-    "right-click-action": "Right-click action",
+    "right-click-action": "右键操作",
     "right-click-action-options": {
-      "copyPaste": "Copy/paste",
-      "default": "Default",
-      "nothing": "Nothing",
-      "paste": "Paste"
+      "copyPaste": "复制/粘贴",
+      "default": "默认",
+      "nothing": "无操作",
+      "paste": "粘贴"
     },
     "terminal-options": "$t(generic.terminal-option_other, capitalize)",
     "terminal-options-description": "除非特定$t(generic.profile)明确覆盖它们，否则它们会被浅合并到每个$t(generic.profile)中。",
