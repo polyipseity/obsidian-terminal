@@ -151,6 +151,7 @@
     "preferred-renderer-icon": "brush",
     "profiles-edit-icon": "$t(asset:generic.edit-list-icon)",
     "profiles-icon": "$t(asset:generic.profile-icon)",
+    "right-click-action-icon": "mouse-pointer-2",
     "terminal-options-edit-icon": "$t(asset:generic.edit-icon)",
     "terminal-options-icon": "$t(asset:generic.terminal-icon)"
   }

@@ -21,6 +21,7 @@ import {
   TerminalOptionsModal,
 } from "./modals.js";
 import { Settings } from "./settings-data.js";
+import { RightClickActionAddon } from "./terminal/emulator-addons.js";
 
 export class SettingTab extends AdvancedSettingTab<Settings> {
   public constructor(
@@ -315,32 +316,43 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
         );
     });
 
-    // keyboard section
-    this.newSectionWidget(() => i18n.t("settings.keyboard"));
+    // inputs section
+    this.newSectionWidget(() => i18n.t("settings.inputs"));
     ui.newSetting(containerEl, (setting) => {
       setting
-        .setName(i18n.t("settings.intercept-keys-when-focused"))
-        .setDesc(i18n.t("settings.intercept-keys-when-focused-description"))
-        .addToggle(
+        .setName(i18n.t("settings.right-click-action"))
+        .addDropdown(
           linkSetting(
-            () => settings.value.interceptKeysWhenFocused,
-            async (value) =>
+            (): string => settings.value.rightClickAction,
+            setTextToEnum(RightClickActionAddon.ACTIONS, async (value) =>
               settings.mutate((settingsM) => {
-                settingsM.interceptKeysWhenFocused = value;
+                settingsM.rightClickAction = value;
               }),
+            ),
             () => {
               this.postMutate();
+            },
+            {
+              pre: (dropdown) => {
+                dropdown.addOptions(
+                  Object.fromEntries(
+                    RightClickActionAddon.ACTIONS.map((action) => [
+                      action,
+                      i18n.t(`settings.right-click-action-options.${action}`),
+                    ]),
+                  ),
+                );
+              },
             },
           ),
         )
         .addExtraButton(
           resetButton(
-            i18n.t("asset:settings.intercept-keys-when-focused-icon"),
+            i18n.t("asset:settings.right-click-action-icon"),
             i18n.t("settings.reset"),
             async () =>
               settings.mutate((settingsM) => {
-                settingsM.interceptKeysWhenFocused =
-                  Settings.DEFAULT.interceptKeysWhenFocused;
+                settingsM.rightClickAction = Settings.DEFAULT.rightClickAction;
               }),
             () => {
               this.postMutate();
@@ -348,6 +360,37 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
           ),
         );
     })
+      .newSetting(containerEl, (setting) => {
+        setting
+          .setName(i18n.t("settings.intercept-keys-when-focused"))
+          .setDesc(i18n.t("settings.intercept-keys-when-focused-description"))
+          .addToggle(
+            linkSetting(
+              () => settings.value.interceptKeysWhenFocused,
+              async (value) =>
+                settings.mutate((settingsM) => {
+                  settingsM.interceptKeysWhenFocused = value;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          )
+          .addExtraButton(
+            resetButton(
+              i18n.t("asset:settings.intercept-keys-when-focused-icon"),
+              i18n.t("settings.reset"),
+              async () =>
+                settings.mutate((settingsM) => {
+                  settingsM.interceptKeysWhenFocused =
+                    Settings.DEFAULT.interceptKeysWhenFocused;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          );
+      })
       .newSetting(containerEl, (setting) => {
         setting
           .setName(i18n.t("settings.keymappings"))

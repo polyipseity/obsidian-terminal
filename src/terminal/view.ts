@@ -1140,10 +1140,8 @@ export class TerminalView extends ItemView {
                   () => new WebglAddon(false),
                 ),
                 rightClickAction: new RightClickActionAddon(
-                  profile.type === "invalid"
-                    ? void 0
-                    : (): RightClickActionAddon.Action =>
-                        profile.rightClickAction,
+                  (): RightClickActionAddon.Action =>
+                    settings.value.rightClickAction,
                 ),
                 search: new SearchAddon(),
                 unicode11: new Unicode11Addon(),

@@ -86,15 +86,17 @@ export interface Settings extends PluginContext.Settings {
   readonly focusOnNewInstance: boolean;
   readonly pinNewInstance: boolean;
 
+  readonly rightClickAction: RightClickActionAddon.Action;
+  readonly interceptKeysWhenFocused: boolean;
+  readonly keymappings: readonly Settings.Keymapping[];
+  readonly macOSOptionKeyPassthrough: boolean;
+
   readonly openChangelogOnUpdate: boolean;
   readonly hideStatusBar: Settings.HideStatusBarOption;
 
   readonly exposeInternalModules: boolean;
-  readonly interceptKeysWhenFocused: boolean;
   readonly interceptLogging: boolean;
-  readonly macOSOptionKeyPassthrough: boolean;
   readonly preferredRenderer: Settings.PreferredRendererOption;
-  readonly keymappings: readonly Settings.Keymapping[];
 }
 export namespace Settings {
   export type DefaultProfile = keyof Profiles | null;
@@ -279,6 +281,7 @@ export namespace Settings {
       ).map((key) => [key, PROFILE_PRESETS[key]]),
     ),
     defaultProfile: null,
+    rightClickAction: "copyPaste",
     terminalOptions: DEFAULT_TERMINAL_OPTIONS,
   });
 
@@ -1569,6 +1572,12 @@ export namespace Settings {
         unc,
         "macOSOptionKeyPassthrough",
         ["boolean"],
+      ),
+      rightClickAction: fixInSet(
+        DEFAULT,
+        unc,
+        "rightClickAction",
+        RightClickActionAddon.ACTIONS,
       ),
       newInstanceBehavior: fixInSet(
         DEFAULT,
