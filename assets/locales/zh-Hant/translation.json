@@ -340,12 +340,12 @@
       "never": "從不",
       "running": "當執行$t(generic.terminal)時"
     },
+    "inputs": "Inputs",
     "instancing": "$t(generic.instance)",
     "intercept-keys-when-focused": "$t(generic.intercept)$t(generic.terminal)獲得焦點時的按鍵",
     "intercept-keys-when-focused-description": "啟用此項後，當$t(generic.terminal)獲得焦點時，按鍵將優先路由至$t(generic.terminal)命令，大部份 Obsidian 快捷鍵會被停用。停用此項可在$t(generic.terminal)獲得焦點時繼續使用 Obsidian 快捷鍵。",
     "intercept-logging": "攔截記錄",
     "interface": "界面",
-    "keyboard": "鍵盤",
     "keymappings": "$t(generic.keymapping_other, capitalize)",
     "keymappings-description": "在$t(generic.terminal)之前攔截的自訂按鍵綁定。每條記錄將按鍵組合（可選平台篩選器）映射到一個動作——跳脫序列、原始文字或十六進位代碼。第一條符合的記錄優先。例如：內建的 Shift+Enter → ESC+CR 可讓 TUI 程式區分 Enter（提交）與 Shift+Enter（換行）。",
     "keymappings-edit": "$t(generic.edit, capitalize)",
@@ -375,6 +375,13 @@
     "profiles": "$t(generic.profile)",
     "profiles-description": "$t(generic.list-description)",
     "profiles-edit": "$t(generic.edit)",
+    "right-click-action": "Right-click action",
+    "right-click-action-options": {
+      "copyPaste": "Copy/paste",
+      "default": "Default",
+      "nothing": "Nothing",
+      "paste": "Paste"
+    },
     "terminal-options": "$t(generic.terminal-option_other, capitalize)",
     "terminal-options-description": "除非特定$t(generic.profile)明確覆蓋它們，否則它們會被淺合併到每個$t(generic.profile)中。",
     "terminal-options-edit": "$t(generic.edit, capitalize)"

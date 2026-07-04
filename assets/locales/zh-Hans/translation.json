@@ -67,6 +67,11 @@
       },
       "follow-theme": "$t(generic.follow)$t(generic.theme)",
       "integrated": {
+        "Python-executable": "$t(generic.Python)$t(generic.executable)",
+        "Python-executable-check": "$t(generic.check)",
+        "Python-executable-checking": "$t(generic.check)中",
+        "Python-executable-description": "推荐{{version}}或更高版本。于$t(generic.platforms.unix)$t(generic.spawn)$t(generic.profile-types.integrated)$t(generic.terminal)所需要的。$t(generic.clear)$t(generic.text-field)以$t(generic.disable)$t(generic.Python)。",
+        "Python-executable-placeholder": "（已$t(generic.disable)）",
         "arguments": "$t(generic.argument)",
         "arguments-description": "$t(generic.list-description)",
         "arguments-edit": "$t(generic.edit)",
@@ -77,11 +82,6 @@
         "environment-list-description": "对于重复的键，以最后一项为准。键和值中的前后空白会按原样保留。在$t(generic.platforms.win32)上，变量名不区分大小写；在应用这些条目前，会先移除名称与任一条目键名大小写不敏感匹配的现有变量。这是因为 Node.js 会按字典序排序环境变量键，并且只将第一个大小写不敏感匹配项传递给子进程。",
         "environment-value-placeholder": "值",
         "executable": "$t(generic.executable)",
-        "Python-executable": "$t(generic.Python)$t(generic.executable)",
-        "Python-executable-check": "$t(generic.check)",
-        "Python-executable-checking": "$t(generic.check)中",
-        "Python-executable-description": "推荐{{version}}或更高版本。于$t(generic.platforms.unix)$t(generic.spawn)$t(generic.profile-types.integrated)$t(generic.terminal)所需要的。$t(generic.clear)$t(generic.text-field)以$t(generic.disable)$t(generic.Python)。",
-        "Python-executable-placeholder": "（已$t(generic.disable)）",
         "use-win32-conhost": "$t(generic.use)$t(generic.platforms.win32)「conhost.exe」",
         "use-win32-conhost-description": "如果执行「conhost.exe」没有创建视窗，请$t(generic.disable)。不保证这会起作用。"
       },
@@ -174,6 +174,7 @@
     "resizer-exited-unexpectedly": "$t(generic.terminal-resizer)意外$t(generic.exit)：{{code}}"
   },
   "generic": {
+    "Python": "Python",
     "argument": "参数",
     "behavior": "行为",
     "check": "检查",
@@ -236,7 +237,6 @@
       "select": "选择"
     },
     "pseudoterminal": "伪终端",
-    "Python": "Python",
     "rename": "rename",
     "renderer": "渲染器",
     "renderers": {
@@ -272,9 +272,9 @@
   },
   "name": "$t(generic.terminal)",
   "notices": {
-    "no-default-profile": "没有$t(generic.type)「$t(generic.profile-types.{{type}})」的$t(generic.default)$t(generic.profile)",
     "Python-status-entry-": "{{name}}：{{version}}（满足：{{requirement}}）",
     "Python-status-entry-unsatisfied": "{{name}}：{{version}}（未满足：{{requirement}}）",
+    "no-default-profile": "没有$t(generic.type)「$t(generic.profile-types.{{type}})」的$t(generic.default)$t(generic.profile)",
     "spawning-terminal": "$t(generic.terminal)$t(generic.spawn)中：{{title}}",
     "terminal-exited": "$t(generic.terminal)已$t(generic.exit)：{{code}}"
   },
@@ -340,12 +340,12 @@
       "never": "从不",
       "running": "当执行$t(generic.terminal)时"
     },
+    "inputs": "Inputs",
     "instancing": "$t(generic.instance)",
     "intercept-keys-when-focused": "$t(generic.intercept)$t(generic.terminal)获得焦点时的按键",
     "intercept-keys-when-focused-description": "启用此项后，当$t(generic.terminal)获得焦点时，按键将优先路由至$t(generic.terminal)命令，大部分 Obsidian 快捷键会被禁用。禁用此项可在$t(generic.terminal)获得焦点时继续使用 Obsidian 快捷键。",
     "intercept-logging": "拦截记录",
     "interface": "界面",
-    "keyboard": "键盘",
     "keymappings": "$t(generic.keymapping_other, capitalize)",
     "keymappings-description": "在$t(generic.terminal)之前拦截的自定义按键绑定。每条记录将按键组合（可选平台过滤器）映射到一个动作——转义序列、原始文本或十六进制代码。第一条匹配的记录优先。例如：内置的 Shift+Enter → ESC+CR 可让 TUI 程序区分 Enter（提交）与 Shift+Enter（换行）。",
     "keymappings-edit": "$t(generic.edit, capitalize)",
@@ -375,6 +375,13 @@
     "profiles": "$t(generic.profile)",
     "profiles-description": "$t(generic.list-description)",
     "profiles-edit": "$t(generic.edit)",
+    "right-click-action": "Right-click action",
+    "right-click-action-options": {
+      "copyPaste": "Copy/paste",
+      "default": "Default",
+      "nothing": "Nothing",
+      "paste": "Paste"
+    },
     "terminal-options": "$t(generic.terminal-option_other, capitalize)",
     "terminal-options-description": "除非特定$t(generic.profile)明确覆盖它们，否则它们会被浅合并到每个$t(generic.profile)中。",
     "terminal-options-edit": "$t(generic.edit, capitalize)"
