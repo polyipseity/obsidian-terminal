@@ -643,16 +643,16 @@ export class TerminalView extends ItemView {
   }
 
   public getDisplayText(): string {
-    if (!this.context.settings.value.showTerminalTabPrefix) {
-      return this.title;
+    if (this.context.settings.value.showTerminalTabPrefix) {
+      return this.context.language.value.t(
+        `components.${TerminalView.type.id}.display-name`,
+        {
+          interpolation: { escapeValue: false },
+          title: this.title,
+        },
+      );
     }
-    return this.context.language.value.t(
-      `components.${TerminalView.type.id}.display-name`,
-      {
-        interpolation: { escapeValue: false },
-        title: this.title,
-      },
-    );
+    return this.title;
   }
 
   public override getIcon(): string {
