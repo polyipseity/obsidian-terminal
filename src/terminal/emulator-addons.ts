@@ -1123,11 +1123,16 @@ export class VaultFileLinksAddon implements ITerminalAddon {
           });
         };
 
+        const parenRanges: { start: number; end: number }[] = [];
         for (const match of lineText.matchAll(
           VaultFileLinksAddon.#PAREN_REGEX,
         )) {
           if (match[1] !== undefined) {
             addLink(match[1], match.index + 1); // +1 skips the opening `(`
+            parenRanges.push({
+              start: match.index + 1,
+              end: match.index + 1 + match[1].length,
+            });
           }
         }
 
@@ -1136,7 +1141,14 @@ export class VaultFileLinksAddon implements ITerminalAddon {
         )) {
           if (match[1] !== undefined) {
             const prefixLen = match[0].length - match[1].length;
-            addLink(match[1], match.index + prefixLen);
+            const bareStart = match.index + prefixLen;
+            const bareEnd = bareStart + match[1].length;
+            if (
+              parenRanges.some((r) => bareStart >= r.start && bareEnd <= r.end)
+            ) {
+              continue;
+            }
+            addLink(match[1], bareStart);
           }
         }
 

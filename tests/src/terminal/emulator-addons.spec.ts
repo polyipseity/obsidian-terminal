@@ -646,13 +646,17 @@ describe("VaultFileLinksAddon", () => {
   });
 
   it("finds parenthesized .md links with spaces", () => {
-    const { provideLinks, getFileByPath } = createBed();
-    // The bare regex also matches "notes/file.md" from inside the parens,
-    // but only the full parenthesized path exists in the vault.
-    getFileByPath.mockImplementation((path: string) => {
-      return path === "my notes/file.md" ? MOCK_FILE : null;
-    });
+    const { provideLinks } = createBed();
     const links = provideLinks("Open (my notes/file.md) here");
+    expect(links).toHaveLength(1);
+    expect(links?.[0]?.text).toBe("my notes/file.md");
+  });
+
+  it("filters bare sub-matches inside parenthesized paths", () => {
+    const { provideLinks } = createBed();
+    // The bare regex would match "notes/file.md" as a sub-path, but it falls
+    // inside paren range of "my notes/file.md", so only 1 link is produced.
+    const links = provideLinks("(my notes/file.md)");
     expect(links).toHaveLength(1);
     expect(links?.[0]?.text).toBe("my notes/file.md");
   });
