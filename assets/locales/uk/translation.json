@@ -398,6 +398,7 @@
       "nothing": "Nothing",
       "paste": "Paste"
     },
+    "show-terminal-tab-prefix": "Show $t(generic.terminal) tab prefix",
     "terminal-options": "$t(generic.terminal-option_other, capitalize)",
     "terminal-options-description": "Застосовуються до кожного профілю, якщо не перевизначені явно.",
     "terminal-options-edit": "$t(generic.edit, capitalize)"

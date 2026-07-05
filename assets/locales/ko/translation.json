@@ -398,6 +398,7 @@
       "nothing": "Nothing",
       "paste": "Paste"
     },
+    "show-terminal-tab-prefix": "Show $t(generic.terminal) tab prefix",
     "terminal-options": "$t(generic.terminal-option_other, capitalize)",
     "terminal-options-description": "Shallow-merged into every $t(generic.profile) unless a specific $t(generic.profile) explicitly overrides them.",
     "terminal-options-edit": "$t(generic.edit, capitalize)"

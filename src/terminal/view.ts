@@ -643,13 +643,16 @@ export class TerminalView extends ItemView {
   }
 
   public getDisplayText(): string {
-    return this.context.language.value.t(
-      `components.${TerminalView.type.id}.display-name`,
-      {
-        interpolation: { escapeValue: false },
-        title: this.title,
-      },
-    );
+    if (this.context.settings.value.showTerminalTabPrefix) {
+      return this.context.language.value.t(
+        `components.${TerminalView.type.id}.display-name`,
+        {
+          interpolation: { escapeValue: false },
+          title: this.title,
+        },
+      );
+    }
+    return this.title;
   }
 
   public override getIcon(): string {
@@ -892,6 +895,14 @@ export class TerminalView extends ItemView {
           if (cur && this.isFocused) {
             keymap.pushScope(focusedScope);
           }
+        },
+      ),
+    );
+    this.register(
+      settings.onMutate(
+        (s) => s.showTerminalTabPrefix,
+        () => {
+          updateView(context, this);
         },
       ),
     );
