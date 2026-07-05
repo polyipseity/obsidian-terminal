@@ -820,4 +820,46 @@ describe("VaultFileLinksAddon", () => {
     addon.dispose();
     expect(disposer.dispose).toHaveBeenCalled();
   });
+
+  // --- Link range x-coordinates ---
+
+  it("computes correct x-range for link at line start", () => {
+    const { provideLinks } = createBed();
+    const links = provideLinks("(file.md)");
+    expect(links).toHaveLength(1);
+    // `(` is column 1, `f` starts at column 2.
+    expect(links?.[0]?.range.start.x).toBe(2);
+    // `(` + `file.md` = 8 visual columns (all ASCII).
+    expect(links?.[0]?.range.end.x).toBe(8);
+  });
+
+  it("computes correct x-range for link after ASCII text", () => {
+    const { provideLinks } = createBed();
+    const links = provideLinks("see (file.md) here");
+    expect(links).toHaveLength(1);
+    // `see ` is 4 columns, `(` is column 5, `f` starts at column 6.
+    expect(links?.[0]?.range.start.x).toBe(6);
+    // `see (file.md` = 12 visual columns (all ASCII).
+    expect(links?.[0]?.range.end.x).toBe(12);
+  });
+
+  it("accounts for double-width characters in x-range", () => {
+    const { provideLinks } = createBed();
+    const links = provideLinks("中文(content.md)");
+    expect(links).toHaveLength(1);
+    // `中` = 2 columns, `文` = 2 columns, `(` = 1 column → `f` at column 6.
+    expect(links?.[0]?.range.start.x).toBe(6);
+    // `content.md` = 10 chars, all ASCII, adds 10 columns past `(`.
+    expect(links?.[0]?.range.end.x).toBe(15);
+  });
+
+  it("x-range end minus start plus one equals path visual length", () => {
+    const { provideLinks } = createBed();
+    const links = provideLinks("(abc.md)");
+    expect(links).toHaveLength(1);
+    // "abc.md" is 6 ASCII chars, each 1 column wide.
+    expect(
+      (links?.[0]?.range.end.x ?? 0) - (links?.[0]?.range.start.x ?? 0) + 1,
+    ).toBe(6);
+  });
 });
