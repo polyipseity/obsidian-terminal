@@ -598,6 +598,37 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
     })
       .newSetting(containerEl, (setting) => {
         setting
+          .setName(i18n.t("settings.show-terminal-tab-prefix"))
+          .setDesc(i18n.t("settings.show-terminal-tab-prefix-description"))
+          .addToggle(
+            linkSetting(
+              () => settings.value.showTerminalTabPrefix,
+              async (value) =>
+                settings.mutate((settingsM) => {
+                  settingsM.showTerminalTabPrefix = value;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          )
+          .addExtraButton(
+            resetButton(
+              i18n.t("asset:settings.show-terminal-tab-prefix-icon"),
+              i18n.t("settings.reset"),
+              async () =>
+                settings.mutate((settingsM) => {
+                  settingsM.showTerminalTabPrefix =
+                    Settings.DEFAULT.showTerminalTabPrefix;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          );
+      })
+      .newSetting(containerEl, (setting) => {
+        setting
           .setName(i18n.t("settings.hide-status-bar"))
           .addDropdown(
             linkSetting(
@@ -631,37 +662,6 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               async () =>
                 settings.mutate((settingsM) => {
                   settingsM.hideStatusBar = Settings.DEFAULT.hideStatusBar;
-                }),
-              () => {
-                this.postMutate();
-              },
-            ),
-          );
-      })
-      .newSetting(containerEl, (setting) => {
-        setting
-          .setName(i18n.t("settings.hide-terminal-tab-prefix"))
-          .setDesc(i18n.t("settings.hide-terminal-tab-prefix-description"))
-          .addToggle(
-            linkSetting(
-              () => settings.value.hideTerminalTabPrefix,
-              async (value) =>
-                settings.mutate((settingsM) => {
-                  settingsM.hideTerminalTabPrefix = value;
-                }),
-              () => {
-                this.postMutate();
-              },
-            ),
-          )
-          .addExtraButton(
-            resetButton(
-              i18n.t("asset:settings.hide-terminal-tab-prefix-icon"),
-              i18n.t("settings.reset"),
-              async () =>
-                settings.mutate((settingsM) => {
-                  settingsM.hideTerminalTabPrefix =
-                    Settings.DEFAULT.hideTerminalTabPrefix;
                 }),
               () => {
                 this.postMutate();

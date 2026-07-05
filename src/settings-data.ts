@@ -86,8 +86,8 @@ export interface Settings extends PluginContext.Settings {
   readonly focusOnNewInstance: boolean;
   readonly pinNewInstance: boolean;
 
-  readonly hideTerminalTabPrefix: boolean;
   readonly openChangelogOnUpdate: boolean;
+  readonly showTerminalTabPrefix: boolean;
   readonly hideStatusBar: Settings.HideStatusBarOption;
 
   readonly exposeInternalModules: boolean;
@@ -120,7 +120,6 @@ export namespace Settings {
     exposeInternalModules: true,
     focusOnNewInstance: true,
     hideStatusBar: "focused",
-    hideTerminalTabPrefix: false,
     interceptKeysWhenFocused: true,
     interceptLogging: true,
     keymappings: [
@@ -265,6 +264,7 @@ export namespace Settings {
     newInstanceBehavior: "newHorizontalSplit",
     noticeTimeout: 5,
     openChangelogOnUpdate: true,
+    showTerminalTabPrefix: true,
     pinNewInstance: true,
     preferredRenderer: "webgl",
     profiles: Object.fromEntries(
@@ -1551,9 +1551,6 @@ export namespace Settings {
         "hideStatusBar",
         HIDE_STATUS_BAR_OPTIONS,
       ),
-      hideTerminalTabPrefix: fixTyped(DEFAULT, unc, "hideTerminalTabPrefix", [
-        "boolean",
-      ]),
       interceptKeysWhenFocused: fixTyped(
         DEFAULT,
         unc,
@@ -1583,6 +1580,9 @@ export namespace Settings {
       ),
       noticeTimeout: fixTyped(DEFAULT, unc, "noticeTimeout", ["number"]),
       openChangelogOnUpdate: fixTyped(DEFAULT, unc, "openChangelogOnUpdate", [
+        "boolean",
+      ]),
+      showTerminalTabPrefix: fixTyped(DEFAULT, unc, "showTerminalTabPrefix", [
         "boolean",
       ]),
       pinNewInstance: fixTyped(DEFAULT, unc, "pinNewInstance", ["boolean"]),

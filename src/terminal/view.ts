@@ -643,7 +643,7 @@ export class TerminalView extends ItemView {
   }
 
   public getDisplayText(): string {
-    if (this.context.settings.value.hideTerminalTabPrefix) {
+    if (!this.context.settings.value.showTerminalTabPrefix) {
       return this.title;
     }
     return this.context.language.value.t(
@@ -900,7 +900,7 @@ export class TerminalView extends ItemView {
     );
     this.register(
       settings.onMutate(
-        (s) => s.hideTerminalTabPrefix,
+        (s) => s.showTerminalTabPrefix,
         () => {
           updateView(context, this);
         },

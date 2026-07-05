@@ -144,12 +144,12 @@ describe("src/terminal/view.ts", () => {
   });
 
   describe("getDisplayText", () => {
-    it("returns title directly when hideTerminalTabPrefix is enabled", async () => {
+    it("returns title directly when showTerminalTabPrefix is disabled", async () => {
       const { WorkspaceLeaf } = await import("obsidian");
       const mockI18n = { t: vi.fn((key: string) => key) };
       const mockContext = {
         language: { value: mockI18n },
-        settings: { value: { hideTerminalTabPrefix: true } },
+        settings: { value: { showTerminalTabPrefix: false } },
       } as unknown as ConstructorParameters<typeof TerminalView>[0];
       const leaf = new WorkspaceLeaf();
       const view = new TerminalView(mockContext, leaf);
@@ -162,12 +162,12 @@ describe("src/terminal/view.ts", () => {
       expect(result).toBe("components.terminal.name.profile-type");
     });
 
-    it("returns localized display-name when hideTerminalTabPrefix is disabled", async () => {
+    it("returns localized display-name when showTerminalTabPrefix is enabled", async () => {
       const { WorkspaceLeaf } = await import("obsidian");
       const mockI18n = { t: vi.fn((key: string) => key) };
       const mockContext = {
         language: { value: mockI18n },
-        settings: { value: { hideTerminalTabPrefix: false } },
+        settings: { value: { showTerminalTabPrefix: true } },
       } as unknown as ConstructorParameters<typeof TerminalView>[0];
       const leaf = new WorkspaceLeaf();
       const view = new TerminalView(mockContext, leaf);

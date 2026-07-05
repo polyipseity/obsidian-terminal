@@ -10,8 +10,8 @@ describe("src/settings-data.ts", () => {
     expect(typeof Settings.DEFAULT.noticeTimeout).toBe("number");
     expect(Settings.DEFAULT).toHaveProperty("openChangelogOnUpdate");
     expect(typeof Settings.DEFAULT.openChangelogOnUpdate).toBe("boolean");
-    expect(Settings.DEFAULT).toHaveProperty("hideTerminalTabPrefix");
-    expect(Settings.DEFAULT.hideTerminalTabPrefix).toBe(false);
+    expect(Settings.DEFAULT).toHaveProperty("showTerminalTabPrefix");
+    expect(Settings.DEFAULT.showTerminalTabPrefix).toBe(true);
     expect(Settings.DEFAULT).toHaveProperty("terminalOptions");
     expect(typeof Settings.DEFAULT.terminalOptions).toBe("object");
     // should at least include the documentOverride property from the preset
@@ -147,20 +147,20 @@ describe("src/settings-data.ts", () => {
     expect(alsoBad.value.defaultProfile).toBe(null);
   });
 
-  it("Settings.fix preserves valid hideTerminalTabPrefix", () => {
-    const enabled = Settings.fix({ hideTerminalTabPrefix: true });
-    expect(enabled.value.hideTerminalTabPrefix).toBe(true);
+  it("Settings.fix preserves valid showTerminalTabPrefix", () => {
+    const enabled = Settings.fix({ showTerminalTabPrefix: true });
+    expect(enabled.value.showTerminalTabPrefix).toBe(true);
 
-    const disabled = Settings.fix({ hideTerminalTabPrefix: false });
-    expect(disabled.value.hideTerminalTabPrefix).toBe(false);
+    const disabled = Settings.fix({ showTerminalTabPrefix: false });
+    expect(disabled.value.showTerminalTabPrefix).toBe(false);
   });
 
-  it("Settings.fix coerces bad hideTerminalTabPrefix to default", () => {
+  it("Settings.fix coerces bad showTerminalTabPrefix to default", () => {
     const bad = Settings.fix({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      hideTerminalTabPrefix: "not-a-boolean" as any,
+      showTerminalTabPrefix: "not-a-boolean" as any,
     });
-    expect(bad.value.hideTerminalTabPrefix).toBe(false);
+    expect(bad.value.showTerminalTabPrefix).toBe(true);
   });
 
   describe("Settings.Profile.defaultEntryOfType", () => {
