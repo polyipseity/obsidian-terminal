@@ -641,7 +641,6 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
       .newSetting(containerEl, (setting) => {
         setting
           .setName(i18n.t("settings.show-terminal-tab-prefix"))
-          .setDesc(i18n.t("settings.show-terminal-tab-prefix-description"))
           .addToggle(
             linkSetting(
               () => settings.value.showTerminalTabPrefix,

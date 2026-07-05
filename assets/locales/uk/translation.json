@@ -392,7 +392,6 @@
     "profiles-description": "$t(generic.list-description, capitalize)",
     "profiles-edit": "$t(generic.edit, capitalize)",
     "show-terminal-tab-prefix": "Show $t(generic.terminal) tab prefix",
-    "show-terminal-tab-prefix-description": "When disabled, $t(generic.terminal) tabs show only the session name (e.g. bash) instead of \"$t(generic.terminal): bash\".",
     "terminal-options": "$t(generic.terminal-option_other, capitalize)",
     "terminal-options-description": "Застосовуються до кожного профілю, якщо не перевизначені явно.",
     "terminal-options-edit": "$t(generic.edit, capitalize)"
