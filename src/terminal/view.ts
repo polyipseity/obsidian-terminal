@@ -898,6 +898,14 @@ export class TerminalView extends ItemView {
         },
       ),
     );
+    this.register(
+      settings.onMutate(
+        (s) => s.hideTerminalTabPrefix,
+        () => {
+          updateView(context, this);
+        },
+      ),
+    );
 
     this.register(statusBarHider.hide(() => this.hidesStatusBar));
     this.register(() => {
