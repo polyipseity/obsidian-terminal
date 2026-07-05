@@ -1110,14 +1110,11 @@ export class VaultFileLinksAddon implements ITerminalAddon {
               start: { x: startX, y: bufferLineNumber },
             },
             text: filePath,
-            activate(_event: MouseEvent, text: string): void {
-              const vaultFile = app.vault.getFileByPath(text);
-              if (!vaultFile) {
-                return;
-              }
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            activate(_event: MouseEvent, _text: string): void {
               app.workspace
                 .getLeaf(false)
-                .openFile(vaultFile)
+                .openFile(file)
                 .catch((error: unknown) => {
                   activeSelf(terminal.element).console.error(error);
                 });
