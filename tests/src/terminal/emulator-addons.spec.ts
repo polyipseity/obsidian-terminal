@@ -11,13 +11,16 @@
  * - SynchronizedOutputScrollAddon: scroll position preservation across DEC 2026
  *   synchronized output blocks via queueMicrotask (xterm.js issue #5801 workaround)
  */
-import type { IDisposable, Terminal } from "@xterm/xterm";
+import type { ILink, ILinkProvider, IDisposable, Terminal } from "@xterm/xterm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { App, TFile, Vault, Workspace, WorkspaceLeaf } from "obsidian";
+import type { PluginContext } from "@polyipseity/obsidian-plugin-library";
 import type { Settings } from "../../../src/settings-data.js";
 import {
   CustomKeyEventHandlerAddon,
   FollowThemeAddon,
   SynchronizedOutputScrollAddon,
+  VaultFileLinksAddon,
 } from "../../../src/terminal/emulator-addons.js";
 
 /** Minimal mock Terminal with `input()` and `attachCustomKeyEventHandler()`. */
@@ -557,5 +560,306 @@ describe("SynchronizedOutputScrollAddon", () => {
       returnVals.push(h(fakeParams));
     }
     expect(returnVals).toEqual([false, false]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// VaultFileLinksAddon
+// ---------------------------------------------------------------------------
+
+describe("VaultFileLinksAddon", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** Mock file returned by getFileByPath. */
+  const MOCK_FILE = { path: "test.md", name: "test.md" } as TFile;
+
+  /**
+   * Creates a VaultFileLinksAddon test bed.
+   *
+   * @param fileExists - Whether getFileByPath should return a TFile or null.
+   */
+  function createBed(fileExists = true): {
+    provideLinks(lineText: string): ILink[] | undefined;
+    getFileByPath: ReturnType<typeof vi.fn>;
+    openFile: ReturnType<typeof vi.fn>;
+    getLeaf: ReturnType<typeof vi.fn>;
+    disposable: IDisposable;
+    addon: VaultFileLinksAddon;
+  } {
+    const getFileByPath = vi.fn(() => (fileExists ? MOCK_FILE : null));
+    const vault = { getFileByPath } as unknown as Vault;
+
+    const openFile = vi.fn().mockResolvedValue(undefined);
+    const getLeaf = vi.fn(() => ({ openFile }) as unknown as WorkspaceLeaf);
+    const workspace = { getLeaf } as unknown as Workspace;
+
+    const app = { vault, workspace } as unknown as App;
+    const context = { app } as unknown as PluginContext;
+
+    const addon = new VaultFileLinksAddon(context);
+
+    let capturedProvider: ILinkProvider | undefined;
+    const disposable = { dispose: vi.fn() };
+    const registerLinkProvider = vi.fn((p: ILinkProvider) => {
+      capturedProvider = p;
+      return disposable;
+    });
+
+    const getLine = vi.fn();
+    const terminal = {
+      registerLinkProvider,
+      buffer: { active: { getLine } },
+      element: document.createElement("div"),
+    } as unknown as Terminal;
+
+    addon.activate(terminal);
+
+    function provideLinks(lineText: string): ILink[] | undefined {
+      let result: ILink[] | undefined;
+      const line = { translateToString: vi.fn(() => lineText) };
+      getLine.mockReturnValue(line);
+      capturedProvider?.provideLinks(1, (links) => {
+        result = links;
+      });
+      return result;
+    }
+
+    return {
+      provideLinks,
+      getFileByPath,
+      openFile,
+      getLeaf,
+      disposable,
+      addon,
+    };
+  }
+
+  // --- Parenthesized links ---
+
+  it("finds parenthesized .md links", () => {
+    const { provideLinks } = createBed();
+    const links = provideLinks("See (test.md) for details");
+    expect(links).toHaveLength(1);
+    expect(links?.[0]?.text).toBe("test.md");
+  });
+
+  it("finds parenthesized .md links with spaces", () => {
+    const { provideLinks } = createBed();
+    const links = provideLinks("Open (my notes/file.md) here");
+    expect(links).toHaveLength(1);
+    expect(links?.[0]?.text).toBe("my notes/file.md");
+  });
+
+  it("filters bare sub-matches inside parenthesized paths", () => {
+    const { provideLinks } = createBed();
+    // The bare regex would match "notes/file.md" as a sub-path, but it falls
+    // inside paren range of "my notes/file.md", so only 1 link is produced.
+    const links = provideLinks("(my notes/file.md)");
+    expect(links).toHaveLength(1);
+    expect(links?.[0]?.text).toBe("my notes/file.md");
+  });
+
+  it("ignores parenthesized text without .md extension", () => {
+    const { provideLinks } = createBed();
+    const links = provideLinks("(test.txt)");
+    expect(links).toHaveLength(0);
+  });
+
+  // --- Bare links ---
+
+  it("finds bare .md links after whitespace", () => {
+    const { provideLinks } = createBed();
+    const links = provideLinks("see docs/file.md for info");
+    expect(links).toHaveLength(1);
+    expect(links?.[0]?.text).toBe("docs/file.md");
+  });
+
+  it("finds bare .md links at line start", () => {
+    const { provideLinks } = createBed();
+    const links = provideLinks("file.md is here");
+    expect(links).toHaveLength(1);
+    expect(links?.[0]?.text).toBe("file.md");
+  });
+
+  it("finds bare .md links after an opening quote", () => {
+    const { provideLinks } = createBed();
+    const links = provideLinks('read "docs/file.md" here');
+    expect(links).toHaveLength(1);
+    expect(links?.[0]?.text).toBe("docs/file.md");
+  });
+
+  it("does not include preceding space or quote in link text", () => {
+    const { provideLinks } = createBed();
+    const withSpace = provideLinks("see docs/file.md now");
+    expect(withSpace).toHaveLength(1);
+    expect(withSpace?.[0]?.text).toBe("docs/file.md");
+
+    const withQuote = provideLinks('"docs/file.md"');
+    expect(withQuote).toHaveLength(1);
+    expect(withQuote?.[0]?.text).toBe("docs/file.md");
+  });
+
+  // --- Multiple links ---
+
+  it("finds multiple parenthesized links on one line", () => {
+    const { provideLinks } = createBed();
+    const links = provideLinks("(a.md) and (b.md)");
+    expect(links).toHaveLength(2);
+    expect(links?.[0]?.text).toBe("a.md");
+    expect(links?.[1]?.text).toBe("b.md");
+  });
+
+  it("finds mixed bare and parenthesized links", () => {
+    const { provideLinks } = createBed();
+    const links = provideLinks("(a.md) and b.md");
+    expect(links).toHaveLength(2);
+    expect(links?.[0]?.text).toBe("a.md");
+    expect(links?.[1]?.text).toBe("b.md");
+  });
+
+  // --- No-match cases ---
+
+  it("returns empty array for a line with no .md links", () => {
+    const { provideLinks } = createBed();
+    const links = provideLinks("Just some plain text");
+    expect(links).toHaveLength(0);
+  });
+
+  it("returns empty array for empty line", () => {
+    const { provideLinks } = createBed();
+    const links = provideLinks("");
+    expect(links).toHaveLength(0);
+  });
+
+  // --- File resolution ---
+
+  it("calls getFileByPath for each matched link", () => {
+    const { provideLinks, getFileByPath } = createBed();
+    provideLinks("(a.md) and (b.md)");
+    expect(getFileByPath).toHaveBeenCalledTimes(2);
+    expect(getFileByPath).toHaveBeenCalledWith("a.md");
+    expect(getFileByPath).toHaveBeenCalledWith("b.md");
+  });
+
+  it("omits links whose files do not exist", () => {
+    const { provideLinks } = createBed(false);
+    const links = provideLinks("(test.md)");
+    expect(links).toHaveLength(0);
+  });
+
+  // --- Activation ---
+
+  it("activates by opening the file in Obsidian", () => {
+    const { provideLinks, openFile, getLeaf } = createBed();
+    const links = provideLinks("(test.md)");
+    expect(links).toHaveLength(1);
+
+    links?.[0]?.activate({} as MouseEvent, "test.md");
+    expect(getLeaf).toHaveBeenCalledWith(false);
+    expect(openFile).toHaveBeenCalledWith(MOCK_FILE);
+  });
+
+  it("logs to console.error when openFile rejects", async () => {
+    const getFileByPath = vi.fn(() => MOCK_FILE);
+    const vault = { getFileByPath } as unknown as Vault;
+
+    const consoleError = vi.fn();
+    vi.spyOn(console, "error").mockImplementation(consoleError);
+
+    const openFile = vi.fn().mockRejectedValue(new Error("fail"));
+    const getLeaf = vi.fn(() => ({ openFile }) as unknown as WorkspaceLeaf);
+    const workspace = { getLeaf } as unknown as Workspace;
+    const app = { vault, workspace } as unknown as App;
+    const context = { app } as unknown as PluginContext;
+    const addon = new VaultFileLinksAddon(context);
+
+    let capturedProvider: ILinkProvider;
+    const terminal = {
+      registerLinkProvider: vi.fn((p: ILinkProvider) => {
+        capturedProvider = p;
+        return { dispose: vi.fn() };
+      }),
+      buffer: { active: { getLine: vi.fn() } },
+      element: document.createElement("div"),
+    } as unknown as Terminal;
+    addon.activate(terminal);
+
+    const line = { translateToString: vi.fn(() => "(test.md)") };
+    terminal.buffer.active.getLine.mockReturnValue(line);
+    let result: ILink[] | undefined;
+    capturedProvider?.provideLinks(1, (links) => {
+      result = links;
+    });
+
+    result?.[0]?.activate({} as MouseEvent, "test.md");
+
+    await Promise.resolve();
+    expect(consoleError).toHaveBeenCalled();
+  });
+
+  // --- Disposal ---
+
+  it("dispose() disposes the registered link provider", () => {
+    const disposer = { dispose: vi.fn() };
+    const registerLinkProvider = vi.fn(() => disposer);
+    const terminal = {
+      registerLinkProvider,
+      buffer: { active: { getLine: vi.fn() } },
+      element: document.createElement("div"),
+    } as unknown as Terminal;
+
+    const getFileByPath = vi.fn();
+    const vault = { getFileByPath } as unknown as Vault;
+    const app = { vault, workspace: {} as Workspace } as unknown as App;
+    const context = { app } as unknown as PluginContext;
+    const addon = new VaultFileLinksAddon(context);
+    addon.activate(terminal);
+
+    addon.dispose();
+    expect(disposer.dispose).toHaveBeenCalled();
+  });
+
+  // --- Link range x-coordinates ---
+
+  it("computes correct x-range for link at line start", () => {
+    const { provideLinks } = createBed();
+    const links = provideLinks("(file.md)");
+    expect(links).toHaveLength(1);
+    // `(` is column 1, `f` starts at column 2.
+    expect(links?.[0]?.range.start.x).toBe(2);
+    // `(` + `file.md` = 8 visual columns (all ASCII).
+    expect(links?.[0]?.range.end.x).toBe(8);
+  });
+
+  it("computes correct x-range for link after ASCII text", () => {
+    const { provideLinks } = createBed();
+    const links = provideLinks("see (file.md) here");
+    expect(links).toHaveLength(1);
+    // `see ` is 4 columns, `(` is column 5, `f` starts at column 6.
+    expect(links?.[0]?.range.start.x).toBe(6);
+    // `see (file.md` = 12 visual columns (all ASCII).
+    expect(links?.[0]?.range.end.x).toBe(12);
+  });
+
+  it("accounts for double-width characters in x-range", () => {
+    const { provideLinks } = createBed();
+    const links = provideLinks("中文(content.md)");
+    expect(links).toHaveLength(1);
+    // `中` = 2 columns, `文` = 2 columns, `(` = 1 column → `f` at column 6.
+    expect(links?.[0]?.range.start.x).toBe(6);
+    // `content.md` = 10 chars, all ASCII, adds 10 columns past `(`.
+    expect(links?.[0]?.range.end.x).toBe(15);
+  });
+
+  it("x-range end minus start plus one equals path visual length", () => {
+    const { provideLinks } = createBed();
+    const links = provideLinks("(abc.md)");
+    expect(links).toHaveLength(1);
+    // "abc.md" is 6 ASCII chars, each 1 column wide.
+    expect(
+      (links?.[0]?.range.end.x ?? 0) - (links?.[0]?.range.start.x ?? 0) + 1,
+    ).toBe(6);
   });
 });

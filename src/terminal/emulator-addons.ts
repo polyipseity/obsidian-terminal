@@ -11,7 +11,8 @@ import {
 } from "@polyipseity/obsidian-plugin-library";
 import type { CanvasAddon } from "@xterm/addon-canvas";
 import type { WebglAddon } from "@xterm/addon-webgl";
-import type { ITerminalAddon, ITheme, Terminal } from "@xterm/xterm";
+import type { ILink, ITerminalAddon, ITheme, Terminal } from "@xterm/xterm";
+import { eastAsianWidth } from "get-east-asian-width";
 import { constant, isUndefined } from "lodash-es";
 import { around } from "monkey-around";
 import { noop } from "ts-essentials";
@@ -1056,5 +1057,168 @@ export class SynchronizedOutputScrollAddon implements ITerminalAddon {
 
   public dispose(): void {
     this.#disposer.call();
+  }
+}
+
+// Detects vault-relative .md file paths in the terminal and opens them in
+// Obsidian's viewer on click, instead of the system default application.
+//
+// Supports two path formats that appear in terminal output:
+//   1. Parenthesized (may contain spaces): (wiki/goals/My File.md)
+//   2. Bare paths (no spaces):             wiki/some/file.md
+export class VaultFileLinksAddon implements ITerminalAddon {
+  readonly #disposer = new Functions({ async: false, settled: true });
+
+  // Parenthesized paths: (path/to/file.md) — spaces inside are allowed
+  static readonly #PAREN_REGEX = /\(([^)\n]+\.md)\)/g;
+
+  // Bare space-free paths: path/to/file.md
+  static readonly #BARE_REGEX =
+    /(?:^|[\s"'])([^\s"'()[\]{}<>|\\:]+\.md)(?=[\s"'()[\]{}<>|\\:,;]|$)/gm;
+
+  public constructor(protected readonly context: PluginContext) {}
+
+  public activate(terminal: Terminal): void {
+    const {
+      context: { app },
+    } = this;
+
+    const disposable = terminal.registerLinkProvider({
+      provideLinks: (
+        bufferLineNumber: number,
+        callback: (links: ILink[] | undefined) => void,
+      ): void => {
+        const line = terminal.buffer.active.getLine(bufferLineNumber - 1);
+        if (!line) {
+          callback([]);
+          return;
+        }
+
+        const lineText = line.translateToString(true);
+        const { links: parenLinks, ranges: parenRanges } =
+          VaultFileLinksAddon.#processParenLinks(
+            lineText,
+            bufferLineNumber,
+            app,
+            terminal,
+          );
+        const bareLinks = VaultFileLinksAddon.#processBareLinks(
+          lineText,
+          bufferLineNumber,
+          app,
+          terminal,
+          parenRanges,
+        );
+        callback([...parenLinks, ...bareLinks]);
+      },
+    });
+
+    this.#disposer.push(() => {
+      disposable.dispose();
+    });
+  }
+
+  public dispose(): void {
+    this.#disposer.call();
+  }
+
+  /** Converts a string character index to a 0-based visual terminal column,
+   * counting double-width (CJK and ambiguous-width) characters as 2 columns. */
+  static visualColumn(text: string, charIndex: number): number {
+    let col = 0;
+    for (let i = 0; i < charIndex && i < text.length; ) {
+      const cp = text.codePointAt(i) ?? 0;
+      col += eastAsianWidth(cp, { ambiguousAsWide: true });
+      i += cp > 0xffff ? 2 : 1;
+    }
+    return col;
+  }
+
+  static makeLink(
+    lineText: string,
+    filePath: string,
+    textStart: number,
+    bufferLineNumber: number,
+    app: PluginContext["app"],
+    terminal: Terminal,
+  ): ILink | null {
+    const file = app.vault.getFileByPath(filePath);
+    if (!file) return null;
+    const startX = this.visualColumn(lineText, textStart) + 1;
+    const endX = this.visualColumn(lineText, textStart + filePath.length);
+    return {
+      range: {
+        end: { x: endX, y: bufferLineNumber },
+        start: { x: startX, y: bufferLineNumber },
+      },
+      text: filePath,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      activate(_event: MouseEvent, _text: string): void {
+        app.workspace
+          .getLeaf(false)
+          .openFile(file)
+          .catch((error: unknown) => {
+            activeSelf(terminal.element).console.error(error);
+          });
+      },
+    };
+  }
+
+  static #processParenLinks(
+    lineText: string,
+    bufferLineNumber: number,
+    app: PluginContext["app"],
+    terminal: Terminal,
+  ): {
+    links: readonly ILink[];
+    ranges: readonly { readonly start: number; readonly end: number }[];
+  } {
+    const links: ILink[] = [];
+    const ranges: { readonly start: number; readonly end: number }[] = [];
+    for (const match of lineText.matchAll(this.#PAREN_REGEX)) {
+      if (!match[1]) continue;
+      const link = this.makeLink(
+        lineText,
+        match[1],
+        match.index + 1,
+        bufferLineNumber,
+        app,
+        terminal,
+      );
+      if (link) links.push(link);
+      ranges.push({
+        start: match.index + 1,
+        end: match.index + 1 + match[1].length,
+      });
+    }
+    return { links, ranges };
+  }
+
+  static #processBareLinks(
+    lineText: string,
+    bufferLineNumber: number,
+    app: PluginContext["app"],
+    terminal: Terminal,
+    parenRanges: readonly { readonly start: number; readonly end: number }[],
+  ): readonly ILink[] {
+    const links: ILink[] = [];
+    for (const match of lineText.matchAll(this.#BARE_REGEX)) {
+      if (!match[1]) continue;
+      const prefixLen = match[0].length - match[1].length;
+      const bareStart = match.index + prefixLen;
+      const bareEnd = bareStart + match[1].length;
+      if (parenRanges.some((r) => bareStart >= r.start && bareEnd <= r.end))
+        continue;
+      const link = this.makeLink(
+        lineText,
+        match[1],
+        bareStart,
+        bufferLineNumber,
+        app,
+        terminal,
+      );
+      if (link) links.push(link);
+    }
+    return links;
   }
 }
