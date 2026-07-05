@@ -382,7 +382,7 @@
       "nothing": "无操作",
       "paste": "粘贴"
     },
-    "show-terminal-tab-prefix": "Show $t(generic.terminal) tab prefix",
+    "show-terminal-tab-prefix": "显示$t(generic.terminal)标签页前缀",
     "terminal-options": "$t(generic.terminal-option_other, capitalize)",
     "terminal-options-description": "除非特定$t(generic.profile)明确覆盖它们，否则它们会被浅合并到每个$t(generic.profile)中。",
     "terminal-options-edit": "$t(generic.edit, capitalize)"
