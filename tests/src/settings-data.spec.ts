@@ -11,7 +11,7 @@ describe("src/settings-data.ts", () => {
     expect(Settings.DEFAULT).toHaveProperty("openChangelogOnUpdate");
     expect(typeof Settings.DEFAULT.openChangelogOnUpdate).toBe("boolean");
     expect(Settings.DEFAULT).toHaveProperty("showTerminalTabPrefix");
-    expect(Settings.DEFAULT.showTerminalTabPrefix).toBe(true);
+    expect(Settings.DEFAULT.showTerminalTabPrefix).toBe(false);
     expect(Settings.DEFAULT).toHaveProperty("terminalOptions");
     expect(typeof Settings.DEFAULT.terminalOptions).toBe("object");
     // should at least include the documentOverride property from the preset
@@ -160,7 +160,7 @@ describe("src/settings-data.ts", () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       showTerminalTabPrefix: "not-a-boolean" as any,
     });
-    expect(bad.value.showTerminalTabPrefix).toBe(true);
+    expect(bad.value.showTerminalTabPrefix).toBe(false);
   });
 
   describe("Settings.Profile.defaultEntryOfType", () => {

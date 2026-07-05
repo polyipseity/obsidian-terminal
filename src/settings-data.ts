@@ -87,8 +87,8 @@ export interface Settings extends PluginContext.Settings {
   readonly pinNewInstance: boolean;
 
   readonly openChangelogOnUpdate: boolean;
-  readonly showTerminalTabPrefix: boolean;
   readonly hideStatusBar: Settings.HideStatusBarOption;
+  readonly showTerminalTabPrefix: boolean;
 
   readonly exposeInternalModules: boolean;
   readonly interceptKeysWhenFocused: boolean;
@@ -264,7 +264,7 @@ export namespace Settings {
     newInstanceBehavior: "newHorizontalSplit",
     noticeTimeout: 5,
     openChangelogOnUpdate: true,
-    showTerminalTabPrefix: true,
+    showTerminalTabPrefix: false,
     pinNewInstance: true,
     preferredRenderer: "webgl",
     profiles: Object.fromEntries(
@@ -1551,6 +1551,9 @@ export namespace Settings {
         "hideStatusBar",
         HIDE_STATUS_BAR_OPTIONS,
       ),
+      showTerminalTabPrefix: fixTyped(DEFAULT, unc, "showTerminalTabPrefix", [
+        "boolean",
+      ]),
       interceptKeysWhenFocused: fixTyped(
         DEFAULT,
         unc,
@@ -1580,9 +1583,6 @@ export namespace Settings {
       ),
       noticeTimeout: fixTyped(DEFAULT, unc, "noticeTimeout", ["number"]),
       openChangelogOnUpdate: fixTyped(DEFAULT, unc, "openChangelogOnUpdate", [
-        "boolean",
-      ]),
-      showTerminalTabPrefix: fixTyped(DEFAULT, unc, "showTerminalTabPrefix", [
         "boolean",
       ]),
       pinNewInstance: fixTyped(DEFAULT, unc, "pinNewInstance", ["boolean"]),
