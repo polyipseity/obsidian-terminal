@@ -1,3 +1,4 @@
+import { eastAsianWidth } from "get-east-asian-width";
 import {
   Functions,
   type PluginContext,
@@ -1159,40 +1160,8 @@ function visualColumn(text: string, charIndex: number): number {
   let col = 0;
   for (let i = 0; i < charIndex && i < text.length; ) {
     const cp = text.codePointAt(i) ?? 0;
-    col += isCjkDoubleWidth(cp) ? 2 : 1;
+    col += eastAsianWidth(cp, { ambiguousAsWide: true });
     i += cp > 0xffff ? 2 : 1;
   }
   return col;
-}
-
-// Best-effort East Asian Width classification for terminal column calculation.
-// Covers CJK, fullwidth forms, Hangul, wide emoji, and SMP ranges with
-// Unicode East Asian Width property W or F. Not exhaustive — terminals vary
-// in how they render certain characters (especially emoji).
-function isCjkDoubleWidth(cp: number): boolean {
-  return (
-    (cp >= 0x1100 && cp <= 0x115f) || // Hangul Jamo
-    cp === 0x2329 ||
-    cp === 0x232a ||
-    (cp >= 0x2e80 && cp <= 0x303e) || // CJK Radicals Supplement
-    (cp >= 0x3040 && cp <= 0x33ff) || // Japanese kana + CJK compat
-    (cp >= 0x3400 && cp <= 0x4dbf) || // CJK Extension A
-    (cp >= 0x4e00 && cp <= 0xa4cf) || // CJK Unified + Yi
-    (cp >= 0xa960 && cp <= 0xa97f) || // Hangul Jamo Extended-A
-    (cp >= 0xac00 && cp <= 0xd7af) || // Hangul Syllables
-    (cp >= 0xd7b0 && cp <= 0xd7ff) || // Hangul Jamo Extended-B
-    (cp >= 0xf900 && cp <= 0xfaff) || // CJK Compatibility Ideographs
-    (cp >= 0xfe10 && cp <= 0xfe19) || // Vertical Forms
-    (cp >= 0xfe30 && cp <= 0xfe6f) || // CJK Compatibility Forms
-    (cp >= 0xff00 && cp <= 0xff60) || // Fullwidth Latin + Halfwidth Katakana
-    (cp >= 0xffe0 && cp <= 0xffe6) || // Fullwidth Signs
-    (cp >= 0x1b000 && cp <= 0x1b77f) || // Kana Supplement
-    (cp >= 0x1f300 && cp <= 0x1f9ff) || // Misc Symbols & Pictographs
-    (cp >= 0x1fa00 && cp <= 0x1fa6f) || // Chess Symbols
-    (cp >= 0x1fa70 && cp <= 0x1faff) || // Symbols and Pictographs Extended-A
-    (cp >= 0x20000 && cp <= 0x2a6df) || // CJK Extension B
-    (cp >= 0x2a700 && cp <= 0x2ceaf) || // CJK Extension C/D/E
-    (cp >= 0x2ceb0 && cp <= 0x2ebef) || // CJK Extension F
-    (cp >= 0x30000 && cp <= 0x3134f) // CJK Extension G
-  );
 }
