@@ -1126,7 +1126,7 @@ export class VaultFileLinksAddon implements ITerminalAddon {
         for (const match of lineText.matchAll(
           VaultFileLinksAddon.#PAREN_REGEX,
         )) {
-          if (match[1] !== undefined && match.index !== undefined) {
+          if (match[1] !== undefined) {
             addLink(match[1], match.index + 1); // +1 skips the opening `(`
           }
         }
@@ -1134,7 +1134,7 @@ export class VaultFileLinksAddon implements ITerminalAddon {
         for (const match of lineText.matchAll(
           VaultFileLinksAddon.#BARE_REGEX,
         )) {
-          if (match[1] !== undefined && match.index !== undefined) {
+          if (match[1] !== undefined) {
             const prefixLen = match[0].length - match[1].length;
             addLink(match[1], match.index + prefixLen);
           }
@@ -1155,7 +1155,7 @@ export class VaultFileLinksAddon implements ITerminalAddon {
 }
 
 // Converts a string character index to a 0-based visual terminal column,
-// counting double-width CJK characters as 2 columns.
+// counting double-width (CJK and ambiguous-width) characters as 2 columns.
 function visualColumn(text: string, charIndex: number): number {
   let col = 0;
   for (let i = 0; i < charIndex && i < text.length; ) {
