@@ -1165,6 +1165,10 @@ function visualColumn(text: string, charIndex: number): number {
   return col;
 }
 
+// Best-effort East Asian Width classification for terminal column calculation.
+// Covers CJK, fullwidth forms, Hangul, wide emoji, and SMP ranges with
+// Unicode East Asian Width property W or F. Not exhaustive — terminals vary
+// in how they render certain characters (especially emoji).
 function isCjkDoubleWidth(cp: number): boolean {
   return (
     (cp >= 0x1100 && cp <= 0x115f) || // Hangul Jamo
@@ -1184,6 +1188,8 @@ function isCjkDoubleWidth(cp: number): boolean {
     (cp >= 0xffe0 && cp <= 0xffe6) || // Fullwidth Signs
     (cp >= 0x1b000 && cp <= 0x1b77f) || // Kana Supplement
     (cp >= 0x1f300 && cp <= 0x1f9ff) || // Misc Symbols & Pictographs
+    (cp >= 0x1fa00 && cp <= 0x1fa6f) || // Chess Symbols
+    (cp >= 0x1fa70 && cp <= 0x1faff) || // Symbols and Pictographs Extended-A
     (cp >= 0x20000 && cp <= 0x2a6df) || // CJK Extension B
     (cp >= 0x2a700 && cp <= 0x2ceaf) || // CJK Extension C/D/E
     (cp >= 0x2ceb0 && cp <= 0x2ebef) || // CJK Extension F
