@@ -664,7 +664,7 @@ describe("VaultFileLinksAddon", () => {
   it("ignores parenthesized text without .md extension", () => {
     const { provideLinks } = createBed();
     const links = provideLinks("(test.txt)");
-    expect(links).toBeUndefined();
+    expect(links).toHaveLength(0);
   });
 
   // --- Bare links ---
@@ -721,16 +721,16 @@ describe("VaultFileLinksAddon", () => {
 
   // --- No-match cases ---
 
-  it("returns undefined for a line with no .md links", () => {
+  it("returns empty array for a line with no .md links", () => {
     const { provideLinks } = createBed();
     const links = provideLinks("Just some plain text");
-    expect(links).toBeUndefined();
+    expect(links).toHaveLength(0);
   });
 
-  it("returns undefined for empty line", () => {
+  it("returns empty array for empty line", () => {
     const { provideLinks } = createBed();
     const links = provideLinks("");
-    expect(links).toBeUndefined();
+    expect(links).toHaveLength(0);
   });
 
   // --- File resolution ---
@@ -746,7 +746,7 @@ describe("VaultFileLinksAddon", () => {
   it("omits links whose files do not exist", () => {
     const { provideLinks } = createBed(false);
     const links = provideLinks("(test.md)");
-    expect(links).toBeUndefined();
+    expect(links).toHaveLength(0);
   });
 
   // --- Activation ---
