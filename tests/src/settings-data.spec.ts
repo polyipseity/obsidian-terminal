@@ -10,6 +10,8 @@ describe("src/settings-data.ts", () => {
     expect(typeof Settings.DEFAULT.noticeTimeout).toBe("number");
     expect(Settings.DEFAULT).toHaveProperty("openChangelogOnUpdate");
     expect(typeof Settings.DEFAULT.openChangelogOnUpdate).toBe("boolean");
+    expect(Settings.DEFAULT).toHaveProperty("hideTerminalTabPrefix");
+    expect(Settings.DEFAULT.hideTerminalTabPrefix).toBe(false);
     expect(Settings.DEFAULT).toHaveProperty("terminalOptions");
     expect(typeof Settings.DEFAULT.terminalOptions).toBe("object");
     // should at least include the documentOverride property from the preset
@@ -143,6 +145,22 @@ describe("src/settings-data.ts", () => {
       defaultProfile: 123 as any,
     });
     expect(alsoBad.value.defaultProfile).toBe(null);
+  });
+
+  it("Settings.fix preserves valid hideTerminalTabPrefix", () => {
+    const enabled = Settings.fix({ hideTerminalTabPrefix: true });
+    expect(enabled.value.hideTerminalTabPrefix).toBe(true);
+
+    const disabled = Settings.fix({ hideTerminalTabPrefix: false });
+    expect(disabled.value.hideTerminalTabPrefix).toBe(false);
+  });
+
+  it("Settings.fix coerces bad hideTerminalTabPrefix to default", () => {
+    const bad = Settings.fix({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      hideTerminalTabPrefix: "not-a-boolean" as any,
+    });
+    expect(bad.value.hideTerminalTabPrefix).toBe(false);
   });
 
   describe("Settings.Profile.defaultEntryOfType", () => {
