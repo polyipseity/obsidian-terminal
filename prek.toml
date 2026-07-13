@@ -77,6 +77,11 @@ rev = "0470f7c8a653e950f7cc5a653204ceb3fde4c02a"
 hooks = [{ id = "ruff-check", args = ["--fix"] }, { id = "ruff-format" }]
 
 [[repos]]
+repo = "https://github.com/astral-sh/ty-pre-commit.git"
+rev = "e20b8a0be260b57e3b30f632a3ee8ade65b3dc5d"
+hooks = [{ id = "ty" }]
+
+[[repos]]
 repo = "local"
 hooks = [
   # Format code files with Prettier.
@@ -97,12 +102,6 @@ hooks = [
     "yaml",
     "graphql",
   ] },
-  # Type checkers need global context, not individual files
-  { id = "ty-check", name = "ty check", entry = "uv run --locked ty check", language = "system", types_or = [
-    "cython",
-    "pyi",
-    "python",
-  ], pass_filenames = false, always_run = true },
   # Run all tests, not just those with changed files
   { id = "test-bun", name = "test with Bun", entry = "bun run test", language = "system", pass_filenames = false, always_run = true, stages = [
     "pre-push",
