@@ -82,6 +82,8 @@ exclude = [
 ]
 
 [tool.uv]
+add-bounds = "exact"
+exclude-newer = "P5D"
 default-groups = ["dev", "uvloop"]
 package = false
 required-version = ">=0.11.0"
