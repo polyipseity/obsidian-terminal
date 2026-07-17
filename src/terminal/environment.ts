@@ -113,18 +113,20 @@ export function expandWindowsVars(
   return path.replace(/%([^%]+)%/g, (_, key: string) => env[key] ?? "");
 }
 
-/** Merges `system` PATH entries into `current`, skipping duplicates.
+/** Merges `additional` PATH entries into `base`, skipping duplicates.
+ *  The `base` entries retain their original order and priority.
+ *  Entries from `additional` that aren't already in `base` are appended.
  *  When `caseInsensitive` is `true` (Windows), comparison folds to lower-case. */
 export function mergePathEntries(
-  current: readonly string[],
-  system: readonly string[],
+  base: readonly string[],
+  additional: readonly string[],
   caseInsensitive: boolean,
 ): string[] {
-  const entries = [...current];
+  const entries = [...base];
   const entrySet = caseInsensitive
     ? new Set(entries.map((e) => e.toLowerCase()))
     : new Set(entries);
-  for (const entry of system) {
+  for (const entry of additional) {
     const check = caseInsensitive ? entry.toLowerCase() : entry;
     if (!entrySet.has(check)) {
       entries.push(entry);
@@ -134,11 +136,14 @@ export function mergePathEntries(
   return entries;
 }
 
-/** Lazily resolves the system PATH on first call.
+/** Lazily resolves the canonical system PATH on first call.
  *
  *  GUI apps (Obsidian via Finder / Start Menu) often inherit a minimal PATH
- *  that is missing entries the user expects in a terminal.  We query the
- *  canonical system PATH once and merge it into the PTY environment.
+ *  that is missing entries the user expects in a terminal, or has the wrong
+ *  entry order.  We query the canonical system PATH once and use it as the
+ *  base for the PTY environment, appending any unique inherited entries.
+ *  This ensures the canonical ordering (e.g. /usr/local/bin before /usr/bin
+ *  on macOS) is respected.
  *
  *  - macOS:   /usr/libexec/path_helper -s  (reads /etc/paths + /etc/paths.d/*)
  *  - Linux:   reads /etc/environment (the PAM default)
@@ -297,8 +302,10 @@ async function sanitizeEnv(
     }
     env[key] = value;
   }
-  // Merge the canonical system PATH so tools installed in standard locations
-  // are reachable even when Obsidian was launched with a minimal environment.
+  // Use the canonical system PATH as the base, then append any unique
+  // inherited entries.  This ensures correct ordering (/usr/local/bin
+  // before /usr/bin on macOS) is preserved from path_helper, rather than
+  // letting the GUI app's accidental launch-time order take priority.
   const isWin = Platform.CURRENT === "win32";
   const sep = isWin ? ";" : ":";
   const pathKey = isWin
@@ -307,7 +314,7 @@ async function sanitizeEnv(
   const currentPath = env[pathKey] ?? "";
   const entries = currentPath.split(sep).filter(Boolean);
   const systemEntries = await getSystemPath();
-  const merged = mergePathEntries(entries, systemEntries, isWin);
+  const merged = mergePathEntries(systemEntries, entries, isWin);
   if (merged.length > entries.length) {
     env[pathKey] = merged.join(sep);
   }
