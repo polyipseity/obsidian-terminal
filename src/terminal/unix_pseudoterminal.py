@@ -29,6 +29,12 @@ if TYPE_CHECKING:
 else:
 
     def override(func):
+        """No-op fallback for the ``@override`` decorator at runtime.
+
+        The real ``typing_extensions.override`` is a static-only marker; this
+        pass-through is functionally identical when type checkers are not
+        running.
+        """
         return func
 
 
