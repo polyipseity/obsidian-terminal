@@ -1,5 +1,17 @@
 # obsidian-terminal <!-- markdownlint-disable-file MD024 -->
 
+## 3.27.0
+
+### Minor Changes
+
+- a4cda3b: Add global right-click action setting to Inputs section. Fixes [GH#174](https://github.com/polyipseity/obsidian-terminal/issues/174).
+- f7aa920: Add setting to show the "Terminal:" prefix in tab titles. When disabled, terminal tabs show only the session name (e.g., "bash") instead of "Terminal: bash". Defaults to disabled for brevity. ([GH#170](https://github.com/polyipseity/obsidian-terminal/pull/170) by [@soehme](https://github.com/soehme))
+- 3d47223: Add clickable vault-relative Markdown file links in terminal output. `.md` paths (parenthesized or bare) open in Obsidian's built-in Markdown viewer on click instead of the system default. Uses `get-east-asian-width` for CJK column range calculation in xterm.js. ([GH#171](https://github.com/polyipseity/obsidian-terminal/pull/171) by [@jaden2dev](https://github.com/jaden2dev))
+
+### Patch Changes
+
+- e105d6a: Fix PATH merge order: system PATH entries from `path_helper` (macOS), `/etc/environment` (Linux), and registry (Windows) now take priority over inherited GUI-launch entries. This fixes a common issue on macOS where `/usr/bin/python3` (an xcrun shim) shadowed real Python installations in `/usr/local/bin` or other system-defined directories.
+
 ## 3.26.0
 
 ### Minor Changes
