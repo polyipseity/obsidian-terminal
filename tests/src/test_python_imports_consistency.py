@@ -5,15 +5,18 @@ Reads ``PYTHON_REQUIREMENTS`` from ``src/magic.ts``, walks all Python files in
 to a defined requirement.
 """
 
+from __future__ import annotations
+
 import ast
 import json
 import sys
-from collections.abc import Mapping, Set
+from collections.abc import Set
 from os import PathLike
 
 import pytest
 from anyio import Path
 from asyncstdlib.builtins import sorted as a_sorted
+from typing_extensions import override
 
 """Public API of this test module (empty)."""
 __all__ = ()
@@ -89,110 +92,152 @@ async def _read_python_requirements() -> Set[str]:
     return set(data.keys())
 
 
-def _collect_imports(tree: ast.AST) -> Set[str]:
-    """Return the set of top-level third-party package names imported in *tree*."""
-    imports = set[str]()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                imports.add(alias.name.split(".")[0])
-        elif isinstance(node, ast.ImportFrom):
-            if node.module is not None:
-                imports.add(node.module.split(".")[0])
-    return imports
+class ImportGuardAnalyzer(ast.NodeVisitor):
+    """AST visitor that classifies imports as guarded or unguarded in one pass.
 
+    Tracks the parent chain during traversal so each ``import`` or ``from
+    … import`` statement can determine whether it sits inside a recognised
+    guard block.
 
-def _catches_import_error(exception_type: ast.AST) -> bool:
-    """Return ``True`` when *exception_type* references ``ImportError``.
+    Guard patterns that suppress the "unguarded" classification:
 
-    Handles ``ast.Name`` (bare ``ImportError``), ``ast.Tuple`` (e.g.
-    ``(ValueError, ImportError)``), and ``ast.Attribute`` (e.g.
-    ``builtins.ImportError``).
+    ==============================  =============================================
+    Pattern                         Example
+    ==============================  =============================================
+    ``try/except ImportError``      ``try:\n    import foo\nexcept ImportError:\n    ...``
+    ``try/except ModuleNotFoundError``  ``try:\n    import foo\nexcept ModuleNotFoundError:\n    ...``
+    Bare ``except:``                ``try:\n    import foo\nexcept:\n    ...``
+    ``if TYPE_CHECKING:``           ``if TYPE_CHECKING:\n    import foo``
+    ``if sys.platform ==/!=``       ``if sys.platform == \"win32\":\n    import foo``
+    ==============================  =============================================
     """
-    if isinstance(exception_type, ast.Name):
-        return exception_type.id == "ImportError"
-    if isinstance(exception_type, ast.Tuple):
-        return any(
-            isinstance(el, ast.Name) and el.id == "ImportError"
-            for el in exception_type.elts
-        )
-    if isinstance(exception_type, ast.Attribute):
-        return exception_type.attr == "ImportError"
-    return False
 
-
-def _is_platform_guard(node: ast.AST) -> bool:
-    """Return ``True`` when *node* is an ``if sys.platform ==/!= \"...\":`` guard.
-
-    Recognizes both ``==`` and ``!=`` comparisons against ``sys.platform`` with
-    any string literal (``\"win32\"``, ``\"linux\"``, ``\"darwin\"``, etc.). These
-    are platform-specific guards: imports inside them are effectively conditional.
-    """
-    if not isinstance(node, ast.If):
-        return False
-    test = node.test
-    if not isinstance(test, ast.Compare):
-        return False
-    left = test.left
-    if not (
-        isinstance(left, ast.Attribute)
-        and left.attr == "platform"
-        and isinstance(left.value, ast.Name)
-        and left.value.id == "sys"
-    ):
-        return False
-    # Any comparison (==, !=, in, not in) against sys.platform counts as a guard.
-    return any(
-        isinstance(comparator, ast.Constant) and isinstance(comparator.value, str)
-        for comparator in test.comparators
+    _IMPORT_ERROR_NAMES: frozenset[str] = frozenset(
+        {"ImportError", "ModuleNotFoundError"}
     )
 
+    def __init__(self) -> None:
+        """Initialise an empty analyzer with no parents and empty sets."""
+        self._parents: list[ast.AST] = []
+        self.unguarded: set[str] = set()
+        self.guarded: set[str] = set()
 
-def _get_guarded_imports(tree: ast.AST) -> Set[str]:
-    """Collect imports inside recognised guard blocks.
+    @override
+    def generic_visit(self, node: ast.AST) -> None:
+        """Track parent chain and recurse."""
+        self._parents.append(node)
+        super().generic_visit(node)
+        self._parents.pop()
 
-    The following patterns are considered guards:
-    - ``try`` / ``except ImportError`` — the import may fail gracefully.
-    - ``if TYPE_CHECKING:`` — the import is only needed for static analysis.
-    - ``if sys.platform ==/!= \"...\":`` — platform-specific imports that do not
-      apply to all platforms.
-    """
-    guarded = set[str]()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Try):
-            for handler in node.handlers:
-                if handler.type is not None and _catches_import_error(handler.type):
-                    guarded.update(_collect_imports(node))
-                    break
-        elif isinstance(node, ast.If):
-            if (
-                isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING"
-            ) or _is_platform_guard(node):
-                guarded.update(_collect_imports(node))
-    return guarded
+    # -- Guard detection ---------------------------------------------------
+
+    def _is_in_guard(self) -> bool:
+        """Return ``True`` when the current position is inside a recognised guard."""
+        for parent in reversed(self._parents):
+            if isinstance(parent, ast.Try):
+                if any(
+                    handler.type is None or self._catches_import_error(handler.type)
+                    for handler in parent.handlers
+                ):
+                    return True
+            elif isinstance(parent, ast.If):
+                if self._is_type_checking_test(parent) or self._is_platform_test(
+                    parent
+                ):
+                    return True
+        return False
+
+    @classmethod
+    def _catches_import_error(cls, exception_type: ast.expr | None) -> bool:
+        """Return ``True`` when *exception_type* names an import-related error.
+
+        Handles ``ast.Name`` (bare ``ImportError`` / ``ModuleNotFoundError``),
+        ``ast.Tuple`` (e.g. ``(ValueError, ImportError)``), ``ast.Attribute``
+        (e.g. ``builtins.ImportError``), and ``None`` (bare ``except:``).
+        """
+        if exception_type is None:
+            return True  # bare except:
+        if isinstance(exception_type, ast.Name):
+            return exception_type.id in cls._IMPORT_ERROR_NAMES
+        if isinstance(exception_type, ast.Tuple):
+            return any(
+                isinstance(el, ast.Name) and el.id in cls._IMPORT_ERROR_NAMES
+                for el in exception_type.elts
+            )
+        if isinstance(exception_type, ast.Attribute):
+            return exception_type.attr in cls._IMPORT_ERROR_NAMES
+        return False
+
+    @staticmethod
+    def _is_type_checking_test(node: ast.If) -> bool:
+        """Return ``True`` when *node* is an ``if TYPE_CHECKING:`` guard."""
+        return isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING"
+
+    @staticmethod
+    def _is_platform_test(node: ast.If) -> bool:
+        """Return ``True`` when *node* tests ``sys.platform``."""
+        if not isinstance(node.test, ast.Compare):
+            return False
+        return ImportGuardAnalyzer._is_platform_left(node.test.left)
+
+    @staticmethod
+    def _is_platform_left(node: ast.expr) -> bool:
+        """Return ``True`` when *node* is ``sys.platform`` (attribute chain)."""
+        return (
+            isinstance(node, ast.Attribute)
+            and node.attr == "platform"
+            and isinstance(node.value, ast.Name)
+            and node.value.id == "sys"
+        )
+
+    # -- Import extraction -------------------------------------------------
+
+    @staticmethod
+    def _extract_import_names(
+        node: ast.Import | ast.ImportFrom,
+    ) -> set[str]:
+        """Extract top-level package names from an import statement."""
+        if isinstance(node, ast.Import):
+            return {alias.name.split(".")[0] for alias in node.names}
+        if isinstance(node, ast.ImportFrom) and node.module is not None:
+            return {node.module.split(".")[0]}
+        return set()
+
+    # -- Visitors ----------------------------------------------------------
+
+    @override
+    def visit_Import(self, node: ast.Import) -> None:
+        """Classify a bare ``import`` statement."""
+        names = self._extract_import_names(node)
+        (self.unguarded if not self._is_in_guard() else self.guarded).update(names)
+
+    @override
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        """Classify a ``from … import`` statement."""
+        names = self._extract_import_names(node)
+        (self.unguarded if not self._is_in_guard() else self.guarded).update(names)
 
 
 async def _get_unconditional_third_party_imports(
     root: PathLike[str],
-) -> Mapping[PathLike[str], Set[str]]:
-    """Walk *root* recursively, returning unconditional third-party imports per file.
+) -> dict[PathLike[str], set[str]]:
+    """Walk *root*, returning unconditional third-party imports per file.
 
     For each ``.py`` file under *root*:
-      1. Collect all imports via AST.
-      2. Subtract imports guarded by ``try/except ImportError`` or
-         ``if TYPE_CHECKING:``.
-      3. Filter out stdlib modules (via the fallback set on 3.9).
-      4. Filter out intra-project modules.
+      1. Parse the file into an AST.
+      2. Run ``ImportGuardAnalyzer`` to separate guarded from unguarded imports.
+      3. Subtract stdlib and intra-project modules from the unguarded set.
     """
-    result = dict[PathLike[str], Set[str]]()
+    result: dict[PathLike[str], set[str]] = {}
     for py_file in await a_sorted(Path(root).rglob("*.py")):
-        tree = ast.parse(await py_file.read_text("utf-8"), filename=str(py_file))
-        all_imports = _collect_imports(tree)
-        guarded = _get_guarded_imports(tree)
-        unguarded = all_imports - guarded
-        third_party = unguarded - _STDLIB_MODULE_NAMES - _INTRA_PROJECT_MODULES
-        if third_party:
-            result[py_file] = third_party
+        tree = ast.parse(await Path(py_file).read_text("utf-8"), filename=str(py_file))
+        analyzer = ImportGuardAnalyzer()
+        analyzer.visit(tree)
+        unguarded_third_party = (
+            analyzer.unguarded - _STDLIB_MODULE_NAMES - _INTRA_PROJECT_MODULES
+        )
+        if unguarded_third_party:
+            result[Path(py_file)] = unguarded_third_party
     return result
 
 
