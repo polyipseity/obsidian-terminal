@@ -6,7 +6,7 @@ to a defined requirement.
 """
 
 import ast
-import re
+import json
 import sys
 from collections.abc import Mapping, Set
 from os import PathLike
@@ -78,32 +78,15 @@ _INTRA_PROJECT_MODULES: Set[str] = frozenset({"get_package_version"})
 # ---------------------------------------------------------------------------
 
 
-async def _read_python_requirements_keys() -> Set[str]:
-    """Extract pip-package key names from ``PYTHON_REQUIREMENTS`` in ``src/magic.ts``.
+async def _read_python_requirements() -> Set[str]:
+    """Read pip-package names from ``src/python-requirements.json``.
 
-    Skips ``Python`` (version constraint, not a pip package). Returns a set of
-    requirement names that the project explicitly declares.
+    The JSON is the single source of truth for Python requirement names
+    and is consumed by both ``magic.ts`` and this test.
     """
-    path = Path(__file__).parents[2] / "src/magic.ts"
-    text = await path.read_text("utf-8")
-    match = re.search(
-        r"PYTHON_REQUIREMENTS\s*=\s*deepFreeze\(\{(.*?)\}\)",
-        text,
-        re.DOTALL,
-    )
-    if match is None:
-        raise AssertionError(
-            "Could not locate PYTHON_REQUIREMENTS block in src/magic.ts"
-        )
-    body = match.group(1)
-    keys = set[str]()
-    for line in body.splitlines():
-        line_match = re.match(r"^\s*(\w+)\s*:", line)
-        if line_match is not None:
-            key = line_match.group(1)
-            if key != "Python":
-                keys.add(key)
-    return keys
+    path = Path(__file__).parents[2] / "src" / "python-requirements.json"
+    data = json.loads(await path.read_text("utf-8"))
+    return set(data.keys())
 
 
 def _collect_imports(tree: ast.AST) -> Set[str]:
@@ -222,7 +205,7 @@ async def _get_unconditional_third_party_imports(
 async def test_python_requirements_consistency() -> None:
     """Every unconditional third-party Python import needs a ``PYTHON_REQUIREMENTS`` entry."""
     src_root = Path(__file__).parents[2] / "src"
-    requirements = await _read_python_requirements_keys()
+    requirements = await _read_python_requirements()
     third_party_imports = await _get_unconditional_third_party_imports(src_root)
 
     # Verify known-good cases first for readable failure messages.

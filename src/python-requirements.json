@@ -1,0 +1,5 @@
+{
+  "psutil": { "platforms": ["win32"], "version": "5.9.5" },
+  "pywinctl": { "platforms": ["win32"], "version": "0.0.50" },
+  "typing_extensions": { "platforms": ["win32"], "version": "4.7.1" }
+}

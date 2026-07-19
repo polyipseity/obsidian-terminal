@@ -1,5 +1,6 @@
 import { Platform, deepFreeze } from "@polyipseity/obsidian-plugin-library";
 import { SemVer } from "semver";
+import pythonRequirementsJson from "./python-requirements.json";
 
 export const CHECK_EXECUTABLE_WAIT = 5,
   DEFAULT_ENCODING = "utf-8",
@@ -18,10 +19,15 @@ export const CHECK_EXECUTABLE_WAIT = 5,
     // Minimum Python version (3.9 or above). Update README.md, dependabot.yml, magic.ts, pyproject.toml together.
 
     Python: { platforms: Platform.DESKTOP, version: new SemVer("3.9.0") },
-    psutil: { platforms: ["win32"], version: new SemVer("5.9.5") },
-    pywinctl: { platforms: ["win32"], version: new SemVer("0.0.50") },
-
-    typing_extensions: { platforms: ["win32"], version: new SemVer("4.7.1") },
+    ...Object.fromEntries(
+      Object.entries(pythonRequirementsJson).map(([name, data]) => [
+        name,
+        {
+          platforms: data.platforms,
+          version: new SemVer(data.version),
+        },
+      ]),
+    ),
   }) satisfies Readonly<
     Record<
       string,
