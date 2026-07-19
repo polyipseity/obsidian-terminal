@@ -22,8 +22,15 @@ from struct import pack
 from sys import exit, stdin, stdout
 from time import sleep
 from types import FrameType, TracebackType
+from typing import TYPE_CHECKING
 
-from typing_extensions import override
+if TYPE_CHECKING:
+    from typing_extensions import override
+else:
+
+    def override(func):
+        return func
+
 
 """Public API of this module."""
 __all__ = ("main",)
