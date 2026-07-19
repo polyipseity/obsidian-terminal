@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ast
 import json
+import pathlib
 import sys
 from collections.abc import Set
 from os import PathLike
@@ -76,6 +77,9 @@ _STDLIB_MODULE_NAMES: Set[str] = (
 """Module names that live in-tree under ``src/`` and are not pip packages."""
 _INTRA_PROJECT_MODULES: Set[str] = frozenset({"get_package_version"})
 
+"""Canonical root of ``src/``, resolved to an absolute path."""
+_SRC_ROOT: Path = Path(pathlib.Path(__file__).resolve(strict=True).parents[2] / "src")
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -87,7 +91,7 @@ async def _read_python_requirements() -> Set[str]:
     The JSON is the single source of truth for Python requirement names
     and is consumed by both ``magic.ts`` and this test.
     """
-    path = Path(__file__).parents[2] / "src" / "python-requirements.json"
+    path = _SRC_ROOT / "python-requirements.json"
     data = json.loads(await path.read_text("utf-8"))
     return set(data.keys())
 
@@ -249,7 +253,7 @@ async def _get_unconditional_third_party_imports(
 @pytest.mark.anyio
 async def test_python_requirements_consistency() -> None:
     """Every unconditional third-party Python import needs a ``PYTHON_REQUIREMENTS`` entry."""
-    src_root = Path(__file__).parents[2] / "src"
+    src_root = _SRC_ROOT
     requirements = await _read_python_requirements()
     third_party_imports = await _get_unconditional_third_party_imports(src_root)
 
@@ -265,7 +269,10 @@ async def test_python_requirements_consistency() -> None:
 
     failures = list[str]()
     for file_path, imports in sorted(third_party_imports.items()):
-        rel = Path(file_path).relative_to(src_root.parent)
+        try:
+            rel = Path(file_path).relative_to(_SRC_ROOT.parent)
+        except ValueError:
+            rel = file_path
         missing = sorted(imports - requirements)
         if missing:
             failures.append(
