@@ -5,11 +5,10 @@ Reads ``PYTHON_REQUIREMENTS`` from ``src/magic.ts``, walks all Python files in
 to a defined requirement.
 """
 
-from __future__ import annotations
-
 import ast
 import re
 import sys
+from collections.abc import Mapping, Set
 from pathlib import Path
 
 """Public API of this test module (empty)."""
@@ -23,7 +22,7 @@ __all__ = ()
 
 On Python 3.10+ this uses ``sys.stdlib_module_names``; on 3.9 it falls back to a
 curated set covering all modules imported across ``src/``."""
-_STDLIB_MODULE_NAMES: frozenset[str] = (
+_STDLIB_MODULE_NAMES: Set[str] = (
     sys.stdlib_module_names  # type: ignore[attr-defined]  # 3.10+
     if hasattr(sys, "stdlib_module_names")
     else frozenset(
@@ -68,14 +67,14 @@ _STDLIB_MODULE_NAMES: frozenset[str] = (
 )
 
 """Module names that live in-tree under ``src/`` and are not pip packages."""
-_INTRA_PROJECT_MODULES: frozenset[str] = frozenset({"get_package_version"})
+_INTRA_PROJECT_MODULES: Set[str] = frozenset({"get_package_version"})
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _read_python_requirements_keys() -> set[str]:
+def _read_python_requirements_keys() -> Set[str]:
     """Extract pip-package key names from ``PYTHON_REQUIREMENTS`` in ``src/magic.ts``.
 
     Skips ``Python`` (version constraint, not a pip package). Returns a set of
@@ -93,7 +92,7 @@ def _read_python_requirements_keys() -> set[str]:
             "Could not locate PYTHON_REQUIREMENTS block in src/magic.ts"
         )
     body = match.group(1)
-    keys: set[str] = set()
+    keys = set[str]()
     for line in body.splitlines():
         line_match = re.match(r"^\s*(\w+)\s*:", line)
         if line_match is not None:
@@ -103,9 +102,9 @@ def _read_python_requirements_keys() -> set[str]:
     return keys
 
 
-def _collect_imports(tree: ast.AST) -> set[str]:
+def _collect_imports(tree: ast.AST) -> Set[str]:
     """Return the set of top-level third-party package names imported in *tree*."""
-    imports: set[str] = set()
+    imports = set[str]()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
@@ -162,7 +161,7 @@ def _is_platform_guard(node: ast.AST) -> bool:
     )
 
 
-def _get_guarded_imports(tree: ast.AST) -> set[str]:
+def _get_guarded_imports(tree: ast.AST) -> Set[str]:
     """Collect imports inside recognised guard blocks.
 
     The following patterns are considered guards:
@@ -171,7 +170,7 @@ def _get_guarded_imports(tree: ast.AST) -> set[str]:
     - ``if sys.platform ==/!= \"...\":`` — platform-specific imports that do not
       apply to all platforms.
     """
-    guarded: set[str] = set()
+    guarded = set[str]()
     for node in ast.walk(tree):
         if isinstance(node, ast.Try):
             for handler in node.handlers:
@@ -188,7 +187,7 @@ def _get_guarded_imports(tree: ast.AST) -> set[str]:
 
 def _get_unconditional_third_party_imports(
     root: Path,
-) -> dict[Path, set[str]]:
+) -> Mapping[Path, Set[str]]:
     """Walk *root* recursively, returning unconditional third-party imports per file.
 
     For each ``.py`` file under *root*:
@@ -198,7 +197,7 @@ def _get_unconditional_third_party_imports(
       3. Filter out stdlib modules (via the fallback set on 3.9).
       4. Filter out intra-project modules.
     """
-    result: dict[Path, set[str]] = {}
+    result = dict[Path, Set[str]]()
     for py_file in sorted(root.rglob("*.py")):
         tree = ast.parse(py_file.read_text("utf-8"), filename=str(py_file))
         all_imports = _collect_imports(tree)
@@ -231,7 +230,7 @@ def test_python_requirements_consistency() -> None:
         "but missing from PYTHON_REQUIREMENTS"
     )
 
-    failures: list[str] = []
+    failures = list[str]()
     for file_path, imports in sorted(third_party_imports.items()):
         rel = file_path.relative_to(src_root.parent)
         missing = sorted(imports - requirements)
