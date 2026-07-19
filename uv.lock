@@ -61,6 +61,15 @@ wheels = [
 ]
 
 [[package]]
+name = "asyncstdlib"
+version = "3.14.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/66/7b76f2b48afc5c8b4648500a4ff9869f83528e3d601a19de51da18b5e8a5/asyncstdlib-3.14.0.tar.gz", hash = "sha256:f99396992a3bba7495d8cf6c832bfe8c8727f61213233d3569a5a9cbd1c04385", size = 51074, upload-time = "2026-03-20T21:06:46.025Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/93/50/463443651ddb0ba66c289d5649369099ab72b4665888b337ed25ea622550/asyncstdlib-3.14.0-py3-none-any.whl", hash = "sha256:cad90c590ce357da6e70c56f0e2ad9e9baaf146a8fc2ede189879da57eb8bd87", size = 44255, upload-time = "2026-03-20T21:06:45.033Z" },
+]
+
+[[package]]
 name = "attrs"
 version = "25.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -428,6 +437,7 @@ dependencies = [
     { name = "anyio" },
     { name = "asyncer", version = "0.0.14", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "asyncer", version = "0.0.17", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "asyncstdlib" },
     { name = "psutil" },
     { name = "pywinctl" },
     { name = "typing-extensions" },
@@ -460,6 +470,7 @@ uvloop = [
 requires-dist = [
     { name = "anyio", specifier = ">=3.6.0" },
     { name = "asyncer", specifier = ">=0.0.14" },
+    { name = "asyncstdlib", specifier = ">=3.14.0" },
     { name = "psutil", specifier = "==5.9.5" },
     { name = "pywinctl", specifier = "==0.0.50" },
     { name = "typing-extensions", specifier = ">=4.7.1" },

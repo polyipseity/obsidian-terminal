@@ -9,7 +9,11 @@ import ast
 import re
 import sys
 from collections.abc import Mapping, Set
-from pathlib import Path
+from os import PathLike
+
+import pytest
+from anyio import Path
+from asyncstdlib.builtins import sorted as a_sorted
 
 """Public API of this test module (empty)."""
 __all__ = ()
@@ -74,14 +78,14 @@ _INTRA_PROJECT_MODULES: Set[str] = frozenset({"get_package_version"})
 # ---------------------------------------------------------------------------
 
 
-def _read_python_requirements_keys() -> Set[str]:
+async def _read_python_requirements_keys() -> Set[str]:
     """Extract pip-package key names from ``PYTHON_REQUIREMENTS`` in ``src/magic.ts``.
 
     Skips ``Python`` (version constraint, not a pip package). Returns a set of
     requirement names that the project explicitly declares.
     """
     path = Path(__file__).parents[2] / "src/magic.ts"
-    text = path.read_text("utf-8")
+    text = await path.read_text("utf-8")
     match = re.search(
         r"PYTHON_REQUIREMENTS\s*=\s*deepFreeze\(\{(.*?)\}\)",
         text,
@@ -185,9 +189,9 @@ def _get_guarded_imports(tree: ast.AST) -> Set[str]:
     return guarded
 
 
-def _get_unconditional_third_party_imports(
-    root: Path,
-) -> Mapping[Path, Set[str]]:
+async def _get_unconditional_third_party_imports(
+    root: PathLike[str],
+) -> Mapping[PathLike[str], Set[str]]:
     """Walk *root* recursively, returning unconditional third-party imports per file.
 
     For each ``.py`` file under *root*:
@@ -197,9 +201,9 @@ def _get_unconditional_third_party_imports(
       3. Filter out stdlib modules (via the fallback set on 3.9).
       4. Filter out intra-project modules.
     """
-    result = dict[Path, Set[str]]()
-    for py_file in sorted(root.rglob("*.py")):
-        tree = ast.parse(py_file.read_text("utf-8"), filename=str(py_file))
+    result = dict[PathLike[str], Set[str]]()
+    for py_file in await a_sorted(Path(root).rglob("*.py")):
+        tree = ast.parse(await py_file.read_text("utf-8"), filename=str(py_file))
         all_imports = _collect_imports(tree)
         guarded = _get_guarded_imports(tree)
         unguarded = all_imports - guarded
@@ -214,11 +218,12 @@ def _get_unconditional_third_party_imports(
 # ---------------------------------------------------------------------------
 
 
-def test_python_requirements_consistency() -> None:
+@pytest.mark.anyio
+async def test_python_requirements_consistency() -> None:
     """Every unconditional third-party Python import needs a ``PYTHON_REQUIREMENTS`` entry."""
     src_root = Path(__file__).parents[2] / "src"
-    requirements = _read_python_requirements_keys()
-    third_party_imports = _get_unconditional_third_party_imports(src_root)
+    requirements = await _read_python_requirements_keys()
+    third_party_imports = await _get_unconditional_third_party_imports(src_root)
 
     # Verify known-good cases first for readable failure messages.
     assert "psutil" in requirements, (
@@ -232,7 +237,7 @@ def test_python_requirements_consistency() -> None:
 
     failures = list[str]()
     for file_path, imports in sorted(third_party_imports.items()):
-        rel = file_path.relative_to(src_root.parent)
+        rel = Path(file_path).relative_to(src_root.parent)
         missing = sorted(imports - requirements)
         if missing:
             failures.append(

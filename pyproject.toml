@@ -14,6 +14,7 @@ readme = "README.md"
 dependencies = [
   "anyio>=3.6.0",
   "asyncer>=0.0.14",
+  "asyncstdlib>=3.14.0",
   "psutil==5.9.5",            # sync
   "pywinctl==0.0.50",         # sync
   "typing_extensions>=4.7.1", # sync
