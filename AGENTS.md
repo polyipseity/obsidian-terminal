@@ -122,6 +122,7 @@ If you need help designing a test or mocking a dependency, ask for a short examp
 
 **TypeScript Types:**
 
+- **Default to `readonly`.** All TypeScript properties, interfaces, function parameters, and variables must be `readonly` by default. Only use mutable types when mutation is explicitly required and documented.
 - Do **not** use the TypeScript `any` type. Prefer `unknown` over `any`. When accepting unknown inputs, validate or use type guards to narrow `unknown` before use. If `any` is truly unavoidable, document the reason and add tests that assert safety.
 - **Never use `as` casting.** Avoid `value as Foo` in production code — prefer safe alternatives such as:
   - runtime type guards (e.g. `function isFoo(v: unknown): v is Foo`) and narrowing checks;
@@ -137,8 +138,8 @@ Example:
 ```ts
 // preferred for object shapes
 interface Settings {
-  openChangelogOnUpdate: boolean;
-  noticeTimeout: number;
+  readonly openChangelogOnUpdate: boolean;
+  readonly noticeTimeout: number;
 }
 
 // prefer a type guard over `as` casting

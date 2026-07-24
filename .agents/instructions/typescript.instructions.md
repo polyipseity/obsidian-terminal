@@ -23,7 +23,7 @@ description: Guidelines for TypeScript files in obsidian-plugin-template
 ## Do / Don't
 
 - **Do:**
-  - Use explicit types and `readonly` where appropriate
+  - **Default to `readonly` on all properties, function parameters, and local variables.** Only use mutable types (`let`, non-`readonly` properties) when mutation is explicitly required. Immutability by default reduces bugs and makes data flow easier to reason about.
   - Keep logic modular and add unit tests for transformation helpers
   - Use `deepFreeze`/`markFixed`/`fixTyped` helpers available in `@polyipseity/obsidian-plugin-library`
 - **Don't:**
