@@ -60,7 +60,7 @@ export class PLACEHOLDERPlugin
           { language, localSettings, settings } = this,
           earlyChildren = [language, localSettings, settings],
           // Placeholder to resolve merge conflicts more easily
-          children: never[] = [];
+          children: readonly never[] = [];
         for (const child of earlyChildren) {
           child.unload();
         }
