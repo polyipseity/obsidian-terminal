@@ -45,14 +45,13 @@ export const DOCUMENTATIONS = deepFreeze({
           setting: { settingTabs },
         } = app0;
         for (const tab of settingTabs) {
-          const {
-            containerEl: { ownerDocument },
-            id,
-            installedPlugins,
-          } = tab;
-          if (id !== "community-plugins") {
+          if (tab.id !== "community-plugins") {
             continue;
           }
+          const {
+            containerEl: { ownerDocument },
+            installedPlugins,
+          } = tab;
 
           // Find the donate button in the already-rendered installed plugins list:
           // locate this plugin's row by matching the name from the manifest, then
