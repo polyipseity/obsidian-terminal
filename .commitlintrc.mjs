@@ -8,6 +8,7 @@ export default {
         process.env.GITHUB_DEPENDABOT_CRED_TOKEN ||
         process.env.GITHUB_DEPENDABOT_JOB_TOKEN,
       ),
-    (message) => message.includes("Signed-off-by: dependabot[bot]"),
+    (/** @type {string} */ message) =>
+      message.includes("Signed-off-by: dependabot[bot]"),
   ],
 };
