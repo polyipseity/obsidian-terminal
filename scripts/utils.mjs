@@ -1,7 +1,14 @@
-import PLazy from "p-lazy";
 import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { readFile } from "node:fs/promises";
+import { promisify } from "node:util";
+import PLazy from "p-lazy";
+import * as v from "valibot";
+
+const ManifestJson = v.pipe(
+  v.string(),
+  v.parseJson(),
+  v.object({ id: v.string() }),
+);
 
 const execFileP = promisify(execFile),
   OUTDIR = ".";
@@ -20,9 +27,17 @@ export const PATHS = Object.freeze({
   }),
   PLUGIN_ID = PLazy.from(
     async () =>
-      JSON.parse(await readFile(PATHS.manifest, { encoding: "utf-8" })).id,
+      v.parse(
+        ManifestJson,
+        await readFile(PATHS.manifest, { encoding: "utf-8" }),
+      ).id,
   );
 
+/**
+ *
+ * @param  {...unknown} args
+ * @returns {Promise<string>}
+ */
 export async function execute(...args) {
   const process = execFileP(...args),
     { stdout, stderr } = await process;

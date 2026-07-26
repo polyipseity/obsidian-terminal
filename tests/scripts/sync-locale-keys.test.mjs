@@ -3,7 +3,8 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import * as v from "valibot";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 // This integration test exercises the sync-locale-keys.mjs script on a temporary
 // locale directory tree.  It verifies that keys are copied from the English
@@ -67,7 +68,8 @@ describe("scripts/sync-locale-keys.mjs", () => {
     const { main } = await import(SCRIPT_PATH);
     await main(tmpdir);
 
-    const result = JSON.parse(
+    const result = v.parse(
+      v.pipe(v.string(), v.parseJson()),
       fs.readFileSync(path.join(frDir, "translation.json"), "utf-8"),
     );
 
@@ -129,7 +131,8 @@ describe("scripts/sync-locale-keys.mjs", () => {
     const { main } = await import(SCRIPT_PATH);
     await main(tmpdir);
 
-    const result = JSON.parse(
+    const result = v.parse(
+      v.pipe(v.string(), v.parseJson()),
       fs.readFileSync(path.join(frDir, "translation.json"), "utf-8"),
     );
     // since the variant existed, the base should NOT have been added
@@ -166,7 +169,8 @@ describe("scripts/sync-locale-keys.mjs", () => {
     const { main } = await import(SCRIPT_PATH);
     await main(tmpdir);
 
-    const result = JSON.parse(
+    const result = v.parse(
+      v.pipe(v.string(), v.parseJson()),
       fs.readFileSync(path.join(frDir, "translation.json"), "utf-8"),
     );
     expect(result).toEqual({ other: "baz" });

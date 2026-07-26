@@ -2,20 +2,21 @@
  * Unit tests for the Obsidian runtime mock.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import * as v from "valibot";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
-  reset,
-  setVaultFiles,
-  setRequestHandler,
-  setRequestResponse,
   getApp,
   getVault,
   makeEditor,
-  spyRequests,
   normalizePath,
-  stripHeading,
-  stringifyYaml,
   parseYaml,
+  reset,
+  setRequestHandler,
+  setRequestResponse,
+  setVaultFiles,
+  spyRequests,
+  stringifyYaml,
+  stripHeading,
   type RequestUrlResponse,
 } from "./obsidian.js";
 
@@ -364,7 +365,10 @@ describe("Obsidian Mock", () => {
 
     it("parseYaml parses YAML strings", () => {
       const yaml = "key: value\nnumber: 42\n";
-      const parsed = parseYaml(yaml);
+      const parsed = v.parse(
+        v.record(v.string(), v.unknown()),
+        parseYaml(yaml),
+      );
       expect(parsed).toEqual({ key: "value", number: 42 });
     });
   });
@@ -510,7 +514,10 @@ describe("Obsidian Mock", () => {
       expect(fmMatch).not.toBeNull();
       if (!fmMatch || typeof fmMatch[1] !== "string")
         throw new Error("frontmatter not found");
-      const parsed = parseYaml(fmMatch[1]);
+      const parsed = v.parse(
+        v.looseObject({ title: v.string() }),
+        parseYaml(fmMatch[1]),
+      );
       expect(parsed.title).toBe("New Title");
     });
 
@@ -533,7 +540,10 @@ describe("Obsidian Mock", () => {
       expect(fmMatch).not.toBeNull();
       if (!fmMatch || typeof fmMatch[1] !== "string")
         throw new Error("frontmatter not found");
-      const parsed = parseYaml(fmMatch[1]);
+      const parsed = v.parse(
+        v.looseObject({ title: v.string() }),
+        parseYaml(fmMatch[1]),
+      );
       expect(parsed.title).toBe("Fixed");
       expect(content).not.toContain(":bad");
     });
@@ -554,7 +564,10 @@ describe("Obsidian Mock", () => {
       if (!fmMatch || typeof fmMatch[1] !== "string")
         throw new Error("frontmatter not found");
 
-      const parsed = parseYaml(fmMatch[1]);
+      const parsed = v.parse(
+        v.looseObject({ title: v.string() }),
+        parseYaml(fmMatch[1]),
+      );
       expect(parsed.title).toBe("New");
     });
   });

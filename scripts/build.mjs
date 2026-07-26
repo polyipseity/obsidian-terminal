@@ -1,12 +1,12 @@
-import { analyzeMetafile, context, formatMessages } from "esbuild";
-import { PATHS } from "./utils.mjs";
-import { argv } from "node:process";
 import builtinModules from "builtin-modules";
+import { analyzeMetafile, context, formatMessages } from "esbuild";
 import esbuildCompress from "esbuild-compress";
 import esbuildPluginGlobals from "esbuild-plugin-globals";
 import esbuildPluginTextReplace from "esbuild-plugin-text-replace";
 import { isEmpty } from "lodash-es";
-import { writeFile, rm } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
+import { argv } from "node:process";
+import { PATHS } from "./utils.mjs";
 
 const ARGV_PRODUCTION = 2,
   COMMENT =
@@ -76,51 +76,33 @@ async function esbuild() {
     await build.watch({});
     return;
   }
+
   try {
     // Await https://github.com/evanw/esbuild/issues/2886
     const { errors, warnings, metafile } = await build.rebuild();
     await Promise.all([
       (async () => {
-        if (metafile) {
-          console.log(
-            await analyzeMetafile(metafile, {
-              color: true,
-              verbose: true,
-            }),
+        console.log(
+          await analyzeMetafile(metafile, { color: true, verbose: true }),
+        );
+        if (!isEmpty(warnings)) {
+          console.warn(
+            (
+              await formatMessages(warnings, { color: true, kind: "warning" })
+            ).join("\n"),
           );
         }
-        for await (const logging of [
-          {
-            data: warnings,
-            kind: "warning",
-            log: console.warn.bind(console),
-          },
-          {
-            data: errors,
-            kind: "error",
-            log: console.error.bind(console),
-          },
-        ]
-          .filter(({ data }) => !isEmpty(data))
-          .map(async ({ data, kind, log }) => {
-            const message = (
-              await formatMessages(data, {
-                color: true,
-                kind,
-              })
-            ).join("\n");
-            return () => log(message);
-          })) {
-          logging();
+        if (!isEmpty(errors)) {
+          console.error(
+            (await formatMessages(errors, { color: true, kind: "error" })).join(
+              "\n",
+            ),
+          );
         }
       })(),
-      ...(metafile
-        ? [
-            writeFile(PATHS.metafile, JSON.stringify(metafile, null, "  "), {
-              encoding: "utf-8",
-            }),
-          ]
-        : []),
+      writeFile(PATHS.metafile, JSON.stringify(metafile, null, "  "), {
+        encoding: "utf-8",
+      }),
     ]);
   } finally {
     await build.dispose();

@@ -3,7 +3,8 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import * as v from "valibot";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Integration tests for scripts/build.mjs — uses mocked esbuild
 // to verify top-level behaviour such as writing a metafile and
@@ -39,6 +40,30 @@ describe("scripts/build.mjs", () => {
       }),
     }));
 
+    // Ensure PLUGIN_ID can be resolved by build.mjs on import
+    fs.writeFileSync(
+      path.join(project, "manifest.json"),
+      JSON.stringify({ name: "test-plugin" }),
+    );
+
+    // Mock tsc invocation (which + spawn) to avoid running real tsc during import
+    vi.doMock("which", () => ({
+      __esModule: true,
+      default: vi.fn().mockResolvedValue("bunx"),
+    }));
+    vi.doMock("node:child_process", () => ({
+      execFile: vi.fn(),
+      spawn: vi.fn().mockImplementation(() => {
+        const obj = {
+          once(event, cb) {
+            if (event === "exit") setImmediate(() => cb(0, null));
+            return obj;
+          },
+        };
+        return obj;
+      }),
+    }));
+
     const cwd = process.cwd();
     process.chdir(project);
 
@@ -66,7 +91,8 @@ describe("scripts/build.mjs", () => {
     expect(logSpy).toHaveBeenCalledWith("ANALYSIS");
     expect(errSpy).toHaveBeenCalledWith("formatted error");
 
-    const mf = JSON.parse(
+    const mf = v.parse(
+      v.pipe(v.string(), v.parseJson()),
       fs.readFileSync(path.join(project, "metafile.json"), "utf-8"),
     );
     expect(mf).toEqual(fakeMetafile);
@@ -75,6 +101,30 @@ describe("scripts/build.mjs", () => {
   it("calls watch when argv contains 'dev'", async () => {
     const project = fs.mkdtempSync(path.join(os.tmpdir(), "build-proj-"));
     process.chdir(project);
+
+    // Ensure PLUGIN_ID can be resolved by build.mjs on import
+    fs.writeFileSync(
+      path.join(project, "manifest.json"),
+      JSON.stringify({ id: "test-plugin" }),
+    );
+
+    // Mock tsc invocation (which + spawn) to avoid running real tsc during import
+    vi.doMock("which", () => ({
+      __esModule: true,
+      default: vi.fn().mockResolvedValue("bunx"),
+    }));
+    vi.doMock("node:child_process", () => ({
+      execFile: vi.fn(),
+      spawn: vi.fn().mockImplementation(() => {
+        const obj = {
+          once(event, cb) {
+            if (event === "exit") setImmediate(() => cb(0, null));
+            return obj;
+          },
+        };
+        return obj;
+      }),
+    }));
 
     const watch = vi.fn().mockResolvedValue();
     const context = vi.fn().mockResolvedValue({ watch, dispose: vi.fn() });
@@ -117,6 +167,30 @@ describe("scripts/build.mjs", () => {
       context,
     }));
 
+    // Ensure PACKAGE_ID can be resolved by build.mjs on import
+    fs.writeFileSync(
+      path.join(project, "manifest.json"),
+      JSON.stringify({ name: "test-plugin" }),
+    );
+
+    // Mock tsc invocation (which + spawn) to avoid running real tsc during import
+    vi.doMock("which", () => ({
+      __esModule: true,
+      default: vi.fn().mockResolvedValue("bunx"),
+    }));
+    vi.doMock("node:child_process", () => ({
+      execFile: vi.fn(),
+      spawn: vi.fn().mockImplementation(() => {
+        const obj = {
+          once(event, cb) {
+            if (event === "exit") setImmediate(() => cb(0, null));
+            return obj;
+          },
+        };
+        return obj;
+      }),
+    }));
+
     process.chdir(project);
 
     await import("../../scripts/build.mjs");
@@ -126,7 +200,7 @@ describe("scripts/build.mjs", () => {
     expect(esbuild.formatMessages).toHaveBeenCalled();
     // formatMessages should be called with warnings and kind 'warning'
     const calls = esbuild.formatMessages.mock.calls;
-    expect(calls.some((c) => c[1] && c[1].kind === "warning")).toBe(true);
+    expect(calls.some((c) => c[1].kind === "warning")).toBe(true);
 
     expect(warnSpy).toHaveBeenCalledWith("formatted warn");
   });
