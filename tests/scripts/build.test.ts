@@ -22,11 +22,11 @@ function createSpawnMock() {
   });
 }
 
-/** Set up a temporary project directory with package.json and mock tsc invocations. */
+/** Set up identity file (manifest.json) and mock tsc invocations. */
 async function setupProject(project: string): Promise<void> {
   await fs.writeFile(
-    path.join(project, "package.json"),
-    JSON.stringify({ name: "test-package" }),
+    path.join(project, "manifest.json"),
+    JSON.stringify({ id: "test-plugin" }),
   );
   vi.doMock("which", () => ({
     __esModule: true,
@@ -67,12 +67,6 @@ describe("scripts/build.mjs", () => {
         dispose: vi.fn(),
       }),
     }));
-
-    // Ensure PLUGIN_ID can be resolved by build.mjs on import
-    await fs.writeFile(
-      path.join(project, "manifest.json"),
-      JSON.stringify({ name: "test-plugin" }),
-    );
 
     await setupProject(project);
 
@@ -119,12 +113,6 @@ describe("scripts/build.mjs", () => {
     const project = await fs.mkdtemp(path.join(os.tmpdir(), "build-proj-"));
     process.chdir(project);
 
-    // Ensure PLUGIN_ID can be resolved by build.mjs on import
-    await fs.writeFile(
-      path.join(project, "manifest.json"),
-      JSON.stringify({ id: "test-plugin" }),
-    );
-
     await setupProject(project);
 
     const watch = vi.fn();
@@ -168,12 +156,6 @@ describe("scripts/build.mjs", () => {
       formatMessages,
       context,
     }));
-
-    // Ensure PACKAGE_ID can be resolved by build.mjs on import
-    await fs.writeFile(
-      path.join(project, "manifest.json"),
-      JSON.stringify({ name: "test-plugin" }),
-    );
 
     await setupProject(project);
 
@@ -225,8 +207,18 @@ describe("scripts/build.mjs", () => {
       process.chdir(cwd);
     }
 
-    expect(await fs.stat(mainFile).then(() => true).catch(() => false)).toBe(false);
-    expect(await fs.stat(stylesFile).then(() => true).catch(() => false)).toBe(false);
+    expect(
+      await fs
+        .stat(mainFile)
+        .then(() => true)
+        .catch(() => false),
+    ).toBe(false);
+    expect(
+      await fs
+        .stat(stylesFile)
+        .then(() => true)
+        .catch(() => false),
+    ).toBe(false);
   });
 
   it("logs a warning and continues when removing previous build files fails", async () => {
