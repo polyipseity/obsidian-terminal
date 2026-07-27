@@ -30,8 +30,8 @@
  * documentation makes it a formal part of our workflow.
  */
 
-import fs from "fs";
-import path from "path";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 // These variables need to be computed at runtime rather than at module load
 // time.  By default we derive paths relative to the location of this script so
@@ -55,12 +55,12 @@ function makePaths(/** @type {string} */ rootDir) {
 /**
  *
  * @param {string} filePath
- * @returns {unknown}
+ * @returns {Promise<unknown>}
  */
-function readJSON(filePath) {
+async function readJSON(filePath) {
   return v.parse(
     v.pipe(v.string(), v.parseJson()),
-    fs.readFileSync(filePath, "utf-8"),
+    await fs.readFile(filePath, "utf-8"),
   );
 }
 
@@ -68,11 +68,12 @@ function readJSON(filePath) {
  *
  * @param {string} filePath
  * @param {unknown} obj
+ * @returns {Promise<void>}
  */
-function writeJson(filePath, obj) {
+async function writeJson(filePath, obj) {
   // sort prior to serialization so disk output is deterministic
   const sorted = sortObject(obj);
-  fs.writeFileSync(filePath, JSON.stringify(sorted, null, 2) + "\n", "utf-8");
+  await fs.writeFile(filePath, JSON.stringify(sorted, null, 2) + "\n", "utf-8");
 }
 
 /**
@@ -168,28 +169,35 @@ function merge(source, target) {
 /**
  *
  * @param {string} rootDir
+ * @returns {Promise<void>}
  */
-function main(rootDir) {
+async function main(rootDir) {
   const { localesDir, enPath } = makePaths(rootDir);
 
-  if (!fs.existsSync(enPath)) {
+  try {
+    await fs.access(enPath);
+  } catch {
     console.error(`English file not found at ${enPath}`);
     process.exit(1);
   }
 
-  const enData = readJSON(enPath);
+  const enData = await readJSON(enPath);
 
-  for (const entry of fs.readdirSync(localesDir)) {
+  for (const entry of await fs.readdir(localesDir)) {
     const subdir = path.join(localesDir, entry);
-    if (!fs.statSync(subdir).isDirectory()) continue;
+    if (!(await fs.stat(subdir)).isDirectory()) continue;
     if (entry === "en") continue;
 
     const file = path.join(subdir, "translation.json");
-    if (!fs.existsSync(file)) continue;
+    try {
+      await fs.access(file);
+    } catch {
+      continue;
+    }
 
-    const data = readJSON(file);
+    const data = await readJSON(file);
     merge(enData, data);
-    writeJson(file, data);
+    await writeJson(file, data);
     console.log(`updated ${file}`);
   }
 
