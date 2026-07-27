@@ -25,7 +25,10 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error("Error configuring rolling refspec:", error.message);
+main().catch((/** @type {unknown} */ error) => {
+  console.error(
+    "Error configuring rolling refspec:",
+    error instanceof Error ? error.message : String(error),
+  );
   process.exit(1);
 });

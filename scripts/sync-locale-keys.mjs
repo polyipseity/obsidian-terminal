@@ -214,7 +214,7 @@ export { main };
   const { fileURLToPath } = await import("url");
   const scriptFile = fileURLToPath(import.meta.url);
   if (process.argv[1] && path.resolve(process.argv[1]) === scriptFile) {
-    main().catch((error) => {
+    main().catch((/** @type {unknown} */ error) => {
       console.error(error);
       process.exit(1);
     });

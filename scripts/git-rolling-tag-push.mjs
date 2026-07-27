@@ -29,7 +29,10 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error("Error pushing rolling tag:", error.message);
+main().catch((/** @type {unknown} */ error) => {
+  console.error(
+    "Error pushing rolling tag:",
+    error instanceof Error ? error.message : String(error),
+  );
   process.exit(1);
 });
