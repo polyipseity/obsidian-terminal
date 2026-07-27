@@ -117,7 +117,7 @@ try {
   ]);
   const rejectedReasons = results
     .filter((r) => r.status === "rejected")
-    .map((r) => r.reason);
+    .map((r) => /** @type {unknown} */ (r.reason));
   if (rejectedReasons.length) {
     // throw all errors together so callers can inspect each failure
     throw new AggregateError(
