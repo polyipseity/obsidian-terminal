@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import fs from "node:fs";
+import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import * as v from "valibot";
@@ -23,8 +23,8 @@ function createSpawnMock() {
 }
 
 /** Set up a temporary project directory with package.json and mock tsc invocations. */
-function setupProject(project: string): void {
-  fs.writeFileSync(
+async function setupProject(project: string): Promise<void> {
+  await fs.writeFile(
     path.join(project, "package.json"),
     JSON.stringify({ name: "test-package" }),
   );
@@ -51,7 +51,7 @@ describe("scripts/build.mjs", () => {
   });
 
   it("writes metafile and logs errors when rebuild returns errors and metafile", async () => {
-    const project = fs.mkdtempSync(path.join(os.tmpdir(), "build-proj-"));
+    const project = await fs.mkdtemp(path.join(os.tmpdir(), "build-proj-"));
 
     const fakeMetafile = { inputs: { "a.js": {} } };
     const fakeError = { text: "err" };
@@ -69,12 +69,12 @@ describe("scripts/build.mjs", () => {
     }));
 
     // Ensure PLUGIN_ID can be resolved by build.mjs on import
-    fs.writeFileSync(
+    await fs.writeFile(
       path.join(project, "manifest.json"),
       JSON.stringify({ name: "test-plugin" }),
     );
 
-    setupProject(project);
+    await setupProject(project);
 
     const cwd = process.cwd();
     process.chdir(project);
@@ -110,22 +110,22 @@ describe("scripts/build.mjs", () => {
 
     const mf = v.parse(
       v.pipe(v.string(), v.parseJson()),
-      fs.readFileSync(path.join(project, "metafile.json"), "utf-8"),
+      await fs.readFile(path.join(project, "metafile.json"), "utf-8"),
     );
     expect(mf).toEqual(fakeMetafile);
   });
 
   it("calls watch when argv contains 'dev'", async () => {
-    const project = fs.mkdtempSync(path.join(os.tmpdir(), "build-proj-"));
+    const project = await fs.mkdtemp(path.join(os.tmpdir(), "build-proj-"));
     process.chdir(project);
 
     // Ensure PLUGIN_ID can be resolved by build.mjs on import
-    fs.writeFileSync(
+    await fs.writeFile(
       path.join(project, "manifest.json"),
       JSON.stringify({ id: "test-plugin" }),
     );
 
-    setupProject(project);
+    await setupProject(project);
 
     const watch = vi.fn();
     const context = vi.fn().mockResolvedValue({ watch, dispose: vi.fn() });
@@ -147,7 +147,7 @@ describe("scripts/build.mjs", () => {
   it("logs warnings when rebuild returns warnings and no metafile", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    const project = fs.mkdtempSync(path.join(os.tmpdir(), "build-proj-"));
+    const project = await fs.mkdtemp(path.join(os.tmpdir(), "build-proj-"));
     const fakeWarning = { text: "warn" };
 
     const fakeMetafile = { inputs: { "a.js": {} } };
@@ -170,12 +170,12 @@ describe("scripts/build.mjs", () => {
     }));
 
     // Ensure PACKAGE_ID can be resolved by build.mjs on import
-    fs.writeFileSync(
+    await fs.writeFile(
       path.join(project, "manifest.json"),
       JSON.stringify({ name: "test-plugin" }),
     );
 
-    setupProject(project);
+    await setupProject(project);
 
     process.chdir(project);
 
@@ -192,15 +192,15 @@ describe("scripts/build.mjs", () => {
   });
 
   it("removes existing built files (main + styles) before building", async () => {
-    const project = fs.mkdtempSync(path.join(os.tmpdir(), "build-proj-"));
+    const project = await fs.mkdtemp(path.join(os.tmpdir(), "build-proj-"));
     const mainFile = path.join(project, "main.js");
     const stylesFile = path.join(project, "styles.css");
 
     // create stale build artifacts that should be removed
-    fs.writeFileSync(mainFile, "stale");
-    fs.writeFileSync(stylesFile, "stale");
+    await fs.writeFile(mainFile, "stale");
+    await fs.writeFile(stylesFile, "stale");
 
-    setupProject(project);
+    await setupProject(project);
 
     const fakeMetafile = { inputs: { "a.js": {} } };
     const context = vi.fn().mockResolvedValue({
@@ -225,14 +225,14 @@ describe("scripts/build.mjs", () => {
       process.chdir(cwd);
     }
 
-    expect(fs.existsSync(mainFile)).toBe(false);
-    expect(fs.existsSync(stylesFile)).toBe(false);
+    expect(await fs.stat(mainFile).then(() => true).catch(() => false)).toBe(false);
+    expect(await fs.stat(stylesFile).then(() => true).catch(() => false)).toBe(false);
   });
 
   it("logs a warning and continues when removing previous build files fails", async () => {
-    const project = fs.mkdtempSync(path.join(os.tmpdir(), "build-proj-"));
+    const project = await fs.mkdtemp(path.join(os.tmpdir(), "build-proj-"));
 
-    setupProject(project);
+    await setupProject(project);
 
     // Mock rm to fail while preserving other fs/promises functions (readFile is used by utils.PACKAGE_ID)
     vi.doMock("node:fs/promises", async (importOriginal) => {
