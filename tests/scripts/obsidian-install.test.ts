@@ -1,12 +1,12 @@
 // @vitest-environment node
 
+import { execFile as execFileCb } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { execFile as execFileCb } from "node:child_process";
 import { promisify } from "node:util";
+import { describe, expect, it } from "vitest";
 const execFile = promisify(execFileCb);
-import { describe, it, expect } from "vitest";
 
 // Integration test for scripts/obsidian-install.mjs
 // See AGENTS.md (Testing section) — this is an integration test and
