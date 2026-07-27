@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import fs from "node:fs";
+import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import * as v from "valibot";
@@ -17,14 +17,14 @@ describe("scripts/sync-locale-keys.mjs", () => {
   let tmpdir: string;
   let origCwd: string;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     origCwd = process.cwd();
-    tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), "locales-"));
+    tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), "locales-"));
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     process.chdir(origCwd);
-    fs.rmSync(tmpdir, { recursive: true, force: true });
+    await fs.rm(tmpdir, { recursive: true, force: true });
   });
 
   it("copies keys and sorts result", async () => {
@@ -32,12 +32,12 @@ describe("scripts/sync-locale-keys.mjs", () => {
     // inside the script; instead we pass `tmpdir` explicitly when invoking
     // `main`.
     const localesDir = path.join(tmpdir, "assets", "locales");
-    fs.mkdirSync(localesDir, { recursive: true });
+    await fs.mkdir(localesDir, { recursive: true });
 
     const enDir = path.join(localesDir, "en");
     const frDir = path.join(localesDir, "fr");
-    fs.mkdirSync(enDir, { recursive: true });
-    fs.mkdirSync(frDir, { recursive: true });
+    await fs.mkdir(enDir, { recursive: true });
+    await fs.mkdir(frDir, { recursive: true });
 
     const enData = {
       b: "second",
@@ -47,7 +47,7 @@ describe("scripts/sync-locale-keys.mjs", () => {
       },
       c: "third",
     };
-    fs.writeFileSync(
+    await fs.writeFile(
       path.join(enDir, "translation.json"),
       JSON.stringify(enData, null, 2),
     );
@@ -59,7 +59,7 @@ describe("scripts/sync-locale-keys.mjs", () => {
         y: "ancien",
       },
     };
-    fs.writeFileSync(
+    await fs.writeFile(
       path.join(frDir, "translation.json"),
       JSON.stringify(frData, null, 2),
     );
@@ -72,7 +72,7 @@ describe("scripts/sync-locale-keys.mjs", () => {
       v.record(v.string(), v.unknown()),
       v.parse(
         v.pipe(v.string(), v.parseJson()),
-        fs.readFileSync(path.join(frDir, "translation.json"), "utf-8"),
+        await fs.readFile(path.join(frDir, "translation.json"), "utf-8"),
       ),
     );
 
@@ -97,9 +97,9 @@ describe("scripts/sync-locale-keys.mjs", () => {
 
   it("ignores directories without translation.json", async () => {
     const localesDir = path.join(tmpdir, "assets", "locales");
-    fs.mkdirSync(path.join(localesDir, "en"), { recursive: true });
-    fs.writeFileSync(path.join(localesDir, "en", "translation.json"), "{}");
-    fs.mkdirSync(path.join(localesDir, "es")); // no translation.json
+    await fs.mkdir(path.join(localesDir, "en"), { recursive: true });
+    await fs.writeFile(path.join(localesDir, "en", "translation.json"), "{}");
+    await fs.mkdir(path.join(localesDir, "es")); // no translation.json
 
     // should not throw
     const { main } = await import(SCRIPT_PATH);
@@ -108,19 +108,19 @@ describe("scripts/sync-locale-keys.mjs", () => {
 
   it("treats base key and variants as a group when adding", async () => {
     const localesDir = path.join(tmpdir, "assets", "locales");
-    fs.mkdirSync(localesDir, { recursive: true });
+    await fs.mkdir(localesDir, { recursive: true });
 
     const enDir = path.join(localesDir, "en");
     const frDir = path.join(localesDir, "fr");
-    fs.mkdirSync(enDir, { recursive: true });
-    fs.mkdirSync(frDir, { recursive: true });
+    await fs.mkdir(enDir, { recursive: true });
+    await fs.mkdir(frDir, { recursive: true });
 
     const enData = {
       spawn: "to spawn",
       spawn_gerund: "spawning",
       other: "value",
     };
-    fs.writeFileSync(
+    await fs.writeFile(
       path.join(enDir, "translation.json"),
       JSON.stringify(enData, null, 2),
     );
@@ -129,7 +129,7 @@ describe("scripts/sync-locale-keys.mjs", () => {
     const frData = {
       spawn_gerund: "exist",
     };
-    fs.writeFileSync(
+    await fs.writeFile(
       path.join(frDir, "translation.json"),
       JSON.stringify(frData, null, 2),
     );
@@ -141,7 +141,7 @@ describe("scripts/sync-locale-keys.mjs", () => {
       v.record(v.string(), v.unknown()),
       v.parse(
         v.pipe(v.string(), v.parseJson()),
-        fs.readFileSync(path.join(frDir, "translation.json"), "utf-8"),
+        await fs.readFile(path.join(frDir, "translation.json"), "utf-8"),
       ),
     );
     // since the variant existed, the base should NOT have been added
@@ -153,14 +153,14 @@ describe("scripts/sync-locale-keys.mjs", () => {
 
   it("removes group when base is deleted from English", async () => {
     const localesDir = path.join(tmpdir, "assets", "locales");
-    fs.mkdirSync(localesDir, { recursive: true });
+    await fs.mkdir(localesDir, { recursive: true });
     const enDir = path.join(localesDir, "en");
     const frDir = path.join(localesDir, "fr");
-    fs.mkdirSync(enDir, { recursive: true });
-    fs.mkdirSync(frDir, { recursive: true });
+    await fs.mkdir(enDir, { recursive: true });
+    await fs.mkdir(frDir, { recursive: true });
 
     // english has no spawn keys at all
-    fs.writeFileSync(
+    await fs.writeFile(
       path.join(enDir, "translation.json"),
       JSON.stringify({ other: "x" }, null, 2),
     );
@@ -170,7 +170,7 @@ describe("scripts/sync-locale-keys.mjs", () => {
       spawn_gerund: "bar",
       other: "baz",
     };
-    fs.writeFileSync(
+    await fs.writeFile(
       path.join(frDir, "translation.json"),
       JSON.stringify(frData, null, 2),
     );
@@ -182,7 +182,7 @@ describe("scripts/sync-locale-keys.mjs", () => {
       v.record(v.string(), v.unknown()),
       v.parse(
         v.pipe(v.string(), v.parseJson()),
-        fs.readFileSync(path.join(frDir, "translation.json"), "utf-8"),
+        await fs.readFile(path.join(frDir, "translation.json"), "utf-8"),
       ),
     );
     expect(result).toEqual({ other: "baz" });
