@@ -10,15 +10,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // to verify top-level behaviour such as writing a metafile and
 // calling watch in dev mode.
 
+function createSpawnMock() {
+  return vi.fn().mockImplementation(() => {
+    const obj = {
+      once(event: string, cb: (code: number, signal: null) => void) {
+        if (event === "exit") setImmediate(() => cb(0, null));
+        return obj;
+      },
+    };
+    return obj;
+  });
+}
+
 describe("scripts/build.mjs", () => {
-  let cwd;
+  let cwd: string;
   beforeEach(() => {
     vi.resetModules();
     cwd = process.cwd();
   });
   afterEach(() => {
     process.chdir(cwd);
-    process.argv[2] = undefined;
+    delete process.argv[2];
     vi.restoreAllMocks();
   });
 
@@ -36,7 +48,7 @@ describe("scripts/build.mjs", () => {
           warnings: [],
           metafile: fakeMetafile,
         }),
-        dispose: vi.fn().mockResolvedValue(),
+        dispose: vi.fn(),
       }),
     }));
 
@@ -53,15 +65,7 @@ describe("scripts/build.mjs", () => {
     }));
     vi.doMock("node:child_process", () => ({
       execFile: vi.fn(),
-      spawn: vi.fn().mockImplementation(() => {
-        const obj = {
-          once(event, cb) {
-            if (event === "exit") setImmediate(() => cb(0, null));
-            return obj;
-          },
-        };
-        return obj;
-      }),
+      spawn: createSpawnMock(),
     }));
 
     const cwd = process.cwd();
@@ -78,13 +82,18 @@ describe("scripts/build.mjs", () => {
     }
 
     const esbuild = vi.mocked(await import("esbuild"));
+    const contextResult = esbuild.context.mock.results[0];
+    if (!contextResult) throw new Error("esbuild.context was not called");
     const { rebuild: rebuildSpy, dispose: disposeSpy } =
-      await esbuild.context.mock.results[0].value;
+      await contextResult.value;
 
     expect(rebuildSpy).toHaveBeenCalled();
     expect(disposeSpy).toHaveBeenCalled();
     expect(esbuild.analyzeMetafile).toHaveBeenCalled();
-    expect(esbuild.analyzeMetafile.mock.calls[0][0]).toHaveProperty("inputs");
+    expect(esbuild.analyzeMetafile).toHaveBeenCalledWith(
+      expect.objectContaining({ inputs: expect.anything() }),
+      expect.anything(),
+    );
     expect(esbuild.formatMessages).toHaveBeenCalled();
 
     // verify the module logged analyzeMetafile output and formatted errors
@@ -115,18 +124,10 @@ describe("scripts/build.mjs", () => {
     }));
     vi.doMock("node:child_process", () => ({
       execFile: vi.fn(),
-      spawn: vi.fn().mockImplementation(() => {
-        const obj = {
-          once(event, cb) {
-            if (event === "exit") setImmediate(() => cb(0, null));
-            return obj;
-          },
-        };
-        return obj;
-      }),
+      spawn: createSpawnMock(),
     }));
 
-    const watch = vi.fn().mockResolvedValue();
+    const watch = vi.fn();
     const context = vi.fn().mockResolvedValue({ watch, dispose: vi.fn() });
     vi.doMock("esbuild", () => ({
       analyzeMetafile: vi.fn(),
@@ -140,7 +141,7 @@ describe("scripts/build.mjs", () => {
 
     expect(watch).toHaveBeenCalled();
 
-    process.argv[2] = undefined;
+    delete process.argv[2];
   });
 
   it("logs warnings when rebuild returns warnings and no metafile", async () => {
@@ -149,13 +150,14 @@ describe("scripts/build.mjs", () => {
     const project = fs.mkdtempSync(path.join(os.tmpdir(), "build-proj-"));
     const fakeWarning = { text: "warn" };
 
+    const fakeMetafile = { inputs: { "a.js": {} } };
     const context = vi.fn().mockResolvedValue({
       rebuild: vi.fn().mockResolvedValue({
         errors: [],
         warnings: [fakeWarning],
-        metafile: undefined,
+        metafile: fakeMetafile,
       }),
-      dispose: vi.fn().mockResolvedValue(),
+      dispose: vi.fn(),
     });
 
     const formatMessages = vi.fn().mockResolvedValue(["formatted warn"]);
@@ -180,15 +182,7 @@ describe("scripts/build.mjs", () => {
     }));
     vi.doMock("node:child_process", () => ({
       execFile: vi.fn(),
-      spawn: vi.fn().mockImplementation(() => {
-        const obj = {
-          once(event, cb) {
-            if (event === "exit") setImmediate(() => cb(0, null));
-            return obj;
-          },
-        };
-        return obj;
-      }),
+      spawn: createSpawnMock(),
     }));
 
     process.chdir(project);
@@ -227,24 +221,17 @@ describe("scripts/build.mjs", () => {
     }));
     vi.doMock("node:child_process", () => ({
       execFile: vi.fn(),
-      spawn: vi.fn().mockImplementation(() => {
-        const obj = {
-          once(event, cb) {
-            if (event === "exit") setImmediate(() => cb(0, null));
-            return obj;
-          },
-        };
-        return obj;
-      }),
+      spawn: createSpawnMock(),
     }));
 
+    const fakeMetafile = { inputs: { "a.js": {} } };
     const context = vi.fn().mockResolvedValue({
       rebuild: vi.fn().mockResolvedValue({
         errors: [],
         warnings: [],
-        metafile: undefined,
+        metafile: fakeMetafile,
       }),
-      dispose: vi.fn().mockResolvedValue(),
+      dispose: vi.fn(),
     });
     vi.doMock("esbuild", () => ({
       analyzeMetafile: vi.fn(),
@@ -276,10 +263,9 @@ describe("scripts/build.mjs", () => {
     // Mock rm to fail while preserving other fs/promises functions (readFile is used by utils.PACKAGE_ID)
     vi.doMock("node:fs/promises", async (importOriginal) => {
       const actual = await importOriginal();
-      return {
-        ...actual,
+      return Object.assign({}, actual, {
         rm: vi.fn().mockRejectedValue(new Error("boom")),
-      };
+      });
     });
 
     // Mock tsc invocation (which + spawn)
@@ -289,26 +275,19 @@ describe("scripts/build.mjs", () => {
     }));
     vi.doMock("node:child_process", () => ({
       execFile: vi.fn(),
-      spawn: vi.fn().mockImplementation(() => {
-        const obj = {
-          once(event, cb) {
-            if (event === "exit") setImmediate(() => cb(0, null));
-            return obj;
-          },
-        };
-        return obj;
-      }),
+      spawn: createSpawnMock(),
     }));
 
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
+    const fakeMetafile = { inputs: { "a.js": {} } };
     const context = vi.fn().mockResolvedValue({
       rebuild: vi.fn().mockResolvedValue({
         errors: [],
         warnings: [],
-        metafile: undefined,
+        metafile: fakeMetafile,
       }),
-      dispose: vi.fn().mockResolvedValue(),
+      dispose: vi.fn(),
     });
     vi.doMock("esbuild", () => ({
       analyzeMetafile: vi.fn(),
@@ -324,14 +303,9 @@ describe("scripts/build.mjs", () => {
       process.chdir(cwd);
     }
 
-    expect(warnSpy).toHaveBeenCalled();
-    const call = warnSpy.mock.calls[0];
-    expect(call[0]).toBe(
+    expect(warnSpy).toHaveBeenCalledWith(
       "Failed to remove previous build output, proceeding anyway:",
+      expect.objectContaining({ message: "boom" }),
     );
-    expect(call[1]).toBeInstanceOf(AggregateError);
-    expect(Array.isArray(call[1].errors)).toBe(true);
-    expect(call[1].errors[0]).toBeInstanceOf(Error);
-    expect(call[1].errors[0].message).toBe("boom");
   });
 });

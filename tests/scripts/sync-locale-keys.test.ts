@@ -14,8 +14,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 const SCRIPT_PATH = path.join(process.cwd(), "scripts", "sync-locale-keys.mjs");
 
 describe("scripts/sync-locale-keys.mjs", () => {
-  let tmpdir;
-  let origCwd;
+  let tmpdir: string;
+  let origCwd: string;
 
   beforeEach(() => {
     origCwd = process.cwd();
@@ -69,8 +69,11 @@ describe("scripts/sync-locale-keys.mjs", () => {
     await main(tmpdir);
 
     const result = v.parse(
-      v.pipe(v.string(), v.parseJson()),
-      fs.readFileSync(path.join(frDir, "translation.json"), "utf-8"),
+      v.record(v.string(), v.unknown()),
+      v.parse(
+        v.pipe(v.string(), v.parseJson()),
+        fs.readFileSync(path.join(frDir, "translation.json"), "utf-8"),
+      ),
     );
 
     // after sync the french file should reflect english structure
@@ -86,7 +89,10 @@ describe("scripts/sync-locale-keys.mjs", () => {
     // verify keys are sorted at each level
     const keys = Object.keys(result);
     expect(keys).toEqual(["a", "b", "c"]);
-    expect(Object.keys(result.a)).toEqual(["y", "z"]);
+    const aValue: unknown = result.a;
+    expect(
+      aValue !== null && typeof aValue === "object" && Object.keys(aValue),
+    ).toEqual(["y", "z"]);
   });
 
   it("ignores directories without translation.json", async () => {
@@ -132,8 +138,11 @@ describe("scripts/sync-locale-keys.mjs", () => {
     await main(tmpdir);
 
     const result = v.parse(
-      v.pipe(v.string(), v.parseJson()),
-      fs.readFileSync(path.join(frDir, "translation.json"), "utf-8"),
+      v.record(v.string(), v.unknown()),
+      v.parse(
+        v.pipe(v.string(), v.parseJson()),
+        fs.readFileSync(path.join(frDir, "translation.json"), "utf-8"),
+      ),
     );
     // since the variant existed, the base should NOT have been added
     expect(result).toEqual({
@@ -170,8 +179,11 @@ describe("scripts/sync-locale-keys.mjs", () => {
     await main(tmpdir);
 
     const result = v.parse(
-      v.pipe(v.string(), v.parseJson()),
-      fs.readFileSync(path.join(frDir, "translation.json"), "utf-8"),
+      v.record(v.string(), v.unknown()),
+      v.parse(
+        v.pipe(v.string(), v.parseJson()),
+        fs.readFileSync(path.join(frDir, "translation.json"), "utf-8"),
+      ),
     );
     expect(result).toEqual({ other: "baz" });
   });
