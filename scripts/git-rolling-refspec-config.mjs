@@ -6,22 +6,26 @@
  * Runs as post-checkout hook.
  */
 
-import { execSync } from "child_process";
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
+const execP = promisify(exec);
 
-try {
-  const output = execSync(
-    "git config --local --get-all remote.origin.fetch | grep -c '^+refs/tags/rolling:' || true",
-    { encoding: "utf-8" },
-  ).trim();
-
-  const hasRollingRefspec = parseInt(output) > 0;
-
-  if (!hasRollingRefspec) {
-    execSync(
-      "git config --local --add remote.origin.fetch '+refs/tags/rolling:refs/tags/rolling'",
+(async () => {
+  try {
+    const { stdout } = await execP(
+      "git config --local --get-all remote.origin.fetch | grep -c '^+refs/tags/rolling:' || true",
+      { encoding: "utf-8" },
     );
+
+    const hasRollingRefspec = parseInt(stdout.trim()) > 0;
+
+    if (!hasRollingRefspec) {
+      await execP(
+        "git config --local --add remote.origin.fetch '+refs/tags/rolling:refs/tags/rolling'",
+      );
+    }
+  } catch (error) {
+    console.error("Error configuring rolling refspec:", error.message);
+    process.exit(1);
   }
-} catch (error) {
-  console.error("Error configuring rolling refspec:", error.message);
-  process.exit(1);
-}
+})();
