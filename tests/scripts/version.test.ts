@@ -25,7 +25,7 @@ vi.mock("../../scripts/utils.mjs", () => ({
 // See AGENTS.md (Testing section) — this is an integration test and uses
 // jest-like isolation by resetting modules and providing mocks.
 
-function writePackageAndVersions(project, packageContents = {}) {
+function writePackageAndVersions(project: string, packageContents = {}) {
   const pkg = {
     author: "Tester",
     description: "A test package",

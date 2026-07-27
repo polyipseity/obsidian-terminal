@@ -25,7 +25,7 @@ describe("scripts/obsidian-install.mjs", () => {
     );
 
     expect(errSpy).toHaveBeenCalled();
-    const msg = errSpy.mock.calls[0][0];
+    const msg = errSpy.mock.calls[0]?.[0];
     expect(msg).toContain("Error reading manifest.json");
     expect(exitMock).toHaveBeenCalledWith(1);
   });
@@ -45,7 +45,7 @@ describe("scripts/obsidian-install.mjs", () => {
       "process.exit called with 1",
     );
 
-    const msg = errSpy.mock.calls[0][0];
+    const msg = errSpy.mock.calls[0]?.[0];
     expect(msg).toContain("Error reading manifest.json");
     expect(msg).not.toContain("\n");
     expect(msg).not.toMatch(/\bat\s+/);
@@ -66,8 +66,8 @@ describe("scripts/obsidian-install.mjs", () => {
       PLUGIN_ID: Promise.resolve("unit-id"),
     }));
 
-    const mkdirMock = vi.fn().mockResolvedValue();
-    const copyMock = vi.fn().mockResolvedValue();
+    const mkdirMock = vi.fn().mockResolvedValue(undefined);
+    const copyMock = vi.fn().mockResolvedValue(undefined);
     vi.doMock("node:fs/promises", () => ({
       mkdir: mkdirMock,
       copyFile: copyMock,
@@ -75,14 +75,14 @@ describe("scripts/obsidian-install.mjs", () => {
 
     // Ensure no destination argument (defaults to '.')
     const oldArg = process.argv[2];
-    process.argv[2] = undefined;
+    delete process.argv[2];
 
     await import("../../scripts/obsidian-install.mjs");
 
     // Expect mkdir called for './.obsidian/plugins/unit-id'
     expect(mkdirMock).toHaveBeenCalled();
     const expectedDest = `./.obsidian/plugins/unit-id`;
-    expect(mkdirMock.mock.calls[0][0]).toBe(expectedDest);
+    expect(mkdirMock.mock.calls[0]?.[0]).toBe(expectedDest);
 
     // Expect copyFile called for manifest, main and styles
     expect(copyMock).toHaveBeenCalledTimes(3);
@@ -90,7 +90,11 @@ describe("scripts/obsidian-install.mjs", () => {
     expect(files).toEqual(["manifest.json", "main.js", "styles.css"]);
 
     // restore argv
-    process.argv[2] = oldArg;
+    if (typeof oldArg === "string") {
+      process.argv[2] = oldArg;
+    } else {
+      delete process.argv[2];
+    }
   });
 
   it("uses provided destination argument when present", async () => {
@@ -104,8 +108,8 @@ describe("scripts/obsidian-install.mjs", () => {
       PLUGIN_ID: Promise.resolve("provided-id"),
     }));
 
-    const mkdirMock = vi.fn().mockResolvedValue();
-    const copyMock = vi.fn().mockResolvedValue();
+    const mkdirMock = vi.fn().mockResolvedValue(undefined);
+    const copyMock = vi.fn().mockResolvedValue(undefined);
     vi.doMock("node:fs/promises", () => ({
       mkdir: mkdirMock,
       copyFile: copyMock,
@@ -118,10 +122,15 @@ describe("scripts/obsidian-install.mjs", () => {
 
     expect(mkdirMock).toHaveBeenCalled();
     const expectedDest = `/tmp/dest/.obsidian/plugins/provided-id`;
-    expect(mkdirMock.mock.calls[0][0]).toBe(expectedDest);
+    expect(mkdirMock.mock.calls[0]?.[0]).toBe(expectedDest);
 
     expect(copyMock).toHaveBeenCalledTimes(3);
-    process.argv[2] = oldArg;
+    // restore argv
+    if (typeof oldArg === "string") {
+      process.argv[2] = oldArg;
+    } else {
+      delete process.argv[2];
+    }
   });
 
   it("formats non-Error rejection using String(err)", async () => {
@@ -140,7 +149,7 @@ describe("scripts/obsidian-install.mjs", () => {
       "process.exit called with 1",
     );
 
-    const msgArg = errSpy.mock.calls[0][1];
+    const msgArg = errSpy.mock.calls[0]?.[1];
     expect(String(msgArg)).toContain("[object Object]");
 
     expect(exitMock).toHaveBeenCalledWith(1);

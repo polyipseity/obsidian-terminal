@@ -10,7 +10,7 @@ import { describe, it, expect } from "vitest";
 // See AGENTS.md (Testing section) — this is an integration test and
 // mirrors the behavior of the runtime script using temporary dirs.
 
-function setupProject(tmp) {
+function setupProject(tmp: string): void {
   fs.writeFileSync(
     path.join(tmp, "manifest.json"),
     JSON.stringify({ id: "copy-test" }),
