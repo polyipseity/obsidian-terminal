@@ -215,7 +215,10 @@ export { main };
   const scriptFile = fileURLToPath(import.meta.url);
   if (process.argv[1] && path.resolve(process.argv[1]) === scriptFile) {
     main().catch((/** @type {unknown} */ error) => {
-      console.error(error);
+      console.error(
+        "Error syncing locale keys:",
+        error instanceof Error ? error.message : String(error),
+      );
       process.exit(1);
     });
   }
