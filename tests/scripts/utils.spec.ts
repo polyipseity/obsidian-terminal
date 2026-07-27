@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import fs from "node:fs";
+import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,10 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // deterministic. Some tests use quick node child processes to exercise
 // `execute` but the module is imported per-test to keep state isolated.
 
-function mktemp() {
-  return fs.mkdtempSync(
-    path.join(os.tmpdir(), "obsidian-plugin-template-test-"),
-  );
+async function mktemp() {
+  return fs.mkdtemp(path.join(os.tmpdir(), "obsidian-plugin-template-test-"));
 }
 
 describe("scripts/utils.mjs", () => {
@@ -55,9 +53,9 @@ describe("scripts/utils.mjs", () => {
   });
 
   it("PLUGIN_ID resolves to id from manifest.json", async () => {
-    const tmp = mktemp();
+    const tmp = await mktemp();
     process.chdir(tmp);
-    fs.writeFileSync("manifest.json", JSON.stringify({ id: "test-plugin" }));
+    await fs.writeFile("manifest.json", JSON.stringify({ id: "test-plugin" }));
 
     const { PLUGIN_ID } = await import("../../scripts/utils.mjs");
     const id = await PLUGIN_ID;
@@ -66,9 +64,11 @@ describe("scripts/utils.mjs", () => {
 
   describe("scripts/utils.mjs PLUGIN_ID and execute edge cases", () => {
     it("PLUGIN_ID caches its value after first resolution", async () => {
-      const project = fs.mkdtempSync(path.join(os.tmpdir(), "plugin-id-proj-"));
+      const project = await fs.mkdtemp(
+        path.join(os.tmpdir(), "plugin-id-proj-"),
+      );
       const manifestPath = path.join(project, "manifest.json");
-      fs.writeFileSync(manifestPath, JSON.stringify({ id: "first-id" }));
+      await fs.writeFile(manifestPath, JSON.stringify({ id: "first-id" }));
 
       const cwd = process.cwd();
       try {
@@ -79,7 +79,7 @@ describe("scripts/utils.mjs", () => {
         const first = await PLUGIN_ID;
         expect(first).toBe("first-id");
 
-        fs.writeFileSync(manifestPath, JSON.stringify({ id: "second-id" }));
+        await fs.writeFile(manifestPath, JSON.stringify({ id: "second-id" }));
         const second = await PLUGIN_ID;
         expect(second).toBe("first-id");
       } finally {

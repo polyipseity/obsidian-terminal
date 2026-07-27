@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import fs from "node:fs";
+import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, it, expect, vi } from "vitest";
@@ -25,7 +25,7 @@ vi.mock("../../scripts/utils.mjs", () => ({
 // See AGENTS.md (Testing section) — this is an integration test and uses
 // jest-like isolation by resetting modules and providing mocks.
 
-function writePackageAndVersions(project: string, packageContents = {}) {
+async function writePackageAndVersions(project: string, packageContents = {}) {
   const pkg = {
     author: "Tester",
     description: "A test package",
@@ -33,11 +33,11 @@ function writePackageAndVersions(project: string, packageContents = {}) {
     obsidian: { minAppVersion: "1.0.0" },
     ...packageContents,
   };
-  fs.writeFileSync(
+  await fs.writeFile(
     path.join(project, "package.json"),
     JSON.stringify(pkg, null, "  "),
   );
-  fs.writeFileSync(
+  await fs.writeFile(
     path.join(project, "versions.json"),
     JSON.stringify({}, null, "  "),
   );
@@ -46,8 +46,8 @@ function writePackageAndVersions(project: string, packageContents = {}) {
 
 describe("scripts/version.mjs", () => {
   it("creates manifest.json, manifest-beta.json and updates versions.json", async () => {
-    const project = fs.mkdtempSync(path.join(os.tmpdir(), "version-proj-"));
-    const pkg = writePackageAndVersions(project, {
+    const project = await fs.mkdtemp(path.join(os.tmpdir(), "version-proj-"));
+    const pkg = await writePackageAndVersions(project, {
       version: "1.2.3",
       funding: [{ type: "paypal", url: "https://paypal.me/test" }],
     });
@@ -63,7 +63,7 @@ describe("scripts/version.mjs", () => {
     }
 
     const manifest = JSON.parse(
-      fs.readFileSync(path.join(project, "manifest.json"), "utf-8"),
+      await fs.readFile(path.join(project, "manifest.json"), "utf-8"),
     );
     expect(manifest.author).toBe(pkg.author);
     expect(manifest.description).toBe(pkg.description);
@@ -71,19 +71,19 @@ describe("scripts/version.mjs", () => {
     expect(manifest.fundingUrl).toEqual({ paypal: "https://paypal.me/test" });
 
     const manifestBeta = JSON.parse(
-      fs.readFileSync(path.join(project, "manifest-beta.json"), "utf-8"),
+      await fs.readFile(path.join(project, "manifest-beta.json"), "utf-8"),
     );
     expect(manifestBeta.version).toBe("rolling");
 
     const versions = JSON.parse(
-      fs.readFileSync(path.join(project, "versions.json"), "utf-8"),
+      await fs.readFile(path.join(project, "versions.json"), "utf-8"),
     );
     expect(versions["1.2.3"]).toBe(pkg.obsidian.minAppVersion);
   });
 
   it("omits fundingUrl when package.json has no funding field", async () => {
-    const project = fs.mkdtempSync(path.join(os.tmpdir(), "version-proj-"));
-    writePackageAndVersions(project, { version: "2.0.0" });
+    const project = await fs.mkdtemp(path.join(os.tmpdir(), "version-proj-"));
+    await writePackageAndVersions(project, { version: "2.0.0" });
 
     vi.resetModules();
 
@@ -96,13 +96,13 @@ describe("scripts/version.mjs", () => {
     }
 
     const manifest = JSON.parse(
-      fs.readFileSync(path.join(project, "manifest.json"), "utf-8"),
+      await fs.readFile(path.join(project, "manifest.json"), "utf-8"),
     );
     expect(manifest.fundingUrl).toBeUndefined();
   });
 
   it("maps multiple funding entries to fundingUrl object", async () => {
-    const project = fs.mkdtempSync(
+    const project = await fs.mkdtemp(
       path.join(os.tmpdir(), "version-fund-proj-"),
     );
     const pkg = {
@@ -115,11 +115,11 @@ describe("scripts/version.mjs", () => {
         { type: "github", url: "https://github.com/sponsor" },
       ],
     };
-    fs.writeFileSync(
+    await fs.writeFile(
       path.join(project, "package.json"),
       JSON.stringify(pkg, null, "  "),
     );
-    fs.writeFileSync(
+    await fs.writeFile(
       path.join(project, "versions.json"),
       JSON.stringify({}, null, "  "),
     );
@@ -135,7 +135,7 @@ describe("scripts/version.mjs", () => {
     }
 
     const manifest = JSON.parse(
-      fs.readFileSync(path.join(project, "manifest.json"), "utf-8"),
+      await fs.readFile(path.join(project, "manifest.json"), "utf-8"),
     );
     expect(manifest.fundingUrl).toEqual({
       paypal: "https://paypal.me/x",
@@ -144,7 +144,9 @@ describe("scripts/version.mjs", () => {
   });
 
   it("merges `obsidian` fields into manifest and allows override", async () => {
-    const project = fs.mkdtempSync(path.join(os.tmpdir(), "version-obs-proj-"));
+    const project = await fs.mkdtemp(
+      path.join(os.tmpdir(), "version-obs-proj-"),
+    );
     const pkg = {
       author: "Author A",
       description: "Original description",
@@ -154,11 +156,11 @@ describe("scripts/version.mjs", () => {
         minAppVersion: "9.9.9",
       },
     };
-    fs.writeFileSync(
+    await fs.writeFile(
       path.join(project, "package.json"),
       JSON.stringify(pkg, null, "  "),
     );
-    fs.writeFileSync(
+    await fs.writeFile(
       path.join(project, "versions.json"),
       JSON.stringify({}, null, "  "),
     );
@@ -174,7 +176,7 @@ describe("scripts/version.mjs", () => {
     }
 
     const manifest = JSON.parse(
-      fs.readFileSync(path.join(project, "manifest.json"), "utf-8"),
+      await fs.readFile(path.join(project, "manifest.json"), "utf-8"),
     );
     expect(manifest.description).toBe("Obsidianny description");
     expect(manifest.version).toBe(pkg.version);

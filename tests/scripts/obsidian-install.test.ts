@@ -1,157 +1,207 @@
 // @vitest-environment node
 
-import fs from "node:fs";
+import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFile as execFileCb } from "node:child_process";
+import { promisify } from "node:util";
+const execFile = promisify(execFileCb);
 import { describe, it, expect } from "vitest";
 
 // Integration test for scripts/obsidian-install.mjs
 // See AGENTS.md (Testing section) — this is an integration test and
 // mirrors the behavior of the runtime script using temporary dirs.
 
-function setupProject(tmp: string): void {
-  fs.writeFileSync(
+async function setupProject(tmp: string): Promise<void> {
+  await fs.writeFile(
     path.join(tmp, "manifest.json"),
     JSON.stringify({ id: "copy-test" }),
   );
-  fs.writeFileSync(path.join(tmp, "main.js"), "console.log('main');\n");
-  fs.writeFileSync(path.join(tmp, "styles.css"), "/* styles */\n");
+  await fs.writeFile(path.join(tmp, "main.js"), "console.log('main');\n");
+  await fs.writeFile(path.join(tmp, "styles.css"), "/* styles */\n");
 }
 
 describe("scripts/obsidian-install.mjs", () => {
-  it("copies manifest, main and styles to provided destination", () => {
-    const project = fs.mkdtempSync(
+  it("copies manifest, main and styles to provided destination", async () => {
+    const project = await fs.mkdtemp(
       path.join(os.tmpdir(), "obsidian-install-proj-"),
     );
-    const dest = fs.mkdtempSync(
+    const dest = await fs.mkdtemp(
       path.join(os.tmpdir(), "obsidian-install-dest-"),
     );
-    setupProject(project);
+    await setupProject(project);
 
-    execFileSync(
+    await execFile(
       process.execPath,
       [path.join(__dirname, "../../scripts/obsidian-install.mjs"), dest],
       { cwd: project },
     );
 
     const expectedDir = path.join(dest, ".obsidian", "plugins", "copy-test");
-    expect(fs.existsSync(path.join(expectedDir, "manifest.json"))).toBe(true);
     expect(
-      fs.readFileSync(path.join(expectedDir, "main.js"), "utf-8"),
+      await fs
+        .access(path.join(expectedDir, "manifest.json"))
+        .then(() => true)
+        .catch(() => false),
+    ).toBe(true);
+    expect(
+      await fs.readFile(path.join(expectedDir, "main.js"), "utf-8"),
     ).toContain("console.log('main')");
-    expect(fs.existsSync(path.join(expectedDir, "styles.css"))).toBe(true);
+    expect(
+      await fs
+        .access(path.join(expectedDir, "styles.css"))
+        .then(() => true)
+        .catch(() => false),
+    ).toBe(true);
   });
 
-  it("defaults to current directory when no destination arg is passed", () => {
-    const project = fs.mkdtempSync(
+  it("defaults to current directory when no destination arg is passed", async () => {
+    const project = await fs.mkdtemp(
       path.join(os.tmpdir(), "obsidian-install-proj-"),
     );
-    setupProject(project);
+    await setupProject(project);
 
-    execFileSync(
+    await execFile(
       process.execPath,
       [path.join(__dirname, "../../scripts/obsidian-install.mjs")],
       { cwd: project },
     );
 
     const expectedDir = path.join(project, ".obsidian", "plugins", "copy-test");
-    expect(fs.existsSync(path.join(expectedDir, "manifest.json"))).toBe(true);
     expect(
-      fs.readFileSync(path.join(expectedDir, "main.js"), "utf-8"),
+      await fs
+        .access(path.join(expectedDir, "manifest.json"))
+        .then(() => true)
+        .catch(() => false),
+    ).toBe(true);
+    expect(
+      await fs.readFile(path.join(expectedDir, "main.js"), "utf-8"),
     ).toContain("console.log('main')");
-    expect(fs.existsSync(path.join(expectedDir, "styles.css"))).toBe(true);
+    expect(
+      await fs
+        .access(path.join(expectedDir, "styles.css"))
+        .then(() => true)
+        .catch(() => false),
+    ).toBe(true);
   });
 
-  it("fails gracefully when manifest.json is missing", () => {
-    const project = fs.mkdtempSync(
+  it("fails gracefully when manifest.json is missing", async () => {
+    const project = await fs.mkdtemp(
       path.join(os.tmpdir(), "obsidian-install-edge-"),
     );
-    fs.writeFileSync(path.join(project, "main.js"), "console.log('x')\n");
-    fs.writeFileSync(path.join(project, "styles.css"), "/* x */\n");
+    await fs.writeFile(path.join(project, "main.js"), "console.log('x')\n");
+    await fs.writeFile(path.join(project, "styles.css"), "/* x */\n");
 
-    // Use spawnSync so we can inspect status and stderr without throwing
-    const res = spawnSync(
-      process.execPath,
-      [path.join(__dirname, "../../scripts/obsidian-install.mjs")],
-      {
-        cwd: project,
-        encoding: "utf-8",
-      },
-    );
-
-    expect(res.status).not.toBe(0);
-    expect(res.stderr).toContain("Error reading manifest.json:");
+    // Use execFile and catch its rejection to inspect status and stderr
+    try {
+      await execFile(
+        process.execPath,
+        [path.join(__dirname, "../../scripts/obsidian-install.mjs")],
+        { cwd: project },
+      );
+      expect.fail("Expected execFile to reject");
+    } catch (err: unknown) {
+      const execErr = err as { stderr?: string; code?: number };
+      expect(execErr.code).not.toBe(0);
+      expect(execErr.stderr).toContain("Error reading manifest.json:");
+    }
   });
 
-  it("copies into existing destination directory without error", () => {
-    const project = fs.mkdtempSync(
+  it("copies into existing destination directory without error", async () => {
+    const project = await fs.mkdtemp(
       path.join(os.tmpdir(), "obsidian-install-proj-"),
     );
-    const dest = fs.mkdtempSync(
+    const dest = await fs.mkdtemp(
       path.join(os.tmpdir(), "obsidian-install-dest-"),
     );
 
-    fs.writeFileSync(
+    await fs.writeFile(
       path.join(project, "manifest.json"),
       JSON.stringify({ id: "edge-copy" }),
     );
-    fs.writeFileSync(path.join(project, "main.js"), "console.log('main');\n");
-    fs.writeFileSync(path.join(project, "styles.css"), "/* styles */\n");
+    await fs.writeFile(path.join(project, "main.js"), "console.log('main');\n");
+    await fs.writeFile(path.join(project, "styles.css"), "/* styles */\n");
 
-    fs.mkdirSync(path.join(dest, ".obsidian"), { recursive: true });
-    fs.mkdirSync(path.join(dest, ".obsidian", "plugins"), { recursive: true });
+    await fs.mkdir(path.join(dest, ".obsidian"), { recursive: true });
+    await fs.mkdir(path.join(dest, ".obsidian", "plugins"), {
+      recursive: true,
+    });
 
-    execFileSync(
+    await execFile(
       process.execPath,
       [path.join(__dirname, "../../scripts/obsidian-install.mjs"), dest],
       { cwd: project },
     );
 
     const expectedDir = path.join(dest, ".obsidian", "plugins", "edge-copy");
-    expect(fs.existsSync(path.join(expectedDir, "manifest.json"))).toBe(true);
-    expect(fs.existsSync(path.join(expectedDir, "main.js"))).toBe(true);
+    expect(
+      await fs
+        .access(path.join(expectedDir, "manifest.json"))
+        .then(() => true)
+        .catch(() => false),
+    ).toBe(true);
+    expect(
+      await fs
+        .access(path.join(expectedDir, "main.js"))
+        .then(() => true)
+        .catch(() => false),
+    ).toBe(true);
   });
 
-  it("accepts destination with trailing slash and copies correctly", () => {
-    const project = fs.mkdtempSync(path.join(os.tmpdir(), "obs-install-proj-"));
+  it("accepts destination with trailing slash and copies correctly", async () => {
+    const project = await fs.mkdtemp(
+      path.join(os.tmpdir(), "obs-install-proj-"),
+    );
     const dest =
-      fs.mkdtempSync(path.join(os.tmpdir(), "obs-install-dest-")) + path.sep;
+      (await fs.mkdtemp(path.join(os.tmpdir(), "obs-install-dest-"))) +
+      path.sep;
 
-    fs.writeFileSync(
+    await fs.writeFile(
       path.join(project, "manifest.json"),
       JSON.stringify({ id: "trail-test" }),
     );
-    fs.writeFileSync(path.join(project, "main.js"), "console.log('m');\n");
-    fs.writeFileSync(path.join(project, "styles.css"), "/* s */\n");
+    await fs.writeFile(path.join(project, "main.js"), "console.log('m');\n");
+    await fs.writeFile(path.join(project, "styles.css"), "/* s */\n");
 
-    execFileSync(
+    await execFile(
       process.execPath,
       [path.join(__dirname, "../../scripts/obsidian-install.mjs"), dest],
       { cwd: project },
     );
 
     const expectedDir = path.join(dest, ".obsidian", "plugins", "trail-test");
-    expect(fs.existsSync(path.join(expectedDir, "manifest.json"))).toBe(true);
+    expect(
+      await fs
+        .access(path.join(expectedDir, "manifest.json"))
+        .then(() => true)
+        .catch(() => false),
+    ).toBe(true);
   });
 
-  it("accepts '.' as destination and copies into ./ .obsidian/plugins/<id>", () => {
-    const project = fs.mkdtempSync(path.join(os.tmpdir(), "obs-install-proj-"));
+  it("accepts '.' as destination and copies into ./ .obsidian/plugins/<id>", async () => {
+    const project = await fs.mkdtemp(
+      path.join(os.tmpdir(), "obs-install-proj-"),
+    );
 
-    fs.writeFileSync(
+    await fs.writeFile(
       path.join(project, "manifest.json"),
       JSON.stringify({ id: "dot-dest" }),
     );
-    fs.writeFileSync(path.join(project, "main.js"), "console.log('m');\n");
-    fs.writeFileSync(path.join(project, "styles.css"), "/* s */\n");
+    await fs.writeFile(path.join(project, "main.js"), "console.log('m');\n");
+    await fs.writeFile(path.join(project, "styles.css"), "/* s */\n");
 
-    execFileSync(
+    await execFile(
       process.execPath,
       [path.join(__dirname, "../../scripts/obsidian-install.mjs"), "."],
       { cwd: project },
     );
 
     const expectedDir = path.join(project, ".obsidian", "plugins", "dot-dest");
-    expect(fs.existsSync(path.join(expectedDir, "manifest.json"))).toBe(true);
+    expect(
+      await fs
+        .access(path.join(expectedDir, "manifest.json"))
+        .then(() => true)
+        .catch(() => false),
+    ).toBe(true);
   }, 20000);
 });
