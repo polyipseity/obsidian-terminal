@@ -4,11 +4,7 @@ import eslintPrettier from "eslint-config-prettier/flat";
 import { defineConfig, includeIgnoreFile } from "eslint/config";
 import globals from "globals"; // provide Node/browser globals for file-level overrides
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import eslintTs from "typescript-eslint";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 export const FILE_GLOBS = [
   "**/*.cjs",
@@ -26,7 +22,7 @@ export default defineConfig([
   eslintJs.configs.recommended,
   ...eslintTs.configs.strict,
   eslintPrettier,
-  includeIgnoreFile(path.join(__dirname, ".gitignore")),
+  includeIgnoreFile(path.join(import.meta.dirname, ".gitignore")),
   {
     files: FILE_GLOBS,
   },
