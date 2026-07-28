@@ -14,7 +14,10 @@ function createSpawnMock() {
   return vi.fn().mockImplementation(() => {
     const obj = {
       once(event: string, cb: (code: number, signal: null) => void) {
-        if (event === "exit") setImmediate(() => { cb(0, null); });
+        if (event === "exit")
+          setImmediate(() => {
+            cb(0, null);
+          });
         return obj;
       },
     };
@@ -86,14 +89,18 @@ describe("scripts/build.mjs", () => {
     const esbuild = vi.mocked(await import("esbuild"));
     const contextResult = esbuild.context.mock.results[0];
     if (!contextResult) throw new Error("esbuild.context was not called");
-    if (contextResult.type !== "return") throw new Error("esbuild.context did not return successfully");
-    const { rebuild: rebuildSpy, dispose: disposeSpy } = await contextResult.value;
+    if (contextResult.type !== "return")
+      throw new Error("esbuild.context did not return successfully");
+    const { rebuild: rebuildSpy, dispose: disposeSpy } =
+      await contextResult.value;
 
     expect(rebuildSpy).toHaveBeenCalled();
     expect(disposeSpy).toHaveBeenCalled();
     expect(esbuild.analyzeMetafile).toHaveBeenCalled();
     expect(esbuild.analyzeMetafile).toHaveBeenCalledWith(
-      expect.objectContaining({ inputs: expect.anything() satisfies unknown as unknown }),
+      expect.objectContaining({
+        inputs: expect.anything() satisfies unknown as unknown,
+      }),
       expect.anything(),
     );
     expect(esbuild.formatMessages).toHaveBeenCalled();
