@@ -20,7 +20,7 @@ export const FILE_GLOBS = [
 
 export default defineConfig([
   eslintJs.configs.recommended,
-  ...eslintTs.configs.strict,
+  ...eslintTs.configs.strictTypeChecked,
   eslintPrettier,
   includeIgnoreFile(path.join(import.meta.dirname, ".gitignore")),
   {
