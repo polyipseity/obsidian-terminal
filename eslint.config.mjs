@@ -37,6 +37,12 @@ export default defineConfig([
       },
     },
     rules: {
+      "@typescript-eslint/no-empty-object-type": [
+        "error",
+        {
+          allowInterfaces: "with-single-extends",
+        },
+      ],
       "@typescript-eslint/no-namespace": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",
