@@ -37,6 +37,14 @@ export default defineConfig([
     },
     rules: {
       "@typescript-eslint/no-namespace": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
+      ],
     },
   },
   // Scripts run on Node.js — provide Node globals so `console` is defined
