@@ -159,8 +159,8 @@ describe("Obsidian Mock", () => {
       const file = getVault().getFileByPath("test.md");
 
       expect(file?.stat).toMatchObject({
-        ctime: expect.any(Number),
-        mtime: expect.any(Number),
+        ctime: expect.any(Number) satisfies number as number,
+        mtime: expect.any(Number) satisfies number as number,
         size: "content".length,
       });
     });

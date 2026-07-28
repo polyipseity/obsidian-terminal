@@ -14,7 +14,7 @@ function createSpawnMock() {
   return vi.fn().mockImplementation(() => {
     const obj = {
       once(event: string, cb: (code: number, signal: null) => void) {
-        if (event === "exit") setImmediate(() => cb(0, null));
+        if (event === "exit") setImmediate(() => { cb(0, null); });
         return obj;
       },
     };
@@ -46,7 +46,7 @@ describe("scripts/build.mjs", () => {
   });
   afterEach(() => {
     process.chdir(cwd);
-    delete process.argv[2];
+    process.argv.splice(2, 1);
     vi.restoreAllMocks();
   });
 
@@ -86,14 +86,14 @@ describe("scripts/build.mjs", () => {
     const esbuild = vi.mocked(await import("esbuild"));
     const contextResult = esbuild.context.mock.results[0];
     if (!contextResult) throw new Error("esbuild.context was not called");
-    const { rebuild: rebuildSpy, dispose: disposeSpy } =
-      await contextResult.value;
+    if (contextResult.type !== "return") throw new Error("esbuild.context did not return successfully");
+    const { rebuild: rebuildSpy, dispose: disposeSpy } = await contextResult.value;
 
     expect(rebuildSpy).toHaveBeenCalled();
     expect(disposeSpy).toHaveBeenCalled();
     expect(esbuild.analyzeMetafile).toHaveBeenCalled();
     expect(esbuild.analyzeMetafile).toHaveBeenCalledWith(
-      expect.objectContaining({ inputs: expect.anything() }),
+      expect.objectContaining({ inputs: expect.anything() satisfies unknown as unknown }),
       expect.anything(),
     );
     expect(esbuild.formatMessages).toHaveBeenCalled();
@@ -129,7 +129,7 @@ describe("scripts/build.mjs", () => {
 
     expect(watch).toHaveBeenCalled();
 
-    delete process.argv[2];
+    process.argv.splice(2, 1);
   });
 
   it("logs warnings when rebuild returns warnings and no metafile", async () => {
