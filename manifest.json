@@ -1,13 +1,13 @@
 {
   "author": "PLACEHOLDER",
+  "authorUrl": "PLACEHOLDER",
   "description": "PLACEHOLDER",
   "fundingUrl": {
     "PLACEHOLDER": "PLACEHOLDER"
   },
-  "version": "0.0.0",
-  "authorUrl": "PLACEHOLDER",
   "id": "PLACEHOLDER",
   "isDesktopOnly": false,
   "minAppVersion": "1.4.11",
-  "name": "PLACEHOLDER"
+  "name": "PLACEHOLDER",
+  "version": "0.0.0"
 }
