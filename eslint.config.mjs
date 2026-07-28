@@ -25,6 +25,7 @@ export const FILE_GLOBS = [
 export default defineConfig([
   eslintJs.configs.recommended,
   ...eslintTs.configs.strict,
+  eslintPrettier,
   includeIgnoreFile(path.join(__dirname, ".gitignore")),
   {
     files: FILE_GLOBS,
@@ -56,6 +57,4 @@ export default defineConfig([
       },
     },
   },
-  // Disable formatting-related rules that may conflict with Prettier
-  eslintPrettier,
 ]);
