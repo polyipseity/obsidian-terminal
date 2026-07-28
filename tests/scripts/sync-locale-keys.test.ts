@@ -11,7 +11,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // file to an existing translation, that sorting is applied, and that files with
 // missing translation.json are ignored.
 
-const SCRIPT_PATH = path.join(process.cwd(), "scripts", "sync-locale-keys.mjs");
+async function importScript() {
+  return await import("../../scripts/sync-locale-keys.mjs");
+}
 
 describe("scripts/sync-locale-keys.mjs", () => {
   let tmpdir: string;
@@ -65,7 +67,7 @@ describe("scripts/sync-locale-keys.mjs", () => {
     );
 
     // run the script
-    const { main } = await import(SCRIPT_PATH);
+    const { main } = await importScript();
     await main(tmpdir);
 
     const result = v.parse(
@@ -102,7 +104,7 @@ describe("scripts/sync-locale-keys.mjs", () => {
     await fs.mkdir(path.join(localesDir, "es")); // no translation.json
 
     // should not throw
-    const { main } = await import(SCRIPT_PATH);
+    const { main } = await importScript();
     await main(tmpdir);
   });
 
@@ -134,7 +136,7 @@ describe("scripts/sync-locale-keys.mjs", () => {
       JSON.stringify(frData, null, 2),
     );
 
-    const { main } = await import(SCRIPT_PATH);
+    const { main } = await importScript();
     await main(tmpdir);
 
     const result = v.parse(
@@ -175,7 +177,7 @@ describe("scripts/sync-locale-keys.mjs", () => {
       JSON.stringify(frData, null, 2),
     );
 
-    const { main } = await import(SCRIPT_PATH);
+    const { main } = await importScript();
     await main(tmpdir);
 
     const result = v.parse(
