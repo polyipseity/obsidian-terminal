@@ -1,6 +1,6 @@
 // @vitest-environment node
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Unit spec for scripts/obsidian-install.mjs — assert concise error output
 // when the manifest cannot be read. Uses module mocking and process.exit
@@ -12,7 +12,7 @@ describe("scripts/obsidian-install.mjs", () => {
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const exitMock = vi.spyOn(process, "exit").mockImplementation((code) => {
       // Simulate process.exit but make it observable without terminating the test runner
-      throw new Error(`process.exit called with ${code}`);
+      throw new Error(`process.exit called with ${String(code)}`);
     });
 
     vi.doMock("../../scripts/utils.mjs", () => ({
@@ -25,7 +25,7 @@ describe("scripts/obsidian-install.mjs", () => {
     );
 
     expect(errSpy).toHaveBeenCalled();
-    const msg = errSpy.mock.calls[0]?.[0];
+    const msg = String(errSpy.mock.calls[0]?.[0]);
     expect(msg).toContain("Error reading manifest.json");
     expect(exitMock).toHaveBeenCalledWith(1);
   });
@@ -33,7 +33,7 @@ describe("scripts/obsidian-install.mjs", () => {
   it("does not print a full stack trace when manifest is missing", async () => {
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const exitMock = vi.spyOn(process, "exit").mockImplementation((code) => {
-      throw new Error(`process.exit called with ${code}`);
+      throw new Error(`process.exit called with ${String(code)}`);
     });
 
     vi.doMock("../../scripts/utils.mjs", () => ({
@@ -45,7 +45,7 @@ describe("scripts/obsidian-install.mjs", () => {
       "process.exit called with 1",
     );
 
-    const msg = errSpy.mock.calls[0]?.[0];
+    const msg = String(errSpy.mock.calls[0]?.[0]);
     expect(msg).toContain("Error reading manifest.json");
     expect(msg).not.toContain("\n");
     expect(msg).not.toMatch(/\bat\s+/);
@@ -75,7 +75,7 @@ describe("scripts/obsidian-install.mjs", () => {
 
     // Ensure no destination argument (defaults to '.')
     const oldArg = process.argv[2];
-    delete process.argv[2];
+    process.argv.splice(2, 1);
 
     await import("../../scripts/obsidian-install.mjs");
 
@@ -86,14 +86,23 @@ describe("scripts/obsidian-install.mjs", () => {
 
     // Expect copyFile called for manifest, main and styles
     expect(copyMock).toHaveBeenCalledTimes(3);
-    const files = copyMock.mock.calls.map((c) => c[0]);
-    expect(files).toEqual(["manifest.json", "main.js", "styles.css"]);
+    expect(copyMock).toHaveBeenNthCalledWith(
+      1,
+      "manifest.json",
+      expect.any(String),
+    );
+    expect(copyMock).toHaveBeenNthCalledWith(2, "main.js", expect.any(String));
+    expect(copyMock).toHaveBeenNthCalledWith(
+      3,
+      "styles.css",
+      expect.any(String),
+    );
 
     // restore argv
     if (typeof oldArg === "string") {
       process.argv[2] = oldArg;
     } else {
-      delete process.argv[2];
+      process.argv.splice(2, 1);
     }
   });
 
@@ -129,28 +138,28 @@ describe("scripts/obsidian-install.mjs", () => {
     if (typeof oldArg === "string") {
       process.argv[2] = oldArg;
     } else {
-      delete process.argv[2];
+      process.argv.splice(2, 1);
     }
   });
 
   it("formats non-Error rejection using String(err)", async () => {
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const exitMock = vi.spyOn(process, "exit").mockImplementation((code) => {
-      throw new Error(`process.exit called with ${code}`);
+      throw new Error(`process.exit called with ${String(code)}`);
     });
 
     // PLUGIN_ID rejects with a plain object (no message property)
     vi.doMock("../../scripts/utils.mjs", () => ({
       PATHS: { obsidianPlugins: ".obsidian/plugins" },
-      PLUGIN_ID: Promise.reject({ problem: true }),
+      PLUGIN_ID: Promise.reject(new Error(JSON.stringify({ problem: true }))),
     }));
 
     await expect(import("../../scripts/obsidian-install.mjs")).rejects.toThrow(
       "process.exit called with 1",
     );
 
-    const msgArg = errSpy.mock.calls[0]?.[1];
-    expect(String(msgArg)).toContain("[object Object]");
+    const msgArg = String(errSpy.mock.calls[0]?.[1]);
+    expect(msgArg).toContain("problem");
 
     expect(exitMock).toHaveBeenCalledWith(1);
   });

@@ -3,6 +3,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import * as v from "valibot";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("../../scripts/utils.mjs", () => ({
@@ -20,6 +21,19 @@ vi.mock("../../scripts/utils.mjs", () => ({
   },
   execute: vi.fn().mockResolvedValue(""),
 }));
+
+const ManifestSchema = v.object({
+  author: v.optional(v.string()),
+  description: v.optional(v.string()),
+  version: v.string(),
+  fundingUrl: v.optional(v.record(v.string(), v.string())),
+});
+
+const ManifestBetaSchema = v.object({
+  version: v.string(),
+});
+
+const VersionsSchema = v.record(v.string(), v.string());
 
 // Integration tests for scripts/version.mjs (mirrors top-level behaviour)
 // See AGENTS.md (Testing section) — this is an integration test and uses
@@ -62,21 +76,30 @@ describe("scripts/version.mjs", () => {
       process.chdir(cwd);
     }
 
-    const manifest = JSON.parse(
-      await fs.readFile(path.join(project, "manifest.json"), "utf-8"),
+    const manifest = v.parse(
+      ManifestSchema,
+      JSON.parse(
+        await fs.readFile(path.join(project, "manifest.json"), "utf-8"),
+      ),
     );
     expect(manifest.author).toBe(pkg.author);
     expect(manifest.description).toBe(pkg.description);
     expect(manifest.version).toBe(pkg.version);
     expect(manifest.fundingUrl).toEqual({ paypal: "https://paypal.me/test" });
 
-    const manifestBeta = JSON.parse(
-      await fs.readFile(path.join(project, "manifest-beta.json"), "utf-8"),
+    const manifestBeta = v.parse(
+      ManifestBetaSchema,
+      JSON.parse(
+        await fs.readFile(path.join(project, "manifest-beta.json"), "utf-8"),
+      ),
     );
     expect(manifestBeta.version).toBe("rolling");
 
-    const versions = JSON.parse(
-      await fs.readFile(path.join(project, "versions.json"), "utf-8"),
+    const versions = v.parse(
+      VersionsSchema,
+      JSON.parse(
+        await fs.readFile(path.join(project, "versions.json"), "utf-8"),
+      ),
     );
     expect(versions["1.2.3"]).toBe(pkg.obsidian.minAppVersion);
   });
@@ -95,8 +118,11 @@ describe("scripts/version.mjs", () => {
       process.chdir(cwd);
     }
 
-    const manifest = JSON.parse(
-      await fs.readFile(path.join(project, "manifest.json"), "utf-8"),
+    const manifest = v.parse(
+      ManifestSchema,
+      JSON.parse(
+        await fs.readFile(path.join(project, "manifest.json"), "utf-8"),
+      ),
     );
     expect(manifest.fundingUrl).toBeUndefined();
   });
@@ -134,8 +160,11 @@ describe("scripts/version.mjs", () => {
       process.chdir(cwd);
     }
 
-    const manifest = JSON.parse(
-      await fs.readFile(path.join(project, "manifest.json"), "utf-8"),
+    const manifest = v.parse(
+      ManifestSchema,
+      JSON.parse(
+        await fs.readFile(path.join(project, "manifest.json"), "utf-8"),
+      ),
     );
     expect(manifest.fundingUrl).toEqual({
       paypal: "https://paypal.me/x",
@@ -175,8 +204,11 @@ describe("scripts/version.mjs", () => {
       process.chdir(cwd);
     }
 
-    const manifest = JSON.parse(
-      await fs.readFile(path.join(project, "manifest.json"), "utf-8"),
+    const manifest = v.parse(
+      ManifestSchema,
+      JSON.parse(
+        await fs.readFile(path.join(project, "manifest.json"), "utf-8"),
+      ),
     );
     expect(manifest.description).toBe("Obsidianny description");
     expect(manifest.version).toBe(pkg.version);

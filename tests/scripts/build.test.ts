@@ -58,16 +58,18 @@ describe("scripts/build.mjs", () => {
 
     const fakeMetafile = { inputs: { "a.js": {} } };
     const fakeError = { text: "err" };
+    const rebuildMock = vi.fn().mockResolvedValue({
+      errors: [fakeError],
+      warnings: [],
+      metafile: fakeMetafile,
+    });
+    const disposeMock = vi.fn();
     vi.doMock("esbuild", () => ({
       analyzeMetafile: vi.fn().mockResolvedValue("ANALYSIS"),
       formatMessages: vi.fn().mockResolvedValue(["formatted error"]),
       context: vi.fn().mockResolvedValue({
-        rebuild: vi.fn().mockResolvedValue({
-          errors: [fakeError],
-          warnings: [],
-          metafile: fakeMetafile,
-        }),
-        dispose: vi.fn(),
+        rebuild: rebuildMock,
+        dispose: disposeMock,
       }),
     }));
 
@@ -87,15 +89,9 @@ describe("scripts/build.mjs", () => {
     }
 
     const esbuild = vi.mocked(await import("esbuild"));
-    const contextResult = esbuild.context.mock.results[0];
-    if (!contextResult) throw new Error("esbuild.context was not called");
-    if (contextResult.type !== "return")
-      throw new Error("esbuild.context did not return successfully");
-    const { rebuild: rebuildSpy, dispose: disposeSpy } =
-      await contextResult.value;
 
-    expect(rebuildSpy).toHaveBeenCalled();
-    expect(disposeSpy).toHaveBeenCalled();
+    expect(rebuildMock).toHaveBeenCalled();
+    expect(disposeMock).toHaveBeenCalled();
     expect(esbuild.analyzeMetafile).toHaveBeenCalled();
     expect(esbuild.analyzeMetafile).toHaveBeenCalledWith(
       expect.objectContaining({
