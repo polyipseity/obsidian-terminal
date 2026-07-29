@@ -301,6 +301,7 @@ describe("Obsidian Mock", () => {
     });
 
     it("supports override via setRequestHandler", async () => {
+      // eslint-disable-next-line @typescript-eslint/require-await
       setRequestHandler(async (): Promise<RequestUrlResponse> => {
         return {
           status: 201,
@@ -397,7 +398,7 @@ describe("Obsidian Mock", () => {
   });
 
   describe("MetadataCache", () => {
-    it("parses frontmatter from vault files", async () => {
+    it("parses frontmatter from vault files", () => {
       setVaultFiles({
         "note.md":
           "---\ntitle: Test Note\ntags: [tag1, tag2]\n---\n\nContent here",
@@ -411,7 +412,7 @@ describe("Obsidian Mock", () => {
       });
     });
 
-    it("parses headings", async () => {
+    it("parses headings", () => {
       setVaultFiles({
         "note.md": "# Heading 1\n\n## Heading 2\n\nText\n\n### Heading 3",
       });
@@ -433,7 +434,7 @@ describe("Obsidian Mock", () => {
       });
     });
 
-    it("parses wikilinks", async () => {
+    it("parses wikilinks", () => {
       setVaultFiles({
         "note.md": "Link to [[other note]] and [[file|alias]]",
       });
@@ -453,7 +454,7 @@ describe("Obsidian Mock", () => {
       });
     });
 
-    it("parses tags", async () => {
+    it("parses tags", () => {
       setVaultFiles({
         "note.md": "Text with #tag1 and #tag2",
       });

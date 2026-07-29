@@ -188,15 +188,18 @@ export class Vault extends Events {
   adapter = {
     getName: (): string => "mock-adapter",
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     exists: async (path: string): Promise<boolean> =>
       state.files.has(normalizePath(path)),
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     read: async (path: string): Promise<string> => {
       const file = state.files.get(normalizePath(path));
       if (!file) throw new Error(`File not found: ${path}`);
       return file.content;
     },
 
+    // eslint-disable-next-line @typescript-eslint/require-await
     write: async (path: string, data: string): Promise<void> => {
       const normalized = normalizePath(path);
       const existing = state.files.get(normalized);
@@ -255,6 +258,7 @@ export class Vault extends Events {
     return files;
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async create(path: string, data: string): Promise<TFile> {
     const normalized = normalizePath(path);
     if (state.files.has(normalized)) {
@@ -270,6 +274,7 @@ export class Vault extends Events {
     return file;
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async createFolder(path: string): Promise<TFolder> {
     return {
       path: normalizePath(path),
@@ -281,6 +286,7 @@ export class Vault extends Events {
     };
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async read(file: TFile | string): Promise<string> {
     const path = typeof file === "string" ? file : file.path;
     const normalized = normalizePath(path);
@@ -299,6 +305,7 @@ export class Vault extends Events {
     return encoder.encode(content).buffer;
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async modify(file: TFile | string, data: string): Promise<void> {
     const path = typeof file === "string" ? file : file.path;
     const normalized = normalizePath(path);
@@ -312,6 +319,7 @@ export class Vault extends Events {
     this.trigger("modify", fileObj);
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async delete(file: TFile | string, _force?: boolean): Promise<void> {
     const path = typeof file === "string" ? file : file.path;
     const normalized = normalizePath(path);
@@ -323,6 +331,7 @@ export class Vault extends Events {
     this.trigger("delete", fileObj);
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async rename(file: TFile | string, newPath: string): Promise<void> {
     const oldPath = typeof file === "string" ? file : file.path;
     const normalizedOld = normalizePath(oldPath);
@@ -338,6 +347,7 @@ export class Vault extends Events {
     this.trigger("rename", newFile, oldPath);
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async copy(file: TFile | string, newPath: string): Promise<TFile> {
     const oldPath = typeof file === "string" ? file : file.path;
     const normalizedOld = normalizePath(oldPath);
@@ -425,6 +435,7 @@ export class FileManager {
     await this.vault.rename(file, newPath);
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async generateMarkdownLink(
     file: TFile,
     _sourcePath: string,
@@ -1716,10 +1727,11 @@ export function requestUrl(param: RequestUrlParam): RequestUrlResponsePromise {
         typeof stub.response === "function" ? stub.response() : stub.response;
       const promise = Promise.resolve(response) as RequestUrlResponsePromise;
 
+      // eslint-disable-next-line @typescript-eslint/require-await
       promise.arrayBuffer = async () => response.arrayBuffer;
-
+      // eslint-disable-next-line @typescript-eslint/require-await
       promise.json = async () => response.json;
-
+      // eslint-disable-next-line @typescript-eslint/require-await
       promise.text = async () => response.text;
       return promise;
     }
@@ -1761,6 +1773,7 @@ export function requestUrl(param: RequestUrlParam): RequestUrlResponsePromise {
 // ===== Rendering Helpers (No-ops) =====
 
 export const MarkdownRenderer = {
+  // eslint-disable-next-line @typescript-eslint/require-await
   renderMarkdown: async (
     markdown: string,
     el: HTMLElement,
@@ -1772,6 +1785,7 @@ export const MarkdownRenderer = {
   // Some environments/tests expect the newer `render(app, ...)` API —
   // provide a thin shim so both signatures work in tests.
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   render: async (
     _app: App,
     markdown: string,
