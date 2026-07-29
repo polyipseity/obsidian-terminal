@@ -46,6 +46,7 @@ async function esbuild() {
         // Cannot use `i18next` because it is too outdated to have formatters
         moment: "moment",
       }),
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call -- JSDoc typings could be not parsed for some reason.
       esbuildCompress({
         compressors: [
           {
