@@ -187,16 +187,13 @@ export class Events {
 export class Vault extends Events {
   adapter = {
     getName: (): string => "mock-adapter",
-
     exists: async (path: string): Promise<boolean> =>
       state.files.has(normalizePath(path)),
-
     read: async (path: string): Promise<string> => {
       const file = state.files.get(normalizePath(path));
       if (!file) throw new Error(`File not found: ${path}`);
       return file.content;
     },
-
     write: async (path: string, data: string): Promise<void> => {
       const normalized = normalizePath(path);
       const existing = state.files.get(normalized);
@@ -391,7 +388,9 @@ export class Vault extends Events {
 
   on(
     name: string,
-    callback: (...args: unknown[]) => unknown,
+    // eslint-disable-next-line eslint-comments/no-restricted-disable -- What is the point of this?
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- EventRef callback signature
+    callback: (...args: any[]) => unknown,
     ctx?: unknown,
   ): EventRef {
     return super.on(name, callback, ctx);
@@ -1591,7 +1590,7 @@ export class Notice {
   private message: string | DocumentFragment;
   private duration: number;
   private hidden = false;
-  private hideTimeout: NodeJS.Timeout | null = null;
+  private hideTimeout: number | null = null;
 
   constructor(message: string | DocumentFragment, duration = 5000) {
     this.message = message;
@@ -1652,7 +1651,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
   wait: number,
   immediate = false,
 ): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout | null = null;
+  let timeout: number | null = null;
   return function (this: unknown, ...args: Parameters<T>): void {
     const later = (): void => {
       timeout = null;
@@ -1714,7 +1713,6 @@ export function requestUrl(param: RequestUrlParam): RequestUrlResponsePromise {
       const response =
         typeof stub.response === "function" ? stub.response() : stub.response;
       const promise = Promise.resolve(response) as RequestUrlResponsePromise;
-
       promise.arrayBuffer = async () => response.arrayBuffer;
       promise.json = async () => response.json;
       promise.text = async () => response.text;
@@ -1768,7 +1766,6 @@ export const MarkdownRenderer = {
   },
   // Some environments/tests expect the newer `render(app, ...)` API —
   // provide a thin shim so both signatures work in tests.
-
   render: async (
     _app: App,
     markdown: string,
@@ -1850,7 +1847,6 @@ export function getIcon(iconId: string): string | null {
 
 export function setIcon(el: HTMLElement, iconId: string): void {
   const svg = state.icons.get(iconId);
-  // eslint-disable-next-line no-unsanitized/property -- mock implementation
   if (svg) el.innerHTML = svg;
 }
 
