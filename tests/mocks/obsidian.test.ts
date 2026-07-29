@@ -114,7 +114,9 @@ describe("Obsidian Mock", () => {
         deleteTriggered = true;
       });
 
-      await vault.delete("test.md");
+      const file = vault.getFileByPath("test.md");
+      if (!file) throw new Error("setup failed");
+      await getApp().fileManager.trashFile(file);
 
       expect(vault.getFileByPath("test.md")).toBeNull();
       expect(deleteTriggered).toBe(true);
@@ -397,7 +399,7 @@ describe("Obsidian Mock", () => {
   });
 
   describe("MetadataCache", () => {
-    it("parses frontmatter from vault files", () => {
+    it("parses frontmatter from vault files", async () => {
       setVaultFiles({
         "note.md":
           "---\ntitle: Test Note\ntags: [tag1, tag2]\n---\n\nContent here",
@@ -411,7 +413,7 @@ describe("Obsidian Mock", () => {
       });
     });
 
-    it("parses headings", () => {
+    it("parses headings", async () => {
       setVaultFiles({
         "note.md": "# Heading 1\n\n## Heading 2\n\nText\n\n### Heading 3",
       });
@@ -433,7 +435,7 @@ describe("Obsidian Mock", () => {
       });
     });
 
-    it("parses wikilinks", () => {
+    it("parses wikilinks", async () => {
       setVaultFiles({
         "note.md": "Link to [[other note]] and [[file|alias]]",
       });
@@ -453,7 +455,7 @@ describe("Obsidian Mock", () => {
       });
     });
 
-    it("parses tags", () => {
+    it("parses tags", async () => {
       setVaultFiles({
         "note.md": "Text with #tag1 and #tag2",
       });
@@ -506,7 +508,7 @@ describe("Obsidian Mock", () => {
 
       await getApp().fileManager.processFrontMatter(file, (fm) => {
         // mutate to trigger a write
-        fm.title = "New Title";
+        fm.title = "New title";
       });
 
       const content = await vault.read("no-fm-2.md");
@@ -518,7 +520,7 @@ describe("Obsidian Mock", () => {
         v.looseObject({ title: v.string() }),
         parseYaml(fmMatch[1]),
       );
-      expect(parsed.title).toBe("New Title");
+      expect(parsed.title).toBe("New title");
     });
 
     it("does not overwrite malformed frontmatter when processor leaves it unchanged, but will replace it if processor mutates", async () => {
@@ -625,7 +627,7 @@ describe("Obsidian Mock", () => {
 
       class TestPlugin extends Plugin {
         onload(): void {
-          this.addCommand({ id: "test", name: "Test Command" });
+          this.addCommand({ id: "test", name: "Test" });
         }
       }
 
@@ -649,7 +651,7 @@ describe("Obsidian Mock", () => {
 
       class TestPlugin extends Plugin {
         onload(): void {
-          this.addRibbonIcon("star", "Test Icon", () => {});
+          this.addRibbonIcon("star", "Test icon", () => {});
         }
       }
 

@@ -110,8 +110,7 @@ const state: {
   editors: Editor[];
   icons: Map<string, string>;
   requestHandler:
-    | ((param: RequestUrlParam) => Promise<RequestUrlResponse>)
-    | null;
+    ((param: RequestUrlParam) => Promise<RequestUrlResponse>) | null;
   requestStubs: {
     matcher: string | RegExp;
     response: RequestUrlResponse | (() => RequestUrlResponse);
@@ -421,6 +420,12 @@ export class FileManager {
 
   async renameFile(file: TFile, newPath: string): Promise<void> {
     await this.vault.rename(file, newPath);
+  }
+
+  async trashFile(file: TFile): Promise<void> {
+    // eslint-disable-next-line eslint-comments/no-restricted-disable -- What is the point of this useless lint?
+    // eslint-disable-next-line obsidianmd/prefer-file-manager-trash-file -- Required to implement `trashFile` properly in test mocks.
+    await this.vault.delete(file);
   }
 
   async generateMarkdownLink(
