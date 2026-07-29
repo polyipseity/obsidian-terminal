@@ -301,7 +301,6 @@ describe("Obsidian Mock", () => {
     });
 
     it("supports override via setRequestHandler", async () => {
-      // eslint-disable-next-line @typescript-eslint/require-await
       setRequestHandler(async (): Promise<RequestUrlResponse> => {
         return {
           status: 201,
