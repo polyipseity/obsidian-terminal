@@ -158,7 +158,7 @@ function merge(source, target) {
   for (const key of Object.keys(target)) {
     const base = baseOf(key);
     if (!sourceBases.has(base)) {
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- clean up translated keys not in source
       delete target[key];
     }
   }
@@ -198,10 +198,10 @@ async function main(rootDir) {
     const data = await readJSON(file);
     merge(enData, data);
     await writeJson(file, data);
-    console.log(`updated ${file}`);
+    process.stdout.write(`updated ${file}\n`);
   }
 
-  console.log("sync complete");
+  process.stdout.write("sync complete\n");
 }
 
 export { main };
