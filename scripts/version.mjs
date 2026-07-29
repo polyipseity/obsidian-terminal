@@ -1,30 +1,40 @@
 import { PATHS, execute } from "./utils.mjs";
 import { readFile, writeFile } from "node:fs/promises";
+import * as v from "valibot";
 
-const MANIFEST_MAP = Object.freeze({
-    author: ({ author }) => author,
-    description: ({ description }) => description,
-    fundingUrl: ({ funding }) =>
-      funding
-        ? Object.fromEntries(funding.map(({ type, url }) => [type, url]))
-        : null,
-    version: ({ version }) => version,
+const PackageSchema = v.object({
+    author: v.optional(v.string()),
+    description: v.optional(v.string()),
+    funding: v.optional(
+      v.array(v.object({ type: v.string(), url: v.string() })),
+    ),
+    version: v.string(),
+    obsidian: v.objectWithRest({ minAppVersion: v.string() }, v.unknown()),
   }),
-  BETA_MANIFEST = Object.freeze({ version: "rolling" }),
-  aPackage = readFile(PATHS.package, "utf-8").then((data) => JSON.parse(data)),
+  VersionsSchema = v.record(v.string(), v.string());
+
+const BETA_MANIFEST = Object.freeze({ version: "rolling" }),
+  aPackage = readFile(PATHS.package, "utf-8").then((data) =>
+    v.parse(PackageSchema, JSON.parse(data)),
+  ),
   aVersions = readFile(PATHS.versions, "utf-8").then((data) =>
-    JSON.parse(data),
+    v.parse(VersionsSchema, JSON.parse(data)),
   );
 
 await Promise.all([
   (async () => {
     const pack = await aPackage,
       manifest = {
-        ...Object.fromEntries(
-          Object.entries(MANIFEST_MAP)
-            .map(([key, value]) => [key, value(pack)])
-            .filter(([, value]) => value),
-        ),
+        ...(pack.author ? { author: pack.author } : {}),
+        ...(pack.description ? { description: pack.description } : {}),
+        ...(pack.funding
+          ? {
+              fundingUrl: Object.fromEntries(
+                pack.funding.map(({ type, url }) => [type, url]),
+              ),
+            }
+          : {}),
+        version: pack.version,
         ...pack.obsidian,
       };
     await Promise.all([
@@ -42,7 +52,7 @@ await Promise.all([
   })(),
   (async () => {
     const [pack, versions] = await Promise.all([aPackage, aVersions]);
-    versions[MANIFEST_MAP.version(pack)] = pack.obsidian.minAppVersion;
+    versions[pack.version] = pack.obsidian.minAppVersion;
     await writeFile(PATHS.versions, JSON.stringify(versions, null, "  "), {
       encoding: "utf-8",
     });
