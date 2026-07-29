@@ -61,13 +61,20 @@ export default defineConfig([
       ],
     },
   },
-  // Scripts run on Node.js — provide Node globals so `console` is defined
+  // Scripts and tests run on Node.js — provide Node globals so `console` is defined
   {
-    files: ["scripts/**", "tests/scripts/**"],
+    files: ["*.mjs", "*.mts", "scripts/**", "tests/**"],
     languageOptions: {
       globals: {
         ...globals.node,
       },
+    },
+    rules: {
+      "no-console": "off",
+      "no-new-func": "off",
+      "no-restricted-globals": "off",
+      "obsidianmd/no-nodejs-modules": "off",
+      "obsidianmd/prefer-create-el": "off",
     },
   },
 ]);
