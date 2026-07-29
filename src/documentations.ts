@@ -59,15 +59,17 @@ export const DOCUMENTATIONS = deepFreeze({
           // get the heart icon's parent element (the clickable button) and click it.
           // Note: `textContent` is `string | null` so both `?.` are required;
           // `querySelector` can also return `null` so `?.parentElement` is needed too.
-          let div = installedPlugins.listEl ?? installedPlugins.groupEl;
-          let element = [
-            ...(div?.querySelectorAll(`.${DOMClasses2.SETTING_ITEM}`) ?? []),
-          ]
+          let div = installedPlugins?.listEl ?? installedPlugins?.groupEl;
+          let element = (
+            (div
+              ? [...div.querySelectorAll(`.${DOMClasses2.SETTING_ITEM}`)]
+              : []) satisfies Element[] as Element[]
+          )
             .find(
               (item) =>
                 item
                   .querySelector(`.${DOMClasses2.SETTING_ITEM_NAME}`)
-                  ?.textContent?.trim() === manifest.name,
+                  ?.textContent.trim() === manifest.name,
             )
             ?.querySelector(
               `.${DOMClasses2.SVG_ICON}.${DOMClasses2.LUCIDE_HEART}`,
@@ -78,9 +80,13 @@ export const DOCUMENTATIONS = deepFreeze({
             // Deprecated: older versions of Obsidian (pre-1.12.7) exposed
             // `renderInstalledPlugin`, which rendered each plugin's UI into a
             // caller-supplied detached element; the heart icon was then queried from
-            // that subtree and clicked. This API was removed in Obsidian 1.12.7.
+            // that subtree and clicked. This API was removed since at least Obsidian 1.12.7.
             div = ownerDocument.createElement("div");
-            tab.renderInstalledPlugin(manifest, div);
+            // eslint-disable-next-line @typescript-eslint/no-deprecated -- needed for older Obsidian compat
+            if (tab.renderInstalledPlugin) {
+              // eslint-disable-next-line @typescript-eslint/no-deprecated -- needed for older Obsidian compat
+              tab.renderInstalledPlugin(manifest, div);
+            }
             element = div.querySelector(
               `.${DOMClasses2.SVG_ICON}.${DOMClasses2.LUCIDE_HEART}`,
             )?.parentElement;
@@ -152,26 +158,24 @@ class Loaded0 {
     } = this;
     const { active = true, event = null } = opts;
     (async (): Promise<void> => {
-      try {
-        await DOCUMENTATIONS[key](docMdView, { active, event });
-        if (key === "changelog" && version !== null) {
-          localSettings
-            .mutate((lsm) => {
-              lsm.lastReadChangelogVersion = version;
-            })
-            .then(async () => localSettings.write())
-            .catch((error: unknown) => {
-              self.console.error(error);
-            });
-        }
-      } catch (error) {
-        printError(
-          anyToError(error),
-          () => i18n.t("errors.error-opening-documentation"),
-          context,
-        );
+      await DOCUMENTATIONS[key](docMdView, { active, event });
+      if (key === "changelog" && version !== null) {
+        localSettings
+          .mutate((lsm) => {
+            lsm.lastReadChangelogVersion = version;
+          })
+          .then(async () => localSettings.write())
+          .catch((error: unknown) => {
+            self.console.error(error);
+          });
       }
-    })();
+    })().catch((error: unknown) => {
+      printError(
+        anyToError(error),
+        () => i18n.t("errors.error-opening-documentation"),
+        context,
+      );
+    });
   }
 }
 export function loadDocumentations(
