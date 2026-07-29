@@ -31,6 +31,7 @@
     "esbuild-plugin-text-replace": "^1.3.0",
     "eslint": "^10.7.0",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-obsidianmd": "^0.4.1",
     "globals": "^17.4.0",
     "happy-dom": "^20.7.0",
     "if-ci": "^3.0.0",

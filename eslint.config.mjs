@@ -1,6 +1,7 @@
 // @ts-check
 import eslintJs from "@eslint/js";
 import eslintPrettier from "eslint-config-prettier/flat";
+import eslintObsidianMd from "eslint-plugin-obsidianmd";
 import { defineConfig, includeIgnoreFile } from "eslint/config";
 import globals from "globals"; // provide Node/browser globals for file-level overrides
 import path from "node:path";
@@ -16,12 +17,19 @@ export const FILE_GLOBS = [
   "**/*.mts",
   "**/*.ts",
   "**/*.tsx",
+  "**/*.svelte",
+  "**/*.svelte.js",
+  "**/*.svelte.ts",
 ];
 
 export default defineConfig([
   eslintJs.configs.recommended,
   ...eslintTs.configs.strictTypeChecked,
   eslintPrettier,
+  // Obsidian
+  ...eslintObsidianMd.configs.recommendedWithLocalesEn.filter(
+    (config) => !config.name?.endsWith("typescript-eslint/base"),
+  ),
   includeIgnoreFile(path.join(import.meta.dirname, ".gitignore")),
   {
     files: FILE_GLOBS,
