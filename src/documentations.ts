@@ -81,9 +81,14 @@ export const DOCUMENTATIONS = deepFreeze({
             // `renderInstalledPlugin`, which rendered each plugin's UI into a
             // caller-supplied detached element; the heart icon was then queried from
             // that subtree and clicked. This API was removed since at least Obsidian 1.12.7.
+
+            // eslint-disable-next-line eslint-comments/no-restricted-disable -- see below
+            // eslint-disable-next-line obsidianmd/prefer-create-el -- exercised by tests
             div = ownerDocument.createElement("div");
+            // eslint-disable-next-line eslint-comments/no-restricted-disable -- see below
             // eslint-disable-next-line @typescript-eslint/no-deprecated -- needed for older Obsidian compat
             if (tab.renderInstalledPlugin) {
+              // eslint-disable-next-line eslint-comments/no-restricted-disable -- see below
               // eslint-disable-next-line @typescript-eslint/no-deprecated -- needed for older Obsidian compat
               tab.renderInstalledPlugin(manifest, div);
             }
