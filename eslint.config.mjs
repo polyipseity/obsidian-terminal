@@ -76,4 +76,12 @@ export default defineConfig([
       "obsidianmd/rule-custom-message": "off",
     },
   },
+  // JSON files are data declarations, not executable code — expression and UI-text rules don't apply
+  {
+    files: ["assets/**/*.json"],
+    rules: {
+      "@typescript-eslint/no-unused-expressions": "off",
+      "obsidianmd/ui/sentence-case-json": "off",
+    },
+  },
 ]);
