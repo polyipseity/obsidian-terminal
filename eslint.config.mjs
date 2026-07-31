@@ -71,6 +71,7 @@ export default defineConfig([
     },
     rules: {
       "no-restricted-globals": "off",
+      "obsidianmd/hardcoded-config-path": "off",
       "obsidianmd/no-nodejs-modules": "off",
       "obsidianmd/prefer-create-el": "off",
       "obsidianmd/rule-custom-message": "off",
