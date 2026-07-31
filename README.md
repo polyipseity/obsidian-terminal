@@ -2,18 +2,11 @@
 
 To apply this [Obsidian] plugin template, replace all occurrences of `PLACEHOLDER` and `obsidian-plugin-template`.
 
-[Obsidian]: https://obsidian.md/
-[changelog]: https://github.com/polyipseity/obsidian-plugin-template/blob/main/CHANGELOG.md
-[community plugin]: https://obsidian.md/plugins?id=PLACEHOLDER
-[latest release]: https://github.com/polyipseity/obsidian-plugin-template/releases/latest
-[repository]: https://github.com/polyipseity/obsidian-plugin-template
-[trailer]: https://raw.githubusercontent.com/polyipseity/obsidian-plugin-template/main/assets/trailer.png
-
 PLACEHOLDER
 
-__[Repository] · [Changelog] · [Community plugin] · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing) · [Security](#security)__
+__[Repository][repository] · [Changelog][changelog] · [Community plugin][community plugin] · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing) · [Security](#security)__
 
-![Trailer]
+![Trailer][trailer]
 
 For first time users, read the [installation](#installation) section first!
 
@@ -134,3 +127,10 @@ We hope that there will never be any security vulnerabilities, but unfortunately
 ### Reporting a vulnerability
 
 Please report a vulnerability by opening an new issue. We will get back to you as soon as possible.
+
+[changelog]: https://github.com/polyipseity/obsidian-plugin-template/blob/main/CHANGELOG.md
+[community plugin]: https://obsidian.md/plugins?id=PLACEHOLDER
+[latest release]: https://github.com/polyipseity/obsidian-plugin-template/releases/latest
+[Obsidian]: https://obsidian.md/
+[repository]: https://github.com/polyipseity/obsidian-plugin-template
+[trailer]: https://raw.githubusercontent.com/polyipseity/obsidian-plugin-template/main/assets/trailer.png
