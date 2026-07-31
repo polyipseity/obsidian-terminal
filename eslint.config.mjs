@@ -70,11 +70,10 @@ export default defineConfig([
       },
     },
     rules: {
-      "no-console": "off",
-      "no-new-func": "off",
       "no-restricted-globals": "off",
       "obsidianmd/no-nodejs-modules": "off",
       "obsidianmd/prefer-create-el": "off",
+      "obsidianmd/rule-custom-message": "off",
     },
   },
 ]);
