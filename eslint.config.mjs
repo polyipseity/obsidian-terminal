@@ -87,7 +87,10 @@ export default defineConfig([
   {
     files: ["package.json"],
     rules: {
-      "depend/ban-dependencies": allowDependencies(),
+      "depend/ban-dependencies": allowDependencies(
+        // `rimraf` is exempted from `depend/ban-dependencies` — the `clean` script relies on it for cross-platform recursive directory removal. The module-replacements alternatives are cumbersome: the native `fs.rm` replacement requires remembering `{ recursive: true, force: true }` (plus retry emulation on Windows) and `fs.rmdir` is deprecated, while `premove` has minimal activity.
+        "rimraf",
+      ),
     },
   },
 ]);
