@@ -198,10 +198,10 @@ async function main(rootDir) {
     const data = await readJSON(file);
     merge(enData, data);
     await writeJson(file, data);
-    process.stdout.write(`updated ${file}\n`);
+    console.log(`updated ${file}`);
   }
 
-  process.stdout.write("sync complete\n");
+  console.log("sync complete");
 }
 
 export { main };

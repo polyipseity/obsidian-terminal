@@ -4,7 +4,15 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import * as v from "valibot";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  type MockInstance,
+  vi,
+} from "vitest";
 
 // This integration test exercises the sync-locale-keys.mjs script on a temporary
 // locale directory tree.  It verifies that keys are copied from the English
@@ -18,13 +26,16 @@ async function importScript() {
 describe("scripts/sync-locale-keys.mjs", () => {
   let tmpdir: string;
   let origCwd: string;
+  let logSpy: MockInstance;
 
   beforeEach(async () => {
     origCwd = process.cwd();
     tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), "locales-"));
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
   afterEach(async () => {
+    logSpy.mockRestore();
     process.chdir(origCwd);
     await fs.rm(tmpdir, { recursive: true, force: true });
   });
