@@ -61,9 +61,7 @@ export const DOCUMENTATIONS = deepFreeze({
           // `querySelector` can also return `null` so `?.parentElement` is needed too.
           let div = installedPlugins?.listEl ?? installedPlugins?.groupEl;
           let element = (
-            (div
-              ? [...div.querySelectorAll(`.${DOMClasses2.SETTING_ITEM}`)]
-              : []) satisfies Element[] as Element[]
+            div ? [...div.querySelectorAll(`.${DOMClasses2.SETTING_ITEM}`)] : []
           )
             .find(
               (item) =>

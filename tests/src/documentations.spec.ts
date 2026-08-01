@@ -42,7 +42,7 @@ vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => {
     // before the test module is loaded, so we must import the original first.
     // Stub: real activeSelf(Document) crashes in jsdom ("Cannot destructure
     // property 'defaultView'"); always returning `self` is safe for these tests.
-    activeSelf: (() => self) as unknown as typeof actual.activeSelf,
+    activeSelf: () => self,
     openExternal: openExternalSpy,
     revealPrivate: ((
       _context: unknown,
