@@ -122,7 +122,9 @@ describe("src/documentations.ts", () => {
 
     it("clicks the heart button when the plugin row is found via installedPlugins.listEl", () => {
       openExternalSpy.mockClear();
-      const warnSpy = vi.spyOn(self.console, "warn");
+      const warnSpy = vi
+        .spyOn(self.console, "warn")
+        .mockImplementation(() => {});
 
       const listEl = self.document.createElement("ul");
       const { item, heartButton } = makePluginRow("PLACEHOLDER");
@@ -158,7 +160,9 @@ describe("src/documentations.ts", () => {
 
     it("clicks the heart button when the plugin row is found via installedPlugins.groupEl", () => {
       openExternalSpy.mockClear();
-      const warnSpy = vi.spyOn(self.console, "warn");
+      const warnSpy = vi
+        .spyOn(self.console, "warn")
+        .mockImplementation(() => {});
 
       // installedPlugins.listEl is null so the ?? falls through to groupEl.
       const pluginsGroupEl = self.document.createElement("div");
@@ -198,7 +202,9 @@ describe("src/documentations.ts", () => {
 
     it("opens the donation URL and does not throw when renderInstalledPlugin fails", () => {
       openExternalSpy.mockClear();
-      const warnSpy = vi.spyOn(self.console, "warn");
+      const warnSpy = vi
+        .spyOn(self.console, "warn")
+        .mockImplementation(() => {});
 
       expect(() => {
         DOCUMENTATIONS.donate(
@@ -217,11 +223,15 @@ describe("src/documentations.ts", () => {
       // The primary listEl path found no element — one warning before the
       // deprecated fallback was attempted (which then threw).
       expect(warnSpy).toHaveBeenCalledTimes(1);
+      // The warning is the JSON-serialized unmatched element (empty `<ul>`).
+      expect(JSON.parse(String(warnSpy.mock.calls[0]?.[0]))).toEqual({});
     });
 
     it("rethrows the original error when there is no usable donation URL", () => {
       openExternalSpy.mockClear();
-      const warnSpy = vi.spyOn(self.console, "warn");
+      const warnSpy = vi
+        .spyOn(self.console, "warn")
+        .mockImplementation(() => {});
 
       expect(() => {
         DOCUMENTATIONS.donate(brokenDonateView(undefined), {
@@ -233,11 +243,15 @@ describe("src/documentations.ts", () => {
       // One warning from the primary listEl path before the deprecated fallback
       // was attempted (which then threw the rethrown error).
       expect(warnSpy).toHaveBeenCalledTimes(1);
+      // The warning is the JSON-serialized unmatched element (empty `<ul>`).
+      expect(JSON.parse(String(warnSpy.mock.calls[0]?.[0]))).toEqual({});
     });
 
     it("warns twice and opens the URL when both listEl and renderInstalledPlugin find no element", () => {
       openExternalSpy.mockClear();
-      const warnSpy = vi.spyOn(self.console, "warn");
+      const warnSpy = vi
+        .spyOn(self.console, "warn")
+        .mockImplementation(() => {});
 
       // renderInstalledPlugin renders a node with no heart icon — unlike the
       // brokenDonateView helper it does not throw, so donate() reaches the
@@ -265,6 +279,10 @@ describe("src/documentations.ts", () => {
 
       // First warn: primary listEl path. Second warn: deprecated path also fails.
       expect(warnSpy).toHaveBeenCalledTimes(2);
+      // Both warnings are JSON-serialized unmatched elements: the empty `<ul>`
+      // and the rendered div containing only a `<span>` — both serialize to {}.
+      expect(JSON.parse(String(warnSpy.mock.calls[0]?.[0]))).toEqual({});
+      expect(JSON.parse(String(warnSpy.mock.calls[1]?.[0]))).toEqual({});
       expect(openExternalSpy).toHaveBeenCalledTimes(1);
       expect(openExternalSpy.mock.calls[0]?.[1]).toBe(
         "https://example.com/donate",

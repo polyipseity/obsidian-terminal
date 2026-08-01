@@ -27,15 +27,25 @@ describe("scripts/sync-locale-keys.mjs", () => {
   let tmpdir: string;
   let origCwd: string;
   let logSpy: MockInstance;
+  let errorSpy: MockInstance;
+  let exitSpy: MockInstance;
 
   beforeEach(async () => {
     origCwd = process.cwd();
     tmpdir = await fs.mkdtemp(path.join(os.tmpdir(), "locales-"));
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    exitSpy = vi.spyOn(process, "exit").mockImplementation((code) => {
+      // Simulate process.exit but make it observable without terminating the
+      // test runner.
+      throw new Error(`process.exit called with ${String(code)}`);
+    });
   });
 
   afterEach(async () => {
     logSpy.mockRestore();
+    errorSpy.mockRestore();
+    exitSpy.mockRestore();
     process.chdir(origCwd);
     await fs.rm(tmpdir, { recursive: true, force: true });
   });
@@ -99,6 +109,11 @@ describe("scripts/sync-locale-keys.mjs", () => {
       c: "troisieme", // existing translation untouched
     });
 
+    expect(logSpy).toHaveBeenCalledWith(
+      `updated ${path.join(frDir, "translation.json")}`,
+    );
+    expect(logSpy).toHaveBeenCalledWith("sync complete");
+
     // verify keys are sorted at each level
     const keys = Object.keys(result);
     expect(keys).toEqual(["a", "b", "c"]);
@@ -117,6 +132,9 @@ describe("scripts/sync-locale-keys.mjs", () => {
     // should not throw
     const { main } = await importScript();
     await main(tmpdir);
+
+    // no "updated" call since `es` has no translation.json
+    expect(logSpy).toHaveBeenCalledWith("sync complete");
   });
 
   it("treats base key and variants as a group when adding", async () => {
@@ -162,6 +180,11 @@ describe("scripts/sync-locale-keys.mjs", () => {
       spawn_gerund: "exist",
       other: "value",
     });
+
+    expect(logSpy).toHaveBeenCalledWith(
+      `updated ${path.join(frDir, "translation.json")}`,
+    );
+    expect(logSpy).toHaveBeenCalledWith("sync complete");
   });
 
   it("removes group when base is deleted from English", async () => {
@@ -199,5 +222,28 @@ describe("scripts/sync-locale-keys.mjs", () => {
       ),
     );
     expect(result).toEqual({ other: "baz" });
+
+    expect(logSpy).toHaveBeenCalledWith(
+      `updated ${path.join(frDir, "translation.json")}`,
+    );
+    expect(logSpy).toHaveBeenCalledWith("sync complete");
+  });
+
+  it("exits with error when English translation.json is missing", async () => {
+    const localesDir = path.join(tmpdir, "assets", "locales");
+    await fs.mkdir(localesDir, { recursive: true });
+    // no en/translation.json created
+
+    const { main } = await importScript();
+    await expect(main(tmpdir)).rejects.toThrow("process.exit called with 1");
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      `English file not found at ${path.join(
+        localesDir,
+        "en",
+        "translation.json",
+      )}`,
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
   });
 });
