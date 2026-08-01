@@ -1,10 +1,9 @@
-import builtinModules from "builtin-modules";
 import { analyzeMetafile, context, formatMessages } from "esbuild";
 import esbuildCompress from "esbuild-compress";
 import esbuildPluginGlobals from "esbuild-plugin-globals";
 import esbuildPluginTextReplace from "esbuild-plugin-text-replace";
-import { isEmpty } from "lodash-es";
 import { rm, writeFile } from "node:fs/promises";
+import { builtinModules } from "node:module";
 import { argv } from "node:process";
 import { PATHS } from "./utils.mjs";
 
@@ -86,14 +85,14 @@ async function esbuild() {
         console.log(
           await analyzeMetafile(metafile, { color: true, verbose: true }),
         );
-        if (!isEmpty(warnings)) {
+        if (warnings.length !== 0) {
           console.warn(
             (
               await formatMessages(warnings, { color: true, kind: "warning" })
             ).join("\n"),
           );
         }
-        if (!isEmpty(errors)) {
+        if (errors.length !== 0) {
           console.error(
             (await formatMessages(errors, { color: true, kind: "error" })).join(
               "\n",
