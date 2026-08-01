@@ -12,7 +12,9 @@ describe("scripts/git-rolling-*.mjs error paths", () => {
 
   it("refspec-config logs error and exits 1 when exec fails", async () => {
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const exitMock = vi.spyOn(process, "exit").mockImplementation(() => {});
+    const exitMock = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
 
     vi.doMock("node:child_process", () => ({
       exec: vi.fn(() => {
@@ -33,7 +35,9 @@ describe("scripts/git-rolling-*.mjs error paths", () => {
 
   it("tag-create logs error and exits 1 when exec fails", async () => {
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const exitMock = vi.spyOn(process, "exit").mockImplementation(() => {});
+    const exitMock = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
 
     vi.doMock("node:child_process", () => ({
       exec: vi.fn(() => {
@@ -54,7 +58,9 @@ describe("scripts/git-rolling-*.mjs error paths", () => {
 
   it("tag-push logs error and exits 1 when exec fails", async () => {
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const exitMock = vi.spyOn(process, "exit").mockImplementation(() => {});
+    const exitMock = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
 
     vi.doMock("node:child_process", () => ({
       exec: vi.fn(() => {
