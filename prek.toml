@@ -89,7 +89,7 @@ hooks = [
   ] },
   # Configure rolling tag to allow force updates during fetch
   # Ensures 'git fetch' can update the rolling tag without user intervention
-  { id = "git-rolling-refspec-config", name = "configure rolling refspec", entry = "bun run scripts/git-rolling-tag.mjs config", language = "system", pass_filenames = false, always_run = true, stages = [
+  { id = "git-rolling-tag-config", name = "configure rolling tag refspec", entry = "bun run scripts/git-rolling-tag.mjs config", language = "system", pass_filenames = false, always_run = true, stages = [
     "post-checkout",
     "post-merge",
   ] },
