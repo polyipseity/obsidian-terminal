@@ -126,11 +126,12 @@ We hope that there will never be any security vulnerabilities, but unfortunately
 
 ### Reporting a vulnerability
 
-Please report a vulnerability by opening an new issue. We will get back to you as soon as possible.
+Please report a vulnerability by opening a [private vulnerability report][new security advisory]. We will get back to you as soon as possible.
 
 [changelog]: https://github.com/polyipseity/obsidian-plugin-template/blob/main/CHANGELOG.md
 [community plugin]: https://obsidian.md/plugins?id=PLACEHOLDER
 [latest release]: https://github.com/polyipseity/obsidian-plugin-template/releases/latest
+[new security advisory]: https://github.com/polyipseity/obsidian-plugin-template/security/advisories/new
 [Obsidian]: https://obsidian.md/
 [repository]: https://github.com/polyipseity/obsidian-plugin-template
 [trailer]: https://raw.githubusercontent.com/polyipseity/obsidian-plugin-template/main/assets/trailer.png
