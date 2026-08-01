@@ -43,8 +43,8 @@ describe("scripts/utils.mjs", () => {
       "process.stdout.write('ok'); process.stderr.write('bad'); process.exit(0)",
     ]);
     expect(out).toContain("ok");
-    expect(logSpy).toHaveBeenCalled();
-    expect(errSpy).toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledWith("ok");
+    expect(errSpy).toHaveBeenCalledWith("bad");
   });
 
   it("execute throws when the child exits with non-zero exit code", async () => {
@@ -109,7 +109,7 @@ describe("scripts/utils.mjs", () => {
         "process.stdout.write('hello'); process.exit(0)",
       ]);
       expect(out).toContain("hello");
-      expect(logSpy).toHaveBeenCalled();
+      expect(logSpy).toHaveBeenCalledWith("hello");
       expect(errSpy).not.toHaveBeenCalled();
     });
 
@@ -124,7 +124,7 @@ describe("scripts/utils.mjs", () => {
       ]);
       expect(out).toBe("");
       expect(logSpy).not.toHaveBeenCalled();
-      expect(errSpy).toHaveBeenCalled();
+      expect(errSpy).toHaveBeenCalledWith("err");
     });
 
     it("handles child that produces no output but exits successfully", async () => {
