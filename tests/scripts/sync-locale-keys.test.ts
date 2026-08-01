@@ -99,6 +99,11 @@ describe("scripts/sync-locale-keys.mjs", () => {
       c: "troisieme", // existing translation untouched
     });
 
+    expect(logSpy).toHaveBeenCalledWith(
+      `updated ${path.join(frDir, "translation.json")}`,
+    );
+    expect(logSpy).toHaveBeenCalledWith("sync complete");
+
     // verify keys are sorted at each level
     const keys = Object.keys(result);
     expect(keys).toEqual(["a", "b", "c"]);
@@ -117,6 +122,9 @@ describe("scripts/sync-locale-keys.mjs", () => {
     // should not throw
     const { main } = await importScript();
     await main(tmpdir);
+
+    // no "updated" call since `es` has no translation.json
+    expect(logSpy).toHaveBeenCalledWith("sync complete");
   });
 
   it("treats base key and variants as a group when adding", async () => {
@@ -162,6 +170,11 @@ describe("scripts/sync-locale-keys.mjs", () => {
       spawn_gerund: "exist",
       other: "value",
     });
+
+    expect(logSpy).toHaveBeenCalledWith(
+      `updated ${path.join(frDir, "translation.json")}`,
+    );
+    expect(logSpy).toHaveBeenCalledWith("sync complete");
   });
 
   it("removes group when base is deleted from English", async () => {
@@ -199,5 +212,10 @@ describe("scripts/sync-locale-keys.mjs", () => {
       ),
     );
     expect(result).toEqual({ other: "baz" });
+
+    expect(logSpy).toHaveBeenCalledWith(
+      `updated ${path.join(frDir, "translation.json")}`,
+    );
+    expect(logSpy).toHaveBeenCalledWith("sync complete");
   });
 });
