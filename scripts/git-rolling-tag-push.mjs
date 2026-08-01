@@ -7,25 +7,15 @@
 
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
+import { createRollingTag, isOnDefaultBranch } from "./git-rolling-tag.mjs";
 const execP = promisify(exec);
 
 async function main() {
-  const { stdout: branchStdout } = await execP(
-    "git rev-parse --abbrev-ref HEAD",
-    {
+  if (await isOnDefaultBranch()) {
+    await createRollingTag();
+    await execP("git push --no-verify --force origin rolling", {
       encoding: "utf-8",
-    },
-  );
-  const currentBranch = branchStdout.trim();
-
-  const { stdout: defaultStdout } = await execP(
-    "git rev-parse --abbrev-ref origin/HEAD | sed 's@origin/@@'",
-    { encoding: "utf-8", shell: "/bin/bash" },
-  );
-  const defaultBranch = defaultStdout.trim();
-
-  if (currentBranch === defaultBranch) {
-    await execP("git push --no-verify --force origin rolling");
+    });
   }
 }
 
