@@ -8,7 +8,6 @@
         "@polyipseity/obsidian-plugin-library": "file:./vendor/obsidian-plugin-library",
         "es-toolkit": "^1.50.0",
         "i18next": "^25.8.13",
-        "lodash-es": "^4.17.23",
         "obsidian": "~1.4.11",
         "semver": "^7.7.4",
         "ts-essentials": "^10.1.1",
@@ -20,13 +19,11 @@
         "@commitlint/config-conventional": "^20.4.2",
         "@eslint/js": "^10.0.1",
         "@j178/prek": "^0.4.5",
-        "@types/lodash-es": "^4.17.12",
         "@types/node": "^25.3.3",
         "@types/semver": "^7.7.1",
         "@types/which": "^3.0.4",
         "@typescript/native": "npm:typescript@^7.0.2",
         "@vitest/coverage-istanbul": "^4.1.6",
-        "builtin-modules": "^5.2.0",
         "esbuild": "^0.27.3",
         "esbuild-compress": "^2.2.0",
         "esbuild-plugin-globals": "^0.2.0",
@@ -406,10 +403,6 @@
 
     "@types/katex": ["@types/katex@0.16.8", "", {}, "sha512-trgaNyfU+Xh2Tc+ABIb44a5AYUpicB3uwirOioeOkNPPbmgRNtcWyDeeFRzjPZENO9Vq8gvVqfhaaXWLlevVwg=="],
 
-    "@types/lodash": ["@types/lodash@4.17.24", "", {}, "sha512-gIW7lQLZbue7lRSWEFql49QJJWThrTFFeIMJdp3eH4tKoxm1OvEPg02rm4wCCSHS0cL3/Fizimb35b7k8atwsQ=="],
-
-    "@types/lodash-es": ["@types/lodash-es@4.17.12", "", { "dependencies": { "@types/lodash": "*" } }, "sha512-0NgftHUcV4v34VhXm8QBSftKVXtbkBG3ViCjs6+eJ5a6y6Mi/jiFGPc1sC7QK+9BFhWrURE3EOggmWaSxL9OzQ=="],
-
     "@types/ms": ["@types/ms@2.1.0", "", {}, "sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA=="],
 
     "@types/node": ["@types/node@25.5.0", "", { "dependencies": { "undici-types": "~7.18.0" } }, "sha512-jp2P3tQMSxWugkCUKLRPVUpGaL5MVFwF8RDuSRztfwgN1wmqJeMSbKlnEtQqU8UrhTmzEmZdu2I6v2dpp7XIxw=="],
@@ -571,8 +564,6 @@
     "browser-util-inspect": ["browser-util-inspect@0.2.0", "", {}, "sha512-R7WvAj0p9FtwS2Jbtc1HUd1+YZdeb5EEqjBSbbOK3owJtW1viWyJDeTPy43QZ7bZ8POtb1yMv++h844486jMsQ=="],
 
     "browserslist": ["browserslist@4.28.2", "", { "dependencies": { "baseline-browser-mapping": "^2.10.12", "caniuse-lite": "^1.0.30001782", "electron-to-chromium": "^1.5.328", "node-releases": "^2.0.36", "update-browserslist-db": "^1.2.3" }, "bin": { "browserslist": "cli.js" } }, "sha512-48xSriZYYg+8qXna9kwqjIVzuQxi+KYWp2+5nCYnYKPTr0LvD89Jqk2Or5ogxz0NUMfIjhh2lIUX/LyX9B4oIg=="],
-
-    "builtin-modules": ["builtin-modules@5.2.0", "", {}, "sha512-02yxLeyxF4dNl6SlY6/5HfRSrSdZ/sCPoxy2kZNP5dZZX8LSAD9aE2gtJIUgWrsQTiMPl3mxESyrobSwvRGisQ=="],
 
     "call-bind": ["call-bind@1.0.8", "", { "dependencies": { "call-bind-apply-helpers": "^1.0.0", "es-define-property": "^1.0.0", "get-intrinsic": "^1.2.4", "set-function-length": "^1.2.2" } }, "sha512-oKlSFMcMwpUg2ednkhQ454wfWiU/ul3CkJe/PEHcTKuiX6RpbehUiFMXu13HalGZxfUwCQzZG747YXBn1im9ww=="],
 
