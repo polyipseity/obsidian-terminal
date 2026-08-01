@@ -5,6 +5,7 @@
   },
   "dependencies": {
     "@polyipseity/obsidian-plugin-library": "file:./vendor/obsidian-plugin-library",
+    "es-toolkit": "^1.50.0",
     "i18next": "^25.8.13",
     "lodash-es": "^4.17.23",
     "obsidian": "~1.4.11",
