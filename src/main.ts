@@ -8,7 +8,7 @@ import {
   createI18n,
   semVerString,
 } from "@polyipseity/obsidian-plugin-library";
-import { isNil } from "lodash-es";
+import { isNil } from "es-toolkit/predicate";
 import { type App, Plugin, type PluginManifest } from "obsidian";
 import { PluginLocales } from "../assets/locales.js";
 import { loadDocumentations } from "./documentations.js";
