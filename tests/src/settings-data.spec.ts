@@ -1,8 +1,8 @@
 /**
  * Unit tests for `src/settings-data.ts` — validate defaults and normalization helpers.
  */
-import { vi, describe, it, expect } from "vitest";
-import { Settings, LocalSettings } from "../../src/settings-data.js";
+import { describe, expect, it, vi } from "vitest";
+import { LocalSettings, Settings } from "../../src/settings-data.js";
 
 describe("src/settings-data.ts", () => {
   it("Settings.DEFAULT has expected keys and types", () => {
@@ -53,10 +53,10 @@ describe("src/settings-data.ts", () => {
     expect(typeof fixed.value.lastReadChangelogVersion).toBe("string");
 
     // semver parsing of an undefined value will be logged via opaqueOrDefault()
-    expect(debugSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        message: expect.stringContaining("Invalid Version: undefined"),
-      }),
+    const [debugCall] = debugSpy.mock.calls;
+    expect(debugCall?.[0]).toHaveProperty(
+      "message",
+      expect.stringContaining("Invalid Version: undefined"),
     );
   });
 });

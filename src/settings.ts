@@ -48,8 +48,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
             .setIcon(i18n.t("asset:settings.documentations.donate-icon"))
             .setTooltip(i18n.t("settings.documentations.donate"))
             .setCta()
-            .onClick(() => {
-              docs.open("donate");
+            .onClick((event) => {
+              docs.open("donate", { event });
             }),
         )
         .addButton((button) =>
@@ -57,8 +57,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
             .setIcon(i18n.t("asset:settings.documentations.readme-icon"))
             .setTooltip(i18n.t("settings.documentations.readme"))
             .setCta()
-            .onClick(() => {
-              docs.open("readme");
+            .onClick((event) => {
+              docs.open("readme", { event });
               closeSetting(containerEl);
             }),
         )
@@ -66,8 +66,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
           button
             .setIcon(i18n.t("asset:settings.documentations.changelog-icon"))
             .setTooltip(i18n.t("settings.documentations.changelog"))
-            .onClick(() => {
-              docs.open("changelog");
+            .onClick((event) => {
+              docs.open("changelog", { event });
               closeSetting(containerEl);
             });
           if (

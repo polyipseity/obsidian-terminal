@@ -1,0 +1,104 @@
+# Prek native configuration: preferred as the canonical configuration for pre-commit-style hooks.
+# Prek is a Rust-based, drop-in replacement for pre-commit with support for TOML config.
+# Configuration mirrors project conventions: baseline checks, formatting, linting, and CI validation.
+# For details on prek, see: https://prek.j178.dev/
+# Note: `prek` can also read `.pre-commit-config.yaml` for compatibility, but `prek.toml` is preferred.
+
+default_install_hook_types = [
+  "commit-msg",
+  "post-checkout",
+  "post-commit",
+  "post-merge",
+  "pre-commit",
+  "pre-push",
+]
+default_stages = ["pre-commit"]
+
+[[repos]]
+repo = "https://github.com/pre-commit/pre-commit-hooks.git"
+rev = "3e8a8703264a2f4a69428a0aa4dcb512790b2c8c"
+# Notes:
+# - These hooks are a recommended baseline. If a particular hook is undesired (for example, forbidding
+#   submodules in a repository that intentionally uses them), remove or configure that hook in `prek.toml`.
+# - Keep hook repositories pinned (set `rev`) to an explicit commit hash to ensure reproducible behaviour.
+hooks = [
+  { id = "check-case-conflict" },
+  { id = "check-executables-have-shebangs", exclude = "\\.(bat|cmd|ps1|psd1|psm1|vbs|wsf|wsh)$" },
+  { id = "check-illegal-windows-names" },
+  { id = "check-merge-conflict" },
+  { id = "check-shebang-scripts-are-executable" },
+  { id = "check-symlinks" },
+  { id = "destroyed-symlinks" },
+  { id = "detect-private-key" },
+  { id = "end-of-file-fixer" },
+  { id = "fix-byte-order-marker" },
+  { id = "name-tests-test", args = [
+    "--pytest-test-first",
+  ] },
+  # Preserve markdown hard line breaks (common in docs)
+  { id = "trailing-whitespace", args = [
+    "--markdown-linebreak-ext=md,mdoc,mdown,mdx,mkd,mkdn,markdown,rmd",
+  ] },
+]
+
+# Commit message linting using commitlint (Node.js). This uses
+# the commitlint-pre-commit-hook bridge so it runs as a commit-msg hook.
+# Note: Node.js must be available on developer machines to run this hook.
+[[repos]]
+repo = "https://github.com/alessandrojcm/commitlint-pre-commit-hook.git"
+rev = "3b48bd150c62d95642df393f7c64af62d82e16e7"
+hooks = [
+  { id = "commitlint", stages = [
+    "commit-msg",
+  ], additional_dependencies = [
+    "@commitlint/config-conventional",
+  ] },
+]
+
+[[repos]]
+repo = "https://github.com/python-jsonschema/check-jsonschema.git"
+rev = "7ef03ac2e60d02f7dc93ca9f898698c0588803c7"
+hooks = [{ id = "check-dependabot" }, { id = "check-github-workflows" }]
+
+[[repos]]
+repo = "local"
+hooks = [
+  # Format code files with Prettier.
+  { id = "prettier-write", name = "Prettier write", entry = "bun x --no-install -- prettier --write", language = "system", types_or = [
+    "astro",
+    "javascript",
+    "jsx",
+    "json",
+    "json5",
+    "ts",
+    "tsx",
+    "vue",
+    "css",
+    "scss",
+    "sass",
+    "less",
+    "html",
+    "yaml",
+    "graphql",
+  ] },
+  # Lint and auto-fix ESLint-targeted files.
+  { id = "eslint-fix", name = "ESLint fix", entry = "bun x --no-install -- eslint --fix", language = "system", files = "\\.(cjs|cts|d\\.ts|js|jsx|mjs|mts|ts|tsx)$" },
+  # Run all tests, not just those with changed files
+  { id = "test-bun", name = "test with Bun", entry = "bun run test", language = "system", pass_filenames = false, always_run = true, stages = [
+    "pre-push",
+  ] },
+  # Configure rolling tag to allow force updates during fetch
+  # Ensures 'git fetch' can update the rolling tag without user intervention
+  { id = "git-rolling-refspec-config", name = "configure rolling refspec", entry = "bun run scripts/git-rolling-refspec-config.mjs", language = "system", pass_filenames = false, always_run = true, stages = [
+    "post-checkout",
+    "post-merge",
+  ] },
+  # Create/update rolling tag on default branch after commit
+  { id = "git-rolling-tag-create", name = "create rolling tag", entry = "bun run scripts/git-rolling-tag-create.mjs", language = "system", pass_filenames = false, always_run = true, stages = [
+    "post-commit",
+  ] },
+  # Push rolling tag to origin on default branch
+  { id = "git-rolling-tag-push", name = "push rolling tag", entry = "bun run scripts/git-rolling-tag-push.mjs", language = "system", pass_filenames = false, always_run = true, stages = [
+    "pre-push",
+  ] },
+]

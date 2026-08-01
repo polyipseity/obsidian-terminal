@@ -2,20 +2,21 @@
  * Unit tests for the Obsidian runtime mock.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import * as v from "valibot";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
-  reset,
-  setVaultFiles,
-  setRequestHandler,
-  setRequestResponse,
   getApp,
   getVault,
   makeEditor,
-  spyRequests,
   normalizePath,
-  stripHeading,
-  stringifyYaml,
   parseYaml,
+  reset,
+  setRequestHandler,
+  setRequestResponse,
+  setVaultFiles,
+  spyRequests,
+  stringifyYaml,
+  stripHeading,
   type RequestUrlResponse,
 } from "./obsidian.js";
 
@@ -113,7 +114,9 @@ describe("Obsidian Mock", () => {
         deleteTriggered = true;
       });
 
-      await vault.delete("test.md");
+      const file = vault.getFileByPath("test.md");
+      if (!file) throw new Error("setup failed");
+      await getApp().fileManager.trashFile(file);
 
       expect(vault.getFileByPath("test.md")).toBeNull();
       expect(deleteTriggered).toBe(true);
@@ -158,8 +161,8 @@ describe("Obsidian Mock", () => {
       const file = getVault().getFileByPath("test.md");
 
       expect(file?.stat).toMatchObject({
-        ctime: expect.any(Number),
-        mtime: expect.any(Number),
+        ctime: expect.any(Number) satisfies number as number,
+        mtime: expect.any(Number) satisfies number as number,
         size: "content".length,
       });
     });
@@ -364,7 +367,10 @@ describe("Obsidian Mock", () => {
 
     it("parseYaml parses YAML strings", () => {
       const yaml = "key: value\nnumber: 42\n";
-      const parsed = parseYaml(yaml);
+      const parsed = v.parse(
+        v.record(v.string(), v.unknown()),
+        parseYaml(yaml),
+      );
       expect(parsed).toEqual({ key: "value", number: 42 });
     });
   });
@@ -502,7 +508,7 @@ describe("Obsidian Mock", () => {
 
       await getApp().fileManager.processFrontMatter(file, (fm) => {
         // mutate to trigger a write
-        fm.title = "New Title";
+        fm.title = "New title";
       });
 
       const content = await vault.read("no-fm-2.md");
@@ -510,8 +516,11 @@ describe("Obsidian Mock", () => {
       expect(fmMatch).not.toBeNull();
       if (!fmMatch || typeof fmMatch[1] !== "string")
         throw new Error("frontmatter not found");
-      const parsed = parseYaml(fmMatch[1]);
-      expect(parsed.title).toBe("New Title");
+      const parsed = v.parse(
+        v.looseObject({ title: v.string() }),
+        parseYaml(fmMatch[1]),
+      );
+      expect(parsed.title).toBe("New title");
     });
 
     it("does not overwrite malformed frontmatter when processor leaves it unchanged, but will replace it if processor mutates", async () => {
@@ -533,7 +542,10 @@ describe("Obsidian Mock", () => {
       expect(fmMatch).not.toBeNull();
       if (!fmMatch || typeof fmMatch[1] !== "string")
         throw new Error("frontmatter not found");
-      const parsed = parseYaml(fmMatch[1]);
+      const parsed = v.parse(
+        v.looseObject({ title: v.string() }),
+        parseYaml(fmMatch[1]),
+      );
       expect(parsed.title).toBe("Fixed");
       expect(content).not.toContain(":bad");
     });
@@ -554,7 +566,10 @@ describe("Obsidian Mock", () => {
       if (!fmMatch || typeof fmMatch[1] !== "string")
         throw new Error("frontmatter not found");
 
-      const parsed = parseYaml(fmMatch[1]);
+      const parsed = v.parse(
+        v.looseObject({ title: v.string() }),
+        parseYaml(fmMatch[1]),
+      );
       expect(parsed.title).toBe("New");
     });
   });
@@ -612,7 +627,7 @@ describe("Obsidian Mock", () => {
 
       class TestPlugin extends Plugin {
         onload(): void {
-          this.addCommand({ id: "test", name: "Test Command" });
+          this.addCommand({ id: "test", name: "Test" });
         }
       }
 
@@ -636,7 +651,7 @@ describe("Obsidian Mock", () => {
 
       class TestPlugin extends Plugin {
         onload(): void {
-          this.addRibbonIcon("star", "Test Icon", () => {});
+          this.addRibbonIcon("star", "Test icon", () => {});
         }
       }
 

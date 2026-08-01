@@ -2,23 +2,13 @@
 
 To apply this [Obsidian] plugin template, replace all occurrences of `PLACEHOLDER` and `obsidian-plugin-template`.
 
-[Buy Me a Coffee]: https://buymeacoffee.com/polyipseity
-[Buy Me a Coffee/embed]: https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=polyipseity&button_colour=40DCA5&font_colour=ffffff&font_family=Lato&outline_colour=000000&coffee_colour=FFDD00
-[Obsidian]: https://obsidian.md/
-[changelog]: https://github.com/polyipseity/obsidian-plugin-template/blob/main/CHANGELOG.md
-[community plugin]: https://obsidian.md/plugins?id=PLACEHOLDER
-[latest release]: https://github.com/polyipseity/obsidian-plugin-template/releases/latest
-[repository]: https://github.com/polyipseity/obsidian-plugin-template
-[trailer]: https://raw.githubusercontent.com/polyipseity/obsidian-plugin-template/main/assets/trailer.png
-[related]: https://github.com/polyipseity/obsidian-monorepo
-
 PLACEHOLDER
 
-[![Buy Me a Coffee/embed]][Buy Me a Coffee]
+[![Buy Me a Coffee/embed][Buy Me a Coffee/embed]][Buy Me a Coffee]
 
-__[Repository] · [Changelog] · [Community plugin] · [Related] · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing) · [Security](#security)__
+__[Repository][repository] · [Changelog][changelog] · [Community plugin][community plugin] · [Related][related] · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing) · [Security](#security)__
 
-![Trailer]
+![Trailer][trailer]
 
 For first time users, read the [installation](#installation) section first!
 
@@ -139,3 +129,13 @@ We hope that there will never be any security vulnerabilities, but unfortunately
 ### Reporting a vulnerability
 
 Please report a vulnerability by opening an new issue. We will get back to you as soon as possible.
+
+[Buy Me a Coffee]: https://buymeacoffee.com/polyipseity
+[Buy Me a Coffee/embed]: https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=polyipseity&button_colour=40DCA5&font_colour=ffffff&font_family=Lato&outline_colour=000000&coffee_colour=FFDD00
+[changelog]: https://github.com/polyipseity/obsidian-plugin-template/blob/main/CHANGELOG.md
+[community plugin]: https://obsidian.md/plugins?id=PLACEHOLDER
+[latest release]: https://github.com/polyipseity/obsidian-plugin-template/releases/latest
+[Obsidian]: https://obsidian.md/
+[related]: https://github.com/polyipseity/obsidian-monorepo
+[repository]: https://github.com/polyipseity/obsidian-plugin-template
+[trailer]: https://raw.githubusercontent.com/polyipseity/obsidian-plugin-template/main/assets/trailer.png

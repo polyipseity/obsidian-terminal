@@ -58,7 +58,7 @@ Quick reference for scripts in `package.json`. Use `bun` (preferred).
 - `format:prettier` — `prettier --write .`.
 - `format:md` — `markdownlint-cli2 --fix`.
 - `commitlint` — `commitlint --from=origin/main --to=HEAD`.
-- `prepare` — runs `husky` to set up Git hooks.
+- `prepare` — runs `prek install` to set up Git hooks.
 - `version` / `postversion` — version lifecycle scripts (`node scripts/version.mjs`, `node scripts/version-post.mjs`).
 
 > CI tip: Use `bun install --frozen-lockfile` in CI for deterministic installs.
@@ -100,7 +100,7 @@ Helpful local resources:
   > **Agent note — vitest CLI:** `vitest` without a subcommand defaults to interactive/watch mode. **Agents must never run Vitest in watch mode**; always use `vitest run <options>` or add the `--run` option so tests execute non-interactively (example: `bun x vitest --run "tests/**/*.spec.{js,ts,mjs}"`).
 
 - **Git hooks & CI:**
-  - Pre-push: `.husky/pre-push` runs `bun run test` — failing tests will block pushes.
+  - Pre-push: Prek pre-push hook (configured in `prek.toml`) runs `bun run test` — failing tests will block pushes.
   - CI: CI jobs run the full test suite (both unit and integration). If adding slow or flaky integration tests, mark them clearly (folder or filename) and justify in the PR description; prefer to keep the default suite fast.
 
 - **Guidelines for agents & contributors:**
@@ -114,7 +114,7 @@ Helpful local resources:
   1. Add/modify tests to cover behavior changes and follow the **one test file per source file** convention.
   2. Run `bun x vitest run "tests/**/*.spec.{js,ts,mjs}"` locally for fast verification and `bun run test` for the full suite.
   3. Keep tests parallelizable and idempotent.
-  4. Document any infra changes in `AGENTS.md`.  
+  4. Document any infra changes in `AGENTS.md`.
 
 If you need help designing a test or mocking a dependency, ask for a short example to be added to `tests/fixtures/`.
 
@@ -122,6 +122,7 @@ If you need help designing a test or mocking a dependency, ask for a short examp
 
 **TypeScript Types:**
 
+- **Default to `readonly`.** All TypeScript properties, interfaces, function parameters, and variables must be `readonly` by default. Only use mutable types when mutation is explicitly required and documented.
 - Do **not** use the TypeScript `any` type. Prefer `unknown` over `any`. When accepting unknown inputs, validate or use type guards to narrow `unknown` before use. If `any` is truly unavoidable, document the reason and add tests that assert safety.
 - **Never use `as` casting.** Avoid `value as Foo` in production code — prefer safe alternatives such as:
   - runtime type guards (e.g. `function isFoo(v: unknown): v is Foo`) and narrowing checks;
@@ -137,8 +138,8 @@ Example:
 ```ts
 // preferred for object shapes
 interface Settings {
-  openChangelogOnUpdate: boolean;
-  noticeTimeout: number;
+  readonly openChangelogOnUpdate: boolean;
+  readonly noticeTimeout: number;
 }
 
 // prefer a type guard over `as` casting
@@ -159,7 +160,7 @@ type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
 
 - All commit messages **must** follow the Conventional Commits standard.
 - **Header should be ≤ 72 characters (use 72 as a human-friendly buffer; tooling still accepts up to 100).**
-- **Body lines must be hard-wrapped at 100 characters** (enforced by commitlint/husky). Prefer 72 for messages intended for humans.
+- **Body lines must be hard-wrapped at 100 characters** (enforced by commitlint/prek). Prefer 72 for messages intended for humans.
 - See `.agents/instructions/commit-message.instructions.md` for up-to-date rules, examples, and a short agent-oriented summary.
 - Run `bun run commitlint` locally to validate message format before pushing; Husky will run checks on `prepare`/pre-push as configured.
 
@@ -252,6 +253,7 @@ const { loadDocumentations } = await import("../../src/documentations.js");
 - [.agents/instructions/localization.instructions.md](./.agents/instructions/localization.instructions.md) — Localization rules
 - [.agents/instructions/commit-message.instructions.md](./.agents/instructions/commit-message.instructions.md) — Commit message convention
 - [.agents/skills/plugin-testing/SKILL.md](./.agents/skills/plugin-testing/SKILL.md) — Plugin testing skill
+- [.agents/skills/code-review/SKILL.md](./.agents/skills/code-review/SKILL.md) — Code review skill
 - [.agents/instructions/agents.instructions.md](.agents/instructions/agents.instructions.md) — AI agent quick rules
 
 ---
@@ -270,7 +272,7 @@ This section contains concise, actionable rules and project-specific examples to
 - Formatting & linting: run `bun run format` and `bun run check` before committing. CI uses `bun install`.
 - Commit rules for agents: use Conventional Commits; run `bun run commitlint` locally when appropriate. Keep headers ≤100 chars and wrap bodies at 100 chars.
 - Localization rule for agents: when adding text keys, update `assets/locales/en/translation.json` first and add tests or localization notes. Follow `.agents/instructions/localization.instructions.md`.
-- PR checklist (brief): add/modify tests, run `bun x vitest run "tests/**/*.spec.{js,ts,mjs}"` locally for fast checks, run `bun run check`, add changeset when changing public API or version, and update `AGENTS.md` if you changed infra or agent-visible patterns.
+- PR checklist: run the code review skill (`.agents/skills/code-review/SKILL.md`) for structured change assessment.
 
 > Note: Keep suggestions and changes small and well-scoped. Prefer to add tests first for behavioral changes and follow the test naming conventions above.
 

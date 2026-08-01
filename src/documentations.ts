@@ -1,29 +1,38 @@
 import {
   DocumentationMarkdownView,
   StorageSettingsManager,
+  activeSelf,
   addCommand,
   anyToError,
   deepFreeze,
+  openExternal,
   printError,
   revealPrivate,
   toJSONOrString,
   typedKeys,
 } from "@polyipseity/obsidian-plugin-library";
-import { DOMClasses2 } from "./magic.js";
-import type { PLACEHOLDERPlugin } from "./main.js";
+import semverLt from "semver/functions/lt.js";
+import { MarkOptional } from "ts-essentials";
 import changelogMd from "../CHANGELOG.md";
 import readmeMd from "../README.md";
-import semverLt from "semver/functions/lt.js";
+import { DOMClasses2 } from "./magic.js";
+import type { PLACEHOLDERPlugin } from "./main.js";
 
 export const DOCUMENTATIONS = deepFreeze({
-  async changelog(view: DocumentationMarkdownView.Registered, active: boolean) {
-    await view.open(active, {
+  async changelog(
+    view: DocumentationMarkdownView.Registered,
+    opts: DocumentationOpenOptions,
+  ) {
+    await view.open(opts.active, {
       data: await changelogMd,
       displayTextI18nKey: "translation:generic.documentations.changelog",
       iconI18nKey: "asset:generic.documentations.changelog-icon",
     });
   },
-  donate(view: DocumentationMarkdownView.Registered) {
+  donate(
+    view: DocumentationMarkdownView.Registered,
+    opts: DocumentationOpenOptions,
+  ) {
     const {
       context,
       context: { app, manifest },
@@ -36,20 +45,62 @@ export const DOCUMENTATIONS = deepFreeze({
           setting: { settingTabs },
         } = app0;
         for (const tab of settingTabs) {
-          const {
-            id,
-            containerEl: { ownerDocument },
-          } = tab;
-          if (id !== "community-plugins") {
+          if (tab.id !== "community-plugins") {
             continue;
           }
-          const div = ownerDocument.createElement("div");
-          tab.renderInstalledPlugin(manifest, div);
-          const element = div.querySelector(
-            `.${DOMClasses2.SVG_ICON}.${DOMClasses2.LUCIDE_HEART}`,
-          )?.parentElement;
+          const {
+            containerEl,
+            containerEl: { ownerDocument },
+            installedPlugins,
+          } = tab;
+
+          // Find the donate button in the already-rendered installed plugins list:
+          // locate this plugin's row by matching the name from the manifest, then
+          // get the heart icon's parent element (the clickable button) and click it.
+          // Note: `textContent` is `string | null` so both `?.` are required;
+          // `querySelector` can also return `null` so `?.parentElement` is needed too.
+          let div = installedPlugins?.listEl ?? installedPlugins?.groupEl;
+          let element = (
+            (div
+              ? [...div.querySelectorAll(`.${DOMClasses2.SETTING_ITEM}`)]
+              : []) satisfies Element[] as Element[]
+          )
+            .find(
+              (item) =>
+                item
+                  .querySelector(`.${DOMClasses2.SETTING_ITEM_NAME}`)
+                  ?.textContent.trim() === manifest.name,
+            )
+            ?.querySelector(
+              `.${DOMClasses2.SVG_ICON}.${DOMClasses2.LUCIDE_HEART}`,
+            )?.parentElement;
           if (!element) {
-            throw new Error(toJSONOrString(div));
+            activeSelf(containerEl).console.warn(toJSONOrString(div));
+
+            // Deprecated: older versions of Obsidian (pre-1.12.7) exposed
+            // `renderInstalledPlugin`, which rendered each plugin's UI into a
+            // caller-supplied detached element; the heart icon was then queried from
+            // that subtree and clicked. This API was removed since at least Obsidian 1.12.7.
+
+            // eslint-disable-next-line eslint-comments/no-restricted-disable -- see below
+            // eslint-disable-next-line obsidianmd/prefer-create-el -- exercised by tests
+            div = ownerDocument.createElement("div");
+            // eslint-disable-next-line eslint-comments/no-restricted-disable -- see below
+            // eslint-disable-next-line @typescript-eslint/no-deprecated -- needed for older Obsidian compat
+            if (tab.renderInstalledPlugin) {
+              // eslint-disable-next-line eslint-comments/no-restricted-disable -- see below
+              // eslint-disable-next-line @typescript-eslint/no-deprecated -- needed for older Obsidian compat
+              tab.renderInstalledPlugin(manifest, div);
+            }
+            element = div.querySelector(
+              `.${DOMClasses2.SVG_ICON}.${DOMClasses2.LUCIDE_HEART}`,
+            )?.parentElement;
+            if (!element) {
+              activeSelf(containerEl).console.warn(toJSONOrString(div));
+            }
+          }
+          if (!element) {
+            throw new Error(toJSONOrString(tab));
           }
           element.click();
           return;
@@ -57,12 +108,23 @@ export const DOCUMENTATIONS = deepFreeze({
         throw new Error(toJSONOrString(settingTabs));
       },
       (error) => {
-        throw error;
+        const { fundingUrl } = manifest;
+        const url =
+          typeof fundingUrl === "string"
+            ? fundingUrl
+            : (Object.values(fundingUrl ?? {})[0] ?? null);
+        if (url === null) {
+          throw error;
+        }
+        openExternal(activeSelf(opts.event), url);
       },
     );
   },
-  async readme(view: DocumentationMarkdownView.Registered, active: boolean) {
-    await view.open(active, {
+  async readme(
+    view: DocumentationMarkdownView.Registered,
+    opts: DocumentationOpenOptions,
+  ) {
+    await view.open(opts.active, {
       data: await readmeMd,
       displayTextI18nKey: "translation:generic.documentations.readme",
       iconI18nKey: "asset:generic.documentations.readme-icon",
@@ -72,6 +134,10 @@ export const DOCUMENTATIONS = deepFreeze({
 export type DocumentationKeys = readonly ["changelog", "donate", "readme"];
 export const DOCUMENTATION_KEYS =
   typedKeys<DocumentationKeys>()(DOCUMENTATIONS);
+export interface DocumentationOpenOptions {
+  active: boolean;
+  event: UIEvent | null;
+}
 
 class Loaded0 {
   public constructor(
@@ -79,7 +145,13 @@ class Loaded0 {
     public readonly docMdView: DocumentationMarkdownView.Registered,
   ) {}
 
-  public open(key: DocumentationKeys[number], active = true): void {
+  public open(
+    key: DocumentationKeys[number],
+    opts: MarkOptional<
+      DocumentationOpenOptions,
+      keyof DocumentationOpenOptions
+    > = {},
+  ): void {
     const {
       context,
       context: {
@@ -89,27 +161,26 @@ class Loaded0 {
       },
       docMdView,
     } = this;
+    const { active = true, event = null } = opts;
     (async (): Promise<void> => {
-      try {
-        await DOCUMENTATIONS[key](docMdView, active);
-        if (key === "changelog" && version !== null) {
-          localSettings
-            .mutate((lsm) => {
-              lsm.lastReadChangelogVersion = version;
-            })
-            .then(async () => localSettings.write())
-            .catch((error: unknown) => {
-              self.console.error(error);
-            });
-        }
-      } catch (error) {
-        printError(
-          anyToError(error),
-          () => i18n.t("errors.error-opening-documentation"),
-          context,
-        );
+      await DOCUMENTATIONS[key](docMdView, { active, event });
+      if (key === "changelog" && version !== null) {
+        localSettings
+          .mutate((lsm) => {
+            lsm.lastReadChangelogVersion = version;
+          })
+          .then(async () => localSettings.write())
+          .catch((error: unknown) => {
+            self.console.error(error);
+          });
       }
-    })();
+    })().catch((error: unknown) => {
+      printError(
+        anyToError(error),
+        () => i18n.t("errors.error-opening-documentation"),
+        context,
+      );
+    });
   }
 }
 export function loadDocumentations(
@@ -133,7 +204,7 @@ export function loadDocumentations(
     });
   }
   if (readme) {
-    ret.open("readme", false);
+    ret.open("readme", { active: false });
   }
   if (
     version !== null &&
@@ -141,7 +212,7 @@ export function loadDocumentations(
     !StorageSettingsManager.hasFailed(localSettings.value) &&
     semverLt(localSettings.value.lastReadChangelogVersion, version)
   ) {
-    ret.open("changelog", false);
+    ret.open("changelog", { active: false });
   }
   return ret;
 }
