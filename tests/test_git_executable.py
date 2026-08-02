@@ -14,6 +14,7 @@ import os
 import stat
 import subprocess
 from collections.abc import AsyncIterator, Iterable
+from contextlib import suppress
 
 import pytest
 from anyio import IncompleteRead, Path, run_process
@@ -100,7 +101,7 @@ async def git_mode(path: Path) -> str | None:
             stderr=subprocess.PIPE,
             check=False,
         )
-    except Exception:
+    except OSError:
         return None
     out = proc.stdout.decode().strip()
     if not out:
@@ -181,11 +182,7 @@ async def test_git_mode_untracked(tmp_path: Path) -> None:
     finally:
         # clean up both the file and the directory; ignore errors since the
         # filesystem may already have removed them.
-        try:
+        with suppress(OSError):
             await new_file.unlink()
-        except Exception:
-            pass
-        try:
+        with suppress(OSError):
             await unique_dir.rmdir()
-        except Exception:
-            pass

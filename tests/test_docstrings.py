@@ -98,15 +98,12 @@ def _extract_all_tuple(node: ast.Module) -> tuple[str, ...] | None:
                 if isinstance(target, ast.Name) and target.id == "__all__":
                     val = stmt.value
                     if isinstance(val, ast.Tuple):
-                        try:
-                            names = tuple(
-                                elt.value
-                                for elt in val.elts
-                                if isinstance(elt, ast.Constant)
-                                and isinstance(elt.value, str)
-                            )
-                        except Exception:
-                            return None
+                        names = tuple(
+                            elt.value
+                            for elt in val.elts
+                            if isinstance(elt, ast.Constant)
+                            and isinstance(elt.value, str)
+                        )
                         if len(names) == len(val.elts):
                             return names
         elif isinstance(stmt, ast.AnnAssign):
@@ -114,15 +111,11 @@ def _extract_all_tuple(node: ast.Module) -> tuple[str, ...] | None:
             if isinstance(target, ast.Name) and target.id == "__all__":
                 val = stmt.value
                 if isinstance(val, ast.Tuple):
-                    try:
-                        names = tuple(
-                            elt.value
-                            for elt in val.elts
-                            if isinstance(elt, ast.Constant)
-                            and isinstance(elt.value, str)
-                        )
-                    except Exception:
-                        return None
+                    names = tuple(
+                        elt.value
+                        for elt in val.elts
+                        if isinstance(elt, ast.Constant) and isinstance(elt.value, str)
+                    )
                     if len(names) == len(val.elts):
                         return names
     return None
@@ -167,15 +160,7 @@ def _iter_assignments_in_body(
             target = stmt.target
             if isinstance(target, ast.Name):
                 yield target.id, body, idx, is_module
-        elif isinstance(stmt, ast.If):
-            yield from _iter_assignments_in_body(stmt.body, False)
-            if stmt.orelse:
-                yield from _iter_assignments_in_body(stmt.orelse, False)
-        elif isinstance(stmt, (ast.For, ast.AsyncFor)):
-            yield from _iter_assignments_in_body(stmt.body, False)
-            if stmt.orelse:
-                yield from _iter_assignments_in_body(stmt.orelse, False)
-        elif isinstance(stmt, ast.While):
+        elif isinstance(stmt, (ast.If, ast.For, ast.AsyncFor, ast.While)):
             yield from _iter_assignments_in_body(stmt.body, False)
             if stmt.orelse:
                 yield from _iter_assignments_in_body(stmt.orelse, False)
@@ -367,9 +352,8 @@ async def test_modules_and_exported_objects_have_docstrings() -> None:
                 continue
             if isinstance(
                 def_node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
-            ):
-                if not ast.get_docstring(def_node):
-                    failures.append(f"{path}: exported {name!r} is missing a docstring")
+            ) and not ast.get_docstring(def_node):
+                failures.append(f"{path}: exported {name!r} is missing a docstring")
 
     if failures:
         raise AssertionError("Docstring compliance failures:\n" + "\n".join(failures))
