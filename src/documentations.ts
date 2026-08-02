@@ -133,8 +133,8 @@ export type DocumentationKeys = readonly ["changelog", "donate", "readme"];
 export const DOCUMENTATION_KEYS =
   typedKeys<DocumentationKeys>()(DOCUMENTATIONS);
 export interface DocumentationOpenOptions {
-  active: boolean;
-  event: UIEvent | null;
+  readonly active: boolean;
+  readonly event: UIEvent | null;
 }
 
 class Loaded0 {
