@@ -1,32 +1,32 @@
-import type { DeepReadonly, DeepRequired } from "ts-essentials";
-import type {
-  IDisposable,
-  IFunctionIdentifier,
-  Terminal,
-  ITerminalOptions as TerminalOptions,
-  ITerminalInitOnlyOptions as TerminalOptionsInit,
-} from "@xterm/xterm";
 import {
-  acquireConditionally,
-  alternativeRegExp,
-  cartesianProduct,
-  clear,
-  codePoint,
-  deepFreeze,
-  dynamicRequireLazy,
-  insertAt,
-  lazyProxy,
-  rangeCodePoint,
-  removeAt,
-  replaceAllRegex,
+    acquireConditionally,
+    alternativeRegExp,
+    cartesianProduct,
+    clear,
+    codePoint,
+    deepFreeze,
+    dynamicRequireLazy,
+    insertAt,
+    lazyProxy,
+    rangeCodePoint,
+    removeAt,
+    replaceAllRegex,
 } from "@polyipseity/obsidian-plugin-library";
+import type {
+    IDisposable,
+    IFunctionIdentifier,
+    Terminal,
+    ITerminalOptions as TerminalOptions,
+    ITerminalInitOnlyOptions as TerminalOptionsInit,
+} from "@xterm/xterm";
+import type { DeepReadonly, DeepRequired } from "ts-essentials";
 
-import AsyncLock from "async-lock";
-import { BUNDLE } from "../import.js";
-import { MAX_LOCK_PENDING } from "../magic.js";
 import ansi from "ansi-escape-sequences";
-import { range } from "lodash-es";
+import AsyncLock from "async-lock";
 import { Set as valueSet } from "immutable";
+import { range } from "lodash-es";
+import { BUNDLE } from "../imports.js";
+import { MAX_LOCK_PENDING } from "../magic.js";
 
 const xterm = dynamicRequireLazy<typeof import("@xterm/xterm")>(
   BUNDLE,

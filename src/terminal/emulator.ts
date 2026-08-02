@@ -1,28 +1,28 @@
 import {
-  type Fixed,
-  SI_PREFIX_SCALE,
-  activeSelf,
-  asyncDebounce,
-  deepFreeze,
-  dynamicRequire,
-  dynamicRequireLazy,
-  fixTyped,
-  importable,
-  launderUnchecked,
-  markFixed,
+    type Fixed,
+    SI_PREFIX_SCALE,
+    activeSelf,
+    asyncDebounce,
+    deepFreeze,
+    dynamicRequire,
+    dynamicRequireLazy,
+    fixTyped,
+    importable,
+    launderUnchecked,
+    markFixed,
 } from "@polyipseity/obsidian-plugin-library";
 import type {
-  ITerminalInitOnlyOptions,
-  ITerminalOptions,
-  Terminal,
+    ITerminalInitOnlyOptions,
+    ITerminalOptions,
+    Terminal,
 } from "@xterm/xterm";
 import { noop, throttle } from "lodash-es";
 import type { ChildProcessByStdio } from "node:child_process";
 import type { AsyncOrSync } from "ts-essentials";
-import { BUNDLE } from "../import.js";
+import { BUNDLE } from "../imports.js";
 import {
-  TERMINAL_EMULATOR_RESIZE_WAIT,
-  TERMINAL_PTY_RESIZE_WAIT,
+    TERMINAL_EMULATOR_RESIZE_WAIT,
+    TERMINAL_PTY_RESIZE_WAIT,
 } from "../magic.js";
 import { spawnPromise } from "../utils.js";
 import { applyEnv } from "./environment.js";

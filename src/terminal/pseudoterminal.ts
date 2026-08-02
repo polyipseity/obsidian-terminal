@@ -1,52 +1,52 @@
 import {
-  Functions,
-  Platform,
-  ResourceComponent,
-  SI_PREFIX_SCALE,
-  acquireConditionally,
-  activeSelf,
-  anyToError,
-  asyncFunction,
-  attachFunctionSourceMap,
-  clear,
-  consumeEvent,
-  deepFreeze,
-  deopaque,
-  dynamicRequire,
-  getKeyModifiers,
-  inSet,
-  lazyInit,
-  logFormat,
-  multireplace,
-  notice2,
-  printError,
-  promisePromise,
-  remove,
-  replaceAllRegex,
-  sleep2,
-  toJSONOrString,
-  typedKeys,
+    Functions,
+    Platform,
+    ResourceComponent,
+    SI_PREFIX_SCALE,
+    acquireConditionally,
+    activeSelf,
+    anyToError,
+    asyncFunction,
+    attachFunctionSourceMap,
+    clear,
+    consumeEvent,
+    deepFreeze,
+    deopaque,
+    dynamicRequire,
+    getKeyModifiers,
+    inSet,
+    lazyInit,
+    logFormat,
+    multireplace,
+    notice2,
+    printError,
+    promisePromise,
+    remove,
+    replaceAllRegex,
+    sleep2,
+    toJSONOrString,
+    typedKeys,
 } from "@polyipseity/obsidian-plugin-library";
 import type { IMarker, Terminal } from "@xterm/xterm";
 import { type Program, parse } from "acorn";
 import inspect, { type Options } from "browser-util-inspect";
 import { isEmpty, isNil, noop } from "lodash-es";
 import {
-  DEFAULT_ENCODING,
-  EXIT_SUCCESS,
-  MAX_LOCK_PENDING,
-  TERMINAL_EXIT_CLEANUP_WAIT,
-  TERMINAL_RESIZER_WATCHDOG_WAIT,
-  WINDOWS_CONHOST_PATH,
+    DEFAULT_ENCODING,
+    EXIT_SUCCESS,
+    MAX_LOCK_PENDING,
+    TERMINAL_EXIT_CLEANUP_WAIT,
+    TERMINAL_RESIZER_WATCHDOG_WAIT,
+    WINDOWS_CONHOST_PATH,
 } from "../magic.js";
 import { spawnPromise, writePromise } from "../utils.js";
 import {
-  CONTROL_SEQUENCE_INTRODUCER as CSI,
-  CursoredText,
-  NORMALIZED_LINE_FEED,
-  TerminalTextArea,
-  normalizeText,
-  writePromise as tWritePromise,
+    CONTROL_SEQUENCE_INTRODUCER as CSI,
+    CursoredText,
+    NORMALIZED_LINE_FEED,
+    TerminalTextArea,
+    normalizeText,
+    writePromise as tWritePromise,
 } from "./utils.js";
 
 import ansi from "ansi-escape-sequences";
@@ -56,7 +56,7 @@ import type { DeveloperConsoleContext } from "obsidian-terminal";
 import type { Position } from "source-map";
 import type { FileResult } from "tmp-promise";
 import type { AsyncOrSync } from "ts-essentials";
-import { BUNDLE } from "../import.js";
+import { BUNDLE } from "../imports.js";
 import type { TerminalPlugin } from "../main.js";
 import type { Log } from "../patch.js";
 import { DisposerAddon } from "./emulator-addons.js";

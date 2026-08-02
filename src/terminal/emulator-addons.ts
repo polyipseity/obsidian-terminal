@@ -1,13 +1,13 @@
 import {
-  Functions,
-  type PluginContext,
-  activeSelf,
-  consumeEvent,
-  deepFreeze,
-  dynamicRequire,
-  isNonNil,
-  replaceAllRegex,
-  revealPrivate,
+    Functions,
+    type PluginContext,
+    activeSelf,
+    consumeEvent,
+    deepFreeze,
+    dynamicRequire,
+    isNonNil,
+    replaceAllRegex,
+    revealPrivate,
 } from "@polyipseity/obsidian-plugin-library";
 import type { CanvasAddon } from "@xterm/addon-canvas";
 import type { WebglAddon } from "@xterm/addon-webgl";
@@ -16,7 +16,7 @@ import { eastAsianWidth } from "get-east-asian-width";
 import { constant, isUndefined } from "lodash-es";
 import { around } from "monkey-around";
 import { noop } from "ts-essentials";
-import { BUNDLE } from "../import.js";
+import { BUNDLE } from "../imports.js";
 import type { Settings } from "../settings-data.js";
 
 const electron = dynamicRequire<typeof import("electron")>(BUNDLE, "electron");

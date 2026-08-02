@@ -1,15 +1,15 @@
 import {
-  Platform,
-  deopaque,
-  dynamicRequire,
-  lazyInit,
+    Platform,
+    deopaque,
+    dynamicRequire,
+    lazyInit,
 } from "@polyipseity/obsidian-plugin-library";
 
-import { BUNDLE } from "../import.js";
+import { BUNDLE } from "../imports.js";
 import {
-  DEFAULT_PYTHONIOENCODING,
-  TERM_PROGRAM,
-  TERM_PROGRAM_VERSION,
+    DEFAULT_PYTHONIOENCODING,
+    TERM_PROGRAM,
+    TERM_PROGRAM_VERSION,
 } from "../magic.js";
 import { spawnPromise } from "../utils.js";
 
