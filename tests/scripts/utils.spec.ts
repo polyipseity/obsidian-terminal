@@ -1,23 +1,22 @@
 // @vitest-environment node
 
-import fs from "node:fs";
+import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Unit spec for scripts/utils.mjs — prefer hermetic behavior and keep tests
 // deterministic. Some tests use quick node child processes to exercise
 // `execute` but the module is imported per-test to keep state isolated.
 
-function mktemp() {
-  return fs.mkdtempSync(
-    path.join(os.tmpdir(), "obsidian-plugin-template-test-"),
-  );
+async function mktemp() {
+  return fs.mkdtemp(path.join(os.tmpdir(), "obsidian-plugin-template-test-"));
 }
 
 describe("scripts/utils.mjs", () => {
-  let origCwd;
+  let origCwd: string;
   beforeEach(() => {
+    vi.resetModules();
     origCwd = process.cwd();
   });
   afterEach(() => {
@@ -30,6 +29,7 @@ describe("scripts/utils.mjs", () => {
     expect(Object.isFrozen(PATHS)).toBe(true);
     expect(PATHS).toHaveProperty("main");
     expect(PATHS).toHaveProperty("manifest");
+    expect(PATHS).toHaveProperty("metafile");
     expect(PATHS).toHaveProperty("styles");
   });
 
@@ -43,8 +43,8 @@ describe("scripts/utils.mjs", () => {
       "process.stdout.write('ok'); process.stderr.write('bad'); process.exit(0)",
     ]);
     expect(out).toContain("ok");
-    expect(logSpy).toHaveBeenCalled();
-    expect(errSpy).toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledWith("ok");
+    expect(errSpy).toHaveBeenCalledWith("bad");
   });
 
   it("execute throws when the child exits with non-zero exit code", async () => {
@@ -53,9 +53,9 @@ describe("scripts/utils.mjs", () => {
   });
 
   it("PLUGIN_ID resolves to id from manifest.json", async () => {
-    const tmp = mktemp();
+    const tmp = await mktemp();
     process.chdir(tmp);
-    fs.writeFileSync("manifest.json", JSON.stringify({ id: "test-plugin" }));
+    await fs.writeFile("manifest.json", JSON.stringify({ id: "test-plugin" }));
 
     const { PLUGIN_ID } = await import("../../scripts/utils.mjs");
     const id = await PLUGIN_ID;
@@ -64,9 +64,11 @@ describe("scripts/utils.mjs", () => {
 
   describe("scripts/utils.mjs PLUGIN_ID and execute edge cases", () => {
     it("PLUGIN_ID caches its value after first resolution", async () => {
-      const project = fs.mkdtempSync(path.join(os.tmpdir(), "plugin-id-proj-"));
+      const project = await fs.mkdtemp(
+        path.join(os.tmpdir(), "plugin-id-proj-"),
+      );
       const manifestPath = path.join(project, "manifest.json");
-      fs.writeFileSync(manifestPath, JSON.stringify({ id: "first-id" }));
+      await fs.writeFile(manifestPath, JSON.stringify({ id: "first-id" }));
 
       const cwd = process.cwd();
       try {
@@ -77,7 +79,7 @@ describe("scripts/utils.mjs", () => {
         const first = await PLUGIN_ID;
         expect(first).toBe("first-id");
 
-        fs.writeFileSync(manifestPath, JSON.stringify({ id: "second-id" }));
+        await fs.writeFile(manifestPath, JSON.stringify({ id: "second-id" }));
         const second = await PLUGIN_ID;
         expect(second).toBe("first-id");
       } finally {
@@ -107,7 +109,7 @@ describe("scripts/utils.mjs", () => {
         "process.stdout.write('hello'); process.exit(0)",
       ]);
       expect(out).toContain("hello");
-      expect(logSpy).toHaveBeenCalled();
+      expect(logSpy).toHaveBeenCalledWith("hello");
       expect(errSpy).not.toHaveBeenCalled();
     });
 
@@ -122,7 +124,7 @@ describe("scripts/utils.mjs", () => {
       ]);
       expect(out).toBe("");
       expect(logSpy).not.toHaveBeenCalled();
-      expect(errSpy).toHaveBeenCalled();
+      expect(errSpy).toHaveBeenCalledWith("err");
     });
 
     it("handles child that produces no output but exits successfully", async () => {
@@ -136,11 +138,16 @@ describe("scripts/utils.mjs", () => {
       // Mock util.promisify to return a function whose Promise has a .child prop
       vi.doMock("node:util", () => ({
         promisify: () => () => {
-          const p = new Promise((resolve) =>
-            // resolve asynchronously to mimic real execFile behavior
-            setImmediate(() => resolve({ stdout: "stdout", stderr: "stderr" })),
-          );
-          p.child = { exitCode: 5 };
+          const p: Promise<unknown> & { child: { readonly exitCode: number } } =
+            Object.assign(
+              new Promise((resolve) =>
+                // resolve asynchronously to mimic real execFile behavior
+                setImmediate(() => {
+                  resolve({ stdout: "stdout", stderr: "stderr" });
+                }),
+              ),
+              { child: { exitCode: 5 } },
+            );
           return p;
         },
       }));

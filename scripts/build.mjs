@@ -1,12 +1,11 @@
 import { analyzeMetafile, context, formatMessages } from "esbuild";
-import { PATHS } from "./utils.mjs";
-import { argv } from "node:process";
-import builtinModules from "builtin-modules";
 import esbuildCompress from "esbuild-compress";
 import esbuildPluginGlobals from "esbuild-plugin-globals";
 import esbuildPluginTextReplace from "esbuild-plugin-text-replace";
-import { isEmpty } from "lodash-es";
-import { writeFile, rm } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
+import { builtinModules } from "node:module";
+import { argv } from "node:process";
+import { PATHS } from "./utils.mjs";
 
 const ARGV_PRODUCTION = 2,
   COMMENT = "// repository: https://github.com/polyipseity/obsidian-terminal",
@@ -45,6 +44,7 @@ async function esbuild() {
         // Cannot use `i18next` because it is too outdated to have formatters
         moment: "moment",
       }),
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call -- JSDoc typings could be not parsed for some reason.
       esbuildCompress({
         compressors: [
           {
@@ -75,51 +75,33 @@ async function esbuild() {
     await build.watch({});
     return;
   }
+
   try {
     // Await https://github.com/evanw/esbuild/issues/2886
     const { errors, warnings, metafile } = await build.rebuild();
     await Promise.all([
       (async () => {
-        if (metafile) {
-          console.log(
-            await analyzeMetafile(metafile, {
-              color: true,
-              verbose: true,
-            }),
+        console.log(
+          await analyzeMetafile(metafile, { color: true, verbose: true }),
+        );
+        if (warnings.length !== 0) {
+          console.warn(
+            (
+              await formatMessages(warnings, { color: true, kind: "warning" })
+            ).join("\n"),
           );
         }
-        for await (const logging of [
-          {
-            data: warnings,
-            kind: "warning",
-            log: console.warn.bind(console),
-          },
-          {
-            data: errors,
-            kind: "error",
-            log: console.error.bind(console),
-          },
-        ]
-          .filter(({ data }) => !isEmpty(data))
-          .map(async ({ data, kind, log }) => {
-            const message = (
-              await formatMessages(data, {
-                color: true,
-                kind,
-              })
-            ).join("\n");
-            return () => log(message);
-          })) {
-          logging();
+        if (errors.length !== 0) {
+          console.error(
+            (await formatMessages(errors, { color: true, kind: "error" })).join(
+              "\n",
+            ),
+          );
         }
       })(),
-      ...(metafile
-        ? [
-            writeFile(PATHS.metafile, JSON.stringify(metafile, null, "  "), {
-              encoding: "utf-8",
-            }),
-          ]
-        : []),
+      writeFile(PATHS.metafile, JSON.stringify(metafile, null, "  "), {
+        encoding: "utf-8",
+      }),
     ]);
   } finally {
     await build.dispose();
@@ -134,7 +116,7 @@ try {
   ]);
   const rejectedReasons = results
     .filter((r) => r.status === "rejected")
-    .map((r) => r.reason);
+    .map((r) => /** @type {unknown} */ (r.reason));
   if (rejectedReasons.length) {
     // throw all errors together so callers can inspect each failure
     throw new AggregateError(

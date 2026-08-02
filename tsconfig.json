@@ -26,5 +26,5 @@
     "types": ["node"]
   },
   "exclude": ["node_modules", "dist"],
-  "include": ["assets/**/*", "scripts/**/*", "src/**/*"]
+  "include": ["assets/**/*", "scripts/**/*", "src/**/*", "tests/**/*"]
 }

@@ -108,7 +108,7 @@ export namespace Settings {
   export function persistent(settings: Settings): Persistent {
     const ret: MarkOptional<Settings, Optionals> = cloneAsWritable(settings);
     for (const optional of optionals) {
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- to actually remove the optional properties for saving
       delete ret[optional];
     }
     return ret;

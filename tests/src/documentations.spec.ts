@@ -5,18 +5,18 @@
  * - `DOCUMENTATIONS.donate()` clicks the heart button when the plugin row is
  *   found via `installedPlugins.listEl` (primary path, Obsidian 1.12.7+).
  * - `DOCUMENTATIONS.donate()` clicks the heart button when the plugin row is
- *   found via `installedPlugins.containerEl` (secondary primary path).
+ *   found via `installedPlugins.groupEl` (secondary primary path).
  * - `DOCUMENTATIONS.donate()` falls back to the deprecated `renderInstalledPlugin`
  *   path when the primary path finds no matching row (older Obsidian versions).
  * - `DOCUMENTATIONS.donate()` falls back to opening the donation URL (and does
- *   not throw) when both paths fail — regression for polyipseity/obsidian-terminal#157
- *   (Obsidian 1.12.7 private API change).
+ *   not throw) when both paths fail — regression for Obsidian 1.12.7 private
+ *   API change.
  * - `DOCUMENTATIONS.donate()` warns twice when both the listEl path and the
  *   deprecated renderInstalledPlugin path find no element, then opens the URL.
  *
  * `revealPrivate` and `openExternal` are external boundaries. `revealPrivate`
  * is emulated as a `try func / catch -> fallback` wrapper, matching the real
- * contract evidenced by issue #157's stack trace
+ * contract evidenced by the original issue's stack trace
  * (`renderInstalledPlugin -> func -> revealPrivate -> donate`).
  *
  * `activeSelf` is stubbed to return `self` unconditionally: the real
@@ -42,7 +42,7 @@ vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => {
     // before the test module is loaded, so we must import the original first.
     // Stub: real activeSelf(Document) crashes in jsdom ("Cannot destructure
     // property 'defaultView'"); always returning `self` is safe for these tests.
-    activeSelf: (() => self) as unknown as typeof actual.activeSelf,
+    activeSelf: () => self,
     openExternal: openExternalSpy,
     revealPrivate: ((
       _context: unknown,
@@ -64,7 +64,7 @@ import { DOCUMENTATIONS } from "../../src/documentations.js";
 /**
  * Build a minimal DOM structure matching the installed-plugins list layout:
  *   .setting-item
- *     .setting-item-name  (textContent = pluginName)
+ *     .setting-item-name (textContent = pluginName)
  *     button > svg.svg-icon.lucide-heart
  *
  * Returns the row element and the clickable heart button so tests can spy on
@@ -90,7 +90,7 @@ function makePluginRow(pluginName: string): {
 
 // A donate `view` whose `installedPlugins.listEl` is empty (no matching row),
 // so donate() falls through to the deprecated `renderInstalledPlugin` path,
-// which always throws — simulating Obsidian 1.12.7's changed private API (#157).
+// which always throws — simulating Obsidian 1.12.7's changed private API.
 function brokenDonateView(
   donationUrl: string | Record<string, string> | undefined,
 ): Parameters<typeof DOCUMENTATIONS.donate>[0] {
@@ -122,10 +122,12 @@ describe("src/documentations.ts", () => {
 
     it("clicks the heart button when the plugin row is found via installedPlugins.listEl", () => {
       openExternalSpy.mockClear();
-      const warnSpy = vi.spyOn(self.console, "warn");
+      const warnSpy = vi
+        .spyOn(self.console, "warn")
+        .mockImplementation(() => {});
 
       const listEl = self.document.createElement("ul");
-      const { item, heartButton } = makePluginRow("Terminal");
+      const { item, heartButton } = makePluginRow("PLACEHOLDER");
       listEl.appendChild(item);
       const clickSpy = vi.spyOn(heartButton, "click");
 
@@ -144,7 +146,7 @@ describe("src/documentations.ts", () => {
                   ],
                 },
               },
-              manifest: { name: "Terminal", fundingUrl: {} },
+              manifest: { name: "PLACEHOLDER", fundingUrl: {} },
             },
           } as unknown as Parameters<typeof DOCUMENTATIONS.donate>[0],
           { active: true, event: null },
@@ -156,14 +158,16 @@ describe("src/documentations.ts", () => {
       expect(warnSpy).not.toHaveBeenCalled();
     });
 
-    it("clicks the heart button when the plugin row is found via installedPlugins.containerEl", () => {
+    it("clicks the heart button when the plugin row is found via installedPlugins.groupEl", () => {
       openExternalSpy.mockClear();
-      const warnSpy = vi.spyOn(self.console, "warn");
+      const warnSpy = vi
+        .spyOn(self.console, "warn")
+        .mockImplementation(() => {});
 
-      // installedPlugins.listEl is null so the ?? falls through to containerEl.
-      const pluginsContainerEl = self.document.createElement("div");
-      const { item, heartButton } = makePluginRow("Terminal");
-      pluginsContainerEl.appendChild(item);
+      // installedPlugins.listEl is null so the ?? falls through to groupEl.
+      const pluginsGroupEl = self.document.createElement("div");
+      const { item, heartButton } = makePluginRow("PLACEHOLDER");
+      pluginsGroupEl.appendChild(item);
       const clickSpy = vi.spyOn(heartButton, "click");
 
       expect(() => {
@@ -178,13 +182,13 @@ describe("src/documentations.ts", () => {
                       containerEl: self.document.createElement("div"),
                       installedPlugins: {
                         listEl: null as unknown as HTMLElement,
-                        containerEl: pluginsContainerEl,
+                        groupEl: pluginsGroupEl,
                       },
                     },
                   ],
                 },
               },
-              manifest: { name: "Terminal", fundingUrl: {} },
+              manifest: { name: "PLACEHOLDER", fundingUrl: {} },
             },
           } as unknown as Parameters<typeof DOCUMENTATIONS.donate>[0],
           { active: true, event: null },
@@ -198,7 +202,9 @@ describe("src/documentations.ts", () => {
 
     it("opens the donation URL and does not throw when renderInstalledPlugin fails", () => {
       openExternalSpy.mockClear();
-      const warnSpy = vi.spyOn(self.console, "warn");
+      const warnSpy = vi
+        .spyOn(self.console, "warn")
+        .mockImplementation(() => {});
 
       expect(() => {
         DOCUMENTATIONS.donate(
@@ -217,11 +223,15 @@ describe("src/documentations.ts", () => {
       // The primary listEl path found no element — one warning before the
       // deprecated fallback was attempted (which then threw).
       expect(warnSpy).toHaveBeenCalledTimes(1);
+      // The warning is the JSON-serialized unmatched element (empty `<ul>`).
+      expect(JSON.parse(String(warnSpy.mock.calls[0]?.[0]))).toEqual({});
     });
 
     it("rethrows the original error when there is no usable donation URL", () => {
       openExternalSpy.mockClear();
-      const warnSpy = vi.spyOn(self.console, "warn");
+      const warnSpy = vi
+        .spyOn(self.console, "warn")
+        .mockImplementation(() => {});
 
       expect(() => {
         DOCUMENTATIONS.donate(brokenDonateView(undefined), {
@@ -233,11 +243,15 @@ describe("src/documentations.ts", () => {
       // One warning from the primary listEl path before the deprecated fallback
       // was attempted (which then threw the rethrown error).
       expect(warnSpy).toHaveBeenCalledTimes(1);
+      // The warning is the JSON-serialized unmatched element (empty `<ul>`).
+      expect(JSON.parse(String(warnSpy.mock.calls[0]?.[0]))).toEqual({});
     });
 
     it("warns twice and opens the URL when both listEl and renderInstalledPlugin find no element", () => {
       openExternalSpy.mockClear();
-      const warnSpy = vi.spyOn(self.console, "warn");
+      const warnSpy = vi
+        .spyOn(self.console, "warn")
+        .mockImplementation(() => {});
 
       // renderInstalledPlugin renders a node with no heart icon — unlike the
       // brokenDonateView helper it does not throw, so donate() reaches the
@@ -265,6 +279,10 @@ describe("src/documentations.ts", () => {
 
       // First warn: primary listEl path. Second warn: deprecated path also fails.
       expect(warnSpy).toHaveBeenCalledTimes(2);
+      // Both warnings are JSON-serialized unmatched elements: the empty `<ul>`
+      // and the rendered div containing only a `<span>` — both serialize to {}.
+      expect(JSON.parse(String(warnSpy.mock.calls[0]?.[0]))).toEqual({});
+      expect(JSON.parse(String(warnSpy.mock.calls[1]?.[0]))).toEqual({});
       expect(openExternalSpy).toHaveBeenCalledTimes(1);
       expect(openExternalSpy.mock.calls[0]?.[1]).toBe(
         "https://example.com/donate",

@@ -112,7 +112,7 @@ Helpful local resources:
   > **Agent note — vitest CLI:** `vitest` without a subcommand defaults to interactive/watch mode. **Agents must never run Vitest in watch mode**; always use `vitest run <options>` or add the `--run` option so tests execute non-interactively (example: `bun x vitest --run "tests/**/*.spec.{js,ts,mjs}"`).
 
 - **Git hooks & CI:**
-  - Pre-push: `prek` `pre-push` runs `bun run test` — failing tests will block pushes.
+  - Pre-push: Prek pre-push hook (configured in `prek.toml`) runs `bun run test` — failing tests will block pushes.
   - CI: CI jobs run the full test suite (both unit and integration). If adding slow or flaky integration tests, mark them clearly (folder or filename) and justify in the PR description; prefer to keep the default suite fast.
 
 - **Guidelines for agents & contributors:**
@@ -291,7 +291,7 @@ This section contains concise, actionable rules and project-specific examples to
 - Formatting & linting: run `bun run format` and `bun run check` before committing. CI uses `bun install`.
 - Commit rules for agents: use Conventional Commits; run `bun run commitlint` locally when appropriate. Keep headers ≤100 chars and wrap bodies at 100 chars.
 - Localization rule for agents: when adding text keys, update `assets/locales/en/translation.json` first and add tests or localization notes. Follow `.agents/instructions/localization.instructions.md`.
-- PR reviews: invoke the **code-review skill** (use the `skill` tool with name `"code-review"`) for structured, thorough reviews covering correctness, type safety, architecture fit, tests, localization, documentation, and completeness.
+- PR checklist: run the code review skill (`.agents/skills/code-review/SKILL.md`) for structured change assessment.
 
 > Note: Keep suggestions and changes small and well-scoped. Prefer to add tests first for behavioral changes and follow the test naming conventions above.
 

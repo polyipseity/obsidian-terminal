@@ -12,8 +12,12 @@ describe("src/magic.ts", () => {
 
   it("exports DOMClasses2 constants", () => {
     expect(DOMClasses2).toHaveProperty("LUCIDE_HEART");
+    expect(DOMClasses2).toHaveProperty("SETTING_ITEM");
+    expect(DOMClasses2).toHaveProperty("SETTING_ITEM_NAME");
     expect(DOMClasses2).toHaveProperty("SVG_ICON");
     expect(typeof DOMClasses2.LUCIDE_HEART).toBe("string");
+    expect(typeof DOMClasses2.SETTING_ITEM).toBe("string");
+    expect(typeof DOMClasses2.SETTING_ITEM_NAME).toBe("string");
     expect(typeof DOMClasses2.SVG_ICON).toBe("string");
   });
 });

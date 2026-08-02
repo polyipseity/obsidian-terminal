@@ -3,6 +3,7 @@
  * Provides compile-time API surface parity with obsidian.d.ts and useful runtime behavior.
  */
 
+import * as v from "valibot";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 
 // ===== Core Types =====
@@ -109,8 +110,7 @@ const state: {
   editors: Editor[];
   icons: Map<string, string>;
   requestHandler:
-    | ((param: RequestUrlParam) => Promise<RequestUrlResponse>)
-    | null;
+    ((param: RequestUrlParam) => Promise<RequestUrlResponse>) | null;
   requestStubs: {
     matcher: string | RegExp;
     response: RequestUrlResponse | (() => RequestUrlResponse);
@@ -308,7 +308,6 @@ export class Vault extends Events {
     this.trigger("modify", fileObj);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async delete(file: TFile | string, _force?: boolean): Promise<void> {
     const path = typeof file === "string" ? file : file.path;
     const normalized = normalizePath(path);
@@ -388,7 +387,8 @@ export class Vault extends Events {
 
   on(
     name: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line eslint-comments/no-restricted-disable -- What is the point of this?
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- EventRef callback signature
     callback: (...args: any[]) => unknown,
     ctx?: unknown,
   ): EventRef {
@@ -422,6 +422,12 @@ export class FileManager {
     await this.vault.rename(file, newPath);
   }
 
+  async trashFile(file: TFile): Promise<void> {
+    // eslint-disable-next-line eslint-comments/no-restricted-disable -- What is the point of this useless lint?
+    // eslint-disable-next-line obsidianmd/prefer-file-manager-trash-file -- Required to implement `trashFile` properly in test mocks.
+    await this.vault.delete(file);
+  }
+
   async generateMarkdownLink(
     file: TFile,
     _sourcePath: string,
@@ -440,7 +446,6 @@ export class FileManager {
     file: TFile,
     fn: (fm: Record<string, unknown>) => void,
     // options ignored in the mock but accepted for signature parity
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _options?: unknown,
   ): Promise<void> {
     const content = await this.vault.read(file);
@@ -450,20 +455,13 @@ export class FileManager {
     let originalFmObj: Record<string, unknown> | null = null;
     let parseFailed = false;
     if (fmMatch) {
-      try {
-        const parsed = parseYaml(fmMatch[1] ?? "");
-        // Treat non-object YAML results (strings, arrays, etc.) as parse failures
-        if (
-          typeof parsed === "object" &&
-          parsed !== null &&
-          !Array.isArray(parsed)
-        ) {
-          originalFmObj = parsed;
-        } else {
-          parseFailed = true;
-          originalFmObj = null;
-        }
-      } catch {
+      const parsedResult = v.safeParse(
+        v.record(v.string(), v.unknown()),
+        parseYaml(fmMatch[1] ?? ""),
+      );
+      if (parsedResult.success) {
+        originalFmObj = parsedResult.output;
+      } else {
         parseFailed = true;
         originalFmObj = null;
       }
@@ -471,7 +469,7 @@ export class FileManager {
 
     // Start with a shallow clone of the original object (or empty when absent)
     const currentFm: Record<string, unknown> = originalFmObj
-      ? JSON.parse(JSON.stringify(originalFmObj))
+      ? structuredClone(originalFmObj)
       : {};
 
     // Call the provided processor (synchronous in real API)
@@ -492,7 +490,7 @@ export class FileManager {
     if (fmMatch && parseFailed && fmIsEmpty) return;
 
     // Otherwise serialize and write the updated frontmatter
-    const newFmRaw = stringifyYaml(currentFm ?? {}) ?? "";
+    const newFmRaw = stringifyYaml(currentFm);
     const newFrontMatter = `---\n${newFmRaw}\n---`;
     let newContent: string;
     if (fmMatch) {
@@ -506,7 +504,6 @@ export class FileManager {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getNewFileParent(_sourcePath: string): TFolder {
     return this.vault.getRoot();
   }
@@ -673,9 +670,7 @@ export class Editor {
   getScrollInfo(): { top: number; left: number } {
     return { top: 0, left: 0 };
   }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   scrollTo(_x?: number, _y?: number): void {}
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   scrollIntoView(_range: EditorRange, _center?: boolean): void {}
 }
 
@@ -686,8 +681,12 @@ export class MetadataCache extends Events {
 
   constructor(private vault: Vault) {
     super();
-    vault.on("create", (file: TAbstractFile) => this.updateCache(file.path));
-    vault.on("modify", (file: TAbstractFile) => this.updateCache(file.path));
+    vault.on("create", (file: TAbstractFile) => {
+      this.updateCache(file.path);
+    });
+    vault.on("modify", (file: TAbstractFile) => {
+      this.updateCache(file.path);
+    });
     vault.on("delete", (file: TAbstractFile) =>
       this.cache.delete(normalizePath(file.path)),
     );
@@ -733,11 +732,11 @@ export class MetadataCache extends Events {
     // Parse frontmatter
     const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
     if (frontmatterMatch) {
-      try {
-        metadata.frontmatter = parseYaml(frontmatterMatch[1] ?? "");
-      } catch {
-        metadata.frontmatter = {};
-      }
+      const parsed = v.safeParse(
+        v.record(v.string(), v.unknown()),
+        parseYaml(frontmatterMatch[1] ?? ""),
+      );
+      metadata.frontmatter = parsed.success ? parsed.output : {};
     }
 
     // Parse headings
@@ -765,7 +764,7 @@ export class MetadataCache extends Events {
     const linkRegex = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g;
     while ((match = linkRegex.exec(content)) !== null) {
       const linkText = match[1] ?? "";
-      const originalText = match[0] ?? "";
+      const originalText = match[0];
       const display = match[2]?.trim() ?? linkText.trim();
       links.push({
         link: linkText.trim(),
@@ -791,7 +790,7 @@ export class MetadataCache extends Events {
       const lines = content.slice(0, offset).split("\n");
       const line = lines.length - 1;
       const col = lines[lines.length - 1]?.length ?? 0;
-      const tagText = match[0] ?? "";
+      const tagText = match[0];
       tags.push({
         tag: tagText,
         position: {
@@ -842,7 +841,6 @@ export class WorkspaceLeaf {
     return Promise.resolve();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   openFile(file: TFile, _openState?: { active?: boolean }): Promise<void> {
     this.view.file = file;
     return Promise.resolve();
@@ -862,7 +860,6 @@ export class Workspace extends Events {
     return this.activeLeaf?.view.file ?? null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getActiveViewOfType<T>(_type: new (...args: unknown[]) => T): T | null {
     return null;
   }
@@ -874,7 +871,6 @@ export class Workspace extends Events {
     return leaf;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   getLeavesOfType(_type: string): WorkspaceLeaf[] {
     return [];
   }
@@ -1138,12 +1134,18 @@ export class Component {
   unload(): void {
     if (this.loaded) {
       this.onunload();
-      this.callbacks.forEach((cb) => cb());
+      this.callbacks.forEach((cb) => {
+        cb();
+      });
       this.callbacks = [];
       this.eventRefs = [];
-      this.intervals.forEach((id) => clearInterval(id));
+      this.intervals.forEach((id) => {
+        window.clearInterval(id);
+      });
       this.intervals = [];
-      this.children.forEach((child) => child.unload());
+      this.children.forEach((child) => {
+        child.unload();
+      });
       this.loaded = false;
     }
   }
@@ -1190,7 +1192,6 @@ export class Component {
     type: K,
     callback: (this: HTMLElement, ev: HTMLElementEventMap[K]) => unknown,
   ): void;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   registerDomEvent(_el: unknown, _type: string, _callback: unknown): void {
     // Store for cleanup
   }
@@ -1230,7 +1231,6 @@ export class ItemView extends Component {
     return "";
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async setState(_state: unknown, _result?: unknown): Promise<void> {
     return Promise.resolve();
   }
@@ -1260,7 +1260,6 @@ export class ButtonComponent {
 
   // Add `setIcon` as a harmless alias to improve API fidelity for tests that
   // call `setIcon(...)` (some package tests expect this chainable method).
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   setIcon(_icon?: string): this {
     return this;
   }
@@ -1356,23 +1355,18 @@ export class Setting {
     return this;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public addToggle(_v: unknown): this {
     return this;
   }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public addDropdown(_v: unknown): this {
     return this;
   }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public addText(_v: unknown): this {
     return this;
   }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public addTextArea(_v: unknown): this {
     return this;
   }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public addExtraButton(_v: unknown): this {
     return this;
   }
@@ -1496,7 +1490,6 @@ export class SliderComponent {
     return this;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   setLimits(_min: number, _max: number, _step: number): this {
     return this;
   }
@@ -1505,7 +1498,6 @@ export class SliderComponent {
     return this;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   setDisabled(_disabled: boolean): this {
     return this;
   }
@@ -1541,7 +1533,6 @@ export class DropdownComponent {
     return this;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   setDisabled(_disabled: boolean): this {
     return this;
   }
@@ -1604,13 +1595,15 @@ export class Notice {
   private message: string | DocumentFragment;
   private duration: number;
   private hidden = false;
-  private hideTimeout: NodeJS.Timeout | null = null;
+  private hideTimeout: number | null = null;
 
   constructor(message: string | DocumentFragment, duration = 5000) {
     this.message = message;
     this.duration = duration;
     if (duration > 0) {
-      this.hideTimeout = setTimeout(() => this.hide(), duration);
+      this.hideTimeout = window.setTimeout(() => {
+        this.hide();
+      }, duration);
     }
   }
 
@@ -1631,7 +1624,7 @@ export class Notice {
     if (!this.hidden) {
       this.hidden = true;
       if (this.hideTimeout) {
-        clearTimeout(this.hideTimeout);
+        window.clearTimeout(this.hideTimeout);
         this.hideTimeout = null;
       }
     }
@@ -1663,15 +1656,15 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
   wait: number,
   immediate = false,
 ): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout | null = null;
+  let timeout: number | null = null;
   return function (this: unknown, ...args: Parameters<T>): void {
     const later = (): void => {
       timeout = null;
       if (!immediate) func.apply(this, args);
     };
     const callNow = immediate && !timeout;
-    if (timeout) clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
+    if (timeout) window.clearTimeout(timeout);
+    timeout = window.setTimeout(later, wait);
     if (callNow) func.apply(this, args);
   };
 }
@@ -1751,13 +1744,15 @@ export function requestUrl(param: RequestUrlParam): RequestUrlResponsePromise {
         })(),
       ),
       arrayBuffer,
-      json: JSON.parse(text),
+      json: v.parse(v.pipe(v.string(), v.parseJson()), text),
       text,
     };
   }) as RequestUrlResponsePromise;
 
   promise.arrayBuffer = async () => promise.then((r) => r.arrayBuffer);
+
   promise.json = async () => promise.then((r) => r.json);
+
   promise.text = async () => promise.then((r) => r.text);
 
   return promise;
@@ -1769,9 +1764,7 @@ export const MarkdownRenderer = {
   renderMarkdown: async (
     markdown: string,
     el: HTMLElement,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _sourcePath: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _component: Component,
   ): Promise<void> => {
     el.textContent = markdown;
@@ -1782,9 +1775,7 @@ export const MarkdownRenderer = {
     _app: App,
     markdown: string,
     el: HTMLElement,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _sourcePath: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _component: Component,
   ): Promise<void> => {
     el.textContent = markdown;
@@ -1792,11 +1783,8 @@ export const MarkdownRenderer = {
 };
 
 export function renderMath(
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _el: HTMLElement,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _text: string,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _displayMode: boolean,
 ): Promise<void> {
   return Promise.resolve();
@@ -1823,11 +1811,12 @@ export function loadPrism(): Promise<void> {
 export { parseYaml, stringifyYaml };
 
 export function parseFrontMatterEntry(entry: string): Record<string, unknown> {
-  try {
-    return parseYaml(entry);
-  } catch {
-    return {};
-  }
+  const parsed = v.safeParse(
+    v.record(v.string(), v.unknown()),
+    parseYaml(entry),
+  );
+  if (parsed.success) return parsed.output;
+  return {};
 }
 
 export function parseFrontMatterTags(
@@ -1863,7 +1852,13 @@ export function getIcon(iconId: string): string | null {
 
 export function setIcon(el: HTMLElement, iconId: string): void {
   const svg = state.icons.get(iconId);
-  if (svg) el.innerHTML = svg;
+  if (svg) {
+    const svgEl = new DOMParser().parseFromString(
+      svg,
+      "image/svg+xml",
+    ).documentElement;
+    el.replaceChildren(svgEl);
+  }
 }
 
 export function removeIcon(iconId: string): void {
