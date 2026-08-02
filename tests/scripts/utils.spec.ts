@@ -3,6 +3,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import * as v from "valibot";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Unit spec for scripts/utils.mjs — prefer hermetic behavior and keep tests
@@ -192,6 +193,23 @@ describe("scripts/utils.mjs", () => {
       expect(stringifySorted({ b: 1, a: { d: 2, c: 3 } })).toBe(
         '{\n  "a": {\n    "c": 3,\n    "d": 2\n  },\n  "b": 1\n}\n',
       );
+    });
+
+    it("stringifySorted escapes invisible characters", async () => {
+      const { stringifySorted } = await loadHelpers();
+      // non-breaking space becomes a literal \u00a0 escape sequence
+      expect(stringifySorted({ note: "a\u00a0b" })).toBe(
+        '{\n  "note": "a\\u00a0b"\n}\n',
+      );
+      // C1 control character (U+0085) is escaped too
+      expect(stringifySorted({ note: "c\u0085d" })).toContain('"c\\u0085d"');
+      // escaped output still parses back to the original value
+      expect(
+        v.parse(
+          v.record(v.string(), v.unknown()),
+          JSON.parse(stringifySorted({ note: "a\u00a0b" })),
+        ),
+      ).toEqual({ note: "a\u00a0b" });
     });
 
     it("readJSON parses a JSON file", async () => {
