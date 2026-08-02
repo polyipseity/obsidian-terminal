@@ -18,10 +18,10 @@ from pywinctl import Window, getAllWindows
 """Public API of this module."""
 __all__ = (
     "main",
-    "win_to_pid",
     "resizer",
     "resizer_reader",
     "resizer_writer",
+    "win_to_pid",
 )
 
 """Sleep interval (in seconds) between attempts to locate a console window."""
@@ -162,13 +162,11 @@ if sys.platform == "win32":
 
         def console_ctrl_handler(event: int):
             """Console control handler that ignores CTRL events."""
-            if event in (
+            return event in (
                 CTRL_C_EVENT,
                 CTRL_BREAK_EVENT,
                 CTRL_CLOSE_EVENT,
-            ):
-                return True
-            return False
+            )
 
         FreeConsole()
         with attach_console(process.pid) as console:
@@ -197,28 +195,37 @@ if sys.platform == "win32":
                     assert isinstance(handle, int)  # `int` on Windows
                     setters = [
                         # almost accurate, works for alternate screen buffer
-                        lambda: SetWindowPos(
+                        lambda handle=handle, size=size: SetWindowPos(
                             handle,
                             None,
                             0,
                             0,
-                            *size,
+                            size[0],
+                            size[1],
                             SWP_NOACTIVATE | SWP_NOREDRAW | SWP_NOZORDER,
                         ),
                         # accurate, SetConsoleWindowInfo does not work for alternate screen buffer
-                        lambda: console.SetConsoleWindowInfo(
-                            True,
-                            PySMALL_RECTType(0, 0, columns - 1, old_rows - 1),
+                        lambda console=console, columns=columns, old_rows=old_rows: (
+                            console.SetConsoleWindowInfo(
+                                True,
+                                PySMALL_RECTType(0, 0, columns - 1, old_rows - 1),
+                            )
                         ),
-                        lambda: console.SetConsoleScreenBufferSize(
-                            PyCOORDType(columns, old_rows)
+                        lambda console=console, columns=columns, old_rows=old_rows: (
+                            console.SetConsoleScreenBufferSize(
+                                PyCOORDType(columns, old_rows)
+                            )
                         ),
-                        lambda: console.SetConsoleWindowInfo(
-                            True,
-                            PySMALL_RECTType(0, 0, columns - 1, rows - 1),
+                        lambda console=console, columns=columns, rows=rows: (
+                            console.SetConsoleWindowInfo(
+                                True,
+                                PySMALL_RECTType(0, 0, columns - 1, rows - 1),
+                            )
                         ),
-                        lambda: console.SetConsoleScreenBufferSize(
-                            PyCOORDType(columns, rows)
+                        lambda console=console, columns=columns, rows=rows: (
+                            console.SetConsoleScreenBufferSize(
+                                PyCOORDType(columns, rows)
+                            )
                         ),
                     ]
                     if old_cols < columns:

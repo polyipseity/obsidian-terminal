@@ -69,10 +69,10 @@ def test_module_declares_expected_public_api_names() -> None:
     all_values = ast.literal_eval(all_node)
     assert all_values == (
         "main",
-        "win_to_pid",
         "resizer",
         "resizer_reader",
         "resizer_writer",
+        "win_to_pid",
     )
 
 

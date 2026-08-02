@@ -14,6 +14,7 @@ from pathlib import Path
 from types import ModuleType, SimpleNamespace
 
 import pytest
+from typing_extensions import Self
 
 """Public API of this test module (empty)."""
 __all__ = ()
@@ -55,7 +56,7 @@ class _FakeSelector:
         self._select_calls = 0
         self._max_select_calls = max_select_calls
 
-    def __enter__(self) -> _FakeSelector:
+    def __enter__(self) -> Self:
         """Return the context-managed selector instance."""
         return self
 

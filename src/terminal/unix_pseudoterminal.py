@@ -22,11 +22,13 @@ from struct import pack
 from sys import exit, stdin, stdout
 from time import sleep
 from types import FrameType, TracebackType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
 if TYPE_CHECKING:
-    from typing_extensions import override
+    from typing_extensions import Self, override
 else:
+    """Runtime stand-in for ``typing_extensions.Self`` on Python 3.9."""
+    Self = TypeVar("Self", bound="_SelectorHandler")
 
     def override(func):
         """No-op fallback for the ``@override`` decorator at runtime.
@@ -132,7 +134,7 @@ if sys.platform != "win32":
             self.fd = fd
             self.registered = False
 
-        def __enter__(self) -> _SelectorHandler:
+        def __enter__(self) -> Self:
             """Register the FD callback and return this manager."""
             self.selector.register(self.fd, EVENT_READ, self._on_read)
             self.registered = True
@@ -241,34 +243,32 @@ if sys.platform != "win32":
         old_sigint = signal(SIGINT, request_shutdown)
         old_sigterm = signal(SIGTERM, request_shutdown)
         try:
-            with DefaultSelector() as selector:
-                with (
-                    _PipePty(selector, pty_fd) as pipe_pty,
-                    _PipeStdin(selector, pty_fd) as pipe_stdin,
-                    _ProcessCmdIO(selector, pty_fd) as process_cmdio,
+            with (
+                DefaultSelector() as selector,
+                _PipePty(selector, pty_fd) as pipe_pty,
+                _PipeStdin(selector, pty_fd) as pipe_stdin,
+                _ProcessCmdIO(selector, pty_fd) as process_cmdio,
+            ):
+                # Keep proxying while all host-facing pipes are alive and
+                # no explicit shutdown signal has been requested.
+                while (
+                    pipe_pty.registered
+                    and pipe_stdin.registered
+                    and process_cmdio.registered
+                    and not shutdown_requested
                 ):
-                    # Keep proxying while all host-facing pipes are alive and
-                    # no explicit shutdown signal has been requested.
-                    while (
-                        pipe_pty.registered
-                        and pipe_stdin.registered
-                        and process_cmdio.registered
-                        and not shutdown_requested
-                    ):
-                        for key, _ in selector.select(_SELECT_TIMEOUT_SECONDS):
-                            key.data()
-                        if getppid() == 1:
-                            shutdown_requested = True
+                    for key, _ in selector.select(_SELECT_TIMEOUT_SECONDS):
+                        key.data()
+                    if getppid() == 1:
+                        shutdown_requested = True
 
-                    host_disconnected = (
-                        not pipe_stdin.registered or not process_cmdio.registered
-                    )
-                    # If host side is gone (or we got SIGINT/SIGTERM), tear
-                    # down the child session proactively to avoid orphans.
-                    if pipe_pty.registered and (
-                        host_disconnected or shutdown_requested
-                    ):
-                        terminate_process_group(pid)
+                host_disconnected = (
+                    not pipe_stdin.registered or not process_cmdio.registered
+                )
+                # If host side is gone (or we got SIGINT/SIGTERM), tear
+                # down the child session proactively to avoid orphans.
+                if pipe_pty.registered and (host_disconnected or shutdown_requested):
+                    terminate_process_group(pid)
         finally:
             signal(SIGINT, old_sigint)
             signal(SIGTERM, old_sigterm)

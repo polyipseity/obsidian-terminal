@@ -11,7 +11,7 @@ import ast
 import json
 import pathlib
 import sys
-from collections.abc import Set
+from collections.abc import Set as AbstractSet
 from os import PathLike
 
 import pytest
@@ -30,7 +30,7 @@ __all__ = ()
 
 On Python 3.10+ this uses ``sys.stdlib_module_names``; on 3.9 it falls back to a
 curated set covering all modules imported across ``src/``."""
-_STDLIB_MODULE_NAMES: Set[str] = (
+_STDLIB_MODULE_NAMES: AbstractSet[str] = (
     sys.stdlib_module_names  # type: ignore[attr-defined]  # 3.10+
     if hasattr(sys, "stdlib_module_names")
     else frozenset(
@@ -75,7 +75,7 @@ _STDLIB_MODULE_NAMES: Set[str] = (
 )
 
 """Module names that live in-tree under ``src/`` and are not pip packages."""
-_INTRA_PROJECT_MODULES: Set[str] = frozenset({"get_package_version"})
+_INTRA_PROJECT_MODULES: AbstractSet[str] = frozenset({"get_package_version"})
 
 """Canonical root of ``src/``, resolved to an absolute path."""
 _SRC_ROOT: Path = Path(pathlib.Path(__file__).resolve(strict=True).parents[2] / "src")
@@ -85,7 +85,7 @@ _SRC_ROOT: Path = Path(pathlib.Path(__file__).resolve(strict=True).parents[2] / 
 # ---------------------------------------------------------------------------
 
 
-async def _read_python_requirements() -> Set[str]:
+async def _read_python_requirements() -> AbstractSet[str]:
     """Read pip-package names from ``src/python-requirements.json``.
 
     The JSON is the single source of truth for Python requirement names
@@ -144,11 +144,10 @@ class ImportGuardAnalyzer(ast.NodeVisitor):
                     for handler in parent.handlers
                 ):
                     return True
-            elif isinstance(parent, ast.If):
-                if self._is_type_checking_test(parent) or self._is_platform_test(
-                    parent
-                ):
-                    return True
+            elif isinstance(parent, ast.If) and (
+                self._is_type_checking_test(parent) or self._is_platform_test(parent)
+            ):
+                return True
         return False
 
     @classmethod
