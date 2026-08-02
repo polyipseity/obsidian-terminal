@@ -21,7 +21,8 @@
  *                                           # via `import.meta.url`
  *
  * It uses only the built‑in `fs` and `path` modules plus the shared helpers in
- * `utils.mjs`.  It deliberately avoids mutating the English file and ignores
+ * `utils.mjs`; invisible and control characters are escaped as `\uXXXX` on
+ * save. It deliberately avoids mutating the English file and ignores
  * directories that lack a `translation.json`.
  *
  * This script is intended to be run manually (or via a bun script) whenever

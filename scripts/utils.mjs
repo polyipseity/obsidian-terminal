@@ -76,15 +76,33 @@ export function sortKeys(value) {
   return value;
 }
 
+const INVISIBLE_PATTERN =
+  /[\u007f-\u009f\u00a0\u00ad\u1680\u2000-\u200f\u2028\u2029\u202a-\u202e\u205f\u2060-\u206f\u3000\ufeff]/gu;
+
+/**
+ * Replace invisible and control characters with `\uXXXX` escapes so that
+ * saved JSON stays diff-friendly and tool-safe. The pattern excludes all
+ * ASCII, so the structural whitespace of pretty-printed JSON is untouched.
+ *
+ * @param {string} text
+ * @returns {string}
+ */
+function escapeInvisible(text) {
+  return text.replace(INVISIBLE_PATTERN, (char) => {
+    return `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`;
+  });
+}
+
 /**
  * Stringify JSON with sorted keys and a trailing newline, matching prettier
- * output.
+ * output. Invisible and control characters are escaped as `\uXXXX`; prettier
+ * preserves such escapes, so output remains prettier-identical.
  *
  * @param {unknown} value
  * @returns {string}
  */
 export function stringifySorted(value) {
-  return `${JSON.stringify(sortKeys(value), null, "  ")}\n`;
+  return `${escapeInvisible(JSON.stringify(sortKeys(value), null, "  "))}\n`;
 }
 
 /**
