@@ -6,21 +6,11 @@ import path from "node:path";
 import * as v from "valibot";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("../../scripts/utils.mjs", () => ({
-  PATHS: {
-    main: "./main.js",
-    manifest: "manifest.json",
-    manifestBeta: "manifest-beta.json",
-    metafile: "metafile.json",
-    obsidianPlugins: ".obsidian/plugins",
-    outDir: ".",
-    package: "package.json",
-    packageLock: "package-lock.json",
-    styles: "styles.css",
-    versions: "versions.json",
-  },
-  execute: vi.fn().mockResolvedValue(""),
-}));
+vi.mock("../../scripts/utils.mjs", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../scripts/utils.mjs")>();
+  return { ...actual, execute: vi.fn().mockResolvedValue("") };
+});
 
 const ManifestSchema = v.object({
   author: v.optional(v.string()),
