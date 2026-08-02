@@ -121,6 +121,11 @@ describe("scripts/sync-locale-keys.mjs", () => {
     expect(
       aValue !== null && typeof aValue === "object" && Object.keys(aValue),
     ).toEqual(["y", "z"]);
+
+    // shared writeJSON appends a trailing newline, matching prettier output
+    expect(
+      await fs.readFile(path.join(frDir, "translation.json"), "utf-8"),
+    ).toMatch(/\n$/);
   });
 
   it("ignores directories without translation.json", async () => {
