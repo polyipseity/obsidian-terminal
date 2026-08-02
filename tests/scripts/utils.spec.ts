@@ -168,21 +168,10 @@ describe("scripts/utils.mjs", () => {
   });
 
   describe("shared JSON helpers", () => {
-    // Phase 1 is red: the helpers are added to utils.mjs in the next phase,
-    // so type-aware lint cannot resolve them yet. The typed accessor keeps
-    // lint green while the tests still fail at runtime (undefined imports).
-    async function loadHelpers(): Promise<{
-      readonly sortKeys: (value: unknown) => unknown;
-      readonly stringifySorted: (value: unknown) => string;
-      readonly readJSON: (filePath: string) => Promise<unknown>;
-      readonly writeJSON: (filePath: string, obj: unknown) => Promise<void>;
-    }> {
-      return (await import("../../scripts/utils.mjs")) as unknown as {
-        readonly sortKeys: (value: unknown) => unknown;
-        readonly stringifySorted: (value: unknown) => string;
-        readonly readJSON: (filePath: string) => Promise<unknown>;
-        readonly writeJSON: (filePath: string, obj: unknown) => Promise<void>;
-      };
+    async function loadHelpers(): Promise<
+      typeof import("../../scripts/utils.mjs")
+    > {
+      return await import("../../scripts/utils.mjs");
     }
 
     it("sortKeys sorts nested keys and recurses into arrays without mutating input", async () => {
