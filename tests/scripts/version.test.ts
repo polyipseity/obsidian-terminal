@@ -6,21 +6,11 @@ import path from "node:path";
 import * as v from "valibot";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("../../scripts/utils.mjs", () => ({
-  PATHS: {
-    main: "./main.js",
-    manifest: "manifest.json",
-    manifestBeta: "manifest-beta.json",
-    metafile: "metafile.json",
-    obsidianPlugins: ".obsidian/plugins",
-    outDir: ".",
-    package: "package.json",
-    packageLock: "package-lock.json",
-    styles: "styles.css",
-    versions: "versions.json",
-  },
-  execute: vi.fn().mockResolvedValue(""),
-}));
+vi.mock("../../scripts/utils.mjs", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../scripts/utils.mjs")>();
+  return { ...actual, execute: vi.fn().mockResolvedValue("") };
+});
 
 const ManifestSchema = v.object({
   author: v.optional(v.string()),
@@ -34,6 +24,30 @@ const ManifestBetaSchema = v.object({
 });
 
 const VersionsSchema = v.record(v.string(), v.string());
+
+const RecordSchema = v.record(v.string(), v.unknown());
+
+function expectSortedKeys(raw: string): void {
+  const walk = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      for (const entry of value) {
+        walk(entry);
+      }
+      return;
+    }
+    if (value === null || typeof value !== "object") {
+      return;
+    }
+    const entries = Object.entries(v.parse(RecordSchema, value));
+    expect(entries.map(([key]) => key)).toEqual(
+      entries.map(([key]) => key).sort(),
+    );
+    for (const [, entry] of entries) {
+      walk(entry);
+    }
+  };
+  walk(JSON.parse(raw));
+}
 
 // Integration tests for scripts/version.mjs (mirrors top-level behaviour)
 // See AGENTS.md (Testing section) — this is an integration test and uses
@@ -212,5 +226,92 @@ describe("scripts/version.mjs", () => {
     );
     expect(manifest.description).toBe("Obsidianny description");
     expect(manifest.version).toBe(pkg.version);
+  });
+
+  it("writes alphabetically sorted manifest keys", async () => {
+    const project = await fs.mkdtemp(
+      path.join(os.tmpdir(), "version-sort-proj-"),
+    );
+    await writePackageAndVersions(project, {
+      version: "1.2.3",
+      funding: [
+        { type: "paypal", url: "https://paypal.me/x" },
+        { type: "github", url: "https://github.com/sponsor" },
+      ],
+    });
+
+    vi.resetModules();
+
+    const cwd = process.cwd();
+    try {
+      process.chdir(project);
+      await import("../../scripts/version.mjs");
+    } finally {
+      process.chdir(cwd);
+    }
+
+    const raw = await fs.readFile(path.join(project, "manifest.json"), "utf-8");
+    expect(raw.endsWith("\n")).toBe(true);
+    expectSortedKeys(raw);
+    expect(v.parse(ManifestSchema, JSON.parse(raw)).fundingUrl).toEqual({
+      github: "https://github.com/sponsor",
+      paypal: "https://paypal.me/x",
+    });
+  });
+
+  it("writes sorted manifest-beta with rolling version", async () => {
+    const project = await fs.mkdtemp(
+      path.join(os.tmpdir(), "version-beta-sort-proj-"),
+    );
+    await writePackageAndVersions(project, { version: "2.0.0" });
+
+    vi.resetModules();
+
+    const cwd = process.cwd();
+    try {
+      process.chdir(project);
+      await import("../../scripts/version.mjs");
+    } finally {
+      process.chdir(cwd);
+    }
+
+    const raw = await fs.readFile(
+      path.join(project, "manifest-beta.json"),
+      "utf-8",
+    );
+    expect(raw.endsWith("\n")).toBe(true);
+    expectSortedKeys(raw);
+    expect(v.parse(ManifestBetaSchema, JSON.parse(raw)).version).toBe(
+      "rolling",
+    );
+  });
+
+  it("writes versions.json keys in prettier sort order", async () => {
+    const project = await fs.mkdtemp(
+      path.join(os.tmpdir(), "version-vers-sort-proj-"),
+    );
+    await writePackageAndVersions(project, { version: "1.9.0" });
+    await fs.writeFile(
+      path.join(project, "versions.json"),
+      JSON.stringify({ "1.10.0": "1.2.0", "1.2.3": "1.0.0" }, null, "  "),
+    );
+
+    vi.resetModules();
+
+    const cwd = process.cwd();
+    try {
+      process.chdir(project);
+      await import("../../scripts/version.mjs");
+    } finally {
+      process.chdir(cwd);
+    }
+
+    const raw = await fs.readFile(path.join(project, "versions.json"), "utf-8");
+    expect(raw.endsWith("\n")).toBe(true);
+    expect(Object.keys(v.parse(VersionsSchema, JSON.parse(raw)))).toEqual([
+      "1.10.0",
+      "1.2.3",
+      "1.9.0",
+    ]);
   });
 });

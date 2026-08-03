@@ -20,9 +20,10 @@
  *                                           # directory; it locates itself
  *                                           # via `import.meta.url`
  *
- * There is no external dependency; the script only uses the built‑in `fs` and
- * `path` modules.  It deliberately avoids mutating the English file and
- * ignores directories that lack a `translation.json`.
+ * It uses only the built‑in `fs` and `path` modules plus the shared helpers in
+ * `utils.mjs`; invisible and control characters are escaped as `\uXXXX` on
+ * save. It deliberately avoids mutating the English file and ignores
+ * directories that lack a `translation.json`.
  *
  * This script is intended to be run manually (or via a bun script) whenever
  * translation keys are added or modified.  It is *not* run as part of the
@@ -39,7 +40,7 @@ import path from "node:path";
 // can override by passing an explicit `rootDir` argument to `main`.
 import { fileURLToPath } from "url";
 
-import * as v from "valibot";
+import { readJSON, writeJSON } from "./utils.mjs";
 
 function makePaths(/** @type {string} */ rootDir) {
   // `rootDir`, if provided, should be the project root containing the
@@ -50,52 +51,6 @@ function makePaths(/** @type {string} */ rootDir) {
   const localesDir = path.join(repoRoot, "assets", "locales");
   const enPath = path.join(localesDir, "en", "translation.json");
   return { localesDir, enPath };
-}
-
-/**
- *
- * @param {string} filePath
- * @returns {Promise<unknown>}
- */
-async function readJSON(filePath) {
-  return v.parse(
-    v.pipe(v.string(), v.parseJson()),
-    await fs.readFile(filePath, "utf-8"),
-  );
-}
-
-/**
- *
- * @param {string} filePath
- * @param {unknown} obj
- * @returns {Promise<void>}
- */
-async function writeJson(filePath, obj) {
-  // sort prior to serialization so disk output is deterministic
-  const sorted = sortObject(obj);
-  await fs.writeFile(filePath, JSON.stringify(sorted, null, 2) + "\n", "utf-8");
-}
-
-/**
- * Recursively sorts the keys of an object.  Arrays and non-object values are
- * returned unchanged.  This is a pure function that returns a new object.
- *
- * @param {unknown} value
- * @returns {unknown}
- */
-function sortObject(value) {
-  if (Array.isArray(value)) {
-    const /** @type {unknown[]} */ ret = value.slice();
-    return ret;
-  }
-  if (value && typeof value === "object") {
-    const sorted = {};
-    for (const key of Object.keys(value).sort()) {
-      sorted[key] = sortObject(value[key]);
-    }
-    return sorted;
-  }
-  return value;
 }
 
 /**
@@ -197,7 +152,7 @@ async function main(rootDir) {
 
     const data = await readJSON(file);
     merge(enData, data);
-    await writeJson(file, data);
+    await writeJSON(file, data);
     console.log(`updated ${file}`);
   }
 

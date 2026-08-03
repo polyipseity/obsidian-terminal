@@ -49,7 +49,6 @@ export const DOCUMENTATIONS = deepFreeze({
             continue;
           }
           const {
-            containerEl,
             containerEl: { ownerDocument },
             installedPlugins,
           } = tab;
@@ -73,7 +72,7 @@ export const DOCUMENTATIONS = deepFreeze({
               `.${DOMClasses2.SVG_ICON}.${DOMClasses2.LUCIDE_HEART}`,
             )?.parentElement;
           if (!element) {
-            activeSelf(containerEl).console.warn(toJSONOrString(div));
+            activeSelf(ownerDocument).console.warn(toJSONOrString(div));
 
             // Deprecated: older versions of Obsidian (pre-1.12.7) exposed
             // `renderInstalledPlugin`, which rendered each plugin's UI into a
@@ -94,7 +93,7 @@ export const DOCUMENTATIONS = deepFreeze({
               `.${DOMClasses2.SVG_ICON}.${DOMClasses2.LUCIDE_HEART}`,
             )?.parentElement;
             if (!element) {
-              activeSelf(containerEl).console.warn(toJSONOrString(div));
+              activeSelf(ownerDocument).console.warn(toJSONOrString(div));
             }
           }
           if (!element) {
@@ -133,8 +132,8 @@ export type DocumentationKeys = readonly ["changelog", "donate", "readme"];
 export const DOCUMENTATION_KEYS =
   typedKeys<DocumentationKeys>()(DOCUMENTATIONS);
 export interface DocumentationOpenOptions {
-  active: boolean;
-  event: UIEvent | null;
+  readonly active: boolean;
+  readonly event: UIEvent | null;
 }
 
 class Loaded0 {

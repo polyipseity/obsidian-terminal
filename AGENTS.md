@@ -33,7 +33,7 @@ This guide provides clear, actionable instructions for AI coding agents working 
   - `bun run format` — eslint --fix, prettier --write, markdownlint --fix.
 
 - **Versioning**
-  - Use `changesets` for PRs; version lifecycle scripts are configured (`version` / `postversion`).
+  - Use `changesets` for PRs; the `version` lifecycle script is configured (`node scripts/version.mjs`).
 
 - **Localization**
   - Add locales by copying `assets/locales/en/translation.json` and updating `assets/locales/*/language.json` as needed. See `assets/locales/README.md` for conventions.
@@ -59,7 +59,7 @@ Quick reference for scripts in `package.json`. Use `bun` (preferred).
 - `format:md` — `markdownlint-cli2 --fix`.
 - `commitlint` — `commitlint --from=origin/main --to=HEAD`.
 - `prepare` — runs `prek install` to set up Git hooks.
-- `version` / `postversion` — version lifecycle scripts (`node scripts/version.mjs`, `node scripts/version-post.mjs`).
+- `version` — version lifecycle script (`node scripts/version.mjs`).
 
 > CI tip: Use `bun install --frozen-lockfile` in CI for deterministic installs.
 

@@ -47,11 +47,11 @@ Refs: dependabot config improvement
 
   ```text
   refactor(eslint): remove @eslint/compat, eslintrc, js; update Prettier rules
-  
+
   - Removed @eslint/compat, @eslint/eslintrc, @eslint/js from config and lockfiles
   - Updated Prettier to v3 and adjusted markdownlint config for new plugin
   - Cleaned up ESLint overrides and Svelte linting comments
-  
+
   Refs: lint config modernization
   ```
 

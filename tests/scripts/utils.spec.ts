@@ -3,6 +3,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import * as v from "valibot";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Unit spec for scripts/utils.mjs — prefer hermetic behavior and keep tests
@@ -164,6 +165,72 @@ describe("scripts/utils.mjs", () => {
 
       expect(logSpy).toHaveBeenCalledWith("stdout");
       expect(errSpy).toHaveBeenCalledWith("stderr");
+    });
+  });
+
+  describe("shared JSON helpers", () => {
+    async function loadHelpers(): Promise<
+      typeof import("../../scripts/utils.mjs")
+    > {
+      return await import("../../scripts/utils.mjs");
+    }
+
+    it("sortKeys sorts nested keys and recurses into arrays without mutating input", async () => {
+      const { sortKeys } = await loadHelpers();
+      const input = { b: 1, a: { z: 2, y: 3 }, arr: [{ d: 4, c: 5 }] };
+      const result = sortKeys(input);
+      expect(result).toEqual({
+        a: { y: 3, z: 2 },
+        arr: [{ c: 5, d: 4 }],
+        b: 1,
+      });
+      expect(Object.keys(input)).toEqual(["b", "a", "arr"]);
+      expect(input.a).toEqual({ z: 2, y: 3 });
+    });
+
+    it("stringifySorted writes 2-space indented JSON with sorted keys and trailing newline", async () => {
+      const { stringifySorted } = await loadHelpers();
+      expect(stringifySorted({ b: 1, a: { d: 2, c: 3 } })).toBe(
+        '{\n  "a": {\n    "c": 3,\n    "d": 2\n  },\n  "b": 1\n}\n',
+      );
+    });
+
+    it("stringifySorted escapes invisible characters", async () => {
+      const { stringifySorted } = await loadHelpers();
+      // non-breaking space becomes a literal \u00a0 escape sequence
+      expect(stringifySorted({ note: "a\u00a0b" })).toBe(
+        '{\n  "note": "a\\u00a0b"\n}\n',
+      );
+      // C1 control character (U+0085) is escaped too
+      expect(stringifySorted({ note: "c\u0085d" })).toContain('"c\\u0085d"');
+      // escaped output still parses back to the original value
+      expect(
+        v.parse(
+          v.record(v.string(), v.unknown()),
+          JSON.parse(stringifySorted({ note: "a\u00a0b" })),
+        ),
+      ).toEqual({ note: "a\u00a0b" });
+    });
+
+    it("readJSON parses a JSON file", async () => {
+      const tmp = await mktemp();
+      const file = path.join(tmp, "data.json");
+      await fs.writeFile(file, JSON.stringify({ b: 2, a: { d: 4, c: 3 } }));
+      const { readJSON } = await loadHelpers();
+      await expect(readJSON(file)).resolves.toEqual({
+        b: 2,
+        a: { d: 4, c: 3 },
+      });
+    });
+
+    it("writeJSON writes sorted JSON with trailing newline", async () => {
+      const tmp = await mktemp();
+      const file = path.join(tmp, "data.json");
+      const { writeJSON, stringifySorted } = await loadHelpers();
+      await writeJSON(file, { b: 1, a: 2 });
+      const raw = await fs.readFile(file, "utf-8");
+      expect(raw).toBe(stringifySorted({ a: 2, b: 1 }));
+      expect(raw.endsWith("\n")).toBe(true);
     });
   });
 });
