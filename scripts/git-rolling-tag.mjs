@@ -22,6 +22,9 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 const execP = promisify(exec);
 
+/** Customizable message attached to the rolling tag on creation/update. */
+const _TAG_MESSAGE = "rolling";
+
 /**
  * Run a git command without throwing on a non-zero exit. Returns the
  * trimmed stdout, stderr, and exit code so callers can treat "absent"
@@ -111,7 +114,7 @@ export async function createRollingTag() {
     "git rev-parse --verify --quiet 'refs/tags/rolling^{commit}'",
   );
   if (rolling.stdout !== head.stdout) {
-    await git('git tag --force --sign rolling --message "Rolling release"');
+    await git(`git tag --force --sign rolling --message ${shq(_TAG_MESSAGE)}`);
   }
 }
 
@@ -186,6 +189,20 @@ export async function configureRollingRefspec() {
 }
 
 /**
+ * Format a thrown value for hook failure output, appending command stderr
+ * when the error carries it.
+ * @param {unknown} error The thrown value.
+ */
+function formatError(error) {
+  if (!(error instanceof Error)) return String(error);
+  const stderr = /** @type {{ stderr?: unknown }} */ (error).stderr;
+  const details =
+    typeof stderr === "string" && stderr.trim() !== "" ? stderr.trim() : "";
+  if (details === "") return error.message;
+  return error.message === "" ? details : `${error.message}: ${details}`;
+}
+
+/**
  * Run one rolling-tag hook action. Failures are reported to stderr and exit
  * with status 1, matching expected git hook behavior.
  * @param {string} action The hook action: `config`, `create`, or `push`.
@@ -208,11 +225,7 @@ export async function run(action) {
       );
     }
   } catch (error) {
-    console.error(
-      "Error running rolling tag hook:",
-      error instanceof Error ? error.message : String(error),
-      error instanceof Error ? (error.stderr ?? "") : "",
-    );
+    console.error("Error running rolling tag hook:", formatError(error));
     process.exit(1);
   }
 }

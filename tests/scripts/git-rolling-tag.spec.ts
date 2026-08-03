@@ -30,8 +30,8 @@ const defaultBranchCmd = (remote: string) =>
 const headCmd = "git rev-parse --verify 'HEAD^{commit}'";
 const rollingCmd =
   "git rev-parse --verify --quiet 'refs/tags/rolling^{commit}'";
-const createTagCmd =
-  'git tag --force --sign rolling --message "Rolling release"';
+const tagMessage = "rolling";
+const createTagCmd = `git tag --force --sign rolling --message ${shq(tagMessage)}`;
 const pushTagCmd = (remote: string) =>
   `git push --no-verify --force ${shq(remote)} refs/tags/rolling:refs/tags/rolling`;
 const refspecsCmd = (remote: string) =>
@@ -504,7 +504,6 @@ describe("scripts/git-rolling-tag.mjs", () => {
       expect(errSpy).toHaveBeenCalledWith(
         "Error running rolling tag hook:",
         "boom",
-        "",
       );
       expect(exitMock).toHaveBeenCalledWith(1);
     });
@@ -519,7 +518,6 @@ describe("scripts/git-rolling-tag.mjs", () => {
       expect(errSpy).toHaveBeenCalledWith(
         "Error running rolling tag hook:",
         "unknown action: expected 'config', 'create' or 'push', got 'bogus'",
-        "",
       );
       expect(exitMock).toHaveBeenCalledWith(1);
       expect(execMock.mock.calls.length).toBe(0);
