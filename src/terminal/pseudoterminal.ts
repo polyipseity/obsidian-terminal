@@ -1,52 +1,52 @@
 import {
-    Functions,
-    Platform,
-    ResourceComponent,
-    SI_PREFIX_SCALE,
-    acquireConditionally,
-    activeSelf,
-    anyToError,
-    asyncFunction,
-    attachFunctionSourceMap,
-    clear,
-    consumeEvent,
-    deepFreeze,
-    deopaque,
-    dynamicRequire,
-    getKeyModifiers,
-    inSet,
-    lazyInit,
-    logFormat,
-    multireplace,
-    notice2,
-    printError,
-    promisePromise,
-    remove,
-    replaceAllRegex,
-    sleep2,
-    toJSONOrString,
-    typedKeys,
+  Functions,
+  Platform,
+  ResourceComponent,
+  SI_PREFIX_SCALE,
+  acquireConditionally,
+  activeSelf,
+  anyToError,
+  asyncFunction,
+  attachFunctionSourceMap,
+  clear,
+  consumeEvent,
+  deepFreeze,
+  deopaque,
+  dynamicRequire,
+  getKeyModifiers,
+  inSet,
+  lazyInit,
+  logFormat,
+  multireplace,
+  notice2,
+  printError,
+  promisePromise,
+  remove,
+  replaceAllRegex,
+  sleep2,
+  toJSONOrString,
+  typedKeys,
 } from "@polyipseity/obsidian-plugin-library";
 import type { IMarker, Terminal } from "@xterm/xterm";
 import { type Program, parse } from "acorn";
 import inspect, { type Options } from "browser-util-inspect";
-import { isEmpty, isNil, noop } from "lodash-es";
+import { isEmpty, isNil, noop } from "es-toolkit/compat";
 import {
-    DEFAULT_ENCODING,
-    EXIT_SUCCESS,
-    MAX_LOCK_PENDING,
-    TERMINAL_EXIT_CLEANUP_WAIT,
-    TERMINAL_RESIZER_WATCHDOG_WAIT,
-    WINDOWS_CONHOST_PATH,
+  DEFAULT_ENCODING,
+  EXIT_SUCCESS,
+  MAX_LOCK_PENDING,
+  TERMINAL_EXIT_CLEANUP_WAIT,
+  TERMINAL_RESIZER_WATCHDOG_WAIT,
+  WINDOWS_CONHOST_PATH,
 } from "../magic.js";
 import { spawnPromise, writePromise } from "../utils.js";
 import {
-    CONTROL_SEQUENCE_INTRODUCER as CSI,
-    CursoredText,
-    NORMALIZED_LINE_FEED,
-    TerminalTextArea,
-    normalizeText,
-    writePromise as tWritePromise,
+  CONTROL_SEQUENCE_INTRODUCER as CSI,
+  CursoredText,
+  NORMALIZED_LINE_FEED,
+  TerminalTextArea,
+  normalizeText,
+  writePromise as tWritePromise,
 } from "./utils.js";
 
 import ansi from "ansi-escape-sequences";
@@ -261,7 +261,7 @@ export class DeveloperConsolePseudoterminal
   >();
 
   public constructor(
-    protected readonly self0: () => Window & typeof globalThis,
+    protected readonly self0: () => Window & typeof window,
     protected readonly log: Log,
     protected readonly sourceRoot = "",
   ) {
@@ -330,6 +330,7 @@ export class DeveloperConsolePseudoterminal
                   await this.syncBuffer(terminals, false);
                 });
 
+              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- The write callbacks clear `writing` while `syncBuffer` is awaited.
               while (writing) {
                 await this.syncBuffer(terminals, false);
               }
@@ -379,6 +380,7 @@ export class DeveloperConsolePseudoterminal
                     })
                     .then(async () => this.syncBuffer(terminals, false));
 
+                  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- The write callbacks clear `writing` while `syncBuffer` is awaited.
                   while (writing) {
                     await this.syncBuffer(terminals, false);
                   }
@@ -463,7 +465,7 @@ export class DeveloperConsolePseudoterminal
           const {
             [style]: [apply, undo],
           } = inspect.colors;
-          return `${CSI}${apply}m${str}${CSI}${undo}m${ansi.styles(styles)}`;
+          return `${CSI}${String(apply)}m${str}${CSI}${String(undo)}m${ansi.styles(styles)}`;
         }
         return str;
       },
@@ -520,7 +522,7 @@ export class DeveloperConsolePseudoterminal
     if (lastStmtLoc) {
       const { start, end } = lastStmtLoc;
       let column = 0;
-      // eslint-disable-next-line no-empty-pattern
+      // eslint-disable-next-line no-empty-pattern -- Iterate once per character; only the count matters.
       for (const {} of "return [(") {
         codeRetDeletions.push({
           column: start.column + column,
@@ -531,7 +533,7 @@ export class DeveloperConsolePseudoterminal
       if (start.line !== end.line) {
         column = 0;
       }
-      // eslint-disable-next-line no-empty-pattern
+      // eslint-disable-next-line no-empty-pattern -- Iterate once per character; only the count matters.
       for (const {} of ")]") {
         codeRetDeletions.push({
           column: end.column + column,
@@ -877,7 +879,10 @@ class WindowsPseudoterminal implements Pseudoterminal {
                 .then(async (resizer0) => {
                   if (resizer0) {
                     try {
-                      await writePromise(resizer0.stdin, `${ret.pid ?? -1}\n`);
+                      await writePromise(
+                        resizer0.stdin,
+                        `${String(ret.pid ?? -1)}\n`,
+                      );
                       const watchdog = self.setInterval(() => {
                         writePromise(resizer0.stdin, "\n").catch(
                           (error: unknown) => {
@@ -940,7 +945,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
                   /* @__PURE__ */ self.console.debug(error);
                   return conCode ?? signal ?? NaN;
                 } finally {
-                  (async (): Promise<void> => {
+                  void (async (): Promise<void> => {
                     try {
                       await sleep2(self, TERMINAL_EXIT_CLEANUP_WAIT);
                       await inOutTmp.cleanup();
@@ -991,7 +996,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
     if (!resizer0) {
       throw new Error(plugin.language.value.t("errors.resizer-disabled"));
     }
-    await writePromise(resizer0.stdin, `${columns}x${rows}\n`);
+    await writePromise(resizer0.stdin, `${String(columns)}x${String(rows)}\n`);
   }
 
   public async pipe(terminal: Terminal): Promise<void> {
@@ -1130,7 +1135,7 @@ class UnixPseudoterminal implements Pseudoterminal {
     if (!(cmdio instanceof stream2.Writable)) {
       throw new TypeError(toJSONOrString(cmdio));
     }
-    await writePromise(cmdio, `${columns}x${rows}\n`);
+    await writePromise(cmdio, `${String(columns)}x${String(rows)}\n`);
   }
 }
 

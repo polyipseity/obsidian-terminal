@@ -10,7 +10,7 @@ import {
 import type { App } from "obsidian";
 import type { TerminalPlugin } from "./main.js";
 import { around } from "monkey-around";
-import { noop } from "lodash-es";
+import { noop } from "es-toolkit/compat";
 
 export class Log {
   public readonly logger = new EventEmitterLite<readonly [Log.Event]>();
@@ -148,7 +148,7 @@ function patchLoggingWindow(self0: Window, log: Log): () => void {
   }
 }
 
-function patchLogging(self0: Window & typeof globalThis, log: Log): () => void {
+function patchLogging(self0: Window & typeof window, log: Log): () => void {
   const ret = new Functions({ async: false, settled: true });
   try {
     ret.push(patchLoggingConsole(self0.console, log));
@@ -246,7 +246,7 @@ export class EarlyPatchManager extends ResourceComponent<EarlyPatch> {
 
 function patchRequire(
   context: TerminalPlugin,
-  self0: typeof globalThis,
+  self0: typeof window,
 ): () => void {
   const { settings } = context;
   return around(self0, {

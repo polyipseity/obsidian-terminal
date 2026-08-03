@@ -7,7 +7,7 @@ import {
   isNonNil,
   notice2,
 } from "@polyipseity/obsidian-plugin-library";
-import { isEmpty } from "lodash-es";
+import { isEmpty } from "es-toolkit/compat";
 import {
   FileSystemAdapter,
   MarkdownView,
@@ -25,9 +25,7 @@ export function loadTerminal(context: TerminalPlugin): void {
   const PROFILE_TYPES = deepFreeze(
       (
         ["default", "external", "integrated", "select"] satisfies readonly (
-          | "default"
-          | "select"
-          | keyof typeof PROFILE_PROPERTIES
+          "default" | "select" | keyof typeof PROFILE_PROPERTIES
         )[]
       ).filter(
         (type) =>
@@ -103,9 +101,6 @@ export function loadTerminal(context: TerminalPlugin): void {
       (type: (typeof PROFILE_TYPES)[number], cwd: (typeof CWD_TYPES)[number]) =>
       (checking: boolean): boolean => {
         const cwd0 = ((): string | null | undefined => {
-          if (!cwd) {
-            return void 0;
-          }
           if (!adapter) {
             return null;
           }

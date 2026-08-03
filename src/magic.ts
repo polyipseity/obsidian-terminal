@@ -1,6 +1,6 @@
 import { Platform, deepFreeze } from "@polyipseity/obsidian-plugin-library";
 import { SemVer } from "semver";
-import pythonRequirementsJson from "./python-requirements.json";
+import pythonRequirementsJson from "./python-requirements.json" with { type: "json" };
 
 export const CHECK_EXECUTABLE_WAIT = 5,
   DEFAULT_ENCODING = "utf-8",

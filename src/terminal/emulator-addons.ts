@@ -1,19 +1,19 @@
 import {
-    Functions,
-    type PluginContext,
-    activeSelf,
-    consumeEvent,
-    deepFreeze,
-    dynamicRequire,
-    isNonNil,
-    replaceAllRegex,
-    revealPrivate,
+  Functions,
+  type PluginContext,
+  activeSelf,
+  consumeEvent,
+  deepFreeze,
+  dynamicRequire,
+  isNonNil,
+  replaceAllRegex,
+  revealPrivate,
 } from "@polyipseity/obsidian-plugin-library";
 import type { CanvasAddon } from "@xterm/addon-canvas";
 import type { WebglAddon } from "@xterm/addon-webgl";
 import type { ILink, ITerminalAddon, ITheme, Terminal } from "@xterm/xterm";
 import { eastAsianWidth } from "get-east-asian-width";
-import { constant, isUndefined } from "lodash-es";
+import { constant, isUndefined } from "es-toolkit/compat";
 import { around } from "monkey-around";
 import { noop } from "ts-essentials";
 import { BUNDLE } from "../imports.js";
@@ -27,7 +27,6 @@ export class DisposerAddon extends Functions implements ITerminalAddon {
     super({ async: false, settled: true }, ...args);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public activate(_terminal: Terminal): void {
     // Noop
   }
@@ -82,6 +81,8 @@ export class DragAndDropAddon implements ITerminalAddon {
         // Fallback to legacy File.path property (Electron < 32).
         // This property is non-standard and removed in Electron 32+, but provides
         // compatibility with older versions that may not have webUtils.
+        // eslint-disable-next-line eslint-comments/no-restricted-disable -- Need to suppress no-deprecated (see below)
+        // eslint-disable-next-line @typescript-eslint/no-deprecated -- Intentional fallback for Electron versions without `webUtils.getPathForFile`.
         return file.path;
       };
 
@@ -112,7 +113,7 @@ export class DragAndDropAddon implements ITerminalAddon {
       );
       element.addEventListener("drop", drop);
       element.addEventListener("dragover", dragover);
-    })().catch((error) => {
+    })().catch((error: unknown) => {
       // Log errors from the async initialization to help with debugging.
       activeSelf(element).console.error(error);
     });
@@ -250,12 +251,10 @@ export class FollowThemeAddon implements ITerminalAddon {
     }
 
     // Robust path: let the browser resolve var(...) into a concrete color
+    // eslint-disable-next-line eslint-comments/no-restricted-disable -- Need to suppress prefer-create-el (see below)
+    // eslint-disable-next-line obsidianmd/prefer-create-el -- Probe must be created in `doc` (a possibly-popout document); the global `createDiv` binds to the main window.
     const probe = doc.createElement("div");
-    probe.style.position = "absolute";
-    probe.style.width = "0";
-    probe.style.height = "0";
-    probe.style.pointerEvents = "none";
-    probe.style.visibility = "hidden";
+    probe.classList.add("terminal:color-probe");
     probe.style.backgroundColor = `var(${varName})`;
     const resolved = ((): string => {
       attachTo.appendChild(probe);
@@ -275,14 +274,14 @@ export class FollowThemeAddon implements ITerminalAddon {
       blue = Math.round(color.blue);
 
     if (color.alpha === FollowThemeAddon.#COLOR_ALPHA_OPAQUE) {
-      return `rgb(${red}, ${green}, ${blue})`;
+      return `rgb(${String(red)}, ${String(green)}, ${String(blue)})`;
     }
 
     const alpha = Number(
       color.alpha.toFixed(FollowThemeAddon.#RGBA_ALPHA_DECIMALS),
     );
 
-    return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+    return `rgba(${String(red)}, ${String(green)}, ${String(blue)}, ${String(alpha)})`;
   }
 
   /** WCAG relative luminance of sRGB color */
@@ -556,8 +555,10 @@ export class FollowThemeAddon implements ITerminalAddon {
       return null;
     }
 
+    // eslint-disable-next-line eslint-comments/no-restricted-disable -- Need to suppress prefer-create-el (see below)
+    // eslint-disable-next-line obsidianmd/prefer-create-el -- Probe must be created in `doc` (a possibly-popout document); the global `createSpan` binds to the main window.
     const span = doc.createElement("span");
-    span.style.color = "";
+    // A fresh element has an empty `color`; assigning the input tests whether the browser can parse it.
     span.style.color = input ?? "";
 
     if (span.style.color === "") {
@@ -680,7 +681,7 @@ export class RightClickActionAddon implements ITerminalAddon {
       if (action === "default") {
         return;
       }
-      (async (): Promise<void> => {
+      void (async (): Promise<void> => {
         try {
           switch (action) {
             case "nothing":
@@ -695,7 +696,7 @@ export class RightClickActionAddon implements ITerminalAddon {
                 terminal.clearSelection();
                 break;
               }
-            // eslint-disable-next-line no-fallthrough
+            // eslint-disable-next-line no-fallthrough -- `copyPaste` without a selection intentionally falls through to paste.
             case "paste":
               terminal.paste(
                 await activeSelf(element).navigator.clipboard.readText(),
@@ -947,7 +948,7 @@ export class AltScreenExitAddon implements ITerminalAddon {
       { prefix: "?", final: "l" },
       (params) => {
         if (params[0] === 1049) {
-          setTimeout(() => {
+          window.setTimeout(() => {
             terminal.scrollToBottom();
           }, 0);
         }
@@ -1126,7 +1127,7 @@ export class VaultFileLinksAddon implements ITerminalAddon {
    * counting double-width (CJK and ambiguous-width) characters as 2 columns. */
   static visualColumn(text: string, charIndex: number): number {
     let col = 0;
-    for (let i = 0; i < charIndex && i < text.length; ) {
+    for (let i = 0; i < charIndex && i < text.length;) {
       const cp = text.codePointAt(i) ?? 0;
       col += eastAsianWidth(cp, { ambiguousAsWide: true });
       i += cp > 0xffff ? 2 : 1;
@@ -1152,7 +1153,7 @@ export class VaultFileLinksAddon implements ITerminalAddon {
         start: { x: startX, y: bufferLineNumber },
       },
       text: filePath,
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
       activate(_event: MouseEvent, _text: string): void {
         app.workspace
           .getLeaf(false)

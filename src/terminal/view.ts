@@ -1,84 +1,84 @@
 import {
-    DialogModal,
-    FindComponent,
-    type FindComponent$,
-    type Fixed,
-    JSON_STRINGIFY_SPACE,
-    Platform,
-    UnnamespacedID,
-    activeSelf,
-    addCommand,
-    anyToError,
-    assignExact,
-    awaitCSS,
-    basename,
-    cloneAsWritable,
-    createChildElement,
-    deepFreeze,
-    dynamicRequire,
-    extname,
-    fixTyped,
-    instanceOf,
-    launderUnchecked,
-    linkSetting,
-    markFixed,
-    newCollaborativeState,
-    newHotkeyListener,
-    notice2,
-    onResize,
-    openExternal,
-    printError,
-    printMalformedData,
-    randomNotIn,
-    readStateCollaboratively,
-    recordViewStateHistory,
-    resetButton,
-    saveFileAs,
-    svelteState,
-    updateView,
-    useSettings,
-    writeStateCollaboratively,
+  DialogModal,
+  FindComponent,
+  type FindComponent$,
+  type Fixed,
+  JSON_STRINGIFY_SPACE,
+  Platform,
+  UnnamespacedID,
+  activeSelf,
+  addCommand,
+  anyToError,
+  assignExact,
+  awaitCSS,
+  basename,
+  cloneAsWritable,
+  createChildElement,
+  deepFreeze,
+  dynamicRequire,
+  extname,
+  fixTyped,
+  instanceOf,
+  launderUnchecked,
+  linkSetting,
+  markFixed,
+  newCollaborativeState,
+  newHotkeyListener,
+  notice2,
+  onResize,
+  openExternal,
+  printError,
+  printMalformedData,
+  randomNotIn,
+  readStateCollaboratively,
+  recordViewStateHistory,
+  resetButton,
+  saveFileAs,
+  svelteState,
+  updateView,
+  useSettings,
+  writeStateCollaboratively,
 } from "@polyipseity/obsidian-plugin-library";
 import type { LigaturesAddon } from "@xterm/addon-ligatures";
 import type { SearchAddon } from "@xterm/addon-search";
 import type { Unicode11Addon } from "@xterm/addon-unicode11";
 import type { WebLinksAddon } from "@xterm/addon-web-links";
 import { type ITerminalOptions, Terminal } from "@xterm/xterm";
-import { noop } from "lodash-es";
+import { noop } from "es-toolkit/compat";
 import {
-    FileSystemAdapter,
-    ItemView,
-    type Menu,
-    Scope,
-    type ViewStateResult,
-    type WorkspaceLeaf,
+  FileSystemAdapter,
+  ItemView,
+  type Menu,
+  Scope,
+  type ViewStateResult,
+  type WorkspaceLeaf,
 } from "obsidian";
 import { mount, unmount } from "svelte";
 import type { DeepWritable } from "ts-essentials";
 import { BUNDLE } from "../imports.js";
 import {
-    DEFAULT_ENCODING,
-    DEFAULT_SUCCESS_EXIT_CODES,
-    DOMClasses2,
+  DEFAULT_ENCODING,
+  DEFAULT_SUCCESS_EXIT_CODES,
+  DOMClasses2,
 } from "../magic.js";
 import type { TerminalPlugin } from "../main.js";
 import { ProfileModal } from "../modals.js";
 import { Settings } from "../settings-data.js";
 import {
-    AltScreenExitAddon,
-    CustomKeyEventHandlerAddon,
-    DisposerAddon,
-    DragAndDropAddon,
-    FollowThemeAddon,
-    RendererAddon,
-    RightClickActionAddon,
-    SynchronizedOutputScrollAddon,
-    VaultFileLinksAddon,
+  AltScreenExitAddon,
+  CustomKeyEventHandlerAddon,
+  DisposerAddon,
+  DragAndDropAddon,
+  FollowThemeAddon,
+  RendererAddon,
+  RightClickActionAddon,
+  SynchronizedOutputScrollAddon,
+  VaultFileLinksAddon,
 } from "./emulator-addons.js";
 import { XtermTerminalEmulator } from "./emulator.js";
 import {
-    applyTerminalOptionDiffShallow,
-    mergeTerminalOptions,
+  applyTerminalOptionDiffShallow,
+  mergeTerminalOptions,
 } from "./options.js";
 import { PROFILE_PROPERTIES, openProfile } from "./profile-properties.js";
 import { TextPseudoterminal } from "./pseudoterminal.js";
@@ -318,8 +318,8 @@ export class TerminalView extends ItemView {
   #rawTitle0 = "";
   #emulator0: TerminalView.EMULATOR | null = null;
   #find0:
-    | readonly [ReturnType<typeof FindComponent>, FindComponent$.Props]
-    | null = null;
+    readonly [ReturnType<typeof FindComponent>, FindComponent$.Props] | null =
+    null;
   #state = TerminalView.State.DEFAULT;
 
   public constructor(
@@ -344,8 +344,7 @@ export class TerminalView extends ItemView {
   }
 
   protected get find():
-    | readonly [ReturnType<typeof FindComponent>, FindComponent$.Props]
-    | null {
+    readonly [ReturnType<typeof FindComponent>, FindComponent$.Props] | null {
     return this.#find0;
   }
 
@@ -432,8 +431,7 @@ export class TerminalView extends ItemView {
 
   protected set find(
     val:
-      | readonly [ReturnType<typeof FindComponent>, FindComponent$.Props]
-      | null,
+      readonly [ReturnType<typeof FindComponent>, FindComponent$.Props] | null,
   ) {
     if (this.find) {
       unmount(this.find[0], { outro: true }).catch((error: unknown) => {
@@ -635,12 +633,13 @@ export class TerminalView extends ItemView {
     recordViewStateHistory(plugin, result);
   }
 
-  public override getState(): unknown {
+  public override getState(): Record<string, unknown> {
+    // `writeStateCollaboratively` returns the laundered state object.
     return writeStateCollaboratively(
       super.getState(),
       TerminalView.type.namespaced(this.context),
       this.state,
-    );
+    ) as Record<string, unknown>;
   }
 
   public getDisplayText(): string {
@@ -768,7 +767,7 @@ export class TerminalView extends ItemView {
 
   protected focus(): void {
     const { app, emulator, leaf } = this;
-    app.workspace.revealLeaf(leaf);
+    void app.workspace.revealLeaf(leaf);
     emulator?.terminal.focus();
   }
 
@@ -828,11 +827,11 @@ export class TerminalView extends ItemView {
                 userTitle = value;
               });
           });
-          controlEl.style.width = "100%";
+          controlEl.classList.add("terminal:full-width");
           controlEl
             .querySelectorAll<HTMLInputElement>(":scope > input")
             .forEach((input) => {
-              input.style.width = "100%";
+              input.classList.add("terminal:full-width");
             });
         });
       },
@@ -1007,7 +1006,7 @@ export class TerminalView extends ItemView {
         );
       };
     if (!PROFILE_PROPERTIES[profile.type].integratable) {
-      (async (): Promise<void> => {
+      void (async (): Promise<void> => {
         try {
           noticeSpawn();
           await openProfile(context, profile, { cwd: cwd ?? void 0 });
@@ -1027,7 +1026,7 @@ export class TerminalView extends ItemView {
         activeSelf(ele).console.warn(error);
       }
       ele.classList.add(TerminalView.type.namespaced(context));
-      (async (): Promise<void> => {
+      void (async (): Promise<void> => {
         try {
           await awaitCSS(ele);
           noticeSpawn();
@@ -1400,46 +1399,47 @@ export namespace TerminalView {
         },
         settings,
       } = context,
-      newLeaf = ((): WorkspaceLeaf => {
-        if (settings.value.createInstanceNearExistingOnes) {
-          const existingLeaves = workspace.getLeavesOfType(
-              TerminalView.type.namespaced(context),
-            ),
-            existingLeaf = leaf ?? existingLeaves[existingLeaves.length - 1];
-          if (existingLeaf) {
-            const root = existingLeaf.getRoot();
-            if (root === leftSplit) {
-              return workspace.getLeftLeaf(false);
+      newLeaf =
+        ((): WorkspaceLeaf | null => {
+          if (settings.value.createInstanceNearExistingOnes) {
+            const existingLeaves = workspace.getLeavesOfType(
+                TerminalView.type.namespaced(context),
+              ),
+              existingLeaf = leaf ?? existingLeaves[existingLeaves.length - 1];
+            if (existingLeaf) {
+              const root = existingLeaf.getRoot();
+              if (root === leftSplit) {
+                return workspace.getLeftLeaf(false);
+              }
+              if (root === rightSplit) {
+                return workspace.getRightLeaf(false);
+              }
+              workspace.setActiveLeaf(existingLeaf);
+              return workspace.getLeaf("tab");
             }
-            if (root === rightSplit) {
-              return workspace.getRightLeaf(false);
-            }
-            workspace.setActiveLeaf(existingLeaf);
-            return workspace.getLeaf("tab");
           }
-        }
-        switch (settings.value.newInstanceBehavior) {
-          case "replaceTab":
-            return workspace.getLeaf();
-          case "newTab":
-            return workspace.getLeaf("tab");
-          case "newLeftTab":
-            return workspace.getLeftLeaf(false);
-          case "newLeftSplit":
-            return workspace.getLeftLeaf(true);
-          case "newRightTab":
-            return workspace.getRightLeaf(false);
-          case "newRightSplit":
-            return workspace.getRightLeaf(true);
-          case "newHorizontalSplit":
-            return workspace.getLeaf("split", "horizontal");
-          case "newVerticalSplit":
-            return workspace.getLeaf("split", "vertical");
-          case "newWindow":
-            return workspace.getLeaf("window");
-          // No default
-        }
-      })();
+          switch (settings.value.newInstanceBehavior) {
+            case "replaceTab":
+              return workspace.getLeaf();
+            case "newTab":
+              return workspace.getLeaf("tab");
+            case "newLeftTab":
+              return workspace.getLeftLeaf(false);
+            case "newLeftSplit":
+              return workspace.getLeftLeaf(true);
+            case "newRightTab":
+              return workspace.getRightLeaf(false);
+            case "newRightSplit":
+              return workspace.getRightLeaf(true);
+            case "newHorizontalSplit":
+              return workspace.getLeaf("split", "horizontal");
+            case "newVerticalSplit":
+              return workspace.getLeaf("split", "vertical");
+            case "newWindow":
+              return workspace.getLeaf("window");
+            // No default
+          }
+        })() ?? workspace.getLeaf("tab");
     newLeaf.setPinned(settings.value.pinNewInstance);
     return newLeaf;
   }
@@ -1451,10 +1451,11 @@ export namespace TerminalView {
   ): Promise<void> {
     await (leaf ?? getLeaf(context)).setViewState({
       active: true,
+      // `newCollaborativeState` returns a frozen plain object.
       state: newCollaborativeState(
         context,
         new Map([[TerminalView.type, state]]),
-      ),
+      ) as Record<string, unknown>,
       type,
     });
   }

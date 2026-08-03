@@ -207,7 +207,7 @@ describe("CustomKeyEventHandlerAddon", () => {
         shift: false,
         platform: null,
         action: "ignore",
-        actionArg: "",
+        actionArg: null,
       },
     ]);
     const result = handler(fakeKeyEvent({ key: "a", ctrlKey: true }));
@@ -225,7 +225,7 @@ describe("CustomKeyEventHandlerAddon", () => {
         shift: false,
         platform: null,
         action: "passthrough",
-        actionArg: "",
+        actionArg: null,
       },
     ]);
     const keydownResult = handler(fakeKeyEvent({ key: "a", ctrlKey: true }));
@@ -526,8 +526,6 @@ describe("SynchronizedOutputScrollAddon", () => {
   });
 
   it("returns false from both handlers so xterm processes sequences normally", () => {
-    const { terminal } = createSyncMockTerminal(0, 0);
-
     // Capture return values by overriding triggerCsi to return them
     const returnVals: boolean[] = [];
     const origHandlers: Record<
@@ -535,7 +533,9 @@ describe("SynchronizedOutputScrollAddon", () => {
       Array<(params: { [index: number]: number }) => boolean>
     > = {};
     const patchedTerminal = {
-      ...terminal,
+      buffer: { active: { baseY: 0, viewportY: 0 } },
+      scrollToBottom: vi.fn(),
+      scrollToLine: vi.fn(),
       parser: {
         registerCsiHandler(
           id: { prefix?: string; final: string },
@@ -573,7 +573,15 @@ describe("VaultFileLinksAddon", () => {
   });
 
   /** Mock file returned by getFileByPath. */
-  const MOCK_FILE = { path: "test.md", name: "test.md" } as TFile;
+  const MOCK_FILE: TFile = {
+    basename: "test",
+    extension: "md",
+    name: "test.md",
+    parent: null,
+    path: "test.md",
+    stat: { ctime: 0, mtime: 0, size: 0 },
+    vault: {} as Vault,
+  };
 
   /**
    * Creates a VaultFileLinksAddon test bed.
@@ -581,7 +589,7 @@ describe("VaultFileLinksAddon", () => {
    * @param fileExists - Whether getFileByPath should return a TFile or null.
    */
   function createBed(fileExists = true): {
-    provideLinks(lineText: string): ILink[] | undefined;
+    provideLinks: (lineText: string) => ILink[] | undefined;
     getFileByPath: ReturnType<typeof vi.fn>;
     openFile: ReturnType<typeof vi.fn>;
     getLeaf: ReturnType<typeof vi.fn>;
@@ -775,19 +783,20 @@ describe("VaultFileLinksAddon", () => {
     const context = { app } as unknown as PluginContext;
     const addon = new VaultFileLinksAddon(context);
 
-    let capturedProvider: ILinkProvider;
+    let capturedProvider: ILinkProvider | undefined;
+    const getLine = vi.fn();
     const terminal = {
       registerLinkProvider: vi.fn((p: ILinkProvider) => {
         capturedProvider = p;
         return { dispose: vi.fn() };
       }),
-      buffer: { active: { getLine: vi.fn() } },
+      buffer: { active: { getLine } },
       element: document.createElement("div"),
     } as unknown as Terminal;
     addon.activate(terminal);
 
     const line = { translateToString: vi.fn(() => "(test.md)") };
-    terminal.buffer.active.getLine.mockReturnValue(line);
+    getLine.mockReturnValue(line);
     let result: ILink[] | undefined;
     capturedProvider?.provideLinks(1, (links) => {
       result = links;
