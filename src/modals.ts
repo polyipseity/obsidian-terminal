@@ -1,45 +1,45 @@
 import {
-    DISABLED_TOOLTIP,
-    DOMClasses,
-    EditDataModal,
-    ListModal,
-    Platform,
-    SI_PREFIX_SCALE,
-    type StatusUI,
-    UpdatableUI,
-    activeSelf,
-    anyToError,
-    assignExact,
-    clearProperties,
-    cloneAsWritable,
-    composeSetters,
-    consumeEvent,
-    createChildElement,
-    createDocumentFragment,
-    dynamicRequire,
-    escapeQuerySelectorAttribute,
-    inSet,
-    linkSetting,
-    notice2,
-    printError,
-    randomNotIn,
-    resetButton,
-    setTextToEnum,
-    setTextToNumber,
-    unexpected,
-    useSettings,
-    useSubsettings,
+  DISABLED_TOOLTIP,
+  DOMClasses,
+  EditDataModal,
+  ListModal,
+  Platform,
+  SI_PREFIX_SCALE,
+  type StatusUI,
+  UpdatableUI,
+  activeSelf,
+  anyToError,
+  assignExact,
+  clearProperties,
+  cloneAsWritable,
+  composeSetters,
+  consumeEvent,
+  createChildElement,
+  createDocumentFragment,
+  dynamicRequire,
+  escapeQuerySelectorAttribute,
+  inSet,
+  linkSetting,
+  notice2,
+  printError,
+  randomNotIn,
+  resetButton,
+  setTextToEnum,
+  setTextToNumber,
+  unexpected,
+  useSettings,
+  useSubsettings,
 } from "@polyipseity/obsidian-plugin-library";
-import { constant, identity, noop } from "lodash-es";
-import { Modal, Setting } from "obsidian";
+import { constant, identity, noop } from "es-toolkit/compat";
+import { Modal, Setting, sanitizeHTMLToDom } from "obsidian";
 import type { DeepWritable } from "ts-essentials";
 import { BUNDLE } from "./imports.js";
 import { CHECK_EXECUTABLE_WAIT, PYTHON_REQUIREMENTS } from "./magic.js";
 import { applyEnv } from "./terminal/environment.js";
 import {
-    DEFAULT_TERMINAL_OPTIONS,
-    PROFILE_PRESETS,
-    PROFILE_PRESET_ORDERED_KEYS,
+  DEFAULT_TERMINAL_OPTIONS,
+  PROFILE_PRESETS,
+  PROFILE_PRESET_ORDERED_KEYS,
 } from "./terminal/profile-presets.js";
 import { PROFILE_PROPERTIES } from "./terminal/profile-properties.js";
 import { Pseudoterminal } from "./terminal/pseudoterminal.js";
@@ -91,7 +91,11 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
     ui.new(
       () => createChildElement(element, "div"),
       (ele) => {
-        ele.innerHTML = i18n.t("components.terminal-options.description-HTML");
+        ele.replaceChildren(
+          sanitizeHTMLToDom(
+            i18n.t("components.terminal-options.description-HTML"),
+          ),
+        );
       },
       (ele) => {
         ele.remove();
@@ -725,8 +729,12 @@ export class ProfileModal extends Modal {
           .setDesc(
             createDocumentFragment(settingEl.ownerDocument, (frag) => {
               createChildElement(frag, "span", (ele) => {
-                ele.innerHTML = i18n.t(
-                  "components.profile.restore-history-description-HTML",
+                ele.replaceChildren(
+                  sanitizeHTMLToDom(
+                    i18n.t(
+                      "components.profile.restore-history-description-HTML",
+                    ),
+                  ),
                 );
               });
             }),
@@ -778,7 +786,7 @@ export class ProfileModal extends Modal {
                   profile.successExitCodes,
                   {
                     callback: async (value): Promise<void> => {
-                      profile.successExitCodes = value;
+                      profile.successExitCodes = [...value];
                       await this.postMutate();
                     },
                     title: (): string =>
@@ -867,7 +875,7 @@ export class ProfileModal extends Modal {
                     profile.args,
                     {
                       callback: async (value): Promise<void> => {
-                        profile.args = value;
+                        profile.args = [...value];
                         await this.postMutate();
                       },
                       title: (): string =>
@@ -926,7 +934,7 @@ export class ProfileModal extends Modal {
                           )
                           .setDisabled(!editable);
                         if (!refs) {
-                          textArea.inputEl.style.visibility = "hidden";
+                          textArea.inputEl.classList.add("terminal:hidden");
                           return;
                         }
                         textArea
@@ -946,7 +954,7 @@ export class ProfileModal extends Modal {
                           )
                           .setDisabled(!editable);
                         if (!refs) {
-                          textArea.inputEl.style.visibility = "hidden";
+                          textArea.inputEl.classList.add("terminal:hidden");
                           return;
                         }
                         textArea
@@ -962,7 +970,7 @@ export class ProfileModal extends Modal {
                     profile.environment,
                     {
                       callback: async (value): Promise<void> => {
-                        profile.environment = value;
+                        profile.environment = value.map(([k, v]) => [k, v]);
                         await this.postMutate();
                       },
                       description: (): string =>
@@ -1090,7 +1098,7 @@ export class ProfileModal extends Modal {
                       return;
                     }
                     checkingPython = true;
-                    (async (): Promise<void> => {
+                    void (async (): Promise<void> => {
                       try {
                         const [execFileP2, getPackageVersion2] =
                             await Promise.all([execFileP, getPackageVersion]),
@@ -1278,7 +1286,7 @@ export class ProfileListModal extends ListModal<
             .setTooltip(i18n.t("components.profile-list.mark-as-default"))
             .setDisabled(!editable);
           if (!refs) {
-            button.buttonEl.style.visibility = "hidden";
+            button.buttonEl.classList.add("terminal:hidden");
             return;
           }
           if (
@@ -1308,7 +1316,7 @@ export class ProfileListModal extends ListModal<
             .setTooltip(i18n.t("components.profile-list.edit"))
             .setDisabled(!editable);
           if (!refs) {
-            button.buttonEl.style.visibility = "hidden";
+            button.buttonEl.classList.add("terminal:hidden");
             return;
           }
           button.onClick(() => {
@@ -1456,7 +1464,7 @@ export class KeymappingEditModal extends Modal {
         data.alt = event.altKey;
         data.meta = event.metaKey;
         data.shift = event.shiftKey;
-        (async () => {
+        void (async () => {
           try {
             await this.postMutate();
           } catch (error) {
@@ -1518,7 +1526,7 @@ export class KeymappingEditModal extends Modal {
                 this.#stopRecording();
                 return;
               }
-              startRecording();
+              void startRecording();
             });
           if (isRecording) {
             button.setCta();
@@ -1701,7 +1709,7 @@ export class KeymappingsModal extends ListModal<
             .setTooltip(i18n.t("components.keymappings.edit"))
             .setDisabled(!editable);
           if (!refs) {
-            button.buttonEl.style.visibility = "hidden";
+            button.buttonEl.classList.add("terminal:hidden");
             return;
           }
           button.onClick(() => {

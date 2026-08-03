@@ -6,6 +6,7 @@ import {
 import type {
   ILinkHandler,
   ILogger,
+  IOverviewRulerOptions,
   ITheme,
   IWindowOptions,
   IWindowsPty,
@@ -20,8 +21,7 @@ import type { Pseudoterminal } from "./pseudoterminal.js";
 import type { Settings } from "../settings-data.js";
 
 export const DEFAULT_LINK_HANDLER: ILinkHandler = deepFreeze({
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    activate(event, text, range) {
+    activate(event, text, _range) {
       openExternal(activeSelf(event), text);
     },
   }),
@@ -42,6 +42,7 @@ export const DEFAULT_LINK_HANDLER: ILinkHandler = deepFreeze({
       self.console.warn(message, ...args);
     },
   }),
+  DEFAULT_OVERVIEW_RULER: IOverviewRulerOptions = deepFreeze({}),
   DEFAULT_TERMINAL_OPTIONS: Settings.Profile.TerminalOptions = deepFreeze({
     documentOverride: null,
   }),
@@ -90,6 +91,7 @@ export interface ProfilePresets
 const PROFILE_PRESETS0 = deepFreeze({
   bashIntegrated: {
     args: ["--login"],
+    environment: [],
     executable: "/bin/bash",
     followTheme: true,
     name: "",
@@ -104,6 +106,7 @@ const PROFILE_PRESETS0 = deepFreeze({
   },
   cmdExternal: {
     args: [],
+    environment: [],
     executable: WINDOWS_CMD_PATH,
     followTheme: true,
     name: "",
@@ -116,6 +119,7 @@ const PROFILE_PRESETS0 = deepFreeze({
   },
   cmdIntegrated: {
     args: [],
+    environment: [],
     executable: WINDOWS_CMD_PATH,
     followTheme: true,
     name: "",
@@ -130,6 +134,7 @@ const PROFILE_PRESETS0 = deepFreeze({
   },
   dashIntegrated: {
     args: [],
+    environment: [],
     executable: "/bin/dash",
     followTheme: true,
     name: "",
@@ -162,6 +167,7 @@ const PROFILE_PRESETS0 = deepFreeze({
   },
   gitBashIntegrated: {
     args: ["--login"],
+    environment: [],
     executable: "C:\\Program Files\\Git\\bin\\bash.exe",
     followTheme: true,
     name: "",
@@ -176,6 +182,7 @@ const PROFILE_PRESETS0 = deepFreeze({
   },
   gnomeTerminalExternal: {
     args: [],
+    environment: [],
     executable: "gnome-terminal",
     followTheme: true,
     name: "",
@@ -188,6 +195,7 @@ const PROFILE_PRESETS0 = deepFreeze({
   },
   iTerm2External: {
     args: ['"$PWD"'],
+    environment: [],
     executable: "/Applications/iTerm.app/Contents/MacOS/iTerm2",
     followTheme: true,
     name: "",
@@ -200,6 +208,7 @@ const PROFILE_PRESETS0 = deepFreeze({
   },
   konsoleExternal: {
     args: [],
+    environment: [],
     executable: "konsole",
     followTheme: true,
     name: "",
@@ -212,6 +221,7 @@ const PROFILE_PRESETS0 = deepFreeze({
   },
   powershellExternal: {
     args: [],
+    environment: [],
     executable: "powershell",
     followTheme: true,
     name: "",
@@ -224,6 +234,7 @@ const PROFILE_PRESETS0 = deepFreeze({
   },
   powershellIntegrated: {
     args: [],
+    environment: [],
     executable: "powershell",
     followTheme: true,
     name: "",
@@ -238,6 +249,7 @@ const PROFILE_PRESETS0 = deepFreeze({
   },
   pwshExternal: {
     args: [],
+    environment: [],
     executable: "pwsh",
     followTheme: true,
     name: "",
@@ -250,6 +262,7 @@ const PROFILE_PRESETS0 = deepFreeze({
   },
   pwshIntegrated: {
     args: [],
+    environment: [],
     executable: "pwsh",
     followTheme: true,
     name: "",
@@ -264,6 +277,7 @@ const PROFILE_PRESETS0 = deepFreeze({
   },
   shIntegrated: {
     args: [],
+    environment: [],
     executable: "/bin/sh",
     followTheme: true,
     name: "",
@@ -278,6 +292,7 @@ const PROFILE_PRESETS0 = deepFreeze({
   },
   terminalMacOSExternal: {
     args: ['"$PWD"'],
+    environment: [],
     executable:
       "/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal",
     followTheme: true,
@@ -291,6 +306,7 @@ const PROFILE_PRESETS0 = deepFreeze({
   },
   wslIntegrated: {
     args: [],
+    environment: [],
     executable: "C:\\Windows\\System32\\wsl.exe",
     followTheme: true,
     name: "",
@@ -305,6 +321,7 @@ const PROFILE_PRESETS0 = deepFreeze({
   },
   wtExternal: {
     args: [],
+    environment: [],
     executable: "wt",
     followTheme: true,
     name: "",
@@ -317,6 +334,7 @@ const PROFILE_PRESETS0 = deepFreeze({
   },
   xtermExternal: {
     args: [],
+    environment: [],
     executable: "xterm",
     followTheme: true,
     name: "",
@@ -329,6 +347,7 @@ const PROFILE_PRESETS0 = deepFreeze({
   },
   zshIntegrated: {
     args: ["--login"],
+    environment: [],
     executable: "/bin/zsh",
     followTheme: true,
     name: "",

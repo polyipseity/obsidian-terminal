@@ -11,7 +11,8 @@ import {
   resetButton,
   setTextToEnum,
 } from "@polyipseity/obsidian-plugin-library";
-import { cloneDeep, size } from "lodash-es";
+import { cloneDeep, size } from "es-toolkit/compat";
+import { sanitizeHTMLToDom } from "obsidian";
 import semverLt from "semver/functions/lt.js";
 import type { loadDocumentations } from "./documentations.js";
 import type { TerminalPlugin } from "./main.js";
@@ -212,8 +213,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               async (value) =>
                 settings.mutate((settingsM) => {
                   // Unfortunately we have to use the empty string as a sentinel value for "no default profile" because the dropdown component doesn't allow null/undefined values. So we have to coerce it back to null here.
-                  settingsM.defaultProfile =
-                    value === "" ? null : (value as Settings.DefaultProfile);
+                  settingsM.defaultProfile = value === "" ? null : value;
                 }),
               () => {
                 this.postMutate();
@@ -720,8 +720,10 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
         .setDesc(
           createDocumentFragment(settingEl.ownerDocument, (frag) => {
             createChildElement(frag, "span", (ele) => {
-              ele.innerHTML = i18n.t(
-                "settings.expose-internal-modules-description-HTML",
+              ele.replaceChildren(
+                sanitizeHTMLToDom(
+                  i18n.t("settings.expose-internal-modules-description-HTML"),
+                ),
               );
             });
           }),

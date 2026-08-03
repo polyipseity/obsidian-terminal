@@ -1,1 +1,10 @@
 @import "@xterm/xterm/css/xterm.css";
+
+/* Hidden off-screen probe used to resolve CSS variables into concrete colors. */
+.terminal\:color-probe {
+  height: 0;
+  pointer-events: none;
+  position: absolute;
+  visibility: hidden;
+  width: 0;
+}

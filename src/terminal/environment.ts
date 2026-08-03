@@ -1,15 +1,15 @@
 import {
-    Platform,
-    deopaque,
-    dynamicRequire,
-    lazyInit,
+  Platform,
+  deopaque,
+  dynamicRequire,
+  lazyInit,
 } from "@polyipseity/obsidian-plugin-library";
 
 import { BUNDLE } from "../imports.js";
 import {
-    DEFAULT_PYTHONIOENCODING,
-    TERM_PROGRAM,
-    TERM_PROGRAM_VERSION,
+  DEFAULT_PYTHONIOENCODING,
+  TERM_PROGRAM,
+  TERM_PROGRAM_VERSION,
 } from "../magic.js";
 import { spawnPromise } from "../utils.js";
 
@@ -278,7 +278,7 @@ function mergeEnvPairs(
     const upperKeys = new Set(pairs.map(([k]) => k.toUpperCase()));
     for (const key of Object.keys(env)) {
       if (upperKeys.has(key.toUpperCase())) {
-        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- Remove the case-colliding key from the plain env record.
         delete env[key];
       }
     }

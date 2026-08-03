@@ -4,7 +4,7 @@ declare module "obsidian" {
   }
 
   interface App extends Private<$App, PrivateKey> {}
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- `T` must stay declared to match the augmented class signature.
   interface SuggestModal<T> extends Private<$SuggestModal, PrivateKey> {}
 }
 import type { Private } from "@polyipseity/obsidian-plugin-library";

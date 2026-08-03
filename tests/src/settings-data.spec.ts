@@ -36,8 +36,8 @@ describe("src/settings-data.ts", () => {
       openChangelogOnUpdate: Settings.DEFAULT.openChangelogOnUpdate,
       extra: "present",
     };
-    // Use toRecord to assert type for test ergonomics
-    const p = Settings.persistent(sample);
+    // Deliberately partial: `persistent` only touches `optionals` keys.
+    const p = Settings.persistent(sample as unknown as Settings);
     expect(p).toHaveProperty("noticeTimeout");
     // ensure extra is still present because `optionals` is empty
     expect(p).toHaveProperty("extra");
@@ -141,8 +141,7 @@ describe("src/settings-data.ts", () => {
     // even when the input is wrong type, it should coerce to null
     const alsoBad = Settings.fix({
       profiles: baseProfiles,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      defaultProfile: 123 as any,
+      defaultProfile: 123,
     });
     expect(alsoBad.value.defaultProfile).toBe(null);
   });
@@ -157,8 +156,7 @@ describe("src/settings-data.ts", () => {
 
   it("Settings.fix coerces bad showTerminalTabPrefix to default", () => {
     const bad = Settings.fix({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      showTerminalTabPrefix: "not-a-boolean" as any,
+      showTerminalTabPrefix: "not-a-boolean",
     });
     expect(bad.value.showTerminalTabPrefix).toBe(false);
   });
@@ -169,11 +167,11 @@ describe("src/settings-data.ts", () => {
         abc123: {
           ...Settings.Profile.DEFAULTS.integrated,
           type: "integrated",
-        } as Settings.Profile,
+        },
         def456: {
           ...Settings.Profile.DEFAULTS.developerConsole,
           type: "developerConsole",
-        } as Settings.Profile,
+        },
       };
       const result = Settings.Profile.defaultEntryOfType(
         "integrated",

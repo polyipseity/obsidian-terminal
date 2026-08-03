@@ -261,12 +261,18 @@ function shouldSanitize(key: string): boolean {
 }
 
 describe("env key sanitization", () => {
-  it("strips TMUX", () => expect(shouldSanitize("TMUX")).toBe(true));
-  it("strips STY", () => expect(shouldSanitize("STY")).toBe(true));
-  it("strips TERM_PROGRAM", () =>
-    expect(shouldSanitize("TERM_PROGRAM")).toBe(true));
-  it("strips TERM_PROGRAM_VERSION", () =>
-    expect(shouldSanitize("TERM_PROGRAM_VERSION")).toBe(true));
+  it("strips TMUX", () => {
+    expect(shouldSanitize("TMUX")).toBe(true);
+  });
+  it("strips STY", () => {
+    expect(shouldSanitize("STY")).toBe(true);
+  });
+  it("strips TERM_PROGRAM", () => {
+    expect(shouldSanitize("TERM_PROGRAM")).toBe(true);
+  });
+  it("strips TERM_PROGRAM_VERSION", () => {
+    expect(shouldSanitize("TERM_PROGRAM_VERSION")).toBe(true);
+  });
   it("strips VSCODE_ prefixed keys", () => {
     expect(shouldSanitize("VSCODE_GIT_ASKPASS_NODE")).toBe(true);
     expect(shouldSanitize("VSCODE_IPC_HOOK")).toBe(true);
@@ -274,10 +280,18 @@ describe("env key sanitization", () => {
   it("strips ZED_ prefixed keys", () => {
     expect(shouldSanitize("ZED_TERM")).toBe(true);
   });
-  it("keeps PATH", () => expect(shouldSanitize("PATH")).toBe(false));
-  it("keeps HOME", () => expect(shouldSanitize("HOME")).toBe(false));
-  it("keeps TERM", () => expect(shouldSanitize("TERM")).toBe(false));
-  it("keeps SHELL", () => expect(shouldSanitize("SHELL")).toBe(false));
+  it("keeps PATH", () => {
+    expect(shouldSanitize("PATH")).toBe(false);
+  });
+  it("keeps HOME", () => {
+    expect(shouldSanitize("HOME")).toBe(false);
+  });
+  it("keeps TERM", () => {
+    expect(shouldSanitize("TERM")).toBe(false);
+  });
+  it("keeps SHELL", () => {
+    expect(shouldSanitize("SHELL")).toBe(false);
+  });
 });
 
 // ── profile environment variables ──────────────────────────────────────────

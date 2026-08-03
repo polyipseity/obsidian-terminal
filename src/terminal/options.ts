@@ -1,5 +1,5 @@
 import type { Settings } from "../settings-data.js";
-import { cloneDeep, isEqual } from "lodash-es";
+import { cloneDeep, isEqual } from "es-toolkit/compat";
 import { cloneAsWritable } from "@polyipseity/obsidian-plugin-library";
 import type { DeepWritable } from "ts-essentials";
 import type { Terminal, ITerminalOptions } from "@xterm/xterm";
@@ -47,12 +47,14 @@ export function applyTerminalOptionDiffShallow(
     ...Object.keys(curOpts),
   ]);
   for (const key of allKeys) {
-    const prevVal = prevOpts[key as keyof typeof prevOpts];
-    const curVal = curOpts[key as keyof typeof curOpts];
+    // `unknown` avoids the `any` that leaks from `documentOverride: any`.
+    const prevVal: unknown = prevOpts[key as keyof typeof prevOpts];
+    const curVal: unknown = curOpts[key as keyof typeof curOpts];
     if (!isEqual(prevVal, curVal)) {
       // assign a deep clone to avoid accidental shared references
-      terminal.options[key as keyof typeof terminal.options] =
-        cloneDeep(curVal);
+      terminal.options[key as keyof typeof terminal.options] = cloneDeep(
+        curVal,
+      ) as never;
     }
   }
 }

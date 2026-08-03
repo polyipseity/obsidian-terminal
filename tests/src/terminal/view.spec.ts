@@ -11,12 +11,12 @@
 import { describe, it, expect, vi } from "vitest";
 
 /*
- * Mock `src/import.js` — the BUNDLE map provides lazy `require()` loaders for
+ * Mock `src/imports.js` — the BUNDLE map provides lazy `require()` loaders for
  * xterm addon packages that are not built/available in the test environment.
  * Replacing the map entries with no-op factories prevents unhandled rejections
  * from `dynamicRequire`.
  */
-vi.mock("../../../src/import.js", () => {
+vi.mock("../../../src/imports.js", () => {
   const dummy = (): Record<string, unknown> => ({});
   const entries: Array<[string, () => Record<string, unknown>]> = [
     ["@xterm/addon-canvas", dummy],
@@ -175,7 +175,7 @@ describe("src/terminal/view.ts", () => {
       const result = view.getDisplayText();
       expect(mockI18n.t).toHaveBeenCalledWith(
         "components.terminal.display-name",
-        expect.objectContaining({ title: expect.any(String) }),
+        expect.objectContaining({ title: expect.any(String) as unknown }),
       );
       expect(result).toBe("components.terminal.display-name");
     });

@@ -1,30 +1,30 @@
 import {
-    acquireConditionally,
-    alternativeRegExp,
-    cartesianProduct,
-    clear,
-    codePoint,
-    deepFreeze,
-    dynamicRequireLazy,
-    insertAt,
-    lazyProxy,
-    rangeCodePoint,
-    removeAt,
-    replaceAllRegex,
+  acquireConditionally,
+  alternativeRegExp,
+  cartesianProduct,
+  clear,
+  codePoint,
+  deepFreeze,
+  dynamicRequireLazy,
+  insertAt,
+  lazyProxy,
+  rangeCodePoint,
+  removeAt,
+  replaceAllRegex,
 } from "@polyipseity/obsidian-plugin-library";
 import type {
-    IDisposable,
-    IFunctionIdentifier,
-    Terminal,
-    ITerminalOptions as TerminalOptions,
-    ITerminalInitOnlyOptions as TerminalOptionsInit,
+  IDisposable,
+  IFunctionIdentifier,
+  Terminal,
+  ITerminalOptions as TerminalOptions,
+  ITerminalInitOnlyOptions as TerminalOptionsInit,
 } from "@xterm/xterm";
 import type { DeepReadonly, DeepRequired } from "ts-essentials";
 
 import ansi from "ansi-escape-sequences";
 import AsyncLock from "async-lock";
 import { Set as valueSet } from "immutable";
-import { range } from "lodash-es";
+import { range } from "es-toolkit/compat";
 import { BUNDLE } from "../imports.js";
 import { MAX_LOCK_PENDING } from "../magic.js";
 
@@ -275,6 +275,7 @@ export class TerminalTextArea implements IDisposable {
                   await writePromise(terminal, char);
                   consumed += char.length;
 
+                  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Another method can clear `#sequence` while `writePromise` is awaited.
                   if (!this.#sequence) {
                     break;
                   }
@@ -313,7 +314,7 @@ export class TerminalTextArea implements IDisposable {
                 if (width > 0) {
                   await writePromise(
                     terminal,
-                    `${ansi.cursor.back(width)}${CSI}${width}P`,
+                    `${ansi.cursor.back(width)}${CSI}${String(width)}P`,
                   );
                   this.#widths[cursorY] -= width;
                 } else if (cursorY > 0) {
@@ -340,11 +341,11 @@ export class TerminalTextArea implements IDisposable {
               const reserve = MAX_CHARACTER_WIDTH * datum.length;
               terminal.resize(terminal.cols + reserve, terminal.rows);
 
-              await writePromise(terminal, `${CSI}${reserve}@${datum}`);
+              await writePromise(terminal, `${CSI}${String(reserve)}@${datum}`);
               this.#widths[cursorY] += reserve;
               const lossX = reserve - (active.cursorX - cursorX);
 
-              await writePromise(terminal, `${CSI}${lossX}P`);
+              await writePromise(terminal, `${CSI}${String(lossX)}P`);
               this.#widths[cursorY] -= lossX;
               break;
             }
