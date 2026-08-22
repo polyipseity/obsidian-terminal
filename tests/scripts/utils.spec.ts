@@ -1,5 +1,3 @@
-// @vitest-environment node
-
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -7,8 +5,8 @@ import * as v from "valibot";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Unit spec for scripts/utils.mjs — prefer hermetic behavior and keep tests
-// deterministic. Some tests use quick node child processes to exercise
-// `execute` but the module is imported per-test to keep state isolated.
+// deterministic. Some tests spawn the current runtime (process.execPath) to
+// exercise `execute` but the module is imported per-test to keep state isolated.
 
 async function mktemp() {
   return fs.mkdtemp(path.join(os.tmpdir(), "obsidian-plugin-template-test-"));
@@ -39,7 +37,7 @@ describe("scripts/utils.mjs", () => {
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const out = await execute("node", [
+    const out = await execute(process.execPath, [
       "-e",
       "process.stdout.write('ok'); process.stderr.write('bad'); process.exit(0)",
     ]);
@@ -50,7 +48,9 @@ describe("scripts/utils.mjs", () => {
 
   it("execute throws when the child exits with non-zero exit code", async () => {
     const { execute } = await import("../../scripts/utils.mjs");
-    await expect(execute("node", ["-e", "process.exit(2)"])).rejects.toThrow();
+    await expect(
+      execute(process.execPath, ["-e", "process.exit(2)"]),
+    ).rejects.toThrow();
   });
 
   it("PLUGIN_ID resolves to id from manifest.json", async () => {
@@ -105,7 +105,7 @@ describe("scripts/utils.mjs", () => {
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
       const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      const out = await execute("node", [
+      const out = await execute(process.execPath, [
         "-e",
         "process.stdout.write('hello'); process.exit(0)",
       ]);
@@ -119,7 +119,7 @@ describe("scripts/utils.mjs", () => {
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
       const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      const out = await execute("node", [
+      const out = await execute(process.execPath, [
         "-e",
         "process.stderr.write('err'); process.exit(0)",
       ]);
@@ -130,14 +130,16 @@ describe("scripts/utils.mjs", () => {
 
     it("handles child that produces no output but exits successfully", async () => {
       const { execute } = await import("../../scripts/utils.mjs");
-      const out = await execute("node", ["-e", "process.exit(0)"]);
+      const out = await execute(process.execPath, ["-e", "process.exit(0)"]);
       expect(out).toBe("");
     }, 20000);
 
     it("throws Error(String(exitCode)) when execFile resolves and child.exitCode is non-zero", async () => {
       vi.resetModules();
-      // Mock util.promisify to return a function whose Promise has a .child prop
-      vi.doMock("node:util", () => ({
+      // Mock util.promisify to return a function whose Promise has a .child prop.
+      // The mock object is self-referential (default = itself) so vitest's CJS
+      // interop resolves the named `promisify` export.
+      const utilMock = {
         promisify: () => () => {
           const p: Promise<unknown> & { child: { readonly exitCode: number } } =
             Object.assign(
@@ -151,10 +153,15 @@ describe("scripts/utils.mjs", () => {
             );
           return p;
         },
-      }));
+      };
+      utilMock.default = utilMock;
+      vi.doMock("node:util", () => utilMock);
 
-      // execFile itself isn't used by our mocked promisify, but provide it anyway
-      vi.doMock("node:child_process", () => ({ execFile: vi.fn() }));
+      // execFile itself isn't used by our mocked promisify, but provide a
+      // self-referential mock so ESM interop (default export) is satisfied.
+      const cpMock = { execFile: vi.fn() };
+      cpMock.default = cpMock;
+      vi.doMock("node:child_process", () => cpMock);
 
       // Prevent test output from printing to the terminal and assert it
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
