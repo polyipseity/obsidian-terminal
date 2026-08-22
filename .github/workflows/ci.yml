@@ -67,3 +67,33 @@ jobs:
 
       - name: Build project
         run: bun run build
+
+  windows-native:
+    name: "Windows native PTY (${{ matrix.python }})"
+    runs-on: windows-2025
+    # Cap the job: a wedged pseudoconsole handle must not burn the 6 h default
+    # on a runner billed at twice the Linux rate.
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.12"]
+    steps:
+      # No submodules: the Python tests do not need `vendor/`.
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39
+        with:
+          resolution-strategy: "lowest"
+
+      - name: Install the locked Windows test environment
+        run: uv sync --locked --python ${{ matrix.python }}
+
+      - name: Run ConPTY host and ConHost resizer tests
+        run: >-
+          uv run --locked --python ${{ matrix.python }} pytest
+          -n 0 --no-cov
+          tests/src/terminal/test_win32_conpty.py
+          tests/src/terminal/test_win32_resizer.py

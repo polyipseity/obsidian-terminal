@@ -33,6 +33,48 @@ describe("mergeTerminalOptions", () => {
     expect(result.fontSize).toBe(12);
   });
 
+  it("forces the ConPTY renderer hint for the ctypes backend on Windows", () => {
+    const result = mergeTerminalOptions(
+      {
+        documentOverride: null,
+        windowsPty: { backend: "winpty", buildNumber: 19_045 },
+      },
+      {
+        ...baseDefaults,
+        windowsPty: { backend: "conpty", buildNumber: 22_631 },
+      },
+      { platform: "win32", win32Backend: "conpty" },
+    );
+
+    expect(result.windowsPty).toEqual({ backend: "conpty" });
+  });
+
+  it("clears ConPTY renderer hints for the legacy backend on Windows", () => {
+    const result = mergeTerminalOptions(
+      {
+        documentOverride: null,
+        windowsPty: { backend: "conpty", buildNumber: 22_631 },
+      },
+      {
+        ...baseDefaults,
+        windowsPty: { backend: "conpty", buildNumber: 19_045 },
+      },
+      { platform: "win32", win32Backend: "legacy" },
+    );
+
+    expect(result.windowsPty).toBeUndefined();
+  });
+
+  it("does not set a Windows renderer hint on another platform", () => {
+    const result = mergeTerminalOptions(
+      { documentOverride: null },
+      baseDefaults,
+      { platform: "darwin", win32Backend: "conpty" },
+    );
+
+    expect(result.windowsPty).toBeUndefined();
+  });
+
   it("returns a new object without mutating inputs and is writable", () => {
     const prof = { documentOverride: null, fontFamily: "baz" };
     const globals = { documentOverride: null, fontFamily: "foo" };

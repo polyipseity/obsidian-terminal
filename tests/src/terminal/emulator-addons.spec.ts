@@ -27,6 +27,10 @@ import {
 function createMockTerminal() {
   const inputSpy = vi.fn();
   let handler: ((event: KeyboardEvent) => boolean) | null = null;
+  const csiHandlers: Record<
+    string,
+    Array<(params: (number | number[])[]) => boolean>
+  > = {};
 
   const terminal = {
     input: inputSpy,
@@ -34,6 +38,24 @@ function createMockTerminal() {
       handler = fn;
     },
     element: document.createElement("div"),
+    parser: {
+      registerCsiHandler(
+        id: { prefix?: string; final: string },
+        callback: (params: (number | number[])[]) => boolean,
+      ): IDisposable {
+        const key = `${id.prefix ?? ""}${id.final}`;
+        const bucket = (csiHandlers[key] ??= []);
+        bucket.push(callback);
+        return {
+          dispose: vi.fn(() => {
+            const index = bucket.indexOf(callback);
+            if (index >= 0) {
+              bucket.splice(index, 1);
+            }
+          }),
+        };
+      },
+    },
   } as unknown as Terminal;
 
   return {
@@ -45,6 +67,10 @@ function createMockTerminal() {
       }
       return handler;
     },
+    triggerCsi: (prefix: string, final: string, params: number[]) =>
+      (csiHandlers[`${prefix}${final}`] ?? []).map((callback) =>
+        callback(params),
+      ),
   };
 }
 
@@ -59,6 +85,8 @@ function fakeKeyEvent(
     metaKey: false,
     shiftKey: false,
     isComposing: false,
+    preventDefault: vi.fn(),
+    stopPropagation: vi.fn(),
     ...overrides,
   } as unknown as KeyboardEvent;
 }
@@ -78,12 +106,24 @@ const SHIFT_ENTER_MAPPING: Settings.Keymapping = {
 describe("CustomKeyEventHandlerAddon", () => {
   let inputSpy: ReturnType<typeof vi.fn>;
   let handler: (event: KeyboardEvent) => boolean;
+  let triggerCsi: (
+    prefix: string,
+    final: string,
+    params: number[],
+  ) => boolean[];
 
   /** Helper: activate addon with passthrough enabled and return handler. */
+  function setupWin32InputMode(
+    getMappings: () => readonly Settings.Keymapping[] = () => [],
+  ) {
+    return setup(false, getMappings, "win32", true);
+  }
+
   function setup(
     isEnabled = true,
     getMappings: () => readonly Settings.Keymapping[] = () => [],
     currentPlatform = "darwin",
+    supportsWin32InputMode = false,
   ) {
     const mock = createMockTerminal();
     inputSpy = mock.inputSpy;
@@ -91,9 +131,11 @@ describe("CustomKeyEventHandlerAddon", () => {
       currentPlatform,
       getMappings,
       () => isEnabled,
+      supportsWin32InputMode,
     );
     addon.activate(mock.terminal);
     handler = mock.getHandler();
+    triggerCsi = mock.triggerCsi;
     return addon;
   }
 
@@ -131,6 +173,153 @@ describe("CustomKeyEventHandlerAddon", () => {
   it("passes through Option+Right to xterm when no mapping matches", () => {
     const result = handler(fakeKeyEvent({ key: "ArrowRight", altKey: true }));
     expect(result).toBe(true);
+    expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  // === Windows ConPTY input mode backport ===
+
+  it("encodes Backspace after DECSET 9001 on supported ConPTY terminals", () => {
+    setupWin32InputMode();
+
+    expect(triggerCsi("?", "h", [9001])).toEqual([false]);
+    expect(handler(fakeKeyEvent({ code: "Backspace", key: "Backspace" }))).toBe(
+      false,
+    );
+    expect(inputSpy).toHaveBeenCalledWith("\x1b[8;14;8;1;0;1_", true);
+  });
+
+  it("encodes keyup while Win32 input mode is active", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+
+    expect(
+      handler(
+        fakeKeyEvent({
+          code: "KeyA",
+          key: "a",
+          type: "keyup",
+        }),
+      ),
+    ).toBe(false);
+    expect(inputSpy).toHaveBeenCalledWith("\x1b[65;30;97;0;0;1_", true);
+  });
+
+  it.each([
+    { code: "ShiftLeft", key: "Shift", keyCode: 16 },
+    { code: "ControlLeft", key: "Control", keyCode: 17 },
+    { code: "AltLeft", key: "Alt", keyCode: 18 },
+    { code: "MetaLeft", key: "Meta", keyCode: 91 },
+  ])(
+    "marks $key-only Win32 records as non-user input",
+    ({ code, key, keyCode }) => {
+      setupWin32InputMode();
+      triggerCsi("?", "h", [9001]);
+
+      expect(handler(fakeKeyEvent({ code, key, keyCode }))).toBe(false);
+      expect(inputSpy).toHaveBeenCalledWith(expect.any(String), false);
+    },
+  );
+
+  it("suppresses keypress without emitting a duplicate Win32 record", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+
+    expect(
+      handler(fakeKeyEvent({ code: "KeyA", key: "a", type: "keypress" })),
+    ).toBe(false);
+    expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  it("stops encoding after DECRST 9001", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+
+    expect(triggerCsi("?", "l", [9001])).toEqual([false]);
+    expect(handler(fakeKeyEvent({ code: "Backspace", key: "Backspace" }))).toBe(
+      true,
+    );
+    expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not activate for unrelated CSI private modes", () => {
+    setupWin32InputMode();
+
+    expect(triggerCsi("?", "h", [1049])).toEqual([false]);
+    expect(handler(fakeKeyEvent({ code: "Backspace", key: "Backspace" }))).toBe(
+      true,
+    );
+    expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not register mode handlers for unsupported terminals", () => {
+    setup(false, () => [], "win32", false);
+
+    expect(triggerCsi("?", "h", [9001])).toEqual([]);
+    expect(handler(fakeKeyEvent({ code: "Backspace", key: "Backspace" }))).toBe(
+      true,
+    );
+  });
+
+  it("keeps user keymappings ahead of active Win32 input mode", () => {
+    setup(
+      false,
+      () => [
+        {
+          action: "sendText",
+          actionArg: "mapped",
+          alt: false,
+          ctrl: false,
+          key: "Backspace",
+          meta: false,
+          platform: null,
+          shift: false,
+        },
+      ],
+      "win32",
+      true,
+    );
+    triggerCsi("?", "h", [9001]);
+
+    expect(handler(fakeKeyEvent({ code: "Backspace", key: "Backspace" }))).toBe(
+      false,
+    );
+    expect(inputSpy).toHaveBeenCalledOnce();
+    expect(inputSpy).toHaveBeenCalledWith("mapped");
+  });
+
+  it("routes a matched passthrough mapping into active Win32 encoding", () => {
+    setup(
+      false,
+      () => [
+        {
+          action: "passthrough",
+          actionArg: null,
+          alt: false,
+          ctrl: false,
+          key: "Backspace",
+          meta: false,
+          platform: null,
+          shift: false,
+        },
+      ],
+      "win32",
+      true,
+    );
+    triggerCsi("?", "h", [9001]);
+
+    expect(handler(fakeKeyEvent({ code: "Backspace", key: "Backspace" }))).toBe(
+      false,
+    );
+    expect(inputSpy).toHaveBeenCalledWith("\x1b[8;14;8;1;0;1_", true);
+  });
+
+  it("passes IME composition through while Win32 input mode is active", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+
+    expect(
+      handler(fakeKeyEvent({ code: "KeyA", isComposing: true, key: "a" })),
+    ).toBe(true);
     expect(inputSpy).not.toHaveBeenCalled();
   });
 
@@ -337,6 +526,15 @@ describe("CustomKeyEventHandlerAddon", () => {
     const result = handler(fakeKeyEvent({ key: "@", altKey: true }));
     expect(result).toBe(true);
     expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  it("removes Win32 mode handlers on dispose()", () => {
+    const addon = setupWin32InputMode();
+
+    addon.dispose();
+
+    expect(triggerCsi("?", "h", [9001])).toEqual([]);
+    expect(triggerCsi("?", "l", [9001])).toEqual([]);
   });
 });
 

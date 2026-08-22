@@ -19,6 +19,7 @@ import { noop } from "ts-essentials";
 import { BUNDLE } from "../imports.js";
 import type { Settings } from "../settings-data.js";
 import type { $App } from "../@types/obsidian.js";
+import { Win32InputMode } from "./win32-input-mode.js";
 
 const electron = dynamicRequire<typeof import("electron")>(BUNDLE, "electron");
 /* @__PURE__ */ electron.catch(noop); // Prevent unhandled rejections from `dynamicRequire` in tests.
@@ -761,23 +762,37 @@ export namespace RightClickActionAddon {
  *    - Option + single-character key → re-emit composed char, suppress event.
  *    - All other Option+key (Enter, function keys, arrows not covered by a
  *      mapping, etc.) → passed through to xterm unchanged.
+ *
+ * Between stages 2 and 3, ConPTY terminals can activate Win32 input mode with
+ * `DECSET 9001`. While active, unmatched keydown and keyup events use Win32
+ * `KEY_EVENT_RECORD` sequences.
  */
 export class CustomKeyEventHandlerAddon implements ITerminalAddon {
+  readonly #disposer = new Functions({ async: false, settled: true });
   #terminal: Terminal | null = null;
+  #win32InputMode: Win32InputMode | null = null;
+  #win32InputModeActive = false;
 
   public constructor(
     protected readonly currentPlatform: string,
     protected readonly getKeymappings: () => readonly Settings.Keymapping[],
     protected readonly isPassthroughEnabled: () => boolean,
+    protected readonly supportsWin32InputMode = false,
   ) {}
 
   public activate(terminal: Terminal): void {
     this.#terminal = terminal;
     terminal.attachCustomKeyEventHandler((event) => this.#handleEvent(event));
+    if (this.supportsWin32InputMode) {
+      this.#registerWin32InputModeHandlers(terminal);
+    }
   }
 
   public dispose(): void {
+    this.#disposer.call();
     this.#terminal = null;
+    this.#win32InputMode = null;
+    this.#win32InputModeActive = false;
   }
 
   #handleEvent(event: KeyboardEvent): boolean {
@@ -797,6 +812,12 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
     // Walk the ordered list; first match wins.
     for (const mapping of this.getKeymappings()) {
       if (this.#matches(event, mapping)) {
+        // In active Win32 input mode, passthrough means bypass the mapping and
+        // continue into Win32 encoding. Returning true here would expose the
+        // event to xterm.js 6.x's legacy keyboard encoder.
+        if (mapping.action === "passthrough" && this.#win32InputModeActive) {
+          break;
+        }
         if (event.type === "keydown") {
           return this.#fire(terminal, mapping);
         }
@@ -810,7 +831,21 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
       }
     }
 
-    // --- Stage 2: macOS Option key passthrough ---
+    // --- Stage 2: Windows ConPTY Win32 input mode ---
+    if (this.#win32InputModeActive && this.#win32InputMode) {
+      if (event.type === "keydown" || event.type === "keyup") {
+        terminal.input(
+          this.#win32InputMode.encode(event, event.type === "keydown"),
+          !isWin32ModifierKeyOnlyEvent(event),
+        );
+      }
+      // Prevent a following keypress from producing duplicate legacy input.
+      event.preventDefault();
+      event.stopPropagation();
+      return false;
+    }
+
+    // --- Stage 3: macOS Option key passthrough ---
     // Workaround for xterm.js issue #2831: even with macOptionIsMeta: false,
     // xterm fires ESC sequences for single-character Option+key events on macOS.
     // When passthrough is enabled we intercept those events, re-emit the
@@ -848,6 +883,38 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
     // These multi-character key names are not subject to the #2831 composition
     // bug, so xterm can handle them correctly without interception.
     return true;
+  }
+
+  #registerWin32InputModeHandlers(terminal: Terminal): void {
+    const setHandler = terminal.parser.registerCsiHandler(
+        { final: "h", prefix: "?" },
+        (params) => {
+          if (params.some((parameter) => parameter === 9001)) {
+            this.#win32InputMode ??= new Win32InputMode();
+            this.#win32InputModeActive = true;
+          }
+          // Preserve xterm.js processing for this and every unrelated mode.
+          return false;
+        },
+      ),
+      resetHandler = terminal.parser.registerCsiHandler(
+        { final: "l", prefix: "?" },
+        (params) => {
+          if (params.some((parameter) => parameter === 9001)) {
+            this.#win32InputModeActive = false;
+          }
+          return false;
+        },
+      );
+
+    this.#disposer.push(
+      () => {
+        setHandler.dispose();
+      },
+      () => {
+        resetHandler.dispose();
+      },
+    );
   }
 
   #matches(event: KeyboardEvent, mapping: Settings.Keymapping): boolean {
@@ -929,6 +996,18 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
     }
     return false;
   }
+}
+
+/** Keep modifier-only records from changing xterm's user-input state. */
+function isWin32ModifierKeyOnlyEvent(event: KeyboardEvent): boolean {
+  const { key } = event;
+  return (
+    key === "Alt" ||
+    key === "Control" ||
+    key === "ContextMenu" ||
+    key === "Meta" ||
+    key === "Shift"
+  );
 }
 
 /**

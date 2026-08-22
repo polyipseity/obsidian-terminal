@@ -150,6 +150,14 @@ export function mergePathEntries(
  *  - Windows: reg query of the System + User PATH from the registry */
 const getSystemPath = lazyInit(() => resolveSystemPath());
 
+/** Starts the one-time system PATH resolution off the spawn path. The result
+ * is memoized, so the first spawn reuses it instead of paying for it. */
+export function warmSystemPath(): void {
+  getSystemPath().catch((error: unknown) => {
+    /* @__PURE__ */ self.console.debug(error);
+  });
+}
+
 async function resolveSystemPath(): Promise<string[]> {
   const platform = deopaque(Platform.CURRENT);
   const process2 = await process;

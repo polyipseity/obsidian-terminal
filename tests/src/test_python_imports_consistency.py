@@ -39,6 +39,7 @@ _STDLIB_MODULE_NAMES: AbstractSet[str] = (
             "abc",
             "collections",
             "contextlib",
+            "ctypes",
             "enum",
             "fcntl",
             "functools",
@@ -86,11 +87,7 @@ _SRC_ROOT: Path = Path(pathlib.Path(__file__).resolve(strict=True).parents[2] / 
 
 
 async def _read_python_requirements() -> AbstractSet[str]:
-    """Read pip-package names from ``src/python-requirements.json``.
-
-    The JSON is the single source of truth for Python requirement names
-    and is consumed by both ``magic.ts`` and this test.
-    """
+    """Read pip-package names from ``src/python-requirements.json``."""
     path = _SRC_ROOT / "python-requirements.json"
     data = json.loads(await path.read_text("utf-8"))
     return set(data.keys())
@@ -256,14 +253,10 @@ async def test_python_requirements_consistency() -> None:
     requirements = await _read_python_requirements()
     third_party_imports = await _get_unconditional_third_party_imports(src_root)
 
-    # Verify known-good cases first for readable failure messages.
-    assert "psutil" in requirements, (
-        "psutil is imported unconditionally in win32_resizer.py "
-        "but missing from PYTHON_REQUIREMENTS"
-    )
-    assert "pywinctl" in requirements, (
-        "pywinctl is imported unconditionally in win32_resizer.py "
-        "but missing from PYTHON_REQUIREMENTS"
+    assert {"psutil", "pywinctl"} <= requirements, (
+        f"python-requirements.json lost entries; has {sorted(requirements)}. "
+        "The ConHost resizer imports them, and the profile editor's Python "
+        "check reads this manifest to verify them."
     )
 
     failures = list[str]()

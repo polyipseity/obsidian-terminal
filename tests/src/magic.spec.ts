@@ -2,9 +2,34 @@
  * Small unit tests for `src/magic.ts` constants — ensure exported constants are sane.
  */
 import { describe, it, expect } from "vitest";
-import { PLUGIN_UNLOAD_DELAY, DOMClasses2 } from "../../src/magic.js";
+import {
+  PLUGIN_UNLOAD_DELAY,
+  DOMClasses2,
+  TERMINAL_CONPTY_RESIZE_REPAINT_WINDOW,
+  TERMINAL_OUTPUT_HIGH_WATER_BYTES,
+  TERMINAL_OUTPUT_LOW_WATER_BYTES,
+  TERMINAL_OUTPUT_WRITE_SLICE_BYTES,
+  TERMINAL_PTY_RESIZE_WAIT,
+} from "../../src/magic.js";
 
 describe("src/magic.ts", () => {
+  it("keeps the flow-control geometry ordered", () => {
+    expect(TERMINAL_OUTPUT_WRITE_SLICE_BYTES).toBeGreaterThan(0);
+    expect(TERMINAL_OUTPUT_LOW_WATER_BYTES).toBeGreaterThan(
+      TERMINAL_OUTPUT_WRITE_SLICE_BYTES,
+    );
+    expect(TERMINAL_OUTPUT_HIGH_WATER_BYTES).toBeGreaterThan(
+      TERMINAL_OUTPUT_LOW_WATER_BYTES,
+    );
+  });
+
+  it("keeps the ConPTY repaint window covering a drag step", () => {
+    expect(TERMINAL_CONPTY_RESIZE_REPAINT_WINDOW).toBeGreaterThan(
+      TERMINAL_PTY_RESIZE_WAIT,
+    );
+    expect(TERMINAL_CONPTY_RESIZE_REPAINT_WINDOW).toBeLessThanOrEqual(1);
+  });
+
   it("exports PLUGIN_UNLOAD_DELAY as a number", () => {
     expect(typeof PLUGIN_UNLOAD_DELAY).toBe("number");
     expect(PLUGIN_UNLOAD_DELAY).toBeGreaterThanOrEqual(0);

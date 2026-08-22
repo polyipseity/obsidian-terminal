@@ -63,4 +63,56 @@ describe("PluginLocales", () => {
     const zhHansRes = await zhHans();
     expect(typeof zhHansRes).toBe("object");
   });
+
+  it("provides the Windows backend selector and ConPTY failure messages", async () => {
+    const translations = await Promise.all(
+      Array.from(PluginLocales.LANGUAGES, async (language) => {
+        const loader =
+          PluginLocales.RESOURCES[language][PluginLocales.DEFAULT_NAMESPACE];
+        return loader();
+      }),
+    );
+
+    const integratedKeys = [
+        "win32-backend",
+        "win32-backend-description",
+        "win32-backend-options-conpty",
+        "win32-backend-options-legacy",
+      ],
+      errorKeys = [
+        "conpty-control-unauthenticated",
+        "conpty-host-exited-before-ready",
+        "conpty-readiness-timeout",
+        "no-Python-to-spawn-Windows-ConPTY",
+        "win32-exit-9009",
+        "win32-exit-c0000142",
+        "win32-python-missing",
+        "win32-python-store-stub",
+        "win32-python-too-old",
+      ];
+    for (const translation of translations) {
+      const integrated = translation.components.profile.integrated as Record<
+          string,
+          unknown
+        >,
+        errors = translation.errors as Record<string, unknown>;
+      for (const key of integratedKeys) expect(integrated[key]).toBeTruthy();
+      // The shell-pipes option and the old conhost boolean are retired, in
+      // every locale rather than English alone.
+      expect(integrated).not.toHaveProperty(
+        "win32-backend-options-shell-pipes",
+      );
+      expect(integrated).not.toHaveProperty("use-win32-conhost");
+      expect(integrated).not.toHaveProperty("use-win32-conhost-description");
+      for (const key of errorKeys) expect(errors[key]).toBeTruthy();
+    }
+
+    const asset = await PluginLocales.RESOURCES.en.asset();
+    expect(
+      asset.components.profile.integrated["win32-backend-icon"],
+    ).toBeTruthy();
+    expect(asset.components.profile.integrated).not.toHaveProperty(
+      "use-win32-conhost-icon",
+    );
+  });
 });

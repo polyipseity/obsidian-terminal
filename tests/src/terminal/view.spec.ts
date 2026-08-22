@@ -36,10 +36,57 @@ vi.mock("../../../src/imports.js", () => {
   };
 });
 
-import { TerminalView } from "../../../src/terminal/view.js";
+import { TerminalView, fittedSize } from "../../../src/terminal/view.js";
 import { Settings } from "../../../src/settings-data.js";
 
 describe("src/terminal/view.ts", () => {
+  describe("fittedSize", () => {
+    const terminal = { cols: 80, rows: 24 };
+
+    it("uses the fit proposal for the pseudoterminal spawn size", () => {
+      expect(
+        fittedSize(
+          { proposeDimensions: () => ({ cols: 132, rows: 43 }) },
+          terminal,
+        ),
+      ).toEqual([132, 43]);
+    });
+
+    it("normalizes fractional and zero-cell proposals", () => {
+      expect(
+        fittedSize(
+          { proposeDimensions: () => ({ cols: 100.9, rows: 0.4 }) },
+          terminal,
+        ),
+      ).toEqual([100, 1]);
+    });
+
+    it("falls back when the fit proposal is unavailable or invalid", () => {
+      expect(fittedSize({ proposeDimensions: () => void 0 }, terminal)).toEqual(
+        [80, 24],
+      );
+      expect(
+        fittedSize(
+          { proposeDimensions: () => ({ cols: NaN, rows: 10 }) },
+          terminal,
+        ),
+      ).toEqual([80, 24]);
+    });
+
+    it("falls back when the fit addon throws", () => {
+      expect(
+        fittedSize(
+          {
+            proposeDimensions: () => {
+              throw new Error("not opened");
+            },
+          },
+          terminal,
+        ),
+      ).toEqual([80, 24]);
+    });
+  });
+
   describe("TerminalView.State", () => {
     describe("State.DEFAULT", () => {
       it("includes userTitle set to empty string", () => {
