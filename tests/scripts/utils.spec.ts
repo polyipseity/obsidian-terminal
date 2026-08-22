@@ -137,8 +137,6 @@ describe("scripts/utils.mjs", () => {
     it("throws Error(String(exitCode)) when execFile resolves and child.exitCode is non-zero", async () => {
       vi.resetModules();
       // Mock util.promisify to return a function whose Promise has a .child prop.
-      // The mock object is self-referential (default = itself) so vitest's CJS
-      // interop resolves the named `promisify` export.
       const utilMock = {
         promisify: () => () => {
           const p: Promise<unknown> & { child: { readonly exitCode: number } } =
@@ -154,13 +152,11 @@ describe("scripts/utils.mjs", () => {
           return p;
         },
       };
-      utilMock.default = utilMock;
       vi.doMock("node:util", () => utilMock);
 
-      // execFile itself isn't used by our mocked promisify, but provide a
-      // self-referential mock so ESM interop (default export) is satisfied.
+      // execFile itself isn't used by our mocked promisify, but provide a mock
+      // so the module's named import resolves.
       const cpMock = { execFile: vi.fn() };
-      cpMock.default = cpMock;
       vi.doMock("node:child_process", () => cpMock);
 
       // Prevent test output from printing to the terminal and assert it
