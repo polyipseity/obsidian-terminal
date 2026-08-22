@@ -14,10 +14,11 @@
  * - `DOCUMENTATIONS.donate()` warns twice when both the listEl path and the
  *   deprecated renderInstalledPlugin path find no element, then opens the URL.
  *
- * `revealPrivate` and `openExternal` are external boundaries. `revealPrivate`
- * is emulated as a `try func / catch -> fallback` wrapper, matching the real
- * contract evidenced by the original issue's stack trace
- * (`renderInstalledPlugin -> func -> revealPrivate -> donate`).
+ * `revealPrivateFilter` (the non-deprecated replacement) and `openExternal`
+ * are external boundaries. `revealPrivateFilter` is used un-mocked from the
+ * real library; its `try func / catch -> fallback` contract is evidenced by the
+ * original issue's stack trace (`renderInstalledPlugin -> func ->
+ * revealPrivateFilter -> donate`).
  *
  * `activeSelf` is stubbed to return `self` unconditionally: the real
  * implementation accepts `Element | UIEvent | null` but production code
@@ -44,18 +45,6 @@ vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => {
     // property 'defaultView'"); always returning `self` is safe for these tests.
     activeSelf: () => self,
     openExternal: openExternalSpy,
-    revealPrivate: ((
-      _context: unknown,
-      args: readonly unknown[],
-      func: (...a: readonly unknown[]) => unknown,
-      fallback: (error: unknown) => unknown,
-    ): unknown => {
-      try {
-        return func(...args);
-      } catch (error) {
-        return fallback(error);
-      }
-    }) as unknown as typeof actual.revealPrivate,
   };
 });
 
@@ -255,7 +244,7 @@ describe("src/documentations.ts", () => {
 
       // renderInstalledPlugin renders a node with no heart icon — unlike the
       // brokenDonateView helper it does not throw, so donate() reaches the
-      // second warning and the inner throw before the revealPrivate fallback.
+      // second warning and the inner throw before the revealPrivateFilter fallback.
       const communityPluginsTab = {
         id: "community-plugins",
         containerEl: self.document.createElement("div"),
