@@ -97,6 +97,7 @@ function brokenDonateView(
   };
   return {
     context: {
+      language: { value: { t: () => "" } },
       app: { setting: { settingTabs: [communityPluginsTab] } },
       manifest: { fundingUrl: donationUrl },
     },
@@ -124,6 +125,7 @@ describe("src/documentations.ts", () => {
         DOCUMENTATIONS.donate(
           {
             context: {
+              language: { value: { t: () => "" } },
               app: {
                 setting: {
                   settingTabs: [
@@ -163,6 +165,7 @@ describe("src/documentations.ts", () => {
         DOCUMENTATIONS.donate(
           {
             context: {
+              language: { value: { t: () => "" } },
               app: {
                 setting: {
                   settingTabs: [
@@ -209,10 +212,11 @@ describe("src/documentations.ts", () => {
       expect(openExternalSpy.mock.calls[0]?.[1]).toBe(
         "https://example.com/donate-a",
       );
-      // The primary listEl path found no element — one warning before the
-      // deprecated fallback was attempted (which then threw).
-      expect(warnSpy).toHaveBeenCalledTimes(1);
-      // The warning is the JSON-serialized unmatched element (empty `<ul>`).
+      // The primary listEl path found no element — one app warning, then the
+      // deprecated fallback threw and revealPrivateFilter emitted its own catch
+      // warning before the fallback opened the donation URL.
+      expect(warnSpy).toHaveBeenCalledTimes(2);
+      // The first warning is the JSON-serialized unmatched element (empty `<ul>`).
       expect(JSON.parse(String(warnSpy.mock.calls[0]?.[0]))).toEqual({});
     });
 
@@ -229,10 +233,10 @@ describe("src/documentations.ts", () => {
         });
       }).toThrow("addSetting");
       expect(openExternalSpy).not.toHaveBeenCalled();
-      // One warning from the primary listEl path before the deprecated fallback
-      // was attempted (which then threw the rethrown error).
-      expect(warnSpy).toHaveBeenCalledTimes(1);
-      // The warning is the JSON-serialized unmatched element (empty `<ul>`).
+      // One app warning from the primary listEl path, then revealPrivateFilter's
+      // catch warning before the deprecated fallback rethrew the error.
+      expect(warnSpy).toHaveBeenCalledTimes(2);
+      // The first warning is the JSON-serialized unmatched element (empty `<ul>`).
       expect(JSON.parse(String(warnSpy.mock.calls[0]?.[0]))).toEqual({});
     });
 
@@ -258,6 +262,7 @@ describe("src/documentations.ts", () => {
         DOCUMENTATIONS.donate(
           {
             context: {
+              language: { value: { t: () => "" } },
               app: { setting: { settingTabs: [communityPluginsTab] } },
               manifest: { fundingUrl: "https://example.com/donate" },
             },
@@ -266,8 +271,9 @@ describe("src/documentations.ts", () => {
         );
       }).not.toThrow();
 
-      // First warn: primary listEl path. Second warn: deprecated path also fails.
-      expect(warnSpy).toHaveBeenCalledTimes(2);
+      // First warn: primary listEl path. Second warn: deprecated path also
+      // fails. Third warn: revealPrivateFilter's catch warning.
+      expect(warnSpy).toHaveBeenCalledTimes(3);
       // Both warnings are JSON-serialized unmatched elements: the empty `<ul>`
       // and the rendered div containing only a `<span>` — both serialize to {}.
       expect(JSON.parse(String(warnSpy.mock.calls[0]?.[0]))).toEqual({});
