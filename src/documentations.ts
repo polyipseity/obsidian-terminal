@@ -1,4 +1,5 @@
 import {
+  $App,
   DocumentationMarkdownView,
   StorageSettingsManager,
   activeSelf,
@@ -7,7 +8,7 @@ import {
   deepFreeze,
   openExternal,
   printError,
-  revealPrivate,
+  revealPrivateFilter,
   toJSONOrString,
   typedKeys,
 } from "@polyipseity/obsidian-plugin-library";
@@ -17,6 +18,7 @@ import changelogMd from "../CHANGELOG.md";
 import readmeMd from "../README.md";
 import { DOMClasses2 } from "./magic.js";
 import type { PLACEHOLDERPlugin } from "./main.js";
+import { App, CommunityPluginsSettingTab, UnknownSettingTab } from "obsidian";
 
 export const DOCUMENTATIONS = deepFreeze({
   async changelog(
@@ -37,7 +39,9 @@ export const DOCUMENTATIONS = deepFreeze({
       context,
       context: { app, manifest },
     } = view;
-    revealPrivate(
+    revealPrivateFilter<
+      [App, $App["setting"], CommunityPluginsSettingTab | UnknownSettingTab]
+    >()(
       context,
       [app],
       (app0) => {
