@@ -41,7 +41,8 @@ export const DOCUMENTATIONS = deepFreeze({
       context: { app, manifest },
     } = view;
     revealPrivateFilter<
-      [$App, $CommunityPluginsSettingTab, $UnknownSettingTab]
+      [$App, $CommunityPluginsSettingTab, $UnknownSettingTab],
+      [Document, Element, HTMLElement]
     >()(
       context,
       [app],
