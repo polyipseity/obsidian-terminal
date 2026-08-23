@@ -137,7 +137,16 @@ describe("scripts/utils.mjs", () => {
     it("throws Error(String(exitCode)) when execFile resolves and child.exitCode is non-zero", async () => {
       vi.resetModules();
       // Mock util.promisify to return a function whose Promise has a .child prop.
-      const utilMock = {
+      // The mock must expose a `default` export: vitest v4 ESM interop requires
+      // it on the mocked module even for named imports, and the factory returns
+      // a pre-declared const (not an inline literal) so vitest won't auto-add it.
+      interface UtilMock {
+        promisify: () => () => Promise<unknown> & {
+          child: { readonly exitCode: number };
+        };
+        default?: UtilMock;
+      }
+      const utilMock: UtilMock = {
         promisify: () => () => {
           const p: Promise<unknown> & { child: { readonly exitCode: number } } =
             Object.assign(
@@ -152,11 +161,18 @@ describe("scripts/utils.mjs", () => {
           return p;
         },
       };
+      utilMock.default = utilMock;
       vi.doMock("node:util", () => utilMock);
 
       // execFile itself isn't used by our mocked promisify, but provide a mock
-      // so the module's named import resolves.
-      const cpMock = { execFile: vi.fn() };
+      // so the module's named import resolves. It also needs a `default`
+      // export for the same vitest v4 interop reason as the util mock.
+      interface CpMock {
+        execFile: ReturnType<typeof vi.fn>;
+        default?: CpMock;
+      }
+      const cpMock: CpMock = { execFile: vi.fn() };
+      cpMock.default = cpMock;
       vi.doMock("node:child_process", () => cpMock);
 
       // Prevent test output from printing to the terminal and assert it
