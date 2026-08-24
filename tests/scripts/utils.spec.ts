@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // `execute` but the module is imported per-test to keep state isolated.
 
 async function mktemp() {
-  return fs.mkdtemp(path.join(os.tmpdir(), "obsidian-plugin-template-test-"));
+  return fs.mkdtemp(path.join(os.tmpdir(), "obsidian-plugin-test-"));
 }
 
 describe("scripts/utils.mjs", () => {

@@ -260,7 +260,7 @@ Please report a vulnerability by opening a [private vulnerability report][new se
 [changelog]: https://github.com/polyipseity/obsidian-terminal/blob/main/CHANGELOG.md
 [community plugin]: https://obsidian.md/plugins?id=terminal
 [latest release]: https://github.com/polyipseity/obsidian-terminal/releases/latest
-[new security advisory]: https://github.com/polyipseity/obsidian-plugin-template/security/advisories/new
+[new security advisory]: https://github.com/polyipseity/obsidian-terminal/security/advisories/new
 [Obsidian]: https://obsidian.md/
 [Python]: https://python.org/downloads/
 [related]: https://github.com/polyipseity/obsidian-monorepo

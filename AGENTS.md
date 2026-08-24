@@ -1,11 +1,11 @@
 # AGENTS.md — AI Coding Agent Guide
 
-This guide provides clear, actionable instructions for AI coding agents working in the `obsidian-plugin-template` codebase. Follow these rules for productivity, accuracy, and maintainability.
+This guide provides clear, actionable instructions for AI coding agents working in the current codebase. Follow these rules for productivity, accuracy, and maintainability.
 
 ## 1. Architecture Overview
 
 - **Plugin Structure:**
-  - Core logic in `src/` (entry: `src/main.ts`, class: `PLACEHOLDERPlugin`).
+  - Core logic in `src/` (entry: `src/main.ts`, class: `Plugin`).
 - **Settings & Localization:**
   - Settings: `src/settings.ts`, `src/settings-data.ts`
   - Localization: `assets/locales.ts`, per-locale JSON in `assets/locales/`
@@ -188,7 +188,7 @@ type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
   Refs: lint config modernization
   ```
 
-- **Lifecycle:** Register/unload all major managers in `PLACEHOLDERPlugin.onload()`
+  **Lifecycle:** Register/unload all major managers in `Plugin.onload()`
 
 ## 4. Integration Points
 

@@ -1,9 +1,9 @@
 ---
 name: plugin-testing
-description: Skill for testing Obsidian plugin features in obsidian-plugin-template. Use for automated, manual, and integration test workflows specific to Obsidian plugins.
+description: Skill for testing Obsidian plugin features in this repository. Use for automated, manual, and integration test workflows specific to Obsidian plugins.
 ---
 
-# Plugin Testing Skill — obsidian-plugin-template
+# Plugin Testing Skill
 
 > **Note:** Always prefer `bun` over other package managers if possible. Use `bun` for all commands unless you have a specific reason to use another package manager.
 

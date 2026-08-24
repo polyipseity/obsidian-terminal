@@ -4,7 +4,7 @@ applyTo: "**/*"
 description: Concise, project-specific rules for AI coding agents working in this repo
 ---
 
-# AI Agent Guidelines — obsidian-plugin-template
+# AI Agent Guidelines
 
 This short guide contains focused rules and examples to help AI coding agents make safe, high-quality changes quickly.
 
