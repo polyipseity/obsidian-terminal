@@ -7,7 +7,7 @@ import {
   dynamicRequire,
   isNonNil,
   replaceAllRegex,
-  revealPrivate,
+  revealPrivateFilter,
 } from "@polyipseity/obsidian-plugin-library";
 import type { CanvasAddon } from "@xterm/addon-canvas";
 import type { WebglAddon } from "@xterm/addon-webgl";
@@ -18,6 +18,7 @@ import { around } from "monkey-around";
 import { noop } from "ts-essentials";
 import { BUNDLE } from "../imports.js";
 import type { Settings } from "../settings-data.js";
+import type { $App } from "../@types/obsidian.js";
 
 const electron = dynamicRequire<typeof import("electron")>(BUNDLE, "electron");
 /* @__PURE__ */ electron.catch(noop); // Prevent unhandled rejections from `dynamicRequire` in tests.
@@ -398,7 +399,7 @@ export class FollowThemeAddon implements ITerminalAddon {
       workspace.offref(ref);
     });
 
-    revealPrivate(
+    revealPrivateFilter<[$App]>()(
       this.context,
       [app],
       (app2) => {

@@ -18,10 +18,10 @@ declare module "@polyipseity/obsidian-plugin-library" {
   }
 }
 
-interface $App {
+export interface $App {
   readonly setAccentColor: (color?: string) => void;
 }
 
-interface $SuggestModal {
+export interface $SuggestModal {
   readonly selectActiveSuggestion: (evt: KeyboardEvent | MouseEvent) => void;
 }
