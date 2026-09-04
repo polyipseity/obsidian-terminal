@@ -7,9 +7,11 @@ separate FD to update terminal window size.
 
 from __future__ import annotations
 
+import os
 import sys
 from contextlib import suppress
 from os import (
+    close,
     execvp,
     read,
     waitpid,
@@ -83,7 +85,11 @@ def main() -> None:
 
 if sys.platform != "win32":
     from fcntl import ioctl  # ty: ignore[possibly-missing-import]
-    from os import getpgid, getppid, killpg  # ty: ignore[possibly-missing-import]
+    from os import (
+        WNOHANG,  # ty: ignore[possibly-missing-import]
+        getppid,
+        killpg,  # ty: ignore[possibly-missing-import]
+    )
     from pty import fork  # ty: ignore[possibly-missing-import]
     from signal import SIGHUP, SIGKILL  # ty: ignore[possibly-missing-import]
     from termios import TIOCSWINSZ  # ty: ignore[possibly-missing-import]
@@ -91,35 +97,85 @@ if sys.platform != "win32":
     """Selector timeout used to periodically check parent process liveness."""
     _SELECT_TIMEOUT_SECONDS = 0.5
 
-    """Signal grace timings for child process-group termination escalation."""
+    """Seconds to wait for the shell to exit after each signal."""
     _TERMINATION_SEQUENCE = (
         (SIGHUP, 1.0),
         (SIGTERM, 1.0),
-        (SIGKILL, 0.0),  # No grace period after SIGKILL since it's not catchable.
+        (SIGKILL, 2.0),
     )
 
-    def terminate_process_group(pid: int) -> None:
-        """Best-effort termination of the child process group for `pid`.
+    """Polling interval while waiting for the child to exit."""
+    _TERMINATION_POLL_SECONDS = 0.05
 
-        The child created via ``pty.fork()`` runs in its own session/process group,
-        so terminating the proxy process alone does not guarantee the shell tree
-        exits. This helper escalates from ``SIGHUP`` to ``SIGTERM`` and then
-        ``SIGKILL`` with short grace delays.
+    def _group_alive(pgid: int) -> bool:
+        """Return True while at least one live process remains in process group.
+
+        The process group is identified by `pgid`.
         """
-        try:
-            pgid = getpgid(pid)
-        except ProcessLookupError:
-            return
+        if os.path.isdir("/proc"):
+            for entry in os.listdir("/proc"):
+                if not entry.isdigit():
+                    continue
+                try:
+                    with open(f"/proc/{entry}/stat", encoding="utf-8") as stat_file:
+                        fields = stat_file.read().rsplit(")", 1)[1].split()
+                    if int(fields[2]) == pgid and fields[0] not in "ZX":
+                        return True
+                except (OSError, ValueError):
+                    continue
+            return False
 
-        for sig, wait_seconds in _TERMINATION_SEQUENCE:
-            try:
-                killpg(pgid, sig)
-            except ProcessLookupError:
-                return
-            # Give the process group a brief grace window between escalation
-            # steps to exit cleanly before sending a stronger signal.
-            if wait_seconds > 0:
-                sleep(wait_seconds)
+        try:
+            killpg(pgid, 0)
+            return True
+        except PermissionError:
+            # On macOS, a group whose remaining members have all exited but
+            # are not yet collected answers EPERM, so this means "no live
+            # member".
+            return False
+        except ProcessLookupError:
+            return False
+        except OSError:
+            return False
+
+    def terminate_shell(pid: int, pty_fd: int) -> int | None:
+        """Close the pseudo-terminal and stop the shell's process group.
+
+        Close the pseudo-terminal, send SIGHUP, SIGTERM, and SIGKILL to the
+        shell's process group, waiting after each until no live process remains
+        in the group. Then collect the shell and return its wait status, or
+        ``None`` if it remains running.
+        """
+        # Close the master first: the kernel hangs up the session and drops
+        # pending output, so an exiting shell cannot block on its final terminal
+        # write.
+        with suppress(OSError):
+            close(pty_fd)
+
+        group_quiet = False
+        for sig, grace in _TERMINATION_SEQUENCE:
+            # On macOS, killpg can raise PermissionError when the group's only
+            # member has exited; the next poll collects the child harmlessly.
+            with suppress(OSError):
+                killpg(pid, sig)
+            elapsed = 0.0
+            while elapsed < grace:
+                interval = min(_TERMINATION_POLL_SECONDS, grace - elapsed)
+                sleep(interval)
+                elapsed += interval
+                if not _group_alive(pid):
+                    group_quiet = True
+                    break
+            if group_quiet:
+                break
+
+        try:
+            waited, status = waitpid(pid, WNOHANG)
+        except ChildProcessError:
+            return 0
+        if waited == pid:
+            return status
+        return None
 
     class _SelectorHandler:
         """Base context-manager that registers a read-callback for an FD.
@@ -242,6 +298,7 @@ if sys.platform != "win32":
 
         old_sigint = signal(SIGINT, request_shutdown)
         old_sigterm = signal(SIGTERM, request_shutdown)
+        exit_code: int | None = None
         try:
             with (
                 DefaultSelector() as selector,
@@ -267,12 +324,26 @@ if sys.platform != "win32":
                 )
                 # If host side is gone (or we got SIGINT/SIGTERM), tear
                 # down the child session proactively to avoid orphans.
-                if pipe_pty.registered and (host_disconnected or shutdown_requested):
-                    terminate_process_group(pid)
+                # Exit 0 when the host asked for the shutdown and the shell has
+                # exited: the shell's signal status carries no information for
+                # the user, and "0" is in the plugin's default success exit
+                # codes (src/magic.ts), so no error notice.
+                # Exit 1 only when the shell is still running after the last wait.
+                if host_disconnected or shutdown_requested:
+                    if pipe_pty.registered:
+                        exit_code = 0 if terminate_shell(pid, pty_fd) is not None else 1
+                    else:
+                        # The shell already exited on its own; collect it and
+                        # report success because the host asked for shutdown.
+                        with suppress(ChildProcessError):
+                            waitpid(pid, 0)
+                        exit_code = 0
         finally:
             signal(SIGINT, old_sigint)
             signal(SIGTERM, old_sigterm)
 
+        if exit_code is not None:
+            exit(exit_code)
         exit(waitstatus_to_exitcode(waitpid(pid, 0)[1]))
 
 
