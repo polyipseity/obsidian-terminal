@@ -14,9 +14,10 @@
  * - `DOCUMENTATIONS.donate()` warns twice when both the listEl path and the
  *   deprecated renderInstalledPlugin path find no element, then opens the URL.
  *
- * `revealPrivate` and `openExternal` are external boundaries. `revealPrivate`
- * is emulated as a `try func / catch -> fallback` wrapper, matching the real
- * contract evidenced by the original issue's stack trace
+ * `revealPrivateFilter` and `openExternal` are external boundaries.
+ * `revealPrivateFilter` is emulated as a factory returning a
+ * `try func / catch -> fallback` wrapper, matching the real contract evidenced
+ * by the original issue's stack trace
  * (`renderInstalledPlugin -> func -> revealPrivate -> donate`).
  *
  * `activeSelf` is stubbed to return `self` unconditionally: the real
@@ -44,18 +45,19 @@ vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => {
     // property 'defaultView'"); always returning `self` is safe for these tests.
     activeSelf: () => self,
     openExternal: openExternalSpy,
-    revealPrivate: ((
-      _context: unknown,
-      args: readonly unknown[],
-      func: (...a: readonly unknown[]) => unknown,
-      fallback: (error: unknown) => unknown,
-    ): unknown => {
-      try {
-        return func(...args);
-      } catch (error) {
-        return fallback(error);
-      }
-    }) as unknown as typeof actual.revealPrivate,
+    revealPrivateFilter: (() =>
+      (
+        _context: unknown,
+        args: readonly unknown[],
+        func: (...a: readonly unknown[]) => unknown,
+        fallback: (error: unknown) => unknown,
+      ): unknown => {
+        try {
+          return func(...args);
+        } catch (error) {
+          return fallback(error);
+        }
+      }) as unknown as typeof actual.revealPrivateFilter,
   };
 });
 

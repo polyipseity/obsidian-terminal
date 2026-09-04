@@ -1,4 +1,7 @@
 import {
+  type $App,
+  type $CommunityPluginsSettingTab,
+  type $UnknownSettingTab,
   DocumentationMarkdownView,
   StorageSettingsManager,
   activeSelf,
@@ -7,7 +10,7 @@ import {
   deepFreeze,
   openExternal,
   printError,
-  revealPrivate,
+  revealPrivateFilter,
   toJSONOrString,
   typedKeys,
 } from "@polyipseity/obsidian-plugin-library";
@@ -37,7 +40,10 @@ export const DOCUMENTATIONS = deepFreeze({
       context,
       context: { app, manifest },
     } = view;
-    revealPrivate(
+    revealPrivateFilter<
+      [$App, $CommunityPluginsSettingTab, $UnknownSettingTab],
+      [Document, HTMLElement]
+    >()(
       context,
       [app],
       (app0) => {

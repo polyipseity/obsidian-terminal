@@ -2,11 +2,12 @@ import { EditTerminalModal, TerminalView } from "./view.js";
 import {
   Platform,
   getDefaultSuggestModalInstructions,
-  revealPrivate,
+  revealPrivateFilter,
 } from "@polyipseity/obsidian-plugin-library";
 import { FuzzySuggestModal } from "obsidian";
 import { Settings } from "../settings-data.js";
 import type { TerminalPlugin } from "../main.js";
+import type { $SuggestModal } from "../@types/obsidian.js";
 import { noop } from "es-toolkit/compat";
 
 export class SelectProfileModal extends FuzzySuggestModal<Settings.Profile.Entry | null> {
@@ -39,7 +40,7 @@ export class SelectProfileModal extends FuzzySuggestModal<Settings.Profile.Entry
       if (evt.isComposing) {
         return true;
       }
-      revealPrivate(
+      revealPrivateFilter<[$SuggestModal], [KeyboardEvent, MouseEvent]>()(
         context,
         [this],
         (this0) => {
