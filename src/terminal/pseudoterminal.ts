@@ -284,7 +284,7 @@ export class DeveloperConsolePseudoterminal
       },
     });
     this.onExit
-      .catch(noop satisfies () => unknown)
+      .catch(noop)
       .finally(log.logger.listen(async (event) => this.write([event])))
       .finally(() => {
         new Functions(
@@ -412,7 +412,7 @@ export class DeveloperConsolePseudoterminal
         disposer0.dispose();
       }),
     );
-    this.onExit.catch(noop satisfies () => unknown).finally(() => {
+    this.onExit.catch(noop).finally(() => {
       disposer.call();
     });
     await this.write(this.log.history, [terminal]);
@@ -1024,7 +1024,7 @@ class WindowsPseudoterminal implements Pseudoterminal {
     const writer = terminal.onData(async (data) =>
       writePromise(shell.stdin, data),
     );
-    this.onExit.catch(noop satisfies () => unknown).finally(() => {
+    this.onExit.catch(noop).finally(() => {
       writer.dispose();
     });
   }
@@ -1117,7 +1117,7 @@ class UnixPseudoterminal implements Pseudoterminal {
     const writer = terminal.onData(async (data) =>
       writePromise(shell.stdin, data),
     );
-    this.onExit.catch(noop satisfies () => unknown).finally(() => {
+    this.onExit.catch(noop).finally(() => {
       writer.dispose();
     });
   }

@@ -1080,7 +1080,7 @@ export class TerminalView extends ItemView {
                   profile: JSON.stringify(profile, null, JSON_STRINGIFY_SPACE),
                 }),
               );
-              pty.onExit.catch(noop satisfies () => unknown).finally(
+              pty.onExit.catch(noop).finally(
                 onChangeLanguage.listen(() => {
                   pty.text = i18n.t("components.terminal.unsupported-profile", {
                     interpolation: { escapeValue: false },

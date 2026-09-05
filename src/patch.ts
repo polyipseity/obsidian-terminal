@@ -73,9 +73,7 @@ function patchLoggingConsole(console: Console, log: Log): () => void {
       recursive = true;
       try {
         try {
-          log.logger
-            .emit({ data: args, type })
-            .catch(noop satisfies () => unknown);
+          log.logger.emit({ data: args, type }).catch(noop);
         } catch (error) {
           this.error(error);
         } finally {
@@ -109,7 +107,7 @@ function patchLoggingWindow(self0: Window, log: Log): () => void {
           data: error,
           type: "windowError",
         })
-        .catch(noop satisfies () => unknown);
+        .catch(noop);
     },
     onUnhandledRejection = (error: PromiseRejectionEvent): void => {
       log.logger
@@ -117,7 +115,7 @@ function patchLoggingWindow(self0: Window, log: Log): () => void {
           data: error,
           type: "unhandledRejection",
         })
-        .catch(noop satisfies () => unknown);
+        .catch(noop);
     },
     ret = new Functions(
       { async: false, settled: true },

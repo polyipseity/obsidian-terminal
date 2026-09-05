@@ -188,7 +188,7 @@ export class XtermTerminalEmulator<A> {
     });
     this.pseudoterminal
       .then(async (pty0) => pty0.onExit)
-      .catch(noop satisfies () => unknown)
+      .catch(noop)
       .finally(() => {
         this.#running = false;
       });
