@@ -35,7 +35,11 @@ import { identity, noop } from "es-toolkit/function";
 import { Modal, Setting } from "obsidian";
 import type { DeepWritable } from "ts-essentials";
 import { BUNDLE } from "./imports.js";
-import { CHECK_EXECUTABLE_WAIT, PYTHON_REQUIREMENTS } from "./magic.js";
+import {
+  CHECK_EXECUTABLE_WAIT,
+  DOMClasses2,
+  PYTHON_REQUIREMENTS,
+} from "./magic.js";
 import { applyEnv } from "./terminal/environment.js";
 import {
   DEFAULT_TERMINAL_OPTIONS,
@@ -931,7 +935,7 @@ export class ProfileModal extends Modal {
                           )
                           .setDisabled(!editable);
                         if (!refs) {
-                          textArea.inputEl.classList.add("terminal:hidden");
+                          textArea.inputEl.classList.add(DOMClasses2.HIDDEN);
                           return;
                         }
                         textArea
@@ -951,7 +955,7 @@ export class ProfileModal extends Modal {
                           )
                           .setDisabled(!editable);
                         if (!refs) {
-                          textArea.inputEl.classList.add("terminal:hidden");
+                          textArea.inputEl.classList.add(DOMClasses2.HIDDEN);
                           return;
                         }
                         textArea
@@ -1279,7 +1283,7 @@ export class ProfileListModal extends ListModal<
             .setTooltip(i18n.t("components.profile-list.mark-as-default"))
             .setDisabled(!editable);
           if (!refs) {
-            button.buttonEl.classList.add("terminal:hidden");
+            button.buttonEl.classList.add(DOMClasses2.HIDDEN);
             return;
           }
           if (
@@ -1310,7 +1314,7 @@ export class ProfileListModal extends ListModal<
             .setTooltip(i18n.t("components.profile-list.edit"))
             .setDisabled(!editable);
           if (!refs) {
-            button.buttonEl.classList.add("terminal:hidden");
+            button.buttonEl.classList.add(DOMClasses2.HIDDEN);
             return;
           }
           button.onClick(() => {
@@ -1703,7 +1707,7 @@ export class KeymappingsModal extends ListModal<
             .setTooltip(i18n.t("components.keymappings.edit"))
             .setDisabled(!editable);
           if (!refs) {
-            button.buttonEl.classList.add("terminal:hidden");
+            button.buttonEl.classList.add(DOMClasses2.HIDDEN);
             return;
           }
           button.onClick(() => {

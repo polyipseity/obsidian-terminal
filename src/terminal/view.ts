@@ -828,11 +828,11 @@ export class TerminalView extends ItemView {
                 userTitle = value;
               });
           });
-          controlEl.classList.add("terminal:full-width");
+          controlEl.classList.add(DOMClasses2.FULL_WIDTH);
           controlEl
             .querySelectorAll<HTMLInputElement>(":scope > input")
             .forEach((input) => {
-              input.classList.add("terminal:full-width");
+              input.classList.add(DOMClasses2.FULL_WIDTH);
             });
         });
       },
