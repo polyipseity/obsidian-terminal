@@ -9,10 +9,10 @@ import {
   Platform,
   registerSettingsCommands,
   resetButton,
+  setSanitizedInnerHTML,
   setTextToEnum,
 } from "@polyipseity/obsidian-plugin-library";
 import { cloneDeep, size } from "es-toolkit/compat";
-import { sanitizeHTMLToDom } from "obsidian";
 import semverLt from "semver/functions/lt.js";
 import type { loadDocumentations } from "./documentations.js";
 import type { TerminalPlugin } from "./main.js";
@@ -720,10 +720,9 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
         .setDesc(
           createDocumentFragment(settingEl.ownerDocument, (frag) => {
             createChildElement(frag, "span", (ele) => {
-              ele.replaceChildren(
-                sanitizeHTMLToDom(
-                  i18n.t("settings.expose-internal-modules-description-HTML"),
-                ),
+              setSanitizedInnerHTML(
+                ele,
+                i18n.t("settings.expose-internal-modules-description-HTML"),
               );
             });
           }),

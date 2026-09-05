@@ -24,6 +24,7 @@ import {
   printError,
   randomNotIn,
   resetButton,
+  setSanitizedInnerHTML,
   setTextToEnum,
   setTextToNumber,
   unexpected,
@@ -31,7 +32,7 @@ import {
   useSubsettings,
 } from "@polyipseity/obsidian-plugin-library";
 import { constant, identity, noop } from "es-toolkit/compat";
-import { Modal, Setting, sanitizeHTMLToDom } from "obsidian";
+import { Modal, Setting } from "obsidian";
 import type { DeepWritable } from "ts-essentials";
 import { BUNDLE } from "./imports.js";
 import { CHECK_EXECUTABLE_WAIT, PYTHON_REQUIREMENTS } from "./magic.js";
@@ -91,10 +92,9 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
     ui.new(
       () => createChildElement(element, "div"),
       (ele) => {
-        ele.replaceChildren(
-          sanitizeHTMLToDom(
-            i18n.t("components.terminal-options.description-HTML"),
-          ),
+        setSanitizedInnerHTML(
+          ele,
+          i18n.t("components.terminal-options.description-HTML"),
         );
       },
       (ele) => {
@@ -729,12 +729,9 @@ export class ProfileModal extends Modal {
           .setDesc(
             createDocumentFragment(settingEl.ownerDocument, (frag) => {
               createChildElement(frag, "span", (ele) => {
-                ele.replaceChildren(
-                  sanitizeHTMLToDom(
-                    i18n.t(
-                      "components.profile.restore-history-description-HTML",
-                    ),
-                  ),
+                setSanitizedInnerHTML(
+                  ele,
+                  i18n.t("components.profile.restore-history-description-HTML"),
                 );
               });
             }),
