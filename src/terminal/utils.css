@@ -1,0 +1,9 @@
+/* Utility classes for dynamic element state. */
+
+.terminal\:hidden {
+  visibility: hidden;
+}
+
+.terminal\:full-width {
+  width: 100%;
+}
