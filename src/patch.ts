@@ -262,7 +262,7 @@ function patchRequire(
           /* @__PURE__ */ self0.console.debug(error);
           return dynamicRequireSync(new Map(), ...args);
         }
-      } as NodeJS.Require;
+      } as typeof window.require;
     },
     toString: aroundIdentityFactory(),
   });

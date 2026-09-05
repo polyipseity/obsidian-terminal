@@ -94,6 +94,16 @@ export default defineConfig([
       ),
     },
   },
+  // Most of these files are desktop-only, and are properly guarded
+  {
+    files: ["src/terminal/environment.ts", "src/terminal/pseudoterminal.ts"],
+    languageOptions: {
+      globals: {
+        ...globals.nodeBuiltin,
+        NodeJS: false,
+      },
+    },
+  },
 ]);
 
 /**

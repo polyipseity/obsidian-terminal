@@ -52,6 +52,8 @@ import {
 
 import ansi from "ansi-escape-sequences";
 import AsyncLock from "async-lock";
+// eslint-disable-next-line eslint-comments/no-restricted-disable -- See below.
+// eslint-disable-next-line obsidianmd/no-nodejs-modules -- Type-only import.
 import type { ChildProcessWithoutNullStreams as PipedChildProcess } from "node:child_process";
 import type { DeveloperConsoleContext } from "obsidian-terminal";
 import type { Position } from "source-map";
