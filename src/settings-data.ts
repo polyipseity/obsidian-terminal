@@ -419,7 +419,7 @@ export namespace Settings {
   );
 
   export namespace Keymapping {
-    export const DEFAULT = deepFreeze({
+    export const DEFAULT: Keymapping = deepFreeze({
       action: "ignore",
       actionArg: null,
       alt: false,
@@ -428,7 +428,7 @@ export namespace Settings {
       meta: false,
       platform: null,
       shift: false,
-    }) satisfies Keymapping;
+    });
 
     export function isValidActionArg<
       const T extends (typeof ACTION_ARG_TYPES)[keyof typeof ACTION_ARG_TYPES],
