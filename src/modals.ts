@@ -1095,7 +1095,7 @@ export class ProfileModal extends Modal {
                       return;
                     }
                     checkingPython = true;
-                    void (async (): Promise<void> => {
+                    (async (): Promise<void> => {
                       const [execFileP2, getPackageVersion2] =
                           await Promise.all([execFileP, getPackageVersion]),
                         env = await applyEnv(),
@@ -1457,7 +1457,7 @@ export class KeymappingEditModal extends Modal {
         data.alt = event.altKey;
         data.meta = event.metaKey;
         data.shift = event.shiftKey;
-        void (async () => {
+        (async () => {
           await this.postMutate();
         })().catch((error: unknown) => {
           activeSelf(event).console.error(error);
