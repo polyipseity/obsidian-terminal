@@ -51,8 +51,6 @@ export default defineConfig([
         },
       ],
       "@typescript-eslint/no-namespace": "off",
-      // The TypeScript compiler already reports undefined identifiers; core `no-undef` false-positives on type-only globals such as the `NodeJS` namespace and Electron's renderer `require`.
-      "no-undef": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
@@ -77,17 +75,6 @@ export default defineConfig([
       "obsidianmd/no-nodejs-modules": "off",
       "obsidianmd/prefer-create-el": "off",
       "obsidianmd/rule-custom-message": "off",
-    },
-  },
-  // Desktop-only integrated-terminal modules import Node builtins as types only (erased at compile time); runtime Node access goes through guarded dynamic requires
-  {
-    files: [
-      "src/terminal/emulator.ts",
-      "src/terminal/pseudoterminal.ts",
-      "src/utils.ts",
-    ],
-    rules: {
-      "obsidianmd/no-nodejs-modules": "off",
     },
   },
   // JSON files are data declarations, not executable code — expression and UI-text rules don't apply
