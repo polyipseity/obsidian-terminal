@@ -1379,47 +1379,54 @@ export namespace TerminalView {
         },
         settings,
       } = context,
-      newLeaf =
-        ((): WorkspaceLeaf | null => {
-          if (settings.value.createInstanceNearExistingOnes) {
-            const existingLeaves = workspace.getLeavesOfType(
-                TerminalView.type.namespaced(context),
-              ),
-              existingLeaf = leaf ?? existingLeaves[existingLeaves.length - 1];
-            if (existingLeaf) {
-              const root = existingLeaf.getRoot();
-              if (root === leftSplit) {
-                return workspace.getLeftLeaf(false);
-              }
-              if (root === rightSplit) {
-                return workspace.getRightLeaf(false);
-              }
-              workspace.setActiveLeaf(existingLeaf);
-              return workspace.getLeaf("tab");
+      newLeaf = ((): WorkspaceLeaf => {
+        if (settings.value.createInstanceNearExistingOnes) {
+          const existingLeaves = workspace.getLeavesOfType(
+              TerminalView.type.namespaced(context),
+            ),
+            existingLeaf = leaf ?? existingLeaves[existingLeaves.length - 1];
+          if (existingLeaf) {
+            const root = existingLeaf.getRoot();
+            if (root === leftSplit) {
+              const ret = workspace.getLeftLeaf(false);
+              if (ret !== null) return ret;
             }
+            if (root === rightSplit) {
+              const ret = workspace.getRightLeaf(false);
+              if (ret !== null) return ret;
+            }
+            workspace.setActiveLeaf(existingLeaf);
+            return workspace.getLeaf("tab");
           }
-          switch (settings.value.newInstanceBehavior) {
-            case "replaceTab":
-              return workspace.getLeaf();
-            case "newTab":
-              return workspace.getLeaf("tab");
-            case "newLeftTab":
-              return workspace.getLeftLeaf(false);
-            case "newLeftSplit":
-              return workspace.getLeftLeaf(true);
-            case "newRightTab":
-              return workspace.getRightLeaf(false);
-            case "newRightSplit":
-              return workspace.getRightLeaf(true);
-            case "newHorizontalSplit":
-              return workspace.getLeaf("split", "horizontal");
-            case "newVerticalSplit":
-              return workspace.getLeaf("split", "vertical");
-            case "newWindow":
-              return workspace.getLeaf("window");
-            // No default
-          }
-        })() ?? workspace.getLeaf("tab");
+        }
+        switch (settings.value.newInstanceBehavior) {
+          case "replaceTab":
+            return workspace.getLeaf();
+          case "newTab":
+            return workspace.getLeaf("tab");
+          case "newLeftTab":
+            return workspace.getLeftLeaf(false) ?? workspace.getLeaf("tab");
+          case "newLeftSplit":
+            return (
+              workspace.getLeftLeaf(true) ??
+              workspace.getLeaf("split", "horizontal")
+            );
+          case "newRightTab":
+            return workspace.getRightLeaf(false) ?? workspace.getLeaf("tab");
+          case "newRightSplit":
+            return (
+              workspace.getRightLeaf(true) ??
+              workspace.getLeaf("split", "horizontal")
+            );
+          case "newHorizontalSplit":
+            return workspace.getLeaf("split", "horizontal");
+          case "newVerticalSplit":
+            return workspace.getLeaf("split", "vertical");
+          case "newWindow":
+            return workspace.getLeaf("window");
+          // No default
+        }
+      })();
     newLeaf.setPinned(settings.value.pinNewInstance);
     return newLeaf;
   }
