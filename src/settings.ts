@@ -213,7 +213,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               async (value) =>
                 settings.mutate((settingsM) => {
                   // Unfortunately we have to use the empty string as a sentinel value for "no default profile" because the dropdown component doesn't allow null/undefined values. So we have to coerce it back to null here.
-                  settingsM.defaultProfile = value === "" ? null : value;
+                  settingsM.defaultProfile =
+                    value === "" ? null : (value as Settings.DefaultProfile);
                 }),
               () => {
                 this.postMutate();
