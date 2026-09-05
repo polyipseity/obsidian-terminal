@@ -32,7 +32,6 @@ import { type Program, parse } from "acorn";
 import inspect, { type Options } from "browser-util-inspect";
 import { noop } from "es-toolkit/function";
 import { isNil } from "es-toolkit/predicate";
-import { isEmpty } from "es-toolkit/compat";
 import {
   DEFAULT_ENCODING,
   EXIT_SUCCESS,
@@ -341,7 +340,7 @@ export class DeveloperConsolePseudoterminal
           );
         }),
         terminal.onKey(({ domEvent }) => {
-          if (!isEmpty(getKeyModifiers(domEvent))) {
+          if (getKeyModifiers(domEvent).length > 0) {
             return;
           }
           function logError(error: unknown): void {

@@ -12,7 +12,7 @@ import {
   setSanitizedInnerHTML,
   setTextToEnum,
 } from "@polyipseity/obsidian-plugin-library";
-import { cloneDeep, size } from "es-toolkit/compat";
+import { cloneDeep } from "es-toolkit/compat";
 import semverLt from "semver/functions/lt.js";
 import type { loadDocumentations } from "./documentations.js";
 import type { TerminalPlugin } from "./main.js";
@@ -158,7 +158,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
           .setName(i18n.t("settings.profiles"))
           .setDesc(
             i18n.t("settings.profiles-description", {
-              count: size(settings.value.profiles),
+              count: Object.keys(settings.value.profiles).length,
               interpolation: { escapeValue: false },
             }),
           )

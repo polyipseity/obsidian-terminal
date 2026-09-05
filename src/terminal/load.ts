@@ -7,7 +7,6 @@ import {
   isNonNil,
   notice2,
 } from "@polyipseity/obsidian-plugin-library";
-import { isEmpty } from "es-toolkit/compat";
 import {
   FileSystemAdapter,
   MarkdownView,
@@ -233,7 +232,7 @@ export function loadTerminal(context: TerminalPlugin): void {
       const items = PROFILE_TYPES.map((type) =>
         contextMenu(type, folder),
       ).filter(isNonNil);
-      if (!isEmpty(items)) {
+      if (items.length > 0) {
         menu.addSeparator();
         items.forEach((item) => menu.addItem(item));
       }
@@ -253,7 +252,7 @@ export function loadTerminal(context: TerminalPlugin): void {
       const items = PROFILE_TYPES.map((type) =>
         contextMenu(type, parent),
       ).filter(isNonNil);
-      if (!isEmpty(items)) {
+      if (items.length > 0) {
         menu.addSeparator();
         items.forEach((item) => menu.addItem(item));
       }
