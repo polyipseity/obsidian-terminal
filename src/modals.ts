@@ -1299,7 +1299,8 @@ export class ProfileListModal extends ListModal<
                 return;
               }
               // Set the default profile to the clicked profile
-              this.dataProfileList.defaultProfile = id;
+              this.dataProfileList.defaultProfile =
+                id as Settings.DefaultProfile;
             });
           });
         });
