@@ -16,8 +16,7 @@ import type {
   ITerminalOptions,
   Terminal,
 } from "@xterm/xterm";
-import { noop } from "es-toolkit/function";
-import { throttle } from "es-toolkit/compat";
+import { noop, throttle } from "es-toolkit/function";
 import type { ChildProcessByStdio } from "node:child_process";
 import type { AsyncOrSync } from "ts-essentials";
 import { BUNDLE } from "../imports.js";

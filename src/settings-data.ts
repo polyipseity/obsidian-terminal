@@ -30,7 +30,6 @@ import type {
   IWindowOptions,
   IWindowsPty,
 } from "@xterm/xterm";
-import { isUndefined, omitBy } from "es-toolkit/compat";
 import type {
   DeepReadonly,
   DeepRequired,
@@ -66,6 +65,11 @@ import { Pseudoterminal } from "./terminal/pseudoterminal.js";
 type CompleteUndefinable<T> = {
   readonly [K in keyof Required<T>]: DeepUndefinable<T[K]> | undefined;
 };
+
+const omitUndefined = <T extends Record<string, unknown>>(obj: T): Partial<T> =>
+  Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined),
+  ) as Partial<T>;
 
 export interface LocalSettings extends PluginContext.LocalSettings {
   readonly lastReadChangelogVersion: SemVerString;
@@ -1096,7 +1100,7 @@ export namespace Settings {
                       ]) as ILinkHandler["leave"],
                     } satisfies CompleteUndefinable<ILinkHandler>;
                   return {
-                    ...omitBy(ret, isUndefined),
+                    ...omitUndefined(ret),
                     activate: ret.activate,
                   };
                 })(),
@@ -1135,7 +1139,7 @@ export namespace Settings {
                       ]) as ILogger["warn"],
                     } satisfies CompleteUndefinable<ILogger>;
                   return {
-                    ...omitBy(ret, isUndefined),
+                    ...omitUndefined(ret),
                     debug: ret.debug,
                     error: ret.error,
                     info: ret.info,
@@ -1186,7 +1190,7 @@ export namespace Settings {
                         "number",
                       ]),
                     } satisfies CompleteUndefinable<IOverviewRulerOptions>;
-                  return omitBy(ret, isUndefined);
+                  return omitUndefined(ret);
                 })(),
           reflowCursorLine: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
@@ -1392,7 +1396,7 @@ export namespace Settings {
                         "string",
                       ]),
                     } satisfies CompleteUndefinable<ITheme>;
-                  return omitBy(ret, isUndefined);
+                  return omitUndefined(ret);
                 })(),
           windowOptions:
             unc.windowOptions === void 0
@@ -1535,7 +1539,7 @@ export namespace Settings {
                         ["undefined", "boolean"],
                       ),
                     } satisfies CompleteUndefinable<IWindowOptions>;
-                  return omitBy(ret, isUndefined);
+                  return omitUndefined(ret);
                 })(),
           windowsPty:
             unc.windowsPty === void 0
@@ -1555,7 +1559,7 @@ export namespace Settings {
                         ["undefined", "number"],
                       ),
                     } satisfies CompleteUndefinable<IWindowsPty>;
-                  return omitBy(ret, isUndefined);
+                  return omitUndefined(ret);
                 })(),
           wordSeparator: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
@@ -1565,7 +1569,7 @@ export namespace Settings {
           ),
         } satisfies CompleteUndefinable<TerminalOptions>;
       return markFixed(self0, {
-        ...omitBy(ret2, isUndefined),
+        ...omitUndefined(ret2),
         documentOverride: DEFAULT_TERMINAL_OPTIONS.documentOverride,
       });
     }

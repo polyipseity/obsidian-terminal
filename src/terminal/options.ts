@@ -1,5 +1,6 @@
 import type { Settings } from "../settings-data.js";
-import { cloneDeep, isEqual } from "es-toolkit/compat";
+import { cloneDeep } from "es-toolkit/object";
+import { isEqual } from "es-toolkit/predicate";
 import { cloneAsWritable } from "@polyipseity/obsidian-plugin-library";
 import type { DeepWritable } from "ts-essentials";
 import type { Terminal, ITerminalOptions } from "@xterm/xterm";

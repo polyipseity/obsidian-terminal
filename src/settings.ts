@@ -12,7 +12,7 @@ import {
   setSanitizedInnerHTML,
   setTextToEnum,
 } from "@polyipseity/obsidian-plugin-library";
-import { cloneDeep } from "es-toolkit/compat";
+import { cloneDeep } from "es-toolkit/object";
 import semverLt from "semver/functions/lt.js";
 import type { loadDocumentations } from "./documentations.js";
 import type { TerminalPlugin } from "./main.js";

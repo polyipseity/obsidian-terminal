@@ -24,7 +24,7 @@ import type { DeepReadonly, DeepRequired } from "ts-essentials";
 import ansi from "ansi-escape-sequences";
 import AsyncLock from "async-lock";
 import { Set as valueSet } from "immutable";
-import { range } from "es-toolkit/compat";
+import { range } from "es-toolkit/math";
 import { BUNDLE } from "../imports.js";
 import { MAX_LOCK_PENDING } from "../magic.js";
 
