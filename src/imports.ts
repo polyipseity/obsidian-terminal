@@ -1,7 +1,8 @@
 import { deepFreeze, typedKeys } from "@polyipseity/obsidian-plugin-library";
 
-// Needed for bundler
-/* eslint-disable @typescript-eslint/no-require-imports -- The bundler rewrites these lazy `require()` calls; ESM imports would load the modules eagerly. */
+declare const require: typeof window.require;
+
+// Needed for bundler -- The bundler rewrites these lazy `require()` calls; ESM imports would load the modules eagerly.
 const BUNDLE0 = deepFreeze({
   "@xterm/addon-canvas": (): unknown => require("@xterm/addon-canvas"),
 
@@ -23,9 +24,7 @@ const BUNDLE0 = deepFreeze({
 
   "tmp-promise": (): unknown => require("tmp-promise"),
 });
-/* eslint-enable @typescript-eslint/no-require-imports -- End of the bundler-rewritten lazy `require()` map. */
-export const // Needed for bundler
-  BUNDLE = new Map(Object.entries(BUNDLE0)),
+export const BUNDLE = new Map(Object.entries(BUNDLE0)),
   MODULES =
     typedKeys<
       readonly [
