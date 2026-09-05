@@ -10,7 +10,7 @@ import {
 import type { App } from "obsidian";
 import type { TerminalPlugin } from "./main.js";
 import { around } from "monkey-around";
-import { noop } from "es-toolkit/compat";
+import { noop } from "es-toolkit/function";
 
 export class Log {
   public readonly logger = new EventEmitterLite<readonly [Log.Event]>();
@@ -75,7 +75,7 @@ function patchLoggingConsole(console: Console, log: Log): () => void {
         try {
           log.logger
             .emit({ data: args, type })
-            .catch(noop satisfies () => unknown as () => unknown);
+            .catch(noop satisfies () => unknown);
         } catch (error) {
           this.error(error);
         } finally {
@@ -109,7 +109,7 @@ function patchLoggingWindow(self0: Window, log: Log): () => void {
           data: error,
           type: "windowError",
         })
-        .catch(noop satisfies () => unknown as () => unknown);
+        .catch(noop satisfies () => unknown);
     },
     onUnhandledRejection = (error: PromiseRejectionEvent): void => {
       log.logger
@@ -117,7 +117,7 @@ function patchLoggingWindow(self0: Window, log: Log): () => void {
           data: error,
           type: "unhandledRejection",
         })
-        .catch(noop satisfies () => unknown as () => unknown);
+        .catch(noop satisfies () => unknown);
     },
     ret = new Functions(
       { async: false, settled: true },

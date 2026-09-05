@@ -31,7 +31,7 @@ import {
   useSettings,
   useSubsettings,
 } from "@polyipseity/obsidian-plugin-library";
-import { constant, identity, noop } from "es-toolkit/compat";
+import { noop, identity } from "es-toolkit/function";
 import { Modal, Setting } from "obsidian";
 import type { DeepWritable } from "ts-essentials";
 import { BUNDLE } from "./imports.js";
@@ -434,7 +434,7 @@ export class ProfileModal extends Modal {
         }),
       )
       .new(
-        constant(titleEl),
+        () => titleEl,
         (ele) => {
           ele.textContent = i18n.t("components.profile.title", {
             interpolation: { escapeValue: false },
@@ -1477,7 +1477,7 @@ export class KeymappingEditModal extends Modal {
         }),
       )
       .new(
-        constant(titleEl),
+        () => titleEl,
         (ele) => {
           ele.textContent =
             this.#recordHandler !== null

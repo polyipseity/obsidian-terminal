@@ -13,7 +13,6 @@ import type { CanvasAddon } from "@xterm/addon-canvas";
 import type { WebglAddon } from "@xterm/addon-webgl";
 import type { ILink, ITerminalAddon, ITheme, Terminal } from "@xterm/xterm";
 import { eastAsianWidth } from "get-east-asian-width";
-import { constant, isUndefined } from "es-toolkit/compat";
 import { around } from "monkey-around";
 import { noop } from "ts-essentials";
 import { BUNDLE } from "../imports.js";
@@ -586,7 +585,7 @@ export class FollowThemeAddon implements ITerminalAddon {
     const red = Number(match.groups["red"]),
       green = Number(match.groups["green"]),
       blue = Number(match.groups["blue"]),
-      hasAlpha = !isUndefined(match.groups["alpha"]),
+      hasAlpha = match.groups["alpha"] !== undefined,
       alpha = hasAlpha
         ? Number(match.groups["alpha"])
         : FollowThemeAddon.#COLOR_ALPHA_OPAQUE;
@@ -667,9 +666,8 @@ export class RightClickActionAddon implements ITerminalAddon {
   readonly #disposer = new Functions({ async: false, settled: true });
 
   public constructor(
-    protected readonly action: () => RightClickActionAddon.Action = constant(
+    protected readonly action: () => RightClickActionAddon.Action = () =>
       "default",
-    ),
   ) {}
 
   public activate(terminal: Terminal): void {

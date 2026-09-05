@@ -8,7 +8,7 @@ import { FuzzySuggestModal } from "obsidian";
 import { Settings } from "../settings-data.js";
 import type { TerminalPlugin } from "../main.js";
 import type { $SuggestModal } from "../@types/obsidian.js";
-import { noop } from "es-toolkit/compat";
+import { noop } from "es-toolkit/function";
 
 export class SelectProfileModal extends FuzzySuggestModal<Settings.Profile.Entry | null> {
   public constructor(

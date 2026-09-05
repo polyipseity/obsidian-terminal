@@ -30,7 +30,8 @@ import {
 import type { IMarker, Terminal } from "@xterm/xterm";
 import { type Program, parse } from "acorn";
 import inspect, { type Options } from "browser-util-inspect";
-import { isEmpty, isNil, noop } from "es-toolkit/compat";
+import { noop } from "es-toolkit/function";
+import { isEmpty, isNil } from "es-toolkit/compat";
 import {
   DEFAULT_ENCODING,
   EXIT_SUCCESS,
@@ -283,7 +284,7 @@ export class DeveloperConsolePseudoterminal
       },
     });
     this.onExit
-      .catch(noop satisfies () => unknown as () => unknown)
+      .catch(noop satisfies () => unknown)
       .finally(log.logger.listen(async (event) => this.write([event])))
       .finally(() => {
         new Functions(
@@ -411,11 +412,9 @@ export class DeveloperConsolePseudoterminal
         disposer0.dispose();
       }),
     );
-    this.onExit
-      .catch(noop satisfies () => unknown as () => unknown)
-      .finally(() => {
-        disposer.call();
-      });
+    this.onExit.catch(noop satisfies () => unknown).finally(() => {
+      disposer.call();
+    });
     await this.write(this.log.history, [terminal]);
   }
 
@@ -1025,11 +1024,9 @@ class WindowsPseudoterminal implements Pseudoterminal {
     const writer = terminal.onData(async (data) =>
       writePromise(shell.stdin, data),
     );
-    this.onExit
-      .catch(noop satisfies () => unknown as () => unknown)
-      .finally(() => {
-        writer.dispose();
-      });
+    this.onExit.catch(noop satisfies () => unknown).finally(() => {
+      writer.dispose();
+    });
   }
 }
 
@@ -1120,11 +1117,9 @@ class UnixPseudoterminal implements Pseudoterminal {
     const writer = terminal.onData(async (data) =>
       writePromise(shell.stdin, data),
     );
-    this.onExit
-      .catch(noop satisfies () => unknown as () => unknown)
-      .finally(() => {
-        writer.dispose();
-      });
+    this.onExit.catch(noop satisfies () => unknown).finally(() => {
+      writer.dispose();
+    });
   }
 
   public async resize(columns: number, rows: number): Promise<void> {

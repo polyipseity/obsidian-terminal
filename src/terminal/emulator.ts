@@ -16,7 +16,8 @@ import type {
   ITerminalOptions,
   Terminal,
 } from "@xterm/xterm";
-import { noop, throttle } from "es-toolkit/compat";
+import { noop } from "es-toolkit/function";
+import { throttle } from "es-toolkit/compat";
 import type { ChildProcessByStdio } from "node:child_process";
 import type { AsyncOrSync } from "ts-essentials";
 import { BUNDLE } from "../imports.js";
@@ -188,7 +189,7 @@ export class XtermTerminalEmulator<A> {
     });
     this.pseudoterminal
       .then(async (pty0) => pty0.onExit)
-      .catch(noop satisfies () => unknown as () => unknown)
+      .catch(noop satisfies () => unknown)
       .finally(() => {
         this.#running = false;
       });

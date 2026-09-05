@@ -44,7 +44,7 @@ import type { SearchAddon } from "@xterm/addon-search";
 import type { Unicode11Addon } from "@xterm/addon-unicode11";
 import type { WebLinksAddon } from "@xterm/addon-web-links";
 import { type ITerminalOptions, Terminal } from "@xterm/xterm";
-import { noop } from "es-toolkit/compat";
+import { noop } from "es-toolkit/function";
 import {
   FileSystemAdapter,
   ItemView,
@@ -1080,23 +1080,18 @@ export class TerminalView extends ItemView {
                   profile: JSON.stringify(profile, null, JSON_STRINGIFY_SPACE),
                 }),
               );
-              pty.onExit
-                .catch(noop satisfies () => unknown as () => unknown)
-                .finally(
-                  onChangeLanguage.listen(() => {
-                    pty.text = i18n.t(
-                      "components.terminal.unsupported-profile",
-                      {
-                        interpolation: { escapeValue: false },
-                        profile: JSON.stringify(
-                          profile,
-                          null,
-                          JSON_STRINGIFY_SPACE,
-                        ),
-                      },
-                    );
-                  }),
-                );
+              pty.onExit.catch(noop satisfies () => unknown).finally(
+                onChangeLanguage.listen(() => {
+                  pty.text = i18n.t("components.terminal.unsupported-profile", {
+                    interpolation: { escapeValue: false },
+                    profile: JSON.stringify(
+                      profile,
+                      null,
+                      JSON_STRINGIFY_SPACE,
+                    ),
+                  });
+                }),
+              );
               return pty;
             },
             serial ?? void 0,
