@@ -45,7 +45,7 @@ This guide provides clear, actionable instructions for AI coding agents working 
   - Python environment / `uv` usage: This package follows the workspace convention of adding `uvloop` extras to `tool.uv.default-groups`. Run `uv sync` locally to install dev and platform event-loop extras; CI should use `uv sync --locked`. Avoid `--all-extras` / `--dev` flags.
 
 - **Versioning**
-  - Use `changesets` for PRs; version lifecycle scripts are configured (`version` / `postversion`).
+  - Use `changesets` for PRs; the `version` lifecycle script is configured (`node scripts/version.mjs`).
 
 - **Localization**
   - Add locales by copying `assets/locales/en/translation.json` and updating `assets/locales/*/language.json` as needed. See `assets/locales/README.md` for conventions.
@@ -71,7 +71,7 @@ Quick reference for scripts in `package.json`. Use `bun` (preferred).
 - `format:md` — `markdownlint-cli2 --fix`.
 - `commitlint` — `commitlint --from=origin/main --to=HEAD`.
 - `prepare` — runs `prek install` to set up Git hooks.
-- `version` / `postversion` — version lifecycle scripts (`node scripts/version.mjs`, `node scripts/version-post.mjs`).
+- `version` — version lifecycle script (`node scripts/version.mjs`).
 
 > CI tip: Use `bun install --frozen-lockfile` in CI for deterministic installs.
 
@@ -294,6 +294,10 @@ This section contains concise, actionable rules and project-specific examples to
 - PR checklist: run the code review skill (`.agents/skills/code-review/SKILL.md`) for structured change assessment.
 
 > Note: Keep suggestions and changes small and well-scoped. Prefer to add tests first for behavioral changes and follow the test naming conventions above.
+
+## 9. Vendor submodule
+
+The library `@polyipseity/obsidian-plugin-library` is vendored as a git **submodule** at `vendor/obsidian-plugin-library/` (see `.gitmodules`). A **sibling** checkout also exists at `../obsidian-plugin-library/` in the monorepo — same remote, different history. Do not confuse them. When asked to commit to "the vendor submodule", the target is `vendor/obsidian-plugin-library` only; verify with `git -C vendor/obsidian-plugin-library rev-parse --show-toplevel` (must end in `vendor/obsidian-plugin-library`) before any git write. See `.agents/instructions/submodule.instructions.md` for the full boundary rule.
 
 ---
 
