@@ -1096,104 +1096,100 @@ export class ProfileModal extends Modal {
                     }
                     checkingPython = true;
                     void (async (): Promise<void> => {
-                      try {
-                        const [execFileP2, getPackageVersion2] =
-                            await Promise.all([execFileP, getPackageVersion]),
-                          env = await applyEnv(),
-                          { stdout, stderr } = await execFileP2(
-                            profile.pythonExecutable,
-                            ["--version"],
-                            {
-                              env,
-                              timeout: CHECK_EXECUTABLE_WAIT * SI_PREFIX_SCALE,
-                              windowsHide: true,
-                            },
-                          );
-                        if (stdout) {
-                          activeSelf(buttonEl).console.log(stdout);
-                        }
-                        if (stderr) {
-                          activeSelf(buttonEl).console.error(stderr);
-                        }
-                        if (!stdout.trimStart().startsWith("Python ")) {
-                          throw new Error(i18n.t("errors.not-Python"));
-                        }
-                        const msgs = await Promise.all(
-                          Object.entries(PYTHON_REQUIREMENTS)
-                            .filter(([, { platforms }]) =>
-                              inSet(platforms, Platform.CURRENT),
-                            )
-                            .map(async ([name, { version: req }]) => {
-                              let ver: SemVer | null = null;
-                              try {
-                                if (name === "Python") {
-                                  ver = new SemVer(
-                                    semverCoerce(stdout, { loose: true }) ??
-                                      stdout,
-                                    { loose: true },
-                                  );
-                                } else {
-                                  const { stdout: stdout2, stderr: stderr2 } =
-                                    await execFileP2(
-                                      profile.pythonExecutable,
-                                      ["-c", getPackageVersion2, name],
-                                      {
-                                        env,
-                                        timeout:
-                                          CHECK_EXECUTABLE_WAIT *
-                                          SI_PREFIX_SCALE,
-                                        windowsHide: true,
-                                      },
-                                    );
-                                  if (stdout2) {
-                                    activeSelf(buttonEl).console.log(stdout2);
-                                  }
-                                  if (stderr2) {
-                                    activeSelf(buttonEl).console.error(stderr2);
-                                  }
-                                  ver = new SemVer(
-                                    semverCoerce(stdout2, { loose: true }) ??
-                                      stdout2,
-                                    { loose: true },
-                                  );
-                                }
-                              } catch (error) {
-                                /* @__PURE__ */ activeSelf(
-                                  buttonEl,
-                                ).console.debug(error);
-                              }
-                              const variant =
-                                (ver?.compare(req) ?? -1) >= 0
-                                  ? ""
-                                  : "unsatisfied";
-                              return (): string =>
-                                i18n.t(
-                                  `notices.Python-status-entry-${variant}`,
-                                  {
-                                    interpolation: { escapeValue: false },
-                                    name,
-                                    requirement: `>=${req.version}`,
-                                    version: ver?.version ?? "",
-                                  },
+                      const [execFileP2, getPackageVersion2] =
+                          await Promise.all([execFileP, getPackageVersion]),
+                        env = await applyEnv(),
+                        { stdout, stderr } = await execFileP2(
+                          profile.pythonExecutable,
+                          ["--version"],
+                          {
+                            env,
+                            timeout: CHECK_EXECUTABLE_WAIT * SI_PREFIX_SCALE,
+                            windowsHide: true,
+                          },
+                        );
+                      if (stdout) {
+                        activeSelf(buttonEl).console.log(stdout);
+                      }
+                      if (stderr) {
+                        activeSelf(buttonEl).console.error(stderr);
+                      }
+                      if (!stdout.trimStart().startsWith("Python ")) {
+                        throw new Error(i18n.t("errors.not-Python"));
+                      }
+                      const msgs = await Promise.all(
+                        Object.entries(PYTHON_REQUIREMENTS)
+                          .filter(([, { platforms }]) =>
+                            inSet(platforms, Platform.CURRENT),
+                          )
+                          .map(async ([name, { version: req }]) => {
+                            let ver: SemVer | null = null;
+                            try {
+                              if (name === "Python") {
+                                ver = new SemVer(
+                                  semverCoerce(stdout, { loose: true }) ??
+                                    stdout,
+                                  { loose: true },
                                 );
-                            }),
-                        );
-                        notice2(
-                          () => msgs.map((msg) => msg()).join("\n"),
-                          settings.value.noticeTimeout,
-                          context,
-                        );
-                      } catch (error) {
+                              } else {
+                                const { stdout: stdout2, stderr: stderr2 } =
+                                  await execFileP2(
+                                    profile.pythonExecutable,
+                                    ["-c", getPackageVersion2, name],
+                                    {
+                                      env,
+                                      timeout:
+                                        CHECK_EXECUTABLE_WAIT * SI_PREFIX_SCALE,
+                                      windowsHide: true,
+                                    },
+                                  );
+                                if (stdout2) {
+                                  activeSelf(buttonEl).console.log(stdout2);
+                                }
+                                if (stderr2) {
+                                  activeSelf(buttonEl).console.error(stderr2);
+                                }
+                                ver = new SemVer(
+                                  semverCoerce(stdout2, { loose: true }) ??
+                                    stdout2,
+                                  { loose: true },
+                                );
+                              }
+                            } catch (error) {
+                              /* @__PURE__ */ activeSelf(
+                                buttonEl,
+                              ).console.debug(error);
+                            }
+                            const variant =
+                              (ver?.compare(req) ?? -1) >= 0
+                                ? ""
+                                : "unsatisfied";
+                            return (): string =>
+                              i18n.t(`notices.Python-status-entry-${variant}`, {
+                                interpolation: { escapeValue: false },
+                                name,
+                                requirement: `>=${req.version}`,
+                                version: ver?.version ?? "",
+                              });
+                          }),
+                      );
+                      notice2(
+                        () => msgs.map((msg) => msg()).join("\n"),
+                        settings.value.noticeTimeout,
+                        context,
+                      );
+                    })()
+                      .catch((error: unknown) => {
                         printError(
                           anyToError(error),
                           () => i18n.t("errors.error-checking-Python"),
                           context,
                         );
-                      } finally {
+                      })
+                      .finally(() => {
                         checkingPython = false;
                         ui.update();
-                      }
-                    })();
+                      });
                     ui.update();
                   });
                 if (checkingPython) {
@@ -1462,12 +1458,10 @@ export class KeymappingEditModal extends Modal {
         data.meta = event.metaKey;
         data.shift = event.shiftKey;
         void (async () => {
-          try {
-            await this.postMutate();
-          } catch (error) {
-            activeSelf(event).console.error(error);
-          }
-        })();
+          await this.postMutate();
+        })().catch((error: unknown) => {
+          activeSelf(event).console.error(error);
+        });
       };
       this.#recordHandler = handler;
       this.#recordDoc = doc;
