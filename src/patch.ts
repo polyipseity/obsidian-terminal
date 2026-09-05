@@ -148,7 +148,7 @@ function patchLoggingWindow(self0: Window, log: Log): () => void {
   }
 }
 
-function patchLogging(self0: Window & typeof window, log: Log): () => void {
+function patchLogging(self0: typeof window, log: Log): () => void {
   const ret = new Functions({ async: false, settled: true });
   try {
     ret.push(patchLoggingConsole(self0.console, log));

@@ -261,7 +261,7 @@ export class DeveloperConsolePseudoterminal
   >();
 
   public constructor(
-    protected readonly self0: () => Window & typeof window,
+    protected readonly self0: () => typeof window,
     protected readonly log: Log,
     protected readonly sourceRoot = "",
   ) {
