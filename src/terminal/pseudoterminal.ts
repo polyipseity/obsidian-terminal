@@ -946,13 +946,11 @@ class WindowsPseudoterminal implements Pseudoterminal {
                   return conCode ?? signal ?? NaN;
                 } finally {
                   void (async (): Promise<void> => {
-                    try {
-                      await sleep2(self, TERMINAL_EXIT_CLEANUP_WAIT);
-                      await inOutTmp.cleanup();
-                    } catch (error) {
-                      self.console.warn(error);
-                    }
-                  })();
+                    await sleep2(self, TERMINAL_EXIT_CLEANUP_WAIT);
+                    await inOutTmp.cleanup();
+                  })().catch((error: unknown) => {
+                    self.console.warn(error);
+                  });
                 }
               })(),
             );
