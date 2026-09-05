@@ -719,7 +719,7 @@ export namespace Settings {
         return [];
       }
       const result: [string, string][] = [];
-      for (const entry of val as readonly unknown[]) {
+      for (const entry of val satisfies readonly unknown[] as readonly unknown[]) {
         if (!Array.isArray(entry)) {
           continue;
         }

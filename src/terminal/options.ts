@@ -1,9 +1,9 @@
-import type { Settings } from "../settings-data.js";
+import { cloneAsWritable } from "@polyipseity/obsidian-plugin-library";
+import type { ITerminalOptions, Terminal } from "@xterm/xterm";
 import { cloneDeep } from "es-toolkit/object";
 import { isEqual } from "es-toolkit/predicate";
-import { cloneAsWritable } from "@polyipseity/obsidian-plugin-library";
 import type { DeepWritable } from "ts-essentials";
-import type { Terminal, ITerminalOptions } from "@xterm/xterm";
+import type { Settings } from "../settings-data.js";
 
 /**
  * Combine global defaults with a profile-specific set of terminal options.
@@ -53,9 +53,8 @@ export function applyTerminalOptionDiffShallow(
     const curVal: unknown = curOpts[key as keyof typeof curOpts];
     if (!isEqual(prevVal, curVal)) {
       // assign a deep clone to avoid accidental shared references
-      terminal.options[key as keyof typeof terminal.options] = cloneDeep(
-        curVal,
-      ) as never;
+      terminal.options[key as keyof typeof terminal.options] =
+        cloneDeep(curVal);
     }
   }
 }
