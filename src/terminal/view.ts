@@ -634,12 +634,11 @@ export class TerminalView extends ItemView {
   }
 
   public override getState(): Record<string, unknown> {
-    // `writeStateCollaboratively` returns the laundered state object.
     return writeStateCollaboratively(
       super.getState(),
       TerminalView.type.namespaced(this.context),
       this.state,
-    ) as Record<string, unknown>;
+    );
   }
 
   public getDisplayText(): string {
@@ -1437,12 +1436,10 @@ export namespace TerminalView {
     type: string = TerminalView.type.namespaced(context),
   ): Promise<void> {
     await (leaf ?? getLeaf(context)).setViewState({
-      active: true,
-      // `newCollaborativeState` returns a frozen plain object.
       state: newCollaborativeState(
         context,
         new Map([[TerminalView.type, state]]),
-      ) as Record<string, unknown>,
+      ),
       type,
     });
   }
