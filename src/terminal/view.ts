@@ -1006,18 +1006,16 @@ export class TerminalView extends ItemView {
         );
       };
     if (!PROFILE_PROPERTIES[profile.type].integratable) {
-      void (async (): Promise<void> => {
-        try {
-          noticeSpawn();
-          await openProfile(context, profile, { cwd: cwd ?? void 0 });
-        } catch (error) {
-          printError(
-            anyToError(error),
-            () => i18n.t("errors.error-spawning-terminal"),
-            context,
-          );
-        }
-      })();
+      (async (): Promise<void> => {
+        noticeSpawn();
+        await openProfile(context, profile, { cwd: cwd ?? void 0 });
+      })().catch((error: unknown) => {
+        printError(
+          anyToError(error),
+          () => i18n.t("errors.error-spawning-terminal"),
+          context,
+        );
+      });
       leaf.detach();
       return;
     }
@@ -1026,312 +1024,299 @@ export class TerminalView extends ItemView {
         activeSelf(ele).console.warn(error);
       }
       ele.classList.add(TerminalView.type.namespaced(context));
-      void (async (): Promise<void> => {
-        try {
-          await awaitCSS(ele);
-          noticeSpawn();
-          const [
-              { CanvasAddon },
+      (async (): Promise<void> => {
+        await awaitCSS(ele);
+        noticeSpawn();
+        const [
+            { CanvasAddon },
 
-              { LigaturesAddon },
+            { LigaturesAddon },
 
-              { SearchAddon },
+            { SearchAddon },
 
-              { Unicode11Addon },
+            { Unicode11Addon },
 
-              { WebLinksAddon },
+            { WebLinksAddon },
 
-              { WebglAddon },
-            ] = await Promise.all([
-              xtermAddonCanvas,
-              xtermAddonLigatures,
-              xtermAddonSearch,
-              xtermAddonUnicode11,
-              xtermAddonWebLinks,
-              xtermAddonWebgl,
-            ]),
-            profileTerminalOptions =
-              profile.type === "invalid"
-                ? Settings.Profile.DEFAULTS[""].terminalOptions
-                : profile.terminalOptions,
-            customKeyEventHandler = new CustomKeyEventHandlerAddon(
-              Platform.CURRENT,
-              () => settings.value.keymappings,
-              () => settings.value.macOSOptionKeyPassthrough,
-            ),
-            emulator = new TerminalView.EMULATOR(
-              ele,
-              async (terminal) => {
-                if (serial) {
-                  await writePromise(
-                    terminal,
-                    i18n.t("components.terminal.restored-history", {
-                      datetime: new Date(),
-                      interpolation: { escapeValue: false },
-                    }),
-                  );
-                }
-                const ret = await openProfile(context, profile, {
-                  cwd: cwd ?? void 0,
-                });
-                if (ret) {
-                  return ret;
-                }
-                const pty = new TextPseudoterminal(
-                  i18n.t("components.terminal.unsupported-profile", {
+            { WebglAddon },
+          ] = await Promise.all([
+            xtermAddonCanvas,
+            xtermAddonLigatures,
+            xtermAddonSearch,
+            xtermAddonUnicode11,
+            xtermAddonWebLinks,
+            xtermAddonWebgl,
+          ]),
+          profileTerminalOptions =
+            profile.type === "invalid"
+              ? Settings.Profile.DEFAULTS[""].terminalOptions
+              : profile.terminalOptions,
+          customKeyEventHandler = new CustomKeyEventHandlerAddon(
+            Platform.CURRENT,
+            () => settings.value.keymappings,
+            () => settings.value.macOSOptionKeyPassthrough,
+          ),
+          emulator = new TerminalView.EMULATOR(
+            ele,
+            async (terminal) => {
+              if (serial) {
+                await writePromise(
+                  terminal,
+                  i18n.t("components.terminal.restored-history", {
+                    datetime: new Date(),
                     interpolation: { escapeValue: false },
-                    profile: JSON.stringify(
-                      profile,
-                      null,
-                      JSON_STRINGIFY_SPACE,
-                    ),
                   }),
                 );
-                pty.onExit
-                  .catch(noop satisfies () => unknown as () => unknown)
-                  .finally(
-                    onChangeLanguage.listen(() => {
-                      pty.text = i18n.t(
-                        "components.terminal.unsupported-profile",
-                        {
-                          interpolation: { escapeValue: false },
-                          profile: JSON.stringify(
-                            profile,
-                            null,
-                            JSON_STRINGIFY_SPACE,
-                          ),
-                        },
-                      );
-                    }),
-                  );
-                return pty;
-              },
-              serial ?? void 0,
-              mergeTerminalOptions(
-                profileTerminalOptions,
-                settings.value.terminalOptions,
-              ),
-              {
-                altScreenExit: new AltScreenExitAddon(),
-                customKeyEventHandler,
-                synchronizedOutputScroll: new SynchronizedOutputScrollAddon(),
-                disposer: new DisposerAddon(
-                  () => {
-                    ele.remove();
-                  },
-                  () => {
-                    this.rawTitle = "";
-                  },
-                  ele.onWindowMigrated(() => {
-                    emulator.reopen();
-                    emulator.resize(false).catch(warn);
-                  }),
-                  () => {
-                    if (this.find) {
-                      this.find[1].results = "";
-                    }
-                  },
-                ),
-                dragAndDrop: new DragAndDropAddon(ele),
-                followTheme: new FollowThemeAddon(context, ele, {
-                  enabled: (): boolean => {
-                    const { profileSourceId } = this.state;
-                    if (profileSourceId !== null) {
-                      const live = settings.value.profiles[profileSourceId];
-                      if (live) {
-                        return live.type === "invalid" || live.followTheme;
-                      }
-                    }
-                    return profile.type === "invalid" || profile.followTheme;
-                  },
+              }
+              const ret = await openProfile(context, profile, {
+                cwd: cwd ?? void 0,
+              });
+              if (ret) {
+                return ret;
+              }
+              const pty = new TextPseudoterminal(
+                i18n.t("components.terminal.unsupported-profile", {
+                  interpolation: { escapeValue: false },
+                  profile: JSON.stringify(profile, null, JSON_STRINGIFY_SPACE),
                 }),
-                ligatures: new LigaturesAddon({}),
-                renderer: new RendererAddon(
-                  () => new CanvasAddon(),
-                  () => new WebglAddon(false),
-                ),
-                rightClickAction: new RightClickActionAddon(
-                  (): RightClickActionAddon.Action =>
-                    settings.value.rightClickAction,
-                ),
-                search: new SearchAddon(),
-                unicode11: new Unicode11Addon(),
-                vaultFileLinks: new VaultFileLinksAddon(context),
-                webLinks: new WebLinksAddon(
-                  (event, uri) => openExternal(activeSelf(event), uri),
-                  {
-                    /*
-                    ref: <https://github.com/xtermjs/xterm.js/blob/fb25eb8f79fd223acef90828dc2990bb7e196a1d/addons/addon-web-links/src/WebLinksAddon.ts#L10-L21>
-
-                    const strictUrlRegex = /(https?|HTTPS?):[/]{2}[^\s"'!*(){}|\\\^<>`]*[^\s"':,.!?{}|\\\^~\[\]`()<>]/;
-                    */
-                    urlRegex:
-                      /(https?|HTTPS?|obsidian|OBSIDIAN):[/]{2}[^\s"'!*(){}|\\^<>`]*[^\s"':,.!?{}|\\^~[\]`()<>]/,
-                  },
-                ),
-              },
-            ),
-            { pseudoterminal, terminal, addons } = emulator,
-            { disposer, renderer, search } = addons;
-          pseudoterminal
-            .then(async (pty0) => pty0.onExit)
-            .then(
-              (code) => {
-                notice2(
-                  () =>
-                    i18n.t("notices.terminal-exited", {
-                      code,
-                      interpolation: { escapeValue: false },
-                    }),
-                  (profile.type === "invalid"
-                    ? DEFAULT_SUCCESS_EXIT_CODES
-                    : profile.successExitCodes
-                  ).includes(code.toString())
-                    ? settings.value.noticeTimeout
-                    : settings.value.errorNoticeTimeout,
-                  context,
-                );
-              },
-              (error: unknown) => {
-                printError(
-                  anyToError(error),
-                  () => i18n.t("errors.error-spawning-terminal"),
-                  context,
-                );
-              },
-            );
-          terminal.unicode.activeVersion = "11";
-          terminal.onWriteParsed(requestSaveLayout);
-          terminal.onResize(requestSaveLayout);
-          terminal.onTitleChange((title) => {
-            this.rawTitle = title;
-          });
-
-          disposer.push(
-            settings.onMutate(
-              (s) => {
-                const { profileSourceId } = this.state;
-                const liveProfile =
-                  profileSourceId !== null ? s.profiles[profileSourceId] : null;
-                return {
-                  globalOptions: s.terminalOptions,
-                  profileOptions:
-                    liveProfile && liveProfile.type !== "invalid"
-                      ? liveProfile.terminalOptions
-                      : null,
-                  followTheme: liveProfile
-                    ? liveProfile.type === "invalid" || liveProfile.followTheme
-                    : null,
-                };
-              },
-              (cur, prev) => {
-                if (
-                  cur.globalOptions !== prev.globalOptions ||
-                  cur.profileOptions !== prev.profileOptions
-                ) {
-                  // When computing the merged options we want to see what
-                  // xterm actually normalises the object to.  To do that we
-                  // create short-lived Terminal instances with the merged
-                  // settings, read back their `.options`, then dispose them
-                  // immediately in a finally block so there's no residual
-                  // DOM state.
-                  const createMergedWith = (
-                    profileOpts: Settings.Profile.TerminalOptions,
-                    globalOpts: Settings.Profile.TerminalOptions,
-                  ): ITerminalOptions => {
-                    const merged = mergeTerminalOptions(
-                      profileOpts,
-                      globalOpts,
-                    );
-                    const tmp = new Terminal(merged);
-                    try {
-                      return tmp.options;
-                    } finally {
-                      tmp.dispose();
-                    }
-                  };
-
-                  const prevProfileOpts =
-                    prev.profileOptions ?? profileTerminalOptions;
-                  const curProfileOpts =
-                    cur.profileOptions ?? profileTerminalOptions;
-                  const prevMerged = createMergedWith(
-                    prevProfileOpts,
-                    prev.globalOptions,
-                  );
-                  const curMerged = createMergedWith(
-                    curProfileOpts,
-                    cur.globalOptions,
-                  );
-
-                  // Only patch the terminal when something actually changed at
-                  // the *first* level of the merged settings object.  The helper
-                  // will perform a deep equality check per-key and update/delete
-                  // values accordingly.
-                  applyTerminalOptionDiffShallow(
-                    terminal,
-                    prevMerged,
-                    curMerged,
-                  );
-                }
-                if (
-                  cur.followTheme !== prev.followTheme ||
-                  cur.globalOptions !== prev.globalOptions ||
-                  cur.profileOptions !== prev.profileOptions
-                ) {
-                  emulator.addons.followTheme.refresh(true);
-                }
-              },
-            ),
-          );
-          disposer.push(
-            settings.onMutate(
-              (settings0) => settings0.preferredRenderer,
-              (cur) => {
-                renderer.use(cur);
-              },
-            ),
-          );
-          renderer.use(settings.value.preferredRenderer);
-          search.onDidChangeResults((results0) => {
-            const { resultIndex, resultCount } = results0,
-              results =
-                resultIndex === -1 && resultCount > 0
-                  ? i18n.t("components.find.too-many-results", {
-                      interpolation: { escapeValue: false },
-                      limit: resultCount - 1,
-                    })
-                  : i18n.t("components.find.results", {
-                      interpolation: { escapeValue: false },
-                      replace: {
-                        count: resultCount,
-                        index: resultIndex + 1,
+              );
+              pty.onExit
+                .catch(noop satisfies () => unknown as () => unknown)
+                .finally(
+                  onChangeLanguage.listen(() => {
+                    pty.text = i18n.t(
+                      "components.terminal.unsupported-profile",
+                      {
+                        interpolation: { escapeValue: false },
+                        profile: JSON.stringify(
+                          profile,
+                          null,
+                          JSON_STRINGIFY_SPACE,
+                        ),
                       },
-                    });
-            if (this.find) {
-              this.find[1].results = results;
-            }
-          });
+                    );
+                  }),
+                );
+              return pty;
+            },
+            serial ?? void 0,
+            mergeTerminalOptions(
+              profileTerminalOptions,
+              settings.value.terminalOptions,
+            ),
+            {
+              altScreenExit: new AltScreenExitAddon(),
+              customKeyEventHandler,
+              synchronizedOutputScroll: new SynchronizedOutputScrollAddon(),
+              disposer: new DisposerAddon(
+                () => {
+                  ele.remove();
+                },
+                () => {
+                  this.rawTitle = "";
+                },
+                ele.onWindowMigrated(() => {
+                  emulator.reopen();
+                  emulator.resize(false).catch(warn);
+                }),
+                () => {
+                  if (this.find) {
+                    this.find[1].results = "";
+                  }
+                },
+              ),
+              dragAndDrop: new DragAndDropAddon(ele),
+              followTheme: new FollowThemeAddon(context, ele, {
+                enabled: (): boolean => {
+                  const { profileSourceId } = this.state;
+                  if (profileSourceId !== null) {
+                    const live = settings.value.profiles[profileSourceId];
+                    if (live) {
+                      return live.type === "invalid" || live.followTheme;
+                    }
+                  }
+                  return profile.type === "invalid" || profile.followTheme;
+                },
+              }),
+              ligatures: new LigaturesAddon({}),
+              renderer: new RendererAddon(
+                () => new CanvasAddon(),
+                () => new WebglAddon(false),
+              ),
+              rightClickAction: new RightClickActionAddon(
+                (): RightClickActionAddon.Action =>
+                  settings.value.rightClickAction,
+              ),
+              search: new SearchAddon(),
+              unicode11: new Unicode11Addon(),
+              vaultFileLinks: new VaultFileLinksAddon(context),
+              webLinks: new WebLinksAddon(
+                (event, uri) => openExternal(activeSelf(event), uri),
+                {
+                  /*
+                  ref: <https://github.com/xtermjs/xterm.js/blob/fb25eb8f79fd223acef90828dc2990bb7e196a1d/addons/addon-web-links/src/WebLinksAddon.ts#L10-L21>
 
-          emulator.resize().catch(warn);
-          onResize(ele, (ent) => {
-            if (
-              ent.contentBoxSize.every(
-                (size) => size.blockSize <= 0 || size.inlineSize <= 0,
-              )
-            ) {
-              return;
-            }
-            emulator.resize(false).catch(warn);
-          });
-          this.emulator = emulator;
-          if (focus) {
-            terminal.focus();
+                  const strictUrlRegex = /(https?|HTTPS?):[/]{2}[^\s"'!*(){}|\\\^<>`]*[^\s"':,.!?{}|\\\^~\[\]`()<>]/;
+                  */
+                  urlRegex:
+                    /(https?|HTTPS?|obsidian|OBSIDIAN):[/]{2}[^\s"'!*(){}|\\^<>`]*[^\s"':,.!?{}|\\^~[\]`()<>]/,
+                },
+              ),
+            },
+          ),
+          { pseudoterminal, terminal, addons } = emulator,
+          { disposer, renderer, search } = addons;
+        pseudoterminal
+          .then(async (pty0) => pty0.onExit)
+          .then(
+            (code) => {
+              notice2(
+                () =>
+                  i18n.t("notices.terminal-exited", {
+                    code,
+                    interpolation: { escapeValue: false },
+                  }),
+                (profile.type === "invalid"
+                  ? DEFAULT_SUCCESS_EXIT_CODES
+                  : profile.successExitCodes
+                ).includes(code.toString())
+                  ? settings.value.noticeTimeout
+                  : settings.value.errorNoticeTimeout,
+                context,
+              );
+            },
+            (error: unknown) => {
+              printError(
+                anyToError(error),
+                () => i18n.t("errors.error-spawning-terminal"),
+                context,
+              );
+            },
+          );
+        terminal.unicode.activeVersion = "11";
+        terminal.onWriteParsed(requestSaveLayout);
+        terminal.onResize(requestSaveLayout);
+        terminal.onTitleChange((title) => {
+          this.rawTitle = title;
+        });
+
+        disposer.push(
+          settings.onMutate(
+            (s) => {
+              const { profileSourceId } = this.state;
+              const liveProfile =
+                profileSourceId !== null ? s.profiles[profileSourceId] : null;
+              return {
+                globalOptions: s.terminalOptions,
+                profileOptions:
+                  liveProfile && liveProfile.type !== "invalid"
+                    ? liveProfile.terminalOptions
+                    : null,
+                followTheme: liveProfile
+                  ? liveProfile.type === "invalid" || liveProfile.followTheme
+                  : null,
+              };
+            },
+            (cur, prev) => {
+              if (
+                cur.globalOptions !== prev.globalOptions ||
+                cur.profileOptions !== prev.profileOptions
+              ) {
+                // When computing the merged options we want to see what
+                // xterm actually normalises the object to.  To do that we
+                // create short-lived Terminal instances with the merged
+                // settings, read back their `.options`, then dispose them
+                // immediately in a finally block so there's no residual
+                // DOM state.
+                const createMergedWith = (
+                  profileOpts: Settings.Profile.TerminalOptions,
+                  globalOpts: Settings.Profile.TerminalOptions,
+                ): ITerminalOptions => {
+                  const merged = mergeTerminalOptions(profileOpts, globalOpts);
+                  const tmp = new Terminal(merged);
+                  try {
+                    return tmp.options;
+                  } finally {
+                    tmp.dispose();
+                  }
+                };
+
+                const prevProfileOpts =
+                  prev.profileOptions ?? profileTerminalOptions;
+                const curProfileOpts =
+                  cur.profileOptions ?? profileTerminalOptions;
+                const prevMerged = createMergedWith(
+                  prevProfileOpts,
+                  prev.globalOptions,
+                );
+                const curMerged = createMergedWith(
+                  curProfileOpts,
+                  cur.globalOptions,
+                );
+
+                // Only patch the terminal when something actually changed at
+                // the *first* level of the merged settings object.  The helper
+                // will perform a deep equality check per-key and update/delete
+                // values accordingly.
+                applyTerminalOptionDiffShallow(terminal, prevMerged, curMerged);
+              }
+              if (
+                cur.followTheme !== prev.followTheme ||
+                cur.globalOptions !== prev.globalOptions ||
+                cur.profileOptions !== prev.profileOptions
+              ) {
+                emulator.addons.followTheme.refresh(true);
+              }
+            },
+          ),
+        );
+        disposer.push(
+          settings.onMutate(
+            (settings0) => settings0.preferredRenderer,
+            (cur) => {
+              renderer.use(cur);
+            },
+          ),
+        );
+        renderer.use(settings.value.preferredRenderer);
+        search.onDidChangeResults((results0) => {
+          const { resultIndex, resultCount } = results0,
+            results =
+              resultIndex === -1 && resultCount > 0
+                ? i18n.t("components.find.too-many-results", {
+                    interpolation: { escapeValue: false },
+                    limit: resultCount - 1,
+                  })
+                : i18n.t("components.find.results", {
+                    interpolation: { escapeValue: false },
+                    replace: {
+                      count: resultCount,
+                      index: resultIndex + 1,
+                    },
+                  });
+          if (this.find) {
+            this.find[1].results = results;
           }
-        } catch (error) {
-          activeSelf(ele).console.error(error);
+        });
+
+        emulator.resize().catch(warn);
+        onResize(ele, (ent) => {
+          if (
+            ent.contentBoxSize.every(
+              (size) => size.blockSize <= 0 || size.inlineSize <= 0,
+            )
+          ) {
+            return;
+          }
+          emulator.resize(false).catch(warn);
+        });
+        this.emulator = emulator;
+        if (focus) {
+          terminal.focus();
         }
-      })();
+      })().catch((error: unknown) => {
+        activeSelf(ele).console.error(error);
+      });
     });
   }
 }

@@ -682,32 +682,30 @@ export class RightClickActionAddon implements ITerminalAddon {
       if (action === "default") {
         return;
       }
-      void (async (): Promise<void> => {
-        try {
-          switch (action) {
-            case "nothing":
-              // How to send right click to the terminal?
-              break;
-            // @ts-expect-error: fallthrough
-            case "copyPaste":
-              if (terminal.hasSelection()) {
-                await activeSelf(element).navigator.clipboard.writeText(
-                  terminal.getSelection(),
-                );
-                terminal.clearSelection();
-                break;
-              }
-            // eslint-disable-next-line no-fallthrough -- `copyPaste` without a selection intentionally falls through to paste.
-            case "paste":
-              terminal.paste(
-                await activeSelf(element).navigator.clipboard.readText(),
+      (async (): Promise<void> => {
+        switch (action) {
+          case "nothing":
+            // How to send right click to the terminal?
+            break;
+          // @ts-expect-error: fallthrough
+          case "copyPaste":
+            if (terminal.hasSelection()) {
+              await activeSelf(element).navigator.clipboard.writeText(
+                terminal.getSelection(),
               );
+              terminal.clearSelection();
               break;
-          }
-        } catch (error) {
-          activeSelf(element).console.error(error);
+            }
+          // eslint-disable-next-line no-fallthrough -- `copyPaste` without a selection intentionally falls through to paste.
+          case "paste":
+            terminal.paste(
+              await activeSelf(element).navigator.clipboard.readText(),
+            );
+            break;
         }
-      })();
+      })().catch((error: unknown) => {
+        activeSelf(element).console.error(error);
+      });
       consumeEvent(ev);
     };
     this.#disposer.push(() => {

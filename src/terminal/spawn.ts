@@ -125,11 +125,9 @@ export function spawnTerminal(
     ).open();
     return;
   }
-  void (async (): Promise<void> => {
-    try {
-      await TerminalView.spawn(context, state);
-    } catch (error) {
-      self.console.error(error);
-    }
-  })();
+  (async (): Promise<void> => {
+    await TerminalView.spawn(context, state);
+  })().catch((error: unknown) => {
+    self.console.error(error);
+  });
 }
