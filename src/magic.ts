@@ -55,3 +55,7 @@ export namespace DOMClasses2 {
     export const TERMINAL = "terminal";
   }
 }
+
+export namespace PluginUUIDs {
+  export const UUID0 = "97fa8b23-8f64-4719-8cf5-630ea6e528d7";
+}

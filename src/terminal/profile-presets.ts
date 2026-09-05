@@ -42,7 +42,7 @@ export const DEFAULT_LINK_HANDLER: ILinkHandler = deepFreeze({
       self.console.warn(message, ...args);
     },
   }),
-  DEFAULT_OVERVIEW_RULER: IOverviewRulerOptions = deepFreeze({}),
+  DEFAULT_OVERVIEW_RULER_OPTIONS: IOverviewRulerOptions = deepFreeze({}),
   DEFAULT_TERMINAL_OPTIONS: Settings.Profile.TerminalOptions = deepFreeze({
     documentOverride: null,
   }),
