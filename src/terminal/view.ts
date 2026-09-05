@@ -765,8 +765,10 @@ export class TerminalView extends ItemView {
   }
 
   protected focus(): void {
-    const { app, emulator, leaf } = this;
-    void app.workspace.revealLeaf(leaf);
+    const { app, emulator, leaf, contentEl } = this;
+    app.workspace.revealLeaf(leaf).catch((error: unknown) => {
+      activeSelf(contentEl).console.error(error);
+    });
     emulator?.terminal.focus();
   }
 

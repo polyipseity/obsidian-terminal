@@ -31,7 +31,7 @@ import {
   useSettings,
   useSubsettings,
 } from "@polyipseity/obsidian-plugin-library";
-import { noop, identity } from "es-toolkit/function";
+import { identity, noop } from "es-toolkit/function";
 import { Modal, Setting } from "obsidian";
 import type { DeepWritable } from "ts-essentials";
 import { BUNDLE } from "./imports.js";
@@ -1517,7 +1517,9 @@ export class KeymappingEditModal extends Modal {
                 this.#stopRecording();
                 return;
               }
-              void startRecording();
+              startRecording().catch((error: unknown) => {
+                activeSelf(button.buttonEl).console.error(error);
+              });
             });
           if (isRecording) {
             button.setCta();
