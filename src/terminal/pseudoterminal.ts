@@ -31,7 +31,8 @@ import type { IMarker, Terminal } from "@xterm/xterm";
 import { type Program, parse } from "acorn";
 import inspect, { type Options } from "browser-util-inspect";
 import { noop } from "es-toolkit/function";
-import { isEmpty, isNil } from "es-toolkit/compat";
+import { isNil } from "es-toolkit/predicate";
+import { isEmpty } from "es-toolkit/compat";
 import {
   DEFAULT_ENCODING,
   EXIT_SUCCESS,
