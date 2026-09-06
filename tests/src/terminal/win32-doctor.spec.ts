@@ -632,7 +632,7 @@ describe("applyWin32BackendVerdict", () => {
 
   it("demotes ConPTY profiles and records provenance when Python is missing", () => {
     const profiles = { a: integratedWin32() };
-    expect(applyWin32BackendVerdict(profiles, false)).toBe(true);
+    expect(applyWin32BackendVerdict(profiles, () => false)).toBe(true);
     expect(profiles.a).toMatchObject({
       win32Backend: "legacy",
       win32BackendAutoDemoted: true,
@@ -647,7 +647,7 @@ describe("applyWin32BackendVerdict", () => {
       }),
       userChoice: integratedWin32({ win32Backend: "legacy" }),
     };
-    expect(applyWin32BackendVerdict(profiles, true)).toBe(true);
+    expect(applyWin32BackendVerdict(profiles, () => true)).toBe(true);
     expect(profiles.demoted).toMatchObject({
       win32Backend: "conpty",
       win32BackendAutoDemoted: false,
@@ -662,7 +662,7 @@ describe("applyWin32BackendVerdict", () => {
     const profiles = {
       a: integratedWin32({ win32BackendAutoDemoted: true }),
     };
-    expect(applyWin32BackendVerdict(profiles, true)).toBe(true);
+    expect(applyWin32BackendVerdict(profiles, () => true)).toBe(true);
     expect(profiles.a).toMatchObject({
       win32Backend: "conpty",
       win32BackendAutoDemoted: false,
@@ -677,7 +677,7 @@ describe("applyWin32BackendVerdict", () => {
       },
       unix: integratedWin32({ platforms: { linux: true } }),
     } as unknown as DeepWritable<Settings.Profiles>;
-    expect(applyWin32BackendVerdict(profiles, false)).toBe(false);
+    expect(applyWin32BackendVerdict(profiles, () => false)).toBe(false);
     expect(profiles["unix"]).toMatchObject({ win32Backend: "conpty" });
   });
 
@@ -685,8 +685,8 @@ describe("applyWin32BackendVerdict", () => {
     const profiles = {
       a: integratedWin32({ win32Backend: "legacy" }),
     };
-    expect(applyWin32BackendVerdict(profiles, false)).toBe(false);
-    expect(applyWin32BackendVerdict(profiles, true)).toBe(false);
+    expect(applyWin32BackendVerdict(profiles, () => false)).toBe(false);
+    expect(applyWin32BackendVerdict(profiles, () => true)).toBe(false);
   });
 });
 
@@ -825,6 +825,94 @@ describe("runPluginPythonCheck", () => {
     });
     expect(write).not.toHaveBeenCalled();
   });
+
+  it.each([false, true])(
+    "uses each profile's Python when global discovery fails (timeout: %s)",
+    async (timedOut) => {
+      vi.spyOn(console, "warn").mockImplementation(vi.fn());
+      const python = "C:\\portable\\python.exe",
+        { context: ctx, value } = reconcileContext({
+          profiles: {
+            inherited: win32Conpty(),
+            working: win32Conpty({ pythonExecutable: python }),
+            demoted: win32Conpty({
+              pythonExecutable: "portable-shim",
+              win32Backend: "legacy",
+              win32BackendAutoDemoted: true,
+            }),
+            manual: win32Conpty({
+              pythonExecutable: python,
+              win32Backend: "legacy",
+            }),
+            slow: win32Conpty({ pythonExecutable: "slow-python" }),
+          },
+        }),
+        spawn = vi.fn<Win32PythonSpawn>(async (executable) => {
+          if (executable === python || executable === "portable-shim")
+            return identityResult(python);
+          return result({
+            code: 9009,
+            timedOut: timedOut || executable === "slow-python",
+          });
+        });
+
+      await runPluginPythonCheck(ctx, spawn);
+
+      expect(value.profiles["working"]).toMatchObject({
+        pythonExecutable: python,
+        win32Backend: "conpty",
+        win32BackendAutoDemoted: false,
+      });
+      expect(value.profiles["demoted"]).toMatchObject({
+        pythonExecutable: python,
+        win32Backend: "conpty",
+        win32BackendAutoDemoted: false,
+      });
+      expect(value.profiles["manual"]).toMatchObject({
+        win32Backend: "legacy",
+        win32BackendAutoDemoted: false,
+      });
+      expect(value.profiles["inherited"]).toMatchObject({
+        win32Backend: timedOut ? "conpty" : "legacy",
+        win32BackendAutoDemoted: !timedOut,
+      });
+      expect(value.profiles["slow"]).toMatchObject({
+        win32Backend: "conpty",
+        win32BackendAutoDemoted: false,
+      });
+    },
+  );
+
+  it.each([false, true])(
+    "uses the failed override's fallback chain (available: %s)",
+    async (fallbackAvailable) => {
+      const python = "C:\\plugin\\python.exe",
+        { context: ctx, value } = reconcileContext({
+          pythonExecutable: python,
+          profiles: {
+            custom: win32Conpty({ pythonExecutable: "missing-python" }),
+          },
+        }),
+        spawn = vi.fn<Win32PythonSpawn>(async (executable) =>
+          executable === python ||
+          (fallbackAvailable && executable === "python")
+            ? identityResult(python)
+            : result({ code: 9009 }),
+        );
+
+      expect((await runPluginPythonCheck(ctx, spawn)).status).toBe("ok");
+      expect(value.profiles["custom"]).toMatchObject({
+        pythonExecutable: "missing-python",
+        win32Backend: fallbackAvailable ? "conpty" : "legacy",
+        win32BackendAutoDemoted: !fallbackAvailable,
+      });
+      expect(
+        spawn.mock.calls.filter(
+          ([executable]) => executable === "missing-python",
+        ),
+      ).toHaveLength(1);
+    },
+  );
 
   it("skips the settings write when the result changed nothing", async () => {
     const { context: ctx, write } = reconcileContext({

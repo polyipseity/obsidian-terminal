@@ -319,9 +319,10 @@ export async function resolveWindowsPythonValue(
 async function diagnoseWindowsPythonCandidates(
   spawn: Win32PythonSpawn,
   candidates: readonly Win32PythonCandidate[],
+  previousFailure?: Win32PythonDiagnosis,
 ): Promise<Win32PythonDiagnosis> {
-  let firstFailure: Win32PythonDiagnosis | null = null,
-    sawTransient = false;
+  let firstFailure: Win32PythonDiagnosis | null = previousFailure ?? null,
+    sawTransient = previousFailure?.transient ?? false;
   for (const { args, executable } of candidates) {
     let result: Win32PythonProcessResult;
     try {
@@ -556,8 +557,9 @@ export async function checkWindowsPython(
 }
 
 /**
- * Aligns every Windows-capable integrated profile's stored backend with a
- * plugin-level Python check result. Returns `true` when any profile changed.
+ * Aligns each Windows-capable integrated profile's stored backend with its
+ * effective Python verdict. An undefined verdict preserves the backend.
+ * Returns `true` when any profile changed.
  *
  * - No usable Python: ConPTY profiles are demoted to ConHost and marked
  *   auto-demoted.
@@ -568,13 +570,17 @@ export async function checkWindowsPython(
  */
 export function applyWin32BackendVerdict(
   profiles: DeepWritable<Settings.Profiles>,
-  pythonUsable: boolean,
+  verdict: (
+    profile: Settings.Profile.Typed<"integrated">,
+  ) => boolean | undefined,
 ): boolean {
   let changed = false;
   for (const profile of Object.values(profiles)) {
     if (!isWin32Integrated(profile)) {
       continue;
     }
+    const pythonUsable = verdict(profile);
+    if (pythonUsable === void 0) continue;
     if (!pythonUsable) {
       if (profile.win32Backend === "conpty") {
         profile.win32Backend = "legacy";
@@ -660,8 +666,7 @@ export async function runPluginPythonCheck(
     notify: false,
   });
   pluginDiagnoses.set(context, diagnosis);
-  const usable = diagnosis.status === "ok",
-    transient = diagnosis.transient ?? false;
+  const usable = diagnosis.status === "ok";
   let adopted: string | null = null;
   if (!configured) {
     if (usable) adopted = diagnosis.executable;
@@ -684,10 +689,21 @@ export async function runPluginPythonCheck(
       profileValues.add(profile.pythonExecutable);
     }
   }
-  const profileResolutions = new Map<string, string>();
+  const profileResolutions = new Map<string, string>(),
+    profileDiagnoses = new Map<string, Win32PythonDiagnosis>();
   await Promise.all(
     [...profileValues].map(async (value) => {
       const resolved = await resolveWindowsPythonValue(spawn, value);
+      profileDiagnoses.set(
+        value,
+        resolved.status === "ok"
+          ? resolved
+          : await diagnoseWindowsPythonCandidates(
+              spawn,
+              win32PythonCandidates(""),
+              resolved,
+            ),
+      );
       if (resolved.status !== "ok") return;
       // The opener keys its check by the stored value and probes a cache
       // miss again; a usable value is exactly what the chain would find.
@@ -701,25 +717,34 @@ export async function runPluginPythonCheck(
   if (adopted) {
     diagnoses.set(adopted, Promise.resolve(diagnosis));
   }
-  // Transient results move nothing.
-  const applyVerdict = usable || !transient,
+  const verdict = (
+      profile: Settings.Profile.Typed<"integrated">,
+    ): boolean | undefined => {
+      const effective = profile.pythonExecutable
+        ? profileDiagnoses.get(profile.pythonExecutable)
+        : diagnosis;
+      if (!effective) return void 0;
+      if (effective.status === "ok") return true;
+      return effective.transient ? void 0 : false;
+    },
     // `mutate` clones and re-publishes the whole settings tree, so a
     // load that changes nothing must not call it. Rehearse the result on
     // a copy first.
     changed =
       adopted !== null ||
       profileResolutions.size > 0 ||
-      (applyVerdict &&
-        applyWin32BackendVerdict(
-          cloneAsWritable(settings.value.profiles, cloneDeep),
-          usable,
-        ));
+      applyWin32BackendVerdict(
+        cloneAsWritable(settings.value.profiles, cloneDeep),
+        verdict,
+      );
   if (changed) {
     await settings.mutate((settingsM) => {
       if (adopted !== null) {
         settingsM.pythonExecutable = adopted;
         settingsM.pythonExecutableDiscovered = adopted !== "";
       }
+      // Verdicts are keyed by the checked value, before shim normalization.
+      applyWin32BackendVerdict(settingsM.profiles, verdict);
       for (const profile of Object.values(settingsM.profiles)) {
         if (!isWin32Integrated(profile)) {
           continue;
@@ -728,9 +753,6 @@ export async function runPluginPythonCheck(
         if (resolved !== void 0) {
           profile.pythonExecutable = resolved;
         }
-      }
-      if (applyVerdict) {
-        applyWin32BackendVerdict(settingsM.profiles, usable);
       }
     });
     await settings.write();
