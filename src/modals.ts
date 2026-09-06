@@ -1392,19 +1392,19 @@ export class ProfileModal extends Modal {
                     )
                     .setCta()
                     .onClick(() => {
-                      activeSelf(setting.settingEl)
-                        .navigator.clipboard.writeText(resizerInstallCommand)
-                        .then(() => {
-                          notice2(
-                            () =>
-                              i18n.t("notices.resizer-install-command-copied"),
-                            settings.value.noticeTimeout,
-                            context,
-                          );
-                        })
-                        .catch((error: unknown) => {
-                          activeSelf(setting.settingEl).console.error(error);
-                        });
+                      (async (): Promise<void> => {
+                        await activeSelf(
+                          setting.settingEl,
+                        ).navigator.clipboard.writeText(resizerInstallCommand);
+                        notice2(
+                          () =>
+                            i18n.t("notices.resizer-install-command-copied"),
+                          settings.value.noticeTimeout,
+                          context,
+                        );
+                      })().catch((error: unknown) => {
+                        activeSelf(setting.settingEl).console.error(error);
+                      });
                     });
                 });
             });
