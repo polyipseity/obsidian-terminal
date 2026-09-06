@@ -1,26 +1,48 @@
-import { cloneAsWritable } from "@polyipseity/obsidian-plugin-library";
+import {
+  Platform,
+  cloneAsWritable,
+  deopaque,
+} from "@polyipseity/obsidian-plugin-library";
 import type { ITerminalOptions, Terminal } from "@xterm/xterm";
 import { cloneDeep } from "es-toolkit/object";
 import { isEqual } from "es-toolkit/predicate";
 import type { DeepWritable } from "ts-essentials";
 import type { Settings } from "../settings-data.js";
 
+export interface TerminalBackendOptions {
+  /** Platform the terminal runs on. Defaults to the current platform. */
+  readonly platform?: Platform.All | undefined;
+  readonly win32Backend?: Settings.Profile.Win32Backend | undefined;
+}
+
 /**
  * Combine global defaults with a profile-specific set of terminal options.
  * Values present in `profileOpts` take precedence; everything else comes from
  * `globalOpts`. This is a shallow merge and mirrors the behavior previously
  * implemented just for `fontFamily`.
+ *
+ * `windowsPty` is forced to the selected Windows backend, overriding a
+ * persisted value that names a different one.
  */
 export function mergeTerminalOptions(
   profileOpts: Settings.Profile.TerminalOptions,
   globalOpts: Settings.Profile.TerminalOptions,
+  backendOptions: TerminalBackendOptions = {},
 ): DeepWritable<Settings.Profile.TerminalOptions> {
-  return {
+  const merged: DeepWritable<Settings.Profile.TerminalOptions> = {
     allowProposedApi: true,
     macOptionIsMeta: false, // `false` is the default value, but set it explicitly for `CustomKeyEventHandlerAddon` to work just in case.
     ...cloneAsWritable(globalOpts, cloneDeep),
     ...cloneAsWritable(profileOpts, cloneDeep),
   };
+  if ((backendOptions.platform ?? deopaque(Platform.CURRENT)) === "win32") {
+    if (backendOptions.win32Backend === "conpty") {
+      merged.windowsPty = { backend: "conpty" };
+    } else if (backendOptions.win32Backend === "legacy") {
+      delete merged.windowsPty;
+    }
+  }
+  return merged;
 }
 
 /**

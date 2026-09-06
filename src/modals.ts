@@ -16,9 +16,9 @@ import {
   consumeEvent,
   createChildElement,
   createDocumentFragment,
+  deopaque,
   dynamicRequire,
   escapeQuerySelectorAttribute,
-  inSet,
   linkSetting,
   notice2,
   printError,
@@ -38,6 +38,7 @@ import { BUNDLE } from "./imports.js";
 import {
   CHECK_EXECUTABLE_WAIT,
   DOMClasses2,
+  PYTHON_PROBE_SETTLE_WAIT,
   PYTHON_REQUIREMENTS,
 } from "./magic.js";
 import { applyEnv } from "./terminal/environment.js";
@@ -48,6 +49,12 @@ import {
 } from "./terminal/profile-presets.js";
 import { PROFILE_PROPERTIES } from "./terminal/profile-properties.js";
 import { Pseudoterminal } from "./terminal/pseudoterminal.js";
+import {
+  checkWindowsPython,
+  checkWindowsResizerPackages,
+  inheritedPythonExecutable,
+  win32ResizerInstallCommand,
+} from "./terminal/win32-doctor.js";
 
 import SemVer from "semver/classes/semver.js";
 import semverCoerce from "semver/functions/coerce.js";
@@ -1047,7 +1054,14 @@ export class ProfileModal extends Modal {
           });
         }
         if (profile.type === "integrated") {
-          let checkingPython = false;
+          let checkingPython = false,
+            resizerInstallCommand = "",
+            resizerPackagesMissing = false,
+            resizerProbeKey: string | null = null,
+            resizerProbeTimer: number | undefined;
+          ui.finally(() => {
+            self.clearTimeout(resizerProbeTimer);
+          });
           ui.newSetting(element, (setting) => {
             setting
               .setName(
@@ -1072,9 +1086,21 @@ export class ProfileModal extends Modal {
                   {
                     post: (component) => {
                       component.setPlaceholder(
-                        i18n.t(
-                          `components.profile.${profile.type}.Python-executable-placeholder`,
-                        ),
+                        deopaque(Platform.CURRENT) === "win32"
+                          ? settings.value.pythonExecutable
+                            ? i18n.t(
+                                `components.profile.${profile.type}.Python-executable-placeholder-default`,
+                                {
+                                  interpolation: { escapeValue: false },
+                                  value: settings.value.pythonExecutable,
+                                },
+                              )
+                            : i18n.t(
+                                `components.profile.${profile.type}.Python-executable-placeholder-detect`,
+                              )
+                          : i18n.t(
+                              `components.profile.${profile.type}.Python-executable-placeholder`,
+                            ),
                       );
                     },
                   },
@@ -1100,11 +1126,29 @@ export class ProfileModal extends Modal {
                     }
                     checkingPython = true;
                     (async (): Promise<void> => {
-                      const [execFileP2, getPackageVersion2] =
-                          await Promise.all([execFileP, getPackageVersion]),
+                      // Resolve the inherited value the same way the open
+                      // path does.
+                      const pythonExecutable =
+                          deopaque(Platform.CURRENT) === "win32"
+                            ? (
+                                await checkWindowsPython(
+                                  context,
+                                  inheritedPythonExecutable(
+                                    profile.pythonExecutable,
+                                    settings.value.pythonExecutable,
+                                  ),
+                                  void 0,
+                                  { notify: false },
+                                )
+                              ).executable
+                            : profile.pythonExecutable,
+                        [execFileP2, getPackageVersion2] = await Promise.all([
+                          execFileP,
+                          getPackageVersion,
+                        ]),
                         env = await applyEnv(),
                         { stdout, stderr } = await execFileP2(
-                          profile.pythonExecutable,
+                          pythonExecutable,
                           ["--version"],
                           {
                             env,
@@ -1124,7 +1168,14 @@ export class ProfileModal extends Modal {
                       const msgs = await Promise.all(
                         Object.entries(PYTHON_REQUIREMENTS)
                           .filter(([, { platforms }]) =>
-                            inSet(platforms, Platform.CURRENT),
+                            platforms.includes(Platform.CURRENT),
+                          )
+                          // ConPTY runs on the standard library alone; the
+                          // pip packages serve only the ConHost resizer.
+                          .filter(
+                            ([name]) =>
+                              name === "Python" ||
+                              profile.win32Backend !== "conpty",
                           )
                           .map(async ([name, { version: req }]) => {
                             let ver: SemVer | null = null;
@@ -1138,7 +1189,7 @@ export class ProfileModal extends Modal {
                               } else {
                                 const { stdout: stdout2, stderr: stderr2 } =
                                   await execFileP2(
-                                    profile.pythonExecutable,
+                                    pythonExecutable,
                                     ["-c", getPackageVersion2, name],
                                     {
                                       env,
@@ -1213,39 +1264,151 @@ export class ProfileModal extends Modal {
                   async () => this.postMutate(),
                 ),
               );
-          }).newSetting(element, (setting) => {
+          });
+          ui.newSetting(element, (setting) => {
             setting
               .setName(
-                i18n.t(`components.profile.${profile.type}.use-win32-conhost`),
+                i18n.t(`components.profile.${profile.type}.win32-backend`),
               )
               .setDesc(
                 i18n.t(
-                  `components.profile.${profile.type}.use-win32-conhost-description`,
+                  `components.profile.${profile.type}.win32-backend-description`,
                 ),
               )
-              .addToggle(
+              .addDropdown(
                 linkSetting(
-                  () => profile.useWin32Conhost,
-                  (value) => {
-                    profile.useWin32Conhost = value;
-                  },
+                  (): string => profile.win32Backend,
+                  setTextToEnum(Settings.Profile.WIN32_BACKENDS, (value) => {
+                    profile.win32Backend = value;
+                    profile.win32BackendAutoDemoted = false;
+                  }),
                   async () => this.postMutate(),
+                  {
+                    pre: (dropdown) => {
+                      dropdown.addOptions(
+                        Object.fromEntries(
+                          Settings.Profile.WIN32_BACKENDS.map((backend) => [
+                            backend,
+                            i18n.t(
+                              `components.profile.${profile.type}.win32-backend-options-${backend}`,
+                            ),
+                          ]),
+                        ),
+                      );
+                    },
+                  },
                 ),
               )
               .addExtraButton(
                 resetButton(
                   i18n.t(
-                    `asset:components.profile.${profile.type}.use-win32-conhost-icon`,
+                    `asset:components.profile.${profile.type}.win32-backend-icon`,
                   ),
                   i18n.t("components.profile.reset"),
                   () => {
-                    profile.useWin32Conhost =
-                      Settings.Profile.DEFAULTS[profile.type].useWin32Conhost;
+                    profile.win32Backend =
+                      Settings.Profile.DEFAULTS[profile.type].win32Backend;
+                    profile.win32BackendAutoDemoted =
+                      Settings.Profile.DEFAULTS[
+                        profile.type
+                      ].win32BackendAutoDemoted;
                   },
                   async () => this.postMutate(),
                 ),
               );
           });
+          if (deopaque(Platform.CURRENT) === "win32") {
+            ui.newSetting(element, (setting) => {
+              // Always rendered; visibility toggled (see settings.ts
+              // newPythonWidgets).
+              const effective = inheritedPythonExecutable(
+                profile.pythonExecutable,
+                settings.value.pythonExecutable,
+              );
+              if (profile.win32Backend !== "legacy") {
+                resizerProbeKey = null;
+                resizerPackagesMissing = false;
+              } else if (resizerProbeKey !== effective) {
+                resizerProbeKey = effective;
+                resizerPackagesMissing = false;
+                // Debounce: every keystroke re-renders this row.
+                self.clearTimeout(resizerProbeTimer);
+                resizerProbeTimer = self.setTimeout(() => {
+                  (async (): Promise<void> => {
+                    const diagnosis = await checkWindowsPython(
+                      context,
+                      effective,
+                      void 0,
+                      { notify: false },
+                    );
+                    if (
+                      diagnosis.status !== "ok" ||
+                      resizerProbeKey !== effective
+                    ) {
+                      return;
+                    }
+                    const missing = !(await checkWindowsResizerPackages(
+                      diagnosis.executable,
+                    ));
+                    if (resizerProbeKey !== effective) {
+                      return;
+                    }
+                    resizerInstallCommand = win32ResizerInstallCommand(
+                      diagnosis.executable,
+                    );
+                    if (missing !== resizerPackagesMissing) {
+                      resizerPackagesMissing = missing;
+                      ui.update();
+                    }
+                  })().catch((error: unknown) => {
+                    activeSelf(setting.settingEl).console.error(error);
+                  });
+                }, PYTHON_PROBE_SETTLE_WAIT * SI_PREFIX_SCALE);
+              }
+              setting.settingEl.style.display =
+                profile.win32Backend === "legacy" && resizerPackagesMissing
+                  ? ""
+                  : "none";
+              setting
+                .setName(
+                  i18n.t(`components.profile.${profile.type}.resizer-packages`),
+                )
+                .setDesc(
+                  i18n.t(
+                    `components.profile.${profile.type}.resizer-packages-description`,
+                  ),
+                )
+                .addButton((button) => {
+                  button
+                    .setIcon(
+                      i18n.t(
+                        `asset:components.profile.${profile.type}.resizer-packages-copy-icon`,
+                      ),
+                    )
+                    .setTooltip(
+                      i18n.t(
+                        `components.profile.${profile.type}.resizer-packages-copy`,
+                      ),
+                    )
+                    .setCta()
+                    .onClick(() => {
+                      (async (): Promise<void> => {
+                        await activeSelf(
+                          setting.settingEl,
+                        ).navigator.clipboard.writeText(resizerInstallCommand);
+                        notice2(
+                          () =>
+                            i18n.t("notices.resizer-install-command-copied"),
+                          settings.value.noticeTimeout,
+                          context,
+                        );
+                      })().catch((error: unknown) => {
+                        activeSelf(setting.settingEl).console.error(error);
+                      });
+                    });
+                });
+            });
+          }
         }
         break;
       }
@@ -1333,6 +1496,8 @@ export class ProfileListModal extends ListModal<
       {
         ...options,
         ...({
+          // Saving writes the editor's whole profiles snapshot, so a Python
+          // check landing meanwhile is overwritten; the next check re-applies it.
           callback: async (data0): Promise<void> => {
             await callback({
               ...this.dataProfileList,

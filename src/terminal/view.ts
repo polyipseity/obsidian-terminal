@@ -15,6 +15,7 @@ import {
   cloneAsWritable,
   createChildElement,
   deepFreeze,
+  deopaque,
   dynamicRequire,
   extname,
   fixTyped,
@@ -39,6 +40,7 @@ import {
   useSettings,
   writeStateCollaboratively,
 } from "@polyipseity/obsidian-plugin-library";
+import type { FitAddon, ITerminalDimensions } from "@xterm/addon-fit";
 import type { LigaturesAddon } from "@xterm/addon-ligatures";
 import type { SearchAddon } from "@xterm/addon-search";
 import type { Unicode11Addon } from "@xterm/addon-unicode11";
@@ -83,6 +85,7 @@ import {
 import { PROFILE_PROPERTIES, openProfile } from "./profile-properties.js";
 import { TextPseudoterminal } from "./pseudoterminal.js";
 import { writePromise } from "./utils.js";
+import { win32ExitCodeKey } from "./win32-doctor.js";
 
 const xtermAddonCanvas = dynamicRequire<typeof import("@xterm/addon-canvas")>(
     BUNDLE,
@@ -108,6 +111,28 @@ const xtermAddonCanvas = dynamicRequire<typeof import("@xterm/addon-canvas")>(
     BUNDLE,
     "@xterm/addon-webgl",
   );
+
+/** Returns the fitted spawn size, or the terminal's current size as fallback. */
+export function fittedSize(
+  fit: Pick<FitAddon, "proposeDimensions">,
+  terminal: Pick<Terminal, "cols" | "rows">,
+): readonly [number, number] {
+  const dim = ((): ITerminalDimensions | undefined => {
+    try {
+      return fit.proposeDimensions();
+    } catch (error) {
+      /* @__PURE__ */ self.console.debug(error);
+      return void 0;
+    }
+  })();
+  if (dim && isFinite(dim.cols) && isFinite(dim.rows)) {
+    return [
+      Math.max(1, Math.trunc(dim.cols)),
+      Math.max(1, Math.trunc(dim.rows)),
+    ];
+  }
+  return [Math.max(1, terminal.cols), Math.max(1, terminal.rows)];
+}
 
 export class EditTerminalModal extends DialogModal {
   protected readonly state;
@@ -1052,14 +1077,22 @@ export class TerminalView extends ItemView {
             profile.type === "invalid"
               ? Settings.Profile.DEFAULTS[""].terminalOptions
               : profile.terminalOptions,
+          terminalBackendOptions = deepFreeze({
+            platform: deopaque(Platform.CURRENT),
+            win32Backend:
+              profile.type === "integrated" ? profile.win32Backend : void 0,
+          }),
           customKeyEventHandler = new CustomKeyEventHandlerAddon(
             Platform.CURRENT,
             () => settings.value.keymappings,
             () => settings.value.macOSOptionKeyPassthrough,
+            deopaque(Platform.CURRENT) === "win32" &&
+              profile.type === "integrated" &&
+              profile.win32Backend === "conpty",
           ),
           emulator = new TerminalView.EMULATOR(
             ele,
-            async (terminal) => {
+            async (terminal, addons0) => {
               if (serial) {
                 await writePromise(
                   terminal,
@@ -1069,8 +1102,14 @@ export class TerminalView extends ItemView {
                   }),
                 );
               }
+              // Spawn at the fitted size: a default-sized spawn reflows on
+              // the first frame.
+              const [columns, rows] = fittedSize(addons0.fit, terminal);
+              terminal.resize(columns, rows);
               const ret = await openProfile(context, profile, {
+                columns,
                 cwd: cwd ?? void 0,
+                rows,
               });
               if (ret) {
                 return ret;
@@ -1099,6 +1138,7 @@ export class TerminalView extends ItemView {
             mergeTerminalOptions(
               profileTerminalOptions,
               settings.value.terminalOptions,
+              terminalBackendOptions,
             ),
             {
               altScreenExit: new AltScreenExitAddon(),
@@ -1167,11 +1207,18 @@ export class TerminalView extends ItemView {
           .then(
             (code) => {
               notice2(
-                () =>
-                  i18n.t("notices.terminal-exited", {
+                () => {
+                  const key =
+                    deopaque(Platform.CURRENT) === "win32"
+                      ? (win32ExitCodeKey(code) ?? "notices.terminal-exited")
+                      : "notices.terminal-exited";
+                  return i18n.t(key, {
                     code,
+                    executable:
+                      profile.type === "integrated" ? profile.executable : "",
                     interpolation: { escapeValue: false },
-                  }),
+                  });
+                },
                 (profile.type === "invalid"
                   ? DEFAULT_SUCCESS_EXIT_CODES
                   : profile.successExitCodes
@@ -1228,7 +1275,11 @@ export class TerminalView extends ItemView {
                   profileOpts: Settings.Profile.TerminalOptions,
                   globalOpts: Settings.Profile.TerminalOptions,
                 ): ITerminalOptions => {
-                  const merged = mergeTerminalOptions(profileOpts, globalOpts);
+                  const merged = mergeTerminalOptions(
+                    profileOpts,
+                    globalOpts,
+                    terminalBackendOptions,
+                  );
                   const tmp = new Terminal(merged);
                   try {
                     return tmp.options;

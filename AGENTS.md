@@ -24,9 +24,9 @@ This guide provides clear, actionable instructions for AI coding agents working 
 
 - **Build & Install**
   - `bun run build` — production build (runs checks then builds).
-  - `bun run dev` — development/watch build.
+  - `bun run build:dev` — development/watch build without checks.
   - `bun run obsidian:install <vault>` — build and install the plugin to a vault.
-  - `bun run obsidian:install:force <vault>` — force install using `build:force` (skips format).
+  - `bun run obsidian:install:force <vault>` — build and install without checks.
 
 ### Agent quick-start (AI agents)
 
@@ -34,13 +34,13 @@ This guide provides clear, actionable instructions for AI coding agents working 
   - `bun install` — install dependencies (preferred)
   - `bun run build:dev` — development / watch build
   - `bun run build` — production build (runs checks then builds)
-  - `bun exec vitest run "tests/**/*.spec.{js,ts,mjs}"` — run unit tests (non-interactive)
-  - `bun test` — run full test suite
+  - `bun x vitest run "tests/**/*.spec.{js,ts,mjs}"` — run Vitest unit tests
+  - `bun run test` — run the full Pytest and Vitest suite
 
 - Read first: `AGENTS.md`, `src/main.ts`, `src/settings-data.ts`, `src/settings.ts`, `src/terminal/load.ts`, `assets/locales.ts`, `scripts/build.mjs`, `vitest.config.mts`
 - Note: `scripts/obsidian-install.mjs` now fails gracefully when `manifest.json` is missing or invalid and prints a concise error message rather than emitting a full stack trace. This makes local tests and CI logs cleaner and eases assertions for failure cases.
-  - `bun run check` — eslint + prettier(check) + markdownlint.
-  - `bun run format` — eslint --fix, prettier --write, markdownlint --fix.
+  - `bun run check` — TypeScript, ESLint, Markdown, Prettier, Ruff, and Ty checks.
+  - `bun run format` — ESLint, Markdown, Prettier, and Ruff fixes, then Ty.
 
   - Python environment / `uv` usage: This package follows the workspace convention of adding `uvloop` extras to `tool.uv.default-groups`. Run `uv sync` locally to install dev and platform event-loop extras; CI should use `uv sync --locked`. Avoid `--all-extras` / `--dev` flags.
 
@@ -56,19 +56,25 @@ This guide provides clear, actionable instructions for AI coding agents working 
 
 Quick reference for scripts in `package.json`. Use `bun` (preferred).
 
-- `build` — runs `format` then `build:force`.
+- `build` — runs `check` then `build:force`.
 - `build:force` — runs `node scripts/build.mjs` (internal build implementation).
 - `build:dev` — runs `build:force` in dev mode (`bun run build:force -- dev`).
 - `obsidian:install` — runs `build` then `node scripts/obsidian-install.mjs` (install to vault).
 - `obsidian:install:force` — runs `build:force` then `node scripts/obsidian-install.mjs`.
-- `check` — runs `check:eslint`, `check:prettier`, `check:md`.
+- `check` — runs `check:tsc`, `check:eslint`, `check:md`, `check:prettier`, then `check:py`.
+- `check:tsc` — `tsc --noEmit`.
 - `check:eslint` — `eslint --cache --max-warnings=0`.
-- `check:prettier` — `prettier --check .`.
 - `check:md` — `markdownlint-cli2`.
-- `format` — runs `format:eslint`, `format:prettier`, `format:md`.
+- `check:prettier` — checks the `package.json` Prettier globs.
+- `check:py` — locked Ruff lint, Ruff format, and Ty checks.
+- `format` — runs `format:eslint`, `format:md`, `format:prettier`, then `format:py`.
 - `format:eslint` — `eslint --cache --fix`.
-- `format:prettier` — `prettier --write .`.
 - `format:md` — `markdownlint-cli2 --fix`.
+- `format:prettier` — writes the `package.json` Prettier globs.
+- `format:py` — locked Ruff fixes and formatting, then Ty.
+- `test` — runs `test:py` then `test:vitest`.
+- `test:py` — `uv run --locked pytest`.
+- `test:vitest` — `vitest run --coverage`.
 - `commitlint` — `commitlint --from=origin/main --to=HEAD`.
 - `prepare` — runs `prek install` to set up Git hooks.
 - `version` — version lifecycle script (`node scripts/version.mjs`).
@@ -77,7 +83,7 @@ Quick reference for scripts in `package.json`. Use `bun` (preferred).
 
 ## Testing ✅
 
-- **Test runner:** Vitest (fast, TypeScript support).
+- **Test runners:** Pytest for Python and Vitest for TypeScript/JavaScript.
 - **Test file conventions and meaning:**
   - `*.spec.{ts,js,mjs}` — **Unit tests (BDD-style)**: prefer a Behavior-Driven mindset; tests describe what the code should do, focus on small, isolated units, and should be fast and hermetic
   - `*.test.{ts,js,mjs}` — **Integration tests (TDD-style)**: prefer a Test-Driven mindset for integration verification; tests exercise multiple units or real integrations (filesystem, build, etc.).
@@ -104,10 +110,13 @@ Helpful local resources:
 - `tests/README.md` — Examples and recommended patterns for `vi` usage (async stubs, fake timers, spying globals).
 
 - **Run locally:**
-  - Full (default): `bun run test` — runs both unit and integration tests with coverage.
+  - Full (default): `bun run test` — runs Pytest, then Vitest with coverage.
+  - Python-only: `bun run test:py`.
+  - Vitest-only: `bun run test:vitest`.
   - Unit-only (Vitest CLI): `bun x vitest run "tests/**/*.spec.{js,ts,mjs}" --coverage` — fast, good for PR iteration.
   - Integration-only (Vitest CLI): `bun x vitest run "tests/**/*.test.{js,ts,mjs}" --coverage` — use for longer-running integration suites.
   - Interactive / watch: `bun run test:watch`.
+  - Native Windows ConPTY host: `uv run --locked pytest tests/src/terminal/test_win32_conpty.py`.
 
   > **Agent note — vitest CLI:** `vitest` without a subcommand defaults to interactive/watch mode. **Agents must never run Vitest in watch mode**; always use `vitest run <options>` or add the `--run` option so tests execute non-interactively (example: `bun x vitest --run "tests/**/*.spec.{js,ts,mjs}"`).
 
@@ -124,11 +133,22 @@ Helpful local resources:
 
 - **PR checklist (for agents):**
   1. Add/modify tests to cover behavior changes and follow the **one test file per source file** convention.
-  2. Run `bun x vitest run "tests/**/*.spec.{js,ts,mjs}"` locally for fast verification and `bun run test` for the full suite.
-  3. Keep tests parallelizable and idempotent.
-  4. Document any infra changes in `AGENTS.md`.
+  2. Run `bun x vitest run "tests/**/*.spec.{js,ts,mjs}"` for fast verification.
+  3. Run `bun run test` for the full Pytest and Vitest suite.
+  4. Keep tests parallelizable and idempotent.
+  5. Document any infrastructure changes in `AGENTS.md`.
 
 If you need help designing a test or mocking a dependency, ask for a short example to be added to `tests/fixtures/`.
+
+### Windows backend tests
+
+Run the ConPTY host and ConHost resizer tests on native Windows:
+
+```powershell
+uv run --locked pytest tests/src/terminal/test_win32_conpty.py tests/src/terminal/test_win32_resizer.py
+```
+
+CI runs the same suites in the `windows-native` job on `windows-2025` for Python 3.9 and 3.12.
 
 ## 3. Coding Conventions
 
@@ -285,8 +305,8 @@ This section contains concise, actionable rules and project-specific examples to
 - Start by inspecting `src/main.ts`, `src/settings-data.ts`, and `assets/locales.ts` to learn core patterns: Manager classes (LanguageManager, SettingsManager), `.fix()` validators, and `PluginLocales` usage.
 - Settings pattern: always prefer `.fix()` functions (see `Settings.fix`/`LocalSettings.fix`) to validate/normalize external inputs before persisting or mutating settings.
 - I18n: use `createI18n(PluginLocales.RESOURCES, ...)` and `language.value.t(...)` for translations. Never hardcode translatable strings—use existing translation keys in `assets/locales/`.
-- Build/Dev pattern: `scripts/build.mjs` uses esbuild `context()`; pass `dev` as `argv[2]` to enable watch mode. Tests mock `esbuild` in `tests/scripts/build.test.mjs`—use those tests as canonical examples for safe refactors.
-- Script behavior: `scripts/obsidian-install.mjs` exits 1 with a short error message when `manifest.json` is missing. Make changes in scripts with tests mirroring error conditions (see `tests/scripts/obsidian-install.test.mjs`).
+- Build/Dev pattern: `scripts/build.mjs` uses esbuild `context()`; pass `dev` as `argv[2]` to enable watch mode. Tests mock esbuild in `tests/scripts/build.test.ts`.
+- Script behavior: `scripts/obsidian-install.mjs` exits 1 with a short error message when `manifest.json` is missing. Mirror error changes in `tests/scripts/obsidian-install.spec.ts`.
 - Test conventions: `*.spec.*` = unit (fast, isolated); `*.test.*` = integration (may use filesystem or child processes). Follow the one-test-file-per-source-file convention and place tests under `tests/` mirroring `src/`.
 - Formatting & linting: run `bun run format` and `bun run check` before committing. CI uses `bun install`.
 - Commit rules for agents: use Conventional Commits; run `bun run commitlint` locally when appropriate. Keep headers ≤100 chars and wrap bodies at 100 chars.

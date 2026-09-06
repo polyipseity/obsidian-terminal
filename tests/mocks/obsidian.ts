@@ -289,12 +289,6 @@ export class Vault extends Events {
     return this.read(file);
   }
 
-  async readBinary(file: TFile | string): Promise<ArrayBuffer> {
-    const content = await this.read(file);
-    const encoder = new TextEncoder();
-    return encoder.encode(content).buffer;
-  }
-
   async modify(file: TFile | string, data: string): Promise<void> {
     const path = typeof file === "string" ? file : file.path;
     const normalized = normalizePath(path);
