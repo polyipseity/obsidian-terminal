@@ -52,7 +52,7 @@ export function resolveWin32Backend(
  */
 export function conPtyFailureCondemnsRuntime(
   error: unknown,
-  hostExit: NodeJS.Signals | number | null,
+  hostExit: Awaited<Pseudoterminal["onExit"]> | null,
 ): boolean {
   if (error instanceof ConPtyControlError && error.reason === "aborted") {
     return false;

@@ -8,7 +8,7 @@ import { FuzzySuggestModal } from "obsidian";
 import { Settings } from "../settings-data.js";
 import type { TerminalPlugin } from "../main.js";
 import type { $SuggestModal } from "../@types/obsidian.js";
-import { noop } from "es-toolkit/compat";
+import { noop } from "es-toolkit/function";
 
 export class SelectProfileModal extends FuzzySuggestModal<Settings.Profile.Entry | null> {
   public constructor(
@@ -125,11 +125,9 @@ export function spawnTerminal(
     ).open();
     return;
   }
-  void (async (): Promise<void> => {
-    try {
-      await TerminalView.spawn(context, state);
-    } catch (error) {
-      self.console.error(error);
-    }
-  })();
+  (async (): Promise<void> => {
+    await TerminalView.spawn(context, state);
+  })().catch((error: unknown) => {
+    self.console.error(error);
+  });
 }

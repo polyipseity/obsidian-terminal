@@ -1,16 +1,15 @@
-// @vitest-environment node
-
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import * as v from "valibot";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Unit spec for scripts/utils.mjs — prefer hermetic behavior and keep tests
-// deterministic. Some tests use quick node child processes to exercise
-// `execute` but the module is imported per-test to keep state isolated.
+// deterministic. Some tests spawn the current runtime (process.execPath) to
+// exercise `execute` but the module is imported per-test to keep state isolated.
 
 async function mktemp() {
-  return fs.mkdtemp(path.join(os.tmpdir(), "obsidian-plugin-template-test-"));
+  return fs.mkdtemp(path.join(os.tmpdir(), "obsidian-plugin-test-"));
 }
 
 describe("scripts/utils.mjs", () => {
@@ -38,7 +37,7 @@ describe("scripts/utils.mjs", () => {
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const out = await execute("node", [
+    const out = await execute(process.execPath, [
       "-e",
       "process.stdout.write('ok'); process.stderr.write('bad'); process.exit(0)",
     ]);
@@ -49,7 +48,9 @@ describe("scripts/utils.mjs", () => {
 
   it("execute throws when the child exits with non-zero exit code", async () => {
     const { execute } = await import("../../scripts/utils.mjs");
-    await expect(execute("node", ["-e", "process.exit(2)"])).rejects.toThrow();
+    await expect(
+      execute(process.execPath, ["-e", "process.exit(2)"]),
+    ).rejects.toThrow();
   });
 
   it("PLUGIN_ID resolves to id from manifest.json", async () => {
@@ -104,7 +105,7 @@ describe("scripts/utils.mjs", () => {
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
       const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      const out = await execute("node", [
+      const out = await execute(process.execPath, [
         "-e",
         "process.stdout.write('hello'); process.exit(0)",
       ]);
@@ -118,7 +119,7 @@ describe("scripts/utils.mjs", () => {
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
       const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      const out = await execute("node", [
+      const out = await execute(process.execPath, [
         "-e",
         "process.stderr.write('err'); process.exit(0)",
       ]);
@@ -129,14 +130,23 @@ describe("scripts/utils.mjs", () => {
 
     it("handles child that produces no output but exits successfully", async () => {
       const { execute } = await import("../../scripts/utils.mjs");
-      const out = await execute("node", ["-e", "process.exit(0)"]);
+      const out = await execute(process.execPath, ["-e", "process.exit(0)"]);
       expect(out).toBe("");
     }, 20000);
 
     it("throws Error(String(exitCode)) when execFile resolves and child.exitCode is non-zero", async () => {
       vi.resetModules();
-      // Mock util.promisify to return a function whose Promise has a .child prop
-      vi.doMock("node:util", () => ({
+      // Mock util.promisify to return a function whose Promise has a .child prop.
+      // The mock must expose a `default` export: vitest v4 ESM interop requires
+      // it on the mocked module even for named imports, and the factory returns
+      // a pre-declared const (not an inline literal) so vitest won't auto-add it.
+      interface UtilMock {
+        promisify: () => () => Promise<unknown> & {
+          child: { readonly exitCode: number };
+        };
+        default?: UtilMock;
+      }
+      const utilMock: UtilMock = {
         promisify: () => () => {
           const p: Promise<unknown> & { child: { readonly exitCode: number } } =
             Object.assign(
@@ -150,10 +160,20 @@ describe("scripts/utils.mjs", () => {
             );
           return p;
         },
-      }));
+      };
+      utilMock.default = utilMock;
+      vi.doMock("node:util", () => utilMock);
 
-      // execFile itself isn't used by our mocked promisify, but provide it anyway
-      vi.doMock("node:child_process", () => ({ execFile: vi.fn() }));
+      // execFile itself isn't used by our mocked promisify, but provide a mock
+      // so the module's named import resolves. It also needs a `default`
+      // export for the same vitest v4 interop reason as the util mock.
+      interface CpMock {
+        execFile: ReturnType<typeof vi.fn>;
+        default?: CpMock;
+      }
+      const cpMock: CpMock = { execFile: vi.fn() };
+      cpMock.default = cpMock;
+      vi.doMock("node:child_process", () => cpMock);
 
       // Prevent test output from printing to the terminal and assert it
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -164,6 +184,72 @@ describe("scripts/utils.mjs", () => {
 
       expect(logSpy).toHaveBeenCalledWith("stdout");
       expect(errSpy).toHaveBeenCalledWith("stderr");
+    });
+  });
+
+  describe("shared JSON helpers", () => {
+    async function loadHelpers(): Promise<
+      typeof import("../../scripts/utils.mjs")
+    > {
+      return await import("../../scripts/utils.mjs");
+    }
+
+    it("sortKeys sorts nested keys and recurses into arrays without mutating input", async () => {
+      const { sortKeys } = await loadHelpers();
+      const input = { b: 1, a: { z: 2, y: 3 }, arr: [{ d: 4, c: 5 }] };
+      const result = sortKeys(input);
+      expect(result).toEqual({
+        a: { y: 3, z: 2 },
+        arr: [{ c: 5, d: 4 }],
+        b: 1,
+      });
+      expect(Object.keys(input)).toEqual(["b", "a", "arr"]);
+      expect(input.a).toEqual({ z: 2, y: 3 });
+    });
+
+    it("stringifySorted writes 2-space indented JSON with sorted keys and trailing newline", async () => {
+      const { stringifySorted } = await loadHelpers();
+      expect(stringifySorted({ b: 1, a: { d: 2, c: 3 } })).toBe(
+        '{\n  "a": {\n    "c": 3,\n    "d": 2\n  },\n  "b": 1\n}\n',
+      );
+    });
+
+    it("stringifySorted escapes invisible characters", async () => {
+      const { stringifySorted } = await loadHelpers();
+      // non-breaking space becomes a literal \u00a0 escape sequence
+      expect(stringifySorted({ note: "a\u00a0b" })).toBe(
+        '{\n  "note": "a\\u00a0b"\n}\n',
+      );
+      // C1 control character (U+0085) is escaped too
+      expect(stringifySorted({ note: "c\u0085d" })).toContain('"c\\u0085d"');
+      // escaped output still parses back to the original value
+      expect(
+        v.parse(
+          v.record(v.string(), v.unknown()),
+          JSON.parse(stringifySorted({ note: "a\u00a0b" })),
+        ),
+      ).toEqual({ note: "a\u00a0b" });
+    });
+
+    it("readJSON parses a JSON file", async () => {
+      const tmp = await mktemp();
+      const file = path.join(tmp, "data.json");
+      await fs.writeFile(file, JSON.stringify({ b: 2, a: { d: 4, c: 3 } }));
+      const { readJSON } = await loadHelpers();
+      await expect(readJSON(file)).resolves.toEqual({
+        b: 2,
+        a: { d: 4, c: 3 },
+      });
+    });
+
+    it("writeJSON writes sorted JSON with trailing newline", async () => {
+      const tmp = await mktemp();
+      const file = path.join(tmp, "data.json");
+      const { writeJSON, stringifySorted } = await loadHelpers();
+      await writeJSON(file, { b: 1, a: 2 });
+      const raw = await fs.readFile(file, "utf-8");
+      expect(raw).toBe(stringifySorted({ a: 2, b: 1 }));
+      expect(raw.endsWith("\n")).toBe(true);
     });
   });
 });

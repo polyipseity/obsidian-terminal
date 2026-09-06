@@ -12,10 +12,10 @@ import {
   Platform,
   registerSettingsCommands,
   resetButton,
+  setSanitizedInnerHTML,
   setTextToEnum,
 } from "@polyipseity/obsidian-plugin-library";
-import { cloneDeep, size } from "es-toolkit/compat";
-import { sanitizeHTMLToDom } from "obsidian";
+import { cloneDeep } from "es-toolkit/object";
 import semverLt from "semver/functions/lt.js";
 import type { loadDocumentations } from "./documentations.js";
 import type { TerminalPlugin } from "./main.js";
@@ -178,7 +178,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
           .setName(i18n.t("settings.profiles"))
           .setDesc(
             i18n.t("settings.profiles-description", {
-              count: size(settings.value.profiles),
+              count: Object.keys(settings.value.profiles).length,
               interpolation: { escapeValue: false },
             }),
           )
@@ -233,7 +233,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               async (value) =>
                 settings.mutate((settingsM) => {
                   // Unfortunately we have to use the empty string as a sentinel value for "no default profile" because the dropdown component doesn't allow null/undefined values. So we have to coerce it back to null here.
-                  settingsM.defaultProfile = value === "" ? null : value;
+                  settingsM.defaultProfile =
+                    value === "" ? null : (value as Settings.DefaultProfile);
                 }),
               () => {
                 this.postMutate();
@@ -740,10 +741,9 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
         .setDesc(
           createDocumentFragment(settingEl.ownerDocument, (frag) => {
             createChildElement(frag, "span", (ele) => {
-              ele.replaceChildren(
-                sanitizeHTMLToDom(
-                  i18n.t("settings.expose-internal-modules-description-HTML"),
-                ),
+              setSanitizedInnerHTML(
+                ele,
+                i18n.t("settings.expose-internal-modules-description-HTML"),
               );
             });
           }),

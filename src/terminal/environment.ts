@@ -4,7 +4,6 @@ import {
   dynamicRequire,
   lazyInit,
 } from "@polyipseity/obsidian-plugin-library";
-
 import { BUNDLE } from "../imports.js";
 import {
   DEFAULT_PYTHONIOENCODING,

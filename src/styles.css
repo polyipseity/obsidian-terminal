@@ -1,12 +1,4 @@
 @import "@polyipseity/obsidian-plugin-library/style";
 @import "./terminal/emulator.css";
+@import "./terminal/utils.css";
 @import "./terminal/view.css";
-
-/* Utility classes for dynamic element state. */
-.terminal\:hidden {
-  visibility: hidden;
-}
-
-.terminal\:full-width {
-  width: 100%;
-}

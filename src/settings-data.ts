@@ -30,15 +30,18 @@ import type {
   IWindowOptions,
   IWindowsPty,
 } from "@xterm/xterm";
-import { isUndefined, omitBy } from "es-toolkit/compat";
+import { omitBy } from "es-toolkit/object";
+import { isNil } from "es-toolkit/predicate";
 import type {
   DeepReadonly,
   DeepRequired,
-  DeepUndefinable,
   DeepWritable,
+  Opaque,
+  OptionalKeys,
+  RequiredKeys,
 } from "ts-essentials";
 import { PluginLocales } from "../assets/locales.js";
-import { DEFAULT_SUCCESS_EXIT_CODES } from "./magic.js";
+import { DEFAULT_SUCCESS_EXIT_CODES, PluginUUIDs } from "./magic.js";
 import {
   RendererAddon,
   RightClickActionAddon,
@@ -46,7 +49,7 @@ import {
 import {
   DEFAULT_LINK_HANDLER,
   DEFAULT_LOGGER,
-  DEFAULT_OVERVIEW_RULER,
+  DEFAULT_OVERVIEW_RULER_OPTIONS,
   DEFAULT_TERMINAL_OPTIONS,
   DEFAULT_THEME,
   DEFAULT_WINDOWS_PTY,
@@ -55,15 +58,10 @@ import {
 } from "./terminal/profile-presets.js";
 import { Pseudoterminal } from "./terminal/pseudoterminal.js";
 
-/**
- * Every key of `T` present, each value possibly `undefined`.
- *
- * `Required<DeepUndefinable<T>>` strips `undefined` from optional properties.
- * Mapping over `keyof Required<T>` is non-homomorphic, so no modifier-based
- * `undefined` filtering applies and fixer results stay assignable.
- */
-type CompleteUndefinable<T> = {
-  readonly [K in keyof Required<T>]: DeepUndefinable<T[K]> | undefined;
+type RequiredWithUndefined<T> = {
+  [K in RequiredKeys<T>]: T[K];
+} & {
+  [K in OptionalKeys<T>]: T[K] | undefined;
 };
 
 export interface LocalSettings extends PluginContext.LocalSettings {
@@ -125,7 +123,10 @@ export interface Settings extends PluginContext.Settings {
   readonly pythonExecutableDiscovered: boolean;
 }
 export namespace Settings {
-  export type DefaultProfile = keyof Profiles | null;
+  export type DefaultProfile = Opaque<
+    keyof Profiles,
+    (typeof PluginUUIDs)["UUID0"]
+  > | null;
 
   export const DEFAULT: Settings = deepFreeze({
     addToCommand: true,
@@ -421,7 +422,7 @@ export namespace Settings {
   );
 
   export namespace Keymapping {
-    export const DEFAULT = deepFreeze({
+    export const DEFAULT: Keymapping = deepFreeze({
       action: "ignore",
       actionArg: null,
       alt: false,
@@ -430,7 +431,7 @@ export namespace Settings {
       meta: false,
       platform: null,
       shift: false,
-    }) satisfies Keymapping;
+    });
 
     export function isValidActionArg<
       const T extends (typeof ACTION_ARG_TYPES)[keyof typeof ACTION_ARG_TYPES],
@@ -731,12 +732,11 @@ export namespace Settings {
         return [];
       }
       const result: [string, string][] = [];
-      for (const entry of val as readonly unknown[]) {
+      for (const entry of val satisfies readonly unknown[] as readonly unknown[]) {
         if (!Array.isArray(entry)) {
           continue;
         }
-        const pair: readonly unknown[] = entry,
-          [k, v] = pair;
+        const [k, v] = entry satisfies readonly unknown[] as readonly unknown[];
         if (typeof k !== "string" || typeof v !== "string") {
           continue;
         }
@@ -774,160 +774,156 @@ export namespace Settings {
           const type = inSet(TYPES, unc.type) ? unc.type : "invalid";
           switch (type) {
             case "": {
-              const uncTyped: Unchecked<Typed<typeof type>> = unc;
               return {
-                followTheme: fixTyped(DEFAULTS[type], uncTyped, "followTheme", [
+                followTheme: fixTyped(DEFAULTS[type], unc, "followTheme", [
                   "boolean",
                 ]),
-                name: fixTyped(DEFAULTS[type], uncTyped, "name", ["string"]),
+                name: fixTyped(DEFAULTS[type], unc, "name", ["string"]),
                 restoreHistory: fixTyped(
                   DEFAULTS[type],
-                  uncTyped,
+                  unc,
                   "restoreHistory",
                   ["boolean"],
                 ),
                 rightClickAction: fixInSet(
                   DEFAULTS[type],
-                  uncTyped,
+                  unc,
                   "rightClickAction",
                   RightClickActionAddon.ACTIONS,
                 ),
                 successExitCodes: fixArray(
                   DEFAULTS[type],
-                  uncTyped,
+                  unc,
                   "successExitCodes",
                   ["string"],
                 ),
-                terminalOptions: fixTerminalOptions(uncTyped["terminalOptions"])
+                terminalOptions: fixTerminalOptions(unc["terminalOptions"])
                   .value,
                 type,
               } satisfies Typed<typeof type>;
             }
             case "developerConsole": {
-              const uncTyped: Unchecked<Typed<typeof type>> = unc;
               return {
-                followTheme: fixTyped(DEFAULTS[type], uncTyped, "followTheme", [
+                followTheme: fixTyped(DEFAULTS[type], unc, "followTheme", [
                   "boolean",
                 ]),
-                name: fixTyped(DEFAULTS[type], uncTyped, "name", ["string"]),
+                name: fixTyped(DEFAULTS[type], unc, "name", ["string"]),
                 restoreHistory: fixTyped(
                   DEFAULTS[type],
-                  uncTyped,
+                  unc,
                   "restoreHistory",
                   ["boolean"],
                 ),
                 rightClickAction: fixInSet(
                   DEFAULTS[type],
-                  uncTyped,
+                  unc,
                   "rightClickAction",
                   RightClickActionAddon.ACTIONS,
                 ),
                 successExitCodes: fixArray(
                   DEFAULTS[type],
-                  uncTyped,
+                  unc,
                   "successExitCodes",
                   ["string"],
                 ),
-                terminalOptions: fixTerminalOptions(uncTyped["terminalOptions"])
+                terminalOptions: fixTerminalOptions(unc["terminalOptions"])
                   .value,
                 type,
               } satisfies Typed<typeof type>;
             }
             case "external": {
-              const uncTyped: Unchecked<Typed<typeof type>> = unc;
               return {
-                args: fixArray(DEFAULTS[type], uncTyped, "args", ["string"]),
-                environment: fixEnvironment(uncTyped["environment"]),
-                executable: fixTyped(DEFAULTS[type], uncTyped, "executable", [
+                args: fixArray(DEFAULTS[type], unc, "args", ["string"]),
+                environment: fixEnvironment(unc["environment"]),
+                executable: fixTyped(DEFAULTS[type], unc, "executable", [
                   "string",
                 ]),
-                followTheme: fixTyped(DEFAULTS[type], uncTyped, "followTheme", [
+                followTheme: fixTyped(DEFAULTS[type], unc, "followTheme", [
                   "boolean",
                 ]),
-                name: fixTyped(DEFAULTS[type], uncTyped, "name", ["string"]),
+                name: fixTyped(DEFAULTS[type], unc, "name", ["string"]),
                 platforms: fixPlatforms(
                   DEFAULTS[type].platforms,
-                  uncTyped["platforms"] ?? {},
+                  unc["platforms"] ?? {},
                   Pseudoterminal.SUPPORTED_PLATFORMS,
                 ),
                 restoreHistory: fixTyped(
                   DEFAULTS[type],
-                  uncTyped,
+                  unc,
                   "restoreHistory",
                   ["boolean"],
                 ),
                 rightClickAction: fixInSet(
                   DEFAULTS[type],
-                  uncTyped,
+                  unc,
                   "rightClickAction",
                   RightClickActionAddon.ACTIONS,
                 ),
                 successExitCodes: fixArray(
                   DEFAULTS[type],
-                  uncTyped,
+                  unc,
                   "successExitCodes",
                   ["string"],
                 ),
-                terminalOptions: fixTerminalOptions(uncTyped["terminalOptions"])
+                terminalOptions: fixTerminalOptions(unc["terminalOptions"])
                   .value,
                 type,
               } satisfies Typed<typeof type>;
             }
             case "integrated": {
-              const uncTyped: Unchecked<Typed<typeof type>> = unc;
               return {
-                args: fixArray(DEFAULTS[type], uncTyped, "args", ["string"]),
-                environment: fixEnvironment(uncTyped["environment"]),
-                executable: fixTyped(DEFAULTS[type], uncTyped, "executable", [
+                args: fixArray(DEFAULTS[type], unc, "args", ["string"]),
+                environment: fixEnvironment(unc["environment"]),
+                executable: fixTyped(DEFAULTS[type], unc, "executable", [
                   "string",
                 ]),
-                followTheme: fixTyped(DEFAULTS[type], uncTyped, "followTheme", [
+                followTheme: fixTyped(DEFAULTS[type], unc, "followTheme", [
                   "boolean",
                 ]),
-                name: fixTyped(DEFAULTS[type], uncTyped, "name", ["string"]),
+                name: fixTyped(DEFAULTS[type], unc, "name", ["string"]),
                 platforms: fixPlatforms(
                   DEFAULTS[type].platforms,
-                  uncTyped["platforms"] ?? {},
+                  unc["platforms"] ?? {},
                   Pseudoterminal.SUPPORTED_PLATFORMS,
                 ),
                 pythonExecutable: fixTyped(
                   DEFAULTS[type],
-                  uncTyped,
+                  unc,
                   "pythonExecutable",
                   ["string"],
                 ),
                 restoreHistory: fixTyped(
                   DEFAULTS[type],
-                  uncTyped,
+                  unc,
                   "restoreHistory",
                   ["boolean"],
                 ),
                 rightClickAction: fixInSet(
                   DEFAULTS[type],
-                  uncTyped,
+                  unc,
                   "rightClickAction",
                   RightClickActionAddon.ACTIONS,
                 ),
                 successExitCodes: fixArray(
                   DEFAULTS[type],
-                  uncTyped,
+                  unc,
                   "successExitCodes",
                   ["string"],
                 ),
-                terminalOptions: fixTerminalOptions(uncTyped["terminalOptions"])
+                terminalOptions: fixTerminalOptions(unc["terminalOptions"])
                   .value,
                 type,
                 // useWin32Conhost (retired) is ignored; a missing
                 // win32Backend takes the default.
                 win32Backend: fixInSet(
                   DEFAULTS[type],
-                  uncTyped,
+                  unc,
                   "win32Backend",
                   WIN32_BACKENDS,
                 ),
                 win32BackendAutoDemoted: fixTyped(
                   DEFAULTS[type],
-                  uncTyped,
+                  unc,
                   "win32BackendAutoDemoted",
                   ["boolean"],
                 ),
@@ -1022,7 +1018,7 @@ export namespace Settings {
             ["undefined", "boolean"],
           ),
           // Do not expose `documentOverride`
-          documentOverride: void 0,
+          documentOverride: null,
           drawBoldTextInBrightColors: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
             unc,
@@ -1118,9 +1114,9 @@ export namespace Settings {
                         "undefined",
                         "function",
                       ]) as ILinkHandler["leave"],
-                    } satisfies CompleteUndefinable<ILinkHandler>;
+                    } satisfies RequiredWithUndefined<ILinkHandler>;
                   return {
-                    ...omitBy(ret, isUndefined),
+                    ...omitBy(ret, (value) => typeof value === "undefined"),
                     activate: ret.activate,
                   };
                 })(),
@@ -1157,9 +1153,9 @@ export namespace Settings {
                       warn: fixTyped(DEFAULT_LOGGER, unc2, "warn", [
                         "function",
                       ]) as ILogger["warn"],
-                    } satisfies CompleteUndefinable<ILogger>;
+                    } satisfies RequiredWithUndefined<ILogger>;
                   return {
-                    ...omitBy(ret, isUndefined),
+                    ...omitBy(ret, (value) => typeof value === "undefined"),
                     debug: ret.debug,
                     error: ret.error,
                     info: ret.info,
@@ -1194,23 +1190,25 @@ export namespace Settings {
                     ),
                     ret = {
                       showBottomBorder: fixTyped(
-                        DEFAULT_OVERVIEW_RULER,
+                        DEFAULT_OVERVIEW_RULER_OPTIONS,
                         unc2,
                         "showBottomBorder",
                         ["undefined", "boolean"],
                       ),
                       showTopBorder: fixTyped(
-                        DEFAULT_OVERVIEW_RULER,
+                        DEFAULT_OVERVIEW_RULER_OPTIONS,
                         unc2,
                         "showTopBorder",
                         ["undefined", "boolean"],
                       ),
-                      width: fixTyped(DEFAULT_OVERVIEW_RULER, unc2, "width", [
-                        "undefined",
-                        "number",
-                      ]),
-                    } satisfies CompleteUndefinable<IOverviewRulerOptions>;
-                  return omitBy(ret, isUndefined);
+                      width: fixTyped(
+                        DEFAULT_OVERVIEW_RULER_OPTIONS,
+                        unc2,
+                        "width",
+                        ["undefined", "number"],
+                      ),
+                    } satisfies RequiredWithUndefined<IOverviewRulerOptions>;
+                  return omitBy(ret, (value) => typeof value === "undefined");
                 })(),
           reflowCursorLine: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
@@ -1371,16 +1369,16 @@ export namespace Settings {
                         "undefined",
                         "string",
                       ]),
-                      scrollbarSliderActiveBackground: fixTyped(
-                        DEFAULT_THEME,
-                        unc2,
-                        "scrollbarSliderActiveBackground",
-                        ["undefined", "string"],
-                      ),
                       scrollbarSliderBackground: fixTyped(
                         DEFAULT_THEME,
                         unc2,
                         "scrollbarSliderBackground",
+                        ["undefined", "string"],
+                      ),
+                      scrollbarSliderActiveBackground: fixTyped(
+                        DEFAULT_THEME,
+                        unc2,
+                        "scrollbarSliderActiveBackground",
                         ["undefined", "string"],
                       ),
                       scrollbarSliderHoverBackground: fixTyped(
@@ -1415,8 +1413,8 @@ export namespace Settings {
                         "undefined",
                         "string",
                       ]),
-                    } satisfies CompleteUndefinable<ITheme>;
-                  return omitBy(ret, isUndefined);
+                    } satisfies RequiredWithUndefined<ITheme>;
+                  return omitBy(ret, (value) => typeof value === "undefined");
                 })(),
           windowOptions:
             unc.windowOptions === void 0
@@ -1558,8 +1556,8 @@ export namespace Settings {
                         "setWinSizePixels",
                         ["undefined", "boolean"],
                       ),
-                    } satisfies CompleteUndefinable<IWindowOptions>;
-                  return omitBy(ret, isUndefined);
+                    } satisfies RequiredWithUndefined<IWindowOptions>;
+                  return omitBy(ret, (value) => typeof value === "undefined");
                 })(),
           windowsPty:
             unc.windowsPty === void 0
@@ -1578,8 +1576,8 @@ export namespace Settings {
                         "buildNumber",
                         ["undefined", "number"],
                       ),
-                    } satisfies CompleteUndefinable<IWindowsPty>;
-                  return omitBy(ret, isUndefined);
+                    } satisfies RequiredWithUndefined<IWindowsPty>;
+                  return omitBy(ret, (value) => typeof value === "undefined");
                 })(),
           wordSeparator: fixTyped(
             DEFAULT_TERMINAL_OPTIONS,
@@ -1587,9 +1585,9 @@ export namespace Settings {
             "wordSeparator",
             ["undefined", "string"],
           ),
-        } satisfies CompleteUndefinable<TerminalOptions>;
+        } satisfies RequiredWithUndefined<TerminalOptions>;
       return markFixed(self0, {
-        ...omitBy(ret2, isUndefined),
+        ...omitBy(ret2, (value) => typeof value === "undefined"),
         documentOverride: DEFAULT_TERMINAL_OPTIONS.documentOverride,
       });
     }
@@ -1697,12 +1695,13 @@ export namespace Settings {
       // defaultProfile will be validated against fixedProfiles
       defaultProfile: ((): Settings.DefaultProfile => {
         const raw = unc.defaultProfile;
-        // Profile keys are strings; any other type cannot name a profile.
-        if (typeof raw !== "string") {
+        if (isNil(raw)) {
           return null;
         }
-        if (raw && fixedProfiles[raw] !== undefined) {
-          return raw;
+        // eslint-disable-next-line @typescript-eslint/no-base-to-string -- Intended conversion.
+        const rp = String(raw);
+        if (rp && fixedProfiles[rp] !== undefined) {
+          return rp as Settings.DefaultProfile;
         }
         return null;
       })(),

@@ -4,7 +4,7 @@ applyTo: "assets/locales/**/*.json"
 description: Rules for translation and localization files
 ---
 
-# Localization Guidelines — obsidian-plugin-template
+# Localization Guidelines
 
 ## Core Rules
 

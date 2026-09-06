@@ -24,18 +24,20 @@ import {
   printError,
   randomNotIn,
   resetButton,
+  setSanitizedInnerHTML,
   setTextToEnum,
   setTextToNumber,
   unexpected,
   useSettings,
   useSubsettings,
 } from "@polyipseity/obsidian-plugin-library";
-import { constant, identity, noop } from "es-toolkit/compat";
-import { Modal, Setting, sanitizeHTMLToDom } from "obsidian";
+import { identity, noop } from "es-toolkit/function";
+import { Modal, Setting } from "obsidian";
 import type { DeepWritable } from "ts-essentials";
 import { BUNDLE } from "./imports.js";
 import {
   CHECK_EXECUTABLE_WAIT,
+  DOMClasses2,
   PYTHON_PROBE_SETTLE_WAIT,
   PYTHON_REQUIREMENTS,
 } from "./magic.js";
@@ -101,10 +103,9 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
     ui.new(
       () => createChildElement(element, "div"),
       (ele) => {
-        ele.replaceChildren(
-          sanitizeHTMLToDom(
-            i18n.t("components.terminal-options.description-HTML"),
-          ),
+        setSanitizedInnerHTML(
+          ele,
+          i18n.t("components.terminal-options.description-HTML"),
         );
       },
       (ele) => {
@@ -444,7 +445,7 @@ export class ProfileModal extends Modal {
         }),
       )
       .new(
-        constant(titleEl),
+        () => titleEl,
         (ele) => {
           ele.textContent = i18n.t("components.profile.title", {
             interpolation: { escapeValue: false },
@@ -739,12 +740,9 @@ export class ProfileModal extends Modal {
           .setDesc(
             createDocumentFragment(settingEl.ownerDocument, (frag) => {
               createChildElement(frag, "span", (ele) => {
-                ele.replaceChildren(
-                  sanitizeHTMLToDom(
-                    i18n.t(
-                      "components.profile.restore-history-description-HTML",
-                    ),
-                  ),
+                setSanitizedInnerHTML(
+                  ele,
+                  i18n.t("components.profile.restore-history-description-HTML"),
                 );
               });
             }),
@@ -944,7 +942,7 @@ export class ProfileModal extends Modal {
                           )
                           .setDisabled(!editable);
                         if (!refs) {
-                          textArea.inputEl.classList.add("terminal:hidden");
+                          textArea.inputEl.classList.add(DOMClasses2.HIDDEN);
                           return;
                         }
                         textArea
@@ -964,7 +962,7 @@ export class ProfileModal extends Modal {
                           )
                           .setDisabled(!editable);
                         if (!refs) {
-                          textArea.inputEl.classList.add("terminal:hidden");
+                          textArea.inputEl.classList.add(DOMClasses2.HIDDEN);
                           return;
                         }
                         textArea
@@ -1127,130 +1125,126 @@ export class ProfileModal extends Modal {
                       return;
                     }
                     checkingPython = true;
-                    void (async (): Promise<void> => {
-                      try {
-                        // Resolve the inherited value the same way the open
-                        // path does.
-                        const pythonExecutable =
-                            deopaque(Platform.CURRENT) === "win32"
-                              ? (
-                                  await checkWindowsPython(
-                                    context,
-                                    inheritedPythonExecutable(
-                                      profile.pythonExecutable,
-                                      settings.value.pythonExecutable,
-                                    ),
-                                    void 0,
-                                    { notify: false },
-                                  )
-                                ).executable
-                              : profile.pythonExecutable,
-                          [execFileP2, getPackageVersion2] = await Promise.all([
-                            execFileP,
-                            getPackageVersion,
-                          ]),
-                          env = await applyEnv(),
-                          { stdout, stderr } = await execFileP2(
-                            pythonExecutable,
-                            ["--version"],
-                            {
-                              env,
-                              timeout: CHECK_EXECUTABLE_WAIT * SI_PREFIX_SCALE,
-                              windowsHide: true,
-                            },
-                          );
-                        if (stdout) {
-                          activeSelf(buttonEl).console.log(stdout);
-                        }
-                        if (stderr) {
-                          activeSelf(buttonEl).console.error(stderr);
-                        }
-                        if (!stdout.trimStart().startsWith("Python ")) {
-                          throw new Error(i18n.t("errors.not-Python"));
-                        }
-                        const msgs = await Promise.all(
-                          Object.entries(PYTHON_REQUIREMENTS)
-                            .filter(([, { platforms }]) =>
-                              platforms.includes(Platform.CURRENT),
-                            )
-                            // ConPTY runs on the standard library alone; the
-                            // pip packages serve only the ConHost resizer.
-                            .filter(
-                              ([name]) =>
-                                name === "Python" ||
-                                profile.win32Backend !== "conpty",
-                            )
-                            .map(async ([name, { version: req }]) => {
-                              let ver: SemVer | null = null;
-                              try {
-                                if (name === "Python") {
-                                  ver = new SemVer(
-                                    semverCoerce(stdout, { loose: true }) ??
-                                      stdout,
-                                    { loose: true },
-                                  );
-                                } else {
-                                  const { stdout: stdout2, stderr: stderr2 } =
-                                    await execFileP2(
-                                      pythonExecutable,
-                                      ["-c", getPackageVersion2, name],
-                                      {
-                                        env,
-                                        timeout:
-                                          CHECK_EXECUTABLE_WAIT *
-                                          SI_PREFIX_SCALE,
-                                        windowsHide: true,
-                                      },
-                                    );
-                                  if (stdout2) {
-                                    activeSelf(buttonEl).console.log(stdout2);
-                                  }
-                                  if (stderr2) {
-                                    activeSelf(buttonEl).console.error(stderr2);
-                                  }
-                                  ver = new SemVer(
-                                    semverCoerce(stdout2, { loose: true }) ??
-                                      stdout2,
-                                    { loose: true },
-                                  );
-                                }
-                              } catch (error) {
-                                /* @__PURE__ */ activeSelf(
-                                  buttonEl,
-                                ).console.debug(error);
-                              }
-                              const variant =
-                                (ver?.compare(req) ?? -1) >= 0
-                                  ? ""
-                                  : "unsatisfied";
-                              return (): string =>
-                                i18n.t(
-                                  `notices.Python-status-entry-${variant}`,
-                                  {
-                                    interpolation: { escapeValue: false },
-                                    name,
-                                    requirement: `>=${req.version}`,
-                                    version: ver?.version ?? "",
-                                  },
+                    (async (): Promise<void> => {
+                      // Resolve the inherited value the same way the open
+                      // path does.
+                      const pythonExecutable =
+                          deopaque(Platform.CURRENT) === "win32"
+                            ? (
+                                await checkWindowsPython(
+                                  context,
+                                  inheritedPythonExecutable(
+                                    profile.pythonExecutable,
+                                    settings.value.pythonExecutable,
+                                  ),
+                                  void 0,
+                                  { notify: false },
+                                )
+                              ).executable
+                            : profile.pythonExecutable,
+                        [execFileP2, getPackageVersion2] = await Promise.all([
+                          execFileP,
+                          getPackageVersion,
+                        ]),
+                        env = await applyEnv(),
+                        { stdout, stderr } = await execFileP2(
+                          pythonExecutable,
+                          ["--version"],
+                          {
+                            env,
+                            timeout: CHECK_EXECUTABLE_WAIT * SI_PREFIX_SCALE,
+                            windowsHide: true,
+                          },
+                        );
+                      if (stdout) {
+                        activeSelf(buttonEl).console.log(stdout);
+                      }
+                      if (stderr) {
+                        activeSelf(buttonEl).console.error(stderr);
+                      }
+                      if (!stdout.trimStart().startsWith("Python ")) {
+                        throw new Error(i18n.t("errors.not-Python"));
+                      }
+                      const msgs = await Promise.all(
+                        Object.entries(PYTHON_REQUIREMENTS)
+                          .filter(([, { platforms }]) =>
+                            platforms.includes(Platform.CURRENT),
+                          )
+                          // ConPTY runs on the standard library alone; the
+                          // pip packages serve only the ConHost resizer.
+                          .filter(
+                            ([name]) =>
+                              name === "Python" ||
+                              profile.win32Backend !== "conpty",
+                          )
+                          .map(async ([name, { version: req }]) => {
+                            let ver: SemVer | null = null;
+                            try {
+                              if (name === "Python") {
+                                ver = new SemVer(
+                                  semverCoerce(stdout, { loose: true }) ??
+                                    stdout,
+                                  { loose: true },
                                 );
-                            }),
-                        );
-                        notice2(
-                          () => msgs.map((msg) => msg()).join("\n"),
-                          settings.value.noticeTimeout,
-                          context,
-                        );
-                      } catch (error) {
+                              } else {
+                                const { stdout: stdout2, stderr: stderr2 } =
+                                  await execFileP2(
+                                    pythonExecutable,
+                                    ["-c", getPackageVersion2, name],
+                                    {
+                                      env,
+                                      timeout:
+                                        CHECK_EXECUTABLE_WAIT * SI_PREFIX_SCALE,
+                                      windowsHide: true,
+                                    },
+                                  );
+                                if (stdout2) {
+                                  activeSelf(buttonEl).console.log(stdout2);
+                                }
+                                if (stderr2) {
+                                  activeSelf(buttonEl).console.error(stderr2);
+                                }
+                                ver = new SemVer(
+                                  semverCoerce(stdout2, { loose: true }) ??
+                                    stdout2,
+                                  { loose: true },
+                                );
+                              }
+                            } catch (error) {
+                              /* @__PURE__ */ activeSelf(
+                                buttonEl,
+                              ).console.debug(error);
+                            }
+                            const variant =
+                              (ver?.compare(req) ?? -1) >= 0
+                                ? ""
+                                : "unsatisfied";
+                            return (): string =>
+                              i18n.t(`notices.Python-status-entry-${variant}`, {
+                                interpolation: { escapeValue: false },
+                                name,
+                                requirement: `>=${req.version}`,
+                                version: ver?.version ?? "",
+                              });
+                          }),
+                      );
+                      notice2(
+                        () => msgs.map((msg) => msg()).join("\n"),
+                        settings.value.noticeTimeout,
+                        context,
+                      );
+                    })()
+                      .catch((error: unknown) => {
                         printError(
                           anyToError(error),
                           () => i18n.t("errors.error-checking-Python"),
                           context,
                         );
-                      } finally {
+                      })
+                      .finally(() => {
                         checkingPython = false;
                         ui.update();
-                      }
-                    })();
+                      });
                     ui.update();
                   });
                 if (checkingPython) {
@@ -1340,7 +1334,7 @@ export class ProfileModal extends Modal {
                 // Debounce: every keystroke re-renders this row.
                 self.clearTimeout(resizerProbeTimer);
                 resizerProbeTimer = self.setTimeout(() => {
-                  void (async (): Promise<void> => {
+                  (async (): Promise<void> => {
                     const diagnosis = await checkWindowsPython(
                       context,
                       effective,
@@ -1366,7 +1360,9 @@ export class ProfileModal extends Modal {
                       resizerPackagesMissing = missing;
                       ui.update();
                     }
-                  })();
+                  })().catch((error: unknown) => {
+                    activeSelf(setting.settingEl).console.error(error);
+                  });
                 }, PYTHON_PROBE_SETTLE_WAIT * SI_PREFIX_SCALE);
               }
               setting.settingEl.style.display =
@@ -1396,23 +1392,19 @@ export class ProfileModal extends Modal {
                     )
                     .setCta()
                     .onClick(() => {
-                      void (async (): Promise<void> => {
-                        try {
-                          await activeSelf(
-                            setting.settingEl,
-                          ).navigator.clipboard.writeText(
-                            resizerInstallCommand,
-                          );
+                      activeSelf(setting.settingEl)
+                        .navigator.clipboard.writeText(resizerInstallCommand)
+                        .then(() => {
                           notice2(
                             () =>
                               i18n.t("notices.resizer-install-command-copied"),
                             settings.value.noticeTimeout,
                             context,
                           );
-                        } catch (error) {
+                        })
+                        .catch((error: unknown) => {
                           activeSelf(setting.settingEl).console.error(error);
-                        }
-                      })();
+                        });
                     });
                 });
             });
@@ -1454,7 +1446,7 @@ export class ProfileListModal extends ListModal<
             .setTooltip(i18n.t("components.profile-list.mark-as-default"))
             .setDisabled(!editable);
           if (!refs) {
-            button.buttonEl.classList.add("terminal:hidden");
+            button.buttonEl.classList.add(DOMClasses2.HIDDEN);
             return;
           }
           if (
@@ -1474,7 +1466,8 @@ export class ProfileListModal extends ListModal<
                 return;
               }
               // Set the default profile to the clicked profile
-              this.dataProfileList.defaultProfile = id;
+              this.dataProfileList.defaultProfile =
+                id as Settings.DefaultProfile;
             });
           });
         });
@@ -1484,7 +1477,7 @@ export class ProfileListModal extends ListModal<
             .setTooltip(i18n.t("components.profile-list.edit"))
             .setDisabled(!editable);
           if (!refs) {
-            button.buttonEl.classList.add("terminal:hidden");
+            button.buttonEl.classList.add(DOMClasses2.HIDDEN);
             return;
           }
           button.onClick(() => {
@@ -1634,13 +1627,11 @@ export class KeymappingEditModal extends Modal {
         data.alt = event.altKey;
         data.meta = event.metaKey;
         data.shift = event.shiftKey;
-        void (async () => {
-          try {
-            await this.postMutate();
-          } catch (error) {
-            activeSelf(event).console.error(error);
-          }
-        })();
+        (async () => {
+          await this.postMutate();
+        })().catch((error: unknown) => {
+          activeSelf(event).console.error(error);
+        });
       };
       this.#recordHandler = handler;
       this.#recordDoc = doc;
@@ -1656,7 +1647,7 @@ export class KeymappingEditModal extends Modal {
         }),
       )
       .new(
-        constant(titleEl),
+        () => titleEl,
         (ele) => {
           ele.textContent =
             this.#recordHandler !== null
@@ -1696,7 +1687,9 @@ export class KeymappingEditModal extends Modal {
                 this.#stopRecording();
                 return;
               }
-              void startRecording();
+              startRecording().catch((error: unknown) => {
+                activeSelf(button.buttonEl).console.error(error);
+              });
             });
           if (isRecording) {
             button.setCta();
@@ -1879,7 +1872,7 @@ export class KeymappingsModal extends ListModal<
             .setTooltip(i18n.t("components.keymappings.edit"))
             .setDisabled(!editable);
           if (!refs) {
-            button.buttonEl.classList.add("terminal:hidden");
+            button.buttonEl.classList.add(DOMClasses2.HIDDEN);
             return;
           }
           button.onClick(() => {

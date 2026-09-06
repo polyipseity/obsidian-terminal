@@ -31,7 +31,8 @@ import {
 import type { IMarker, Terminal } from "@xterm/xterm";
 import { type Program, parse } from "acorn";
 import inspect, { type Options } from "browser-util-inspect";
-import { isEmpty, isNil, noop } from "es-toolkit/compat";
+import { noop } from "es-toolkit/function";
+import { isNil } from "es-toolkit/predicate";
 import {
   DEFAULT_ENCODING,
   EXIT_SUCCESS,
@@ -57,6 +58,8 @@ import {
 
 import ansi from "ansi-escape-sequences";
 import AsyncLock from "async-lock";
+// eslint-disable-next-line eslint-comments/no-restricted-disable -- See below.
+// eslint-disable-next-line obsidianmd/no-nodejs-modules -- Type-only import.
 import type { ChildProcessWithoutNullStreams as PipedChildProcess } from "node:child_process";
 import type { DeveloperConsoleContext } from "obsidian-terminal";
 import type { Position } from "source-map";
@@ -294,7 +297,7 @@ export async function pipeShellToTerminal(
   const writer = terminal.onData(async (data) =>
     writePromise(shell.stdin, data),
   );
-  onExit.catch(noop satisfies () => unknown as () => unknown).finally(() => {
+  onExit.catch(noop).finally(() => {
     writer.dispose();
   });
 }
@@ -480,7 +483,7 @@ export class DeveloperConsolePseudoterminal
   >();
 
   public constructor(
-    protected readonly self0: () => Window & typeof window,
+    protected readonly self0: () => typeof window,
     protected readonly log: Log,
     protected readonly sourceRoot = "",
   ) {
@@ -502,7 +505,7 @@ export class DeveloperConsolePseudoterminal
       },
     });
     this.onExit
-      .catch(noop satisfies () => unknown as () => unknown)
+      .catch(noop)
       .finally(log.logger.listen(async (event) => this.write([event])))
       .finally(() => {
         new Functions(
@@ -558,7 +561,7 @@ export class DeveloperConsolePseudoterminal
           );
         }),
         terminal.onKey(({ domEvent }) => {
-          if (!isEmpty(getKeyModifiers(domEvent))) {
+          if (getKeyModifiers(domEvent).length > 0) {
             return;
           }
           function logError(error: unknown): void {
@@ -630,11 +633,9 @@ export class DeveloperConsolePseudoterminal
         disposer0.dispose();
       }),
     );
-    this.onExit
-      .catch(noop satisfies () => unknown as () => unknown)
-      .finally(() => {
-        disposer.call();
-      });
+    this.onExit.catch(noop).finally(() => {
+      disposer.call();
+    });
     await this.write(this.log.history, [terminal]);
   }
 
@@ -1196,14 +1197,12 @@ export class WindowsPseudoterminal implements Pseudoterminal {
                   /* @__PURE__ */ self.console.debug(error);
                   exitCode = conCode ?? signal ?? NaN;
                 } finally {
-                  void (async (): Promise<void> => {
-                    try {
-                      await sleep2(self, TERMINAL_EXIT_CLEANUP_WAIT);
-                      await inOutTmp.cleanup();
-                    } catch (error) {
-                      self.console.warn(error);
-                    }
-                  })();
+                  (async (): Promise<void> => {
+                    await sleep2(self, TERMINAL_EXIT_CLEANUP_WAIT);
+                    await inOutTmp.cleanup();
+                  })().catch((error: unknown) => {
+                    self.console.warn(error);
+                  });
                 }
                 try {
                   await this.#closeResizer();
@@ -1759,13 +1758,13 @@ export class WindowsNamedPipeControlChannel implements ConPtyControlChannel {
       ready = promisePromise<ConPtyReadyEvent>(),
       idleAuth = promisePromise();
     this.#connection = connection.then(async ({ promise }) => promise);
-    this.#connection.catch(noop satisfies () => unknown as () => unknown);
+    this.#connection.catch(noop);
     this.hello = hello.then(async ({ promise }) => promise);
-    this.hello.catch(noop satisfies () => unknown as () => unknown);
+    this.hello.catch(noop);
     this.ready = ready.then(async ({ promise }) => promise);
-    this.ready.catch(noop satisfies () => unknown as () => unknown);
+    this.ready.catch(noop);
     this.idleAuthenticated = idleAuth.then(async ({ promise }) => promise);
-    this.idleAuthenticated.catch(noop satisfies () => unknown as () => unknown);
+    this.idleAuthenticated.catch(noop);
     this.#settleHello = hello;
     this.#settleReady = ready;
     this.#settleIdleAuth = idleAuth;
@@ -2079,7 +2078,7 @@ export class WindowsNamedPipeControlChannel implements ConPtyControlChannel {
       .then(({ resolve }) => {
         resolve();
       })
-      .catch(noop satisfies () => unknown as () => unknown);
+      .catch(noop);
   }
 
   #succeedHello(hello: ConPtyHelloEvent): void {
@@ -2087,7 +2086,7 @@ export class WindowsNamedPipeControlChannel implements ConPtyControlChannel {
       .then(({ resolve }) => {
         resolve(hello);
       })
-      .catch(noop satisfies () => unknown as () => unknown);
+      .catch(noop);
   }
 
   #succeedReady(ready: ConPtyReadyEvent): void {
@@ -2095,7 +2094,7 @@ export class WindowsNamedPipeControlChannel implements ConPtyControlChannel {
       .then(({ resolve }) => {
         resolve(ready);
       })
-      .catch(noop satisfies () => unknown as () => unknown);
+      .catch(noop);
   }
 
   #fail(error: ConPtyControlError): void {
@@ -2108,7 +2107,7 @@ export class WindowsNamedPipeControlChannel implements ConPtyControlChannel {
         .then(({ reject }) => {
           reject(error);
         })
-        .catch(noop satisfies () => unknown as () => unknown);
+        .catch(noop);
     }
   }
 }
@@ -2268,7 +2267,7 @@ export class ConPtyHostPool {
       return;
     }
     this.#booting.set(pythonExecutable, generation);
-    void (async (): Promise<void> => {
+    (async (): Promise<void> => {
       const control = await createDeferredControl();
       let host;
       try {
@@ -2621,7 +2620,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
       control: Promise<ConPtyControlChannel> = session.then(
         (session0) => session0.control,
       );
-    control.catch(noop satisfies () => unknown as () => unknown);
+    control.catch(noop);
     if (pool) registerConPtyPoolDisposal(context, pool);
     this.control = control;
     control
@@ -2632,7 +2631,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
           this.#repaintWindow.arm();
         };
       })
-      .catch(noop satisfies () => unknown as () => unknown);
+      .catch(noop);
     let disposing: Promise<void> | null = null;
     const dispose = (): Promise<void> => {
       disposing ??= (async (): Promise<void> => {
@@ -2646,7 +2645,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
     };
     this.#dispose = dispose;
     const host = session.then((session0) => session0.host);
-    host.catch(noop satisfies () => unknown as () => unknown);
+    host.catch(noop);
     this.host = host;
     const hostExit = host.then(
       async (shell) =>
@@ -2663,7 +2662,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
     this.onExit = hostExit
       .then(async (exit) => (await control).reportedExitCode() ?? exit)
       .finally(dispose);
-    this.onExit.catch(noop satisfies () => unknown as () => unknown);
+    this.onExit.catch(noop);
     this.shell = (async (): Promise<PipedChildProcess> => {
       try {
         const [shell, control0] = await Promise.all([host, control]),
@@ -2730,7 +2729,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
      * await `shell`. A readiness failure still surfaces through the notice
      * and the host exit above.
      */
-    this.shell.catch(noop satisfies () => unknown as () => unknown);
+    this.shell.catch(noop);
     // Spare only after ready: earlier competes for CPU, after a failure
     // respawns a broken interpreter.
     this.shell
@@ -2738,7 +2737,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
         if (settings.value.prewarmConPty && pythonExecutable)
           pool?.ensureSpare(pythonExecutable, dependencies);
       })
-      .catch(noop satisfies () => unknown as () => unknown);
+      .catch(noop);
   }
 
   public async kill(): Promise<void> {

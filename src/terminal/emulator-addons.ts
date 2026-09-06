@@ -13,10 +13,10 @@ import type { CanvasAddon } from "@xterm/addon-canvas";
 import type { WebglAddon } from "@xterm/addon-webgl";
 import type { ILink, ITerminalAddon, ITheme, Terminal } from "@xterm/xterm";
 import { eastAsianWidth } from "get-east-asian-width";
-import { constant, isUndefined } from "es-toolkit/compat";
 import { around } from "monkey-around";
 import { noop } from "ts-essentials";
 import { BUNDLE } from "../imports.js";
+import { DOMClasses2 } from "../magic.js";
 import type { Settings } from "../settings-data.js";
 import type { $App } from "../@types/obsidian.js";
 import { Win32InputMode } from "./win32-input-mode.js";
@@ -256,7 +256,7 @@ export class FollowThemeAddon implements ITerminalAddon {
     // eslint-disable-next-line eslint-comments/no-restricted-disable -- Need to suppress prefer-create-el (see below)
     // eslint-disable-next-line obsidianmd/prefer-create-el -- Probe must be created in `doc` (a possibly-popout document); the global `createDiv` binds to the main window.
     const probe = doc.createElement("div");
-    probe.classList.add("terminal:color-probe");
+    probe.classList.add(DOMClasses2.COLOR_PROBE);
     probe.style.backgroundColor = `var(${varName})`;
     const resolved = ((): string => {
       attachTo.appendChild(probe);
@@ -587,7 +587,7 @@ export class FollowThemeAddon implements ITerminalAddon {
     const red = Number(match.groups["red"]),
       green = Number(match.groups["green"]),
       blue = Number(match.groups["blue"]),
-      hasAlpha = !isUndefined(match.groups["alpha"]),
+      hasAlpha = match.groups["alpha"] !== undefined,
       alpha = hasAlpha
         ? Number(match.groups["alpha"])
         : FollowThemeAddon.#COLOR_ALPHA_OPAQUE;
@@ -668,9 +668,8 @@ export class RightClickActionAddon implements ITerminalAddon {
   readonly #disposer = new Functions({ async: false, settled: true });
 
   public constructor(
-    protected readonly action: () => RightClickActionAddon.Action = constant(
+    protected readonly action: () => RightClickActionAddon.Action = () =>
       "default",
-    ),
   ) {}
 
   public activate(terminal: Terminal): void {
@@ -683,32 +682,30 @@ export class RightClickActionAddon implements ITerminalAddon {
       if (action === "default") {
         return;
       }
-      void (async (): Promise<void> => {
-        try {
-          switch (action) {
-            case "nothing":
-              // How to send right click to the terminal?
-              break;
-            // @ts-expect-error: fallthrough
-            case "copyPaste":
-              if (terminal.hasSelection()) {
-                await activeSelf(element).navigator.clipboard.writeText(
-                  terminal.getSelection(),
-                );
-                terminal.clearSelection();
-                break;
-              }
-            // eslint-disable-next-line no-fallthrough -- `copyPaste` without a selection intentionally falls through to paste.
-            case "paste":
-              terminal.paste(
-                await activeSelf(element).navigator.clipboard.readText(),
+      (async (): Promise<void> => {
+        switch (action) {
+          case "nothing":
+            // How to send right click to the terminal?
+            break;
+          // @ts-expect-error: fallthrough
+          case "copyPaste":
+            if (terminal.hasSelection()) {
+              await activeSelf(element).navigator.clipboard.writeText(
+                terminal.getSelection(),
               );
+              terminal.clearSelection();
               break;
-          }
-        } catch (error) {
-          activeSelf(element).console.error(error);
+            }
+          // eslint-disable-next-line no-fallthrough -- `copyPaste` without a selection intentionally falls through to paste.
+          case "paste":
+            terminal.paste(
+              await activeSelf(element).navigator.clipboard.readText(),
+            );
+            break;
         }
-      })();
+      })().catch((error: unknown) => {
+        activeSelf(element).console.error(error);
+      });
       consumeEvent(ev);
     };
     this.#disposer.push(() => {

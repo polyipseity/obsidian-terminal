@@ -46,7 +46,7 @@ import type { SearchAddon } from "@xterm/addon-search";
 import type { Unicode11Addon } from "@xterm/addon-unicode11";
 import type { WebLinksAddon } from "@xterm/addon-web-links";
 import { type ITerminalOptions, Terminal } from "@xterm/xterm";
-import { noop } from "es-toolkit/compat";
+import { noop } from "es-toolkit/function";
 import {
   FileSystemAdapter,
   ItemView,
@@ -659,12 +659,11 @@ export class TerminalView extends ItemView {
   }
 
   public override getState(): Record<string, unknown> {
-    // `writeStateCollaboratively` returns the laundered state object.
     return writeStateCollaboratively(
       super.getState(),
       TerminalView.type.namespaced(this.context),
       this.state,
-    ) as Record<string, unknown>;
+    );
   }
 
   public getDisplayText(): string {
@@ -791,8 +790,10 @@ export class TerminalView extends ItemView {
   }
 
   protected focus(): void {
-    const { app, emulator, leaf } = this;
-    void app.workspace.revealLeaf(leaf);
+    const { app, emulator, leaf, contentEl } = this;
+    app.workspace.revealLeaf(leaf).catch((error: unknown) => {
+      activeSelf(contentEl).console.error(error);
+    });
     emulator?.terminal.focus();
   }
 
@@ -852,11 +853,11 @@ export class TerminalView extends ItemView {
                 userTitle = value;
               });
           });
-          controlEl.classList.add("terminal:full-width");
+          controlEl.classList.add(DOMClasses2.FULL_WIDTH);
           controlEl
             .querySelectorAll<HTMLInputElement>(":scope > input")
             .forEach((input) => {
-              input.classList.add("terminal:full-width");
+              input.classList.add(DOMClasses2.FULL_WIDTH);
             });
         });
       },
@@ -1031,18 +1032,16 @@ export class TerminalView extends ItemView {
         );
       };
     if (!PROFILE_PROPERTIES[profile.type].integratable) {
-      void (async (): Promise<void> => {
-        try {
-          noticeSpawn();
-          await openProfile(context, profile, { cwd: cwd ?? void 0 });
-        } catch (error) {
-          printError(
-            anyToError(error),
-            () => i18n.t("errors.error-spawning-terminal"),
-            context,
-          );
-        }
-      })();
+      (async (): Promise<void> => {
+        noticeSpawn();
+        await openProfile(context, profile, { cwd: cwd ?? void 0 });
+      })().catch((error: unknown) => {
+        printError(
+          anyToError(error),
+          () => i18n.t("errors.error-spawning-terminal"),
+          context,
+        );
+      });
       leaf.detach();
       return;
     }
@@ -1051,7 +1050,7 @@ export class TerminalView extends ItemView {
         activeSelf(ele).console.warn(error);
       }
       ele.classList.add(TerminalView.type.namespaced(context));
-      const ready = (async (): Promise<TerminalView.EMULATOR> => {
+      (async (): Promise<void> => {
         await awaitCSS(ele);
         noticeSpawn();
         const [
@@ -1121,23 +1120,18 @@ export class TerminalView extends ItemView {
                   profile: JSON.stringify(profile, null, JSON_STRINGIFY_SPACE),
                 }),
               );
-              pty.onExit
-                .catch(noop satisfies () => unknown as () => unknown)
-                .finally(
-                  onChangeLanguage.listen(() => {
-                    pty.text = i18n.t(
-                      "components.terminal.unsupported-profile",
-                      {
-                        interpolation: { escapeValue: false },
-                        profile: JSON.stringify(
-                          profile,
-                          null,
-                          JSON_STRINGIFY_SPACE,
-                        ),
-                      },
-                    );
-                  }),
-                );
+              pty.onExit.catch(noop).finally(
+                onChangeLanguage.listen(() => {
+                  pty.text = i18n.t("components.terminal.unsupported-profile", {
+                    interpolation: { escapeValue: false },
+                    profile: JSON.stringify(
+                      profile,
+                      null,
+                      JSON_STRINGIFY_SPACE,
+                    ),
+                  });
+                }),
+              );
               return pty;
             },
             serial ?? void 0,
@@ -1196,10 +1190,10 @@ export class TerminalView extends ItemView {
                 (event, uri) => openExternal(activeSelf(event), uri),
                 {
                   /*
-                    ref: <https://github.com/xtermjs/xterm.js/blob/fb25eb8f79fd223acef90828dc2990bb7e196a1d/addons/addon-web-links/src/WebLinksAddon.ts#L10-L21>
+                  ref: <https://github.com/xtermjs/xterm.js/blob/fb25eb8f79fd223acef90828dc2990bb7e196a1d/addons/addon-web-links/src/WebLinksAddon.ts#L10-L21>
 
-                    const strictUrlRegex = /(https?|HTTPS?):[/]{2}[^\s"'!*(){}|\\\^<>`]*[^\s"':,.!?{}|\\\^~\[\]`()<>]/;
-                    */
+                  const strictUrlRegex = /(https?|HTTPS?):[/]{2}[^\s"'!*(){}|\\\^<>`]*[^\s"':,.!?{}|\\\^~\[\]`()<>]/;
+                  */
                   urlRegex:
                     /(https?|HTTPS?|obsidian|OBSIDIAN):[/]{2}[^\s"'!*(){}|\\^<>`]*[^\s"':,.!?{}|\\^~[\]`()<>]/,
                 },
@@ -1367,9 +1361,7 @@ export class TerminalView extends ItemView {
         if (focus) {
           terminal.focus();
         }
-        return emulator;
-      })();
-      void ready.catch((error: unknown) => {
+      })().catch((error: unknown) => {
         activeSelf(ele).console.error(error);
       });
     });
@@ -1439,47 +1431,54 @@ export namespace TerminalView {
         },
         settings,
       } = context,
-      newLeaf =
-        ((): WorkspaceLeaf | null => {
-          if (settings.value.createInstanceNearExistingOnes) {
-            const existingLeaves = workspace.getLeavesOfType(
-                TerminalView.type.namespaced(context),
-              ),
-              existingLeaf = leaf ?? existingLeaves[existingLeaves.length - 1];
-            if (existingLeaf) {
-              const root = existingLeaf.getRoot();
-              if (root === leftSplit) {
-                return workspace.getLeftLeaf(false);
-              }
-              if (root === rightSplit) {
-                return workspace.getRightLeaf(false);
-              }
-              workspace.setActiveLeaf(existingLeaf);
-              return workspace.getLeaf("tab");
+      newLeaf = ((): WorkspaceLeaf => {
+        if (settings.value.createInstanceNearExistingOnes) {
+          const existingLeaves = workspace.getLeavesOfType(
+              TerminalView.type.namespaced(context),
+            ),
+            existingLeaf = leaf ?? existingLeaves[existingLeaves.length - 1];
+          if (existingLeaf) {
+            const root = existingLeaf.getRoot();
+            if (root === leftSplit) {
+              const ret = workspace.getLeftLeaf(false);
+              if (ret !== null) return ret;
             }
+            if (root === rightSplit) {
+              const ret = workspace.getRightLeaf(false);
+              if (ret !== null) return ret;
+            }
+            workspace.setActiveLeaf(existingLeaf);
+            return workspace.getLeaf("tab");
           }
-          switch (settings.value.newInstanceBehavior) {
-            case "replaceTab":
-              return workspace.getLeaf();
-            case "newTab":
-              return workspace.getLeaf("tab");
-            case "newLeftTab":
-              return workspace.getLeftLeaf(false);
-            case "newLeftSplit":
-              return workspace.getLeftLeaf(true);
-            case "newRightTab":
-              return workspace.getRightLeaf(false);
-            case "newRightSplit":
-              return workspace.getRightLeaf(true);
-            case "newHorizontalSplit":
-              return workspace.getLeaf("split", "horizontal");
-            case "newVerticalSplit":
-              return workspace.getLeaf("split", "vertical");
-            case "newWindow":
-              return workspace.getLeaf("window");
-            // No default
-          }
-        })() ?? workspace.getLeaf("tab");
+        }
+        switch (settings.value.newInstanceBehavior) {
+          case "replaceTab":
+            return workspace.getLeaf();
+          case "newTab":
+            return workspace.getLeaf("tab");
+          case "newLeftTab":
+            return workspace.getLeftLeaf(false) ?? workspace.getLeaf("tab");
+          case "newLeftSplit":
+            return (
+              workspace.getLeftLeaf(true) ??
+              workspace.getLeaf("split", "horizontal")
+            );
+          case "newRightTab":
+            return workspace.getRightLeaf(false) ?? workspace.getLeaf("tab");
+          case "newRightSplit":
+            return (
+              workspace.getRightLeaf(true) ??
+              workspace.getLeaf("split", "horizontal")
+            );
+          case "newHorizontalSplit":
+            return workspace.getLeaf("split", "horizontal");
+          case "newVerticalSplit":
+            return workspace.getLeaf("split", "vertical");
+          case "newWindow":
+            return workspace.getLeaf("window");
+          // No default
+        }
+      })();
     newLeaf.setPinned(settings.value.pinNewInstance);
     return newLeaf;
   }
@@ -1490,12 +1489,10 @@ export namespace TerminalView {
     type: string = TerminalView.type.namespaced(context),
   ): Promise<void> {
     await (leaf ?? getLeaf(context)).setViewState({
-      active: true,
-      // `newCollaborativeState` returns a frozen plain object.
       state: newCollaborativeState(
         context,
         new Map([[TerminalView.type, state]]),
-      ) as Record<string, unknown>,
+      ),
       type,
     });
   }

@@ -1,12 +1,13 @@
-import type { Settings } from "../settings-data.js";
-import { cloneDeep, isEqual } from "es-toolkit/compat";
 import {
   Platform,
   cloneAsWritable,
   deopaque,
 } from "@polyipseity/obsidian-plugin-library";
+import type { ITerminalOptions, Terminal } from "@xterm/xterm";
+import { cloneDeep } from "es-toolkit/object";
+import { isEqual } from "es-toolkit/predicate";
 import type { DeepWritable } from "ts-essentials";
-import type { Terminal, ITerminalOptions } from "@xterm/xterm";
+import type { Settings } from "../settings-data.js";
 
 export interface TerminalBackendOptions {
   /** Platform the terminal runs on. Defaults to the current platform. */
@@ -74,9 +75,8 @@ export function applyTerminalOptionDiffShallow(
     const curVal: unknown = curOpts[key as keyof typeof curOpts];
     if (!isEqual(prevVal, curVal)) {
       // assign a deep clone to avoid accidental shared references
-      terminal.options[key as keyof typeof terminal.options] = cloneDeep(
-        curVal,
-      ) as never;
+      terminal.options[key as keyof typeof terminal.options] =
+        cloneDeep(curVal);
     }
   }
 }

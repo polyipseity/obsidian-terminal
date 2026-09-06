@@ -10,7 +10,7 @@ import {
 import type { App } from "obsidian";
 import type { TerminalPlugin } from "./main.js";
 import { around } from "monkey-around";
-import { noop } from "es-toolkit/compat";
+import { noop } from "es-toolkit/function";
 
 export class Log {
   public readonly logger = new EventEmitterLite<readonly [Log.Event]>();
@@ -73,9 +73,7 @@ function patchLoggingConsole(console: Console, log: Log): () => void {
       recursive = true;
       try {
         try {
-          log.logger
-            .emit({ data: args, type })
-            .catch(noop satisfies () => unknown as () => unknown);
+          log.logger.emit({ data: args, type }).catch(noop);
         } catch (error) {
           this.error(error);
         } finally {
@@ -109,7 +107,7 @@ function patchLoggingWindow(self0: Window, log: Log): () => void {
           data: error,
           type: "windowError",
         })
-        .catch(noop satisfies () => unknown as () => unknown);
+        .catch(noop);
     },
     onUnhandledRejection = (error: PromiseRejectionEvent): void => {
       log.logger
@@ -117,7 +115,7 @@ function patchLoggingWindow(self0: Window, log: Log): () => void {
           data: error,
           type: "unhandledRejection",
         })
-        .catch(noop satisfies () => unknown as () => unknown);
+        .catch(noop);
     },
     ret = new Functions(
       { async: false, settled: true },
@@ -148,7 +146,7 @@ function patchLoggingWindow(self0: Window, log: Log): () => void {
   }
 }
 
-function patchLogging(self0: Window & typeof window, log: Log): () => void {
+function patchLogging(self0: typeof window, log: Log): () => void {
   const ret = new Functions({ async: false, settled: true });
   try {
     ret.push(patchLoggingConsole(self0.console, log));
@@ -264,7 +262,7 @@ function patchRequire(
           /* @__PURE__ */ self0.console.debug(error);
           return dynamicRequireSync(new Map(), ...args);
         }
-      } as NodeJS.Require;
+      } as typeof window.require;
     },
     toString: aroundIdentityFactory(),
   });

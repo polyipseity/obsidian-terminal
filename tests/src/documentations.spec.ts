@@ -14,11 +14,11 @@
  * - `DOCUMENTATIONS.donate()` warns twice when both the listEl path and the
  *   deprecated renderInstalledPlugin path find no element, then opens the URL.
  *
- * `revealPrivateFilter` and `openExternal` are external boundaries.
- * `revealPrivateFilter` is emulated as a factory returning a
- * `try func / catch -> fallback` wrapper, matching the real contract evidenced
- * by the original issue's stack trace
- * (`renderInstalledPlugin -> func -> revealPrivate -> donate`).
+ * `revealPrivateFilter` (the non-deprecated replacement) and `openExternal`
+ * are external boundaries. `revealPrivateFilter` is used un-mocked from the
+ * real library; its `try func / catch -> fallback` contract is evidenced by the
+ * original issue's stack trace (`renderInstalledPlugin -> func ->
+ * revealPrivateFilter -> donate`).
  *
  * `activeSelf` is stubbed to return `self` unconditionally: the real
  * implementation accepts `Element | UIEvent | null` but production code
@@ -45,19 +45,6 @@ vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => {
     // property 'defaultView'"); always returning `self` is safe for these tests.
     activeSelf: () => self,
     openExternal: openExternalSpy,
-    revealPrivateFilter: (() =>
-      (
-        _context: unknown,
-        args: readonly unknown[],
-        func: (...a: readonly unknown[]) => unknown,
-        fallback: (error: unknown) => unknown,
-      ): unknown => {
-        try {
-          return func(...args);
-        } catch (error) {
-          return fallback(error);
-        }
-      }) as unknown as typeof actual.revealPrivateFilter,
   };
 });
 
@@ -110,6 +97,7 @@ function brokenDonateView(
   };
   return {
     context: {
+      language: { value: { t: () => "" } },
       app: { setting: { settingTabs: [communityPluginsTab] } },
       manifest: { fundingUrl: donationUrl },
     },
@@ -129,7 +117,7 @@ describe("src/documentations.ts", () => {
         .mockImplementation(() => {});
 
       const listEl = self.document.createElement("ul");
-      const { item, heartButton } = makePluginRow("PLACEHOLDER");
+      const { item, heartButton } = makePluginRow("Example Plugin");
       listEl.appendChild(item);
       const clickSpy = vi.spyOn(heartButton, "click");
 
@@ -137,6 +125,7 @@ describe("src/documentations.ts", () => {
         DOCUMENTATIONS.donate(
           {
             context: {
+              language: { value: { t: () => "" } },
               app: {
                 setting: {
                   settingTabs: [
@@ -148,7 +137,7 @@ describe("src/documentations.ts", () => {
                   ],
                 },
               },
-              manifest: { name: "PLACEHOLDER", fundingUrl: {} },
+              manifest: { name: "Example Plugin", fundingUrl: {} },
             },
           } as unknown as Parameters<typeof DOCUMENTATIONS.donate>[0],
           { active: true, event: null },
@@ -168,7 +157,7 @@ describe("src/documentations.ts", () => {
 
       // installedPlugins.listEl is null so the ?? falls through to groupEl.
       const pluginsGroupEl = self.document.createElement("div");
-      const { item, heartButton } = makePluginRow("PLACEHOLDER");
+      const { item, heartButton } = makePluginRow("Example Plugin");
       pluginsGroupEl.appendChild(item);
       const clickSpy = vi.spyOn(heartButton, "click");
 
@@ -176,6 +165,7 @@ describe("src/documentations.ts", () => {
         DOCUMENTATIONS.donate(
           {
             context: {
+              language: { value: { t: () => "" } },
               app: {
                 setting: {
                   settingTabs: [
@@ -190,7 +180,7 @@ describe("src/documentations.ts", () => {
                   ],
                 },
               },
-              manifest: { name: "PLACEHOLDER", fundingUrl: {} },
+              manifest: { name: "Example Plugin", fundingUrl: {} },
             },
           } as unknown as Parameters<typeof DOCUMENTATIONS.donate>[0],
           { active: true, event: null },
@@ -222,10 +212,11 @@ describe("src/documentations.ts", () => {
       expect(openExternalSpy.mock.calls[0]?.[1]).toBe(
         "https://example.com/donate-a",
       );
-      // The primary listEl path found no element — one warning before the
-      // deprecated fallback was attempted (which then threw).
-      expect(warnSpy).toHaveBeenCalledTimes(1);
-      // The warning is the JSON-serialized unmatched element (empty `<ul>`).
+      // The primary listEl path found no element — one app warning, then the
+      // deprecated fallback threw and revealPrivateFilter emitted its own catch
+      // warning before the fallback opened the donation URL.
+      expect(warnSpy).toHaveBeenCalledTimes(2);
+      // The first warning is the JSON-serialized unmatched element (empty `<ul>`).
       expect(JSON.parse(String(warnSpy.mock.calls[0]?.[0]))).toEqual({});
     });
 
@@ -242,10 +233,10 @@ describe("src/documentations.ts", () => {
         });
       }).toThrow("addSetting");
       expect(openExternalSpy).not.toHaveBeenCalled();
-      // One warning from the primary listEl path before the deprecated fallback
-      // was attempted (which then threw the rethrown error).
-      expect(warnSpy).toHaveBeenCalledTimes(1);
-      // The warning is the JSON-serialized unmatched element (empty `<ul>`).
+      // One app warning from the primary listEl path, then revealPrivateFilter's
+      // catch warning before the deprecated fallback rethrew the error.
+      expect(warnSpy).toHaveBeenCalledTimes(2);
+      // The first warning is the JSON-serialized unmatched element (empty `<ul>`).
       expect(JSON.parse(String(warnSpy.mock.calls[0]?.[0]))).toEqual({});
     });
 
@@ -257,7 +248,7 @@ describe("src/documentations.ts", () => {
 
       // renderInstalledPlugin renders a node with no heart icon — unlike the
       // brokenDonateView helper it does not throw, so donate() reaches the
-      // second warning and the inner throw before the revealPrivate fallback.
+      // second warning and the inner throw before the revealPrivateFilter fallback.
       const communityPluginsTab = {
         id: "community-plugins",
         containerEl: self.document.createElement("div"),
@@ -271,6 +262,7 @@ describe("src/documentations.ts", () => {
         DOCUMENTATIONS.donate(
           {
             context: {
+              language: { value: { t: () => "" } },
               app: { setting: { settingTabs: [communityPluginsTab] } },
               manifest: { fundingUrl: "https://example.com/donate" },
             },
@@ -279,8 +271,9 @@ describe("src/documentations.ts", () => {
         );
       }).not.toThrow();
 
-      // First warn: primary listEl path. Second warn: deprecated path also fails.
-      expect(warnSpy).toHaveBeenCalledTimes(2);
+      // First warn: primary listEl path. Second warn: deprecated path also
+      // fails. Third warn: revealPrivateFilter's catch warning.
+      expect(warnSpy).toHaveBeenCalledTimes(3);
       // Both warnings are JSON-serialized unmatched elements: the empty `<ul>`
       // and the rendered div containing only a `<span>` — both serialize to {}.
       expect(JSON.parse(String(warnSpy.mock.calls[0]?.[0]))).toEqual({});

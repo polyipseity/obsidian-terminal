@@ -1,10 +1,10 @@
 ---
 name: TypeScript Coding Standards
 applyTo: "src/**/*.ts"
-description: Guidelines for TypeScript files in obsidian-plugin-template
+description: Guidelines for TypeScript files in this repository
 ---
 
-# TypeScript Coding Standards — obsidian-plugin-template
+# TypeScript Coding Standards
 
 ## Core Rules
 
@@ -18,7 +18,7 @@ description: Guidelines for TypeScript files in obsidian-plugin-template
 
 - When creating new settings, add a `fix()` entry and default in `Settings.DEFAULT` / `LocalSettings` and add a test that validates malformed data is corrected by `fix()`.
 - When writing UI code, prefer the i18n accessor from `context.language.value.t(...)` rather than importing `i18next` directly.
-- For lifecycle-sensitive managers, call `.load()` and ensure `.unload()` tasks are registered (see `PLACEHOLDERPlugin.onload()` pattern in `src/main.ts`).
+- For lifecycle-sensitive managers, call `.load()` and ensure `.unload()` tasks are registered (see `Plugin.onload()` pattern in `src/main.ts`).
 
 ## Do / Don't
 

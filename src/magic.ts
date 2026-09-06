@@ -101,11 +101,18 @@ export const CHECK_EXECUTABLE_WAIT = 5,
   WINDOWS_CONHOST_PATH = "C:\\Windows\\System32\\conhost.exe";
 
 export namespace DOMClasses2 {
-  export const LUCIDE_HEART = "lucide-heart",
-    SETTING_ITEM = "setting-item",
-    SETTING_ITEM_NAME = "setting-item-name",
-    SVG_ICON = "svg-icon";
   export namespace Namespaced {
     export const TERMINAL = "terminal";
   }
+  export const COLOR_PROBE = `${Namespaced.TERMINAL}:color-probe`,
+    FULL_WIDTH = `${Namespaced.TERMINAL}:full-width`,
+    HIDDEN = `${Namespaced.TERMINAL}:hidden`,
+    LUCIDE_HEART = "lucide-heart",
+    SETTING_ITEM = "setting-item",
+    SETTING_ITEM_NAME = "setting-item-name",
+    SVG_ICON = "svg-icon";
+}
+
+export namespace PluginUUIDs {
+  export const UUID0 = "97fa8b23-8f64-4719-8cf5-630ea6e528d7";
 }

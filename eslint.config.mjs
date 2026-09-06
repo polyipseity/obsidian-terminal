@@ -51,8 +51,6 @@ export default defineConfig([
         },
       ],
       "@typescript-eslint/no-namespace": "off",
-      // The TypeScript compiler already reports undefined identifiers; core `no-undef` false-positives on type-only globals such as the `NodeJS` namespace and Electron's renderer `require`.
-      "no-undef": "off",
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
@@ -79,17 +77,6 @@ export default defineConfig([
       "obsidianmd/rule-custom-message": "off",
     },
   },
-  // Desktop-only integrated-terminal modules import Node builtins as types only (erased at compile time); runtime Node access goes through guarded dynamic requires
-  {
-    files: [
-      "src/terminal/emulator.ts",
-      "src/terminal/pseudoterminal.ts",
-      "src/utils.ts",
-    ],
-    rules: {
-      "obsidianmd/no-nodejs-modules": "off",
-    },
-  },
   // JSON files are data declarations, not executable code — expression and UI-text rules don't apply
   {
     files: ["assets/**/*.json"],
@@ -105,6 +92,16 @@ export default defineConfig([
         // `rimraf` is exempted from `depend/ban-dependencies` — the `clean` script relies on it for cross-platform recursive directory removal. The module-replacements alternatives are cumbersome: the native `fs.rm` replacement requires remembering `{ recursive: true, force: true }` (plus retry emulation on Windows) and `fs.rmdir` is deprecated, while `premove` has minimal activity.
         "rimraf",
       ),
+    },
+  },
+  // Most of these files are desktop-only, and are properly guarded
+  {
+    files: ["src/terminal/environment.ts", "src/terminal/pseudoterminal.ts"],
+    languageOptions: {
+      globals: {
+        ...globals.nodeBuiltin,
+        NodeJS: false,
+      },
     },
   },
 ]);

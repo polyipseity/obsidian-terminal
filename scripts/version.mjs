@@ -1,5 +1,4 @@
-import { PATHS, execute } from "./utils.mjs";
-import { readFile, writeFile } from "node:fs/promises";
+import { PATHS, execute, readJSON, writeJSON } from "./utils.mjs";
 import * as v from "valibot";
 
 const PackageSchema = v.object({
@@ -14,11 +13,11 @@ const PackageSchema = v.object({
   VersionsSchema = v.record(v.string(), v.string());
 
 const BETA_MANIFEST = Object.freeze({ version: "rolling" }),
-  aPackage = readFile(PATHS.package, "utf-8").then((data) =>
-    v.parse(PackageSchema, JSON.parse(data)),
+  aPackage = readJSON(PATHS.package).then((data) =>
+    v.parse(PackageSchema, data),
   ),
-  aVersions = readFile(PATHS.versions, "utf-8").then((data) =>
-    v.parse(VersionsSchema, JSON.parse(data)),
+  aVersions = readJSON(PATHS.versions).then((data) =>
+    v.parse(VersionsSchema, data),
   );
 
 await Promise.all([
@@ -38,24 +37,14 @@ await Promise.all([
         ...pack.obsidian,
       };
     await Promise.all([
-      writeFile(PATHS.manifest, JSON.stringify(manifest, null, "  "), {
-        encoding: "utf-8",
-      }),
-      writeFile(
-        PATHS.manifestBeta,
-        JSON.stringify({ ...manifest, ...BETA_MANIFEST }, null, "  "),
-        {
-          encoding: "utf-8",
-        },
-      ),
+      writeJSON(PATHS.manifest, manifest),
+      writeJSON(PATHS.manifestBeta, { ...manifest, ...BETA_MANIFEST }),
     ]);
   })(),
   (async () => {
     const [pack, versions] = await Promise.all([aPackage, aVersions]);
     versions[pack.version] = pack.obsidian.minAppVersion;
-    await writeFile(PATHS.versions, JSON.stringify(versions, null, "  "), {
-      encoding: "utf-8",
-    });
+    await writeJSON(PATHS.versions, versions);
   })(),
 ]);
 await execute(

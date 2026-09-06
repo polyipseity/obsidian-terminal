@@ -16,7 +16,9 @@ import type {
   ITerminalOptions,
   Terminal,
 } from "@xterm/xterm";
-import { throttle } from "es-toolkit/compat";
+import { noop, throttle } from "es-toolkit/function";
+// eslint-disable-next-line eslint-comments/no-restricted-disable -- See below.
+// eslint-disable-next-line obsidianmd/no-nodejs-modules -- Type-only import.
 import type { ChildProcessByStdio } from "node:child_process";
 import type { AsyncOrSync } from "ts-essentials";
 import { BUNDLE } from "../imports.js";
@@ -197,7 +199,7 @@ export class XtermTerminalEmulator<A> {
       .finally(() => {
         this.#running = false;
       })
-      .catch(() => undefined);
+      .catch(noop);
   }
 
   public async close(mustClosePseudoterminal = true): Promise<void> {

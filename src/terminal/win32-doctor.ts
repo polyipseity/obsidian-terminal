@@ -11,13 +11,14 @@ import {
   launderUnchecked,
   notice2,
 } from "@polyipseity/obsidian-plugin-library";
-import { cloneDeep } from "es-toolkit/compat";
+import { cloneDeep } from "es-toolkit/object";
 import type { DeepWritable } from "ts-essentials";
 import { BUNDLE } from "../imports.js";
 import { CHECK_EXECUTABLE_WAIT, PYTHON_REQUIREMENTS } from "../magic.js";
 import type { TerminalPlugin } from "../main.js";
 import { Settings } from "../settings-data.js";
 import { applyEnv } from "./environment.js";
+import type { Pseudoterminal } from "./pseudoterminal.js";
 
 const childProcess = dynamicRequire<typeof import("node:child_process")>(
     BUNDLE,
@@ -61,7 +62,7 @@ export type Win32ExitCodeKey =
  * every other code, which keeps the generic exit notice.
  */
 export function win32ExitCodeKey(
-  code: NodeJS.Signals | number,
+  code: Awaited<Pseudoterminal["onExit"]>,
 ): Win32ExitCodeKey | null {
   if (code === WIN32_EXIT_COMMAND_NOT_FOUND) {
     return "errors.win32-exit-9009";

@@ -1,7 +1,7 @@
 {
   "author": "polyipseity",
   "bugs": {
-    "url": "https://github.com/polyipseity/PLACEHOLDER"
+    "url": "https://github.com/polyipseity/obsidian-terminal"
   },
   "dependencies": {
     "@polyipseity/obsidian-plugin-library": "file:./vendor/obsidian-plugin-library",
@@ -83,7 +83,7 @@
       "url": "https://github.com/sponsors/polyipseity"
     }
   ],
-  "homepage": "https://github.com/polyipseity/PLACEHOLDER#readme",
+  "homepage": "https://github.com/polyipseity/obsidian-terminal#readme",
   "keywords": [
     "console",
     "console-emulator",
@@ -110,7 +110,7 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/polyipseity/PLACEHOLDER.git"
+    "url": "git+https://github.com/polyipseity/obsidian-terminal.git"
   },
   "scripts": {
     "build": "bun run check && bun run build:force",
