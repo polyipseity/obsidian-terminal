@@ -330,15 +330,18 @@ export async function prewarmConPtyProfile(
 ): Promise<void> {
   const { platform = Platform.CURRENT } = options;
   if (
-    !context.settings.value.prewarmConPty ||
     profile.type !== "integrated" ||
     platform !== "win32" ||
     profile.win32Backend !== "conpty" ||
-    // A runtime the breaker condemned would only boot a doomed spare.
-    conptyRuntimeUnavailable ||
     !Settings.Profile.isCompatible(profile, platform)
   )
     return;
+  // Both can change while the Python check runs: opting out clears the pool,
+  // and a breaker trip condemns the runtime, so a spare booted afterwards
+  // would be unwanted or doomed. Checked again before the boot.
+  const wanted = (): boolean =>
+    context.settings.value.prewarmConPty && !conptyRuntimeUnavailable;
+  if (!wanted()) return;
   // Resolves the same way as the open path so the pool key matches.
   const effectivePythonExecutable = inheritedPythonExecutable(
     profile.pythonExecutable,
@@ -350,7 +353,7 @@ export async function prewarmConPtyProfile(
     void 0,
     { notify: false },
   );
-  if (diagnosis.status !== "ok") return;
+  if (diagnosis.status !== "ok" || !wanted()) return;
   registerConPtyPoolDisposal(context, CONPTY_HOST_POOL);
   CONPTY_HOST_POOL.ensureSpare(diagnosis.executable, CONPTY_DEPENDENCIES);
 }

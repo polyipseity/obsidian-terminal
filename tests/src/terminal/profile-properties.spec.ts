@@ -58,13 +58,27 @@ import {
   resolveWin32Backend,
 } from "../../../src/terminal/profile-properties.js";
 
-function context(pythonExecutable = ""): TerminalPlugin {
+/** A settings holder a test can replace, as the manager does on mutate. */
+function settingsOf(pythonExecutable = ""): {
+  value: {
+    errorNoticeTimeout: number;
+    prewarmConPty: boolean;
+    pythonExecutable: string;
+  };
+} {
+  return {
+    value: { errorNoticeTimeout: 0, prewarmConPty: true, pythonExecutable },
+  };
+}
+
+function context(
+  pythonExecutable = "",
+  settings = settingsOf(pythonExecutable),
+): TerminalPlugin {
   return {
     language: { value: { t: (key: string): string => key } },
     register: vi.fn(),
-    settings: {
-      value: { errorNoticeTimeout: 0, prewarmConPty: true, pythonExecutable },
-    },
+    settings,
   } as unknown as TerminalPlugin;
 }
 
@@ -267,6 +281,27 @@ describe("prewarmConPtyProfile on Windows", () => {
       expect(notice2Spy).not.toHaveBeenCalled();
     },
   );
+
+  it("boots no spare when prewarm is switched off during the Python check", async () => {
+    const settings = settingsOf();
+    checkWindowsPythonMock.mockImplementation(async () => {
+      // The settings manager replaces `value` on every mutation.
+      settings.value = { ...settings.value, prewarmConPty: false };
+      return diagnosis();
+    });
+    await prewarmOnWindows(context("", settings), integratedProfile());
+    expect(checkWindowsPythonMock).toHaveBeenCalledTimes(1);
+    expect(ensureSpare).not.toHaveBeenCalled();
+  });
+
+  it("boots no spare when the breaker trips during the Python check", async () => {
+    checkWindowsPythonMock.mockImplementation(async () => {
+      reportConPtyRuntimeFailure("python");
+      return diagnosis();
+    });
+    await prewarmOnWindows(context(), integratedProfile());
+    expect(ensureSpare).not.toHaveBeenCalled();
+  });
 
   it("does not notify during prewarm", async () => {
     checkWindowsPythonMock.mockResolvedValue(diagnosis());
