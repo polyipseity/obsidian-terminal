@@ -4,6 +4,7 @@ import { cloneDeep } from "es-toolkit/object";
 import { isEqual } from "es-toolkit/predicate";
 import type { DeepWritable } from "ts-essentials";
 import type { Settings } from "../settings-data.js";
+import { DEFAULT_LINK_HANDLER } from "./profile-presets.js";
 
 /**
  * Combine global defaults with a profile-specific set of terminal options.
@@ -18,6 +19,7 @@ export function mergeTerminalOptions(
   return {
     allowProposedApi: true,
     macOptionIsMeta: false, // `false` is the default value, but set it explicitly for `CustomKeyEventHandlerAddon` to work just in case.
+    linkHandler: DEFAULT_LINK_HANDLER,
     ...cloneAsWritable(globalOpts, cloneDeep),
     ...cloneAsWritable(profileOpts, cloneDeep),
   };

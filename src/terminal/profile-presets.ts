@@ -24,6 +24,7 @@ export const DEFAULT_LINK_HANDLER: ILinkHandler = deepFreeze({
     activate(event, text, _range) {
       openExternal(activeSelf(event), text);
     },
+    allowNonHttpProtocols: true,
   }),
   DEFAULT_LOGGER: ILogger = deepFreeze({
     debug(message, ...args: readonly unknown[]) {

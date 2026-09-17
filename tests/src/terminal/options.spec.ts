@@ -23,6 +23,7 @@ describe("mergeTerminalOptions", () => {
     // the helper always ensures these baseline fields
     expect(result.allowProposedApi).toBe(true);
     expect(result.macOptionIsMeta).toBe(false);
+    expect(result.linkHandler).toBeDefined();
   });
 
   it("allows profile values to override globals", () => {
