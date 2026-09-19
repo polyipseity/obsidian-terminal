@@ -42,7 +42,7 @@ This guide provides clear, actionable instructions for AI coding agents working 
   - `bun run check` — eslint + prettier(check) + markdownlint.
   - `bun run format` — eslint --fix, prettier --write, markdownlint --fix.
 
-  - Python environment / `uv` usage: This package follows the workspace convention of adding `uvloop` extras to `tool.uv.default-groups`. Run `uv sync` locally to install dev and platform event-loop extras; CI should use `uv sync --locked`. Avoid `--all-extras` / `--dev` flags.
+  - Python environment / `uv` usage: Run `uv sync` locally to install the default `dev` group; CI should use `uv sync --locked`. The Python repository checks use synchronous standard-library filesystem and subprocess APIs, so they need no AnyIO plugin or event-loop extras. This keeps the full suite compatible with Python 3.9; pytest-xdist still runs test modules in parallel. Windows CI verifies these repository checks on Python 3.9 and 3.12. Avoid `--all-extras` / `--dev` flags.
 
 - **Versioning**
   - Use `changesets` for PRs; the `version` lifecycle script is configured (`node scripts/version.mjs`).

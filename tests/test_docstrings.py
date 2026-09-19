@@ -15,10 +15,8 @@ that:
 from __future__ import annotations
 
 import ast
-from collections.abc import AsyncIterator, Iterator
-
-import pytest
-from anyio import Path
+from collections.abc import Iterator
+from pathlib import Path
 
 """Public API of this test module (empty: no symbols are exported)."""
 __all__ = ()
@@ -52,7 +50,7 @@ def _iter_glob_patterns(spec: str) -> Iterator[tuple[str, bool]]:
         yield pattern, is_exclude
 
 
-async def _find_py_files() -> list[Path]:
+def _find_py_files() -> list[Path]:
     """Return sorted Python file paths matching ``_GLOB_SPEC``.
 
     The helper is intentionally very similar to ``_get_candidate_files`` in
@@ -65,20 +63,20 @@ async def _find_py_files() -> list[Path]:
     yielded: set[Path] = set()
     result: list[Path] = []
 
-    async def _iter_files(pattern: str) -> AsyncIterator[Path]:
+    def _iter_files(pattern: str) -> Iterator[Path]:
         """Yield all files matching the given glob pattern, relative to the repo root."""
-        async for p in root.glob(pattern):
-            if await p.is_file():
+        for p in root.glob(pattern):
+            if p.is_file():
                 yield p
 
     for pattern, is_exclude in _iter_glob_patterns(_GLOB_SPEC):
         if is_exclude:
-            async for p in root.glob(pattern):
+            for p in root.glob(pattern):
                 yielded.discard(p)
                 if p in result:
                     result.remove(p)
         else:
-            async for p in _iter_files(pattern):
+            for p in _iter_files(pattern):
                 if p not in yielded:
                     yielded.add(p)
                     result.append(p)
@@ -306,8 +304,7 @@ def test_shebang_and_def_are_flagged() -> None:
     assert ast.get_docstring(func) is None
 
 
-@pytest.mark.anyio
-async def test_modules_and_exported_objects_have_docstrings() -> None:
+def test_modules_and_exported_objects_have_docstrings() -> None:
     """Assert each module and its exported/top-level objects have docstrings.
 
     In addition to checking module-level and exported function/class docstrings,
@@ -317,8 +314,8 @@ async def test_modules_and_exported_objects_have_docstrings() -> None:
 
     failures: list[str] = []
 
-    for path in await _find_py_files():
-        text = await path.read_text(encoding="utf-8")
+    for path in _find_py_files():
+        text = path.read_text(encoding="utf-8")
         try:
             node = ast.parse(text, filename=path)
         except SyntaxError as exc:
@@ -359,8 +356,7 @@ async def test_modules_and_exported_objects_have_docstrings() -> None:
         raise AssertionError("Docstring compliance failures:\n" + "\n".join(failures))
 
 
-@pytest.mark.anyio
-async def test_all_top_level_definitions_have_docstrings() -> None:
+def test_all_top_level_definitions_have_docstrings() -> None:
     """Assert every top-level API surface is documented.
 
     This enforces that all top-level `def`/`class` objects in modules under
@@ -371,8 +367,8 @@ async def test_all_top_level_definitions_have_docstrings() -> None:
 
     failures: list[str] = []
 
-    for path in await _find_py_files():
-        text = await path.read_text(encoding="utf-8")
+    for path in _find_py_files():
+        text = path.read_text(encoding="utf-8")
         try:
             node = ast.parse(text, filename=path)
         except SyntaxError as exc:
@@ -418,8 +414,7 @@ def _iter_function_and_class_nodes(
             yield from _iter_function_and_class_nodes(child)
 
 
-@pytest.mark.anyio
-async def test_all_defs_at_any_depth_have_docstrings() -> None:
+def test_all_defs_at_any_depth_have_docstrings() -> None:
     """Assert every function/class (at any nesting level) has a docstring.
 
     This enforces docstrings for class methods, nested (inner) functions,
@@ -429,8 +424,8 @@ async def test_all_defs_at_any_depth_have_docstrings() -> None:
 
     failures: list[str] = []
 
-    for path in await _find_py_files():
-        text = await path.read_text(encoding="utf-8")
+    for path in _find_py_files():
+        text = path.read_text(encoding="utf-8")
         try:
             node = ast.parse(text, filename=path)
         except SyntaxError as exc:

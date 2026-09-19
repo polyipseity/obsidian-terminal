@@ -13,11 +13,9 @@ from __future__ import annotations
 import os
 import stat
 import subprocess
-from collections.abc import AsyncIterator, Iterable
+from collections.abc import Iterable, Iterator
 from contextlib import suppress
-
-import pytest
-from anyio import IncompleteRead, Path, run_process
+from pathlib import Path
 
 """Public API of this test module (empty)."""
 __all__ = ()
@@ -53,7 +51,7 @@ def _iter_glob_patterns(spec: str) -> Iterable[tuple[str, bool]]:
         yield pattern, is_exclude
 
 
-async def _get_candidate_files() -> AsyncIterator[Path]:
+def _get_candidate_files() -> Iterator[Path]:
     """Yield files that should be executable, from gitignore-style globs.
 
     The patterns are read from ``_GLOB_SPEC`` using :func:`_iter_glob_patterns`.
@@ -65,40 +63,38 @@ async def _get_candidate_files() -> AsyncIterator[Path]:
     root = Path(__file__).parent.parent  # repo root
     yielded: set[Path] = set()
 
-    async def _iter_files(pattern: str) -> AsyncIterator[Path]:
+    def _iter_files(pattern: str) -> Iterator[Path]:
         """Yield all files matching the given glob pattern, relative to the repo root."""
-        async for p in root.glob(pattern):
-            if await p.is_file():
+        for p in root.glob(pattern):
+            if p.is_file():
                 yield p
 
     for pattern, is_exclude in _iter_glob_patterns(_GLOB_SPEC):
         if is_exclude:
-            async for p in root.glob(pattern):
+            for p in root.glob(pattern):
                 # Remove any file that has already been yielded.
                 yielded.discard(p)
         else:
-            async for p in _iter_files(pattern):
+            for p in _iter_files(pattern):
                 if p not in yielded:
                     yielded.add(p)
                     yield p
 
 
-async def git_mode(path: Path) -> str | None:
+def git_mode(path: Path) -> str | None:
     """Query git for the index mode of a file.
 
     The return value will look like ``"100644"`` or ``"100755"``; if the
-    file is not tracked at all the function returns ``None``.  We use
-    ``anyio.run_process`` so that the helper is fully async-friendly.
+    file is not tracked at all the function returns ``None``.
     """
     root = Path(__file__).parent.parent  # repo root
     # git understands forward slashes even on Windows; convert to posix
     rel = path.relative_to(root).as_posix()
     try:
-        proc = await run_process(
+        proc = subprocess.run(
             ["git", "ls-files", "--stage", "--", rel],
             cwd=str(root),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             check=False,
         )
     except OSError:
@@ -109,21 +105,20 @@ async def git_mode(path: Path) -> str | None:
     return out.split()[0]
 
 
-@pytest.mark.anyio
-async def test_top_level_scripts_executable() -> None:
+def test_top_level_scripts_executable() -> None:
     """Ensure every candidate file (per include/exclude globs) has an
     executable bit set (on platforms where that makes sense).
     """
 
-    async for entry in _get_candidate_files():
+    for entry in _get_candidate_files():
         # permissions check
         try:
-            st = await entry.stat()
+            st = entry.stat()
             is_exec = bool(st.st_mode & (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
-        except (OSError, IncompleteRead):
+        except OSError:
             is_exec = False
 
-        git_mode_str: str | None = await git_mode(entry)
+        git_mode_str: str | None = git_mode(entry)
         if git_mode_str is not None:
             # sanity check: git index mode should be one of the known values.
             # `100644`/`100755` are regular files; `120000` is a symlink.
@@ -155,16 +150,14 @@ async def test_top_level_scripts_executable() -> None:
         assert is_exec, f"{entry} is not marked executable"
 
 
-@pytest.mark.anyio
-async def test_git_mode_tracked() -> None:
+def test_git_mode_tracked() -> None:
     """Verify that the helper returns a valid mode string for a tracked file."""
     path = Path(__file__)
-    mode = await git_mode(path)
+    mode = git_mode(path)
     assert mode is not None
 
 
-@pytest.mark.anyio
-async def test_git_mode_untracked(tmp_path: Path) -> None:
+def test_git_mode_untracked(tmp_path: Path) -> None:
     """Verify that the helper returns None for an untracked file."""
     root = Path(__file__).parent.parent
     # create a file inside the repository but do not add it to git.  to avoid
@@ -173,16 +166,16 @@ async def test_git_mode_untracked(tmp_path: Path) -> None:
     # helper only works on files beneath the repo root so we create the
     # directory here rather than relying on ``tmp_path`` directly.
     unique_dir = root / tmp_path.name
-    await unique_dir.mkdir()
+    unique_dir.mkdir()
     new_file = unique_dir / "tmp_untracked.txt"
-    await new_file.write_text("x")
+    new_file.write_text("x")
     try:
-        mode = await git_mode(new_file)
+        mode = git_mode(new_file)
         assert mode is None
     finally:
         # clean up both the file and the directory; ignore errors since the
         # filesystem may already have removed them.
         with suppress(OSError):
-            await new_file.unlink()
+            new_file.unlink()
         with suppress(OSError):
-            await unique_dir.rmdir()
+            unique_dir.rmdir()

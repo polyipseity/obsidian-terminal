@@ -67,3 +67,26 @@ jobs:
 
       - name: Build project
         run: bun run build
+
+  windows-python-checks:
+    name: "Python repository checks (Windows, ${{ matrix.python }})"
+    runs-on: windows-2025
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.12"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39
+        with:
+          resolution-strategy: "lowest"
+
+      - name: Run repository checks without asynchronous test dependencies
+        run: >-
+          uv run --locked --python ${{ matrix.python }} pytest -n 0 --no-cov
+          tests/test_docstrings.py tests/test_module_exports.py
+          tests/test_git_executable.py tests/src/test_python_imports_consistency.py

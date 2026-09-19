@@ -15,10 +15,8 @@ surface self-documenting and avoid accidental exports.
 """
 
 import ast
-from collections.abc import AsyncIterator, Iterator
-
-import pytest
-from anyio import Path
+from collections.abc import Iterator
+from pathlib import Path
 
 """Public API of this test module (empty)."""
 __all__ = ()
@@ -52,7 +50,7 @@ def _iter_glob_patterns(spec: str) -> Iterator[tuple[str, bool]]:
         yield pattern, is_exclude
 
 
-async def _find_py_files() -> list[Path]:
+def _find_py_files() -> list[Path]:
     """Return sorted Python file paths matching ``_GLOB_SPEC``.
 
     This mirrors the implementation used in ``test_docstrings`` and
@@ -62,20 +60,20 @@ async def _find_py_files() -> list[Path]:
     yielded: set[Path] = set()
     result: list[Path] = []
 
-    async def _iter_files(pattern: str) -> AsyncIterator[Path]:
+    def _iter_files(pattern: str) -> Iterator[Path]:
         """Yield all files matching the given glob pattern, relative to the repo root."""
-        async for p in root.glob(pattern):
-            if await p.is_file():
+        for p in root.glob(pattern):
+            if p.is_file():
                 yield p
 
     for pattern, is_exclude in _iter_glob_patterns(_GLOB_SPEC):
         if is_exclude:
-            async for p in root.glob(pattern):
+            for p in root.glob(pattern):
                 yielded.discard(p)
                 if p in result:
                     result.remove(p)
         else:
-            async for p in _iter_files(pattern):
+            for p in _iter_files(pattern):
                 if p not in yielded:
                     yielded.add(p)
                     result.append(p)
@@ -124,8 +122,7 @@ def _has_all_tuple(node: ast.Module) -> tuple[bool, str]:
     return False, "__all__ not found"
 
 
-@pytest.mark.anyio
-async def test_all_tuple_present_and_is_tuple() -> None:
+def test_all_tuple_present_and_is_tuple() -> None:
     """Assert that every module declares `__all__` as a tuple of strings.
 
     The test parses AST for each file and reports per-file failures for
@@ -134,9 +131,9 @@ async def test_all_tuple_present_and_is_tuple() -> None:
 
     failures: list[str] = []
 
-    for path in await _find_py_files():
+    for path in _find_py_files():
         # ignore compiled or cache files (shouldn't be any), and exclude vendored/third-party code
-        text = await path.read_text(encoding="utf-8")
+        text = path.read_text(encoding="utf-8")
         try:
             node = ast.parse(text, filename=path)
         except SyntaxError as exc:
@@ -152,8 +149,7 @@ async def test_all_tuple_present_and_is_tuple() -> None:
         raise AssertionError(f"__all__ compliance failures:\n{joined}")
 
 
-@pytest.mark.anyio
-async def test___all___follows_top_level_imports() -> None:
+def test___all___follows_top_level_imports() -> None:
     """Ensure `__all__` assignment appears after top-level imports.
 
     For each module, locate the last top-level `import`/`from ... import`
@@ -164,8 +160,8 @@ async def test___all___follows_top_level_imports() -> None:
 
     failures: list[str] = []
 
-    for path in await _find_py_files():
-        text = await path.read_text(encoding="utf-8")
+    for path in _find_py_files():
+        text = path.read_text(encoding="utf-8")
         try:
             node = ast.parse(text, filename=path)
         except SyntaxError as exc:
