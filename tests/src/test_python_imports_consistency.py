@@ -9,14 +9,11 @@ from __future__ import annotations
 
 import ast
 import json
-import pathlib
 import sys
 from collections.abc import Set as AbstractSet
 from os import PathLike
+from pathlib import Path
 
-import pytest
-from anyio import Path
-from asyncstdlib.builtins import sorted as a_sorted
 from typing_extensions import override
 
 """Public API of this test module (empty)."""
@@ -78,21 +75,21 @@ _STDLIB_MODULE_NAMES: AbstractSet[str] = (
 _INTRA_PROJECT_MODULES: AbstractSet[str] = frozenset({"get_package_version"})
 
 """Canonical root of ``src/``, resolved to an absolute path."""
-_SRC_ROOT: Path = Path(pathlib.Path(__file__).resolve(strict=True).parents[2] / "src")
+_SRC_ROOT: Path = Path(__file__).resolve(strict=True).parents[2] / "src"
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-async def _read_python_requirements() -> AbstractSet[str]:
+def _read_python_requirements() -> AbstractSet[str]:
     """Read pip-package names from ``src/python-requirements.json``.
 
     The JSON is the single source of truth for Python requirement names
     and is consumed by both ``magic.ts`` and this test.
     """
     path = _SRC_ROOT / "python-requirements.json"
-    data = json.loads(await path.read_text("utf-8"))
+    data = json.loads(path.read_text("utf-8"))
     return set(data.keys())
 
 
@@ -221,7 +218,7 @@ class ImportGuardAnalyzer(ast.NodeVisitor):
         (self.unguarded if not self._is_in_guard() else self.guarded).update(names)
 
 
-async def _get_unconditional_third_party_imports(
+def _get_unconditional_third_party_imports(
     root: PathLike[str],
 ) -> dict[PathLike[str], set[str]]:
     """Walk *root*, returning unconditional third-party imports per file.
@@ -232,8 +229,8 @@ async def _get_unconditional_third_party_imports(
       3. Subtract stdlib and intra-project modules from the unguarded set.
     """
     result: dict[PathLike[str], set[str]] = {}
-    for py_file in await a_sorted(Path(root).rglob("*.py")):
-        tree = ast.parse(await Path(py_file).read_text("utf-8"), filename=str(py_file))
+    for py_file in sorted(Path(root).rglob("*.py")):
+        tree = ast.parse(Path(py_file).read_text("utf-8"), filename=str(py_file))
         analyzer = ImportGuardAnalyzer()
         analyzer.visit(tree)
         unguarded_third_party = (
@@ -249,12 +246,11 @@ async def _get_unconditional_third_party_imports(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.anyio
-async def test_python_requirements_consistency() -> None:
+def test_python_requirements_consistency() -> None:
     """Every unconditional third-party Python import needs a ``PYTHON_REQUIREMENTS`` entry."""
     src_root = _SRC_ROOT
-    requirements = await _read_python_requirements()
-    third_party_imports = await _get_unconditional_third_party_imports(src_root)
+    requirements = _read_python_requirements()
+    third_party_imports = _get_unconditional_third_party_imports(src_root)
 
     # Verify known-good cases first for readable failure messages.
     assert "psutil" in requirements, (

@@ -12,18 +12,9 @@ license = { file = "LICENSE.txt" }
 readme = "README.md"
 # Update `README.md`, `dependabot.yml`, `magic.ts`, and `pyproject.toml` together.
 dependencies = [
-  "anyio>=3.6.0",
-  "asyncer>=0.0.14",
-  "asyncstdlib>=3.14.0",
   "psutil==5.9.5",            # sync
   "pywinctl==0.0.50",         # sync
   "typing_extensions>=4.16.0", # sync
-]
-
-[project.optional-dependencies]
-uvloop = [
-  "uvloop>=0.22.0; platform_system != 'Windows'",
-  "winloop>=0.6.3; platform_system == 'Windows'",
 ]
 
 [project.scripts]
@@ -41,7 +32,6 @@ dev = [
   "ty>=0.0.63",
   "types-pywin32>=311.0.0",
 ]
-uvloop = ["obsidian-terminal-f9b1c3e0-fcc2-4914-9732-1867d920929b[uvloop]"]
 
 [tool.pytest.ini_options]
 addopts = [
@@ -85,7 +75,7 @@ exclude = [
 [tool.uv]
 add-bounds = "exact"
 exclude-newer = "P5D"
-default-groups = ["dev", "uvloop"]
+default-groups = ["dev"]
 package = false
 required-version = ">=0.11.0"
 
