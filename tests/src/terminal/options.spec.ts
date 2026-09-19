@@ -1,10 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   mergeTerminalOptions,
   applyTerminalOptionDiffShallow,
 } from "../../../src/terminal/options.js";
+import { DEFAULT_LINK_HANDLER } from "../../../src/terminal/profile-presets.js";
 import { Settings } from "../../../src/settings-data.js";
-import type { Terminal } from "@xterm/xterm";
+import type { ILinkHandler, Terminal } from "@xterm/xterm";
 
 describe("mergeTerminalOptions", () => {
   const baseDefaults: Settings.Profile.TerminalOptions = {
@@ -23,6 +24,8 @@ describe("mergeTerminalOptions", () => {
     // the helper always ensures these baseline fields
     expect(result.allowProposedApi).toBe(true);
     expect(result.macOptionIsMeta).toBe(false);
+    // without a handler, xterm opens OSC 8 links via `window.open()`, which Obsidian blocks
+    expect(result.linkHandler).toBe(DEFAULT_LINK_HANDLER);
   });
 
   it("allows profile values to override globals", () => {
@@ -31,6 +34,27 @@ describe("mergeTerminalOptions", () => {
     expect(result.fontFamily).toBe("bar");
     // unspecified keys should still come from globals
     expect(result.fontSize).toBe(12);
+  });
+
+  it("lets a global link handler replace the default", () => {
+    const activate = vi.fn<ILinkHandler["activate"]>();
+    const result = mergeTerminalOptions(
+      { documentOverride: null },
+      { documentOverride: null, linkHandler: { activate } },
+    );
+    // merged values are deep clones, so compare the callback rather than the wrapper
+    expect(result.linkHandler).not.toBe(DEFAULT_LINK_HANDLER);
+    expect(result.linkHandler?.activate).toBe(activate);
+  });
+
+  it("lets a profile link handler override the global one", () => {
+    const globalActivate = vi.fn<ILinkHandler["activate"]>(),
+      profileActivate = vi.fn<ILinkHandler["activate"]>();
+    const result = mergeTerminalOptions(
+      { documentOverride: null, linkHandler: { activate: profileActivate } },
+      { documentOverride: null, linkHandler: { activate: globalActivate } },
+    );
+    expect(result.linkHandler?.activate).toBe(profileActivate);
   });
 
   it("returns a new object without mutating inputs and is writable", () => {
