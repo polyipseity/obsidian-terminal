@@ -12,6 +12,8 @@
  * - the plugin-level check: demotion, re-promotion, stale results, and that
  *   no Python value is ever written back
  */
+import { ChildProcess } from "node:child_process";
+import { Readable } from "node:stream";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DeepWritable } from "ts-essentials";
 import {
@@ -1259,37 +1261,77 @@ describe("runPluginPythonCheck", () => {
     expect(value.pythonExecutable).toBe("C:\\user\\python.exe");
   });
 
-  it("demotes on a missing result, then re-promotes after an install", async () => {
+  it("refreshes a cached registry PATH and re-promotes after an install", async () => {
     vi.spyOn(console, "warn").mockImplementation(vi.fn());
-    let installed = false;
-    const { context: ctx, value } = reconcileContext({
-        profiles: {
-          auto: win32Conpty(),
-          userChoice: win32Conpty({ win32Backend: "legacy" }),
-        },
-      }),
-      spawn = (async () => {
-        if (!installed) return result({ code: 9009 });
-        return identityResult();
-      }) as Win32PythonSpawn;
-    expect((await runPluginPythonCheck(ctx, spawn)).status).not.toBe("ok");
-    expect(value.profiles["auto"]).toMatchObject({
-      win32Backend: "legacy",
-      win32BackendAutoDemoted: true,
+    const inheritedPath = "C:\\Windows\\System32",
+      pythonDirectory = "C:\\Python312";
+    let registryPath = inheritedPath;
+    const registrySpawn = vi.fn((_command: string, args: readonly string[]) => {
+      const child = new ChildProcess();
+      child.stdout = Readable.from([
+        args[1] === "HKCU\\Environment"
+          ? ""
+          : `Path REG_SZ ${registryPath}\r\n`,
+      ]);
+      child.stdout.once("end", () => child.emit("close", 0));
+      window.setTimeout(() => child.emit("spawn"), 0);
+      return child;
     });
-    // The user asked for ConHost; that is not a demotion.
-    expect(value.profiles["userChoice"]).toMatchObject({
-      win32BackendAutoDemoted: false,
-    });
-    installed = true;
-    expect((await runPluginPythonCheck(ctx, spawn)).status).toBe("ok");
-    expect(value.profiles["auto"]).toMatchObject({
-      win32Backend: "conpty",
-      win32BackendAutoDemoted: false,
-    });
-    expect(value.profiles["userChoice"]).toMatchObject({
-      win32Backend: "legacy",
-    });
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Windows");
+    vi.doMock("../../../src/imports.js", () => ({
+      BUNDLE: new Map<string, () => unknown>([
+        [
+          "node:child_process",
+          () => ({ execFile: vi.fn(), spawn: registrySpawn }),
+        ],
+        ["node:process", () => ({ env: { Path: inheritedPath } })],
+      ]),
+    }));
+    // Reload both modules together so this test owns the real PATH cache.
+    vi.resetModules();
+    try {
+      const { applyEnv, pathEnvKey } =
+          await import("../../../src/terminal/environment.js"),
+        { runPluginPythonCheck: recheck } =
+          await import("../../../src/terminal/win32-doctor.js"),
+        { context: ctx, value } = reconcileContext({
+          profiles: {
+            auto: win32Conpty(),
+            userChoice: win32Conpty({ win32Backend: "legacy" }),
+          },
+        }),
+        spawn = vi.fn<Win32PythonSpawn>(async (executable) => {
+          // The production spawn uses this same environment builder.
+          const env = await applyEnv();
+          return executable === "C:\\Python312\\python.exe" ||
+            (executable === "python" &&
+              env[pathEnvKey(env)]?.split(";").includes(pythonDirectory))
+            ? identityResult()
+            : result({ code: 9009 });
+        });
+      expect((await recheck(ctx, spawn)).status).not.toBe("ok");
+      expect(value.profiles["auto"]).toMatchObject({
+        win32Backend: "legacy",
+        win32BackendAutoDemoted: true,
+      });
+      // Only the registry changes; Obsidian still has its launch-time PATH.
+      registryPath = `${inheritedPath};${pythonDirectory}`;
+      expect((await applyEnv())["Path"]).toBe(inheritedPath);
+      expect(registrySpawn).toHaveBeenCalledTimes(2);
+      expect((await recheck(ctx, spawn)).status).toBe("ok");
+      expect(registrySpawn).toHaveBeenCalledTimes(4);
+      expect(value.profiles["auto"]).toMatchObject({
+        win32Backend: "conpty",
+        win32BackendAutoDemoted: false,
+      });
+      expect(value.profiles["userChoice"]).toMatchObject({
+        win32Backend: "legacy",
+        win32BackendAutoDemoted: false,
+      });
+    } finally {
+      vi.doUnmock("../../../src/imports.js");
+      vi.resetModules();
+    }
   });
 
   it("leaves stored backends alone on a transient probe failure", async () => {

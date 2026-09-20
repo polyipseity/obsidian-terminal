@@ -139,17 +139,23 @@ export function mergePathEntries(
  *
  *  GUI apps (Obsidian via Finder / Start Menu) often inherit a minimal PATH
  *  that is missing entries the user expects in a terminal, or has the wrong
- *  entry order.  We query the canonical system PATH once and use it as the
- *  base for the PTY environment, appending any unique inherited entries.
+ *  entry order.  We cache the canonical system PATH until an explicit recheck
+ *  invalidates it, using it as the base for the PTY environment and appending
+ *  any unique inherited entries.
  *  This ensures the canonical ordering (e.g. /usr/local/bin before /usr/bin
  *  on macOS) is respected.
  *
  *  - macOS:   /usr/libexec/path_helper -s  (reads /etc/paths + /etc/paths.d/*)
  *  - Linux:   reads /etc/environment (the PAM default)
  *  - Windows: reg query of the System + User PATH from the registry */
-const getSystemPath = lazyInit(() => resolveSystemPath());
+let getSystemPath = lazyInit(() => resolveSystemPath());
 
-/** Starts the one-time system PATH resolution off the spawn path. The result
+/** Makes the next environment read resolve PATH again after an install. */
+export function invalidateSystemPath(): void {
+  getSystemPath = lazyInit(() => resolveSystemPath());
+}
+
+/** Starts the cached system PATH resolution off the spawn path. The result
  * is memoized, so the first spawn reuses it instead of paying for it. */
 export function warmSystemPath(): void {
   getSystemPath().catch((error: unknown) => {

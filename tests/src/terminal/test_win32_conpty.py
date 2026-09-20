@@ -15,6 +15,7 @@ from __future__ import annotations
 import ctypes
 import io
 import json
+import ntpath
 import os
 import shutil
 import signal
@@ -497,6 +498,67 @@ def test_resolve_executable_unwraps_a_quoted_path_entry(tmp_path: Path) -> None:
     assert _MODULE.resolve_executable("tool", path) == str(
         tmp_path / "preferred" / "tool.exe"
     )
+
+
+@pytest.mark.parametrize(
+    "bits, sysnative", ((32, True), (32, False), (64, False), (64, True))
+)
+@pytest.mark.parametrize(
+    "program, path, relative",
+    (
+        (r"C:\Windows\System32\wsl.exe", "", "wsl.exe"),
+        ("wsl", r'"C:\Windows\System32"', "wsl.exe"),
+        ("wsl", "", "wsl.exe"),
+        (
+            r"c:/WINDOWS/system32/WindowsPowerShell/v1.0/powershell.exe",
+            "",
+            r"WindowsPowerShell\v1.0\powershell.exe",
+        ),
+        (r"C:\Windows\SysWOW64\cmd.exe", "", r"C:\Windows\SysWOW64\cmd.exe"),
+        (r"C:\Windows\System32tools\cmd.exe", "", r"C:\Windows\System32tools\cmd.exe"),
+        (r"D:\Windows\System32\cmd.exe", "", r"D:\Windows\System32\cmd.exe"),
+    ),
+)
+def test_resolve_executable_uses_native_system_programs_from_wow64(
+    monkeypatch: pytest.MonkeyPatch,
+    bits: int,
+    sysnative: bool,
+    program: str,
+    path: str,
+    relative: str,
+) -> None:
+    """A 32-bit host must find and launch native System32 programs via Sysnative."""
+    native = r"C:\Windows\Sysnative"
+    system = native if bits == 32 and sysnative else r"C:\Windows\System32"
+    expected = ntpath.join(system, relative)
+    windows_path = Mock(wraps=ntpath)
+    windows_path.isdir.side_effect = lambda value: sysnative and value == native
+    windows_path.isfile.side_effect = lambda value: (
+        ntpath.normcase(value) == (ntpath.normcase(expected))
+    )
+    monkeypatch.setattr(
+        _MODULE,
+        "os",
+        Mock(
+            wraps=os,
+            path=windows_path,
+            pathsep=";",
+            curdir=".",
+            sep="\\",
+            environ={"SystemRoot": r"C:\Windows"},
+        ),
+    )
+    monkeypatch.setattr(
+        _MODULE, "sys", Mock(wraps=sys, platform="win32", maxsize=2 ** (bits - 1) - 1)
+    )
+    monkeypatch.setattr(_MODULE, "_SearchPathW", Mock(return_value=0), raising=False)
+
+    resolved = _MODULE.resolve_executable(program, path)
+    assert ntpath.normcase(resolved) == ntpath.normcase(expected)
+    assert _split_command_line(_MODULE.build_command_line((resolved, "--help"))) == [
+        resolved,
+        "--help",
+    ]
 
 
 def test_resolve_executable_prefers_native_programs_to_batch_launchers(

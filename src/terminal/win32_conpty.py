@@ -501,6 +501,21 @@ def environment_path(environment: Mapping[str, str] | None) -> str | None:
     )
 
 
+def _native_system_path(path: str) -> str:
+    """Bypass WOW64 redirection for programs requested from native System32."""
+    root = os.environ.get("SystemRoot")
+    if sys.platform != "win32" or sys.maxsize > 2**32 or not root:
+        return path
+    native = os.path.join(root, "Sysnative")
+    system = os.path.normcase(os.path.join(root, "System32")) + os.sep
+    absolute = os.path.abspath(path)
+    if os.path.normcase(absolute).startswith(system) and os.path.isdir(native):
+        # Sysnative exists only under WOW64. Keep it in the command line too:
+        # CreateProcessW would redirect a System32 path again.
+        return os.path.join(native, absolute[len(system) :])
+    return path
+
+
 def resolve_executable(executable: str, path: str | None) -> str:
     """Resolve a program through the PATH the child will see, native first.
 
@@ -529,7 +544,7 @@ def resolve_executable(executable: str, path: str | None) -> str:
         names.insert(0, program)
     for entry in directories:
         for name in names:
-            candidate = os.path.join(entry, name)
+            candidate = _native_system_path(os.path.join(entry, name))
             if os.path.isfile(candidate):
                 return candidate
     if sys.platform == "win32" and not directory:
@@ -539,10 +554,18 @@ def resolve_executable(executable: str, path: str | None) -> str:
         for name in names:
             length = _SearchPathW(None, name, None, len(buffer), buffer, None)
             if 0 < length < len(buffer):
-                return buffer.value
+                return _native_system_path(buffer.value)
+        # SearchPathW cannot find native-only programs such as WSL under
+        # WOW64 when System32 is absent from PATH.
+        root = os.environ.get("SystemRoot")
+        if root:
+            for name in names:
+                candidate = _native_system_path(os.path.join(root, "System32", name))
+                if os.path.isfile(candidate):
+                    return candidate
     for entry in directories:
         for extension in _BATCH_EXTENSIONS:
-            candidate = os.path.join(entry, program + extension)
+            candidate = _native_system_path(os.path.join(entry, program + extension))
             if os.path.isfile(candidate):
                 return candidate
     return executable

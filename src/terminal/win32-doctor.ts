@@ -17,7 +17,7 @@ import { BUNDLE } from "../imports.js";
 import { CHECK_EXECUTABLE_WAIT, PYTHON_REQUIREMENTS } from "../magic.js";
 import type { TerminalPlugin } from "../main.js";
 import { Settings } from "../settings-data.js";
-import { applyEnv, pathEnvKey } from "./environment.js";
+import { applyEnv, invalidateSystemPath, pathEnvKey } from "./environment.js";
 import type { Pseudoterminal } from "./pseudoterminal.js";
 
 const childProcess = dynamicRequire<typeof import("node:child_process")>(
@@ -936,8 +936,9 @@ export async function runPluginPythonCheck(
       pluginCheckGenerations.get(context) !== generation ||
       pythonExecutable !== configured;
   pluginCheckGenerations.set(context, generation);
-  // Always re-probe: the recheck button must see a Python installed moments
-  // ago.
+  // Refresh both caches: an installer can add Python to the registry PATH
+  // while Obsidian keeps its launch-time environment.
+  invalidateSystemPath();
   invalidateWindowsPythonDiagnosis(configured);
   const diagnosis = await checkWindowsPython(context, configured, spawn, {
     locate,
