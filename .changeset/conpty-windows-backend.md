@@ -11,6 +11,7 @@ Use ConPTY by default for Windows integrated terminals, improving full-screen ap
 - Guide users with missing ConHost resizer packages to ConPTY or a copied installation command explicitly intended for PowerShell, with literal quoting for interpreter paths.
 - Preserve bare batch launchers without shadowing native executables, and share concurrent ConPTY host-file repairs.
 - Resolve native Windows system programs through Sysnative when the ConPTY host uses 32-bit Python, and refresh the registry PATH when rechecking Python after installation.
+- Retry ConPTY when restarting or restoring an automatically demoted terminal tab after Python becomes available, while preserving explicit ConHost choices.
 - Keep terminals responsive under heavy output on every platform using sliced writes and backpressure. Reduce resize throttling from 0.5 to 0.1 seconds and start terminals at the fitted pane size.
 - Suppress exit notifications for intentional closes and restarts while retaining notifications for spontaneous exits.
 - Detach closing terminals immediately and dispose their UI before waiting for process exit, including when a child ignores termination.

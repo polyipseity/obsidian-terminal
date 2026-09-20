@@ -238,13 +238,18 @@ export const PROFILE_PROPERTIES: {
         pythonUsable = diagnosis?.status === "ok",
         // A usable interpreter can still lack a confirmed ConPTY host.
         hostConfirmed = pythonUsable && diagnosis.hostExecutable !== null,
+        // Saved tabs can retain an automatic demotion after settings recover.
+        requestedBackend =
+          diagnosis && profile.win32BackendAutoDemoted
+            ? "conpty"
+            : win32Backend,
         backend = diagnosis
           ? resolveWin32Backend(
-              win32Backend,
+              requestedBackend,
               hostConfirmed && !conptyRuntimeUnavailable,
             )
           : win32Backend,
-        fallback = backend !== win32Backend,
+        fallback = backend !== requestedBackend,
         requestPythonExecutable = diagnosis
           ? pythonUsable
             ? (win32SpawnPythonExecutable(backend, diagnosis) ?? void 0)
