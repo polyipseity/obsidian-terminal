@@ -4,7 +4,7 @@ Integrate consoles, shells, and terminals inside [Obsidian].
 
 [![Buy Me a Coffee/embed][Buy Me a Coffee/embed]][Buy Me a Coffee]
 
-__[Repository][repository] · [Changelog][changelog] · [Community plugin][community plugin] · [Related][related] · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing) · [Security](#security)__
+[Repository][repository] · [Changelog][changelog] · [Community plugin][community plugin] · [Related][related] · [Features](#features) · [Installation](#installation) · [Usage](#usage) · [Contributing](#contributing) · [Security](#security)
 
 ![Trailer][trailer]
 
@@ -27,22 +27,22 @@ This file is automatically opened on first install. You can reopen it in setting
 ## Installation
 
 1. Install plugin.
-    - Community plugins
-        1. Install the [plugin][community plugin] from community plugins directly.
-    - Manual
-        1. Create directory `terminal` under `.obsidian/plugins` of your vault.
-        2. Place `manifest.json`, `main.js`, and `styles.css` from the [latest release] into the directory.
-    - Building (rolling)
-        1. Clone this repository, including its submodules.
-        2. Install `bun`. See <https://bun.sh> for installation.
-        3. Run `bun install` in the root directory.
-        4. Run `bun run obsidian:install <vault directory>` in the root directory.
-    - [Obsidian42 - BRAT](https://obsidian.md/plugins?id=obsidian42-brat) (rolling)
-        - See [their readme](https://github.com/TfTHacker/obsidian42-brat#readme).
-2. (optional for Windows, recommended) Install Python and dependencies.
-    1. Install [Python] 3.9 or above.
-    2. (Windows only) Run `pip3 install psutil==5.9.5 pywinctl==0.0.50 typing_extensions==4.7.1`. <!-- Update `README.md`, `dependabot.yml`, `magic.ts`, and `pyproject.toml` together. -->
-    3. Configure Python executable in profile settings. Press the "Check" button to validate the Python configuration. Each profile needs to be configured separately.
+   - Community plugins
+     1. Install the [plugin][community plugin] from community plugins directly.
+   - Manual
+     1. Create directory `terminal` under `.obsidian/plugins` of your vault.
+     2. Place `manifest.json`, `main.js`, and `styles.css` from the [latest release] into the directory.
+   - Building (rolling)
+     1. Clone this repository, including its submodules.
+     2. Install [Bun](https://bun.sh) and [uv](https://docs.astral.sh/uv/).
+     3. Run `bun install` in the root directory.
+     4. Run `uv sync --locked` in the root directory.
+     5. Run `bun run obsidian:install <vault directory>` in the root directory.
+   - [Obsidian42 - BRAT](https://obsidian.md/plugins?id=obsidian42-brat) (rolling)
+     - See [their readme](https://github.com/TfTHacker/obsidian42-brat#readme).
+2. (optional for Windows, recommended) Install Python.
+   1. Install [Python] 3.9 or above. The default ConPTY backend needs no pip packages; the ConHost backend's resizer additionally needs `pip3 install psutil pywinctl typing_extensions`. <!-- Update `README.md`, `magic.ts`, `pyproject.toml`, and `dependabot.yml` together. -->
+   2. On Windows the plugin detects Python by itself and shows the result in the plugin settings, where you can also set the interpreter once for every profile; a profile's own Python field overrides it. On other platforms, configure the Python executable per profile and press the "Check" button to validate it.
 3. Enable plugin.
 4. (optional) Configure plugin settings.
 
@@ -50,19 +50,19 @@ This file is automatically opened on first install. You can reopen it in setting
 
 - To start a new external or integrated terminal
   - Ribbon
-      1. Click on the `Open terminal` ribbon.
-      2. Opens the default terminal if you have set up one. Otherwise, choose the desired profile.
+    1. Click on the `Open terminal` ribbon.
+    2. Opens the default terminal if you have set up one. Otherwise, choose the desired profile.
   - Context menu
-      1. Right-click on files, folders, or tab headers.
-      2. Choose the desired action \(and profile\).
+    1. Right-click on files, folders, or tab headers.
+    2. Choose the desired action \(and profile\).
   - Command palette
-      1. Press `Ctrl`+`P` or click on the `Open command palette` ribbon next to the left window border.
-      2. Choose the desired action \(and profile\).
+    1. Press `Ctrl`+`P` or click on the `Open command palette` ribbon next to the left window border.
+    2. Choose the desired action \(and profile\).
   - Select profile modal
-      1. Choose the desired profile. Press `Ctrl` to edit the profile before use. The item `(Temporary profile)` starts a terminal with a temporary profile.
+    1. Choose the desired profile. Press `Ctrl` to edit the profile before use. The item `(Temporary profile)` starts a terminal with a temporary profile.
 - To save and restore integrated terminal history
-    1. Keep the terminal open when exiting Obsidian.
-    2. Terminal history will be restored next time Obsidian is opened.
+  1. Keep the terminal open when exiting Obsidian.
+  2. Terminal history will be restored next time Obsidian is opened.
 - Additional actions
   - Includes
     - Clear terminal: \(1\), \(4\)
@@ -83,14 +83,12 @@ This file is automatically opened on first install. You can reopen it in setting
 
 The keyboard shortcuts can be customized in hotkeys settings.
 
-<!-- markdownlint-disable-next-line MD036 -->
-__Global__
+#### Global
 
 - Toggle focus on last terminal: `Ctrl`+`Shift`+`` ` ``
   - Focus on last terminal: \(unbound; useful if you want separate keys for focus and unfocus\)
 
-<!-- markdownlint-disable-next-line MD036 -->
-__Terminal is focused__
+#### Terminal is focused
 
 When a terminal is focused, other keyboard shortcuts \(including Obsidian and plugin hotkeys\) are disabled. Only the following keyboard shortcuts work. Thus you can ignore Obsidian complaining about conflicting keys for the following keyboard shortcuts.
 
@@ -120,8 +118,7 @@ When setting up a terminal profile, you need to distinguish between shells and t
 
 #### Examples
 
-<!-- markdownlint-disable-next-line MD036 -->
-__Shells__
+##### Shells
 
 - Bash: `bash --login`
 - Bourne shell: `sh`
@@ -133,8 +130,7 @@ __Shells__
 - Windows Subsystem for Linux: `wsl` or `wsl -d <distribution name>`
 - Z shell: `zsh --login`
 
-<!-- markdownlint-disable-next-line MD036 -->
-__Terminal emulators__
+##### Terminal emulators
 
 - Command Prompt: `cmd`
 - GNOME Terminal: `gnome-terminal`
@@ -175,53 +171,62 @@ This project uses [`changesets`](https://github.com/changesets/changesets) to ma
 This is an example change. ([GH#1](https://github.com/ghost/example/pull/1) by [@ghost](https://github.com/ghost))
 ```
 
-### Linting, Commit, and Hooks
+### Checks, formatting, and hooks
 
-This project uses the following tools to ensure code and commit quality:
+`package.json` defines the executable workflow:
 
-- __ESLint__: Linting for TypeScript/JavaScript. Run with `bun run check` (lint only) or `bun run fix` (auto-fix lint issues).
-- __Prettier__: Code formatting. Run with `bun run format` (format all files) or `bun run format:check` (check formatting only).
-- __markdownlint__: Lints Markdown files. Run with `bun run markdownlint` or auto-fix with `bun run markdownlint:fix`.
-- __commitlint__: Enforces conventional commit messages. Used automatically on commit via Husky.
-- __husky__: Manages Git hooks. Pre-commit runs `lint-staged` and pre-push runs commitlint.
-- __lint-staged__: Runs linters on staged files. Markdown files are auto-fixed before commit.
+- `bun run check` runs TypeScript, ESLint, markdownlint, Prettier, Ruff, and Ty checks.
+- `bun run format` applies ESLint, markdownlint, Prettier, and Ruff fixes, then runs Ty.
+- `bun run build` runs `bun run check`, then creates the production bundle.
+- `bun run build:dev` starts the development watcher without running the checks.
+- `bun run commitlint` checks commits from `origin/main` through `HEAD`.
 
-> __Lint-staged note:__ The lint-staged configuration (`.lintstagedrc.mjs`) invokes formatter/linter binaries directly (for example `prettier --write`, `eslint --cache --fix`, `markdownlint-cli2 --fix`) so that the list of staged files is passed through to the tool. Invoking these via `bun run` would prevent lint-staged from forwarding filenames and cause the tool to operate on its default glob (or the entire repo). Use `bun run format` to format the entire repository when needed.
+Prek manages the Git hooks in `prek.toml`. The pre-commit hooks format supported files. The commit-message hook runs commitlint. The pre-push hook runs the full test suite.
 
 To set up locally:
 
-1. Run `bun install` to install dependencies and set up hooks.
-2. On commit, staged Markdown files will be linted and auto-fixed.
-3. Commit messages are checked for conventional format.
+1. Install Bun and uv.
+2. Run `bun install` to install JavaScript dependencies and Prek hooks.
+3. Run `uv sync --locked` to install the locked Python environment.
 
-You can manually run:
+Use these scoped commands when one check needs attention:
 
-- `bun run check` — lint all code (no formatting)
-- `bun run fix` — auto-fix lint issues (no formatting)
-- `bun run format` — format all code with Prettier
-- `bun run format:check` — check formatting with Prettier
-- `bun run markdownlint` — check all Markdown files
-- `bun run markdownlint:fix` — auto-fix Markdown files
-- `bun run commitlint` — check commit messages in range
+- `bun run check:tsc` — TypeScript type check
+- `bun run check:eslint` — TypeScript and JavaScript lint
+- `bun run check:md` — Markdown lint
+- `bun run check:prettier` — Prettier check
+- `bun run check:py` — Ruff formatting, Ruff lint, and Ty checks
+- `bun run format:eslint` — ESLint fixes
+- `bun run format:md` — Markdown fixes
+- `bun run format:prettier` — Prettier fixes
+- `bun run format:py` — Ruff fixes and Ty check
 
 Configuration files:
 
-- `.eslintrc.*` or `eslint.config.mjs` — ESLint rules
-- `.prettierrc` — Prettier rules
+- `eslint.config.mjs` — ESLint rules
+- `.prettierrc.mjs` — Prettier rules
 - `.prettierignore` — Prettier ignore patterns
 - `.markdownlint.jsonc` — markdownlint rules
-- `.commitlintrc.js` — commitlint config
-- `.husky/` — Git hooks
+- `.markdownlint-cli2.mjs` — markdownlint file selection
+- `.commitlintrc.mjs` — commitlint config
+- `prek.toml` — Git hooks
 
 ### Testing
 
-This repository uses __Vitest__ for fast unit tests. Tests live under `tests/` and should be named `*.spec.ts` or `*.spec.js`.
+This repository uses Pytest for Python tests and Vitest for TypeScript and JavaScript tests.
 
-- Run locally (non-interactive, coverage): `bun run test` (runs `vitest run --coverage`).
-- Run locally (interactive / watch): `bun run test:watch`.
-- Git hooks: The pre-push hook runs `bun run test` (see `.husky/pre-push`) and will block pushes if tests fail.
+- Run every non-interactive test with coverage: `bun run test`.
+- Run only Python tests: `bun run test:py`.
+- Run only Vitest tests: `bun run test:vitest`.
+- Run Vitest interactively: `bun run test:watch`.
+- The Prek pre-push hook runs `bun run test` and blocks a push when a test fails.
 
 See `vitest.config.mts` for minimal config and further instructions.
+
+### Windows backend tests
+
+The ConPTY host and ConHost resizer tests run on native Windows only. See
+[Windows backend tests](AGENTS.md#windows-backend-tests).
 
 ### Todos
 

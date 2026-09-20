@@ -1,7 +1,8 @@
 {
   "psutil": {
     "platforms": ["win32"],
-    "version": "5.9.5"
+    "version": "5.9.5",
+    "maximum": "7.1.1"
   },
   "pywinctl": {
     "platforms": ["win32"],

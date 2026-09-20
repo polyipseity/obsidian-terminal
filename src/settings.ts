@@ -1,20 +1,26 @@
 import {
   AdvancedSettingTab,
+  activeSelf,
   cloneAsWritable,
   closeSetting,
   createChildElement,
   createDocumentFragment,
+  deopaque,
   DOMClasses,
   linkSetting,
+  openExternal,
   Platform,
   registerSettingsCommands,
   resetButton,
   setSanitizedInnerHTML,
   setTextToEnum,
+  SI_PREFIX_SCALE,
 } from "@polyipseity/obsidian-plugin-library";
+import { debounce } from "es-toolkit/function";
 import { cloneDeep } from "es-toolkit/object";
 import semverLt from "semver/functions/lt.js";
 import type { loadDocumentations } from "./documentations.js";
+import { PYTHON_PROBE_SETTLE_WAIT } from "./magic.js";
 import type { TerminalPlugin } from "./main.js";
 import {
   KeymappingsModal,
@@ -23,13 +29,28 @@ import {
 } from "./modals.js";
 import { Settings } from "./settings-data.js";
 import { RightClickActionAddon } from "./terminal/emulator-addons.js";
+import {
+  PYTHON_DOWNLOADS_URL,
+  getPluginPythonDiagnosis,
+  onPluginPythonDiagnosis,
+  pythonStatusKey,
+  runPluginPythonCheck,
+} from "./terminal/win32-doctor.js";
 
 export class SettingTab extends AdvancedSettingTab<Settings> {
+  #unregisterPythonDiagnosis?: () => void;
+
   public constructor(
     protected override readonly context: TerminalPlugin,
     protected readonly docs: loadDocumentations.Loaded,
   ) {
     super(context);
+  }
+
+  protected override onUnload(): void {
+    this.#unregisterPythonDiagnosis?.();
+    this.#unregisterPythonDiagnosis = void 0;
+    super.onUnload();
   }
 
   protected override onLoad(): void {
@@ -94,6 +115,9 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
         });
     });
     this.newAllSettingsWidget(Settings.DEFAULT, Settings.fix);
+    if (deopaque(Platform.CURRENT) === "win32") {
+      this.newPythonWidgets();
+    }
     ui.newSetting(containerEl, (setting) => {
       setting
         .setName(i18n.t("settings.add-to-command"))
@@ -835,8 +859,174 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
       });
   }
 
+  /** Plugin-level Python controls, rendered on Windows only. */
+  protected newPythonWidgets(): void {
+    const {
+      containerEl,
+      context,
+      context: {
+        language: { value: i18n },
+        settings,
+      },
+      ui,
+    } = this;
+    // Checks overlap when the field moves mid-check; the newest one owns the
+    // result, so the row stays "checking" until all of them settle.
+    let rechecks = 0,
+      recheckKey = settings.value.pythonExecutable;
+    const recheck = (): void => {
+        ++rechecks;
+        runPluginPythonCheck(context)
+          .catch((error: unknown) => {
+            activeSelf(containerEl).console.error(error);
+          })
+          .finally(() => {
+            --rechecks;
+            ui.update();
+          });
+        ui.update();
+      },
+      recheckLater = debounce(
+        recheck,
+        PYTHON_PROBE_SETTLE_WAIT * SI_PREFIX_SCALE,
+      );
+    ui.finally(() => {
+      recheckLater.cancel();
+    });
+    // The load-time check may still be probing when the tab opens; its
+    // completion must replace the "checking" status without a reopen.
+    this.#unregisterPythonDiagnosis?.();
+    this.#unregisterPythonDiagnosis = onPluginPythonDiagnosis(context, () => {
+      ui.update();
+    });
+    ui.newSetting(containerEl, (setting) => {
+      setting
+        .setName(i18n.t("settings.python-executable"))
+        .setDesc(i18n.t("settings.python-executable-description"))
+        .addText(
+          linkSetting(
+            () => settings.value.pythonExecutable,
+            async (value) =>
+              settings.mutate((settingsM) => {
+                settingsM.pythonExecutable = value;
+              }),
+            () => {
+              this.postMutate();
+            },
+            {
+              post: (component) => {
+                component.setPlaceholder(
+                  i18n.t("settings.python-executable-placeholder"),
+                );
+              },
+            },
+          ),
+        )
+        .addExtraButton(
+          resetButton(
+            i18n.t("asset:settings.python-executable-icon"),
+            i18n.t("settings.reset"),
+            async () =>
+              settings.mutate((settingsM) => {
+                settingsM.pythonExecutable = Settings.DEFAULT.pythonExecutable;
+              }),
+            () => {
+              this.postMutate();
+            },
+          ),
+        );
+    })
+      .newSetting(containerEl, (setting) => {
+        const { pythonExecutable } = settings.value;
+        if (recheckKey !== pythonExecutable) {
+          recheckKey = pythonExecutable;
+          // The status and the demoted profiles describe the previous value.
+          // Debounce: every keystroke re-renders this row.
+          recheckLater();
+        }
+        const rechecking = rechecks > 0,
+          diagnosis = getPluginPythonDiagnosis(context),
+          // `status` gates the buttons; the message key also tells a
+          // discovered name apart from a configured path.
+          status = rechecking || !diagnosis ? "checking" : diagnosis.status,
+          statusKey = pythonStatusKey(diagnosis, rechecking),
+          i18nVariant = rechecking ? "ing" : "";
+        setting.setName(i18n.t("settings.python-status")).setDesc(
+          i18n.t(`settings.python-status-${statusKey}`, {
+            candidate: diagnosis?.candidate,
+            executable: diagnosis?.executable,
+            interpolation: { escapeValue: false },
+            version: diagnosis?.version,
+          }),
+        );
+        /*
+         * The UI records its components once, at plugin load, and later
+         * updates only reconfigure them — a conditionally added button
+         * would never be recorded. Always add it; toggle visibility.
+         */
+        setting.addButton((button) => {
+          button
+            .setIcon(i18n.t("asset:settings.python-download-icon"))
+            .setTooltip(i18n.t("settings.python-download"))
+            .onClick(() => {
+              openExternal(activeSelf(containerEl), PYTHON_DOWNLOADS_URL);
+            });
+          const hidden = status === "checking" || status === "ok";
+          button.buttonEl.style.display = hidden ? "none" : "";
+          if (!hidden) {
+            button.setCta();
+          }
+        });
+        setting.addButton((button) => {
+          button
+            .setIcon(i18n.t(`asset:settings.python-recheck${i18nVariant}-icon`))
+            .setTooltip(i18n.t("settings.python-recheck"))
+            .onClick(() => {
+              if (rechecks > 0) {
+                return;
+              }
+              recheckLater.cancel();
+              recheck();
+            });
+          if (rechecking) {
+            button.setCta();
+          }
+        });
+      })
+      .newSetting(containerEl, (setting) => {
+        setting
+          .setName(i18n.t("settings.prewarm-conpty"))
+          .setDesc(i18n.t("settings.prewarm-conpty-description"))
+          .addToggle(
+            linkSetting(
+              () => settings.value.prewarmConPty,
+              async (value) =>
+                settings.mutate((settingsM) => {
+                  settingsM.prewarmConPty = value;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          )
+          .addExtraButton(
+            resetButton(
+              i18n.t("asset:settings.prewarm-conpty-icon"),
+              i18n.t("settings.reset"),
+              async () =>
+                settings.mutate((settingsM) => {
+                  settingsM.prewarmConPty = Settings.DEFAULT.prewarmConPty;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          );
+      });
+  }
+
   protected override snapshot0(): Partial<Settings> {
-    return Settings.persistent(this.context.settings.value);
+    return this.context.settings.value;
   }
 }
 

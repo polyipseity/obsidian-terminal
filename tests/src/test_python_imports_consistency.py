@@ -36,6 +36,7 @@ _STDLIB_MODULE_NAMES: AbstractSet[str] = (
             "abc",
             "collections",
             "contextlib",
+            "ctypes",
             "enum",
             "fcntl",
             "functools",
@@ -252,14 +253,10 @@ def test_python_requirements_consistency() -> None:
     requirements = _read_python_requirements()
     third_party_imports = _get_unconditional_third_party_imports(src_root)
 
-    # Verify known-good cases first for readable failure messages.
-    assert "psutil" in requirements, (
-        "psutil is imported unconditionally in win32_resizer.py "
-        "but missing from PYTHON_REQUIREMENTS"
-    )
-    assert "pywinctl" in requirements, (
-        "pywinctl is imported unconditionally in win32_resizer.py "
-        "but missing from PYTHON_REQUIREMENTS"
+    assert {"psutil", "pywinctl"} <= requirements, (
+        f"python-requirements.json lost entries; has {sorted(requirements)}. "
+        "The ConHost resizer imports them, and the profile editor's Python "
+        "check reads this manifest to verify them."
     )
 
     failures = list[str]()

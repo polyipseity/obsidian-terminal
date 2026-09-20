@@ -1,8 +1,10 @@
 import {
   Platform,
+  SI_PREFIX_SCALE,
   addCommand,
   addRibbonIcon,
   deepFreeze,
+  deopaque,
   inSet,
   isNonNil,
   notice2,
@@ -14,10 +16,17 @@ import {
   TFolder,
 } from "obsidian";
 import type { TerminalPlugin } from "../main.js";
+import { TERMINAL_CONPTY_PREWARM_DELAY } from "../magic.js";
+import { warmSystemPath } from "./environment.js";
 import { Settings } from "../settings-data.js";
-import { PROFILE_PROPERTIES } from "./profile-properties.js";
+import {
+  PROFILE_PROPERTIES,
+  prewarmConPtyProfile,
+} from "./profile-properties.js";
+import { CONPTY_HOST_POOL } from "./pseudoterminal.js";
 import { SelectProfileModal, spawnTerminal } from "./spawn.js";
 import { TerminalView } from "./view.js";
+import { runPluginPythonCheck } from "./win32-doctor.js";
 
 export function loadTerminal(context: TerminalPlugin): void {
   TerminalView.load(context);
@@ -50,6 +59,17 @@ export function loadTerminal(context: TerminalPlugin): void {
         }
       }
       return null;
+    },
+    getPrewarmProfile = (): Settings.Profile | null => {
+      const isCandidate = (profile: Settings.Profile): boolean =>
+        profile.type === "integrated" &&
+        profile.win32Backend === "conpty" &&
+        Settings.Profile.isCompatible(profile, Platform.CURRENT);
+      const fromDefault = getDefaultProfile()?.[1];
+      if (fromDefault && isCandidate(fromDefault)) {
+        return fromDefault;
+      }
+      return Object.values(settings.value.profiles).find(isCandidate) ?? null;
     },
     getDefaultProfileOfType = (
       type: Settings.Profile.Type,
@@ -294,4 +314,50 @@ export function loadTerminal(context: TerminalPlugin): void {
       );
     }
   }
+
+  /*
+   * `onLayoutReady` has no unsubscribe and still fires after the plugin
+   * unloads; the flag stops the callback from starting work (and registering
+   * cleanup) on an unloaded plugin, which would leak the timer and the spare.
+   */
+  const prewarm = (): void => {
+    const profile = getPrewarmProfile();
+    if (!profile) return;
+    prewarmConPtyProfile(context, profile).catch((error: unknown) => {
+      /* @__PURE__ */ self.console.debug(error);
+    });
+  };
+  let unloaded = false;
+  context.register(() => {
+    unloaded = true;
+  });
+  workspace.onLayoutReady(() => {
+    if (unloaded) {
+      return;
+    }
+    warmSystemPath();
+    if (deopaque(Platform.CURRENT) === "win32") {
+      // Silent; the settings tab shows the result.
+      runPluginPythonCheck(context).catch((error: unknown) => {
+        /* @__PURE__ */ self.console.debug(error);
+      });
+    }
+    const timer = self.setTimeout(
+      prewarm,
+      TERMINAL_CONPTY_PREWARM_DELAY * SI_PREFIX_SCALE,
+    );
+    context.register(() => {
+      self.clearTimeout(timer);
+    });
+  });
+
+  context.register(
+    settings.onMutate(
+      (settings0) => settings0.prewarmConPty,
+      (prewarm0) => {
+        if (prewarm0) prewarm();
+        else CONPTY_HOST_POOL.clear();
+      },
+    ),
+  );
 }

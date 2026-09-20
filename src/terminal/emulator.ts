@@ -114,10 +114,13 @@ export class XtermTerminalEmulator<A> {
         columns: number,
         rows: number,
         mustResizePseudoterminal: boolean,
+        xtermReady: Promise<void>,
       ) => {
         resolve(
           (async (): Promise<void> => {
             try {
+              // The xterm resize lands before the backend resize.
+              await xtermReady;
               const pty = await this.pseudoterminal;
               if (pty.resize) {
                 await pty.resize(columns, rows);
@@ -138,6 +141,7 @@ export class XtermTerminalEmulator<A> {
   );
 
   #running = true;
+  readonly #ptyExit: Promise<void>;
 
   public constructor(
     protected readonly element: HTMLElement,
@@ -150,8 +154,8 @@ export class XtermTerminalEmulator<A> {
     addons?: A,
   ) {
     this.terminal = new xterm.Terminal(options);
+    this.terminal.open(element);
     const { terminal } = this;
-    terminal.open(element);
 
     const addons0 = Object.assign(
       {
@@ -188,33 +192,45 @@ export class XtermTerminalEmulator<A> {
       await pty0.pipe(terminal);
       return pty0;
     });
-    this.pseudoterminal
-      .then(async (pty0) => pty0.onExit)
-      .catch(noop)
+    this.#ptyExit = this.pseudoterminal
+      .then(async (pty0) => {
+        await pty0.onExit;
+      })
       .finally(() => {
         this.#running = false;
-      });
+      })
+      .catch(noop);
   }
 
   public async close(mustClosePseudoterminal = true): Promise<void> {
+    let pseudoterminalCloseFailed = false;
+    let pseudoterminalCloseError: unknown;
     try {
       if (this.#running) {
         await (await this.pseudoterminal).kill();
+        await this.#ptyExit;
       }
     } catch (error) {
-      if (mustClosePseudoterminal) {
-        throw error;
+      pseudoterminalCloseFailed = true;
+      pseudoterminalCloseError = error;
+      if (!mustClosePseudoterminal)
+        /* @__PURE__ */ activeSelf(this.terminal.element).console.debug(error);
+    }
+    // Dispose outer addons before xterm.
+    for (const addon of Object.values(this.addons).reverse()) {
+      try {
+        addon.dispose();
+      } catch (error) {
+        /* @__PURE__ */ activeSelf(this.terminal.element).console.debug(error);
       }
-      /* @__PURE__ */ activeSelf(this.terminal.element).console.debug(error);
     }
     try {
       this.terminal.dispose();
     } catch (error) {
-      // xterm.js can throw during internal addon disposal (e.g., WebGL addon
-      // accessing _isDisposed on undefined internal references). This is an
-      // xterm.js bug - suppress to avoid noisy console errors.
       /* @__PURE__ */ activeSelf(this.terminal.element).console.debug(error);
     }
+    if (mustClosePseudoterminal && pseudoterminalCloseFailed)
+      throw pseudoterminalCloseError;
   }
 
   public async resize(mustResizePseudoterminal = true): Promise<void> {
@@ -224,9 +240,10 @@ export class XtermTerminalEmulator<A> {
     if (dim) {
       const { cols, rows } = dim;
       if (isFinite(cols) && isFinite(rows)) {
+        const xtermReady = resizeEmulator(cols, rows);
         await Promise.all([
-          resizeEmulator(cols, rows),
-          resizePTY(cols, rows, mustResizePseudoterminal),
+          xtermReady,
+          resizePTY(cols, rows, mustResizePseudoterminal, xtermReady),
         ]);
       }
     }
@@ -239,14 +256,10 @@ export class XtermTerminalEmulator<A> {
   }
 
   public serialize(): XtermTerminalEmulator.State {
-    const { active } = this.terminal.buffer;
-    let scrollLine = active.viewportY;
+    const { normal } = this.terminal.buffer;
+    let scrollLine = normal.viewportY;
 
-    // Only consider "at bottom" if there's actually scrollable content
-    // This prevents false positives in initial/empty state where baseY < rows
-    const hasScrollableContent = active.baseY >= this.terminal.rows,
-      isAtBottomPosition = scrollLine >= active.baseY - this.terminal.rows + 1;
-    if (hasScrollableContent && isAtBottomPosition) {
+    if (scrollLine === normal.baseY) {
       scrollLine = XtermTerminalEmulator.State.SCROLL_LINE_BOTTOM;
     }
 

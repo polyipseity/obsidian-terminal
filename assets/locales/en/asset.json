@@ -35,7 +35,8 @@
         "arguments-edit-icon": "$t(asset:generic.edit-list-icon)",
         "arguments-icon": "$t(asset:components.profile.generic.arguments-icon)",
         "executable-icon": "$t(asset:components.profile.generic.executable-icon)",
-        "use-win32-conhost-icon": "code"
+        "win32-backend-icon": "square-terminal",
+        "resizer-packages-copy-icon": "clipboard-copy"
       },
       "name-icon": "text-cursor-input",
       "platform-icon": "$t(asset:generic.platforms.{{type}}-icon)",
@@ -150,8 +151,13 @@
     "open-changelog-on-update-icon": "$t(asset:generic.documentations.changelog-icon)",
     "pin-new-instance-icon": "pin",
     "preferred-renderer-icon": "brush",
+    "prewarm-conpty-icon": "zap",
     "profiles-edit-icon": "$t(asset:generic.edit-list-icon)",
     "profiles-icon": "$t(asset:generic.profile-icon)",
+    "python-download-icon": "download",
+    "python-executable-icon": "file-cog",
+    "python-recheck-icon": "refresh-cw",
+    "python-rechecking-icon": "$t(asset:generic.load-icon)",
     "right-click-action-icon": "mouse-pointer-2",
     "terminal-options-edit-icon": "$t(asset:generic.edit-icon)",
     "terminal-options-icon": "$t(asset:generic.terminal-icon)"

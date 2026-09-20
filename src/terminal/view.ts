@@ -15,6 +15,7 @@ import {
   cloneAsWritable,
   createChildElement,
   deepFreeze,
+  deopaque,
   dynamicRequire,
   extname,
   fixTyped,
@@ -39,12 +40,13 @@ import {
   useSettings,
   writeStateCollaboratively,
 } from "@polyipseity/obsidian-plugin-library";
+import type { FitAddon, ITerminalDimensions } from "@xterm/addon-fit";
 import type { LigaturesAddon } from "@xterm/addon-ligatures";
 import type { SearchAddon } from "@xterm/addon-search";
 import type { Unicode11Addon } from "@xterm/addon-unicode11";
 import type { WebLinksAddon } from "@xterm/addon-web-links";
 import { type ITerminalOptions, Terminal } from "@xterm/xterm";
-import { noop } from "es-toolkit/function";
+import { noop, once } from "es-toolkit/function";
 import {
   FileSystemAdapter,
   ItemView,
@@ -77,14 +79,18 @@ import {
 } from "./emulator-addons.js";
 import { XtermTerminalEmulator } from "./emulator.js";
 import {
+  type TerminalBackendOptions,
   applyTerminalOptionDiffShallow,
   mergeTerminalOptions,
+  parseWin32BuildNumber,
 } from "./options.js";
 import { PROFILE_PROPERTIES, openProfile } from "./profile-properties.js";
-import { TextPseudoterminal } from "./pseudoterminal.js";
+import { type Pseudoterminal, TextPseudoterminal } from "./pseudoterminal.js";
 import { writePromise } from "./utils.js";
+import { win32ExitCodeKey } from "./win32-doctor.js";
 
-const xtermAddonCanvas = dynamicRequire<typeof import("@xterm/addon-canvas")>(
+const os = dynamicRequire<typeof import("node:os")>(BUNDLE, "node:os"),
+  xtermAddonCanvas = dynamicRequire<typeof import("@xterm/addon-canvas")>(
     BUNDLE,
     "@xterm/addon-canvas",
   ),
@@ -108,6 +114,57 @@ const xtermAddonCanvas = dynamicRequire<typeof import("@xterm/addon-canvas")>(
     BUNDLE,
     "@xterm/addon-webgl",
   );
+
+/** Returns the fitted spawn size, or the terminal's current size as fallback. */
+export function fittedSize(
+  fit: Pick<FitAddon, "proposeDimensions">,
+  terminal: Pick<Terminal, "cols" | "rows">,
+): readonly [number, number] {
+  const dim = ((): ITerminalDimensions | undefined => {
+    try {
+      return fit.proposeDimensions();
+    } catch (error) {
+      /* @__PURE__ */ self.console.debug(error);
+      return void 0;
+    }
+  })();
+  if (dim && isFinite(dim.cols) && isFinite(dim.rows)) {
+    return [
+      Math.max(1, Math.trunc(dim.cols)),
+      Math.max(1, Math.trunc(dim.rows)),
+    ];
+  }
+  return [Math.max(1, terminal.cols), Math.max(1, terminal.rows)];
+}
+
+/**
+ * Backend options for the pseudoterminal that opened. `openProfile` falls
+ * back to ConHost when ConPTY is unusable, so the profile's `win32Backend` is
+ * only the request. Returns `requested` itself when the pseudoterminal agrees
+ * or does not name a backend.
+ */
+export function settleTerminalBackendOptions(
+  requested: TerminalBackendOptions,
+  pty: Pseudoterminal | null,
+): TerminalBackendOptions {
+  const win32Backend = pty?.win32Backend;
+  return win32Backend === void 0 || win32Backend === requested.win32Backend
+    ? requested
+    : deepFreeze({ ...requested, win32Backend });
+}
+
+/** This machine's Windows build, read once, or `undefined` off Windows. */
+const win32BuildNumber = once(async (): Promise<number | undefined> => {
+  if (deopaque(Platform.CURRENT) !== "win32") {
+    return void 0;
+  }
+  try {
+    return parseWin32BuildNumber((await os).release());
+  } catch (error) {
+    /* @__PURE__ */ self.console.debug(error);
+    return void 0;
+  }
+});
 
 export class EditTerminalModal extends DialogModal {
   protected readonly state;
@@ -1028,6 +1085,13 @@ export class TerminalView extends ItemView {
       (async (): Promise<void> => {
         await awaitCSS(ele);
         noticeSpawn();
+        // Starts as the profile's request; the opened pseudoterminal settles it.
+        let terminalBackendOptions: TerminalBackendOptions = deepFreeze({
+          platform: deopaque(Platform.CURRENT),
+          win32Backend:
+            profile.type === "integrated" ? profile.win32Backend : void 0,
+          win32BuildNumber: await win32BuildNumber(),
+        });
         const [
             { CanvasAddon },
 
@@ -1056,10 +1120,11 @@ export class TerminalView extends ItemView {
             Platform.CURRENT,
             () => settings.value.keymappings,
             () => settings.value.macOSOptionKeyPassthrough,
+            () => terminalBackendOptions.win32Backend === "conpty",
           ),
           emulator = new TerminalView.EMULATOR(
             ele,
-            async (terminal) => {
+            async (terminal, addons0) => {
               if (serial) {
                 await writePromise(
                   terminal,
@@ -1069,9 +1134,37 @@ export class TerminalView extends ItemView {
                   }),
                 );
               }
+              // Spawn at the fitted size: a default-sized spawn reflows on
+              // the first frame.
+              const [columns, rows] = fittedSize(addons0.fit, terminal);
+              terminal.resize(columns, rows);
               const ret = await openProfile(context, profile, {
-                cwd: cwd ?? void 0,
-              });
+                  columns,
+                  cwd: cwd ?? void 0,
+                  rows,
+                }),
+                requested = terminalBackendOptions;
+              terminalBackendOptions = settleTerminalBackendOptions(
+                requested,
+                ret,
+              );
+              if (terminalBackendOptions !== requested) {
+                // A ConHost fallback: nothing has been piped yet, so drop what
+                // only ConPTY understands before any output is parsed.
+                const merge = (
+                  backendOptions: TerminalBackendOptions,
+                ): ReturnType<typeof mergeTerminalOptions> =>
+                  mergeTerminalOptions(
+                    profileTerminalOptions,
+                    settings.value.terminalOptions,
+                    backendOptions,
+                  );
+                applyTerminalOptionDiffShallow(
+                  terminal,
+                  merge(requested),
+                  merge(terminalBackendOptions),
+                );
+              }
               if (ret) {
                 return ret;
               }
@@ -1099,6 +1192,7 @@ export class TerminalView extends ItemView {
             mergeTerminalOptions(
               profileTerminalOptions,
               settings.value.terminalOptions,
+              terminalBackendOptions,
             ),
             {
               altScreenExit: new AltScreenExitAddon(),
@@ -1166,12 +1260,23 @@ export class TerminalView extends ItemView {
           .then(async (pty0) => pty0.onExit)
           .then(
             (code) => {
+              // Closing or replacing the view intentionally kills its old PTY.
+              if (this.emulator !== emulator) {
+                return;
+              }
               notice2(
-                () =>
-                  i18n.t("notices.terminal-exited", {
+                () => {
+                  const key =
+                    deopaque(Platform.CURRENT) === "win32"
+                      ? (win32ExitCodeKey(code) ?? "notices.terminal-exited")
+                      : "notices.terminal-exited";
+                  return i18n.t(key, {
                     code,
+                    executable:
+                      profile.type === "integrated" ? profile.executable : "",
                     interpolation: { escapeValue: false },
-                  }),
+                  });
+                },
                 (profile.type === "invalid"
                   ? DEFAULT_SUCCESS_EXIT_CODES
                   : profile.successExitCodes
@@ -1228,7 +1333,11 @@ export class TerminalView extends ItemView {
                   profileOpts: Settings.Profile.TerminalOptions,
                   globalOpts: Settings.Profile.TerminalOptions,
                 ): ITerminalOptions => {
-                  const merged = mergeTerminalOptions(profileOpts, globalOpts);
+                  const merged = mergeTerminalOptions(
+                    profileOpts,
+                    globalOpts,
+                    terminalBackendOptions,
+                  );
                   const tmp = new Terminal(merged);
                   try {
                     return tmp.options;

@@ -149,6 +149,14 @@ export function mergePathEntries(
  *  - Windows: reg query of the System + User PATH from the registry */
 const getSystemPath = lazyInit(() => resolveSystemPath());
 
+/** Starts the one-time system PATH resolution off the spawn path. The result
+ * is memoized, so the first spawn reuses it instead of paying for it. */
+export function warmSystemPath(): void {
+  getSystemPath().catch((error: unknown) => {
+    /* @__PURE__ */ self.console.debug(error);
+  });
+}
+
 async function resolveSystemPath(): Promise<string[]> {
   const platform = deopaque(Platform.CURRENT);
   const process2 = await process;
@@ -288,6 +296,11 @@ function mergeEnvPairs(
   return env;
 }
 
+/** The key `env` names `PATH` by, whatever its case; `Path` when absent. */
+export function pathEnvKey(env: NodeJS.ProcessEnv): string {
+  return Object.keys(env).find((k) => k.toUpperCase() === "PATH") ?? "Path";
+}
+
 async function sanitizeEnv(
   base: NodeJS.ProcessEnv,
 ): Promise<NodeJS.ProcessEnv> {
@@ -307,9 +320,7 @@ async function sanitizeEnv(
   // letting the GUI app's accidental launch-time order take priority.
   const isWin = Platform.CURRENT === "win32";
   const sep = isWin ? ";" : ":";
-  const pathKey = isWin
-    ? (Object.keys(env).find((k) => k.toUpperCase() === "PATH") ?? "Path")
-    : "PATH";
+  const pathKey = isWin ? pathEnvKey(env) : "PATH";
   const currentPath = env[pathKey] ?? "";
   const entries = currentPath.split(sep).filter(Boolean);
   const systemEntries = await getSystemPath();
