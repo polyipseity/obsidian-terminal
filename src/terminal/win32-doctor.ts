@@ -744,6 +744,21 @@ export function invalidateWindowsPythonDiagnosis(
 }
 
 /**
+ * Drops one cache entry only while it still holds `diagnosis`. A check the
+ * cache moved on from — a recheck invalidated it and installed a newer probe
+ * meanwhile — owns nothing to evict, and deleting the newer entry would make
+ * the next open re-probe an interpreter that was just resolved.
+ */
+function evictOwnDiagnosis(
+  pythonExecutable: string,
+  diagnosis: Promise<Win32PythonDiagnosis>,
+): void {
+  if (diagnoses.get(pythonExecutable) === diagnosis) {
+    diagnoses.delete(pythonExecutable);
+  }
+}
+
+/**
  * Runs the Python check once per session per configured executable and shows
  * one notice when it fails. Callers await it before constructing a Windows
  * PTY so the same interpreter is used by every helper in that request.
@@ -769,7 +784,7 @@ export async function checkWindowsPython(
   try {
     ret = await diagnosis;
   } catch (error) {
-    diagnoses.delete(pythonExecutable);
+    evictOwnDiagnosis(pythonExecutable, diagnosis);
     throw error;
   }
   const { detail, executable, status, version } = ret;
@@ -777,14 +792,14 @@ export async function checkWindowsPython(
     notified.delete(pythonExecutable);
     if (ret.transient ?? false) {
       // An unconfirmed host is retried by the next open.
-      diagnoses.delete(pythonExecutable);
+      evictOwnDiagnosis(pythonExecutable, diagnosis);
     }
     return ret;
   }
   // Failures are not cached: the notice asks the user to install Python and
   // the next open must re-probe. A missing interpreter fails fast, so this
   // is cheap.
-  diagnoses.delete(pythonExecutable);
+  evictOwnDiagnosis(pythonExecutable, diagnosis);
   const {
     language: { value: i18n },
     settings,
@@ -952,7 +967,11 @@ export async function runPluginPythonCheck(
       profileValues.add(profile.pythonExecutable);
     }
   }
-  const profileDiagnoses = new Map<string, Win32PythonDiagnosis>();
+  const profileDiagnoses = new Map<string, Win32PythonDiagnosis>(),
+    // Held back until the generation check below: an overtaken check must not
+    // replace the newer one's interpreter, which the opener would then read
+    // from the cache without re-probing it.
+    resolutions: [string, Win32PythonDiagnosis][] = [];
   await Promise.all(
     [...profileValues].map(async (value) => {
       // An override that stopped working must not keep its cached success.
@@ -972,7 +991,7 @@ export async function runPluginPythonCheck(
       if (resolved.status !== "ok" || (resolved.transient ?? false)) return;
       // The opener keys its check by the stored value and probes a cache
       // miss again; a usable value is exactly what the chain would find.
-      diagnoses.set(value, Promise.resolve(resolved));
+      resolutions.push([value, resolved]);
       // Alias only the interpreter path: a venv's base host has different
       // packages and must keep its own diagnosis.
       if (
@@ -980,11 +999,14 @@ export async function runPluginPythonCheck(
           sameExecutable(resolved.executable, value2),
         )
       ) {
-        diagnoses.set(resolved.executable, Promise.resolve(resolved));
+        resolutions.push([resolved.executable, resolved]);
       }
     }),
   );
   if (stale()) return diagnosis;
+  for (const [value, resolved] of resolutions) {
+    diagnoses.set(value, Promise.resolve(resolved));
+  }
   pluginDiagnoses.set(context, diagnosis);
   const verdict = (
       profile: Settings.Profile.Typed<"integrated">,

@@ -1215,6 +1215,86 @@ describe("runPluginPythonCheck", () => {
     expect(getPluginPythonDiagnosis(ctx)).toBeNull();
   });
 
+  it("keeps the newer result when an overtaken check fails on the same value", async () => {
+    vi.spyOn(console, "warn").mockImplementation(vi.fn());
+    const path = "C:\\Python312\\python.exe",
+      { context: ctx } = reconcileContext({ pythonExecutable: path }),
+      finishOld: ((probe: Win32PythonProcessResult) => void)[] = [],
+      oldProbe = new Promise<Win32PythonProcessResult>((resolve) => {
+        finishOld.push(resolve);
+      }),
+      started: (() => void)[] = [],
+      // Resolves once the overtaken check is inside its probe, so the newer
+      // one starts while the older result is still outstanding.
+      probing = new Promise<void>((resolve) => {
+        started.push(resolve);
+      }),
+      spawn = vi.fn<Win32PythonSpawn>(async (executable) => {
+        if (executable !== path) return result({ code: 9009 });
+        // The first check waits; the recheck resolves the same value.
+        if (spawn.mock.calls.length === 1) {
+          started[0]?.();
+          return oldProbe;
+        }
+        return identityResult(path);
+      });
+    const oldCheck = runPluginPythonCheck(ctx, spawn);
+    await probing;
+    // The recheck evicts the in-flight entry and installs its own result.
+    expect((await runPluginPythonCheck(ctx, spawn)).status).toBe("ok");
+    // The overtaken check now fails — its chain fallbacks all answer 9009 —
+    // and must not evict the entry it no longer owns.
+    finishOld[0]?.(result({ code: 9009 }));
+    expect((await oldCheck).status).not.toBe("ok");
+    const probes = spawn.mock.calls.length,
+      cached = await checkWindowsPython(ctx, path, spawn, {
+        notify: false,
+      });
+    expect(cached).toMatchObject({ executable: path, status: "ok" });
+    expect(spawn.mock.calls).toHaveLength(probes);
+  });
+
+  it("caches no profile override from a check a newer one overtook", async () => {
+    const venv = "C:\\venv\\Scripts\\python.exe",
+      oldHost = "C:\\Old\\python.exe",
+      newHost = "C:\\New\\python.exe",
+      { context: ctx } = reconcileContext({
+        profiles: { custom: win32Conpty({ pythonExecutable: venv }) },
+      }),
+      finishOld: ((probe: Win32PythonProcessResult) => void)[] = [],
+      oldProbe = new Promise<Win32PythonProcessResult>((resolve) => {
+        finishOld.push(resolve);
+      }),
+      started: (() => void)[] = [],
+      probing = new Promise<void>((resolve) => {
+        started.push(resolve);
+      });
+    let overrideProbes = 0;
+    const spawn = vi.fn<Win32PythonSpawn>(async (executable) => {
+      if (executable === venv) {
+        overrideProbes += 1;
+        if (overrideProbes === 1) {
+          started[0]?.();
+          return oldProbe;
+        }
+        // The environment moved on: the same override now runs another
+        // interpreter.
+        return identityResult(newHost);
+      }
+      return identityResult(executable);
+    });
+    const oldCheck = runPluginPythonCheck(ctx, spawn);
+    await probing;
+    await runPluginPythonCheck(ctx, spawn);
+    // The overtaken check resolves the override last, to the old interpreter.
+    finishOld[0]?.(identityResult(oldHost));
+    await oldCheck;
+    // The next open must read the newer check's interpreter.
+    expect(
+      await checkWindowsPython(ctx, venv, spawn, { notify: false }),
+    ).toMatchObject({ executable: newHost, status: "ok" });
+  });
+
   it("re-probes a profile override that stopped working", async () => {
     vi.spyOn(console, "warn").mockImplementation(vi.fn());
     const venv = "C:\\venv\\Scripts\\python.exe";
