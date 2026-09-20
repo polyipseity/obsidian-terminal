@@ -1,5 +1,6 @@
 import type { ITerminalAddon, Terminal } from "@xterm/xterm";
 import { describe, expect, it, vi } from "vitest";
+import { DisposerAddon } from "../../../src/terminal/emulator-addons.js";
 import { XtermTerminalEmulator } from "../../../src/terminal/emulator.js";
 import type { Pseudoterminal } from "../../../src/terminal/pseudoterminal.js";
 
@@ -65,33 +66,75 @@ describe("XtermTerminalEmulator lifecycle", () => {
     }
   });
 
-  it("pipes the pseudoterminal and swallows an optional close failure", async () => {
-    vi.spyOn(console, "debug").mockImplementation(vi.fn());
-    const pipe = vi.fn().mockResolvedValue(undefined),
-      kill = vi.fn().mockRejectedValue(new Error("seeded kill failure")),
-      pseudoterminal: Pseudoterminal = {
-        kill,
-        onExit: Promise.resolve(0),
-        pipe,
-      },
-      factory = vi.fn(() => pseudoterminal),
-      addons = stubAddons(),
+  it.each([true, false])(
+    "handles a kill failure (required: %s)",
+    async (mustClosePseudoterminal) => {
+      vi.spyOn(console, "debug").mockImplementation(vi.fn());
+      const pipe = vi.fn().mockResolvedValue(undefined),
+        kill = vi.fn().mockRejectedValue(new Error("seeded kill failure")),
+        pseudoterminal: Pseudoterminal = {
+          kill,
+          onExit: new Promise<number>(() => {}),
+          pipe,
+        },
+        factory = vi.fn(() => pseudoterminal),
+        addons = stubAddons(),
+        emulator = new XtermTerminalEmulator(
+          document.createElement("div"),
+          factory,
+          undefined,
+          undefined,
+          addons,
+        );
+
+      await emulator.pseudoterminal;
+      const dispose = vi.spyOn(emulator.terminal, "dispose"),
+        closing = emulator.close(mustClosePseudoterminal);
+      if (mustClosePseudoterminal) {
+        await expect(closing).rejects.toThrow("seeded kill failure");
+      } else {
+        await expect(closing).resolves.toBeUndefined();
+      }
+
+      expect(factory).toHaveBeenCalledWith(expect.anything(), emulator.addons);
+      expect(pipe).toHaveBeenCalledOnce();
+      expect(kill).toHaveBeenCalledOnce();
+      expect(dispose).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("detaches during startup but lets piping finish before disposal", async () => {
+    let resolvePty = (_pty: Pseudoterminal): void => {};
+    const element = document.body.appendChild(document.createElement("div")),
       emulator = new XtermTerminalEmulator(
-        document.createElement("div"),
-        factory,
+        element,
+        () =>
+          new Promise<Pseudoterminal>((resolve) => {
+            resolvePty = resolve;
+          }),
         undefined,
         undefined,
-        addons,
+        stubAddons(),
       );
-
-    await emulator.pseudoterminal;
-    await pseudoterminal.onExit;
+    // Start the asynchronous factory, leaving its result pending.
     await Promise.resolve();
-    await emulator.close(false);
-
-    expect(factory).toHaveBeenCalledWith(expect.anything(), emulator.addons);
+    const dispose = vi.spyOn(emulator.terminal, "dispose"),
+      pipe = vi.fn(() => {
+        expect(dispose).not.toHaveBeenCalled();
+      }),
+      kill = vi.fn(),
+      closing = emulator.close();
+    try {
+      expect(element.isConnected).toBe(false);
+      expect(dispose).not.toHaveBeenCalled();
+    } finally {
+      resolvePty({ kill, onExit: Promise.resolve(0), pipe });
+      await closing;
+      element.remove();
+    }
     expect(pipe).toHaveBeenCalledOnce();
     expect(kill).toHaveBeenCalledOnce();
+    expect(dispose).toHaveBeenCalledOnce();
   });
 
   it("closes cleanly after the pseudoterminal factory fails", async () => {
@@ -111,33 +154,61 @@ describe("XtermTerminalEmulator lifecycle", () => {
     expect(dispose).toHaveBeenCalledOnce();
   });
 
-  it("keeps closing pending until the child actually exits", async () => {
-    let resolveExit = (_exit: number): void => {};
-    const onExit = new Promise<number>((resolve) => {
-        resolveExit = resolve;
-      }),
-      emulator = new XtermTerminalEmulator(
-        document.createElement("div"),
-        vi.fn((): Pseudoterminal => ({
-          kill: vi.fn(),
-          onExit,
-          pipe: vi.fn(),
-        })),
-        undefined,
-        undefined,
-        stubAddons(),
-      );
+  it.each([true, false])(
+    "detaches before kill settles and disposes before exit (required: %s)",
+    async (mustClosePseudoterminal) => {
+      let resolveKill = (): void => {},
+        resolveExit = (_exit: number): void => {};
+      const killed = new Promise<void>((resolve) => {
+          resolveKill = resolve;
+        }),
+        onExit = new Promise<number>((resolve) => {
+          resolveExit = resolve;
+        }),
+        element = document.body.appendChild(document.createElement("div")),
+        disposer = new DisposerAddon(() => {
+          element.remove();
+        }),
+        kill = vi.fn(() => killed),
+        emulator = new XtermTerminalEmulator(
+          element,
+          vi.fn((): Pseudoterminal => ({
+            kill,
+            onExit,
+            pipe: vi.fn(),
+          })),
+          undefined,
+          undefined,
+          { ...stubAddons(), disposer },
+        );
 
-    await emulator.pseudoterminal;
-    const settled = vi.fn(),
-      closing = emulator.close();
-    void closing.finally(settled);
-    await Promise.resolve();
-    expect(settled).not.toHaveBeenCalled();
-    resolveExit(0);
-    await closing;
-    expect(settled).toHaveBeenCalledOnce();
-  });
+      await emulator.pseudoterminal;
+      const dispose = vi.spyOn(emulator.terminal, "dispose"),
+        disposeAddon = vi.spyOn(disposer, "dispose"),
+        settled = vi.fn(),
+        closing = emulator.close(mustClosePseudoterminal);
+      void closing.then(settled);
+      try {
+        expect(element.isConnected).toBe(false);
+        await Promise.resolve();
+        expect(kill).toHaveBeenCalledOnce();
+        expect(dispose).not.toHaveBeenCalled();
+
+        resolveKill();
+        await vi.waitFor(() => {
+          expect(dispose).toHaveBeenCalledOnce();
+        });
+        expect(disposeAddon).toHaveBeenCalledOnce();
+        expect(settled).not.toHaveBeenCalled();
+      } finally {
+        resolveKill();
+        resolveExit(0);
+        await closing;
+        element.remove();
+      }
+      expect(settled).toHaveBeenCalledOnce();
+    },
+  );
 
   it("applies each xterm resize before sending it to the PTY", async () => {
     const order: string[] = [],

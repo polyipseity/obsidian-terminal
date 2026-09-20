@@ -203,12 +203,13 @@ export class XtermTerminalEmulator<A> {
   }
 
   public async close(mustClosePseudoterminal = true): Promise<void> {
+    // Detach immediately, even while PTY startup or termination is pending.
+    this.element.remove();
     let pseudoterminalCloseFailed = false;
     let pseudoterminalCloseError: unknown;
     try {
       if (this.#running) {
         await (await this.pseudoterminal).kill();
-        await this.#ptyExit;
       }
     } catch (error) {
       pseudoterminalCloseFailed = true;
@@ -231,6 +232,8 @@ export class XtermTerminalEmulator<A> {
     }
     if (mustClosePseudoterminal && pseudoterminalCloseFailed)
       throw pseudoterminalCloseError;
+    // A child may ignore termination, so dispose before waiting for its exit.
+    if (!pseudoterminalCloseFailed) await this.#ptyExit;
   }
 
   public async resize(mustResizePseudoterminal = true): Promise<void> {

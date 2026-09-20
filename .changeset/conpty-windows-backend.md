@@ -12,5 +12,6 @@ Use ConPTY by default for Windows integrated terminals, improving full-screen ap
 - Preserve bare batch launchers without shadowing native executables, and share concurrent ConPTY host-file repairs.
 - Keep terminals responsive under heavy output on every platform using sliced writes and backpressure. Reduce resize throttling from 0.5 to 0.1 seconds and start terminals at the fitted pane size.
 - Suppress exit notifications for intentional closes and restarts while retaining notifications for spontaneous exits.
+- Detach closing terminals immediately and dispose their UI before waiting for process exit, including when a child ignores termination.
 
 Fixes [GH#104](https://github.com/polyipseity/obsidian-terminal/issues/104); addresses [GH#77](https://github.com/polyipseity/obsidian-terminal/issues/77), [GH#79](https://github.com/polyipseity/obsidian-terminal/issues/79), [GH#115](https://github.com/polyipseity/obsidian-terminal/issues/115), [GH#142](https://github.com/polyipseity/obsidian-terminal/issues/142), [GH#145](https://github.com/polyipseity/obsidian-terminal/issues/145), [GH#153](https://github.com/polyipseity/obsidian-terminal/issues/153), and [GH#168](https://github.com/polyipseity/obsidian-terminal/issues/168). ([GH#183](https://github.com/polyipseity/obsidian-terminal/pull/183) by [@janah01](https://github.com/janah01))
