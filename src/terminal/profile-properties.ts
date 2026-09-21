@@ -120,8 +120,11 @@ export function noticeWin32ResizerDisabled(
  * Records a ConPTY host that failed before ready. Later spawns using this
  * Python configuration fall back to ConHost until a successful recheck.
  */
-export function reportConPtyRuntimeFailure(pythonExecutable: string): void {
-  invalidateConPtyRuntime(pythonExecutable);
+export function reportConPtyRuntimeFailure(
+  pythonExecutable: string,
+  fallbackPythonExecutable = "",
+): void {
+  invalidateConPtyRuntime(pythonExecutable, fallbackPythonExecutable);
   // A spare booted before the failure is part of the same broken runtime.
   CONPTY_HOST_POOL.clear();
 }
@@ -209,11 +212,12 @@ export const PROFILE_PROPERTIES: {
       if (!Settings.Profile.isCompatible(profile, Platform.CURRENT)) {
         return null;
       }
-      const effectivePythonExecutable =
+      const fallbackPythonExecutable = context.settings.value.pythonExecutable,
+        effectivePythonExecutable =
           deopaque(Platform.CURRENT) === "win32"
             ? inheritedPythonExecutable(
                 pythonExecutable,
-                context.settings.value.pythonExecutable,
+                fallbackPythonExecutable,
               )
             : pythonExecutable,
         diagnosis =
@@ -238,7 +242,10 @@ export const PROFILE_PROPERTIES: {
           ? resolveWin32Backend(
               requestedBackend,
               hostConfirmed &&
-                !isConPtyRuntimeUnavailable(effectivePythonExecutable),
+                !isConPtyRuntimeUnavailable(
+                  effectivePythonExecutable,
+                  fallbackPythonExecutable,
+                ),
             )
           : win32Backend,
         fallback = backend !== requestedBackend,
@@ -306,7 +313,10 @@ export const PROFILE_PROPERTIES: {
           /* @__PURE__ */ self.console.debug(error);
           // The resolved value is the Python check's cache key, so the
           // eviction must use it too — the profile field may be empty.
-          reportConPtyRuntimeFailure(effectivePythonExecutable);
+          reportConPtyRuntimeFailure(
+            effectivePythonExecutable,
+            fallbackPythonExecutable,
+          );
         });
       }
       return new RefPsuedoterminal<Pseudoterminal>(pty);
@@ -353,13 +363,17 @@ export async function prewarmConPtyProfile(
   // and a breaker trip condemns the runtime, so a spare booted afterwards
   // would be unwanted or doomed. Checked again before the boot.
   // Resolves the same way as the open path so the pool key matches.
-  const effectivePythonExecutable = inheritedPythonExecutable(
+  const fallbackPythonExecutable = context.settings.value.pythonExecutable,
+    effectivePythonExecutable = inheritedPythonExecutable(
       profile.pythonExecutable,
-      context.settings.value.pythonExecutable,
+      fallbackPythonExecutable,
     ),
     wanted = (): boolean =>
       context.settings.value.prewarmConPty &&
-      !isConPtyRuntimeUnavailable(effectivePythonExecutable);
+      !isConPtyRuntimeUnavailable(
+        effectivePythonExecutable,
+        fallbackPythonExecutable,
+      );
   if (!wanted()) return;
   registerConPtyPoolDisposal(context, CONPTY_HOST_POOL);
   const diagnosis = await checkWindowsPython(

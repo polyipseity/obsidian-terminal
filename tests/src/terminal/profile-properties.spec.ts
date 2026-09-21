@@ -73,6 +73,7 @@ import {
   TextPseudoterminal,
 } from "../../../src/terminal/pseudoterminal.js";
 import { Settings } from "../../../src/settings-data.js";
+import { PROFILE_PRESETS } from "../../../src/terminal/profile-presets.js";
 import {
   clearWindowsPythonDiagnoses,
   isConPtyRuntimeUnavailable,
@@ -286,6 +287,53 @@ describe("openProfile with saved Windows backend choices", () => {
     await (await openProfile(context(), integratedProfile()))?.kill();
     expect(spawn.mock.calls[0]?.[0].win32Backend).toBe("conpty");
     expect(checkWindowsResizerPackagesMock).not.toHaveBeenCalled();
+  });
+
+  it("opens and prewarms a shared profile after changing its failed plugin fallback", async () => {
+    // Use the real resolver with a fake Python process to exercise the
+    // configured pair through the opener, cache, breaker and prewarm.
+    const { checkWindowsPython: checkPython } = await vi.importActual<
+        typeof import("../../../src/terminal/win32-doctor.js")
+      >("../../../src/terminal/win32-doctor.js"),
+      first = "C:\\First\\python.exe",
+      second = "C:\\Second\\python.exe",
+      settings = settingsOf(first),
+      ctx = context(first, settings),
+      profile = PROFILE_PRESETS.pwshIntegrated,
+      probe = vi.fn(async (executable: string) =>
+        executable === first || executable === second
+          ? { code: 0, stderr: "", stdout: `${executable}\n3.12.0\n` }
+          : { code: null, errno: "ENOENT", stderr: "", stdout: "" },
+      ),
+      spare = vi
+        .spyOn(CONPTY_HOST_POOL, "ensureSpare")
+        .mockImplementation(vi.fn());
+    checkWindowsPythonMock.mockImplementation((_ctx, value) =>
+      checkPython(ctx, value, probe, {
+        locate: vi.fn().mockResolvedValue(null),
+        notify: false,
+      }),
+    );
+    await (await openProfile(ctx, profile))?.kill();
+    reportConPtyRuntimeFailure("python3", first);
+    await (await openProfile(ctx, profile))?.kill();
+    await prewarmConPtyProfile(ctx, profile, { platform: "win32" });
+    expect(spare).not.toHaveBeenCalled();
+    settings.value.pythonExecutable = second;
+    await (await openProfile(ctx, profile))?.kill();
+    await prewarmConPtyProfile(ctx, profile, { platform: "win32" });
+    expect(
+      spawn.mock.calls.map(([args]) => [
+        args.win32Backend,
+        args.pythonExecutable,
+      ]),
+    ).toEqual([
+      ["conpty", first],
+      ["legacy", first],
+      ["conpty", second],
+    ]);
+    expect(spare).toHaveBeenCalledExactlyOnceWith(second, expect.anything());
+    expect(profile.pythonExecutable).toBe("python3");
   });
 
   it.each(["missing", "unconfirmed", "breaker"])(

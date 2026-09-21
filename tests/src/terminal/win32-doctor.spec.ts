@@ -44,6 +44,7 @@ import {
 } from "../../../src/terminal/win32-doctor.js";
 import type { TerminalPlugin } from "../../../src/main.js";
 import { Settings } from "../../../src/settings-data.js";
+import { PROFILE_PRESETS } from "../../../src/terminal/profile-presets.js";
 
 function result(
   overrides: Partial<Win32PythonProcessResult> = {},
@@ -818,7 +819,7 @@ describe("checkWindowsPython session cache", () => {
           },
         },
       },
-      settings: { value: { errorNoticeTimeout: 0 } },
+      settings: { value: { errorNoticeTimeout: 0, pythonExecutable: "" } },
     } as unknown as TerminalPlugin;
   }
 
@@ -1136,6 +1137,77 @@ describe("runPluginPythonCheck", () => {
     } as DeepWritable<Settings.Profile.Typed<"integrated">>;
   }
 
+  it.each([false, true])(
+    "uses the plugin interpreter for a shared pwsh profile (legacy: %s)",
+    async (legacy) => {
+      const python = "C:\\Portable\\python.exe",
+        profile = Settings.Profile.fix({
+          ...PROFILE_PRESETS.pwshIntegrated,
+          ...(legacy ? { win32Backend: undefined } : {}),
+        }).value,
+        { context: ctx, value } = reconcileContext({
+          pythonExecutable: python,
+          profiles: { shared: profile },
+        }),
+        spawn = vi.fn<Win32PythonSpawn>(async (executable) => {
+          if (executable === python) return identityResult(python);
+          if (executable === "python" || executable === "C:\\Other\\python.exe")
+            return identityResult("C:\\Other\\python.exe");
+          return result({ code: null, errno: "ENOENT" });
+        });
+      expect(
+        await checkWindowsPython(ctx, "python3", spawn, { locate: noLocate }),
+      ).toMatchObject({ executable: python, status: "ok" });
+      await runPluginPythonCheck(ctx, spawn, noLocate);
+      expect(value.profiles["shared"]).toMatchObject({
+        pythonExecutable: "python3",
+        win32Backend: "conpty",
+        platforms: { darwin: true, linux: true, win32: true },
+      });
+      expect(
+        await checkWindowsPython(ctx, "python3", spawn, { locate: noLocate }),
+      ).toMatchObject({ executable: python, status: "ok" });
+      expect(
+        spawn.mock.calls.some(([executable]) => executable === "python"),
+      ).toBe(false);
+    },
+  );
+
+  it("does not reuse a profile diagnosis after the plugin fallback changes", async () => {
+    const first = "C:\\First\\python.exe",
+      second = "C:\\Second\\python.exe",
+      { context: ctx, value } = reconcileContext({ pythonExecutable: first }),
+      spawn = vi.fn<Win32PythonSpawn>(async (executable) =>
+        executable === first || executable === second
+          ? identityResult(executable)
+          : result({ code: null, errno: "ENOENT" }),
+      );
+    expect(
+      (await checkWindowsPython(ctx, "python3", spawn, { locate: noLocate }))
+        .executable,
+    ).toBe(first);
+    value.pythonExecutable = second;
+    expect(
+      (await checkWindowsPython(ctx, "python3", spawn, { locate: noLocate }))
+        .executable,
+    ).toBe(second);
+  });
+
+  it("keeps a working profile interpreter ahead of the plugin fallback", async () => {
+    const profilePython = "C:\\Profile\\python.exe",
+      pluginPython = "C:\\Plugin\\python.exe",
+      { context: ctx } = reconcileContext({ pythonExecutable: pluginPython }),
+      spawn = vi.fn<Win32PythonSpawn>(async (executable) =>
+        identityResult(executable === "python3" ? profilePython : executable),
+      );
+    expect(
+      await checkWindowsPython(ctx, "python3", spawn, { locate: noLocate }),
+    ).toMatchObject({ executable: profilePython, status: "ok" });
+    expect(
+      spawn.mock.calls.some(([executable]) => executable === pluginPython),
+    ).toBe(false);
+  });
+
   it("re-arms only checked, confirmed Python configurations", async () => {
     const python = "C:\\Python312\\python.exe",
       override = "C:\\portable\\python.exe",
@@ -1156,7 +1228,7 @@ describe("runPluginPythonCheck", () => {
         return result({ code: 9009, timedOut: executable === base });
       });
     for (const value of [python, override, venv, "missing-python", "unchecked"])
-      invalidateConPtyRuntime(value);
+      invalidateConPtyRuntime(value, python);
 
     // Opening another terminal may probe Python, but only Recheck retries
     // a runtime that already failed to reach readiness.
@@ -1164,10 +1236,11 @@ describe("runPluginPythonCheck", () => {
     expect(isConPtyRuntimeUnavailable(python)).toBe(true);
     await runPluginPythonCheck(ctx, spawn, noLocate);
     expect(isConPtyRuntimeUnavailable(python)).toBe(false);
-    expect(isConPtyRuntimeUnavailable(override)).toBe(false);
-    expect(isConPtyRuntimeUnavailable(venv)).toBe(true);
-    expect(isConPtyRuntimeUnavailable("missing-python")).toBe(true);
-    expect(isConPtyRuntimeUnavailable("unchecked")).toBe(true);
+    expect(isConPtyRuntimeUnavailable(override, python)).toBe(false);
+    expect(isConPtyRuntimeUnavailable(venv, python)).toBe(true);
+    // The failed profile value now resolves through the confirmed plugin.
+    expect(isConPtyRuntimeUnavailable("missing-python", python)).toBe(false);
+    expect(isConPtyRuntimeUnavailable("unchecked", python)).toBe(true);
   });
 
   it("keeps a newer runtime failure reported during the recheck", async () => {
@@ -1643,7 +1716,7 @@ describe("runPluginPythonCheck", () => {
   );
 
   it.each([false, true])(
-    "uses the failed override's fallback chain (available: %s)",
+    "uses the plugin fallback when an override fails (discovery available: %s)",
     async (fallbackAvailable) => {
       const python = "C:\\plugin\\python.exe",
         { context: ctx, value } = reconcileContext({
@@ -1662,8 +1735,8 @@ describe("runPluginPythonCheck", () => {
       expect((await runPluginPythonCheck(ctx, spawn)).status).toBe("ok");
       expect(value.profiles["custom"]).toMatchObject({
         pythonExecutable: "missing-python",
-        win32Backend: fallbackAvailable ? "conpty" : "legacy",
-        win32BackendAutoDemoted: !fallbackAvailable,
+        win32Backend: "conpty",
+        win32BackendAutoDemoted: false,
       });
       expect(
         spawn.mock.calls.filter(

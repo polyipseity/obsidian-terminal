@@ -3,11 +3,6 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import { LocalSettings, Settings } from "../../src/settings-data.js";
-import {
-  type Win32PythonSpawn,
-  diagnoseWindowsPython,
-  inheritedPythonExecutable,
-} from "../../src/terminal/win32-doctor.js";
 
 describe("src/settings-data.ts", () => {
   it("Settings.DEFAULT has expected keys and types", () => {
@@ -177,66 +172,29 @@ describe("src/settings-data.ts", () => {
     ).not.toHaveProperty("pythonExecutableDiscovered");
   });
 
-  it.each([true, false, undefined])(
-    "lets an upgraded Windows default inherit an off-PATH Python (old ConHost: %s)",
-    async (useWin32Conhost) => {
-      const python = "C:\\Portable\\python.exe",
-        fixed = Settings.fix({
-          pythonExecutable: python,
-          profiles: {
-            upgrade: {
-              type: "integrated",
-              platforms: { win32: true },
-              pythonExecutable: "python3",
-              useWin32Conhost,
-            },
-          },
-        }).value,
-        profile = fixed.profiles["upgrade"],
-        spawn = vi.fn<Win32PythonSpawn>(async (executable) =>
-          executable === python
-            ? { code: 0, stderr: "", stdout: `${python}\n3.12.0\n${python}` }
-            : { code: null, errno: "ENOENT", stderr: "", stdout: "" },
-        );
-      if (profile?.type !== "integrated") {
-        throw new Error("Expected an integrated profile");
-      }
-      const diagnosis = await diagnoseWindowsPython(
-        spawn,
-        inheritedPythonExecutable(
-          profile.pythonExecutable,
-          fixed.pythonExecutable,
-        ),
-        vi.fn().mockResolvedValue(null),
-      );
-      expect(diagnosis).toMatchObject({ status: "ok", executable: python });
-      expect(profile.pythonExecutable).toBe("");
-      const stored: unknown = JSON.parse(JSON.stringify(fixed));
-      expect(Settings.fix(stored)).toMatchObject({
-        valid: true,
-        value: stored,
-      });
-    },
-  );
-
   it.each([
-    { platforms: { win32: true }, pythonExecutable: "C:\\Custom\\python.exe" },
-    { platforms: { win32: true }, pythonExecutable: "custom-python" },
-    { platforms: { darwin: true }, pythonExecutable: "python3" },
-    { platforms: { linux: true }, pythonExecutable: "python3" },
-    { platforms: { win32: true, darwin: true }, pythonExecutable: "python3" },
-    { platforms: { win32: true, linux: true }, pythonExecutable: "python3" },
+    { platforms: { win32: true }, useWin32Conhost: true },
     {
-      platforms: { win32: true },
-      pythonExecutable: "python3",
-      win32Backend: "conpty",
+      platforms: { darwin: true, linux: true, win32: true },
+      useWin32Conhost: true,
     },
+    { platforms: { win32: true }, win32Backend: "conpty" },
   ])(
-    "preserves Python overrides outside the legacy Windows default: %j",
+    "preserves stored python3 across profile schemas and platforms: %j",
     (input) => {
-      expect(
-        Settings.Profile.fix({ type: "integrated", ...input }).value,
-      ).toMatchObject({ pythonExecutable: input.pythonExecutable });
+      const fixed = Settings.fix({
+        pythonExecutable: "C:\\Plugin\\python.exe",
+        profiles: {
+          explicit: {
+            type: "integrated",
+            pythonExecutable: "python3",
+            ...input,
+          },
+        },
+      }).value;
+      expect(fixed.profiles["explicit"]).toMatchObject({
+        pythonExecutable: "python3",
+      });
     },
   );
 

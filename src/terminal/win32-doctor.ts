@@ -1,7 +1,7 @@
 /**
  * Windows Python check and exit-code diagnostics. Resolves a usable Python
  * before each Windows PTY construction; results are cached per configured
- * value for the session.
+ * value and plugin fallback for the session.
  */
 import {
   type AnyObject,
@@ -152,17 +152,23 @@ export interface Win32PythonDiagnosis {
 }
 
 /**
- * Resolution order: the configured executable first, then the two usual
- * names, then the launcher. Names go first so the status row can name a plain
- * command whenever one works; `python` precedes `python3` because the
+ * Resolution order: the profile executable, the plugin fallback, the two
+ * usual names, then the launcher. `python` precedes `python3` because the
  * python.org installer ships only `python.exe`.
  */
 export function win32PythonCandidates(
   pythonExecutable: string,
+  fallbackPythonExecutable = "",
 ): readonly Win32PythonCandidate[] {
   const ret: Win32PythonCandidate[] = [];
   if (pythonExecutable) {
     ret.push({ args: [], executable: pythonExecutable });
+  }
+  if (
+    fallbackPythonExecutable &&
+    fallbackPythonExecutable !== pythonExecutable
+  ) {
+    ret.push({ args: [], executable: fallbackPythonExecutable });
   }
   ret.push(
     { args: [], executable: "python" },
@@ -553,38 +559,27 @@ async function settlePythonCandidate(
   );
 }
 
-/** Probes the configured executable, then `python`, `python3`, `py -3`. */
+/** Probes the configured executables, then `python`, `python3`, `py -3`. */
 export async function diagnoseWindowsPython(
   spawn: Win32PythonSpawn,
   pythonExecutable: string,
   locate: Win32PathLocator = DEFAULT_LOCATE,
+  fallbackPythonExecutable = "",
 ): Promise<Win32PythonDiagnosis> {
   return diagnoseWindowsPythonCandidates(
     spawn,
     locate,
-    win32PythonCandidates(pythonExecutable),
+    win32PythonCandidates(pythonExecutable, fallbackPythonExecutable),
   );
-}
-
-/** Probes one value without the fallback chain. */
-export async function resolveWindowsPythonValue(
-  spawn: Win32PythonSpawn,
-  pythonExecutable: string,
-  locate: Win32PathLocator = DEFAULT_LOCATE,
-): Promise<Win32PythonDiagnosis> {
-  return diagnoseWindowsPythonCandidates(spawn, locate, [
-    { args: [], executable: pythonExecutable },
-  ]);
 }
 
 async function diagnoseWindowsPythonCandidates(
   spawn: Win32PythonSpawn,
   locate: Win32PathLocator,
   candidates: readonly Win32PythonCandidate[],
-  previousFailure?: Win32PythonDiagnosis,
 ): Promise<Win32PythonDiagnosis> {
-  let firstFailure: Win32PythonDiagnosis | null = previousFailure ?? null,
-    sawTransient = previousFailure?.transient ?? false;
+  let firstFailure: Win32PythonDiagnosis | null = null,
+    sawTransient = false;
   for (const entry of candidates) {
     const { args, executable } = entry,
       [diagnosis, identity] = await probePython(
@@ -624,6 +619,19 @@ export function inheritedPythonExecutable(
   pluginValue: string,
 ): string {
   return profileValue || pluginValue;
+}
+
+/** Resolution and runtime state depend on both configured candidates. */
+export function win32PythonConfigurationKey(
+  pythonExecutable: string,
+  fallbackPythonExecutable = "",
+): string {
+  return JSON.stringify([
+    pythonExecutable,
+    fallbackPythonExecutable === pythonExecutable
+      ? ""
+      : fallbackPythonExecutable,
+  ]);
 }
 
 const DEFAULT_SPAWN: Win32PythonSpawn = async (executable, args) => {
@@ -674,13 +682,24 @@ const diagnoses = new Map<string, Promise<Win32PythonDiagnosis>>(),
   conPtyRuntimeFailures = new Map<string, symbol>();
 
 /** Blocks ConPTY for this Python configuration until a successful recheck. */
-export function invalidateConPtyRuntime(pythonExecutable: string): void {
-  conPtyRuntimeFailures.set(pythonExecutable, Symbol());
-  invalidateWindowsPythonDiagnosis(pythonExecutable);
+export function invalidateConPtyRuntime(
+  pythonExecutable: string,
+  fallbackPythonExecutable = "",
+): void {
+  conPtyRuntimeFailures.set(
+    win32PythonConfigurationKey(pythonExecutable, fallbackPythonExecutable),
+    Symbol(),
+  );
+  invalidateWindowsPythonDiagnosis(pythonExecutable, fallbackPythonExecutable);
 }
 
-export function isConPtyRuntimeUnavailable(pythonExecutable: string): boolean {
-  return conPtyRuntimeFailures.has(pythonExecutable);
+export function isConPtyRuntimeUnavailable(
+  pythonExecutable: string,
+  fallbackPythonExecutable = "",
+): boolean {
+  return conPtyRuntimeFailures.has(
+    win32PythonConfigurationKey(pythonExecutable, fallbackPythonExecutable),
+  );
 }
 
 /** Clears the session cache. Tests only. */
@@ -752,9 +771,14 @@ export async function checkWindowsResizerPackages(
  */
 export function invalidateWindowsPythonDiagnosis(
   pythonExecutable: string,
+  fallbackPythonExecutable = "",
 ): void {
-  diagnoses.delete(pythonExecutable);
-  notified.delete(pythonExecutable);
+  const key = win32PythonConfigurationKey(
+    pythonExecutable,
+    fallbackPythonExecutable,
+  );
+  diagnoses.delete(key);
+  notified.delete(key);
 }
 
 /**
@@ -764,16 +788,16 @@ export function invalidateWindowsPythonDiagnosis(
  * the next open re-probe an interpreter that was just resolved.
  */
 function evictOwnDiagnosis(
-  pythonExecutable: string,
+  key: string,
   diagnosis: Promise<Win32PythonDiagnosis>,
 ): void {
-  if (diagnoses.get(pythonExecutable) === diagnosis) {
-    diagnoses.delete(pythonExecutable);
+  if (diagnoses.get(key) === diagnosis) {
+    diagnoses.delete(key);
   }
 }
 
 /**
- * Runs the Python check once per session per configured executable and shows
+ * Runs the Python check once per configuration and plugin fallback and shows
  * one notice when it fails. Callers await it before constructing a Windows
  * PTY so the same interpreter is used by every helper in that request.
  */
@@ -787,40 +811,50 @@ export async function checkWindowsPython(
   } = {},
 ): Promise<Win32PythonDiagnosis> {
   const { locate = DEFAULT_LOCATE, notify = true } = options,
-    cached = diagnoses.get(pythonExecutable);
+    fallbackPythonExecutable = context.settings.value.pythonExecutable,
+    key = win32PythonConfigurationKey(
+      pythonExecutable,
+      fallbackPythonExecutable,
+    ),
+    cached = diagnoses.get(key);
   if (cached) {
     return cached;
   }
-  const diagnosis = diagnoseWindowsPython(spawn, pythonExecutable, locate);
+  const diagnosis = diagnoseWindowsPython(
+    spawn,
+    pythonExecutable,
+    locate,
+    fallbackPythonExecutable,
+  );
   // Retained while in flight so concurrent first callers share one probe.
-  diagnoses.set(pythonExecutable, diagnosis);
+  diagnoses.set(key, diagnosis);
   let ret: Win32PythonDiagnosis;
   try {
     ret = await diagnosis;
   } catch (error) {
-    evictOwnDiagnosis(pythonExecutable, diagnosis);
+    evictOwnDiagnosis(key, diagnosis);
     throw error;
   }
   const { detail, executable, status, version } = ret;
   if (status === "ok") {
-    notified.delete(pythonExecutable);
+    notified.delete(key);
     if (ret.transient ?? false) {
       // An unconfirmed host is retried by the next open.
-      evictOwnDiagnosis(pythonExecutable, diagnosis);
+      evictOwnDiagnosis(key, diagnosis);
     }
     return ret;
   }
   // Failures are not cached: the notice asks the user to install Python and
   // the next open must re-probe. A missing interpreter fails fast, so this
   // is cheap.
-  evictOwnDiagnosis(pythonExecutable, diagnosis);
+  evictOwnDiagnosis(key, diagnosis);
   const {
     language: { value: i18n },
     settings,
   } = context;
   self.console.warn(`Python check: ${status} (${detail})`);
-  if (notify && !notified.has(pythonExecutable)) {
-    notified.add(pythonExecutable);
+  if (notify && !notified.has(key)) {
+    notified.add(key);
     notice2(
       () =>
         i18n.t(`errors.win32-python-${status}`, {
@@ -990,22 +1024,17 @@ export async function runPluginPythonCheck(
   await Promise.all(
     [...profileValues].map(async (value) => {
       // An override that stopped working must not keep its cached success.
-      invalidateWindowsPythonDiagnosis(value);
-      const resolved = await resolveWindowsPythonValue(spawn, value, locate);
-      profileDiagnoses.set(
+      invalidateWindowsPythonDiagnosis(value, configured);
+      const resolved = await diagnoseWindowsPython(
+        spawn,
         value,
-        resolved.status === "ok"
-          ? resolved
-          : await diagnoseWindowsPythonCandidates(
-              spawn,
-              locate,
-              win32PythonCandidates(""),
-              resolved,
-            ),
+        locate,
+        configured,
       );
+      profileDiagnoses.set(value, resolved);
       if (resolved.status !== "ok" || (resolved.transient ?? false)) return;
-      // The opener keys its check by the stored value and probes a cache
-      // miss again; a usable value is exactly what the chain would find.
+      // Publish only after the generation check; opening a terminal uses
+      // the same configured candidates and must see this result.
       resolutions.push([value, resolved]);
       // Alias only the interpreter path: a venv's base host has different
       // packages and must keep its own diagnosis.
@@ -1019,22 +1048,30 @@ export async function runPluginPythonCheck(
     }),
   );
   if (stale()) return diagnosis;
-  for (const [value, failure] of failuresBeforeCheck) {
-    const checked =
-      value === configured ? diagnosis : profileDiagnoses.get(value);
+  const checkedConfigurations = new Map(profileDiagnoses).set(
+    configured,
+    diagnosis,
+  );
+  for (const [value, checked] of checkedConfigurations) {
+    const key = win32PythonConfigurationKey(value, configured),
+      failure = failuresBeforeCheck.get(key);
     if (
-      checked?.status === "ok" &&
+      failure !== void 0 &&
+      checked.status === "ok" &&
       checked.hostExecutable !== null &&
       !(checked.transient ?? false) &&
-      conPtyRuntimeFailures.get(value) === failure
+      conPtyRuntimeFailures.get(key) === failure
     ) {
       // The identity probe permits a retry; only host readiness proves that
       // ConPTY recovered. Unchecked configurations keep their own breaker.
-      conPtyRuntimeFailures.delete(value);
+      conPtyRuntimeFailures.delete(key);
     }
   }
   for (const [value, resolved] of resolutions) {
-    diagnoses.set(value, Promise.resolve(resolved));
+    diagnoses.set(
+      win32PythonConfigurationKey(value, configured),
+      Promise.resolve(resolved),
+    );
   }
   pluginDiagnoses.set(context, diagnosis);
   const verdict = (

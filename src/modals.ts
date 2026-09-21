@@ -54,6 +54,7 @@ import {
   checkWindowsResizerPackages,
   getPluginPythonDiagnosis,
   inheritedPythonExecutable,
+  win32PythonConfigurationKey,
   win32ResizerInstallCommand,
 } from "./terminal/win32-doctor.js";
 
@@ -1334,14 +1335,18 @@ export class ProfileModal extends Modal {
               // Always rendered; visibility toggled (see settings.ts
               // newPythonWidgets).
               const effective = inheritedPythonExecutable(
-                profile.pythonExecutable,
-                settings.value.pythonExecutable,
-              );
+                  profile.pythonExecutable,
+                  settings.value.pythonExecutable,
+                ),
+                probeKey = win32PythonConfigurationKey(
+                  effective,
+                  settings.value.pythonExecutable,
+                );
               if (profile.win32Backend !== "legacy") {
                 resizerProbeKey = null;
                 resizerPackagesMissing = false;
-              } else if (resizerProbeKey !== effective) {
-                resizerProbeKey = effective;
+              } else if (resizerProbeKey !== probeKey) {
+                resizerProbeKey = probeKey;
                 resizerPackagesMissing = false;
                 // Debounce: every keystroke re-renders this row.
                 self.clearTimeout(resizerProbeTimer);
@@ -1355,14 +1360,14 @@ export class ProfileModal extends Modal {
                     );
                     if (
                       diagnosis.status !== "ok" ||
-                      resizerProbeKey !== effective
+                      resizerProbeKey !== probeKey
                     ) {
                       return;
                     }
                     const missing = !(await checkWindowsResizerPackages(
                       diagnosis.executable,
                     ));
-                    if (resizerProbeKey !== effective) {
+                    if (resizerProbeKey !== probeKey) {
                       return;
                     }
                     resizerInstallCommand = win32ResizerInstallCommand(
