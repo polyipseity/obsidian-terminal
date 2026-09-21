@@ -74,8 +74,12 @@ import {
 } from "../../../src/terminal/pseudoterminal.js";
 import { Settings } from "../../../src/settings-data.js";
 import {
-  conPtyFailureCondemnsRuntime,
+  clearWindowsPythonDiagnoses,
   isConPtyRuntimeUnavailable,
+  runPluginPythonCheck,
+} from "../../../src/terminal/win32-doctor.js";
+import {
+  conPtyFailureCondemnsRuntime,
   noticeWin32ConhostFallback,
   noticeWin32ResizerDisabled,
   openProfile,
@@ -85,6 +89,10 @@ import {
   resolveWin32Backend,
   win32SpawnPythonExecutable,
 } from "../../../src/terminal/profile-properties.js";
+
+afterEach(() => {
+  clearWindowsPythonDiagnoses();
+});
 
 /** A settings holder a test can replace, as the manager does on mutate. */
 function settingsOf(pythonExecutable = ""): {
@@ -249,6 +257,37 @@ describe("openProfile with saved Windows backend choices", () => {
     expect(notice2Spy).not.toHaveBeenCalled();
   });
 
+  it("retries ConPTY after a successful Python recheck", async () => {
+    const ctx = Object.assign(context("python"), {
+      settings: {
+        value: { ...settingsOf("python").value, profiles: {} },
+      },
+    });
+    reportConPtyRuntimeFailure("python");
+    await (await openProfile(ctx, integratedProfile()))?.kill();
+    await runPluginPythonCheck(
+      ctx,
+      vi.fn().mockResolvedValue({
+        code: 0,
+        stderr: "",
+        stdout: "C:\\Python312\\python.exe\n3.12.0\n",
+      }),
+      vi.fn().mockResolvedValue(null),
+    );
+    await (await openProfile(ctx, integratedProfile()))?.kill();
+    expect(spawn.mock.calls.map(([args]) => args.win32Backend)).toEqual([
+      "legacy",
+      "conpty",
+    ]);
+  });
+
+  it("keeps another interpreter on ConPTY after one host fails", async () => {
+    reportConPtyRuntimeFailure("broken-python");
+    await (await openProfile(context(), integratedProfile()))?.kill();
+    expect(spawn.mock.calls[0]?.[0].win32Backend).toBe("conpty");
+    expect(checkWindowsResizerPackagesMock).not.toHaveBeenCalled();
+  });
+
   it.each(["missing", "unconfirmed", "breaker"])(
     "keeps a saved auto-demoted tab on ConHost when the host is %s",
     async (failure) => {
@@ -351,15 +390,15 @@ describe("the ConPTY runtime circuit breaker", () => {
   });
 
   it("starts closed and opens on a reported boot failure", () => {
-    expect(isConPtyRuntimeUnavailable()).toBe(false);
+    expect(isConPtyRuntimeUnavailable("python")).toBe(false);
     reportConPtyRuntimeFailure("python");
-    expect(isConPtyRuntimeUnavailable()).toBe(true);
+    expect(isConPtyRuntimeUnavailable("python")).toBe(true);
   });
 
   it("closes again with the session reset", () => {
     reportConPtyRuntimeFailure("python");
-    resetWin32FallbackNotice();
-    expect(isConPtyRuntimeUnavailable()).toBe(false);
+    clearWindowsPythonDiagnoses();
+    expect(isConPtyRuntimeUnavailable("python")).toBe(false);
   });
 
   it("explains a runtime fallback with the runtime message", () => {
@@ -394,12 +433,13 @@ describe("the ConPTY runtime circuit breaker", () => {
 
   it("condemns the runtime for any other pre-ready death", () => {
     expect(conPtyFailureCondemnsRuntime(new Error("exited"), 1)).toBe(true);
-    expect(
-      conPtyFailureCondemnsRuntime(
-        new ConPtyControlError("unauthenticated"),
-        null,
-      ),
-    ).toBe(true);
+    for (const error of [
+      new ConPtyControlError("unauthenticated"),
+      new ConPtyControlError("timeout"),
+      new ConPtyControlError("disconnected"),
+    ]) {
+      expect(conPtyFailureCondemnsRuntime(error, null)).toBe(true);
+    }
   });
 });
 
@@ -538,6 +578,13 @@ describe("prewarmConPtyProfile on Windows", () => {
     });
     await prewarmOnWindows(context(), integratedProfile());
     expect(ensureSpare).not.toHaveBeenCalled();
+  });
+
+  it("still prewarms an interpreter when another configuration failed", async () => {
+    reportConPtyRuntimeFailure("broken-python");
+    checkWindowsPythonMock.mockResolvedValue(diagnosis());
+    await prewarmOnWindows(context(), integratedProfile());
+    expect(ensureSpare).toHaveBeenCalledTimes(1);
   });
 
   it("does not notify during prewarm", async () => {

@@ -668,13 +668,27 @@ const DEFAULT_LOCATE: Win32PathLocator = async (name) => {
 };
 
 const diagnoses = new Map<string, Promise<Win32PythonDiagnosis>>(),
-  notified = new Set<string>();
+  notified = new Set<string>(),
+  // Same configured-value keys as the Python cache. A new token identifies
+  // each failure so a check already in flight cannot clear a later failure.
+  conPtyRuntimeFailures = new Map<string, symbol>();
+
+/** Blocks ConPTY for this Python configuration until a successful recheck. */
+export function invalidateConPtyRuntime(pythonExecutable: string): void {
+  conPtyRuntimeFailures.set(pythonExecutable, Symbol());
+  invalidateWindowsPythonDiagnosis(pythonExecutable);
+}
+
+export function isConPtyRuntimeUnavailable(pythonExecutable: string): boolean {
+  return conPtyRuntimeFailures.has(pythonExecutable);
+}
 
 /** Clears the session cache. Tests only. */
 export function clearWindowsPythonDiagnoses(): void {
   diagnoses.clear();
   notified.clear();
   resizerPackages.clear();
+  conPtyRuntimeFailures.clear();
 }
 
 const resizerPackages = new Set<string>(),
@@ -944,6 +958,7 @@ export async function runPluginPythonCheck(
 ): Promise<Win32PythonDiagnosis> {
   const { settings } = context,
     { pythonExecutable: configured } = settings.value,
+    failuresBeforeCheck = new Map(conPtyRuntimeFailures),
     generation = (pluginCheckGenerations.get(context) ?? 0) + 1,
     // The newest check owns the UI; a moved field has the same effect, since
     // this result describes a value that is no longer configured.
@@ -1004,6 +1019,20 @@ export async function runPluginPythonCheck(
     }),
   );
   if (stale()) return diagnosis;
+  for (const [value, failure] of failuresBeforeCheck) {
+    const checked =
+      value === configured ? diagnosis : profileDiagnoses.get(value);
+    if (
+      checked?.status === "ok" &&
+      checked.hostExecutable !== null &&
+      !(checked.transient ?? false) &&
+      conPtyRuntimeFailures.get(value) === failure
+    ) {
+      // The identity probe permits a retry; only host readiness proves that
+      // ConPTY recovered. Unchecked configurations keep their own breaker.
+      conPtyRuntimeFailures.delete(value);
+    }
+  }
   for (const [value, resolved] of resolutions) {
     diagnoses.set(value, Promise.resolve(resolved));
   }

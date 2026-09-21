@@ -27,7 +27,8 @@ import {
   checkWindowsPython,
   checkWindowsResizerPackages,
   inheritedPythonExecutable,
-  invalidateWindowsPythonDiagnosis,
+  invalidateConPtyRuntime,
+  isConPtyRuntimeUnavailable,
 } from "./win32-doctor.js";
 
 export interface OpenOptions {
@@ -60,7 +61,7 @@ export function win32SpawnPythonExecutable(
 
 /**
  * Decides whether one failed ConPTY session condemns the runtime for the
- * rest of the session. Aborts and shell-start failures (9009/251) do not:
+ * current Python configuration. Aborts and shell-start failures (9009/251) do not:
  * ConHost would fail the same way.
  */
 export function conPtyFailureCondemnsRuntime(
@@ -77,14 +78,12 @@ export function conPtyFailureCondemnsRuntime(
 }
 
 let win32ResizerDisabledNotified = false,
-  win32ConhostFallbackNotified = false,
-  conptyRuntimeUnavailable = false;
+  win32ConhostFallbackNotified = false;
 
-/** Clears the once-per-session notice guards and the breaker. Tests only. */
+/** Clears the once-per-session notice guards. Tests only. */
 export function resetWin32FallbackNotice(): void {
   win32ConhostFallbackNotified = false;
   win32ResizerDisabledNotified = false;
-  conptyRuntimeUnavailable = false;
 }
 
 export interface Win32ResizerDisabledCause {
@@ -117,20 +116,12 @@ export function noticeWin32ResizerDisabled(
   );
 }
 
-/** True after a ConPTY host failed between spawn and ready this session.
- * Tests only. */
-export function isConPtyRuntimeUnavailable(): boolean {
-  return conptyRuntimeUnavailable;
-}
-
 /**
- * Records a ConPTY host that spawned but never reached ready. Later spawns
- * fall back to ConHost, and the cached Python check for this interpreter is
- * evicted so the next check re-probes.
+ * Records a ConPTY host that failed before ready. Later spawns using this
+ * Python configuration fall back to ConHost until a successful recheck.
  */
 export function reportConPtyRuntimeFailure(pythonExecutable: string): void {
-  conptyRuntimeUnavailable = true;
-  invalidateWindowsPythonDiagnosis(pythonExecutable);
+  invalidateConPtyRuntime(pythonExecutable);
   // A spare booted before the failure is part of the same broken runtime.
   CONPTY_HOST_POOL.clear();
 }
@@ -246,7 +237,8 @@ export const PROFILE_PROPERTIES: {
         backend = diagnosis
           ? resolveWin32Backend(
               requestedBackend,
-              hostConfirmed && !conptyRuntimeUnavailable,
+              hostConfirmed &&
+                !isConPtyRuntimeUnavailable(effectivePythonExecutable),
             )
           : win32Backend,
         fallback = backend !== requestedBackend,
@@ -360,15 +352,16 @@ export async function prewarmConPtyProfile(
   // Both can change while the Python check runs: opting out clears the pool,
   // and a breaker trip condemns the runtime, so a spare booted afterwards
   // would be unwanted or doomed. Checked again before the boot.
-  const wanted = (): boolean =>
-    context.settings.value.prewarmConPty && !conptyRuntimeUnavailable;
-  if (!wanted()) return;
-  registerConPtyPoolDisposal(context, CONPTY_HOST_POOL);
   // Resolves the same way as the open path so the pool key matches.
   const effectivePythonExecutable = inheritedPythonExecutable(
-    profile.pythonExecutable,
-    context.settings.value.pythonExecutable,
-  );
+      profile.pythonExecutable,
+      context.settings.value.pythonExecutable,
+    ),
+    wanted = (): boolean =>
+      context.settings.value.prewarmConPty &&
+      !isConPtyRuntimeUnavailable(effectivePythonExecutable);
+  if (!wanted()) return;
+  registerConPtyPoolDisposal(context, CONPTY_HOST_POOL);
   const diagnosis = await checkWindowsPython(
     context,
     effectivePythonExecutable,

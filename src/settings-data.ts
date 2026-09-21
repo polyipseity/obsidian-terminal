@@ -869,6 +869,11 @@ export namespace Settings {
               } satisfies Typed<typeof type>;
             }
             case "integrated": {
+              const platforms = fixPlatforms(
+                DEFAULTS[type].platforms,
+                unc["platforms"] ?? {},
+                Pseudoterminal.SUPPORTED_PLATFORMS,
+              );
               return {
                 args: fixArray(DEFAULTS[type], unc, "args", ["string"]),
                 environment: fixEnvironment(unc["environment"]),
@@ -879,17 +884,19 @@ export namespace Settings {
                   "boolean",
                 ]),
                 name: fixTyped(DEFAULTS[type], unc, "name", ["string"]),
-                platforms: fixPlatforms(
-                  DEFAULTS[type].platforms,
-                  unc["platforms"] ?? {},
-                  Pseudoterminal.SUPPORTED_PLATFORMS,
-                ),
-                pythonExecutable: fixTyped(
-                  DEFAULTS[type],
-                  unc,
-                  "pythonExecutable",
-                  ["string"],
-                ),
+                platforms,
+                // Pre-selector Windows defaults used python3. Migrate once;
+                // shared profiles need that value on their other platforms.
+                pythonExecutable:
+                  unc["win32Backend"] === void 0 &&
+                  unc["pythonExecutable"] === "python3" &&
+                  platforms.win32 === true &&
+                  platforms.darwin !== true &&
+                  platforms.linux !== true
+                    ? ""
+                    : fixTyped(DEFAULTS[type], unc, "pythonExecutable", [
+                        "string",
+                      ]),
                 restoreHistory: fixTyped(
                   DEFAULTS[type],
                   unc,

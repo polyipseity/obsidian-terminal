@@ -39,6 +39,8 @@ import {
   checkWindowsPython,
   clearWindowsPythonDiagnoses,
   invalidateWindowsPythonDiagnosis,
+  invalidateConPtyRuntime,
+  isConPtyRuntimeUnavailable,
 } from "../../../src/terminal/win32-doctor.js";
 import type { TerminalPlugin } from "../../../src/main.js";
 import { Settings } from "../../../src/settings-data.js";
@@ -1133,6 +1135,81 @@ describe("runPluginPythonCheck", () => {
       ...overrides,
     } as DeepWritable<Settings.Profile.Typed<"integrated">>;
   }
+
+  it("re-arms only checked, confirmed Python configurations", async () => {
+    const python = "C:\\Python312\\python.exe",
+      override = "C:\\portable\\python.exe",
+      venv = "C:\\venv\\python.exe",
+      base = "C:\\base\\python.exe",
+      { context: ctx } = reconcileContext({
+        pythonExecutable: python,
+        profiles: {
+          working: win32Conpty({ pythonExecutable: override }),
+          missing: win32Conpty({ pythonExecutable: "missing-python" }),
+          unconfirmed: win32Conpty({ pythonExecutable: venv }),
+        },
+      }),
+      spawn = vi.fn<Win32PythonSpawn>(async (executable) => {
+        if (executable === python || executable === override)
+          return identityResult(executable);
+        if (executable === venv) return identityResult(venv, "3.12.0", base);
+        return result({ code: 9009, timedOut: executable === base });
+      });
+    for (const value of [python, override, venv, "missing-python", "unchecked"])
+      invalidateConPtyRuntime(value);
+
+    // Opening another terminal may probe Python, but only Recheck retries
+    // a runtime that already failed to reach readiness.
+    expect((await checkWindowsPython(ctx, python, spawn)).status).toBe("ok");
+    expect(isConPtyRuntimeUnavailable(python)).toBe(true);
+    await runPluginPythonCheck(ctx, spawn, noLocate);
+    expect(isConPtyRuntimeUnavailable(python)).toBe(false);
+    expect(isConPtyRuntimeUnavailable(override)).toBe(false);
+    expect(isConPtyRuntimeUnavailable(venv)).toBe(true);
+    expect(isConPtyRuntimeUnavailable("missing-python")).toBe(true);
+    expect(isConPtyRuntimeUnavailable("unchecked")).toBe(true);
+  });
+
+  it("keeps a newer runtime failure reported during the recheck", async () => {
+    const python = "C:\\Python312\\python.exe",
+      { context: ctx } = reconcileContext({ pythonExecutable: python }),
+      spawn = vi.fn<Win32PythonSpawn>(async () => {
+        invalidateConPtyRuntime(python);
+        return identityResult(python);
+      });
+    invalidateConPtyRuntime(python);
+    expect((await runPluginPythonCheck(ctx, spawn, noLocate)).status).toBe(
+      "ok",
+    );
+    expect(isConPtyRuntimeUnavailable(python)).toBe(true);
+  });
+
+  it.each(["field edit", "newer failed recheck"])(
+    "does not re-arm a configuration after a %s supersedes its recheck",
+    async (supersededBy) => {
+      const python = "C:\\Python312\\python.exe",
+        { context: ctx, value } = reconcileContext({
+          pythonExecutable: python,
+        }),
+        spawn = vi.fn<Win32PythonSpawn>(async () => {
+          if (supersededBy === "field edit") {
+            value.pythonExecutable = "another-python";
+          } else {
+            await runPluginPythonCheck(
+              ctx,
+              vi.fn().mockResolvedValue(result({ code: 9009 })),
+              noLocate,
+            );
+          }
+          return identityResult(python);
+        });
+      invalidateConPtyRuntime(python);
+      expect((await runPluginPythonCheck(ctx, spawn, noLocate)).status).toBe(
+        "ok",
+      );
+      expect(isConPtyRuntimeUnavailable(python)).toBe(true);
+    },
+  );
 
   it("leaves an empty plugin-level field empty and publishes the result", async () => {
     const { context: ctx, value, write } = reconcileContext({}),

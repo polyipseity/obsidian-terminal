@@ -7,6 +7,8 @@ Use ConPTY by default for Windows integrated terminals, improving full-screen ap
 **Breaking:** remove the "Shell pipes" backend and "Use Windows 'conhost.exe'" setting. Existing Windows profiles migrate to ConPTY once on upgrade when Python is available. The new **Windows terminal backend** profile setting allows switching to ConHost; an explicit ConHost choice is preserved.
 
 - Add a Windows **Python executable** setting with automatic detection, interpreter status, and a download link when Python is missing. Profiles inherit it unless they specify their own interpreter. Resolved paths stay out of synced settings. Missing Python falls back to ConHost without its resizer; detecting Python on recheck or reload restores automatically demoted profiles to ConPTY.
+- Migrate the legacy `python3` default in Windows-only profiles to inherit the plugin Python setting, while preserving custom interpreters and current-schema overrides.
+- Limit ConPTY startup fallback to the affected Python configuration, and allow a successful explicit Python recheck to retry ConPTY without reloading Obsidian.
 - Add **Prewarm ConPTY terminal host**, enabled by default on Windows, to prepare a spare host and avoid Python startup time when opening a terminal.
 - Guide users with missing ConHost resizer packages to ConPTY or a copied installation command explicitly intended for PowerShell, with literal quoting for interpreter paths.
 - Preserve bare batch launchers without shadowing native executables, and share concurrent ConPTY host-file repairs.
