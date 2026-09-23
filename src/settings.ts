@@ -32,9 +32,11 @@ import { RightClickActionAddon } from "./terminal/emulator-addons.js";
 import {
   PYTHON_DOWNLOADS_URL,
   getPluginPythonDiagnosis,
+  getWindowsPythonDiagnosis,
   onPluginPythonDiagnosis,
-  pythonStatusKey,
+  pluginPythonStatusKey,
   runPluginPythonCheck,
+  onWindowsPythonStateChange,
 } from "./terminal/win32-doctor.js";
 
 export class SettingTab extends AdvancedSettingTab<Settings> {
@@ -873,8 +875,10 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
     // Checks overlap when the field moves mid-check; the newest one owns the
     // result, so the row stays "checking" until all of them settle.
     let rechecks = 0,
+      pendingRecheck = false,
       recheckKey = settings.value.pythonExecutable;
     const recheck = (): void => {
+        pendingRecheck = false;
         ++rechecks;
         runPluginPythonCheck(context)
           .catch((error: unknown) => {
@@ -899,6 +903,11 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
     this.#unregisterPythonDiagnosis = onPluginPythonDiagnosis(context, () => {
       ui.update();
     });
+    ui.finally(
+      onWindowsPythonStateChange(() => {
+        ui.update();
+      }),
+    );
     ui.newSetting(containerEl, (setting) => {
       setting
         .setName(i18n.t("settings.python-executable"))
@@ -940,16 +949,23 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
         const { pythonExecutable } = settings.value;
         if (recheckKey !== pythonExecutable) {
           recheckKey = pythonExecutable;
-          // The status and the demoted profiles describe the previous value.
+          // The status describes the previous configured value.
           // Debounce: every keystroke re-renders this row.
+          pendingRecheck = true;
           recheckLater();
         }
-        const rechecking = rechecks > 0,
-          diagnosis = getPluginPythonDiagnosis(context),
+        const rechecking = rechecks > 0 || pendingRecheck,
+          diagnosis =
+            getWindowsPythonDiagnosis(pythonExecutable, pythonExecutable) ??
+            getPluginPythonDiagnosis(context),
           // `status` gates the buttons; the message key also tells a
           // discovered name apart from a configured path.
           status = rechecking || !diagnosis ? "checking" : diagnosis.status,
-          statusKey = pythonStatusKey(diagnosis, rechecking),
+          statusKey = pluginPythonStatusKey(
+            diagnosis,
+            rechecking,
+            pythonExecutable,
+          ),
           i18nVariant = rechecking ? "ing" : "";
         setting.setName(i18n.t("settings.python-status")).setDesc(
           i18n.t(`settings.python-status-${statusKey}`, {

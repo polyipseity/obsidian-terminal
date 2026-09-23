@@ -190,12 +190,10 @@ describe("openProfile with saved Windows backend choices", () => {
   const savedProfile = (autoDemoted = true): Settings.Profile =>
     Settings.Profile.fix(
       JSON.parse(
-        JSON.stringify(
-          integratedProfile({
-            win32Backend: "legacy",
-            win32BackendAutoDemoted: autoDemoted,
-          }),
-        ),
+        JSON.stringify({
+          ...integratedProfile({ win32Backend: "legacy" }),
+          win32BackendAutoDemoted: autoDemoted,
+        }),
       ),
     ).value;
 
@@ -227,7 +225,7 @@ describe("openProfile with saved Windows backend choices", () => {
     vi.restoreAllMocks();
   });
 
-  it("recovers a restored auto-demoted tab and its restart when Python is healthy", async () => {
+  it("migrates a restored auto-demoted tab and retries ConPTY on restart", async () => {
     const profile = savedProfile();
     const ctx = context();
     const restored = await openProfile(ctx, profile);
@@ -243,10 +241,8 @@ describe("openProfile with saved Windows backend choices", () => {
     );
     expect(notice2Spy).not.toHaveBeenCalled();
     expect(checkWindowsResizerPackagesMock).not.toHaveBeenCalled();
-    expect(profile).toMatchObject({
-      win32Backend: "legacy",
-      win32BackendAutoDemoted: true,
-    });
+    expect(profile).toHaveProperty("win32Backend", "conpty");
+    expect(profile).not.toHaveProperty("win32BackendAutoDemoted");
   });
 
   it("passes a live breaker predicate keyed by the effective Python", async () => {
@@ -352,7 +348,7 @@ describe("openProfile with saved Windows backend choices", () => {
   });
 
   it.each(["missing", "unconfirmed", "breaker"])(
-    "keeps a saved auto-demoted tab on ConHost when the host is %s",
+    "uses ConHost without changing saved ConPTY intent when the host is %s",
     async (failure) => {
       if (failure === "missing") {
         checkWindowsPythonMock.mockResolvedValue(
@@ -365,9 +361,15 @@ describe("openProfile with saved Windows backend choices", () => {
       } else {
         reportConPtyRuntimeFailure("python");
       }
-      const pty = await openProfile(context(), savedProfile());
+      const profile = savedProfile();
+      const pty = await openProfile(context(), profile);
       await pty?.kill();
-      expect(spawn.mock.calls[0]?.[0].win32Backend).toBe("legacy");
+      await (await openProfile(context(), profile))?.kill();
+      expect(spawn.mock.calls.map(([args]) => args.win32Backend)).toEqual([
+        "legacy",
+        "legacy",
+      ]);
+      expect(profile).toHaveProperty("win32Backend", "conpty");
       expect(notice2Spy.mock.calls.map(([message]) => message())).toEqual(
         failure === "unconfirmed"
           ? []

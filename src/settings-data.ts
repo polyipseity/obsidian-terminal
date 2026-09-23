@@ -650,14 +650,8 @@ export namespace Settings {
        * Python.
        */
       readonly pythonExecutable: string;
+      /** Synced user intent; this device may use ConHost at runtime. */
       readonly win32Backend: Win32Backend;
-      /**
-       * `true` when the plugin, not the user, set `win32Backend` to `legacy`
-       * because no usable Python was found. A later successful Python check
-       * re-promotes only profiles carrying this marker. The profile editor
-       * clears it on every manual backend change.
-       */
-      readonly win32BackendAutoDemoted: boolean;
     }
     /** Windows process and pseudoterminal implementations, in the order the
      * profile editor offers them. */
@@ -714,7 +708,6 @@ export namespace Settings {
         terminalOptions: DEFAULT_TERMINAL_OPTIONS,
         type: "integrated",
         win32Backend: "conpty",
-        win32BackendAutoDemoted: false,
       },
       invalid: {
         type: "invalid",
@@ -913,18 +906,16 @@ export namespace Settings {
                 type,
                 // useWin32Conhost (retired) is ignored; a missing
                 // win32Backend takes the default.
-                win32Backend: fixInSet(
-                  DEFAULTS[type],
-                  unc,
-                  "win32Backend",
-                  WIN32_BACKENDS,
-                ),
-                win32BackendAutoDemoted: fixTyped(
-                  DEFAULTS[type],
-                  unc,
-                  "win32BackendAutoDemoted",
-                  ["boolean"],
-                ),
+                win32Backend:
+                  unc["win32BackendAutoDemoted"] === true &&
+                  unc["win32Backend"] === "legacy"
+                    ? "conpty"
+                    : fixInSet(
+                        DEFAULTS[type],
+                        unc,
+                        "win32Backend",
+                        WIN32_BACKENDS,
+                      ),
               } satisfies Typed<typeof type>;
             }
             case "invalid": {

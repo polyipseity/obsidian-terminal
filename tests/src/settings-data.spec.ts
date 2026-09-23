@@ -198,32 +198,28 @@ describe("src/settings-data.ts", () => {
     },
   );
 
-  it("records backend demotion provenance on integrated profiles", () => {
-    expect(Settings.Profile.DEFAULTS.integrated.win32BackendAutoDemoted).toBe(
-      false,
-    );
-    // A demoted profile keeps its marker; anything else reads as the user's
-    // own choice.
-    expect(
-      Settings.Profile.fix({
+  it.each([
+    ["legacy", true, "conpty"],
+    ["legacy", false, "legacy"],
+    ["conpty", true, "conpty"],
+    ["conpty", false, "conpty"],
+    ["legacy", "yes", "legacy"],
+    [undefined, true, "conpty"],
+  ])(
+    "migrates backend %s with marker %s to %s",
+    (backend, marker, expected) => {
+      const fixed = Settings.Profile.fix({
         type: "integrated",
-        win32Backend: "legacy",
-        win32BackendAutoDemoted: true,
-      }).value,
-    ).toMatchObject({
-      win32Backend: "legacy",
-      win32BackendAutoDemoted: true,
-    });
-    expect(Settings.Profile.fix({ type: "integrated" }).value).toMatchObject({
-      win32BackendAutoDemoted: false,
-    });
-    expect(
-      Settings.Profile.fix({
-        type: "integrated",
-        win32BackendAutoDemoted: "yes",
-      }).value,
-    ).toMatchObject({ win32BackendAutoDemoted: false });
-  });
+        win32Backend: backend,
+        win32BackendAutoDemoted: marker,
+      }).value;
+      expect(fixed).toHaveProperty("win32Backend", expected);
+      expect(fixed).not.toHaveProperty("win32BackendAutoDemoted");
+      expect(
+        Settings.Profile.fix(JSON.parse(JSON.stringify(fixed))).value,
+      ).toEqual(fixed);
+    },
+  );
 
   describe("fixer convergence across persistence", () => {
     /*
@@ -260,6 +256,8 @@ describe("src/settings-data.ts", () => {
             terminalOptions: { documentOverride: null, fontSize: 14 },
             type: "integrated",
             useWin32Conhost: true,
+            win32Backend: "legacy",
+            win32BackendAutoDemoted: true,
           },
         },
       });

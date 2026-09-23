@@ -78,6 +78,19 @@ describe("PluginLocales", () => {
         "win32-backend-description",
         "win32-backend-options-conpty",
         "win32-backend-options-legacy",
+        "win32-backend-status-available",
+        "win32-backend-status-checking",
+        "win32-backend-status-legacy",
+        "win32-backend-status-missing",
+        "win32-backend-status-runtime-unavailable",
+        "win32-backend-status-unconfirmed",
+        "win32-backend-status-unverified",
+        "Python-status-fallback",
+        "Python-status-inherited-unverified",
+        "Python-status-missing",
+        "Python-status-store-stub",
+        "Python-status-too-old",
+        "Python-status-unverified",
       ],
       errorKeys = [
         "conpty-control-unauthenticated",
@@ -97,6 +110,24 @@ describe("PluginLocales", () => {
         >,
         errors = translation.errors as Record<string, unknown>;
       for (const key of integratedKeys) expect(integrated[key]).toBeTruthy();
+      expect(translation.settings["python-status-ok-unconfirmed"]).toBeTruthy();
+      expect(translation.settings["python-status-unverified"]).toBeTruthy();
+      expect(
+        translation.settings["python-status-ok-runtime-unavailable"],
+      ).toBeTruthy();
+      for (const key of [
+        "python-status-missing",
+        "python-status-ok",
+        "python-status-ok-resolved",
+        "python-status-ok-runtime-unavailable",
+        "python-status-ok-unconfirmed",
+        "python-status-store-stub",
+        "python-status-too-old",
+      ] as const) {
+        expect(translation.settings[key].toLowerCase()).toContain(
+          "terminals using the plugin's python",
+        );
+      }
       // The shell-pipes option and the old conhost boolean are retired, in
       // every locale rather than English alone.
       expect(integrated).not.toHaveProperty(

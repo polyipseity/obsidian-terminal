@@ -42,7 +42,7 @@ This file is automatically opened on first install. You can reopen it in setting
      - See [their readme](https://github.com/TfTHacker/obsidian42-brat#readme).
 2. (optional for Windows, recommended) Install Python.
    1. Install [Python] 3.9 or above. The default ConPTY backend needs no pip packages; the ConHost backend's resizer additionally needs `pip3 install psutil pywinctl typing_extensions`. <!-- Update `README.md`, `magic.ts`, `pyproject.toml`, and `dependabot.yml` together. -->
-   2. On Windows, the plugin tries the profile's Python interpreter, then the interpreter in the plugin settings, then `python`, `python3`, and `py -3`, using the first working interpreter. Stored profile values stay unchanged. On other platforms, configure the Python executable per profile and press the "Check" button to validate it.
+   2. On Windows, the plugin tries the profile's Python interpreter, then the interpreter in the plugin settings, then `python`, `python3`, and `py -3`, using the first working interpreter. Stored profile values stay unchanged. If ConPTY is selected but Python or its ConPTY host is unavailable on this device, that terminal opens with ConHost; the saved backend choice remains ConPTY and works again when available. On other platforms, configure the Python executable per profile and press the "Check" button to validate it.
 3. Enable plugin.
 4. (optional) Configure plugin settings.
 

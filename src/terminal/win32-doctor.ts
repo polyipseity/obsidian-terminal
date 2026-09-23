@@ -6,13 +6,10 @@
 import {
   type AnyObject,
   SI_PREFIX_SCALE,
-  cloneAsWritable,
   dynamicRequire,
   launderUnchecked,
   notice2,
 } from "@polyipseity/obsidian-plugin-library";
-import { cloneDeep } from "es-toolkit/object";
-import type { DeepWritable } from "ts-essentials";
 import { BUNDLE } from "../imports.js";
 import { CHECK_EXECUTABLE_WAIT, PYTHON_REQUIREMENTS } from "../magic.js";
 import type { TerminalPlugin } from "../main.js";
@@ -687,6 +684,9 @@ const DEFAULT_LOCATE: Win32PathLocator = async (name) => {
 };
 
 const diagnoses = new Map<string, Promise<Win32PythonDiagnosis>>(),
+  displayDiagnoses = new Map<string, Win32PythonDiagnosis>(),
+  displayOwners = new Map<string, symbol>(),
+  windowsStateListeners = new Set<() => void>(),
   notified = new Set<string>(),
   // Same configured-value keys as the Python cache. A new token identifies
   // each failure so a check already in flight cannot clear a later failure.
@@ -702,6 +702,7 @@ export function invalidateConPtyRuntime(
     Symbol(),
   );
   invalidateWindowsPythonDiagnosis(pythonExecutable, fallbackPythonExecutable);
+  publishWindowsState();
 }
 
 export function isConPtyRuntimeUnavailable(
@@ -716,9 +717,59 @@ export function isConPtyRuntimeUnavailable(
 /** Clears the session cache. Tests only. */
 export function clearWindowsPythonDiagnoses(): void {
   diagnoses.clear();
+  displayDiagnoses.clear();
+  displayOwners.clear();
+  windowsStateListeners.clear();
+  pluginDiagnoses = new WeakMap();
+  pluginDiagnosisListeners = new WeakMap();
+  pluginCheckGenerations = new WeakMap();
   notified.clear();
   resizerPackages.clear();
   conPtyRuntimeFailures.clear();
+}
+
+/** Latest settled device result, including failures evicted from the execution cache. */
+export function getWindowsPythonDiagnosis(
+  pythonExecutable: string,
+  fallbackPythonExecutable = "",
+): Win32PythonDiagnosis | null {
+  return (
+    displayDiagnoses.get(
+      win32PythonConfigurationKey(pythonExecutable, fallbackPythonExecutable),
+    ) ?? null
+  );
+}
+
+/** Subscribe to accepted probe results and ConPTY breaker changes. */
+export function onWindowsPythonStateChange(listener: () => void): () => void {
+  windowsStateListeners.add(listener);
+  return () => windowsStateListeners.delete(listener);
+}
+
+function publishWindowsState(): void {
+  for (const listener of windowsStateListeners) {
+    try {
+      listener();
+    } catch (error) {
+      self.console.warn(error);
+    }
+  }
+}
+
+function publishWindowsDiagnosis(
+  key: string,
+  diagnosis: Win32PythonDiagnosis,
+  owner: symbol,
+): void {
+  if (displayOwners.get(key) !== owner) return;
+  displayDiagnoses.set(key, diagnosis);
+  publishWindowsState();
+}
+
+function claimWindowsDiagnosis(key: string): symbol {
+  const owner = Symbol();
+  displayOwners.set(key, owner);
+  return owner;
 }
 
 const resizerPackages = new Set<string>(),
@@ -819,9 +870,10 @@ export async function checkWindowsPython(
   options: {
     readonly locate?: Win32PathLocator;
     readonly notify?: boolean;
+    readonly publish?: boolean;
   } = {},
 ): Promise<Win32PythonDiagnosis> {
-  const { locate = DEFAULT_LOCATE, notify = true } = options,
+  const { locate = DEFAULT_LOCATE, notify = true, publish = true } = options,
     fallbackPythonExecutable = context.settings.value.pythonExecutable,
     key = win32PythonConfigurationKey(
       pythonExecutable,
@@ -829,8 +881,18 @@ export async function checkWindowsPython(
     ),
     cached = diagnoses.get(key);
   if (cached) {
+    if (publish && !displayDiagnoses.has(key)) {
+      // A stale plugin check can leave a reusable execution result without
+      // publishing it. A later opener/editor may claim it for display.
+      const owner = claimWindowsDiagnosis(key);
+      const settled = await cached;
+      if (diagnoses.get(key) === cached || !diagnoses.has(key)) {
+        publishWindowsDiagnosis(key, settled, owner);
+      }
+    }
     return cached;
   }
+  const owner = publish ? claimWindowsDiagnosis(key) : null;
   const diagnosis = diagnoseWindowsPython(
     spawn,
     pythonExecutable,
@@ -847,6 +909,9 @@ export async function checkWindowsPython(
     throw error;
   }
   const { detail, executable, status, version } = ret;
+  if (owner !== null && diagnoses.get(key) === diagnosis) {
+    publishWindowsDiagnosis(key, ret, owner);
+  }
   if (status === "ok") {
     notified.delete(key);
     if (ret.transient ?? false) {
@@ -880,55 +945,55 @@ export async function checkWindowsPython(
   return ret;
 }
 
-/**
- * Aligns each Windows-capable integrated profile's stored backend with its
- * effective Python verdict. An undefined verdict preserves the backend.
- * Returns `true` when any profile changed.
- *
- * - No usable Python: ConPTY profiles are demoted to ConHost and marked
- *   auto-demoted.
- * - Usable Python: only auto-demoted profiles are re-promoted to ConPTY; a
- *   stale marker on a ConPTY profile is cleared.
- *
- * Only Python-check results reach this; the circuit breaker does not.
- */
-export function applyWin32BackendVerdict(
-  profiles: DeepWritable<Settings.Profiles>,
-  verdict: (
-    profile: Settings.Profile.Typed<"integrated">,
-  ) => boolean | undefined,
-): boolean {
-  let changed = false;
-  for (const profile of Object.values(profiles)) {
-    if (!isWin32Integrated(profile)) {
-      continue;
-    }
-    const pythonUsable = verdict(profile);
-    if (pythonUsable === void 0) continue;
-    if (!pythonUsable) {
-      if (profile.win32Backend === "conpty") {
-        profile.win32Backend = "legacy";
-        profile.win32BackendAutoDemoted = true;
-        changed = true;
-      }
-      continue;
-    }
-    if (profile.win32BackendAutoDemoted) {
-      profile.win32Backend = "conpty";
-      profile.win32BackendAutoDemoted = false;
-      changed = true;
-    }
-  }
-  return changed;
-}
-
-const pluginDiagnoses = new WeakMap<TerminalPlugin, Win32PythonDiagnosis>(),
+let pluginDiagnoses = new WeakMap<TerminalPlugin, Win32PythonDiagnosis>(),
   pluginDiagnosisListeners = new WeakMap<TerminalPlugin, Set<() => void>>(),
   pluginCheckGenerations = new WeakMap<TerminalPlugin, number>();
 
 /** Windows paths compare case-insensitively. */
-function sameExecutable(left: string, right: string): boolean {
+export function sameExecutable(left: string, right: string): boolean {
   return left.toLowerCase() === right.toLowerCase();
+}
+
+/** The opener's ConPTY predicate, with a display reason for the editor. */
+export function windowsConPtyStatus(
+  diagnosis: Win32PythonDiagnosis | null,
+  pythonExecutable: string,
+  fallbackPythonExecutable = "",
+):
+  | "checking"
+  | "available"
+  | "missing"
+  | "unconfirmed"
+  | "runtime-unavailable"
+  | "unverified" {
+  if (!diagnosis) return "checking";
+  if (diagnosis.status !== "ok" && diagnosis.transient) return "unverified";
+  if (diagnosis.status !== "ok") return "missing";
+  if (diagnosis.hostExecutable === null) return "unconfirmed";
+  return isConPtyRuntimeUnavailable(pythonExecutable, fallbackPythonExecutable)
+    ? "runtime-unavailable"
+    : "available";
+}
+
+/** An override's typed candidate can fail while discovery still succeeds. */
+export function pythonOverrideStatus(
+  override: string,
+  diagnosis: Win32PythonDiagnosis | null,
+):
+  | "checking"
+  | "using"
+  | "fallback"
+  | "missing"
+  | "store-stub"
+  | "too-old"
+  | "unverified" {
+  if (!diagnosis) return "checking";
+  if (diagnosis.status !== "ok" && diagnosis.transient) return "unverified";
+  if (diagnosis.status !== "ok") return diagnosis.status;
+  return sameExecutable(override, diagnosis.candidate) ||
+    sameExecutable(override, diagnosis.executable)
+    ? "using"
+    : "fallback";
 }
 
 /**
@@ -940,8 +1005,9 @@ function sameExecutable(left: string, right: string): boolean {
 export function pythonStatusKey(
   diagnosis: Win32PythonDiagnosis | null,
   checking: boolean,
-): "checking" | "ok-resolved" | Win32PythonStatus {
+): "checking" | "ok-resolved" | "unverified" | Win32PythonStatus {
   if (checking || !diagnosis) return "checking";
+  if (diagnosis.status !== "ok" && diagnosis.transient) return "unverified";
   if (
     diagnosis.status === "ok" &&
     !sameExecutable(diagnosis.candidate, diagnosis.executable)
@@ -949,6 +1015,23 @@ export function pythonStatusKey(
     return "ok-resolved";
   }
   return diagnosis.status;
+}
+
+/** Plugin status text follows the same host and breaker predicate as the opener. */
+export function pluginPythonStatusKey(
+  diagnosis: Win32PythonDiagnosis | null,
+  checking: boolean,
+  configured: string,
+):
+  | "ok-unconfirmed"
+  | "ok-runtime-unavailable"
+  | ReturnType<typeof pythonStatusKey> {
+  if (!checking && diagnosis?.status === "ok") {
+    const availability = windowsConPtyStatus(diagnosis, configured, configured);
+    if (availability === "unconfirmed") return "ok-unconfirmed";
+    if (availability === "runtime-unavailable") return "ok-runtime-unavailable";
+  }
+  return pythonStatusKey(diagnosis, checking);
 }
 
 function isWin32Integrated<T extends Settings.Profile>(
@@ -990,11 +1073,8 @@ export function getPluginPythonDiagnosis(
 
 /**
  * Runs the plugin-level Python check, publishes the result for the settings
- * tab, and aligns stored backends with each profile's effective verdict.
- * Nothing else is written: the plugin-level and profile `pythonExecutable`
- * values are the user's, sync across devices, and stay portable, so every
- * resolution lives in the session cache instead. A check that a newer one
- * overtook — a recheck, or the field edited meanwhile — publishes nothing.
+ * tab. Configured values remain untouched; resolutions stay in session state.
+ * An overtaken check publishes nothing.
  */
 export async function runPluginPythonCheck(
   context: TerminalPlugin,
@@ -1003,6 +1083,8 @@ export async function runPluginPythonCheck(
 ): Promise<Win32PythonDiagnosis> {
   const { settings } = context,
     { pythonExecutable: configured } = settings.value,
+    pluginKey = win32PythonConfigurationKey(configured),
+    pluginOwner = claimWindowsDiagnosis(pluginKey),
     failuresBeforeCheck = new Map(conPtyRuntimeFailures),
     generation = (pluginCheckGenerations.get(context) ?? 0) + 1,
     // The newest check owns the UI; a moved field has the same effect, since
@@ -1018,6 +1100,7 @@ export async function runPluginPythonCheck(
   const diagnosis = await checkWindowsPython(context, configured, spawn, {
     locate,
     notify: false,
+    publish: false,
   });
   // An overtaken check publishes nothing, so it probes no override either.
   if (stale()) return diagnosis;
@@ -1028,12 +1111,15 @@ export async function runPluginPythonCheck(
     }
   }
   const profileDiagnoses = new Map<string, Win32PythonDiagnosis>(),
+    profileOwners = new Map<string, symbol>(),
     // Held back until the generation check below: an overtaken check must not
     // replace the newer one's interpreter, which the opener would then read
     // from the cache without re-probing it.
-    resolutions: [string, Win32PythonDiagnosis][] = [];
+    resolutions: [string, Win32PythonDiagnosis, string][] = [];
   await Promise.all(
     [...profileValues].map(async (value) => {
+      const key = win32PythonConfigurationKey(value, configured);
+      profileOwners.set(value, claimWindowsDiagnosis(key));
       // An override that stopped working must not keep its cached success.
       invalidateWindowsPythonDiagnosis(value, configured);
       const resolved = await diagnoseWindowsPython(
@@ -1046,7 +1132,7 @@ export async function runPluginPythonCheck(
       if (resolved.status !== "ok" || (resolved.transient ?? false)) return;
       // Publish only after the generation check; opening a terminal uses
       // the same configured candidates and must see this result.
-      resolutions.push([value, resolved]);
+      resolutions.push([value, resolved, value]);
       // Alias only the interpreter path: a venv's base host has different
       // packages and must keep its own diagnosis.
       if (
@@ -1054,19 +1140,20 @@ export async function runPluginPythonCheck(
           sameExecutable(resolved.executable, value2),
         )
       ) {
-        resolutions.push([resolved.executable, resolved]);
+        resolutions.push([resolved.executable, resolved, value]);
       }
     }),
   );
   if (stale()) return diagnosis;
-  const checkedConfigurations = new Map(profileDiagnoses).set(
-    configured,
-    diagnosis,
-  );
+  const checkedConfigurations = new Map<string, Win32PythonDiagnosis>([
+    [configured, diagnosis],
+    ...profileDiagnoses,
+  ]);
   for (const [value, checked] of checkedConfigurations) {
     const key = win32PythonConfigurationKey(value, configured),
       failure = failuresBeforeCheck.get(key);
     if (
+      displayOwners.get(key) === (profileOwners.get(value) ?? pluginOwner) &&
       failure !== void 0 &&
       checked.status === "ok" &&
       checked.hostExecutable !== null &&
@@ -1078,37 +1165,27 @@ export async function runPluginPythonCheck(
       conPtyRuntimeFailures.delete(key);
     }
   }
-  for (const [value, resolved] of resolutions) {
-    diagnoses.set(
-      win32PythonConfigurationKey(value, configured),
-      Promise.resolve(resolved),
-    );
+  for (const [value, resolved, source] of resolutions) {
+    const key = win32PythonConfigurationKey(value, configured);
+    if (
+      displayOwners.get(win32PythonConfigurationKey(source, configured)) ===
+        profileOwners.get(source) &&
+      (value === source || !displayOwners.has(key))
+    ) {
+      diagnoses.set(key, Promise.resolve(resolved));
+    }
   }
   pluginDiagnoses.set(context, diagnosis);
-  const verdict = (
-      profile: Settings.Profile.Typed<"integrated">,
-    ): boolean | undefined => {
-      const effective = profile.pythonExecutable
-        ? profileDiagnoses.get(profile.pythonExecutable)
-        : diagnosis;
-      // A transient result decides nothing, whichever way it points.
-      if (!effective || (effective.transient ?? false)) return void 0;
-      return effective.status === "ok";
-    },
-    // `mutate` clones and re-publishes the whole settings tree, so a
-    // load that changes nothing must not call it. Rehearse the result on
-    // a copy first.
-    changed = applyWin32BackendVerdict(
-      cloneAsWritable(settings.value.profiles, cloneDeep),
-      verdict,
-    );
-  if (changed) {
-    await settings.mutate((settingsM) => {
-      // The field may have moved on between the rehearsal and the clone.
-      if (stale(settingsM.pythonExecutable)) return;
-      applyWin32BackendVerdict(settingsM.profiles, verdict);
-    });
-    await settings.write();
+  publishWindowsDiagnosis(pluginKey, diagnosis, pluginOwner);
+  for (const [value, resolved] of profileDiagnoses) {
+    const owner = profileOwners.get(value);
+    if (owner) {
+      publishWindowsDiagnosis(
+        win32PythonConfigurationKey(value, configured),
+        resolved,
+        owner,
+      );
+    }
   }
   for (const listener of pluginDiagnosisListeners.get(context) ?? []) {
     try {

@@ -52,10 +52,13 @@ import { Pseudoterminal } from "./terminal/pseudoterminal.js";
 import {
   checkWindowsPython,
   checkWindowsResizerPackages,
-  getPluginPythonDiagnosis,
+  getWindowsPythonDiagnosis,
   inheritedPythonExecutable,
+  onWindowsPythonStateChange,
+  pythonOverrideStatus,
   win32PythonConfigurationKey,
   win32ResizerInstallCommand,
+  windowsConPtyStatus,
 } from "./terminal/win32-doctor.js";
 
 import SemVer from "semver/classes/semver.js";
@@ -1060,11 +1063,63 @@ export class ProfileModal extends Modal {
             resizerInstallCommand = "",
             resizerPackagesMissing = false,
             resizerProbeKey: string | null = null,
-            resizerProbeTimer: number | undefined;
+            resizerProbeTimer: number | undefined,
+            statusProbeKey: string | null = null,
+            statusProbeTimer: number | undefined,
+            statusProbeGeneration = 0;
           ui.finally(() => {
             self.clearTimeout(resizerProbeTimer);
+            self.clearTimeout(statusProbeTimer);
+            ++statusProbeGeneration;
           });
+          if (deopaque(Platform.CURRENT) === "win32") {
+            ui.finally(
+              onWindowsPythonStateChange(() => {
+                ui.update();
+              }),
+            );
+          }
           ui.newSetting(element, (setting) => {
+            const pluginPython = settings.value.pythonExecutable,
+              effective = inheritedPythonExecutable(
+                profile.pythonExecutable,
+                pluginPython,
+              ),
+              key = win32PythonConfigurationKey(effective, pluginPython),
+              windows = deopaque(Platform.CURRENT) === "win32";
+            if (windows && statusProbeKey !== key) {
+              statusProbeKey = key;
+              const generation = ++statusProbeGeneration;
+              self.clearTimeout(statusProbeTimer);
+              statusProbeTimer = self.setTimeout(() => {
+                checkWindowsPython(context, effective, void 0, {
+                  notify: false,
+                })
+                  .then(() => {
+                    if (
+                      statusProbeGeneration === generation &&
+                      statusProbeKey === key
+                    ) {
+                      ui.update();
+                    }
+                  })
+                  .catch((error: unknown) => {
+                    activeSelf(setting.settingEl).console.error(error);
+                  });
+              }, PYTHON_PROBE_SETTLE_WAIT * SI_PREFIX_SCALE);
+            }
+            const diagnosis = windows
+                ? getWindowsPythonDiagnosis(effective, pluginPython)
+                : null,
+              overrideStatus = profile.pythonExecutable
+                ? pythonOverrideStatus(profile.pythonExecutable, diagnosis)
+                : diagnosis?.status === "ok"
+                  ? "inherited-ok"
+                  : diagnosis?.transient
+                    ? "inherited-unverified"
+                    : diagnosis
+                      ? "inherited-missing"
+                      : "checking";
             setting
               .setName(
                 i18n.t(`components.profile.${profile.type}.Python-executable`),
@@ -1076,7 +1131,17 @@ export class ProfileModal extends Modal {
                     interpolation: { escapeValue: false },
                     version: PYTHON_REQUIREMENTS.Python.version,
                   },
-                ),
+                ) +
+                  (windows
+                    ? ` ${i18n.t(
+                        `components.profile.integrated.Python-status-${overrideStatus}`,
+                        {
+                          executable: diagnosis?.executable,
+                          interpolation: { escapeValue: false },
+                          value: profile.pythonExecutable,
+                        },
+                      )}`
+                    : ""),
               )
               .addText(
                 linkSetting(
@@ -1089,7 +1154,10 @@ export class ProfileModal extends Modal {
                     post: (component) => {
                       // The plugin-level check never writes its result into
                       // the field, so the detected name is shown here.
-                      const detected = getPluginPythonDiagnosis(context);
+                      const detected = getWindowsPythonDiagnosis(
+                        settings.value.pythonExecutable,
+                        settings.value.pythonExecutable,
+                      );
                       component.setPlaceholder(
                         deopaque(Platform.CURRENT) === "win32"
                           ? settings.value.pythonExecutable
@@ -1279,6 +1347,20 @@ export class ProfileModal extends Modal {
               );
           });
           ui.newSetting(element, (setting) => {
+            const pluginPython = settings.value.pythonExecutable,
+              effective = inheritedPythonExecutable(
+                profile.pythonExecutable,
+                pluginPython,
+              ),
+              windows = deopaque(Platform.CURRENT) === "win32",
+              backendStatus =
+                profile.win32Backend === "legacy"
+                  ? "legacy"
+                  : windowsConPtyStatus(
+                      getWindowsPythonDiagnosis(effective, pluginPython),
+                      effective,
+                      pluginPython,
+                    );
             setting
               .setName(
                 i18n.t(`components.profile.${profile.type}.win32-backend`),
@@ -1286,14 +1368,18 @@ export class ProfileModal extends Modal {
               .setDesc(
                 i18n.t(
                   `components.profile.${profile.type}.win32-backend-description`,
-                ),
+                ) +
+                  (windows
+                    ? ` ${i18n.t(
+                        `components.profile.integrated.win32-backend-status-${backendStatus}`,
+                      )}`
+                    : ""),
               )
               .addDropdown(
                 linkSetting(
                   (): string => profile.win32Backend,
                   setTextToEnum(Settings.Profile.WIN32_BACKENDS, (value) => {
                     profile.win32Backend = value;
-                    profile.win32BackendAutoDemoted = false;
                   }),
                   async () => this.postMutate(),
                   {
@@ -1321,10 +1407,6 @@ export class ProfileModal extends Modal {
                   () => {
                     profile.win32Backend =
                       Settings.Profile.DEFAULTS[profile.type].win32Backend;
-                    profile.win32BackendAutoDemoted =
-                      Settings.Profile.DEFAULTS[
-                        profile.type
-                      ].win32BackendAutoDemoted;
                   },
                   async () => this.postMutate(),
                 ),
@@ -1513,8 +1595,6 @@ export class ProfileListModal extends ListModal<
       {
         ...options,
         ...({
-          // Saving writes the editor's whole profiles snapshot, so a Python
-          // check landing meanwhile is overwritten; the next check re-applies it.
           callback: async (data0): Promise<void> => {
             await callback({
               ...this.dataProfileList,

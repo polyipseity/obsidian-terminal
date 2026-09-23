@@ -345,6 +345,21 @@ describe("src/terminal/view.ts", () => {
     });
 
     describe("State.fix()", () => {
+      it("migrates a restored auto-demoted profile once", () => {
+        const fixed = TerminalView.State.fix({
+          profile: {
+            ...Settings.Profile.DEFAULTS.integrated,
+            win32Backend: "legacy",
+            win32BackendAutoDemoted: true,
+          },
+          cwd: null,
+          serial: null,
+          focus: false,
+        }).value;
+        expect(fixed.profile).toHaveProperty("win32Backend", "conpty");
+        expect(fixed.profile).not.toHaveProperty("win32BackendAutoDemoted");
+      });
+
       it("preserves a valid userTitle string", () => {
         const input = {
           profile: Settings.Profile.DEFAULTS.integrated,

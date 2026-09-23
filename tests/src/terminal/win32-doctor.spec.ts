@@ -9,7 +9,7 @@
  * - `diagnoseWindowsPython` against a stubbed spawn and `PATH` locator:
  *   transient probe failures, the venv base interpreter, and bare names
  * - `checkWindowsPython` caching, its notice budget, and its silent mode
- * - the plugin-level check: demotion, re-promotion, stale results, and that
+ * - the plugin-level check: diagnosis refresh, stale results, and that
  *   no Python value is ever written back
  */
 import { ChildProcess } from "node:child_process";
@@ -20,22 +20,24 @@ import {
   type Win32PathLocator,
   type Win32PythonProcessResult,
   type Win32PythonSpawn,
-  applyWin32BackendVerdict,
   checkWindowsResizerPackages,
   classifyPythonResult,
   diagnoseWindowsPython,
   getPluginPythonDiagnosis,
+  getWindowsPythonDiagnosis,
   inheritedPythonExecutable,
   isPythonVersionSupported,
   isStoreStub,
   parsePythonVersion,
   parseWindowsPythonIdentity,
+  pythonOverrideStatus,
   pythonStatusKey,
   runPluginPythonCheck,
   win32ExitCodeKey,
   win32PathCandidates,
   win32PythonCandidates,
   win32ResizerInstallCommand,
+  windowsConPtyStatus,
   checkWindowsPython,
   clearWindowsPythonDiagnoses,
   invalidateWindowsPythonDiagnosis,
@@ -821,6 +823,20 @@ describe("src/terminal/win32-doctor.ts", () => {
         ),
       ).toBe("store-stub");
     });
+
+    it("reports transient failures as unverified", () => {
+      const transient = {
+        ...found,
+        status: "missing" as const,
+        transient: true,
+      };
+      expect(pythonStatusKey(transient, false)).toBe("unverified");
+      expect(pythonOverrideStatus("python", transient)).toBe("unverified");
+      expect(windowsConPtyStatus(transient, "python")).toBe("unverified");
+      const final = { ...transient, transient: false };
+      expect(pythonOverrideStatus("python", final)).toBe("missing");
+      expect(windowsConPtyStatus(final, "python")).toBe("missing");
+    });
   });
 });
 
@@ -1042,77 +1058,6 @@ describe("checkWindowsResizerPackages", () => {
     expect(seen).toEqual([
       ["-c", "import psutil, pywinctl, typing_extensions"],
     ]);
-  });
-});
-
-describe("applyWin32BackendVerdict", () => {
-  function integratedWin32(
-    overrides: Partial<Settings.Profile.Typed<"integrated">> = {},
-  ): DeepWritable<Settings.Profile> {
-    return {
-      ...Settings.Profile.DEFAULTS.integrated,
-      platforms: { win32: true },
-      ...overrides,
-    } as DeepWritable<Settings.Profile>;
-  }
-
-  it("demotes ConPTY profiles and records provenance when Python is missing", () => {
-    const profiles = { a: integratedWin32() };
-    expect(applyWin32BackendVerdict(profiles, () => false)).toBe(true);
-    expect(profiles.a).toMatchObject({
-      win32Backend: "legacy",
-      win32BackendAutoDemoted: true,
-    });
-  });
-
-  it("re-promotes only auto-demoted profiles, never a user choice", () => {
-    const profiles = {
-      demoted: integratedWin32({
-        win32Backend: "legacy",
-        win32BackendAutoDemoted: true,
-      }),
-      userChoice: integratedWin32({ win32Backend: "legacy" }),
-    };
-    expect(applyWin32BackendVerdict(profiles, () => true)).toBe(true);
-    expect(profiles.demoted).toMatchObject({
-      win32Backend: "conpty",
-      win32BackendAutoDemoted: false,
-    });
-    expect(profiles.userChoice).toMatchObject({
-      win32Backend: "legacy",
-      win32BackendAutoDemoted: false,
-    });
-  });
-
-  it("clears a stale marker on a profile that already runs ConPTY", () => {
-    const profiles = {
-      a: integratedWin32({ win32BackendAutoDemoted: true }),
-    };
-    expect(applyWin32BackendVerdict(profiles, () => true)).toBe(true);
-    expect(profiles.a).toMatchObject({
-      win32Backend: "conpty",
-      win32BackendAutoDemoted: false,
-    });
-  });
-
-  it("leaves incompatible and non-integrated profiles alone", () => {
-    const profiles = {
-      external: {
-        ...Settings.Profile.DEFAULTS.external,
-        platforms: { win32: true },
-      },
-      unix: integratedWin32({ platforms: { linux: true } }),
-    } as unknown as DeepWritable<Settings.Profiles>;
-    expect(applyWin32BackendVerdict(profiles, () => false)).toBe(false);
-    expect(profiles["unix"]).toMatchObject({ win32Backend: "conpty" });
-  });
-
-  it("reports an unchanged result as a no-op", () => {
-    const profiles = {
-      a: integratedWin32({ win32Backend: "legacy" }),
-    };
-    expect(applyWin32BackendVerdict(profiles, () => false)).toBe(false);
-    expect(applyWin32BackendVerdict(profiles, () => true)).toBe(false);
   });
 });
 
@@ -1358,11 +1303,10 @@ describe("runPluginPythonCheck", () => {
     expect(newer.status).toBe("ok");
     finishOld[0]?.(result({ code: 9009 }));
     expect((await oldCheck).status).not.toBe("ok");
-    // The old failure neither replaces the status nor demotes anything.
+    // The old failure neither replaces the status nor changes the profile.
     expect(getPluginPythonDiagnosis(ctx)).toBe(newer);
     expect(value.profiles["inherited"]).toMatchObject({
       win32Backend: "conpty",
-      win32BackendAutoDemoted: false,
     });
     expect(write).not.toHaveBeenCalled();
   });
@@ -1493,10 +1437,7 @@ describe("runPluginPythonCheck", () => {
 
     installed = false;
     await runPluginPythonCheck(ctx, spawn);
-    expect(value.profiles["custom"]).toMatchObject({
-      win32Backend: "legacy",
-      win32BackendAutoDemoted: true,
-    });
+    expect(value.profiles["custom"]).toMatchObject({ win32Backend: "conpty" });
     // ...and the next open re-probes instead of reusing it.
     const probes2 = spawn.mock.calls.length;
     await checkWindowsPython(ctx, venv, spawn, { notify: false });
@@ -1518,7 +1459,7 @@ describe("runPluginPythonCheck", () => {
     expect(value.pythonExecutable).toBe("C:\\user\\python.exe");
   });
 
-  it("refreshes a cached registry PATH and re-promotes after an install", async () => {
+  it("refreshes a cached registry PATH after an install", async () => {
     vi.spyOn(console, "warn").mockImplementation(vi.fn());
     const inheritedPath = "C:\\Windows\\System32",
       pythonDirectory = "C:\\Python312";
@@ -1567,23 +1508,16 @@ describe("runPluginPythonCheck", () => {
             : result({ code: 9009 });
         });
       expect((await recheck(ctx, spawn)).status).not.toBe("ok");
-      expect(value.profiles["auto"]).toMatchObject({
-        win32Backend: "legacy",
-        win32BackendAutoDemoted: true,
-      });
+      expect(value.profiles["auto"]).toMatchObject({ win32Backend: "conpty" });
       // Only the registry changes; Obsidian still has its launch-time PATH.
       registryPath = `${inheritedPath};${pythonDirectory}`;
       expect((await applyEnv())["Path"]).toBe(inheritedPath);
       expect(registrySpawn).toHaveBeenCalledTimes(2);
       expect((await recheck(ctx, spawn)).status).toBe("ok");
       expect(registrySpawn).toHaveBeenCalledTimes(4);
-      expect(value.profiles["auto"]).toMatchObject({
-        win32Backend: "conpty",
-        win32BackendAutoDemoted: false,
-      });
+      expect(value.profiles["auto"]).toMatchObject({ win32Backend: "conpty" });
       expect(value.profiles["userChoice"]).toMatchObject({
         win32Backend: "legacy",
-        win32BackendAutoDemoted: false,
       });
     } finally {
       vi.doUnmock("../../../src/imports.js");
@@ -1593,7 +1527,7 @@ describe("runPluginPythonCheck", () => {
 
   it("leaves stored backends alone on a transient probe failure", async () => {
     // One timed-out candidate might have been the working interpreter, so
-    // "missing" is not decisive: nothing is demoted and nothing is written.
+    // "missing" is not decisive: nothing is changed or written.
     const {
         context: ctx,
         value,
@@ -1608,10 +1542,7 @@ describe("runPluginPythonCheck", () => {
     const diagnosis = await runPluginPythonCheck(ctx, spawn);
     expect(diagnosis.status).not.toBe("ok");
     expect(diagnosis.transient).toBe(true);
-    expect(value.profiles["auto"]).toMatchObject({
-      win32Backend: "conpty",
-      win32BackendAutoDemoted: false,
-    });
+    expect(value.profiles["auto"]).toMatchObject({ win32Backend: "conpty" });
     expect(write).not.toHaveBeenCalled();
   });
 
@@ -1635,15 +1566,12 @@ describe("runPluginPythonCheck", () => {
     const diagnosis = await runPluginPythonCheck(ctx, spawn);
     expect(diagnosis).toMatchObject({ status: "missing", transient: true });
     for (const id of ["inherited", "override"]) {
-      expect(value.profiles[id]).toMatchObject({
-        win32Backend: "conpty",
-        win32BackendAutoDemoted: false,
-      });
+      expect(value.profiles[id]).toMatchObject({ win32Backend: "conpty" });
     }
     expect(write).not.toHaveBeenCalled();
   });
 
-  it("demotes when every candidate is decisively not found", async () => {
+  it("keeps the selected backend when every candidate is decisively not found", async () => {
     vi.spyOn(console, "warn").mockImplementation(vi.fn());
     const { context: ctx, value } = reconcileContext({
         profiles: { auto: win32Conpty() },
@@ -1653,10 +1581,7 @@ describe("runPluginPythonCheck", () => {
     const diagnosis = await runPluginPythonCheck(ctx, spawn);
     expect(diagnosis.status).toBe("missing");
     expect(diagnosis.transient ?? false).toBe(false);
-    expect(value.profiles["auto"]).toMatchObject({
-      win32Backend: "legacy",
-      win32BackendAutoDemoted: true,
-    });
+    expect(value.profiles["auto"]).toMatchObject({ win32Backend: "conpty" });
   });
 
   it("leaves stored backends alone when the launcher's interpreter is slow to confirm", async () => {
@@ -1677,10 +1602,7 @@ describe("runPluginPythonCheck", () => {
     expect(await runPluginPythonCheck(ctx, spawn)).toMatchObject({
       transient: true,
     });
-    expect(value.profiles["auto"]).toMatchObject({
-      win32Backend: "conpty",
-      win32BackendAutoDemoted: false,
-    });
+    expect(value.profiles["auto"]).toMatchObject({ win32Backend: "conpty" });
     expect(write).not.toHaveBeenCalled();
   });
 
@@ -1693,10 +1615,9 @@ describe("runPluginPythonCheck", () => {
           profiles: {
             inherited: win32Conpty(),
             working: win32Conpty({ pythonExecutable: python }),
-            demoted: win32Conpty({
+            legacy: win32Conpty({
               pythonExecutable: "portable-shim",
               win32Backend: "legacy",
-              win32BackendAutoDemoted: true,
             }),
             manual: win32Conpty({
               pythonExecutable: python,
@@ -1719,26 +1640,18 @@ describe("runPluginPythonCheck", () => {
       expect(value.profiles["working"]).toMatchObject({
         pythonExecutable: python,
         win32Backend: "conpty",
-        win32BackendAutoDemoted: false,
       });
-      expect(value.profiles["demoted"]).toMatchObject({
-        // Re-promoted by its own value, which stays the portable name.
+      expect(value.profiles["legacy"]).toMatchObject({
         pythonExecutable: "portable-shim",
-        win32Backend: "conpty",
-        win32BackendAutoDemoted: false,
+        win32Backend: "legacy",
       });
       expect(value.profiles["manual"]).toMatchObject({
         win32Backend: "legacy",
-        win32BackendAutoDemoted: false,
       });
       expect(value.profiles["inherited"]).toMatchObject({
-        win32Backend: timedOut ? "conpty" : "legacy",
-        win32BackendAutoDemoted: !timedOut,
-      });
-      expect(value.profiles["slow"]).toMatchObject({
         win32Backend: "conpty",
-        win32BackendAutoDemoted: false,
       });
+      expect(value.profiles["slow"]).toMatchObject({ win32Backend: "conpty" });
     },
   );
 
@@ -1763,7 +1676,6 @@ describe("runPluginPythonCheck", () => {
       expect(value.profiles["custom"]).toMatchObject({
         pythonExecutable: "missing-python",
         win32Backend: "conpty",
-        win32BackendAutoDemoted: false,
       });
       expect(
         spawn.mock.calls.filter(
@@ -1811,6 +1723,10 @@ describe("runPluginPythonCheck", () => {
     expect((await checkWindowsPython(ctx, "python", spawn)).executable).toBe(
       canonical,
     );
+    const resolved = await checkWindowsPython(ctx, canonical, spawn);
+    expect(resolved.candidate).toBe("python");
+    expect(pythonOverrideStatus(canonical, resolved)).toBe("using");
+    expect(getWindowsPythonDiagnosis(canonical)).toEqual(resolved);
     expect(spawn.mock.calls).toHaveLength(probes);
   });
 

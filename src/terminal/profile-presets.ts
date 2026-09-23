@@ -103,7 +103,6 @@ const PROFILE_PRESETS0 = deepFreeze({
     terminalOptions: DEFAULT_TERMINAL_OPTIONS,
     type: "integrated",
     win32Backend: "conpty",
-    win32BackendAutoDemoted: false,
   },
   cmdExternal: {
     args: [],
@@ -132,7 +131,6 @@ const PROFILE_PRESETS0 = deepFreeze({
     terminalOptions: DEFAULT_TERMINAL_OPTIONS,
     type: "integrated",
     win32Backend: "conpty",
-    win32BackendAutoDemoted: false,
   },
   dashIntegrated: {
     args: [],
@@ -148,7 +146,6 @@ const PROFILE_PRESETS0 = deepFreeze({
     terminalOptions: DEFAULT_TERMINAL_OPTIONS,
     type: "integrated",
     win32Backend: "conpty",
-    win32BackendAutoDemoted: false,
   },
   developerConsole: {
     followTheme: true,
@@ -182,7 +179,6 @@ const PROFILE_PRESETS0 = deepFreeze({
     terminalOptions: DEFAULT_TERMINAL_OPTIONS,
     type: "integrated",
     win32Backend: "conpty",
-    win32BackendAutoDemoted: false,
   },
   gnomeTerminalExternal: {
     args: [],
@@ -250,7 +246,6 @@ const PROFILE_PRESETS0 = deepFreeze({
     terminalOptions: DEFAULT_TERMINAL_OPTIONS,
     type: "integrated",
     win32Backend: "conpty",
-    win32BackendAutoDemoted: false,
   },
   pwshExternal: {
     args: [],
@@ -279,7 +274,6 @@ const PROFILE_PRESETS0 = deepFreeze({
     terminalOptions: DEFAULT_TERMINAL_OPTIONS,
     type: "integrated",
     win32Backend: "conpty",
-    win32BackendAutoDemoted: false,
   },
   shIntegrated: {
     args: [],
@@ -295,7 +289,6 @@ const PROFILE_PRESETS0 = deepFreeze({
     terminalOptions: DEFAULT_TERMINAL_OPTIONS,
     type: "integrated",
     win32Backend: "conpty",
-    win32BackendAutoDemoted: false,
   },
   terminalMacOSExternal: {
     args: ['"$PWD"'],
@@ -325,7 +318,6 @@ const PROFILE_PRESETS0 = deepFreeze({
     terminalOptions: DEFAULT_TERMINAL_OPTIONS,
     type: "integrated",
     win32Backend: "conpty",
-    win32BackendAutoDemoted: false,
   },
   wtExternal: {
     args: [],
@@ -367,7 +359,6 @@ const PROFILE_PRESETS0 = deepFreeze({
     terminalOptions: DEFAULT_TERMINAL_OPTIONS,
     type: "integrated",
     win32Backend: "conpty",
-    win32BackendAutoDemoted: false,
   },
 }) satisfies ProfilePresets0;
 export const PROFILE_PRESETS = deepFreeze({
