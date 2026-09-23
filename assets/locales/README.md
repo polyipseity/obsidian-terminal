@@ -22,7 +22,7 @@ This updates all other translation files and sorts their keys alphabetically.
 
 ## Instructions
 
-Each locale has its own directory named with its corresponding __[IETF language tag](https://wikipedia.org/wiki/IETF_language_tag)__.
+Each locale has its own directory named with its corresponding **[IETF language tag](https://wikipedia.org/wiki/IETF_language_tag)**.
 
 To contribute translation for an existing locale, modify the files in the corresponding directory.
 
@@ -42,7 +42,7 @@ Sort the list of languages by the alphabetical order of their language tags. The
 
 When translating, keep in mind the following things:
 
-- Do not translate anything between `{{` and `}}` (`{{example}}`). They are __interpolations__ and will be replaced by localized strings at runtime.
+- Do not translate anything between `{{` and `}}` (`{{example}}`). They are **interpolations** and will be replaced by localized strings at runtime.
 - Do not translate anything between `$t(` and `)` (`$t(example)`). They refer to other localized strings. To find the localized string being referred to, follow the path of the key, which is separated by dots (`.`). For example, the key [`youtu.be./dQw4w9WgXcQ`](https://youtu.be./dQw4w9WgXcQ) refers to:
 
 ```JSONc

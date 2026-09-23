@@ -28,22 +28,6 @@ describe("src/settings-data.ts", () => {
     expect(Settings.DEFAULTABLE_LANGUAGES).toContain("");
   });
 
-  it("persistent removes optional keys (no-op when none) but returns writable copy", () => {
-    const sample = {
-      errorNoticeTimeout: Settings.DEFAULT.errorNoticeTimeout,
-      language: Settings.DEFAULT.language,
-      noticeTimeout: Settings.DEFAULT.noticeTimeout,
-      openChangelogOnUpdate: Settings.DEFAULT.openChangelogOnUpdate,
-      extra: "present",
-    };
-    // Deliberately partial: `persistent` only touches `optionals` keys.
-    const p = Settings.persistent(sample as unknown as Settings);
-    expect(p).toHaveProperty("noticeTimeout");
-    // ensure extra is still present because `optionals` is empty
-    expect(p).toHaveProperty("extra");
-    expect(p).property("extra").equals("present");
-  });
-
   it("Settings.fix coerces bad typed values to defaults", () => {
     // provide clearly wrong types including terminalOptions
     const bad = {
@@ -60,6 +44,16 @@ describe("src/settings-data.ts", () => {
     expect(fixed.value.terminalOptions).toEqual(
       Settings.DEFAULT.terminalOptions,
     );
+  });
+
+  it("LocalSettings survives a JSON persistence round trip as valid", () => {
+    vi.spyOn(console, "debug").mockImplementation(() => {});
+    // `StorageSettingsManager.write` persists `JSON.stringify(value)`, which
+    // drops undefined-valued keys. The next load must not flag that stored
+    // shape as malformed, or every startup appends a recovery entry.
+    const first = LocalSettings.fix(null),
+      stored: unknown = JSON.parse(JSON.stringify(first.value));
+    expect(LocalSettings.fix(stored).valid).toBe(true);
   });
 
   it("LocalSettings.fix ensures lastReadChangelogVersion exists and is a string", () => {
@@ -108,6 +102,170 @@ describe("src/settings-data.ts", () => {
     expect((result as Settings.Profile.External).environment).toEqual([
       ["KEY", "value"],
     ]);
+  });
+
+  it("normalizes the Windows backend selector", () => {
+    // Presentation order for the profile editor; the default is ConPTY.
+    expect(Settings.Profile.WIN32_BACKENDS).toEqual(["conpty", "legacy"]);
+    expect(Settings.Profile.DEFAULTS.integrated.win32Backend).toBe("conpty");
+    const conpty = Settings.Profile.fix({
+        type: "integrated",
+        win32Backend: "conpty",
+      }).value,
+      legacy = Settings.Profile.fix({
+        type: "integrated",
+        win32Backend: "legacy",
+      }).value;
+    expect(conpty).toMatchObject({
+      type: "integrated",
+      win32Backend: "conpty",
+    });
+    expect(legacy).toMatchObject({
+      type: "integrated",
+      win32Backend: "legacy",
+    });
+    expect(conpty).not.toHaveProperty("useWin32Conhost");
+    expect(legacy).not.toHaveProperty("useWin32Conhost");
+  });
+
+  it("moves a stored ConHost boolean onto the default backend", () => {
+    // useWin32Conhost is retired: either value adopts the default and the
+    // key is dropped.
+    for (const useWin32Conhost of [true, false]) {
+      const fixed = Settings.Profile.fix({
+        type: "integrated",
+        useWin32Conhost,
+      }).value;
+      expect(fixed).toMatchObject({ win32Backend: "conpty" });
+      expect(fixed).not.toHaveProperty("useWin32Conhost");
+    }
+  });
+
+  it("rejects unknown Windows backend values", () => {
+    expect(
+      Settings.Profile.fix({
+        type: "integrated",
+        win32Backend: "shell-pipes",
+      }).value,
+    ).toMatchObject({ win32Backend: "conpty" });
+  });
+
+  it("defaults the plugin-level Python executable to automatic discovery", () => {
+    expect(Settings.DEFAULT.pythonExecutable).toBe("");
+    expect(
+      Settings.fix({ pythonExecutable: "C:\\Python312\\python.exe" }).value
+        .pythonExecutable,
+    ).toBe("C:\\Python312\\python.exe");
+    expect(Settings.fix({ pythonExecutable: 42 }).value.pythonExecutable).toBe(
+      "",
+    );
+  });
+
+  it("drops the retired discovery marker", () => {
+    // The field holds only what the user typed, so nothing marks a value as
+    // discovered any more.
+    expect(
+      Settings.fix({
+        pythonExecutable: "python",
+        pythonExecutableDiscovered: true,
+      }).value,
+    ).not.toHaveProperty("pythonExecutableDiscovered");
+  });
+
+  it.each([
+    { platforms: { win32: true }, useWin32Conhost: true },
+    {
+      platforms: { darwin: true, linux: true, win32: true },
+      useWin32Conhost: true,
+    },
+    { platforms: { win32: true }, win32Backend: "conpty" },
+  ])(
+    "preserves stored python3 across profile schemas and platforms: %j",
+    (input) => {
+      const fixed = Settings.fix({
+        pythonExecutable: "C:\\Plugin\\python.exe",
+        profiles: {
+          explicit: {
+            type: "integrated",
+            pythonExecutable: "python3",
+            ...input,
+          },
+        },
+      }).value;
+      expect(fixed.profiles["explicit"]).toMatchObject({
+        pythonExecutable: "python3",
+      });
+    },
+  );
+
+  it.each([
+    ["legacy", true, "conpty"],
+    ["legacy", false, "legacy"],
+    ["conpty", true, "conpty"],
+    ["conpty", false, "conpty"],
+    ["legacy", "yes", "legacy"],
+    [undefined, true, "conpty"],
+  ])(
+    "migrates backend %s with marker %s to %s",
+    (backend, marker, expected) => {
+      const fixed = Settings.Profile.fix({
+        type: "integrated",
+        win32Backend: backend,
+        win32BackendAutoDemoted: marker,
+      }).value;
+      expect(fixed).toHaveProperty("win32Backend", expected);
+      expect(fixed).not.toHaveProperty("win32BackendAutoDemoted");
+      expect(
+        Settings.Profile.fix(JSON.parse(JSON.stringify(fixed))).value,
+      ).toEqual(fixed);
+    },
+  );
+
+  describe("fixer convergence across persistence", () => {
+    /*
+     * A fixer key that does not round-trip stably appends one recovery
+     * snapshot per load, forever. Fix → persist → fix must be a no-op.
+     */
+    function expectConvergence(input: unknown): void {
+      const first = Settings.fix(input).value,
+        stored: unknown = JSON.parse(JSON.stringify(first)),
+        second = Settings.fix(stored);
+      expect(second.valid).toBe(true);
+      expect(JSON.parse(JSON.stringify(second.value))).toEqual(stored);
+    }
+
+    it("converges main-era data in one cycle", () => {
+      expectConvergence({
+        addToCommand: true,
+        defaultProfile: "upgrade",
+        errorNoticeTimeout: 0,
+        language: "",
+        noticeTimeout: 5,
+        profiles: {
+          upgrade: {
+            args: [],
+            environment: [],
+            executable: "C:\\Windows\\System32\\cmd.exe",
+            followTheme: true,
+            name: "",
+            platforms: { win32: true },
+            pythonExecutable: "python3",
+            restoreHistory: false,
+            rightClickAction: "copyPaste",
+            successExitCodes: ["0", "SIGINT", "SIGTERM"],
+            terminalOptions: { documentOverride: null, fontSize: 14 },
+            type: "integrated",
+            useWin32Conhost: true,
+            win32Backend: "legacy",
+            win32BackendAutoDemoted: true,
+          },
+        },
+      });
+    });
+
+    it("converges current-era data in one cycle", () => {
+      expectConvergence(JSON.parse(JSON.stringify(Settings.DEFAULT)));
+    });
   });
 
   it("Settings.fix validates defaultProfile against available profiles", () => {

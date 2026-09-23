@@ -19,6 +19,7 @@ import { BUNDLE } from "../imports.js";
 import { DOMClasses2 } from "../magic.js";
 import type { Settings } from "../settings-data.js";
 import type { $App } from "../@types/obsidian.js";
+import { Win32InputMode, isWin32ClipboardChord } from "./win32-input-mode.js";
 
 const electron = dynamicRequire<typeof import("electron")>(BUNDLE, "electron");
 /* @__PURE__ */ electron.catch(noop); // Prevent unhandled rejections from `dynamicRequire` in tests.
@@ -758,23 +759,56 @@ export namespace RightClickActionAddon {
  *    - Option + single-character key → re-emit composed char, suppress event.
  *    - All other Option+key (Enter, function keys, arrows not covered by a
  *      mapping, etc.) → passed through to xterm unchanged.
+ *
+ * Between stages 2 and 3, ConPTY terminals can activate Win32 input mode with
+ * `DECSET 9001`. The mode handlers are registered on Windows and honoured only
+ * while the effective backend is ConPTY: `supportsWin32InputMode` is asked
+ * when the mode is requested, because a ConHost fallback is known only after
+ * the terminal opened. While active, unmatched keydown and keyup events use
+ * Win32 `KEY_EVENT_RECORD` sequences. Dead keys are the exception: the browser
+ * composes them, and cancelling a dead key's keydown or the keydown of the
+ * character it combines with discards the composed character (UI Events
+ * §Dead keys; xterm.js #3430). Both keydowns are left to the browser, and the
+ * `keypress` carrying the composed character becomes the keydown record, as
+ * Windows Terminal turns character events into key events. That record reuses
+ * the deferred keydown's virtual key, so it keeps the layout's identity. Two
+ * more kinds of key stay unencoded and go to the browser: the keydown that
+ * starts an IME composition (`isImeKeyEvent`) and the clipboard chords
+ * (`isWin32ClipboardChord`).
  */
 export class CustomKeyEventHandlerAddon implements ITerminalAddon {
+  readonly #disposer = new Functions({ async: false, settled: true });
   #terminal: Terminal | null = null;
+  #win32InputMode: Win32InputMode | null = null;
+  #win32InputModeActive = false;
+  /** `pending` after a dead key's keydown; `composing` once the character
+   * keydown it combines with was deferred to its keypress. */
+  #deadKey: "composing" | "none" | "pending" = "none";
+  /** Virtual key of the deferred keydown, reused by its keypresses. */
+  #deadKeyVirtualKey = 0;
+  /** `code`s of the clipboard chord keys whose keydown went to the browser. */
+  readonly #clipboardChordCodes = new Set<string>();
 
   public constructor(
     protected readonly currentPlatform: string,
     protected readonly getKeymappings: () => readonly Settings.Keymapping[],
     protected readonly isPassthroughEnabled: () => boolean,
+    protected readonly supportsWin32InputMode: () => boolean,
   ) {}
 
   public activate(terminal: Terminal): void {
     this.#terminal = terminal;
     terminal.attachCustomKeyEventHandler((event) => this.#handleEvent(event));
+    if (this.currentPlatform === "win32") {
+      this.#registerWin32InputModeHandlers(terminal);
+    }
   }
 
   public dispose(): void {
+    this.#disposer.call();
     this.#terminal = null;
+    this.#win32InputMode = null;
+    this.#resetWin32InputMode();
   }
 
   #handleEvent(event: KeyboardEvent): boolean {
@@ -794,6 +828,12 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
     // Walk the ordered list; first match wins.
     for (const mapping of this.getKeymappings()) {
       if (this.#matches(event, mapping)) {
+        // In active Win32 input mode, passthrough means bypass the mapping and
+        // continue into Win32 encoding. Returning true here would expose the
+        // event to xterm.js 6.x's legacy keyboard encoder.
+        if (mapping.action === "passthrough" && this.#win32InputModeActive) {
+          break;
+        }
         if (event.type === "keydown") {
           return this.#fire(terminal, mapping);
         }
@@ -807,7 +847,12 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
       }
     }
 
-    // --- Stage 2: macOS Option key passthrough ---
+    // --- Stage 2: Windows ConPTY Win32 input mode ---
+    if (this.#win32InputModeActive && this.#win32InputMode) {
+      return this.#encodeWin32(terminal, this.#win32InputMode, event);
+    }
+
+    // --- Stage 3: macOS Option key passthrough ---
     // Workaround for xterm.js issue #2831: even with macOptionIsMeta: false,
     // xterm fires ESC sequences for single-character Option+key events on macOS.
     // When passthrough is enabled we intercept those events, re-emit the
@@ -845,6 +890,113 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
     // These multi-character key names are not subject to the #2831 composition
     // bug, so xterm can handle them correctly without interception.
     return true;
+  }
+
+  /**
+   * Win32 input mode. Dead keys defer to the browser: neither the dead key's
+   * keydown nor the keydown of the character key it combines with is cancelled
+   * or encoded, and the keypress carrying the composed character becomes the
+   * keydown record, with the deferred keydown's virtual key.
+   */
+  #encodeWin32(
+    terminal: Terminal,
+    mode: Win32InputMode,
+    event: KeyboardEvent,
+  ): boolean {
+    const { type } = event;
+    if (mode.isImeKeyEvent(event)) {
+      return true;
+    }
+    if (type === "keydown") {
+      if (event.key === "Dead") {
+        this.#deadKey = "pending";
+      } else if (this.#deadKey === "composing") {
+        // The composed character's keypresses precede the next keydown.
+        this.#deadKey = "none";
+      } else if (
+        this.#deadKey === "pending" &&
+        isWin32ComposableKeyEvent(event)
+      ) {
+        this.#deadKey = "composing";
+      }
+      if (event.key === "Dead" || this.#deadKey === "composing") {
+        // Cancelling either keydown discards the composition; the browser
+        // delivers the result on the keypress, whose `keyCode` is the
+        // character, so the key's identity is kept here.
+        this.#deadKeyVirtualKey = mode.virtualKey(event);
+        event.stopPropagation();
+        return false;
+      }
+      if (isWin32ClipboardChord(event, mode.virtualKey(event))) {
+        this.#clipboardChordCodes.add(event.code);
+        return true;
+      }
+      this.#clipboardChordCodes.delete(event.code);
+    } else if (
+      type === "keyup" &&
+      this.#clipboardChordCodes.delete(event.code)
+    ) {
+      // The application never saw this key go down. The modifiers may be up
+      // already, so the chord is recognized by its key alone.
+      return true;
+    }
+    if (type === "keydown" || type === "keyup") {
+      terminal.input(
+        mode.encode(event, type === "keydown"),
+        !isWin32ModifierKeyOnlyEvent(event),
+      );
+    } else if (type === "keypress" && this.#deadKey !== "none") {
+      // Only a deferred keydown still produces keypresses, one per composed
+      // character (`'` then `q` yields two on US-International).
+      terminal.input(mode.encode(event, true, this.#deadKeyVirtualKey), true);
+    }
+    // A cancelled keydown produces no keypress, and a cancelled keypress
+    // inserts nothing, so xterm.js sends no duplicate legacy input.
+    event.preventDefault();
+    event.stopPropagation();
+    return false;
+  }
+
+  #registerWin32InputModeHandlers(terminal: Terminal): void {
+    const setHandler = terminal.parser.registerCsiHandler(
+        { final: "h", prefix: "?" },
+        (params) => {
+          if (
+            params.some((parameter) => parameter === 9001) &&
+            this.supportsWin32InputMode()
+          ) {
+            this.#win32InputMode ??= new Win32InputMode();
+            this.#win32InputModeActive = true;
+          }
+          // Preserve xterm.js processing for this and every unrelated mode.
+          return false;
+        },
+      ),
+      resetHandler = terminal.parser.registerCsiHandler(
+        { final: "l", prefix: "?" },
+        (params) => {
+          if (params.some((parameter) => parameter === 9001)) {
+            this.#resetWin32InputMode();
+          }
+          return false;
+        },
+      );
+
+    this.#disposer.push(
+      () => {
+        setHandler.dispose();
+      },
+      () => {
+        resetHandler.dispose();
+      },
+    );
+  }
+
+  #resetWin32InputMode(): void {
+    this.#win32InputModeActive = false;
+    this.#deadKey = "none";
+    this.#deadKeyVirtualKey = 0;
+    this.#clipboardChordCodes.clear();
   }
 
   #matches(event: KeyboardEvent, mapping: Settings.Keymapping): boolean {
@@ -926,6 +1078,30 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
     }
     return false;
   }
+}
+
+/**
+ * Whether the browser combines this key with a pending dead key: an
+ * unmodified character key. Chords get no character event on Windows, and
+ * modifier and navigation keys leave the dead key pending, as the OS does.
+ */
+function isWin32ComposableKeyEvent(event: KeyboardEvent): boolean {
+  return (
+    event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey
+  );
+}
+
+/** Keep modifier-only records from changing xterm's user-input state. */
+function isWin32ModifierKeyOnlyEvent(event: KeyboardEvent): boolean {
+  const { key } = event;
+  return (
+    key === "Alt" ||
+    key === "AltGraph" ||
+    key === "Control" ||
+    key === "ContextMenu" ||
+    key === "Meta" ||
+    key === "Shift"
+  );
 }
 
 /**
