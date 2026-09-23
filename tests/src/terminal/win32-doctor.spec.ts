@@ -417,7 +417,11 @@ describe("src/terminal/win32-doctor.ts", () => {
       const alias =
           "C:\\Users\\a\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe",
         storeSpawn =
-          (calls: string[], aliasRuns = true): Win32PythonSpawn =>
+          (
+            calls: string[],
+            aliasRuns = true,
+            canonicalErrno = "EACCES",
+          ): Win32PythonSpawn =>
           async (executable) => {
             calls.push(executable);
             if (
@@ -425,6 +429,9 @@ describe("src/terminal/win32-doctor.ts", () => {
               (aliasRuns && executable === alias)
             ) {
               return identityResult(STORE_PACKAGE_PYTHON);
+            }
+            if (executable === STORE_PACKAGE_PYTHON) {
+              return result({ code: null, errno: canonicalErrno });
             }
             return result({ code: 1, stderr: "Access is denied." });
           };
@@ -444,6 +451,21 @@ describe("src/terminal/win32-doctor.ts", () => {
         });
         expect(locate.mock.calls).toEqual([["python"]]);
         // The located path answered a probe of its own before it was used.
+        expect(calls).toEqual(["python", STORE_PACKAGE_PYTHON, alias]);
+      });
+
+      it("uses the alias fallback when the canonical path fails with EPERM", async () => {
+        const calls: string[] = [],
+          locate = vi.fn<Win32PathLocator>(async () => alias);
+        await expect(
+          diagnoseWindowsPython(storeSpawn(calls, true, "EPERM"), "", locate),
+        ).resolves.toMatchObject({
+          candidate: "python",
+          executable: alias,
+          hostExecutable: alias,
+          status: "ok",
+        });
+        expect(locate).toHaveBeenCalledWith("python");
         expect(calls).toEqual(["python", STORE_PACKAGE_PYTHON, alias]);
       });
 
@@ -703,6 +725,11 @@ describe("src/terminal/win32-doctor.ts", () => {
         (): Win32PythonProcessResult => {
           throw new Error("EACCES");
         },
+        true,
+      ],
+      [
+        "returns EACCES outside WindowsApps",
+        (): Win32PythonProcessResult => result({ code: null, errno: "EACCES" }),
         true,
       ],
       [

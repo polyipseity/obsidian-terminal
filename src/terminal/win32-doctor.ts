@@ -149,6 +149,8 @@ export interface Win32PythonDiagnosis {
   /** True when a probe timed out, threw, or never ran; callers must persist
    * nothing on it. */
   readonly transient?: boolean;
+  /** Spawn errno when the probe did not run. */
+  readonly errno?: string;
 }
 
 /**
@@ -316,14 +318,17 @@ export function classifyPythonResult(
     // Only a file that does not exist is decisive. A locked or denied
     // executable (antivirus, `EPERM`, `EBUSY`) says nothing about whether
     // Python is installed, and neither does a probe without an exit code.
-    return pythonDiagnosis(
-      executable,
-      candidate,
-      "missing",
-      `identity probe did not run (${result.errno ?? "no exit code"})`,
-      "",
-      true,
-    );
+    return {
+      ...pythonDiagnosis(
+        executable,
+        candidate,
+        "missing",
+        `identity probe did not run (${result.errno ?? "no exit code"})`,
+        "",
+        true,
+      ),
+      ...(result.errno ? { errno: result.errno } : {}),
+    };
   }
   if (isStoreStub(executable, result)) {
     return pythonDiagnosis(
@@ -525,7 +530,13 @@ async function settlePythonCandidate(
     if (confirmed.status === "ok") {
       return resolveHostExecutable(spawn, confirmed, confirmedIdentity);
     }
-    if (confirmed.transient ?? false) {
+    if (
+      (confirmed.transient ?? false) &&
+      !(
+        /[\\/]WindowsApps[\\/]/iu.test(canonicalExecutable) &&
+        (confirmed.errno === "EACCES" || confirmed.errno === "EPERM")
+      )
+    ) {
       return confirmed;
     }
     unconfirmed = true;
