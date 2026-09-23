@@ -1170,6 +1170,7 @@ function constructConPty(
     cwd?: URL | string;
     rows?: number;
     environment?: readonly (readonly [string, string])[];
+    conPtyRuntimeUnavailable?: () => boolean;
   }>,
   t = vi.fn((key: string) => key),
 ): ConPtyPseudoterminal {
@@ -1179,7 +1180,8 @@ function constructConPty(
         onChangeLanguage: { listen: vi.fn(() => vi.fn()) },
         value: { t },
       },
-      settings: { value: { errorNoticeTimeout: 0 } },
+      register: vi.fn(),
+      settings: { value: { errorNoticeTimeout: 0, prewarmConPty: true } },
     } as unknown as TerminalPlugin,
     {
       ...initialSize,
@@ -1191,6 +1193,40 @@ function constructConPty(
 }
 
 describe("ConPTY ready transition", () => {
+  it.each([
+    ["true", (): boolean => true, false],
+    ["false", (): boolean => false, true],
+    ["absent", undefined, true],
+  ] as const)(
+    "prewarms only when the breaker predicate is %s",
+    async (_name, predicate, shouldPrewarm) => {
+      const host = testHost(),
+        hostPid = liveHostPid(host),
+        ready = Object.freeze(readyEvent(hostPid, hostPid + 1)),
+        pool = {
+          acquire: vi.fn(() => null),
+          dispose: vi.fn(),
+          ensureSpare: vi.fn(),
+        },
+        dependencies = {
+          ...conPtyDependencies(
+            fakeControl(Promise.resolve(ready), () => host.kill()),
+            host,
+          ),
+          pool: pool as unknown as ConPtyHostPool,
+        },
+        pty = constructConPty(dependencies, {
+          conPtyRuntimeUnavailable: predicate,
+        });
+
+      await pty.shell;
+      await Promise.resolve();
+      expect(pool.ensureSpare).toHaveBeenCalledTimes(shouldPrewarm ? 1 : 0);
+      await pty.kill();
+      await pty.onExit;
+    },
+  );
+
   it("resolves the shell only against the live host's ready event", async () => {
     const host = testHost(),
       hostPid = liveHostPid(host),

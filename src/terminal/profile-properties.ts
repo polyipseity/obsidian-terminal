@@ -298,6 +298,11 @@ export const PROFILE_PROPERTIES: {
         environment,
         executable,
         pythonExecutable: spawnPythonExecutable,
+        conPtyRuntimeUnavailable: () =>
+          isConPtyRuntimeUnavailable(
+            effectivePythonExecutable,
+            fallbackPythonExecutable,
+          ),
         rows: options?.rows,
         win32Backend: backend,
       });

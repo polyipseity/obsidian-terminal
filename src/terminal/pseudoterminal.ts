@@ -982,6 +982,7 @@ export interface ShellPseudoterminalArguments {
   readonly args?: readonly string[] | undefined;
   readonly environment?: readonly (readonly [string, string])[] | undefined;
   readonly pythonExecutable?: string | undefined;
+  readonly conPtyRuntimeUnavailable?: (() => boolean) | undefined;
   readonly win32Backend?: Settings.Profile.Win32Backend | undefined;
   readonly columns?: number | undefined;
   readonly rows?: number | undefined;
@@ -2524,6 +2525,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
       environment,
       executable,
       pythonExecutable,
+      conPtyRuntimeUnavailable,
       rows,
     }: ShellPseudoterminalArguments,
     dependencies: ConPtyPseudoterminalDependencies = CONPTY_DEPENDENCIES,
@@ -2782,7 +2784,11 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
     // respawns a broken interpreter.
     this.shell
       .then(() => {
-        if (settings.value.prewarmConPty && pythonExecutable)
+        if (
+          settings.value.prewarmConPty &&
+          pythonExecutable &&
+          !(conPtyRuntimeUnavailable?.() ?? false)
+        )
           pool?.ensureSpare(pythonExecutable, dependencies);
       })
       .catch(noop);

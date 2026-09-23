@@ -76,6 +76,7 @@ import { Settings } from "../../../src/settings-data.js";
 import { PROFILE_PRESETS } from "../../../src/terminal/profile-presets.js";
 import {
   clearWindowsPythonDiagnoses,
+  invalidateConPtyRuntime,
   isConPtyRuntimeUnavailable,
   runPluginPythonCheck,
 } from "../../../src/terminal/win32-doctor.js";
@@ -246,6 +247,20 @@ describe("openProfile with saved Windows backend choices", () => {
       win32Backend: "legacy",
       win32BackendAutoDemoted: true,
     });
+  });
+
+  it("passes a live breaker predicate keyed by the effective Python", async () => {
+    const ctx = context();
+    await openProfile(ctx, integratedProfile());
+    const predicate = spawn.mock.calls[0]?.[0].conPtyRuntimeUnavailable;
+    const effective = checkWindowsPythonMock.mock.calls[0]?.[1];
+    expect(effective).toBeDefined();
+    expect(predicate?.()).toBe(false);
+    invalidateConPtyRuntime(
+      effective ?? "",
+      ctx.settings.value.pythonExecutable,
+    );
+    expect(predicate?.()).toBe(true);
   });
 
   it("preserves an explicit saved legacy choice when Python is healthy", async () => {
