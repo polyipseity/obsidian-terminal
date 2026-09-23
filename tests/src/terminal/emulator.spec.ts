@@ -32,6 +32,61 @@ function stubAddons(
 }
 
 describe("XtermTerminalEmulator lifecycle", () => {
+  it.each([
+    {
+      description: "restores a mid-page scroll position",
+      scrollLine: (baseY: number): number => baseY - 2,
+      expectedLine: (baseY: number): number => baseY - 2,
+    },
+    {
+      description: "restores the bottom sentinel to the bottom",
+      scrollLine: (): number => XtermTerminalEmulator.State.SCROLL_LINE_BOTTOM,
+      expectedLine: (baseY: number): number => baseY,
+    },
+    {
+      description: "clamps a scroll position beyond the buffer",
+      scrollLine: (baseY: number): number => baseY + 1,
+      expectedLine: (baseY: number): number => baseY,
+    },
+  ])("$description", async ({ scrollLine, expectedLine }) => {
+    const baseY = 92;
+    const state: XtermTerminalEmulator.State = {
+        columns: 80,
+        data: Array.from(
+          { length: 101 },
+          (_, line) => `${String(line)}\r\n`,
+        ).join(""),
+        rows: 10,
+        scrollLine: scrollLine(baseY),
+      },
+      emulator = new XtermTerminalEmulator(
+        document.createElement("div"),
+        vi.fn((): Pseudoterminal => ({
+          kill: vi.fn(),
+          onExit: Promise.resolve(0),
+          pipe: vi.fn(),
+        })),
+        state,
+        undefined,
+        stubAddons(),
+      );
+    const scrollToLine = vi.spyOn(emulator.terminal, "scrollToLine"),
+      scrollToBottom = vi.spyOn(emulator.terminal, "scrollToBottom");
+    try {
+      await emulator.pseudoterminal;
+      expect(emulator.terminal.buffer.active.baseY).toBe(baseY);
+      if (
+        scrollLine(baseY) === XtermTerminalEmulator.State.SCROLL_LINE_BOTTOM
+      ) {
+        expect(scrollToBottom).toHaveBeenCalledOnce();
+      } else {
+        expect(scrollToLine).toHaveBeenCalledWith(expectedLine(baseY));
+      }
+    } finally {
+      await emulator.close(false);
+    }
+  });
+
   it("waits for the pseudoterminal before resizing it", async () => {
     const pseudoterminal: Pseudoterminal = {
       kill: vi.fn(),

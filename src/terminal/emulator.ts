@@ -182,8 +182,10 @@ export class XtermTerminalEmulator<A> {
         }
         // User was scrolled up - restore exact position with bounds checking
         const { active } = terminal.buffer,
-          maxScrollY = Math.max(0, active.baseY - terminal.rows + 1),
-          safeScrollLine = Math.min(Math.max(0, state.scrollLine), maxScrollY);
+          safeScrollLine = Math.min(
+            Math.max(0, state.scrollLine),
+            active.baseY,
+          );
         terminal.scrollToLine(safeScrollLine);
       });
     }
