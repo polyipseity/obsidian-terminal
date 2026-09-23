@@ -1113,10 +1113,9 @@ if sys.platform == "win32":
                     pipe_name, "r+b", buffering=0
                 )
                 try:
-                    # One FileIO serving both directions deadlocks: a blocked
-                    # synchronous read also blocks a write until it is
-                    # cancelled, even through a duplicate handle. Hence the
-                    # independent writer.
+                    # A duplicate avoids the FileIO-level read/write deadlock,
+                    # but the shared synchronous file object still serializes
+                    # I/O. Skip the exit write if the reader cannot stop.
                     writer = _duplicate_control_writer(reader)
                 except OSError:
                     reader.close()
@@ -1229,11 +1228,9 @@ if sys.platform == "win32":
                 try:
                     self._stop_control_reader()
                 except OSError as error:
-                    # A reader that survives its cancel window must not cost
-                    # the exit report: the child's code still reaches the
-                    # plugin, and the host still exits with it.
                     diagnose(f"control reader did not stop: {error}")
-                self._send({"event": "exit", "code": code})
+                else:
+                    self._send({"event": "exit", "code": code})
             finally:
                 self._close_control()
             return code

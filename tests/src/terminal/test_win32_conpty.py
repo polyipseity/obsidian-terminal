@@ -839,6 +839,32 @@ def test_child_start_error_carries_the_exit_code() -> None:
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize("reader_stops", (True, False))
+def test_session_reports_exit_only_after_control_reader_stops(
+    monkeypatch: pytest.MonkeyPatch, reader_stops: bool
+) -> None:
+    """A stuck reader cannot block the exit write or prevent channel closure."""
+    host = _MODULE._ConPtyHost(_MODULE.HostArguments(80, 24, "pipe", ("cmd",)), "token")
+    stop = Mock(side_effect=None if reader_stops else OSError("cancel timed out"))
+    send = Mock()
+    close = Mock()
+    monkeypatch.setattr(host, "_start", Mock())
+    monkeypatch.setattr(host, "_supervise", Mock(return_value=42))
+    monkeypatch.setattr(host, "_finish", Mock())
+    monkeypatch.setattr(host, "_stop_control_reader", stop)
+    monkeypatch.setattr(host, "_send", send)
+    monkeypatch.setattr(host, "_close_control", close)
+
+    assert host._run_session() == 42
+    stop.assert_called_once_with()
+    close.assert_called_once_with()
+    if reader_stops:
+        send.assert_called_once_with({"event": "exit", "code": 42})
+    else:
+        send.assert_not_called()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
 def test_start_rejects_missing_cwd_before_creating_pipes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
