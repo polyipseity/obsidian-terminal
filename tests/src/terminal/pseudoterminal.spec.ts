@@ -36,6 +36,7 @@ import {
   splitConPtyLines,
   writeTerminalSliced,
 } from "../../../src/terminal/pseudoterminal.js";
+import { conPtyFailureCondemnsRuntime } from "../../../src/terminal/profile-properties.js";
 import { pseudoterminal } from "../../support/helpers.js";
 
 afterEach(() => {
@@ -1192,6 +1193,15 @@ function constructConPty(
   );
 }
 
+function observeConPtyRuntimeFailure(pty: ConPtyPseudoterminal) {
+  const reportConPtyRuntimeFailure = vi.fn();
+  pty.shell.catch(async (error: unknown) => {
+    const exit = await pty.onExit.catch(() => null);
+    if (conPtyFailureCondemnsRuntime(error, exit)) reportConPtyRuntimeFailure();
+  });
+  return reportConPtyRuntimeFailure;
+}
+
 describe("ConPTY ready transition", () => {
   it.each([
     ["true", (): boolean => true, false],
@@ -1370,6 +1380,273 @@ describe("ConPTY ready transition", () => {
     );
     await pty.kill();
     await pty.onExit;
+  });
+
+  it.each(["exit", "error", "close"] as const)(
+    "cold-spawns when an acquired spare has a pre-hello %s",
+    async (failure) => {
+      let rejectHello: (error: ConPtyControlError) => void = () => {};
+      const spareHost = testHost(
+          "process.stdin.once('data', () => process.exit(0)); process.stdin.resume()",
+        ),
+        coldHost = testHost(
+          "process.stdin.once('data', () => process.exit(23)); process.stdin.resume()",
+        ),
+        warmControl = {
+          ...fakeControl(new Promise(() => {}), () => spareHost.kill()),
+          hello: new Promise<Awaited<ConPtyControlChannel["hello"]>>(
+            (_resolve, reject) => {
+              rejectHello = reject;
+            },
+          ),
+          start: vi.fn().mockResolvedValue(undefined),
+        },
+        coldControl = fakeControl(
+          Promise.resolve(readyEvent(liveHostPid(coldHost))),
+          () => coldHost.kill(),
+        ),
+        pool = {
+          acquire: vi.fn(() => ({ control: warmControl, host: spareHost })),
+          dispose: vi.fn(),
+          ensureSpare: vi.fn(),
+        },
+        dependencies = {
+          ...conPtyDependencies(coldControl, coldHost),
+          pool: pool as unknown as ConPtyHostPool,
+        },
+        killSpare = vi.spyOn(spareHost, "kill"),
+        pty = constructConPty(dependencies),
+        reportConPtyRuntimeFailure = observeConPtyRuntimeFailure(pty);
+
+      await vi.waitFor(() => {
+        expect(warmControl.start).toHaveBeenCalledOnce();
+      });
+      if (failure === "exit") spareHost.stdin.write("exit");
+      else rejectHello(new ConPtyControlError("disconnected", failure));
+      expect(await pty.shell).toBe(coldHost);
+      coldHost.stdin.write("exit");
+      await expect(pty.onExit).resolves.toBe(23);
+      expect(dependencies.spawn).toHaveBeenCalledOnce();
+      expect(pool.acquire).toHaveBeenCalledOnce();
+      expect(warmControl.dispose).toHaveBeenCalledOnce();
+      expect(killSpare).toHaveBeenCalled();
+      if (failure !== "exit") expect(spareHost.killed).toBe(true);
+      expect(reportConPtyRuntimeFailure).not.toHaveBeenCalled();
+    },
+  );
+
+  it("reports a warm session failure after hello", async () => {
+    let rejectReady: (error: ConPtyControlError) => void = () => {};
+    const host = testHost(),
+      warmControl = {
+        ...fakeControl(
+          new Promise<ConPtyReadyEvent>((_resolve, reject) => {
+            rejectReady = reject;
+          }),
+          () => host.kill(),
+        ),
+        start: vi.fn().mockResolvedValue(undefined),
+      },
+      pool = {
+        acquire: vi.fn(() => ({ control: warmControl, host })),
+        dispose: vi.fn(),
+        ensureSpare: vi.fn(),
+      },
+      dependencies = {
+        ...conPtyDependencies(warmControl, host),
+        pool: pool as unknown as ConPtyHostPool,
+      },
+      pty = constructConPty(dependencies),
+      reportConPtyRuntimeFailure = observeConPtyRuntimeFailure(pty);
+
+    await vi.waitFor(() => {
+      expect(warmControl.start).toHaveBeenCalledOnce();
+    });
+    await warmControl.hello;
+    rejectReady(new ConPtyControlError("disconnected"));
+    await expect(pty.shell).rejects.toMatchObject({ reason: "disconnected" });
+    await pty.onExit;
+    await vi.waitFor(() => {
+      expect(reportConPtyRuntimeFailure).toHaveBeenCalledOnce();
+    });
+    expect(dependencies.spawn).not.toHaveBeenCalled();
+  });
+
+  it("reports one cold failure after a discarded spare", async () => {
+    let rejectHello: (error: ConPtyControlError) => void = () => {},
+      rejectReady: (error: ConPtyControlError) => void = () => {};
+    const spareHost = testHost(),
+      coldHost = testHost(),
+      warmControl = {
+        ...fakeControl(new Promise(() => {}), () => spareHost.kill()),
+        hello: new Promise<Awaited<ConPtyControlChannel["hello"]>>(
+          (_resolve, reject) => {
+            rejectHello = reject;
+          },
+        ),
+        start: vi.fn().mockResolvedValue(undefined),
+      },
+      coldControl = fakeControl(
+        new Promise<ConPtyReadyEvent>((_resolve, reject) => {
+          rejectReady = reject;
+        }),
+        () => coldHost.kill(),
+      ),
+      pool = {
+        acquire: vi.fn(() => ({ control: warmControl, host: spareHost })),
+        dispose: vi.fn(),
+        ensureSpare: vi.fn(),
+      },
+      dependencies = {
+        ...conPtyDependencies(coldControl, coldHost),
+        pool: pool as unknown as ConPtyHostPool,
+      },
+      pty = constructConPty(dependencies),
+      reportConPtyRuntimeFailure = observeConPtyRuntimeFailure(pty);
+
+    await vi.waitFor(() => {
+      expect(warmControl.start).toHaveBeenCalledOnce();
+    });
+    rejectHello(new ConPtyControlError("disconnected"));
+    await vi.waitFor(() => {
+      expect(dependencies.spawn).toHaveBeenCalledOnce();
+    });
+    rejectReady(new ConPtyControlError("disconnected"));
+    await expect(pty.shell).rejects.toMatchObject({ reason: "disconnected" });
+    await pty.onExit;
+    await vi.waitFor(() => {
+      expect(reportConPtyRuntimeFailure).toHaveBeenCalledOnce();
+    });
+    expect(pool.acquire).toHaveBeenCalledOnce();
+    expect(warmControl.dispose).toHaveBeenCalledOnce();
+    expect(coldControl.dispose).toHaveBeenCalledOnce();
+  });
+
+  it("does not cold-spawn when the terminal closes before a warm hello", async () => {
+    const host = testHost(),
+      control = {
+        ...fakeControl(new Promise(() => {}), () => host.kill()),
+        hello: new Promise<Awaited<ConPtyControlChannel["hello"]>>(() => {}),
+        start: vi.fn().mockResolvedValue(undefined),
+      },
+      pool = {
+        acquire: vi.fn(() => ({ control, host })),
+        dispose: vi.fn(),
+        ensureSpare: vi.fn(),
+      },
+      dependencies = {
+        ...conPtyDependencies(control, host),
+        pool: pool as unknown as ConPtyHostPool,
+      },
+      pty = constructConPty(dependencies),
+      shellFailure = expect(pty.shell).rejects.toMatchObject({
+        reason: "aborted",
+      });
+
+    await vi.waitFor(() => {
+      expect(control.start).toHaveBeenCalledOnce();
+    });
+    await pty.kill();
+    await shellFailure;
+    await expect(pty.onExit).rejects.toMatchObject({ reason: "aborted" });
+    expect(dependencies.spawn).not.toHaveBeenCalled();
+  });
+
+  it("aborts when closing interrupts disposal of a failed pre-hello spare", async () => {
+    let rejectHello: (error: ConPtyControlError) => void = () => {},
+      rejectReady: (error: ConPtyControlError) => void = () => {},
+      finishDisposal = (): void => {};
+    const host = testHost(),
+      disposal = new Promise<void>((resolve) => {
+        finishDisposal = resolve;
+      }),
+      control = {
+        ...fakeControl(
+          new Promise<ConPtyReadyEvent>((_resolve, reject) => {
+            rejectReady = reject;
+          }),
+          () => host.kill(),
+        ),
+        dispose: vi.fn(() => {
+          rejectReady(new ConPtyControlError("aborted"));
+          return disposal;
+        }),
+        hello: new Promise<Awaited<ConPtyControlChannel["hello"]>>(
+          (_resolve, reject) => {
+            rejectHello = reject;
+          },
+        ),
+        start: vi.fn().mockResolvedValue(undefined),
+      },
+      pool = {
+        acquire: vi.fn(() => ({ control, host })),
+        dispose: vi.fn(),
+        ensureSpare: vi.fn(),
+      },
+      dependencies = {
+        ...conPtyDependencies(control, host),
+        pool: pool as unknown as ConPtyHostPool,
+      },
+      pty = constructConPty(dependencies),
+      reportConPtyRuntimeFailure = observeConPtyRuntimeFailure(pty),
+      shellFailure = expect(pty.shell).rejects.toMatchObject({
+        reason: "aborted",
+      });
+
+    await vi.waitFor(() => {
+      expect(control.start).toHaveBeenCalledOnce();
+    });
+    rejectHello(new ConPtyControlError("disconnected"));
+    await vi.waitFor(() => {
+      expect(control.dispose).toHaveBeenCalledOnce();
+    });
+    const killing = pty.kill();
+    finishDisposal();
+    await killing;
+    await shellFailure;
+    await pty.onExit.catch(() => null);
+    expect(dependencies.spawn).not.toHaveBeenCalled();
+    expect(control.dispose).toHaveBeenCalledOnce();
+    expect(host.killed).toBe(true);
+    expect(reportConPtyRuntimeFailure).not.toHaveBeenCalled();
+  });
+
+  it("kills a spare while warm start is pending and aborts its cold fallback", async () => {
+    let rejectStart: (error: Error) => void = () => {};
+    const host = testHost(),
+      control = {
+        ...fakeControl(new Promise(() => {}), () => host.kill()),
+        start: vi.fn(
+          () =>
+            new Promise<void>((_resolve, reject) => {
+              rejectStart = reject;
+            }),
+        ),
+      },
+      pool = {
+        acquire: vi.fn(() => ({ control, host })),
+        dispose: vi.fn(),
+        ensureSpare: vi.fn(),
+      },
+      dependencies = {
+        ...conPtyDependencies(control, host),
+        pool: pool as unknown as ConPtyHostPool,
+      },
+      pty = constructConPty(dependencies),
+      shellFailure = expect(pty.shell).rejects.toMatchObject({
+        reason: "aborted",
+      });
+
+    await vi.waitFor(() => {
+      expect(control.start).toHaveBeenCalledOnce();
+    });
+    await pty.kill();
+    expect(host.killed).toBe(true);
+    rejectStart(new Error("start failed after close"));
+    await shellFailure;
+    await pty.onExit.catch(() => null);
+    expect(control.dispose).toHaveBeenCalledOnce();
+    expect(dependencies.spawn).not.toHaveBeenCalled();
   });
 
   it("cold-spawns when a non-ASCII start op exceeds the byte cap", async () => {

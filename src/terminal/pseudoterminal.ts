@@ -2506,7 +2506,13 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
   public readonly onExit;
   protected readonly control;
   protected readonly host;
+  /** Current attempt changes once when an acquired spare fails before hello. */
+  #activeSession: Promise<{
+    readonly control: ConPtyControlChannel;
+    readonly host: PipedChildProcess;
+  }>;
   readonly #dispose;
+  #closing = false;
   #ready = false;
   #resizeSeq = 0;
   /** Open while conhost's post-resize repaint frames may still arrive.
@@ -2535,6 +2541,13 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
       warm = pythonExecutable
         ? (pool?.acquire(pythonExecutable) ?? null)
         : null;
+    let spareDisposing: Promise<void> | null = null;
+    const disposeSpare = (control0: ConPtyControlChannel): Promise<void> => {
+      spareDisposing ??= control0.dispose().catch((error: unknown) => {
+        self.console.warn(error);
+      });
+      return spareDisposing;
+    };
     /*
      * The host applies the working directory on both paths, so a missing one
      * is its shell-start exit code. As a spawn option it would fail the host
@@ -2641,7 +2654,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
           return null;
         }
       },
-      session = (async (): Promise<{
+      initialSession = (async (): Promise<{
         readonly control: ConPtyControlChannel;
         readonly host: PipedChildProcess;
       }> => {
@@ -2652,6 +2665,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
         }
         if (warm) {
           const started = await startWarmHost(warm);
+          if (this.#closing) throw new ConPtyControlError("aborted");
           if (started === "declined") {
             pool?.release(pythonExecutable, warm);
           } else if (started) {
@@ -2660,13 +2674,54 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
             if (isRunning(warm.host)) {
               warm.host.kill();
             }
-            await warm.control.dispose().catch((error: unknown) => {
-              self.console.warn(error);
-            });
+            await disposeSpare(warm.control);
           }
         }
-        return spawnColdHost(pythonExecutable);
-      })(),
+        if (this.#closing) throw new ConPtyControlError("aborted");
+        this.#activeSession = spawnColdHost(pythonExecutable);
+        return this.#activeSession;
+      })();
+    this.#activeSession = warm
+      ? Promise.resolve({ control: warm.control, host: warm.host })
+      : initialSession;
+    const session = initialSession.then(async (started) => {
+        if (!warm || started.control !== warm.control) return started;
+        // A spare is only a real session after hello. Before that, its exit
+        // or control failure belongs to the pool, not this terminal.
+        const greeted = await new Promise<boolean>((resolve) => {
+          const onExit = (): void => {
+              finish(false);
+            },
+            finish = (value: boolean): void => {
+              started.host.off("exit", onExit);
+              resolve(value);
+            };
+          started.host.once("exit", onExit);
+          started.control.hello.then(
+            () => {
+              finish(true);
+            },
+            () => {
+              finish(false);
+            },
+          );
+          started.control.ready.then(
+            () => {
+              finish(true);
+            },
+            () => {
+              finish(false);
+            },
+          );
+          if (!isRunning(started.host)) finish(false);
+        });
+        if (greeted || !pythonExecutable) return started;
+        started.host.kill();
+        await disposeSpare(started.control);
+        if (this.#closing) throw new ConPtyControlError("aborted");
+        this.#activeSession = spawnColdHost(pythonExecutable);
+        return this.#activeSession;
+      }),
       control: Promise<ConPtyControlChannel> = session.then(
         (session0) => session0.control,
       );
@@ -2683,10 +2738,12 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
       })
       .catch(noop);
     let disposing: Promise<void> | null = null;
-    const dispose = (): Promise<void> => {
+    const dispose = (selected?: ConPtyControlChannel): Promise<void> => {
       disposing ??= (async (): Promise<void> => {
         try {
-          await (await control).dispose();
+          const control0 = selected ?? (await control);
+          if (warm && control0 === warm.control) await disposeSpare(control0);
+          else await control0.dispose();
         } catch (error) {
           self.console.warn(error);
         }
@@ -2795,15 +2852,18 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
   }
 
   public async kill(): Promise<void> {
-    const [shell, control] = await Promise.all([this.host, this.control]);
+    this.#closing = true;
+    const { host: shell, control } = this.#ready
+      ? { host: await this.host, control: await this.control }
+      : await this.#activeSession;
     if (!this.#ready) {
       if (isRunning(shell) && !shell.kill()) {
-        await this.#dispose();
+        await this.#dispose(control);
         throw new Error(
           this.context.language.value.t("errors.error-killing-pseudoterminal"),
         );
       }
-      await this.#dispose();
+      await this.#dispose(control);
       return;
     }
     try {
@@ -2845,7 +2905,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
   }
 
   public async pipe(terminal: Terminal): Promise<void> {
-    // Gate on the host process, not readiness: nothing arrives before the
+    // Gate on the selected host, not readiness: nothing arrives before the
     // host resumes the child.
     const shell = await this.host;
     await pipeShellToTerminal(terminal, shell, [shell.stdout], this.onExit, {
