@@ -838,6 +838,41 @@ def test_child_start_error_carries_the_exit_code() -> None:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+def test_start_rejects_missing_cwd_before_creating_pipes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An unavailable cwd fails as a shell error without allocating pipes."""
+    arguments = _MODULE.HostArguments(80, 24, "pipe", ("cmd",), "missing")
+    host = _MODULE._ConPtyHost(arguments, "token")
+    create_pipe = Mock(side_effect=AssertionError("pipe should not be created"))
+    monkeypatch.setattr(_MODULE.os, "chdir", Mock(side_effect=FileNotFoundError()))
+    monkeypatch.setattr(_MODULE, "_create_pipe", create_pipe)
+
+    with pytest.raises(_MODULE.ChildStartError) as error:
+        host._start()
+
+    assert error.value.exit_code == _MODULE._EXIT_SHELL_START_FAILED
+    create_pipe.assert_not_called()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+def test_start_closes_first_pipe_pair_when_second_pipe_creation_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The first pipe pair is released if creating the output pair fails."""
+    host = _MODULE._ConPtyHost(_MODULE.HostArguments(80, 24, "pipe", ("cmd",)), "token")
+    create_pipe = Mock(side_effect=[(101, 102), OSError("second pipe failed")])
+    close = Mock()
+    monkeypatch.setattr(_MODULE, "_create_pipe", create_pipe)
+    monkeypatch.setattr(_MODULE, "_close", close)
+
+    with pytest.raises(OSError, match="second pipe failed"):
+        host._start()
+
+    assert close.call_args_list == [((101,),), ((102,),)]
+
+
 class _HostResult(NamedTuple):
     """What one supervised ConPTY host run produced."""
 

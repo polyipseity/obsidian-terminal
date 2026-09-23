@@ -1258,9 +1258,6 @@ if sys.platform == "win32":
             arguments = self._arguments
             if arguments is None:
                 raise OSError("the session arguments are missing")
-            input_read, self._input_write = _create_pipe()
-            self._output_read, output_write = _create_pipe()
-
             cwd = arguments.cwd
             if cwd is not None:
                 # The host enters the profile's directory itself, so a missing
@@ -1275,6 +1272,15 @@ if sys.platform == "win32":
                         f"working directory unavailable: {cwd}",
                         _EXIT_SHELL_START_FAILED,
                     ) from error
+
+            input_read, self._input_write = _create_pipe()
+            try:
+                self._output_read, output_write = _create_pipe()
+            except BaseException:
+                _close(input_read)
+                _close(self._input_write)
+                self._input_write = 0
+                raise
 
             def create_session() -> tuple[int, int, int]:
                 """Create ConPTY and its suspended child before pipe cleanup."""
