@@ -8,9 +8,33 @@
  * - `onPaneMenu()` includes a "Rename" menu item
  * - "rename-terminal" command is registered
  */
+import { ChildProcess, spawn } from "node:child_process";
+import { once } from "node:events";
+import { PassThrough } from "node:stream";
 import * as library from "@polyipseity/obsidian-plugin-library";
 import { WorkspaceLeaf } from "obsidian";
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import { SerializeAddon } from "@xterm/addon-serialize";
+import * as profileProperties from "../../../src/terminal/profile-properties.js";
 import { afterEach, describe, it, expect, vi } from "vitest";
+
+const platform = vi.hoisted(() => ({ windows: false }));
+vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@polyipseity/obsidian-plugin-library")
+    >();
+  return {
+    ...actual,
+    Platform: {
+      ...actual.Platform,
+      get CURRENT() {
+        return platform.windows ? "win32" : actual.Platform.CURRENT;
+      },
+    },
+  };
+});
 
 /*
  * Mock `src/imports.js` — the BUNDLE map provides lazy `require()` loaders for
@@ -54,8 +78,17 @@ import {
   settleTerminalBackendOptions,
 } from "../../../src/terminal/view.js";
 import { Settings } from "../../../src/settings-data.js";
+import { TERMINAL_CONPTY_HOST_EXIT_WAIT } from "../../../src/magic.js";
+import * as environment from "../../../src/terminal/environment.js";
 import { mergeTerminalOptions } from "../../../src/terminal/options.js";
-import type { Pseudoterminal } from "../../../src/terminal/pseudoterminal.js";
+import {
+  ConPtyControlError,
+  ConPtyPseudoterminal,
+  type ConPtyControlChannel,
+  type ConPtyPseudoterminalDependencies,
+  type ConPtyReadyEvent,
+  type Pseudoterminal,
+} from "../../../src/terminal/pseudoterminal.js";
 import { pseudoterminal, tick } from "../../support/helpers.js";
 
 describe("src/terminal/view.ts", () => {
@@ -73,15 +106,28 @@ describe("src/terminal/view.ts", () => {
       public stopEmulator(): void {
         this.emulator = null;
       }
+
+      public createConPty(
+        dependencies: ConPtyPseudoterminalDependencies,
+      ): ConPtyPseudoterminal {
+        return new ConPtyPseudoterminal(
+          this.context,
+          { executable: "cmd.exe", pythonExecutable: "python" },
+          dependencies,
+        );
+      }
     }
 
     afterEach(() => {
+      platform.windows = false;
+      vi.useRealTimers();
       vi.restoreAllMocks();
     });
 
     async function startView(
       ...ptys: readonly Promise<Pseudoterminal>[]
     ): Promise<TestView> {
+      platform.windows = true;
       const pending = ptys.values();
       vi.spyOn(library, "awaitCSS").mockImplementation(async (element) => {
         Object.assign(element, { onWindowMigrated: vi.fn() });
@@ -97,7 +143,8 @@ describe("src/terminal/view.ts", () => {
           return {
             addons,
             close: vi.fn(async () => {
-              await (await pty).kill();
+              const opened = await pty.catch(() => null);
+              await opened?.kill();
             }),
             pseudoterminal: pty,
             resize: vi.fn().mockResolvedValue(undefined),
@@ -122,6 +169,258 @@ describe("src/terminal/view.ts", () => {
       vi.mocked(library.notice2).mockClear();
       return view;
     }
+
+    it("forwards the emulator factory's abort signal into openProfile", async () => {
+      const exit = Promise.withResolvers<number>(),
+        view = await startView(
+          Promise.resolve({ ...pseudoterminal(), onExit: exit.promise }),
+        ),
+        call = vi.mocked(TerminalView.EMULATOR).mock.calls[0];
+      if (!call?.[4]) throw new Error("Missing emulator factory or addons");
+      const [, factory, , , addons] = call,
+        controller = new AbortController(),
+        terminal = new Terminal(),
+        aborted = new ConPtyControlError("aborted"),
+        open = vi
+          .spyOn(profileProperties, "openProfile")
+          .mockRejectedValue(aborted);
+      try {
+        controller.abort();
+        await expect(
+          factory(
+            terminal,
+            {
+              ...addons,
+              fit: new FitAddon(),
+              serialize: new SerializeAddon(),
+            },
+            controller.signal,
+          ),
+        ).rejects.toBe(aborted);
+        expect(open).toHaveBeenCalledExactlyOnceWith(
+          expect.anything(),
+          expect.anything(),
+          expect.objectContaining({ signal: controller.signal }),
+        );
+      } finally {
+        terminal.dispose();
+        view.stopEmulator();
+        exit.resolve(0);
+      }
+    });
+
+    const startupExits = [
+      [9009, "errors.win32-exit-9009"],
+      [251, "errors.win32-exit-251"],
+      [0xc0000142, "errors.win32-exit-c0000142"],
+      [-1073741502, "errors.win32-exit-c0000142"],
+    ] satisfies readonly (readonly [number, string])[];
+
+    function expectExitNotice(key: string): void {
+      expect(library.notice2).toHaveBeenCalledOnce();
+      expect(vi.mocked(library.notice2).mock.calls[0]?.[0]()).toBe(key);
+    }
+
+    async function startConPtyView() {
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      vi.spyOn(environment, "applyEnv").mockResolvedValue({});
+      const opened = Promise.withResolvers<Pseudoterminal>(),
+        view = await startView(opened.promise),
+        ready = Promise.withResolvers<ConPtyReadyEvent>(),
+        stdin = new PassThrough(),
+        stdout = new PassThrough(),
+        stderr = new PassThrough(),
+        host = Object.assign(new ChildProcess(), {
+          pid: 100,
+          stdin,
+          stdout,
+          stderr,
+          stdio: [stdin, stdout, stderr, null, null] satisfies Awaited<
+            ReturnType<ConPtyPseudoterminalDependencies["spawn"]>
+          >["stdio"],
+        }),
+        control: ConPtyControlChannel = {
+          armReadyDeadline: vi.fn(),
+          dispose: vi.fn(async () => {
+            ready.reject(new ConPtyControlError("aborted"));
+          }),
+          hello: Promise.resolve({
+            childPid: 200,
+            event: "hello",
+            hostPid: 100,
+            token: "token",
+          }),
+          kill: vi.fn().mockResolvedValue(undefined),
+          path: "test-control-pipe",
+          ready: ready.promise,
+          reportedExitCode: vi.fn(() => null),
+          resize: vi.fn().mockResolvedValue(undefined),
+          token: "token",
+        };
+      vi.spyOn(host, "kill").mockImplementation(() => {
+        Object.assign(host, { signalCode: "SIGTERM" });
+        host.emit("exit", null, "SIGTERM");
+        return true;
+      });
+      const pty = view.createConPty({
+        createControl: vi.fn().mockResolvedValue(control),
+        materializeSource: vi.fn().mockResolvedValue("test-host.py"),
+        source: Promise.resolve("test host"),
+        spawn: vi.fn().mockResolvedValue(host),
+      });
+      // ShellPseudoterminal normally supplies the selected backend tag.
+      opened.resolve(
+        Object.assign(pty, {
+          win32Backend: "conpty",
+        } satisfies Pick<Pseudoterminal, "win32Backend">),
+      );
+      await tick();
+      return { host, pty, ready, view };
+    }
+
+    it.each([
+      ["timeout", "errors.conpty-readiness-timeout"],
+      ["unauthenticated", "errors.conpty-control-unauthenticated"],
+      ["protocol", "errors.conpty-control-unauthenticated"],
+      ["disconnected", "errors.conpty-control-unauthenticated"],
+    ] satisfies readonly (readonly [ConPtyControlError["reason"], string])[])(
+      "announces a ConPTY %s startup failure exactly once",
+      async (reason, key) => {
+        const { pty, ready } = await startConPtyView();
+        ready.reject(new ConPtyControlError(reason));
+        await vi.advanceTimersByTimeAsync(
+          TERMINAL_CONPTY_HOST_EXIT_WAIT * library.SI_PREFIX_SCALE,
+        );
+        await expect(pty.shell).rejects.toMatchObject({ reason });
+        await expect(pty.onExit).resolves.toBe("SIGTERM");
+        await tick();
+        expectExitNotice(key);
+      },
+    );
+
+    it.each([251, 9009])(
+      "announces only the ConPTY startup hint after disconnect and exit %s",
+      async (code) => {
+        const { host, pty, ready } = await startConPtyView();
+        ready.reject(new ConPtyControlError("disconnected"));
+        await tick();
+        // Emit the native result directly: macOS would truncate exit 9009.
+        Object.assign(host, { exitCode: code });
+        host.emit("exit", code, null);
+        await expect(pty.shell).rejects.toMatchObject({
+          reason: "disconnected",
+        });
+        await expect(pty.onExit).resolves.toBe(code);
+        await tick();
+        expectExitNotice(`errors.win32-exit-${code.toString()}`);
+      },
+    );
+
+    it("keeps an intentional ConPTY startup close silent", async () => {
+      const { pty, view } = await startConPtyView();
+      view.stopEmulator();
+      await expect(pty.onExit).resolves.toBe("SIGTERM");
+      await expect(pty.shell).rejects.toBeInstanceOf(Error);
+      await tick();
+      expect(library.notice2).not.toHaveBeenCalled();
+    });
+
+    it.each(startupExits)(
+      "reports generic exit %s after ConPTY readiness",
+      async (code) => {
+        const host = spawn(process.execPath, ["-e", ""], { stdio: "pipe" });
+        await once(host, "close");
+        const exit = Promise.withResolvers<number>();
+        await startView(
+          Promise.resolve({
+            ...pseudoterminal({ win32Backend: "conpty" }),
+            shell: Promise.resolve(host),
+            onExit: exit.promise,
+          }),
+        );
+        exit.resolve(code);
+        await tick();
+        expectExitNotice("notices.terminal-exited");
+      },
+    );
+
+    it.each(startupExits)(
+      "keeps the startup hint for ConPTY exit %s before readiness",
+      async (code, key) => {
+        const exit = Promise.withResolvers<number>(),
+          shell =
+            Promise.withResolvers<
+              Awaited<NonNullable<Pseudoterminal["shell"]>>
+            >();
+        await startView(
+          Promise.resolve({
+            ...pseudoterminal({ win32Backend: "conpty" }),
+            shell: shell.promise,
+            onExit: exit.promise,
+          }),
+        );
+        shell.promise.catch(() => undefined);
+        // Exit can arrive before readiness rejection finishes its cleanup.
+        exit.resolve(code);
+        await tick();
+        shell.reject(new Error("host exited before ready"));
+        await tick();
+        expectExitNotice(key);
+      },
+    );
+
+    it.each([
+      { name: "ConHost", win32Backend: "legacy" },
+      { name: "unknown backend", win32Backend: undefined },
+      { name: "ConPTY without startup state", win32Backend: "conpty" },
+    ] satisfies readonly {
+      readonly name: string;
+      readonly win32Backend: Pseudoterminal["win32Backend"];
+    }[])("reports generic notices for $name", async ({ win32Backend }) => {
+      for (const [code] of startupExits) {
+        const exit = Promise.withResolvers<number>();
+        await startView(
+          Promise.resolve({
+            ...pseudoterminal({ win32Backend }),
+            onExit: exit.promise,
+          }),
+        );
+        exit.resolve(code);
+        await tick();
+        expectExitNotice("notices.terminal-exited");
+        vi.mocked(library.notice2).mockClear();
+      }
+    });
+
+    it.each(["close", "restart"])(
+      "suppresses a startup failure settled after %s",
+      async (action) => {
+        const exit = Promise.withResolvers<number>(),
+          shell =
+            Promise.withResolvers<
+              Awaited<NonNullable<Pseudoterminal["shell"]>>
+            >(),
+          view = await startView(
+            Promise.resolve({
+              ...pseudoterminal({ win32Backend: "conpty" }),
+              shell: shell.promise,
+              onExit: exit.promise,
+            }),
+            new Promise<Pseudoterminal>(() => undefined),
+          );
+        exit.resolve(9009);
+        await tick();
+        if (action === "close") view.stopEmulator();
+        else {
+          view.startEmulator(false);
+          await tick();
+          vi.mocked(library.notice2).mockClear();
+        }
+        shell.reject(new Error("host exited before ready"));
+        await tick();
+        expect(library.notice2).not.toHaveBeenCalled();
+      },
+    );
 
     it.each(exitCodes)(
       "does not report exit %s after an intentional close",
@@ -196,6 +495,44 @@ describe("src/terminal/view.ts", () => {
         expect.anything(),
       );
     });
+
+    it.each([
+      { state: "closed", reason: "aborted", report: false },
+      { state: "replaced", reason: "aborted", report: false },
+      { state: "active", reason: "aborted", report: true },
+      { state: "closed", reason: "disconnected", report: true },
+    ] satisfies readonly {
+      readonly state: "closed" | "replaced" | "active";
+      readonly reason: ConPtyControlError["reason"];
+      readonly report: boolean;
+    }[])(
+      "handles a $reason startup error from a $state emulator",
+      async ({ state, reason, report }) => {
+        const spawned = Promise.withResolvers<Pseudoterminal>(),
+          error = new ConPtyControlError(reason),
+          printError = vi
+            .spyOn(library, "printError")
+            .mockImplementation(vi.fn()),
+          view = await startView(
+            spawned.promise,
+            Promise.resolve(pseudoterminal()),
+          );
+        if (state === "closed") view.stopEmulator();
+        else if (state === "replaced") {
+          view.startEmulator(false);
+          await tick();
+        }
+        spawned.reject(error);
+        await tick();
+        if (report) {
+          expect(printError).toHaveBeenCalledWith(
+            error,
+            expect.any(Function),
+            expect.anything(),
+          );
+        } else expect(printError).not.toHaveBeenCalled();
+      },
+    );
 
     it.each(exitCodes)("reports spontaneous exit %s", async (code) => {
       const exit = Promise.withResolvers<Awaited<Pseudoterminal["onExit"]>>();

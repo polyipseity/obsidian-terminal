@@ -97,6 +97,11 @@ export const CHECK_EXECUTABLE_WAIT = 5,
   TERMINAL_RESIZER_WATCHDOG_WAIT = 0.5,
   TERM_PROGRAM = "obsidian-terminal",
   TERM_PROGRAM_VERSION = "0.0.0",
+  /** Exit code `cmd.exe` reports when a command name cannot be resolved. */
+  WIN32_EXIT_COMMAND_NOT_FOUND = 9009,
+  /** ConPTY host exit code: invalid profile launch input, or Windows refused
+   * to start the shell (access denied, not an executable, missing working directory). */
+  WIN32_EXIT_SHELL_START_FAILED = 251,
   WINDOWS_CMD_PATH = "C:\\Windows\\System32\\cmd.exe",
   WINDOWS_CONHOST_PATH = "C:\\Windows\\System32\\conhost.exe";
 

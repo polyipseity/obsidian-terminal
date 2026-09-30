@@ -4,11 +4,13 @@ import fsPromises, { mkdtemp, readFile, rm } from "node:fs/promises";
 import { connect, createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { PassThrough } from "node:stream";
+import nodeUrl, { pathToFileURL } from "node:url";
 import type { Terminal } from "@xterm/xterm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TerminalPlugin } from "../../../src/main.js";
 import {
+  TERMINAL_CONPTY_HOST_EXIT_WAIT,
   TERMINAL_RESIZER_WATCHDOG_WAIT,
   WINDOWS_CONHOST_PATH,
 } from "../../../src/magic.js";
@@ -21,10 +23,12 @@ import {
   type ConPtyControlChannel,
   ConPtyControlError,
   ConPtyPseudoterminal,
+  ConPtySetupError,
   createResizeRepaintWindow,
   createTerminalOutputBackpressure,
   type ConPtyPseudoterminalDependencies,
   type ConPtyReadyEvent,
+  type ConPtyStartOp,
   pipeShellToTerminal,
   RefPsuedoterminal,
   WindowsNamedPipeControlChannel,
@@ -36,6 +40,7 @@ import {
   splitConPtyLines,
   writeTerminalSliced,
 } from "../../../src/terminal/pseudoterminal.js";
+import * as environment from "../../../src/terminal/environment.js";
 import { conPtyFailureCondemnsRuntime } from "../../../src/terminal/profile-properties.js";
 import { pseudoterminal } from "../../support/helpers.js";
 
@@ -349,29 +354,69 @@ describe("ConPTY control protocol", () => {
     );
   });
 
-  it("parses exact hello, ready, and exit records", () => {
-    expect(
-      parseConPtyHostEvent(
-        '{"event":"hello","token":"t","hostPid":10,"childPid":20}',
-      ),
-    ).toEqual({
-      childPid: 20,
-      event: "hello",
-      hostPid: 10,
-      token: "t",
+  const hostEvents = [
+    { event: "hello", token: "t", hostPid: 10, childPid: 20 },
+    { event: "idle", token: "t", hostPid: 10 },
+    readyEvent(10, 20),
+    { event: "resized", columns: 100, rows: 40, seq: 3 },
+    { event: "exit", code: 3 },
+  ];
+  describe.each(hostEvents)("$event records", (event) => {
+    it("accepts the exact wire shape", () => {
+      expect(parseConPtyHostEvent(JSON.stringify(event))).toEqual(event);
     });
-    expect(parseConPtyHostEvent(JSON.stringify(readyEvent(10, 20)))).toEqual(
-      readyEvent(10, 20),
-    );
-    expect(parseConPtyHostEvent('{"event":"exit","code":3}')).toEqual({
-      code: 3,
-      event: "exit",
+
+    it("rejects extra fields", () => {
+      expect(
+        parseConPtyHostEvent(JSON.stringify({ ...event, extra: true })),
+      ).toBeNull();
     });
+
+    it.each(Object.keys(event))("requires a correctly typed %s", (field) => {
+      const missing = Object.fromEntries(
+        Object.entries(event).filter(([key]) => key !== field),
+      );
+      expect(parseConPtyHostEvent(JSON.stringify(missing))).toBeNull();
+      expect(
+        parseConPtyHostEvent(JSON.stringify({ ...event, [field]: null })),
+      ).toBeNull();
+    });
+  });
+
+  it.each([
+    ...["hello", "idle", "ready"].flatMap((event) =>
+      [0, -1, 1.5, 0x1_0000_0000, "10"].map((hostPid) => ({ event, hostPid })),
+    ),
+    ...["hello", "ready"].flatMap((event) =>
+      [0, -1, 1.5, 0x1_0000_0000, "20", 10].map((childPid) => ({
+        event,
+        childPid,
+      })),
+    ),
+    { event: "hello", token: "" },
+    { event: "idle", token: "" },
+    { event: "ready", attestation: "configured" },
+    ...[
+      "controlChannelAuthenticated",
+      "createPseudoConsole",
+      "jobObjectAssigned",
+    ].map((field) => ({ event: "ready", [field]: false })),
+    ...["columns", "rows"].flatMap((field) =>
+      [0, -1, 1.5, 32_768, "100"].map((value) => ({
+        event: "resized",
+        [field]: value,
+      })),
+    ),
+    ...[0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, "3"].map((seq) => ({
+      event: "resized",
+      seq,
+    })),
+    ...[-1, 1.5, 0x1_0000_0000, "3"].map((code) => ({ event: "exit", code })),
+  ])("rejects invalid field values: %j", (invalid) => {
+    const valid = hostEvents.find(({ event }) => event === invalid.event);
     expect(
-      parseConPtyHostEvent(
-        '{"event":"resized","columns":100,"rows":40,"seq":3}',
-      ),
-    ).toEqual({ columns: 100, event: "resized", rows: 40, seq: 3 });
+      parseConPtyHostEvent(JSON.stringify({ ...valid, ...invalid })),
+    ).toBeNull();
   });
 
   it("rejects malformed resized acknowledgments", () => {
@@ -442,6 +487,40 @@ describe("ConPTY control protocol", () => {
     expect(overflow).toMatchObject({ overflow: true, lines: [] });
     expect(overflow.rest).toHaveLength(0);
     expect(terminatedOverflow).toMatchObject({ overflow: true, lines: [] });
+  });
+
+  describe.each(["x", "字"])("4096-byte inbound limit (%s)", (character) => {
+    it.each([4095, 4096, 4097])("frames a %i-byte JSON line", (bytes) => {
+      const overhead = Buffer.byteLength(
+          '{"event":"idle","token":"","hostPid":10}',
+        ),
+        available = bytes - overhead,
+        width = Buffer.byteLength(character),
+        token =
+          character.repeat(Math.floor(available / width)) +
+          "x".repeat(available % width),
+        line = JSON.stringify({ event: "idle", token, hostPid: 10 }),
+        encoded = Buffer.from(line),
+        split = encoded.indexOf(Buffer.from(token[0] ?? "")) + 1;
+      expect(encoded.byteLength).toBe(bytes);
+      // Split inside a multibyte character, then test both unterminated and
+      // terminated overflow. The newline itself is outside the inbound cap.
+      const first = splitConPtyLines(
+          Buffer.alloc(0),
+          encoded.subarray(0, split),
+        ),
+        fragment = splitConPtyLines(first.rest, encoded.subarray(split)),
+        complete = splitConPtyLines(
+          first.rest,
+          Buffer.concat([encoded.subarray(split), Buffer.from("\n")]),
+        );
+      expect(first.overflow).toBe(false);
+      expect(fragment.overflow).toBe(bytes > 4096);
+      expect(fragment.rest.byteLength).toBe(bytes > 4096 ? 0 : bytes);
+      expect(complete.overflow).toBe(bytes > 4096);
+      expect(complete.lines).toEqual(bytes > 4096 ? [] : [line]);
+      expect(complete.rest.byteLength).toBe(0);
+    });
   });
 
   it("normalizes dimensions to the Win32 COORD range", () => {
@@ -1167,10 +1246,12 @@ function conPtyDependencies(
 function constructConPty(
   dependencies: ConPtyPseudoterminalDependencies,
   initialSize?: Readonly<{
+    args?: readonly string[];
     columns?: number;
     cwd?: URL | string;
     rows?: number;
     environment?: readonly (readonly [string, string])[];
+    executable?: string;
     conPtyRuntimeUnavailable?: () => boolean;
   }>,
   t = vi.fn((key: string) => key),
@@ -1185,8 +1266,8 @@ function constructConPty(
       settings: { value: { errorNoticeTimeout: 0, prewarmConPty: true } },
     } as unknown as TerminalPlugin,
     {
-      ...initialSize,
       executable: "cmd.exe",
+      ...initialSize,
       pythonExecutable: process.execPath,
     },
     dependencies,
@@ -1203,6 +1284,49 @@ function observeConPtyRuntimeFailure(pty: ConPtyPseudoterminal) {
 }
 
 describe("ConPTY ready transition", () => {
+  interface NulLaunchProfile {
+    readonly name: string;
+    readonly profile: NonNullable<Parameters<typeof constructConPty>[1]>;
+  }
+  const nulLaunchProfiles: readonly NulLaunchProfile[] = [
+    { name: "executable", profile: { executable: "cmd\0.exe" } },
+    { name: "args", profile: { args: ["x\0y"] } },
+    { name: "cwd", profile: { cwd: "C:\\x\0y" } },
+    { name: "env key", profile: { environment: [["X\0Y", "value"]] } },
+    { name: "env value", profile: { environment: [["FOO", "x\0y"]] } },
+  ];
+
+  it.each(nulLaunchProfiles)(
+    "rejects a NUL in $name before cold spawn without condemning Python",
+    async ({ profile }) => {
+      vi.spyOn(environment, "applyEnv").mockResolvedValue(
+        Object.fromEntries(profile.environment ?? []),
+      );
+      const control = fakeControl(new Promise(() => {}), vi.fn()),
+        spawn = vi.fn(CONPTY_DEPENDENCIES.spawn),
+        pty = constructConPty(
+          {
+            createControl: vi.fn().mockResolvedValue(control),
+            materializeSource: vi.fn().mockResolvedValue("test-host.py"),
+            source: Promise.resolve("test host"),
+            spawn,
+          },
+          profile,
+        ),
+        reportFailure = observeConPtyRuntimeFailure(pty),
+        error: unknown = await pty.shell.catch((error0: unknown) => error0);
+
+      await expect(pty.onExit).rejects.toBe(error);
+      expect(spawn).not.toHaveBeenCalled();
+      expect(error).toBeInstanceOf(ConPtySetupError);
+      expect(error).toMatchObject({ message: "errors.profile-launch-nul" });
+      expect(control.dispose).toHaveBeenCalledOnce();
+      expect(control.armReadyDeadline).not.toHaveBeenCalled();
+      expect(conPtyFailureCondemnsRuntime(error, null)).toBe(false);
+      expect(reportFailure).not.toHaveBeenCalled();
+    },
+  );
+
   it.each([
     ["true", (): boolean => true, false],
     ["false", (): boolean => false, true],
@@ -1272,6 +1396,28 @@ describe("ConPTY ready transition", () => {
     await pty.onExit;
   });
 
+  it("accepts readiness immediately followed by host exit", async () => {
+    const host = testHost("process.stdin.once('data', () => process.exit(17))"),
+      hostPid = liveHostPid(host),
+      ready = Promise.withResolvers<ConPtyReadyEvent>(),
+      control = fakeControl(ready.promise, () => host.kill());
+    // Deliver accepted readiness before the PTY observes exit, in the same
+    // event-loop turn. Its readiness continuation sees an already exited host.
+    host.once("exit", () => {
+      ready.resolve(readyEvent(hostPid, hostPid + 1));
+    });
+    const pty = constructConPty(conPtyDependencies(control, host));
+    try {
+      await pty.pipe(captureTerminal().terminal);
+      host.stdin.write("exit");
+      await expect(pty.shell).resolves.toBe(host);
+      await expect(pty.onExit).resolves.toBe(17);
+    } finally {
+      host.kill();
+      await pty.onExit;
+    }
+  });
+
   it.each([
     ["a path", (directory: string): URL | string => directory],
     [
@@ -1323,6 +1469,59 @@ describe("ConPTY ready transition", () => {
     await pty.onExit;
   });
 
+  it.each([
+    "createControl",
+    "source",
+    "materializeSource",
+    "applyEnv",
+    "hostCwd",
+  ])(
+    "does not condemn the runtime when %s fails before spawn",
+    async (step) => {
+      const cause = new Error(`${step} failed`),
+        control = fakeControl(new Promise(() => {}), vi.fn()),
+        createControl = vi.fn().mockResolvedValue(control),
+        materializeSource = vi.fn().mockResolvedValue("test-host.py"),
+        spawn = vi.fn<ConPtyPseudoterminalDependencies["spawn"]>(),
+        applyEnv = vi.spyOn(environment, "applyEnv").mockResolvedValue({}),
+        cwd = pathToFileURL(tmpdir());
+      if (step === "createControl") createControl.mockRejectedValue(cause);
+      if (step === "materializeSource")
+        materializeSource.mockRejectedValue(cause);
+      if (step === "applyEnv") applyEnv.mockRejectedValue(cause);
+      if (step === "hostCwd") {
+        vi.spyOn(nodeUrl, "fileURLToPath").mockImplementationOnce(() => {
+          throw cause;
+        });
+      }
+      const pty = constructConPty(
+          {
+            createControl,
+            materializeSource,
+            source:
+              step === "source"
+                ? Promise.reject(cause)
+                : Promise.resolve("host"),
+            spawn,
+          },
+          { cwd },
+        ),
+        reportFailure = observeConPtyRuntimeFailure(pty),
+        error: unknown = await pty.shell.catch((error0: unknown) => error0);
+
+      await expect(pty.onExit).rejects.toBe(error);
+      expect(spawn).not.toHaveBeenCalled();
+      expect(control.dispose).toHaveBeenCalledTimes(
+        step === "createControl" ? 0 : 1,
+      );
+      expect(control.armReadyDeadline).not.toHaveBeenCalled();
+      expect(conPtyFailureCondemnsRuntime(error, null)).toBe(false);
+      expect(error).toBeInstanceOf(ConPtySetupError);
+      expect(error).toMatchObject({ cause, message: cause.message });
+      expect(reportFailure).not.toHaveBeenCalled();
+    },
+  );
+
   it("never arms the deadline for a host that failed to spawn", async () => {
     const control = fakeControl(new Promise(() => {}), () => {}),
       dependencies: ConPtyPseudoterminalDependencies = {
@@ -1331,9 +1530,12 @@ describe("ConPTY ready transition", () => {
         source: Promise.resolve("test host"),
         spawn: vi.fn().mockRejectedValue(new Error("spawn ENOENT")),
       },
-      pty = constructConPty(dependencies);
+      pty = constructConPty(dependencies),
+      reportFailure = observeConPtyRuntimeFailure(pty);
 
     await expect(pty.shell).rejects.toThrow("spawn ENOENT");
+    await expect(pty.onExit).rejects.toThrow("spawn ENOENT");
+    expect(reportFailure).toHaveBeenCalledOnce();
     expect(control.armReadyDeadline).not.toHaveBeenCalled();
     // The channel still goes away: its server must not outlive the attempt.
     expect(control.dispose).toHaveBeenCalledOnce();
@@ -1343,7 +1545,9 @@ describe("ConPTY ready transition", () => {
     const host = testHost(),
       hostPid = liveHostPid(host),
       ready = Object.freeze(readyEvent(hostPid, hostPid + 1)),
-      start = vi.fn().mockResolvedValue(undefined),
+      start = vi
+        .fn<(op: ConPtyStartOp) => Promise<void>>()
+        .mockResolvedValue(undefined),
       warmControl = {
         ...fakeControl(Promise.resolve(ready), () => host.kill()),
         start,
@@ -1362,6 +1566,10 @@ describe("ConPTY ready transition", () => {
       },
       pty = constructConPty(dependencies, {
         columns: 132,
+        environment: [
+          ["VALID", "A=B"],
+          ["EMPTY_VALUE", ""],
+        ],
         rows: 43,
       });
 
@@ -1378,6 +1586,8 @@ describe("ConPTY ready transition", () => {
         rows: 43,
       }),
     );
+    expect(start.mock.calls[0]?.[0].env.VALID).toBe("A=B");
+    expect(start.mock.calls[0]?.[0].env.EMPTY_VALUE).toBe("");
     await pty.kill();
     await pty.onExit;
   });
@@ -1434,6 +1644,289 @@ describe("ConPTY ready transition", () => {
       expect(reportConPtyRuntimeFailure).not.toHaveBeenCalled();
     },
   );
+
+  describe("warm startup failure ownership", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.spyOn(environment, "applyEnv").mockResolvedValue({});
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    // Emit native process results directly: macOS would truncate exit 9009.
+    function controlledHost(pid: number) {
+      const stdin = new PassThrough(),
+        stdout = new PassThrough(),
+        stderr = new PassThrough(),
+        host = Object.assign(new childProcess.ChildProcess(), {
+          pid,
+          stdin,
+          stdout,
+          stderr,
+          stdio: [stdin, stdout, stderr, null, null] satisfies ReturnType<
+            typeof testHost
+          >["stdio"],
+        }),
+        exit = (code: number): void => {
+          Object.assign(host, { exitCode: code });
+          host.emit("exit", code, null);
+        };
+      const kill = vi.spyOn(host, "kill").mockImplementation(() => {
+        Object.assign(host, { signalCode: "SIGTERM" });
+        host.emit("exit", null, "SIGTERM");
+        return true;
+      });
+      return { exit, host, kill };
+    }
+
+    async function pendingControl() {
+      const server = createServer();
+      // Only process/control ordering matters here; no OS listener is needed.
+      vi.spyOn(server, "listen").mockImplementation(() => {
+        server.emit("listening");
+        return server;
+      });
+      return WindowsNamedPipeControlChannel.create({
+        createServer: vi.fn(() => server),
+        deferred: true,
+        pipePath: vi.fn(() => "test-control-pipe"),
+        randomUUID,
+      });
+    }
+
+    interface StartupFixtureOptions {
+      readonly profile?: Parameters<typeof constructConPty>[1];
+      readonly coldControl?: ConPtyControlChannel;
+      readonly sourceFile?: Promise<string>;
+    }
+    async function fixture(options: StartupFixtureOptions = {}) {
+      const control = await pendingControl(),
+        hello = Promise.withResolvers<Awaited<ConPtyControlChannel["hello"]>>(),
+        startResult = Promise.withResolvers<undefined>(),
+        start = vi.spyOn(control, "start").mockReturnValue(startResult.promise),
+        dispose = vi.spyOn(control, "dispose"),
+        warm = controlledHost(100),
+        cold = controlledHost(200),
+        pool = new ConPtyHostPool(),
+        ensureSpare = vi
+          .spyOn(pool, "ensureSpare")
+          .mockImplementation(() => {}),
+        dependencies = {
+          ...conPtyDependencies(
+            options.coldControl ??
+              fakeControl(Promise.resolve(readyEvent(200)), () =>
+                cold.host.kill(),
+              ),
+            cold.host,
+          ),
+          pool,
+        };
+      if (options.sourceFile) {
+        vi.mocked(dependencies.materializeSource).mockReturnValue(
+          options.sourceFile,
+        );
+      }
+      Object.assign(control, { hello: hello.promise });
+      hello.promise.catch(() => {});
+      vi.spyOn(pool, "acquire").mockReturnValue({
+        control,
+        generation: 0,
+        host: warm.host,
+      });
+      const release = vi.spyOn(pool, "release").mockImplementation(() => {}),
+        pty = constructConPty(dependencies, options.profile);
+      await vi.advanceTimersByTimeAsync(0);
+      return {
+        cold,
+        dependencies,
+        dispose,
+        ensureSpare,
+        hello,
+        pty,
+        release,
+        start,
+        startResult,
+        warm,
+        cleanup: async (): Promise<void> => {
+          await pty.kill().catch(() => {});
+          await control.dispose();
+          warm.host.kill();
+          cold.host.kill();
+        },
+      };
+    }
+
+    it.each(nulLaunchProfiles)(
+      "declines a NUL in $name before sending a warm start",
+      async ({ profile }) => {
+        vi.mocked(environment.applyEnv).mockResolvedValue(
+          Object.fromEntries(profile.environment ?? []),
+        );
+        const f = await fixture({ profile });
+        try {
+          expect(f.start).not.toHaveBeenCalled();
+          expect(f.release).toHaveBeenCalledExactlyOnceWith(
+            process.execPath,
+            expect.objectContaining({ host: f.warm.host }),
+          );
+          await expect(f.pty.shell).rejects.toBeInstanceOf(ConPtySetupError);
+          expect(f.dependencies.spawn).not.toHaveBeenCalled();
+          expect(f.warm.kill).not.toHaveBeenCalled();
+          expect(f.dispose).not.toHaveBeenCalled();
+        } finally {
+          await f.cleanup();
+        }
+      },
+    );
+
+    it.each(["dead spare", "declined warm start"])(
+      "does not spawn after closing during cold preparation for a %s",
+      async (path) => {
+        const coldControl = await pendingControl(),
+          dispose = vi.spyOn(coldControl, "dispose"),
+          sourceFile = Promise.withResolvers<string>();
+        if (path === "declined warm start") {
+          vi.mocked(environment.applyEnv).mockResolvedValue({ "": "" });
+        }
+        const f = await fixture({
+            coldControl,
+            sourceFile: sourceFile.promise,
+          }),
+          reportFailure = observeConPtyRuntimeFailure(f.pty);
+        try {
+          if (path === "dead spare") {
+            f.startResult.resolve(undefined);
+            await vi.advanceTimersByTimeAsync(0);
+            f.warm.exit(250);
+            await vi.advanceTimersByTimeAsync(0);
+          }
+          expect(f.dependencies.materializeSource).toHaveBeenCalledOnce();
+          expect(f.dependencies.spawn).not.toHaveBeenCalled();
+          const killing = f.pty.kill(),
+            killed = expect(killing).resolves.toBeUndefined();
+          sourceFile.resolve("test-host.py");
+          await killed;
+          await expect(f.pty.shell).rejects.toMatchObject({
+            reason: "aborted",
+          });
+          await expect(f.pty.onExit).rejects.toMatchObject({
+            reason: "aborted",
+          });
+          expect(f.dependencies.spawn).not.toHaveBeenCalled();
+          expect(dispose).toHaveBeenCalledOnce();
+          expect(reportFailure).not.toHaveBeenCalled();
+        } finally {
+          sourceFile.resolve("test-host.py");
+          await f.cleanup();
+          await coldControl.dispose();
+        }
+      },
+    );
+
+    it.each(
+      [251, 9009].flatMap((code) =>
+        ["exit", "disconnect", "start-write"].map((failure) => ({
+          code,
+          failure,
+        })),
+      ),
+    )(
+      "keeps warm exit $code after pre-hello $failure",
+      async ({ code, failure }) => {
+        const f = await fixture();
+        try {
+          if (failure === "start-write") {
+            f.startResult.reject(new Error("start write failed"));
+          } else {
+            f.startResult.resolve(undefined);
+          }
+          await vi.advanceTimersByTimeAsync(0);
+          if (failure === "disconnect") {
+            f.hello.reject(new ConPtyControlError("disconnected"));
+          }
+          if (failure !== "exit") {
+            await vi.advanceTimersByTimeAsync(
+              TERMINAL_CONPTY_HOST_EXIT_WAIT * 1000 - 1,
+            );
+            expect(f.dependencies.spawn).not.toHaveBeenCalled();
+            expect(f.warm.kill).not.toHaveBeenCalled();
+          }
+          f.warm.exit(code);
+          await vi.advanceTimersByTimeAsync(0);
+          expect(f.dependencies.spawn).not.toHaveBeenCalled();
+          await expect(f.pty.onExit).resolves.toBe(code);
+          await expect(f.pty.shell).rejects.toBeInstanceOf(Error);
+          expect(f.ensureSpare).not.toHaveBeenCalled();
+          expect(f.warm.kill).not.toHaveBeenCalled();
+          await f.pty.kill();
+          await f.pty.kill();
+          expect(f.dispose).toHaveBeenCalledOnce();
+        } finally {
+          await f.cleanup();
+        }
+      },
+    );
+
+    it.each(["another exit code", "no exit code", "failed start write"])(
+      "allows one cold attempt for a dead spare with %s",
+      async (failure) => {
+        const f = await fixture();
+        try {
+          if (failure === "failed start write") {
+            f.startResult.reject(new Error("start write failed"));
+          } else {
+            f.startResult.resolve(undefined);
+          }
+          await vi.advanceTimersByTimeAsync(0);
+          if (failure === "another exit code") {
+            f.warm.exit(250);
+            await vi.advanceTimersByTimeAsync(0);
+          } else {
+            if (failure === "no exit code") {
+              f.hello.reject(new ConPtyControlError("disconnected"));
+            }
+            await vi.advanceTimersByTimeAsync(
+              TERMINAL_CONPTY_HOST_EXIT_WAIT * 1000 - 1,
+            );
+            expect(f.dependencies.spawn).not.toHaveBeenCalled();
+            await vi.advanceTimersByTimeAsync(1);
+          }
+          await expect(f.pty.shell).resolves.toBe(f.cold.host);
+          expect(f.dependencies.spawn).toHaveBeenCalledOnce();
+          expect(f.dispose).toHaveBeenCalledOnce();
+          f.cold.exit(23);
+          await expect(f.pty.onExit).resolves.toBe(23);
+        } finally {
+          await f.cleanup();
+        }
+      },
+    );
+
+    it("lets closing win during the pre-hello exit wait", async () => {
+      const f = await fixture();
+      try {
+        f.startResult.resolve(undefined);
+        await vi.advanceTimersByTimeAsync(0);
+        f.hello.reject(new ConPtyControlError("disconnected"));
+        await vi.advanceTimersByTimeAsync(100);
+        expect(f.dependencies.spawn).not.toHaveBeenCalled();
+        await f.pty.kill();
+        await f.pty.kill();
+        await vi.advanceTimersByTimeAsync(
+          TERMINAL_CONPTY_HOST_EXIT_WAIT * 1000,
+        );
+        await expect(f.pty.shell).rejects.toMatchObject({ reason: "aborted" });
+        await expect(f.pty.onExit).rejects.toMatchObject({ reason: "aborted" });
+        expect(f.dependencies.spawn).not.toHaveBeenCalled();
+        expect(f.ensureSpare).not.toHaveBeenCalled();
+        expect(f.dispose).toHaveBeenCalledOnce();
+      } finally {
+        await f.cleanup();
+      }
+    });
+  });
 
   it("reports a warm session failure after hello", async () => {
     let rejectReady: (error: ConPtyControlError) => void = () => {};
@@ -1649,47 +2142,171 @@ describe("ConPTY ready transition", () => {
     expect(dependencies.spawn).not.toHaveBeenCalled();
   });
 
-  it("cold-spawns when a non-ASCII start op exceeds the byte cap", async () => {
-    const host = testHost(),
-      hostPid = liveHostPid(host),
-      ready = Object.freeze(readyEvent(hostPid, hostPid + 1)),
-      start = vi.fn().mockResolvedValue(undefined),
-      warmControl = {
-        ...fakeControl(Promise.resolve(ready), () => host.kill()),
-        start,
-      },
-      pool = {
-        acquire: vi.fn(() => ({ control: warmControl, generation: 0, host })),
-        dispose: vi.fn(),
-        ensureSpare: vi.fn(),
-        release: vi.fn(),
-      },
+  interface InvalidWarmProfile {
+    readonly name: string;
+    readonly executable: string;
+    readonly environment: readonly (readonly [string, string])[];
+  }
+  it.each<InvalidWarmProfile>([
+    {
+      name: "an empty env key",
+      executable: "cmd.exe",
+      environment: [["", ""]],
+    },
+    {
+      name: "an env key containing =",
+      executable: "cmd.exe",
+      environment: [["A=B", "1"]],
+    },
+    { name: "an empty executable", executable: "", environment: [] },
+  ])("declines $name before sending a warm start", async (profile) => {
+    const server = createServer();
+    // Admission needs a channel with pending hello/ready, not an OS listener.
+    vi.spyOn(server, "listen").mockImplementation(() => {
+      server.emit("listening");
+      return server;
+    });
+    const warmControl = await WindowsNamedPipeControlChannel.create({
+        createServer: vi.fn(() => server),
+        deferred: true,
+        pipePath: vi.fn(() => "test-control-pipe"),
+        randomUUID,
+      }),
+      spareHost = testHost(),
+      coldHost = testHost(),
+      ready = readyEvent(liveHostPid(coldHost), liveHostPid(coldHost) + 1),
+      pool = new ConPtyHostPool(),
+      spare = { control: warmControl, generation: 0, host: spareHost },
+      start = vi.spyOn(warmControl, "start").mockResolvedValue(undefined),
+      dispose = vi.spyOn(warmControl, "dispose"),
+      release = vi.spyOn(pool, "release").mockImplementation(() => {}),
       dependencies = {
         ...conPtyDependencies(
-          fakeControl(Promise.resolve(ready), () => host.kill()),
-          host,
+          fakeControl(Promise.resolve(ready), () => coldHost.kill()),
+          coldHost,
         ),
-        pool: pool as unknown as ConPtyHostPool,
-      },
-      // Each CJK code unit encodes to three UTF-8 bytes, so this value stays
-      // far below the cap by string length and far above it by bytes.
-      pty = constructConPty(dependencies, {
-        environment: [["WIDE", "字".repeat(20_000)]],
-      });
-
-    await pty.shell;
-    expect(start).not.toHaveBeenCalled();
-    expect(dependencies.spawn).toHaveBeenCalled();
-    // The spare never saw the oversized op; it goes back to the pool
-    // instead of dying for a session it could not serve.
-    expect(pool.release).toHaveBeenCalledWith(
-      process.execPath,
-      expect.objectContaining({ host }),
-    );
-    expect(warmControl.dispose).not.toHaveBeenCalled();
-    await pty.kill();
-    await pty.onExit;
+        pool,
+      };
+    vi.spyOn(pool, "acquire").mockReturnValue(spare);
+    vi.spyOn(pool, "ensureSpare").mockImplementation(() => {});
+    const pty = constructConPty(dependencies, profile);
+    try {
+      // Poll for at most one second; the warm readiness deadline is ten.
+      // Its hello/ready stay pending, so waiting for either cannot pass.
+      await vi.waitFor(
+        () => {
+          expect(dependencies.spawn).toHaveBeenCalledOnce();
+        },
+        { timeout: 1000 },
+      );
+      await expect(pty.shell).resolves.toBe(coldHost);
+      expect(start).not.toHaveBeenCalled();
+      expect(release).toHaveBeenCalledExactlyOnceWith(process.execPath, spare);
+      expect(dispose).not.toHaveBeenCalled();
+      expect(spareHost.killed).toBe(false);
+      const coldSpawn = vi.mocked(dependencies.spawn).mock.calls[0];
+      expect(coldSpawn?.[1]).toEqual(
+        expect.arrayContaining(["--", profile.executable]),
+      );
+      for (const [key, value] of profile.environment) {
+        expect(coldSpawn?.[2].env[key]).toBe(value);
+      }
+    } finally {
+      await pty.kill();
+      spareHost.kill();
+      coldHost.kill();
+      await warmControl.dispose();
+      await pty.onExit.catch(() => null);
+    }
   });
+
+  describe.each(["x", "字"])(
+    "49,152-byte start admission (%s)",
+    (character) => {
+      it.each([49_151, 49_152, 49_153])(
+        "admits only bounded %i-byte operations",
+        async (bytes) => {
+          const empty: ConPtyStartOp = {
+              columns: 120,
+              rows: 30,
+              op: "start",
+              command: ["cmd.exe"],
+              cwd: null,
+              env: { PAD: "" },
+            },
+            available = bytes - Buffer.byteLength(encodeConPtyOp(empty)),
+            width = Buffer.byteLength(character),
+            env = {
+              PAD:
+                character.repeat(Math.floor(available / width)) +
+                "x".repeat(available % width),
+            },
+            expected = { ...empty, env };
+          expect(Buffer.byteLength(encodeConPtyOp(expected))).toBe(bytes);
+          vi.spyOn(environment, "applyEnv").mockResolvedValue(env);
+          const server = createServer();
+          // Only admission is under test; the pending real channel never listens.
+          vi.spyOn(server, "listen").mockImplementation(() => {
+            server.emit("listening");
+            return server;
+          });
+          const warmControl = await WindowsNamedPipeControlChannel.create({
+              createServer: vi.fn(() => server),
+              deferred: true,
+              randomUUID,
+            }),
+            spareHost = testHost(),
+            coldHost = testHost(),
+            pool = new ConPtyHostPool(),
+            spare = { control: warmControl, generation: 0, host: spareHost },
+            start = vi.spyOn(warmControl, "start").mockResolvedValue(undefined),
+            release = vi.spyOn(pool, "release"),
+            dependencies = {
+              ...conPtyDependencies(
+                fakeControl(
+                  Promise.resolve(
+                    readyEvent(
+                      liveHostPid(coldHost),
+                      liveHostPid(coldHost) + 1,
+                    ),
+                  ),
+                  () => coldHost.kill(),
+                ),
+                coldHost,
+              ),
+              pool,
+            };
+          vi.spyOn(pool, "acquire").mockReturnValue(spare);
+          const pty = constructConPty(dependencies);
+          try {
+            if (bytes <= 49_152) {
+              await vi.waitFor(() => {
+                expect(start).toHaveBeenCalledExactlyOnceWith(expected);
+              });
+              expect(dependencies.spawn).not.toHaveBeenCalled();
+              expect(release).not.toHaveBeenCalled();
+            } else {
+              await pty.shell;
+              expect(start).not.toHaveBeenCalled();
+              expect(dependencies.spawn).toHaveBeenCalledOnce();
+              expect(release).toHaveBeenCalledExactlyOnceWith(
+                process.execPath,
+                spare,
+              );
+              expect(spareHost.killed).toBe(false);
+            }
+          } finally {
+            await pty.kill();
+            pool.dispose();
+            spareHost.kill();
+            coldHost.kill();
+            await warmControl.dispose();
+            await pty.onExit.catch(() => null);
+          }
+        },
+      );
+    },
+  );
 
   it("rejects a ready event for a different host process", async () => {
     const host = testHost(),
@@ -1770,11 +2387,15 @@ describe("ConPTY ready transition", () => {
   it("kills a live host without waiting for readiness", async () => {
     const host = testHost(),
       control = fakeControl(new Promise(() => {}), () => host.kill()),
-      pty = constructConPty(conPtyDependencies(control, host)),
+      dependencies = conPtyDependencies(control, host),
+      pty = constructConPty(dependencies),
       shellFailure = expect(pty.shell).rejects.toThrow(
         "errors.conpty-host-exited-before-ready",
       );
 
+    await vi.waitFor(() => {
+      expect(dependencies.spawn).toHaveBeenCalledOnce();
+    });
     await pty.kill();
     await pty.onExit;
     await shellFailure;
@@ -1798,11 +2419,15 @@ describe("ConPTY ready transition", () => {
         }),
       },
       t = vi.fn((key: string) => key),
-      pty = constructConPty(conPtyDependencies(control, host), void 0, t),
+      dependencies = conPtyDependencies(control, host),
+      pty = constructConPty(dependencies, void 0, t),
       shellFailure = expect(pty.shell).rejects.toMatchObject({
         reason: "aborted",
       });
 
+    await vi.waitFor(() => {
+      expect(dependencies.spawn).toHaveBeenCalledOnce();
+    });
     await pty.kill();
     await shellFailure;
     await pty.onExit;
@@ -1812,6 +2437,56 @@ describe("ConPTY ready transition", () => {
 });
 
 describe("ConPTY source materialization", () => {
+  it.each(["EPERM", "EACCES", "EBUSY"])(
+    "retries a transient %s rename failure",
+    async (code) => {
+      const source = `# retry-source ${randomUUID()}`,
+        rename = vi
+          .spyOn(fsPromises, "rename")
+          .mockRejectedValueOnce(
+            Object.assign(new Error("temporarily locked"), { code }),
+          );
+      try {
+        const target = await CONPTY_DEPENDENCIES.materializeSource(source);
+        expect(rename).toHaveBeenCalledTimes(2);
+        await expect(readFile(target, "utf8")).resolves.toBe(source);
+      } finally {
+        for (const [staging, target] of rename.mock.calls) {
+          await rm(staging, { force: true });
+          await rm(target, { force: true });
+        }
+      }
+    },
+  );
+
+  it.each(["EPERM", "EACCES", "EBUSY", "EIO"])(
+    "bounds a persistent %s rename failure and allows the next open to retry",
+    async (code) => {
+      const source = `# locked-source ${randomUUID()}`,
+        cause = Object.assign(new Error("rename failed"), { code }),
+        rename = vi.spyOn(fsPromises, "rename").mockRejectedValue(cause);
+      try {
+        await expect(
+          CONPTY_DEPENDENCIES.materializeSource(source),
+        ).rejects.toBe(cause);
+        // Only lock/permission errors get a short retry window (five retries).
+        expect(rename).toHaveBeenCalledTimes(code === "EIO" ? 1 : 6);
+        rename.mockRestore();
+        const target = await CONPTY_DEPENDENCIES.materializeSource(source);
+        try {
+          await expect(readFile(target, "utf8")).resolves.toBe(source);
+        } finally {
+          await rm(target, { force: true });
+        }
+      } finally {
+        for (const [staging, target] of rename.mock.calls) {
+          await rm(staging, { force: true });
+          await rm(target, { force: true });
+        }
+      }
+    },
+  );
+
   it("caches the host source at a stable content-addressed path", async () => {
     const source = `# test-source ${randomUUID()}`,
       first = await CONPTY_DEPENDENCIES.materializeSource(source),

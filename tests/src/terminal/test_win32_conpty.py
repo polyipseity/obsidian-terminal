@@ -343,6 +343,37 @@ def test_decoder_drops_and_diagnoses_an_oversized_line(
     assert len(diagnostics) == 1
 
 
+@pytest.mark.parametrize("character", ("x", "字"), ids=("ascii", "multibyte"))
+@pytest.mark.parametrize("size", (65535, 65536, 65537))
+@pytest.mark.parametrize("terminated", (False, True), ids=("fragment", "line"))
+def test_decoder_enforces_the_utf8_byte_boundary(
+    monkeypatch: pytest.MonkeyPatch, character: str, size: int, terminated: bool
+) -> None:
+    """Accept exactly 65536 bytes before the newline, even across UTF-8 chunks."""
+    overhead = len(_MODULE.encode_message({"op": "authenticate", "token": ""})) - 1
+    available = size - overhead
+    width = len(character.encode("utf-8"))
+    token = character * (available // width) + "x" * (available % width)
+    message = {"op": "authenticate", "token": token}
+    payload = _MODULE.encode_message(message)
+    assert len(payload) == size + 1
+    diagnostics = Mock()
+    monkeypatch.setattr(_MODULE, "diagnose", diagnostics)
+    decoder = _MODULE.NdjsonDecoder()
+    # Leave the first multibyte character incomplete in the initial read.
+    split = payload.index(token[:1].encode("utf-8")) + 1
+    assert decoder.feed(payload[:split]) == []
+    received = decoder.feed(payload[split:] if terminated else payload[split:-1])
+    expected = [message] if size <= 65536 else []
+    if terminated:
+        assert received == expected
+    else:
+        assert received == []
+        assert decoder.feed(b"\n") == expected
+    assert diagnostics.call_count == (1 if size > 65536 else 0)
+    assert decoder.feed(b'{"op":"kill"}\n') == [{"op": "kill"}]
+
+
 class _ScriptedReader:
     """Return each scripted chunk once, then signal end-of-stream."""
 
@@ -832,6 +863,7 @@ def test_resolve_executable_defaults_to_the_host_path(
         {"op": "resize", "columns": 120, "rows": 30, "command": ["cmd.exe"]},
         {"op": "start", "columns": 0, "rows": 30, "command": ["cmd.exe"]},
         {"op": "start", "columns": 120, "rows": 30, "command": []},
+        {"op": "start", "columns": 120, "rows": 30, "command": [""]},
         {"op": "start", "columns": 120, "rows": 30, "command": ["cmd", 3]},
         {"op": "start", "columns": 120, "rows": 30, "command": ["cmd"], "cwd": 5},
         {
@@ -840,6 +872,13 @@ def test_resolve_executable_defaults_to_the_host_path(
             "rows": 30,
             "command": ["cmd"],
             "env": {"a=b": "1"},
+        },
+        {
+            "op": "start",
+            "columns": 120,
+            "rows": 30,
+            "command": ["cmd"],
+            "env": {"": ""},
         },
         {
             "op": "start",
@@ -945,8 +984,12 @@ def test_parse_arguments_keeps_a_child_argument_that_looks_like_a_separator() ->
         ["120", "30", "C:\\not-a-pipe", "--", "cmd"],
         ["0", "30", "\\\\.\\pipe\\p", "--", "cmd"],
         ["120", "99999", "\\\\.\\pipe\\p", "--", "cmd"],
-        ["120", "30", "\\\\.\\pipe\\p", "--"],
-        ["120", "30", "\\\\.\\pipe\\p", "--", ""],
+        # Envelope errors take precedence over a missing/empty executable.
+        ["0", "30", "\\\\.\\pipe\\p", "--", ""],
+        ["120", "99999", "\\\\.\\pipe\\p", "--"],
+        ["invalid", "30", "\\\\.\\pipe\\p", "--", ""],
+        ["120", "30", "C:\\not-a-pipe", "--", ""],
+        ["120", "30", "\\\\.\\pipe\\p", "--cwd", "--", ""],
         # ``--cwd`` without a value: the separator is never taken as one.
         ["120", "30", "\\\\.\\pipe\\p", "--cwd", "--", "cmd"],
         [
@@ -971,6 +1014,54 @@ def test_parse_arguments_rejects_a_malformed_command_line(
     """Every contract violation must be refused rather than guessed at."""
     with pytest.raises(ValueError):
         _MODULE.parse_arguments(arguments)
+
+
+@pytest.mark.parametrize("command", ((), ("",), ("", "/c", "echo ignored")))
+def test_parse_arguments_classifies_empty_executable_as_profile_fault(
+    command: Sequence[str],
+) -> None:
+    """A valid host envelope with no executable must not condemn the runtime."""
+    with pytest.raises(_MODULE.ChildStartError, match="executable") as caught:
+        _MODULE.parse_arguments(["80", "24", "\\\\.\\pipe\\p", "--", *command])
+    assert caught.value.exit_code == 251
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize(
+    ("arguments", "token", "expected"),
+    (
+        (["80", "24", "\\\\.\\pipe\\p", "--", ""], "token", 251),
+        (["80", "24", "\\\\.\\pipe\\p", "--"], "token", 251),
+        (["0", "24", "\\\\.\\pipe\\p", "--", ""], "token", 250),
+        (["80", "32768", "\\\\.\\pipe\\p", "--", ""], "token", 250),
+        (["80", "24", "not-a-pipe", "--", ""], "token", 250),
+        (["80", "24", "\\\\.\\pipe\\p", "--cwd", "--", ""], "token", 250),
+        (["80", "24", "\\\\.\\pipe\\p", ""], "token", 250),
+        (["80", "24", "\\\\.\\pipe\\p", "--", "cmd"], None, 250),
+        (["80", "24", "\\\\.\\pipe\\p", "--", ""], None, 250),
+        (["80", "24", "\\\\.\\pipe\\p", "--"], "", 250),
+    ),
+)
+def test_main_classifies_profile_and_host_argument_errors(
+    arguments: Sequence[str], token: str | None, expected: int
+) -> None:
+    """Rejected launches exit promptly with the profile or host fault code."""
+    environment = dict(os.environ)
+    environment.pop(_MODULE.TOKEN_ENVIRONMENT_VARIABLE, None)
+    if token is not None:
+        environment[_MODULE.TOKEN_ENVIRONMENT_VARIABLE] = token
+    result = subprocess.run(
+        [sys.executable, str(_module_path()), *arguments],
+        input=b"",
+        capture_output=True,
+        env=environment,
+        timeout=_HOST_TIMEOUT,
+        check=False,
+    )
+    assert result.returncode == expected, result.stderr
+    assert result.stdout == b""
+    assert b"win32_conpty:" in result.stderr
+    assert b"Traceback" not in result.stderr
 
 
 # ---------------------------------------------------------------------------
@@ -1016,6 +1107,94 @@ def test_child_start_error_carries_the_exit_code() -> None:
 # ---------------------------------------------------------------------------
 # Windows acceptance test
 # ---------------------------------------------------------------------------
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize(
+    "invalid_fields",
+    ({"env": {"": ""}}, {"env": {"A=B": "1"}}, {"command": [""]}),
+    ids=("empty-env-key", "equals-env-key", "empty-executable"),
+)
+def test_deferred_host_rejects_malformed_start(
+    monkeypatch: pytest.MonkeyPatch,
+    capfd: pytest.CaptureFixture[str],
+    invalid_fields: dict[str, object],
+) -> None:
+    """A rejected start closes the channel without another read or a child."""
+    message = {
+        "op": "start",
+        "columns": 80,
+        "rows": 24,
+        "command": ["cmd.exe"],
+        **invalid_fields,
+    }
+    reader = Mock(spec=io.BytesIO)
+    reader.read.side_effect = [
+        _MODULE.encode_message({"op": "authenticate", "token": "token"}),
+        _MODULE.encode_message(message),
+        AssertionError("host waited for another message after malformed start"),
+    ]
+    writer = Mock(wraps=io.BytesIO())
+    monkeypatch.setattr(
+        _MODULE,
+        "_connect_control",
+        Mock(return_value=_MODULE._ControlFiles(reader, writer)),
+    )
+    create_child = Mock(side_effect=AssertionError("host created a child"))
+    monkeypatch.setattr(_MODULE, "_create_child", create_child)
+    host = _MODULE._ConPtyHost(None, "token", pipe_name="pipe")
+
+    assert host.run_deferred() == 251
+
+    create_child.assert_not_called()
+    assert reader.read.call_count == 2
+    reader.close.assert_called_once_with()
+    writer.close.assert_called_once_with()
+    writer.write.assert_called_once_with(
+        _MODULE.encode_message(
+            {"event": "idle", "token": "token", "hostPid": os.getpid()}
+        )
+    )
+    output = capfd.readouterr()
+    assert output.out == ""
+    assert "malformed start" in output.err
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize("operation", (b'{"op":"kill"}\n', b""), ids=("kill", "eof"))
+def test_deferred_host_shuts_down_quietly_while_idle(
+    monkeypatch: pytest.MonkeyPatch,
+    capfd: pytest.CaptureFixture[str],
+    operation: bytes,
+) -> None:
+    """Idle kill and pipe EOF close the channel without launching a child."""
+    reader = Mock(spec=io.BytesIO)
+    reader.read.side_effect = [
+        _MODULE.encode_message({"op": "authenticate", "token": "token"}),
+        operation,
+        AssertionError("host waited for another message after shutdown"),
+    ]
+    writer = Mock(wraps=io.BytesIO())
+    monkeypatch.setattr(
+        _MODULE,
+        "_connect_control",
+        Mock(return_value=_MODULE._ControlFiles(reader, writer)),
+    )
+    create_child = Mock(side_effect=AssertionError("host created a child"))
+    monkeypatch.setattr(_MODULE, "_create_child", create_child)
+    host = _MODULE._ConPtyHost(None, "token", pipe_name="pipe")
+
+    assert host.run_deferred() == 0
+
+    create_child.assert_not_called()
+    reader.close.assert_called_once_with()
+    writer.close.assert_called_once_with()
+    writer.write.assert_called_once_with(
+        _MODULE.encode_message(
+            {"event": "idle", "token": "token", "hostPid": os.getpid()}
+        )
+    )
+    assert capfd.readouterr() == ("", "")
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)

@@ -11,7 +11,12 @@ import {
   notice2,
 } from "@polyipseity/obsidian-plugin-library";
 import { BUNDLE } from "../imports.js";
-import { CHECK_EXECUTABLE_WAIT, PYTHON_REQUIREMENTS } from "../magic.js";
+import {
+  CHECK_EXECUTABLE_WAIT,
+  PYTHON_REQUIREMENTS,
+  WIN32_EXIT_COMMAND_NOT_FOUND,
+  WIN32_EXIT_SHELL_START_FAILED,
+} from "../magic.js";
 import type { TerminalPlugin } from "../main.js";
 import { Settings } from "../settings-data.js";
 import { applyEnv, invalidateSystemPath, pathEnvKey } from "./environment.js";
@@ -34,14 +39,11 @@ const childProcess = dynamicRequire<typeof import("node:child_process")>(
 /** Official Python download page, opened by the settings download button. */
 export const PYTHON_DOWNLOADS_URL = "https://www.python.org/downloads/";
 
-/** Exit code `cmd.exe` reports when a command name cannot be resolved. */
-export const WIN32_EXIT_COMMAND_NOT_FOUND = 9009,
-  /** ConPTY host exit code: the shell exists but Windows refused to start
-   * it (access denied, not an executable, missing working directory). */
-  WIN32_EXIT_SHELL_START_FAILED = 251,
-  /** `STATUS_DLL_INIT_FAILED` (0xC0000142): the console client failed to
-   * initialize. Seen when ConPTY cannot attach the child. */
-  WIN32_EXIT_DLL_INIT_FAILED = 3_221_225_794,
+export { WIN32_EXIT_COMMAND_NOT_FOUND, WIN32_EXIT_SHELL_START_FAILED };
+
+/** `STATUS_DLL_INIT_FAILED` (0xC0000142): the console client failed to
+ * initialize. Seen when ConPTY cannot attach the child. */
+export const WIN32_EXIT_DLL_INIT_FAILED = 3_221_225_794,
   /** Signed 32-bit representation Node may report for 0xC0000142. */
   WIN32_EXIT_DLL_INIT_FAILED_SIGNED = -1_073_741_502,
   /** Minimum supported Python, from the requirements manifest. */

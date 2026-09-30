@@ -44,6 +44,8 @@ import {
   TERMINAL_OUTPUT_LOW_WATER_BYTES,
   TERMINAL_OUTPUT_WRITE_SLICE_BYTES,
   TERMINAL_RESIZER_WATCHDOG_WAIT,
+  WIN32_EXIT_COMMAND_NOT_FOUND,
+  WIN32_EXIT_SHELL_START_FAILED,
   WINDOWS_CONHOST_PATH,
 } from "../magic.js";
 import { spawnPromise, writePromise } from "../utils.js";
@@ -311,6 +313,10 @@ function isRunning(child: {
 }
 
 export interface Pseudoterminal {
+  /** For ConPTY, resolves once authenticated readiness is accepted (including
+   * host PID validation), even if the host exits immediately afterward.
+   * Rejects if startup fails before that boundary; other backends only expose
+   * their process, without ConPTY's startup guarantee. */
   readonly shell?: Promise<PipedChildProcess> | undefined;
   readonly kill: () => AsyncOrSync<void>;
   readonly onExit: Promise<NodeJS.Signals | number>;
@@ -1427,6 +1433,7 @@ export interface ConPtyReadyEvent {
   readonly createPseudoConsole: true;
   readonly event: "ready";
   readonly hostPid: number;
+  /** The shell is assigned to the kill-on-close job; descendants may break away. */
   readonly jobObjectAssigned: true;
 }
 export interface ConPtyExitEvent {
@@ -1652,7 +1659,17 @@ export function normalizeConPtyDimension(
   );
 }
 
+/** A local preparation failure before the ConPTY interpreter was invoked. */
+export class ConPtySetupError extends Error {
+  public constructor(cause: unknown) {
+    super(anyToError(cause).message, { cause });
+  }
+}
+
 export class ConPtyControlError extends Error {
+  /** Set after the startup failure notice is shown, before rejecting shell. */
+  public noticeShown = false;
+
   public constructor(
     public readonly reason:
       "aborted" | "disconnected" | "protocol" | "timeout" | "unauthenticated",
@@ -2465,7 +2482,26 @@ export const CONPTY_DEPENDENCIES: ConPtyPseudoterminalDependencies = {
             encoding: DEFAULT_ENCODING,
             flag: "w",
           });
-          await fsPromises2.rename(staging, target);
+          // Windows scanners can briefly lock either path. Bound the wait to
+          // five retries at 50 ms each; other filesystem failures fail fast.
+          for (let retries = 0; ; retries++) {
+            try {
+              await fsPromises2.rename(staging, target);
+              break;
+            } catch (error) {
+              if (
+                retries >= 5 ||
+                typeof error !== "object" ||
+                error === null ||
+                !("code" in error) ||
+                typeof error.code !== "string" ||
+                !["EPERM", "EACCES", "EBUSY"].includes(error.code)
+              ) {
+                throw error;
+              }
+              await sleep2(self, 50 / SI_PREFIX_SCALE);
+            }
+          }
         }
         // The stable file is reused by later sessions; never delete it.
         return target;
@@ -2548,6 +2584,9 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
       });
       return spareDisposing;
     };
+    const throwIfClosing = (): void => {
+      if (this.#closing) throw new ConPtyControlError("aborted");
+    };
     /*
      * The host applies the working directory on both paths, so a missing one
      * is its shell-start exit code. As a spawn option it would fail the host
@@ -2565,8 +2604,11 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
         readonly control: ConPtyControlChannel;
         readonly host: PipedChildProcess;
       }> => {
-        const control0 = await dependencies.createControl();
+        // Track ownership and the invocation boundary across awaited setup.
+        let control0: ConPtyControlChannel | null = null,
+          invokingHost = false;
         try {
+          control0 = await dependencies.createControl();
           // Source materialization and applyEnv (reg query x2 on first use)
           // run concurrently.
           const [sourceFile, env, directory] = await Promise.all([
@@ -2581,45 +2623,52 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
               }),
               hostCwd(),
             ]),
-            ret = await dependencies.spawn(
-              interpreter,
-              [
-                ...CONPTY_PYTHON_FLAGS,
-                sourceFile,
-                normalizeConPtyDimension(
-                  columns,
-                  CONPTY_DEFAULT_COLUMNS,
-                ).toString(),
-                normalizeConPtyDimension(rows, CONPTY_DEFAULT_ROWS).toString(),
-                control0.path,
-                ...(directory === null ? [] : ["--cwd", directory]),
-                "--",
-                executable,
-                ...(args ?? []),
-              ],
-              { env },
-            );
+            hostArgs = [
+              ...CONPTY_PYTHON_FLAGS,
+              sourceFile,
+              normalizeConPtyDimension(
+                columns,
+                CONPTY_DEFAULT_COLUMNS,
+              ).toString(),
+              normalizeConPtyDimension(rows, CONPTY_DEFAULT_ROWS).toString(),
+              control0.path,
+              ...(directory === null ? [] : ["--cwd", directory]),
+              "--",
+              executable,
+              ...(args ?? []),
+            ];
+          if (
+            hostArgs.some((argument) => argument.includes("\0")) ||
+            Object.entries(env).some(
+              ([key, value]) => key.includes("\0") || value?.includes("\0"),
+            )
+          ) {
+            throw new Error(language.value.t("errors.profile-launch-nul"));
+          }
+          throwIfClosing();
+          // spawn's own rejection is an interpreter invocation failure.
+          invokingHost = true;
+          const ret = await dependencies.spawn(interpreter, hostArgs, { env });
           control0.armReadyDeadline();
           logChildStderr(ret);
           return { control: control0, host: ret };
         } catch (error) {
           // Nothing else owns this channel yet; do not leak its server.
-          await control0.dispose().catch((error0: unknown) => {
+          await control0?.dispose().catch((error0: unknown) => {
             self.console.warn(error0);
           });
-          throw error;
+          if (
+            invokingHost ||
+            (error instanceof ConPtyControlError && error.reason === "aborted")
+          ) {
+            throw error;
+          }
+          throw new ConPtySetupError(error);
         }
       },
       startWarmHost = async (
         warm0: ConPtySpareHost,
-      ): Promise<
-        | {
-            readonly control: ConPtyControlChannel;
-            readonly host: PipedChildProcess;
-          }
-        | "declined"
-        | null
-      > => {
+      ): Promise<boolean | "declined"> => {
         try {
           const [env, directory] = await Promise.all([
               applyEnv({ profile: environment ?? [] }),
@@ -2628,6 +2677,24 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
             envRecord: Record<string, string> = {};
           for (const [key, value] of Object.entries(env)) {
             if (typeof value === "string") envRecord[key] = value;
+          }
+          if (
+            !executable ||
+            [executable, ...(args ?? [])].some((argument) =>
+              argument.includes("\0"),
+            ) ||
+            directory?.includes("\0") ||
+            Object.entries(envRecord).some(
+              ([key, value]) =>
+                !key ||
+                key.includes("=") ||
+                key.includes("\0") ||
+                value.includes("\0"),
+            )
+          ) {
+            // Decline invalid start content and NULs that cannot be passed
+            // to a process. Cold setup reports NULs without blaming Python.
+            return "declined";
           }
           const startOp: ConPtyStartOp = {
               columns: normalizeConPtyDimension(
@@ -2648,15 +2715,18 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
             return "declined";
           }
           await warm0.control.start(startOp);
-          return { control: warm0.control, host: warm0.host };
+          return true;
         } catch (error) {
           /* @__PURE__ */ self.console.debug(error);
-          return null;
+          // A failed write can race the host's shell-start exit. Let the
+          // pre-hello decision observe that exit before discarding the spare.
+          return false;
         }
       },
       initialSession = (async (): Promise<{
         readonly control: ConPtyControlChannel;
         readonly host: PipedChildProcess;
+        readonly startFailed?: boolean;
       }> => {
         if (!pythonExecutable) {
           throw new Error(
@@ -2668,13 +2738,12 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
           if (this.#closing) throw new ConPtyControlError("aborted");
           if (started === "declined") {
             pool?.release(pythonExecutable, warm);
-          } else if (started) {
-            return started;
           } else {
-            if (isRunning(warm.host)) {
-              warm.host.kill();
-            }
-            await disposeSpare(warm.control);
+            return {
+              control: warm.control,
+              host: warm.host,
+              startFailed: !started,
+            };
           }
         }
         if (this.#closing) throw new ConPtyControlError("aborted");
@@ -2686,39 +2755,65 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
       : initialSession;
     const session = initialSession.then(async (started) => {
         if (!warm || started.control !== warm.control) return started;
-        // A spare is only a real session after hello. Before that, its exit
-        // or control failure belongs to the pool, not this terminal.
-        const greeted = await new Promise<boolean>((resolve) => {
-          const onExit = (): void => {
-              finish(false);
-            },
-            finish = (value: boolean): void => {
-              started.host.off("exit", onExit);
-              resolve(value);
-            };
-          started.host.once("exit", onExit);
-          started.control.hello.then(
-            () => {
-              finish(true);
-            },
-            () => {
-              finish(false);
-            },
-          );
-          started.control.ready.then(
-            () => {
-              finish(true);
-            },
-            () => {
-              finish(false);
-            },
-          );
-          if (!isRunning(started.host)) finish(false);
-        });
+        // A profile-start failure belongs to this terminal even before hello;
+        // only a genuinely dead spare gets another interpreter attempt.
+        const greeted =
+          !started.startFailed &&
+          (await new Promise<boolean>((resolve) => {
+            const onExit = (): void => {
+                finish(false);
+              },
+              finish = (value: boolean): void => {
+                started.host.off("exit", onExit);
+                resolve(value);
+              };
+            started.host.once("exit", onExit);
+            started.control.hello.then(
+              () => {
+                finish(true);
+              },
+              () => {
+                finish(false);
+              },
+            );
+            started.control.ready.then(
+              () => {
+                finish(true);
+              },
+              () => {
+                finish(false);
+              },
+            );
+            if (!isRunning(started.host)) finish(false);
+          }));
+        throwIfClosing();
         if (greeted || !pythonExecutable) return started;
+        // A disconnect or failed start write can precede the process exit.
+        // Reuse the short exit budget, never another readiness timeout.
+        if (isRunning(started.host)) {
+          await new Promise<void>((resolve) => {
+            const finish = (): void => {
+                started.host.off("exit", finish);
+                self.clearTimeout(timer);
+                resolve();
+              },
+              timer = self.setTimeout(
+                finish,
+                TERMINAL_CONPTY_HOST_EXIT_WAIT * SI_PREFIX_SCALE,
+              );
+            started.host.once("exit", finish);
+          });
+        }
+        throwIfClosing();
+        if (
+          started.host.exitCode === WIN32_EXIT_COMMAND_NOT_FOUND ||
+          started.host.exitCode === WIN32_EXIT_SHELL_START_FAILED
+        ) {
+          return started;
+        }
         started.host.kill();
         await disposeSpare(started.control);
-        if (this.#closing) throw new ConPtyControlError("aborted");
+        throwIfClosing();
         this.#activeSession = spawnColdHost(pythonExecutable);
         return this.#activeSession;
       }),
@@ -2787,11 +2882,6 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
             "The ConPTY ready host PID does not match the spawned host.",
           );
         }
-        if (!isRunning(shell)) {
-          throw new Error(
-            language.value.t("errors.conpty-host-exited-before-ready"),
-          );
-        }
         this.#ready = true;
         return shell;
       } catch (error) {
@@ -2827,6 +2917,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
             settings.value.errorNoticeTimeout,
             context,
           );
+          failure.noticeShown = true;
         }
         throw error;
       }
@@ -2853,9 +2944,20 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
 
   public async kill(): Promise<void> {
     this.#closing = true;
-    const { host: shell, control } = this.#ready
+    const session = this.#ready
       ? { host: await this.host, control: await this.control }
-      : await this.#activeSession;
+      : await this.#activeSession.catch((error: unknown) => {
+          // Cold preparation already disposed its channel without spawning.
+          if (
+            error instanceof ConPtyControlError &&
+            error.reason === "aborted"
+          ) {
+            return null;
+          }
+          throw error;
+        });
+    if (!session) return;
+    const { host: shell, control } = session;
     if (!this.#ready) {
       if (isRunning(shell) && !shell.kill()) {
         await this.#dispose(control);

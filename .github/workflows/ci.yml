@@ -79,9 +79,22 @@ jobs:
       matrix:
         python: ["3.9", "3.12"]
     steps:
-      # No submodules: the Python tests do not need `vendor/`.
       - name: Checkout repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          submodules: "recursive"
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+
+      # Build dist before Bun copies the file: dependency into its store.
+      - name: Build the vendored library and install TypeScript tests
+        run: |
+          cd vendor/obsidian-plugin-library
+          bun install --frozen-lockfile --ignore-scripts
+          bun run build:force
+          cd ../..
+          bun install --frozen-lockfile --ignore-scripts
 
       - name: Setup uv
         uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39
@@ -103,3 +116,8 @@ jobs:
           uv run --locked --python ${{ matrix.python }} pytest -n 0 --no-cov
           tests/test_docstrings.py tests/test_module_exports.py
           tests/test_git_executable.py tests/src/test_python_imports_consistency.py
+
+      - name: Run the real TypeScript to Python ConPTY contract
+        run: >-
+          uv run --locked --python ${{ matrix.python }}
+          bun x vitest run tests/src/terminal/pseudoterminal.test.ts

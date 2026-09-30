@@ -15,6 +15,7 @@ import {
   CONPTY_DEPENDENCIES,
   CONPTY_HOST_POOL,
   ConPtyControlError,
+  ConPtySetupError,
   Pseudoterminal,
   RefPsuedoterminal,
   TextPseudoterminal,
@@ -36,6 +37,7 @@ export interface OpenOptions {
   readonly columns?: number | undefined;
   readonly cwd?: string | undefined;
   readonly rows?: number | undefined;
+  readonly signal?: AbortSignal | undefined;
 }
 
 /** Picks the backend one spawn runs on; ConPTY needs a usable Python. */
@@ -61,14 +63,19 @@ export function win32SpawnPythonExecutable(
 
 /**
  * Decides whether one failed ConPTY session condemns the runtime for the
- * current Python configuration. Aborts and shell-start failures (9009/251) do not:
- * ConHost would fail the same way.
+ * current Python configuration. Local setup failures, aborts and shell-start
+ * failures (9009/251) do not. Invocation and host/protocol failures before
+ * readiness do, even without an exit code. Normal exits after readiness never
+ * enter this classifier.
  */
 export function conPtyFailureCondemnsRuntime(
   error: unknown,
   hostExit: Awaited<Pseudoterminal["onExit"]> | null,
 ): boolean {
-  if (error instanceof ConPtyControlError && error.reason === "aborted") {
+  if (
+    error instanceof ConPtySetupError ||
+    (error instanceof ConPtyControlError && error.reason === "aborted")
+  ) {
     return false;
   }
   return (
@@ -204,6 +211,10 @@ export const PROFILE_PROPERTIES: {
       profile: Settings.Profile.Typed<"integrated">,
       options?: OpenOptions,
     ) {
+      const checkAborted = (): void => {
+        if (options?.signal?.aborted) throw new ConPtyControlError("aborted");
+      };
+      checkAborted();
       if (!Pseudoterminal.PLATFORM_PSEUDOTERMINAL) {
         return null;
       }
@@ -211,6 +222,15 @@ export const PROFILE_PROPERTIES: {
         profile;
       if (!Settings.Profile.isCompatible(profile, Platform.CURRENT)) {
         return null;
+      }
+      if (
+        deopaque(Platform.CURRENT) === "win32" &&
+        win32Backend === "conpty" &&
+        executable === ""
+      ) {
+        throw new Error(
+          context.language.value.t("errors.profile-executable-empty"),
+        );
       }
       const fallbackPythonExecutable = context.settings.value.pythonExecutable,
         effectivePythonExecutable =
@@ -229,8 +249,9 @@ export const PROFILE_PROPERTIES: {
                 // The backend-specific notices below explain a failure.
                 { notify: false },
               )
-            : null,
-        pythonUsable = diagnosis?.status === "ok",
+            : null;
+      checkAborted();
+      const pythonUsable = diagnosis?.status === "ok",
         // A usable interpreter can still lack a confirmed ConPTY host.
         hostConfirmed = pythonUsable && diagnosis.hostExecutable !== null,
         requestedBackend = win32Backend,
@@ -277,14 +298,18 @@ export const PROFILE_PROPERTIES: {
               reason: "python-missing",
             });
           }
-        } else if (
-          !(await checkWindowsResizerPackages(spawnPythonExecutable))
-        ) {
-          noticeWin32ResizerDisabled(context, {
-            pythonExecutable: spawnPythonExecutable,
-            reason: "packages-missing",
-          });
-          spawnPythonExecutable = void 0;
+        } else {
+          const packagesAvailable = await checkWindowsResizerPackages(
+            spawnPythonExecutable,
+          );
+          checkAborted();
+          if (!packagesAvailable) {
+            noticeWin32ResizerDisabled(context, {
+              pythonExecutable: spawnPythonExecutable,
+              reason: "packages-missing",
+            });
+            spawnPythonExecutable = void 0;
+          }
         }
       }
       const pty = new Pseudoterminal.PLATFORM_PSEUDOTERMINAL(context, {

@@ -1,8 +1,41 @@
 import type { ITerminalAddon, Terminal } from "@xterm/xterm";
-import { describe, expect, it, vi } from "vitest";
+import {
+  ChildProcess,
+  type ChildProcessWithoutNullStreams,
+} from "node:child_process";
+import { Server } from "node:net";
+import { PassThrough } from "node:stream";
+import { App } from "obsidian";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { TerminalPlugin } from "../../../src/main.js";
 import { DisposerAddon } from "../../../src/terminal/emulator-addons.js";
 import { XtermTerminalEmulator } from "../../../src/terminal/emulator.js";
-import type { Pseudoterminal } from "../../../src/terminal/pseudoterminal.js";
+import * as environment from "../../../src/terminal/environment.js";
+import {
+  ConPtyControlError,
+  ConPtyHostPool,
+  ConPtyPseudoterminal,
+  type Pseudoterminal,
+  RefPsuedoterminal,
+  WindowsNamedPipeControlChannel,
+} from "../../../src/terminal/pseudoterminal.js";
+import { tick } from "../../support/helpers.js";
+
+// ConPTY consumes the plugin's context; plugin loading and UI setup are outside
+// this lifecycle test and would eagerly load unrelated rendering addons.
+vi.mock("../../../src/main.js", () => ({
+  TerminalPlugin: class {
+    public readonly register = vi.fn();
+    public readonly language = { value: { t: vi.fn((key: string) => key) } };
+    public readonly settings = {
+      value: { errorNoticeTimeout: 0, prewarmConPty: false },
+    };
+  },
+}));
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 class TestAddon implements ITerminalAddon {
   public activate(_terminal: Terminal): void {}
@@ -61,11 +94,14 @@ describe("XtermTerminalEmulator lifecycle", () => {
       },
       emulator = new XtermTerminalEmulator(
         document.createElement("div"),
-        vi.fn((): Pseudoterminal => ({
-          kill: vi.fn(),
-          onExit: Promise.resolve(0),
-          pipe: vi.fn(),
-        })),
+        vi.fn((terminal: Terminal): Pseudoterminal => {
+          expect(terminal.buffer.active.baseY).toBe(baseY);
+          return {
+            kill: vi.fn(),
+            onExit: Promise.resolve(0),
+            pipe: vi.fn(),
+          };
+        }),
         state,
         undefined,
         stubAddons(),
@@ -87,37 +123,268 @@ describe("XtermTerminalEmulator lifecycle", () => {
     }
   });
 
-  it("waits for the pseudoterminal before resizing it", async () => {
-    const pseudoterminal: Pseudoterminal = {
-      kill: vi.fn(),
-      onExit: Promise.resolve(0),
-      pipe: vi.fn(),
-      resize: vi.fn().mockResolvedValue(undefined),
-    };
-    let resolvePty: (pty: Pseudoterminal) => void = () => {};
+  it("waits for piping before exposing or resizing the pseudoterminal", async () => {
+    const created = Promise.withResolvers<Pseudoterminal>(),
+      piped = Promise.withResolvers<undefined>(),
+      pipeStarted = Promise.withResolvers<undefined>(),
+      pseudoterminal: Pseudoterminal = {
+        kill: vi.fn(),
+        onExit: Promise.resolve(0),
+        pipe: vi.fn(() => {
+          pipeStarted.resolve(undefined);
+          return piped.promise;
+        }),
+        resize: vi.fn().mockResolvedValue(undefined),
+      };
     const emulator = new XtermTerminalEmulator(
       document.createElement("div"),
-      () =>
-        new Promise<Pseudoterminal>((resolve) => {
-          resolvePty = resolve;
-        }),
+      vi.fn(() => created.promise),
       undefined,
       undefined,
       stubAddons(() => ({ cols: 80, rows: 24 })),
     );
+    const ready = vi.fn(),
+      resized = emulator.resize(true);
+    void emulator.pseudoterminal.then(ready);
     try {
-      const resized = emulator.resize(true);
       // A pre-session resize must wait for the pseudoterminal instead of
       // reaching a backend that does not exist yet.
-      await new Promise((resolve) => {
-        self.setTimeout(resolve, 0);
-      });
+      await tick();
       expect(pseudoterminal.resize).not.toHaveBeenCalled();
-      resolvePty(pseudoterminal);
+      created.resolve(pseudoterminal);
+      await pipeStarted.promise;
+      await tick();
+      expect(ready).not.toHaveBeenCalled();
+      expect(pseudoterminal.resize).not.toHaveBeenCalled();
+      piped.resolve(undefined);
       await resized;
+      expect(ready).toHaveBeenCalledWith(pseudoterminal);
       expect(pseudoterminal.resize).toHaveBeenCalledWith(80, 24);
     } finally {
+      created.resolve(pseudoterminal);
+      piped.resolve(undefined);
+      await resized;
       await emulator.close(false);
+    }
+  });
+
+  it.each([true, false])(
+    "kills while piping is pending and joins piping before disposal (required: %s)",
+    async (mustClosePseudoterminal) => {
+      const pipeStarted = Promise.withResolvers<undefined>(),
+        piped = Promise.withResolvers<undefined>(),
+        exit = Promise.withResolvers<number>(),
+        element = document.body.appendChild(document.createElement("div")),
+        lateAddon = new TestAddon(),
+        disposeLateAddon = vi.spyOn(lateAddon, "dispose"),
+        kill = vi.fn(),
+        emulator = new XtermTerminalEmulator(
+          element,
+          vi.fn((): Pseudoterminal => ({
+            kill,
+            onExit: exit.promise,
+            pipe: vi.fn(async (terminal: Terminal) => {
+              pipeStarted.resolve(undefined);
+              await piped.promise;
+              terminal.loadAddon(lateAddon);
+            }),
+          })),
+          undefined,
+          undefined,
+          stubAddons(),
+        );
+      await pipeStarted.promise;
+      const dispose = vi.spyOn(emulator.terminal, "dispose"),
+        settled = vi.fn(),
+        closing = emulator.close(mustClosePseudoterminal);
+      void closing.then(settled);
+      try {
+        expect(element.isConnected).toBe(false);
+        await tick();
+        expect(kill).toHaveBeenCalledOnce();
+        expect(dispose).not.toHaveBeenCalled();
+
+        piped.resolve(undefined);
+        await tick();
+        expect(dispose).toHaveBeenCalledOnce();
+        expect(disposeLateAddon).toHaveBeenCalledOnce();
+        expect(settled).not.toHaveBeenCalled();
+      } finally {
+        piped.resolve(undefined);
+        exit.resolve(0);
+        await closing;
+        element.remove();
+      }
+    },
+  );
+
+  it.each(["aborted", "returned", "failed"])(
+    "aborts a pending factory and handles its %s result",
+    async (result) => {
+      const created = Promise.withResolvers<Pseudoterminal>(),
+        factory = vi.fn(
+          (_terminal: Terminal, _addons: unknown, _signal?: AbortSignal) =>
+            created.promise,
+        ),
+        kill = vi.fn(),
+        emulator = new XtermTerminalEmulator(
+          document.createElement("div"),
+          factory,
+          undefined,
+          undefined,
+          stubAddons(),
+        );
+      await tick();
+      const signal = factory.mock.calls[0]?.[2],
+        dispose = vi.spyOn(emulator.terminal, "dispose"),
+        closing = emulator.close(true),
+        outcome = closing.catch((error: unknown) => error),
+        error = new Error("factory failed during close");
+      try {
+        expect(signal?.aborted).toBe(true);
+      } finally {
+        if (result === "returned") {
+          created.resolve({ kill, onExit: Promise.resolve(0), pipe: vi.fn() });
+        } else {
+          created.reject(
+            result === "aborted" ? new ConPtyControlError("aborted") : error,
+          );
+        }
+        await outcome;
+      }
+      if (result === "failed") await expect(closing).rejects.toBe(error);
+      else await expect(closing).resolves.toBeUndefined();
+      expect(kill).toHaveBeenCalledTimes(result === "returned" ? 1 : 0);
+      expect(dispose).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("aborts a warm ConPTY before hello without starting a cold host", async () => {
+    // Keep the real control promises, but avoid opening a native pipe or process.
+    const server = new Server();
+    vi.spyOn(server, "listen").mockImplementation(() => {
+      server.emit("listening");
+      return server;
+    });
+    vi.spyOn(environment, "applyEnv").mockResolvedValue({});
+    const control = await WindowsNamedPipeControlChannel.create({
+        createServer: vi.fn(() => server),
+        randomUUID: vi.fn(() => "emulator-test"),
+        deferred: true,
+      }),
+      start = vi.spyOn(control, "start").mockResolvedValue(undefined),
+      stdin = new PassThrough(),
+      stdout = new PassThrough(),
+      stderr = new PassThrough(),
+      host = Object.assign(new ChildProcess(), {
+        stdin,
+        stdout,
+        stderr,
+        stdio: [
+          stdin,
+          stdout,
+          stderr,
+          null,
+          null,
+        ] satisfies ChildProcessWithoutNullStreams["stdio"],
+      }),
+      killHost = vi.spyOn(host, "kill").mockImplementation(() => {
+        // Model the process exit observed after an early termination request.
+        Object.defineProperty(host, "signalCode", { value: "SIGTERM" });
+        host.emit("exit", null, "SIGTERM");
+        return true;
+      }),
+      pool = new ConPtyHostPool(),
+      context = new TerminalPlugin(new App(), {
+        id: "emulator-test",
+        name: "Emulator test",
+        version: "0.0.0",
+        minAppVersion: "1.4.11",
+        description: "Emulator lifecycle test",
+        author: "test",
+      }),
+      dependencies = {
+        // A regression must fail promptly instead of hanging in a cold handshake.
+        createControl: vi
+          .fn()
+          .mockRejectedValue(new Error("unexpected cold host")),
+        materializeSource: vi.fn().mockResolvedValue("test-host.py"),
+        source: Promise.resolve("test host"),
+        spawn: vi.fn().mockResolvedValue(host),
+        pool,
+      };
+    vi.spyOn(pool, "acquire").mockReturnValue({ control, host, generation: 0 });
+    const pty = new ConPtyPseudoterminal(
+        context,
+        { executable: "cmd.exe", pythonExecutable: "test-python" },
+        dependencies,
+      ),
+      kill = vi.spyOn(pty, "kill"),
+      pipe = vi.spyOn(pty, "pipe"),
+      emulator = new XtermTerminalEmulator(
+        document.createElement("div"),
+        vi.fn(() => new RefPsuedoterminal(pty)),
+        undefined,
+        undefined,
+        stubAddons(),
+      );
+    await tick();
+    const closing = emulator.close();
+    try {
+      expect(start).toHaveBeenCalledOnce();
+      expect(pipe).toHaveBeenCalledOnce();
+      await tick();
+      expect(kill).toHaveBeenCalledOnce();
+      await closing;
+      await expect(emulator.pseudoterminal).rejects.toMatchObject({
+        reason: "aborted",
+      });
+      await expect(pty.shell).rejects.toMatchObject({ reason: "aborted" });
+      await expect(pty.onExit).rejects.toMatchObject({ reason: "aborted" });
+      expect(killHost).toHaveBeenCalled();
+      expect(dependencies.createControl).not.toHaveBeenCalled();
+      expect(dependencies.spawn).not.toHaveBeenCalled();
+    } finally {
+      await control.dispose();
+      await closing.catch(vi.fn());
+      pool.dispose();
+      host.stdin.destroy();
+      host.stdout.destroy();
+      host.stderr.destroy();
+    }
+  });
+
+  it("disposes after a pending pipe rejects during close", async () => {
+    const pipeStarted = Promise.withResolvers<undefined>(),
+      piped = Promise.withResolvers<undefined>(),
+      kill = vi.fn(),
+      error = new Error("pipe failed"),
+      emulator = new XtermTerminalEmulator(
+        document.createElement("div"),
+        vi.fn((): Pseudoterminal => ({
+          kill,
+          onExit: Promise.resolve(0),
+          pipe: vi.fn(() => {
+            pipeStarted.resolve(undefined);
+            return piped.promise;
+          }),
+        })),
+        undefined,
+        undefined,
+        stubAddons(),
+      );
+    await pipeStarted.promise;
+    const dispose = vi.spyOn(emulator.terminal, "dispose"),
+      closing = emulator.close(false);
+    try {
+      piped.reject(error);
+      await expect(emulator.pseudoterminal).rejects.toBe(error);
+      await closing;
+      expect(kill).toHaveBeenCalledOnce();
+      expect(dispose).toHaveBeenCalledOnce();
+    } finally {
+      piped.reject(error);
+      await closing;
     }
   });
 
@@ -125,7 +392,12 @@ describe("XtermTerminalEmulator lifecycle", () => {
     "handles a kill failure (required: %s)",
     async (mustClosePseudoterminal) => {
       vi.spyOn(console, "debug").mockImplementation(vi.fn());
-      const pipe = vi.fn().mockResolvedValue(undefined),
+      const piped = Promise.withResolvers<undefined>(),
+        pipeStarted = Promise.withResolvers<undefined>(),
+        pipe = vi.fn(() => {
+          pipeStarted.resolve(undefined);
+          return piped.promise;
+        }),
         kill = vi.fn().mockRejectedValue(new Error("seeded kill failure")),
         pseudoterminal: Pseudoterminal = {
           kill,
@@ -142,16 +414,27 @@ describe("XtermTerminalEmulator lifecycle", () => {
           addons,
         );
 
-      await emulator.pseudoterminal;
+      await pipeStarted.promise;
       const dispose = vi.spyOn(emulator.terminal, "dispose"),
-        closing = emulator.close(mustClosePseudoterminal);
-      if (mustClosePseudoterminal) {
-        await expect(closing).rejects.toThrow("seeded kill failure");
-      } else {
-        await expect(closing).resolves.toBeUndefined();
+        closing = emulator.close(mustClosePseudoterminal),
+        outcome = closing.catch((error: unknown) => error);
+      try {
+        await tick();
+        expect(kill).toHaveBeenCalledOnce();
+        expect(dispose).not.toHaveBeenCalled();
+      } finally {
+        piped.resolve(undefined);
+        await outcome;
       }
+      if (mustClosePseudoterminal)
+        await expect(closing).rejects.toThrow("seeded kill failure");
+      else await expect(closing).resolves.toBeUndefined();
 
-      expect(factory).toHaveBeenCalledWith(expect.anything(), emulator.addons);
+      expect(factory).toHaveBeenCalledWith(
+        expect.anything(),
+        emulator.addons,
+        expect.any(AbortSignal),
+      );
       expect(pipe).toHaveBeenCalledOnce();
       expect(kill).toHaveBeenCalledOnce();
       expect(dispose).toHaveBeenCalledOnce();

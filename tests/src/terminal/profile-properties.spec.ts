@@ -69,6 +69,7 @@ vi.mock("../../../src/terminal/win32-doctor.js", async (importOriginal) => {
 import {
   CONPTY_HOST_POOL,
   ConPtyControlError,
+  ConPtySetupError,
   Pseudoterminal,
   TextPseudoterminal,
 } from "../../../src/terminal/pseudoterminal.js";
@@ -125,6 +126,7 @@ function integratedProfile(
 ): Settings.Profile.Typed<"integrated"> {
   return {
     ...Settings.Profile.DEFAULTS.integrated,
+    executable: "cmd.exe",
     // The test host reports `linux`; the profile has to accept it for the
     // gates after the platform check to run at all.
     platforms: { darwin: true, linux: true, win32: true },
@@ -223,6 +225,35 @@ describe("openProfile with saved Windows backend choices", () => {
     notice2Spy.mockClear();
     resetWin32FallbackNotice();
     vi.restoreAllMocks();
+  });
+
+  it("rejects an empty executable without touching Python, the pool or the breaker", async () => {
+    const ctx = context(),
+      translate = vi
+        .spyOn(ctx.language.value, "t")
+        .mockReturnValue("Localized empty executable error"),
+      acquire = vi.spyOn(CONPTY_HOST_POOL, "acquire"),
+      clear = vi.spyOn(CONPTY_HOST_POOL, "clear"),
+      refill = vi.spyOn(CONPTY_HOST_POOL, "ensureSpare");
+    expect(isConPtyRuntimeUnavailable("python")).toBe(false);
+
+    await expect(
+      openProfile(ctx, integratedProfile({ executable: "" })),
+    ).rejects.toThrow("Localized empty executable error");
+
+    expect(translate).toHaveBeenCalledWith("errors.profile-executable-empty");
+    expect(checkWindowsPythonMock).not.toHaveBeenCalled();
+    expect(checkWindowsResizerPackagesMock).not.toHaveBeenCalled();
+    expect(spawn).not.toHaveBeenCalled();
+    expect(acquire).not.toHaveBeenCalled();
+    expect(clear).not.toHaveBeenCalled();
+    expect(refill).not.toHaveBeenCalled();
+    expect(isConPtyRuntimeUnavailable("python")).toBe(false);
+
+    await (await openProfile(ctx, integratedProfile()))?.kill();
+    expect(spawn.mock.calls.map(([args]) => args.win32Backend)).toEqual([
+      "conpty",
+    ]);
   });
 
   it("migrates a restored auto-demoted tab and retries ConPTY on restart", async () => {
@@ -490,6 +521,15 @@ describe("the ConPTY runtime circuit breaker", () => {
     expect(conPtyFailureCondemnsRuntime(new Error("exited"), 251)).toBe(false);
   });
 
+  it("ignores local setup failures without a host exit", () => {
+    expect(
+      conPtyFailureCondemnsRuntime(
+        new ConPtySetupError(new Error("disk full")),
+        null,
+      ),
+    ).toBe(false);
+  });
+
   it("ignores a user abort", () => {
     expect(
       conPtyFailureCondemnsRuntime(new ConPtyControlError("aborted"), 1),
@@ -497,8 +537,13 @@ describe("the ConPTY runtime circuit breaker", () => {
   });
 
   it("condemns the runtime for any other pre-ready death", () => {
-    expect(conPtyFailureCondemnsRuntime(new Error("exited"), 1)).toBe(true);
+    for (const exit of [null, 1, 250]) {
+      expect(conPtyFailureCondemnsRuntime(new Error("host failed"), exit)).toBe(
+        true,
+      );
+    }
     for (const error of [
+      new ConPtyControlError("protocol"),
       new ConPtyControlError("unauthenticated"),
       new ConPtyControlError("timeout"),
       new ConPtyControlError("disconnected"),

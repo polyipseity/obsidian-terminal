@@ -85,7 +85,11 @@ import {
   parseWin32BuildNumber,
 } from "./options.js";
 import { PROFILE_PROPERTIES, openProfile } from "./profile-properties.js";
-import { type Pseudoterminal, TextPseudoterminal } from "./pseudoterminal.js";
+import {
+  ConPtyControlError,
+  type Pseudoterminal,
+  TextPseudoterminal,
+} from "./pseudoterminal.js";
 import { writePromise } from "./utils.js";
 import { win32ExitCodeKey } from "./win32-doctor.js";
 
@@ -1124,7 +1128,7 @@ export class TerminalView extends ItemView {
           ),
           emulator = new TerminalView.EMULATOR(
             ele,
-            async (terminal, addons0) => {
+            async (terminal, addons0, signal) => {
               if (serial) {
                 await writePromise(
                   terminal,
@@ -1142,6 +1146,7 @@ export class TerminalView extends ItemView {
                   columns,
                   cwd: cwd ?? void 0,
                   rows,
+                  signal,
                 }),
                 requested = terminalBackendOptions;
               terminalBackendOptions = settleTerminalBackendOptions(
@@ -1257,17 +1262,32 @@ export class TerminalView extends ItemView {
           { pseudoterminal, terminal, addons } = emulator,
           { disposer, renderer, search } = addons;
         pseudoterminal
-          .then(async (pty0) => pty0.onExit)
+          .then(async (pty0) => ({
+            code: await pty0.onExit,
+            // Only ConPTY's shell promise records authenticated readiness.
+            // Wait for its cleanup to settle before classifying the exit.
+            startupFailure:
+              pty0.win32Backend === "conpty"
+                ? await pty0.shell?.then(
+                    () => null,
+                    (error: unknown) =>
+                      error instanceof ConPtyControlError && error.noticeShown
+                        ? "notified"
+                        : "unnotified",
+                  )
+                : null,
+          }))
           .then(
-            (code) => {
+            ({ code, startupFailure }) => {
               // Closing or replacing the view intentionally kills its old PTY.
-              if (this.emulator !== emulator) {
+              // ConPTY owns failures it already announced during startup.
+              if (this.emulator !== emulator || startupFailure === "notified") {
                 return;
               }
               notice2(
                 () => {
                   const key =
-                    deopaque(Platform.CURRENT) === "win32"
+                    startupFailure === "unnotified"
                       ? (win32ExitCodeKey(code) ?? "notices.terminal-exited")
                       : "notices.terminal-exited";
                   return i18n.t(key, {
@@ -1287,6 +1307,13 @@ export class TerminalView extends ItemView {
               );
             },
             (error: unknown) => {
+              if (
+                this.emulator !== emulator &&
+                error instanceof ConPtyControlError &&
+                error.reason === "aborted"
+              ) {
+                return;
+              }
               printError(
                 anyToError(error),
                 () => i18n.t("errors.error-spawning-terminal"),

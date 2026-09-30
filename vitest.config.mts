@@ -11,6 +11,7 @@
  * providers, document that in `AGENTS.md`.
  */
 
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 // Minimal config: only the test globs are required for this project
@@ -29,7 +30,10 @@ export default defineConfig({
   // `obsidian-plugin-library`) can be imported in node tests.
   resolve: {
     alias: {
-      obsidian: new URL("./tests/mocks/obsidian.ts", import.meta.url).pathname,
+      // URL.pathname leaves a leading slash before Windows drive letters.
+      obsidian: fileURLToPath(
+        new URL("./tests/mocks/obsidian.ts", import.meta.url),
+      ),
     },
   },
   test: {

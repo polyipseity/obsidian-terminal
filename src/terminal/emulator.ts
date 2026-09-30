@@ -28,7 +28,7 @@ import {
 } from "../magic.js";
 import { spawnPromise } from "../utils.js";
 import { applyEnv } from "./environment.js";
-import type { Pseudoterminal } from "./pseudoterminal.js";
+import { ConPtyControlError, type Pseudoterminal } from "./pseudoterminal.js";
 import { writePromise } from "./utils.js";
 
 const childProcess = dynamicRequire<typeof import("node:child_process")>(
@@ -141,6 +141,8 @@ export class XtermTerminalEmulator<A> {
   );
 
   #running = true;
+  readonly #opening = new AbortController();
+  readonly #opened: Promise<Pseudoterminal>;
   readonly #ptyExit: Promise<void>;
 
   public constructor(
@@ -148,6 +150,7 @@ export class XtermTerminalEmulator<A> {
     pseudoterminal: (
       terminal: Terminal,
       addons: XtermTerminalEmulator<A>["addons"],
+      signal: AbortSignal,
     ) => AsyncOrSync<Pseudoterminal>,
     state?: XtermTerminalEmulator.State,
     options?: ITerminalInitOnlyOptions & ITerminalOptions,
@@ -189,12 +192,16 @@ export class XtermTerminalEmulator<A> {
         terminal.scrollToLine(safeScrollLine);
       });
     }
-    this.pseudoterminal = write.then(async () => {
-      const pty0 = await pseudoterminal(terminal, addons0);
+    this.#opened = write.then(() =>
+      pseudoterminal(terminal, addons0, this.#opening.signal),
+    );
+    this.pseudoterminal = this.#opened.then(async (pty0) => {
       await pty0.pipe(terminal);
       return pty0;
     });
-    this.#ptyExit = this.pseudoterminal
+    this.pseudoterminal.catch(noop);
+    // Observe exit even when aborted piping prevents public PTY readiness.
+    this.#ptyExit = this.#opened
       .then(async (pty0) => {
         await pty0.onExit;
       })
@@ -205,13 +212,29 @@ export class XtermTerminalEmulator<A> {
   }
 
   public async close(mustClosePseudoterminal = true): Promise<void> {
+    this.#opening.abort();
     // Detach immediately, even while PTY startup or termination is pending.
     this.element.remove();
     let pseudoterminalCloseFailed = false;
     let pseudoterminalCloseError: unknown;
     try {
       if (this.#running) {
-        await (await this.pseudoterminal).kill();
+        // Startup cancellation must not wait for pipe() to select a session.
+        // A cancelled factory leaves no PTY to kill.
+        let pty: Pseudoterminal | undefined;
+        try {
+          pty = await this.#opened;
+        } catch (error) {
+          if (!(
+            this.#opening.signal.aborted &&
+            error instanceof ConPtyControlError &&
+            error.reason === "aborted"
+          )) {
+            throw error;
+          }
+        }
+        // Keep actual kill failures outside the factory cancellation handler.
+        await pty?.kill();
       }
     } catch (error) {
       pseudoterminalCloseFailed = true;
@@ -219,6 +242,8 @@ export class XtermTerminalEmulator<A> {
       if (!mustClosePseudoterminal)
         /* @__PURE__ */ activeSelf(this.terminal.element).console.debug(error);
     }
+    // Piping may still attach listeners and addons; join it before disposal.
+    await this.pseudoterminal.catch(noop);
     // Dispose outer addons before xterm.
     for (const addon of Object.values(this.addons).reverse()) {
       try {

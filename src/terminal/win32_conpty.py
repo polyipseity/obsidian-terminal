@@ -12,9 +12,10 @@ Its stdin and stdout carry raw terminal bytes.  A local named pipe, created by
 the plugin before the spawn and connected to by this host, carries NDJSON
 control messages: the host announces itself with ``hello``, the plugin sends
 an authenticated response, and the host reports ``ready`` only after Job
-Object assignment and primary-thread resume. The plugin then sends ``resize``
-and ``kill`` operations, and the host reports ``exit`` before leaving. The
-token authenticating that pipe arrives in the
+Object assignment of the shell and primary-thread resume. Descendants may
+break away; ``jobObjectAssigned`` does not attest to their containment.
+The plugin then sends ``resize`` and ``kill`` operations, and the host reports
+``exit`` before leaving. The token authenticating that pipe arrives in the
 ``OBSIDIAN_TERMINAL_CONPTY_TOKEN`` environment variable, never on the command
 line.
 
@@ -64,7 +65,11 @@ __all__ = (
 """Environment variable carrying the control-channel authentication token."""
 TOKEN_ENVIRONMENT_VARIABLE = "OBSIDIAN_TERMINAL_CONPTY_TOKEN"
 
-"""Attestation required by the TypeScript backend-ready contract."""
+"""Attestation required by the TypeScript backend-ready contract.
+
+Job assignment covers the shell in the kill-on-close job, not every descendant.
+Descendants may break away; console attachment determines console-close behavior.
+"""
 READY_ATTESTATION = (
     "create-pseudoconsole+authenticated-control-channel+job-object-assigned"
 )
@@ -92,7 +97,7 @@ can report one message about a missing executable for both Windows backends.
 _EXIT_EXECUTABLE_NOT_FOUND = 9009
 """Host exit code used when the host itself cannot start a session."""
 _EXIT_HOST_ERROR = 250
-"""Host exit code used when the shell exists but Windows refused to start it."""
+"""Host exit code for invalid profile launch inputs or shell-start refusal."""
 _EXIT_SHELL_START_FAILED = 251
 """Exit code reported for a child the host had to terminate."""
 _EXIT_TERMINATED = 1
@@ -389,7 +394,9 @@ def parse_arguments(
     Everything after the first ``--`` is the child command, so a ``--cwd``
     there belongs to the child.  The directory is taken verbatim, as the
     deferred ``start`` op takes its ``cwd``: whether it exists is decided when
-    the session starts, where a bad one is a shell-start failure.
+    the session starts, where a bad one is a shell-start failure. Host envelope
+    errors raise ``ValueError``; a missing/empty executable raises
+    ``ChildStartError`` with the profile-fault exit code.
     """
     values = list(arguments)
     if values and values[0] == "--defer-session":
@@ -413,11 +420,15 @@ def parse_arguments(
     pipe_name = head[2]
     if not pipe_name.lower().startswith(_PIPE_PREFIXES):
         raise ValueError(f"not a local named pipe: {pipe_name}")
+    columns = _parse_dimension(head[0], "columns")
+    rows = _parse_dimension(head[1], "rows")
     if not command or not command[0]:
-        raise ValueError("an executable is required after --")
+        raise ChildStartError(
+            "an executable is required after --", _EXIT_SHELL_START_FAILED
+        )
     return HostArguments(
-        columns=_parse_dimension(head[0], "columns"),
-        rows=_parse_dimension(head[1], "rows"),
+        columns=columns,
+        rows=rows,
         pipe_name=pipe_name,
         command=tuple(command),
         cwd=options[1] if has_cwd else None,
@@ -436,7 +447,7 @@ def spawn_exit_code(win32_error: int) -> int:
 
 
 class ChildStartError(OSError):
-    """Windows refused to start the shell; the host itself is healthy."""
+    """The profile cannot start its shell; the host itself is healthy."""
 
     def __init__(self, message: str, exit_code: int) -> None:
         """Carry the exit code the host reports for this failure."""
@@ -1277,7 +1288,11 @@ if sys.platform == "win32":
             except OSError as error:
                 diagnose(f"could not enter the deferred session: {error}")
                 self._close_control()
-                return _EXIT_HOST_ERROR
+                return (
+                    error.exit_code
+                    if isinstance(error, ChildStartError)
+                    else _EXIT_HOST_ERROR
+                )
             if start is None:
                 self._close_control()
                 return 0
@@ -1328,6 +1343,10 @@ if sys.platform == "win32":
                 start = _parse_start(message, self._pipe_name)
                 if start is not None:
                     return start
+                if message.get("op") == "start":
+                    raise ChildStartError(
+                        "malformed start operation", _EXIT_SHELL_START_FAILED
+                    )
                 diagnose("ignored a non-start control operation while idle")
 
         def _start(self) -> None:
@@ -1788,17 +1807,20 @@ if sys.platform == "win32":
 
     def main() -> None:
         """Run the ConPTY session described by the host command line."""
-        try:
-            arguments = parse_arguments(sys.argv[1:])
-        except ValueError as error:
-            diagnose(str(error))
-            sys.exit(_EXIT_HOST_ERROR)
         token = os.environ.get(TOKEN_ENVIRONMENT_VARIABLE, "")
         # The child inherits this process's environment block, so the token has
         # to be removed before the child is created.
         os.environ.pop(TOKEN_ENVIRONMENT_VARIABLE, None)
         if not token:
             diagnose("the control authentication token is missing")
+            sys.exit(_EXIT_HOST_ERROR)
+        try:
+            arguments = parse_arguments(sys.argv[1:])
+        except ChildStartError as error:
+            diagnose(str(error))
+            sys.exit(error.exit_code)
+        except ValueError as error:
+            diagnose(str(error))
             sys.exit(_EXIT_HOST_ERROR)
         if isinstance(arguments, DeferredArguments):
             sys.exit(

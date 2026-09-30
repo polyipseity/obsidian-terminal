@@ -148,7 +148,29 @@ Run the ConPTY host and ConHost resizer tests on native Windows:
 uv run --locked pytest tests/src/terminal/test_win32_conpty.py tests/src/terminal/test_win32_resizer.py
 ```
 
-CI runs the same suites in the `windows-native` job on `windows-2025` for Python 3.9 and 3.12.
+The TypeScript contract suite runs the shipped client against the real Python host
+on cold and pooled paths. Native cases skip explicitly off Windows; the host-source
+loading check runs on every platform. Check out submodules
+recursively, then build the vendor **before** installing the root dependencies:
+Bun copies the `file:` dependency into its store, so `dist` must already exist.
+
+```powershell
+cd vendor/obsidian-plugin-library
+bun install --frozen-lockfile --ignore-scripts
+bun run build:force
+cd ../..
+bun install --frozen-lockfile --ignore-scripts
+uv run --locked --python 3.9 bun x vitest run tests/src/terminal/pseudoterminal.test.ts
+uv run --locked --python 3.12 bun x vitest run tests/src/terminal/pseudoterminal.test.ts
+```
+
+Vitest resolves the Obsidian mock with `fileURLToPath` so native Windows drive
+paths work. For platform-free framing and admission checks, run
+`bun x vitest run tests/src/terminal/pseudoterminal.spec.ts`.
+
+The `windows-native` job on `windows-2025` for Python 3.9 and 3.12 runs the pytest
+suites and `pseudoterminal.test.ts`. The Linux `build` job runs
+`pseudoterminal.spec.ts` with the rest of the Vitest suite.
 
 ## 3. Coding Conventions
 

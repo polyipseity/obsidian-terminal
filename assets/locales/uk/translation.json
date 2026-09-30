@@ -199,6 +199,8 @@
     "no-Python-to-spawn-Unix-pseudoterminal": "Відсутній $t(generic.Python) для $t(generic.spawn) $t(generic.platforms.unix) $t(generic.pseudoterminal)",
     "no-Python-to-spawn-Windows-ConPTY": "No $t(generic.Python) is configured to spawn the Windows ConPTY host.",
     "not-Python": "Це не $t(generic.Python)",
+    "profile-executable-empty": "This $t(generic.profile) has no $t(generic.executable). Set an $t(generic.executable) in the $t(generic.profile) settings, then reopen the $t(generic.terminal).",
+    "profile-launch-nul": "Terminal launch settings cannot contain NUL (U+0000). Check the executable, arguments, working directory, and environment variables.",
     "resizer-exited-unexpectedly": "Ресайзер термінала $t(generic.exit_past) неочікувано: {{code}}",
     "win32-exit-251": "$t(generic.platforms.win32) refused to start '{{executable}}' (exit code 251). Check that it is an executable you may run and that the $t(generic.profile)'s working directory exists.",
     "win32-exit-9009": "$t(generic.platforms.win32) could not find '{{executable}}' (exit code 9009). Check the $t(generic.executable) path in the $t(generic.profile).",
