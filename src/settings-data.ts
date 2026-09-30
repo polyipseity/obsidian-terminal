@@ -864,6 +864,11 @@ export namespace Settings {
               } satisfies Typed<typeof type>;
             }
             case "integrated": {
+              const platforms = fixPlatforms(
+                DEFAULTS[type].platforms,
+                unc["platforms"] ?? {},
+                Pseudoterminal.SUPPORTED_PLATFORMS,
+              );
               return {
                 args: fixArray(DEFAULTS[type], unc, "args", ["string"]),
                 environment: fixEnvironment(unc["environment"]),
@@ -874,17 +879,19 @@ export namespace Settings {
                   "boolean",
                 ]),
                 name: fixTyped(DEFAULTS[type], unc, "name", ["string"]),
-                platforms: fixPlatforms(
-                  DEFAULTS[type].platforms,
-                  unc["platforms"] ?? {},
-                  Pseudoterminal.SUPPORTED_PLATFORMS,
-                ),
-                pythonExecutable: fixTyped(
-                  DEFAULTS[type],
-                  unc,
-                  "pythonExecutable",
-                  ["string"],
-                ),
+                platforms,
+                // Released Windows-only presets stored python3. Writing
+                // win32Backend below makes this inheritance migration one-time.
+                pythonExecutable:
+                  unc["win32Backend"] === void 0 &&
+                  unc["pythonExecutable"] === "python3" &&
+                  platforms.win32 === true &&
+                  platforms.darwin !== true &&
+                  platforms.linux !== true
+                    ? ""
+                    : fixTyped(DEFAULTS[type], unc, "pythonExecutable", [
+                        "string",
+                      ]),
                 restoreHistory: fixTyped(
                   DEFAULTS[type],
                   unc,
@@ -908,16 +915,12 @@ export namespace Settings {
                 type,
                 // useWin32Conhost (retired) is ignored; a missing
                 // win32Backend takes the default.
-                win32Backend:
-                  unc["win32BackendAutoDemoted"] === true &&
-                  unc["win32Backend"] === "legacy"
-                    ? "conpty"
-                    : fixInSet(
-                        DEFAULTS[type],
-                        unc,
-                        "win32Backend",
-                        WIN32_BACKENDS,
-                      ),
+                win32Backend: fixInSet(
+                  DEFAULTS[type],
+                  unc,
+                  "win32Backend",
+                  WIN32_BACKENDS,
+                ),
               } satisfies Typed<typeof type>;
             }
             case "invalid": {

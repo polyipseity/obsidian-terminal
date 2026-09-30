@@ -3,7 +3,7 @@
  *
  * Covers:
  * - `resolveWin32Backend` for every configured backend and Python state
- * - saved auto-demoted profiles recovering through `openProfile`
+ * - saved backend choices and runtime fallback through `openProfile`
  * - `win32SpawnPythonExecutable` splitting the host and resizer interpreters
  * - the once-per-session ConPTY fallback notice and its reset helper
  * - `prewarmConPtyProfile` gating the spare on the Python check
@@ -144,7 +144,7 @@ function integratedProfile(
 ): Settings.Profile.Typed<"integrated"> {
   return {
     ...Settings.Profile.DEFAULTS.integrated,
-    executable: "cmd.exe",
+    executable: "C:\\Windows\\System32\\cmd.exe",
     // The test host reports `linux`; the profile has to accept it for the
     // gates after the platform check to run at all.
     platforms: { darwin: true, linux: true, win32: true },
@@ -246,14 +246,11 @@ describe("openProfile with saved Windows backend choices", () => {
     });
   }
 
-  const savedProfile = (autoDemoted = true): Settings.Profile =>
+  const savedProfile = (
+    win32Backend: Settings.Profile.Win32Backend = "conpty",
+  ): Settings.Profile =>
     Settings.Profile.fix(
-      JSON.parse(
-        JSON.stringify({
-          ...integratedProfile({ win32Backend: "legacy" }),
-          win32BackendAutoDemoted: autoDemoted,
-        }),
-      ),
+      JSON.parse(JSON.stringify(integratedProfile({ win32Backend }))),
     ).value;
 
   beforeEach(() => {
@@ -619,26 +616,6 @@ describe("openProfile with saved Windows backend choices", () => {
     localSettings.unload();
   });
 
-  it("migrates a restored auto-demoted tab and retries ConPTY on restart", async () => {
-    const profile = savedProfile();
-    const ctx = context();
-    const restored = await openProfile(ctx, profile);
-    await restored?.kill();
-    const restarted = await openProfile(ctx, profile);
-    await restarted?.kill();
-    expect(spawn.mock.calls.map(([args]) => args.win32Backend)).toEqual([
-      "conpty",
-      "conpty",
-    ]);
-    expect(spawn.mock.calls[0]?.[0].pythonExecutable).toBe(
-      "C:\\Python312\\python.exe",
-    );
-    expect(notice2Spy).not.toHaveBeenCalled();
-    expect(checkWindowsResizerPackagesMock).not.toHaveBeenCalled();
-    expect(profile).toHaveProperty("win32Backend", "conpty");
-    expect(profile).not.toHaveProperty("win32BackendAutoDemoted");
-  });
-
   it("warns about a POSIX profile path on explicit open even when fallback succeeds", async () => {
     const profile = integratedProfile({ pythonExecutable: "/opt/python3" }),
       ctx = context("python");
@@ -676,7 +653,7 @@ describe("openProfile with saved Windows backend choices", () => {
   });
 
   it("preserves an explicit saved legacy choice when Python is healthy", async () => {
-    const pty = await openProfile(context(), savedProfile(false));
+    const pty = await openProfile(context(), savedProfile("legacy"));
     await pty?.kill();
     expect(spawn.mock.calls[0]?.[0].win32Backend).toBe("legacy");
     expect(checkWindowsResizerPackagesMock).toHaveBeenCalledWith(

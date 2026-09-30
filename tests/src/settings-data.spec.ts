@@ -1,8 +1,50 @@
 /**
  * Unit tests for `src/settings-data.ts` — validate defaults and normalization helpers.
  */
+import { cloneAsWritable } from "@polyipseity/obsidian-plugin-library";
 import { describe, expect, it, vi } from "vitest";
 import { LocalSettings, Settings } from "../../src/settings-data.js";
+import { PROFILE_PRESETS } from "../../src/terminal/profile-presets.js";
+import { inheritedPythonExecutable } from "../../src/terminal/win32-doctor.js";
+
+// Literal presets from 3.27.2 (a485e98b05f2dc0bc14e0a9d92c3d8cad6d0a95f),
+// src/terminal/profile-presets.ts and constants from src/magic.ts.
+// These released records predate win32Backend. 3.27.0 and 3.27.1 presets omitted
+// environment; 3.27.2 added environment: [] (50aaa931).
+// The generic integrated default used an empty Python
+// executable, whereas these Windows-only and cross-platform presets used python3.
+const RELEASED_3_27_2_PROFILES = {
+  cmdIntegrated: {
+    args: [],
+    environment: [],
+    executable: "C:\\Windows\\System32\\cmd.exe",
+    followTheme: true,
+    name: "",
+    platforms: { win32: true },
+    pythonExecutable: "python3",
+    restoreHistory: false,
+    rightClickAction: "copyPaste",
+    successExitCodes: ["0", "SIGINT", "SIGTERM"],
+    terminalOptions: { documentOverride: null },
+    type: "integrated",
+    useWin32Conhost: true,
+  },
+  pwshIntegrated: {
+    args: [],
+    environment: [],
+    executable: "pwsh",
+    followTheme: true,
+    name: "",
+    platforms: { darwin: true, linux: true, win32: true },
+    pythonExecutable: "python3",
+    restoreHistory: false,
+    rightClickAction: "copyPaste",
+    successExitCodes: ["0", "SIGINT", "SIGTERM"],
+    terminalOptions: { documentOverride: null },
+    type: "integrated",
+    useWin32Conhost: true,
+  },
+};
 
 describe("src/settings-data.ts", () => {
   it("Settings.DEFAULT has expected keys and types", () => {
@@ -156,19 +198,6 @@ describe("src/settings-data.ts", () => {
     expect(legacy).not.toHaveProperty("useWin32Conhost");
   });
 
-  it("moves a stored ConHost boolean onto the default backend", () => {
-    // useWin32Conhost is retired: either value adopts the default and the
-    // key is dropped.
-    for (const useWin32Conhost of [true, false]) {
-      const fixed = Settings.Profile.fix({
-        type: "integrated",
-        useWin32Conhost,
-      }).value;
-      expect(fixed).toMatchObject({ win32Backend: "conpty" });
-      expect(fixed).not.toHaveProperty("useWin32Conhost");
-    }
-  });
-
   it("rejects unknown Windows backend values", () => {
     expect(
       Settings.Profile.fix({
@@ -201,22 +230,40 @@ describe("src/settings-data.ts", () => {
   });
 
   it.each([
-    { platforms: { win32: true }, useWin32Conhost: true },
-    {
-      platforms: { darwin: true, linux: true, win32: true },
-      useWin32Conhost: true,
-    },
-    { platforms: { win32: true }, win32Backend: "conpty" },
+    RELEASED_3_27_2_PROFILES.cmdIntegrated.platforms,
+    { darwin: false, linux: false, win32: true },
+    { darwin: "false", linux: 0, win32: true },
   ])(
-    "preserves stored python3 across profile schemas and platforms: %j",
-    (input) => {
+    "migrates released Windows-only python3 after normalizing platforms: %j",
+    (platforms) => {
+      const fixed = Settings.Profile.fix({
+        ...RELEASED_3_27_2_PROFILES.cmdIntegrated,
+        platforms,
+      });
+      expect(fixed.value).toMatchObject({
+        pythonExecutable: "",
+        win32Backend: "conpty",
+      });
+    },
+  );
+
+  it.each([
+    RELEASED_3_27_2_PROFILES.pwshIntegrated.platforms,
+    { darwin: true, win32: true },
+    { linux: true, win32: true },
+    { darwin: true, linux: true },
+    { win32: false },
+    { win32: "true" },
+    {},
+  ])(
+    "preserves stored python3 for profiles that are not Windows-only: %j",
+    (platforms) => {
       const fixed = Settings.fix({
         pythonExecutable: "C:\\Plugin\\python.exe",
         profiles: {
           explicit: {
-            type: "integrated",
-            pythonExecutable: "python3",
-            ...input,
+            ...RELEASED_3_27_2_PROFILES.pwshIntegrated,
+            platforms,
           },
         },
       }).value;
@@ -227,25 +274,54 @@ describe("src/settings-data.ts", () => {
   );
 
   it.each([
-    ["legacy", true, "conpty"],
-    ["legacy", false, "legacy"],
-    ["conpty", true, "conpty"],
-    ["conpty", false, "conpty"],
-    ["legacy", "yes", "legacy"],
-    [undefined, true, "conpty"],
+    { win32Backend: "conpty", expectedBackend: "conpty" },
+    { win32Backend: "legacy", expectedBackend: "legacy" },
+    { win32Backend: null, expectedBackend: "conpty" },
   ])(
-    "migrates backend %s with marker %s to %s",
-    (backend, marker, expected) => {
-      const fixed = Settings.Profile.fix({
-        type: "integrated",
-        win32Backend: backend,
-        win32BackendAutoDemoted: marker,
-      }).value;
-      expect(fixed).toHaveProperty("win32Backend", expected);
-      expect(fixed).not.toHaveProperty("win32BackendAutoDemoted");
+    "preserves stored python3 with a defined backend: $win32Backend",
+    ({ win32Backend, expectedBackend }) => {
       expect(
-        Settings.Profile.fix(JSON.parse(JSON.stringify(fixed))).value,
-      ).toEqual(fixed);
+        Settings.Profile.fix({
+          ...RELEASED_3_27_2_PROFILES.cmdIntegrated,
+          win32Backend,
+        }).value,
+      ).toMatchObject({
+        pythonExecutable: "python3",
+        win32Backend: expectedBackend,
+      });
+    },
+  );
+
+  it.each([
+    "C:\\Custom\\python.exe",
+    "python",
+    "my-python",
+    "Python3",
+    " python3",
+    "python3 ",
+    "python3\t",
+    "",
+  ])(
+    "preserves other legacy Python strings exactly: %j",
+    (pythonExecutable) => {
+      expect(
+        Settings.Profile.fix({
+          ...RELEASED_3_27_2_PROFILES.cmdIntegrated,
+          pythonExecutable,
+        }).value,
+      ).toHaveProperty("pythonExecutable", pythonExecutable);
+    },
+  );
+
+  it.each([false, true])(
+    "keeps a current preset clone's inherited Python (missing backend: %s)",
+    (missingBackend) => {
+      // Match the profile editor's clone path, including a not-yet-fixed shape.
+      const cloned = cloneAsWritable(PROFILE_PRESETS.cmdIntegrated),
+        { win32Backend: _win32Backend, ...withoutBackend } = cloned,
+        fixed = Settings.Profile.fix(missingBackend ? withoutBackend : cloned);
+      expect(cloned.pythonExecutable).toBe("");
+      expect(fixed.value).toEqual(cloned);
     },
   );
 
@@ -254,45 +330,107 @@ describe("src/settings-data.ts", () => {
      * A fixer key that does not round-trip stably appends one recovery
      * snapshot per load, forever. Fix → persist → fix must be a no-op.
      */
-    function expectConvergence(input: unknown): void {
+    function expectConvergence(input: unknown): Settings {
       const first = Settings.fix(input).value,
         stored: unknown = JSON.parse(JSON.stringify(first)),
         second = Settings.fix(stored);
       expect(second.valid).toBe(true);
-      expect(JSON.parse(JSON.stringify(second.value))).toEqual(stored);
+      expect(JSON.stringify(second.value)).toBe(JSON.stringify(first));
+      return first;
     }
 
-    it("converges main-era data in one cycle", () => {
-      expectConvergence({
-        addToCommand: true,
-        defaultProfile: "upgrade",
-        errorNoticeTimeout: 0,
-        language: "",
-        noticeTimeout: 5,
-        profiles: {
-          upgrade: {
-            args: [],
-            environment: [],
-            executable: "C:\\Windows\\System32\\cmd.exe",
-            followTheme: true,
-            name: "",
-            platforms: { win32: true },
-            pythonExecutable: "python3",
-            restoreHistory: false,
-            rightClickAction: "copyPaste",
-            successExitCodes: ["0", "SIGINT", "SIGTERM"],
-            terminalOptions: { documentOverride: null, fontSize: 14 },
-            type: "integrated",
-            useWin32Conhost: true,
-            win32Backend: "legacy",
-            win32BackendAutoDemoted: true,
+    it.each([
+      { useWin32Conhost: true, omitEnvironment: true },
+      { useWin32Conhost: false, omitEnvironment: true },
+      { useWin32Conhost: true, omitEnvironment: false },
+      { useWin32Conhost: false, omitEnvironment: false },
+    ])(
+      "converges released 3.27.x settings onto ConPTY (useWin32Conhost: $useWin32Conhost, omitted environment: $omitEnvironment)",
+      ({ useWin32Conhost, omitEnvironment }) => {
+        // Released settings have neither plugin-level Python nor prewarm fields.
+        const released = {
+            addToCommand: false,
+            defaultProfile: "cmdIntegrated",
+            errorNoticeTimeout: 0,
+            language: "",
+            noticeTimeout: 17,
+            profiles: Object.fromEntries(
+              Object.entries(RELEASED_3_27_2_PROFILES).map(([id, profile]) => {
+                const { environment: _environment, ...olderProfile } = profile;
+                return [
+                  id,
+                  {
+                    ...(omitEnvironment ? olderProfile : profile),
+                    useWin32Conhost,
+                  },
+                ];
+              }),
+            ),
           },
-        },
-      });
-    });
+          fixed = expectConvergence(released),
+          { profiles: _profiles, ...unrelated } = released;
+        expect(fixed).toMatchObject(unrelated);
+        expect(Object.keys(fixed.profiles)).toEqual(
+          Object.keys(released.profiles),
+        );
+        for (const [id, profile] of Object.entries(RELEASED_3_27_2_PROFILES)) {
+          const {
+            useWin32Conhost: _useWin32Conhost,
+            pythonExecutable: _pythonExecutable,
+            ...preserved
+          } = profile;
+          expect(fixed.profiles[id]).toMatchObject({
+            ...preserved,
+            pythonExecutable: id === "cmdIntegrated" ? "" : "python3",
+            win32Backend: "conpty",
+          });
+          expect(fixed.profiles[id]).not.toHaveProperty("useWin32Conhost");
+        }
+      },
+    );
 
     it("converges current-era data in one cycle", () => {
       expectConvergence(JSON.parse(JSON.stringify(Settings.DEFAULT)));
+    });
+
+    it("migrates once, inherits plugin Python, and preserves a later explicit python3", () => {
+      // Model released profiles with a plugin path configured after upgrading.
+      const input = {
+          ...Settings.DEFAULT,
+          defaultProfile: "cmdIntegrated",
+          noticeTimeout: 17,
+          profiles: RELEASED_3_27_2_PROFILES,
+          pythonExecutable: "C:\\Plugin\\python.exe",
+          showTerminalTabPrefix: true,
+        },
+        before = cloneAsWritable(input),
+        fixed = expectConvergence(input),
+        profile = fixed.profiles["cmdIntegrated"];
+      if (profile?.type !== "integrated") {
+        throw new Error("Expected an integrated profile");
+      }
+      expect(profile.pythonExecutable).toBe("");
+      expect(
+        inheritedPythonExecutable(
+          profile.pythonExecutable,
+          fixed.pythonExecutable,
+        ),
+      ).toBe(input.pythonExecutable);
+      const { profiles: _profiles, ...unrelated } = input;
+      expect(fixed).toMatchObject(unrelated);
+      expect(input).toEqual(before);
+
+      const edited = expectConvergence({
+        ...fixed,
+        profiles: {
+          ...fixed.profiles,
+          cmdIntegrated: { ...profile, pythonExecutable: "python3" },
+        },
+      });
+      expect(edited.profiles["cmdIntegrated"]).toHaveProperty(
+        "pythonExecutable",
+        "python3",
+      );
     });
   });
 
