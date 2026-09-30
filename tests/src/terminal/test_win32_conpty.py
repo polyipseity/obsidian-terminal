@@ -121,8 +121,8 @@ def test_job_assignment_failure_terminates_without_resuming() -> None:
     assert calls == ["terminate"]
 
 
-def test_resume_failure_terminates_the_assigned_tree() -> None:
-    """A failed primary-thread resume must close the contained process tree."""
+def test_resume_failure_terminates_the_assigned_child() -> None:
+    """A failed primary-thread resume must terminate the assigned child."""
     calls: list[str] = []
     with pytest.raises(OSError, match="ResumeThread"):
         _MODULE.resume_assigned_child(
@@ -475,8 +475,11 @@ def _touch(directory: Path, *names: str) -> None:
         (directory / name).write_text("", encoding="utf-8")
 
 
-def test_resolve_executable_searches_the_given_path(tmp_path: Path) -> None:
+def test_resolve_executable_searches_the_given_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """A bare name resolves through the child's PATH; others pass through."""
+    monkeypatch.delenv("NoDefaultCurrentDirectoryInExePath", raising=False)
     _touch(tmp_path / "bin", "tool.exe")
     program = str(tmp_path / "bin" / "tool.exe")
     path = os.pathsep.join(("", str(tmp_path / "missing"), str(tmp_path / "bin")))
@@ -500,6 +503,13 @@ def test_resolve_executable_unwraps_a_quoted_path_entry(tmp_path: Path) -> None:
     )
 
 
+def _write_wide_string(buffer: ctypes.Array[ctypes.c_wchar], value: str) -> int:
+    """Fill a Win32 output buffer and return its character count."""
+    buffer.value = value
+    return len(value)
+
+
+@pytest.mark.parametrize("search_cwd", (False, True))
 @pytest.mark.parametrize(
     "bits, sysnative", ((32, True), (32, False), (64, False), (64, True))
 )
@@ -526,6 +536,7 @@ def test_resolve_executable_uses_native_system_programs_from_wow64(
     program: str,
     path: str,
     relative: str,
+    search_cwd: bool,
 ) -> None:
     """A 32-bit host must find and launch native System32 programs via Sysnative."""
     native = r"C:\Windows\Sysnative"
@@ -552,6 +563,27 @@ def test_resolve_executable_uses_native_system_programs_from_wow64(
         _MODULE, "sys", Mock(wraps=sys, platform="win32", maxsize=2 ** (bits - 1) - 1)
     )
     monkeypatch.setattr(_MODULE, "_SearchPathW", Mock(return_value=0), raising=False)
+    monkeypatch.setattr(
+        _MODULE,
+        "_NeedCurrentDirectoryForExePathW",
+        Mock(return_value=search_cwd),
+        raising=False,
+    )
+    for binding, value in (
+        ("_GetModuleFileNameW", r"C:\Python\python.exe"),
+        ("_GetSystemDirectoryW", r"C:\Windows\System32"),
+        ("_GetWindowsDirectoryW", r"C:\Windows"),
+    ):
+        monkeypatch.setattr(
+            _MODULE,
+            binding,
+            Mock(
+                side_effect=lambda *args, value=value: _write_wide_string(
+                    args[-2], value
+                )
+            ),
+            raising=False,
+        )
 
     resolved = _MODULE.resolve_executable(program, path)
     assert ntpath.normcase(resolved) == ntpath.normcase(expected)
@@ -628,13 +660,161 @@ def test_resolve_executable_appends_to_a_name_that_has_an_extension(
 def test_resolve_executable_searches_the_current_directory_first(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """``CreateProcessW`` searches the parent's directory before PATH."""
+    """The current directory wins when Windows permits implicit cwd lookup."""
+    monkeypatch.delenv("NoDefaultCurrentDirectoryInExePath", raising=False)
     _touch(tmp_path / "cwd", "tool.exe")
     _touch(tmp_path / "bin", "tool.exe")
     monkeypatch.chdir(tmp_path / "cwd")
     assert _MODULE.resolve_executable("tool", str(tmp_path / "bin")) == (
         os.path.join(os.curdir, "tool.exe")
     )
+
+
+@pytest.fixture
+def current_directory_opt_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Use the real policy on Windows, substituting its result elsewhere."""
+    monkeypatch.setenv("NoDefaultCurrentDirectoryInExePath", "1")
+    if sys.platform != "win32":
+        monkeypatch.setattr(
+            _MODULE, "sys", Mock(wraps=sys, platform="win32", maxsize=sys.maxsize)
+        )
+        monkeypatch.setattr(
+            _MODULE,
+            "_NeedCurrentDirectoryForExePathW",
+            Mock(return_value=False),
+            raising=False,
+        )
+
+
+@pytest.mark.usefixtures("current_directory_opt_out")
+@pytest.mark.parametrize(
+    "ignored_entry",
+    (
+        "",
+        '"',
+        '""',
+        f'"trusted{os.pathsep}.{os.pathsep}tools"',
+        f'trusted"quoted{os.pathsep}.{os.pathsep}tools"suffix',
+    ),
+)
+@pytest.mark.parametrize("suffix", ("", ".com", ".exe"))
+def test_resolve_executable_honors_current_directory_opt_out(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    suffix: str,
+    ignored_entry: str,
+) -> None:
+    """A planted bare name cannot shadow the same native program on PATH."""
+    _touch(tmp_path / "cwd", "tool.com", "tool.exe")
+    _touch(tmp_path / "bin", "tool.com", "tool.exe")
+    monkeypatch.chdir(tmp_path / "cwd")
+    path = os.pathsep.join((ignored_entry, str(tmp_path / "bin")))
+    assert _MODULE.resolve_executable("tool" + suffix, path) == (
+        str(tmp_path / "bin" / ("tool" + (suffix or ".com")))
+    )
+
+
+@pytest.mark.usefixtures("current_directory_opt_out")
+def test_resolve_executable_opt_out_preserves_explicit_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Explicit paths work, and an explicit cwd PATH entry keeps its position."""
+    _touch(tmp_path / "cwd", "tool.exe")
+    _touch(tmp_path / "bin", "tool.exe")
+    monkeypatch.chdir(tmp_path / "cwd")
+    explicit = os.path.join(os.curdir, "tool.exe")
+    path = str(tmp_path / "bin")
+    assert _MODULE.resolve_executable(explicit, path) == explicit
+    assert _MODULE.resolve_executable("tool", os.pathsep.join((path, os.curdir))) == (
+        str(tmp_path / "bin" / "tool.exe")
+    )
+    assert _MODULE.resolve_executable("tool", os.pathsep.join((os.curdir, path))) == (
+        explicit
+    )
+
+
+@pytest.mark.parametrize(
+    "location, path",
+    (
+        ("cwd", ""),
+        ("cwd", '"'),
+        ("cwd", '""'),
+        ("cwd", f'"trusted{os.pathsep}.{os.pathsep}tools"'),
+        ("cwd", f'trusted"quoted{os.pathsep}.{os.pathsep}tools"suffix'),
+        ("application", ""),
+        ("system", ""),
+        ("legacy", ""),
+        ("windows", ""),
+    ),
+)
+def test_resolve_executable_current_directory_opt_out_constrains_system_search(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, location: str, path: str
+) -> None:
+    """A fallback preserves system lookup but cannot restore implicit cwd search."""
+    directories = {
+        "cwd": tmp_path / "cwd",
+        "application": tmp_path / ("Python" + os.pathsep + "tools"),
+        "system": tmp_path / "Windows" / "System32",
+        "legacy": tmp_path / "Windows" / "System",
+        "windows": tmp_path / "Windows",
+    }
+    for directory in directories.values():
+        directory.mkdir(parents=True, exist_ok=True)
+    program = "obsidian-terminal-cwd-probe.exe"
+    _touch(directories[location], program)
+    monkeypatch.chdir(directories["cwd"])
+    monkeypatch.setattr(
+        _MODULE, "sys", Mock(wraps=sys, platform="win32", maxsize=2**63 - 1)
+    )
+    monkeypatch.setattr(
+        _MODULE,
+        "_NeedCurrentDirectoryForExePathW",
+        Mock(return_value=False),
+        raising=False,
+    )
+    for binding, value in (
+        ("_GetModuleFileNameW", directories["application"] / "python.exe"),
+        ("_GetSystemDirectoryW", directories["system"]),
+        ("_GetWindowsDirectoryW", directories["windows"]),
+    ):
+        monkeypatch.setattr(
+            _MODULE,
+            binding,
+            Mock(
+                side_effect=lambda *args, value=value: _write_wide_string(
+                    args[-2], str(value)
+                )
+            ),
+            raising=False,
+        )
+
+    def search(
+        path: str | None,
+        name: str,
+        _extension: object,
+        _size: int,
+        buffer: ctypes.Array[ctypes.c_wchar],
+        _part: object,
+    ) -> int:
+        """Emulate SearchPathW; a NULL path performs the unsafe default search."""
+        entries = path.split(os.pathsep) if path is not None else directories.values()
+        for entry in entries:
+            candidate = Path(entry) / name
+            if candidate.is_file():
+                return _write_wide_string(buffer, str(candidate.resolve()))
+        return 0
+
+    monkeypatch.setattr(
+        _MODULE, "_SearchPathW", Mock(side_effect=search), raising=False
+    )
+    if location == "cwd":
+        with pytest.raises(_MODULE.ChildStartError) as caught:
+            _MODULE.resolve_executable(program, path)
+        assert caught.value.exit_code == 9009
+    else:
+        assert _MODULE.resolve_executable(program, path) == str(
+            directories[location] / program
+        )
 
 
 def test_resolve_executable_defaults_to_the_host_path(
@@ -1446,28 +1626,49 @@ def _report_console_handles(delay: float) -> list[str]:
     return [sys.executable, "-c", code]
 
 
-def _spawn_grandchild(pid_file: Path, detached: bool = False) -> list[str]:
-    """Return a child command that publishes its grandchild's PID, then idles.
-
-    A ``detached`` grandchild has no console, so the pseudoconsole closing
-    cannot end it; only the Job Object can.
-    """
+def _spawn_grandchild(
+    ready_file: Path, exit_gate: Path, detached: bool = False
+) -> list[str]:
+    """Publish the grandchild's PID and console attachment; gate shell exit."""
+    grandchild_code = (
+        "import ctypes, json, os, sys, time\n"
+        "kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)\n"
+        "process_list = kernel32.GetConsoleProcessList\n"
+        "process_list.argtypes = (ctypes.POINTER(ctypes.c_uint32), ctypes.c_uint32)\n"
+        "process_list.restype = ctypes.c_uint32\n"
+        "pids = (ctypes.c_uint32 * 1)()\n"
+        "count = process_list(pids, len(pids))\n"
+        "if count > len(pids):\n"
+        "    pids = (ctypes.c_uint32 * count)()\n"
+        "    count = process_list(pids, len(pids))\n"
+        "assert count <= len(pids)\n"
+        "shell_pid = int(sys.argv[1])\n"
+        "record = {'pid': os.getpid(), 'shellPid': shell_pid, "
+        "'sharesConsole': shell_pid in pids[:count]}\n"
+        f"path = {str(ready_file)!r}\n"
+        "with open(path + '.tmp', 'w', encoding='utf-8') as stream:\n"
+        "    json.dump(record, stream)\n"
+        "os.replace(path + '.tmp', path)\n"
+        "time.sleep(120)\n"
+    )
     code = (
         "import os, subprocess, sys, time\n"
         "grandchild = subprocess.Popen(\n"
-        "    [sys.executable, '-c', 'import time; time.sleep(120)'],\n"
+        f"    [sys.executable, '-c', {grandchild_code!r}, str(os.getpid())],\n"
         "    stdin=subprocess.DEVNULL,\n"
         "    stdout=subprocess.DEVNULL,\n"
         "    stderr=subprocess.DEVNULL,\n"
         f"    creationflags={'subprocess.DETACHED_PROCESS' if detached else 0},\n"
         ")\n"
-        f"path = {str(pid_file)!r}\n"
-        "with open(path + '.tmp', 'w') as stream:\n"
-        "    stream.write(str(grandchild.pid))\n"
-        "os.replace(path + '.tmp', path)\n"
-        "time.sleep(120)\n"
+        "deadline = time.monotonic() + 120\n"
+        f"while not os.path.exists({str(exit_gate)!r}):\n"
+        "    assert time.monotonic() < deadline, 'shell exit gate was not released'\n"
+        "    time.sleep(0.05)\n"
+        "sys.exit(42)\n"
     )
-    return [sys.executable, "-c", code]
+    # A venv redirector would add an unassigned interpreter between the shell
+    # PID reported by the host and the process that actually runs this probe.
+    return [getattr(sys, "_base_executable", sys.executable), "-c", code]
 
 
 def _create_marker(marker: Path) -> list[str]:
@@ -1557,6 +1758,102 @@ def test_session_resolves_batch_launchers_through_the_child_path(
     )
     assert result.code == 0, result.stderr
     assert "path-probe-ran" in result.text
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize(
+    "deferred, host_only, key, value, suffix",
+    (
+        (False, False, "NoDefaultCurrentDirectoryInExePath", "", ""),
+        (False, False, "nodefaultcurrentdirectoryinexepath", "1", ".exe"),
+        (True, False, "nodefaultcurrentdirectoryinexepath", "", ".com"),
+        (True, False, "NODEFAULTCURRENTDIRECTORYINEXEPATH", "1", ""),
+        (True, True, "NoDefaultCurrentDirectoryInExePath", "", ".exe"),
+        (True, True, "nodefaultcurrentdirectoryinexepath", "1", ".com"),
+    ),
+    ids=(
+        "immediate-empty",
+        "immediate-set",
+        "child-empty",
+        "child-set",
+        "host-empty",
+        "host-set",
+    ),
+)
+def test_session_honors_current_directory_opt_out(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    deferred: bool,
+    host_only: bool,
+    key: str,
+    value: str,
+    suffix: str,
+) -> None:
+    """Host or child opt-out presence protects both session startup modes."""
+    monkeypatch.delenv("NoDefaultCurrentDirectoryInExePath", raising=False)
+    cwd, path = tmp_path / "cwd", tmp_path / "bin"
+    cwd.mkdir()
+    path.mkdir()
+    name = "obsidian-terminal-current-directory-probe"
+    native_cmd = Path(os.environ["SystemRoot"]) / "System32" / "cmd.exe"
+    for directory in (cwd, path):
+        for extension in (".com", ".exe"):
+            shutil.copyfile(native_cmd, directory / (name + extension))
+    environment = {
+        key: value for key, value in os.environ.items() if key.upper() != "PATH"
+    }
+    environment["Path"] = str(path)
+    if host_only:
+        # Omit the policy from the child block: it must not clear the host's.
+        monkeypatch.setenv(key, value)
+    else:
+        environment[key] = value
+    marker = cwd / "selected-shell.txt"
+    command = [name + suffix, "/d", "/c", "echo %CMDCMDLINE% > selected-shell.txt"]
+    allowed = _run_host(
+        command,
+        deferred=deferred,
+        child_environment=environment,
+        child_cwd=str(cwd),
+    )
+    assert allowed.code == 0, allowed
+    assert os.path.normcase(
+        str(path / (name + (suffix or ".com")))
+    ) in os.path.normcase(marker.read_text())
+    marker.unlink()
+
+    environment["Path"] = ""
+    missing = _run_host(
+        command,
+        deferred=deferred,
+        child_environment=environment,
+        child_cwd=str(cwd),
+    )
+    assert missing.code == 9009, missing
+    assert "hello" not in [message["event"] for message in missing.messages], missing
+    assert not marker.exists(), missing
+
+    explicit = _run_host(
+        [os.path.join(os.curdir, name + ".exe"), *command[1:]],
+        deferred=deferred,
+        child_environment=environment,
+        child_cwd=str(cwd),
+    )
+    assert explicit.code == 0, explicit
+    assert marker.exists(), explicit
+
+    # The restricted fallback must still find native system programs before
+    # batch launchers, even with an empty PATH and a cwd shadow.
+    (cwd / "cmd.cmd").write_text("@echo batch-shadow-ran\r\n", encoding="utf-8")
+    system = _run_host(
+        ["cmd", "/d", "/c", "echo system-search-ran"],
+        deferred=deferred,
+        child_environment=environment,
+        child_cwd=str(cwd),
+    )
+    assert system.code == 0, system
+    assert "system-search-ran" in system.text, system
+    assert "batch-shadow-ran" not in system.text, system
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
@@ -1801,54 +2098,55 @@ def test_ctrl_c_byte_reaches_the_child() -> None:
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
-def test_kill_operation_terminates_the_child_tree(tmp_path: Path) -> None:
-    """A control ``kill`` must end the child and the grandchild it started."""
-    pid_file = tmp_path / "grandchild.pid"
+@pytest.mark.parametrize("shutdown", ("natural-exit", "kill", "host-death"))
+@pytest.mark.parametrize("detached", (False, True), ids=("attached", "detached"))
+def test_descendant_lifetime_follows_console_attachment(
+    tmp_path: Path, shutdown: str, detached: bool
+) -> None:
+    """The shell and console clients end; a detached grandchild survives."""
+    ready_file = tmp_path / "grandchild.json"
+    exit_gate = tmp_path / "shell-exit"
+    grandchild_pids: list[int] = []
     with closing(_ProcessWatch()) as watch:
 
-        def pin_tree(ready: Mapping[str, Any]) -> None:
-            """Pin both processes; the server sends ``kill`` only afterwards."""
+        def pin_before_shutdown(ready: Mapping[str, object]) -> None:
+            """Pin live processes before releasing the selected shutdown path."""
+            assert isinstance(ready["childPid"], int)
             watch.pin(ready["childPid"])
-            watch.pin(int(_read_when_published(pid_file, 30.0)))
-
-        # The tree idles for two minutes, so only ``kill`` beats the timeout.
-        result = _run_host(
-            _spawn_grandchild(pid_file),
-            close_stdin=False,
-            replies=({"op": "kill"},),
-            ready_probe=pin_tree,
-            timeout=60.0,
-        )
-        assert result.code == 1
-        assert watch.survivors(15.0) == []
-
-
-@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
-def test_host_death_takes_the_child_tree_with_it(tmp_path: Path) -> None:
-    """Killing the host closes its Job Object, which must kill the whole tree.
-
-    This is what an Obsidian crash relies on. The grandchild has no console,
-    so the dying pseudoconsole cannot end it: only ``KILL_ON_JOB_CLOSE`` can.
-    """
-    pid_file = tmp_path / "grandchild.pid"
-    with closing(_ProcessWatch()) as watch:
-
-        def kill_host(ready: Mapping[str, Any]) -> None:
-            """Pin the tree, then end the host with no chance to clean up."""
-            watch.pin(ready["childPid"])
-            watch.pin(int(_read_when_published(pid_file, 30.0)))
-            # ``hostPid`` names the interpreter holding the Job Object even
-            # when ``sys.executable`` is a venv redirector in front of it.
-            os.kill(ready["hostPid"], signal.SIGTERM)
+            record: object = json.loads(_read_when_published(ready_file, 30.0))
+            assert isinstance(record, dict), record
+            grandchild_pid = record.get("pid")
+            assert isinstance(grandchild_pid, int), record
+            watch.pin(grandchild_pid)
+            grandchild_pids.append(grandchild_pid)
+            assert record.get("shellPid") == ready["childPid"], record
+            assert record.get("sharesConsole") is (not detached), record
+            assert watch.survivors(0.0) == [ready["childPid"], grandchild_pid]
+            if shutdown == "natural-exit":
+                exit_gate.touch()
+            elif shutdown == "host-death":
+                # Target the interpreter owning the job, even behind a venv
+                # redirector. On Windows SIGTERM calls TerminateProcess.
+                assert isinstance(ready["hostPid"], int)
+                os.kill(ready["hostPid"], signal.SIGTERM)
 
         result = _run_host(
-            _spawn_grandchild(pid_file, detached=True),
+            _spawn_grandchild(ready_file, exit_gate, detached=detached),
             close_stdin=False,
-            ready_probe=kill_host,
+            replies=({"op": "kill"},) if shutdown == "kill" else (),
+            ready_probe=pin_before_shutdown,
             timeout=60.0,
         )
-        assert "exit" not in [message["event"] for message in result.messages]
-        assert watch.survivors(15.0) == []
+        # A startup failure must not pass the host-death case with no handles.
+        assert len(grandchild_pids) == 1, result
+        if shutdown == "host-death":
+            assert "exit" not in [message["event"] for message in result.messages]
+        else:
+            assert result.messages[-1] == {"event": "exit", "code": result.code}
+            if shutdown == "natural-exit":
+                assert result.code == 42, result
+        # Assert through pinned handles before closing the watch kills survivors.
+        assert watch.survivors(15.0) == (grandchild_pids if detached else [])
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)

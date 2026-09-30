@@ -28,6 +28,7 @@ from __future__ import annotations
 import ctypes
 import json
 import os
+import re
 import sys
 import threading
 import time
@@ -201,7 +202,7 @@ def assign_suspended_child(
 def resume_assigned_child(
     resume: Callable[[], int], terminate: Callable[[], None]
 ) -> None:
-    """Resume a job-contained child or terminate its process tree."""
+    """Resume a job-assigned child or terminate it."""
     if resume() != _RESUME_FAILED:
         return
     terminate()
@@ -516,6 +517,26 @@ def _native_system_path(path: str) -> str:
     return path
 
 
+def _system_search_directories() -> tuple[str, ...]:
+    """Keep Windows' application and system search directories, excluding cwd."""
+    application = ctypes.create_unicode_buffer(32768)
+    system = ctypes.create_unicode_buffer(32768)
+    windows = ctypes.create_unicode_buffer(32768)
+    lengths = (
+        _GetModuleFileNameW(None, application, len(application)),
+        _GetSystemDirectoryW(system, len(system)),
+        _GetWindowsDirectoryW(windows, len(windows)),
+    )
+    if not all(0 < length < 32768 for length in lengths):
+        raise OSError("could not determine the Windows executable search directories")
+    return (
+        os.path.dirname(application.value),
+        system.value,
+        os.path.join(windows.value, "System"),
+        windows.value,
+    )
+
+
 def resolve_executable(executable: str, path: str | None) -> str:
     """Resolve a program through the PATH the child will see, native first.
 
@@ -523,19 +544,36 @@ def resolve_executable(executable: str, path: str | None) -> str:
     Windows system search cannot retry a name against a warm host's old PATH.
     A directory-qualified name is searched only in its own directory.
 
-    Search the current directory and PATH for an exact name with an extension,
-    then ``.com`` and ``.exe``. Exhaust the native system search before trying
-    ``.bat`` and ``.cmd``: existing profiles used a batch wrapper, but a script
-    on PATH must never shadow an available native shell. Arbitrary ``PATHEXT``
-    entries remain unsupported.
+    Search the current directory (when Windows permits it) and PATH for an
+    exact name with an extension, then ``.com`` and ``.exe``. Exhaust the native
+    system search before trying ``.bat`` and ``.cmd``: existing profiles used a
+    batch wrapper, but a script on PATH must never shadow an available native
+    shell. Arbitrary ``PATHEXT`` entries remain unsupported. An opted-out miss
+    raises ``ChildStartError`` instead of allowing process creation to retry cwd.
     """
     if path is None:
         path = os.environ.get("PATH", "")
     directory, program = os.path.split(executable)
-    directories = (directory,) if directory else (os.curdir, *path.split(os.pathsep))
+    search_current_directory = True
+    if not directory and sys.platform == "win32":
+        search_current_directory = bool(_NeedCurrentDirectoryForExePathW(program))
+    if directory:
+        directories = (directory,)
+    else:
+        # Keep separators inside paired quotes in the same PATH entry, even
+        # when the quoted span starts mid-entry. Match a lone quote literally
+        # so it cannot hide the remaining PATH entries.
+        directories = tuple(
+            re.findall(rf'(?:[^{re.escape(os.pathsep)}"]|"[^"]*"|")+', path)
+        )
+        if search_current_directory:
+            directories = (os.curdir, *directories)
     directories = tuple(
-        entry[1:-1] if entry[:1] == entry[-1:] == '"' else entry
-        for entry in directories
+        entry
+        for entry in (
+            entry[1:-1] if entry[:1] == entry[-1:] == '"' else entry
+            for entry in directories
+        )
         if entry
     )
     names = [program + extension for extension in _EXECUTABLE_EXTENSIONS]
@@ -550,11 +588,22 @@ def resolve_executable(executable: str, path: str | None) -> str:
     if sys.platform == "win32" and not directory:
         # Include the interpreter and Windows system directories, even when
         # the profile PATH omits them, before considering a batch launcher.
-        buffer = ctypes.create_unicode_buffer(32768)
-        for name in names:
-            length = _SearchPathW(None, name, None, len(buffer), buffer, None)
-            if 0 < length < len(buffer):
-                return _native_system_path(buffer.value)
+        if search_current_directory:
+            buffer = ctypes.create_unicode_buffer(32768)
+            for name in names:
+                length = _SearchPathW(None, name, None, len(buffer), buffer, None)
+                if 0 < length < len(buffer):
+                    return _native_system_path(buffer.value)
+        else:
+            # SearchPathW's default search can restore implicit cwd lookup.
+            # Keep directory paths literal: joining them with semicolons could
+            # turn a semicolon in an installation path into a relative entry.
+            system_directories = _system_search_directories()
+            for name in names:
+                for entry in system_directories:
+                    candidate = os.path.join(entry, name)
+                    if os.path.isfile(candidate):
+                        return _native_system_path(candidate)
         # SearchPathW cannot find native-only programs such as WSL under
         # WOW64 when System32 is absent from PATH.
         root = os.environ.get("SystemRoot")
@@ -568,6 +617,11 @@ def resolve_executable(executable: str, path: str | None) -> str:
             candidate = _native_system_path(os.path.join(entry, program + extension))
             if os.path.isfile(candidate):
                 return candidate
+    if not search_current_directory:
+        # CreateProcessW also searches cwd for an unresolved bare name.
+        raise ChildStartError(
+            f"executable not found: {executable}", _EXIT_EXECUTABLE_NOT_FOUND
+        )
     return executable
 
 
@@ -640,6 +694,10 @@ if sys.platform == "win32":
     _JOBOBJECT_EXTENDED_LIMIT_CLASS = 9
     """Job limit killing every assigned process when the job closes."""
     _JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
+    """Job limit allowing a child to request explicit breakaway."""
+    _JOB_OBJECT_LIMIT_BREAKAWAY_OK = 0x00000800
+    """Job limit keeping descendants outside the job without a spawn flag."""
+    _JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK = 0x00001000
     """Wait result meaning the waited-on object is signalled."""
     _WAIT_OBJECT_0 = 0x00000000
 
@@ -808,6 +866,14 @@ if sys.platform == "win32":
     _GetExitCodeProcess = _bind("GetExitCodeProcess", (_HANDLE, _PDWORD), _BOOL)
     """Return a pseudo-handle for the current process."""
     _GetCurrentProcess = _bind("GetCurrentProcess", (), _HANDLE)
+    """Locate the host executable used by the default Windows search."""
+    _GetModuleFileNameW = _bind(
+        "GetModuleFileNameW", (_HANDLE, _LPWSTR, _DWORD), _DWORD
+    )
+    """Locate the system directory independently of the profile environment."""
+    _GetSystemDirectoryW = _bind("GetSystemDirectoryW", (_LPWSTR, _UINT), _UINT)
+    """Locate the Windows directory independently of the profile environment."""
+    _GetWindowsDirectoryW = _bind("GetWindowsDirectoryW", (_LPWSTR, _UINT), _UINT)
     """Size and then initialise a process-thread attribute list."""
     _InitAttributeList = _bind(
         "InitializeProcThreadAttributeList",
@@ -820,6 +886,10 @@ if sys.platform == "win32":
     _OpenThread = _bind("OpenThread", (_DWORD, _BOOL, _DWORD), _HANDLE)
     """Resume a suspended primary process thread."""
     _ResumeThread = _bind("ResumeThread", (_HANDLE,), _DWORD)
+    """Ask Windows whether a program permits implicit current-directory lookup."""
+    _NeedCurrentDirectoryForExePathW = _bind(
+        "NeedCurrentDirectoryForExePathW", (_LPWSTR,), _BOOL
+    )
     """Find a native executable in the default Windows search directories."""
     _SearchPathW = _bind(
         "SearchPathW", (_LPWSTR, _LPWSTR, _LPWSTR, _DWORD, _LPWSTR, _VOID), _DWORD
@@ -955,12 +1025,22 @@ if sys.platform == "win32":
         return _as_handle(handle.value)
 
     def _create_job() -> int:
-        """Create a job object that kills its whole tree when it is closed."""
+        """Own only the shell in a kill-on-close job; descendants break away.
+
+        ``jobObjectAssigned`` attests to shell assignment, not descendant
+        containment. Console attachment, not this job, determines descendant
+        lifetime; an ancestor job that forbids breakaway can still hold and
+        end them.
+        """
         job = _as_handle(_CreateJobObjectW(None, None))
         if not job:
             raise _last_error()
         limits = _JOB_LIMITS()
-        limits.LimitFlags = _JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        limits.LimitFlags = (
+            _JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+            | _JOB_OBJECT_LIMIT_BREAKAWAY_OK
+            | _JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK
+        )
         if not _SetInformationJobObject(
             job,
             _JOBOBJECT_EXTENDED_LIMIT_CLASS,
@@ -1294,6 +1374,14 @@ if sys.platform == "win32":
                     # Windows searches the host's PATH, not the child block.
                     # This host serves one session, so no restoration is needed.
                     os.environ["PATH"] = path
+                if environment is not None and any(
+                    key.upper() == "NODEFAULTCURRENTDIRECTORYINEXEPATH"
+                    for key in environment
+                ):
+                    # The native policy API reads the host environment. Only
+                    # presence matters; an empty value would unset it via the
+                    # Windows C runtime. Never clear an inherited host opt-out.
+                    os.environ["NoDefaultCurrentDirectoryInExePath"] = "1"
                 program, *rest = arguments.command
                 return _create_child(
                     build_command_line(
@@ -1368,7 +1456,7 @@ if sys.platform == "win32":
                         _TerminateJobObject(self._job, _EXIT_TERMINATED)
                         _WaitForSingleObject(self._process, grace)
                     return _exit_code(self._process)
-            # An explicit plugin stop terminates the whole contained child tree.
+            # An explicit plugin stop terminates the job-assigned shell.
             _TerminateJobObject(self._job, _EXIT_TERMINATED)
             _WaitForSingleObject(self._process, int(_TERMINATE_GRACE * 1000))
             return _exit_code(self._process)
