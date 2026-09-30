@@ -87,6 +87,7 @@ function fakeKeyEvent(
     metaKey: false,
     shiftKey: false,
     isComposing: false,
+    getModifierState: vi.fn().mockReturnValue(false),
     preventDefault: vi.fn(),
     stopPropagation: vi.fn(),
     ...overrides,
@@ -603,6 +604,244 @@ describe("CustomKeyEventHandlerAddon", () => {
     );
   });
 
+  describe("Alt+Numpad composition", () => {
+    const alt = { altKey: true, code: "AltLeft", key: "Alt", keyCode: 18 },
+      digit = { altKey: true, code: "Numpad0", key: "0", keyCode: 96 },
+      character = { code: "AltLeft", key: "é", keyCode: 233, type: "keypress" };
+
+    it.each(
+      [
+        { numLock: false, releaseFirst: false },
+        { numLock: false, releaseFirst: true },
+        { numLock: true, releaseFirst: false },
+        { numLock: true, releaseFirst: true },
+      ].flatMap((scenario) =>
+        ["Alt", "é"].map((releaseKey) => ({ ...scenario, releaseKey })),
+      ),
+    )(
+      "delivers Alt+0233 once (NumLock=$numLock, release first=$releaseFirst, release key=$releaseKey)",
+      ({ numLock, releaseFirst, releaseKey }) => {
+        setupWin32InputMode();
+        triggerCsi("?", "h", [9001]);
+        const getModifierState = vi.fn(
+          (modifier: string) => modifier === "NumLock" && numLock,
+        );
+        expect(dispatch({ ...alt, getModifierState })).toEqual({
+          cancelled: false,
+          result: false,
+        });
+        for (const key of "0233") {
+          for (const type of ["keydown", "keyup"]) {
+            expect(
+              dispatch({
+                altKey: true,
+                code: `Numpad${key}`,
+                getModifierState,
+                key,
+                keyCode: 96 + Number(key),
+                type,
+              }),
+            ).toEqual({ cancelled: false, result: false });
+          }
+        }
+        const release = {
+          ...alt,
+          altKey: false,
+          getModifierState,
+          key: releaseKey,
+          type: "keyup",
+        };
+        if (releaseFirst) {
+          expect(dispatch(release)).toEqual({
+            cancelled: false,
+            result: false,
+          });
+        }
+        expect(dispatch({ ...character, getModifierState })).toEqual({
+          cancelled: true,
+          result: false,
+        });
+        if (!releaseFirst) {
+          dispatch(release);
+        }
+        // A duplicate character event must not insert a second character.
+        expect(dispatch({ ...character, getModifierState })).toEqual({
+          cancelled: true,
+          result: false,
+        });
+        const locks = numLock ? 32 : 0,
+          altDown = [`\x1b[18;56;0;1;${String(locks | 2)};1_`, false],
+          altUp = [`\x1b[18;56;0;0;${String(locks)};1_`, false],
+          composed = [
+            `\x1b[0;0;233;1;${String(locks)};1_\x1b[0;0;233;0;${String(locks)};1_`,
+            true,
+          ];
+        expect(inputSpy.mock.calls).toEqual(
+          releaseFirst
+            ? [altDown, altUp, composed]
+            : [altDown, composed, altUp],
+        );
+      },
+    );
+
+    it("uses the OS character and only its lock state, even before the last digit's keyup", () => {
+      setupWin32InputMode();
+      triggerCsi("?", "h", [9001]);
+      dispatch(alt);
+      dispatch(digit);
+      dispatch({ ...alt, altKey: false, type: "keyup" });
+      inputSpy.mockClear();
+
+      dispatch({
+        ...character,
+        key: "€",
+        keyCode: 8364,
+        altKey: true,
+        ctrlKey: true,
+        shiftKey: true,
+        metaKey: true,
+        getModifierState: vi.fn().mockReturnValue(true),
+      });
+      dispatch({ ...digit, altKey: false, type: "keyup" });
+      dispatch(character);
+      expect(inputSpy.mock.calls).toEqual([
+        ["\x1b[0;0;8364;1;224;1_\x1b[0;0;8364;0;224;1_", true],
+      ]);
+    });
+
+    it.each(
+      [
+        "unrelated keydown",
+        "mapped keydown",
+        "IME composition",
+        "IME start",
+        "DECRST",
+        "disposal",
+      ].flatMap((interruption) =>
+        [false, true].map((releaseFirst) => ({ interruption, releaseFirst })),
+      ),
+    )(
+      "forgets a composition after $interruption (released=$releaseFirst)",
+      ({ interruption, releaseFirst }) => {
+        const addon = setupWin32InputMode(() => [SHIFT_ENTER_MAPPING]);
+        triggerCsi("?", "h", [9001]);
+        dispatch(alt);
+        dispatch(digit);
+        if (releaseFirst) {
+          dispatch({ ...alt, altKey: false, type: "keyup" });
+        }
+
+        switch (interruption) {
+          case "unrelated keydown":
+            dispatch({ code: "ArrowLeft", key: "ArrowLeft", keyCode: 37 });
+            break;
+          case "mapped keydown":
+            dispatch({
+              code: "Enter",
+              key: "Enter",
+              keyCode: 13,
+              shiftKey: true,
+            });
+            expect(inputSpy).toHaveBeenLastCalledWith("\x1b\r");
+            break;
+          case "IME composition":
+            expect(dispatch({ key: "Process", isComposing: true })).toEqual({
+              cancelled: false,
+              result: true,
+            });
+            break;
+          case "IME start":
+            expect(dispatch({ key: "Process", keyCode: 229 })).toEqual({
+              cancelled: false,
+              result: true,
+            });
+            break;
+          case "DECRST":
+            triggerCsi("?", "l", [9001]);
+            triggerCsi("?", "h", [9001]);
+            break;
+          case "disposal": {
+            addon.dispose();
+            expect(dispatch(character)).toEqual({
+              cancelled: false,
+              result: true,
+            });
+            // Reactivate the same addon to verify disposal cleared its state.
+            const mock = createMockTerminal();
+            addon.activate(mock.terminal);
+            handler = mock.getHandler();
+            inputSpy = mock.inputSpy;
+            triggerCsi = mock.triggerCsi;
+            triggerCsi("?", "h", [9001]);
+            break;
+          }
+        }
+        inputSpy.mockClear();
+        const reset = interruption === "DECRST" || interruption === "disposal";
+        expect(dispatch({ ...digit, altKey: false, type: "keyup" })).toEqual({
+          cancelled: reset,
+          result: false,
+        });
+        // An interrupted digit still has no matching down record. A mode
+        // reset, however, must forget even the held-key suppression state.
+        expect(inputSpy.mock.calls).toEqual(
+          reset ? [["\x1b[96;82;48;0;0;1_", true]] : [],
+        );
+        inputSpy.mockClear();
+        dispatch(character);
+        expect(inputSpy).not.toHaveBeenCalled();
+        dispatch({ code: "KeyA", key: "a", keyCode: 65 });
+        expect(inputSpy.mock.calls).toEqual([["\x1b[65;30;97;1;0;1_", true]]);
+      },
+    );
+
+    it.each([
+      { ctrlKey: true },
+      { shiftKey: true },
+      { metaKey: true },
+      {
+        getModifierState: vi.fn((modifier: string) => modifier === "AltGraph"),
+      },
+    ])(
+      "does not compose a numpad chord with extra modifiers: %j",
+      (modifiers) => {
+        setupWin32InputMode();
+        triggerCsi("?", "h", [9001]);
+        dispatch(alt);
+        inputSpy.mockClear();
+        expect(dispatch({ ...digit, ...modifiers })).toEqual({
+          cancelled: true,
+          result: false,
+        });
+        expect(inputSpy).toHaveBeenCalledOnce();
+        inputSpy.mockClear();
+        dispatch(character);
+        expect(inputSpy).not.toHaveBeenCalled();
+      },
+    );
+
+    it("keeps ordinary Alt shortcuts and subsequent numpad chords encoded", () => {
+      setupWin32InputMode();
+      triggerCsi("?", "h", [9001]);
+      dispatch(alt);
+      const shortcut = { altKey: true, code: "KeyF", key: "f", keyCode: 70 };
+      expect(dispatch(shortcut)).toEqual({ cancelled: true, result: false });
+      dispatch({ ...shortcut, type: "keyup" });
+      dispatch(digit);
+      dispatch({ ...digit, type: "keyup" });
+      dispatch({ ...alt, altKey: false, type: "keyup" });
+      dispatch(character);
+      expect(inputSpy.mock.calls).toEqual([
+        ["\x1b[18;56;0;1;2;1_", false],
+        ["\x1b[70;33;102;1;2;1_", true],
+        ["\x1b[70;33;102;0;2;1_", true],
+        ["\x1b[96;82;48;1;2;1_", true],
+        ["\x1b[96;82;48;0;2;1_", true],
+        ["\x1b[18;56;0;0;0;1_", false],
+      ]);
+    });
+  });
+
   // === Clipboard chords in Win32 input mode ===
   // xterm.js has no key for these, so the browser copies or pastes. No default
   // keymapping binds them either.
@@ -744,7 +983,7 @@ describe("CustomKeyEventHandlerAddon", () => {
       ["\x1b[86;47;22;1;8;1_", true],
       ["\x1b[45;82;0;1;256;1_", true],
       ["\x1b[45;82;0;1;280;1_", true],
-      ["\x1b[86;47;86;1;26;1_", true],
+      ["\x1b[86;47;0;1;26;1_", true],
     ]);
   });
 

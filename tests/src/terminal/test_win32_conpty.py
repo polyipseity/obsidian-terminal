@@ -2420,6 +2420,84 @@ def test_nul_in_a_start_operation_is_a_shell_start_failure(
     assert "hello" not in [message["event"] for message in result.messages], result
 
 
+def _report_vt_input() -> list[str]:
+    """Read raw UTF-8 VT input through a CR delimiter and report every byte."""
+    code = (
+        "import ctypes, msvcrt, os\n"
+        "from ctypes import wintypes\n"
+        'kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)\n'
+        "kernel32.SetConsoleMode.argtypes = (wintypes.HANDLE, wintypes.DWORD)\n"
+        "kernel32.SetConsoleMode.restype = wintypes.BOOL\n"
+        "kernel32.SetConsoleCP.argtypes = (wintypes.UINT,)\n"
+        "kernel32.SetConsoleCP.restype = wintypes.BOOL\n"
+        "handle = msvcrt.get_osfhandle(0)\n"
+        # ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_EXTENDED_FLAGS: no line,
+        # echo, processed input, or Quick Edit modes.
+        "if not kernel32.SetConsoleMode(handle, 0x0200 | 0x0080):\n"
+        "    raise ctypes.WinError(ctypes.get_last_error())\n"
+        "if not kernel32.SetConsoleCP(65001):\n"
+        "    raise ctypes.WinError(ctypes.get_last_error())\n"
+        "msvcrt.setmode(0, os.O_BINARY)\n"
+        "print('VT_INPUT_READY', flush=True)\n"
+        "data = bytearray()\n"
+        "while True:\n"
+        "    chunk = os.read(0, 1)\n"
+        "    if chunk == b'\\r':\n"
+        "        break\n"
+        "    if not chunk:\n"
+        "        raise EOFError('VT input ended before the delimiter')\n"
+        "    data.extend(chunk)\n"
+        "print('VT_INPUT_HEX=' + data.hex() + ';', flush=True)\n"
+    )
+    return [sys.executable, "-c", code]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize(
+    ("records", "expected_hex"),
+    (
+        (b"\x1b[69;18;0;1;10;1_\x1b[69;18;0;0;10;1_", "1b05"),
+        (b"\x1b[81;16;64;1;9;1_\x1b[81;16;64;0;9;1_", "40"),
+    ),
+    ids=("ctrl-alt-e", "altgr-q"),
+)
+def test_win32_input_ctrl_alt_and_altgr_reach_vt_child(
+    records: bytes, expected_hex: str
+) -> None:
+    """Conhost converts chords and preserves AltGr, without stray keyup bytes."""
+    # These down/up records match the portable Win32InputMode encoder tests.
+    # Read through a neutral Enter so extra characters cannot be truncated.
+    result = _run_host(
+        _report_vt_input(),
+        stdin=records + b"\x1b[13;28;13;1;0;1_\x1b[13;28;13;0;0;1_",
+        stdout_ready=b"VT_INPUT_READY",
+        close_stdin=False,
+        wait_for_ready_before_stdin=True,
+    )
+    assert result.code == 0, result
+    assert f"VT_INPUT_HEX={expected_hex};" in result.text, result
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+def test_win32_input_composed_character_reaches_vt_child() -> None:
+    """The Alt+Numpad synthetic pair yields exactly one UTF-8 é, without digits."""
+    # Match the addon's Alt+0233 records with NumLock on, then read through
+    # Enter so duplicate characters or digit input cannot go unnoticed.
+    result = _run_host(
+        _report_vt_input(),
+        stdin=(
+            b"\x1b[18;56;0;1;34;1_\x1b[18;56;0;0;32;1_"
+            b"\x1b[0;0;233;1;32;1_\x1b[0;0;233;0;32;1_"
+            b"\x1b[13;28;13;1;0;1_\x1b[13;28;13;0;0;1_"
+        ),
+        stdout_ready=b"VT_INPUT_READY",
+        close_stdin=False,
+        wait_for_ready_before_stdin=True,
+    )
+    assert result.code == 0, result
+    assert "VT_INPUT_HEX=c3a9;" in result.text, result
+
+
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
 def test_deferred_start_environment_reaches_the_child_without_the_token() -> None:
     """The child sees the ``start`` op's environment, minus the control token."""

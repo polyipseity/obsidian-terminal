@@ -412,6 +412,24 @@ export class Win32InputMode {
     }
 
     const codePoint = event.key.codePointAt(0) ?? 0;
+    if (
+      event.ctrlKey &&
+      event.altKey &&
+      !event.metaKey &&
+      !event.getModifierState?.("AltGraph")
+    ) {
+      const virtualKey = this.#getVirtualKeyCode(event);
+      // A base letter/digit is a chord, not a layout-produced AltGr character.
+      // With Uc=0, conhost derives the Ctrl+Alt sequence from the virtual key.
+      if (
+        (virtualKey >= 0x41 &&
+          virtualKey <= 0x5a &&
+          (codePoint === virtualKey || codePoint === virtualKey + 0x20)) ||
+        (virtualKey >= 0x30 && virtualKey <= 0x39 && codePoint === virtualKey)
+      ) {
+        return 0;
+      }
+    }
     if (event.ctrlKey && !event.altKey && !event.metaKey) {
       // Match Windows' Ctrl conversion: letters and punctuation use the
       // low five ASCII bits (for example, Ctrl+[ becomes ESC).
@@ -446,6 +464,15 @@ export class Win32InputMode {
         event.code === "AltRight" || altGraph
           ? Win32ControlKeyState.RIGHT_ALT_PRESSED
           : Win32ControlKeyState.LEFT_ALT_PRESSED;
+    }
+    if (event.getModifierState?.("NumLock")) {
+      state |= Win32ControlKeyState.NUMLOCK_ON;
+    }
+    if (event.getModifierState?.("CapsLock")) {
+      state |= Win32ControlKeyState.CAPSLOCK_ON;
+    }
+    if (event.getModifierState?.("ScrollLock")) {
+      state |= Win32ControlKeyState.SCROLLLOCK_ON;
     }
     if (this.#enhancedKeyCodes.has(event.code)) {
       state |= Win32ControlKeyState.ENHANCED_KEY;

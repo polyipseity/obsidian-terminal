@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   Win32ControlKeyState,
   Win32InputMode,
@@ -134,6 +134,50 @@ describe("Win32InputMode", () => {
     );
   });
 
+  it.each([
+    { locks: ["NumLock"], state: 0x20 },
+    { locks: ["CapsLock"], state: 0x80 },
+    { locks: ["ScrollLock"], state: 0x40 },
+    { locks: ["NumLock", "CapsLock", "ScrollLock"], state: 0xe0 },
+  ])("reports lock bits for $locks", ({ locks, state }) => {
+    for (const modified of [false, true]) {
+      const event = keyboardEvent({
+        code: "ArrowLeft",
+        key: "ArrowLeft",
+        altKey: modified,
+        ctrlKey: modified,
+        shiftKey: modified,
+        getModifierState: vi.fn((modifier: string) => locks.includes(modifier)),
+      });
+      for (const keyDown of [true, false]) {
+        expect(mode.encode(event, keyDown)).toBe(
+          `\x1b[37;75;0;${String(Number(keyDown))};${String(state | 0x100 | (modified ? 0x1a : 0))};1_`,
+        );
+      }
+    }
+  });
+
+  it.each([false, true])(
+    "reports no lock bits with a false or missing getter (missing=%s)",
+    (missing) => {
+      const event = {
+        altKey: false,
+        code: "KeyA",
+        ctrlKey: false,
+        key: "a",
+        keyCode: 65,
+        metaKey: false,
+        shiftKey: false,
+        type: "keydown",
+        ...(missing
+          ? {}
+          : { getModifierState: vi.fn().mockReturnValue(false) }),
+      };
+      expect(mode.encode(event, true)).toBe("\x1b[65;30;97;1;0;1_");
+      expect(mode.encode(event, false)).toBe("\x1b[65;30;97;0;0;1_");
+    },
+  );
+
   it("encodes an unmapped key by its keyCode alone", () => {
     const event = keyboardEvent({ key: "Unidentified" }, 255);
 
@@ -200,58 +244,122 @@ describe("Win32InputMode", () => {
   // Windows reports AltGr as right Alt with left Ctrl (0x09); the browser
   // reports Ctrl+Alt with the `AltGraph` modifier.
 
-  it("encodes AltGr+0 on AZERTY as right Alt with left Ctrl", () => {
-    const event = keyboardEvent(
-      {
-        altKey: true,
-        code: "Digit0",
-        ctrlKey: true,
-        getModifierState: (key) => key === "AltGraph",
-        key: "@",
-      },
-      48,
-    );
+  it.each([
+    { layout: "AZERTY", code: "Digit0", key: "@", keyCode: 48, scanCode: 11 },
+    { layout: "German", code: "KeyQ", key: "@", keyCode: 81, scanCode: 16 },
+    { layout: "German", code: "KeyE", key: "€", keyCode: 69, scanCode: 18 },
+  ])(
+    "encodes $layout AltGr $key as right Alt with left Ctrl",
+    ({ code, key, keyCode, scanCode }) => {
+      const event = keyboardEvent(
+        {
+          altKey: true,
+          code,
+          ctrlKey: true,
+          getModifierState: vi.fn((modifier) => modifier === "AltGraph"),
+          key,
+        },
+        keyCode,
+      );
 
-    expect(mode.encode(event, true)).toBe(
-      "\x1b[" +
-        [
-          48,
-          11,
-          64,
-          1,
-          Win32ControlKeyState.RIGHT_ALT_PRESSED |
-            Win32ControlKeyState.LEFT_CTRL_PRESSED,
-          1,
-        ].join(";") +
-        "_",
-    );
+      for (const keyDown of [true, false]) {
+        expect(mode.encode(event, keyDown)).toBe(
+          "\x1b[" +
+            [
+              keyCode,
+              scanCode,
+              key.charCodeAt(0),
+              Number(keyDown),
+              Win32ControlKeyState.RIGHT_ALT_PRESSED |
+                Win32ControlKeyState.LEFT_CTRL_PRESSED,
+              1,
+            ].join(";") +
+            "_",
+        );
+      }
+    },
+  );
+
+  it.each([
+    { key: "e", code: "KeyE", keyCode: 69, scanCode: 18 },
+    { key: "q", code: "KeyQ", keyCode: 81, scanCode: 16 },
+    { key: "f", code: "KeyF", keyCode: 70, scanCode: 33 },
+    { key: "0", code: "Digit0", keyCode: 48, scanCode: 11 },
+    { key: "E", code: "KeyE", keyCode: 69, scanCode: 18, shiftKey: true },
+    { key: "z", code: "KeyY", keyCode: 90, scanCode: 21 },
+  ])(
+    "keeps left Ctrl+Alt+$key at $code apart from AltGr",
+    ({ key, code, keyCode, scanCode, shiftKey = false }) => {
+      for (const keyDown of [true, false]) {
+        const event = keyboardEvent(
+          {
+            altKey: true,
+            code,
+            ctrlKey: true,
+            getModifierState: vi.fn().mockReturnValue(false),
+            key,
+            shiftKey,
+            type: keyDown ? "keydown" : "keyup",
+          },
+          keyCode,
+        );
+
+        expect(mode.encode(event, keyDown)).toBe(
+          "\x1b[" +
+            [
+              keyCode,
+              scanCode,
+              0,
+              Number(keyDown),
+              Win32ControlKeyState.LEFT_ALT_PRESSED |
+                Win32ControlKeyState.LEFT_CTRL_PRESSED |
+                (shiftKey ? Win32ControlKeyState.SHIFT_PRESSED : 0),
+              1,
+            ].join(";") +
+            "_",
+        );
+      }
+    },
+  );
+
+  it("encodes Ctrl+Alt without a modifier getter", () => {
+    for (const keyDown of [true, false]) {
+      expect(
+        mode.encode(
+          {
+            altKey: true,
+            code: "KeyE",
+            ctrlKey: true,
+            key: "e",
+            keyCode: 69,
+            metaKey: false,
+            shiftKey: false,
+            type: keyDown ? "keydown" : "keyup",
+          },
+          keyDown,
+        ),
+      ).toBe(`\x1b[69;18;0;${String(Number(keyDown))};10;1_`);
+    }
   });
 
-  it("keeps left Ctrl+Alt apart from AltGr", () => {
+  it("preserves a layout character differing from its virtual key without AltGraph", () => {
+    // The physical key matches the character, but the resolved VK does not.
     const event = keyboardEvent(
       {
         altKey: true,
-        code: "Digit0",
+        code: "KeyZ",
         ctrlKey: true,
-        getModifierState: () => false,
-        key: "0",
+        getModifierState: vi.fn().mockReturnValue(false),
+        key: "z",
       },
-      48,
+      89,
     );
 
-    expect(mode.encode(event, true)).toBe(
-      "\x1b[" +
-        [
-          48,
-          11,
-          48,
-          1,
-          Win32ControlKeyState.LEFT_ALT_PRESSED |
-            Win32ControlKeyState.LEFT_CTRL_PRESSED,
-          1,
-        ].join(";") +
-        "_",
-    );
+    for (const keyDown of [true, false]) {
+      expect(mode.encode(event, keyDown)).toBe(
+        `\x1b[89;44;122;${String(Number(keyDown))};10;1_`,
+      );
+    }
   });
 
   it("sends an astral character as one record per surrogate", () => {

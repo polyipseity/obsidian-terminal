@@ -786,6 +786,12 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
   #deadKey: "composing" | "none" | "pending" = "none";
   /** Virtual key of the deferred keydown, reused by its keypresses. */
   #deadKeyVirtualKey = 0;
+  /** Alt starts a candidate; numpad digits await the OS character, which may
+   * arrive before or after Alt's keyup. Never derive it from the digits. */
+  #altNumpad: "alt" | "composing" | "none" | "released" = "none";
+  /** Suppress each participating digit's keyup, even after completion or
+   * interruption. Mode reset and disposal clear this held-key tracking. */
+  readonly #altNumpadCodes = new Set<string>();
   /** `code`s of the clipboard chord keys whose keydown went to the browser. */
   readonly #clipboardChordCodes = new Set<string>();
 
@@ -821,6 +827,7 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
 
     // Block during IME composition so the input method operates unimpeded.
     if (event.isComposing) {
+      this.#altNumpad = "none";
       return true;
     }
 
@@ -834,6 +841,7 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
         if (mapping.action === "passthrough" && this.#win32InputModeActive) {
           break;
         }
+        this.#altNumpad = "none";
         if (event.type === "keydown") {
           return this.#fire(terminal, mapping);
         }
@@ -896,18 +904,53 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
    * Win32 input mode. Dead keys defer to the browser: neither the dead key's
    * keydown nor the keydown of the character key it combines with is cancelled
    * or encoded, and the keypress carrying the composed character becomes the
-   * keydown record, with the deferred keydown's virtual key.
+   * keydown record, with the deferred keydown's virtual key. Alt+Numpad also
+   * leaves its keydowns to the browser, but replaces the digits with one
+   * synthetic character down/up pair once the OS supplies the character.
    */
   #encodeWin32(
     terminal: Terminal,
     mode: Win32InputMode,
     event: KeyboardEvent,
   ): boolean {
-    const { type } = event;
+    const { type } = event,
+      isAltRelease =
+        type === "keyup" &&
+        (event.code === "AltLeft" ||
+          event.code === "AltRight" ||
+          mode.virtualKey(event) === 18);
     if (mode.isImeKeyEvent(event)) {
+      this.#altNumpad = "none";
       return true;
     }
+    // Returning false bypasses xterm.js 6 without cancelling native input.
+    let preserveDefault = false;
     if (type === "keydown") {
+      const altOnly =
+        event.altKey &&
+        !event.ctrlKey &&
+        !event.shiftKey &&
+        !event.metaKey &&
+        !event.getModifierState("AltGraph");
+      if (event.key === "Alt" && altOnly) {
+        this.#altNumpad = "alt";
+        preserveDefault = true;
+      } else if (
+        (this.#altNumpad === "alt" || this.#altNumpad === "composing") &&
+        altOnly &&
+        /^Numpad[0-9]$/u.test(event.code)
+      ) {
+        this.#altNumpad = "composing";
+        this.#altNumpadCodes.add(event.code);
+        // This composition owns the character, not a previous dead key.
+        this.#deadKey = "none";
+        this.#deadKeyVirtualKey = 0;
+        event.stopPropagation();
+        return false;
+      } else {
+        this.#altNumpad = "none";
+        this.#altNumpadCodes.delete(event.code);
+      }
       if (event.key === "Dead") {
         this.#deadKey = "pending";
       } else if (this.#deadKey === "composing") {
@@ -932,6 +975,12 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
         return true;
       }
       this.#clipboardChordCodes.delete(event.code);
+    } else if (type === "keyup" && this.#altNumpadCodes.delete(event.code)) {
+      event.stopPropagation();
+      return false;
+    } else if (isAltRelease) {
+      preserveDefault = this.#altNumpad !== "none";
+      this.#altNumpad = this.#altNumpad === "composing" ? "released" : "none";
     } else if (
       type === "keyup" &&
       this.#clipboardChordCodes.delete(event.code)
@@ -941,9 +990,50 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
       return true;
     }
     if (type === "keydown" || type === "keyup") {
+      // Alt's release may carry the OS-composed character in `key`, even
+      // after its keypress. Only the synthetic pair delivers that character.
+      // Copy fields explicitly: DOM KeyboardEvent getters are not enumerable.
+      const keyEvent = isAltRelease
+        ? {
+            altKey: event.altKey,
+            code: event.code,
+            ctrlKey: event.ctrlKey,
+            getModifierState: (modifier: string): boolean =>
+              event.getModifierState(modifier),
+            key: "Alt",
+            keyCode: mode.virtualKey(event),
+            metaKey: event.metaKey,
+            shiftKey: event.shiftKey,
+            type,
+          }
+        : event;
       terminal.input(
-        mode.encode(event, type === "keydown"),
-        !isWin32ModifierKeyOnlyEvent(event),
+        mode.encode(keyEvent, type === "keydown"),
+        !isAltRelease && !isWin32ModifierKeyOnlyEvent(event),
+      );
+    } else if (
+      type === "keypress" &&
+      (this.#altNumpad === "composing" || this.#altNumpad === "released") &&
+      Array.from(event.key).length === 1 &&
+      !(event.altKey && /^Numpad[0-9]$/u.test(event.code))
+    ) {
+      this.#altNumpad = "none";
+      const character = {
+        altKey: false,
+        code: "",
+        ctrlKey: false,
+        getModifierState: (modifier: string): boolean =>
+          ["NumLock", "CapsLock", "ScrollLock"].includes(modifier) &&
+          event.getModifierState(modifier),
+        key: event.key,
+        keyCode: 0,
+        metaKey: false,
+        shiftKey: false,
+        type: "keypress",
+      };
+      terminal.input(
+        mode.encode(character, true) + mode.encode(character, false),
+        true,
       );
     } else if (type === "keypress" && this.#deadKey !== "none") {
       // Only a deferred keydown still produces keypresses, one per composed
@@ -952,7 +1042,9 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
     }
     // A cancelled keydown produces no keypress, and a cancelled keypress
     // inserts nothing, so xterm.js sends no duplicate legacy input.
-    event.preventDefault();
+    if (!preserveDefault) {
+      event.preventDefault();
+    }
     event.stopPropagation();
     return false;
   }
@@ -997,6 +1089,8 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
     this.#deadKey = "none";
     this.#deadKeyVirtualKey = 0;
     this.#clipboardChordCodes.clear();
+    this.#altNumpad = "none";
+    this.#altNumpadCodes.clear();
   }
 
   #matches(event: KeyboardEvent, mapping: Settings.Keymapping): boolean {
