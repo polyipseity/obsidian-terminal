@@ -1,14 +1,13 @@
 /**
  * Windows Python check and exit-code diagnostics. Resolves a usable Python
  * before each Windows PTY construction; results are cached per configured
- * value and plugin fallback for the session.
+ * value and plugin fallback: successes for the session, failures briefly.
  */
 import {
   type AnyObject,
   SI_PREFIX_SCALE,
   dynamicRequire,
   launderUnchecked,
-  notice2,
 } from "@polyipseity/obsidian-plugin-library";
 import { BUNDLE } from "../imports.js";
 import {
@@ -19,7 +18,12 @@ import {
 } from "../magic.js";
 import type { TerminalPlugin } from "../main.js";
 import { Settings } from "../settings-data.js";
-import { applyEnv, invalidateSystemPath, pathEnvKey } from "./environment.js";
+import {
+  applyEnv,
+  getSystemPathGeneration,
+  invalidateSystemPath,
+  pathEnvKey,
+} from "./environment.js";
 import type { Pseudoterminal } from "./pseudoterminal.js";
 
 const childProcess = dynamicRequire<typeof import("node:child_process")>(
@@ -57,6 +61,17 @@ export const WIN32_EXIT_DLL_INIT_FAILED = 3_221_225_794,
 const BARE_NAME = /^[^\\/:]+$/u,
   /** Drive-absolute (`C:\`) or UNC (`\\server\`) directory. */
   ABSOLUTE_DIRECTORY = /^(?:[A-Za-z]:|[\\/])[\\/]/u;
+
+/** Empty keeps discovery; automatic Windows checks accept names and drive-absolute paths. */
+export function isAutomaticWindowsPythonExecutable(
+  executable: string,
+): boolean {
+  return (
+    !executable ||
+    BARE_NAME.test(executable) ||
+    /^[A-Za-z]:[\\/]/u.test(executable)
+  );
+}
 
 const WIN32_PYTHON_IDENTITY_SOURCE =
   'import sys; print(sys.executable); print("%d.%d.%d" % tuple(sys.version_info[:3])); print(getattr(sys, "_base_executable", "") or sys.executable)';
@@ -141,12 +156,15 @@ export interface Win32PythonDiagnosis {
    * answers for, as typed or named — the status row shows it next to the
    * interpreter it runs. */
   readonly candidate: string;
+  /** Discovery candidates attempted in order, including launcher arguments;
+   * excludes canonical/base-interpreter confirmation probes. */
+  readonly tried: readonly string[];
   /** Version reported by the identity probe, empty when unavailable. */
   readonly version: string;
   /** Short, non-localized diagnostic detail for logs. */
   readonly detail: string;
-  /** True when a probe timed out, threw, or never ran; callers must persist
-   * nothing on it. */
+  /** True when a probe timed out, threw, or never ran. Only failures receive
+   * a short retry delay; successful transient results are never cached. */
   readonly transient?: boolean;
   /** Spawn errno when the probe did not run. */
   readonly errno?: string;
@@ -288,6 +306,7 @@ function pythonDiagnosis(
     hostExecutable: executable,
     status,
     ...(transient ? { transient } : {}),
+    tried: candidate ? [candidate] : [],
     version,
   };
 }
@@ -588,15 +607,19 @@ async function diagnoseWindowsPythonCandidates(
   locate: Win32PathLocator,
   candidates: readonly Win32PythonCandidate[],
 ): Promise<Win32PythonDiagnosis> {
+  // Accumulate only discovery entries, before each candidate is probed.
+  const tried: string[] = [];
   let firstFailure: Win32PythonDiagnosis | null = null,
     sawTransient = false;
   for (const entry of candidates) {
     const { args, executable } = entry,
-      [diagnosis, identity] = await probePython(
+      candidate = [executable, ...args].join(" ");
+    tried.push(candidate);
+    const [diagnosis, identity] = await probePython(
         spawn,
         executable,
         args,
-        [executable, ...args].join(" "),
+        candidate,
       ),
       settled =
         diagnosis.status === "ok"
@@ -609,7 +632,11 @@ async function diagnoseWindowsPythonCandidates(
             )
           : diagnosis;
     if (settled.status === "ok") {
-      return settled;
+      return {
+        ...settled,
+        ...(sawTransient ? { transient: true } : {}),
+        tried,
+      };
     }
     sawTransient ||= settled.transient ?? false;
     firstFailure ??= settled;
@@ -617,9 +644,7 @@ async function diagnoseWindowsPythonCandidates(
   const failure =
     firstFailure ?? pythonDiagnosis("", "", "missing", "no candidate");
   // One transient candidate makes the whole result transient.
-  return sawTransient && !(failure.transient ?? false)
-    ? { ...failure, transient: true }
-    : failure;
+  return { ...failure, ...(sawTransient ? { transient: true } : {}), tried };
 }
 
 /** The profile's own Python executable when set, the plugin-level one
@@ -685,11 +710,22 @@ const DEFAULT_LOCATE: Win32PathLocator = async (name) => {
   return null;
 };
 
+interface NegativePythonDiagnosis {
+  readonly diagnosis: Win32PythonDiagnosis;
+  readonly expiresAt: number;
+  readonly pathGeneration: number;
+}
+
+const NEGATIVE_DIAGNOSIS_TTL = 30_000,
+  TRANSIENT_NEGATIVE_DIAGNOSIS_TTL = 5_000;
+// Advances when settings invalidate all failures, including pending probes.
+let negativeDiagnosisGeneration = 0;
+
 const diagnoses = new Map<string, Promise<Win32PythonDiagnosis>>(),
+  negativeDiagnoses = new Map<string, NegativePythonDiagnosis>(),
   displayDiagnoses = new Map<string, Win32PythonDiagnosis>(),
   displayOwners = new Map<string, symbol>(),
   windowsStateListeners = new Set<() => void>(),
-  notified = new Set<string>(),
   // Same configured-value keys as the Python cache. A new token identifies
   // each failure so a check already in flight cannot clear a later failure.
   conPtyRuntimeFailures = new Map<string, symbol>();
@@ -718,6 +754,7 @@ export function isConPtyRuntimeUnavailable(
 
 /** Clears the session cache. Tests only. */
 export function clearWindowsPythonDiagnoses(): void {
+  invalidateWindowsPythonNegativeDiagnoses();
   diagnoses.clear();
   displayDiagnoses.clear();
   displayOwners.clear();
@@ -725,7 +762,6 @@ export function clearWindowsPythonDiagnoses(): void {
   pluginDiagnoses = new WeakMap();
   pluginDiagnosisListeners = new WeakMap();
   pluginCheckGenerations = new WeakMap();
-  notified.clear();
   resizerPackages.clear();
   conPtyRuntimeFailures.clear();
 }
@@ -789,10 +825,7 @@ const resizerPackages = new Set<string>(),
 export function win32ResizerInstallCommand(pythonExecutable: string): string {
   const requirements = Object.entries(PYTHON_REQUIREMENTS)
     .filter(([name]) => name !== "Python")
-    .map(
-      ([name, { maximum, version }]) =>
-        `"${name}>=${version.version}${maximum ? `,<=${maximum.version}` : ""}"`,
-    )
+    .map(([name, { version }]) => `"${name}>=${version.version}"`)
     .join(" ");
   return /[^A-Za-z0-9_.:\\/-]/u.test(pythonExecutable)
     ? `& '${pythonExecutable.replaceAll(/['\u2018-\u201b]/gu, "$&$&")}' -m pip install --upgrade ${requirements}`
@@ -829,9 +862,8 @@ export async function checkWindowsResizerPackages(
 }
 
 /**
- * Evicts one cached diagnosis and re-arms its notice. For callers that
- * discover at runtime that a checked interpreter cannot host a session; the
- * next check re-probes and may notify again.
+ * Evicts one cached diagnosis. For callers that discover at runtime that a
+ * checked interpreter cannot host a session; the next check re-probes silently.
  */
 export function invalidateWindowsPythonDiagnosis(
   pythonExecutable: string,
@@ -842,7 +874,13 @@ export function invalidateWindowsPythonDiagnosis(
     fallbackPythonExecutable,
   );
   diagnoses.delete(key);
-  notified.delete(key);
+  negativeDiagnoses.delete(key);
+}
+
+/** Drops failed results without launching probes, refreshing PATH or prewarming. */
+export function invalidateWindowsPythonNegativeDiagnoses(): void {
+  negativeDiagnosisGeneration++;
+  negativeDiagnoses.clear();
 }
 
 /**
@@ -861,9 +899,9 @@ function evictOwnDiagnosis(
 }
 
 /**
- * Runs the Python check once per configuration and plugin fallback and shows
- * one notice when it fails. Callers await it before constructing a Windows
- * PTY so the same interpreter is used by every helper in that request.
+ * Checks Python silently, caching stable successes and briefly reusing failures
+ * per configuration and plugin fallback. Callers await it before constructing
+ * a Windows PTY; the open path explains any backend fallback or disabled resizer.
  */
 export async function checkWindowsPython(
   context: TerminalPlugin,
@@ -871,11 +909,10 @@ export async function checkWindowsPython(
   spawn: Win32PythonSpawn = DEFAULT_SPAWN,
   options: {
     readonly locate?: Win32PathLocator;
-    readonly notify?: boolean;
     readonly publish?: boolean;
   } = {},
 ): Promise<Win32PythonDiagnosis> {
-  const { locate = DEFAULT_LOCATE, notify = true, publish = true } = options,
+  const { locate = DEFAULT_LOCATE, publish = true } = options,
     fallbackPythonExecutable = context.settings.value.pythonExecutable,
     key = win32PythonConfigurationKey(
       pythonExecutable,
@@ -894,6 +931,25 @@ export async function checkWindowsPython(
     }
     return cached;
   }
+  const pathGeneration = getSystemPathGeneration(),
+    negativeGeneration = negativeDiagnosisGeneration,
+    negative = negativeDiagnoses.get(key);
+  if (negative) {
+    if (
+      negative.pathGeneration === pathGeneration &&
+      Date.now() < negative.expiresAt
+    ) {
+      if (publish && !displayDiagnoses.has(key)) {
+        publishWindowsDiagnosis(
+          key,
+          negative.diagnosis,
+          claimWindowsDiagnosis(key),
+        );
+      }
+      return negative.diagnosis;
+    }
+    negativeDiagnoses.delete(key);
+  }
   const owner = publish ? claimWindowsDiagnosis(key) : null;
   const diagnosis = diagnoseWindowsPython(
     spawn,
@@ -910,40 +966,36 @@ export async function checkWindowsPython(
     evictOwnDiagnosis(key, diagnosis);
     throw error;
   }
-  const { detail, executable, status, version } = ret;
+  const { detail, status } = ret;
   if (owner !== null && diagnoses.get(key) === diagnosis) {
     publishWindowsDiagnosis(key, ret, owner);
   }
   if (status === "ok") {
-    notified.delete(key);
     if (ret.transient ?? false) {
       // An unconfirmed host is retried by the next open.
       evictOwnDiagnosis(key, diagnosis);
     }
     return ret;
   }
-  // Failures are not cached: the notice asks the user to install Python and
-  // the next open must re-probe. A missing interpreter fails fast, so this
-  // is cheap.
-  evictOwnDiagnosis(key, diagnosis);
-  const {
-    language: { value: i18n },
-    settings,
-  } = context;
-  self.console.warn(`Python check: ${status} (${detail})`);
-  if (notify && !notified.has(key)) {
-    notified.add(key);
-    notice2(
-      () =>
-        i18n.t(`errors.win32-python-${status}`, {
-          executable,
-          interpolation: { escapeValue: false },
-          version,
-        }),
-      settings.value.errorNoticeTimeout,
-      context,
-    );
+  // Measure retry delay from settlement. Invalidated or superseded work must
+  // neither install a failure nor evict a newer probe or successful result.
+  if (
+    diagnoses.get(key) === diagnosis &&
+    pathGeneration === getSystemPathGeneration() &&
+    negativeGeneration === negativeDiagnosisGeneration
+  ) {
+    negativeDiagnoses.set(key, {
+      diagnosis: ret,
+      expiresAt:
+        Date.now() +
+        (ret.transient
+          ? TRANSIENT_NEGATIVE_DIAGNOSIS_TTL
+          : NEGATIVE_DIAGNOSIS_TTL),
+      pathGeneration,
+    });
   }
+  evictOwnDiagnosis(key, diagnosis);
+  self.console.warn(`Python check: ${status} (${detail})`);
   return ret;
 }
 
@@ -1001,14 +1053,20 @@ export function pythonOverrideStatus(
 /**
  * Settings-tab status key for a diagnosis. A discovered name maps to the
  * interpreter it runs (`ok-resolved`); a configured path is that interpreter
- * (`ok`). Only the message differs — the download and recheck buttons follow
- * the diagnosis status itself.
+ * (`ok`). Failed probes carrying errno show the refusal detail before the
+ * generic transient message.
  */
 export function pythonStatusKey(
   diagnosis: Win32PythonDiagnosis | null,
   checking: boolean,
-): "checking" | "ok-resolved" | "unverified" | Win32PythonStatus {
+):
+  | "checking"
+  | "ok-resolved"
+  | "unverified"
+  | "unverified-errno"
+  | Win32PythonStatus {
   if (checking || !diagnosis) return "checking";
+  if (diagnosis.status !== "ok" && diagnosis.errno) return "unverified-errno";
   if (diagnosis.status !== "ok" && diagnosis.transient) return "unverified";
   if (
     diagnosis.status === "ok" &&
@@ -1019,21 +1077,38 @@ export function pythonStatusKey(
   return diagnosis.status;
 }
 
-/** Plugin status text follows the same host and breaker predicate as the opener. */
+/** Report interpreter fallback before the opener's host and breaker status. */
 export function pluginPythonStatusKey(
   diagnosis: Win32PythonDiagnosis | null,
   checking: boolean,
   configured: string,
 ):
+  | "missing-configured"
+  | "ok-fallback"
   | "ok-unconfirmed"
   | "ok-runtime-unavailable"
   | ReturnType<typeof pythonStatusKey> {
   if (!checking && diagnosis?.status === "ok") {
+    if (
+      configured &&
+      pythonOverrideStatus(configured, diagnosis) === "fallback"
+    ) {
+      return "ok-fallback";
+    }
     const availability = windowsConPtyStatus(diagnosis, configured, configured);
     if (availability === "unconfirmed") return "ok-unconfirmed";
     if (availability === "runtime-unavailable") return "ok-runtime-unavailable";
   }
-  return pythonStatusKey(diagnosis, checking);
+  const status = pythonStatusKey(diagnosis, checking);
+  if (
+    status === "missing" &&
+    configured &&
+    diagnosis &&
+    sameExecutable(diagnosis.executable, configured)
+  ) {
+    return "missing-configured";
+  }
+  return status;
 }
 
 function isWin32Integrated<T extends Settings.Profile>(
@@ -1073,6 +1148,13 @@ export function getPluginPythonDiagnosis(
   return pluginDiagnoses.get(context) ?? null;
 }
 
+export interface PluginPythonCheckOptions {
+  /** Explicit Recheck includes overrides; automatic checks stay plugin-only. */
+  readonly includeProfileOverrides?: boolean;
+  /** Explicit Recheck refreshes PATH and diagnoses; startup reuses pending work. */
+  readonly refresh?: boolean;
+}
+
 /**
  * Runs the plugin-level Python check, publishes the result for the settings
  * tab. Configured values remain untouched; resolutions stay in session state.
@@ -1082,6 +1164,10 @@ export async function runPluginPythonCheck(
   context: TerminalPlugin,
   spawn: Win32PythonSpawn = DEFAULT_SPAWN,
   locate: Win32PathLocator = DEFAULT_LOCATE,
+  {
+    includeProfileOverrides = true,
+    refresh = true,
+  }: PluginPythonCheckOptions = {},
 ): Promise<Win32PythonDiagnosis> {
   const { settings } = context,
     { pythonExecutable: configured } = settings.value,
@@ -1095,46 +1181,51 @@ export async function runPluginPythonCheck(
       pluginCheckGenerations.get(context) !== generation ||
       pythonExecutable !== configured;
   pluginCheckGenerations.set(context, generation);
-  // Refresh both caches: an installer can add Python to the registry PATH
-  // while Obsidian keeps its launch-time environment.
-  invalidateSystemPath();
-  invalidateWindowsPythonDiagnosis(configured);
+  if (refresh) {
+    // An installer can add Python to the registry PATH while Obsidian keeps
+    // its launch-time environment. Startup shares the existing work instead.
+    invalidateSystemPath();
+    invalidateWindowsPythonDiagnosis(configured);
+  }
   const diagnosis = await checkWindowsPython(context, configured, spawn, {
     locate,
-    notify: false,
     publish: false,
   });
   // An overtaken check publishes nothing, so it probes no override either.
   if (stale()) return diagnosis;
   const profileValues = new Set<string>();
-  for (const profile of Object.values(settings.value.profiles)) {
-    if (isWin32Integrated(profile) && profile.pythonExecutable) {
-      profileValues.add(profile.pythonExecutable);
+  if (includeProfileOverrides) {
+    for (const profile of Object.values(settings.value.profiles)) {
+      if (isWin32Integrated(profile) && profile.pythonExecutable) {
+        profileValues.add(profile.pythonExecutable);
+      }
     }
   }
   const profileDiagnoses = new Map<string, Win32PythonDiagnosis>(),
     profileOwners = new Map<string, symbol>(),
-    // Held back until the generation check below: an overtaken check must not
-    // replace the newer one's interpreter, which the opener would then read
-    // from the cache without re-probing it.
-    resolutions: [string, Win32PythonDiagnosis, string][] = [];
+    // Only aliases are held back; checkWindowsPython owns configured entries.
+    // An alias is valid only while its source probe still owns that entry.
+    resolutions: (readonly [
+      executable: string,
+      diagnosis: Win32PythonDiagnosis,
+      source: string,
+      pending: Promise<Win32PythonDiagnosis>,
+    ])[] = [];
   await Promise.all(
     [...profileValues].map(async (value) => {
       const key = win32PythonConfigurationKey(value, configured);
       profileOwners.set(value, claimWindowsDiagnosis(key));
       // An override that stopped working must not keep its cached success.
-      invalidateWindowsPythonDiagnosis(value, configured);
-      const resolved = await diagnoseWindowsPython(
-        spawn,
-        value,
-        locate,
-        configured,
-      );
+      if (refresh) invalidateWindowsPythonDiagnosis(value, configured);
+      const checking = checkWindowsPython(context, value, spawn, {
+          locate,
+          publish: false,
+        }),
+        pending = diagnoses.get(key),
+        resolved = await checking;
       profileDiagnoses.set(value, resolved);
-      if (resolved.status !== "ok" || (resolved.transient ?? false)) return;
-      // Publish only after the generation check; opening a terminal uses
-      // the same configured candidates and must see this result.
-      resolutions.push([value, resolved, value]);
+      if (!pending || resolved.status !== "ok" || (resolved.transient ?? false))
+        return;
       // Alias only the interpreter path: a venv's base host has different
       // packages and must keep its own diagnosis.
       if (
@@ -1142,7 +1233,7 @@ export async function runPluginPythonCheck(
           sameExecutable(resolved.executable, value2),
         )
       ) {
-        resolutions.push([resolved.executable, resolved, value]);
+        resolutions.push([resolved.executable, resolved, value, pending]);
       }
     }),
   );
@@ -1167,12 +1258,13 @@ export async function runPluginPythonCheck(
       conPtyRuntimeFailures.delete(key);
     }
   }
-  for (const [value, resolved, source] of resolutions) {
-    const key = win32PythonConfigurationKey(value, configured);
+  for (const [value, resolved, source, pending] of resolutions) {
+    const key = win32PythonConfigurationKey(value, configured),
+      sourceKey = win32PythonConfigurationKey(source, configured);
     if (
-      displayOwners.get(win32PythonConfigurationKey(source, configured)) ===
-        profileOwners.get(source) &&
-      (value === source || !displayOwners.has(key))
+      displayOwners.get(sourceKey) === profileOwners.get(source) &&
+      diagnoses.get(sourceKey) === pending &&
+      !displayOwners.has(key)
     ) {
       diagnoses.set(key, Promise.resolve(resolved));
     }

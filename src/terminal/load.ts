@@ -26,7 +26,11 @@ import {
 import { CONPTY_HOST_POOL } from "./pseudoterminal.js";
 import { SelectProfileModal, spawnTerminal } from "./spawn.js";
 import { TerminalView } from "./view.js";
-import { runPluginPythonCheck } from "./win32-doctor.js";
+import {
+  invalidateWindowsPythonNegativeDiagnoses,
+  isAutomaticWindowsPythonExecutable,
+  runPluginPythonCheck,
+} from "./win32-doctor.js";
 
 export function loadTerminal(context: TerminalPlugin): void {
   TerminalView.load(context);
@@ -64,6 +68,7 @@ export function loadTerminal(context: TerminalPlugin): void {
       const isCandidate = (profile: Settings.Profile): boolean =>
         profile.type === "integrated" &&
         profile.win32Backend === "conpty" &&
+        !profile.pythonExecutable &&
         Settings.Profile.isCompatible(profile, Platform.CURRENT);
       const fromDefault = getDefaultProfile()?.[1];
       if (fromDefault && isCandidate(fromDefault)) {
@@ -233,6 +238,46 @@ export function loadTerminal(context: TerminalPlugin): void {
   );
   context.register(
     settings.onMutate(
+      (settings0) => [
+        settings0.pythonExecutable,
+        Object.fromEntries(
+          Object.entries(settings0.profiles).map(([id, profile]) => [
+            id,
+            [
+              profile.type,
+              Settings.Profile.isCompatible(profile, "win32"),
+              profile.type === "integrated" ? profile.pythonExecutable : null,
+              profile.type === "integrated" ? profile.win32Backend : null,
+            ],
+          ]),
+        ),
+      ],
+      () => {
+        // Retire obsolete hosts and pending refills; edits never start a probe.
+        CONPTY_HOST_POOL.clear();
+      },
+    ),
+  );
+  context.register(
+    settings.onMutate(
+      (settings0) => [
+        settings0.pythonExecutable,
+        Object.fromEntries(
+          Object.entries(settings0.profiles).flatMap(([id, profile]) =>
+            profile.type === "integrated"
+              ? [[id, profile.pythonExecutable]]
+              : [],
+          ),
+        ),
+      ],
+      () => {
+        invalidateWindowsPythonNegativeDiagnoses();
+      },
+    ),
+  );
+
+  context.register(
+    settings.onMutate(
       (settings) => settings.defaultProfile,
       openTerminal.reload,
     ),
@@ -321,6 +366,7 @@ export function loadTerminal(context: TerminalPlugin): void {
    * cleanup) on an unloaded plugin, which would leak the timer and the spare.
    */
   const prewarm = (): void => {
+    if (unloaded || !settings.value.prewarmConPty) return;
     const profile = getPrewarmProfile();
     if (!profile) return;
     prewarmConPtyProfile(context, profile).catch((error: unknown) => {
@@ -336,16 +382,30 @@ export function loadTerminal(context: TerminalPlugin): void {
       return;
     }
     warmSystemPath();
-    if (deopaque(Platform.CURRENT) === "win32") {
-      // Silent; the settings tab shows the result.
-      runPluginPythonCheck(context).catch((error: unknown) => {
+    if (
+      deopaque(Platform.CURRENT) === "win32" &&
+      isAutomaticWindowsPythonExecutable(settings.value.pythonExecutable)
+    ) {
+      // Silent; overrides are checked when visited or explicitly rechecked.
+      runPluginPythonCheck(context, void 0, void 0, {
+        includeProfileOverrides: false,
+        refresh: false,
+      }).catch((error: unknown) => {
         /* @__PURE__ */ self.console.debug(error);
       });
     }
-    const timer = self.setTimeout(
-      prewarm,
-      TERMINAL_CONPTY_PREWARM_DELAY * SI_PREFIX_SCALE,
-    );
+    if (
+      !context.localSettings.value.hasUsedIntegratedTerminal ||
+      !settings.value.prewarmConPty ||
+      !getPrewarmProfile()
+    ) {
+      return;
+    }
+    const timer = self.setTimeout(() => {
+      if (!unloaded && context.localSettings.value.hasUsedIntegratedTerminal) {
+        prewarm();
+      }
+    }, TERMINAL_CONPTY_PREWARM_DELAY * SI_PREFIX_SCALE);
     context.register(() => {
       self.clearTimeout(timer);
     });

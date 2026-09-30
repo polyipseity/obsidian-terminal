@@ -38,7 +38,6 @@ import { BUNDLE } from "./imports.js";
 import {
   CHECK_EXECUTABLE_WAIT,
   DOMClasses2,
-  PYTHON_PROBE_SETTLE_WAIT,
   PYTHON_REQUIREMENTS,
 } from "./magic.js";
 import { applyEnv } from "./terminal/environment.js";
@@ -48,15 +47,16 @@ import {
   PROFILE_PRESET_ORDERED_KEYS,
 } from "./terminal/profile-presets.js";
 import { PROFILE_PROPERTIES } from "./terminal/profile-properties.js";
-import { Pseudoterminal } from "./terminal/pseudoterminal.js";
+import { CONPTY_HOST_POOL, Pseudoterminal } from "./terminal/pseudoterminal.js";
 import {
   checkWindowsPython,
   checkWindowsResizerPackages,
   getWindowsPythonDiagnosis,
   inheritedPythonExecutable,
+  invalidateWindowsPythonDiagnosis,
+  isAutomaticWindowsPythonExecutable,
   onWindowsPythonStateChange,
   pythonOverrideStatus,
-  win32PythonConfigurationKey,
   win32ResizerInstallCommand,
   windowsConPtyStatus,
 } from "./terminal/win32-doctor.js";
@@ -1059,18 +1059,95 @@ export class ProfileModal extends Modal {
           });
         }
         if (profile.type === "integrated") {
+          // Check the entire configuration pair: discovery can run the plugin fallback.
+          const canCheckAutomatically = (): boolean =>
+            isAutomaticWindowsPythonExecutable(profile.pythonExecutable) &&
+            isAutomaticWindowsPythonExecutable(settings.value.pythonExecutable);
+          const configurationKey = (): string =>
+            JSON.stringify([
+              profile.pythonExecutable,
+              settings.value.pythonExecutable,
+              profile.win32Backend,
+              // Platform changes invalidate pending checks and commit deduplication.
+              deopaque(Platform.CURRENT) === "win32" &&
+                Settings.Profile.isCompatible(profile, "win32"),
+            ]);
           let checkingPython = false,
+            checkingExplicitly = false,
+            disposed = false,
             resizerInstallCommand = "",
             resizerPackagesMissing = false,
-            resizerProbeKey: string | null = null,
-            resizerProbeTimer: number | undefined,
-            statusProbeKey: string | null = null,
-            statusProbeTimer: number | undefined,
-            statusProbeGeneration = 0;
+            statusProbeKey = configurationKey(),
+            committedKey: string | null = null,
+            statusProbeGeneration = 0,
+            pythonInput: HTMLInputElement | undefined;
+          const beginCheck = (explicit = false): (() => boolean) => {
+              const key = configurationKey(),
+                generation = ++statusProbeGeneration;
+              statusProbeKey = key;
+              committedKey = key;
+              checkingPython = true;
+              checkingExplicitly = explicit;
+              resizerPackagesMissing = false;
+              ui.update();
+              return (): boolean =>
+                !disposed &&
+                generation === statusProbeGeneration &&
+                key === configurationKey();
+            },
+            finishCheck = (current: () => boolean): void => {
+              if (!current()) return;
+              checkingPython = false;
+              checkingExplicitly = false;
+              ui.update();
+            },
+            commit = (): void => {
+              if (
+                disposed ||
+                deopaque(Platform.CURRENT) !== "win32" ||
+                !Settings.Profile.isCompatible(profile, "win32") ||
+                !canCheckAutomatically() ||
+                committedKey === configurationKey()
+              )
+                return;
+              const effective = inheritedPythonExecutable(
+                  profile.pythonExecutable,
+                  settings.value.pythonExecutable,
+                ),
+                current = beginCheck();
+              (async (): Promise<void> => {
+                const diagnosis = await checkWindowsPython(context, effective);
+                if (
+                  !current() ||
+                  !canCheckAutomatically() ||
+                  diagnosis.status !== "ok" ||
+                  profile.win32Backend !== "legacy"
+                )
+                  return;
+                const missing = !(await checkWindowsResizerPackages(
+                  diagnosis.executable,
+                ));
+                if (!current() || !canCheckAutomatically()) return;
+                resizerInstallCommand = win32ResizerInstallCommand(
+                  diagnosis.executable,
+                );
+                resizerPackagesMissing = missing;
+              })()
+                .catch((error: unknown) => {
+                  activeSelf(element).console.error(error);
+                })
+                .finally(() => {
+                  finishCheck(current);
+                });
+            },
+            removeCommitListeners = (): void => {
+              pythonInput?.removeEventListener("change", commit);
+              pythonInput?.removeEventListener("blur", commit);
+            };
           ui.finally(() => {
-            self.clearTimeout(resizerProbeTimer);
-            self.clearTimeout(statusProbeTimer);
+            disposed = true;
             ++statusProbeGeneration;
+            removeCommitListeners();
           });
           if (deopaque(Platform.CURRENT) === "win32") {
             ui.finally(
@@ -1085,41 +1162,39 @@ export class ProfileModal extends Modal {
                 profile.pythonExecutable,
                 pluginPython,
               ),
-              key = win32PythonConfigurationKey(effective, pluginPython),
-              windows = deopaque(Platform.CURRENT) === "win32";
-            if (windows && statusProbeKey !== key) {
+              key = configurationKey(),
+              win32Eligible =
+                deopaque(Platform.CURRENT) === "win32" &&
+                Settings.Profile.isCompatible(profile, "win32");
+            if (statusProbeKey !== key) {
               statusProbeKey = key;
-              const generation = ++statusProbeGeneration;
-              self.clearTimeout(statusProbeTimer);
-              statusProbeTimer = self.setTimeout(() => {
-                checkWindowsPython(context, effective, void 0, {
-                  notify: false,
-                })
-                  .then(() => {
-                    if (
-                      statusProbeGeneration === generation &&
-                      statusProbeKey === key
-                    ) {
-                      ui.update();
-                    }
-                  })
-                  .catch((error: unknown) => {
-                    activeSelf(setting.settingEl).console.error(error);
-                  });
-              }, PYTHON_PROBE_SETTLE_WAIT * SI_PREFIX_SCALE);
+              ++statusProbeGeneration;
+              checkingPython = false;
+              checkingExplicitly = false;
+              resizerPackagesMissing = false;
+              committedKey = null;
             }
-            const diagnosis = windows
+            const diagnosis = win32Eligible
                 ? getWindowsPythonDiagnosis(effective, pluginPython)
                 : null,
-              overrideStatus = profile.pythonExecutable
-                ? pythonOverrideStatus(profile.pythonExecutable, diagnosis)
-                : diagnosis?.status === "ok"
-                  ? "inherited-ok"
-                  : diagnosis?.transient
-                    ? "inherited-unverified"
-                    : diagnosis
-                      ? "inherited-missing"
-                      : "checking";
+              overrideStatus = checkingPython
+                ? "checking"
+                : win32Eligible && !canCheckAutomatically() && !diagnosis
+                  ? "not-automatic"
+                  : !diagnosis
+                    ? profile.pythonExecutable
+                      ? "unverified"
+                      : "inherited-unverified"
+                    : profile.pythonExecutable
+                      ? pythonOverrideStatus(
+                          profile.pythonExecutable,
+                          diagnosis,
+                        )
+                      : diagnosis.status === "ok"
+                        ? "inherited-ok"
+                        : diagnosis.transient
+                          ? "inherited-unverified"
+                          : "inherited-missing";
             setting
               .setName(
                 i18n.t(`components.profile.${profile.type}.Python-executable`),
@@ -1132,7 +1207,7 @@ export class ProfileModal extends Modal {
                     version: PYTHON_REQUIREMENTS.Python.version,
                   },
                 ) +
-                  (windows
+                  (win32Eligible
                     ? ` ${i18n.t(
                         `components.profile.integrated.Python-status-${overrideStatus}`,
                         {
@@ -1141,6 +1216,13 @@ export class ProfileModal extends Modal {
                           value: profile.pythonExecutable,
                         },
                       )}`
+                    : "") +
+                  (win32Eligible &&
+                  /^\/(?![\\/])/u.test(profile.pythonExecutable)
+                    ? ` ${i18n.t("notices.win32-python-posix-path", {
+                        executable: profile.pythonExecutable,
+                        interpolation: { escapeValue: false },
+                      })}`
                     : ""),
               )
               .addText(
@@ -1152,6 +1234,10 @@ export class ProfileModal extends Modal {
                   async () => this.postMutate(),
                   {
                     post: (component) => {
+                      removeCommitListeners();
+                      pythonInput = component.inputEl;
+                      pythonInput.addEventListener("change", commit);
+                      pythonInput.addEventListener("blur", commit);
                       // The plugin-level check never writes its result into
                       // the field, so the detected name is shown here.
                       const detected = getWindowsPythonDiagnosis(
@@ -1159,7 +1245,7 @@ export class ProfileModal extends Modal {
                         settings.value.pythonExecutable,
                       );
                       component.setPlaceholder(
-                        deopaque(Platform.CURRENT) === "win32"
+                        win32Eligible
                           ? settings.value.pythonExecutable
                             ? i18n.t(
                                 `components.profile.${profile.type}.Python-executable-placeholder-default`,
@@ -1202,41 +1288,61 @@ export class ProfileModal extends Modal {
                     ),
                   )
                   .onClick(() => {
-                    if (checkingPython) {
+                    if (disposed || checkingExplicitly) {
                       return;
                     }
-                    checkingPython = true;
+                    // Check remains explicit even when leaving the field just
+                    // started an automatic blur check.
+                    const current = beginCheck(true);
                     (async (): Promise<void> => {
-                      // Resolve the inherited value the same way the open
-                      // path does.
-                      const pythonExecutable =
-                          deopaque(Platform.CURRENT) === "win32"
-                            ? (
-                                await checkWindowsPython(
-                                  context,
-                                  inheritedPythonExecutable(
-                                    profile.pythonExecutable,
-                                    settings.value.pythonExecutable,
-                                  ),
-                                  void 0,
-                                  { notify: false },
-                                )
-                              ).executable
-                            : profile.pythonExecutable,
-                        [execFileP2, getPackageVersion2] = await Promise.all([
-                          execFileP,
-                          getPackageVersion,
-                        ]),
-                        env = await applyEnv(),
-                        { stdout, stderr } = await execFileP2(
-                          pythonExecutable,
-                          ["--version"],
-                          {
-                            env,
-                            timeout: CHECK_EXECUTABLE_WAIT * SI_PREFIX_SCALE,
-                            windowsHide: true,
-                          },
+                      // Resolve and invalidate the same configuration the open path uses.
+                      const effective = inheritedPythonExecutable(
+                          profile.pythonExecutable,
+                          settings.value.pythonExecutable,
+                        ),
+                        windows =
+                          deopaque(Platform.CURRENT) === "win32" &&
+                          Settings.Profile.isCompatible(profile, "win32");
+                      if (windows) {
+                        CONPTY_HOST_POOL.clear();
+                        invalidateWindowsPythonDiagnosis(
+                          effective,
+                          settings.value.pythonExecutable,
                         );
+                      }
+                      const diagnosis = windows
+                          ? await checkWindowsPython(context, effective)
+                          : null,
+                        pythonExecutable =
+                          diagnosis?.executable ?? profile.pythonExecutable;
+                      if (!current()) return;
+                      if (
+                        diagnosis?.status === "ok" &&
+                        profile.win32Backend === "legacy"
+                      ) {
+                        const missing = !(await checkWindowsResizerPackages(
+                          diagnosis.executable,
+                        ));
+                        if (!current()) return;
+                        resizerInstallCommand = win32ResizerInstallCommand(
+                          diagnosis.executable,
+                        );
+                        resizerPackagesMissing = missing;
+                      }
+                      const [execFileP2, getPackageVersion2] =
+                          await Promise.all([execFileP, getPackageVersion]),
+                        env = await applyEnv();
+                      if (!current()) return;
+                      const { stdout, stderr } = await execFileP2(
+                        pythonExecutable,
+                        ["--version"],
+                        {
+                          env,
+                          timeout: CHECK_EXECUTABLE_WAIT * SI_PREFIX_SCALE,
+                          windowsHide: true,
+                        },
+                      );
+                      if (!current()) return;
                       if (stdout) {
                         activeSelf(buttonEl).console.log(stdout);
                       }
@@ -1256,7 +1362,12 @@ export class ProfileModal extends Modal {
                           .filter(
                             ([name]) =>
                               name === "Python" ||
-                              profile.win32Backend !== "conpty",
+                              (deopaque(Platform.CURRENT) === "win32" &&
+                                Settings.Profile.isCompatible(
+                                  profile,
+                                  "win32",
+                                ) &&
+                                profile.win32Backend !== "conpty"),
                           )
                           .map(async ([name, { version: req }]) => {
                             let ver: SemVer | null = null;
@@ -1309,6 +1420,7 @@ export class ProfileModal extends Modal {
                               });
                           }),
                       );
+                      if (!current()) return;
                       notice2(
                         () => msgs.map((msg) => msg()).join("\n"),
                         settings.value.noticeTimeout,
@@ -1316,6 +1428,7 @@ export class ProfileModal extends Modal {
                       );
                     })()
                       .catch((error: unknown) => {
+                        if (!current()) return;
                         printError(
                           anyToError(error),
                           () => i18n.t("errors.error-checking-Python"),
@@ -1323,10 +1436,8 @@ export class ProfileModal extends Modal {
                         );
                       })
                       .finally(() => {
-                        checkingPython = false;
-                        ui.update();
+                        finishCheck(current);
                       });
-                    ui.update();
                   });
                 if (checkingPython) {
                   button.setCta();
@@ -1352,15 +1463,20 @@ export class ProfileModal extends Modal {
                 profile.pythonExecutable,
                 pluginPython,
               ),
-              windows = deopaque(Platform.CURRENT) === "win32",
+              win32Eligible =
+                deopaque(Platform.CURRENT) === "win32" &&
+                Settings.Profile.isCompatible(profile, "win32"),
+              diagnosis = getWindowsPythonDiagnosis(effective, pluginPython),
+              notAutomatic =
+                !canCheckAutomatically() && !diagnosis && !checkingPython,
               backendStatus =
                 profile.win32Backend === "legacy"
                   ? "legacy"
-                  : windowsConPtyStatus(
-                      getWindowsPythonDiagnosis(effective, pluginPython),
-                      effective,
-                      pluginPython,
-                    );
+                  : checkingPython
+                    ? "checking"
+                    : !diagnosis
+                      ? "unverified"
+                      : windowsConPtyStatus(diagnosis, effective, pluginPython);
             setting
               .setName(
                 i18n.t(`components.profile.${profile.type}.win32-backend`),
@@ -1369,9 +1485,11 @@ export class ProfileModal extends Modal {
                 i18n.t(
                   `components.profile.${profile.type}.win32-backend-description`,
                 ) +
-                  (windows
+                  (win32Eligible
                     ? ` ${i18n.t(
-                        `components.profile.integrated.win32-backend-status-${backendStatus}`,
+                        notAutomatic && profile.win32Backend !== "legacy"
+                          ? "components.profile.integrated.Python-status-not-automatic"
+                          : `components.profile.integrated.win32-backend-status-${backendStatus}`,
                       )}`
                     : ""),
               )
@@ -1414,58 +1532,15 @@ export class ProfileModal extends Modal {
           });
           if (deopaque(Platform.CURRENT) === "win32") {
             ui.newSetting(element, (setting) => {
+              const win32Eligible =
+                deopaque(Platform.CURRENT) === "win32" &&
+                Settings.Profile.isCompatible(profile, "win32");
               // Always rendered; visibility toggled (see settings.ts
               // newPythonWidgets).
-              const effective = inheritedPythonExecutable(
-                  profile.pythonExecutable,
-                  settings.value.pythonExecutable,
-                ),
-                probeKey = win32PythonConfigurationKey(
-                  effective,
-                  settings.value.pythonExecutable,
-                );
-              if (profile.win32Backend !== "legacy") {
-                resizerProbeKey = null;
-                resizerPackagesMissing = false;
-              } else if (resizerProbeKey !== probeKey) {
-                resizerProbeKey = probeKey;
-                resizerPackagesMissing = false;
-                // Debounce: every keystroke re-renders this row.
-                self.clearTimeout(resizerProbeTimer);
-                resizerProbeTimer = self.setTimeout(() => {
-                  (async (): Promise<void> => {
-                    const diagnosis = await checkWindowsPython(
-                      context,
-                      effective,
-                      void 0,
-                      { notify: false },
-                    );
-                    if (
-                      diagnosis.status !== "ok" ||
-                      resizerProbeKey !== probeKey
-                    ) {
-                      return;
-                    }
-                    const missing = !(await checkWindowsResizerPackages(
-                      diagnosis.executable,
-                    ));
-                    if (resizerProbeKey !== probeKey) {
-                      return;
-                    }
-                    resizerInstallCommand = win32ResizerInstallCommand(
-                      diagnosis.executable,
-                    );
-                    if (missing !== resizerPackagesMissing) {
-                      resizerPackagesMissing = missing;
-                      ui.update();
-                    }
-                  })().catch((error: unknown) => {
-                    activeSelf(setting.settingEl).console.error(error);
-                  });
-                }, PYTHON_PROBE_SETTLE_WAIT * SI_PREFIX_SCALE);
-              }
               setting.settingEl.style.display =
-                profile.win32Backend === "legacy" && resizerPackagesMissing
+                win32Eligible &&
+                profile.win32Backend === "legacy" &&
+                resizerPackagesMissing
                   ? ""
                   : "none";
               setting

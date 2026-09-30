@@ -148,15 +148,22 @@ export function mergePathEntries(
  *  - macOS:   /usr/libexec/path_helper -s  (reads /etc/paths + /etc/paths.d/*)
  *  - Linux:   reads /etc/environment (the PAM default)
  *  - Windows: reg query of the System + User PATH from the registry */
-let getSystemPath = lazyInit(() => resolveSystemPath());
+let getSystemPath = lazyInit(() => resolveSystemPath()),
+  systemPathGeneration = 0;
+
+/** Generation of the PATH cache; reading it never resolves the environment. */
+export function getSystemPathGeneration(): number {
+  return systemPathGeneration;
+}
 
 /** Makes the next environment read resolve PATH again after an install. */
 export function invalidateSystemPath(): void {
+  systemPathGeneration++;
   getSystemPath = lazyInit(() => resolveSystemPath());
 }
 
-/** Starts the cached system PATH resolution off the spawn path. The result
- * is memoized, so the first spawn reuses it instead of paying for it. */
+/** Starts system PATH resolution off the spawn path. Startup checks and
+ * spawns share the pending work and result until explicit invalidation. */
 export function warmSystemPath(): void {
   getSystemPath().catch((error: unknown) => {
     /* @__PURE__ */ self.console.debug(error);

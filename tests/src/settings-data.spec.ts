@@ -46,6 +46,34 @@ describe("src/settings-data.ts", () => {
     );
   });
 
+  it.each([
+    undefined,
+    null,
+    {},
+    "bad",
+    { hasUsedIntegratedTerminal: "true" },
+    { hasUsedIntegratedTerminal: 1 },
+    { hasUsedIntegratedTerminal: null },
+  ])("defaults local integrated-terminal use to false for %j", (stored) => {
+    expect(LocalSettings.fix(stored).value).toHaveProperty(
+      "hasUsedIntegratedTerminal",
+      false,
+    );
+  });
+
+  it.each([false, true])(
+    "preserves local integrated-terminal use %s through JSON",
+    (used) => {
+      const first = LocalSettings.fix({ hasUsedIntegratedTerminal: used }),
+        stored: unknown = JSON.parse(JSON.stringify(first.value));
+      expect(LocalSettings.fix(stored)).toMatchObject({
+        valid: true,
+        value: { hasUsedIntegratedTerminal: used },
+      });
+      expect(Settings.DEFAULT).not.toHaveProperty("hasUsedIntegratedTerminal");
+    },
+  );
+
   it("LocalSettings survives a JSON persistence round trip as valid", () => {
     vi.spyOn(console, "debug").mockImplementation(() => {});
     // `StorageSettingsManager.write` persists `JSON.stringify(value)`, which

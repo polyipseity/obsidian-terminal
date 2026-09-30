@@ -7,19 +7,15 @@ import { SemVer } from "semver";
 import pythonRequirementsJson from "./python-requirements.json" with { type: "json" };
 
 export interface PythonRequirement {
-  /** Highest version the shipped helpers are known to work with. */
-  readonly maximum: SemVer | undefined;
   readonly platforms: readonly Platform.All[];
   readonly version: SemVer;
 }
 
 function pythonRequirement(data: {
-  readonly maximum?: string;
   readonly platforms: readonly string[];
   readonly version: string;
 }): PythonRequirement {
   return {
-    maximum: data.maximum === void 0 ? void 0 : new SemVer(data.maximum),
     platforms: data.platforms.filter((platform) =>
       inSet(Platform.ALL, platform),
     ),
@@ -40,11 +36,13 @@ export const CHECK_EXECUTABLE_WAIT = 5,
   MAX_HISTORY = 1024,
   MAX_LOCK_PENDING = Infinity,
   PLUGIN_UNLOAD_DELAY = 10,
-  /** The interpreter itself under `Python`, then the manifest's packages. */
+  /** The interpreter under `Python`, then resizer runtime minimums from
+   * `src/python-requirements.json`. Repository pins in `pyproject.toml` and
+   * Dependabot rules are a separate development policy. */
   PYTHON_REQUIREMENTS: Readonly<Record<string, PythonRequirement>> & {
     readonly Python: PythonRequirement;
   } = deepFreeze({
-    // Minimum Python version (3.9 or above). Update README.md, dependabot.yml, magic.ts, pyproject.toml together.
+    // Minimum interpreter version: keep README.md and pyproject.toml in sync.
     Python: pythonRequirement({
       platforms: Platform.DESKTOP,
       version: "3.9.0",
@@ -56,9 +54,6 @@ export const CHECK_EXECUTABLE_WAIT = 5,
       ]),
     ),
   }),
-  /** Seconds a profile's Python field must rest before its packages are
-   * probed again. */
-  PYTHON_PROBE_SETTLE_WAIT = 0.5,
   TERMINAL_EMULATOR_RESIZE_WAIT = 0.1,
   TERMINAL_EXIT_CLEANUP_WAIT = 5,
   /*

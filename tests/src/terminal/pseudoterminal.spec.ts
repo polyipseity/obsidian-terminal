@@ -1014,6 +1014,13 @@ describe("Windows named-pipe ConPTY readiness", () => {
         expect(spawned[0]?.killed).toBe(true);
       });
       expect(spawned[1]?.killed).toBe(false);
+      await expect(fixture.channel().ready).rejects.toMatchObject({
+        reason: "aborted",
+      });
+      const currentChannel = fixture.channelsCreated[1];
+      if (!currentChannel) throw new Error("Missing current spare channel");
+      await authenticateIdle(currentChannel);
+      expect(pool.acquire("python")?.host).toBe(spawned[1]);
     } finally {
       fixture.cleanup();
       for (const host of spawned)
@@ -1169,11 +1176,51 @@ describe("Windows named-pipe ConPTY readiness", () => {
       await vi.waitFor(() => {
         expect(spare.host.killed).toBe(true);
       });
+      await expect(spare.control.ready).rejects.toMatchObject({
+        reason: "aborted",
+      });
       expect(pool.acquire("python")).toBeNull();
     } finally {
       fixture.cleanup();
     }
   });
+
+  it.each(["construction", "readiness"])(
+    "does not replenish an invalidated pool after terminal readiness (cleared before %s)",
+    async (stage) => {
+      const ready = Promise.withResolvers<ConPtyReadyEvent>(),
+        control = fakeControl(ready.promise, vi.fn()),
+        fixture = poolFixture({
+          createControl: vi.fn().mockResolvedValue(control),
+        }),
+        { dependencies, pool, spawned } = fixture,
+        generation = pool.generation,
+        createSpare = vi.spyOn(dependencies, "createDeferredControl");
+      try {
+        if (stage === "construction") pool.clear();
+        const pty = constructConPty(
+          { ...dependencies, pool },
+          stage === "construction"
+            ? { conPtyPoolGeneration: generation }
+            : undefined,
+        );
+        await vi.waitFor(() => {
+          expect(spawned).toHaveLength(1);
+        });
+        const host = spawned[0];
+        if (!host) throw new Error("Missing terminal host");
+        const hostPid = liveHostPid(host);
+        if (stage === "readiness") pool.clear();
+        ready.resolve(readyEvent(hostPid, hostPid + 1));
+        expect(await pty.shell).toBe(host);
+        expect(host.killed).toBe(false);
+        expect(createSpare).not.toHaveBeenCalled();
+        expect(pool.acquire(process.execPath)).toBeNull();
+      } finally {
+        fixture.cleanup();
+      }
+    },
+  );
 
   it("carries the ack sequence and reports resized acknowledgments", async () => {
     const channel = await newChannel(),
@@ -1252,6 +1299,7 @@ function constructConPty(
     rows?: number;
     environment?: readonly (readonly [string, string])[];
     executable?: string;
+    conPtyPoolGeneration?: number;
     conPtyRuntimeUnavailable?: () => boolean;
   }>,
   t = vi.fn((key: string) => key),

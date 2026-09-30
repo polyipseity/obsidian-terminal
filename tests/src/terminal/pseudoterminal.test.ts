@@ -552,4 +552,59 @@ describe.skipIf(process.platform !== "win32")("real ConPTY protocol", () => {
       await fixture.cleanup();
     }
   }, 60_000);
+
+  it("reaps an invalidated spare without stopping an acquired session", async () => {
+    const fixture = await nativeFixture(python);
+    try {
+      const acquired = await fixture.spare(),
+        pty = fixture.open(),
+        host = await bounded(pty.shell, "acquired readiness"),
+        activeChannel = only(fixture.channels),
+        activeHost = only(fixture.hosts);
+      expect(host).toBe(acquired.host);
+      await assertReady(activeChannel, activeHost, true);
+      await vi.waitFor(
+        () => {
+          expect(activeHost.output()).toContain(BARRIER);
+        },
+        { timeout: TIMEOUT_MS },
+      );
+      const spare = await fixture.spare(),
+        idleChannel = fixture.channels.find(
+          ({ control }) => control === spare.control,
+        ),
+        idleHost = fixture.hosts.find(({ host }) => host === spare.host);
+      if (!idleChannel || !idleHost)
+        throw new Error("Missing idle host resources");
+      fixture.pool.clear();
+      await bounded(idleHost.closed, "invalidated host exit");
+      await bounded(idleChannel.closed, "invalidated control disposal");
+      expect(fixture.pool.acquire(python)).toBeNull();
+      expect(
+        idleHost.host.exitCode !== null || idleHost.host.signalCode !== null,
+      ).toBe(true);
+      expect(idleChannel.server.listening).toBe(false);
+      expect(connection(idleChannel).socket.destroyed).toBe(true);
+      expect(
+        connection(idleChannel)
+          .events()
+          .map(({ event }) => event),
+      ).toEqual(["idle"]);
+      expect(host.killed).toBe(false);
+      expect(host.exitCode).toBeNull();
+      expect(connection(activeChannel).socket.destroyed).toBe(false);
+      await bounded(
+        writePromise(host.stdin, "continue\r\n"),
+        "input after invalidation",
+      );
+      expect(await bounded(pty.onExit, "acquired session exit")).toBe(3);
+      await bounded(activeHost.closed, "acquired stdout drain");
+      expect(stripVTControlCharacters(activeHost.output())).toMatch(
+        /(?:^|[\r\n])hi[ \t]*(?:\r?\n|$)/u,
+      );
+      expect(activeChannel.control.reportedExitCode()).toBe(3);
+    } finally {
+      await fixture.cleanup();
+    }
+  }, 60_000);
 });

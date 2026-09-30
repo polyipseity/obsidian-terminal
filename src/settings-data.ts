@@ -65,6 +65,7 @@ type RequiredWithUndefined<T> = {
 };
 
 export interface LocalSettings extends PluginContext.LocalSettings {
+  readonly hasUsedIntegratedTerminal: boolean;
   readonly lastReadChangelogVersion: SemVerString;
 }
 export namespace LocalSettings {
@@ -72,6 +73,7 @@ export namespace LocalSettings {
     const unc = launderUnchecked<LocalSettings>(self0);
     return markFixed(self0, {
       ...PluginContext.LocalSettings.fix(self0).value,
+      hasUsedIntegratedTerminal: unc.hasUsedIntegratedTerminal === true,
       lastReadChangelogVersion: opaqueOrDefault(
         semVerString,
         String(unc.lastReadChangelogVersion),

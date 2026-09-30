@@ -1,3 +1,4 @@
+import { createInstance } from "i18next";
 import { describe, it, expect } from "vitest";
 import { PluginLocales } from "../../assets/locales.js";
 
@@ -64,6 +65,40 @@ describe("PluginLocales", () => {
     expect(typeof zhHansRes).toBe("object");
   });
 
+  it("interpolates the attempted Python candidates in every locale", async () => {
+    const tried =
+      "C:\\Profile\\python.exe, D:\\Plugin\\python.exe, python, python3, py -3";
+    for (const language of PluginLocales.LANGUAGES) {
+      const translation = await PluginLocales.RESOURCES[language].translation();
+      const i18n = createInstance();
+      await i18n.init({
+        lng: language,
+        fallbackLng: false,
+        resources: { [language]: { translation } },
+      });
+      const message = i18n.t("errors.win32-python-missing", {
+        tried,
+        interpolation: { escapeValue: false },
+      });
+      expect(message, language).toContain(tried);
+      expect(message, language).not.toContain("{{");
+      expect(message, language).not.toContain(`'${tried}'`);
+    }
+  });
+
+  it("provides automatic-check and POSIX-path guidance in every locale", async () => {
+    for (const language of PluginLocales.LANGUAGES) {
+      const translation = await PluginLocales.RESOURCES[language].translation();
+      expect(translation.settings["python-status-not-automatic"]).toBeTruthy();
+      expect(
+        translation.components.profile.integrated[
+          "Python-status-not-automatic"
+        ],
+      ).toBeTruthy();
+      expect(translation.notices["win32-python-posix-path"]).toBeTruthy();
+    }
+  });
+
   it("provides the Windows backend selector and ConPTY failure messages", async () => {
     const translations = await Promise.all(
       Array.from(PluginLocales.LANGUAGES, async (language) => {
@@ -110,8 +145,20 @@ describe("PluginLocales", () => {
         >,
         errors = translation.errors as Record<string, unknown>;
       for (const key of integratedKeys) expect(integrated[key]).toBeTruthy();
+      expect(translation.settings).toHaveProperty(
+        "python-status-ok-fallback",
+        expect.any(String),
+      );
       expect(translation.settings["python-status-ok-unconfirmed"]).toBeTruthy();
       expect(translation.settings["python-status-unverified"]).toBeTruthy();
+      expect(translation.settings).toHaveProperty(
+        "python-status-missing-configured",
+        expect.any(String),
+      );
+      expect(translation.settings).toHaveProperty(
+        "python-status-unverified-errno",
+        expect.any(String),
+      );
       expect(
         translation.settings["python-status-ok-runtime-unavailable"],
       ).toBeTruthy();

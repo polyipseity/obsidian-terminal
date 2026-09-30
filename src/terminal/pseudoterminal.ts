@@ -988,6 +988,8 @@ export interface ShellPseudoterminalArguments {
   readonly args?: readonly string[] | undefined;
   readonly environment?: readonly (readonly [string, string])[] | undefined;
   readonly pythonExecutable?: string | undefined;
+  /** Pool generation when the opener reads its Python configuration. */
+  readonly conPtyPoolGeneration?: number | undefined;
   readonly conPtyRuntimeUnavailable?: (() => boolean) | undefined;
   readonly win32Backend?: Settings.Profile.Win32Backend | undefined;
   readonly columns?: number | undefined;
@@ -2227,6 +2229,11 @@ export class ConPtyHostPool {
    * a second `ensureSpare` within one generation does not boot a duplicate. */
   #generation = 0;
 
+  /** Work started before a clear must not refill the new generation. */
+  public get generation(): number {
+    return this.#generation;
+  }
+
   public acquire(pythonExecutable: string): ConPtySpareHost | null {
     const entry = this.#spares.get(pythonExecutable);
     if (!entry?.authenticated) {
@@ -2370,8 +2377,8 @@ export class ConPtyHostPool {
       });
   }
 
-  /** Kills every spare without retiring the pool, so a later
-   * {@link ensureSpare} can refill it. Used when the user opts out. */
+  /** Kills every spare and invalidates pending refills without retiring the
+   * pool. Acquired sessions retain ownership and keep running. */
   public clear(): void {
     this.#generation += 1;
     for (const [key, entry] of [...this.#spares]) {
@@ -2567,6 +2574,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
       environment,
       executable,
       pythonExecutable,
+      conPtyPoolGeneration,
       conPtyRuntimeUnavailable,
       rows,
     }: ShellPseudoterminalArguments,
@@ -2574,6 +2582,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
   ) {
     const { language, settings } = context,
       pool = dependencies.pool,
+      poolGeneration = conPtyPoolGeneration ?? pool?.generation,
       warm = pythonExecutable
         ? (pool?.acquire(pythonExecutable) ?? null)
         : null;
@@ -2929,10 +2938,11 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
      */
     this.shell.catch(noop);
     // Spare only after ready: earlier competes for CPU, after a failure
-    // respawns a broken interpreter.
+    // respawns a broken interpreter. A clear during startup retires this refill.
     this.shell
       .then(() => {
         if (
+          pool?.generation === poolGeneration &&
           settings.value.prewarmConPty &&
           pythonExecutable &&
           !(conPtyRuntimeUnavailable?.() ?? false)

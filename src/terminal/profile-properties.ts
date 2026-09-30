@@ -3,9 +3,11 @@ import {
   deepFreeze,
   deopaque,
   notice2,
+  sleep2,
 } from "@polyipseity/obsidian-plugin-library";
 import type { AsyncOrSync } from "ts-essentials";
 import type { TerminalPlugin } from "../main.js";
+import { TERMINAL_EXIT_CLEANUP_WAIT } from "../magic.js";
 import { Settings } from "../settings-data.js";
 import {
   SUPPORTS_EXTERNAL_TERMINAL_EMULATOR,
@@ -28,6 +30,7 @@ import {
   checkWindowsPython,
   checkWindowsResizerPackages,
   inheritedPythonExecutable,
+  isAutomaticWindowsPythonExecutable,
   invalidateConPtyRuntime,
   isConPtyRuntimeUnavailable,
 } from "./win32-doctor.js";
@@ -136,10 +139,17 @@ export function reportConPtyRuntimeFailure(
   CONPTY_HOST_POOL.clear();
 }
 
+export type Win32ConhostFallbackCause =
+  | {
+      readonly reason: "missing-python";
+      readonly diagnosis: Win32PythonDiagnosis;
+    }
+  | { readonly reason: "runtime-failure" };
+
 /** Explains the degraded backend once per session. */
 export function noticeWin32ConhostFallback(
   context: TerminalPlugin,
-  cause: "missing-python" | "runtime-failure",
+  cause: Win32ConhostFallbackCause,
 ): void {
   if (win32ConhostFallbackNotified) return;
   win32ConhostFallbackNotified = true;
@@ -148,12 +158,21 @@ export function noticeWin32ConhostFallback(
     settings,
   } = context;
   notice2(
-    () =>
-      i18n.t(
-        cause === "runtime-failure"
-          ? "notices.win32-conpty-runtime-fallback"
-          : "notices.win32-conhost-fallback",
-      ),
+    () => {
+      if (cause.reason === "runtime-failure") {
+        return i18n.t("notices.win32-conpty-runtime-fallback");
+      }
+      const explanation = i18n.t("notices.win32-conhost-fallback"),
+        { executable, status, tried, version } = cause.diagnosis;
+      return status === "ok"
+        ? explanation
+        : `${explanation}\n\n${i18n.t(`errors.win32-python-${status}`, {
+            executable,
+            interpolation: { escapeValue: false },
+            tried: tried.join(", "),
+            version,
+          })}`;
+    },
     settings.value.errorNoticeTimeout,
     context,
   );
@@ -232,7 +251,23 @@ export const PROFILE_PROPERTIES: {
           context.language.value.t("errors.profile-executable-empty"),
         );
       }
-      const fallbackPythonExecutable = context.settings.value.pythonExecutable,
+      if (
+        deopaque(Platform.CURRENT) === "win32" &&
+        /^\/(?![\\/])/u.test(pythonExecutable)
+      ) {
+        notice2(
+          () =>
+            context.language.value.t("notices.win32-python-posix-path", {
+              executable: pythonExecutable,
+              interpolation: { escapeValue: false },
+            }),
+          context.settings.value.errorNoticeTimeout,
+          context,
+        );
+      }
+      // Keep the configuration generation across the awaited Python diagnosis.
+      const conPtyPoolGeneration = CONPTY_HOST_POOL.generation,
+        fallbackPythonExecutable = context.settings.value.pythonExecutable,
         effectivePythonExecutable =
           deopaque(Platform.CURRENT) === "win32"
             ? inheritedPythonExecutable(
@@ -242,13 +277,7 @@ export const PROFILE_PROPERTIES: {
             : pythonExecutable,
         diagnosis =
           deopaque(Platform.CURRENT) === "win32"
-            ? await checkWindowsPython(
-                context,
-                effectivePythonExecutable,
-                void 0,
-                // The backend-specific notices below explain a failure.
-                { notify: false },
-              )
+            ? await checkWindowsPython(context, effectivePythonExecutable)
             : null;
       checkAborted();
       const pythonUsable = diagnosis?.status === "ok",
@@ -269,30 +298,35 @@ export const PROFILE_PROPERTIES: {
         requestPythonExecutable = diagnosis
           ? pythonUsable
             ? (win32SpawnPythonExecutable(backend, diagnosis) ?? void 0)
-            : // The resizer must not be handed a rejected interpreter; the
-              // Python check already notified.
+            : // The resizer must not be handed a rejected interpreter;
+              // the backend-specific notice below explains the failure.
               void 0
           : pythonExecutable || void 0;
       if (diagnosis && fallback) {
         self.console.warn(
           `ConPTY unavailable, opening on ConHost: ${diagnosis.status} (${diagnosis.detail})`,
         );
-        // An unconfirmed host is this open's alone, and the next one probes
-        // again: neither session-wide notice describes it.
-        if (hostConfirmed || !pythonUsable) {
+        // Unconfirmed hosts and transient discovery failures may recover on a
+        // later open. Keep the session-wide notice for a definitive failure.
+        if (
+          hostConfirmed ||
+          (!pythonUsable && !(diagnosis.transient ?? false))
+        ) {
           noticeWin32ConhostFallback(
             context,
-            pythonUsable ? "runtime-failure" : "missing-python",
+            pythonUsable
+              ? { reason: "runtime-failure" }
+              : { reason: "missing-python", diagnosis },
           );
         }
       }
       let spawnPythonExecutable = requestPythonExecutable;
       if (diagnosis && backend === "legacy") {
-        // ConHost runs without a resizer; a rejected Python or missing
-        // packages opens resizer-less with one notice. A runtime fallback
-        // already explained the missing Python.
+        // ConHost runs without a resizer; a definitively rejected Python or
+        // missing packages opens resizer-less with one notice. A fallback
+        // already handles the Python diagnosis.
         if (spawnPythonExecutable === void 0) {
-          if (!fallback) {
+          if (!fallback && !(diagnosis.transient ?? false)) {
             noticeWin32ResizerDisabled(context, {
               pythonExecutable: diagnosis.executable,
               reason: "python-missing",
@@ -319,6 +353,7 @@ export const PROFILE_PROPERTIES: {
         environment,
         executable,
         pythonExecutable: spawnPythonExecutable,
+        conPtyPoolGeneration,
         conPtyRuntimeUnavailable: () =>
           isConPtyRuntimeUnavailable(
             effectivePythonExecutable,
@@ -345,6 +380,31 @@ export const PROFILE_PROPERTIES: {
           );
         });
       }
+      // Observe startup without delaying the PTY's return to the emulator.
+      pty.shell
+        .then(async () => {
+          const { localSettings } = context,
+            hasUsed = (): boolean =>
+              localSettings.value.hasUsedIntegratedTerminal;
+          if (hasUsed()) return;
+          if (deopaque(Platform.CURRENT) === "win32" && backend === "legacy") {
+            // ConHost's shell promise confirms only conhost.exe spawn. Allow
+            // command failures and startup cancellation to arrive via onExit;
+            // short successful sessions also wait for a later open to count.
+            const survived = await Promise.race([
+              pty.onExit.then(() => false),
+              sleep2(self, TERMINAL_EXIT_CLEANUP_WAIT).then(() => true),
+            ]);
+            if (!survived || hasUsed()) return;
+          }
+          await localSettings.mutate((settings) => {
+            settings.hasUsedIntegratedTerminal = true;
+          });
+          await localSettings.write();
+        })
+        .catch((error: unknown) => {
+          /* @__PURE__ */ self.console.debug(error);
+        });
       return new RefPsuedoterminal<Pseudoterminal>(pty);
     },
     valid: true,
@@ -369,7 +429,7 @@ export function openProfile<T extends Settings.Profile.Type>(
 }
 
 /**
- * Boots one spare ConPTY host for a profile that opts into the conpty
+ * Boots one spare ConPTY host for an inheriting profile on the conpty
  * backend. Silent: a broken interpreter notifies on the open path, not here.
  */
 export async function prewarmConPtyProfile(
@@ -382,19 +442,24 @@ export async function prewarmConPtyProfile(
     profile.type !== "integrated" ||
     platform !== "win32" ||
     profile.win32Backend !== "conpty" ||
+    profile.pythonExecutable !== "" ||
+    !isAutomaticWindowsPythonExecutable(
+      context.settings.value.pythonExecutable,
+    ) ||
     !Settings.Profile.isCompatible(profile, platform)
   )
     return;
-  // Both can change while the Python check runs: opting out clears the pool,
-  // and a breaker trip condemns the runtime, so a spare booted afterwards
-  // would be unwanted or doomed. Checked again before the boot.
+  // Settings edits, explicit checks, opt-out and unload retire the generation.
+  // Recheck it and the breaker after diagnosis before requesting a spare.
   // Resolves the same way as the open path so the pool key matches.
-  const fallbackPythonExecutable = context.settings.value.pythonExecutable,
+  const generation = CONPTY_HOST_POOL.generation,
+    fallbackPythonExecutable = context.settings.value.pythonExecutable,
     effectivePythonExecutable = inheritedPythonExecutable(
       profile.pythonExecutable,
       fallbackPythonExecutable,
     ),
     wanted = (): boolean =>
+      CONPTY_HOST_POOL.generation === generation &&
       context.settings.value.prewarmConPty &&
       !isConPtyRuntimeUnavailable(
         effectivePythonExecutable,
@@ -405,8 +470,6 @@ export async function prewarmConPtyProfile(
   const diagnosis = await checkWindowsPython(
     context,
     effectivePythonExecutable,
-    void 0,
-    { notify: false },
   );
   const hostExecutable = win32SpawnPythonExecutable("conpty", diagnosis);
   if (diagnosis.status !== "ok" || hostExecutable === null || !wanted()) {

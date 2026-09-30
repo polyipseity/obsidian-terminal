@@ -14,13 +14,10 @@ import {
   resetButton,
   setSanitizedInnerHTML,
   setTextToEnum,
-  SI_PREFIX_SCALE,
 } from "@polyipseity/obsidian-plugin-library";
-import { debounce } from "es-toolkit/function";
 import { cloneDeep } from "es-toolkit/object";
 import semverLt from "semver/functions/lt.js";
 import type { loadDocumentations } from "./documentations.js";
-import { PYTHON_PROBE_SETTLE_WAIT } from "./magic.js";
 import type { TerminalPlugin } from "./main.js";
 import {
   KeymappingsModal,
@@ -29,10 +26,12 @@ import {
 } from "./modals.js";
 import { Settings } from "./settings-data.js";
 import { RightClickActionAddon } from "./terminal/emulator-addons.js";
+import { CONPTY_HOST_POOL } from "./terminal/pseudoterminal.js";
 import {
   PYTHON_DOWNLOADS_URL,
-  getPluginPythonDiagnosis,
   getWindowsPythonDiagnosis,
+  isAutomaticWindowsPythonExecutable,
+  invalidateWindowsPythonDiagnosis,
   onPluginPythonDiagnosis,
   pluginPythonStatusKey,
   runPluginPythonCheck,
@@ -41,6 +40,7 @@ import {
 
 export class SettingTab extends AdvancedSettingTab<Settings> {
   #unregisterPythonDiagnosis?: () => void;
+  #setPythonWidgetsVisible?: (visible: boolean) => void;
 
   public constructor(
     protected override readonly context: TerminalPlugin,
@@ -49,9 +49,20 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
     super(context);
   }
 
+  public override display(): void {
+    this.#setPythonWidgetsVisible?.(true);
+    super.display();
+  }
+
+  public override hide(): void {
+    this.#setPythonWidgetsVisible?.(false);
+    super.hide();
+  }
+
   protected override onUnload(): void {
     this.#unregisterPythonDiagnosis?.();
     this.#unregisterPythonDiagnosis = void 0;
+    this.#setPythonWidgetsVisible = void 0;
     super.onUnload();
   }
 
@@ -872,40 +883,109 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
       },
       ui,
     } = this;
-    // Checks overlap when the field moves mid-check; the newest one owns the
-    // result, so the row stays "checking" until all of them settle.
-    let rechecks = 0,
-      pendingRecheck = false,
-      recheckKey = settings.value.pythonExecutable;
-    const recheck = (): void => {
-        pendingRecheck = false;
-        ++rechecks;
-        runPluginPythonCheck(context)
+    // UI-local ownership keeps late completions from repainting a moved field.
+    let checking = false,
+      checkingExplicitly = false,
+      disposed = false,
+      visible = true,
+      generation = 0,
+      fieldGeneration = 0,
+      recheckKey = settings.value.pythonExecutable,
+      committedValue: string | undefined,
+      fieldMutation = Promise.resolve(),
+      pythonInput: HTMLInputElement | undefined;
+    const recheck = (includeProfileOverrides = true): void => {
+        const configured = settings.value.pythonExecutable;
+        if (
+          disposed ||
+          !visible ||
+          (!includeProfileOverrides &&
+            !isAutomaticWindowsPythonExecutable(configured))
+        )
+          return;
+        recheckKey = configured;
+        committedValue = configured;
+        const currentGeneration = ++generation;
+        checking = true;
+        checkingExplicitly = includeProfileOverrides;
+        if (includeProfileOverrides) {
+          CONPTY_HOST_POOL.clear();
+        } else {
+          invalidateWindowsPythonDiagnosis(configured, configured);
+        }
+        runPluginPythonCheck(context, void 0, void 0, {
+          includeProfileOverrides,
+          refresh: includeProfileOverrides,
+        })
           .catch((error: unknown) => {
             activeSelf(containerEl).console.error(error);
           })
           .finally(() => {
-            --rechecks;
+            if (
+              disposed ||
+              currentGeneration !== generation ||
+              settings.value.pythonExecutable !== configured
+            )
+              return;
+            checking = false;
+            checkingExplicitly = false;
             ui.update();
           });
         ui.update();
       },
-      recheckLater = debounce(
-        recheck,
-        PYTHON_PROBE_SETTLE_WAIT * SI_PREFIX_SCALE,
-      );
+      afterFieldMutation = (callback: () => void): void => {
+        // Persistence may settle after another edit or after the tab closes.
+        const currentGeneration = fieldGeneration;
+        fieldMutation
+          .then(() => {
+            if (!disposed && visible && currentGeneration === fieldGeneration)
+              callback();
+          })
+          .catch((error: unknown) => {
+            activeSelf(containerEl).console.error(error);
+          });
+      },
+      commit = (): void => {
+        const value = pythonInput?.value;
+        // linkSetting persists on input; commit can arrive before it settles.
+        afterFieldMutation(() => {
+          if (
+            value !== settings.value.pythonExecutable ||
+            committedValue === value
+          )
+            return;
+          committedValue = value;
+          recheck(false);
+        });
+      },
+      removeCommitListeners = (): void => {
+        pythonInput?.removeEventListener("change", commit);
+        pythonInput?.removeEventListener("blur", commit);
+      };
+    // Settings tabs survive hide/show; onUnload only runs at plugin unload.
+    this.#setPythonWidgetsVisible = (value): void => {
+      visible = value;
+      if (visible) return;
+      ++generation;
+      ++fieldGeneration;
+      checking = false;
+      checkingExplicitly = false;
+      removeCommitListeners();
+    };
     ui.finally(() => {
-      recheckLater.cancel();
+      disposed = true;
+      ++generation;
+      removeCommitListeners();
     });
     // The load-time check may still be probing when the tab opens; its
     // completion must replace the "checking" status without a reopen.
     this.#unregisterPythonDiagnosis?.();
     this.#unregisterPythonDiagnosis = onPluginPythonDiagnosis(context, () => {
-      ui.update();
+      if (visible && !disposed) ui.update();
     });
     ui.finally(
       onWindowsPythonStateChange(() => {
-        ui.update();
+        if (visible && !disposed) ui.update();
       }),
     );
     ui.newSetting(containerEl, (setting) => {
@@ -915,15 +995,24 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
         .addText(
           linkSetting(
             () => settings.value.pythonExecutable,
-            async (value) =>
-              settings.mutate((settingsM) => {
+            (value) => {
+              ++fieldGeneration;
+              fieldMutation = settings.mutate((settingsM) => {
                 settingsM.pythonExecutable = value;
-              }),
+              });
+              return fieldMutation;
+            },
             () => {
               this.postMutate();
             },
             {
               post: (component) => {
+                removeCommitListeners();
+                pythonInput = component.inputEl;
+                if (visible && !disposed) {
+                  pythonInput.addEventListener("change", commit);
+                  pythonInput.addEventListener("blur", commit);
+                }
                 component.setPlaceholder(
                   i18n.t("settings.python-executable-placeholder"),
                 );
@@ -949,29 +1038,38 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
         const { pythonExecutable } = settings.value;
         if (recheckKey !== pythonExecutable) {
           recheckKey = pythonExecutable;
-          // The status describes the previous configured value.
-          // Debounce: every keystroke re-renders this row.
-          pendingRecheck = true;
-          recheckLater();
+          ++generation;
+          checking = false;
+          checkingExplicitly = false;
+          committedValue = void 0;
         }
-        const rechecking = rechecks > 0 || pendingRecheck,
-          diagnosis =
-            getWindowsPythonDiagnosis(pythonExecutable, pythonExecutable) ??
-            getPluginPythonDiagnosis(context),
-          // `status` gates the buttons; the message key also tells a
-          // discovered name apart from a configured path.
-          status = rechecking || !diagnosis ? "checking" : diagnosis.status,
-          statusKey = pluginPythonStatusKey(
-            diagnosis,
-            rechecking,
+        const automatic = isAutomaticWindowsPythonExecutable(pythonExecutable),
+          rechecking = checking,
+          diagnosis = getWindowsPythonDiagnosis(
+            pythonExecutable,
             pythonExecutable,
           ),
+          notAutomatic = !automatic && !rechecking && !diagnosis,
+          // Status, transient failures and errno gate Download; the message
+          // also distinguishes configured values from discovered interpreters.
+          status = notAutomatic
+            ? "not-automatic"
+            : rechecking || !diagnosis
+              ? "checking"
+              : diagnosis.status,
+          statusKey = notAutomatic
+            ? "not-automatic"
+            : !diagnosis && !rechecking
+              ? "unverified"
+              : pluginPythonStatusKey(diagnosis, rechecking, pythonExecutable),
           i18nVariant = rechecking ? "ing" : "";
         setting.setName(i18n.t("settings.python-status")).setDesc(
           i18n.t(`settings.python-status-${statusKey}`, {
             candidate: diagnosis?.candidate,
+            errno: diagnosis?.errno,
             executable: diagnosis?.executable,
             interpolation: { escapeValue: false },
+            value: pythonExecutable,
             version: diagnosis?.version,
           }),
         );
@@ -987,7 +1085,12 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
             .onClick(() => {
               openExternal(activeSelf(containerEl), PYTHON_DOWNLOADS_URL);
             });
-          const hidden = status === "checking" || status === "ok";
+          const hidden =
+            status === "checking" ||
+            status === "ok" ||
+            status === "not-automatic" ||
+            !!diagnosis?.transient ||
+            !!diagnosis?.errno;
           button.buttonEl.style.display = hidden ? "none" : "";
           if (!hidden) {
             button.setCta();
@@ -998,13 +1101,12 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
             .setIcon(i18n.t(`asset:settings.python-recheck${i18nVariant}-icon`))
             .setTooltip(i18n.t("settings.python-recheck"))
             .onClick(() => {
-              if (rechecks > 0) {
-                return;
-              }
-              recheckLater.cancel();
-              recheck();
+              afterFieldMutation(() => {
+                // A blur check must not consume an explicit full Recheck.
+                if (!checkingExplicitly) recheck();
+              });
             });
-          if (rechecking) {
+          if (rechecking || statusKey === "ok-fallback") {
             button.setCta();
           }
         });

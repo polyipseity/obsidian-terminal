@@ -8,7 +8,7 @@
  * - Microsoft Store stub detection
  * - `diagnoseWindowsPython` against a stubbed spawn and `PATH` locator:
  *   transient probe failures, the venv base interpreter, and bare names
- * - `checkWindowsPython` caching, its notice budget, and its silent mode
+ * - `checkWindowsPython` caching and silent checks
  * - the plugin-level check: diagnosis refresh, stale results, and that
  *   no Python value is ever written back
  */
@@ -26,6 +26,7 @@ import {
   getPluginPythonDiagnosis,
   getWindowsPythonDiagnosis,
   inheritedPythonExecutable,
+  isAutomaticWindowsPythonExecutable,
   isPythonVersionSupported,
   isStoreStub,
   parsePythonVersion,
@@ -41,11 +42,13 @@ import {
   checkWindowsPython,
   clearWindowsPythonDiagnoses,
   invalidateWindowsPythonDiagnosis,
+  invalidateWindowsPythonNegativeDiagnoses,
   invalidateConPtyRuntime,
   isConPtyRuntimeUnavailable,
 } from "../../../src/terminal/win32-doctor.js";
 import type { TerminalPlugin } from "../../../src/main.js";
 import { Settings } from "../../../src/settings-data.js";
+import { invalidateSystemPath } from "../../../src/terminal/environment.js";
 import { PROFILE_PRESETS } from "../../../src/terminal/profile-presets.js";
 
 function result(
@@ -95,6 +98,27 @@ describe("src/terminal/win32-doctor.ts", () => {
       expect(win32ExitCodeKey(1)).toBeNull();
       expect(win32ExitCodeKey(9008)).toBeNull();
       expect(win32ExitCodeKey("SIGINT")).toBeNull();
+    });
+  });
+
+  describe("isAutomaticWindowsPythonExecutable", () => {
+    it.each([
+      ["", true],
+      ["python", true],
+      ["python3.exe", true],
+      ["py", true],
+      ["C:\\Python\\python.exe", true],
+      ["d:/Tools/python.exe", true],
+      ["/opt/python3", false],
+      ["\\tools\\python.exe", false],
+      ["\\\\server\\share\\python.exe", false],
+      ["//server/share/python.exe", false],
+      ["./python", false],
+      ["bin/python", false],
+      ["bin\\python.exe", false],
+      ["C:python.exe", false],
+    ])("classifies %j as eligible: %s", (value, eligible) => {
+      expect(isAutomaticWindowsPythonExecutable(value)).toBe(eligible);
     });
   });
 
@@ -272,6 +296,7 @@ describe("src/terminal/win32-doctor.ts", () => {
       ).toMatchObject({
         candidate: "python",
         detail: "found 3.11.7 at C:\\Python311\\python.exe",
+        tried: ["python"],
         executable: "python",
         status: "ok",
         version: "3.11.7",
@@ -381,6 +406,7 @@ describe("src/terminal/win32-doctor.ts", () => {
       ).resolves.toEqual({
         candidate: "C:\\Python312\\python.exe",
         detail: "found 3.12.0 at C:\\Python312\\python.exe",
+        tried: ["C:\\Python312\\python.exe"],
         executable: "C:\\Python312\\python.exe",
         hostExecutable: "C:\\Python312\\python.exe",
         status: "ok",
@@ -390,6 +416,49 @@ describe("src/terminal/win32-doctor.ts", () => {
       expect(calls[0]?.[0]).toBe("C:\\Python312\\python.exe");
       expect(calls[0]?.[1].slice(0, 1)).toEqual(["-c"]);
     });
+
+    it.each(["timeout", "throw", "EBUSY", "EPERM"])(
+      "keeps a successful fallback transient after the preferred probe reports %s",
+      async (failure) => {
+        const preferred = "C:\\venv\\Scripts\\python.exe",
+          fallback = "C:\\Python312\\python.exe",
+          spawn = vi
+            .fn<Win32PythonSpawn>()
+            .mockResolvedValue(identityResult(fallback));
+        if (failure === "throw") {
+          spawn.mockRejectedValueOnce(new Error("spawn failed"));
+        } else {
+          spawn.mockResolvedValueOnce(
+            result({
+              code: null,
+              ...(failure === "timeout"
+                ? { timedOut: true }
+                : { errno: failure }),
+            }),
+          );
+        }
+        const diagnosis = await diagnoseWindowsPython(
+          spawn,
+          preferred,
+          noLocate,
+        );
+        expect(diagnosis).toMatchObject({
+          candidate: "python",
+          executable: fallback,
+          hostExecutable: fallback,
+          tried: [preferred, "python"],
+          status: "ok",
+          transient: true,
+          version: "3.12.0",
+        });
+        expect(spawn.mock.calls.map(([executable]) => executable)).toEqual([
+          preferred,
+          "python",
+          fallback,
+        ]);
+        expect(windowsConPtyStatus(diagnosis, preferred)).toBe("available");
+      },
+    );
 
     it("falls through the resolution order until one works", async () => {
       const calls: string[] = [],
@@ -408,6 +477,7 @@ describe("src/terminal/win32-doctor.ts", () => {
         candidate: "python3",
         executable: "python3",
         hostExecutable: "python3",
+        tried: ["python", "python3"],
         status: "ok",
       });
       expect(calls).toEqual(["python", "python3", "C:\\Python310\\python.exe"]);
@@ -603,6 +673,7 @@ describe("src/terminal/win32-doctor.ts", () => {
           candidate: "python",
           executable: venv,
           hostExecutable: base,
+          tried: ["python"],
           status: "ok",
         });
         expect(calls).toEqual(["python", venv, base]);
@@ -652,6 +723,33 @@ describe("src/terminal/win32-doctor.ts", () => {
       ).resolves.toMatchObject({ executable: "python", status: "store-stub" });
     });
 
+    it("reports every attempted candidate in order when discovery is exhausted", async () => {
+      const profile = "C:\\Profile\\python.exe",
+        fallback = "D:\\Plugin\\python.exe",
+        spawn = vi
+          .fn<Win32PythonSpawn>()
+          .mockResolvedValue(result({ code: null, errno: "ENOENT" }));
+      const diagnosis = await diagnoseWindowsPython(
+        spawn,
+        profile,
+        noLocate,
+        fallback,
+      );
+      expect(diagnosis).toMatchObject({
+        candidate: profile,
+        executable: profile,
+        status: "missing",
+        version: "",
+        tried: [profile, fallback, "python", "python3", "py -3"],
+      });
+      expect(diagnosis.transient ?? false).toBe(false);
+      expect(
+        spawn.mock.calls.map(([executable, args]) =>
+          [executable, ...args.slice(0, -2)].join(" "),
+        ),
+      ).toEqual([profile, fallback, "python", "python3", "py -3"]);
+    });
+
     it("reports the configured executable's failure, not a later one", async () => {
       const spawn: Win32PythonSpawn = async (executable) =>
         executable === "C:\\old\\python.exe"
@@ -694,6 +792,7 @@ describe("src/terminal/win32-doctor.ts", () => {
       expect(diagnosis).toMatchObject({
         candidate: "py -3",
         executable: canonical,
+        tried: ["C:\\missing\\python.exe", "python", "python3", "py -3"],
         status: "ok",
         version: "3.12.9",
       });
@@ -824,6 +923,19 @@ describe("src/terminal/win32-doctor.ts", () => {
       ).toBe("store-stub");
     });
 
+    it.each(["EACCES", "UNKNOWN"])(
+      "reports a spawn refusal with %s before generic unverified text",
+      (errno) => {
+        const refused = classifyPythonResult(
+          "C:\\Python312\\python.exe",
+          result({ code: null, errno }),
+        );
+        expect(pythonStatusKey(refused, false)).toBe("unverified-errno");
+        expect(pythonStatusKey(refused, true)).toBe("checking");
+        expect(pythonStatusKey(found, false)).toBe("ok");
+      },
+    );
+
     it("reports transient failures as unverified", () => {
       const transient = {
         ...found,
@@ -841,12 +953,13 @@ describe("src/terminal/win32-doctor.ts", () => {
 });
 
 describe("checkWindowsPython session cache", () => {
-  /** Message keys rendered by the failure notice, newest last. */
+  /** Message keys rendered by notices; checks must leave this empty. */
   const noticeKeys: string[] = [];
 
   afterEach(() => {
     clearWindowsPythonDiagnoses();
     noticeKeys.length = 0;
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -878,6 +991,37 @@ describe("checkWindowsPython session cache", () => {
     expect(spawn.mock.calls).toHaveLength(probes);
   });
 
+  it("retries the preferred interpreter after a transient successful fallback", async () => {
+    const preferred = "C:\\venv\\Scripts\\python.exe",
+      fallback = "C:\\Python312\\python.exe",
+      spawn = vi
+        .fn<Win32PythonSpawn>()
+        .mockResolvedValueOnce(result({ code: null, timedOut: true }))
+        .mockResolvedValueOnce(identityResult(fallback))
+        .mockResolvedValueOnce(identityResult(fallback))
+        .mockResolvedValue(identityResult(preferred)),
+      ctx = context();
+    expect(
+      await checkWindowsPython(ctx, preferred, spawn, { locate: noLocate }),
+    ).toMatchObject({
+      executable: fallback,
+      hostExecutable: fallback,
+      status: "ok",
+    });
+    spawn.mockClear();
+    expect(
+      await checkWindowsPython(ctx, preferred, spawn, { locate: noLocate }),
+    ).toMatchObject({
+      candidate: preferred,
+      executable: preferred,
+      status: "ok",
+    });
+    expect(spawn.mock.calls.map(([executable]) => executable)).toEqual([
+      preferred,
+    ]);
+    expect(noticeKeys).toEqual([]);
+  });
+
   it("re-probes a venv whose ConPTY host was not confirmed", async () => {
     const venv = "C:\\venv\\Scripts\\python.exe",
       base = "C:\\Python312\\python.exe";
@@ -900,66 +1044,178 @@ describe("checkWindowsPython session cache", () => {
     expect(noticeKeys).toEqual([]);
   });
 
-  it("re-probes after a failure so a mid-session install is picked up", async () => {
-    vi.spyOn(console, "warn").mockImplementation(vi.fn());
-    let installed = false;
-    const spawn = vi.fn(async () => {
-      if (!installed) throw new Error("ENOENT");
-      return identityResult();
-    }) as Win32PythonSpawn;
-    expect((await checkWindowsPython(context(), "python", spawn)).status).toBe(
-      "missing",
-    );
-    // The notice told the user to install Python; the next open must see it.
-    installed = true;
-    expect((await checkWindowsPython(context(), "python", spawn)).status).toBe(
-      "ok",
-    );
-  });
+  it.each([
+    {
+      failure: "definitive",
+      probe: result({ code: null, errno: "ENOENT" }),
+      ttl: 30_000,
+    },
+    {
+      failure: "transient",
+      probe: result({ code: null, timedOut: true }),
+      ttl: 5_000,
+    },
+  ])(
+    "reuses a $failure failure until its TTL from settlement expires",
+    async ({ probe, ttl }) => {
+      vi.useFakeTimers();
+      vi.spyOn(console, "warn").mockImplementation(vi.fn());
+      const pending = Promise.withResolvers<Win32PythonProcessResult>(),
+        spawn = vi
+          .fn<Win32PythonSpawn>()
+          .mockResolvedValue(probe)
+          .mockReturnValueOnce(pending.promise),
+        ctx = context(),
+        first = checkWindowsPython(ctx, "", spawn, { locate: noLocate }),
+        concurrent = checkWindowsPython(ctx, "", spawn, { locate: noLocate });
+      await vi.advanceTimersByTimeAsync(10_000);
+      pending.resolve(probe);
+      const failed = await first;
+      expect(await concurrent).toBe(failed);
+      expect(failed.status).toBe("missing");
+      expect(spawn.mock.calls.map(([executable]) => executable)).toEqual([
+        "python",
+        "python3",
+        "py",
+      ]);
+      spawn.mockClear().mockResolvedValue(identityResult());
+      await vi.advanceTimersByTimeAsync(ttl - 1);
+      expect(
+        await checkWindowsPython(ctx, "", spawn, { locate: noLocate }),
+      ).toBe(failed);
+      expect(spawn).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(
+        (await checkWindowsPython(ctx, "", spawn, { locate: noLocate })).status,
+      ).toBe("ok");
+      expect(spawn).toHaveBeenCalled();
+      expect(noticeKeys).toEqual([]);
+    },
+  );
 
-  it("shows no notice for a silent check and keeps the budget intact", async () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(vi.fn()),
-      spawn = vi.fn(async () => result({ code: 9009 })) as Win32PythonSpawn,
-      ctx = context();
+  it.each([
+    { status: "missing", probe: result({ code: null, errno: "ENOENT" }) },
+    { status: "store-stub", probe: result({ code: 9009 }) },
+    {
+      status: "too-old",
+      probe: identityResult("C:\\Python38\\python.exe", "3.8.10"),
+    },
+  ])(
+    "keeps repeated $status checks silent, including after invalidation",
+    async ({ status, probe }) => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(vi.fn()),
+        spawn = vi.fn<Win32PythonSpawn>().mockResolvedValue(probe),
+        ctx = context();
+      for (let attempt = 0; attempt < 3; attempt++) {
+        expect(
+          (await checkWindowsPython(ctx, "python", spawn, { locate: noLocate }))
+            .status,
+        ).toBe(status);
+        expect(noticeKeys).toEqual([]);
+        if (attempt === 1) invalidateWindowsPythonDiagnosis("python");
+      }
+      // Silent checks still log failures for diagnostics.
+      expect(warn).toHaveBeenCalledTimes(2);
+    },
+  );
 
-    expect(
-      (await checkWindowsPython(ctx, "python", spawn, { notify: false }))
-        .status,
-    ).toBe("store-stub");
-    expect(noticeKeys).toHaveLength(0);
-    // The log line stays in both modes.
-    expect(warn).toHaveBeenCalledTimes(1);
+  const invalidations = [
+    {
+      name: "configuration",
+      invalidate: () => {
+        invalidateWindowsPythonDiagnosis("");
+      },
+    },
+    {
+      name: "Python settings",
+      invalidate: invalidateWindowsPythonNegativeDiagnoses,
+    },
+    { name: "PATH", invalidate: invalidateSystemPath },
+    { name: "session reset", invalidate: clearWindowsPythonDiagnoses },
+  ];
 
-    // The silent check spent nothing, so the interactive one still notifies.
-    expect((await checkWindowsPython(ctx, "python", spawn)).status).toBe(
-      "store-stub",
-    );
-    expect(noticeKeys).toEqual(["errors.win32-python-store-stub"]);
+  it.each(invalidations)(
+    "retries a failure after $name invalidation without eager work",
+    async ({ invalidate }) => {
+      vi.spyOn(console, "warn").mockImplementation(vi.fn());
+      const spawn = vi
+          .fn<Win32PythonSpawn>()
+          .mockResolvedValue(result({ code: null, errno: "ENOENT" })),
+        ctx = context();
+      expect(
+        (await checkWindowsPython(ctx, "", spawn, { locate: noLocate })).status,
+      ).toBe("missing");
+      spawn.mockClear().mockResolvedValue(identityResult());
+      invalidate();
+      expect(spawn).not.toHaveBeenCalled();
+      expect(
+        (await checkWindowsPython(ctx, "", spawn, { locate: noLocate })).status,
+      ).toBe("ok");
+      expect(spawn).toHaveBeenCalled();
+    },
+  );
 
-    // And the notice is still shown once per session per configured value.
-    await checkWindowsPython(ctx, "python", spawn);
-    expect(noticeKeys).toHaveLength(1);
-  });
+  it.each(invalidations)(
+    "does not cache a failure settling after $name invalidation",
+    async ({ invalidate }) => {
+      vi.spyOn(console, "warn").mockImplementation(vi.fn());
+      const failed = result({ code: null, errno: "ENOENT" }),
+        pending = Promise.withResolvers<Win32PythonProcessResult>(),
+        spawn = vi
+          .fn<Win32PythonSpawn>()
+          .mockResolvedValue(failed)
+          .mockReturnValueOnce(pending.promise),
+        ctx = context(),
+        old = checkWindowsPython(ctx, "", spawn, { locate: noLocate });
+      invalidate();
+      pending.resolve(failed);
+      expect((await old).status).toBe("missing");
+      spawn.mockClear().mockResolvedValue(identityResult());
+      expect(
+        (await checkWindowsPython(ctx, "", spawn, { locate: noLocate })).status,
+      ).toBe("ok");
+      expect(spawn).toHaveBeenCalled();
+    },
+  );
 
-  it("re-probes after a silent failure", async () => {
-    vi.spyOn(console, "warn").mockImplementation(vi.fn());
-    let installed = false;
-    const spawn = vi.fn(async () => {
-        if (!installed) throw new Error("ENOENT");
-        return identityResult();
-      }) as Win32PythonSpawn,
-      ctx = context();
-    expect(
-      (await checkWindowsPython(ctx, "python", spawn, { notify: false }))
-        .status,
-    ).toBe("missing");
-    installed = true;
-    expect(
-      (await checkWindowsPython(ctx, "python", spawn, { notify: false }))
-        .status,
-    ).toBe("ok");
-    expect(noticeKeys).toHaveLength(0);
-  });
+  it.each(["pending", "settled"])(
+    "keeps a newer %s success when an older failure completes",
+    async (state) => {
+      vi.spyOn(console, "warn").mockImplementation(vi.fn());
+      const failed = result({ code: null, errno: "ENOENT" }),
+        oldProbe = Promise.withResolvers<Win32PythonProcessResult>(),
+        oldSpawn = vi
+          .fn<Win32PythonSpawn>()
+          .mockResolvedValue(failed)
+          .mockReturnValueOnce(oldProbe.promise),
+        newProbe = Promise.withResolvers<Win32PythonProcessResult>(),
+        newSpawn = vi
+          .fn<Win32PythonSpawn>()
+          .mockResolvedValue(identityResult())
+          .mockReturnValueOnce(newProbe.promise),
+        ctx = context(),
+        old = checkWindowsPython(ctx, "", oldSpawn, { locate: noLocate });
+      invalidateWindowsPythonDiagnosis("");
+      const newer = checkWindowsPython(ctx, "", newSpawn, { locate: noLocate });
+      if (state === "settled") {
+        newProbe.resolve(identityResult());
+        await newer;
+      }
+      oldProbe.resolve(failed);
+      expect((await old).status).toBe("missing");
+      const reused = checkWindowsPython(ctx, "", newSpawn, {
+        locate: noLocate,
+      });
+      newProbe.resolve(identityResult());
+      expect(await reused).toBe(await newer);
+      expect((await reused).status).toBe("ok");
+      expect(newSpawn.mock.calls.map(([executable]) => executable)).toEqual([
+        "python",
+        "C:\\Python312\\python.exe",
+      ]);
+      expect(getWindowsPythonDiagnosis("")?.status).toBe("ok");
+    },
+  );
 
   it("re-probes after a runtime failure invalidates a cached success", async () => {
     const spawn = vi.fn<Win32PythonSpawn>(async () => identityResult()),
@@ -990,9 +1246,9 @@ describe("checkWindowsPython session cache", () => {
 
 describe("win32ResizerInstallCommand", () => {
   const specs =
-    '--upgrade "psutil>=5.9.5,<=7.1.1" "pywinctl>=0.0.50" "typing_extensions>=4.7.1"';
+    '--upgrade "psutil>=5.9.5" "pywinctl>=0.0.50" "typing_extensions>=4.7.1"';
 
-  it("targets the exact interpreter with the manifest's minimums", () => {
+  it("targets the exact interpreter with only the manifest's minimums", () => {
     expect(win32ResizerInstallCommand("C:\\Python312\\python.exe")).toBe(
       `C:\\Python312\\python.exe -m pip install ${specs}`,
     );
@@ -1020,9 +1276,9 @@ describe("win32ResizerInstallCommand", () => {
   });
 
   it("escapes smart apostrophes that PowerShell treats as string delimiters", () => {
-    expect(
-      win32ResizerInstallCommand("C:\\O\u2019Brien\\python.exe"),
-    ).toContain("& 'C:\\O\u2019\u2019Brien\\python.exe' -m pip install");
+    expect(win32ResizerInstallCommand("C:\\O\u2019Brien\\python.exe")).toBe(
+      `& 'C:\\O\u2019\u2019Brien\\python.exe' -m pip install ${specs}`,
+    );
   });
 });
 
@@ -1109,6 +1365,43 @@ describe("runPluginPythonCheck", () => {
     } as DeepWritable<Settings.Profile.Typed<"integrated">>;
   }
 
+  it("checks only the plugin configuration when profile overrides are excluded", async () => {
+    const pluginPython = "C:\\Plugin\\python.exe",
+      override = "/opt/python3",
+      {
+        context: ctx,
+        value,
+        write,
+      } = reconcileContext({
+        pythonExecutable: pluginPython,
+        profiles: { custom: win32Conpty({ pythonExecutable: override }) },
+      }),
+      spawn = vi
+        .fn<Win32PythonSpawn>()
+        .mockResolvedValue(identityResult(pluginPython));
+    await runPluginPythonCheck(ctx, spawn, noLocate, {
+      includeProfileOverrides: false,
+    });
+    expect(spawn.mock.calls.map(([executable]) => executable)).toEqual([
+      pluginPython,
+    ]);
+    expect(getPluginPythonDiagnosis(ctx)?.executable).toBe(pluginPython);
+    expect(getWindowsPythonDiagnosis(override, pluginPython)).toBeNull();
+    expect(value.pythonExecutable).toBe(pluginPython);
+    expect(value.profiles["custom"]).toHaveProperty(
+      "pythonExecutable",
+      override,
+    );
+    expect(write).not.toHaveBeenCalled();
+
+    // Explicit Recheck retains the full configuration chain, including this override.
+    spawn.mockClear();
+    await runPluginPythonCheck(ctx, spawn, noLocate);
+    expect(
+      spawn.mock.calls.some(([executable]) => executable === override),
+    ).toBe(true);
+  });
+
   it.each([false, true])(
     "uses the plugin interpreter for a shared pwsh profile (legacy: %s)",
     async (legacy) => {
@@ -1179,6 +1472,65 @@ describe("runPluginPythonCheck", () => {
       spawn.mock.calls.some(([executable]) => executable === pluginPython),
     ).toBe(false);
   });
+
+  it.each(["plugin", "profile", "canonical alias"])(
+    "does not cache a transient successful fallback under the %s key",
+    async (key) => {
+      const preferred = "C:\\venv\\Scripts\\python.exe",
+        fallback = "C:\\Python312\\python.exe",
+        { context: ctx } = reconcileContext(
+          key === "plugin"
+            ? { pythonExecutable: preferred }
+            : {
+                profiles: {
+                  custom: win32Conpty({ pythonExecutable: preferred }),
+                },
+              },
+        ),
+        spawn = vi.fn<Win32PythonSpawn>(async (executable) =>
+          executable === preferred
+            ? result({ code: null, timedOut: true })
+            : identityResult(fallback),
+        );
+      await runPluginPythonCheck(ctx, spawn, noLocate);
+      // Display state may retain the fallback; opening must still probe again.
+      const next = key === "canonical alias" ? fallback : preferred;
+      spawn.mockClear();
+      spawn.mockResolvedValue(identityResult(next));
+      expect(
+        await checkWindowsPython(ctx, next, spawn, { locate: noLocate }),
+      ).toMatchObject({ candidate: next, executable: next, status: "ok" });
+      expect(spawn.mock.calls.map(([executable]) => executable)).toEqual([
+        next,
+      ]);
+    },
+  );
+
+  it.each(["plugin", "profile"])(
+    "keeps the %s runtime breaker after a transient successful fallback",
+    async (scope) => {
+      const preferred = "C:\\venv\\Scripts\\python.exe",
+        fallback = "C:\\Python312\\python.exe",
+        { context: ctx } = reconcileContext(
+          scope === "plugin"
+            ? { pythonExecutable: preferred }
+            : {
+                profiles: {
+                  custom: win32Conpty({ pythonExecutable: preferred }),
+                },
+              },
+        ),
+        configured = ctx.settings.value.pythonExecutable,
+        spawn = vi.fn<Win32PythonSpawn>(async (executable) =>
+          executable === preferred
+            ? result({ code: null, timedOut: true })
+            : identityResult(fallback),
+        );
+      invalidateConPtyRuntime(preferred, configured);
+      await runPluginPythonCheck(ctx, spawn, noLocate);
+      expect(isConPtyRuntimeUnavailable(preferred, configured)).toBe(true);
+    },
+  );
 
   it("re-arms only checked, confirmed Python configurations", async () => {
     const python = "C:\\Python312\\python.exe",
@@ -1368,9 +1720,7 @@ describe("runPluginPythonCheck", () => {
     finishOld[0]?.(result({ code: 9009 }));
     expect((await oldCheck).status).not.toBe("ok");
     const probes = spawn.mock.calls.length,
-      cached = await checkWindowsPython(ctx, path, spawn, {
-        notify: false,
-      });
+      cached = await checkWindowsPython(ctx, path, spawn);
     expect(cached).toMatchObject({ executable: path, status: "ok" });
     expect(spawn.mock.calls).toHaveLength(probes);
   });
@@ -1411,9 +1761,10 @@ describe("runPluginPythonCheck", () => {
     finishOld[0]?.(identityResult(oldHost));
     await oldCheck;
     // The next open must read the newer check's interpreter.
-    expect(
-      await checkWindowsPython(ctx, venv, spawn, { notify: false }),
-    ).toMatchObject({ executable: newHost, status: "ok" });
+    expect(await checkWindowsPython(ctx, venv, spawn)).toMatchObject({
+      executable: newHost,
+      status: "ok",
+    });
   });
 
   it("re-probes a profile override that stopped working", async () => {
@@ -1432,16 +1783,169 @@ describe("runPluginPythonCheck", () => {
     expect(value.profiles["custom"]).toMatchObject({ win32Backend: "conpty" });
     // The opener's cache holds the override's success from the first check.
     const probes = spawn.mock.calls.length;
-    await checkWindowsPython(ctx, venv, spawn, { notify: false });
+    await checkWindowsPython(ctx, venv, spawn);
     expect(spawn.mock.calls).toHaveLength(probes);
 
     installed = false;
     await runPluginPythonCheck(ctx, spawn);
     expect(value.profiles["custom"]).toMatchObject({ win32Backend: "conpty" });
-    // ...and the next open re-probes instead of reusing it.
+    // The next open reuses the newly failed diagnosis, not the former success.
     const probes2 = spawn.mock.calls.length;
-    await checkWindowsPython(ctx, venv, spawn, { notify: false });
-    expect(spawn.mock.calls.length).toBeGreaterThan(probes2);
+    expect((await checkWindowsPython(ctx, venv, spawn)).status).toBe(
+      "store-stub",
+    );
+    expect(spawn.mock.calls).toHaveLength(probes2);
+  });
+
+  it("shares an explicit profile check with an opener", async () => {
+    const python = "C:\\Plugin\\python.exe",
+      override = "C:\\Profile\\python.exe",
+      { context: ctx } = reconcileContext({
+        pythonExecutable: python,
+        profiles: { custom: win32Conpty({ pythonExecutable: override }) },
+      }),
+      finishProbe: ((probe: Win32PythonProcessResult) => void)[] = [],
+      probe = new Promise<Win32PythonProcessResult>((resolve) => {
+        finishProbe.push(resolve);
+      }),
+      started: (() => void)[] = [],
+      probing = new Promise<void>((resolve) => {
+        started.push(resolve);
+      }),
+      spawn = vi.fn<Win32PythonSpawn>(async (executable) => {
+        if (executable === override) {
+          started[0]?.();
+          return probe;
+        }
+        return identityResult(executable);
+      });
+    const recheck = runPluginPythonCheck(ctx, spawn, noLocate);
+    await probing;
+    const opener = checkWindowsPython(ctx, override, spawn, {
+      locate: noLocate,
+    });
+    finishProbe[0]?.(identityResult(override));
+    await recheck;
+    expect(await opener).toMatchObject({ executable: override, status: "ok" });
+    expect(spawn.mock.calls.map(([executable]) => executable)).toEqual([
+      python,
+      override,
+    ]);
+  });
+
+  it("reuses both cached diagnoses without refresh and refreshes both by default", async () => {
+    const python = "C:\\Plugin\\python.exe",
+      override = "C:\\Profile\\python.exe",
+      { context: ctx } = reconcileContext({
+        pythonExecutable: python,
+        profiles: { custom: win32Conpty({ pythonExecutable: override }) },
+      }),
+      spawn = vi.fn<Win32PythonSpawn>(async (executable) =>
+        identityResult(executable),
+      );
+    await runPluginPythonCheck(ctx, spawn, noLocate);
+    spawn.mockClear();
+    await runPluginPythonCheck(ctx, spawn, noLocate, { refresh: false });
+    expect(spawn).not.toHaveBeenCalled();
+    await runPluginPythonCheck(ctx, spawn, noLocate);
+    expect(spawn.mock.calls.map(([executable]) => executable)).toEqual([
+      python,
+      override,
+    ]);
+  });
+
+  it("reuses plugin and override failures without refresh, while Recheck bypasses both", async () => {
+    vi.spyOn(console, "warn").mockImplementation(vi.fn());
+    const python = "C:\\Plugin\\python.exe",
+      override = "C:\\Profile\\python.exe",
+      { context: ctx } = reconcileContext({
+        pythonExecutable: python,
+        profiles: { custom: win32Conpty({ pythonExecutable: override }) },
+      }),
+      spawn = vi
+        .fn<Win32PythonSpawn>()
+        .mockResolvedValue(result({ code: null, errno: "ENOENT" }));
+    expect((await runPluginPythonCheck(ctx, spawn, noLocate)).status).toBe(
+      "missing",
+    );
+    spawn
+      .mockClear()
+      .mockImplementation(async (executable) => identityResult(executable));
+    expect(
+      (await runPluginPythonCheck(ctx, spawn, noLocate, { refresh: false }))
+        .status,
+    ).toBe("missing");
+    expect(spawn).not.toHaveBeenCalled();
+    expect((await runPluginPythonCheck(ctx, spawn, noLocate)).status).toBe(
+      "ok",
+    );
+    expect(spawn.mock.calls.map(([executable]) => executable)).toEqual([
+      python,
+      override,
+    ]);
+  });
+
+  it("does not restore an invalidated profile result or alias while another profile waits", async () => {
+    const python = "C:\\Plugin\\python.exe",
+      override = "custom-python",
+      oldPython = "C:\\Old\\python.exe",
+      newPython = "C:\\New\\python.exe",
+      slow = "C:\\Slow\\python.exe",
+      { context: ctx } = reconcileContext({
+        pythonExecutable: python,
+        profiles: {
+          custom: win32Conpty({ pythonExecutable: override }),
+          slow: win32Conpty({ pythonExecutable: slow }),
+        },
+      }),
+      finishProbe: ((probe: Win32PythonProcessResult) => void)[] = [],
+      probe = new Promise<Win32PythonProcessResult>((resolve) => {
+        finishProbe.push(resolve);
+      }),
+      started: (() => void)[] = [],
+      probing = new Promise<void>((resolve) => {
+        started.push(resolve);
+      });
+    // The interpreter behind the configured shim changes while Recheck waits.
+    let resolved = oldPython;
+    const spawn = vi.fn<Win32PythonSpawn>(async (executable) => {
+      if (executable === slow) {
+        started[0]?.();
+        return probe;
+      }
+      return identityResult(
+        executable === override || executable === oldPython
+          ? resolved
+          : executable,
+      );
+    });
+    const recheck = runPluginPythonCheck(ctx, spawn, noLocate);
+    await probing;
+    const options = { locate: noLocate, publish: false };
+    expect(
+      await checkWindowsPython(ctx, override, spawn, options),
+    ).toMatchObject({
+      executable: oldPython,
+    });
+    invalidateWindowsPythonDiagnosis(override, python);
+    resolved = newPython;
+    expect(
+      await checkWindowsPython(ctx, override, spawn, options),
+    ).toMatchObject({
+      executable: newPython,
+    });
+    finishProbe[0]?.(identityResult(slow));
+    await recheck;
+    expect(
+      await checkWindowsPython(ctx, override, spawn, options),
+    ).toMatchObject({
+      executable: newPython,
+    });
+    expect(
+      await checkWindowsPython(ctx, oldPython, spawn, options),
+    ).toMatchObject({
+      executable: newPython,
+    });
   });
 
   it("keeps a user-set field even when discovery finds another Python", async () => {
@@ -1459,71 +1963,111 @@ describe("runPluginPythonCheck", () => {
     expect(value.pythonExecutable).toBe("C:\\user\\python.exe");
   });
 
-  it("refreshes a cached registry PATH after an install", async () => {
-    vi.spyOn(console, "warn").mockImplementation(vi.fn());
-    const inheritedPath = "C:\\Windows\\System32",
-      pythonDirectory = "C:\\Python312";
-    let registryPath = inheritedPath;
-    const registrySpawn = vi.fn((_command: string, args: readonly string[]) => {
-      const child = new ChildProcess();
-      child.stdout = Readable.from([
-        args[1] === "HKCU\\Environment"
-          ? ""
-          : `Path REG_SZ ${registryPath}\r\n`,
-      ]);
-      child.stdout.once("end", () => child.emit("close", 0));
-      window.setTimeout(() => child.emit("spawn"), 0);
-      return child;
-    });
-    vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Windows");
-    vi.doMock("../../../src/imports.js", () => ({
-      BUNDLE: new Map<string, () => unknown>([
-        [
-          "node:child_process",
-          () => ({ execFile: vi.fn(), spawn: registrySpawn }),
-        ],
-        ["node:process", () => ({ env: { Path: inheritedPath } })],
-      ]),
-    }));
-    // Reload both modules together so this test owns the real PATH cache.
-    vi.resetModules();
-    try {
-      const { applyEnv, pathEnvKey } =
-          await import("../../../src/terminal/environment.js"),
-        { runPluginPythonCheck: recheck } =
-          await import("../../../src/terminal/win32-doctor.js"),
-        { context: ctx, value } = reconcileContext({
-          profiles: {
-            auto: win32Conpty(),
-            userChoice: win32Conpty({ win32Backend: "legacy" }),
-          },
-        }),
-        spawn = vi.fn<Win32PythonSpawn>(async (executable) => {
-          // The production spawn uses this same environment builder.
-          const env = await applyEnv();
-          return executable === "C:\\Python312\\python.exe" ||
-            (executable === "python" &&
-              env[pathEnvKey(env)]?.split(";").includes(pythonDirectory))
-            ? identityResult()
-            : result({ code: 9009 });
-        });
-      expect((await recheck(ctx, spawn)).status).not.toBe("ok");
-      expect(value.profiles["auto"]).toMatchObject({ win32Backend: "conpty" });
-      // Only the registry changes; Obsidian still has its launch-time PATH.
-      registryPath = `${inheritedPath};${pythonDirectory}`;
-      expect((await applyEnv())["Path"]).toBe(inheritedPath);
-      expect(registrySpawn).toHaveBeenCalledTimes(2);
-      expect((await recheck(ctx, spawn)).status).toBe("ok");
-      expect(registrySpawn).toHaveBeenCalledTimes(4);
-      expect(value.profiles["auto"]).toMatchObject({ win32Backend: "conpty" });
-      expect(value.profiles["userChoice"]).toMatchObject({
-        win32Backend: "legacy",
-      });
-    } finally {
-      vi.doUnmock("../../../src/imports.js");
+  it.each([false, true])(
+    "shares warmed startup PATH and refreshes after an install (pending opener: %s)",
+    async (pendingOpener) => {
+      vi.spyOn(console, "warn").mockImplementation(vi.fn());
+      const inheritedPath = "C:\\Windows\\System32",
+        pythonDirectory = "C:\\Python312";
+      let registryPath = inheritedPath;
+      const registrySpawn = vi.fn(
+        (_command: string, args: readonly string[]) => {
+          const child = new ChildProcess();
+          child.stdout = Readable.from([
+            args[1] === "HKCU\\Environment"
+              ? ""
+              : `Path REG_SZ ${registryPath}\r\n`,
+          ]);
+          child.stdout.once("end", () => child.emit("close", 0));
+          window.setTimeout(() => child.emit("spawn"), 0);
+          return child;
+        },
+      );
+      vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Windows");
+      vi.doMock("../../../src/imports.js", () => ({
+        BUNDLE: new Map<string, () => unknown>([
+          [
+            "node:child_process",
+            () => ({ execFile: vi.fn(), spawn: registrySpawn }),
+          ],
+          ["node:process", () => ({ env: { Path: inheritedPath } })],
+        ]),
+      }));
+      // Reload both modules together so this test owns the real PATH cache.
       vi.resetModules();
-    }
-  });
+      try {
+        const { applyEnv, pathEnvKey, warmSystemPath } =
+            await import("../../../src/terminal/environment.js"),
+          { runPluginPythonCheck: recheck, checkWindowsPython: openerCheck } =
+            await import("../../../src/terminal/win32-doctor.js"),
+          { context: ctx, value } = reconcileContext({
+            profiles: {
+              auto: win32Conpty(),
+              userChoice: win32Conpty({ win32Backend: "legacy" }),
+              override: win32Conpty({
+                pythonExecutable: "C:\\Override\\python.exe",
+              }),
+            },
+          }),
+          finishProbe: (() => void)[] = [],
+          probe = new Promise<void>((resolve) => {
+            finishProbe.push(resolve);
+          }),
+          spawn = vi.fn<Win32PythonSpawn>(async (executable) => {
+            // The production spawn uses this same environment builder.
+            const env = await applyEnv();
+            await probe;
+            return executable === "C:\\Python312\\python.exe" ||
+              (executable === "python" &&
+                env[pathEnvKey(env)]?.split(";").includes(pythonDirectory))
+              ? identityResult()
+              : result({ code: 9009 });
+          });
+        warmSystemPath();
+        const opener = pendingOpener
+          ? openerCheck(ctx, "", spawn, { locate: noLocate })
+          : null;
+        const startup = recheck(ctx, spawn, noLocate, {
+          includeProfileOverrides: false,
+          refresh: false,
+        });
+        await applyEnv();
+        finishProbe[0]?.();
+        const diagnosis = await startup;
+        if (opener) expect(await opener).toBe(diagnosis);
+        expect(diagnosis.status).not.toBe("ok");
+        expect(spawn.mock.calls.map(([executable]) => executable)).toEqual([
+          "python",
+          "python3",
+          "py",
+        ]);
+        expect(
+          registrySpawn.mock.calls.map(([_command, args]) => args[1]),
+        ).toEqual([
+          "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment",
+          "HKCU\\Environment",
+        ]);
+        expect(value.profiles["auto"]).toMatchObject({
+          win32Backend: "conpty",
+        });
+        // Only the registry changes; Obsidian still has its launch-time PATH.
+        registryPath = `${inheritedPath};${pythonDirectory}`;
+        expect((await applyEnv())["Path"]).toBe(inheritedPath);
+        expect(registrySpawn).toHaveBeenCalledTimes(2);
+        expect((await recheck(ctx, spawn)).status).toBe("ok");
+        expect(registrySpawn).toHaveBeenCalledTimes(4);
+        expect(value.profiles["auto"]).toMatchObject({
+          win32Backend: "conpty",
+        });
+        expect(value.profiles["userChoice"]).toMatchObject({
+          win32Backend: "legacy",
+        });
+      } finally {
+        vi.doUnmock("../../../src/imports.js");
+        vi.resetModules();
+      }
+    },
+  );
 
   it("leaves stored backends alone on a transient probe failure", async () => {
     // One timed-out candidate might have been the working interpreter, so

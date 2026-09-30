@@ -8,10 +8,27 @@
  * - the once-per-session ConPTY fallback notice and its reset helper
  * - `prewarmConPtyProfile` gating the spare on the Python check
  */
+import { createInstance } from "i18next";
+import { Storage } from "happy-dom";
+import {
+  SI_PREFIX_SCALE,
+  StorageSettingsManager,
+} from "@polyipseity/obsidian-plugin-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import en from "../../../assets/locales/en/translation.json" with { type: "json" };
 import type { MockInstance } from "vitest";
 import type { TerminalPlugin } from "../../../src/main.js";
-import type { Win32PythonDiagnosis } from "../../../src/terminal/win32-doctor.js";
+import type {
+  checkWindowsPython,
+  Win32PythonDiagnosis,
+  Win32PythonSpawn,
+} from "../../../src/terminal/win32-doctor.js";
+import { TERMINAL_EXIT_CLEANUP_WAIT } from "../../../src/magic.js";
+import {
+  spawnExternalTerminalEmulator,
+  XtermTerminalEmulator,
+} from "../../../src/terminal/emulator.js";
+import { tick } from "../../support/helpers.js";
 import type { ShellPseudoterminalArguments } from "../../../src/terminal/pseudoterminal.js";
 
 const {
@@ -23,15 +40,7 @@ const {
   platform: { windows: false },
   checkWindowsResizerPackagesMock:
     vi.fn<(pythonExecutable: string) => Promise<boolean>>(),
-  checkWindowsPythonMock:
-    vi.fn<
-      (
-        context: unknown,
-        pythonExecutable: string,
-        spawn?: unknown,
-        options?: { readonly notify?: boolean },
-      ) => Promise<Win32PythonDiagnosis>
-    >(),
+  checkWindowsPythonMock: vi.fn<typeof checkWindowsPython>(),
   notice2Spy:
     vi.fn<(message: () => string, timeout: number, context: unknown) => void>(),
 }));
@@ -66,14 +75,23 @@ vi.mock("../../../src/terminal/win32-doctor.js", async (importOriginal) => {
   };
 });
 
+vi.mock("../../../src/terminal/emulator.js", async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import("../../../src/terminal/emulator.js")
+  >()),
+  spawnExternalTerminalEmulator: vi.fn().mockResolvedValue(void 0),
+}));
+
 import {
+  CONPTY_DEPENDENCIES,
   CONPTY_HOST_POOL,
   ConPtyControlError,
   ConPtySetupError,
   Pseudoterminal,
+  RefPsuedoterminal,
   TextPseudoterminal,
 } from "../../../src/terminal/pseudoterminal.js";
-import { Settings } from "../../../src/settings-data.js";
+import { LocalSettings, Settings } from "../../../src/settings-data.js";
 import { PROFILE_PRESETS } from "../../../src/terminal/profile-presets.js";
 import {
   clearWindowsPythonDiagnoses,
@@ -147,6 +165,7 @@ function diagnosis(
     // The host interpreter is the probed one unless a venv sits in between.
     hostExecutable: executable,
     status: "ok",
+    tried: ["python"],
     version: "3.12.0",
     ...overrides,
   };
@@ -174,9 +193,18 @@ describe("openProfile with saved Windows backend choices", () => {
     "PLATFORM_PSEUDOTERMINAL",
   );
 
+  // Each test controls the public shell-start boundary without spawning a process.
+  let shellStart = Promise.withResolvers<undefined>();
+  let conhostExit = Promise.withResolvers<number>();
+  const graceMs = TERMINAL_EXIT_CLEANUP_WAIT * SI_PREFIX_SCALE;
+
   class TestPseudoterminal extends TextPseudoterminal {
-    // Backend selection needs a shell promise without starting a process.
-    public readonly shell = new Promise<never>(() => {});
+    public readonly shell = shellStart.promise;
+
+    public override async kill(): Promise<void> {
+      shellStart.reject(new ConPtyControlError("aborted"));
+      await super.kill();
+    }
     public readonly win32Backend;
 
     public constructor(
@@ -184,9 +212,38 @@ describe("openProfile with saved Windows backend choices", () => {
       args: ShellPseudoterminalArguments,
     ) {
       super();
+      this.shell.catch(() => void 0);
       this.win32Backend = args.win32Backend;
       spawn(args);
     }
+  }
+
+  // ConHost spawn fulfils shell before the configured command starts. A kill
+  // waits for that spawn and settles onExit without rejecting shell.
+  class TestConHostPseudoterminal extends TestPseudoterminal {
+    public override readonly onExit = conhostExit.promise;
+
+    public override async kill(): Promise<void> {
+      await this.shell;
+      conhostExit.resolve(0);
+    }
+  }
+
+  function profileForBackend(backend: string) {
+    if (backend !== "conpty") {
+      Object.defineProperty(Pseudoterminal, "PLATFORM_PSEUDOTERMINAL", {
+        configurable: true,
+        value: TestConHostPseudoterminal,
+      });
+    }
+    if (backend === "fallback") {
+      checkWindowsPythonMock.mockResolvedValue(
+        diagnosis({ status: "missing", hostExecutable: null }),
+      );
+    }
+    return integratedProfile({
+      win32Backend: backend === "legacy" ? "legacy" : "conpty",
+    });
   }
 
   const savedProfile = (autoDemoted = true): Settings.Profile =>
@@ -200,6 +257,8 @@ describe("openProfile with saved Windows backend choices", () => {
     ).value;
 
   beforeEach(() => {
+    shellStart = Promise.withResolvers<undefined>();
+    conhostExit = Promise.withResolvers<number>();
     platform.windows = true;
     Object.defineProperty(Pseudoterminal, "PLATFORM_PSEUDOTERMINAL", {
       configurable: true,
@@ -219,6 +278,8 @@ describe("openProfile with saved Windows backend choices", () => {
       );
     }
     platform.windows = false;
+    vi.useRealTimers();
+    vi.mocked(spawnExternalTerminalEmulator).mockClear();
     spawn.mockClear();
     checkWindowsPythonMock.mockReset();
     checkWindowsResizerPackagesMock.mockReset();
@@ -256,6 +317,308 @@ describe("openProfile with saved Windows backend choices", () => {
     ]);
   });
 
+  it.each(["missing", "unconfirmed", "breaker"])(
+    "cancels a %s fallback when closed during Python diagnosis",
+    async (failure) => {
+      const pending = Promise.withResolvers<Win32PythonDiagnosis>(),
+        result = diagnosis({
+          status: failure === "missing" ? "missing" : "ok",
+          hostExecutable: failure === "breaker" ? "python" : null,
+          transient: failure === "unconfirmed",
+        }),
+        { ctx, localSettings, mutate, write } = await localContext();
+      if (failure === "breaker") reportConPtyRuntimeFailure("python");
+      checkWindowsPythonMock.mockReturnValueOnce(pending.promise);
+      const emulator = new XtermTerminalEmulator(
+        document.createElement("div"),
+        async (_terminal, _addons, signal) => {
+          const pty = await openProfile(ctx, integratedProfile(), { signal });
+          if (!pty) throw new Error("Expected an integrated pseudoterminal");
+          return pty;
+        },
+      );
+      await tick();
+      expect(checkWindowsPythonMock).toHaveBeenCalledOnce();
+      const closing = emulator.close(true);
+      pending.resolve(result);
+      try {
+        await expect(closing).resolves.toBeUndefined();
+        expect(notice2Spy).not.toHaveBeenCalled();
+        expect(spawn).not.toHaveBeenCalled();
+        expect(checkWindowsResizerPackagesMock).not.toHaveBeenCalled();
+        await expect(emulator.pseudoterminal).rejects.toMatchObject({
+          reason: "aborted",
+        });
+        expect(localSettings.value.hasUsedIntegratedTerminal).toBe(false);
+        expect(mutate).not.toHaveBeenCalled();
+        expect(write).not.toHaveBeenCalled();
+        // A cancelled open must not consume the later live fallback's notice.
+        checkWindowsPythonMock.mockResolvedValueOnce(result);
+        await (await openProfile(ctx, integratedProfile()))?.kill();
+        expect(notice2Spy).toHaveBeenCalledTimes(
+          failure === "unconfirmed" ? 0 : 1,
+        );
+      } finally {
+        await closing.catch(vi.fn());
+        localSettings.unload();
+      }
+    },
+  );
+
+  it("rejects an already cancelled open before the POSIX-path notice or Python check", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      openProfile(
+        context(),
+        integratedProfile({ pythonExecutable: "/opt/python3" }),
+        {
+          signal: controller.signal,
+        },
+      ),
+    ).rejects.toMatchObject({ reason: "aborted" });
+    expect(notice2Spy).not.toHaveBeenCalled();
+    expect(checkWindowsPythonMock).not.toHaveBeenCalled();
+    expect(spawn).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])(
+    "cancels after a pending resizer check (packages available: %s)",
+    async (packagesAvailable) => {
+      const pending = Promise.withResolvers<boolean>(),
+        controller = new AbortController();
+      checkWindowsPythonMock.mockResolvedValueOnce(
+        diagnosis({ hostExecutable: null, transient: true }),
+      );
+      checkWindowsResizerPackagesMock.mockReturnValueOnce(pending.promise);
+      const opening = openProfile(context(), integratedProfile(), {
+        signal: controller.signal,
+      });
+      await tick();
+      expect(checkWindowsResizerPackagesMock).toHaveBeenCalledOnce();
+      controller.abort();
+      pending.resolve(packagesAvailable);
+      await expect(opening).rejects.toMatchObject({ reason: "aborted" });
+      expect(notice2Spy).not.toHaveBeenCalled();
+      expect(spawn).not.toHaveBeenCalled();
+    },
+  );
+
+  it("forwards the pool generation captured before a pending Python diagnosis", async () => {
+    const pending = Promise.withResolvers<Win32PythonDiagnosis>(),
+      generation = CONPTY_HOST_POOL.generation;
+    checkWindowsPythonMock.mockReturnValueOnce(pending.promise);
+    const opening = openProfile(context(), integratedProfile());
+    expect(checkWindowsPythonMock).toHaveBeenCalledTimes(1);
+    expect(spawn).not.toHaveBeenCalled();
+    CONPTY_HOST_POOL.clear();
+    pending.resolve(diagnosis());
+    const pty = await opening;
+    try {
+      expect(spawn).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ conPtyPoolGeneration: generation }),
+      );
+    } finally {
+      await pty?.kill();
+    }
+  });
+
+  async function localContext() {
+    const ctx = Object.assign(context(), {
+      app: { appId: "local-use-test" },
+      manifest: { id: "terminal-test" },
+      language: {
+        value: { t: (key: string): string => key },
+        onLoaded: Promise.resolve(),
+      },
+    });
+    const storage = new Storage(),
+      localSettings = new StorageSettingsManager(
+        ctx,
+        LocalSettings.fix,
+        storage,
+      );
+    Object.assign(ctx, { localSettings });
+    localSettings.load();
+    await localSettings.onLoaded;
+    await localSettings.write();
+    const mutate = vi.spyOn(localSettings, "mutate"),
+      write = vi.spyOn(localSettings, "write"),
+      syncedMutate = vi.fn(),
+      syncedWrite = vi.fn();
+    Object.assign(ctx.settings, { mutate: syncedMutate, write: syncedWrite });
+    return {
+      ctx,
+      localSettings,
+      storage,
+      mutate,
+      write,
+      syncedMutate,
+      syncedWrite,
+    };
+  }
+
+  it.each(["conpty", "legacy", "fallback"])(
+    "records successful %s shell starts locally once",
+    async (backend) => {
+      vi.useFakeTimers();
+      const profile = profileForBackend(backend);
+      const {
+        ctx,
+        localSettings,
+        storage,
+        mutate,
+        write,
+        syncedMutate,
+        syncedWrite,
+      } = await localContext();
+      const pty = await openProfile(ctx, profile);
+      expect(pty).not.toBeNull();
+      expect(localSettings.value.hasUsedIntegratedTerminal).toBe(false);
+      expect(write).not.toHaveBeenCalled();
+      shellStart.resolve(void 0);
+      await vi.advanceTimersByTimeAsync(0);
+      if (backend !== "conpty") {
+        await vi.advanceTimersByTimeAsync(graceMs - 1);
+        expect(mutate).not.toHaveBeenCalled();
+        expect(write).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);
+      }
+      expect(write).toHaveBeenCalledTimes(1);
+      await write.mock.results[0]?.value;
+      expect(spawn.mock.calls[0]?.[0].win32Backend).toBe(
+        backend === "conpty" ? "conpty" : "legacy",
+      );
+      const stored: unknown = JSON.parse(
+        storage.getItem("local-use-test.terminal-test.settings") ?? "null",
+      );
+      expect(LocalSettings.fix(stored).value.hasUsedIntegratedTerminal).toBe(
+        true,
+      );
+      await (await openProfile(ctx, profile))?.kill();
+      await vi.advanceTimersByTimeAsync(graceMs);
+      expect(mutate).toHaveBeenCalledTimes(1);
+      expect(write).toHaveBeenCalledTimes(1);
+      expect(syncedMutate).not.toHaveBeenCalled();
+      expect(syncedWrite).not.toHaveBeenCalled();
+      expect(ctx.settings.value).not.toHaveProperty(
+        "hasUsedIntegratedTerminal",
+      );
+      await pty?.kill();
+      localSettings.unload();
+    },
+  );
+
+  describe.each(["legacy", "fallback"])("%s first-use recording", (backend) => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    it.each([9009, 251, 0])(
+      "does not record a shell exiting with %i during the grace window",
+      async (exitCode) => {
+        const { ctx, localSettings, mutate, write } = await localContext();
+        const pty = await openProfile(ctx, profileForBackend(backend));
+        shellStart.resolve(void 0);
+        await vi.advanceTimersByTimeAsync(graceMs / 2);
+        conhostExit.resolve(exitCode);
+        await expect(pty?.onExit).resolves.toBe(exitCode);
+        await vi.advanceTimersByTimeAsync(graceMs);
+        expect(localSettings.value.hasUsedIntegratedTerminal).toBe(false);
+        expect(mutate).not.toHaveBeenCalled();
+        expect(write).not.toHaveBeenCalled();
+        localSettings.unload();
+      },
+    );
+
+    it.each(["before", "after"])(
+      "does not record a cancellation requested %s ConHost spawn",
+      async (when) => {
+        const { ctx, localSettings, mutate, write } = await localContext();
+        const pty = await openProfile(ctx, profileForBackend(backend));
+        if (when === "after") {
+          shellStart.resolve(void 0);
+          await vi.advanceTimersByTimeAsync(graceMs / 2);
+        }
+        const killed = pty?.kill();
+        shellStart.resolve(void 0);
+        await killed;
+        await expect(pty?.shell).resolves.toBeUndefined();
+        await expect(pty?.onExit).resolves.toBe(0);
+        await vi.advanceTimersByTimeAsync(graceMs);
+        expect(localSettings.value.hasUsedIntegratedTerminal).toBe(false);
+        expect(mutate).not.toHaveBeenCalled();
+        expect(write).not.toHaveBeenCalled();
+        localSettings.unload();
+      },
+    );
+  });
+
+  it.each(["failed", "setup-faulted", "cancelled"])(
+    "does not record a %s integrated open",
+    async (failure) => {
+      const { ctx, localSettings, mutate, write } = await localContext();
+      const pty = await openProfile(ctx, integratedProfile());
+      if (failure !== "cancelled")
+        shellStart.reject(
+          failure === "setup-faulted"
+            ? new ConPtyControlError("protocol")
+            : new Error("shell start failed"),
+        );
+      await pty?.kill();
+      expect(localSettings.value.hasUsedIntegratedTerminal).toBe(false);
+      expect(mutate).not.toHaveBeenCalled();
+      expect(write).not.toHaveBeenCalled();
+      localSettings.unload();
+    },
+  );
+
+  it("does not record developer consoles, external terminals or Python checks", async () => {
+    const { ctx, localSettings, mutate, write } = await localContext();
+    const consolePty = new RefPsuedoterminal(new TextPseudoterminal());
+    Object.assign(ctx, {
+      developerConsolePTY: { onLoaded: Promise.resolve(() => consolePty) },
+    });
+    await (
+      await openProfile(ctx, Settings.Profile.DEFAULTS.developerConsole)
+    )?.kill();
+    await consolePty.kill();
+    await openProfile(ctx, Settings.Profile.DEFAULTS.external);
+    expect(spawnExternalTerminalEmulator).toHaveBeenCalledTimes(1);
+    Object.assign(ctx.settings, {
+      value: { ...ctx.settings.value, profiles: {} },
+    });
+    await runPluginPythonCheck(
+      ctx,
+      vi.fn().mockResolvedValue({
+        code: 0,
+        stderr: "",
+        stdout: "C:\\Python312\\python.exe\n3.12.0\n",
+      }),
+      vi.fn().mockResolvedValue(null),
+    );
+    expect(localSettings.value.hasUsedIntegratedTerminal).toBe(false);
+    expect(mutate).not.toHaveBeenCalled();
+    expect(write).not.toHaveBeenCalled();
+    localSettings.unload();
+  });
+
+  it("keeps a successful terminal usable when local persistence fails", async () => {
+    const { ctx, localSettings, write } = await localContext();
+    const error = new Error("local storage unavailable"),
+      debug = vi.spyOn(self.console, "debug").mockImplementation(() => {});
+    write.mockRejectedValue(error);
+    const pty = await openProfile(ctx, integratedProfile());
+    shellStart.resolve(void 0);
+    await vi.waitFor(() => {
+      expect(debug).toHaveBeenCalledWith(error);
+    });
+    expect(pty).not.toBeNull();
+    expect(localSettings.value.hasUsedIntegratedTerminal).toBe(true);
+    await pty?.kill();
+    localSettings.unload();
+  });
+
   it("migrates a restored auto-demoted tab and retries ConPTY on restart", async () => {
     const profile = savedProfile();
     const ctx = context();
@@ -274,6 +637,28 @@ describe("openProfile with saved Windows backend choices", () => {
     expect(checkWindowsResizerPackagesMock).not.toHaveBeenCalled();
     expect(profile).toHaveProperty("win32Backend", "conpty");
     expect(profile).not.toHaveProperty("win32BackendAutoDemoted");
+  });
+
+  it("warns about a POSIX profile path on explicit open even when fallback succeeds", async () => {
+    const profile = integratedProfile({ pythonExecutable: "/opt/python3" }),
+      ctx = context("python");
+    await (await openProfile(ctx, profile))?.kill();
+    expect(checkWindowsPythonMock).toHaveBeenCalledWith(ctx, "/opt/python3");
+    expect(spawn.mock.calls[0]?.[0].pythonExecutable).toBe(
+      "C:\\Python312\\python.exe",
+    );
+    expect(notice2Spy.mock.calls.map(([message]) => message())).toEqual([
+      "notices.win32-python-posix-path",
+    ]);
+    expect(profile.pythonExecutable).toBe("/opt/python3");
+  });
+
+  it("does not describe a slash-based UNC profile path as drive-relative", async () => {
+    const profile = integratedProfile({
+      pythonExecutable: "//server/share/python.exe",
+    });
+    await (await openProfile(context(), profile))?.kill();
+    expect(notice2Spy).not.toHaveBeenCalled();
   });
 
   it("passes a live breaker predicate keyed by the effective Python", async () => {
@@ -331,7 +716,114 @@ describe("openProfile with saved Windows backend choices", () => {
     expect(checkWindowsResizerPackagesMock).not.toHaveBeenCalled();
   });
 
-  it("opens and prewarms a shared profile after changing its failed plugin fallback", async () => {
+  it("reuses failed discovery for two ConHost opens and recovers after expiry", async () => {
+    vi.useFakeTimers();
+    // Keep the production resolver/cache and inject only process results.
+    const { checkWindowsPython: checkPython } = await vi.importActual<
+        typeof import("../../../src/terminal/win32-doctor.js")
+      >("../../../src/terminal/win32-doctor.js"),
+      ctx = context("plugin-python"),
+      profile = integratedProfile({ pythonExecutable: "profile-python" }),
+      probe = vi.fn<Win32PythonSpawn>().mockResolvedValue({
+        code: null,
+        errno: "ENOENT",
+        stderr: "",
+        stdout: "",
+      });
+    checkWindowsPythonMock.mockImplementation((context0, value) =>
+      checkPython(context0, value, probe, {
+        locate: vi.fn().mockResolvedValue(null),
+      }),
+    );
+    await (await openProfile(ctx, profile))?.kill();
+    expect(probe.mock.calls.map(([executable]) => executable)).toEqual([
+      "profile-python",
+      "plugin-python",
+      "python",
+      "python3",
+      "py",
+    ]);
+    probe.mockClear().mockResolvedValue({
+      code: 0,
+      stderr: "",
+      stdout: "C:\\Python312\\python.exe\n3.12.0\n",
+    });
+    await (await openProfile(ctx, profile))?.kill();
+    expect(probe).not.toHaveBeenCalled();
+    expect(spawn.mock.calls.map(([args]) => args.win32Backend)).toEqual([
+      "legacy",
+      "legacy",
+    ]);
+    await vi.advanceTimersByTimeAsync(30_000);
+    await (await openProfile(ctx, profile))?.kill();
+    expect(probe).toHaveBeenCalled();
+    expect(spawn.mock.calls.map(([args]) => args.win32Backend)).toEqual([
+      "legacy",
+      "legacy",
+      "conpty",
+    ]);
+  });
+
+  it.each<Settings.Profile.Win32Backend>(["conpty", "legacy"])(
+    "preserves the %s notice budget until Python definitively fails",
+    async (win32Backend) => {
+      vi.useFakeTimers();
+      // Exercise the real resolver and transient cache with injected process results.
+      const { checkWindowsPython: checkPython } = await vi.importActual<
+          typeof import("../../../src/terminal/win32-doctor.js")
+        >("../../../src/terminal/win32-doctor.js"),
+        ctx = context(),
+        profile = integratedProfile({ pythonExecutable: "", win32Backend }),
+        probe = vi.fn<Win32PythonSpawn>().mockResolvedValue({
+          code: null,
+          errno: "EACCES",
+          stderr: "",
+          stdout: "",
+        }),
+        i18n = createInstance();
+      await i18n.init({ lng: "en", resources: { en: { translation: en } } });
+      Object.assign(ctx.language, { value: i18n });
+      checkWindowsPythonMock.mockImplementation((context0, value) =>
+        checkPython(context0, value, probe, {
+          locate: vi.fn().mockResolvedValue(null),
+        }),
+      );
+
+      await (await openProfile(ctx, profile))?.kill();
+      expect(spawn).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          win32Backend: "legacy",
+          pythonExecutable: undefined,
+        }),
+      );
+      expect(notice2Spy).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(5_001);
+      probe.mockResolvedValue({
+        code: null,
+        errno: "ENOENT",
+        stderr: "",
+        stdout: "",
+      });
+      await (await openProfile(ctx, profile))?.kill();
+      await (await openProfile(ctx, profile))?.kill();
+      expect(probe).toHaveBeenCalledTimes(6);
+      expect(notice2Spy).toHaveBeenCalledTimes(1);
+      const message = notice2Spy.mock.calls[0]?.[0]();
+      expect(message).toBe(
+        win32Backend === "conpty"
+          ? `${i18n.t("notices.win32-conhost-fallback")}\n\n${i18n.t(
+              "errors.win32-python-missing",
+              { tried: "python, python3, py -3" },
+            )}`
+          : i18n.t("notices.win32-resizer-python-missing", {
+              executable: "python",
+            }),
+      );
+    },
+  );
+
+  it("opens a shared profile after changing its failed plugin fallback without prewarming its override", async () => {
     // Use the real resolver with a fake Python process to exercise the
     // configured pair through the opener, cache, breaker and prewarm.
     const { checkWindowsPython: checkPython } = await vi.importActual<
@@ -353,7 +845,6 @@ describe("openProfile with saved Windows backend choices", () => {
     checkWindowsPythonMock.mockImplementation((_ctx, value) =>
       checkPython(ctx, value, probe, {
         locate: vi.fn().mockResolvedValue(null),
-        notify: false,
       }),
     );
     await (await openProfile(ctx, profile))?.kill();
@@ -374,9 +865,83 @@ describe("openProfile with saved Windows backend choices", () => {
       ["legacy", first],
       ["conpty", second],
     ]);
-    expect(spare).toHaveBeenCalledExactlyOnceWith(second, expect.anything());
+    expect(spare).not.toHaveBeenCalled();
     expect(profile.pythonExecutable).toBe("python3");
   });
+
+  it.each<{
+    readonly status: Win32PythonDiagnosis["status"];
+    readonly version: string;
+    readonly guidance: string;
+  }>([
+    { status: "missing", version: "", guidance: "No usable Python found" },
+    {
+      status: "store-stub",
+      version: "",
+      guidance: "opens the Microsoft Store instead of running Python",
+    },
+    {
+      status: "too-old",
+      version: "3.8.10",
+      guidance: "is Python 3.8.10; 3.9 or newer is required",
+    },
+  ])(
+    "explains a $status Python when opening ConHost once per session",
+    async ({ status, version, guidance }) => {
+      const executable = "C:\\Python & Tools\\python.exe",
+        tried = [
+          executable,
+          "D:\\Plugin\\python.exe",
+          "python",
+          "python3",
+          "py -3",
+        ],
+        failed = diagnosis({
+          executable,
+          hostExecutable: null,
+          status,
+          tried,
+          version,
+        }),
+        profile = integratedProfile({
+          executable: "cmd.exe",
+          pythonExecutable: "",
+          win32Backend: "conpty",
+        }),
+        ctx = context(),
+        i18n = createInstance();
+      await i18n.init({ lng: "en", resources: { en: { translation: en } } });
+      Object.assign(ctx.language, { value: i18n });
+      checkWindowsPythonMock.mockResolvedValue(failed);
+
+      // Startup prewarm must leave the open path's notice budget available.
+      await prewarmConPtyProfile(ctx, profile, { platform: "win32" });
+      expect(checkWindowsPythonMock).toHaveBeenCalledExactlyOnceWith(ctx, "");
+      expect(notice2Spy).not.toHaveBeenCalled();
+      await (await openProfile(ctx, profile))?.kill();
+      await (await openProfile(ctx, profile))?.kill();
+
+      expect(
+        spawn.mock.calls.map(([args]) => [
+          args.win32Backend,
+          args.pythonExecutable,
+        ]),
+      ).toEqual([
+        ["legacy", undefined],
+        ["legacy", undefined],
+      ]);
+      expect(checkWindowsResizerPackagesMock).not.toHaveBeenCalled();
+      expect(notice2Spy).toHaveBeenCalledTimes(1);
+      const message = notice2Spy.mock.calls[0]?.[0]();
+      expect(message).toContain(i18n.t("notices.win32-conhost-fallback"));
+      expect(message).toContain(guidance);
+      expect(message).toContain(executable);
+      if (status === "missing") {
+        expect(message).toContain(tried.join(", "));
+      }
+      expect(message).not.toContain("{{");
+    },
+  );
 
   it.each(["missing", "unconfirmed", "breaker"])(
     "uses ConHost without changing saved ConPTY intent when the host is %s",
@@ -406,7 +971,7 @@ describe("openProfile with saved Windows backend choices", () => {
           ? []
           : [
               failure === "missing"
-                ? "notices.win32-conhost-fallback"
+                ? "notices.win32-conhost-fallback\n\nerrors.win32-python-missing"
                 : "notices.win32-conpty-runtime-fallback",
             ],
       );
@@ -440,18 +1005,30 @@ describe("the ConPTY fallback notice", () => {
   });
 
   it("explains the degraded backend once per session", () => {
-    noticeWin32ConhostFallback(context(), "missing-python");
-    noticeWin32ConhostFallback(context(), "missing-python");
+    noticeWin32ConhostFallback(context(), {
+      reason: "missing-python",
+      diagnosis: diagnosis({ status: "missing" }),
+    });
+    noticeWin32ConhostFallback(context(), {
+      reason: "missing-python",
+      diagnosis: diagnosis({ status: "missing" }),
+    });
     expect(notice2Spy).toHaveBeenCalledTimes(1);
     expect(notice2Spy.mock.calls[0]?.[0]()).toBe(
-      "notices.win32-conhost-fallback",
+      "notices.win32-conhost-fallback\n\nerrors.win32-python-missing",
     );
   });
 
   it("explains it again after the session guard is reset", () => {
-    noticeWin32ConhostFallback(context(), "missing-python");
+    noticeWin32ConhostFallback(context(), {
+      reason: "missing-python",
+      diagnosis: diagnosis({ status: "missing" }),
+    });
     resetWin32FallbackNotice();
-    noticeWin32ConhostFallback(context(), "missing-python");
+    noticeWin32ConhostFallback(context(), {
+      reason: "missing-python",
+      diagnosis: diagnosis({ status: "missing" }),
+    });
     expect(notice2Spy).toHaveBeenCalledTimes(2);
   });
 
@@ -498,15 +1075,18 @@ describe("the ConPTY runtime circuit breaker", () => {
   });
 
   it("explains a runtime fallback with the runtime message", () => {
-    noticeWin32ConhostFallback(context(), "runtime-failure");
+    noticeWin32ConhostFallback(context(), { reason: "runtime-failure" });
     expect(notice2Spy.mock.calls[0]?.[0]()).toBe(
       "notices.win32-conpty-runtime-fallback",
     );
   });
 
   it("shares one explanation budget across both causes", () => {
-    noticeWin32ConhostFallback(context(), "runtime-failure");
-    noticeWin32ConhostFallback(context(), "missing-python");
+    noticeWin32ConhostFallback(context(), { reason: "runtime-failure" });
+    noticeWin32ConhostFallback(context(), {
+      reason: "missing-python",
+      diagnosis: diagnosis({ status: "missing" }),
+    });
     expect(notice2Spy).toHaveBeenCalledTimes(1);
   });
 
@@ -559,8 +1139,38 @@ describe("prewarmConPtyProfile", () => {
   });
 
   it("does nothing off Windows, before it reaches the Python check", async () => {
-    await prewarmConPtyProfile(context(), integratedProfile());
+    await prewarmConPtyProfile(
+      context(),
+      integratedProfile({ pythonExecutable: "" }),
+    );
     expect(checkWindowsPythonMock).not.toHaveBeenCalled();
+  });
+
+  it("does not recreate an invalidated spare after a pending diagnosis", async () => {
+    const pending = Promise.withResolvers<Win32PythonDiagnosis>(),
+      createControl = vi
+        .spyOn(CONPTY_DEPENDENCIES, "createDeferredControl")
+        .mockRejectedValue(new Error("Test stops before host boot")),
+      ctx = context(),
+      profile = integratedProfile({ pythonExecutable: "" });
+    checkWindowsPythonMock.mockReturnValueOnce(pending.promise);
+    try {
+      const prewarming = prewarmConPtyProfile(ctx, profile, {
+        platform: "win32",
+      });
+      expect(checkWindowsPythonMock).toHaveBeenCalledTimes(1);
+      CONPTY_HOST_POOL.clear();
+      pending.resolve(diagnosis());
+      await prewarming;
+      expect(createControl).not.toHaveBeenCalled();
+      // A later request can still warm the current configuration.
+      checkWindowsPythonMock.mockResolvedValueOnce(diagnosis());
+      await prewarmConPtyProfile(ctx, profile, { platform: "win32" });
+      expect(createControl).toHaveBeenCalledTimes(1);
+    } finally {
+      CONPTY_HOST_POOL.clear();
+      createControl.mockRestore();
+    }
   });
 
   it("boots no spare when the plugin unloads during its first Python check", async () => {
@@ -583,7 +1193,11 @@ describe("prewarmConPtyProfile", () => {
         }),
     );
     try {
-      const pending = prewarm(ctx, integratedProfile(), { platform: "win32" });
+      const pending = prewarm(
+        ctx,
+        integratedProfile({ pythonExecutable: "" }),
+        { platform: "win32" },
+      );
       // Obsidian unload runs callbacks registered so far, not later ones.
       for (const [dispose] of register.mock.calls) dispose();
       resolveCheck(diagnosis());
@@ -622,7 +1236,10 @@ describe("prewarmConPtyProfile on Windows", () => {
 
   it("boots one spare on the resolved interpreter when Python is usable", async () => {
     checkWindowsPythonMock.mockResolvedValue(diagnosis());
-    await prewarmOnWindows(context(), integratedProfile());
+    await prewarmOnWindows(
+      context(),
+      integratedProfile({ pythonExecutable: "" }),
+    );
     expect(ensureSpare).toHaveBeenCalledTimes(1);
     expect(ensureSpare?.mock.calls[0]?.[0]).toBe("C:\\Python312\\python.exe");
   });
@@ -633,7 +1250,10 @@ describe("prewarmConPtyProfile on Windows", () => {
       hostExecutable: "C:\\Python312\\python.exe",
     });
     checkWindowsPythonMock.mockResolvedValue(venv);
-    await prewarmOnWindows(context(), integratedProfile());
+    await prewarmOnWindows(
+      context(),
+      integratedProfile({ pythonExecutable: "" }),
+    );
     // The pool key has to be the value the open path acquires with, or the
     // spare is never reused.
     expect(ensureSpare?.mock.calls[0]?.[0]).toBe(
@@ -652,7 +1272,10 @@ describe("prewarmConPtyProfile on Windows", () => {
         transient: true,
       }),
     );
-    await prewarmOnWindows(context(), integratedProfile());
+    await prewarmOnWindows(
+      context(),
+      integratedProfile({ pythonExecutable: "" }),
+    );
     expect(ensureSpare).not.toHaveBeenCalled();
     expect(notice2Spy).not.toHaveBeenCalled();
   });
@@ -663,7 +1286,10 @@ describe("prewarmConPtyProfile on Windows", () => {
       checkWindowsPythonMock.mockResolvedValue(
         diagnosis({ executable: "python", status }),
       );
-      await prewarmOnWindows(context(), integratedProfile());
+      await prewarmOnWindows(
+        context(),
+        integratedProfile({ pythonExecutable: "" }),
+      );
       expect(ensureSpare).not.toHaveBeenCalled();
       expect(notice2Spy).not.toHaveBeenCalled();
     },
@@ -676,33 +1302,42 @@ describe("prewarmConPtyProfile on Windows", () => {
       settings.value = { ...settings.value, prewarmConPty: false };
       return diagnosis();
     });
-    await prewarmOnWindows(context("", settings), integratedProfile());
+    await prewarmOnWindows(
+      context("", settings),
+      integratedProfile({ pythonExecutable: "" }),
+    );
     expect(checkWindowsPythonMock).toHaveBeenCalledTimes(1);
     expect(ensureSpare).not.toHaveBeenCalled();
   });
 
   it("boots no spare when the breaker trips during the Python check", async () => {
     checkWindowsPythonMock.mockImplementation(async () => {
-      reportConPtyRuntimeFailure("python");
+      reportConPtyRuntimeFailure("");
       return diagnosis();
     });
-    await prewarmOnWindows(context(), integratedProfile());
+    await prewarmOnWindows(
+      context(),
+      integratedProfile({ pythonExecutable: "" }),
+    );
     expect(ensureSpare).not.toHaveBeenCalled();
   });
 
   it("still prewarms an interpreter when another configuration failed", async () => {
     reportConPtyRuntimeFailure("broken-python");
     checkWindowsPythonMock.mockResolvedValue(diagnosis());
-    await prewarmOnWindows(context(), integratedProfile());
+    await prewarmOnWindows(
+      context(),
+      integratedProfile({ pythonExecutable: "" }),
+    );
     expect(ensureSpare).toHaveBeenCalledTimes(1);
   });
 
   it("does not notify during prewarm", async () => {
     checkWindowsPythonMock.mockResolvedValue(diagnosis());
-    await prewarmOnWindows(context(), integratedProfile());
-    expect(checkWindowsPythonMock.mock.calls[0]?.[3]).toEqual({
-      notify: false,
-    });
+    await prewarmOnWindows(
+      context(),
+      integratedProfile({ pythonExecutable: "" }),
+    );
     expect(notice2Spy).not.toHaveBeenCalled();
   });
 
@@ -740,14 +1375,35 @@ describe("prewarmConPtyProfile on Windows", () => {
     );
   });
 
-  it("lets a non-empty profile field override the plugin-level setting", async () => {
-    checkWindowsPythonMock.mockResolvedValue(diagnosis());
-    await prewarmOnWindows(
-      context("D:\\Tools\\python.exe"),
-      integratedProfile({ pythonExecutable: "C:\\Profile\\python.exe" }),
-    );
-    expect(checkWindowsPythonMock.mock.calls[0]?.[1]).toBe(
-      "C:\\Profile\\python.exe",
-    );
-  });
+  it.each(["python", "C:\\Profile\\python.exe", "/opt/python3"])(
+    "skips prewarming the profile override %s",
+    async (pythonExecutable) => {
+      checkWindowsPythonMock.mockResolvedValue(diagnosis());
+      await prewarmOnWindows(
+        context("D:\\Tools\\python.exe"),
+        integratedProfile({ pythonExecutable }),
+      );
+      expect(checkWindowsPythonMock).not.toHaveBeenCalled();
+      expect(ensureSpare).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    "/opt/python3",
+    "\\tools\\python.exe",
+    "\\\\server\\share\\python.exe",
+    "bin/python",
+    "C:python.exe",
+  ])(
+    "skips prewarming an excluded inherited value %s",
+    async (pythonExecutable) => {
+      checkWindowsPythonMock.mockResolvedValue(diagnosis());
+      await prewarmOnWindows(
+        context(pythonExecutable),
+        integratedProfile({ pythonExecutable: "" }),
+      );
+      expect(checkWindowsPythonMock).not.toHaveBeenCalled();
+      expect(ensureSpare).not.toHaveBeenCalled();
+    },
+  );
 });
