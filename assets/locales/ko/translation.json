@@ -206,9 +206,9 @@
     "win32-exit-251": "$t(generic.platforms.win32) refused to start '{{executable}}' (exit code 251). Check that it is an executable you may run and that the $t(generic.profile)'s working directory exists.",
     "win32-exit-9009": "$t(generic.platforms.win32) could not find '{{executable}}' (exit code 9009). Check the $t(generic.executable) path in the $t(generic.profile).",
     "win32-exit-c0000142": "'{{executable}}' failed to initialize its console (exit code 3221225794 / 0xC0000142). Switch the $t(generic.platforms.win32) terminal backend to 'ConHost' for this $t(generic.profile).",
-    "win32-python-missing": "No usable $t(generic.Python) found on $t(generic.platforms.win32) (tried {{tried}}). Install $t(generic.Python) 3.9 or newer from https://www.python.org/downloads/ or run 'winget install -e --id Python.Python.3.14'.",
-    "win32-python-store-stub": "'{{executable}}' opens the Microsoft Store instead of running $t(generic.Python). Install $t(generic.Python) from https://www.python.org/downloads/ or run 'winget install -e --id Python.Python.3.14'.",
-    "win32-python-too-old": "'{{executable}}' is $t(generic.Python) {{version}}; 3.9 or newer is required. Update from https://www.python.org/downloads/, or set another $t(generic.Python) $t(generic.executable) in the plugin settings (or override it in the $t(generic.profile))."
+    "win32-python-missing": "No usable $t(generic.Python) found (tried {{tried}}). Install it from https://www.python.org/downloads/, then select '$t(settings.python-recheck)' in the plugin settings.",
+    "win32-python-store-stub": "'{{executable}}' opens the Microsoft Store instead of $t(generic.Python). Install $t(generic.Python) from https://www.python.org/downloads/, then select '$t(settings.python-recheck)' in the plugin settings.",
+    "win32-python-too-old": "'{{executable}}' is $t(generic.Python) {{version}}, older than 3.9. Update it, or set another $t(generic.Python) $t(generic.executable) in the plugin settings."
   },
   "generic": {
     "Python": "Python",
@@ -331,11 +331,11 @@
     "resizer-install-command-copied": "Install command copied.",
     "spawning-terminal": "$t(generic.terminal) $t(generic.spawn_gerund) 중: {{title}}",
     "terminal-exited": "$t(generic.terminal) $t(generic.exit_past): {{code}}",
-    "win32-conhost-fallback": "$t(generic.Python) 3.9 or newer was not found, so this $t(generic.terminal) is using ConHost, the classic Windows console. Full-screen apps may not draw or resize correctly. Install $t(generic.Python) from https://www.python.org/downloads/ or run 'winget install -e --id Python.Python.3.14', then select '$t(settings.python-recheck)' in the plugin settings (or restart Obsidian) to retry ConPTY.",
-    "win32-conpty-runtime-fallback": "The ConPTY host failed to start, so terminals using this $t(generic.Python) configuration are using ConHost. Select '$t(settings.python-recheck)' in the plugin settings to try ConPTY again. If this keeps happening, reinstall $t(generic.Python) 3.9 or newer from https://www.python.org/downloads/.",
+    "win32-conhost-fallback": "This $t(generic.terminal) is using ConHost because ConPTY needs $t(generic.Python) 3.9 or newer. Full-screen apps may not draw or resize correctly.",
+    "win32-conpty-runtime-fallback": "The ConPTY host failed to start, so terminals using this $t(generic.Python) configuration are using ConHost. Select '$t(settings.python-recheck)' in the plugin settings to try ConPTY again.",
     "win32-python-posix-path": "The profile Python path '{{executable}}' looks like a POSIX path. On Windows it resolves from the current drive root and may run a different program. Check this profile's Python setting even if another interpreter is found.",
     "win32-resizer-packages-missing": "ConHost resizing is disabled because its $t(generic.Python) packages are missing. This also applies when ConPTY falls back to ConHost. In the profile settings, select ConHost as the Windows terminal backend and click Check beside the $t(generic.Python) executable. Copy the install command and run it in PowerShell. If this profile used ConPTY, switch the backend back to ConPTY. Then reopen the terminal.",
-    "win32-resizer-python-missing": "No usable $t(generic.Python) 3.9 or newer was found (tried '{{executable}}'), so this ConHost $t(generic.terminal) opened without automatic resizing. Install $t(generic.Python) from https://www.python.org/downloads/ and the resizer packages to enable it."
+    "win32-resizer-python-missing": "No usable $t(generic.Python) 3.9 or newer found (tried '{{executable}}'), so this ConHost $t(generic.terminal) has no automatic resizing."
   },
   "profile-name-formats": {
     "long": "$t(generic.profile-types.{{info.profile.type}}) 프로필: {{info.nameOrID}} (ID: {{info.id}})",

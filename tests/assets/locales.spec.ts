@@ -86,6 +86,29 @@ describe("PluginLocales", () => {
     }
   });
 
+  it("uses the concise Windows Python notices in all 49 locales", async () => {
+    expect(PluginLocales.LANGUAGES).toHaveLength(49);
+    for (const language of PluginLocales.LANGUAGES) {
+      const translation = await PluginLocales.RESOURCES[language].translation();
+      expect(translation.notices, language).toMatchObject({
+        "win32-conhost-fallback":
+          "This $t(generic.terminal) is using ConHost because ConPTY needs $t(generic.Python) 3.9 or newer. Full-screen apps may not draw or resize correctly.",
+        "win32-conpty-runtime-fallback":
+          "The ConPTY host failed to start, so terminals using this $t(generic.Python) configuration are using ConHost. Select '$t(settings.python-recheck)' in the plugin settings to try ConPTY again.",
+        "win32-resizer-python-missing":
+          "No usable $t(generic.Python) 3.9 or newer found (tried '{{executable}}'), so this ConHost $t(generic.terminal) has no automatic resizing.",
+      });
+      expect(translation.errors, language).toMatchObject({
+        "win32-python-missing":
+          "No usable $t(generic.Python) found (tried {{tried}}). Install it from https://www.python.org/downloads/, then select '$t(settings.python-recheck)' in the plugin settings.",
+        "win32-python-store-stub":
+          "'{{executable}}' opens the Microsoft Store instead of $t(generic.Python). Install $t(generic.Python) from https://www.python.org/downloads/, then select '$t(settings.python-recheck)' in the plugin settings.",
+        "win32-python-too-old":
+          "'{{executable}}' is $t(generic.Python) {{version}}, older than 3.9. Update it, or set another $t(generic.Python) $t(generic.executable) in the plugin settings.",
+      });
+    }
+  });
+
   it("provides automatic-check and POSIX-path guidance in every locale", async () => {
     for (const language of PluginLocales.LANGUAGES) {
       const translation = await PluginLocales.RESOURCES[language].translation();

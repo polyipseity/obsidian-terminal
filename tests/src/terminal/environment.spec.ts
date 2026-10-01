@@ -297,6 +297,29 @@ describe("env key sanitization", () => {
 // ── profile environment variables ──────────────────────────────────────────
 
 describe("applyEnv profile option", () => {
+  it.each(["default", "external"] as const)(
+    "omits empty names in %s mode without changing other entries",
+    async (fixed) => {
+      const base = { "": "inherited", VALID: "old" },
+        profile: readonly (readonly [string, string])[] = [
+          ["", ""],
+          ["", "ignored"],
+          ["VALID", "kept"],
+          ["EMPTY_VALUE", ""],
+          ["A=B", "1"],
+        ],
+        result = await applyEnv({ base, fixed, profile });
+      expect(Object.keys(result)).not.toContain("");
+      expect(result).toMatchObject({
+        VALID: "kept",
+        EMPTY_VALUE: "",
+        "A=B": "1",
+      });
+      expect(base).toEqual({ "": "inherited", VALID: "old" });
+      expect(profile[0]).toEqual(["", ""]);
+    },
+  );
+
   it("merges parsed entries onto the env, overriding existing keys", async () => {
     const result = await applyEnv({
       base: { FOO: "old" },

@@ -304,6 +304,8 @@ function mergeEnvPairs(
     }
   }
   for (const [key, value] of pairs) {
+    // The settings editor can leave an unfinished, empty-named row.
+    if (key === "") continue;
     env[key] = value;
   }
   return env;
@@ -320,6 +322,7 @@ async function sanitizeEnv(
   const env: NodeJS.ProcessEnv = {};
   for (const [key, value] of Object.entries(base)) {
     if (
+      key === "" ||
       SANITIZED_ENV_KEYS.has(key) ||
       SANITIZED_ENV_PREFIXES.some((p) => key.startsWith(p))
     ) {

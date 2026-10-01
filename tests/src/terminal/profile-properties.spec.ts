@@ -10,6 +10,9 @@
  */
 import { createInstance } from "i18next";
 import { Storage } from "happy-dom";
+import childProcess from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { createServer } from "node:net";
 import {
   SI_PREFIX_SCALE,
   StorageSettingsManager,
@@ -23,7 +26,10 @@ import type {
   Win32PythonDiagnosis,
   Win32PythonSpawn,
 } from "../../../src/terminal/win32-doctor.js";
-import { TERMINAL_EXIT_CLEANUP_WAIT } from "../../../src/magic.js";
+import {
+  TERMINAL_EXIT_CLEANUP_WAIT,
+  WINDOWS_CONHOST_PATH,
+} from "../../../src/magic.js";
 import {
   spawnExternalTerminalEmulator,
   XtermTerminalEmulator,
@@ -82,14 +88,21 @@ vi.mock("../../../src/terminal/emulator.js", async (importOriginal) => ({
   spawnExternalTerminalEmulator: vi.fn().mockResolvedValue(void 0),
 }));
 
+// The build loads Python source as a lazy promise; Vitest treats it as an asset URL.
+vi.mock("../../../src/terminal/win32_conpty.py", () => ({
+  default: Promise.resolve("test host"),
+}));
+
 import {
   CONPTY_DEPENDENCIES,
   CONPTY_HOST_POOL,
   ConPtyControlError,
   ConPtySetupError,
+  type ConPtyReadyEvent,
   Pseudoterminal,
   RefPsuedoterminal,
   TextPseudoterminal,
+  WindowsNamedPipeControlChannel,
 } from "../../../src/terminal/pseudoterminal.js";
 import { LocalSettings, Settings } from "../../../src/settings-data.js";
 import { PROFILE_PRESETS } from "../../../src/terminal/profile-presets.js";
@@ -284,6 +297,141 @@ describe("openProfile with saved Windows backend choices", () => {
     resetWin32FallbackNotice();
     vi.restoreAllMocks();
   });
+
+  it.each(
+    ["warm", "cold", "ConHost"].flatMap((path) =>
+      [{ "": "" }, { "": "", VALID: "kept" }].map((environment) => ({
+        path,
+        environment,
+      })),
+    ),
+  )(
+    "opens $path with $environment without passing an empty name or blaming Python",
+    async ({ path, environment }) => {
+      Object.defineProperty(Pseudoterminal, "PLATFORM_PSEUDOTERMINAL", {
+        configurable: true,
+        value: Pseudoterminal.PLATFORM_PSEUDOTERMINALS.win32,
+      });
+      const ctx = Object.assign(context(), {
+          localSettings: { value: { hasUsedIntegratedTerminal: true } },
+        }),
+        nativeSpawn = childProcess.spawn.bind(childProcess),
+        children: ReturnType<typeof nativeSpawn>[] = [],
+        startHost = () => {
+          const host = nativeSpawn(
+            process.execPath,
+            ["-e", "process.stdin.resume();"],
+            {
+              stdio: ["pipe", "pipe", "pipe"],
+            },
+          );
+          children.push(host);
+          return host;
+        },
+        server = createServer();
+      // Exercise the shipped Windows backends without opening a named pipe.
+      vi.spyOn(server, "listen").mockImplementation(() => {
+        server.emit("listening");
+        return server;
+      });
+      const control = await WindowsNamedPipeControlChannel.create({
+          createServer: vi.fn(() => server),
+          deferred: true,
+          pipePath: vi.fn(() => "test-control-pipe"),
+          randomUUID,
+        }),
+        ready = Promise.withResolvers<ConPtyReadyEvent>(),
+        acceptHost = (host: ReturnType<typeof startHost>): void => {
+          if (!host.pid) throw new Error("Test host has no PID");
+          ready.resolve({
+            attestation:
+              "create-pseudoconsole+authenticated-control-channel+job-object-assigned",
+            childPid: host.pid + 1,
+            controlChannelAuthenticated: true,
+            createPseudoConsole: true,
+            event: "ready",
+            hostPid: host.pid,
+            jobObjectAssigned: true,
+          });
+        },
+        warmHost = path === "warm" ? startHost() : null,
+        start = vi.spyOn(control, "start").mockImplementation(async () => {
+          if (warmHost) acceptHost(warmHost);
+        }),
+        spawnHost = vi
+          .spyOn(CONPTY_DEPENDENCIES, "spawn")
+          .mockImplementation(async (_executable, _args, options) => {
+            if (Object.hasOwn(options.env, "")) throw new Error("spawn EINVAL");
+            const host = startHost();
+            acceptHost(host);
+            return host;
+          }),
+        spawnProcess = vi
+          .spyOn(childProcess, "spawn")
+          .mockImplementation((_executable, _args, options) => {
+            // Registry queries return no entries; ConHost and its resizer live
+            // until cleanup, with the resizer exiting when stdin closes.
+            const child = nativeSpawn(
+              process.execPath,
+              ["-e", _executable === "reg" ? "" : "process.stdin.resume();"],
+              options,
+            );
+            children.push(child);
+            return child;
+          });
+      Object.assign(control, { ready: ready.promise });
+      vi.spyOn(control, "kill").mockImplementation(async () => {
+        for (const child of children) child.kill();
+      });
+      vi.spyOn(CONPTY_DEPENDENCIES, "createControl").mockResolvedValue(control);
+      vi.spyOn(CONPTY_DEPENDENCIES, "materializeSource").mockResolvedValue(
+        "test-host.py",
+      );
+      vi.spyOn(CONPTY_HOST_POOL, "acquire").mockReturnValue(
+        warmHost
+          ? { control, host: warmHost, generation: CONPTY_HOST_POOL.generation }
+          : null,
+      );
+      vi.spyOn(CONPTY_HOST_POOL, "release").mockImplementation(() => {});
+      vi.spyOn(CONPTY_HOST_POOL, "ensureSpare").mockImplementation(() => {});
+      const profile = integratedProfile({
+        environment: Object.entries(environment),
+        win32Backend: path === "ConHost" ? "legacy" : "conpty",
+      });
+      let pty: RefPsuedoterminal<Pseudoterminal> | null = null;
+      try {
+        pty = await openProfile(ctx, profile);
+        expect(pty).not.toBeNull();
+        await pty?.shell;
+        await tick();
+        expect(start).toHaveBeenCalledTimes(path === "warm" ? 1 : 0);
+        expect(spawnHost).toHaveBeenCalledTimes(path === "cold" ? 1 : 0);
+        const launchEnv =
+          path === "warm"
+            ? start.mock.calls[0]?.[0].env
+            : path === "cold"
+              ? spawnHost.mock.calls[0]?.[2].env
+              : spawnProcess.mock.calls.find(
+                  ([executable]) => executable === WINDOWS_CONHOST_PATH,
+                )?.[2]?.env;
+        expect(launchEnv).toBeDefined();
+        expect(Object.keys(launchEnv ?? {})).not.toContain("");
+        if ("VALID" in environment) expect(launchEnv?.VALID).toBe("kept");
+        for (const [, , options] of spawnProcess.mock.calls)
+          expect(Object.keys(options.env ?? {})).not.toContain("");
+        expect(notice2Spy).not.toHaveBeenCalled();
+        expect(isConPtyRuntimeUnavailable("python")).toBe(false);
+        expect(profile.environment).toEqual(Object.entries(environment));
+      } finally {
+        await pty?.kill().catch(() => {});
+        await pty?.onExit.catch(() => {});
+        for (const child of children) child.kill();
+        await control.dispose();
+      }
+      expect(notice2Spy).not.toHaveBeenCalled();
+      expect(isConPtyRuntimeUnavailable("python")).toBe(false);
+    },
+  );
 
   it("rejects an empty executable without touching Python, the pool or the breaker", async () => {
     const ctx = context(),
@@ -855,12 +1003,12 @@ describe("openProfile with saved Windows backend choices", () => {
     {
       status: "store-stub",
       version: "",
-      guidance: "opens the Microsoft Store instead of running Python",
+      guidance: "opens the Microsoft Store instead of Python",
     },
     {
       status: "too-old",
       version: "3.8.10",
-      guidance: "is Python 3.8.10; 3.9 or newer is required",
+      guidance: "is Python 3.8.10, older than 3.9",
     },
   ])(
     "explains a $status Python when opening ConHost once per session",
@@ -915,7 +1063,11 @@ describe("openProfile with saved Windows backend choices", () => {
       expect(message).toContain(executable);
       if (status === "missing") {
         expect(message).toContain(tried.join(", "));
+      } else {
+        expect(message).not.toContain("No usable Python found");
       }
+      expect(message).not.toContain("was not found");
+      expect(message).toContain("\n\n");
       expect(message).not.toContain("{{");
     },
   );
@@ -1056,6 +1208,19 @@ describe("the ConPTY runtime circuit breaker", () => {
     expect(notice2Spy.mock.calls[0]?.[0]()).toBe(
       "notices.win32-conpty-runtime-fallback",
     );
+  });
+
+  it("does not suggest Python is missing or too old after a host failure", async () => {
+    const ctx = context(),
+      i18n = createInstance();
+    await i18n.init({ lng: "en", resources: { en: { translation: en } } });
+    Object.assign(ctx.language, { value: i18n });
+    noticeWin32ConhostFallback(ctx, { reason: "runtime-failure" });
+    const message = notice2Spy.mock.calls[0]?.[0]();
+    expect(message).toContain("The ConPTY host failed to start");
+    expect(message).not.toContain("needs Python");
+    expect(message).not.toContain("not found");
+    expect(message).not.toContain("reinstall");
   });
 
   it("shares one explanation budget across both causes", () => {

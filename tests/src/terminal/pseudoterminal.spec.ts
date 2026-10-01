@@ -2197,11 +2197,6 @@ describe("ConPTY ready transition", () => {
   }
   it.each<InvalidWarmProfile>([
     {
-      name: "an empty env key",
-      executable: "cmd.exe",
-      environment: [["", ""]],
-    },
-    {
       name: "an env key containing =",
       executable: "cmd.exe",
       environment: [["A=B", "1"]],
