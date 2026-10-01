@@ -2,21 +2,20 @@
 "obsidian-terminal": major
 ---
 
-Use ConPTY by default for Windows integrated terminals, improving full-screen application drawing and resizing. ConPTY requires Python 3.9 or newer and no pip packages; installation examples recommend Python 3.14.
+Windows integrated terminals now use ConPTY by default. ConPTY requires Python 3.9 or newer and no pip packages.
 
-**Breaking:** remove the "Shell pipes" backend and "Use Windows 'conhost.exe'" setting. The new **Windows terminal backend** profile setting records the user's choice. Previously auto-demoted ConHost profiles migrate to ConPTY once on upgrade, regardless of this device's Python installation; explicit ConHost choices remain ConHost.
+**Breaking:** the "Use Windows conhost.exe" toggle and its pipe mode are removed. Every existing Windows integrated profile upgraded from 3.27.x now selects ConPTY, whatever the old toggle said. To keep using ConHost, choose **ConHost** in the new **Windows terminal backend** profile setting. Without a working Python 3.9 or newer, terminals fall back to ConHost at runtime without rewriting the profile.
 
-- Add a Windows **Python executable** setting with automatic detection, interpreter status, and a download link when Python is missing. Profiles can specify their own interpreter. Resolved paths and runtime backend fallback stay out of synced settings. Missing Python falls back to ConHost without its resizer; later checks can make ConPTY available without rewriting profiles.
-- On Windows, try the profile's Python interpreter, then the plugin interpreter, then `python`, `python3`, and `py -3`, using the first working interpreter without rewriting stored profile values.
-- Limit ConPTY startup fallback to the affected Python configuration, and allow a successful explicit Python recheck to retry ConPTY without reloading Obsidian.
-- Add **Prewarm ConPTY terminal host**, enabled by default on Windows, to prepare a spare host and avoid Python startup time when opening a terminal.
-- Guide users with missing ConHost resizer packages to ConPTY or a copied installation command explicitly intended for PowerShell, with literal quoting for interpreter paths.
-- Preserve bare batch launchers without shadowing native executables, and share concurrent ConPTY host-file repairs.
-- Resolve native Windows system programs through Sysnative when the ConPTY host uses 32-bit Python, and refresh the registry PATH when rechecking Python after installation.
-- Keep the newest Python check authoritative when two checks overlap, so an earlier check finishing later neither replaces the interpreter the recheck found nor discards it.
-- Retry ConPTY when restarting or restoring a terminal tab whose stored choice is ConPTY after Python becomes available, while preserving explicit ConHost choices.
-- Keep terminals responsive under heavy output on every platform using sliced writes and backpressure. Reduce resize throttling from 0.5 to 0.1 seconds and start terminals at the fitted pane size.
-- Suppress exit notifications for intentional closes and restarts while retaining notifications for spontaneous exits.
-- Detach closing terminals immediately and dispose their UI before waiting for process exit, including when a child ignores termination.
+- Programs started from a ConPTY terminal outside its console, including GUI apps, detached launches, and agent-started servers that detach, keep running after the terminal closes. Programs attached to its console end with it.
+- Windows-only profiles that still carry the old `python3` default now inherit the plugin-level Python setting. Custom interpreters and cross-platform profiles retain their values. Update every device syncing the vault: a device still on 3.27.x treats the migrated, empty Python field as "no Python" and runs ConHost without its resizer.
+- The new Windows **Python executable** setting provides automatic detection and interpreter status. Windows terminals try the profile's interpreter, then the plugin's interpreter, then `python`, `python3`, and `py -3`, using the first working interpreter. Detected paths stay out of synced settings.
+- **Prewarm ConPTY terminal host**, enabled by default on Windows, keeps a spare background Python process to reduce terminal startup time. Startup prewarming begins only after an integrated terminal has been used successfully on this device; that usage record stays local and is never synced.
+- Automatic Windows Python checks run only bare command names and drive-absolute paths. Startup checks only the plugin-level interpreter; profile overrides are checked when opening the profile's terminal. Settings and profile-editor checks run when a value is committed by leaving or changing the field, or with **Check** / **Recheck**, not during typing pauses.
+- Failed Python checks can be retried after a short cache period or immediately with **Recheck**. Python status identifies a configured interpreter that could not be used and the working fallback, when available. ConHost fallback notices include guidance for missing or unusable Python.
+- ConPTY shell lookup honours `NoDefaultCurrentDirectoryInExePath`, skipping implicit current-directory searches when it is set.
+- ConHost resizer package checks and installation guidance use minimum versions without upper limits: `psutil>=5.9.5`, `pywinctl>=0.0.50`, and `typing_extensions>=4.7.1`.
+- Closing a tab cancels pending ConPTY startup without launching a fallback shell or showing a startup-error notice. ConPTY startup failures show one error notice.
+- Terminals handle heavy output with sliced writes and backpressure on every platform. Resize throttling drops from 0.5 to 0.1 seconds, and terminals start at the fitted pane size.
+- Intentional closes and restarts suppress exit notifications. Closing terminals detach and dispose their UI before waiting for process exit, including when a child ignores termination.
 
 Fixes [GH#104](https://github.com/polyipseity/obsidian-terminal/issues/104); addresses [GH#77](https://github.com/polyipseity/obsidian-terminal/issues/77), [GH#79](https://github.com/polyipseity/obsidian-terminal/issues/79), [GH#115](https://github.com/polyipseity/obsidian-terminal/issues/115), [GH#142](https://github.com/polyipseity/obsidian-terminal/issues/142), [GH#145](https://github.com/polyipseity/obsidian-terminal/issues/145), [GH#153](https://github.com/polyipseity/obsidian-terminal/issues/153), and [GH#168](https://github.com/polyipseity/obsidian-terminal/issues/168). ([GH#183](https://github.com/polyipseity/obsidian-terminal/pull/183) by [@janah01](https://github.com/janah01))
