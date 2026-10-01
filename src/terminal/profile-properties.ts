@@ -242,19 +242,13 @@ export const PROFILE_PROPERTIES: {
       if (!Settings.Profile.isCompatible(profile, Platform.CURRENT)) {
         return null;
       }
-      if (
-        deopaque(Platform.CURRENT) === "win32" &&
-        win32Backend === "conpty" &&
-        executable === ""
-      ) {
+      const isWin = deopaque(Platform.CURRENT) === "win32";
+      if (isWin && win32Backend === "conpty" && executable === "") {
         throw new Error(
           context.language.value.t("errors.profile-executable-empty"),
         );
       }
-      if (
-        deopaque(Platform.CURRENT) === "win32" &&
-        /^\/(?![\\/])/u.test(pythonExecutable)
-      ) {
+      if (isWin && /^\/(?![\\/])/u.test(pythonExecutable)) {
         notice2(
           () =>
             context.language.value.t("notices.win32-python-posix-path", {
@@ -268,25 +262,22 @@ export const PROFILE_PROPERTIES: {
       // Keep the configuration generation across the awaited Python diagnosis.
       const conPtyPoolGeneration = CONPTY_HOST_POOL.generation,
         fallbackPythonExecutable = context.settings.value.pythonExecutable,
-        effectivePythonExecutable =
-          deopaque(Platform.CURRENT) === "win32"
-            ? inheritedPythonExecutable(
-                pythonExecutable,
-                fallbackPythonExecutable,
-              )
-            : pythonExecutable,
-        diagnosis =
-          deopaque(Platform.CURRENT) === "win32"
-            ? await checkWindowsPython(context, effectivePythonExecutable)
-            : null;
+        effectivePythonExecutable = isWin
+          ? inheritedPythonExecutable(
+              pythonExecutable,
+              fallbackPythonExecutable,
+            )
+          : pythonExecutable,
+        diagnosis = isWin
+          ? await checkWindowsPython(context, effectivePythonExecutable)
+          : null;
       checkAborted();
       const pythonUsable = diagnosis?.status === "ok",
         // A usable interpreter can still lack a confirmed ConPTY host.
         hostConfirmed = pythonUsable && diagnosis.hostExecutable !== null,
-        requestedBackend = win32Backend,
         backend = diagnosis
           ? resolveWin32Backend(
-              requestedBackend,
+              win32Backend,
               hostConfirmed &&
                 !isConPtyRuntimeUnavailable(
                   effectivePythonExecutable,
@@ -294,14 +285,14 @@ export const PROFILE_PROPERTIES: {
                 ),
             )
           : win32Backend,
-        fallback = backend !== requestedBackend,
-        requestPythonExecutable = diagnosis
-          ? pythonUsable
-            ? (win32SpawnPythonExecutable(backend, diagnosis) ?? void 0)
-            : // The resizer must not be handed a rejected interpreter;
-              // the backend-specific notice below explains the failure.
-              void 0
-          : pythonExecutable || void 0;
+        fallback = backend !== win32Backend;
+      let spawnPythonExecutable = diagnosis
+        ? pythonUsable
+          ? (win32SpawnPythonExecutable(backend, diagnosis) ?? void 0)
+          : // The resizer must not be handed a rejected interpreter;
+            // the backend-specific notice below explains the failure.
+            void 0
+        : pythonExecutable || void 0;
       if (diagnosis && fallback) {
         self.console.warn(
           `ConPTY unavailable, opening on ConHost: ${diagnosis.status} (${diagnosis.detail})`,
@@ -320,7 +311,6 @@ export const PROFILE_PROPERTIES: {
           );
         }
       }
-      let spawnPythonExecutable = requestPythonExecutable;
       if (diagnosis && backend === "legacy") {
         // ConHost runs without a resizer; a definitively rejected Python or
         // missing packages opens resizer-less with one notice. A fallback
@@ -366,10 +356,7 @@ export const PROFILE_PROPERTIES: {
         // A host that dies before ready trips the breaker so the next open
         // falls back; this pane already shows the host's own error notice.
         pty.shell.catch(async (error: unknown) => {
-          const exit = await pty.onExit.then(
-            (code) => code,
-            () => null,
-          );
+          const exit = await pty.onExit.catch(() => null);
           if (!conPtyFailureCondemnsRuntime(error, exit)) return;
           /* @__PURE__ */ self.console.debug(error);
           // The resolved value is the Python check's cache key, so the

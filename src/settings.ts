@@ -961,6 +961,9 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
       removeCommitListeners = (): void => {
         pythonInput?.removeEventListener("change", commit);
         pythonInput?.removeEventListener("blur", commit);
+      },
+      repaint = (): void => {
+        if (visible && !disposed) ui.update();
       };
     // Settings tabs survive hide/show; onUnload only runs at plugin unload.
     this.#setPythonWidgetsVisible = (value): void => {
@@ -980,14 +983,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
     // The load-time check may still be probing when the tab opens; its
     // completion must replace the "checking" status without a reopen.
     this.#unregisterPythonDiagnosis?.();
-    this.#unregisterPythonDiagnosis = onPluginPythonDiagnosis(context, () => {
-      if (visible && !disposed) ui.update();
-    });
-    ui.finally(
-      onWindowsPythonStateChange(() => {
-        if (visible && !disposed) ui.update();
-      }),
-    );
+    this.#unregisterPythonDiagnosis = onPluginPythonDiagnosis(context, repaint);
+    ui.finally(onWindowsPythonStateChange(repaint));
     ui.newSetting(containerEl, (setting) => {
       setting
         .setName(i18n.t("settings.python-executable"))
@@ -1043,26 +1040,20 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
           checkingExplicitly = false;
           committedValue = void 0;
         }
-        const automatic = isAutomaticWindowsPythonExecutable(pythonExecutable),
-          rechecking = checking,
-          diagnosis = getWindowsPythonDiagnosis(
+        const diagnosis = getWindowsPythonDiagnosis(
             pythonExecutable,
             pythonExecutable,
           ),
-          notAutomatic = !automatic && !rechecking && !diagnosis,
-          // Status, transient failures and errno gate Download; the message
-          // also distinguishes configured values from discovered interpreters.
-          status = notAutomatic
-            ? "not-automatic"
-            : rechecking || !diagnosis
-              ? "checking"
-              : diagnosis.status,
+          notAutomatic =
+            !isAutomaticWindowsPythonExecutable(pythonExecutable) &&
+            !checking &&
+            !diagnosis,
           statusKey = notAutomatic
             ? "not-automatic"
-            : !diagnosis && !rechecking
+            : !diagnosis && !checking
               ? "unverified"
-              : pluginPythonStatusKey(diagnosis, rechecking, pythonExecutable),
-          i18nVariant = rechecking ? "ing" : "";
+              : pluginPythonStatusKey(diagnosis, checking, pythonExecutable),
+          i18nVariant = checking ? "ing" : "";
         setting.setName(i18n.t("settings.python-status")).setDesc(
           i18n.t(`settings.python-status-${statusKey}`, {
             candidate: diagnosis?.candidate,
@@ -1085,12 +1076,13 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
             .onClick(() => {
               openExternal(activeSelf(containerEl), PYTHON_DOWNLOADS_URL);
             });
+          // Only a settled, definitive failure offers Download.
           const hidden =
-            status === "checking" ||
-            status === "ok" ||
-            status === "not-automatic" ||
-            !!diagnosis?.transient ||
-            !!diagnosis?.errno;
+            checking ||
+            !diagnosis ||
+            diagnosis.status === "ok" ||
+            !!diagnosis.transient ||
+            !!diagnosis.errno;
           button.buttonEl.style.display = hidden ? "none" : "";
           if (!hidden) {
             button.setCta();
@@ -1106,7 +1098,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                 if (!checkingExplicitly) recheck();
               });
             });
-          if (rechecking || statusKey === "ok-fallback") {
+          if (checking || statusKey === "ok-fallback") {
             button.setCta();
           }
         });

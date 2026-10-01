@@ -226,9 +226,7 @@ export class XtermTerminalEmulator<A> {
           pty = await this.#opened;
         } catch (error) {
           if (!(
-            this.#opening.signal.aborted &&
-            error instanceof ConPtyControlError &&
-            error.reason === "aborted"
+            error instanceof ConPtyControlError && error.reason === "aborted"
           )) {
             throw error;
           }

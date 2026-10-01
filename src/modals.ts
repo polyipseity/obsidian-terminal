@@ -1059,6 +1059,10 @@ export class ProfileModal extends Modal {
           });
         }
         if (profile.type === "integrated") {
+          // This device runs Windows and the profile is enabled for it.
+          const isWin32Eligible = (): boolean =>
+            deopaque(Platform.CURRENT) === "win32" &&
+            Settings.Profile.isCompatible(profile, "win32");
           // Check the entire configuration pair: discovery can run the plugin fallback.
           const canCheckAutomatically = (): boolean =>
             isAutomaticWindowsPythonExecutable(profile.pythonExecutable) &&
@@ -1069,8 +1073,7 @@ export class ProfileModal extends Modal {
               settings.value.pythonExecutable,
               profile.win32Backend,
               // Platform changes invalidate pending checks and commit deduplication.
-              deopaque(Platform.CURRENT) === "win32" &&
-                Settings.Profile.isCompatible(profile, "win32"),
+              isWin32Eligible(),
             ]);
           let checkingPython = false,
             checkingExplicitly = false,
@@ -1104,8 +1107,7 @@ export class ProfileModal extends Modal {
             commit = (): void => {
               if (
                 disposed ||
-                deopaque(Platform.CURRENT) !== "win32" ||
-                !Settings.Profile.isCompatible(profile, "win32") ||
+                !isWin32Eligible() ||
                 !canCheckAutomatically() ||
                 committedKey === configurationKey()
               )
@@ -1163,9 +1165,7 @@ export class ProfileModal extends Modal {
                 pluginPython,
               ),
               key = configurationKey(),
-              win32Eligible =
-                deopaque(Platform.CURRENT) === "win32" &&
-                Settings.Profile.isCompatible(profile, "win32");
+              win32Eligible = isWin32Eligible();
             if (statusProbeKey !== key) {
               statusProbeKey = key;
               ++statusProbeGeneration;
@@ -1241,17 +1241,17 @@ export class ProfileModal extends Modal {
                       // The plugin-level check never writes its result into
                       // the field, so the detected name is shown here.
                       const detected = getWindowsPythonDiagnosis(
-                        settings.value.pythonExecutable,
-                        settings.value.pythonExecutable,
+                        pluginPython,
+                        pluginPython,
                       );
                       component.setPlaceholder(
                         win32Eligible
-                          ? settings.value.pythonExecutable
+                          ? pluginPython
                             ? i18n.t(
                                 `components.profile.${profile.type}.Python-executable-placeholder-default`,
                                 {
                                   interpolation: { escapeValue: false },
-                                  value: settings.value.pythonExecutable,
+                                  value: pluginPython,
                                 },
                               )
                             : detected?.status === "ok"
@@ -1300,9 +1300,7 @@ export class ProfileModal extends Modal {
                           profile.pythonExecutable,
                           settings.value.pythonExecutable,
                         ),
-                        windows =
-                          deopaque(Platform.CURRENT) === "win32" &&
-                          Settings.Profile.isCompatible(profile, "win32");
+                        windows = isWin32Eligible();
                       if (windows) {
                         CONPTY_HOST_POOL.clear();
                         invalidateWindowsPythonDiagnosis(
@@ -1362,11 +1360,7 @@ export class ProfileModal extends Modal {
                           .filter(
                             ([name]) =>
                               name === "Python" ||
-                              (deopaque(Platform.CURRENT) === "win32" &&
-                                Settings.Profile.isCompatible(
-                                  profile,
-                                  "win32",
-                                ) &&
+                              (isWin32Eligible() &&
                                 profile.win32Backend !== "conpty"),
                           )
                           .map(async ([name, { version: req }]) => {
@@ -1463,9 +1457,7 @@ export class ProfileModal extends Modal {
                 profile.pythonExecutable,
                 pluginPython,
               ),
-              win32Eligible =
-                deopaque(Platform.CURRENT) === "win32" &&
-                Settings.Profile.isCompatible(profile, "win32"),
+              win32Eligible = isWin32Eligible(),
               diagnosis = getWindowsPythonDiagnosis(effective, pluginPython),
               notAutomatic =
                 !canCheckAutomatically() && !diagnosis && !checkingPython,
@@ -1532,13 +1524,10 @@ export class ProfileModal extends Modal {
           });
           if (deopaque(Platform.CURRENT) === "win32") {
             ui.newSetting(element, (setting) => {
-              const win32Eligible =
-                deopaque(Platform.CURRENT) === "win32" &&
-                Settings.Profile.isCompatible(profile, "win32");
               // Always rendered; visibility toggled (see settings.ts
               // newPythonWidgets).
               setting.settingEl.style.display =
-                win32Eligible &&
+                isWin32Eligible() &&
                 profile.win32Backend === "legacy" &&
                 resizerPackagesMissing
                   ? ""

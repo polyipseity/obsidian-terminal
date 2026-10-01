@@ -330,7 +330,7 @@ export class Win32InputMode {
     isKeyDown: boolean,
     virtualKey = 0,
   ): string {
-    const virtualKey2 = virtualKey || this.#getVirtualKeyCode(event),
+    const virtualKey2 = virtualKey || this.virtualKey(event),
       scanCode = this.#codeToScanCode[event.code] ?? 0,
       keyDown = isKeyDown ? 1 : 0,
       controlKeyState = this.#getControlKeyState(event);
@@ -352,9 +352,19 @@ export class Win32InputMode {
       .join("");
   }
 
-  /** The virtual key `encode` would use for the event. */
+  /**
+   * The virtual key `encode` would use for the event. On keydown and keyup,
+   * `keyCode` is the virtual key the OS reported, so it follows the layout:
+   * Ctrl+Z on QWERTZ is `VK_Z` at the `KeyY` position, and numpad End without
+   * NumLock is `VK_END`. The position table covers a missing value. A
+   * keypress's `keyCode` is its character.
+   */
   public virtualKey(event: Win32KeyboardEvent): number {
-    return this.#getVirtualKeyCode(event);
+    const { keyCode } = event;
+    if (event.type !== "keypress" && keyCode > 0) {
+      return keyCode;
+    }
+    return this.#codeToVirtualKey[event.code] ?? 0;
   }
 
   /**
@@ -367,20 +377,6 @@ export class Win32InputMode {
       event.type !== "keypress" &&
       (event.keyCode === VK_PROCESSKEY || event.key === "Process")
     );
-  }
-
-  /**
-   * On keydown and keyup, `keyCode` is the virtual key the OS reported, so it
-   * follows the layout: Ctrl+Z on QWERTZ is `VK_Z` at the `KeyY` position,
-   * and numpad End without NumLock is `VK_END`. The position table covers a
-   * missing value. A keypress's `keyCode` is its character.
-   */
-  #getVirtualKeyCode(event: Win32KeyboardEvent): number {
-    const { keyCode } = event;
-    if (event.type !== "keypress" && keyCode > 0) {
-      return keyCode;
-    }
-    return this.#codeToVirtualKey[event.code] ?? 0;
   }
 
   /** One UTF-16 code unit per record. */
@@ -418,7 +414,7 @@ export class Win32InputMode {
       !event.metaKey &&
       !event.getModifierState?.("AltGraph")
     ) {
-      const virtualKey = this.#getVirtualKeyCode(event);
+      const virtualKey = this.virtualKey(event);
       // A base letter/digit is a chord, not a layout-produced AltGr character.
       // With Uc=0, conhost derives the Ctrl+Alt sequence from the virtual key.
       if (

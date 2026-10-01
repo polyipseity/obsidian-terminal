@@ -80,6 +80,8 @@ _MAX_DIMENSION = 32767
 _CHUNK_SIZE = 65536
 """Longest control line accepted before the fragment is discarded."""
 _MAX_CONTROL_LINE_BYTES = 64 * 1024
+"""Characters in a buffer that holds any Windows path and its final NUL."""
+_PATH_BUFFER_CHARACTERS = 32768
 
 """Local named-pipe prefixes accepted for the control channel."""
 _PIPE_PREFIXES = ("\\\\.\\pipe\\", "\\\\?\\pipe\\")
@@ -382,6 +384,13 @@ def _parse_dimension(text: str, name: str) -> int:
     return value
 
 
+def _parse_pipe_name(text: str) -> str:
+    """Parse the control pipe name given on the command line."""
+    if not text.lower().startswith(_PIPE_PREFIXES):
+        raise ValueError(f"not a local named pipe: {text}")
+    return text
+
+
 def parse_arguments(
     arguments: Sequence[str],
 ) -> DeferredArguments | HostArguments:
@@ -402,10 +411,7 @@ def parse_arguments(
     if values and values[0] == "--defer-session":
         if len(values) != 2:
             raise ValueError("--defer-session takes exactly one pipe name")
-        deferred_pipe = values[1]
-        if not deferred_pipe.lower().startswith(_PIPE_PREFIXES):
-            raise ValueError(f"not a local named pipe: {deferred_pipe}")
-        return DeferredArguments(pipe_name=deferred_pipe)
+        return DeferredArguments(pipe_name=_parse_pipe_name(values[1]))
     if "--" not in values:
         raise ValueError("a -- separator is required before the executable")
     separator = values.index("--")
@@ -417,9 +423,7 @@ def parse_arguments(
         raise ValueError(
             "expected <columns> <rows> <pipe-name> [--cwd <dir>] before --"
         )
-    pipe_name = head[2]
-    if not pipe_name.lower().startswith(_PIPE_PREFIXES):
-        raise ValueError(f"not a local named pipe: {pipe_name}")
+    pipe_name = _parse_pipe_name(head[2])
     columns = _parse_dimension(head[0], "columns")
     rows = _parse_dimension(head[1], "rows")
     if not command or not command[0]:
@@ -530,15 +534,15 @@ def _native_system_path(path: str) -> str:
 
 def _system_search_directories() -> tuple[str, ...]:
     """Keep Windows' application and system search directories, excluding cwd."""
-    application = ctypes.create_unicode_buffer(32768)
-    system = ctypes.create_unicode_buffer(32768)
-    windows = ctypes.create_unicode_buffer(32768)
+    application = ctypes.create_unicode_buffer(_PATH_BUFFER_CHARACTERS)
+    system = ctypes.create_unicode_buffer(_PATH_BUFFER_CHARACTERS)
+    windows = ctypes.create_unicode_buffer(_PATH_BUFFER_CHARACTERS)
     lengths = (
         _GetModuleFileNameW(None, application, len(application)),
         _GetSystemDirectoryW(system, len(system)),
         _GetWindowsDirectoryW(windows, len(windows)),
     )
-    if not all(0 < length < 32768 for length in lengths):
+    if not all(0 < length < _PATH_BUFFER_CHARACTERS for length in lengths):
         raise OSError("could not determine the Windows executable search directories")
     return (
         os.path.dirname(application.value),
@@ -600,7 +604,7 @@ def resolve_executable(executable: str, path: str | None) -> str:
         # Include the interpreter and Windows system directories, even when
         # the profile PATH omits them, before considering a batch launcher.
         if search_current_directory:
-            buffer = ctypes.create_unicode_buffer(32768)
+            buffer = ctypes.create_unicode_buffer(_PATH_BUFFER_CHARACTERS)
             for name in names:
                 length = _SearchPathW(None, name, None, len(buffer), buffer, None)
                 if 0 < length < len(buffer):
@@ -714,9 +718,9 @@ if sys.platform == "win32":
 
     """Milliseconds between child-liveness checks while a session runs."""
     _POLL_MILLISECONDS = 100
+    """Milliseconds a contained child may take to exit before it is terminated."""
+    _TERMINATE_GRACE_MILLISECONDS = 2000
 
-    """Seconds a contained child may take to exit before it is terminated."""
-    _TERMINATE_GRACE = 2.0
     """Seconds allowed for the output pump to observe end of file."""
     _OUTPUT_JOIN = 5.0
     """Seconds spent unblocking the stdin reader before the host exits."""
@@ -1067,7 +1071,7 @@ if sys.platform == "win32":
         """Terminate an uncontained suspended child and wait for cleanup."""
         if not _TerminateProcess(process, _EXIT_TERMINATED):
             raise _last_error()
-        _WaitForSingleObject(process, int(_TERMINATE_GRACE * 1000))
+        _WaitForSingleObject(process, _TERMINATE_GRACE_MILLISECONDS)
 
     def _terminate_job(job: int) -> None:
         """Terminate every contained process; Job close remains the fallback."""
@@ -1469,7 +1473,7 @@ if sys.platform == "win32":
                 ):
                     return _exit_code(self._process)
                 if self._input_eof.is_set():
-                    grace = int(_TERMINATE_GRACE * 1000)
+                    grace = _TERMINATE_GRACE_MILLISECONDS
                     # Terminate only a child that outlives its EOF grace.
                     if _WaitForSingleObject(self._process, grace) != _WAIT_OBJECT_0:
                         _TerminateJobObject(self._job, _EXIT_TERMINATED)
@@ -1477,7 +1481,7 @@ if sys.platform == "win32":
                     return _exit_code(self._process)
             # An explicit plugin stop terminates the job-assigned shell.
             _TerminateJobObject(self._job, _EXIT_TERMINATED)
-            _WaitForSingleObject(self._process, int(_TERMINATE_GRACE * 1000))
+            _WaitForSingleObject(self._process, _TERMINATE_GRACE_MILLISECONDS)
             return _exit_code(self._process)
 
         def _finish(self) -> None:
@@ -1753,8 +1757,8 @@ if sys.platform == "win32":
             """Resize the pseudoconsole unless it has already been closed.
 
             ``_handles`` is held only for the handle read: holding it across
-            ``ResizePseudoConsole`` blocked every input write for the whole
-            conhost reflow (milliseconds to tens of milliseconds).
+            ``ResizePseudoConsole`` would block every input write for the
+            whole conhost reflow (milliseconds to tens of milliseconds).
             ``_resize_lock`` keeps the close path from invalidating the
             handle while the call is in flight.
             """

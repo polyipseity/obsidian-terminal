@@ -60,7 +60,10 @@ export const WIN32_EXIT_DLL_INIT_FAILED = 3_221_225_794,
  * search. */
 const BARE_NAME = /^[^\\/:]+$/u,
   /** Drive-absolute (`C:\`) or UNC (`\\server\`) directory. */
-  ABSOLUTE_DIRECTORY = /^(?:[A-Za-z]:|[\\/])[\\/]/u;
+  ABSOLUTE_DIRECTORY = /^(?:[A-Za-z]:|[\\/])[\\/]/u,
+  /** A `WindowsApps` path segment; Microsoft Store aliases and packages live
+   * under such a directory. */
+  WINDOWS_APPS_SEGMENT = /[\\/]WindowsApps[\\/]/iu;
 
 /** Empty keeps discovery; automatic Windows checks accept names and drive-absolute paths. */
 export function isAutomaticWindowsPythonExecutable(
@@ -284,7 +287,7 @@ export function isStoreStub(
     return true;
   }
   return (
-    /[\\/]WindowsApps[\\/]/iu.test(executable) &&
+    WINDOWS_APPS_SEGMENT.test(executable) &&
     !parseWindowsPythonIdentity(result.stdout)
   );
 }
@@ -551,7 +554,7 @@ async function settlePythonCandidate(
     if (
       (confirmed.transient ?? false) &&
       !(
-        /[\\/]WindowsApps[\\/]/iu.test(canonicalExecutable) &&
+        WINDOWS_APPS_SEGMENT.test(canonicalExecutable) &&
         (confirmed.errno === "EACCES" || confirmed.errno === "EPERM")
       )
     ) {
@@ -740,7 +743,7 @@ export function invalidateConPtyRuntime(
     Symbol(),
   );
   invalidateWindowsPythonDiagnosis(pythonExecutable, fallbackPythonExecutable);
-  publishWindowsState();
+  notifyListeners(windowsStateListeners);
 }
 
 export function isConPtyRuntimeUnavailable(
@@ -784,8 +787,8 @@ export function onWindowsPythonStateChange(listener: () => void): () => void {
   return () => windowsStateListeners.delete(listener);
 }
 
-function publishWindowsState(): void {
-  for (const listener of windowsStateListeners) {
+function notifyListeners(listeners: Iterable<() => void>): void {
+  for (const listener of listeners) {
     try {
       listener();
     } catch (error) {
@@ -801,7 +804,7 @@ function publishWindowsDiagnosis(
 ): void {
   if (displayOwners.get(key) !== owner) return;
   displayDiagnoses.set(key, diagnosis);
-  publishWindowsState();
+  notifyListeners(windowsStateListeners);
 }
 
 function claimWindowsDiagnosis(key: string): symbol {
@@ -1111,15 +1114,6 @@ export function pluginPythonStatusKey(
   return status;
 }
 
-function isWin32Integrated<T extends Settings.Profile>(
-  profile: T,
-): profile is T & { readonly type: "integrated" } {
-  return (
-    profile.type === "integrated" &&
-    Settings.Profile.isCompatible(profile, "win32")
-  );
-}
-
 /**
  * Notifies whenever {@link runPluginPythonCheck} publishes a result, so an
  * open settings tab can replace its "checking" status without a reopen.
@@ -1177,9 +1171,9 @@ export async function runPluginPythonCheck(
     generation = (pluginCheckGenerations.get(context) ?? 0) + 1,
     // The newest check owns the UI; a moved field has the same effect, since
     // this result describes a value that is no longer configured.
-    stale = (pythonExecutable = settings.value.pythonExecutable): boolean =>
-      pluginCheckGenerations.get(context) !== generation ||
-      pythonExecutable !== configured;
+    stale = (): boolean =>
+      settings.value.pythonExecutable !== configured ||
+      pluginCheckGenerations.get(context) !== generation;
   pluginCheckGenerations.set(context, generation);
   if (refresh) {
     // An installer can add Python to the registry PATH while Obsidian keeps
@@ -1196,7 +1190,11 @@ export async function runPluginPythonCheck(
   const profileValues = new Set<string>();
   if (includeProfileOverrides) {
     for (const profile of Object.values(settings.value.profiles)) {
-      if (isWin32Integrated(profile) && profile.pythonExecutable) {
+      if (
+        profile.type === "integrated" &&
+        Settings.Profile.isCompatible(profile, "win32") &&
+        profile.pythonExecutable
+      ) {
         profileValues.add(profile.pythonExecutable);
       }
     }
@@ -1281,12 +1279,6 @@ export async function runPluginPythonCheck(
       );
     }
   }
-  for (const listener of pluginDiagnosisListeners.get(context) ?? []) {
-    try {
-      listener();
-    } catch (error) {
-      self.console.warn(error);
-    }
-  }
+  notifyListeners(pluginDiagnosisListeners.get(context) ?? []);
   return diagnosis;
 }

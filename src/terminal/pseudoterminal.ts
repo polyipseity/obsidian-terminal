@@ -2212,6 +2212,13 @@ interface ConPtySpareEntry {
   readonly evict: () => void;
 }
 
+/** Disposes a channel in the background; a failure is only debug-logged. */
+function disposeControlInBackground(control: ConPtyControlChannel): void {
+  control.dispose().catch((error: unknown) => {
+    /* @__PURE__ */ self.console.debug(error);
+  });
+}
+
 /**
  * Keeps one authenticated idle ConPTY host per Python executable.
  *
@@ -2247,9 +2254,7 @@ export class ConPtyHostPool {
      */
     entry.host.off("exit", entry.evict);
     if (!isRunning(entry.host)) {
-      entry.control.dispose().catch((error: unknown) => {
-        /* @__PURE__ */ self.console.debug(error);
-      });
+      disposeControlInBackground(entry.control);
       return null;
     }
     return {
@@ -2280,9 +2285,7 @@ export class ConPtyHostPool {
     if (isRunning(host)) {
       host.kill();
     }
-    control.dispose().catch((error: unknown) => {
-      /* @__PURE__ */ self.console.debug(error);
-    });
+    disposeControlInBackground(control);
   }
 
   /** Registers one spare and its eviction wiring. */
@@ -2296,9 +2299,7 @@ export class ConPtyHostPool {
       if (this.#spares.get(pythonExecutable) === entry) {
         this.#spares.delete(pythonExecutable);
       }
-      control.dispose().catch((error: unknown) => {
-        /* @__PURE__ */ self.console.debug(error);
-      });
+      disposeControlInBackground(control);
     };
     const entry: ConPtySpareEntry = { authenticated, control, evict, host };
     this.#spares.set(pythonExecutable, entry);
@@ -2386,9 +2387,7 @@ export class ConPtyHostPool {
       if (isRunning(entry.host)) {
         entry.host.kill();
       }
-      entry.control.dispose().catch((error: unknown) => {
-        /* @__PURE__ */ self.console.debug(error);
-      });
+      disposeControlInBackground(entry.control);
     }
   }
 
@@ -2442,9 +2441,9 @@ export const CONPTY_DEPENDENCIES: ConPtyPseudoterminalDependencies = {
   async materializeSource(source) {
     /*
      * The host source lives at a stable, content-addressed path and is
-     * verified once per session. A fresh random temp file per spawn defeated
-     * the antivirus per-file scan cache: both the write and python.exe's open
-     * were rescanned on every terminal open.
+     * verified once per session. A fresh random temp file per spawn would
+     * defeat the antivirus per-file scan cache: both the write and
+     * python.exe's open would be rescanned on every terminal open.
      */
     let pending = materializedConPtySources.get(source);
     if (pending) {
@@ -2536,6 +2535,12 @@ export const CONPTY_DEPENDENCIES: ConPtyPseudoterminalDependencies = {
   },
 };
 
+/** One startup attempt: a host process and the channel that controls it. */
+interface ConPtySession {
+  readonly control: ConPtyControlChannel;
+  readonly host: PipedChildProcess;
+}
+
 /**
  * ConPTY-backed Windows pseudoterminal.
  *
@@ -2550,10 +2555,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
   protected readonly control;
   protected readonly host;
   /** Current attempt changes once when an acquired spare fails before hello. */
-  #activeSession: Promise<{
-    readonly control: ConPtyControlChannel;
-    readonly host: PipedChildProcess;
-  }>;
+  #activeSession: Promise<ConPtySession>;
   readonly #dispose;
   #closing = false;
   #ready = false;
@@ -2607,12 +2609,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
           : typeof cwd === "string"
             ? cwd
             : (await url).fileURLToPath(cwd),
-      spawnColdHost = async (
-        interpreter: string,
-      ): Promise<{
-        readonly control: ConPtyControlChannel;
-        readonly host: PipedChildProcess;
-      }> => {
+      spawnColdHost = async (interpreter: string): Promise<ConPtySession> => {
         // Track ownership and the invocation boundary across awaited setup.
         let control0: ConPtyControlChannel | null = null,
           invokingHost = false;
@@ -2732,11 +2729,9 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
           return false;
         }
       },
-      initialSession = (async (): Promise<{
-        readonly control: ConPtyControlChannel;
-        readonly host: PipedChildProcess;
-        readonly startFailed?: boolean;
-      }> => {
+      initialSession = (async (): Promise<
+        ConPtySession & { readonly startFailed?: boolean }
+      > => {
         if (!pythonExecutable) {
           throw new Error(
             language.value.t("errors.no-Python-to-spawn-Windows-ConPTY"),
@@ -2744,7 +2739,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
         }
         if (warm) {
           const started = await startWarmHost(warm);
-          if (this.#closing) throw new ConPtyControlError("aborted");
+          throwIfClosing();
           if (started === "declined") {
             pool?.release(pythonExecutable, warm);
           } else {
@@ -2755,7 +2750,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
             };
           }
         }
-        if (this.#closing) throw new ConPtyControlError("aborted");
+        throwIfClosing();
         this.#activeSession = spawnColdHost(pythonExecutable);
         return this.#activeSession;
       })();

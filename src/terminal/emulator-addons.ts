@@ -914,11 +914,12 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
     event: KeyboardEvent,
   ): boolean {
     const { type } = event,
+      virtualKey = mode.virtualKey(event),
       isAltRelease =
         type === "keyup" &&
         (event.code === "AltLeft" ||
           event.code === "AltRight" ||
-          mode.virtualKey(event) === 18);
+          virtualKey === 18);
     if (mode.isImeKeyEvent(event)) {
       this.#altNumpad = "none";
       return true;
@@ -966,11 +967,11 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
         // Cancelling either keydown discards the composition; the browser
         // delivers the result on the keypress, whose `keyCode` is the
         // character, so the key's identity is kept here.
-        this.#deadKeyVirtualKey = mode.virtualKey(event);
+        this.#deadKeyVirtualKey = virtualKey;
         event.stopPropagation();
         return false;
       }
-      if (isWin32ClipboardChord(event, mode.virtualKey(event))) {
+      if (isWin32ClipboardChord(event, virtualKey)) {
         this.#clipboardChordCodes.add(event.code);
         return true;
       }
@@ -1001,7 +1002,7 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
             getModifierState: (modifier: string): boolean =>
               event.getModifierState(modifier),
             key: "Alt",
-            keyCode: mode.virtualKey(event),
+            keyCode: virtualKey,
             metaKey: event.metaKey,
             shiftKey: event.shiftKey,
             type,
