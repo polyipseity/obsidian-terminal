@@ -888,6 +888,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
       checkingExplicitly = false,
       disposed = false,
       visible = true,
+      hasBeenDisplayed = false,
+      repaintQueued = false,
       generation = 0,
       fieldGeneration = 0,
       recheckKey = settings.value.pythonExecutable,
@@ -963,11 +965,17 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
         pythonInput?.removeEventListener("blur", commit);
       },
       repaint = (): void => {
-        if (visible && !disposed) ui.update();
+        if (!visible || !hasBeenDisplayed || disposed || repaintQueued) return;
+        repaintQueued = true;
+        queueMicrotask(() => {
+          repaintQueued = false;
+          if (visible && !disposed) ui.update();
+        });
       };
     // Settings tabs survive hide/show; onUnload only runs at plugin unload.
     this.#setPythonWidgetsVisible = (value): void => {
       visible = value;
+      hasBeenDisplayed ||= visible;
       if (visible) return;
       ++generation;
       ++fieldGeneration;

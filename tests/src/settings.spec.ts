@@ -1,3 +1,4 @@
+import { UpdatableUI } from "@polyipseity/obsidian-plugin-library";
 import { createInstance } from "i18next";
 import * as doctor from "../../src/terminal/win32-doctor.js";
 import { SettingTab } from "../../src/settings.js";
@@ -367,6 +368,74 @@ class PythonSettingTab extends SettingTab {
     this.ui.update();
   }
 }
+
+describe("plugin Python status notifications", () => {
+  afterEach(() => {
+    clearWindowsPythonDiagnoses();
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
+  });
+
+  it("coalesces both notification sources into one update per tick", async () => {
+    capturePythonRows();
+    const plugin = vi.spyOn(doctor, "onPluginPythonDiagnosis"),
+      state = vi.spyOn(doctor, "onWindowsPythonStateChange"),
+      context = await pythonSettingsContext(),
+      tab = new PythonSettingTab(context, loadDocumentations(context));
+    tab.renderPython();
+    tab.display();
+    const update = vi.spyOn(UpdatableUI.prototype, "update"),
+      pluginNotification = plugin.mock.calls[0]?.[1],
+      stateNotification = state.mock.calls[0]?.[0];
+    if (!pluginNotification || !stateNotification)
+      throw new Error("Missing Python subscriptions");
+    try {
+      stateNotification();
+      stateNotification();
+      pluginNotification();
+      await Promise.resolve();
+      expect(update).toHaveBeenCalledOnce();
+
+      pluginNotification();
+      stateNotification();
+      await Promise.resolve();
+      expect(update).toHaveBeenCalledTimes(2);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it.each(["undisplayed", "hidden", "disposed"])(
+    "skips notification repaints when %s",
+    async (state) => {
+      capturePythonRows();
+      const context = await pythonSettingsContext(),
+        tab = new PythonSettingTab(context, loadDocumentations(context));
+      tab.renderPython();
+      if (state !== "undisplayed") tab.display();
+      const update = vi.spyOn(UpdatableUI.prototype, "update");
+      try {
+        invalidateConPtyRuntime("python");
+        if (state === "hidden") tab.hide();
+        if (state === "disposed") tab.dispose();
+        await Promise.resolve();
+        expect(update).not.toHaveBeenCalled();
+        invalidateConPtyRuntime("python");
+        await Promise.resolve();
+        expect(update).not.toHaveBeenCalled();
+        if (state === "hidden") {
+          tab.display();
+          update.mockClear();
+          invalidateConPtyRuntime("python");
+          await Promise.resolve();
+          expect(update).toHaveBeenCalledOnce();
+        }
+      } finally {
+        tab.dispose();
+      }
+    },
+  );
+});
 
 describe("plugin Python automatic checks", () => {
   beforeEach(() => {

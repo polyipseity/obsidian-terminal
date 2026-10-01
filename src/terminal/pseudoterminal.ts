@@ -322,6 +322,8 @@ export interface Pseudoterminal {
   readonly onExit: Promise<NodeJS.Signals | number>;
   readonly pipe: (terminal: Terminal) => AsyncOrSync<void>;
   readonly resize?: (columns: number, rows: number) => AsyncOrSync<void>;
+  /** True when resize resolves once the size is sent to a host that applies it exactly. */
+  readonly resizeIsAcknowledged?: boolean;
   /** The Windows backend in use. A ConHost fallback makes it differ from the
    * profile's, and the emulator must be configured for the one that runs. */
   readonly win32Backend?: Settings.Profile.Win32Backend | undefined;
@@ -361,6 +363,10 @@ export class RefPsuedoterminal<
 
   public get win32Backend(): Settings.Profile.Win32Backend | undefined {
     return this.delegate.win32Backend;
+  }
+
+  public get resizeIsAcknowledged(): boolean | undefined {
+    return this.delegate.resizeIsAcknowledged;
   }
 
   public dup(): RefPsuedoterminal<T> {
@@ -2552,6 +2558,7 @@ interface ConPtySession {
 export class ConPtyPseudoterminal implements Pseudoterminal {
   public readonly shell;
   public readonly onExit;
+  public readonly resizeIsAcknowledged = true;
   protected readonly control;
   protected readonly host;
   /** Current attempt changes once when an acquired spare fails before hello. */
@@ -3037,6 +3044,7 @@ class Win32Pseudoterminal implements Pseudoterminal {
   public readonly shell;
   public readonly onExit;
   public readonly win32Backend: Settings.Profile.Win32Backend;
+  public readonly resizeIsAcknowledged;
   protected readonly delegate;
 
   public constructor(
@@ -3047,6 +3055,8 @@ class Win32Pseudoterminal implements Pseudoterminal {
       delegate = new Backend(context, args);
     this.win32Backend = Backend === ConPtyPseudoterminal ? "conpty" : "legacy";
     this.delegate = delegate;
+    this.resizeIsAcknowledged =
+      delegate instanceof ConPtyPseudoterminal && delegate.resizeIsAcknowledged;
     this.shell = delegate.shell;
     this.onExit = delegate.onExit;
   }

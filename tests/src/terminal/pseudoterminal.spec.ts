@@ -30,6 +30,7 @@ import {
   type ConPtyReadyEvent,
   type ConPtyStartOp,
   pipeShellToTerminal,
+  Pseudoterminal,
   RefPsuedoterminal,
   WindowsNamedPipeControlChannel,
   WindowsPseudoterminal,
@@ -341,6 +342,52 @@ describe("ConPTY control protocol", () => {
       new RefPsuedoterminal(pseudoterminal()).win32Backend,
     ).toBeUndefined();
   });
+
+  it.each([true, false, undefined])(
+    "forwards resize acknowledgment through reference wrappers (%s)",
+    (resizeIsAcknowledged) => {
+      const delegate: Pseudoterminal = {
+          ...pseudoterminal(),
+          ...(resizeIsAcknowledged === undefined
+            ? {}
+            : { resizeIsAcknowledged }),
+        },
+        pty = new RefPsuedoterminal(delegate);
+      expect(pty.resizeIsAcknowledged).toBe(resizeIsAcknowledged);
+      expect(pty.dup().resizeIsAcknowledged).toBe(resizeIsAcknowledged);
+    },
+  );
+
+  it.each<Pseudoterminal["win32Backend"]>(["conpty", "legacy", undefined])(
+    "exposes resize acknowledgment after selecting the %s backend",
+    async (win32Backend) => {
+      const error = new Error("stop before spawning"),
+        // Only these context members are used before the seeded startup failure.
+        context = {
+          language: { value: { t: vi.fn((key: string) => key) } },
+          register: vi.fn(),
+          settings: { value: { errorNoticeTimeout: 0 } },
+        } as unknown as TerminalPlugin;
+      vi.spyOn(CONPTY_DEPENDENCIES, "createControl").mockRejectedValue(error);
+      vi.spyOn(childProcess, "spawn").mockImplementation(() => {
+        throw error;
+      });
+      vi.spyOn(console, "warn").mockImplementation(vi.fn());
+      const pty = new Pseudoterminal.PLATFORM_PSEUDOTERMINALS.win32(context, {
+        executable: "cmd.exe",
+        pythonExecutable:
+          win32Backend === "conpty" ? process.execPath : undefined,
+        win32Backend,
+      });
+      expect(pty.resizeIsAcknowledged).toBe(win32Backend === "conpty");
+      await Promise.all([
+        expect(pty.shell).rejects.toThrow(error.message),
+        expect(pty.onExit).rejects.toThrow(error.message),
+        // Observe ConHost's resizer promise when shell startup rejects.
+        expect(pty.resize(80, 24)).rejects.toThrow(error.message),
+      ]);
+    },
+  );
 
   it("encodes operations as bounded NDJSON records", () => {
     expect(encodeConPtyOp({ columns: 80, op: "resize", rows: 24 })).toBe(

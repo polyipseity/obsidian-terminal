@@ -122,10 +122,22 @@ export class XtermTerminalEmulator<A> {
               // The xterm resize lands before the backend resize.
               await xtermReady;
               const pty = await this.pseudoterminal;
-              if (pty.resize) {
+              if (
+                pty.resize &&
+                (pty.resizeIsAcknowledged !== true ||
+                  this.#lastPTYSize?.[0] !== columns ||
+                  this.#lastPTYSize[1] !== rows)
+              ) {
+                const generation = ++this.#ptyResizeGeneration;
+                // A pending size change invalidates the previous size.
+                this.#lastPTYSize = void 0;
                 await pty.resize(columns, rows);
+                if (generation === this.#ptyResizeGeneration) {
+                  this.#lastPTYSize = [columns, rows];
+                }
               }
             } catch (error) {
+              this.#lastPTYSize = void 0;
               if (mustResizePseudoterminal) {
                 throw error;
               }
@@ -141,6 +153,8 @@ export class XtermTerminalEmulator<A> {
   );
 
   #running = true;
+  #lastPTYSize: readonly [columns: number, rows: number] | undefined;
+  #ptyResizeGeneration = 0;
   readonly #opening = new AbortController();
   readonly #opened: Promise<Pseudoterminal>;
   readonly #ptyExit: Promise<void>;

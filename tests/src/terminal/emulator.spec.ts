@@ -635,4 +635,199 @@ describe("XtermTerminalEmulator lifecycle", () => {
       await emulator.close(false);
     }
   });
+
+  it("repeats identical PTY sizes without resize acknowledgment", async () => {
+    const resize = vi.fn().mockResolvedValue(undefined),
+      emulator = new XtermTerminalEmulator(
+        document.createElement("div"),
+        vi.fn((): Pseudoterminal => ({
+          kill: vi.fn(),
+          onExit: Promise.resolve(0),
+          pipe: vi.fn(),
+          resize,
+        })),
+        undefined,
+        undefined,
+        stubAddons(() => ({ cols: 80, rows: 24 })),
+      );
+    await emulator.pseudoterminal;
+    vi.useFakeTimers();
+    try {
+      for (let count = 0; count < 2; ++count) {
+        const resizing = emulator.resize();
+        await vi.advanceTimersByTimeAsync(1_000);
+        await resizing;
+      }
+      expect(resize.mock.calls).toEqual([
+        [80, 24],
+        [80, 24],
+      ]);
+    } finally {
+      vi.useRealTimers();
+      await emulator.close(false);
+    }
+  });
+
+  it.each([
+    { cols: 100, rows: 24 },
+    { cols: 80, rows: 30 },
+  ])("skips unchanged PTY sizes and sends $cols by $rows", async (changed) => {
+    const dimensions = vi.fn(() => ({ cols: 80, rows: 24 })),
+      resize = vi.fn().mockResolvedValue(undefined),
+      emulator = new XtermTerminalEmulator(
+        document.createElement("div"),
+        vi.fn((): Pseudoterminal => ({
+          kill: vi.fn(),
+          onExit: Promise.resolve(0),
+          pipe: vi.fn(),
+          resize,
+          resizeIsAcknowledged: true,
+        })),
+        undefined,
+        undefined,
+        stubAddons(dimensions),
+      );
+    await emulator.pseudoterminal;
+    vi.useFakeTimers();
+    try {
+      for (let count = 0; count < 2; ++count) {
+        const resizing = emulator.resize();
+        await vi.advanceTimersByTimeAsync(1_000);
+        await resizing;
+      }
+      expect(resize.mock.calls).toEqual([[80, 24]]);
+
+      dimensions.mockReturnValue(changed);
+      const resizing = emulator.resize();
+      await vi.advanceTimersByTimeAsync(1_000);
+      await resizing;
+      expect(resize.mock.calls).toEqual([
+        [80, 24],
+        [changed.cols, changed.rows],
+      ]);
+    } finally {
+      vi.useRealTimers();
+      await emulator.close(false);
+    }
+  });
+
+  it.each([true, false])(
+    "forgets the last PTY size after rejection and retries (required: %s)",
+    async (required) => {
+      vi.spyOn(console, "debug").mockImplementation(vi.fn());
+      const dimensions = vi.fn(() => ({ cols: 80, rows: 24 })),
+        resize = vi.fn().mockResolvedValue(undefined),
+        emulator = new XtermTerminalEmulator(
+          document.createElement("div"),
+          vi.fn((): Pseudoterminal => ({
+            kill: vi.fn(),
+            onExit: Promise.resolve(0),
+            pipe: vi.fn(),
+            resize,
+            resizeIsAcknowledged: true,
+          })),
+          undefined,
+          undefined,
+          stubAddons(dimensions),
+        );
+      await emulator.pseudoterminal;
+      vi.useFakeTimers();
+      try {
+        const first = emulator.resize();
+        await vi.advanceTimersByTimeAsync(1_000);
+        await first;
+
+        const error = new Error("resize failed");
+        resize.mockRejectedValueOnce(error);
+        dimensions.mockReturnValue({ cols: 100, rows: 30 });
+        const failed = emulator
+          .resize(required)
+          .catch((error: unknown) => error);
+        await vi.advanceTimersByTimeAsync(1_000);
+        expect(await failed).toBe(required ? error : undefined);
+
+        // A failed resize may have partially applied, invalidating the old size.
+        dimensions.mockReturnValue({ cols: 80, rows: 24 });
+        const restored = emulator.resize();
+        await vi.advanceTimersByTimeAsync(1_000);
+        await restored;
+        dimensions.mockReturnValue({ cols: 100, rows: 30 });
+        const retry = emulator.resize();
+        await vi.advanceTimersByTimeAsync(1_000);
+        await retry;
+        const repeated = emulator.resize();
+        await vi.advanceTimersByTimeAsync(1_000);
+        await repeated;
+        expect(resize.mock.calls).toEqual([
+          [80, 24],
+          [100, 30],
+          [80, 24],
+          [100, 30],
+        ]);
+      } finally {
+        vi.useRealTimers();
+        await emulator.close(false);
+      }
+    },
+  );
+
+  it("sends a return to the previous size while another PTY resize is pending", async () => {
+    const dimensions = vi.fn(() => ({ cols: 80, rows: 24 })),
+      resize = vi.fn().mockResolvedValue(undefined),
+      pending = Promise.withResolvers<undefined>(),
+      emulator = new XtermTerminalEmulator(
+        document.createElement("div"),
+        vi.fn((): Pseudoterminal => ({
+          kill: vi.fn(),
+          onExit: Promise.resolve(0),
+          pipe: vi.fn(),
+          resize,
+          resizeIsAcknowledged: true,
+        })),
+        undefined,
+        undefined,
+        stubAddons(dimensions),
+      );
+    await emulator.pseudoterminal;
+    vi.useFakeTimers();
+    try {
+      const first = emulator.resize();
+      await vi.advanceTimersByTimeAsync(1_000);
+      await first;
+
+      resize.mockReturnValueOnce(pending.promise);
+      dimensions.mockReturnValue({ cols: 100, rows: 30 });
+      const delayed = emulator.resize();
+      await vi.advanceTimersByTimeAsync(1_000);
+      dimensions.mockReturnValue({ cols: 80, rows: 24 });
+      const restored = emulator.resize();
+      await vi.advanceTimersByTimeAsync(1_000);
+      await restored;
+      expect(resize.mock.calls).toEqual([
+        [80, 24],
+        [100, 30],
+        [80, 24],
+      ]);
+
+      // A late completion cannot replace the most recently sent size.
+      pending.resolve(undefined);
+      await delayed;
+      dimensions.mockReturnValue({ cols: 100, rows: 30 });
+      for (let count = 0; count < 2; ++count) {
+        const resizing = emulator.resize();
+        await vi.advanceTimersByTimeAsync(1_000);
+        await resizing;
+      }
+      expect(resize.mock.calls).toEqual([
+        [80, 24],
+        [100, 30],
+        [80, 24],
+        [100, 30],
+      ]);
+    } finally {
+      pending.resolve(undefined);
+      vi.useRealTimers();
+      await emulator.close(false);
+    }
+  });
 });

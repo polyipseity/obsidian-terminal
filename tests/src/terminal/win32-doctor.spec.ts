@@ -123,6 +123,26 @@ describe("src/terminal/win32-doctor.ts", () => {
   });
 
   describe("win32PythonCandidates", () => {
+    it.each(["python3", "PYTHON3"])(
+      "keeps configured %s first without repeating the built-in candidate",
+      (configured) => {
+        expect(win32PythonCandidates(configured)).toEqual([
+          { args: [], executable: configured },
+          { args: [], executable: "python" },
+          { args: ["-3"], executable: "py" },
+        ]);
+      },
+    );
+
+    it("skips built-in duplicates of the fallback but keeps different launcher arguments", () => {
+      expect(win32PythonCandidates("py", "PYTHON")).toEqual([
+        { args: [], executable: "py" },
+        { args: [], executable: "PYTHON" },
+        { args: [], executable: "python3" },
+        { args: ["-3"], executable: "py" },
+      ]);
+    });
+
     it("tries the configured executable, then the names, then the launcher", () => {
       expect(win32PythonCandidates("C:\\Python\\python.exe")).toEqual([
         { args: [], executable: "C:\\Python\\python.exe" },
@@ -750,6 +770,19 @@ describe("src/terminal/win32-doctor.ts", () => {
       ).toEqual([profile, fallback, "python", "python3", "py -3"]);
     });
 
+    it("probes and lists configured python3 only once when discovery fails", async () => {
+      const spawn = vi
+          .fn<Win32PythonSpawn>()
+          .mockResolvedValue(result({ code: null, errno: "ENOENT" })),
+        diagnosis = await diagnoseWindowsPython(spawn, "python3", noLocate);
+      expect(diagnosis.tried.join(", ")).toBe("python3, python, py -3");
+      expect(spawn.mock.calls.map(([executable]) => executable)).toEqual([
+        "python3",
+        "python",
+        "py",
+      ]);
+    });
+
     it("reports the configured executable's failure, not a later one", async () => {
       const spawn: Win32PythonSpawn = async (executable) =>
         executable === "C:\\old\\python.exe"
@@ -1285,7 +1318,32 @@ describe("win32ResizerInstallCommand", () => {
 describe("checkWindowsResizerPackages", () => {
   afterEach(() => {
     clearWindowsPythonDiagnoses();
+    vi.restoreAllMocks();
   });
+
+  it.each(["success", "failure", "rejection"])(
+    "shares a concurrent package probe and caches only success (%s)",
+    async (outcome) => {
+      vi.spyOn(console, "debug").mockImplementation(vi.fn());
+      const pending = Promise.withResolvers<Win32PythonProcessResult>(),
+        spawn = vi
+          .fn<Win32PythonSpawn>()
+          .mockReturnValueOnce(pending.promise)
+          .mockResolvedValue(result()),
+        first = checkWindowsResizerPackages("py.exe", spawn),
+        second = checkWindowsResizerPackages("py.exe", spawn);
+      await Promise.resolve();
+      expect(spawn).toHaveBeenCalledOnce();
+      if (outcome === "rejection") pending.reject(new Error("spawn failed"));
+      else pending.resolve(result({ code: outcome === "success" ? 0 : 1 }));
+      expect(await Promise.all([first, second])).toEqual([
+        outcome === "success",
+        outcome === "success",
+      ]);
+      expect(await checkWindowsResizerPackages("py.exe", spawn)).toBe(true);
+      expect(spawn).toHaveBeenCalledTimes(outcome === "success" ? 1 : 2);
+    },
+  );
 
   it("caches a success and skips the probe next time", async () => {
     const spawn = vi.fn<Win32PythonSpawn>(async () => result());

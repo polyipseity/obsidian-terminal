@@ -192,11 +192,22 @@ export function win32PythonCandidates(
   ) {
     ret.push({ args: [], executable: fallbackPythonExecutable });
   }
-  ret.push(
+  for (const entry of [
     { args: [], executable: "python" },
     { args: [], executable: "python3" },
     { args: ["-3"], executable: "py" },
-  );
+  ]) {
+    if (
+      !ret.some(
+        ({ args, executable }) =>
+          sameExecutable(executable, entry.executable) &&
+          args.length === entry.args.length &&
+          args.every((arg, index) => arg === entry.args[index]),
+      )
+    ) {
+      ret.push(entry);
+    }
+  }
   return ret;
 }
 
@@ -813,7 +824,7 @@ function claimWindowsDiagnosis(key: string): symbol {
   return owner;
 }
 
-const resizerPackages = new Set<string>(),
+const resizerPackages = new Map<string, Promise<boolean>>(),
   // The manifest's package entries; "Python" names the interpreter itself.
   WIN32_RESIZER_IMPORT_SOURCE = `import ${Object.keys(PYTHON_REQUIREMENTS)
     .filter((name) => name !== "Python")
@@ -845,23 +856,27 @@ export async function checkWindowsResizerPackages(
   pythonExecutable: string,
   spawn: Win32PythonSpawn = DEFAULT_SPAWN,
 ): Promise<boolean> {
-  if (resizerPackages.has(pythonExecutable)) {
-    return true;
-  }
-  let ok = false;
-  try {
-    const result = await spawn(pythonExecutable, [
-      "-c",
-      WIN32_RESIZER_IMPORT_SOURCE,
-    ]);
-    ok = result.code === 0;
-  } catch (error) {
-    /* @__PURE__ */ self.console.debug(error);
-  }
-  if (ok) {
-    resizerPackages.add(pythonExecutable);
-  }
-  return ok;
+  const cached = resizerPackages.get(pythonExecutable);
+  if (cached) return cached;
+  const probe = (async (): Promise<boolean> => {
+    try {
+      const result = await spawn(pythonExecutable, [
+        "-c",
+        WIN32_RESIZER_IMPORT_SOURCE,
+      ]);
+      return result.code === 0;
+    } catch (error) {
+      /* @__PURE__ */ self.console.debug(error);
+      return false;
+    }
+  })().then((ok) => {
+    if (!ok && resizerPackages.get(pythonExecutable) === probe) {
+      resizerPackages.delete(pythonExecutable);
+    }
+    return ok;
+  });
+  resizerPackages.set(pythonExecutable, probe);
+  return probe;
 }
 
 /**
