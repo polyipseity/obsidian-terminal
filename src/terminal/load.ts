@@ -12,6 +12,7 @@ import {
 import {
   FileSystemAdapter,
   MarkdownView,
+  Menu,
   type MenuItem,
   TFolder,
 } from "obsidian";
@@ -229,11 +230,63 @@ export function loadTerminal(context: TerminalPlugin): void {
       return i18n.t("ribbons.open-terminal");
     },
     (evt) => {
+      // The ribbon callback also receives right-button auxclick events.
+      if (evt.button === 2) return;
       if (evt.ctrlKey || evt.metaKey) {
         openSelectProfile(adapter?.getBasePath());
         return;
       }
       openDefaultOrSelectProfile(adapter?.getBasePath());
+    },
+  );
+  // Reloads replace the ribbon element; resolve the current element per event.
+  context.registerDomEvent(
+    openTerminal.elementRef.ownerDocument,
+    "contextmenu",
+    (evt) => {
+      if (
+        evt.button !== 2 ||
+        !(evt.target instanceof Node) ||
+        !openTerminal.elementRef.contains(evt.target)
+      ) {
+        return;
+      }
+      evt.preventDefault();
+      const menu = new Menu(),
+        cwd = adapter?.getBasePath();
+      let hasProfileItems = false;
+      for (const [id, profile] of Object.entries(settings.value.profiles)) {
+        if (!Settings.Profile.isCompatible(profile, Platform.CURRENT)) {
+          continue;
+        }
+        menu.addItem((item) =>
+          item
+            .setTitle(
+              i18n.t("components.select-profile.item-text-", {
+                info: Settings.Profile.info([id, profile]),
+                interpolation: { escapeValue: false },
+              }),
+            )
+            .onClick(() => {
+              spawnTerminal(context, profile, { cwd, profileSourceId: id });
+            }),
+        );
+        hasProfileItems = true;
+      }
+      if (hasProfileItems) menu.addSeparator();
+      menu.addItem((item) =>
+        item
+          .setTitle(
+            i18n.t("menus.open-terminal", {
+              interpolation: { escapeValue: false },
+              type: "select",
+            }),
+          )
+          .onClick(() => {
+            openSelectProfile(cwd);
+          }),
+      );
+      menu.showAtMouseEvent(evt);
     },
   );
   context.register(

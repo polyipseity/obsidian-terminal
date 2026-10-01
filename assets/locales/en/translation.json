@@ -385,7 +385,7 @@
     "create-instance-near-existing-ones": "Create $t(generic.instance) near $t(generic.exist_gerund) ones",
     "create-instance-near-existing-ones-description": "Overrides '$t(settings.new-instance-behavior)' when $t(generic.instance) $t(generic.exist_singular) if $t(generic.true).",
     "default-profile": "Default $t(generic.profile)",
-    "default-profile-description": "$t(generic.profile, capitalize) to open when clicking the ribbon icon. Leave empty to show $t(generic.profile) selector.",
+    "default-profile-description": "$t(generic.profile, capitalize) to open when clicking the ribbon icon. Leave empty to show $t(generic.profile) selector. Right-click the ribbon icon to list all profiles.",
     "default-profile-name-": "$t(profile-name-formats.short)",
     "default-profile-name-incompatible": "($t(generic.incompatible, capitalize)) $t(settings.default-profile-name-)",
     "documentation": "$t(generic.documentation, capitalize)",
