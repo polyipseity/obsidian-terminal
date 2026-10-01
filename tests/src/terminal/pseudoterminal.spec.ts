@@ -227,24 +227,88 @@ describe("Windows ConHost path", () => {
     }
   });
 
-  it("force-terminates a ConHost resizer that ignores stdin end", async () => {
+  it("drains 1 MiB of ConHost resizer stdout so it can exit within two seconds", async () => {
+    const fixture = legacyFixture(
+      "process.stdin.once('data', () => process.stdout.write(Buffer.alloc(1024 * 1024), () => process.exit(0)));",
+    );
+    let deadline: number | undefined;
+    try {
+      await fixture.pty.shell;
+      const { resizer } = fixture.processes;
+      if (!resizer) throw new Error("The ConHost resizer was not spawned.");
+      const exit = new Promise<number | null>((resolve) => {
+        if (resizer.exitCode !== null) resolve(resizer.exitCode);
+        else resizer.once("exit", resolve);
+      });
+      await expect(
+        Promise.race([
+          exit,
+          new Promise<never>((_, reject) => {
+            deadline = window.setTimeout(() => {
+              reject(new Error("Resizer blocked on stdout"));
+            }, 2_000);
+          }),
+        ]),
+      ).resolves.toBe(0);
+    } finally {
+      window.clearTimeout(deadline);
+      fixture.cleanup();
+      await fixture.pty.onExit;
+    }
+  });
+
+  it("force-terminates a ConHost resizer that ignores stdin end without later writes", async () => {
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
     const fixture = legacyFixture(
       "process.stdin.resume(); process.stdin.on('end', () => {}); setInterval(() => {}, 1000);",
     );
     try {
       await fixture.pty.shell;
-      await fixture.pty.kill();
-      await fixture.pty.onExit;
+      await fixture.pty.resize(80, 24);
       const { resizer } = fixture.processes;
-      if (resizer === undefined)
-        throw new Error("The ConHost resizer process was not spawned.");
+      if (!resizer?.stdin) throw new Error("The ConHost resizer has no stdin.");
+      const ended = new Promise<void>((resolve) => {
+        resizer.stdin?.once("finish", resolve);
+      });
+      await fixture.pty.kill();
+      await ended;
+      expect(resizer.stdin.writableEnded).toBe(true);
+      // Record a bad write without letting the unfixed watchdog emit an
+      // uncaught stream error that would obscure the assertion.
+      const writes = vi.spyOn(resizer.stdin, "write").mockReturnValue(false);
+      vi.advanceTimersByTime(TERMINAL_RESIZER_WATCHDOG_WAIT * 3000);
+      expect(writes).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+      await fixture.pty.onExit;
       expect(resizer.exitCode !== null || resizer.signalCode !== null).toBe(
         true,
       );
     } finally {
       fixture.cleanup();
+      await fixture.pty.onExit;
+      vi.useRealTimers();
     }
   });
+
+  it.each(["ERR_STREAM_WRITE_AFTER_END", "EPIPE"])(
+    "logs a ConHost resizer stdin %s error without throwing",
+    async (code) => {
+      const fixture = legacyFixture(KEEPALIVE_SCRIPT),
+        debug = vi.spyOn(self.console, "debug").mockImplementation(vi.fn());
+      try {
+        await fixture.pty.shell;
+        await fixture.pty.resize(80, 24);
+        const stdin = fixture.processes.resizer?.stdin;
+        if (!stdin) throw new Error("The ConHost resizer has no stdin.");
+        const error = Object.assign(new Error(code), { code });
+        expect(() => stdin.emit("error", error)).not.toThrow();
+        expect(debug).toHaveBeenCalledWith(error);
+      } finally {
+        fixture.cleanup();
+        await fixture.pty.onExit;
+      }
+    },
+  );
 
   it("stops pulsing the resizer watchdog once the resizer exits", async () => {
     vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });

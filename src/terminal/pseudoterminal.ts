@@ -1081,6 +1081,11 @@ export class WindowsPseudoterminal implements Pseudoterminal {
             }
           });
           logChildStderr(ret);
+          // Drain the resizer's prompts so a full stdout pipe cannot block it.
+          ret.stdout.resume();
+          ret.stdin.on("error", (error: Error) => {
+            /* @__PURE__ */ self.console.debug(error);
+          });
           return ret;
         } catch (error) {
           self.console.warn(error);
@@ -1147,6 +1152,10 @@ export class WindowsPseudoterminal implements Pseudoterminal {
                       );
                       let watchdog: number | undefined = self.setInterval(
                         () => {
+                          if (resizer0.stdin.writableEnded) {
+                            stopWatchdog();
+                            return;
+                          }
                           writePromise(resizer0.stdin, "\n").catch(
                             (error: unknown) => {
                               /* @__PURE__ */ self.console.debug(error);

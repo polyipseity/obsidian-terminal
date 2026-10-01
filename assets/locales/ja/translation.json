@@ -70,7 +70,7 @@
         "Python-executable": "$t(generic.Python)$t(generic.executable)",
         "Python-executable-check": "$t(generic.check)",
         "Python-executable-checking": "$t(generic.check_gerund)",
-        "Python-executable-description": "Recommend {{version}} or up. Required on $t(generic.platforms.unix) to $t(generic.spawn) $t(generic.profile-types.integrated) $t(generic.terminal). $t(generic.clear, capitalize) $t(generic.text-field) to $t(generic.disable) $t(generic.Python). On $t(generic.platforms.win32), an empty $t(generic.text-field) uses the plugin's '$t(settings.python-executable)' setting.",
+        "Python-executable-description": "Recommend {{version}} or up. Required on $t(generic.platforms.unix) to $t(generic.spawn) $t(generic.profile-types.integrated) $t(generic.terminal). $t(generic.clear, capitalize) $t(generic.text-field) to $t(generic.disable) $t(generic.Python) on platforms other than $t(generic.platforms.win32). On $t(generic.platforms.win32), an empty $t(generic.text-field) uses the plugin's '$t(settings.python-executable)' setting.",
         "Python-executable-placeholder": "($t(generic.disable_past-participle))",
         "Python-executable-placeholder-default": "($t(generic.default, capitalize): {{value}})",
         "Python-executable-placeholder-detect": "$t(settings.python-executable-placeholder)",
@@ -205,7 +205,7 @@
     "resizer-exited-unexpectedly": "$t(generic.terminal-resizer)が予期せず$t(generic.exit_past)しました: {{code}}",
     "win32-exit-251": "$t(generic.platforms.win32) refused to start '{{executable}}' (exit code 251). Check that it is an executable you may run and that the $t(generic.profile)'s working directory exists.",
     "win32-exit-9009": "$t(generic.platforms.win32) could not find '{{executable}}' (exit code 9009). Check the $t(generic.executable) path in the $t(generic.profile).",
-    "win32-exit-c0000142": "'{{executable}}' failed to initialize its console (exit code 3221225794 / 0xC0000142). Switch the $t(generic.platforms.win32) terminal backend to 'ConHost' for this $t(generic.profile).",
+    "win32-exit-c0000142": "The ConPTY host failed to initialize before starting '{{executable}}' (exit code 3221225794 / 0xC0000142). Switch the $t(generic.platforms.win32) terminal backend to 'ConHost' for this $t(generic.profile).",
     "win32-python-missing": "No usable $t(generic.Python) found (tried {{tried}}). Install it from https://www.python.org/downloads/, then select '$t(settings.python-recheck)' in the plugin settings.",
     "win32-python-store-stub": "'{{executable}}' opens the Microsoft Store instead of $t(generic.Python). Install $t(generic.Python) from https://www.python.org/downloads/, then select '$t(settings.python-recheck)' in the plugin settings.",
     "win32-python-too-old": "'{{executable}}' is $t(generic.Python) {{version}}, older than 3.9. Update it, or set another $t(generic.Python) $t(generic.executable) in the plugin settings."

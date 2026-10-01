@@ -122,6 +122,24 @@ describe("PluginLocales", () => {
     }
   });
 
+  it("scopes initialization errors and empty Python fields identically in all 49 locales", async () => {
+    expect(PluginLocales.LANGUAGES).toHaveLength(49);
+    for (const language of PluginLocales.LANGUAGES) {
+      const translation = await PluginLocales.RESOURCES[language].translation();
+      expect(translation.errors["win32-exit-c0000142"], language).toBe(
+        "The ConPTY host failed to initialize before starting '{{executable}}' (exit code 3221225794 / 0xC0000142). Switch the $t(generic.platforms.win32) terminal backend to 'ConHost' for this $t(generic.profile).",
+      );
+      expect(
+        translation.components.profile.integrated[
+          "Python-executable-description"
+        ],
+        language,
+      ).toBe(
+        "Recommend {{version}} or up. Required on $t(generic.platforms.unix) to $t(generic.spawn) $t(generic.profile-types.integrated) $t(generic.terminal). $t(generic.clear, capitalize) $t(generic.text-field) to $t(generic.disable) $t(generic.Python) on platforms other than $t(generic.platforms.win32). On $t(generic.platforms.win32), an empty $t(generic.text-field) uses the plugin's '$t(settings.python-executable)' setting.",
+      );
+    }
+  });
+
   it("provides the Windows backend selector and ConPTY failure messages", async () => {
     const translations = await Promise.all(
       Array.from(PluginLocales.LANGUAGES, async (language) => {

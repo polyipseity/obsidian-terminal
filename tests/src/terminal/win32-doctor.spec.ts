@@ -27,12 +27,14 @@ import {
   getWindowsPythonDiagnosis,
   inheritedPythonExecutable,
   isAutomaticWindowsPythonExecutable,
+  isPluginPythonCheckPending,
   isPythonVersionSupported,
   isStoreStub,
   parsePythonVersion,
   parseWindowsPythonIdentity,
   pythonOverrideStatus,
   pythonStatusKey,
+  onPluginPythonDiagnosis,
   runPluginPythonCheck,
   win32ExitCodeKey,
   win32PathCandidates,
@@ -1422,6 +1424,75 @@ describe("runPluginPythonCheck", () => {
       ...overrides,
     } as DeepWritable<Settings.Profile.Typed<"integrated">>;
   }
+
+  it("tracks a pending plugin check only for its configured value until settlement", async () => {
+    const configured = "C:\\Python\\python.exe",
+      { context } = reconcileContext({ pythonExecutable: configured }),
+      probe = Promise.withResolvers<Win32PythonProcessResult>(),
+      spawn = vi.fn<Win32PythonSpawn>().mockReturnValue(probe.promise);
+    expect(isPluginPythonCheckPending(context, configured)).toBe(false);
+    const check = runPluginPythonCheck(context, spawn, noLocate);
+    expect(isPluginPythonCheckPending(context, configured)).toBe(true);
+    expect(isPluginPythonCheckPending(context, "other-python")).toBe(false);
+    probe.resolve(identityResult(configured));
+    await check;
+    expect(isPluginPythonCheckPending(context, configured)).toBe(false);
+  });
+
+  it("clears pending state and notifies listeners when a plugin check rejects", async () => {
+    const configured = "C:\\Python\\python.exe",
+      { context } = reconcileContext({
+        pythonExecutable: configured,
+        profiles: { custom: win32Conpty({ pythonExecutable: "other-python" }) },
+      }),
+      probe = Promise.withResolvers<Win32PythonProcessResult>(),
+      spawn = vi.fn<Win32PythonSpawn>().mockReturnValue(probe.promise),
+      listener = vi.fn(() => isPluginPythonCheckPending(context, configured));
+    onPluginPythonDiagnosis(context, listener);
+    // Probe errors normally become diagnoses; an unexpected reconciliation
+    // error still has to settle the plugin-level UI state.
+    vi.spyOn(Settings.Profile, "isCompatible").mockImplementation(() => {
+      throw new Error("profile reconciliation failed");
+    });
+    const check = runPluginPythonCheck(context, spawn, noLocate);
+    listener.mockClear();
+    probe.resolve(identityResult(configured));
+    await expect(check).rejects.toThrow("profile reconciliation failed");
+    expect(listener).toHaveReturnedWith(false);
+    expect(isPluginPythonCheckPending(context, configured)).toBe(false);
+  });
+
+  it("keeps a newer plugin check pending when an older check settles", async () => {
+    const configured = "C:\\Python\\python.exe",
+      { context } = reconcileContext({ pythonExecutable: configured }),
+      oldProbe = Promise.withResolvers<Win32PythonProcessResult>(),
+      newProbe = Promise.withResolvers<Win32PythonProcessResult>(),
+      spawn = vi
+        .fn<Win32PythonSpawn>()
+        .mockReturnValueOnce(oldProbe.promise)
+        .mockReturnValueOnce(newProbe.promise),
+      oldCheck = runPluginPythonCheck(context, spawn, noLocate),
+      newCheck = runPluginPythonCheck(context, spawn, noLocate);
+    oldProbe.resolve(identityResult(configured));
+    await oldCheck;
+    expect(isPluginPythonCheckPending(context, configured)).toBe(true);
+    newProbe.resolve(identityResult(configured));
+    await newCheck;
+    expect(isPluginPythonCheckPending(context, configured)).toBe(false);
+  });
+
+  it("resets pending plugin checks when session diagnoses are cleared", async () => {
+    const configured = "C:\\Python\\python.exe",
+      { context } = reconcileContext({ pythonExecutable: configured }),
+      probe = Promise.withResolvers<Win32PythonProcessResult>(),
+      spawn = vi.fn<Win32PythonSpawn>().mockReturnValue(probe.promise),
+      check = runPluginPythonCheck(context, spawn, noLocate);
+    expect(isPluginPythonCheckPending(context, configured)).toBe(true);
+    clearWindowsPythonDiagnoses();
+    expect(isPluginPythonCheckPending(context, configured)).toBe(false);
+    probe.resolve(identityResult(configured));
+    await check;
+  });
 
   it("checks only the plugin configuration when profile overrides are excluded", async () => {
     const pluginPython = "C:\\Plugin\\python.exe",

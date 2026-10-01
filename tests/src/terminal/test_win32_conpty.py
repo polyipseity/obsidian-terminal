@@ -2356,7 +2356,7 @@ def test_control_token_is_not_inherited_by_the_child() -> None:
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
 def test_missing_executable_exits_with_the_shared_not_found_code() -> None:
-    """A missing child executable reports 9009 for both Windows backends."""
+    """A missing child executable makes the host exit with 9009, the code cmd.exe uses under ConHost."""
     result = _run_host(["obsidian-terminal-no-such-executable.exe"], timeout=10.0)
     assert result.code == 9009, result
 

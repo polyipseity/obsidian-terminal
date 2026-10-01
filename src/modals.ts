@@ -55,6 +55,8 @@ import {
   inheritedPythonExecutable,
   invalidateWindowsPythonDiagnosis,
   isAutomaticWindowsPythonExecutable,
+  isPluginPythonCheckPending,
+  onPluginPythonDiagnosis,
   onWindowsPythonStateChange,
   pythonOverrideStatus,
   win32ResizerInstallCommand,
@@ -1153,6 +1155,11 @@ export class ProfileModal extends Modal {
           });
           if (deopaque(Platform.CURRENT) === "win32") {
             ui.finally(
+              onPluginPythonDiagnosis(context, () => {
+                ui.update();
+              }),
+            );
+            ui.finally(
               onWindowsPythonStateChange(() => {
                 ui.update();
               }),
@@ -1177,7 +1184,10 @@ export class ProfileModal extends Modal {
             const diagnosis = win32Eligible
                 ? getWindowsPythonDiagnosis(effective, pluginPython)
                 : null,
-              overrideStatus = checkingPython
+              busy =
+                checkingPython ||
+                isPluginPythonCheckPending(context, effective),
+              overrideStatus = busy
                 ? "checking"
                 : win32Eligible && !canCheckAutomatically() && !diagnosis
                   ? "not-automatic"
@@ -1459,12 +1469,14 @@ export class ProfileModal extends Modal {
               ),
               win32Eligible = isWin32Eligible(),
               diagnosis = getWindowsPythonDiagnosis(effective, pluginPython),
-              notAutomatic =
-                !canCheckAutomatically() && !diagnosis && !checkingPython,
+              busy =
+                checkingPython ||
+                isPluginPythonCheckPending(context, effective),
+              notAutomatic = !canCheckAutomatically() && !diagnosis && !busy,
               backendStatus =
                 profile.win32Backend === "legacy"
                   ? "legacy"
-                  : checkingPython
+                  : busy
                     ? "checking"
                     : !diagnosis
                       ? "unverified"

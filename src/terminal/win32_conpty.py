@@ -94,7 +94,9 @@ _BATCH_EXTENSIONS = (".bat", ".cmd")
 """Host exit codes.
 
 ``9009`` is the ``cmd.exe`` "not recognized" code, reused here so the plugin
-can report one message about a missing executable for both Windows backends.
+uses the same exit code for a missing executable on both Windows backends.
+Only a ConPTY start failing before ready gets the specific message; ConHost
+shows the generic exit notice with this code.
 """
 _EXIT_EXECUTABLE_NOT_FOUND = 9009
 """Host exit code used when the host itself cannot start a session."""

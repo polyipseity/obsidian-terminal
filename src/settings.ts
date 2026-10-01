@@ -31,6 +31,7 @@ import {
   PYTHON_DOWNLOADS_URL,
   getWindowsPythonDiagnosis,
   isAutomaticWindowsPythonExecutable,
+  isPluginPythonCheckPending,
   invalidateWindowsPythonDiagnosis,
   onPluginPythonDiagnosis,
   pluginPythonStatusKey,
@@ -1048,20 +1049,22 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
           checkingExplicitly = false;
           committedValue = void 0;
         }
-        const diagnosis = getWindowsPythonDiagnosis(
+        const busy =
+            checking || isPluginPythonCheckPending(context, pythonExecutable),
+          diagnosis = getWindowsPythonDiagnosis(
             pythonExecutable,
             pythonExecutable,
           ),
           notAutomatic =
             !isAutomaticWindowsPythonExecutable(pythonExecutable) &&
-            !checking &&
+            !busy &&
             !diagnosis,
           statusKey = notAutomatic
             ? "not-automatic"
-            : !diagnosis && !checking
+            : !diagnosis && !busy
               ? "unverified"
-              : pluginPythonStatusKey(diagnosis, checking, pythonExecutable),
-          i18nVariant = checking ? "ing" : "";
+              : pluginPythonStatusKey(diagnosis, busy, pythonExecutable),
+          i18nVariant = busy ? "ing" : "";
         setting.setName(i18n.t("settings.python-status")).setDesc(
           i18n.t(`settings.python-status-${statusKey}`, {
             candidate: diagnosis?.candidate,
@@ -1086,7 +1089,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
             });
           // Only a settled, definitive failure offers Download.
           const hidden =
-            checking ||
+            busy ||
             !diagnosis ||
             diagnosis.status === "ok" ||
             !!diagnosis.transient ||
@@ -1106,7 +1109,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                 if (!checkingExplicitly) recheck();
               });
             });
-          if (checking || statusKey === "ok-fallback") {
+          if (busy || statusKey === "ok-fallback") {
             button.setCta();
           }
         });

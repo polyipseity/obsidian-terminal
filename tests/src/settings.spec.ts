@@ -26,7 +26,7 @@ import {
 vi.mock("../../src/modals.js", () => ({}));
 
 async function renderPythonWidgets(
-  diagnosis: Win32PythonDiagnosis,
+  diagnosis: Win32PythonDiagnosis | null,
   configured = "python",
 ) {
   const i18n = createInstance();
@@ -35,7 +35,7 @@ async function renderPythonWidgets(
     context = await pythonSettingsContext({ pythonExecutable: configured });
   Object.assign(context.language, { value: i18n });
   const key = win32PythonConfigurationKey(configured, configured);
-  displayed.set(key, diagnosis);
+  if (diagnosis) displayed.set(key, diagnosis);
   const tab = new PythonSettingTab(context, loadDocumentations(context));
   tab.renderPython();
   const row = rows.get(i18n.t("settings.python-status")),
@@ -45,6 +45,7 @@ async function renderPythonWidgets(
   const downloadCta = vi.spyOn(download, "setCta"),
     recheckCta = vi.spyOn(recheck, "setCta");
   return {
+    i18n,
     publish: (value: Win32PythonDiagnosis) => {
       displayed.set(key, value);
     },
@@ -81,6 +82,30 @@ describe("plugin Python status row", () => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
   });
+
+  it.each([
+    null,
+    { ...found, status: "missing" },
+  ] satisfies readonly (Win32PythonDiagnosis | null)[])(
+    "shows checking and hides Download during a plugin-level check (%j)",
+    async (diagnosis) => {
+      const pending = vi
+        .spyOn(doctor, "isPluginPythonCheckPending")
+        .mockReturnValue(true);
+      const fixture = await renderPythonWidgets(diagnosis);
+      try {
+        const { description, download, recheck } = fixture.render();
+        expect(pending).toHaveBeenCalledWith(expect.anything(), "python");
+        expect(description).toBe(
+          fixture.i18n.t("settings.python-status-checking"),
+        );
+        expect(download.buttonEl.style.display).toBe("none");
+        expect(recheck.setCta).toHaveBeenCalledOnce();
+      } finally {
+        fixture.cleanup();
+      }
+    },
+  );
 
   it.each(["EACCES", "UNKNOWN"])(
     "renders a %s refusal without installation guidance",

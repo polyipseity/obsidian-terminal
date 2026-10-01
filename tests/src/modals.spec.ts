@@ -1,4 +1,5 @@
 import { ProfileModal } from "../../src/modals.js";
+import * as doctor from "../../src/terminal/win32-doctor.js";
 import { Settings } from "../../src/settings-data.js";
 import { PROFILE_PRESETS } from "../../src/terminal/profile-presets.js";
 import {
@@ -382,6 +383,53 @@ describe("profile Python automatic checks", () => {
       expect(modal.profile).toHaveProperty("pythonExecutable", override);
       expect(context.settings.value.pythonExecutable).toBe(plugin);
       modal.onClose();
+    },
+  );
+
+  it.each(["", "other-python"])(
+    "uses plugin pending state for inherited Python, with override %j",
+    async (override) => {
+      const rows = capturePythonRows(),
+        context = await pythonSettingsContext({ pythonExecutable: "python" }),
+        pending = vi
+          .spyOn(doctor, "isPluginPythonCheckPending")
+          .mockImplementation(
+            (context0, configured) =>
+              context0 === context && configured === "python",
+          ),
+        notification = vi.spyOn(doctor, "onPluginPythonDiagnosis"),
+        modal = new PythonProfileModal(
+          context,
+          {
+            ...windowsProfile,
+            pythonExecutable: override,
+            win32Backend: "conpty",
+          },
+          vi.fn(),
+        );
+      try {
+        modal.renderPython();
+        const row = rows.get("components.profile.integrated.Python-executable"),
+          backend = rows.get("components.profile.integrated.win32-backend");
+        expect(row?.descEl.textContent).toContain(
+          `Python-status-${override ? "unverified" : "checking"}`,
+        );
+        expect(backend?.descEl.textContent).toContain(
+          `win32-backend-status-${override ? "unverified" : "checking"}`,
+        );
+        const notify = notification.mock.calls[0]?.[1];
+        if (!notify) throw new Error("Missing plugin diagnosis subscription");
+        pending.mockReturnValue(false);
+        notify();
+        expect(row?.descEl.textContent).toContain(
+          `Python-status-${override ? "unverified" : "inherited-unverified"}`,
+        );
+        expect(backend?.descEl.textContent).toContain(
+          "win32-backend-status-unverified",
+        );
+      } finally {
+        modal.onClose();
+      }
     },
   );
 

@@ -45,8 +45,9 @@ export const PYTHON_DOWNLOADS_URL = "https://www.python.org/downloads/";
 
 export { WIN32_EXIT_COMMAND_NOT_FOUND, WIN32_EXIT_SHELL_START_FAILED };
 
-/** `STATUS_DLL_INIT_FAILED` (0xC0000142): the console client failed to
- * initialize. Seen when ConPTY cannot attach the child. */
+/** `STATUS_DLL_INIT_FAILED` (0xC0000142): a process failed to initialize.
+ * Classified only when the ConPTY host exits before ready; a shell exiting
+ * with this code after ready gets the generic exit notice. */
 export const WIN32_EXIT_DLL_INIT_FAILED = 3_221_225_794,
   /** Signed 32-bit representation Node may report for 0xC0000142. */
   WIN32_EXIT_DLL_INIT_FAILED_SIGNED = -1_073_741_502,
@@ -87,6 +88,8 @@ export type Win32ExitCodeKey =
 /**
  * Maps a Windows exit code to an actionable message key. Returns `null` for
  * every other code, which keeps the generic exit notice.
+ * The view consults this only for a ConPTY start that failed before ready
+ * without its own notice.
  */
 export function win32ExitCodeKey(
   code: Awaited<Pseudoterminal["onExit"]>,
@@ -776,6 +779,7 @@ export function clearWindowsPythonDiagnoses(): void {
   pluginDiagnoses = new WeakMap();
   pluginDiagnosisListeners = new WeakMap();
   pluginCheckGenerations = new WeakMap();
+  pendingPluginChecks = new WeakMap();
   resizerPackages.clear();
   conPtyRuntimeFailures.clear();
 }
@@ -1017,9 +1021,23 @@ export async function checkWindowsPython(
   return ret;
 }
 
+interface PendingPluginPythonCheck {
+  readonly configured: string;
+  readonly generation: number;
+}
+
 let pluginDiagnoses = new WeakMap<TerminalPlugin, Win32PythonDiagnosis>(),
   pluginDiagnosisListeners = new WeakMap<TerminalPlugin, Set<() => void>>(),
-  pluginCheckGenerations = new WeakMap<TerminalPlugin, number>();
+  pluginCheckGenerations = new WeakMap<TerminalPlugin, number>(),
+  pendingPluginChecks = new WeakMap<TerminalPlugin, PendingPluginPythonCheck>();
+
+/** Whether a plugin-level check is in flight for this configured value. */
+export function isPluginPythonCheckPending(
+  context: TerminalPlugin,
+  configured: string,
+): boolean {
+  return pendingPluginChecks.get(context)?.configured === configured;
+}
 
 /** Windows paths compare case-insensitively. */
 export function sameExecutable(left: string, right: string): boolean {
@@ -1130,8 +1148,8 @@ export function pluginPythonStatusKey(
 }
 
 /**
- * Notifies whenever {@link runPluginPythonCheck} publishes a result, so an
- * open settings tab can replace its "checking" status without a reopen.
+ * Notifies when {@link runPluginPythonCheck} starts or settles, including
+ * rejection, so an open settings tab can update its "checking" status.
  * Returns the unregister function.
  */
 export function onPluginPythonDiagnosis(
@@ -1190,110 +1208,124 @@ export async function runPluginPythonCheck(
       settings.value.pythonExecutable !== configured ||
       pluginCheckGenerations.get(context) !== generation;
   pluginCheckGenerations.set(context, generation);
-  if (refresh) {
-    // An installer can add Python to the registry PATH while Obsidian keeps
-    // its launch-time environment. Startup shares the existing work instead.
-    invalidateSystemPath();
-    invalidateWindowsPythonDiagnosis(configured);
-  }
-  const diagnosis = await checkWindowsPython(context, configured, spawn, {
-    locate,
-    publish: false,
-  });
-  // An overtaken check publishes nothing, so it probes no override either.
-  if (stale()) return diagnosis;
-  const profileValues = new Set<string>();
-  if (includeProfileOverrides) {
-    for (const profile of Object.values(settings.value.profiles)) {
-      if (
-        profile.type === "integrated" &&
-        Settings.Profile.isCompatible(profile, "win32") &&
-        profile.pythonExecutable
-      ) {
-        profileValues.add(profile.pythonExecutable);
-      }
-    }
-  }
-  const profileDiagnoses = new Map<string, Win32PythonDiagnosis>(),
-    profileOwners = new Map<string, symbol>(),
-    // Only aliases are held back; checkWindowsPython owns configured entries.
-    // An alias is valid only while its source probe still owns that entry.
-    resolutions: (readonly [
-      executable: string,
-      diagnosis: Win32PythonDiagnosis,
-      source: string,
-      pending: Promise<Win32PythonDiagnosis>,
-    ])[] = [];
-  await Promise.all(
-    [...profileValues].map(async (value) => {
-      const key = win32PythonConfigurationKey(value, configured);
-      profileOwners.set(value, claimWindowsDiagnosis(key));
-      // An override that stopped working must not keep its cached success.
-      if (refresh) invalidateWindowsPythonDiagnosis(value, configured);
-      const checking = checkWindowsPython(context, value, spawn, {
-          locate,
-          publish: false,
-        }),
-        pending = diagnoses.get(key),
-        resolved = await checking;
-      profileDiagnoses.set(value, resolved);
-      if (!pending || resolved.status !== "ok" || (resolved.transient ?? false))
-        return;
-      // Alias only the interpreter path: a venv's base host has different
-      // packages and must keep its own diagnosis.
-      if (
-        ![configured, ...profileValues].some((value2) =>
-          sameExecutable(resolved.executable, value2),
-        )
-      ) {
-        resolutions.push([resolved.executable, resolved, value, pending]);
-      }
-    }),
-  );
-  if (stale()) return diagnosis;
-  const checkedConfigurations = new Map<string, Win32PythonDiagnosis>([
-    [configured, diagnosis],
-    ...profileDiagnoses,
-  ]);
-  for (const [value, checked] of checkedConfigurations) {
-    const key = win32PythonConfigurationKey(value, configured),
-      failure = failuresBeforeCheck.get(key);
-    if (
-      displayOwners.get(key) === (profileOwners.get(value) ?? pluginOwner) &&
-      failure !== void 0 &&
-      checked.status === "ok" &&
-      checked.hostExecutable !== null &&
-      !(checked.transient ?? false) &&
-      conPtyRuntimeFailures.get(key) === failure
-    ) {
-      // The identity probe permits a retry; only host readiness proves that
-      // ConPTY recovered. Unchecked configurations keep their own breaker.
-      conPtyRuntimeFailures.delete(key);
-    }
-  }
-  for (const [value, resolved, source, pending] of resolutions) {
-    const key = win32PythonConfigurationKey(value, configured),
-      sourceKey = win32PythonConfigurationKey(source, configured);
-    if (
-      displayOwners.get(sourceKey) === profileOwners.get(source) &&
-      diagnoses.get(sourceKey) === pending &&
-      !displayOwners.has(key)
-    ) {
-      diagnoses.set(key, Promise.resolve(resolved));
-    }
-  }
-  pluginDiagnoses.set(context, diagnosis);
-  publishWindowsDiagnosis(pluginKey, diagnosis, pluginOwner);
-  for (const [value, resolved] of profileDiagnoses) {
-    const owner = profileOwners.get(value);
-    if (owner) {
-      publishWindowsDiagnosis(
-        win32PythonConfigurationKey(value, configured),
-        resolved,
-        owner,
-      );
-    }
-  }
+  const pendingCheck = { configured, generation };
+  pendingPluginChecks.set(context, pendingCheck);
   notifyListeners(pluginDiagnosisListeners.get(context) ?? []);
-  return diagnosis;
+  try {
+    if (refresh) {
+      // An installer can add Python to the registry PATH while Obsidian keeps
+      // its launch-time environment. Startup shares the existing work instead.
+      invalidateSystemPath();
+      invalidateWindowsPythonDiagnosis(configured);
+    }
+    const diagnosis = await checkWindowsPython(context, configured, spawn, {
+      locate,
+      publish: false,
+    });
+    // An overtaken check publishes nothing, so it probes no override either.
+    if (stale()) return diagnosis;
+    const profileValues = new Set<string>();
+    if (includeProfileOverrides) {
+      for (const profile of Object.values(settings.value.profiles)) {
+        if (
+          profile.type === "integrated" &&
+          Settings.Profile.isCompatible(profile, "win32") &&
+          profile.pythonExecutable
+        ) {
+          profileValues.add(profile.pythonExecutable);
+        }
+      }
+    }
+    const profileDiagnoses = new Map<string, Win32PythonDiagnosis>(),
+      profileOwners = new Map<string, symbol>(),
+      // Only aliases are held back; checkWindowsPython owns configured entries.
+      // An alias is valid only while its source probe still owns that entry.
+      resolutions: (readonly [
+        executable: string,
+        diagnosis: Win32PythonDiagnosis,
+        source: string,
+        pending: Promise<Win32PythonDiagnosis>,
+      ])[] = [];
+    await Promise.all(
+      [...profileValues].map(async (value) => {
+        const key = win32PythonConfigurationKey(value, configured);
+        profileOwners.set(value, claimWindowsDiagnosis(key));
+        // An override that stopped working must not keep its cached success.
+        if (refresh) invalidateWindowsPythonDiagnosis(value, configured);
+        const checking = checkWindowsPython(context, value, spawn, {
+            locate,
+            publish: false,
+          }),
+          pending = diagnoses.get(key),
+          resolved = await checking;
+        profileDiagnoses.set(value, resolved);
+        if (
+          !pending ||
+          resolved.status !== "ok" ||
+          (resolved.transient ?? false)
+        )
+          return;
+        // Alias only the interpreter path: a venv's base host has different
+        // packages and must keep its own diagnosis.
+        if (
+          ![configured, ...profileValues].some((value2) =>
+            sameExecutable(resolved.executable, value2),
+          )
+        ) {
+          resolutions.push([resolved.executable, resolved, value, pending]);
+        }
+      }),
+    );
+    if (stale()) return diagnosis;
+    const checkedConfigurations = new Map<string, Win32PythonDiagnosis>([
+      [configured, diagnosis],
+      ...profileDiagnoses,
+    ]);
+    for (const [value, checked] of checkedConfigurations) {
+      const key = win32PythonConfigurationKey(value, configured),
+        failure = failuresBeforeCheck.get(key);
+      if (
+        displayOwners.get(key) === (profileOwners.get(value) ?? pluginOwner) &&
+        failure !== void 0 &&
+        checked.status === "ok" &&
+        checked.hostExecutable !== null &&
+        !(checked.transient ?? false) &&
+        conPtyRuntimeFailures.get(key) === failure
+      ) {
+        // The identity probe permits a retry; only host readiness proves that
+        // ConPTY recovered. Unchecked configurations keep their own breaker.
+        conPtyRuntimeFailures.delete(key);
+      }
+    }
+    for (const [value, resolved, source, pending] of resolutions) {
+      const key = win32PythonConfigurationKey(value, configured),
+        sourceKey = win32PythonConfigurationKey(source, configured);
+      if (
+        displayOwners.get(sourceKey) === profileOwners.get(source) &&
+        diagnoses.get(sourceKey) === pending &&
+        !displayOwners.has(key)
+      ) {
+        diagnoses.set(key, Promise.resolve(resolved));
+      }
+    }
+    pluginDiagnoses.set(context, diagnosis);
+    publishWindowsDiagnosis(pluginKey, diagnosis, pluginOwner);
+    for (const [value, resolved] of profileDiagnoses) {
+      const owner = profileOwners.get(value);
+      if (owner) {
+        publishWindowsDiagnosis(
+          win32PythonConfigurationKey(value, configured),
+          resolved,
+          owner,
+        );
+      }
+    }
+    return diagnosis;
+  } finally {
+    // A superseded check must not clear the current check's pending state.
+    if (pendingPluginChecks.get(context) === pendingCheck) {
+      pendingPluginChecks.delete(context);
+      notifyListeners(pluginDiagnosisListeners.get(context) ?? []);
+    }
+  }
 }
