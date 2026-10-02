@@ -208,20 +208,14 @@ describe("Windows ConHost path", () => {
     );
     try {
       await fixture.pty.shell;
-      let exitResolved = false;
-      const exit = fixture.pty.onExit.then((code) => {
-        exitResolved = true;
-        return code;
-      });
+      // Sampled when the PTY reports exit: a resizer still running then has
+      // no exit code yet.
+      const resizerExitCode = fixture.pty.onExit.then(
+        () => fixture.processes.resizer?.exitCode,
+      );
 
       await fixture.pty.kill();
-      await new Promise<void>((resolve) => {
-        window.setTimeout(resolve, 10);
-      });
-      expect(exitResolved).toBe(false);
-      await exit;
-      expect(exitResolved).toBe(true);
-      expect(fixture.processes.resizer?.exitCode).toBe(0);
+      await expect(resizerExitCode).resolves.toBe(0);
     } finally {
       fixture.cleanup();
     }
@@ -989,8 +983,9 @@ describe("Windows named-pipe ConPTY readiness", () => {
       JSON.stringify({ columns: 100, op: "resize", rows: 40 }),
     );
     client.write(`${JSON.stringify({ code: 42, event: "exit" })}\n`);
-    await new Promise((resolve) => self.setTimeout(resolve, 10));
-    expect(channel.reportedExitCode()).toBe(42);
+    await vi.waitFor(() => {
+      expect(channel.reportedExitCode()).toBe(42);
+    });
   });
 
   it("sends kill only after a complete ready transition", async () => {
@@ -1346,10 +1341,11 @@ describe("Windows named-pipe ConPTY readiness", () => {
       '{"columns":100,"op":"resize","rows":40,"seq":7}',
     );
     client.write('{"event":"resized","columns":100,"rows":40,"seq":7}\n');
-    await new Promise((resolve) => self.setTimeout(resolve, 10));
-    expect(acked).toEqual([
-      { columns: 100, event: "resized", rows: 40, seq: 7 },
-    ]);
+    await vi.waitFor(() => {
+      expect(acked).toEqual([
+        { columns: 100, event: "resized", rows: 40, seq: 7 },
+      ]);
+    });
   });
 });
 
