@@ -35,6 +35,7 @@ import {
   pythonOverrideStatus,
   pythonStatusKey,
   onPluginPythonDiagnosis,
+  onWindowsPythonStateChange,
   runPluginPythonCheck,
   win32ExitCodeKey,
   win32PathCandidates,
@@ -668,7 +669,7 @@ describe("src/terminal/win32-doctor.ts", () => {
       it("confirms no host when the base probe proves nothing", async () => {
         // Hosting on the venv's launcher would fail the PID check and condemn
         // the runtime for the session. The venv itself answered, so the
-        // ConHost resizer keeps it, and the transient result is not cached.
+        // ConHost resizer keeps it, and the transient result stays provisional.
         const spawn: Win32PythonSpawn = async (executable) =>
           executable === venv
             ? identityResult(venv, "3.12.0", base)
@@ -1026,38 +1027,70 @@ describe("checkWindowsPython session cache", () => {
     expect(spawn.mock.calls).toHaveLength(probes);
   });
 
-  it("retries the preferred interpreter after a transient successful fallback", async () => {
+  it("serves a transient successful fallback immediately while one background probe retries the preferred interpreter", async () => {
+    vi.useFakeTimers();
     const preferred = "C:\\venv\\Scripts\\python.exe",
       fallback = "C:\\Python312\\python.exe",
+      pending = Promise.withResolvers<Win32PythonProcessResult>(),
       spawn = vi
         .fn<Win32PythonSpawn>()
         .mockResolvedValueOnce(result({ code: null, timedOut: true }))
         .mockResolvedValueOnce(identityResult(fallback))
         .mockResolvedValueOnce(identityResult(fallback))
+        .mockReturnValueOnce(pending.promise)
         .mockResolvedValue(identityResult(preferred)),
-      ctx = context();
-    expect(
-      await checkWindowsPython(ctx, preferred, spawn, { locate: noLocate }),
-    ).toMatchObject({
+      ctx = context(),
+      provisional = await checkWindowsPython(ctx, preferred, spawn, {
+        locate: noLocate,
+      });
+    expect(provisional).toMatchObject({
       executable: fallback,
       hostExecutable: fallback,
       status: "ok",
+      transient: true,
     });
+    expect(getWindowsPythonDiagnosis(preferred)).toBe(provisional);
+    const listener = vi.fn();
+    onWindowsPythonStateChange(listener);
     spawn.mockClear();
-    expect(
-      await checkWindowsPython(ctx, preferred, spawn, { locate: noLocate }),
-    ).toMatchObject({
+    const returned = vi.fn(),
+      opens = Promise.all([
+        checkWindowsPython(ctx, preferred, spawn),
+        checkWindowsPython(ctx, preferred, spawn),
+      ]).then(returned);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(returned).toHaveBeenCalledExactlyOnceWith([
+      provisional,
+      provisional,
+    ]);
+    expect(spawn.mock.calls.map(([executable]) => executable)).toEqual([
+      preferred,
+    ]);
+    // Even a slow revalidation cannot make another open wait or start a probe.
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(await checkWindowsPython(ctx, preferred, spawn)).toBe(provisional);
+    expect(spawn).toHaveBeenCalledTimes(1);
+    expect(listener).not.toHaveBeenCalled();
+    pending.resolve(identityResult(preferred));
+    await vi.advanceTimersByTimeAsync(0);
+    await opens;
+    const clean = await checkWindowsPython(ctx, preferred, spawn);
+    expect(clean).toMatchObject({
       candidate: preferred,
       executable: preferred,
       status: "ok",
     });
-    expect(spawn.mock.calls.map(([executable]) => executable)).toEqual([
-      preferred,
-    ]);
+    expect(clean.transient).toBeUndefined();
+    expect(getWindowsPythonDiagnosis(preferred)).toBe(clean);
+    expect(listener).toHaveBeenCalledTimes(1);
+    invalidateWindowsPythonNegativeDiagnoses();
+    expect(await checkWindowsPython(ctx, preferred, spawn)).toBe(clean);
+    expect(spawn).toHaveBeenCalledTimes(1);
     expect(noticeKeys).toEqual([]);
   });
 
-  it("re-probes a venv whose ConPTY host was not confirmed", async () => {
+  it("re-probes a venv whose ConPTY host was not confirmed in the background", async () => {
+    vi.useFakeTimers();
     const venv = "C:\\venv\\Scripts\\python.exe",
       base = "C:\\Python312\\python.exe";
     let locked = true;
@@ -1067,16 +1100,188 @@ describe("checkWindowsPython session cache", () => {
         : locked
           ? result({ code: null, errno: "EACCES" })
           : identityResult(base, "3.12.0", base);
-    await expect(
-      checkWindowsPython(context(), venv, spawn),
-    ).resolves.toMatchObject({ hostExecutable: null, status: "ok" });
+    const provisional = await checkWindowsPython(context(), venv, spawn);
+    expect(provisional).toMatchObject({
+      hostExecutable: null,
+      status: "ok",
+      transient: true,
+    });
     // The lock was momentary; a cached answer would keep ConPTY off the
     // profile for the whole session.
     locked = false;
+    expect(await checkWindowsPython(context(), venv, spawn)).toBe(provisional);
+    await vi.advanceTimersByTimeAsync(0);
     await expect(
       checkWindowsPython(context(), venv, spawn),
     ).resolves.toMatchObject({ hostExecutable: base, status: "ok" });
     expect(noticeKeys).toEqual([]);
+  });
+
+  it("shares revalidation with display listeners and promotes a clean result before notifying them", async () => {
+    vi.useFakeTimers();
+    const spawn = vi
+        .fn<Win32PythonSpawn>()
+        .mockResolvedValueOnce(result({ code: null, timedOut: true }))
+        .mockResolvedValue(identityResult()),
+      ctx = context(),
+      provisional = await checkWindowsPython(ctx, "", spawn, {
+        publish: false,
+      }),
+      pending = Promise.withResolvers<Win32PythonProcessResult>(),
+      returned = vi.fn(),
+      listener = vi.fn(() => {
+        void checkWindowsPython(ctx, "", spawn).then(returned);
+      });
+    expect(getWindowsPythonDiagnosis("")).toBeNull();
+    onWindowsPythonStateChange(listener);
+    spawn.mockClear().mockReturnValueOnce(pending.promise);
+    expect(await checkWindowsPython(ctx, "", spawn)).toBe(provisional);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(returned).toHaveBeenCalledExactlyOnceWith(provisional);
+    expect(spawn).toHaveBeenCalledTimes(1);
+    pending.resolve(identityResult());
+    await vi.advanceTimersByTimeAsync(0);
+    const clean = getWindowsPythonDiagnosis("");
+    expect(clean?.transient).toBeUndefined();
+    expect(returned).toHaveBeenLastCalledWith(clean);
+    expect(listener).toHaveBeenCalledTimes(2);
+    expect(spawn).toHaveBeenCalledTimes(2);
+  });
+
+  it("refreshes a provisional fallback and throttles revalidation for 30 seconds from its start", async () => {
+    vi.useFakeTimers();
+    const timeout = result({ code: null, timedOut: true }),
+      spawn = vi
+        .fn<Win32PythonSpawn>()
+        .mockResolvedValueOnce(timeout)
+        .mockResolvedValue(identityResult()),
+      ctx = context(),
+      provisional = await checkWindowsPython(ctx, "", spawn),
+      pending = Promise.withResolvers<Win32PythonProcessResult>(),
+      fallback = "C:\\Other\\python.exe";
+    spawn
+      .mockClear()
+      .mockReturnValueOnce(pending.promise)
+      .mockResolvedValue(identityResult(fallback));
+    expect(await checkWindowsPython(ctx, "", spawn)).toBe(provisional);
+    await vi.advanceTimersByTimeAsync(10_000);
+    pending.resolve(timeout);
+    await vi.advanceTimersByTimeAsync(0);
+    const refreshed = getWindowsPythonDiagnosis("");
+    expect(refreshed).toMatchObject({
+      executable: fallback,
+      status: "ok",
+      transient: true,
+    });
+    expect(spawn.mock.calls.map(([executable]) => executable)).toEqual([
+      "python",
+      "python3",
+      fallback,
+    ]);
+    spawn.mockClear().mockResolvedValue(identityResult());
+    expect(await checkWindowsPython(ctx, "", spawn)).toBe(refreshed);
+    await vi.advanceTimersByTimeAsync(19_999);
+    expect(await checkWindowsPython(ctx, "", spawn)).toBe(refreshed);
+    expect(spawn).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await checkWindowsPython(ctx, "", spawn)).toBe(refreshed);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(spawn.mock.calls.map(([executable]) => executable)).toEqual([
+      "python",
+      "C:\\Python312\\python.exe",
+    ]);
+    expect(
+      (await checkWindowsPython(ctx, "", spawn)).transient,
+    ).toBeUndefined();
+  });
+
+  it.each([
+    {
+      name: "definitive",
+      probe: result({ code: null, errno: "ENOENT" }),
+      ttl: 30_000,
+    },
+    {
+      name: "transient",
+      probe: result({ code: null, timedOut: true }),
+      ttl: 5_000,
+    },
+  ])(
+    "removes a provisional result after a $name background failure and caches the failure normally",
+    async ({ probe, ttl }) => {
+      vi.useFakeTimers();
+      const warn = vi.spyOn(console, "warn").mockImplementation(vi.fn()),
+        spawn = vi
+          .fn<Win32PythonSpawn>()
+          .mockResolvedValueOnce(result({ code: null, timedOut: true }))
+          .mockResolvedValue(identityResult()),
+        ctx = context(),
+        provisional = await checkWindowsPython(ctx, "", spawn),
+        listener = vi.fn();
+      onWindowsPythonStateChange(listener);
+      spawn.mockClear().mockResolvedValue(probe);
+      expect(await checkWindowsPython(ctx, "", spawn)).toBe(provisional);
+      await vi.advanceTimersByTimeAsync(0);
+      const failed = getWindowsPythonDiagnosis("");
+      expect(failed?.status).toBe("missing");
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(spawn.mock.calls.map(([executable]) => executable)).toEqual([
+        "python",
+        "python3",
+        "py",
+      ]);
+      spawn.mockClear().mockResolvedValue(identityResult());
+      await vi.advanceTimersByTimeAsync(ttl - 1);
+      expect(await checkWindowsPython(ctx, "", spawn)).toBe(failed);
+      expect(spawn).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect((await checkWindowsPython(ctx, "", spawn)).status).toBe("ok");
+      expect(spawn).toHaveBeenCalled();
+      expect(noticeKeys).toEqual([]);
+    },
+  );
+
+  it("catches a rejected background probe and allows another revalidation after 30 seconds", async () => {
+    vi.useFakeTimers();
+    const debug = vi.spyOn(console, "debug").mockImplementation(vi.fn()),
+      spawn = vi
+        .fn<Win32PythonSpawn>()
+        .mockResolvedValueOnce(result({ code: null, timedOut: true }))
+        .mockResolvedValue(identityResult()),
+      ctx = context(),
+      provisional = await checkWindowsPython(ctx, "", spawn),
+      error = new Error("unexpected probe result"),
+      unhandled = vi.fn();
+    // Spawn rejections become diagnoses; fail result processing instead to
+    // exercise the background promise's unexpected-rejection handler.
+    spawn.mockClear().mockResolvedValue({
+      ...result(),
+      get stdout(): string {
+        throw error;
+      },
+    });
+    process.on("unhandledRejection", unhandled);
+    try {
+      expect(await checkWindowsPython(ctx, "", spawn)).toBe(provisional);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(debug).toHaveBeenCalledExactlyOnceWith(error);
+      expect(unhandled).not.toHaveBeenCalled();
+      spawn.mockClear().mockResolvedValue(identityResult());
+      await vi.advanceTimersByTimeAsync(29_999);
+      expect(await checkWindowsPython(ctx, "", spawn)).toBe(provisional);
+      expect(spawn).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(await checkWindowsPython(ctx, "", spawn)).toBe(provisional);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(
+        (await checkWindowsPython(ctx, "", spawn)).transient,
+      ).toBeUndefined();
+      expect(spawn).toHaveBeenCalledTimes(2);
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off("unhandledRejection", unhandled);
+    }
   });
 
   it.each([
@@ -1167,7 +1372,130 @@ describe("checkWindowsPython session cache", () => {
     },
     { name: "PATH", invalidate: invalidateSystemPath },
     { name: "session reset", invalidate: clearWindowsPythonDiagnoses },
+    {
+      name: "runtime breaker",
+      invalidate: () => {
+        invalidateConPtyRuntime("");
+      },
+    },
   ];
+
+  it.each(invalidations)(
+    "drops a provisional result after $name invalidation and probes in the foreground",
+    async ({ invalidate }) => {
+      vi.useFakeTimers();
+      const spawn = vi
+          .fn<Win32PythonSpawn>()
+          .mockResolvedValueOnce(result({ code: null, timedOut: true }))
+          .mockResolvedValue(identityResult()),
+        ctx = context();
+      expect((await checkWindowsPython(ctx, "", spawn)).transient).toBe(true);
+      const pending = Promise.withResolvers<Win32PythonProcessResult>(),
+        returned = vi.fn();
+      spawn.mockClear().mockReturnValueOnce(pending.promise);
+      invalidate();
+      expect(spawn).not.toHaveBeenCalled();
+      const next = checkWindowsPython(ctx, "", spawn).then(returned);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(spawn).toHaveBeenCalledTimes(1);
+      expect(returned).not.toHaveBeenCalled();
+      pending.resolve(identityResult());
+      await next;
+      expect(returned).toHaveBeenCalledWith(
+        expect.objectContaining({ status: "ok" }),
+      );
+    },
+  );
+
+  it.each(
+    invalidations.flatMap((invalidation) =>
+      ["clean success", "transient success", "failure"].map((outcome) => ({
+        ...invalidation,
+        outcome,
+      })),
+    ),
+  )(
+    "ignores a background $outcome settling after $name invalidation",
+    async ({ invalidate, outcome }) => {
+      vi.useFakeTimers();
+      vi.spyOn(console, "warn").mockImplementation(vi.fn());
+      const timeout = result({ code: null, timedOut: true }),
+        failed = result({ code: null, errno: "ENOENT" }),
+        spawn = vi
+          .fn<Win32PythonSpawn>()
+          .mockResolvedValueOnce(timeout)
+          .mockResolvedValue(identityResult()),
+        ctx = context(),
+        provisional = await checkWindowsPython(ctx, "", spawn),
+        pending = Promise.withResolvers<Win32PythonProcessResult>(),
+        stale = identityResult("C:\\Stale\\python.exe");
+      spawn
+        .mockClear()
+        .mockReturnValueOnce(pending.promise)
+        .mockResolvedValue(outcome === "failure" ? failed : stale);
+      expect(await checkWindowsPython(ctx, "", spawn)).toBe(provisional);
+      expect(spawn).toHaveBeenCalledTimes(1);
+      invalidate();
+      const displayed = getWindowsPythonDiagnosis(""),
+        listener = vi.fn();
+      onWindowsPythonStateChange(listener);
+      pending.resolve(
+        outcome === "failure"
+          ? failed
+          : outcome === "transient success"
+            ? timeout
+            : stale,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+      expect(getWindowsPythonDiagnosis("")).toBe(displayed);
+      expect(listener).not.toHaveBeenCalled();
+      spawn.mockClear().mockResolvedValue(identityResult());
+      const next = await checkWindowsPython(ctx, "", spawn);
+      expect(next).toMatchObject({
+        executable: "C:\\Python312\\python.exe",
+        status: "ok",
+      });
+      expect(next.transient).toBeUndefined();
+      expect(spawn.mock.calls.map(([executable]) => executable)).toEqual([
+        "python",
+        "C:\\Python312\\python.exe",
+      ]);
+      expect(getWindowsPythonDiagnosis("")).toBe(next);
+    },
+  );
+
+  it("keeps a newer foreground probe when an invalidated background revalidation settles", async () => {
+    vi.useFakeTimers();
+    const spawn = vi
+        .fn<Win32PythonSpawn>()
+        .mockResolvedValueOnce(result({ code: null, timedOut: true }))
+        .mockResolvedValue(identityResult()),
+      ctx = context(),
+      provisional = await checkWindowsPython(ctx, "", spawn),
+      oldProbe = Promise.withResolvers<Win32PythonProcessResult>(),
+      newProbe = Promise.withResolvers<Win32PythonProcessResult>();
+    spawn.mockReturnValueOnce(oldProbe.promise);
+    expect(await checkWindowsPython(ctx, "", spawn)).toBe(provisional);
+    const newSpawn = vi
+        .fn<Win32PythonSpawn>()
+        .mockReturnValueOnce(newProbe.promise)
+        .mockResolvedValue(identityResult("C:\\New\\python.exe")),
+      // Explicit Recheck must bypass the provisional result and pending retry.
+      recheck = runPluginPythonCheck(ctx, newSpawn, noLocate, {
+        includeProfileOverrides: false,
+      });
+    oldProbe.resolve(identityResult());
+    await vi.advanceTimersByTimeAsync(0);
+    expect(getWindowsPythonDiagnosis("")).toBe(provisional);
+    const concurrent = checkWindowsPython(ctx, "", newSpawn);
+    expect(newSpawn).toHaveBeenCalledTimes(1);
+    newProbe.resolve(identityResult("C:\\New\\python.exe"));
+    const clean = await recheck;
+    expect(await concurrent).toBe(clean);
+    expect(await checkWindowsPython(ctx, "", newSpawn)).toBe(clean);
+    expect(getWindowsPythonDiagnosis("")).toBe(clean);
+    expect(newSpawn).toHaveBeenCalledTimes(2);
+  });
 
   it.each(invalidations)(
     "retries a failure after $name invalidation without eager work",
@@ -1380,6 +1708,7 @@ describe("checkWindowsResizerPackages", () => {
 describe("runPluginPythonCheck", () => {
   afterEach(() => {
     clearWindowsPythonDiagnoses();
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -1494,6 +1823,106 @@ describe("runPluginPythonCheck", () => {
     await check;
   });
 
+  it.each(["clean", "refreshed provisional", "failed"])(
+    "publishes a %s result from a startup background revalidation",
+    async (outcome) => {
+      vi.useFakeTimers();
+      vi.spyOn(console, "warn").mockImplementation(vi.fn());
+      const preferred = "C:\\Preferred\\python.exe",
+        fallback = "C:\\Fallback\\python.exe",
+        { context: ctx } = reconcileContext({ pythonExecutable: preferred }),
+        timeout = result({ code: null, timedOut: true }),
+        missing = result({ code: null, errno: "ENOENT" }),
+        spawn = vi
+          .fn<Win32PythonSpawn>()
+          .mockResolvedValueOnce(timeout)
+          .mockResolvedValue(identityResult(fallback)),
+        provisional = await checkWindowsPython(ctx, preferred, spawn, {
+          locate: noLocate,
+        }),
+        pending = Promise.withResolvers<Win32PythonProcessResult>();
+      expect(provisional).toMatchObject({
+        executable: fallback,
+        status: "ok",
+        transient: true,
+      });
+      spawn
+        .mockClear()
+        .mockReturnValueOnce(pending.promise)
+        .mockResolvedValue(
+          outcome === "failed" ? missing : identityResult(fallback),
+        );
+      expect(
+        await runPluginPythonCheck(ctx, spawn, noLocate, {
+          refresh: false,
+          includeProfileOverrides: false,
+        }),
+      ).toBe(provisional);
+      expect(getWindowsPythonDiagnosis(preferred)).toBe(provisional);
+      expect(spawn).toHaveBeenCalledTimes(1);
+      const listener = vi.fn(() => getWindowsPythonDiagnosis(preferred));
+      onWindowsPythonStateChange(listener);
+      pending.resolve(
+        outcome === "clean"
+          ? identityResult(preferred)
+          : outcome === "failed"
+            ? missing
+            : timeout,
+      );
+      await vi.advanceTimersByTimeAsync(0);
+      const updated = await checkWindowsPython(ctx, preferred, spawn, {
+        publish: false,
+      });
+      expect(updated).not.toBe(provisional);
+      expect(updated).toMatchObject({
+        executable: outcome === "refreshed provisional" ? fallback : preferred,
+        status: outcome === "failed" ? "missing" : "ok",
+      });
+      expect(updated.transient).toBe(
+        outcome === "refreshed provisional" ? true : void 0,
+      );
+      expect(getWindowsPythonDiagnosis(preferred)).toBe(updated);
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveReturnedWith(updated);
+    },
+  );
+
+  it("keeps a newer foreground result when a startup background revalidation settles late", async () => {
+    vi.useFakeTimers();
+    const preferred = "C:\\Preferred\\python.exe",
+      { context: ctx } = reconcileContext({ pythonExecutable: preferred }),
+      spawn = vi
+        .fn<Win32PythonSpawn>()
+        .mockResolvedValueOnce(result({ code: null, timedOut: true }))
+        .mockResolvedValue(identityResult()),
+      provisional = await checkWindowsPython(ctx, preferred, spawn, {
+        locate: noLocate,
+      }),
+      pending = Promise.withResolvers<Win32PythonProcessResult>();
+    spawn.mockReturnValueOnce(pending.promise);
+    expect(
+      await runPluginPythonCheck(ctx, spawn, noLocate, {
+        refresh: false,
+        includeProfileOverrides: false,
+      }),
+    ).toBe(provisional);
+    const newSpawn = vi
+        .fn<Win32PythonSpawn>()
+        .mockResolvedValue(identityResult(preferred, "3.13.0")),
+      newer = await runPluginPythonCheck(ctx, newSpawn, noLocate, {
+        includeProfileOverrides: false,
+      }),
+      listener = vi.fn();
+    expect(getWindowsPythonDiagnosis(preferred)).toBe(newer);
+    onWindowsPythonStateChange(listener);
+    pending.resolve(identityResult(preferred));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(getWindowsPythonDiagnosis(preferred)).toBe(newer);
+    expect(await checkWindowsPython(ctx, preferred, newSpawn)).toBe(newer);
+    expect(listener).not.toHaveBeenCalled();
+    expect(newSpawn).toHaveBeenCalledTimes(1);
+  });
+
   it("checks only the plugin configuration when profile overrides are excluded", async () => {
     const pluginPython = "C:\\Plugin\\python.exe",
       override = "/opt/python3",
@@ -1603,8 +2032,9 @@ describe("runPluginPythonCheck", () => {
   });
 
   it.each(["plugin", "profile", "canonical alias"])(
-    "does not cache a transient successful fallback under the %s key",
+    "keeps a transient successful fallback provisional without aliasing it under the %s key",
     async (key) => {
+      vi.useFakeTimers();
       const preferred = "C:\\venv\\Scripts\\python.exe",
         fallback = "C:\\Python312\\python.exe",
         { context: ctx } = reconcileContext(
@@ -1622,13 +2052,33 @@ describe("runPluginPythonCheck", () => {
             : identityResult(fallback),
         );
       await runPluginPythonCheck(ctx, spawn, noLocate);
-      // Display state may retain the fallback; opening must still probe again.
+      const provisional = getWindowsPythonDiagnosis(preferred);
+      expect(provisional).toMatchObject({
+        executable: fallback,
+        status: "ok",
+        transient: true,
+      });
+      // Configured keys serve the fallback while retrying; canonical paths
+      // must still answer their own foreground probe.
       const next = key === "canonical alias" ? fallback : preferred;
       spawn.mockClear();
       spawn.mockResolvedValue(identityResult(next));
-      expect(
-        await checkWindowsPython(ctx, next, spawn, { locate: noLocate }),
-      ).toMatchObject({ candidate: next, executable: next, status: "ok" });
+      const opened = await checkWindowsPython(ctx, next, spawn, {
+        locate: noLocate,
+      });
+      if (key !== "canonical alias") expect(opened).toBe(provisional);
+      else
+        expect(opened).toMatchObject({
+          candidate: next,
+          executable: next,
+          status: "ok",
+        });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(await checkWindowsPython(ctx, next, spawn)).toMatchObject({
+        candidate: next,
+        executable: next,
+        status: "ok",
+      });
       expect(spawn.mock.calls.map(([executable]) => executable)).toEqual([
         next,
       ]);
@@ -1636,8 +2086,9 @@ describe("runPluginPythonCheck", () => {
   );
 
   it.each(["plugin", "profile"])(
-    "keeps the %s runtime breaker after a transient successful fallback",
+    "keeps the %s runtime breaker after a provisional fallback and background refresh",
     async (scope) => {
+      vi.useFakeTimers();
       const preferred = "C:\\venv\\Scripts\\python.exe",
         fallback = "C:\\Python312\\python.exe",
         { context: ctx } = reconcileContext(
@@ -1658,6 +2109,25 @@ describe("runPluginPythonCheck", () => {
       invalidateConPtyRuntime(preferred, configured);
       await runPluginPythonCheck(ctx, spawn, noLocate);
       expect(isConPtyRuntimeUnavailable(preferred, configured)).toBe(true);
+      const provisional = getWindowsPythonDiagnosis(preferred, configured);
+      expect(await checkWindowsPython(ctx, preferred, spawn)).toBe(provisional);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(getWindowsPythonDiagnosis(preferred, configured)).toMatchObject({
+        executable: fallback,
+        status: "ok",
+        transient: true,
+      });
+      await runPluginPythonCheck(ctx, spawn, noLocate, { refresh: false });
+      expect(isConPtyRuntimeUnavailable(preferred, configured)).toBe(true);
+      spawn.mockClear().mockResolvedValue(identityResult(fallback));
+      expect(await checkWindowsPython(ctx, fallback, spawn)).toMatchObject({
+        candidate: fallback,
+        executable: fallback,
+        status: "ok",
+      });
+      expect(spawn.mock.calls.map(([executable]) => executable)).toEqual([
+        fallback,
+      ]);
     },
   );
 

@@ -169,8 +169,8 @@ export interface Win32PythonDiagnosis {
   readonly version: string;
   /** Short, non-localized diagnostic detail for logs. */
   readonly detail: string;
-  /** True when a probe timed out, threw, or never ran. Only failures receive
-   * a short retry delay; successful transient results are never cached. */
+  /** True when a probe timed out, threw, or never ran. Failures receive a
+   * short retry delay; successful transient results stay provisional. */
   readonly transient?: boolean;
   /** Spawn errno when the probe did not run. */
   readonly errno?: string;
@@ -466,7 +466,7 @@ async function probePython(
  * already `rejected` by its own probe is not probed again. A base probe that
  * proved nothing confirms no host: spawning the venv's launcher would fail
  * the PID check and condemn the runtime. The venv itself stays usable, so the
- * ConHost resizer keeps it, and the transient result is never cached.
+ * ConHost resizer keeps it, and the transient result stays provisional.
  */
 async function resolveHostExecutable(
   spawn: Win32PythonSpawn,
@@ -733,13 +733,22 @@ interface NegativePythonDiagnosis {
   readonly pathGeneration: number;
 }
 
+interface ProvisionalPythonDiagnosis {
+  readonly diagnosis: Win32PythonDiagnosis;
+  readonly pathGeneration: number;
+  readonly revalidateAfter: number;
+  readonly revalidating: boolean;
+}
+
 const NEGATIVE_DIAGNOSIS_TTL = 30_000,
-  TRANSIENT_NEGATIVE_DIAGNOSIS_TTL = 5_000;
-// Advances when settings invalidate all failures, including pending probes.
+  TRANSIENT_NEGATIVE_DIAGNOSIS_TTL = 5_000,
+  PROVISIONAL_REVALIDATION_INTERVAL = 30_000;
+// Advances when settings invalidate failures and provisional results.
 let negativeDiagnosisGeneration = 0;
 
 const diagnoses = new Map<string, Promise<Win32PythonDiagnosis>>(),
   negativeDiagnoses = new Map<string, NegativePythonDiagnosis>(),
+  provisionalDiagnoses = new Map<string, ProvisionalPythonDiagnosis>(),
   displayDiagnoses = new Map<string, Win32PythonDiagnosis>(),
   displayOwners = new Map<string, symbol>(),
   windowsStateListeners = new Set<() => void>(),
@@ -897,12 +906,14 @@ export function invalidateWindowsPythonDiagnosis(
   );
   diagnoses.delete(key);
   negativeDiagnoses.delete(key);
+  provisionalDiagnoses.delete(key);
 }
 
-/** Drops failed results without launching probes, refreshing PATH or prewarming. */
+/** Drops failed and provisional results without probes, PATH refresh or prewarming. */
 export function invalidateWindowsPythonNegativeDiagnoses(): void {
   negativeDiagnosisGeneration++;
   negativeDiagnoses.clear();
+  provisionalDiagnoses.clear();
 }
 
 /**
@@ -922,8 +933,9 @@ function evictOwnDiagnosis(
 
 /**
  * Checks Python silently, caching stable successes and briefly reusing failures
- * per configuration and plugin fallback. Callers await it before constructing
- * a Windows PTY; the open path explains any backend fallback or disabled resizer.
+ * per configuration and plugin fallback. Provisional successes return at once
+ * while revalidating in the background. Callers await it before constructing a
+ * Windows PTY; the open path explains any backend fallback or disabled resizer.
  */
 export async function checkWindowsPython(
   context: TerminalPlugin,
@@ -955,7 +967,34 @@ export async function checkWindowsPython(
   }
   const pathGeneration = getSystemPathGeneration(),
     negativeGeneration = negativeDiagnosisGeneration,
+    provisional = provisionalDiagnoses.get(key),
     negative = negativeDiagnoses.get(key);
+  let revalidation: ProvisionalPythonDiagnosis | null = null;
+  if (provisional) {
+    if (provisional.pathGeneration === pathGeneration) {
+      if (
+        provisional.revalidating ||
+        Date.now() < provisional.revalidateAfter
+      ) {
+        if (publish && !displayDiagnoses.has(key)) {
+          publishWindowsDiagnosis(
+            key,
+            provisional.diagnosis,
+            claimWindowsDiagnosis(key),
+          );
+        }
+        return provisional.diagnosis;
+      }
+      revalidation = {
+        ...provisional,
+        revalidateAfter: Date.now() + PROVISIONAL_REVALIDATION_INTERVAL,
+        revalidating: true,
+      };
+      provisionalDiagnoses.set(key, revalidation);
+    } else {
+      provisionalDiagnoses.delete(key);
+    }
+  }
   if (negative) {
     if (
       negative.pathGeneration === pathGeneration &&
@@ -979,46 +1018,86 @@ export async function checkWindowsPython(
     locate,
     fallbackPythonExecutable,
   );
-  // Retained while in flight so concurrent first callers share one probe.
-  diagnoses.set(key, diagnosis);
-  let ret: Win32PythonDiagnosis;
-  try {
-    ret = await diagnosis;
-  } catch (error) {
-    evictOwnDiagnosis(key, diagnosis);
-    throw error;
-  }
-  const { detail, status } = ret;
-  if (owner !== null && diagnoses.get(key) === diagnosis) {
-    publishWindowsDiagnosis(key, ret, owner);
-  }
-  if (status === "ok") {
-    if (ret.transient ?? false) {
-      // An unconfirmed host is retried by the next open.
-      evictOwnDiagnosis(key, diagnosis);
-    }
-    return ret;
-  }
-  // Measure retry delay from settlement. Invalidated or superseded work must
-  // neither install a failure nor evict a newer probe or successful result.
-  if (
-    diagnoses.get(key) === diagnosis &&
-    pathGeneration === getSystemPathGeneration() &&
-    negativeGeneration === negativeDiagnosisGeneration
-  ) {
-    negativeDiagnoses.set(key, {
-      diagnosis: ret,
-      expiresAt:
-        Date.now() +
-        (ret.transient
-          ? TRANSIENT_NEGATIVE_DIAGNOSIS_TTL
-          : NEGATIVE_DIAGNOSIS_TTL),
-      pathGeneration,
+  // Only foreground callers share an in-flight entry in the success cache.
+  if (!revalidation) diagnoses.set(key, diagnosis);
+  const currentGeneration = (): boolean =>
+      pathGeneration === getSystemPathGeneration() &&
+      negativeGeneration === negativeDiagnosisGeneration,
+    ownsDiagnosis = (): boolean =>
+      revalidation
+        ? provisionalDiagnoses.get(key) === revalidation && currentGeneration()
+        : diagnoses.get(key) === diagnosis,
+    checked = diagnosis
+      .then((ret) => {
+        // Invalidation revokes background ownership, including display updates.
+        const owned = ownsDiagnosis(),
+          { detail, status } = ret;
+        if (revalidation && !owned) return ret;
+        if (status === "ok") {
+          if (ret.transient ?? false) {
+            if (owned && currentGeneration()) {
+              provisionalDiagnoses.set(key, {
+                diagnosis: ret,
+                pathGeneration,
+                revalidateAfter: revalidation?.revalidateAfter ?? 0,
+                revalidating: false,
+              });
+            }
+            evictOwnDiagnosis(key, diagnosis);
+          } else if (revalidation && owned) {
+            provisionalDiagnoses.delete(key);
+            diagnoses.set(key, diagnosis);
+          }
+        } else {
+          // Measure retry delay from settlement. Invalidated or superseded work
+          // must neither install a failure nor evict a newer probe or success.
+          if (owned && currentGeneration()) {
+            provisionalDiagnoses.delete(key);
+            negativeDiagnoses.set(key, {
+              diagnosis: ret,
+              expiresAt:
+                Date.now() +
+                (ret.transient
+                  ? TRANSIENT_NEGATIVE_DIAGNOSIS_TTL
+                  : NEGATIVE_DIAGNOSIS_TTL),
+              pathGeneration,
+            });
+          }
+          evictOwnDiagnosis(key, diagnosis);
+          self.console.warn(`Python check: ${status} (${detail})`);
+        }
+        if (owner !== null && owned) {
+          publishWindowsDiagnosis(key, ret, owner);
+        } else if (
+          revalidation &&
+          displayDiagnoses.get(key) === revalidation.diagnosis
+        ) {
+          // Startup can revalidate without a display claim. Replace only the
+          // provisional result it superseded, leaving newer displays alone.
+          publishWindowsDiagnosis(key, ret, claimWindowsDiagnosis(key));
+        }
+        return ret;
+      })
+      .catch((error: unknown) => {
+        if (revalidation && ownsDiagnosis()) {
+          provisionalDiagnoses.set(key, {
+            ...revalidation,
+            revalidating: false,
+          });
+        }
+        evictOwnDiagnosis(key, diagnosis);
+        throw error;
+      });
+  if (revalidation) {
+    void checked.catch((error: unknown) => {
+      /* @__PURE__ */ self.console.debug(error);
     });
+    if (owner !== null && !displayDiagnoses.has(key) && ownsDiagnosis()) {
+      publishWindowsDiagnosis(key, revalidation.diagnosis, owner);
+    }
+    return revalidation.diagnosis;
   }
-  evictOwnDiagnosis(key, diagnosis);
-  self.console.warn(`Python check: ${status} (${detail})`);
-  return ret;
+  return checked;
 }
 
 interface PendingPluginPythonCheck {
