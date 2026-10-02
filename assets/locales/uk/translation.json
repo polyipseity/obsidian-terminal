@@ -349,6 +349,7 @@
     "expose-internal-modules": "Відкрити внутрішні модулі",
     "expose-internal-modules-description-HTML": "<code>obsidian</code>, <code>@codemirror/*</code>, <code>@lezer/*</code>…",
     "focus-on-new-instance": "$t(generic.focus, capitalize) на новому екземплярі",
+    "focus-on-new-instance-description": "When $t(generic.enable_past-participle), moves keyboard $t(generic.focus) to the new $t(generic.terminal). The $t(generic.terminal) is shown and its $t(generic.tab) is selected either way.",
     "hide-status-bar": "Приховати рядок стану",
     "hide-status-bar-options": {
       "always": "Завжди",
