@@ -2,20 +2,17 @@
 "obsidian-terminal": major
 ---
 
-Windows integrated terminals now use ConPTY by default. ConPTY requires Python 3.9 or newer and no pip packages.
+Windows integrated terminals now use ConPTY by default. ConPTY needs Python 3.9 or newer and no pip packages.
 
-**Breaking:** the "Use Windows conhost.exe" toggle and its pipe mode are removed. Every existing Windows integrated profile upgraded from 3.27.x now selects ConPTY, whatever the old toggle said. To keep using ConHost, choose **ConHost** in the new **Windows terminal backend** profile setting. Without a working Python 3.9 or newer, terminals fall back to ConHost at runtime without rewriting the profile. On Windows, an empty profile **Python executable** no longer means "no Python": it inherits the plugin-level setting and then auto-detects. A ConHost profile that was left empty to run without the resizer now gets the resizer whenever a usable Python with the resizer packages is found, and no setting turns the ConHost resizer off.
+The "Use Windows conhost.exe" toggle and its pipe mode are removed. Every Windows integrated profile upgraded from 3.27.x now selects ConPTY, whatever the old toggle said; choose **ConHost** in the new **Windows terminal backend** profile setting to keep it. Without a working Python, terminals fall back to ConHost and the profile stays unchanged. An empty profile **Python executable** on Windows now inherits the plugin-level setting and auto-detects, so ConHost profiles left empty to skip the resizer get it whenever a usable Python has the resizer packages. No setting turns the resizer off.
 
-- Programs started from a ConPTY terminal outside its console, including GUI apps, detached launches, and agent-started servers that detach, keep running after the terminal closes. Programs attached to its console end with it.
-- Windows-only profiles that still carry the old `python3` default now inherit the plugin-level Python setting. Custom interpreters and cross-platform profiles retain their values. Update every device syncing the vault: a device still on 3.27.x treats the migrated, empty Python field as "no Python" and runs ConHost without its resizer.
-- The new Windows **Python executable** setting provides automatic detection and interpreter status. Windows terminals try the profile's interpreter, then the plugin's interpreter, then `python`, `python3`, and `py -3`, using the first working interpreter. Detected paths stay out of synced settings.
-- **Prewarm ConPTY terminal host**, enabled by default on Windows, keeps a spare background Python process to reduce terminal startup time. Startup prewarming begins only after an integrated terminal has been used successfully on this device; that usage record stays local and is never synced.
-- Automatic Windows Python checks run only bare command names and drive-absolute paths. Startup checks only the plugin-level interpreter; profile overrides are checked when opening the profile's terminal. Settings and profile-editor checks run when a value is committed by leaving or changing the field, or with **Check** / **Recheck**, not during typing pauses.
-- Failed Python checks can be retried after a short cache period or immediately with **Recheck**. Python status identifies a configured interpreter that could not be used and the working fallback, when available. ConHost fallback notices include guidance for missing or unusable Python.
-- ConPTY shell lookup honours `NoDefaultCurrentDirectoryInExePath`, skipping implicit current-directory searches when it is set.
-- ConHost resizer package checks and installation guidance use minimum versions without upper limits: `psutil>=5.9.5`, `pywinctl>=0.0.50`, and `typing_extensions>=4.7.1`.
-- Closing a tab cancels pending ConPTY startup without launching a fallback shell or showing a startup-error notice. ConPTY startup failures show one error notice.
-- Terminals handle heavy output with sliced writes and backpressure on every platform. Resize throttling drops from 0.5 to 0.1 seconds, and terminals start at the fitted pane size.
-- Intentional closes and restarts suppress exit notifications. Closing terminals detach and dispose their UI before waiting for process exit, including when a child ignores termination.
+- GUI apps and detached processes started from a ConPTY terminal keep running after the terminal closes.
+- Windows-only profiles still on the old `python3` default now inherit the plugin-level Python setting.
+- The new Windows **Python executable** setting shows interpreter status and auto-detects: profile interpreter, plugin interpreter, then `python`, `python3`, and `py -3`.
+- **Prewarm ConPTY terminal host**, on by default, keeps a spare Python process ready so terminals open faster, once an integrated terminal has worked.
+- Automatic Python checks run only bare command names and drive-absolute paths. Settings checks run when a field is committed or with **Check** / **Recheck**, not while typing.
+- Python status names an unusable configured interpreter and the working fallback; ConHost fallback notices add install guidance.
+- Closing a tab cancels pending ConPTY startup without a fallback shell or error notice, and intentional closes and restarts show no exit notice. The UI is disposed before waiting for process exit, even when a child ignores termination.
+- Resize throttling drops from 0.5 to 0.1 seconds, and terminals start at the fitted pane size.
 
 Fixes [GH#104](https://github.com/polyipseity/obsidian-terminal/issues/104); addresses [GH#77](https://github.com/polyipseity/obsidian-terminal/issues/77), [GH#79](https://github.com/polyipseity/obsidian-terminal/issues/79), [GH#115](https://github.com/polyipseity/obsidian-terminal/issues/115), [GH#142](https://github.com/polyipseity/obsidian-terminal/issues/142), [GH#145](https://github.com/polyipseity/obsidian-terminal/issues/145), [GH#153](https://github.com/polyipseity/obsidian-terminal/issues/153), and [GH#168](https://github.com/polyipseity/obsidian-terminal/issues/168). ([GH#183](https://github.com/polyipseity/obsidian-terminal/pull/183) by [@janah01](https://github.com/janah01))

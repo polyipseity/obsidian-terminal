@@ -376,6 +376,7 @@
     "expose-internal-modules": "顯示內部模塊",
     "expose-internal-modules-description-HTML": "<code>obsidian</code>、<code>@codemirror/*</code>、<code>@lezer/*</code>……",
     "focus-on-new-instance": "$t(generic.focus)新$t(generic.instance)",
+    "focus-on-new-instance-description": "When $t(generic.enable_past-participle), moves keyboard $t(generic.focus) to the new $t(generic.terminal). The $t(generic.terminal) is shown and its $t(generic.tab) is selected either way.",
     "hide-status-bar": "隱藏$t(generic.status-bar)",
     "hide-status-bar-options": {
       "always": "總是",

@@ -590,6 +590,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
       .newSetting(containerEl, (setting) => {
         setting
           .setName(i18n.t("settings.focus-on-new-instance"))
+          .setDesc(i18n.t("settings.focus-on-new-instance-description"))
           .addToggle(
             linkSetting(
               () => settings.value.focusOnNewInstance,

@@ -821,6 +821,7 @@ export class MetadataCache extends Events {
 
 export class WorkspaceLeaf {
   view: { file: TFile | null } = { file: null };
+  private readonly root = {};
   private viewState: { type: string; state: unknown } = {
     type: "empty",
     state: {},
@@ -834,6 +835,12 @@ export class WorkspaceLeaf {
     this.viewState = { type: viewState.type, state: viewState.state ?? {} };
     return Promise.resolve();
   }
+
+  getRoot(): object {
+    return this.root;
+  }
+
+  setPinned(_pinned: boolean): void {}
 
   openFile(file: TFile, _openState?: { active?: boolean }): Promise<void> {
     this.view.file = file;
@@ -858,11 +865,33 @@ export class Workspace extends Events {
     return null;
   }
 
-  getLeaf(newLeaf?: boolean): WorkspaceLeaf {
+  getLeaf(
+    newLeaf?: boolean | "tab" | "split" | "window",
+    _direction?: "horizontal" | "vertical",
+  ): WorkspaceLeaf {
     if (!newLeaf && this.activeLeaf) return this.activeLeaf;
     const leaf = new WorkspaceLeaf();
     this.activeLeaf = leaf;
     return leaf;
+  }
+
+  getLeftLeaf(_split: boolean): WorkspaceLeaf | null {
+    return new WorkspaceLeaf();
+  }
+
+  getRightLeaf(_split: boolean): WorkspaceLeaf | null {
+    return new WorkspaceLeaf();
+  }
+
+  revealLeaf(_leaf: WorkspaceLeaf): Promise<void> {
+    return Promise.resolve();
+  }
+
+  setActiveLeaf(
+    leaf: WorkspaceLeaf,
+    _params?: { readonly focus?: boolean },
+  ): void {
+    this.activeLeaf = leaf;
   }
 
   getLeavesOfType(_type: string): WorkspaceLeaf[] {
@@ -1224,6 +1253,12 @@ export class ItemView extends Component {
   getIcon(): string {
     return "";
   }
+
+  protected onOpen(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  onPaneMenu(_menu: unknown, _source: string): void {}
 
   async setState(_state: unknown, _result?: unknown): Promise<void> {
     return Promise.resolve();

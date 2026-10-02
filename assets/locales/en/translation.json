@@ -383,7 +383,7 @@
     "add-to-context-menu": "Add to $t(generic.context-menu)",
     "advanced": "Advanced",
     "create-instance-near-existing-ones": "Create $t(generic.instance) near $t(generic.exist_gerund) ones",
-    "create-instance-near-existing-ones-description": "Overrides '$t(settings.new-instance-behavior)' when $t(generic.instance) $t(generic.exist_singular) if $t(generic.true).",
+    "create-instance-near-existing-ones-description": "When $t(generic.enable_past-participle), creates a new $t(generic.instance) near the most recently used $t(generic.terminal) that is still open. Only a $t(generic.terminal) you have opened or $t(generic.focus_past-participle) since starting Obsidian is used; otherwise '$t(settings.new-instance-behavior)' applies.",
     "default-profile": "Default $t(generic.profile)",
     "default-profile-description": "$t(generic.profile, capitalize) to open when clicking the ribbon icon. Leave empty to show $t(generic.profile) selector. Right-click the ribbon icon to list all profiles.",
     "default-profile-name-": "$t(profile-name-formats.short)",
@@ -397,6 +397,7 @@
     "expose-internal-modules": "Expose internal modules",
     "expose-internal-modules-description-HTML": "<code>obsidian</code>, <code>@codemirror/*</code>, <code>@lezer/*</code>…",
     "focus-on-new-instance": "$t(generic.focus, capitalize) on new $t(generic.instance)",
+    "focus-on-new-instance-description": "When $t(generic.enable_past-participle), moves keyboard $t(generic.focus) to the new $t(generic.terminal). The $t(generic.terminal) is shown and its $t(generic.tab) is selected either way.",
     "hide-status-bar": "Hide $t(generic.status-bar)",
     "hide-status-bar-options": {
       "always": "Always",

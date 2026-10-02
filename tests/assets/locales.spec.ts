@@ -29,6 +29,18 @@ describe("PluginLocales", () => {
     expect(language.en).toBe("English");
   });
 
+  describe("provides the instancing descriptions in every declared locale", () => {
+    it.each(Array.from(PluginLocales.LANGUAGES))("%s", async (language) => {
+      const { settings } =
+        await PluginLocales.RESOURCES[language].translation();
+
+      expect(settings["focus-on-new-instance-description"]).toMatch(/\S/u);
+      expect(
+        settings["create-instance-near-existing-ones-description"],
+      ).toMatch(/\S/u);
+    });
+  });
+
   it("lists languages and includes expected entries", () => {
     const langs = Array.from(PluginLocales.LANGUAGES);
     expect(langs).toEqual(expect.arrayContaining(["en", "pt", "pt-BR"]));
