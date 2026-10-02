@@ -50,6 +50,7 @@ import {
   ItemView,
   type Menu,
   Scope,
+  View,
   type ViewStateResult,
   type WorkspaceLeaf,
 } from "obsidian";
@@ -108,6 +109,20 @@ const xtermAddonCanvas = dynamicRequire<typeof import("@xterm/addon-canvas")>(
     BUNDLE,
     "@xterm/addon-webgl",
   );
+
+const terminalUses = new WeakMap<TerminalView, number>();
+// Intentionally mutable so session uses have a strict order even within one tick.
+let terminalUseSequence = 0;
+
+function recordTerminalUse(view: TerminalView): void {
+  terminalUses.set(view, ++terminalUseSequence);
+}
+
+// Recorded uses start at 1, so 0 means "not used this session".
+function terminalUseOf(leaf: WorkspaceLeaf | undefined): number {
+  const view = leaf?.view;
+  return view instanceof TerminalView ? (terminalUses.get(view) ?? 0) : 0;
+}
 
 export class EditTerminalModal extends DialogModal {
   protected readonly state;
@@ -703,7 +718,10 @@ export class TerminalView extends ItemView {
           .onClick(async () =>
             TerminalView.spawn(
               context,
-              this.state,
+              {
+                ...this.state,
+                focus: context.settings.value.focusOnNewInstance,
+              },
               TerminalView.getLeaf(context, this.leaf),
               this.getViewType(),
             ),
@@ -877,6 +895,7 @@ export class TerminalView extends ItemView {
       "focusin",
       () => {
         TerminalView.lastFocusTimes.set(this, Date.now());
+        recordTerminalUse(this);
         if (settings.value.interceptKeysWhenFocused) {
           keymap.pushScope(focusedScope);
         }
@@ -1385,7 +1404,15 @@ export namespace TerminalView {
           const existingLeaves = workspace.getLeavesOfType(
               TerminalView.type.namespaced(context),
             ),
-            existingLeaf = leaf ?? existingLeaves[existingLeaves.length - 1];
+            existingLeaf =
+              leaf ??
+              existingLeaves.reduce<WorkspaceLeaf | undefined>(
+                (latest, candidate) =>
+                  terminalUseOf(candidate) > terminalUseOf(latest)
+                    ? candidate
+                    : latest,
+                void 0,
+              );
           if (existingLeaf) {
             const root = existingLeaf.getRoot();
             if (root === leftSplit) {
@@ -1437,12 +1464,40 @@ export namespace TerminalView {
     leaf?: WorkspaceLeaf,
     type: string = TerminalView.type.namespaced(context),
   ): Promise<void> {
-    await (leaf ?? getLeaf(context)).setViewState({
+    const { focus } = state,
+      {
+        app: { workspace },
+      } = context,
+      target = leaf ?? getLeaf(context);
+    await target.setViewState({
       state: newCollaborativeState(
         context,
         new Map([[TerminalView.type, state]]),
       ),
       type,
     });
+    const { view } = target;
+    // An external profile detaches the leaf while its state is set, so there is nothing to reveal.
+    if (
+      !(view instanceof TerminalView) ||
+      !workspace.getLeavesOfType(type).includes(target)
+    ) {
+      return;
+    }
+    await workspace.revealLeaf(target);
+    recordTerminalUse(view);
+    if (focus) {
+      workspace.setActiveLeaf(target, { focus: true });
+    } else {
+      const activeView = workspace.getActiveViewOfType(View);
+      // The reveal hid the active leaf's tab, so the shown terminal becomes the active leaf.
+      if (
+        activeView !== null &&
+        activeView.leaf.parent === target.parent &&
+        activeView.containerEl.offsetParent === null
+      ) {
+        workspace.setActiveLeaf(target);
+      }
+    }
   }
 }
