@@ -13,6 +13,9 @@
  *   API change.
  * - `DOCUMENTATIONS.donate()` warns twice when both the listEl path and the
  *   deprecated renderInstalledPlugin path find no element, then opens the URL.
+ * - `loadDocumentations()` opens the changelog as the active tab after an
+ *   update, and does not open it when the setting is off or the changelog for
+ *   the current version was already read.
  *
  * `revealPrivateFilter` (the non-deprecated replacement) and `openExternal`
  * are external boundaries. `revealPrivateFilter` is used un-mocked from the
@@ -28,7 +31,8 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { openExternalSpy } = vi.hoisted(() => ({
+const { addCommandSpy, openExternalSpy } = vi.hoisted(() => ({
+  addCommandSpy: vi.fn<() => void>(),
   openExternalSpy: vi.fn<(win: unknown, url: string) => void>(),
 }));
 
@@ -44,11 +48,18 @@ vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => {
     // Stub: real activeSelf(Document) crashes in jsdom ("Cannot destructure
     // property 'defaultView'"); always returning `self` is safe for these tests.
     activeSelf: () => self,
+    // Stub: the real addCommand needs a full plugin context to register
+    // commands, which loadDocumentations() tests do not exercise.
+    addCommand: addCommandSpy,
     openExternal: openExternalSpy,
   };
 });
 
-import { DOCUMENTATIONS } from "../../src/documentations.js";
+import { DocumentationMarkdownView } from "@polyipseity/obsidian-plugin-library";
+import {
+  DOCUMENTATIONS,
+  loadDocumentations,
+} from "../../src/documentations.js";
 
 /**
  * Build a minimal DOM structure matching the installed-plugins list layout:
@@ -282,6 +293,85 @@ describe("src/documentations.ts", () => {
       expect(openExternalSpy.mock.calls[0]?.[1]).toBe(
         "https://example.com/donate",
       );
+    });
+  });
+
+  describe("loadDocumentations()", () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    // Build a plugin context on `version` whose last read changelog is
+    // `lastReadChangelogVersion`, and stub the registered documentation view
+    // so tests can assert how the changelog is opened.
+    function setup(options: {
+      readonly lastReadChangelogVersion: string;
+      readonly openChangelogOnUpdate: boolean;
+    }): {
+      readonly context: Parameters<typeof loadDocumentations>[0];
+      readonly openSpy: ReturnType<
+        typeof vi.fn<DocumentationMarkdownView.Registered["open"]>
+      >;
+    } {
+      const openSpy = vi
+        .fn<DocumentationMarkdownView.Registered["open"]>()
+        .mockResolvedValue(undefined);
+      vi.spyOn(DocumentationMarkdownView, "register").mockReturnValue({
+        open: openSpy,
+      } as unknown as DocumentationMarkdownView.Registered);
+      const context = {
+        language: { value: { t: () => "" } },
+        localSettings: {
+          mutate: vi.fn().mockResolvedValue(undefined),
+          value: {
+            lastReadChangelogVersion: options.lastReadChangelogVersion,
+          },
+          write: vi.fn().mockResolvedValue(undefined),
+        },
+        settings: {
+          value: { openChangelogOnUpdate: options.openChangelogOnUpdate },
+        },
+        version: "3.28.0",
+      } as unknown as Parameters<typeof loadDocumentations>[0];
+      return { context, openSpy };
+    }
+
+    it("opens the changelog as the active tab after an update", async () => {
+      const { context, openSpy } = setup({
+        lastReadChangelogVersion: "3.27.2",
+        openChangelogOnUpdate: true,
+      });
+
+      loadDocumentations(context);
+
+      await vi.waitFor(() => {
+        expect(openSpy).toHaveBeenCalledTimes(1);
+      });
+      expect(openSpy.mock.calls[0]?.[0]).toBe(true);
+    });
+
+    it("does not open the changelog when the setting is off", async () => {
+      const { context, openSpy } = setup({
+        lastReadChangelogVersion: "3.27.2",
+        openChangelogOnUpdate: false,
+      });
+
+      loadDocumentations(context);
+      await Promise.resolve();
+
+      expect(openSpy).not.toHaveBeenCalled();
+    });
+
+    it("does not open the changelog already read for this version", async () => {
+      const { context, openSpy } = setup({
+        lastReadChangelogVersion: "3.28.0",
+        openChangelogOnUpdate: true,
+      });
+
+      loadDocumentations(context);
+      await Promise.resolve();
+
+      expect(openSpy).not.toHaveBeenCalled();
     });
   });
 });

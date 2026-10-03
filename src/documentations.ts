@@ -215,7 +215,9 @@ export function loadDocumentations(
     !StorageSettingsManager.hasFailed(localSettings.value) &&
     semverLt(localSettings.value.lastReadChangelogVersion, version)
   ) {
-    ret.open("changelog", { active: false });
+    // Switch to the changelog tab regardless of Obsidian's "Always focus new
+    // tabs" setting, so the update never leaves it unnoticed in the background.
+    ret.open("changelog", { active: true });
   }
   return ret;
 }
