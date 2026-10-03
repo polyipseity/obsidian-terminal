@@ -142,7 +142,7 @@
   "sideEffects": false,
   "style": "styles.css",
   "type": "module",
-  "version": "3.27.2",
+  "version": "3.28.0",
   "workspaces": [
     "."
   ]
