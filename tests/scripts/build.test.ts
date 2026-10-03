@@ -25,7 +25,7 @@ function createSpawnMock() {
   });
 }
 
-/** Set up identity file (manifest.json) and mock tsc invocations. */
+/** Set up the identity file and deterministic child-process results. */
 async function setupProject(project: string): Promise<void> {
   await fs.writeFile(
     path.join(project, "manifest.json"),

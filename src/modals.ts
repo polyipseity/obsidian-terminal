@@ -16,9 +16,9 @@ import {
   consumeEvent,
   createChildElement,
   createDocumentFragment,
+  deopaque,
   dynamicRequire,
   escapeQuerySelectorAttribute,
-  inSet,
   linkSetting,
   notice2,
   printError,
@@ -47,7 +47,21 @@ import {
   PROFILE_PRESET_ORDERED_KEYS,
 } from "./terminal/profile-presets.js";
 import { PROFILE_PROPERTIES } from "./terminal/profile-properties.js";
-import { Pseudoterminal } from "./terminal/pseudoterminal.js";
+import { CONPTY_HOST_POOL, Pseudoterminal } from "./terminal/pseudoterminal.js";
+import {
+  checkWindowsPython,
+  checkWindowsResizerPackages,
+  getWindowsPythonDiagnosis,
+  inheritedPythonExecutable,
+  invalidateWindowsPythonDiagnosis,
+  isAutomaticWindowsPythonExecutable,
+  isPluginPythonCheckPending,
+  onPluginPythonDiagnosis,
+  onWindowsPythonStateChange,
+  pythonOverrideStatus,
+  win32ResizerInstallCommand,
+  windowsConPtyStatus,
+} from "./terminal/win32-doctor.js";
 
 import SemVer from "semver/classes/semver.js";
 import semverCoerce from "semver/functions/coerce.js";
@@ -1047,8 +1061,150 @@ export class ProfileModal extends Modal {
           });
         }
         if (profile.type === "integrated") {
-          let checkingPython = false;
+          // This device runs Windows and the profile is enabled for it.
+          const isWin32Eligible = (): boolean =>
+            deopaque(Platform.CURRENT) === "win32" &&
+            Settings.Profile.isCompatible(profile, "win32");
+          // Check the entire configuration pair: discovery can run the plugin fallback.
+          const canCheckAutomatically = (): boolean =>
+            isAutomaticWindowsPythonExecutable(profile.pythonExecutable) &&
+            isAutomaticWindowsPythonExecutable(settings.value.pythonExecutable);
+          const configurationKey = (): string =>
+            JSON.stringify([
+              profile.pythonExecutable,
+              settings.value.pythonExecutable,
+              profile.win32Backend,
+              // Platform changes invalidate pending checks and commit deduplication.
+              isWin32Eligible(),
+            ]);
+          let checkingPython = false,
+            checkingExplicitly = false,
+            disposed = false,
+            resizerInstallCommand = "",
+            resizerPackagesMissing = false,
+            statusProbeKey = configurationKey(),
+            committedKey: string | null = null,
+            statusProbeGeneration = 0,
+            pythonInput: HTMLInputElement | undefined;
+          const beginCheck = (explicit = false): (() => boolean) => {
+              const key = configurationKey(),
+                generation = ++statusProbeGeneration;
+              statusProbeKey = key;
+              committedKey = key;
+              checkingPython = true;
+              checkingExplicitly = explicit;
+              resizerPackagesMissing = false;
+              ui.update();
+              return (): boolean =>
+                !disposed &&
+                generation === statusProbeGeneration &&
+                key === configurationKey();
+            },
+            finishCheck = (current: () => boolean): void => {
+              if (!current()) return;
+              checkingPython = false;
+              checkingExplicitly = false;
+              ui.update();
+            },
+            commit = (): void => {
+              if (
+                disposed ||
+                !isWin32Eligible() ||
+                !canCheckAutomatically() ||
+                committedKey === configurationKey()
+              )
+                return;
+              const effective = inheritedPythonExecutable(
+                  profile.pythonExecutable,
+                  settings.value.pythonExecutable,
+                ),
+                current = beginCheck();
+              (async (): Promise<void> => {
+                const diagnosis = await checkWindowsPython(context, effective);
+                if (
+                  !current() ||
+                  !canCheckAutomatically() ||
+                  diagnosis.status !== "ok" ||
+                  profile.win32Backend !== "legacy"
+                )
+                  return;
+                const missing = !(await checkWindowsResizerPackages(
+                  diagnosis.executable,
+                ));
+                if (!current() || !canCheckAutomatically()) return;
+                resizerInstallCommand = win32ResizerInstallCommand(
+                  diagnosis.executable,
+                );
+                resizerPackagesMissing = missing;
+              })()
+                .catch((error: unknown) => {
+                  activeSelf(element).console.error(error);
+                })
+                .finally(() => {
+                  finishCheck(current);
+                });
+            },
+            removeCommitListeners = (): void => {
+              pythonInput?.removeEventListener("change", commit);
+              pythonInput?.removeEventListener("blur", commit);
+            };
+          ui.finally(() => {
+            disposed = true;
+            ++statusProbeGeneration;
+            removeCommitListeners();
+          });
+          if (deopaque(Platform.CURRENT) === "win32") {
+            ui.finally(
+              onPluginPythonDiagnosis(context, () => {
+                ui.update();
+              }),
+            );
+            ui.finally(
+              onWindowsPythonStateChange(() => {
+                ui.update();
+              }),
+            );
+          }
           ui.newSetting(element, (setting) => {
+            const pluginPython = settings.value.pythonExecutable,
+              effective = inheritedPythonExecutable(
+                profile.pythonExecutable,
+                pluginPython,
+              ),
+              key = configurationKey(),
+              win32Eligible = isWin32Eligible();
+            if (statusProbeKey !== key) {
+              statusProbeKey = key;
+              ++statusProbeGeneration;
+              checkingPython = false;
+              checkingExplicitly = false;
+              resizerPackagesMissing = false;
+              committedKey = null;
+            }
+            const diagnosis = win32Eligible
+                ? getWindowsPythonDiagnosis(effective, pluginPython)
+                : null,
+              busy =
+                checkingPython ||
+                isPluginPythonCheckPending(context, effective),
+              overrideStatus = busy
+                ? "checking"
+                : win32Eligible && !canCheckAutomatically() && !diagnosis
+                  ? "not-automatic"
+                  : !diagnosis
+                    ? profile.pythonExecutable
+                      ? "unverified"
+                      : "inherited-unverified"
+                    : profile.pythonExecutable
+                      ? pythonOverrideStatus(
+                          profile.pythonExecutable,
+                          diagnosis,
+                        )
+                      : diagnosis.status === "ok"
+                        ? "inherited-ok"
+                        : diagnosis.transient
+                          ? "inherited-unverified"
+                          : "inherited-missing";
             setting
               .setName(
                 i18n.t(`components.profile.${profile.type}.Python-executable`),
@@ -1060,7 +1216,24 @@ export class ProfileModal extends Modal {
                     interpolation: { escapeValue: false },
                     version: PYTHON_REQUIREMENTS.Python.version,
                   },
-                ),
+                ) +
+                  (win32Eligible
+                    ? ` ${i18n.t(
+                        `components.profile.integrated.Python-status-${overrideStatus}`,
+                        {
+                          executable: diagnosis?.executable,
+                          interpolation: { escapeValue: false },
+                          value: profile.pythonExecutable,
+                        },
+                      )}`
+                    : "") +
+                  (win32Eligible &&
+                  /^\/(?![\\/])/u.test(profile.pythonExecutable)
+                    ? ` ${i18n.t("notices.win32-python-posix-path", {
+                        executable: profile.pythonExecutable,
+                        interpolation: { escapeValue: false },
+                      })}`
+                    : ""),
               )
               .addText(
                 linkSetting(
@@ -1071,10 +1244,40 @@ export class ProfileModal extends Modal {
                   async () => this.postMutate(),
                   {
                     post: (component) => {
+                      removeCommitListeners();
+                      pythonInput = component.inputEl;
+                      pythonInput.addEventListener("change", commit);
+                      pythonInput.addEventListener("blur", commit);
+                      // The plugin-level check never writes its result into
+                      // the field, so the detected name is shown here.
+                      const detected = getWindowsPythonDiagnosis(
+                        pluginPython,
+                        pluginPython,
+                      );
                       component.setPlaceholder(
-                        i18n.t(
-                          `components.profile.${profile.type}.Python-executable-placeholder`,
-                        ),
+                        win32Eligible
+                          ? pluginPython
+                            ? i18n.t(
+                                `components.profile.${profile.type}.Python-executable-placeholder-default`,
+                                {
+                                  interpolation: { escapeValue: false },
+                                  value: pluginPython,
+                                },
+                              )
+                            : detected?.status === "ok"
+                              ? i18n.t(
+                                  `components.profile.${profile.type}.Python-executable-placeholder-detected`,
+                                  {
+                                    interpolation: { escapeValue: false },
+                                    value: detected.candidate,
+                                  },
+                                )
+                              : i18n.t(
+                                  `components.profile.${profile.type}.Python-executable-placeholder-detect`,
+                                )
+                          : i18n.t(
+                              `components.profile.${profile.type}.Python-executable-placeholder`,
+                            ),
                       );
                     },
                   },
@@ -1095,23 +1298,59 @@ export class ProfileModal extends Modal {
                     ),
                   )
                   .onClick(() => {
-                    if (checkingPython) {
+                    if (disposed || checkingExplicitly) {
                       return;
                     }
-                    checkingPython = true;
+                    // Check remains explicit even when leaving the field just
+                    // started an automatic blur check.
+                    const current = beginCheck(true);
                     (async (): Promise<void> => {
+                      // Resolve and invalidate the same configuration the open path uses.
+                      const effective = inheritedPythonExecutable(
+                          profile.pythonExecutable,
+                          settings.value.pythonExecutable,
+                        ),
+                        windows = isWin32Eligible();
+                      if (windows) {
+                        CONPTY_HOST_POOL.clear();
+                        invalidateWindowsPythonDiagnosis(
+                          effective,
+                          settings.value.pythonExecutable,
+                        );
+                      }
+                      const diagnosis = windows
+                          ? await checkWindowsPython(context, effective)
+                          : null,
+                        pythonExecutable =
+                          diagnosis?.executable ?? profile.pythonExecutable;
+                      if (!current()) return;
+                      if (
+                        diagnosis?.status === "ok" &&
+                        profile.win32Backend === "legacy"
+                      ) {
+                        const missing = !(await checkWindowsResizerPackages(
+                          diagnosis.executable,
+                        ));
+                        if (!current()) return;
+                        resizerInstallCommand = win32ResizerInstallCommand(
+                          diagnosis.executable,
+                        );
+                        resizerPackagesMissing = missing;
+                      }
                       const [execFileP2, getPackageVersion2] =
                           await Promise.all([execFileP, getPackageVersion]),
-                        env = await applyEnv(),
-                        { stdout, stderr } = await execFileP2(
-                          profile.pythonExecutable,
-                          ["--version"],
-                          {
-                            env,
-                            timeout: CHECK_EXECUTABLE_WAIT * SI_PREFIX_SCALE,
-                            windowsHide: true,
-                          },
-                        );
+                        env = await applyEnv();
+                      if (!current()) return;
+                      const { stdout, stderr } = await execFileP2(
+                        pythonExecutable,
+                        ["--version"],
+                        {
+                          env,
+                          timeout: CHECK_EXECUTABLE_WAIT * SI_PREFIX_SCALE,
+                          windowsHide: true,
+                        },
+                      );
+                      if (!current()) return;
                       if (stdout) {
                         activeSelf(buttonEl).console.log(stdout);
                       }
@@ -1124,7 +1363,15 @@ export class ProfileModal extends Modal {
                       const msgs = await Promise.all(
                         Object.entries(PYTHON_REQUIREMENTS)
                           .filter(([, { platforms }]) =>
-                            inSet(platforms, Platform.CURRENT),
+                            platforms.includes(Platform.CURRENT),
+                          )
+                          // ConPTY runs on the standard library alone; the
+                          // pip packages serve only the ConHost resizer.
+                          .filter(
+                            ([name]) =>
+                              name === "Python" ||
+                              (isWin32Eligible() &&
+                                profile.win32Backend !== "conpty"),
                           )
                           .map(async ([name, { version: req }]) => {
                             let ver: SemVer | null = null;
@@ -1138,7 +1385,7 @@ export class ProfileModal extends Modal {
                               } else {
                                 const { stdout: stdout2, stderr: stderr2 } =
                                   await execFileP2(
-                                    profile.pythonExecutable,
+                                    pythonExecutable,
                                     ["-c", getPackageVersion2, name],
                                     {
                                       env,
@@ -1177,6 +1424,7 @@ export class ProfileModal extends Modal {
                               });
                           }),
                       );
+                      if (!current()) return;
                       notice2(
                         () => msgs.map((msg) => msg()).join("\n"),
                         settings.value.noticeTimeout,
@@ -1184,6 +1432,7 @@ export class ProfileModal extends Modal {
                       );
                     })()
                       .catch((error: unknown) => {
+                        if (!current()) return;
                         printError(
                           anyToError(error),
                           () => i18n.t("errors.error-checking-Python"),
@@ -1191,10 +1440,8 @@ export class ProfileModal extends Modal {
                         );
                       })
                       .finally(() => {
-                        checkingPython = false;
-                        ui.update();
+                        finishCheck(current);
                       });
-                    ui.update();
                   });
                 if (checkingPython) {
                   button.setCta();
@@ -1213,39 +1460,130 @@ export class ProfileModal extends Modal {
                   async () => this.postMutate(),
                 ),
               );
-          }).newSetting(element, (setting) => {
+          });
+          ui.newSetting(element, (setting) => {
+            const pluginPython = settings.value.pythonExecutable,
+              effective = inheritedPythonExecutable(
+                profile.pythonExecutable,
+                pluginPython,
+              ),
+              win32Eligible = isWin32Eligible(),
+              diagnosis = getWindowsPythonDiagnosis(effective, pluginPython),
+              busy =
+                checkingPython ||
+                isPluginPythonCheckPending(context, effective),
+              notAutomatic = !canCheckAutomatically() && !diagnosis && !busy,
+              backendStatus =
+                profile.win32Backend === "legacy"
+                  ? "legacy"
+                  : busy
+                    ? "checking"
+                    : !diagnosis
+                      ? "unverified"
+                      : windowsConPtyStatus(diagnosis, effective, pluginPython);
             setting
               .setName(
-                i18n.t(`components.profile.${profile.type}.use-win32-conhost`),
+                i18n.t(`components.profile.${profile.type}.win32-backend`),
               )
               .setDesc(
                 i18n.t(
-                  `components.profile.${profile.type}.use-win32-conhost-description`,
-                ),
+                  `components.profile.${profile.type}.win32-backend-description`,
+                ) +
+                  (win32Eligible
+                    ? ` ${i18n.t(
+                        notAutomatic && profile.win32Backend !== "legacy"
+                          ? "components.profile.integrated.Python-status-not-automatic"
+                          : `components.profile.integrated.win32-backend-status-${backendStatus}`,
+                      )}`
+                    : ""),
               )
-              .addToggle(
+              .addDropdown(
                 linkSetting(
-                  () => profile.useWin32Conhost,
-                  (value) => {
-                    profile.useWin32Conhost = value;
-                  },
+                  (): string => profile.win32Backend,
+                  setTextToEnum(Settings.Profile.WIN32_BACKENDS, (value) => {
+                    profile.win32Backend = value;
+                  }),
                   async () => this.postMutate(),
+                  {
+                    pre: (dropdown) => {
+                      dropdown.addOptions(
+                        Object.fromEntries(
+                          Settings.Profile.WIN32_BACKENDS.map((backend) => [
+                            backend,
+                            i18n.t(
+                              `components.profile.${profile.type}.win32-backend-options-${backend}`,
+                            ),
+                          ]),
+                        ),
+                      );
+                    },
+                  },
                 ),
               )
               .addExtraButton(
                 resetButton(
                   i18n.t(
-                    `asset:components.profile.${profile.type}.use-win32-conhost-icon`,
+                    `asset:components.profile.${profile.type}.win32-backend-icon`,
                   ),
                   i18n.t("components.profile.reset"),
                   () => {
-                    profile.useWin32Conhost =
-                      Settings.Profile.DEFAULTS[profile.type].useWin32Conhost;
+                    profile.win32Backend =
+                      Settings.Profile.DEFAULTS[profile.type].win32Backend;
                   },
                   async () => this.postMutate(),
                 ),
               );
           });
+          if (deopaque(Platform.CURRENT) === "win32") {
+            ui.newSetting(element, (setting) => {
+              // Always rendered; visibility toggled (see settings.ts
+              // newPythonWidgets).
+              setting.settingEl.style.display =
+                isWin32Eligible() &&
+                profile.win32Backend === "legacy" &&
+                resizerPackagesMissing
+                  ? ""
+                  : "none";
+              setting
+                .setName(
+                  i18n.t(`components.profile.${profile.type}.resizer-packages`),
+                )
+                .setDesc(
+                  i18n.t(
+                    `components.profile.${profile.type}.resizer-packages-description`,
+                  ),
+                )
+                .addButton((button) => {
+                  button
+                    .setIcon(
+                      i18n.t(
+                        `asset:components.profile.${profile.type}.resizer-packages-copy-icon`,
+                      ),
+                    )
+                    .setTooltip(
+                      i18n.t(
+                        `components.profile.${profile.type}.resizer-packages-copy`,
+                      ),
+                    )
+                    .setCta()
+                    .onClick(() => {
+                      (async (): Promise<void> => {
+                        await activeSelf(
+                          setting.settingEl,
+                        ).navigator.clipboard.writeText(resizerInstallCommand);
+                        notice2(
+                          () =>
+                            i18n.t("notices.resizer-install-command-copied"),
+                          settings.value.noticeTimeout,
+                          context,
+                        );
+                      })().catch((error: unknown) => {
+                        activeSelf(setting.settingEl).console.error(error);
+                      });
+                    });
+                });
+            });
+          }
         }
         break;
       }

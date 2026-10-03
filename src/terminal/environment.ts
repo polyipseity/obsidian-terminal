@@ -139,15 +139,36 @@ export function mergePathEntries(
  *
  *  GUI apps (Obsidian via Finder / Start Menu) often inherit a minimal PATH
  *  that is missing entries the user expects in a terminal, or has the wrong
- *  entry order.  We query the canonical system PATH once and use it as the
- *  base for the PTY environment, appending any unique inherited entries.
+ *  entry order.  We cache the canonical system PATH until an explicit recheck
+ *  invalidates it, using it as the base for the PTY environment and appending
+ *  any unique inherited entries.
  *  This ensures the canonical ordering (e.g. /usr/local/bin before /usr/bin
  *  on macOS) is respected.
  *
  *  - macOS:   /usr/libexec/path_helper -s  (reads /etc/paths + /etc/paths.d/*)
  *  - Linux:   reads /etc/environment (the PAM default)
  *  - Windows: reg query of the System + User PATH from the registry */
-const getSystemPath = lazyInit(() => resolveSystemPath());
+let getSystemPath = lazyInit(() => resolveSystemPath()),
+  systemPathGeneration = 0;
+
+/** Generation of the PATH cache; reading it never resolves the environment. */
+export function getSystemPathGeneration(): number {
+  return systemPathGeneration;
+}
+
+/** Makes the next environment read resolve PATH again after an install. */
+export function invalidateSystemPath(): void {
+  systemPathGeneration++;
+  getSystemPath = lazyInit(() => resolveSystemPath());
+}
+
+/** Starts system PATH resolution off the spawn path. Startup checks and
+ * spawns share the pending work and result until explicit invalidation. */
+export function warmSystemPath(): void {
+  getSystemPath().catch((error: unknown) => {
+    /* @__PURE__ */ self.console.debug(error);
+  });
+}
 
 async function resolveSystemPath(): Promise<string[]> {
   const platform = deopaque(Platform.CURRENT);
@@ -283,9 +304,16 @@ function mergeEnvPairs(
     }
   }
   for (const [key, value] of pairs) {
+    // The settings editor can leave an unfinished, empty-named row.
+    if (key === "") continue;
     env[key] = value;
   }
   return env;
+}
+
+/** The key `env` names `PATH` by, whatever its case; `Path` when absent. */
+export function pathEnvKey(env: NodeJS.ProcessEnv): string {
+  return Object.keys(env).find((k) => k.toUpperCase() === "PATH") ?? "Path";
 }
 
 async function sanitizeEnv(
@@ -294,6 +322,7 @@ async function sanitizeEnv(
   const env: NodeJS.ProcessEnv = {};
   for (const [key, value] of Object.entries(base)) {
     if (
+      key === "" ||
       SANITIZED_ENV_KEYS.has(key) ||
       SANITIZED_ENV_PREFIXES.some((p) => key.startsWith(p))
     ) {
@@ -307,9 +336,7 @@ async function sanitizeEnv(
   // letting the GUI app's accidental launch-time order take priority.
   const isWin = Platform.CURRENT === "win32";
   const sep = isWin ? ";" : ":";
-  const pathKey = isWin
-    ? (Object.keys(env).find((k) => k.toUpperCase() === "PATH") ?? "Path")
-    : "PATH";
+  const pathKey = isWin ? pathEnvKey(env) : "PATH";
   const currentPath = env[pathKey] ?? "";
   const entries = currentPath.split(sep).filter(Boolean);
   const systemEntries = await getSystemPath();

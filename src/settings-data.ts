@@ -36,7 +36,6 @@ import type {
   DeepReadonly,
   DeepRequired,
   DeepWritable,
-  MarkOptional,
   Opaque,
   OptionalKeys,
   RequiredKeys,
@@ -66,6 +65,7 @@ type RequiredWithUndefined<T> = {
 };
 
 export interface LocalSettings extends PluginContext.LocalSettings {
+  readonly hasUsedIntegratedTerminal: boolean;
   readonly lastReadChangelogVersion: SemVerString;
 }
 export namespace LocalSettings {
@@ -73,6 +73,7 @@ export namespace LocalSettings {
     const unc = launderUnchecked<LocalSettings>(self0);
     return markFixed(self0, {
       ...PluginContext.LocalSettings.fix(self0).value,
+      hasUsedIntegratedTerminal: unc.hasUsedIntegratedTerminal === true,
       lastReadChangelogVersion: opaqueOrDefault(
         semVerString,
         String(unc.lastReadChangelogVersion),
@@ -109,6 +110,13 @@ export interface Settings extends PluginContext.Settings {
   readonly exposeInternalModules: boolean;
   readonly interceptLogging: boolean;
   readonly preferredRenderer: Settings.PreferredRendererOption;
+  readonly prewarmConPty: boolean;
+  /**
+   * Plugin-level Python interpreter, inherited by Windows integrated profiles
+   * with an empty `pythonExecutable`. Empty means auto-discover on every
+   * load; the Python check never writes here, since this value syncs.
+   */
+  readonly pythonExecutable: string;
 }
 export namespace Settings {
   export type DefaultProfile = Opaque<
@@ -116,19 +124,7 @@ export namespace Settings {
     (typeof PluginUUIDs)["UUID0"]
   > | null;
 
-  export const optionals = deepFreeze([]) satisfies readonly (keyof Settings)[];
-  export type Optionals = (typeof optionals)[number];
-  export type Persistent = Omit<Settings, Optionals>;
-  export function persistent(settings: Settings): Persistent {
-    const ret: MarkOptional<Settings, Optionals> = cloneAsWritable(settings);
-    for (const optional of optionals) {
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- to actually remove the optional properties for saving
-      delete ret[optional];
-    }
-    return ret;
-  }
-
-  export const DEFAULT: Persistent = deepFreeze({
+  export const DEFAULT: Settings = deepFreeze({
     addToCommand: true,
     addToContextMenu: true,
     createInstanceNearExistingOnes: true,
@@ -283,6 +279,8 @@ export namespace Settings {
     showTerminalTabPrefix: false,
     pinNewInstance: true,
     preferredRenderer: "webgl",
+    prewarmConPty: true,
+    pythonExecutable: "",
     profiles: Object.fromEntries(
       (
         [
@@ -647,9 +645,20 @@ export namespace Settings {
       readonly args: readonly string[];
       readonly environment: readonly (readonly [string, string])[];
       readonly platforms: Platforms<Pseudoterminal.SupportedPlatforms[number]>;
+      /**
+       * Python that spawns the pseudoterminal: a command name or a path valid
+       * on every platform the profile enables, since it syncs. On Windows an
+       * empty value inherits the plugin-level setting; elsewhere it disables
+       * Python.
+       */
       readonly pythonExecutable: string;
-      readonly useWin32Conhost: boolean;
+      /** Synced user intent; this device may use ConHost at runtime. */
+      readonly win32Backend: Win32Backend;
     }
+    /** Windows process and pseudoterminal implementations, in the order the
+     * profile editor offers them. */
+    export const WIN32_BACKENDS = deepFreeze(["conpty", "legacy"]);
+    export type Win32Backend = (typeof WIN32_BACKENDS)[number];
     export const DEFAULTS: {
       readonly [key in Type]: DeepRequired<
         Omit<Typed<key>, "terminalOptions">
@@ -700,7 +709,7 @@ export namespace Settings {
         successExitCodes: DEFAULT_SUCCESS_EXIT_CODES,
         terminalOptions: DEFAULT_TERMINAL_OPTIONS,
         type: "integrated",
-        useWin32Conhost: true,
+        win32Backend: "conpty",
       },
       invalid: {
         type: "invalid",
@@ -855,6 +864,11 @@ export namespace Settings {
               } satisfies Typed<typeof type>;
             }
             case "integrated": {
+              const platforms = fixPlatforms(
+                DEFAULTS[type].platforms,
+                unc["platforms"] ?? {},
+                Pseudoterminal.SUPPORTED_PLATFORMS,
+              );
               return {
                 args: fixArray(DEFAULTS[type], unc, "args", ["string"]),
                 environment: fixEnvironment(unc["environment"]),
@@ -865,17 +879,19 @@ export namespace Settings {
                   "boolean",
                 ]),
                 name: fixTyped(DEFAULTS[type], unc, "name", ["string"]),
-                platforms: fixPlatforms(
-                  DEFAULTS[type].platforms,
-                  unc["platforms"] ?? {},
-                  Pseudoterminal.SUPPORTED_PLATFORMS,
-                ),
-                pythonExecutable: fixTyped(
-                  DEFAULTS[type],
-                  unc,
-                  "pythonExecutable",
-                  ["string"],
-                ),
+                platforms,
+                // Released Windows-only presets stored python3. Writing
+                // win32Backend below makes this inheritance migration one-time.
+                pythonExecutable:
+                  unc["win32Backend"] === void 0 &&
+                  unc["pythonExecutable"] === "python3" &&
+                  platforms.win32 === true &&
+                  platforms.darwin !== true &&
+                  platforms.linux !== true
+                    ? ""
+                    : fixTyped(DEFAULTS[type], unc, "pythonExecutable", [
+                        "string",
+                      ]),
                 restoreHistory: fixTyped(
                   DEFAULTS[type],
                   unc,
@@ -897,11 +913,13 @@ export namespace Settings {
                 terminalOptions: fixTerminalOptions(unc["terminalOptions"])
                   .value,
                 type,
-                useWin32Conhost: fixTyped(
+                // useWin32Conhost (retired) is ignored; a missing
+                // win32Backend takes the default.
+                win32Backend: fixInSet(
                   DEFAULTS[type],
                   unc,
-                  "useWin32Conhost",
-                  ["boolean"],
+                  "win32Backend",
+                  WIN32_BACKENDS,
                 ),
               } satisfies Typed<typeof type>;
             }
@@ -1659,6 +1677,8 @@ export namespace Settings {
         "preferredRenderer",
         PREFERRED_RENDERER_OPTIONS,
       ),
+      prewarmConPty: fixTyped(DEFAULT, unc, "prewarmConPty", ["boolean"]),
+      pythonExecutable: fixTyped(DEFAULT, unc, "pythonExecutable", ["string"]),
       profiles: fixedProfiles,
       // defaultProfile will be validated against fixedProfiles
       defaultProfile: ((): Settings.DefaultProfile => {

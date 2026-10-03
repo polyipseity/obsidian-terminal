@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   mergeTerminalOptions,
   applyTerminalOptionDiffShallow,
+  parseWin32BuildNumber,
 } from "../../../src/terminal/options.js";
 import { DEFAULT_LINK_HANDLER } from "../../../src/terminal/profile-presets.js";
 import { Settings } from "../../../src/settings-data.js";
@@ -34,6 +35,86 @@ describe("mergeTerminalOptions", () => {
     expect(result.fontFamily).toBe("bar");
     // unspecified keys should still come from globals
     expect(result.fontSize).toBe(12);
+  });
+
+  it("forces the ConPTY renderer hint for the ctypes backend on Windows", () => {
+    const result = mergeTerminalOptions(
+      {
+        documentOverride: null,
+        windowsPty: { backend: "winpty", buildNumber: 19_045 },
+      },
+      {
+        ...baseDefaults,
+        windowsPty: { backend: "conpty", buildNumber: 22_631 },
+      },
+      { platform: "win32", win32Backend: "conpty", win32BuildNumber: 26_100 },
+    );
+
+    // The persisted build survives, and wins over the machine's.
+    expect(result.windowsPty).toEqual({
+      backend: "conpty",
+      buildNumber: 19_045,
+    });
+  });
+
+  it("fills a missing build number from the machine's Windows build", () => {
+    const backendOptions = {
+      platform: "win32",
+      win32Backend: "conpty",
+      win32BuildNumber: 19_045,
+    } as const;
+
+    expect(
+      mergeTerminalOptions(
+        { documentOverride: null },
+        baseDefaults,
+        backendOptions,
+      ).windowsPty,
+    ).toEqual({ backend: "conpty", buildNumber: 19_045 });
+    expect(
+      mergeTerminalOptions(
+        { documentOverride: null, windowsPty: { backend: "winpty" } },
+        baseDefaults,
+        backendOptions,
+      ).windowsPty,
+    ).toEqual({ backend: "conpty", buildNumber: 19_045 });
+  });
+
+  it("leaves the build number out when neither source has one", () => {
+    const result = mergeTerminalOptions(
+      { documentOverride: null },
+      baseDefaults,
+      { platform: "win32", win32Backend: "conpty" },
+    );
+
+    expect(result.windowsPty).toEqual({ backend: "conpty" });
+    expect(result.windowsPty).not.toHaveProperty("buildNumber");
+  });
+
+  it("clears ConPTY renderer hints for the legacy backend on Windows", () => {
+    const result = mergeTerminalOptions(
+      {
+        documentOverride: null,
+        windowsPty: { backend: "conpty", buildNumber: 22_631 },
+      },
+      {
+        ...baseDefaults,
+        windowsPty: { backend: "conpty", buildNumber: 19_045 },
+      },
+      { platform: "win32", win32Backend: "legacy", win32BuildNumber: 19_045 },
+    );
+
+    expect(result.windowsPty).toBeUndefined();
+  });
+
+  it("does not set a Windows renderer hint on another platform", () => {
+    const result = mergeTerminalOptions(
+      { documentOverride: null },
+      baseDefaults,
+      { platform: "darwin", win32Backend: "conpty" },
+    );
+
+    expect(result.windowsPty).toBeUndefined();
   });
 
   it("lets a global link handler replace the default", () => {
@@ -69,6 +150,24 @@ describe("mergeTerminalOptions", () => {
     // writable: should be able to mutate returned value
     result.fontFamily = "new";
     expect(result.fontFamily).toBe("new");
+  });
+
+  describe("parseWin32BuildNumber", () => {
+    it("takes the third component of the OS release", () => {
+      expect(parseWin32BuildNumber("10.0.19045")).toBe(19_045);
+      expect(parseWin32BuildNumber("10.0.26100")).toBe(26_100);
+    });
+
+    it("ignores a missing, non-numeric, or non-positive build", () => {
+      expect(parseWin32BuildNumber("")).toBeUndefined();
+      expect(parseWin32BuildNumber("10.0")).toBeUndefined();
+      expect(parseWin32BuildNumber("10.0.x")).toBeUndefined();
+      expect(parseWin32BuildNumber("10.0.")).toBeUndefined();
+      expect(parseWin32BuildNumber("10.0.0")).toBeUndefined();
+      expect(parseWin32BuildNumber("10.0.-1")).toBeUndefined();
+      expect(parseWin32BuildNumber("10.0.19045abc")).toBeUndefined();
+      expect(parseWin32BuildNumber("24.6.0-darwin")).toBeUndefined();
+    });
   });
 
   describe("applyTerminalOptionDiffShallow", () => {

@@ -71,7 +71,6 @@
   "files": [
     "main.js",
     "manifest.json",
-    "requirements.txt",
     "styles.css"
   ],
   "funding": [

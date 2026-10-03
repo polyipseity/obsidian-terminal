@@ -8,6 +8,8 @@
  * - Keymapping actions including the new "passthrough" action
  * - Shift+Enter ESC+CR injection via default keymapping (not hardcoded)
  * - Guard conditions (disposed, platform, setting, modifier combos)
+ * - Win32 input mode (DECSET 9001): KEY_EVENT_RECORD encoding, dead-key
+ *   composition deferred to the browser, layout-aware virtual keys
  * - SynchronizedOutputScrollAddon: scroll position preservation across DEC 2026
  *   synchronized output blocks via queueMicrotask (xterm.js issue #5801 workaround)
  */
@@ -27,6 +29,10 @@ import {
 function createMockTerminal() {
   const inputSpy = vi.fn();
   let handler: ((event: KeyboardEvent) => boolean) | null = null;
+  const csiHandlers: Record<
+    string,
+    Array<(params: (number | number[])[]) => boolean>
+  > = {};
 
   const terminal = {
     input: inputSpy,
@@ -34,6 +40,24 @@ function createMockTerminal() {
       handler = fn;
     },
     element: document.createElement("div"),
+    parser: {
+      registerCsiHandler(
+        id: { prefix?: string; final: string },
+        callback: (params: (number | number[])[]) => boolean,
+      ): IDisposable {
+        const key = `${id.prefix ?? ""}${id.final}`;
+        const bucket = (csiHandlers[key] ??= []);
+        bucket.push(callback);
+        return {
+          dispose: vi.fn(() => {
+            const index = bucket.indexOf(callback);
+            if (index >= 0) {
+              bucket.splice(index, 1);
+            }
+          }),
+        };
+      },
+    },
   } as unknown as Terminal;
 
   return {
@@ -45,6 +69,10 @@ function createMockTerminal() {
       }
       return handler;
     },
+    triggerCsi: (prefix: string, final: string, params: number[]) =>
+      (csiHandlers[`${prefix}${final}`] ?? []).map((callback) =>
+        callback(params),
+      ),
   };
 }
 
@@ -59,6 +87,9 @@ function fakeKeyEvent(
     metaKey: false,
     shiftKey: false,
     isComposing: false,
+    getModifierState: vi.fn().mockReturnValue(false),
+    preventDefault: vi.fn(),
+    stopPropagation: vi.fn(),
     ...overrides,
   } as unknown as KeyboardEvent;
 }
@@ -78,12 +109,24 @@ const SHIFT_ENTER_MAPPING: Settings.Keymapping = {
 describe("CustomKeyEventHandlerAddon", () => {
   let inputSpy: ReturnType<typeof vi.fn>;
   let handler: (event: KeyboardEvent) => boolean;
+  let triggerCsi: (
+    prefix: string,
+    final: string,
+    params: number[],
+  ) => boolean[];
 
   /** Helper: activate addon with passthrough enabled and return handler. */
+  function setupWin32InputMode(
+    getMappings: () => readonly Settings.Keymapping[] = () => [],
+  ) {
+    return setup(false, getMappings, "win32", () => true);
+  }
+
   function setup(
     isEnabled = true,
     getMappings: () => readonly Settings.Keymapping[] = () => [],
     currentPlatform = "darwin",
+    supportsWin32InputMode: () => boolean = () => false,
   ) {
     const mock = createMockTerminal();
     inputSpy = mock.inputSpy;
@@ -91,9 +134,11 @@ describe("CustomKeyEventHandlerAddon", () => {
       currentPlatform,
       getMappings,
       () => isEnabled,
+      supportsWin32InputMode,
     );
     addon.activate(mock.terminal);
     handler = mock.getHandler();
+    triggerCsi = mock.triggerCsi;
     return addon;
   }
 
@@ -132,6 +177,877 @@ describe("CustomKeyEventHandlerAddon", () => {
     const result = handler(fakeKeyEvent({ key: "ArrowRight", altKey: true }));
     expect(result).toBe(true);
     expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  // === Windows ConPTY input mode backport ===
+
+  it("encodes Backspace after DECSET 9001 on supported ConPTY terminals", () => {
+    setupWin32InputMode();
+
+    expect(triggerCsi("?", "h", [9001])).toEqual([false]);
+    expect(handler(fakeKeyEvent({ code: "Backspace", key: "Backspace" }))).toBe(
+      false,
+    );
+    expect(inputSpy).toHaveBeenCalledWith("\x1b[8;14;8;1;0;1_", true);
+  });
+
+  it("encodes keyup while Win32 input mode is active", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+
+    expect(
+      handler(
+        fakeKeyEvent({
+          code: "KeyA",
+          key: "a",
+          type: "keyup",
+        }),
+      ),
+    ).toBe(false);
+    expect(inputSpy).toHaveBeenCalledWith("\x1b[65;30;97;0;0;1_", true);
+  });
+
+  it.each([
+    { code: "ShiftLeft", key: "Shift", keyCode: 16 },
+    { code: "ControlLeft", key: "Control", keyCode: 17 },
+    { code: "AltLeft", key: "Alt", keyCode: 18 },
+    { code: "AltRight", key: "AltGraph", keyCode: 18 },
+    { code: "MetaLeft", key: "Meta", keyCode: 91 },
+  ])(
+    "marks $key-only Win32 records as non-user input",
+    ({ code, key, keyCode }) => {
+      setupWin32InputMode();
+      triggerCsi("?", "h", [9001]);
+
+      expect(handler(fakeKeyEvent({ code, key, keyCode }))).toBe(false);
+      expect(inputSpy).toHaveBeenCalledWith(expect.any(String), false);
+    },
+  );
+
+  it("suppresses keypress without emitting a duplicate Win32 record", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+
+    expect(
+      handler(fakeKeyEvent({ code: "KeyA", key: "a", type: "keypress" })),
+    ).toBe(false);
+    expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  it("stops encoding after DECRST 9001", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+
+    expect(triggerCsi("?", "l", [9001])).toEqual([false]);
+    expect(handler(fakeKeyEvent({ code: "Backspace", key: "Backspace" }))).toBe(
+      true,
+    );
+    expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not activate for unrelated CSI private modes", () => {
+    setupWin32InputMode();
+
+    expect(triggerCsi("?", "h", [1049])).toEqual([false]);
+    expect(handler(fakeKeyEvent({ code: "Backspace", key: "Backspace" }))).toBe(
+      true,
+    );
+    expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not register mode handlers off Windows", () => {
+    setup(
+      false,
+      () => [],
+      "darwin",
+      () => true,
+    );
+
+    expect(triggerCsi("?", "h", [9001])).toEqual([]);
+    expect(triggerCsi("?", "l", [9001])).toEqual([]);
+  });
+
+  // A ConHost fallback is known only after the terminal opened, so the
+  // backend is asked when the mode is requested.
+
+  it("ignores DECSET 9001 once the backend is not ConPTY", () => {
+    let conpty = true;
+    setup(
+      false,
+      () => [],
+      "win32",
+      () => conpty,
+    );
+    conpty = false;
+
+    expect(triggerCsi("?", "h", [9001])).toEqual([false]);
+    expect(handler(fakeKeyEvent({ code: "Backspace", key: "Backspace" }))).toBe(
+      true,
+    );
+    expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  it("honours DECSET 9001 once the backend is ConPTY", () => {
+    let conpty = false;
+    setup(
+      false,
+      () => [],
+      "win32",
+      () => conpty,
+    );
+    conpty = true;
+
+    expect(triggerCsi("?", "h", [9001])).toEqual([false]);
+    expect(handler(fakeKeyEvent({ code: "Backspace", key: "Backspace" }))).toBe(
+      false,
+    );
+    expect(inputSpy).toHaveBeenCalledWith("\x1b[8;14;8;1;0;1_", true);
+  });
+
+  it("keeps user keymappings ahead of active Win32 input mode", () => {
+    setup(
+      false,
+      () => [
+        {
+          action: "sendText",
+          actionArg: "mapped",
+          alt: false,
+          ctrl: false,
+          key: "Backspace",
+          meta: false,
+          platform: null,
+          shift: false,
+        },
+      ],
+      "win32",
+      () => true,
+    );
+    triggerCsi("?", "h", [9001]);
+
+    expect(handler(fakeKeyEvent({ code: "Backspace", key: "Backspace" }))).toBe(
+      false,
+    );
+    expect(inputSpy).toHaveBeenCalledOnce();
+    expect(inputSpy).toHaveBeenCalledWith("mapped");
+  });
+
+  it("routes a matched passthrough mapping into active Win32 encoding", () => {
+    setup(
+      false,
+      () => [
+        {
+          action: "passthrough",
+          actionArg: null,
+          alt: false,
+          ctrl: false,
+          key: "Backspace",
+          meta: false,
+          platform: null,
+          shift: false,
+        },
+      ],
+      "win32",
+      () => true,
+    );
+    triggerCsi("?", "h", [9001]);
+
+    expect(handler(fakeKeyEvent({ code: "Backspace", key: "Backspace" }))).toBe(
+      false,
+    );
+    expect(inputSpy).toHaveBeenCalledWith("\x1b[8;14;8;1;0;1_", true);
+  });
+
+  // === Dead keys in Win32 input mode ===
+  // Chromium on Windows composes dead keys itself: the composed character
+  // arrives on the keypress of the key that follows the dead key.
+
+  const DEAD_QUOTE = { code: "Quote", key: "Dead", keyCode: 222 };
+
+  /** Runs the handler on one event and reports whether it was cancelled. */
+  function dispatch(overrides: Partial<KeyboardEvent> & { key: string }): {
+    cancelled: boolean;
+    result: boolean;
+  } {
+    const preventDefault = vi.fn();
+    const result = handler(fakeKeyEvent({ ...overrides, preventDefault }));
+    return { cancelled: preventDefault.mock.calls.length > 0, result };
+  }
+
+  it("leaves a dead key's keydown to the browser", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+
+    expect(dispatch(DEAD_QUOTE)).toEqual({ cancelled: false, result: false });
+    expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  it("encodes the dead key's keyup", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+    dispatch(DEAD_QUOTE);
+
+    expect(dispatch({ ...DEAD_QUOTE, type: "keyup" })).toEqual({
+      cancelled: true,
+      result: false,
+    });
+    expect(inputSpy).toHaveBeenCalledExactlyOnceWith(
+      "\x1b[222;40;0;0;0;1_",
+      true,
+    );
+  });
+
+  it("defers the key combined with a dead key to its keypress", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+    dispatch(DEAD_QUOTE);
+
+    expect(dispatch({ code: "KeyE", key: "e", keyCode: 69 })).toEqual({
+      cancelled: false,
+      result: false,
+    });
+    expect(inputSpy).not.toHaveBeenCalled();
+
+    // A keypress's `keyCode` is its character, never the virtual key.
+    expect(
+      dispatch({ code: "KeyE", key: "é", keyCode: 233, type: "keypress" }),
+    ).toEqual({ cancelled: true, result: false });
+    expect(inputSpy).toHaveBeenCalledExactlyOnceWith(
+      "\x1b[69;18;233;1;0;1_",
+      true,
+    );
+  });
+
+  it("keeps the layout's virtual key across composition", () => {
+    // QWERTZ: the `z` key sits at the `KeyY` position and reports `VK_Z`;
+    // the composed keypress reports its character instead.
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+    dispatch(DEAD_QUOTE);
+    dispatch({ code: "KeyY", key: "z", keyCode: 90 });
+
+    dispatch({ code: "KeyY", key: "ź", keyCode: 378, type: "keypress" });
+    expect(inputSpy).toHaveBeenCalledExactlyOnceWith(
+      "\x1b[90;21;378;1;0;1_",
+      true,
+    );
+  });
+
+  it("encodes a doubled dead key with the dead key's own virtual key", () => {
+    // `'` `'` yields `'` on US-International: the keypress follows the second
+    // dead keydown with no character keydown in between.
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+    dispatch(DEAD_QUOTE);
+    dispatch({ ...DEAD_QUOTE, type: "keyup" });
+    inputSpy.mockClear();
+    dispatch(DEAD_QUOTE);
+
+    dispatch({ code: "Quote", key: "'", keyCode: 39, type: "keypress" });
+    expect(inputSpy).toHaveBeenCalledExactlyOnceWith(
+      "\x1b[222;40;39;1;0;1_",
+      true,
+    );
+  });
+
+  it("encodes every character the browser composes from one keydown", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+    dispatch(DEAD_QUOTE);
+    dispatch({ code: "KeyQ", key: "q", keyCode: 81 });
+
+    dispatch({ code: "KeyQ", key: "'", keyCode: 39, type: "keypress" });
+    dispatch({ code: "KeyQ", key: "q", keyCode: 113, type: "keypress" });
+    expect(inputSpy.mock.calls).toEqual([
+      ["\x1b[81;16;39;1;0;1_", true],
+      ["\x1b[81;16;113;1;0;1_", true],
+    ]);
+  });
+
+  it("delivers a dead key released by Space, then encodes the next key", () => {
+    // xterm.js #3573: the arrow after `'` + Space must not be swallowed.
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+    dispatch(DEAD_QUOTE);
+    dispatch({ code: "Space", key: " ", keyCode: 32 });
+    dispatch({ code: "Space", key: "'", keyCode: 39, type: "keypress" });
+
+    expect(
+      dispatch({ code: "ArrowLeft", key: "ArrowLeft", keyCode: 37 }),
+    ).toEqual({ cancelled: true, result: false });
+    expect(inputSpy.mock.calls).toEqual([
+      ["\x1b[32;57;39;1;0;1_", true],
+      ["\x1b[37;75;0;1;256;1_", true],
+    ]);
+  });
+
+  it("keeps the dead key pending across a modifier keydown", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+    dispatch(DEAD_QUOTE);
+
+    expect(
+      dispatch({
+        code: "ShiftLeft",
+        key: "Shift",
+        keyCode: 16,
+        shiftKey: true,
+      }),
+    ).toEqual({ cancelled: true, result: false });
+    expect(
+      dispatch({ code: "KeyE", key: "E", keyCode: 69, shiftKey: true }),
+    ).toEqual({ cancelled: false, result: false });
+    dispatch({
+      code: "KeyE",
+      key: "É",
+      keyCode: 201,
+      shiftKey: true,
+      type: "keypress",
+    });
+    expect(inputSpy.mock.calls).toEqual([
+      ["\x1b[16;42;0;1;16;1_", false],
+      ["\x1b[69;18;201;1;16;1_", true],
+    ]);
+  });
+
+  it("does not defer a chord after a dead key", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+    dispatch(DEAD_QUOTE);
+
+    expect(
+      dispatch({ code: "KeyC", ctrlKey: true, key: "c", keyCode: 67 }),
+    ).toEqual({ cancelled: true, result: false });
+    expect(inputSpy).toHaveBeenCalledExactlyOnceWith(
+      "\x1b[67;46;3;1;8;1_",
+      true,
+    );
+  });
+
+  it("cancels keydowns again once the composed character arrived", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+    dispatch(DEAD_QUOTE);
+    dispatch({ code: "KeyE", key: "e", keyCode: 69 });
+    dispatch({ code: "KeyE", key: "é", keyCode: 233, type: "keypress" });
+    inputSpy.mockClear();
+
+    expect(dispatch({ code: "KeyA", key: "a", keyCode: 65 })).toEqual({
+      cancelled: true,
+      result: false,
+    });
+    expect(inputSpy).toHaveBeenCalledExactlyOnceWith(
+      "\x1b[65;30;97;1;0;1_",
+      true,
+    );
+    expect(
+      dispatch({ code: "KeyA", key: "a", keyCode: 97, type: "keypress" }),
+    ).toEqual({ cancelled: true, result: false });
+    expect(inputSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("forgets a pending dead key when the mode ends", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+    dispatch(DEAD_QUOTE);
+    triggerCsi("?", "l", [9001]);
+    triggerCsi("?", "h", [9001]);
+
+    expect(dispatch({ code: "KeyE", key: "e", keyCode: 69 })).toEqual({
+      cancelled: true,
+      result: false,
+    });
+    expect(inputSpy).toHaveBeenCalledExactlyOnceWith(
+      "\x1b[69;18;101;1;0;1_",
+      true,
+    );
+  });
+
+  it("passes IME composition through while Win32 input mode is active", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+
+    expect(
+      handler(fakeKeyEvent({ code: "KeyA", isComposing: true, key: "a" })),
+    ).toBe(true);
+    expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  it("leaves the keydown that starts an IME composition to the IME", () => {
+    // Chromium fires it with `isComposing` false, `keyCode` 229, and the key
+    // `Process`; a record for it would precede the composed text.
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+
+    expect(dispatch({ code: "KeyA", key: "Process", keyCode: 229 })).toEqual({
+      cancelled: false,
+      result: true,
+    });
+    expect(
+      dispatch({ code: "KeyA", key: "Process", keyCode: 229, type: "keyup" }),
+    ).toEqual({ cancelled: false, result: true });
+    expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  it("encodes the composed `å`, whose keypress has keyCode 229", () => {
+    const deadRing = { code: "BracketLeft", key: "Dead", keyCode: 221 };
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+    dispatch(deadRing);
+    dispatch({ code: "KeyA", key: "a", keyCode: 65 });
+
+    expect(
+      dispatch({ code: "KeyA", key: "å", keyCode: 229, type: "keypress" }),
+    ).toEqual({ cancelled: true, result: false });
+    expect(inputSpy).toHaveBeenCalledExactlyOnceWith(
+      "\x1b[65;30;229;1;0;1_",
+      true,
+    );
+  });
+
+  describe("Alt+Numpad composition", () => {
+    const alt = { altKey: true, code: "AltLeft", key: "Alt", keyCode: 18 },
+      digit = { altKey: true, code: "Numpad0", key: "0", keyCode: 96 },
+      character = { code: "AltLeft", key: "é", keyCode: 233, type: "keypress" };
+
+    it.each(
+      [
+        { numLock: false, releaseFirst: false },
+        { numLock: false, releaseFirst: true },
+        { numLock: true, releaseFirst: false },
+        { numLock: true, releaseFirst: true },
+      ].flatMap((scenario) =>
+        ["Alt", "é"].map((releaseKey) => ({ ...scenario, releaseKey })),
+      ),
+    )(
+      "delivers Alt+0233 once (NumLock=$numLock, release first=$releaseFirst, release key=$releaseKey)",
+      ({ numLock, releaseFirst, releaseKey }) => {
+        setupWin32InputMode();
+        triggerCsi("?", "h", [9001]);
+        const getModifierState = vi.fn(
+          (modifier: string) => modifier === "NumLock" && numLock,
+        );
+        expect(dispatch({ ...alt, getModifierState })).toEqual({
+          cancelled: false,
+          result: false,
+        });
+        for (const key of "0233") {
+          for (const type of ["keydown", "keyup"]) {
+            expect(
+              dispatch({
+                altKey: true,
+                code: `Numpad${key}`,
+                getModifierState,
+                key,
+                keyCode: 96 + Number(key),
+                type,
+              }),
+            ).toEqual({ cancelled: false, result: false });
+          }
+        }
+        const release = {
+          ...alt,
+          altKey: false,
+          getModifierState,
+          key: releaseKey,
+          type: "keyup",
+        };
+        if (releaseFirst) {
+          expect(dispatch(release)).toEqual({
+            cancelled: false,
+            result: false,
+          });
+        }
+        expect(dispatch({ ...character, getModifierState })).toEqual({
+          cancelled: true,
+          result: false,
+        });
+        if (!releaseFirst) {
+          dispatch(release);
+        }
+        // A duplicate character event must not insert a second character.
+        expect(dispatch({ ...character, getModifierState })).toEqual({
+          cancelled: true,
+          result: false,
+        });
+        const locks = numLock ? 32 : 0,
+          altDown = [`\x1b[18;56;0;1;${String(locks | 2)};1_`, false],
+          altUp = [`\x1b[18;56;0;0;${String(locks)};1_`, false],
+          composed = [
+            `\x1b[0;0;233;1;${String(locks)};1_\x1b[0;0;233;0;${String(locks)};1_`,
+            true,
+          ];
+        expect(inputSpy.mock.calls).toEqual(
+          releaseFirst
+            ? [altDown, altUp, composed]
+            : [altDown, composed, altUp],
+        );
+      },
+    );
+
+    it("uses the OS character and only its lock state, even before the last digit's keyup", () => {
+      setupWin32InputMode();
+      triggerCsi("?", "h", [9001]);
+      dispatch(alt);
+      dispatch(digit);
+      dispatch({ ...alt, altKey: false, type: "keyup" });
+      inputSpy.mockClear();
+
+      dispatch({
+        ...character,
+        key: "€",
+        keyCode: 8364,
+        altKey: true,
+        ctrlKey: true,
+        shiftKey: true,
+        metaKey: true,
+        getModifierState: vi.fn().mockReturnValue(true),
+      });
+      dispatch({ ...digit, altKey: false, type: "keyup" });
+      dispatch(character);
+      expect(inputSpy.mock.calls).toEqual([
+        ["\x1b[0;0;8364;1;224;1_\x1b[0;0;8364;0;224;1_", true],
+      ]);
+    });
+
+    it.each(
+      [
+        "unrelated keydown",
+        "mapped keydown",
+        "IME composition",
+        "IME start",
+        "DECRST",
+        "disposal",
+      ].flatMap((interruption) =>
+        [false, true].map((releaseFirst) => ({ interruption, releaseFirst })),
+      ),
+    )(
+      "forgets a composition after $interruption (released=$releaseFirst)",
+      ({ interruption, releaseFirst }) => {
+        const addon = setupWin32InputMode(() => [SHIFT_ENTER_MAPPING]);
+        triggerCsi("?", "h", [9001]);
+        dispatch(alt);
+        dispatch(digit);
+        if (releaseFirst) {
+          dispatch({ ...alt, altKey: false, type: "keyup" });
+        }
+
+        switch (interruption) {
+          case "unrelated keydown":
+            dispatch({ code: "ArrowLeft", key: "ArrowLeft", keyCode: 37 });
+            break;
+          case "mapped keydown":
+            dispatch({
+              code: "Enter",
+              key: "Enter",
+              keyCode: 13,
+              shiftKey: true,
+            });
+            expect(inputSpy).toHaveBeenLastCalledWith("\x1b\r");
+            break;
+          case "IME composition":
+            expect(dispatch({ key: "Process", isComposing: true })).toEqual({
+              cancelled: false,
+              result: true,
+            });
+            break;
+          case "IME start":
+            expect(dispatch({ key: "Process", keyCode: 229 })).toEqual({
+              cancelled: false,
+              result: true,
+            });
+            break;
+          case "DECRST":
+            triggerCsi("?", "l", [9001]);
+            triggerCsi("?", "h", [9001]);
+            break;
+          case "disposal": {
+            addon.dispose();
+            expect(dispatch(character)).toEqual({
+              cancelled: false,
+              result: true,
+            });
+            // Reactivate the same addon to verify disposal cleared its state.
+            const mock = createMockTerminal();
+            addon.activate(mock.terminal);
+            handler = mock.getHandler();
+            inputSpy = mock.inputSpy;
+            triggerCsi = mock.triggerCsi;
+            triggerCsi("?", "h", [9001]);
+            break;
+          }
+        }
+        inputSpy.mockClear();
+        const reset = interruption === "DECRST" || interruption === "disposal";
+        expect(dispatch({ ...digit, altKey: false, type: "keyup" })).toEqual({
+          cancelled: reset,
+          result: false,
+        });
+        // An interrupted digit still has no matching down record. A mode
+        // reset, however, must forget even the held-key suppression state.
+        expect(inputSpy.mock.calls).toEqual(
+          reset ? [["\x1b[96;82;48;0;0;1_", true]] : [],
+        );
+        inputSpy.mockClear();
+        dispatch(character);
+        expect(inputSpy).not.toHaveBeenCalled();
+        dispatch({ code: "KeyA", key: "a", keyCode: 65 });
+        expect(inputSpy.mock.calls).toEqual([["\x1b[65;30;97;1;0;1_", true]]);
+      },
+    );
+
+    it.each([
+      { ctrlKey: true },
+      { shiftKey: true },
+      { metaKey: true },
+      {
+        getModifierState: vi.fn((modifier: string) => modifier === "AltGraph"),
+      },
+    ])(
+      "does not compose a numpad chord with extra modifiers: %j",
+      (modifiers) => {
+        setupWin32InputMode();
+        triggerCsi("?", "h", [9001]);
+        dispatch(alt);
+        inputSpy.mockClear();
+        expect(dispatch({ ...digit, ...modifiers })).toEqual({
+          cancelled: true,
+          result: false,
+        });
+        expect(inputSpy).toHaveBeenCalledOnce();
+        inputSpy.mockClear();
+        dispatch(character);
+        expect(inputSpy).not.toHaveBeenCalled();
+      },
+    );
+
+    it("keeps ordinary Alt shortcuts and subsequent numpad chords encoded", () => {
+      setupWin32InputMode();
+      triggerCsi("?", "h", [9001]);
+      dispatch(alt);
+      const shortcut = { altKey: true, code: "KeyF", key: "f", keyCode: 70 };
+      expect(dispatch(shortcut)).toEqual({ cancelled: true, result: false });
+      dispatch({ ...shortcut, type: "keyup" });
+      dispatch(digit);
+      dispatch({ ...digit, type: "keyup" });
+      dispatch({ ...alt, altKey: false, type: "keyup" });
+      dispatch(character);
+      expect(inputSpy.mock.calls).toEqual([
+        ["\x1b[18;56;0;1;2;1_", false],
+        ["\x1b[70;33;102;1;2;1_", true],
+        ["\x1b[70;33;102;0;2;1_", true],
+        ["\x1b[96;82;48;1;2;1_", true],
+        ["\x1b[96;82;48;0;2;1_", true],
+        ["\x1b[18;56;0;0;0;1_", false],
+      ]);
+    });
+  });
+
+  // === Clipboard chords in Win32 input mode ===
+  // xterm.js has no key for these, so the browser copies or pastes. No default
+  // keymapping binds them either.
+
+  const CLIPBOARD_CHORDS = [
+    {
+      chord: { code: "Insert", key: "Insert", keyCode: 45, shiftKey: true },
+      name: "Shift+Insert",
+    },
+    {
+      chord: { code: "Insert", ctrlKey: true, key: "Insert", keyCode: 45 },
+      name: "Ctrl+Insert",
+    },
+    {
+      chord: {
+        code: "KeyV",
+        ctrlKey: true,
+        key: "V",
+        keyCode: 86,
+        shiftKey: true,
+      },
+      name: "Ctrl+Shift+V",
+    },
+    {
+      chord: {
+        code: "KeyC",
+        ctrlKey: true,
+        key: "C",
+        keyCode: 67,
+        shiftKey: true,
+      },
+      name: "Ctrl+Shift+C",
+    },
+  ];
+
+  it.each(CLIPBOARD_CHORDS)("leaves $name to the browser", ({ chord }) => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+
+    expect(dispatch(chord)).toEqual({ cancelled: false, result: true });
+    // Key repeat.
+    expect(dispatch(chord)).toEqual({ cancelled: false, result: true });
+    expect(dispatch({ ...chord, type: "keyup" })).toEqual({
+      cancelled: false,
+      result: true,
+    });
+    expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  it.each(CLIPBOARD_CHORDS)(
+    "sends no keyup for $name after its modifiers were released",
+    ({ chord }) => {
+      setupWin32InputMode();
+      triggerCsi("?", "h", [9001]);
+      dispatch(chord);
+
+      expect(
+        dispatch({
+          ...chord,
+          ctrlKey: false,
+          key: chord.key.toLowerCase(),
+          shiftKey: false,
+          type: "keyup",
+        }),
+      ).toEqual({ cancelled: false, result: true });
+      expect(inputSpy).not.toHaveBeenCalled();
+    },
+  );
+
+  it("encodes the modifiers around a clipboard chord", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+    const control = {
+        code: "ControlLeft",
+        ctrlKey: true,
+        key: "Control",
+        keyCode: 17,
+      },
+      shift = {
+        code: "ShiftLeft",
+        ctrlKey: true,
+        key: "Shift",
+        keyCode: 16,
+        shiftKey: true,
+      };
+
+    dispatch(control);
+    dispatch(shift);
+    dispatch({
+      code: "KeyV",
+      ctrlKey: true,
+      key: "V",
+      keyCode: 86,
+      shiftKey: true,
+    });
+    dispatch({ ...shift, shiftKey: false, type: "keyup" });
+    dispatch({ ...control, ctrlKey: false, type: "keyup" });
+
+    expect(inputSpy.mock.calls).toEqual([
+      ["\x1b[17;29;0;1;8;1_", false],
+      ["\x1b[16;42;0;1;24;1_", false],
+      ["\x1b[16;42;0;0;8;1_", false],
+      ["\x1b[17;29;0;0;0;1_", false],
+    ]);
+  });
+
+  it("still encodes a plain V, its keyup, and other chords", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+
+    expect(dispatch({ code: "KeyV", key: "v", keyCode: 86 })).toEqual({
+      cancelled: true,
+      result: false,
+    });
+    expect(
+      dispatch({ code: "KeyV", key: "v", keyCode: 86, type: "keyup" }),
+    ).toEqual({ cancelled: true, result: false });
+    dispatch({ code: "KeyV", ctrlKey: true, key: "v", keyCode: 86 });
+    dispatch({ code: "Insert", key: "Insert", keyCode: 45 });
+    dispatch({
+      code: "Insert",
+      ctrlKey: true,
+      key: "Insert",
+      keyCode: 45,
+      shiftKey: true,
+    });
+    dispatch({
+      altKey: true,
+      code: "KeyV",
+      ctrlKey: true,
+      key: "V",
+      keyCode: 86,
+      shiftKey: true,
+    });
+
+    expect(inputSpy.mock.calls).toEqual([
+      ["\x1b[86;47;118;1;0;1_", true],
+      ["\x1b[86;47;118;0;0;1_", true],
+      ["\x1b[86;47;22;1;8;1_", true],
+      ["\x1b[45;82;0;1;256;1_", true],
+      ["\x1b[45;82;0;1;280;1_", true],
+      ["\x1b[86;47;0;1;26;1_", true],
+    ]);
+  });
+
+  it("encodes the keyup of a key that went down again outside a chord", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+    const chord = {
+      code: "KeyV",
+      ctrlKey: true,
+      key: "V",
+      keyCode: 86,
+      shiftKey: true,
+    };
+    dispatch(chord);
+    // The keyup was lost, for example to a focus change.
+    dispatch({ code: "KeyV", key: "v", keyCode: 86 });
+    inputSpy.mockClear();
+
+    expect(
+      dispatch({ code: "KeyV", key: "v", keyCode: 86, type: "keyup" }),
+    ).toEqual({ cancelled: true, result: false });
+    expect(inputSpy).toHaveBeenCalledExactlyOnceWith(
+      "\x1b[86;47;118;0;0;1_",
+      true,
+    );
+  });
+
+  it("follows the layout's virtual key for a clipboard chord", () => {
+    // Russian layout: the `V` position types `м` and still reports `VK_V`.
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+
+    expect(
+      dispatch({
+        code: "KeyV",
+        ctrlKey: true,
+        key: "М",
+        keyCode: 86,
+        shiftKey: true,
+      }),
+    ).toEqual({ cancelled: false, result: true });
+    expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  it("forgets a passed-through chord when the mode ends", () => {
+    setupWin32InputMode();
+    triggerCsi("?", "h", [9001]);
+    dispatch({
+      code: "KeyV",
+      ctrlKey: true,
+      key: "V",
+      keyCode: 86,
+      shiftKey: true,
+    });
+    triggerCsi("?", "l", [9001]);
+    triggerCsi("?", "h", [9001]);
+
+    expect(
+      dispatch({ code: "KeyV", key: "v", keyCode: 86, type: "keyup" }),
+    ).toEqual({ cancelled: true, result: false });
+    expect(inputSpy).toHaveBeenCalledExactlyOnceWith(
+      "\x1b[86;47;118;0;0;1_",
+      true,
+    );
   });
 
   it("passes through Option+Backspace to xterm when no mapping matches", () => {
@@ -337,6 +1253,15 @@ describe("CustomKeyEventHandlerAddon", () => {
     const result = handler(fakeKeyEvent({ key: "@", altKey: true }));
     expect(result).toBe(true);
     expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  it("removes Win32 mode handlers on dispose()", () => {
+    const addon = setupWin32InputMode();
+
+    addon.dispose();
+
+    expect(triggerCsi("?", "h", [9001])).toEqual([]);
+    expect(triggerCsi("?", "l", [9001])).toEqual([]);
   });
 });
 

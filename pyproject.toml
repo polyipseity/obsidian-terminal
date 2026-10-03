@@ -10,11 +10,12 @@ requires-python = ">=3.9.0"
 description = "Obsidian Terminal"
 license = { file = "LICENSE.txt" }
 readme = "README.md"
-# Update `README.md`, `dependabot.yml`, `magic.ts`, and `pyproject.toml` together.
+# Resizer runtime minimums come from `src/python-requirements.json`.
+# These repository pins and Dependabot rules are a separate development policy.
 dependencies = [
-  "psutil==5.9.5",            # sync
-  "pywinctl==0.0.50",         # sync
-  "typing_extensions>=4.16.0", # sync
+  "psutil==5.9.5",
+  "pywinctl==0.0.50",
+  "typing_extensions>=4.16.0",
 ]
 
 [project.scripts]

@@ -1,8 +1,10 @@
 import {
   Platform,
+  SI_PREFIX_SCALE,
   addCommand,
   addRibbonIcon,
   deepFreeze,
+  deopaque,
   inSet,
   isNonNil,
   notice2,
@@ -10,14 +12,26 @@ import {
 import {
   FileSystemAdapter,
   MarkdownView,
+  Menu,
   type MenuItem,
   TFolder,
 } from "obsidian";
 import type { TerminalPlugin } from "../main.js";
+import { TERMINAL_CONPTY_PREWARM_DELAY } from "../magic.js";
+import { warmSystemPath } from "./environment.js";
 import { Settings } from "../settings-data.js";
-import { PROFILE_PROPERTIES } from "./profile-properties.js";
+import {
+  PROFILE_PROPERTIES,
+  prewarmConPtyProfile,
+} from "./profile-properties.js";
+import { CONPTY_HOST_POOL } from "./pseudoterminal.js";
 import { SelectProfileModal, spawnTerminal } from "./spawn.js";
 import { TerminalView } from "./view.js";
+import {
+  invalidateWindowsPythonNegativeDiagnoses,
+  isAutomaticWindowsPythonExecutable,
+  runPluginPythonCheck,
+} from "./win32-doctor.js";
 
 export function loadTerminal(context: TerminalPlugin): void {
   TerminalView.load(context);
@@ -50,6 +64,18 @@ export function loadTerminal(context: TerminalPlugin): void {
         }
       }
       return null;
+    },
+    getPrewarmProfile = (): Settings.Profile | null => {
+      const isCandidate = (profile: Settings.Profile): boolean =>
+        profile.type === "integrated" &&
+        profile.win32Backend === "conpty" &&
+        !profile.pythonExecutable &&
+        Settings.Profile.isCompatible(profile, Platform.CURRENT);
+      const fromDefault = getDefaultProfile()?.[1];
+      if (fromDefault && isCandidate(fromDefault)) {
+        return fromDefault;
+      }
+      return Object.values(settings.value.profiles).find(isCandidate) ?? null;
     },
     getDefaultProfileOfType = (
       type: Settings.Profile.Type,
@@ -204,6 +230,8 @@ export function loadTerminal(context: TerminalPlugin): void {
       return i18n.t("ribbons.open-terminal");
     },
     (evt) => {
+      // The ribbon callback also receives right-button auxclick events.
+      if (evt.button === 2) return;
       if (evt.ctrlKey || evt.metaKey) {
         openSelectProfile(adapter?.getBasePath());
         return;
@@ -211,6 +239,96 @@ export function loadTerminal(context: TerminalPlugin): void {
       openDefaultOrSelectProfile(adapter?.getBasePath());
     },
   );
+  // Reloads replace the ribbon element; resolve the current element per event.
+  context.registerDomEvent(
+    openTerminal.elementRef.ownerDocument,
+    "contextmenu",
+    (evt) => {
+      if (
+        evt.button !== 2 ||
+        !(evt.target instanceof Node) ||
+        !openTerminal.elementRef.contains(evt.target)
+      ) {
+        return;
+      }
+      evt.preventDefault();
+      const menu = new Menu(),
+        cwd = adapter?.getBasePath();
+      let hasProfileItems = false;
+      for (const [id, profile] of Object.entries(settings.value.profiles)) {
+        if (!Settings.Profile.isCompatible(profile, Platform.CURRENT)) {
+          continue;
+        }
+        menu.addItem((item) =>
+          item
+            .setTitle(
+              i18n.t("components.select-profile.item-text-", {
+                info: Settings.Profile.info([id, profile]),
+                interpolation: { escapeValue: false },
+              }),
+            )
+            .onClick(() => {
+              spawnTerminal(context, profile, { cwd, profileSourceId: id });
+            }),
+        );
+        hasProfileItems = true;
+      }
+      if (hasProfileItems) menu.addSeparator();
+      menu.addItem((item) =>
+        item
+          .setTitle(
+            i18n.t("menus.open-terminal", {
+              interpolation: { escapeValue: false },
+              type: "select",
+            }),
+          )
+          .onClick(() => {
+            openSelectProfile(cwd);
+          }),
+      );
+      menu.showAtMouseEvent(evt);
+    },
+  );
+  context.register(
+    settings.onMutate(
+      (settings0) => [
+        settings0.pythonExecutable,
+        Object.fromEntries(
+          Object.entries(settings0.profiles).map(([id, profile]) => [
+            id,
+            [
+              profile.type,
+              Settings.Profile.isCompatible(profile, "win32"),
+              profile.type === "integrated" ? profile.pythonExecutable : null,
+              profile.type === "integrated" ? profile.win32Backend : null,
+            ],
+          ]),
+        ),
+      ],
+      () => {
+        // Retire obsolete hosts and pending refills; edits never start a probe.
+        CONPTY_HOST_POOL.clear();
+      },
+    ),
+  );
+  context.register(
+    settings.onMutate(
+      (settings0) => [
+        settings0.pythonExecutable,
+        Object.fromEntries(
+          Object.entries(settings0.profiles).flatMap(([id, profile]) =>
+            profile.type === "integrated"
+              ? [[id, profile.pythonExecutable]]
+              : [],
+          ),
+        ),
+      ],
+      () => {
+        invalidateWindowsPythonNegativeDiagnoses();
+      },
+    ),
+  );
+
   context.register(
     settings.onMutate(
       (settings) => settings.defaultProfile,
@@ -294,4 +412,65 @@ export function loadTerminal(context: TerminalPlugin): void {
       );
     }
   }
+
+  /*
+   * `onLayoutReady` has no unsubscribe and still fires after the plugin
+   * unloads; the flag stops the callback from starting work (and registering
+   * cleanup) on an unloaded plugin, which would leak the timer and the spare.
+   */
+  const prewarm = (): void => {
+    if (unloaded || !settings.value.prewarmConPty) return;
+    const profile = getPrewarmProfile();
+    if (!profile) return;
+    prewarmConPtyProfile(context, profile).catch((error: unknown) => {
+      /* @__PURE__ */ self.console.debug(error);
+    });
+  };
+  let unloaded = false;
+  context.register(() => {
+    unloaded = true;
+  });
+  workspace.onLayoutReady(() => {
+    if (unloaded) {
+      return;
+    }
+    warmSystemPath();
+    if (
+      deopaque(Platform.CURRENT) === "win32" &&
+      isAutomaticWindowsPythonExecutable(settings.value.pythonExecutable)
+    ) {
+      // Silent; overrides are checked when visited or explicitly rechecked.
+      runPluginPythonCheck(context, void 0, void 0, {
+        includeProfileOverrides: false,
+        refresh: false,
+      }).catch((error: unknown) => {
+        /* @__PURE__ */ self.console.debug(error);
+      });
+    }
+    if (
+      !context.localSettings.value.hasUsedIntegratedTerminal ||
+      !settings.value.prewarmConPty ||
+      !getPrewarmProfile()
+    ) {
+      return;
+    }
+    const timer = self.setTimeout(() => {
+      if (!unloaded && context.localSettings.value.hasUsedIntegratedTerminal) {
+        prewarm();
+      }
+    }, TERMINAL_CONPTY_PREWARM_DELAY * SI_PREFIX_SCALE);
+    context.register(() => {
+      self.clearTimeout(timer);
+    });
+  });
+
+  context.register(
+    settings.onMutate(
+      (settings0) => settings0.prewarmConPty,
+      (prewarm0) => {
+        if (prewarm0) prewarm();
+        else CONPTY_HOST_POOL.clear();
+      },
+    ),
+  );
 }

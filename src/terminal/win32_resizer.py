@@ -113,13 +113,18 @@ if sys.platform == "win32":
         """Read size strings from stdin and yield (rows, columns) tuples.
 
         The reader waits for non-empty input lines of the form "<rows>x<cols>".
+        The plugin closes stdin when the console exits; that EOF ends the
+        reader cleanly.
         """
         while True:
             size0 = ""
             while not size0:  # stdin watchdog triggers this loop
                 if not process.is_running():
                     return
-                size0 = input("size: ")
+                try:
+                    size0 = input("size: ")
+                except EOFError:
+                    return
             rows, columns = (int(s.strip()) for s in size0.split("x", 2))
             print(f"received: {rows}x{columns}")
             yield rows, columns

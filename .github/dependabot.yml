@@ -93,9 +93,10 @@ updates:
     cooldown:
       default-days: 5
     ignore:
-      # Requires manual review and testing to update
+      # Resizer runtime minimums come from `src/python-requirements.json`.
+      # These rules and pyproject.toml pins are a separate development policy;
+      # updating repository pins requires manual review and testing.
       - dependency-name: "psutil"
         versions: [">5.9.5"]
-      # Requires manual review and testing to update
       - dependency-name: "pywinctl"
         versions: [">0.0.50"]

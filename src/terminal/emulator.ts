@@ -28,7 +28,7 @@ import {
 } from "../magic.js";
 import { spawnPromise } from "../utils.js";
 import { applyEnv } from "./environment.js";
-import type { Pseudoterminal } from "./pseudoterminal.js";
+import { ConPtyControlError, type Pseudoterminal } from "./pseudoterminal.js";
 import { writePromise } from "./utils.js";
 
 const childProcess = dynamicRequire<typeof import("node:child_process")>(
@@ -114,15 +114,30 @@ export class XtermTerminalEmulator<A> {
         columns: number,
         rows: number,
         mustResizePseudoterminal: boolean,
+        xtermReady: Promise<void>,
       ) => {
         resolve(
           (async (): Promise<void> => {
             try {
+              // The xterm resize lands before the backend resize.
+              await xtermReady;
               const pty = await this.pseudoterminal;
-              if (pty.resize) {
+              if (
+                pty.resize &&
+                (pty.resizeIsAcknowledged !== true ||
+                  this.#lastPTYSize?.[0] !== columns ||
+                  this.#lastPTYSize[1] !== rows)
+              ) {
+                const generation = ++this.#ptyResizeGeneration;
+                // A pending size change invalidates the previous size.
+                this.#lastPTYSize = void 0;
                 await pty.resize(columns, rows);
+                if (generation === this.#ptyResizeGeneration) {
+                  this.#lastPTYSize = [columns, rows];
+                }
               }
             } catch (error) {
+              this.#lastPTYSize = void 0;
               if (mustResizePseudoterminal) {
                 throw error;
               }
@@ -138,20 +153,26 @@ export class XtermTerminalEmulator<A> {
   );
 
   #running = true;
+  #lastPTYSize: readonly [columns: number, rows: number] | undefined;
+  #ptyResizeGeneration = 0;
+  readonly #opening = new AbortController();
+  readonly #opened: Promise<Pseudoterminal>;
+  readonly #ptyExit: Promise<void>;
 
   public constructor(
     protected readonly element: HTMLElement,
     pseudoterminal: (
       terminal: Terminal,
       addons: XtermTerminalEmulator<A>["addons"],
+      signal: AbortSignal,
     ) => AsyncOrSync<Pseudoterminal>,
     state?: XtermTerminalEmulator.State,
     options?: ITerminalInitOnlyOptions & ITerminalOptions,
     addons?: A,
   ) {
     this.terminal = new xterm.Terminal(options);
+    this.terminal.open(element);
     const { terminal } = this;
-    terminal.open(element);
 
     const addons0 = Object.assign(
       {
@@ -178,43 +199,80 @@ export class XtermTerminalEmulator<A> {
         }
         // User was scrolled up - restore exact position with bounds checking
         const { active } = terminal.buffer,
-          maxScrollY = Math.max(0, active.baseY - terminal.rows + 1),
-          safeScrollLine = Math.min(Math.max(0, state.scrollLine), maxScrollY);
+          safeScrollLine = Math.min(
+            Math.max(0, state.scrollLine),
+            active.baseY,
+          );
         terminal.scrollToLine(safeScrollLine);
       });
     }
-    this.pseudoterminal = write.then(async () => {
-      const pty0 = await pseudoterminal(terminal, addons0);
+    this.#opened = write.then(() =>
+      pseudoterminal(terminal, addons0, this.#opening.signal),
+    );
+    this.pseudoterminal = this.#opened.then(async (pty0) => {
       await pty0.pipe(terminal);
       return pty0;
     });
-    this.pseudoterminal
-      .then(async (pty0) => pty0.onExit)
-      .catch(noop)
+    this.pseudoterminal.catch(noop);
+    // Observe exit even when aborted piping prevents public PTY readiness.
+    this.#ptyExit = this.#opened
+      .then(async (pty0) => {
+        await pty0.onExit;
+      })
       .finally(() => {
         this.#running = false;
-      });
+      })
+      .catch(noop);
   }
 
   public async close(mustClosePseudoterminal = true): Promise<void> {
+    this.#opening.abort();
+    // Detach immediately, even while PTY startup or termination is pending.
+    this.element.remove();
+    let pseudoterminalCloseFailed = false;
+    let pseudoterminalCloseError: unknown;
     try {
       if (this.#running) {
-        await (await this.pseudoterminal).kill();
+        // Startup cancellation must not wait for pipe() to select a session.
+        // A cancelled factory leaves no PTY to kill.
+        let pty: Pseudoterminal | undefined;
+        try {
+          pty = await this.#opened;
+        } catch (error) {
+          if (!(
+            error instanceof ConPtyControlError && error.reason === "aborted"
+          )) {
+            throw error;
+          }
+        }
+        // Keep actual kill failures outside the factory cancellation handler.
+        await pty?.kill();
       }
     } catch (error) {
-      if (mustClosePseudoterminal) {
-        throw error;
+      pseudoterminalCloseFailed = true;
+      pseudoterminalCloseError = error;
+      if (!mustClosePseudoterminal)
+        /* @__PURE__ */ activeSelf(this.terminal.element).console.debug(error);
+    }
+    // Piping may still attach listeners and addons; join it before disposal.
+    await this.pseudoterminal.catch(noop);
+    // Dispose outer addons before xterm.
+    for (const addon of Object.values(this.addons).reverse()) {
+      try {
+        addon.dispose();
+      } catch (error) {
+        /* @__PURE__ */ activeSelf(this.terminal.element).console.debug(error);
       }
-      /* @__PURE__ */ activeSelf(this.terminal.element).console.debug(error);
     }
     try {
       this.terminal.dispose();
     } catch (error) {
-      // xterm.js can throw during internal addon disposal (e.g., WebGL addon
-      // accessing _isDisposed on undefined internal references). This is an
-      // xterm.js bug - suppress to avoid noisy console errors.
       /* @__PURE__ */ activeSelf(this.terminal.element).console.debug(error);
     }
+    if (mustClosePseudoterminal && pseudoterminalCloseFailed)
+      throw pseudoterminalCloseError;
+    // A child may ignore termination, so dispose before waiting for its exit.
+    if (!pseudoterminalCloseFailed) await this.#ptyExit;
   }
 
   public async resize(mustResizePseudoterminal = true): Promise<void> {
@@ -224,9 +282,10 @@ export class XtermTerminalEmulator<A> {
     if (dim) {
       const { cols, rows } = dim;
       if (isFinite(cols) && isFinite(rows)) {
+        const xtermReady = resizeEmulator(cols, rows);
         await Promise.all([
-          resizeEmulator(cols, rows),
-          resizePTY(cols, rows, mustResizePseudoterminal),
+          xtermReady,
+          resizePTY(cols, rows, mustResizePseudoterminal, xtermReady),
         ]);
       }
     }
@@ -239,14 +298,10 @@ export class XtermTerminalEmulator<A> {
   }
 
   public serialize(): XtermTerminalEmulator.State {
-    const { active } = this.terminal.buffer;
-    let scrollLine = active.viewportY;
+    const { normal } = this.terminal.buffer;
+    let scrollLine = normal.viewportY;
 
-    // Only consider "at bottom" if there's actually scrollable content
-    // This prevents false positives in initial/empty state where baseY < rows
-    const hasScrollableContent = active.baseY >= this.terminal.rows,
-      isAtBottomPosition = scrollLine >= active.baseY - this.terminal.rows + 1;
-    if (hasScrollableContent && isAtBottomPosition) {
+    if (scrollLine === normal.baseY) {
       scrollLine = XtermTerminalEmulator.State.SCROLL_LINE_BOTTOM;
     }
 

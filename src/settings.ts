@@ -1,11 +1,14 @@
 import {
   AdvancedSettingTab,
+  activeSelf,
   cloneAsWritable,
   closeSetting,
   createChildElement,
   createDocumentFragment,
+  deopaque,
   DOMClasses,
   linkSetting,
+  openExternal,
   Platform,
   registerSettingsCommands,
   resetButton,
@@ -23,13 +26,45 @@ import {
 } from "./modals.js";
 import { Settings } from "./settings-data.js";
 import { RightClickActionAddon } from "./terminal/emulator-addons.js";
+import { CONPTY_HOST_POOL } from "./terminal/pseudoterminal.js";
+import {
+  PYTHON_DOWNLOADS_URL,
+  getWindowsPythonDiagnosis,
+  isAutomaticWindowsPythonExecutable,
+  isPluginPythonCheckPending,
+  invalidateWindowsPythonDiagnosis,
+  onPluginPythonDiagnosis,
+  pluginPythonStatusKey,
+  runPluginPythonCheck,
+  onWindowsPythonStateChange,
+} from "./terminal/win32-doctor.js";
 
 export class SettingTab extends AdvancedSettingTab<Settings> {
+  #unregisterPythonDiagnosis?: () => void;
+  #setPythonWidgetsVisible?: (visible: boolean) => void;
+
   public constructor(
     protected override readonly context: TerminalPlugin,
     protected readonly docs: loadDocumentations.Loaded,
   ) {
     super(context);
+  }
+
+  public override display(): void {
+    this.#setPythonWidgetsVisible?.(true);
+    super.display();
+  }
+
+  public override hide(): void {
+    this.#setPythonWidgetsVisible?.(false);
+    super.hide();
+  }
+
+  protected override onUnload(): void {
+    this.#unregisterPythonDiagnosis?.();
+    this.#unregisterPythonDiagnosis = void 0;
+    this.#setPythonWidgetsVisible = void 0;
+    super.onUnload();
   }
 
   protected override onLoad(): void {
@@ -94,6 +129,9 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
         });
     });
     this.newAllSettingsWidget(Settings.DEFAULT, Settings.fix);
+    if (deopaque(Platform.CURRENT) === "win32") {
+      this.newPythonWidgets();
+    }
     ui.newSetting(containerEl, (setting) => {
       setting
         .setName(i18n.t("settings.add-to-command"))
@@ -836,8 +874,281 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
       });
   }
 
+  /** Plugin-level Python controls, rendered on Windows only. */
+  protected newPythonWidgets(): void {
+    const {
+      containerEl,
+      context,
+      context: {
+        language: { value: i18n },
+        settings,
+      },
+      ui,
+    } = this;
+    // UI-local ownership keeps late completions from repainting a moved field.
+    let checking = false,
+      checkingExplicitly = false,
+      disposed = false,
+      visible = true,
+      hasBeenDisplayed = false,
+      repaintQueued = false,
+      generation = 0,
+      fieldGeneration = 0,
+      recheckKey = settings.value.pythonExecutable,
+      committedValue: string | undefined,
+      fieldMutation = Promise.resolve(),
+      pythonInput: HTMLInputElement | undefined;
+    const recheck = (includeProfileOverrides = true): void => {
+        const configured = settings.value.pythonExecutable;
+        if (
+          disposed ||
+          !visible ||
+          (!includeProfileOverrides &&
+            !isAutomaticWindowsPythonExecutable(configured))
+        )
+          return;
+        recheckKey = configured;
+        committedValue = configured;
+        const currentGeneration = ++generation;
+        checking = true;
+        checkingExplicitly = includeProfileOverrides;
+        if (includeProfileOverrides) {
+          CONPTY_HOST_POOL.clear();
+        } else {
+          invalidateWindowsPythonDiagnosis(configured, configured);
+        }
+        runPluginPythonCheck(context, void 0, void 0, {
+          includeProfileOverrides,
+          refresh: includeProfileOverrides,
+        })
+          .catch((error: unknown) => {
+            activeSelf(containerEl).console.error(error);
+          })
+          .finally(() => {
+            if (
+              disposed ||
+              currentGeneration !== generation ||
+              settings.value.pythonExecutable !== configured
+            )
+              return;
+            checking = false;
+            checkingExplicitly = false;
+            ui.update();
+          });
+        ui.update();
+      },
+      afterFieldMutation = (callback: () => void): void => {
+        // Persistence may settle after another edit or after the tab closes.
+        const currentGeneration = fieldGeneration;
+        fieldMutation
+          .then(() => {
+            if (!disposed && visible && currentGeneration === fieldGeneration)
+              callback();
+          })
+          .catch((error: unknown) => {
+            activeSelf(containerEl).console.error(error);
+          });
+      },
+      commit = (): void => {
+        const value = pythonInput?.value;
+        // linkSetting persists on input; commit can arrive before it settles.
+        afterFieldMutation(() => {
+          if (
+            value !== settings.value.pythonExecutable ||
+            committedValue === value
+          )
+            return;
+          committedValue = value;
+          recheck(false);
+        });
+      },
+      removeCommitListeners = (): void => {
+        pythonInput?.removeEventListener("change", commit);
+        pythonInput?.removeEventListener("blur", commit);
+      },
+      repaint = (): void => {
+        if (!visible || !hasBeenDisplayed || disposed || repaintQueued) return;
+        repaintQueued = true;
+        queueMicrotask(() => {
+          repaintQueued = false;
+          if (visible && !disposed) ui.update();
+        });
+      };
+    // Settings tabs survive hide/show; onUnload only runs at plugin unload.
+    this.#setPythonWidgetsVisible = (value): void => {
+      visible = value;
+      hasBeenDisplayed ||= visible;
+      if (visible) return;
+      ++generation;
+      ++fieldGeneration;
+      checking = false;
+      checkingExplicitly = false;
+      removeCommitListeners();
+    };
+    ui.finally(() => {
+      disposed = true;
+      ++generation;
+      removeCommitListeners();
+    });
+    // The load-time check may still be probing when the tab opens; its
+    // completion must replace the "checking" status without a reopen.
+    this.#unregisterPythonDiagnosis?.();
+    this.#unregisterPythonDiagnosis = onPluginPythonDiagnosis(context, repaint);
+    ui.finally(onWindowsPythonStateChange(repaint));
+    ui.newSetting(containerEl, (setting) => {
+      setting
+        .setName(i18n.t("settings.python-executable"))
+        .setDesc(i18n.t("settings.python-executable-description"))
+        .addText(
+          linkSetting(
+            () => settings.value.pythonExecutable,
+            (value) => {
+              ++fieldGeneration;
+              fieldMutation = settings.mutate((settingsM) => {
+                settingsM.pythonExecutable = value;
+              });
+              return fieldMutation;
+            },
+            () => {
+              this.postMutate();
+            },
+            {
+              post: (component) => {
+                removeCommitListeners();
+                pythonInput = component.inputEl;
+                if (visible && !disposed) {
+                  pythonInput.addEventListener("change", commit);
+                  pythonInput.addEventListener("blur", commit);
+                }
+                component.setPlaceholder(
+                  i18n.t("settings.python-executable-placeholder"),
+                );
+              },
+            },
+          ),
+        )
+        .addExtraButton(
+          resetButton(
+            i18n.t("asset:settings.python-executable-icon"),
+            i18n.t("settings.reset"),
+            async () =>
+              settings.mutate((settingsM) => {
+                settingsM.pythonExecutable = Settings.DEFAULT.pythonExecutable;
+              }),
+            () => {
+              this.postMutate();
+            },
+          ),
+        );
+    })
+      .newSetting(containerEl, (setting) => {
+        const { pythonExecutable } = settings.value;
+        if (recheckKey !== pythonExecutable) {
+          recheckKey = pythonExecutable;
+          ++generation;
+          checking = false;
+          checkingExplicitly = false;
+          committedValue = void 0;
+        }
+        const busy =
+            checking || isPluginPythonCheckPending(context, pythonExecutable),
+          diagnosis = getWindowsPythonDiagnosis(
+            pythonExecutable,
+            pythonExecutable,
+          ),
+          notAutomatic =
+            !isAutomaticWindowsPythonExecutable(pythonExecutable) &&
+            !busy &&
+            !diagnosis,
+          statusKey = notAutomatic
+            ? "not-automatic"
+            : !diagnosis && !busy
+              ? "unverified"
+              : pluginPythonStatusKey(diagnosis, busy, pythonExecutable),
+          i18nVariant = busy ? "ing" : "";
+        setting.setName(i18n.t("settings.python-status")).setDesc(
+          i18n.t(`settings.python-status-${statusKey}`, {
+            candidate: diagnosis?.candidate,
+            errno: diagnosis?.errno,
+            executable: diagnosis?.executable,
+            interpolation: { escapeValue: false },
+            value: pythonExecutable,
+            version: diagnosis?.version,
+          }),
+        );
+        /*
+         * The UI records its components once, at plugin load, and later
+         * updates only reconfigure them — a conditionally added button
+         * would never be recorded. Always add it; toggle visibility.
+         */
+        setting.addButton((button) => {
+          button
+            .setIcon(i18n.t("asset:settings.python-download-icon"))
+            .setTooltip(i18n.t("settings.python-download"))
+            .onClick(() => {
+              openExternal(activeSelf(containerEl), PYTHON_DOWNLOADS_URL);
+            });
+          // Only a settled, definitive failure offers Download.
+          const hidden =
+            busy ||
+            !diagnosis ||
+            diagnosis.status === "ok" ||
+            !!diagnosis.transient ||
+            !!diagnosis.errno;
+          button.buttonEl.style.display = hidden ? "none" : "";
+          if (!hidden) {
+            button.setCta();
+          }
+        });
+        setting.addButton((button) => {
+          button
+            .setIcon(i18n.t(`asset:settings.python-recheck${i18nVariant}-icon`))
+            .setTooltip(i18n.t("settings.python-recheck"))
+            .onClick(() => {
+              afterFieldMutation(() => {
+                // A blur check must not consume an explicit full Recheck.
+                if (!checkingExplicitly) recheck();
+              });
+            });
+          if (busy || statusKey === "ok-fallback") {
+            button.setCta();
+          }
+        });
+      })
+      .newSetting(containerEl, (setting) => {
+        setting
+          .setName(i18n.t("settings.prewarm-conpty"))
+          .setDesc(i18n.t("settings.prewarm-conpty-description"))
+          .addToggle(
+            linkSetting(
+              () => settings.value.prewarmConPty,
+              async (value) =>
+                settings.mutate((settingsM) => {
+                  settingsM.prewarmConPty = value;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          )
+          .addExtraButton(
+            resetButton(
+              i18n.t("asset:settings.prewarm-conpty-icon"),
+              i18n.t("settings.reset"),
+              async () =>
+                settings.mutate((settingsM) => {
+                  settingsM.prewarmConPty = Settings.DEFAULT.prewarmConPty;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          );
+      });
+  }
+
   protected override snapshot0(): Partial<Settings> {
-    return Settings.persistent(this.context.settings.value);
+    return this.context.settings.value;
   }
 }
 
