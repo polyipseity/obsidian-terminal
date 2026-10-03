@@ -1,5 +1,5 @@
 ---
-"obsidian-terminal": major
+"obsidian-terminal": minor
 ---
 
 Windows integrated terminals now use ConPTY by default. ConPTY needs Python 3.9 or newer and no pip packages.
