@@ -1,0 +1,71 @@
+# Release Workflow: Version Tag Build
+#
+# On a version tag push, builds the plugin and drafts a release titled with the
+# tag (the community Scorecard flags untitled releases), with only main.js,
+# manifest.json and styles.css, each attested. Publish the draft by hand.
+
+name: "Release: Version Tag Build"
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  attestations: write
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    name: "Draft Versioned Release"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          submodules: "recursive"
+
+      - name: Check the tag matches manifest.json
+        run: jq -e --arg tag "$GITHUB_REF_NAME" '.version == $tag' manifest.json
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        with:
+          resolution-strategy: "lowest"
+
+      - name: Install project
+        run: |
+          cd vendor/obsidian-plugin-library
+          bun install --frozen-lockfile --ignore-scripts
+          bun run build:force
+          cd ../..
+          bun install --frozen-lockfile --ignore-scripts
+          uv sync --locked
+
+      - name: Build project
+        run: bun run build
+
+      - name: Attest build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
+
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$GITHUB_REF_NAME"
+          if gh release view "$tag" > /dev/null 2>&1; then
+            gh release edit "$tag" --title "$tag"
+            gh release upload "$tag" main.js manifest.json styles.css --clobber
+          else
+            awk -v v="$tag" '/^## /{p=($2==v);next} p' CHANGELOG.md |
+              gh release create "$tag" main.js manifest.json styles.css \
+                --draft --title "$tag" --notes-file -
+          fi
