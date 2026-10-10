@@ -3,15 +3,18 @@ declare module "obsidian" {
     readonly fundingUrl?: string | Record<string, string>;
   }
 
-  interface App extends Private<$App, PrivateKey> {}
+  // Inlined `Private<$X, typeof PRIVATE_KEY>`: an interface that only extends it is empty.
+  interface App {
+    readonly [PRIVATE_KEY]?: $App;
+  }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- `T` must stay declared to match the augmented class signature.
-  interface SuggestModal<T> extends Private<$SuggestModal, PrivateKey> {}
+  interface SuggestModal<T> {
+    readonly [PRIVATE_KEY]?: $SuggestModal;
+  }
 }
-import type { Private } from "@polyipseity/obsidian-plugin-library";
 import type {} from "obsidian";
 
 declare const PRIVATE_KEY: unique symbol;
-type PrivateKey = typeof PRIVATE_KEY;
 declare module "@polyipseity/obsidian-plugin-library" {
   interface PrivateKeys {
     readonly [PRIVATE_KEY]: never;
