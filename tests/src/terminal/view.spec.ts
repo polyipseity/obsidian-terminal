@@ -276,6 +276,23 @@ describe("src/terminal/view.ts", () => {
       }
     });
 
+    it("opens vault file links outside the terminal's own leaf", async () => {
+      const exit = Promise.withResolvers<number>(),
+        view = await startView(
+          Promise.resolve({ ...pseudoterminal(), onExit: exit.promise }),
+        ),
+        addons = vi.mocked(TerminalView.EMULATOR).mock.calls[0]?.[4];
+      try {
+        view.app = new App();
+        // Clicking a link in the terminal makes it the active leaf.
+        view.app.workspace.setActiveLeaf(view.leaf);
+        expect(addons?.vaultFileLinks["fileLeaf"]()).not.toBe(view.leaf);
+      } finally {
+        view.stopEmulator();
+        exit.resolve(0);
+      }
+    });
+
     const startupExits = [
       [9009, "errors.win32-exit-9009"],
       [251, "errors.win32-exit-251"],
@@ -1548,5 +1565,77 @@ describe("TerminalView pane menu", () => {
       leaf,
       view.getViewType(),
     );
+  });
+});
+
+describe("TerminalView file link leaf", () => {
+  function makeBed() {
+    const { context, workspace, next, allocate } = makeTerminalContext();
+    const terminal = makeTerminalLeaf(context);
+    const note = new WorkspaceLeaf();
+    const notes: WorkspaceLeaf[] = [];
+    // Real Obsidian lists leaves by the type of the view they host now.
+    vi.spyOn(workspace, "getLeavesOfType").mockImplementation((type) =>
+      type === "markdown"
+        ? notes
+        : type === TerminalView.type.namespaced(context)
+          ? [terminal.leaf]
+          : [],
+    );
+    const lastActive = (leaf: WorkspaceLeaf): void => {
+      TerminalView["lastActiveOtherLeaf"] = new WeakRef(leaf);
+    };
+    return { terminal, note, notes, lastActive, next, allocate };
+  }
+
+  afterEach(() => {
+    TerminalView["lastActiveOtherLeaf"] = null;
+  });
+
+  it("reuses the last active note", () => {
+    const { terminal, note, notes, lastActive, allocate } = makeBed();
+    notes.push(note);
+    lastActive(note);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(note);
+    expect(allocate).not.toHaveBeenCalled();
+  });
+
+  it("opens a new tab when no other leaf was active", () => {
+    const { terminal, next, allocate } = makeBed();
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+    expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
+  });
+
+  it("opens a new tab when the last other leaf now hosts this terminal", () => {
+    // "Replace tab" turns the previously active empty leaf into the terminal.
+    const { terminal, lastActive, next, allocate } = makeBed();
+    lastActive(terminal.leaf);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+    expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
+  });
+
+  it("opens a new tab when the last active note was closed", () => {
+    const { terminal, note, lastActive, next, allocate } = makeBed();
+    lastActive(note);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+    expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
+  });
+
+  it("opens a new tab instead of replacing a pinned note", () => {
+    const { terminal, note, notes, lastActive, next, allocate } = makeBed();
+    notes.push(note);
+    vi.spyOn(note, "getViewState").mockReturnValue({
+      pinned: true,
+      state: {},
+      type: "markdown",
+    });
+    lastActive(note);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+    expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
   });
 });

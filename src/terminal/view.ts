@@ -851,6 +851,23 @@ export class TerminalView extends ItemView {
     emulator?.terminal.focus();
   }
 
+  /**
+   * Where a clicked vault file opens: the last active unpinned note, else a
+   * new tab. Never this terminal's leaf, which would unmount the view and end
+   * its session.
+   */
+  protected fileLinkLeaf(): WorkspaceLeaf {
+    const {
+      app: { workspace },
+    } = this;
+    const note = TerminalView.lastActiveOtherLeaf?.deref();
+    return note &&
+      !note.getViewState().pinned &&
+      workspace.getLeavesOfType("markdown").includes(note)
+      ? note
+      : workspace.getLeaf("tab");
+  }
+
   protected unfocus(): void {
     const {
       app: { workspace },
@@ -1263,7 +1280,9 @@ export class TerminalView extends ItemView {
               ),
               search: new SearchAddon(),
               unicode11: new Unicode11Addon(),
-              vaultFileLinks: new VaultFileLinksAddon(context),
+              vaultFileLinks: new VaultFileLinksAddon(context, () =>
+                this.fileLinkLeaf(),
+              ),
               webLinks: new WebLinksAddon(
                 (event, uri) => openExternal(activeSelf(event), uri),
                 {
