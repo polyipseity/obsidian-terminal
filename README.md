@@ -248,6 +248,14 @@ See [`assets/locales/README.md`](assets/locales/README.md).
 
 We hope that there will never be any security vulnerabilities, but unfortunately it does happen. Please [report](#reporting-a-vulnerability) them!
 
+### System access
+
+Obsidian's [community Scorecard][community plugin scorecard] flags the plugin for reading system information and for using Node.js `fs`. A terminal cannot work without them:
+
+- **Environment variables.** Terminals inherit Obsidian's environment, such as `HOME` and `PATH`. The plugin removes variables left by the terminal or editor Obsidian was started from (such as `TMUX` and `VSCODE_*`) and, for integrated terminals, sets `TERM`, `COLORTERM`, `TERM_PROGRAM`, `TERM_PROGRAM_VERSION`, and `PYTHONIOENCODING`. Your profile's variables are applied last. The environment goes only to the processes the plugin starts.
+- **System `PATH` and Windows version.** Obsidian started from a desktop launcher often has a short `PATH`. To find shells and Python, the plugin adds the system `PATH`: from `/usr/libexec/path_helper` on macOS, `/etc/environment` or `getconf PATH` on Linux, and the registry on Windows. On Windows, it also reads the OS build number, which tells the terminal display how ConPTY wraps lines.
+- **Files outside the vault.** The plugin runs the shells, terminal emulators, and Python interpreters named in your profiles or settings. On Windows, it writes to the system temporary folder: the ConPTY host script (`obsidian-terminal-conpty-*.py`) and, with the ConHost backend, a `.bat` file holding the command line, deleted when the terminal exits.
+
 ### Supported versions
 
 | Version  | Supported |
@@ -264,6 +272,7 @@ Please report a vulnerability by opening a [private vulnerability report][new se
 [Buy Me a Coffee/embed]: https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=polyipseity&button_colour=40DCA5&font_colour=ffffff&font_family=Lato&outline_colour=000000&coffee_colour=FFDD00
 [changelog]: https://github.com/polyipseity/obsidian-terminal/blob/main/CHANGELOG.md
 [community plugin]: https://obsidian.md/plugins?id=terminal
+[community plugin scorecard]: https://community.obsidian.md/plugins/terminal#scorecard
 [latest release]: https://github.com/polyipseity/obsidian-terminal/releases/latest
 [new security advisory]: https://github.com/polyipseity/obsidian-terminal/security/advisories/new
 [Obsidian]: https://obsidian.md/
