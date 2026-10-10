@@ -1485,6 +1485,8 @@ export class TextComponent {
   }
 }
 
+export class TextAreaComponent extends TextComponent {}
+
 export class ColorComponent {
   private value = "#000000";
   private changeHandler: ((value: string) => void) | null = null;

@@ -122,6 +122,9 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
       .newSetting(element, (setting) => {
         setting
           .setName(i18n.t("components.terminal-options.font-family"))
+          .setDesc(
+            i18n.t("components.terminal-options.font-family-description"),
+          )
           .addText(
             linkSetting(
               () => data.fontFamily ?? "",
