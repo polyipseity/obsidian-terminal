@@ -1358,14 +1358,14 @@ export class VaultFileLinksAddon implements ITerminalAddon {
       fileLeaf,
     } = this;
     const open = (file: TFile): void => {
-      const leaf = fileLeaf();
-      // Reveal first: a leaf in a collapsed sidebar cannot take focus.
-      app.workspace
-        .revealLeaf(leaf)
-        .then(async () => leaf.openFile(file, { active: true }))
-        .catch((error: unknown) => {
-          activeSelf(terminal.element).console.error(error);
-        });
+      (async (): Promise<void> => {
+        const leaf = fileLeaf();
+        // Reveal first: a leaf in a collapsed sidebar cannot take focus.
+        await app.workspace.revealLeaf(leaf);
+        await leaf.openFile(file, { active: true });
+      })().catch((error: unknown) => {
+        activeSelf(terminal.element).console.error(error);
+      });
     };
 
     const disposable = terminal.registerLinkProvider({

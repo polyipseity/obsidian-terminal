@@ -1690,19 +1690,93 @@ describe("VaultFileLinksAddon", () => {
 
   // --- Activation ---
 
-  it("reveals the leaf from fileLeaf, then opens the file focused in it", async () => {
+  it("waits for the leaf to be revealed before opening the file focused in it", async () => {
     const { provideLinks, openFile, revealLeaf, leaf } = createBed();
+    const reveal = Promise.withResolvers<undefined>();
+    revealLeaf.mockReturnValueOnce(reveal.promise);
     const links = provideLinks("(test.md)");
     expect(links).toHaveLength(1);
 
     links?.[0]?.activate({} as MouseEvent, "test.md");
     expect(revealLeaf).toHaveBeenCalledExactlyOnceWith(leaf);
+    expect(openFile).not.toHaveBeenCalled();
+    await Promise.resolve();
+    expect(openFile).not.toHaveBeenCalled();
+
+    reveal.resolve(undefined);
     await vi.waitFor(() => {
       expect(openFile).toHaveBeenCalledExactlyOnceWith(MOCK_FILE, {
         active: true,
       });
     });
-    expect(revealLeaf).toHaveBeenCalledBefore(openFile);
+  });
+
+  it("supports a void-returning revealLeaf", async () => {
+    const { provideLinks, openFile, revealLeaf } = createBed();
+    revealLeaf.mockReturnValueOnce(undefined);
+
+    provideLinks("(test.md)")?.[0]?.activate({} as MouseEvent, "test.md");
+
+    await vi.waitFor(() => {
+      expect(openFile).toHaveBeenCalledExactlyOnceWith(MOCK_FILE, {
+        active: true,
+      });
+    });
+  });
+
+  it("logs to console.error without opening the file when revealLeaf rejects", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { provideLinks, openFile, revealLeaf } = createBed();
+    const error = new Error("reveal failed");
+    revealLeaf.mockRejectedValueOnce(error);
+
+    provideLinks("(test.md)")?.[0]?.activate({} as MouseEvent, "test.md");
+
+    await vi.waitFor(() => {
+      expect(consoleError).toHaveBeenCalledExactlyOnceWith(error);
+    });
+    expect(openFile).not.toHaveBeenCalled();
+  });
+
+  it("logs to console.error without throwing when revealLeaf throws", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { provideLinks, openFile, revealLeaf } = createBed();
+    const error = new Error("reveal failed");
+    revealLeaf.mockImplementationOnce(() => {
+      throw error;
+    });
+    const link = provideLinks("(test.md)")?.[0];
+    if (!link) throw new Error("Missing vault file link");
+
+    expect(() => {
+      link.activate(new MouseEvent("click"), "test.md");
+    }).not.toThrow();
+
+    await vi.waitFor(() => {
+      expect(consoleError).toHaveBeenCalledExactlyOnceWith(error);
+    });
+    expect(openFile).not.toHaveBeenCalled();
+  });
+
+  it("logs to console.error without throwing when fileLeaf throws", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { provideLinks, fileLeaf, revealLeaf, openFile } = createBed();
+    const error = new Error("target failed");
+    fileLeaf.mockImplementationOnce(() => {
+      throw error;
+    });
+    const link = provideLinks("(test.md)")?.[0];
+    if (!link) throw new Error("Missing vault file link");
+
+    expect(() => {
+      link.activate(new MouseEvent("click"), "test.md");
+    }).not.toThrow();
+
+    await vi.waitFor(() => {
+      expect(consoleError).toHaveBeenCalledExactlyOnceWith(error);
+    });
+    expect(revealLeaf).not.toHaveBeenCalled();
+    expect(openFile).not.toHaveBeenCalled();
   });
 
   it("asks fileLeaf for a target on every click, not once", () => {

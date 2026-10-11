@@ -283,10 +283,11 @@ describe("src/terminal/view.ts", () => {
         ),
         addons = vi.mocked(TerminalView.EMULATOR).mock.calls[0]?.[4];
       try {
+        if (!addons) throw new Error("Missing emulator factory or addons");
         view.app = new App();
         // Clicking a link in the terminal makes it the active leaf.
         view.app.workspace.setActiveLeaf(view.leaf);
-        expect(addons?.vaultFileLinks["fileLeaf"]()).not.toBe(view.leaf);
+        expect(addons.vaultFileLinks["fileLeaf"]()).not.toBe(view.leaf);
       } finally {
         view.stopEmulator();
         exit.resolve(0);
@@ -1585,11 +1586,25 @@ describe("TerminalView file link leaf", () => {
     const lastActive = (leaf: WorkspaceLeaf): void => {
       TerminalView["lastActiveOtherLeaf"] = new WeakRef(leaf);
     };
-    return { terminal, note, notes, lastActive, next, allocate };
+    const lastActiveNote = (leaf: WorkspaceLeaf): void => {
+      TerminalView["lastActiveNoteLeaf"] = new WeakRef(leaf);
+    };
+    return {
+      context,
+      workspace,
+      terminal,
+      note,
+      notes,
+      lastActive,
+      lastActiveNote,
+      next,
+      allocate,
+    };
   }
 
   afterEach(() => {
     TerminalView["lastActiveOtherLeaf"] = null;
+    TerminalView["lastActiveNoteLeaf"] = null;
   });
 
   it("reuses the last active note", () => {
@@ -1599,6 +1614,96 @@ describe("TerminalView file link leaf", () => {
 
     expect(terminal.view["fileLinkLeaf"]()).toBe(note);
     expect(allocate).not.toHaveBeenCalled();
+  });
+
+  it("reuses the last active note when a non-note leaf was active after it", () => {
+    const { terminal, note, notes, lastActive, lastActiveNote, allocate } =
+      makeBed();
+    notes.push(note);
+    lastActiveNote(note);
+    lastActive(new WorkspaceLeaf());
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(note);
+    expect(allocate).not.toHaveBeenCalled();
+  });
+
+  it("prefers the last other leaf when it now hosts a note", () => {
+    const { terminal, note, notes, lastActive, lastActiveNote, allocate } =
+      makeBed();
+    const other = new WorkspaceLeaf();
+    lastActiveNote(note);
+    lastActive(other);
+    notes.push(note, other);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(other);
+    expect(allocate).not.toHaveBeenCalled();
+  });
+
+  it("opens a new tab when the remembered note is pinned", () => {
+    const {
+      terminal,
+      note,
+      notes,
+      lastActive,
+      lastActiveNote,
+      next,
+      allocate,
+    } = makeBed();
+    notes.push(note);
+    lastActiveNote(note);
+    lastActive(new WorkspaceLeaf());
+    vi.spyOn(note, "getViewState").mockReturnValue({
+      pinned: true,
+      state: {},
+      type: "markdown",
+    });
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+    expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
+  });
+
+  it("opens a new tab when the remembered note was closed", () => {
+    const { terminal, note, lastActive, lastActiveNote, next, allocate } =
+      makeBed();
+    lastActiveNote(note);
+    lastActive(new WorkspaceLeaf());
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+    expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
+  });
+
+  it("remembers only non-terminal markdown leaves as the last active note", () => {
+    const { context, workspace, terminal, note } = makeBed();
+    Object.assign(context, {
+      addCommand: vi.fn<TerminalPlugin["addCommand"]>((command) => command),
+      register: vi.fn(),
+      registerEvent: vi.fn(),
+      registerView: vi.fn(),
+    });
+    vi.spyOn(library, "newHotkeyListener").mockReturnValue(vi.fn());
+    vi.spyOn(TerminalView["focusedScope"], "register").mockImplementation(
+      vi.fn(),
+    );
+    Object.assign(note.view, {
+      getViewType: vi.fn().mockReturnValue("markdown"),
+    });
+    const other = new WorkspaceLeaf();
+    Object.assign(other.view, {
+      getViewType: vi.fn().mockReturnValue("file-explorer"),
+    });
+    TerminalView.load(context);
+
+    workspace.trigger("active-leaf-change", note);
+    expect(TerminalView["lastActiveOtherLeaf"]?.deref()).toBe(note);
+    expect(TerminalView["lastActiveNoteLeaf"]?.deref()).toBe(note);
+
+    workspace.trigger("active-leaf-change", other);
+    expect(TerminalView["lastActiveOtherLeaf"]?.deref()).toBe(other);
+    expect(TerminalView["lastActiveNoteLeaf"]?.deref()).toBe(note);
+
+    workspace.trigger("active-leaf-change", terminal.leaf);
+    expect(TerminalView["lastActiveOtherLeaf"]?.deref()).toBe(other);
+    expect(TerminalView["lastActiveNoteLeaf"]?.deref()).toBe(note);
   });
 
   it("opens a new tab when no other leaf was active", () => {

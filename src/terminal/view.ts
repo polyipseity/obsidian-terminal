@@ -388,6 +388,7 @@ export class TerminalView extends ItemView {
 
   protected static lastFocusTimes = new Map<TerminalView, number>();
   protected static lastActiveOtherLeaf: WeakRef<WorkspaceLeaf> | null = null;
+  protected static lastActiveNoteLeaf: WeakRef<WorkspaceLeaf> | null = null;
   protected static readonly focusedScope = new Scope();
 
   static #namespacedType: string;
@@ -538,6 +539,9 @@ export class TerminalView extends ItemView {
       workspace.on("active-leaf-change", (leaf) => {
         if (leaf && !(leaf.view instanceof TerminalView)) {
           this.lastActiveOtherLeaf = new WeakRef(leaf);
+          if (leaf.view.getViewType() === "markdown") {
+            this.lastActiveNoteLeaf = new WeakRef(leaf);
+          }
         }
       }),
     );
@@ -852,20 +856,28 @@ export class TerminalView extends ItemView {
   }
 
   /**
-   * Where a clicked vault file opens: the last active unpinned note, else a
-   * new tab. Never this terminal's leaf, which would unmount the view and end
-   * its session.
+   * Where a clicked vault file opens: the last other leaf if it now holds an
+   * unpinned note, then the last active unpinned note, else a new tab. Never
+   * this terminal's leaf, which would unmount the view and end its session.
    */
   protected fileLinkLeaf(): WorkspaceLeaf {
     const {
       app: { workspace },
     } = this;
-    const note = TerminalView.lastActiveOtherLeaf?.deref();
-    return note &&
-      !note.getViewState().pinned &&
-      workspace.getLeavesOfType("markdown").includes(note)
-      ? note
-      : workspace.getLeaf("tab");
+    for (const candidate of [
+      TerminalView.lastActiveOtherLeaf,
+      TerminalView.lastActiveNoteLeaf,
+    ]) {
+      const note = candidate?.deref();
+      if (
+        note &&
+        !note.getViewState().pinned &&
+        workspace.getLeavesOfType("markdown").includes(note)
+      ) {
+        return note;
+      }
+    }
+    return workspace.getLeaf("tab");
   }
 
   protected unfocus(): void {
