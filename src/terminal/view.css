@@ -21,3 +21,16 @@
     )
   );
 }
+
+/*
+ * Obsidian flashes the tab header of a leaf shown by `Workspace.revealLeaf`
+ * (`is-flashing`, 750 ms). On the active tab of a main-area tab strip the
+ * tab's corner curves keep the tab colour, so the highlight looks notched.
+ * Keep the tab in that colour. Obsidian sets the highlight with `!important`.
+ */
+.workspace-split.mod-root
+  .workspace-tab-header-container
+  .workspace-tab-header[data-type="terminal\:terminal"].is-active.is-flashing {
+  background-color: var(--tab-background-active) !important;
+  mix-blend-mode: normal;
+}
