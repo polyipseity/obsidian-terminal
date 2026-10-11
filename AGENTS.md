@@ -46,6 +46,7 @@ This guide provides clear, actionable instructions for AI coding agents working 
 
 - **Versioning**
   - Use `changesets` for PRs; the `version` lifecycle script is configured (`node scripts/version.mjs`).
+  - Pushing a tag `X.Y.Z` equal to the version in `manifest.json` runs `.github/workflows/release.yml`. It builds and attests `main.js`, `manifest.json`, and `styles.css`, then drafts a release titled with the tag. Someone must publish the draft before Obsidian can download that version. Publish it only after the release run for that tag has finished, because publishing during the run can let an upload replace published files. A release already published when the run reaches the release step keeps its files.
 
 - **Localization**
   - Add locales by copying `assets/locales/en/translation.json` and updating `assets/locales/*/language.json` as needed. See `assets/locales/README.md` for conventions.
@@ -169,7 +170,8 @@ paths work. For platform-free framing and admission checks, run
 `bun x vitest run tests/src/terminal/pseudoterminal.spec.ts`.
 
 The `windows-native` job on `windows-2025` for Python 3.9 and 3.12 runs the pytest
-suites and `pseudoterminal.test.ts`. The Linux `build` job runs
+suites and `pseudoterminal.test.ts`, and checks `bun run clean` with files present
+and already gone. The Linux `build` job runs
 `pseudoterminal.spec.ts` with the rest of the Vitest suite.
 
 ## 3. Coding Conventions
