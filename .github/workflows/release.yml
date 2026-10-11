@@ -1,14 +1,21 @@
 # Release Workflow: Version Tag Build
 #
-# On a version tag push, builds the plugin and drafts a release titled with the
-# tag (the community Scorecard flags untitled releases), with only main.js,
-# manifest.json and styles.css, each attested. Publish the draft by hand.
+# On a version tag push, builds and attests main.js, manifest.json and styles.css.
+# Creates or updates a draft. Publish it by hand only after the release run for
+# that tag has finished, because publishing during the run can let an upload
+# replace published files. A release already published when the run reaches the
+# release step keeps its files.
+# Release titles retain existing text when they already contain the version tag.
 
 name: "Release: Version Tag Build"
 on:
   push:
     tags:
       - "[0-9]+.[0-9]+.[0-9]+"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   attestations: write
@@ -60,12 +67,34 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
           tag="$GITHUB_REF_NAME"
-          if gh release view "$tag" > /dev/null 2>&1; then
-            gh release edit "$tag" --title "$tag"
-            gh release upload "$tag" main.js manifest.json styles.css --clobber
+          release_error="$RUNNER_TEMP/release-view.stderr"
+          if release="$(gh release view "$tag" --json isDraft,name 2> "$release_error")"; then
+            cat "$release_error"
+            is_draft="$(jq -r '.isDraft' <<< "$release")"
+            title="$(jq -r '.name' <<< "$release")"
+            if [[ "$title" != *"$tag"* ]]; then
+              gh release edit "$tag" --title "$tag"
+            fi
+            if [[ "$is_draft" == true ]]; then
+              gh release upload "$tag" main.js manifest.json styles.css --clobber
+            else
+              echo "::warning::Published files were left as they are; this run's attestations describe this run's build."
+            fi
+          # gh release view prints this text when the tag has neither a published release nor a draft.
+          elif grep -Fq 'release not found' "$release_error"; then
+            echo "No release for $tag yet; creating a draft."
+            notes_file="$RUNNER_TEMP/release-notes.md"
+            awk -v v="$tag" '/^## /{p=($2==v);next} p' CHANGELOG.md > "$notes_file"
+            if [[ ! -s "$notes_file" ]]; then
+              echo "::error::No CHANGELOG.md notes found for $tag."
+              exit 1
+            fi
+            gh release create "$tag" main.js manifest.json styles.css \
+              --draft --title "$tag" --notes-file "$notes_file"
           else
-            awk -v v="$tag" '/^## /{p=($2==v);next} p' CHANGELOG.md |
-              gh release create "$tag" main.js manifest.json styles.css \
-                --draft --title "$tag" --notes-file -
+            cat "$release_error"
+            echo "::error::Release state for tag $tag could not be read."
+            exit 1
           fi
