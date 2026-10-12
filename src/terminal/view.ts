@@ -848,11 +848,18 @@ export class TerminalView extends ItemView {
   }
 
   protected focus(): void {
-    const { app, emulator, leaf, contentEl } = this;
-    app.workspace.revealLeaf(leaf).catch((error: unknown) => {
+    const { app, leaf, contentEl } = this;
+    (async (): Promise<void> => {
+      try {
+        // Reveal first: a leaf in a collapsed sidebar cannot take focus.
+        await app.workspace.revealLeaf(leaf);
+      } finally {
+        // A failed reveal does not keep the terminal from taking focus.
+        this.emulator?.terminal.focus();
+      }
+    })().catch((error: unknown) => {
       activeSelf(contentEl).console.error(error);
     });
-    emulator?.terminal.focus();
   }
 
   /**
