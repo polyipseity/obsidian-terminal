@@ -407,6 +407,26 @@ export class Vault extends Events {
   }
 }
 
+// ===== FileSystemAdapter =====
+
+/**
+ * Desktop adapter of a vault on the local file system. The mock `Vault` does
+ * not use it; code under test checks `vault.adapter instanceof FileSystemAdapter`.
+ */
+export class FileSystemAdapter {
+  getName(): string {
+    return "mock-vault";
+  }
+
+  getBasePath(): string {
+    return "/mock-vault";
+  }
+
+  getFullPath(normalizedPath: string): string {
+    return `${this.getBasePath()}/${normalizedPath}`;
+  }
+}
+
 // ===== FileManager =====
 
 export class FileManager {
@@ -968,6 +988,8 @@ export const Platform = {
   isIosApp: false,
   isAndroidApp: false,
   isDesktopApp: true,
+  // Desktop form: `app://` and an id that is random per installation.
+  resourcePathPrefix: "app://0123456789abcdef/",
 };
 
 // ===== Plugin & PluginManifest =====

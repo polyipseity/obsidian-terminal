@@ -149,6 +149,7 @@
     },
     "terminal": {
       "display-name": "$t(generic.terminal): {{title}}",
+      "drag-insert-path": "Insert path",
       "edit-modal": {
         "profile": "$t(generic.profile)",
         "profile-edit": "$t(generic.edit)",
@@ -327,6 +328,8 @@
   "notices": {
     "Python-status-entry-": "{{name}}: {{version}} (요구사항 충족: {{requirement}})",
     "Python-status-entry-unsatisfied": "{{name}}: {{version}} (요구사항 미충족: {{requirement}})",
+    "drop-no-paths": "Nothing to insert: the dropped items are not files on this computer.",
+    "drop-skipped-paths": "Some dropped items could not be inserted as paths.",
     "no-default-profile": "'$t(generic.profile-types.{{type}})' $t(generic.type)에 대한 $t(generic.default) $t(generic.profile)이 설정되지 않았습니다",
     "resizer-install-command-copied": "Install command copied.",
     "spawning-terminal": "$t(generic.terminal) $t(generic.spawn_gerund) 중: {{title}}",

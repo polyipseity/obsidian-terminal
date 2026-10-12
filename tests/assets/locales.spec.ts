@@ -41,6 +41,17 @@ describe("PluginLocales", () => {
     });
   });
 
+  describe("provides the drop notices and the drag label in every declared locale", () => {
+    it.each(Array.from(PluginLocales.LANGUAGES))("%s", async (language) => {
+      const { components, notices } =
+        await PluginLocales.RESOURCES[language].translation();
+
+      expect(notices["drop-no-paths"]).toMatch(/\S/u);
+      expect(notices["drop-skipped-paths"]).toMatch(/\S/u);
+      expect(components.terminal["drag-insert-path"]).toMatch(/\S/u);
+    });
+  });
+
   it("lists languages and includes expected entries", () => {
     const langs = Array.from(PluginLocales.LANGUAGES);
     expect(langs).toEqual(expect.arrayContaining(["en", "pt", "pt-BR"]));
