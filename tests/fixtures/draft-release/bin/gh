@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Stub gh for tests/scripts/draft-release.test.ts. Logs every call to $GH_LOG.
+# `release view` answers from $STUB_STATE; every other call succeeds.
+echo "gh $*" >> "$GH_LOG"
+if [[ "$1 $2" == "release view" ]]; then
+  case "$STUB_STATE" in
+    none) echo "release not found" >&2; exit 1 ;;
+    draft-titled) echo "{\"isDraft\":true,\"name\":\"$3\"}" ;;
+    draft-titled-extra) echo "{\"isDraft\":true,\"name\":\"Terminal $3 (autumn)\"}" ;;
+    draft-untitled) echo '{"isDraft":true,"name":""}' ;;
+    published-untitled) echo '{"isDraft":false,"name":""}' ;;
+    published-titled) echo "{\"isDraft\":false,\"name\":\"$3\"}" ;;
+    published-other-title) echo '{"isDraft":false,"name":"Autumn release"}' ;;
+    http502) echo "HTTP 502: Bad Gateway (https://api.github.com/repos/o/r/releases/tags/$3)" >&2; exit 1 ;;
+    http401) echo "HTTP 401: Bad credentials (https://api.github.com/graphql)" >&2; exit 1 ;;
+    silent-fail) exit 1 ;;
+    *) echo "stub: unknown state $STUB_STATE" >&2; exit 97 ;;
+  esac
+fi
+exit 0
