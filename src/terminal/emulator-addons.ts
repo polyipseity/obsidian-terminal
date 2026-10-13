@@ -361,7 +361,7 @@ export class DragAndDropAddon implements ITerminalAddon {
     // a tab or a newline): the cursor must not promise an insertion that the
     // drop then declines with a notice.
     const effect =
-      kind === "vault" && !this.#canInsert(this.#vaultPaths(draggable).paths)
+      kind === "vault" && !this.#insertsVaultPath(draggable)
         ? "none"
         : DragAndDropAddon.#dropEffect(
             dataTransfer?.effectAllowed ?? "uninitialized",
@@ -557,14 +557,23 @@ export class DragAndDropAddon implements ITerminalAddon {
   }
 
   /**
-   * Tells whether a drop of these paths inserts any of them: whether the
-   * shell of the terminal has a way to write one. It stops at the first such
-   * path, as it is asked at every `dragover` and a drag can carry a thousand
-   * files.
+   * Tells whether a drop of a vault drag inserts a path: whether the drag
+   * carries a file that the vault knows, at a path the shell of the terminal
+   * has a way to write. It stops at the first such file, as it is asked at
+   * every `dragover` and a drag can carry a thousand files.
    */
-  #canInsert(paths: readonly string[]): boolean {
+  #insertsVaultPath(draggable: unknown): boolean {
+    const { vault } = this.context.app,
+      { adapter } = vault;
+    if (!(adapter instanceof FileSystemAdapter)) {
+      return false;
+    }
     const writing = this.#writing(deopaque(Platform.CURRENT));
-    return paths.some((path) => formatDroppedPath(path, ...writing) !== null);
+    return vaultDragPaths(draggable).some(
+      (path) =>
+        vault.getAbstractFileByPath(path) !== null &&
+        formatDroppedPath(adapter.getFullPath(path), ...writing) !== null,
+    );
   }
 
   /**

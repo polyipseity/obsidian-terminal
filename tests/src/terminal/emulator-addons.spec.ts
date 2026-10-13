@@ -1738,6 +1738,9 @@ describe("DragAndDropAddon", () => {
       dragManager,
       element,
       focus,
+      /** What the vault is asked about its files. */
+      getAbstractFileByPath,
+      getFullPath,
       /** Sends data from the terminal to its program, as typing does. */
       input,
       /** The listeners for that data that are still there. */
@@ -2408,6 +2411,56 @@ describe("DragAndDropAddon", () => {
   });
 
   // === Accepting and refusing a drag ===
+
+  // A drag stays over the terminal for as long as the user holds it there,
+  // and the event comes many times a second.
+  describe("with a thousand vault files dragged", () => {
+    const files = Array.from({ length: 1000 }, (_value, index) =>
+      vaultFile(`Notes/${String(index)}.md`),
+    );
+
+    it.each(OVER_TYPES)(
+      "asks the vault on %s about no file after the first it can insert",
+      (type) => {
+        const bed = createBed({ draggable: { files, type: "files" } }),
+          over = bed.fire(type, vaultDrag());
+
+        expect(over.dataTransfer?.dropEffect).toBe("copy");
+        expect(bed.getAbstractFileByPath.mock.calls).toEqual([["Notes/0.md"]]);
+        expect(bed.getFullPath.mock.calls).toEqual([["Notes/0.md"]]);
+      },
+    );
+
+    it("goes on past the files it cannot insert to the first it can", () => {
+      const bed = createBed({
+          draggable: {
+            files: [vaultFile("gone.md"), vaultFile("a\tb.md"), ...files],
+            type: "files",
+          },
+          missing: ["gone.md"],
+        }),
+        over = bed.fire("dragover", vaultDrag());
+
+      expect(over.dataTransfer?.dropEffect).toBe("copy");
+      expect(bed.getAbstractFileByPath.mock.calls).toEqual([
+        ["gone.md"],
+        ["a\tb.md"],
+        ["Notes/0.md"],
+      ]);
+      // No path is made for a file the vault does not know.
+      expect(bed.getFullPath.mock.calls).toEqual([["a\tb.md"], ["Notes/0.md"]]);
+    });
+
+    it("still pastes every one of them on the drop", async () => {
+      const bed = createBed({ draggable: { files, type: "files" } });
+
+      await drop(bed, vaultDrag());
+
+      expect(bed.paste).toHaveBeenCalledOnce();
+      expect(bed.getFullPath).toHaveBeenCalledTimes(files.length);
+      expect(notices()).toEqual([]);
+    });
+  });
 
   describe.each(TAKEN_DRAGS)("with %s dragged", (_name, options, init) => {
     it.each(OVER_TYPES)("accepts the drag as a copy on %s", (type) => {
