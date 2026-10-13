@@ -1,7 +1,8 @@
 """Regression tests for the Unix PTY proxy lifecycle.
 
-These tests validate host-disconnect behavior in
-``src/terminal/unix_pseudoterminal.py`` with deterministic doubles and real proxies.
+These tests validate host-disconnect behavior, input buffering, resize frames
+and the exit status in ``src/terminal/unix_pseudoterminal.py`` with
+deterministic doubles and real proxies.
 """
 
 from __future__ import annotations
@@ -31,8 +32,9 @@ from typing_extensions import Self, override
 """Public API of this test module (empty)."""
 __all__ = ()
 
-"""Bytes of input sent in one burst: more than a PTY's input queue holds
-(about 1 KiB on macOS, about 64 KiB on Linux)."""
+"""Bytes of input sent in one burst: more than a PTY takes while its child
+does not read. That was 1022 bytes on macOS, and about 20 KiB in the one Linux
+run measured (kernel 7.0, aarch64)."""
 _BURST_BYTES = 256 * 1024
 
 """Bytes the burst child writes before it reads the rest of its input: more
