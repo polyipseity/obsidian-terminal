@@ -161,6 +161,10 @@ describe.skipIf(process.platform === "win32").each(SHELLS)(
       ["http502", "9.9.9"],
       ["http401", "3.28.0"],
       ["silent-fail", "3.28.0"],
+      ["not-found-inside", "3.28.0"],
+      ["empty-ok", "3.28.0"],
+      ["not-json", "3.28.0"],
+      ["string-draft", "3.28.0"],
     ])(
       "stops when the release state cannot be read (%s, tag %s)",
       async (state, tag) => {

@@ -7,7 +7,12 @@ tag="$GITHUB_REF_NAME"
 release_error="$RUNNER_TEMP/release-view.stderr"
 if release="$(gh release view "$tag" --json isDraft,name 2> "$release_error")"; then
   cat "$release_error"
-  is_draft="$(jq -r '.isDraft' <<< "$release")"
+  # Without -r a JSON string keeps its quotes, so only the booleans pass.
+  is_draft="$(jq '.isDraft' <<< "$release" || true)"
+  if [[ "$is_draft" != true && "$is_draft" != false ]]; then
+    echo "::error::Release state for tag $tag could not be read."
+    exit 1
+  fi
   title="$(jq -r '.name' <<< "$release")"
   if [[ "$title" != *"$tag"* ]]; then
     gh release edit "$tag" --title "$tag"
@@ -17,8 +22,8 @@ if release="$(gh release view "$tag" --json isDraft,name 2> "$release_error")"; 
   else
     echo "::warning::Published files were left as they are; this run's attestations describe this run's build."
   fi
-# gh release view prints this text when the tag has neither a published release nor a draft.
-elif grep -Fq 'release not found' "$release_error"; then
+# gh release view prints this line when the tag has neither a published release nor a draft.
+elif grep -Fxq 'release not found' "$release_error"; then
   echo "No release for $tag yet; creating a draft."
   notes_file="$RUNNER_TEMP/release-notes.md"
   awk -v v="$tag" '/^## /{p=($2==v);next} p' CHANGELOG.md > "$notes_file"
