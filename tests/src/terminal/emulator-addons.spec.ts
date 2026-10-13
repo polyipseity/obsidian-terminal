@@ -4728,11 +4728,8 @@ describe("DragAndDropAddon", () => {
 
       /** A drag of vault files over a terminal on macOS. */
       function drag(executable: string, ...files: readonly string[]): Bed {
-        dragAndDropEnvironment.platform = "darwin";
-        return createBed({
+        return longDrop("darwin", executable, {
           draggable: { files: files.map(vaultFile), type: "files" },
-          executable,
-          fullPath: (path) => `/tmp/${path}`,
         });
       }
 

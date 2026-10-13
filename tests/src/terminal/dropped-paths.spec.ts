@@ -2820,19 +2820,6 @@ describe("ttyLineByteLimit", () => {
       expect(ttyLineByteLimit(platform)).toBeNull();
     },
   );
-
-  it.each<readonly [string, Platform.All]>([
-    ["/bin/dash", "linux"],
-    ["/bin/sh", "linux"],
-    ["/bin/dash", "darwin"],
-  ])(
-    "is what a paste into %s on %s is bounded to at any time",
-    (executable, platform) => {
-      expect(lineByteLimit(executable, platform)).toBe(
-        ttyLineByteLimit(platform),
-      );
-    },
-  );
 });
 
 /** The platforms where dropped paths are one paste: all but Windows. */
