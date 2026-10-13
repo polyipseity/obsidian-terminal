@@ -1610,10 +1610,17 @@ describe("TerminalView file link leaf", () => {
     const moveToWindow = (leaf: WorkspaceLeaf, container: object): void => {
       Object.assign(leaf, { getContainer: () => container });
     };
-    const markdown = (leaf: WorkspaceLeaf): void => {
+    const viewType = (leaf: WorkspaceLeaf, type: string): void => {
       Object.assign(leaf.view, {
-        getViewType: vi.fn().mockReturnValue("markdown"),
+        getViewType: vi.fn().mockReturnValue(type),
         leaf,
+      });
+    };
+    const pin = (leaf: WorkspaceLeaf): void => {
+      vi.spyOn(leaf, "getViewState").mockReturnValue({
+        pinned: true,
+        state: {},
+        type: "markdown",
       });
     };
     // Registers the workspace handlers of the plugin, as its start does.
@@ -1641,7 +1648,8 @@ describe("TerminalView file link leaf", () => {
       lastActiveNote,
       place,
       moveToWindow,
-      markdown,
+      viewType,
+      pin,
       load,
       next,
       allocate,
@@ -1692,17 +1700,14 @@ describe("TerminalView file link leaf", () => {
       notes,
       lastActive,
       lastActiveNote,
+      pin,
       next,
       allocate,
     } = makeBed();
     notes.push(note);
     lastActiveNote(note);
     lastActive(new WorkspaceLeaf());
-    vi.spyOn(note, "getViewState").mockReturnValue({
-      pinned: true,
-      state: {},
-      type: "markdown",
-    });
+    pin(note);
 
     expect(terminal.view["fileLinkLeaf"]()).toBe(next);
     expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
@@ -1719,12 +1724,10 @@ describe("TerminalView file link leaf", () => {
   });
 
   it("remembers only non-terminal markdown leaves as the last active note", () => {
-    const { workspace, terminal, note, markdown, load } = makeBed();
-    markdown(note);
+    const { workspace, terminal, note, viewType, load } = makeBed();
+    viewType(note, "markdown");
     const other = new WorkspaceLeaf();
-    Object.assign(other.view, {
-      getViewType: vi.fn().mockReturnValue("file-explorer"),
-    });
+    viewType(other, "file-explorer");
     load();
 
     workspace.trigger("active-leaf-change", note);
@@ -1741,14 +1744,12 @@ describe("TerminalView file link leaf", () => {
   });
 
   it("opens a clicked file in the note used before a sidebar pane and the terminal", () => {
-    const { workspace, terminal, note, notes, markdown, load, allocate } =
+    const { workspace, terminal, note, notes, viewType, load, allocate } =
       makeBed();
-    markdown(note);
+    viewType(note, "markdown");
     notes.push(note);
     const explorer = new WorkspaceLeaf();
-    Object.assign(explorer.view, {
-      getViewType: vi.fn().mockReturnValue("file-explorer"),
-    });
+    viewType(explorer, "file-explorer");
     load();
 
     workspace.trigger("active-leaf-change", note);
@@ -1761,9 +1762,9 @@ describe("TerminalView file link leaf", () => {
 
   it("opens a clicked file in the note that was active when the plugin loaded", () => {
     // Enabling or updating the plugin in a running app fires no event for it.
-    const { workspace, terminal, note, notes, markdown, load, allocate } =
+    const { workspace, terminal, note, notes, viewType, load, allocate } =
       makeBed();
-    markdown(note);
+    viewType(note, "markdown");
     notes.push(note);
     vi.spyOn(workspace, "getActiveViewOfType").mockReturnValue(note.view);
     load();
@@ -1831,15 +1832,11 @@ describe("TerminalView file link leaf", () => {
   });
 
   it("opens a new tab when the only shown note is pinned", () => {
-    const { terminal, note, notes, place, next, allocate } = makeBed();
+    const { terminal, note, notes, place, pin, next, allocate } = makeBed();
     place(terminal.leaf, {});
     place(note, {});
     notes.push(note);
-    vi.spyOn(note, "getViewState").mockReturnValue({
-      pinned: true,
-      state: {},
-      type: "markdown",
-    });
+    pin(note);
 
     expect(terminal.view["fileLinkLeaf"]()).toBe(next);
     expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
@@ -1923,13 +1920,10 @@ describe("TerminalView file link leaf", () => {
   });
 
   it("opens a new tab instead of replacing a pinned note", () => {
-    const { terminal, note, notes, lastActive, next, allocate } = makeBed();
+    const { terminal, note, notes, lastActive, pin, next, allocate } =
+      makeBed();
     notes.push(note);
-    vi.spyOn(note, "getViewState").mockReturnValue({
-      pinned: true,
-      state: {},
-      type: "markdown",
-    });
+    pin(note);
     lastActive(note);
 
     expect(terminal.view["fileLinkLeaf"]()).toBe(next);
