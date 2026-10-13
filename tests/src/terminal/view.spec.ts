@@ -881,20 +881,17 @@ describe("hotkeys while a terminal has focus", () => {
     readonly modifiers: readonly string[];
     readonly key: string;
   }
-  interface Pressed {
+  interface CompiledHotkey {
     readonly modifiers: string;
     readonly key: string;
-    readonly vkey: string;
   }
 
   // `Mod` stays symbolic: the table and the pressed key are compiled alike.
   const compile = (modifiers: readonly string[]): string =>
       [...modifiers].sort((left, right) => left.localeCompare(right)).join(","),
-    // `Keymap.isMatch` of Obsidian 1.14.4.
-    isMatch = (hotkey: Omit<Pressed, "vkey">, pressed: Pressed): boolean =>
-      hotkey.modifiers === pressed.modifiers &&
-      (hotkey.key === pressed.vkey ||
-        hotkey.key.toLowerCase() === pressed.key.toLowerCase());
+    // Stands in for `Keymap.isMatch`.
+    isMatch = (hotkey: CompiledHotkey, pressed: CompiledHotkey): boolean =>
+      hotkey.modifiers === pressed.modifiers && hotkey.key === pressed.key;
 
   /**
    * The hotkey table of Obsidian 1.14.4. Every change marks it stale, the
@@ -904,7 +901,7 @@ describe("hotkeys while a terminal has focus", () => {
   class HotkeyTable {
     public defaultKeys: Record<string, readonly Hotkey[]> = {};
     public baked = false;
-    public bakedHotkeys: readonly Omit<Pressed, "vkey">[] = [];
+    public bakedHotkeys: readonly CompiledHotkey[] = [];
     public bakedIds: readonly string[] = [];
     readonly #customKeys = new Map<string, readonly Hotkey[]>();
 
@@ -952,7 +949,7 @@ describe("hotkeys while a terminal has focus", () => {
   // Runs the real `TerminalView.load` and the library's real hotkey listener
   // against the Obsidian parts both of them reach for.
   function loadView() {
-    const app = new App(),
+    const { context } = makeTerminalContext(),
       hotkeys = new HotkeyTable(),
       registry = new Map<string, Command>(),
       // Obsidian runs the check with `false` and reports success unless it throws.
@@ -961,14 +958,12 @@ describe("hotkeys while a terminal has focus", () => {
         return true;
       }),
       // The mock `Scope` cannot take the catch-all `null, null` the view registers.
-      register = vi
-        .spyOn(ScopeView.scope, "register")
-        .mockImplementation((modifiers, key) => ({
-          key,
-          modifiers: modifiers?.join(",") ?? null,
-          scope: ScopeView.scope,
-        }));
-    Object.assign(app, {
+      register = vi.spyOn(ScopeView.scope, "register").mockReturnValue({
+        key: null,
+        modifiers: null,
+        scope: ScopeView.scope,
+      });
+    Object.assign(context.app, {
       commands: {
         executeCommand,
         findCommand: (id: string): Command | undefined => registry.get(id),
@@ -976,9 +971,7 @@ describe("hotkeys while a terminal has focus", () => {
       hotkeyManager: hotkeys,
       keymap: { constructor: { isMatch } },
     });
-    // Fixtures supply only the host API used here; this boundary cast bridges
-    // the intentionally partial plugin stub to the full plugin type.
-    const context = {
+    Object.assign(context, {
       // `Plugin.addCommand` prefixes the id; the table learns the default keys.
       addCommand: (command: Command): Command => {
         command.id = `terminal:${command.id}`;
@@ -988,13 +981,10 @@ describe("hotkeys while a terminal has focus", () => {
         }
         return command;
       },
-      app,
-      id: "terminal",
-      language: { value: { t: (key: string): string => key } },
       register: vi.fn(),
       registerEvent: vi.fn(),
       registerView: vi.fn(),
-    } as unknown as TerminalPlugin;
+    });
     TerminalView.load(context);
     const listener = register.mock.calls[0]?.[2];
     if (!listener) throw new Error("Missing focused-scope listener");
@@ -1011,12 +1001,11 @@ describe("hotkeys while a terminal has focus", () => {
         return { check, command };
       },
       press: (modifiers: readonly string[], key: string): void => {
-        const pressed: Pressed = {
+        listener(new KeyboardEvent("keydown", { key }), {
           key,
           modifiers: compile(modifiers),
           vkey: key,
-        };
-        listener(new KeyboardEvent("keydown", { key }), pressed);
+        });
       },
     };
   }
