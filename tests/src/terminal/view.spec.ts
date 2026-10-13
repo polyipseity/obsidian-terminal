@@ -1432,46 +1432,6 @@ describe("TerminalView reveal flash", () => {
       expect(header.classList.contains(FLASH)).toBe(false);
     });
   });
-
-  it("removes the flash when revealLeaf returns nothing", async () => {
-    const { context, workspace } = makeTerminalContext();
-    const { leaf, header } = makeTabbedLeaf(context);
-    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([leaf]);
-    // Obsidian before 1.7.2 returned void from revealLeaf.
-    const reveal = vi.fn<() => void>(() => {
-      header.classList.add(FLASH);
-    });
-    Object.assign(workspace, { revealLeaf: reveal });
-
-    await TerminalView.spawn(context, TerminalView.State.DEFAULT, leaf);
-
-    expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
-    expect(header.classList.contains(FLASH)).toBe(false);
-  });
-
-  it("keeps other classes on the tab", async () => {
-    const { context, workspace } = makeTerminalContext();
-    const { leaf, header } = makeTabbedLeaf(context);
-    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([leaf]);
-    header.className = `workspace-tab-header is-active ${FLASH}`;
-
-    await TerminalView.spawn(context, TerminalView.State.DEFAULT, leaf);
-
-    expect(header.className).toBe("workspace-tab-header is-active");
-  });
-
-  it("leaves a tab header alone that is not an element", async () => {
-    const { context, workspace, reveal } = makeTerminalContext();
-    const { leaf } = makeTerminalLeaf(context);
-    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([leaf]);
-    const remove = vi.fn();
-    Object.assign(leaf, { tabHeaderEl: { classList: { remove } } });
-
-    await TerminalView.spawn(context, TerminalView.State.DEFAULT, leaf);
-
-    expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
-    expect(remove).not.toHaveBeenCalled();
-  });
 });
 
 describe("TerminalView.getLeaf session usage", () => {

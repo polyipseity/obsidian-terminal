@@ -54,7 +54,6 @@ import {
   Scope,
   View,
   type ViewStateResult,
-  type Workspace,
   type WorkspaceLeaf,
 } from "obsidian";
 import { mount, unmount } from "svelte";
@@ -92,6 +91,7 @@ import {
   type Pseudoterminal,
   TextPseudoterminal,
 } from "./pseudoterminal.js";
+import { revealLeafWithoutFlash } from "./reveal.js";
 import { writePromise } from "./utils.js";
 import { win32ExitCodeKey } from "./win32-doctor.js";
 
@@ -184,23 +184,6 @@ function recordTerminalUse(view: TerminalView): void {
 function terminalUseOf(leaf: WorkspaceLeaf | undefined): number {
   const view = leaf?.view;
   return view instanceof TerminalView ? (terminalUses.get(view) ?? 0) : 0;
-}
-
-/**
- * Reveals `leaf` without the highlight Obsidian flashes on the tab header of a
- * leaf it reveals (`is-flashing`, 750 ms), which is drawn notched on main-area
- * tabs. Both callers reveal a terminal view that is already loaded, so the
- * reveal settles and the class comes off before the next frame is painted.
- */
-async function revealLeafWithoutFlash(
-  workspace: Workspace,
-  leaf: WorkspaceLeaf,
-): Promise<void> {
-  await workspace.revealLeaf(leaf);
-  // `tabHeaderEl` is not part of Obsidian's API. Without it the flash stays.
-  if ("tabHeaderEl" in leaf && instanceOf(leaf.tabHeaderEl, HTMLElement)) {
-    leaf.tabHeaderEl.classList.remove("is-flashing");
-  }
 }
 
 export class EditTerminalModal extends DialogModal {
