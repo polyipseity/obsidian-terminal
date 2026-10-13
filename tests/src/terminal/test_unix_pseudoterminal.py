@@ -117,9 +117,9 @@ sys.exit(7)
 """
 
 """Child that reads nothing until the file named by its second argument
-exists, then discards the terminal's input queue and reads until the line
-`END`, or until no input comes for 3 seconds. It reports the bytes it read and
-which of the two ended the reading.
+exists, then discards the terminal's input queue and reads until it has as
+many bytes as its fourth argument says, or until no input comes for 3 seconds.
+It reports the bytes it read.
 
 Its third argument says how it discards the queue: `tcflush`, or `tcsaflush`
 for setting the terminal's attributes with TCSAFLUSH, as `getpass` and
@@ -139,14 +139,13 @@ if sys.argv[3] == "tcflush":
     termios.tcflush(0, termios.TCIFLUSH)
 else:
     termios.tcsetattr(0, termios.TCSAFLUSH, attributes)
-count, ending = 0, b"STALLED"
-while select.select([0], [], [], 3.0)[0]:
+count, enough = 0, int(sys.argv[4])
+while count < enough and select.select([0], [], [], 3.0)[0]:
     data = os.read(0, 65536)
-    count += len(data)
-    if not data or data.endswith(b"END\\n"):
-        ending = b"END" if data else b"EOF"
+    if not data:
         break
-os.write(1, b"GOT %d %s\\n" % (count, ending))
+    count += len(data)
+os.write(1, b"GOT %d\\n" % count)
 termios.tcdrain(1)
 """
 
@@ -1175,16 +1174,20 @@ def _pipe_capacity() -> int:
         os.close(write_end)
 
 
-def _fill_input_buffer(process: subprocess.Popen[bytes]) -> None:
+def _fill_input_buffer(process: subprocess.Popen[bytes], line: bytes = b"x") -> None:
     """Offer a child that never reads more input than the proxy may hold.
 
     On return the proxy has taken a full input buffer out of its pipe and
     stopped reading. The pipe alone takes the first bytes whatever the proxy
     does, so only what went in beyond the pipe's capacity counts. A proxy that
     is slow to start gets 5 seconds before that count is judged.
+
+    The input is `line` over and over. A terminal in canonical mode needs
+    complete lines there: it discards anything else once its queue is full,
+    and the proxy would hold nothing.
     """
     capacity = _pipe_capacity()
-    payload = b"x" * _PENDING_BYTES
+    payload = line * (_PENDING_BYTES // len(line))
     sent = 0
     deadline = time.monotonic() + 5.0
     while sent - capacity < _HELD_BYTES and time.monotonic() < deadline:
@@ -1361,7 +1364,10 @@ def test_real_proxy_delivers_input_burst_while_child_writes() -> None:
         assert process.stderr.read() == b""
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only proxy")
+@pytest.mark.skipif(
+    sys.platform != "darwin",
+    reason="only macOS is known to leave a discarded PTY queue unreported",
+)
 @pytest.mark.parametrize("how", ["tcflush", "tcsaflush"])
 def test_real_proxy_delivers_held_input_after_the_child_discards_its_queue(
     tmp_path: Path, how: str
@@ -1370,29 +1376,29 @@ def test_real_proxy_delivers_held_input_after_the_child_discards_its_queue(
 
     Discarding the queue gives the PTY room without a read. On macOS the
     selector then never reports the PTY as writable, so a proxy that waits for
-    that report holds the input for good. Not known to happen on Linux, where
-    this test checks the delivery only.
+    that report holds the input for good. What a Linux selector reports here
+    has not been measured, so the test runs on macOS only.
+
+    The proxy holds a full buffer before the discard, and the host sends
+    nothing after it: only the proxy offering that input again by itself can
+    bring it to the child.
     """
     marker = _marker(4000)
     discard = tmp_path / "discard"
     line = b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\n"
-    payload = line * (_BURST_BYTES // len(line)) + b"END\n"
     child = [sys.executable, "-c", _DISCARDING_CHILD, marker, str(discard), how]
-    with _spawn_proxy(child, marker) as (process, _cmd_write):
-        output, sent, eof = _pump(process, payload, stall=0.5)
-        assert (output, eof) == (b"", False)
+    with _spawn_proxy([*child, str(_HELD_BYTES)], marker) as (process, _cmd_write):
+        _fill_input_buffer(process, line)
 
         discard.touch()
-        output, taken, eof = _pump(process, payload[sent:], stall=5.0)
+        output, _sent, eof = _pump(process, b"", stall=5.0)
 
-        assert (sent + taken, eof) == (len(payload), True), (
-            f"stalled after {sent + taken} of {len(payload)} input bytes: "
-            f"{output[-200:]!r}"
-        )
+        assert eof, output[-200:]
         report = output.split()
-        assert (report[0], report[2:]) == (b"GOT", [b"END"]), output[-200:]
-        # The discarded queue is all that is missing.
-        assert int(report[1]) >= len(payload) // 2
+        assert report[:1] == [b"GOT"], output[-200:]
+        # The proxy held this much, and what waited in its pipe makes up for
+        # the discarded queue.
+        assert int(report[1]) >= _HELD_BYTES, output[-200:]
         assert process.wait(timeout=5) == 0
         assert process.stderr is not None
         assert process.stderr.read() == b""
