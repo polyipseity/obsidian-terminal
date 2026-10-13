@@ -1002,13 +1002,14 @@ describe("hotkeys while a terminal has focus", () => {
         hotkeys.setHotkeys(command.id, [hotkey]);
         return { check, command };
       },
-      press: (modifiers: readonly string[], key: string): void => {
+      // Hands back what the listener answers Obsidian: after `false` Obsidian
+      // consumes the key, after `undefined` the key goes on to the terminal.
+      press: (modifiers: readonly string[], key: string): unknown =>
         listener(new KeyboardEvent("keydown", { key }), {
           key,
           modifiers: compile(modifiers),
           vkey: key,
-        });
-      },
+        }),
     };
   }
 
@@ -1019,10 +1020,18 @@ describe("hotkeys while a terminal has focus", () => {
         modifiers: ["Alt", "Ctrl"],
       });
 
-    press(["Ctrl", "Alt"], "t");
+    expect(press(["Ctrl", "Alt"], "t")).toBeUndefined();
 
     expect(executeCommand).not.toHaveBeenCalled();
     expect(check).not.toHaveBeenCalled();
+  });
+
+  it("leaves a key that no hotkey matches to the terminal", () => {
+    const { executeCommand, press } = loadView();
+
+    expect(press(["Ctrl"], "r")).toBeUndefined();
+
+    expect(executeCommand).not.toHaveBeenCalled();
   });
 
   it("runs the user-assigned hotkey of a command added with allowWhileFocused", () => {
@@ -1033,7 +1042,8 @@ describe("hotkeys while a terminal has focus", () => {
       });
     TerminalView.allowWhileFocused(command);
 
-    press(["Ctrl", "Alt"], "t");
+    // The key ran a command, so it must not reach the shell as well.
+    expect(press(["Ctrl", "Alt"], "t")).toBe(false);
 
     expect(executeCommand).toHaveBeenCalledExactlyOnceWith(command);
     expect(check).toHaveBeenCalledExactlyOnceWith(false);
@@ -1049,10 +1059,10 @@ describe("hotkeys while a terminal has focus", () => {
     );
     addBoundCommand("command-palette", { key: "p", modifiers: ["Mod"] });
 
-    press(["Mod"], "p");
+    expect(press(["Mod"], "p")).toBeUndefined();
     expect(executeCommand).not.toHaveBeenCalled();
 
-    press(["Mod", "Shift"], "k");
+    expect(press(["Mod", "Shift"], "k")).toBe(false);
     expect(executeCommand).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ id: "terminal:clear-terminal" }),
     );
