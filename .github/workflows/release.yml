@@ -35,15 +35,27 @@ jobs:
       - name: Check the tag matches manifest.json
         run: jq -e --arg tag "$GITHUB_REF_NAME" '.version == $tag' manifest.json
 
+      # An attestation cannot be withdrawn, so what can stop the release is
+      # checked before the build. A release that is already published ends the
+      # run here: every later step is skipped.
+      - name: Check the release state and notes
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/draft-release.sh check
+
       - name: Setup bun
+        if: steps.check.outputs.published != 'true'
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
 
       - name: Setup uv
+        if: steps.check.outputs.published != 'true'
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
         with:
           resolution-strategy: "lowest"
 
       - name: Install project
+        if: steps.check.outputs.published != 'true'
         run: |
           cd vendor/obsidian-plugin-library
           bun install --frozen-lockfile --ignore-scripts
@@ -53,9 +65,11 @@ jobs:
           uv sync --locked
 
       - name: Build project
+        if: steps.check.outputs.published != 'true'
         run: bun run build
 
       - name: Attest build provenance
+        if: steps.check.outputs.published != 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: |
@@ -63,7 +77,9 @@ jobs:
             manifest.json
             styles.css
 
+      # Reads the release state again: it can have changed during the build.
       - name: Draft release
+        if: steps.check.outputs.published != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash scripts/draft-release.sh
+        run: bash scripts/draft-release.sh draft
