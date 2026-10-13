@@ -3,6 +3,7 @@
  */
 import { cloneAsWritable } from "@polyipseity/obsidian-plugin-library";
 import { describe, expect, it, vi } from "vitest";
+import { isExperimentEnabled } from "../../src/experiments.js";
 import { LocalSettings, Settings } from "../../src/settings-data.js";
 import { PROFILE_PRESETS } from "../../src/terminal/profile-presets.js";
 import { inheritedPythonExecutable } from "../../src/terminal/win32-doctor.js";
@@ -550,13 +551,11 @@ describe("src/settings-data.ts", () => {
         tabIconSet: "bezel",
         tabIconSize: 18,
         tabStatusAnimation: "none",
-        tabStatusReports: true,
       },
       OPTIONS = [
         ["tabIconSet", Settings.TAB_ICON_SETS],
         ["tabStatusAnimation", Settings.TAB_STATUS_ANIMATIONS],
       ] satisfies readonly (readonly [keyof Settings, readonly string[]])[],
-      TOGGLES = ["tabStatusReports"] satisfies readonly (keyof Settings)[],
       // Options of earlier designs of this feature, never released.
       REMOVED_KEYS = [
         "tabStatusMarks",
@@ -568,13 +567,16 @@ describe("src/settings-data.ts", () => {
       ],
       // The last two to go: idle and seen always have the grey badge, and a
       // finished program is always unread until the user looks.
-      ALWAYS_ON_KEYS = ["tabStatusQuietMarks", "tabStatusUnreadBadge"];
+      ALWAYS_ON_KEYS = ["tabStatusQuietMarks", "tabStatusUnreadBadge"],
+      /** What `data.json` holds: the settings as written, with `extra` on top. */
+      stored = (extra: Readonly<Record<string, unknown>>): unknown =>
+        JSON.parse(JSON.stringify({ ...Settings.fix({}).value, ...extra }));
 
     it("has the documented defaults", () => {
       expect(Settings.DEFAULT).toMatchObject(TAB_STATUS_DEFAULTS);
     });
 
-    it("has no setting of the tab but the icon set, its size, the motion and the reports", () => {
+    it("has no setting of the tab but the icon set, its size and the motion", () => {
       expect(
         Object.keys(Settings.DEFAULT)
           .filter((key) => /^tab(?:Icon|Status)/u.test(key))
@@ -583,6 +585,48 @@ describe("src/settings-data.ts", () => {
       for (const key of ALWAYS_ON_KEYS) {
         expect(Settings.DEFAULT).not.toHaveProperty(key);
       }
+    });
+
+    it("is off until the user turns it on, and on only for a stored true", () => {
+      expect(isExperimentEnabled(Settings.DEFAULT, "tabStatus")).toBe(false);
+      expect(isExperimentEnabled(Settings.fix({}).value, "tabStatus")).toBe(
+        false,
+      );
+      for (const stored of [false, "true", 1, null, {}]) {
+        expect(
+          Settings.fix({ experiments: { tabStatus: stored } }).value
+            .experiments,
+        ).toEqual({});
+      }
+      const on = Settings.fix(stored({ experiments: { tabStatus: true } }));
+      expect(on.valid).toBe(true);
+      expect(isExperimentEnabled(on.value, "tabStatus")).toBe(true);
+    });
+
+    it("does not turn the experiment on for a stored tabStatusReports", () => {
+      // The switch of the builds before the experiment: never released.
+      const fixed = Settings.fix(stored({ tabStatusReports: true }));
+      expect(fixed.valid).toBe(false);
+      expect(fixed.value).not.toHaveProperty("tabStatusReports");
+      expect(isExperimentEnabled(fixed.value, "tabStatus")).toBe(false);
+      expect(Settings.DEFAULT).not.toHaveProperty("tabStatusReports");
+    });
+
+    it("keeps the look when the experiment is off", () => {
+      const fixed = Settings.fix(
+        stored({
+          tabIconSet: "tile",
+          tabIconSize: 22,
+          tabStatusAnimation: "loop",
+        }),
+      );
+      expect(fixed.valid).toBe(true);
+      expect(isExperimentEnabled(fixed.value, "tabStatus")).toBe(false);
+      expect(fixed.value).toMatchObject({
+        tabIconSet: "tile",
+        tabIconSize: 22,
+        tabStatusAnimation: "loop",
+      });
     });
 
     it("lists the options in the order the settings tab shows them", () => {
@@ -620,6 +664,10 @@ describe("src/settings-data.ts", () => {
       "frame",
       "well",
       "ivory",
+      // The program icons were tried out and are not part of this.
+      "app-claude",
+      "app-python",
+      "app-codex",
     ])("replaces the removed icon set %s with the default", (removed) => {
       expect(Settings.fix({ tabIconSet: removed }).value.tabIconSet).toBe(
         "bezel",
@@ -659,7 +707,6 @@ describe("src/settings-data.ts", () => {
             tabIconSet: "tile",
             tabIconSize: 22,
             tabStatusAnimation: "loop",
-            tabStatusReports: false,
           },
           fixed = Settings.fix({ ...saved, [key]: stored }).value;
         expect(fixed).not.toHaveProperty(key);
@@ -669,7 +716,6 @@ describe("src/settings-data.ts", () => {
           tabIconSet: "tile",
           tabIconSize: 22,
           tabStatusAnimation: "loop",
-          tabStatusReports: false,
         });
         // And what is written back holds nothing to drop.
         expect(Settings.fix(JSON.parse(JSON.stringify(fixed))).valid).toBe(
@@ -701,11 +747,6 @@ describe("src/settings-data.ts", () => {
       for (const option of options) {
         expect(Settings.fix({ [key]: option }).value[key]).toBe(option);
       }
-    });
-
-    it.each(TOGGLES)("keeps both values of %s", (key) => {
-      expect(Settings.fix({ [key]: false }).value[key]).toBe(false);
-      expect(Settings.fix({ [key]: true }).value[key]).toBe(true);
     });
 
     it.each(OPTIONS)("replaces an unknown or mistyped %s", (key, _options) => {
@@ -745,14 +786,6 @@ describe("src/settings-data.ts", () => {
       ]) {
         expect(Settings.fix({ tabIconSize: bad }).value.tabIconSize).toBe(
           Settings.DEFAULT.tabIconSize,
-        );
-      }
-    });
-
-    it.each(TOGGLES)("replaces a mistyped %s", (key) => {
-      for (const bad of ["yes", 0, null, {}]) {
-        expect(Settings.fix({ [key]: bad }).value[key]).toBe(
-          Settings.DEFAULT[key],
         );
       }
     });

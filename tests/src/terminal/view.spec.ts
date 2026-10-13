@@ -26,14 +26,16 @@ import {
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SerializeAddon } from "@xterm/addon-serialize";
-import { afterEach, describe, it, expect, vi } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import type { TerminalPlugin } from "../../../src/main.js";
 import { TERMINAL_CONPTY_HOST_EXIT_WAIT } from "../../../src/magic.js";
 import { tabIconId } from "../../../src/icons.js";
 import { Settings } from "../../../src/settings-data.js";
+import { ProgramStatusAddon } from "../../../src/terminal/emulator-addons.js";
 import * as environment from "../../../src/terminal/environment.js";
 import { mergeTerminalOptions } from "../../../src/terminal/options.js";
 import * as profileProperties from "../../../src/terminal/profile-properties.js";
+import { DETECTION_REPLY } from "../../../src/terminal/program-status.js";
 import {
   ConPtyControlError,
   ConPtyPseudoterminal,
@@ -48,6 +50,7 @@ import {
   fittedSize,
   settleTerminalBackendOptions,
 } from "../../../src/terminal/view.js";
+import { TabStatusPresenter } from "../../../src/terminal/tab-status.js";
 import { microtasks, pseudoterminal, tick } from "../../support/helpers.js";
 
 const platform = vi.hoisted(() => ({ windows: false }));
@@ -75,6 +78,41 @@ vi.mock("obsidian", async () => {
     View: actual.ItemView,
     // Watched: the tabs whose view is not loaded get their icon through it.
     setIcon: vi.fn<typeof actual.setIcon>(),
+  };
+});
+
+/*
+ * The two classes of the tab status feature are watched as they are made:
+ * while the feature is off, neither may be. They work as they do in the app:
+ * an object made by `new` on a mock gets the prototype of the mock, so each
+ * mock is a plain function that hands back an object of the real class.
+ */
+vi.mock("../../../src/terminal/emulator-addons.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("../../../src/terminal/emulator-addons.js")
+    >();
+  return {
+    ...actual,
+    ProgramStatusAddon: vi.fn(function make(
+      ...args: ConstructorParameters<typeof actual.ProgramStatusAddon>
+    ) {
+      return new actual.ProgramStatusAddon(...args);
+    }),
+  };
+});
+vi.mock("../../../src/terminal/tab-status.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("../../../src/terminal/tab-status.js")
+    >();
+  return {
+    ...actual,
+    TabStatusPresenter: vi.fn(function make(
+      ...args: ConstructorParameters<typeof actual.TabStatusPresenter>
+    ) {
+      return new actual.TabStatusPresenter(...args);
+    }),
   };
 });
 
@@ -2007,21 +2045,6 @@ describe("TerminalView.getLeaf session usage", () => {
     expect(activate).toHaveBeenCalledExactlyOnceWith(restored.leaf);
   });
 
-  it("follows its content into another window for the focus that counts as looking, until it closes", async () => {
-    const { context } = makeTerminalContext(),
-      { view } = makeTerminalLeaf(context),
-      unfollow = vi.fn<() => void>(),
-      follow = vi.fn((_follower: (win: Window) => void) => unfollow);
-    Object.assign(view.contentEl, { onWindowMigrated: follow });
-
-    await view["onOpen"]();
-    expect(follow).toHaveBeenCalledOnce();
-    expect(unfollow).not.toHaveBeenCalled();
-
-    view.unload();
-    expect(unfollow).toHaveBeenCalledOnce();
-  });
-
   it("does not inherit usage when a leaf receives a different terminal view", async () => {
     const { context, workspace, next, allocate, activate } =
       makeTerminalContext({
@@ -2165,6 +2188,481 @@ function terminalPaneActions(view: TerminalView) {
   return actions;
 }
 
+/**
+ * Turns the tab status experiment on or off the way a change of the settings
+ * reaches its gates: the new value first, then every listener.
+ */
+function setTabStatus(context: TerminalPlugin, on: boolean): void {
+  const { settings } = context,
+    enabled = {
+      ...Settings.DEFAULT,
+      experiments: { tabStatus: true },
+    } satisfies Settings;
+  Object.assign(settings, {
+    value: { ...settings.value, experiments: on ? enabled.experiments : {} },
+  });
+  // A gate is the listener whose accessor says whether the experiment is on.
+  // A copy of the list: a gate that starts adds listeners of its own.
+  for (const [accessor, changed] of [
+    ...vi.mocked(settings).onMutate.mock.calls,
+  ]) {
+    if (accessor(Settings.DEFAULT) === false && accessor(enabled) === true) {
+      changed(on, !on, settings.value);
+    }
+  }
+}
+
+describe("program status on the tab, behind its experiment", () => {
+  // The test translations answer with the key they were asked for.
+  const PLAIN_ICON = "asset:components.terminal.icon",
+    ATTRIBUTES = [
+      "data-terminal-animation",
+      "data-terminal-size",
+      "data-terminal-status",
+    ];
+  interface Handler {
+    readonly dispose: ReturnType<typeof vi.fn<() => void>>;
+    readonly key: number | string;
+    readonly run: (payload: string) => boolean;
+  }
+
+  // Animation frames are a hand-driven queue, as in emulator-addons.spec.ts.
+  let frames: Map<number, FrameRequestCallback>, nextFrame: number;
+  const runFrames = (): void => {
+    const due = [...frames.values()];
+    frames.clear();
+    for (const callback of due) callback(0);
+  };
+
+  beforeEach(() => {
+    frames = new Map();
+    nextFrame = 1;
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      (callback: FrameRequestCallback): number => {
+        const handle = nextFrame++;
+        frames.set(handle, callback);
+        return handle;
+      },
+    );
+    vi.stubGlobal("cancelAnimationFrame", (handle: number): void => {
+      frames.delete(handle);
+    });
+    vi.mocked(ProgramStatusAddon).mockClear();
+    vi.mocked(TabStatusPresenter).mockClear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  /**
+   * One terminal, opened as the app opens it: a view on a leaf that has a
+   * tab header, and an emulator whose parser keeps what is registered on it.
+   * Everything a test asserts about is watched from before the view opens.
+   */
+  async function openTerminal(experiments: Settings["experiments"] = {}) {
+    const { context, workspace } = makeTerminalContext({ experiments }),
+      { leaf, view } = makeTerminalLeaf(context),
+      header = document.createElement("div"),
+      updateHeader = vi.fn<() => void>(),
+      registered: Handler[] = [],
+      register = (key: Handler["key"], run: Handler["run"]): Handler => {
+        const handler: Handler = {
+          dispose: vi.fn(() => {
+            registered.splice(registered.indexOf(handler), 1);
+          }),
+          key,
+          run,
+        };
+        registered.push(handler);
+        return handler;
+      },
+      parser = {
+        registerEscHandler: vi.fn(
+          (id: { readonly final: string }, run: () => boolean) =>
+            register(id.final, run),
+        ),
+        registerOscHandler: vi.fn((ident: number, run: Handler["run"]) =>
+          register(ident, run),
+        ),
+      },
+      terminal = {
+        element: document.createElement("div"),
+        input: vi.fn<(data: string, wasUserInput: boolean) => void>(),
+        // As xterm does: loading an addon activates it on the terminal.
+        loadAddon: vi.fn(function load(
+          this: unknown,
+          addon: { readonly activate: (on: unknown) => void },
+        ): void {
+          addon.activate(this);
+        }),
+        onResize: vi.fn(),
+        onTitleChange: vi.fn(),
+        onWriteParsed: vi.fn(),
+        parser,
+        unicode: {},
+      },
+      exit = Promise.withResolvers<number>(),
+      // Mutable: a test that sets `until` keeps a closing terminal alive.
+      closing: { until: Promise<void> | null } = { until: null },
+      listen = vi.spyOn(window, "addEventListener"),
+      unlisten = vi.spyOn(window, "removeEventListener"),
+      follow = vi.fn((_follower: (win: Window) => void) => vi.fn()),
+      lookedAt = vi
+        .spyOn(
+          // The getter is protected; a test says whether the user looks.
+          view as unknown as { readonly isLookedAt: boolean },
+          "isLookedAt",
+          "get",
+        )
+        .mockReturnValue(false),
+      count = (spy: typeof listen | typeof unlisten, type: string): number =>
+        spy.mock.calls.filter(([name]) => name === type).length;
+    Object.assign(leaf, { tabHeaderEl: header, updateHeader });
+    Object.assign(workspace, { requestUpdateLayout: vi.fn() });
+    Object.assign(view.contentEl, { onWindowMigrated: follow });
+    vi.spyOn(library, "awaitCSS").mockImplementation(async (element) => {
+      Object.assign(element, { onWindowMigrated: vi.fn(() => vi.fn()) });
+    });
+    vi.spyOn(library, "notice2").mockImplementation(vi.fn());
+    vi.spyOn(library, "onResize").mockImplementation(vi.fn());
+    vi.spyOn(TerminalView, "EMULATOR").mockImplementation(
+      function (_element, _factory, _state, _options, addons) {
+        // Only the view-facing surface, as in the exit notices above.
+        return {
+          addons,
+          // As the emulator does: its addons go when the program is gone.
+          close: vi.fn(async () => {
+            await closing.until;
+            addons?.disposer.dispose();
+          }),
+          pseudoterminal: Promise.resolve({
+            ...pseudoterminal(),
+            onExit: exit.promise,
+          }),
+          resize: vi.fn().mockResolvedValue(undefined),
+          terminal,
+        } as unknown as TerminalView.EMULATOR;
+      },
+    );
+
+    await view["onOpen"]();
+    view["startEmulator"](false);
+    await tick();
+    expect(TerminalView.EMULATOR).toHaveBeenCalledOnce();
+
+    return {
+      closing,
+      context,
+      exit,
+      follow,
+      header,
+      lookedAt,
+      /** Sends an OSC sequence to the terminal; one answer per handler. */
+      osc: (ident: number, payload: string): readonly boolean[] =>
+        registered
+          .filter(({ key }) => key === ident)
+          .map(({ run }) => run(payload)),
+      parser,
+      registered,
+      /**
+       * What the feature has done and left behind. Asked the same way in
+       * every state, so that "nothing" while off is measured with what
+       * measures "everything" while on.
+       */
+      state: () => ({
+        addons: vi.mocked(ProgramStatusAddon).mock.calls.length,
+        attributes: header
+          .getAttributeNames()
+          .filter((name) => name.startsWith("data-terminal-"))
+          .sort(),
+        focusListeners: count(listen, "focus") - count(unlisten, "focus"),
+        handlers: registered.map(({ key }) => key),
+        icon: view.getIcon(),
+        presenters: vi.mocked(TabStatusPresenter).mock.calls.length,
+        registrations:
+          parser.registerOscHandler.mock.calls.length +
+          parser.registerEscHandler.mock.calls.length,
+        replies: terminal.input.mock.calls.length,
+        windowFollowers: follow.mock.calls.length,
+      }),
+      terminal,
+      updateHeader,
+      view,
+      workspace,
+    };
+  }
+
+  /** What `state()` says of a terminal the feature has never touched. */
+  const UNTOUCHED = {
+      addons: 0,
+      attributes: [],
+      focusListeners: 0,
+      handlers: [],
+      icon: PLAIN_ICON,
+      presenters: 0,
+      registrations: 0,
+      replies: 0,
+      windowFollowers: 0,
+    },
+    /** And of one it shows on, before any program has reported. */
+    SHOWING = {
+      addons: 1,
+      attributes: ["data-terminal-animation", "data-terminal-size"],
+      focusListeners: 1,
+      handlers: [7501, 133, "c"],
+      icon: "terminal:tab-bezel",
+      presenters: 1,
+      registrations: 3,
+      replies: 0,
+      windowFollowers: 1,
+    };
+
+  it("does nothing while off: no handler, no reply, no listener, no attribute, and the icon of 3.28.0", async () => {
+    const opened = await openTerminal(),
+      { header, lookedAt, osc, state, view, workspace } = opened;
+    expect(state()).toEqual(UNTOUCHED);
+
+    // A program that reports and asks is not heard.
+    expect(osc(7501, "state=working")).toEqual([]);
+    expect(osc(7501, "?")).toEqual([]);
+    expect(osc(133, "A")).toEqual([]);
+    // The user comes and goes, the layout changes, the program ends.
+    lookedAt.mockReturnValue(true);
+    view.contentEl.dispatchEvent(new FocusEvent("focusin"));
+    window.dispatchEvent(new Event("focus"));
+    workspace.trigger("layout-change");
+    opened.exit.resolve(0);
+    await tick();
+    runFrames();
+
+    expect(state()).toEqual(UNTOUCHED);
+    expect(header.getAttributeNames()).toEqual([]);
+    expect(frames.size).toBe(0);
+    // Nor does anything wait for the look to change.
+    expect(
+      vi
+        .mocked(opened.context.settings)
+        .onMutate.mock.calls.filter(([accessor]) =>
+          Array.isArray(accessor(Settings.DEFAULT)),
+        ),
+    ).toEqual([]);
+  });
+
+  it("does all of it while on: the handlers, the reply, the listeners, the attributes and the chosen icon", async () => {
+    const { context, header, osc, state, terminal } = await openTerminal({
+      tabStatus: true,
+    });
+    expect(state()).toEqual(SHOWING);
+    // It is told where to report, and nothing else: it has no switch.
+    expect(
+      Object.keys(vi.mocked(ProgramStatusAddon).mock.calls[0]?.[0] ?? {}),
+    ).toEqual(["onChange"]);
+    expect(header.getAttribute("data-terminal-size")).toBe(
+      String(context.settings.value.tabIconSize),
+    );
+
+    expect(osc(7501, "?")).toEqual([true]);
+    expect(terminal.input).toHaveBeenCalledExactlyOnceWith(
+      DETECTION_REPLY,
+      false,
+    );
+    expect(osc(7501, "state=working")).toEqual([true]);
+    runFrames();
+    expect(header.getAttribute("data-terminal-status")).toBe("working");
+    expect(header.getAttributeNames().sort()).toEqual(ATTRIBUTES);
+  });
+
+  it("starts on an open terminal when turned on, and takes everything back when turned off", async () => {
+    const { context, header, osc, registered, state, updateHeader } =
+      await openTerminal();
+    expect(state()).toEqual(UNTOUCHED);
+
+    setTabStatus(context, true);
+    // Applied when the change of the settings has been announced: no frame,
+    // no timer and no new terminal is needed.
+    expect(state()).toEqual(SHOWING);
+    expect(updateHeader).toHaveBeenCalled();
+    const handlers = [...registered];
+    expect(osc(7501, "state=blocked")).toEqual([true]);
+    runFrames();
+    expect(header.getAttribute("data-terminal-status")).toBe("blocked");
+    // One more report is on its way when the user turns the feature off.
+    osc(7501, "state=error");
+    expect(frames.size).toBe(1);
+    updateHeader.mockClear();
+
+    setTabStatus(context, false);
+    expect(frames.size).toBe(0);
+    runFrames();
+    await tick();
+    for (const handler of handlers) {
+      expect(handler.dispose).toHaveBeenCalledOnce();
+    }
+    // As a terminal the feature never touched, but for what was made once.
+    expect(state()).toEqual({
+      ...UNTOUCHED,
+      addons: 1,
+      presenters: 1,
+      registrations: 3,
+      windowFollowers: 1,
+    });
+    expect(header.getAttributeNames()).toEqual([]);
+    expect(updateHeader).toHaveBeenCalled();
+    expect(osc(7501, "state=working")).toEqual([]);
+    expect(osc(7501, "?")).toEqual([]);
+
+    // On again: a new start, which knows nothing of what was reported.
+    setTabStatus(context, true);
+    expect(state()).toEqual({
+      ...SHOWING,
+      addons: 2,
+      presenters: 2,
+      registrations: 6,
+      windowFollowers: 2,
+    });
+    runFrames();
+    expect(header.hasAttribute("data-terminal-status")).toBe(false);
+  });
+
+  it("follows a change of the look on an open terminal", async () => {
+    const { context, header, updateHeader } = await openTerminal({
+        tabStatus: true,
+      }),
+      { settings } = context,
+      looks = vi
+        .mocked(settings)
+        .onMutate.mock.calls.filter(([accessor]) =>
+          Array.isArray(accessor(Settings.DEFAULT)),
+        );
+    expect(looks).toHaveLength(1);
+    updateHeader.mockClear();
+    Object.assign(settings, {
+      value: {
+        ...settings.value,
+        tabIconSize: 22,
+        tabStatusAnimation: "loop",
+      },
+    });
+    looks[0]?.[1]([], [], settings.value);
+    expect(header.getAttribute("data-terminal-size")).toBe("22");
+    expect(header.getAttribute("data-terminal-animation")).toBe("loop");
+    // The icon is Obsidian's to draw again, from `getIcon`.
+    expect(updateHeader).toHaveBeenCalledOnce();
+  });
+
+  it("shows a finish as unread until the user looks, by coming to the terminal or back to its window", async () => {
+    const { header, lookedAt, osc, view } = await openTerminal({
+        tabStatus: true,
+      }),
+      status = (): string | null => header.getAttribute("data-terminal-status");
+    osc(7501, "state=done");
+    runFrames();
+    expect(status()).toBe("done");
+
+    // Focus without looking (the window is behind another) changes nothing.
+    view.contentEl.dispatchEvent(new FocusEvent("focusin"));
+    expect(status()).toBe("done");
+    lookedAt.mockReturnValue(true);
+    view.contentEl.dispatchEvent(new FocusEvent("focusin"));
+    expect(status()).toBe("seen");
+
+    // Looked at while it arrives: seen at once, and the next one is news.
+    osc(7501, "state=done");
+    runFrames();
+    expect(status()).toBe("seen");
+    lookedAt.mockReturnValue(false);
+    osc(7501, "state=done");
+    runFrames();
+    expect(status()).toBe("done");
+    lookedAt.mockReturnValue(true);
+    window.dispatchEvent(new Event("focus"));
+    expect(status()).toBe("seen");
+  });
+
+  it("drops working when the program ends, and everything when the terminal closes", async () => {
+    const { exit, header, osc, registered, state, view } = await openTerminal({
+      tabStatus: true,
+    });
+    osc(7501, "state=working");
+    runFrames();
+    expect(header.getAttribute("data-terminal-status")).toBe("working");
+
+    exit.resolve(0);
+    await tick();
+    runFrames();
+    expect(header.hasAttribute("data-terminal-status")).toBe(false);
+
+    osc(7501, "state=error");
+    runFrames();
+    expect(header.getAttribute("data-terminal-status")).toBe("error");
+    const handlers = [...registered];
+    view.unload();
+    await tick();
+    // The header belongs to the leaf and outlives the view.
+    expect(header.getAttributeNames()).toEqual([]);
+    expect(state()).toMatchObject({ focusListeners: 0, handlers: [] });
+    for (const handler of handlers) {
+      expect(handler.dispose).toHaveBeenCalledOnce();
+    }
+  });
+
+  it("lets the terminal that replaced another speak for the tab alone", async () => {
+    const { closing, header, osc, registered, view } = await openTerminal({
+        tabStatus: true,
+      }),
+      status = (): string | null => header.getAttribute("data-terminal-status"),
+      gone = deferred();
+    osc(7501, "state=done");
+    runFrames();
+    expect(status()).toBe("done");
+    const [before] = registered;
+
+    // A restart: the new terminal is there before the old program is gone.
+    closing.until = gone.promise;
+    view["startEmulator"](false);
+    await tick();
+    expect(registered.map(({ key }) => key)).toEqual([
+      ...SHOWING.handlers,
+      ...SHOWING.handlers,
+    ]);
+    // What the program before it reported is not the new one's status.
+    expect(status()).toBeNull();
+    registered[3]?.run("state=working");
+    runFrames();
+    expect(status()).toBe("working");
+
+    // The last words of the old program, and its end, change nothing.
+    before?.run("state=error");
+    runFrames();
+    expect(status()).toBe("working");
+    gone.resolve(undefined);
+    await tick();
+    runFrames();
+    expect(registered.map(({ key }) => key)).toEqual(SHOWING.handlers);
+    expect(status()).toBe("working");
+  });
+
+  it("stops following its window when the view closes or the feature is turned off", async () => {
+    const { context, follow, view } = await openTerminal({ tabStatus: true }),
+      unfollow = (): ReturnType<typeof vi.fn> | undefined => {
+        const last = follow.mock.results.at(-1);
+        return last?.type === "return" ? last.value : undefined;
+      };
+    expect(follow).toHaveBeenCalledOnce();
+    expect(unfollow()).not.toHaveBeenCalled();
+    setTabStatus(context, false);
+    expect(unfollow()).toHaveBeenCalledOnce();
+
+    setTabStatus(context, true);
+    expect(follow).toHaveBeenCalledTimes(2);
+    expect(unfollow()).not.toHaveBeenCalled();
+    view.unload();
+    expect(unfollow()).toHaveBeenCalledOnce();
+  });
+});
+
 describe("TerminalView.dressUnloadedTabs", () => {
   /**
    * A tab whose view Obsidian has not loaded yet: the leaf answers to the
@@ -2204,7 +2702,7 @@ describe("TerminalView.dressUnloadedTabs", () => {
         .spyOn(workspace, "getLeavesOfType")
         .mockReturnValue([first.leaf, second.leaf]);
 
-    TerminalView.dressUnloadedTabs(context);
+    TerminalView.dressUnloadedTabs(context, true);
 
     expect(listed).toHaveBeenCalledExactlyOnceWith(
       TerminalView.type.namespaced(context),
@@ -2228,7 +2726,7 @@ describe("TerminalView.dressUnloadedTabs", () => {
     ]);
     vi.mocked(setIcon).mockClear();
 
-    TerminalView.dressUnloadedTabs(context);
+    TerminalView.dressUnloadedTabs(context, true);
 
     const chosen = tabIconId(context, "tile");
     expect(vi.mocked(setIcon).mock.calls).toEqual([
@@ -2244,7 +2742,7 @@ describe("TerminalView.dressUnloadedTabs", () => {
     vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
     vi.mocked(setIcon).mockClear();
 
-    TerminalView.dressUnloadedTabs(context);
+    TerminalView.dressUnloadedTabs(context, true);
 
     expect(setIcon).not.toHaveBeenCalled();
     expect(tab.icon.firstElementChild).toBe(before);
@@ -2263,10 +2761,10 @@ describe("TerminalView.dressUnloadedTabs", () => {
     ]);
     vi.mocked(setIcon).mockClear();
 
-    TerminalView.dressUnloadedTabs(context, null);
+    TerminalView.dressUnloadedTabs(context, false);
     expect(setIcon).not.toHaveBeenCalled();
 
-    TerminalView.dressUnloadedTabs(context);
+    TerminalView.dressUnloadedTabs(context, true);
     // The loaded tab's icon is Obsidian's to draw, from the view's `getIcon`.
     expect(vi.mocked(setIcon).mock.calls).toEqual([
       [unloaded.icon, tabIconId(context, "tile")],
@@ -2281,7 +2779,9 @@ describe("TerminalView.dressUnloadedTabs", () => {
     vi.mocked(setIcon).mockClear();
 
     expect(() => {
-      TerminalView.dressUnloadedTabs(context);
+      TerminalView.dressUnloadedTabs(context, true);
+      TerminalView.dressUnloadedTabs(context, false);
+      TerminalView.dressUnloadedTabs(context, true);
     }).not.toThrow();
     expect(tab.header.getAttribute("data-terminal-size")).toBe("22");
     expect(setIcon).not.toHaveBeenCalled();
@@ -2296,14 +2796,14 @@ describe("TerminalView.dressUnloadedTabs", () => {
       unloaded.leaf,
     ]);
 
-    TerminalView.dressUnloadedTabs(context);
+    TerminalView.dressUnloadedTabs(context, true);
     // Not written here: the view's presenter writes it with the rest.
     expect(loaded.header.getAttributeNames()).toEqual([]);
     expect(unloaded.header.getAttribute("data-terminal-size")).toBe("22");
 
     // And not taken back here: what the presenter wrote is its own to clear.
     loaded.header.setAttribute("data-terminal-size", "22");
-    TerminalView.dressUnloadedTabs(context, null);
+    TerminalView.dressUnloadedTabs(context, false);
     expect(loaded.header.getAttribute("data-terminal-size")).toBe("22");
     expect(unloaded.header.hasAttribute("data-terminal-size")).toBe(false);
   });
@@ -2313,11 +2813,11 @@ describe("TerminalView.dressUnloadedTabs", () => {
       tab = unloadedTab();
     vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
 
-    TerminalView.dressUnloadedTabs(context);
+    TerminalView.dressUnloadedTabs(context, true);
     expect(tab.header.getAttribute("data-terminal-size")).toBe(
       String(Settings.DEFAULT.tabIconSize),
     );
-    TerminalView.dressUnloadedTabs(context, null);
+    TerminalView.dressUnloadedTabs(context, false);
     expect(tab.header.getAttributeNames()).toEqual(["data-type"]);
   });
 
@@ -2328,22 +2828,86 @@ describe("TerminalView.dressUnloadedTabs", () => {
     vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([bare, tab.leaf]);
 
     expect(() => {
-      TerminalView.dressUnloadedTabs(context);
+      TerminalView.dressUnloadedTabs(context, true);
     }).not.toThrow();
     expect(tab.header.hasAttribute("data-terminal-size")).toBe(true);
+    expect(() => {
+      TerminalView.dressUnloadedTabs(context, false);
+    }).not.toThrow();
+    expect(tab.header.hasAttribute("data-terminal-size")).toBe(false);
   });
 
-  it("goes over the tabs when the layout is ready, when it changes and when the size or the icon set does, until the plugin unloads", () => {
-    const { context, workspace } = makeTerminalContext({ tabIconSize: 20 }),
+  it("gives an unloaded tab the 3.28.0 icon back while off", () => {
+    const { context, workspace } = makeTerminalContext(),
+      // A layout saved while the feature was on names its icon for the tab.
+      tab = unloadedTab(tabIconId(context, "bezel"));
+    tab.header.setAttribute("data-terminal-size", "18");
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
+    vi.mocked(setIcon).mockClear();
+
+    TerminalView.dressUnloadedTabs(context, false);
+
+    expect(tab.header.getAttributeNames()).toEqual(["data-type"]);
+    // The test translations answer with the key they were asked for.
+    expect(vi.mocked(setIcon).mock.calls).toEqual([
+      [tab.icon, "asset:components.terminal.icon"],
+    ]);
+  });
+
+  it("leaves an unloaded tab alone that shows no icon of ours", () => {
+    const { context, workspace } = makeTerminalContext(),
+      plain = unloadedTab("lucide-terminal"),
+      empty = unloadedTab(null),
+      before = plain.header.outerHTML;
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([
+      plain.leaf,
+      empty.leaf,
+    ]);
+    vi.mocked(setIcon).mockClear();
+
+    TerminalView.dressUnloadedTabs(context, false);
+
+    expect(setIcon).not.toHaveBeenCalled();
+    expect(plain.header.outerHTML).toBe(before);
+    expect(empty.icon.childElementCount).toBe(0);
+  });
+
+  it("follows the experiment when it is not told what to do", () => {
+    const off = makeTerminalContext(),
+      on = makeTerminalContext({ experiments: { tabStatus: true } }),
+      dressed = unloadedTab(tabIconId(off.context, "bezel")),
+      bare = unloadedTab();
+    dressed.header.setAttribute("data-terminal-size", "18");
+    vi.spyOn(off.workspace, "getLeavesOfType").mockReturnValue([dressed.leaf]);
+    vi.spyOn(on.workspace, "getLeavesOfType").mockReturnValue([bare.leaf]);
+    vi.mocked(setIcon).mockClear();
+
+    TerminalView.dressUnloadedTabs(off.context);
+    TerminalView.dressUnloadedTabs(on.context);
+
+    expect(dressed.header.hasAttribute("data-terminal-size")).toBe(false);
+    expect(bare.header.getAttribute("data-terminal-size")).toBe(
+      String(Settings.DEFAULT.tabIconSize),
+    );
+    expect(vi.mocked(setIcon).mock.calls).toEqual([
+      [dressed.icon, "asset:components.terminal.icon"],
+      [bare.icon, tabIconId(on.context, "bezel")],
+    ]);
+  });
+
+  /** Runs the loader on a context that keeps what it registers. */
+  function loadViews(overrides: Partial<Settings> = {}) {
+    const made = makeTerminalContext(overrides),
+      { context, workspace } = made,
       ready: (() => void)[] = [],
       disposers: (() => void)[] = [],
-      tab = unloadedTab(),
-      later = unloadedTab(),
-      listed = vi
-        .spyOn(workspace, "getLeavesOfType")
-        .mockReturnValue([tab.leaf]),
-      size = (header: Element): string | null =>
-        header.getAttribute("data-terminal-size");
+      on = vi.spyOn(workspace, "on"),
+      offref = vi.spyOn(workspace, "offref"),
+      // The spy is typed by one overload of `on`; any name is a word here.
+      layoutChange: string = "layout-change",
+      layoutListeners = (): number =>
+        on.mock.calls.filter(([name]) => name === layoutChange).length -
+        offref.mock.calls.length;
     Object.assign(workspace, {
       onLayoutReady: vi.fn((callback: () => void) => {
         ready.push(callback);
@@ -2367,8 +2931,69 @@ describe("TerminalView.dressUnloadedTabs", () => {
       scope: TerminalView["focusedScope"],
     });
     vi.spyOn(TerminalView["focusedScope"], "unregister").mockReturnValue();
-
     TerminalView.load(context);
+    return { ...made, disposers, layoutListeners, ready };
+  }
+
+  it("listens for layout changes and for the look only while on", () => {
+    const { context, disposers, layoutListeners, ready, workspace } = loadViews(
+        { tabIconSize: 20 },
+      ),
+      tab = unloadedTab(),
+      size = (): string | null => tab.header.getAttribute("data-terminal-size"),
+      changed = {
+        ...Settings.DEFAULT,
+        tabIconSet: "tile",
+        tabIconSize: 23,
+      } satisfies Settings,
+      // The listeners of the look, by what their accessors read.
+      looks = (): number =>
+        vi.mocked(context.settings).onMutate.mock.calls.filter(([accessor]) => {
+          const read = accessor(changed);
+          return read === "tile" || read === 23;
+        }).length;
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
+    vi.mocked(setIcon).mockClear();
+
+    // Off: one pass when the layout is ready, and nothing that listens.
+    for (const callback of ready) callback();
+    expect(layoutListeners()).toBe(0);
+    expect(looks()).toBe(0);
+    workspace.trigger("layout-change");
+    expect(tab.header.getAttributeNames()).toEqual(["data-type"]);
+    expect(setIcon).not.toHaveBeenCalled();
+
+    setTabStatus(context, true);
+    expect(size()).toBe("20");
+    expect(layoutListeners()).toBe(1);
+    expect(looks()).toBe(2);
+
+    setTabStatus(context, false);
+    expect(size()).toBeNull();
+    expect(layoutListeners()).toBe(0);
+    vi.mocked(setIcon).mockClear();
+    workspace.trigger("layout-change");
+    expect(size()).toBeNull();
+    expect(setIcon).not.toHaveBeenCalled();
+
+    // Unloading while off has nothing left to take back.
+    for (const dispose of disposers) dispose();
+    expect(tab.header.getAttributeNames()).toEqual(["data-type"]);
+  });
+
+  it("goes over the tabs when the layout is ready, when it changes and when the size or the icon set does, until the plugin unloads", () => {
+    const { context, disposers, ready, workspace } = loadViews({
+        experiments: { tabStatus: true },
+        tabIconSize: 20,
+      }),
+      tab = unloadedTab(),
+      later = unloadedTab(),
+      listed = vi
+        .spyOn(workspace, "getLeavesOfType")
+        .mockReturnValue([tab.leaf]),
+      size = (header: Element): string | null =>
+        header.getAttribute("data-terminal-size");
+
     // Nothing before the layout is there: there are no tabs to go over yet.
     expect(size(tab.header)).toBeNull();
     for (const callback of ready) callback();

@@ -1601,6 +1601,69 @@ describe("tab-status.css", () => {
     }
   });
 
+  it("styles nothing on a terminal tab that carries no size, wherever it is and whatever the device", () => {
+    /** The same selector with the pointer on whatever it asks about. */
+    const hovering = (compounds: readonly Compound[]): readonly Compound[] =>
+        compounds.map((compound) => ({
+          ...compound,
+          simples: compound.simples
+            .filter((simple) => simple.kind !== "hover")
+            .map((simple) =>
+              simple.kind === "is"
+                ? {
+                    ...simple,
+                    options: simple.options.map((option) => ({
+                      ...option,
+                      compounds: hovering(option.compounds),
+                    })),
+                  }
+                : simple,
+            ),
+        })),
+      /** How many rules select the header of a tab or something in it, in every place a tab can be. */
+      selected = (written: Readonly<Record<string, string>>): number => {
+        let count = 0;
+        for (const split of SPLITS) {
+          for (const active of ["", " is-active"]) {
+            for (const theme of ["theme-dark", "theme-light"]) {
+              // As Obsidian draws a terminal's tab by itself: its own icon.
+              const chain: Chain = [
+                box(theme, []),
+                box(split, []),
+                box(`workspace-tab-header${active}`, [], {
+                  "data-type": "terminal:terminal",
+                  ...written,
+                }),
+                box("workspace-tab-header-inner", []),
+                box("workspace-tab-header-inner-icon", []),
+                part(
+                  "svg",
+                  new Map([["class", "svg-icon lucide-terminal"]]),
+                  [],
+                ),
+              ];
+              // The at-rules are left out: they can only take rules away.
+              for (const rule of READ) {
+                for (const selector of rule.selectors) {
+                  const compounds = hovering(selector.compounds);
+                  for (let index = 2; index < chain.length; index++) {
+                    if (selects(chain, index, compounds)) {
+                      count += 1;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        return count;
+      };
+    // While the feature is off the plugin writes nothing on the header.
+    expect(selected({})).toBe(0);
+    // And the count is of something: the size alone brings rules in.
+    expect(selected({ [TAB_STATUS_ATTRIBUTES.size]: "18" })).toBeGreaterThan(0);
+  });
+
   it("names only classes that an icon, a tab or a preview has", () => {
     const named = new Set(
         READ.flatMap((rule) => rule.selectors)
@@ -2826,16 +2889,34 @@ describe("tab-status.css", () => {
 
     it("has one rule for every size the settings offer, and for no other", () => {
       const sized = READ.flatMap((rule) =>
-        rule.selectors
-          .flatMap(simplesOf)
-          .flatMap((simple) =>
-            simple.kind === "attribute" &&
-            simple.name === TAB_STATUS_ATTRIBUTES.size
-              ? [simple.value]
-              : [],
-          ),
+        rule.selectors.flatMap(simplesOf).flatMap((simple) =>
+          simple.kind === "attribute" &&
+          simple.name === TAB_STATUS_ATTRIBUTES.size &&
+          // Without a value it only asks whether the tab carries a size.
+          simple.value !== null
+            ? [simple.value]
+            : [],
+        ),
       );
       expect(sized).toEqual(Settings.TAB_ICON_SIZES.map(String));
+    });
+
+    it("has no size for a header without the attribute", () => {
+      const sizing = READ.filter((rule) => rule.declarations.has("--tts-size"));
+      expect(sizing).toHaveLength(Settings.TAB_ICON_SIZES.length);
+      for (const rule of sizing) {
+        for (const selector of rule.selectors) {
+          expect(
+            simplesOf(selector).some(
+              (simple) =>
+                simple.kind === "attribute" &&
+                simple.name === TAB_STATUS_ATTRIBUTES.size &&
+                simple.value !== null,
+            ),
+            JSON.stringify(selector),
+          ).toBe(true);
+        }
+      }
     });
 
     it.each(Settings.TAB_ICON_SIZES)(
@@ -2854,12 +2935,13 @@ describe("tab-status.css", () => {
       },
     );
 
-    it("gives a tab nobody has written yet the default size, and a preview without a size Obsidian's and two pixels", () => {
+    it("gives a tab without a size none, and a preview without a size Obsidian's and two pixels", () => {
       const tab = view({ size: null }),
         preview = view({ host: "preview", size: null });
-      expect(inherited(tab, tab.container, "--tts-size")).toBe(
-        `${String(Settings.DEFAULT.tabIconSize)}px`,
-      );
+      // Only the plugin writes a size, and only while the feature is on.
+      expect(inherited(tab, tab.container, "--tts-size")).toBeUndefined();
+      expect(declared(tab, tab.container, "--icon-size")).toBeUndefined();
+      expect(declared(tab, tab.container, "position")).toBeUndefined();
       expect(
         inherited(preview, preview.container, "--tts-size"),
       ).toBeUndefined();

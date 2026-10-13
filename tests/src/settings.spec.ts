@@ -615,7 +615,7 @@ describe("experimental section", () => {
     const registered: readonly Experiment[] = EXPERIMENTS,
       { tab } = await drawExperimentalSection(null),
       drawn = tab.containerEl.querySelectorAll("[data-experiment]");
-    // None is registered in this version, so there is no heading and no row.
+    // One heading for the section, however many are registered.
     expect(tab.containerEl.querySelectorAll("h2")).toHaveLength(
       Math.min(registered.length, 1),
     );
@@ -778,6 +778,77 @@ describe("experimental section", () => {
     section.tab.update();
     expect(alpha.toggle.getValue()).toBe(true);
     expect(section.holder("alpha")?.style.display).toBe("");
+  });
+
+  it("lists program status on tabs: off, with its texts, and applied at once", async () => {
+    const section = await drawExperimentalSection(null),
+      row = section.row(0),
+      texts = en.settings["experimental-features"].tabStatus;
+    expect(section.rows).toHaveLength(1);
+    expect(row.settingEl.getAttribute("data-experiment")).toBe("tabStatus");
+    expect(row.toggle.getValue()).toBe(false);
+    expect(row.nameEl.textContent).toBe(texts.name);
+    // No line on how a change applies: it applies to open terminals at once.
+    expect(Array.from(row.descEl.children, (line) => line.textContent)).toEqual(
+      [
+        texts.effect,
+        `Known risk: ${texts.risk}`,
+        en.settings["experimental-feedback"],
+      ],
+    );
+    // A program that looked for the feature while it was off must be restarted.
+    expect(texts.risk).toMatch(/restart/u);
+    expect(row.descEl.querySelector("a")?.getAttribute("href")).toMatch(
+      /^https:\/\/github\.com\/polyipseity\/obsidian-terminal\/issues\/new\?/u,
+    );
+  });
+
+  it("draws the look of program status on tabs only once the experiment is on", async () => {
+    const section = await drawExperimentalSection(null),
+      { settings } = section.context,
+      row = section.row(0),
+      holder = section.holder("tabStatus"),
+      drawn = (selector: string): number =>
+        section.tab.containerEl.querySelectorAll(selector).length;
+    if (!holder) throw new Error("Missing options holder");
+    // Off: the preview and the pickers were never built, not merely hidden.
+    expect(holder.childElementCount).toBe(0);
+    expect(holder.style.display).toBe("none");
+    expect(drawn(".tts-strip, .tts-pick, .tts-host")).toBe(0);
+    expect(section.rows).toHaveLength(1);
+
+    row.toggle.setValue(true);
+    await vi.waitFor(() => {
+      expect(holder.querySelectorAll(".tts-strip")).toHaveLength(1);
+    });
+    expect(holder.style.display).toBe("");
+    // The icon, its size and the motion, under the preview, and nowhere else.
+    expect(holder.querySelectorAll(".tts-pick")).toHaveLength(3);
+    expect(holder.firstElementChild?.classList.contains("tts-strip")).toBe(
+      true,
+    );
+    expect(drawn(".tts-strip")).toBe(1);
+    expect(drawn(".tts-pick")).toBe(3);
+    expect(section.rows).toHaveLength(4);
+
+    // Choosing in a picker changes the setting, not the experiment.
+    holder
+      .querySelector<HTMLElement>('.tts-pick-tile[data-value="tile"]')
+      ?.click();
+    await vi.waitFor(() => {
+      expect(settings.value.tabIconSet).toBe("tile");
+    });
+
+    // Off again: hidden, and what was chosen is kept for the next time.
+    row.toggle.setValue(false);
+    await vi.waitFor(() => {
+      expect(holder.style.display).toBe("none");
+    });
+    expect(settings.value.experiments).toEqual({});
+    expect(settings.value.tabIconSet).toBe("tile");
+
+    section.tab.dispose();
+    expect(section.tab.containerEl.childElementCount).toBe(0);
   });
 });
 

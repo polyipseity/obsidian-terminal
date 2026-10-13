@@ -154,7 +154,6 @@ describe("PluginLocales", () => {
       ).toEqual([]);
       // The rows that stay have their words.
       expect(settings, language).toHaveProperty(["tab-status-animation"]);
-      expect(settings, language).toHaveProperty(["tab-status-reports"]);
     }
     const asset = await PluginLocales.RESOURCES.en.asset();
     for (const key of [
@@ -164,7 +163,27 @@ describe("PluginLocales", () => {
       expect(asset.settings).not.toHaveProperty([key]);
     }
     expect(asset.settings).toHaveProperty(["tab-status-animation-icon"]);
-    expect(asset.settings).toHaveProperty(["tab-status-reports-icon"]);
+  });
+
+  it("has the words of the program status experiment, and none for a switch or a section of its own, in every locale", async () => {
+    for (const language of PluginLocales.LANGUAGES) {
+      const { settings } =
+          await PluginLocales.RESOURCES[language].translation(),
+        { tabStatus } = settings["experimental-features"];
+      expect(tabStatus.name, language).toMatch(/\S/u);
+      expect(tabStatus.effect, language).toMatch(/\S/u);
+      expect(tabStatus.risk, language).toMatch(/\S/u);
+      // The experiment's toggle is the switch, and its rows have no heading.
+      for (const key of [
+        "tab-status",
+        "tab-status-reports",
+        "tab-status-reports-description",
+      ]) {
+        expect(settings, `${language} ${key}`).not.toHaveProperty([key]);
+      }
+    }
+    const asset = await PluginLocales.RESOURCES.en.asset();
+    expect(asset.settings).not.toHaveProperty(["tab-status-reports-icon"]);
   });
 
   it("has words for the two tab icons and for no other, in every locale", async () => {

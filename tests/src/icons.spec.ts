@@ -1,8 +1,10 @@
 /**
  * Unit tests for `src/icons.ts`: icon ids and what gets registered at load.
  */
+import { createInstance } from "i18next";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { loadIcons, tabIconId } from "../../src/icons.js";
+import asset from "../../assets/locales/en/asset.json" with { type: "json" };
+import { loadIcons, tabIconId, terminalIconId } from "../../src/icons.js";
 import { Settings } from "../../src/settings-data.js";
 import type { TerminalPlugin } from "../../src/main.js";
 import { composeTabIcon } from "../../src/terminal/tab-icons.js";
@@ -26,6 +28,24 @@ describe("tabIconId", () => {
       expect(tabIconId(context, set)).toBe(`terminal:tab-${set}`);
     },
   );
+});
+
+describe("terminalIconId", () => {
+  it("is the icon a terminal tab has had since before there were icon sets", async () => {
+    const i18n = createInstance();
+    await i18n.init({
+      fallbackLng: false,
+      lng: "en",
+      ns: ["asset"],
+      resources: { en: { asset } },
+    });
+    // Only the translations are read; the rest of the plugin is not needed.
+    expect(
+      terminalIconId({
+        language: { value: i18n },
+      } as unknown as TerminalPlugin),
+    ).toBe("terminal");
+  });
 });
 
 describe("loadIcons", () => {

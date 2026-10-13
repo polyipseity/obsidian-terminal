@@ -6326,11 +6326,11 @@ describe("ProgramStatusAddon", () => {
     vi.restoreAllMocks();
   });
 
-  function createBed(enabled: () => boolean = () => true) {
+  function createBed() {
     const mock = createStatusMockTerminal();
     const onChange =
       vi.fn<(status: ProgramStatusAddon.Status | null) => void>();
-    const addon = new ProgramStatusAddon({ enabled, onChange });
+    const addon = new ProgramStatusAddon({ onChange });
     addon.activate(mock.terminal);
     return {
       ...mock,
@@ -6342,7 +6342,7 @@ describe("ProgramStatusAddon", () => {
 
   it("has no status before anything is reported, or before activation", () => {
     const onChange = vi.fn();
-    const idle = new ProgramStatusAddon({ enabled: () => true, onChange });
+    const idle = new ProgramStatusAddon({ onChange });
     expect(idle.status).toBeNull();
     expect(() => {
       idle.processExited();
@@ -6699,47 +6699,55 @@ describe("ProgramStatusAddon", () => {
     expect(onChange).toHaveBeenCalledTimes(2);
   });
 
-  it("is silent while disabled: no status, no reply, no notification", () => {
-    let enabled = false;
-    const { addon, report, inputSpy, onChange, triggerOsc, triggerEsc } =
-      createBed(() => enabled);
+  it("touches the terminal only when it is loaded: three handlers, and each goes on dispose", () => {
+    const mock = createStatusMockTerminal(),
+      osc = vi.spyOn(mock.terminal.parser, "registerOscHandler"),
+      esc = vi.spyOn(mock.terminal.parser, "registerEscHandler"),
+      addon = new ProgramStatusAddon({ onChange: vi.fn() });
+    // Made, not loaded: the terminal has not heard of it.
+    expect(osc).not.toHaveBeenCalled();
+    expect(esc).not.toHaveBeenCalled();
 
-    expect(report("state=working")).toEqual([true]);
-    expect(report("?")).toEqual([true]);
-    expect(triggerOsc(133, "A")).toEqual([false]);
-    expect(triggerEsc("c")).toEqual([false]);
-    addon.processExited();
-    runFrame();
-    vi.runAllTimers();
+    addon.activate(mock.terminal);
+    expect(osc.mock.calls.map(([ident]) => ident)).toEqual([7501, 133]);
+    expect(esc.mock.calls.map(([id]) => id)).toEqual([{ final: "c" }]);
 
-    expect(addon.status).toBeNull();
-    expect(inputSpy).not.toHaveBeenCalled();
-    expect(onChange).not.toHaveBeenCalled();
-    expect(requestFrame).not.toHaveBeenCalled();
+    // One answer per handler that is there: the report is taken, the other
+    // two are left for whoever else listens.
+    expect(mock.triggerOsc(7501, "state=idle")).toEqual([true]);
+    expect(mock.triggerOsc(133, "A")).toEqual([false]);
+    expect(mock.triggerEsc("c")).toEqual([false]);
 
-    // Nothing reported while disabled was kept.
-    enabled = true;
-    expect(addon.status).toBeNull();
-    report("?");
-    expect(inputSpy).toHaveBeenCalledWith(DETECTION_REPLY, false);
+    addon.dispose();
+    expect(mock.triggerOsc(7501, "state=idle")).toEqual([]);
+    expect(mock.triggerOsc(133, "A")).toEqual([]);
+    expect(mock.triggerEsc("c")).toEqual([]);
+    expect(osc).toHaveBeenCalledTimes(2);
+    expect(esc).toHaveBeenCalledOnce();
   });
 
-  it("hides stored records while disabled and still ends their lifetime", () => {
-    let enabled = true;
-    const { addon, report, onChange, triggerOsc } = createBed(() => enabled);
+  it("knows nothing of what the addon before it on the same terminal was told", () => {
+    const { addon, terminal, report, onChange, inputSpy } = createBed();
     report("state=working");
     report("state=done:id=a");
     runFrame();
     expect(onChange).toHaveBeenCalledOnce();
+    addon.dispose();
+    // Nobody listens in between: no status is kept and the query gets no reply.
+    expect(report("state=error")).toEqual([]);
+    expect(report("?")).toEqual([]);
+    expect(inputSpy).not.toHaveBeenCalled();
 
-    enabled = false;
-    expect(addon.status).toBeNull();
-    triggerOsc(133, "A");
+    const next = new ProgramStatusAddon({ onChange });
+    next.activate(terminal);
+    expect(next.status).toBeNull();
     runFrame();
-    expect(onChange).toHaveBeenLastCalledWith(null);
+    vi.runAllTimers();
+    expect(onChange).toHaveBeenCalledOnce();
 
-    enabled = true;
-    expect(addon.status?.state).toBe("done");
+    report("?");
+    expect(inputSpy).toHaveBeenCalledExactlyOnceWith(DETECTION_REPLY, false);
+    next.dispose();
   });
 
   it("stops everything on dispose", () => {

@@ -2211,10 +2211,10 @@ export class SynchronizedOutputScrollAddon implements ITerminalAddon {
  * process exit drop Working and Needs input, a full reset (`ESC c`) drops
  * every record, and Done and Error stay.
  *
- * While `enabled()` is false, reports are ignored, the detection query gets
- * no reply and `status` is `null`. Prompt, reset and process exit still apply
- * to records stored earlier, so nothing stale returns when it is enabled
- * again.
+ * There is no switch on the addon: it listens from the moment it is loaded
+ * on a terminal until it is disposed, and a terminal without it drops every
+ * report and leaves the detection query unanswered. Whoever turns the
+ * feature off disposes the addon, and what it was told goes with it.
  */
 export class ProgramStatusAddon implements ITerminalAddon {
   readonly #disposer = new Functions({ async: false, settled: true });
@@ -2259,9 +2259,6 @@ export class ProgramStatusAddon implements ITerminalAddon {
 
   /** The most urgent live record, or `null`. */
   public get status(): ProgramStatusAddon.Status | null {
-    if (!this.options.enabled()) {
-      return null;
-    }
     const record = this.#store.mostUrgent();
     if (record === null) {
       return null;
@@ -2281,19 +2278,17 @@ export class ProgramStatusAddon implements ITerminalAddon {
     const reportHandler = terminal.parser.registerOscHandler(
         7501,
         (payload) => {
-          if (this.options.enabled()) {
-            const result = parseProgramStatus(payload);
-            if (result.type === "query") {
-              // The only bytes ever written back; nothing in them comes from
-              // a report.
-              terminal.input(DETECTION_REPLY, false);
-            } else if (this.#store.apply(result)) {
-              if (result.type === "report" && this.#seen) {
-                this.#seen = false;
-                this.#renotify = true;
-              }
-              this.#schedule();
+          const result = parseProgramStatus(payload);
+          if (result.type === "query") {
+            // The only bytes ever written back; nothing in them comes from
+            // a report.
+            terminal.input(DETECTION_REPLY, false);
+          } else if (this.#store.apply(result)) {
+            if (result.type === "report" && this.#seen) {
+              this.#seen = false;
+              this.#renotify = true;
             }
+            this.#schedule();
           }
           // Handled either way: xterm.js has nothing to do with OSC 7501.
           return true;
@@ -2399,8 +2394,6 @@ export class ProgramStatusAddon implements ITerminalAddon {
 }
 export namespace ProgramStatusAddon {
   export interface Options {
-    /** Read on every sequence. `false`: ignore reports and do not answer the query. */
-    readonly enabled: () => boolean;
     /**
      * Called after the visible status changed. Coalesced: at most once per
      * animation frame. One exception to "changed": the first report after

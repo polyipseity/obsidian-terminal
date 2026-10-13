@@ -92,6 +92,31 @@ export function writeTabIcon(
 }
 
 /**
+ * Takes the chosen icon off a tab nobody presents, when the feature that
+ * drew it is turned off.
+ *
+ * Only an icon of the feature is replaced: a tab whose header is not drawn
+ * yet, or that shows the plain icon or some other one, is left as it is.
+ *
+ * @param icon the element that holds the tab's icon
+ * @param ours what the ids of the feature's icons start with
+ * @param id the id of the icon to draw in their place
+ * @param draw Obsidian's `setIcon`
+ */
+export function restoreTabIcon(
+  icon: HTMLElement,
+  ours: string,
+  id: string,
+  draw: (element: HTMLElement, id: string) => void,
+): void {
+  // Obsidian marks a drawn icon with its id as a class (see `writeTabIcon`).
+  const classes = Array.from(icon.firstElementChild?.classList ?? []);
+  if (classes.some((name) => name.startsWith(ours))) {
+    draw(icon, id);
+  }
+}
+
+/**
  * Listens for the focus of the window an element is in, and goes with the
  * element when Obsidian moves it to another window (a tab dragged out into a
  * popout, or back).
@@ -130,8 +155,6 @@ export function onWindowFocus(
 export class TabStatusPresenter {
   #state: State | null = null;
   #seen = true;
-  /** What the tab showed when a settings change took its status away. */
-  #held: { readonly seen: boolean; readonly state: State | null } | null = null;
 
   public constructor(protected readonly options: TabStatusPresenter.Options) {}
 
@@ -151,45 +174,10 @@ export class TabStatusPresenter {
    * @param state the most urgent reported state
    */
   public report(state: State | null): void {
-    this.#held = null;
     this.#state = state;
     this.#seen =
       state === null || !ATTENTION_STATES.has(state) || this.options.lookedAt();
     this.render();
-  }
-
-  /**
-   * Takes the program's state after a settings change. Nothing arrived, so
-   * what the user has seen stays seen, and what they have not stays unseen:
-   * when reports are turned off and on again, the state that comes back is
-   * the one that went, as it was (also if the user looked at the terminal
-   * meanwhile: nothing was on the tab to see). Only a state that differs
-   * from it counts as a report.
-   *
-   * @param state the most urgent reported state
-   */
-  public sync(state: State | null): void {
-    if (state === this.#state) {
-      this.render();
-      return;
-    }
-    const held = this.#held;
-    if (state === null) {
-      // Reports were turned off: keep what the tab showed for their return.
-      this.#held = { seen: this.#seen, state: this.#state };
-      this.#state = null;
-      this.#seen = true;
-      this.render();
-      return;
-    }
-    if (this.#state === null && held?.state === state) {
-      this.#held = null;
-      this.#state = state;
-      this.#seen = held.seen;
-      this.render();
-      return;
-    }
-    this.report(state);
   }
 
   /** The user is looking at the tab now. */
@@ -230,7 +218,6 @@ export class TabStatusPresenter {
 
   /** Removes everything this presenter wrote. The header outlives the view. */
   public clear(): void {
-    this.#held = null;
     this.#state = null;
     this.#seen = true;
     const header = this.options.header();

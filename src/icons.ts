@@ -12,7 +12,17 @@ export function tabIconId(
   context: TerminalPlugin,
   set: Settings.TabIconSet,
 ): string {
-  return new UnnamespacedID(`tab-${set}`).namespaced(context);
+  return `${tabIconIdPrefix(context)}${set}`;
+}
+
+/** What the id of every icon set's tab icon starts with: `terminal:tab-`. */
+export function tabIconIdPrefix(context: TerminalPlugin): string {
+  return new UnnamespacedID("tab-").namespaced(context);
+}
+
+/** The icon of a terminal tab that shows no icon set: the one of 3.28.0. */
+export function terminalIconId(context: TerminalPlugin): string {
+  return context.language.value.t("asset:components.terminal.icon");
 }
 
 export function loadIcons(context: TerminalPlugin): void {

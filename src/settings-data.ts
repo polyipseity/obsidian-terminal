@@ -112,7 +112,7 @@ export interface Settings extends PluginContext.Settings {
   readonly hideStatusBar: Settings.HideStatusBarOption;
   readonly showTerminalTabPrefix: boolean;
 
-  readonly tabStatusReports: boolean;
+  // The look of the `tabStatus` experiment; without effect while it is off.
   readonly tabIconSet: Settings.TabIconSet;
   readonly tabIconSize: Settings.TabIconSize;
   readonly tabStatusAnimation: Settings.TabStatusAnimation;
@@ -293,7 +293,6 @@ export namespace Settings {
     tabIconSet: "bezel",
     tabIconSize: 18,
     tabStatusAnimation: "none",
-    tabStatusReports: true,
     pinNewInstance: true,
     preferredRenderer: "webgl",
     prewarmConPty: true,
@@ -1683,7 +1682,6 @@ export namespace Settings {
         "tabStatusAnimation",
         TAB_STATUS_ANIMATIONS,
       ),
-      tabStatusReports: fixTyped(DEFAULT, unc, "tabStatusReports", ["boolean"]),
       interceptKeysWhenFocused: fixTyped(
         DEFAULT,
         unc,

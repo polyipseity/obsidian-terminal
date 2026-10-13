@@ -40,7 +40,14 @@ export namespace Experiment {
 }
 
 /** Every experiment of this version. One line each. */
-export const EXPERIMENTS = deepFreeze([]) satisfies readonly Experiment[];
+export const EXPERIMENTS = deepFreeze([
+  {
+    applies: "live",
+    feedback:
+      "https://github.com/polyipseity/obsidian-terminal/issues/new?title=Experimental%3A%20program%20status%20on%20tabs",
+    id: "tabStatus",
+  },
+]) satisfies readonly Experiment[];
 
 /** `never` while the registry is empty. */
 export type ExperimentId = (typeof EXPERIMENTS)[number]["id"];

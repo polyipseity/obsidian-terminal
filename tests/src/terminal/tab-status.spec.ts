@@ -7,7 +7,8 @@
  *   the settings
  * - the three attributes written on the header, and nothing besides them
  * - idempotent writes and cleanup
- * - the size and the icon written on a tab that has no presenter
+ * - the size and the icon written on a tab that has no presenter, and the
+ *   plain icon put back on it
  * - the window focus listener that goes with a tab into another window
  */
 import { describe, expect, it, vi } from "vitest";
@@ -17,6 +18,7 @@ import {
   TabStatusPresenter,
   needsAttention,
   onWindowFocus,
+  restoreTabIcon,
   writeTabIcon,
   writeTabIconSize,
 } from "../../../src/terminal/tab-status.js";
@@ -206,7 +208,6 @@ describe("TabStatusPresenter", () => {
       // No change of the look stands in for the user's look.
       look.mockReturnValue(LOOK);
       presenter.render();
-      presenter.sync("done");
       expect(status(header)).toBe("done");
       expect(presenter.unread).toBe(true);
       presenter.look();
@@ -221,7 +222,7 @@ describe("TabStatusPresenter", () => {
     presenter.report("done");
     presenter.look();
     look.mockReturnValue({ ...LOOK, animation: "loop" });
-    presenter.sync("done");
+    presenter.render();
     expect(status(header)).toBe("seen");
     expect(presenter.unread).toBe(false);
     expect(header.getAttribute(TAB_STATUS_ATTRIBUTES.animation)).toBe("loop");
@@ -233,77 +234,11 @@ describe("TabStatusPresenter", () => {
       const { header, presenter } = fixture();
       presenter.report(state);
       presenter.look();
-      presenter.sync(state);
+      presenter.render();
       expect(status(header)).toBe(state);
       expect(presenter.unread).toBe(false);
     },
   );
-
-  it("takes a state that differs after a settings change as a report", () => {
-    const { header, presenter } = fixture();
-    presenter.report("working");
-    presenter.sync("done");
-    expect(status(header)).toBe("done");
-    expect(presenter.unread).toBe(true);
-  });
-
-  it("does not highlight a seen finish again when reports are turned off and on", () => {
-    const { header, presenter } = fixture();
-    presenter.report("done");
-    presenter.look();
-    presenter.sync(null);
-    expect(header.hasAttribute(TAB_STATUS_ATTRIBUTES.status)).toBe(false);
-    presenter.sync("done");
-    expect(status(header)).toBe("seen");
-    expect(presenter.unread).toBe(false);
-  });
-
-  it("keeps an unseen finish highlighted when reports are turned off and on", () => {
-    const { header, presenter } = fixture();
-    presenter.report("done");
-    presenter.sync(null);
-    expect(presenter.unread).toBe(false);
-    presenter.sync("done");
-    expect(status(header)).toBe("done");
-    expect(presenter.unread).toBe(true);
-  });
-
-  it("takes another state after reports were off as a report", () => {
-    const { header, presenter, lookedAt } = fixture();
-    presenter.report("done");
-    presenter.look();
-    presenter.sync(null);
-    lookedAt.mockReturnValue(false);
-    presenter.sync("error");
-    expect(status(header)).toBe("error");
-    expect(presenter.unread).toBe(true);
-  });
-
-  it("forgets what reports being off held back once the program reports or the tab is cleared", () => {
-    const { header, presenter } = fixture();
-    presenter.report("done");
-    presenter.look();
-    presenter.sync(null);
-    presenter.report(null);
-    presenter.sync("done");
-    // Not the seen finish from before: a new one, and nobody is looking.
-    expect(status(header)).toBe("done");
-
-    presenter.look();
-    presenter.sync(null);
-    presenter.clear();
-    presenter.sync("done");
-    expect(status(header)).toBe("done");
-    expect(presenter.unread).toBe(true);
-  });
-
-  it("drops the status when a settings change leaves nothing reported", () => {
-    const { header, presenter } = fixture();
-    presenter.report("blocked");
-    presenter.sync(null);
-    expect(header.hasAttribute(TAB_STATUS_ATTRIBUTES.status)).toBe(false);
-    expect(presenter.unread).toBe(false);
-  });
 
   it("writes the look from the settings", () => {
     const { header, presenter } = fixture({
@@ -362,7 +297,7 @@ describe("TabStatusPresenter", () => {
     presenter.report("working");
     const before = header.outerHTML;
     look.mockReturnValue({ ...LOOK, set: "tile" });
-    presenter.sync("working");
+    presenter.render();
     expect(header.outerHTML).toBe(before);
   });
 
@@ -381,7 +316,6 @@ describe("TabStatusPresenter", () => {
     const set = vi.spyOn(header, "setAttribute"),
       remove = vi.spyOn(header, "removeAttribute");
     presenter.report("working");
-    presenter.sync("working");
     presenter.render();
     presenter.look();
     expect(set).not.toHaveBeenCalled();
@@ -417,7 +351,7 @@ describe("TabStatusPresenter", () => {
     expect(status(header)).toBe("working");
     expect(header.hasAttribute("style")).toBe(false);
     look.mockReturnValue(LOOK);
-    presenter.sync("working");
+    presenter.render();
     expect(header.getAttribute(TAB_STATUS_ATTRIBUTES.animation)).toBe("none");
   });
 
@@ -490,22 +424,22 @@ describe("writeTabIconSize", () => {
   });
 });
 
-describe("writeTabIcon", () => {
-  /** A tab's icon element holding an icon drawn under `id`, as Obsidian marks it. */
-  function drawn(id: string | null): {
-    readonly icon: HTMLElement;
-    readonly svg: Element | null;
-  } {
-    const icon = document.createElement("div");
-    if (id === null) {
-      return { icon, svg: null };
-    }
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.classList.add("svg-icon", id);
-    icon.append(svg);
-    return { icon, svg };
+/** A tab's icon element holding an icon drawn under `id`, as Obsidian marks it. */
+function drawn(id: string | null): {
+  readonly icon: HTMLElement;
+  readonly svg: Element | null;
+} {
+  const icon = document.createElement("div");
+  if (id === null) {
+    return { icon, svg: null };
   }
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.classList.add("svg-icon", id);
+  icon.append(svg);
+  return { icon, svg };
+}
 
+describe("writeTabIcon", () => {
   it("draws the icon where there is none", () => {
     const { icon } = drawn(null),
       draw = vi.fn<(element: HTMLElement, id: string) => void>();
@@ -527,6 +461,36 @@ describe("writeTabIcon", () => {
     expect(draw).not.toHaveBeenCalled();
     expect(icon.firstElementChild).toBe(svg);
   });
+});
+
+describe("restoreTabIcon", () => {
+  it.each(["terminal:tab-bezel", "terminal:tab-tile"])(
+    "puts the plain icon back where %s is drawn",
+    (ours) => {
+      const { icon } = drawn(ours),
+        draw = vi.fn<(element: HTMLElement, id: string) => void>();
+      restoreTabIcon(icon, "terminal:tab-", "terminal", draw);
+      expect(draw).toHaveBeenCalledExactlyOnceWith(icon, "terminal");
+    },
+  );
+
+  it("puts it back where the icon of a set that no longer exists is drawn", () => {
+    const { icon } = drawn("terminal:tab-bezelround"),
+      draw = vi.fn<(element: HTMLElement, id: string) => void>();
+    restoreTabIcon(icon, "terminal:tab-", "terminal", draw);
+    expect(draw).toHaveBeenCalledExactlyOnceWith(icon, "terminal");
+  });
+
+  it.each(["lucide-terminal", "terminal:linux", "lucide-file", null])(
+    "leaves a tab alone that shows %s",
+    (other) => {
+      const { icon, svg } = drawn(other),
+        draw = vi.fn<(element: HTMLElement, id: string) => void>();
+      restoreTabIcon(icon, "terminal:tab-", "terminal", draw);
+      expect(draw).not.toHaveBeenCalled();
+      expect(icon.firstElementChild).toBe(svg);
+    },
+  );
 });
 
 describe("onWindowFocus", () => {

@@ -16,7 +16,10 @@
  *
  * Scope: every selector starts at the terminal tab header or at a class of
  * the icon's root, `.tts` or `.tts-set-<set>` (the theme is asked for with
- * `:is(.theme-light *)`, to keep that true).
+ * `:is(.theme-light *)`, to keep that true). A rule for the tab header needs
+ * an attribute on it that `view.ts` writes, `data-terminal-size` wherever no
+ * other is asked for: a terminal tab that carries none is styled by nothing
+ * here, and that is every terminal tab while the feature is off.
  * `.tts-host` stands in for the tab header and `.tts-host-icon` for its icon
  * container wherever the plugin draws a preview (the settings pickers).
  *
@@ -104,7 +107,10 @@
 
 /* ---------- 3. Colour and light ---------- */
 
-:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host) {
+:is(
+  .workspace-tab-header[data-type="terminal:terminal"][data-terminal-size],
+  .tts-host
+) {
   --tts-st: currentColor;
   --tts-o: var(--icon-opacity, 0.85);
 }
@@ -244,7 +250,10 @@
  * makes the container their frame, except on a tab where the browser can
  * place them from the drawing (section 6).
  */
-:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host)
+:is(
+    .workspace-tab-header[data-type="terminal:terminal"][data-terminal-size],
+    .tts-host
+  )
   :is(.workspace-tab-header-inner-icon, .tts-host-icon) {
   --tts-u: calc(var(--icon-size) / 24);
   position: relative;
@@ -268,7 +277,9 @@
  * the one rule that has to give it to the drawing instead (section 6).
  */
 :is(
-    .workspace-tab-header[data-type="terminal:terminal"]:is(.mod-root *),
+    .workspace-tab-header[data-type="terminal:terminal"][data-terminal-size]:is(
+        .mod-root *
+      ),
     .tts-host
   )
   :is(.workspace-tab-header-inner-icon, .tts-host-icon) {
@@ -285,7 +296,7 @@
  * moving boxes would be laid out for an icon of another size.
  * Both names of each side are listed: the left and right ones are older.
  */
-.workspace-tab-header[data-type="terminal:terminal"]:is(
+.workspace-tab-header[data-type="terminal:terminal"][data-terminal-size]:is(
     .mod-primary-split *,
     .mod-secondary-split *,
     .mod-left-split *,
@@ -296,15 +307,11 @@
 }
 
 /*
- * A tab whose view Obsidian has not loaded yet has no attribute until the
- * plugin has gone over the tabs (`TerminalView.dressUnloadedTabs`): until
- * then, `Settings.DEFAULT.tabIconSize`.
+ * The sizes of `Settings.TAB_ICON_SIZES`. There is no size for a header
+ * without the attribute: a tab whose view Obsidian has not loaded yet gets
+ * it when the plugin goes over the tabs (`TerminalView.dressUnloadedTabs`),
+ * and until then it is drawn as Obsidian draws any tab.
  */
-.workspace-tab-header[data-type="terminal:terminal"] {
-  --tts-size: 18px;
-}
-
-/* The sizes of `Settings.TAB_ICON_SIZES`. */
 :is(
   .workspace-tab-header[data-type="terminal:terminal"],
   .tts-host
@@ -663,7 +670,7 @@
  * only; beside a title the active tab's icon is as faded as the others, and
  * the tile stays so, or it would brighten when a status arrives.
  */
-.workspace-tab-header[data-type="terminal:terminal"].is-active:is(
+.workspace-tab-header[data-type="terminal:terminal"][data-terminal-size].is-active:is(
     .mod-primary-split *,
     .mod-secondary-split *,
     .mod-left-split *,
@@ -673,7 +680,7 @@
 }
 
 @media (hover: hover) {
-  .workspace-tab-header[data-type="terminal:terminal"]
+  .workspace-tab-header[data-type="terminal:terminal"][data-terminal-size]
     .workspace-tab-header-inner:hover {
     --tts-o: var(--icon-opacity-hover, 1);
   }
