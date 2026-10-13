@@ -7,7 +7,11 @@ import { ExtraButtonComponent, Setting, ToggleComponent } from "obsidian";
 import * as doctor from "../../src/terminal/win32-doctor.js";
 import { SettingTab } from "../../src/settings.js";
 import { loadDocumentations } from "../../src/documentations.js";
-import { type Experiment, fixExperiments } from "../../src/experiments.js";
+import {
+  EXPERIMENTS,
+  type Experiment,
+  fixExperiments,
+} from "../../src/experiments.js";
 import { Settings } from "../../src/settings-data.js";
 import {
   capturePythonRows,
@@ -447,6 +451,10 @@ class ExperimentalSettingTab extends SettingTab {
   public draw(rows: readonly Experiment.Row[]): void {
     this.newExperimentalWidgets(rows);
   }
+  /** Draws what `experimentRows()` returns, as `onLoad()` does. */
+  public drawRegistered(): void {
+    this.newExperimentalWidgets();
+  }
   public update(): void {
     this.ui.update();
   }
@@ -458,7 +466,18 @@ class ExperimentalSettingTab extends SettingTab {
   }
 }
 
-async function drawExperimentalSection(rows: readonly Experiment.Row[]) {
+/** A tab whose registry holds the two fixture experiments. */
+class TwoExperimentsSettingTab extends ExperimentalSettingTab {
+  protected override experimentRows(): readonly Experiment.Row[] {
+    return [ALPHA, BETA];
+  }
+}
+
+/** Draws `rows`, or for `null` what the tab's own `experimentRows()` returns. */
+async function drawExperimentalSection(
+  rows: readonly Experiment.Row[] | null,
+  Tab: typeof ExperimentalSettingTab = ExperimentalSettingTab,
+) {
   const i18n = createInstance();
   await i18n.init({
     lng: "en",
@@ -492,8 +511,12 @@ async function drawExperimentalSection(rows: readonly Experiment.Row[]) {
     await mutate(value);
     Object.assign(context.settings, { value });
   });
-  const tab = new ExperimentalSettingTab(context, loadDocumentations(context));
-  tab.draw(rows);
+  const tab = new Tab(context, loadDocumentations(context));
+  if (rows) {
+    tab.draw(rows);
+  } else {
+    tab.drawRegistered();
+  }
   return {
     context,
     holder: (id: string): HTMLElement | null =>
@@ -572,6 +595,33 @@ describe("experimental section", () => {
     ]);
     tab.dispose();
     expect(tab.containerEl.childElementCount).toBe(0);
+  });
+
+  it("draws what experimentRows() returns when it is given no rows", async () => {
+    const { tab } = await drawExperimentalSection(
+      null,
+      TwoExperimentsSettingTab,
+    );
+    // The heading, the intro and the two rows, as when the rows are given.
+    expect(
+      Array.from(
+        tab.containerEl.children,
+        (child) => child.getAttribute("data-experiment") ?? child.tagName,
+      ),
+    ).toEqual(["H2", "DIV", "alpha", "beta"]);
+  });
+
+  it("draws the registered experiments when it is given no rows", async () => {
+    const registered: readonly Experiment[] = EXPERIMENTS,
+      { tab } = await drawExperimentalSection(null),
+      drawn = tab.containerEl.querySelectorAll("[data-experiment]");
+    // None is registered in this version, so there is no heading and no row.
+    expect(tab.containerEl.querySelectorAll("h2")).toHaveLength(
+      Math.min(registered.length, 1),
+    );
+    expect(
+      Array.from(drawn, (row) => row.getAttribute("data-experiment")),
+    ).toEqual(registered.map(({ id }) => id));
   });
 
   it("a row shows the name, the effect, the known risk and a feedback link", async () => {
