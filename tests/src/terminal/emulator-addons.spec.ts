@@ -4390,6 +4390,29 @@ describe("DragAndDropAddon", () => {
     ]);
   });
 
+  // nushell reads a backslash outside quotes as a character of the name.
+  it("writes a path with a space in quotes for nushell", async () => {
+    const bed = createBed({ executable: "/opt/homebrew/bin/nu" });
+
+    await drop(bed, nativeDrag([nativeFile("b c.png", `${DESKTOP}/b c.png`)]));
+
+    expect(bed.paste.mock.calls).toEqual([[`'${DESKTOP}/b c.png' `]]);
+  });
+
+  it("writes the Linux path for the launcher of a WSL distribution", async () => {
+    dragAndDropEnvironment.platform = "win32";
+    const bed = createBed({ executable: "ubuntu2404.exe" });
+
+    await drop(
+      bed,
+      nativeDrag([nativeFile("a `b`.md", "C:\\Users\\me\\vault\\a `b`.md")]),
+    );
+
+    expect(bed.paste.mock.calls).toEqual([
+      ["/mnt/c/Users/me/vault/a\\ \\`b\\`.md "],
+    ]);
+  });
+
   // === What the profile says beyond its shell ===
 
   describe("in a WSL terminal", () => {

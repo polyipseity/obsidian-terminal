@@ -43,15 +43,16 @@ const GRAMMARS: readonly ShellGrammar[] = [
   "wsl",
   "powershell",
   "cmd",
+  "quoted",
   "javascript",
 ];
 
 /**
- * The grammars of shells that write the path they are given. `wsl` writes
- * another one, the Linux path, and `javascript` is no shell: both have tests
- * of their own.
+ * The grammars that have a text for each name of the tables below. `wsl`
+ * writes another path, the Linux one; `quoted` and `javascript` have no row
+ * there, and tests of their own.
  */
-type SamePathGrammar = Exclude<ShellGrammar, "javascript" | "wsl">;
+type SamePathGrammar = Exclude<ShellGrammar, "javascript" | "quoted" | "wsl">;
 
 describe("vaultDragPaths", () => {
   it.each<readonly [string, unknown, readonly string[]]>([
@@ -456,7 +457,26 @@ describe("shellGrammar", () => {
     ["/bin/zsh", "darwin", "posix"],
     ["/bin/bash", "linux", "posix"],
     ["/usr/bin/fish", "linux", "posix"],
-    ["/opt/homebrew/bin/nu", "darwin", "posix"],
+    // nushell and elvish read a backslash outside quotes as itself.
+    ["/opt/homebrew/bin/nu", "darwin", "quoted"],
+    ["nu", "linux", "quoted"],
+    ["/usr/local/bin/elvish", "darwin", "quoted"],
+    ["elvish", "linux", "quoted"],
+    ["nu.exe", "win32", "quoted"],
+    ["C:\\Program Files\\nu\\bin\\nu.exe", "win32", "quoted"],
+    ["elvish.exe", "win32", "quoted"],
+    // By their exact names, as every shell.
+    ["/usr/local/bin/nushell-wrapper", "darwin", "posix"],
+    ["nuget.exe", "win32", "cmd"],
+    // Known limit. A program that is not known gets the escapes of a POSIX
+    // shell off Windows: a wrapper, `tmux` or `ssh` mostly runs one, and
+    // Claude Code reads them. A shell or a prompt of another language that
+    // does not (xonsh, `python3`, `node`) reads another path, or none.
+    ["/usr/local/bin/xonsh", "darwin", "posix"],
+    ["/usr/bin/python3", "linux", "posix"],
+    ["/usr/local/bin/node", "darwin", "posix"],
+    ["/usr/bin/tmux", "linux", "posix"],
+    ["/Users/me/.local/bin/claude", "darwin", "posix"],
     ["zsh", "darwin", "posix"],
     ["/bin/sh", "android", "posix"],
     ["/bin/sh", "ios", "posix"],
@@ -473,7 +493,10 @@ describe("shellGrammar", () => {
     ["C:\\Windows\\System32\\cmd.exe", "win32", "cmd"],
     ["C:/Windows/System32/cmd.exe", "win32", "cmd"],
     ["C:\\WINDOWS\\SYSTEM32\\CMD.EXE", "win32", "cmd"],
-    ["nu.exe", "win32", "cmd"],
+    // Known limit. A program that is not known gets the double quotes of
+    // `cmd.exe` on Windows. One that reads them as the sh family does (`ssh`
+    // into such a shell) expands `$` and backticks of a name inside them.
+    ["ssh.exe", "win32", "cmd"],
     ["python.exe", "win32", "cmd"],
     ["claude", "win32", "cmd"],
     ["wt", "win32", "cmd"],
@@ -522,6 +545,23 @@ describe("shellGrammar", () => {
     // The exact name only: these two do not start a shell.
     ["C:\\Windows\\System32\\wslhost.exe", "win32", "cmd"],
     ["wslg.exe", "win32", "cmd"],
+    // The programs that the distributions of the Store install start a
+    // Linux shell as `wsl.exe` does.
+    ["ubuntu.exe", "win32", "wsl"],
+    ["ubuntu2204.exe", "win32", "wsl"],
+    ["Ubuntu2404.EXE", "win32", "wsl"],
+    [
+      "C:\\Users\\me\\AppData\\Local\\Microsoft\\WindowsApps\\ubuntu.exe",
+      "win32",
+      "wsl",
+    ],
+    ["debian.exe", "win32", "wsl"],
+    ["kali.exe", "win32", "wsl"],
+    ["openSUSE-Leap-15.6.exe", "win32", "wsl"],
+    ["opensuse-tumbleweed.exe", "win32", "wsl"],
+    ["debian-installer.exe", "win32", "cmd"],
+    ["kalinka.exe", "win32", "cmd"],
+    ["/usr/local/bin/ubuntu", "linux", "posix"],
     ["BASH.EXE", "win32", "posix-quoted"],
     ["C:\\msys64\\msys2_shell.cmd", "win32", "posix-quoted"],
     ["C:\\cygwin64\\Cygwin.bat", "win32", "posix-quoted"],
@@ -842,11 +882,14 @@ const WRITTEN_CASES: readonly (readonly [ShellGrammar, string])[] =
 /**
  * The paths of {@link WRITTEN_CASES} for one grammar. WSL has those of
  * `posix`: a Linux path is written as it is, and read back as it was dropped.
- * So has the developer console, which is given any path as a string.
+ * So have the grammars that put any path in quotes: `quoted` and that of the
+ * developer console.
  */
 function writtenPaths(grammar: ShellGrammar): readonly string[] {
   const fixture =
-      grammar === "wsl" || grammar === "javascript" ? "posix" : grammar,
+      grammar === "wsl" || grammar === "quoted" || grammar === "javascript"
+        ? "posix"
+        : grammar,
     paths = WRITTEN_CASES.filter(([written]) => written === fixture).map(
       ([, path]) => path,
     );
@@ -981,6 +1024,27 @@ function cmdArguments(line: string): readonly string[] | null {
 }
 
 /**
+ * nushell and elvish, by their manuals: a single-quoted string is read as it
+ * is, a double-quoted one with a backslash before each `\` and `"` of it, and
+ * a backslash in a bare word is a character like any other. Anything else
+ * that either of them gives a meaning to is unreadable.
+ */
+function quotedArguments(line: string): readonly string[] | null {
+  return shellArguments(
+    line,
+    /^(?:'[^']*'|"(?:[^"\\]|\\["\\])*"|[A-Za-z0-9\\/._:+-]+)(?= |$)/u,
+    (argument) => {
+      if (argument.startsWith("'")) {
+        return argument.slice(1, -1);
+      }
+      return argument.startsWith('"')
+        ? argument.slice(1, -1).replace(/\\(["\\])/gu, "$1")
+        : argument;
+    },
+  );
+}
+
+/**
  * The developer console: string literals of JavaScript in double quotes,
  * which JSON reads as JavaScript does.
  */
@@ -998,6 +1062,7 @@ const READERS: Readonly<
   posix: escapedArguments,
   "posix-quoted": shArguments,
   powershell: powershellArguments,
+  quoted: quotedArguments,
   // Whichever shell the distribution starts: the path is escaped for all.
   wsl: escapedArguments,
 };
@@ -1695,6 +1760,21 @@ describe("formatDroppedPath", () => {
       );
     });
 
+    // In the double quotes that an unknown program on Windows gets, the bash
+    // of the distribution runs what the name has between backticks.
+    it.each(["ubuntu.exe", "ubuntu2404.exe", "debian.exe", "kali.exe"])(
+      "keeps the shell that the launcher %j starts from running a part of a name",
+      (launcher) => {
+        const grammar = shellGrammar(launcher, "win32"),
+          text = written("C:\\Users\\me\\vault\\notes`calc.exe`.md", grammar);
+
+        expect(text).toBe("/mnt/c/Users/me/vault/notes\\`calc.exe\\`.md");
+        expect(READERS[grammar](text)).toEqual([
+          "/mnt/c/Users/me/vault/notes`calc.exe`.md",
+        ]);
+      },
+    );
+
     // Known limit. A profile whose arguments name no distribution runs the
     // default one, which nothing here tells: a file of any distribution is
     // then written as one of the distribution of the terminal.
@@ -1790,6 +1870,66 @@ describe("formatDroppedPath", () => {
           ).not.toBeNull();
         },
       );
+    });
+  });
+
+  describe("for nushell and elvish", () => {
+    it.each<readonly [string, string, string]>([
+      ["a plain path", "/Users/me/a.png", "/Users/me/a.png"],
+      ["a plain Windows path", "C:\\Users\\me\\a.png", "C:\\Users\\me\\a.png"],
+      ["a space", "/Users/me/My Vault/a.png", "'/Users/me/My Vault/a.png'"],
+      [
+        "a space in a Windows path",
+        "C:\\Users\\me\\My Vault\\a.png",
+        "'C:\\Users\\me\\My Vault\\a.png'",
+      ],
+      [
+        "what a shell expands or separates commands at",
+        "/Users/me/$HOME `x` (y) a;calc|b.png",
+        "'/Users/me/$HOME `x` (y) a;calc|b.png'",
+      ],
+      [
+        "a double quote",
+        '/Users/me/say "hi".png',
+        "'/Users/me/say \"hi\".png'",
+      ],
+      ["a tilde", "/Users/me/~a.png", "'/Users/me/~a.png'"],
+      [
+        "letters of another script",
+        "/Users/me/日本語.png",
+        "'/Users/me/日本語.png'",
+      ],
+      ["a single quote", "/Users/me/it's.png", '"/Users/me/it\'s.png"'],
+      [
+        "a single quote, a double quote and a backslash",
+        'C:\\Users\\me\\it\'s "x".png',
+        '"C:\\\\Users\\\\me\\\\it\'s \\"x\\".png"',
+      ],
+    ])("writes %s", (_name, path, text) => {
+      expect(formatDroppedPath(path, "quoted")).toBe(text);
+      expect(READERS.quoted(text)).toEqual([path]);
+    });
+
+    // What the escapes of a POSIX shell are to them: `My\` and `Vault/a.png`.
+    it("is given a path with a space as one argument, which escapes would not be", () => {
+      const path = "/Users/me/My Vault/a.png",
+        grammar = shellGrammar("/opt/homebrew/bin/nu", "darwin");
+
+      expect(READERS.quoted(written(path, grammar))).toEqual([path]);
+      expect(READERS.quoted(written(path, "posix"))).not.toEqual([path]);
+    });
+
+    it.each(writtenPaths("quoted"))(
+      "gives them one argument that is the path %j",
+      (path) => {
+        expect(READERS.quoted(written(path, "quoted"))).toEqual([path]);
+      },
+    );
+
+    it("is the path once Claude Code takes the quotes off", () => {
+      const path = "/Users/me/My Vault/photo.png";
+
+      expect(claudeCodeReads(pasted(path, "quoted"), "posix")).toEqual([path]);
     });
   });
 

@@ -17,11 +17,19 @@ import type { Platform } from "@polyipseity/obsidian-plugin-library";
  *   Windows file at its Linux path only.
  * - `powershell`: Windows PowerShell or PowerShell, on any platform.
  * - `cmd`: `cmd.exe`, and any other program on Windows.
+ * - `quoted`: nushell or elvish, on any platform, where a backslash outside
+ *   quotes is a character of the name.
  * - `javascript`: the developer console, which reads no arguments but
  *   JavaScript, where a path is a string.
  */
 export type ShellGrammar =
-  "posix" | "posix-quoted" | "wsl" | "powershell" | "cmd" | "javascript";
+  | "posix"
+  | "posix-quoted"
+  | "wsl"
+  | "powershell"
+  | "cmd"
+  | "quoted"
+  | "javascript";
 
 /** The paths one drop inserts at most; the rest is reported as skipped. */
 export const MAX_DROPPED_PATHS = 1024;
@@ -83,6 +91,10 @@ const PATH_SEPARATOR = /[\\/]/u,
   // three expand `$` (csh and tcsh backticks too) inside double quotes. They
   // read a backslash before a character as that character, on Windows too.
   ESCAPING_SHELLS: ReadonlySet<string> = new Set(["csh", "fish", "tcsh"]),
+  // Shells that have no escape outside quotes: a backslash there is a
+  // character like any other, so an escaped space still ends the argument and
+  // an escaped `;` still ends the command. Their quotes read alike.
+  QUOTING_SHELLS: ReadonlySet<string> = new Set(["elvish", "nu"]),
   // Programs that start a shell of the sh family on Windows, without suffix.
   WIN32_POSIX_SHELLS: ReadonlySet<string> = new Set([
     "ash",
@@ -101,6 +113,10 @@ const PATH_SEPARATOR = /[\\/]/u,
   ]),
   // The program that starts a Linux shell on Windows, without suffix.
   WSL = "wsl",
+  // The programs that start the shell of one WSL distribution, as the
+  // distributions of the Microsoft Store install them: `ubuntu`,
+  // `ubuntu2404`, `debian`, `kali`, `opensuse-leap-15.6`...
+  WSL_LAUNCHER = /^(?:ubuntu|opensuse)|^(?:debian|kali)$/u,
   // Shells without a line editor, by the platforms that have a terminal
   // driver: they read a line through it, and it keeps a line of limited size.
   // `sh` is dash on Debian and Ubuntu; on macOS it is bash, which edits its
@@ -135,6 +151,10 @@ const PATH_SEPARATOR = /[\\/]/u,
   // Paths made only of these need no quotes in PowerShell or `cmd.exe`:
   // letters, digits and combining marks of any script, and `\ / . _ : ~ + -`.
   PLAIN = /^[A-Za-z0-9\\/._:~+\p{L}\p{N}\p{M}-]*$/u,
+  // Paths made only of these are one bare word to nushell and to elvish.
+  BARE_WORD = /^[A-Za-z0-9\\/._:+-]*$/u,
+  // What their double-quoted strings do not read as it is.
+  DOUBLE_QUOTED_ESCAPED = /["\\]/gu,
   // What `cmd.exe` takes for a variable at its prompt: two percent signs
   // with text between them. One `%` names none, and neither does `%%`.
   CMD_VARIABLE = /%[^%]+%/u,
@@ -306,11 +326,16 @@ function programName(executable: string): string {
  * Windows has no grammar that every shell shares: `cmd.exe` knows double
  * quotes only, PowerShell expands `$` and backticks inside them, a shell of
  * the sh family takes the backslashes of a Windows path for escapes, and the
- * Linux shell that `wsl.exe` starts does not find a Windows path at all. A
+ * Linux shell that `wsl.exe` starts does not find a Windows path at all, nor
+ * does the one that the launcher of a distribution starts (`ubuntu.exe`). A
  * program that is not recognized gets double quotes there, which
  * Explorer-style terminals write and Claude Code reads. fish, csh and tcsh
  * read neither kind of quotes as written, so their paths are escaped as on
  * other platforms, backslashes of the path included.
+ *
+ * Off Windows a program that is not recognized gets the escapes of a POSIX
+ * shell, which is what most of them are or start. nushell and elvish are
+ * known: they read no escape outside quotes, on any platform.
  *
  * The shell is known by the exact name of the executable, in any case and
  * without one suffix of a Windows program or script (`.exe`, `.cmd`, `.bat`,
@@ -328,10 +353,13 @@ export function shellGrammar(
   if (POWERSHELLS.has(name)) {
     return "powershell";
   }
+  if (QUOTING_SHELLS.has(name)) {
+    return "quoted";
+  }
   if (platform !== "win32" || ESCAPING_SHELLS.has(name)) {
     return "posix";
   }
-  if (name === WSL) {
+  if (name === WSL || WSL_LAUNCHER.test(name)) {
     return "wsl";
   }
   return WIN32_POSIX_SHELLS.has(name) ? "posix-quoted" : "cmd";
@@ -575,6 +603,23 @@ function quoteCmd(path: string): string | null {
 }
 
 /**
+ * Quotes for nushell and elvish.
+ *
+ * Both read a single-quoted string as it is, and a double-quoted one with a
+ * backslash before each `\` and `"` of it; neither expands anything inside
+ * either. A path with a single quote goes in double quotes: each of the two
+ * writes a single quote inside single quotes in its own way.
+ */
+function quoteLiteral(path: string): string {
+  if (BARE_WORD.test(path)) {
+    return path;
+  }
+  return path.includes("'")
+    ? `"${path.replace(DOUBLE_QUOTED_ESCAPED, "\\$&")}"`
+    : `'${path}'`;
+}
+
+/**
  * Writes a path as one argument for a shell.
  *
  * @param path - absolute path.
@@ -603,6 +648,8 @@ export function formatDroppedPath(
       return quotePowerShell(path);
     case "cmd":
       return quoteCmd(path);
+    case "quoted":
+      return quoteLiteral(path);
     case "javascript":
       // A string literal of JavaScript, as JSON writes one.
       return JSON.stringify(path);
