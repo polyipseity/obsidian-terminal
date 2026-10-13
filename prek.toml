@@ -63,7 +63,7 @@ hooks = [{ id = "check-dependabot" }, { id = "check-github-workflows" }]
 # Markdown linting using markdownlint-cli2.
 [[repos]]
 repo = "https://github.com/DavidAnson/markdownlint-cli2.git"
-rev = "996abf60411a8d954288ac9856aae7602b80cbda"
+rev = "916ad0aaa108c64d294101002066f530ea170b10"
 hooks = [{ id = "markdownlint-cli2", args = ["--fix", "--no-globs"] }]
 
 [[repos]]

@@ -47,6 +47,14 @@ This guide provides clear, actionable instructions for AI coding agents working 
 - **Versioning**
   - Use `changesets` for PRs; the `version` lifecycle script is configured (`node scripts/version.mjs`).
 
+- **Releases**
+  - Pushing a tag `X.Y.Z` equal to the version in `manifest.json` starts `.github/workflows/release.yml` in the repository that receives the tag, at the tagged commit. The job runs in `polyipseity/obsidian-terminal`. Any other repository skips it unless its repository variable `RELEASE_ON_TAG` is `true`; set that on a fork only to rehearse a release.
+  - Before it builds, the run reads the release state and requires a `## X.Y.Z` section in `CHANGELOG.md` for a new draft. It then builds, attests `main.js`, `manifest.json`, and `styles.css`, and drafts a release titled with the tag. It never publishes.
+  - Order: push the tag, wait until the run has succeeded, then publish the draft. Obsidian cannot download the version before that. Publish only when the run is green and the draft lists the three files: a failed run can leave a draft with files missing, and publishing during a run can let an upload replace published files.
+  - Do not create the release by hand before the run. A release that is already published keeps its files, and the run then builds and attests nothing.
+  - A failed run can be re-run: an existing draft gets the three files again. Fallback by hand when the run cannot pass: `bun run build`, then `gh release upload X.Y.Z main.js manifest.json styles.css --clobber` and publish if the run left a draft, otherwise `gh release create X.Y.Z main.js manifest.json styles.css --title X.Y.Z --notes-file <notes>`. Files released by hand have no attestation.
+  - The steps that call `gh` are in `scripts/draft-release.sh`. `tests/scripts/draft-release.test.ts` runs them against a stub `gh` and checks the order of the workflow's steps. It needs `bash`, `jq`, and `awk`, and is skipped on Windows.
+
 - **Localization**
   - Add locales by copying `assets/locales/en/translation.json` and updating `assets/locales/*/language.json` as needed. See `assets/locales/README.md` for conventions.
 
@@ -169,7 +177,8 @@ paths work. For platform-free framing and admission checks, run
 `bun x vitest run tests/src/terminal/pseudoterminal.spec.ts`.
 
 The `windows-native` job on `windows-2025` for Python 3.9 and 3.12 runs the pytest
-suites and `pseudoterminal.test.ts`. The Linux `build` job runs
+suites and `pseudoterminal.test.ts`, and checks `bun run clean` with files present
+and already gone. The Linux `build` job runs
 `pseudoterminal.spec.ts` with the rest of the Vitest suite.
 
 ## 3. Coding Conventions

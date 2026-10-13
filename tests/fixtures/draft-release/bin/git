@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Stub git for tests/scripts/draft-release.test.ts. The checked-out commit is $STUB_HEAD.
+if [[ "$*" == "rev-parse HEAD" ]]; then
+  echo "$STUB_HEAD"
+  exit 0
+fi
+echo "stub git: unexpected call: git $*" >&2
+exit 97

@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Stub gh for tests/scripts/draft-release.test.ts. Logs every call to $GH_LOG.
+# `release view` answers from $STUB_STATE and `api`, the lookup of the tag's
+# commit, from $STUB_TAG_COMMIT; every other call succeeds.
+echo "gh $*" >> "$GH_LOG"
+if [[ "$1 $2" == "release view" ]]; then
+  case "$STUB_STATE" in
+    none) echo "release not found" >&2; exit 1 ;;
+    draft-titled) echo "{\"isDraft\":true,\"name\":\"$3\"}" ;;
+    draft-titled-extra) echo "{\"isDraft\":true,\"name\":\"Terminal $3 (autumn)\"}" ;;
+    draft-untitled) echo '{"isDraft":true,"name":""}' ;;
+    published-untitled) echo '{"isDraft":false,"name":""}' ;;
+    published-titled) echo "{\"isDraft\":false,\"name\":\"$3\"}" ;;
+    published-other-title) echo '{"isDraft":false,"name":"Autumn release"}' ;;
+    http502) echo "HTTP 502: Bad Gateway (https://api.github.com/repos/o/r/releases/tags/$3)" >&2; exit 1 ;;
+    http401) echo "HTTP 401: Bad credentials (https://api.github.com/graphql)" >&2; exit 1 ;;
+    silent-fail) exit 1 ;;
+    not-found-inside) echo "HTTP 404: release not found (https://api.github.com/graphql)" >&2; exit 1 ;;
+    http502-then-not-found) printf '%s\n' "HTTP 502: Bad Gateway (https://api.github.com/graphql)" "release not found" >&2; exit 1 ;;
+    not-found-then-http502) printf '%s\n' "release not found" "HTTP 502: Bad Gateway (https://api.github.com/graphql)" >&2; exit 1 ;;
+    empty-ok) : ;;
+    not-json) echo "<html>" ;;
+    string-draft) echo "{\"isDraft\":\"true\",\"name\":\"$3\"}" ;;
+    *) echo "stub: unknown state $STUB_STATE" >&2; exit 97 ;;
+  esac
+elif [[ "$1" == api ]]; then
+  if [[ -z "${STUB_TAG_COMMIT:-}" ]]; then
+    echo "gh: No commit found for SHA: ${2##*/commits/} (HTTP 422)" >&2
+    exit 1
+  fi
+  echo "$STUB_TAG_COMMIT"
+fi
+exit 0
