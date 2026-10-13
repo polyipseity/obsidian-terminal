@@ -807,7 +807,8 @@ describe("terminal options font family", () => {
   async function openTerminalOptions(): Promise<{
     readonly field: HTMLInputElement;
     readonly json: HTMLTextAreaElement;
-    readonly description: string;
+    readonly description: string | undefined;
+    readonly inNameColumn: string;
   }> {
     const rows = capturePythonRows(),
       modal = new TerminalOptionsModal(
@@ -822,7 +823,13 @@ describe("terminal options font family", () => {
       field = font?.texts[0]?.inputEl,
       json = rows.get("components.edit-data.data")?.textAreas[0]?.inputEl;
     if (!field || !json) throw new Error("terminal options rows missing");
-    return { description: font.descEl.textContent, field, json };
+    return {
+      // The line right under the row, as wide as the dialog.
+      description: font.settingEl.nextElementSibling?.textContent,
+      field,
+      inNameColumn: font.descEl.textContent,
+      json,
+    };
   }
 
   afterEach(() => {
@@ -838,6 +845,12 @@ describe("terminal options font family", () => {
     expect(
       en.components["terminal-options"]["font-family-description"],
     ).toMatch(/CSS font-family list.*'0xProto Nerd Font Mono', monospace/u);
+  });
+
+  it("keeps the description out of the row's narrow name column", async () => {
+    const { inNameColumn } = await openTerminalOptions();
+
+    expect(inNameColumn).toBe("");
   });
 
   it("writes a quoted family with a fallback to the raw JSON unchanged", async () => {

@@ -122,9 +122,6 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
       .newSetting(element, (setting) => {
         setting
           .setName(i18n.t("components.terminal-options.font-family"))
-          .setDesc(
-            i18n.t("components.terminal-options.font-family-description"),
-          )
           .addText(
             linkSetting(
               () => data.fontFamily ?? "",
@@ -171,6 +168,18 @@ export class TerminalOptionsModal extends EditDataModal<Settings.Profile.Termina
             ),
           );
       })
+      // A line of its own: the row's name column is too narrow for the sentence.
+      .new(
+        () => createChildElement(element, "div"),
+        (ele) => {
+          ele.textContent = i18n.t(
+            "components.terminal-options.font-family-description",
+          );
+        },
+        (ele) => {
+          ele.remove();
+        },
+      )
       .newSetting(element, (setting) => {
         setting
           .setName(i18n.t("components.terminal-options.font-size"))

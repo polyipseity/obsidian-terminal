@@ -217,7 +217,12 @@ export function capturePythonRows(): ReadonlyMap<string, PythonRow> {
     configure,
   ) {
     return this.new(
-      () => new PythonRow(element),
+      () => {
+        const row = new PythonRow(element);
+        // In the container, as Obsidian's rows are, so tests can read order.
+        element.append(row.settingEl);
+        return row;
+      },
       (row) => {
         row.buttonIndex = 0;
         row.textIndex = 0;
