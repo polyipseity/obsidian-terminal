@@ -109,6 +109,23 @@ os.write(1, b"GOT %d %s\\n" % (count, ending))
 termios.tcdrain(1)
 """
 
+"""Stand-in for a proxy that has closed its stdin and keeps its stdout open."""
+_CLOSED_STDIN_STAND_IN = """
+import os, time
+os.close(0)
+os.write(1, b"READY\\n")
+time.sleep(60)
+"""
+
+"""Stand-in for a proxy that reads nothing and never stops writing."""
+_ENDLESS_OUTPUT_STAND_IN = """
+import os, time
+os.write(1, b"READY\\n")
+while True:
+    os.write(1, b".")
+    time.sleep(0.01)
+"""
+
 
 def _module_path() -> Path:
     """Return the filesystem path to the Unix PTY proxy module."""
@@ -1012,15 +1029,20 @@ def _spawn_proxy(
 
 
 def _pump(
-    process: subprocess.Popen[bytes], payload: bytes, *, stall: float
+    process: subprocess.Popen[bytes],
+    payload: bytes,
+    *,
+    stall: float,
+    limit: float = 30.0,
 ) -> tuple[bytes, int, bool]:
     """Offer `payload` to the proxy's stdin while draining its stdout.
 
     Return the output read, the number of payload bytes the proxy took, and
-    whether the output reached EOF. Give up once neither direction moves for
-    `stall` seconds, so a deadlocked proxy fails the test instead of hanging
-    it. The payload is written without blocking: a write that waited for the
-    proxy would deadlock the test itself.
+    whether the output reached EOF. Give up once no byte moves in either
+    direction for `stall` seconds, or after `limit` seconds in all, so a proxy
+    that is deadlocked or never stops writing fails the test instead of
+    hanging it. The payload is written without blocking: a write that waited
+    for the proxy would deadlock the test itself.
     """
     stdin, stdout = process.stdin, process.stdout
     if stdin is None or stdout is None:
@@ -1031,20 +1053,69 @@ def _pump(
     view = memoryview(payload)
     sent = 0
     output = bytearray()
+    offering = True
+    moved = time.monotonic()
+    deadline = moved + limit
     while True:
-        pending = [stdin] if sent < len(view) else []
-        readable, writable, _ = select.select([stdout], pending, [], stall)
-        if not readable and not writable:
+        wait = min(moved + stall, deadline) - time.monotonic()
+        if wait <= 0:
             return bytes(output), sent, False
+        pending = [stdin] if offering and sent < len(view) else []
+        readable, writable, _ = select.select([stdout], pending, [], wait)
         if writable:
-            # A proxy that died shows as the end of its output.
-            with suppress(BlockingIOError, BrokenPipeError):
-                sent += os.write(stdin.fileno(), view[sent : sent + 65536])
+            taken = 0
+            try:
+                taken = os.write(stdin.fileno(), view[sent : sent + 65536])
+            except BlockingIOError:
+                pass
+            except BrokenPipeError:
+                # Nobody reads the pipe any more, and it stays writable: stop
+                # offering. A proxy that died shows as the end of its output.
+                offering = False
+            if taken:
+                sent += taken
+                moved = time.monotonic()
         if readable:
             data = os.read(stdout.fileno(), 65536)
             if not data:
                 return bytes(output), sent, True
             output += data
+            moved = time.monotonic()
+
+
+@contextmanager
+def _stand_in(program: str) -> Iterator[subprocess.Popen[bytes]]:
+    """Run `program` in place of a proxy once it is ready, and end it afterwards."""
+    with subprocess.Popen(
+        [sys.executable, "-c", program],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+    ) as process:
+        try:
+            assert process.stdout is not None
+            assert os.read(process.stdout.fileno(), 6) == b"READY\n"
+            yield process
+        finally:
+            process.kill()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only proxy")
+@pytest.mark.usefixtures("_deadline")
+def test_pump_stops_offering_input_that_nobody_reads() -> None:
+    """Give up on a proxy that closed its stdin instead of spinning on the pipe."""
+    with _stand_in(_CLOSED_STDIN_STAND_IN) as process:
+        assert _pump(process, b"x" * 65536, stall=0.2) == (b"", 0, False)
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only proxy")
+@pytest.mark.usefixtures("_deadline")
+def test_pump_ends_at_its_limit_while_output_keeps_coming() -> None:
+    """Give up on a proxy that never stops writing once the time limit passes."""
+    with _stand_in(_ENDLESS_OUTPUT_STAND_IN) as process:
+        output, _sent, eof = _pump(process, b"", stall=5.0, limit=0.5)
+
+        assert output
+        assert not eof
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only proxy")
