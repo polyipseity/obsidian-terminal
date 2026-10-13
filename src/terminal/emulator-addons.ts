@@ -14,7 +14,7 @@ import type { WebglAddon } from "@xterm/addon-webgl";
 import type { ILink, ITerminalAddon, ITheme, Terminal } from "@xterm/xterm";
 import { eastAsianWidth } from "get-east-asian-width";
 import { around } from "monkey-around";
-import type { TFile, WorkspaceLeaf } from "obsidian";
+import { TFile, type WorkspaceLeaf } from "obsidian";
 import { noop } from "ts-essentials";
 import { BUNDLE } from "../imports.js";
 import { DOMClasses2 } from "../magic.js";
@@ -1427,8 +1427,9 @@ export class VaultFileLinksAddon implements ITerminalAddon {
     app: PluginContext["app"],
     open: (file: TFile) => void,
   ): ILink | null {
-    const file = app.vault.getFileByPath(filePath);
-    if (!file) return null;
+    // `Vault.getFileByPath` needs Obsidian 1.5.7, newer than `minAppVersion`.
+    const file = app.vault.getAbstractFileByPath(filePath);
+    if (!(file instanceof TFile)) return null;
     const startX = this.visualColumn(lineText, textStart) + 1;
     const endX = this.visualColumn(lineText, textStart + filePath.length);
     return {

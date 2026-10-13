@@ -1492,13 +1492,25 @@ describe("SynchronizedOutputScrollAddon", () => {
 // VaultFileLinksAddon
 // ---------------------------------------------------------------------------
 
+// The shared Obsidian mock declares `TFile` as an interface only. The addon
+// narrows with `instanceof TFile`, which needs a class at run time.
+const { MockTFile } = vi.hoisted(() => ({
+  MockTFile: class TFile {
+    public path = "";
+  },
+}));
+vi.mock("obsidian", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("obsidian")>()),
+  TFile: MockTFile,
+}));
+
 describe("VaultFileLinksAddon", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  /** Mock file returned by getFileByPath. */
-  const MOCK_FILE: TFile = {
+  /** Mock file returned by getAbstractFileByPath. */
+  const MOCK_FILE: TFile = Object.assign(new MockTFile(), {
     basename: "test",
     extension: "md",
     name: "test.md",
@@ -1506,16 +1518,17 @@ describe("VaultFileLinksAddon", () => {
     path: "test.md",
     stat: { ctime: 0, mtime: 0, size: 0 },
     vault: {} as Vault,
-  };
+  });
 
   /**
-   * Creates a VaultFileLinksAddon test bed.
+   * Creates a VaultFileLinksAddon test bed. Its vault has no `getFileByPath`,
+   * like the vault of an Obsidian before 1.5.7.
    *
-   * @param fileExists - Whether getFileByPath should return a TFile or null.
+   * @param fileExists - Whether getAbstractFileByPath should return a TFile or null.
    */
   function createBed(fileExists = true): {
     provideLinks: (lineText: string) => ILink[] | undefined;
-    getFileByPath: ReturnType<typeof vi.fn>;
+    getAbstractFileByPath: ReturnType<typeof vi.fn>;
     openFile: ReturnType<typeof vi.fn>;
     revealLeaf: ReturnType<typeof vi.fn>;
     leaf: WorkspaceLeaf;
@@ -1523,8 +1536,8 @@ describe("VaultFileLinksAddon", () => {
     disposable: IDisposable;
     addon: VaultFileLinksAddon;
   } {
-    const getFileByPath = vi.fn(() => (fileExists ? MOCK_FILE : null));
-    const vault = { getFileByPath } as unknown as Vault;
+    const getAbstractFileByPath = vi.fn(() => (fileExists ? MOCK_FILE : null));
+    const vault = { getAbstractFileByPath } as unknown as Vault;
 
     const revealLeaf = vi.fn().mockResolvedValue(undefined);
     const workspace = { revealLeaf } as unknown as Workspace;
@@ -1565,7 +1578,7 @@ describe("VaultFileLinksAddon", () => {
 
     return {
       provideLinks,
-      getFileByPath,
+      getAbstractFileByPath,
       openFile,
       revealLeaf,
       leaf,
@@ -1674,12 +1687,27 @@ describe("VaultFileLinksAddon", () => {
 
   // --- File resolution ---
 
-  it("calls getFileByPath for each matched link", () => {
-    const { provideLinks, getFileByPath } = createBed();
+  it("calls getAbstractFileByPath for each matched link", () => {
+    const { provideLinks, getAbstractFileByPath } = createBed();
     provideLinks("(a.md) and (b.md)");
-    expect(getFileByPath).toHaveBeenCalledTimes(2);
-    expect(getFileByPath).toHaveBeenCalledWith("a.md");
-    expect(getFileByPath).toHaveBeenCalledWith("b.md");
+    expect(getAbstractFileByPath).toHaveBeenCalledTimes(2);
+    expect(getAbstractFileByPath).toHaveBeenCalledWith("a.md");
+    expect(getAbstractFileByPath).toHaveBeenCalledWith("b.md");
+  });
+
+  it("links a file on a vault without getFileByPath", () => {
+    // `Vault.getFileByPath` is new in Obsidian 1.5.7; the manifest allows 1.4.11.
+    const { provideLinks } = createBed();
+    const links = provideLinks("see notes/todo.md");
+    expect(links).toHaveLength(1);
+    expect(links?.[0]?.text).toBe("notes/todo.md");
+  });
+
+  it("omits a path that names a folder", () => {
+    const { provideLinks, getAbstractFileByPath } = createBed();
+    // A folder is an abstract file that is not a TFile.
+    getAbstractFileByPath.mockReturnValue({ children: [], path: "dir.md" });
+    expect(provideLinks("(dir.md)")).toHaveLength(0);
   });
 
   it("omits links whose files do not exist", () => {
@@ -1811,8 +1839,8 @@ describe("VaultFileLinksAddon", () => {
       element: document.createElement("div"),
     } as unknown as Terminal;
 
-    const getFileByPath = vi.fn();
-    const vault = { getFileByPath } as unknown as Vault;
+    const getAbstractFileByPath = vi.fn();
+    const vault = { getAbstractFileByPath } as unknown as Vault;
     const app = { vault, workspace: {} as Workspace } as unknown as App;
     const context = { app } as unknown as PluginContext;
     const addon = new VaultFileLinksAddon(context, vi.fn());
