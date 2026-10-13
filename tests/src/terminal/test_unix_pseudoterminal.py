@@ -47,6 +47,11 @@ the proxy's input buffer and the pipe to the proxy hold together (a pipe holds
 up to 1 MiB on Linux with 64 KiB pages)."""
 _PENDING_BYTES = 4 * 1024 * 1024
 
+"""Bytes of input the proxy holds for a PTY that takes no more, before it
+stops reading its stdin: the proxy's `_INPUT_BUFFER_LIMIT`. Stated here, so
+that the real-proxy tests describe the proxy from outside."""
+_HELD_BYTES = 64 * 1024
+
 """Counts the markers this process has handed out."""
 _MARKER_COUNT = itertools.count()
 
@@ -1203,19 +1208,18 @@ def _fill_input_buffer(process: subprocess.Popen[bytes]) -> None:
     does, so only what went in beyond the pipe's capacity counts. A proxy that
     is slow to start gets 5 seconds before that count is judged.
     """
-    limit = _load_unix_pseudoterminal_module()._INPUT_BUFFER_LIMIT
     capacity = _pipe_capacity()
     payload = b"x" * _PENDING_BYTES
     sent = 0
     deadline = time.monotonic() + 5.0
-    while sent - capacity < limit and time.monotonic() < deadline:
+    while sent - capacity < _HELD_BYTES and time.monotonic() < deadline:
         output, taken, eof = _pump(process, payload[sent:], stall=0.5)
         assert not eof
         assert not output, output[:200]
         sent += taken
-    assert sent - capacity >= limit, (
+    assert sent - capacity >= _HELD_BYTES, (
         f"the proxy took {sent - capacity} bytes out of its pipe, "
-        f"less than its input buffer of {limit}"
+        f"less than the {_HELD_BYTES} it holds"
     )
     # The proxy stopped taking input instead of holding all of it.
     assert sent <= len(payload) // 2
