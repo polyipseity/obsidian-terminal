@@ -4714,6 +4714,74 @@ describe("DragAndDropAddon", () => {
         expect(notices()).toEqual([]);
       },
     );
+
+    // The drop stops at the first path that does not fit the line. So the
+    // first path a drag can insert decides whether its drop inserts anything,
+    // and the cursor must not promise what the drop then declines.
+    describe("whose first path alone is longer than the line", () => {
+      // 780 bytes under `/tmp`: more than the 768 that dash on macOS has.
+      const LONG = `${"a".repeat(255)}/${"b".repeat(255)}/${"c".repeat(255)}/long.md`;
+
+      /** A drag of vault files over a terminal on macOS. */
+      function drag(executable: string, ...files: readonly string[]): Bed {
+        dragAndDropEnvironment.platform = "darwin";
+        return createBed({
+          draggable: { files: files.map(vaultFile), type: "files" },
+          executable,
+          fullPath: (path) => `/tmp/${path}`,
+        });
+      }
+
+      it.each<readonly [string, readonly string[]]>([
+        ["that path alone", [LONG]],
+        ["a short path after it", [LONG, "short.md"]],
+        ["a path that cannot be written before it", ["a\tb.md", LONG]],
+      ])(
+        "refuses the drag of %s into dash, and its drop inserts nothing",
+        async (_name, files) => {
+          const bed = drag("/bin/dash", ...files);
+
+          for (const type of OVER_TYPES) {
+            expect(bed.fire(type, vaultDrag()).dataTransfer?.dropEffect).toBe(
+              "none",
+            );
+          }
+          expect(bed.setAction.mock.calls).toEqual([[null], [null]]);
+
+          await drop(bed, vaultDrag());
+
+          expect(bed.paste).not.toHaveBeenCalled();
+          expect(notices()).toEqual([SKIPPED_PATHS]);
+        },
+      );
+
+      it("accepts the drag of a short path before it into dash, and its drop inserts that one", async () => {
+        const bed = drag("/bin/dash", "short.md", LONG);
+
+        expect(bed.fire("dragover", vaultDrag()).dataTransfer?.dropEffect).toBe(
+          "copy",
+        );
+        expect(bed.setAction).toHaveBeenCalledExactlyOnceWith(INSERT_PATH);
+
+        await drop(bed, vaultDrag());
+
+        expect(bed.paste.mock.calls).toEqual([["/tmp/short.md "]]);
+        expect(notices()).toEqual([SKIPPED_PATHS]);
+      });
+
+      it("accepts the drag of that path into zsh, and its drop inserts it", async () => {
+        const bed = drag("/bin/zsh", LONG);
+
+        expect(bed.fire("dragover", vaultDrag()).dataTransfer?.dropEffect).toBe(
+          "copy",
+        );
+
+        await drop(bed, vaultDrag());
+
+        expect(bed.paste.mock.calls).toEqual([[`/tmp/${LONG} `]]);
+        expect(notices()).toEqual([]);
+      });
+    });
   });
 
   // Claude Code tells quoted paths apart only when each is a paste of its own.

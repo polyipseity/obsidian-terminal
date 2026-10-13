@@ -612,8 +612,9 @@ export class DragAndDropAddon implements ITerminalAddon {
   /**
    * Tells whether a drop of a vault drag inserts a path: whether the drag
    * carries a file that the vault knows, at a path the shell of the terminal
-   * has a way to write. It stops at the first such file, as it is asked at
-   * every `dragover` and a drag can carry a thousand files.
+   * has a way to write, and whether that path fits what one drop may paste.
+   * It stops at the first such file, as it is asked at every `dragover` and
+   * a drag can carry a thousand files.
    */
   #insertsVaultPath(draggable: unknown): boolean {
     const { vault } = this.context.app,
@@ -622,11 +623,17 @@ export class DragAndDropAddon implements ITerminalAddon {
       return false;
     }
     const writing = this.#writing(deopaque(Platform.CURRENT));
-    return vaultDragPaths(draggable).some(
-      (path) =>
-        vault.getAbstractFileByPath(path) !== null &&
-        formatDroppedPath(adapter.getFullPath(path), ...writing) !== null,
-    );
+    for (const path of vaultDragPaths(draggable)) {
+      if (vault.getAbstractFileByPath(path) !== null) {
+        const fullPath = adapter.getFullPath(path);
+        if (formatDroppedPath(fullPath, ...writing) !== null) {
+          // The first path the drop writes. A drop stops at the first path
+          // that does not fit: if it is this one, nothing is pasted.
+          return formatDroppedPaths([fullPath], ...writing).texts.length > 0;
+        }
+      }
+    }
+    return false;
   }
 
   /**
