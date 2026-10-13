@@ -705,14 +705,17 @@ export class DragAndDropAddon implements ITerminalAddon {
     if (paths.length === 0) {
       return listed;
     }
-    const self0 = activeSelf(this.element),
-      found = new Set<number>(),
+    const found = new Set<number>(),
       // One iterator for all the loops below, so each path is taken once.
       entries = paths.entries();
     let expired = false,
       timer: number | undefined;
+    // The timer is one of the main window, not of the window the terminal is
+    // in: a terminal can be moved out of a pop-out window, which then closes,
+    // and a closed window runs none of its timers. The deadline would never
+    // come, and a lookup without answer would hold up every later drop.
     const deadline = new Promise<false>((resolve) => {
-        timer = self0.setTimeout(() => {
+        timer = self.setTimeout(() => {
           expired = true;
           resolve(false);
         }, DragAndDropAddon.#LOOKUP_DEADLINE);
@@ -744,7 +747,7 @@ export class DragAndDropAddon implements ITerminalAddon {
       Array.from({ length: Math.min(paths.length, LOOKUPS) }, lookUp),
     );
     // Every path has its answer, or the deadline has passed.
-    self0.clearTimeout(timer);
+    self.clearTimeout(timer);
     const onDisk = paths.filter((_path, index) => found.has(index));
     return { paths: onDisk, skipped: skipped + paths.length - onDisk.length };
   }

@@ -3581,6 +3581,31 @@ describe("DragAndDropAddon", () => {
     expect(notices()).toEqual([NO_PATHS]);
   });
 
+  // A terminal dragged out of a pop-out keeps its addon, and the pop-out
+  // closes with its last tab. A closed window runs none of its timers.
+  it("stops waiting for the disk after the window the terminal was dropped in has closed", async () => {
+    vi.useFakeTimers();
+    dragAndDropEnvironment.stat.mockImplementation((path) =>
+      path === `${DESKTOP}/stuck.png`
+        ? pendingStat().promise
+        : Promise.resolve(FILE_ON_DISK),
+    );
+    const popout = popoutWindow(),
+      bed = createBed({ document: popout.document });
+
+    bed.fire("drop", uriDrag(`file://${DESKTOP}/stuck.png`));
+    await vi.advanceTimersByTimeAsync(0);
+    document.body.appendChild(bed.view);
+    popout.close();
+    bed.fire("drop", uriDrag());
+    await vi.advanceTimersByTimeAsync(2000);
+    bed.view.remove();
+
+    // The stuck drop has given up, and the one after it has had its turn.
+    expect(notices()).toEqual([NO_PATHS]);
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+  });
+
   // === Lookups outstanding, over every drop and every terminal ===
 
   // The process reads and writes every file on a pool of four threads, those
