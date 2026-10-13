@@ -888,7 +888,12 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
     return describeExperiments(EXPERIMENTS, {});
   }
 
-  /** The Experimental section: nothing when there are no experiments. */
+  /**
+   * The Experimental section: nothing when there are no experiments.
+   *
+   * `rows` is every registered experiment, in registry order: the toggles
+   * rewrite the stored flags against this list.
+   */
   protected newExperimentalWidgets(
     rows: readonly Experiment.Row[] = this.experimentRows(),
   ): void {

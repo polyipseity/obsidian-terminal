@@ -96,7 +96,8 @@ export function isExperimentEnabled<I extends string>(
  * settings. An error from either is logged and does not reach the settings
  * change that caused it.
  *
- * @returns stops a running experiment and ends the subscription
+ * @returns stops a running experiment and ends the subscription; register it
+ *   with the owner
  */
 export function whileExperimentEnabled<I extends string>(
   settings: ExperimentSettings<I>,
