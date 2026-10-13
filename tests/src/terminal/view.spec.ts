@@ -1845,6 +1845,22 @@ describe("TerminalView file link leaf", () => {
     expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
   });
 
+  it.each(["left", "right"] as const)(
+    "opens a new tab when the only shown note is in the %s sidebar",
+    (side) => {
+      // A note kept in a sidebar is reused only after it was the active leaf.
+      const { workspace, terminal, note, notes, place, next, allocate } =
+        makeBed();
+      place(terminal.leaf, {});
+      place(note, {});
+      notes.push(note);
+      vi.spyOn(note, "getRoot").mockReturnValue(workspace[`${side}Split`]);
+
+      expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+      expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
+    },
+  );
+
   it("opens a new tab when the remembered note is in another window", () => {
     // Revealing a leaf raises its window, here over the terminal's own.
     const { terminal, note, notes, lastActive, moveToWindow, next, allocate } =
