@@ -205,6 +205,7 @@ describe("profile editor Windows-only rows", () => {
   );
 
   it("keeps the Windows terminal backend and resizer rows on win32", async () => {
+    platform.current = "win32";
     const rows = capturePythonRows(),
       modal = new PythonProfileModal(
         await pythonSettingsContext(),
