@@ -11,17 +11,25 @@ export function tabHeaderOf(leaf: WorkspaceLeaf): HTMLElement | null {
     : null;
 }
 
+function removeFlash(leaf: WorkspaceLeaf): void {
+  // Without a tab header the flash stays.
+  tabHeaderOf(leaf)?.classList.remove("is-flashing");
+}
+
 /**
  * Reveals `leaf` without the highlight Obsidian flashes on the tab header of a
  * leaf it reveals (`is-flashing`, 750 ms), which is drawn notched on main-area
- * tabs. Both callers reveal a terminal view that is already loaded, so the
- * reveal settles and the class comes off before the next frame is painted.
+ * tabs. Obsidian adds the class before `revealLeaf` first yields, so it comes
+ * off as soon as the call returns: the reveal of a view that is still loading
+ * stays pending while frames are painted. It comes off once more after the
+ * reveal, for an Obsidian that adds the class later.
  */
 export async function revealLeafWithoutFlash(
   workspace: Workspace,
   leaf: WorkspaceLeaf,
 ): Promise<void> {
-  await workspace.revealLeaf(leaf);
-  // Without a tab header the flash stays.
-  tabHeaderOf(leaf)?.classList.remove("is-flashing");
+  const revealed = workspace.revealLeaf(leaf);
+  removeFlash(leaf);
+  await revealed;
+  removeFlash(leaf);
 }

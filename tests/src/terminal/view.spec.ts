@@ -1416,21 +1416,19 @@ describe("TerminalView reveal flash", () => {
     expect(header.classList.contains(FLASH)).toBe(false);
   });
 
-  it("removes the flash from the tab of a terminal it focuses", async () => {
+  it("removes the flash from the tab of a terminal it focuses", () => {
     const { context, reveal } = makeTerminalContext();
     const { leaf, view, header } = makeTabbedLeaf(context);
+    // The reveal stays pending, as for a view that is still loading.
     reveal.mockImplementation(() => {
       header.classList.add(FLASH);
-      return Promise.resolve();
+      return deferred().promise;
     });
 
     view["focus"]();
 
     expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
-    expect(header.classList.contains(FLASH)).toBe(true);
-    await vi.waitFor(() => {
-      expect(header.classList.contains(FLASH)).toBe(false);
-    });
+    expect(header.classList.contains(FLASH)).toBe(false);
   });
 });
 

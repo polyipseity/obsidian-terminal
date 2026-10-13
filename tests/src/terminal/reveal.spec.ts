@@ -8,6 +8,7 @@ import {
   revealLeafWithoutFlash,
   tabHeaderOf,
 } from "../../../src/terminal/reveal.js";
+import { microtasks } from "../../support/helpers.js";
 
 const FLASH = "is-flashing";
 
@@ -60,6 +61,39 @@ describe("revealLeafWithoutFlash", () => {
 
     expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
     expect(header.classList.contains(FLASH)).toBe(false);
+  });
+
+  it("removes the flash while the reveal is still pending", async () => {
+    const { workspace, reveal } = makeWorkspace();
+    const { leaf, header } = makeTabbedLeaf();
+    // A view that is still loading: Obsidian flashes the tab, then waits for it.
+    const loading = Promise.withResolvers<undefined>();
+    reveal.mockImplementation(() => {
+      header.classList.add(FLASH);
+      return loading.promise;
+    });
+
+    const revealed = revealLeafWithoutFlash(workspace, leaf);
+
+    expect(header.classList.contains(FLASH)).toBe(false);
+    loading.resolve(undefined);
+    await revealed;
+  });
+
+  it("removes a flash added after revealLeaf yields before another task runs", async () => {
+    const { workspace, reveal } = makeWorkspace();
+    const { leaf, header } = makeTabbedLeaf();
+    // An Obsidian that flashes the tab only after its first await.
+    reveal.mockImplementation(async () => {
+      await Promise.resolve();
+      header.classList.add(FLASH);
+    });
+
+    const revealed = revealLeafWithoutFlash(workspace, leaf);
+    await microtasks();
+
+    expect(header.classList.contains(FLASH)).toBe(false);
+    await revealed;
   });
 
   it("removes the flash when revealLeaf returns nothing", async () => {
