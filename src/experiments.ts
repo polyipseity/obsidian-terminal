@@ -149,8 +149,17 @@ export function describeExperiments<
   P extends { readonly [K in E["id"]]: Experiment.Presentation },
 >(
   experiments: readonly E[],
-  // A key that is no registered id is an error, also when no id is left.
-  presentations: P & { readonly [K in Exclude<keyof P, E["id"]>]: never },
+  // A key that is no registered id is an error, also when no id is left, and
+  // so is a key of an entry that is no key of the texts.
+  presentations: P & {
+    readonly [K in keyof P]: K extends E["id"]
+      ? {
+          readonly [
+            Q in Exclude<keyof P[K], keyof Experiment.Presentation>
+          ]: never;
+        }
+      : never;
+  },
 ): readonly Experiment.Row[] {
   return experiments.map((experiment) => {
     const id: E["id"] = experiment.id,

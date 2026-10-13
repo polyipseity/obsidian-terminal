@@ -452,6 +452,24 @@ describe("src/experiments.ts", () => {
       describeExperiments([ALPHA, BETA], { alpha: texts("Alpha") });
       // @ts-expect-error -- alpha is not registered.
       describeExperiments([], { alpha: texts("Alpha") });
+      describeExperiments([ALPHA], {
+        // @ts-expect-error -- optionz is no key of the texts.
+        alpha: { ...texts("Alpha"), optionz: (): void => {} },
+      });
+      describeExperiments([ALPHA], {
+        // @ts-expect-error -- id is the registry's: the texts would replace it.
+        alpha: { ...texts("Alpha"), id: "other" },
+      });
+      describeExperiments([ALPHA], {
+        alpha: {
+          effect: () => "e",
+          name: () => "n",
+          options: (container) => {
+            container.remove();
+          },
+          risk: () => "r",
+        },
+      });
     });
   });
 
