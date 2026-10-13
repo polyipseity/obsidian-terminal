@@ -42,7 +42,7 @@ This guide provides clear, actionable instructions for AI coding agents working 
   - `bun run check` — TypeScript, ESLint, Markdown, Prettier, Ruff, and Ty checks.
   - `bun run format` — ESLint, Markdown, Prettier, and Ruff fixes, then Ty.
 
-  - Python environment / `uv` usage: Run `uv sync` locally to install the default `dev` group; CI should use `uv sync --locked`. The Python repository checks use synchronous standard-library filesystem and subprocess APIs, so they need no AnyIO plugin or event-loop extras. This keeps the full suite compatible with Python 3.9; pytest-xdist still runs test modules in parallel. Windows CI verifies these repository checks on Python 3.9 and 3.12. Avoid `--all-extras` / `--dev` flags.
+  - Python environment / `uv` usage: Run `uv sync` locally to install the default `dev` group; CI should use `uv sync --locked`. The Python repository checks use synchronous standard-library filesystem and subprocess APIs, so they need no AnyIO plugin or event-loop extras. This keeps the full suite compatible with Python 3.9; pytest-xdist still runs test modules in parallel. Windows CI verifies these repository checks on Python 3.9 and 3.14. Avoid `--all-extras` / `--dev` flags.
 
 - **Versioning**
   - Use `changesets` for PRs; the `version` lifecycle script is configured (`node scripts/version.mjs`).
@@ -161,14 +161,14 @@ bun run build:force
 cd ../..
 bun install --frozen-lockfile --ignore-scripts
 uv run --locked --python 3.9 bun x vitest run tests/src/terminal/pseudoterminal.test.ts
-uv run --locked --python 3.12 bun x vitest run tests/src/terminal/pseudoterminal.test.ts
+uv run --locked --python 3.14 bun x vitest run tests/src/terminal/pseudoterminal.test.ts
 ```
 
 Vitest resolves the Obsidian mock with `fileURLToPath` so native Windows drive
 paths work. For platform-free framing and admission checks, run
 `bun x vitest run tests/src/terminal/pseudoterminal.spec.ts`.
 
-The `windows-native` job on `windows-2025` for Python 3.9 and 3.12 runs the pytest
+The `windows-native` job on `windows-2025` for Python 3.9 and 3.14 runs the pytest
 suites and `pseudoterminal.test.ts`. The Linux `build` job runs
 `pseudoterminal.spec.ts` with the rest of the Vitest suite.
 It caches the vendored library's `dist` by submodule commit and skips the vendor
