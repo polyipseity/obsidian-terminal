@@ -14,6 +14,7 @@
  * - formatDroppedPaths: one text per path, order, duplicates, trailing space,
  *   skipped paths, the cap, the bytes the texts may have
  * - lineByteLimit: the shells whose paste is bounded, per platform
+ * - ttyLineByteLimit: the same bound for any program, per platform
  * - droppedPathPastes: one paste for all the texts off Windows and one per
  *   text on it, and what a shell and Claude Code read back from the one paste
  * - uriListPaths: `file:` URIs and Obsidian resource URLs per platform, the
@@ -31,6 +32,7 @@ import {
   formatDroppedPaths,
   lineByteLimit,
   shellGrammar,
+  ttyLineByteLimit,
   uriListPaths,
   vaultDragPaths,
   vaultDragSkipped,
@@ -2796,6 +2798,38 @@ describe("lineByteLimit", () => {
         key === "dashIntegrated" ||
           (platform === "linux" &&
             (key === "shIntegrated" || key === "linuxIntegratedDefault")),
+      );
+    },
+  );
+});
+
+describe("ttyLineByteLimit", () => {
+  // The line of the terminal driver again, less the same 256 bytes: for any
+  // program, while it has not set up a line editor of its own.
+  it.each<readonly [Platform.All, number]>([
+    ["linux", 3840],
+    ["darwin", 768],
+  ])("bounds a paste on %s to %i bytes", (platform, limit) => {
+    expect(ttyLineByteLimit(platform)).toBe(limit);
+  });
+
+  // Windows has no terminal driver that cuts a line.
+  it.each<Platform.All>(["win32", "android", "ios", "unknown"])(
+    "sets no limit on %s",
+    (platform) => {
+      expect(ttyLineByteLimit(platform)).toBeNull();
+    },
+  );
+
+  it.each<readonly [string, Platform.All]>([
+    ["/bin/dash", "linux"],
+    ["/bin/sh", "linux"],
+    ["/bin/dash", "darwin"],
+  ])(
+    "is what a paste into %s on %s is bounded to at any time",
+    (executable, platform) => {
+      expect(lineByteLimit(executable, platform)).toBe(
+        ttyLineByteLimit(platform),
       );
     },
   );

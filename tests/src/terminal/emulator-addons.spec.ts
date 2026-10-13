@@ -4433,13 +4433,40 @@ describe("DragAndDropAddon", () => {
       paths = names.map((name) => `/tmp/${name}`),
       bytes = (text: string): number => new TextEncoder().encode(text).length;
 
-    function longDrop(platform: string, executable: string): Bed {
+    function longDrop(
+      platform: string,
+      executable: string,
+      options: BedOptions = {},
+    ): Bed {
       dragAndDropEnvironment.platform = platform;
       return createBed({
         draggable: { files: names.map(vaultFile), type: "files" },
         executable,
         fullPath: (path) => `/tmp/${path}`,
+        ...options,
       });
+    }
+
+    /**
+     * Expects one paste of the first paths that fit a line of the terminal
+     * driver, each whole, and the notice that some were left out.
+     *
+     * @param line - the bytes the driver has for a line.
+     */
+    function expectFirstPathsOfLine(bed: Bed, line: number): void {
+      expect(bed.paste).toHaveBeenCalledOnce();
+      const pasted = String(bed.paste.mock.calls[0]?.[0]),
+        words = pasted.trimEnd().split(" ");
+      // 256 bytes of the line are left for what is typed before the drop.
+      expect(bytes(pasted)).toBeLessThanOrEqual(line - 256);
+      expect(pasted.endsWith(" ")).toBe(true);
+      expect(words.length).toBeGreaterThan(0);
+      expect(words).toEqual(paths.slice(0, words.length));
+      // The next path would not have fitted.
+      expect(bytes(`${pasted}${String(paths[words.length])} `)).toBeGreaterThan(
+        line - 256,
+      );
+      expect(notices()).toEqual([SKIPPED_PATHS]);
     }
 
     it.each<readonly [string, string, string, number]>([
@@ -4453,21 +4480,101 @@ describe("DragAndDropAddon", () => {
 
         await drop(bed, vaultDrag());
 
-        expect(bed.paste).toHaveBeenCalledOnce();
-        const pasted = String(bed.paste.mock.calls[0]?.[0]),
-          words = pasted.trimEnd().split(" ");
-        // 256 bytes of the line are left for what is typed before the drop.
-        expect(bytes(pasted)).toBeLessThanOrEqual(line - 256);
-        expect(pasted.endsWith(" ")).toBe(true);
-        expect(words.length).toBeGreaterThan(0);
-        expect(words).toEqual(paths.slice(0, words.length));
-        // The next path would not have fitted.
-        expect(
-          bytes(`${pasted}${String(paths[words.length])} `),
-        ).toBeGreaterThan(line - 256);
-        expect(notices()).toEqual([SKIPPED_PATHS]);
+        expectFirstPathsOfLine(bed, line);
       },
     );
+
+    // The terminal shows before its program has started. A drop from then is
+    // pasted the moment the program is there, when a shell has not set up
+    // its line editor yet: it still reads its line through the terminal
+    // driver, as dash does at any time.
+    describe("that came before the terminal had its program", () => {
+      /**
+       * Makes a terminal whose program starts when the test says, and a
+       * clock that tells a drop that had to wait for it from one that did
+       * not: a task of the main window runs in between.
+       */
+      function lateProgram(platform: string, executable: string) {
+        vi.useFakeTimers();
+        let started: () => void = noop;
+        const program = new Promise<void>((resolve) => {
+          started = resolve;
+        });
+        return {
+          bed: longDrop(platform, executable, {
+            attached: async () => program,
+          }),
+          start: async (): Promise<void> => {
+            await vi.advanceTimersByTimeAsync(0);
+            started();
+            await vi.advanceTimersByTimeAsync(0);
+          },
+        };
+      }
+
+      it.each<readonly [string, string, string, number]>([
+        ["zsh on macOS", "darwin", "/bin/zsh", 1024],
+        ["bash on Linux", "linux", "/bin/bash", 4096],
+        ["an unknown program on Linux", "linux", "", 4096],
+      ])(
+        "pastes only the first paths that fit the line into %s, each whole, and says that some were left out",
+        async (_name, platform, executable, line) => {
+          const { bed, start } = lateProgram(platform, executable);
+
+          bed.fire("drop", vaultDrag());
+          await start();
+
+          expectFirstPathsOfLine(bed, line);
+        },
+      );
+
+      it("bounds a drop that waits behind another one from before the program as well", async () => {
+        const { bed, start } = lateProgram("darwin", "/bin/zsh"),
+          { draggable } = bed.dragManager;
+
+        bed.dragManager.draggable = null;
+        bed.fire("drop", nativeDrag());
+        bed.dragManager.draggable = draggable;
+        bed.fire("drop", vaultDrag());
+        await start();
+
+        expect(bed.paste).toHaveBeenCalledTimes(2);
+        expect(bed.paste.mock.calls[0]).toEqual([`${DESKTOP}/b.png `]);
+        expect(bytes(String(bed.paste.mock.calls[1]?.[0]))).toBeLessThanOrEqual(
+          1024 - 256,
+        );
+        expect(notices()).toEqual([SKIPPED_PATHS]);
+      });
+
+      it("pastes every path of the next drop, which finds the program there", async () => {
+        const { bed, start } = lateProgram("darwin", "/bin/zsh"),
+          { draggable } = bed.dragManager;
+
+        bed.dragManager.draggable = null;
+        bed.fire("drop", nativeDrag());
+        await start();
+        bed.dragManager.draggable = draggable;
+        bed.fire("drop", vaultDrag());
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(bed.paste.mock.calls).toEqual([
+          [`${DESKTOP}/b.png `],
+          [paths.map((path) => `${path} `).join("")],
+        ]);
+        expect(notices()).toEqual([]);
+      });
+
+      // Windows has no terminal driver that cuts a line.
+      it("pastes every path on Windows", async () => {
+        const { bed, start } = lateProgram("win32", "powershell.exe");
+
+        bed.fire("drop", vaultDrag());
+        await start();
+
+        expect(bed.paste.mock.calls).toEqual(paths.map((path) => [`${path} `]));
+        expect(notices()).toEqual([]);
+      });
+    });
 
     it.each<readonly [string, string, string]>([
       ["bash on Linux", "linux", "/bin/bash"],

@@ -412,10 +412,28 @@ export function lineByteLimit(
   executable: string,
   platform: Platform.All,
 ): number | null {
-  const driver = LINE_DRIVERS[platform];
-  return driver?.shells.has(programName(executable)) === true
-    ? driver.bytes - LINE_TYPED_BYTES
+  return LINE_DRIVERS[platform]?.shells.has(programName(executable)) === true
+    ? ttyLineByteLimit(platform)
     : null;
+}
+
+/**
+ * Tells how many bytes one paste of dropped paths may have while the program
+ * of a terminal reads its line through the terminal driver, whatever the
+ * program: the size {@link lineByteLimit} has for a shell without a line
+ * editor.
+ *
+ * Every shell is such a program for its first moments. The driver has the
+ * terminal from the start, and a shell sets up its line editor only once it
+ * has read its startup files: what is pasted before that is a line of the
+ * driver, cut as one is.
+ *
+ * @param platform - platform the terminal runs on.
+ * @returns the bytes, as UTF-8; `null` for no limit, as on Windows.
+ */
+export function ttyLineByteLimit(platform: Platform.All): number | null {
+  const driver = LINE_DRIVERS[platform];
+  return driver ? driver.bytes - LINE_TYPED_BYTES : null;
 }
 
 /**

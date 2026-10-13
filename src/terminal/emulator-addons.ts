@@ -32,6 +32,7 @@ import {
   formatDroppedPaths,
   lineByteLimit,
   shellGrammar,
+  ttyLineByteLimit,
   uriListPaths,
   vaultDragPaths,
   vaultDragSkipped,
@@ -292,7 +293,7 @@ export class DragAndDropAddon implements ITerminalAddon {
       });
     // The listeners are added in `activate` itself, with nothing awaited
     // before them: the terminal takes drags from the moment it shows. A drop
-    // that comes before its program does is held (see `#hasProgram`).
+    // that comes before its program does is held (see `#program`).
     this.#disposer.push(
       () => {
         input.dispose();
@@ -428,8 +429,8 @@ export class DragAndDropAddon implements ITerminalAddon {
       // A vault drag never falls back on the other sources: what a browser
       // adds to it (the bitmap of a dragged image) is not what was dragged.
       const dropped = this.#vaultPaths(draggable);
-      this.#afterEarlierDrops(() => {
-        this.#insert(drop, dropped);
+      this.#afterEarlierDrops((held) => {
+        this.#insert(drop, dropped, held);
       });
       return;
     }
@@ -441,7 +442,7 @@ export class DragAndDropAddon implements ITerminalAddon {
         ) ?? "",
       uriList =
         DragAndDropAddon.#data(dataTransfer, DragAndDropAddon.#URI_LIST) ?? "";
-    this.#afterEarlierDrops(async () => {
+    this.#afterEarlierDrops(async (held) => {
       if (!this.#isCurrent(activation)) {
         // Nothing is looked up for a terminal that is replaced or gone.
         return;
@@ -449,6 +450,7 @@ export class DragAndDropAddon implements ITerminalAddon {
       this.#insert(
         drop,
         await this.#externalPaths(files, vscodeUriList, uriList, activation),
+        held,
       );
     });
   }
@@ -457,12 +459,19 @@ export class DragAndDropAddon implements ITerminalAddon {
    * Runs the rest of a drop once the drops before it are done, so that paths
    * reach the terminal in the order they were dropped: without this, a vault
    * drop would paste ahead of an earlier URI list still looked up on disk.
+   *
+   * @param rest - is told whether the drop was held for the program of the
+   * terminal (see `#program`), and is not called if the terminal got none.
    */
-  #afterEarlierDrops(rest: () => AsyncOrSync<void>): void {
+  #afterEarlierDrops(rest: (held: boolean) => AsyncOrSync<void>): void {
+    // Asked now, at the drop: by the time the drops before it are done, the
+    // program may be there that this drop came too early for.
+    const program = this.#program();
     this.#drops = this.#drops
       .then(async () => {
-        if (await this.#hasProgram()) {
-          await rest();
+        const state = await program;
+        if (state !== "none") {
+          await rest(state === "late");
         }
       })
       .catch((error: unknown) => {
@@ -476,24 +485,38 @@ export class DragAndDropAddon implements ITerminalAddon {
    * program has started, with the history it had, and what is pasted in
    * between reaches no program: the terminal keeps none of it.
    *
-   * @returns whether it has one. `false` when it got none: the drop is then
+   * @returns `there` if the terminal has its program as this is called, and
+   * `late` if it gets it later: a drop that was held for it is pasted the
+   * moment the program is there, before a shell has set up its line editor
+   * (see `ttyLineByteLimit`). `none` if it got none: the drop is then
    * discarded without a word, as the view has said that the program did not
    * start, or the terminal was closed.
    */
-  async #hasProgram(): Promise<boolean> {
+  async #program(): Promise<"late" | "none" | "there"> {
+    // A program that is there answers before any timer runs, so a timer that
+    // has run by the answer tells that there was none at the call. The timer
+    // is one of the main window, as the deadline of a lookup is.
+    const timer = { ran: false },
+      handle = self.setTimeout(() => {
+        timer.ran = true;
+      }, 0);
     try {
       await this.attached();
-      return true;
     } catch {
-      return false;
+      return "none";
+    } finally {
+      self.clearTimeout(handle);
     }
+    return timer.ran ? "late" : "there";
   }
 
   /**
    * Pastes the dropped paths, and says so when some or all of the dropped
    * items could not become one.
+   *
+   * @param held - whether the drop was held for the program of the terminal.
    */
-  #insert(drop: Drop, dropped: DroppedPaths): void {
+  #insert(drop: Drop, dropped: DroppedPaths, held: boolean): void {
     const { activation, focused, input, terminal } = drop;
     if (!this.#isCurrent(activation)) {
       // The terminal was replaced or went away while the drop waited.
@@ -512,7 +535,7 @@ export class DragAndDropAddon implements ITerminalAddon {
     const platform = deopaque(Platform.CURRENT),
       { texts, skipped } = formatDroppedPaths(
         dropped.paths,
-        ...this.#writing(platform),
+        ...this.#writing(platform, held),
       );
     // One paste for all the paths, but one per path on Windows. One paste is
     // how Claude Code reads several escaped paths, and a shell reads it in
@@ -579,9 +602,13 @@ export class DragAndDropAddon implements ITerminalAddon {
   /**
    * Tells how a path is written for what the terminal runs: the grammar its
    * program reads, and what the profile says beyond that.
+   *
+   * @param held - whether the paths are of a drop that was held for the
+   * program: no shell has a line editor yet when they are pasted.
    */
   #writing(
     platform: Platform.All,
+    held = false,
   ): readonly [ShellGrammar, DroppedPathOptions] {
     const { profile } = this;
     if (profile?.type === "developerConsole") {
@@ -596,7 +623,9 @@ export class DragAndDropAddon implements ITerminalAddon {
       shellGrammar(executable, platform),
       {
         distribution: wslDistribution(args),
-        maxBytes: lineByteLimit(executable, platform),
+        maxBytes: held
+          ? ttyLineByteLimit(platform)
+          : lineByteLimit(executable, platform),
       },
     ];
   }
