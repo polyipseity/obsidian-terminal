@@ -1401,6 +1401,23 @@ describe("TerminalView reveal flash", () => {
     return { ...made, header };
   }
 
+  // Replaces `revealLeaf` with one that flashes the tab as Obsidian does.
+  // The returned promise resolves once it has been called.
+  function flashOnReveal(
+    workspace: App["workspace"],
+    header: HTMLElement,
+    returnsPromise: boolean,
+  ): Promise<undefined> {
+    const called = deferred();
+    const reveal = vi.fn<() => Promise<void> | undefined>(() => {
+      header.classList.add(FLASH);
+      called.resolve(undefined);
+      return returnsPromise ? Promise.resolve() : undefined;
+    });
+    Object.assign(workspace, { revealLeaf: reveal });
+    return called.promise;
+  }
+
   it("removes the flash from the tab of a terminal it opens", async () => {
     const { context, workspace, reveal } = makeTerminalContext();
     const { leaf, header } = makeTabbedLeaf(context);
@@ -1430,23 +1447,6 @@ describe("TerminalView reveal flash", () => {
     expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
     expect(header.classList.contains(FLASH)).toBe(false);
   });
-
-  // Replaces `revealLeaf` with one that flashes the tab as Obsidian does.
-  // The returned promise resolves once it has been called.
-  function flashOnReveal(
-    workspace: App["workspace"],
-    header: HTMLElement,
-    returnsPromise: boolean,
-  ): Promise<undefined> {
-    const called = deferred();
-    const reveal = vi.fn<() => Promise<void> | undefined>(() => {
-      header.classList.add(FLASH);
-      called.resolve(undefined);
-      return returnsPromise ? Promise.resolve() : undefined;
-    });
-    Object.assign(workspace, { revealLeaf: reveal });
-    return called.promise;
-  }
 
   describe.each([
     { returns: "a resolved promise", returnsPromise: true },

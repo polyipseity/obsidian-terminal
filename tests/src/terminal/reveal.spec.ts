@@ -81,7 +81,7 @@ describe("revealLeafWithoutFlash", () => {
     await revealed;
   });
 
-  it("removes a flash added after revealLeaf yields before another task runs", async () => {
+  it("removes a flash that is added later, before another task runs", async () => {
     const { workspace, reveal } = makeWorkspace();
     const { leaf, header } = makeTabbedLeaf();
     // An Obsidian that flashes the tab only after its first await.
