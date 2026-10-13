@@ -33,6 +33,7 @@ import {
   shellGrammar,
   uriListPaths,
   vaultDragPaths,
+  vaultDragSkipped,
   wslDistribution,
 } from "../../../src/terminal/dropped-paths.js";
 import { PROFILE_PRESETS } from "../../../src/terminal/profile-presets.js";
@@ -390,6 +391,75 @@ describe("vaultDragPaths", () => {
     ],
   ])("returns no path, instead of throwing, for %s", (_name, draggable) => {
     expect(vaultDragPaths(draggable())).toEqual([]);
+  });
+
+  describe("vaultDragSkipped", () => {
+    it.each<readonly [string, unknown, number]>([
+      ["a file", { file: { path: "a.md" }, type: "file" }, 0],
+      [
+        "a multi-selection of files and folders",
+        { files: [{ path: "a.md" }, { path: "Assets" }], type: "files" },
+        0,
+      ],
+      [
+        "a file that is there twice, which is one path",
+        { files: [{ path: "a.md" }, { path: "a.md" }], type: "files" },
+        0,
+      ],
+      [
+        "the entries of a multi-selection that have no path",
+        {
+          files: [{ path: "a.md" }, { name: "b.md" }, null, { path: "" }],
+          type: "files",
+        },
+        3,
+      ],
+      [
+        "a group, a search and a URL among bookmarked files",
+        {
+          items: [
+            { item: { path: "Notes/a.md", type: "file" } },
+            { item: { items: [], title: "Group", type: "group" } },
+            { item: { path: "Assets", type: "folder" } },
+            { item: { query: "tag:#todo", type: "search" } },
+            { item: { type: "url", url: "https://example.com" } },
+          ],
+          type: "bookmarks",
+        },
+        3,
+      ],
+      ["a bookmark without an item", { items: [{}], type: "bookmarks" }, 1],
+      ["an unresolved link", { file: null, type: "link" }, 1],
+      [
+        "a board card whose entry has no file",
+        { entry: { file: null }, type: "kanban-card" },
+        1,
+      ],
+      // Not a drag of files at all: nothing of it is left out of any.
+      [
+        "a heading",
+        { file: { path: "a.md" }, heading: {}, type: "heading" },
+        0,
+      ],
+      ["an empty multi-selection", { files: [], type: "files" }, 0],
+      ["no drag", null, 0],
+    ])("counts %s", (_name, draggable, skipped) => {
+      expect(vaultDragSkipped(draggable)).toBe(skipped);
+    });
+
+    it.each<readonly [string, () => unknown]>([
+      ["a revoked proxy", (): unknown => revokedProxy()],
+      ["a type that throws", (): unknown => throwingAt("type")],
+      [
+        "a multi-selection whose last file throws",
+        (): unknown => ({
+          files: [{ path: "a.md" }, null, throwingAt("path")],
+          type: "files",
+        }),
+      ],
+    ])("counts nothing, instead of throwing, for %s", (_name, draggable) => {
+      expect(vaultDragSkipped(draggable())).toBe(0);
+    });
   });
 });
 

@@ -311,6 +311,28 @@ export function vaultDragPaths(draggable: unknown): readonly string[] {
 }
 
 /**
+ * Counts what a vault drag of files carries besides them, for which
+ * {@link vaultDragPaths} has no path: a group, a search or a URL in a
+ * selection of bookmarks, a link that is not resolved, an entry of a
+ * selection that is no file. A file that is there twice is not counted: its
+ * path is there once.
+ *
+ * @param draggable - `app.dragManager.draggable`, of any shape.
+ * @returns the number of such entries; 0 for an unsupported drag, and for one
+ * that cannot be read. Never throws.
+ */
+export function vaultDragSkipped(draggable: unknown): number {
+  try {
+    return draggedFiles(draggable).filter((file) => pathOf(file) === null)
+      .length;
+  } catch {
+    // As in `vaultDragPaths`, which then has no path: nothing is left out of
+    // a drag that carries nothing.
+    return 0;
+  }
+}
+
+/**
  * The name a program is known by: the last segment of its executable, in
  * lower case and without one suffix of a Windows program or script.
  */

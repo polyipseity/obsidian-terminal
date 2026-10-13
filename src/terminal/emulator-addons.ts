@@ -34,6 +34,7 @@ import {
   shellGrammar,
   uriListPaths,
   vaultDragPaths,
+  vaultDragSkipped,
   wslDistribution,
 } from "./dropped-paths.js";
 import { Win32InputMode, isWin32ClipboardChord } from "./win32-input-mode.js";
@@ -841,19 +842,21 @@ export class DragAndDropAddon implements ITerminalAddon {
   /**
    * Returns the absolute paths of the vault files and folders in a vault
    * drag. A path the vault does not know (a file deleted during the drag)
-   * counts as skipped, and a vault that is not on the file system has none.
+   * counts as skipped, as does what the drag carries besides files (a group
+   * among bookmarks), and a vault that is not on the file system has none.
    */
   #vaultPaths(draggable: unknown): DroppedPaths {
     const { vault } = this.context.app,
       { adapter } = vault,
-      dragged = vaultDragPaths(draggable);
+      dragged = vaultDragPaths(draggable),
+      entries = dragged.length + vaultDragSkipped(draggable);
     if (!(adapter instanceof FileSystemAdapter)) {
-      return { paths: [], skipped: dragged.length };
+      return { paths: [], skipped: entries };
     }
     const paths = dragged
       .filter((path) => vault.getAbstractFileByPath(path) !== null)
       .map((path) => adapter.getFullPath(path));
-    return { paths, skipped: dragged.length - paths.length };
+    return { paths, skipped: entries - paths.length };
   }
 }
 

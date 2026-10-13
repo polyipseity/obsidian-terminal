@@ -2804,6 +2804,48 @@ describe("DragAndDropAddon", () => {
     expect(notices()).toEqual([SKIPPED_PATHS]);
   });
 
+  it.each<readonly [string, unknown]>([
+    [
+      "a group and a search among bookmarked files",
+      {
+        items: [
+          { item: { path: "here.md", type: "file" } },
+          { item: { items: [], title: "Group", type: "group" } },
+          { item: { query: "tag:#todo", type: "search" } },
+        ],
+        type: "bookmarks",
+      },
+    ],
+    [
+      "an entry of a multi-selection that is no file",
+      { files: [vaultFile("here.md"), { name: "no path" }], type: "files" },
+    ],
+  ])(
+    "leaves out %s, which have no path, and says so",
+    async (_name, draggable) => {
+      const bed = createBed({ draggable });
+
+      await drop(bed, vaultDrag());
+
+      expect(bed.paste.mock.calls).toEqual([[`${ESCAPED_VAULT}/here.md `]]);
+      expect(notices()).toEqual([SKIPPED_PATHS]);
+    },
+  );
+
+  it("says nothing of a vault file that was dragged twice", async () => {
+    const bed = createBed({
+      draggable: {
+        files: [vaultFile("here.md"), vaultFile("here.md")],
+        type: "files",
+      },
+    });
+
+    await drop(bed, vaultDrag());
+
+    expect(bed.paste.mock.calls).toEqual([[`${ESCAPED_VAULT}/here.md `]]);
+    expect(notices()).toEqual([]);
+  });
+
   it("leaves out a vault file name with a newline and says so", async () => {
     const bed = createBed({
       draggable: {
