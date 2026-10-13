@@ -111,9 +111,11 @@ describe("Windows profile editor status", () => {
   });
 });
 
-const { displayed, execFile } = vi.hoisted(() => ({
+const { displayed, execFile, platform } = vi.hoisted(() => ({
   displayed: new Map<string, Win32PythonDiagnosis>(),
   execFile: vi.fn().mockResolvedValue({ stdout: "Python 3.12.0", stderr: "" }),
+  // The device platform. Tests that change it restore "win32" afterwards.
+  platform: { current: "win32" },
 }));
 vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => {
   const actual =
@@ -122,7 +124,12 @@ vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => {
     >();
   return {
     ...actual,
-    Platform: { ...actual.Platform, CURRENT: "win32" },
+    Platform: {
+      ...actual.Platform,
+      get CURRENT() {
+        return platform.current;
+      },
+    },
     notice2: vi.fn(),
     dynamicRequire: (...args: Parameters<typeof actual.dynamicRequire>) =>
       args[1] === "node:util"
@@ -169,6 +176,92 @@ const windowsProfile = {
   ...Settings.Profile.DEFAULTS.integrated,
   platforms: { ...Settings.Profile.DEFAULTS.integrated.platforms, win32: true },
 } satisfies Settings.Profile;
+
+describe("profile editor Windows-only rows", () => {
+  const pythonRow = "components.profile.integrated.Python-executable",
+    backendRow = "components.profile.integrated.win32-backend",
+    resizerRow = "components.profile.integrated.resizer-packages",
+    // A profile synced from a Windows device: enabled there, ConHost chosen.
+    syncedProfile = {
+      ...windowsProfile,
+      platforms: { darwin: true, linux: true, win32: true },
+      win32Backend: "legacy",
+    } satisfies Settings.Profile;
+
+  afterEach(() => {
+    platform.current = "win32";
+    vi.restoreAllMocks();
+  });
+
+  it.each(["darwin", "linux"])(
+    "omits the Windows terminal backend and resizer rows on %s",
+    async (current) => {
+      platform.current = current;
+      const rows = capturePythonRows(),
+        modal = new PythonProfileModal(
+          await pythonSettingsContext(),
+          syncedProfile,
+          vi.fn(),
+        );
+      modal.renderPython();
+      expect(rows.has(pythonRow)).toBe(true);
+      expect(rows.has(backendRow)).toBe(false);
+      expect(rows.has(resizerRow)).toBe(false);
+      // The i18n stub returns keys, so no row may carry a Windows backend key.
+      for (const row of rows.values()) {
+        expect(row.descEl.textContent).not.toMatch(/win32-backend|resizer/u);
+      }
+      modal.onClose();
+    },
+  );
+
+  it("keeps the Windows terminal backend and resizer rows on win32", async () => {
+    platform.current = "win32";
+    const rows = capturePythonRows(),
+      modal = new PythonProfileModal(
+        await pythonSettingsContext(),
+        syncedProfile,
+        vi.fn(),
+      );
+    modal.renderPython();
+    expect(rows.has(pythonRow)).toBe(true);
+    expect(rows.get(backendRow)?.descEl.textContent).toBe(
+      "components.profile.integrated.win32-backend-description components.profile.integrated.win32-backend-status-legacy",
+    );
+    expect(rows.get(resizerRow)?.settingEl.style.display).toBe("none");
+    modal.onClose();
+  });
+
+  it.each(["darwin", "linux"])(
+    "keeps a stored ConHost choice through an edit on %s",
+    async (current) => {
+      platform.current = current;
+      const rows = capturePythonRows(),
+        saved = vi.fn<(profile: Settings.Profile) => void>(),
+        modal = new PythonProfileModal(
+          await pythonSettingsContext(),
+          syncedProfile,
+          saved,
+        );
+      modal.renderPython();
+      typePythonValue(rows.get(pythonRow)?.texts[0], "python3.12");
+      await vi.waitFor(() => {
+        expect(saved).toHaveBeenCalled();
+      });
+      const stored = saved.mock.lastCall?.[0];
+      expect(stored).toMatchObject({
+        pythonExecutable: "python3.12",
+        win32Backend: "legacy",
+      });
+      // The settings fixer must keep the value as well.
+      expect(Settings.Profile.fix(stored).value).toMatchObject({
+        win32Backend: "legacy",
+      });
+      expect(modal.profile).toHaveProperty("win32Backend", "legacy");
+      modal.onClose();
+    },
+  );
+});
 
 describe("profile Python automatic checks", () => {
   beforeEach(() => {
