@@ -271,6 +271,16 @@ if sys.platform != "win32":
             self._pending += data
             self._flush()
 
+        def retry(self) -> None:
+            """Offer queued input to the PTY again.
+
+            A PTY can get room without the selector reporting it as writable:
+            on macOS, when the child discards its input queue or changes the
+            terminal mode.
+            """
+            if self._pending and self.registered:
+                self._flush()
+
         def _flush(self) -> None:
             """Write queued input until the PTY would block or none is left."""
             while self._pending:
@@ -405,6 +415,9 @@ if sys.platform != "win32":
                 ):
                     for key, mask in selector.select(_SELECT_TIMEOUT_SECONDS):
                         key.data(mask)
+                    # Before the throttle, so that a buffer this empties has
+                    # stdin watched again on the same turn.
+                    pipe_pty.retry()
                     pipe_stdin.throttle()
                     if getppid() == 1:
                         shutdown_requested = True

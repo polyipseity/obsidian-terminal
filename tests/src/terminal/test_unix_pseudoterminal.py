@@ -82,6 +82,33 @@ os.write(1, b"READY\\n")
 time.sleep(float(sys.argv[1]))
 """
 
+"""Child that reads nothing until the file named by its second argument
+exists, then discards the terminal's input queue and reads until the line
+`END`, or until no input comes for 3 seconds. It reports the bytes it read and
+which of the two ended the reading.
+
+The terminal stays in canonical mode, without echo: complete lines make the
+writer wait once the queue is full, and nothing is written back."""
+_DISCARDING_CHILD = """
+import os, select, sys, termios, time
+attributes = termios.tcgetattr(0)
+attributes[3] &= ~termios.ECHO
+termios.tcsetattr(0, termios.TCSANOW, attributes)
+os.write(1, b"READY\\n")
+while not os.path.exists(sys.argv[2]):
+    time.sleep(0.01)
+termios.tcflush(0, termios.TCIFLUSH)
+count, ending = 0, b"STALLED"
+while select.select([0], [], [], 3.0)[0]:
+    data = os.read(0, 65536)
+    count += len(data)
+    if not data or data.endswith(b"END\\n"):
+        ending = b"END" if data else b"EOF"
+        break
+os.write(1, b"GOT %d %s\\n" % (count, ending))
+termios.tcdrain(1)
+"""
+
 
 def _module_path() -> Path:
     """Return the filesystem path to the Unix PTY proxy module."""
@@ -806,6 +833,64 @@ def test_main_stops_watching_stdin_while_the_input_buffer_is_full(
     assert module._STDIN not in watched[1]
 
 
+def test_main_offers_held_input_again_without_a_writable_event(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Write held input on a turn with no events, then watch stdin again."""
+    module = _load_unix_pseudoterminal_module()
+    watched: list[list[int]] = []
+    written = bytearray()
+
+    class _Selector(_FakeSelector):
+        """Report stdin readable, then nothing, then end through the command pipe."""
+
+        @override
+        def select(self, _timeout: float | None = None) -> list[tuple[object, int]]:
+            """Record what is watched, then emit the next scripted event."""
+            if len(watched) == 3:
+                raise RuntimeError("select loop did not terminate")
+            watched.append(sorted(self._callbacks))
+            if len(watched) == 2:
+                # The PTY has room now, and no event says so.
+                return []
+            fd = module._STDIN if len(watched) == 1 else module._CMDIO
+            return [(SimpleNamespace(data=self._callbacks[fd]), EVENT_READ)]
+
+    def fake_read(fd: int, _size: int) -> bytes:
+        """Fill the buffer from stdin in one read; report EOF elsewhere."""
+        return b"x" * module._INPUT_BUFFER_LIMIT if fd == module._STDIN else b""
+
+    def fake_write(_fd: int, data: bytes) -> int:
+        """Refuse input until the second turn, then take all of it."""
+        if len(watched) < 2:
+            raise BlockingIOError
+        written.extend(data)
+        return len(data)
+
+    _patch_proxy(
+        monkeypatch,
+        module,
+        fork_result=(1234, 99),
+        event_fd=(),
+        killpg=lambda _pgid, _signal: None,
+        waitpid=lambda pid, _flags: (pid, 0),
+    )
+    # See test_main_stops_watching_stdin_while_the_input_buffer_is_full.
+    monkeypatch.setattr(module, "_STDIN", 0)
+    monkeypatch.setattr(module, "DefaultSelector", lambda: _Selector(()))
+    monkeypatch.setattr(module, "read", fake_read)
+    monkeypatch.setattr(module, "write", fake_write)
+
+    with pytest.raises(SystemExit) as raised:
+        module.main()
+
+    assert raised.value.code == 0
+    assert bytes(written) == b"x" * module._INPUT_BUFFER_LIMIT
+    assert module._STDIN not in watched[1]
+    # The buffer emptied before the loop throttled stdin on the same turn.
+    assert module._STDIN in watched[2]
+
+
 def _marker(seconds: int) -> str:
     """Return a sleep duration that no other live process on this machine uses."""
     return f"{seconds}.{os.getpid():07d}{next(_MARKER_COUNT) % 100:02d}"
@@ -1012,6 +1097,42 @@ def test_real_proxy_delivers_input_burst_while_child_writes() -> None:
         assert output[-len(tail) :] == tail
         assert len(output) == _FLOOD_BYTES + len(tail)
         assert output.count(b"o", 0, _FLOOD_BYTES) == _FLOOD_BYTES
+        assert process.wait(timeout=5) == 0
+        assert process.stderr is not None
+        assert process.stderr.read() == b""
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only proxy")
+def test_real_proxy_delivers_held_input_after_the_child_discards_its_queue(
+    tmp_path: Path,
+) -> None:
+    """Deliver the input the proxy holds to a child that discarded its queue.
+
+    Discarding the queue gives the PTY room without a read. On macOS the
+    selector then never reports the PTY as writable, so a proxy that waits for
+    that report holds the input for good. Not known to happen on Linux, where
+    this test checks the delivery only.
+    """
+    marker = _marker(4000)
+    discard = tmp_path / "discard"
+    line = b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\n"
+    payload = line * (_BURST_BYTES // len(line)) + b"END\n"
+    child = [sys.executable, "-c", _DISCARDING_CHILD, marker, str(discard)]
+    with _spawn_proxy(child, marker) as (process, _cmd_write):
+        output, sent, eof = _pump(process, payload, stall=0.5)
+        assert (output, eof) == (b"", False)
+
+        discard.touch()
+        output, taken, eof = _pump(process, payload[sent:], stall=5.0)
+
+        assert (sent + taken, eof) == (len(payload), True), (
+            f"stalled after {sent + taken} of {len(payload)} input bytes: "
+            f"{output[-200:]!r}"
+        )
+        report = output.split()
+        assert (report[0], report[2:]) == (b"GOT", [b"END"]), output[-200:]
+        # The discarded queue is all that is missing.
+        assert int(report[1]) >= len(payload) // 2
         assert process.wait(timeout=5) == 0
         assert process.stderr is not None
         assert process.stderr.read() == b""
