@@ -1533,6 +1533,7 @@ describe("VaultFileLinksAddon", () => {
     getAbstractFileByPath: ReturnType<typeof vi.fn>;
     openFile: ReturnType<typeof vi.fn>;
     readonly revealLeaf: ReturnType<typeof vi.fn>;
+    readonly getLeavesOfType: ReturnType<typeof vi.fn>;
     readonly leaf: WorkspaceLeaf;
     readonly fileLeaf: ReturnType<typeof vi.fn>;
     disposable: IDisposable;
@@ -1542,9 +1543,14 @@ describe("VaultFileLinksAddon", () => {
     const vault = { getAbstractFileByPath } as unknown as Vault;
 
     const revealLeaf = vi.fn().mockResolvedValue(undefined);
-    const workspace = { revealLeaf } as unknown as Workspace;
     const openFile = vi.fn().mockResolvedValue(undefined);
-    const leaf = { openFile } as unknown as WorkspaceLeaf;
+    const leaf = {
+      openFile,
+      view: { getViewType: (): string => "markdown" },
+    } as unknown as WorkspaceLeaf;
+    // Obsidian lists the open leaves by view type; a closed one is not listed.
+    const getLeavesOfType = vi.fn(() => [leaf]);
+    const workspace = { getLeavesOfType, revealLeaf } as unknown as Workspace;
     const fileLeaf = vi.fn(() => leaf);
 
     const app = { vault, workspace } as unknown as App;
@@ -1583,6 +1589,7 @@ describe("VaultFileLinksAddon", () => {
       getAbstractFileByPath,
       openFile,
       revealLeaf,
+      getLeavesOfType,
       leaf,
       fileLeaf,
       disposable,
@@ -1814,6 +1821,22 @@ describe("VaultFileLinksAddon", () => {
     expect(consoleError).toHaveBeenCalledExactlyOnceWith(error);
     expect(revealLeaf).not.toHaveBeenCalled();
     expect(openFile).not.toHaveBeenCalled();
+  });
+
+  it("opens nothing in a leaf closed while it was being revealed", async () => {
+    const { provideLinks, openFile, revealLeaf, getLeavesOfType } = createBed();
+    const reveal = Promise.withResolvers<undefined>();
+    revealLeaf.mockReturnValueOnce(reveal.promise);
+    const link = provideLinks("(test.md)")?.[0];
+    if (!link) throw new Error("Missing vault file link");
+
+    link.activate(new MouseEvent("click"), "test.md");
+    getLeavesOfType.mockReturnValue([]);
+    reveal.resolve(undefined);
+    await settled();
+
+    expect(openFile).not.toHaveBeenCalled();
+    expect(getLeavesOfType).toHaveBeenLastCalledWith("markdown");
   });
 
   it("asks fileLeaf for a target on every click, not once", () => {

@@ -1362,6 +1362,9 @@ export class VaultFileLinksAddon implements ITerminalAddon {
         const leaf = fileLeaf();
         // Reveal first: a leaf in a collapsed sidebar cannot take focus.
         await app.workspace.revealLeaf(leaf);
+        // A tab closed during the wait is detached and would show nothing.
+        const listed = app.workspace.getLeavesOfType(leaf.view.getViewType());
+        if (!listed.includes(leaf)) return;
         await leaf.openFile(file, { active: true });
       })().catch((error: unknown) => {
         activeSelf(terminal.element).console.error(error);
