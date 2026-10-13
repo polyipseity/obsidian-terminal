@@ -1846,4 +1846,56 @@ describe("TerminalView focus", () => {
     expect(focusTerminal).toHaveBeenCalledOnce();
     expect(consoleError).not.toHaveBeenCalled();
   });
+
+  describe("through the commands", () => {
+    afterEach(() => {
+      document.body.replaceChildren();
+    });
+
+    it.each(["focus-on-last-terminal", "toggle-focus-on-last-terminal"])(
+      "has the terminal focused when %s returns",
+      async (id) => {
+        const { context, reveal } = makeTerminalContext();
+        const addCommand = vi.fn<TerminalPlugin["addCommand"]>(
+          (command) => command,
+        );
+        Object.assign(context, {
+          addCommand,
+          register: vi.fn(),
+          registerEvent: vi.fn(),
+          registerView: vi.fn(),
+        });
+        vi.spyOn(library, "newHotkeyListener").mockReturnValue(vi.fn());
+        vi.spyOn(TerminalView["focusedScope"], "register").mockImplementation(
+          vi.fn(),
+        );
+        TerminalView.load(context);
+        const { leaf, view } = makeTerminalLeaf(context);
+        // `onOpen` makes the view the last focused terminal.
+        await view["onOpen"]();
+        // A note holds the keyboard; the terminal's textarea can take it.
+        const note = document.createElement("textarea");
+        const textarea = document.createElement("textarea");
+        view.contentEl.append(textarea);
+        document.body.append(note, view.contentEl);
+        note.focus();
+        view["emulator"] = makeEmulator(
+          vi.fn(() => {
+            textarea.focus();
+          }),
+        ).emulator;
+        // The reveal is still pending when the command returns.
+        reveal.mockReturnValue(deferred().promise);
+        const command = addCommand.mock.calls
+          .map(([registered]) => registered)
+          .find((registered) => registered.id === id);
+
+        expect(command?.checkCallback?.(true)).toBe(true);
+        command?.checkCallback?.(false);
+
+        expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
+        expect(view["isFocused"]).toBe(true);
+      },
+    );
+  });
 });
