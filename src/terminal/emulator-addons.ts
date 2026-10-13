@@ -48,7 +48,9 @@ const electron = dynamicRequire<typeof import("electron")>(BUNDLE, "electron"),
 // every drop on every terminal. What counts is a `stat` that has not answered,
 // also when its drop no longer waits for it: it holds a thread of the pool the
 // process reads its files with, and a volume that never answers keeps it.
-const LOOKUPS = 4,
+// That pool has four threads, which Obsidian reads and saves notes with, so
+// the lookups take half of it at most.
+const LOOKUPS = 2,
   // The lookups in line for a slot, oldest first; each is called when a slot
   // is handed to it.
   lookupQueue: (() => void)[] = [];

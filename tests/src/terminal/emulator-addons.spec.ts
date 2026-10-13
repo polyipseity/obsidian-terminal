@@ -1526,7 +1526,7 @@ describe("DragAndDropAddon", () => {
   }
 
   // Every `stat` a test left without an answer, for `afterEach` to answer:
-  // until it has one, it holds one of the four lookups that all the addons of
+  // until it has one, it holds one of the two lookups that all the addons of
   // a copy of `emulator-addons.ts` share, in the tests that follow as well.
   const pendingStats: PendingStat[] = [];
 
@@ -1543,9 +1543,9 @@ describe("DragAndDropAddon", () => {
     return pending;
   }
 
-  /** Four of them, which is every lookup the addons may have outstanding. */
+  /** Two of them, which is every lookup the addons may have outstanding. */
   function pendingStatsForEverySlot(): readonly PendingStat[] {
-    return Array.from({ length: 4 }, pendingStat);
+    return Array.from({ length: 2 }, pendingStat);
   }
 
   /** The file URIs of names on the desktop, as a URI list. */
@@ -3236,7 +3236,7 @@ describe("DragAndDropAddon", () => {
 
   // === Looking up a URI list on disk, within bounds ===
 
-  it("looks up four paths of a URI list at a time and pastes in list order", async () => {
+  it("looks up two paths of a URI list at a time and pastes in list order", async () => {
     const names = Array.from(
         { length: 10 },
         (_value, index) => `${String(index)}.png`,
@@ -3257,14 +3257,14 @@ describe("DragAndDropAddon", () => {
     const bed = createBed();
 
     await drop(bed, uriDrag(desktopUriList(names)));
-    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(4);
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(2);
     // Answered from the newest to the oldest, which is not the list order.
     for (let stat = stats.pop(); stat; stat = stats.pop()) {
       stat.answer();
       await tick();
     }
 
-    expect(mostInFlight).toBe(4);
+    expect(mostInFlight).toBe(2);
     expect(dragAndDropEnvironment.stat.mock.calls).toEqual(
       names.map((name) => [`${DESKTOP}/${name}`]),
     );
@@ -3306,8 +3306,8 @@ describe("DragAndDropAddon", () => {
       ),
     );
     await vi.advanceTimersByTimeAsync(1999);
-    // `1.png` has its answer, and `4.png` took its place; `5.png` waits.
-    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(5);
+    // `1.png` has its answer, and `2.png` took its place; `3.png` waits.
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(3);
     expect(bed.paste).not.toHaveBeenCalled();
     expect(notices()).toEqual([]);
 
@@ -3316,15 +3316,15 @@ describe("DragAndDropAddon", () => {
     expect(bed.focus).toHaveBeenCalledOnce();
     expect(notices()).toEqual([SKIPPED_PATHS]);
 
-    // Late answers are ignored, and nothing more is looked up: `5.png`, which
+    // Late answers are ignored, and nothing more is looked up: `3.png`, which
     // never got a lookup, is not given the ones that come free now.
     for (const stat of late) {
       stat.answer();
     }
     await vi.advanceTimersByTimeAsync(5000);
-    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(5);
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(3);
     expect(dragAndDropEnvironment.stat).not.toHaveBeenCalledWith(
-      `${DESKTOP}/5.png`,
+      `${DESKTOP}/3.png`,
     );
     expect(bed.paste).toHaveBeenCalledOnce();
     expect(notices()).toEqual([SKIPPED_PATHS]);
@@ -3389,9 +3389,37 @@ describe("DragAndDropAddon", () => {
 
   // === Lookups outstanding, over every drop and every terminal ===
 
+  // The process reads and writes every file on a pool of four threads, those
+  // of the vault as well, and a `stat` without an answer holds one of them.
+  it("leaves half of the pool the process reads its files with free while no lookup has an answer", async () => {
+    vi.useFakeTimers();
+    const pool = 4;
+    dragAndDropEnvironment.stat.mockImplementation(() => pendingStat().promise);
+    const first = createBed(),
+      second = createBed();
+
+    // More paths than the pool has threads, over two terminals, and none has
+    // an answer: a volume whose server is gone.
+    first.fire(
+      "drop",
+      uriDrag(
+        desktopUriList(["0.png", "1.png", "2.png", "3.png", "4.png", "5.png"]),
+      ),
+    );
+    await vi.advanceTimersByTimeAsync(2000);
+    second.fire("drop", uriDrag(desktopUriList(["6.png", "7.png"])));
+    await vi.advanceTimersByTimeAsync(2000);
+
+    // Every `stat` that was called is still without an answer here.
+    expect(dragAndDropEnvironment.stat.mock.calls.length).toBeLessThanOrEqual(
+      pool / 2,
+    );
+    expect(notices()).toEqual([NO_PATHS, NO_PATHS]);
+  });
+
   // A `stat` that has no answer goes on after its drop has stopped waiting,
   // and holds a thread of the process until it has one.
-  it("starts no fifth lookup for the next drop while four have no answer", async () => {
+  it("starts no third lookup for the next drop while two have no answer", async () => {
     vi.useFakeTimers();
     dragAndDropEnvironment.stat.mockImplementation(() => pendingStat().promise);
     const bed = createBed();
@@ -3407,9 +3435,7 @@ describe("DragAndDropAddon", () => {
     await vi.advanceTimersByTimeAsync(2000);
 
     expect(dragAndDropEnvironment.stat.mock.calls).toEqual(
-      ["0.png", "1.png", "2.png", "3.png"].map((name) => [
-        `${DESKTOP}/${name}`,
-      ]),
+      ["0.png", "1.png"].map((name) => [`${DESKTOP}/${name}`]),
     );
     expect(bed.paste).not.toHaveBeenCalled();
     // The paths of the second drop never got a lookup, and count as skipped.
@@ -3427,10 +3453,7 @@ describe("DragAndDropAddon", () => {
     const names = ["a.png", "b.png", "c.png", "d.png", "e.png"],
       bed = createBed();
 
-    bed.fire(
-      "drop",
-      uriDrag(desktopUriList(["0.png", "1.png", "2.png", "3.png"])),
-    );
+    bed.fire("drop", uriDrag(desktopUriList(["0.png", "1.png"])));
     await vi.advanceTimersByTimeAsync(2000);
     expect(notices()).toEqual([NO_PATHS]);
     // The answers come when the drop no longer waits for them.
@@ -3456,20 +3479,17 @@ describe("DragAndDropAddon", () => {
     dragAndDropEnvironment.stat.mockResolvedValue(FILE_ON_DISK);
     const bed = createBed();
 
-    bed.fire(
-      "drop",
-      uriDrag(desktopUriList(["0.png", "1.png", "2.png", "3.png"])),
-    );
+    bed.fire("drop", uriDrag(desktopUriList(["0.png", "1.png"])));
     await vi.advanceTimersByTimeAsync(2000);
     bed.fire("drop", uriDrag(desktopUriList(["a.png", "b.png"])));
     await vi.advanceTimersByTimeAsync(1999);
-    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(4);
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(2);
 
     // One lookup comes free, and the two paths take it in turn.
-    stuck[2]?.answer();
+    stuck[1]?.answer();
     await vi.advanceTimersByTimeAsync(0);
 
-    expect(dragAndDropEnvironment.stat.mock.calls.slice(4)).toEqual([
+    expect(dragAndDropEnvironment.stat.mock.calls.slice(2)).toEqual([
       [`${DESKTOP}/a.png`],
       [`${DESKTOP}/b.png`],
     ]);
@@ -3488,29 +3508,26 @@ describe("DragAndDropAddon", () => {
     const first = createBed(),
       second = createBed();
 
-    first.fire(
-      "drop",
-      uriDrag(desktopUriList(["0.png", "1.png", "2.png", "3.png"])),
-    );
+    first.fire("drop", uriDrag(desktopUriList(["0.png", "1.png"])));
     await vi.advanceTimersByTimeAsync(0);
     second.fire("drop", uriDrag());
     await vi.advanceTimersByTimeAsync(1999);
     // The first terminal holds every lookup, so the second one waits.
-    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(4);
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(2);
     expect(second.paste).not.toHaveBeenCalled();
 
     // A lookup comes free when its `stat` answers, and not before: also when
     // the addon it was for is gone by then.
     first.addon.dispose();
     await vi.advanceTimersByTimeAsync(0);
-    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(4);
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(2);
     stuck[0]?.answer();
     await vi.advanceTimersByTimeAsync(0);
 
     expect(dragAndDropEnvironment.stat).toHaveBeenLastCalledWith(
       `${DESKTOP}/b.png`,
     );
-    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(5);
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(3);
     expect(second.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
     expect(first.paste).not.toHaveBeenCalled();
     expect(notices()).toEqual([]);
@@ -3522,10 +3539,7 @@ describe("DragAndDropAddon", () => {
     const first = createBed(),
       second = createBed();
 
-    first.fire(
-      "drop",
-      uriDrag(desktopUriList(["0.png", "1.png", "2.png", "3.png"])),
-    );
+    first.fire("drop", uriDrag(desktopUriList(["0.png", "1.png"])));
     await vi.advanceTimersByTimeAsync(1000);
     second.fire("drop", uriDrag());
     await vi.advanceTimersByTimeAsync(1999);
@@ -3533,7 +3547,7 @@ describe("DragAndDropAddon", () => {
 
     // The second drop has its own two seconds.
     await vi.advanceTimersByTimeAsync(1);
-    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(4);
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(2);
     expect(second.paste).not.toHaveBeenCalled();
     expect(notices()).toEqual([NO_PATHS, NO_PATHS]);
   });
@@ -3549,17 +3563,14 @@ describe("DragAndDropAddon", () => {
       second = createBed(),
       third = createBed();
 
-    first.fire(
-      "drop",
-      uriDrag(desktopUriList(["0.png", "1.png", "2.png", "3.png"])),
-    );
+    first.fire("drop", uriDrag(desktopUriList(["0.png", "1.png"])));
     await vi.advanceTimersByTimeAsync(0);
     second.fire("drop", uriDrag(`file://${DESKTOP}/second.png`));
     await vi.advanceTimersByTimeAsync(0);
     second.addon.dispose();
     stuck[0]?.answer();
     await vi.advanceTimersByTimeAsync(0);
-    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(4);
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(2);
 
     // The lookup it was handed is free for the next drop.
     third.fire("drop", uriDrag());
