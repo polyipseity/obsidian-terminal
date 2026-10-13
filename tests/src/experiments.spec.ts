@@ -156,19 +156,27 @@ describe("src/experiments.ts", () => {
   });
 
   describe("whileExperimentEnabled", () => {
+    /** Gates a spied start on alpha; the settings source also knows beta. */
+    function watchAlpha(initial: ExperimentFlags<"alpha" | "beta">) {
+      const settings = fakeSettings(initial),
+        stop = vi.fn(),
+        start = vi.fn(() => stop);
+      return {
+        dispose: whileExperimentEnabled(settings, "alpha", start),
+        settings,
+        start,
+        stop,
+      };
+    }
+
     it("does not call start while the experiment is off", async () => {
-      const settings = fakeSettings<"alpha" | "beta">({}),
-        start = vi.fn(() => vi.fn());
-      whileExperimentEnabled(settings, "alpha", start);
+      const { settings, start } = watchAlpha({});
       await settings.set({ beta: true });
       expect(start).not.toHaveBeenCalled();
     });
 
     it("calls start when turned on and its disposer when turned off", async () => {
-      const settings = fakeSettings<"alpha">({}),
-        stop = vi.fn(),
-        start = vi.fn(() => stop);
-      whileExperimentEnabled(settings, "alpha", start);
+      const { settings, start, stop } = watchAlpha({});
       await settings.set({ alpha: true });
       expect(start).toHaveBeenCalledOnce();
       expect(stop).not.toHaveBeenCalled();
@@ -178,22 +186,13 @@ describe("src/experiments.ts", () => {
     });
 
     it("starts at once when the experiment is already on", () => {
-      const stop = vi.fn(),
-        start = vi.fn(() => stop);
-      whileExperimentEnabled(
-        fakeSettings<"alpha">({ alpha: true }),
-        "alpha",
-        start,
-      );
+      const { start, stop } = watchAlpha({ alpha: true });
       expect(start).toHaveBeenCalledOnce();
       expect(stop).not.toHaveBeenCalled();
     });
 
     it("starts again after off and on", async () => {
-      const settings = fakeSettings<"alpha" | "beta">({}),
-        stop = vi.fn(),
-        start = vi.fn(() => stop);
-      whileExperimentEnabled(settings, "alpha", start);
+      const { settings, start, stop } = watchAlpha({});
       await settings.set({ alpha: true });
       // A change that leaves the flag as it is calls neither.
       await settings.set({ alpha: true, beta: true });
@@ -208,10 +207,7 @@ describe("src/experiments.ts", () => {
     });
 
     it("the returned disposer stops a running experiment and unsubscribes", async () => {
-      const settings = fakeSettings<"alpha">({ alpha: true }),
-        stop = vi.fn(),
-        start = vi.fn(() => stop),
-        dispose = whileExperimentEnabled(settings, "alpha", start);
+      const { dispose, settings, start, stop } = watchAlpha({ alpha: true });
       dispose();
       expect(stop).toHaveBeenCalledOnce();
       await settings.set({});
@@ -221,10 +217,7 @@ describe("src/experiments.ts", () => {
     });
 
     it("the returned disposer does nothing more while off", async () => {
-      const settings = fakeSettings<"alpha">({}),
-        stop = vi.fn(),
-        start = vi.fn(() => stop),
-        dispose = whileExperimentEnabled(settings, "alpha", start);
+      const { dispose, settings, start, stop } = watchAlpha({});
       dispose();
       await settings.set({ alpha: true });
       expect(start).not.toHaveBeenCalled();
@@ -269,10 +262,7 @@ describe("src/experiments.ts", () => {
     it("the change has applied when the settings change resolves", async () => {
       vi.useFakeTimers();
       try {
-        const settings = fakeSettings<"alpha">({}),
-          stop = vi.fn(),
-          start = vi.fn(() => stop);
-        whileExperimentEnabled(settings, "alpha", start);
+        const { settings, start, stop } = watchAlpha({});
         await settings.set({ alpha: true });
         expect(start).toHaveBeenCalledOnce();
         await settings.set({});
