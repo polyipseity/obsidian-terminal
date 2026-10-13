@@ -262,7 +262,8 @@ if sys.platform != "win32":
 
         The PTY must be non-blocking. Input it cannot take yet waits in
         `_pending`, and the selector reports the PTY as writable only while
-        something waits there.
+        something waits there. That report does not come every time the PTY
+        gets room, so the loop also calls `retry` on every turn.
         """
 
         def __init__(self, selector: BaseSelector, pty_fd: int) -> None:

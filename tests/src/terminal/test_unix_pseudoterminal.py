@@ -116,6 +116,10 @@ exists, then discards the terminal's input queue and reads until the line
 `END`, or until no input comes for 3 seconds. It reports the bytes it read and
 which of the two ended the reading.
 
+Its third argument says how it discards the queue: `tcflush`, or `tcsaflush`
+for setting the terminal's attributes with TCSAFLUSH, as `getpass` and
+`tty.setraw` do.
+
 The terminal stays in canonical mode, without echo: complete lines make the
 writer wait once the queue is full, and nothing is written back."""
 _DISCARDING_CHILD = """
@@ -126,7 +130,10 @@ termios.tcsetattr(0, termios.TCSANOW, attributes)
 os.write(1, b"READY\\n")
 while not os.path.exists(sys.argv[2]):
     time.sleep(0.01)
-termios.tcflush(0, termios.TCIFLUSH)
+if sys.argv[3] == "tcflush":
+    termios.tcflush(0, termios.TCIFLUSH)
+else:
+    termios.tcsetattr(0, termios.TCSAFLUSH, attributes)
 count, ending = 0, b"STALLED"
 while select.select([0], [], [], 3.0)[0]:
     data = os.read(0, 65536)
@@ -1376,8 +1383,9 @@ def test_real_proxy_delivers_input_burst_while_child_writes() -> None:
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only proxy")
+@pytest.mark.parametrize("how", ["tcflush", "tcsaflush"])
 def test_real_proxy_delivers_held_input_after_the_child_discards_its_queue(
-    tmp_path: Path,
+    tmp_path: Path, how: str
 ) -> None:
     """Deliver the input the proxy holds to a child that discarded its queue.
 
@@ -1390,7 +1398,7 @@ def test_real_proxy_delivers_held_input_after_the_child_discards_its_queue(
     discard = tmp_path / "discard"
     line = b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\n"
     payload = line * (_BURST_BYTES // len(line)) + b"END\n"
-    child = [sys.executable, "-c", _DISCARDING_CHILD, marker, str(discard)]
+    child = [sys.executable, "-c", _DISCARDING_CHILD, marker, str(discard), how]
     with _spawn_proxy(child, marker) as (process, _cmd_write):
         output, sent, eof = _pump(process, payload, stall=0.5)
         assert (output, eof) == (b"", False)
