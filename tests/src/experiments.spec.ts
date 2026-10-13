@@ -319,7 +319,11 @@ describe("src/experiments.ts", () => {
           .mockImplementation(() => vi.fn());
       whileExperimentEnabled(settings, "alpha", start);
       await expect(settings.set({ alpha: true })).resolves.toBeUndefined();
-      expect(logged).toHaveBeenCalledExactlyOnceWith(failure);
+      // The log names the experiment and keeps the error, with its stack.
+      expect(logged).toHaveBeenCalledExactlyOnceWith(
+        'Experiment "alpha":',
+        failure,
+      );
       await settings.set({});
       await settings.set({ alpha: true });
       expect(start).toHaveBeenCalledTimes(2);
@@ -337,7 +341,10 @@ describe("src/experiments.ts", () => {
       whileExperimentEnabled(settings, "alpha", start);
       await expect(settings.set({})).resolves.toBeUndefined();
       expect(stop).toHaveBeenCalledOnce();
-      expect(logged).toHaveBeenCalledExactlyOnceWith(failure);
+      expect(logged).toHaveBeenCalledExactlyOnceWith(
+        'Experiment "alpha":',
+        failure,
+      );
       await settings.set({ alpha: true });
       expect(start).toHaveBeenCalledTimes(2);
     });

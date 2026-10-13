@@ -126,7 +126,8 @@ export function whileExperimentEnabled<I extends string>(
           stop0();
         }
       } catch (error) {
-        self.console.error(error);
+        // The console line is the only trace: it has to say which experiment.
+        self.console.error(`Experiment "${id}":`, error);
       }
     },
     unlisten = settings.onMutate(
