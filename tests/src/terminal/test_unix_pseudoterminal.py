@@ -371,6 +371,56 @@ def test_teardown_stops_after_child_exits(
     assert events.index("close") < events.index(f"killpg:{module.SIGHUP}")
 
 
+@pytest.mark.parametrize(("collectable_after", "exit_code"), [(1, 0), (None, 1)])
+def test_teardown_waits_for_a_shell_that_cannot_be_collected_yet(
+    monkeypatch: pytest.MonkeyPatch,
+    collectable_after: int | None,
+    exit_code: int,
+) -> None:
+    """Poll for the shell's status when its group is quiet before it is a zombie."""
+    module = _load_unix_pseudoterminal_module()
+    signal_calls: list[int] = []
+    slept: list[float] = []
+    polls = 0
+
+    def fake_killpg(_pgid: int, signal_number: int) -> None:
+        """Record each signal used to terminate the child process group."""
+        signal_calls.append(signal_number)
+
+    def fake_sleep(seconds: float) -> None:
+        """Record polling intervals without delaying the test."""
+        slept.append(seconds)
+
+    def fake_waitpid(pid: int, flags: int) -> tuple[int, int]:
+        """Report nothing to collect for the first polls; reject blocking waits."""
+        nonlocal polls
+        if flags == 0:
+            raise AssertionError("blocking waitpid should not run during teardown")
+        polls += 1
+        if collectable_after is None or polls <= collectable_after:
+            return 0, 0
+        return pid, 1
+
+    _patch_proxy(
+        monkeypatch,
+        module,
+        fork_result=(1234, 99),
+        event_fd=module._STDIN,
+        killpg=fake_killpg,
+        waitpid=fake_waitpid,
+        sleep=fake_sleep,
+        group_alive=lambda _pgid: False,
+    )
+
+    with pytest.raises(SystemExit) as raised:
+        module.main()
+
+    assert raised.value.code == exit_code
+    assert signal_calls == [module.SIGHUP]
+    # The polling ends with the grace period of the signal that was sent.
+    assert sum(slept) <= module._TERMINATION_SEQUENCE[0][1] + 0.01
+
+
 def test_shutdown_request_with_pty_eof_exits_zero(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

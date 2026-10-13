@@ -164,6 +164,7 @@ if sys.platform != "win32":
             close(pty_fd)
 
         group_quiet = False
+        remaining = 0.0
         for sig, grace in _TERMINATION_SEQUENCE:
             # On macOS, killpg can raise PermissionError when the group's only
             # member has exited; the next poll collects the child harmlessly.
@@ -176,17 +177,25 @@ if sys.platform != "win32":
                 elapsed += interval
                 if not _group_alive(pid):
                     group_quiet = True
+                    remaining = grace - elapsed
                     break
             if group_quiet:
                 break
 
-        try:
-            waited, status = waitpid(pid, WNOHANG)
-        except ChildProcessError:
-            return 0
-        if waited == pid:
-            return status
-        return None
+        while True:
+            try:
+                waited, status = waitpid(pid, WNOHANG)
+            except ChildProcessError:
+                return 0
+            if waited == pid:
+                return status
+            if remaining <= 0:
+                return None
+            # A shell that has just died can be gone from its group before it
+            # can be collected; it gets the rest of this grace period.
+            interval = min(_TERMINATION_POLL_SECONDS, remaining)
+            sleep(interval)
+            remaining -= interval
 
     class _SelectorHandler:
         """Base context-manager that registers a read-callback for an FD.
