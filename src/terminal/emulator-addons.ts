@@ -114,6 +114,8 @@ interface Drop {
   readonly activation: number;
   /** What had the focus in the terminal's window. */
   readonly focused: Element | null;
+  /** `DragAndDropAddon.#input` at the drop, which says what was typed since. */
+  readonly input: number;
   readonly terminal: Terminal;
 }
 
@@ -157,6 +159,15 @@ export class DragAndDropAddon implements ITerminalAddon {
   // disk, in milliseconds.
   static readonly #LOOKUP_DEADLINE = 2000;
 
+  // What the terminal tells a program that asked for it when it gains or
+  // loses the focus. It is data of the terminal like what is typed, but no
+  // input of the user: a click on the terminal sets it off, and so does the
+  // focus a drop gives it.
+  static readonly #FOCUS_REPORTS: ReadonlySet<string> = new Set([
+    "\u001b[I",
+    "\u001b[O",
+  ]);
+
   readonly #disposer = new Functions({ async: false, settled: true });
   // Set by `dispose()`: nothing would remove listeners added after it.
   #disposed = false;
@@ -166,6 +177,12 @@ export class DragAndDropAddon implements ITerminalAddon {
   #activation = 0;
   // Settles when every drop so far is done with the terminal.
   #drops: Promise<void> = Promise.resolve();
+  // Counts the input the terminal has sent to its program. A drop that had
+  // to wait is not pasted once the count has moved on: the command line is
+  // no longer the one the paths were dropped on.
+  #input = 0;
+  // Set while a drop is pasted, which the terminal sends as data as well.
+  #pasting = false;
 
   /**
    * @param context - plugin whose vault, language and settings are used.
@@ -257,10 +274,18 @@ export class DragAndDropAddon implements ITerminalAddon {
       },
       drop = (event: DragEvent): void => {
         this.#drop(terminal, activation, event);
-      };
+      },
+      input = terminal.onData((data) => {
+        if (!this.#pasting && !DragAndDropAddon.#FOCUS_REPORTS.has(data)) {
+          ++this.#input;
+        }
+      });
     // The listeners are added in `activate` itself, not after the import of
     // Electron as before, when a drop that came during the import was lost.
     this.#disposer.push(
+      () => {
+        input.dispose();
+      },
       () => {
         element.removeEventListener("dragenter", over);
       },
@@ -385,6 +410,7 @@ export class DragAndDropAddon implements ITerminalAddon {
     const drop: Drop = {
       activation,
       focused: this.element.ownerDocument.activeElement,
+      input: this.#input,
       terminal,
     };
     if (kind === "vault") {
@@ -433,13 +459,19 @@ export class DragAndDropAddon implements ITerminalAddon {
    * items could not become one.
    */
   #insert(drop: Drop, dropped: DroppedPaths): void {
-    const { activation, focused, terminal } = drop;
+    const { activation, focused, input, terminal } = drop;
     if (!this.#isCurrent(activation)) {
       // The terminal was replaced or went away while the drop waited.
       return;
     }
     if (dropped.paths.length === 0) {
       this.#notice("notices.drop-no-paths");
+      return;
+    }
+    if (input !== this.#input) {
+      // The user typed while the drop waited for its paths or for the drops
+      // before it. After Enter the paths would go to whatever runs by now.
+      this.#notice("notices.drop-skipped-paths");
       return;
     }
     const platform = deopaque(Platform.CURRENT),
@@ -458,7 +490,7 @@ export class DragAndDropAddon implements ITerminalAddon {
       if (!this.#isCurrent(activation)) {
         return;
       }
-      terminal.paste(paste);
+      this.#paste(terminal, paste);
     }
     if (!this.#isCurrent(activation)) {
       return;
@@ -475,6 +507,19 @@ export class DragAndDropAddon implements ITerminalAddon {
     // are files on this computer then, which the other notice would deny.
     if (dropped.skipped + skipped > 0) {
       this.#notice("notices.drop-skipped-paths");
+    }
+  }
+
+  /**
+   * Pastes a text. The terminal sends it to its program as data, like what
+   * is typed, so it is marked as not being input of the user.
+   */
+  #paste(terminal: Terminal, text: string): void {
+    this.#pasting = true;
+    try {
+      terminal.paste(text);
+    } finally {
+      this.#pasting = false;
     }
   }
 

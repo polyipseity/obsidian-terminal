@@ -1618,6 +1618,34 @@ describe("DragAndDropAddon", () => {
   }
 
   /**
+   * A terminal as the addon uses it. What is pasted reaches the program as
+   * data, as it does in xterm.js, and so does `input`: what the user types,
+   * or what the terminal reports by itself.
+   */
+  function fakeTerminal() {
+    const listeners = new Set<(data: string) => void>(),
+      input = (data: string): void => {
+        for (const listener of [...listeners]) {
+          listener(data);
+        }
+      },
+      focus = vi.fn(),
+      paste = vi.fn((data: string): void => {
+        input(data);
+      }),
+      onData = vi.fn((listener: (data: string) => void): IDisposable => {
+        listeners.add(listener);
+        return {
+          dispose: () => {
+            listeners.delete(listener);
+          },
+        };
+      }),
+      terminal = { focus, onData, paste } as unknown as Terminal;
+    return { focus, input, listeners, onData, paste, terminal };
+  }
+
+  /**
    * Activates the addon on the element of a terminal inside a view.
    *
    * @param options - the vault, the profile and the vault drag in flight.
@@ -1638,9 +1666,7 @@ describe("DragAndDropAddon", () => {
       reachedView = vi.fn<(event: Event) => void>(),
       addEventListener = vi.spyOn(element, "addEventListener"),
       removeEventListener = vi.spyOn(element, "removeEventListener"),
-      focus = vi.fn(),
-      paste = vi.fn(),
-      terminal = { focus, paste } as unknown as Terminal,
+      { focus, input, listeners, paste, terminal } = fakeTerminal(),
       getFullPath = vi.fn(fullPath),
       getAbstractFileByPath = vi.fn((path: string) =>
         missing.includes(path) ? null : vaultFile(path),
@@ -1677,6 +1703,10 @@ describe("DragAndDropAddon", () => {
       dragManager,
       element,
       focus,
+      /** Sends data from the terminal to its program, as typing does. */
+      input,
+      /** The listeners for that data that are still there. */
+      listeners,
       paste,
       removeEventListener,
       setAction,
@@ -1959,14 +1989,13 @@ describe("DragAndDropAddon", () => {
     const stat = pendingStat();
     dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
     const bed = createBed(),
-      focus = vi.fn(),
-      paste = vi.fn();
+      { focus, paste, terminal } = fakeTerminal();
     pastes.push(paste);
 
     // A drop that is still looked up on disk when the terminal is replaced
     // belongs to neither terminal by the time it has its answer.
     await drop(bed, uriDrag());
-    bed.addon.activate({ focus, paste } as unknown as Terminal);
+    bed.addon.activate(terminal);
     stat.answer();
     await tick();
 
@@ -3650,8 +3679,122 @@ describe("DragAndDropAddon", () => {
     expect(bed.focus).toHaveBeenCalledOnce();
   });
 
+  // === Input while a drop waits ===
+
+  // The paths of a URI list are pasted once they are looked up. What the
+  // user types meanwhile changes the command line they were dropped on:
+  // after Enter, they would go to the program that runs by then.
+  it.each<readonly [string, string]>([
+    ["Enter", "\r"],
+    ["a letter", "x"],
+    ["an arrow key", "\u001b[A"],
+    ["a paste of the user", "\u001b[200~text\u001b[201~"],
+  ])(
+    "pastes nothing of a drop when %s reaches the terminal while it waits, and says so",
+    async (_name, data) => {
+      const stat = pendingStat();
+      dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+      const bed = createBed();
+
+      await drop(bed, uriDrag());
+      bed.input(data);
+      stat.answer();
+      await tick();
+
+      expect(bed.paste).not.toHaveBeenCalled();
+      expect(bed.focus).not.toHaveBeenCalled();
+      expect(notices()).toEqual([SKIPPED_PATHS]);
+    },
+  );
+
+  it("pastes nothing of a drop that waits behind another when input reaches the terminal", async () => {
+    const stat = pendingStat();
+    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+    const bed = createBed();
+
+    await drop(bed, uriDrag());
+    await drop(bed, nativeDrag([nativeFile("c.png", `${DESKTOP}/c.png`)]));
+    bed.input("\r");
+    stat.answer();
+    await tick();
+
+    expect(bed.paste).not.toHaveBeenCalled();
+    expect(notices()).toEqual([SKIPPED_PATHS, SKIPPED_PATHS]);
+  });
+
+  it("still pastes a drop that comes after the input", async () => {
+    const stat = pendingStat();
+    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+    const bed = createBed();
+
+    await drop(bed, uriDrag());
+    bed.input("ls\r");
+    await drop(bed, nativeDrag([nativeFile("c.png", `${DESKTOP}/c.png`)]));
+    stat.answer();
+    await tick();
+
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/c.png `]]);
+    expect(notices()).toEqual([SKIPPED_PATHS]);
+  });
+
+  it("says that there is nothing to insert, not that something was left out, when a drop without a path saw input", async () => {
+    const stat = pendingStat();
+    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+    const bed = createBed();
+
+    await drop(bed, uriDrag());
+    bed.input("\r");
+    stat.answer({ isDirectory: () => false, isFile: () => false });
+    await tick();
+
+    expect(notices()).toEqual([NO_PATHS]);
+  });
+
+  // A program that asked for it is told when the terminal gains or loses the
+  // focus, which a click on the terminal sets off, and so does the drop.
+  it.each<readonly [string, string]>([
+    ["gains", "\u001b[I"],
+    ["loses", "\u001b[O"],
+  ])(
+    "does not take the report that the terminal %s the focus for input",
+    async (_name, report) => {
+      const stat = pendingStat();
+      dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+      const bed = createBed();
+      bed.focus.mockImplementation(() => {
+        bed.input("\u001b[I");
+      });
+
+      await drop(bed, uriDrag());
+      await drop(bed, nativeDrag([nativeFile("c.png", `${DESKTOP}/c.png`)]));
+      bed.input(report);
+      stat.answer();
+      await tick();
+
+      expect(bed.paste.mock.calls).toEqual([
+        [`${DESKTOP}/b.png `],
+        [`${DESKTOP}/c.png `],
+      ]);
+      expect(notices()).toEqual([]);
+    },
+  );
+
+  it("stops listening for input on dispose, and when the terminal is replaced", () => {
+    const bed = createBed(),
+      next = fakeTerminal();
+
+    expect(bed.listeners.size).toBe(1);
+    bed.addon.activate(next.terminal);
+    expect(bed.listeners.size).toBe(0);
+    expect(next.listeners.size).toBe(1);
+    bed.addon.dispose();
+    expect(next.listeners.size).toBe(0);
+  });
+
   // === Drops one after another ===
 
+  // The paste of the first drop is data to the terminal as well, and is not
+  // taken for input of the user.
   it("pastes a drop that needs no lookup after an earlier one that does", async () => {
     const stat = pendingStat();
     dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
