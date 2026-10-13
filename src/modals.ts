@@ -1461,80 +1461,84 @@ export class ProfileModal extends Modal {
                 ),
               );
           });
-          ui.newSetting(element, (setting) => {
-            const pluginPython = settings.value.pythonExecutable,
-              effective = inheritedPythonExecutable(
-                profile.pythonExecutable,
-                pluginPython,
-              ),
-              win32Eligible = isWin32Eligible(),
-              diagnosis = getWindowsPythonDiagnosis(effective, pluginPython),
-              busy =
-                checkingPython ||
-                isPluginPythonCheckPending(context, effective),
-              notAutomatic = !canCheckAutomatically() && !diagnosis && !busy,
-              backendStatus =
-                profile.win32Backend === "legacy"
-                  ? "legacy"
-                  : busy
-                    ? "checking"
-                    : !diagnosis
-                      ? "unverified"
-                      : windowsConPtyStatus(diagnosis, effective, pluginPython);
-            setting
-              .setName(
-                i18n.t(`components.profile.${profile.type}.win32-backend`),
-              )
-              .setDesc(
-                i18n.t(
-                  `components.profile.${profile.type}.win32-backend-description`,
-                ) +
-                  (win32Eligible
-                    ? ` ${i18n.t(
-                        notAutomatic && profile.win32Backend !== "legacy"
-                          ? "components.profile.integrated.Python-status-not-automatic"
-                          : `components.profile.integrated.win32-backend-status-${backendStatus}`,
-                      )}`
-                    : ""),
-              )
-              .addDropdown(
-                linkSetting(
-                  (): string => profile.win32Backend,
-                  setTextToEnum(Settings.Profile.WIN32_BACKENDS, (value) => {
-                    profile.win32Backend = value;
-                  }),
-                  async () => this.postMutate(),
-                  {
-                    pre: (dropdown) => {
-                      dropdown.addOptions(
-                        Object.fromEntries(
-                          Settings.Profile.WIN32_BACKENDS.map((backend) => [
-                            backend,
-                            i18n.t(
-                              `components.profile.${profile.type}.win32-backend-options-${backend}`,
-                            ),
-                          ]),
-                        ),
-                      );
-                    },
-                  },
-                ),
-              )
-              .addExtraButton(
-                resetButton(
-                  i18n.t(
-                    `asset:components.profile.${profile.type}.win32-backend-icon`,
-                  ),
-                  i18n.t("components.profile.reset"),
-                  () => {
-                    profile.win32Backend =
-                      Settings.Profile.DEFAULTS[profile.type].win32Backend;
-                  },
-                  async () => this.postMutate(),
-                ),
-              );
-          });
           if (deopaque(Platform.CURRENT) === "win32") {
+            ui.newSetting(element, (setting) => {
+              const pluginPython = settings.value.pythonExecutable,
+                effective = inheritedPythonExecutable(
+                  profile.pythonExecutable,
+                  pluginPython,
+                ),
+                win32Eligible = isWin32Eligible(),
+                diagnosis = getWindowsPythonDiagnosis(effective, pluginPython),
+                busy =
+                  checkingPython ||
+                  isPluginPythonCheckPending(context, effective),
+                notAutomatic = !canCheckAutomatically() && !diagnosis && !busy,
+                backendStatus =
+                  profile.win32Backend === "legacy"
+                    ? "legacy"
+                    : busy
+                      ? "checking"
+                      : !diagnosis
+                        ? "unverified"
+                        : windowsConPtyStatus(
+                            diagnosis,
+                            effective,
+                            pluginPython,
+                          );
+              setting
+                .setName(
+                  i18n.t(`components.profile.${profile.type}.win32-backend`),
+                )
+                .setDesc(
+                  i18n.t(
+                    `components.profile.${profile.type}.win32-backend-description`,
+                  ) +
+                    (win32Eligible
+                      ? ` ${i18n.t(
+                          notAutomatic && profile.win32Backend !== "legacy"
+                            ? "components.profile.integrated.Python-status-not-automatic"
+                            : `components.profile.integrated.win32-backend-status-${backendStatus}`,
+                        )}`
+                      : ""),
+                )
+                .addDropdown(
+                  linkSetting(
+                    (): string => profile.win32Backend,
+                    setTextToEnum(Settings.Profile.WIN32_BACKENDS, (value) => {
+                      profile.win32Backend = value;
+                    }),
+                    async () => this.postMutate(),
+                    {
+                      pre: (dropdown) => {
+                        dropdown.addOptions(
+                          Object.fromEntries(
+                            Settings.Profile.WIN32_BACKENDS.map((backend) => [
+                              backend,
+                              i18n.t(
+                                `components.profile.${profile.type}.win32-backend-options-${backend}`,
+                              ),
+                            ]),
+                          ),
+                        );
+                      },
+                    },
+                  ),
+                )
+                .addExtraButton(
+                  resetButton(
+                    i18n.t(
+                      `asset:components.profile.${profile.type}.win32-backend-icon`,
+                    ),
+                    i18n.t("components.profile.reset"),
+                    () => {
+                      profile.win32Backend =
+                        Settings.Profile.DEFAULTS[profile.type].win32Backend;
+                    },
+                    async () => this.postMutate(),
+                  ),
+                );
+            });
             ui.newSetting(element, (setting) => {
               // Always rendered; visibility toggled (see settings.ts
               // newPythonWidgets).
