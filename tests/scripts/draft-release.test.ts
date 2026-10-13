@@ -1,7 +1,7 @@
 // @vitest-environment node
 
 import { spawnSync } from "node:child_process";
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -11,10 +11,10 @@ import { parse } from "yaml";
 
 // Integration test for scripts/draft-release.sh, which the release workflow
 // (.github/workflows/release.yml) calls. That workflow only runs on GitHub, so
-// the script runs here in a temporary folder with a stub `gh` first on PATH:
-// no network, no real release. The order in which the workflow calls the script
-// is part of what the script relies on, so the last suite reads the workflow.
-// See AGENTS.md (Testing section).
+// the script runs here in a temporary folder with a stub `gh` and a stub `git`
+// first on PATH: no network, no real release. The order in which the workflow
+// calls the script is part of what the script relies on, so the last suite
+// reads the workflow. See AGENTS.md (Releases).
 
 const SCRIPT = path.join(__dirname, "../../scripts/draft-release.sh");
 const STUB_BIN = path.join(__dirname, "../fixtures/draft-release/bin");
@@ -35,6 +35,18 @@ const CHANGELOG = `# obsidian-terminal
 - 5d6e7f8: Older change.
 `;
 const RETITLE = "gh release edit 3.28.0 --title 3.28.0";
+/** A release state of the stub `gh`, and the title edits it makes necessary. */
+type Release = readonly [state: string, edits: readonly string[]];
+const DRAFTS: readonly Release[] = [
+  ["draft-titled", []],
+  ["draft-titled-extra", []],
+  ["draft-untitled", [RETITLE]],
+];
+const PUBLISHED: readonly Release[] = [
+  ["published-untitled", [RETITLE]],
+  ["published-titled", []],
+  ["published-other-title", [RETITLE]],
+];
 /** Answers of `gh release view` that say nothing reliable about the release. */
 const UNREADABLE = [
   "http502",
@@ -181,7 +193,7 @@ describe.skipIf(process.platform === "win32").each(SHELLS)(
         expect(calls).toEqual([view("9.9.9")]);
       });
 
-      it.each(["draft-titled", "draft-titled-extra", "draft-untitled"])(
+      it.each(DRAFTS)(
         "leaves a draft to the draft step (%s)",
         async (state) => {
           const { status, calls, stepOutput } = await run("check", state);
@@ -192,11 +204,7 @@ describe.skipIf(process.platform === "win32").each(SHELLS)(
         },
       );
 
-      it.each([
-        ["published-untitled", [RETITLE]],
-        ["published-titled", []],
-        ["published-other-title", [RETITLE]],
-      ])(
+      it.each(PUBLISHED)(
         "reports a published release and leaves its files alone (%s)",
         async (state, edits) => {
           const { status, output, calls, stepOutput } = await run(
@@ -281,26 +289,21 @@ describe.skipIf(process.platform === "win32").each(SHELLS)(
         expect(calls).toEqual([view("9.9.9")]);
       });
 
-      it.each([
-        ["draft-titled", []],
-        ["draft-titled-extra", []],
-        ["draft-untitled", [RETITLE]],
-      ])("replaces the files of a draft (%s)", async (state, edits) => {
-        const { status, calls } = await run("draft", state);
+      it.each(DRAFTS)(
+        "replaces the files of a draft (%s)",
+        async (state, edits) => {
+          const { status, calls } = await run("draft", state);
 
-        expect(status).toBe(0);
-        expect(calls).toEqual([
-          view("3.28.0"),
-          ...edits,
-          `gh release upload 3.28.0 ${FILES} --clobber`,
-        ]);
-      });
+          expect(status).toBe(0);
+          expect(calls).toEqual([
+            view("3.28.0"),
+            ...edits,
+            `gh release upload 3.28.0 ${FILES} --clobber`,
+          ]);
+        },
+      );
 
-      it.each([
-        ["published-untitled", [RETITLE]],
-        ["published-titled", []],
-        ["published-other-title", [RETITLE]],
-      ])(
+      it.each(PUBLISHED)(
         "leaves the files of a release published during the run alone (%s)",
         async (state, edits) => {
           const { status, output, calls } = await run("draft", state);
@@ -335,71 +338,53 @@ const Workflow = v.object({
 });
 
 describe(".github/workflows/release.yml", () => {
-  type Job = v.InferOutput<typeof Workflow>["jobs"]["release"];
+  const job = v.parse(Workflow, parse(readFileSync(WORKFLOW, "utf8"))).jobs
+      .release,
+    { steps } = job;
 
-  async function job(): Promise<Job> {
-    return v.parse(Workflow, parse(await fs.readFile(WORKFLOW, "utf8"))).jobs
-      .release;
+  function runs(command: string): number {
+    return steps.findIndex(({ run }) => run === command);
   }
 
-  async function steps(): Promise<Job["steps"]> {
-    return (await job()).steps;
-  }
-
-  it("runs where releases are cut, and elsewhere only when a repository opts in", async () => {
-    expect((await job()).if).toBe(
+  it("runs where releases are cut, and elsewhere only when a repository opts in", () => {
+    expect(job.if).toBe(
       "github.repository == 'polyipseity/obsidian-terminal' || vars.RELEASE_ON_TAG == 'true'",
     );
   });
 
-  it("ends a hung job after 15 minutes", async () => {
-    expect((await job())["timeout-minutes"]).toBe(15);
+  it("ends a hung job after 15 minutes", () => {
+    expect(job["timeout-minutes"]).toBe(15);
   });
 
-  it("keeps the checkout's credentials away from the build", async () => {
-    const checkout = (await steps()).find(({ uses }) =>
+  it("keeps the checkout's credentials away from the build", () => {
+    const checkout = steps.find(({ uses }) =>
       uses?.startsWith("actions/checkout@"),
     );
 
     expect(checkout?.with).toMatchObject({ "persist-credentials": false });
   });
 
-  it("checks the release before it builds, attests and drafts", async () => {
-    const all = await steps(),
-      order = [
-        all.findIndex(
-          ({ run }) => run === `bash scripts/draft-release.sh check`,
-        ),
-        all.findIndex(({ run }) => run === "bun run build"),
-        all.findIndex(({ uses }) => uses?.startsWith("actions/attest@")),
-        all.findIndex(
-          ({ run }) => run === `bash scripts/draft-release.sh draft`,
-        ),
-      ];
+  it("checks the release before the build and the tag before the attestation, and drafts last", () => {
+    const order = [
+      runs("bash scripts/draft-release.sh check"),
+      runs("bun run build"),
+      runs("bash scripts/draft-release.sh tag"),
+      steps.findIndex(({ uses }) => uses?.startsWith("actions/attest@")),
+      runs("bash scripts/draft-release.sh draft"),
+    ];
 
     expect(order).not.toContain(-1);
     expect(order).toEqual([...order].sort((left, right) => left - right));
   });
 
-  it("checks that the tag has not moved between the build and the attestation", async () => {
-    const all = await steps(),
-      order = [
-        all.findIndex(({ run }) => run === "bun run build"),
-        all.findIndex(({ run }) => run === "bash scripts/draft-release.sh tag"),
-        all.findIndex(({ uses }) => uses?.startsWith("actions/attest@")),
-      ];
+  it("skips every later step once the check reports a published release", () => {
+    const later = steps.slice(steps.findIndex(({ id }) => id === "check") + 1);
 
-    expect(order).not.toContain(-1);
-    expect(order).toEqual([...order].sort((left, right) => left - right));
-  });
-
-  it("skips every later step once the check reports a published release", async () => {
-    const all = await steps(),
-      check = all.findIndex(({ id }) => id === "check");
-
-    expect(all[check]?.run).toBe("bash scripts/draft-release.sh check");
-    expect(all.slice(check + 1).map((step) => step.if)).toEqual(
-      all.slice(check + 1).map(() => "steps.check.outputs.published != 'true'"),
+    expect(steps[runs("bash scripts/draft-release.sh check")]?.id).toBe(
+      "check",
+    );
+    expect(later.map((step) => step.if)).toEqual(
+      later.map(() => "steps.check.outputs.published != 'true'"),
     );
   });
 });
