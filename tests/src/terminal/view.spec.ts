@@ -986,7 +986,9 @@ describe("hotkeys while a terminal has focus", () => {
       registerView: vi.fn(),
     });
     TerminalView.load(context);
-    const listener = register.mock.calls[0]?.[2];
+    // Spying again hands back the same spy, so a second load in one test
+    // finds its own listener in the last call.
+    const listener = register.mock.lastCall?.[2];
     if (!listener) throw new Error("Missing focused-scope listener");
     return {
       executeCommand,
@@ -1054,6 +1056,42 @@ describe("hotkeys while a terminal has focus", () => {
     expect(executeCommand).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ id: "terminal:clear-terminal" }),
     );
+  });
+
+  it("forgets the commands of an earlier load", () => {
+    const hotkey = { key: "t", modifiers: ["Alt", "Ctrl"] },
+      earlier = loadView();
+    TerminalView.allowWhileFocused(
+      earlier.addBoundCommand("open-terminal.external.root", hotkey).command,
+    );
+    const { addBoundCommand, executeCommand, press } = loadView(),
+      { check } = addBoundCommand("open-terminal.external.root", hotkey);
+
+    press(["Ctrl", "Alt"], "t");
+
+    expect(executeCommand).not.toHaveBeenCalled();
+    expect(check).not.toHaveBeenCalled();
+  });
+
+  it("honours a command allowed after a bake only once the hotkey table is stale again", () => {
+    const { addBoundCommand, executeCommand, press } = loadView(),
+      { command } = addBoundCommand("open-terminal.external.root", {
+        key: "t",
+        modifiers: ["Alt", "Ctrl"],
+      });
+
+    // The first key bakes the table, without the command.
+    press(["Ctrl", "Alt"], "t");
+    expect(executeCommand).not.toHaveBeenCalled();
+
+    TerminalView.allowWhileFocused(command);
+    press(["Ctrl", "Alt"], "t");
+    expect(executeCommand).not.toHaveBeenCalled();
+
+    // Any change of a hotkey marks the table stale.
+    addBoundCommand("command-palette", { key: "p", modifiers: ["Mod"] });
+    press(["Ctrl", "Alt"], "t");
+    expect(executeCommand).toHaveBeenCalledExactlyOnceWith(command);
   });
 });
 
