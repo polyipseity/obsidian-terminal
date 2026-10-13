@@ -2859,26 +2859,22 @@ describe("shell input piping", () => {
             callback(error);
           },
         }),
-        listeners: ((data: string) => unknown)[] = [],
-        terminal = {
-          element: document.createElement("div"),
-          loadAddon: (): void => {},
-          onData: (listener: (data: string) => unknown) => {
-            listeners.push(listener);
-            return { dispose: (): void => {} };
-          },
-          rows: 24,
-          write: (_data: Buffer | string, callback?: () => void): void => {
-            callback?.();
-          },
-        } as unknown as Terminal,
-        shell = { stdin } as unknown as Parameters<
-          typeof pipeShellToTerminal
-        >[1];
+        stdout = new PassThrough(),
+        stderr = new PassThrough(),
+        shell = Object.assign(new childProcess.ChildProcess(), {
+          stderr,
+          stdin,
+          stdio: [stdin, stdout, stderr, null, null] satisfies Parameters<
+            typeof pipeShellToTerminal
+          >[1]["stdio"],
+          stdout,
+        }),
+        { terminal } = captureTerminal(),
+        onData = vi.spyOn(terminal, "onData");
       // The stream's own "error" event is the pseudoterminal's to handle.
       stdin.on("error", () => {});
       await pipeShellToTerminal(terminal, shell, [], new Promise(() => {}));
-      const [writer] = listeners;
+      const writer = onData.mock.calls[0]?.[0];
       if (!writer) throw new Error("No input listener was registered.");
 
       // xterm drops what the listener returns: a rejection here is unhandled.
