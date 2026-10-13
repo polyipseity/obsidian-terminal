@@ -232,6 +232,16 @@ type JsonValue = string | number | boolean | null | JsonObject | JsonArray;
 
   **Lifecycle:** Register/unload all major managers in `Plugin.onload()`
 
+### Experimental features
+
+A feature that is not finished ships behind a toggle in the `Experimental` settings section, off by default. The registry is `EXPERIMENTS` in `src/experiments.ts`.
+
+- **Add:** one entry in `EXPERIMENTS` (`id`, `feedback`, `applies`), its texts in `SettingTab.experimentRows()` (`src/settings.ts`), and `settings.experimental-features.<id>.{name,effect,risk}` in `assets/locales/en/translation.json`. Never reuse an id.
+- **Gate:** feature code asks `isExperimentEnabled(settings.value, id)` and puts everything that registers a listener, starts a process or draws inside `whileExperimentEnabled(settings, id, start)`. Only `src/experiments.ts`, `src/settings-data.ts` and `src/settings.ts` touch `settings.experiments`; `tests/src/experiments.test.ts` enforces it.
+- **Off means off:** with the flag off the plugin behaves as the stable release. Each experiment has a test that runs one scenario with the flag off and on, and asserts that off calls none of the feature's code.
+- **Options:** an experiment's own options are ordinary settings with their own fixers. Their rows are drawn by the `options` drawer of its `experimentRows()` entry and are shown only while it is on. Turning it off keeps their values.
+- **Graduate or remove:** delete the entry from `EXPERIMENTS`. The compiler lists every gate and text to remove, and `Settings.fix` drops the stored flag. The changeset says the feature is no longer experimental.
+
 ## 4. Integration Points
 
 - **Obsidian API:** Peer dependency, entry/manifest must match plugin requirements
