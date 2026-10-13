@@ -1083,6 +1083,49 @@ def _pump(
             moved = time.monotonic()
 
 
+def _pipe_capacity() -> int:
+    """Return how many bytes a pipe takes before a write to it would block."""
+    read_end, write_end = os.pipe()
+    try:
+        os.set_blocking(  # ty: ignore[possibly-missing-attribute]
+            write_end, False
+        )
+        capacity = 0
+        with suppress(BlockingIOError):
+            while True:
+                capacity += os.write(write_end, bytes(65536))
+        return capacity
+    finally:
+        os.close(read_end)
+        os.close(write_end)
+
+
+def _fill_input_buffer(process: subprocess.Popen[bytes]) -> None:
+    """Offer a child that never reads more input than the proxy may hold.
+
+    On return the proxy has taken a full input buffer out of its pipe and
+    stopped reading. The pipe alone takes the first bytes whatever the proxy
+    does, so only what went in beyond the pipe's capacity counts. A proxy that
+    is slow to start gets 5 seconds before that count is judged.
+    """
+    limit = _load_unix_pseudoterminal_module()._INPUT_BUFFER_LIMIT
+    capacity = _pipe_capacity()
+    payload = b"x" * _PENDING_BYTES
+    sent = 0
+    deadline = time.monotonic() + 5.0
+    while sent - capacity < limit and time.monotonic() < deadline:
+        output, taken, eof = _pump(process, payload[sent:], stall=0.5)
+        assert not eof
+        assert not output, output[:200]
+        sent += taken
+    assert sent - capacity >= limit, (
+        f"the proxy took {sent - capacity} bytes out of its pipe, "
+        f"less than its input buffer of {limit}"
+    )
+    # The proxy stopped taking input instead of holding all of it.
+    assert sent <= len(payload) // 2
+
+
 @contextmanager
 def _stand_in(program: str) -> Iterator[subprocess.Popen[bytes]]:
     """Run `program` in place of a proxy once it is ready, and end it afterwards."""
@@ -1267,17 +1310,11 @@ def test_real_proxy_delivers_held_input_after_the_child_discards_its_queue(
 def test_real_proxy_ends_while_input_is_pending(ending: str) -> None:
     """End promptly although the child never reads the input sent to it."""
     marker = _marker(4000)
-    payload = b"x" * _PENDING_BYTES
     with _spawn_proxy([sys.executable, "-c", _DEAF_CHILD, marker], marker) as (
         process,
         cmd_write,
     ):
-        output, sent, eof = _pump(process, payload, stall=0.5)
-
-        # The proxy stopped taking input instead of holding all of it.
-        assert not eof
-        assert not output, output[:200]
-        assert 0 < sent <= len(payload) // 2
+        _fill_input_buffer(process)
 
         start = time.monotonic()
         if ending == "sigterm":
