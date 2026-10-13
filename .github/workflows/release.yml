@@ -2,10 +2,12 @@
 #
 # On a version tag push, builds and attests main.js, manifest.json and styles.css.
 # Creates or updates a draft. Publish it by hand only after the release run for
-# that tag has finished, because publishing during the run can let an upload
-# replace published files. A release already published when the run reaches the
-# release step keeps its files.
+# that tag has succeeded and the draft lists the three files: a failed run can
+# leave files missing, and publishing during the run can let an upload replace
+# published files. A release that is already published keeps its files.
 # Release titles retain existing text when they already contain the version tag.
+# The steps that talk to GitHub are in scripts/draft-release.sh. AGENTS.md has
+# the release order and the fallback by hand.
 
 name: "Release: Version Tag Build"
 on:
