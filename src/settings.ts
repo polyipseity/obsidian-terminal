@@ -45,7 +45,7 @@ import {
   TabStatusStrip,
   tabStatusPreviewAttributes,
 } from "./terminal/tab-status-picker.js";
-import type { TabStatusLook } from "./terminal/tab-status.js";
+import { type TabStatusLook, tabStatusLook } from "./terminal/tab-status.js";
 import {
   PYTHON_DOWNLOADS_URL,
   getWindowsPythonDiagnosis,
@@ -909,14 +909,6 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
         },
         ui,
       } = this,
-      tabStatusLook = (): TabStatusLook => {
-        const { value } = settings;
-        return {
-          animation: value.tabStatusAnimation,
-          set: value.tabIconSet,
-          size: value.tabIconSize,
-        };
-      },
       // A picker's values are words; a size is a number.
       tabIconSizeOf = (value: string): Settings.TabIconSize =>
         Settings.TAB_ICON_SIZES.find((size) => String(size) === value) ??
@@ -925,9 +917,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
         tabIconId(context, set),
       tabStatusEnvironment: TabStatusPreviewEnvironment = {
         setIcon,
-        setTooltip: (element, text) => {
-          setTooltip(element, text);
-        },
+        setTooltip,
       },
       /*
        * A setting whose control is a picker: tiles that show each option on
@@ -981,7 +971,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
                 });
             },
           });
-          const look = tabStatusLook();
+          const look = tabStatusLook(settings.value);
           picker.update({
             describe: (value) => options.hosts(look, value, tabStatusIcon),
             label: options.name(),
@@ -997,7 +987,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
     ui.new(
       () => new TabStatusStrip(container, tabStatusEnvironment),
       (strip) => {
-        const look = tabStatusLook();
+        const look = tabStatusLook(settings.value);
         strip.update({
           label: i18n.t("settings.tab-status-preview.label"),
           tabs: TAB_STATUS_PREVIEW_STATES.map((state, index) => ({

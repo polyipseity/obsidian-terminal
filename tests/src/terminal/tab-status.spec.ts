@@ -19,6 +19,8 @@ import {
   needsAttention,
   onWindowFocus,
   restoreTabIcon,
+  tabStatusLook,
+  writeAttribute,
   writeTabIcon,
   writeTabIconSize,
 } from "../../../src/terminal/tab-status.js";
@@ -71,6 +73,41 @@ describe("TAB_STATUS_ATTRIBUTES", () => {
       size: "data-terminal-size",
       status: "data-terminal-status",
     });
+  });
+});
+
+describe("tabStatusLook", () => {
+  it("is the icon set, the size and the motion of the settings", () => {
+    expect(
+      tabStatusLook({
+        tabIconSet: "tile",
+        tabIconSize: 22,
+        tabStatusAnimation: "loop",
+      }),
+    ).toEqual({ animation: "loop", set: "tile", size: 22 });
+  });
+});
+
+describe("writeAttribute", () => {
+  it("sets a value, replaces it and takes it back", () => {
+    const element = document.createElement("div");
+    writeAttribute(element, "data-x", "one");
+    expect(element.getAttribute("data-x")).toBe("one");
+    writeAttribute(element, "data-x", "two");
+    expect(element.getAttribute("data-x")).toBe("two");
+    writeAttribute(element, "data-x", null);
+    expect(element.hasAttribute("data-x")).toBe(false);
+  });
+
+  it("leaves the element alone when nothing changes", () => {
+    const element = document.createElement("div"),
+      set = vi.spyOn(element, "setAttribute"),
+      remove = vi.spyOn(element, "removeAttribute");
+    writeAttribute(element, "data-x", null);
+    expect(remove).not.toHaveBeenCalled();
+    writeAttribute(element, "data-x", "one");
+    writeAttribute(element, "data-x", "one");
+    expect(set).toHaveBeenCalledOnce();
   });
 });
 

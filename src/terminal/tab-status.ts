@@ -37,6 +37,22 @@ const ATTENTION_STATES: ReadonlySet<State> = new Set<State>([
 ]);
 
 /**
+ * The look the user chose, from the settings.
+ *
+ * @param settings the settings, or the three of them that make the look
+ * @returns the look
+ */
+export function tabStatusLook(
+  settings: Pick<Settings, "tabIconSet" | "tabIconSize" | "tabStatusAnimation">,
+): TabStatusLook {
+  return {
+    animation: settings.tabStatusAnimation,
+    set: settings.tabIconSet,
+    size: settings.tabIconSize,
+  };
+}
+
+/**
  * Whether a state asks for the user when it arrives while they are elsewhere.
  *
  * @param state a reported state
@@ -61,7 +77,7 @@ export function writeTabIconSize(
   header: Element,
   size: Settings.TabIconSize | null,
 ): void {
-  write(
+  writeAttribute(
     header,
     TAB_STATUS_ATTRIBUTES.size,
     size === null ? null : String(size),
@@ -196,12 +212,12 @@ export class TabStatusPresenter {
       return;
     }
     const look = this.options.look();
-    write(header, TAB_STATUS_ATTRIBUTES.status, this.shown());
-    write(header, TAB_STATUS_ATTRIBUTES.size, String(look.size));
+    writeAttribute(header, TAB_STATUS_ATTRIBUTES.status, this.shown());
+    writeAttribute(header, TAB_STATUS_ATTRIBUTES.size, String(look.size));
     // Nothing here keeps anything moving: under animation "loop" the
     // stylesheet does, from these attributes alone, while the status is
     // "working".
-    write(header, TAB_STATUS_ATTRIBUTES.animation, look.animation);
+    writeAttribute(header, TAB_STATUS_ATTRIBUTES.animation, look.animation);
   }
 
   /**
@@ -225,7 +241,7 @@ export class TabStatusPresenter {
       return;
     }
     for (const name of Object.values(TAB_STATUS_ATTRIBUTES)) {
-      write(header, name, null);
+      writeAttribute(header, name, null);
     }
   }
 }
@@ -243,11 +259,15 @@ export namespace TabStatusPresenter {
 /**
  * Sets or removes one attribute, leaving the element alone when nothing changes.
  *
- * @param element the tab header
+ * @param element the tab header, or what stands in for it in a preview
  * @param name attribute name
  * @param value attribute value, or `null` to remove the attribute
  */
-function write(element: Element, name: string, value: string | null): void {
+export function writeAttribute(
+  element: Element,
+  name: string,
+  value: string | null,
+): void {
   if (element.getAttribute(name) === value) {
     return;
   }

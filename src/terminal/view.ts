@@ -91,6 +91,7 @@ import {
   needsAttention,
   onWindowFocus,
   restoreTabIcon,
+  tabStatusLook,
   writeTabIcon,
   writeTabIconSize,
 } from "./tab-status.js";
@@ -1243,14 +1244,7 @@ export class TerminalView extends ItemView {
       } = context,
       presenter = new TabStatusPresenter({
         header: (): Element | null => tabHeaderOf(context, leaf),
-        look: () => {
-          const { value } = settings;
-          return {
-            animation: value.tabStatusAnimation,
-            set: value.tabIconSet,
-            size: value.tabIconSize,
-          };
-        },
+        look: () => tabStatusLook(settings.value),
         lookedAt: (): boolean => this.isLookedAt,
       }),
       look = (): void => {

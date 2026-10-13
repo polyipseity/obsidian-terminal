@@ -1,5 +1,5 @@
 /**
- * The visual half of the "Tab status" settings: a strip of mock tabs that
+ * The visual half of the tab status settings: a strip of mock tabs that
  * shows the current look, and pickers whose options are drawn on real icons.
  *
  * Nothing here draws an icon. A preview host is an element with class
@@ -16,6 +16,7 @@ import {
   TAB_STATUS_ATTRIBUTES,
   type TabStatusDisplay,
   type TabStatusLook,
+  writeAttribute,
 } from "./tab-status.js";
 
 /** What the module needs from Obsidian. */
@@ -98,16 +99,10 @@ export function tabStatusPreviewAttributes(
   look: TabStatusLook,
   state: TabStatusPreviewState,
 ): TabStatusHostAttributes {
-  const size = String(look.size);
-  switch (state) {
-    case "none":
-      return { ...tabStatusHostAttributes(look, null), size };
-    case "done":
-    case "working":
-    case "blocked":
-    case "error":
-      return { ...tabStatusHostAttributes(look, state), size };
-  }
+  return {
+    ...tabStatusHostAttributes(look, state === "none" ? null : state),
+    size: String(look.size),
+  };
 }
 
 /** Describes the tiles of one picker: the option `value` on top of the current look. */
@@ -157,24 +152,6 @@ export const TAB_STATUS_PICKER_HOSTS: {
 });
 
 /**
- * Sets or removes one attribute, leaving the element alone when nothing changes.
- *
- * @param element the element
- * @param name attribute name
- * @param value attribute value, or `null` to remove the attribute
- */
-function write(element: Element, name: string, value: string | null): void {
-  if (element.getAttribute(name) === value) {
-    return;
-  }
-  if (value === null) {
-    element.removeAttribute(name);
-  } else {
-    element.setAttribute(name, value);
-  }
-}
-
-/**
  * Creates an element in the parent's own document and appends it.
  *
  * @param parent where the element goes
@@ -207,9 +184,9 @@ function writeAttributes(
   attributes: TabStatusHostAttributes,
 ): void {
   const names = TAB_STATUS_ATTRIBUTES;
-  write(element, names.animation, attributes.animation ?? null);
-  write(element, names.size, attributes.size ?? null);
-  write(element, names.status, attributes.status ?? null);
+  writeAttribute(element, names.animation, attributes.animation ?? null);
+  writeAttribute(element, names.size, attributes.size ?? null);
+  writeAttribute(element, names.status, attributes.status ?? null);
 }
 
 /** One `tts-host` element and the icon inside it. */
@@ -272,7 +249,7 @@ export class TabStatusStrip {
    */
   public update(state: TabStatusStrip.State): void {
     const tabs = this.#tabs;
-    write(this.element, "aria-label", state.label);
+    writeAttribute(this.element, "aria-label", state.label);
     for (const extra of tabs.splice(state.tabs.length)) {
       extra.host.element.remove();
     }
@@ -371,7 +348,7 @@ export class TabStatusPicker<V extends string> {
    */
   public update(state: TabStatusPicker.State<V>): void {
     const { options } = state;
-    write(this.#tilesElement, "aria-label", state.label);
+    writeAttribute(this.#tilesElement, "aria-label", state.label);
     if (
       options.length !== this.#tiles.length ||
       options.some(
@@ -481,8 +458,8 @@ export class TabStatusPicker<V extends string> {
       chosen = this.#tiles.find((tile) => tile.value === value),
       stop = chosen ?? this.#tiles[0];
     for (const tile of this.#tiles) {
-      write(tile.element, "aria-checked", String(tile === chosen));
-      write(tile.element, "tabindex", tile === stop ? "0" : "-1");
+      writeAttribute(tile.element, "aria-checked", String(tile === chosen));
+      writeAttribute(tile.element, "tabindex", tile === stop ? "0" : "-1");
     }
     // The pointer says more about where the eyes are than the focus does.
     const engaged =
