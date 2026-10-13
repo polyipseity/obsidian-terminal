@@ -537,7 +537,7 @@ export class DragAndDropAddon implements ITerminalAddon {
       terminal.focus();
     }
     // Also when no path could be written for the shell: the dropped items
-    // are files on this computer then, which the other notice would deny.
+    // had paths then, and the other notice says that none was found.
     if (dropped.skipped + skipped > 0) {
       this.#notice("notices.drop-skipped-paths");
     }

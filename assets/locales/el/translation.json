@@ -328,7 +328,7 @@
   "notices": {
     "Python-status-entry-": "{{name}}: {{version}} (satisfied: {{requirement}})",
     "Python-status-entry-unsatisfied": "{{name}}: {{version}} (unsatisfied: {{requirement}})",
-    "drop-no-paths": "Nothing to insert: the dropped items are not files on this computer.",
+    "drop-no-paths": "Nothing to insert: no local file path was found in the dropped items.",
     "drop-skipped-paths": "Some dropped items could not be inserted as paths.",
     "no-default-profile": "No $t(generic.default) $t(generic.profile) for $t(generic.type) '$t(generic.profile-types.{{type}}, capitalize)'",
     "resizer-install-command-copied": "Install command copied.",

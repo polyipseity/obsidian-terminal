@@ -52,6 +52,28 @@ describe("PluginLocales", () => {
     });
   });
 
+  // The notice also shows for files of this computer: one of another vault's
+  // window, or one whose lookup on disk had no answer in time. A translation
+  // may word it freely; the English text that every locale starts from must
+  // not say that the dropped items are no files of this computer.
+  describe("does not deny in any declared locale that a drop without a path held local files", () => {
+    it.each(Array.from(PluginLocales.LANGUAGES))("%s", async (language) => {
+      const { notices } = await PluginLocales.RESOURCES[language].translation();
+
+      expect(notices["drop-no-paths"]).not.toMatch(
+        /not files on this computer/iu,
+      );
+    });
+
+    it("says in English that no path was found", async () => {
+      const { notices } = await PluginLocales.RESOURCES.en.translation();
+
+      expect(notices["drop-no-paths"]).toBe(
+        "Nothing to insert: no local file path was found in the dropped items.",
+      );
+    });
+  });
+
   it("lists languages and includes expected entries", () => {
     const langs = Array.from(PluginLocales.LANGUAGES);
     expect(langs).toEqual(expect.arrayContaining(["en", "pt", "pt-BR"]));
