@@ -820,6 +820,7 @@ export class MetadataCache extends Events {
 // ===== Workspace =====
 
 export class WorkspaceLeaf {
+  private static readonly container = {};
   view: { file: TFile | null } = { file: null };
   private readonly root = {};
   private viewState: { type: string; state: unknown } = {
@@ -838,6 +839,11 @@ export class WorkspaceLeaf {
 
   getRoot(): object {
     return this.root;
+  }
+
+  /** The window the leaf is in: one for every leaf, unless a test stubs it. */
+  getContainer(): object {
+    return WorkspaceLeaf.container;
   }
 
   setPinned(_pinned: boolean): void {}
@@ -896,6 +902,11 @@ export class Workspace extends Events {
 
   getLeavesOfType(_type: string): WorkspaceLeaf[] {
     return [];
+  }
+
+  /** The mock's layout is always ready, so the callback runs at once. */
+  onLayoutReady(callback: () => unknown): void {
+    callback();
   }
 
   on(
