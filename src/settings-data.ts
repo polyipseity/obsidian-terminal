@@ -41,6 +41,11 @@ import type {
   RequiredKeys,
 } from "ts-essentials";
 import { PluginLocales } from "../assets/locales.js";
+import {
+  EXPERIMENTS,
+  type ExperimentFlags,
+  fixExperiments,
+} from "./experiments.js";
 import { DEFAULT_SUCCESS_EXIT_CODES, PluginUUIDs } from "./magic.js";
 import {
   RendererAddon,
@@ -107,6 +112,8 @@ export interface Settings extends PluginContext.Settings {
   readonly hideStatusBar: Settings.HideStatusBarOption;
   readonly showTerminalTabPrefix: boolean;
 
+  /** Experimental features the user turned on. A missing key is off. */
+  readonly experiments: ExperimentFlags;
   readonly exposeInternalModules: boolean;
   readonly interceptLogging: boolean;
   readonly preferredRenderer: Settings.PreferredRendererOption;
@@ -129,6 +136,7 @@ export namespace Settings {
     addToContextMenu: true,
     createInstanceNearExistingOnes: true,
     errorNoticeTimeout: NOTICE_NO_TIMEOUT,
+    experiments: {},
     exposeInternalModules: true,
     focusOnNewInstance: true,
     hideStatusBar: "focused",
@@ -1618,6 +1626,7 @@ export namespace Settings {
       errorNoticeTimeout: fixTyped(DEFAULT, unc, "errorNoticeTimeout", [
         "number",
       ]),
+      experiments: fixExperiments(unc["experiments"], EXPERIMENTS),
       exposeInternalModules: fixTyped(DEFAULT, unc, "exposeInternalModules", [
         "boolean",
       ]),

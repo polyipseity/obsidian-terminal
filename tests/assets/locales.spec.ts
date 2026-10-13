@@ -134,6 +134,23 @@ describe("PluginLocales", () => {
     }
   });
 
+  it("provides the Experimental section texts in every declared locale", async () => {
+    for (const language of PluginLocales.LANGUAGES) {
+      const { settings } =
+        await PluginLocales.RESOURCES[language].translation();
+      expect(settings.experimental, language).toMatch(/\S/u);
+      expect(settings["experimental-description"], language).toMatch(/\S/u);
+      expect(settings["experimental-feedback"], language).toMatch(/\S/u);
+      expect(settings["experimental-applies"].newTerminals, language).toMatch(
+        /\S/u,
+      );
+      expect(settings["experimental-applies"].restart, language).toMatch(/\S/u);
+      expect(settings["experimental-risk"], language).toContain("{{risk}}");
+    }
+    const asset = await PluginLocales.RESOURCES.en.asset();
+    expect(asset.settings["experimental-feature-icon"]).toMatch(/\S/u);
+  });
+
   it("scopes initialization errors and empty Python fields identically in all 49 locales", async () => {
     expect(PluginLocales.LANGUAGES).toHaveLength(49);
     for (const language of PluginLocales.LANGUAGES) {

@@ -857,6 +857,29 @@ describe("Obsidian Mock", () => {
       expect(toggle.getValue()).toBe(false);
     });
 
+    it("ExtraButtonComponent runs its handler on click unless disabled", async () => {
+      const { ExtraButtonComponent } = await import("./obsidian.js");
+      const container = document.createElement("div"),
+        button = new ExtraButtonComponent(container);
+      let calls = 0;
+
+      expect(button.extraSettingsEl.parentElement).toBe(container);
+      expect(button.setIcon("flask-conical")).toBe(button);
+      expect(button.setTooltip("Reset")).toBe(button);
+      expect(
+        button.onClick(() => {
+          calls += 1;
+        }),
+      ).toBe(button);
+
+      button.extraSettingsEl.click();
+      expect(calls).toBe(1);
+
+      expect(button.setDisabled(true)).toBe(button);
+      button.extraSettingsEl.click();
+      expect(calls).toBe(1);
+    });
+
     it("TextComponent respects disabled state", async () => {
       const { TextComponent } = await import("./obsidian.js");
       const text = new TextComponent();
