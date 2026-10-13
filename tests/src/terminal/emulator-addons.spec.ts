@@ -1596,19 +1596,45 @@ describe("DragAndDropAddon", () => {
     // disk then looks nothing more up, and pastes nothing into a later test.
     addons: DragAndDropAddon[] = [],
     // Every element a test has put in the document to take the focus.
-    focusables: HTMLElement[] = [];
+    focusables: HTMLElement[] = [],
+    // Every pop-out window a test has opened, by the frame that holds it.
+    popouts: HTMLIFrameElement[] = [];
 
   /**
-   * The document of a pop-out window: another one than the global `document`,
-   * which stays that of the main window. A document made this way has no
-   * window, so it is given the main one for the console and the timers.
+   * A pop-out window: a window of its own, with its own document, timers and
+   * focus, next to the main one that the globals `window` and `document`
+   * stay. A frame is the second window this environment has.
+   *
+   * One thing a pop-out of Obsidian has is not here: its own classes. In this
+   * environment a node of any window is an instance of the one `Node`, so
+   * these tests show nothing about values of another window's classes.
    */
+  function popoutWindow(): {
+    readonly document: Document;
+    /** Closes it, after which its timers never fire. */
+    readonly close: () => void;
+  } {
+    const frame = document.body.appendChild(document.createElement("iframe")),
+      { contentDocument } = frame;
+    popouts.push(frame);
+    if (
+      !contentDocument ||
+      contentDocument.defaultView === null ||
+      contentDocument.defaultView === document.defaultView
+    ) {
+      throw new Error("no window of its own for the pop-out");
+    }
+    return {
+      close: () => {
+        frame.remove();
+      },
+      document: contentDocument,
+    };
+  }
+
+  /** The document of a pop-out window (see {@link popoutWindow}). */
   function popoutDocument(): Document {
-    return Object.defineProperty(
-      document.implementation.createHTMLDocument(),
-      "defaultView",
-      { value: window },
-    );
+    return popoutWindow().document;
   }
 
   /** An element of the window that takes the focus, as the editor of a note does. */
@@ -1829,6 +1855,9 @@ describe("DragAndDropAddon", () => {
     for (const element of focusables.splice(0)) {
       element.blur();
       element.remove();
+    }
+    for (const frame of popouts.splice(0)) {
+      frame.remove();
     }
     dragAndDropEnvironment.electron = true;
     dragAndDropEnvironment.fileSystem = true;
