@@ -14,17 +14,19 @@ const SRC = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "src"),
     "settings-data.ts",
     "settings.ts",
   ],
-  STORED_FLAGS = /\bexperiments\b/u;
+  STORED_FLAGS = /\bexperiments\b/u,
+  // `from "<path>/experiments.js"`, `import "<path>/experiments.js"` and
+  // `import("<path>/experiments.js")`, up to the closing quote.
+  GATE_SPECIFIER =
+    /\b(?:from|import)\s*\(?\s*(["'])[^"'\n]*\/experiments\.js\1/gu;
 
 /**
- * Drops the lines that end an import from the gate's module, also when the
- * import spans several lines. What is left must not name the stored flags.
+ * Removes the module specifier from every import and re-export of the gate's
+ * module: nothing else in such a statement names the stored flags. The rest of
+ * the line stays, so what is left must not name them.
  */
 function withoutGateImports(source: string): string {
-  return source
-    .split("\n")
-    .filter((line) => !line.includes('experiments.js"'))
-    .join("\n");
+  return source.replace(GATE_SPECIFIER, "");
 }
 
 describe("src/experiments.ts as the single entrance", () => {
@@ -63,6 +65,20 @@ describe("src/experiments.ts as the single entrance", () => {
         ].join("\n"),
       ),
     ).not.toMatch(STORED_FLAGS);
+    expect(
+      withoutGateImports('const gate = await import("./experiments.js");'),
+    ).not.toMatch(STORED_FLAGS);
+    // Naming the gate's module on a line does not hide the rest of the line.
+    expect(
+      withoutGateImports(
+        'const on = settings.value.experiments.tabStatus; // see "./experiments.js"',
+      ),
+    ).toMatch(STORED_FLAGS);
+    expect(
+      withoutGateImports(
+        'const gate = await import("./experiments.js"), raw = settings.value.experiments;',
+      ),
+    ).toMatch(STORED_FLAGS);
     expect(
       withoutGateImports("const on = settings.value.experiments.alpha;"),
     ).toMatch(STORED_FLAGS);
