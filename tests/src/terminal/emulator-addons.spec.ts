@@ -4095,9 +4095,8 @@ describe("DragAndDropAddon", () => {
 
   // === One paste for a drop, or one for each path ===
 
-  // Measured on macOS with zsh: sixteen and nineteen paths, each a paste of
-  // its own, hung the terminal for good, and one paste of fifty-seven paths
-  // was read whole.
+  // One paste is how Claude Code tells several escaped paths apart. Measured
+  // on macOS with zsh: one paste of fifty-seven paths was read whole.
   it.each<readonly [string, string, string]>([
     ["macOS", "darwin", "/bin/zsh"],
     ["Linux", "linux", "/bin/bash"],

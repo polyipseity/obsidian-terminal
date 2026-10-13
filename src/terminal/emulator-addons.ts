@@ -480,11 +480,10 @@ export class DragAndDropAddon implements ITerminalAddon {
         shellGrammar(this.executable, platform),
         { maxBytes: lineByteLimit(this.executable, platform) },
       );
-    // One paste for all the paths, but one per path on Windows. Several
-    // pastes in a burst can stall the shell against the pty proxy for good,
-    // and one paste is how Claude Code reads several escaped paths. Quoted,
-    // as most shells on Windows need them, it reads them only when each is
-    // its own paste.
+    // One paste for all the paths, but one per path on Windows. One paste is
+    // how Claude Code reads several escaped paths, and a shell reads it in
+    // one go. Quoted, as most shells on Windows need them, Claude Code reads
+    // them only when each is its own paste.
     for (const paste of droppedPathPastes(texts, platform)) {
       // Asked again each time: what a paste sets off may dispose the addon.
       if (!this.#isCurrent(activation)) {

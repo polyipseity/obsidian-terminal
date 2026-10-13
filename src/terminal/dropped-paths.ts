@@ -599,18 +599,16 @@ export function formatDroppedPaths(
 /**
  * Puts the texts of dropped paths into the pastes that insert them.
  *
- * One paste holds them all, except on Windows. Each paste is a bracketed
- * paste of its own, after which a shell redraws its line, and a burst of them
- * can stall the shell against the pty proxy for good: the proxy does not read
- * the shell's output while it writes its input. A shell reads one paste in
- * one go, and Claude Code tells the escaped paths in it apart, as it cuts a
- * paste at a space followed by `/`.
+ * One paste holds them all, except on Windows. Claude Code tells the escaped
+ * paths in one paste apart, as it cuts a paste at a space followed by `/`.
+ * And a shell reads one paste in one go: each of several pastes is a
+ * bracketed paste of its own, after which the shell redraws its line.
  *
  * On Windows each text is a paste of its own: a path with a space is quoted
  * there, and Claude Code attaches several quoted paths only when each arrives
- * as a separate paste. Terminals there do not go through the proxy. The
- * escaped paths of a WSL terminal go the same way: the platform decides
- * here, not the shell, and a paste for each path loses them nothing.
+ * as a separate paste. The escaped paths of a WSL terminal go the same way:
+ * the platform decides here, not the shell, and a paste for each path loses
+ * them nothing.
  *
  * @param texts - texts of {@link formatDroppedPaths}, each ending in a space.
  * @param platform - platform the terminal runs on.
