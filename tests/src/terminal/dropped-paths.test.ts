@@ -81,17 +81,20 @@ const SHELLS: readonly Shell[] = [
 function cases(
   grammar: ShellGrammar,
 ): readonly (readonly [written: string, read: string])[] {
+  // A path that is read as it is written.
+  const same = (path: string): readonly [string, string] => [path, path],
+    patterns = PATTERNS.map((name) => same(`/bin/${name}`));
   switch (grammar) {
     case "posix":
       return [
-        ...NAMES.map((name) => POSIX_DIRECTORY + name),
-        ...PATTERNS.map((name) => `/bin/${name}`),
-      ].map((path) => [path, path]);
+        ...NAMES.map((name) => same(POSIX_DIRECTORY + name)),
+        ...patterns,
+      ];
     case "posix-quoted":
       return [
-        ...NAMES.map((name) => WIN32_DIRECTORY + name),
-        ...PATTERNS.map((name) => `/bin/${name}`),
-      ].map((path) => [path, path]);
+        ...NAMES.map((name) => same(WIN32_DIRECTORY + name)),
+        ...patterns,
+      ];
     case "wsl":
       return [
         ...NAMES.filter((name) => !name.includes("\\")).map(
@@ -100,10 +103,7 @@ function cases(
             LINUX_DIRECTORY + name,
           ],
         ),
-        ...PATTERNS.map((name): readonly [string, string] => [
-          `/bin/${name}`,
-          `/bin/${name}`,
-        ]),
+        ...patterns,
       ];
     default:
       throw new Error(`${grammar} is not read by a shell of the sh family`);

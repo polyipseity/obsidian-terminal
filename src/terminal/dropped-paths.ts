@@ -61,6 +61,14 @@ export interface DroppedPathOptions {
   readonly maxBytes?: number | null | undefined;
 }
 
+/** How the terminal driver of a platform keeps a line, and for which shells. */
+interface LineDriver {
+  /** The bytes it has for one line. */
+  readonly bytes: number;
+  /** The shells that read a line through it, by name. */
+  readonly shells: ReadonlySet<string>;
+}
+
 export interface UriListOptions {
   /** Platform whose path syntax the result has. */
   readonly platform: Platform.All;
@@ -117,22 +125,14 @@ const PATH_SEPARATOR = /[\\/]/u,
   // distributions of the Microsoft Store install them: `ubuntu`,
   // `ubuntu2404`, `debian`, `kali`, `opensuse-leap-15.6`...
   WSL_LAUNCHER = /^(?:ubuntu|opensuse)|^(?:debian|kali)$/u,
-  // Shells without a line editor, by the platforms that have a terminal
-  // driver: they read a line through it, and it keeps a line of limited size.
-  // `sh` is dash on Debian and Ubuntu; on macOS it is bash, which edits its
-  // line itself.
-  LINE_DRIVER_SHELLS: Readonly<
-    Partial<Record<Platform.All, ReadonlySet<string>>>
-  > = {
-    darwin: new Set(["dash"]),
-    linux: new Set(["dash", "sh"]),
-  },
-  // The bytes the terminal driver has for one line. Linux discards what is
-  // more and still takes Enter, which then runs a line that ends in a cut
-  // path; macOS refuses the line.
-  LINE_DRIVER_BYTES: Readonly<Partial<Record<Platform.All, number>>> = {
-    darwin: 1024,
-    linux: 4096,
+  // The terminal driver of the platforms that have one: the bytes it has for
+  // one line, and the shells without a line editor, which read a line
+  // through it. Linux discards what is more and still takes Enter, which then
+  // runs a line that ends in a cut path; macOS refuses the line. `sh` is dash
+  // on Debian and Ubuntu; on macOS it is bash, which edits its line itself.
+  LINE_DRIVERS: Readonly<Partial<Record<Platform.All, LineDriver>>> = {
+    darwin: { bytes: 1024, shells: new Set(["dash"]) },
+    linux: { bytes: 4096, shells: new Set(["dash", "sh"]) },
   },
   // The bytes of such a line left for what is typed before the drop.
   LINE_TYPED_BYTES = 256,
@@ -412,10 +412,9 @@ export function lineByteLimit(
   executable: string,
   platform: Platform.All,
 ): number | null {
-  const line = LINE_DRIVER_BYTES[platform];
-  return typeof line === "number" &&
-    (LINE_DRIVER_SHELLS[platform]?.has(programName(executable)) ?? false)
-    ? line - LINE_TYPED_BYTES
+  const driver = LINE_DRIVERS[platform];
+  return driver?.shells.has(programName(executable)) === true
+    ? driver.bytes - LINE_TYPED_BYTES
     : null;
 }
 
