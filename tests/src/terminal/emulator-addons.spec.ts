@@ -4738,6 +4738,71 @@ describe("DragAndDropAddon", () => {
       expect(bed.setAction).toHaveBeenCalledExactlyOnceWith(null);
     });
 
+    it.each<readonly [string, DragInit, string]>([
+      [
+        "a URI list",
+        uriDrag("file:///C:/Users/me/My%20Pictures/a.png"),
+        "/mnt/c/Users/me/My\\ Pictures/a.png ",
+      ],
+      [
+        // Visual Studio Code writes the drive in lower case, with `%3A`.
+        "a URI list of VS Code's kind",
+        vscodeDrag([VSCODE_URI_LIST], {
+          [VSCODE_URI_LIST]: "file:///c%3A/Users/me/My%20Pictures/a.png",
+        }),
+        "/mnt/c/Users/me/My\\ Pictures/a.png ",
+      ],
+    ])(
+      "writes the Linux path of a file on a drive that comes as %s",
+      async (_name, init, pasted) => {
+        onDisk({ "C:\\Users\\me\\My Pictures\\a.png": "file" });
+        const bed = createBed({ executable: WSL });
+
+        await drop(bed, init);
+
+        expect(bed.paste.mock.calls).toEqual([[pasted]]);
+        expect(notices()).toEqual([]);
+      },
+    );
+
+    // Known limit. An editor names a file of the distribution by a URI with
+    // the share as its host, or with a scheme of its own. A URI with a host
+    // is a network location, which is never looked up. The same file dragged
+    // out of Explorer comes as a file of the system, and is inserted.
+    it.each<readonly [string, DragInit]>([
+      [
+        "the share of the distribution as its host",
+        uriDrag("file://wsl.localhost/Ubuntu/home/me/a.png"),
+      ],
+      [
+        "the share under its older name as its host",
+        uriDrag("file://wsl$/Ubuntu/home/me/a.png"),
+      ],
+      [
+        "that share in a list of VS Code's kind",
+        vscodeDrag([VSCODE_URI_LIST], {
+          [VSCODE_URI_LIST]: "file://wsl.localhost/Ubuntu/home/me/a.png",
+        }),
+      ],
+      [
+        "the scheme of an editor that runs in the distribution",
+        vscodeDrag([VSCODE_URI_LIST], {
+          [VSCODE_URI_LIST]: "vscode-remote://wsl%2Bubuntu/home/me/a.png",
+        }),
+      ],
+    ])(
+      "inserts nothing for a file of a distribution that comes as a URI with %s, and looks nothing up",
+      async (_name, init) => {
+        const bed = createBed({ args: ["-d", "Ubuntu"], executable: WSL });
+
+        await drop(bed, init);
+
+        expect(bed.paste).not.toHaveBeenCalled();
+        expect(dragAndDropEnvironment.stat).not.toHaveBeenCalled();
+        expect(notices()).toEqual([NO_PATHS]);
+      },
+    );
+
     // Known limit. Without the option `wsl.exe` runs the default
     // distribution, whose name the profile does not tell.
     it("takes a file of any distribution for one of the terminal's when the profile names none", async () => {
