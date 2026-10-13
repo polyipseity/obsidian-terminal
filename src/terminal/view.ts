@@ -535,16 +535,21 @@ export class TerminalView extends ItemView {
     );
 
     // Track the last non-terminal leaf for restoring focus on unfocus
-    context.registerEvent(
-      workspace.on("active-leaf-change", (leaf) => {
-        if (leaf && !(leaf.view instanceof TerminalView)) {
-          this.lastActiveOtherLeaf = new WeakRef(leaf);
-          if (leaf.view.getViewType() === "markdown") {
-            this.lastActiveNoteLeaf = new WeakRef(leaf);
-          }
+    const track = (leaf: WorkspaceLeaf | null): void => {
+      if (leaf && !(leaf.view instanceof TerminalView)) {
+        this.lastActiveOtherLeaf = new WeakRef(leaf);
+        if (leaf.view.getViewType() === "markdown") {
+          this.lastActiveNoteLeaf = new WeakRef(leaf);
         }
-      }),
-    );
+      }
+    };
+    context.registerEvent(workspace.on("active-leaf-change", track));
+    // No event announces the leaf that is active already, as when the plugin
+    // is enabled or updated in a running app. The callback only writes the
+    // two references, so it needs no guard against a plugin unloaded by then.
+    workspace.onLayoutReady(() => {
+      track(workspace.getActiveViewOfType(View)?.leaf ?? null);
+    });
 
     const withLastFocusedView =
       (
@@ -865,13 +870,19 @@ export class TerminalView extends ItemView {
 
   /**
    * Where a clicked vault file opens: the last other leaf if it now holds an
-   * unpinned note, then the last active unpinned note, else a new tab. Never
-   * this terminal's leaf, which would unmount the view and end its session.
+   * unpinned note, then the last active unpinned note, then an unpinned note
+   * or empty tab that another tab group shows outside the sidebars, else a
+   * new tab. Only leaves of the terminal's own window count: revealing a leaf
+   * raises its window, and another window would end up over the terminal's.
+   * Never this terminal's leaf, which would unmount the view and end its
+   * session.
    */
   protected fileLinkLeaf(): WorkspaceLeaf {
     const {
       app: { workspace },
+      leaf,
     } = this;
+    const container = leaf.getContainer();
     for (const candidate of [
       TerminalView.lastActiveOtherLeaf,
       TerminalView.lastActiveNoteLeaf,
@@ -880,9 +891,31 @@ export class TerminalView extends ItemView {
       if (
         note &&
         !note.getViewState().pinned &&
-        workspace.getLeavesOfType("markdown").includes(note)
+        workspace.getLeavesOfType("markdown").includes(note) &&
+        note.getContainer() === container
       ) {
         return note;
+      }
+    }
+    // Nothing usable is remembered after a start with the terminal focused,
+    // or when the last leaf used holds no note: take what the layout shows
+    // outside the sidebars, whose leaves report the main window too.
+    const { leftSplit, rightSplit } = workspace;
+    for (const type of ["markdown", "empty"]) {
+      const shown = workspace.getLeavesOfType(type).find((candidate) => {
+        const root = candidate.getRoot();
+        return (
+          candidate.parent !== leaf.parent &&
+          root !== leftSplit &&
+          root !== rightSplit &&
+          candidate.getContainer() === container &&
+          !candidate.getViewState().pinned &&
+          // A tab that is not in front of its group has no layout box.
+          candidate.view.containerEl.offsetParent !== null
+        );
+      });
+      if (shown) {
+        return shown;
       }
     }
     return workspace.getLeaf("tab");

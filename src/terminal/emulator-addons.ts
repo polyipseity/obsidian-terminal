@@ -14,7 +14,7 @@ import type { WebglAddon } from "@xterm/addon-webgl";
 import type { ILink, ITerminalAddon, ITheme, Terminal } from "@xterm/xterm";
 import { eastAsianWidth } from "get-east-asian-width";
 import { around } from "monkey-around";
-import type { TFile, WorkspaceLeaf } from "obsidian";
+import { TFile, type WorkspaceLeaf } from "obsidian";
 import { noop } from "ts-essentials";
 import { BUNDLE } from "../imports.js";
 import { DOMClasses2 } from "../magic.js";
@@ -1362,6 +1362,9 @@ export class VaultFileLinksAddon implements ITerminalAddon {
         const leaf = fileLeaf();
         // Reveal first: a leaf in a collapsed sidebar cannot take focus.
         await app.workspace.revealLeaf(leaf);
+        // A tab closed during the wait is detached and would show nothing.
+        const listed = app.workspace.getLeavesOfType(leaf.view.getViewType());
+        if (!listed.includes(leaf)) return;
         await leaf.openFile(file, { active: true });
       })().catch((error: unknown) => {
         activeSelf(terminal.element).console.error(error);
@@ -1427,8 +1430,9 @@ export class VaultFileLinksAddon implements ITerminalAddon {
     app: PluginContext["app"],
     open: (file: TFile) => void,
   ): ILink | null {
-    const file = app.vault.getFileByPath(filePath);
-    if (!file) return null;
+    // `Vault.getFileByPath` needs Obsidian 1.5.7, newer than `minAppVersion`.
+    const file = app.vault.getAbstractFileByPath(filePath);
+    if (!(file instanceof TFile)) return null;
     const startX = this.visualColumn(lineText, textStart) + 1;
     const endX = this.visualColumn(lineText, textStart + filePath.length);
     return {
@@ -1438,7 +1442,9 @@ export class VaultFileLinksAddon implements ITerminalAddon {
       },
       text: filePath,
 
-      activate(_event: MouseEvent, _text: string): void {
+      activate(event: MouseEvent, _text: string): void {
+        // xterm activates a link on any button; a paste click must not open it.
+        if (event.button !== 0) return;
         open(file);
       },
     };
