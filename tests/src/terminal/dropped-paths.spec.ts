@@ -735,7 +735,8 @@ const MORE_NAMES: readonly string[] = [
 /**
  * A variable of `cmd.exe` in a name: `%NAME%`, and `!NAME!` with delayed
  * expansion on. Quotes do not keep it from expanding one, so such a name is
- * not among the paths `cmd.exe` reads back.
+ * not among the paths `cmd.exe` reads back, and one with `%NAME%` is not
+ * written for it at all.
  */
 const CMD_VARIABLE = /%[^%]+%|![^!]+!/u;
 
@@ -1935,30 +1936,52 @@ describe("formatDroppedPath", () => {
       expect(READERS.cmd(text)).toEqual([root]);
     });
 
-    // Known limit. `cmd.exe` expands a variable inside double quotes as well,
-    // and has no way to write a `%` or a `!` that it leaves alone on the
-    // command line: the program gets the value in place of the name.
-    it.each<readonly [string, string, string]>([
-      ["%NAME%", "C:\\Users\\me\\%PATH%.md", '"C:\\Users\\me\\%PATH%.md"'],
+    // `cmd.exe` expands `%NAME%` before it reads quotes, so a value that
+    // holds a double quote ends the quoted string, and an `&` after it starts
+    // a command. The ConHost launcher gives every shell such a variable (`q`).
+    // `cmd.exe` has no way to write a `%NAME%` that it leaves alone.
+    it.each<readonly [string, string]>([
+      [
+        "the quote variable of the ConHost launcher",
+        "C:\\drop\\%q%&echo INJECTED&rem .txt",
+      ],
+      ["that variable in upper case", "C:\\drop\\%Q%&echo INJECTED&rem .txt"],
+      ["%NAME%", "C:\\Users\\me\\%PATH%.md"],
       [
         "%NAME% with spaces around it",
         "C:\\Users\\me\\old %USERPROFILE% copy.md",
-        '"C:\\Users\\me\\old %USERPROFILE% copy.md"',
       ],
-      [
-        "!NAME!, with delayed expansion on",
-        "C:\\Users\\me\\!PATH!.md",
-        '"C:\\Users\\me\\!PATH!.md"',
-      ],
-    ])(
-      "double-quotes a path with %s, which cmd.exe expands all the same",
-      (_name, path, text) => {
-        expect(formatDroppedPath(path, "cmd")).toBe(text);
-        expect(READERS.cmd(text)).toBeNull();
-        // Claude Code does not expand anything.
-        expect(claudeCodeReads(`${text} `, "win32")).toEqual([path]);
-      },
-    );
+      ["a variable that cmd.exe computes", "C:\\Users\\me\\%CMDCMDLINE%.md"],
+      ["two percent signs with text between", "C:\\Users\\me\\5% of 10%.md"],
+    ])("refuses a path with %s, which cmd.exe would expand", (_name, path) => {
+      expect(formatDroppedPath(path, "cmd")).toBeNull();
+      // The other paths of the drop are still written.
+      expect(formatDroppedPaths([path, "C:\\c d.png"], "cmd")).toEqual({
+        skipped: 1,
+        texts: ['"C:\\c d.png" '],
+      });
+    });
+
+    it("writes a path with %NAME% for the shells that do not expand it", () => {
+      const path = "C:\\drop\\%q%&echo INJECTED&rem .txt";
+
+      expect(formatDroppedPath(path, "powershell")).toBe(`'${path}'`);
+      expect(formatDroppedPath(path, "posix-quoted")).toBe(`'${path}'`);
+    });
+
+    // Known limit. With delayed expansion on (`cmd /V:ON`), `cmd.exe` expands
+    // `!NAME!` inside double quotes as well: the program gets the value in
+    // place of the name. That happens once the line is split, so the value
+    // cannot end the quotes, and delayed expansion is off unless asked for.
+    it("double-quotes a path with !NAME!, which cmd.exe expands with delayed expansion on", () => {
+      const path = "C:\\Users\\me\\!PATH!.md",
+        text = '"C:\\Users\\me\\!PATH!.md"';
+
+      expect(formatDroppedPath(path, "cmd")).toBe(text);
+      expect(READERS.cmd(text)).toBeNull();
+      // Claude Code does not expand anything.
+      expect(claudeCodeReads(`${text} `, "win32")).toEqual([path]);
+    });
 
     it.each<readonly [string, string]>([
       ["a percent sign", "C:\\Users\\me\\100% done.md"],
@@ -2053,12 +2076,12 @@ describe("formatDroppedPath", () => {
       ]);
     });
 
-    it.each(windowsImages("cmd"))(
-      "is the one image path %j once written for cmd.exe",
-      (path) => {
-        expect(claudeCodeReads(pasted(path, "cmd"), "win32")).toEqual([path]);
-      },
-    );
+    it.each(
+      // `cmd.exe` is not given a name with `%NAME%`.
+      windowsImages("cmd").filter((path) => !/%[^%]+%/u.test(path)),
+    )("is the one image path %j once written for cmd.exe", (path) => {
+      expect(claudeCodeReads(pasted(path, "cmd"), "win32")).toEqual([path]);
+    });
 
     it.each(
       // PowerShell on macOS or Linux. It has no backslash escape, so the

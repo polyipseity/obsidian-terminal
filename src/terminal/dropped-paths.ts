@@ -99,6 +99,9 @@ const PATH_SEPARATOR = /[\\/]/u,
   // Paths made only of these need no quotes in PowerShell or `cmd.exe`:
   // letters, digits and combining marks of any script, and `\ / . _ : ~ + -`.
   PLAIN = /^[A-Za-z0-9\\/._:~+\p{L}\p{N}\p{M}-]*$/u,
+  // What `cmd.exe` takes for a variable at its prompt: two percent signs
+  // with text between them. One `%` names none, and neither does `%%`.
+  CMD_VARIABLE = /%[^%]+%/u,
   // PowerShell reads the curly quotes as it reads the straight ones: these
   // end a single-quoted string...
   POWERSHELL_SINGLE_QUOTES = /['\u2018\u2019\u201a\u201b]/gu,
@@ -423,13 +426,21 @@ function quotePowerShell(path: string): string {
   return posix ? `"${quoted}"` : doubleQuoteWin32(quoted);
 }
 
-/** Double quotes for `cmd.exe`, the only quotes it knows. */
+/**
+ * Double quotes for `cmd.exe`, the only quotes it knows.
+ *
+ * They do not keep it from expanding `%NAME%`, which it does before it reads
+ * quotes: a value with a double quote in it ends the quoted string, and what
+ * follows is read as commands. `cmd.exe` has no way to write such a name that
+ * it leaves alone, so a path with one is not written. `!NAME!` is: it is
+ * expanded only with delayed expansion on, and after the line is split.
+ */
 function quoteCmd(path: string): string | null {
   if (PLAIN.test(path)) {
     return path;
   }
   // `cmd.exe` cannot escape a double quote, and no Windows file has one.
-  return path.includes('"')
+  return path.includes('"') || CMD_VARIABLE.test(path)
     ? null
     : doubleQuoteWin32(withoutTrailingBackslashes(path));
 }

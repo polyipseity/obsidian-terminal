@@ -2703,6 +2703,31 @@ describe("DragAndDropAddon", () => {
     expect(powershell.setAction).toHaveBeenCalledExactlyOnceWith(INSERT_PATH);
   });
 
+  it("refuses a vault file whose name cmd.exe would expand, and leaves it out of a drop with a notice", async () => {
+    dragAndDropEnvironment.platform = "win32";
+    const expanded = "%q%&echo INJECTED&rem .txt",
+      options: BedOptions = {
+        executable: "cmd.exe",
+        fullPath: (path) => `C:\\Vault\\${path}`,
+      },
+      alone = createBed({ ...options, draggable: fileDraggable(expanded) }),
+      among = createBed({
+        ...options,
+        draggable: {
+          files: [vaultFile(expanded), vaultFile("a b.md")],
+          type: "files",
+        },
+      });
+
+    expect(alone.fire("dragover", vaultDrag()).dataTransfer?.dropEffect).toBe(
+      "none",
+    );
+    await drop(among, vaultDrag());
+
+    expect(among.paste.mock.calls).toEqual([['"C:\\Vault\\a b.md" ']]);
+    expect(notices()).toEqual([SKIPPED_PATHS]);
+  });
+
   // === Vault drags without a path to insert ===
 
   describe.each<readonly [string, BedOptions]>([
