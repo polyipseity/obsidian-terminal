@@ -41,7 +41,7 @@ import {
   notice2,
 } from "@polyipseity/obsidian-plugin-library";
 import { noop } from "ts-essentials";
-import type { Settings } from "../../../src/settings-data.js";
+import { Settings } from "../../../src/settings-data.js";
 import {
   CustomKeyEventHandlerAddon,
   DragAndDropAddon,
@@ -1693,8 +1693,12 @@ describe("DragAndDropAddon", () => {
         args = [],
         draggable = null,
         executable = "/bin/zsh",
-        // The addon reads no more of an integrated profile than these.
-        profile = { args, executable, type: "integrated" } as Settings.Profile,
+        // The addon reads no more of an integrated profile than these two.
+        profile = {
+          ...Settings.Profile.DEFAULTS.integrated,
+          args,
+          executable,
+        },
         fileSystem = true,
         fullPath = (path: string): string => `${VAULT}/${path}`,
         missing = [],
@@ -5132,7 +5136,7 @@ describe("DragAndDropAddon", () => {
     async (_name, platform, path, pasted) => {
       dragAndDropEnvironment.platform = platform;
       const bed = createBed({
-        profile: { type: "developerConsole" } as Settings.Profile,
+        profile: Settings.Profile.DEFAULTS.developerConsole,
       });
 
       await drop(bed, nativeDrag([nativeFile("My Note.md", path)]));
@@ -5145,7 +5149,7 @@ describe("DragAndDropAddon", () => {
   it.each<Settings.Profile["type"]>(["", "invalid"])(
     "writes a path for a profile of type %j, which names no program, as for an unknown one",
     async (type) => {
-      const bed = createBed({ profile: { type } as Settings.Profile });
+      const bed = createBed({ profile: Settings.Profile.DEFAULTS[type] });
 
       await drop(
         bed,
