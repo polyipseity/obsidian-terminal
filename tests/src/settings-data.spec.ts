@@ -545,6 +545,233 @@ describe("src/settings-data.ts", () => {
     expect(bad.value.showTerminalTabPrefix).toBe(false);
   });
 
+  describe("tab status settings", () => {
+    const TAB_STATUS_DEFAULTS = {
+        tabIconSet: "bezel",
+        tabIconSize: 18,
+        tabStatusAnimation: "none",
+        tabStatusReports: true,
+      },
+      OPTIONS = [
+        ["tabIconSet", Settings.TAB_ICON_SETS],
+        ["tabStatusAnimation", Settings.TAB_STATUS_ANIMATIONS],
+      ] satisfies readonly (readonly [keyof Settings, readonly string[]])[],
+      TOGGLES = ["tabStatusReports"] satisfies readonly (keyof Settings)[],
+      // Options of earlier designs of this feature, never released.
+      REMOVED_KEYS = [
+        "tabStatusMarks",
+        "tabStatusWorkingIndicator",
+        "tabStatusPalette",
+        "tabStatusTint",
+        "tabStatusQuietMarks",
+        "tabStatusUnreadBadge",
+      ],
+      // The last two to go: idle and seen always have the grey badge, and a
+      // finished program is always unread until the user looks.
+      ALWAYS_ON_KEYS = ["tabStatusQuietMarks", "tabStatusUnreadBadge"];
+
+    it("has the documented defaults", () => {
+      expect(Settings.DEFAULT).toMatchObject(TAB_STATUS_DEFAULTS);
+    });
+
+    it("has no setting of the tab but the icon set, its size, the motion and the reports", () => {
+      expect(
+        Object.keys(Settings.DEFAULT)
+          .filter((key) => /^tab(?:Icon|Status)/u.test(key))
+          .sort(),
+      ).toEqual(Object.keys(TAB_STATUS_DEFAULTS).sort());
+      for (const key of ALWAYS_ON_KEYS) {
+        expect(Settings.DEFAULT).not.toHaveProperty(key);
+      }
+    });
+
+    it("lists the options in the order the settings tab shows them", () => {
+      // The rendered tile, then the one drawn in lines alone.
+      expect(Settings.TAB_ICON_SETS).toEqual(["bezel", "tile"]);
+      expect(Settings.TAB_STATUS_ANIMATIONS).toEqual(["none", "loop"]);
+      // The grey badge of idle and seen is no option any more.
+      expect(Settings).not.toHaveProperty("TAB_STATUS_QUIET_MARKS");
+    });
+
+    it("holds no icon set twice", () => {
+      expect(new Set(Settings.TAB_ICON_SETS).size).toBe(
+        Settings.TAB_ICON_SETS.length,
+      );
+    });
+
+    it("starts with the first option of each list, the one the settings tab shows first", () => {
+      expect(Settings.DEFAULT.tabIconSet).toBe(Settings.TAB_ICON_SETS[0]);
+      expect(Settings.DEFAULT.tabStatusAnimation).toBe(
+        Settings.TAB_STATUS_ANIMATIONS[0],
+      );
+    });
+
+    it.each([
+      "visor",
+      "openring",
+      "classic",
+      "window",
+      "circle",
+      "bezelwide",
+      // Every circle went (2026-10-12): this one was the default until then.
+      "bezelround",
+      // The three other rendered tiles went the same day: the fine border,
+      // the sunken well and the white tile.
+      "frame",
+      "well",
+      "ivory",
+    ])("replaces the removed icon set %s with the default", (removed) => {
+      expect(Settings.fix({ tabIconSet: removed }).value.tabIconSet).toBe(
+        "bezel",
+      );
+    });
+
+    it("keeps the set drawn in lines alone, which was taken out and put back", () => {
+      expect(Settings.fix({ tabIconSet: "tile" }).value.tabIconSet).toBe(
+        "tile",
+      );
+    });
+
+    it("offers no circle: the default is the square with a raised border", () => {
+      expect(Settings.DEFAULT.tabIconSet).toBe("bezel");
+      expect(
+        Settings.TAB_ICON_SETS.filter((set) => /round|circle|ring/u.test(set)),
+      ).toEqual([]);
+    });
+
+    it("replaces the removed animation entry with the default", () => {
+      expect(
+        Settings.fix({ tabStatusAnimation: "entry" }).value.tabStatusAnimation,
+      ).toBe("none");
+    });
+
+    it.each(
+      ALWAYS_ON_KEYS.flatMap((key) =>
+        ["none", "badge", true, false, 3, null, ["badge"], { badge: true }].map(
+          (stored) => [key, stored] as const,
+        ),
+      ),
+    )(
+      "drops a stored %s of %j and leaves the settings beside it as they were",
+      (key, stored) => {
+        const saved = {
+            ...Settings.DEFAULT,
+            tabIconSet: "tile",
+            tabIconSize: 22,
+            tabStatusAnimation: "loop",
+            tabStatusReports: false,
+          },
+          fixed = Settings.fix({ ...saved, [key]: stored }).value;
+        expect(fixed).not.toHaveProperty(key);
+        // Exactly what the same settings give without the key.
+        expect(fixed).toEqual(Settings.fix(saved).value);
+        expect(fixed).toMatchObject({
+          tabIconSet: "tile",
+          tabIconSize: 22,
+          tabStatusAnimation: "loop",
+          tabStatusReports: false,
+        });
+        // And what is written back holds nothing to drop.
+        expect(Settings.fix(JSON.parse(JSON.stringify(fixed))).valid).toBe(
+          true,
+        );
+      },
+    );
+
+    it("drops the options of the earlier designs", () => {
+      const fixed = Settings.fix({
+        ...Settings.DEFAULT,
+        tabIconSet: "tile",
+        tabStatusMarks: "dot",
+        tabStatusPalette: "semantic",
+        tabStatusQuietMarks: "badge",
+        tabStatusTint: "whole",
+        tabStatusUnreadBadge: false,
+        tabStatusWorkingIndicator: "ring",
+      });
+      for (const key of REMOVED_KEYS) {
+        expect(fixed.value).not.toHaveProperty(key);
+        expect(Settings.DEFAULT).not.toHaveProperty(key);
+      }
+      // The rest of what was saved stays.
+      expect(fixed.value.tabIconSet).toBe("tile");
+    });
+
+    it.each(OPTIONS)("keeps every valid %s", (key, options) => {
+      for (const option of options) {
+        expect(Settings.fix({ [key]: option }).value[key]).toBe(option);
+      }
+    });
+
+    it.each(TOGGLES)("keeps both values of %s", (key) => {
+      expect(Settings.fix({ [key]: false }).value[key]).toBe(false);
+      expect(Settings.fix({ [key]: true }).value[key]).toBe(true);
+    });
+
+    it.each(OPTIONS)("replaces an unknown or mistyped %s", (key, _options) => {
+      for (const bad of ["no-such-option", "", 3, true, null, ["tile"]]) {
+        expect(Settings.fix({ [key]: bad }).value[key]).toBe(
+          Settings.DEFAULT[key],
+        );
+      }
+    });
+
+    it("offers every whole size from 12 to 24 pixels", () => {
+      expect(Settings.TAB_ICON_SIZES).toEqual([
+        12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+      ]);
+    });
+
+    it("keeps every valid tabIconSize", () => {
+      for (const size of Settings.TAB_ICON_SIZES) {
+        expect(Settings.fix({ tabIconSize: size }).value.tabIconSize).toBe(
+          size,
+        );
+      }
+    });
+
+    it("replaces a tabIconSize that is not one of the sizes", () => {
+      for (const bad of [
+        11,
+        25,
+        17.5,
+        0,
+        -18,
+        "18",
+        "large",
+        null,
+        true,
+        [18],
+      ]) {
+        expect(Settings.fix({ tabIconSize: bad }).value.tabIconSize).toBe(
+          Settings.DEFAULT.tabIconSize,
+        );
+      }
+    });
+
+    it.each(TOGGLES)("replaces a mistyped %s", (key) => {
+      for (const bad of ["yes", 0, null, {}]) {
+        expect(Settings.fix({ [key]: bad }).value[key]).toBe(
+          Settings.DEFAULT[key],
+        );
+      }
+    });
+
+    it("adds the defaults to settings saved by 3.28.0", () => {
+      // 3.28.0 wrote none of these keys.
+      const released: Record<string, unknown> = { ...Settings.DEFAULT };
+      for (const key of Object.keys(TAB_STATUS_DEFAULTS)) {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- Builds the older shape.
+        delete released[key];
+      }
+      released["showTerminalTabPrefix"] = true;
+      const fixed = Settings.fix(released).value;
+      expect(fixed).toMatchObject(TAB_STATUS_DEFAULTS);
+      expect(fixed.showTerminalTabPrefix).toBe(true);
+      expect(Settings.fix(JSON.parse(JSON.stringify(fixed))).valid).toBe(true);
+    });
+  });
+
   describe("Settings.Profile.defaultEntryOfType", () => {
     it("returns [key, profile] tuple for matching profile", () => {
       const profiles: Settings.Profiles = {

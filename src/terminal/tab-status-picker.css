@@ -1,0 +1,294 @@
+/*
+ * Tab status: picker. Imported after tab-status.css, so a rule of equal
+ * specificity here wins.
+ *
+ * The settings' preview strip (`tts-strip-…`) and option tiles
+ * (`tts-pick-…`). The icons inside are drawn by tab-status.css from the
+ * attributes on their `tts-host`; nothing here reaches into an icon. The
+ * only thing a host is given is what Obsidian gives a tab's icon container
+ * (layout, colour, size).
+ */
+
+/* ---------- 1. A preview host: what a tab header gives its icon ---------- */
+
+:is(.tts-strip, .tts-pick) .tts-host-icon {
+  flex: 0 0 auto;
+  display: flex;
+  color: var(--icon-color);
+  opacity: var(--icon-opacity);
+  --icon-stroke: var(--icon-xs-stroke-width);
+}
+
+/* ---------- 2. The strip: a piece of the tab bar ---------- */
+
+.tts-strip {
+  container-type: inline-size;
+  margin: var(--size-4-2) 0 var(--size-4-4);
+}
+
+.tts-strip-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: var(--header-height, 40px);
+  padding: 0 var(--size-4-2);
+  overflow: hidden;
+  background-color: var(
+    --tab-container-background,
+    var(--background-secondary)
+  );
+  border: var(--border-width, 1px) solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+}
+
+.tts-strip-tab {
+  flex: 1 1 0;
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-1);
+  min-width: 0;
+  height: calc(var(--header-height, 40px) - var(--size-4-2));
+  padding: 0 var(--size-4-2);
+  color: var(--tab-text-color);
+  font-size: var(--tab-font-size, var(--font-ui-small));
+  border-radius: var(--tab-radius-active, 10px 10px 0 0);
+}
+
+/* The hairline Obsidian draws between two tabs that are both at rest. */
+.tts-strip-tab {
+  position: relative;
+}
+
+.tts-strip-tab:not(.is-active) + .tts-strip-tab:not(.is-active)::before {
+  content: "";
+  position: absolute;
+  inset-block: 28%;
+  inset-inline-start: -1px;
+  width: 1px;
+  background-color: var(--tab-divider-color, var(--background-modifier-border));
+}
+
+.tts-strip-tab.is-active {
+  color: var(--tab-text-color-focused-active-current);
+  background-color: var(--tab-background-active, var(--background-primary));
+}
+
+.tts-strip-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Too narrow for five titles next to their icons: the words go under. */
+@container (max-width: 460px) {
+  .tts-strip-bar {
+    height: auto;
+    padding-top: var(--size-4-2);
+  }
+
+  .tts-strip-tab {
+    flex-direction: column;
+    justify-content: center;
+    height: auto;
+    padding: var(--size-4-2) var(--size-2-1, 2px);
+    font-size: var(--font-ui-smaller);
+  }
+
+  .tts-strip-title {
+    max-width: 100%;
+  }
+}
+
+/* ---------- 3. A setting whose control is a picker ---------- */
+
+/*
+ * The picker takes a line of its own under the name and the reset button.
+ * In a narrow window Obsidian stacks a setting's name and control; here the
+ * control is one small button, which stays next to the name.
+ */
+.setting-item.tts-pick-setting {
+  flex-flow: row wrap;
+  row-gap: var(--size-4-3);
+}
+
+.setting-item.tts-pick-setting .setting-item-info {
+  flex: 1 1 0;
+  align-self: auto;
+  min-width: 0;
+  margin-inline-end: var(--size-4-4);
+}
+
+.setting-item.tts-pick-setting .setting-item-control {
+  flex: 0 0 auto;
+  width: auto;
+  justify-content: flex-end;
+}
+
+.tts-pick {
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+/* A tile is at least sixty pixels wide; the row wraps where it is narrower. */
+.tts-pick-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  gap: var(--size-4-2);
+}
+
+/*
+ * Few options: cards that share the line and carry their option in words,
+ * so nothing has to be hovered to be understood.
+ */
+.tts-pick-cards .tts-pick-tiles {
+  grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
+}
+
+/* ---------- 4. A tile ---------- */
+
+/* Two classes, to win over Obsidian's `button:not(.clickable-icon)`. */
+.tts-pick .tts-pick-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: auto;
+  min-height: 52px;
+  margin: 0;
+  padding: var(--size-4-2) var(--size-4-3);
+  color: var(--text-muted);
+  font: inherit;
+  cursor: var(--cursor, pointer);
+  background-color: var(--background-secondary);
+  border: none;
+  border-radius: var(--radius-m);
+  box-shadow: inset 0 0 0 1px var(--background-modifier-border);
+  outline: none;
+}
+
+@media (hover: hover) {
+  .tts-pick .tts-pick-tile:hover {
+    background-color: var(--background-modifier-hover);
+    box-shadow: inset 0 0 0 1px var(--background-modifier-border-hover);
+  }
+}
+
+.tts-pick .tts-pick-tile[aria-checked="true"] {
+  background-color: var(--background-primary);
+  box-shadow: inset 0 0 0 2px var(--interactive-accent);
+}
+
+.tts-pick .tts-pick-tile:focus-visible {
+  outline: 2px solid var(--text-normal);
+  outline-offset: 2px;
+}
+
+.tts-pick-hosts {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-3);
+}
+
+.tts-pick-host {
+  display: flex;
+  --icon-xs: 30px;
+}
+
+/* The option in words: on a card, and wherever an icon could not be drawn. */
+.tts-pick-text {
+  display: none;
+  max-width: 100%;
+  font-size: var(--font-ui-smaller);
+  line-height: var(--line-height-tight, 1.3);
+  white-space: normal;
+  text-align: center;
+  overflow-wrap: break-word;
+}
+
+.tts-pick-cards .tts-pick-tile {
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: var(--size-4-2);
+  padding: var(--size-4-3) var(--size-4-2) var(--size-4-2);
+}
+
+.tts-pick-cards .tts-pick-hosts {
+  min-height: 34px;
+}
+
+.tts-pick-cards .tts-pick-text,
+.tts-pick-tile-text .tts-pick-text {
+  display: block;
+}
+
+.tts-pick-cards .tts-pick-tile[aria-checked="true"] .tts-pick-text {
+  color: var(--text-normal);
+}
+
+.tts-pick-tile-text .tts-pick-hosts {
+  display: none;
+}
+
+/* Words need the room of a card, and sit in its middle. */
+.tts-pick .tts-pick-tile-text {
+  justify-content: center;
+  padding: var(--size-4-2);
+}
+
+.tts-pick-tiles:has(.tts-pick-tile-text) {
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+}
+
+/* A card says its own words: no line under the cards. */
+.tts-pick-cards .tts-pick-caption {
+  display: none;
+}
+
+/*
+ * Sizes: each tile holds the icon as large as it would be on a tab, over
+ * the number of pixels. Every tile is as high as the largest icon needs, so
+ * the row does not step.
+ */
+.tts-pick-sizes .tts-pick-tiles {
+  /* Forty-four pixels: the thirteen sizes make one row in the settings window. */
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+}
+
+.tts-pick-sizes .tts-pick-tile {
+  flex-direction: column;
+  gap: var(--size-2-2, 4px);
+  padding: var(--size-4-2) var(--size-2-2, 4px);
+}
+
+.tts-pick-sizes .tts-pick-hosts {
+  min-height: 28px;
+}
+
+.tts-pick-sizes .tts-pick-text {
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+
+.tts-pick-sizes .tts-pick-tile[aria-checked="true"] .tts-pick-text {
+  color: var(--text-normal);
+}
+
+.tts-pick-sizes .tts-pick-caption {
+  display: none;
+}
+
+/* ---------- 5. The chosen option in words ---------- */
+
+.tts-pick-caption {
+  min-height: 1lh;
+  margin-top: var(--size-4-2);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: var(--line-height-tight, 1.3);
+}
+
+/* The option under the pointer or the focus, not the chosen one. */
+.tts-pick-caption-preview {
+  color: var(--text-faint);
+}

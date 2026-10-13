@@ -20,6 +20,8 @@
  *   after drop, written for the profile's shell by the real
  *   `dropped-paths.ts`; drags without a usable path, or without one that can
  *   be written for the shell, refused, reported or left untouched
+ * - ProgramStatusAddon: OSC 7501 reports, the detection reply, record lifetime
+ *   (OSC 133 `A`, process exit, `ESC c`) and coalesced change notifications
  */
 import {
   type ILink,
@@ -48,9 +50,11 @@ import {
   CustomKeyEventHandlerAddon,
   DragAndDropAddon,
   FollowThemeAddon,
+  ProgramStatusAddon,
   SynchronizedOutputScrollAddon,
   VaultFileLinksAddon,
 } from "../../../src/terminal/emulator-addons.js";
+import { DETECTION_REPLY } from "../../../src/terminal/program-status.js";
 import { tick } from "../../support/helpers.js";
 
 /** What `DragAndDropAddon` reads of the result of `stat`. */
@@ -6216,5 +6220,565 @@ describe("VaultFileLinksAddon", () => {
     expect(
       (links?.[0]?.range.end.x ?? 0) - (links?.[0]?.range.start.x ?? 0) + 1,
     ).toBe(6);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ProgramStatusAddon
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal mock Terminal for ProgramStatusAddon tests.
+ *
+ * Captures the OSC and ESC handlers registered on `parser` so tests can fire
+ * them directly, as xterm.js does when the sequence arrives, and returns what
+ * each handler returned.
+ */
+function createStatusMockTerminal(): {
+  terminal: Terminal;
+  inputSpy: ReturnType<typeof vi.fn>;
+  triggerOsc: (ident: number, payload: string) => boolean[];
+  triggerEsc: (final: string) => boolean[];
+} {
+  const oscHandlers: Record<number, Array<(data: string) => boolean>> = {};
+  const escHandlers: Record<string, Array<() => boolean>> = {};
+  const inputSpy = vi.fn();
+  const register = <T>(bucket: T[], handler: T): IDisposable => {
+    bucket.push(handler);
+    return {
+      dispose: vi.fn(() => {
+        const index = bucket.indexOf(handler);
+        if (index >= 0) {
+          bucket.splice(index, 1);
+        }
+      }),
+    };
+  };
+
+  const terminal = {
+    // The addon schedules on this element's window, which is the global one.
+    element: document.createElement("div"),
+    input: inputSpy,
+    parser: {
+      registerOscHandler(
+        ident: number,
+        handler: (data: string) => boolean,
+      ): IDisposable {
+        return register((oscHandlers[ident] ??= []), handler);
+      },
+      registerEscHandler(
+        id: { final: string },
+        handler: () => boolean,
+      ): IDisposable {
+        return register((escHandlers[id.final] ??= []), handler);
+      },
+    },
+  } as unknown as Terminal;
+
+  return {
+    terminal,
+    inputSpy,
+    triggerOsc: (ident, payload) =>
+      [...(oscHandlers[ident] ?? [])].map((handler) => handler(payload)),
+    triggerEsc: (final) =>
+      [...(escHandlers[final] ?? [])].map((handler) => handler()),
+  };
+}
+
+describe("ProgramStatusAddon", () => {
+  const base64 = (text: string): string =>
+    Buffer.from(text, "utf8").toString("base64");
+
+  // Animation frames are a hand-driven queue and only the timeout pair is
+  // faked. Vitest's fake timers can fake `requestAnimationFrame` too; mixing
+  // both would leave it unclear which one a test is driving.
+  let frames: Map<number, FrameRequestCallback>;
+  let nextFrameHandle: number;
+  let requestFrame: ReturnType<typeof vi.fn>;
+  let cancelFrame: ReturnType<typeof vi.fn>;
+  const runFrame = (): void => {
+    const due = [...frames.values()];
+    frames.clear();
+    for (const callback of due) {
+      callback(0);
+    }
+  };
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    frames = new Map();
+    nextFrameHandle = 1;
+    requestFrame = vi.fn((callback: FrameRequestCallback): number => {
+      const handle = nextFrameHandle++;
+      frames.set(handle, callback);
+      return handle;
+    });
+    cancelFrame = vi.fn((handle: number): void => {
+      frames.delete(handle);
+    });
+    vi.stubGlobal("requestAnimationFrame", requestFrame);
+    vi.stubGlobal("cancelAnimationFrame", cancelFrame);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  function createBed(enabled: () => boolean = () => true) {
+    const mock = createStatusMockTerminal();
+    const onChange =
+      vi.fn<(status: ProgramStatusAddon.Status | null) => void>();
+    const addon = new ProgramStatusAddon({ enabled, onChange });
+    addon.activate(mock.terminal);
+    return {
+      ...mock,
+      addon,
+      onChange,
+      report: (payload: string): boolean[] => mock.triggerOsc(7501, payload),
+    };
+  }
+
+  it("has no status before anything is reported, or before activation", () => {
+    const onChange = vi.fn();
+    const idle = new ProgramStatusAddon({ enabled: () => true, onChange });
+    expect(idle.status).toBeNull();
+    expect(() => {
+      idle.processExited();
+      idle.markSeen();
+      idle.dispose();
+    }).not.toThrow();
+
+    const { addon } = createBed();
+    expect(addon.status).toBeNull();
+    runFrame();
+    vi.runAllTimers();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("sets the status from a report and marks the sequence handled", () => {
+    const { addon, report, inputSpy } = createBed();
+
+    expect(
+      report(
+        `state=blocked:kind=permission:app=terraform:progress=40:msg=${base64("Apply 3 to add?")}`,
+      ),
+    ).toEqual([true]);
+
+    expect(addon.status).toStrictEqual({
+      app: "terraform",
+      kind: "permission",
+      message: "Apply 3 to add?",
+      progress: 40,
+      state: "blocked",
+      title: null,
+    });
+    expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  it("passes title and message through displayText", () => {
+    const { addon, report } = createBed();
+
+    report(
+      `state=working:title=${base64("safe‮gnp.exe")}:msg=${base64("a​b c")}`,
+    );
+    expect(addon.status?.title).toBe("safegnp.exe");
+    expect(addon.status?.message).toBe("ab c");
+
+    // Text made only of invisible characters is no text.
+    report(`state=working:msg=${base64("​‮")}`);
+    expect(addon.status?.message).toBeNull();
+  });
+
+  it("keeps markup in a message as literal text", () => {
+    const { addon, report } = createBed();
+    const html = '<img src=x onerror="alert(1)"> **bold**';
+
+    report(`state=blocked:msg=${base64(html)}`);
+
+    expect(addon.status?.message).toBe(html);
+  });
+
+  it("takes app from the nearest ancestor record", () => {
+    const { addon, report } = createBed();
+
+    report("state=idle:app=deploy");
+    report("state=working:id=eu/west");
+
+    expect(addon.status?.state).toBe("working");
+    expect(addon.status?.app).toBe("deploy");
+  });
+
+  it("replaces the record on every report and removes it on clear", () => {
+    const { addon, report } = createBed();
+
+    report(`state=blocked:kind=auth:msg=${base64("Password")}`);
+    report("state=working");
+    expect(addon.status).toStrictEqual({
+      app: null,
+      kind: null,
+      message: null,
+      progress: null,
+      state: "working",
+      title: null,
+    });
+
+    report("state=clear");
+    expect(addon.status).toBeNull();
+  });
+
+  it("changes nothing on a report the protocol rejects", () => {
+    const { addon, report, onChange } = createBed();
+    report("state=working:app=brew");
+    runFrame();
+    onChange.mockClear();
+    requestFrame.mockClear();
+
+    const rejected = [
+      "state=thinking",
+      "state=done:msg=a",
+      `state=done:msg=${base64("a\nb")}`,
+      "state=done:id=a b",
+      `state=done:app=${"a".repeat(33)}`,
+      `state=done:msg=${"A".repeat(5000)}`,
+    ];
+    for (const payload of rejected) {
+      expect(report(payload), payload).toEqual([true]);
+    }
+
+    expect(addon.status?.state).toBe("working");
+    expect(addon.status?.app).toBe("brew");
+    expect(requestFrame).not.toHaveBeenCalled();
+    runFrame();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("answers the detection query with the fixed reply, as non-user input", () => {
+    const { addon, report, inputSpy, onChange } = createBed();
+
+    expect(report("?")).toEqual([true]);
+
+    expect(inputSpy).toHaveBeenCalledOnce();
+    expect(inputSpy).toHaveBeenCalledWith(DETECTION_REPLY, false);
+    expect(addon.status).toBeNull();
+    runFrame();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("writes nothing back for a report", () => {
+    const { report, inputSpy } = createBed();
+
+    report("state=working");
+    report("state=clear");
+    report("state=nonsense");
+
+    expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  it("drops working and blocked at OSC 133;A, keeps done and error", () => {
+    const { addon, report, triggerOsc } = createBed();
+    report("state=working");
+    report("state=blocked:id=a");
+    report("state=done:id=b");
+    report("state=error:id=c");
+    expect(addon.status?.state).toBe("blocked");
+
+    // Returns false so xterm.js and other handlers still see the sequence.
+    expect(triggerOsc(133, "A")).toEqual([false]);
+    expect(addon.status?.state).toBe("error");
+
+    report("state=clear:id=c");
+    expect(addon.status?.state).toBe("done");
+
+    report("state=blocked");
+    expect(triggerOsc(133, "A;aid=1")).toEqual([false]);
+    expect(addon.status?.state).toBe("done");
+  });
+
+  it("leaves records alone at the other OSC 133 marks", () => {
+    const { addon, report, triggerOsc } = createBed();
+    report("state=working");
+
+    for (const payload of ["B", "C", "D;0", "", "P;k=A"]) {
+      expect(triggerOsc(133, payload), payload).toEqual([false]);
+    }
+
+    expect(addon.status?.state).toBe("working");
+  });
+
+  it("drops working and blocked when the process exits, keeps done and error", () => {
+    const { addon, report } = createBed();
+    report("state=working");
+    report("state=blocked:id=a");
+    report("state=done:id=b");
+    report("state=error:id=c");
+
+    addon.processExited();
+
+    expect(addon.status?.state).toBe("error");
+    report("state=clear:id=c");
+    expect(addon.status?.state).toBe("done");
+    report("state=clear:id=b");
+    expect(addon.status).toBeNull();
+  });
+
+  it("clears every record on ESC c and lets xterm reset", () => {
+    const { addon, report, triggerEsc } = createBed();
+    report("state=done");
+    report("state=error:id=a");
+    report("state=working:id=b");
+
+    expect(triggerEsc("c")).toEqual([false]);
+
+    expect(addon.status).toBeNull();
+  });
+
+  it("shows the more urgent of two records: blocked > error > working > done > idle", () => {
+    const order = ["blocked", "error", "working", "done", "idle"] as const;
+    for (const [rank, urgent] of order.entries()) {
+      for (const calm of order.slice(rank + 1)) {
+        const first = createBed();
+        first.report(`state=${urgent}:id=a`);
+        first.report(`state=${calm}:id=b`);
+        expect(first.addon.status?.state, `${urgent} then ${calm}`).toBe(
+          urgent,
+        );
+
+        const second = createBed();
+        second.report(`state=${calm}:id=b`);
+        second.report(`state=${urgent}:id=a`);
+        expect(second.addon.status?.state, `${calm} then ${urgent}`).toBe(
+          urgent,
+        );
+      }
+    }
+  });
+
+  it("coalesces a burst of reports into one onChange per animation frame", () => {
+    const { addon, report, onChange } = createBed();
+    const seen: (ProgramStatusAddon.Status | null)[] = [];
+    onChange.mockImplementation(() => {
+      seen.push(addon.status);
+    });
+
+    report("state=working:progress=1");
+    report("state=working:progress=2");
+    report("state=blocked:kind=question");
+    expect(onChange).not.toHaveBeenCalled();
+    expect(requestFrame).toHaveBeenCalledOnce();
+
+    runFrame();
+    expect(onChange).toHaveBeenCalledOnce();
+    const expected = {
+      app: null,
+      kind: "question",
+      message: null,
+      progress: null,
+      state: "blocked",
+      title: null,
+    };
+    expect(onChange).toHaveBeenCalledWith(expected);
+    // What onChange receives is what the getter returns at that moment.
+    expect(seen).toStrictEqual([expected]);
+
+    report("state=clear");
+    runFrame();
+    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(onChange).toHaveBeenLastCalledWith(null);
+    vi.runAllTimers();
+    expect(onChange).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not call onChange for an identical status", () => {
+    const { report, onChange, triggerOsc, triggerEsc, addon } = createBed();
+    report("state=done:app=cargo");
+    runFrame();
+    expect(onChange).toHaveBeenCalledOnce();
+
+    // The same report again, and a less urgent record beneath it.
+    report("state=done:app=cargo");
+    report("state=idle:id=child");
+    runFrame();
+    // A burst that ends where it started.
+    report("state=working:app=cargo");
+    report("state=done:app=cargo");
+    runFrame();
+    // Lifetime events that remove nothing visible.
+    triggerOsc(133, "A");
+    addon.processExited();
+    runFrame();
+    expect(onChange).toHaveBeenCalledOnce();
+
+    // Each field counts.
+    report("state=done:app=brew");
+    runFrame();
+    expect(onChange).toHaveBeenCalledTimes(2);
+    report(`state=done:app=brew:msg=${base64("Upgraded")}`);
+    runFrame();
+    expect(onChange).toHaveBeenCalledTimes(3);
+    report(`state=done:app=brew:msg=${base64("Upgraded")}:title=QQ==`);
+    runFrame();
+    expect(onChange).toHaveBeenCalledTimes(4);
+
+    triggerEsc("c");
+    triggerEsc("c");
+    runFrame();
+    expect(onChange).toHaveBeenCalledTimes(5);
+    expect(onChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it("notifies on progress and kind changes alone", () => {
+    const { report, onChange } = createBed();
+    report("state=blocked:progress=10");
+    runFrame();
+    report("state=blocked:progress=11");
+    runFrame();
+    report("state=blocked:progress=11:kind=auth");
+    runFrame();
+    expect(onChange).toHaveBeenCalledTimes(3);
+  });
+
+  it("uses a timer instead of an animation frame while the document is hidden", () => {
+    const { report, onChange } = createBed();
+    vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+
+    report("state=working");
+    report("state=done");
+    expect(requestFrame).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
+
+    vi.runAllTimers();
+    expect(onChange).toHaveBeenCalledOnce();
+    expect(onChange.mock.calls[0]?.[0]?.state).toBe("done");
+  });
+
+  it("uses a timer when requestAnimationFrame is unavailable", () => {
+    const { report, onChange } = createBed();
+    vi.stubGlobal("requestAnimationFrame", undefined);
+
+    report("state=working");
+    expect(onChange).not.toHaveBeenCalled();
+
+    vi.runAllTimers();
+    expect(onChange).toHaveBeenCalledOnce();
+  });
+
+  it("keeps done and error when the user has seen them", () => {
+    const { addon, report, onChange } = createBed();
+    report("state=done");
+    report("state=error:id=a");
+    runFrame();
+
+    addon.markSeen();
+    runFrame();
+    vi.runAllTimers();
+
+    expect(addon.status?.state).toBe("error");
+    report("state=clear:id=a");
+    expect(addon.status?.state).toBe("done");
+    // Looking is not a change of status.
+    expect(onChange).toHaveBeenCalledOnce();
+  });
+
+  it("announces the next report after the user looked, even an identical one", () => {
+    const { addon, report, onChange } = createBed();
+    report("state=done");
+    runFrame();
+    expect(onChange).toHaveBeenCalledOnce();
+
+    addon.markSeen();
+    report("state=done");
+    runFrame();
+    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(onChange.mock.calls[1]?.[0]?.state).toBe("done");
+
+    // Only once per look.
+    report("state=done");
+    runFrame();
+    expect(onChange).toHaveBeenCalledTimes(2);
+  });
+
+  it("is silent while disabled: no status, no reply, no notification", () => {
+    let enabled = false;
+    const { addon, report, inputSpy, onChange, triggerOsc, triggerEsc } =
+      createBed(() => enabled);
+
+    expect(report("state=working")).toEqual([true]);
+    expect(report("?")).toEqual([true]);
+    expect(triggerOsc(133, "A")).toEqual([false]);
+    expect(triggerEsc("c")).toEqual([false]);
+    addon.processExited();
+    runFrame();
+    vi.runAllTimers();
+
+    expect(addon.status).toBeNull();
+    expect(inputSpy).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
+    expect(requestFrame).not.toHaveBeenCalled();
+
+    // Nothing reported while disabled was kept.
+    enabled = true;
+    expect(addon.status).toBeNull();
+    report("?");
+    expect(inputSpy).toHaveBeenCalledWith(DETECTION_REPLY, false);
+  });
+
+  it("hides stored records while disabled and still ends their lifetime", () => {
+    let enabled = true;
+    const { addon, report, onChange, triggerOsc } = createBed(() => enabled);
+    report("state=working");
+    report("state=done:id=a");
+    runFrame();
+    expect(onChange).toHaveBeenCalledOnce();
+
+    enabled = false;
+    expect(addon.status).toBeNull();
+    triggerOsc(133, "A");
+    runFrame();
+    expect(onChange).toHaveBeenLastCalledWith(null);
+
+    enabled = true;
+    expect(addon.status?.state).toBe("done");
+  });
+
+  it("stops everything on dispose", () => {
+    const { addon, report, onChange, triggerOsc, triggerEsc, inputSpy } =
+      createBed();
+    report("state=working");
+    expect(requestFrame).toHaveBeenCalledOnce();
+
+    addon.dispose();
+
+    // The pending notification is cancelled, not merely ignored.
+    expect(cancelFrame).toHaveBeenCalledOnce();
+    expect(frames.size).toBe(0);
+    // Every parser handler is gone.
+    expect(report("state=done")).toEqual([]);
+    expect(report("?")).toEqual([]);
+    expect(triggerOsc(133, "A")).toEqual([]);
+    expect(triggerEsc("c")).toEqual([]);
+    // Late calls from the owner schedule nothing.
+    addon.processExited();
+    addon.markSeen();
+    runFrame();
+    vi.runAllTimers();
+    expect(requestFrame).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(inputSpy).not.toHaveBeenCalled();
+  });
+
+  it("cancels a pending timer on dispose", () => {
+    const { addon, report, onChange } = createBed();
+    vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+    report("state=working");
+    expect(vi.getTimerCount()).toBe(1);
+
+    addon.dispose();
+
+    expect(vi.getTimerCount()).toBe(0);
+    vi.runAllTimers();
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

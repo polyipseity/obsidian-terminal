@@ -1,4 +1,6 @@
 @import "@polyipseity/obsidian-plugin-library/style";
 @import "./terminal/emulator.css";
+@import "./terminal/tab-status.css";
+@import "./terminal/tab-status-picker.css";
 @import "./terminal/utils.css";
 @import "./terminal/view.css";

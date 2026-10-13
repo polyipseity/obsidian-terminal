@@ -34,6 +34,7 @@ import {
   readStateCollaboratively,
   recordViewStateHistory,
   resetButton,
+  revealPrivateFilter,
   saveFileAs,
   svelteState,
   updateView,
@@ -56,9 +57,12 @@ import {
   View,
   type ViewStateResult,
   type WorkspaceLeaf,
+  setIcon,
 } from "obsidian";
 import { mount, unmount } from "svelte";
 import type { DeepWritable } from "ts-essentials";
+import type { $WorkspaceLeaf } from "../@types/obsidian.js";
+import { tabIconId } from "../icons.js";
 import { BUNDLE } from "../imports.js";
 import {
   DEFAULT_ENCODING,
@@ -74,12 +78,20 @@ import {
   DisposerAddon,
   DragAndDropAddon,
   FollowThemeAddon,
+  ProgramStatusAddon,
   RendererAddon,
   RightClickActionAddon,
   SynchronizedOutputScrollAddon,
   VaultFileLinksAddon,
 } from "./emulator-addons.js";
 import { XtermTerminalEmulator } from "./emulator.js";
+import {
+  TabStatusPresenter,
+  needsAttention,
+  onWindowFocus,
+  writeTabIcon,
+  writeTabIconSize,
+} from "./tab-status.js";
 import {
   type TerminalBackendOptions,
   applyTerminalOptionDiffShallow,
@@ -185,6 +197,32 @@ function recordTerminalUse(view: TerminalView): void {
 function terminalUseOf(leaf: WorkspaceLeaf | undefined): number {
   const view = leaf?.view;
   return view instanceof TerminalView ? (terminalUses.get(view) ?? 0) : 0;
+}
+
+/**
+ * A leaf's tab header. `tabHeaderEl` is not part of Obsidian's API, and this
+ * is the one place that reads it.
+ *
+ * @param context the plugin
+ * @param leaf the leaf
+ * @returns the header, or `null` where this Obsidian has none under that name
+ */
+function tabHeaderOf(
+  context: TerminalPlugin,
+  leaf: WorkspaceLeaf,
+): Element | null {
+  return revealPrivateFilter<
+    [$WorkspaceLeaf],
+    [Document, Element, HTMLElement]
+  >()(
+    context,
+    [leaf],
+    (leaf0) => {
+      const { tabHeaderEl } = leaf0;
+      return instanceOf(tabHeaderEl, Element) ? tabHeaderEl : null;
+    },
+    () => null,
+  );
 }
 
 export class EditTerminalModal extends DialogModal {
@@ -401,6 +439,18 @@ export class TerminalView extends ItemView {
     readonly [ReturnType<typeof FindComponent>, FindComponent$.Props] | null =
     null;
   #state = TerminalView.State.DEFAULT;
+  readonly #tabStatus = new TabStatusPresenter({
+    header: (): Element | null => tabHeaderOf(this.context, this.leaf),
+    look: () => {
+      const { value: settings } = this.context.settings;
+      return {
+        animation: settings.tabStatusAnimation,
+        set: settings.tabIconSet,
+        size: settings.tabIconSize,
+      };
+    },
+    lookedAt: (): boolean => this.isLookedAt,
+  });
 
   public constructor(
     protected readonly context: TerminalPlugin,
@@ -413,6 +463,11 @@ export class TerminalView extends ItemView {
   protected get isFocused(): boolean {
     const { contentEl } = this;
     return contentEl.contains(contentEl.ownerDocument.activeElement);
+  }
+
+  /** The terminal has the keyboard and its window is the one in front. */
+  protected get isLookedAt(): boolean {
+    return this.isFocused && this.contentEl.ownerDocument.hasFocus();
   }
 
   protected get state(): TerminalView.State {
@@ -526,6 +581,42 @@ export class TerminalView extends ItemView {
     updateView(this.context, this);
   }
 
+  /**
+   * Gives the tabs whose view is not loaded the chosen icon and its size.
+   *
+   * Obsidian loads the view of a background tab only when the tab is
+   * opened. Until then the tab has this view's type and no view of ours, so
+   * no presenter has written its header and nothing has asked for its icon:
+   * it would show the icon saved with the layout, at the default size,
+   * beside tabs that show the chosen one.
+   *
+   * @param context the plugin
+   * @param size the size to write; `null` takes it back and leaves the icon
+   */
+  public static dressUnloadedTabs(
+    context: TerminalPlugin,
+    size: Settings.TabIconSize | null = context.settings.value.tabIconSize,
+  ): void {
+    const id = tabIconId(context, context.settings.value.tabIconSet);
+    for (const leaf of context.app.workspace.getLeavesOfType(
+      TerminalView.type.namespaced(context),
+    )) {
+      if (leaf.view instanceof TerminalView) {
+        // Its presenter writes the header, and clears it when the view goes.
+        continue;
+      }
+      const header = tabHeaderOf(context, leaf);
+      if (!header) {
+        continue;
+      }
+      writeTabIconSize(header, size);
+      const icon = header.querySelector(".workspace-tab-header-inner-icon");
+      if (size !== null && instanceOf(icon, HTMLElement)) {
+        writeTabIcon(icon, id, setIcon);
+      }
+    }
+  }
+
   public static load(context: TerminalPlugin): void {
     const {
       app: { workspace },
@@ -536,6 +627,37 @@ export class TerminalView extends ItemView {
       TerminalView.type.namespaced(context),
       (leaf) => new TerminalView(context, leaf),
     );
+
+    /*
+     * `onLayoutReady` has no unsubscribe and still fires after the plugin
+     * unloads; the flag keeps it from writing on tabs the plugin has left.
+     */
+    let unloaded = false;
+    const dressUnloadedTabs = (): void => {
+      TerminalView.dressUnloadedTabs(context);
+    };
+    workspace.onLayoutReady(() => {
+      if (!unloaded) {
+        dressUnloadedTabs();
+      }
+    });
+    context.registerEvent(workspace.on("layout-change", dressUnloadedTabs));
+    context.register(
+      context.settings.onMutate(
+        (settings) => settings.tabIconSize,
+        dressUnloadedTabs,
+      ),
+    );
+    context.register(
+      context.settings.onMutate(
+        (settings) => settings.tabIconSet,
+        dressUnloadedTabs,
+      ),
+    );
+    context.register(() => {
+      unloaded = true;
+      TerminalView.dressUnloadedTabs(context, null);
+    });
 
     // Track the last non-terminal leaf for restoring focus on unfocus
     const track = (leaf: WorkspaceLeaf | null): void => {
@@ -758,9 +880,8 @@ export class TerminalView extends ItemView {
   }
 
   public override getIcon(): string {
-    return this.context.language.value.t(
-      `asset:components.${TerminalView.type.id}.icon`,
-    );
+    const { context } = this;
+    return tabIconId(context, context.settings.value.tabIconSet);
   }
 
   public getViewType(): string {
@@ -1045,8 +1166,44 @@ export class TerminalView extends ItemView {
           keymap.pushScope(focusedScope);
         }
         statusBarHider.update();
+        this.lookAtTab();
       },
       { capture: true, passive: true },
+    );
+    // Coming back to the window with the terminal still focused counts as
+    // looking at it, in whichever window the tab is by then.
+    this.register(
+      onWindowFocus(contentEl, activeSelf(contentEl), () => {
+        this.lookAtTab();
+      }),
+    );
+    this.register(() => {
+      // The tab header belongs to the leaf and outlives this view.
+      this.#tabStatus.clear();
+    });
+    this.register(
+      settings.onMutate(
+        (s) => [
+          s.tabIconSet,
+          s.tabIconSize,
+          s.tabStatusAnimation,
+          s.tabStatusReports,
+        ],
+        () => {
+          // Turning reports off or on changes what the addon answers.
+          this.#tabStatus.sync(
+            this.emulator?.addons.programStatus.status?.state ?? null,
+          );
+          updateView(context, this);
+        },
+      ),
+    );
+    this.#tabStatus.render();
+    // A tab moved to another pane or window can come back with a new header.
+    this.registerEvent(
+      this.app.workspace.on("layout-change", () => {
+        this.#tabStatus.render();
+      }),
     );
     TerminalView.lastFocusTimes.set(this, Date.now());
     if (this.isFocused && settings.value.interceptKeysWhenFocused) {
@@ -1076,6 +1233,15 @@ export class TerminalView extends ItemView {
     this.register(() => {
       this.emulator = null;
     });
+  }
+
+  /** The user is at this terminal: what it reported is no longer unread. */
+  protected lookAtTab(): void {
+    if (!this.isLookedAt) {
+      return;
+    }
+    this.emulator?.addons.programStatus.markSeen();
+    this.#tabStatus.look();
   }
 
   protected startFind(): void {
@@ -1313,6 +1479,9 @@ export class TerminalView extends ItemView {
                 () => {
                   this.rawTitle = "";
                 },
+                () => {
+                  this.#tabStatus.report(null);
+                },
                 ele.onWindowMigrated(() => {
                   emulator.reopen();
                   emulator.resize(false).catch(warn);
@@ -1342,6 +1511,22 @@ export class TerminalView extends ItemView {
                 },
               }),
               ligatures: new LigaturesAddon({}),
+              programStatus: new ProgramStatusAddon({
+                enabled: (): boolean => settings.value.tabStatusReports,
+                onChange: (status): void => {
+                  const state = status?.state ?? null;
+                  this.#tabStatus.report(state);
+                  if (
+                    state !== null &&
+                    needsAttention(state) &&
+                    !this.#tabStatus.unread
+                  ) {
+                    // It arrived while the user was looking: the next one,
+                    // even an identical one, is news again.
+                    this.emulator?.addons.programStatus.markSeen();
+                  }
+                },
+              }),
               renderer: new RendererAddon(
                 () => new CanvasAddon(),
                 () => new WebglAddon(false),
@@ -1389,6 +1574,8 @@ export class TerminalView extends ItemView {
           }))
           .then(
             ({ code, startupFailure }) => {
+              // The program is gone: it is no longer working or waiting.
+              addons.programStatus.processExited();
               // Closing or replacing the view intentionally kills its old PTY.
               // ConPTY owns failures it already announced during startup.
               if (this.emulator !== emulator || startupFailure === "notified") {
@@ -1572,6 +1759,7 @@ export namespace TerminalView {
     readonly dragAndDrop: DragAndDropAddon;
     readonly followTheme: FollowThemeAddon;
     readonly ligatures: LigaturesAddon;
+    readonly programStatus: ProgramStatusAddon;
     readonly renderer: RendererAddon;
     readonly rightClickAction: RightClickActionAddon;
     readonly search: SearchAddon;

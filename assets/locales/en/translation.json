@@ -481,6 +481,32 @@
       "nothing": "Nothing",
       "paste": "Paste"
     },
+    "tab-icon-set": "$t(generic.terminal, capitalize) icon",
+    "tab-icon-set-description": "The icon of a $t(generic.terminal) $t(generic.tab).",
+    "tab-icon-set-options": {
+      "bezel": "Square with a raised border",
+      "tile": "Rounded square"
+    },
+    "tab-icon-size": "Icon size",
+    "tab-icon-size-description": "How large the icon is on a $t(generic.terminal) $t(generic.tab), in pixels. Obsidian's own $t(generic.tab) icons are 14. A $t(generic.tab) in a sidebar keeps Obsidian's size.",
+    "tab-icon-size-option": "{{size}} px",
+    "tab-status": "$t(generic.tab, capitalize) status",
+    "tab-status-animation": "Motion",
+    "tab-status-animation-description": "Whether the mark of a working program stands still or keeps moving. Where the system asks for reduced motion, the three dots stand still.",
+    "tab-status-animation-options": {
+      "loop": "Moving: three dots",
+      "none": "Still: three dots"
+    },
+    "tab-status-preview": {
+      "blocked": "Needs you",
+      "done": "Finished",
+      "error": "Error",
+      "label": "Preview",
+      "none": "No status",
+      "working": "Working"
+    },
+    "tab-status-reports": "Show program status on the $t(generic.tab)",
+    "tab-status-reports-description": "Programs such as coding agents can report whether they are working, done or waiting for you, and the $t(generic.tab) shows it.",
     "terminal-options": "$t(generic.terminal-option_other, capitalize)",
     "terminal-options-description": "Shallow-merged into every $t(generic.profile) unless a specific $t(generic.profile) explicitly overrides them.",
     "terminal-options-edit": "$t(generic.edit, capitalize)"

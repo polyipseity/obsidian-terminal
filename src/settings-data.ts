@@ -112,6 +112,11 @@ export interface Settings extends PluginContext.Settings {
   readonly hideStatusBar: Settings.HideStatusBarOption;
   readonly showTerminalTabPrefix: boolean;
 
+  readonly tabStatusReports: boolean;
+  readonly tabIconSet: Settings.TabIconSet;
+  readonly tabIconSize: Settings.TabIconSize;
+  readonly tabStatusAnimation: Settings.TabStatusAnimation;
+
   /** Experimental features the user turned on. A missing key is off. */
   readonly experiments: ExperimentFlags;
   readonly exposeInternalModules: boolean;
@@ -285,6 +290,10 @@ export namespace Settings {
     noticeTimeout: 5,
     openChangelogOnUpdate: true,
     showTerminalTabPrefix: false,
+    tabIconSet: "bezel",
+    tabIconSize: 18,
+    tabStatusAnimation: "none",
+    tabStatusReports: true,
     pinNewInstance: true,
     preferredRenderer: "webgl",
     prewarmConPty: true,
@@ -332,6 +341,30 @@ export namespace Settings {
     "running",
   ]);
   export type HideStatusBarOption = (typeof HIDE_STATUS_BAR_OPTIONS)[number];
+
+  /**
+   * The icons a terminal tab can have. `bezel` is a rendered tile
+   * (`tab-skins.ts`), a square with a raised border, under a prompt drawn in
+   * lines. `tile` is lines alone: a rounded square around the prompt in the
+   * icon's own colour, as Obsidian's icons are drawn.
+   */
+  export const TAB_ICON_SETS = deepFreeze(["bezel", "tile"]);
+  export type TabIconSet = (typeof TAB_ICON_SETS)[number];
+  /**
+   * The sizes a tab icon can have, in CSS pixels. Obsidian's own tab icons
+   * are 14; the box a tab gives its icon is 28 high, so 24 is the largest
+   * that leaves room for the marks that reach over the icon's edge.
+   */
+  export const TAB_ICON_SIZES = deepFreeze([
+    12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+  ]);
+  export type TabIconSize = (typeof TAB_ICON_SIZES)[number];
+  /**
+   * Whether the three dots of a working program stand still (`none`) or
+   * keep moving, lighting up in turn (`loop`).
+   */
+  export const TAB_STATUS_ANIMATIONS = deepFreeze(["none", "loop"]);
+  export type TabStatusAnimation = (typeof TAB_STATUS_ANIMATIONS)[number];
 
   export const PREFERRED_RENDERER_OPTIONS = RendererAddon.RENDERER_OPTIONS;
   export type PreferredRendererOption = RendererAddon.RendererOption;
@@ -1642,6 +1675,15 @@ export namespace Settings {
       showTerminalTabPrefix: fixTyped(DEFAULT, unc, "showTerminalTabPrefix", [
         "boolean",
       ]),
+      tabIconSet: fixInSet(DEFAULT, unc, "tabIconSet", TAB_ICON_SETS),
+      tabIconSize: fixInSet(DEFAULT, unc, "tabIconSize", TAB_ICON_SIZES),
+      tabStatusAnimation: fixInSet(
+        DEFAULT,
+        unc,
+        "tabStatusAnimation",
+        TAB_STATUS_ANIMATIONS,
+      ),
+      tabStatusReports: fixTyped(DEFAULT, unc, "tabStatusReports", ["boolean"]),
       interceptKeysWhenFocused: fixTyped(
         DEFAULT,
         unc,

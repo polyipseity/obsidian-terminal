@@ -15,13 +15,21 @@ import { once } from "node:events";
 import { PassThrough } from "node:stream";
 import * as library from "@polyipseity/obsidian-plugin-library";
 import { readStateCollaboratively } from "@polyipseity/obsidian-plugin-library";
-import { App, type Menu, type MenuItem, View, WorkspaceLeaf } from "obsidian";
+import {
+  App,
+  type Menu,
+  type MenuItem,
+  View,
+  WorkspaceLeaf,
+  setIcon,
+} from "obsidian";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { afterEach, describe, it, expect, vi } from "vitest";
 import type { TerminalPlugin } from "../../../src/main.js";
 import { TERMINAL_CONPTY_HOST_EXIT_WAIT } from "../../../src/magic.js";
+import { tabIconId } from "../../../src/icons.js";
 import { Settings } from "../../../src/settings-data.js";
 import * as environment from "../../../src/terminal/environment.js";
 import { mergeTerminalOptions } from "../../../src/terminal/options.js";
@@ -62,7 +70,12 @@ vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => {
 vi.mock("obsidian", async () => {
   // The shared mock has no base View; ItemView supplies its leaf contract here.
   const actual = await vi.importActual<typeof import("obsidian")>("obsidian");
-  return { ...actual, View: actual.ItemView };
+  return {
+    ...actual,
+    View: actual.ItemView,
+    // Watched: the tabs whose view is not loaded get their icon through it.
+    setIcon: vi.fn<typeof actual.setIcon>(),
+  };
 });
 
 /*
@@ -135,6 +148,8 @@ function makeTerminalLeaf(context: TerminalPlugin) {
   const leaf = new WorkspaceLeaf();
   const view = new TerminalView(context, leaf);
   view.app = context.app;
+  // Obsidian gives every element this; the test DOM does not.
+  Object.assign(view.contentEl, { onWindowMigrated: vi.fn(() => vi.fn()) });
   view.load();
   terminalViews.push(view);
   // Call matchers compare arguments structurally; the id keeps two mock leaves
@@ -1992,6 +2007,21 @@ describe("TerminalView.getLeaf session usage", () => {
     expect(activate).toHaveBeenCalledExactlyOnceWith(restored.leaf);
   });
 
+  it("follows its content into another window for the focus that counts as looking, until it closes", async () => {
+    const { context } = makeTerminalContext(),
+      { view } = makeTerminalLeaf(context),
+      unfollow = vi.fn<() => void>(),
+      follow = vi.fn((_follower: (win: Window) => void) => unfollow);
+    Object.assign(view.contentEl, { onWindowMigrated: follow });
+
+    await view["onOpen"]();
+    expect(follow).toHaveBeenCalledOnce();
+    expect(unfollow).not.toHaveBeenCalled();
+
+    view.unload();
+    expect(unfollow).toHaveBeenCalledOnce();
+  });
+
   it("does not inherit usage when a leaf receives a different terminal view", async () => {
     const { context, workspace, next, allocate, activate } =
       makeTerminalContext({
@@ -2134,6 +2164,261 @@ function terminalPaneActions(view: TerminalView) {
   view.onPaneMenu(menu as unknown as Menu, "tab-header");
   return actions;
 }
+
+describe("TerminalView.dressUnloadedTabs", () => {
+  /**
+   * A tab whose view Obsidian has not loaded yet: the leaf answers to the
+   * terminal's type (`getLeavesOfType` is mocked to say so), its header has
+   * that type, and its view is not a `TerminalView`.
+   */
+  function unloadedTab(saved: string | null = "lucide-terminal") {
+    const leaf = new WorkspaceLeaf(),
+      header = document.createElement("div"),
+      icon = header
+        .appendChild(document.createElement("div"))
+        .appendChild(document.createElement("div"));
+    header.setAttribute("data-type", "terminal:terminal");
+    icon.className = "workspace-tab-header-inner-icon";
+    if (saved !== null) {
+      // The icon saved with the layout, marked with its id as Obsidian does.
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.classList.add("svg-icon", saved);
+      icon.append(svg);
+    }
+    Object.assign(leaf, { tabHeaderEl: header });
+    return { leaf, header, icon };
+  }
+
+  function loadedTab(context: TerminalPlugin) {
+    const made = makeTerminalLeaf(context),
+      header = document.createElement("div");
+    Object.assign(made.leaf, { tabHeaderEl: header });
+    return { ...made, header };
+  }
+
+  it("writes the chosen size on a tab whose view is not loaded", () => {
+    const { context, workspace } = makeTerminalContext({ tabIconSize: 22 }),
+      first = unloadedTab(),
+      second = unloadedTab(),
+      listed = vi
+        .spyOn(workspace, "getLeavesOfType")
+        .mockReturnValue([first.leaf, second.leaf]);
+
+    TerminalView.dressUnloadedTabs(context);
+
+    expect(listed).toHaveBeenCalledExactlyOnceWith(
+      TerminalView.type.namespaced(context),
+    );
+    expect(first.header.getAttribute("data-terminal-size")).toBe("22");
+    expect(second.header.getAttribute("data-terminal-size")).toBe("22");
+    // The size and no other attribute: the tab shows no status.
+    expect(first.header.getAttributeNames()).toEqual([
+      "data-type",
+      "data-terminal-size",
+    ]);
+  });
+
+  it("draws the chosen icon on a tab whose view is not loaded", () => {
+    const { context, workspace } = makeTerminalContext({ tabIconSet: "tile" }),
+      first = unloadedTab(),
+      second = unloadedTab(null);
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([
+      first.leaf,
+      second.leaf,
+    ]);
+    vi.mocked(setIcon).mockClear();
+
+    TerminalView.dressUnloadedTabs(context);
+
+    const chosen = tabIconId(context, "tile");
+    expect(vi.mocked(setIcon).mock.calls).toEqual([
+      [first.icon, chosen],
+      [second.icon, chosen],
+    ]);
+  });
+
+  it("leaves an icon that is already the chosen one", () => {
+    const { context, workspace } = makeTerminalContext({ tabIconSet: "tile" }),
+      tab = unloadedTab(tabIconId(context, "tile")),
+      before = tab.icon.firstElementChild;
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
+    vi.mocked(setIcon).mockClear();
+
+    TerminalView.dressUnloadedTabs(context);
+
+    expect(setIcon).not.toHaveBeenCalled();
+    expect(tab.icon.firstElementChild).toBe(before);
+  });
+
+  it("draws nothing on a loaded terminal's tab, nor when the size is taken back", () => {
+    const { context, workspace } = makeTerminalContext({ tabIconSet: "tile" }),
+      loaded = loadedTab(context),
+      unloaded = unloadedTab();
+    loaded.header
+      .appendChild(document.createElement("div"))
+      .classList.add("workspace-tab-header-inner-icon");
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([
+      loaded.leaf,
+      unloaded.leaf,
+    ]);
+    vi.mocked(setIcon).mockClear();
+
+    TerminalView.dressUnloadedTabs(context, null);
+    expect(setIcon).not.toHaveBeenCalled();
+
+    TerminalView.dressUnloadedTabs(context);
+    // The loaded tab's icon is Obsidian's to draw, from the view's `getIcon`.
+    expect(vi.mocked(setIcon).mock.calls).toEqual([
+      [unloaded.icon, tabIconId(context, "tile")],
+    ]);
+  });
+
+  it("writes the size on a header that has no icon element", () => {
+    const { context, workspace } = makeTerminalContext({ tabIconSize: 22 }),
+      tab = unloadedTab();
+    tab.header.replaceChildren();
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
+    vi.mocked(setIcon).mockClear();
+
+    expect(() => {
+      TerminalView.dressUnloadedTabs(context);
+    }).not.toThrow();
+    expect(tab.header.getAttribute("data-terminal-size")).toBe("22");
+    expect(setIcon).not.toHaveBeenCalled();
+  });
+
+  it("leaves a loaded terminal's header to its presenter", () => {
+    const { context, workspace } = makeTerminalContext({ tabIconSize: 22 }),
+      loaded = loadedTab(context),
+      unloaded = unloadedTab();
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([
+      loaded.leaf,
+      unloaded.leaf,
+    ]);
+
+    TerminalView.dressUnloadedTabs(context);
+    // Not written here: the view's presenter writes it with the rest.
+    expect(loaded.header.getAttributeNames()).toEqual([]);
+    expect(unloaded.header.getAttribute("data-terminal-size")).toBe("22");
+
+    // And not taken back here: what the presenter wrote is its own to clear.
+    loaded.header.setAttribute("data-terminal-size", "22");
+    TerminalView.dressUnloadedTabs(context, null);
+    expect(loaded.header.getAttribute("data-terminal-size")).toBe("22");
+    expect(unloaded.header.hasAttribute("data-terminal-size")).toBe(false);
+  });
+
+  it("takes the size back", () => {
+    const { context, workspace } = makeTerminalContext(),
+      tab = unloadedTab();
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
+
+    TerminalView.dressUnloadedTabs(context);
+    expect(tab.header.getAttribute("data-terminal-size")).toBe(
+      String(Settings.DEFAULT.tabIconSize),
+    );
+    TerminalView.dressUnloadedTabs(context, null);
+    expect(tab.header.getAttributeNames()).toEqual(["data-type"]);
+  });
+
+  it("skips a leaf that has no tab header", () => {
+    const { context, workspace } = makeTerminalContext(),
+      bare = new WorkspaceLeaf(),
+      tab = unloadedTab();
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([bare, tab.leaf]);
+
+    expect(() => {
+      TerminalView.dressUnloadedTabs(context);
+    }).not.toThrow();
+    expect(tab.header.hasAttribute("data-terminal-size")).toBe(true);
+  });
+
+  it("goes over the tabs when the layout is ready, when it changes and when the size or the icon set does, until the plugin unloads", () => {
+    const { context, workspace } = makeTerminalContext({ tabIconSize: 20 }),
+      ready: (() => void)[] = [],
+      disposers: (() => void)[] = [],
+      tab = unloadedTab(),
+      later = unloadedTab(),
+      listed = vi
+        .spyOn(workspace, "getLeavesOfType")
+        .mockReturnValue([tab.leaf]),
+      size = (header: Element): string | null =>
+        header.getAttribute("data-terminal-size");
+    Object.assign(workspace, {
+      onLayoutReady: vi.fn((callback: () => void) => {
+        ready.push(callback);
+      }),
+    });
+    Object.assign(context, {
+      addCommand: vi.fn((command: object) => command),
+      displayName: vi.fn(() => "Terminal"),
+      register: vi.fn((dispose: () => void) => {
+        disposers.push(dispose);
+      }),
+      registerEvent: vi.fn(),
+      registerView: vi.fn(),
+    });
+    // The rest of the loader registers commands and a key handler; the
+    // shared mocks have no hotkey manager and no handler-less scope.
+    vi.spyOn(library, "newHotkeyListener").mockReturnValue(vi.fn());
+    vi.spyOn(TerminalView["focusedScope"], "register").mockReturnValue({
+      key: null,
+      modifiers: null,
+      scope: TerminalView["focusedScope"],
+    });
+    vi.spyOn(TerminalView["focusedScope"], "unregister").mockReturnValue();
+
+    TerminalView.load(context);
+    // Nothing before the layout is there: there are no tabs to go over yet.
+    expect(size(tab.header)).toBeNull();
+    for (const callback of ready) callback();
+    expect(size(tab.header)).toBe("20");
+
+    // A tab that arrives later, unloaded as well.
+    listed.mockReturnValue([tab.leaf, later.leaf]);
+    workspace.trigger("layout-change");
+    expect(size(later.header)).toBe("20");
+
+    // Another size: the listener registered for that setting, and only it.
+    const probe = { ...Settings.DEFAULT, tabIconSize: 23 } satisfies Settings,
+      onSize = vi
+        .mocked(context.settings)
+        .onMutate.mock.calls.filter(([accessor]) => accessor(probe) === 23);
+    expect(onSize).toHaveLength(1);
+    Object.assign(context.settings, {
+      value: { ...context.settings.value, tabIconSize: 14 },
+    });
+    onSize[0]?.[1](14, 20, context.settings.value);
+    expect(size(tab.header)).toBe("14");
+    expect(size(later.header)).toBe("14");
+
+    // Another icon set: its own listener, and the tabs get the new icon.
+    const onSet = vi
+      .mocked(context.settings)
+      .onMutate.mock.calls.filter(
+        ([accessor]) =>
+          accessor({ ...probe, tabIconSet: "tile" } satisfies Settings) ===
+          "tile",
+      );
+    expect(onSet).toHaveLength(1);
+    Object.assign(context.settings, {
+      value: { ...context.settings.value, tabIconSet: "tile" },
+    });
+    vi.mocked(setIcon).mockClear();
+    onSet[0]?.[1]("tile", "bezel", context.settings.value);
+    expect(vi.mocked(setIcon).mock.calls).toEqual([
+      [tab.icon, tabIconId(context, "tile")],
+      [later.icon, tabIconId(context, "tile")],
+    ]);
+
+    // Unload takes the size back, and a late layout-ready writes nothing.
+    for (const dispose of disposers) dispose();
+    expect(size(tab.header)).toBeNull();
+    expect(size(later.header)).toBeNull();
+    for (const callback of ready) callback();
+    expect(size(tab.header)).toBeNull();
+  });
+});
 
 describe("TerminalView pane menu", () => {
   describe.each([false, true])("with source focus=%s", (sourceFocus) => {

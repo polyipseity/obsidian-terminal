@@ -214,6 +214,14 @@ describe("terminal ribbon profile access", () => {
     return event;
   }
 
+  it("gives the ribbon button the plain terminal icon, not the icon of the tabs", async () => {
+    const { context } = await ribbon();
+    expect(context.settings.value.tabIconSet).toBe("bezel");
+    expect(vi.mocked(addRibbonIcon).mock.calls.at(-1)?.[2]).toBe(
+      "terminal-square",
+    );
+  });
+
   it("lists compatible profiles and opens an external profile in the vault root", async () => {
     const { context, icon } = await ribbon();
     const event = rightClick(icon.elementRef);

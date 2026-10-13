@@ -16,6 +16,7 @@ import {
   setTextToEnum,
 } from "@polyipseity/obsidian-plugin-library";
 import { cloneDeep } from "es-toolkit/object";
+import { type Setting, setIcon, setTooltip } from "obsidian";
 import semverLt from "semver/functions/lt.js";
 import type { loadDocumentations } from "./documentations.js";
 import {
@@ -25,6 +26,7 @@ import {
   fixExperiments,
   isExperimentEnabled,
 } from "./experiments.js";
+import { tabIconId } from "./icons.js";
 import type { TerminalPlugin } from "./main.js";
 import {
   KeymappingsModal,
@@ -34,6 +36,16 @@ import {
 import { Settings } from "./settings-data.js";
 import { RightClickActionAddon } from "./terminal/emulator-addons.js";
 import { CONPTY_HOST_POOL } from "./terminal/pseudoterminal.js";
+import {
+  TAB_STATUS_PICKER_HOSTS,
+  TAB_STATUS_PREVIEW_STATES,
+  TabStatusPicker,
+  type TabStatusPreviewEnvironment,
+  type TabStatusPreviewHost,
+  TabStatusStrip,
+  tabStatusPreviewAttributes,
+} from "./terminal/tab-status-picker.js";
+import type { TabStatusLook } from "./terminal/tab-status.js";
 import {
   PYTHON_DOWNLOADS_URL,
   getWindowsPythonDiagnosis,
@@ -759,6 +771,210 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
           );
       });
     this.newNoticeTimeoutWidget(Settings.DEFAULT);
+    // Sits below the notice timeouts so they stay under the interface heading.
+    this.newSectionWidget(() => i18n.t("settings.tab-status"));
+    const tabStatusLook = (): TabStatusLook => {
+        const { value } = settings;
+        return {
+          animation: value.tabStatusAnimation,
+          set: value.tabIconSet,
+          size: value.tabIconSize,
+        };
+      },
+      // A picker's values are words; a size is a number.
+      tabIconSizeOf = (value: string): Settings.TabIconSize =>
+        Settings.TAB_ICON_SIZES.find((size) => String(size) === value) ??
+        Settings.DEFAULT.tabIconSize,
+      tabStatusIcon = (set: Settings.TabIconSet): string =>
+        tabIconId(context, set),
+      tabStatusEnvironment: TabStatusPreviewEnvironment = {
+        setIcon,
+        setTooltip: (element, text) => {
+          setTooltip(element, text);
+        },
+      },
+      /*
+       * A setting whose control is a picker: tiles that show each option on
+       * the real icon, on a line of their own under the name. Choosing a tile
+       * does what choosing in a dropdown did, and every redraw of the tab
+       * (`postMutate()`, a reset, a reload) brings the tiles up to date.
+       */
+      tabStatusPicker = <V extends string>(options: {
+        readonly values: readonly V[];
+        readonly name: () => string;
+        readonly description: () => string;
+        readonly label: (value: V) => string;
+        readonly resetIcon: () => string;
+        readonly hosts: (
+          look: TabStatusLook,
+          value: V,
+          icon: (set: Settings.TabIconSet) => string,
+        ) => readonly TabStatusPreviewHost[];
+        readonly get: () => V;
+        readonly set: (value: V) => Promise<unknown>;
+        readonly reset: () => Promise<unknown>;
+        readonly classes?: readonly string[];
+      }): ((setting: Setting) => void) => {
+        let picker: TabStatusPicker<V> | null = null;
+        return (setting) => {
+          setting
+            .setName(options.name())
+            .setDesc(options.description())
+            .addExtraButton(
+              resetButton(
+                options.resetIcon(),
+                i18n.t("settings.reset"),
+                options.reset,
+                () => {
+                  this.postMutate();
+                },
+              ),
+            );
+          setting.settingEl.classList.add("tts-pick-setting");
+          picker ??= new TabStatusPicker<V>(setting.settingEl, {
+            classes: options.classes ?? [],
+            environment: tabStatusEnvironment,
+            onChange: (value) => {
+              options
+                .set(value)
+                .then(() => {
+                  this.postMutate();
+                })
+                .catch((error: unknown) => {
+                  activeSelf(containerEl).console.error(error);
+                });
+            },
+          });
+          const look = tabStatusLook();
+          picker.update({
+            describe: (value) => options.hosts(look, value, tabStatusIcon),
+            label: options.name(),
+            options: options.values.map((value) => ({
+              label: options.label(value),
+              value,
+            })),
+            value: options.get(),
+          });
+        };
+      };
+    // What the choices below add up to, on five tabs.
+    ui.new(
+      () => new TabStatusStrip(containerEl, tabStatusEnvironment),
+      (strip) => {
+        const look = tabStatusLook();
+        strip.update({
+          label: i18n.t("settings.tab-status-preview.label"),
+          tabs: TAB_STATUS_PREVIEW_STATES.map((state, index) => ({
+            caption: i18n.t(`settings.tab-status-preview.${state}`),
+            current: index === 0,
+            host: {
+              attributes: tabStatusPreviewAttributes(look, state),
+              icon: tabStatusIcon(look.set),
+            },
+          })),
+        });
+      },
+      (strip) => {
+        strip.destroy();
+      },
+    );
+    ui.newSetting(containerEl, (setting) => {
+      setting
+        .setName(i18n.t("settings.tab-status-reports"))
+        .setDesc(i18n.t("settings.tab-status-reports-description"))
+        .addToggle(
+          linkSetting(
+            () => settings.value.tabStatusReports,
+            async (value) =>
+              settings.mutate((settingsM) => {
+                settingsM.tabStatusReports = value;
+              }),
+            () => {
+              this.postMutate();
+            },
+          ),
+        )
+        .addExtraButton(
+          resetButton(
+            i18n.t("asset:settings.tab-status-reports-icon"),
+            i18n.t("settings.reset"),
+            async () =>
+              settings.mutate((settingsM) => {
+                settingsM.tabStatusReports = Settings.DEFAULT.tabStatusReports;
+              }),
+            () => {
+              this.postMutate();
+            },
+          ),
+        );
+    })
+      .newSetting(
+        containerEl,
+        tabStatusPicker<Settings.TabIconSet>({
+          description: () => i18n.t("settings.tab-icon-set-description"),
+          get: () => settings.value.tabIconSet,
+          hosts: TAB_STATUS_PICKER_HOSTS.set,
+          label: (value) => i18n.t(`settings.tab-icon-set-options.${value}`),
+          name: () => i18n.t("settings.tab-icon-set"),
+          reset: async () =>
+            settings.mutate((settingsM) => {
+              settingsM.tabIconSet = Settings.DEFAULT.tabIconSet;
+            }),
+          resetIcon: () => i18n.t("asset:settings.tab-icon-set-icon"),
+          set: async (value) =>
+            settings.mutate((settingsM) => {
+              settingsM.tabIconSet = value;
+            }),
+          values: Settings.TAB_ICON_SETS,
+        }),
+      )
+      .newSetting(
+        containerEl,
+        tabStatusPicker({
+          classes: ["tts-pick-sizes"],
+          description: () => i18n.t("settings.tab-icon-size-description"),
+          get: () => String(settings.value.tabIconSize),
+          hosts: (look, value, icon) =>
+            TAB_STATUS_PICKER_HOSTS.size(look, tabIconSizeOf(value), icon),
+          label: (value) =>
+            i18n.t("settings.tab-icon-size-option", { size: value }),
+          name: () => i18n.t("settings.tab-icon-size"),
+          reset: async () =>
+            settings.mutate((settingsM) => {
+              settingsM.tabIconSize = Settings.DEFAULT.tabIconSize;
+            }),
+          resetIcon: () => i18n.t("asset:settings.tab-icon-size-icon"),
+          set: async (value) =>
+            settings.mutate((settingsM) => {
+              settingsM.tabIconSize = tabIconSizeOf(value);
+            }),
+          values: Settings.TAB_ICON_SIZES.map(String),
+        }),
+      )
+      .newSetting(
+        containerEl,
+        tabStatusPicker({
+          classes: ["tts-pick-cards"],
+          description: () =>
+            i18n.t("settings.tab-status-animation-description"),
+          get: () => settings.value.tabStatusAnimation,
+          hosts: TAB_STATUS_PICKER_HOSTS.animation,
+          label: (value) =>
+            i18n.t(`settings.tab-status-animation-options.${value}`),
+          name: () => i18n.t("settings.tab-status-animation"),
+          reset: async () =>
+            settings.mutate((settingsM) => {
+              settingsM.tabStatusAnimation =
+                Settings.DEFAULT.tabStatusAnimation;
+            }),
+          resetIcon: () => i18n.t("asset:settings.tab-status-animation-icon"),
+          set: async (value) =>
+            settings.mutate((settingsM) => {
+              settingsM.tabStatusAnimation = value;
+            }),
+          values: Settings.TAB_STATUS_ANIMATIONS,
+        }),
+      );
     this.newSectionWidget(() => i18n.t("settings.advanced"));
     ui.newSetting(containerEl, (setting) => {
       const { settingEl } = setting;

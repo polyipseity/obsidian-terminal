@@ -43,6 +43,14 @@ import {
   vaultDragSkipped,
   wslDistribution,
 } from "./dropped-paths.js";
+import {
+  DETECTION_REPLY,
+  type Kind,
+  ProgramStatusStore,
+  type State,
+  displayText,
+  parseProgramStatus,
+} from "./program-status.js";
 import { revealLeafWithoutFlash } from "./reveal.js";
 import { Win32InputMode, isWin32ClipboardChord } from "./win32-input-mode.js";
 
@@ -2185,6 +2193,231 @@ export class SynchronizedOutputScrollAddon implements ITerminalAddon {
 
   public dispose(): void {
     this.#disposer.call();
+  }
+}
+
+/**
+ * Addon that keeps what the program inside the terminal reports about itself
+ * through the Program Status Protocol (OSC 7501): idle, working, done, needs
+ * input or failed, with an optional message.
+ *
+ * Reports are validated by `parseProgramStatus` and held in a
+ * `ProgramStatusStore`; nothing from a rejected report is applied. The only
+ * bytes ever sent back are the fixed detection reply. The addon never touches
+ * the DOM: the owner reads `status`, or is told through `onChange`, and
+ * decides how to show it.
+ *
+ * Record lifetime follows the protocol: a new shell prompt (OSC 133 `A`) and
+ * process exit drop Working and Needs input, a full reset (`ESC c`) drops
+ * every record, and Done and Error stay.
+ *
+ * While `enabled()` is false, reports are ignored, the detection query gets
+ * no reply and `status` is `null`. Prompt, reset and process exit still apply
+ * to records stored earlier, so nothing stale returns when it is enabled
+ * again.
+ */
+export class ProgramStatusAddon implements ITerminalAddon {
+  readonly #disposer = new Functions({ async: false, settled: true });
+  readonly #store = new ProgramStatusStore();
+  #terminal: Terminal | null = null;
+  /** The status `onChange` was last called with. */
+  #notified: ProgramStatusAddon.Status | null = null;
+  /** Cancels the scheduled notification, when there is one. */
+  #cancelPending: (() => void) | null = null;
+  /** The user has looked since the last report. */
+  #seen = false;
+  /** A report arrived after the user looked: notify even if nothing differs. */
+  #renotify = false;
+  #disposed = false;
+
+  public constructor(protected readonly options: ProgramStatusAddon.Options) {}
+
+  static #same(
+    left: ProgramStatusAddon.Status | null,
+    right: ProgramStatusAddon.Status | null,
+  ): boolean {
+    if (left === null || right === null) {
+      return left === right;
+    }
+    return (
+      left.state === right.state &&
+      left.kind === right.kind &&
+      left.progress === right.progress &&
+      left.app === right.app &&
+      left.title === right.title &&
+      left.message === right.message
+    );
+  }
+
+  static #text(text: string | null): string | null {
+    if (text === null) {
+      return null;
+    }
+    const shown = displayText(text);
+    return shown === "" ? null : shown;
+  }
+
+  /** The most urgent live record, or `null`. */
+  public get status(): ProgramStatusAddon.Status | null {
+    if (!this.options.enabled()) {
+      return null;
+    }
+    const record = this.#store.mostUrgent();
+    if (record === null) {
+      return null;
+    }
+    return {
+      app: this.#store.appOf(record),
+      kind: record.kind,
+      message: ProgramStatusAddon.#text(record.msg),
+      progress: record.progress,
+      state: record.state,
+      title: ProgramStatusAddon.#text(record.title),
+    };
+  }
+
+  public activate(terminal: Terminal): void {
+    this.#terminal = terminal;
+    const reportHandler = terminal.parser.registerOscHandler(
+        7501,
+        (payload) => {
+          if (this.options.enabled()) {
+            const result = parseProgramStatus(payload);
+            if (result.type === "query") {
+              // The only bytes ever written back; nothing in them comes from
+              // a report.
+              terminal.input(DETECTION_REPLY, false);
+            } else if (this.#store.apply(result)) {
+              if (result.type === "report" && this.#seen) {
+                this.#seen = false;
+                this.#renotify = true;
+              }
+              this.#schedule();
+            }
+          }
+          // Handled either way: xterm.js has nothing to do with OSC 7501.
+          return true;
+        },
+      ),
+      // OSC 133 `A` marks a new shell prompt: the program that was working
+      // or waiting is gone.
+      promptHandler = terminal.parser.registerOscHandler(133, (payload) => {
+        if (payload.startsWith("A") && this.#store.dropTransient()) {
+          this.#schedule();
+        }
+        // Return false so anything else can still see the sequence.
+        return false;
+      }),
+      // A full reset (`ESC c`, RIS) removes every record. A soft reset
+      // (DECSTR) must not, and has no handler here.
+      resetHandler = terminal.parser.registerEscHandler({ final: "c" }, () => {
+        if (this.#store.reset()) {
+          this.#schedule();
+        }
+        // Return false so xterm still performs the reset.
+        return false;
+      });
+    this.#disposer.push(
+      () => {
+        reportHandler.dispose();
+      },
+      () => {
+        promptHandler.dispose();
+      },
+      () => {
+        resetHandler.dispose();
+      },
+    );
+  }
+
+  /** The process ended: drop Working and Needs input. */
+  public processExited(): void {
+    if (this.#store.dropTransient()) {
+      this.#schedule();
+    }
+  }
+
+  /**
+   * The user looked at the tab. Does not remove Done or Error: records and
+   * `status` stay as they are. The next report is announced through
+   * `onChange` even when it leaves `status` identical, so a second Done
+   * after the first was seen is not lost.
+   */
+  public markSeen(): void {
+    this.#seen = true;
+  }
+
+  public dispose(): void {
+    this.#disposed = true;
+    this.#cancelPending?.();
+    this.#cancelPending = null;
+    this.#disposer.call();
+    this.#terminal = null;
+  }
+
+  /**
+   * Coalesces notifications: any number of changes before the next animation
+   * frame end in one `onChange` call, and in none if the visible status ends
+   * where it started. A hidden document gets no animation frames, so it uses
+   * a timer instead.
+   */
+  #schedule(): void {
+    if (this.#disposed || this.#cancelPending !== null) {
+      return;
+    }
+    const win = activeSelf(this.#terminal?.element),
+      flush = (): void => {
+        this.#cancelPending = null;
+        this.#flush();
+      };
+    if (
+      typeof win.requestAnimationFrame === "function" &&
+      !win.document.hidden
+    ) {
+      const handle = win.requestAnimationFrame(flush);
+      this.#cancelPending = (): void => {
+        win.cancelAnimationFrame(handle);
+      };
+    } else {
+      const handle = win.setTimeout(flush, 0);
+      this.#cancelPending = (): void => {
+        win.clearTimeout(handle);
+      };
+    }
+  }
+
+  #flush(): void {
+    const { status } = this,
+      forced = this.#renotify && status !== null;
+    this.#renotify = false;
+    if (!forced && ProgramStatusAddon.#same(this.#notified, status)) {
+      return;
+    }
+    this.#notified = status;
+    this.options.onChange(status);
+  }
+}
+export namespace ProgramStatusAddon {
+  export interface Options {
+    /** Read on every sequence. `false`: ignore reports and do not answer the query. */
+    readonly enabled: () => boolean;
+    /**
+     * Called after the visible status changed. Coalesced: at most once per
+     * animation frame. One exception to "changed": the first report after
+     * `markSeen()` is announced even when it leaves the status identical.
+     */
+    readonly onChange: (status: Status | null) => void;
+  }
+  export interface Status {
+    readonly state: State;
+    readonly kind: Kind | null;
+    readonly progress: number | null;
+    /** Inherited from the nearest ancestor record when the record has none. */
+    readonly app: string | null;
+    /** Already passed through `displayText`. */
+    readonly title: string | null;
+    /** Already passed through `displayText`. */
+    readonly message: string | null;
   }
 }
 

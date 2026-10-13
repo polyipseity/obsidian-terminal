@@ -131,6 +131,79 @@ describe("PluginLocales", () => {
     }
   });
 
+  it("has no words left for the two tab status settings that are always on, in any locale", async () => {
+    // Idle and seen always have the grey badge, and a finished program is
+    // always unread until the user looks: no row asks, so no key is used.
+    const removed = [
+      "tab-status-quiet-marks",
+      "tab-status-quiet-marks-description",
+      "tab-status-quiet-marks-options",
+      "tab-status-unread-badge",
+      "tab-status-unread-badge-description",
+    ];
+    expect(PluginLocales.LANGUAGES).toHaveLength(49);
+    for (const language of PluginLocales.LANGUAGES) {
+      const { settings } =
+        await PluginLocales.RESOURCES[language].translation();
+      for (const key of removed) {
+        expect(settings, `${language} ${key}`).not.toHaveProperty([key]);
+      }
+      expect(
+        Object.keys(settings).filter((key) => /quiet|unread/u.test(key)),
+        language,
+      ).toEqual([]);
+      // The rows that stay have their words.
+      expect(settings, language).toHaveProperty(["tab-status-animation"]);
+      expect(settings, language).toHaveProperty(["tab-status-reports"]);
+    }
+    const asset = await PluginLocales.RESOURCES.en.asset();
+    for (const key of [
+      "tab-status-quiet-marks-icon",
+      "tab-status-unread-badge-icon",
+    ]) {
+      expect(asset.settings).not.toHaveProperty([key]);
+    }
+    expect(asset.settings).toHaveProperty(["tab-status-animation-icon"]);
+    expect(asset.settings).toHaveProperty(["tab-status-reports-icon"]);
+  });
+
+  it("has words for the two tab icons and for no other, in every locale", async () => {
+    for (const language of PluginLocales.LANGUAGES) {
+      const { settings } =
+        await PluginLocales.RESOURCES[language].translation();
+      expect(
+        Object.keys(settings["tab-icon-set-options"]).sort(),
+        language,
+      ).toEqual(["bezel", "tile"]);
+      expect(
+        Object.keys(settings)
+          .filter((key) => key.startsWith("tab-icon-"))
+          .sort(),
+        language,
+      ).toEqual([
+        "tab-icon-set",
+        "tab-icon-set-description",
+        "tab-icon-set-options",
+        "tab-icon-size",
+        "tab-icon-size-description",
+        "tab-icon-size-option",
+      ]);
+    }
+  });
+
+  it("still names the plain icons of the terminal view and of the ribbon button", async () => {
+    const asset = await PluginLocales.RESOURCES.en.asset(),
+      i18n = createInstance();
+    await i18n.init({
+      lng: "en",
+      fallbackLng: false,
+      ns: ["asset"],
+      resources: { en: { asset } },
+    });
+    expect(i18n.t("asset:components.terminal.icon")).toBe("terminal");
+    expect(i18n.t("asset:ribbons.open-terminal-icon")).toBe("terminal-square");
+  });
+
   it("uses the concise Windows Python notices in all 49 locales", async () => {
     expect(PluginLocales.LANGUAGES).toHaveLength(49);
     for (const language of PluginLocales.LANGUAGES) {

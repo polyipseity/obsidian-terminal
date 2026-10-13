@@ -1,0 +1,680 @@
+/*
+ * Tab status: everything visible about a terminal tab's status.
+ *
+ * `view.ts` writes `data-terminal-*` attributes on the tab header; the icon
+ * (`tab-icons.ts`) carries every mark; the rules below choose.
+ * Lengths written as `px` inside the icon are units of its 24-unit drawing.
+ *
+ * What a status looks like:
+ * - the tile is never cut and nothing on it moves aside: a mark stands on
+ *   the upper right corner, over whatever is there, set off by a white ring
+ *   and a dark hairline;
+ * - a state lights a rendered tile from behind with a soft glow, and with
+ *   nothing else: no coloured border, no dashes, no wash. The set drawn in
+ *   lines (`tile`) has nothing to light: its square takes the colour;
+ * - working and done are the theme's accent; needs input and error are red.
+ *
+ * Scope: every selector starts at the terminal tab header or at a class of
+ * the icon's root, `.tts` or `.tts-set-<set>` (the theme is asked for with
+ * `:is(.theme-light *)`, to keep that true).
+ * `.tts-host` stands in for the tab header and `.tts-host-icon` for its icon
+ * container wherever the plugin draws a preview (the settings pickers).
+ *
+ * Motion: one thing moves, the three dots of a working program, and only
+ * under animation "loop" where the system does not ask for reduced motion
+ * (section 6); everywhere else the same three dots stand still. What moves
+ * is not a part of the icon:
+ * it is drawn over the icon with the two boxes of the icon's container,
+ * `::before` and `::after`, and only their `transform` and `opacity` change.
+ * Obsidian zooms its page, and at a zoom other than 1 Chromium keeps every
+ * part of an SVG on the main thread; a box of the container goes to the
+ * compositor (measured).
+ */
+
+/* ---------- 1. The marks, hidden wherever the icon is shown ---------- */
+
+/* Without a status on a tab header around it, an icon is only its terminal. */
+.tts .tts-mk,
+.tts .tts-sym > * {
+  display: none;
+}
+
+/* Around a mark: a white ring, then a dark hairline. The same in every theme. */
+.tts .tts-mk-edge {
+  fill: black;
+  opacity: 0.6;
+}
+
+.tts .tts-mk-ring {
+  fill: white;
+}
+
+.tts .tts-mk-ink {
+  fill: var(--tts-st, currentColor);
+}
+
+.tts .tts-mk-line {
+  fill: none;
+  stroke: var(--tts-st, currentColor);
+}
+
+/* The symbols on a badge are white: the check is a line, the moon a shape. */
+.tts .tts-sym {
+  stroke: white;
+  stroke-width: 3px;
+}
+
+.tts .tts-sym-moon {
+  fill: white;
+  stroke: none;
+}
+
+/* ---------- 2. The tiles: an image per theme under what is on the face ---------- */
+
+/*
+ * A rendered tile is a square with a raised border. Its face is the same in
+ * both themes; the border is what differs (gunmetal in a dark theme, pale
+ * silver in a light one). It stands on a soft shadow in both.
+ */
+.tts .tts-skin-light {
+  display: none;
+}
+
+.tts:is(.theme-light *) .tts-skin-dark {
+  display: none;
+}
+
+.tts:is(.theme-light *) .tts-skin-light {
+  display: inline;
+}
+
+/* `bezel`: the face is dark, so the prompt has a colour of its own. */
+.tts-set-bezel .tts-ink {
+  stroke: var(--color-green);
+}
+
+/*
+ * `tile`: no image, a rounded square drawn as a line around the prompt,
+ * both in the icon's colour. The square is fainter than the prompt, so the
+ * prompt reads first; under a state it takes the state's colour (section 3).
+ */
+.tts-set-tile .tts-skin {
+  stroke-opacity: 0.62;
+}
+
+/* ---------- 3. Colour and light ---------- */
+
+:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host) {
+  --tts-st: currentColor;
+  --tts-o: var(--icon-opacity, 0.85);
+}
+
+/* Working and done: the theme's accent. */
+:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host):is(
+  [data-terminal-status="working"],
+  [data-terminal-status="done"]
+) {
+  --tts-st: var(--interactive-accent);
+  --tts-glow: var(--interactive-accent);
+}
+
+/* Needs input and error: red, the mark and the light alike. Red means: act. */
+:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host):is(
+  [data-terminal-status="blocked"],
+  [data-terminal-status="error"]
+) {
+  --tts-st: var(--color-red);
+  --tts-glow: var(--color-red);
+}
+
+/* Idle and seen: grey, and no light. */
+:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host):is(
+  [data-terminal-status="idle"],
+  [data-terminal-status="seen"]
+) {
+  --tts-st: var(--text-faint);
+}
+
+/*
+ * A rendered tile is lit from behind: a soft light round it, and a tighter
+ * one at its edge.
+ */
+:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host):is(
+    [data-terminal-status="working"],
+    [data-terminal-status="done"],
+    [data-terminal-status="blocked"],
+    [data-terminal-status="error"]
+  )
+  .tts
+  .tts-skin {
+  filter: drop-shadow(0 0 1.5px var(--tts-glow))
+    drop-shadow(0 0 0.5px var(--tts-glow));
+}
+
+/*
+ * `tile` has no tile to light from behind, only a line: there the square
+ * itself takes the state's colour, at full strength, and nothing glows.
+ * The same four states; an idle or seen program leaves the square as it is.
+ */
+:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host):is(
+    [data-terminal-status="working"],
+    [data-terminal-status="done"],
+    [data-terminal-status="blocked"],
+    [data-terminal-status="error"]
+  )
+  .tts-set-tile
+  .tts-skin {
+  filter: none;
+  stroke: var(--tts-st);
+  stroke-opacity: 1;
+}
+
+/* ---------- 4. Which mark shows ---------- */
+
+/* Done and needs input: the dot, full. */
+:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host):is(
+    [data-terminal-status="done"],
+    [data-terminal-status="blocked"]
+  )
+  .tts-mk-dot {
+  display: inline;
+}
+
+/* Error: the dot as a ring with a core. */
+:is(
+    .workspace-tab-header[data-type="terminal:terminal"],
+    .tts-host
+  )[data-terminal-status="error"]
+  .tts-mk-eye {
+  display: inline;
+}
+
+/*
+ * Working: three dots on a white bar, whatever the animation. As they are
+ * drawn they stand still, all three lit; under animation "loop" they light
+ * up in turn (section 6).
+ */
+:is(
+    .workspace-tab-header[data-type="terminal:terminal"],
+    .tts-host
+  )[data-terminal-status="working"]
+  .tts-mk-dots {
+  display: inline;
+}
+
+/*
+ * Idle and seen: a grey badge with a moon, or with a check. A grey badge has
+ * no ring: it is not there to be noticed.
+ */
+:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host):is(
+    [data-terminal-status="idle"],
+    [data-terminal-status="seen"]
+  )
+  .tts-mk-badge {
+  display: inline;
+}
+
+:is(
+    .workspace-tab-header[data-type="terminal:terminal"],
+    .tts-host
+  )[data-terminal-status="idle"]
+  .tts-sym-moon,
+:is(
+    .workspace-tab-header[data-type="terminal:terminal"],
+    .tts-host
+  )[data-terminal-status="seen"]
+  .tts-sym-check {
+  display: inline;
+}
+
+:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host):is(
+    [data-terminal-status="idle"],
+    [data-terminal-status="seen"]
+  )
+  .tts-mk-badge
+  :is(.tts-mk-edge, .tts-mk-ring) {
+  display: none;
+}
+
+/* ---------- 5. Size and place ---------- */
+
+/*
+ * `--tts-u` is one unit of the icon's 24-unit drawing, at whatever size the
+ * icon is drawn; the two moving boxes are counted in it. `position: relative`
+ * makes the container their frame, except on a tab where the browser can
+ * place them from the drawing (section 6).
+ */
+:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host)
+  :is(.workspace-tab-header-inner-icon, .tts-host-icon) {
+  --tts-u: calc(var(--icon-size) / 24);
+  position: relative;
+}
+
+/*
+ * Where a tab has a title (the root split of a window, `.mod-root`),
+ * Obsidian draws its icon at `--icon-xs` (14 px), centred on the height of
+ * the tab. The terminal's icon is a framed tile with a mark on its corner,
+ * so it is drawn larger: at the size the user chose, which the tab header
+ * carries as `data-terminal-size` (a rule per size below, 12 to 24). A
+ * preview is drawn the same way; a picker's tile carries no size and sets
+ * `--icon-xs` to show its icon enlarged, two pixels over that.
+ *
+ * It is also set a little lower. Measured in Obsidian 1.14.4 with the
+ * default 13 px title: centred, the middle of the tile lies 0.5 px above the
+ * middle of a capital letter and 1.6 px above the middle of a lower-case
+ * one, so beside a title the tile looks too high. 6% of the title's size
+ * (0.8 px) puts it between the two. `--tts-drop` is for a theme or a snippet
+ * that sets other type. `--tts-down` is the lowering as it applies here, for
+ * the one rule that has to give it to the drawing instead (section 6).
+ */
+:is(
+    .workspace-tab-header[data-type="terminal:terminal"]:is(.mod-root *),
+    .tts-host
+  )
+  :is(.workspace-tab-header-inner-icon, .tts-host-icon) {
+  --icon-size: var(--tts-size, calc(var(--icon-xs, 14px) + 2px));
+  --tts-down: var(--tts-drop, calc(var(--tab-font-size, 13px) * 0.06));
+  top: var(--tts-down);
+}
+
+/*
+ * In a sidebar a tab is its icon alone, in a box made for `--icon-m` (24 px
+ * high with 4 px of padding, measured in 1.14.4; a mark fits in the
+ * padding). Obsidian sets that size on the drawing itself there, so the
+ * chosen size does not apply; the container is told the same size, or the
+ * moving boxes would be laid out for an icon of another size.
+ * Both names of each side are listed: the left and right ones are older.
+ */
+.workspace-tab-header[data-type="terminal:terminal"]:is(
+    .mod-primary-split *,
+    .mod-secondary-split *,
+    .mod-left-split *,
+    .mod-right-split *
+  )
+  .workspace-tab-header-inner-icon {
+  --icon-size: var(--icon-m, 16px);
+}
+
+/*
+ * A tab whose view Obsidian has not loaded yet has no attribute until the
+ * plugin has gone over the tabs (`TerminalView.dressUnloadedTabs`): until
+ * then, `Settings.DEFAULT.tabIconSize`.
+ */
+.workspace-tab-header[data-type="terminal:terminal"] {
+  --tts-size: 18px;
+}
+
+/* The sizes of `Settings.TAB_ICON_SIZES`. */
+:is(
+  .workspace-tab-header[data-type="terminal:terminal"],
+  .tts-host
+)[data-terminal-size="12"] {
+  --tts-size: 12px;
+}
+
+:is(
+  .workspace-tab-header[data-type="terminal:terminal"],
+  .tts-host
+)[data-terminal-size="13"] {
+  --tts-size: 13px;
+}
+
+:is(
+  .workspace-tab-header[data-type="terminal:terminal"],
+  .tts-host
+)[data-terminal-size="14"] {
+  --tts-size: 14px;
+}
+
+:is(
+  .workspace-tab-header[data-type="terminal:terminal"],
+  .tts-host
+)[data-terminal-size="15"] {
+  --tts-size: 15px;
+}
+
+:is(
+  .workspace-tab-header[data-type="terminal:terminal"],
+  .tts-host
+)[data-terminal-size="16"] {
+  --tts-size: 16px;
+}
+
+:is(
+  .workspace-tab-header[data-type="terminal:terminal"],
+  .tts-host
+)[data-terminal-size="17"] {
+  --tts-size: 17px;
+}
+
+:is(
+  .workspace-tab-header[data-type="terminal:terminal"],
+  .tts-host
+)[data-terminal-size="18"] {
+  --tts-size: 18px;
+}
+
+:is(
+  .workspace-tab-header[data-type="terminal:terminal"],
+  .tts-host
+)[data-terminal-size="19"] {
+  --tts-size: 19px;
+}
+
+:is(
+  .workspace-tab-header[data-type="terminal:terminal"],
+  .tts-host
+)[data-terminal-size="20"] {
+  --tts-size: 20px;
+}
+
+:is(
+  .workspace-tab-header[data-type="terminal:terminal"],
+  .tts-host
+)[data-terminal-size="21"] {
+  --tts-size: 21px;
+}
+
+:is(
+  .workspace-tab-header[data-type="terminal:terminal"],
+  .tts-host
+)[data-terminal-size="22"] {
+  --tts-size: 22px;
+}
+
+:is(
+  .workspace-tab-header[data-type="terminal:terminal"],
+  .tts-host
+)[data-terminal-size="23"] {
+  --tts-size: 23px;
+}
+
+:is(
+  .workspace-tab-header[data-type="terminal:terminal"],
+  .tts-host
+)[data-terminal-size="24"] {
+  --tts-size: 24px;
+}
+
+/* ---------- 6. The three dots of a working program ---------- */
+
+/*
+ * A working program shows three dots (section 4). Under animation "none",
+ * and where the system asks for reduced motion, they stand still, all three
+ * lit. Under animation "loop" they are faint and light up in turn, as
+ * follows.
+ *
+ * Each dot swells and lights up in turn, from the left, and falls back
+ * twice as slowly: a dot is in motion for two thirds of a turn and the next
+ * starts a third of a turn later, so no more than two are ever in motion.
+ * Two boxes are enough for three dots: each lights one dot, and while it is
+ * invisible it steps to the dot that is next but one. A box's round is
+ * therefore two turns (7.68 s for a turn of 3.84 s), and the second box runs
+ * one turn behind the first.
+ *
+ * A box is as large as a lit dot and drawn over the faint dot of the icon:
+ * 3.322 units wide (`TAB_ICON_MARKS.dots`: radius 1.51, peak 1.1), around
+ * the last dot at (21, 3). The dots are 4.07 units apart, 122.517% of the
+ * box; at rest a box is 0.727 of its size (rest 0.8 over peak 1.1).
+ *
+ * Only `transform` and `opacity` change, so the compositor moves the boxes,
+ * on every refresh: the motion is as smooth as the display. Measured in
+ * Obsidian 1.14.4 at 120 Hz, per second on top of a window at rest: about
+ * 6 ms of main-thread time, 45 of the renderer process and 55 of the GPU
+ * process.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :is(
+      .workspace-tab-header[data-type="terminal:terminal"],
+      .tts-host
+    )[data-terminal-animation="loop"][data-terminal-status="working"]
+    .tts-mk-dots
+    .tts-mk-ink {
+    opacity: 0.3;
+  }
+
+  :is(
+      .workspace-tab-header[data-type="terminal:terminal"],
+      .tts-host
+    )[data-terminal-animation="loop"][data-terminal-status="working"]
+    :is(.workspace-tab-header-inner-icon, .tts-host-icon)::before,
+  :is(
+      .workspace-tab-header[data-type="terminal:terminal"],
+      .tts-host
+    )[data-terminal-animation="loop"][data-terminal-status="working"]
+    :is(.workspace-tab-header-inner-icon, .tts-host-icon)::after {
+    content: "";
+    position: absolute;
+    left: calc(19.339 * var(--tts-u));
+    top: calc(1.339 * var(--tts-u));
+    width: calc(3.322 * var(--tts-u));
+    height: calc(3.322 * var(--tts-u));
+    border-radius: 50%;
+    background: var(--tts-st);
+    opacity: 0;
+    pointer-events: none;
+    animation: tts-dots 7.68s infinite;
+  }
+
+  :is(
+      .workspace-tab-header[data-type="terminal:terminal"],
+      .tts-host
+    )[data-terminal-animation="loop"][data-terminal-status="working"]
+    :is(.workspace-tab-header-inner-icon, .tts-host-icon)::after {
+    animation-delay: -3.84s;
+  }
+
+  /*
+   * `left` and `top` above count from the container's padding edge, and the
+   * drawing starts there only where the container has no padding on those
+   * sides. Obsidian pads it on every side in stacked tabs and on the left
+   * in a right-to-left interface, and a theme may pad it anywhere. So the
+   * boxes are placed from the drawing itself where the browser can (anchor
+   * positioning, Chromium 125); an older one keeps the lines above.
+   */
+  @supports (left: anchor(left)) {
+    :is(
+        .workspace-tab-header[data-type="terminal:terminal"],
+        .tts-host
+      )[data-terminal-animation="loop"][data-terminal-status="working"]
+      :is(.workspace-tab-header-inner-icon, .tts-host-icon)
+      > .svg-icon {
+      anchor-name: --tts-icon;
+    }
+
+    /*
+     * Every icon gives its drawing the same name, so the name must not be
+     * seen outside its own icon: a box whose frame holds several icons
+     * would otherwise go to the last of them.
+     */
+    :is(
+        .workspace-tab-header[data-type="terminal:terminal"],
+        .tts-host
+      )[data-terminal-animation="loop"][data-terminal-status="working"]
+      :is(.workspace-tab-header-inner-icon, .tts-host-icon) {
+      anchor-scope: --tts-icon;
+    }
+
+    :is(
+        .workspace-tab-header[data-type="terminal:terminal"],
+        .tts-host
+      )[data-terminal-animation="loop"][data-terminal-status="working"]
+      :is(.workspace-tab-header-inner-icon, .tts-host-icon)::before,
+    :is(
+        .workspace-tab-header[data-type="terminal:terminal"],
+        .tts-host
+      )[data-terminal-animation="loop"][data-terminal-status="working"]
+      :is(.workspace-tab-header-inner-icon, .tts-host-icon)::after {
+      position-anchor: --tts-icon;
+      left: calc(anchor(left) + 19.339 * var(--tts-u));
+      top: calc(anchor(top) + 1.339 * var(--tts-u));
+    }
+
+    /*
+     * A tab's inner box clips what is in it to rounded corners, and a box
+     * that moves under such a clip costs the GPU process three times as
+     * much (measured: 160 ms a second against 55). Placed from the drawing,
+     * the boxes do not need the container as their frame. So on a tab it
+     * stops being one, their frame becomes the tab header or whatever is
+     * positioned above it, and they are out of that clip. They stay where
+     * they were: on the icon, inside the inner box. Only where the name of
+     * the drawing can be kept to its own icon (`anchor-scope`, Chromium
+     * 131), because that frame may hold other terminal tabs.
+     *
+     * A box outside a clip its drawing is in would by default be hidden
+     * whenever the drawing is clipped away, and the browser finds that out
+     * on the main thread, on every frame the boxes move (measured: 120
+     * style passes and 150 ms a second). `position-visibility: always`
+     * switches that off. The inner box never clips the icon, so nothing is
+     * lost.
+     *
+     * The lowering of section 5 is an offset of a positioned container,
+     * and does nothing on one that is not positioned: the icon would step
+     * up by it for as long as a program works. So the drawing carries it
+     * meanwhile, as a margin above that the one below takes back: it sits
+     * as low as before in a container as tall as before, is not positioned
+     * itself (the boxes stay painted over it), and the boxes follow it.
+     */
+    @supports (anchor-scope: --tts-icon) {
+      .workspace-tab-header[data-type="terminal:terminal"][data-terminal-animation="loop"][data-terminal-status="working"]
+        .workspace-tab-header-inner-icon {
+        position: static;
+      }
+
+      .workspace-tab-header[data-type="terminal:terminal"][data-terminal-animation="loop"][data-terminal-status="working"]
+        .workspace-tab-header-inner-icon::before,
+      .workspace-tab-header[data-type="terminal:terminal"][data-terminal-animation="loop"][data-terminal-status="working"]
+        .workspace-tab-header-inner-icon::after {
+        position-visibility: always;
+      }
+
+      .workspace-tab-header[data-type="terminal:terminal"][data-terminal-animation="loop"][data-terminal-status="working"]
+        .workspace-tab-header-inner-icon
+        > .svg-icon {
+        margin-block: var(--tts-down, 0px) calc(-1 * var(--tts-down, 0px));
+      }
+    }
+  }
+}
+
+/*
+ * One box's round: the first dot, the third, the second. Each visit is a
+ * rise (11% of the round), a fall (22%) and a step to the next dot while
+ * the box cannot be seen.
+ */
+@keyframes tts-dots {
+  0% {
+    opacity: 0;
+    transform: translateX(-245.033%) scale(0.727);
+    animation-timing-function: ease-in-out;
+  }
+
+  11% {
+    opacity: 1;
+    transform: translateX(-245.033%) scale(1);
+    animation-timing-function: ease-in-out;
+  }
+
+  33% {
+    opacity: 0;
+    transform: translateX(-245.033%) scale(0.727);
+    animation-timing-function: step-end;
+  }
+
+  33.333% {
+    opacity: 0;
+    transform: translateX(0) scale(0.727);
+    animation-timing-function: ease-in-out;
+  }
+
+  44.333% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    animation-timing-function: ease-in-out;
+  }
+
+  66.333% {
+    opacity: 0;
+    transform: translateX(0) scale(0.727);
+    animation-timing-function: step-end;
+  }
+
+  66.667% {
+    opacity: 0;
+    transform: translateX(-122.517%) scale(0.727);
+    animation-timing-function: ease-in-out;
+  }
+
+  77.667% {
+    opacity: 1;
+    transform: translateX(-122.517%) scale(1);
+    animation-timing-function: ease-in-out;
+  }
+
+  99.667% {
+    opacity: 0;
+    transform: translateX(-122.517%) scale(0.727);
+    animation-timing-function: step-end;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(-245.033%) scale(0.727);
+  }
+}
+
+/* ---------- 7. Obsidian's dimming of inactive tabs ---------- */
+
+/*
+ * Obsidian fades the whole icon container (`opacity: var(--icon-opacity)`).
+ * With a status present the container stays at full strength and the fade
+ * moves to the terminal icon, so the mark keeps its own. A mark reaches past
+ * the icon's box, so the drawing must not be cut at its edge.
+ */
+:is(
+    .workspace-tab-header[data-type="terminal:terminal"],
+    .tts-host
+  )[data-terminal-status]
+  :is(.workspace-tab-header-inner-icon, .tts-host-icon) {
+  --icon-opacity: 1;
+  --icon-opacity-hover: 1;
+  --icon-opacity-active: 1;
+}
+
+:is(
+    .workspace-tab-header[data-type="terminal:terminal"],
+    .tts-host
+  )[data-terminal-status]
+  :is(.workspace-tab-header-inner-icon, .tts-host-icon)
+  > .svg-icon {
+  overflow: visible;
+}
+
+:is(
+    .workspace-tab-header[data-type="terminal:terminal"],
+    .tts-host
+  )[data-terminal-status]
+  .tts-t {
+  opacity: var(--tts-o, 1);
+}
+
+/*
+ * Obsidian brings the icon of the active tab to full strength in a sidebar
+ * only; beside a title the active tab's icon is as faded as the others, and
+ * the tile stays so, or it would brighten when a status arrives.
+ */
+.workspace-tab-header[data-type="terminal:terminal"].is-active:is(
+    .mod-primary-split *,
+    .mod-secondary-split *,
+    .mod-left-split *,
+    .mod-right-split *
+  ) {
+  --tts-o: var(--icon-opacity-active, 1);
+}
+
+@media (hover: hover) {
+  .workspace-tab-header[data-type="terminal:terminal"]
+    .workspace-tab-header-inner:hover {
+    --tts-o: var(--icon-opacity-hover, 1);
+  }
+}

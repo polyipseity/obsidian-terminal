@@ -160,6 +160,10 @@
     "python-recheck-icon": "refresh-cw",
     "python-rechecking-icon": "$t(asset:generic.load-icon)",
     "right-click-action-icon": "mouse-pointer-2",
+    "tab-icon-set-icon": "$t(asset:generic.terminal-alt-icon)",
+    "tab-icon-size-icon": "scaling",
+    "tab-status-animation-icon": "zap",
+    "tab-status-reports-icon": "$t(asset:generic.terminal-icon)",
     "terminal-options-edit-icon": "$t(asset:generic.edit-icon)",
     "terminal-options-icon": "$t(asset:generic.terminal-icon)"
   }
