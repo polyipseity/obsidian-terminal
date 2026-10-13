@@ -99,6 +99,8 @@ This behavior can be turned off via the `Intercept keys when terminal is focused
 - Find in terminal: `Ctrl`+`Shift`+`F`, `Command`+`Shift`+`F` \(Apple\)
 - Toggle focus on last terminal: `Ctrl`+`Shift`+`` ` `` \(same as above\)
   - Unfocus terminal: \(unbound; useful if you want separate keys for focus and unfocus\)
+- Open root directory in terminal \(every profile type\) and open developer console: \(unbound; a hotkey you assign also works here\)
+  - The commands that open the current directory need an active file, so they do not work while a terminal is focused.
 
 ### Theming
 
