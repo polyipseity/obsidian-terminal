@@ -3678,6 +3678,11 @@ describe("DragAndDropAddon", () => {
 
   // A terminal dragged out of a pop-out keeps its addon, and the pop-out
   // closes with its last tab. A closed window runs none of its timers.
+  //
+  // The clock of this test is that of the main window alone: it never runs a
+  // timer of the pop-out, closed or not, and the timers of a removed frame
+  // were seen not to fire by themselves either. So what the test tells is
+  // whose timer the deadline is, which is what decides after a close.
   it("stops waiting for the disk after the window the terminal was dropped in has closed", async () => {
     vi.useFakeTimers();
     dragAndDropEnvironment.stat.mockImplementation((path) =>
