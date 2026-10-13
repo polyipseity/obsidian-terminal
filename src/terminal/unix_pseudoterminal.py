@@ -370,19 +370,19 @@ if sys.platform != "win32":
         def _on_read(self) -> None:
             """Read control frames from the command FD and apply window size.
 
-            Expected input: lines like "<rows>x<cols>"; each line triggers an
-            ioctl(TIOCSWINSZ) on the PTY.
+            Expected input: lines like "<columns>x<rows>"; each line triggers
+            an ioctl(TIOCSWINSZ) on the PTY.
             """
             data = _read_or_eof(self.fd)
             if not data:
                 self._unregister()
                 return
             for line in data.decode("UTF-8", "strict").splitlines():
-                rows, columns = (int(ss.strip()) for ss in line.split("x", 2))
+                columns, rows = (int(ss.strip()) for ss in line.split("x", 2))
                 ioctl(
                     self.pty_fd,
                     TIOCSWINSZ,
-                    pack("HHHH", columns, rows, 0, 0),
+                    pack("HHHH", rows, columns, 0, 0),
                 )
 
     def main() -> None:

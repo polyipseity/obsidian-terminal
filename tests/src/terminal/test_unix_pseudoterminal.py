@@ -14,6 +14,7 @@ import select
 import shutil
 import signal
 import socket
+import struct
 import subprocess
 import sys
 import time
@@ -78,6 +79,19 @@ termios.tcdrain(1)
 _DEAF_CHILD = """
 import os, sys, time, tty
 tty.setraw(0)
+os.write(1, b"READY\\n")
+time.sleep(float(sys.argv[1]))
+"""
+
+"""Child that never reads its input and reports the terminal's size whenever
+it changes. Its sleep duration is the test's marker."""
+_RESIZED_CHILD = """
+import os, signal, sys, time, tty
+def report(_signal_number, _frame):
+    size = os.get_terminal_size(0)
+    os.write(1, b"SIZE %d %d\\n" % (size.columns, size.lines))
+tty.setraw(0)
+signal.signal(signal.SIGWINCH, report)
 os.write(1, b"READY\\n")
 time.sleep(float(sys.argv[1]))
 """
@@ -961,6 +975,65 @@ def test_main_offers_held_input_again_without_a_writable_event(
     assert module._STDIN in watched[2]
 
 
+def test_main_applies_a_resize_frame_while_the_input_buffer_is_full(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Set the window size from a frame although the PTY takes no input."""
+    module = _load_unix_pseudoterminal_module()
+    watched: list[list[int]] = []
+    resizes: list[tuple[int, int, bytes]] = []
+
+    class _Selector(_FakeSelector):
+        """Report stdin readable once, then the command pipe twice."""
+
+        @override
+        def select(self, _timeout: float | None = None) -> list[tuple[object, int]]:
+            """Record what is watched, then emit the next scripted event."""
+            if len(watched) == 3:
+                raise RuntimeError("select loop did not terminate")
+            watched.append(sorted(self._callbacks))
+            fd = module._STDIN if len(watched) == 1 else module._CMDIO
+            return [(SimpleNamespace(data=self._callbacks[fd]), EVENT_READ)]
+
+    def fake_read(fd: int, _size: int) -> bytes:
+        """Fill the buffer from stdin; send one frame, then EOF, as commands."""
+        if fd == module._STDIN:
+            return b"x" * module._INPUT_BUFFER_LIMIT
+        return b"80x24\n" if len(watched) == 2 else b""
+
+    def fake_write(_fd: int, _data: bytes) -> int:
+        """Refuse every write, as a PTY with a full input queue does."""
+        raise BlockingIOError
+
+    def fake_ioctl(fd: int, request: int, argument: bytes) -> None:
+        """Record the window size set on the PTY."""
+        resizes.append((fd, request, argument))
+
+    _patch_proxy(
+        monkeypatch,
+        module,
+        fork_result=(1234, 99),
+        event_fd=(),
+        killpg=lambda _pgid, _signal: None,
+        waitpid=lambda pid, _flags: (pid, 0),
+    )
+    # See test_main_stops_watching_stdin_while_the_input_buffer_is_full.
+    monkeypatch.setattr(module, "_STDIN", 0)
+    monkeypatch.setattr(module, "DefaultSelector", lambda: _Selector(()))
+    monkeypatch.setattr(module, "read", fake_read)
+    monkeypatch.setattr(module, "write", fake_write)
+    monkeypatch.setattr(module, "ioctl", fake_ioctl, raising=False)
+
+    with pytest.raises(SystemExit) as raised:
+        module.main()
+
+    assert raised.value.code == 0
+    # The frame came while the buffer was full: stdin was not watched.
+    assert module._STDIN not in watched[1]
+    # 80 columns by 24 rows; the kernel's structure has the rows first.
+    assert resizes == [(99, module.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))]
+
+
 def _marker(seconds: int) -> str:
     """Return a sleep duration that no other live process on this machine uses."""
     return f"{seconds}.{os.getpid():07d}{next(_MARKER_COUNT) % 100:02d}"
@@ -1124,6 +1197,24 @@ def _fill_input_buffer(process: subprocess.Popen[bytes]) -> None:
     )
     # The proxy stopped taking input instead of holding all of it.
     assert sent <= len(payload) // 2
+
+
+def _read_until(process: subprocess.Popen[bytes], token: bytes) -> bytes:
+    """Read the proxy's output until it contains `token`, for up to 5 seconds."""
+    stdout = process.stdout
+    if stdout is None:
+        raise AssertionError("proxy stdout pipe is unavailable")
+    output = b""
+    deadline = time.monotonic() + 5.0
+    while token not in output:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0 or not select.select([stdout], [], [], remaining)[0]:
+            break
+        data = os.read(stdout.fileno(), 65536)
+        if not data:
+            break
+        output += data
+    return output
 
 
 @contextmanager
@@ -1332,3 +1423,22 @@ def test_real_proxy_ends_while_input_is_pending(ending: str) -> None:
         assert process.stderr is not None
         assert process.stderr.read() == b""
         assert elapsed < 3.0
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only proxy")
+def test_real_proxy_resizes_while_input_is_pending() -> None:
+    """Apply a resize frame although the child never reads the input sent to it."""
+    marker = _marker(4000)
+    with _spawn_proxy([sys.executable, "-c", _RESIZED_CHILD, marker], marker) as (
+        process,
+        cmd_write,
+    ):
+        _fill_input_buffer(process)
+
+        os.write(cmd_write, b"132x43\n")
+
+        assert _read_until(process, b"\n") == b"SIZE 132 43\n"
+        process.send_signal(signal.SIGTERM)
+        assert process.wait(timeout=5) == 0
+        assert process.stderr is not None
+        assert process.stderr.read() == b""
