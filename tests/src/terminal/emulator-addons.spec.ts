@@ -10,6 +10,8 @@
  * - Guard conditions (disposed, platform, setting, modifier combos)
  * - Win32 input mode (DECSET 9001): KEY_EVENT_RECORD encoding, dead-key
  *   composition deferred to the browser, layout-aware virtual keys
+ * - VaultFileLinksAddon: which printed paths are links, and how a click opens
+ *   the file in the leaf the view picks
  * - SynchronizedOutputScrollAddon: scroll position preservation across DEC 2026
  *   synchronized output blocks via queueMicrotask (xterm.js issue #5801 workaround)
  */
@@ -1530,9 +1532,9 @@ describe("VaultFileLinksAddon", () => {
     provideLinks: (lineText: string) => ILink[] | undefined;
     getAbstractFileByPath: ReturnType<typeof vi.fn>;
     openFile: ReturnType<typeof vi.fn>;
-    revealLeaf: ReturnType<typeof vi.fn>;
-    leaf: WorkspaceLeaf;
-    fileLeaf: ReturnType<typeof vi.fn>;
+    readonly revealLeaf: ReturnType<typeof vi.fn>;
+    readonly leaf: WorkspaceLeaf;
+    readonly fileLeaf: ReturnType<typeof vi.fn>;
     disposable: IDisposable;
     addon: VaultFileLinksAddon;
   } {
@@ -1738,10 +1740,9 @@ describe("VaultFileLinksAddon", () => {
     expect(openFile).not.toHaveBeenCalled();
 
     reveal.resolve(undefined);
-    await vi.waitFor(() => {
-      expect(openFile).toHaveBeenCalledExactlyOnceWith(MOCK_FILE, {
-        active: true,
-      });
+    await settled();
+    expect(openFile).toHaveBeenCalledExactlyOnceWith(MOCK_FILE, {
+      active: true,
     });
   });
 
@@ -1754,10 +1755,9 @@ describe("VaultFileLinksAddon", () => {
       "test.md",
     );
 
-    await vi.waitFor(() => {
-      expect(openFile).toHaveBeenCalledExactlyOnceWith(MOCK_FILE, {
-        active: true,
-      });
+    await settled();
+    expect(openFile).toHaveBeenCalledExactlyOnceWith(MOCK_FILE, {
+      active: true,
     });
   });
 
@@ -1772,9 +1772,8 @@ describe("VaultFileLinksAddon", () => {
       "test.md",
     );
 
-    await vi.waitFor(() => {
-      expect(consoleError).toHaveBeenCalledExactlyOnceWith(error);
-    });
+    await settled();
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(error);
     expect(openFile).not.toHaveBeenCalled();
   });
 
@@ -1792,9 +1791,8 @@ describe("VaultFileLinksAddon", () => {
       link.activate(new MouseEvent("click"), "test.md");
     }).not.toThrow();
 
-    await vi.waitFor(() => {
-      expect(consoleError).toHaveBeenCalledExactlyOnceWith(error);
-    });
+    await settled();
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(error);
     expect(openFile).not.toHaveBeenCalled();
   });
 
@@ -1812,9 +1810,8 @@ describe("VaultFileLinksAddon", () => {
       link.activate(new MouseEvent("click"), "test.md");
     }).not.toThrow();
 
-    await vi.waitFor(() => {
-      expect(consoleError).toHaveBeenCalledExactlyOnceWith(error);
-    });
+    await settled();
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(error);
     expect(revealLeaf).not.toHaveBeenCalled();
     expect(openFile).not.toHaveBeenCalled();
   });
@@ -1855,9 +1852,8 @@ describe("VaultFileLinksAddon", () => {
       "test.md",
     );
 
-    await vi.waitFor(() => {
-      expect(consoleError).toHaveBeenCalled();
-    });
+    await settled();
+    expect(consoleError).toHaveBeenCalled();
   });
 
   // --- Disposal ---

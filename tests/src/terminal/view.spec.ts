@@ -6,6 +6,7 @@
  * - `getDisplayText`
  * - `spawn` reveal and focus rules
  * - `getLeaf` session-usage anchoring
+ * - `fileLinkLeaf`: the leaf a clicked vault file link opens in
  * - Copy and edit pane-menu entries
  */
 import { ChildProcess, spawn } from "node:child_process";
