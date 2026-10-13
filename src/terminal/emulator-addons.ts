@@ -20,6 +20,7 @@ import { BUNDLE } from "../imports.js";
 import { DOMClasses2 } from "../magic.js";
 import type { Settings } from "../settings-data.js";
 import type { $App } from "../@types/obsidian.js";
+import { revealLeafWithoutFlash } from "./reveal.js";
 import { Win32InputMode, isWin32ClipboardChord } from "./win32-input-mode.js";
 
 const electron = dynamicRequire<typeof import("electron")>(BUNDLE, "electron");
@@ -1361,7 +1362,7 @@ export class VaultFileLinksAddon implements ITerminalAddon {
       (async (): Promise<void> => {
         const leaf = fileLeaf();
         // Reveal first: a leaf in a collapsed sidebar cannot take focus.
-        await app.workspace.revealLeaf(leaf);
+        await revealLeafWithoutFlash(app.workspace, leaf);
         await leaf.openFile(file, { active: true });
       })().catch((error: unknown) => {
         activeSelf(terminal.element).console.error(error);
