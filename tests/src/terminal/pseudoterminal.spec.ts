@@ -4,7 +4,7 @@ import fsPromises, { mkdtemp, readFile, rm } from "node:fs/promises";
 import { connect, createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { PassThrough } from "node:stream";
+import { PassThrough, Writable } from "node:stream";
 import nodeUrl, { pathToFileURL } from "node:url";
 import type { Terminal } from "@xterm/xterm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -2844,6 +2844,89 @@ describe("shell output piping", () => {
     fixture.emit(Buffer.alloc(20_000, 0x61));
     expect(payloadSizes(fixture.payloads)).toEqual([8_192, 8_192, 3_616]);
   });
+});
+
+describe("shell input piping", () => {
+  // EPIPE: the shell's end closed first. ECANCELED: Node destroyed stdin on
+  // the shell's exit first. ERR_STREAM_DESTROYED: a write made after that.
+  it.each(["EPIPE", "ECANCELED", "ERR_STREAM_DESTROYED"])(
+    "logs a shell stdin write that fails with %s instead of rejecting",
+    async (code) => {
+      const error = Object.assign(new Error(code), { code }),
+        debug = vi.spyOn(self.console, "debug").mockImplementation(vi.fn()),
+        stdin = new Writable({
+          write(_chunk, _encoding, callback): void {
+            callback(error);
+          },
+        }),
+        listeners: ((data: string) => unknown)[] = [],
+        terminal = {
+          element: document.createElement("div"),
+          loadAddon: (): void => {},
+          onData: (listener: (data: string) => unknown) => {
+            listeners.push(listener);
+            return { dispose: (): void => {} };
+          },
+          rows: 24,
+          write: (_data: Buffer | string, callback?: () => void): void => {
+            callback?.();
+          },
+        } as unknown as Terminal,
+        shell = { stdin } as unknown as Parameters<
+          typeof pipeShellToTerminal
+        >[1];
+      // The stream's own "error" event is the pseudoterminal's to handle.
+      stdin.on("error", () => {});
+      await pipeShellToTerminal(terminal, shell, [], new Promise(() => {}));
+      const [writer] = listeners;
+      if (!writer) throw new Error("No input listener was registered.");
+
+      // xterm drops what the listener returns: a rejection here is unhandled.
+      await expect(Promise.resolve(writer("x"))).resolves.toBeUndefined();
+      await vi.waitFor(() => {
+        expect(debug).toHaveBeenCalledWith(error);
+      });
+    },
+  );
+});
+
+describe("Unix pseudoterminal", () => {
+  it.each(["EPIPE", "ERR_STREAM_DESTROYED"])(
+    "logs a proxy stdin %s error without throwing",
+    async (code) => {
+      const nativeSpawn = childProcess.spawn.bind(childProcess);
+      let proxy: ChildProcess | undefined;
+      vi.spyOn(childProcess, "spawn").mockImplementation(
+        (executable, args, options) => {
+          if (executable !== "test-python")
+            return nativeSpawn(executable, args, options);
+          proxy = nativeSpawn(
+            process.execPath,
+            ["-e", KEEPALIVE_SCRIPT],
+            options,
+          );
+          return proxy;
+        },
+      );
+      const debug = vi.spyOn(self.console, "debug").mockImplementation(vi.fn()),
+        context = {
+          language: { value: { t: vi.fn(() => "terminal error") } },
+        } as unknown as TerminalPlugin,
+        pty = new Pseudoterminal.PLATFORM_PSEUDOTERMINALS.darwin(context, {
+          executable: "sh",
+          pythonExecutable: "test-python",
+        });
+      try {
+        const shell = await pty.shell,
+          error = Object.assign(new Error(code), { code });
+        expect(() => shell.stdin.emit("error", error)).not.toThrow();
+        expect(debug).toHaveBeenCalledWith(error);
+      } finally {
+        if (proxy?.exitCode === null && proxy.signalCode === null) proxy.kill();
+        await pty.onExit;
+      }
+    },
+  );
 });
 
 describe("ConPTY resize repaint window wiring", () => {
