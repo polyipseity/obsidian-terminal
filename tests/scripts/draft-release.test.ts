@@ -53,6 +53,8 @@ const UNREADABLE = [
   "http401",
   "silent-fail",
   "not-found-inside",
+  "http502-then-not-found",
+  "not-found-then-http502",
   "empty-ok",
   "not-json",
   "string-draft",

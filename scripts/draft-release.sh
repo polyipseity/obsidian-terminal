@@ -33,8 +33,9 @@ read_release() {
       *) fail "Release state for tag $tag could not be read." ;;
     esac
     title="$(jq -r '.name' <<< "$release")"
-  # gh release view prints this line when the tag has neither a published release nor a draft.
-  elif grep -Fxq 'release not found' "$error_file"; then
+  # gh release view prints this line, and nothing else, when the tag has neither a published
+  # release nor a draft. Next to another message it is a failure like any other.
+  elif [[ "$(< "$error_file")" == 'release not found' ]]; then
     state=none
   else
     cat "$error_file"
