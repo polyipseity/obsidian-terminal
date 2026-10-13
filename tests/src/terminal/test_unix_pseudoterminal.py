@@ -96,6 +96,19 @@ os.write(1, b"READY\\n")
 time.sleep(float(sys.argv[1]))
 """
 
+"""Child that never reads its input. Once the file named by its second
+argument exists, it writes a last line and exits with status 7."""
+_EXITING_CHILD = """
+import os, sys, termios, time, tty
+tty.setraw(0)
+os.write(1, b"READY\\n")
+while not os.path.exists(sys.argv[2]):
+    time.sleep(0.01)
+os.write(1, b"BYE\\n")
+termios.tcdrain(1)
+sys.exit(7)
+"""
+
 """Child that reads nothing until the file named by its second argument
 exists, then discards the terminal's input queue and reads until the line
 `END`, or until no input comes for 3 seconds. It reports the bytes it read and
@@ -1440,5 +1453,25 @@ def test_real_proxy_resizes_while_input_is_pending() -> None:
         assert _read_until(process, b"\n") == b"SIZE 132 43\n"
         process.send_signal(signal.SIGTERM)
         assert process.wait(timeout=5) == 0
+        assert process.stderr is not None
+        assert process.stderr.read() == b""
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only proxy")
+def test_real_proxy_reports_the_child_exit_status_while_input_is_pending(
+    tmp_path: Path,
+) -> None:
+    """Forward the child's last output and its exit status although input waits."""
+    marker = _marker(4000)
+    leave = tmp_path / "leave"
+    child = [sys.executable, "-c", _EXITING_CHILD, marker, str(leave)]
+    with _spawn_proxy(child, marker) as (process, _cmd_write):
+        _fill_input_buffer(process)
+
+        leave.touch()
+        output, _sent, eof = _pump(process, b"", stall=5.0)
+
+        assert (output, eof) == (b"BYE\n", True)
+        assert process.wait(timeout=5) == 7
         assert process.stderr is not None
         assert process.stderr.read() == b""
