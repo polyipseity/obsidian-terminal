@@ -872,5 +872,21 @@ describe("Obsidian Mock", () => {
       text.setValue("changed");
       expect(text.getValue()).toBe("changed");
     });
+
+    it("text fields and text areas are sibling text value components", async () => {
+      const {
+        AbstractTextComponent,
+        TextAreaComponent,
+        TextComponent,
+        ValueComponent,
+      } = await import("./obsidian.js");
+      const text = new TextComponent(),
+        textArea = new TextAreaComponent();
+
+      expect(text).toBeInstanceOf(AbstractTextComponent);
+      expect(textArea).toBeInstanceOf(AbstractTextComponent);
+      expect(text).toBeInstanceOf(ValueComponent);
+      expect(textArea).not.toBeInstanceOf(TextComponent);
+    });
   });
 });

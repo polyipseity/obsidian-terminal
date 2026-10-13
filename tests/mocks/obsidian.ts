@@ -1443,7 +1443,16 @@ export class ToggleComponent {
   }
 }
 
-export class TextComponent {
+// The plugin library tells controls apart with `instanceof` on these two
+// bases; text fields and text areas are siblings under the second, as in
+// Obsidian.
+export class ValueComponent {
+  registerOptionListener(): this {
+    return this;
+  }
+}
+
+export class AbstractTextComponent extends ValueComponent {
   private value = "";
   private changeHandler: ((value: string) => void) | null = null;
   private placeholder = "";
@@ -1485,7 +1494,9 @@ export class TextComponent {
   }
 }
 
-export class TextAreaComponent extends TextComponent {}
+export class TextComponent extends AbstractTextComponent {}
+
+export class TextAreaComponent extends AbstractTextComponent {}
 
 export class ColorComponent {
   private value = "#000000";
