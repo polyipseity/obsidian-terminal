@@ -450,6 +450,8 @@ describe("src/experiments.ts", () => {
       expect(describeExperiments([], {})).toEqual([]);
       // @ts-expect-error -- beta has no texts.
       describeExperiments([ALPHA, BETA], { alpha: texts("Alpha") });
+      // @ts-expect-error -- alpha is not registered.
+      describeExperiments([], { alpha: texts("Alpha") });
     });
   });
 

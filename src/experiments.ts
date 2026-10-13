@@ -143,12 +143,17 @@ export function whileExperimentEnabled<I extends string>(
 }
 
 /** Pairs every experiment with its texts, in registry order. */
-export function describeExperiments<E extends Experiment>(
+export function describeExperiments<
+  E extends Experiment,
+  P extends { readonly [K in E["id"]]: Experiment.Presentation },
+>(
   experiments: readonly E[],
-  presentations: { readonly [K in E["id"]]: Experiment.Presentation },
+  // A key that is no registered id is an error, also when no id is left.
+  presentations: P & { readonly [K in Exclude<keyof P, E["id"]>]: never },
 ): readonly Experiment.Row[] {
   return experiments.map((experiment) => {
-    const id: E["id"] = experiment.id;
-    return { ...experiment, ...presentations[id] };
+    const id: E["id"] = experiment.id,
+      presentation: Experiment.Presentation = presentations[id];
+    return { ...experiment, ...presentation };
   });
 }
