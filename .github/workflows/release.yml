@@ -25,7 +25,14 @@ permissions:
 jobs:
   release:
     name: "Draft Versioned Release"
+    # A version tag also reaches forks when they sync. Only the repository that
+    # cuts the releases runs this job; another one opts in, for a rehearsal, by
+    # setting its repository variable RELEASE_ON_TAG to "true".
+    if: github.repository == 'polyipseity/obsidian-terminal' || vars.RELEASE_ON_TAG == 'true'
     runs-on: ubuntu-latest
+    # Cap the job: a hung step must not hold the tag's concurrency group for
+    # the 6 h default.
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

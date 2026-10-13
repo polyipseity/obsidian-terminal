@@ -319,6 +319,8 @@ describe.skipIf(process.platform === "win32").each(SHELLS)(
 const Workflow = v.object({
   jobs: v.object({
     release: v.object({
+      if: v.optional(v.string()),
+      "timeout-minutes": v.optional(v.number()),
       steps: v.array(
         v.object({
           id: v.optional(v.string()),
@@ -333,12 +335,26 @@ const Workflow = v.object({
 });
 
 describe(".github/workflows/release.yml", () => {
-  async function steps(): Promise<
-    v.InferOutput<typeof Workflow>["jobs"]["release"]["steps"]
-  > {
+  type Job = v.InferOutput<typeof Workflow>["jobs"]["release"];
+
+  async function job(): Promise<Job> {
     return v.parse(Workflow, parse(await fs.readFile(WORKFLOW, "utf8"))).jobs
-      .release.steps;
+      .release;
   }
+
+  async function steps(): Promise<Job["steps"]> {
+    return (await job()).steps;
+  }
+
+  it("runs where releases are cut, and elsewhere only when a repository opts in", async () => {
+    expect((await job()).if).toBe(
+      "github.repository == 'polyipseity/obsidian-terminal' || vars.RELEASE_ON_TAG == 'true'",
+    );
+  });
+
+  it("ends a hung job after 15 minutes", async () => {
+    expect((await job())["timeout-minutes"]).toBe(15);
+  });
 
   it("keeps the checkout's credentials away from the build", async () => {
     const checkout = (await steps()).find(({ uses }) =>
