@@ -26,6 +26,7 @@ function makeTabbedLeaf() {
 }
 
 afterEach(() => {
+  document.body.replaceChildren();
   vi.restoreAllMocks();
 });
 
@@ -119,6 +120,21 @@ describe("revealLeafWithoutFlash", () => {
     await revealLeafWithoutFlash(workspace, leaf);
 
     expect(header.className).toBe("workspace-tab-header is-active");
+  });
+
+  it("leaves the flash on the tab of another leaf", async () => {
+    const { workspace } = makeWorkspace();
+    const { leaf, header } = makeTabbedLeaf();
+    const { header: other } = makeTabbedLeaf();
+    // Both tabs are in the document, next to each other as in a tab group.
+    document.body.append(header, other);
+    header.classList.add(FLASH);
+    other.classList.add(FLASH);
+
+    await revealLeafWithoutFlash(workspace, leaf);
+
+    expect(header.classList.contains(FLASH)).toBe(false);
+    expect(other.classList.contains(FLASH)).toBe(true);
   });
 
   it("leaves a tab header alone that is not an element", async () => {
