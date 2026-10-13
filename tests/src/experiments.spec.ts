@@ -107,6 +107,10 @@ describe("src/experiments.ts", () => {
       expect(fixExperiments(Object.create({ alpha: true }), [ALPHA])).toEqual(
         {},
       );
+      // Parsed JSON can hold an own `__proto__` key, which a copy inherits from.
+      expect(
+        fixExperiments(JSON.parse('{"__proto__":{"alpha":true}}'), [ALPHA]),
+      ).toEqual({});
     });
 
     it("does not change its input", () => {

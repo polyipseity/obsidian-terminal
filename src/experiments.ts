@@ -73,7 +73,8 @@ export function fixExperiments<E extends Experiment>(
     ret: { [K in E["id"]]?: true } = {};
   for (const { id } of experiments) {
     const key: E["id"] = id;
-    if (unc[key] === true) {
+    // An own key only: a stored `__proto__` object makes the copy inherit.
+    if (Object.prototype.hasOwnProperty.call(unc, key) && unc[key] === true) {
       ret[key] = true;
     }
   }
