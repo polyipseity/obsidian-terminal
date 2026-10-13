@@ -99,6 +99,7 @@ describe.skipIf(process.platform === "win32").each(SHELLS)(
       step: string,
       state: string,
       tag = "3.28.0",
+      commits: Readonly<Record<string, string>> = {},
     ): Promise<Outcome> {
       const notes = path.join(work, "tmp", "release-notes.md"),
         { status, stdout, stderr } = spawnSync(shell, [SCRIPT, step], {
@@ -110,9 +111,11 @@ describe.skipIf(process.platform === "win32").each(SHELLS)(
             GH_TOKEN: "stub",
             GITHUB_OUTPUT: path.join(work, "step-output"),
             GITHUB_REF_NAME: tag,
+            GITHUB_REPOSITORY: "o/r",
             PATH: `${STUB_BIN}${path.delimiter}${process.env["PATH"] ?? ""}`,
             RUNNER_TEMP: path.join(work, "tmp"),
             STUB_STATE: state,
+            ...commits,
           },
         }),
         log = await fs.readFile(path.join(work, "gh.log"), "utf8");
@@ -211,6 +214,46 @@ describe.skipIf(process.platform === "win32").each(SHELLS)(
       );
     });
 
+    describe("tag, before the attestation", () => {
+      const BUILT = "8cbff8938df29d1d0c3f1037044e86d936af7e88",
+        MOVED = "8e1c0770bae2302cfb8b553cc41143191f04f816",
+        LOOKUP = "gh api repos/o/r/commits/refs/tags/3.28.0 --jq .sha";
+
+      it("passes when the tag still points at the checked-out commit", async () => {
+        const { status, calls } = await run("tag", "none", "3.28.0", {
+          STUB_HEAD: BUILT,
+          STUB_TAG_COMMIT: BUILT,
+        });
+
+        expect(status).toBe(0);
+        expect(calls).toEqual([LOOKUP]);
+      });
+
+      it("stops when the tag points at another commit now", async () => {
+        const { status, output, calls } = await run("tag", "none", "3.28.0", {
+          STUB_HEAD: BUILT,
+          STUB_TAG_COMMIT: MOVED,
+        });
+
+        expect(status).toBe(1);
+        expect(output).toContain(
+          `::error::Tag 3.28.0 points at ${MOVED} now; this run built ${BUILT}.`,
+        );
+        expect(calls).toEqual([LOOKUP]);
+      });
+
+      it("stops when the commit of the tag cannot be read", async () => {
+        const { status, output } = await run("tag", "none", "3.28.0", {
+          STUB_HEAD: BUILT,
+        });
+
+        expect(status).toBe(1);
+        expect(output).toContain(
+          "::error::The commit of tag 3.28.0 could not be read.",
+        );
+      });
+    });
+
     describe("draft, after the attestation", () => {
       it("creates a draft with the notes of the tag when there is no release", async () => {
         const { status, output, calls, notes } = await run("draft", "none");
@@ -307,6 +350,18 @@ describe(".github/workflows/release.yml", () => {
         all.findIndex(
           ({ run }) => run === `bash scripts/draft-release.sh draft`,
         ),
+      ];
+
+    expect(order).not.toContain(-1);
+    expect(order).toEqual([...order].sort((left, right) => left - right));
+  });
+
+  it("checks that the tag has not moved between the build and the attestation", async () => {
+    const all = await steps(),
+      order = [
+        all.findIndex(({ run }) => run === "bun run build"),
+        all.findIndex(({ run }) => run === "bash scripts/draft-release.sh tag"),
+        all.findIndex(({ uses }) => uses?.startsWith("actions/attest@")),
       ];
 
     expect(order).not.toContain(-1);

@@ -8,6 +8,8 @@
 #                           without notes. A published release keeps its files:
 #                           the step output `published=true` tells the workflow
 #                           to skip the build, the attestation and the draft.
+#   draft-release.sh tag    Before the attestation. Fails when the tag no longer
+#                           points at the checked-out commit.
 #   draft-release.sh draft  After the attestation. Creates the draft, or replaces
 #                           the files of an existing draft.
 set -euo pipefail
@@ -67,6 +69,13 @@ case "${1:-}" in
         ;;
     esac
     ;;
+  tag)
+    # The API answers with the commit, also when the tag is annotated.
+    remote="$(gh api "repos/$GITHUB_REPOSITORY/commits/refs/tags/$tag" --jq .sha)" ||
+      fail "The commit of tag $tag could not be read."
+    built="$(git rev-parse HEAD)"
+    [[ "$remote" == "$built" ]] || fail "Tag $tag points at $remote now; this run built $built."
+    ;;
   draft)
     read_release
     case "$state" in
@@ -88,7 +97,7 @@ case "${1:-}" in
     esac
     ;;
   *)
-    echo "usage: draft-release.sh check|draft" >&2
+    echo "usage: draft-release.sh check|tag|draft" >&2
     exit 2
     ;;
 esac

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Stub gh for tests/scripts/draft-release.test.ts. Logs every call to $GH_LOG.
-# `release view` answers from $STUB_STATE; every other call succeeds.
+# `release view` answers from $STUB_STATE and `api`, the lookup of the tag's
+# commit, from $STUB_TAG_COMMIT; every other call succeeds.
 echo "gh $*" >> "$GH_LOG"
 if [[ "$1 $2" == "release view" ]]; then
   case "$STUB_STATE" in
@@ -20,5 +21,11 @@ if [[ "$1 $2" == "release view" ]]; then
     string-draft) echo "{\"isDraft\":\"true\",\"name\":\"$3\"}" ;;
     *) echo "stub: unknown state $STUB_STATE" >&2; exit 97 ;;
   esac
+elif [[ "$1" == api ]]; then
+  if [[ -z "${STUB_TAG_COMMIT:-}" ]]; then
+    echo "gh: No commit found for SHA: ${2##*/commits/} (HTTP 422)" >&2
+    exit 1
+  fi
+  echo "$STUB_TAG_COMMIT"
 fi
 exit 0

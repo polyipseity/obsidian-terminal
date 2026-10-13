@@ -68,6 +68,14 @@ jobs:
         if: steps.check.outputs.published != 'true'
         run: bun run build
 
+      # The files are attested and released under the tag's name, and the tag
+      # can be moved while the build runs.
+      - name: Check the tag still points at the built commit
+        if: steps.check.outputs.published != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/draft-release.sh tag
+
       - name: Attest build provenance
         if: steps.check.outputs.published != 'true'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
