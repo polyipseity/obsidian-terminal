@@ -1,4 +1,4 @@
-/** Minimal controls for the Python rows; runs the production row callbacks. */
+/** Minimal settings-row controls; runs the production row callbacks. */
 import {
   UpdatableUI,
   cloneAsWritable,
@@ -6,7 +6,13 @@ import {
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { createServer } from "node:net";
-import { App, ButtonComponent, Setting, TextComponent } from "obsidian";
+import {
+  App,
+  ButtonComponent,
+  Setting,
+  TextAreaComponent,
+  TextComponent,
+} from "obsidian";
 import type { DeepWritable } from "ts-essentials";
 import { vi } from "vitest";
 import { TerminalPlugin } from "../../src/main.js";
@@ -57,7 +63,10 @@ export async function withPythonSpare(
 // The tests need a plugin context without loading managers or patching windows.
 vi.mock("../../src/main.js", () => ({
   TerminalPlugin: class {
-    public readonly language = { value: { t: (key: string): string => key } };
+    public readonly language = {
+      value: { t: (key: string): string => key },
+      onChangeLanguage: { listen: vi.fn(() => vi.fn()) },
+    };
     public readonly register = vi.fn();
     public readonly registerEvent = vi.fn();
     public readonly addChild = vi.fn();
@@ -114,15 +123,37 @@ class PythonText extends TextComponent {
   }
 }
 
+class PythonTextArea extends TextAreaComponent {
+  public override readonly inputEl = document.createElement("textarea");
+
+  public override setValue(value: string): this {
+    this.inputEl.value = value;
+    return this;
+  }
+
+  public override getValue(): string {
+    return this.inputEl.value;
+  }
+
+  public override onChange(callback: (value: string) => unknown): this {
+    this.inputEl.oninput = () => {
+      callback(this.inputEl.value);
+    };
+    return this;
+  }
+}
+
 class PythonRow extends Setting {
   public override readonly settingEl = document.createElement("div");
   public override readonly nameEl = document.createElement("div");
   public override readonly descEl = document.createElement("div");
   public readonly buttons: ButtonComponent[] = [];
   public readonly texts: TextComponent[] = [];
+  public readonly textAreas: TextAreaComponent[] = [];
   // UpdatableUI reconfigures the same controls on each render.
   public buttonIndex = 0;
   public textIndex = 0;
+  public textAreaIndex = 0;
 
   public override setName(name: string): this {
     this.nameEl.textContent = name;
@@ -165,6 +196,16 @@ class PythonRow extends Setting {
     configure(text);
     return this;
   }
+
+  public override addTextArea(
+    configure: (text: TextAreaComponent) => unknown,
+  ): this {
+    const index = this.textAreaIndex++;
+    const text = this.textAreas[index] ?? new PythonTextArea(this.settingEl);
+    this.textAreas[index] = text;
+    configure(text);
+    return this;
+  }
 }
 
 /** Retains real UpdatableUI update/disposal, with only the needed mock controls. */
@@ -176,10 +217,16 @@ export function capturePythonRows(): ReadonlyMap<string, PythonRow> {
     configure,
   ) {
     return this.new(
-      () => new PythonRow(element),
+      () => {
+        const row = new PythonRow(element);
+        // In the container, as Obsidian's rows are, so tests can read order.
+        element.append(row.settingEl);
+        return row;
+      },
       (row) => {
         row.buttonIndex = 0;
         row.textIndex = 0;
+        row.textAreaIndex = 0;
         configure(row);
         rows.set(row.nameEl.textContent, row);
       },

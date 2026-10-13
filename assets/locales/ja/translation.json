@@ -181,6 +181,7 @@
       "bold-font-weight": "太字の$t(generic.font-weight)",
       "description-HTML": "すべての$t(generic.option_other)については <a aria-label=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" class=\"external-link\" data-tooltip-position=\"top\" href=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" rel=\"noopener\" target=\"_blank\"><code>ITerminalOptions</code></a> を参照してください。",
       "font-family": "$t(generic.font)ファミリー",
+      "font-family-description": "A CSS font-family list. Quote a name that starts with a digit or has spaces, e.g. '0xProto Nerd Font Mono', monospace",
       "font-size": "$t(generic.font)サイズ",
       "font-weight": "$t(generic.font-weight)",
       "invalid-description": "$t(generic.invalid)",
