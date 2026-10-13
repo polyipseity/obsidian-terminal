@@ -71,7 +71,6 @@ function fakeSettings<I extends string>(
     },
   };
 }
-
 describe("src/experiments.ts", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -222,6 +221,38 @@ describe("src/experiments.ts", () => {
       await settings.set({ alpha: true });
       expect(start).not.toHaveBeenCalled();
       expect(stop).not.toHaveBeenCalled();
+    });
+
+    it("does not start a scope that an earlier listener disposed in the same change", async () => {
+      const settings = fakeSettings<"alpha" | "beta">({}),
+        start = vi.fn(() => vi.fn());
+      let dispose = (): void => {};
+      // Registered first, so it runs before the gate hears of the change.
+      settings.onMutate(
+        (value) => isExperimentEnabled(value, "beta"),
+        () => {
+          dispose();
+        },
+      );
+      dispose = whileExperimentEnabled(settings, "alpha", start);
+      await settings.set({ alpha: true, beta: true });
+      expect(start).not.toHaveBeenCalled();
+    });
+
+    it("stops at once when start disposes its own scope", async () => {
+      const settings = fakeSettings<"alpha">({}),
+        stop = vi.fn();
+      let dispose = (): void => {};
+      const start = vi.fn(() => {
+        dispose();
+        return stop;
+      });
+      dispose = whileExperimentEnabled(settings, "alpha", start);
+      await settings.set({ alpha: true });
+      expect(stop).toHaveBeenCalledOnce();
+      await settings.set({});
+      expect(start).toHaveBeenCalledOnce();
+      expect(stop).toHaveBeenCalledOnce();
     });
 
     it("an error thrown by start is logged and does not escape", async () => {

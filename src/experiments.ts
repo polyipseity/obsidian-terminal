@@ -102,14 +102,23 @@ export function whileExperimentEnabled<I extends string>(
   id: NoInfer<I>,
   start: () => () => void,
 ): () => void {
-  let stop: (() => void) | null = null;
+  let stop: (() => void) | null = null,
+    disposed = false;
   const apply = (on: boolean): void => {
-      if (on === (stop !== null)) {
+      // A listener removed while a change is announced still hears of that
+      // change, so a disposed scope must refuse to start.
+      if (on === (stop !== null) || (on && disposed)) {
         return;
       }
       try {
         if (stop === null) {
-          stop = start();
+          const stop0 = start();
+          if (disposed) {
+            // `start` disposed its own scope: nothing would stop it later.
+            stop0();
+          } else {
+            stop = stop0;
+          }
         } else {
           const stop0 = stop;
           stop = null;
@@ -125,6 +134,7 @@ export function whileExperimentEnabled<I extends string>(
     );
   apply(isExperimentEnabled(settings.value, id));
   return (): void => {
+    disposed = true;
     unlisten();
     apply(false);
   };
