@@ -3,6 +3,10 @@
 This module implements a simple pseudoterminal bridge that spawns a child
 process on a pty, proxies stdin/stdout, and accepts control frames on a
 separate FD to update terminal window size.
+
+The proxy never waits on a write to the pty: the child may itself be waiting
+to write its output, and then neither side would move again. Input the pty
+cannot take yet is kept in a bounded buffer while its output keeps flowing.
 """
 
 from __future__ import annotations
@@ -18,7 +22,7 @@ from os import (
     waitstatus_to_exitcode,
     write,
 )
-from selectors import EVENT_READ, BaseSelector, DefaultSelector
+from selectors import EVENT_READ, EVENT_WRITE, BaseSelector, DefaultSelector
 from signal import SIGINT, SIGTERM, signal
 from struct import pack
 from sys import exit, stdin, stdout
@@ -47,6 +51,12 @@ __all__ = ("main",)
 
 """Chunk size in bytes used when reading from the PTY."""
 _CHUNK_SIZE = 1024
+
+"""Bytes of input held for the PTY before the proxy stops reading stdin.
+
+Past this the host waits on its pipe instead, so memory stays bounded however
+much is sent."""
+_INPUT_BUFFER_LIMIT = 65536
 
 """File descriptor for stdin used by the PTY proxy."""
 _STDIN = stdin.fileno()
@@ -89,6 +99,7 @@ if sys.platform != "win32":
         WNOHANG,  # ty: ignore[possibly-missing-import]
         getppid,
         killpg,  # ty: ignore[possibly-missing-import]
+        set_blocking,  # ty: ignore[possibly-missing-import]
     )
     from pty import fork  # ty: ignore[possibly-missing-import]
     from signal import SIGHUP, SIGKILL  # ty: ignore[possibly-missing-import]
@@ -181,7 +192,8 @@ if sys.platform != "win32":
         """Base context-manager that registers a read-callback for an FD.
 
         Subclasses should implement `_on_read()`; this base class provides the
-        common registration/unregistration logic and exposes `registered`.
+        common registration/unregistration logic and exposes `registered`,
+        which stays true until the FD reports EOF or the manager exits.
         """
 
         def __init__(self, selector: BaseSelector, fd: int) -> None:
@@ -189,10 +201,11 @@ if sys.platform != "win32":
             self.selector = selector
             self.fd = fd
             self.registered = False
+            self._events = 0
 
         def __enter__(self) -> Self:
             """Register the FD callback and return this manager."""
-            self.selector.register(self.fd, EVENT_READ, self._on_read)
+            self._watch(EVENT_READ)
             self.registered = True
             return self
 
@@ -203,10 +216,24 @@ if sys.platform != "win32":
             tb: TracebackType | None,
         ) -> None:
             """Unregister the FD if still registered."""
-            if self.registered:
-                with suppress(Exception):
-                    self.selector.unregister(self.fd)
-                self.registered = False
+            self._unregister()
+
+        def _watch(self, events: int) -> None:
+            """Select the events the selector reports for the FD; 0 for none."""
+            if events == self._events:
+                return
+            if not self._events:
+                self.selector.register(self.fd, events, self._on_event)
+            elif not events:
+                self.selector.unregister(self.fd)
+            else:
+                self.selector.modify(self.fd, events, self._on_event)
+            self._events = events
+
+        def _on_event(self, mask: int) -> None:
+            """Dispatch the events the selector reported for the FD."""
+            if mask & EVENT_READ:
+                self._on_read()
 
         def _on_read(self) -> None:
             """Read callback — must be implemented by subclasses."""
@@ -216,20 +243,69 @@ if sys.platform != "win32":
             """Safely unregister and mark as not registered."""
             if self.registered:
                 with suppress(Exception):
-                    self.selector.unregister(self.fd)
+                    self._watch(0)
+                self._events = 0
                 self.registered = False
 
     class _PipePty(_SelectorHandler):
-        """Context manager that handles PTY -> stdout forwarding."""
+        """Context manager that owns the PTY: forwards its output to stdout
+        and writes the input queued for it.
+
+        The PTY must be non-blocking. Input it cannot take yet waits in
+        `_pending`, and the selector reports the PTY as writable only while
+        something waits there.
+        """
 
         def __init__(self, selector: BaseSelector, pty_fd: int) -> None:
-            """Initialize the PTY->stdout handler."""
+            """Initialize the PTY handler with nothing queued."""
             super().__init__(selector, pty_fd)
+            self._pending = bytearray()
+
+        @property
+        def accepting(self) -> bool:
+            """Whether the input buffer has room for another chunk."""
+            return len(self._pending) < _INPUT_BUFFER_LIMIT
+
+        def feed(self, data: bytes) -> None:
+            """Queue input for the PTY and write what it takes right away."""
+            self._pending += data
+            self._flush()
+
+        def _flush(self) -> None:
+            """Write queued input until the PTY would block or none is left."""
+            while self._pending:
+                try:
+                    written = write(self.fd, self._pending)
+                except BlockingIOError:
+                    break
+                except OSError:
+                    # The child side is gone; reading the PTY reports the EOF.
+                    self._pending.clear()
+                    break
+                if not written:
+                    break
+                del self._pending[:written]
+            if self.registered:
+                self._watch(EVENT_READ | EVENT_WRITE if self._pending else EVENT_READ)
+
+        @override
+        def _on_event(self, mask: int) -> None:
+            """Write queued input when the PTY takes it, then read its output."""
+            if mask & EVENT_WRITE:
+                self._flush()
+            if mask & EVENT_READ and self.registered:
+                self._on_read()
 
         @override
         def _on_read(self) -> None:
             """Read from the PTY and forward bytes to stdout; stop on EOF."""
-            data = _read_or_eof(self.fd)
+            try:
+                data = read(self.fd, _CHUNK_SIZE)
+            except BlockingIOError:
+                # Nothing to read after all; this is not the end of the PTY.
+                return
+            except OSError:
+                data = b""
             if not data:
                 self._unregister()
                 return
@@ -238,19 +314,30 @@ if sys.platform != "win32":
     class _PipeStdin(_SelectorHandler):
         """Context manager that forwards stdin -> PTY."""
 
-        def __init__(self, selector: BaseSelector, pty_fd: int) -> None:
+        def __init__(self, selector: BaseSelector, pipe_pty: _PipePty) -> None:
             """Initialize the stdin->PTY handler."""
             super().__init__(selector, _STDIN)
-            self.pty_fd = pty_fd
+            self.pipe_pty = pipe_pty
 
         @override
         def _on_read(self) -> None:
-            """Read from stdin and forward bytes to the PTY; unregister on EOF."""
+            """Read from stdin and queue bytes for the PTY; unregister on EOF."""
+            if not self.pipe_pty.accepting:
+                return
             data = _read_or_eof(self.fd)
             if not data:
                 self._unregister()
                 return
-            write_all(self.pty_fd, data)
+            self.pipe_pty.feed(data)
+
+        def throttle(self) -> None:
+            """Watch stdin only while the PTY's input buffer has room.
+
+            An unwatched stdin stays `registered`: the host is still there,
+            it only has to wait.
+            """
+            if self.registered:
+                self._watch(EVENT_READ if self.pipe_pty.accepting else 0)
 
     class _ProcessCmdIO(_SelectorHandler):
         """Context manager that applies window-size control frames to the PTY."""
@@ -288,6 +375,8 @@ if sys.platform != "win32":
         pid, pty_fd = fork()
         if pid == 0:
             execvp(sys.argv[1], sys.argv[1:])
+        # Only this end stops blocking; the child has its own descriptors.
+        set_blocking(pty_fd, False)
 
         shutdown_requested = False
 
@@ -303,7 +392,7 @@ if sys.platform != "win32":
             with (
                 DefaultSelector() as selector,
                 _PipePty(selector, pty_fd) as pipe_pty,
-                _PipeStdin(selector, pty_fd) as pipe_stdin,
+                _PipeStdin(selector, pipe_pty) as pipe_stdin,
                 _ProcessCmdIO(selector, pty_fd) as process_cmdio,
             ):
                 # Keep proxying while all host-facing pipes are alive and
@@ -314,8 +403,9 @@ if sys.platform != "win32":
                     and process_cmdio.registered
                     and not shutdown_requested
                 ):
-                    for key, _ in selector.select(_SELECT_TIMEOUT_SECONDS):
-                        key.data()
+                    for key, mask in selector.select(_SELECT_TIMEOUT_SECONDS):
+                        key.data(mask)
+                    pipe_stdin.throttle()
                     if getppid() == 1:
                         shutdown_requested = True
 
