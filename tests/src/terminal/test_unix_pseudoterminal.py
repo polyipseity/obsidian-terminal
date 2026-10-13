@@ -663,14 +663,17 @@ def _deadline() -> Iterator[None]:
 def test_pty_handler_writes_at_once_what_the_pty_takes() -> None:
     """Write input straight through while the PTY has room for it."""
     module = _load_unix_pseudoterminal_module()
+    # Less than the stand-in takes, and more than one small write.
+    payload = bytes(range(256)) * 8
     with (
         _socket_pty() as (fd, peer),
         DefaultSelector() as selector,
         module._PipePty(selector, fd) as pipe_pty,
     ):
-        pipe_pty.feed(b"typed")
+        pipe_pty.feed(payload)
 
-        assert peer.recv(64) == b"typed"
+        # All of it is there before the selector has had a turn.
+        assert peer.recv(4096) == payload
         assert pipe_pty.accepting
         # Nothing waits, so the PTY is not watched for room.
         assert selector.get_key(fd).events == EVENT_READ
