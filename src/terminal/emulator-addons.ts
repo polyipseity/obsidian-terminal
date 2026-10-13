@@ -447,7 +447,8 @@ export class DragAndDropAddon implements ITerminalAddon {
     // One paste for all the paths, but one per path on Windows. Several
     // pastes in a burst can stall the shell against the pty proxy for good,
     // and one paste is how Claude Code reads several escaped paths. Quoted,
-    // as Windows needs them, it reads them only when each is its own paste.
+    // as most shells on Windows need them, it reads them only when each is
+    // its own paste.
     for (const paste of droppedPathPastes(texts, platform)) {
       // Asked again each time: what a paste sets off may dispose the addon.
       if (!this.#isCurrent(activation)) {

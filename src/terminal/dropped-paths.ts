@@ -13,10 +13,13 @@ import type { Platform } from "@polyipseity/obsidian-plugin-library";
  * - `posix`: a POSIX shell on macOS or Linux, which takes backslash escapes.
  * - `posix-quoted`: a shell of the sh family on Windows, where paths hold
  *   backslashes.
+ * - `wsl`: the Linux shell that `wsl.exe` starts on Windows, which finds a
+ *   Windows file at its Linux path only.
  * - `powershell`: Windows PowerShell or PowerShell, on any platform.
  * - `cmd`: `cmd.exe`, and any other program on Windows.
  */
-export type ShellGrammar = "posix" | "posix-quoted" | "powershell" | "cmd";
+export type ShellGrammar =
+  "posix" | "posix-quoted" | "wsl" | "powershell" | "cmd";
 
 /** The paths one drop inserts at most; the rest is reported as skipped. */
 export const MAX_DROPPED_PATHS = 1024;
@@ -77,9 +80,10 @@ const PATH_SEPARATOR = /[\\/]/u,
     "msys2",
     "msys2_shell",
     "sh",
-    "wsl",
     "zsh",
   ]),
+  // The program that starts a Linux shell on Windows, without suffix.
+  WSL = "wsl",
   // Characters a POSIX shell reads literally: everything else in ASCII gets a
   // backslash. Non-ASCII characters are not special to a shell and stay as-is.
   // No shell needs the colon escaped; Claude Code does (see `escapePosix`).
@@ -121,7 +125,17 @@ const PATH_SEPARATOR = /[\\/]/u,
   ENCODED_SLASH = /%2f/iu,
   ENCODED_SLASH_OR_BACKSLASH = /%(?:2f|5c)/iu,
   WIN32_DRIVE_PATHNAME = /^\/[A-Za-z]:\//u,
-  SLASH = /\//gu;
+  SLASH = /\//gu,
+  BACKSLASH = /\\/gu,
+  // A Windows path on a drive: the letter, and what follows the root. The
+  // rest is taken whole (`s`): a name may hold a line separator of Unicode.
+  WIN32_DRIVE_PATH = /^([A-Za-z]):[\\/](.*)$/su,
+  // A path into the files of a WSL distribution, as Windows shows them:
+  // `\\wsl.localhost\<distribution>`, or `\\wsl$\<distribution>` as it was
+  // before, and what follows it.
+  WSL_SHARE_PATH = /^[\\/]{2}(?:wsl\.localhost|wsl\$)[\\/]+[^\\/]+(.*)$/isu,
+  // Two separators at the start: a network share, or a device path.
+  WIN32_UNC_PATH = /^[\\/]{2}/u;
 
 /** Narrows to a non-array object that has `key`, own or inherited. */
 function hasProperty<K extends string>(
@@ -226,8 +240,9 @@ export function vaultDragPaths(draggable: unknown): readonly string[] {
  * Tells how the shell of a terminal reads a path, from the shell's executable.
  *
  * Windows has no grammar that every shell shares: `cmd.exe` knows double
- * quotes only, PowerShell expands `$` and backticks inside them, and a shell
- * of the sh family takes the backslashes of a Windows path for escapes. A
+ * quotes only, PowerShell expands `$` and backticks inside them, a shell of
+ * the sh family takes the backslashes of a Windows path for escapes, and the
+ * Linux shell that `wsl.exe` starts does not find a Windows path at all. A
  * program that is not recognized gets double quotes there, which
  * Explorer-style terminals write and Claude Code reads. fish, csh and tcsh
  * read neither kind of quotes as written, so their paths are escaped as on
@@ -253,6 +268,9 @@ export function shellGrammar(
   }
   if (platform !== "win32" || ESCAPING_SHELLS.has(name)) {
     return "posix";
+  }
+  if (name === WSL) {
+    return "wsl";
   }
   return WIN32_POSIX_SHELLS.has(name) ? "posix-quoted" : "cmd";
 }
@@ -312,6 +330,48 @@ function quoteSh(path: string): string {
 function escapePosix(path: string): string {
   // The space is `\ ` by now; the slash after it gets a backslash as well.
   return path.replace(POSIX_ESCAPED, "\\$&").replace(SPACE_SLASH, " \\/");
+}
+
+/**
+ * The path at which a Linux program under WSL finds a Windows file.
+ *
+ * WSL mounts each drive under `/mnt`, by its letter in lower case. The files
+ * of a distribution, which Windows shows under `\\wsl.localhost` (`\\wsl$`
+ * before), are at its root. Windows Terminal converts dropped paths the same
+ * way.
+ *
+ * Three limits. `/mnt` is where the drives are unless `/etc/wsl.conf` of the
+ * distribution names another place. A drive that WSL has not mounted, as a
+ * removable or a network drive may be, has no file at its path. And a path
+ * into a distribution is taken for one into the distribution of the
+ * terminal, which the executable of the profile does not tell.
+ *
+ * @param path - absolute path, as Windows writes it.
+ * @returns the Linux path; a path that is one already as it is; `null` for a
+ * path with no place under WSL, such as one on a network share.
+ */
+function wslPath(path: string): string | null {
+  const [, underDistribution] = WSL_SHARE_PATH.exec(path) ?? [];
+  if (typeof underDistribution === "string") {
+    const linux = underDistribution.replace(BACKSLASH, "/");
+    // The distribution alone is its root.
+    return linux === "" ? "/" : linux;
+  }
+  const [, drive, underDrive] = WIN32_DRIVE_PATH.exec(path) ?? [];
+  if (typeof drive === "string" && typeof underDrive === "string") {
+    return `/mnt/${drive.toLowerCase()}/${underDrive.replace(BACKSLASH, "/")}`;
+  }
+  return path.startsWith("/") && !WIN32_UNC_PATH.test(path) ? path : null;
+}
+
+/**
+ * Writes a path for the Linux shell that `wsl.exe` starts: as its Linux path
+ * (see {@link wslPath}), escaped as for any shell on Linux. Claude Code
+ * there is the Linux program, and reads the path as it does on Linux.
+ */
+function escapeWsl(path: string): string | null {
+  const linux = wslPath(path);
+  return linux === null ? null : escapePosix(linux);
 }
 
 /**
@@ -395,6 +455,8 @@ export function formatDroppedPath(
       return escapePosix(path);
     case "posix-quoted":
       return quoteSh(path);
+    case "wsl":
+      return escapeWsl(path);
     case "powershell":
       return quotePowerShell(path);
     case "cmd":
@@ -454,7 +516,9 @@ export function formatDroppedPaths(
  *
  * On Windows each text is a paste of its own: a path with a space is quoted
  * there, and Claude Code attaches several quoted paths only when each arrives
- * as a separate paste. Terminals there do not go through the proxy.
+ * as a separate paste. Terminals there do not go through the proxy. The
+ * escaped paths of a WSL terminal go the same way: the platform decides
+ * here, not the shell, and a paste for each path loses them nothing.
  *
  * @param texts - texts of {@link formatDroppedPaths}, each ending in a space.
  * @param platform - platform the terminal runs on.

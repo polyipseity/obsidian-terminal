@@ -8,8 +8,9 @@
  * - shellGrammar: the grammar of an executable per platform, and of every
  *   integrated profile preset
  * - formatDroppedPath: the text of each grammar for the file names of the
- *   test vault, refused paths (empty, control characters), and what a shell
- *   and Claude Code read back from the text, with each known limit pinned
+ *   test vault, the Linux path that WSL gets for a Windows one, refused paths
+ *   (empty, control characters, no place under WSL), and what a shell and
+ *   Claude Code read back from the text, with each known limit pinned
  * - formatDroppedPaths: one text per path, order, duplicates, trailing space,
  *   skipped paths, the cap
  * - droppedPathPastes: one paste for all the texts off Windows and one per
@@ -36,9 +37,16 @@ import { PROFILE_PRESETS } from "../../../src/terminal/profile-presets.js";
 const GRAMMARS: readonly ShellGrammar[] = [
   "posix",
   "posix-quoted",
+  "wsl",
   "powershell",
   "cmd",
 ];
+
+/**
+ * The grammars that write the path they are given. `wsl` writes another one,
+ * the Linux path, so it has tables and tests of its own.
+ */
+type SamePathGrammar = Exclude<ShellGrammar, "wsl">;
 
 describe("vaultDragPaths", () => {
   it.each<readonly [string, unknown, readonly string[]]>([
@@ -388,7 +396,6 @@ const WIN32_POSIX_SHELLS: readonly string[] = [
   "ksh",
   "mksh",
   "ash",
-  "wsl",
   "git-bash",
   "msys2",
   "msys2_shell",
@@ -435,7 +442,7 @@ const PRESET_GRAMMARS: Readonly<Record<string, ShellGrammar>> = {
   pwshIntegrated: "powershell",
   shIntegrated: "posix",
   win32IntegratedDefault: "cmd",
-  wslIntegrated: "posix-quoted",
+  wslIntegrated: "wsl",
   zshIntegrated: "posix",
 };
 
@@ -502,7 +509,14 @@ describe("shellGrammar", () => {
     ["C:\\Program Files\\Git\\bin\\bash.exe", "win32", "posix-quoted"],
     ["C:/msys64/usr/bin/zsh.exe", "win32", "posix-quoted"],
     ["C:\\Program Files\\Git\\git-bash.exe", "win32", "posix-quoted"],
-    ["C:\\Windows\\System32\\wsl.exe", "win32", "posix-quoted"],
+    ["C:\\Windows\\System32\\wsl.exe", "win32", "wsl"],
+    ["wsl", "win32", "wsl"],
+    ["WSL.EXE", "win32", "wsl"],
+    // Off Windows a program of that name is not the one of Windows.
+    ["/usr/local/bin/wsl", "linux", "posix"],
+    // The exact name only: these two do not start a shell.
+    ["C:\\Windows\\System32\\wslhost.exe", "win32", "cmd"],
+    ["wslg.exe", "win32", "cmd"],
     ["BASH.EXE", "win32", "posix-quoted"],
     ["C:\\msys64\\msys2_shell.cmd", "win32", "posix-quoted"],
     ["C:\\cygwin64\\Cygwin.bat", "win32", "posix-quoted"],
@@ -513,6 +527,7 @@ describe("shellGrammar", () => {
     ["C:\\bash\\python.exe", "win32", "cmd"],
     ["C:\\pwsh\\cmd.exe", "win32", "cmd"],
     ["C:\\cmd\\bash.exe", "win32", "posix-quoted"],
+    ["C:\\wsl\\bash.exe", "win32", "posix-quoted"],
     ["/opt/pwsh/bin/zsh", "linux", "posix"],
     ["bash.exe.bak", "win32", "cmd"],
     ["bash.exe.exe", "win32", "cmd"],
@@ -579,7 +594,7 @@ describe("shellGrammar", () => {
  * A Windows directory holds a part of them only (no `"`, `\`, `*`, `?`, `|`,
  * `<`, `>`, tab or newline in a name), but the functions do not know that.
  */
-interface TrickyName extends Readonly<Record<ShellGrammar, string | null>> {
+interface TrickyName extends Readonly<Record<SamePathGrammar, string | null>> {
   readonly name: string;
   /** The text for PowerShell under a POSIX directory, where it is another one. */
   readonly powershellPosix?: string;
@@ -728,7 +743,7 @@ const TRICKY_POSIX = "/Users/me/Vault/Tricky/",
   TRICKY_WIN32 = "C:\\Users\\me\\Vault\\Tricky\\";
 
 /** The directories a grammar is used with: PowerShell also runs on macOS and Linux. */
-const GRAMMAR_DIRECTORIES: readonly (readonly [ShellGrammar, string])[] = [
+const GRAMMAR_DIRECTORIES: readonly (readonly [SamePathGrammar, string])[] = [
   ["posix", TRICKY_POSIX],
   ["posix-quoted", TRICKY_WIN32],
   ["powershell", TRICKY_WIN32],
@@ -739,7 +754,7 @@ const GRAMMAR_DIRECTORIES: readonly (readonly [ShellGrammar, string])[] = [
 /** The text of a tricky name for a grammar under a directory, `<dir>` filled in. */
 function trickyText(
   tricky: TrickyName,
-  grammar: ShellGrammar,
+  grammar: SamePathGrammar,
   directory: string,
 ): string | null {
   const text =
@@ -778,11 +793,19 @@ const WRITTEN_CASES: readonly (readonly [ShellGrammar, string])[] =
       ]),
   );
 
-/** The paths of {@link WRITTEN_CASES} for one grammar. */
+/**
+ * The paths of {@link WRITTEN_CASES} for one grammar. WSL has those of
+ * `posix`: a Linux path is written as it is, and read back as it was dropped.
+ */
 function writtenPaths(grammar: ShellGrammar): readonly string[] {
-  return WRITTEN_CASES.filter(([written]) => written === grammar).map(
-    ([, path]) => path,
-  );
+  const fixture = grammar === "wsl" ? "posix" : grammar,
+    paths = WRITTEN_CASES.filter(([written]) => written === fixture).map(
+      ([, path]) => path,
+    );
+  if (paths.length === 0) {
+    throw new Error(`no paths to write for ${grammar}`);
+  }
+  return paths;
 }
 
 /** `formatDroppedPath` for a path the grammar must be able to write. */
@@ -916,6 +939,8 @@ const READERS: Readonly<
   posix: escapedArguments,
   "posix-quoted": shArguments,
   powershell: powershellArguments,
+  // Whichever shell the distribution starts: the path is escaped for all.
+  wsl: escapedArguments,
 };
 
 /**
@@ -1012,7 +1037,7 @@ function asImage(name: string): string {
 }
 
 /** The names of the tables above that a grammar writes, each once. */
-function fixtureNames(grammar: ShellGrammar): readonly string[] {
+function fixtureNames(grammar: SamePathGrammar): readonly string[] {
   return [
     ...new Set([
       ...TRICKY_NAMES.filter((tricky) => tricky[grammar] !== null).map(
@@ -1412,19 +1437,212 @@ describe("formatDroppedPath", () => {
         "/b.png'",
       ]);
     });
+  });
 
-    // Known limit. `wsl.exe` starts a Linux shell, which is handed the Windows
-    // path as it is: no Linux program finds `C:\...`. Claude Code is the
-    // exception, as it converts a pasted Windows path under WSL itself.
-    it("gives WSL the Windows path, not the Linux one", () => {
+  describe("for the Linux shell of WSL", () => {
+    const linuxDirectory = "/mnt/c/Users/me/Vault/Tricky/",
+      // A backslash is a separator in a Windows path, not a part of a name.
+      names = fixtureNames("posix").filter((name) => !name.includes("\\"));
+
+    it.each<readonly [string, string, string, string]>([
+      [
+        "a file on a drive",
+        "C:\\Users\\me\\a.png",
+        "/mnt/c/Users/me/a.png",
+        "/mnt/c/Users/me/a.png",
+      ],
+      [
+        "a drive written in lower case",
+        "d:\\data\\a.png",
+        "/mnt/d/data/a.png",
+        "/mnt/d/data/a.png",
+      ],
+      [
+        "forward slashes",
+        "C:/Users/me/a.png",
+        "/mnt/c/Users/me/a.png",
+        "/mnt/c/Users/me/a.png",
+      ],
+      [
+        "a space",
+        "C:\\Users\\a b\\c d.png",
+        "/mnt/c/Users/a\\ b/c\\ d.png",
+        "/mnt/c/Users/a b/c d.png",
+      ],
+      [
+        "what a shell expands",
+        "C:\\Users\\$HOME `x` & (y);z.png",
+        "/mnt/c/Users/\\$HOME\\ \\`x\\`\\ \\&\\ \\(y\\)\\;z.png",
+        "/mnt/c/Users/$HOME `x` & (y);z.png",
+      ],
+      [
+        "a single quote",
+        "C:\\Users\\O'Brien\\a.png",
+        "/mnt/c/Users/O\\'Brien/a.png",
+        "/mnt/c/Users/O'Brien/a.png",
+      ],
+      ["a drive root", "C:\\", "/mnt/c/", "/mnt/c/"],
+      [
+        "a folder with a backslash at its end",
+        "C:\\Users\\me\\",
+        "/mnt/c/Users/me/",
+        "/mnt/c/Users/me/",
+      ],
+      [
+        "a file of a distribution",
+        "\\\\wsl.localhost\\Ubuntu\\home\\me\\a b.png",
+        "/home/me/a\\ b.png",
+        "/home/me/a b.png",
+      ],
+      [
+        "a file of a distribution under the older name of the share",
+        "\\\\wsl$\\Ubuntu-24.04\\home\\me\\a.png",
+        "/home/me/a.png",
+        "/home/me/a.png",
+      ],
+      [
+        "a file of a distribution in another case and with forward slashes",
+        "//WSL.LOCALHOST/Ubuntu/etc/hosts",
+        "/etc/hosts",
+        "/etc/hosts",
+      ],
+      ["the root of a distribution", "\\\\wsl.localhost\\Ubuntu", "/", "/"],
+      [
+        "the root of a distribution with a backslash at its end",
+        "\\\\wsl$\\Ubuntu\\",
+        "/",
+        "/",
+      ],
+      [
+        "a path that is a Linux one already",
+        "/home/me/a b.png",
+        "/home/me/a\\ b.png",
+        "/home/me/a b.png",
+      ],
+    ])("writes %s as its Linux path", (_name, path, text, linux) => {
+      expect(formatDroppedPath(path, "wsl")).toBe(text);
+      expect(READERS.wsl(text)).toEqual([linux]);
+      expect(claudeCodeReads(`${text} `, "wsl")).toEqual([linux]);
+    });
+
+    // Windows allows the line and paragraph separators of Unicode in a name,
+    // and they are no control characters: such a path is not refused.
+    it.each([
+      [
+        "under a drive",
+        "C:\\Users\\me\\a\u2028b\u2029c.png",
+        "/mnt/c/Users/me/a\u2028b\u2029c.png",
+      ],
+      [
+        "in a distribution",
+        "\\\\wsl.localhost\\Ubuntu\\home\\me\\a\u2028b\u2029c.png",
+        "/home/me/a\u2028b\u2029c.png",
+      ],
+    ])(
+      "keeps a name with a line separator of Unicode %s whole",
+      (_name, path, linux) => {
+        expect(formatDroppedPath(path, "wsl")).toBe(linux);
+        expect(READERS.wsl(linux)).toEqual([linux]);
+      },
+    );
+
+    it.each<readonly [string, string]>([
+      ["a network share", "\\\\server\\share\\a.png"],
+      ["a network share with forward slashes", "//server/share/a.png"],
+      [
+        "a host whose name only starts like the one of WSL",
+        "\\\\wsl.localhost.example\\Ubuntu\\a.png",
+      ],
+      ["the host of WSL without a distribution", "\\\\wsl.localhost\\"],
+      ["a device path", "\\\\?\\C:\\Users\\me\\a.png"],
+      ["a path relative to a drive", "C:a.png"],
+      ["a path relative to the current drive", "\\Users\\me\\a.png"],
+      ["a relative path", "a.png"],
+    ])("refuses %s, which has no place under WSL", (_name, path) => {
+      expect(formatDroppedPath(path, "wsl")).toBeNull();
+    });
+
+    it.each([...TRICKY_NAMES.map(({ name }) => name), ...MORE_NAMES])(
+      "writes %j under a drive as a POSIX shell gets its Linux path",
+      (name) => {
+        expect(formatDroppedPath(TRICKY_WIN32 + name, "wsl")).toBe(
+          formatDroppedPath(
+            linuxDirectory + name.replaceAll("\\", "/"),
+            "posix",
+          ),
+        );
+      },
+    );
+
+    it.each(names)(
+      "gives the Linux shell one argument that is the Linux path of %j",
+      (name) => {
+        expect(READERS.wsl(written(TRICKY_WIN32 + name, "wsl"))).toEqual([
+          linuxDirectory + name,
+        ]);
+      },
+    );
+
+    // Claude Code is the Linux program there: it reads the escapes as on
+    // Linux, and would convert a Windows path itself, which it no longer gets.
+    it.each(names.map(asImage))(
+      "is the one image path Claude Code reads under WSL for %j",
+      (name) => {
+        expect(
+          claudeCodeReads(pasted(TRICKY_WIN32 + name, "wsl"), "wsl"),
+        ).toEqual([linuxDirectory + name]);
+      },
+    );
+
+    it("gives the terminal of the WSL preset the Linux path, not the Windows one", () => {
       const path = "C:\\Users\\me\\My Vault\\photo.png",
+        linux = "/mnt/c/Users/me/My Vault/photo.png",
         grammar = shellGrammar("C:\\Windows\\System32\\wsl.exe", "win32"),
         text = pasted(path, grammar);
 
-      expect(grammar).toBe("posix-quoted");
-      expect(text).toBe("'C:\\Users\\me\\My Vault\\photo.png' ");
-      expect(READERS[grammar](text)).toEqual([path]);
-      expect(claudeCodeReads(text, "wsl")).toEqual([path]);
+      expect(grammar).toBe("wsl");
+      expect(text).toBe("/mnt/c/Users/me/My\\ Vault/photo.png ");
+      expect(READERS[grammar](text)).toEqual([linux]);
+      expect(claudeCodeReads(text, "wsl")).toEqual([linux]);
+    });
+
+    it("writes several paths, each a paste of its own, and skips one on a network share", () => {
+      const { skipped, texts } = formatDroppedPaths(
+          [
+            "C:\\Users\\me\\My Vault\\a.png",
+            "\\\\server\\share\\b.png",
+            "D:\\c d.png",
+            "\\\\wsl.localhost\\Ubuntu\\home\\me\\e.png",
+          ],
+          "wsl",
+        ),
+        linux = [
+          "/mnt/c/Users/me/My Vault/a.png",
+          "/mnt/d/c d.png",
+          "/home/me/e.png",
+        ],
+        pastes = droppedPathPastes(texts, "win32");
+
+      expect(skipped).toBe(1);
+      expect(texts).toEqual([
+        "/mnt/c/Users/me/My\\ Vault/a.png ",
+        "/mnt/d/c\\ d.png ",
+        "/home/me/e.png ",
+      ]);
+      expect(pastes).toEqual(texts);
+      expect(READERS.wsl(pastes.join(""))).toEqual(linux);
+      expect(pastes.flatMap((paste) => claudeCodeReads(paste, "wsl"))).toEqual(
+        linux,
+      );
+    });
+
+    // Known limit. The executable of a profile does not tell which
+    // distribution the terminal runs, so a file of any distribution is
+    // written as one of this distribution.
+    it("takes a file of any distribution for one of the distribution of the terminal", () => {
+      expect(
+        formatDroppedPath("\\\\wsl.localhost\\Debian\\home\\me\\a.png", "wsl"),
+      ).toBe("/home/me/a.png");
     });
   });
 
@@ -1784,7 +2002,7 @@ describe("formatDroppedPath", () => {
      * paths Claude Code cuts whatever is written around them. Windows has
      * none of those: no name there ends in a space or holds a colon.
      */
-    const windowsImages = (grammar: ShellGrammar): readonly string[] =>
+    const windowsImages = (grammar: SamePathGrammar): readonly string[] =>
         fixtureNames(grammar)
           .map((name) => TRICKY_WIN32 + asImage(name))
           .filter((path) => !CLAUDE_CODE_CUT.test(path)),
@@ -1977,6 +2195,11 @@ describe("formatDroppedPaths", () => {
       "posix-quoted",
       ["C:\\Users\\me\\My Vault\\a.png", "C:\\Users\\me\\b.png"],
       ["'C:\\Users\\me\\My Vault\\a.png' ", "'C:\\Users\\me\\b.png' "],
+    ],
+    [
+      "wsl",
+      ["C:\\Users\\me\\My Vault\\a.png", "C:\\Users\\me\\b.png"],
+      ["/mnt/c/Users/me/My\\ Vault/a.png ", "/mnt/c/Users/me/b.png "],
     ],
     [
       "powershell",

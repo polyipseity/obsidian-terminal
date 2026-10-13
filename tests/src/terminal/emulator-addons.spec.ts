@@ -3996,6 +3996,13 @@ describe("DragAndDropAddon", () => {
       "C:\\Users\\me\\Desktop\\shot 1.png",
       "'C:\\Users\\me\\Desktop\\shot 1.png' ",
     ],
+    [
+      "Windows under WSL, as the Linux path",
+      "win32",
+      "C:\\Windows\\System32\\wsl.exe",
+      "C:\\Users\\me\\Desktop\\shot 1.png",
+      "/mnt/c/Users/me/Desktop/shot\\ 1.png ",
+    ],
   ])(
     "pastes a single path as one paste of that path on %s",
     async (_name, platform, executable, path, pasted) => {
@@ -4056,6 +4063,16 @@ describe("DragAndDropAddon", () => {
       [
         "'C:\\Users\\me\\Vault\\Assets\\photo 1.png' ",
         "'C:\\Users\\me\\Vault\\b.png' ",
+      ],
+    ],
+    [
+      "WSL, as Linux paths",
+      "win32",
+      "C:\\Windows\\System32\\wsl.exe",
+      "C:\\Users\\me\\Vault\\",
+      [
+        "/mnt/c/Users/me/Vault/Assets/photo\\ 1.png ",
+        "/mnt/c/Users/me/Vault/b.png ",
       ],
     ],
     [
