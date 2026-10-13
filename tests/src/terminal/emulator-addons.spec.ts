@@ -19,7 +19,12 @@
  *   `dropped-paths.ts`; drags without a usable path, or without one that can
  *   be written for the shell, refused, reported or left untouched
  */
-import type { ILink, ILinkProvider, IDisposable, Terminal } from "@xterm/xterm";
+import {
+  type ILink,
+  type ILinkProvider,
+  type IDisposable,
+  Terminal,
+} from "@xterm/xterm";
 import {
   type Mock,
   afterEach,
@@ -3979,6 +3984,13 @@ describe("DragAndDropAddon", () => {
     ["a letter", "x"],
     ["an arrow key", "\u001b[A"],
     ["a paste of the user", "\u001b[200~text\u001b[201~"],
+    // Keys whose data start as a report of the terminal does.
+    ["Alt and [", "\u001b["],
+    ["Alt and ]", "\u001b]"],
+    ["Alt, Shift and P", "\u001bP"],
+    ["F3", "\u001bOR"],
+    ["a key as the kitty protocol writes it", "\u001b[97;5u"],
+    ["a key as the Windows console writes it", "\u001b[65;30;97;1;0;1_"],
   ])(
     "pastes nothing of a drop when %s reaches the terminal while it waits, and says so",
     async (_name, data) => {
@@ -4040,13 +4052,35 @@ describe("DragAndDropAddon", () => {
     expect(notices()).toEqual([NO_PATHS]);
   });
 
-  // A program that asked for it is told when the terminal gains or loses the
-  // focus, which a click on the terminal sets off, and so does the drop.
+  // The terminal sends its program data of its own as well, by the way of
+  // what is typed. A program that asked for it is told when the terminal
+  // gains or loses the focus, which a click on the terminal sets off, and so
+  // does the drop. A program gets an answer to what it asks the terminal,
+  // which a shell does as it starts and a full-screen program all the time.
+  // And a program that follows the pointer is told where it is and what its
+  // buttons do, which is no typing either. The data are those xterm.js sends.
   it.each<readonly [string, string]>([
-    ["gains", "\u001b[I"],
-    ["loses", "\u001b[O"],
+    ["that it gains the focus", "\u001b[I"],
+    ["that it loses the focus", "\u001b[O"],
+    ["its device attributes", "\u001b[?1;2c"],
+    ["its secondary device attributes", "\u001b[>0;276;0c"],
+    ["its status", "\u001b[0n"],
+    ["the cursor position", "\u001b[1;1R"],
+    ["the cursor position with a question mark", "\u001b[?12;40R"],
+    ["a private mode", "\u001b[?2026;2$y"],
+    ["a mode", "\u001b[4;2$y"],
+    ["the size of its window", "\u001b[4;600;800t"],
+    ["the size of a cell", "\u001b[6;17;8t"],
+    ["its size in cells", "\u001b[8;24;80t"],
+    ["a colour", "\u001b]11;rgb:0000/0000/0000\u001b\\"],
+    ["a colour of the palette", "\u001b]4;1;rgb:cdcd/0000/0000\u001b\\"],
+    ["a setting, as a string", "\u001bP1$r0m\u001b\\"],
+    ["a move of the pointer", "\u001b[<35;10;5M"],
+    ["a button of the pointer going down", "\u001b[<0;10;5M"],
+    ["a button of the pointer going up", "\u001b[<0;10;5m"],
+    ["the wheel of the pointer", "\u001b[<64;10;5M"],
   ])(
-    "does not take the report that the terminal %s the focus for input",
+    "does not take what the terminal reports of %s for input",
     async (_name, report) => {
       const stat = pendingStat();
       dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
@@ -4079,6 +4113,91 @@ describe("DragAndDropAddon", () => {
     expect(next.listeners.size).toBe(1);
     bed.addon.dispose();
     expect(next.listeners.size).toBe(0);
+  });
+
+  // The tests above say what the terminal sends. Here xterm.js sends it: the
+  // answers to a program and the input of the user reach the addon as they
+  // do in the plugin, by the one event xterm.js has for both.
+  describe("on a terminal of xterm.js", () => {
+    const opened: {
+      readonly host: HTMLElement;
+      readonly terminal: Terminal;
+    }[] = [];
+
+    afterEach(() => {
+      for (const { host, terminal } of opened.splice(0)) {
+        terminal.dispose();
+        host.remove();
+      }
+    });
+
+    /**
+     * Opens a terminal of xterm.js that takes the drops of a bed, with a URI
+     * list dropped on it that still waits for the disk.
+     */
+    async function waitingDrop() {
+      const stat = pendingStat();
+      dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+      const bed = createBed(),
+        host = document.body.appendChild(document.createElement("div")),
+        terminal = new Terminal(),
+        sent: string[] = [];
+      opened.push({ host, terminal });
+      terminal.open(host);
+      terminal.onData((data) => {
+        sent.push(data);
+      });
+      bed.addon.activate(terminal);
+      const paste = vi.spyOn(terminal, "paste");
+
+      await drop(bed, uriDrag());
+
+      return {
+        /** Lets the disk answer, with which the drop stops waiting. */
+        answer: async (): Promise<void> => {
+          stat.answer();
+          await tick();
+        },
+        paste,
+        /** What the terminal has sent to its program. */
+        sent,
+        terminal,
+        /** Writes output of the program to the terminal, and waits for it. */
+        write: async (output: string): Promise<void> =>
+          new Promise((resolve) => {
+            terminal.write(output, resolve);
+          }),
+      };
+    }
+
+    it("pastes a drop that waited while the terminal answered its program", async () => {
+      const { answer, paste, sent, write } = await waitingDrop();
+
+      // The program asks for the cursor position, for the device attributes
+      // and for a mode, as a shell does when it draws its prompt.
+      await write("\u001b[6n\u001b[c\u001b[?2026$p");
+      await answer();
+
+      expect(sent).toEqual([
+        "\u001b[1;1R",
+        "\u001b[?1;2c",
+        "\u001b[?2026;2$y",
+        `${DESKTOP}/b.png `,
+      ]);
+      expect(paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+      expect(notices()).toEqual([]);
+    });
+
+    it("pastes nothing of a drop that waited while the user typed", async () => {
+      const { answer, paste, sent, terminal } = await waitingDrop();
+
+      terminal.input("x");
+      await answer();
+
+      expect(sent).toEqual(["x"]);
+      expect(paste).not.toHaveBeenCalled();
+      expect(notices()).toEqual([SKIPPED_PATHS]);
+    });
   });
 
   // === Drops one after another ===

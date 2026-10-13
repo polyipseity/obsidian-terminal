@@ -164,14 +164,23 @@ export class DragAndDropAddon implements ITerminalAddon {
   // disk, in milliseconds.
   static readonly #LOOKUP_DEADLINE = 2000;
 
-  // What the terminal tells a program that asked for it when it gains or
-  // loses the focus. It is data of the terminal like what is typed, but no
-  // input of the user: a click on the terminal sets it off, and so does the
-  // focus a drop gives it.
-  static readonly #FOCUS_REPORTS: ReadonlySet<string> = new Set([
-    "\u001b[I",
-    "\u001b[O",
-  ]);
+  // The character every report of the terminal starts with.
+  static readonly #ESCAPE = "\u001b";
+
+  // What follows it in a report that is a control sequence, each as xterm.js
+  // writes it. `[I` and `[O` tell that the terminal gained or lost the focus,
+  // which a click on the terminal sets off, and so does the focus a drop
+  // gives it. Then the answers to what a program asks: the status of the
+  // terminal, its device attributes, the cursor position or a mode, and its
+  // size. A modified F3 has the bytes of a cursor position, and is taken for
+  // one. Last what the pointer does, for a program that follows it.
+  static readonly #REPORT_SEQUENCE =
+    /^\[(?:[IO]|0n|[?>][\d;]*c|\??\d+;\d+(?:R|\$y)|[468];\d+;\d+t|<\d+;\d+;\d+[Mm])$/u;
+
+  // What follows it in an answer that is a string: a colour, or a setting.
+  // The string has an end, which the key that sends as much as its start
+  // (Alt and `]`) has not.
+  static readonly #REPORT_STRING = /^[\]P]/u;
 
   readonly #disposer = new Functions({ async: false, settled: true });
   // Set by `dispose()`: nothing would remove listeners added after it.
@@ -267,6 +276,27 @@ export class DragAndDropAddon implements ITerminalAddon {
     return typeof path === "string" && path !== "" ? path : null;
   }
 
+  /**
+   * Tells whether data the terminal sends to its program is a report of the
+   * terminal itself. It is data like what is typed, by the one event the
+   * terminal has for both, but nothing the user typed: a shell asks the
+   * terminal as it starts and a full-screen program all the time, and after
+   * a drop the pointer is over the terminal, where each move of it is told
+   * to a program that follows it.
+   */
+  static #isReport(data: string): boolean {
+    const escape = DragAndDropAddon.#ESCAPE;
+    if (!data.startsWith(escape)) {
+      return false;
+    }
+    const report = data.slice(escape.length);
+    return (
+      DragAndDropAddon.#REPORT_SEQUENCE.test(report) ||
+      (DragAndDropAddon.#REPORT_STRING.test(report) &&
+        report.endsWith(`${escape}\\`))
+    );
+  }
+
   public activate(terminal: Terminal): void {
     if (this.#disposed) {
       // Nothing would remove listeners added now.
@@ -287,7 +317,7 @@ export class DragAndDropAddon implements ITerminalAddon {
         this.#drop(terminal, activation, event);
       },
       input = terminal.onData((data) => {
-        if (!this.#pasting && !DragAndDropAddon.#FOCUS_REPORTS.has(data)) {
+        if (!this.#pasting && !DragAndDropAddon.#isReport(data)) {
           ++this.#input;
         }
       });
