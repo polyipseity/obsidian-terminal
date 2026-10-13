@@ -12,7 +12,8 @@
  *   (empty, control characters, no place under WSL), and what a shell and
  *   Claude Code read back from the text, with each known limit pinned
  * - formatDroppedPaths: one text per path, order, duplicates, trailing space,
- *   skipped paths, the cap
+ *   skipped paths, the cap, the bytes the texts may have
+ * - lineByteLimit: the shells whose paste is bounded, per platform
  * - droppedPathPastes: one paste for all the texts off Windows and one per
  *   text on it, and what a shell and Claude Code read back from the one paste
  * - uriListPaths: `file:` URIs and Obsidian resource URLs per platform, the
@@ -28,6 +29,7 @@ import {
   droppedPathPastes,
   formatDroppedPath,
   formatDroppedPaths,
+  lineByteLimit,
   shellGrammar,
   uriListPaths,
   vaultDragPaths,
@@ -2300,6 +2302,112 @@ describe("formatDroppedPaths", () => {
       ).toBe(3);
     });
   });
+
+  describe("with more bytes than the texts may have", () => {
+    it("writes the paths whose texts fit exactly", () => {
+      // Each text is 13 bytes with its space.
+      expect(
+        formatDroppedPaths(["/vault/a.png", "/vault/b.png"], "posix", {
+          maxBytes: 26,
+        }),
+      ).toEqual({ skipped: 0, texts: ["/vault/a.png ", "/vault/b.png "] });
+    });
+
+    it("stops at the first path that does not fit, and skips it and those after it", () => {
+      // The third does not fit 30 bytes; the fourth would, and is not written
+      // either: what is pasted are the first paths of the drop.
+      const paths = ["/vault/a.png", "/vault/b.png", "/vault/c.png", "/d"];
+
+      expect(formatDroppedPaths(paths, "posix", { maxBytes: 30 })).toEqual({
+        skipped: 2,
+        texts: ["/vault/a.png ", "/vault/b.png "],
+      });
+    });
+
+    it("counts the bytes of a text as UTF-8, with its escapes", () => {
+      // `/é\ 😀 ` is 1 + 2 + 2 + 4 + 1 bytes.
+      expect(
+        formatDroppedPaths(["/é 😀"], "posix", { maxBytes: 10 }).texts,
+      ).toEqual(["/é\\ 😀 "]);
+      expect(formatDroppedPaths(["/é 😀"], "posix", { maxBytes: 9 })).toEqual({
+        skipped: 1,
+        texts: [],
+      });
+    });
+
+    it("does not count a duplicate or a path that cannot be written", () => {
+      expect(
+        formatDroppedPaths(
+          ["/vault/a.png", "/vault/a.png", "/a\tb.png", "/vault/b.png"],
+          "posix",
+          { maxBytes: 26 },
+        ),
+      ).toEqual({ skipped: 1, texts: ["/vault/a.png ", "/vault/b.png "] });
+    });
+
+    it.each([null, undefined])("has no limit with %s", (maxBytes) => {
+      const paths = Array.from(
+        { length: MAX_DROPPED_PATHS },
+        (_, index) => `/vault/${String(index)}.png`,
+      );
+
+      expect(formatDroppedPaths(paths, "posix", { maxBytes }).skipped).toBe(0);
+    });
+  });
+});
+
+describe("lineByteLimit", () => {
+  // What the terminal driver keeps of a line, less 256 bytes for what is
+  // typed before the drop: 4096 bytes on Linux, 1024 on macOS.
+  it.each<readonly [string, Platform.All, number]>([
+    ["/bin/dash", "linux", 3840],
+    ["dash", "linux", 3840],
+    // `sh` is dash on Debian and Ubuntu.
+    ["/bin/sh", "linux", 3840],
+    ["sh", "linux", 3840],
+    ["/bin/dash", "darwin", 768],
+    ["/opt/homebrew/bin/dash", "darwin", 768],
+  ])(
+    "bounds a paste into %s on %s, which has no line editor, to %i bytes",
+    (executable, platform, limit) => {
+      expect(lineByteLimit(executable, platform)).toBe(limit);
+    },
+  );
+
+  it.each<readonly [string, Platform.All]>([
+    // bash on macOS, which edits its line itself.
+    ["/bin/sh", "darwin"],
+    ["/bin/bash", "linux"],
+    ["/bin/bash", "darwin"],
+    ["/bin/zsh", "darwin"],
+    ["/usr/bin/zsh", "linux"],
+    ["/usr/bin/fish", "linux"],
+    ["/bin/ksh", "darwin"],
+    ["pwsh", "linux"],
+    // A program that is not known is not bounded.
+    ["", "linux"],
+    ["", "darwin"],
+    ["/usr/bin/cat", "linux"],
+    ["/usr/local/bin/dash-wrapper", "linux"],
+    // Windows has no terminal driver that cuts a line.
+    ["dash.exe", "win32"],
+    ["sh", "win32"],
+    ["/bin/sh", "android"],
+    ["/bin/dash", "unknown"],
+  ])("sets no limit for %j on %s", (executable, platform) => {
+    expect(lineByteLimit(executable, platform)).toBeNull();
+  });
+
+  it.each(INTEGRATED_PRESETS)(
+    "bounds only the dash and Linux sh presets: %s on %s",
+    (key, platform, executable) => {
+      expect(lineByteLimit(executable, platform) !== null).toBe(
+        key === "dashIntegrated" ||
+          (platform === "linux" &&
+            (key === "shIntegrated" || key === "linuxIntegratedDefault")),
+      );
+    },
+  );
 });
 
 /** The platforms where dropped paths are one paste: all but Windows. */

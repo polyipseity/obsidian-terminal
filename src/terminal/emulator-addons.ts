@@ -28,6 +28,7 @@ import {
   droppedPathPastes,
   formatDroppedPath,
   formatDroppedPaths,
+  lineByteLimit,
   shellGrammar,
   uriListPaths,
   vaultDragPaths,
@@ -443,6 +444,7 @@ export class DragAndDropAddon implements ITerminalAddon {
       { texts, skipped } = formatDroppedPaths(
         dropped.paths,
         shellGrammar(this.executable, platform),
+        { maxBytes: lineByteLimit(this.executable, platform) },
       );
     // One paste for all the paths, but one per path on Windows. Several
     // pastes in a burst can stall the shell against the pty proxy for good,

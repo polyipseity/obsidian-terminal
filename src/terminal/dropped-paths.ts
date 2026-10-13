@@ -36,6 +36,15 @@ export interface DroppedPathTexts {
   readonly skipped: number;
 }
 
+/** What bounds the texts of dropped paths, next to the grammar. */
+export interface DroppedPathOptions {
+  /**
+   * The bytes the texts may have in all, as UTF-8 (see {@link lineByteLimit});
+   * no limit if `null` or left out.
+   */
+  readonly maxBytes?: number | null | undefined;
+}
+
 export interface UriListOptions {
   /** Platform whose path syntax the result has. */
   readonly platform: Platform.All;
@@ -84,6 +93,25 @@ const PATH_SEPARATOR = /[\\/]/u,
   ]),
   // The program that starts a Linux shell on Windows, without suffix.
   WSL = "wsl",
+  // Shells without a line editor, by the platforms that have a terminal
+  // driver: they read a line through it, and it keeps a line of limited size.
+  // `sh` is dash on Debian and Ubuntu; on macOS it is bash, which edits its
+  // line itself.
+  LINE_DRIVER_SHELLS: Readonly<
+    Partial<Record<Platform.All, ReadonlySet<string>>>
+  > = {
+    darwin: new Set(["dash"]),
+    linux: new Set(["dash", "sh"]),
+  },
+  // The bytes the terminal driver has for one line. Linux discards what is
+  // more and still takes Enter, which then runs a line that ends in a cut
+  // path; macOS refuses the line.
+  LINE_DRIVER_BYTES: Readonly<Partial<Record<Platform.All, number>>> = {
+    darwin: 1024,
+    linux: 4096,
+  },
+  // The bytes of such a line left for what is typed before the drop.
+  LINE_TYPED_BYTES = 256,
   // Characters a POSIX shell reads literally: everything else in ASCII gets a
   // backslash. Non-ASCII characters are not special to a shell and stay as-is.
   // No shell needs the colon escaped; Claude Code does (see `escapePosix`).
@@ -240,6 +268,16 @@ export function vaultDragPaths(draggable: unknown): readonly string[] {
 }
 
 /**
+ * The name a program is known by: the last segment of its executable, in
+ * lower case and without one suffix of a Windows program or script.
+ */
+function programName(executable: string): string {
+  return (executable.split(PATH_SEPARATOR).at(-1) ?? "")
+    .toLowerCase()
+    .replace(EXECUTABLE_SUFFIX, "");
+}
+
+/**
  * Tells how the shell of a terminal reads a path, from the shell's executable.
  *
  * Windows has no grammar that every shell shares: `cmd.exe` knows double
@@ -263,9 +301,7 @@ export function shellGrammar(
   executable: string,
   platform: Platform.All,
 ): ShellGrammar {
-  const name = (executable.split(PATH_SEPARATOR).at(-1) ?? "")
-    .toLowerCase()
-    .replace(EXECUTABLE_SUFFIX, "");
+  const name = programName(executable);
   if (POWERSHELLS.has(name)) {
     return "powershell";
   }
@@ -276,6 +312,38 @@ export function shellGrammar(
     return "wsl";
   }
   return WIN32_POSIX_SHELLS.has(name) ? "posix-quoted" : "cmd";
+}
+
+/**
+ * Tells how many bytes one paste of dropped paths may have for the shell of
+ * a terminal, from the shell's executable.
+ *
+ * A shell without a line editor (dash, which is also `sh` on Debian and
+ * Ubuntu) reads its line through the terminal driver, and that has room for
+ * one line of 4096 bytes on Linux and of 1024 on macOS. Linux discards the
+ * rest of a longer line without a sign and still takes Enter: the line that
+ * runs then ends in a cut path, which is a valid word, and can be a folder
+ * above the dropped file. So the paste stays under that size, less 256 bytes
+ * for what is typed before the drop.
+ *
+ * A shell that edits its line itself reads a paste of any length, and so may
+ * a program that is not known: neither is bounded. That leaves out a program
+ * started inside such a shell that reads a line through the driver, as `cat`
+ * does.
+ *
+ * @param executable - executable of the profile, as a name or a path.
+ * @param platform - platform the terminal runs on.
+ * @returns the bytes, as UTF-8; `null` for no limit.
+ */
+export function lineByteLimit(
+  executable: string,
+  platform: Platform.All,
+): number | null {
+  const line = LINE_DRIVER_BYTES[platform];
+  return typeof line === "number" &&
+    (LINE_DRIVER_SHELLS[platform]?.has(programName(executable)) ?? false)
+    ? line - LINE_TYPED_BYTES
+    : null;
 }
 
 /**
@@ -484,32 +552,45 @@ export function formatDroppedPath(
  *
  * Duplicates are removed, keeping the first. Paths that cannot be written
  * (see {@link formatDroppedPath}) and distinct paths after the first
- * {@link MAX_DROPPED_PATHS} texts are counted as skipped.
+ * {@link MAX_DROPPED_PATHS} texts are counted as skipped. So is the first
+ * path whose text no longer fits the bytes the texts may have, with every
+ * path after it: what is pasted are the first paths of the drop, each whole.
  *
  * @param paths - absolute paths, in the order to insert them.
  * @param grammar - how the shell in the terminal reads arguments.
+ * @param options - what bounds the texts.
  * @returns the texts to paste, in order, and the number of skipped paths.
  */
 export function formatDroppedPaths(
   paths: readonly string[],
   grammar: ShellGrammar,
+  options: DroppedPathOptions = {},
 ): DroppedPathTexts {
-  const seen = new Set<string>(),
+  const { maxBytes = null } = options,
+    encoder = new TextEncoder(),
+    seen = new Set<string>(),
     texts: string[] = [];
-  let skipped = 0;
+  let bytes = 0,
+    full = false,
+    skipped = 0;
   for (const path of paths) {
     if (seen.has(path)) {
       continue;
     }
     seen.add(path);
-    const text =
-      texts.length < MAX_DROPPED_PATHS
-        ? formatDroppedPath(path, grammar)
-        : null;
-    if (text === null) {
+    const written =
+        full || texts.length >= MAX_DROPPED_PATHS
+          ? null
+          : formatDroppedPath(path, grammar),
+      text = written === null ? null : `${written} `;
+    if (text !== null && maxBytes !== null) {
+      bytes += encoder.encode(text).length;
+      full = bytes > maxBytes;
+    }
+    if (text === null || full) {
       ++skipped;
     } else {
-      texts.push(`${text} `);
+      texts.push(text);
     }
   }
   return { skipped, texts };

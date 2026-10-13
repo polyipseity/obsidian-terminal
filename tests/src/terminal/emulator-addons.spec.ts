@@ -3973,6 +3973,80 @@ describe("DragAndDropAddon", () => {
     },
   );
 
+  describe("with a drop longer than a line of the terminal driver", () => {
+    // Sixteen paths of 249 bytes and one more: 4095 bytes in all. A shell
+    // without a line editor reads its line through the terminal driver, which
+    // on Linux keeps 4095 bytes of it and discards the rest without a sign.
+    // With `rm -r -- ` typed before, the line would end in the slash after
+    // the folder of `note.txt`, and Enter would run it.
+    const names = [
+        ...Array.from(
+          { length: 16 },
+          (_value, index) =>
+            `f${String(index).padStart(2, "0")}-${"a".repeat(240)}`,
+        ),
+        `${"D".repeat(80)}/note.txt`,
+      ],
+      paths = names.map((name) => `/tmp/${name}`),
+      bytes = (text: string): number => new TextEncoder().encode(text).length;
+
+    function longDrop(platform: string, executable: string): Bed {
+      dragAndDropEnvironment.platform = platform;
+      return createBed({
+        draggable: { files: names.map(vaultFile), type: "files" },
+        executable,
+        fullPath: (path) => `/tmp/${path}`,
+      });
+    }
+
+    it.each<readonly [string, string, string, number]>([
+      ["dash as sh on Linux", "linux", "/bin/sh", 4096],
+      ["dash on Linux", "linux", "/usr/bin/dash", 4096],
+      ["dash on macOS", "darwin", "/bin/dash", 1024],
+    ])(
+      "pastes only the first paths that fit the line into %s, each whole, and says that some were left out",
+      async (_name, platform, executable, line) => {
+        const bed = longDrop(platform, executable);
+
+        await drop(bed, vaultDrag());
+
+        expect(bed.paste).toHaveBeenCalledOnce();
+        const pasted = String(bed.paste.mock.calls[0]?.[0]),
+          words = pasted.trimEnd().split(" ");
+        // 256 bytes of the line are left for what is typed before the drop.
+        expect(bytes(pasted)).toBeLessThanOrEqual(line - 256);
+        expect(pasted.endsWith(" ")).toBe(true);
+        expect(words.length).toBeGreaterThan(0);
+        expect(words).toEqual(paths.slice(0, words.length));
+        // The next path would not have fitted.
+        expect(
+          bytes(`${pasted}${String(paths[words.length])} `),
+        ).toBeGreaterThan(line - 256);
+        expect(notices()).toEqual([SKIPPED_PATHS]);
+      },
+    );
+
+    it.each<readonly [string, string, string]>([
+      ["bash on Linux", "linux", "/bin/bash"],
+      ["zsh on macOS", "darwin", "/bin/zsh"],
+      // bash there, which edits its line itself.
+      ["sh on macOS", "darwin", "/bin/sh"],
+      ["an unknown program on Linux", "linux", ""],
+    ])(
+      "pastes every path at once into %s",
+      async (_name, platform, executable) => {
+        const bed = longDrop(platform, executable);
+
+        await drop(bed, vaultDrag());
+
+        expect(bed.paste.mock.calls).toEqual([
+          [paths.map((path) => `${path} `).join("")],
+        ]);
+        expect(notices()).toEqual([]);
+      },
+    );
+  });
+
   // Claude Code tells quoted paths apart only when each is a paste of its own.
   it("pastes several paths as one paste each on Windows", async () => {
     dragAndDropEnvironment.platform = "win32";
