@@ -325,6 +325,7 @@ const Workflow = v.object({
           if: v.optional(v.string()),
           run: v.optional(v.string()),
           uses: v.optional(v.string()),
+          with: v.optional(v.record(v.string(), v.unknown())),
         }),
       ),
     }),
@@ -338,6 +339,14 @@ describe(".github/workflows/release.yml", () => {
     return v.parse(Workflow, parse(await fs.readFile(WORKFLOW, "utf8"))).jobs
       .release.steps;
   }
+
+  it("keeps the checkout's credentials away from the build", async () => {
+    const checkout = (await steps()).find(({ uses }) =>
+      uses?.startsWith("actions/checkout@"),
+    );
+
+    expect(checkout?.with).toMatchObject({ "persist-credentials": false });
+  });
 
   it("checks the release before it builds, attests and drafts", async () => {
     const all = await steps(),

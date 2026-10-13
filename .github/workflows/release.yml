@@ -30,6 +30,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          # The build runs the project's development dependencies. No later step
+          # needs git credentials: the submodule is fetched here and gh reads
+          # GH_TOKEN.
+          persist-credentials: false
           submodules: "recursive"
 
       - name: Check the tag matches manifest.json
