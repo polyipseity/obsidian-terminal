@@ -24,7 +24,9 @@ import { DOMClasses2 } from "../magic.js";
 import type { Settings } from "../settings-data.js";
 import type { $App } from "../@types/obsidian.js";
 import {
+  type DroppedPathOptions,
   type DroppedPaths,
+  type ShellGrammar,
   droppedPathPastes,
   formatDroppedPath,
   formatDroppedPaths,
@@ -32,6 +34,7 @@ import {
   shellGrammar,
   uriListPaths,
   vaultDragPaths,
+  wslDistribution,
 } from "./dropped-paths.js";
 import { Win32InputMode, isWin32ClipboardChord } from "./win32-input-mode.js";
 
@@ -187,13 +190,13 @@ export class DragAndDropAddon implements ITerminalAddon {
   /**
    * @param context - plugin whose vault, language and settings are used.
    * @param element - element of the terminal, which receives the drags.
-   * @param executable - shell the terminal runs, which decides how paths are
-   * quoted; empty if unknown.
+   * @param profile - profile the terminal runs, which decides how paths are
+   * written; `null` if unknown.
    */
   public constructor(
     protected readonly context: PluginContext,
     protected readonly element: HTMLElement,
-    protected readonly executable = "",
+    protected readonly profile: Settings.Profile | null = null,
   ) {}
 
   /**
@@ -477,8 +480,7 @@ export class DragAndDropAddon implements ITerminalAddon {
     const platform = deopaque(Platform.CURRENT),
       { texts, skipped } = formatDroppedPaths(
         dropped.paths,
-        shellGrammar(this.executable, platform),
-        { maxBytes: lineByteLimit(this.executable, platform) },
+        ...this.#writing(platform),
       );
     // One paste for all the paths, but one per path on Windows. One paste is
     // how Claude Code reads several escaped paths, and a shell reads it in
@@ -529,8 +531,33 @@ export class DragAndDropAddon implements ITerminalAddon {
    * files.
    */
   #canInsert(paths: readonly string[]): boolean {
-    const grammar = shellGrammar(this.executable, deopaque(Platform.CURRENT));
-    return paths.some((path) => formatDroppedPath(path, grammar) !== null);
+    const writing = this.#writing(deopaque(Platform.CURRENT));
+    return paths.some((path) => formatDroppedPath(path, ...writing) !== null);
+  }
+
+  /**
+   * Tells how a path is written for what the terminal runs: the grammar its
+   * program reads, and what the profile says beyond that.
+   */
+  #writing(
+    platform: Platform.All,
+  ): readonly [ShellGrammar, DroppedPathOptions] {
+    const { profile } = this;
+    if (profile?.type === "developerConsole") {
+      return ["javascript", {}];
+    }
+    // Only an integrated profile names the program in the terminal.
+    const [executable, args] =
+      profile?.type === "integrated"
+        ? [profile.executable, profile.args]
+        : ["", []];
+    return [
+      shellGrammar(executable, platform),
+      {
+        distribution: wslDistribution(args),
+        maxBytes: lineByteLimit(executable, platform),
+      },
+    ];
   }
 
   #notice(key: "notices.drop-no-paths" | "notices.drop-skipped-paths"): void {

@@ -33,6 +33,7 @@ import {
   shellGrammar,
   uriListPaths,
   vaultDragPaths,
+  wslDistribution,
 } from "../../../src/terminal/dropped-paths.js";
 import { PROFILE_PRESETS } from "../../../src/terminal/profile-presets.js";
 
@@ -42,13 +43,15 @@ const GRAMMARS: readonly ShellGrammar[] = [
   "wsl",
   "powershell",
   "cmd",
+  "javascript",
 ];
 
 /**
- * The grammars that write the path they are given. `wsl` writes another one,
- * the Linux path, so it has tables and tests of its own.
+ * The grammars of shells that write the path they are given. `wsl` writes
+ * another one, the Linux path, and `javascript` is no shell: both have tests
+ * of their own.
  */
-type SamePathGrammar = Exclude<ShellGrammar, "wsl">;
+type SamePathGrammar = Exclude<ShellGrammar, "javascript" | "wsl">;
 
 describe("vaultDragPaths", () => {
   it.each<readonly [string, unknown, readonly string[]]>([
@@ -588,6 +591,46 @@ describe("shellGrammar", () => {
   });
 });
 
+describe("wslDistribution", () => {
+  it.each<readonly [readonly string[], string]>([
+    [["-d", "Ubuntu"], "Ubuntu"],
+    [["--distribution", "Ubuntu-24.04"], "Ubuntu-24.04"],
+    [["--distribution", "Debian", "--", "bash", "-l"], "Debian"],
+    // After the options of `wsl.exe` that take a value of their own.
+    [["--cd", "~", "-d", "Debian"], "Debian"],
+    [["-u", "root", "--distribution", "Debian"], "Debian"],
+    [
+      ["--user", "me", "--shell-type", "login", "-d", "kali-linux"],
+      "kali-linux",
+    ],
+    [["--system", "-d", "Ubuntu"], "Ubuntu"],
+    [["-d", "Ubuntu", "-d", "Debian"], "Ubuntu"],
+  ])("reads the distribution of the arguments %j", (args, distribution) => {
+    expect(wslDistribution(args)).toBe(distribution);
+  });
+
+  it.each<readonly [string, readonly string[]]>([
+    ["no arguments, as the preset has", []],
+    ["other options only", ["--cd", "~"]],
+    ["the option without a name after it", ["-d"]],
+    ["the option with an empty name", ["--distribution", ""]],
+    // What follows belongs to the command that is run, not to `wsl.exe`.
+    ["the option after `--`", ["--", "ls", "-d", "Ubuntu"]],
+    ["the option after `-e`", ["-e", "ls", "-d", "Ubuntu"]],
+    ["the option after `--exec`", ["--exec", "ls", "-d", "Ubuntu"]],
+    ["the option of a command", ["ls", "-d", "Ubuntu"]],
+    [
+      "the option of a command after a value",
+      ["--cd", "/tmp", "ls", "-d", "x"],
+    ],
+    ["the option as the value of another", ["--cd", "-d", "--system"]],
+    // An identifier is not a name that a share has.
+    ["the identifier of a distribution", ["--distribution-id", "{1234}"]],
+  ])("reads no distribution from %s", (_name, args) => {
+    expect(wslDistribution(args)).toBeNull();
+  });
+});
+
 /**
  * The file names of the `Tricky` folder of the test vault, with the text each
  * grammar writes for them. `<dir>` stands for the directory, and `null` for a
@@ -799,9 +842,11 @@ const WRITTEN_CASES: readonly (readonly [ShellGrammar, string])[] =
 /**
  * The paths of {@link WRITTEN_CASES} for one grammar. WSL has those of
  * `posix`: a Linux path is written as it is, and read back as it was dropped.
+ * So has the developer console, which is given any path as a string.
  */
 function writtenPaths(grammar: ShellGrammar): readonly string[] {
-  const fixture = grammar === "wsl" ? "posix" : grammar,
+  const fixture =
+      grammar === "wsl" || grammar === "javascript" ? "posix" : grammar,
     paths = WRITTEN_CASES.filter(([written]) => written === fixture).map(
       ([, path]) => path,
     );
@@ -935,10 +980,21 @@ function cmdArguments(line: string): readonly string[] | null {
   );
 }
 
+/**
+ * The developer console: string literals of JavaScript in double quotes,
+ * which JSON reads as JavaScript does.
+ */
+function javascriptStrings(line: string): readonly string[] | null {
+  return shellArguments(line, /^"(?:[^"\\]|\\.)*"(?= |$)/u, (argument) =>
+    String(JSON.parse(argument)),
+  );
+}
+
 const READERS: Readonly<
   Record<ShellGrammar, (line: string) => readonly string[] | null>
 > = {
   cmd: cmdArguments,
+  javascript: javascriptStrings,
   posix: escapedArguments,
   "posix-quoted": shArguments,
   powershell: powershellArguments,
@@ -1639,13 +1695,138 @@ describe("formatDroppedPath", () => {
       );
     });
 
-    // Known limit. The executable of a profile does not tell which
-    // distribution the terminal runs, so a file of any distribution is
-    // written as one of this distribution.
-    it("takes a file of any distribution for one of the distribution of the terminal", () => {
-      expect(
-        formatDroppedPath("\\\\wsl.localhost\\Debian\\home\\me\\a.png", "wsl"),
-      ).toBe("/home/me/a.png");
+    // Known limit. A profile whose arguments name no distribution runs the
+    // default one, which nothing here tells: a file of any distribution is
+    // then written as one of the distribution of the terminal.
+    it.each([{}, { distribution: null }, { distribution: undefined }])(
+      "takes a file of any distribution for one of the distribution of the terminal with %j",
+      (options) => {
+        expect(
+          formatDroppedPath(
+            "\\\\wsl.localhost\\Debian\\home\\me\\a.png",
+            "wsl",
+            options,
+          ),
+        ).toBe("/home/me/a.png");
+      },
+    );
+
+    describe("in a terminal whose profile names its distribution", () => {
+      const options = { distribution: "Ubuntu" };
+
+      it.each<readonly [string, string, string]>([
+        [
+          "a file of that distribution",
+          "\\\\wsl.localhost\\Ubuntu\\home\\me\\a b.png",
+          "/home/me/a\\ b.png",
+        ],
+        [
+          "one under the older name of the share",
+          "\\\\wsl$\\Ubuntu\\home\\me\\a.png",
+          "/home/me/a.png",
+        ],
+        [
+          // Windows compares the names of distributions without case.
+          "one whose share is written in another case",
+          "//WSL.LOCALHOST/UBUNTU/etc/hosts",
+          "/etc/hosts",
+        ],
+        ["the root of that distribution", "\\\\wsl.localhost\\ubuntu", "/"],
+        // Every distribution mounts the drives.
+        ["a file on a drive", "C:\\Users\\me\\a.png", "/mnt/c/Users/me/a.png"],
+        [
+          "a path that is a Linux one already",
+          "/home/me/a.png",
+          "/home/me/a.png",
+        ],
+      ])("writes %s as its Linux path", (_name, path, text) => {
+        expect(formatDroppedPath(path, "wsl", options)).toBe(text);
+      });
+
+      it.each<readonly [string, string]>([
+        [
+          "a file of another distribution",
+          "\\\\wsl.localhost\\Debian\\home\\me\\a.png",
+        ],
+        [
+          "one under the older name of the share",
+          "\\\\wsl$\\Debian\\home\\me\\a.png",
+        ],
+        [
+          "a distribution whose name only starts like it",
+          "\\\\wsl.localhost\\Ubuntu-24.04\\home\\me\\a.png",
+        ],
+        ["the root of another distribution", "\\\\wsl.localhost\\Debian"],
+      ])(
+        "refuses %s, which is another file in the terminal's",
+        (_name, path) => {
+          expect(formatDroppedPath(path, "wsl", options)).toBeNull();
+        },
+      );
+
+      it("skips the files of another distribution among dropped paths", () => {
+        expect(
+          formatDroppedPaths(
+            [
+              "\\\\wsl.localhost\\Debian\\home\\me\\a.png",
+              "\\\\wsl.localhost\\Ubuntu\\home\\me\\b.png",
+              "C:\\c.png",
+            ],
+            "wsl",
+            options,
+          ),
+        ).toEqual({ skipped: 1, texts: ["/home/me/b.png ", "/mnt/c/c.png "] });
+      });
+
+      it.each<SamePathGrammar>(["posix", "posix-quoted", "powershell", "cmd"])(
+        "does not make %s refuse the share of another distribution",
+        (grammar) => {
+          expect(
+            formatDroppedPath(
+              "\\\\wsl.localhost\\Debian\\home\\me\\a.png",
+              grammar,
+              options,
+            ),
+          ).not.toBeNull();
+        },
+      );
+    });
+  });
+
+  describe("for the developer console", () => {
+    it.each<readonly [string, string, string]>([
+      ["a plain path", "/Users/me/a.md", '"/Users/me/a.md"'],
+      ["a space", "/Users/me/My Note.md", '"/Users/me/My Note.md"'],
+      [
+        "a double quote",
+        '/Users/me/say "hi".md',
+        '"/Users/me/say \\"hi\\".md"',
+      ],
+      [
+        "the backslashes of a Windows path",
+        "C:\\Users\\me\\My Note.md",
+        '"C:\\\\Users\\\\me\\\\My Note.md"',
+      ],
+      [
+        "what a shell or a template would expand",
+        "/Users/me/$HOME `x` ${y} 'z'.md",
+        "\"/Users/me/$HOME `x` ${y} 'z'.md\"",
+      ],
+      [
+        "letters of any script",
+        "/Users/me/日本語 😀.md",
+        '"/Users/me/日本語 😀.md"',
+      ],
+    ])("writes %s as a string of JavaScript", (_name, path, text) => {
+      expect(formatDroppedPath(path, "javascript")).toBe(text);
+      expect(READERS.javascript(text)).toEqual([path]);
+    });
+
+    // What 3.28.0 pasted there: double quotes around a path with a space.
+    it("writes a path with a space as 3.28.0 did", () => {
+      const path = "/Users/me/My Vault/My Note.md";
+
+      expect(formatDroppedPath(path, "javascript")).toBe(`"${path}"`);
     });
   });
 

@@ -1239,11 +1239,7 @@ export class TerminalView extends ItemView {
                   }
                 },
               ),
-              dragAndDrop: new DragAndDropAddon(
-                context,
-                ele,
-                profile.type === "integrated" ? profile.executable : "",
-              ),
+              dragAndDrop: new DragAndDropAddon(context, ele, profile),
               followTheme: new FollowThemeAddon(context, ele, {
                 enabled: (): boolean => {
                   const { profileSourceId } = this.state;

@@ -1431,6 +1431,10 @@ describe("DragAndDropAddon", () => {
     readonly app?: Readonly<Record<string, unknown>>;
     /** Executable of the profile's shell; zsh by default. */
     readonly executable?: string;
+    /** Arguments of the profile's shell; none by default. */
+    readonly args?: readonly string[];
+    /** Profile of the terminal; an integrated one of the two above by default. */
+    readonly profile?: Settings.Profile;
     /** Whether the vault is on the file system. */
     readonly fileSystem?: boolean;
     /** Absolute path of a vault path; under `VAULT` by default. */
@@ -1653,8 +1657,11 @@ describe("DragAndDropAddon", () => {
   function createBed(options: BedOptions = {}) {
     const {
         Addon = DragAndDropAddon,
+        args = [],
         draggable = null,
         executable = "/bin/zsh",
+        // The addon reads no more of an integrated profile than these.
+        profile = { args, executable, type: "integrated" } as Settings.Profile,
         fileSystem = true,
         fullPath = (path: string): string => `${VAULT}/${path}`,
         missing = [],
@@ -1687,7 +1694,7 @@ describe("DragAndDropAddon", () => {
         language: { value: { t: vi.fn((key: string) => key) } },
         settings: { value: { noticeTimeout: NOTICE_TIMEOUT } },
       } as unknown as PluginContext,
-      addon = new Addon(context, element, executable);
+      addon = new Addon(context, element, profile);
 
     for (const type of DRAG_TYPES) {
       view.addEventListener(type, reachedView);
@@ -4381,6 +4388,121 @@ describe("DragAndDropAddon", () => {
     expect(bed.paste.mock.calls).toEqual([
       ['"C:\\Users\\me\\Desktop\\a b.png" '],
     ]);
+  });
+
+  // === What the profile says beyond its shell ===
+
+  describe("in a WSL terminal", () => {
+    const WSL = "C:\\Windows\\System32\\wsl.exe",
+      // The same name in two distributions, as Explorer gives the files.
+      DEBIAN = "\\\\wsl.localhost\\Debian\\home\\me\\a.md",
+      UBUNTU = "\\\\wsl.localhost\\Ubuntu\\home\\me\\a.md",
+      both = nativeDrag([
+        nativeFile("a.md", DEBIAN),
+        nativeFile("a.md", UBUNTU),
+      ]);
+
+    beforeEach(() => {
+      dragAndDropEnvironment.platform = "win32";
+    });
+
+    it.each<readonly [string, readonly string[]]>([
+      ["-d", ["-d", "Ubuntu"]],
+      ["--distribution", ["--cd", "~", "--distribution", "ubuntu"]],
+    ])(
+      "leaves out a file of another distribution than the one %s names, and says so",
+      async (_name, args) => {
+        const bed = createBed({ args, executable: WSL });
+
+        await drop(bed, both);
+
+        // In the Ubuntu of the terminal, `/home/me/a.md` is another file than
+        // the one that was dragged out of Debian.
+        expect(bed.paste.mock.calls).toEqual([["/home/me/a.md "]]);
+        expect(notices()).toEqual([SKIPPED_PATHS]);
+      },
+    );
+
+    it("refuses the drag of a vault that is in another distribution", () => {
+      const bed = createBed({
+        args: ["-d", "Ubuntu"],
+        draggable: fileDraggable("a.md"),
+        executable: WSL,
+        fullPath: (path) => `\\\\wsl.localhost\\Debian\\home\\me\\${path}`,
+      });
+
+      expect(bed.fire("dragover", vaultDrag()).dataTransfer?.dropEffect).toBe(
+        "none",
+      );
+      expect(bed.setAction).toHaveBeenCalledExactlyOnceWith(null);
+    });
+
+    // Known limit. Without the option `wsl.exe` runs the default
+    // distribution, whose name the profile does not tell.
+    it("takes a file of any distribution for one of the terminal's when the profile names none", async () => {
+      const bed = createBed({ executable: WSL });
+
+      await drop(bed, both);
+
+      // Two files, and one path in the distribution of the terminal.
+      expect(bed.paste.mock.calls).toEqual([
+        ["/home/me/a.md "],
+        ["/home/me/a.md "],
+      ]);
+      expect(notices()).toEqual([]);
+    });
+  });
+
+  // The developer console reads JavaScript, where a path is a string.
+  it.each<readonly [string, string, string, string]>([
+    ["macOS", "darwin", `${DESKTOP}/My Note.md`, `"${DESKTOP}/My Note.md" `],
+    [
+      "Windows",
+      "win32",
+      "C:\\Users\\me\\My Note.md",
+      '"C:\\\\Users\\\\me\\\\My Note.md" ',
+    ],
+  ])(
+    "writes a path for the developer console on %s as a string of JavaScript",
+    async (_name, platform, path, pasted) => {
+      dragAndDropEnvironment.platform = platform;
+      const bed = createBed({
+        profile: { type: "developerConsole" } as Settings.Profile,
+      });
+
+      await drop(bed, nativeDrag([nativeFile("My Note.md", path)]));
+
+      expect(bed.paste.mock.calls).toEqual([[pasted]]);
+      expect(notices()).toEqual([]);
+    },
+  );
+
+  it.each<Settings.Profile["type"]>(["", "invalid"])(
+    "writes a path for a profile of type %j, which names no program, as for an unknown one",
+    async (type) => {
+      const bed = createBed({ profile: { type } as Settings.Profile });
+
+      await drop(
+        bed,
+        nativeDrag([nativeFile("b c.png", `${DESKTOP}/b c.png`)]),
+      );
+
+      expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b\\ c.png `]]);
+    },
+  );
+
+  it("writes a path as for an unknown program without a profile", async () => {
+    const bed = createBed(),
+      { paste, terminal } = fakeTerminal(),
+      addon = new DragAndDropAddon(bed.context, bed.element);
+    pastes.push(paste);
+    addons.push(addon);
+    bed.addon.dispose();
+    addon.activate(terminal);
+
+    await drop(bed, nativeDrag([nativeFile("b c.png", `${DESKTOP}/b c.png`)]));
+
+    expect(paste.mock.calls).toEqual([[`${DESKTOP}/b\\ c.png `]]);
   });
 
   // === Notices ===

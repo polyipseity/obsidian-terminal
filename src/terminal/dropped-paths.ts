@@ -17,9 +17,11 @@ import type { Platform } from "@polyipseity/obsidian-plugin-library";
  *   Windows file at its Linux path only.
  * - `powershell`: Windows PowerShell or PowerShell, on any platform.
  * - `cmd`: `cmd.exe`, and any other program on Windows.
+ * - `javascript`: the developer console, which reads no arguments but
+ *   JavaScript, where a path is a string.
  */
 export type ShellGrammar =
-  "posix" | "posix-quoted" | "wsl" | "powershell" | "cmd";
+  "posix" | "posix-quoted" | "wsl" | "powershell" | "cmd" | "javascript";
 
 /** The paths one drop inserts at most; the rest is reported as skipped. */
 export const MAX_DROPPED_PATHS = 1024;
@@ -36,8 +38,14 @@ export interface DroppedPathTexts {
   readonly skipped: number;
 }
 
-/** What bounds the texts of dropped paths, next to the grammar. */
+/** What the profile of a terminal says about dropped paths, next to the grammar. */
 export interface DroppedPathOptions {
+  /**
+   * For `wsl`: the distribution the terminal runs, where the arguments of
+   * its profile name one (see {@link wslDistribution}). A file of another
+   * distribution is then not written. `null` or left out if they name none.
+   */
+  readonly distribution?: string | null | undefined;
   /**
    * The bytes the texts may have in all, as UTF-8 (see {@link lineByteLimit});
    * no limit if `null` or left out.
@@ -164,7 +172,22 @@ const PATH_SEPARATOR = /[\\/]/u,
   // A path into the files of a WSL distribution, as Windows shows them:
   // `\\wsl.localhost\<distribution>`, or `\\wsl$\<distribution>` as it was
   // before, and what follows it.
-  WSL_SHARE_PATH = /^[\\/]{2}(?:wsl\.localhost|wsl\$)[\\/]+[^\\/]+(.*)$/isu,
+  WSL_SHARE_PATH = /^[\\/]{2}(?:wsl\.localhost|wsl\$)[\\/]+([^\\/]+)(.*)$/isu,
+  // The options of `wsl.exe` that name the distribution to run...
+  WSL_DISTRIBUTION_OPTIONS: ReadonlySet<string> = new Set([
+    "-d",
+    "--distribution",
+  ]),
+  // ...its other options that take a value, which is no option itself...
+  WSL_VALUE_OPTIONS: ReadonlySet<string> = new Set([
+    "--cd",
+    "--distribution-id",
+    "--shell-type",
+    "--user",
+    "-u",
+  ]),
+  // ...and those after which the command to run starts.
+  WSL_COMMAND_OPTIONS: ReadonlySet<string> = new Set(["--", "--exec", "-e"]),
   // Two separators at the start: a network share, or a device path.
   WIN32_UNC_PATH = /^[\\/]{2}/u;
 
@@ -347,6 +370,34 @@ export function lineByteLimit(
 }
 
 /**
+ * Tells which distribution `wsl.exe` runs, from its arguments: the name after
+ * `-d` or `--distribution`, among the options that come before the command.
+ *
+ * Without that option `wsl.exe` runs the default distribution, whose name
+ * only `wsl.exe` itself could tell.
+ *
+ * @param args - arguments of the profile, one string for each.
+ * @returns the name as it is written there; `null` if they name none.
+ */
+export function wslDistribution(args: readonly string[]): string | null {
+  for (let index = 0; index < args.length; ++index) {
+    const arg = args[index] ?? "";
+    if (WSL_DISTRIBUTION_OPTIONS.has(arg)) {
+      const name = args[index + 1];
+      return typeof name === "string" && name !== "" ? name : null;
+    }
+    if (WSL_VALUE_OPTIONS.has(arg)) {
+      // Its value is not looked at: it may read like an option.
+      ++index;
+    } else if (WSL_COMMAND_OPTIONS.has(arg) || !arg.startsWith("-")) {
+      // What follows are the command and its own options.
+      break;
+    }
+  }
+  return null;
+}
+
+/**
  * A file name must never send Enter, Escape or another control input to the
  * program in the terminal: a pasted newline arrives as a carriage return,
  * which runs the line when the program has no bracketed paste.
@@ -413,17 +464,27 @@ function escapePosix(path: string): string {
  *
  * Three limits. `/mnt` is where the drives are unless `/etc/wsl.conf` of the
  * distribution names another place. A drive that WSL has not mounted, as a
- * removable or a network drive may be, has no file at its path. And a path
- * into a distribution is taken for one into the distribution of the
- * terminal, which the executable of the profile does not tell.
+ * removable or a network drive may be, has no file at its path. And where
+ * the profile does not name its distribution, a path into any distribution
+ * is taken for one into the distribution of the terminal.
  *
  * @param path - absolute path, as Windows writes it.
+ * @param distribution - distribution of the terminal; `null` if not known.
  * @returns the Linux path; a path that is one already as it is; `null` for a
- * path with no place under WSL, such as one on a network share.
+ * path with no place under WSL, such as one on a network share, and for one
+ * into another distribution than the terminal's, where another file of that
+ * name may be.
  */
-function wslPath(path: string): string | null {
-  const [, underDistribution] = WSL_SHARE_PATH.exec(path) ?? [];
-  if (typeof underDistribution === "string") {
+function wslPath(path: string, distribution: string | null): string | null {
+  const [, shared, underDistribution] = WSL_SHARE_PATH.exec(path) ?? [];
+  if (typeof shared === "string" && typeof underDistribution === "string") {
+    // Windows compares the names of distributions without case.
+    if (
+      distribution !== null &&
+      shared.toLowerCase() !== distribution.toLowerCase()
+    ) {
+      return null;
+    }
     const linux = underDistribution.replace(BACKSLASH, "/");
     // The distribution alone is its root.
     return linux === "" ? "/" : linux;
@@ -440,8 +501,8 @@ function wslPath(path: string): string | null {
  * (see {@link wslPath}), escaped as for any shell on Linux. Claude Code
  * there is the Linux program, and reads the path as it does on Linux.
  */
-function escapeWsl(path: string): string | null {
-  const linux = wslPath(path);
+function escapeWsl(path: string, distribution: string | null): string | null {
+  const linux = wslPath(path, distribution);
   return linux === null ? null : escapePosix(linux);
 }
 
@@ -518,6 +579,7 @@ function quoteCmd(path: string): string | null {
  *
  * @param path - absolute path.
  * @param grammar - how the shell in the terminal reads arguments.
+ * @param options - what the profile of the terminal says beyond that.
  * @returns the argument, without a space after it; `null` for an empty path,
  * a path with a control character (C0, DEL or C1), and a path the shell has
  * no way to write.
@@ -525,6 +587,7 @@ function quoteCmd(path: string): string | null {
 export function formatDroppedPath(
   path: string,
   grammar: ShellGrammar,
+  options: DroppedPathOptions = {},
 ): string | null {
   if (path === "" || hasControlCharacter(path)) {
     return null;
@@ -535,11 +598,14 @@ export function formatDroppedPath(
     case "posix-quoted":
       return quoteSh(path);
     case "wsl":
-      return escapeWsl(path);
+      return escapeWsl(path, options.distribution ?? null);
     case "powershell":
       return quotePowerShell(path);
     case "cmd":
       return quoteCmd(path);
+    case "javascript":
+      // A string literal of JavaScript, as JSON writes one.
+      return JSON.stringify(path);
   }
 }
 
@@ -581,7 +647,7 @@ export function formatDroppedPaths(
     const written =
         full || texts.length >= MAX_DROPPED_PATHS
           ? null
-          : formatDroppedPath(path, grammar),
+          : formatDroppedPath(path, grammar, options),
       text = written === null ? null : `${written} `;
     if (text !== null && maxBytes !== null) {
       bytes += encoder.encode(text).length;

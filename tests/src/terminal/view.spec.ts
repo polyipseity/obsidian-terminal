@@ -612,6 +612,123 @@ describe("src/terminal/view.ts", () => {
     });
   });
 
+  describe("paths dropped on the terminal", () => {
+    class TestView extends TerminalView {
+      public start(profile: Settings.Profile): void {
+        this.state = { ...this.state, profile };
+        this.startEmulator(false);
+      }
+    }
+    const integrated = Settings.Profile.DEFAULTS.integrated;
+
+    afterEach(() => {
+      platform.windows = false;
+    });
+
+    /**
+     * Starts a view of a profile on Windows, drops one file from the system
+     * on the element of its terminal, and returns what its drag and drop
+     * addon pastes: the addon the view made, of the real class.
+     */
+    async function pastesOfDrop(
+      profile: Settings.Profile,
+      path: string,
+    ): Promise<readonly (readonly unknown[])[]> {
+      platform.windows = true;
+      vi.spyOn(console, "debug").mockImplementation(vi.fn());
+      vi.spyOn(library, "awaitCSS").mockImplementation(async (element) => {
+        Object.assign(element, { onWindowMigrated: vi.fn() });
+      });
+      vi.spyOn(library, "notice2").mockImplementation(vi.fn());
+      vi.spyOn(library, "onResize").mockImplementation(vi.fn());
+      vi.spyOn(library, "updateView").mockImplementation(vi.fn());
+      vi.spyOn(TerminalView, "EMULATOR").mockImplementation(
+        function (_element, _factory, _state, _options, addons) {
+          // Only what the view reads of its emulator; the addons are its own.
+          return {
+            addons,
+            close: vi.fn().mockResolvedValue(undefined),
+            pseudoterminal: Promise.resolve({
+              ...pseudoterminal(),
+              onExit: new Promise<never>(() => {}),
+            }),
+            resize: vi.fn().mockResolvedValue(undefined),
+            terminal: {
+              unicode: {},
+              onWriteParsed: vi.fn(),
+              onResize: vi.fn(),
+              onTitleChange: vi.fn(),
+            },
+          } as unknown as TerminalView.EMULATOR;
+        },
+      );
+      const context = {
+          app: new App(),
+          language: { value: { t: vi.fn((key: string) => key) } },
+          settings: { value: Settings.DEFAULT, onMutate: vi.fn() },
+        } as unknown as ConstructorParameters<typeof TerminalView>[0],
+        paste = vi.fn();
+      new TestView(context, new WorkspaceLeaf()).start(profile);
+      await vi.waitFor(() => {
+        expect(TerminalView.EMULATOR).toHaveBeenCalledOnce();
+      });
+      const [element, , , , addons] =
+        vi.mocked(TerminalView.EMULATOR).mock.calls[0] ?? [];
+      if (!element || !addons) throw new Error("Missing emulator arguments");
+      // The terminal as the addon uses it: the emulator is not the real one.
+      addons.dragAndDrop.activate({
+        focus: vi.fn(),
+        onData: vi.fn(() => ({ dispose: vi.fn() })),
+        paste,
+      } as unknown as Terminal);
+
+      const drop = new Event("drop", { bubbles: true, cancelable: true });
+      Object.defineProperty(drop, "dataTransfer", {
+        value: { files: [{ name: "file", path }], types: ["Files"] },
+      });
+      element.dispatchEvent(drop);
+      await tick();
+      return paste.mock.calls;
+    }
+
+    it.each<readonly [string, Settings.Profile, string, readonly string[]]>([
+      [
+        "the shell of an integrated profile",
+        { ...integrated, executable: "powershell.exe" },
+        "C:\\Users\\me\\a b.png",
+        ["'C:\\Users\\me\\a b.png' "],
+      ],
+      [
+        "the Linux path of a WSL profile",
+        { ...integrated, args: ["-d", "Debian"], executable: "wsl.exe" },
+        "\\\\wsl.localhost\\Debian\\home\\me\\a.md",
+        ["/home/me/a.md "],
+      ],
+      [
+        "the distribution that the arguments of a WSL profile name",
+        { ...integrated, args: ["-d", "Ubuntu"], executable: "wsl.exe" },
+        "\\\\wsl.localhost\\Debian\\home\\me\\a.md",
+        [],
+      ],
+      [
+        "the developer console",
+        Settings.Profile.DEFAULTS.developerConsole,
+        "C:\\Users\\me\\a b.png",
+        ['"C:\\\\Users\\\\me\\\\a b.png" '],
+      ],
+      [
+        "a profile that names no program",
+        Settings.Profile.DEFAULTS[""],
+        "C:\\Users\\me\\a b.png",
+        ['"C:\\Users\\me\\a b.png" '],
+      ],
+    ])("are written for %s", async (_name, profile, path, pastes) => {
+      expect(await pastesOfDrop(profile, path)).toEqual(
+        pastes.map((paste) => [paste]),
+      );
+    });
+  });
+
   describe("fittedSize", () => {
     const terminal = { cols: 80, rows: 24 };
 
