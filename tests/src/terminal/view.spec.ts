@@ -894,6 +894,160 @@ describe("src/terminal/view.ts", () => {
   });
 });
 
+describe("TerminalView focus", () => {
+  // Only the emulator surface that `focus` and the emulator setter touch.
+  function makeEmulator(focus = vi.fn()) {
+    const emulator = {
+      close: vi.fn().mockResolvedValue(undefined),
+      terminal: { focus },
+    };
+    return { emulator: emulator as unknown as TerminalView.EMULATOR, focus };
+  }
+
+  function makeBed() {
+    const { context, workspace, reveal } = makeTerminalContext();
+    const { leaf, view } = makeTerminalLeaf(context);
+    const { emulator, focus } = makeEmulator();
+    view["emulator"] = emulator;
+    return { workspace, reveal, leaf, view, focusTerminal: focus };
+  }
+
+  it("asks for the reveal and focuses the terminal without waiting for it", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { reveal, leaf, view, focusTerminal } = makeBed();
+    const revealed = deferred();
+    reveal.mockReturnValue(revealed.promise);
+
+    view["focus"]();
+    // The reveal is still pending and the terminal already has focus.
+    expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
+    expect(focusTerminal).toHaveBeenCalledOnce();
+    expect(reveal).toHaveBeenCalledBefore(focusTerminal);
+
+    revealed.resolve(undefined);
+    await tick();
+    expect(focusTerminal).toHaveBeenCalledOnce();
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it("supports a void-returning revealLeaf", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { workspace, leaf, view, focusTerminal } = makeBed();
+    // Obsidian before 1.7.2 returned void from revealLeaf.
+    const reveal = vi.fn<() => void>();
+    Object.assign(workspace, { revealLeaf: reveal });
+
+    expect(() => {
+      view["focus"]();
+    }).not.toThrow();
+
+    expect(focusTerminal).toHaveBeenCalledOnce();
+    expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
+    await tick();
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it("logs to console.error and still focuses the terminal when revealLeaf rejects", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { reveal, view, focusTerminal } = makeBed();
+    const failure = new Error("reveal failed");
+    reveal.mockRejectedValueOnce(failure);
+
+    view["focus"]();
+
+    expect(focusTerminal).toHaveBeenCalledOnce();
+    await tick();
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(failure);
+  });
+
+  it("logs to console.error and still focuses the terminal when revealLeaf throws", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { reveal, view, focusTerminal } = makeBed();
+    const failure = new Error("reveal failed");
+    reveal.mockImplementationOnce(() => {
+      throw failure;
+    });
+
+    expect(() => {
+      view["focus"]();
+    }).not.toThrow();
+
+    expect(focusTerminal).toHaveBeenCalledOnce();
+    await tick();
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(failure);
+  });
+
+  it("stays quiet when the view unloads before the reveal settles", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { reveal, view, focusTerminal } = makeBed();
+    // `onOpen` registers the cleanup that drops the emulator on unload.
+    await view["onOpen"]();
+    const revealed = deferred();
+    reveal.mockReturnValue(revealed.promise);
+
+    view["focus"]();
+    view.unload();
+    expect(view["emulator"]).toBeNull();
+    revealed.resolve(undefined);
+    await tick();
+
+    expect(focusTerminal).toHaveBeenCalledOnce();
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  describe("through the commands", () => {
+    afterEach(() => {
+      document.body.replaceChildren();
+    });
+
+    it.each(["focus-on-last-terminal", "toggle-focus-on-last-terminal"])(
+      "has the terminal focused when %s returns",
+      async (id) => {
+        const { context, reveal } = makeTerminalContext();
+        const addCommand = vi.fn<TerminalPlugin["addCommand"]>(
+          (command) => command,
+        );
+        Object.assign(context, {
+          addCommand,
+          register: vi.fn(),
+          registerEvent: vi.fn(),
+          registerView: vi.fn(),
+        });
+        vi.spyOn(library, "newHotkeyListener").mockReturnValue(vi.fn());
+        vi.spyOn(TerminalView["focusedScope"], "register").mockImplementation(
+          vi.fn(),
+        );
+        TerminalView.load(context);
+        const { leaf, view } = makeTerminalLeaf(context);
+        // `onOpen` makes the view the last focused terminal.
+        await view["onOpen"]();
+        // A note holds the keyboard; the terminal's textarea can take it.
+        const note = document.createElement("textarea");
+        const textarea = document.createElement("textarea");
+        view.contentEl.append(textarea);
+        document.body.append(note, view.contentEl);
+        note.focus();
+        view["emulator"] = makeEmulator(
+          vi.fn(() => {
+            textarea.focus();
+          }),
+        ).emulator;
+        // The reveal is still pending when the command returns.
+        reveal.mockReturnValue(deferred().promise);
+        const command = addCommand.mock.calls
+          .map(([registered]) => registered)
+          .find((registered) => registered.id === id);
+
+        expect(command?.checkCallback?.(true)).toBe(true);
+        command?.checkCallback?.(false);
+
+        expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
+        expect(view["isFocused"]).toBe(true);
+      },
+    );
+  });
+});
+
 describe("TerminalView.spawn", () => {
   describe.each([true, false])("with focus=%s", (focus) => {
     it.each(Settings.NEW_INSTANCE_BEHAVIORS)(
@@ -1743,159 +1897,5 @@ describe("TerminalView file link leaf", () => {
 
     expect(terminal.view["fileLinkLeaf"]()).toBe(next);
     expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
-  });
-});
-
-describe("TerminalView focus", () => {
-  // Only the emulator surface that `focus` and the emulator setter touch.
-  function makeEmulator(focus = vi.fn()) {
-    const emulator = {
-      close: vi.fn().mockResolvedValue(undefined),
-      terminal: { focus },
-    };
-    return { emulator: emulator as unknown as TerminalView.EMULATOR, focus };
-  }
-
-  function makeBed() {
-    const { context, workspace, reveal } = makeTerminalContext();
-    const { leaf, view } = makeTerminalLeaf(context);
-    const { emulator, focus } = makeEmulator();
-    view["emulator"] = emulator;
-    return { workspace, reveal, leaf, view, focusTerminal: focus };
-  }
-
-  it("asks for the reveal and focuses the terminal without waiting for it", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
-    const { reveal, leaf, view, focusTerminal } = makeBed();
-    const revealed = deferred();
-    reveal.mockReturnValue(revealed.promise);
-
-    view["focus"]();
-    // The reveal is still pending and the terminal already has focus.
-    expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
-    expect(focusTerminal).toHaveBeenCalledOnce();
-    expect(reveal).toHaveBeenCalledBefore(focusTerminal);
-
-    revealed.resolve(undefined);
-    await tick();
-    expect(focusTerminal).toHaveBeenCalledOnce();
-    expect(consoleError).not.toHaveBeenCalled();
-  });
-
-  it("supports a void-returning revealLeaf", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
-    const { workspace, leaf, view, focusTerminal } = makeBed();
-    // Obsidian before 1.7.2 returned void from revealLeaf.
-    const reveal = vi.fn<() => void>();
-    Object.assign(workspace, { revealLeaf: reveal });
-
-    expect(() => {
-      view["focus"]();
-    }).not.toThrow();
-
-    expect(focusTerminal).toHaveBeenCalledOnce();
-    expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
-    await tick();
-    expect(consoleError).not.toHaveBeenCalled();
-  });
-
-  it("logs to console.error and still focuses the terminal when revealLeaf rejects", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
-    const { reveal, view, focusTerminal } = makeBed();
-    const failure = new Error("reveal failed");
-    reveal.mockRejectedValueOnce(failure);
-
-    view["focus"]();
-
-    expect(focusTerminal).toHaveBeenCalledOnce();
-    await tick();
-    expect(consoleError).toHaveBeenCalledExactlyOnceWith(failure);
-  });
-
-  it("logs to console.error and still focuses the terminal when revealLeaf throws", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
-    const { reveal, view, focusTerminal } = makeBed();
-    const failure = new Error("reveal failed");
-    reveal.mockImplementationOnce(() => {
-      throw failure;
-    });
-
-    expect(() => {
-      view["focus"]();
-    }).not.toThrow();
-
-    expect(focusTerminal).toHaveBeenCalledOnce();
-    await tick();
-    expect(consoleError).toHaveBeenCalledExactlyOnceWith(failure);
-  });
-
-  it("stays quiet when the view unloads before the reveal settles", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
-    const { reveal, view, focusTerminal } = makeBed();
-    // `onOpen` registers the cleanup that drops the emulator on unload.
-    await view["onOpen"]();
-    const revealed = deferred();
-    reveal.mockReturnValue(revealed.promise);
-
-    view["focus"]();
-    view.unload();
-    expect(view["emulator"]).toBeNull();
-    revealed.resolve(undefined);
-    await tick();
-
-    expect(focusTerminal).toHaveBeenCalledOnce();
-    expect(consoleError).not.toHaveBeenCalled();
-  });
-
-  describe("through the commands", () => {
-    afterEach(() => {
-      document.body.replaceChildren();
-    });
-
-    it.each(["focus-on-last-terminal", "toggle-focus-on-last-terminal"])(
-      "has the terminal focused when %s returns",
-      async (id) => {
-        const { context, reveal } = makeTerminalContext();
-        const addCommand = vi.fn<TerminalPlugin["addCommand"]>(
-          (command) => command,
-        );
-        Object.assign(context, {
-          addCommand,
-          register: vi.fn(),
-          registerEvent: vi.fn(),
-          registerView: vi.fn(),
-        });
-        vi.spyOn(library, "newHotkeyListener").mockReturnValue(vi.fn());
-        vi.spyOn(TerminalView["focusedScope"], "register").mockImplementation(
-          vi.fn(),
-        );
-        TerminalView.load(context);
-        const { leaf, view } = makeTerminalLeaf(context);
-        // `onOpen` makes the view the last focused terminal.
-        await view["onOpen"]();
-        // A note holds the keyboard; the terminal's textarea can take it.
-        const note = document.createElement("textarea");
-        const textarea = document.createElement("textarea");
-        view.contentEl.append(textarea);
-        document.body.append(note, view.contentEl);
-        note.focus();
-        view["emulator"] = makeEmulator(
-          vi.fn(() => {
-            textarea.focus();
-          }),
-        ).emulator;
-        // The reveal is still pending when the command returns.
-        reveal.mockReturnValue(deferred().promise);
-        const command = addCommand.mock.calls
-          .map(([registered]) => registered)
-          .find((registered) => registered.id === id);
-
-        expect(command?.checkCallback?.(true)).toBe(true);
-        command?.checkCallback?.(false);
-
-        expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
-        expect(view["isFocused"]).toBe(true);
-      },
-    );
   });
 });
