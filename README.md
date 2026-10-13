@@ -156,6 +156,8 @@ Features that are not finished are listed under `Experimental`, the last section
 - An experimental feature may change or be removed in a later version. When one becomes a regular feature, its toggle leaves the section and the changelog says so.
 - The choice is stored with the other plugin settings, so it follows the vault to every device that syncs them.
 
+`Program status on tabs` is such a feature. With it on, every terminal tab gets a prompt icon, in one of two styles and at a size you choose, and the icon shows what the program in the terminal reports about itself: working, done, needs input or failed. A finished program stays marked until you look at its terminal. Programs report with the escape sequence OSC 7501, and a program that does not send it shows no status. Inside tmux or screen, a report reaches the terminal only when passthrough is set up there. A program that was already running when you turn the feature on may report only after you restart it.
+
 ### Miscellaneous
 
 This plugin patches `require` so that `require("obsidian")` and other Obsidian modules work in the developer console. It is toggleable as `Expose internal modules` in settings.
