@@ -628,11 +628,18 @@ describe("src/terminal/view.ts", () => {
     /**
      * Starts a view of a profile on Windows, drops one file from the system
      * on the element of its terminal, and returns what its drag and drop
-     * addon pastes: the addon the view made, of the real class.
+     * addon pastes, then and later: the addon the view made, of the real
+     * class.
+     *
+     * @param program - the pseudoterminal of the emulator; there by default.
      */
     async function pastesOfDrop(
       profile: Settings.Profile,
       path: string,
+      program: Promise<Pseudoterminal> = Promise.resolve({
+        ...pseudoterminal(),
+        onExit: new Promise<never>(() => {}),
+      }),
     ): Promise<readonly (readonly unknown[])[]> {
       platform.windows = true;
       vi.spyOn(console, "debug").mockImplementation(vi.fn());
@@ -648,10 +655,7 @@ describe("src/terminal/view.ts", () => {
           return {
             addons,
             close: vi.fn().mockResolvedValue(undefined),
-            pseudoterminal: Promise.resolve({
-              ...pseudoterminal(),
-              onExit: new Promise<never>(() => {}),
-            }),
+            pseudoterminal: program,
             resize: vi.fn().mockResolvedValue(undefined),
             terminal: {
               unicode: {},
@@ -726,6 +730,26 @@ describe("src/terminal/view.ts", () => {
       expect(await pastesOfDrop(profile, path)).toEqual(
         pastes.map((paste) => [paste]),
       );
+    });
+
+    // Until then nothing reads what the terminal is given.
+    it("are pasted once the emulator has its pseudoterminal, not before", async () => {
+      const program = Promise.withResolvers<Pseudoterminal>(),
+        pastes = await pastesOfDrop(
+          { ...integrated, executable: "powershell.exe" },
+          "C:\\Users\\me\\a.png",
+          program.promise,
+        );
+
+      expect(pastes).toEqual([]);
+
+      program.resolve({
+        ...pseudoterminal(),
+        onExit: new Promise<never>(() => {}),
+      });
+      await tick();
+
+      expect(pastes).toEqual([["C:\\Users\\me\\a.png "]]);
     });
   });
 

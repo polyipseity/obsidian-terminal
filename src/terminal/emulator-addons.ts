@@ -192,11 +192,17 @@ export class DragAndDropAddon implements ITerminalAddon {
    * @param element - element of the terminal, which receives the drags.
    * @param profile - profile the terminal runs, which decides how paths are
    * written; `null` if unknown.
+   * @param attached - gives a promise that is fulfilled once the terminal has
+   * its program, which what is pasted then reaches, and rejected if it gets
+   * none. It is asked at a drop, never before. Left out, the terminal is
+   * taken to have its program from the start.
    */
   public constructor(
     protected readonly context: PluginContext,
     protected readonly element: HTMLElement,
     protected readonly profile: Settings.Profile | null = null,
+    protected readonly attached: () => PromiseLike<unknown> = async () =>
+      Promise.resolve(),
   ) {}
 
   /**
@@ -283,8 +289,9 @@ export class DragAndDropAddon implements ITerminalAddon {
           ++this.#input;
         }
       });
-    // The listeners are added in `activate` itself, not after the import of
-    // Electron as before, when a drop that came during the import was lost.
+    // The listeners are added in `activate` itself, with nothing awaited
+    // before them: the terminal takes drags from the moment it shows. A drop
+    // that comes before its program does is held (see `#hasProgram`).
     this.#disposer.push(
       () => {
         input.dispose();
@@ -451,10 +458,34 @@ export class DragAndDropAddon implements ITerminalAddon {
    * drop would paste ahead of an earlier URI list still looked up on disk.
    */
   #afterEarlierDrops(rest: () => AsyncOrSync<void>): void {
-    this.#drops = this.#drops.then(rest).catch((error: unknown) => {
-      // Logged here, so that a drop that fails does not stop the next ones.
-      activeSelf(this.element).console.error(error);
-    });
+    this.#drops = this.#drops
+      .then(async () => {
+        if (await this.#hasProgram()) {
+          await rest();
+        }
+      })
+      .catch((error: unknown) => {
+        // Logged here, so that a drop that fails does not stop the next ones.
+        activeSelf(this.element).console.error(error);
+      });
+  }
+
+  /**
+   * Waits until the terminal has its program. The terminal shows before its
+   * program has started, with the history it had, and what is pasted in
+   * between reaches no program: the terminal keeps none of it.
+   *
+   * @returns whether it has one. `false` when it got none: the drop is then
+   * discarded without a word, as the view has said that the program did not
+   * start, or the terminal was closed.
+   */
+  async #hasProgram(): Promise<boolean> {
+    try {
+      await this.attached();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**

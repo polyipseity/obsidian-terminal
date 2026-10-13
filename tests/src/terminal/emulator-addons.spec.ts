@@ -1445,6 +1445,8 @@ describe("DragAndDropAddon", () => {
     readonly Addon?: typeof DragAndDropAddon;
     /** The document of the terminal's window; that of the main window by default. */
     readonly document?: Document;
+    /** Tells when the terminal has its program; it has it at once by default. */
+    readonly attached?: () => PromiseLike<unknown>;
   }
 
   interface DragInit {
@@ -1694,7 +1696,7 @@ describe("DragAndDropAddon", () => {
         language: { value: { t: vi.fn((key: string) => key) } },
         settings: { value: { noticeTimeout: NOTICE_TIMEOUT } },
       } as unknown as PluginContext,
-      addon = new Addon(context, element, profile);
+      addon = new Addon(context, element, profile, options.attached);
 
     for (const type of DRAG_TYPES) {
       view.addEventListener(type, reachedView);
@@ -1853,6 +1855,133 @@ describe("DragAndDropAddon", () => {
     await drop(bed, nativeDrag());
 
     expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+  });
+
+  // === A drop before the terminal has its program ===
+
+  // The terminal takes drags from the moment it shows, with its restored
+  // history, and its program starts after that. What is pasted in between
+  // reaches no program, and the terminal keeps none of it.
+  describe("before the terminal has its program", () => {
+    /** The program of a terminal, which starts or fails when the test says. */
+    function pendingProgram() {
+      let start: () => void = noop,
+        fail: () => void = noop;
+      const program = new Promise<void>((resolve, reject) => {
+        start = resolve;
+        fail = (): void => {
+          reject(new Error("the program did not start"));
+        };
+      });
+      return { attached: vi.fn(async () => program), fail, start };
+    }
+
+    it.each(TAKEN_DRAGS)(
+      "holds %s until the terminal has it",
+      async (_name, options, init) => {
+        onDisk({ [`${DESKTOP}/b.png`]: "file" });
+        const program = pendingProgram(),
+          bed = createBed({ ...options, attached: program.attached });
+
+        await drop(bed, init);
+
+        expect(bed.paste).not.toHaveBeenCalled();
+        expect(bed.focus).not.toHaveBeenCalled();
+        expect(notices()).toEqual([]);
+
+        program.start();
+        await tick();
+
+        expect(bed.paste).toHaveBeenCalledOnce();
+        expect(bed.focus).toHaveBeenCalledOnce();
+        expect(notices()).toEqual([]);
+      },
+    );
+
+    it("pastes the drops it held in the order they came", async () => {
+      const program = pendingProgram(),
+        bed = createBed({ attached: program.attached });
+
+      await drop(bed, nativeDrag([nativeFile("a.png", `${DESKTOP}/a.png`)]));
+      await drop(bed, nativeDrag([nativeFile("b.png", `${DESKTOP}/b.png`)]));
+      program.start();
+      await tick();
+
+      expect(bed.paste.mock.calls).toEqual([
+        [`${DESKTOP}/a.png `],
+        [`${DESKTOP}/b.png `],
+      ]);
+    });
+
+    // The view says that the program did not start: that is none of the
+    // drop's, which has nothing to add to it.
+    it("discards a drop when the program did not start", async () => {
+      const program = pendingProgram(),
+        error = vi.spyOn(console, "error").mockImplementation(noop),
+        bed = createBed({ attached: program.attached });
+
+      await drop(bed, nativeDrag());
+      program.fail();
+      await tick();
+
+      expect(bed.paste).not.toHaveBeenCalled();
+      expect(bed.focus).not.toHaveBeenCalled();
+      expect(notices()).toEqual([]);
+      expect(error).not.toHaveBeenCalled();
+    });
+
+    it("takes the next drop once a terminal has its program after all", async () => {
+      const attached = vi
+          .fn<() => Promise<void>>()
+          .mockRejectedValueOnce(new Error("the program did not start"))
+          .mockResolvedValue(),
+        bed = createBed({ attached });
+
+      await drop(bed, nativeDrag([nativeFile("a.png", `${DESKTOP}/a.png`)]));
+      await drop(bed, nativeDrag([nativeFile("b.png", `${DESKTOP}/b.png`)]));
+
+      expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    });
+
+    // What is typed before the program is there reaches nothing either, but
+    // it shows that the user has gone on: the drop is not pasted behind it.
+    it("does not paste a drop it held after the user typed", async () => {
+      const program = pendingProgram(),
+        bed = createBed({ attached: program.attached });
+
+      await drop(bed, nativeDrag());
+      bed.input("l");
+      program.start();
+      await tick();
+
+      expect(bed.paste).not.toHaveBeenCalled();
+      expect(notices()).toEqual([SKIPPED_PATHS]);
+    });
+
+    it("pastes nothing when it is disposed before the terminal has its program", async () => {
+      const program = pendingProgram(),
+        bed = createBed({ attached: program.attached });
+
+      await drop(bed, nativeDrag());
+      bed.addon.dispose();
+      program.start();
+      await tick();
+
+      expect(bed.paste).not.toHaveBeenCalled();
+      expect(notices()).toEqual([]);
+    });
+
+    it("asks for the program at the drop, not when it is made or activated", async () => {
+      const attached = vi.fn(async () => Promise.resolve()),
+        bed = createBed({ attached });
+
+      expect(attached).not.toHaveBeenCalled();
+
+      await drop(bed, nativeDrag());
+
+      expect(attached).toHaveBeenCalled();
+      expect(bed.paste).toHaveBeenCalledOnce();
+    });
   });
 
   it.each(DRAG_TYPES)("leaves %s untouched after dispose", async (type) => {
