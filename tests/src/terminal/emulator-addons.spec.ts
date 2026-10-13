@@ -1517,21 +1517,25 @@ describe("VaultFileLinksAddon", () => {
     provideLinks: (lineText: string) => ILink[] | undefined;
     getFileByPath: ReturnType<typeof vi.fn>;
     openFile: ReturnType<typeof vi.fn>;
-    getLeaf: ReturnType<typeof vi.fn>;
+    revealLeaf: ReturnType<typeof vi.fn>;
+    leaf: WorkspaceLeaf;
+    fileLeaf: ReturnType<typeof vi.fn>;
     disposable: IDisposable;
     addon: VaultFileLinksAddon;
   } {
     const getFileByPath = vi.fn(() => (fileExists ? MOCK_FILE : null));
     const vault = { getFileByPath } as unknown as Vault;
 
+    const revealLeaf = vi.fn().mockResolvedValue(undefined);
+    const workspace = { revealLeaf } as unknown as Workspace;
     const openFile = vi.fn().mockResolvedValue(undefined);
-    const getLeaf = vi.fn(() => ({ openFile }) as unknown as WorkspaceLeaf);
-    const workspace = { getLeaf } as unknown as Workspace;
+    const leaf = { openFile } as unknown as WorkspaceLeaf;
+    const fileLeaf = vi.fn(() => leaf);
 
     const app = { vault, workspace } as unknown as App;
     const context = { app } as unknown as PluginContext;
 
-    const addon = new VaultFileLinksAddon(context);
+    const addon = new VaultFileLinksAddon(context, fileLeaf);
 
     let capturedProvider: ILinkProvider | undefined;
     const disposable = { dispose: vi.fn() };
@@ -1563,7 +1567,9 @@ describe("VaultFileLinksAddon", () => {
       provideLinks,
       getFileByPath,
       openFile,
-      getLeaf,
+      revealLeaf,
+      leaf,
+      fileLeaf,
       disposable,
       addon,
     };
@@ -1684,53 +1690,114 @@ describe("VaultFileLinksAddon", () => {
 
   // --- Activation ---
 
-  it("activates by opening the file in Obsidian", () => {
-    const { provideLinks, openFile, getLeaf } = createBed();
+  it("waits for the leaf to be revealed before opening the file focused in it", async () => {
+    const { provideLinks, openFile, revealLeaf, leaf } = createBed();
+    const reveal = Promise.withResolvers<undefined>();
+    revealLeaf.mockReturnValueOnce(reveal.promise);
     const links = provideLinks("(test.md)");
     expect(links).toHaveLength(1);
 
     links?.[0]?.activate({} as MouseEvent, "test.md");
-    expect(getLeaf).toHaveBeenCalledWith(false);
-    expect(openFile).toHaveBeenCalledWith(MOCK_FILE);
+    expect(revealLeaf).toHaveBeenCalledExactlyOnceWith(leaf);
+    expect(openFile).not.toHaveBeenCalled();
+    await Promise.resolve();
+    expect(openFile).not.toHaveBeenCalled();
+
+    reveal.resolve(undefined);
+    await vi.waitFor(() => {
+      expect(openFile).toHaveBeenCalledExactlyOnceWith(MOCK_FILE, {
+        active: true,
+      });
+    });
+  });
+
+  it("supports a void-returning revealLeaf", async () => {
+    const { provideLinks, openFile, revealLeaf } = createBed();
+    revealLeaf.mockReturnValueOnce(undefined);
+
+    provideLinks("(test.md)")?.[0]?.activate({} as MouseEvent, "test.md");
+
+    await vi.waitFor(() => {
+      expect(openFile).toHaveBeenCalledExactlyOnceWith(MOCK_FILE, {
+        active: true,
+      });
+    });
+  });
+
+  it("logs to console.error without opening the file when revealLeaf rejects", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { provideLinks, openFile, revealLeaf } = createBed();
+    const error = new Error("reveal failed");
+    revealLeaf.mockRejectedValueOnce(error);
+
+    provideLinks("(test.md)")?.[0]?.activate({} as MouseEvent, "test.md");
+
+    await vi.waitFor(() => {
+      expect(consoleError).toHaveBeenCalledExactlyOnceWith(error);
+    });
+    expect(openFile).not.toHaveBeenCalled();
+  });
+
+  it("logs to console.error without throwing when revealLeaf throws", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { provideLinks, openFile, revealLeaf } = createBed();
+    const error = new Error("reveal failed");
+    revealLeaf.mockImplementationOnce(() => {
+      throw error;
+    });
+    const link = provideLinks("(test.md)")?.[0];
+    if (!link) throw new Error("Missing vault file link");
+
+    expect(() => {
+      link.activate(new MouseEvent("click"), "test.md");
+    }).not.toThrow();
+
+    await vi.waitFor(() => {
+      expect(consoleError).toHaveBeenCalledExactlyOnceWith(error);
+    });
+    expect(openFile).not.toHaveBeenCalled();
+  });
+
+  it("logs to console.error without throwing when fileLeaf throws", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { provideLinks, fileLeaf, revealLeaf, openFile } = createBed();
+    const error = new Error("target failed");
+    fileLeaf.mockImplementationOnce(() => {
+      throw error;
+    });
+    const link = provideLinks("(test.md)")?.[0];
+    if (!link) throw new Error("Missing vault file link");
+
+    expect(() => {
+      link.activate(new MouseEvent("click"), "test.md");
+    }).not.toThrow();
+
+    await vi.waitFor(() => {
+      expect(consoleError).toHaveBeenCalledExactlyOnceWith(error);
+    });
+    expect(revealLeaf).not.toHaveBeenCalled();
+    expect(openFile).not.toHaveBeenCalled();
+  });
+
+  it("asks fileLeaf for a target on every click, not once", () => {
+    const { provideLinks, fileLeaf } = createBed();
+    const link = provideLinks("(test.md)")?.[0];
+    link?.activate({} as MouseEvent, "test.md");
+    link?.activate({} as MouseEvent, "test.md");
+    expect(fileLeaf).toHaveBeenCalledTimes(2);
   });
 
   it("logs to console.error when openFile rejects", async () => {
-    const getFileByPath = vi.fn(() => MOCK_FILE);
-    const vault = { getFileByPath } as unknown as Vault;
-
     const consoleError = vi.fn();
     vi.spyOn(console, "error").mockImplementation(consoleError);
+    const { provideLinks, openFile } = createBed();
+    openFile.mockRejectedValueOnce(new Error("fail"));
 
-    const openFile = vi.fn().mockRejectedValue(new Error("fail"));
-    const getLeaf = vi.fn(() => ({ openFile }) as unknown as WorkspaceLeaf);
-    const workspace = { getLeaf } as unknown as Workspace;
-    const app = { vault, workspace } as unknown as App;
-    const context = { app } as unknown as PluginContext;
-    const addon = new VaultFileLinksAddon(context);
+    provideLinks("(test.md)")?.[0]?.activate({} as MouseEvent, "test.md");
 
-    let capturedProvider: ILinkProvider | undefined;
-    const getLine = vi.fn();
-    const terminal = {
-      registerLinkProvider: vi.fn((p: ILinkProvider) => {
-        capturedProvider = p;
-        return { dispose: vi.fn() };
-      }),
-      buffer: { active: { getLine } },
-      element: document.createElement("div"),
-    } as unknown as Terminal;
-    addon.activate(terminal);
-
-    const line = { translateToString: vi.fn(() => "(test.md)") };
-    getLine.mockReturnValue(line);
-    let result: ILink[] | undefined;
-    capturedProvider?.provideLinks(1, (links) => {
-      result = links;
+    await vi.waitFor(() => {
+      expect(consoleError).toHaveBeenCalled();
     });
-
-    result?.[0]?.activate({} as MouseEvent, "test.md");
-
-    await Promise.resolve();
-    expect(consoleError).toHaveBeenCalled();
   });
 
   // --- Disposal ---
@@ -1748,7 +1815,7 @@ describe("VaultFileLinksAddon", () => {
     const vault = { getFileByPath } as unknown as Vault;
     const app = { vault, workspace: {} as Workspace } as unknown as App;
     const context = { app } as unknown as PluginContext;
-    const addon = new VaultFileLinksAddon(context);
+    const addon = new VaultFileLinksAddon(context, vi.fn());
     addon.activate(terminal);
 
     addon.dispose();

@@ -406,6 +406,7 @@ export class TerminalView extends ItemView {
 
   protected static lastFocusTimes = new Map<TerminalView, number>();
   protected static lastActiveOtherLeaf: WeakRef<WorkspaceLeaf> | null = null;
+  protected static lastActiveNoteLeaf: WeakRef<WorkspaceLeaf> | null = null;
   protected static readonly focusedScope = new Scope();
 
   static #namespacedType: string;
@@ -556,6 +557,9 @@ export class TerminalView extends ItemView {
       workspace.on("active-leaf-change", (leaf) => {
         if (leaf && !(leaf.view instanceof TerminalView)) {
           this.lastActiveOtherLeaf = new WeakRef(leaf);
+          if (leaf.view.getViewType() === "markdown") {
+            this.lastActiveNoteLeaf = new WeakRef(leaf);
+          }
         }
       }),
     );
@@ -862,11 +866,40 @@ export class TerminalView extends ItemView {
   }
 
   protected focus(): void {
-    const { app, emulator, leaf, contentEl } = this;
+    const { app, leaf, contentEl } = this;
+    // The reveal is async: one that throws, or returns nothing as Obsidian
+    // before 1.7.2 does, ends up here like any other.
     revealLeafWithoutFlash(app.workspace, leaf).catch((error: unknown) => {
       activeSelf(contentEl).console.error(error);
     });
-    emulator?.terminal.focus();
+    // Focus in the same turn, whatever becomes of the reveal: a command that
+    // runs right after this one must find the terminal focused.
+    this.emulator?.terminal.focus();
+  }
+
+  /**
+   * Where a clicked vault file opens: the last other leaf if it now holds an
+   * unpinned note, then the last active unpinned note, else a new tab. Never
+   * this terminal's leaf, which would unmount the view and end its session.
+   */
+  protected fileLinkLeaf(): WorkspaceLeaf {
+    const {
+      app: { workspace },
+    } = this;
+    for (const candidate of [
+      TerminalView.lastActiveOtherLeaf,
+      TerminalView.lastActiveNoteLeaf,
+    ]) {
+      const note = candidate?.deref();
+      if (
+        note &&
+        !note.getViewState().pinned &&
+        workspace.getLeavesOfType("markdown").includes(note)
+      ) {
+        return note;
+      }
+    }
+    return workspace.getLeaf("tab");
   }
 
   protected unfocus(): void {
@@ -1281,7 +1314,9 @@ export class TerminalView extends ItemView {
               ),
               search: new SearchAddon(),
               unicode11: new Unicode11Addon(),
-              vaultFileLinks: new VaultFileLinksAddon(context),
+              vaultFileLinks: new VaultFileLinksAddon(context, () =>
+                this.fileLinkLeaf(),
+              ),
               webLinks: new WebLinksAddon(
                 (event, uri) => openExternal(activeSelf(event), uri),
                 {
