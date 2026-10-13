@@ -1439,7 +1439,9 @@ export class VaultFileLinksAddon implements ITerminalAddon {
       },
       text: filePath,
 
-      activate(_event: MouseEvent, _text: string): void {
+      activate(event: MouseEvent, _text: string): void {
+        // xterm activates a link on any button; a paste click must not open it.
+        if (event.button !== 0) return;
         open(file);
       },
     };

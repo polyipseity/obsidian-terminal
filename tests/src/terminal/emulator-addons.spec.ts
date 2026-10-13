@@ -1718,6 +1718,12 @@ describe("VaultFileLinksAddon", () => {
 
   // --- Activation ---
 
+  /** Resolves after the opener's promise chain has run to its end. */
+  const settled = (): Promise<void> =>
+    new Promise((resolve) => {
+      setImmediate(resolve);
+    });
+
   it("waits for the leaf to be revealed before opening the file focused in it", async () => {
     const { provideLinks, openFile, revealLeaf, leaf } = createBed();
     const reveal = Promise.withResolvers<undefined>();
@@ -1725,7 +1731,7 @@ describe("VaultFileLinksAddon", () => {
     const links = provideLinks("(test.md)");
     expect(links).toHaveLength(1);
 
-    links?.[0]?.activate({} as MouseEvent, "test.md");
+    links?.[0]?.activate(new MouseEvent("click"), "test.md");
     expect(revealLeaf).toHaveBeenCalledExactlyOnceWith(leaf);
     expect(openFile).not.toHaveBeenCalled();
     await Promise.resolve();
@@ -1743,7 +1749,10 @@ describe("VaultFileLinksAddon", () => {
     const { provideLinks, openFile, revealLeaf } = createBed();
     revealLeaf.mockReturnValueOnce(undefined);
 
-    provideLinks("(test.md)")?.[0]?.activate({} as MouseEvent, "test.md");
+    provideLinks("(test.md)")?.[0]?.activate(
+      new MouseEvent("click"),
+      "test.md",
+    );
 
     await vi.waitFor(() => {
       expect(openFile).toHaveBeenCalledExactlyOnceWith(MOCK_FILE, {
@@ -1758,7 +1767,10 @@ describe("VaultFileLinksAddon", () => {
     const error = new Error("reveal failed");
     revealLeaf.mockRejectedValueOnce(error);
 
-    provideLinks("(test.md)")?.[0]?.activate({} as MouseEvent, "test.md");
+    provideLinks("(test.md)")?.[0]?.activate(
+      new MouseEvent("click"),
+      "test.md",
+    );
 
     await vi.waitFor(() => {
       expect(consoleError).toHaveBeenCalledExactlyOnceWith(error);
@@ -1810,9 +1822,26 @@ describe("VaultFileLinksAddon", () => {
   it("asks fileLeaf for a target on every click, not once", () => {
     const { provideLinks, fileLeaf } = createBed();
     const link = provideLinks("(test.md)")?.[0];
-    link?.activate({} as MouseEvent, "test.md");
-    link?.activate({} as MouseEvent, "test.md");
+    link?.activate(new MouseEvent("click"), "test.md");
+    link?.activate(new MouseEvent("click"), "test.md");
     expect(fileLeaf).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ["middle", 1],
+    ["secondary", 2],
+  ])("opens nothing on the %s mouse button", async (_name, button) => {
+    // xterm activates a link on any button, so a paste click lands here too.
+    const { provideLinks, fileLeaf, revealLeaf, openFile } = createBed();
+    const link = provideLinks("(test.md)")?.[0];
+    if (!link) throw new Error("Missing vault file link");
+
+    link.activate(new MouseEvent("mouseup", { button }), "test.md");
+    await settled();
+
+    expect(fileLeaf).not.toHaveBeenCalled();
+    expect(revealLeaf).not.toHaveBeenCalled();
+    expect(openFile).not.toHaveBeenCalled();
   });
 
   it("logs to console.error when openFile rejects", async () => {
@@ -1821,7 +1850,10 @@ describe("VaultFileLinksAddon", () => {
     const { provideLinks, openFile } = createBed();
     openFile.mockRejectedValueOnce(new Error("fail"));
 
-    provideLinks("(test.md)")?.[0]?.activate({} as MouseEvent, "test.md");
+    provideLinks("(test.md)")?.[0]?.activate(
+      new MouseEvent("click"),
+      "test.md",
+    );
 
     await vi.waitFor(() => {
       expect(consoleError).toHaveBeenCalled();
