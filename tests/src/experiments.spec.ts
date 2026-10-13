@@ -5,7 +5,13 @@
  * The registry is empty, so every test passes fixture experiments as
  * arguments. The two tests that walk the real registry guard later entries.
  */
-import type { SettingsManager } from "@polyipseity/obsidian-plugin-library";
+import {
+  AbstractSettingsManager,
+  type AnyObject,
+  type SettingsManager,
+  launderUnchecked,
+  markFixed,
+} from "@polyipseity/obsidian-plugin-library";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   EXPERIMENTS,
@@ -71,6 +77,48 @@ function fakeSettings<I extends string>(
     },
   };
 }
+
+interface MemorySettings extends AbstractSettingsManager.Type {
+  readonly experiments: ExperimentFlags<"alpha" | "beta">;
+}
+
+/** The library's settings manager, reading nothing and writing nowhere. */
+class MemorySettingsManager extends AbstractSettingsManager<MemorySettings> {
+  public constructor() {
+    super((raw) =>
+      markFixed(raw, {
+        experiments: fixExperiments(
+          launderUnchecked<AnyObject>(raw)["experiments"],
+          [ALPHA, BETA],
+        ),
+      }),
+    );
+  }
+
+  /** Replaces the stored flags. `mutate` does not run the fixer. */
+  public async set(flags: ExperimentFlags<"alpha" | "beta">): Promise<void> {
+    await this.mutate((settings) => {
+      settings.experiments = { ...flags };
+    });
+  }
+
+  public write(): void {}
+
+  protected onInvalidData(): void {}
+
+  protected read0(): null {
+    return null;
+  }
+}
+
+/** A loaded manager with every flag off. */
+async function memorySettings(): Promise<MemorySettingsManager> {
+  const settings = new MemorySettingsManager();
+  settings.load();
+  await settings.onLoaded;
+  return settings;
+}
+
 describe("src/experiments.ts", () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -313,6 +361,52 @@ describe("src/experiments.ts", () => {
         manager: SettingsManager<Settings>,
       ): ExperimentSettings<never> => manager;
       expect(check).toBeTypeOf("function");
+    });
+
+    // The fake above waits for each listener in turn. The library's manager
+    // calls them all in one pass, under a lock, and rejects when one rejects.
+    describe("on the library's settings manager", () => {
+      it("ends stopped after on and off without a wait in between", async () => {
+        const settings = await memorySettings(),
+          stop = vi.fn(),
+          start = vi.fn(() => stop);
+        whileExperimentEnabled(settings, "alpha", start);
+        await Promise.all([settings.set({ alpha: true }), settings.set({})]);
+        expect(start).toHaveBeenCalledOnce();
+        expect(stop).toHaveBeenCalledOnce();
+        expect(settings.value.experiments).toEqual({});
+      });
+
+      it("a start that throws neither rejects the change nor silences another listener", async () => {
+        const logged = vi.spyOn(console, "error").mockImplementation(() => {}),
+          settings = await memorySettings(),
+          other = vi.fn();
+        whileExperimentEnabled(settings, "alpha", () => {
+          throw new Error("start failed");
+        });
+        settings.onMutate(
+          (value) => isExperimentEnabled(value, "alpha"),
+          other,
+        );
+        await expect(settings.set({ alpha: true })).resolves.toBeUndefined();
+        expect(other).toHaveBeenCalledOnce();
+        expect(logged).toHaveBeenCalledOnce();
+      });
+
+      it("does not start a scope that an earlier listener disposed in the same change", async () => {
+        const settings = await memorySettings(),
+          start = vi.fn(() => vi.fn());
+        let dispose = (): void => {};
+        settings.onMutate(
+          (value) => isExperimentEnabled(value, "beta"),
+          () => {
+            dispose();
+          },
+        );
+        dispose = whileExperimentEnabled(settings, "alpha", start);
+        await settings.set({ alpha: true, beta: true });
+        expect(start).not.toHaveBeenCalled();
+      });
     });
   });
 
