@@ -149,7 +149,7 @@ When setting up a terminal profile, you need to distinguish between shells and t
 
 ### Program status on tabs
 
-Terminal tabs show the plugin's own icon, a square with a raised border, and the `Open terminal` ribbon button shows a rounded square. Which icon is drawn does not depend on `Program status`.
+Terminal tabs show the plugin's own icon, a square with a raised border, at 22 px: larger than Obsidian's own tab icons. A tab in a sidebar keeps Obsidian's size. The `Open terminal` ribbon button shows a rounded square. Which icon is drawn does not depend on `Program status`.
 
 `Program status`, in the `Interface` section of the plugin settings, shows on a terminal tab what the program in it reports with the escape sequence OSC 7501: idle, working, needs input, finished or error.
 
