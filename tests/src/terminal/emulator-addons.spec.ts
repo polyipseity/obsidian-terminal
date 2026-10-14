@@ -1659,14 +1659,22 @@ describe("DragAndDropAddon", () => {
   /**
    * A terminal as the addon uses it. What is pasted reaches the program as
    * data, as it does in xterm.js, and so does `input`: what the user types,
-   * or what the terminal reports by itself.
+   * or what the terminal reports by itself. A key that is pressed is told
+   * first, then what it sends is data like the rest: that is `press`.
    */
   function fakeTerminal() {
     const listeners = new Set<(data: string) => void>(),
+      keys = new Set<() => void>(),
       input = (data: string): void => {
         for (const listener of [...listeners]) {
           listener(data);
         }
+      },
+      press = (data: string): void => {
+        for (const listener of [...keys]) {
+          listener();
+        }
+        input(data);
       },
       focus = vi.fn(),
       paste = vi.fn((data: string): void => {
@@ -1680,8 +1688,16 @@ describe("DragAndDropAddon", () => {
           },
         };
       }),
-      terminal = { focus, onData, paste } as unknown as Terminal;
-    return { focus, input, listeners, onData, paste, terminal };
+      onKey = vi.fn((listener: () => void): IDisposable => {
+        keys.add(listener);
+        return {
+          dispose: () => {
+            keys.delete(listener);
+          },
+        };
+      }),
+      terminal = { focus, onData, onKey, paste } as unknown as Terminal;
+    return { focus, input, keys, listeners, onData, paste, press, terminal };
   }
 
   /**
@@ -1712,7 +1728,8 @@ describe("DragAndDropAddon", () => {
       reachedView = vi.fn<(event: Event) => void>(),
       addEventListener = vi.spyOn(element, "addEventListener"),
       removeEventListener = vi.spyOn(element, "removeEventListener"),
-      { focus, input, listeners, paste, terminal } = fakeTerminal(),
+      { focus, input, keys, listeners, paste, press, terminal } =
+        fakeTerminal(),
       getFullPath = vi.fn(fullPath),
       getAbstractFileByPath = vi.fn((path: string) =>
         missing.includes(path) ? null : vaultFile(path),
@@ -1754,9 +1771,13 @@ describe("DragAndDropAddon", () => {
       getFullPath,
       /** Sends data from the terminal to its program, as typing does. */
       input,
-      /** The listeners for that data that are still there. */
+      /** The listeners for a pressed key that are still there. */
+      keys,
+      /** The listeners for the data of the terminal that are still there. */
       listeners,
       paste,
+      /** Presses a key that sends that data. */
+      press,
       removeEventListener,
       setAction,
       terminal,
@@ -2024,6 +2045,19 @@ describe("DragAndDropAddon", () => {
 
       expect(attached).toHaveBeenCalled();
       expect(bed.paste).toHaveBeenCalledOnce();
+    });
+
+    // Before the drop, so that the drop finds the answer there; and once, as
+    // a drag is over the terminal many times before it is dropped.
+    it("asks for the program at the first drag over the terminal, and at no later one", () => {
+      const program = pendingProgram(),
+        bed = createBed({ attached: program.attached });
+
+      for (const type of [...OVER_TYPES, ...OVER_TYPES]) {
+        bed.fire(type, nativeDrag());
+      }
+
+      expect(program.attached).toHaveBeenCalledOnce();
     });
   });
 
@@ -4015,6 +4049,29 @@ describe("DragAndDropAddon", () => {
     },
   );
 
+  // A key is input whatever it sends. F3 with Shift, Alt or Control sends
+  // the bytes of a cursor position, which the terminal reports by itself as
+  // well (see the reports below): the terminal says that a key was pressed.
+  it.each<readonly [string, string]>([
+    ["Shift and F3", "\u001b[1;2R"],
+    ["Control and F3", "\u001b[1;5R"],
+  ])(
+    "pastes nothing of a drop when %s is pressed while it waits, though the key sends the bytes of a report",
+    async (_name, data) => {
+      const stat = pendingStat();
+      dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+      const bed = createBed();
+
+      await drop(bed, uriDrag());
+      bed.press(data);
+      stat.answer();
+      await tick();
+
+      expect(bed.paste).not.toHaveBeenCalled();
+      expect(notices()).toEqual([SKIPPED_PATHS]);
+    },
+  );
+
   it("pastes nothing of a drop that waits behind another when input reaches the terminal", async () => {
     const stat = pendingStat();
     dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
@@ -4072,6 +4129,8 @@ describe("DragAndDropAddon", () => {
     ["its secondary device attributes", "\u001b[>0;276;0c"],
     ["its status", "\u001b[0n"],
     ["the cursor position", "\u001b[1;1R"],
+    // The bytes Shift and F3 send, here with no key pressed.
+    ["the cursor position in the second column", "\u001b[1;2R"],
     ["the cursor position with a question mark", "\u001b[?12;40R"],
     ["a private mode", "\u001b[?2026;2$y"],
     ["a mode", "\u001b[4;2$y"],
@@ -4114,11 +4173,15 @@ describe("DragAndDropAddon", () => {
       next = fakeTerminal();
 
     expect(bed.listeners.size).toBe(1);
+    expect(bed.keys.size).toBe(1);
     bed.addon.activate(next.terminal);
     expect(bed.listeners.size).toBe(0);
+    expect(bed.keys.size).toBe(0);
     expect(next.listeners.size).toBe(1);
+    expect(next.keys.size).toBe(1);
     bed.addon.dispose();
     expect(next.listeners.size).toBe(0);
+    expect(next.keys.size).toBe(0);
   });
 
   // The tests above say what the terminal sends. Here xterm.js sends it: the
@@ -4201,6 +4264,28 @@ describe("DragAndDropAddon", () => {
       await answer();
 
       expect(sent).toEqual(["x"]);
+      expect(paste).not.toHaveBeenCalled();
+      expect(notices()).toEqual([SKIPPED_PATHS]);
+    });
+
+    // Shift and F3 send what the terminal reports for a cursor in its first
+    // row. The bytes do not tell the key from the report; that the terminal
+    // says a key was pressed does.
+    it("pastes nothing of a drop that waited while the user pressed a key that sends the bytes of a report", async () => {
+      const { answer, paste, sent, terminal } = await waitingDrop();
+
+      terminal.textarea?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          key: "F3",
+          keyCode: 114,
+          shiftKey: true,
+        }),
+      );
+      await answer();
+
+      expect(sent).toEqual(["\u001b[1;2R"]);
       expect(paste).not.toHaveBeenCalled();
       expect(notices()).toEqual([SKIPPED_PATHS]);
     });
@@ -4616,8 +4701,8 @@ describe("DragAndDropAddon", () => {
     describe("that came before the terminal had its program", () => {
       /**
        * Makes a terminal whose program starts when the test says, and a
-       * clock that tells a drop that had to wait for it from one that did
-       * not: a task of the main window runs in between.
+       * clock: the timers of the main window run before the program is
+       * there, as they do while a drop waits for it.
        */
       function lateProgram(platform: string, executable: string) {
         vi.useFakeTimers();
@@ -4653,6 +4738,25 @@ describe("DragAndDropAddon", () => {
         },
       );
 
+      // What counts is that the terminal had no program when the drop came,
+      // not how long the drop then waited for one: here the program is there
+      // in the task of the drop, before the window has run a timer.
+      it("bounds a drop whose program is there before a timer has run", async () => {
+        let started: () => void = noop;
+        const program = new Promise<void>((resolve) => {
+            started = resolve;
+          }),
+          bed = longDrop("darwin", "/bin/zsh", {
+            attached: async () => program,
+          });
+
+        bed.fire("drop", vaultDrag());
+        started();
+        await tick();
+
+        expectFirstPathsOfLine(bed, 1024);
+      });
+
       it("bounds a drop that waits behind another one from before the program as well", async () => {
         const { bed, start } = lateProgram("darwin", "/bin/zsh"),
           { draggable } = bed.dragManager;
@@ -4671,6 +4775,80 @@ describe("DragAndDropAddon", () => {
         expect(notices()).toEqual([SKIPPED_PATHS]);
       });
 
+      // The drops that were held are pasted one after the other when the
+      // program is there, into the one line that the terminal driver has:
+      // they have its room between them, not each for itself.
+      describe("with several drops held", () => {
+        /** The text that is pasted for some of the long paths. */
+        function text(from: number, to: number): string {
+          return paths
+            .slice(from, to)
+            .map((path) => `${path} `)
+            .join("");
+        }
+
+        /** Drops some of the long paths, each of 250 bytes as it is pasted. */
+        function dropPaths(bed: Bed, from: number, to: number): void {
+          bed.dragManager.draggable = {
+            files: names.slice(from, to).map(vaultFile),
+            type: "files",
+          };
+          bed.fire("drop", vaultDrag());
+        }
+
+        it("pastes no more than one line of all of them, each path whole, and says what a drop leaves out", async () => {
+          const { bed, start } = lateProgram("darwin", "/bin/zsh");
+
+          // 500 bytes each: one fits the 768 bytes of a line, two do not.
+          dropPaths(bed, 0, 2);
+          dropPaths(bed, 2, 4);
+          await start();
+
+          const pasted = bed.paste.mock.calls.map(([paste]) => paste);
+          expect(pasted).toEqual([text(0, 2), text(2, 3)]);
+          expect(bytes(pasted.join(""))).toBeLessThanOrEqual(1024 - 256);
+          expect(notices()).toEqual([SKIPPED_PATHS]);
+        });
+
+        it("pastes nothing of a drop for which the line has no room left, and says so", async () => {
+          const { bed, start } = lateProgram("darwin", "/bin/zsh");
+
+          dropPaths(bed, 0, 3);
+          dropPaths(bed, 3, 4);
+          await start();
+
+          const pasted = bed.paste.mock.calls.map(([paste]) => paste);
+          expect(pasted).toEqual([text(0, 3)]);
+          expect(bytes(pasted.join(""))).toBeLessThanOrEqual(1024 - 256);
+          expect(notices()).toEqual([SKIPPED_PATHS]);
+        });
+
+        // The line is that of the driver, whoever reads it.
+        it("counts what it pasted for the line on Linux as well", async () => {
+          const { bed, start } = lateProgram("linux", "/bin/bash");
+
+          // 3750 of the 3840 bytes of a line, and 500 more.
+          dropPaths(bed, 0, 15);
+          dropPaths(bed, 15, 17);
+          await start();
+
+          expect(bed.paste.mock.calls).toEqual([[text(0, 15)]]);
+          expect(notices()).toEqual([SKIPPED_PATHS]);
+        });
+
+        it("gives a drop that finds the program there no part of that line", async () => {
+          const { bed, start } = lateProgram("darwin", "/bin/zsh");
+
+          dropPaths(bed, 0, 3);
+          await start();
+          dropPaths(bed, 3, 17);
+          await vi.advanceTimersByTimeAsync(0);
+
+          expect(bed.paste.mock.calls).toEqual([[text(0, 3)], [text(3, 17)]]);
+          expect(notices()).toEqual([]);
+        });
+      });
+
       it("pastes every path of the next drop, which finds the program there", async () => {
         const { bed, start } = lateProgram("darwin", "/bin/zsh"),
           { draggable } = bed.dragManager;
@@ -4687,6 +4865,62 @@ describe("DragAndDropAddon", () => {
           [paths.map((path) => `${path} `).join("")],
         ]);
         expect(notices()).toEqual([]);
+      });
+
+      // A drag is over the terminal before it is dropped, and the terminal
+      // is asked for its program when the first one is: the answer of a
+      // terminal that has its program is there when the drop comes.
+      it("pastes every path of a drop whose drag found the program there", async () => {
+        const bed = longDrop("darwin", "/bin/zsh", {
+          attached: async () => Promise.resolve(),
+        });
+
+        bed.fire("dragenter", vaultDrag());
+        await tick();
+        await drop(bed, vaultDrag());
+
+        expect(bed.paste.mock.calls).toEqual([
+          [paths.map((path) => `${path} `).join("")],
+        ]);
+        expect(notices()).toEqual([]);
+      });
+
+      it("pastes every path of a drop whose program came while its drag was over the terminal", async () => {
+        const { bed, start } = lateProgram("darwin", "/bin/zsh");
+
+        bed.fire("dragover", vaultDrag());
+        await start();
+        bed.fire("drop", vaultDrag());
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(bed.paste.mock.calls).toEqual([
+          [paths.map((path) => `${path} `).join("")],
+        ]);
+        expect(notices()).toEqual([]);
+      });
+
+      it("bounds a drop whose drag was over a terminal that still has no program", async () => {
+        const { bed, start } = lateProgram("darwin", "/bin/zsh");
+
+        bed.fire("dragover", vaultDrag());
+        bed.fire("drop", vaultDrag());
+        await start();
+
+        expectFirstPathsOfLine(bed, 1024);
+      });
+
+      // Only an answer that has come tells that the terminal has its
+      // program. A drop that no drag over the terminal came before, which a
+      // pointer cannot make, has none, and is taken for one from before the
+      // program: it then errs on the side of fewer paths.
+      it("bounds a drop that no drag came before, whose terminal has not answered yet", async () => {
+        const bed = longDrop("darwin", "/bin/zsh", {
+          attached: async () => Promise.resolve(),
+        });
+
+        await drop(bed, vaultDrag());
+
+        expectFirstPathsOfLine(bed, 1024);
       });
 
       // Windows has no terminal driver that cuts a line.
@@ -5026,6 +5260,31 @@ describe("DragAndDropAddon", () => {
       },
     );
 
+    // `wsl.exe ~ -d Ubuntu` starts the shell of Ubuntu in its home directory.
+    it.each<readonly [string, string]>([
+      ["its present name", "\\\\wsl.localhost"],
+      ["its older name", "\\\\wsl$"],
+    ])(
+      "leaves out a file of another distribution, on the share under %s, when `~` comes before the option",
+      async (_name, share) => {
+        const bed = createBed({
+          args: ["~", "-d", "Ubuntu"],
+          executable: WSL,
+        });
+
+        await drop(
+          bed,
+          nativeDrag([
+            nativeFile("a.md", `${share}\\Debian\\home\\me\\a.md`),
+            nativeFile("b.md", `${share}\\Ubuntu\\home\\me\\b.md`),
+          ]),
+        );
+
+        expect(bed.paste.mock.calls).toEqual([["/home/me/b.md "]]);
+        expect(notices()).toEqual([SKIPPED_PATHS]);
+      },
+    );
+
     it("refuses the drag of a vault that is in another distribution", () => {
       const bed = createBed({
         args: ["-d", "Ubuntu"],
@@ -5137,6 +5396,43 @@ describe("DragAndDropAddon", () => {
       const bed = createBed({
         profile: Settings.Profile.DEFAULTS.developerConsole,
       });
+
+      await drop(bed, nativeDrag([nativeFile("My Note.md", path)]));
+
+      expect(bed.paste.mock.calls).toEqual([[pasted]]);
+      expect(notices()).toEqual([]);
+    },
+  );
+
+  // So do the prompts of node and python, which a profile can start as its
+  // program: the escapes of a shell are no string to them.
+  it.each<readonly [string, string, string, string, string]>([
+    [
+      "python3 on macOS",
+      "darwin",
+      "/usr/bin/python3",
+      `${DESKTOP}/My Note.md`,
+      `"${DESKTOP}/My Note.md" `,
+    ],
+    [
+      "node on Linux",
+      "linux",
+      "/usr/bin/node",
+      "/home/me/My Note.md",
+      '"/home/me/My Note.md" ',
+    ],
+    [
+      "python on Windows",
+      "win32",
+      "C:\\Python313\\python.exe",
+      "C:\\Users\\me\\My Note.md",
+      '"C:\\\\Users\\\\me\\\\My Note.md" ',
+    ],
+  ])(
+    "writes a path for %s as a string, as for the developer console",
+    async (_name, platform, executable, path, pasted) => {
+      dragAndDropEnvironment.platform = platform;
+      const bed = createBed({ executable });
 
       await drop(bed, nativeDrag([nativeFile("My Note.md", path)]));
 

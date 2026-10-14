@@ -540,13 +540,23 @@ describe("shellGrammar", () => {
     // By their exact names, as every shell.
     ["/usr/local/bin/nushell-wrapper", "darwin", "posix"],
     ["nuget.exe", "win32", "cmd"],
+    // The prompts of node and python read no arguments but a language, where
+    // a path is a string: they get what the developer console gets.
+    ["/usr/bin/python3", "linux", "javascript"],
+    ["/usr/local/bin/node", "darwin", "javascript"],
+    ["python", "darwin", "javascript"],
+    ["python.exe", "win32", "javascript"],
+    ["Python3.EXE", "win32", "javascript"],
+    ["C:\\Program Files\\nodejs\\node.exe", "win32", "javascript"],
+    // By their exact names, as every program.
+    ["/usr/local/bin/nodemon", "darwin", "posix"],
+    ["pythonw.exe", "win32", "cmd"],
     // Known limit. A program that is not known gets the escapes of a POSIX
     // shell off Windows: a wrapper, `tmux` or `ssh` mostly runs one, and
     // Claude Code reads them. A shell or a prompt of another language that
-    // does not (xonsh, `python3`, `node`) reads another path, or none.
+    // does not (xonsh, `irb`) reads another path, or none.
     ["/usr/local/bin/xonsh", "darwin", "posix"],
-    ["/usr/bin/python3", "linux", "posix"],
-    ["/usr/local/bin/node", "darwin", "posix"],
+    ["/usr/bin/irb", "linux", "posix"],
     ["/usr/bin/tmux", "linux", "posix"],
     ["/Users/me/.local/bin/claude", "darwin", "posix"],
     ["zsh", "darwin", "posix"],
@@ -569,10 +579,8 @@ describe("shellGrammar", () => {
     // `cmd.exe` on Windows. One that reads them as the sh family does (`ssh`
     // into such a shell) expands `$` and backticks of a name inside them.
     ["ssh.exe", "win32", "cmd"],
-    ["python.exe", "win32", "cmd"],
     ["claude", "win32", "cmd"],
     ["wt", "win32", "cmd"],
-    ["C:\\Program Files\\nodejs\\node.exe", "win32", "cmd"],
     ["powershell", "win32", "powershell"],
     ["powershell.exe", "win32", "powershell"],
     ["PowerShell.EXE", "win32", "powershell"],
@@ -641,7 +649,8 @@ describe("shellGrammar", () => {
     ["sh.com", "win32", "posix-quoted"],
     ["C:\\tools/bin\\Fish.exe", "win32", "posix"],
     // Only the last segment counts, and one suffix only at its end.
-    ["C:\\bash\\python.exe", "win32", "cmd"],
+    ["C:\\bash\\python.exe", "win32", "javascript"],
+    ["C:\\python\\ssh.exe", "win32", "cmd"],
     ["C:\\pwsh\\cmd.exe", "win32", "cmd"],
     ["C:\\cmd\\bash.exe", "win32", "posix-quoted"],
     ["C:\\wsl\\bash.exe", "win32", "posix-quoted"],
@@ -717,8 +726,23 @@ describe("wslDistribution", () => {
     ],
     [["--system", "-d", "Ubuntu"], "Ubuntu"],
     [["-d", "Ubuntu", "-d", "Debian"], "Ubuntu"],
+    // After `~` at the start, which has the shell start in the home
+    // directory: `wsl.exe` takes it off before it reads its options.
+    [["~", "-d", "Ubuntu"], "Ubuntu"],
+    [["~", "--distribution", "Debian"], "Debian"],
+    [["~", "-u", "root", "-d", "kali-linux"], "kali-linux"],
+    [["~", "-d", "Ubuntu", "--", "bash", "-l"], "Ubuntu"],
   ])("reads the distribution of the arguments %j", (args, distribution) => {
     expect(wslDistribution(args)).toBe(distribution);
+  });
+
+  // No argument names one there, which is what tells nothing about the
+  // distribution: a profile made from the preset runs the default one.
+  it("reads no distribution from the arguments of the WSL preset, which has none", () => {
+    const { args } = PROFILE_PRESETS.wslIntegrated;
+
+    expect(args).toEqual([]);
+    expect(wslDistribution(args)).toBeNull();
   });
 
   it.each<readonly [string, readonly string[]]>([
@@ -736,6 +760,11 @@ describe("wslDistribution", () => {
       ["--cd", "/tmp", "ls", "-d", "x"],
     ],
     ["the option as the value of another", ["--cd", "-d", "--system"]],
+    ["`~` alone", ["~"]],
+    // Only the first argument is the home directory: after an option, `~` is
+    // the command that is run, and what follows it is that command's.
+    ["the option after a `~` that is not first", ["-u", "me", "~", "-d", "x"]],
+    ["the option after a second `~`", ["~", "~", "-d", "Ubuntu"]],
     // An identifier is not a name that a share has.
     ["the identifier of a distribution", ["--distribution-id", "{1234}"]],
   ])("reads no distribution from %s", (_name, args) => {
@@ -1123,6 +1152,18 @@ function quotedArguments(line: string): readonly string[] | null {
 function javascriptStrings(line: string): readonly string[] | null {
   return shellArguments(line, /^"(?:[^"\\]|\\.)*"(?= |$)/u, (argument) =>
     String(JSON.parse(argument)),
+  );
+}
+
+/**
+ * The prompt of Python, by its reference: string literals in double quotes,
+ * in which a backslash before `\` or `"` is that character. Any other
+ * backslash starts an escape, which Python need not read as JSON does, and
+ * is unreadable.
+ */
+function pythonStrings(line: string): readonly string[] | null {
+  return shellArguments(line, /^"(?:[^"\\\n]|\\["\\])*"(?= |$)/u, (argument) =>
+    argument.slice(1, -1).replace(/\\(["\\])/gu, "$1"),
   );
 }
 
@@ -2039,6 +2080,61 @@ describe("formatDroppedPath", () => {
       const path = "/Users/me/My Vault/My Note.md";
 
       expect(formatDroppedPath(path, "javascript")).toBe(`"${path}"`);
+    });
+  });
+
+  // A profile can start `node` or `python` as its program. Their prompts
+  // read a language, as the developer console does: the escapes of a shell
+  // are an error there, and a string of JSON is one of theirs.
+  describe("for the prompts of node and python", () => {
+    const PROMPTS: readonly (readonly [string, Platform.All])[] = [
+      ["/usr/local/bin/node", "darwin"],
+      ["/usr/bin/python3", "linux"],
+      ["/usr/bin/python", "darwin"],
+      ["C:\\Program Files\\nodejs\\node.exe", "win32"],
+      ["C:\\Python313\\python.exe", "win32"],
+    ];
+
+    // What 3.28.0 pasted there. `/Users/me/My\ Vault/a.png` is no string.
+    it.each(PROMPTS)(
+      "writes a path with a space for %s on %s in double quotes, as 3.28.0 did",
+      (executable, platform) => {
+        const path = "/Users/me/My Vault/a.png";
+
+        expect(
+          formatDroppedPath(path, shellGrammar(executable, platform)),
+        ).toBe(`"${path}"`);
+      },
+    );
+
+    it.each(PROMPTS)(
+      "writes the backslashes of a Windows path for %s on %s twice",
+      (executable, platform) => {
+        const path = "C:\\Users\\me\\My Vault\\a.png",
+          text = written(path, shellGrammar(executable, platform));
+
+        expect(text).toBe('"C:\\\\Users\\\\me\\\\My Vault\\\\a.png"');
+        expect(READERS.javascript(text)).toEqual([path]);
+        expect(pythonStrings(text)).toEqual([path]);
+      },
+    );
+
+    it.each(writtenPaths("javascript"))(
+      "gives both one string that is the path %j",
+      (path) => {
+        const text = written(path, shellGrammar("python3", "linux"));
+
+        expect(text).toBe(written(path, shellGrammar("node", "linux")));
+        expect(READERS.javascript(text)).toEqual([path]);
+        expect(pythonStrings(text)).toEqual([path]);
+      },
+    );
+
+    it("gives neither a string with the escapes of a shell", () => {
+      const text = written("/Users/me/My Vault/a.png", "posix");
+
+      expect(READERS.javascript(text)).toBeNull();
+      expect(pythonStrings(text)).toBeNull();
     });
   });
 
