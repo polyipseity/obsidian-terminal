@@ -11,14 +11,21 @@
  * the line editor. Nothing is read from or written to the disk: the paths
  * need not exist, and the few that could match a file do so in `/bin`.
  *
+ * The texts it writes for the prompts of node and python are handed to those
+ * two as well, where the `PATH` of the test run has them: each reads them as
+ * string literals of its language, in a program, not at its prompt.
+ *
  * Not run on Windows, which has no shell of this family at a known path.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
+import { delimiter, join } from "node:path";
+import type { Platform } from "@polyipseity/obsidian-plugin-library";
 import { describe, expect, it } from "vitest";
 import {
   type ShellGrammar,
   formatDroppedPaths,
+  shellGrammar,
 } from "../../../src/terminal/dropped-paths.js";
 
 /** A shell, where it may be installed, and how it is started without its startup files. */
@@ -166,6 +173,116 @@ describe.skipIf(process.platform === "win32")(
     // Without this the tests above could pass on a machine that has none.
     it("finds the shell that every such machine has", () => {
       expect(existsSync("/bin/sh")).toBe(true);
+    });
+  },
+);
+
+/**
+ * A program whose prompt reads a language, by the names it may have, and the
+ * program in that language that prints string literals with a NUL between
+ * them. It is read from the standard input: no command line is in the way.
+ */
+interface Interpreter {
+  readonly name: string;
+  readonly names: readonly string[];
+  readonly options: readonly string[];
+  readonly program: (literals: readonly string[]) => string;
+}
+
+const INTERPRETERS: readonly Interpreter[] = [
+  {
+    name: "node",
+    names: ["node"],
+    options: ["-"],
+    program: (literals) =>
+      `process.stdout.write([\n${literals.join(",\n")}\n].join("\\0"));\n`,
+  },
+  {
+    name: "python",
+    names: ["python3", "python"],
+    // Isolated: nothing of the user's environment or packages is read.
+    options: ["-I", "-"],
+    program: (literals) =>
+      `import sys\nsys.stdout.buffer.write("\\0".join([\n${literals.join(",\n")}\n]).encode("utf-8"))\n`,
+  },
+];
+
+/**
+ * The first program of one of these names on the `PATH` of the test run that
+ * starts: a name can be there for a program that is not installed.
+ */
+function onPath(names: readonly string[]): string | undefined {
+  const directories = (process.env["PATH"] ?? "")
+    .split(delimiter)
+    .filter((directory) => directory !== "");
+  return names
+    .flatMap((name) => directories.map((directory) => join(directory, name)))
+    .find((candidate) => {
+      try {
+        execFileSync(candidate, ["--version"], {
+          stdio: "ignore",
+          timeout: 10_000,
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    });
+}
+
+/** The strings an interpreter reads in a program, which prints them. */
+function stringsRead(
+  executable: string,
+  options: readonly string[],
+  program: string,
+): readonly string[] {
+  return execFileSync(executable, options, {
+    cwd: "/",
+    // Nothing of the environment of the test run reaches the interpreter.
+    env: { PATH: "/usr/bin:/bin" },
+    input: program,
+    timeout: 10_000,
+  })
+    .toString("utf8")
+    .split("\0");
+}
+
+// Not on Windows either: both read a string there as they do here, and
+// `dropped-paths.spec.ts` reads the same texts by rule on every platform.
+describe.skipIf(process.platform === "win32")(
+  "dropped paths read by the interpreters of this machine",
+  () => {
+    describe.each(
+      INTERPRETERS.map((interpreter): readonly [string, Interpreter] => [
+        interpreter.name,
+        interpreter,
+      ]),
+    )("%s", (_name, { names, options, program }) => {
+      const executable = onPath(names);
+
+      it
+        .skipIf(executable === undefined)
+        .each<readonly [string, string, Platform.All]>([
+          ["macOS", POSIX_DIRECTORY, "darwin"],
+          ["Windows", WIN32_DIRECTORY, "win32"],
+        ])(
+        "reads each path of %s, written for its prompt, as one string",
+        (_system, directory, platform) => {
+          if (executable === undefined) {
+            throw new Error("skipped without the interpreter");
+          }
+          const paths = NAMES.map((name) => directory + name),
+            { skipped, texts } = formatDroppedPaths(
+              paths,
+              shellGrammar(executable, platform),
+            );
+
+          expect(skipped).toBe(0);
+          expect(stringsRead(executable, options, program(texts))).toEqual(
+            paths,
+          );
+        },
+      );
     });
   },
 );

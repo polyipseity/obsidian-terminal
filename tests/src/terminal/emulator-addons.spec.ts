@@ -5330,6 +5330,43 @@ describe("DragAndDropAddon", () => {
     },
   );
 
+  // So do the prompts of node and python, which a profile can start as its
+  // program: the escapes of a shell are no string to them.
+  it.each<readonly [string, string, string, string, string]>([
+    [
+      "python3 on macOS",
+      "darwin",
+      "/usr/bin/python3",
+      `${DESKTOP}/My Note.md`,
+      `"${DESKTOP}/My Note.md" `,
+    ],
+    [
+      "node on Linux",
+      "linux",
+      "/usr/bin/node",
+      "/home/me/My Note.md",
+      '"/home/me/My Note.md" ',
+    ],
+    [
+      "python on Windows",
+      "win32",
+      "C:\\Python313\\python.exe",
+      "C:\\Users\\me\\My Note.md",
+      '"C:\\\\Users\\\\me\\\\My Note.md" ',
+    ],
+  ])(
+    "writes a path for %s as a string, as for the developer console",
+    async (_name, platform, executable, path, pasted) => {
+      dragAndDropEnvironment.platform = platform;
+      const bed = createBed({ executable });
+
+      await drop(bed, nativeDrag([nativeFile("My Note.md", path)]));
+
+      expect(bed.paste.mock.calls).toEqual([[pasted]]);
+      expect(notices()).toEqual([]);
+    },
+  );
+
   it.each<Settings.Profile["type"]>(["", "invalid"])(
     "writes a path for a profile of type %j, which names no program, as for an unknown one",
     async (type) => {
