@@ -62,46 +62,94 @@ const electron = dynamicRequire<typeof import("electron")>(BUNDLE, "electron"),
 // That pool has four threads, which Obsidian reads and saves notes with, so
 // the lookups take half of it at most.
 const LOOKUPS = 2,
-  // The lookups in line for a slot, oldest first; each is called when a slot
-  // is handed to it.
-  lookupQueue: (() => void)[] = [];
-// The slots taken.
-let lookups = 0;
+  // Where the slots are kept. Obsidian evaluates the plugin anew each time it
+  // is enabled again, and a `stat` of the copy that ran before still holds
+  // its thread until it answers. So the slots are not in this module but on
+  // the main window, which every copy runs in. The key names the shape of
+  // `LookupSlots`: slots of another shape need a key of their own.
+  LOOKUP_SLOTS = Symbol.for("obsidian-terminal.dropped-path-lookups.v1");
+
+/** The {@link LOOKUPS} slots, which every copy of this module shares. */
+interface LookupSlots {
+  /**
+   * The lookups in line for a slot, oldest first; each is called when a slot
+   * is handed to it. Mutable: lookups join and leave it.
+   */
+  readonly line: (() => void)[];
+  /** The slots taken. Mutable: counted up and down as they are. */
+  taken: number;
+}
+
+/** Narrows what is kept under {@link LOOKUP_SLOTS} to the slots. */
+function isLookupSlots(value: unknown): value is LookupSlots {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "line" in value &&
+    Array.isArray(value.line) &&
+    "taken" in value &&
+    typeof value.taken === "number"
+  );
+}
+
+/**
+ * Returns the slots that every copy of this module shares, made by the first
+ * to ask. They hold a count and the lookups in line, and a lookup leaves the
+ * line by its drop's deadline at the latest: nothing in them grows from one
+ * copy to the next, nor keeps a terminal there past that deadline.
+ */
+function lookupSlots(): LookupSlots {
+  // `self` is the main window here, as for the deadline of `#onDisk`.
+  const kept: unknown = Reflect.get(self, LOOKUP_SLOTS);
+  if (isLookupSlots(kept)) {
+    return kept;
+  }
+  const slots: LookupSlots = { line: [], taken: 0 };
+  Reflect.set(self, LOOKUP_SLOTS, slots);
+  return slots;
+}
 
 /**
  * Takes one of the {@link LOOKUPS} slots, waiting in line for one until
  * `deadline` settles.
  *
- * @returns whether a slot was taken, which `releaseLookup` then gives back.
+ * @returns what gives the slot back to the slots it was taken from, which a
+ * copy of this module enabled since shares; `null` if no slot was taken.
  */
-async function acquireLookup(deadline: Promise<unknown>): Promise<boolean> {
-  if (lookups < LOOKUPS) {
-    ++lookups;
-    return true;
+async function acquireLookup(
+  deadline: Promise<unknown>,
+): Promise<(() => void) | null> {
+  const slots = lookupSlots(),
+    release = (): void => {
+      releaseLookup(slots);
+    };
+  if (slots.taken < LOOKUPS) {
+    ++slots.taken;
+    return release;
   }
   let grant: () => void = noop;
   const slot = new Promise<void>((resolve) => {
     grant = resolve;
   });
-  lookupQueue.push(grant);
+  slots.line.push(grant);
   await Promise.race([slot, deadline]);
   // `releaseLookup` takes the lookup it hands a slot to out of the line, so
   // one that is still in it has seen the deadline come first.
-  const index = lookupQueue.indexOf(grant);
+  const index = slots.line.indexOf(grant);
   if (index === -1) {
-    return true;
+    return release;
   }
-  lookupQueue.splice(index, 1);
-  return false;
+  slots.line.splice(index, 1);
+  return null;
 }
 
 /** Gives a slot back: to the lookup that has waited longest, if one waits. */
-function releaseLookup(): void {
-  const next = lookupQueue.shift();
+function releaseLookup(slots: LookupSlots): void {
+  const next = slots.line.shift();
   if (next) {
     next();
   } else {
-    --lookups;
+    --slots.taken;
   }
 }
 
@@ -891,7 +939,8 @@ export class DragAndDropAddon implements ITerminalAddon {
     deadline: Promise<unknown>,
     awaited: () => boolean,
   ): Promise<boolean> {
-    if (!(await acquireLookup(deadline))) {
+    const release = await acquireLookup(deadline);
+    if (release === null) {
       return false;
     }
     try {
@@ -907,8 +956,9 @@ export class DragAndDropAddon implements ITerminalAddon {
       return false;
     } finally {
       // Only now that `stat` has answered, which can be long after the drop
-      // stopped waiting for it or the terminal went away.
-      releaseLookup();
+      // stopped waiting for it, the terminal went away, or the plugin was
+      // enabled again.
+      release();
     }
   }
 

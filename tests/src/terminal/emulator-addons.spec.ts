@@ -3947,6 +3947,45 @@ describe("DragAndDropAddon", () => {
     expect(second.paste).not.toHaveBeenCalled();
   });
 
+  // Obsidian evaluates the plugin anew each time it is enabled again, and a
+  // `stat` of the copy that ran before still holds its thread until it has
+  // an answer.
+  it("shares the lookups with the copy of the plugin that ran before it was enabled again", async () => {
+    vi.useFakeTimers();
+    const stuck = pendingStatsForEverySlot();
+    for (const { promise } of stuck) {
+      dragAndDropEnvironment.stat.mockReturnValueOnce(promise);
+    }
+    dragAndDropEnvironment.stat.mockResolvedValue(FILE_ON_DISK);
+    // Each copy is loaded on its own, after `vi.resetModules` (see
+    // `loadAddon`), as enabling the plugin evaluates its module anew.
+    const before = createBed({ Addon: await loadAddon() });
+
+    before.fire("drop", uriDrag(desktopUriList(["0.png", "1.png"])));
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(notices()).toEqual([NO_PATHS]);
+    // The plugin is disabled, and enabled again.
+    before.addon.dispose();
+    const after = createBed({ Addon: await loadAddon() });
+    expect(after.addon).not.toBeInstanceOf(before.addon.constructor);
+    after.fire("drop", uriDrag());
+    await vi.advanceTimersByTimeAsync(1999);
+    // Both lookups of the copy before are still without an answer.
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(2);
+    expect(after.paste).not.toHaveBeenCalled();
+
+    // The answer gives the lookup back to the drop of the copy now running.
+    stuck[0]?.answer();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(3);
+    expect(dragAndDropEnvironment.stat).toHaveBeenLastCalledWith(
+      `${DESKTOP}/b.png`,
+    );
+    expect(after.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(notices()).toEqual([NO_PATHS]);
+  });
+
   // === Focus after a drop ===
 
   it("leaves the focus where it went while a URI list was looked up", async () => {
