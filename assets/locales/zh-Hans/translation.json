@@ -387,7 +387,7 @@
       "tabStatus": {
         "effect": "Terminal tabs get a new icon that shows whether the program is working, needs input, is done or has failed, when the program reports it.",
         "name": "Program status on tabs",
-        "risk": "Few programs report their status yet, and the way they report it (OSC 7501) may still change. Inside tmux the report may not reach the terminal. A program that was already running when you turn this on may report only after you restart it."
+        "risk": "Few programs report their status yet, and the way they report it (OSC 7501) may still change. Inside tmux or screen the report may not reach the terminal. A program that was already running when you turn this on may report only after you restart it."
       }
     },
     "experimental-feedback": "Send feedback",
