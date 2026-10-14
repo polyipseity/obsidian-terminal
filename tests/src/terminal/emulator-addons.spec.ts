@@ -14,18 +14,132 @@
  *   the file in the leaf the view picks
  * - SynchronizedOutputScrollAddon: scroll position preservation across DEC 2026
  *   synchronized output blocks via queueMicrotask (xterm.js issue #5801 workaround)
+ * - DragAndDropAddon: vault drags (read from Obsidian's drag manager), files
+ *   from the system and lists of file URIs (VS Code's own list first) pasted
+ *   as absolute paths, one paste per drop (one per path on Windows) and drop
+ *   after drop, written for the profile's shell by the real
+ *   `dropped-paths.ts`; drags without a usable path, or without one that can
+ *   be written for the shell, refused, reported or left untouched
  */
-import type { ILink, ILinkProvider, IDisposable, Terminal } from "@xterm/xterm";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  type ILink,
+  type ILinkProvider,
+  type IDisposable,
+  Terminal,
+} from "@xterm/xterm";
+import {
+  type Mock,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import type { App, TFile, Vault, Workspace, WorkspaceLeaf } from "obsidian";
-import type { PluginContext } from "@polyipseity/obsidian-plugin-library";
-import type { Settings } from "../../../src/settings-data.js";
+import { FileSystemAdapter, Platform as ObsidianPlatform } from "obsidian";
+import {
+  type PluginContext,
+  notice2,
+} from "@polyipseity/obsidian-plugin-library";
+import { noop } from "ts-essentials";
+import { Settings } from "../../../src/settings-data.js";
 import {
   CustomKeyEventHandlerAddon,
+  DragAndDropAddon,
   FollowThemeAddon,
   SynchronizedOutputScrollAddon,
   VaultFileLinksAddon,
 } from "../../../src/terminal/emulator-addons.js";
+import { tick } from "../../support/helpers.js";
+
+/** What `DragAndDropAddon` reads of the result of `stat`. */
+interface DragAndDropStats {
+  readonly isDirectory: () => boolean;
+  readonly isFile: () => boolean;
+}
+
+/** What `DragAndDropAddon` reads from module state, set per test. */
+interface DragAndDropEnvironment {
+  /** Whether `electron` can be required; `false` as on mobile. */
+  electron: boolean;
+  /** Whether `node:fs/promises` can be required. */
+  fileSystem: boolean;
+  /** `notice2` of the library: one mock for every copy of the module. */
+  readonly notice2: Mock;
+  /** Overrides `Platform.CURRENT`; `null` keeps the real one. */
+  platform: string | null;
+  /** `stat` of `node:fs/promises`, which checks the paths of a URI list. */
+  readonly stat: Mock<(path: string) => Promise<DragAndDropStats>>;
+  /** Electron's `webUtils`; `undefined` as in Electron before 30. */
+  webUtils: { readonly getPathForFile: (file: File) => string } | undefined;
+}
+const dragAndDropEnvironment = vi.hoisted((): DragAndDropEnvironment => ({
+  electron: true,
+  fileSystem: true,
+  notice2: vi.fn(),
+  platform: null,
+  stat: vi.fn<(path: string) => Promise<DragAndDropStats>>(),
+  webUtils: void 0,
+}));
+
+vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@polyipseity/obsidian-plugin-library")
+    >();
+  return {
+    ...actual,
+    Platform: {
+      ...actual.Platform,
+      get CURRENT() {
+        return dragAndDropEnvironment.platform ?? actual.Platform.CURRENT;
+      },
+    },
+    notice2: dragAndDropEnvironment.notice2,
+  };
+});
+
+/*
+ * `emulator-addons.ts` requires `electron` and `node:fs/promises` once, when
+ * the module loads, through the `BUNDLE` map of `src/imports.js`. Entries for
+ * them stand in for Electron and the file system; `webUtils` is read at each
+ * drop and `stat` is one mock, so tests can change both. Whether a module can
+ * be required at all is read when it is required: a test that takes one away
+ * loads its own copy of `emulator-addons.ts`.
+ */
+vi.mock("../../../src/imports.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../../src/imports.js")>();
+  return {
+    ...actual,
+    BUNDLE: new Map([
+      ...actual.BUNDLE,
+      [
+        "electron",
+        (): unknown => {
+          if (!dragAndDropEnvironment.electron) {
+            throw new Error("Cannot find module 'electron'");
+          }
+          return {
+            get webUtils() {
+              return dragAndDropEnvironment.webUtils;
+            },
+          };
+        },
+      ],
+      [
+        "node:fs/promises",
+        (): unknown => {
+          if (!dragAndDropEnvironment.fileSystem) {
+            throw new Error("Cannot find module 'node:fs/promises'");
+          }
+          return { stat: dragAndDropEnvironment.stat };
+        },
+      ],
+    ]),
+  };
+});
 
 /** Minimal mock Terminal with `input()` and `attachCustomKeyEventHandler()`. */
 function createMockTerminal() {
@@ -1264,6 +1378,3844 @@ describe("CustomKeyEventHandlerAddon", () => {
 
     expect(triggerCsi("?", "h", [9001])).toEqual([]);
     expect(triggerCsi("?", "l", [9001])).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DragAndDropAddon
+// ---------------------------------------------------------------------------
+
+describe("DragAndDropAddon", () => {
+  const VAULT = "/Users/me/My Vault",
+    ESCAPED_VAULT = "/Users/me/My\\ Vault",
+    DESKTOP = "/Users/me/Desktop",
+    OVER_TYPES = ["dragenter", "dragover"] as const,
+    DRAG_TYPES = [...OVER_TYPES, "dragleave", "drop"] as const,
+    NOTICE_TIMEOUT = 7,
+    // The bed's translator returns the key it is asked for.
+    INSERT_PATH = "components.terminal.drag-insert-path",
+    NO_PATHS = "notices.drop-no-paths",
+    SKIPPED_PATHS = "notices.drop-skipped-paths",
+    TEXT = "text/plain",
+    URI_LIST = "text/uri-list",
+    VSCODE_URI_LIST = "application/vnd.code.uri-list",
+    // The class Obsidian 1.14.4 has on the body of its main window while it
+    // drags a tab or something out of the vault, and never for a drag that
+    // started in another application.
+    GRABBING = "is-grabbing",
+    // What real pointer drags onto the terminal carried in a Windows 11 guest
+    // (VS Code 1.141.0, Edge 155), with the folder the dragged files were in
+    // as a path and as VS Code writes it in a URI: lower-case drive letter,
+    // encoded colon.
+    WINDOWS_FOLDER = "C:\\Users\\janah\\Downloads\\tes-206-dnd",
+    VSCODE_FOLDER = "file:///c%3A/Users/janah/Downloads/tes-206-dnd",
+    EDGE_FOLDER = "file:///C:/Users/janah/Downloads/tes-206-dnd",
+    // The types of a drag out of VS Code's file tree, in the order measured.
+    VSCODE_TREE_TYPES = [
+      TEXT,
+      URI_LIST,
+      "resourceurls",
+      "codefiles",
+      "chromium/x-drag-id",
+      "codeeditors",
+      VSCODE_URI_LIST,
+    ],
+    // Those of a link or an image dragged out of a page in Edge.
+    EDGE_TYPES = [TEXT, URI_LIST, "text/html", "chromium/x-drag-id"],
+    FILE_ON_DISK: DragAndDropStats = {
+      isDirectory: () => false,
+      isFile: () => true,
+    };
+
+  type DragType = (typeof DRAG_TYPES)[number];
+  type DiskEntry = "directory" | "file" | "socket";
+  type Bed = ReturnType<typeof createBed>;
+
+  interface BedOptions {
+    /** `app.dragManager.draggable`: what is dragged out of the vault, if anything. */
+    readonly draggable?: unknown;
+    /** Private properties of the app, replacing the drag manager made from `draggable`. */
+    readonly app?: Readonly<Record<string, unknown>>;
+    /** Executable of the profile's shell; zsh by default. */
+    readonly executable?: string;
+    /** Arguments of the profile's shell; none by default. */
+    readonly args?: readonly string[];
+    /** Profile of the terminal; an integrated one of the two above by default. */
+    readonly profile?: Settings.Profile;
+    /** Whether the vault is on the file system. */
+    readonly fileSystem?: boolean;
+    /** Absolute path of a vault path; under `VAULT` by default. */
+    readonly fullPath?: (path: string) => string;
+    /** Vault-relative paths the vault does not know. */
+    readonly missing?: readonly string[];
+    /** The addon of another copy of `emulator-addons.ts`; see `loadAddon`. */
+    readonly Addon?: typeof DragAndDropAddon;
+    /** The document of the terminal's window; that of the main window by default. */
+    readonly document?: Document;
+    /** Tells when the terminal has its program; it has it at once by default. */
+    readonly attached?: () => PromiseLike<unknown>;
+  }
+
+  interface DragInit {
+    readonly effectAllowed?: DataTransfer["effectAllowed"];
+    readonly files?: readonly File[];
+    readonly types?: readonly string[];
+    /** The strings of the data transfer, by type. */
+    readonly data?: Readonly<Record<string, string>>;
+    /** What a `dragleave` enters; `null` outside the window. */
+    readonly relatedTarget?: EventTarget | null;
+    /** Whether a handler before the terminal's prevents the default. */
+    readonly taken?: boolean;
+  }
+
+  /** A vault file or folder as the drag manager carries it. */
+  function vaultFile(path: string): { readonly path: string } {
+    return { path };
+  }
+
+  /** The draggable of one vault file. */
+  function fileDraggable(path: string): unknown {
+    return { file: vaultFile(path), type: "file" };
+  }
+
+  /** A file dragged in from the system; `path` is the legacy Electron property. */
+  function nativeFile(name: string, path?: string): File {
+    return { name, path } as unknown as File;
+  }
+
+  /** A drag out of the vault: Obsidian only puts a name or URL in `text/plain`. */
+  function vaultDrag(init: DragInit = {}): DragInit {
+    return { types: ["text/plain"], ...init };
+  }
+
+  /** A drag of files from the system. */
+  function nativeDrag(
+    files: readonly File[] = [nativeFile("b.png", `${DESKTOP}/b.png`)],
+    init: DragInit = {},
+  ): DragInit {
+    return { files, types: ["Files"], ...init };
+  }
+
+  /**
+   * A drag of links, which its source describes in `text/uri-list`; a browser
+   * writes the link in `text/plain` as well.
+   */
+  function uriDrag(
+    uriList = `file://${DESKTOP}/b.png`,
+    init: DragInit = {},
+  ): DragInit {
+    return {
+      data: { [TEXT]: uriList, [URI_LIST]: uriList },
+      types: [URI_LIST, TEXT],
+      ...init,
+    };
+  }
+
+  /**
+   * A drag out of VS Code, which allows a copy or a move. Its own list holds
+   * every dragged item; `text/uri-list`, where it is present, only the first.
+   */
+  function vscodeDrag(
+    types: readonly string[],
+    data: Readonly<Record<string, string>>,
+  ): DragInit {
+    return { data, effectAllowed: "copyMove", types };
+  }
+
+  /** A file whose legacy Electron `path` cannot be read. */
+  function unreadableFile(name: string): File {
+    return Object.defineProperty({ name }, "path", {
+      get(): never {
+        throw new Error("File.path is gone");
+      },
+    }) as unknown as File;
+  }
+
+  /** A `stat` that is called but has not answered. */
+  interface PendingStat {
+    /** Answers it; with a file, unless told otherwise. */
+    readonly answer: (stats?: DragAndDropStats) => void;
+    readonly promise: Promise<DragAndDropStats>;
+  }
+
+  // Every `stat` a test left without an answer, for `afterEach` to answer:
+  // until it has one, it holds one of the two lookups that all the addons of
+  // a copy of `emulator-addons.ts` share, in the tests that follow as well.
+  const pendingStats: PendingStat[] = [];
+
+  /** A `stat` that has no answer until the test gives one. */
+  function pendingStat(): PendingStat {
+    let answer: (stats?: DragAndDropStats) => void = noop;
+    const promise = new Promise<DragAndDropStats>((resolve) => {
+        answer = (stats = FILE_ON_DISK): void => {
+          resolve(stats);
+        };
+      }),
+      pending = { answer, promise };
+    pendingStats.push(pending);
+    return pending;
+  }
+
+  /** Two of them, which is every lookup the addons may have outstanding. */
+  function pendingStatsForEverySlot(): readonly PendingStat[] {
+    return Array.from({ length: 2 }, pendingStat);
+  }
+
+  /** The file URIs of names on the desktop, as a URI list. */
+  function desktopUriList(names: readonly string[]): string {
+    return names.map((name) => `file://${DESKTOP}/${name}`).join("\r\n");
+  }
+
+  /**
+   * Loads `emulator-addons.ts` anew: it requires Electron and the file system
+   * once, when it loads, so a test that takes one of them away needs a copy
+   * of its own. The copy shares the mocks above, but not `obsidian`.
+   */
+  async function loadAddon(): Promise<typeof DragAndDropAddon> {
+    vi.resetModules();
+    // Imported here, after the test has set what the module can require.
+    const { DragAndDropAddon: Addon } =
+      await import("../../../src/terminal/emulator-addons.js");
+    return Addon;
+  }
+
+  /** Sets what is on the disk `stat` looks at; every other path is missing. */
+  function onDisk(entries: Readonly<Record<string, DiskEntry>>): void {
+    const disk = new Map(Object.entries(entries));
+    dragAndDropEnvironment.stat.mockImplementation((path) => {
+      const entry = disk.get(path);
+      return entry === undefined
+        ? Promise.reject(
+            Object.assign(new Error(`ENOENT: stat '${path}'`), {
+              code: "ENOENT",
+            }),
+          )
+        : Promise.resolve({
+            isDirectory: () => entry === "directory",
+            isFile: () => entry === "file",
+          });
+    });
+  }
+
+  // Every `terminal.paste` of a test, to check that none pasted nothing.
+  const pastes: Mock[] = [],
+    // Every addon of a test, disposed after it: one that still waits for the
+    // disk then looks nothing more up, and pastes nothing into a later test.
+    addons: DragAndDropAddon[] = [],
+    // Every element a test has put in the document to take the focus.
+    focusables: HTMLElement[] = [],
+    // Every pop-out window a test has opened, by the frame that holds it.
+    popouts: HTMLIFrameElement[] = [];
+
+  /**
+   * A pop-out window: a window of its own, with its own document, timers and
+   * focus, next to the main one that the globals `window` and `document`
+   * stay. A frame is the second window this environment has.
+   *
+   * One thing a pop-out of Obsidian has is not here: its own classes. In this
+   * environment a node of any window is an instance of the one `Node`, so
+   * these tests show nothing about values of another window's classes.
+   */
+  function popoutWindow(): {
+    readonly document: Document;
+    /** Closes it, after which its timers never fire. */
+    readonly close: () => void;
+  } {
+    const frame = document.body.appendChild(document.createElement("iframe")),
+      { contentDocument } = frame;
+    popouts.push(frame);
+    if (
+      !contentDocument ||
+      contentDocument.defaultView === null ||
+      contentDocument.defaultView === document.defaultView
+    ) {
+      throw new Error("no window of its own for the pop-out");
+    }
+    return {
+      close: () => {
+        frame.remove();
+      },
+      document: contentDocument,
+    };
+  }
+
+  /** The document of a pop-out window (see {@link popoutWindow}). */
+  function popoutDocument(): Document {
+    return popoutWindow().document;
+  }
+
+  /** An element of the window that takes the focus, as the editor of a note does. */
+  function focusable(): HTMLElement {
+    const input = document.body.appendChild(document.createElement("input"));
+    focusables.push(input);
+    return input;
+  }
+
+  /** Keys of the notices shown so far. */
+  function notices(): readonly unknown[] {
+    return vi.mocked(notice2).mock.calls.map(([message]) => message());
+  }
+
+  /**
+   * A terminal as the addon uses it. What is pasted reaches the program as
+   * data, as it does in xterm.js, and so does `input`: what the user types,
+   * or what the terminal reports by itself.
+   */
+  function fakeTerminal() {
+    const listeners = new Set<(data: string) => void>(),
+      input = (data: string): void => {
+        for (const listener of [...listeners]) {
+          listener(data);
+        }
+      },
+      focus = vi.fn(),
+      paste = vi.fn((data: string): void => {
+        input(data);
+      }),
+      onData = vi.fn((listener: (data: string) => void): IDisposable => {
+        listeners.add(listener);
+        return {
+          dispose: () => {
+            listeners.delete(listener);
+          },
+        };
+      }),
+      terminal = { focus, onData, paste } as unknown as Terminal;
+    return { focus, input, listeners, onData, paste, terminal };
+  }
+
+  /**
+   * Activates the addon on the element of a terminal inside a view.
+   *
+   * @param options - the vault, the profile and the vault drag in flight.
+   */
+  function createBed(options: BedOptions = {}) {
+    const {
+        Addon = DragAndDropAddon,
+        args = [],
+        draggable = null,
+        executable = "/bin/zsh",
+        // The addon reads no more of an integrated profile than these two.
+        profile = {
+          ...Settings.Profile.DEFAULTS.integrated,
+          args,
+          executable,
+        },
+        fileSystem = true,
+        fullPath = (path: string): string => `${VAULT}/${path}`,
+        missing = [],
+        document: ownerDocument = document,
+      } = options,
+      // The container of the view, where Obsidian has its own drag handlers.
+      view = ownerDocument.createElement("div"),
+      element = view.appendChild(ownerDocument.createElement("div")),
+      reachedView = vi.fn<(event: Event) => void>(),
+      addEventListener = vi.spyOn(element, "addEventListener"),
+      removeEventListener = vi.spyOn(element, "removeEventListener"),
+      { focus, input, listeners, paste, terminal } = fakeTerminal(),
+      getFullPath = vi.fn(fullPath),
+      getAbstractFileByPath = vi.fn((path: string) =>
+        missing.includes(path) ? null : vaultFile(path),
+      ),
+      setAction = vi.fn(),
+      dragManager = { draggable, setAction },
+      app = {
+        ...(options.app ?? { dragManager }),
+        vault: {
+          adapter: fileSystem
+            ? Object.assign(new FileSystemAdapter(), { getFullPath })
+            : { getFullPath },
+          getAbstractFileByPath,
+        },
+      } as unknown as App,
+      context = {
+        app,
+        language: { value: { t: vi.fn((key: string) => key) } },
+        settings: { value: { noticeTimeout: NOTICE_TIMEOUT } },
+      } as unknown as PluginContext,
+      addon = new Addon(context, element, profile, options.attached);
+
+    for (const type of DRAG_TYPES) {
+      view.addEventListener(type, reachedView);
+    }
+    pastes.push(paste);
+    addons.push(addon);
+    addon.activate(terminal);
+
+    return {
+      addEventListener,
+      addon,
+      context,
+      dragManager,
+      element,
+      focus,
+      /** What the vault is asked about its files. */
+      getAbstractFileByPath,
+      getFullPath,
+      /** Sends data from the terminal to its program, as typing does. */
+      input,
+      /** The listeners for that data that are still there. */
+      listeners,
+      paste,
+      removeEventListener,
+      setAction,
+      terminal,
+      view,
+      /**
+       * Dispatches a drag event on the terminal, as the browser does.
+       *
+       * @param type - type of the event.
+       * @param init - its data transfer; `null` leaves it out.
+       */
+      fire(type: DragType, init: DragInit | null = {}) {
+        const event = new Event(type, { bubbles: true, cancelable: true }),
+          // A data transfer shows its types during the whole drag, but its
+          // files and strings only while the drop is dispatched.
+          readable = { now: false },
+          getData = vi.fn((format: string) =>
+            readable.now ? (init?.data?.[format] ?? "") : "",
+          ),
+          dataTransfer =
+            init === null
+              ? null
+              : {
+                  // A value the addon never sets, to tell when it set none.
+                  dropEffect: "move",
+                  effectAllowed: init.effectAllowed ?? "all",
+                  get files(): readonly File[] {
+                    return readable.now ? (init.files ?? []) : [];
+                  },
+                  getData,
+                  types: init.types ?? [],
+                };
+        Object.defineProperty(event, "dataTransfer", { value: dataTransfer });
+        Object.defineProperty(event, "relatedTarget", {
+          value: init?.relatedTarget ?? null,
+        });
+        if (init?.taken ?? false) {
+          view.addEventListener(
+            type,
+            (taken) => {
+              taken.preventDefault();
+            },
+            { capture: true, once: true },
+          );
+        }
+        readable.now = type === "drop";
+        element.dispatchEvent(event);
+        readable.now = false;
+        return {
+          dataTransfer,
+          event,
+          getData,
+          /** Whether the event went on to the view's own handlers. */
+          reachedView: reachedView.mock.calls.some(([seen]) => seen === event),
+        };
+      },
+    };
+  }
+
+  /** Drops on the terminal and waits until the paths are looked up and pasted. */
+  async function drop(bed: Bed, init: DragInit | null = {}) {
+    const dropped = bed.fire("drop", init);
+    await tick();
+    return dropped;
+  }
+
+  /** One drag of each kind the terminal takes: name, bed, data transfer. */
+  const TAKEN_DRAGS: readonly (readonly [string, BedOptions, DragInit])[] = [
+    [
+      "a vault file",
+      { draggable: fileDraggable("Assets/photo.png") },
+      vaultDrag(),
+    ],
+    ["files from the system", {}, nativeDrag()],
+    ["a URI list", {}, uriDrag()],
+    [
+      // All an editor tab of VS Code has.
+      "a URI list of VS Code's kind",
+      {},
+      {
+        data: { [VSCODE_URI_LIST]: `file://${DESKTOP}/b.png` },
+        types: [VSCODE_URI_LIST],
+      },
+    ],
+  ];
+
+  beforeEach(() => {
+    dragAndDropEnvironment.platform = "darwin";
+    onDisk({});
+    // Paths that are left out are reported at these levels.
+    vi.spyOn(console, "debug").mockImplementation(noop);
+    vi.spyOn(console, "warn").mockImplementation(noop);
+  });
+
+  afterEach(async () => {
+    for (const paste of pastes.splice(0)) {
+      expect(paste).not.toHaveBeenCalledWith("");
+    }
+    // Nothing of this test may be left in the lookups the addons share: its
+    // addons stop looking up, and each `stat` without an answer gets one.
+    for (const addon of addons.splice(0)) {
+      addon.dispose();
+    }
+    for (const pending of pendingStats.splice(0)) {
+      pending.answer();
+    }
+    // `tick` needs the real `setImmediate`.
+    vi.useRealTimers();
+    await tick();
+    document.body.classList.remove(GRABBING);
+    for (const element of focusables.splice(0)) {
+      element.blur();
+      element.remove();
+    }
+    for (const frame of popouts.splice(0)) {
+      frame.remove();
+    }
+    dragAndDropEnvironment.electron = true;
+    dragAndDropEnvironment.fileSystem = true;
+    dragAndDropEnvironment.platform = null;
+    dragAndDropEnvironment.webUtils = void 0;
+    dragAndDropEnvironment.stat.mockReset();
+    vi.mocked(notice2).mockClear();
+    vi.restoreAllMocks();
+  });
+
+  // === Listeners and disposal ===
+
+  it("listens for every drag event as soon as it is activated", () => {
+    const bed = createBed();
+
+    expect(
+      new Set(bed.addEventListener.mock.calls.map(([type]) => type)),
+    ).toEqual(new Set(DRAG_TYPES));
+  });
+
+  it("takes a drop that comes right after it is activated", async () => {
+    const bed = createBed();
+
+    await drop(bed, nativeDrag());
+
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+  });
+
+  // === A drop before the terminal has its program ===
+
+  // The terminal takes drags from the moment it shows, with its restored
+  // history, and its program starts after that. What is pasted in between
+  // reaches no program, and the terminal keeps none of it.
+  describe("before the terminal has its program", () => {
+    /** The program of a terminal, which starts or fails when the test says. */
+    function pendingProgram() {
+      let start: () => void = noop,
+        fail: () => void = noop;
+      const program = new Promise<void>((resolve, reject) => {
+        start = resolve;
+        fail = (): void => {
+          reject(new Error("the program did not start"));
+        };
+      });
+      return { attached: vi.fn(async () => program), fail, start };
+    }
+
+    it.each(TAKEN_DRAGS)(
+      "holds %s until the terminal has it",
+      async (_name, options, init) => {
+        onDisk({ [`${DESKTOP}/b.png`]: "file" });
+        const program = pendingProgram(),
+          bed = createBed({ ...options, attached: program.attached });
+
+        await drop(bed, init);
+
+        expect(bed.paste).not.toHaveBeenCalled();
+        expect(bed.focus).not.toHaveBeenCalled();
+        expect(notices()).toEqual([]);
+
+        program.start();
+        await tick();
+
+        expect(bed.paste).toHaveBeenCalledOnce();
+        expect(bed.focus).toHaveBeenCalledOnce();
+        expect(notices()).toEqual([]);
+      },
+    );
+
+    it("pastes the drops it held in the order they came", async () => {
+      const program = pendingProgram(),
+        bed = createBed({ attached: program.attached });
+
+      await drop(bed, nativeDrag([nativeFile("a.png", `${DESKTOP}/a.png`)]));
+      await drop(bed, nativeDrag([nativeFile("b.png", `${DESKTOP}/b.png`)]));
+      program.start();
+      await tick();
+
+      expect(bed.paste.mock.calls).toEqual([
+        [`${DESKTOP}/a.png `],
+        [`${DESKTOP}/b.png `],
+      ]);
+    });
+
+    // The view says that the program did not start: that is none of the
+    // drop's, which has nothing to add to it.
+    it("discards a drop when the program did not start", async () => {
+      const program = pendingProgram(),
+        error = vi.spyOn(console, "error").mockImplementation(noop),
+        bed = createBed({ attached: program.attached });
+
+      await drop(bed, nativeDrag());
+      program.fail();
+      await tick();
+
+      expect(bed.paste).not.toHaveBeenCalled();
+      expect(bed.focus).not.toHaveBeenCalled();
+      expect(notices()).toEqual([]);
+      expect(error).not.toHaveBeenCalled();
+    });
+
+    it("takes the next drop once a terminal has its program after all", async () => {
+      const attached = vi
+          .fn<() => Promise<void>>()
+          .mockRejectedValueOnce(new Error("the program did not start"))
+          .mockResolvedValue(),
+        bed = createBed({ attached });
+
+      await drop(bed, nativeDrag([nativeFile("a.png", `${DESKTOP}/a.png`)]));
+      await drop(bed, nativeDrag([nativeFile("b.png", `${DESKTOP}/b.png`)]));
+
+      expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    });
+
+    // What is typed before the program is there reaches nothing either, but
+    // it shows that the user has gone on: the drop is not pasted behind it.
+    it("does not paste a drop it held after the user typed", async () => {
+      const program = pendingProgram(),
+        bed = createBed({ attached: program.attached });
+
+      await drop(bed, nativeDrag());
+      bed.input("l");
+      program.start();
+      await tick();
+
+      expect(bed.paste).not.toHaveBeenCalled();
+      expect(notices()).toEqual([SKIPPED_PATHS]);
+    });
+
+    it("pastes nothing when it is disposed before the terminal has its program", async () => {
+      const program = pendingProgram(),
+        bed = createBed({ attached: program.attached });
+
+      await drop(bed, nativeDrag());
+      bed.addon.dispose();
+      program.start();
+      await tick();
+
+      expect(bed.paste).not.toHaveBeenCalled();
+      expect(notices()).toEqual([]);
+    });
+
+    it("asks for the program at the drop, not when it is made or activated", async () => {
+      const attached = vi.fn(async () => Promise.resolve()),
+        bed = createBed({ attached });
+
+      expect(attached).not.toHaveBeenCalled();
+
+      await drop(bed, nativeDrag());
+
+      expect(attached).toHaveBeenCalled();
+      expect(bed.paste).toHaveBeenCalledOnce();
+    });
+  });
+
+  it.each(DRAG_TYPES)("leaves %s untouched after dispose", async (type) => {
+    const bed = createBed();
+
+    bed.addon.dispose();
+    const fired = bed.fire(type, nativeDrag());
+    await tick();
+
+    expect(fired.event.defaultPrevented).toBe(false);
+    expect(fired.reachedView).toBe(true);
+    expect(fired.dataTransfer?.dropEffect).toBe("move");
+    expect(bed.paste).not.toHaveBeenCalled();
+  });
+
+  it("pastes nothing for a drop after dispose", async () => {
+    const bed = createBed();
+
+    await drop(bed, nativeDrag());
+    bed.addon.dispose();
+    await drop(bed, nativeDrag());
+
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+  });
+
+  it("pastes nothing when disposed while dropped files are looked up", async () => {
+    const getPathForFile = vi.fn(() => `${DESKTOP}/b.png`),
+      bed = createBed();
+    dragAndDropEnvironment.webUtils = { getPathForFile };
+
+    bed.fire("drop", nativeDrag());
+    bed.addon.dispose();
+    await tick();
+
+    expect(bed.paste).not.toHaveBeenCalled();
+    expect(bed.focus).not.toHaveBeenCalled();
+    expect(notices()).toEqual([]);
+    // The files of a drop whose terminal is gone are not even asked for a path.
+    expect(getPathForFile).not.toHaveBeenCalled();
+  });
+
+  it("pastes nothing when disposed while a URI list is checked on disk", async () => {
+    const stat = pendingStat();
+    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+    const bed = createBed();
+
+    await drop(bed, uriDrag());
+    bed.addon.dispose();
+    stat.answer();
+    await tick();
+
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledOnce();
+    expect(bed.paste).not.toHaveBeenCalled();
+    expect(bed.focus).not.toHaveBeenCalled();
+    expect(notices()).toEqual([]);
+  });
+
+  it("looks nothing up for a drop that waits behind another when disposed", async () => {
+    const stat = pendingStat();
+    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+    const bed = createBed();
+
+    await drop(bed, uriDrag());
+    await drop(bed, uriDrag(`file://${DESKTOP}/c.png`));
+    bed.addon.dispose();
+    stat.answer();
+    await tick();
+
+    expect(dragAndDropEnvironment.stat.mock.calls).toEqual([
+      [`${DESKTOP}/b.png`],
+    ]);
+    expect(bed.paste).not.toHaveBeenCalled();
+  });
+
+  // A paste can set off a callback that closes the terminal.
+  it.each<readonly [string, string, string, readonly string[], string]>([
+    [
+      // Each path is a paste of its own there, and the second is not pasted.
+      "the first of two pastes on Windows",
+      "win32",
+      "cmd.exe",
+      ["C:\\Users\\me\\a.png", "C:\\Users\\me\\b.png"],
+      "C:\\Users\\me\\a.png ",
+    ],
+    [
+      "the one paste of two paths",
+      "darwin",
+      "/bin/zsh",
+      [`${DESKTOP}/a.png`, `${DESKTOP}/b.png`],
+      `${DESKTOP}/a.png ${DESKTOP}/b.png `,
+    ],
+    [
+      "the paste of the only path",
+      "darwin",
+      "/bin/zsh",
+      [`${DESKTOP}/a.png`],
+      `${DESKTOP}/a.png `,
+    ],
+  ])(
+    "stops when %s disposes the addon, without focusing the terminal",
+    async (_name, platform, executable, paths, pasted) => {
+      dragAndDropEnvironment.platform = platform;
+      const bed = createBed({ executable });
+      bed.paste.mockImplementationOnce(() => {
+        bed.addon.dispose();
+      });
+
+      await drop(
+        bed,
+        nativeDrag(paths.map((path) => nativeFile("dropped.png", path))),
+      );
+
+      expect(bed.paste.mock.calls).toEqual([[pasted]]);
+      expect(bed.focus).not.toHaveBeenCalled();
+      expect(notices()).toEqual([]);
+    },
+  );
+
+  it("removes every listener it added on dispose", () => {
+    const bed = createBed();
+
+    bed.addon.dispose();
+
+    expect(
+      bed.removeEventListener.mock.calls.map(([type, listener]) => [
+        type,
+        listener,
+      ]),
+    ).toEqual(
+      expect.arrayContaining(
+        bed.addEventListener.mock.calls.map(([type, listener]) => [
+          type,
+          listener,
+        ]),
+      ),
+    );
+    expect(bed.removeEventListener).toHaveBeenCalledTimes(DRAG_TYPES.length);
+  });
+
+  it("pastes into the terminal of its last activation only", async () => {
+    const stat = pendingStat();
+    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+    const bed = createBed(),
+      { focus, paste, terminal } = fakeTerminal();
+    pastes.push(paste);
+
+    // A drop that is still looked up on disk when the terminal is replaced
+    // belongs to neither terminal by the time it has its answer.
+    await drop(bed, uriDrag());
+    bed.addon.activate(terminal);
+    stat.answer();
+    await tick();
+
+    expect(bed.paste).not.toHaveBeenCalled();
+    expect(paste).not.toHaveBeenCalled();
+    expect(focus).not.toHaveBeenCalled();
+    expect(notices()).toEqual([]);
+
+    bed.dragManager.draggable = fileDraggable("a.png");
+    bed.fire("dragover", vaultDrag());
+    await drop(bed, vaultDrag());
+
+    expect(bed.paste).not.toHaveBeenCalled();
+    expect(bed.focus).not.toHaveBeenCalled();
+    expect(paste.mock.calls).toEqual([[`${ESCAPED_VAULT}/a.png `]]);
+    expect(focus).toHaveBeenCalledOnce();
+    // One `dragover` listener is left, not two.
+    expect(bed.setAction).toHaveBeenCalledOnce();
+    expect(bed.removeEventListener).toHaveBeenCalledTimes(DRAG_TYPES.length);
+  });
+
+  it("shows no notice for a drop without a path that is looked up when the terminal is replaced", async () => {
+    const stat = pendingStat();
+    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+    const bed = createBed();
+
+    await drop(bed, uriDrag());
+    bed.addon.activate(bed.terminal);
+    stat.answer({ isDirectory: () => false, isFile: () => false });
+    await tick();
+
+    expect(bed.paste).not.toHaveBeenCalled();
+    expect(notices()).toEqual([]);
+  });
+
+  it("looks nothing up for a drop that waits behind another when the terminal is replaced", async () => {
+    const stat = pendingStat();
+    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+    const bed = createBed();
+
+    await drop(bed, uriDrag());
+    await drop(bed, uriDrag(`file://${DESKTOP}/c.png`));
+    bed.addon.activate(bed.terminal);
+    stat.answer();
+    await tick();
+
+    expect(dragAndDropEnvironment.stat.mock.calls).toEqual([
+      [`${DESKTOP}/b.png`],
+    ]);
+    expect(bed.paste).not.toHaveBeenCalled();
+    expect(bed.focus).not.toHaveBeenCalled();
+    expect(notices()).toEqual([]);
+  });
+
+  it.each(DRAG_TYPES)(
+    "leaves %s untouched when activated after dispose",
+    async (type) => {
+      const bed = createBed();
+
+      bed.addon.dispose();
+      bed.addEventListener.mockClear();
+      bed.addon.activate(bed.terminal);
+      const fired = bed.fire(type, nativeDrag());
+      await tick();
+
+      expect(bed.addEventListener).not.toHaveBeenCalled();
+      expect(fired.event.defaultPrevented).toBe(false);
+      expect(fired.reachedView).toBe(true);
+      expect(bed.paste).not.toHaveBeenCalled();
+    },
+  );
+
+  it("logs a failed drop instead of leaving a rejection unhandled", async () => {
+    const failure = new Error("terminal is gone"),
+      error = vi.spyOn(console, "error").mockImplementation(noop),
+      bed = createBed();
+    bed.paste.mockImplementation(() => {
+      throw failure;
+    });
+
+    await drop(bed, nativeDrag());
+
+    expect(error).toHaveBeenCalledExactlyOnceWith(failure);
+  });
+
+  // === Drags that are not for the terminal ===
+
+  describe.each<readonly [string, DragInit | null]>([
+    ["a text selection", { types: ["text/plain", "text/html"] }],
+    // Obsidian drags a tab with an empty `text/plain` and no draggable.
+    ["a tab header", { types: ["text/plain"] }],
+    ["an empty data transfer", {}],
+    ["no data transfer", null],
+  ])("with %s dragged", (_name, init) => {
+    it.each(DRAG_TYPES)("leaves %s untouched", async (type) => {
+      const bed = createBed(),
+        fired = bed.fire(type, init);
+      await tick();
+
+      expect(fired.event.defaultPrevented).toBe(false);
+      expect(fired.reachedView).toBe(true);
+      expect(fired.dataTransfer?.dropEffect ?? "move").toBe("move");
+      expect(fired.getData).not.toHaveBeenCalled();
+      expect(bed.paste).not.toHaveBeenCalled();
+      expect(bed.focus).not.toHaveBeenCalled();
+      expect(bed.setAction).not.toHaveBeenCalled();
+      expect(notices()).toEqual([]);
+    });
+  });
+
+  // While Obsidian drags a tab, the body of its main window has the class
+  // `is-grabbing`. A tab grabbed by an image in its header (the icon of a web
+  // page) carries what Chromium adds for the image as well, so nothing but
+  // that class tells it from a drag out of another application.
+  describe.each<readonly [string, DragInit, readonly string[]]>([
+    [
+      "the image as a file and a URI",
+      {
+        data: { [TEXT]: "", [URI_LIST]: "https://example.com/favicon.ico" },
+        files: [nativeFile("favicon.ico", "")],
+        types: [TEXT, URI_LIST, "text/html", "Files"],
+      },
+      [],
+    ],
+    [
+      "the image as a URI",
+      {
+        data: { [TEXT]: "", [URI_LIST]: `file://${DESKTOP}/b.png` },
+        types: [TEXT, URI_LIST],
+      },
+      [`${DESKTOP}/b.png `],
+    ],
+    [
+      "a list of VS Code's kind",
+      {
+        data: { [TEXT]: "", [VSCODE_URI_LIST]: `file://${DESKTOP}/b.png` },
+        types: [TEXT, VSCODE_URI_LIST],
+      },
+      [`${DESKTOP}/b.png `],
+    ],
+  ])("with a drag that carries %s", (_name, init, pasted) => {
+    it.each(DRAG_TYPES)(
+      "leaves %s untouched while Obsidian drags a tab",
+      async (type) => {
+        document.body.classList.add(GRABBING);
+        onDisk({ [`${DESKTOP}/b.png`]: "file" });
+        const bed = createBed(),
+          fired = bed.fire(type, init);
+        await tick();
+
+        expect(fired.event.defaultPrevented).toBe(false);
+        expect(fired.reachedView).toBe(true);
+        expect(fired.dataTransfer?.dropEffect).toBe("move");
+        expect(fired.getData).not.toHaveBeenCalled();
+        expect(dragAndDropEnvironment.stat).not.toHaveBeenCalled();
+        expect(bed.paste).not.toHaveBeenCalled();
+        expect(bed.focus).not.toHaveBeenCalled();
+        expect(bed.setAction).not.toHaveBeenCalled();
+        expect(notices()).toEqual([]);
+      },
+    );
+
+    it.each(OVER_TYPES)(
+      "accepts %s of the same drag out of another application",
+      (type) => {
+        const bed = createBed(),
+          over = bed.fire(type, init);
+
+        expect(over.event.defaultPrevented).toBe(true);
+        expect(over.dataTransfer?.dropEffect).toBe("copy");
+      },
+    );
+
+    it("takes the drop of the same drag out of another application", async () => {
+      onDisk({ [`${DESKTOP}/b.png`]: "file" });
+      const bed = createBed(),
+        dropped = await drop(bed, init);
+
+      expect(dropped.event.defaultPrevented).toBe(true);
+      expect(dropped.reachedView).toBe(false);
+      expect(bed.paste.mock.calls).toEqual(pasted.map((text) => [text]));
+      expect(notices()).toEqual(pasted.length > 0 ? [] : [NO_PATHS]);
+    });
+  });
+
+  it("pastes files from another application that come with an empty text/plain", async () => {
+    const bed = createBed(),
+      dropped = await drop(
+        bed,
+        nativeDrag([nativeFile("b.png", `${DESKTOP}/b.png`)], {
+          data: { [TEXT]: "" },
+          types: [TEXT, "Files"],
+        }),
+      );
+
+    expect(dropped.event.defaultPrevented).toBe(true);
+    expect(dropped.getData).not.toHaveBeenCalled();
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(notices()).toEqual([]);
+  });
+
+  // Obsidian's drag manager sets the class for its own drags as well.
+  it("still takes a vault drag, which Obsidian marks as it marks a tab", async () => {
+    document.body.classList.add(GRABBING);
+    const bed = createBed({ draggable: fileDraggable("Assets/photo.png") }),
+      over = bed.fire("dragover", vaultDrag()),
+      dropped = await drop(bed, vaultDrag());
+
+    expect(over.event.defaultPrevented).toBe(true);
+    expect(over.dataTransfer?.dropEffect).toBe("copy");
+    expect(bed.setAction).toHaveBeenCalledExactlyOnceWith(INSERT_PATH);
+    expect(dropped.event.defaultPrevented).toBe(true);
+    expect(bed.paste.mock.calls).toEqual([
+      [`${ESCAPED_VAULT}/Assets/photo.png `],
+    ]);
+  });
+
+  describe("in a pop-out window", () => {
+    // Obsidian marks a drag on the body of its main window only.
+    it.each(DRAG_TYPES)(
+      "leaves %s untouched while Obsidian drags a tab",
+      async (type) => {
+        document.body.classList.add(GRABBING);
+        const bed = createBed({ document: popoutDocument() }),
+          fired = bed.fire(type, nativeDrag());
+        await tick();
+
+        expect(fired.event.defaultPrevented).toBe(false);
+        expect(fired.reachedView).toBe(true);
+        expect(bed.paste).not.toHaveBeenCalled();
+        expect(notices()).toEqual([]);
+      },
+    );
+
+    it("takes a drop out of another application", async () => {
+      const popout = popoutDocument(),
+        bed = createBed({ document: popout });
+      // Not where Obsidian marks a drag, so not read.
+      popout.body.classList.add(GRABBING);
+
+      await drop(bed, nativeDrag());
+
+      expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    });
+  });
+
+  // === Accepting and refusing a drag ===
+
+  // A drag stays over the terminal for as long as the user holds it there,
+  // and the event comes many times a second.
+  describe("with a thousand vault files dragged", () => {
+    const files = Array.from({ length: 1000 }, (_value, index) =>
+      vaultFile(`Notes/${String(index)}.md`),
+    );
+
+    it.each(OVER_TYPES)(
+      "asks the vault on %s about no file after the first it can insert",
+      (type) => {
+        const bed = createBed({ draggable: { files, type: "files" } }),
+          over = bed.fire(type, vaultDrag());
+
+        expect(over.dataTransfer?.dropEffect).toBe("copy");
+        expect(bed.getAbstractFileByPath.mock.calls).toEqual([["Notes/0.md"]]);
+        expect(bed.getFullPath.mock.calls).toEqual([["Notes/0.md"]]);
+      },
+    );
+
+    it("goes on past the files it cannot insert to the first it can", () => {
+      const bed = createBed({
+          draggable: {
+            files: [vaultFile("gone.md"), vaultFile("a\tb.md"), ...files],
+            type: "files",
+          },
+          missing: ["gone.md"],
+        }),
+        over = bed.fire("dragover", vaultDrag());
+
+      expect(over.dataTransfer?.dropEffect).toBe("copy");
+      expect(bed.getAbstractFileByPath.mock.calls).toEqual([
+        ["gone.md"],
+        ["a\tb.md"],
+        ["Notes/0.md"],
+      ]);
+      // No path is made for a file the vault does not know.
+      expect(bed.getFullPath.mock.calls).toEqual([["a\tb.md"], ["Notes/0.md"]]);
+    });
+
+    it("still pastes every one of them on the drop", async () => {
+      const bed = createBed({ draggable: { files, type: "files" } });
+
+      await drop(bed, vaultDrag());
+
+      expect(bed.paste).toHaveBeenCalledOnce();
+      expect(bed.getFullPath).toHaveBeenCalledTimes(files.length);
+      expect(notices()).toEqual([]);
+    });
+  });
+
+  describe.each(TAKEN_DRAGS)("with %s dragged", (_name, options, init) => {
+    it.each(OVER_TYPES)("accepts the drag as a copy on %s", (type) => {
+      const bed = createBed(options),
+        over = bed.fire(type, init);
+
+      expect(over.event.defaultPrevented).toBe(true);
+      expect(over.dataTransfer?.dropEffect).toBe("copy");
+      expect(bed.paste).not.toHaveBeenCalled();
+    });
+
+    // Obsidian moves its drag ghost from window-level `dragover` listeners.
+    it.each(OVER_TYPES)("lets %s go on to the view and the window", (type) => {
+      const bed = createBed(options),
+        over = bed.fire(type, init);
+
+      expect(over.reachedView).toBe(true);
+    });
+
+    it.each(OVER_TYPES)(
+      "leaves %s alone when another handler has answered it",
+      (type) => {
+        const bed = createBed(options),
+          over = bed.fire(type, { ...init, taken: true });
+
+        expect(over.dataTransfer?.dropEffect).toBe("move");
+        expect(over.reachedView).toBe(true);
+        expect(bed.setAction).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each<readonly [DataTransfer["effectAllowed"], string]>([
+      ["all", "copy"],
+      ["copy", "copy"],
+      ["copyLink", "copy"],
+      ["copyMove", "copy"],
+      ["uninitialized", "copy"],
+      ["link", "link"],
+      ["linkMove", "link"],
+      // Never a move: a file manager may delete the source after one.
+      ["move", "none"],
+      ["none", "none"],
+    ])(
+      "answers a source allowing %s with the drop effect %s",
+      (effectAllowed, dropEffect) => {
+        const bed = createBed(options),
+          over = bed.fire("dragover", { ...init, effectAllowed });
+
+        expect(over.event.defaultPrevented).toBe(true);
+        expect(over.dataTransfer?.dropEffect).toBe(dropEffect);
+        expect(over.reachedView).toBe(true);
+      },
+    );
+
+    it("leaves a drop alone when another handler took it", async () => {
+      onDisk({ [`${DESKTOP}/b.png`]: "file" });
+      const bed = createBed(options),
+        dropped = await drop(bed, { ...init, taken: true });
+
+      expect(dropped.reachedView).toBe(true);
+      expect(dropped.getData).not.toHaveBeenCalled();
+      expect(bed.paste).not.toHaveBeenCalled();
+      expect(bed.focus).not.toHaveBeenCalled();
+      expect(notices()).toEqual([]);
+    });
+
+    it("pastes on drop and keeps the drop from the view", async () => {
+      onDisk({ [`${DESKTOP}/b.png`]: "file" });
+      const bed = createBed(options),
+        dropped = await drop(bed, init);
+
+      expect(bed.paste).toHaveBeenCalledOnce();
+      expect(dropped.event.defaultPrevented).toBe(true);
+      expect(dropped.reachedView).toBe(false);
+    });
+
+    it("focuses the terminal once after a drop", async () => {
+      onDisk({ [`${DESKTOP}/b.png`]: "file" });
+      const bed = createBed(options);
+
+      await drop(bed, init);
+
+      expect(bed.focus).toHaveBeenCalledOnce();
+    });
+
+    it("shows no notice when everything dropped is inserted", async () => {
+      onDisk({ [`${DESKTOP}/b.png`]: "file" });
+      const bed = createBed(options);
+
+      await drop(bed, init);
+
+      expect(notices()).toEqual([]);
+    });
+  });
+
+  // === Label on Obsidian's drag ghost ===
+
+  it.each(OVER_TYPES)(
+    "labels Obsidian's drag ghost on %s of a vault file",
+    (type) => {
+      const bed = createBed({ draggable: fileDraggable("Assets/photo.png") });
+
+      bed.fire(type, vaultDrag());
+
+      expect(bed.setAction).toHaveBeenCalledExactlyOnceWith(INSERT_PATH);
+      expect(bed.setAction.mock.contexts).toEqual([bed.dragManager]);
+    },
+  );
+
+  // In a pop-out window Obsidian does not clear the label itself.
+  describe.each<readonly [string, BedOptions, DragInit]>([
+    [
+      "a vault drag without a path",
+      { draggable: { file: null, linktext: "Missing", type: "link" } },
+      vaultDrag(),
+    ],
+    [
+      "a vault file from a source that only allows a move",
+      { draggable: fileDraggable("Assets/photo.png") },
+      vaultDrag({ effectAllowed: "move" }),
+    ],
+  ])("with %s dragged", (_name, options, init) => {
+    it.each(OVER_TYPES)("takes the label off the drag ghost on %s", (type) => {
+      const bed = createBed(options);
+
+      bed.fire(type, init);
+
+      expect(bed.setAction).toHaveBeenCalledExactlyOnceWith(null);
+      expect(bed.setAction.mock.contexts).toEqual([bed.dragManager]);
+    });
+  });
+
+  it.each<readonly [string, DragInit]>([
+    ["files from the system", nativeDrag()],
+    ["a URI list", uriDrag()],
+  ])("leaves the drag ghost alone for %s", (_name, init) => {
+    const bed = createBed();
+
+    for (const type of [...OVER_TYPES, "dragleave"] as const) {
+      bed.fire(type, init);
+    }
+
+    expect(bed.setAction).not.toHaveBeenCalled();
+  });
+
+  it.each<readonly [string, (bed: Bed) => EventTarget | null]>([
+    ["the window", (): null => null],
+    ["the view around the terminal", (bed): EventTarget => bed.view],
+  ])(
+    "takes the label off the drag ghost when a vault drag leaves for %s",
+    (_name, entered) => {
+      const bed = createBed({ draggable: fileDraggable("Assets/photo.png") });
+
+      bed.fire("dragover", vaultDrag());
+      bed.setAction.mockClear();
+      const left = bed.fire(
+        "dragleave",
+        vaultDrag({ relatedTarget: entered(bed) }),
+      );
+
+      expect(bed.setAction).toHaveBeenCalledExactlyOnceWith(null);
+      expect(bed.setAction.mock.contexts).toEqual([bed.dragManager]);
+      expect(left.event.defaultPrevented).toBe(false);
+      expect(left.reachedView).toBe(true);
+    },
+  );
+
+  it.each<readonly [string, (bed: Bed) => EventTarget]>([
+    ["the terminal itself", (bed): EventTarget => bed.element],
+    [
+      "an element inside it",
+      (bed): EventTarget =>
+        bed.element
+          .appendChild(document.createElement("div"))
+          .appendChild(document.createElement("canvas")),
+    ],
+  ])("keeps the label while a vault drag moves on to %s", (_name, entered) => {
+    const bed = createBed({ draggable: fileDraggable("Assets/photo.png") });
+
+    bed.fire("dragover", vaultDrag());
+    bed.fire("dragleave", vaultDrag({ relatedTarget: entered(bed) }));
+
+    expect(bed.setAction.mock.calls).toEqual([[INSERT_PATH]]);
+  });
+
+  it("leaves the drag ghost alone when a vault drag leaves after dispose", () => {
+    const bed = createBed({ draggable: fileDraggable("Assets/photo.png") });
+
+    bed.addon.dispose();
+    bed.fire("dragleave", vaultDrag());
+
+    expect(bed.setAction).not.toHaveBeenCalled();
+  });
+
+  describe.each<readonly [string, Readonly<Record<string, unknown>>]>([
+    ["no setAction", {}],
+    ["a setAction that is not a function", { setAction: "Insert path" }],
+    [
+      "a setAction that throws",
+      {
+        setAction: (): never => {
+          throw new Error("no drag ghost");
+        },
+      },
+    ],
+  ])("with a drag manager with %s", (_name, labelling) => {
+    const app = {
+      dragManager: {
+        draggable: fileDraggable("Assets/photo.png"),
+        ...labelling,
+      },
+    };
+
+    it("still accepts a vault file", () => {
+      const bed = createBed({ app }),
+        over = bed.fire("dragover", vaultDrag());
+
+      expect(over.event.defaultPrevented).toBe(true);
+      expect(over.dataTransfer?.dropEffect).toBe("copy");
+      expect(over.reachedView).toBe(true);
+    });
+
+    it("still pastes a dropped vault file", async () => {
+      const bed = createBed({ app });
+
+      bed.fire("dragover", vaultDrag());
+      bed.fire("dragleave", vaultDrag());
+      await drop(bed, vaultDrag());
+
+      expect(bed.paste.mock.calls).toEqual([
+        [`${ESCAPED_VAULT}/Assets/photo.png `],
+      ]);
+    });
+
+    it("still refuses a vault file from a source that only allows a move", () => {
+      const bed = createBed({ app }),
+        over = bed.fire("dragover", vaultDrag({ effectAllowed: "move" }));
+
+      expect(over.event.defaultPrevented).toBe(true);
+      expect(over.dataTransfer?.dropEffect).toBe("none");
+    });
+  });
+
+  // === Vault drags ===
+
+  it.each<readonly [string, unknown, readonly string[]]>([
+    [
+      "a file",
+      { file: vaultFile("Assets/photo 1.png"), type: "file" },
+      ["Assets/photo\\ 1.png"],
+    ],
+    ["a folder", { file: vaultFile("Assets"), type: "folder" }, ["Assets"]],
+    [
+      "a multi-selection in drag order, without duplicates",
+      {
+        files: [
+          vaultFile("b.png"),
+          vaultFile("Notes/a.md"),
+          vaultFile("b.png"),
+          vaultFile("Assets"),
+        ],
+        type: "files",
+      },
+      ["b.png", "Notes/a.md", "Assets"],
+    ],
+    [
+      "the target of a resolved link",
+      {
+        file: vaultFile("Assets/photo.png"),
+        linktext: "photo.png",
+        sourcePath: "Notes/a.md",
+        type: "link",
+      },
+      ["Assets/photo.png"],
+    ],
+    [
+      "the files and folders among bookmarks",
+      {
+        items: [
+          { item: { path: "Notes/a.md", type: "file" } },
+          { item: { items: [], title: "Group", type: "group" } },
+          { item: { path: "Assets", type: "folder" } },
+          { item: { query: "tag:#todo", type: "search" } },
+        ],
+        type: "bookmarks",
+      },
+      ["Notes/a.md", "Assets"],
+    ],
+    [
+      "the note of a Bases card",
+      { entry: { file: vaultFile("Notes/card.md") }, type: "kanban-card" },
+      ["Notes/card.md"],
+    ],
+  ])(
+    "pastes %s dropped out of the vault, in one paste",
+    async (_name, draggable, expected) => {
+      const bed = createBed({ draggable });
+
+      await drop(bed, vaultDrag());
+
+      expect(bed.paste.mock.calls).toEqual([
+        [expected.map((path) => `${ESCAPED_VAULT}/${path} `).join("")],
+      ]);
+    },
+  );
+
+  it("keeps the extension of a note, which the dragged URL lacks", async () => {
+    const bed = createBed({ draggable: fileDraggable("Notes/My note.md") }),
+      dropped = await drop(
+        bed,
+        vaultDrag({
+          data: {
+            [URI_LIST]:
+              "obsidian://open?vault=My%20Vault&file=Notes%2FMy%20note",
+          },
+          types: [TEXT, URI_LIST],
+        }),
+      );
+
+    expect(bed.paste.mock.calls).toEqual([
+      [`${ESCAPED_VAULT}/Notes/My\\ note.md `],
+    ]);
+    expect(dropped.getData).not.toHaveBeenCalled();
+  });
+
+  it("reads the vault drag while the drop is dispatched", async () => {
+    const bed = createBed({ draggable: fileDraggable("a.png") });
+
+    bed.fire("drop", vaultDrag());
+    // Obsidian clears the draggable in a timer right after the drop.
+    bed.dragManager.draggable = null;
+    await tick();
+
+    expect(bed.paste.mock.calls).toEqual([[`${ESCAPED_VAULT}/a.png `]]);
+  });
+
+  it("reads the drag in flight at each event", async () => {
+    const bed = createBed();
+
+    bed.dragManager.draggable = fileDraggable("a.png");
+    await drop(bed, vaultDrag());
+    bed.dragManager.draggable = null;
+    await drop(bed, vaultDrag());
+
+    expect(bed.paste.mock.calls).toEqual([[`${ESCAPED_VAULT}/a.png `]]);
+  });
+
+  it("pastes only the vault paths of a vault drag that also carries files", async () => {
+    const getPathForFile = vi.fn(() => `${DESKTOP}/b.png`),
+      bed = createBed({ draggable: fileDraggable("Assets/photo.png") });
+    dragAndDropEnvironment.webUtils = { getPathForFile };
+
+    await drop(bed, nativeDrag());
+
+    expect(bed.paste.mock.calls).toEqual([
+      [`${ESCAPED_VAULT}/Assets/photo.png `],
+    ]);
+    expect(getPathForFile).not.toHaveBeenCalled();
+  });
+
+  it("pastes only the vault path of an embedded image", async () => {
+    // Chromium adds the dragged image itself as a file without a path.
+    dragAndDropEnvironment.webUtils = { getPathForFile: () => "" };
+    const bed = createBed({
+      draggable: {
+        file: vaultFile("Assets/photo.png"),
+        linktext: "photo.png",
+        sourcePath: "Notes/a.md",
+        type: "link",
+      },
+    });
+
+    await drop(bed, nativeDrag([nativeFile("photo.png")]));
+
+    expect(bed.paste.mock.calls).toEqual([
+      [`${ESCAPED_VAULT}/Assets/photo.png `],
+    ]);
+    expect(notices()).toEqual([]);
+  });
+
+  it("leaves out a vault path the vault no longer knows and says so", async () => {
+    const bed = createBed({
+        draggable: {
+          files: [vaultFile("gone.md"), vaultFile("here.md")],
+          type: "files",
+        },
+        // Deleted while it was dragged.
+        missing: ["gone.md"],
+      }),
+      dropped = await drop(bed, vaultDrag());
+
+    expect(bed.paste.mock.calls).toEqual([[`${ESCAPED_VAULT}/here.md `]]);
+    expect(dropped.reachedView).toBe(false);
+    expect(notices()).toEqual([SKIPPED_PATHS]);
+  });
+
+  it.each<readonly [string, unknown]>([
+    [
+      "a group and a search among bookmarked files",
+      {
+        items: [
+          { item: { path: "here.md", type: "file" } },
+          { item: { items: [], title: "Group", type: "group" } },
+          { item: { query: "tag:#todo", type: "search" } },
+        ],
+        type: "bookmarks",
+      },
+    ],
+    [
+      "an entry of a multi-selection that is no file",
+      { files: [vaultFile("here.md"), { name: "no path" }], type: "files" },
+    ],
+  ])(
+    "leaves out %s, which have no path, and says so",
+    async (_name, draggable) => {
+      const bed = createBed({ draggable });
+
+      await drop(bed, vaultDrag());
+
+      expect(bed.paste.mock.calls).toEqual([[`${ESCAPED_VAULT}/here.md `]]);
+      expect(notices()).toEqual([SKIPPED_PATHS]);
+    },
+  );
+
+  it("says nothing of a vault file that was dragged twice", async () => {
+    const bed = createBed({
+      draggable: {
+        files: [vaultFile("here.md"), vaultFile("here.md")],
+        type: "files",
+      },
+    });
+
+    await drop(bed, vaultDrag());
+
+    expect(bed.paste.mock.calls).toEqual([[`${ESCAPED_VAULT}/here.md `]]);
+    expect(notices()).toEqual([]);
+  });
+
+  it("leaves out a vault file name with a newline and says so", async () => {
+    const bed = createBed({
+      draggable: {
+        files: [vaultFile("Notes/a\nrm -rf ~.md"), vaultFile("Notes/b.md")],
+        type: "files",
+      },
+    });
+
+    await drop(bed, vaultDrag());
+
+    expect(bed.paste.mock.calls).toEqual([[`${ESCAPED_VAULT}/Notes/b.md `]]);
+    expect(notices()).toEqual([SKIPPED_PATHS]);
+  });
+
+  it("never pastes a vault file name with a newline", async () => {
+    const bed = createBed({
+        draggable: fileDraggable("Notes/a\nrm -rf ~.md"),
+      }),
+      dropped = await drop(bed, vaultDrag());
+
+    expect(bed.paste).not.toHaveBeenCalled();
+    expect(bed.focus).not.toHaveBeenCalled();
+    expect(dropped.event.defaultPrevented).toBe(true);
+    // The file is one of this computer: only its path cannot be written.
+    expect(notices()).toEqual([SKIPPED_PATHS]);
+  });
+
+  // === Vault drags without a path that can be written for the shell ===
+
+  // The cursor must not promise an insertion that the drop then declines.
+  describe.each<readonly [string, string]>([
+    ["a newline", "Notes/a\nrm -rf ~.md"],
+    ["a tab", "Notes/a\tb.md"],
+  ])("with a vault file whose name has %s dragged", (_name, path) => {
+    it.each(OVER_TYPES)(
+      "refuses the drag on %s and takes the label off the drag ghost",
+      (type) => {
+        const bed = createBed({ draggable: fileDraggable(path) }),
+          over = bed.fire(type, vaultDrag());
+
+        // Prevented, so that Obsidian does not open the file in this tab.
+        expect(over.event.defaultPrevented).toBe(true);
+        expect(over.dataTransfer?.dropEffect).toBe("none");
+        expect(over.reachedView).toBe(true);
+        expect(bed.setAction).toHaveBeenCalledExactlyOnceWith(null);
+        expect(bed.paste).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  it("accepts a multi-selection of which one path can be written, pastes that one and says so", async () => {
+    const bed = createBed({
+        draggable: {
+          // The one that cannot be written comes first.
+          files: [vaultFile("Notes/a\nrm -rf ~.md"), vaultFile("Notes/b.md")],
+          type: "files",
+        },
+      }),
+      accepted = OVER_TYPES.map((type) => bed.fire(type, vaultDrag()));
+
+    for (const over of accepted) {
+      expect(over.event.defaultPrevented).toBe(true);
+      expect(over.dataTransfer?.dropEffect).toBe("copy");
+    }
+    expect(bed.setAction.mock.calls).toEqual([[INSERT_PATH], [INSERT_PATH]]);
+
+    await drop(bed, vaultDrag());
+
+    expect(bed.paste.mock.calls).toEqual([[`${ESCAPED_VAULT}/Notes/b.md `]]);
+    expect(bed.focus).toHaveBeenCalledOnce();
+    expect(notices()).toEqual([SKIPPED_PATHS]);
+  });
+
+  it("asks the shell of the terminal whether a vault path can be written", () => {
+    dragAndDropEnvironment.platform = "win32";
+    // `cmd.exe` has no way to write a double quote; PowerShell has one.
+    const options: BedOptions = {
+        draggable: fileDraggable('say "hi".png'),
+        fullPath: (path) => `C:\\Vault\\${path}`,
+      },
+      cmd = createBed({ ...options, executable: "cmd.exe" }),
+      powershell = createBed({ ...options, executable: "powershell.exe" });
+
+    expect(cmd.fire("dragover", vaultDrag()).dataTransfer?.dropEffect).toBe(
+      "none",
+    );
+    expect(cmd.setAction).toHaveBeenCalledExactlyOnceWith(null);
+    expect(
+      powershell.fire("dragover", vaultDrag()).dataTransfer?.dropEffect,
+    ).toBe("copy");
+    expect(powershell.setAction).toHaveBeenCalledExactlyOnceWith(INSERT_PATH);
+  });
+
+  it("refuses a vault file whose name cmd.exe would expand, and leaves it out of a drop with a notice", async () => {
+    dragAndDropEnvironment.platform = "win32";
+    const expanded = "%q%&echo INJECTED&rem .txt",
+      options: BedOptions = {
+        executable: "cmd.exe",
+        fullPath: (path) => `C:\\Vault\\${path}`,
+      },
+      alone = createBed({ ...options, draggable: fileDraggable(expanded) }),
+      among = createBed({
+        ...options,
+        draggable: {
+          files: [vaultFile(expanded), vaultFile("a b.md")],
+          type: "files",
+        },
+      });
+
+    expect(alone.fire("dragover", vaultDrag()).dataTransfer?.dropEffect).toBe(
+      "none",
+    );
+    await drop(among, vaultDrag());
+
+    expect(among.paste.mock.calls).toEqual([['"C:\\Vault\\a b.md" ']]);
+    expect(notices()).toEqual([SKIPPED_PATHS]);
+  });
+
+  // === Vault drags without a path to insert ===
+
+  describe.each<readonly [string, BedOptions]>([
+    [
+      "an unresolved link",
+      {
+        draggable: {
+          file: null,
+          linktext: "Missing",
+          sourcePath: "a.md",
+          type: "link",
+        },
+      },
+    ],
+    [
+      "a heading",
+      {
+        draggable: {
+          file: vaultFile("Notes/a.md"),
+          heading: { heading: "Title" },
+          type: "heading",
+        },
+      },
+    ],
+    [
+      "a bookmark group and a bookmarked search",
+      {
+        draggable: {
+          items: [
+            { item: { items: [], title: "Group", type: "group" } },
+            { item: { query: "tag:#todo", type: "search" } },
+          ],
+          type: "bookmarks",
+        },
+      },
+    ],
+    [
+      "a file the vault does not know",
+      { draggable: fileDraggable("gone.md"), missing: ["gone.md"] },
+    ],
+    [
+      "a file of a vault that is not on the file system",
+      { draggable: fileDraggable("Assets/photo.png"), fileSystem: false },
+    ],
+  ])("with %s dragged out of the vault", (_name, options) => {
+    it.each(OVER_TYPES)(
+      "refuses the drag on %s without stopping it",
+      (type) => {
+        const bed = createBed(options),
+          over = bed.fire(type, vaultDrag());
+
+        // Prevented, so that Obsidian does not open the file in this tab.
+        expect(over.event.defaultPrevented).toBe(true);
+        expect(over.dataTransfer?.dropEffect).toBe("none");
+        expect(over.reachedView).toBe(true);
+        expect(bed.setAction).not.toHaveBeenCalledWith(INSERT_PATH);
+      },
+    );
+
+    it.each(OVER_TYPES)(
+      "leaves %s alone when another handler has answered it",
+      (type) => {
+        const bed = createBed(options),
+          over = bed.fire(type, vaultDrag({ taken: true }));
+
+        expect(over.dataTransfer?.dropEffect).toBe("move");
+        expect(over.reachedView).toBe(true);
+        expect(bed.setAction).not.toHaveBeenCalled();
+      },
+    );
+
+    it("pastes nothing on drop and says so, without letting the drop through", async () => {
+      const bed = createBed(options),
+        dropped = await drop(bed, vaultDrag());
+
+      expect(bed.paste).not.toHaveBeenCalled();
+      expect(bed.focus).not.toHaveBeenCalled();
+      expect(dropped.event.defaultPrevented).toBe(true);
+      // The drag was the terminal's, with or without a path to insert.
+      expect(dropped.reachedView).toBe(false);
+      expect(notices()).toEqual([NO_PATHS]);
+    });
+  });
+
+  // === Files from the system ===
+
+  it("pastes files from the system through webUtils.getPathForFile, in one paste", async () => {
+    const files = [nativeFile("shot 1.png"), nativeFile("b.png")],
+      getPathForFile = vi.fn((file: File) => `${DESKTOP}/${file.name}`),
+      bed = createBed();
+    dragAndDropEnvironment.webUtils = { getPathForFile };
+
+    await drop(bed, nativeDrag(files));
+
+    expect(getPathForFile.mock.calls).toEqual([[files[0]], [files[1]]]);
+    expect(bed.paste.mock.calls).toEqual([
+      [`${DESKTOP}/shot\\ 1.png ${DESKTOP}/b.png `],
+    ]);
+  });
+
+  it("does not check files from the system on disk", async () => {
+    const bed = createBed();
+
+    await drop(bed, nativeDrag());
+
+    expect(bed.paste).toHaveBeenCalledOnce();
+    expect(dragAndDropEnvironment.stat).not.toHaveBeenCalled();
+  });
+
+  it("does not read a URI list the drag does not have", async () => {
+    const bed = createBed(),
+      dropped = await drop(bed, nativeDrag());
+
+    expect(dropped.getData).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the legacy File.path without webUtils", async () => {
+    const bed = createBed();
+
+    await drop(bed, nativeDrag([nativeFile("a b.png", `${DESKTOP}/a b.png`)]));
+
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/a\\ b.png `]]);
+  });
+
+  it("falls back to the legacy File.path when webUtils.getPathForFile throws", async () => {
+    dragAndDropEnvironment.webUtils = {
+      getPathForFile: (): never => {
+        throw new Error("not a file");
+      },
+    };
+    const bed = createBed();
+
+    await drop(bed, nativeDrag([nativeFile("b.png", `${DESKTOP}/b.png`)]));
+
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(notices()).toEqual([]);
+  });
+
+  it("leaves out a file webUtils.getPathForFile throws for and says so", async () => {
+    dragAndDropEnvironment.webUtils = {
+      getPathForFile: (file: File): string => {
+        if (file.name === "blob.png") {
+          throw new Error("not a file");
+        }
+        return `${DESKTOP}/${file.name}`;
+      },
+    };
+    const bed = createBed();
+
+    await drop(bed, nativeDrag([nativeFile("blob.png"), nativeFile("b.png")]));
+
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(notices()).toEqual([SKIPPED_PATHS]);
+  });
+
+  it("takes the legacy File.path of a file webUtils has no path for", async () => {
+    dragAndDropEnvironment.webUtils = { getPathForFile: () => "" };
+    const bed = createBed();
+
+    await drop(bed, nativeDrag([nativeFile("b.png", `${DESKTOP}/b.png`)]));
+
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(notices()).toEqual([]);
+  });
+
+  it("prefers the path webUtils gives to the legacy File.path", async () => {
+    dragAndDropEnvironment.webUtils = {
+      getPathForFile: () => `${DESKTOP}/real.png`,
+    };
+    const bed = createBed();
+
+    await drop(bed, nativeDrag([nativeFile("b.png", `${DESKTOP}/b.png`)]));
+
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/real.png `]]);
+  });
+
+  it.each<readonly [string, DragAndDropEnvironment["webUtils"]]>([
+    ["without webUtils", void 0],
+    ["with a webUtils that has no path for it", { getPathForFile: () => "" }],
+    [
+      "with a webUtils that throws for it",
+      {
+        getPathForFile: (): never => {
+          throw new Error("not a file");
+        },
+      },
+    ],
+  ])(
+    "leaves out a file whose legacy File.path throws, %s, and pastes the others",
+    async (_name, webUtils) => {
+      dragAndDropEnvironment.webUtils = webUtils;
+      const bed = createBed();
+
+      await drop(
+        bed,
+        nativeDrag([
+          nativeFile("a.png", `${DESKTOP}/a.png`),
+          unreadableFile("bad.png"),
+          nativeFile("b.png", `${DESKTOP}/b.png`),
+        ]),
+      );
+
+      expect(bed.paste.mock.calls).toEqual([
+        [`${DESKTOP}/a.png ${DESKTOP}/b.png `],
+      ]);
+      expect(notices()).toEqual([SKIPPED_PATHS]);
+    },
+  );
+
+  it.each<readonly [string, () => void, File]>([
+    [
+      "an empty path from webUtils",
+      (): void => {
+        dragAndDropEnvironment.webUtils = { getPathForFile: () => "" };
+      },
+      nativeFile("image.png"),
+    ],
+    ["an empty legacy path", noop, nativeFile("image.png", "")],
+    ["no path at all", noop, nativeFile("image.png")],
+    ["a legacy path that throws", noop, unreadableFile("image.png")],
+  ])(
+    "pastes nothing for a file with %s, without letting the drop through",
+    async (_name, arrange, file) => {
+      arrange();
+      const bed = createBed(),
+        dropped = await drop(bed, nativeDrag([file]));
+
+      expect(bed.paste).not.toHaveBeenCalled();
+      expect(bed.focus).not.toHaveBeenCalled();
+      // The browser would open the file, and so might a handler further up.
+      expect(dropped.event.defaultPrevented).toBe(true);
+      expect(dropped.reachedView).toBe(false);
+      expect(notices()).toEqual([NO_PATHS]);
+    },
+  );
+
+  it("leaves out a file without a path among others and says so", async () => {
+    const bed = createBed();
+
+    await drop(
+      bed,
+      nativeDrag([
+        nativeFile("image.png"),
+        nativeFile("b.png", `${DESKTOP}/b.png`),
+      ]),
+    );
+
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(notices()).toEqual([SKIPPED_PATHS]);
+  });
+
+  it("never pastes the name of a file from the system with a newline", async () => {
+    const bed = createBed();
+
+    await drop(
+      bed,
+      nativeDrag([
+        nativeFile("evil", `${DESKTOP}/a\nrm -rf ~`),
+        nativeFile("b.png", `${DESKTOP}/b.png`),
+      ]),
+    );
+
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(notices()).toEqual([SKIPPED_PATHS]);
+  });
+
+  it("says that a file was left out, not that there was none, when no path can be written", async () => {
+    const bed = createBed(),
+      dropped = await drop(
+        bed,
+        nativeDrag([nativeFile("evil", `${DESKTOP}/a\nrm -rf ~`)]),
+      );
+
+    expect(bed.paste).not.toHaveBeenCalled();
+    expect(bed.focus).not.toHaveBeenCalled();
+    expect(dropped.event.defaultPrevented).toBe(true);
+    expect(notices()).toEqual([SKIPPED_PATHS]);
+  });
+
+  it("pastes a file dropped twice once, without a notice", async () => {
+    const bed = createBed();
+
+    await drop(
+      bed,
+      nativeDrag([
+        nativeFile("b.png", `${DESKTOP}/b.png`),
+        nativeFile("b.png", `${DESKTOP}/b.png`),
+      ]),
+    );
+
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(notices()).toEqual([]);
+  });
+
+  it("still pastes files from the system when the vault is not on the file system", async () => {
+    const bed = createBed({ fileSystem: false });
+
+    await drop(bed, nativeDrag());
+
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+  });
+
+  // === URI lists ===
+
+  it("pastes the files and directories of a URI list, in one paste", async () => {
+    onDisk({
+      [`${DESKTOP}/a b.png`]: "file",
+      [`${DESKTOP}/Shots`]: "directory",
+    });
+    const bed = createBed();
+
+    await drop(
+      bed,
+      uriDrag(`file://${DESKTOP}/a%20b.png\r\nfile://${DESKTOP}/Shots\r\n`),
+    );
+
+    expect(bed.paste.mock.calls).toEqual([
+      [`${DESKTOP}/a\\ b.png ${DESKTOP}/Shots `],
+    ]);
+    expect(notices()).toEqual([]);
+  });
+
+  it("reads the URI list while the drop is dispatched", async () => {
+    onDisk({ [`${DESKTOP}/b.png`]: "file" });
+    const bed = createBed(),
+      // The data transfer answers with an empty string after the dispatch.
+      dropped = await drop(bed, uriDrag());
+
+    // The list the drag has, once; `text/plain` is not read.
+    expect(dropped.getData.mock.calls).toEqual([[URI_LIST]]);
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+  });
+
+  it("reads both URI lists of a drag that has two, while the drop is dispatched", async () => {
+    onDisk({ [`${DESKTOP}/b.png`]: "file" });
+    const bed = createBed(),
+      dropped = await drop(bed, {
+        // The list of VS Code's kind names nothing, so the other is used.
+        data: {
+          [URI_LIST]: `file://${DESKTOP}/b.png`,
+          [VSCODE_URI_LIST]: "untitled:Untitled-1",
+        },
+        types: [URI_LIST, VSCODE_URI_LIST],
+      });
+
+    expect(new Set(dropped.getData.mock.calls)).toEqual(
+      new Set([[URI_LIST], [VSCODE_URI_LIST]]),
+    );
+    expect(dropped.getData).toHaveBeenCalledTimes(2);
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(notices()).toEqual([]);
+  });
+
+  it("keeps to the list of VS Code's kind when both lists name paths", async () => {
+    onDisk({ [`${DESKTOP}/b.png`]: "file", [`${DESKTOP}/c.png`]: "file" });
+    const bed = createBed();
+
+    await drop(bed, {
+      data: {
+        [URI_LIST]: `file://${DESKTOP}/c.png`,
+        [VSCODE_URI_LIST]: `file://${DESKTOP}/gone.png\r\nfile://${DESKTOP}/b.png`,
+      },
+      types: [URI_LIST, VSCODE_URI_LIST],
+    });
+
+    // Never merged, and no second try with the other list.
+    expect(dragAndDropEnvironment.stat.mock.calls).toEqual([
+      [`${DESKTOP}/gone.png`],
+      [`${DESKTOP}/b.png`],
+    ]);
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(notices()).toEqual([SKIPPED_PATHS]);
+  });
+
+  it("does not take a fragment off a URI of text/uri-list", async () => {
+    // A `#` there may as well be part of a name its source did not encode.
+    onDisk({ [`${DESKTOP}/b.png`]: "file" });
+    const bed = createBed();
+
+    await drop(bed, uriDrag(`file://${DESKTOP}/b.png#L3`));
+
+    expect(dragAndDropEnvironment.stat).not.toHaveBeenCalled();
+    expect(bed.paste).not.toHaveBeenCalled();
+    expect(notices()).toEqual([NO_PATHS]);
+  });
+
+  it.each<readonly [string, () => void]>([
+    [
+      "is neither a file nor a directory",
+      (): void => {
+        onDisk({ [`${DESKTOP}/b.png`]: "file", [`${DESKTOP}/gone`]: "socket" });
+      },
+    ],
+    [
+      "is missing",
+      (): void => {
+        onDisk({ [`${DESKTOP}/b.png`]: "file" });
+      },
+    ],
+    [
+      "cannot be looked up",
+      (): void => {
+        dragAndDropEnvironment.stat.mockImplementation((path) => {
+          if (path === `${DESKTOP}/gone`) {
+            throw new Error("EIO: i/o error");
+          }
+          return Promise.resolve({
+            isDirectory: () => false,
+            isFile: () => true,
+          });
+        });
+      },
+    ],
+  ])(
+    "leaves out an entry of a URI list that %s and says so",
+    async (_name, arrange) => {
+      arrange();
+      const bed = createBed();
+
+      await drop(
+        bed,
+        uriDrag(`file://${DESKTOP}/gone\nfile://${DESKTOP}/b.png`),
+      );
+
+      expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+      expect(notices()).toEqual([SKIPPED_PATHS]);
+    },
+  );
+
+  it("pastes nothing for a URI list of files that are not on disk and says so", async () => {
+    const bed = createBed(),
+      dropped = await drop(bed, uriDrag());
+
+    expect(bed.paste).not.toHaveBeenCalled();
+    expect(bed.focus).not.toHaveBeenCalled();
+    expect(dropped.event.defaultPrevented).toBe(true);
+    expect(notices()).toEqual([NO_PATHS]);
+  });
+
+  it("never looks up a file on a network host", async () => {
+    onDisk({ [`${DESKTOP}/b.png`]: "file" });
+    const bed = createBed();
+
+    await drop(
+      bed,
+      uriDrag(`file://server/share/a.png\nfile://${DESKTOP}/b.png`),
+    );
+
+    expect(dragAndDropEnvironment.stat.mock.calls).toEqual([
+      [`${DESKTOP}/b.png`],
+    ]);
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(notices()).toEqual([SKIPPED_PATHS]);
+  });
+
+  it("pastes nothing for a web link, without letting the drop through", async () => {
+    const bed = createBed(),
+      dropped = await drop(bed, uriDrag("https://example.com/photo.png"));
+
+    expect(bed.paste).not.toHaveBeenCalled();
+    expect(dragAndDropEnvironment.stat).not.toHaveBeenCalled();
+    // The browser would navigate to the link.
+    expect(dropped.event.defaultPrevented).toBe(true);
+    expect(dropped.reachedView).toBe(false);
+    expect(notices()).toEqual([NO_PATHS]);
+  });
+
+  it("pastes the path of an image dragged out of a note in a pop-out window", async () => {
+    // Obsidian makes no draggable there: the drag carries the bitmap as a
+    // file without a path, and the URL Obsidian serves the image from.
+    dragAndDropEnvironment.webUtils = { getPathForFile: () => "" };
+    onDisk({ [`${VAULT}/Assets/photo 1.png`]: "file" });
+    const bed = createBed();
+
+    await drop(
+      bed,
+      nativeDrag([nativeFile("photo 1.png")], {
+        data: {
+          [URI_LIST]: `${ObsidianPlatform.resourcePathPrefix}Users/me/My%20Vault/Assets/photo%201.png?1712345678901`,
+        },
+        types: ["Files", URI_LIST, "text/html"],
+      }),
+    );
+
+    expect(bed.paste.mock.calls).toEqual([
+      [`${ESCAPED_VAULT}/Assets/photo\\ 1.png `],
+    ]);
+    expect(notices()).toEqual([]);
+  });
+
+  it("does not add the URI list to files from the system that have paths", async () => {
+    onDisk({ [`${DESKTOP}/other.png`]: "file" });
+    const bed = createBed();
+
+    await drop(
+      bed,
+      nativeDrag([nativeFile("b.png", `${DESKTOP}/b.png`)], {
+        data: { [URI_LIST]: `file://${DESKTOP}/other.png` },
+        types: ["Files", URI_LIST],
+      }),
+    );
+
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(dragAndDropEnvironment.stat).not.toHaveBeenCalled();
+  });
+
+  // === Looking up a URI list on disk, within bounds ===
+
+  it("looks up two paths of a URI list at a time and pastes in list order", async () => {
+    const names = Array.from(
+        { length: 10 },
+        (_value, index) => `${String(index)}.png`,
+      ),
+      stats: PendingStat[] = [];
+    let inFlight = 0,
+      mostInFlight = 0;
+    dragAndDropEnvironment.stat.mockImplementation(async () => {
+      const stat = pendingStat();
+      stats.push(stat);
+      mostInFlight = Math.max(mostInFlight, ++inFlight);
+      try {
+        return await stat.promise;
+      } finally {
+        --inFlight;
+      }
+    });
+    const bed = createBed();
+
+    await drop(bed, uriDrag(desktopUriList(names)));
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(2);
+    // Answered from the newest to the oldest, which is not the list order.
+    for (let stat = stats.pop(); stat; stat = stats.pop()) {
+      stat.answer();
+      await tick();
+    }
+
+    expect(mostInFlight).toBe(2);
+    expect(dragAndDropEnvironment.stat.mock.calls).toEqual(
+      names.map((name) => [`${DESKTOP}/${name}`]),
+    );
+    expect(bed.paste.mock.calls).toEqual([
+      [names.map((name) => `${DESKTOP}/${name} `).join("")],
+    ]);
+    expect(notices()).toEqual([]);
+  });
+
+  it("looks up a short URI list all at once", async () => {
+    dragAndDropEnvironment.stat.mockReturnValue(pendingStat().promise);
+    const bed = createBed();
+
+    await drop(bed, uriDrag(desktopUriList(["a.png", "b.png"])));
+
+    expect(dragAndDropEnvironment.stat.mock.calls).toEqual([
+      [`${DESKTOP}/a.png`],
+      [`${DESKTOP}/b.png`],
+    ]);
+  });
+
+  it("stops waiting for the disk two seconds after it starts on a URI list", async () => {
+    vi.useFakeTimers();
+    const late: PendingStat[] = [];
+    dragAndDropEnvironment.stat.mockImplementation((path) => {
+      if (path === `${DESKTOP}/1.png`) {
+        return Promise.resolve(FILE_ON_DISK);
+      }
+      const stat = pendingStat();
+      late.push(stat);
+      return stat.promise;
+    });
+    const bed = createBed();
+
+    bed.fire(
+      "drop",
+      uriDrag(
+        desktopUriList(["0.png", "1.png", "2.png", "3.png", "4.png", "5.png"]),
+      ),
+    );
+    await vi.advanceTimersByTimeAsync(1999);
+    // `1.png` has its answer, and `2.png` took its place; `3.png` waits.
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(3);
+    expect(bed.paste).not.toHaveBeenCalled();
+    expect(notices()).toEqual([]);
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/1.png `]]);
+    expect(bed.focus).toHaveBeenCalledOnce();
+    expect(notices()).toEqual([SKIPPED_PATHS]);
+
+    // Late answers are ignored, and nothing more is looked up: `3.png`, which
+    // never got a lookup, is not given the ones that come free now.
+    for (const stat of late) {
+      stat.answer();
+    }
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(3);
+    expect(dragAndDropEnvironment.stat).not.toHaveBeenCalledWith(
+      `${DESKTOP}/3.png`,
+    );
+    expect(bed.paste).toHaveBeenCalledOnce();
+    expect(notices()).toEqual([SKIPPED_PATHS]);
+  });
+
+  it("sets no deadline for a URI list that names no path", async () => {
+    vi.useFakeTimers();
+    const bed = createBed();
+
+    bed.fire("drop", uriDrag("https://example.com/photo.png"));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(notices()).toEqual([NO_PATHS]);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("drops the deadline once every path of a URI list has its answer", async () => {
+    vi.useFakeTimers();
+    onDisk({ [`${DESKTOP}/b.png`]: "file" });
+    const bed = createBed();
+
+    bed.fire(
+      "drop",
+      uriDrag(`file://${DESKTOP}/gone\nfile://${DESKTOP}/b.png`),
+    );
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("says there is nothing to insert when the disk has no answer in time", async () => {
+    vi.useFakeTimers();
+    dragAndDropEnvironment.stat.mockReturnValue(pendingStat().promise);
+    const bed = createBed();
+
+    bed.fire("drop", uriDrag());
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(bed.paste).not.toHaveBeenCalled();
+    expect(notices()).toEqual([NO_PATHS]);
+  });
+
+  it("takes the next drop once the deadline of a stuck one has passed", async () => {
+    vi.useFakeTimers();
+    dragAndDropEnvironment.stat.mockImplementation((path) =>
+      path === `${DESKTOP}/stuck.png`
+        ? pendingStat().promise
+        : Promise.resolve(FILE_ON_DISK),
+    );
+    const bed = createBed();
+
+    bed.fire("drop", uriDrag(`file://${DESKTOP}/stuck.png`));
+    bed.fire("drop", uriDrag());
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledOnce();
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(notices()).toEqual([NO_PATHS]);
+  });
+
+  // A terminal dragged out of a pop-out keeps its addon, and the pop-out
+  // closes with its last tab. A closed window runs none of its timers.
+  //
+  // The clock of this test is that of the main window alone: it never runs a
+  // timer of the pop-out, closed or not, and the timers of a removed frame
+  // were seen not to fire by themselves either. So what the test tells is
+  // whose timer the deadline is, which is what decides after a close.
+  it("stops waiting for the disk after the window the terminal was dropped in has closed", async () => {
+    vi.useFakeTimers();
+    dragAndDropEnvironment.stat.mockImplementation((path) =>
+      path === `${DESKTOP}/stuck.png`
+        ? pendingStat().promise
+        : Promise.resolve(FILE_ON_DISK),
+    );
+    const popout = popoutWindow(),
+      bed = createBed({ document: popout.document });
+
+    bed.fire("drop", uriDrag(`file://${DESKTOP}/stuck.png`));
+    await vi.advanceTimersByTimeAsync(0);
+    document.body.appendChild(bed.view);
+    popout.close();
+    bed.fire("drop", uriDrag());
+    await vi.advanceTimersByTimeAsync(2000);
+    bed.view.remove();
+
+    // The stuck drop has given up, and the one after it has had its turn.
+    expect(notices()).toEqual([NO_PATHS]);
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+  });
+
+  // === Lookups outstanding, over every drop and every terminal ===
+
+  // The process reads and writes every file on a pool of four threads, those
+  // of the vault as well, and a `stat` without an answer holds one of them.
+  it("leaves half of the pool the process reads its files with free while no lookup has an answer", async () => {
+    vi.useFakeTimers();
+    const pool = 4;
+    dragAndDropEnvironment.stat.mockImplementation(() => pendingStat().promise);
+    const first = createBed(),
+      second = createBed();
+
+    // More paths than the pool has threads, over two terminals, and none has
+    // an answer: a volume whose server is gone.
+    first.fire(
+      "drop",
+      uriDrag(
+        desktopUriList(["0.png", "1.png", "2.png", "3.png", "4.png", "5.png"]),
+      ),
+    );
+    await vi.advanceTimersByTimeAsync(2000);
+    second.fire("drop", uriDrag(desktopUriList(["6.png", "7.png"])));
+    await vi.advanceTimersByTimeAsync(2000);
+
+    // Every `stat` that was called is still without an answer here.
+    expect(dragAndDropEnvironment.stat.mock.calls.length).toBeLessThanOrEqual(
+      pool / 2,
+    );
+    expect(notices()).toEqual([NO_PATHS, NO_PATHS]);
+  });
+
+  // A `stat` that has no answer goes on after its drop has stopped waiting,
+  // and holds a thread of the process until it has one.
+  it("starts no third lookup for the next drop while two have no answer", async () => {
+    vi.useFakeTimers();
+    dragAndDropEnvironment.stat.mockImplementation(() => pendingStat().promise);
+    const bed = createBed();
+
+    bed.fire(
+      "drop",
+      uriDrag(
+        desktopUriList(["0.png", "1.png", "2.png", "3.png", "4.png", "5.png"]),
+      ),
+    );
+    await vi.advanceTimersByTimeAsync(2000);
+    bed.fire("drop", uriDrag(desktopUriList(["6.png", "7.png"])));
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(dragAndDropEnvironment.stat.mock.calls).toEqual(
+      ["0.png", "1.png"].map((name) => [`${DESKTOP}/${name}`]),
+    );
+    expect(bed.paste).not.toHaveBeenCalled();
+    // The paths of the second drop never got a lookup, and count as skipped.
+    expect(notices()).toEqual([NO_PATHS, NO_PATHS]);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("looks up a later drop once the lookups before it have their late answers", async () => {
+    vi.useFakeTimers();
+    const stuck = pendingStatsForEverySlot();
+    for (const { promise } of stuck) {
+      dragAndDropEnvironment.stat.mockReturnValueOnce(promise);
+    }
+    dragAndDropEnvironment.stat.mockResolvedValue(FILE_ON_DISK);
+    const names = ["a.png", "b.png", "c.png", "d.png", "e.png"],
+      bed = createBed();
+
+    bed.fire("drop", uriDrag(desktopUriList(["0.png", "1.png"])));
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(notices()).toEqual([NO_PATHS]);
+    // The answers come when the drop no longer waits for them.
+    for (const stat of stuck) {
+      stat.answer();
+    }
+    await vi.advanceTimersByTimeAsync(0);
+    bed.fire("drop", uriDrag(desktopUriList(names)));
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(bed.paste.mock.calls).toEqual([
+      [names.map((name) => `${DESKTOP}/${name} `).join("")],
+    ]);
+    expect(notices()).toEqual([NO_PATHS]);
+  });
+
+  it("gives a drop that waits the lookup of the first answer that comes", async () => {
+    vi.useFakeTimers();
+    const stuck = pendingStatsForEverySlot();
+    for (const { promise } of stuck) {
+      dragAndDropEnvironment.stat.mockReturnValueOnce(promise);
+    }
+    dragAndDropEnvironment.stat.mockResolvedValue(FILE_ON_DISK);
+    const bed = createBed();
+
+    bed.fire("drop", uriDrag(desktopUriList(["0.png", "1.png"])));
+    await vi.advanceTimersByTimeAsync(2000);
+    bed.fire("drop", uriDrag(desktopUriList(["a.png", "b.png"])));
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(2);
+
+    // One lookup comes free, and the two paths take it in turn.
+    stuck[1]?.answer();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(dragAndDropEnvironment.stat.mock.calls.slice(2)).toEqual([
+      [`${DESKTOP}/a.png`],
+      [`${DESKTOP}/b.png`],
+    ]);
+    expect(bed.paste.mock.calls).toEqual([
+      [`${DESKTOP}/a.png ${DESKTOP}/b.png `],
+    ]);
+  });
+
+  it("shares the lookups with the terminals of other addons", async () => {
+    vi.useFakeTimers();
+    const stuck = pendingStatsForEverySlot();
+    for (const { promise } of stuck) {
+      dragAndDropEnvironment.stat.mockReturnValueOnce(promise);
+    }
+    dragAndDropEnvironment.stat.mockResolvedValue(FILE_ON_DISK);
+    const first = createBed(),
+      second = createBed();
+
+    first.fire("drop", uriDrag(desktopUriList(["0.png", "1.png"])));
+    await vi.advanceTimersByTimeAsync(0);
+    second.fire("drop", uriDrag());
+    await vi.advanceTimersByTimeAsync(1999);
+    // The first terminal holds every lookup, so the second one waits.
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(2);
+    expect(second.paste).not.toHaveBeenCalled();
+
+    // A lookup comes free when its `stat` answers, and not before: also when
+    // the addon it was for is gone by then.
+    first.addon.dispose();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(2);
+    stuck[0]?.answer();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(dragAndDropEnvironment.stat).toHaveBeenLastCalledWith(
+      `${DESKTOP}/b.png`,
+    );
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(3);
+    expect(second.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(first.paste).not.toHaveBeenCalled();
+    expect(notices()).toEqual([]);
+  });
+
+  it("says there is nothing to insert when every lookup is held by another terminal for too long", async () => {
+    vi.useFakeTimers();
+    dragAndDropEnvironment.stat.mockImplementation(() => pendingStat().promise);
+    const first = createBed(),
+      second = createBed();
+
+    first.fire("drop", uriDrag(desktopUriList(["0.png", "1.png"])));
+    await vi.advanceTimersByTimeAsync(1000);
+    second.fire("drop", uriDrag());
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(notices()).toEqual([NO_PATHS]);
+
+    // The second drop has its own two seconds.
+    await vi.advanceTimersByTimeAsync(1);
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(2);
+    expect(second.paste).not.toHaveBeenCalled();
+    expect(notices()).toEqual([NO_PATHS, NO_PATHS]);
+  });
+
+  it("looks nothing up for a drop whose addon is disposed while it waits for a lookup", async () => {
+    vi.useFakeTimers();
+    const stuck = pendingStatsForEverySlot();
+    for (const { promise } of stuck) {
+      dragAndDropEnvironment.stat.mockReturnValueOnce(promise);
+    }
+    dragAndDropEnvironment.stat.mockResolvedValue(FILE_ON_DISK);
+    const first = createBed(),
+      second = createBed(),
+      third = createBed();
+
+    first.fire("drop", uriDrag(desktopUriList(["0.png", "1.png"])));
+    await vi.advanceTimersByTimeAsync(0);
+    second.fire("drop", uriDrag(`file://${DESKTOP}/second.png`));
+    await vi.advanceTimersByTimeAsync(0);
+    second.addon.dispose();
+    stuck[0]?.answer();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(2);
+
+    // The lookup it was handed is free for the next drop.
+    third.fire("drop", uriDrag());
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(dragAndDropEnvironment.stat).toHaveBeenLastCalledWith(
+      `${DESKTOP}/b.png`,
+    );
+    expect(third.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(second.paste).not.toHaveBeenCalled();
+  });
+
+  // === Focus after a drop ===
+
+  it("leaves the focus where it went while a URI list was looked up", async () => {
+    const stat = pendingStat();
+    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+    const bed = createBed(),
+      note = focusable();
+
+    await drop(bed, uriDrag());
+    // The disk is slow, and the user goes on to write in a note.
+    note.focus();
+    stat.answer();
+    await tick();
+
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(bed.focus).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(note);
+  });
+
+  it("focuses the terminal when the focus was elsewhere at the drop and has not moved since", async () => {
+    const stat = pendingStat();
+    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+    const bed = createBed(),
+      note = focusable();
+
+    note.focus();
+    expect(document.activeElement).toBe(note);
+    await drop(bed, uriDrag());
+    stat.answer();
+    await tick();
+
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(bed.focus).toHaveBeenCalledOnce();
+  });
+
+  it("leaves the focus where it went while an earlier drop was looked up", async () => {
+    const stat = pendingStat();
+    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+    const bed = createBed(),
+      note = focusable();
+
+    await drop(bed, uriDrag());
+    // Files from the system need no lookup, but wait their turn.
+    await drop(bed, nativeDrag([nativeFile("c.png", `${DESKTOP}/c.png`)]));
+    note.focus();
+    stat.answer();
+    await tick();
+
+    expect(bed.paste.mock.calls).toEqual([
+      [`${DESKTOP}/b.png `],
+      [`${DESKTOP}/c.png `],
+    ]);
+    expect(bed.focus).not.toHaveBeenCalled();
+  });
+
+  it("reads the focus of the window the terminal is in", async () => {
+    const bed = createBed({ document: popoutDocument() }),
+      note = focusable();
+
+    bed.fire("drop", nativeDrag());
+    // In the main window, which is not where the terminal is.
+    note.focus();
+    await tick();
+
+    expect(bed.focus).toHaveBeenCalledOnce();
+  });
+
+  // === Input while a drop waits ===
+
+  // The paths of a URI list are pasted once they are looked up. What the
+  // user types meanwhile changes the command line they were dropped on:
+  // after Enter, they would go to the program that runs by then.
+  it.each<readonly [string, string]>([
+    ["Enter", "\r"],
+    ["a letter", "x"],
+    ["an arrow key", "\u001b[A"],
+    ["a paste of the user", "\u001b[200~text\u001b[201~"],
+    // Keys whose data start as a report of the terminal does.
+    ["Alt and [", "\u001b["],
+    ["Alt and ]", "\u001b]"],
+    ["Alt, Shift and P", "\u001bP"],
+    ["F3", "\u001bOR"],
+    ["a key as the kitty protocol writes it", "\u001b[97;5u"],
+    ["a key as the Windows console writes it", "\u001b[65;30;97;1;0;1_"],
+  ])(
+    "pastes nothing of a drop when %s reaches the terminal while it waits, and says so",
+    async (_name, data) => {
+      const stat = pendingStat();
+      dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+      const bed = createBed();
+
+      await drop(bed, uriDrag());
+      bed.input(data);
+      stat.answer();
+      await tick();
+
+      expect(bed.paste).not.toHaveBeenCalled();
+      expect(bed.focus).not.toHaveBeenCalled();
+      expect(notices()).toEqual([SKIPPED_PATHS]);
+    },
+  );
+
+  it("pastes nothing of a drop that waits behind another when input reaches the terminal", async () => {
+    const stat = pendingStat();
+    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+    const bed = createBed();
+
+    await drop(bed, uriDrag());
+    await drop(bed, nativeDrag([nativeFile("c.png", `${DESKTOP}/c.png`)]));
+    bed.input("\r");
+    stat.answer();
+    await tick();
+
+    expect(bed.paste).not.toHaveBeenCalled();
+    expect(notices()).toEqual([SKIPPED_PATHS, SKIPPED_PATHS]);
+  });
+
+  it("still pastes a drop that comes after the input", async () => {
+    const stat = pendingStat();
+    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+    const bed = createBed();
+
+    await drop(bed, uriDrag());
+    bed.input("ls\r");
+    await drop(bed, nativeDrag([nativeFile("c.png", `${DESKTOP}/c.png`)]));
+    stat.answer();
+    await tick();
+
+    expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/c.png `]]);
+    expect(notices()).toEqual([SKIPPED_PATHS]);
+  });
+
+  it("says that there is nothing to insert, not that something was left out, when a drop without a path saw input", async () => {
+    const stat = pendingStat();
+    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+    const bed = createBed();
+
+    await drop(bed, uriDrag());
+    bed.input("\r");
+    stat.answer({ isDirectory: () => false, isFile: () => false });
+    await tick();
+
+    expect(notices()).toEqual([NO_PATHS]);
+  });
+
+  // The terminal sends its program data of its own as well, by the way of
+  // what is typed. A program that asked for it is told when the terminal
+  // gains or loses the focus, which a click on the terminal sets off, and so
+  // does the drop. A program gets an answer to what it asks the terminal,
+  // which a shell does as it starts and a full-screen program all the time.
+  // And a program that follows the pointer is told where it is and what its
+  // buttons do, which is no typing either. The data are those xterm.js sends.
+  it.each<readonly [string, string]>([
+    ["that it gains the focus", "\u001b[I"],
+    ["that it loses the focus", "\u001b[O"],
+    ["its device attributes", "\u001b[?1;2c"],
+    ["its secondary device attributes", "\u001b[>0;276;0c"],
+    ["its status", "\u001b[0n"],
+    ["the cursor position", "\u001b[1;1R"],
+    ["the cursor position with a question mark", "\u001b[?12;40R"],
+    ["a private mode", "\u001b[?2026;2$y"],
+    ["a mode", "\u001b[4;2$y"],
+    ["the size of its window", "\u001b[4;600;800t"],
+    ["the size of a cell", "\u001b[6;17;8t"],
+    ["its size in cells", "\u001b[8;24;80t"],
+    ["a colour", "\u001b]11;rgb:0000/0000/0000\u001b\\"],
+    ["a colour of the palette", "\u001b]4;1;rgb:cdcd/0000/0000\u001b\\"],
+    ["a setting, as a string", "\u001bP1$r0m\u001b\\"],
+    ["a move of the pointer", "\u001b[<35;10;5M"],
+    ["a button of the pointer going down", "\u001b[<0;10;5M"],
+    ["a button of the pointer going up", "\u001b[<0;10;5m"],
+    ["the wheel of the pointer", "\u001b[<64;10;5M"],
+  ])(
+    "does not take what the terminal reports of %s for input",
+    async (_name, report) => {
+      const stat = pendingStat();
+      dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+      const bed = createBed();
+      bed.focus.mockImplementation(() => {
+        bed.input("\u001b[I");
+      });
+
+      await drop(bed, uriDrag());
+      await drop(bed, nativeDrag([nativeFile("c.png", `${DESKTOP}/c.png`)]));
+      bed.input(report);
+      stat.answer();
+      await tick();
+
+      expect(bed.paste.mock.calls).toEqual([
+        [`${DESKTOP}/b.png `],
+        [`${DESKTOP}/c.png `],
+      ]);
+      expect(notices()).toEqual([]);
+    },
+  );
+
+  it("stops listening for input on dispose, and when the terminal is replaced", () => {
+    const bed = createBed(),
+      next = fakeTerminal();
+
+    expect(bed.listeners.size).toBe(1);
+    bed.addon.activate(next.terminal);
+    expect(bed.listeners.size).toBe(0);
+    expect(next.listeners.size).toBe(1);
+    bed.addon.dispose();
+    expect(next.listeners.size).toBe(0);
+  });
+
+  // The tests above say what the terminal sends. Here xterm.js sends it: the
+  // answers to a program and the input of the user reach the addon as they
+  // do in the plugin, by the one event xterm.js has for both.
+  describe("on a terminal of xterm.js", () => {
+    const opened: {
+      readonly host: HTMLElement;
+      readonly terminal: Terminal;
+    }[] = [];
+
+    afterEach(() => {
+      for (const { host, terminal } of opened.splice(0)) {
+        terminal.dispose();
+        host.remove();
+      }
+    });
+
+    /**
+     * Opens a terminal of xterm.js that takes the drops of a bed, with a URI
+     * list dropped on it that still waits for the disk.
+     */
+    async function waitingDrop() {
+      const stat = pendingStat();
+      dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+      const bed = createBed(),
+        host = document.body.appendChild(document.createElement("div")),
+        terminal = new Terminal(),
+        sent: string[] = [];
+      opened.push({ host, terminal });
+      terminal.open(host);
+      terminal.onData((data) => {
+        sent.push(data);
+      });
+      bed.addon.activate(terminal);
+      const paste = vi.spyOn(terminal, "paste");
+
+      await drop(bed, uriDrag());
+
+      return {
+        /** Lets the disk answer, with which the drop stops waiting. */
+        answer: async (): Promise<void> => {
+          stat.answer();
+          await tick();
+        },
+        paste,
+        /** What the terminal has sent to its program. */
+        sent,
+        terminal,
+        /** Writes output of the program to the terminal, and waits for it. */
+        write: async (output: string): Promise<void> =>
+          new Promise((resolve) => {
+            terminal.write(output, resolve);
+          }),
+      };
+    }
+
+    it("pastes a drop that waited while the terminal answered its program", async () => {
+      const { answer, paste, sent, write } = await waitingDrop();
+
+      // The program asks for the cursor position, for the device attributes
+      // and for a mode, as a shell does when it draws its prompt.
+      await write("\u001b[6n\u001b[c\u001b[?2026$p");
+      await answer();
+
+      expect(sent).toEqual([
+        "\u001b[1;1R",
+        "\u001b[?1;2c",
+        "\u001b[?2026;2$y",
+        `${DESKTOP}/b.png `,
+      ]);
+      expect(paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+      expect(notices()).toEqual([]);
+    });
+
+    it("pastes nothing of a drop that waited while the user typed", async () => {
+      const { answer, paste, sent, terminal } = await waitingDrop();
+
+      terminal.input("x");
+      await answer();
+
+      expect(sent).toEqual(["x"]);
+      expect(paste).not.toHaveBeenCalled();
+      expect(notices()).toEqual([SKIPPED_PATHS]);
+    });
+  });
+
+  // === Drops one after another ===
+
+  // The paste of the first drop is data to the terminal as well, and is not
+  // taken for input of the user.
+  it("pastes a drop that needs no lookup after an earlier one that does", async () => {
+    const stat = pendingStat();
+    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+    const bed = createBed();
+
+    await drop(bed, uriDrag());
+    bed.dragManager.draggable = fileDraggable("a.png");
+    await drop(bed, vaultDrag());
+    bed.dragManager.draggable = null;
+    await drop(bed, nativeDrag([nativeFile("c.png", `${DESKTOP}/c.png`)]));
+    expect(bed.paste).not.toHaveBeenCalled();
+    stat.answer();
+    await tick();
+
+    expect(bed.paste.mock.calls).toEqual([
+      [`${DESKTOP}/b.png `],
+      [`${ESCAPED_VAULT}/a.png `],
+      [`${DESKTOP}/c.png `],
+    ]);
+  });
+
+  it("shows the notice of each drop in drop order", async () => {
+    const stat = pendingStat();
+    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+    const bed = createBed({
+      draggable: {
+        files: [vaultFile("gone.md"), vaultFile("here.md")],
+        type: "files",
+      },
+      missing: ["gone.md"],
+    });
+
+    // A vault drag wins over the URI list it carries, so the draggable is
+    // taken away for the first drop.
+    const { draggable } = bed.dragManager;
+    bed.dragManager.draggable = null;
+    await drop(bed, uriDrag());
+    bed.dragManager.draggable = draggable;
+    await drop(bed, vaultDrag());
+    stat.answer({ isDirectory: () => false, isFile: () => false });
+    await tick();
+
+    expect(notices()).toEqual([NO_PATHS, SKIPPED_PATHS]);
+  });
+
+  it("still takes a drop after one that failed", async () => {
+    const failure = new Error("terminal is busy"),
+      error = vi.spyOn(console, "error").mockImplementation(noop),
+      bed = createBed();
+    bed.paste.mockImplementationOnce(() => {
+      throw failure;
+    });
+
+    await drop(bed, nativeDrag());
+    await drop(bed, nativeDrag([nativeFile("c.png", `${DESKTOP}/c.png`)]));
+
+    expect(error).toHaveBeenCalledExactlyOnceWith(failure);
+    expect(bed.paste.mock.calls).toEqual([
+      [`${DESKTOP}/b.png `],
+      [`${DESKTOP}/c.png `],
+    ]);
+  });
+
+  // === Drags out of VS Code and Edge, as measured on Windows ===
+
+  describe("on Windows, with PowerShell", () => {
+    /** Sets up the disk of the measured drags and a PowerShell terminal. */
+    function createWindowsBed(): Bed {
+      dragAndDropEnvironment.platform = "win32";
+      // VS Code has no files in its data transfer; Edge has one for an image.
+      dragAndDropEnvironment.webUtils = { getPathForFile: () => "" };
+      onDisk({
+        [`${WINDOWS_FOLDER}\\.obsidian\\workspace.json`]: "file",
+        [`${WINDOWS_FOLDER}\\Images\\photo space.jpg`]: "file",
+        [`${WINDOWS_FOLDER}\\Images\\photo.png`]: "file",
+        [`${WINDOWS_FOLDER}\\Images\\second.png`]: "file",
+        [`${WINDOWS_FOLDER}\\Notes`]: "directory",
+        [`${WINDOWS_FOLDER}\\Notes\\Plain.md`]: "file",
+        [`${WINDOWS_FOLDER}\\manifest.fixtures.json`]: "file",
+      });
+      return createBed({ executable: "powershell.exe" });
+    }
+
+    it.each<readonly [string, DragInit, readonly string[]]>([
+      [
+        "a file of VS Code's tree",
+        vscodeDrag(VSCODE_TREE_TYPES, {
+          [TEXT]: `${WINDOWS_FOLDER}\\Images\\photo.png`,
+          [URI_LIST]: `${VSCODE_FOLDER}/Images/photo.png`,
+          [VSCODE_URI_LIST]: `${VSCODE_FOLDER}/Images/photo.png`,
+        }),
+        [`${WINDOWS_FOLDER}\\Images\\photo.png `],
+      ],
+      [
+        "a file of VS Code's tree with a space in its name",
+        vscodeDrag(VSCODE_TREE_TYPES, {
+          [TEXT]: `${WINDOWS_FOLDER}\\Images\\photo space.jpg`,
+          [URI_LIST]: `${VSCODE_FOLDER}/Images/photo%20space.jpg`,
+          [VSCODE_URI_LIST]: `${VSCODE_FOLDER}/Images/photo%20space.jpg`,
+        }),
+        [`'${WINDOWS_FOLDER}\\Images\\photo space.jpg' `],
+      ],
+      [
+        // `text/uri-list` has only the first of them.
+        "two files of VS Code's tree, each on its own",
+        vscodeDrag(VSCODE_TREE_TYPES, {
+          [TEXT]: `${WINDOWS_FOLDER}\\Images\\photo.png\r\n${WINDOWS_FOLDER}\\Images\\second.png`,
+          [URI_LIST]: `${VSCODE_FOLDER}/Images/photo.png`,
+          [VSCODE_URI_LIST]: `${VSCODE_FOLDER}/Images/photo.png\r\n${VSCODE_FOLDER}/Images/second.png`,
+        }),
+        [
+          `${WINDOWS_FOLDER}\\Images\\photo.png `,
+          `${WINDOWS_FOLDER}\\Images\\second.png `,
+        ],
+      ],
+      [
+        "a folder and a file of VS Code's tree, each on its own",
+        vscodeDrag(VSCODE_TREE_TYPES, {
+          [TEXT]: `${WINDOWS_FOLDER}\\manifest.fixtures.json\r\n${WINDOWS_FOLDER}\\Notes`,
+          [URI_LIST]: `${VSCODE_FOLDER}/Notes`,
+          [VSCODE_URI_LIST]: `${VSCODE_FOLDER}/Notes\r\n${VSCODE_FOLDER}/manifest.fixtures.json`,
+        }),
+        [
+          `${WINDOWS_FOLDER}\\Notes `,
+          `${WINDOWS_FOLDER}\\manifest.fixtures.json `,
+        ],
+      ],
+      [
+        // No `text/uri-list` and no `text/plain` at all.
+        "an editor tab of VS Code",
+        vscodeDrag(
+          [
+            "resourceurls",
+            "chromium/x-drag-id",
+            "codeeditors",
+            VSCODE_URI_LIST,
+          ],
+          { [VSCODE_URI_LIST]: `${VSCODE_FOLDER}/Notes/Plain.md` },
+        ),
+        [`${WINDOWS_FOLDER}\\Notes\\Plain.md `],
+      ],
+      [
+        // The place of the match comes as a fragment, in both lists.
+        "a match in VS Code's search results",
+        vscodeDrag(
+          [
+            TEXT,
+            URI_LIST,
+            "resourceurls",
+            "chromium/x-drag-id",
+            "codeeditors",
+            VSCODE_URI_LIST,
+          ],
+          {
+            [TEXT]: `${WINDOWS_FOLDER}\\.obsidian\\workspace.json`,
+            [URI_LIST]: `${VSCODE_FOLDER}/.obsidian/workspace.json#251%2C29-251%2C34`,
+            [VSCODE_URI_LIST]: `${VSCODE_FOLDER}/.obsidian/workspace.json#251%2C29-251%2C34`,
+          },
+        ),
+        [`${WINDOWS_FOLDER}\\.obsidian\\workspace.json `],
+      ],
+      [
+        "a link to a file in a page of Edge",
+        {
+          data: {
+            [TEXT]: `${EDGE_FOLDER}/Notes/Plain.md`,
+            [URI_LIST]: `${EDGE_FOLDER}/Notes/Plain.md`,
+          },
+          effectAllowed: "all",
+          types: EDGE_TYPES,
+        },
+        [`${WINDOWS_FOLDER}\\Notes\\Plain.md `],
+      ],
+      [
+        // The image itself comes as a file without a path.
+        "an image of a file in a page of Edge",
+        {
+          data: {
+            [TEXT]: `${EDGE_FOLDER}/Images/photo.png`,
+            [URI_LIST]: `${EDGE_FOLDER}/Images/photo.png`,
+          },
+          effectAllowed: "all",
+          files: [nativeFile("photo.png", "")],
+          types: [...EDGE_TYPES, "Files"],
+        },
+        [`${WINDOWS_FOLDER}\\Images\\photo.png `],
+      ],
+    ])("pastes %s", async (_name, init, expected) => {
+      const bed = createWindowsBed(),
+        entered = bed.fire("dragenter", init),
+        over = bed.fire("dragover", init),
+        dropped = await drop(bed, init);
+
+      for (const accepted of [entered, over]) {
+        expect(accepted.event.defaultPrevented).toBe(true);
+        expect(accepted.dataTransfer?.dropEffect).toBe("copy");
+      }
+      expect(bed.paste.mock.calls).toEqual(expected.map((text) => [text]));
+      expect(bed.focus).toHaveBeenCalledOnce();
+      expect(dropped.event.defaultPrevented).toBe(true);
+      expect(dropped.reachedView).toBe(false);
+      expect(notices()).toEqual([]);
+    });
+
+    it.each<readonly [string, DragInit]>([
+      [
+        "an untitled editor tab of VS Code",
+        vscodeDrag(["codeeditors", VSCODE_URI_LIST, "chromium/x-drag-id"], {
+          [VSCODE_URI_LIST]: "untitled:Untitled-1",
+        }),
+      ],
+      [
+        "a link to a web page in a page of Edge",
+        {
+          data: {
+            [TEXT]: "https://example.com/some%20path/page?x=1&y=2#frag",
+            [URI_LIST]: "https://example.com/some%20path/page?x=1&y=2#frag",
+          },
+          effectAllowed: "all",
+          types: EDGE_TYPES,
+        },
+      ],
+    ])(
+      "pastes nothing for %s and says so, without letting the drop through",
+      async (_name, init) => {
+        const bed = createWindowsBed(),
+          dropped = await drop(bed, init);
+
+        expect(bed.paste).not.toHaveBeenCalled();
+        expect(bed.focus).not.toHaveBeenCalled();
+        expect(dragAndDropEnvironment.stat).not.toHaveBeenCalled();
+        // VS Code would open the tab in a window of its own all the same, and
+        // the browser would follow the link.
+        expect(dropped.event.defaultPrevented).toBe(true);
+        expect(dropped.reachedView).toBe(false);
+        expect(notices()).toEqual([NO_PATHS]);
+      },
+    );
+  });
+
+  // === Without Electron or a file system ===
+
+  describe("where Electron cannot be required, as on mobile", () => {
+    it("pastes a file from the system by its legacy File.path", async () => {
+      dragAndDropEnvironment.electron = false;
+      const bed = createBed({ Addon: await loadAddon() });
+
+      await drop(bed, nativeDrag([nativeFile("b.png", `${DESKTOP}/b.png`)]));
+
+      expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+      expect(notices()).toEqual([]);
+    });
+
+    it("pastes nothing for a file without a path and says so", async () => {
+      dragAndDropEnvironment.electron = false;
+      const bed = createBed({ Addon: await loadAddon() }),
+        dropped = await drop(bed, nativeDrag([nativeFile("image.png")]));
+
+      expect(bed.paste).not.toHaveBeenCalled();
+      expect(dropped.event.defaultPrevented).toBe(true);
+      expect(notices()).toEqual([NO_PATHS]);
+    });
+  });
+
+  describe("where the file system cannot be required", () => {
+    it("leaves out every entry of a URI list and says so", async () => {
+      dragAndDropEnvironment.fileSystem = false;
+      const unhandled = vi.fn();
+      process.on("unhandledRejection", unhandled);
+      try {
+        const bed = createBed({ Addon: await loadAddon() }),
+          dropped = await drop(
+            bed,
+            uriDrag(desktopUriList(["a.png", "b.png"])),
+          );
+        // Node reports a rejection nobody handled after the microtasks of a tick.
+        await tick();
+
+        expect(bed.paste).not.toHaveBeenCalled();
+        expect(dragAndDropEnvironment.stat).not.toHaveBeenCalled();
+        expect(dropped.event.defaultPrevented).toBe(true);
+        expect(notices()).toEqual([NO_PATHS]);
+        expect(unhandled).not.toHaveBeenCalled();
+      } finally {
+        process.off("unhandledRejection", unhandled);
+      }
+    });
+
+    it("still pastes files from the system", async () => {
+      dragAndDropEnvironment.fileSystem = false;
+      const bed = createBed({ Addon: await loadAddon() });
+
+      await drop(bed, nativeDrag());
+
+      expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    });
+  });
+
+  // === One paste for a drop, or one for each path ===
+
+  // One paste is how Claude Code tells several escaped paths apart. Measured
+  // on macOS with zsh: one paste of fifty-seven paths was read whole.
+  it.each<readonly [string, string, string]>([
+    ["macOS", "darwin", "/bin/zsh"],
+    ["Linux", "linux", "/bin/bash"],
+  ])(
+    "pastes several paths as one paste on %s",
+    async (_name, platform, executable) => {
+      dragAndDropEnvironment.platform = platform;
+      const numbers = Array.from({ length: 19 }, (_value, index) =>
+          String(index),
+        ),
+        bed = createBed({ executable });
+
+      await drop(
+        bed,
+        nativeDrag(
+          numbers.map((number) =>
+            nativeFile("shot.png", `${DESKTOP}/shot ${number}.png`),
+          ),
+        ),
+      );
+
+      expect(bed.paste.mock.calls).toEqual([
+        [numbers.map((number) => `${DESKTOP}/shot\\ ${number}.png `).join("")],
+      ]);
+      expect(bed.focus).toHaveBeenCalledOnce();
+      expect(notices()).toEqual([]);
+    },
+  );
+
+  describe("with a drop longer than a line of the terminal driver", () => {
+    // Sixteen paths of 249 bytes and one more: 4095 bytes in all. A shell
+    // without a line editor reads its line through the terminal driver, which
+    // on Linux keeps 4095 bytes of it and discards the rest without a sign.
+    // With `rm -r -- ` typed before, the line would end in the slash after
+    // the folder of `note.txt`, and Enter would run it.
+    const names = [
+        ...Array.from(
+          { length: 16 },
+          (_value, index) =>
+            `f${String(index).padStart(2, "0")}-${"a".repeat(240)}`,
+        ),
+        `${"D".repeat(80)}/note.txt`,
+      ],
+      paths = names.map((name) => `/tmp/${name}`),
+      bytes = (text: string): number => new TextEncoder().encode(text).length;
+
+    function longDrop(
+      platform: string,
+      executable: string,
+      options: BedOptions = {},
+    ): Bed {
+      dragAndDropEnvironment.platform = platform;
+      return createBed({
+        draggable: { files: names.map(vaultFile), type: "files" },
+        executable,
+        fullPath: (path) => `/tmp/${path}`,
+        ...options,
+      });
+    }
+
+    /**
+     * Expects one paste of the first paths that fit a line of the terminal
+     * driver, each whole, and the notice that some were left out.
+     *
+     * @param line - the bytes the driver has for a line.
+     */
+    function expectFirstPathsOfLine(bed: Bed, line: number): void {
+      expect(bed.paste).toHaveBeenCalledOnce();
+      const pasted = String(bed.paste.mock.calls[0]?.[0]),
+        words = pasted.trimEnd().split(" ");
+      // 256 bytes of the line are left for what is typed before the drop.
+      expect(bytes(pasted)).toBeLessThanOrEqual(line - 256);
+      expect(pasted.endsWith(" ")).toBe(true);
+      expect(words.length).toBeGreaterThan(0);
+      expect(words).toEqual(paths.slice(0, words.length));
+      // The next path would not have fitted.
+      expect(bytes(`${pasted}${String(paths[words.length])} `)).toBeGreaterThan(
+        line - 256,
+      );
+      expect(notices()).toEqual([SKIPPED_PATHS]);
+    }
+
+    it.each<readonly [string, string, string, number]>([
+      ["dash as sh on Linux", "linux", "/bin/sh", 4096],
+      ["dash on Linux", "linux", "/usr/bin/dash", 4096],
+      ["dash on macOS", "darwin", "/bin/dash", 1024],
+    ])(
+      "pastes only the first paths that fit the line into %s, each whole, and says that some were left out",
+      async (_name, platform, executable, line) => {
+        const bed = longDrop(platform, executable);
+
+        await drop(bed, vaultDrag());
+
+        expectFirstPathsOfLine(bed, line);
+      },
+    );
+
+    // The terminal shows before its program has started. A drop from then is
+    // pasted the moment the program is there, when a shell has not set up
+    // its line editor yet: it still reads its line through the terminal
+    // driver, as dash does at any time.
+    describe("that came before the terminal had its program", () => {
+      /**
+       * Makes a terminal whose program starts when the test says, and a
+       * clock that tells a drop that had to wait for it from one that did
+       * not: a task of the main window runs in between.
+       */
+      function lateProgram(platform: string, executable: string) {
+        vi.useFakeTimers();
+        let started: () => void = noop;
+        const program = new Promise<void>((resolve) => {
+          started = resolve;
+        });
+        return {
+          bed: longDrop(platform, executable, {
+            attached: async () => program,
+          }),
+          start: async (): Promise<void> => {
+            await vi.advanceTimersByTimeAsync(0);
+            started();
+            await vi.advanceTimersByTimeAsync(0);
+          },
+        };
+      }
+
+      it.each<readonly [string, string, string, number]>([
+        ["zsh on macOS", "darwin", "/bin/zsh", 1024],
+        ["bash on Linux", "linux", "/bin/bash", 4096],
+        ["an unknown program on Linux", "linux", "", 4096],
+      ])(
+        "pastes only the first paths that fit the line into %s, each whole, and says that some were left out",
+        async (_name, platform, executable, line) => {
+          const { bed, start } = lateProgram(platform, executable);
+
+          bed.fire("drop", vaultDrag());
+          await start();
+
+          expectFirstPathsOfLine(bed, line);
+        },
+      );
+
+      it("bounds a drop that waits behind another one from before the program as well", async () => {
+        const { bed, start } = lateProgram("darwin", "/bin/zsh"),
+          { draggable } = bed.dragManager;
+
+        bed.dragManager.draggable = null;
+        bed.fire("drop", nativeDrag());
+        bed.dragManager.draggable = draggable;
+        bed.fire("drop", vaultDrag());
+        await start();
+
+        expect(bed.paste).toHaveBeenCalledTimes(2);
+        expect(bed.paste.mock.calls[0]).toEqual([`${DESKTOP}/b.png `]);
+        expect(bytes(String(bed.paste.mock.calls[1]?.[0]))).toBeLessThanOrEqual(
+          1024 - 256,
+        );
+        expect(notices()).toEqual([SKIPPED_PATHS]);
+      });
+
+      it("pastes every path of the next drop, which finds the program there", async () => {
+        const { bed, start } = lateProgram("darwin", "/bin/zsh"),
+          { draggable } = bed.dragManager;
+
+        bed.dragManager.draggable = null;
+        bed.fire("drop", nativeDrag());
+        await start();
+        bed.dragManager.draggable = draggable;
+        bed.fire("drop", vaultDrag());
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(bed.paste.mock.calls).toEqual([
+          [`${DESKTOP}/b.png `],
+          [paths.map((path) => `${path} `).join("")],
+        ]);
+        expect(notices()).toEqual([]);
+      });
+
+      // Windows has no terminal driver that cuts a line.
+      it("pastes every path on Windows", async () => {
+        const { bed, start } = lateProgram("win32", "powershell.exe");
+
+        bed.fire("drop", vaultDrag());
+        await start();
+
+        expect(bed.paste.mock.calls).toEqual(paths.map((path) => [`${path} `]));
+        expect(notices()).toEqual([]);
+      });
+    });
+
+    it.each<readonly [string, string, string]>([
+      ["bash on Linux", "linux", "/bin/bash"],
+      ["zsh on macOS", "darwin", "/bin/zsh"],
+      // bash there, which edits its line itself.
+      ["sh on macOS", "darwin", "/bin/sh"],
+      ["an unknown program on Linux", "linux", ""],
+    ])(
+      "pastes every path at once into %s",
+      async (_name, platform, executable) => {
+        const bed = longDrop(platform, executable);
+
+        await drop(bed, vaultDrag());
+
+        expect(bed.paste.mock.calls).toEqual([
+          [paths.map((path) => `${path} `).join("")],
+        ]);
+        expect(notices()).toEqual([]);
+      },
+    );
+
+    // The drop stops at the first path that does not fit the line. So the
+    // first path a drag can insert decides whether its drop inserts anything,
+    // and the cursor must not promise what the drop then declines.
+    describe("whose first path alone is longer than the line", () => {
+      // 780 bytes under `/tmp`: more than the 768 that dash on macOS has.
+      const LONG = `${"a".repeat(255)}/${"b".repeat(255)}/${"c".repeat(255)}/long.md`;
+
+      /** A drag of vault files over a terminal on macOS. */
+      function drag(executable: string, ...files: readonly string[]): Bed {
+        return longDrop("darwin", executable, {
+          draggable: { files: files.map(vaultFile), type: "files" },
+        });
+      }
+
+      it.each<readonly [string, readonly string[]]>([
+        ["that path alone", [LONG]],
+        ["a short path after it", [LONG, "short.md"]],
+        ["a path that cannot be written before it", ["a\tb.md", LONG]],
+      ])(
+        "refuses the drag of %s into dash, and its drop inserts nothing",
+        async (_name, files) => {
+          const bed = drag("/bin/dash", ...files);
+
+          for (const type of OVER_TYPES) {
+            expect(bed.fire(type, vaultDrag()).dataTransfer?.dropEffect).toBe(
+              "none",
+            );
+          }
+          expect(bed.setAction.mock.calls).toEqual([[null], [null]]);
+
+          await drop(bed, vaultDrag());
+
+          expect(bed.paste).not.toHaveBeenCalled();
+          expect(notices()).toEqual([SKIPPED_PATHS]);
+        },
+      );
+
+      it("accepts the drag of a short path before it into dash, and its drop inserts that one", async () => {
+        const bed = drag("/bin/dash", "short.md", LONG);
+
+        expect(bed.fire("dragover", vaultDrag()).dataTransfer?.dropEffect).toBe(
+          "copy",
+        );
+        expect(bed.setAction).toHaveBeenCalledExactlyOnceWith(INSERT_PATH);
+
+        await drop(bed, vaultDrag());
+
+        expect(bed.paste.mock.calls).toEqual([["/tmp/short.md "]]);
+        expect(notices()).toEqual([SKIPPED_PATHS]);
+      });
+
+      it("accepts the drag of that path into zsh, and its drop inserts it", async () => {
+        const bed = drag("/bin/zsh", LONG);
+
+        expect(bed.fire("dragover", vaultDrag()).dataTransfer?.dropEffect).toBe(
+          "copy",
+        );
+
+        await drop(bed, vaultDrag());
+
+        expect(bed.paste.mock.calls).toEqual([[`/tmp/${LONG} `]]);
+        expect(notices()).toEqual([]);
+      });
+    });
+  });
+
+  // Claude Code tells quoted paths apart only when each is a paste of its own.
+  it("pastes several paths as one paste each on Windows", async () => {
+    dragAndDropEnvironment.platform = "win32";
+    const numbers = Array.from({ length: 19 }, (_value, index) =>
+        String(index),
+      ),
+      bed = createBed({ executable: "powershell.exe" });
+
+    await drop(
+      bed,
+      nativeDrag(
+        numbers.map((number) =>
+          nativeFile("shot.png", `C:\\Users\\me\\Desktop\\shot ${number}.png`),
+        ),
+      ),
+    );
+
+    expect(bed.paste.mock.calls).toEqual(
+      numbers.map((number) => [
+        `'C:\\Users\\me\\Desktop\\shot ${number}.png' `,
+      ]),
+    );
+    expect(bed.focus).toHaveBeenCalledOnce();
+    expect(notices()).toEqual([]);
+  });
+
+  it.each<readonly [string, string, string, string, string]>([
+    [
+      "macOS",
+      "darwin",
+      "/bin/zsh",
+      `${DESKTOP}/shot 1.png`,
+      `${DESKTOP}/shot\\ 1.png `,
+    ],
+    [
+      "Linux",
+      "linux",
+      "/bin/bash",
+      "/home/me/shot 1.png",
+      "/home/me/shot\\ 1.png ",
+    ],
+    [
+      "Windows",
+      "win32",
+      "powershell.exe",
+      "C:\\Users\\me\\Desktop\\shot 1.png",
+      "'C:\\Users\\me\\Desktop\\shot 1.png' ",
+    ],
+    [
+      "Windows under WSL, as the Linux path",
+      "win32",
+      "C:\\Windows\\System32\\wsl.exe",
+      "C:\\Users\\me\\Desktop\\shot 1.png",
+      "/mnt/c/Users/me/Desktop/shot\\ 1.png ",
+    ],
+  ])(
+    "pastes a single path as one paste of that path on %s",
+    async (_name, platform, executable, path, pasted) => {
+      dragAndDropEnvironment.platform = platform;
+      const bed = createBed({ executable });
+
+      await drop(bed, nativeDrag([nativeFile("shot 1.png", path)]));
+
+      expect(bed.paste.mock.calls).toEqual([[pasted]]);
+      expect(bed.focus).toHaveBeenCalledOnce();
+      expect(notices()).toEqual([]);
+    },
+  );
+
+  // === Quoting for the shell of the profile ===
+
+  // The pastes of two paths: one off Windows, and one for each path on it.
+  it.each<readonly [string, string, string, string, readonly string[]]>([
+    [
+      "zsh on macOS",
+      "darwin",
+      "/bin/zsh",
+      "/Users/me/Vault/",
+      ["/Users/me/Vault/Assets/photo\\ 1.png /Users/me/Vault/b.png "],
+    ],
+    [
+      "an unknown program on Linux",
+      "linux",
+      "",
+      "/home/me/Vault/",
+      ["/home/me/Vault/Assets/photo\\ 1.png /home/me/Vault/b.png "],
+    ],
+    [
+      "PowerShell on Windows",
+      "win32",
+      "powershell",
+      "C:\\Users\\me\\Vault\\",
+      [
+        "'C:\\Users\\me\\Vault\\Assets\\photo 1.png' ",
+        "C:\\Users\\me\\Vault\\b.png ",
+      ],
+    ],
+    [
+      "Command Prompt",
+      "win32",
+      "C:\\Windows\\System32\\cmd.exe",
+      "C:\\Users\\me\\Vault\\",
+      [
+        '"C:\\Users\\me\\Vault\\Assets\\photo 1.png" ',
+        "C:\\Users\\me\\Vault\\b.png ",
+      ],
+    ],
+    [
+      "Git Bash",
+      "win32",
+      "C:\\Program Files\\Git\\bin\\bash.exe",
+      "C:\\Users\\me\\Vault\\",
+      [
+        "'C:\\Users\\me\\Vault\\Assets\\photo 1.png' ",
+        "'C:\\Users\\me\\Vault\\b.png' ",
+      ],
+    ],
+    [
+      "WSL, as Linux paths",
+      "win32",
+      "C:\\Windows\\System32\\wsl.exe",
+      "C:\\Users\\me\\Vault\\",
+      [
+        "/mnt/c/Users/me/Vault/Assets/photo\\ 1.png ",
+        "/mnt/c/Users/me/Vault/b.png ",
+      ],
+    ],
+    [
+      "an unknown program on Windows",
+      "win32",
+      "",
+      "C:\\Users\\me\\Vault\\",
+      [
+        '"C:\\Users\\me\\Vault\\Assets\\photo 1.png" ',
+        "C:\\Users\\me\\Vault\\b.png ",
+      ],
+    ],
+  ])(
+    "writes vault paths for %s",
+    async (_name, platform, executable, root, pastes) => {
+      dragAndDropEnvironment.platform = platform;
+      const bed = createBed({
+        draggable: {
+          files: [vaultFile("Assets/photo 1.png"), vaultFile("b.png")],
+          type: "files",
+        },
+        executable,
+        fullPath: (path) =>
+          root + (platform === "win32" ? path.replaceAll("/", "\\") : path),
+      });
+
+      await drop(bed, vaultDrag());
+
+      expect(bed.paste.mock.calls).toEqual(pastes.map((paste) => [paste]));
+    },
+  );
+
+  it("writes a file URI on Windows as a drive path for the shell", async () => {
+    dragAndDropEnvironment.platform = "win32";
+    onDisk({ "C:\\Users\\me\\My Pictures\\a.png": "file" });
+    const bed = createBed({ executable: "pwsh.exe" });
+
+    await drop(bed, uriDrag("file:///C:/Users/me/My%20Pictures/a.png"));
+
+    expect(bed.paste.mock.calls).toEqual([
+      ["'C:\\Users\\me\\My Pictures\\a.png' "],
+    ]);
+  });
+
+  it("writes files from the system on Windows for the shell", async () => {
+    dragAndDropEnvironment.platform = "win32";
+    const bed = createBed({ executable: "C:\\Windows\\System32\\cmd.exe" });
+
+    await drop(
+      bed,
+      nativeDrag([nativeFile("a b.png", "C:\\Users\\me\\Desktop\\a b.png")]),
+    );
+
+    expect(bed.paste.mock.calls).toEqual([
+      ['"C:\\Users\\me\\Desktop\\a b.png" '],
+    ]);
+  });
+
+  // nushell reads a backslash outside quotes as a character of the name.
+  it("writes a path with a space in quotes for nushell", async () => {
+    const bed = createBed({ executable: "/opt/homebrew/bin/nu" });
+
+    await drop(bed, nativeDrag([nativeFile("b c.png", `${DESKTOP}/b c.png`)]));
+
+    expect(bed.paste.mock.calls).toEqual([[`'${DESKTOP}/b c.png' `]]);
+  });
+
+  it("writes the Linux path for the launcher of a WSL distribution", async () => {
+    dragAndDropEnvironment.platform = "win32";
+    const bed = createBed({ executable: "ubuntu2404.exe" });
+
+    await drop(
+      bed,
+      nativeDrag([nativeFile("a `b`.md", "C:\\Users\\me\\vault\\a `b`.md")]),
+    );
+
+    expect(bed.paste.mock.calls).toEqual([
+      ["/mnt/c/Users/me/vault/a\\ \\`b\\`.md "],
+    ]);
+  });
+
+  // === What the profile says beyond its shell ===
+
+  describe("in a WSL terminal", () => {
+    const WSL = "C:\\Windows\\System32\\wsl.exe",
+      // The same name in two distributions, as Explorer gives the files.
+      DEBIAN = "\\\\wsl.localhost\\Debian\\home\\me\\a.md",
+      UBUNTU = "\\\\wsl.localhost\\Ubuntu\\home\\me\\a.md",
+      both = nativeDrag([
+        nativeFile("a.md", DEBIAN),
+        nativeFile("a.md", UBUNTU),
+      ]);
+
+    beforeEach(() => {
+      dragAndDropEnvironment.platform = "win32";
+    });
+
+    it.each<readonly [string, readonly string[]]>([
+      ["-d", ["-d", "Ubuntu"]],
+      ["--distribution", ["--cd", "~", "--distribution", "ubuntu"]],
+    ])(
+      "leaves out a file of another distribution than the one %s names, and says so",
+      async (_name, args) => {
+        const bed = createBed({ args, executable: WSL });
+
+        await drop(bed, both);
+
+        // In the Ubuntu of the terminal, `/home/me/a.md` is another file than
+        // the one that was dragged out of Debian.
+        expect(bed.paste.mock.calls).toEqual([["/home/me/a.md "]]);
+        expect(notices()).toEqual([SKIPPED_PATHS]);
+      },
+    );
+
+    it("refuses the drag of a vault that is in another distribution", () => {
+      const bed = createBed({
+        args: ["-d", "Ubuntu"],
+        draggable: fileDraggable("a.md"),
+        executable: WSL,
+        fullPath: (path) => `\\\\wsl.localhost\\Debian\\home\\me\\${path}`,
+      });
+
+      expect(bed.fire("dragover", vaultDrag()).dataTransfer?.dropEffect).toBe(
+        "none",
+      );
+      expect(bed.setAction).toHaveBeenCalledExactlyOnceWith(null);
+    });
+
+    it.each<readonly [string, DragInit, string]>([
+      [
+        "a URI list",
+        uriDrag("file:///C:/Users/me/My%20Pictures/a.png"),
+        "/mnt/c/Users/me/My\\ Pictures/a.png ",
+      ],
+      [
+        // Visual Studio Code writes the drive in lower case, with `%3A`.
+        "a URI list of VS Code's kind",
+        vscodeDrag([VSCODE_URI_LIST], {
+          [VSCODE_URI_LIST]: "file:///c%3A/Users/me/My%20Pictures/a.png",
+        }),
+        "/mnt/c/Users/me/My\\ Pictures/a.png ",
+      ],
+    ])(
+      "writes the Linux path of a file on a drive that comes as %s",
+      async (_name, init, pasted) => {
+        onDisk({ "C:\\Users\\me\\My Pictures\\a.png": "file" });
+        const bed = createBed({ executable: WSL });
+
+        await drop(bed, init);
+
+        expect(bed.paste.mock.calls).toEqual([[pasted]]);
+        expect(notices()).toEqual([]);
+      },
+    );
+
+    // Known limit. An editor names a file of the distribution by a URI with
+    // the share as its host, or with a scheme of its own. A URI with a host
+    // is a network location, which is never looked up. The same file dragged
+    // out of Explorer comes as a file of the system, and is inserted.
+    it.each<readonly [string, DragInit]>([
+      [
+        "the share of the distribution as its host",
+        uriDrag("file://wsl.localhost/Ubuntu/home/me/a.png"),
+      ],
+      [
+        "the share under its older name as its host",
+        uriDrag("file://wsl$/Ubuntu/home/me/a.png"),
+      ],
+      [
+        "that share in a list of VS Code's kind",
+        vscodeDrag([VSCODE_URI_LIST], {
+          [VSCODE_URI_LIST]: "file://wsl.localhost/Ubuntu/home/me/a.png",
+        }),
+      ],
+      [
+        "the scheme of an editor that runs in the distribution",
+        vscodeDrag([VSCODE_URI_LIST], {
+          [VSCODE_URI_LIST]: "vscode-remote://wsl%2Bubuntu/home/me/a.png",
+        }),
+      ],
+    ])(
+      "inserts nothing for a file of a distribution that comes as a URI with %s, and looks nothing up",
+      async (_name, init) => {
+        const bed = createBed({ args: ["-d", "Ubuntu"], executable: WSL });
+
+        await drop(bed, init);
+
+        expect(bed.paste).not.toHaveBeenCalled();
+        expect(dragAndDropEnvironment.stat).not.toHaveBeenCalled();
+        expect(notices()).toEqual([NO_PATHS]);
+      },
+    );
+
+    // Known limit. Without the option `wsl.exe` runs the default
+    // distribution, whose name the profile does not tell.
+    it("takes a file of any distribution for one of the terminal's when the profile names none", async () => {
+      const bed = createBed({ executable: WSL });
+
+      await drop(bed, both);
+
+      // Two files, and one path in the distribution of the terminal.
+      expect(bed.paste.mock.calls).toEqual([
+        ["/home/me/a.md "],
+        ["/home/me/a.md "],
+      ]);
+      expect(notices()).toEqual([]);
+    });
+  });
+
+  // The developer console reads JavaScript, where a path is a string.
+  it.each<readonly [string, string, string, string]>([
+    ["macOS", "darwin", `${DESKTOP}/My Note.md`, `"${DESKTOP}/My Note.md" `],
+    [
+      "Windows",
+      "win32",
+      "C:\\Users\\me\\My Note.md",
+      '"C:\\\\Users\\\\me\\\\My Note.md" ',
+    ],
+  ])(
+    "writes a path for the developer console on %s as a string of JavaScript",
+    async (_name, platform, path, pasted) => {
+      dragAndDropEnvironment.platform = platform;
+      const bed = createBed({
+        profile: Settings.Profile.DEFAULTS.developerConsole,
+      });
+
+      await drop(bed, nativeDrag([nativeFile("My Note.md", path)]));
+
+      expect(bed.paste.mock.calls).toEqual([[pasted]]);
+      expect(notices()).toEqual([]);
+    },
+  );
+
+  it.each<Settings.Profile["type"]>(["", "invalid"])(
+    "writes a path for a profile of type %j, which names no program, as for an unknown one",
+    async (type) => {
+      const bed = createBed({ profile: Settings.Profile.DEFAULTS[type] });
+
+      await drop(
+        bed,
+        nativeDrag([nativeFile("b c.png", `${DESKTOP}/b c.png`)]),
+      );
+
+      expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b\\ c.png `]]);
+    },
+  );
+
+  it("writes a path as for an unknown program without a profile", async () => {
+    const bed = createBed(),
+      { paste, terminal } = fakeTerminal(),
+      addon = new DragAndDropAddon(bed.context, bed.element);
+    pastes.push(paste);
+    addons.push(addon);
+    bed.addon.dispose();
+    addon.activate(terminal);
+
+    await drop(bed, nativeDrag([nativeFile("b c.png", `${DESKTOP}/b c.png`)]));
+
+    expect(paste.mock.calls).toEqual([[`${DESKTOP}/b\\ c.png `]]);
+  });
+
+  // === Notices ===
+
+  it("shows its notices as the plugin's other notices are shown", async () => {
+    const bed = createBed();
+
+    await drop(bed, nativeDrag([nativeFile("image.png")]));
+
+    expect(notice2).toHaveBeenCalledExactlyOnceWith(
+      expect.any(Function),
+      NOTICE_TIMEOUT,
+      bed.context,
+    );
+  });
+
+  // === Obsidian without the private drag manager ===
+
+  describe.each<readonly [string, Readonly<Record<string, unknown>>]>([
+    ["no drag manager", {}],
+    ["a null drag manager", { dragManager: null }],
+    ["a drag manager that is not an object", { dragManager: "manager" }],
+    ["a drag manager without a draggable", { dragManager: {} }],
+    ["an undefined draggable", { dragManager: { draggable: void 0 } }],
+  ])("in an app with %s", (_name, app) => {
+    it.each(DRAG_TYPES)(
+      "leaves %s of a vault drag untouched without throwing",
+      async (type) => {
+        const bed = createBed({ app }),
+          fired = bed.fire(type, vaultDrag());
+        await tick();
+
+        expect(fired.event.defaultPrevented).toBe(false);
+        expect(fired.reachedView).toBe(true);
+        expect(bed.paste).not.toHaveBeenCalled();
+      },
+    );
+
+    it("still pastes files from the system", async () => {
+      const bed = createBed({ app });
+
+      await drop(bed, nativeDrag());
+
+      expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    });
   });
 });
 

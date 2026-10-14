@@ -1,12 +1,15 @@
 import {
   Functions,
+  Platform,
   type PluginContext,
   activeSelf,
   consumeEvent,
   deepFreeze,
+  deopaque,
   dynamicRequire,
+  instanceOf,
   isNonNil,
-  replaceAllRegex,
+  notice2,
   revealPrivateFilter,
 } from "@polyipseity/obsidian-plugin-library";
 import type { CanvasAddon } from "@xterm/addon-canvas";
@@ -14,17 +17,93 @@ import type { WebglAddon } from "@xterm/addon-webgl";
 import type { ILink, ITerminalAddon, ITheme, Terminal } from "@xterm/xterm";
 import { eastAsianWidth } from "get-east-asian-width";
 import { around } from "monkey-around";
-import { TFile, type WorkspaceLeaf } from "obsidian";
-import { noop } from "ts-essentials";
+import {
+  FileSystemAdapter,
+  Platform as ObsidianPlatform,
+  TFile,
+  type WorkspaceLeaf,
+} from "obsidian";
+import { type AsyncOrSync, noop } from "ts-essentials";
 import { BUNDLE } from "../imports.js";
 import { DOMClasses2 } from "../magic.js";
 import type { Settings } from "../settings-data.js";
 import type { $App } from "../@types/obsidian.js";
+import {
+  type DroppedPathOptions,
+  type DroppedPaths,
+  type ShellGrammar,
+  droppedPathPastes,
+  formatDroppedPath,
+  formatDroppedPaths,
+  lineByteLimit,
+  shellGrammar,
+  ttyLineByteLimit,
+  uriListPaths,
+  vaultDragPaths,
+  vaultDragSkipped,
+  wslDistribution,
+} from "./dropped-paths.js";
 import { revealLeafWithoutFlash } from "./reveal.js";
 import { Win32InputMode, isWin32ClipboardChord } from "./win32-input-mode.js";
 
-const electron = dynamicRequire<typeof import("electron")>(BUNDLE, "electron");
-/* @__PURE__ */ electron.catch(noop); // Prevent unhandled rejections from `dynamicRequire` in tests.
+const electron = dynamicRequire<typeof import("electron")>(BUNDLE, "electron"),
+  fsPromises = dynamicRequire<typeof import("node:fs/promises")>(
+    BUNDLE,
+    "node:fs/promises",
+  );
+// Prevent unhandled rejections from `dynamicRequire` in tests.
+/* @__PURE__ */ electron.catch(noop);
+/* @__PURE__ */ fsPromises.catch(noop);
+
+// How many paths of dropped URI lists are looked up on disk at a time, over
+// every drop on every terminal. What counts is a `stat` that has not answered,
+// also when its drop no longer waits for it: it holds a thread of the pool the
+// process reads its files with, and a volume that never answers keeps it.
+// That pool has four threads, which Obsidian reads and saves notes with, so
+// the lookups take half of it at most.
+const LOOKUPS = 2,
+  // The lookups in line for a slot, oldest first; each is called when a slot
+  // is handed to it.
+  lookupQueue: (() => void)[] = [];
+// The slots taken.
+let lookups = 0;
+
+/**
+ * Takes one of the {@link LOOKUPS} slots, waiting in line for one until
+ * `deadline` settles.
+ *
+ * @returns whether a slot was taken, which `releaseLookup` then gives back.
+ */
+async function acquireLookup(deadline: Promise<unknown>): Promise<boolean> {
+  if (lookups < LOOKUPS) {
+    ++lookups;
+    return true;
+  }
+  let grant: () => void = noop;
+  const slot = new Promise<void>((resolve) => {
+    grant = resolve;
+  });
+  lookupQueue.push(grant);
+  await Promise.race([slot, deadline]);
+  // `releaseLookup` takes the lookup it hands a slot to out of the line, so
+  // one that is still in it has seen the deadline come first.
+  const index = lookupQueue.indexOf(grant);
+  if (index === -1) {
+    return true;
+  }
+  lookupQueue.splice(index, 1);
+  return false;
+}
+
+/** Gives a slot back: to the lookup that has waited longest, if one waits. */
+function releaseLookup(): void {
+  const next = lookupQueue.shift();
+  if (next) {
+    next();
+  } else {
+    --lookups;
+  }
+}
 
 export class DisposerAddon extends Functions implements ITerminalAddon {
   public constructor(...args: readonly (() => void)[]) {
@@ -40,91 +119,825 @@ export class DisposerAddon extends Functions implements ITerminalAddon {
   }
 }
 
-export class DragAndDropAddon implements ITerminalAddon {
-  readonly #disposer = new Functions({ async: false, settled: true });
+/** What a drop keeps of the moment it came, for when its paths are known. */
+interface Drop {
+  /** `DragAndDropAddon.#activation` at the drop, which says whose it is. */
+  readonly activation: number;
+  /** What had the focus in the terminal's window. */
+  readonly focused: Element | null;
+  /** `DragAndDropAddon.#input` at the drop, which says what was typed since. */
+  readonly input: number;
+  readonly terminal: Terminal;
+}
 
-  public constructor(protected readonly element: HTMLElement) {}
+/**
+ * Inserts the paths of what is dropped onto the terminal: files and folders
+ * dragged out of the vault, files dragged in from other applications, and
+ * lists of file URIs. Every other drag is left to Obsidian.
+ */
+export class DragAndDropAddon implements ITerminalAddon {
+  // Values of `DataTransfer.effectAllowed` that let a drop be a copy.
+  static readonly #COPY_EFFECTS: ReadonlySet<string> = new Set([
+    "all",
+    "copy",
+    "copyLink",
+    "copyMove",
+    "uninitialized",
+  ]);
+
+  // Values that let it be a link, but not a copy.
+  static readonly #LINK_EFFECTS: ReadonlySet<string> = new Set([
+    "link",
+    "linkMove",
+  ]);
+
+  // Class Obsidian has on the body of its main window while it drags
+  // something of its own, from wherever the drag started: a tab header once
+  // the pointer has moved, and whatever its drag manager carries. A drag out
+  // of another application never sets it.
+  static readonly #GRABBING = "is-grabbing";
+
+  // The standard type for a list of URIs. A source may put only the first of
+  // several dragged files there: VS Code does.
+  static readonly #URI_LIST = "text/uri-list";
+
+  // VS Code's own type, in lower case as a data transfer lists its types. It
+  // holds every dragged file and folder, and is the only type with a path on
+  // the drag of an editor tab.
+  static readonly #VSCODE_URI_LIST = "application/vnd.code.uri-list";
+
+  // How long a drop waits for the paths of a URI list to be looked up on
+  // disk, in milliseconds.
+  static readonly #LOOKUP_DEADLINE = 2000;
+
+  // The character every report of the terminal starts with.
+  static readonly #ESCAPE = "\u001b";
+
+  // What follows it in a report that is a control sequence, each as xterm.js
+  // writes it. `[I` and `[O` tell that the terminal gained or lost the focus,
+  // which a click on the terminal sets off, and so does the focus a drop
+  // gives it. Then the answers to what a program asks: the status of the
+  // terminal, its device attributes, the cursor position or a mode, and its
+  // size. A modified F3 has the bytes of a cursor position, and is taken for
+  // one. Last what the pointer does, for a program that follows it.
+  static readonly #REPORT_SEQUENCE =
+    /^\[(?:[IO]|0n|[?>][\d;]*c|\??\d+;\d+(?:R|\$y)|[468];\d+;\d+t|<\d+;\d+;\d+[Mm])$/u;
+
+  // What follows it in an answer that is a string: a colour, or a setting.
+  // The string has an end, which the key that sends as much as its start
+  // (Alt and `]`) has not.
+  static readonly #REPORT_STRING = /^[\]P]/u;
+
+  readonly #disposer = new Functions({ async: false, settled: true });
+  // Set by `dispose()`: nothing would remove listeners added after it.
+  #disposed = false;
+  // Counts the calls of `activate()` and `dispose()`. What a drop has queued
+  // is for the terminal it came in on, and is discarded once the count has
+  // moved on: that terminal is replaced or gone.
+  #activation = 0;
+  // Settles when every drop so far is done with the terminal.
+  #drops: Promise<void> = Promise.resolve();
+  // Counts the input the terminal has sent to its program. A drop that had
+  // to wait is not pasted once the count has moved on: the command line is
+  // no longer the one the paths were dropped on.
+  #input = 0;
+  // Set while a drop is pasted, which the terminal sends as data as well.
+  #pasting = false;
+
+  /**
+   * @param context - plugin whose vault, language and settings are used.
+   * @param element - element of the terminal, which receives the drags.
+   * @param profile - profile the terminal runs, which decides how paths are
+   * written; `null` if unknown.
+   * @param attached - gives a promise that is fulfilled once the terminal has
+   * its program, which what is pasted then reaches, and rejected if it gets
+   * none. It is asked at a drop, never before. Left out, the terminal is
+   * taken to have its program from the start.
+   */
+  public constructor(
+    protected readonly context: PluginContext,
+    protected readonly element: HTMLElement,
+    protected readonly profile: Settings.Profile | null = null,
+    protected readonly attached: () => PromiseLike<unknown> = async () =>
+      Promise.resolve(),
+  ) {}
+
+  /**
+   * Tells whose drag this is from what every drag event can read; the data
+   * itself is readable only in `drop`.
+   *
+   * @returns `vault` for a drag out of the vault, `native` for files from the
+   * system, `uri` for a list of URIs, and `null` for a drag that is not for
+   * the terminal (text selection, tab header...).
+   */
+  static #kind(
+    event: DragEvent,
+    draggable: unknown,
+  ): "native" | "uri" | "vault" | null {
+    if (isNonNil(draggable)) {
+      return "vault";
+    }
+    // A drag Obsidian manages itself without a vault file in it is a tab on
+    // its way to be docked. The types do not tell: a tab grabbed by an image
+    // in its header (the icon of a web viewer) carries that image as a file
+    // and a URI. The global `document` is read on purpose: the class is on
+    // the body of the main window, also when the terminal is in a pop-out.
+    if (document.body.classList.contains(DragAndDropAddon.#GRABBING)) {
+      return null;
+    }
+    const types = event.dataTransfer?.types ?? [];
+    if (types.includes("Files")) {
+      return "native";
+    }
+    return types.includes(DragAndDropAddon.#VSCODE_URI_LIST) ||
+      types.includes(DragAndDropAddon.#URI_LIST)
+      ? "uri"
+      : null;
+  }
+
+  /**
+   * Picks the drop effect for a source, `none` refusing the drag. It is never
+   * `move`: a file manager may delete the source after a move, and inserting
+   * a path takes nothing away.
+   */
+  static #dropEffect(effectAllowed: string): "copy" | "link" | "none" {
+    if (DragAndDropAddon.#COPY_EFFECTS.has(effectAllowed)) {
+      return "copy";
+    }
+    return DragAndDropAddon.#LINK_EFFECTS.has(effectAllowed) ? "link" : "none";
+  }
+
+  /**
+   * Returns the string a data transfer has for a type, which is readable only
+   * while the drop is dispatched; `null` if the drag does not have that type.
+   */
+  static #data(dataTransfer: DataTransfer | null, type: string): string | null {
+    return dataTransfer !== null && dataTransfer.types.includes(type)
+      ? dataTransfer.getData(type)
+      : null;
+  }
+
+  /** Narrows to a path that names something: a string that is not empty. */
+  static #pathOrNull(path: unknown): string | null {
+    return typeof path === "string" && path !== "" ? path : null;
+  }
+
+  /**
+   * Tells whether data the terminal sends to its program is a report of the
+   * terminal itself. It is data like what is typed, by the one event the
+   * terminal has for both, but nothing the user typed: a shell asks the
+   * terminal as it starts and a full-screen program all the time, and after
+   * a drop the pointer is over the terminal, where each move of it is told
+   * to a program that follows it.
+   */
+  static #isReport(data: string): boolean {
+    const escape = DragAndDropAddon.#ESCAPE;
+    if (!data.startsWith(escape)) {
+      return false;
+    }
+    const report = data.slice(escape.length);
+    return (
+      DragAndDropAddon.#REPORT_SEQUENCE.test(report) ||
+      (DragAndDropAddon.#REPORT_STRING.test(report) &&
+        report.endsWith(`${escape}\\`))
+    );
+  }
 
   public activate(terminal: Terminal): void {
-    const { element } = this;
-
-    // Asynchronously load Electron's webUtils API for file path resolution.
-    // This is available in Electron 30+. We load it asynchronously to:
-    // 1. Avoid blocking the terminal initialization
-    // 2. Gracefully handle cases where Electron is unavailable (e.g.,
-    //    running in non-Electron environments or sandboxed contexts)
-    (async (): Promise<void> => {
-      let electron2 = null;
-      try {
-        // Dynamically load the electron module using dynamicRequire with the
-        // configured BUNDLE. This ensures safe loading in both development and
-        // production builds, respecting the plugin's module bundling strategy.
-        electron2 = await electron;
-      } catch (error) {
-        // Electron module failed to load. This is expected in non-Electron
-        // environments. Log at debug level to avoid console spam.
-        // The fallback to File.path will be used if available.
-        /* @__PURE__ */ activeSelf(element).console.debug(error);
-      }
-
-      const getFilePath = (file: File): string | undefined => {
-        // Priority order for file path extraction:
-        // 1. Electron 30+ webUtils.getPathForFile() - recommended, handles edge cases
-        // 2. Catch any errors from getPathForFile() - some paths may fail
-        // 3. Fall back to deprecated File.path - available in Electron < 32
-        if (electron2?.webUtils?.getPathForFile) {
-          try {
-            return electron2.webUtils.getPathForFile(file);
-          } catch (error) {
-            // getPathForFile() failed for this specific file.
-            // This can happen with certain file types or in special contexts.
-            // Log the error and continue with the fallback.
-            /* @__PURE__ */ activeSelf(element).console.warn(error);
-          }
+    if (this.#disposed) {
+      // Nothing would remove listeners added now.
+      return;
+    }
+    // A second activation replaces the first, whose listeners would go on
+    // pasting into the terminal they were added for.
+    this.#removeListeners();
+    const activation = ++this.#activation,
+      { element } = this,
+      over = (event: DragEvent): void => {
+        this.#over(event);
+      },
+      leave = (event: DragEvent): void => {
+        this.#leave(event);
+      },
+      drop = (event: DragEvent): void => {
+        this.#drop(terminal, activation, event);
+      },
+      input = terminal.onData((data) => {
+        if (!this.#pasting && !DragAndDropAddon.#isReport(data)) {
+          ++this.#input;
         }
-        // Fallback to legacy File.path property (Electron < 32).
-        // This property is non-standard and removed in Electron 32+, but provides
-        // compatibility with older versions that may not have webUtils.
-        // eslint-disable-next-line eslint-comments/no-restricted-disable -- Need to suppress no-deprecated (see below)
-        // eslint-disable-next-line @typescript-eslint/no-deprecated -- Intentional fallback for Electron versions without `webUtils.getPathForFile`.
-        return file.path;
-      };
-
-      const drop = (event: DragEvent): void => {
-        terminal.paste(
-          Array.from(event.dataTransfer?.files ?? [])
-            .map(getFilePath)
-            .filter(isNonNil)
-            .map((path) => path.replace(replaceAllRegex('"'), '\\"'))
-            .map((path) => (path.includes(" ") ? `"${path}"` : path))
-            .join(" "),
-        );
-        consumeEvent(event);
-      };
-
-      // dragover handler - needed to enable the drop target
-      const dragover = consumeEvent;
-
-      // Register event listeners and store cleanup functions.
-      // Both listeners are removed when the addon is disposed to prevent memory leaks.
-      this.#disposer.push(
-        () => {
-          element.removeEventListener("dragover", dragover);
-        },
-        () => {
-          element.removeEventListener("drop", drop);
-        },
-      );
-      element.addEventListener("drop", drop);
-      element.addEventListener("dragover", dragover);
-    })().catch((error: unknown) => {
-      // Log errors from the async initialization to help with debugging.
-      activeSelf(element).console.error(error);
-    });
+      });
+    // The listeners are added in `activate` itself, with nothing awaited
+    // before them: the terminal takes drags from the moment it shows. A drop
+    // that comes before its program does is held (see `#program`).
+    this.#disposer.push(
+      () => {
+        input.dispose();
+      },
+      () => {
+        element.removeEventListener("dragenter", over);
+      },
+      () => {
+        element.removeEventListener("dragover", over);
+      },
+      () => {
+        element.removeEventListener("dragleave", leave);
+      },
+      () => {
+        element.removeEventListener("drop", drop);
+      },
+    );
+    element.addEventListener("drop", drop);
+    element.addEventListener("dragleave", leave);
+    element.addEventListener("dragover", over);
+    element.addEventListener("dragenter", over);
   }
 
   public dispose(): void {
+    this.#disposed = true;
+    ++this.#activation;
+    this.#removeListeners();
+  }
+
+  #removeListeners(): void {
     this.#disposer.call();
+    // Emptied, so that listeners are not removed again at the next call.
+    this.#disposer.length = 0;
+  }
+
+  /**
+   * Tells whether a drop of that activation still has its terminal: neither
+   * `activate()` nor `dispose()` has run since. Asked again wherever the
+   * answer can have changed: a paste may dispose the addon.
+   */
+  #isCurrent(activation: number): boolean {
+    return activation === this.#activation;
+  }
+
+  /**
+   * Handles `dragenter` and `dragover`: accepting the drag there is what makes
+   * the terminal a drop target. The event keeps propagating in every case,
+   * because Obsidian moves its drag ghost from window-level `dragover`
+   * listeners.
+   */
+  #over(event: DragEvent): void {
+    if (event.defaultPrevented) {
+      // Another handler has answered this drag.
+      return;
+    }
+    const { dataTransfer } = event,
+      draggable = this.#draggable(),
+      kind = DragAndDropAddon.#kind(event, draggable);
+    if (kind === null) {
+      // Untouched, so that a tab can still be docked over the terminal.
+      return;
+    }
+    // A vault drag without a path to insert (heading, unresolved link,
+    // bookmark group...) is refused like a source that only allows a move.
+    // So is one with no path that can be written for the shell (a name with
+    // a tab or a newline): the cursor must not promise an insertion that the
+    // drop then declines with a notice.
+    const effect =
+      kind === "vault" && !this.#insertsVaultPath(draggable)
+        ? "none"
+        : DragAndDropAddon.#dropEffect(
+            dataTransfer?.effectAllowed ?? "uninitialized",
+          );
+    // Refusing prevents the default as well: Obsidian's own handlers on the
+    // view skip a prevented event, and would otherwise open the dragged file
+    // in this tab when Shift (macOS) or Alt is held, replacing the terminal.
+    event.preventDefault();
+    if (dataTransfer) {
+      dataTransfer.dropEffect = effect;
+    }
+    if (kind === "vault") {
+      // A refused drag loses the label an earlier `dragover` gave it.
+      this.#labelDragGhost(effect !== "none");
+    }
+  }
+
+  /**
+   * Handles `dragleave`: a vault drag that leaves the terminal loses the
+   * label of its drag ghost. Obsidian does not clear the label in a pop-out
+   * window, where it would stay on the ghost wherever the drag goes next.
+   */
+  #leave(event: DragEvent): void {
+    const { relatedTarget } = event;
+    if (
+      instanceOf(relatedTarget, Node) &&
+      this.element.contains(relatedTarget)
+    ) {
+      // The drag only moved from one part of the terminal to another.
+      return;
+    }
+    if (isNonNil(this.#draggable())) {
+      this.#labelDragGhost(false);
+    }
+  }
+
+  #drop(terminal: Terminal, activation: number, event: DragEvent): void {
+    if (event.defaultPrevented) {
+      // Another handler took the drop.
+      return;
+    }
+    const { dataTransfer } = event,
+      // Obsidian clears the draggable in a timer right after the drop, and
+      // the strings of a data transfer are readable only while the drop is
+      // dispatched, so everything is read here, before anything is awaited.
+      draggable = this.#draggable(),
+      kind = DragAndDropAddon.#kind(event, draggable);
+    if (kind === null) {
+      // Left as it is: Obsidian docks a tab from window-level listeners.
+      return;
+    }
+    // Keeps the browser from opening a dropped file or link, and Obsidian
+    // from opening a vault file in this tab. The drop goes no further in any
+    // case: the drag is the terminal's, also when it has no path to insert.
+    event.preventDefault();
+    event.stopPropagation();
+    const drop: Drop = {
+      activation,
+      focused: this.element.ownerDocument.activeElement,
+      input: this.#input,
+      terminal,
+    };
+    if (kind === "vault") {
+      // A vault drag never falls back on the other sources: what a browser
+      // adds to it (the bitmap of a dragged image) is not what was dragged.
+      const dropped = this.#vaultPaths(draggable);
+      this.#afterEarlierDrops((held) => {
+        this.#insert(drop, dropped, held);
+      });
+      return;
+    }
+    const files = Array.from(dataTransfer?.files ?? []),
+      vscodeUriList =
+        DragAndDropAddon.#data(
+          dataTransfer,
+          DragAndDropAddon.#VSCODE_URI_LIST,
+        ) ?? "",
+      uriList =
+        DragAndDropAddon.#data(dataTransfer, DragAndDropAddon.#URI_LIST) ?? "";
+    this.#afterEarlierDrops(async (held) => {
+      if (!this.#isCurrent(activation)) {
+        // Nothing is looked up for a terminal that is replaced or gone.
+        return;
+      }
+      this.#insert(
+        drop,
+        await this.#externalPaths(files, vscodeUriList, uriList, activation),
+        held,
+      );
+    });
+  }
+
+  /**
+   * Runs the rest of a drop once the drops before it are done, so that paths
+   * reach the terminal in the order they were dropped: without this, a vault
+   * drop would paste ahead of an earlier URI list still looked up on disk.
+   *
+   * @param rest - is told whether the drop was held for the program of the
+   * terminal (see `#program`), and is not called if the terminal got none.
+   */
+  #afterEarlierDrops(rest: (held: boolean) => AsyncOrSync<void>): void {
+    // Asked now, at the drop: by the time the drops before it are done, the
+    // program may be there that this drop came too early for.
+    const program = this.#program();
+    this.#drops = this.#drops
+      .then(async () => {
+        const state = await program;
+        if (state !== "none") {
+          await rest(state === "late");
+        }
+      })
+      .catch((error: unknown) => {
+        // Logged here, so that a drop that fails does not stop the next ones.
+        activeSelf(this.element).console.error(error);
+      });
+  }
+
+  /**
+   * Waits until the terminal has its program. The terminal shows before its
+   * program has started, with the history it had, and what is pasted in
+   * between reaches no program: the terminal keeps none of it.
+   *
+   * @returns `there` if the terminal has its program as this is called, and
+   * `late` if it gets it later: a drop that was held for it is pasted the
+   * moment the program is there, before a shell has set up its line editor
+   * (see `ttyLineByteLimit`). `none` if it got none: the drop is then
+   * discarded without a word, as the view has said that the program did not
+   * start, or the terminal was closed.
+   */
+  async #program(): Promise<"late" | "none" | "there"> {
+    // A program that is there answers before any timer runs, so a timer that
+    // has run by the answer tells that there was none at the call. The timer
+    // is one of the main window, as the deadline of a lookup is.
+    const timer = { ran: false },
+      handle = self.setTimeout(() => {
+        timer.ran = true;
+      }, 0);
+    try {
+      await this.attached();
+    } catch {
+      return "none";
+    } finally {
+      self.clearTimeout(handle);
+    }
+    return timer.ran ? "late" : "there";
+  }
+
+  /**
+   * Pastes the dropped paths, and says so when some or all of the dropped
+   * items could not become one.
+   *
+   * @param held - whether the drop was held for the program of the terminal.
+   */
+  #insert(drop: Drop, dropped: DroppedPaths, held: boolean): void {
+    const { activation, focused, input, terminal } = drop;
+    if (!this.#isCurrent(activation)) {
+      // The terminal was replaced or went away while the drop waited.
+      return;
+    }
+    if (dropped.paths.length === 0) {
+      this.#notice("notices.drop-no-paths");
+      return;
+    }
+    if (input !== this.#input) {
+      // The user typed while the drop waited for its paths or for the drops
+      // before it. After Enter the paths would go to whatever runs by now.
+      this.#notice("notices.drop-skipped-paths");
+      return;
+    }
+    const platform = deopaque(Platform.CURRENT),
+      { texts, skipped } = formatDroppedPaths(
+        dropped.paths,
+        ...this.#writing(platform, held),
+      );
+    // One paste for all the paths, but one per path on Windows. One paste is
+    // how Claude Code reads several escaped paths, and a shell reads it in
+    // one go. Quoted, as most shells on Windows need them, Claude Code reads
+    // them only when each is its own paste.
+    for (const paste of droppedPathPastes(texts, platform)) {
+      // Asked again each time: what a paste sets off may dispose the addon.
+      if (!this.#isCurrent(activation)) {
+        return;
+      }
+      this.#paste(terminal, paste);
+    }
+    if (!this.#isCurrent(activation)) {
+      return;
+    }
+    // Not when the focus has moved since the drop: a drop that was slow to
+    // look up must not take it back from where the user went on to work.
+    if (
+      texts.length > 0 &&
+      this.element.ownerDocument.activeElement === focused
+    ) {
+      terminal.focus();
+    }
+    // Also when no path could be written for the shell: the dropped items
+    // had paths then, and the other notice says that none was found.
+    if (dropped.skipped + skipped > 0) {
+      this.#notice("notices.drop-skipped-paths");
+    }
+  }
+
+  /**
+   * Pastes a text. The terminal sends it to its program as data, like what
+   * is typed, so it is marked as not being input of the user.
+   */
+  #paste(terminal: Terminal, text: string): void {
+    this.#pasting = true;
+    try {
+      terminal.paste(text);
+    } finally {
+      this.#pasting = false;
+    }
+  }
+
+  /**
+   * Tells whether a drop of a vault drag inserts a path: whether the drag
+   * carries a file that the vault knows, at a path the shell of the terminal
+   * has a way to write, and whether that path fits what one drop may paste.
+   * It stops at the first such file, as it is asked at every `dragover` and
+   * a drag can carry a thousand files.
+   */
+  #insertsVaultPath(draggable: unknown): boolean {
+    const { vault } = this.context.app,
+      { adapter } = vault;
+    if (!(adapter instanceof FileSystemAdapter)) {
+      return false;
+    }
+    const writing = this.#writing(deopaque(Platform.CURRENT));
+    for (const path of vaultDragPaths(draggable)) {
+      if (vault.getAbstractFileByPath(path) !== null) {
+        const fullPath = adapter.getFullPath(path);
+        if (formatDroppedPath(fullPath, ...writing) !== null) {
+          // The first path the drop writes. A drop stops at the first path
+          // that does not fit: if it is this one, nothing is pasted.
+          return formatDroppedPaths([fullPath], ...writing).texts.length > 0;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Tells how a path is written for what the terminal runs: the grammar its
+   * program reads, and what the profile says beyond that.
+   *
+   * @param held - whether the paths are of a drop that was held for the
+   * program: no shell has a line editor yet when they are pasted.
+   */
+  #writing(
+    platform: Platform.All,
+    held = false,
+  ): readonly [ShellGrammar, DroppedPathOptions] {
+    const { profile } = this;
+    if (profile?.type === "developerConsole") {
+      return ["javascript", {}];
+    }
+    // Only an integrated profile names the program in the terminal.
+    const [executable, args] =
+      profile?.type === "integrated"
+        ? [profile.executable, profile.args]
+        : ["", []];
+    return [
+      shellGrammar(executable, platform),
+      {
+        distribution: wslDistribution(args),
+        maxBytes: held
+          ? ttyLineByteLimit(platform)
+          : lineByteLimit(executable, platform),
+      },
+    ];
+  }
+
+  #notice(key: "notices.drop-no-paths" | "notices.drop-skipped-paths"): void {
+    const {
+      context,
+      context: { language, settings },
+    } = this;
+    notice2(() => language.value.t(key), settings.value.noticeTimeout, context);
+  }
+
+  /**
+   * Returns the paths of a drag from outside the vault. The first source that
+   * names a path wins, and the sources are never merged: a drag that carries
+   * several describes the same items in each.
+   */
+  async #externalPaths(
+    files: readonly File[],
+    vscodeUriList: string,
+    uriList: string,
+    activation: number,
+  ): Promise<DroppedPaths> {
+    const native = await this.#nativePaths(files);
+    if (native.paths.length > 0) {
+      return native;
+    }
+    // An image dragged out of a web page, or out of a note in a pop-out
+    // window, comes as a bitmap without a path, next to the URI it is served
+    // from. VS Code gives no files at all.
+    const options = {
+        platform: deopaque(Platform.CURRENT),
+        resourcePrefix: ObsidianPlatform.resourcePathPrefix,
+      },
+      // VS Code percent-encodes a `#` in a name, and adds the place of a
+      // search match as a fragment, which is not part of the path.
+      vscode = uriListPaths(vscodeUriList, { ...options, fragments: true });
+    return this.#onDisk(
+      vscode.paths.length > 0
+        ? vscode
+        : uriListPaths(uriList, { ...options, fragments: false }),
+      activation,
+    );
+  }
+
+  /**
+   * Returns the paths of files dragged in from the system (Finder, Explorer,
+   * Files...). They are not checked: the system handed them over, and a
+   * `stat` on a slow network volume must not hold up a drop.
+   */
+  async #nativePaths(files: readonly File[]): Promise<DroppedPaths> {
+    let webUtils: (typeof import("electron"))["webUtils"] = void 0;
+    try {
+      ({ webUtils } = await electron);
+    } catch (error) {
+      // Expected outside Electron; `File.path` is used if available.
+      /* @__PURE__ */ activeSelf(this.element).console.debug(error);
+    }
+    const paths = files
+      .map((file) => this.#nativePath(file, webUtils))
+      .filter(isNonNil);
+    return { paths, skipped: files.length - paths.length };
+  }
+
+  /**
+   * Returns the path of a file from the system; `null` for a `File` that is
+   * not a file on disk, such as an image dragged out of a web page. Whatever
+   * a `File` throws stays here, so that the other dropped files keep theirs.
+   */
+  #nativePath(
+    file: File,
+    webUtils: (typeof import("electron"))["webUtils"],
+  ): string | null {
+    const { console } = activeSelf(this.element);
+    // `webUtils.getPathForFile()` is in Electron 30 and later.
+    if (webUtils) {
+      try {
+        const path = DragAndDropAddon.#pathOrNull(
+          webUtils.getPathForFile(file),
+        );
+        if (path !== null) {
+          return path;
+        }
+      } catch (error) {
+        /* @__PURE__ */ console.warn(error);
+      }
+    }
+    try {
+      // eslint-disable-next-line eslint-comments/no-restricted-disable -- Need to suppress no-deprecated (see below)
+      // eslint-disable-next-line @typescript-eslint/no-deprecated -- Intentional fallback for Electron versions without `webUtils.getPathForFile`.
+      return DragAndDropAddon.#pathOrNull(file.path);
+    } catch (error) {
+      // A getter that is being removed may throw instead of returning nothing.
+      /* @__PURE__ */ console.debug(error);
+      return null;
+    }
+  }
+
+  /**
+   * Leaves out the paths of a URI list that are not files or directories on
+   * disk. Unlike files from the system, a URI list is text the drag source
+   * chose, so nothing in it is pasted unverified. Network hosts are refused
+   * by `uriListPaths`, before anything is looked up.
+   *
+   * The lookup is bounded, because a list can name a thousand paths, and a
+   * path on a volume that does not answer would hold up this drop and the
+   * ones after it: a few paths at a time, and one deadline for all of them.
+   * A path without an answer by then counts as skipped, as does one whose
+   * lookup could not start, the slots being held by lookups without answer.
+   */
+  async #onDisk(
+    listed: DroppedPaths,
+    activation: number,
+  ): Promise<DroppedPaths> {
+    const { paths, skipped } = listed;
+    if (paths.length === 0) {
+      return listed;
+    }
+    const found = new Set<number>(),
+      // One iterator for all the loops below, so each path is taken once.
+      entries = paths.entries();
+    let expired = false,
+      timer: number | undefined;
+    // The timer is one of the main window, not of the window the terminal is
+    // in: a terminal can be moved out of a pop-out window, which then closes,
+    // and a closed window runs none of its timers. The deadline would never
+    // come, and a lookup without answer would hold up every later drop.
+    const deadline = new Promise<false>((resolve) => {
+        timer = self.setTimeout(() => {
+          expired = true;
+          resolve(false);
+        }, DragAndDropAddon.#LOOKUP_DEADLINE);
+      }),
+      // Nobody waits for an answer after the deadline, nor once the terminal
+      // is replaced or gone.
+      awaited = (): boolean => !expired && this.#isCurrent(activation),
+      lookUp = async (): Promise<void> => {
+        for (const [index, path] of entries) {
+          if (!awaited()) {
+            // No lookup starts for an answer nobody waits for.
+            return;
+          }
+          // The deadline answers for a path that has no answer by then, and
+          // the late answer is ignored.
+          if (
+            await Promise.race([
+              this.#isOnDisk(path, deadline, awaited),
+              deadline,
+            ])
+          ) {
+            found.add(index);
+          }
+        }
+      };
+    // No more paths of one drop in line for a slot than there are slots, so
+    // that a long list does not keep the drop on another terminal waiting.
+    await Promise.all(
+      Array.from({ length: Math.min(paths.length, LOOKUPS) }, lookUp),
+    );
+    // Every path has its answer, or the deadline has passed.
+    self.clearTimeout(timer);
+    const onDisk = paths.filter((_path, index) => found.has(index));
+    return { paths: onDisk, skipped: skipped + paths.length - onDisk.length };
+  }
+
+  /**
+   * Tells whether a path is a file or a directory on disk, once one of the
+   * {@link LOOKUPS} slots is free to ask.
+   *
+   * @param path - absolute path.
+   * @param deadline - settles when the drop stops waiting for a slot.
+   * @param awaited - tells whether the drop still waits for the answer.
+   * @returns `false` as well for a path that was not looked up.
+   */
+  async #isOnDisk(
+    path: string,
+    deadline: Promise<unknown>,
+    awaited: () => boolean,
+  ): Promise<boolean> {
+    if (!(await acquireLookup(deadline))) {
+      return false;
+    }
+    try {
+      if (!awaited()) {
+        // The slot came free as the drop gave up.
+        return false;
+      }
+      const stats = await (await fsPromises).stat(path);
+      return stats.isFile() || stats.isDirectory();
+    } catch (error) {
+      // Missing, unreadable, or no file system to ask: not a path to insert.
+      /* @__PURE__ */ activeSelf(this.element).console.debug(error);
+      return false;
+    } finally {
+      // Only now that `stat` has answered, which can be long after the drop
+      // stopped waiting for it or the terminal went away.
+      releaseLookup();
+    }
+  }
+
+  /**
+   * Returns Obsidian's drag manager, which is not part of its API; `null`
+   * without one, and vault drags are then ignored (other drops still work).
+   */
+  #dragManager(): object | null {
+    const { app } = this.context;
+    if (!("dragManager" in app)) {
+      return null;
+    }
+    const { dragManager } = app;
+    return typeof dragManager === "object" ? dragManager : null;
+  }
+
+  /**
+   * Returns what is being dragged out of the vault (file explorer, search,
+   * backlinks, bookmarks, links...); `null` or `undefined` outside such a drag.
+   */
+  #draggable(): unknown {
+    const dragManager = this.#dragManager();
+    return dragManager !== null && "draggable" in dragManager
+      ? dragManager.draggable
+      : null;
+  }
+
+  /**
+   * Shows what a drop will do next to Obsidian's drag ghost, as Obsidian's own
+   * drop targets do, or takes that label off again. Obsidian clears the label
+   * before every `dragover`, but only in its main window.
+   *
+   * @param insertable - whether a drop here inserts a path.
+   */
+  #labelDragGhost(insertable: boolean): void {
+    const dragManager = this.#dragManager();
+    if (dragManager === null || !("setAction" in dragManager)) {
+      return;
+    }
+    const { setAction } = dragManager;
+    if (typeof setAction !== "function") {
+      return;
+    }
+    const label = insertable
+      ? this.context.language.value.t("components.terminal.drag-insert-path")
+      : null;
+    try {
+      Reflect.apply(setAction, dragManager, [label]);
+    } catch (error) {
+      // The label is a nicety of a private API: the drag goes on without it.
+      /* @__PURE__ */ activeSelf(this.element).console.debug(error);
+    }
+  }
+
+  /**
+   * Returns the absolute paths of the vault files and folders in a vault
+   * drag. A path the vault does not know (a file deleted during the drag)
+   * counts as skipped, as does what the drag carries besides files (a group
+   * among bookmarks), and a vault that is not on the file system has none.
+   */
+  #vaultPaths(draggable: unknown): DroppedPaths {
+    const { vault } = this.context.app,
+      { adapter } = vault,
+      dragged = vaultDragPaths(draggable),
+      entries = dragged.length + vaultDragSkipped(draggable);
+    if (!(adapter instanceof FileSystemAdapter)) {
+      return { paths: [], skipped: entries };
+    }
+    const paths = dragged
+      .filter((path) => vault.getAbstractFileByPath(path) !== null)
+      .map((path) => adapter.getFullPath(path));
+    return { paths, skipped: entries - paths.length };
   }
 }
 

@@ -5,11 +5,13 @@
 import * as v from "valibot";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  FileSystemAdapter,
   getApp,
   getVault,
   makeEditor,
   normalizePath,
   parseYaml,
+  Platform,
   reset,
   setRequestHandler,
   setRequestResponse,
@@ -165,6 +167,22 @@ describe("Obsidian Mock", () => {
         mtime: expect.any(Number) satisfies number as number,
         size: "content".length,
       });
+    });
+  });
+
+  describe("FileSystemAdapter", () => {
+    it("resolves vault paths under its base path", () => {
+      const adapter = new FileSystemAdapter();
+
+      expect(adapter.getFullPath("Notes/a.md")).toBe(
+        `${adapter.getBasePath()}/Notes/a.md`,
+      );
+    });
+  });
+
+  describe("Platform", () => {
+    it("serves local files from an app:// origin, as the desktop app does", () => {
+      expect(Platform.resourcePathPrefix).toMatch(/^app:\/\/[0-9a-f]+\/$/u);
     });
   });
 

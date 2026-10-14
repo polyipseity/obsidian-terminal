@@ -1323,7 +1323,12 @@ export class TerminalView extends ItemView {
                   }
                 },
               ),
-              dragAndDrop: new DragAndDropAddon(ele),
+              dragAndDrop: new DragAndDropAddon(
+                context,
+                ele,
+                profile,
+                async (): Promise<unknown> => emulator.pseudoterminal,
+              ),
               followTheme: new FollowThemeAddon(context, ele, {
                 enabled: (): boolean => {
                   const { profileSourceId } = this.state;
