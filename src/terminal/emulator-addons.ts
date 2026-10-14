@@ -172,8 +172,9 @@ export class DragAndDropAddon implements ITerminalAddon {
   // which a click on the terminal sets off, and so does the focus a drop
   // gives it. Then the answers to what a program asks: the status of the
   // terminal, its device attributes, the cursor position or a mode, and its
-  // size. A modified F3 has the bytes of a cursor position, and is taken for
-  // one. Last what the pointer does, for a program that follows it.
+  // size. Last what the pointer does, for a program that follows it. F3 with
+  // Shift, Alt or Control sends the bytes of a cursor position as well, which
+  // these bytes cannot tell from one: a key is told as one (see `activate`).
   static readonly #REPORT_SEQUENCE =
     /^\[(?:[IO]|0n|[?>][\d;]*c|\??\d+;\d+(?:R|\$y)|[468];\d+;\d+t|<\d+;\d+;\d+[Mm])$/u;
 
@@ -199,9 +200,10 @@ export class DragAndDropAddon implements ITerminalAddon {
   // They are pasted in a row once the program is there, into the one line
   // the terminal driver has: its room is for all of them together.
   #heldBytes = 0;
-  // Counts the input the terminal has sent to its program. A drop that had
-  // to wait is not pasted once the count has moved on: the command line is
-  // no longer the one the paths were dropped on.
+  // Counts the input the terminal has sent to its program, and the keys
+  // pressed in it. A drop that had to wait is not pasted once the count has
+  // moved on: the command line is no longer the one the paths were dropped
+  // on.
   #input = 0;
   // Set while a drop is pasted, which the terminal sends as data as well.
   #pasting = false;
@@ -328,6 +330,12 @@ export class DragAndDropAddon implements ITerminalAddon {
         if (!this.#pasting && !DragAndDropAddon.#isReport(data)) {
           ++this.#input;
         }
+      }),
+      // A key is input whatever it sends, and the terminal tells each one
+      // that sends something before it sends it: the bytes of a report
+      // (see `#REPORT_SEQUENCE`) are then no report.
+      key = terminal.onKey(() => {
+        ++this.#input;
       });
     // The listeners are added in `activate` itself, with nothing awaited
     // before them: the terminal takes drags from the moment it shows. A drop
@@ -335,6 +343,9 @@ export class DragAndDropAddon implements ITerminalAddon {
     this.#disposer.push(
       () => {
         input.dispose();
+      },
+      () => {
+        key.dispose();
       },
       () => {
         element.removeEventListener("dragenter", over);

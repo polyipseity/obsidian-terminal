@@ -1657,14 +1657,22 @@ describe("DragAndDropAddon", () => {
   /**
    * A terminal as the addon uses it. What is pasted reaches the program as
    * data, as it does in xterm.js, and so does `input`: what the user types,
-   * or what the terminal reports by itself.
+   * or what the terminal reports by itself. A key that is pressed is told
+   * first, then what it sends is data like the rest: that is `press`.
    */
   function fakeTerminal() {
     const listeners = new Set<(data: string) => void>(),
+      keys = new Set<() => void>(),
       input = (data: string): void => {
         for (const listener of [...listeners]) {
           listener(data);
         }
+      },
+      press = (data: string): void => {
+        for (const listener of [...keys]) {
+          listener();
+        }
+        input(data);
       },
       focus = vi.fn(),
       paste = vi.fn((data: string): void => {
@@ -1678,8 +1686,16 @@ describe("DragAndDropAddon", () => {
           },
         };
       }),
-      terminal = { focus, onData, paste } as unknown as Terminal;
-    return { focus, input, listeners, onData, paste, terminal };
+      onKey = vi.fn((listener: () => void): IDisposable => {
+        keys.add(listener);
+        return {
+          dispose: () => {
+            keys.delete(listener);
+          },
+        };
+      }),
+      terminal = { focus, onData, onKey, paste } as unknown as Terminal;
+    return { focus, input, keys, listeners, onData, paste, press, terminal };
   }
 
   /**
@@ -1710,7 +1726,8 @@ describe("DragAndDropAddon", () => {
       reachedView = vi.fn<(event: Event) => void>(),
       addEventListener = vi.spyOn(element, "addEventListener"),
       removeEventListener = vi.spyOn(element, "removeEventListener"),
-      { focus, input, listeners, paste, terminal } = fakeTerminal(),
+      { focus, input, keys, listeners, paste, press, terminal } =
+        fakeTerminal(),
       getFullPath = vi.fn(fullPath),
       getAbstractFileByPath = vi.fn((path: string) =>
         missing.includes(path) ? null : vaultFile(path),
@@ -1752,9 +1769,13 @@ describe("DragAndDropAddon", () => {
       getFullPath,
       /** Sends data from the terminal to its program, as typing does. */
       input,
-      /** The listeners for that data that are still there. */
+      /** The listeners for a pressed key that are still there. */
+      keys,
+      /** The listeners for the data of the terminal that are still there. */
       listeners,
       paste,
+      /** Presses a key that sends that data. */
+      press,
       removeEventListener,
       setAction,
       terminal,
@@ -4026,6 +4047,29 @@ describe("DragAndDropAddon", () => {
     },
   );
 
+  // A key is input whatever it sends. F3 with Shift, Alt or Control sends
+  // the bytes of a cursor position, which the terminal reports by itself as
+  // well (see the reports below): the terminal says that a key was pressed.
+  it.each<readonly [string, string]>([
+    ["Shift and F3", "\u001b[1;2R"],
+    ["Control and F3", "\u001b[1;5R"],
+  ])(
+    "pastes nothing of a drop when %s is pressed while it waits, though the key sends the bytes of a report",
+    async (_name, data) => {
+      const stat = pendingStat();
+      dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+      const bed = createBed();
+
+      await drop(bed, uriDrag());
+      bed.press(data);
+      stat.answer();
+      await tick();
+
+      expect(bed.paste).not.toHaveBeenCalled();
+      expect(notices()).toEqual([SKIPPED_PATHS]);
+    },
+  );
+
   it("pastes nothing of a drop that waits behind another when input reaches the terminal", async () => {
     const stat = pendingStat();
     dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
@@ -4083,6 +4127,8 @@ describe("DragAndDropAddon", () => {
     ["its secondary device attributes", "\u001b[>0;276;0c"],
     ["its status", "\u001b[0n"],
     ["the cursor position", "\u001b[1;1R"],
+    // The bytes Shift and F3 send, here with no key pressed.
+    ["the cursor position in the second column", "\u001b[1;2R"],
     ["the cursor position with a question mark", "\u001b[?12;40R"],
     ["a private mode", "\u001b[?2026;2$y"],
     ["a mode", "\u001b[4;2$y"],
@@ -4125,11 +4171,15 @@ describe("DragAndDropAddon", () => {
       next = fakeTerminal();
 
     expect(bed.listeners.size).toBe(1);
+    expect(bed.keys.size).toBe(1);
     bed.addon.activate(next.terminal);
     expect(bed.listeners.size).toBe(0);
+    expect(bed.keys.size).toBe(0);
     expect(next.listeners.size).toBe(1);
+    expect(next.keys.size).toBe(1);
     bed.addon.dispose();
     expect(next.listeners.size).toBe(0);
+    expect(next.keys.size).toBe(0);
   });
 
   // The tests above say what the terminal sends. Here xterm.js sends it: the
@@ -4212,6 +4262,28 @@ describe("DragAndDropAddon", () => {
       await answer();
 
       expect(sent).toEqual(["x"]);
+      expect(paste).not.toHaveBeenCalled();
+      expect(notices()).toEqual([SKIPPED_PATHS]);
+    });
+
+    // Shift and F3 send what the terminal reports for a cursor in its first
+    // row. The bytes do not tell the key from the report; that the terminal
+    // says a key was pressed does.
+    it("pastes nothing of a drop that waited while the user pressed a key that sends the bytes of a report", async () => {
+      const { answer, paste, sent, terminal } = await waitingDrop();
+
+      terminal.textarea?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          key: "F3",
+          keyCode: 114,
+          shiftKey: true,
+        }),
+      );
+      await answer();
+
+      expect(sent).toEqual(["\u001b[1;2R"]);
       expect(paste).not.toHaveBeenCalled();
       expect(notices()).toEqual([SKIPPED_PATHS]);
     });
