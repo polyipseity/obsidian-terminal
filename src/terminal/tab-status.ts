@@ -47,6 +47,13 @@ export const TAB_STATUS_TRANSIENT_TIMEOUTS = Object.freeze({
   title: 400,
 });
 
+/**
+ * How long after a title starts to slide in, in milliseconds, another title
+ * appears in place without one: a program that renames its terminal many
+ * times a second would otherwise keep the title faded and moving.
+ */
+export const TAB_STATUS_TITLE_COOLDOWN = 1000;
+
 /** The names of the keyframes each transient attribute plays. */
 export const TAB_STATUS_KEYFRAMES = Object.freeze({
   pop: "tts-pop",
@@ -269,6 +276,13 @@ export class TabStatusPresenter {
   #seen = true;
   /** What the header was last given to show. */
   #drawn: TabStatusDisplay | null = null;
+  /**
+   * A report made a state that asks for the user unseen again without
+   * changing what the tab shows: the next render pops it all the same.
+   */
+  #renotify = false;
+  /** Runs from the start of a title's slide until `TAB_STATUS_TITLE_COOLDOWN`. */
+  #titleCooldown: number | null = null;
   readonly #pop = new TransientAttribute(
     TAB_STATUS_ATTRIBUTES.pop,
     TAB_STATUS_KEYFRAMES.pop,
@@ -298,9 +312,13 @@ export class TabStatusPresenter {
    * @param state the most urgent reported state
    */
   public report(state: State | null): void {
+    const wasSeen = this.#seen;
     this.#state = state;
     this.#seen =
       state === null || !ATTENTION_STATES.has(state) || this.options.lookedAt();
+    // The program asks again for what the user has seen: also a reason to
+    // pop, where the tab's mark stays the same. Only a report sets this.
+    this.#renotify = wasSeen && !this.#seen;
     this.render();
   }
 
@@ -315,10 +333,14 @@ export class TabStatusPresenter {
 
   /**
    * Writes the current status and look to the header. Safe to call at any
-   * time. Under `animated`, a status that asks for the user and was not
-   * shown before pops in.
+   * time. Under `animated`, a status that asks for the user pops in when it
+   * was not shown before, or when a report has just made it unseen again.
    */
   public render(): void {
+    // Taken here whatever happens next: a pop that cannot play now never
+    // plays later.
+    const renotify = this.#renotify;
+    this.#renotify = false;
     const header = this.options.header();
     if (!header) {
       return;
@@ -336,7 +358,11 @@ export class TabStatusPresenter {
       this.#title.stop();
       return;
     }
-    if (shown !== before && shown !== null && ATTENTION_STATES.has(shown)) {
+    if (
+      (shown !== before || renotify) &&
+      shown !== null &&
+      ATTENTION_STATES.has(shown)
+    ) {
       this.#pop.play(header, shown);
     } else if (this.#pop.value !== null && this.#pop.value !== shown) {
       // Another mark is shown by now: it does not pop.
@@ -345,15 +371,25 @@ export class TabStatusPresenter {
   }
 
   /**
-   * The header's title has just changed. Under `animated` it slides in.
-   * The caller decides what counts as a change: not the first title a tab
-   * is drawn with.
+   * The header's title has just changed. Under `animated` it slides in,
+   * unless a slide plays or started less than `TAB_STATUS_TITLE_COOLDOWN`
+   * ago: then it only replaces the title. The caller decides what counts as
+   * a change: not the first title a tab is drawn with.
    */
   public titleChanged(): void {
     const header = this.options.header();
-    if (header && this.options.look().motion === "animated") {
-      this.#title.play(header, "");
+    if (
+      !header ||
+      this.options.look().motion !== "animated" ||
+      this.#title.value !== null ||
+      this.#titleCooldown !== null
+    ) {
+      return;
     }
+    this.#title.play(header, "");
+    this.#titleCooldown = self.setTimeout(() => {
+      this.#titleCooldown = null;
+    }, TAB_STATUS_TITLE_COOLDOWN);
   }
 
   /**
@@ -376,8 +412,13 @@ export class TabStatusPresenter {
     this.#state = null;
     this.#seen = true;
     this.#drawn = null;
+    this.#renotify = false;
     this.#pop.stop();
     this.#title.stop();
+    if (this.#titleCooldown !== null) {
+      self.clearTimeout(this.#titleCooldown);
+      this.#titleCooldown = null;
+    }
     const header = this.options.header();
     if (!header) {
       return;

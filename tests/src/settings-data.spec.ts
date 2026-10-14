@@ -695,6 +695,33 @@ describe("src/settings-data.ts", () => {
         }
       });
 
+      // `JSON.parse` keeps `__proto__` as an own key, as `data.json` can hold
+      // it; a copy made by assignment then inherits what it holds.
+      it.each([
+        ["Program status", '{"__proto__":{"tabStatus":"animated"}}', "none"],
+        [
+          "the experiments",
+          '{"__proto__":{"experiments":{"tabStatus":true}},"tabStatusAnimation":"loop"}',
+          "none",
+        ],
+        [
+          "the motion",
+          '{"experiments":{"tabStatus":true},"__proto__":{"tabStatusAnimation":"loop"}}',
+          "still",
+        ],
+        [
+          "Program status beside the switch",
+          '{"experiments":{"tabStatus":true},"__proto__":{"tabStatus":"none"}}',
+          "still",
+        ],
+      ] as const)(
+        "reads %s only as a key stored in the settings themselves, never an inherited one",
+        (_what, json, expected) => {
+          const read: unknown = JSON.parse(json);
+          expect(Settings.fix(read).value.tabStatus).toBe(expected);
+        },
+      );
+
       it("lets a stored Program status win over the switch", () => {
         for (const tabStatus of Settings.TAB_STATUSES) {
           expect(

@@ -1616,21 +1616,32 @@ export namespace Settings {
    * @returns the Program status to keep
    */
   function fixTabStatus(self0: unknown): TabStatus {
-    const unc = launderUnchecked<AnyObject>(self0),
-      { tabStatus } = unc;
+    // Own keys only, as `fixExperiments` reads them: a stored `__proto__`
+    // object makes a laundered copy inherit what it holds.
+    const tabStatus = ownValue(self0, "tabStatus");
     if (inSet(TAB_STATUSES, tabStatus)) {
       return tabStatus;
     }
-    const flags = launderUnchecked<AnyObject>(unc["experiments"]);
-    // An own key only, as `fixExperiments` reads them: a stored `__proto__`
-    // object makes a copy inherit.
-    if (
-      Object.prototype.hasOwnProperty.call(flags, "tabStatus") &&
-      flags["tabStatus"] === true
-    ) {
-      return unc["tabStatusAnimation"] === "loop" ? "animated" : "still";
+    if (ownValue(ownValue(self0, "experiments"), "tabStatus") === true) {
+      return ownValue(self0, "tabStatusAnimation") === "loop"
+        ? "animated"
+        : "still";
     }
     return DEFAULT.tabStatus;
+  }
+
+  /**
+   * @param value what was read
+   * @param key a key
+   * @returns the value `value` itself holds under `key`, or `undefined` when
+   *   it holds none (an inherited one included) or is no object
+   */
+  function ownValue(value: unknown, key: string): unknown {
+    if (typeof value !== "object" || value === null) {
+      return undefined;
+    }
+    const own: unknown = Object.getOwnPropertyDescriptor(value, key)?.value;
+    return own;
   }
 
   export function fix(self0: unknown): Fixed<Settings> {

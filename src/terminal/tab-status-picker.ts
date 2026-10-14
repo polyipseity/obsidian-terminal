@@ -140,6 +140,7 @@ interface Tile<V extends string> {
   readonly element: HTMLButtonElement;
   readonly host: PreviewHost;
   readonly textElement: HTMLElement;
+  /** Mutable: `fill` writes it again whenever the option's name changes. */
   label: string;
 }
 

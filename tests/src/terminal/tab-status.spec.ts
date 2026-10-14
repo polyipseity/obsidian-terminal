@@ -20,6 +20,7 @@ import { TAB_ICON_SIZE } from "../../../src/terminal/tab-icons.js";
 import {
   TAB_STATUS_ATTRIBUTES,
   TAB_STATUS_KEYFRAMES,
+  TAB_STATUS_TITLE_COOLDOWN,
   TAB_STATUS_TRANSIENT_TIMEOUTS,
   type TabStatusLook,
   TabStatusPresenter,
@@ -717,6 +718,83 @@ describe("TabStatusPresenter", () => {
       presenter.report("blocked");
       expect(pop(header)).toBe("blocked");
     });
+
+    it.each(["blocked", "error"] as const)(
+      "pops %s in again when the program asks once more after the user has seen it, while the user is elsewhere",
+      (state) => {
+        const { header, lookedAt, presenter } = fixture(ANIMATED);
+        presenter.report(state);
+        vi.runAllTimers();
+        presenter.look();
+        expect(presenter.unread).toBe(false);
+        expect(pop(header)).toBeNull();
+        lookedAt.mockReturnValue(false);
+        presenter.report(state);
+        // The same mark, unread again: it asks for the user, so it pops.
+        expect(status(header)).toBe(state);
+        expect(presenter.unread).toBe(true);
+        expect(pop(header)).toBe(state);
+      },
+    );
+
+    it("pops once for the same state reported twice while unread", () => {
+      const { header, presenter } = fixture(ANIMATED),
+        set = vi.spyOn(header, "setAttribute");
+      presenter.report("blocked");
+      presenter.report("blocked");
+      vi.runAllTimers();
+      presenter.report("blocked");
+      expect(
+        set.mock.calls.filter(([name]) => name === TAB_STATUS_ATTRIBUTES.pop),
+      ).toEqual([[TAB_STATUS_ATTRIBUTES.pop, "blocked"]]);
+      expect(pop(header)).toBeNull();
+    });
+
+    it("does not pop again for a report the user sees as it arrives", () => {
+      const { header, lookedAt, presenter } = fixture(ANIMATED);
+      presenter.report("blocked");
+      vi.runAllTimers();
+      presenter.look();
+      lookedAt.mockReturnValue(true);
+      presenter.report("blocked");
+      expect(pop(header)).toBeNull();
+    });
+
+    it("never pops a repeat under Still, nor later when the look turns animated", () => {
+      const { header, look, lookedAt, presenter } = fixture(LOOK),
+        set = vi.spyOn(header, "setAttribute");
+      presenter.report("blocked");
+      presenter.look();
+      lookedAt.mockReturnValue(false);
+      presenter.report("blocked");
+      expect(presenter.unread).toBe(true);
+      look.mockReturnValue(ANIMATED);
+      presenter.render();
+      expect(
+        set.mock.calls.filter(([name]) => name === TAB_STATUS_ATTRIBUTES.pop),
+      ).toEqual([]);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("drops the pop of a repeat that arrives while there is no header, rather than play it later", () => {
+      const header = document.createElement("div"),
+        there = vi.fn<() => Element | null>().mockReturnValue(header),
+        lookedAt = vi.fn<() => boolean>().mockReturnValue(false),
+        presenter = new TabStatusPresenter({
+          header: there,
+          look: () => ANIMATED,
+          lookedAt,
+        });
+      presenter.report("error");
+      vi.runAllTimers();
+      presenter.look();
+      there.mockReturnValue(null);
+      presenter.report("error");
+      there.mockReturnValue(header);
+      presenter.render();
+      expect(status(header)).toBe("error");
+      expect(pop(header)).toBeNull();
+    });
   });
 
   describe("a new title, under Animated", () => {
@@ -738,6 +816,9 @@ describe("TabStatusPresenter", () => {
       expect(sliding(header)).toBe(true);
       animationEnd(title, TAB_STATUS_KEYFRAMES.title);
       expect(sliding(header)).toBe(false);
+      // Only the cooldown waits, and nothing once it is over.
+      expect(vi.getTimerCount()).toBe(1);
+      vi.advanceTimersByTime(TAB_STATUS_TITLE_COOLDOWN);
       expect(vi.getTimerCount()).toBe(0);
     });
 
@@ -750,18 +831,46 @@ describe("TabStatusPresenter", () => {
       expect(sliding(header)).toBe(false);
     });
 
-    it("starts over when the title changes again while it slides", () => {
+    it("does not start over when the title changes again while it slides: no layout, the same end", () => {
       const { header, presenter } = fixture(ANIMATED),
-        layout = vi.spyOn(header, "getBoundingClientRect");
+        layout = vi.spyOn(header, "getBoundingClientRect"),
+        set = vi.spyOn(header, "setAttribute");
       presenter.titleChanged();
-      expect(layout).not.toHaveBeenCalled();
       vi.advanceTimersByTime(TAB_STATUS_TRANSIENT_TIMEOUTS.title - 50);
       presenter.titleChanged();
-      expect(layout).toHaveBeenCalledOnce();
-      vi.advanceTimersByTime(TAB_STATUS_TRANSIENT_TIMEOUTS.title - 1);
+      expect(layout).not.toHaveBeenCalled();
+      expect(set).toHaveBeenCalledOnce();
+      vi.advanceTimersByTime(49);
       expect(sliding(header)).toBe(true);
       vi.advanceTimersByTime(1);
       expect(sliding(header)).toBe(false);
+    });
+
+    it("slides once for titles 100 ms apart, and again only after the cooldown", () => {
+      const { header, presenter } = fixture(ANIMATED),
+        set = vi.spyOn(header, "setAttribute"),
+        slides = (): number =>
+          set.mock.calls.filter(
+            ([name]) => name === TAB_STATUS_ATTRIBUTES.title,
+          ).length;
+      expect(TAB_STATUS_TITLE_COOLDOWN).toBeGreaterThan(
+        TAB_STATUS_TRANSIENT_TIMEOUTS.title,
+      );
+      // A program that renames its terminal ten times a second.
+      for (
+        let elapsed = 0;
+        elapsed < TAB_STATUS_TITLE_COOLDOWN;
+        elapsed += 100
+      ) {
+        presenter.titleChanged();
+        vi.advanceTimersByTime(100);
+      }
+      expect(slides()).toBe(1);
+      expect(sliding(header)).toBe(false);
+      // The cooldown is over: the next title slides in.
+      presenter.titleChanged();
+      expect(slides()).toBe(2);
+      expect(sliding(header)).toBe(true);
     });
 
     it("never slides under Still, stops when the look turns still, and goes on clear", () => {
@@ -776,9 +885,12 @@ describe("TabStatusPresenter", () => {
       presenter.render();
       expect(sliding(header)).toBe(false);
       look.mockReturnValue(ANIMATED);
+      vi.advanceTimersByTime(TAB_STATUS_TITLE_COOLDOWN);
       presenter.titleChanged();
+      expect(sliding(header)).toBe(true);
       presenter.clear();
       expect(sliding(header)).toBe(false);
+      // The cooldown goes too.
       expect(vi.getTimerCount()).toBe(0);
     });
 

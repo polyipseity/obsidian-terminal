@@ -252,8 +252,9 @@
  * the tab. The terminal's icon is a framed tile with a mark on its corner,
  * so it is drawn larger: at `TAB_ICON_SIZE`, 22 px, which the tab header
  * carries as `data-terminal-size` (the one rule below). A preview is drawn
- * the same way; a picker's tile carries no size and sets `--icon-xs` to
- * show its icon enlarged, two pixels over that.
+ * the same way: each tile of the picker is a `.tts-host` that carries the
+ * same `data-terminal-size`. Only a host without it falls back to two
+ * pixels over `--icon-xs`.
  *
  * It is also set a little lower. Measured in Obsidian 1.14.4 with the
  * default 13 px title: centred, the middle of the tile lies 0.5 px above the
