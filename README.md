@@ -23,6 +23,7 @@ This file is automatically opened on first install. You can reopen it in setting
 - Find in terminal.
 - Save terminal history as file.
 - Customize terminal appearance.
+- Show program status on terminal tabs.
 
 ## Installation
 
@@ -146,6 +147,20 @@ When setting up a terminal profile, you need to distinguish between shells and t
 - iTerm2: `/Applications/iTerm.app/Contents/MacOS/iTerm2 "$PWD"`
 - xterm: `xterm`
 
+### Program status on tabs
+
+Terminal tabs show the plugin's own icon, a square with a raised border, and the `Open terminal` ribbon button shows a rounded square. Which icon is drawn does not depend on `Program status`.
+
+`Program status`, in the `Interface` section of the plugin settings, shows on a terminal tab what the program in it reports with the escape sequence OSC 7501: idle, working, needs input, finished or error.
+
+- `None` (default): no status is shown and the reports are ignored.
+- `Still`: the tab icon gets a mark for the status. Nothing moves.
+- `Animated`: the same marks, and the working dots light up in turn, a changed tab title slides up from below, and a new finished, needs-input or error mark pops in. Nothing moves where the system asks for reduced motion.
+
+A finished program stays marked until you look at its terminal. A program that does not send OSC 7501 shows no status. Inside tmux or screen, a report reaches the terminal only when passthrough is set up there. On Windows, a program that asks the terminal whether it understands the reports gets no answer, so a program that waits for that answer before it reports shows no status there. A program that was already running when you choose `Still` or `Animated` may report only after you restart it.
+
+The setting is stored with the other plugin settings, so it follows the vault to every device that syncs them. A device that runs 3.28.0 or earlier drops the `tabStatus` setting when it saves its settings, so `Program status` goes back to `None`.
+
 ### Experimental features
 
 Features that are not finished are listed under `Experimental`, the last section of the plugin settings. The section is shown only when the installed version has such features.
@@ -155,8 +170,6 @@ Features that are not finished are listed under `Experimental`, the last section
 - To try a feature, turn on its toggle. To stop, turn it off. The plugin then behaves as it did before, and nothing you stored is lost. A change applies at once unless the row says it needs new terminals or a restart.
 - An experimental feature may change or be removed in a later version. When one becomes a regular feature, its toggle leaves the section and the changelog says so.
 - The choice is stored with the other plugin settings, so it follows the vault to every device that syncs them. A device that still runs an older version turns the feature off again and resets its options when it saves its settings, because that version drops settings it does not know.
-
-`Program status on tabs` is such a feature. With it on, every terminal tab gets a prompt icon, in one of two styles and at a size you choose, and the icon shows what the program in the terminal reports about itself: idle, working, done, needs input or failed. A finished program stays marked until you look at its terminal. Programs report with the escape sequence OSC 7501, and a program that does not send it shows no status. Inside tmux or screen, a report reaches the terminal only when passthrough is set up there. On Windows, a program that asks the terminal whether it understands the reports gets no answer, so a program that waits for that answer before it reports shows no status there. A program that was already running when you turn the feature on may report only after you restart it.
 
 ### Miscellaneous
 
