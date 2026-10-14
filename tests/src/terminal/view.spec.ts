@@ -2193,35 +2193,32 @@ function terminalPaneActions(view: TerminalView) {
 }
 
 /**
- * Turns the tab status experiment on or off the way a change of the settings
- * reaches its gates: the new value first, then every listener.
+ * What a mock that registers listeners was called with, for the listeners
+ * that are still registered: what such a mock returns removes its listener.
  */
-function setTabStatus(context: TerminalPlugin, on: boolean): void {
-  const { settings } = context,
-    enabled = {
-      ...Settings.DEFAULT,
-      experiments: { tabStatus: true },
-    } satisfies Settings;
-  Object.assign(settings, {
-    value: { ...settings.value, experiments: on ? enabled.experiments : {} },
+function listenersOf<Call>(mock: {
+  readonly calls: readonly Call[];
+  readonly results: readonly {
+    readonly type: string;
+    readonly value?: unknown;
+  }[];
+}): Call[] {
+  return mock.calls.filter((_call, index) => {
+    const removed = mock.results[index];
+    return !(
+      removed?.type === "return" &&
+      vi.isMockFunction(removed.value) &&
+      removed.value.mock.calls.length > 0
+    );
   });
-  // A gate is the listener whose accessor says whether the experiment is on.
-  // A copy of the list: a gate that starts adds listeners of its own.
-  for (const [accessor, changed] of [
-    ...vi.mocked(settings).onMutate.mock.calls,
-  ]) {
-    if (accessor(Settings.DEFAULT) === false && accessor(enabled) === true) {
-      changed(on, !on, settings.value);
-    }
-  }
 }
 
 /**
- * Changes several settings the way one `settings.mutate` announces them: the
- * new value first, then every listener whose accessor reads something else
- * than before, in the order they were registered. The list is the one from
- * before the first call, as the library's emitter takes it: a listener that
- * an earlier one removes still hears of this change.
+ * Changes settings the way one `settings.mutate` announces them: the new
+ * value first, then every listener whose accessor reads something else than
+ * before, in the order they were registered. The list is the one from before
+ * the first call, as the library's emitter takes it: a listener that an
+ * earlier one removes still hears of this change.
  */
 function mutateSettings(
   context: TerminalPlugin,
@@ -2229,16 +2226,7 @@ function mutateSettings(
 ): void {
   const { settings } = context,
     before = settings.value,
-    { calls, results } = vi.mocked(settings).onMutate.mock,
-    listening = calls.filter((_call, index) => {
-      // What `onMutate` returned removes the listener: not those gone by now.
-      const removed = results[index];
-      return !(
-        removed?.type === "return" &&
-        vi.isMockFunction(removed.value) &&
-        removed.value.mock.calls.length > 0
-      );
-    });
+    listening = listenersOf(vi.mocked(settings).onMutate.mock);
   Object.assign(settings, { value: { ...before, ...patch } });
   for (const [accessor, changed] of listening) {
     const prev = accessor(before),
@@ -2249,14 +2237,23 @@ function mutateSettings(
   }
 }
 
+/** Turns the tab status experiment on or off, as the toggle of its row does. */
+function setTabStatus(context: TerminalPlugin, on: boolean): void {
+  mutateSettings(context, { experiments: on ? { tabStatus: true } : {} });
+}
+
+/**
+ * The 3.28.0 icon of a terminal tab: the test translations answer with the
+ * key they were asked for.
+ */
+const PLAIN_ICON = "asset:components.terminal.icon";
+
 describe("program status on the tab, behind its experiment", () => {
-  // The test translations answer with the key they were asked for.
-  const PLAIN_ICON = "asset:components.terminal.icon",
-    ATTRIBUTES = [
-      "data-terminal-animation",
-      "data-terminal-size",
-      "data-terminal-status",
-    ];
+  const ATTRIBUTES = [
+    "data-terminal-animation",
+    "data-terminal-size",
+    "data-terminal-status",
+  ];
   interface Handler {
     readonly dispose: ReturnType<typeof vi.fn<() => void>>;
     readonly key: number | string;
@@ -2407,15 +2404,9 @@ describe("program status on the tab, behind its experiment", () => {
         Object.assign(terminal, {
           element: { ownerDocument: { defaultView: win } },
         });
-        moved.mock.calls.forEach(([follower], index) => {
-          const unfollow = moved.mock.results[index];
-          if (
-            unfollow?.type === "return" &&
-            unfollow.value.mock.calls.length === 0
-          ) {
-            follower(win);
-          }
-        });
+        for (const [follower] of listenersOf(moved.mock)) {
+          follower(win);
+        }
       },
       /** Sends an OSC sequence to the terminal; one answer per handler. */
       osc: (ident: number, payload: string): readonly boolean[] =>
@@ -2996,10 +2987,7 @@ describe("TerminalView.dressUnloadedTabs", () => {
     TerminalView.dressUnloadedTabs(context, false);
 
     expect(tab.header.getAttributeNames()).toEqual(["data-type"]);
-    // The test translations answer with the key they were asked for.
-    expect(vi.mocked(setIcon).mock.calls).toEqual([
-      [tab.icon, "asset:components.terminal.icon"],
-    ]);
+    expect(vi.mocked(setIcon).mock.calls).toEqual([[tab.icon, PLAIN_ICON]]);
   });
 
   it("leaves an unloaded tab alone that shows no icon of ours", () => {
@@ -3019,9 +3007,6 @@ describe("TerminalView.dressUnloadedTabs", () => {
     expect(plain.header.outerHTML).toBe(before);
     expect(empty.icon.childElementCount).toBe(0);
   });
-
-  // The test translations answer with the key they were asked for.
-  const PLAIN_ICON = "asset:components.terminal.icon";
 
   it("keeps the 3.28.0 icon on a never-opened tab that Obsidian draws again after the turn-off", () => {
     const { context, workspace } = makeTerminalContext(),
@@ -3124,7 +3109,7 @@ describe("TerminalView.dressUnloadedTabs", () => {
       String(Settings.DEFAULT.tabIconSize),
     );
     expect(vi.mocked(setIcon).mock.calls).toEqual([
-      [dressed.icon, "asset:components.terminal.icon"],
+      [dressed.icon, PLAIN_ICON],
       [bare.icon, tabIconId(on.context, "bezel")],
     ]);
   });
@@ -3229,11 +3214,7 @@ describe("TerminalView.dressUnloadedTabs", () => {
     // As resetting all settings does: one change turns it off and sets the look.
     mutateSettings(context, { experiments: {}, tabIconSize: 18 });
 
-    // The test translations answer with the key they were asked for.
-    expect(vi.mocked(setIcon).mock.lastCall).toEqual([
-      tab.icon,
-      "asset:components.terminal.icon",
-    ]);
+    expect(vi.mocked(setIcon).mock.lastCall).toEqual([tab.icon, PLAIN_ICON]);
     expect(tab.header.getAttributeNames()).toEqual(["data-type"]);
   });
 

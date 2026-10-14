@@ -6297,9 +6297,10 @@ describe("ProgramStatusAddon", () => {
   let nextFrameHandle: number;
   let requestFrame: ReturnType<typeof vi.fn>;
   let cancelFrame: ReturnType<typeof vi.fn>;
-  const runFrame = (): void => {
-    const due = [...frames.values()];
-    frames.clear();
+  /** Runs what waits for a frame: of the main window, or of `queue`. */
+  const runFrame = (queue = frames): void => {
+    const due = [...queue.values()];
+    queue.clear();
     for (const callback of due) {
       callback(0);
     }
@@ -6694,11 +6695,7 @@ describe("ProgramStatusAddon", () => {
         });
       },
       runFrame: (): void => {
-        const due = [...queued.values()];
-        queued.clear();
-        for (const callback of due) {
-          callback(0);
-        }
+        runFrame(queued);
       },
       win,
     };
