@@ -1396,6 +1396,7 @@ describe("DragAndDropAddon", () => {
     INSERT_PATH = "components.terminal.drag-insert-path",
     NO_PATHS = "notices.drop-no-paths",
     SKIPPED_PATHS = "notices.drop-skipped-paths",
+    TYPED_WHILE_WAITING = "notices.drop-typed-while-waiting",
     TEXT = "text/plain",
     URI_LIST = "text/uri-list",
     VSCODE_URI_LIST = "application/vnd.code.uri-list",
@@ -2019,7 +2020,7 @@ describe("DragAndDropAddon", () => {
       await tick();
 
       expect(bed.paste).not.toHaveBeenCalled();
-      expect(notices()).toEqual([SKIPPED_PATHS]);
+      expect(notices()).toEqual([TYPED_WHILE_WAITING]);
     });
 
     it("pastes nothing when it is disposed before the terminal has its program", async () => {
@@ -4084,7 +4085,7 @@ describe("DragAndDropAddon", () => {
 
       expect(bed.paste).not.toHaveBeenCalled();
       expect(bed.focus).not.toHaveBeenCalled();
-      expect(notices()).toEqual([SKIPPED_PATHS]);
+      expect(notices()).toEqual([TYPED_WHILE_WAITING]);
     },
   );
 
@@ -4107,7 +4108,7 @@ describe("DragAndDropAddon", () => {
       await tick();
 
       expect(bed.paste).not.toHaveBeenCalled();
-      expect(notices()).toEqual([SKIPPED_PATHS]);
+      expect(notices()).toEqual([TYPED_WHILE_WAITING]);
     },
   );
 
@@ -4156,7 +4157,7 @@ describe("DragAndDropAddon", () => {
     await tick();
 
     expect(bed.paste).not.toHaveBeenCalled();
-    expect(notices()).toEqual([SKIPPED_PATHS]);
+    expect(notices()).toEqual([TYPED_WHILE_WAITING]);
   });
 
   it("pastes nothing of a drop that waits behind another when input reaches the terminal", async () => {
@@ -4171,7 +4172,7 @@ describe("DragAndDropAddon", () => {
     await tick();
 
     expect(bed.paste).not.toHaveBeenCalled();
-    expect(notices()).toEqual([SKIPPED_PATHS, SKIPPED_PATHS]);
+    expect(notices()).toEqual([TYPED_WHILE_WAITING, TYPED_WHILE_WAITING]);
   });
 
   it("still pastes a drop that comes after the input", async () => {
@@ -4186,7 +4187,7 @@ describe("DragAndDropAddon", () => {
     await tick();
 
     expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/c.png `]]);
-    expect(notices()).toEqual([SKIPPED_PATHS]);
+    expect(notices()).toEqual([TYPED_WHILE_WAITING]);
   });
 
   it("says that there is nothing to insert, not that something was left out, when a drop without a path saw input", async () => {
@@ -4352,7 +4353,7 @@ describe("DragAndDropAddon", () => {
 
       expect(sent).toEqual(["x"]);
       expect(paste).not.toHaveBeenCalled();
-      expect(notices()).toEqual([SKIPPED_PATHS]);
+      expect(notices()).toEqual([TYPED_WHILE_WAITING]);
     });
 
     // Shift and F3 send what the terminal reports for a cursor in its first
@@ -4374,7 +4375,7 @@ describe("DragAndDropAddon", () => {
 
       expect(sent).toEqual(["\u001b[1;2R"]);
       expect(paste).not.toHaveBeenCalled();
-      expect(notices()).toEqual([SKIPPED_PATHS]);
+      expect(notices()).toEqual([TYPED_WHILE_WAITING]);
     });
   });
 

@@ -330,6 +330,7 @@
     "Python-status-entry-unsatisfied": "{{name}}: {{version}} (не задовольняє: {{requirement}})",
     "drop-no-paths": "Nothing to insert: no local file path was found in the dropped items.",
     "drop-skipped-paths": "Some dropped items could not be inserted as paths.",
+    "drop-typed-while-waiting": "Nothing was inserted: you typed before the dropped paths could be inserted. Drop them again.",
     "no-default-profile": "Немає стандартного профілю для типу '$t(generic.profile-types.{{type}}, capitalize)'",
     "resizer-install-command-copied": "Install command copied.",
     "spawning-terminal": "$t(generic.spawn_gerund, capitalize) $t(generic.terminal): {{title}}",

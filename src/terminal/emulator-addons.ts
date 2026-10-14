@@ -669,7 +669,7 @@ export class DragAndDropAddon implements ITerminalAddon {
     if (input !== this.#input) {
       // The user typed while the drop waited for its paths or for the drops
       // before it. After Enter the paths would go to whatever runs by now.
-      this.#notice("notices.drop-skipped-paths");
+      this.#notice("notices.drop-typed-while-waiting");
       return;
     }
     const platform = deopaque(Platform.CURRENT),
@@ -790,7 +790,12 @@ export class DragAndDropAddon implements ITerminalAddon {
     return line === null ? null : Math.max(line - this.#heldBytes, 0);
   }
 
-  #notice(key: "notices.drop-no-paths" | "notices.drop-skipped-paths"): void {
+  #notice(
+    key:
+      | "notices.drop-no-paths"
+      | "notices.drop-skipped-paths"
+      | "notices.drop-typed-while-waiting",
+  ): void {
     const {
       context,
       context: { language, settings },

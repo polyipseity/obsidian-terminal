@@ -335,6 +335,7 @@
     "Python-status-entry-unsatisfied": "{{name}}: {{version}} (unsatisfied: {{requirement}})",
     "drop-no-paths": "Nothing to insert: no local file path was found in the dropped items.",
     "drop-skipped-paths": "Some dropped items could not be inserted as paths.",
+    "drop-typed-while-waiting": "Nothing was inserted: you typed before the dropped paths could be inserted. Drop them again.",
     "no-default-profile": "No $t(generic.default) $t(generic.profile) for $t(generic.type) '$t(generic.profile-types.{{type}}, capitalize)'",
     "spawning-terminal": "$t(generic.spawn_gerund, capitalize) $t(generic.terminal): {{title}}",
     "terminal-exited": "$t(generic.terminal, capitalize) $t(generic.exit_past): {{code}}",
