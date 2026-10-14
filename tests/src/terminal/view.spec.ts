@@ -2343,6 +2343,8 @@ describe("program status on the tab, behind its experiment", () => {
       listen = vi.spyOn(window, "addEventListener"),
       unlisten = vi.spyOn(window, "removeEventListener"),
       follow = vi.fn((_follower: (win: Window) => void) => vi.fn()),
+      // The same for the terminal's own element, which the emulator follows.
+      moved = vi.fn((_follower: (win: object) => void) => vi.fn()),
       lookedAt = vi
         .spyOn(
           // The getter is protected; a test says whether the user looks.
@@ -2357,7 +2359,7 @@ describe("program status on the tab, behind its experiment", () => {
     Object.assign(workspace, { requestUpdateLayout: vi.fn() });
     Object.assign(view.contentEl, { onWindowMigrated: follow });
     vi.spyOn(library, "awaitCSS").mockImplementation(async (element) => {
-      Object.assign(element, { onWindowMigrated: vi.fn(() => vi.fn()) });
+      Object.assign(element, { onWindowMigrated: moved });
     });
     vi.spyOn(library, "notice2").mockImplementation(vi.fn());
     vi.spyOn(library, "onResize").mockImplementation(vi.fn());
@@ -2375,6 +2377,7 @@ describe("program status on the tab, behind its experiment", () => {
             ...pseudoterminal(),
             onExit: exit.promise,
           }),
+          reopen: vi.fn(),
           resize: vi.fn().mockResolvedValue(undefined),
           terminal,
         } as unknown as TerminalView.EMULATOR;
@@ -2393,6 +2396,24 @@ describe("program status on the tab, behind its experiment", () => {
       follow,
       header,
       lookedAt,
+      /**
+       * Moves the terminal to another window, as dragging its tab there
+       * does: its element is in that window, then whoever follows it hears.
+       */
+      moveTo: (win: object): void => {
+        Object.assign(terminal, {
+          element: { ownerDocument: { defaultView: win } },
+        });
+        moved.mock.calls.forEach(([follower], index) => {
+          const unfollow = moved.mock.results[index];
+          if (
+            unfollow?.type === "return" &&
+            unfollow.value.mock.calls.length === 0
+          ) {
+            follower(win);
+          }
+        });
+      },
       /** Sends an OSC sequence to the terminal; one answer per handler. */
       osc: (ident: number, payload: string): readonly boolean[] =>
         registered
@@ -2419,6 +2440,7 @@ describe("program status on the tab, behind its experiment", () => {
           parser.registerOscHandler.mock.calls.length +
           parser.registerEscHandler.mock.calls.length,
         replies: terminal.input.mock.calls.length,
+        terminalFollowers: moved.mock.calls.length,
         windowFollowers: follow.mock.calls.length,
       }),
       terminal,
@@ -2438,6 +2460,8 @@ describe("program status on the tab, behind its experiment", () => {
       presenters: 0,
       registrations: 0,
       replies: 0,
+      // The emulator's own, which reopens the terminal in its new window.
+      terminalFollowers: 1,
       windowFollowers: 0,
     },
     /** And of one it shows on, before any program has reported. */
@@ -2450,6 +2474,7 @@ describe("program status on the tab, behind its experiment", () => {
       presenters: 1,
       registrations: 3,
       replies: 0,
+      terminalFollowers: 2,
       windowFollowers: 1,
     };
 
@@ -2540,6 +2565,7 @@ describe("program status on the tab, behind its experiment", () => {
       addons: 1,
       presenters: 1,
       registrations: 3,
+      terminalFollowers: 2,
       windowFollowers: 1,
     });
     expect(header.getAttributeNames()).toEqual([]);
@@ -2554,6 +2580,7 @@ describe("program status on the tab, behind its experiment", () => {
       addons: 2,
       presenters: 2,
       registrations: 6,
+      terminalFollowers: 3,
       windowFollowers: 2,
     });
     runFrames();
@@ -2717,6 +2744,36 @@ describe("program status on the tab, behind its experiment", () => {
     expect(unfollow()).not.toHaveBeenCalled();
     view.unload();
     expect(unfollow()).toHaveBeenCalledOnce();
+  });
+
+  it("takes a status that waits for a frame along when the terminal moves to another window, until the feature is turned off", async () => {
+    const { context, header, moveTo, osc } = await openTerminal({
+        tabStatus: true,
+      }),
+      queued: FrameRequestCallback[] = [],
+      // A window with frames of its own, as a pop-out or the main window is.
+      other = {
+        cancelAnimationFrame: vi.fn<(handle: number) => void>(),
+        closed: false,
+        document: { hidden: false },
+        requestAnimationFrame: vi.fn((callback: FrameRequestCallback) =>
+          queued.push(callback),
+        ),
+      };
+    osc(7501, "state=working");
+    expect(frames.size).toBe(1);
+
+    // The tab is dragged to the other window before that frame comes, and
+    // the window it left may close without ever running it.
+    moveTo(other);
+    expect(frames.size).toBe(0);
+    for (const callback of queued) callback(0);
+    expect(header.getAttribute("data-terminal-status")).toBe("working");
+
+    setTabStatus(context, false);
+    moveTo(window);
+    expect(other.requestAnimationFrame).toHaveBeenCalledOnce();
+    expect(frames.size).toBe(0);
   });
 });
 

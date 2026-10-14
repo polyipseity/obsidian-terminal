@@ -1627,12 +1627,17 @@ export class TerminalView extends ItemView {
               },
             });
             terminal.loadAddon(addon);
+            // What waits for a frame of a window must not be lost with it.
+            const unfollow = ele.onWindowMigrated(() => {
+              addon.windowMigrated();
+            });
             programStatus = addon;
             // The newest terminal of the view speaks for its tab from here
             // on, and what the one before it reported is not its status.
             this.#programStatus = addon;
             this.#tabStatus?.report(null);
             return (): void => {
+              unfollow();
               addon.dispose();
               programStatus = null;
               if (this.#programStatus === addon) {

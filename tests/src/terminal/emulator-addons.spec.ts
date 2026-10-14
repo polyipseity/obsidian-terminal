@@ -6664,6 +6664,102 @@ describe("ProgramStatusAddon", () => {
     expect(onChange).toHaveBeenCalledOnce();
   });
 
+  /** A window of its own, as a pop-out is: its frames run only when told to. */
+  function createWindow() {
+    const queued = new Map<number, FrameRequestCallback>(),
+      win = {
+        cancelAnimationFrame: vi.fn((handle: number): void => {
+          queued.delete(handle);
+        }),
+        clearTimeout: vi.fn<(handle: number) => void>(),
+        closed: false,
+        document: { hidden: false },
+        requestAnimationFrame: vi.fn(
+          (callback: FrameRequestCallback): number => {
+            const handle = ++handles;
+            queued.set(handle, callback);
+            return handle;
+          },
+        ),
+        setTimeout: vi.fn<(callback: () => void, delay: number) => number>(),
+      };
+    // Mutable: counts the requests, so that no handle is given out twice.
+    let handles = 0;
+    return {
+      /** Puts the terminal's element into this window. */
+      hold: (terminal: Terminal): void => {
+        Object.assign(terminal, {
+          element: { ownerDocument: { defaultView: win } },
+        });
+      },
+      runFrame: (): void => {
+        const due = [...queued.values()];
+        queued.clear();
+        for (const callback of due) {
+          callback(0);
+        }
+      },
+      win,
+    };
+  }
+
+  it("takes a waiting notification along when it is told that the terminal changed its window", () => {
+    const { addon, report, onChange, terminal } = createBed(),
+      popout = createWindow(),
+      main = createWindow();
+    popout.hold(terminal);
+    report("state=working");
+    expect(popout.win.requestAnimationFrame).toHaveBeenCalledOnce();
+
+    // The tab is dragged back and the pop-out closes: its frame never comes.
+    main.hold(terminal);
+    addon.windowMigrated();
+    expect(popout.win.cancelAnimationFrame).toHaveBeenCalledExactlyOnceWith(1);
+    expect(main.win.requestAnimationFrame).toHaveBeenCalledOnce();
+    main.runFrame();
+    expect(onChange).toHaveBeenCalledOnce();
+    expect(onChange.mock.calls[0]?.[0]?.state).toBe("working");
+
+    // Nothing waits any more: a second move asks nobody.
+    popout.hold(terminal);
+    addon.windowMigrated();
+    expect(popout.win.requestAnimationFrame).toHaveBeenCalledOnce();
+  });
+
+  it("asks the terminal's window again at the next report when it had asked another", () => {
+    const { report, onChange, terminal } = createBed(),
+      popout = createWindow(),
+      main = createWindow();
+    popout.hold(terminal);
+    report("state=working");
+
+    main.hold(terminal);
+    report("state=done");
+    expect(popout.win.cancelAnimationFrame).toHaveBeenCalledExactlyOnceWith(1);
+    main.runFrame();
+    expect(onChange).toHaveBeenCalledOnce();
+    expect(onChange.mock.calls[0]?.[0]?.state).toBe("done");
+    // The terminal follows its program from here on.
+    report("state=error");
+    main.runFrame();
+    expect(onChange).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not go on waiting for a window that has closed", () => {
+    const { report, terminal } = createBed(),
+      popout = createWindow();
+    popout.hold(terminal);
+    report("state=working");
+    report("state=working:progress=10");
+    // One request while the window is open, however many reports.
+    expect(popout.win.requestAnimationFrame).toHaveBeenCalledOnce();
+
+    popout.win.closed = true;
+    report("state=done");
+    expect(popout.win.cancelAnimationFrame).toHaveBeenCalledExactlyOnceWith(1);
+    expect(popout.win.requestAnimationFrame).toHaveBeenCalledTimes(2);
+  });
+
   it("keeps done and error when the user has seen them", () => {
     const { addon, report, onChange } = createBed();
     report("state=done");
