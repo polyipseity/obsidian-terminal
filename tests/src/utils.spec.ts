@@ -61,7 +61,11 @@ describe("setSettingDesc", () => {
       expect(setSettingDesc(row, build)).toBe(row);
       expect(build).toHaveBeenCalledOnce();
       const fragment = build.mock.calls[0]?.[0];
-      expect(fragment?.ownerDocument).toBe(shownIn);
+      // Compared as a boolean: printing a Document on failure walks the window.
+      expect(
+        fragment?.ownerDocument === shownIn,
+        "built in the shown document",
+      ).toBe(true);
       // A fragment of the second window fails the main window's instanceof
       // test, so Setting.setDesc would show it as "[object DocumentFragment]".
       expect(fragment instanceof DocumentFragment).toBe(where === "main");
