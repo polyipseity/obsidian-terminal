@@ -24,7 +24,7 @@ import sys
 import threading
 import time
 import uuid
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from contextlib import closing
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
@@ -1290,6 +1290,9 @@ def _win32_error() -> int:
 """``SYNCHRONIZE | PROCESS_TERMINATE``: wait on a process, and clean it up."""
 _PROCESS_WATCH_ACCESS = 0x00100000 | 0x0001
 
+"""Seconds an expected survivor gets to be ended after the others exit."""
+_SURVIVOR_GRACE = 2.0
+
 
 class _ProcessWatch:
     """Pin running processes so a test can prove that they later exited.
@@ -1329,18 +1332,38 @@ class _ProcessWatch:
             )
         self._handles[pid] = int(handle)
 
-    def survivors(self, timeout: float) -> list[int]:
-        """Return the pinned PIDs still running once ``timeout`` seconds pass."""
+    def survivors(self, timeout: float, expected: Collection[int] = ()) -> list[int]:
+        """Return the pinned PIDs still running once ``timeout`` seconds pass.
+
+        PIDs in ``expected`` are meant to outlive the others, so waiting on them
+        would always use up the whole ``timeout``. They are checked last, once
+        every other pinned process has exited, after a short grace period
+        instead.
+        """
         wait = _kernel32().WaitForSingleObject
         wait.argtypes = (ctypes.c_void_p, ctypes.c_uint32)
         wait.restype = ctypes.c_uint32
+
+        def running(handle: int, until: float) -> bool:
+            """Wait until ``until`` for the process; report whether it still runs."""
+            # ``WAIT_OBJECT_0``: the process handle is signalled once it exits.
+            return wait(handle, int(max(until - time.monotonic(), 0.0) * 1000)) != 0
+
         deadline = time.monotonic() + timeout
-        return [
+        alive = {
             pid
             for pid, handle in self._handles.items()
-            # ``WAIT_OBJECT_0``: the process handle is signalled once it exits.
-            if wait(handle, int(max(deadline - time.monotonic(), 0.0) * 1000)) != 0
-        ]
+            if pid not in expected and running(handle, deadline)
+        }
+        # Anything that would end an expected survivor ends the other processes
+        # first, so a short grace after they exit is enough to see it.
+        grace = min(deadline, time.monotonic() + _SURVIVOR_GRACE)
+        alive.update(
+            pid
+            for pid, handle in self._handles.items()
+            if pid in expected and running(handle, grace)
+        )
+        return [pid for pid in self._handles if pid in alive]
 
 
 def _read_when_published(path: Path, timeout: float) -> str:
@@ -2325,7 +2348,8 @@ def test_descendant_lifetime_follows_console_attachment(
             if shutdown == "natural-exit":
                 assert result.code == 42, result
         # Assert through pinned handles before closing the watch kills survivors.
-        assert watch.survivors(15.0) == (grandchild_pids if detached else [])
+        survivors = grandchild_pids if detached else []
+        assert watch.survivors(15.0, expected=survivors) == survivors
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
