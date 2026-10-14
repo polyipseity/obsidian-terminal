@@ -42,11 +42,14 @@ import {
   type PluginContext,
   notice2,
 } from "@polyipseity/obsidian-plugin-library";
+import { setFlagsFromString } from "node:v8";
+import { runInNewContext } from "node:vm";
 import { noop } from "ts-essentials";
 import { Settings } from "../../../src/settings-data.js";
 import {
   CustomKeyEventHandlerAddon,
   DragAndDropAddon,
+  acquireLookup,
   FollowThemeAddon,
   SynchronizedOutputScrollAddon,
   VaultFileLinksAddon,
@@ -1396,6 +1399,7 @@ describe("DragAndDropAddon", () => {
     INSERT_PATH = "components.terminal.drag-insert-path",
     NO_PATHS = "notices.drop-no-paths",
     SKIPPED_PATHS = "notices.drop-skipped-paths",
+    TYPED_WHILE_WAITING = "notices.drop-typed-while-waiting",
     TEXT = "text/plain",
     URI_LIST = "text/uri-list",
     VSCODE_URI_LIST = "application/vnd.code.uri-list",
@@ -1540,7 +1544,8 @@ describe("DragAndDropAddon", () => {
 
   // Every `stat` a test left without an answer, for `afterEach` to answer:
   // until it has one, it holds one of the two lookups that all the addons of
-  // a copy of `emulator-addons.ts` share, in the tests that follow as well.
+  // every copy of `emulator-addons.ts` share, in the tests that follow as
+  // well.
   const pendingStats: PendingStat[] = [];
 
   /** A `stat` that has no answer until the test gives one. */
@@ -1569,7 +1574,8 @@ describe("DragAndDropAddon", () => {
   /**
    * Loads `emulator-addons.ts` anew: it requires Electron and the file system
    * once, when it loads, so a test that takes one of them away needs a copy
-   * of its own. The copy shares the mocks above, but not `obsidian`.
+   * of its own. The copy shares the mocks above and the lookups, but not
+   * `obsidian`.
    */
   async function loadAddon(): Promise<typeof DragAndDropAddon> {
     vi.resetModules();
@@ -1843,6 +1849,76 @@ describe("DragAndDropAddon", () => {
     return dropped;
   }
 
+  /**
+   * Drops a URI list on a terminal of its own, lets the drop's deadline pass
+   * and closes the terminal. Nothing of the test holds the addon then: not
+   * the beds, nor a mock that was handed one of its listeners.
+   *
+   * @returns a weak reference to the addon.
+   */
+  async function lookUpAndClose(): Promise<WeakRef<DragAndDropAddon>> {
+    const element = document.createElement("div"),
+      context = {
+        app: { vault: {} },
+        language: { value: { t: (key: string): string => key } },
+        settings: { value: { noticeTimeout: NOTICE_TIMEOUT } },
+      } as unknown as PluginContext,
+      addon = new DragAndDropAddon(context, element),
+      listens = (): IDisposable => ({ dispose: noop }),
+      terminal = { onData: listens, onKey: listens } as unknown as Terminal,
+      event = new Event("drop", { bubbles: true, cancelable: true }),
+      uriList = `file://${DESKTOP}/b.png`;
+    Object.defineProperty(event, "dataTransfer", {
+      value: {
+        effectAllowed: "all",
+        files: [],
+        getData: (type: string): string => (type === URI_LIST ? uriList : ""),
+        types: [URI_LIST],
+      },
+    });
+    addon.activate(terminal);
+    element.dispatchEvent(event);
+    await vi.advanceTimersByTimeAsync(2000);
+    addon.dispose();
+    return new WeakRef(addon);
+  }
+
+  /** Collects every object that nothing reaches, as V8 does when it must. */
+  function collectGarbage(): void {
+    // V8 gives a script `gc` in a context made after it is told to.
+    setFlagsFromString("--expose-gc");
+    const gc: unknown = runInNewContext("gc");
+    if (!isCallable(gc)) {
+      throw new Error("V8 gave no gc");
+    }
+    gc();
+    gc();
+  }
+
+  /** Narrows to a function that takes nothing. */
+  function isCallable(value: unknown): value is () => void {
+    return typeof value === "function";
+  }
+
+  /**
+   * The lookup slots taken, as every copy of `emulator-addons.ts` counts them
+   * on the main window. There are none before the first lookup.
+   */
+  function lookupsTaken(): number {
+    const slots: unknown = Reflect.get(
+        self,
+        Symbol.for("obsidian-terminal.dropped-path-lookups.v1"),
+      ),
+      taken: unknown =
+        typeof slots === "object" && slots !== null
+          ? Reflect.get(slots, "taken")
+          : 0;
+    if (typeof taken !== "number") {
+      throw new Error("no count of the lookup slots");
+    }
+    return taken;
+  }
+
   /** One drag of each kind the terminal takes: name, bed, data transfer. */
   const TAKEN_DRAGS: readonly (readonly [string, BedOptions, DragInit])[] = [
     [
@@ -2019,7 +2095,7 @@ describe("DragAndDropAddon", () => {
       await tick();
 
       expect(bed.paste).not.toHaveBeenCalled();
-      expect(notices()).toEqual([SKIPPED_PATHS]);
+      expect(notices()).toEqual([TYPED_WHILE_WAITING]);
     });
 
     it("pastes nothing when it is disposed before the terminal has its program", async () => {
@@ -3947,6 +4023,99 @@ describe("DragAndDropAddon", () => {
     expect(second.paste).not.toHaveBeenCalled();
   });
 
+  // Obsidian evaluates the plugin anew each time it is enabled again, and a
+  // `stat` of the copy that ran before still holds its thread until it has
+  // an answer.
+  it("shares the lookups with the copy of the plugin that ran before it was enabled again", async () => {
+    vi.useFakeTimers();
+    const stuck = pendingStatsForEverySlot();
+    for (const { promise } of stuck) {
+      dragAndDropEnvironment.stat.mockReturnValueOnce(promise);
+    }
+    dragAndDropEnvironment.stat.mockResolvedValue(FILE_ON_DISK);
+    // Each copy is loaded on its own, after `vi.resetModules` (see
+    // `loadAddon`), as enabling the plugin evaluates its module anew.
+    const before = createBed({ Addon: await loadAddon() });
+
+    before.fire("drop", uriDrag(desktopUriList(["0.png", "1.png"])));
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(notices()).toEqual([NO_PATHS]);
+    // The plugin is disabled, and enabled again.
+    before.addon.dispose();
+    const after = createBed({ Addon: await loadAddon() });
+    expect(after.addon).not.toBeInstanceOf(before.addon.constructor);
+    after.fire("drop", uriDrag());
+    await vi.advanceTimersByTimeAsync(1999);
+    // Both lookups of the copy before are still without an answer.
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(2);
+    expect(after.paste).not.toHaveBeenCalled();
+
+    // The answer gives the lookup back to the drop of the copy now running.
+    stuck[0]?.answer();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledTimes(3);
+    expect(dragAndDropEnvironment.stat).toHaveBeenLastCalledWith(
+      `${DESKTOP}/b.png`,
+    );
+    expect(after.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+    expect(notices()).toEqual([NO_PATHS]);
+  });
+
+  // A `stat` on a volume that never answers is never let go of: what waits
+  // for it stays as long. That must not be the terminal, nor the plugin that
+  // ran it, once it is closed or the plugin disabled.
+  it("keeps nothing of a terminal that is gone in a lookup without an answer", async () => {
+    vi.useFakeTimers();
+    dragAndDropEnvironment.stat.mockReturnValue(pendingStat().promise);
+
+    const addon = await lookUpAndClose();
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledOnce();
+    // A weak reference keeps its target to the end of the task it is read
+    // in, and so do timers that are not real.
+    vi.useRealTimers();
+    await tick();
+    collectGarbage();
+
+    expect(addon.deref()).toBeUndefined();
+  });
+
+  // A lookup gives its slot back once. Giving it back again would let a
+  // third lookup run, or hand one slot to two lookups in line.
+  it("counts a slot that is given back twice as given back once", async () => {
+    const slot = await acquireLookup(new Promise(noop)),
+      taken = lookupsTaken();
+
+    slot?.();
+    slot?.();
+
+    expect(lookupsTaken()).toBe(taken - 1);
+  });
+
+  it("hands a slot that is given back twice to one lookup in line", async () => {
+    const never = new Promise(noop),
+      held = [await acquireLookup(never), await acquireLookup(never)];
+    let giveUp: () => void = noop;
+    const deadline = new Promise<void>((resolve) => {
+        giveUp = resolve;
+      }),
+      waiting = Promise.all([acquireLookup(never), acquireLookup(deadline)]);
+
+    held[0]?.();
+    held[0]?.();
+    giveUp();
+    const [granted, refused] = await waiting;
+    // Every slot of the test goes back before anything is checked, so that
+    // the tests after it have them whatever happens here.
+    for (const release of [held[1], granted, refused]) {
+      release?.();
+    }
+
+    expect(granted).toBeTypeOf("function");
+    expect(refused).toBeNull();
+    expect(lookupsTaken()).toBe(0);
+  });
+
   // === Focus after a drop ===
 
   it("leaves the focus where it went while a URI list was looked up", async () => {
@@ -4031,6 +4200,11 @@ describe("DragAndDropAddon", () => {
     ["F3", "\u001bOR"],
     ["a key as the kitty protocol writes it", "\u001b[97;5u"],
     ["a key as the Windows console writes it", "\u001b[65;30;97;1;0;1_"],
+    // In one write, the letter that comes with Shift is still typed.
+    [
+      "Shift and a letter as the Windows console writes them",
+      "\u001b[16;42;0;1;16;1_\u001b[65;30;65;1;16;1_",
+    ],
   ])(
     "pastes nothing of a drop when %s reaches the terminal while it waits, and says so",
     async (_name, data) => {
@@ -4045,7 +4219,7 @@ describe("DragAndDropAddon", () => {
 
       expect(bed.paste).not.toHaveBeenCalled();
       expect(bed.focus).not.toHaveBeenCalled();
-      expect(notices()).toEqual([SKIPPED_PATHS]);
+      expect(notices()).toEqual([TYPED_WHILE_WAITING]);
     },
   );
 
@@ -4068,9 +4242,82 @@ describe("DragAndDropAddon", () => {
       await tick();
 
       expect(bed.paste).not.toHaveBeenCalled();
-      expect(notices()).toEqual([SKIPPED_PATHS]);
+      expect(notices()).toEqual([TYPED_WHILE_WAITING]);
     },
   );
+
+  // In the input mode of the Windows console, which ConPTY asks for, the
+  // terminal sends a record for each key that goes down and for each that
+  // comes up, and the fourth field tells which. Releasing a key types
+  // nothing, as releasing Shift or Control after a drag does. The records
+  // are those the key handler writes (see its tests above).
+  it.each<readonly [string, string]>([
+    ["Shift", "\u001b[16;42;0;0;0;1_"],
+    ["Control", "\u001b[17;29;0;0;0;1_"],
+    ["Shift while Control is held", "\u001b[16;42;0;0;8;1_"],
+    ["a letter", "\u001b[65;30;97;0;0;1_"],
+    // One record for each half of the character.
+    [
+      "a key of a character beyond 16 bits",
+      "\u001b[0;0;55357;0;0;1_\u001b[0;0;56832;0;0;1_",
+    ],
+  ])(
+    "still pastes a drop when %s is released while it waits, as the Windows console writes it",
+    async (_name, data) => {
+      const stat = pendingStat();
+      dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+      const bed = createBed();
+
+      await drop(bed, uriDrag());
+      bed.input(data);
+      stat.answer();
+      await tick();
+
+      expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+      expect(notices()).toEqual([]);
+    },
+  );
+
+  // Pressing a modifier by itself types nothing either. Outside that input
+  // mode, xterm.js sends nothing for it at all.
+  it.each<readonly [string, string]>([
+    ["Shift", "\u001b[16;42;0;1;16;1_"],
+    ["Control", "\u001b[17;29;0;1;8;1_"],
+    ["Alt", "\u001b[18;56;0;1;2;1_"],
+    ["Shift while Control is held", "\u001b[16;42;0;1;24;1_"],
+    ["the Windows key", "\u001b[91;0;0;1;256;1_"],
+  ])(
+    "still pastes a drop when %s is pressed by itself while it waits, as the Windows console writes it",
+    async (_name, data) => {
+      const stat = pendingStat();
+      dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+      const bed = createBed();
+
+      await drop(bed, uriDrag());
+      bed.input(data);
+      stat.answer();
+      await tick();
+
+      expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+      expect(notices()).toEqual([]);
+    },
+  );
+
+  // A character composed with Alt and the numpad is sent as a key that goes
+  // down and comes up, in one go.
+  it("pastes nothing of a drop when a key goes down and up in one record pair while it waits", async () => {
+    const stat = pendingStat();
+    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+    const bed = createBed();
+
+    await drop(bed, uriDrag());
+    bed.input("\u001b[0;0;233;1;0;1_\u001b[0;0;233;0;0;1_");
+    stat.answer();
+    await tick();
+
+    expect(bed.paste).not.toHaveBeenCalled();
+    expect(notices()).toEqual([TYPED_WHILE_WAITING]);
+  });
 
   it("pastes nothing of a drop that waits behind another when input reaches the terminal", async () => {
     const stat = pendingStat();
@@ -4084,7 +4331,7 @@ describe("DragAndDropAddon", () => {
     await tick();
 
     expect(bed.paste).not.toHaveBeenCalled();
-    expect(notices()).toEqual([SKIPPED_PATHS, SKIPPED_PATHS]);
+    expect(notices()).toEqual([TYPED_WHILE_WAITING, TYPED_WHILE_WAITING]);
   });
 
   it("still pastes a drop that comes after the input", async () => {
@@ -4099,7 +4346,7 @@ describe("DragAndDropAddon", () => {
     await tick();
 
     expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/c.png `]]);
-    expect(notices()).toEqual([SKIPPED_PATHS]);
+    expect(notices()).toEqual([TYPED_WHILE_WAITING]);
   });
 
   it("says that there is nothing to insert, not that something was left out, when a drop without a path saw input", async () => {
@@ -4265,7 +4512,7 @@ describe("DragAndDropAddon", () => {
 
       expect(sent).toEqual(["x"]);
       expect(paste).not.toHaveBeenCalled();
-      expect(notices()).toEqual([SKIPPED_PATHS]);
+      expect(notices()).toEqual([TYPED_WHILE_WAITING]);
     });
 
     // Shift and F3 send what the terminal reports for a cursor in its first
@@ -4287,7 +4534,7 @@ describe("DragAndDropAddon", () => {
 
       expect(sent).toEqual(["\u001b[1;2R"]);
       expect(paste).not.toHaveBeenCalled();
-      expect(notices()).toEqual([SKIPPED_PATHS]);
+      expect(notices()).toEqual([TYPED_WHILE_WAITING]);
     });
   });
 

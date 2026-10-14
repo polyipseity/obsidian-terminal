@@ -62,46 +62,130 @@ const electron = dynamicRequire<typeof import("electron")>(BUNDLE, "electron"),
 // That pool has four threads, which Obsidian reads and saves notes with, so
 // the lookups take half of it at most.
 const LOOKUPS = 2,
-  // The lookups in line for a slot, oldest first; each is called when a slot
-  // is handed to it.
-  lookupQueue: (() => void)[] = [];
-// The slots taken.
-let lookups = 0;
+  // Where the slots are kept. Obsidian evaluates the plugin anew each time it
+  // is enabled again, and a `stat` of the copy that ran before still holds
+  // its thread until it answers. So the slots are not in this module but on
+  // the main window, which every copy runs in. The key names the shape of
+  // `LookupSlots`. Slots of another shape need a key of their own, and must
+  // take over the count kept under this one before they hand out a slot:
+  // the lookups of a copy before them may still hold theirs.
+  LOOKUP_SLOTS = Symbol.for("obsidian-terminal.dropped-path-lookups.v1");
+
+/** The {@link LOOKUPS} slots, which every copy of this module shares. */
+interface LookupSlots {
+  /**
+   * The lookups in line for a slot, oldest first; each is called when a slot
+   * is handed to it. Mutable: lookups join and leave it.
+   */
+  readonly line: (() => void)[];
+  /** The slots taken. Mutable: counted up and down as they are. */
+  taken: number;
+}
+
+/** Narrows what is kept under {@link LOOKUP_SLOTS} to the slots. */
+function isLookupSlots(value: unknown): value is LookupSlots {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "line" in value &&
+    Array.isArray(value.line) &&
+    "taken" in value &&
+    typeof value.taken === "number"
+  );
+}
+
+/**
+ * Returns the slots that every copy of this module shares, made by the first
+ * to ask. They hold a count and the lookups in line, and a lookup leaves the
+ * line by its drop's deadline at the latest: nothing in them grows from one
+ * copy to the next, nor keeps a terminal there past that deadline.
+ */
+function lookupSlots(): LookupSlots {
+  // `self` is the main window here, as for the deadline of `#onDisk`.
+  const kept: unknown = Reflect.get(self, LOOKUP_SLOTS);
+  if (isLookupSlots(kept)) {
+    return kept;
+  }
+  const slots: LookupSlots = { line: [], taken: 0 };
+  Reflect.set(self, LOOKUP_SLOTS, slots);
+  return slots;
+}
 
 /**
  * Takes one of the {@link LOOKUPS} slots, waiting in line for one until
  * `deadline` settles.
  *
- * @returns whether a slot was taken, which `releaseLookup` then gives back.
+ * Exported for its tests, which give a slot back more than once.
+ *
+ * @returns what gives the slot back to the slots it was taken from, which a
+ * copy of this module enabled since shares; `null` if no slot was taken.
+ * Only its first call gives the slot back: a second one would hand a slot
+ * nobody gave up to the next lookup in line, or count one too few taken.
  */
-async function acquireLookup(deadline: Promise<unknown>): Promise<boolean> {
-  if (lookups < LOOKUPS) {
-    ++lookups;
-    return true;
+export async function acquireLookup(
+  deadline: Promise<unknown>,
+): Promise<(() => void) | null> {
+  const slots = lookupSlots();
+  // Mutable: set by the first call of `release`.
+  let released = false;
+  const release = (): void => {
+    if (released) {
+      return;
+    }
+    released = true;
+    releaseLookup(slots);
+  };
+  if (slots.taken < LOOKUPS) {
+    ++slots.taken;
+    return release;
   }
   let grant: () => void = noop;
   const slot = new Promise<void>((resolve) => {
     grant = resolve;
   });
-  lookupQueue.push(grant);
+  slots.line.push(grant);
   await Promise.race([slot, deadline]);
   // `releaseLookup` takes the lookup it hands a slot to out of the line, so
   // one that is still in it has seen the deadline come first.
-  const index = lookupQueue.indexOf(grant);
+  const index = slots.line.indexOf(grant);
   if (index === -1) {
-    return true;
+    return release;
   }
-  lookupQueue.splice(index, 1);
-  return false;
+  slots.line.splice(index, 1);
+  return null;
 }
 
 /** Gives a slot back: to the lookup that has waited longest, if one waits. */
-function releaseLookup(): void {
-  const next = lookupQueue.shift();
+function releaseLookup(slots: LookupSlots): void {
+  const next = slots.line.shift();
   if (next) {
     next();
   } else {
-    --lookups;
+    --slots.taken;
+  }
+}
+
+/**
+ * Tells whether a path is a file or a directory on disk, and gives its slot
+ * back once `stat` has answered, which can be long after the drop stopped
+ * waiting for it, the terminal went away, or the plugin was enabled again.
+ * A `stat` that never answers keeps what waits for it, so this holds only
+ * the path and `release`, and nothing of a terminal or of the plugin.
+ *
+ * @param path - absolute path.
+ * @param release - gives back the slot the lookup holds.
+ * @returns `false` as well for a path that could not be looked up.
+ */
+async function statOnDisk(path: string, release: () => void): Promise<boolean> {
+  try {
+    const stats = await (await fsPromises).stat(path);
+    return stats.isFile() || stats.isDirectory();
+  } catch (error) {
+    // Missing, unreadable, or no file system to ask: not a path to insert.
+    /* @__PURE__ */ self.console.debug(error);
+    return false;
+  } finally {
+    release();
   }
 }
 
@@ -188,6 +272,14 @@ export class DragAndDropAddon implements ITerminalAddon {
   // The string has an end, which the key that sends as much as its start
   // (Alt and `]`) has not.
   static readonly #REPORT_STRING = /^[\]P]/u;
+
+  // What follows it in a record of the input mode of the Windows console,
+  // which ConPTY asks for, when the record is of a key that types nothing:
+  // one that comes up, whose fourth field (key down) is 0, or Shift,
+  // Control, Alt or a Windows key going down, whose first field (virtual
+  // key) is 16, 17, 18, 91 or 92 and whose third (character) is 0.
+  static readonly #WIN32_UNTYPED_KEY =
+    /^\[(?:\d+;\d+;\d+;0|(?:16|17|18|91|92);\d+;0;1);\d+;\d+_$/u;
 
   readonly #disposer = new Functions({ async: false, settled: true });
   // Set by `dispose()`: nothing would remove listeners added after it.
@@ -313,6 +405,26 @@ export class DragAndDropAddon implements ITerminalAddon {
     );
   }
 
+  /**
+   * Tells whether data the terminal sends to its program is a key that types
+   * nothing, in the input mode of the Windows console: one record, or two for
+   * a character beyond 16 bits. Releasing a key types nothing, as releasing
+   * Shift or Control after a drag does, and neither does pressing a modifier
+   * by itself, for which xterm.js sends nothing outside that mode.
+   * `CustomKeyEventHandlerAddon` writes these records itself, so xterm.js
+   * tells no key for them, nor for the records of a key that types.
+   */
+  static #isUntypedWin32Key(data: string): boolean {
+    const [before, ...records] = data.split(DragAndDropAddon.#ESCAPE);
+    return (
+      before === "" &&
+      records.length > 0 &&
+      records.every((record) =>
+        DragAndDropAddon.#WIN32_UNTYPED_KEY.test(record),
+      )
+    );
+  }
+
   public activate(terminal: Terminal): void {
     if (this.#disposed) {
       // Nothing would remove listeners added now.
@@ -333,7 +445,11 @@ export class DragAndDropAddon implements ITerminalAddon {
         this.#drop(terminal, activation, event);
       },
       input = terminal.onData((data) => {
-        if (!this.#pasting && !DragAndDropAddon.#isReport(data)) {
+        if (
+          !this.#pasting &&
+          !DragAndDropAddon.#isReport(data) &&
+          !DragAndDropAddon.#isUntypedWin32Key(data)
+        ) {
           ++this.#input;
         }
       }),
@@ -595,7 +711,7 @@ export class DragAndDropAddon implements ITerminalAddon {
     if (input !== this.#input) {
       // The user typed while the drop waited for its paths or for the drops
       // before it. After Enter the paths would go to whatever runs by now.
-      this.#notice("notices.drop-skipped-paths");
+      this.#notice("notices.drop-typed-while-waiting");
       return;
     }
     const platform = deopaque(Platform.CURRENT),
@@ -716,7 +832,12 @@ export class DragAndDropAddon implements ITerminalAddon {
     return line === null ? null : Math.max(line - this.#heldBytes, 0);
   }
 
-  #notice(key: "notices.drop-no-paths" | "notices.drop-skipped-paths"): void {
+  #notice(
+    key:
+      | "notices.drop-no-paths"
+      | "notices.drop-skipped-paths"
+      | "notices.drop-typed-while-waiting",
+  ): void {
     const {
       context,
       context: { language, settings },
@@ -891,25 +1012,18 @@ export class DragAndDropAddon implements ITerminalAddon {
     deadline: Promise<unknown>,
     awaited: () => boolean,
   ): Promise<boolean> {
-    if (!(await acquireLookup(deadline))) {
+    const release = await acquireLookup(deadline);
+    if (release === null) {
       return false;
     }
-    try {
-      if (!awaited()) {
-        // The slot came free as the drop gave up.
-        return false;
-      }
-      const stats = await (await fsPromises).stat(path);
-      return stats.isFile() || stats.isDirectory();
-    } catch (error) {
-      // Missing, unreadable, or no file system to ask: not a path to insert.
-      /* @__PURE__ */ activeSelf(this.element).console.debug(error);
+    if (!awaited()) {
+      // The slot came free as the drop gave up.
+      release();
       return false;
-    } finally {
-      // Only now that `stat` has answered, which can be long after the drop
-      // stopped waiting for it or the terminal went away.
-      releaseLookup();
     }
+    // Returned, not awaited: this call is then done, and what waits for the
+    // `stat` holds nothing of this addon (see `statOnDisk`).
+    return statOnDisk(path, release);
   }
 
   /**
