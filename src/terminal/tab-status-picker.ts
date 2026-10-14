@@ -43,10 +43,15 @@ export interface TabStatusPreviewHost {
 }
 
 /** The six tabs of the preview strip, in order. */
-export type TabStatusPreviewState =
-  "none" | "idle" | "working" | "done" | "blocked" | "error";
-export const TAB_STATUS_PREVIEW_STATES: readonly TabStatusPreviewState[] =
-  Object.freeze(["none", "idle", "working", "done", "blocked", "error"]);
+export const TAB_STATUS_PREVIEW_STATES = Object.freeze([
+  "none",
+  "idle",
+  "working",
+  "done",
+  "blocked",
+  "error",
+] as const);
+export type TabStatusPreviewState = (typeof TAB_STATUS_PREVIEW_STATES)[number];
 
 const CLASSES = Object.freeze({
   caption: "tts-pick-caption",
