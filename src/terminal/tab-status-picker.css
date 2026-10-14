@@ -79,7 +79,7 @@
   text-overflow: ellipsis;
 }
 
-/* Too narrow for five titles next to their icons: the words go under. */
+/* Too narrow for six titles next to their icons: the words go under. */
 @container (max-width: 460px) {
   .tts-strip-bar {
     height: auto;

@@ -385,7 +385,7 @@
     "experimental-description": "These features are not finished. They may change or be removed in a later version. Each one is off until you turn it on.",
     "experimental-features": {
       "tabStatus": {
-        "effect": "Terminal tabs get a new icon that shows whether the program is working, needs input, is done or has failed, when the program reports it.",
+        "effect": "Terminal tabs get a new icon that shows whether the program is idle, working, needs input, is done or has failed, when the program reports it.",
         "name": "Program status on tabs",
         "risk": "Few programs report their status yet, and the way they report it (OSC 7501) may still change. Inside tmux or screen the report may not reach the terminal. A program that was already running when you turn this on may report only after you restart it."
       }
@@ -486,6 +486,7 @@
       "blocked": "Needs you",
       "done": "Finished",
       "error": "Error",
+      "idle": "Idle",
       "label": "Preview",
       "none": "No status",
       "working": "Working"

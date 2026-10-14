@@ -42,11 +42,11 @@ export interface TabStatusPreviewHost {
   readonly attributes: TabStatusHostAttributes;
 }
 
-/** The five tabs of the preview strip, in order. */
+/** The six tabs of the preview strip, in order. */
 export type TabStatusPreviewState =
-  "none" | "working" | "done" | "blocked" | "error";
+  "none" | "idle" | "working" | "done" | "blocked" | "error";
 export const TAB_STATUS_PREVIEW_STATES: readonly TabStatusPreviewState[] =
-  Object.freeze(["none", "working", "done", "blocked", "error"]);
+  Object.freeze(["none", "idle", "working", "done", "blocked", "error"]);
 
 const CLASSES = Object.freeze({
   caption: "tts-pick-caption",
@@ -92,7 +92,7 @@ export function tabStatusHostAttributes(
  * its icons have the chosen size.
  *
  * @param look the settings that decide the look
- * @param state which of the five tabs
+ * @param state which of the six tabs
  * @returns the attributes of that tab
  */
 export function tabStatusPreviewAttributes(

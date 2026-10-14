@@ -7,7 +7,7 @@
  * - the chosen tile, the tab stop and the line of words following the value
  * - choosing with the pointer and the keyboard, and the change callback
  * - the words standing in for an icon that cannot be drawn
- * - the strip's five tabs following the look
+ * - the strip's six tabs following the look
  * - the attributes of a preview host, for every state
  * - what each of the three pickers shows for the current look
  * - every element belonging to the parent's document, not the global one
@@ -558,7 +558,14 @@ describe("TabStatusPicker", () => {
 });
 
 describe("TabStatusStrip", () => {
-  const CAPTIONS = ["No status", "Working", "Finished", "Needs you", "Error"];
+  const CAPTIONS = [
+    "No status",
+    "Idle",
+    "Working",
+    "Finished",
+    "Needs you",
+    "Error",
+  ];
 
   function strip(): {
     readonly doc: Document;
@@ -593,12 +600,12 @@ describe("TabStatusStrip", () => {
     };
   }
 
-  it("shows the five states, each a preview host with its words", () => {
+  it("shows the six states, each a preview host with its words", () => {
     const { made, tabs } = strip();
     expect(made.element.getAttribute("aria-label")).toBe("Preview");
     expect(
       tabs().map((tab) => tab.getAttribute(TAB_STATUS_ATTRIBUTES.status)),
-    ).toEqual([null, "working", "done", "blocked", "error"]);
+    ).toEqual([null, "idle", "working", "done", "blocked", "error"]);
     expect(
       tabs().map((tab) => tab.querySelector(".tts-strip-title")?.textContent),
     ).toEqual(CAPTIONS);
@@ -654,6 +661,7 @@ describe("TabStatusStrip", () => {
       false,
       false,
       false,
+      false,
     ]);
   });
 
@@ -674,8 +682,8 @@ describe("TabStatusStrip", () => {
     // No look changes what the tabs report: the finished one is unread.
     expect(
       tabs().map((tab) => tab.getAttribute(TAB_STATUS_ATTRIBUTES.status)),
-    ).toEqual([null, "working", "done", "blocked", "error"]);
-    expect(env.setIcon).toHaveBeenCalledTimes(5);
+    ).toEqual([null, "idle", "working", "done", "blocked", "error"]);
+    expect(env.setIcon).toHaveBeenCalledTimes(6);
     expect(env.setIcon).toHaveBeenCalledWith(expect.anything(), "tab-tile");
   });
 
@@ -776,9 +784,10 @@ describe("tabStatusHostAttributes", () => {
 });
 
 describe("tabStatusPreviewAttributes", () => {
-  it("has the five tabs in the order the strip shows them", () => {
+  it("has the six tabs in the order the strip shows them", () => {
     expect(TAB_STATUS_PREVIEW_STATES).toEqual([
       "none",
+      "idle",
       "working",
       "done",
       "blocked",
@@ -788,6 +797,7 @@ describe("tabStatusPreviewAttributes", () => {
 
   it.each([
     ["none", undefined],
+    ["idle", "idle"],
     ["working", "working"],
     // Unread: the tabs after the first are ones the user is not looking at.
     ["done", "done"],

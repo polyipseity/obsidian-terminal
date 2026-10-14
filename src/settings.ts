@@ -895,7 +895,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
   }
 
   /**
-   * The look of program status on tabs: a preview on five tabs, then the icon
+   * The look of program status on tabs: a preview on six tabs, then the icon
    * set, the size and the motion. The options drawer of the experiment draws
    * them into `container`, so none of this runs for a user who never turned
    * the experiment on.
@@ -983,7 +983,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
           });
         };
       };
-    // What the choices below add up to, on five tabs.
+    // What the choices below add up to, on six tabs.
     ui.new(
       () => new TabStatusStrip(container, tabStatusEnvironment),
       (strip) => {
