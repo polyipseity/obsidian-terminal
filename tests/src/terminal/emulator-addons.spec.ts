@@ -1541,7 +1541,8 @@ describe("DragAndDropAddon", () => {
 
   // Every `stat` a test left without an answer, for `afterEach` to answer:
   // until it has one, it holds one of the two lookups that all the addons of
-  // a copy of `emulator-addons.ts` share, in the tests that follow as well.
+  // every copy of `emulator-addons.ts` share, in the tests that follow as
+  // well.
   const pendingStats: PendingStat[] = [];
 
   /** A `stat` that has no answer until the test gives one. */
@@ -1570,7 +1571,8 @@ describe("DragAndDropAddon", () => {
   /**
    * Loads `emulator-addons.ts` anew: it requires Electron and the file system
    * once, when it loads, so a test that takes one of them away needs a copy
-   * of its own. The copy shares the mocks above, but not `obsidian`.
+   * of its own. The copy shares the mocks above and the lookups, but not
+   * `obsidian`.
    */
   async function loadAddon(): Promise<typeof DragAndDropAddon> {
     vi.resetModules();
