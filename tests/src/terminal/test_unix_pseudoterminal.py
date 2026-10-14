@@ -1364,10 +1364,7 @@ def test_real_proxy_delivers_input_burst_while_child_writes() -> None:
         assert process.stderr.read() == b""
 
 
-@pytest.mark.skipif(
-    sys.platform != "darwin",
-    reason="only macOS is known to leave a discarded PTY queue unreported",
-)
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX-only proxy")
 @pytest.mark.parametrize("how", ["tcflush", "tcsaflush"])
 def test_real_proxy_delivers_held_input_after_the_child_discards_its_queue(
     tmp_path: Path, how: str
@@ -1376,12 +1373,19 @@ def test_real_proxy_delivers_held_input_after_the_child_discards_its_queue(
 
     Discarding the queue gives the PTY room without a read. On macOS the
     selector then never reports the PTY as writable, so a proxy that waits for
-    that report holds the input for good. What a Linux selector reports here
-    has not been measured, so the test runs on macOS only.
+    that report holds the input for good.
 
     The proxy holds a full buffer before the discard, and the host sends
-    nothing after it: only the proxy offering that input again by itself can
-    bring it to the child.
+    nothing after it. On every platform the test checks only that the held
+    input reaches the child. On macOS, only the proxy's retry, which offers
+    that input again by itself, can bring it there.
+
+    On Linux each case passed seven runs (kernel 7.0, aarch64). Whether the
+    selector there reports the PTY as writable after the discard was not
+    measured, and nobody ran the test there without the retry, so on Linux it
+    may pass without the retry. The scripted test
+    test_main_offers_held_input_again_without_a_writable_event covers the
+    retry on every platform.
     """
     marker = _marker(4000)
     discard = tmp_path / "discard"

@@ -48,6 +48,7 @@ describe("PluginLocales", () => {
 
       expect(notices["drop-no-paths"]).toMatch(/\S/u);
       expect(notices["drop-skipped-paths"]).toMatch(/\S/u);
+      expect(notices["drop-typed-while-waiting"]).toMatch(/\S/u);
       expect(components.terminal["drag-insert-path"]).toMatch(/\S/u);
     });
   });

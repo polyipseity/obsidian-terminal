@@ -1,9 +1,15 @@
 import {
   UpdatableUI,
   cloneAsWritable,
+  setSanitizedInnerHTML,
 } from "@polyipseity/obsidian-plugin-library";
 import { createInstance } from "i18next";
-import { ExtraButtonComponent, Setting, ToggleComponent } from "obsidian";
+import {
+  ButtonComponent,
+  ExtraButtonComponent,
+  Setting,
+  ToggleComponent,
+} from "obsidian";
 import * as doctor from "../../src/terminal/win32-doctor.js";
 import { SettingTab } from "../../src/settings.js";
 import { loadDocumentations } from "../../src/documentations.js";
@@ -12,7 +18,7 @@ import {
   type Experiment,
   fixExperiments,
 } from "../../src/experiments.js";
-import { Settings } from "../../src/settings-data.js";
+import { LocalSettings, Settings } from "../../src/settings-data.js";
 import {
   capturePythonRows,
   pythonSettingsContext,
@@ -1292,4 +1298,200 @@ describe("plugin Python automatic checks", () => {
     expect(runPluginPythonCheck).toHaveBeenCalledTimes(2);
     tab.dispose();
   });
+});
+
+/**
+ * A setting row as Obsidian builds it in the plugin's settings tab. Its elements
+ * come from the main window, which also made the tab's container, wherever the
+ * tab is shown. In Obsidian 1.14.4 the tab is shown in a Settings window.
+ *
+ * `setName` and `setDesc` call the `Element.prototype.setText` of the window
+ * that made the element. It inserts a value that passes `instanceof
+ * DocumentFragment || instanceof Node` and shows anything else as
+ * `String(value)`. In Chromium a fragment of another window fails both tests.
+ * happy-dom gives each window its own `DocumentFragment` but one shared `Node`,
+ * so this row keeps only the first test, the one that tells windows apart here.
+ */
+class MainWindowRow extends Setting {
+  public override readonly settingEl = document.createElement("div");
+  public override readonly nameEl = document.createElement("div");
+  public override readonly descEl = document.createElement("div");
+
+  public override setName(name: string | DocumentFragment): this {
+    MainWindowRow.setText(this.nameEl, name);
+    return this;
+  }
+
+  public override setDesc(desc: string | DocumentFragment): this {
+    MainWindowRow.setText(this.descEl, desc);
+    return this;
+  }
+
+  public override addButton(
+    configure: (button: ButtonComponent) => unknown,
+  ): this {
+    configure(new ButtonComponent(this.settingEl));
+    return this;
+  }
+
+  protected static setText(element: HTMLElement, value: unknown): void {
+    if (value instanceof DocumentFragment) {
+      element.replaceChildren(value);
+      return;
+    }
+    element.textContent = String(value);
+  }
+}
+
+/** Runs the production row callbacks on {@link MainWindowRow}s. */
+function captureMainWindowRows(): ReadonlyMap<string, MainWindowRow> {
+  const rows = new Map<string, MainWindowRow>();
+  vi.spyOn(UpdatableUI.prototype, "newSetting").mockImplementation(function (
+    this: UpdatableUI,
+    element,
+    configure,
+  ) {
+    return this.new(
+      () => {
+        const row = new MainWindowRow(element);
+        row.settingEl.append(row.nameEl, row.descEl);
+        element.append(row.settingEl);
+        return row;
+      },
+      (row) => {
+        configure(row);
+        rows.set(row.nameEl.textContent, row);
+      },
+      (row) => {
+        row.settingEl.remove();
+      },
+    );
+  });
+  return rows;
+}
+
+/** An iframe's document stands in for Obsidian's Settings window. */
+function settingsWindowDocument(): Document {
+  const { contentDocument } = document.body.appendChild(
+    document.createElement("iframe"),
+  );
+  if (!contentDocument) throw new Error("iframe has no document");
+  return contentDocument;
+}
+
+class LoadedSettingTab extends SettingTab {
+  public load(): void {
+    this.onLoad();
+  }
+  public dispose(): void {
+    this.onUnload();
+  }
+  protected override newPythonWidgets(): void {
+    // The Windows-only rows have their own tests above.
+  }
+}
+
+describe("settings tab descriptions", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.replaceChildren();
+  });
+
+  it.each(["main", "Settings"])(
+    "renders the internal modules description in the %s window",
+    async (where) => {
+      const i18n = createInstance();
+      await i18n.init({ lng: "en", resources: { en: { translation: en } } });
+      const rows = captureMainWindowRows(),
+        context = await pythonSettingsContext();
+      Object.assign(context, {
+        localSettings: {
+          value: LocalSettings.fix({ lastReadChangelogVersion: "0.0.0" }).value,
+        },
+        version: null,
+      });
+      Object.assign(context.language, {
+        onChangeLanguage: { listen: vi.fn().mockReturnValue(vi.fn()) },
+        value: i18n,
+      });
+      const tab = new LoadedSettingTab(context, loadDocumentations(context)),
+        shownIn = where === "main" ? document : settingsWindowDocument(),
+        // The markup as the sanitizer leaves it: under happy-dom, DOMPurify
+        // unwraps the first <code> of this text.
+        expected = setSanitizedInnerHTML(
+          document.createElement("span"),
+          en.settings["expose-internal-modules-description-HTML"],
+        ),
+        codes = (root: ParentNode): readonly string[] =>
+          Array.from(root.querySelectorAll("code"), (code) => code.textContent);
+      expect(codes(expected)).not.toHaveLength(0);
+      shownIn.body.append(tab.containerEl);
+      try {
+        tab.load();
+        const { descEl } =
+          rows.get(en.settings["expose-internal-modules"]) ?? {};
+        expect(descEl?.textContent).toBe(expected.textContent);
+        // The markup is shown as elements, not as its text alone. Checking the
+        // elements' document would prove nothing: insertion adopts every node
+        // into the description's document, wherever it was made.
+        expect(descEl ? codes(descEl) : null).toEqual(codes(expected));
+      } finally {
+        tab.dispose();
+      }
+    },
+  );
+
+  it.each(["main", "Settings"])(
+    "renders each experiment's description as elements in the %s window",
+    async (where) => {
+      const i18n = createInstance();
+      await i18n.init({
+        lng: "en",
+        resources: { en: { asset, translation: en } },
+      });
+      const rows = captureMainWindowRows(),
+        context = await pythonSettingsContext();
+      Object.assign(context.language, { value: i18n });
+      const tab = new ExperimentalSettingTab(
+          context,
+          loadDocumentations(context),
+        ),
+        shownIn = where === "main" ? document : settingsWindowDocument(),
+        lines = (descEl?: HTMLElement): readonly string[] =>
+          Array.from(
+            descEl?.children ?? [],
+            (line) => `${line.tagName} ${line.textContent}`,
+          );
+      shownIn.body.append(tab.containerEl);
+      try {
+        tab.draw([ALPHA, BETA]);
+        const alpha = rows.get(ALPHA.name())?.descEl,
+          beta = rows.get(BETA.name())?.descEl,
+          feedback = en.settings["experimental-feedback"];
+        expect(tab.containerEl.textContent).not.toContain(
+          "[object DocumentFragment]",
+        );
+        // Alpha applies live, so it has no line on how a change applies.
+        expect(lines(alpha)).toEqual([
+          "DIV Alpha effect.",
+          "DIV Known risk: Alpha risk.",
+          `A ${feedback}`,
+        ]);
+        expect(lines(beta)).toEqual([
+          "DIV Beta & <b>more</b> effect.",
+          "DIV Known risk: Beta & <b>more</b> risk.",
+          `DIV ${en.settings["experimental-applies"].restart}`,
+          `A ${feedback}`,
+        ]);
+        expect(alpha?.querySelector("a")?.getAttribute("href")).toBe(
+          ALPHA.feedback,
+        );
+        expect(beta?.querySelector("a")?.getAttribute("href")).toBe(
+          BETA.feedback,
+        );
+      } finally {
+        tab.dispose();
+      }
+    },
+  );
 });
