@@ -1,9 +1,10 @@
 import { UpdatableUI } from "@polyipseity/obsidian-plugin-library";
 import { createInstance } from "i18next";
+import { ButtonComponent, Setting } from "obsidian";
 import * as doctor from "../../src/terminal/win32-doctor.js";
 import { SettingTab } from "../../src/settings.js";
 import { loadDocumentations } from "../../src/documentations.js";
-import { Settings } from "../../src/settings-data.js";
+import { LocalSettings, Settings } from "../../src/settings-data.js";
 import {
   capturePythonRows,
   pythonSettingsContext,
@@ -393,6 +394,140 @@ class PythonSettingTab extends SettingTab {
     this.ui.update();
   }
 }
+
+/**
+ * A setting row as Obsidian builds it in the plugin's settings tab. Its elements
+ * come from the main window, which also made the tab's container, wherever the
+ * tab is shown. In Obsidian 1.14.4 the tab is shown in a Settings window.
+ *
+ * `setName` and `setDesc` call the `Element.prototype.setText` of the window
+ * that made the element. It inserts a value that passes `instanceof
+ * DocumentFragment || instanceof Node` and shows anything else as
+ * `String(value)`. In Chromium a fragment of another window fails both tests.
+ * happy-dom gives each window its own `DocumentFragment` but one shared `Node`,
+ * so this row keeps only the first test, the one that tells windows apart here.
+ */
+class MainWindowRow extends Setting {
+  public override readonly settingEl = document.createElement("div");
+  public override readonly nameEl = document.createElement("div");
+  public override readonly descEl = document.createElement("div");
+
+  public override setName(name: string | DocumentFragment): this {
+    MainWindowRow.setText(this.nameEl, name);
+    return this;
+  }
+
+  public override setDesc(desc: string | DocumentFragment): this {
+    MainWindowRow.setText(this.descEl, desc);
+    return this;
+  }
+
+  public override addButton(
+    configure: (button: ButtonComponent) => unknown,
+  ): this {
+    configure(new ButtonComponent(this.settingEl));
+    return this;
+  }
+
+  protected static setText(element: HTMLElement, value: unknown): void {
+    if (value instanceof DocumentFragment) {
+      element.replaceChildren(value);
+      return;
+    }
+    element.textContent = String(value);
+  }
+}
+
+/** Runs the production row callbacks on {@link MainWindowRow}s. */
+function captureMainWindowRows(): ReadonlyMap<string, MainWindowRow> {
+  const rows = new Map<string, MainWindowRow>();
+  vi.spyOn(UpdatableUI.prototype, "newSetting").mockImplementation(function (
+    this: UpdatableUI,
+    element,
+    configure,
+  ) {
+    return this.new(
+      () => {
+        const row = new MainWindowRow(element);
+        row.settingEl.append(row.nameEl, row.descEl);
+        element.append(row.settingEl);
+        return row;
+      },
+      (row) => {
+        configure(row);
+        rows.set(row.nameEl.textContent, row);
+      },
+      (row) => {
+        row.settingEl.remove();
+      },
+    );
+  });
+  return rows;
+}
+
+/** An iframe's document stands in for Obsidian's Settings window. */
+function settingsWindowDocument(): Document {
+  const { contentDocument } = document.body.appendChild(
+    document.createElement("iframe"),
+  );
+  if (!contentDocument) throw new Error("iframe has no document");
+  return contentDocument;
+}
+
+class LoadedSettingTab extends SettingTab {
+  public load(): void {
+    this.onLoad();
+  }
+  public dispose(): void {
+    this.onUnload();
+  }
+  protected override newPythonWidgets(): void {
+    // The Windows-only rows have their own tests above.
+  }
+}
+
+describe("settings tab descriptions", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.replaceChildren();
+  });
+
+  it.each(["main", "Settings"])(
+    "renders the internal modules description in the %s window",
+    async (where) => {
+      const i18n = createInstance();
+      await i18n.init({ lng: "en", resources: { en: { translation: en } } });
+      const rows = captureMainWindowRows(),
+        context = await pythonSettingsContext();
+      Object.assign(context, {
+        localSettings: {
+          value: LocalSettings.fix({ lastReadChangelogVersion: "0.0.0" }).value,
+        },
+        version: null,
+      });
+      Object.assign(context.language, {
+        onChangeLanguage: { listen: vi.fn().mockReturnValue(vi.fn()) },
+        value: i18n,
+      });
+      const tab = new LoadedSettingTab(context, loadDocumentations(context)),
+        shownIn = where === "main" ? document : settingsWindowDocument(),
+        expected = new DOMParser().parseFromString(
+          en.settings["expose-internal-modules-description-HTML"],
+          "text/html",
+        ).body.textContent;
+      shownIn.body.append(tab.containerEl);
+      try {
+        tab.load();
+        const { descEl } =
+          rows.get(en.settings["expose-internal-modules"]) ?? {};
+        expect(descEl?.textContent).toBe(expected);
+        expect(descEl?.querySelector("code")?.ownerDocument).toBe(shownIn);
+      } finally {
+        tab.dispose();
+      }
+    },
+  );
+});
 
 describe("plugin Python status notifications", () => {
   afterEach(() => {

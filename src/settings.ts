@@ -4,7 +4,6 @@ import {
   cloneAsWritable,
   closeSetting,
   createChildElement,
-  createDocumentFragment,
   deopaque,
   DOMClasses,
   linkSetting,
@@ -38,6 +37,7 @@ import {
   runPluginPythonCheck,
   onWindowsPythonStateChange,
 } from "./terminal/win32-doctor.js";
+import { setSettingDesc } from "./utils.js";
 
 export class SettingTab extends AdvancedSettingTab<Settings> {
   #unregisterPythonDiagnosis?: () => void;
@@ -754,19 +754,15 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
     this.newNoticeTimeoutWidget(Settings.DEFAULT);
     this.newSectionWidget(() => i18n.t("settings.advanced"));
     ui.newSetting(containerEl, (setting) => {
-      const { settingEl } = setting;
-      setting
+      setSettingDesc(setting, (frag) => {
+        createChildElement(frag, "span", (ele) => {
+          setSanitizedInnerHTML(
+            ele,
+            i18n.t("settings.expose-internal-modules-description-HTML"),
+          );
+        });
+      })
         .setName(i18n.t("settings.expose-internal-modules"))
-        .setDesc(
-          createDocumentFragment(settingEl.ownerDocument, (frag) => {
-            createChildElement(frag, "span", (ele) => {
-              setSanitizedInnerHTML(
-                ele,
-                i18n.t("settings.expose-internal-modules-description-HTML"),
-              );
-            });
-          }),
-        )
         .addToggle(
           linkSetting(
             () => settings.value.exposeInternalModules,
