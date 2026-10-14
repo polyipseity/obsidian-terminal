@@ -21,7 +21,8 @@
  *   `dropped-paths.ts`; drags without a usable path, or without one that can
  *   be written for the shell, refused, reported or left untouched
  * - ProgramStatusAddon: OSC 7501 reports, the detection reply, record lifetime
- *   (OSC 133 `A`, process exit, `ESC c`) and coalesced change notifications
+ *   (OSC 133 `A`, process exit, `ESC c`) and coalesced change notifications,
+ *   on a parser made for the tests and on a terminal of xterm.js itself
  */
 import {
   type ILink,
@@ -6911,6 +6912,104 @@ describe("ProgramStatusAddon", () => {
     report("?");
     expect(inputSpy).toHaveBeenCalledExactlyOnceWith(DETECTION_REPLY, false);
     next.dispose();
+  });
+
+  /*
+   * The cases above hand the addon a parser made for them. These load it on
+   * a terminal of xterm.js itself: what that parser hands a handler, where a
+   * reply goes, and that the addon comes off a running terminal and a new
+   * one goes on.
+   */
+  describe("on a real xterm terminal", () => {
+    const sequence = (payload: string): string =>
+      `\u001b]7501;${payload}\u001b\\`;
+
+    function openTerminal() {
+      const terminal = new Terminal(),
+        host = document.body.appendChild(document.createElement("div")),
+        replies: string[] = [],
+        changes: (string | null)[] = [];
+      // A terminal that was never opened has no element, and the addon asks
+      // the window of its element for a frame.
+      Object.defineProperty(terminal, "element", { get: () => host });
+      terminal.onData((data) => replies.push(data));
+      return {
+        changes,
+        load: (): ProgramStatusAddon => {
+          const addon = new ProgramStatusAddon({
+            onChange: (status) => changes.push(status?.state ?? null),
+          });
+          terminal.loadAddon(addon);
+          return addon;
+        },
+        /** The terminal parses what it was given in a later task: this is it. */
+        parse: (): void => {
+          vi.runAllTimers();
+          runFrame();
+        },
+        replies,
+        terminal,
+      };
+    }
+
+    it("answers the query, stops when disposed, and lets a second addon take over", () => {
+      const { changes, load, parse, replies, terminal } = openTerminal(),
+        first = load();
+      terminal.write(sequence("?"));
+      parse();
+      expect(replies).toEqual([DETECTION_REPLY]);
+      // Ended by BEL instead of ST.
+      terminal.write("\u001b]7501;?\u0007");
+      parse();
+      expect(replies).toEqual([DETECTION_REPLY, DETECTION_REPLY]);
+
+      first.dispose();
+      first.dispose();
+      terminal.write(sequence("?") + sequence("state=working"));
+      parse();
+      expect(replies).toHaveLength(2);
+      expect(changes).toEqual([]);
+
+      load();
+      terminal.write(sequence("state=working"));
+      parse();
+      expect(changes).toEqual(["working"]);
+      // A full reset still resets the terminal, and drops every record.
+      terminal.write("\u001bc");
+      parse();
+      expect(changes).toEqual(["working", null]);
+      expect(() => {
+        terminal.dispose();
+      }).not.toThrow();
+    });
+
+    it("drops a working report that the terminal parses after the exit", () => {
+      const { changes, load, parse, terminal } = openTerminal(),
+        addon = load();
+      // The last output of the process waits to be parsed when its exit is
+      // handled.
+      terminal.write(sequence("state=working"));
+      addon.processExited();
+      parse();
+      expect(addon.status).toBeNull();
+      expect(changes).toEqual([]);
+      terminal.dispose();
+    });
+
+    it("does not announce a seen done again for a report of another record", () => {
+      const { changes, load, parse, terminal } = openTerminal(),
+        addon = load();
+      terminal.write(sequence("state=done:id=a"));
+      parse();
+      expect(changes).toEqual(["done"]);
+
+      addon.markSeen();
+      terminal.write(sequence("state=idle:id=b"));
+      parse();
+      expect(addon.status?.state).toBe("done");
+      expect(changes).toEqual(["done"]);
+      terminal.dispose();
+    });
   });
 
   it("stops everything on dispose", () => {
