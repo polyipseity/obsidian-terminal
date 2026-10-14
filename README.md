@@ -154,7 +154,7 @@ Features that are not finished are listed under `Experimental`, the last section
 - Each row says what the feature does, what the known risk is, and where to send feedback.
 - To try a feature, turn on its toggle. To stop, turn it off. The plugin then behaves as it did before, and nothing you stored is lost. A change applies at once unless the row says it needs new terminals or a restart.
 - An experimental feature may change or be removed in a later version. When one becomes a regular feature, its toggle leaves the section and the changelog says so.
-- The choice is stored with the other plugin settings, so it follows the vault to every device that syncs them.
+- The choice is stored with the other plugin settings, so it follows the vault to every device that syncs them. A device that still runs an older version turns the feature off again when it saves its settings, because that version drops a setting it does not know.
 
 `Program status on tabs` is such a feature. With it on, every terminal tab gets a prompt icon, in one of two styles and at a size you choose, and the icon shows what the program in the terminal reports about itself: idle, working, done, needs input or failed. A finished program stays marked until you look at its terminal. Programs report with the escape sequence OSC 7501, and a program that does not send it shows no status. Inside tmux or screen, a report reaches the terminal only when passthrough is set up there. A program that was already running when you turn the feature on may report only after you restart it.
 
@@ -285,6 +285,10 @@ Obsidian's [community Scorecard][community plugin scorecard] flags the plugin fo
 ### Reporting a vulnerability
 
 Please report a vulnerability by opening a [private vulnerability report][new security advisory]. We will get back to you as soon as possible.
+
+## Credits
+
+The idle mark on terminal tabs is the moon of Phosphor Icons (MIT License, Copyright (c) 2023 Phosphor Icons).
 
 [Buy Me a Coffee]: https://buymeacoffee.com/polyipseity
 [Buy Me a Coffee/embed]: https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=polyipseity&button_colour=40DCA5&font_colour=ffffff&font_family=Lato&outline_colour=000000&coffee_colour=FFDD00
