@@ -98,22 +98,6 @@ jobs:
           cache-dependency-glob: "uv.lock"
           python-version: ${{ matrix.python }}
 
-      # A cache hit below skips the vendor's own `bun install`, which used to
-      # fill Bun's download cache for the root install. Keep that cache instead.
-      - name: Locate the Bun download cache
-        id: bun-cache
-        shell: bash
-        run: |
-          dir=$(bun pm cache)
-          echo "dir=$dir" >> "$GITHUB_OUTPUT"
-
-      - name: Restore the Bun download cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: ${{ steps.bun-cache.outputs.dir }}
-          key: bun-cache-${{ runner.os }}-${{ hashFiles('bun.lock', 'vendor/obsidian-plugin-library/bun.lock') }}
-          restore-keys: bun-cache-${{ runner.os }}-
-
       # The vendored library's `dist` depends only on the submodule commit, so
       # reuse it across runs and skip the library's own install and build.
       # (Not in the Linux job: ESLint lints vendor/ with the vendor's own
