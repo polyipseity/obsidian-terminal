@@ -4200,6 +4200,11 @@ describe("DragAndDropAddon", () => {
     ["F3", "\u001bOR"],
     ["a key as the kitty protocol writes it", "\u001b[97;5u"],
     ["a key as the Windows console writes it", "\u001b[65;30;97;1;0;1_"],
+    // In one write, the letter that comes with Shift is still typed.
+    [
+      "Shift and a letter as the Windows console writes them",
+      "\u001b[16;42;0;1;16;1_\u001b[65;30;65;1;16;1_",
+    ],
   ])(
     "pastes nothing of a drop when %s reaches the terminal while it waits, and says so",
     async (_name, data) => {
@@ -4258,6 +4263,31 @@ describe("DragAndDropAddon", () => {
     ],
   ])(
     "still pastes a drop when %s is released while it waits, as the Windows console writes it",
+    async (_name, data) => {
+      const stat = pendingStat();
+      dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+      const bed = createBed();
+
+      await drop(bed, uriDrag());
+      bed.input(data);
+      stat.answer();
+      await tick();
+
+      expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+      expect(notices()).toEqual([]);
+    },
+  );
+
+  // Pressing a modifier by itself types nothing either. Outside that input
+  // mode, xterm.js sends nothing for it at all.
+  it.each<readonly [string, string]>([
+    ["Shift", "\u001b[16;42;0;1;16;1_"],
+    ["Control", "\u001b[17;29;0;1;8;1_"],
+    ["Alt", "\u001b[18;56;0;1;2;1_"],
+    ["Shift while Control is held", "\u001b[16;42;0;1;24;1_"],
+    ["the Windows key", "\u001b[91;0;0;1;256;1_"],
+  ])(
+    "still pastes a drop when %s is pressed by itself while it waits, as the Windows console writes it",
     async (_name, data) => {
       const stat = pendingStat();
       dragAndDropEnvironment.stat.mockReturnValue(stat.promise);

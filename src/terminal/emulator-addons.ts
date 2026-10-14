@@ -274,9 +274,12 @@ export class DragAndDropAddon implements ITerminalAddon {
   static readonly #REPORT_STRING = /^[\]P]/u;
 
   // What follows it in a record of the input mode of the Windows console,
-  // which ConPTY asks for, when the record is of a key that comes up: its
-  // fourth field (key down) is 0.
-  static readonly #WIN32_KEY_UP = /^\[\d+;\d+;\d+;0;\d+;\d+_$/u;
+  // which ConPTY asks for, when the record is of a key that types nothing:
+  // one that comes up, whose fourth field (key down) is 0, or Shift,
+  // Control, Alt or a Windows key going down, whose first field (virtual
+  // key) is 16, 17, 18, 91 or 92 and whose third (character) is 0.
+  static readonly #WIN32_UNTYPED_KEY =
+    /^\[(?:\d+;\d+;\d+;0|(?:16|17|18|91|92);\d+;0;1);\d+;\d+_$/u;
 
   readonly #disposer = new Functions({ async: false, settled: true });
   // Set by `dispose()`: nothing would remove listeners added after it.
@@ -403,19 +406,22 @@ export class DragAndDropAddon implements ITerminalAddon {
   }
 
   /**
-   * Tells whether data the terminal sends to its program is a key that comes
-   * up, in the input mode of the Windows console: one record, or two for a
-   * character beyond 16 bits. Releasing a key types nothing, as releasing
-   * Shift or Control after a drag does. `CustomKeyEventHandlerAddon` writes
-   * these records itself, so xterm.js tells no key for them, nor for the
-   * records of a key that goes down.
+   * Tells whether data the terminal sends to its program is a key that types
+   * nothing, in the input mode of the Windows console: one record, or two for
+   * a character beyond 16 bits. Releasing a key types nothing, as releasing
+   * Shift or Control after a drag does, and neither does pressing a modifier
+   * by itself, for which xterm.js sends nothing outside that mode.
+   * `CustomKeyEventHandlerAddon` writes these records itself, so xterm.js
+   * tells no key for them, nor for the records of a key that types.
    */
-  static #isWin32KeyUp(data: string): boolean {
+  static #isUntypedWin32Key(data: string): boolean {
     const [before, ...records] = data.split(DragAndDropAddon.#ESCAPE);
     return (
       before === "" &&
       records.length > 0 &&
-      records.every((record) => DragAndDropAddon.#WIN32_KEY_UP.test(record))
+      records.every((record) =>
+        DragAndDropAddon.#WIN32_UNTYPED_KEY.test(record),
+      )
     );
   }
 
@@ -442,7 +448,7 @@ export class DragAndDropAddon implements ITerminalAddon {
         if (
           !this.#pasting &&
           !DragAndDropAddon.#isReport(data) &&
-          !DragAndDropAddon.#isWin32KeyUp(data)
+          !DragAndDropAddon.#isUntypedWin32Key(data)
         ) {
           ++this.#input;
         }
