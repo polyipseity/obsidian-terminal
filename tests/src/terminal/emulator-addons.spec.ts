@@ -4701,6 +4701,80 @@ describe("DragAndDropAddon", () => {
         expect(notices()).toEqual([SKIPPED_PATHS]);
       });
 
+      // The drops that were held are pasted one after the other when the
+      // program is there, into the one line that the terminal driver has:
+      // they have its room between them, not each for itself.
+      describe("with several drops held", () => {
+        /** The text that is pasted for some of the long paths. */
+        function text(from: number, to: number): string {
+          return paths
+            .slice(from, to)
+            .map((path) => `${path} `)
+            .join("");
+        }
+
+        /** Drops some of the long paths, each of 250 bytes as it is pasted. */
+        function dropPaths(bed: Bed, from: number, to: number): void {
+          bed.dragManager.draggable = {
+            files: names.slice(from, to).map(vaultFile),
+            type: "files",
+          };
+          bed.fire("drop", vaultDrag());
+        }
+
+        it("pastes no more than one line of all of them, each path whole, and says what a drop leaves out", async () => {
+          const { bed, start } = lateProgram("darwin", "/bin/zsh");
+
+          // 500 bytes each: one fits the 768 bytes of a line, two do not.
+          dropPaths(bed, 0, 2);
+          dropPaths(bed, 2, 4);
+          await start();
+
+          const pasted = bed.paste.mock.calls.map(([paste]) => paste);
+          expect(pasted).toEqual([text(0, 2), text(2, 3)]);
+          expect(bytes(pasted.join(""))).toBeLessThanOrEqual(1024 - 256);
+          expect(notices()).toEqual([SKIPPED_PATHS]);
+        });
+
+        it("pastes nothing of a drop for which the line has no room left, and says so", async () => {
+          const { bed, start } = lateProgram("darwin", "/bin/zsh");
+
+          dropPaths(bed, 0, 3);
+          dropPaths(bed, 3, 4);
+          await start();
+
+          const pasted = bed.paste.mock.calls.map(([paste]) => paste);
+          expect(pasted).toEqual([text(0, 3)]);
+          expect(bytes(pasted.join(""))).toBeLessThanOrEqual(1024 - 256);
+          expect(notices()).toEqual([SKIPPED_PATHS]);
+        });
+
+        // The line is that of the driver, whoever reads it.
+        it("counts what it pasted for the line on Linux as well", async () => {
+          const { bed, start } = lateProgram("linux", "/bin/bash");
+
+          // 3750 of the 3840 bytes of a line, and 500 more.
+          dropPaths(bed, 0, 15);
+          dropPaths(bed, 15, 17);
+          await start();
+
+          expect(bed.paste.mock.calls).toEqual([[text(0, 15)]]);
+          expect(notices()).toEqual([SKIPPED_PATHS]);
+        });
+
+        it("gives a drop that finds the program there no part of that line", async () => {
+          const { bed, start } = lateProgram("darwin", "/bin/zsh");
+
+          dropPaths(bed, 0, 3);
+          await start();
+          dropPaths(bed, 3, 17);
+          await vi.advanceTimersByTimeAsync(0);
+
+          expect(bed.paste.mock.calls).toEqual([[text(0, 3)], [text(3, 17)]]);
+          expect(notices()).toEqual([]);
+        });
+      });
+
       it("pastes every path of the next drop, which finds the program there", async () => {
         const { bed, start } = lateProgram("darwin", "/bin/zsh"),
           { draggable } = bed.dragManager;

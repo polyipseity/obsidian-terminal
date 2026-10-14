@@ -195,6 +195,10 @@ export class DragAndDropAddon implements ITerminalAddon {
   #attached: boolean | null = null;
   // Settles when every drop so far is done with the terminal.
   #drops: Promise<void> = Promise.resolve();
+  // The bytes pasted so far of the drops that were held for the program.
+  // They are pasted in a row once the program is there, into the one line
+  // the terminal driver has: its room is for all of them together.
+  #heldBytes = 0;
   // Counts the input the terminal has sent to its program. A drop that had
   // to wait is not pasted once the count has moved on: the command line is
   // no longer the one the paths were dropped on.
@@ -582,6 +586,9 @@ export class DragAndDropAddon implements ITerminalAddon {
         dropped.paths,
         ...this.#writing(platform, held),
       );
+    if (held) {
+      this.#heldBytes += new TextEncoder().encode(texts.join("")).length;
+    }
     // One paste for all the paths, but one per path on Windows. One paste is
     // how Claude Code reads several escaped paths, and a shell reads it in
     // one go. Quoted, as most shells on Windows need them, Claude Code reads
@@ -676,10 +683,20 @@ export class DragAndDropAddon implements ITerminalAddon {
       {
         distribution: wslDistribution(args),
         maxBytes: held
-          ? ttyLineByteLimit(platform)
+          ? this.#heldBytesLeft(platform)
           : lineByteLimit(executable, platform),
       },
     ];
+  }
+
+  /**
+   * Tells how many bytes a drop that was held for the program may paste:
+   * what the drops held before it have left of a line of the terminal
+   * driver (see `ttyLineByteLimit`). `null` for no limit.
+   */
+  #heldBytesLeft(platform: Platform.All): number | null {
+    const line = ttyLineByteLimit(platform);
+    return line === null ? null : Math.max(line - this.#heldBytes, 0);
   }
 
   #notice(key: "notices.drop-no-paths" | "notices.drop-skipped-paths"): void {
