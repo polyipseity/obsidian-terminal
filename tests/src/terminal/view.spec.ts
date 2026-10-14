@@ -6,7 +6,9 @@
  * - `getDisplayText`
  * - `spawn` reveal and focus rules
  * - `getLeaf` session-usage anchoring
+ * - `fileLinkLeaf`: the leaf a clicked vault file link opens in
  * - Copy and edit pane-menu entries
+ * - `focus` reveal ordering and failure handling
  */
 import { ChildProcess, spawn } from "node:child_process";
 import { once } from "node:events";
@@ -38,7 +40,7 @@ import {
   fittedSize,
   settleTerminalBackendOptions,
 } from "../../../src/terminal/view.js";
-import { pseudoterminal, tick } from "../../support/helpers.js";
+import { microtasks, pseudoterminal, tick } from "../../support/helpers.js";
 
 const platform = vi.hoisted(() => ({ windows: false }));
 vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => {
@@ -271,6 +273,30 @@ describe("src/terminal/view.ts", () => {
         );
       } finally {
         terminal.dispose();
+        view.stopEmulator();
+        exit.resolve(0);
+      }
+    });
+
+    it("opens vault file links outside the terminal's own leaf", async () => {
+      const exit = Promise.withResolvers<number>(),
+        view = await startView(
+          Promise.resolve({ ...pseudoterminal(), onExit: exit.promise }),
+        ),
+        addons = vi.mocked(TerminalView.EMULATOR).mock.calls[0]?.[4];
+      try {
+        if (!addons) throw new Error("Missing emulator factory or addons");
+        view.app = new App();
+        // Clicking a link in the terminal makes it the active leaf.
+        view.app.workspace.setActiveLeaf(view.leaf);
+        expect(addons.vaultFileLinks["fileLeaf"]()).not.toBe(view.leaf);
+        // The addon asks the view's picker, which answers a remembered note.
+        const note = new WorkspaceLeaf();
+        vi.spyOn(view.app.workspace, "getLeavesOfType").mockReturnValue([note]);
+        TerminalView["lastActiveNoteLeaf"] = new WeakRef(note);
+        expect(addons.vaultFileLinks["fileLeaf"]()).toBe(note);
+      } finally {
+        TerminalView["lastActiveNoteLeaf"] = null;
         view.stopEmulator();
         exit.resolve(0);
       }
@@ -1016,6 +1042,160 @@ describe("src/terminal/view.ts", () => {
   });
 });
 
+describe("TerminalView focus", () => {
+  // Only the emulator surface that `focus` and the emulator setter touch.
+  function makeEmulator(focus = vi.fn()) {
+    const emulator = {
+      close: vi.fn().mockResolvedValue(undefined),
+      terminal: { focus },
+    };
+    return { emulator: emulator as unknown as TerminalView.EMULATOR, focus };
+  }
+
+  function makeBed() {
+    const { context, workspace, reveal } = makeTerminalContext();
+    const { leaf, view } = makeTerminalLeaf(context);
+    const { emulator, focus } = makeEmulator();
+    view["emulator"] = emulator;
+    return { workspace, reveal, leaf, view, focusTerminal: focus };
+  }
+
+  it("asks for the reveal and focuses the terminal without waiting for it", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { reveal, leaf, view, focusTerminal } = makeBed();
+    const revealed = deferred();
+    reveal.mockReturnValue(revealed.promise);
+
+    view["focus"]();
+    // The reveal is still pending and the terminal already has focus.
+    expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
+    expect(focusTerminal).toHaveBeenCalledOnce();
+    expect(reveal).toHaveBeenCalledBefore(focusTerminal);
+
+    revealed.resolve(undefined);
+    await tick();
+    expect(focusTerminal).toHaveBeenCalledOnce();
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it("supports a void-returning revealLeaf", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { workspace, leaf, view, focusTerminal } = makeBed();
+    // Obsidian before 1.7.2 returned void from revealLeaf.
+    const reveal = vi.fn<() => void>();
+    Object.assign(workspace, { revealLeaf: reveal });
+
+    expect(() => {
+      view["focus"]();
+    }).not.toThrow();
+
+    expect(focusTerminal).toHaveBeenCalledOnce();
+    expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
+    await tick();
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it("logs to console.error and still focuses the terminal when revealLeaf rejects", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { reveal, view, focusTerminal } = makeBed();
+    const failure = new Error("reveal failed");
+    reveal.mockRejectedValueOnce(failure);
+
+    view["focus"]();
+
+    expect(focusTerminal).toHaveBeenCalledOnce();
+    await tick();
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(failure);
+  });
+
+  it("logs to console.error and still focuses the terminal when revealLeaf throws", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { reveal, view, focusTerminal } = makeBed();
+    const failure = new Error("reveal failed");
+    reveal.mockImplementationOnce(() => {
+      throw failure;
+    });
+
+    expect(() => {
+      view["focus"]();
+    }).not.toThrow();
+
+    expect(focusTerminal).toHaveBeenCalledOnce();
+    await tick();
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(failure);
+  });
+
+  it("stays quiet when the view unloads before the reveal settles", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { reveal, view, focusTerminal } = makeBed();
+    // `onOpen` registers the cleanup that drops the emulator on unload.
+    await view["onOpen"]();
+    const revealed = deferred();
+    reveal.mockReturnValue(revealed.promise);
+
+    view["focus"]();
+    view.unload();
+    expect(view["emulator"]).toBeNull();
+    revealed.resolve(undefined);
+    await tick();
+
+    expect(focusTerminal).toHaveBeenCalledOnce();
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  describe("through the commands", () => {
+    afterEach(() => {
+      document.body.replaceChildren();
+    });
+
+    it.each(["focus-on-last-terminal", "toggle-focus-on-last-terminal"])(
+      "has the terminal focused when %s returns",
+      async (id) => {
+        const { context, reveal } = makeTerminalContext();
+        const addCommand = vi.fn<TerminalPlugin["addCommand"]>(
+          (command) => command,
+        );
+        Object.assign(context, {
+          addCommand,
+          register: vi.fn(),
+          registerEvent: vi.fn(),
+          registerView: vi.fn(),
+        });
+        vi.spyOn(library, "newHotkeyListener").mockReturnValue(vi.fn());
+        vi.spyOn(TerminalView["focusedScope"], "register").mockImplementation(
+          vi.fn(),
+        );
+        TerminalView.load(context);
+        const { leaf, view } = makeTerminalLeaf(context);
+        // `onOpen` makes the view the last focused terminal.
+        await view["onOpen"]();
+        // A note holds the keyboard; the terminal's textarea can take it.
+        const note = document.createElement("textarea");
+        const textarea = document.createElement("textarea");
+        view.contentEl.append(textarea);
+        document.body.append(note, view.contentEl);
+        note.focus();
+        view["emulator"] = makeEmulator(
+          vi.fn(() => {
+            textarea.focus();
+          }),
+        ).emulator;
+        // The reveal is still pending when the command returns.
+        reveal.mockReturnValue(deferred().promise);
+        const command = addCommand.mock.calls
+          .map(([registered]) => registered)
+          .find((registered) => registered.id === id);
+
+        expect(command?.checkCallback?.(true)).toBe(true);
+        command?.checkCallback?.(false);
+
+        expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
+        expect(view["isFocused"]).toBe(true);
+      },
+    );
+  });
+});
+
 describe("TerminalView.spawn", () => {
   describe.each([true, false])("with focus=%s", (focus) => {
     it.each(Settings.NEW_INSTANCE_BEHAVIORS)(
@@ -1358,6 +1538,101 @@ describe("TerminalView.spawn", () => {
   });
 });
 
+describe("TerminalView reveal flash", () => {
+  const FLASH = "is-flashing";
+
+  // Obsidian keeps the leaf's tab header in `tabHeaderEl` and flashes it on reveal.
+  function makeTabbedLeaf(context: TerminalPlugin) {
+    const made = makeTerminalLeaf(context);
+    const header = document.createElement("div");
+    Object.assign(made.leaf, { tabHeaderEl: header });
+    return { ...made, header };
+  }
+
+  // Replaces `revealLeaf` with one that flashes the tab as Obsidian does.
+  // The returned promise resolves once it has been called.
+  function flashOnReveal(
+    workspace: App["workspace"],
+    header: HTMLElement,
+    returnsPromise: boolean,
+  ): Promise<undefined> {
+    const called = deferred();
+    const reveal = vi.fn<() => Promise<void> | undefined>(() => {
+      header.classList.add(FLASH);
+      called.resolve(undefined);
+      return returnsPromise ? Promise.resolve() : undefined;
+    });
+    Object.assign(workspace, { revealLeaf: reveal });
+    return called.promise;
+  }
+
+  it("removes the flash from the tab of a terminal it opens", async () => {
+    const { context, workspace, reveal } = makeTerminalContext();
+    const { leaf, header } = makeTabbedLeaf(context);
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([leaf]);
+    reveal.mockImplementation(() => {
+      header.classList.add(FLASH);
+      return Promise.resolve();
+    });
+
+    await TerminalView.spawn(context, TerminalView.State.DEFAULT, leaf);
+
+    expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
+    expect(header.classList.contains(FLASH)).toBe(false);
+  });
+
+  it("removes the flash from the tab of a terminal it focuses", () => {
+    const { context, reveal } = makeTerminalContext();
+    const { leaf, view, header } = makeTabbedLeaf(context);
+    // The reveal stays pending, as for a view that is still loading.
+    reveal.mockImplementation(() => {
+      header.classList.add(FLASH);
+      return deferred().promise;
+    });
+
+    view["focus"]();
+
+    expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
+    expect(header.classList.contains(FLASH)).toBe(false);
+  });
+
+  describe.each([
+    { returns: "a resolved promise", returnsPromise: true },
+    // Obsidian before 1.7.2 returned void from revealLeaf.
+    { returns: "nothing", returnsPromise: false },
+  ])("when revealLeaf returns $returns", ({ returnsPromise }) => {
+    it("removes the flash of a terminal it opens before another task runs", async () => {
+      const { context, workspace } = makeTerminalContext();
+      const { leaf, header } = makeTabbedLeaf(context);
+      vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([leaf]);
+      const revealed = flashOnReveal(workspace, header, returnsPromise);
+
+      const opened = TerminalView.spawn(
+        context,
+        TerminalView.State.DEFAULT,
+        leaf,
+      );
+      await revealed;
+      await microtasks();
+
+      expect(header.classList.contains(FLASH)).toBe(false);
+      await opened;
+    });
+
+    it("removes the flash of a terminal it focuses before another task runs", async () => {
+      const { context, workspace } = makeTerminalContext();
+      const { view, header } = makeTabbedLeaf(context);
+      const revealed = flashOnReveal(workspace, header, returnsPromise);
+
+      view["focus"]();
+      await revealed;
+      await microtasks();
+
+      expect(header.classList.contains(FLASH)).toBe(false);
+    });
+  });
+});
+
 describe("TerminalView.getLeaf session usage", () => {
   it("chooses the last successfully opened terminal instead of traversal order", async () => {
     vi.spyOn(Date, "now").mockReturnValue(1000);
@@ -1689,5 +1964,360 @@ describe("TerminalView pane menu", () => {
       leaf,
       view.getViewType(),
     );
+  });
+});
+
+describe("TerminalView file link leaf", () => {
+  function makeBed() {
+    const { context, workspace, next, allocate } = makeTerminalContext();
+    const terminal = makeTerminalLeaf(context);
+    const note = new WorkspaceLeaf();
+    const notes: WorkspaceLeaf[] = [];
+    const empties: WorkspaceLeaf[] = [];
+    const leaves = new Map([
+      ["markdown", notes],
+      ["empty", empties],
+      [TerminalView.type.namespaced(context), [terminal.leaf]],
+    ]);
+    // Real Obsidian lists leaves by the type of the view they host now.
+    vi.spyOn(workspace, "getLeavesOfType").mockImplementation(
+      (type) => leaves.get(type) ?? [],
+    );
+    const lastActive = (leaf: WorkspaceLeaf): void => {
+      TerminalView["lastActiveOtherLeaf"] = new WeakRef(leaf);
+    };
+    const lastActiveNote = (leaf: WorkspaceLeaf): void => {
+      TerminalView["lastActiveNoteLeaf"] = new WeakRef(leaf);
+    };
+    // A leaf's parent is its tab group. Obsidian hides the tabs that are not
+    // in front, and a hidden element has no offset parent.
+    const place = (leaf: WorkspaceLeaf, tabs: object, shown = true): void => {
+      Object.assign(leaf, { parent: tabs });
+      Object.assign(leaf.view, {
+        containerEl: { offsetParent: shown ? document.body : null },
+      });
+    };
+    // A pop-out window is another container; only its identity matters.
+    const moveToWindow = (leaf: WorkspaceLeaf, container: object): void => {
+      Object.assign(leaf, { getContainer: () => container });
+    };
+    const viewType = (leaf: WorkspaceLeaf, type: string): void => {
+      Object.assign(leaf.view, {
+        getViewType: vi.fn().mockReturnValue(type),
+        leaf,
+      });
+    };
+    const pin = (leaf: WorkspaceLeaf): void => {
+      vi.spyOn(leaf, "getViewState").mockReturnValue({
+        pinned: true,
+        state: {},
+        type: "markdown",
+      });
+    };
+    // Registers the workspace handlers of the plugin, as its start does.
+    const load = (): void => {
+      Object.assign(context, {
+        addCommand: vi.fn<TerminalPlugin["addCommand"]>((command) => command),
+        register: vi.fn(),
+        registerEvent: vi.fn(),
+        registerView: vi.fn(),
+      });
+      vi.spyOn(library, "newHotkeyListener").mockReturnValue(vi.fn());
+      vi.spyOn(TerminalView["focusedScope"], "register").mockImplementation(
+        vi.fn(),
+      );
+      TerminalView.load(context);
+    };
+    return {
+      context,
+      workspace,
+      terminal,
+      note,
+      notes,
+      empties,
+      lastActive,
+      lastActiveNote,
+      place,
+      moveToWindow,
+      viewType,
+      pin,
+      load,
+      next,
+      allocate,
+    };
+  }
+
+  afterEach(() => {
+    TerminalView["lastActiveOtherLeaf"] = null;
+    TerminalView["lastActiveNoteLeaf"] = null;
+  });
+
+  it("reuses the last active note", () => {
+    const { terminal, note, notes, lastActive, allocate } = makeBed();
+    notes.push(note);
+    lastActive(note);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(note);
+    expect(allocate).not.toHaveBeenCalled();
+  });
+
+  it("reuses the last active note when a non-note leaf was active after it", () => {
+    const { terminal, note, notes, lastActive, lastActiveNote, allocate } =
+      makeBed();
+    notes.push(note);
+    lastActiveNote(note);
+    lastActive(new WorkspaceLeaf());
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(note);
+    expect(allocate).not.toHaveBeenCalled();
+  });
+
+  it("prefers the last other leaf when it now hosts a note", () => {
+    const { terminal, note, notes, lastActive, lastActiveNote, allocate } =
+      makeBed();
+    const other = new WorkspaceLeaf();
+    lastActiveNote(note);
+    lastActive(other);
+    notes.push(note, other);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(other);
+    expect(allocate).not.toHaveBeenCalled();
+  });
+
+  it("opens a new tab when the remembered note is pinned", () => {
+    const {
+      terminal,
+      note,
+      notes,
+      lastActive,
+      lastActiveNote,
+      pin,
+      next,
+      allocate,
+    } = makeBed();
+    notes.push(note);
+    lastActiveNote(note);
+    lastActive(new WorkspaceLeaf());
+    pin(note);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+    expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
+  });
+
+  it("opens a new tab when the remembered note was closed", () => {
+    const { terminal, note, lastActive, lastActiveNote, next, allocate } =
+      makeBed();
+    lastActiveNote(note);
+    lastActive(new WorkspaceLeaf());
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+    expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
+  });
+
+  it("remembers only non-terminal markdown leaves as the last active note", () => {
+    const { workspace, terminal, note, viewType, load } = makeBed();
+    viewType(note, "markdown");
+    const other = new WorkspaceLeaf();
+    viewType(other, "file-explorer");
+    load();
+
+    workspace.trigger("active-leaf-change", note);
+    expect(TerminalView["lastActiveOtherLeaf"]?.deref()).toBe(note);
+    expect(TerminalView["lastActiveNoteLeaf"]?.deref()).toBe(note);
+
+    workspace.trigger("active-leaf-change", other);
+    expect(TerminalView["lastActiveOtherLeaf"]?.deref()).toBe(other);
+    expect(TerminalView["lastActiveNoteLeaf"]?.deref()).toBe(note);
+
+    workspace.trigger("active-leaf-change", terminal.leaf);
+    expect(TerminalView["lastActiveOtherLeaf"]?.deref()).toBe(other);
+    expect(TerminalView["lastActiveNoteLeaf"]?.deref()).toBe(note);
+  });
+
+  it("opens a clicked file in the note used before a sidebar pane and the terminal", () => {
+    const { workspace, terminal, note, notes, viewType, load, allocate } =
+      makeBed();
+    viewType(note, "markdown");
+    notes.push(note);
+    const explorer = new WorkspaceLeaf();
+    viewType(explorer, "file-explorer");
+    load();
+
+    workspace.trigger("active-leaf-change", note);
+    workspace.trigger("active-leaf-change", explorer);
+    workspace.trigger("active-leaf-change", terminal.leaf);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(note);
+    expect(allocate).not.toHaveBeenCalled();
+  });
+
+  it("opens a clicked file in the note that was active when the plugin loaded", () => {
+    // Enabling or updating the plugin in a running app fires no event for it.
+    const { workspace, terminal, note, notes, viewType, load, allocate } =
+      makeBed();
+    viewType(note, "markdown");
+    notes.push(note);
+    vi.spyOn(workspace, "getActiveViewOfType").mockReturnValue(note.view);
+    load();
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(note);
+    expect(allocate).not.toHaveBeenCalled();
+  });
+
+  it("reuses a note shown in another tab group when none is remembered", () => {
+    // As after a restart with the terminal focused: no other leaf was active.
+    const { terminal, note, notes, place, allocate } = makeBed();
+    place(terminal.leaf, {});
+    place(note, {});
+    notes.push(note);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(note);
+    expect(allocate).not.toHaveBeenCalled();
+  });
+
+  it("reuses an empty tab shown in another tab group when no note is", () => {
+    const { terminal, note, notes, empties, place, allocate } = makeBed();
+    const empty = new WorkspaceLeaf();
+    place(terminal.leaf, {});
+    place(note, {}, false);
+    place(empty, {});
+    notes.push(note);
+    empties.push(empty);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(empty);
+    expect(allocate).not.toHaveBeenCalled();
+  });
+
+  it("prefers a shown note to a shown empty tab", () => {
+    const { terminal, note, notes, empties, place } = makeBed();
+    const empty = new WorkspaceLeaf();
+    place(terminal.leaf, {});
+    place(empty, {});
+    place(note, {});
+    empties.push(empty);
+    notes.push(note);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(note);
+  });
+
+  it("opens a new tab when the only other note is behind another tab", () => {
+    const { terminal, note, notes, place, next, allocate } = makeBed();
+    place(terminal.leaf, {});
+    place(note, {}, false);
+    notes.push(note);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+    expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
+  });
+
+  it("opens a new tab when the only other note shares the terminal's tab group", () => {
+    // Stacked tabs show every leaf of the group at once.
+    const { terminal, note, notes, place, next, allocate } = makeBed();
+    const tabs = {};
+    place(terminal.leaf, tabs);
+    place(note, tabs);
+    notes.push(note);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+    expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
+  });
+
+  it("opens a new tab when the only shown note is pinned", () => {
+    const { terminal, note, notes, place, pin, next, allocate } = makeBed();
+    place(terminal.leaf, {});
+    place(note, {});
+    notes.push(note);
+    pin(note);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+    expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
+  });
+
+  it.each(["left", "right"] as const)(
+    "opens a new tab when the only shown note is in the %s sidebar",
+    (side) => {
+      // A note kept in a sidebar is reused only after it was the active leaf.
+      const { workspace, terminal, note, notes, place, next, allocate } =
+        makeBed();
+      place(terminal.leaf, {});
+      place(note, {});
+      notes.push(note);
+      vi.spyOn(note, "getRoot").mockReturnValue(workspace[`${side}Split`]);
+
+      expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+      expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
+    },
+  );
+
+  it("opens a new tab when the remembered note is in another window", () => {
+    // Revealing a leaf raises its window, here over the terminal's own.
+    const { terminal, note, notes, lastActive, moveToWindow, next, allocate } =
+      makeBed();
+    notes.push(note);
+    lastActive(note);
+    moveToWindow(terminal.leaf, {});
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+    expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
+  });
+
+  it("reuses the remembered note of the pop-out window the terminal is in", () => {
+    const { terminal, note, notes, lastActive, moveToWindow, allocate } =
+      makeBed();
+    const popout = {};
+    notes.push(note);
+    lastActive(note);
+    moveToWindow(terminal.leaf, popout);
+    moveToWindow(note, popout);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(note);
+    expect(allocate).not.toHaveBeenCalled();
+  });
+
+  it("opens a new tab when the only shown note is in another window", () => {
+    const { terminal, note, notes, place, moveToWindow, next, allocate } =
+      makeBed();
+    place(terminal.leaf, {});
+    place(note, {});
+    notes.push(note);
+    moveToWindow(note, {});
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+    expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
+  });
+
+  it("opens a new tab when no other leaf was active", () => {
+    const { terminal, next, allocate } = makeBed();
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+    expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
+  });
+
+  it("opens a new tab when the last other leaf now hosts this terminal", () => {
+    // "Replace tab" turns the previously active empty leaf into the terminal.
+    const { terminal, lastActive, next, allocate } = makeBed();
+    lastActive(terminal.leaf);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+    expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
+  });
+
+  it("opens a new tab when the last active note was closed", () => {
+    const { terminal, note, lastActive, next, allocate } = makeBed();
+    lastActive(note);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+    expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
+  });
+
+  it("opens a new tab instead of replacing a pinned note", () => {
+    const { terminal, note, notes, lastActive, pin, next, allocate } =
+      makeBed();
+    notes.push(note);
+    pin(note);
+    lastActive(note);
+
+    expect(terminal.view["fileLinkLeaf"]()).toBe(next);
+    expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
   });
 });

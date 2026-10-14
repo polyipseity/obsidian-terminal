@@ -17,6 +17,17 @@ export function tick(): Promise<void> {
   return new Promise((r) => setImmediate(r));
 }
 
+/**
+ * Lets the queued microtasks run and nothing else: no timer, animation frame
+ * or other task runs before the caller continues, so a browser would paint no
+ * frame in between. The number of turns is slack, not a count to rely on.
+ */
+export async function microtasks(): Promise<void> {
+  for (let turn = 0; turn < 16; turn++) {
+    await Promise.resolve();
+  }
+}
+
 /** A stub `Pseudoterminal`, plus whatever names its backend. */
 export function pseudoterminal(
   backend: Pick<Pseudoterminal, "win32Backend"> = {},
