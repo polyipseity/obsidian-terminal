@@ -738,7 +738,7 @@ function unitsFrom(side: "left" | "top", value: string | undefined): number {
   );
 }
 
-/** What each status shows, as it was chosen in the catalogue. */
+/** What each status shows. */
 interface Shows {
   readonly mark: Mark;
   readonly symbol: MarkSymbol | null;
@@ -986,7 +986,7 @@ describe("composeTabIcon", () => {
   });
 });
 
-describe("the marks, to the catalogue's numbers", () => {
+describe("the marks, to their chosen numbers", () => {
   // The marks are the same in every set (above), so one icon stands for all.
   const icon: Chain = [drawn(Settings.DEFAULT.tabIconSet)],
     mark = (name: Mark): Part =>
@@ -1212,9 +1212,9 @@ describe("the marks, to the catalogue's numbers", () => {
     expect(hair.round - white.round).toBeCloseTo(0.3, 6);
   });
 
-  it("draws the dots, their distance and their bar 1.3 times as large as the catalogue chose them", () => {
-    // The catalogue's: a dot 1.16 in radius, 3.13 from one to the next, and
-    // a bar that reaches 0.8 past them, so 10.18 by 3.92.
+  it("draws the dots, their distance and their bar 1.3 times as large as they were chosen", () => {
+    // As chosen: a dot 1.16 in radius, 3.13 from one to the next, and a bar
+    // that reaches 0.8 past them, so 10.18 by 3.92.
     const { dots } = TAB_ICON_MARKS,
       [edge, ring] = mark("dots").children;
     if (!edge || !ring) {

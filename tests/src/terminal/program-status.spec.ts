@@ -258,8 +258,8 @@ describe("reports that change nothing", () => {
 
   it("rejects a 10,000,000 character payload without reading it", () => {
     const hostile = `state=working:msg=${"A".repeat(10_000_000)}`;
-    // The spike bounded this by wall time (5 ms). Counting the scans is the
-    // same claim without a clock: the length comparison must answer alone.
+    // Counting the scans makes the claim without a clock: the length
+    // comparison must answer alone.
     const encode = vi.spyOn(TextEncoder.prototype, "encode");
     expect(reason(hostile)).toBe("sequence-too-long");
     expect(encode).not.toHaveBeenCalled();

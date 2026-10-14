@@ -165,7 +165,7 @@ function child<K extends keyof HTMLElementTagNameMap>(
   ...classes: readonly string[]
 ): HTMLElementTagNameMap[K] {
   // eslint-disable-next-line eslint-comments/no-restricted-disable -- Need to suppress prefer-create-el (see below)
-  // eslint-disable-next-line obsidianmd/prefer-create-el -- Plain DOM module: Obsidian's window helpers exist neither in the tests nor on the preview page
+  // eslint-disable-next-line obsidianmd/prefer-create-el -- Plain DOM module: Obsidian's window helpers exist neither in the tests nor outside Obsidian
   const element = parent.ownerDocument.createElement(tag);
   element.classList.add(...classes);
   parent.append(element);

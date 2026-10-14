@@ -41,8 +41,8 @@ export const TAB_ICON_CLASSES: readonly string[] = Object.freeze([
 
 /**
  * Where the marks stand and how large they are, in units of the 24-unit
- * drawing. The numbers of the dot and the badge are the ones chosen in the
- * design catalogue.
+ * drawing. The numbers of the dot and the badge are the ones that were
+ * chosen for the design.
  *
  * - `dot`: the small dot off the corner. Full for done and needs input; a
  *   ring with a core (the "eye") for an error.
@@ -55,8 +55,8 @@ export const TAB_ICON_CLASSES: readonly string[] = Object.freeze([
  *   stylesheet draws the lit ones over these with two boxes
  *   (`tab-status.css`, section 6), to the numbers below; a test keeps the
  *   two in step. The dots, their distance and the bar are 1.3 times the
- *   catalogue's (radius 1.16, pitch 3.13, margin 0.8); the hairline is the
- *   one every mark has.
+ *   chosen radius 1.16, pitch 3.13 and margin 0.8; the hairline is the one
+ *   every mark has.
  *
  * `ring` is the width of the white ring around a mark and `edge` that of
  * the dark hairline outside it.

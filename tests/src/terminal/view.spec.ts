@@ -9,6 +9,9 @@
  * - `fileLinkLeaf`: the leaf a clicked vault file link opens in
  * - Copy and edit pane-menu entries
  * - `focus` reveal ordering and failure handling
+ * - Program status on the tab while its experiment is on, and nothing of it
+ *   while off
+ * - `dressUnloadedTabs`: the icon and size of tabs whose view is not loaded
  */
 import { ChildProcess, spawn } from "node:child_process";
 import { once } from "node:events";
