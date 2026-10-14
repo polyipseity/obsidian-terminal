@@ -121,7 +121,11 @@ jobs:
       - name: Resolve the vendored library commit
         id: vendor
         shell: bash
-        run: echo "sha=$(git rev-parse HEAD:vendor/obsidian-plugin-library)" >> "$GITHUB_OUTPUT"
+        # On its own line, so a failed lookup stops the step (`bash -e`)
+        # instead of giving the cache key an empty commit.
+        run: |
+          sha=$(git rev-parse HEAD:vendor/obsidian-plugin-library)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
       - name: Restore the vendored library build
         id: vendor-dist
