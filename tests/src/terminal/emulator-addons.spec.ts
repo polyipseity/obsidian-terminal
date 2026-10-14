@@ -2023,6 +2023,19 @@ describe("DragAndDropAddon", () => {
       expect(attached).toHaveBeenCalled();
       expect(bed.paste).toHaveBeenCalledOnce();
     });
+
+    // Before the drop, so that the drop finds the answer there; and once, as
+    // a drag is over the terminal many times before it is dropped.
+    it("asks for the program at the first drag over the terminal, and at no later one", () => {
+      const program = pendingProgram(),
+        bed = createBed({ attached: program.attached });
+
+      for (const type of [...OVER_TYPES, ...OVER_TYPES]) {
+        bed.fire(type, nativeDrag());
+      }
+
+      expect(program.attached).toHaveBeenCalledOnce();
+    });
   });
 
   it.each(DRAG_TYPES)("leaves %s untouched after dispose", async (type) => {
@@ -4614,8 +4627,8 @@ describe("DragAndDropAddon", () => {
     describe("that came before the terminal had its program", () => {
       /**
        * Makes a terminal whose program starts when the test says, and a
-       * clock that tells a drop that had to wait for it from one that did
-       * not: a task of the main window runs in between.
+       * clock: the timers of the main window run before the program is
+       * there, as they do while a drop waits for it.
        */
       function lateProgram(platform: string, executable: string) {
         vi.useFakeTimers();
@@ -4651,6 +4664,25 @@ describe("DragAndDropAddon", () => {
         },
       );
 
+      // What counts is that the terminal had no program when the drop came,
+      // not how long the drop then waited for one: here the program is there
+      // in the task of the drop, before the window has run a timer.
+      it("bounds a drop whose program is there before a timer has run", async () => {
+        let started: () => void = noop;
+        const program = new Promise<void>((resolve) => {
+            started = resolve;
+          }),
+          bed = longDrop("darwin", "/bin/zsh", {
+            attached: async () => program,
+          });
+
+        bed.fire("drop", vaultDrag());
+        started();
+        await tick();
+
+        expectFirstPathsOfLine(bed, 1024);
+      });
+
       it("bounds a drop that waits behind another one from before the program as well", async () => {
         const { bed, start } = lateProgram("darwin", "/bin/zsh"),
           { draggable } = bed.dragManager;
@@ -4685,6 +4717,62 @@ describe("DragAndDropAddon", () => {
           [paths.map((path) => `${path} `).join("")],
         ]);
         expect(notices()).toEqual([]);
+      });
+
+      // A drag is over the terminal before it is dropped, and the terminal
+      // is asked for its program when the first one is: the answer of a
+      // terminal that has its program is there when the drop comes.
+      it("pastes every path of a drop whose drag found the program there", async () => {
+        const bed = longDrop("darwin", "/bin/zsh", {
+          attached: async () => Promise.resolve(),
+        });
+
+        bed.fire("dragenter", vaultDrag());
+        await tick();
+        await drop(bed, vaultDrag());
+
+        expect(bed.paste.mock.calls).toEqual([
+          [paths.map((path) => `${path} `).join("")],
+        ]);
+        expect(notices()).toEqual([]);
+      });
+
+      it("pastes every path of a drop whose program came while its drag was over the terminal", async () => {
+        const { bed, start } = lateProgram("darwin", "/bin/zsh");
+
+        bed.fire("dragover", vaultDrag());
+        await start();
+        bed.fire("drop", vaultDrag());
+        await vi.advanceTimersByTimeAsync(0);
+
+        expect(bed.paste.mock.calls).toEqual([
+          [paths.map((path) => `${path} `).join("")],
+        ]);
+        expect(notices()).toEqual([]);
+      });
+
+      it("bounds a drop whose drag was over a terminal that still has no program", async () => {
+        const { bed, start } = lateProgram("darwin", "/bin/zsh");
+
+        bed.fire("dragover", vaultDrag());
+        bed.fire("drop", vaultDrag());
+        await start();
+
+        expectFirstPathsOfLine(bed, 1024);
+      });
+
+      // Only an answer that has come tells that the terminal has its
+      // program. A drop that no drag over the terminal came before, which a
+      // pointer cannot make, has none, and is taken for one from before the
+      // program: it then errs on the side of fewer paths.
+      it("bounds a drop that no drag came before, whose terminal has not answered yet", async () => {
+        const bed = longDrop("darwin", "/bin/zsh", {
+          attached: async () => Promise.resolve(),
+        });
+
+        await drop(bed, vaultDrag());
+
+        expectFirstPathsOfLine(bed, 1024);
       });
 
       // Windows has no terminal driver that cuts a line.

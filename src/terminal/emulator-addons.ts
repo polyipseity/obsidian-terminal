@@ -189,6 +189,10 @@ export class DragAndDropAddon implements ITerminalAddon {
   // is for the terminal it came in on, and is discarded once the count has
   // moved on: that terminal is replaced or gone.
   #activation = 0;
+  // What the terminal has said of its program: `null` until it is asked,
+  // which the first drag over it does, then `false` until it answers that it
+  // has one. A drop reads this as it comes (see `#program`).
+  #attached: boolean | null = null;
   // Settles when every drop so far is done with the terminal.
   #drops: Promise<void> = Promise.resolve();
   // Counts the input the terminal has sent to its program. A drop that had
@@ -205,15 +209,15 @@ export class DragAndDropAddon implements ITerminalAddon {
    * written; `null` if unknown.
    * @param attached - gives a promise that is fulfilled once the terminal has
    * its program, which what is pasted then reaches, and rejected if it gets
-   * none. It is asked at a drop, never before. Left out, the terminal is
-   * taken to have its program from the start.
+   * none. It is asked when a drag first comes over the terminal and at each
+   * drop, never before. Left out, the terminal is taken to have its program
+   * from the start.
    */
   public constructor(
     protected readonly context: PluginContext,
     protected readonly element: HTMLElement,
     protected readonly profile: Settings.Profile | null = null,
-    protected readonly attached: () => PromiseLike<unknown> = async () =>
-      Promise.resolve(),
+    protected readonly attached: (() => PromiseLike<unknown>) | null = null,
   ) {}
 
   /**
@@ -375,6 +379,11 @@ export class DragAndDropAddon implements ITerminalAddon {
    * listeners.
    */
   #over(event: DragEvent): void {
+    if (this.#attached === null) {
+      // Asked ahead of the drop, which then finds the answer of a terminal
+      // that has its program (see `#program`).
+      void this.#program();
+    }
     if (event.defaultPrevented) {
       // Another handler has answered this drag.
       return;
@@ -515,29 +524,35 @@ export class DragAndDropAddon implements ITerminalAddon {
    * program has started, with the history it had, and what is pasted in
    * between reaches no program: the terminal keeps none of it.
    *
-   * @returns `there` if the terminal has its program as this is called, and
-   * `late` if it gets it later: a drop that was held for it is pasted the
-   * moment the program is there, before a shell has set up its line editor
-   * (see `ttyLineByteLimit`). `none` if it got none: the drop is then
-   * discarded without a word, as the view has said that the program did not
-   * start, or the terminal was closed.
+   * @returns `there` if the terminal has said that it has its program by the
+   * time this is called, and `late` if it says so later: a drop that was
+   * held for it is pasted the moment the program is there, before a shell
+   * has set up its line editor (see `ttyLineByteLimit`). `none` if it got
+   * none: the drop is then discarded without a word, as the view has said
+   * that the program did not start, or the terminal was closed.
    */
   async #program(): Promise<"late" | "none" | "there"> {
-    // A program that is there answers before any timer runs, so a timer that
-    // has run by the answer tells that there was none at the call. The timer
-    // is one of the main window, as the deadline of a lookup is.
-    const timer = { ran: false },
-      handle = self.setTimeout(() => {
-        timer.ran = true;
-      }, 0);
+    const { attached } = this;
+    if (attached === null) {
+      // Nothing to ask: the terminal has its program from the start.
+      this.#attached = true;
+      return "there";
+    }
+    // Read before the terminal is asked: what counts is whether it had its
+    // program when this was called, not how soon after it got one, and a
+    // promise does not tell whether it is settled. So only an answer that
+    // has come before tells that the program is there: to the drag that is
+    // now dropped, or to a drop before it. Without one the terminal is taken
+    // to have no program yet.
+    const there = this.#attached ?? false;
+    this.#attached = there;
     try {
-      await this.attached();
+      await attached();
     } catch {
       return "none";
-    } finally {
-      self.clearTimeout(handle);
     }
-    return timer.ran ? "late" : "there";
+    this.#attached = true;
+    return there ? "there" : "late";
   }
 
   /**
