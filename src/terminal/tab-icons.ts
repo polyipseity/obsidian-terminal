@@ -1,14 +1,15 @@
 /**
- * Tab icons: one composite SVG per icon set. Each holds the terminal icon
- * and every status mark; `tab-status.css` decides which mark shows, from the
- * `data-terminal-*` attributes on the tab header.
+ * The plugin's two drawn icons. The tab icon is one composite SVG: the
+ * terminal icon and every status mark; `tab-status.css` decides which mark
+ * shows, from the `data-terminal-*` attributes on the tab header. The ribbon
+ * icon is the terminal drawn in lines alone, with no mark.
  *
  * Obsidian clones a registered icon into every tab, so nothing here may carry
- * an `id` or point at one: no `<defs>`, masks, gradients or `<use>`. A set
- * is a small image (`tab-skins.ts`), a square with a raised border, under
- * the prompt drawn on its face (`bezel`): an `<image>` with a data URI needs
- * no `id`. The other set, `tile`, has no image: its tile is a rounded square
- * drawn as a line.
+ * an `id` or point at one: no `<defs>`, masks, gradients or `<use>`. The tab
+ * icon is a small image (`tab-skins.ts`), a square with a raised border,
+ * under the prompt drawn on its face (`bezel`): an `<image>` with a data URI
+ * needs no `id`. The ribbon's (`tile`) has no image: its tile is a rounded
+ * square drawn as a line.
  *
  * The marks stand on the tile's upper right corner and reach past it.
  * Nothing is cut out of the tile for them: a white ring and a dark hairline
@@ -18,16 +19,25 @@
  * Icons, https://phosphoricons.com).
  */
 import { TAB_SKINS, type TabSkin, type TabSkinName } from "./tab-skins.js";
-import type { Settings } from "../settings-data.js";
+
+/**
+ * The two drawings, by the tile they stand on: `bezel`, the tab's, and
+ * `tile`, the ribbon's. Neither is a setting.
+ */
+export type TabIconSet = "bezel" | "tile";
+
+/** A terminal tab's icon size in CSS pixels, where the tab has a title. */
+export const TAB_ICON_SIZE = 22;
 
 /** The drawing space is 24 units; Obsidian's icon view box is 100. */
 export const TAB_ICON_WRAPPER_ATTRIBUTES =
   'transform="scale(4.1666667)" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
 
 /**
- * The parts every set has, each as the classes one element carries: the
- * terminal group, the tile (an image, or the group of a drawn one), the
- * marks group and the four marks. The tests look for each in every set.
+ * The parts of the tab icon, each as the classes one element carries: the
+ * terminal group, the tile's images, the marks group, the four marks and
+ * what pops in (the inside of the dot and of the eye). The tests look for
+ * each.
  */
 export const TAB_ICON_CLASSES: readonly string[] = Object.freeze([
   "tts-t",
@@ -37,6 +47,7 @@ export const TAB_ICON_CLASSES: readonly string[] = Object.freeze([
   "tts-mk tts-mk-eye",
   "tts-mk tts-mk-badge",
   "tts-mk tts-mk-dots",
+  "tts-mk-pop",
 ]);
 
 /**
@@ -107,6 +118,12 @@ function bar(grow: number): string {
 /**
  * Every mark. Each is whole in itself, with its own ring and hairline, so
  * the stylesheet only chooses which one shows and what colour it has.
+ *
+ * The dot and the eye, the marks of a state that asks for the user, hold
+ * everything in a group of its own (`tts-mk-pop`), which the stylesheet
+ * scales when the state arrives. The mark's own group is placed by its
+ * `transform` attribute, and a `transform` in CSS would replace it; the
+ * inner group has none to replace.
  */
 const MARKS = ((): string => {
   const { badge, dot, dots } = TAB_ICON_MARKS,
@@ -127,15 +144,15 @@ const MARKS = ((): string => {
       .join("");
   return [
     '<g class="tts-m" stroke="none">',
-    `<g class="tts-mk tts-mk-dot" ${at(dot)}>${round}<circle class="tts-mk-ink" r="${num(dot.radius)}"/></g>`,
-    `<g class="tts-mk tts-mk-eye" ${at(dot)}>${round}${eye}</g>`,
+    `<g class="tts-mk tts-mk-dot" ${at(dot)}><g class="tts-mk-pop">${round}<circle class="tts-mk-ink" r="${num(dot.radius)}"/></g></g>`,
+    `<g class="tts-mk tts-mk-eye" ${at(dot)}><g class="tts-mk-pop">${round}${eye}</g></g>`,
     `<g class="tts-mk tts-mk-badge" ${at(badge)}>${plate(badge.radius, badge.ring, badge.edge)}<circle class="tts-mk-ink" r="${num(badge.radius)}"/><g class="tts-sym" transform="scale(${String(badge.symbol)})">${symbols}</g></g>`,
     `<g class="tts-mk tts-mk-dots" ${at(dot)}><rect class="tts-mk-edge" ${bar(dots.margin + dots.edge)}/><rect class="tts-mk-ring" ${bar(dots.margin)}/>${three}</g>`,
     "</g>",
   ].join("");
 })();
 
-/** What an icon set is made of. The marks are added to it. */
+/** What a drawing with a rendered tile is made of. The marks are added to it. */
 export interface TabIconParts {
   /** `<g class="tts-t">…</g>`: the icon at rest. */
   readonly terminal: string;
@@ -144,16 +161,25 @@ export interface TabIconParts {
 /** The box a tile fills. */
 export const TAB_ICON_TILE_BOX = Object.freeze({ size: 21, x: 1.5, y: 1.3 });
 
-/** A prompt: a chevron and an underscore, in lines `width` units wide. */
-function prompt(chevron: string, underscore: string, width: number): string {
-  return `<g class="tts-ink" stroke-width="${num(width)}"><path d="${chevron}"/><path d="${underscore}"/></g>`;
+/**
+ * A prompt: a chevron and an underscore, in lines `width` units wide.
+ *
+ * @param attributes what the group carries besides its line width
+ */
+function prompt(
+  chevron: string,
+  underscore: string,
+  width: number,
+  attributes = 'class="tts-ink" ',
+): string {
+  return `<g ${attributes}stroke-width="${num(width)}"><path d="${chevron}"/><path d="${underscore}"/></g>`;
 }
 
 /** The prompt of a rendered tile, around the middle of the tile box. */
 const SKIN_PROMPT = prompt("m7.6 8.7 3.3 3.2-3.3 3.2", "M12.7 15.1h3.8", 1.9);
 
 /**
- * The rounded square of the set drawn in lines alone (`tile`), in units of
+ * The rounded square of the drawing in lines alone (`tile`), in units of
  * the 24-unit drawing: its line is as wide as the icon's lines (2), so its
  * outer edge is 20 wide, a little inside the tile box.
  */
@@ -164,23 +190,11 @@ export const TAB_ICON_LINE_TILE = Object.freeze({
   y: 2.6,
 });
 
-/**
- * The set drawn in lines alone: a rounded square and a prompt, both in the
- * icon's colour, and no image. The square is the set's tile: it carries the
- * tile's class (`tts-skin`), and a status colours its line where it would
- * light a rendered tile. It stands on no shadow.
- */
-function tabIconLined(): TabIconParts {
-  const { radius, size, x, y } = TAB_ICON_LINE_TILE;
-  return {
-    terminal: [
-      '<g class="tts-t">',
-      `<g class="tts-skin"><rect x="${num(x)}" y="${num(y)}" width="${num(size)}" height="${num(size)}" rx="${num(radius)}"/></g>`,
-      prompt("m7.6 8.3 3.3 3.3-3.3 3.3", "M12.6 14.9h3.9", 2),
-      "</g>",
-    ].join(""),
-  };
-}
+/** The root class of the ribbon's icon, and the class of its square. */
+export const RIBBON_ICON_CLASSES = Object.freeze({
+  root: "terminal-ribbon-icon",
+  square: "terminal-ribbon-icon-square",
+});
 
 /**
  * A rendered tile: one image per theme under the prompt. The stylesheet
@@ -191,7 +205,7 @@ function tabIconLined(): TabIconParts {
  * square with rounded corners.
  *
  * @param name the tile
- * @returns the parts of the set
+ * @returns the parts of the drawing
  */
 export function tabIconSkinned(name: TabSkinName): TabIconParts {
   const skin: TabSkin = TAB_SKINS[name],
@@ -214,21 +228,38 @@ export function tabIconSkinned(name: TabSkinName): TabIconParts {
   return { terminal };
 }
 
-const SETS: Readonly<Record<Settings.TabIconSet, TabIconParts>> = Object.freeze(
-  {
-    bezel: tabIconSkinned("bezel"),
-    tile: tabIconLined(),
-  },
-);
+/** The tab's drawing. */
+const TAB_SET = "bezel" satisfies TabIconSet;
 
 /**
- * The content to register for one icon set: Obsidian wraps it in
- * `<svg viewBox="0 0 100 100" class="svg-icon …">`.
+ * The content to register for the tab icon: Obsidian wraps it in
+ * `<svg viewBox="0 0 100 100" class="svg-icon …">`. It is the same at every
+ * Program status; with none, no rule shows a mark.
  *
- * Nothing in the icon moves. The three dots of a working program are lit by
- * two boxes that the stylesheet draws over the icon.
+ * Nothing in the icon moves by itself. The three dots of a working program
+ * are lit by two boxes that the stylesheet draws over the icon, and a new
+ * state's mark is scaled by the stylesheet while it pops in.
  */
-export function composeTabIcon(set: Settings.TabIconSet): string {
-  const { terminal } = SETS[set];
-  return `<g class="tts tts-set-${set}" ${TAB_ICON_WRAPPER_ATTRIBUTES}>${terminal}${MARKS}</g>`;
+export function composeTabIcon(): string {
+  const { terminal } = tabIconSkinned(TAB_SET);
+  return `<g class="tts tts-set-${TAB_SET}" ${TAB_ICON_WRAPPER_ATTRIBUTES}>${terminal}${MARKS}</g>`;
+}
+
+/**
+ * The content to register for the ribbon button: the terminal drawn in lines
+ * alone (`tile`), a rounded square around a prompt, both in the icon's
+ * colour, with no mark and no image. Its classes are its own, so no rule of
+ * the tab icon reaches it; one rule of `tab-status.css` draws the square
+ * fainter than the prompt.
+ */
+export function composeRibbonIcon(): string {
+  const { radius, size, x, y } = TAB_ICON_LINE_TILE,
+    { root, square } = RIBBON_ICON_CLASSES;
+  return [
+    `<g class="${root}" ${TAB_ICON_WRAPPER_ATTRIBUTES}>`,
+    `<rect class="${square}" x="${num(x)}" y="${num(y)}" width="${num(size)}" height="${num(size)}" rx="${num(radius)}"/>`,
+    // In the icon's colour, as wide as the square's line: no class.
+    prompt("m7.6 8.3 3.3 3.3-3.3 3.3", "M12.6 14.9h3.9", 2, ""),
+    "</g>",
+  ].join("");
 }

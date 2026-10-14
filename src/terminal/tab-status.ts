@@ -7,49 +7,103 @@
  * inserted there would be thrown away.
  */
 import type { Settings } from "../settings-data.js";
+import { whileSettingsHold, type WatchedSettings } from "../experiments.js";
 import type { State } from "./program-status.js";
+import { TAB_ICON_SIZE } from "./tab-icons.js";
 
 /** What the tab shows: a reported state, or `seen` for a finished one the user has looked at. */
 export type TabStatusDisplay = State | "seen";
 
+/** How the marks move: `still` or `animated`. Program status None draws none. */
+export type TabStatusMotion = Exclude<Settings.TabStatus, "none">;
+
 /** The settings that decide how a status looks. */
 export interface TabStatusLook {
-  /** The icon set. The tab's icon is of it; nothing is written for it. */
-  readonly set: Settings.TabIconSet;
-  /** The icon's size on the tab, in CSS pixels. */
-  readonly size: Settings.TabIconSize;
-  /** Whether the mark of a working program keeps moving. */
-  readonly animation: Settings.TabStatusAnimation;
+  /** Whether anything moves: the dots of a working program, a new mark, a new title. */
+  readonly motion: TabStatusMotion;
 }
 
 /** Attribute names written on the tab header. The stylesheet depends on them. */
 export const TAB_STATUS_ATTRIBUTES = Object.freeze({
-  animation: "data-terminal-animation",
+  /** `still` or `animated`; only while Program status is not None. */
+  motion: "data-terminal-motion",
+  /** Transient, under `animated`: a new state that asks for the user pops in. */
+  pop: "data-terminal-pop",
+  /** `TAB_ICON_SIZE` on every terminal tab header, whatever Program status says. */
   size: "data-terminal-size",
   status: "data-terminal-status",
+  /** Transient, under `animated`: a new title slides up. */
+  title: "data-terminal-title-change",
+});
+
+/**
+ * How long a transient attribute stays at most, in milliseconds: a little
+ * longer than its animation in `tab-status.css`. The end of the animation
+ * takes it back; this is for where none runs (reduced motion, a hidden
+ * tab).
+ */
+export const TAB_STATUS_TRANSIENT_TIMEOUTS = Object.freeze({
+  pop: 600,
+  title: 400,
+});
+
+/** The names of the keyframes each transient attribute plays. */
+export const TAB_STATUS_KEYFRAMES = Object.freeze({
+  pop: "tts-pop",
+  title: "tts-title",
 });
 
 /** States that ask for the user's attention when they arrive unseen. */
-const ATTENTION_STATES: ReadonlySet<State> = new Set<State>([
-  "blocked",
-  "done",
-  "error",
-]);
+const ATTENTION_STATES: ReadonlySet<TabStatusDisplay> =
+  new Set<TabStatusDisplay>(["blocked", "done", "error"]);
 
 /**
- * The look the user chose, from the settings.
+ * The look the user chose, from the settings. None has no look of its own:
+ * nothing is drawn under it, and a preview of it shows the marks still.
  *
- * @param settings the settings, or the three of them that make the look
+ * @param settings the settings, or the one of them that makes the look
  * @returns the look
  */
 export function tabStatusLook(
-  settings: Pick<Settings, "tabIconSet" | "tabIconSize" | "tabStatusAnimation">,
+  settings: Pick<Settings, "tabStatus">,
 ): TabStatusLook {
   return {
-    animation: settings.tabStatusAnimation,
-    set: settings.tabIconSet,
-    size: settings.tabIconSize,
+    motion: settings.tabStatus === "animated" ? "animated" : "still",
   };
+}
+
+/**
+ * Whether the tab shows a program's status at all.
+ *
+ * @param settings the settings, or the one of them that says it
+ * @returns `false` under Program status None
+ */
+export function isTabStatusShown(
+  settings: Pick<Settings, "tabStatus">,
+): boolean {
+  return settings.tabStatus !== "none";
+}
+
+/**
+ * Runs `start` while Program status is not None, as `whileSettingsHold`
+ * does: at once if it already is not, again each time it is turned from
+ * None, and stops when it is turned to None. A change between Still and
+ * Animated neither starts nor stops anything.
+ *
+ * @param settings the plugin's settings manager
+ * @param start starts what shows a status and returns what stops it
+ * @returns stops it and ends the subscription; register it with the owner
+ */
+export function whileTabStatusShown<S extends Pick<Settings, "tabStatus">>(
+  settings: WatchedSettings<S>,
+  start: () => () => void,
+): () => void {
+  return whileSettingsHold(
+    settings,
+    isTabStatusShown,
+    "Program status on tabs",
+    start,
+  );
 }
 
 /**
@@ -63,32 +117,25 @@ export function needsAttention(state: State): boolean {
 }
 
 /**
- * Tells a tab header how large its icon is, for a tab nobody presents.
+ * Tells a tab header how large its icon is: `TAB_ICON_SIZE`, on every
+ * terminal tab, whatever Program status says.
  *
- * Obsidian does not load the view of a background tab until the tab is
- * opened. Until then the header has the terminal's type and the icon saved
- * with the layout, but no view and so no presenter. The size, and the chosen
- * icon (`writeTabIcon`), are what it needs to stand like its neighbours.
+ * A loaded view writes it on its own header. Obsidian does not load the view
+ * of a background tab until the tab is opened; until then the header has
+ * the terminal's type and the icon saved with the layout, and no view of
+ * ours, so the plugin writes it there (`TerminalView.dressUnloadedTabs`).
  *
  * @param header the tab header
- * @param size the icon's size in CSS pixels, or `null` to take it back
  */
-export function writeTabIconSize(
-  header: Element,
-  size: Settings.TabIconSize | null,
-): void {
-  writeAttribute(
-    header,
-    TAB_STATUS_ATTRIBUTES.size,
-    size === null ? null : String(size),
-  );
+export function writeTabIconSize(header: Element): void {
+  writeAttribute(header, TAB_STATUS_ATTRIBUTES.size, String(TAB_ICON_SIZE));
 }
 
 /**
- * Draws the chosen icon on a tab nobody presents.
+ * Draws the tab icon on a tab nobody presents.
  *
- * Such a tab shows the icon saved with the layout: the set chosen when the
- * layout was saved, or the icon of a version before there were sets. Obsidian
+ * Such a tab shows the icon saved with the layout: an icon of an earlier
+ * version, or nothing where that icon is no longer registered. Obsidian
  * marks a drawn icon with its id as a class, which is how an icon that is
  * already right is told and left alone.
  *
@@ -105,31 +152,6 @@ export function writeTabIcon(
     return;
   }
   draw(icon, id);
-}
-
-/**
- * Takes the chosen icon off a tab nobody presents, when the feature that
- * drew it is turned off.
- *
- * Only an icon of the feature is replaced: a tab whose header is not drawn
- * yet, or that shows the plain icon or some other one, is left as it is.
- *
- * @param icon the element that holds the tab's icon
- * @param ours what the ids of the feature's icons start with
- * @param id the id of the icon to draw in their place
- * @param draw Obsidian's `setIcon`
- */
-export function restoreTabIcon(
-  icon: HTMLElement,
-  ours: string,
-  id: string,
-  draw: (element: HTMLElement, id: string) => void,
-): void {
-  // Obsidian marks a drawn icon with its id as a class (see `writeTabIcon`).
-  const classes = Array.from(icon.firstElementChild?.classList ?? []);
-  if (classes.some((name) => name.startsWith(ours))) {
-    draw(icon, id);
-  }
 }
 
 /**
@@ -163,14 +185,100 @@ export function onWindowFocus(
 }
 
 /**
+ * An attribute that an element carries only while the CSS animation it
+ * starts plays: set, then taken back at the end of the animation (or after
+ * `timeout`, where none runs). Set again while it plays, the animation
+ * starts over.
+ */
+export class TransientAttribute {
+  #element: Element | null = null;
+  #timer: number | null = null;
+  readonly #ended = (event: Event): void => {
+    // The event bubbles from the element that plays, and other animations
+    // around it end too.
+    if ("animationName" in event && event.animationName === this.keyframes) {
+      this.stop();
+    }
+  };
+
+  /**
+   * @param name the attribute
+   * @param keyframes the name of the keyframes it plays
+   * @param timeout how long it stays at most, in milliseconds
+   */
+  public constructor(
+    protected readonly name: string,
+    protected readonly keyframes: string,
+    protected readonly timeout: number,
+  ) {}
+
+  /** Its value while it plays, or `null`. */
+  public get value(): string | null {
+    return this.#element?.getAttribute(this.name) ?? null;
+  }
+
+  /**
+   * Sets the attribute, or sets it again: the animation starts over.
+   *
+   * @param element the tab header, or what stands in for it
+   * @param value the attribute's value
+   */
+  public play(element: Element, value: string): void {
+    const again = this.#element === element;
+    this.stop();
+    if (again) {
+      // An attribute taken off and put back in one task is no change to the
+      // browser: a layout in between makes it drop the running animation,
+      // so the new one starts from its beginning.
+      element.getBoundingClientRect();
+    }
+    element.setAttribute(this.name, value);
+    element.addEventListener("animationend", this.#ended);
+    this.#timer = self.setTimeout(() => {
+      this.stop();
+    }, this.timeout);
+    this.#element = element;
+  }
+
+  /** Takes the attribute back at once. Safe to call at any time. */
+  public stop(): void {
+    const element = this.#element;
+    if (element === null) {
+      return;
+    }
+    this.#element = null;
+    element.removeAttribute(this.name);
+    element.removeEventListener("animationend", this.#ended);
+    if (this.#timer !== null) {
+      self.clearTimeout(this.#timer);
+      this.#timer = null;
+    }
+  }
+}
+
+/**
  * Keeps one tab's status and writes it to the header.
  *
  * Writes are idempotent and only touch attributes whose value changed, so a
  * program that reports often costs nothing once the header is up to date.
+ * The size of the tab's icon is not the presenter's: it is on every terminal
+ * tab (`writeTabIconSize`).
  */
 export class TabStatusPresenter {
   #state: State | null = null;
   #seen = true;
+  /** What the header was last given to show. */
+  #drawn: TabStatusDisplay | null = null;
+  readonly #pop = new TransientAttribute(
+    TAB_STATUS_ATTRIBUTES.pop,
+    TAB_STATUS_KEYFRAMES.pop,
+    TAB_STATUS_TRANSIENT_TIMEOUTS.pop,
+  );
+  readonly #title = new TransientAttribute(
+    TAB_STATUS_ATTRIBUTES.title,
+    TAB_STATUS_KEYFRAMES.title,
+    TAB_STATUS_TRANSIENT_TIMEOUTS.title,
+  );
 
   public constructor(protected readonly options: TabStatusPresenter.Options) {}
 
@@ -205,19 +313,47 @@ export class TabStatusPresenter {
     this.render();
   }
 
-  /** Writes the current status and look to the header. Safe to call at any time. */
+  /**
+   * Writes the current status and look to the header. Safe to call at any
+   * time. Under `animated`, a status that asks for the user and was not
+   * shown before pops in.
+   */
   public render(): void {
     const header = this.options.header();
     if (!header) {
       return;
     }
-    const look = this.options.look();
-    writeAttribute(header, TAB_STATUS_ATTRIBUTES.status, this.shown());
-    writeAttribute(header, TAB_STATUS_ATTRIBUTES.size, String(look.size));
-    // Nothing here keeps anything moving: under animation "loop" the
-    // stylesheet does, from these attributes alone, while the status is
-    // "working".
-    writeAttribute(header, TAB_STATUS_ATTRIBUTES.animation, look.animation);
+    const shown = this.shown(),
+      before = this.#drawn,
+      { motion } = this.options.look();
+    this.#drawn = shown;
+    writeAttribute(header, TAB_STATUS_ATTRIBUTES.status, shown);
+    // Nothing here keeps anything moving: under "animated" the stylesheet
+    // does, from these attributes alone, while the status is "working".
+    writeAttribute(header, TAB_STATUS_ATTRIBUTES.motion, motion);
+    if (motion !== "animated") {
+      this.#pop.stop();
+      this.#title.stop();
+      return;
+    }
+    if (shown !== before && shown !== null && ATTENTION_STATES.has(shown)) {
+      this.#pop.play(header, shown);
+    } else if (this.#pop.value !== null && this.#pop.value !== shown) {
+      // Another mark is shown by now: it does not pop.
+      this.#pop.stop();
+    }
+  }
+
+  /**
+   * The header's title has just changed. Under `animated` it slides in.
+   * The caller decides what counts as a change: not the first title a tab
+   * is drawn with.
+   */
+  public titleChanged(): void {
+    const header = this.options.header();
+    if (header && this.options.look().motion === "animated") {
+      this.#title.play(header, "");
+    }
   }
 
   /**
@@ -232,17 +368,22 @@ export class TabStatusPresenter {
     return state === "done" && this.#seen ? "seen" : state;
   }
 
-  /** Removes everything this presenter wrote. The header outlives the view. */
+  /**
+   * Removes everything this presenter wrote. The header outlives the view.
+   * The size stays: it is not the presenter's.
+   */
   public clear(): void {
     this.#state = null;
     this.#seen = true;
+    this.#drawn = null;
+    this.#pop.stop();
+    this.#title.stop();
     const header = this.options.header();
     if (!header) {
       return;
     }
-    for (const name of Object.values(TAB_STATUS_ATTRIBUTES)) {
-      writeAttribute(header, name, null);
-    }
+    writeAttribute(header, TAB_STATUS_ATTRIBUTES.status, null);
+    writeAttribute(header, TAB_STATUS_ATTRIBUTES.motion, null);
   }
 }
 export namespace TabStatusPresenter {

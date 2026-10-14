@@ -12,6 +12,7 @@ import {
   pythonSettingsContext,
   withPythonSpare,
 } from "../../fixtures/python-settings-ui.js";
+import { ribbonIconId, tabIconId } from "../../../src/icons.js";
 import { LocalSettings, Settings } from "../../../src/settings-data.js";
 import { loadTerminal } from "../../../src/terminal/load.js";
 import { CONPTY_HOST_POOL } from "../../../src/terminal/pseudoterminal.js";
@@ -160,9 +161,13 @@ afterEach(() => {
 });
 
 describe("terminal ribbon profile access", () => {
-  async function ribbon(defaultProfile: string | null = "integrated") {
+  async function ribbon(
+    defaultProfile: string | null = "integrated",
+    tabStatus: Settings.TabStatus = Settings.DEFAULT.tabStatus,
+  ) {
     const context = await terminalContext({
       defaultProfile,
+      tabStatus,
       profiles: {
         integrated: {
           ...Settings.Profile.DEFAULTS.integrated,
@@ -214,12 +219,18 @@ describe("terminal ribbon profile access", () => {
     return event;
   }
 
-  it("gives the ribbon button the plain terminal icon, not the icon of the tabs", async () => {
-    const { context } = await ribbon();
-    expect(context.settings.value.tabIconSet).toBe("bezel");
-    expect(vi.mocked(addRibbonIcon).mock.calls.at(-1)?.[2]).toBe(
-      "terminal-square",
-    );
+  it("gives the ribbon button its own icon, the terminal in lines alone, whatever Program status says", async () => {
+    for (const tabStatus of Settings.TAB_STATUSES) {
+      const { context } = await ribbon("integrated", tabStatus);
+      expect(context.settings.value.tabStatus).toBe(tabStatus);
+      const icon = vi.mocked(addRibbonIcon).mock.calls.at(-1)?.[2];
+      expect(icon, tabStatus).toBe(ribbonIconId(context));
+      // `<plugin id>:ribbon`; this context has no manifest to name the id.
+      expect(icon, tabStatus).toMatch(/:ribbon$/u);
+      // Not the tab's icon, nor the plain one it had before.
+      expect(icon).not.toBe(tabIconId(context));
+      expect(icon).not.toBe("terminal-square");
+    }
   });
 
   it("lists compatible profiles and opens an external profile in the vault root", async () => {

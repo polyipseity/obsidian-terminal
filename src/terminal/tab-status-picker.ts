@@ -1,6 +1,7 @@
 /**
- * The visual half of the tab status settings: a strip of mock tabs that
- * shows the current look, and pickers whose options are drawn on real icons.
+ * The control of the "Program status" setting: small tiles on the line of
+ * the setting's name, each showing the terminal tab icon as that option
+ * draws it, with the option's name under it.
  *
  * Nothing here draws an icon. A preview host is an element with class
  * `tts-host` and the `data-terminal-*` attributes of a tab header, holding an
@@ -12,12 +13,8 @@
  * (`setIcon`, `setTooltip`) is passed in.
  */
 import type { Settings } from "../settings-data.js";
-import {
-  TAB_STATUS_ATTRIBUTES,
-  type TabStatusDisplay,
-  type TabStatusLook,
-  writeAttribute,
-} from "./tab-status.js";
+import { TAB_ICON_SIZE } from "./tab-icons.js";
+import { TAB_STATUS_ATTRIBUTES, writeAttribute } from "./tab-status.js";
 
 /** What the module needs from Obsidian. */
 export interface TabStatusPreviewEnvironment {
@@ -29,132 +26,50 @@ export interface TabStatusPreviewEnvironment {
 
 /** The `data-terminal-*` attributes of a host, by their key in `TAB_STATUS_ATTRIBUTES`. A missing key removes the attribute. */
 export interface TabStatusHostAttributes {
-  readonly animation?: string | undefined;
-  /** The icon's size in CSS pixels. Without it a host shows its icon at the size its place gives it. */
+  readonly motion?: string | undefined;
+  /** The icon's size in CSS pixels. */
   readonly size?: string | undefined;
   readonly status?: string | undefined;
 }
 
-/** One icon of a preview. */
+/** The icon of a preview. */
 export interface TabStatusPreviewHost {
   /** The id handed to `setIcon`. */
   readonly icon: string;
   readonly attributes: TabStatusHostAttributes;
 }
 
-/** The six tabs of the preview strip, in order. */
-export const TAB_STATUS_PREVIEW_STATES = Object.freeze([
-  "none",
-  "idle",
-  "working",
-  "done",
-  "blocked",
-  "error",
-] as const);
-export type TabStatusPreviewState = (typeof TAB_STATUS_PREVIEW_STATES)[number];
-
 const CLASSES = Object.freeze({
-  caption: "tts-pick-caption",
-  captionPreview: "tts-pick-caption-preview",
   host: "tts-host",
   hostIcon: "tts-host-icon",
   picker: "tts-pick",
   pickerHost: "tts-pick-host",
-  strip: "tts-strip",
-  stripBar: "tts-strip-bar",
-  stripCurrent: "is-active",
-  stripTab: "tts-strip-tab",
-  stripTitle: "tts-strip-title",
   tile: "tts-pick-tile",
-  tileHosts: "tts-pick-hosts",
   tileText: "tts-pick-text",
   tileTextOnly: "tts-pick-tile-text",
-  tiles: "tts-pick-tiles",
 });
 
 /**
- * The attributes a tab header would carry for a look and a status, without
- * the size: a tile of a picker shows its icon enlarged.
+ * What the tile of a Program status option shows: the tab icon at the tab's
+ * size, carrying what a terminal tab header carries under that option. None
+ * has no status; Still and Animated show a working program, whose three dots
+ * stand still or move.
  *
- * @param look the settings that decide the look
- * @param status the status shown, or `null` for a tab without a report
- * @returns the attributes of a preview host
+ * @param value the option
+ * @param icon the registered id of the tab icon
+ * @returns the host of the option's tile
  */
-export function tabStatusHostAttributes(
-  look: TabStatusLook,
-  status: TabStatusDisplay | null,
-): TabStatusHostAttributes {
+export function tabStatusOptionHost(
+  value: Settings.TabStatus,
+  icon: string,
+): TabStatusPreviewHost {
+  const size = String(TAB_ICON_SIZE);
   return {
-    animation: look.animation,
-    ...(status === null ? {} : { status }),
+    attributes:
+      value === "none" ? { size } : { motion: value, size, status: "working" },
+    icon,
   };
 }
-
-/**
- * What one tab of the preview strip carries. Mirrors `TabStatusPresenter`:
- * the tabs other than the first are ones the user is not looking at, so a
- * finished program there is unread. The strip is a piece of the tab bar, so
- * its icons have the chosen size.
- *
- * @param look the settings that decide the look
- * @param state which of the six tabs
- * @returns the attributes of that tab
- */
-export function tabStatusPreviewAttributes(
-  look: TabStatusLook,
-  state: TabStatusPreviewState,
-): TabStatusHostAttributes {
-  return {
-    ...tabStatusHostAttributes(look, state === "none" ? null : state),
-    size: String(look.size),
-  };
-}
-
-/** Describes the tiles of one picker: the option `value` on top of the current look. */
-type Describe<V> = (
-  look: TabStatusLook,
-  value: V,
-  icon: (set: Settings.TabIconSet) => string,
-) => readonly TabStatusPreviewHost[];
-
-/**
- * What each option of each picker shows. Every tile starts from the current
- * look, so it follows the other settings, and changes the one thing it is
- * about.
- */
-export const TAB_STATUS_PICKER_HOSTS: {
-  readonly set: Describe<Settings.TabIconSet>;
-  readonly size: Describe<Settings.TabIconSize>;
-  readonly animation: Describe<Settings.TabStatusAnimation>;
-} = Object.freeze({
-  /** A working program: its three dots, standing still or moving. */
-  animation: (look, value, icon) => [
-    {
-      attributes: tabStatusHostAttributes(
-        { ...look, animation: value },
-        "working",
-      ),
-      icon: icon(look.set),
-    },
-  ],
-  /** The icon at rest. */
-  set: (look, value, icon) => [
-    {
-      attributes: tabStatusHostAttributes(look, null),
-      icon: icon(value),
-    },
-  ],
-  /** The icon at rest, at that size and not enlarged: sizes are compared as they are. */
-  size: (look, value, icon) => [
-    {
-      attributes: {
-        ...tabStatusHostAttributes(look, null),
-        size: String(value),
-      },
-      icon: icon(look.set),
-    },
-  ],
-});
 
 /**
  * Creates an element in the parent's own document and appends it.
@@ -177,19 +92,12 @@ function child<K extends keyof HTMLElementTagNameMap>(
   return element;
 }
 
-/** Sets the text of an element, leaving it alone when nothing changes. */
-function writeText(element: Element, text: string): void {
-  if (element.textContent !== text) {
-    element.textContent = text;
-  }
-}
-
 function writeAttributes(
   element: Element,
   attributes: TabStatusHostAttributes,
 ): void {
   const names = TAB_STATUS_ATTRIBUTES;
-  writeAttribute(element, names.animation, attributes.animation ?? null);
+  writeAttribute(element, names.motion, attributes.motion ?? null);
   writeAttribute(element, names.size, attributes.size ?? null);
   writeAttribute(element, names.status, attributes.status ?? null);
 }
@@ -227,99 +135,23 @@ class PreviewHost {
   }
 }
 
-/**
- * A row of mock tabs, one per state, each drawn with the current look.
- */
-export class TabStatusStrip {
-  public readonly element: HTMLElement;
-  readonly #bar: HTMLElement;
-  readonly #tabs: {
-    readonly host: PreviewHost;
-    readonly title: HTMLElement;
-  }[] = [];
-
-  public constructor(
-    parent: HTMLElement,
-    protected readonly environment: TabStatusPreviewEnvironment,
-  ) {
-    this.element = child(parent, "div", CLASSES.strip);
-    this.element.setAttribute("role", "group");
-    this.#bar = child(this.element, "div", CLASSES.stripBar);
-  }
-
-  /**
-   * Shows the tabs. Elements are kept and only what changed is written.
-   *
-   * @param state the label of the strip and its tabs, in order
-   */
-  public update(state: TabStatusStrip.State): void {
-    const tabs = this.#tabs;
-    writeAttribute(this.element, "aria-label", state.label);
-    for (const extra of tabs.splice(state.tabs.length)) {
-      extra.host.element.remove();
-    }
-    state.tabs.forEach((tab, index) => {
-      let entry = tabs[index];
-      if (!entry) {
-        // The tab is the host, as a tab header is; its icon comes before its title.
-        const element = child(this.#bar, "div", CLASSES.stripTab),
-          host = new PreviewHost(element, this.environment);
-        entry = { host, title: child(element, "span", CLASSES.stripTitle) };
-        tabs.push(entry);
-      }
-      entry.host.show(tab.host);
-      entry.host.element.classList.toggle(
-        CLASSES.stripCurrent,
-        tab.current ?? false,
-      );
-      writeText(entry.title, tab.caption);
-    });
-  }
-
-  public destroy(): void {
-    this.#tabs.length = 0;
-    this.element.remove();
-  }
-}
-export namespace TabStatusStrip {
-  export interface Tab {
-    /** The words on the tab. */
-    readonly caption: string;
-    readonly host: TabStatusPreviewHost;
-    /** Drawn as the tab the user is on. */
-    readonly current?: boolean;
-  }
-  export interface State {
-    /** The accessible name of the strip. */
-    readonly label: string;
-    readonly tabs: readonly Tab[];
-  }
-}
-
 interface Tile<V extends string> {
   readonly value: V;
   readonly element: HTMLButtonElement;
-  readonly hostsElement: HTMLElement;
+  readonly host: PreviewHost;
   readonly textElement: HTMLElement;
-  readonly hosts: PreviewHost[];
   label: string;
-  /** The pointer is on the tile. */
-  hover: boolean;
-  /** The keyboard focus is on the tile. */
-  focus: boolean;
 }
 
 /**
- * A radio group whose options are tiles that show the option on real icons.
+ * A radio group whose options are tiles: the option drawn on a real icon,
+ * and its name under it.
  *
  * One tab stop; arrow keys move and choose, as do Home and End; Space and
- * Enter choose. Under the tiles a line says the chosen option in words, and
- * the option under the pointer or the focus while there is one.
+ * Enter choose.
  */
 export class TabStatusPicker<V extends string> {
   public readonly element: HTMLElement;
-  readonly #tilesElement: HTMLElement;
-  readonly #caption: HTMLElement;
   readonly #tiles: Tile<V>[] = [];
   #value: V | null = null;
 
@@ -327,17 +159,8 @@ export class TabStatusPicker<V extends string> {
     parent: HTMLElement,
     protected readonly options: TabStatusPicker.Options<V>,
   ) {
-    this.element = child(
-      parent,
-      "div",
-      CLASSES.picker,
-      ...(options.classes ?? []),
-    );
-    this.#tilesElement = child(this.element, "div", CLASSES.tiles);
-    this.#tilesElement.setAttribute("role", "radiogroup");
-    this.#caption = child(this.element, "div", CLASSES.caption);
-    // The tiles carry the same words as their accessible names.
-    this.#caption.setAttribute("aria-hidden", "true");
+    this.element = child(parent, "div", CLASSES.picker);
+    this.element.setAttribute("role", "radiogroup");
   }
 
   /** The chosen value, or `null` before the first `update`. */
@@ -353,7 +176,7 @@ export class TabStatusPicker<V extends string> {
    */
   public update(state: TabStatusPicker.State<V>): void {
     const { options } = state;
-    writeAttribute(this.#tilesElement, "aria-label", state.label);
+    writeAttribute(this.element, "aria-label", state.label);
     if (
       options.length !== this.#tiles.length ||
       options.some(
@@ -379,46 +202,25 @@ export class TabStatusPicker<V extends string> {
 
   protected build(values: readonly V[]): void {
     this.#tiles.length = 0;
-    this.#tilesElement.replaceChildren();
+    this.element.replaceChildren();
     for (const value of values) {
-      const element = child(this.#tilesElement, "button", CLASSES.tile),
-        hostsElement = child(element, "span", CLASSES.tileHosts),
+      const element = child(this.element, "button", CLASSES.tile),
+        host = new PreviewHost(
+          child(element, "span", CLASSES.pickerHost),
+          this.options.environment,
+        ),
         textElement = child(element, "span", CLASSES.tileText),
-        tile: Tile<V> = {
-          element,
-          focus: false,
-          hosts: [],
-          hostsElement,
-          hover: false,
-          label: "",
-          textElement,
-          value,
-        };
+        tile: Tile<V> = { element, host, label: "", textElement, value };
       element.type = "button";
       element.setAttribute("role", "radio");
       element.dataset["value"] = value;
+      // The words under the icon are the tile's name already.
+      textElement.setAttribute("aria-hidden", "true");
       element.addEventListener("click", () => {
         this.choose(tile);
       });
       element.addEventListener("keydown", (event) => {
         this.key(tile, event);
-      });
-      // The line under the tiles follows the pointer and the focus.
-      element.addEventListener("pointerenter", () => {
-        tile.hover = true;
-        this.mark();
-      });
-      element.addEventListener("pointerleave", () => {
-        tile.hover = false;
-        this.mark();
-      });
-      element.addEventListener("focus", () => {
-        tile.focus = true;
-        this.mark();
-      });
-      element.addEventListener("blur", () => {
-        tile.focus = false;
-        this.mark();
       });
       this.#tiles.push(tile);
     }
@@ -427,37 +229,20 @@ export class TabStatusPicker<V extends string> {
   protected fill(
     tile: Tile<V>,
     label: string,
-    hosts: readonly TabStatusPreviewHost[],
+    host: TabStatusPreviewHost,
   ): void {
-    const { environment } = this.options;
     if (tile.label !== label) {
       tile.label = label;
       tile.element.setAttribute("aria-label", label);
-      environment.setTooltip(tile.element, label);
+      this.options.environment.setTooltip(tile.element, label);
       tile.textElement.textContent = label;
     }
-    for (const extra of tile.hosts.splice(hosts.length)) {
-      extra.element.remove();
-    }
-    hosts.forEach((host, index) => {
-      let shown = tile.hosts[index];
-      if (!shown) {
-        shown = new PreviewHost(
-          child(tile.hostsElement, "span", CLASSES.pickerHost),
-          environment,
-        );
-        tile.hosts.push(shown);
-      }
-      shown.show(host);
-    });
-    // An unknown icon id leaves nothing to look at: the words stand in.
-    tile.element.classList.toggle(
-      CLASSES.tileTextOnly,
-      tile.hosts.length === 0 || tile.hosts.some((host) => host.empty),
-    );
+    tile.host.show(host);
+    // An unknown icon id leaves nothing to look at: the words stand alone.
+    tile.element.classList.toggle(CLASSES.tileTextOnly, tile.host.empty);
   }
 
-  /** Marks the chosen tile, moves the tab stop to it and says it in words. */
+  /** Marks the chosen tile and moves the tab stop to it. */
   protected mark(): void {
     const value = this.#value,
       chosen = this.#tiles.find((tile) => tile.value === value),
@@ -466,13 +251,6 @@ export class TabStatusPicker<V extends string> {
       writeAttribute(tile.element, "aria-checked", String(tile === chosen));
       writeAttribute(tile.element, "tabindex", tile === stop ? "0" : "-1");
     }
-    // The pointer says more about where the eyes are than the focus does.
-    const engaged =
-        this.#tiles.find((tile) => tile.hover) ??
-        this.#tiles.find((tile) => tile.focus),
-      preview = engaged && engaged !== chosen ? engaged : null;
-    writeText(this.#caption, (preview ?? chosen)?.label ?? "");
-    this.#caption.classList.toggle(CLASSES.captionPreview, preview !== null);
   }
 
   protected choose(tile: Tile<V>): void {
@@ -507,13 +285,11 @@ export class TabStatusPicker<V extends string> {
       case "Enter":
         return tile;
       case "ArrowRight":
+      case "ArrowDown":
         return at(index + 1);
       case "ArrowLeft":
-        return at(index - 1);
-      case "ArrowDown":
-        return this.across(tile, 1) ?? at(index + 1);
       case "ArrowUp":
-        return this.across(tile, -1) ?? at(index - 1);
+        return at(index - 1);
       case "Home":
         return at(0);
       case "End":
@@ -522,47 +298,16 @@ export class TabStatusPicker<V extends string> {
         return null;
     }
   }
-
-  /**
-   * The tile above or below in a wrapped grid: the nearest one in the next
-   * row that way. `null` where there is no layout, or no such row; the
-   * caller then steps to the neighbour, as a radio group does.
-   */
-  protected across(tile: Tile<V>, direction: -1 | 1): Tile<V> | null {
-    const from = tile.element.getBoundingClientRect();
-    if (from.width === 0) {
-      return null;
-    }
-    let best: Tile<V> | null = null,
-      bestRow = Infinity,
-      bestColumn = Infinity;
-    for (const other of this.#tiles) {
-      const to = other.element.getBoundingClientRect(),
-        row = (to.top - from.top) * direction,
-        column = Math.abs(to.left - from.left);
-      if (
-        row > from.height / 2 &&
-        (row < bestRow - 1 || (row < bestRow + 1 && column < bestColumn))
-      ) {
-        best = other;
-        bestRow = row;
-        bestColumn = column;
-      }
-    }
-    return best;
-  }
 }
 export namespace TabStatusPicker {
   export interface Options<V extends string> {
     readonly environment: TabStatusPreviewEnvironment;
     /** Called once when the user chooses another option than the current one. */
     readonly onChange: (value: V) => void;
-    /** Extra classes for the picker element, for its layout. */
-    readonly classes?: readonly string[];
   }
   export interface Option<V extends string> {
     readonly value: V;
-    /** The option in words: its accessible name and its tooltip. */
+    /** The option in words: its caption, its accessible name and its tooltip. */
     readonly label: string;
   }
   export interface State<V extends string> {
@@ -571,6 +316,6 @@ export namespace TabStatusPicker {
     readonly options: readonly Option<V>[];
     readonly value: V;
     /** What a tile shows for an option. */
-    readonly describe: (value: V) => readonly TabStatusPreviewHost[];
+    readonly describe: (value: V) => TabStatusPreviewHost;
   }
 }

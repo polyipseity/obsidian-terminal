@@ -1,8 +1,9 @@
 /**
  * Unit tests for `src/terminal/tab-icons.ts`, and checks of the stylesheet
  * that drives the icons, `src/terminal/tab-status.css`. The two are one
- * feature: the icon carries the tile and every mark, the stylesheet decides
- * what shows.
+ * feature: the tab icon carries the tile and every mark, the stylesheet
+ * decides what shows. The ribbon's icon is the terminal in lines alone, with
+ * no mark and classes of its own.
  *
  * Nothing is rendered here. The icon is read as XML into a tree; the
  * stylesheet is split into rules; and a small selector matcher with the
@@ -14,27 +15,31 @@
  * cannot judge fails the tests instead of passing unread.
  */
 import {
+  RIBBON_ICON_CLASSES,
   TAB_ICON_CLASSES,
   TAB_ICON_LINE_TILE,
   TAB_ICON_MARKS,
+  TAB_ICON_SIZE,
   TAB_ICON_TILE_BOX,
   TAB_ICON_WRAPPER_ATTRIBUTES,
+  composeRibbonIcon,
   composeTabIcon,
   tabIconSkinned,
 } from "../../../src/terminal/tab-icons.js";
 import {
   TAB_STATUS_ATTRIBUTES,
+  TAB_STATUS_KEYFRAMES,
+  TAB_STATUS_TRANSIENT_TIMEOUTS,
   type TabStatusDisplay,
+  type TabStatusMotion,
 } from "../../../src/terminal/tab-status.js";
 import { describe, expect, it } from "vitest";
 import { dirname, join } from "node:path";
-import { Settings } from "../../../src/settings-data.js";
 import { TAB_SKINS } from "../../../src/terminal/tab-skins.js";
 import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 
-const SETS = Settings.TAB_ICON_SETS,
-  /** The at-rules of the stylesheet: what must hold of the device for their rules to apply. */
+const /** The at-rules of the stylesheet: what must hold of the device for their rules to apply. */
   MOTION = "@media (prefers-reduced-motion: no-preference)",
   HOVER = "@media (hover: hover)",
   /** Whether the browser can place a box from another element (Chromium 125 and later). */
@@ -183,24 +188,22 @@ function place(of: Part): { readonly x: number; readonly y: number } {
   return { x: Number(found?.["x"]), y: Number(found?.["y"]) };
 }
 
-const DRAWN = new Map(SETS.map((set) => [set, readXml(composeTabIcon(set))]));
+const TAB_ICON = readXml(composeTabIcon()),
+  RIBBON_ICON = readXml(composeRibbonIcon()),
+  /** Both icons, by what they are. */
+  ICONS = [
+    ["tab", TAB_ICON],
+    ["ribbon", RIBBON_ICON],
+  ] as const;
 
-/** The icon of a set, as a tree. */
-function drawn(set: Settings.TabIconSet): Part {
-  return one(
-    [...DRAWN].filter(([name]) => name === set).map(([, icon]) => icon),
-    set,
-  );
+/** The tab icon, as a tree. */
+function drawn(): Part {
+  return TAB_ICON;
 }
 
 /** Whether a name is that of a rendered tile. */
 function isSkin(name: string): name is keyof typeof TAB_SKINS {
   return name in TAB_SKINS;
-}
-
-/** The rendered tile a set stands on, or `null` for the set drawn in lines alone. */
-function tileOf(set: Settings.TabIconSet): keyof typeof TAB_SKINS | null {
-  return isSkin(set) ? set : null;
 }
 
 // ---------- The stylesheet, read as rules ----------
@@ -531,12 +534,18 @@ function simplesOf({ compounds }: Complex): readonly Simple[] {
 
 /** A tab header, or a preview in the settings, with an icon on it. */
 interface Scene {
-  readonly set: Settings.TabIconSet;
+  /** Which icon is drawn: the tab's, or, to show that no rule reaches it, the ribbon's. */
+  readonly icon: "ribbon" | "tab";
   /** `null`: the program has reported nothing, so no status is written. */
   readonly status: TabStatusDisplay | null;
-  readonly animation: Settings.TabStatusAnimation;
+  /** `null`: Program status None, under which no motion is written. */
+  readonly motion: TabStatusMotion | null;
   /** `null`: no size is written. */
-  readonly size: Settings.TabIconSize | null;
+  readonly size: number | null;
+  /** The state that pops in, while it does. */
+  readonly pop: TabStatusDisplay | null;
+  /** Whether a new title slides in. */
+  readonly title: boolean;
   /** A real tab header, or what stands in for one in the settings. */
   readonly host: "preview" | "tab";
   /** For a tab: in the root split of a window, where it has a title, or in a sidebar. */
@@ -556,19 +565,25 @@ interface Scene {
   readonly unscoped: boolean;
 }
 
+/** A tab under Program status Still that has no report yet. */
 const PLAIN: Scene = {
   active: false,
-  animation: Settings.DEFAULT.tabStatusAnimation,
   host: "tab",
+  icon: "tab",
   light: false,
-  set: Settings.DEFAULT.tabIconSet,
-  size: Settings.DEFAULT.tabIconSize,
-  split: "mod-root",
+  motion: "still",
   old: false,
+  pop: null,
+  size: TAB_ICON_SIZE,
+  split: "mod-root",
   status: null,
   still: false,
+  title: false,
   unscoped: false,
 };
+
+/** Every motion a header can carry; `null` is Program status None. */
+const MOTIONS = [null, "still", "animated"] as const;
 
 interface View {
   /** The tab header or its stand-in. */
@@ -577,6 +592,8 @@ interface View {
   readonly container: Chain;
   /** The icon: its root group. */
   readonly icon: Chain;
+  /** Obsidian's title element of a tab, or `null` on a preview. */
+  readonly title: Chain | null;
   readonly media: ReadonlySet<string>;
 }
 
@@ -584,21 +601,26 @@ interface View {
 function view(over: Partial<Scene> = {}): View {
   const scene = { ...PLAIN, ...over },
     written = {
-      [TAB_STATUS_ATTRIBUTES.animation]: scene.animation,
+      ...(scene.motion === null
+        ? {}
+        : { [TAB_STATUS_ATTRIBUTES.motion]: scene.motion }),
       ...(scene.size === null
         ? {}
         : { [TAB_STATUS_ATTRIBUTES.size]: String(scene.size) }),
       ...(scene.status === null
         ? {}
         : { [TAB_STATUS_ATTRIBUTES.status]: scene.status }),
+      ...(scene.pop === null ? {} : { [TAB_STATUS_ATTRIBUTES.pop]: scene.pop }),
+      ...(scene.title ? { [TAB_STATUS_ATTRIBUTES.title]: "" } : {}),
     },
-    icon = drawn(scene.set),
+    icon = scene.icon === "tab" ? TAB_ICON : RIBBON_ICON,
     svg = part("svg", new Map([["class", "svg-icon"]]), [icon]),
     tab = scene.host === "tab",
     container = box(tab ? "workspace-tab-header-inner-icon" : "tts-host-icon", [
       svg,
     ]),
-    inner = box("workspace-tab-header-inner", [container]),
+    title = box("workspace-tab-header-inner-title", []),
+    inner = box("workspace-tab-header-inner", [container, title]),
     header = tab
       ? box(
           `workspace-tab-header${scene.active ? " is-active" : ""}`,
@@ -616,6 +638,7 @@ function view(over: Partial<Scene> = {}): View {
     container: upTo,
     header: above,
     icon: [...upTo, svg, icon],
+    title: tab ? [...above, inner, title] : null,
     media: new Set([
       HOVER,
       ...(scene.still ? [] : [MOTION]),
@@ -802,10 +825,10 @@ const ACCENT = "var(--interactive-accent)",
 
 /**
  * The two boxes that light the dots, as they are laid out on a working tab
- * under "loop": in a browser that cannot place them from the drawing, where
- * their place is counted from the container.
+ * under "animated": in a browser that cannot place them from the drawing,
+ * where their place is counted from the container.
  */
-const MOVING = view({ animation: "loop", old: true, status: "working" }),
+const MOVING = view({ motion: "animated", old: true, status: "working" }),
   LIT = {
     height: units(declared(MOVING, MOVING.container, "height", "before")),
     left: units(declared(MOVING, MOVING.container, "left", "before")),
@@ -860,24 +883,30 @@ describe("composeTabIcon", () => {
     });
   });
 
-  it.each(SETS)("%s is well-formed XML with one root group", (set) => {
-    const source = composeTabIcon(set);
-    expect(() => readXml(source)).not.toThrow();
-    expect(source).not.toContain("&");
-    const root = drawn(set);
-    expect(root.tag).toBe("g");
-    for (const [name, value] of readXml(`<g ${TAB_ICON_WRAPPER_ATTRIBUTES}/>`)
-      .attributes) {
-      expect(root.attributes.get(name), name).toBe(value);
-    }
+  it.each(ICONS)(
+    "draws the %s icon as well-formed XML with one root group",
+    (_name, root) => {
+      expect(root.tag).toBe("g");
+      for (const [name, value] of readXml(`<g ${TAB_ICON_WRAPPER_ATTRIBUTES}/>`)
+        .attributes) {
+        expect(root.attributes.get(name), name).toBe(value);
+      }
+    },
+  );
+
+  it("is the same composite at every Program status: it takes no argument", () => {
+    expect(composeTabIcon).toHaveLength(0);
+    expect(composeTabIcon()).toBe(composeTabIcon());
+    expect(composeTabIcon()).not.toContain("&");
+    expect(() => readXml(composeTabIcon())).not.toThrow();
   });
 
-  it.each(SETS)("%s says its set, and nothing else, on its root", (set) => {
-    expect(drawn(set).attributes.get("class")).toBe(`tts tts-set-${set}`);
+  it("says its drawing, the square with a raised border, and nothing else, on its root", () => {
+    expect(drawn().attributes.get("class")).toBe("tts tts-set-bezel");
   });
 
-  it.each(SETS)("%s carries every class the stylesheet relies on", (set) => {
-    const all = within([drawn(set)]).map((chain) => subject(chain).classes);
+  it("carries every class the stylesheet relies on", () => {
+    const all = within([drawn()]).map((chain) => subject(chain).classes);
     expect(TAB_ICON_CLASSES.length).toBeGreaterThan(0);
     // An entry names one element by all of its classes.
     for (const name of TAB_ICON_CLASSES) {
@@ -890,12 +919,12 @@ describe("composeTabIcon", () => {
     }
     // Each mark once, and each symbol once on the badge.
     for (const mark of MARKS) {
-      expect(parts([drawn(set)], `tts-mk-${mark}`), mark).toHaveLength(1);
+      expect(parts([drawn()], `tts-mk-${mark}`), mark).toHaveLength(1);
     }
     for (const symbol of SYMBOLS) {
       expect(
         parts(
-          one(parts([drawn(set)], "tts-mk-badge"), "badge"),
+          one(parts([drawn()], "tts-mk-badge"), "badge"),
           `tts-sym-${symbol}`,
         ),
         symbol,
@@ -903,94 +932,255 @@ describe("composeTabIcon", () => {
     }
   });
 
-  it.each(SETS)("%s has nothing that breaks when the icon is cloned", (set) => {
-    for (const chain of within([drawn(set)])) {
-      const { attributes, tag } = subject(chain);
-      // Nothing that is addressed by an id, and nothing that runs or moves.
-      expect(tag).not.toMatch(
-        /^(?:defs|use|mask|clipPath|linearGradient|radialGradient|pattern|filter|symbol|style|script|set|animate\w*)$/u,
-      );
-      for (const [name, value] of attributes) {
-        expect(name, tag).not.toMatch(/^(?:(?:xml:)?id|style)$/u);
-        // No reference, to an id or by `url()`: a data URI in base64 has neither.
-        expect(value, `${tag} ${name}`).not.toMatch(/#|url\(/u);
+  it.each(ICONS)(
+    "has nothing in the %s icon that breaks when the icon is cloned",
+    (_name, root) => {
+      for (const chain of within([root])) {
+        const { attributes, tag } = subject(chain);
+        // Nothing that is addressed by an id, and nothing that runs or moves.
+        expect(tag).not.toMatch(
+          /^(?:defs|use|mask|clipPath|linearGradient|radialGradient|pattern|filter|symbol|style|script|set|animate\w*)$/u,
+        );
+        for (const [name, value] of attributes) {
+          expect(name, tag).not.toMatch(/^(?:(?:xml:)?id|style)$/u);
+          // No reference, to an id or by `url()`: a data URI in base64 has neither.
+          expect(value, `${tag} ${name}`).not.toMatch(/#|url\(/u);
+        }
       }
-    }
-  });
+    },
+  );
 
-  it.each(SETS)("%s draws the marks over the tile", (set) => {
+  it("draws the marks over the tile", () => {
     // Later is over: the terminal group, then the marks group, and nothing else.
     expect(
-      drawn(set).children.map((child) => child.attributes.get("class")),
+      drawn().children.map((child) => child.attributes.get("class")),
     ).toEqual(["tts-t", "tts-m"]);
-    expect(drawn(set).children.map((child) => child.tag)).toEqual(["g", "g"]);
+    expect(drawn().children.map((child) => child.tag)).toEqual(["g", "g"]);
   });
 
-  it.each(SETS)("%s places nothing of the tile by a transform", (set) => {
+  it("places nothing of the tile by a transform", () => {
     // The tile, its shadow and its face stand where they are drawn; only the marks are moved to their corner.
-    const terminal = one(parts([drawn(set)], "tts-t"), "terminal");
+    const terminal = one(parts([drawn()], "tts-t"), "terminal");
     for (const chain of within(terminal)) {
       expect([...subject(chain).attributes.keys()]).not.toContain("transform");
     }
   });
 
-  it.each(SETS)(
-    "%s shows a prompt of two lines and no image but its tile's",
-    (set) => {
-      const terminal = one(parts([drawn(set)], "tts-t"), "terminal"),
-        prompt = subject(one(parts(terminal, "tts-ink"), "prompt"));
-      expect(prompt.children.map((child) => child.tag)).toEqual([
-        "path",
-        "path",
-      ]);
-      for (const line of prompt.children) {
-        expect(line.attributes.get("d")).toMatch(/^[Mm]/u);
-      }
-      // The only images are the tile's.
-      for (const chain of within(terminal).filter(
-        (found) => subject(found).tag === "image",
-      )) {
-        expect(subject(chain).classes.has("tts-skin")).toBe(true);
-      }
-      // The prompt lies over the tile's image.
-      expect(subject(terminal).children.at(-1)).toBe(prompt);
-    },
-  );
+  it("shows a prompt of two lines and no image but its tile's", () => {
+    const terminal = one(parts([drawn()], "tts-t"), "terminal"),
+      prompt = subject(one(parts(terminal, "tts-ink"), "prompt"));
+    expect(prompt.children.map((child) => child.tag)).toEqual(["path", "path"]);
+    for (const line of prompt.children) {
+      expect(line.attributes.get("d")).toMatch(/^[Mm]/u);
+    }
+    // The only images are the tile's.
+    for (const chain of within(terminal).filter(
+      (found) => subject(found).tag === "image",
+    )) {
+      expect(subject(chain).classes.has("tts-skin")).toBe(true);
+    }
+    // The prompt lies over the tile's image.
+    expect(subject(terminal).children.at(-1)).toBe(prompt);
+  });
 
-  it.each(SETS)("%s paints only with currentColor, white and black", (set) => {
-    const source = composeTabIcon(set),
-      paints = within([drawn(set)]).flatMap((chain) =>
+  it.each(ICONS)(
+    "paints the %s icon only with currentColor, white and black",
+    (_name, root) => {
+      const paints = within([root]).flatMap((chain) =>
         ["fill", "stroke"].flatMap((name) => {
           const paint = subject(chain).attributes.get(name);
           return paint === undefined ? [] : [paint];
         }),
       );
-    expect(paints.length).toBeGreaterThan(0);
-    expect(
-      paints.filter(
-        (paint) => !["none", "currentColor", "white", "black"].includes(paint),
-      ),
-    ).toEqual([]);
-    expect(source).not.toMatch(/\b(?:rgba?|hsla?|color)\(/iu);
+      expect(paints.length).toBeGreaterThan(0);
+      expect(
+        paints.filter(
+          (paint) =>
+            !["none", "currentColor", "white", "black"].includes(paint),
+        ),
+      ).toEqual([]);
+    },
+  );
+
+  it("names no colour in either icon's markup", () => {
+    for (const source of [composeTabIcon(), composeRibbonIcon()]) {
+      expect(source).not.toMatch(/\b(?:rgba?|hsla?|color)\(/iu);
+    }
   });
 
-  it("carries the same marks in every set", () => {
-    const marks = (set: Settings.TabIconSet): string => {
-      const source = composeTabIcon(set);
-      return source.slice(source.indexOf('<g class="tts-m"'));
+  it("wraps the inside of the dot and of the eye in a group of their own, which has no transform to be replaced", () => {
+    const pops = parts([drawn()], "tts-mk-pop");
+    // One in each mark of a state that asks for the user, and none elsewhere.
+    expect(
+      pops.map((chain) =>
+        [...(chain.at(-2)?.classes ?? [])].filter((name) =>
+          /^tts-mk-(?:dot|eye|badge|dots)$/u.test(name),
+        ),
+      ),
+    ).toEqual([["tts-mk-dot"], ["tts-mk-eye"]]);
+    for (const chain of pops) {
+      const group = subject(chain),
+        mark = chain.at(-2);
+      expect(group.tag).toBe("g");
+      // The mark is placed by its own transform; the group inside has none
+      // that a transform of the stylesheet would replace, and nothing else.
+      expect([...group.attributes.keys()]).toEqual(["class"]);
+      expect(mark?.attributes.get("transform")).toMatch(/^translate\(/u);
+      expect(mark?.children).toEqual([group]);
+    }
+  });
+});
+
+describe("composeRibbonIcon", () => {
+  const square = (): Part =>
+      one(
+        RIBBON_ICON.children.filter((child) =>
+          child.classes.has(RIBBON_ICON_CLASSES.square),
+        ),
+        "square",
+      ),
+    /** The corners of a path of straight lines (`m`, `M`, `l`, `h`, `v` and their numbers). */
+    corners = (d: string): readonly (readonly [number, number])[] => {
+      const found: (readonly [number, number])[] = [];
+      let at: readonly [number, number] = [0, 0];
+      for (const [, command = "", rest = ""] of d.matchAll(
+        /(?<command>[A-Za-z])(?<rest>[^A-Za-z]*)/gu,
+      )) {
+        const numbers = (rest.match(/-?\d*\.?\d+/gu) ?? []).map(Number);
+        if (!/^[MmLlHhVv]$/u.test(command)) {
+          throw new Error(`a command this reader does not know: ${command}`);
+        }
+        const step = /[Hh]/u.test(command) || /[Vv]/u.test(command) ? 1 : 2;
+        for (let index = 0; index < numbers.length; index += step) {
+          const first = numbers[index] ?? Number.NaN,
+            second = numbers[index + 1] ?? Number.NaN,
+            relative = command === command.toLowerCase();
+          if (/[Hh]/u.test(command)) {
+            at = [relative ? at[0] + first : first, at[1]];
+          } else if (/[Vv]/u.test(command)) {
+            at = [at[0], relative ? at[1] + first : first];
+          } else {
+            at = relative ? [at[0] + first, at[1] + second] : [first, second];
+          }
+          found.push(at);
+        }
+      }
+      return found;
     };
-    expect(marks(Settings.DEFAULT.tabIconSet)).toMatch(/^<g class="tts-m"/u);
-    for (const set of SETS) {
-      expect(marks(set), set).toBe(marks(Settings.DEFAULT.tabIconSet));
+
+  it("has a root of its own: no class of the tab icon, so no rule of the tab reaches it", () => {
+    expect(RIBBON_ICON.attributes.get("class")).toBe(RIBBON_ICON_CLASSES.root);
+    const classes = within([RIBBON_ICON]).flatMap((chain) => [
+      ...subject(chain).classes,
+    ]);
+    expect(classes.filter((name) => name.startsWith("tts"))).toEqual([]);
+    expect([...new Set(classes)].sort()).toEqual(
+      [RIBBON_ICON_CLASSES.root, RIBBON_ICON_CLASSES.square].sort(),
+    );
+  });
+
+  it("has no mark and no symbol", () => {
+    const source = composeRibbonIcon();
+    expect(source).not.toMatch(/tts-m|tts-sym|<circle|<polyline/u);
+    expect(
+      within([RIBBON_ICON])
+        .map(subject)
+        .map((found) => found.tag),
+    ).toEqual(["g", "rect", "g", "path", "path"]);
+  });
+
+  it("is a rounded square and a prompt, with no image and no shadow", () => {
+    const [tile, prompt, ...more] = RIBBON_ICON.children;
+    expect(more).toEqual([]);
+    expect(tile).toBe(square());
+    expect(tile?.tag).toBe("rect");
+    expect(prompt?.tag).toBe("g");
+    expect(prompt?.children.map((line) => line.tag)).toEqual(["path", "path"]);
+    expect(composeRibbonIcon()).not.toMatch(/<image|data:|opacity=/u);
+  });
+
+  it("draws the square to its measures, a square with rounded corners and no circle", () => {
+    const { radius, size, x, y } = TAB_ICON_LINE_TILE;
+    expect(
+      ["x", "y", "width", "height", "rx"].map((name) => number(square(), name)),
+    ).toEqual([x, y, size, size, radius]);
+    expect(radius).toBeGreaterThan(0);
+    expect(radius).toBeLessThan(size / 3);
+  });
+
+  it("keeps the square's line inside the tile box, where the tab's tile is", () => {
+    const { size, x, y } = TAB_ICON_LINE_TILE,
+      // The line is the icon's own, as wide as the wrapper says; half of it lies outside the square.
+      half =
+        Number(
+          readXml(`<g ${TAB_ICON_WRAPPER_ATTRIBUTES}/>`).attributes.get(
+            "stroke-width",
+          ),
+        ) / 2;
+    expect(half).toBe(1);
+    expect(x - half).toBeGreaterThanOrEqual(TAB_ICON_TILE_BOX.x);
+    expect(y - half).toBeGreaterThanOrEqual(TAB_ICON_TILE_BOX.y);
+    expect(x + size + half).toBeLessThanOrEqual(
+      TAB_ICON_TILE_BOX.x + TAB_ICON_TILE_BOX.size,
+    );
+    expect(y + size + half).toBeLessThanOrEqual(
+      TAB_ICON_TILE_BOX.y + TAB_ICON_TILE_BOX.size,
+    );
+    // And it stands around the same middle, to a tenth of a unit.
+    expect(x + size / 2).toBeCloseTo(
+      TAB_ICON_TILE_BOX.x + TAB_ICON_TILE_BOX.size / 2,
+      1,
+    );
+    expect(
+      Math.abs(
+        y + size / 2 - (TAB_ICON_TILE_BOX.y + TAB_ICON_TILE_BOX.size / 2),
+      ),
+    ).toBeLessThan(0.3);
+  });
+
+  it("paints the square and the prompt as the icon's own lines: no paint of their own", () => {
+    for (const chain of within([RIBBON_ICON]).slice(1)) {
+      const { attributes } = subject(chain);
+      expect(attributes.has("fill")).toBe(false);
+      expect(attributes.has("stroke")).toBe(false);
+    }
+    const [, prompt] = RIBBON_ICON.children;
+    // As wide as the square's line, which is the wrapper's.
+    expect(
+      prompt === undefined ? Number.NaN : number(prompt, "stroke-width"),
+    ).toBe(2);
+    expect(square().attributes.has("stroke-width")).toBe(false);
+  });
+
+  it("keeps the prompt inside the square, clear of its line", () => {
+    const { size, x, y } = TAB_ICON_LINE_TILE,
+      [, prompt] = RIBBON_ICON.children,
+      points = (prompt?.children ?? []).flatMap((line) =>
+        corners(line.attributes.get("d") ?? ""),
+      );
+    // A chevron of three corners and an underscore of two.
+    expect(points).toHaveLength(5);
+    for (const [px, py] of points) {
+      // Two units from the middle of the square's line: a line's own half width and the square's, and room between.
+      expect(px).toBeGreaterThanOrEqual(x + 2);
+      expect(px).toBeLessThanOrEqual(x + size - 2);
+      expect(py).toBeGreaterThanOrEqual(y + 2);
+      expect(py).toBeLessThanOrEqual(y + size - 2);
     }
   });
 });
 
 describe("the marks, to their chosen numbers", () => {
-  // The marks are the same in every set (above), so one icon stands for all.
-  const icon: Chain = [drawn(Settings.DEFAULT.tabIconSet)],
+  const icon: Chain = [drawn()],
+    /** The mark's own group, which its `transform` places. */
     mark = (name: Mark): Part =>
       subject(one(parts(icon, `tts-mk-${name}`), name)),
+    /** What the mark is drawn of: the group that pops in, where it has one. */
+    body = (name: Mark): Part => {
+      const found = mark(name),
+        [inner] = found.children;
+      return inner?.classes.has("tts-mk-pop") === true ? inner : found;
+    },
     classesOf = (of: Part): readonly (string | undefined)[] =>
       of.children.map((child) => child.attributes.get("class")),
     /** Tolerance for a number written with two decimals. */
@@ -998,15 +1188,15 @@ describe("the marks, to their chosen numbers", () => {
 
   it("puts the dot at (21, 3), 2.9 in radius, in a white ring 1 wide and a hairline 0.3 wide", () => {
     const dot = mark("dot"),
-      [edge, ring, ink] = dot.children;
+      [edge, ring, ink] = body("dot").children;
     // Painted in this order: the hairline, the ring over it, the dot over both.
-    expect(classesOf(dot)).toEqual([
+    expect(classesOf(body("dot"))).toEqual([
       "tts-mk-edge",
       "tts-mk-ring",
       "tts-mk-ink",
     ]);
     expect(place(dot)).toEqual({ x: 21, y: 3 });
-    for (const circle of dot.children) {
+    for (const circle of body("dot").children) {
       expect(circle.tag).toBe("circle");
       // Around the mark's own middle.
       expect([...circle.attributes.keys()].sort()).toEqual(["class", "r"]);
@@ -1025,9 +1215,9 @@ describe("the marks, to their chosen numbers", () => {
   it("draws the eye where the dot is: a ring that ends where the dot ends, with a core inside it", () => {
     const dot = mark("dot"),
       eye = mark("eye"),
-      [edge, ring, line, core] = eye.children,
-      [dotEdge, dotRing, dotInk] = dot.children;
-    expect(classesOf(eye)).toEqual([
+      [edge, ring, line, core] = body("eye").children,
+      [dotEdge, dotRing, dotInk] = body("dot").children;
+    expect(classesOf(body("eye"))).toEqual([
       "tts-mk-edge",
       "tts-mk-ring",
       "tts-mk-line",
@@ -1102,10 +1292,8 @@ describe("the marks, to their chosen numbers", () => {
       );
     expect(scale).toBe(0.515);
     expect(classesOf(symbols)).toEqual(["tts-sym-check", "tts-sym-moon"]);
-    // A working program has three dots and nothing else: no set draws a bolt.
-    for (const set of SETS) {
-      expect(composeTabIcon(set), set).not.toContain("tts-sym-bolt");
-    }
+    // A working program has three dots and nothing else: no bolt.
+    expect(composeTabIcon()).not.toContain("tts-sym-bolt");
     expect(line).toBeGreaterThan(0);
     // The one drawn in lines stays on the disc: no coordinate reaches further
     // from the middle than `reach`, so no point further than its diagonal.
@@ -1242,7 +1430,7 @@ describe("the marks, to their chosen numbers", () => {
       radius = (of: Mark, name: string): number =>
         number(
           one(
-            mark(of).children.filter(
+            body(of).children.filter(
               (child) => child.tag === "circle" && child.classes.has(name),
             ),
             name,
@@ -1310,16 +1498,13 @@ describe("tabIconSkinned", () => {
         .map(subject)
         .filter((found) => found.tag === "image");
 
-  it("stands one prompt set on the tile of its name, and the other is drawn in lines alone", () => {
-    expect(SETS.filter((set) => tileOf(set) !== null)).toEqual(["bezel"]);
-    expect(SETS.filter((set) => tileOf(set) === null)).toEqual(["tile"]);
-  });
-
-  it("packs no tile that no set stands on", () => {
-    expect(
-      [...new Set(SETS.flatMap((set) => tileOf(set) ?? []))].sort(),
-    ).toEqual(Object.keys(TAB_SKINS).sort());
+  it("stands the tab icon on the one rendered tile, and the ribbon's on none", () => {
     expect(Object.keys(TAB_SKINS)).toEqual(["bezel"]);
+    expect(isSkin("bezel")).toBe(true);
+    expect(isSkin("tile")).toBe(false);
+    // The tab icon is that tile's drawing, with the marks.
+    expect(composeTabIcon()).toContain(tabIconSkinned("bezel").terminal);
+    expect(parts([RIBBON_ICON], "tts-skin")).toEqual([]);
   });
 
   it("gives the tile a raised border of a tenth of its width", () => {
@@ -1402,135 +1587,14 @@ describe("tabIconSkinned", () => {
   });
 
   it("draws every prompt in lines about as wide as Obsidian's own", () => {
-    const stroke = (set: Settings.TabIconSet): number =>
-      number(
-        subject(one(parts([drawn(set)], "tts-ink"), "prompt")),
-        "stroke-width",
-      );
-    for (const set of SETS) {
-      expect(stroke(set), set).toBeGreaterThan(1.5);
-      expect(stroke(set), set).toBeLessThanOrEqual(2);
-    }
-  });
-});
-
-describe("the set drawn in lines alone", () => {
-  const terminal = (): Part =>
-      subject(one(parts([drawn("tile")], "tts-t"), "terminal")),
-    square = (): Part => {
-      const [tile] = terminal().children;
-      return one(tile?.children ?? [], "square");
-    },
-    /** The corners of a path of straight lines (`m`, `M`, `l`, `h`, `v` and their numbers). */
-    corners = (d: string): readonly (readonly [number, number])[] => {
-      const found: (readonly [number, number])[] = [];
-      let at: readonly [number, number] = [0, 0];
-      for (const [, command = "", rest = ""] of d.matchAll(
-        /(?<command>[A-Za-z])(?<rest>[^A-Za-z]*)/gu,
-      )) {
-        const numbers = (rest.match(/-?\d*\.?\d+/gu) ?? []).map(Number);
-        if (!/^[MmLlHhVv]$/u.test(command)) {
-          throw new Error(`a command this reader does not know: ${command}`);
-        }
-        const step = /[Hh]/u.test(command) || /[Vv]/u.test(command) ? 1 : 2;
-        for (let index = 0; index < numbers.length; index += step) {
-          const first = numbers[index] ?? Number.NaN,
-            second = numbers[index + 1] ?? Number.NaN,
-            relative = command === command.toLowerCase();
-          if (/[Hh]/u.test(command)) {
-            at = [relative ? at[0] + first : first, at[1]];
-          } else if (/[Vv]/u.test(command)) {
-            at = [at[0], relative ? at[1] + first : first];
-          } else {
-            at = relative ? [at[0] + first, at[1] + second] : [first, second];
-          }
-          found.push(at);
-        }
-      }
-      return found;
-    };
-
-  it("is a rounded square and a prompt, with no image and no shadow", () => {
-    const [tile, prompt, ...more] = terminal().children;
-    expect(more).toEqual([]);
-    expect(tile?.tag).toBe("g");
-    expect(tile?.attributes.get("class")).toBe("tts-skin");
-    expect(square().tag).toBe("rect");
-    expect(prompt?.attributes.get("class")).toBe("tts-ink");
-    expect(prompt?.children.map((line) => line.tag)).toEqual(["path", "path"]);
-    const all = within([drawn("tile")]).map(subject);
-    expect(all.filter((found) => found.tag === "image")).toEqual([]);
-    expect(parts([drawn("tile")], "tts-skin-drop")).toEqual([]);
-    expect(composeTabIcon("tile")).not.toContain("data:");
-  });
-
-  it("draws the square to its measures, a square with rounded corners and no circle", () => {
-    const { radius, size, x, y } = TAB_ICON_LINE_TILE;
-    expect(
-      ["x", "y", "width", "height", "rx"].map((name) => number(square(), name)),
-    ).toEqual([x, y, size, size, radius]);
-    expect(radius).toBeGreaterThan(0);
-    expect(radius).toBeLessThan(size / 3);
-  });
-
-  it("keeps the square's line inside the tile box, where every other tile is", () => {
-    const { size, x, y } = TAB_ICON_LINE_TILE,
-      // The line is the icon's own, as wide as the wrapper says; half of it lies outside the square.
-      half =
-        Number(
-          readXml(`<g ${TAB_ICON_WRAPPER_ATTRIBUTES}/>`).attributes.get(
-            "stroke-width",
-          ),
-        ) / 2;
-    expect(half).toBe(1);
-    expect(x - half).toBeGreaterThanOrEqual(TAB_ICON_TILE_BOX.x);
-    expect(y - half).toBeGreaterThanOrEqual(TAB_ICON_TILE_BOX.y);
-    expect(x + size + half).toBeLessThanOrEqual(
-      TAB_ICON_TILE_BOX.x + TAB_ICON_TILE_BOX.size,
-    );
-    expect(y + size + half).toBeLessThanOrEqual(
-      TAB_ICON_TILE_BOX.y + TAB_ICON_TILE_BOX.size,
-    );
-    // And it stands around the same middle, to a tenth of a unit.
-    expect(x + size / 2).toBeCloseTo(
-      TAB_ICON_TILE_BOX.x + TAB_ICON_TILE_BOX.size / 2,
-      1,
-    );
-    expect(
-      Math.abs(
-        y + size / 2 - (TAB_ICON_TILE_BOX.y + TAB_ICON_TILE_BOX.size / 2),
-      ),
-    ).toBeLessThan(0.3);
-  });
-
-  it("paints the square and the prompt as the icon's own lines: no paint of their own", () => {
-    for (const chain of within([terminal()])) {
-      const { attributes } = subject(chain);
-      expect(attributes.has("fill")).toBe(false);
-      expect(attributes.has("stroke")).toBe(false);
-    }
-    const [, prompt] = terminal().children;
-    // As wide as the square's line, which is the wrapper's.
-    expect(
-      prompt === undefined ? Number.NaN : number(prompt, "stroke-width"),
-    ).toBe(2);
-    expect(square().attributes.has("stroke-width")).toBe(false);
-  });
-
-  it("keeps the prompt inside the square, clear of its line", () => {
-    const { size, x, y } = TAB_ICON_LINE_TILE,
-      [, prompt] = terminal().children,
-      points = (prompt?.children ?? []).flatMap((line) =>
-        corners(line.attributes.get("d") ?? ""),
-      );
-    // A chevron of three corners and an underscore of two.
-    expect(points).toHaveLength(5);
-    for (const [px, py] of points) {
-      // Two units from the middle of the square's line: a line's own half width and the square's, and room between.
-      expect(px).toBeGreaterThanOrEqual(x + 2);
-      expect(px).toBeLessThanOrEqual(x + size - 2);
-      expect(py).toBeGreaterThanOrEqual(y + 2);
-      expect(py).toBeLessThanOrEqual(y + size - 2);
+    for (const prompt of [
+      subject(one(parts([drawn()], "tts-ink"), "prompt")),
+      RIBBON_ICON.children[1],
+    ]) {
+      const width =
+        prompt === undefined ? Number.NaN : number(prompt, "stroke-width");
+      expect(width).toBeGreaterThan(1.5);
+      expect(width).toBeLessThanOrEqual(2);
     }
   });
 });
@@ -1547,13 +1611,12 @@ describe("tab-status.css", () => {
         second.value === "terminal:terminal"
       );
     },
-    /** The classes of the icon's own root element. */
+    /** The classes of an icon's own root element: the tab icon's or the ribbon's. */
     isIcon = (simples: readonly Simple[]): boolean => {
       const [first] = simples;
       return (
         first?.kind === "class" &&
-        (first.name === "tts" ||
-          SETS.some((set) => first.name === `tts-set-${set}`))
+        ["tts", "tts-set-bezel", RIBBON_ICON_CLASSES.root].includes(first.name)
       );
     },
     isPreview = (simples: readonly Simple[]): boolean => {
@@ -1571,10 +1634,10 @@ describe("tab-status.css", () => {
         `${MOTION}${INSIDE}${ANCHORS}${INSIDE}${SCOPES}`,
       ].sort(),
     );
-    expect(sheet.rules.length).toBeGreaterThan(30);
+    expect(sheet.rules.length).toBeGreaterThan(25);
   });
 
-  it("starts every selector at the terminal tab header, at .tts-host or at .tts", () => {
+  it("starts every selector at the terminal tab header, at .tts-host, at the tab icon or at the ribbon icon", () => {
     for (const rule of READ) {
       for (const selector of rule.selectors) {
         const [start] = selector.compounds,
@@ -1601,67 +1664,126 @@ describe("tab-status.css", () => {
     }
   });
 
-  it("styles nothing on a terminal tab that carries no size, wherever it is and whatever the device", () => {
-    /** The same selector with the pointer on whatever it asks about. */
-    const hovering = (compounds: readonly Compound[]): readonly Compound[] =>
-        compounds.map((compound) => ({
-          ...compound,
-          simples: compound.simples
-            .filter((simple) => simple.kind !== "hover")
-            .map((simple) =>
-              simple.kind === "is"
-                ? {
-                    ...simple,
-                    options: simple.options.map((option) => ({
-                      ...option,
-                      compounds: hovering(option.compounds),
-                    })),
-                  }
-                : simple,
-            ),
-        })),
-      /** How many rules select the header of a tab or something in it, in every place a tab can be. */
-      selected = (written: Readonly<Record<string, string>>): number => {
-        let count = 0;
-        for (const split of SPLITS) {
-          for (const active of ["", " is-active"]) {
-            for (const theme of ["theme-dark", "theme-light"]) {
-              // As Obsidian draws a terminal's tab by itself: its own icon.
-              const chain: Chain = [
-                box(theme, []),
-                box(split, []),
-                box(`workspace-tab-header${active}`, [], {
+  /** The same selector with the pointer on whatever it asks about. */
+  const hovering = (compounds: readonly Compound[]): readonly Compound[] =>
+      compounds.map((compound) => ({
+        ...compound,
+        simples: compound.simples
+          .filter((simple) => simple.kind !== "hover")
+          .map((simple) =>
+            simple.kind === "is"
+              ? {
+                  ...simple,
+                  options: simple.options.map((option) => ({
+                    ...option,
+                    compounds: hovering(option.compounds),
+                  })),
+                }
+              : simple,
+          ),
+      })),
+    /**
+     * The rules that select the header of a tab, or something in it, by the
+     * header: with these attributes on it, in every place a tab can be, with
+     * the icon Obsidian draws for a tab by itself and with the tab icon. A
+     * rule that starts at the icon's root styles the icon wherever it is,
+     * and is not counted. The at-rules are left out: they can only take
+     * rules away.
+     */
+    selecting = (
+      written: Readonly<Record<string, string>>,
+    ): readonly ReadRule[] => {
+      const found = new Set<ReadRule>();
+      for (const split of SPLITS) {
+        for (const active of ["", " is-active"]) {
+          for (const theme of ["theme-dark", "theme-light"]) {
+            for (const icon of [
+              part("svg", new Map([["class", "svg-icon lucide-terminal"]]), []),
+              part("svg", new Map([["class", "svg-icon"]]), [TAB_ICON]),
+            ]) {
+              const header = box(`workspace-tab-header${active}`, [], {
                   "data-type": "terminal:terminal",
                   ...written,
                 }),
-                box("workspace-tab-header-inner", []),
-                box("workspace-tab-header-inner-icon", []),
-                part(
-                  "svg",
-                  new Map([["class", "svg-icon lucide-terminal"]]),
-                  [],
-                ),
-              ];
-              // The at-rules are left out: they can only take rules away.
+                inner = box("workspace-tab-header-inner", []),
+                above = [box(theme, []), box(split, []), header, inner],
+                container = [
+                  ...above,
+                  box("workspace-tab-header-inner-icon", []),
+                ],
+                chains = [
+                  above.slice(0, -1),
+                  above,
+                  container,
+                  ...within([...container, icon]),
+                  [...above, box("workspace-tab-header-inner-title", [])],
+                ];
               for (const rule of READ) {
                 for (const selector of rule.selectors) {
                   const compounds = hovering(selector.compounds);
-                  for (let index = 2; index < chain.length; index++) {
-                    if (selects(chain, index, compounds)) {
-                      count += 1;
-                    }
+                  if (
+                    !isIcon(selector.compounds[0]?.simples ?? []) &&
+                    chains.some((chain) =>
+                      selects(chain, chain.length - 1, compounds),
+                    )
+                  ) {
+                    found.add(rule);
                   }
                 }
               }
             }
           }
         }
-        return count;
-      };
-    // While the feature is off the plugin writes nothing on the header.
-    expect(selected({})).toBe(0);
+      }
+      return [...found];
+    };
+
+  it("styles nothing on a terminal tab that carries no attribute of ours, wherever it is and whatever the device", () => {
+    // Before the plugin writes the size, Obsidian's own tab is left alone.
+    expect(selecting({})).toEqual([]);
     // And the count is of something: the size alone brings rules in.
-    expect(selected({ [TAB_STATUS_ATTRIBUTES.size]: "18" })).toBeGreaterThan(0);
+    expect(
+      selecting({ [TAB_STATUS_ATTRIBUTES.size]: String(TAB_ICON_SIZE) }).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("matches a header that carries only the size with no rule of a status, only those of the icon's size and place", () => {
+    // Program status None, or a program that has reported nothing.
+    const sized = selecting({
+        [TAB_STATUS_ATTRIBUTES.size]: String(TAB_ICON_SIZE),
+      }),
+      declared = new Set(
+        sized.flatMap((rule) => [...rule.declarations.keys()]),
+      );
+    expect(sized.length).toBeGreaterThan(0);
+    for (const rule of sized) {
+      for (const { name } of rule.selectors
+        .flatMap(simplesOf)
+        .flatMap((simple) => (simple.kind === "attribute" ? [simple] : []))) {
+        // A rule may ask for more on another of its selectors, never need it here.
+        expect(["data-type", TAB_STATUS_ATTRIBUTES.size]).toContain(name);
+      }
+    }
+    // The size and the place of the icon, and nothing else: no colour, no
+    // mark, no fade and nothing that moves.
+    expect([...declared].sort()).toEqual(
+      [
+        "--icon-size",
+        "--tts-down",
+        "--tts-size",
+        "--tts-u",
+        "position",
+        "top",
+      ].sort(),
+    );
+    // So the same tab, a status written, is matched by more.
+    expect(
+      selecting({
+        [TAB_STATUS_ATTRIBUTES.motion]: "still",
+        [TAB_STATUS_ATTRIBUTES.size]: String(TAB_ICON_SIZE),
+        [TAB_STATUS_ATTRIBUTES.status]: "done",
+      }).length,
+    ).toBeGreaterThan(sized.length);
   });
 
   it("names only classes that an icon, a tab or a preview has", () => {
@@ -1671,8 +1793,8 @@ describe("tab-status.css", () => {
           .flatMap((simple) => (simple.kind === "class" ? [simple.name] : [])),
       ),
       inIcons = new Set(
-        SETS.flatMap((set) =>
-          within([drawn(set)]).flatMap((chain) => [...subject(chain).classes]),
+        ICONS.flatMap(([, root]) =>
+          within([root]).flatMap((chain) => [...subject(chain).classes]),
         ),
       ),
       /** Obsidian's own, and the two a preview is built from. */
@@ -1690,6 +1812,7 @@ describe("tab-status.css", () => {
         "workspace-tab-header",
         "workspace-tab-header-inner",
         "workspace-tab-header-inner-icon",
+        "workspace-tab-header-inner-title",
       ];
     expect(
       [...named].filter((name) => !inIcons.has(name) && !around.includes(name)),
@@ -1698,9 +1821,12 @@ describe("tab-status.css", () => {
 
   it("knows no attribute and no value that the presenter cannot write", () => {
     const written: Readonly<Record<string, readonly string[]>> = {
-        [TAB_STATUS_ATTRIBUTES.animation]: Settings.TAB_STATUS_ANIMATIONS,
-        [TAB_STATUS_ATTRIBUTES.size]: Settings.TAB_ICON_SIZES.map(String),
+        [TAB_STATUS_ATTRIBUTES.motion]: ["still", "animated"],
+        // The states that pop in, as the presenter writes them.
+        [TAB_STATUS_ATTRIBUTES.pop]: ["blocked", "done", "error"],
+        [TAB_STATUS_ATTRIBUTES.size]: [String(TAB_ICON_SIZE)],
         [TAB_STATUS_ATTRIBUTES.status]: STATUSES,
+        [TAB_STATUS_ATTRIBUTES.title]: [""],
       },
       asked = READ.flatMap((rule) => rule.selectors)
         .flatMap(simplesOf)
@@ -1721,7 +1847,7 @@ describe("tab-status.css", () => {
         expect(written[name], `${name}="${value}"`).toContain(value);
       }
     }
-    // And none hides in a place the reader does not look: every mention is one of the three.
+    // And none hides in a place the reader does not look: every mention is one of the five.
     for (const [mention] of css
       .replace(/\/\*[\s\S]*?\*\//gu, "")
       .matchAll(/data-terminal-[\w-]*/gu)) {
@@ -1731,26 +1857,32 @@ describe("tab-status.css", () => {
 
   it("asks for no quiet attribute: the grey badge of idle and seen needs none", () => {
     expect(Object.values<string>(TAB_STATUS_ATTRIBUTES).sort()).toEqual([
-      "data-terminal-animation",
+      "data-terminal-motion",
+      "data-terminal-pop",
       "data-terminal-size",
       "data-terminal-status",
+      "data-terminal-title-change",
     ]);
-    expect(css.replace(/\/\*[\s\S]*?\*\//gu, "")).not.toMatch(/quiet/iu);
+    expect(css.replace(/\/\*[\s\S]*?\*\//gu, "")).not.toMatch(
+      /quiet|data-terminal-animation/iu,
+    );
     // No scene writes one either, on a tab or on a preview.
     for (const host of HOSTS) {
-      for (const status of [null, ...STATUSES]) {
-        const { header } = view({ host, status });
-        expect(
-          [...subject(header).attributes.keys()].filter((name) =>
-            name.startsWith("data-terminal-"),
-          ),
-        ).toEqual(
-          [
-            TAB_STATUS_ATTRIBUTES.animation,
-            TAB_STATUS_ATTRIBUTES.size,
-            ...(status === null ? [] : [TAB_STATUS_ATTRIBUTES.status]),
-          ].sort(),
-        );
+      for (const motion of MOTIONS) {
+        for (const status of [null, ...STATUSES]) {
+          const { header } = view({ host, motion, status });
+          expect(
+            [...subject(header).attributes.keys()].filter((name) =>
+              name.startsWith("data-terminal-"),
+            ),
+          ).toEqual(
+            [
+              ...(motion === null ? [] : [TAB_STATUS_ATTRIBUTES.motion]),
+              TAB_STATUS_ATTRIBUTES.size,
+              ...(status === null ? [] : [TAB_STATUS_ATTRIBUTES.status]),
+            ].sort(),
+          );
+        }
       }
     }
   });
@@ -1762,35 +1894,34 @@ describe("tab-status.css", () => {
   });
 
   describe("which mark a tab shows", () => {
-    it.each(SETS)(
-      "shows no mark on %s where nothing is around the icon",
-      (set) => {
-        // An icon in a menu or a list: no tab header, no stand-in.
-        const icon = drawn(set),
-          alone: View = {
-            container: [],
-            header: [],
-            icon: [part("svg", new Map([["class", "svg-icon"]]), [icon]), icon],
-            media: new Set([HOVER, MOTION]),
-          };
-        expect(showing(alone)).toEqual({ marks: [], symbols: [] });
-        for (const tile of parts(alone.icon, "tts-skin")) {
-          expect(declared(alone, tile, "filter")).toBeUndefined();
-        }
-      },
-    );
+    it("shows no mark where nothing is around the icon", () => {
+      // An icon in a menu or a list: no tab header, no stand-in.
+      const icon = drawn(),
+        alone: View = {
+          container: [],
+          header: [],
+          icon: [part("svg", new Map([["class", "svg-icon"]]), [icon]), icon],
+          media: new Set([HOVER, MOTION]),
+          title: null,
+        };
+      expect(showing(alone)).toEqual({ marks: [], symbols: [] });
+      for (const tile of parts(alone.icon, "tts-skin")) {
+        expect(declared(alone, tile, "filter")).toBeUndefined();
+      }
+    });
 
     it.each(HOSTS)(
       "shows no mark, no symbol and no glow on a %s whose program has reported nothing",
       (host) => {
-        for (const set of SETS) {
-          for (const animation of Settings.TAB_STATUS_ANIMATIONS) {
-            const on = view({ animation, host, set });
-            expect(showing(on), set).toEqual({ marks: [], symbols: [] });
-            expect(hasBox(on, "before") || hasBox(on, "after")).toBe(false);
-            for (const tile of parts(on.icon, "tts-skin")) {
-              expect(declared(on, tile, "filter")).toBeUndefined();
-            }
+        for (const motion of MOTIONS) {
+          const on = view({ motion, host });
+          expect(showing(on), String(motion)).toEqual({
+            marks: [],
+            symbols: [],
+          });
+          expect(hasBox(on, "before") || hasBox(on, "after")).toBe(false);
+          for (const tile of parts(on.icon, "tts-skin")) {
+            expect(declared(on, tile, "filter")).toBeUndefined();
           }
         }
       },
@@ -1799,11 +1930,10 @@ describe("tab-status.css", () => {
     it.each(STATUSES)("shows the mark of %s, and no other", (status) => {
       const { mark, symbol } = SHOWS[status];
       for (const host of HOSTS) {
-        for (const set of SETS) {
-          // As the settings are at first: nothing moving.
+        for (const motion of MOTIONS) {
           expect(
-            showing(view({ host, set, status })),
-            `${set} ${host}`,
+            showing(view({ host, motion, status })),
+            `${host} ${String(motion)}`,
           ).toEqual({
             marks: [mark],
             symbols: symbol === null ? [] : [symbol],
@@ -1844,13 +1974,11 @@ describe("tab-status.css", () => {
         });
         // Nothing but the status asks for it: no scene has a setting for it.
         for (const host of HOSTS) {
-          for (const set of SETS) {
-            for (const animation of Settings.TAB_STATUS_ANIMATIONS) {
-              expect(
-                showing(view({ animation, host, set, status })),
-                `${set} ${host} ${animation}`,
-              ).toEqual({ marks: ["badge"], symbols: [symbol] });
-            }
+          for (const motion of MOTIONS) {
+            expect(
+              showing(view({ motion, host, status })),
+              `${host} ${String(motion)}`,
+            ).toEqual({ marks: ["badge"], symbols: [symbol] });
           }
           for (const over of [
             { light: true },
@@ -1859,10 +1987,11 @@ describe("tab-status.css", () => {
             { old: true },
             { unscoped: true },
             { size: null },
-            ...Settings.TAB_ICON_SIZES.map((size) => ({ size })),
+            { pop: "done" },
+            { title: true },
             ...SPLITS.map((split) => ({ split })),
           ] satisfies readonly Partial<Scene>[]) {
-            const on = view({ ...over, animation: "loop", host, status }),
+            const on = view({ ...over, motion: "animated", host, status }),
               badge = markOf(on, "badge");
             expect(showing(on), `${host} ${JSON.stringify(over)}`).toEqual({
               marks: ["badge"],
@@ -1964,43 +2093,39 @@ describe("tab-status.css", () => {
     });
 
     it.each(STATUSES)(
-      "lights the rendered tile of %s from behind in the colour of its mark, or not at all",
+      "lights the tile of %s from behind in the colour of its mark, or not at all",
       (status) => {
         const { colour, glow } = SHOWS[status];
         for (const host of HOSTS) {
-          // The set drawn in lines has nothing to light: see the next test.
-          for (const set of SETS.filter((each) => tileOf(each) !== null)) {
-            for (const light of [false, true]) {
-              const on = view({ host, light, set, status }),
-                tiles = parts(on.icon, "tts-skin");
-              expect(tiles.length).toBeGreaterThan(0);
-              for (const tile of tiles) {
-                const filter = declared(on, tile, "filter"),
-                  what = `${set} ${host}`;
-                // An image takes no colour: the light is all a state does to it.
-                expect(declared(on, tile, "stroke"), what).toBeUndefined();
-                expect(
-                  declared(on, tile, "stroke-opacity"),
-                  what,
-                ).toBeUndefined();
-                if (!glow) {
-                  expect(filter, what).toBeUndefined();
-                  continue;
-                }
-                // A light around the tile's image, of the state's colour and of no other.
-                const lights = (filter ?? "").match(
-                  /drop-shadow\([^()]*(?:\([^()]*\))?[^()]*\)/gu,
-                );
-                expect(lights?.length, what).toBeGreaterThan(0);
-                expect(lights?.join(" "), what).toBe(filter);
-                for (const each of lights ?? []) {
-                  // Around the tile, not to one side of it.
-                  expect(each, what).toMatch(
-                    /^drop-shadow\(0 0 [\d.]+px var\(--tts-glow\)\)$/u,
-                  );
-                }
-                expect(inherited(on, tile, "--tts-glow"), what).toBe(colour);
+          for (const light of [false, true]) {
+            const on = view({ host, light, status }),
+              tiles = parts(on.icon, "tts-skin");
+            expect(tiles.length).toBeGreaterThan(0);
+            for (const tile of tiles) {
+              const filter = declared(on, tile, "filter");
+              // An image takes no colour: the light is all a state does to it.
+              expect(declared(on, tile, "stroke"), host).toBeUndefined();
+              expect(
+                declared(on, tile, "stroke-opacity"),
+                host,
+              ).toBeUndefined();
+              if (!glow) {
+                expect(filter, host).toBeUndefined();
+                continue;
               }
+              // A light around the tile's image, of the state's colour and of no other.
+              const lights = (filter ?? "").match(
+                /drop-shadow\([^()]*(?:\([^()]*\))?[^()]*\)/gu,
+              );
+              expect(lights?.length, host).toBeGreaterThan(0);
+              expect(lights?.join(" "), host).toBe(filter);
+              for (const each of lights ?? []) {
+                // Around the tile, not to one side of it.
+                expect(each, host).toMatch(
+                  /^drop-shadow\(0 0 [\d.]+px var\(--tts-glow\)\)$/u,
+                );
+              }
+              expect(inherited(on, tile, "--tts-glow"), host).toBe(colour);
             }
           }
         }
@@ -2008,37 +2133,30 @@ describe("tab-status.css", () => {
     );
 
     it.each(STATUSES)(
-      "colours the square of the set drawn in lines for %s where a rendered tile would glow, and lights nothing",
+      "leaves the ribbon's icon as it is under %s: no rule of a status reaches it",
       (status) => {
-        const { colour, glow } = SHOWS[status];
         for (const host of HOSTS) {
-          for (const light of [false, true]) {
-            const on = view({ host, light, set: "tile", status }),
-              square = one(parts(on.icon, "tts-skin"), "square"),
-              prompt = one(parts(on.icon, "tts-ink"), "prompt"),
-              what = `${host} ${light ? "light" : "dark"}`;
-            // The prompt keeps the icon's colour, whatever the state.
-            expect(declared(on, prompt, "stroke"), what).toBeUndefined();
-            expect(
-              declared(on, prompt, "stroke-opacity"),
-              what,
-            ).toBeUndefined();
-            expect(declared(on, prompt, "filter"), what).toBeUndefined();
-            if (!glow) {
-              // Idle and seen: the square as at rest, faint and in the icon's colour.
-              expect(declared(on, square, "stroke"), what).toBeUndefined();
-              expect(declared(on, square, "filter"), what).toBeUndefined();
-              expect(
-                Number(declared(on, square, "stroke-opacity")),
-                what,
-              ).toBeLessThan(0.9);
-              continue;
+          for (const motion of MOTIONS) {
+            const on = view({ host, icon: "ribbon", motion, status }),
+              rest = view({ host, icon: "ribbon", motion: null, status: null });
+            for (const [index, chain] of within(on.icon).entries()) {
+              const before = within(rest.icon)[index] ?? chain;
+              for (const property of [
+                "display",
+                "fill",
+                "filter",
+                "opacity",
+                "stroke",
+                "stroke-opacity",
+                "transform",
+                "animation",
+              ]) {
+                expect(
+                  declared(on, chain, property),
+                  `${host} ${String(motion)} ${property}`,
+                ).toBe(declared(rest, before, property));
+              }
             }
-            expect(declared(on, square, "stroke"), what).toBe("var(--tts-st)");
-            expect(inherited(on, square, "--tts-st"), what).toBe(colour);
-            // At full strength, and with no light round it.
-            expect(declared(on, square, "stroke-opacity"), what).toBe("1");
-            expect(declared(on, square, "filter"), what).toBe("none");
           }
         }
       },
@@ -2060,21 +2178,19 @@ describe("tab-status.css", () => {
 
     it("lights nothing but the tile's image: no border, no wash, no dashes", () => {
       for (const status of STATUSES) {
-        for (const set of SETS) {
-          const on = view({ set, status });
-          for (const chain of within(on.icon)) {
-            if (!subject(chain).classes.has("tts-skin")) {
-              expect(declared(on, chain, "filter")).toBeUndefined();
-            }
-            for (const property of [
-              "stroke-dasharray",
-              "stroke-dashoffset",
-              "outline",
-              "box-shadow",
-              "background",
-            ]) {
-              expect(declared(on, chain, property)).toBeUndefined();
-            }
+        const on = view({ status });
+        for (const chain of within(on.icon)) {
+          if (!subject(chain).classes.has("tts-skin")) {
+            expect(declared(on, chain, "filter")).toBeUndefined();
+          }
+          for (const property of [
+            "stroke-dasharray",
+            "stroke-dashoffset",
+            "outline",
+            "box-shadow",
+            "background",
+          ]) {
+            expect(declared(on, chain, property)).toBeUndefined();
           }
         }
       }
@@ -2082,70 +2198,89 @@ describe("tab-status.css", () => {
   });
 
   describe("the tile", () => {
-    it("shows one image of a tile in each theme, or the square of the set drawn in lines", () => {
-      for (const set of SETS) {
-        const pair = tileOf(set) !== null;
-        for (const light of [false, true]) {
-          const on = view({ light, set }),
-            visible = parts(on.icon, "tts-skin")
-              .filter((chain) => shown(on, chain))
-              .map((chain) => subject(chain).attributes.get("class"));
-          expect(visible, set).toEqual([
-            pair ? `tts-skin tts-skin-${light ? "light" : "dark"}` : "tts-skin",
-          ]);
-        }
+    it("shows one image of the tile in each theme", () => {
+      for (const light of [false, true]) {
+        const on = view({ light }),
+          visible = parts(on.icon, "tts-skin")
+            .filter((chain) => shown(on, chain))
+            .map((chain) => subject(chain).attributes.get("class"));
+        expect(visible).toEqual([
+          `tts-skin tts-skin-${light ? "light" : "dark"}`,
+        ]);
       }
     });
 
-    it("stands a rendered tile on its shadow in both themes", () => {
-      for (const set of SETS) {
-        const tile = tileOf(set);
-        if (tile === null) {
-          // Lines alone: nothing to cast a shadow, and none is drawn.
-          expect(parts([drawn(set)], "tts-skin-drop"), set).toHaveLength(0);
-          continue;
-        }
-        for (const light of [false, true]) {
-          const on = view({ light, set });
-          expect(
-            shown(on, one(parts(on.icon, "tts-skin-drop"), "shadow")),
-            set,
-          ).toBe(true);
-        }
+    it("stands the tile on its shadow in both themes", () => {
+      for (const light of [false, true]) {
+        const on = view({ light });
+        expect(shown(on, one(parts(on.icon, "tts-skin-drop"), "shadow"))).toBe(
+          true,
+        );
       }
+      // The ribbon's icon is lines alone: nothing to cast a shadow, and none is drawn.
+      expect(parts([RIBBON_ICON], "tts-skin-drop")).toHaveLength(0);
     });
 
-    it("draws the prompt green on the tile with a dark face, and in the text colour where it is lines alone", () => {
-      const stroke = (set: Settings.TabIconSet): string | undefined => {
-        const on = view({ set });
-        return declared(on, one(parts(on.icon, "tts-ink"), "prompt"), "stroke");
-      };
-      expect(stroke("bezel")).toBe("var(--color-green)");
+    it("draws the prompt green on the tile with a dark face, and in the text colour on the ribbon", () => {
+      const on = view();
+      expect(
+        declared(on, one(parts(on.icon, "tts-ink"), "prompt"), "stroke"),
+      ).toBe("var(--color-green)");
       // Nothing declared: the icon's own `stroke="currentColor"` holds.
-      expect(stroke("tile")).toBeUndefined();
+      const ribbon = view({ icon: "ribbon" }),
+        [, prompt] = ribbon.icon.at(-1)?.children ?? [];
+      expect(prompt?.tag).toBe("g");
+      expect(
+        prompt === undefined
+          ? "no prompt"
+          : declared(ribbon, [...ribbon.icon, prompt], "stroke"),
+      ).toBeUndefined();
     });
 
-    it("draws the square of the set in lines fainter than its prompt, where no state colours it", () => {
-      for (const status of [null, "idle", "seen"] as const) {
-        for (const light of [false, true]) {
-          const on = view({ light, set: "tile", status }),
-            tile = one(parts(on.icon, "tts-skin"), "square"),
-            prompt = one(parts(on.icon, "tts-ink"), "prompt"),
-            faint = Number(declared(on, tile, "stroke-opacity"));
-          expect(faint).toBeGreaterThan(0.4);
-          expect(faint).toBeLessThan(0.9);
-          expect(declared(on, prompt, "stroke-opacity")).toBeUndefined();
-          // The colour stays the icon's: nothing gives the square or the prompt one.
-          expect(declared(on, tile, "stroke")).toBeUndefined();
-          expect(declared(on, tile, "fill")).toBeUndefined();
+    it("draws the ribbon's square fainter than its prompt, in every scene, and thins nothing of the tab's tile", () => {
+      for (const host of HOSTS) {
+        for (const status of [null, ...STATUSES]) {
+          for (const light of [false, true]) {
+            const on = view({ host, icon: "ribbon", light, status }),
+              square = one(
+                parts(on.icon, RIBBON_ICON_CLASSES.square),
+                "square",
+              ),
+              [, prompt] = on.icon.at(-1)?.children ?? [],
+              faint = Number(declared(on, square, "stroke-opacity"));
+            expect(faint).toBeGreaterThan(0.4);
+            expect(faint).toBeLessThan(0.9);
+            expect(
+              prompt === undefined
+                ? "no prompt"
+                : declared(on, [...on.icon, prompt], "stroke-opacity"),
+            ).toBeUndefined();
+            // The colour stays the icon's: nothing gives the square or the prompt one.
+            expect(declared(on, square, "stroke")).toBeUndefined();
+            expect(declared(on, square, "fill")).toBeUndefined();
+          }
         }
       }
-      // No other set has its tile thinned: a rendered tile is an image.
-      for (const set of SETS.filter((each) => each !== "tile")) {
-        const on = view({ set });
-        for (const tile of parts(on.icon, "tts-skin")) {
-          expect(declared(on, tile, "stroke-opacity"), set).toBeUndefined();
-        }
+      // And it is the ribbon's alone: the same faint square, wherever the icon is.
+      const alone: Chain = [RIBBON_ICON],
+        bare: View = {
+          container: [],
+          header: [],
+          icon: alone,
+          media: new Set([HOVER, MOTION]),
+          title: null,
+        };
+      expect(
+        declared(
+          bare,
+          one(parts(alone, RIBBON_ICON_CLASSES.square), "square"),
+          "stroke-opacity",
+        ),
+      ).toBe("0.62");
+      // A rendered tile is an image: it has no line to thin.
+      const on = view();
+      for (const tile of parts(on.icon, "tts-skin")) {
+        expect(declared(on, tile, "stroke-opacity")).toBeUndefined();
       }
     });
 
@@ -2160,8 +2295,8 @@ describe("tab-status.css", () => {
       expect(
         sheet.rules.filter((rule) => /clip|mask/u.test(rule.body)),
       ).toEqual([]);
-      for (const set of SETS) {
-        expect(composeTabIcon(set)).not.toMatch(/clip-path|mask/u);
+      for (const source of [composeTabIcon(), composeRibbonIcon()]) {
+        expect(source).not.toMatch(/clip-path|mask/u);
       }
     });
 
@@ -2169,8 +2304,8 @@ describe("tab-status.css", () => {
       expect(css.replace(/\/\*[\s\S]*?\*\//gu, "")).not.toMatch(
         /stroke-dash|pathLength/u,
       );
-      for (const set of SETS) {
-        expect(composeTabIcon(set)).not.toMatch(/stroke-dash|pathLength/u);
+      for (const source of [composeTabIcon(), composeRibbonIcon()]) {
+        expect(source).not.toMatch(/stroke-dash|pathLength/u);
       }
     });
   });
@@ -2185,59 +2320,249 @@ describe("tab-status.css", () => {
       frames = stops(sheet.keyframes.get("tts-dots") ?? ""),
       { dots } = TAB_ICON_MARKS;
 
-    it("moves nothing of the icon: only the two boxes of its container, on a working tab under loop, where motion is welcome", () => {
+    /** What a selector asks of the header or its stand-in, as `name=value`. */
+    const askedOf = (selector: Complex): readonly string[] =>
+        (selector.compounds[0]?.simples ?? []).flatMap((simple) =>
+          simple.kind === "attribute"
+            ? [`${simple.name}=${String(simple.value)}`]
+            : [],
+        ),
+      /** The classes a compound names, those in its `:is()` too. */
+      classesIn = (simples: readonly Simple[]): readonly string[] =>
+        simplesOf({
+          compounds: [{ combinator: null, simples }],
+          pseudo: null,
+        })
+          .flatMap((simple) => (simple.kind === "class" ? [simple.name] : []))
+          .sort(),
+      /** Whether a part moves in a scene: a property that moves is declared on it. */
+      moves = (on: View, chain: Chain, pseudo: Pseudo = null): boolean =>
+        moving.some((rule) =>
+          [...rule.declarations.keys()].some(
+            (property) =>
+              MOVES.test(property) &&
+              declared(on, chain, property, pseudo) !== undefined,
+          ),
+        ),
+      /** Every part of a scene, and the two boxes of its container, that moves. */
+      movingIn = (on: View): readonly string[] => [
+        ...within(on.container)
+          .filter((chain) => moves(on, chain))
+          .map((chain) => [...subject(chain).classes].join(" ")),
+        ...(["before", "after"] as const).flatMap((pseudo) =>
+          moves(on, on.container, pseudo) ? [`::${pseudo}`] : [],
+        ),
+        ...(on.title !== null && moves(on, on.title) ? ["title"] : []),
+      ],
+      popFrames = sheet.keyframes.get(TAB_STATUS_KEYFRAMES.pop) ?? "",
+      titleFrames = sheet.keyframes.get(TAB_STATUS_KEYFRAMES.title) ?? "",
+      /** The stops of a one-shot animation: when, and what each declares. */
+      shots = (
+        body: string,
+      ): readonly {
+        readonly offset: number;
+        readonly opacity: number;
+        readonly transform: string;
+      }[] =>
+        Array.from(
+          body.matchAll(/(?<offset>[\d.]+)%\s*\{(?<body>[^}]*)\}/gu),
+          (match) => {
+            const declares = declarations(match.groups?.["body"] ?? "");
+            expect([...declares.keys()].sort()).toEqual([
+              "opacity",
+              "transform",
+            ]);
+            return {
+              offset: Number(match.groups?.["offset"]),
+              opacity: Number(declares.get("opacity")),
+              transform: declares.get("transform") ?? "",
+            };
+          },
+        ),
+      /** `0.42s` as milliseconds. */
+      millis = (time: string | undefined): number =>
+        Number.parseFloat(time ?? "") * 1000;
+
+    it("moves three things only, each under Animated where motion is welcome: the dots' two boxes, the inside of a new mark, a new title", () => {
       expect(moving.length).toBeGreaterThan(0);
+      const kinds = new Set<string>();
       for (const rule of moving) {
         expect(rule.at).toBe(MOTION);
         for (const selector of rule.selectors) {
-          const [start, ...rest] = selector.compounds,
-            asked = (start?.simples ?? []).flatMap((simple) =>
-              simple.kind === "attribute"
-                ? [`${simple.name}=${String(simple.value)}`]
-                : [],
-            ),
+          const asked = askedOf(selector),
+            [, ...rest] = selector.compounds,
             last = rest.at(-1)?.simples ?? [];
-          // On a box, not on an element: so not on the tile, its face or a mark.
-          expect(selector.pseudo).not.toBeNull();
-          expect(asked).toEqual(
-            expect.arrayContaining([
-              `${TAB_STATUS_ATTRIBUTES.animation}=loop`,
-              `${TAB_STATUS_ATTRIBUTES.status}=working`,
-            ]),
-          );
-          // The box is the icon container's.
-          expect(rest).toHaveLength(1);
-          expect(
-            simplesOf({
-              compounds: [{ combinator: null, simples: last }],
-              pseudo: null,
-            })
-              .flatMap((simple) =>
-                simple.kind === "class" ? [simple.name] : [],
-              )
-              .sort(),
-          ).toEqual(["tts-host-icon", "workspace-tab-header-inner-icon"]);
+          expect(asked).toContain(`${TAB_STATUS_ATTRIBUTES.motion}=animated`);
+          if (selector.pseudo !== null) {
+            // The dots: a box of the icon container, on a working tab.
+            kinds.add("dots");
+            expect(asked).toContain(`${TAB_STATUS_ATTRIBUTES.status}=working`);
+            expect(rest).toHaveLength(1);
+            expect(classesIn(last)).toEqual([
+              "tts-host-icon",
+              "workspace-tab-header-inner-icon",
+            ]);
+          } else if (asked.includes(`${TAB_STATUS_ATTRIBUTES.pop}=null`)) {
+            // A new mark: the group inside the dot or the eye, which has no
+            // transform attribute for the stylesheet's to replace.
+            kinds.add("pop");
+            expect(classesIn(last)).toEqual(["tts-mk-pop"]);
+            expect(rest.at(-1)?.combinator).toBe(">");
+            expect(classesIn(rest.at(-2)?.simples ?? [])).toEqual([
+              "tts-mk-dot",
+              "tts-mk-eye",
+            ]);
+          } else {
+            // A new title: Obsidian's title element of a tab.
+            kinds.add("title");
+            expect(asked).toContain(`${TAB_STATUS_ATTRIBUTES.title}=null`);
+            expect(isTab(selector.compounds[0]?.simples ?? [])).toBe(true);
+            expect(rest).toHaveLength(1);
+            expect(classesIn(last)).toEqual([
+              "workspace-tab-header-inner-title",
+            ]);
+          }
         }
       }
-      // The same, asked of the icon: in no state does a rule move a part of it.
-      for (const set of SETS) {
-        for (const status of [null, ...STATUSES]) {
-          const on = view({ animation: "loop", set, status });
-          for (const chain of within(on.container)) {
-            for (const rule of moving) {
-              for (const property of rule.declarations.keys()) {
-                if (MOVES.test(property)) {
-                  expect(declared(on, chain, property)).toBeUndefined();
-                }
-              }
-            }
+      expect([...kinds].sort()).toEqual(["dots", "pop", "title"]);
+    });
+
+    it("moves nothing at rest, whatever the status and the motion", () => {
+      for (const host of HOSTS) {
+        for (const motion of MOTIONS) {
+          for (const status of [null, ...STATUSES]) {
+            const on = view({ host, motion, status });
+            expect(
+              movingIn(on),
+              `${host} ${String(motion)} ${String(status)}`,
+            ).toEqual(
+              motion === "animated" && status === "working"
+                ? ["::before", "::after"]
+                : [],
+            );
           }
         }
       }
     });
 
-    it("has one keyframes rule, tts-dots, which changes only transform and opacity", () => {
-      expect([...sheet.keyframes.keys()]).toEqual(["tts-dots"]);
+    it("pops in only the mark shown, the dot or the eye, under Animated where motion is welcome", () => {
+      for (const host of HOSTS) {
+        for (const status of ["done", "blocked", "error"] as const) {
+          const on = view({ host, motion: "animated", pop: status, status }),
+            { mark } = SHOWS[status],
+            popping = parts(on.icon, "tts-mk-pop").filter(
+              (chain) => moves(on, chain) && shown(on, chain),
+            ),
+            group = one(popping, "the group that pops");
+          // The one inside the mark the status shows.
+          expect(group.at(-2)?.classes.has(`tts-mk-${mark}`)).toBe(true);
+          expect(["dot", "eye"]).toContain(mark);
+          expect(declared(on, group, "transform-box")).toBe("fill-box");
+          expect(declared(on, group, "transform-origin")).toBe("center");
+          expect(declared(on, group, "animation")?.split(" ")[0]).toBe(
+            TAB_STATUS_KEYFRAMES.pop,
+          );
+          // Nothing else of the icon moves, and the title stays.
+          expect(movingIn(on).filter((name) => name !== "tts-mk-pop")).toEqual(
+            [],
+          );
+          // Not under Still, None or reduced motion.
+          for (const over of [
+            { motion: "still" },
+            { motion: null },
+            { still: true },
+          ] satisfies readonly Partial<Scene>[]) {
+            const off = view({
+              host,
+              motion: "animated",
+              pop: status,
+              status,
+              ...over,
+            });
+            expect(movingIn(off), JSON.stringify(over)).toEqual([]);
+          }
+        }
+      }
+    });
+
+    it("pops a mark in nearly twice its size and faint, shrinks it a little past its size, and settles it, in under half a second", () => {
+      const frames = shots(popFrames),
+        scales = frames.map((stop) =>
+          Number(
+            /^scale\((?<scale>[\d.]+)\)$/u.exec(stop.transform)?.groups?.[
+              "scale"
+            ],
+          ),
+        ),
+        rule = one(
+          READ.filter((each) =>
+            (each.declarations.get("animation") ?? "").startsWith(
+              TAB_STATUS_KEYFRAMES.pop,
+            ),
+          ),
+          "the rule that pops",
+        ),
+        time = millis(rule.declarations.get("animation")?.split(" ")[1]);
+      expect(frames.map((stop) => stop.offset)).toEqual(
+        [...frames.map((stop) => stop.offset)].sort((a, b) => a - b),
+      );
+      expect(frames[0]?.offset).toBe(0);
+      expect(frames.at(-1)?.offset).toBe(100);
+      expect(scales[0]).toBeGreaterThanOrEqual(1.8);
+      expect(scales[0]).toBeLessThanOrEqual(2);
+      expect(frames[0]?.opacity).toBe(0);
+      // Past its size on the way down, then back: a slight overshoot.
+      expect(Math.min(...scales)).toBeLessThan(1);
+      expect(Math.min(...scales)).toBeGreaterThan(0.85);
+      expect(scales.at(-1)).toBe(1);
+      expect(frames.at(-1)?.opacity).toBe(1);
+      expect(time).toBeGreaterThanOrEqual(350);
+      expect(time).toBeLessThanOrEqual(450);
+      // The presenter takes the attribute back a little after the end.
+      expect(TAB_STATUS_TRANSIENT_TIMEOUTS.pop).toBeGreaterThan(time);
+      expect(TAB_STATUS_TRANSIENT_TIMEOUTS.pop).toBeLessThan(time + 500);
+    });
+
+    it("slides a new title up from below and fades it in, in about a quarter of a second, on a tab under Animated where motion is welcome", () => {
+      const frames = shots(titleFrames),
+        on = view({ motion: "animated", title: true }),
+        title = on.title ?? [],
+        animation = declared(on, title, "animation") ?? "",
+        time = millis(animation.split(" ")[1]);
+      expect(animation.split(" ")[0]).toBe(TAB_STATUS_KEYFRAMES.title);
+      expect(time).toBeGreaterThanOrEqual(220);
+      expect(time).toBeLessThanOrEqual(260);
+      expect(animation).toContain("ease-out");
+      expect(TAB_STATUS_TRANSIENT_TIMEOUTS.title).toBeGreaterThan(time);
+      expect(TAB_STATUS_TRANSIENT_TIMEOUTS.title).toBeLessThan(time + 500);
+      expect(frames.map((stop) => [stop.offset, stop.opacity])).toEqual([
+        [0, 0],
+        [100, 1],
+      ]);
+      expect(frames[0]?.transform).toMatch(/^translateY\([1-9]\d*%\)$/u);
+      expect(frames.at(-1)?.transform).toBe("translateY(0)");
+      expect(movingIn(on)).toEqual(["title"]);
+      for (const over of [
+        { motion: "still" },
+        { motion: null },
+        { still: true },
+        { host: "preview" },
+      ] satisfies readonly Partial<Scene>[]) {
+        expect(
+          movingIn(view({ motion: "animated", title: true, ...over })),
+          JSON.stringify(over),
+        ).toEqual([]);
+      }
+    });
+
+    it("has three keyframes rules, and tts-dots changes only transform and opacity", () => {
+      expect([...sheet.keyframes.keys()].sort()).toEqual(
+        [
+          "tts-dots",
+          TAB_STATUS_KEYFRAMES.pop,
+          TAB_STATUS_KEYFRAMES.title,
+        ].sort(),
+      );
       expect(frames.length).toBeGreaterThan(2);
       for (const stop of frames) {
         // The easing to the next stop is not a change of the box.
@@ -2252,74 +2577,79 @@ describe("tab-status.css", () => {
         );
         expect([0, 1]).toContain(stop.opacity);
       }
-      // And the only animation there is, is this one.
+      // And the only animations there are, are these.
       const named = new Set(
         READ.flatMap((rule) => {
           const animation = rule.declarations.get("animation");
           return animation === undefined ? [] : [animation.split(" ")[0]];
         }),
       );
-      expect([...named]).toEqual(["tts-dots"]);
+      expect([...named].sort()).toEqual(
+        [
+          "tts-dots",
+          TAB_STATUS_KEYFRAMES.pop,
+          TAB_STATUS_KEYFRAMES.title,
+        ].sort(),
+      );
     });
 
     it.each(HOSTS)(
-      "lights the dots of a working %s under loop with two boxes",
+      "lights the dots of a working %s under Animated with two boxes",
       (host) => {
-        for (const set of SETS) {
-          const on = view({ animation: "loop", host, set, status: "working" });
-          expect(showing(on), set).toEqual({ marks: ["dots"], symbols: [] });
-          expect([hasBox(on, "before"), hasBox(on, "after")]).toEqual([
-            true,
-            true,
-          ]);
-        }
+        const on = view({ host, motion: "animated", status: "working" });
+        expect(showing(on)).toEqual({ marks: ["dots"], symbols: [] });
+        expect([hasBox(on, "before"), hasBox(on, "after")]).toEqual([
+          true,
+          true,
+        ]);
       },
     );
 
-    it("stands the three dots still, all lit and with no box, under none and where the user asked for less motion", () => {
+    it("stands the three dots still, all lit and with no box, under Still and None, and where the user asked for less motion", () => {
       const lit = (of: View): readonly (string | undefined)[] =>
         parts(markOf(of, "dots"), "tts-mk-ink").map((chain) =>
           declared(of, chain, "opacity"),
         );
       for (const host of HOSTS) {
-        for (const set of SETS) {
-          for (const over of [
-            // The user's choice of no motion,
-            { animation: "none" },
-            { animation: "none", still: true },
-            // and the system's, which goes before a choice of motion.
-            { animation: "loop", still: true },
-          ] satisfies readonly Partial<Scene>[]) {
-            const on = view({ ...over, host, set, status: "working" }),
-              label = `${set} ${host} ${JSON.stringify(over)}`;
-            // The same mark as where it moves: three dots, and no badge.
-            expect(showing(on), label).toEqual({
-              marks: ["dots"],
-              symbols: [],
-            });
-            expect(lit(on), label).toEqual([undefined, undefined, undefined]);
-            expect([hasBox(on, "before"), hasBox(on, "after")], label).toEqual([
-              false,
-              false,
-            ]);
-            for (const pseudo of ["before", "after"] as const) {
-              expect(
-                declared(on, on.container, "animation", pseudo),
-                label,
-              ).toBeUndefined();
-            }
+        for (const over of [
+          // The user's choice of no motion,
+          { motion: "still" },
+          { motion: "still", still: true },
+          // a header without one (a status is written only under Still
+          // or Animated, but a preview may carry one),
+          { motion: null },
+          // and the system's, which goes before a choice of motion.
+          { motion: "animated", still: true },
+        ] satisfies readonly Partial<Scene>[]) {
+          const on = view({ ...over, host, status: "working" }),
+            label = `${host} ${JSON.stringify(over)}`;
+          // The same mark as where it moves: three dots, and no badge.
+          expect(showing(on), label).toEqual({
+            marks: ["dots"],
+            symbols: [],
+          });
+          expect(lit(on), label).toEqual([undefined, undefined, undefined]);
+          expect([hasBox(on, "before"), hasBox(on, "after")], label).toEqual([
+            false,
+            false,
+          ]);
+          for (const pseudo of ["before", "after"] as const) {
+            expect(
+              declared(on, on.container, "animation", pseudo),
+              label,
+            ).toBeUndefined();
           }
-          // Where they move, the dots of the icon are faint under the lit ones.
-          expect(
-            lit(view({ animation: "loop", host, set, status: "working" })),
-          ).toEqual(["0.3", "0.3", "0.3"]);
         }
+        // Where they move, the dots of the icon are faint under the lit ones.
+        expect(
+          lit(view({ host, motion: "animated", status: "working" })),
+        ).toEqual(["0.3", "0.3", "0.3"]);
       }
     });
 
     it("places the boxes from the drawing where the browser can, at the same distances", () => {
       for (const host of HOSTS) {
-        const on = view({ animation: "loop", host, status: "working" }),
+        const on = view({ motion: "animated", host, status: "working" }),
           drawing = on.icon.slice(0, -1);
         expect(declared(on, drawing, "anchor-name")).toBe("--tts-icon");
         for (const pseudo of ["before", "after"] as const) {
@@ -2331,7 +2661,7 @@ describe("tab-status.css", () => {
         }
         // An older browser has the same boxes, counted from the container.
         const old = view({
-          animation: "loop",
+          motion: "animated",
           host,
           old: true,
           status: "working",
@@ -2375,8 +2705,8 @@ describe("tab-status.css", () => {
       expect(start?.simples.slice(2)).toEqual([
         {
           kind: "attribute",
-          name: TAB_STATUS_ATTRIBUTES.animation,
-          value: "loop",
+          name: TAB_STATUS_ATTRIBUTES.motion,
+          value: "animated",
         },
         {
           kind: "attribute",
@@ -2397,30 +2727,25 @@ describe("tab-status.css", () => {
       ).toEqual([]);
 
       for (const split of SPLITS) {
-        for (const set of SETS) {
-          const on = view({ animation: "loop", set, split, status: "working" });
-          expect(
-            declared(on, on.container, "position"),
-            `${set} ${split}`,
-          ).toBe("static");
-          // The boxes are still there, placed from the drawing and not from a frame.
-          for (const pseudo of ["before", "after"] as const) {
-            const of = (property: string): string | undefined =>
-              declared(on, on.container, property, pseudo);
-            expect(of("position")).toBe("absolute");
-            expect(of("position-anchor")).toBe("--tts-icon");
-            expect(unitsFrom("left", of("left"))).toBe(LIT.left);
-            expect(unitsFrom("top", of("top"))).toBe(LIT.top);
-          }
-          expect(declared(on, on.icon.slice(0, -1), "anchor-name")).toBe(
-            "--tts-icon",
-          );
-          // And the drawing's name goes no further than its own container.
-          expect(declared(on, on.container, "anchor-scope")).toBe("--tts-icon");
+        const on = view({ motion: "animated", split, status: "working" });
+        expect(declared(on, on.container, "position"), split).toBe("static");
+        // The boxes are still there, placed from the drawing and not from a frame.
+        for (const pseudo of ["before", "after"] as const) {
+          const of = (property: string): string | undefined =>
+            declared(on, on.container, property, pseudo);
+          expect(of("position")).toBe("absolute");
+          expect(of("position-anchor")).toBe("--tts-icon");
+          expect(unitsFrom("left", of("left"))).toBe(LIT.left);
+          expect(unitsFrom("top", of("top"))).toBe(LIT.top);
         }
+        expect(declared(on, on.icon.slice(0, -1), "anchor-name")).toBe(
+          "--tts-icon",
+        );
+        // And the drawing's name goes no further than its own container.
+        expect(declared(on, on.container, "anchor-scope")).toBe("--tts-icon");
       }
       // Nothing above the container is made a frame in its place, or a clip.
-      const on = view({ animation: "loop", status: "working" });
+      const on = view({ motion: "animated", status: "working" });
       for (
         let length = on.header.length;
         length < on.container.length;
@@ -2437,22 +2762,19 @@ describe("tab-status.css", () => {
         const on = view(over);
         return declared(on, on.container, "position");
       };
-      for (const set of SETS) {
-        // A preview in the settings: no rounded clip around it to leave.
-        expect(
-          frame({ animation: "loop", host: "preview", set, status: "working" }),
-          set,
-        ).toBe("relative");
-      }
+      // A preview in the settings: no rounded clip around it to leave.
+      expect(
+        frame({ host: "preview", motion: "animated", status: "working" }),
+      ).toBe("relative");
       for (const split of SPLITS) {
         // A browser that cannot place the boxes from the drawing counts from the container.
         expect(
-          frame({ animation: "loop", old: true, split, status: "working" }),
+          frame({ motion: "animated", old: true, split, status: "working" }),
         ).toBe("relative");
         // One that can, but would find the drawing of another tab from a wider frame.
         expect(
           frame({
-            animation: "loop",
+            motion: "animated",
             split,
             status: "working",
             unscoped: true,
@@ -2460,11 +2782,11 @@ describe("tab-status.css", () => {
         ).toBe("relative");
         // Reduced motion: no boxes at all.
         expect(
-          frame({ animation: "loop", split, status: "working", still: true }),
+          frame({ motion: "animated", split, status: "working", still: true }),
         ).toBe("relative");
         expect(
           frame({
-            animation: "loop",
+            motion: "animated",
             old: true,
             split,
             status: "working",
@@ -2474,17 +2796,17 @@ describe("tab-status.css", () => {
       }
       for (const host of HOSTS) {
         for (const status of [null, ...STATUSES]) {
-          for (const animation of Settings.TAB_STATUS_ANIMATIONS) {
+          for (const motion of MOTIONS) {
             if (
               host === "tab" &&
               status === "working" &&
-              animation === "loop"
+              motion === "animated"
             ) {
               continue;
             }
             expect(
-              frame({ animation, host, status }),
-              `${host} ${String(status)} ${animation}`,
+              frame({ motion, host, status }),
+              `${host} ${String(status)} ${String(motion)}`,
             ).toBe("relative");
           }
         }
@@ -2524,20 +2846,17 @@ describe("tab-status.css", () => {
       };
       for (const pseudo of ["before", "after"] as const) {
         for (const split of SPLITS) {
-          for (const set of SETS) {
-            const on: Partial<Scene> = {
-              animation: "loop",
-              set,
-              split,
-              status: "working",
-            };
-            // Wherever the container is no frame, and nowhere else.
-            expect(
-              declared(view(on), view(on).container, "position"),
-              `${set} ${split}`,
-            ).toBe("static");
-            expect(shown(on, pseudo), `${set} ${split}`).toBe("always");
-          }
+          const on: Partial<Scene> = {
+            motion: "animated",
+            split,
+            status: "working",
+          };
+          // Wherever the container is no frame, and nowhere else.
+          expect(
+            declared(view(on), view(on).container, "position"),
+            split,
+          ).toBe("static");
+          expect(shown(on, pseudo), split).toBe("always");
           for (const over of [
             { old: true },
             { unscoped: true },
@@ -2545,7 +2864,7 @@ describe("tab-status.css", () => {
           ] satisfies readonly Partial<Scene>[]) {
             expect(
               shown(
-                { animation: "loop", split, status: "working", ...over },
+                { motion: "animated", split, status: "working", ...over },
                 pseudo,
               ),
               JSON.stringify(over),
@@ -2554,18 +2873,18 @@ describe("tab-status.css", () => {
         }
         expect(
           shown(
-            { animation: "loop", host: "preview", status: "working" },
+            { motion: "animated", host: "preview", status: "working" },
             pseudo,
           ),
         ).toBeUndefined();
         for (const status of [null, ...STATUSES]) {
-          for (const animation of Settings.TAB_STATUS_ANIMATIONS) {
-            if (status === "working" && animation === "loop") {
+          for (const motion of MOTIONS) {
+            if (status === "working" && motion === "animated") {
               continue;
             }
             expect(
-              shown({ animation, status }, pseudo),
-              `${String(status)} ${animation}`,
+              shown({ motion, status }, pseudo),
+              `${String(status)} ${String(motion)}`,
             ).toBeUndefined();
           }
         }
@@ -2609,12 +2928,12 @@ describe("tab-status.css", () => {
       for (const host of HOSTS) {
         for (const split of SPLITS) {
           for (const status of [null, ...STATUSES]) {
-            for (const animation of Settings.TAB_STATUS_ANIMATIONS) {
+            for (const motion of MOTIONS) {
               for (const browser of browsers) {
-                const on = view({ animation, host, split, status, ...browser }),
+                const on = view({ motion, host, split, status, ...browser }),
                   drawing = on.icon.slice(0, -1),
                   frame = declared(on, on.container, "position"),
-                  label = `${host} ${split} ${String(status)} ${animation} ${JSON.stringify(browser)}`;
+                  label = `${host} ${split} ${String(status)} ${String(motion)} ${JSON.stringify(browser)}`;
                 expect(["relative", "static"], label).toContain(frame);
                 expect(declared(on, drawing, "margin-block"), label).toBe(
                   frame === "static" ? CARRIED : undefined,
@@ -2658,7 +2977,7 @@ describe("tab-status.css", () => {
       for (const host of HOSTS) {
         for (const unscoped of [false, true]) {
           const on = view({
-            animation: "loop",
+            motion: "animated",
             host,
             status: "working",
             unscoped,
@@ -2678,11 +2997,11 @@ describe("tab-status.css", () => {
         }
         // No anchor, no scope.
         for (const over of [
-          { animation: "loop", old: true, status: "working" },
-          { animation: "loop", status: "working", still: true },
-          { animation: "none", status: "working" },
-          { animation: "loop", status: "done" },
-          { animation: "loop", status: null },
+          { motion: "animated", old: true, status: "working" },
+          { motion: "animated", status: "working", still: true },
+          { motion: "still", status: "working" },
+          { motion: "animated", status: "done" },
+          { motion: "animated", status: null },
         ] satisfies readonly Partial<Scene>[]) {
           const on = view({ ...over, host });
           expect(
@@ -2702,20 +3021,20 @@ describe("tab-status.css", () => {
     it("moves nothing for any other status, nor without loop", () => {
       for (const host of HOSTS) {
         for (const status of [null, ...STATUSES]) {
-          for (const animation of Settings.TAB_STATUS_ANIMATIONS) {
-            if (status === "working" && animation === "loop") {
+          for (const motion of MOTIONS) {
+            if (status === "working" && motion === "animated") {
               continue;
             }
-            const on = view({ animation, host, status });
+            const on = view({ motion, host, status });
             expect(
               [hasBox(on, "before"), hasBox(on, "after")],
-              `${String(status)} ${animation}`,
+              `${String(status)} ${String(motion)}`,
             ).toEqual([false, false]);
           }
           // Loop changes no mark, a working program's neither: it only sets
           // those dots moving.
-          expect(showing(view({ animation: "loop", host, status }))).toEqual(
-            showing(view({ animation: "none", host, status })),
+          expect(showing(view({ motion: "animated", host, status }))).toEqual(
+            showing(view({ motion: "still", host, status })),
           );
         }
       }
@@ -2887,7 +3206,7 @@ describe("tab-status.css", () => {
       "mod-secondary-split",
     ] as const;
 
-    it("has one rule for every size the settings offer, and for no other", () => {
+    it("has one rule of a size, for the one size the plugin writes", () => {
       const sized = READ.flatMap((rule) =>
         rule.selectors.flatMap(simplesOf).flatMap((simple) =>
           simple.kind === "attribute" &&
@@ -2898,12 +3217,13 @@ describe("tab-status.css", () => {
             : [],
         ),
       );
-      expect(sized).toEqual(Settings.TAB_ICON_SIZES.map(String));
+      expect(sized).toEqual([String(TAB_ICON_SIZE)]);
+      expect(TAB_ICON_SIZE).toBe(22);
     });
 
     it("has no size for a header without the attribute", () => {
       const sizing = READ.filter((rule) => rule.declarations.has("--tts-size"));
-      expect(sizing).toHaveLength(Settings.TAB_ICON_SIZES.length);
+      expect(sizing).toHaveLength(1);
       for (const rule of sizing) {
         for (const selector of rule.selectors) {
           expect(
@@ -2919,21 +3239,20 @@ describe("tab-status.css", () => {
       }
     });
 
-    it.each(Settings.TAB_ICON_SIZES)(
-      "draws the icon at %d px where the tab has a title, and in a preview",
-      (size) => {
-        for (const host of HOSTS) {
-          const on = view({ host, size });
-          expect(inherited(on, on.container, "--tts-size")).toBe(
-            `${String(size)}px`,
-          );
-          // The chosen size is the icon's.
-          expect(declared(on, on.container, "--icon-size")).toMatch(
-            /^var\(--tts-size, /u,
-          );
+    it("draws the icon at 22 px where the tab has a title, and in a preview, whatever Program status says", () => {
+      for (const host of HOSTS) {
+        for (const motion of MOTIONS) {
+          for (const status of [null, ...STATUSES]) {
+            const on = view({ host, motion, status });
+            expect(inherited(on, on.container, "--tts-size")).toBe("22px");
+            // The size is the icon's.
+            expect(declared(on, on.container, "--icon-size")).toMatch(
+              /^var\(--tts-size, /u,
+            );
+          }
         }
-      },
-    );
+      }
+    });
 
     it("gives a tab without a size none, and a preview without a size Obsidian's and two pixels", () => {
       const tab = view({ size: null }),
@@ -2966,8 +3285,8 @@ describe("tab-status.css", () => {
         // Obsidian sets `--icon-size: var(--icon-m)` on the drawing itself
         // there, in a box that cuts off anything larger. The container must
         // agree, or the two boxes are laid out for another size.
-        for (const size of Settings.TAB_ICON_SIZES) {
-          const on = view({ size, split });
+        for (const motion of MOTIONS) {
+          const on = view({ motion, split });
           expect(declared(on, on.container, "--icon-size")).toBe(
             "var(--icon-m, 16px)",
           );

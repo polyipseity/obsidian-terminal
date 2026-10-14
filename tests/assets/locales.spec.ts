@@ -132,17 +132,67 @@ describe("PluginLocales", () => {
     }
   });
 
-  it("has no words left for the two tab status settings that are always on, in any locale", async () => {
-    // Idle and seen always have the grey badge, and a finished program is
-    // always unread until the user looks: no row asks, so no key is used.
+  it("has the words of Program status and of its three options in every locale", async () => {
+    expect(PluginLocales.LANGUAGES).toHaveLength(49);
+    for (const language of PluginLocales.LANGUAGES) {
+      const { settings } =
+          await PluginLocales.RESOURCES[language].translation(),
+        options = settings["tab-status-options"];
+      expect(settings["tab-status"], language).toMatch(/\S/u);
+      // One short sentence that names the protocol.
+      expect(settings["tab-status-description"], language).toContain(
+        "OSC 7501",
+      );
+      expect(Object.keys(options).sort(), language).toEqual([
+        "animated",
+        "none",
+        "still",
+      ]);
+      for (const value of ["animated", "none", "still"] as const) {
+        expect(options[value], `${language} ${value}`).toMatch(/\S/u);
+      }
+    }
+    const asset = await PluginLocales.RESOURCES.en.asset();
+    expect(asset.settings["tab-status-icon"]).toMatch(/\S/u);
+  });
+
+  it("says Program status in English in a few words", async () => {
+    const { settings } = await PluginLocales.RESOURCES.en.translation();
+    expect(settings["tab-status"]).toBe("Program status");
+    expect(settings["tab-status-options"]).toEqual({
+      animated: "Animated",
+      none: "None",
+      still: "Still",
+    });
+    expect(settings["tab-status-description"]).toBe(
+      "Marks on $t(generic.terminal) $t(generic.tab) icons for programs that report OSC 7501: working, needs input, finished, error.",
+    );
+  });
+
+  it("has no words left for the removed tab rows or for the experiment they were, in any locale", async () => {
+    // The icon set, size, motion and preview rows, the rows removed before
+    // them, and the experiment that Program status was.
     const removed = [
+      "experimental-description",
+      "experimental-features",
+      "tab-icon-set",
+      "tab-icon-set-description",
+      "tab-icon-set-options",
+      "tab-icon-size",
+      "tab-icon-size-description",
+      "tab-icon-size-option",
+      "tab-status-animation",
+      "tab-status-animation-description",
+      "tab-status-animation-options",
+      "tab-status-preview",
       "tab-status-quiet-marks",
       "tab-status-quiet-marks-description",
       "tab-status-quiet-marks-options",
+      "tab-status-reports",
+      "tab-status-reports-description",
       "tab-status-unread-badge",
       "tab-status-unread-badge-description",
     ];
-    expect(PluginLocales.LANGUAGES).toHaveLength(49);
     for (const language of PluginLocales.LANGUAGES) {
       const { settings } =
         await PluginLocales.RESOURCES[language].translation();
@@ -150,68 +200,21 @@ describe("PluginLocales", () => {
         expect(settings, `${language} ${key}`).not.toHaveProperty([key]);
       }
       expect(
-        Object.keys(settings).filter((key) => /quiet|unread/u.test(key)),
-        language,
-      ).toEqual([]);
-      // The rows that stay have their words.
-      expect(settings, language).toHaveProperty(["tab-status-animation"]);
-    }
-    const asset = await PluginLocales.RESOURCES.en.asset();
-    for (const key of [
-      "tab-status-quiet-marks-icon",
-      "tab-status-unread-badge-icon",
-    ]) {
-      expect(asset.settings).not.toHaveProperty([key]);
-    }
-    expect(asset.settings).toHaveProperty(["tab-status-animation-icon"]);
-  });
-
-  it("has the words of the program status experiment, and none for a switch or a section of its own, in every locale", async () => {
-    for (const language of PluginLocales.LANGUAGES) {
-      const { settings } =
-          await PluginLocales.RESOURCES[language].translation(),
-        { tabStatus } = settings["experimental-features"];
-      expect(tabStatus.name, language).toMatch(/\S/u);
-      expect(tabStatus.effect, language).toMatch(/\S/u);
-      expect(tabStatus.risk, language).toMatch(/\S/u);
-      // The experiment's toggle is the switch, and its rows have no heading.
-      for (const key of [
-        "tab-status",
-        "tab-status-reports",
-        "tab-status-reports-description",
-      ]) {
-        expect(settings, `${language} ${key}`).not.toHaveProperty([key]);
-      }
-    }
-    const asset = await PluginLocales.RESOURCES.en.asset();
-    expect(asset.settings).not.toHaveProperty(["tab-status-reports-icon"]);
-  });
-
-  it("has words for the two tab icons and for no other, in every locale", async () => {
-    for (const language of PluginLocales.LANGUAGES) {
-      const { settings } =
-        await PluginLocales.RESOURCES[language].translation();
-      expect(
-        Object.keys(settings["tab-icon-set-options"]).sort(),
-        language,
-      ).toEqual(["bezel", "tile"]);
-      expect(
         Object.keys(settings)
-          .filter((key) => key.startsWith("tab-icon-"))
+          .filter((key) => key.startsWith("tab-"))
           .sort(),
         language,
-      ).toEqual([
-        "tab-icon-set",
-        "tab-icon-set-description",
-        "tab-icon-set-options",
-        "tab-icon-size",
-        "tab-icon-size-description",
-        "tab-icon-size-option",
-      ]);
+      ).toEqual(["tab-status", "tab-status-description", "tab-status-options"]);
     }
+    const asset = await PluginLocales.RESOURCES.en.asset();
+    expect(
+      Object.keys(asset.settings)
+        .filter((key) => key.startsWith("tab-"))
+        .sort(),
+    ).toEqual(["tab-status-icon"]);
   });
 
-  it("still names the plain icons of the terminal view and of the ribbon button", async () => {
+  it("still names the plain icon of the terminal view", async () => {
     const asset = await PluginLocales.RESOURCES.en.asset(),
       i18n = createInstance();
     await i18n.init({
@@ -221,7 +224,13 @@ describe("PluginLocales", () => {
       resources: { en: { asset } },
     });
     expect(i18n.t("asset:components.terminal.icon")).toBe("terminal");
-    expect(i18n.t("asset:ribbons.open-terminal-icon")).toBe("terminal-square");
+  });
+
+  it("has no icon name for the ribbon button, which draws a registered icon", async () => {
+    const asset = await PluginLocales.RESOURCES.en.asset();
+    expect(asset.ribbons).not.toHaveProperty(["open-terminal-icon"]);
+    // The command id of the button stays: saved ribbon orders name it.
+    expect(asset.ribbons["open-terminal-id"]).toBe("Open terminal");
   });
 
   it("uses the concise Windows Python notices in all 49 locales", async () => {
@@ -265,7 +274,6 @@ describe("PluginLocales", () => {
       const { settings } =
         await PluginLocales.RESOURCES[language].translation();
       expect(settings.experimental, language).toMatch(/\S/u);
-      expect(settings["experimental-description"], language).toMatch(/\S/u);
       expect(settings["experimental-feedback"], language).toMatch(/\S/u);
       expect(settings["experimental-applies"].newTerminals, language).toMatch(
         /\S/u,

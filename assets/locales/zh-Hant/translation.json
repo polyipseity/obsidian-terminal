@@ -383,14 +383,6 @@
       "newTerminals": "Applies to terminals opened after the change.",
       "restart": "Restart Obsidian to apply the change."
     },
-    "experimental-description": "These features are not finished. They may change or be removed in a later version. Each one is off until you turn it on.",
-    "experimental-features": {
-      "tabStatus": {
-        "effect": "Terminal tabs get a new icon that shows whether the program is idle, working, needs input, is done or has failed, when the program reports it.",
-        "name": "Program status on tabs",
-        "risk": "Few programs report their status yet, and the way they report it (OSC 7501) may still change. Inside tmux or screen the report may not reach the terminal. On Windows a program that asks the terminal whether it understands status reports gets no answer, and a program that waits for that answer shows no status there. A program that was already running when you turn this on may report only after you restart it."
-      }
-    },
     "experimental-feedback": "Send feedback",
     "experimental-risk": "Known risk: {{risk}}",
     "expose-internal-modules": "顯示內部模塊",
@@ -468,29 +460,12 @@
       "paste": "貼上"
     },
     "show-terminal-tab-prefix": "顯示$t(generic.terminal)分頁前綴",
-    "tab-icon-set": "$t(generic.terminal, capitalize) icon",
-    "tab-icon-set-description": "The icon of a $t(generic.terminal) $t(generic.tab).",
-    "tab-icon-set-options": {
-      "bezel": "Square with a raised border",
-      "tile": "Rounded square"
-    },
-    "tab-icon-size": "Icon size",
-    "tab-icon-size-description": "How large the icon is on a $t(generic.terminal) $t(generic.tab), in pixels. Obsidian's own $t(generic.tab) icons are 14. A $t(generic.tab) in a sidebar keeps Obsidian's size.",
-    "tab-icon-size-option": "{{size}} px",
-    "tab-status-animation": "Motion",
-    "tab-status-animation-description": "Whether the mark of a working program stands still or keeps moving. Where the system asks for reduced motion, the three dots stand still.",
-    "tab-status-animation-options": {
-      "loop": "Moving: three dots",
-      "none": "Still: three dots"
-    },
-    "tab-status-preview": {
-      "blocked": "Needs input",
-      "done": "Finished",
-      "error": "Error",
-      "idle": "Idle",
-      "label": "Preview",
-      "none": "No status",
-      "working": "Working"
+    "tab-status": "Program status",
+    "tab-status-description": "Marks on $t(generic.terminal) $t(generic.tab) icons for programs that report OSC 7501: working, needs input, finished, error.",
+    "tab-status-options": {
+      "animated": "Animated",
+      "none": "None",
+      "still": "Still"
     },
     "terminal-options": "$t(generic.terminal-option_other, capitalize)",
     "terminal-options-description": "除非特定$t(generic.profile)明確覆蓋它們，否則它們會被淺合併到每個$t(generic.profile)中。",

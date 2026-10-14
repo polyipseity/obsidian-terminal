@@ -1,13 +1,13 @@
 /**
  * Unit tests for `src/icons.ts`: icon ids and what gets registered at load.
  */
-import { createInstance } from "i18next";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import asset from "../../assets/locales/en/asset.json" with { type: "json" };
-import { loadIcons, tabIconId, terminalIconId } from "../../src/icons.js";
-import { Settings } from "../../src/settings-data.js";
+import { loadIcons, ribbonIconId, tabIconId } from "../../src/icons.js";
 import type { TerminalPlugin } from "../../src/main.js";
-import { composeTabIcon } from "../../src/terminal/tab-icons.js";
+import {
+  composeRibbonIcon,
+  composeTabIcon,
+} from "../../src/terminal/tab-icons.js";
 import { registerIcon } from "@polyipseity/obsidian-plugin-library";
 
 vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => ({
@@ -22,29 +22,15 @@ vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => ({
 const context = { id: "terminal" } as unknown as TerminalPlugin;
 
 describe("tabIconId", () => {
-  it.each(Settings.TAB_ICON_SETS)(
-    "names the %s set terminal:tab-<set>",
-    (set) => {
-      expect(tabIconId(context, set)).toBe(`terminal:tab-${set}`);
-    },
-  );
+  it("keeps the id that saved layouts name: terminal:tab-bezel", () => {
+    expect(tabIconId(context)).toBe("terminal:tab-bezel");
+  });
 });
 
-describe("terminalIconId", () => {
-  it("is the icon a terminal tab has had since before there were icon sets", async () => {
-    const i18n = createInstance();
-    await i18n.init({
-      fallbackLng: false,
-      lng: "en",
-      ns: ["asset"],
-      resources: { en: { asset } },
-    });
-    // Only the translations are read; the rest of the plugin is not needed.
-    expect(
-      terminalIconId({
-        language: { value: i18n },
-      } as unknown as TerminalPlugin),
-    ).toBe("terminal");
+describe("ribbonIconId", () => {
+  it("names the ribbon's icon terminal:ribbon, apart from the tab's", () => {
+    expect(ribbonIconId(context)).toBe("terminal:ribbon");
+    expect(ribbonIconId(context)).not.toBe(tabIconId(context));
   });
 });
 
@@ -53,34 +39,30 @@ describe("loadIcons", () => {
     vi.mocked(registerIcon).mockClear();
   });
 
-  it("registers one tab icon per set, with the composed content", () => {
+  it("registers the tab icon and the ribbon icon, with the composed content", () => {
     loadIcons(context);
-    for (const set of Settings.TAB_ICON_SETS) {
-      expect(registerIcon).toHaveBeenCalledWith(
-        context,
-        `terminal:tab-${set}`,
-        composeTabIcon(set),
-      );
-    }
+    expect(registerIcon).toHaveBeenCalledWith(
+      context,
+      "terminal:tab-bezel",
+      composeTabIcon(),
+    );
+    expect(registerIcon).toHaveBeenCalledWith(
+      context,
+      "terminal:ribbon",
+      composeRibbonIcon(),
+    );
   });
 
-  it("keeps the platform icons", () => {
+  it("registers exactly these and the platform icons", () => {
     loadIcons(context);
     const ids = vi.mocked(registerIcon).mock.calls.map((call) => call[1]);
     expect(ids).toEqual([
       "terminal:linux",
       "terminal:macos",
-      ...Settings.TAB_ICON_SETS.map((set) => `terminal:tab-${set}`),
+      "terminal:tab-bezel",
+      "terminal:ribbon",
     ]);
-  });
-
-  it("registers exactly the two tab icons", () => {
-    loadIcons(context);
-    expect(
-      vi
-        .mocked(registerIcon)
-        .mock.calls.map((call) => call[1])
-        .filter((id) => id.startsWith("terminal:tab-")),
-    ).toEqual(["terminal:tab-bezel", "terminal:tab-tile"]);
+    // The drawing in lines alone is the ribbon's now, under its own id.
+    expect(ids).not.toContain("terminal:tab-tile");
   });
 });

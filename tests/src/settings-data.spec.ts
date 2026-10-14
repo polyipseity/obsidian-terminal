@@ -3,7 +3,6 @@
  */
 import { cloneAsWritable } from "@polyipseity/obsidian-plugin-library";
 import { describe, expect, it, vi } from "vitest";
-import { isExperimentEnabled } from "../../src/experiments.js";
 import { LocalSettings, Settings } from "../../src/settings-data.js";
 import { PROFILE_PRESETS } from "../../src/terminal/profile-presets.js";
 import { inheritedPythonExecutable } from "../../src/terminal/win32-doctor.js";
@@ -546,256 +545,232 @@ describe("src/settings-data.ts", () => {
     expect(bad.value.showTerminalTabPrefix).toBe(false);
   });
 
-  describe("tab status settings", () => {
-    const TAB_STATUS_DEFAULTS = {
-        tabIconSet: "bezel",
-        tabIconSize: 18,
-        tabStatusAnimation: "none",
-      },
-      OPTIONS = [
-        ["tabIconSet", Settings.TAB_ICON_SETS],
-        ["tabStatusAnimation", Settings.TAB_STATUS_ANIMATIONS],
-      ] satisfies readonly (readonly [keyof Settings, readonly string[]])[],
-      // Options of earlier designs of this feature, never released.
-      REMOVED_KEYS = [
+  describe("Program status", () => {
+    // Options of earlier designs of this feature, never released.
+    const REMOVED_KEYS = [
         "tabStatusMarks",
         "tabStatusWorkingIndicator",
         "tabStatusPalette",
         "tabStatusTint",
         "tabStatusQuietMarks",
         "tabStatusUnreadBadge",
+        "tabStatusReports",
       ],
-      // The last two to go: idle and seen always have the grey badge, and a
-      // finished program is always unread until the user looks.
-      ALWAYS_ON_KEYS = ["tabStatusQuietMarks", "tabStatusUnreadBadge"],
+      // The keys of the builds whose feature was an experiment: the switch
+      // was `experiments.tabStatus`, and these were its look.
+      EXPERIMENT_KEYS = ["tabIconSet", "tabIconSize", "tabStatusAnimation"],
       /** What `data.json` holds: the settings as written, with `extra` on top. */
       stored = (extra: Readonly<Record<string, unknown>>): unknown =>
-        JSON.parse(JSON.stringify({ ...Settings.fix({}).value, ...extra }));
+        JSON.parse(JSON.stringify({ ...Settings.fix({}).value, ...extra })),
+      /** What a build of the experiment wrote, with its switch and look. */
+      experimental = (
+        on: unknown,
+        look: Readonly<Record<string, unknown>> = {},
+      ): Readonly<Record<string, unknown>> => {
+        const written = cloneAsWritable<Record<string, unknown>>({
+          ...Settings.fix({}).value,
+          experiments: { tabStatus: on },
+          tabIconSet: "bezel",
+          tabIconSize: 18,
+          tabStatusAnimation: "none",
+          ...look,
+        });
+        delete written["tabStatus"];
+        return written;
+      };
 
-    it("has the documented defaults", () => {
-      expect(Settings.DEFAULT).toMatchObject(TAB_STATUS_DEFAULTS);
+    it("is None until the user chooses another", () => {
+      expect(Settings.DEFAULT.tabStatus).toBe("none");
+      expect(Settings.fix({}).value.tabStatus).toBe("none");
     });
 
-    it("has no setting of the tab but the icon set, its size and the motion", () => {
+    it("offers None, Still and Animated, in the order the settings tab shows them", () => {
+      expect(Settings.TAB_STATUSES).toEqual(["none", "still", "animated"]);
+      expect(Settings.DEFAULT.tabStatus).toBe(Settings.TAB_STATUSES[0]);
+    });
+
+    it("has no setting of the tab but Program status", () => {
       expect(
         Object.keys(Settings.DEFAULT)
           .filter((key) => /^tab(?:Icon|Status)/u.test(key))
           .sort(),
-      ).toEqual(Object.keys(TAB_STATUS_DEFAULTS).sort());
-      for (const key of ALWAYS_ON_KEYS) {
+      ).toEqual(["tabStatus"]);
+      for (const key of [...EXPERIMENT_KEYS, ...REMOVED_KEYS]) {
         expect(Settings.DEFAULT).not.toHaveProperty(key);
       }
-    });
-
-    it("is off until the user turns it on, and on only for a stored true", () => {
-      expect(isExperimentEnabled(Settings.DEFAULT, "tabStatus")).toBe(false);
-      expect(isExperimentEnabled(Settings.fix({}).value, "tabStatus")).toBe(
-        false,
-      );
-      for (const stored of [false, "true", 1, null, {}]) {
-        expect(
-          Settings.fix({ experiments: { tabStatus: stored } }).value
-            .experiments,
-        ).toEqual({});
+      for (const name of [
+        "TAB_ICON_SETS",
+        "TAB_ICON_SIZES",
+        "TAB_STATUS_ANIMATIONS",
+        "TAB_STATUS_QUIET_MARKS",
+      ]) {
+        expect(Settings).not.toHaveProperty(name);
       }
-      const on = Settings.fix(stored({ experiments: { tabStatus: true } }));
-      expect(on.valid).toBe(true);
-      expect(isExperimentEnabled(on.value, "tabStatus")).toBe(true);
     });
 
-    it("does not turn the experiment on for a stored tabStatusReports", () => {
+    it.each(["none", "still", "animated"] as const)(
+      "keeps a stored %s, and is valid with it",
+      (tabStatus) => {
+        const fixed = Settings.fix(stored({ tabStatus }));
+        expect(fixed.value.tabStatus).toBe(tabStatus);
+        expect(fixed.valid).toBe(true);
+      },
+    );
+
+    it("replaces an unknown or mistyped Program status with None", () => {
+      for (const bad of [
+        "loop",
+        "on",
+        "",
+        "Still",
+        3,
+        true,
+        null,
+        ["still"],
+        { still: true },
+      ]) {
+        expect(Settings.fix({ tabStatus: bad }).value.tabStatus).toBe("none");
+      }
+    });
+
+    describe("from the builds whose feature was an experiment", () => {
+      it("turns the switch that was on into Still", () => {
+        const fixed = Settings.fix(experimental(true));
+        expect(fixed.value.tabStatus).toBe("still");
+        // Written back once, without the old keys.
+        expect(fixed.valid).toBe(false);
+      });
+
+      it("turns the switch that was on, with the dots moving, into Animated", () => {
+        expect(
+          Settings.fix(experimental(true, { tabStatusAnimation: "loop" })).value
+            .tabStatus,
+        ).toBe("animated");
+      });
+
+      it.each([
+        ["none"],
+        ["entry"],
+        [undefined],
+        [null],
+        [true],
+        ["LOOP"],
+      ] as const)(
+        "turns the switch that was on into Still under a motion of %j",
+        (tabStatusAnimation) => {
+          expect(
+            Settings.fix(experimental(true, { tabStatusAnimation })).value
+              .tabStatus,
+          ).toBe("still");
+        },
+      );
+
+      it.each([[false], ["true"], [1], [null], [{}], [[true]], [undefined]])(
+        "leaves Program status None for a switch stored as %j, whatever the motion",
+        (on) => {
+          for (const tabStatusAnimation of ["none", "loop"]) {
+            expect(
+              Settings.fix(experimental(on, { tabStatusAnimation })).value
+                .tabStatus,
+            ).toBe("none");
+          }
+        },
+      );
+
+      it("reads the switch only as the experiment's own stored key", () => {
+        // An inherited flag is not a stored flag, as the experiment's fixer read it.
+        const inherited: unknown = JSON.parse(
+          '{"__proto__":{"tabStatus":true}}',
+        );
+        expect(
+          Settings.fix({ experiments: inherited, tabStatusAnimation: "loop" })
+            .value.tabStatus,
+        ).toBe("none");
+        for (const experiments of [undefined, null, true, "tabStatus", []]) {
+          expect(
+            Settings.fix({ experiments, tabStatusAnimation: "loop" }).value
+              .tabStatus,
+            JSON.stringify(experiments),
+          ).toBe("none");
+        }
+      });
+
+      it("lets a stored Program status win over the switch", () => {
+        for (const tabStatus of Settings.TAB_STATUSES) {
+          expect(
+            Settings.fix({
+              ...experimental(true, { tabStatusAnimation: "loop" }),
+              tabStatus,
+            }).value.tabStatus,
+          ).toBe(tabStatus);
+        }
+      });
+
+      it("keeps none of the old keys, and the switch's flag goes with the registry", () => {
+        const fixed = Settings.fix(
+          experimental(true, {
+            tabIconSet: "tile",
+            tabIconSize: 22,
+            tabStatusAnimation: "loop",
+          }),
+        ).value;
+        for (const key of EXPERIMENT_KEYS) {
+          expect(fixed).not.toHaveProperty(key);
+        }
+        expect(fixed.experiments).toEqual({});
+        expect(fixed.tabStatus).toBe("animated");
+      });
+
+      it("converges: what is written back keeps the migrated status and is valid", () => {
+        for (const [look, expected] of [
+          [{ tabStatusAnimation: "loop" }, "animated"],
+          [{ tabStatusAnimation: "none" }, "still"],
+        ] as const) {
+          const first = Settings.fix(experimental(true, look)),
+            second = Settings.fix(JSON.parse(JSON.stringify(first.value)));
+          expect(first.valid).toBe(false);
+          expect(second.valid).toBe(true);
+          expect(second.value.tabStatus).toBe(expected);
+          expect(second.value).toEqual(first.value);
+        }
+      });
+    });
+
+    it("turns nothing on for a stored tabStatusReports", () => {
       // The switch of the builds before the experiment: never released.
       const fixed = Settings.fix(stored({ tabStatusReports: true }));
       expect(fixed.valid).toBe(false);
       expect(fixed.value).not.toHaveProperty("tabStatusReports");
-      expect(isExperimentEnabled(fixed.value, "tabStatus")).toBe(false);
-      expect(Settings.DEFAULT).not.toHaveProperty("tabStatusReports");
+      expect(fixed.value.tabStatus).toBe("none");
+      expect(fixed.value.experiments).toEqual({});
     });
 
-    it("keeps the look when the experiment is off", () => {
-      const fixed = Settings.fix(
-        stored({
-          tabIconSet: "tile",
-          tabIconSize: 22,
-          tabStatusAnimation: "loop",
-        }),
-      );
-      expect(fixed.valid).toBe(true);
-      expect(isExperimentEnabled(fixed.value, "tabStatus")).toBe(false);
-      expect(fixed.value).toMatchObject({
-        tabIconSet: "tile",
-        tabIconSize: 22,
-        tabStatusAnimation: "loop",
-      });
-    });
-
-    it("lists the options in the order the settings tab shows them", () => {
-      // The rendered tile, then the one drawn in lines alone.
-      expect(Settings.TAB_ICON_SETS).toEqual(["bezel", "tile"]);
-      expect(Settings.TAB_STATUS_ANIMATIONS).toEqual(["none", "loop"]);
-      // The grey badge of idle and seen is no option any more.
-      expect(Settings).not.toHaveProperty("TAB_STATUS_QUIET_MARKS");
-    });
-
-    it("holds no icon set twice", () => {
-      expect(new Set(Settings.TAB_ICON_SETS).size).toBe(
-        Settings.TAB_ICON_SETS.length,
-      );
-    });
-
-    it("starts with the first option of each list, the one the settings tab shows first", () => {
-      expect(Settings.DEFAULT.tabIconSet).toBe(Settings.TAB_ICON_SETS[0]);
-      expect(Settings.DEFAULT.tabStatusAnimation).toBe(
-        Settings.TAB_STATUS_ANIMATIONS[0],
-      );
-    });
-
-    it.each([
-      "visor",
-      "openring",
-      "classic",
-      "window",
-      "circle",
-      "bezelwide",
-      // Every circle went (2026-10-12): this one was the default until then.
-      "bezelround",
-      // The three other rendered tiles went the same day: the fine border,
-      // the sunken well and the white tile.
-      "frame",
-      "well",
-      "ivory",
-    ])("replaces the removed icon set %s with the default", (removed) => {
-      expect(Settings.fix({ tabIconSet: removed }).value.tabIconSet).toBe(
-        "bezel",
-      );
-    });
-
-    it("keeps the set drawn in lines alone, which was taken out and put back", () => {
-      expect(Settings.fix({ tabIconSet: "tile" }).value.tabIconSet).toBe(
-        "tile",
-      );
-    });
-
-    it("offers no circle: the default is the square with a raised border", () => {
-      expect(Settings.DEFAULT.tabIconSet).toBe("bezel");
-      expect(
-        Settings.TAB_ICON_SETS.filter((set) => /round|circle|ring/u.test(set)),
-      ).toEqual([]);
-    });
-
-    it("replaces the removed animation entry with the default", () => {
-      expect(
-        Settings.fix({ tabStatusAnimation: "entry" }).value.tabStatusAnimation,
-      ).toBe("none");
-    });
-
-    it.each(
-      ALWAYS_ON_KEYS.flatMap((key) =>
-        ["none", "badge", true, false, 3, null, ["badge"], { badge: true }].map(
-          (stored) => [key, stored] as const,
-        ),
-      ),
-    )(
-      "drops a stored %s of %j and leaves the settings beside it as they were",
-      (key, stored) => {
-        const saved = {
-            ...Settings.DEFAULT,
-            tabIconSet: "tile",
-            tabIconSize: 22,
-            tabStatusAnimation: "loop",
-          },
-          fixed = Settings.fix({ ...saved, [key]: stored }).value;
-        expect(fixed).not.toHaveProperty(key);
-        // Exactly what the same settings give without the key.
-        expect(fixed).toEqual(Settings.fix(saved).value);
-        expect(fixed).toMatchObject({
-          tabIconSet: "tile",
-          tabIconSize: 22,
-          tabStatusAnimation: "loop",
-        });
-        // And what is written back holds nothing to drop.
-        expect(Settings.fix(JSON.parse(JSON.stringify(fixed))).valid).toBe(
-          true,
-        );
-      },
-    );
-
-    it("drops the options of the earlier designs", () => {
-      const fixed = Settings.fix({
-        ...Settings.DEFAULT,
-        tabIconSet: "tile",
-        tabStatusMarks: "dot",
-        tabStatusPalette: "semantic",
-        tabStatusQuietMarks: "badge",
-        tabStatusTint: "whole",
-        tabStatusUnreadBadge: false,
-        tabStatusWorkingIndicator: "ring",
-      });
+    it("drops the options of the earlier designs and leaves the settings beside them as they were", () => {
+      const saved = { ...Settings.DEFAULT, tabStatus: "animated" },
+        fixed = Settings.fix({
+          ...saved,
+          tabStatusMarks: "dot",
+          tabStatusPalette: "semantic",
+          tabStatusQuietMarks: "badge",
+          tabStatusTint: "whole",
+          tabStatusUnreadBadge: false,
+          tabStatusWorkingIndicator: "ring",
+        }).value;
       for (const key of REMOVED_KEYS) {
-        expect(fixed.value).not.toHaveProperty(key);
-        expect(Settings.DEFAULT).not.toHaveProperty(key);
+        expect(fixed).not.toHaveProperty(key);
       }
-      // The rest of what was saved stays.
-      expect(fixed.value.tabIconSet).toBe("tile");
+      expect(fixed).toEqual(Settings.fix(saved).value);
+      expect(fixed.tabStatus).toBe("animated");
+      expect(Settings.fix(JSON.parse(JSON.stringify(fixed))).valid).toBe(true);
     });
 
-    it.each(OPTIONS)("keeps every valid %s", (key, options) => {
-      for (const option of options) {
-        expect(Settings.fix({ [key]: option }).value[key]).toBe(option);
-      }
-    });
-
-    it.each(OPTIONS)("replaces an unknown or mistyped %s", (key, _options) => {
-      for (const bad of ["no-such-option", "", 3, true, null, ["tile"]]) {
-        expect(Settings.fix({ [key]: bad }).value[key]).toBe(
-          Settings.DEFAULT[key],
-        );
-      }
-    });
-
-    it("offers every whole size from 12 to 24 pixels", () => {
-      expect(Settings.TAB_ICON_SIZES).toEqual([
-        12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
-      ]);
-    });
-
-    it("keeps every valid tabIconSize", () => {
-      for (const size of Settings.TAB_ICON_SIZES) {
-        expect(Settings.fix({ tabIconSize: size }).value.tabIconSize).toBe(
-          size,
-        );
-      }
-    });
-
-    it("replaces a tabIconSize that is not one of the sizes", () => {
-      for (const bad of [
-        11,
-        25,
-        17.5,
-        0,
-        -18,
-        "18",
-        "large",
-        null,
-        true,
-        [18],
-      ]) {
-        expect(Settings.fix({ tabIconSize: bad }).value.tabIconSize).toBe(
-          Settings.DEFAULT.tabIconSize,
-        );
-      }
-    });
-
-    it("adds the defaults to settings saved by 3.28.0", () => {
+    it("adds None to settings saved by 3.28.0", () => {
       // 3.28.0 wrote none of these keys.
       const released: Record<string, unknown> = { ...Settings.DEFAULT };
-      for (const key of Object.keys(TAB_STATUS_DEFAULTS)) {
-        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- Builds the older shape.
-        delete released[key];
-      }
+      delete released["tabStatus"];
       released["showTerminalTabPrefix"] = true;
       const fixed = Settings.fix(released).value;
-      expect(fixed).toMatchObject(TAB_STATUS_DEFAULTS);
+      expect(fixed.tabStatus).toBe("none");
       expect(fixed.showTerminalTabPrefix).toBe(true);
       expect(Settings.fix(JSON.parse(JSON.stringify(fixed))).valid).toBe(true);
     });

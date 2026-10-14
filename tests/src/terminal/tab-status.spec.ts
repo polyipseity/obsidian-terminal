@@ -5,34 +5,41 @@
  * - what is displayed for each reported state, seen and unseen
  * - what counts as unread: a finished program until the user looks, whatever
  *   the settings
- * - the three attributes written on the header, and nothing besides them
+ * - the attributes written on the header, and nothing besides them; the size
+ *   is not the presenter's
+ * - the pop of a new state that asks for the user, and the slide of a new
+ *   title, under Animated only: restarted, ended and cleaned up
  * - idempotent writes and cleanup
- * - the size and the icon written on a tab that has no presenter, and the
- *   plain icon put back on it
+ * - the gate on Program status, the size and the icon written on a tab that
+ *   has no presenter
  * - the window focus listener that goes with a tab into another window
  */
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Settings } from "../../../src/settings-data.js";
+import { TAB_ICON_SIZE } from "../../../src/terminal/tab-icons.js";
 import {
   TAB_STATUS_ATTRIBUTES,
+  TAB_STATUS_KEYFRAMES,
+  TAB_STATUS_TRANSIENT_TIMEOUTS,
   type TabStatusLook,
   TabStatusPresenter,
+  TransientAttribute,
+  isTabStatusShown,
   needsAttention,
   onWindowFocus,
-  restoreTabIcon,
   tabStatusLook,
+  whileTabStatusShown,
   writeAttribute,
   writeTabIcon,
   writeTabIconSize,
 } from "../../../src/terminal/tab-status.js";
 
-const LOOK: TabStatusLook = {
-  animation: "none",
-  set: "bezel",
-  size: 18,
-};
+const LOOK: TabStatusLook = { motion: "still" },
+  ANIMATED: TabStatusLook = { motion: "animated" };
 
 /** Attributes of earlier designs. Nothing writes them any more. */
 const REMOVED_ATTRIBUTES = [
+  "data-terminal-animation",
   "data-terminal-set",
   "data-terminal-marks",
   "data-terminal-palette",
@@ -66,25 +73,145 @@ function status(header: Element): string | null {
   return header.getAttribute(TAB_STATUS_ATTRIBUTES.status);
 }
 
+function pop(header: Element): string | null {
+  return header.getAttribute(TAB_STATUS_ATTRIBUTES.pop);
+}
+
+function sliding(header: Element): boolean {
+  return header.hasAttribute(TAB_STATUS_ATTRIBUTES.title);
+}
+
+/** The end of an animation, as the browser announces it from inside the header. */
+function animationEnd(target: Element, animationName: string): void {
+  target.dispatchEvent(
+    Object.assign(new Event("animationend", { bubbles: true }), {
+      animationName,
+    }),
+  );
+}
+
 describe("TAB_STATUS_ATTRIBUTES", () => {
-  it("names the three attributes the stylesheet reads", () => {
+  it("names the five attributes the stylesheet reads", () => {
     expect(TAB_STATUS_ATTRIBUTES).toEqual({
-      animation: "data-terminal-animation",
+      motion: "data-terminal-motion",
+      pop: "data-terminal-pop",
       size: "data-terminal-size",
       status: "data-terminal-status",
+      title: "data-terminal-title-change",
     });
   });
 });
 
 describe("tabStatusLook", () => {
-  it("is the icon set, the size and the motion of the settings", () => {
-    expect(
-      tabStatusLook({
-        tabIconSet: "tile",
-        tabIconSize: 22,
-        tabStatusAnimation: "loop",
-      }),
-    ).toEqual({ animation: "loop", set: "tile", size: 22 });
+  it.each([
+    ["none", "still"],
+    ["still", "still"],
+    ["animated", "animated"],
+  ] as const)("gives %s the motion %s", (tabStatus, motion) => {
+    expect(tabStatusLook({ tabStatus })).toEqual({ motion });
+  });
+
+  it("covers every Program status", () => {
+    for (const tabStatus of Settings.TAB_STATUSES) {
+      expect(["still", "animated"]).toContain(
+        tabStatusLook({ tabStatus }).motion,
+      );
+    }
+  });
+});
+
+describe("isTabStatusShown", () => {
+  it.each([
+    ["none", false],
+    ["still", true],
+    ["animated", true],
+  ] as const)("answers for %s: %s", (tabStatus, shown) => {
+    expect(isTabStatusShown({ tabStatus })).toBe(shown);
+  });
+});
+
+describe("whileTabStatusShown", () => {
+  /** A settings source that announces a change of Program status. */
+  function settingsOf(initial: Settings.TabStatus) {
+    let value: Pick<Settings, "tabStatus"> = { tabStatus: initial };
+    const listeners: (() => void)[] = [];
+    return {
+      get value() {
+        return value;
+      },
+      onMutate<V>(
+        accessor: (settings: Pick<Settings, "tabStatus">) => V,
+        callback: (cur: V) => unknown,
+      ): () => void {
+        let prev = accessor(value);
+        const listener = (): void => {
+          const cur = accessor(value);
+          if (cur !== prev) {
+            prev = cur;
+            callback(cur);
+          }
+        };
+        listeners.push(listener);
+        return () => {
+          listeners.splice(listeners.indexOf(listener), 1);
+        };
+      },
+      set(tabStatus: Settings.TabStatus): void {
+        value = { tabStatus };
+        for (const listener of [...listeners]) {
+          listener();
+        }
+      },
+    };
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("starts nothing under None, starts at Still or Animated, and stops at None", () => {
+    const settings = settingsOf("none"),
+      stop = vi.fn(),
+      start = vi.fn(() => stop);
+    whileTabStatusShown(settings, start);
+    expect(start).not.toHaveBeenCalled();
+    settings.set("still");
+    expect(start).toHaveBeenCalledOnce();
+    settings.set("none");
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it("neither stops nor starts between Still and Animated", () => {
+    const settings = settingsOf("animated"),
+      stop = vi.fn(),
+      start = vi.fn(() => stop),
+      dispose = whileTabStatusShown(settings, start);
+    expect(start).toHaveBeenCalledOnce();
+    settings.set("still");
+    settings.set("animated");
+    expect(start).toHaveBeenCalledOnce();
+    expect(stop).not.toHaveBeenCalled();
+    dispose();
+    expect(stop).toHaveBeenCalledOnce();
+    settings.set("none");
+    settings.set("still");
+    expect(start).toHaveBeenCalledOnce();
+  });
+
+  it("logs an error of start under the feature's name, and the change goes on", () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {}),
+      settings = settingsOf("none"),
+      failure = new Error("start failed");
+    whileTabStatusShown(settings, () => {
+      throw failure;
+    });
+    expect(() => {
+      settings.set("still");
+    }).not.toThrow();
+    expect(logged).toHaveBeenCalledExactlyOnceWith(
+      "Program status on tabs:",
+      failure,
+    );
   });
 });
 
@@ -227,14 +354,10 @@ describe("TabStatusPresenter", () => {
     // `satisfies` fails the type check if the look grows a key again.
     expect(
       Object.keys(LOOK satisfies Record<keyof TabStatusLook, unknown>).sort(),
-    ).toEqual(["animation", "set", "size"]);
+    ).toEqual(["motion"]);
   });
 
-  it.each([
-    { ...LOOK, animation: "loop" },
-    { ...LOOK, set: "tile" },
-    { ...LOOK, size: 24 },
-  ] satisfies readonly TabStatusLook[])(
+  it.each([LOOK, ANIMATED])(
     "shows an unseen finish as done under any look (%j), and as seen only once the user looks",
     (other) => {
       const { header, look, presenter } = fixture(other);
@@ -243,7 +366,7 @@ describe("TabStatusPresenter", () => {
       expect(presenter.display).toBe("done");
       expect(presenter.unread).toBe(true);
       // No change of the look stands in for the user's look.
-      look.mockReturnValue(LOOK);
+      look.mockReturnValue(other === LOOK ? ANIMATED : LOOK);
       presenter.render();
       expect(status(header)).toBe("done");
       expect(presenter.unread).toBe(true);
@@ -258,11 +381,11 @@ describe("TabStatusPresenter", () => {
     const { header, look, presenter } = fixture();
     presenter.report("done");
     presenter.look();
-    look.mockReturnValue({ ...LOOK, animation: "loop" });
+    look.mockReturnValue(ANIMATED);
     presenter.render();
     expect(status(header)).toBe("seen");
     expect(presenter.unread).toBe(false);
-    expect(header.getAttribute(TAB_STATUS_ATTRIBUTES.animation)).toBe("loop");
+    expect(header.getAttribute(TAB_STATUS_ATTRIBUTES.motion)).toBe("animated");
   });
 
   it.each(["blocked", "error"] as const)(
@@ -277,44 +400,36 @@ describe("TabStatusPresenter", () => {
     },
   );
 
-  it("writes the look from the settings", () => {
-    const { header, presenter } = fixture({
-      animation: "loop",
-      set: "tile",
-      size: 22,
-    });
+  it.each([
+    [LOOK, "still"],
+    [ANIMATED, "animated"],
+  ] as const)("writes the motion of the look %j", (look, motion) => {
+    const { header, presenter } = fixture(look);
     presenter.render();
-    expect(header.getAttribute(TAB_STATUS_ATTRIBUTES.size)).toBe("22");
-    expect(header.getAttribute(TAB_STATUS_ATTRIBUTES.animation)).toBe("loop");
+    expect(header.getAttribute(TAB_STATUS_ATTRIBUTES.motion)).toBe(motion);
   });
 
   it("follows a changed look on the next render", () => {
     const { header, look, presenter } = fixture();
     presenter.render();
-    look.mockReturnValue({
-      ...LOOK,
-      animation: "loop",
-      size: 24,
-    });
+    look.mockReturnValue(ANIMATED);
     presenter.render();
-    expect(header.getAttribute(TAB_STATUS_ATTRIBUTES.animation)).toBe("loop");
-    expect(header.getAttribute(TAB_STATUS_ATTRIBUTES.size)).toBe("24");
+    expect(header.getAttribute(TAB_STATUS_ATTRIBUTES.motion)).toBe("animated");
+    look.mockReturnValue(LOOK);
+    presenter.render();
+    expect(header.getAttribute(TAB_STATUS_ATTRIBUTES.motion)).toBe("still");
   });
 
   it.each(["idle", "working", "done", "blocked", "error"] as const)(
-    "writes the status, the size and the animation for %s, and nothing else",
+    "writes the status and the motion for %s, and nothing else at rest",
     (state) => {
-      const { header, presenter } = fixture({
-        ...LOOK,
-        animation: "loop",
-        set: "tile",
-      });
+      const { header, presenter } = fixture();
       presenter.report(state);
-      // Only these three, and no inline style: a timer that wrote a count
-      // here four times a second was what made the motion jerk.
+      // Only these two, and no inline style: a timer that wrote a count
+      // here four times a second was what made the motion jerk. The size is
+      // not the presenter's.
       expect(header.getAttributeNames().sort()).toEqual([
-        "data-terminal-animation",
-        "data-terminal-size",
+        "data-terminal-motion",
         "data-terminal-status",
       ]);
       for (const name of REMOVED_ATTRIBUTES) {
@@ -322,29 +437,25 @@ describe("TabStatusPresenter", () => {
       }
       presenter.look();
       expect(header.getAttributeNames().sort()).toEqual([
-        "data-terminal-animation",
-        "data-terminal-size",
+        "data-terminal-motion",
         "data-terminal-status",
       ]);
     },
   );
 
-  it("writes nothing for the icon set: the tab's icon is of it", () => {
-    const { header, look, presenter } = fixture();
-    presenter.report("working");
-    const before = header.outerHTML;
-    look.mockReturnValue({ ...LOOK, set: "tile" });
-    presenter.render();
-    expect(header.outerHTML).toBe(before);
-  });
-
-  it("leaves the attributes of others on the header alone", () => {
-    const { header, presenter } = fixture();
+  it("leaves the attributes of others on the header alone, the size too", () => {
+    const { header, presenter } = fixture(ANIMATED);
     header.setAttribute("data-type", "terminal:terminal");
     header.setAttribute("aria-label", "Terminal");
+    writeTabIconSize(header);
     presenter.report("error");
+    presenter.titleChanged();
     presenter.clear();
-    expect(header.getAttributeNames()).toEqual(["data-type", "aria-label"]);
+    expect(header.getAttributeNames()).toEqual([
+      "data-type",
+      "aria-label",
+      "data-terminal-size",
+    ]);
   });
 
   it("does not touch the header when nothing changed", () => {
@@ -372,7 +483,7 @@ describe("TabStatusPresenter", () => {
     expect(remove).not.toHaveBeenCalled();
   });
 
-  it("removes every attribute on clear and forgets the state", () => {
+  it("removes every attribute it wrote on clear and forgets the state", () => {
     const { header, presenter } = fixture();
     presenter.report("blocked");
     presenter.clear();
@@ -381,15 +492,15 @@ describe("TabStatusPresenter", () => {
     expect(presenter.unread).toBe(false);
   });
 
-  it("leaves continuous motion to the stylesheet: a working tab gets the animation and nothing that counts", () => {
-    const { header, look, presenter } = fixture({ ...LOOK, animation: "loop" });
+  it("leaves continuous motion to the stylesheet: a working tab gets the motion and nothing that counts", () => {
+    const { header, look, presenter } = fixture(ANIMATED);
     presenter.report("working");
-    expect(header.getAttribute(TAB_STATUS_ATTRIBUTES.animation)).toBe("loop");
+    expect(header.getAttribute(TAB_STATUS_ATTRIBUTES.motion)).toBe("animated");
     expect(status(header)).toBe("working");
     expect(header.hasAttribute("style")).toBe(false);
     look.mockReturnValue(LOOK);
     presenter.render();
-    expect(header.getAttribute(TAB_STATUS_ATTRIBUTES.animation)).toBe("none");
+    expect(header.getAttribute(TAB_STATUS_ATTRIBUTES.motion)).toBe("still");
   });
 
   it("reads the header anew on every write", () => {
@@ -402,7 +513,6 @@ describe("TabStatusPresenter", () => {
         lookedAt: () => false,
       });
     presenter.report("error");
-    // A tab moved to another window comes back with a new header.
     header.mockReturnValue(second);
     presenter.render();
     expect(status(second)).toBe("error");
@@ -414,49 +524,338 @@ describe("TabStatusPresenter", () => {
   it("does nothing while there is no header", () => {
     const presenter = new TabStatusPresenter({
       header: () => null,
-      look: () => LOOK,
+      look: () => ANIMATED,
       lookedAt: () => false,
     });
     expect(() => {
       presenter.report("done");
       presenter.look();
       presenter.render();
+      presenter.titleChanged();
       presenter.clear();
     }).not.toThrow();
+  });
+
+  describe("a new state that asks for the user, under Animated", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it.each(["done", "blocked", "error"] as const)(
+      "pops %s in, with the state as the value, and takes it back when the animation ends",
+      (state) => {
+        const { header, presenter } = fixture(ANIMATED);
+        presenter.report("working");
+        expect(pop(header)).toBeNull();
+        presenter.report(state);
+        expect(pop(header)).toBe(state);
+        expect(status(header)).toBe(state);
+        // Another animation ending is not this one.
+        animationEnd(header, TAB_STATUS_KEYFRAMES.title);
+        animationEnd(header, "tts-dots");
+        expect(pop(header)).toBe(state);
+        // The mark inside the header ends its pop; the event bubbles.
+        const mark = header.appendChild(document.createElement("i"));
+        animationEnd(mark, TAB_STATUS_KEYFRAMES.pop);
+        expect(pop(header)).toBeNull();
+        // Nothing waits any more.
+        expect(vi.getTimerCount()).toBe(0);
+      },
+    );
+
+    it("takes it back after a while where no animation runs", () => {
+      const { header, presenter } = fixture(ANIMATED);
+      presenter.report("error");
+      expect(pop(header)).toBe("error");
+      vi.advanceTimersByTime(TAB_STATUS_TRANSIENT_TIMEOUTS.pop - 1);
+      expect(pop(header)).toBe("error");
+      vi.advanceTimersByTime(1);
+      expect(pop(header)).toBeNull();
+      expect(status(header)).toBe("error");
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("pops in only when the state shown changes into one: not for a repeat, a look or a render", () => {
+      const { header, presenter } = fixture(ANIMATED),
+        set = vi.spyOn(header, "setAttribute");
+      presenter.report("blocked");
+      vi.runAllTimers();
+      set.mockClear();
+      presenter.report("blocked");
+      presenter.render();
+      presenter.look();
+      expect(set).not.toHaveBeenCalled();
+      expect(pop(header)).toBeNull();
+    });
+
+    it("does not pop for idle, working or seen, nor for a finish the user already sees", () => {
+      const { header, lookedAt, presenter } = fixture(ANIMATED);
+      for (const state of ["idle", "working"] as const) {
+        presenter.report(state);
+        expect(pop(header), state).toBeNull();
+      }
+      presenter.report("done");
+      vi.runAllTimers();
+      // Done, then seen: the badge with the check does not pop.
+      presenter.look();
+      expect(status(header)).toBe("seen");
+      expect(pop(header)).toBeNull();
+      presenter.report("working");
+      lookedAt.mockReturnValue(true);
+      presenter.report("done");
+      expect(status(header)).toBe("seen");
+      expect(pop(header)).toBeNull();
+    });
+
+    it("pops a second finish in again, and a change between two that ask for the user", () => {
+      const { header, presenter } = fixture(ANIMATED);
+      presenter.report("done");
+      vi.runAllTimers();
+      presenter.look();
+      presenter.report("working");
+      presenter.report("done");
+      expect(pop(header)).toBe("done");
+      vi.runAllTimers();
+      presenter.report("error");
+      expect(pop(header)).toBe("error");
+    });
+
+    it("starts over when another arrives while one plays: taken off, a layout, set again", () => {
+      const { header, presenter } = fixture(ANIMATED),
+        steps: string[] = [];
+      presenter.report("blocked");
+      vi.advanceTimersByTime(TAB_STATUS_TRANSIENT_TIMEOUTS.pop - 100);
+      vi.spyOn(header, "removeAttribute").mockImplementation(function (
+        this: Element,
+        name,
+      ) {
+        steps.push(`remove ${name}`);
+        Element.prototype.removeAttribute.call(this, name);
+      });
+      vi.spyOn(header, "getBoundingClientRect").mockImplementation(() => {
+        steps.push("layout");
+        return new DOMRect();
+      });
+      vi.spyOn(header, "setAttribute").mockImplementation(function (
+        this: Element,
+        name,
+        value,
+      ) {
+        steps.push(`set ${name}=${value}`);
+        Element.prototype.setAttribute.call(this, name, value);
+      });
+      presenter.report("error");
+      expect(steps).toEqual([
+        "set data-terminal-status=error",
+        "remove data-terminal-pop",
+        "layout",
+        "set data-terminal-pop=error",
+      ]);
+      // A whole new while: the timer of the first is gone.
+      vi.advanceTimersByTime(TAB_STATUS_TRANSIENT_TIMEOUTS.pop - 1);
+      expect(pop(header)).toBe("error");
+      vi.advanceTimersByTime(1);
+      expect(pop(header)).toBeNull();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("stops the pop when another mark is shown before it ends", () => {
+      const { header, presenter } = fixture(ANIMATED);
+      presenter.report("done");
+      expect(pop(header)).toBe("done");
+      presenter.report("working");
+      expect(pop(header)).toBeNull();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("never pops under Still, and stops one that plays when the look turns still", () => {
+      const { header, look, presenter } = fixture(LOOK),
+        set = vi.spyOn(header, "setAttribute");
+      for (const state of ["done", "working", "blocked", "error"] as const) {
+        presenter.report(state);
+        expect(pop(header), state).toBeNull();
+      }
+      expect(
+        set.mock.calls.filter(([name]) => name === TAB_STATUS_ATTRIBUTES.pop),
+      ).toEqual([]);
+      expect(vi.getTimerCount()).toBe(0);
+
+      look.mockReturnValue(ANIMATED);
+      presenter.report("working");
+      presenter.report("done");
+      expect(pop(header)).toBe("done");
+      look.mockReturnValue(LOOK);
+      presenter.render();
+      expect(pop(header)).toBeNull();
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("does not pop what was already shown when the look turns animated", () => {
+      const { header, look, presenter } = fixture(LOOK);
+      presenter.report("error");
+      look.mockReturnValue(ANIMATED);
+      presenter.render();
+      expect(pop(header)).toBeNull();
+    });
+
+    it("takes a pop back on clear, with its timer and its listener", () => {
+      const { header, presenter } = fixture(ANIMATED),
+        unlisten = vi.spyOn(header, "removeEventListener");
+      presenter.report("blocked");
+      presenter.clear();
+      expect(pop(header)).toBeNull();
+      expect(vi.getTimerCount()).toBe(0);
+      expect(unlisten).toHaveBeenCalledWith(
+        "animationend",
+        expect.any(Function),
+      );
+      // And a report after it is news again.
+      presenter.report("blocked");
+      expect(pop(header)).toBe("blocked");
+    });
+  });
+
+  describe("a new title, under Animated", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("slides it in, and takes the attribute back when the title's animation ends", () => {
+      const { header, presenter } = fixture(ANIMATED),
+        title = header.appendChild(document.createElement("div"));
+      title.className = "workspace-tab-header-inner-title";
+      presenter.titleChanged();
+      expect(sliding(header)).toBe(true);
+      animationEnd(title, TAB_STATUS_KEYFRAMES.pop);
+      expect(sliding(header)).toBe(true);
+      animationEnd(title, TAB_STATUS_KEYFRAMES.title);
+      expect(sliding(header)).toBe(false);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("takes it back after a while where no animation runs", () => {
+      const { header, presenter } = fixture(ANIMATED);
+      presenter.titleChanged();
+      vi.advanceTimersByTime(TAB_STATUS_TRANSIENT_TIMEOUTS.title - 1);
+      expect(sliding(header)).toBe(true);
+      vi.advanceTimersByTime(1);
+      expect(sliding(header)).toBe(false);
+    });
+
+    it("starts over when the title changes again while it slides", () => {
+      const { header, presenter } = fixture(ANIMATED),
+        layout = vi.spyOn(header, "getBoundingClientRect");
+      presenter.titleChanged();
+      expect(layout).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(TAB_STATUS_TRANSIENT_TIMEOUTS.title - 50);
+      presenter.titleChanged();
+      expect(layout).toHaveBeenCalledOnce();
+      vi.advanceTimersByTime(TAB_STATUS_TRANSIENT_TIMEOUTS.title - 1);
+      expect(sliding(header)).toBe(true);
+      vi.advanceTimersByTime(1);
+      expect(sliding(header)).toBe(false);
+    });
+
+    it("never slides under Still, stops when the look turns still, and goes on clear", () => {
+      const { header, look, presenter } = fixture(LOOK);
+      presenter.titleChanged();
+      expect(sliding(header)).toBe(false);
+      expect(vi.getTimerCount()).toBe(0);
+      look.mockReturnValue(ANIMATED);
+      presenter.titleChanged();
+      expect(sliding(header)).toBe(true);
+      look.mockReturnValue(LOOK);
+      presenter.render();
+      expect(sliding(header)).toBe(false);
+      look.mockReturnValue(ANIMATED);
+      presenter.titleChanged();
+      presenter.clear();
+      expect(sliding(header)).toBe(false);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("leaves the status and the pop to themselves", () => {
+      const { header, presenter } = fixture(ANIMATED);
+      presenter.report("done");
+      presenter.titleChanged();
+      animationEnd(header, TAB_STATUS_KEYFRAMES.title);
+      expect(pop(header)).toBe("done");
+      expect(status(header)).toBe("done");
+    });
+  });
+});
+
+describe("TransientAttribute", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("has a value only while it plays", () => {
+    const element = document.createElement("div"),
+      transient = new TransientAttribute("data-x", "x", 100);
+    expect(transient.value).toBeNull();
+    transient.play(element, "one");
+    expect(transient.value).toBe("one");
+    expect(element.getAttribute("data-x")).toBe("one");
+    transient.stop();
+    expect(transient.value).toBeNull();
+    expect(element.hasAttribute("data-x")).toBe(false);
+    // Again: nothing left to do.
+    expect(() => {
+      transient.stop();
+    }).not.toThrow();
+  });
+
+  it("moves to another element without a layout of the first", () => {
+    const first = document.createElement("div"),
+      second = document.createElement("div"),
+      layout = vi.spyOn(first, "getBoundingClientRect"),
+      transient = new TransientAttribute("data-x", "x", 100);
+    transient.play(first, "one");
+    transient.play(second, "two");
+    expect(first.hasAttribute("data-x")).toBe(false);
+    expect(second.getAttribute("data-x")).toBe("two");
+    expect(layout).not.toHaveBeenCalled();
+    // The first no longer listens.
+    animationEnd(first, "x");
+    expect(second.getAttribute("data-x")).toBe("two");
+    animationEnd(second, "x");
+    expect(second.hasAttribute("data-x")).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("outlasts its animation in the stylesheet: the timeouts are longer", () => {
+    expect(TAB_STATUS_TRANSIENT_TIMEOUTS.pop).toBeGreaterThan(420);
+    expect(TAB_STATUS_TRANSIENT_TIMEOUTS.title).toBeGreaterThan(240);
   });
 });
 
 describe("writeTabIconSize", () => {
-  it("writes the size the stylesheet reads, and nothing else", () => {
+  it("writes the one size the stylesheet reads, and nothing else", () => {
     const header = document.createElement("div");
-    writeTabIconSize(header, 22);
+    writeTabIconSize(header);
     expect(header.getAttributeNames()).toEqual([TAB_STATUS_ATTRIBUTES.size]);
     expect(header.getAttribute(TAB_STATUS_ATTRIBUTES.size)).toBe("22");
-  });
-
-  it("writes what a presenter would write for the same size", () => {
-    const { header, presenter } = fixture({ ...LOOK, size: 20 }),
-      unloaded = document.createElement("div");
-    presenter.render();
-    writeTabIconSize(unloaded, 20);
-    expect(unloaded.getAttribute(TAB_STATUS_ATTRIBUTES.size)).toBe(
-      header.getAttribute(TAB_STATUS_ATTRIBUTES.size),
-    );
-  });
-
-  it("takes the size back", () => {
-    const header = document.createElement("div");
-    header.setAttribute("data-type", "terminal:terminal");
-    writeTabIconSize(header, 18);
-    writeTabIconSize(header, null);
-    expect(header.getAttributeNames()).toEqual(["data-type"]);
+    expect(TAB_ICON_SIZE).toBe(22);
   });
 
   it("leaves the header alone when the size is already there", () => {
     const header = document.createElement("div"),
       set = vi.spyOn(header, "setAttribute");
-    writeTabIconSize(header, 18);
-    writeTabIconSize(header, 18);
+    writeTabIconSize(header);
+    writeTabIconSize(header);
     expect(set).toHaveBeenCalledOnce();
   });
 });
@@ -484,50 +883,23 @@ describe("writeTabIcon", () => {
     expect(draw).toHaveBeenCalledExactlyOnceWith(icon, "terminal:tab-bezel");
   });
 
-  it("draws the chosen icon over the one saved with the layout", () => {
-    const { icon } = drawn("lucide-terminal"),
-      draw = vi.fn<(element: HTMLElement, id: string) => void>();
-    writeTabIcon(icon, "terminal:tab-tile", draw);
-    expect(draw).toHaveBeenCalledExactlyOnceWith(icon, "terminal:tab-tile");
-  });
+  it.each(["lucide-terminal", "terminal:tab-tile", "terminal:tab-gone"])(
+    "draws the tab icon over %s, saved with the layout",
+    (saved) => {
+      const { icon } = drawn(saved),
+        draw = vi.fn<(element: HTMLElement, id: string) => void>();
+      writeTabIcon(icon, "terminal:tab-bezel", draw);
+      expect(draw).toHaveBeenCalledExactlyOnceWith(icon, "terminal:tab-bezel");
+    },
+  );
 
-  it("leaves an icon that is already the chosen one", () => {
-    const { icon, svg } = drawn("terminal:tab-tile"),
+  it("leaves an icon that is already the tab icon", () => {
+    const { icon, svg } = drawn("terminal:tab-bezel"),
       draw = vi.fn<(element: HTMLElement, id: string) => void>();
-    writeTabIcon(icon, "terminal:tab-tile", draw);
+    writeTabIcon(icon, "terminal:tab-bezel", draw);
     expect(draw).not.toHaveBeenCalled();
     expect(icon.firstElementChild).toBe(svg);
   });
-});
-
-describe("restoreTabIcon", () => {
-  it.each(["terminal:tab-bezel", "terminal:tab-tile"])(
-    "puts the plain icon back where %s is drawn",
-    (ours) => {
-      const { icon } = drawn(ours),
-        draw = vi.fn<(element: HTMLElement, id: string) => void>();
-      restoreTabIcon(icon, "terminal:tab-", "terminal", draw);
-      expect(draw).toHaveBeenCalledExactlyOnceWith(icon, "terminal");
-    },
-  );
-
-  it("puts it back where the icon of a set that no longer exists is drawn", () => {
-    const { icon } = drawn("terminal:tab-bezelround"),
-      draw = vi.fn<(element: HTMLElement, id: string) => void>();
-    restoreTabIcon(icon, "terminal:tab-", "terminal", draw);
-    expect(draw).toHaveBeenCalledExactlyOnceWith(icon, "terminal");
-  });
-
-  it.each(["lucide-terminal", "terminal:linux", "lucide-file", null])(
-    "leaves a tab alone that shows %s",
-    (other) => {
-      const { icon, svg } = drawn(other),
-        draw = vi.fn<(element: HTMLElement, id: string) => void>();
-      restoreTabIcon(icon, "terminal:tab-", "terminal", draw);
-      expect(draw).not.toHaveBeenCalled();
-      expect(icon.firstElementChild).toBe(svg);
-    },
-  );
 });
 
 describe("onWindowFocus", () => {
