@@ -105,7 +105,7 @@ import {
   type Pseudoterminal,
   TextPseudoterminal,
 } from "./pseudoterminal.js";
-import { revealLeafWithoutFlash } from "./reveal.js";
+import { revealLeafWithoutFlash, tabHeaderOf } from "./reveal.js";
 import { writePromise } from "./utils.js";
 import { win32ExitCodeKey } from "./win32-doctor.js";
 
@@ -189,16 +189,6 @@ const win32BuildNumber = once(async (): Promise<number | undefined> => {
 const terminalUses = new WeakMap<TerminalView, number>();
 // Intentionally mutable so session uses have a strict order even within one tick.
 let terminalUseSequence = 0;
-
-/**
- * The tab header of `leaf`, or `null` where this Obsidian has none under that
- * name: `tabHeaderEl` is not part of Obsidian's API.
- */
-function tabHeaderOf(leaf: WorkspaceLeaf): HTMLElement | null {
-  return "tabHeaderEl" in leaf && instanceOf(leaf.tabHeaderEl, HTMLElement)
-    ? leaf.tabHeaderEl
-    : null;
-}
 
 function recordTerminalUse(view: TerminalView): void {
   terminalUses.set(view, ++terminalUseSequence);
