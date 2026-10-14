@@ -563,7 +563,7 @@ describe("TabStatusStrip", () => {
     "Idle",
     "Working",
     "Finished",
-    "Needs you",
+    "Needs input",
     "Error",
   ];
 
