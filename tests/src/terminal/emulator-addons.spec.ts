@@ -4145,6 +4145,7 @@ describe("DragAndDropAddon", () => {
     ["a colour", "\u001b]11;rgb:0000/0000/0000\u001b\\"],
     ["a colour of the palette", "\u001b]4;1;rgb:cdcd/0000/0000\u001b\\"],
     ["a setting, as a string", "\u001bP1$r0m\u001b\\"],
+    ["the program status reply", DETECTION_REPLY],
     ["a move of the pointer", "\u001b[<35;10;5M"],
     ["a button of the pointer going down", "\u001b[<0;10;5M"],
     ["a button of the pointer going up", "\u001b[<0;10;5m"],
