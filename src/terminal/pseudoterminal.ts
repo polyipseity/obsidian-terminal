@@ -296,9 +296,13 @@ export async function pipeShellToTerminal(
   for (const output of outputs) {
     output.on("data", reader);
   }
-  const writer = terminal.onData(async (data) =>
-    writePromise(shell.stdin, data),
-  );
+  const writer = terminal.onData((data) => {
+    // The terminal drops what its listener returns, so a write that fails
+    // because the shell is gone must be caught here.
+    writePromise(shell.stdin, data).catch((error: unknown) => {
+      /* @__PURE__ */ self.console.debug(error);
+    });
+  });
   onExit.catch(noop).finally(() => {
     writer.dispose();
   });
@@ -1340,6 +1344,11 @@ class UnixPseudoterminal implements Pseudoterminal {
       );
     }).then((ret) => {
       logChildStderr(ret);
+      // Input still queued for a proxy that has exited fails with an error
+      // event; without a listener that is an uncaught exception.
+      ret.stdin.on("error", (error: Error) => {
+        /* @__PURE__ */ self.console.debug(error);
+      });
       return ret;
     });
     this.onExit = this.shell.then(
