@@ -1372,4 +1372,58 @@ describe("settings tab descriptions", () => {
       }
     },
   );
+
+  it.each(["main", "Settings"])(
+    "renders each experiment's description as elements in the %s window",
+    async (where) => {
+      const i18n = createInstance();
+      await i18n.init({
+        lng: "en",
+        resources: { en: { asset, translation: en } },
+      });
+      const rows = captureMainWindowRows(),
+        context = await pythonSettingsContext();
+      Object.assign(context.language, { value: i18n });
+      const tab = new ExperimentalSettingTab(
+          context,
+          loadDocumentations(context),
+        ),
+        shownIn = where === "main" ? document : settingsWindowDocument(),
+        lines = (descEl?: HTMLElement): readonly string[] =>
+          Array.from(
+            descEl?.children ?? [],
+            (line) => `${line.tagName} ${line.textContent}`,
+          );
+      shownIn.body.append(tab.containerEl);
+      try {
+        tab.draw([ALPHA, BETA]);
+        const alpha = rows.get(ALPHA.name())?.descEl,
+          beta = rows.get(BETA.name())?.descEl,
+          feedback = en.settings["experimental-feedback"];
+        expect(tab.containerEl.textContent).not.toContain(
+          "[object DocumentFragment]",
+        );
+        // Alpha applies live, so it has no line on how a change applies.
+        expect(lines(alpha)).toEqual([
+          "DIV Alpha effect.",
+          "DIV Known risk: Alpha risk.",
+          `A ${feedback}`,
+        ]);
+        expect(lines(beta)).toEqual([
+          "DIV Beta & <b>more</b> effect.",
+          "DIV Known risk: Beta & <b>more</b> risk.",
+          `DIV ${en.settings["experimental-applies"].restart}`,
+          `A ${feedback}`,
+        ]);
+        expect(alpha?.querySelector("a")?.getAttribute("href")).toBe(
+          ALPHA.feedback,
+        );
+        expect(beta?.querySelector("a")?.getAttribute("href")).toBe(
+          BETA.feedback,
+        );
+      } finally {
+        tab.dispose();
+      }
+    },
+  );
 });
