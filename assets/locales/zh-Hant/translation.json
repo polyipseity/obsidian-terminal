@@ -181,6 +181,7 @@
       "bold-font-weight": "粗體$t(generic.font-weight)",
       "description-HTML": "請參閱<a aria-label=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" class=\"external-link\" data-tooltip-position=\"top\" href=\"https://xtermjs.org/docs/api/terminal/interfaces/iterminaloptions/\" rel=\"noopener\" target=\"_blank\"><code>ITerminalOptions</code></a>了解所有$t(generic.option)。",
       "font-family": "$t(generic.font)系列",
+      "font-family-description": "A CSS font-family list. Quote a name that starts with a digit or has spaces, e.g. '0xProto Nerd Font Mono', monospace",
       "font-size": "$t(generic.font)大小",
       "font-weight": "$t(generic.font-weight)",
       "invalid-description": "$t(generic.invalid)",

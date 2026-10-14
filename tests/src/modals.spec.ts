@@ -1,15 +1,30 @@
-import { KeymappingEditModal, ProfileModal } from "../../src/modals.js";
+import {
+  KeymappingEditModal,
+  ProfileModal,
+  TerminalOptionsModal,
+} from "../../src/modals.js";
 import * as doctor from "../../src/terminal/win32-doctor.js";
 import { Keymap, Scope } from "../mocks/obsidian.js";
 import { Settings } from "../../src/settings-data.js";
-import { PROFILE_PRESETS } from "../../src/terminal/profile-presets.js";
+import {
+  DEFAULT_TERMINAL_OPTIONS,
+  PROFILE_PRESETS,
+} from "../../src/terminal/profile-presets.js";
 import {
   capturePythonRows,
   pythonSettingsContext,
   typePythonValue,
   withPythonSpare,
 } from "../fixtures/python-settings-ui.js";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  onTestFinished,
+  vi,
+} from "vitest";
 import en from "../../assets/locales/en/translation.json" with { type: "json" };
 import {
   type Win32PythonDiagnosis,
@@ -788,6 +803,81 @@ describe("profile Python automatic checks", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(checkWindowsResizerPackages).not.toHaveBeenCalled();
     modal.onClose();
+  });
+});
+
+describe("terminal options font family", () => {
+  const cssList = "'0xProto Nerd Font Mono', monospace";
+
+  async function openTerminalOptions(): Promise<{
+    readonly field: HTMLInputElement;
+    readonly json: HTMLTextAreaElement;
+    readonly description: string | undefined;
+    readonly inNameColumn: string;
+  }> {
+    const rows = capturePythonRows(),
+      modal = new TerminalOptionsModal(
+        await pythonSettingsContext(),
+        DEFAULT_TERMINAL_OPTIONS,
+      );
+    modal.open();
+    onTestFinished(() => {
+      modal.close();
+    });
+    const font = rows.get("components.terminal-options.font-family"),
+      field = font?.texts[0]?.inputEl,
+      json = rows.get("components.edit-data.data")?.textAreas[0]?.inputEl;
+    if (!field || !json) throw new Error("terminal options rows missing");
+    return {
+      // The line right under the row, as wide as the dialog.
+      description: font.settingEl.nextElementSibling?.textContent,
+      field,
+      inNameColumn: font.descEl.textContent,
+      json,
+    };
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("describes the value as a CSS font-family list with a quoted example", async () => {
+    const { description } = await openTerminalOptions();
+
+    expect(description).toBe(
+      "components.terminal-options.font-family-description",
+    );
+    expect(
+      en.components["terminal-options"]["font-family-description"],
+    ).toMatch(/CSS font-family list.*'0xProto Nerd Font Mono', monospace/u);
+  });
+
+  it("keeps the description out of the row's narrow name column", async () => {
+    const { inNameColumn } = await openTerminalOptions();
+
+    expect(inNameColumn).toBe("");
+  });
+
+  it("writes a quoted family with a fallback to the raw JSON unchanged", async () => {
+    const { field, json } = await openTerminalOptions();
+
+    field.value = cssList;
+    field.dispatchEvent(new Event("input"));
+
+    await vi.waitFor(() => {
+      expect(JSON.parse(json.value)).toMatchObject({ fontFamily: cssList });
+    });
+  });
+
+  it("reads a quoted family with a fallback from the raw JSON unchanged", async () => {
+    const { field, json } = await openTerminalOptions();
+
+    json.value = `{ "documentOverride": null, "fontFamily": "${cssList}" }`;
+    json.dispatchEvent(new Event("input"));
+
+    await vi.waitFor(() => {
+      expect(field.value).toBe(cssList);
+    });
   });
 });
 
