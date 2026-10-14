@@ -4,7 +4,6 @@ import {
   cloneAsWritable,
   closeSetting,
   createChildElement,
-  createDocumentFragment,
   deopaque,
   DOMClasses,
   linkSetting,
@@ -45,6 +44,7 @@ import {
   runPluginPythonCheck,
   onWindowsPythonStateChange,
 } from "./terminal/win32-doctor.js";
+import { setSettingDesc } from "./utils.js";
 
 export class SettingTab extends AdvancedSettingTab<Settings> {
   #unregisterPythonDiagnosis?: () => void;
@@ -761,19 +761,15 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
     this.newNoticeTimeoutWidget(Settings.DEFAULT);
     this.newSectionWidget(() => i18n.t("settings.advanced"));
     ui.newSetting(containerEl, (setting) => {
-      const { settingEl } = setting;
-      setting
+      setSettingDesc(setting, (frag) => {
+        createChildElement(frag, "span", (ele) => {
+          setSanitizedInnerHTML(
+            ele,
+            i18n.t("settings.expose-internal-modules-description-HTML"),
+          );
+        });
+      })
         .setName(i18n.t("settings.expose-internal-modules"))
-        .setDesc(
-          createDocumentFragment(settingEl.ownerDocument, (frag) => {
-            createChildElement(frag, "span", (ele) => {
-              setSanitizedInnerHTML(
-                ele,
-                i18n.t("settings.expose-internal-modules-description-HTML"),
-              );
-            });
-          }),
-        )
         .addToggle(
           linkSetting(
             () => settings.value.exposeInternalModules,
@@ -932,40 +928,37 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
       ui.newSetting(containerEl, (setting) => {
         const { settingEl } = setting;
         settingEl.setAttribute("data-experiment", id);
-        setting
+        setSettingDesc(setting, (frag) => {
+          createChildElement(frag, "div", (ele) => {
+            ele.textContent = row.effect();
+          });
+          createChildElement(frag, "div", (ele) => {
+            ele.textContent = i18n.t("settings.experimental-risk", {
+              interpolation: { escapeValue: false },
+              risk: row.risk(),
+            });
+          });
+          if (applies !== "live") {
+            createChildElement(frag, "div", (ele) => {
+              ele.textContent = i18n.t(
+                `settings.experimental-applies.${applies}`,
+              );
+            });
+          }
+          createChildElement(frag, "a", (ele) => {
+            ele.textContent = i18n.t("settings.experimental-feedback");
+            ele.href = feedback;
+            ele.target = "_blank";
+            ele.rel = "noopener noreferrer";
+            // The address shows on hover; the click opens it the way the
+            // Python download button opens its page.
+            ele.addEventListener("click", (event) => {
+              event.preventDefault();
+              openExternal(activeSelf(ele), feedback);
+            });
+          });
+        })
           .setName(row.name())
-          .setDesc(
-            createDocumentFragment(settingEl.ownerDocument, (frag) => {
-              createChildElement(frag, "div", (ele) => {
-                ele.textContent = row.effect();
-              });
-              createChildElement(frag, "div", (ele) => {
-                ele.textContent = i18n.t("settings.experimental-risk", {
-                  interpolation: { escapeValue: false },
-                  risk: row.risk(),
-                });
-              });
-              if (applies !== "live") {
-                createChildElement(frag, "div", (ele) => {
-                  ele.textContent = i18n.t(
-                    `settings.experimental-applies.${applies}`,
-                  );
-                });
-              }
-              createChildElement(frag, "a", (ele) => {
-                ele.textContent = i18n.t("settings.experimental-feedback");
-                ele.href = feedback;
-                ele.target = "_blank";
-                ele.rel = "noopener noreferrer";
-                // The address shows on hover; the click opens it the way the
-                // Python download button opens its page.
-                ele.addEventListener("click", (event) => {
-                  event.preventDefault();
-                  openExternal(activeSelf(ele), feedback);
-                });
-              });
-            }),
-          )
           .addToggle(
             linkSetting(
               () => isExperimentEnabled<string>(settings.value, id),
