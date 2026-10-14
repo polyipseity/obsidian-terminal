@@ -38,12 +38,13 @@ export const TAB_STATUS_ATTRIBUTES = Object.freeze({
 
 /**
  * How long a transient attribute stays at most, in milliseconds: a little
- * longer than its animation in `tab-status.css`. The end of the animation
- * takes it back; this is for where none runs (reduced motion, a hidden
- * tab).
+ * longer than its animation in `tab-status.css`, with its delay. The end of
+ * the animation takes it back; this is for where none runs (reduced motion,
+ * a hidden tab). A pop's is the ring's, which ends last: 0.15 s after the
+ * pop starts, for 0.9 s.
  */
 export const TAB_STATUS_TRANSIENT_TIMEOUTS = Object.freeze({
-  pop: 600,
+  pop: 1200,
   title: 400,
 });
 
@@ -54,9 +55,13 @@ export const TAB_STATUS_TRANSIENT_TIMEOUTS = Object.freeze({
  */
 export const TAB_STATUS_TITLE_COOLDOWN = 1000;
 
-/** The names of the keyframes each transient attribute plays. */
+/**
+ * The names of the keyframes whose end takes each transient attribute
+ * back. A pop plays two: the mark's (`tts-pop`) and the ring's, which ends
+ * after it; the attribute stays until the ring's ends.
+ */
 export const TAB_STATUS_KEYFRAMES = Object.freeze({
-  pop: "tts-pop",
+  pop: "tts-ping",
   title: "tts-title",
 });
 
@@ -66,7 +71,7 @@ const ATTENTION_STATES: ReadonlySet<TabStatusDisplay> =
 
 /**
  * The look the user chose, from the settings. None has no look of its own:
- * nothing is drawn under it, and a preview of it shows the marks still.
+ * nothing is drawn under it, so it reads as Still.
  *
  * @param settings the settings, or the one of them that makes the look
  * @returns the look
@@ -228,7 +233,7 @@ export class TransientAttribute {
   /**
    * Sets the attribute, or sets it again: the animation starts over.
    *
-   * @param element the tab header, or what stands in for it
+   * @param element the tab header
    * @param value the attribute's value
    */
   public play(element: Element, value: string): void {
@@ -442,7 +447,7 @@ export namespace TabStatusPresenter {
 /**
  * Sets or removes one attribute, leaving the element alone when nothing changes.
  *
- * @param element the tab header, or what stands in for it in a preview
+ * @param element the tab header
  * @param name attribute name
  * @param value attribute value, or `null` to remove the attribute
  */

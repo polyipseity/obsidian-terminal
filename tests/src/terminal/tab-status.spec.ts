@@ -547,7 +547,7 @@ describe("TabStatusPresenter", () => {
     });
 
     it.each(["done", "blocked", "error"] as const)(
-      "pops %s in, with the state as the value, and takes it back when the animation ends",
+      "pops %s in, with the state as the value, and takes it back when the ring ends",
       (state) => {
         const { header, presenter } = fixture(ANIMATED);
         presenter.report("working");
@@ -555,13 +555,16 @@ describe("TabStatusPresenter", () => {
         presenter.report(state);
         expect(pop(header)).toBe(state);
         expect(status(header)).toBe(state);
-        // Another animation ending is not this one.
+        // Another animation ending is not this one: nor is the mark's own
+        // pop, which ends before the ring around it.
         animationEnd(header, TAB_STATUS_KEYFRAMES.title);
         animationEnd(header, "tts-dots");
-        expect(pop(header)).toBe(state);
-        // The mark inside the header ends its pop; the event bubbles.
         const mark = header.appendChild(document.createElement("i"));
-        animationEnd(mark, TAB_STATUS_KEYFRAMES.pop);
+        animationEnd(mark, "tts-pop");
+        expect(pop(header)).toBe(state);
+        // The ring, the container's box, ends; the event bubbles.
+        const container = header.appendChild(document.createElement("div"));
+        animationEnd(container, TAB_STATUS_KEYFRAMES.pop);
         expect(pop(header)).toBeNull();
         // Nothing waits any more.
         expect(vi.getTimerCount()).toBe(0);
@@ -949,7 +952,9 @@ describe("TransientAttribute", () => {
   });
 
   it("outlasts its animation in the stylesheet: the timeouts are longer", () => {
-    expect(TAB_STATUS_TRANSIENT_TIMEOUTS.pop).toBeGreaterThan(420);
+    // A pop's lasts until its ring has ended: 0.15 s in, for 0.9 s.
+    expect(TAB_STATUS_KEYFRAMES.pop).toBe("tts-ping");
+    expect(TAB_STATUS_TRANSIENT_TIMEOUTS.pop).toBeGreaterThan(150 + 900);
     expect(TAB_STATUS_TRANSIENT_TIMEOUTS.title).toBeGreaterThan(240);
   });
 });

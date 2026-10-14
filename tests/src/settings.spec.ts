@@ -6,14 +6,12 @@ import {
 import { createInstance } from "i18next";
 import {
   ButtonComponent,
+  DropdownComponent,
   ExtraButtonComponent,
   Setting,
   ToggleComponent,
-  addIcon,
-  removeIcon,
 } from "obsidian";
 import * as doctor from "../../src/terminal/win32-doctor.js";
-import { bezelIconId, tileIconId } from "../../src/icons.js";
 import { SettingTab } from "../../src/settings.js";
 import { loadDocumentations } from "../../src/documentations.js";
 import {
@@ -1255,6 +1253,12 @@ class MainWindowRow extends Setting {
   public override readonly controlEl = document.createElement("div");
   /** The extra button, kept across redraws as the real row keeps it. */
   public reset: ExtraButtonComponent | null = null;
+  /** The dropdown, kept across redraws in the same way. */
+  public dropdown: DropdownComponent | null = null;
+  /** The options handed to the dropdown, in order. */
+  public readonly dropdownOptions = new Map<string, string>();
+  /** What the dropdown calls when the user chooses. */
+  protected changed: ((value: string) => unknown) | null = null;
 
   public override setName(name: string | DocumentFragment): this {
     MainWindowRow.setText(this.nameEl, name);
@@ -1279,6 +1283,38 @@ class MainWindowRow extends Setting {
     this.reset ??= new ExtraButtonComponent(this.controlEl);
     configure(this.reset);
     return this;
+  }
+
+  public override addDropdown(
+    configure: (dropdown: DropdownComponent) => unknown,
+  ): this {
+    if (!this.dropdown) {
+      const dropdown = new DropdownComponent(this.controlEl),
+        { dropdownOptions } = this,
+        addOptions = dropdown.addOptions.bind(dropdown);
+      // The mock keeps its options to itself; the row notes them too.
+      vi.spyOn(dropdown, "addOptions").mockImplementation((options) => {
+        for (const [value, display] of Object.entries(options)) {
+          dropdownOptions.set(value, display);
+        }
+        return addOptions(options);
+      });
+      // As Obsidian's: setting the value is not a choice of the user's, and
+      // calls nothing. The mock's would, and a redraw would choose again.
+      vi.spyOn(dropdown, "onChange").mockImplementation((callback) => {
+        this.changed = callback;
+        return dropdown;
+      });
+      this.dropdown = dropdown;
+    }
+    configure(this.dropdown);
+    return this;
+  }
+
+  /** The user chooses an option, as from the dropdown's list. */
+  public choose(value: string): void {
+    this.dropdown?.setValue(value);
+    void this.changed?.(value);
   }
 
   protected static setText(element: HTMLElement, value: unknown): void {
@@ -1447,22 +1483,12 @@ describe("settings tab descriptions", () => {
 });
 
 describe("program status row", () => {
-  /** A registered icon that says which it is. */
-  const svg = (name: string): string =>
-    `<svg xmlns="http://www.w3.org/2000/svg" data-icon="${name}"></svg>`;
-  // Mutable: what a test registered, taken back after it.
-  let iconIds: readonly string[] = [];
-
   afterEach(() => {
-    for (const id of iconIds) {
-      removeIcon(id);
-    }
-    iconIds = [];
     vi.restoreAllMocks();
     document.body.replaceChildren();
   });
 
-  /** The whole settings tab, drawn as Obsidian draws it, with both tab icons registered. */
+  /** The whole settings tab, drawn as Obsidian draws it. */
   async function drawSettingsTab(initial: Settings.TabStatus = "none") {
     const i18n = createInstance();
     await i18n.init({
@@ -1491,9 +1517,6 @@ describe("program status row", () => {
       settingsM.tabStatus = initial;
     });
     const write = vi.spyOn(context.settings, "write");
-    iconIds = [bezelIconId(context), tileIconId(context)];
-    addIcon(bezelIconId(context), svg("bezel"));
-    addIcon(tileIconId(context), svg("tile"));
     const tab = new LoadedSettingTab(context, loadDocumentations(context));
     document.body.append(tab.containerEl);
     tab.load();
@@ -1503,33 +1526,10 @@ describe("program status row", () => {
         return row;
       },
       row = named(i18n.t("settings.tab-status")),
-      { reset } = row;
+      { dropdown, reset } = row;
     if (!reset) throw new Error("Missing reset button");
-    const tiles = (): HTMLElement[] => [
-        ...row.controlEl.querySelectorAll<HTMLElement>('[role="radio"]'),
-      ],
-      tile = (value: Settings.TabStatus): HTMLElement => {
-        const found = tiles().find((each) => each.dataset["value"] === value);
-        if (!found) throw new Error(value);
-        return found;
-      },
-      checked = (): readonly (string | undefined)[] =>
-        tiles()
-          .filter((each) => each.getAttribute("aria-checked") === "true")
-          .map((each) => each.dataset["value"]);
-    return {
-      checked,
-      context,
-      i18n,
-      named,
-      reset,
-      row,
-      rows,
-      tab,
-      tile,
-      tiles,
-      write,
-    };
+    if (!dropdown) throw new Error("Missing dropdown");
+    return { context, dropdown, i18n, named, reset, row, rows, tab, write };
   }
 
   it("is in the Interface section, right after Show terminal tab prefix", async () => {
@@ -1560,151 +1560,102 @@ describe("program status row", () => {
     }
   });
 
-  it("puts three tiles in the row's control, beside the name and before the reset button", async () => {
-    const { row, tab, tiles } = await drawSettingsTab(),
-      [picker, resetEl, ...rest] = Array.from(row.controlEl.children);
+  it("offers None, Still and Animated in a dropdown, in that order, with the reset button", async () => {
+    const { dropdown, row, tab } = await drawSettingsTab();
     try {
-      expect(picker?.classList.contains("tts-pick")).toBe(true);
-      expect(picker?.getAttribute("role")).toBe("radiogroup");
-      expect(picker?.getAttribute("aria-label")).toBe("Program status");
-      expect(resetEl).toBe(row.reset?.extraSettingsEl);
-      expect(rest).toHaveLength(0);
-      // Not a line of its own: only the control holds the tiles.
-      expect(row.settingEl.querySelectorAll(".tts-pick")).toHaveLength(1);
-      expect(tiles().map((each) => each.dataset["value"])).toEqual([
-        "none",
-        "still",
-        "animated",
+      expect([...row.dropdownOptions]).toEqual([
+        ["none", "None"],
+        ["still", "Still"],
+        ["animated", "Animated"],
       ]);
-      expect(
-        tiles().map((each) => [
-          each.getAttribute("aria-label"),
-          each.querySelector(".tts-pick-text")?.textContent,
-        ]),
-      ).toEqual([
-        ["None", "None"],
-        ["Still", "Still"],
-        ["Animated", "Animated"],
-      ]);
+      expect(dropdown.getValue()).toBe("none");
+      expect(row.reset?.extraSettingsEl.parentElement).toBe(row.controlEl);
     } finally {
       tab.dispose();
     }
   });
 
-  it("draws every option on the icon a tab shows under it, at 22 pixels", async () => {
-    const { tab, tile, tiles } = await drawSettingsTab(),
-      host = (value: Settings.TabStatus): Element | null =>
-        tile(value).querySelector(".tts-host"),
-      drawn = (value: Settings.TabStatus): string | null | undefined =>
-        tile(value)
-          .querySelector(".tts-host-icon svg")
-          ?.getAttribute("data-icon");
+  it("shows the stored value", async () => {
+    const { dropdown, tab } = await drawSettingsTab("animated");
     try {
-      for (const each of tiles()) {
-        expect(each.querySelector(".tts-host-icon svg")).not.toBeNull();
-        expect(each.classList.contains("tts-pick-tile-text")).toBe(false);
-      }
-      // None: the rounded square without marks; the others: the raised border.
-      expect(drawn("none")).toBe("tile");
-      expect(drawn("still")).toBe("bezel");
-      expect(drawn("animated")).toBe("bezel");
-      expect(
-        host("none")
-          ?.getAttributeNames()
-          .filter((name) => name !== "class"),
-      ).toEqual(["data-terminal-size"]);
-      expect(host("none")?.getAttribute("data-terminal-size")).toBe("22");
-      for (const motion of ["still", "animated"] as const) {
-        expect(host(motion)?.getAttribute("data-terminal-size")).toBe("22");
-        expect(host(motion)?.getAttribute("data-terminal-status")).toBe(
-          "working",
-        );
-        expect(host(motion)?.getAttribute("data-terminal-motion")).toBe(motion);
-      }
+      expect(dropdown.getValue()).toBe("animated");
     } finally {
       tab.dispose();
     }
   });
 
-  it("marks the stored value", async () => {
-    const { checked, tab } = await drawSettingsTab("animated");
-    try {
-      expect(checked()).toEqual(["animated"]);
-    } finally {
-      tab.dispose();
-    }
-  });
-
-  it.each(["still", "animated"] as const)(
-    "stores %s when its tile is chosen, and saves",
+  it.each(["still", "animated", "none"] as const)(
+    "stores %s when it is chosen, and saves",
     async (value) => {
-      const { checked, context, tab, tile, write } = await drawSettingsTab();
+      const initial = value === "none" ? "still" : "none",
+        { context, row, tab, write } = await drawSettingsTab(initial);
       try {
-        expect(checked()).toEqual(["none"]);
-        tile(value).click();
+        row.choose(value);
         await vi.waitFor(() => {
           expect(context.settings.value.tabStatus).toBe(value);
           expect(write).toHaveBeenCalled();
         });
-        expect(checked()).toEqual([value]);
       } finally {
         tab.dispose();
       }
     },
   );
 
-  it("stores the option the arrow keys move to", async () => {
-    const { checked, context, tab, tile } = await drawSettingsTab("still");
+  it("stores nothing for a value it does not offer", async () => {
+    const { context, dropdown, row, tab } = await drawSettingsTab("still");
     try {
-      tile("still").dispatchEvent(
-        new KeyboardEvent("keydown", { cancelable: true, key: "ArrowRight" }),
-      );
+      row.choose("loop");
       await vi.waitFor(() => {
-        expect(context.settings.value.tabStatus).toBe("animated");
+        expect(dropdown.getValue()).toBe("still");
       });
-      expect(checked()).toEqual(["animated"]);
+      expect(context.settings.value.tabStatus).toBe("still");
     } finally {
       tab.dispose();
     }
   });
 
   it("resets to None", async () => {
-    const { checked, context, reset, tab } = await drawSettingsTab("animated");
+    const { context, dropdown, reset, tab } = await drawSettingsTab("animated");
     try {
       expect(Settings.DEFAULT.tabStatus).toBe("none");
       reset.extraSettingsEl.click();
       await vi.waitFor(() => {
         expect(context.settings.value.tabStatus).toBe("none");
-        expect(checked()).toEqual(["none"]);
+        expect(dropdown.getValue()).toBe("none");
       });
     } finally {
       tab.dispose();
     }
   });
 
-  it("follows a change made elsewhere on the next redraw, keeping its tiles", async () => {
-    const { checked, context, tab, tiles } = await drawSettingsTab(),
-      before = tiles();
+  it("follows a change made elsewhere on the next redraw", async () => {
+    const { context, dropdown, tab } = await drawSettingsTab();
     try {
       await context.settings.mutate((settingsM) => {
         settingsM.tabStatus = "still";
       });
       tab.update();
-      expect(checked()).toEqual(["still"]);
-      expect(tiles()).toEqual(before);
+      expect(dropdown.getValue()).toBe("still");
     } finally {
       tab.dispose();
     }
   });
 
-  it("leaves no preview strip, no icon set, size or motion picker and no experimental intro", async () => {
-    const { rows, tab } = await drawSettingsTab(),
+  it("draws no icon, no tile, no preview strip, no icon set, size or motion picker and no experimental intro", async () => {
+    const { row, rows, tab } = await drawSettingsTab(),
       { containerEl } = tab;
     try {
-      expect(containerEl.querySelectorAll(".tts-strip")).toHaveLength(0);
-      // The one picker is the Program status row's.
-      expect(containerEl.querySelectorAll(".tts-pick")).toHaveLength(1);
-      expect(containerEl.querySelectorAll(".tts-host")).toHaveLength(3);
+      for (const selector of [
+        ".tts-strip",
+        ".tts-pick",
+        ".tts-host",
+        '[role="radiogroup"]',
+      ]) {
+        expect(containerEl.querySelectorAll(selector), selector).toHaveLength(
+          0,
+        );
+      }
+      expect(row.settingEl.querySelectorAll("svg")).toHaveLength(0);
       for (const name of ["Terminal icon", "Icon size", "Motion"]) {
         expect(rows.has(name), name).toBe(false);
       }

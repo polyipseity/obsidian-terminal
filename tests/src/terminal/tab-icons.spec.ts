@@ -47,6 +47,8 @@ const /** The at-rules of the stylesheet: what must hold of the device for their
   ANCHORS = "@supports (left: anchor(left))",
   /** Whether it can also keep an anchor's name to one element (Chromium 131 and later). */
   SCOPES = "@supports (anchor-scope: --tts-icon)",
+  /** Whether it cannot (before Chromium 131): a box's frame stays its container. */
+  UNSCOPED = "@supports not (anchor-scope: --tts-icon)",
   /** Between the at-rules a rule sits in, from the outermost. */
   INSIDE = " / ",
   /** How far an icon beside a title is lowered: `--tts-down` on its container. */
@@ -533,7 +535,7 @@ function simplesOf({ compounds }: Complex): readonly Simple[] {
 
 // ---------- A tab, and what the stylesheet makes of it ----------
 
-/** A tab header, or a preview in the settings, with an icon on it. */
+/** A terminal tab header with an icon on it. */
 interface Scene {
   /**
    * Which icon is drawn: the one with the marks (`bezel`), or the rounded
@@ -551,9 +553,7 @@ interface Scene {
   readonly pop: TabStatusDisplay | null;
   /** Whether a new title slides in. */
   readonly title: boolean;
-  /** A real tab header, or what stands in for one in the settings. */
-  readonly host: "preview" | "tab";
-  /** For a tab: in the root split of a window, where it has a title, or in a sidebar. */
+  /** In the root split of a window, where the tab has a title, or in a sidebar. */
   readonly split:
     | "mod-left-split"
     | "mod-primary-split"
@@ -573,7 +573,6 @@ interface Scene {
 /** A tab under Program status Still that has no report yet. */
 const PLAIN: Scene = {
   active: false,
-  host: "tab",
   icon: "bezel",
   light: false,
   motion: "still",
@@ -597,12 +596,12 @@ interface View {
   readonly container: Chain;
   /** The icon: its root group. */
   readonly icon: Chain;
-  /** Obsidian's title element of a tab, or `null` on a preview. */
+  /** Obsidian's title element of the tab, or `null` for an icon on no tab. */
   readonly title: Chain | null;
   readonly media: ReadonlySet<string>;
 }
 
-/** Builds the page around an icon as Obsidian does for a tab, and as the pickers do for a preview. */
+/** Builds the page around an icon as Obsidian does for a tab. */
 function view(over: Partial<Scene> = {}): View {
   const scene = { ...PLAIN, ...over },
     written = {
@@ -620,35 +619,28 @@ function view(over: Partial<Scene> = {}): View {
     },
     icon = scene.icon === "bezel" ? TAB_ICON : TILE_ICON,
     svg = part("svg", new Map([["class", "svg-icon"]]), [icon]),
-    tab = scene.host === "tab",
-    container = box(tab ? "workspace-tab-header-inner-icon" : "tts-host-icon", [
-      svg,
-    ]),
+    container = box("workspace-tab-header-inner-icon", [svg]),
     title = box("workspace-tab-header-inner-title", []),
     inner = box("workspace-tab-header-inner", [container, title]),
-    header = tab
-      ? box(
-          `workspace-tab-header${scene.active ? " is-active" : ""}`,
-          [inner],
-          { "data-type": "terminal:terminal", ...written },
-        )
-      : box("tts-host", [container], written),
+    header = box(
+      `workspace-tab-header${scene.active ? " is-active" : ""}`,
+      [inner],
+      { "data-type": "terminal:terminal", ...written },
+    ),
     split = box(scene.split, [header]),
-    body = box(scene.light ? "theme-light" : "theme-dark", [
-      tab ? split : header,
-    ]),
-    above = tab ? [body, split, header] : [body, header],
-    upTo = tab ? [...above, inner, container] : [...above, container];
+    body = box(scene.light ? "theme-light" : "theme-dark", [split]),
+    above = [body, split, header],
+    upTo = [...above, inner, container];
   return {
     container: upTo,
     header: above,
     icon: [...upTo, svg, icon],
-    title: tab ? [...above, inner, title] : null,
+    title: [...above, inner, title],
     media: new Set([
       HOVER,
       ...(scene.still ? [] : [MOTION]),
       ...(scene.old ? [] : [ANCHORS]),
-      ...(scene.old || scene.unscoped ? [] : [SCOPES]),
+      ...(scene.old || scene.unscoped ? [UNSCOPED] : [SCOPES]),
     ]),
   };
 }
@@ -825,8 +817,7 @@ const ACCENT = "var(--interactive-accent)",
     "seen",
     "blocked",
     "error",
-  ] as const satisfies readonly TabStatusDisplay[],
-  HOSTS = ["tab", "preview"] as const;
+  ] as const satisfies readonly TabStatusDisplay[];
 
 /**
  * The two boxes that light the dots, as they are laid out on a working tab
@@ -1625,20 +1616,15 @@ describe("tab-status.css", () => {
         second.value === "terminal:terminal"
       );
     },
-    /** The classes of an icon's own root element: the tab icon's or the tile icon's. */
+    /** The classes of the tab icon's own root element. */
     isIcon = (simples: readonly Simple[]): boolean => {
       const [first] = simples;
       return (
-        first?.kind === "class" &&
-        ["tts", "tts-set-bezel", TILE_ICON_CLASSES.root].includes(first.name)
+        first?.kind === "class" && ["tts", "tts-set-bezel"].includes(first.name)
       );
-    },
-    isPreview = (simples: readonly Simple[]): boolean => {
-      const [first] = simples;
-      return first?.kind === "class" && first.name === "tts-host";
     };
 
-  it("sits in no at-rule but the four it is read with", () => {
+  it("sits in no at-rule but the five it is read with", () => {
     expect([...new Set(sheet.rules.map((rule) => rule.at))].sort()).toEqual(
       [
         "",
@@ -1646,36 +1632,26 @@ describe("tab-status.css", () => {
         MOTION,
         `${MOTION}${INSIDE}${ANCHORS}`,
         `${MOTION}${INSIDE}${ANCHORS}${INSIDE}${SCOPES}`,
+        `${MOTION}${INSIDE}${UNSCOPED}`,
       ].sort(),
     );
     expect(sheet.rules.length).toBeGreaterThan(25);
   });
 
-  it("starts every selector at the terminal tab header, at .tts-host, at the tab icon or at the tile icon", () => {
+  it("starts every selector at the terminal tab header or at the tab icon", () => {
     for (const rule of READ) {
       for (const selector of rule.selectors) {
-        const [start] = selector.compounds,
-          [first] = start?.simples ?? [],
-          // `:is(<tab header>, .tts-host)`: each choice is one of the two.
-          choice =
-            first?.kind === "is" &&
-            first.options.every((option) => {
-              const [compound, ...more] = option.compounds;
-              return (
-                more.length === 0 &&
-                compound !== undefined &&
-                (isTab(compound.simples) || isPreview(compound.simples))
-              );
-            });
+        const [start] = selector.compounds;
         expect(
-          choice ||
-            isTab(start?.simples ?? []) ||
-            isPreview(start?.simples ?? []) ||
-            isIcon(start?.simples ?? []),
+          isTab(start?.simples ?? []) || isIcon(start?.simples ?? []),
           JSON.stringify(selector),
         ).toBe(true);
       }
     }
+  });
+
+  it("draws nothing for a preview: no stand-in for a tab header is named", () => {
+    expect(css).not.toMatch(/tts-host|tts-pick/u);
   });
 
   /** The same selector with the pointer on whatever it asks about. */
@@ -1800,26 +1776,18 @@ describe("tab-status.css", () => {
     ).toBeGreaterThan(sized.length);
   });
 
-  it("asks for no attribute of a status, a motion, a pop or a title in a rule of the tile icon's classes", () => {
-    const tile = new Set<string>(Object.values(TILE_ICON_CLASSES)),
-      rules = READ.filter((rule) =>
+  it("names no class of the tile icon: it is drawn as Obsidian draws its own icons", () => {
+    const tile = new Set<string>(Object.values(TILE_ICON_CLASSES));
+    expect(
+      READ.filter((rule) =>
         rule.selectors
           .flatMap(simplesOf)
           .some((simple) => simple.kind === "class" && tile.has(simple.name)),
-      );
-    // The faint square, and nothing else.
-    expect(rules).toHaveLength(1);
-    for (const rule of rules) {
-      expect(
-        rule.selectors
-          .flatMap(simplesOf)
-          .flatMap((simple) => (simple.kind === "attribute" ? [simple] : [])),
-      ).toEqual([]);
-      expect([...rule.declarations.keys()]).toEqual(["stroke-opacity"]);
-    }
+      ),
+    ).toEqual([]);
   });
 
-  it("names only classes that an icon, a tab or a preview has", () => {
+  it("names only classes that an icon or a tab has", () => {
     const named = new Set(
         READ.flatMap((rule) => rule.selectors)
           .flatMap(simplesOf)
@@ -1830,7 +1798,7 @@ describe("tab-status.css", () => {
           within([root]).flatMap((chain) => [...subject(chain).classes]),
         ),
       ),
-      /** Obsidian's own, and the two a preview is built from. */
+      /** Obsidian's own. */
       around = [
         "is-active",
         "mod-left-split",
@@ -1840,8 +1808,6 @@ describe("tab-status.css", () => {
         "mod-secondary-split",
         "svg-icon",
         "theme-light",
-        "tts-host",
-        "tts-host-icon",
         "workspace-tab-header",
         "workspace-tab-header-inner",
         "workspace-tab-header-inner-icon",
@@ -1899,23 +1865,21 @@ describe("tab-status.css", () => {
     expect(css.replace(/\/\*[\s\S]*?\*\//gu, "")).not.toMatch(
       /quiet|data-terminal-animation/iu,
     );
-    // No scene writes one either, on a tab or on a preview.
-    for (const host of HOSTS) {
-      for (const motion of MOTIONS) {
-        for (const status of [null, ...STATUSES]) {
-          const { header } = view({ host, motion, status });
-          expect(
-            [...subject(header).attributes.keys()].filter((name) =>
-              name.startsWith("data-terminal-"),
-            ),
-          ).toEqual(
-            [
-              ...(motion === null ? [] : [TAB_STATUS_ATTRIBUTES.motion]),
-              TAB_STATUS_ATTRIBUTES.size,
-              ...(status === null ? [] : [TAB_STATUS_ATTRIBUTES.status]),
-            ].sort(),
-          );
-        }
+    // No scene writes one either.
+    for (const motion of MOTIONS) {
+      for (const status of [null, ...STATUSES]) {
+        const { header } = view({ motion, status });
+        expect(
+          [...subject(header).attributes.keys()].filter((name) =>
+            name.startsWith("data-terminal-"),
+          ),
+        ).toEqual(
+          [
+            ...(motion === null ? [] : [TAB_STATUS_ATTRIBUTES.motion]),
+            TAB_STATUS_ATTRIBUTES.size,
+            ...(status === null ? [] : [TAB_STATUS_ATTRIBUTES.status]),
+          ].sort(),
+        );
       }
     }
   });
@@ -1928,7 +1892,7 @@ describe("tab-status.css", () => {
 
   describe("which mark a tab shows", () => {
     it("shows no mark where nothing is around the icon", () => {
-      // An icon in a menu or a list: no tab header, no stand-in.
+      // An icon in a menu or a list: no tab header.
       const icon = drawn(),
         alone: View = {
           container: [],
@@ -1943,35 +1907,27 @@ describe("tab-status.css", () => {
       }
     });
 
-    it.each(HOSTS)(
-      "shows no mark, no symbol and no glow on a %s whose program has reported nothing",
-      (host) => {
-        for (const motion of MOTIONS) {
-          const on = view({ motion, host });
-          expect(showing(on), String(motion)).toEqual({
-            marks: [],
-            symbols: [],
-          });
-          expect(hasBox(on, "before") || hasBox(on, "after")).toBe(false);
-          for (const tile of parts(on.icon, "tts-skin")) {
-            expect(declared(on, tile, "filter")).toBeUndefined();
-          }
+    it("shows no mark, no symbol and no glow on a tab whose program has reported nothing", () => {
+      for (const motion of MOTIONS) {
+        const on = view({ motion });
+        expect(showing(on), String(motion)).toEqual({
+          marks: [],
+          symbols: [],
+        });
+        expect(hasBox(on, "before") || hasBox(on, "after")).toBe(false);
+        for (const tile of parts(on.icon, "tts-skin")) {
+          expect(declared(on, tile, "filter")).toBeUndefined();
         }
-      },
-    );
+      }
+    });
 
     it.each(STATUSES)("shows the mark of %s, and no other", (status) => {
       const { mark, symbol } = SHOWS[status];
-      for (const host of HOSTS) {
-        for (const motion of MOTIONS) {
-          expect(
-            showing(view({ host, motion, status })),
-            `${host} ${String(motion)}`,
-          ).toEqual({
-            marks: [mark],
-            symbols: symbol === null ? [] : [symbol],
-          });
-        }
+      for (const motion of MOTIONS) {
+        expect(showing(view({ motion, status })), String(motion)).toEqual({
+          marks: [mark],
+          symbols: symbol === null ? [] : [symbol],
+        });
       }
     });
 
@@ -2006,49 +1962,45 @@ describe("tab-status.css", () => {
           symbol,
         });
         // Nothing but the status asks for it: no scene has a setting for it.
-        for (const host of HOSTS) {
-          for (const motion of MOTIONS) {
-            expect(
-              showing(view({ motion, host, status })),
-              `${host} ${String(motion)}`,
-            ).toEqual({ marks: ["badge"], symbols: [symbol] });
-          }
-          for (const over of [
-            { light: true },
-            { active: true },
-            { still: true },
-            { old: true },
-            { unscoped: true },
-            { size: null },
-            { pop: "done" },
-            { title: true },
-            ...SPLITS.map((split) => ({ split })),
-          ] satisfies readonly Partial<Scene>[]) {
-            const on = view({ ...over, motion: "animated", host, status }),
-              badge = markOf(on, "badge");
-            expect(showing(on), `${host} ${JSON.stringify(over)}`).toEqual({
-              marks: ["badge"],
-              symbols: [symbol],
-            });
-            // Grey, with no light around the tile.
-            expect(inherited(on, badge, "--tts-st")).toBe(GREY);
-            expect(inherited(on, on.icon, "--tts-glow")).toBeUndefined();
-          }
+        for (const motion of MOTIONS) {
+          expect(showing(view({ motion, status })), String(motion)).toEqual({
+            marks: ["badge"],
+            symbols: [symbol],
+          });
+        }
+        for (const over of [
+          { light: true },
+          { active: true },
+          { still: true },
+          { old: true },
+          { unscoped: true },
+          { size: null },
+          { pop: "done" },
+          { title: true },
+          ...SPLITS.map((split) => ({ split })),
+        ] satisfies readonly Partial<Scene>[]) {
+          const on = view({ ...over, motion: "animated", status }),
+            badge = markOf(on, "badge");
+          expect(showing(on), JSON.stringify(over)).toEqual({
+            marks: ["badge"],
+            symbols: [symbol],
+          });
+          // Grey, with no light around the tile.
+          expect(inherited(on, badge, "--tts-st")).toBe(GREY);
+          expect(inherited(on, on.icon, "--tts-glow")).toBeUndefined();
         }
       },
     );
 
     it("marks both as the settings are at first", () => {
-      for (const host of HOSTS) {
-        expect(showing(view({ host, status: "idle" })), host).toEqual({
-          marks: ["badge"],
-          symbols: ["moon"],
-        });
-        expect(showing(view({ host, status: "seen" })), host).toEqual({
-          marks: ["badge"],
-          symbols: ["check"],
-        });
-      }
+      expect(showing(view({ status: "idle" }))).toEqual({
+        marks: ["badge"],
+        symbols: ["moon"],
+      });
+      expect(showing(view({ status: "seen" }))).toEqual({
+        marks: ["badge"],
+        symbols: ["check"],
+      });
     });
 
     it("gives the grey badge no ring and no hairline, and every other mark both", () => {
@@ -2090,24 +2042,22 @@ describe("tab-status.css", () => {
   describe("the colour of a status", () => {
     it.each(STATUSES)("paints the mark of %s in its colour", (status) => {
       const { colour, mark } = SHOWS[status];
-      for (const host of HOSTS) {
-        const on = view({ host, status }),
-          inks = parts(markOf(on, mark), "tts-mk-ink"),
-          lines = parts(markOf(on, mark), "tts-mk-line");
-        expect(inks.length).toBeGreaterThan(0);
-        // Every part of a mark that has a colour takes the state's.
-        for (const ink of inks) {
-          expect(declared(on, ink, "fill")).toBe("var(--tts-st, currentColor)");
-          expect(inherited(on, ink, "--tts-st"), host).toBe(colour);
-        }
-        for (const line of lines) {
-          expect(declared(on, line, "stroke")).toBe(
-            "var(--tts-st, currentColor)",
-          );
-          expect(declared(on, line, "fill")).toBe("none");
-        }
-        expect(lines).toHaveLength(mark === "eye" ? 1 : 0);
+      const on = view({ status }),
+        inks = parts(markOf(on, mark), "tts-mk-ink"),
+        lines = parts(markOf(on, mark), "tts-mk-line");
+      expect(inks.length).toBeGreaterThan(0);
+      // Every part of a mark that has a colour takes the state's.
+      for (const ink of inks) {
+        expect(declared(on, ink, "fill")).toBe("var(--tts-st, currentColor)");
+        expect(inherited(on, ink, "--tts-st")).toBe(colour);
       }
+      for (const line of lines) {
+        expect(declared(on, line, "stroke")).toBe(
+          "var(--tts-st, currentColor)",
+        );
+        expect(declared(on, line, "fill")).toBe("none");
+      }
+      expect(lines).toHaveLength(mark === "eye" ? 1 : 0);
     });
 
     it("uses the accent for working and done, red for needs input and error, grey for idle and seen", () => {
@@ -2129,37 +2079,32 @@ describe("tab-status.css", () => {
       "lights the tile of %s from behind in the colour of its mark, or not at all",
       (status) => {
         const { colour, glow } = SHOWS[status];
-        for (const host of HOSTS) {
-          for (const light of [false, true]) {
-            const on = view({ host, light, status }),
-              tiles = parts(on.icon, "tts-skin");
-            expect(tiles.length).toBeGreaterThan(0);
-            for (const tile of tiles) {
-              const filter = declared(on, tile, "filter");
-              // An image takes no colour: the light is all a state does to it.
-              expect(declared(on, tile, "stroke"), host).toBeUndefined();
-              expect(
-                declared(on, tile, "stroke-opacity"),
-                host,
-              ).toBeUndefined();
-              if (!glow) {
-                expect(filter, host).toBeUndefined();
-                continue;
-              }
-              // A light around the tile's image, of the state's colour and of no other.
-              const lights = (filter ?? "").match(
-                /drop-shadow\([^()]*(?:\([^()]*\))?[^()]*\)/gu,
-              );
-              expect(lights?.length, host).toBeGreaterThan(0);
-              expect(lights?.join(" "), host).toBe(filter);
-              for (const each of lights ?? []) {
-                // Around the tile, not to one side of it.
-                expect(each, host).toMatch(
-                  /^drop-shadow\(0 0 [\d.]+px var\(--tts-glow\)\)$/u,
-                );
-              }
-              expect(inherited(on, tile, "--tts-glow"), host).toBe(colour);
+        for (const light of [false, true]) {
+          const on = view({ light, status }),
+            tiles = parts(on.icon, "tts-skin");
+          expect(tiles.length).toBeGreaterThan(0);
+          for (const tile of tiles) {
+            const filter = declared(on, tile, "filter");
+            // An image takes no colour: the light is all a state does to it.
+            expect(declared(on, tile, "stroke")).toBeUndefined();
+            expect(declared(on, tile, "stroke-opacity")).toBeUndefined();
+            if (!glow) {
+              expect(filter).toBeUndefined();
+              continue;
             }
+            // A light around the tile's image, of the state's colour and of no other.
+            const lights = (filter ?? "").match(
+              /drop-shadow\([^()]*(?:\([^()]*\))?[^()]*\)/gu,
+            );
+            expect(lights?.length).toBeGreaterThan(0);
+            expect(lights?.join(" ")).toBe(filter);
+            for (const each of lights ?? []) {
+              // Around the tile, not to one side of it.
+              expect(each).toMatch(
+                /^drop-shadow\(0 0 [\d.]+px var\(--tts-glow\)\)$/u,
+              );
+            }
+            expect(inherited(on, tile, "--tts-glow")).toBe(colour);
           }
         }
       },
@@ -2168,27 +2113,25 @@ describe("tab-status.css", () => {
     it.each(STATUSES)(
       "leaves the tile icon as it is under %s: no rule of a status reaches it",
       (status) => {
-        for (const host of HOSTS) {
-          for (const motion of MOTIONS) {
-            const on = view({ host, icon: "tile", motion, status }),
-              rest = view({ host, icon: "tile", motion: null, status: null });
-            for (const [index, chain] of within(on.icon).entries()) {
-              const before = within(rest.icon)[index] ?? chain;
-              for (const property of [
-                "display",
-                "fill",
-                "filter",
-                "opacity",
-                "stroke",
-                "stroke-opacity",
-                "transform",
-                "animation",
-              ]) {
-                expect(
-                  declared(on, chain, property),
-                  `${host} ${String(motion)} ${property}`,
-                ).toBe(declared(rest, before, property));
-              }
+        for (const motion of MOTIONS) {
+          const on = view({ icon: "tile", motion, status }),
+            rest = view({ icon: "tile", motion: null, status: null });
+          for (const [index, chain] of within(on.icon).entries()) {
+            const before = within(rest.icon)[index] ?? chain;
+            for (const property of [
+              "display",
+              "fill",
+              "filter",
+              "opacity",
+              "stroke",
+              "stroke-opacity",
+              "transform",
+              "animation",
+            ]) {
+              expect(
+                declared(on, chain, property),
+                `${String(motion)} ${property}`,
+              ).toBe(declared(rest, before, property));
             }
           }
         }
@@ -2270,47 +2213,31 @@ describe("tab-status.css", () => {
       ).toBeUndefined();
     });
 
-    it("draws the tile icon's square fainter than its prompt, in every scene, and thins nothing of the tab icon's tile", () => {
-      for (const host of HOSTS) {
-        for (const status of [null, ...STATUSES]) {
-          for (const light of [false, true]) {
-            const on = view({ host, icon: "tile", light, status }),
+    it("draws the tile icon's square at full strength, as its prompt, in every scene", () => {
+      for (const status of [null, ...STATUSES]) {
+        for (const light of [false, true]) {
+          for (const motion of MOTIONS) {
+            const on = view({ icon: "tile", light, motion, status }),
               square = one(parts(on.icon, TILE_ICON_CLASSES.square), "square"),
               [, prompt] = on.icon.at(-1)?.children ?? [],
-              faint = Number(declared(on, square, "stroke-opacity"));
-            expect(faint).toBeGreaterThan(0.4);
-            expect(faint).toBeLessThan(0.9);
-            expect(
-              prompt === undefined
-                ? "no prompt"
-                : declared(on, [...on.icon, prompt], "stroke-opacity"),
-            ).toBeUndefined();
-            // The colour stays the icon's: nothing gives the square or the prompt one.
-            expect(declared(on, square, "stroke")).toBeUndefined();
-            expect(declared(on, square, "fill")).toBeUndefined();
+              label = `${String(status)} ${String(light)} ${String(motion)}`;
+            for (const line of [
+              square,
+              prompt === undefined ? square : [...on.icon, prompt],
+            ]) {
+              // The icon's own colour and strength: nothing thins, fades
+              // or paints a line of it.
+              for (const property of [
+                "fill",
+                "opacity",
+                "stroke",
+                "stroke-opacity",
+              ]) {
+                expect(declared(on, line, property), label).toBeUndefined();
+              }
+            }
           }
         }
-      }
-      // And it is the tile icon's alone: the same faint square, wherever the icon is.
-      const alone: Chain = [TILE_ICON],
-        bare: View = {
-          container: [],
-          header: [],
-          icon: alone,
-          media: new Set([HOVER, MOTION]),
-          title: null,
-        };
-      expect(
-        declared(
-          bare,
-          one(parts(alone, TILE_ICON_CLASSES.square), "square"),
-          "stroke-opacity",
-        ),
-      ).toBe("0.62");
-      // A rendered tile is an image: it has no line to thin.
-      const on = view();
-      for (const tile of parts(on.icon, "tts-skin")) {
-        expect(declared(on, tile, "stroke-opacity")).toBeUndefined();
       }
     });
 
@@ -2384,7 +2311,25 @@ describe("tab-status.css", () => {
         ),
         ...(on.title !== null && moves(on, on.title) ? ["title"] : []),
       ],
-      popFrames = sheet.keyframes.get(TAB_STATUS_KEYFRAMES.pop) ?? "",
+      /** The keyframes of the mark's own pop; the ring's are the attribute's (`TAB_STATUS_KEYFRAMES.pop`). */
+      MARK_POP = "tts-pop",
+      popFrames = sheet.keyframes.get(MARK_POP) ?? "",
+      ringFrames = sheet.keyframes.get(TAB_STATUS_KEYFRAMES.pop) ?? "",
+      /** The statuses a selector names, those inside its `:is()` too. */
+      statusesIn = (selector: Complex): readonly (string | null)[] =>
+        simplesOf(selector)
+          .flatMap((simple) =>
+            simple.kind === "attribute" &&
+            simple.name === TAB_STATUS_ATTRIBUTES.status
+              ? [simple.value]
+              : [],
+          )
+          .sort(),
+      /** A new mark of a state that asks for the user, as it pops in under Animated. */
+      ringing = (
+        status: "blocked" | "done" | "error",
+        over: Partial<Scene> = {},
+      ): View => view({ motion: "animated", pop: status, status, ...over }),
       titleFrames = sheet.keyframes.get(TAB_STATUS_KEYFRAMES.title) ?? "",
       /** The stops of a one-shot animation: when, and what each declares. */
       shots = (
@@ -2413,7 +2358,7 @@ describe("tab-status.css", () => {
       millis = (time: string | undefined): number =>
         Number.parseFloat(time ?? "") * 1000;
 
-    it("moves three things only, each under Animated where motion is welcome: the dots' two boxes, the inside of a new mark, a new title", () => {
+    it("moves four things only, each under Animated where motion is welcome: the dots' two boxes, the ring and the inside of a new mark, a new title", () => {
       expect(moving.length).toBeGreaterThan(0);
       const kinds = new Set<string>();
       for (const rule of moving) {
@@ -2424,14 +2369,26 @@ describe("tab-status.css", () => {
             last = rest.at(-1)?.simples ?? [];
           expect(asked).toContain(`${TAB_STATUS_ATTRIBUTES.motion}=animated`);
           if (selector.pseudo !== null) {
-            // The dots: a box of the icon container, on a working tab.
-            kinds.add("dots");
-            expect(asked).toContain(`${TAB_STATUS_ATTRIBUTES.status}=working`);
+            // A box of the icon container.
             expect(rest).toHaveLength(1);
             expect(classesIn(last)).toEqual([
-              "tts-host-icon",
               "workspace-tab-header-inner-icon",
             ]);
+            if (asked.includes(`${TAB_STATUS_ATTRIBUTES.status}=working`)) {
+              // The dots, on a working tab.
+              kinds.add("dots");
+            } else {
+              // The ring of a new mark: only for a state that asks for the
+              // user, so never on a working tab, where the dots are.
+              kinds.add("ring");
+              expect(selector.pseudo).toBe("after");
+              expect(asked).toContain(`${TAB_STATUS_ATTRIBUTES.pop}=null`);
+              expect(statusesIn(selector)).toEqual([
+                "blocked",
+                "done",
+                "error",
+              ]);
+            }
           } else if (asked.includes(`${TAB_STATUS_ATTRIBUTES.pop}=null`)) {
             // A new mark: the group inside the dot or the eye, which has no
             // transform attribute for the stylesheet's to replace.
@@ -2454,63 +2411,54 @@ describe("tab-status.css", () => {
           }
         }
       }
-      expect([...kinds].sort()).toEqual(["dots", "pop", "title"]);
+      expect([...kinds].sort()).toEqual(["dots", "pop", "ring", "title"]);
     });
 
     it("moves nothing at rest, whatever the status and the motion", () => {
-      for (const host of HOSTS) {
-        for (const motion of MOTIONS) {
-          for (const status of [null, ...STATUSES]) {
-            const on = view({ host, motion, status });
-            expect(
-              movingIn(on),
-              `${host} ${String(motion)} ${String(status)}`,
-            ).toEqual(
-              motion === "animated" && status === "working"
-                ? ["::before", "::after"]
-                : [],
-            );
-          }
+      for (const motion of MOTIONS) {
+        for (const status of [null, ...STATUSES]) {
+          const on = view({ motion, status });
+          expect(movingIn(on), `${String(motion)} ${String(status)}`).toEqual(
+            motion === "animated" && status === "working"
+              ? ["::before", "::after"]
+              : [],
+          );
         }
       }
     });
 
     it("pops in only the mark shown, the dot or the eye, under Animated where motion is welcome", () => {
-      for (const host of HOSTS) {
-        for (const status of ["done", "blocked", "error"] as const) {
-          const on = view({ host, motion: "animated", pop: status, status }),
-            { mark } = SHOWS[status],
-            popping = parts(on.icon, "tts-mk-pop").filter(
-              (chain) => moves(on, chain) && shown(on, chain),
-            ),
-            group = one(popping, "the group that pops");
-          // The one inside the mark the status shows.
-          expect(group.at(-2)?.classes.has(`tts-mk-${mark}`)).toBe(true);
-          expect(["dot", "eye"]).toContain(mark);
-          expect(declared(on, group, "transform-box")).toBe("fill-box");
-          expect(declared(on, group, "transform-origin")).toBe("center");
-          expect(declared(on, group, "animation")?.split(" ")[0]).toBe(
-            TAB_STATUS_KEYFRAMES.pop,
-          );
-          // Nothing else of the icon moves, and the title stays.
-          expect(movingIn(on).filter((name) => name !== "tts-mk-pop")).toEqual(
-            [],
-          );
-          // Not under Still, None or reduced motion.
-          for (const over of [
-            { motion: "still" },
-            { motion: null },
-            { still: true },
-          ] satisfies readonly Partial<Scene>[]) {
-            const off = view({
-              host,
-              motion: "animated",
-              pop: status,
-              status,
-              ...over,
-            });
-            expect(movingIn(off), JSON.stringify(over)).toEqual([]);
-          }
+      for (const status of ["done", "blocked", "error"] as const) {
+        const on = view({ motion: "animated", pop: status, status }),
+          { mark } = SHOWS[status],
+          popping = parts(on.icon, "tts-mk-pop").filter(
+            (chain) => moves(on, chain) && shown(on, chain),
+          ),
+          group = one(popping, "the group that pops");
+        // The one inside the mark the status shows.
+        expect(group.at(-2)?.classes.has(`tts-mk-${mark}`)).toBe(true);
+        expect(["dot", "eye"]).toContain(mark);
+        expect(declared(on, group, "transform-box")).toBe("fill-box");
+        expect(declared(on, group, "transform-origin")).toBe("center");
+        expect(declared(on, group, "animation")?.split(" ")[0]).toBe(MARK_POP);
+        // Nothing else of the icon moves, and the title stays: the ring
+        // around the mark is the container's.
+        expect(movingIn(on).filter((name) => name !== "tts-mk-pop")).toEqual([
+          "::after",
+        ]);
+        // Not under Still, None or reduced motion.
+        for (const over of [
+          { motion: "still" },
+          { motion: null },
+          { still: true },
+        ] satisfies readonly Partial<Scene>[]) {
+          const off = view({
+            motion: "animated",
+            pop: status,
+            status,
+            ...over,
+          });
+          expect(movingIn(off), JSON.stringify(over)).toEqual([]);
         }
       }
     });
@@ -2525,10 +2473,10 @@ describe("tab-status.css", () => {
           ),
         ),
         rule = one(
-          READ.filter((each) =>
-            (each.declarations.get("animation") ?? "").startsWith(
-              TAB_STATUS_KEYFRAMES.pop,
-            ),
+          READ.filter(
+            (each) =>
+              (each.declarations.get("animation") ?? "").split(" ")[0] ===
+              MARK_POP,
           ),
           "the rule that pops",
         ),
@@ -2548,9 +2496,186 @@ describe("tab-status.css", () => {
       expect(frames.at(-1)?.opacity).toBe(1);
       expect(time).toBeGreaterThanOrEqual(350);
       expect(time).toBeLessThanOrEqual(450);
-      // The presenter takes the attribute back a little after the end.
+      // The attribute outlasts it: it stays for the ring, which ends later.
       expect(TAB_STATUS_TRANSIENT_TIMEOUTS.pop).toBeGreaterThan(time);
-      expect(TAB_STATUS_TRANSIENT_TIMEOUTS.pop).toBeLessThan(time + 500);
+    });
+
+    it("ripples one ring out of a new mark, in its colour, a little after the pop starts, under Animated where motion is welcome", () => {
+      for (const status of ["done", "blocked", "error"] as const) {
+        const on = ringing(status),
+          of = (property: string): string | undefined =>
+            declared(on, on.container, property, "after"),
+          [name, duration, easing, delay, ...more] = (
+            of("animation") ?? ""
+          ).split(" ");
+        expect([hasBox(on, "before"), hasBox(on, "after")], status).toEqual([
+          false,
+          true,
+        ]);
+        // Once: no count, so one run.
+        expect(name).toBe(TAB_STATUS_KEYFRAMES.pop);
+        expect(millis(duration)).toBe(900);
+        expect(easing).toBe("ease-out");
+        expect(millis(delay)).toBe(150);
+        expect(more).toEqual([]);
+        // A ring in the colour of the state, and nothing filled.
+        expect(of("border")).toBe("calc(2 * var(--tts-u)) solid var(--tts-st)");
+        expect(of("border-radius")).toBe("50%");
+        expect(of("background")).toBeUndefined();
+        expect(of("box-sizing")).toBe("border-box");
+        // Not to be seen before it starts or after it ends.
+        expect(of("opacity")).toBe("0");
+        expect(of("pointer-events")).toBe("none");
+        const plain = view({ status });
+        expect(inherited(on, on.header, "--tts-st")).toBe(
+          inherited(plain, plain.header, "--tts-st"),
+        );
+        // Not under Still, None or reduced motion, nor without a pop.
+        for (const over of [
+          { motion: "still" },
+          { motion: null },
+          { still: true },
+          { pop: null },
+        ] satisfies readonly Partial<Scene>[]) {
+          expect(
+            hasBox(ringing(status, over), "after"),
+            `${status} ${JSON.stringify(over)}`,
+          ).toBe(false);
+        }
+      }
+    });
+
+    it("starts the ring at the mark's outer size around its centre, from the container or from the drawing alike", () => {
+      const { cx, cy, edge, radius, ring } = TAB_ICON_MARKS.dot,
+        outer = 2 * (radius + ring + edge);
+      for (const old of [true, false]) {
+        const on = ringing("done", { old }),
+          of = (property: string): string | undefined =>
+            declared(on, on.container, property, "after"),
+          left = old ? units(of("left")) : unitsFrom("left", of("left")),
+          top = old ? units(of("top")) : unitsFrom("top", of("top")),
+          width = units(of("width")),
+          height = units(of("height"));
+        expect(width, String(old)).toBeCloseTo(outer, 5);
+        expect(height).toBe(width);
+        expect(left + width / 2, String(old)).toBeCloseTo(cx, 5);
+        expect(top + height / 2, String(old)).toBeCloseTo(cy, 5);
+        expect(of("position-anchor")).toBe(old ? undefined : "--tts-icon");
+      }
+    });
+
+    it("grows the ring to 3.4 times its size as it fades out, and to 2.2 times in a sidebar", () => {
+      expect(shots(ringFrames)).toEqual([
+        { offset: 0, opacity: 0.95, transform: "scale(1)" },
+        { offset: 100, opacity: 0, transform: "scale(var(--tts-ping-to))" },
+      ]);
+      for (const split of SPLITS) {
+        const on = ringing("blocked", { split });
+        expect(
+          declared(on, on.container, "--tts-ping-to", "after"),
+          split,
+        ).toBe(split === "mod-root" ? "3.4" : "2.2");
+      }
+    });
+
+    it("keeps the ring inside what clips it, at its largest (measured in Obsidian 1.14.4)", () => {
+      const { edge, radius, ring } = TAB_ICON_MARKS.dot,
+        /** The ring's outer radius at its largest, in CSS pixels, on an icon `size` pixels wide. */
+        largest = (split: Scene["split"], size: number): number =>
+          (radius + ring + edge) *
+          (size / 24) *
+          Number(
+            declared(
+              ringing("done", { split }),
+              ringing("done", { split }).container,
+              "--tts-ping-to",
+              "after",
+            ),
+          );
+      // Beside a title the icon is 22 px, and the mark's centre 14 px below
+      // the top of the tab header, which nothing clips (the box of the tabs
+      // shows 20 px past its edge).
+      expect(largest("mod-root", TAB_ICON_SIZE)).toBeLessThan(14);
+      // In a sidebar it is 16 px, and the box of the tabs clips 7 px above
+      // the mark's centre.
+      for (const split of SPLITS.filter((each) => each !== "mod-root")) {
+        expect(largest(split, 16), split).toBeLessThan(7);
+      }
+    });
+
+    it("lets the tab's row show the ring while it plays, only where the ring's frame is inside the row", () => {
+      const found = READ.filter(
+          (rule) =>
+            rule.declarations.has("overflow") &&
+            rule.selectors.some((each) =>
+              simplesOf(each).some(
+                (simple) =>
+                  simple.kind === "class" &&
+                  simple.name === "workspace-tab-header-inner",
+              ),
+            ),
+        ),
+        rule = one(found, "the rule of the tab's row"),
+        selector = one(rule.selectors, "its selector"),
+        [start, ...more] = selector.compounds;
+      // Where motion is welcome, and where the container stays the frame.
+      expect(rule.at).toBe(`${MOTION}${INSIDE}${UNSCOPED}`);
+      expect([...rule.declarations]).toEqual([["overflow", "visible"]]);
+      // A terminal tab's row, while a pop plays under Animated.
+      expect(selector.pseudo).toBeNull();
+      expect(isTab(start?.simples ?? [])).toBe(true);
+      expect(start?.simples.slice(2)).toEqual([
+        {
+          kind: "attribute",
+          name: TAB_STATUS_ATTRIBUTES.motion,
+          value: "animated",
+        },
+        { kind: "attribute", name: TAB_STATUS_ATTRIBUTES.pop, value: null },
+      ]);
+      expect(more).toEqual([
+        {
+          combinator: " ",
+          simples: [{ kind: "class", name: "workspace-tab-header-inner" }],
+        },
+      ]);
+      const row = (on: View): Chain => on.container.slice(0, -1);
+      for (const split of SPLITS) {
+        for (const over of [
+          { old: true },
+          { unscoped: true },
+        ] satisfies readonly Partial<Scene>[]) {
+          const on = ringing("error", { split, ...over });
+          expect(declared(on, on.container, "position"), split).toBe(
+            "relative",
+          );
+          expect(declared(on, row(on), "overflow"), split).toBe("visible");
+          // Not without the pop, under Still or where motion is not welcome.
+          for (const off of [
+            { pop: null },
+            { motion: "still" },
+            { still: true },
+          ] satisfies readonly Partial<Scene>[]) {
+            const plain = ringing("error", { split, ...over, ...off });
+            expect(
+              declared(plain, row(plain), "overflow"),
+              `${split} ${JSON.stringify({ ...over, ...off })}`,
+            ).toBeUndefined();
+          }
+        }
+        // Where the container is no frame, the row is left to clip.
+        const on = ringing("error", { split });
+        expect(declared(on, row(on), "overflow"), split).toBeUndefined();
+      }
+    });
+
+    it("keeps a pop's attribute until the ring has ended, and not much longer", () => {
+      const on = ringing("error"),
+        [, duration, , delay] = (
+          declared(on, on.container, "animation", "after") ?? ""
+        ).split(" "),
+        end = millis(delay) + millis(duration);
+      expect(TAB_STATUS_TRANSIENT_TIMEOUTS.pop).toBeGreaterThan(end);
+      expect(TAB_STATUS_TRANSIENT_TIMEOUTS.pop).toBeLessThan(end + 500);
     });
 
     it("slides a new title up from below and fades it in, in about a quarter of a second, on a tab under Animated where motion is welcome", () => {
@@ -2576,7 +2701,6 @@ describe("tab-status.css", () => {
         { motion: "still" },
         { motion: null },
         { still: true },
-        { host: "preview" },
       ] satisfies readonly Partial<Scene>[]) {
         expect(
           movingIn(view({ motion: "animated", title: true, ...over })),
@@ -2585,10 +2709,11 @@ describe("tab-status.css", () => {
       }
     });
 
-    it("has three keyframes rules, and tts-dots changes only transform and opacity", () => {
+    it("has four keyframes rules, and tts-dots changes only transform and opacity", () => {
       expect([...sheet.keyframes.keys()].sort()).toEqual(
         [
           "tts-dots",
+          MARK_POP,
           TAB_STATUS_KEYFRAMES.pop,
           TAB_STATUS_KEYFRAMES.title,
         ].sort(),
@@ -2617,103 +2742,95 @@ describe("tab-status.css", () => {
       expect([...named].sort()).toEqual(
         [
           "tts-dots",
+          MARK_POP,
           TAB_STATUS_KEYFRAMES.pop,
           TAB_STATUS_KEYFRAMES.title,
         ].sort(),
       );
     });
 
-    it.each(HOSTS)(
-      "lights the dots of a working %s under Animated with two boxes",
-      (host) => {
-        const on = view({ host, motion: "animated", status: "working" });
-        expect(showing(on)).toEqual({ marks: ["dots"], symbols: [] });
-        expect([hasBox(on, "before"), hasBox(on, "after")]).toEqual([
-          true,
-          true,
-        ]);
-      },
-    );
+    it("lights the dots of a working tab under Animated with two boxes", () => {
+      const on = view({ motion: "animated", status: "working" });
+      expect(showing(on)).toEqual({ marks: ["dots"], symbols: [] });
+      expect([hasBox(on, "before"), hasBox(on, "after")]).toEqual([true, true]);
+    });
 
     it("stands the three dots still, all lit and with no box, under Still and None, and where the user asked for less motion", () => {
       const lit = (of: View): readonly (string | undefined)[] =>
         parts(markOf(of, "dots"), "tts-mk-ink").map((chain) =>
           declared(of, chain, "opacity"),
         );
-      for (const host of HOSTS) {
-        for (const over of [
-          // The user's choice of no motion,
-          { motion: "still" },
-          { motion: "still", still: true },
-          // a header without one (a status is written only under Still
-          // or Animated, but a preview may carry one),
-          { motion: null },
-          // and the system's, which goes before a choice of motion.
-          { motion: "animated", still: true },
-        ] satisfies readonly Partial<Scene>[]) {
-          const on = view({ ...over, host, status: "working" }),
-            label = `${host} ${JSON.stringify(over)}`;
-          // The same mark as where it moves: three dots, and no badge.
-          expect(showing(on), label).toEqual({
-            marks: ["dots"],
-            symbols: [],
-          });
-          expect(lit(on), label).toEqual([undefined, undefined, undefined]);
-          expect([hasBox(on, "before"), hasBox(on, "after")], label).toEqual([
-            false,
-            false,
-          ]);
-          for (const pseudo of ["before", "after"] as const) {
-            expect(
-              declared(on, on.container, "animation", pseudo),
-              label,
-            ).toBeUndefined();
-          }
+      for (const over of [
+        // The user's choice of no motion,
+        { motion: "still" },
+        { motion: "still", still: true },
+        // a header without one (a status is written only under Still
+        // or Animated, but a header could carry one from an earlier build),
+        { motion: null },
+        // and the system's, which goes before a choice of motion.
+        { motion: "animated", still: true },
+      ] satisfies readonly Partial<Scene>[]) {
+        const on = view({ ...over, status: "working" }),
+          label = JSON.stringify(over);
+        // The same mark as where it moves: three dots, and no badge.
+        expect(showing(on), label).toEqual({
+          marks: ["dots"],
+          symbols: [],
+        });
+        expect(lit(on), label).toEqual([undefined, undefined, undefined]);
+        expect([hasBox(on, "before"), hasBox(on, "after")], label).toEqual([
+          false,
+          false,
+        ]);
+        for (const pseudo of ["before", "after"] as const) {
+          expect(
+            declared(on, on.container, "animation", pseudo),
+            label,
+          ).toBeUndefined();
         }
-        // Where they move, the dots of the icon are faint under the lit ones.
-        expect(
-          lit(view({ host, motion: "animated", status: "working" })),
-        ).toEqual(["0.3", "0.3", "0.3"]);
       }
+      // Where they move, the dots of the icon are faint under the lit ones.
+      expect(lit(view({ motion: "animated", status: "working" }))).toEqual([
+        "0.3",
+        "0.3",
+        "0.3",
+      ]);
     });
 
     it("places the boxes from the drawing where the browser can, at the same distances", () => {
-      for (const host of HOSTS) {
-        const on = view({ motion: "animated", host, status: "working" }),
-          drawing = on.icon.slice(0, -1);
-        expect(declared(on, drawing, "anchor-name")).toBe("--tts-icon");
-        for (const pseudo of ["before", "after"] as const) {
-          const of = (property: string): string | undefined =>
-            declared(on, on.container, property, pseudo);
-          expect(of("position-anchor")).toBe("--tts-icon");
-          expect(unitsFrom("left", of("left"))).toBe(LIT.left);
-          expect(unitsFrom("top", of("top"))).toBe(LIT.top);
-        }
-        // An older browser has the same boxes, counted from the container.
-        const old = view({
-          motion: "animated",
-          host,
-          old: true,
-          status: "working",
-        });
-        expect(declared(old, old.icon.slice(0, -1), "anchor-name")).toBe(
-          undefined,
+      const on = view({ motion: "animated", status: "working" }),
+        drawing = on.icon.slice(0, -1);
+      expect(declared(on, drawing, "anchor-name")).toBe("--tts-icon");
+      for (const pseudo of ["before", "after"] as const) {
+        const of = (property: string): string | undefined =>
+          declared(on, on.container, property, pseudo);
+        expect(of("position-anchor")).toBe("--tts-icon");
+        expect(unitsFrom("left", of("left"))).toBe(LIT.left);
+        expect(unitsFrom("top", of("top"))).toBe(LIT.top);
+      }
+      // An older browser has the same boxes, counted from the container.
+      const old = view({
+        motion: "animated",
+        old: true,
+        status: "working",
+      });
+      expect(declared(old, old.icon.slice(0, -1), "anchor-name")).toBe(
+        undefined,
+      );
+      for (const pseudo of ["before", "after"] as const) {
+        expect(
+          declared(old, old.container, "position-anchor", pseudo),
+        ).toBeUndefined();
+        expect(units(declared(old, old.container, "left", pseudo))).toBe(
+          LIT.left,
         );
-        for (const pseudo of ["before", "after"] as const) {
-          expect(
-            declared(old, old.container, "position-anchor", pseudo),
-          ).toBeUndefined();
-          expect(units(declared(old, old.container, "left", pseudo))).toBe(
-            LIT.left,
-          );
-        }
-        // And nothing is an anchor where nothing moves.
-        for (const status of [null, ...STATUSES]) {
-          const rest = view({ host, status });
-          expect(
-            declared(rest, rest.icon.slice(0, -1), "anchor-name"),
-          ).toBeUndefined();
-        }
+      }
+      // And nothing is an anchor where nothing moves.
+      for (const status of [null, ...STATUSES]) {
+        const rest = view({ status });
+        expect(
+          declared(rest, rest.icon.slice(0, -1), "anchor-name"),
+        ).toBeUndefined();
       }
     });
 
@@ -2732,17 +2849,26 @@ describe("tab-status.css", () => {
       // The container itself, not one of its boxes, on a real tab header only.
       expect(selector.pseudo).toBeNull();
       expect(isTab(start?.simples ?? [])).toBe(true);
-      expect(start?.simples.slice(2)).toEqual([
-        {
-          kind: "attribute",
-          name: TAB_STATUS_ATTRIBUTES.motion,
-          value: "animated",
-        },
-        {
-          kind: "attribute",
-          name: TAB_STATUS_ATTRIBUTES.status,
-          value: "working",
-        },
+      // Under Animated, where a box moves: the dots of a working program,
+      // or the ring of a new mark.
+      const [motion, either, ...others] = start?.simples.slice(2) ?? [];
+      expect(motion).toEqual({
+        kind: "attribute",
+        name: TAB_STATUS_ATTRIBUTES.motion,
+        value: "animated",
+      });
+      expect(others).toEqual([]);
+      expect(
+        either?.kind === "is" ? either.options.map(simplesOf) : either,
+      ).toEqual([
+        [
+          {
+            kind: "attribute",
+            name: TAB_STATUS_ATTRIBUTES.status,
+            value: "working",
+          },
+        ],
+        [{ kind: "attribute", name: TAB_STATUS_ATTRIBUTES.pop, value: null }],
       ]);
       expect(more).toEqual([
         {
@@ -2792,10 +2918,6 @@ describe("tab-status.css", () => {
         const on = view(over);
         return declared(on, on.container, "position");
       };
-      // A preview in the settings: no rounded clip around it to leave.
-      expect(
-        frame({ host: "preview", motion: "animated", status: "working" }),
-      ).toBe("relative");
       for (const split of SPLITS) {
         // A browser that cannot place the boxes from the drawing counts from the container.
         expect(
@@ -2824,21 +2946,15 @@ describe("tab-status.css", () => {
           }),
         ).toBe("relative");
       }
-      for (const host of HOSTS) {
-        for (const status of [null, ...STATUSES]) {
-          for (const motion of MOTIONS) {
-            if (
-              host === "tab" &&
-              status === "working" &&
-              motion === "animated"
-            ) {
-              continue;
-            }
-            expect(
-              frame({ motion, host, status }),
-              `${host} ${String(status)} ${String(motion)}`,
-            ).toBe("relative");
+      for (const status of [null, ...STATUSES]) {
+        for (const motion of MOTIONS) {
+          if (status === "working" && motion === "animated") {
+            continue;
           }
+          expect(
+            frame({ motion, status }),
+            `${String(status)} ${String(motion)}`,
+          ).toBe("relative");
         }
       }
     });
@@ -2853,7 +2969,7 @@ describe("tab-status.css", () => {
       expect([...rule.declarations]).toEqual([
         ["position-visibility", "always"],
       ]);
-      // Both boxes of a real tab header, and nothing of a preview.
+      // Both boxes of a real tab header.
       expect(rule.selectors.map((selector) => selector.pseudo).sort()).toEqual([
         "after",
         "before",
@@ -2901,12 +3017,6 @@ describe("tab-status.css", () => {
             ).toBeUndefined();
           }
         }
-        expect(
-          shown(
-            { motion: "animated", host: "preview", status: "working" },
-            pseudo,
-          ),
-        ).toBeUndefined();
         for (const status of [null, ...STATUSES]) {
           for (const motion of MOTIONS) {
             if (status === "working" && motion === "animated") {
@@ -2933,7 +3043,7 @@ describe("tab-status.css", () => {
       expect(rule.at).toBe(`${MOTION}${INSIDE}${ANCHORS}${INSIDE}${SCOPES}`);
       // As much above as is taken back below: the container stays as tall.
       expect([...rule.declarations]).toEqual([["margin-block", CARRIED]]);
-      // The drawing of a real tab header, and nothing of a preview.
+      // The drawing of a real tab header.
       expect(selector.pseudo).toBeNull();
       expect(isTab(selector.compounds[0]?.simples ?? [])).toBe(true);
       expect(selector.compounds.slice(1)).toEqual([
@@ -2955,45 +3065,43 @@ describe("tab-status.css", () => {
         { old: true, still: true },
       ] satisfies readonly Partial<Scene>[];
       let loose = 0;
-      for (const host of HOSTS) {
-        for (const split of SPLITS) {
-          for (const status of [null, ...STATUSES]) {
-            for (const motion of MOTIONS) {
-              for (const browser of browsers) {
-                const on = view({ motion, host, split, status, ...browser }),
-                  drawing = on.icon.slice(0, -1),
-                  frame = declared(on, on.container, "position"),
-                  label = `${host} ${split} ${String(status)} ${String(motion)} ${JSON.stringify(browser)}`;
-                expect(["relative", "static"], label).toContain(frame);
-                expect(declared(on, drawing, "margin-block"), label).toBe(
-                  frame === "static" ? CARRIED : undefined,
+      for (const split of SPLITS) {
+        for (const status of [null, ...STATUSES]) {
+          for (const motion of MOTIONS) {
+            for (const browser of browsers) {
+              const on = view({ motion, split, status, ...browser }),
+                drawing = on.icon.slice(0, -1),
+                frame = declared(on, on.container, "position"),
+                label = `${split} ${String(status)} ${String(motion)} ${JSON.stringify(browser)}`;
+              expect(["relative", "static"], label).toContain(frame);
+              expect(declared(on, drawing, "margin-block"), label).toBe(
+                frame === "static" ? CARRIED : undefined,
+              );
+              if (frame === "static") {
+                loose++;
+                // The same lowering as the container's offset: none in a sidebar.
+                expect(inherited(on, drawing, "--tts-down"), label).toBe(
+                  split === "mod-root" ? LOWERING : undefined,
                 );
-                if (frame === "static") {
-                  loose++;
-                  // The same lowering as the container's offset: none in a sidebar.
-                  expect(inherited(on, drawing, "--tts-down"), label).toBe(
-                    split === "mod-root" ? LOWERING : undefined,
-                  );
-                }
-                // By a margin alone: a positioned or a moved drawing would be
-                // painted over the box that comes before it, and a box does
-                // not follow a drawing that is moved.
-                for (const property of [
-                  "inset",
-                  "margin",
-                  "margin-bottom",
-                  "margin-top",
-                  "position",
-                  "top",
-                  "transform",
-                  "translate",
-                  "z-index",
-                ]) {
-                  expect(
-                    declared(on, drawing, property),
-                    `${label} ${property}`,
-                  ).toBeUndefined();
-                }
+              }
+              // By a margin alone: a positioned or a moved drawing would be
+              // painted over the box that comes before it, and a box does
+              // not follow a drawing that is moved.
+              for (const property of [
+                "inset",
+                "margin",
+                "margin-bottom",
+                "margin-top",
+                "position",
+                "top",
+                "transform",
+                "translate",
+                "z-index",
+              ]) {
+                expect(
+                  declared(on, drawing, property),
+                  `${label} ${property}`,
+                ).toBeUndefined();
               }
             }
           }
@@ -3004,41 +3112,38 @@ describe("tab-status.css", () => {
     });
 
     it("keeps the name of a drawing to its own icon wherever it is an anchor", () => {
-      for (const host of HOSTS) {
-        for (const unscoped of [false, true]) {
-          const on = view({
-            motion: "animated",
-            host,
-            status: "working",
-            unscoped,
-          });
-          // Declared with the anchor; a browser that does not know it drops it.
-          expect(declared(on, on.container, "anchor-scope")).toBe(
-            declared(on, on.icon.slice(0, -1), "anchor-name"),
+      for (const unscoped of [false, true]) {
+        const on = view({
+          motion: "animated",
+          status: "working",
+          unscoped,
+        });
+        // Declared with the anchor; a browser that does not know it drops it.
+        expect(declared(on, on.container, "anchor-scope")).toBe(
+          declared(on, on.icon.slice(0, -1), "anchor-name"),
+        );
+        for (const pseudo of ["before", "after"] as const) {
+          expect(declared(on, on.container, "position-anchor", pseudo)).toBe(
+            "--tts-icon",
           );
-          for (const pseudo of ["before", "after"] as const) {
-            expect(declared(on, on.container, "position-anchor", pseudo)).toBe(
-              "--tts-icon",
-            );
-            expect(
-              declared(on, on.container, "anchor-scope", pseudo),
-            ).toBeUndefined();
-          }
-        }
-        // No anchor, no scope.
-        for (const over of [
-          { motion: "animated", old: true, status: "working" },
-          { motion: "animated", status: "working", still: true },
-          { motion: "still", status: "working" },
-          { motion: "animated", status: "done" },
-          { motion: "animated", status: null },
-        ] satisfies readonly Partial<Scene>[]) {
-          const on = view({ ...over, host });
           expect(
-            declared(on, on.container, "anchor-scope"),
-            JSON.stringify(over),
+            declared(on, on.container, "anchor-scope", pseudo),
           ).toBeUndefined();
         }
+      }
+      // No anchor, no scope.
+      for (const over of [
+        { motion: "animated", old: true, status: "working" },
+        { motion: "animated", status: "working", still: true },
+        { motion: "still", status: "working" },
+        { motion: "animated", status: "done" },
+        { motion: "animated", status: null },
+      ] satisfies readonly Partial<Scene>[]) {
+        const on = view({ ...over });
+        expect(
+          declared(on, on.container, "anchor-scope"),
+          JSON.stringify(over),
+        ).toBeUndefined();
       }
       const scoped = READ.filter((rule) =>
         rule.declarations.has("anchor-scope"),
@@ -3048,25 +3153,66 @@ describe("tab-status.css", () => {
       );
     });
 
-    it("moves nothing for any other status, nor without loop", () => {
-      for (const host of HOSTS) {
-        for (const status of [null, ...STATUSES]) {
-          for (const motion of MOTIONS) {
-            if (status === "working" && motion === "animated") {
-              continue;
-            }
-            const on = view({ motion, host, status });
-            expect(
-              [hasBox(on, "before"), hasBox(on, "after")],
-              `${String(status)} ${String(motion)}`,
-            ).toEqual([false, false]);
-          }
-          // Loop changes no mark, a working program's neither: it only sets
-          // those dots moving.
-          expect(showing(view({ motion: "animated", host, status }))).toEqual(
-            showing(view({ motion: "still", host, status })),
+    it("places the ring as the dots' boxes are placed: from the drawing and out of the tab's clip where the browser can, from the container elsewhere", () => {
+      for (const status of ["done", "blocked", "error"] as const) {
+        for (const split of SPLITS) {
+          const on = ringing(status, { split }),
+            drawing = on.icon.slice(0, -1),
+            label = `${status} ${split}`;
+          expect(declared(on, drawing, "anchor-name"), label).toBe(
+            "--tts-icon",
           );
+          expect(declared(on, on.container, "anchor-scope"), label).toBe(
+            "--tts-icon",
+          );
+          expect(declared(on, on.container, "position"), label).toBe("static");
+          expect(
+            declared(on, on.container, "position-visibility", "after"),
+            label,
+          ).toBe("always");
+          // Lowered by the drawing while the container is no frame.
+          expect(declared(on, drawing, "margin-block"), label).toBe(CARRIED);
+          for (const over of [
+            { old: true },
+            { unscoped: true },
+          ] satisfies readonly Partial<Scene>[]) {
+            const frame = ringing(status, { split, ...over });
+            expect(
+              declared(frame, frame.container, "position"),
+              `${label} ${JSON.stringify(over)}`,
+            ).toBe("relative");
+            expect(
+              declared(frame, frame.icon.slice(0, -1), "margin-block"),
+              `${label} ${JSON.stringify(over)}`,
+            ).toBeUndefined();
+          }
         }
+      }
+      // Once it is over, nothing of it stays: the attribute is gone.
+      const after = view({ motion: "animated", status: "done" });
+      expect(declared(after, after.container, "position")).toBe("relative");
+      expect(
+        declared(after, after.icon.slice(0, -1), "anchor-name"),
+      ).toBeUndefined();
+    });
+
+    it("moves nothing for any other status, nor without loop", () => {
+      for (const status of [null, ...STATUSES]) {
+        for (const motion of MOTIONS) {
+          if (status === "working" && motion === "animated") {
+            continue;
+          }
+          const on = view({ motion, status });
+          expect(
+            [hasBox(on, "before"), hasBox(on, "after")],
+            `${String(status)} ${String(motion)}`,
+          ).toEqual([false, false]);
+        }
+        // Loop changes no mark, a working program's neither: it only sets
+        // those dots moving.
+        expect(showing(view({ motion: "animated", status }))).toEqual(
+          showing(view({ motion: "still", status })),
+        );
       }
     });
 
@@ -3269,32 +3415,28 @@ describe("tab-status.css", () => {
       }
     });
 
-    it("draws the icon at 22 px where the tab has a title, and in a preview, whatever Program status says", () => {
-      for (const host of HOSTS) {
-        for (const motion of MOTIONS) {
-          for (const status of [null, ...STATUSES]) {
-            const on = view({ host, motion, status });
-            expect(inherited(on, on.container, "--tts-size")).toBe("22px");
-            // The size is the icon's.
-            expect(declared(on, on.container, "--icon-size")).toMatch(
-              /^var\(--tts-size, /u,
-            );
-          }
+    it("draws the icon at 22 px where the tab has a title, whatever Program status says", () => {
+      for (const motion of MOTIONS) {
+        for (const status of [null, ...STATUSES]) {
+          const on = view({ motion, status });
+          expect(inherited(on, on.container, "--tts-size")).toBe("22px");
+          // The size is the icon's.
+          expect(declared(on, on.container, "--icon-size")).toMatch(
+            /^var\(--tts-size, /u,
+          );
         }
       }
     });
 
-    it("gives a tab without a size none, and a preview without a size Obsidian's and two pixels", () => {
+    it("gives a tab without a size none, and one with a size it does not know Obsidian's and two pixels", () => {
       const tab = view({ size: null }),
-        preview = view({ host: "preview", size: null });
-      // Only the plugin writes a size, and only while the feature is on.
+        other = view({ size: 18 });
+      // Only the plugin writes a size, on every terminal tab it has gone over.
       expect(inherited(tab, tab.container, "--tts-size")).toBeUndefined();
       expect(declared(tab, tab.container, "--icon-size")).toBeUndefined();
       expect(declared(tab, tab.container, "position")).toBeUndefined();
-      expect(
-        inherited(preview, preview.container, "--tts-size"),
-      ).toBeUndefined();
-      expect(declared(preview, preview.container, "--icon-size")).toBe(
+      expect(inherited(other, other.container, "--tts-size")).toBeUndefined();
+      expect(declared(other, other.container, "--icon-size")).toBe(
         "var(--tts-size, calc(var(--icon-xs, 14px) + 2px))",
       );
     });
@@ -3307,45 +3449,40 @@ describe("tab-status.css", () => {
         "position",
         "top",
       ] as const;
-      for (const host of HOSTS) {
-        for (const split of ["mod-root", ...SIDES] as const) {
-          // What a tab under None carries: the size, and nothing of a status.
-          const tile = view({
-              host,
-              icon: "tile",
-              motion: null,
-              split,
-              status: null,
-            }),
-            bezel = view({ host, motion: null, split, status: null }),
-            where = `${host} ${split}`;
-          for (const property of PROPERTIES) {
-            expect(declared(tile, tile.container, property), where).toBe(
-              declared(bezel, bezel.container, property),
-            );
-          }
-          expect(inherited(tile, tile.container, "--tts-size"), where).toBe(
-            inherited(bezel, bezel.container, "--tts-size"),
+      for (const split of ["mod-root", ...SIDES] as const) {
+        // What a tab under None carries: the size, and nothing of a status.
+        const tile = view({
+            icon: "tile",
+            motion: null,
+            split,
+            status: null,
+          }),
+          bezel = view({ motion: null, split, status: null }),
+          where = split;
+        for (const property of PROPERTIES) {
+          expect(declared(tile, tile.container, property), where).toBe(
+            declared(bezel, bezel.container, property),
           );
         }
-        // Beside a title: 22 px, and a little lower.
-        const on = view({ host, icon: "tile", motion: null, status: null });
-        expect(inherited(on, on.container, "--tts-size")).toBe("22px");
-        expect(declared(on, on.container, "--icon-size")).toMatch(
-          /^var\(--tts-size, /u,
+        expect(inherited(tile, tile.container, "--tts-size"), where).toBe(
+          inherited(bezel, bezel.container, "--tts-size"),
         );
-        expect(declared(on, on.container, "top")).toBe("var(--tts-down)");
       }
+      // Beside a title: 22 px, and a little lower.
+      const on = view({ icon: "tile", motion: null, status: null });
+      expect(inherited(on, on.container, "--tts-size")).toBe("22px");
+      expect(declared(on, on.container, "--icon-size")).toMatch(
+        /^var\(--tts-size, /u,
+      );
+      expect(declared(on, on.container, "top")).toBe("var(--tts-down)");
     });
 
     it("sets the icon a little lower beside a title, by layout", () => {
-      for (const host of HOSTS) {
-        const on = view({ host });
-        // Layout, not a transform: the icon stays on whole device pixels.
-        expect(declared(on, on.container, "--tts-down")).toBe(LOWERING);
-        expect(declared(on, on.container, "top")).toBe("var(--tts-down)");
-        expect(declared(on, on.container, "position")).toBe("relative");
-      }
+      const on = view();
+      // Layout, not a transform: the icon stays on whole device pixels.
+      expect(declared(on, on.container, "--tts-down")).toBe(LOWERING);
+      expect(declared(on, on.container, "top")).toBe("var(--tts-down)");
+      expect(declared(on, on.container, "position")).toBe("relative");
     });
 
     it.each(SIDES)(
@@ -3372,44 +3509,38 @@ describe("tab-status.css", () => {
 
   describe("an inactive tab", () => {
     it("fades the tile and not the mark, once the tab has a status", () => {
-      for (const host of HOSTS) {
-        for (const status of STATUSES) {
-          const on = view({ host, status });
-          // The container, which Obsidian fades, stays at full strength.
-          for (const property of [
-            "--icon-opacity",
-            "--icon-opacity-hover",
-            "--icon-opacity-active",
-          ]) {
-            expect(declared(on, on.container, property)).toBe("1");
-          }
-          // The fade is on the terminal group, and nowhere in the marks.
-          expect(
-            declared(on, one(parts(on.icon, "tts-t"), "terminal"), "opacity"),
-          ).toBe("var(--tts-o, 1)");
-          expect(inherited(on, on.icon, "--tts-o")).toBe(
-            "var(--icon-opacity, 0.85)",
-          );
-          expect(
-            declared(on, one(parts(on.icon, "tts-m"), "marks"), "opacity"),
-          ).toBeUndefined();
-          // A mark reaches past the icon's box and is not cut off there.
-          expect(declared(on, on.icon.slice(0, -1), "overflow")).toBe(
-            "visible",
-          );
+      for (const status of STATUSES) {
+        const on = view({ status });
+        // The container, which Obsidian fades, stays at full strength.
+        for (const property of [
+          "--icon-opacity",
+          "--icon-opacity-hover",
+          "--icon-opacity-active",
+        ]) {
+          expect(declared(on, on.container, property)).toBe("1");
         }
+        // The fade is on the terminal group, and nowhere in the marks.
+        expect(
+          declared(on, one(parts(on.icon, "tts-t"), "terminal"), "opacity"),
+        ).toBe("var(--tts-o, 1)");
+        expect(inherited(on, on.icon, "--tts-o")).toBe(
+          "var(--icon-opacity, 0.85)",
+        );
+        expect(
+          declared(on, one(parts(on.icon, "tts-m"), "marks"), "opacity"),
+        ).toBeUndefined();
+        // A mark reaches past the icon's box and is not cut off there.
+        expect(declared(on, on.icon.slice(0, -1), "overflow")).toBe("visible");
       }
     });
 
     it("leaves a tab without a status to Obsidian", () => {
-      for (const host of HOSTS) {
-        const on = view({ host });
-        expect(declared(on, on.container, "--icon-opacity")).toBeUndefined();
-        expect(
-          declared(on, one(parts(on.icon, "tts-t"), "terminal"), "opacity"),
-        ).toBeUndefined();
-        expect(declared(on, on.icon.slice(0, -1), "overflow")).toBeUndefined();
-      }
+      const on = view();
+      expect(declared(on, on.container, "--icon-opacity")).toBeUndefined();
+      expect(
+        declared(on, one(parts(on.icon, "tts-t"), "terminal"), "opacity"),
+      ).toBeUndefined();
+      expect(declared(on, on.icon.slice(0, -1), "overflow")).toBeUndefined();
     });
 
     it("draws the tile of the active tab at the strength Obsidian gives an active tab's icon: full in a sidebar, as the others beside a title", () => {
@@ -3426,12 +3557,10 @@ describe("tab-status.css", () => {
       }
       // Beside a title Obsidian does not brighten the active tab's icon, so
       // the tile must not brighten when a status arrives.
-      for (const host of HOSTS) {
-        const on = view({ active: true, host, status: "done" });
-        expect(inherited(on, on.icon, "--tts-o"), host).toBe(
-          "var(--icon-opacity, 0.85)",
-        );
-      }
+      const on = view({ active: true, status: "done" });
+      expect(inherited(on, on.icon, "--tts-o")).toBe(
+        "var(--icon-opacity, 0.85)",
+      );
     });
   });
 });

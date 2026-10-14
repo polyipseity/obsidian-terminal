@@ -251,9 +251,9 @@ export function composeTabIcon(): string {
  * The content to register for the tile icon, the ribbon button's and a
  * terminal tab's under Program status None: the terminal drawn in lines
  * alone (`tile`), a rounded square around a prompt, both in the icon's
- * colour, with no mark and no image. Its classes are its own, so no rule of
- * the tab icon or of a status reaches it; one rule of `tab-status.css`
- * draws the square fainter than the prompt.
+ * colour at full strength, as Obsidian's own icons, with no mark and no
+ * image. Its classes are its own, so no rule of the tab icon or of a status
+ * reaches it; no rule of `tab-status.css` names them.
  */
 export function composeTileIcon(): string {
   const { radius, size, x, y } = TAB_ICON_LINE_TILE,

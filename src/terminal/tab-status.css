@@ -13,32 +13,33 @@
  *   else: no coloured border, no dashes, no wash;
  * - working and done are the theme's accent; needs input and error are red.
  *
- * Scope: every selector starts at the terminal tab header, at a class of
- * the tab icon's root, `.tts` or `.tts-set-bezel` (the theme is asked for
- * with `:is(.theme-light *)`, to keep that true), or at the tile icon's
- * root, `.tts-tile-icon`. A rule for the tab header needs an attribute on
- * it that `view.ts` writes. Every terminal tab header carries
- * `data-terminal-size`, whatever Program status says, and the rules of the
- * icon's size and place (section 5) need nothing else: they reach the icon
- * container, so they size and place the tile icon of Program status None
- * as they do the tab icon. Every rule of a status needs
- * `data-terminal-status`, and a header that carries only the size (Program
- * status None, or no report yet) is styled by none of them; nor has the
- * tile icon anything a status rule selects.
- * `.tts-host` stands in for the tab header and `.tts-host-icon` for its icon
- * container wherever the plugin draws a preview (the settings pickers); it
- * takes the same attributes.
+ * Scope: every selector starts at the terminal tab header, or at a class
+ * of the tab icon's root, `.tts` or `.tts-set-bezel` (the theme is asked
+ * for with `:is(.theme-light *)`, to keep that true). A rule for the tab
+ * header needs an attribute on it that `view.ts` writes. Every terminal tab
+ * header carries `data-terminal-size`, whatever Program status says, and
+ * the rules of the icon's size and place (section 5) need nothing else:
+ * they reach the icon container, so they size and place the tile icon of
+ * Program status None (`.tts-tile-icon`) as they do the tab icon. Every
+ * rule of a status needs `data-terminal-status`, and a header that carries
+ * only the size (Program status None, or no report yet) is styled by none
+ * of them. No rule names the tile icon: it is drawn in the icon's colour at
+ * full strength, as Obsidian's own icons are, and has nothing a status rule
+ * selects.
  *
  * Motion, only under `data-terminal-motion="animated"` and only where the
- * system does not ask for reduced motion (section 6); everywhere else
- * nothing moves:
+ * system does not ask for reduced motion (sections 6 and 7); everywhere
+ * else nothing moves:
  * - the three dots of a working program light up in turn. What moves is not
  *   a part of the icon: it is drawn over the icon with the two boxes of the
  *   icon's container, `::before` and `::after`, and only their `transform`
  *   and `opacity` change. Obsidian zooms its page, and at a zoom other than
  *   1 Chromium keeps every part of an SVG on the main thread; a box of the
  *   container goes to the compositor (measured);
- * - a new mark that asks for the user pops in, once (`data-terminal-pop`);
+ * - a new mark that asks for the user pops in, once, and one ring in its
+ *   colour ripples out from it, once (`data-terminal-pop`). The mark is a
+ *   part of the icon and moves for 0.42 s; the ring is the container's
+ *   `::after`, as the dots' boxes are;
  * - a new title slides up, once (`data-terminal-title-change`).
  */
 
@@ -104,49 +105,36 @@
   stroke: var(--color-green);
 }
 
-/*
- * The tile icon (`tile`), the ribbon's and a tab's under Program status
- * None: no image, a rounded square drawn as a line around the prompt, both
- * in the icon's colour. The square is fainter than the prompt, so the
- * prompt reads first. It has no mark and no status.
- */
-.tts-tile-icon .tts-tile-icon-square {
-  stroke-opacity: 0.62;
-}
-
 /* ---------- 3. Colour and light ---------- */
 
-:is(
-  .workspace-tab-header[data-type="terminal:terminal"],
-  .tts-host
-)[data-terminal-status] {
+.workspace-tab-header[data-type="terminal:terminal"][data-terminal-status] {
   --tts-st: currentColor;
   --tts-o: var(--icon-opacity, 0.85);
 }
 
 /* Working and done: the theme's accent. */
-:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host):is(
-  [data-terminal-status="working"],
-  [data-terminal-status="done"]
-) {
+.workspace-tab-header[data-type="terminal:terminal"]:is(
+    [data-terminal-status="working"],
+    [data-terminal-status="done"]
+  ) {
   --tts-st: var(--interactive-accent);
   --tts-glow: var(--interactive-accent);
 }
 
 /* Needs input and error: red, the mark and the light alike. Red means: act. */
-:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host):is(
-  [data-terminal-status="blocked"],
-  [data-terminal-status="error"]
-) {
+.workspace-tab-header[data-type="terminal:terminal"]:is(
+    [data-terminal-status="blocked"],
+    [data-terminal-status="error"]
+  ) {
   --tts-st: var(--color-red);
   --tts-glow: var(--color-red);
 }
 
 /* Idle and seen: grey, and no light. */
-:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host):is(
-  [data-terminal-status="idle"],
-  [data-terminal-status="seen"]
-) {
+.workspace-tab-header[data-type="terminal:terminal"]:is(
+    [data-terminal-status="idle"],
+    [data-terminal-status="seen"]
+  ) {
   --tts-st: var(--text-faint);
 }
 
@@ -154,7 +142,7 @@
  * The tile is lit from behind: a soft light round it, and a tighter one at
  * its edge.
  */
-:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host):is(
+.workspace-tab-header[data-type="terminal:terminal"]:is(
     [data-terminal-status="working"],
     [data-terminal-status="done"],
     [data-terminal-status="blocked"],
@@ -169,7 +157,7 @@
 /* ---------- 4. Which mark shows ---------- */
 
 /* Done and needs input: the dot, full. */
-:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host):is(
+.workspace-tab-header[data-type="terminal:terminal"]:is(
     [data-terminal-status="done"],
     [data-terminal-status="blocked"]
   )
@@ -178,10 +166,7 @@
 }
 
 /* Error: the dot as a ring with a core. */
-:is(
-    .workspace-tab-header[data-type="terminal:terminal"],
-    .tts-host
-  )[data-terminal-status="error"]
+.workspace-tab-header[data-type="terminal:terminal"][data-terminal-status="error"]
   .tts-mk-eye {
   display: inline;
 }
@@ -191,10 +176,7 @@
  * drawn they stand still, all three lit; under "animated" they light up in
  * turn (section 6).
  */
-:is(
-    .workspace-tab-header[data-type="terminal:terminal"],
-    .tts-host
-  )[data-terminal-status="working"]
+.workspace-tab-header[data-type="terminal:terminal"][data-terminal-status="working"]
   .tts-mk-dots {
   display: inline;
 }
@@ -203,7 +185,7 @@
  * Idle and seen: a grey badge with a moon, or with a check. A grey badge has
  * no ring: it is not there to be noticed.
  */
-:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host):is(
+.workspace-tab-header[data-type="terminal:terminal"]:is(
     [data-terminal-status="idle"],
     [data-terminal-status="seen"]
   )
@@ -211,20 +193,14 @@
   display: inline;
 }
 
-:is(
-    .workspace-tab-header[data-type="terminal:terminal"],
-    .tts-host
-  )[data-terminal-status="idle"]
+.workspace-tab-header[data-type="terminal:terminal"][data-terminal-status="idle"]
   .tts-sym-moon,
-:is(
-    .workspace-tab-header[data-type="terminal:terminal"],
-    .tts-host
-  )[data-terminal-status="seen"]
+.workspace-tab-header[data-type="terminal:terminal"][data-terminal-status="seen"]
   .tts-sym-check {
   display: inline;
 }
 
-:is(.workspace-tab-header[data-type="terminal:terminal"], .tts-host):is(
+.workspace-tab-header[data-type="terminal:terminal"]:is(
     [data-terminal-status="idle"],
     [data-terminal-status="seen"]
   )
@@ -241,11 +217,8 @@
  * makes the container their frame, except on a tab where the browser can
  * place them from the drawing (section 6).
  */
-:is(
-    .workspace-tab-header[data-type="terminal:terminal"][data-terminal-size],
-    .tts-host
-  )
-  :is(.workspace-tab-header-inner-icon, .tts-host-icon) {
+.workspace-tab-header[data-type="terminal:terminal"][data-terminal-size]
+  .workspace-tab-header-inner-icon {
   --tts-u: calc(var(--icon-size) / 24);
   position: relative;
 }
@@ -255,10 +228,8 @@
  * Obsidian draws its icon at `--icon-xs` (14 px), centred on the height of
  * the tab. The terminal's icon is a framed tile with a mark on its corner,
  * so it is drawn larger: at `TAB_ICON_SIZE`, 22 px, which the tab header
- * carries as `data-terminal-size` (the one rule below). A preview is drawn
- * the same way: each tile of the picker is a `.tts-host` that carries the
- * same `data-terminal-size`. Only a host without it falls back to two
- * pixels over `--icon-xs`.
+ * carries as `data-terminal-size` (the one rule below). A size this
+ * stylesheet does not know falls back to two pixels over `--icon-xs`.
  *
  * It is also set a little lower. Measured in Obsidian 1.14.4 with the
  * default 13 px title: centred, the middle of the tile lies 0.5 px above the
@@ -268,13 +239,10 @@
  * that sets other type. `--tts-down` is the lowering as it applies here, for
  * the one rule that has to give it to the drawing instead (section 6).
  */
-:is(
-    .workspace-tab-header[data-type="terminal:terminal"][data-terminal-size]:is(
-        .mod-root *
-      ),
-    .tts-host
+.workspace-tab-header[data-type="terminal:terminal"][data-terminal-size]:is(
+    .mod-root *
   )
-  :is(.workspace-tab-header-inner-icon, .tts-host-icon) {
+  .workspace-tab-header-inner-icon {
   --icon-size: var(--tts-size, calc(var(--icon-xs, 14px) + 2px));
   --tts-down: var(--tts-drop, calc(var(--tab-font-size, 13px) * 0.06));
   top: var(--tts-down);
@@ -305,10 +273,7 @@
  * (`TerminalView.dressUnloadedTabs`), and until then it is drawn as Obsidian
  * draws any tab.
  */
-:is(
-  .workspace-tab-header[data-type="terminal:terminal"],
-  .tts-host
-)[data-terminal-size="22"] {
+.workspace-tab-header[data-type="terminal:terminal"][data-terminal-size="22"] {
   --tts-size: 22px;
 }
 
@@ -339,25 +304,16 @@
  * process.
  */
 @media (prefers-reduced-motion: no-preference) {
-  :is(
-      .workspace-tab-header[data-type="terminal:terminal"],
-      .tts-host
-    )[data-terminal-motion="animated"][data-terminal-status="working"]
+  .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"][data-terminal-status="working"]
     .tts-mk-dots
     .tts-mk-ink {
     opacity: 0.3;
   }
 
-  :is(
-      .workspace-tab-header[data-type="terminal:terminal"],
-      .tts-host
-    )[data-terminal-motion="animated"][data-terminal-status="working"]
-    :is(.workspace-tab-header-inner-icon, .tts-host-icon)::before,
-  :is(
-      .workspace-tab-header[data-type="terminal:terminal"],
-      .tts-host
-    )[data-terminal-motion="animated"][data-terminal-status="working"]
-    :is(.workspace-tab-header-inner-icon, .tts-host-icon)::after {
+  .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"][data-terminal-status="working"]
+    .workspace-tab-header-inner-icon::before,
+  .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"][data-terminal-status="working"]
+    .workspace-tab-header-inner-icon::after {
     content: "";
     position: absolute;
     left: calc(19.339 * var(--tts-u));
@@ -371,11 +327,8 @@
     animation: tts-dots 7.68s infinite;
   }
 
-  :is(
-      .workspace-tab-header[data-type="terminal:terminal"],
-      .tts-host
-    )[data-terminal-motion="animated"][data-terminal-status="working"]
-    :is(.workspace-tab-header-inner-icon, .tts-host-icon)::after {
+  .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"][data-terminal-status="working"]
+    .workspace-tab-header-inner-icon::after {
     animation-delay: -3.84s;
   }
 
@@ -386,13 +339,18 @@
    * in a right-to-left interface, and a theme may pad it anywhere. So the
    * boxes are placed from the drawing itself where the browser can (anchor
    * positioning, Chromium 125); an older one keeps the lines above.
+   *
+   * What follows is for every box of the container that moves: the dots'
+   * two of a working program, and the ring of a new mark (section 7), which
+   * is there only while `data-terminal-pop` is. A pop is only for a state
+   * that asks for the user, never for working, so the two never meet.
    */
   @supports (left: anchor(left)) {
-    :is(
-        .workspace-tab-header[data-type="terminal:terminal"],
-        .tts-host
-      )[data-terminal-motion="animated"][data-terminal-status="working"]
-      :is(.workspace-tab-header-inner-icon, .tts-host-icon)
+    .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"]:is(
+        [data-terminal-status="working"],
+        [data-terminal-pop]
+      )
+      .workspace-tab-header-inner-icon
       > .svg-icon {
       anchor-name: --tts-icon;
     }
@@ -402,25 +360,31 @@
      * seen outside its own icon: a box whose frame holds several icons
      * would otherwise go to the last of them.
      */
-    :is(
-        .workspace-tab-header[data-type="terminal:terminal"],
-        .tts-host
-      )[data-terminal-motion="animated"][data-terminal-status="working"]
-      :is(.workspace-tab-header-inner-icon, .tts-host-icon) {
+    .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"]:is(
+        [data-terminal-status="working"],
+        [data-terminal-pop]
+      )
+      .workspace-tab-header-inner-icon {
       anchor-scope: --tts-icon;
     }
 
-    :is(
-        .workspace-tab-header[data-type="terminal:terminal"],
-        .tts-host
-      )[data-terminal-motion="animated"][data-terminal-status="working"]
-      :is(.workspace-tab-header-inner-icon, .tts-host-icon)::before,
-    :is(
-        .workspace-tab-header[data-type="terminal:terminal"],
-        .tts-host
-      )[data-terminal-motion="animated"][data-terminal-status="working"]
-      :is(.workspace-tab-header-inner-icon, .tts-host-icon)::after {
+    .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"]:is(
+        [data-terminal-status="working"],
+        [data-terminal-pop]
+      )
+      .workspace-tab-header-inner-icon::before,
+    .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"]:is(
+        [data-terminal-status="working"],
+        [data-terminal-pop]
+      )
+      .workspace-tab-header-inner-icon::after {
       position-anchor: --tts-icon;
+    }
+
+    .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"][data-terminal-status="working"]
+      .workspace-tab-header-inner-icon::before,
+    .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"][data-terminal-status="working"]
+      .workspace-tab-header-inner-icon::after {
       left: calc(anchor(left) + 19.339 * var(--tts-u));
       top: calc(anchor(top) + 1.339 * var(--tts-u));
     }
@@ -451,19 +415,31 @@
      * itself (the boxes stay painted over it), and the boxes follow it.
      */
     @supports (anchor-scope: --tts-icon) {
-      .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"][data-terminal-status="working"]
+      .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"]:is(
+          [data-terminal-status="working"],
+          [data-terminal-pop]
+        )
         .workspace-tab-header-inner-icon {
         position: static;
       }
 
-      .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"][data-terminal-status="working"]
+      .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"]:is(
+          [data-terminal-status="working"],
+          [data-terminal-pop]
+        )
         .workspace-tab-header-inner-icon::before,
-      .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"][data-terminal-status="working"]
+      .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"]:is(
+          [data-terminal-status="working"],
+          [data-terminal-pop]
+        )
         .workspace-tab-header-inner-icon::after {
         position-visibility: always;
       }
 
-      .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"][data-terminal-status="working"]
+      .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"]:is(
+          [data-terminal-status="working"],
+          [data-terminal-pop]
+        )
         .workspace-tab-header-inner-icon
         > .svg-icon {
         margin-block: var(--tts-down, 0px) calc(-1 * var(--tts-down, 0px));
@@ -543,9 +519,9 @@
 /*
  * Under "animated", a state that asks for the user pops in when it arrives:
  * done, needs input or error, the dot or the eye. `view.ts` sets
- * `data-terminal-pop` while it plays and takes it back at its end. The mark
- * starts nearly twice its size and faint, shrinks a little past its size
- * and settles.
+ * `data-terminal-pop` while it plays and takes it back at the end of the
+ * ring below, the last of the two to end. The mark starts nearly twice its
+ * size and faint, shrinks a little past its size and settles.
  *
  * What scales is a part of the icon, the group inside the mark
  * (`tts-mk-pop`). The mark's own group is placed by its `transform`
@@ -555,20 +531,104 @@
  * (the header of this file): for 0.42 s, once, that is cheaper than drawing
  * the mark again on the container's two boxes.
  *
+ * Just after the pop starts, one ring in the state's colour ripples out
+ * from the mark, once: from the mark's outer size (8.4 units across, the
+ * dot's radius 2.9, ring 1 and hairline 0.3 of `TAB_ICON_MARKS.dot`) around
+ * its centre at (21, 3), to 3.4 times that (2.2 in a sidebar, see below),
+ * fading out. It is the
+ * container's `::after`, placed as the dots' boxes are (section 6), so it
+ * goes to the compositor. Only for a state that asks for the user: the
+ * dots' boxes, of working, never meet it.
+ *
  * And a new title slides up into its place from below, fading in
  * (`data-terminal-title-change`), on a tab only: Obsidian's title element is
  * not a part of the icon, and it goes to the compositor.
  */
 @media (prefers-reduced-motion: no-preference) {
-  :is(
-      .workspace-tab-header[data-type="terminal:terminal"],
-      .tts-host
-    )[data-terminal-motion="animated"][data-terminal-pop]
+  .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"][data-terminal-pop]
     :is(.tts-mk-dot, .tts-mk-eye)
     > .tts-mk-pop {
     transform-box: fill-box;
     transform-origin: center;
     animation: tts-pop 0.42s ease-out;
+  }
+
+  .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"]:is(
+      [data-terminal-status="done"],
+      [data-terminal-status="blocked"],
+      [data-terminal-status="error"]
+    )[data-terminal-pop]
+    .workspace-tab-header-inner-icon::after {
+    content: "";
+    position: absolute;
+    left: calc(16.8 * var(--tts-u));
+    top: calc(-1.2 * var(--tts-u));
+    width: calc(8.4 * var(--tts-u));
+    height: calc(8.4 * var(--tts-u));
+    box-sizing: border-box;
+    border: calc(2 * var(--tts-u)) solid var(--tts-st);
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+    --tts-ping-to: 3.4;
+    animation: tts-ping 0.9s ease-out 0.15s;
+  }
+
+  /* From the drawing where the browser can, as the dots' boxes. */
+  @supports (left: anchor(left)) {
+    .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"]:is(
+        [data-terminal-status="done"],
+        [data-terminal-status="blocked"],
+        [data-terminal-status="error"]
+      )[data-terminal-pop]
+      .workspace-tab-header-inner-icon::after {
+      left: calc(anchor(left) + 16.8 * var(--tts-u));
+      top: calc(anchor(top) + -1.2 * var(--tts-u));
+    }
+  }
+
+  /*
+   * Where the ring may be cut off. At its largest it reaches about 13 px
+   * from the mark's centre, past the top of the tab's row
+   * (`.workspace-tab-header-inner`, about 7 px above the centre), which
+   * clips what is in it (measured in Obsidian 1.14.4).
+   *
+   * Where the container is no frame (section 6), the ring's frame is the
+   * tab header, outside that row, so the row does not clip it. What clips
+   * it then is the box of all the tabs
+   * (`.workspace-tab-header-container-inner`). In the root split the mark's
+   * centre is 14 px below the top of the tab header, and that box shows
+   * 20 px past its edge (`overflow-clip-margin`): the ring shows whole.
+   *
+   * Elsewhere the container is the ring's frame, inside the row, so the row
+   * shows what overflows it while the ring plays. Only there: in a narrow
+   * tab the close button sticks to the row's end (`position: sticky`) only
+   * while the row clips, and it would jump for that second.
+   */
+  @supports not (anchor-scope: --tts-icon) {
+    .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"][data-terminal-pop]
+      .workspace-tab-header-inner {
+      overflow: visible;
+    }
+  }
+
+  /*
+   * In a sidebar the box of the tabs clips at its own edge (`overflow:
+   * auto`), 7 px above the mark's centre, where the icon is 16 px: the ring
+   * grows to 2.2 times there, 6.2 px.
+   */
+  .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"]:is(
+      [data-terminal-status="done"],
+      [data-terminal-status="blocked"],
+      [data-terminal-status="error"]
+    )[data-terminal-pop]:is(
+      .mod-primary-split *,
+      .mod-secondary-split *,
+      .mod-left-split *,
+      .mod-right-split *
+    )
+    .workspace-tab-header-inner-icon::after {
+    --tts-ping-to: 2.2;
   }
 
   .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"][data-terminal-title-change]
@@ -599,6 +659,18 @@
   }
 }
 
+@keyframes tts-ping {
+  0% {
+    opacity: 0.95;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(var(--tts-ping-to));
+  }
+}
+
 @keyframes tts-title {
   0% {
     opacity: 0;
@@ -619,29 +691,20 @@
  * moves to the terminal icon, so the mark keeps its own. A mark reaches past
  * the icon's box, so the drawing must not be cut at its edge.
  */
-:is(
-    .workspace-tab-header[data-type="terminal:terminal"],
-    .tts-host
-  )[data-terminal-status]
-  :is(.workspace-tab-header-inner-icon, .tts-host-icon) {
+.workspace-tab-header[data-type="terminal:terminal"][data-terminal-status]
+  .workspace-tab-header-inner-icon {
   --icon-opacity: 1;
   --icon-opacity-hover: 1;
   --icon-opacity-active: 1;
 }
 
-:is(
-    .workspace-tab-header[data-type="terminal:terminal"],
-    .tts-host
-  )[data-terminal-status]
-  :is(.workspace-tab-header-inner-icon, .tts-host-icon)
+.workspace-tab-header[data-type="terminal:terminal"][data-terminal-status]
+  .workspace-tab-header-inner-icon
   > .svg-icon {
   overflow: visible;
 }
 
-:is(
-    .workspace-tab-header[data-type="terminal:terminal"],
-    .tts-host
-  )[data-terminal-status]
+.workspace-tab-header[data-type="terminal:terminal"][data-terminal-status]
   .tts-t {
   opacity: var(--tts-o, 1);
 }

@@ -15,7 +15,7 @@ import {
   setTextToEnum,
 } from "@polyipseity/obsidian-plugin-library";
 import { cloneDeep } from "es-toolkit/object";
-import { type Setting, setIcon, setTooltip } from "obsidian";
+import type { Setting } from "obsidian";
 import semverLt from "semver/functions/lt.js";
 import type { loadDocumentations } from "./documentations.js";
 import {
@@ -25,7 +25,6 @@ import {
   fixExperiments,
   isExperimentEnabled,
 } from "./experiments.js";
-import { tabIconId } from "./icons.js";
 import type { TerminalPlugin } from "./main.js";
 import {
   KeymappingsModal,
@@ -35,11 +34,6 @@ import {
 import { Settings } from "./settings-data.js";
 import { RightClickActionAddon } from "./terminal/emulator-addons.js";
 import { CONPTY_HOST_POOL } from "./terminal/pseudoterminal.js";
-import {
-  TabStatusPicker,
-  type TabStatusPreviewEnvironment,
-  tabStatusOptionHost,
-} from "./terminal/tab-status-picker.js";
 import {
   PYTHON_DOWNLOADS_URL,
   getWindowsPythonDiagnosis,
@@ -886,68 +880,56 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
     this.newExperimentalWidgets();
   }
 
-  /**
-   * The Program status row: None, Still and Animated as small tiles beside
-   * its name, each showing the terminal tab icon as that option draws it.
-   * Choosing a tile does what choosing in a dropdown does, and every redraw
-   * of the tab (`postMutate()`, a reset, a reload) brings the tiles up to
-   * date.
-   */
+  /** The Program status row: a dropdown of None, Still and Animated. */
   protected tabStatusSetting(): (setting: Setting) => void {
     const {
-        context,
-        context: {
-          language: { value: i18n },
-          settings,
-        },
-      } = this,
-      environment: TabStatusPreviewEnvironment = { setIcon, setTooltip };
-    let picker: TabStatusPicker<Settings.TabStatus> | null = null;
+      context: {
+        language: { value: i18n },
+        settings,
+      },
+    } = this;
     return (setting) => {
-      const { settingEl } = setting;
       setting
         .setName(i18n.t("settings.tab-status"))
-        .setDesc(i18n.t("settings.tab-status-description"));
-      // Before the reset button: the first run decides the order.
-      picker ??= new TabStatusPicker<Settings.TabStatus>(setting.controlEl, {
-        environment,
-        onChange: (value) => {
-          settings
-            .mutate((settingsM) => {
-              settingsM.tabStatus = value;
-            })
-            .then(() => {
+        .setDesc(i18n.t("settings.tab-status-description"))
+        .addDropdown(
+          linkSetting(
+            (): string => settings.value.tabStatus,
+            setTextToEnum(Settings.TAB_STATUSES, async (value) =>
+              settings.mutate((settingsM) => {
+                settingsM.tabStatus = value;
+              }),
+            ),
+            () => {
               this.postMutate();
-            })
-            .catch((error: unknown) => {
-              activeSelf(settingEl).console.error(error);
-            });
-        },
-      });
-      setting.addExtraButton(
-        resetButton(
-          i18n.t("asset:settings.tab-status-icon"),
-          i18n.t("settings.reset"),
-          async () =>
-            settings.mutate((settingsM) => {
-              settingsM.tabStatus = Settings.DEFAULT.tabStatus;
-            }),
-          () => {
-            this.postMutate();
-          },
-        ),
-      );
-      picker.update({
-        // Each option on the icon a tab shows under it.
-        describe: (value) =>
-          tabStatusOptionHost(value, tabIconId(context, { tabStatus: value })),
-        label: i18n.t("settings.tab-status"),
-        options: Settings.TAB_STATUSES.map((value) => ({
-          label: i18n.t(`settings.tab-status-options.${value}`),
-          value,
-        })),
-        value: settings.value.tabStatus,
-      });
+            },
+            {
+              pre: (dropdown) => {
+                dropdown.addOptions(
+                  Object.fromEntries(
+                    Settings.TAB_STATUSES.map((value) => [
+                      value,
+                      i18n.t(`settings.tab-status-options.${value}`),
+                    ]),
+                  ),
+                );
+              },
+            },
+          ),
+        )
+        .addExtraButton(
+          resetButton(
+            i18n.t("asset:settings.tab-status-icon"),
+            i18n.t("settings.reset"),
+            async () =>
+              settings.mutate((settingsM) => {
+                settingsM.tabStatus = Settings.DEFAULT.tabStatus;
+              }),
+            () => {
+              this.postMutate();
+            },
+          ),
+        );
     };
   }
 
