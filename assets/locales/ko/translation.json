@@ -330,7 +330,7 @@
     "Python-status-entry-unsatisfied": "{{name}}: {{version}} (요구사항 미충족: {{requirement}})",
     "drop-no-paths": "Nothing to insert: no local file path was found in the dropped items.",
     "drop-skipped-paths": "Some dropped items could not be inserted as paths.",
-    "drop-typed-while-waiting": "Nothing was inserted: you typed before the dropped paths could be inserted. Drop them again.",
+    "drop-typed-while-waiting": "Nothing was inserted: you typed before the dropped paths were ready. Drop them again.",
     "no-default-profile": "'$t(generic.profile-types.{{type}})' $t(generic.type)에 대한 $t(generic.default) $t(generic.profile)이 설정되지 않았습니다",
     "resizer-install-command-copied": "Install command copied.",
     "spawning-terminal": "$t(generic.terminal) $t(generic.spawn_gerund) 중: {{title}}",

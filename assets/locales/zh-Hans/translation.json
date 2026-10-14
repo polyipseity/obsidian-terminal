@@ -314,7 +314,7 @@
     "Python-status-entry-unsatisfied": "{{name}}：{{version}}（未满足：{{requirement}}）",
     "drop-no-paths": "Nothing to insert: no local file path was found in the dropped items.",
     "drop-skipped-paths": "Some dropped items could not be inserted as paths.",
-    "drop-typed-while-waiting": "Nothing was inserted: you typed before the dropped paths could be inserted. Drop them again.",
+    "drop-typed-while-waiting": "Nothing was inserted: you typed before the dropped paths were ready. Drop them again.",
     "no-default-profile": "没有$t(generic.type)「$t(generic.profile-types.{{type}})」的$t(generic.default)$t(generic.profile)",
     "resizer-install-command-copied": "Install command copied.",
     "spawning-terminal": "$t(generic.terminal)$t(generic.spawn)中：{{title}}",
