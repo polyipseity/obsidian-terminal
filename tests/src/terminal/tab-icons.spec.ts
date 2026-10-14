@@ -2564,43 +2564,31 @@ describe("tab-status.css", () => {
       }
     });
 
-    it("grows the ring to 3.4 times its size as it fades out, and to 2.2 times in a sidebar", () => {
+    it("grows the ring to 2.2 times its size as it fades out, the same in every place", () => {
       expect(shots(ringFrames)).toEqual([
         { offset: 0, opacity: 0.95, transform: "scale(1)" },
-        { offset: 100, opacity: 0, transform: "scale(var(--tts-ping-to))" },
+        { offset: 100, opacity: 0, transform: "scale(2.2)" },
       ]);
-      for (const split of SPLITS) {
-        const on = ringing("blocked", { split });
-        expect(
-          declared(on, on.container, "--tts-ping-to", "after"),
-          split,
-        ).toBe(split === "mod-root" ? "3.4" : "2.2");
-      }
+      expect(css).not.toContain("--tts-ping-to");
     });
 
-    it("keeps the ring inside what clips it, at its largest (measured in Obsidian 1.14.4)", () => {
+    it("keeps the ring inside the strip of tabs, which clips 1 px above the tab header, at its largest (measured in Obsidian 1.14.4)", () => {
       const { edge, radius, ring } = TAB_ICON_MARKS.dot,
+        end = Number(
+          /^scale\((?<scale>[\d.]+)\)$/u.exec(
+            shots(ringFrames).at(-1)?.transform ?? "",
+          )?.groups?.["scale"],
+        ),
         /** The ring's outer radius at its largest, in CSS pixels, on an icon `size` pixels wide. */
-        largest = (split: Scene["split"], size: number): number =>
-          (radius + ring + edge) *
-          (size / 24) *
-          Number(
-            declared(
-              ringing("done", { split }),
-              ringing("done", { split }).container,
-              "--tts-ping-to",
-              "after",
-            ),
-          );
-      // Beside a title the icon is 22 px, and the mark's centre 14 px below
-      // the top of the tab header, which nothing clips (the box of the tabs
-      // shows 20 px past its edge).
-      expect(largest("mod-root", TAB_ICON_SIZE)).toBeLessThan(14);
-      // In a sidebar it is 16 px, and the box of the tabs clips 7 px above
-      // the mark's centre.
-      for (const split of SPLITS.filter((each) => each !== "mod-root")) {
-        expect(largest(split, 16), split).toBeLessThan(7);
-      }
+        largest = (size: number): number =>
+          (radius + ring + edge) * (size / 24) * end;
+      // Beside a title the icon is 22 px, and the strip clips 9 px above the
+      // mark's centre: a ring of 2.64 times lost 1.15 px of its top there,
+      // one of 3.13 times 3 px.
+      expect(largest(TAB_ICON_SIZE)).toBeCloseTo(8.5, 1);
+      expect(largest(TAB_ICON_SIZE)).toBeLessThan(9);
+      // In a sidebar the icon is 16 px, and the strip clips 7 px above it.
+      expect(largest(16)).toBeLessThan(7);
     });
 
     it("lets the tab's row show the ring while it plays, only where the ring's frame is inside the row", () => {

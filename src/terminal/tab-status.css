@@ -534,8 +534,8 @@
  * Just after the pop starts, one ring in the state's colour ripples out
  * from the mark, once: from the mark's outer size (8.4 units across, the
  * dot's radius 2.9, ring 1 and hairline 0.3 of `TAB_ICON_MARKS.dot`) around
- * its centre at (21, 3), to 3.4 times that (2.2 in a sidebar, see below),
- * fading out. It is the
+ * its centre at (21, 3), to 2.2 times that, fading out: no larger, or the
+ * strip of tabs would cut it (see below). It is the
  * container's `::after`, placed as the dots' boxes are (section 6), so it
  * goes to the compositor. Only for a state that asks for the user: the
  * dots' boxes, of working, never meet it.
@@ -570,7 +570,6 @@
     border-radius: 50%;
     opacity: 0;
     pointer-events: none;
-    --tts-ping-to: 3.4;
     animation: tts-ping 0.9s ease-out 0.15s;
   }
 
@@ -588,47 +587,29 @@
   }
 
   /*
-   * Where the ring may be cut off. At its largest it reaches about 13 px
-   * from the mark's centre, past the top of the tab's row
-   * (`.workspace-tab-header-inner`, about 7 px above the centre), which
-   * clips what is in it (measured in Obsidian 1.14.4).
+   * Where the ring may be cut off (measured in Obsidian 1.14.4). At its
+   * largest, 2.2 times the mark, it reaches 8.5 px from the mark's centre
+   * on a 22 px icon, 6.2 px on a sidebar's 16 px one.
    *
-   * Where the container is no frame (section 6), the ring's frame is the
-   * tab header, outside that row, so the row does not clip it. What clips
-   * it then is the box of all the tabs
-   * (`.workspace-tab-header-container-inner`). In the root split the mark's
-   * centre is 14 px below the top of the tab header, and that box shows
-   * 20 px past its edge (`overflow-clip-margin`): the ring shows whole.
+   * The strip of tabs (`.workspace-tab-header-container-inner`) clips at
+   * its top edge, 1 px above the tab header: 9 px above the mark's centre
+   * in the root split, 7 px in a sidebar. A ring of 3.4 times, as first
+   * drawn, lost up to 4 px of its top there; 2.2 times fits both.
    *
-   * Elsewhere the container is the ring's frame, inside the row, so the row
-   * shows what overflows it while the ring plays. Only there: in a narrow
-   * tab the close button sticks to the row's end (`position: sticky`) only
-   * while the row clips, and it would jump for that second.
+   * The tab's row (`.workspace-tab-header-inner`) also clips, about 7 px
+   * above the mark's centre in the root split. Where the container is no
+   * frame (section 6), the ring's frame is the tab header, outside that
+   * row, so the row does not clip it. Elsewhere the container is the
+   * ring's frame, inside the row, so the row shows what overflows it while
+   * the ring plays. Only there: in a narrow tab the close button sticks to
+   * the row's end (`position: sticky`) only while the row clips, and it
+   * would jump for that second.
    */
   @supports not (anchor-scope: --tts-icon) {
     .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"][data-terminal-pop]
       .workspace-tab-header-inner {
       overflow: visible;
     }
-  }
-
-  /*
-   * In a sidebar the box of the tabs clips at its own edge (`overflow:
-   * auto`), 7 px above the mark's centre, where the icon is 16 px: the ring
-   * grows to 2.2 times there, 6.2 px.
-   */
-  .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"]:is(
-      [data-terminal-status="done"],
-      [data-terminal-status="blocked"],
-      [data-terminal-status="error"]
-    )[data-terminal-pop]:is(
-      .mod-primary-split *,
-      .mod-secondary-split *,
-      .mod-left-split *,
-      .mod-right-split *
-    )
-    .workspace-tab-header-inner-icon::after {
-    --tts-ping-to: 2.2;
   }
 
   .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"][data-terminal-title-change]
@@ -667,7 +648,7 @@
 
   100% {
     opacity: 0;
-    transform: scale(var(--tts-ping-to));
+    transform: scale(2.2);
   }
 }
 
