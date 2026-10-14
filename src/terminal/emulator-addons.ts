@@ -2293,7 +2293,13 @@ export class ProgramStatusAddon implements ITerminalAddon {
             // a report.
             terminal.input(DETECTION_REPLY, false);
           } else if (this.#store.apply(result)) {
-            if (result.type === "report" && this.#seen) {
+            // Only a report of the record that shows is news of it: one of
+            // another record leaves what the user has seen as it was.
+            if (
+              result.type === "report" &&
+              this.#seen &&
+              this.#store.mostUrgent() === result.record
+            ) {
               this.#seen = false;
               this.#renotify = true;
             }
@@ -2343,9 +2349,9 @@ export class ProgramStatusAddon implements ITerminalAddon {
 
   /**
    * The user looked at the tab. Does not remove Done or Error: records and
-   * `status` stay as they are. The next report is announced through
-   * `onChange` even when it leaves `status` identical, so a second Done
-   * after the first was seen is not lost.
+   * `status` stay as they are. The next report of the record that shows is
+   * announced through `onChange` even when it leaves `status` identical, so
+   * a second Done after the first was seen is not lost.
    */
   public markSeen(): void {
     this.#seen = true;
@@ -2430,8 +2436,9 @@ export namespace ProgramStatusAddon {
   export interface Options {
     /**
      * Called after the visible status changed. Coalesced: at most once per
-     * animation frame. One exception to "changed": the first report after
-     * `markSeen()` is announced even when it leaves the status identical.
+     * animation frame. One exception to "changed": the first report of the
+     * record that shows after `markSeen()` is announced even when it leaves
+     * the status identical.
      */
     readonly onChange: (status: Status | null) => void;
   }

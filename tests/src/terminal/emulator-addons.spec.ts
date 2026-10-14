@@ -6795,6 +6795,25 @@ describe("ProgramStatusAddon", () => {
     expect(onChange).toHaveBeenCalledTimes(2);
   });
 
+  it("does not announce a seen done again for a report of another record", () => {
+    const { addon, report, onChange } = createBed();
+    report("state=done:id=a");
+    runFrame();
+    expect(onChange).toHaveBeenCalledOnce();
+
+    addon.markSeen();
+    // Record `a` still wins: nothing finished, and the tab shows the same.
+    report("state=idle:id=b");
+    runFrame();
+    expect(addon.status?.state).toBe("done");
+    expect(onChange).toHaveBeenCalledOnce();
+
+    // A second done of the record that shows is news, as before.
+    report("state=done:id=a");
+    runFrame();
+    expect(onChange).toHaveBeenCalledTimes(2);
+  });
+
   it("touches the terminal only when it is loaded: three handlers, and each goes on dispose", () => {
     const mock = createStatusMockTerminal(),
       osc = vi.spyOn(mock.terminal.parser, "registerOscHandler"),
