@@ -280,13 +280,13 @@ export function parseProgramStatus(payload: string): ParseResult {
   if (!("ok" in id)) {
     return id;
   }
-  if (state === "clear") {
-    return { id: id.id, type: "clear" };
-  }
-  if (!isState(state)) {
+  if (state !== "clear" && !isState(state)) {
     return ignored("unknown-state");
   }
 
+  // The checks below also run for a clear: what discards a report whole
+  // discards the clear too, and no record is removed.
+  //
   // The spec lists `app` both as a 32-byte limit (break it and the report is
   // discarded) and as a grammar whose misses count as absent. Length is read
   // as the limit, the character set as the grammar.
@@ -309,6 +309,9 @@ export function parseProgramStatus(payload: string): ParseResult {
   );
   if (!("ok" in msg)) {
     return msg;
+  }
+  if (state === "clear") {
+    return { id: id.id, type: "clear" };
   }
 
   const kind = pairs.get("kind"),

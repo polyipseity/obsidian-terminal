@@ -174,6 +174,16 @@ describe("reports that change nothing", () => {
     expect(reason("state=working:title=a")).toBe("bad-base64");
   });
 
+  it("discards a clear on what discards any other report", () => {
+    expect(reason("state=clear:msg=A")).toBe("bad-base64");
+    expect(reason(`state=clear:app=${"a".repeat(33)}`)).toBe("app-too-long");
+    expect(reason(`state=clear:id=build:title=${b64("a\nb")}`)).toBe(
+      "control-character",
+    );
+    // An unknown state is still what is said first of a report that has one.
+    expect(reason("state=thinking:msg=A")).toBe("unknown-state");
+  });
+
   it("discards the whole report on control characters in decoded text", () => {
     const cases: readonly (readonly [string, string])[] = [
       ["newline", "line one\nline two"],
@@ -452,6 +462,17 @@ describe("the per-terminal store", () => {
     expect(apply(store, "?")).toBe(false);
     expect(store.mostUrgent()?.state).toBe("working");
     expect(store.size).toBe(1);
+  });
+
+  it("keeps every record when a clear is discarded", () => {
+    const store = new ProgramStatusStore();
+    apply(store, "state=working:app=brew");
+    apply(store, "state=done:id=build");
+    // Base64 that does not decode, and an app of 33 bytes.
+    expect(apply(store, "state=clear:msg=A")).toBe(false);
+    expect(apply(store, `state=clear:app=${"a".repeat(33)}`)).toBe(false);
+    expect(apply(store, "state=clear:id=build:msg=A")).toBe(false);
+    expect(store.size).toBe(2);
   });
 
   it("clears a record and everything beneath it, and only that", () => {
