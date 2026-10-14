@@ -41,8 +41,12 @@
   border-radius: var(--radius-m);
 }
 
+/*
+ * A tab is as wide as its icon and title, plus an equal share of what is
+ * left: six equal tabs would each need the room of the longest title.
+ */
 .tts-strip-tab {
-  flex: 1 1 0;
+  flex: 1 1 auto;
   display: flex;
   align-items: center;
   gap: var(--size-4-1);
@@ -79,8 +83,13 @@
   text-overflow: ellipsis;
 }
 
-/* Too narrow for six titles next to their icons: the words go under. */
-@container (max-width: 460px) {
+/*
+ * Too narrow for six titles next to their icons: the words go under. With
+ * Obsidian's tab font, the English titles fit from 570 pixels at the largest
+ * icon size, and from 600 in Verdana, a wide font. The settings column is at
+ * most 700 pixels wide, so the row shows in a large window.
+ */
+@container (max-width: 600px) {
   .tts-strip-bar {
     height: auto;
     padding-top: var(--size-4-2);
