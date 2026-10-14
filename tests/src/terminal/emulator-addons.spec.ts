@@ -6795,6 +6795,54 @@ describe("ProgramStatusAddon", () => {
     expect(onChange).toHaveBeenCalledTimes(2);
   });
 
+  it("drops a working report that is parsed after the exit", () => {
+    const { addon, report, onChange } = createBed();
+    report("state=working");
+    runFrame();
+    addon.processExited();
+    runFrame();
+    expect(onChange).toHaveBeenLastCalledWith(null);
+    onChange.mockClear();
+
+    // The last output of the program, parsed when its exit was handled
+    // already: nothing comes after it that could take the mark off again.
+    report("state=working");
+    report("state=blocked:id=ask");
+    report("state=idle:id=rest");
+    runFrame();
+    vi.runAllTimers();
+    expect(addon.status).toBeNull();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("keeps a done that is parsed after the exit", () => {
+    const { addon, report, onChange } = createBed();
+    report("state=working");
+    runFrame();
+    addon.processExited();
+
+    report("state=done");
+    runFrame();
+    expect(addon.status?.state).toBe("done");
+    expect(onChange.mock.lastCall?.[0]?.state).toBe("done");
+    report("state=error:id=tests");
+    runFrame();
+    expect(addon.status?.state).toBe("error");
+  });
+
+  it("does not announce a seen done again for a working report that is parsed after the exit", () => {
+    const { addon, report, onChange } = createBed();
+    report("state=done:id=build");
+    runFrame();
+    addon.markSeen();
+    addon.processExited();
+
+    report("state=working");
+    runFrame();
+    expect(addon.status?.state).toBe("done");
+    expect(onChange).toHaveBeenCalledOnce();
+  });
+
   it("does not announce a seen done again for a report of another record", () => {
     const { addon, report, onChange } = createBed();
     report("state=done:id=a");

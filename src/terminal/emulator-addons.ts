@@ -2237,6 +2237,8 @@ export class ProgramStatusAddon implements ITerminalAddon {
   #seen = false;
   /** A report arrived after the user looked: notify even if nothing differs. */
   #renotify = false;
+  /** The process has ended. A restarted terminal gets a new addon. */
+  #exited = false;
   #disposed = false;
 
   public constructor(protected readonly options: ProgramStatusAddon.Options) {}
@@ -2293,6 +2295,11 @@ export class ProgramStatusAddon implements ITerminalAddon {
             // a report.
             terminal.input(DETECTION_REPLY, false);
           } else if (this.#store.apply(result)) {
+            if (this.#exited) {
+              // Output the process left behind, parsed after its end: it is
+              // not working or waiting, and nothing follows to say so.
+              this.#store.dropTransient();
+            }
             // Only a report of the record that shows is news of it: one of
             // another record leaves what the user has seen as it was.
             if (
@@ -2340,8 +2347,12 @@ export class ProgramStatusAddon implements ITerminalAddon {
     );
   }
 
-  /** The process ended: drop Working and Needs input. */
+  /**
+   * The process ended: drop Working and Needs input, also from what is
+   * still to be parsed of its output.
+   */
   public processExited(): void {
+    this.#exited = true;
     if (this.#store.dropTransient()) {
       this.#schedule();
     }
