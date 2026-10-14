@@ -10,6 +10,8 @@
  * - Guard conditions (disposed, platform, setting, modifier combos)
  * - Win32 input mode (DECSET 9001): KEY_EVENT_RECORD encoding, dead-key
  *   composition deferred to the browser, layout-aware virtual keys
+ * - VaultFileLinksAddon: which printed paths are links, and how a click opens
+ *   the file in the leaf the view picks
  * - SynchronizedOutputScrollAddon: scroll position preservation across DEC 2026
  *   synchronized output blocks via queueMicrotask (xterm.js issue #5801 workaround)
  */
@@ -1492,13 +1494,25 @@ describe("SynchronizedOutputScrollAddon", () => {
 // VaultFileLinksAddon
 // ---------------------------------------------------------------------------
 
+// The shared Obsidian mock declares `TFile` as an interface only. The addon
+// narrows with `instanceof TFile`, which needs a class at run time.
+const { MockTFile } = vi.hoisted(() => ({
+  MockTFile: class TFile {
+    public path = "";
+  },
+}));
+vi.mock("obsidian", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("obsidian")>()),
+  TFile: MockTFile,
+}));
+
 describe("VaultFileLinksAddon", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  /** Mock file returned by getFileByPath. */
-  const MOCK_FILE: TFile = {
+  /** Mock file returned by getAbstractFileByPath. */
+  const MOCK_FILE: TFile = Object.assign(new MockTFile(), {
     basename: "test",
     extension: "md",
     name: "test.md",
@@ -1506,32 +1520,43 @@ describe("VaultFileLinksAddon", () => {
     path: "test.md",
     stat: { ctime: 0, mtime: 0, size: 0 },
     vault: {} as Vault,
-  };
+  });
 
   /**
-   * Creates a VaultFileLinksAddon test bed.
+   * Creates a VaultFileLinksAddon test bed. Its vault has no `getFileByPath`,
+   * like the vault of an Obsidian before 1.5.7.
    *
-   * @param fileExists - Whether getFileByPath should return a TFile or null.
+   * @param fileExists - Whether getAbstractFileByPath should return a TFile or null.
    */
   function createBed(fileExists = true): {
     provideLinks: (lineText: string) => ILink[] | undefined;
-    getFileByPath: ReturnType<typeof vi.fn>;
+    getAbstractFileByPath: ReturnType<typeof vi.fn>;
     openFile: ReturnType<typeof vi.fn>;
-    getLeaf: ReturnType<typeof vi.fn>;
+    readonly revealLeaf: ReturnType<typeof vi.fn>;
+    readonly getLeavesOfType: ReturnType<typeof vi.fn>;
+    readonly leaf: WorkspaceLeaf;
+    readonly fileLeaf: ReturnType<typeof vi.fn>;
     disposable: IDisposable;
     addon: VaultFileLinksAddon;
   } {
-    const getFileByPath = vi.fn(() => (fileExists ? MOCK_FILE : null));
-    const vault = { getFileByPath } as unknown as Vault;
+    const getAbstractFileByPath = vi.fn(() => (fileExists ? MOCK_FILE : null));
+    const vault = { getAbstractFileByPath } as unknown as Vault;
 
+    const revealLeaf = vi.fn().mockResolvedValue(undefined);
     const openFile = vi.fn().mockResolvedValue(undefined);
-    const getLeaf = vi.fn(() => ({ openFile }) as unknown as WorkspaceLeaf);
-    const workspace = { getLeaf } as unknown as Workspace;
+    const leaf = {
+      openFile,
+      view: { getViewType: (): string => "markdown" },
+    } as unknown as WorkspaceLeaf;
+    // Obsidian lists the open leaves by view type; a closed one is not listed.
+    const getLeavesOfType = vi.fn(() => [leaf]);
+    const workspace = { getLeavesOfType, revealLeaf } as unknown as Workspace;
+    const fileLeaf = vi.fn(() => leaf);
 
     const app = { vault, workspace } as unknown as App;
     const context = { app } as unknown as PluginContext;
 
-    const addon = new VaultFileLinksAddon(context);
+    const addon = new VaultFileLinksAddon(context, fileLeaf);
 
     let capturedProvider: ILinkProvider | undefined;
     const disposable = { dispose: vi.fn() };
@@ -1561,9 +1586,12 @@ describe("VaultFileLinksAddon", () => {
 
     return {
       provideLinks,
-      getFileByPath,
+      getAbstractFileByPath,
       openFile,
-      getLeaf,
+      revealLeaf,
+      getLeavesOfType,
+      leaf,
+      fileLeaf,
       disposable,
       addon,
     };
@@ -1668,12 +1696,27 @@ describe("VaultFileLinksAddon", () => {
 
   // --- File resolution ---
 
-  it("calls getFileByPath for each matched link", () => {
-    const { provideLinks, getFileByPath } = createBed();
+  it("calls getAbstractFileByPath for each matched link", () => {
+    const { provideLinks, getAbstractFileByPath } = createBed();
     provideLinks("(a.md) and (b.md)");
-    expect(getFileByPath).toHaveBeenCalledTimes(2);
-    expect(getFileByPath).toHaveBeenCalledWith("a.md");
-    expect(getFileByPath).toHaveBeenCalledWith("b.md");
+    expect(getAbstractFileByPath).toHaveBeenCalledTimes(2);
+    expect(getAbstractFileByPath).toHaveBeenCalledWith("a.md");
+    expect(getAbstractFileByPath).toHaveBeenCalledWith("b.md");
+  });
+
+  it("links a file on a vault without getFileByPath", () => {
+    // `Vault.getFileByPath` is new in Obsidian 1.5.7; the manifest allows 1.4.11.
+    const { provideLinks } = createBed();
+    const links = provideLinks("see notes/todo.md");
+    expect(links).toHaveLength(1);
+    expect(links?.[0]?.text).toBe("notes/todo.md");
+  });
+
+  it("omits a path that names a folder", () => {
+    const { provideLinks, getAbstractFileByPath } = createBed();
+    // A folder is an abstract file that is not a TFile.
+    getAbstractFileByPath.mockReturnValue({ children: [], path: "dir.md" });
+    expect(provideLinks("(dir.md)")).toHaveLength(0);
   });
 
   it("omits links whose files do not exist", () => {
@@ -1684,52 +1727,182 @@ describe("VaultFileLinksAddon", () => {
 
   // --- Activation ---
 
-  it("activates by opening the file in Obsidian", () => {
-    const { provideLinks, openFile, getLeaf } = createBed();
+  /** Resolves after the opener's promise chain has run to its end. */
+  const settled = (): Promise<void> =>
+    new Promise((resolve) => {
+      setImmediate(resolve);
+    });
+
+  it("waits for the leaf to be revealed before opening the file focused in it", async () => {
+    const { provideLinks, openFile, revealLeaf, leaf } = createBed();
+    const reveal = Promise.withResolvers<undefined>();
+    revealLeaf.mockReturnValueOnce(reveal.promise);
     const links = provideLinks("(test.md)");
     expect(links).toHaveLength(1);
 
-    links?.[0]?.activate({} as MouseEvent, "test.md");
-    expect(getLeaf).toHaveBeenCalledWith(false);
-    expect(openFile).toHaveBeenCalledWith(MOCK_FILE);
+    links?.[0]?.activate(new MouseEvent("click"), "test.md");
+    expect(revealLeaf).toHaveBeenCalledExactlyOnceWith(leaf);
+    expect(openFile).not.toHaveBeenCalled();
+    await Promise.resolve();
+    expect(openFile).not.toHaveBeenCalled();
+
+    reveal.resolve(undefined);
+    await settled();
+    expect(openFile).toHaveBeenCalledExactlyOnceWith(MOCK_FILE, {
+      active: true,
+    });
+  });
+
+  it("supports a void-returning revealLeaf", async () => {
+    const { provideLinks, openFile, revealLeaf } = createBed();
+    revealLeaf.mockReturnValueOnce(undefined);
+
+    provideLinks("(test.md)")?.[0]?.activate(
+      new MouseEvent("click"),
+      "test.md",
+    );
+
+    await settled();
+    expect(openFile).toHaveBeenCalledExactlyOnceWith(MOCK_FILE, {
+      active: true,
+    });
+  });
+
+  it("removes the reveal flash from the tab of the note it opens", async () => {
+    const { provideLinks, openFile, revealLeaf, leaf } = createBed();
+    // Obsidian keeps the leaf's tab header in `tabHeaderEl` and flashes it on reveal.
+    const header = document.createElement("div");
+    header.className = "workspace-tab-header";
+    Object.assign(leaf, { tabHeaderEl: header });
+    // A note that is still loading keeps the reveal pending.
+    const reveal = Promise.withResolvers<undefined>();
+    revealLeaf.mockImplementationOnce((): unknown => {
+      header.classList.add("is-flashing");
+      return reveal.promise;
+    });
+
+    provideLinks("(test.md)")?.[0]?.activate(
+      new MouseEvent("click"),
+      "test.md",
+    );
+    expect(revealLeaf).toHaveBeenCalledExactlyOnceWith(leaf);
+    expect(header.className).toBe("workspace-tab-header");
+
+    reveal.resolve(undefined);
+    await vi.waitFor(() => {
+      expect(openFile).toHaveBeenCalledOnce();
+    });
+    expect(header.className).toBe("workspace-tab-header");
+  });
+
+  it("logs to console.error without opening the file when revealLeaf rejects", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { provideLinks, openFile, revealLeaf } = createBed();
+    const error = new Error("reveal failed");
+    revealLeaf.mockRejectedValueOnce(error);
+
+    provideLinks("(test.md)")?.[0]?.activate(
+      new MouseEvent("click"),
+      "test.md",
+    );
+
+    await settled();
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(error);
+    expect(openFile).not.toHaveBeenCalled();
+  });
+
+  it("logs to console.error without throwing when revealLeaf throws", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { provideLinks, openFile, revealLeaf } = createBed();
+    const error = new Error("reveal failed");
+    revealLeaf.mockImplementationOnce(() => {
+      throw error;
+    });
+    const link = provideLinks("(test.md)")?.[0];
+    if (!link) throw new Error("Missing vault file link");
+
+    expect(() => {
+      link.activate(new MouseEvent("click"), "test.md");
+    }).not.toThrow();
+
+    await settled();
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(error);
+    expect(openFile).not.toHaveBeenCalled();
+  });
+
+  it("logs to console.error without throwing when fileLeaf throws", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    const { provideLinks, fileLeaf, revealLeaf, openFile } = createBed();
+    const error = new Error("target failed");
+    fileLeaf.mockImplementationOnce(() => {
+      throw error;
+    });
+    const link = provideLinks("(test.md)")?.[0];
+    if (!link) throw new Error("Missing vault file link");
+
+    expect(() => {
+      link.activate(new MouseEvent("click"), "test.md");
+    }).not.toThrow();
+
+    await settled();
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(error);
+    expect(revealLeaf).not.toHaveBeenCalled();
+    expect(openFile).not.toHaveBeenCalled();
+  });
+
+  it("opens nothing in a leaf closed while it was being revealed", async () => {
+    const { provideLinks, openFile, revealLeaf, getLeavesOfType } = createBed();
+    const reveal = Promise.withResolvers<undefined>();
+    revealLeaf.mockReturnValueOnce(reveal.promise);
+    const link = provideLinks("(test.md)")?.[0];
+    if (!link) throw new Error("Missing vault file link");
+
+    link.activate(new MouseEvent("click"), "test.md");
+    getLeavesOfType.mockReturnValue([]);
+    reveal.resolve(undefined);
+    await settled();
+
+    expect(openFile).not.toHaveBeenCalled();
+    expect(getLeavesOfType).toHaveBeenLastCalledWith("markdown");
+  });
+
+  it("asks fileLeaf for a target on every click, not once", () => {
+    const { provideLinks, fileLeaf } = createBed();
+    const link = provideLinks("(test.md)")?.[0];
+    link?.activate(new MouseEvent("click"), "test.md");
+    link?.activate(new MouseEvent("click"), "test.md");
+    expect(fileLeaf).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ["middle", 1],
+    ["secondary", 2],
+  ])("opens nothing on the %s mouse button", async (_name, button) => {
+    // xterm activates a link on any button, so a paste click lands here too.
+    const { provideLinks, fileLeaf, revealLeaf, openFile } = createBed();
+    const link = provideLinks("(test.md)")?.[0];
+    if (!link) throw new Error("Missing vault file link");
+
+    link.activate(new MouseEvent("mouseup", { button }), "test.md");
+    await settled();
+
+    expect(fileLeaf).not.toHaveBeenCalled();
+    expect(revealLeaf).not.toHaveBeenCalled();
+    expect(openFile).not.toHaveBeenCalled();
   });
 
   it("logs to console.error when openFile rejects", async () => {
-    const getFileByPath = vi.fn(() => MOCK_FILE);
-    const vault = { getFileByPath } as unknown as Vault;
-
     const consoleError = vi.fn();
     vi.spyOn(console, "error").mockImplementation(consoleError);
+    const { provideLinks, openFile } = createBed();
+    openFile.mockRejectedValueOnce(new Error("fail"));
 
-    const openFile = vi.fn().mockRejectedValue(new Error("fail"));
-    const getLeaf = vi.fn(() => ({ openFile }) as unknown as WorkspaceLeaf);
-    const workspace = { getLeaf } as unknown as Workspace;
-    const app = { vault, workspace } as unknown as App;
-    const context = { app } as unknown as PluginContext;
-    const addon = new VaultFileLinksAddon(context);
+    provideLinks("(test.md)")?.[0]?.activate(
+      new MouseEvent("click"),
+      "test.md",
+    );
 
-    let capturedProvider: ILinkProvider | undefined;
-    const getLine = vi.fn();
-    const terminal = {
-      registerLinkProvider: vi.fn((p: ILinkProvider) => {
-        capturedProvider = p;
-        return { dispose: vi.fn() };
-      }),
-      buffer: { active: { getLine } },
-      element: document.createElement("div"),
-    } as unknown as Terminal;
-    addon.activate(terminal);
-
-    const line = { translateToString: vi.fn(() => "(test.md)") };
-    getLine.mockReturnValue(line);
-    let result: ILink[] | undefined;
-    capturedProvider?.provideLinks(1, (links) => {
-      result = links;
-    });
-
-    result?.[0]?.activate({} as MouseEvent, "test.md");
-
-    await Promise.resolve();
+    await settled();
     expect(consoleError).toHaveBeenCalled();
   });
 
@@ -1744,11 +1917,11 @@ describe("VaultFileLinksAddon", () => {
       element: document.createElement("div"),
     } as unknown as Terminal;
 
-    const getFileByPath = vi.fn();
-    const vault = { getFileByPath } as unknown as Vault;
+    const getAbstractFileByPath = vi.fn();
+    const vault = { getAbstractFileByPath } as unknown as Vault;
     const app = { vault, workspace: {} as Workspace } as unknown as App;
     const context = { app } as unknown as PluginContext;
-    const addon = new VaultFileLinksAddon(context);
+    const addon = new VaultFileLinksAddon(context, vi.fn());
     addon.activate(terminal);
 
     addon.dispose();
