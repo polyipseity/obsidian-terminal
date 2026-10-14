@@ -379,20 +379,22 @@ export function loadTerminal(context: TerminalPlugin): void {
 
   /* Always register command for interop with other plugins */
 
-  addCommand(context, () => i18n.t("commands.open-developer-console"), {
-    checkCallback(checking) {
-      if (!settings.value.addToCommand) {
-        return false;
-      }
-      return openDefaultProfileOfType("developerConsole", void 0, checking);
-    },
-    icon: i18n.t("asset:commands.open-developer-console-icon"),
-    id: "open-terminal.developerConsole",
-  });
+  TerminalView.allowWhileFocused(
+    addCommand(context, () => i18n.t("commands.open-developer-console"), {
+      checkCallback(checking) {
+        if (!settings.value.addToCommand) {
+          return false;
+        }
+        return openDefaultProfileOfType("developerConsole", void 0, checking);
+      },
+      icon: i18n.t("asset:commands.open-developer-console-icon"),
+      id: "open-terminal.developerConsole",
+    }),
+  );
 
   for (const type of PROFILE_TYPES) {
     for (const cwd of CWD_TYPES) {
-      addCommand(
+      const opening = addCommand(
         context,
         () =>
           i18n.t(`commands.open-terminal-${cwd}`, {
@@ -410,6 +412,10 @@ export function loadTerminal(context: TerminalPlugin): void {
           id: `open-terminal.${type}.${cwd}`,
         },
       );
+      // "Current" needs an active file, and a focused terminal has none.
+      if (cwd === "root") {
+        TerminalView.allowWhileFocused(opening);
+      }
     }
   }
 

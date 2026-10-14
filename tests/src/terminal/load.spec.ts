@@ -1,5 +1,6 @@
 import {
   SettingsManager,
+  addCommand,
   addRibbonIcon,
   createI18n,
   notice2,
@@ -18,6 +19,7 @@ import {
   SelectProfileModal,
   spawnTerminal,
 } from "../../../src/terminal/spawn.js";
+import { TerminalView } from "../../../src/terminal/view.js";
 import {
   type Win32PythonSpawn,
   checkWindowsPython,
@@ -107,7 +109,7 @@ vi.mock("../../../src/terminal/spawn.js", () => ({
 }));
 
 vi.mock("../../../src/terminal/view.js", () => ({
-  TerminalView: { load: vi.fn() },
+  TerminalView: { allowWhileFocused: vi.fn(), load: vi.fn() },
 }));
 vi.mock("../../../src/terminal/environment.js", async (importOriginal) => ({
   ...(await importOriginal<
@@ -360,6 +362,44 @@ describe("terminal ribbon profile access", () => {
       );
     },
   );
+});
+
+describe("opening commands while a terminal has focus", () => {
+  afterEach(() => {
+    vi.mocked(addCommand).mockReset();
+  });
+
+  it("keeps the root-directory commands and the developer console, not the current-directory commands", async () => {
+    // The loader passes on what `addCommand` returns; the bare mock returns nothing.
+    vi.mocked(addCommand).mockImplementation((_context, name, command) => ({
+      ...command,
+      name: name(),
+    }));
+    const context = await terminalContext();
+    Object.assign(context.app.workspace, { onLayoutReady: vi.fn() });
+
+    loadTerminal(context);
+
+    const registered = vi
+        .mocked(addCommand)
+        .mock.calls.map(([, , { id }]) => id),
+      allowed = vi
+        .mocked(TerminalView)
+        .allowWhileFocused.mock.calls.map(([{ id }]) => id);
+    expect(registered).toContain("open-terminal.default.current");
+    expect(allowed).toEqual(
+      registered.filter(
+        (id) => id === "open-terminal.developerConsole" || id.endsWith(".root"),
+      ),
+    );
+    expect(allowed).toEqual(
+      expect.arrayContaining([
+        "open-terminal.developerConsole",
+        "open-terminal.default.root",
+      ]),
+    );
+    expect(allowed.filter((id) => id.endsWith(".current"))).toEqual([]);
+  });
 });
 
 describe("layout-ready automatic Python work", () => {
