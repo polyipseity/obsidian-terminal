@@ -717,8 +717,23 @@ describe("wslDistribution", () => {
     ],
     [["--system", "-d", "Ubuntu"], "Ubuntu"],
     [["-d", "Ubuntu", "-d", "Debian"], "Ubuntu"],
+    // After `~` at the start, which has the shell start in the home
+    // directory: `wsl.exe` takes it off before it reads its options.
+    [["~", "-d", "Ubuntu"], "Ubuntu"],
+    [["~", "--distribution", "Debian"], "Debian"],
+    [["~", "-u", "root", "-d", "kali-linux"], "kali-linux"],
+    [["~", "-d", "Ubuntu", "--", "bash", "-l"], "Ubuntu"],
   ])("reads the distribution of the arguments %j", (args, distribution) => {
     expect(wslDistribution(args)).toBe(distribution);
+  });
+
+  // No argument names one there, which is what tells nothing about the
+  // distribution: a profile made from the preset runs the default one.
+  it("reads no distribution from the arguments of the WSL preset, which has none", () => {
+    const { args } = PROFILE_PRESETS.wslIntegrated;
+
+    expect(args).toEqual([]);
+    expect(wslDistribution(args)).toBeNull();
   });
 
   it.each<readonly [string, readonly string[]]>([
@@ -736,6 +751,11 @@ describe("wslDistribution", () => {
       ["--cd", "/tmp", "ls", "-d", "x"],
     ],
     ["the option as the value of another", ["--cd", "-d", "--system"]],
+    ["`~` alone", ["~"]],
+    // Only the first argument is the home directory: after an option, `~` is
+    // the command that is run, and what follows it is that command's.
+    ["the option after a `~` that is not first", ["-u", "me", "~", "-d", "x"]],
+    ["the option after a second `~`", ["~", "~", "-d", "Ubuntu"]],
     // An identifier is not a name that a share has.
     ["the identifier of a distribution", ["--distribution-id", "{1234}"]],
   ])("reads no distribution from %s", (_name, args) => {

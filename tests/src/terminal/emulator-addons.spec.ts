@@ -5186,6 +5186,31 @@ describe("DragAndDropAddon", () => {
       },
     );
 
+    // `wsl.exe ~ -d Ubuntu` starts the shell of Ubuntu in its home directory.
+    it.each<readonly [string, string]>([
+      ["its present name", "\\\\wsl.localhost"],
+      ["its older name", "\\\\wsl$"],
+    ])(
+      "leaves out a file of another distribution, on the share under %s, when `~` comes before the option",
+      async (_name, share) => {
+        const bed = createBed({
+          args: ["~", "-d", "Ubuntu"],
+          executable: WSL,
+        });
+
+        await drop(
+          bed,
+          nativeDrag([
+            nativeFile("a.md", `${share}\\Debian\\home\\me\\a.md`),
+            nativeFile("b.md", `${share}\\Ubuntu\\home\\me\\b.md`),
+          ]),
+        );
+
+        expect(bed.paste.mock.calls).toEqual([["/home/me/b.md "]]);
+        expect(notices()).toEqual([SKIPPED_PATHS]);
+      },
+    );
+
     it("refuses the drag of a vault that is in another distribution", () => {
       const bed = createBed({
         args: ["-d", "Ubuntu"],

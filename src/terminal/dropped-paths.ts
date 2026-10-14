@@ -193,6 +193,10 @@ const PATH_SEPARATOR = /[\\/]/u,
   // `\\wsl.localhost\<distribution>`, or `\\wsl$\<distribution>` as it was
   // before, and what follows it.
   WSL_SHARE_PATH = /^[\\/]{2}(?:wsl\.localhost|wsl\$)[\\/]+([^\\/]+)(.*)$/isu,
+  // What has `wsl.exe` start the shell in the home directory. It is taken
+  // off the start of the arguments before the options are read; anywhere
+  // else it is the command to run.
+  WSL_HOME = "~",
   // The options of `wsl.exe` that name the distribution to run...
   WSL_DISTRIBUTION_OPTIONS: ReadonlySet<string> = new Set([
     "-d",
@@ -439,6 +443,7 @@ export function ttyLineByteLimit(platform: Platform.All): number | null {
 /**
  * Tells which distribution `wsl.exe` runs, from its arguments: the name after
  * `-d` or `--distribution`, among the options that come before the command.
+ * A `~` may come before the options, for the home directory.
  *
  * Without that option `wsl.exe` runs the default distribution, whose name
  * only `wsl.exe` itself could tell.
@@ -447,7 +452,7 @@ export function ttyLineByteLimit(platform: Platform.All): number | null {
  * @returns the name as it is written there; `null` if they name none.
  */
 export function wslDistribution(args: readonly string[]): string | null {
-  for (let index = 0; index < args.length; ++index) {
+  for (let index = args[0] === WSL_HOME ? 1 : 0; index < args.length; ++index) {
     const arg = args[index] ?? "";
     if (WSL_DISTRIBUTION_OPTIONS.has(arg)) {
       const name = args[index + 1];
