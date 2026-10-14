@@ -554,24 +554,18 @@ describe("the per-terminal store", () => {
 });
 
 describe("cost of a report", () => {
-  it("parses and stores a typical report in well under a millisecond", () => {
-    const payloads = [
-      `state=working:app=claude-code:progress=40:msg=${b64("Reading src/terminal/view.ts")}`,
-      `state=blocked:kind=permission:app=claude-code:msg=${b64("Run bun run test?")}`,
-      `state=done:app=claude-code:msg=${b64("Finished")}`,
-      `state=working:id=agents/reviewer:title=${b64("Reviewer")}:msg=${b64("Checking the diff")}`,
-    ];
-    const store = new ProgramStatusStore();
-    const rounds = 200_000;
-    for (let warm = 0; warm < 20_000; warm++) {
-      store.apply(parseProgramStatus(payloads[warm % payloads.length] ?? ""));
-    }
-    const started = performance.now();
-    for (let round = 0; round < rounds; round++) {
-      store.apply(parseProgramStatus(payloads[round % payloads.length] ?? ""));
-    }
-    const microseconds = ((performance.now() - started) * 1000) / rounds;
-    // Measured at about 1.6; the bound leaves room for a loaded machine.
-    expect(microseconds).toBeLessThan(100);
+  it("reads a typical report once: the payload, each key and each text", () => {
+    const payload = `state=working:id=agents/reviewer:progress=40:title=${b64("Reviewer")}:msg=${b64("Checking the diff")}`,
+      store = new ProgramStatusStore(),
+      // Work is counted, not timed: a count is the same on a loaded machine.
+      encode = vi.spyOn(TextEncoder.prototype, "encode"),
+      decode = vi.spyOn(window, "atob");
+
+    expect(store.apply(parseProgramStatus(payload))).toBe(true);
+
+    // One scan for the length of the payload and one for each of five keys.
+    expect(encode).toHaveBeenCalledTimes(6);
+    // The title and the message, each decoded once.
+    expect(decode).toHaveBeenCalledTimes(2);
   });
 });
