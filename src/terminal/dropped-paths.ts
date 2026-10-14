@@ -19,8 +19,10 @@ import type { Platform } from "@polyipseity/obsidian-plugin-library";
  * - `cmd`: `cmd.exe`, and any other program on Windows.
  * - `quoted`: nushell or elvish, on any platform, where a backslash outside
  *   quotes is a character of the name.
- * - `javascript`: the developer console, which reads no arguments but
- *   JavaScript, where a path is a string.
+ * - `javascript`: the developer console, and the prompts of `node`, `python`
+ *   and `python3` on any platform. They read no arguments but a language,
+ *   where a path is a string: JavaScript and Python both read one as JSON
+ *   writes it.
  */
 export type ShellGrammar =
   | "posix"
@@ -103,6 +105,10 @@ const PATH_SEPARATOR = /[\\/]/u,
   // character like any other, so an escaped space still ends the argument and
   // an escaped `;` still ends the command. Their quotes read alike.
   QUOTING_SHELLS: ReadonlySet<string> = new Set(["elvish", "nu"]),
+  // Programs that are no shell: started as they are, they read a language at
+  // their prompt, where the escapes of a shell are an error and a path is a
+  // string in quotes. 3.28.0 gave them one for a path with a space.
+  STRING_PROMPTS: ReadonlySet<string> = new Set(["node", "python", "python3"]),
   // Programs that start a shell of the sh family on Windows, without suffix.
   WIN32_POSIX_SHELLS: ReadonlySet<string> = new Set([
     "ash",
@@ -193,6 +199,10 @@ const PATH_SEPARATOR = /[\\/]/u,
   // `\\wsl.localhost\<distribution>`, or `\\wsl$\<distribution>` as it was
   // before, and what follows it.
   WSL_SHARE_PATH = /^[\\/]{2}(?:wsl\.localhost|wsl\$)[\\/]+([^\\/]+)(.*)$/isu,
+  // What has `wsl.exe` start the shell in the home directory. It is taken
+  // off the start of the arguments before the options are read; anywhere
+  // else it is the command to run.
+  WSL_HOME = "~",
   // The options of `wsl.exe` that name the distribution to run...
   WSL_DISTRIBUTION_OPTIONS: ReadonlySet<string> = new Set([
     "-d",
@@ -357,7 +367,9 @@ function programName(executable: string): string {
  *
  * Off Windows a program that is not recognized gets the escapes of a POSIX
  * shell, which is what most of them are or start. nushell and elvish are
- * known: they read no escape outside quotes, on any platform.
+ * known: they read no escape outside quotes, on any platform. So are `node`,
+ * `python` and `python3`, which are no shell: their prompt gets a string, as
+ * the developer console does, on any platform.
  *
  * The shell is known by the exact name of the executable, in any case and
  * without one suffix of a Windows program or script (`.exe`, `.cmd`, `.bat`,
@@ -377,6 +389,9 @@ export function shellGrammar(
   }
   if (QUOTING_SHELLS.has(name)) {
     return "quoted";
+  }
+  if (STRING_PROMPTS.has(name)) {
+    return "javascript";
   }
   if (platform !== "win32" || ESCAPING_SHELLS.has(name)) {
     return "posix";
@@ -439,6 +454,7 @@ export function ttyLineByteLimit(platform: Platform.All): number | null {
 /**
  * Tells which distribution `wsl.exe` runs, from its arguments: the name after
  * `-d` or `--distribution`, among the options that come before the command.
+ * A `~` may come before the options, for the home directory.
  *
  * Without that option `wsl.exe` runs the default distribution, whose name
  * only `wsl.exe` itself could tell.
@@ -447,7 +463,7 @@ export function ttyLineByteLimit(platform: Platform.All): number | null {
  * @returns the name as it is written there; `null` if they name none.
  */
 export function wslDistribution(args: readonly string[]): string | null {
-  for (let index = 0; index < args.length; ++index) {
+  for (let index = args[0] === WSL_HOME ? 1 : 0; index < args.length; ++index) {
     const arg = args[index] ?? "";
     if (WSL_DISTRIBUTION_OPTIONS.has(arg)) {
       const name = args[index + 1];
@@ -690,7 +706,8 @@ export function formatDroppedPath(
     case "quoted":
       return quoteLiteral(path);
     case "javascript":
-      // A string literal of JavaScript, as JSON writes one.
+      // A string literal of JavaScript, as JSON writes one. Python reads
+      // the same string in it.
       return JSON.stringify(path);
   }
 }

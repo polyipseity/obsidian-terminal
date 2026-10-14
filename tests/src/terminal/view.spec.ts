@@ -709,6 +709,7 @@ describe("src/terminal/view.ts", () => {
       addons.dragAndDrop.activate({
         focus: vi.fn(),
         onData: vi.fn(() => ({ dispose: vi.fn() })),
+        onKey: vi.fn(() => ({ dispose: vi.fn() })),
         paste,
       } as unknown as Terminal);
 
