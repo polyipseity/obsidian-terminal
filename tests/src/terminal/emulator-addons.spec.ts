@@ -4205,6 +4205,12 @@ describe("DragAndDropAddon", () => {
       "Shift and a letter as the Windows console writes them",
       "\u001b[16;42;0;1;16;1_\u001b[65;30;65;1;16;1_",
     ],
+    // A character composed with Alt and the numpad is sent as a key that
+    // goes down and comes up, in one go.
+    [
+      "a character composed with Alt and the numpad as the Windows console writes it",
+      "\u001b[0;0;233;1;0;1_\u001b[0;0;233;0;0;1_",
+    ],
   ])(
     "pastes nothing of a drop when %s reaches the terminal while it waits, and says so",
     async (_name, data) => {
@@ -4252,17 +4258,24 @@ describe("DragAndDropAddon", () => {
   // nothing, as releasing Shift or Control after a drag does. The records
   // are those the key handler writes (see its tests above).
   it.each<readonly [string, string]>([
-    ["Shift", "\u001b[16;42;0;0;0;1_"],
-    ["Control", "\u001b[17;29;0;0;0;1_"],
-    ["Shift while Control is held", "\u001b[16;42;0;0;8;1_"],
-    ["a letter", "\u001b[65;30;97;0;0;1_"],
+    ["Shift is released", "\u001b[16;42;0;0;0;1_"],
+    ["Control is released", "\u001b[17;29;0;0;0;1_"],
+    ["Shift is released with Control held", "\u001b[16;42;0;0;8;1_"],
+    ["a letter is released", "\u001b[65;30;97;0;0;1_"],
     // One record for each half of the character.
     [
-      "a key of a character beyond 16 bits",
+      "a key of a character beyond 16 bits is released",
       "\u001b[0;0;55357;0;0;1_\u001b[0;0;56832;0;0;1_",
     ],
+    // Pressing a modifier by itself types nothing either. Outside that input
+    // mode, xterm.js sends nothing for it at all.
+    ["Shift is pressed by itself", "\u001b[16;42;0;1;16;1_"],
+    ["Control is pressed by itself", "\u001b[17;29;0;1;8;1_"],
+    ["Alt is pressed by itself", "\u001b[18;56;0;1;2;1_"],
+    ["Shift is pressed by itself with Control held", "\u001b[16;42;0;1;24;1_"],
+    ["the Windows key is pressed by itself", "\u001b[91;0;0;1;256;1_"],
   ])(
-    "still pastes a drop when %s is released while it waits, as the Windows console writes it",
+    "still pastes a drop when %s while it waits, as the Windows console writes it",
     async (_name, data) => {
       const stat = pendingStat();
       dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
@@ -4277,47 +4290,6 @@ describe("DragAndDropAddon", () => {
       expect(notices()).toEqual([]);
     },
   );
-
-  // Pressing a modifier by itself types nothing either. Outside that input
-  // mode, xterm.js sends nothing for it at all.
-  it.each<readonly [string, string]>([
-    ["Shift", "\u001b[16;42;0;1;16;1_"],
-    ["Control", "\u001b[17;29;0;1;8;1_"],
-    ["Alt", "\u001b[18;56;0;1;2;1_"],
-    ["Shift while Control is held", "\u001b[16;42;0;1;24;1_"],
-    ["the Windows key", "\u001b[91;0;0;1;256;1_"],
-  ])(
-    "still pastes a drop when %s is pressed by itself while it waits, as the Windows console writes it",
-    async (_name, data) => {
-      const stat = pendingStat();
-      dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
-      const bed = createBed();
-
-      await drop(bed, uriDrag());
-      bed.input(data);
-      stat.answer();
-      await tick();
-
-      expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
-      expect(notices()).toEqual([]);
-    },
-  );
-
-  // A character composed with Alt and the numpad is sent as a key that goes
-  // down and comes up, in one go.
-  it("pastes nothing of a drop when a key goes down and up in one record pair while it waits", async () => {
-    const stat = pendingStat();
-    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
-    const bed = createBed();
-
-    await drop(bed, uriDrag());
-    bed.input("\u001b[0;0;233;1;0;1_\u001b[0;0;233;0;0;1_");
-    stat.answer();
-    await tick();
-
-    expect(bed.paste).not.toHaveBeenCalled();
-    expect(notices()).toEqual([TYPED_WHILE_WAITING]);
-  });
 
   it("pastes nothing of a drop that waits behind another when input reaches the terminal", async () => {
     const stat = pendingStat();

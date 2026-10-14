@@ -15,6 +15,7 @@ import {
 import type { CanvasAddon } from "@xterm/addon-canvas";
 import type { WebglAddon } from "@xterm/addon-webgl";
 import type { ILink, ITerminalAddon, ITheme, Terminal } from "@xterm/xterm";
+import { once } from "es-toolkit/function";
 import { eastAsianWidth } from "get-east-asian-width";
 import { around } from "monkey-around";
 import {
@@ -125,16 +126,10 @@ function lookupSlots(): LookupSlots {
 export async function acquireLookup(
   deadline: Promise<unknown>,
 ): Promise<(() => void) | null> {
-  const slots = lookupSlots();
-  // Mutable: set by the first call of `release`.
-  let released = false;
-  const release = (): void => {
-    if (released) {
-      return;
-    }
-    released = true;
-    releaseLookup(slots);
-  };
+  const slots = lookupSlots(),
+    release = once((): void => {
+      releaseLookup(slots);
+    });
   if (slots.taken < LOOKUPS) {
     ++slots.taken;
     return release;
