@@ -66,7 +66,9 @@ const LOOKUPS = 2,
   // is enabled again, and a `stat` of the copy that ran before still holds
   // its thread until it answers. So the slots are not in this module but on
   // the main window, which every copy runs in. The key names the shape of
-  // `LookupSlots`: slots of another shape need a key of their own.
+  // `LookupSlots`. Slots of another shape need a key of their own, and must
+  // take over the count kept under this one before they hand out a slot:
+  // the lookups of a copy before them may still hold theirs.
   LOOKUP_SLOTS = Symbol.for("obsidian-terminal.dropped-path-lookups.v1");
 
 /** The {@link LOOKUPS} slots, which every copy of this module shares. */
@@ -113,16 +115,26 @@ function lookupSlots(): LookupSlots {
  * Takes one of the {@link LOOKUPS} slots, waiting in line for one until
  * `deadline` settles.
  *
+ * Exported for its tests, which give a slot back more than once.
+ *
  * @returns what gives the slot back to the slots it was taken from, which a
  * copy of this module enabled since shares; `null` if no slot was taken.
+ * Only its first call gives the slot back: a second one would hand a slot
+ * nobody gave up to the next lookup in line, or count one too few taken.
  */
-async function acquireLookup(
+export async function acquireLookup(
   deadline: Promise<unknown>,
 ): Promise<(() => void) | null> {
-  const slots = lookupSlots(),
-    release = (): void => {
-      releaseLookup(slots);
-    };
+  const slots = lookupSlots();
+  // Mutable: set by the first call of `release`.
+  let released = false;
+  const release = (): void => {
+    if (released) {
+      return;
+    }
+    released = true;
+    releaseLookup(slots);
+  };
   if (slots.taken < LOOKUPS) {
     ++slots.taken;
     return release;

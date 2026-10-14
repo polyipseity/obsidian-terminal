@@ -49,6 +49,7 @@ import { Settings } from "../../../src/settings-data.js";
 import {
   CustomKeyEventHandlerAddon,
   DragAndDropAddon,
+  acquireLookup,
   FollowThemeAddon,
   SynchronizedOutputScrollAddon,
   VaultFileLinksAddon,
@@ -1897,6 +1898,25 @@ describe("DragAndDropAddon", () => {
   /** Narrows to a function that takes nothing. */
   function isCallable(value: unknown): value is () => void {
     return typeof value === "function";
+  }
+
+  /**
+   * The lookup slots taken, as every copy of `emulator-addons.ts` counts them
+   * on the main window. There are none before the first lookup.
+   */
+  function lookupsTaken(): number {
+    const slots: unknown = Reflect.get(
+        self,
+        Symbol.for("obsidian-terminal.dropped-path-lookups.v1"),
+      ),
+      taken: unknown =
+        typeof slots === "object" && slots !== null
+          ? Reflect.get(slots, "taken")
+          : 0;
+    if (typeof taken !== "number") {
+      throw new Error("no count of the lookup slots");
+    }
+    return taken;
   }
 
   /** One drag of each kind the terminal takes: name, bed, data transfer. */
@@ -4058,6 +4078,42 @@ describe("DragAndDropAddon", () => {
     collectGarbage();
 
     expect(addon.deref()).toBeUndefined();
+  });
+
+  // A lookup gives its slot back once. Giving it back again would let a
+  // third lookup run, or hand one slot to two lookups in line.
+  it("counts a slot that is given back twice as given back once", async () => {
+    const slot = await acquireLookup(new Promise(noop)),
+      taken = lookupsTaken();
+
+    slot?.();
+    slot?.();
+
+    expect(lookupsTaken()).toBe(taken - 1);
+  });
+
+  it("hands a slot that is given back twice to one lookup in line", async () => {
+    const never = new Promise(noop),
+      held = [await acquireLookup(never), await acquireLookup(never)];
+    let giveUp: () => void = noop;
+    const deadline = new Promise<void>((resolve) => {
+        giveUp = resolve;
+      }),
+      waiting = Promise.all([acquireLookup(never), acquireLookup(deadline)]);
+
+    held[0]?.();
+    held[0]?.();
+    giveUp();
+    const [granted, refused] = await waiting;
+    // Every slot of the test goes back before anything is checked, so that
+    // the tests after it have them whatever happens here.
+    for (const release of [held[1], granted, refused]) {
+      release?.();
+    }
+
+    expect(granted).toBeTypeOf("function");
+    expect(refused).toBeNull();
+    expect(lookupsTaken()).toBe(0);
   });
 
   // === Focus after a drop ===
