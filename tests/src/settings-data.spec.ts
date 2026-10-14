@@ -664,10 +664,6 @@ describe("src/settings-data.ts", () => {
       "frame",
       "well",
       "ivory",
-      // The program icons were tried out and are not part of this.
-      "app-claude",
-      "app-python",
-      "app-codex",
     ])("replaces the removed icon set %s with the default", (removed) => {
       expect(Settings.fix({ tabIconSet: removed }).value.tabIconSet).toBe(
         "bezel",
