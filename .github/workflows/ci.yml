@@ -77,7 +77,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.9", "3.12"]
+        # The oldest supported Python and the newest one users install.
+        python: ["3.9", "3.14"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -87,19 +88,62 @@ jobs:
       - name: Setup bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
 
-      # Build dist before Bun copies the file: dependency into its store.
-      - name: Build the vendored library and install TypeScript tests
-        run: |
-          cd vendor/obsidian-plugin-library
-          bun install --frozen-lockfile --ignore-scripts
-          bun run build:force
-          cd ../..
-          bun install --frozen-lockfile --ignore-scripts
-
+      # Set up uv before `bun install`: its cache key hashes files matching a
+      # glob, and walking `node_modules` on Windows took over a minute.
+      # `python-version` keeps the matrix legs from racing for one cache key.
       - name: Setup uv
         uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
         with:
           resolution-strategy: "lowest"
+          cache-dependency-glob: "uv.lock"
+          python-version: ${{ matrix.python }}
+
+      # A cache hit below skips the vendor's own `bun install`, which used to
+      # fill Bun's download cache for the root install. Keep that cache instead.
+      - name: Locate the Bun download cache
+        id: bun-cache
+        shell: bash
+        run: |
+          dir=$(bun pm cache)
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the Bun download cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ steps.bun-cache.outputs.dir }}
+          key: bun-cache-${{ runner.os }}-${{ hashFiles('bun.lock', 'vendor/obsidian-plugin-library/bun.lock') }}
+          restore-keys: bun-cache-${{ runner.os }}-
+
+      # The vendored library's `dist` depends only on the submodule commit, so
+      # reuse it across runs and skip the library's own install and build.
+      # (Not in the Linux job: ESLint lints vendor/ with the vendor's own
+      # config, which needs the vendor's node_modules.)
+      - name: Resolve the vendored library commit
+        id: vendor
+        shell: bash
+        # On its own line, so a failed lookup stops the step (`bash -e`)
+        # instead of giving the cache key an empty commit.
+        run: |
+          sha=$(git rev-parse HEAD:vendor/obsidian-plugin-library)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the vendored library build
+        id: vendor-dist
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: vendor/obsidian-plugin-library/dist
+          key: vendor-dist-${{ runner.os }}-${{ steps.vendor.outputs.sha }}
+
+      # Build dist before Bun copies the file: dependency into its store.
+      - name: Build the vendored library
+        if: steps.vendor-dist.outputs.cache-hit != 'true'
+        working-directory: vendor/obsidian-plugin-library
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
+          bun run build:force
+
+      - name: Install TypeScript tests
+        run: bun install --frozen-lockfile --ignore-scripts
 
       - name: Install the locked Windows test environment
         run: uv sync --locked --python ${{ matrix.python }}
