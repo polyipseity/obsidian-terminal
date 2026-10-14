@@ -181,9 +181,8 @@ suites and `pseudoterminal.test.ts`, and checks `bun run clean` with files prese
 and already gone. The Linux `build` job runs
 `pseudoterminal.spec.ts` with the rest of the Vitest suite.
 The Windows job caches the vendored library's `dist` by submodule commit and skips
-the vendor install and build on a hit, and it caches Bun's download cache by both
-lockfiles. The Linux job still builds the vendor: ESLint lints `vendor/` with the
-vendor's own config, which needs the vendor's `node_modules`.
+the vendor install and build on a hit. The Linux job still builds the vendor: ESLint
+lints `vendor/` with the vendor's own config, which needs the vendor's `node_modules`.
 
 ## 3. Coding Conventions
 
