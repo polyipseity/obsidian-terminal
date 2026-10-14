@@ -36,6 +36,7 @@ import * as environment from "../../../src/terminal/environment.js";
 import { mergeTerminalOptions } from "../../../src/terminal/options.js";
 import * as profileProperties from "../../../src/terminal/profile-properties.js";
 import { DETECTION_REPLY } from "../../../src/terminal/program-status.js";
+import { TabStatusPresenter } from "../../../src/terminal/tab-status.js";
 import {
   ConPtyControlError,
   ConPtyPseudoterminal,
@@ -50,7 +51,6 @@ import {
   fittedSize,
   settleTerminalBackendOptions,
 } from "../../../src/terminal/view.js";
-import { TabStatusPresenter } from "../../../src/terminal/tab-status.js";
 import { microtasks, pseudoterminal, tick } from "../../support/helpers.js";
 
 const platform = vi.hoisted(() => ({ windows: false }));

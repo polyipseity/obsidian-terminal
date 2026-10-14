@@ -11,9 +11,6 @@ declare module "obsidian" {
   interface SuggestModal<T> {
     readonly [PRIVATE_KEY]?: $SuggestModal;
   }
-  interface WorkspaceLeaf {
-    readonly [PRIVATE_KEY]?: $WorkspaceLeaf;
-  }
 }
 import type {} from "obsidian";
 
@@ -30,9 +27,4 @@ export interface $App {
 
 export interface $SuggestModal {
   readonly selectActiveSuggestion: (evt: KeyboardEvent | MouseEvent) => void;
-}
-
-export interface $WorkspaceLeaf {
-  /** The tab header. Obsidian keeps `data-` attributes on it across refreshes. */
-  readonly tabHeaderEl: HTMLElement;
 }

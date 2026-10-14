@@ -34,7 +34,6 @@ import {
   readStateCollaboratively,
   recordViewStateHistory,
   resetButton,
-  revealPrivateFilter,
   saveFileAs,
   svelteState,
   updateView,
@@ -61,7 +60,6 @@ import {
 } from "obsidian";
 import { mount, unmount } from "svelte";
 import type { DeepWritable } from "ts-essentials";
-import type { $WorkspaceLeaf } from "../@types/obsidian.js";
 import { isExperimentEnabled, whileExperimentEnabled } from "../experiments.js";
 import { tabIconId, tabIconIdPrefix, terminalIconId } from "../icons.js";
 import { BUNDLE } from "../imports.js";
@@ -192,6 +190,16 @@ const terminalUses = new WeakMap<TerminalView, number>();
 // Intentionally mutable so session uses have a strict order even within one tick.
 let terminalUseSequence = 0;
 
+/**
+ * The tab header of `leaf`, or `null` where this Obsidian has none under that
+ * name: `tabHeaderEl` is not part of Obsidian's API.
+ */
+function tabHeaderOf(leaf: WorkspaceLeaf): HTMLElement | null {
+  return "tabHeaderEl" in leaf && instanceOf(leaf.tabHeaderEl, HTMLElement)
+    ? leaf.tabHeaderEl
+    : null;
+}
+
 function recordTerminalUse(view: TerminalView): void {
   terminalUses.set(view, ++terminalUseSequence);
 }
@@ -200,32 +208,6 @@ function recordTerminalUse(view: TerminalView): void {
 function terminalUseOf(leaf: WorkspaceLeaf | undefined): number {
   const view = leaf?.view;
   return view instanceof TerminalView ? (terminalUses.get(view) ?? 0) : 0;
-}
-
-/**
- * A leaf's tab header. `tabHeaderEl` is not part of Obsidian's API, and this
- * is the one place that reads it.
- *
- * @param context the plugin
- * @param leaf the leaf
- * @returns the header, or `null` where this Obsidian has none under that name
- */
-function tabHeaderOf(
-  context: TerminalPlugin,
-  leaf: WorkspaceLeaf,
-): Element | null {
-  return revealPrivateFilter<
-    [$WorkspaceLeaf],
-    [Document, Element, HTMLElement]
-  >()(
-    context,
-    [leaf],
-    (leaf0) => {
-      const { tabHeaderEl } = leaf0;
-      return instanceOf(tabHeaderEl, Element) ? tabHeaderEl : null;
-    },
-    () => null,
-  );
 }
 
 export class EditTerminalModal extends DialogModal {
@@ -605,7 +587,7 @@ export class TerminalView extends ItemView {
         // Its presenter writes the header, and clears it when it goes.
         continue;
       }
-      const header = tabHeaderOf(context, leaf);
+      const header = tabHeaderOf(leaf);
       if (!header) {
         continue;
       }
@@ -1243,7 +1225,7 @@ export class TerminalView extends ItemView {
         settings,
       } = context,
       presenter = new TabStatusPresenter({
-        header: (): Element | null => tabHeaderOf(context, leaf),
+        header: (): Element | null => tabHeaderOf(leaf),
         look: () => tabStatusLook(settings.value),
         lookedAt: (): boolean => this.isLookedAt,
       }),
