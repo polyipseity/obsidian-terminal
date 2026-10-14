@@ -158,6 +158,236 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe("hotkeys while a terminal has focus", () => {
+  type Command = ReturnType<typeof library.addCommand>;
+  interface Hotkey {
+    readonly modifiers: readonly string[];
+    readonly key: string;
+  }
+  interface CompiledHotkey {
+    readonly modifiers: string;
+    readonly key: string;
+  }
+
+  // `Mod` stays symbolic: the table and the pressed key are compiled alike.
+  const compile = (modifiers: readonly string[]): string =>
+      [...modifiers].sort((left, right) => left.localeCompare(right)).join(","),
+    // Stands in for `Keymap.isMatch`.
+    isMatch = (hotkey: CompiledHotkey, pressed: CompiledHotkey): boolean =>
+      hotkey.modifiers === pressed.modifiers && hotkey.key === pressed.key;
+
+  /**
+   * The hotkey table of Obsidian 1.14.4. Every change marks it stale, the
+   * user-assigned keys are handed out as a copy, and `bake` lists them before
+   * the default keys of the commands the user did not rebind.
+   */
+  class HotkeyTable {
+    public defaultKeys: Record<string, readonly Hotkey[]> = {};
+    public baked = false;
+    public bakedHotkeys: readonly CompiledHotkey[] = [];
+    public bakedIds: readonly string[] = [];
+    readonly #customKeys = new Map<string, readonly Hotkey[]>();
+
+    public get customKeys(): Record<string, readonly Hotkey[]> {
+      return Object.fromEntries(this.#customKeys);
+    }
+
+    public addDefaultHotkeys(id: string, keys: readonly Hotkey[]): void {
+      this.defaultKeys[id] = keys;
+      this.baked = false;
+    }
+
+    public setHotkeys(id: string, keys: readonly Hotkey[]): void {
+      this.#customKeys.set(id, keys);
+      this.baked = false;
+    }
+
+    public removeHotkeys(id: string): void {
+      this.#customKeys.delete(id);
+      this.baked = false;
+    }
+
+    public bake(): void {
+      if (this.baked) return;
+      this.baked = true;
+      const entries = [
+        ...this.#customKeys,
+        ...Object.entries(this.defaultKeys).filter(
+          ([id]) => !this.#customKeys.has(id),
+        ),
+      ].flatMap(([id, keys]) => keys.map((key) => ({ id, key })));
+      this.bakedIds = entries.map(({ id }) => id);
+      this.bakedHotkeys = entries.map(({ key: { key, modifiers } }) => ({
+        key,
+        modifiers: compile(modifiers),
+      }));
+    }
+  }
+
+  // The focused scope is protected; a subclass hands it to the tests.
+  class ScopeView extends TerminalView {
+    public static readonly scope = ScopeView.focusedScope;
+  }
+
+  // Runs the real `TerminalView.load` and the library's real hotkey listener
+  // against the Obsidian parts both of them reach for.
+  function loadView() {
+    const { context } = makeTerminalContext(),
+      hotkeys = new HotkeyTable(),
+      registry = new Map<string, Command>(),
+      // Obsidian runs the check with `false` and reports success unless it throws.
+      executeCommand = vi.fn((command: Command): boolean => {
+        command.checkCallback?.(false);
+        return true;
+      }),
+      // The mock `Scope` cannot take the catch-all `null, null` the view registers.
+      register = vi.spyOn(ScopeView.scope, "register").mockReturnValue({
+        key: null,
+        modifiers: null,
+        scope: ScopeView.scope,
+      });
+    Object.assign(context.app, {
+      commands: {
+        executeCommand,
+        findCommand: (id: string): Command | undefined => registry.get(id),
+      },
+      hotkeyManager: hotkeys,
+      keymap: { constructor: { isMatch } },
+    });
+    Object.assign(context, {
+      // `Plugin.addCommand` prefixes the id; the table learns the default keys.
+      addCommand: (command: Command): Command => {
+        command.id = `terminal:${command.id}`;
+        registry.set(command.id, command);
+        if (command.hotkeys?.length) {
+          hotkeys.addDefaultHotkeys(command.id, command.hotkeys);
+        }
+        return command;
+      },
+      register: vi.fn(),
+      registerEvent: vi.fn(),
+      registerView: vi.fn(),
+    });
+    TerminalView.load(context);
+    // Spying again hands back the same spy, so a second load in one test
+    // finds its own listener in the last call.
+    const listener = register.mock.lastCall?.[2];
+    if (!listener) throw new Error("Missing focused-scope listener");
+    return {
+      executeCommand,
+      // The user's own hotkey and no default one, as on an opening command.
+      addBoundCommand: (id: string, hotkey: Hotkey) => {
+        const check = vi.fn((_checking: boolean): boolean => true),
+          command = library.addCommand(context, () => id, {
+            checkCallback: check,
+            id,
+          });
+        hotkeys.setHotkeys(command.id, [hotkey]);
+        return { check, command };
+      },
+      // Hands back what the listener answers Obsidian: after `false` Obsidian
+      // consumes the key, after `undefined` the key goes on to the terminal.
+      press: (modifiers: readonly string[], key: string): unknown =>
+        listener(new KeyboardEvent("keydown", { key }), {
+          key,
+          modifiers: compile(modifiers),
+          vkey: key,
+        }),
+    };
+  }
+
+  it("leaves the hotkey of a command outside the list to the terminal", () => {
+    const { addBoundCommand, executeCommand, press } = loadView(),
+      { check } = addBoundCommand("open-terminal.external.root", {
+        key: "t",
+        modifiers: ["Alt", "Ctrl"],
+      });
+
+    expect(press(["Ctrl", "Alt"], "t")).toBeUndefined();
+
+    expect(executeCommand).not.toHaveBeenCalled();
+    expect(check).not.toHaveBeenCalled();
+  });
+
+  it("leaves a key that no hotkey matches to the terminal", () => {
+    const { executeCommand, press } = loadView();
+
+    expect(press(["Ctrl"], "r")).toBeUndefined();
+
+    expect(executeCommand).not.toHaveBeenCalled();
+  });
+
+  it("runs the user-assigned hotkey of a command added with allowWhileFocused", () => {
+    const { addBoundCommand, executeCommand, press } = loadView(),
+      { check, command } = addBoundCommand("open-terminal.external.root", {
+        key: "t",
+        modifiers: ["Alt", "Ctrl"],
+      });
+    TerminalView.allowWhileFocused(command);
+
+    // The key ran a command, so it must not reach the shell as well.
+    expect(press(["Ctrl", "Alt"], "t")).toBe(false);
+
+    expect(executeCommand).toHaveBeenCalledExactlyOnceWith(command);
+    expect(check).toHaveBeenCalledExactlyOnceWith(false);
+  });
+
+  it("keeps the terminal's own hotkeys and lets no other command through", () => {
+    const { addBoundCommand, executeCommand, press } = loadView();
+    TerminalView.allowWhileFocused(
+      addBoundCommand("open-terminal.external.root", {
+        key: "t",
+        modifiers: ["Alt", "Ctrl"],
+      }).command,
+    );
+    addBoundCommand("command-palette", { key: "p", modifiers: ["Mod"] });
+
+    expect(press(["Mod"], "p")).toBeUndefined();
+    expect(executeCommand).not.toHaveBeenCalled();
+
+    expect(press(["Mod", "Shift"], "k")).toBe(false);
+    expect(executeCommand).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ id: "terminal:clear-terminal" }),
+    );
+  });
+
+  it("forgets the commands of an earlier load", () => {
+    const hotkey = { key: "t", modifiers: ["Alt", "Ctrl"] },
+      earlier = loadView();
+    TerminalView.allowWhileFocused(
+      earlier.addBoundCommand("open-terminal.external.root", hotkey).command,
+    );
+    const { addBoundCommand, executeCommand, press } = loadView(),
+      { check } = addBoundCommand("open-terminal.external.root", hotkey);
+
+    press(["Ctrl", "Alt"], "t");
+
+    expect(executeCommand).not.toHaveBeenCalled();
+    expect(check).not.toHaveBeenCalled();
+  });
+
+  it("honours a command allowed after a bake only once the hotkey table is stale again", () => {
+    const { addBoundCommand, executeCommand, press } = loadView(),
+      { command } = addBoundCommand("open-terminal.external.root", {
+        key: "t",
+        modifiers: ["Alt", "Ctrl"],
+      });
+
+    // The first key bakes the table, without the command.
+    press(["Ctrl", "Alt"], "t");
+    expect(executeCommand).not.toHaveBeenCalled();
+
+    TerminalView.allowWhileFocused(command);
+    press(["Ctrl", "Alt"], "t");
+    expect(executeCommand).not.toHaveBeenCalled();
+
+    // Any change of a hotkey marks the table stale.
+    addBoundCommand("command-palette", { key: "p", modifiers: ["Mod"] });
+    press(["Ctrl", "Alt"], "t");
+    expect(executeCommand).toHaveBeenCalledExactlyOnceWith(command);
+  });
+});
+
 describe("src/terminal/view.ts", () => {
   describe("exit notices", () => {
     const exitCodes: readonly Awaited<Pseudoterminal["onExit"]>[] = [
@@ -872,236 +1102,6 @@ describe("src/terminal/view.ts", () => {
       );
       expect(result).toBe("components.terminal.display-name");
     });
-  });
-});
-
-describe("hotkeys while a terminal has focus", () => {
-  type Command = ReturnType<typeof library.addCommand>;
-  interface Hotkey {
-    readonly modifiers: readonly string[];
-    readonly key: string;
-  }
-  interface CompiledHotkey {
-    readonly modifiers: string;
-    readonly key: string;
-  }
-
-  // `Mod` stays symbolic: the table and the pressed key are compiled alike.
-  const compile = (modifiers: readonly string[]): string =>
-      [...modifiers].sort((left, right) => left.localeCompare(right)).join(","),
-    // Stands in for `Keymap.isMatch`.
-    isMatch = (hotkey: CompiledHotkey, pressed: CompiledHotkey): boolean =>
-      hotkey.modifiers === pressed.modifiers && hotkey.key === pressed.key;
-
-  /**
-   * The hotkey table of Obsidian 1.14.4. Every change marks it stale, the
-   * user-assigned keys are handed out as a copy, and `bake` lists them before
-   * the default keys of the commands the user did not rebind.
-   */
-  class HotkeyTable {
-    public defaultKeys: Record<string, readonly Hotkey[]> = {};
-    public baked = false;
-    public bakedHotkeys: readonly CompiledHotkey[] = [];
-    public bakedIds: readonly string[] = [];
-    readonly #customKeys = new Map<string, readonly Hotkey[]>();
-
-    public get customKeys(): Record<string, readonly Hotkey[]> {
-      return Object.fromEntries(this.#customKeys);
-    }
-
-    public addDefaultHotkeys(id: string, keys: readonly Hotkey[]): void {
-      this.defaultKeys[id] = keys;
-      this.baked = false;
-    }
-
-    public setHotkeys(id: string, keys: readonly Hotkey[]): void {
-      this.#customKeys.set(id, keys);
-      this.baked = false;
-    }
-
-    public removeHotkeys(id: string): void {
-      this.#customKeys.delete(id);
-      this.baked = false;
-    }
-
-    public bake(): void {
-      if (this.baked) return;
-      this.baked = true;
-      const entries = [
-        ...this.#customKeys,
-        ...Object.entries(this.defaultKeys).filter(
-          ([id]) => !this.#customKeys.has(id),
-        ),
-      ].flatMap(([id, keys]) => keys.map((key) => ({ id, key })));
-      this.bakedIds = entries.map(({ id }) => id);
-      this.bakedHotkeys = entries.map(({ key: { key, modifiers } }) => ({
-        key,
-        modifiers: compile(modifiers),
-      }));
-    }
-  }
-
-  // The focused scope is protected; a subclass hands it to the tests.
-  class ScopeView extends TerminalView {
-    public static readonly scope = ScopeView.focusedScope;
-  }
-
-  // Runs the real `TerminalView.load` and the library's real hotkey listener
-  // against the Obsidian parts both of them reach for.
-  function loadView() {
-    const { context } = makeTerminalContext(),
-      hotkeys = new HotkeyTable(),
-      registry = new Map<string, Command>(),
-      // Obsidian runs the check with `false` and reports success unless it throws.
-      executeCommand = vi.fn((command: Command): boolean => {
-        command.checkCallback?.(false);
-        return true;
-      }),
-      // The mock `Scope` cannot take the catch-all `null, null` the view registers.
-      register = vi.spyOn(ScopeView.scope, "register").mockReturnValue({
-        key: null,
-        modifiers: null,
-        scope: ScopeView.scope,
-      });
-    Object.assign(context.app, {
-      commands: {
-        executeCommand,
-        findCommand: (id: string): Command | undefined => registry.get(id),
-      },
-      hotkeyManager: hotkeys,
-      keymap: { constructor: { isMatch } },
-    });
-    Object.assign(context, {
-      // `Plugin.addCommand` prefixes the id; the table learns the default keys.
-      addCommand: (command: Command): Command => {
-        command.id = `terminal:${command.id}`;
-        registry.set(command.id, command);
-        if (command.hotkeys?.length) {
-          hotkeys.addDefaultHotkeys(command.id, command.hotkeys);
-        }
-        return command;
-      },
-      register: vi.fn(),
-      registerEvent: vi.fn(),
-      registerView: vi.fn(),
-    });
-    TerminalView.load(context);
-    // Spying again hands back the same spy, so a second load in one test
-    // finds its own listener in the last call.
-    const listener = register.mock.lastCall?.[2];
-    if (!listener) throw new Error("Missing focused-scope listener");
-    return {
-      executeCommand,
-      // The user's own hotkey and no default one, as on an opening command.
-      addBoundCommand: (id: string, hotkey: Hotkey) => {
-        const check = vi.fn((_checking: boolean): boolean => true),
-          command = library.addCommand(context, () => id, {
-            checkCallback: check,
-            id,
-          });
-        hotkeys.setHotkeys(command.id, [hotkey]);
-        return { check, command };
-      },
-      // Hands back what the listener answers Obsidian: after `false` Obsidian
-      // consumes the key, after `undefined` the key goes on to the terminal.
-      press: (modifiers: readonly string[], key: string): unknown =>
-        listener(new KeyboardEvent("keydown", { key }), {
-          key,
-          modifiers: compile(modifiers),
-          vkey: key,
-        }),
-    };
-  }
-
-  it("leaves the hotkey of a command outside the list to the terminal", () => {
-    const { addBoundCommand, executeCommand, press } = loadView(),
-      { check } = addBoundCommand("open-terminal.external.root", {
-        key: "t",
-        modifiers: ["Alt", "Ctrl"],
-      });
-
-    expect(press(["Ctrl", "Alt"], "t")).toBeUndefined();
-
-    expect(executeCommand).not.toHaveBeenCalled();
-    expect(check).not.toHaveBeenCalled();
-  });
-
-  it("leaves a key that no hotkey matches to the terminal", () => {
-    const { executeCommand, press } = loadView();
-
-    expect(press(["Ctrl"], "r")).toBeUndefined();
-
-    expect(executeCommand).not.toHaveBeenCalled();
-  });
-
-  it("runs the user-assigned hotkey of a command added with allowWhileFocused", () => {
-    const { addBoundCommand, executeCommand, press } = loadView(),
-      { check, command } = addBoundCommand("open-terminal.external.root", {
-        key: "t",
-        modifiers: ["Alt", "Ctrl"],
-      });
-    TerminalView.allowWhileFocused(command);
-
-    // The key ran a command, so it must not reach the shell as well.
-    expect(press(["Ctrl", "Alt"], "t")).toBe(false);
-
-    expect(executeCommand).toHaveBeenCalledExactlyOnceWith(command);
-    expect(check).toHaveBeenCalledExactlyOnceWith(false);
-  });
-
-  it("keeps the terminal's own hotkeys and lets no other command through", () => {
-    const { addBoundCommand, executeCommand, press } = loadView();
-    TerminalView.allowWhileFocused(
-      addBoundCommand("open-terminal.external.root", {
-        key: "t",
-        modifiers: ["Alt", "Ctrl"],
-      }).command,
-    );
-    addBoundCommand("command-palette", { key: "p", modifiers: ["Mod"] });
-
-    expect(press(["Mod"], "p")).toBeUndefined();
-    expect(executeCommand).not.toHaveBeenCalled();
-
-    expect(press(["Mod", "Shift"], "k")).toBe(false);
-    expect(executeCommand).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ id: "terminal:clear-terminal" }),
-    );
-  });
-
-  it("forgets the commands of an earlier load", () => {
-    const hotkey = { key: "t", modifiers: ["Alt", "Ctrl"] },
-      earlier = loadView();
-    TerminalView.allowWhileFocused(
-      earlier.addBoundCommand("open-terminal.external.root", hotkey).command,
-    );
-    const { addBoundCommand, executeCommand, press } = loadView(),
-      { check } = addBoundCommand("open-terminal.external.root", hotkey);
-
-    press(["Ctrl", "Alt"], "t");
-
-    expect(executeCommand).not.toHaveBeenCalled();
-    expect(check).not.toHaveBeenCalled();
-  });
-
-  it("honours a command allowed after a bake only once the hotkey table is stale again", () => {
-    const { addBoundCommand, executeCommand, press } = loadView(),
-      { command } = addBoundCommand("open-terminal.external.root", {
-        key: "t",
-        modifiers: ["Alt", "Ctrl"],
-      });
-
-    // The first key bakes the table, without the command.
-    press(["Ctrl", "Alt"], "t");
-    expect(executeCommand).not.toHaveBeenCalled();
-
-    TerminalView.allowWhileFocused(command);
-    press(["Ctrl", "Alt"], "t");
-    expect(executeCommand).not.toHaveBeenCalled();
-
-    // Any change of a hotkey marks the table stale.
-    addBoundCommand("command-palette", { key: "p", modifiers: ["Mod"] });
-    press(["Ctrl", "Alt"], "t");
-    expect(executeCommand).toHaveBeenCalledExactlyOnceWith(command);
   });
 });
 
