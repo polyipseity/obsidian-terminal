@@ -153,6 +153,30 @@ function releaseLookup(slots: LookupSlots): void {
   }
 }
 
+/**
+ * Tells whether a path is a file or a directory on disk, and gives its slot
+ * back once `stat` has answered, which can be long after the drop stopped
+ * waiting for it, the terminal went away, or the plugin was enabled again.
+ * A `stat` that never answers keeps what waits for it, so this holds only
+ * the path and `release`, and nothing of a terminal or of the plugin.
+ *
+ * @param path - absolute path.
+ * @param release - gives back the slot the lookup holds.
+ * @returns `false` as well for a path that could not be looked up.
+ */
+async function statOnDisk(path: string, release: () => void): Promise<boolean> {
+  try {
+    const stats = await (await fsPromises).stat(path);
+    return stats.isFile() || stats.isDirectory();
+  } catch (error) {
+    // Missing, unreadable, or no file system to ask: not a path to insert.
+    /* @__PURE__ */ self.console.debug(error);
+    return false;
+  } finally {
+    release();
+  }
+}
+
 export class DisposerAddon extends Functions implements ITerminalAddon {
   public constructor(...args: readonly (() => void)[]) {
     super({ async: false, settled: true }, ...args);
@@ -974,23 +998,14 @@ export class DragAndDropAddon implements ITerminalAddon {
     if (release === null) {
       return false;
     }
-    try {
-      if (!awaited()) {
-        // The slot came free as the drop gave up.
-        return false;
-      }
-      const stats = await (await fsPromises).stat(path);
-      return stats.isFile() || stats.isDirectory();
-    } catch (error) {
-      // Missing, unreadable, or no file system to ask: not a path to insert.
-      /* @__PURE__ */ activeSelf(this.element).console.debug(error);
-      return false;
-    } finally {
-      // Only now that `stat` has answered, which can be long after the drop
-      // stopped waiting for it, the terminal went away, or the plugin was
-      // enabled again.
+    if (!awaited()) {
+      // The slot came free as the drop gave up.
       release();
+      return false;
     }
+    // Returned, not awaited: this call is then done, and what waits for the
+    // `stat` holds nothing of this addon (see `statOnDisk`).
+    return statOnDisk(path, release);
   }
 
   /**

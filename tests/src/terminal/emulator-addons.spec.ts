@@ -42,6 +42,8 @@ import {
   type PluginContext,
   notice2,
 } from "@polyipseity/obsidian-plugin-library";
+import { setFlagsFromString } from "node:v8";
+import { runInNewContext } from "node:vm";
 import { noop } from "ts-essentials";
 import { Settings } from "../../../src/settings-data.js";
 import {
@@ -1844,6 +1846,57 @@ describe("DragAndDropAddon", () => {
     const dropped = bed.fire("drop", init);
     await tick();
     return dropped;
+  }
+
+  /**
+   * Drops a URI list on a terminal of its own, lets the drop's deadline pass
+   * and closes the terminal. Nothing of the test holds the addon then: not
+   * the beds, nor a mock that was handed one of its listeners.
+   *
+   * @returns a weak reference to the addon.
+   */
+  async function lookUpAndClose(): Promise<WeakRef<DragAndDropAddon>> {
+    const element = document.createElement("div"),
+      context = {
+        app: { vault: {} },
+        language: { value: { t: (key: string): string => key } },
+        settings: { value: { noticeTimeout: NOTICE_TIMEOUT } },
+      } as unknown as PluginContext,
+      addon = new DragAndDropAddon(context, element),
+      listens = (): IDisposable => ({ dispose: noop }),
+      terminal = { onData: listens, onKey: listens } as unknown as Terminal,
+      event = new Event("drop", { bubbles: true, cancelable: true }),
+      uriList = `file://${DESKTOP}/b.png`;
+    Object.defineProperty(event, "dataTransfer", {
+      value: {
+        effectAllowed: "all",
+        files: [],
+        getData: (type: string): string => (type === URI_LIST ? uriList : ""),
+        types: [URI_LIST],
+      },
+    });
+    addon.activate(terminal);
+    element.dispatchEvent(event);
+    await vi.advanceTimersByTimeAsync(2000);
+    addon.dispose();
+    return new WeakRef(addon);
+  }
+
+  /** Collects every object that nothing reaches, as V8 does when it must. */
+  function collectGarbage(): void {
+    // V8 gives a script `gc` in a context made after it is told to.
+    setFlagsFromString("--expose-gc");
+    const gc: unknown = runInNewContext("gc");
+    if (!isCallable(gc)) {
+      throw new Error("V8 gave no gc");
+    }
+    gc();
+    gc();
+  }
+
+  /** Narrows to a function that takes nothing. */
+  function isCallable(value: unknown): value is () => void {
+    return typeof value === "function";
   }
 
   /** One drag of each kind the terminal takes: name, bed, data transfer. */
@@ -3987,6 +4040,24 @@ describe("DragAndDropAddon", () => {
     );
     expect(after.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
     expect(notices()).toEqual([NO_PATHS]);
+  });
+
+  // A `stat` on a volume that never answers is never let go of: what waits
+  // for it stays as long. That must not be the terminal, nor the plugin that
+  // ran it, once it is closed or the plugin disabled.
+  it("keeps nothing of a terminal that is gone in a lookup without an answer", async () => {
+    vi.useFakeTimers();
+    dragAndDropEnvironment.stat.mockReturnValue(pendingStat().promise);
+
+    const addon = await lookUpAndClose();
+    expect(dragAndDropEnvironment.stat).toHaveBeenCalledOnce();
+    // A weak reference keeps its target to the end of the task it is read
+    // in, and so do timers that are not real.
+    vi.useRealTimers();
+    await tick();
+    collectGarbage();
+
+    expect(addon.deref()).toBeUndefined();
   });
 
   // === Focus after a drop ===
