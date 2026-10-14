@@ -86,6 +86,7 @@ import { XtermTerminalEmulator } from "./emulator.js";
 import {
   TAB_STATUS_ATTRIBUTES,
   TabStatusPresenter,
+  isTabStatusShown,
   needsAttention,
   onWindowFocus,
   tabStatusLook,
@@ -558,20 +559,21 @@ export class TerminalView extends ItemView {
   }
 
   /**
-   * Gives the tabs whose view is not loaded the tab icon and its size, as a
-   * loaded view has them, whatever Program status says.
+   * Gives the tabs whose view is not loaded the icon of the current Program
+   * status and its size, as a loaded view has them.
    *
    * Obsidian loads the view of a background tab only when the tab is
    * opened. Until then the tab has this view's type and no view of ours, so
    * nothing has written its header or asked for its icon: it shows the icon
-   * saved with the layout (3.28.0 saved Lucide's `terminal`, and builds
-   * before this one could save `terminal:tab-tile`), at Obsidian's size,
-   * beside tabs that show the tab icon at `TAB_ICON_SIZE`.
+   * saved with the layout (3.28.0 saved Lucide's `terminal`; later builds
+   * `terminal:tab-tile` or `terminal:tab-bezel`, whichever Program status
+   * then chose), at Obsidian's size, beside tabs that show their icon at
+   * `TAB_ICON_SIZE`.
    *
    * @param context the plugin
    */
   public static dressUnloadedTabs(context: TerminalPlugin): void {
-    const id = tabIconId(context);
+    const id = tabIconId(context, context.settings.value);
     for (const leaf of context.app.workspace.getLeavesOfType(
       TerminalView.type.namespaced(context),
     )) {
@@ -636,12 +638,13 @@ export class TerminalView extends ItemView {
     );
 
     /*
-     * The tabs whose view is not loaded get the tab icon and its size when
-     * the layout is there, and again whenever it changes: a layout can bring
-     * new ones (a saved workspace, a tab moved to another window), whatever
-     * Program status says. `onLayoutReady` has no unsubscribe and still
-     * fires after the plugin unloads; the flag keeps it from writing on tabs
-     * the plugin has left.
+     * The tabs whose view is not loaded get their icon and its size when the
+     * layout is there, and again whenever it changes: a layout can bring new
+     * ones (a saved workspace, a tab moved to another window). Their icon
+     * changes when Program status goes from None or to it; between Still and
+     * Animated it stays. `onLayoutReady` has no unsubscribe and still fires
+     * after the plugin unloads; the flag keeps it from writing on tabs the
+     * plugin has left.
      */
     let unloaded = false;
     const dress = (): void => {
@@ -651,6 +654,9 @@ export class TerminalView extends ItemView {
     };
     workspace.onLayoutReady(dress);
     context.registerEvent(workspace.on("layout-change", dress));
+    context.register(
+      context.settings.onMutate((value) => isTabStatusShown(value), dress),
+    );
     context.register(() => {
       unloaded = true;
       TerminalView.undressUnloadedTabs(context);
@@ -877,7 +883,7 @@ export class TerminalView extends ItemView {
   }
 
   public override getIcon(): string {
-    return tabIconId(this.context);
+    return tabIconId(this.context, this.context.settings.value);
   }
 
   public getViewType(): string {
@@ -1167,6 +1173,20 @@ export class TerminalView extends ItemView {
     );
     this.showTabIconSize();
     this.register(whileTabStatusShown(settings, () => this.showTabStatus()));
+    /*
+     * The icon is Obsidian's to draw, from `getIcon`: it changes when Program
+     * status goes from None or to it. The gate above hears the same change;
+     * whichever is first, Obsidian's redraw writes only the icon, the title
+     * and the type, and leaves the status attributes as the gate leaves them.
+     */
+    this.register(
+      settings.onMutate(
+        (value) => isTabStatusShown(value),
+        () => {
+          this.redrawHeader();
+        },
+      ),
+    );
     TerminalView.lastFocusTimes.set(this, Date.now());
     if (this.isFocused && settings.value.interceptKeysWhenFocused) {
       keymap.pushScope(focusedScope);

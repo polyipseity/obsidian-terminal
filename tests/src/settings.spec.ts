@@ -13,7 +13,7 @@ import {
   removeIcon,
 } from "obsidian";
 import * as doctor from "../../src/terminal/win32-doctor.js";
-import { tabIconId } from "../../src/icons.js";
+import { bezelIconId, tileIconId } from "../../src/icons.js";
 import { SettingTab } from "../../src/settings.js";
 import { loadDocumentations } from "../../src/documentations.js";
 import {
@@ -1447,19 +1447,22 @@ describe("settings tab descriptions", () => {
 });
 
 describe("program status row", () => {
-  const SVG = '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
-  let iconId: string | null = null;
+  /** A registered icon that says which it is. */
+  const svg = (name: string): string =>
+    `<svg xmlns="http://www.w3.org/2000/svg" data-icon="${name}"></svg>`;
+  // Mutable: what a test registered, taken back after it.
+  let iconIds: readonly string[] = [];
 
   afterEach(() => {
-    if (iconId !== null) {
-      removeIcon(iconId);
-      iconId = null;
+    for (const id of iconIds) {
+      removeIcon(id);
     }
+    iconIds = [];
     vi.restoreAllMocks();
     document.body.replaceChildren();
   });
 
-  /** The whole settings tab, drawn as Obsidian draws it, with the tab icon registered. */
+  /** The whole settings tab, drawn as Obsidian draws it, with both tab icons registered. */
   async function drawSettingsTab(initial: Settings.TabStatus = "none") {
     const i18n = createInstance();
     await i18n.init({
@@ -1488,8 +1491,9 @@ describe("program status row", () => {
       settingsM.tabStatus = initial;
     });
     const write = vi.spyOn(context.settings, "write");
-    iconId = tabIconId(context);
-    addIcon(iconId, SVG);
+    iconIds = [bezelIconId(context), tileIconId(context)];
+    addIcon(bezelIconId(context), svg("bezel"));
+    addIcon(tileIconId(context), svg("tile"));
     const tab = new LoadedSettingTab(context, loadDocumentations(context));
     document.body.append(tab.containerEl);
     tab.load();
@@ -1587,15 +1591,23 @@ describe("program status row", () => {
     }
   });
 
-  it("draws every option on the registered tab icon at 22 pixels", async () => {
+  it("draws every option on the icon a tab shows under it, at 22 pixels", async () => {
     const { tab, tile, tiles } = await drawSettingsTab(),
       host = (value: Settings.TabStatus): Element | null =>
-        tile(value).querySelector(".tts-host");
+        tile(value).querySelector(".tts-host"),
+      drawn = (value: Settings.TabStatus): string | null | undefined =>
+        tile(value)
+          .querySelector(".tts-host-icon svg")
+          ?.getAttribute("data-icon");
     try {
       for (const each of tiles()) {
         expect(each.querySelector(".tts-host-icon svg")).not.toBeNull();
         expect(each.classList.contains("tts-pick-tile-text")).toBe(false);
       }
+      // None: the rounded square without marks; the others: the raised border.
+      expect(drawn("none")).toBe("tile");
+      expect(drawn("still")).toBe("bezel");
+      expect(drawn("animated")).toBe("bezel");
       expect(
         host("none")
           ?.getAttributeNames()

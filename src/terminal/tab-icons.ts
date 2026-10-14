@@ -1,15 +1,17 @@
 /**
- * The plugin's two drawn icons. The tab icon is one composite SVG: the
- * terminal icon and every status mark; `tab-status.css` decides which mark
- * shows, from the `data-terminal-*` attributes on the tab header. The ribbon
- * icon is the terminal drawn in lines alone, with no mark.
+ * The plugin's two drawn icons. The tab icon (`bezel`) is one composite SVG:
+ * the terminal icon and every status mark; `tab-status.css` decides which
+ * mark shows, from the `data-terminal-*` attributes on the tab header. A
+ * terminal tab shows it under Program status Still and Animated. The tile
+ * icon (`tile`) is the terminal drawn in lines alone, with no mark: the
+ * ribbon shows it, and so does a terminal tab under None.
  *
  * Obsidian clones a registered icon into every tab, so nothing here may carry
  * an `id` or point at one: no `<defs>`, masks, gradients or `<use>`. The tab
  * icon is a small image (`tab-skins.ts`), a square with a raised border,
- * under the prompt drawn on its face (`bezel`): an `<image>` with a data URI
- * needs no `id`. The ribbon's (`tile`) has no image: its tile is a rounded
- * square drawn as a line.
+ * under the prompt drawn on its face: an `<image>` with a data URI needs no
+ * `id`. The tile icon has no image: its tile is a rounded square drawn as a
+ * line.
  *
  * The marks stand on the tile's upper right corner and reach past it.
  * Nothing is cut out of the tile for them: a white ring and a dark hairline
@@ -21,8 +23,8 @@
 import { TAB_SKINS, type TabSkin, type TabSkinName } from "./tab-skins.js";
 
 /**
- * The two drawings, by the tile they stand on: `bezel`, the tab's, and
- * `tile`, the ribbon's. Neither is a setting.
+ * The two drawings, by the tile they stand on: `bezel`, with the marks, and
+ * `tile`, without. Program status chooses between them on a tab.
  */
 export type TabIconSet = "bezel" | "tile";
 
@@ -190,10 +192,10 @@ export const TAB_ICON_LINE_TILE = Object.freeze({
   y: 2.6,
 });
 
-/** The root class of the ribbon's icon, and the class of its square. */
-export const RIBBON_ICON_CLASSES = Object.freeze({
-  root: "terminal-ribbon-icon",
-  square: "terminal-ribbon-icon-square",
+/** The root class of the tile icon, and the class of its square. */
+export const TILE_ICON_CLASSES = Object.freeze({
+  root: "tts-tile-icon",
+  square: "tts-tile-icon-square",
 });
 
 /**
@@ -232,9 +234,9 @@ export function tabIconSkinned(name: TabSkinName): TabIconParts {
 const TAB_SET = "bezel" satisfies TabIconSet;
 
 /**
- * The content to register for the tab icon: Obsidian wraps it in
- * `<svg viewBox="0 0 100 100" class="svg-icon …">`. It is the same at every
- * Program status; with none, no rule shows a mark.
+ * The content to register for the tab icon of Still and Animated: Obsidian
+ * wraps it in `<svg viewBox="0 0 100 100" class="svg-icon …">`. Without a
+ * status on the header, no rule shows a mark.
  *
  * Nothing in the icon moves by itself. The three dots of a working program
  * are lit by two boxes that the stylesheet draws over the icon, and a new
@@ -246,15 +248,16 @@ export function composeTabIcon(): string {
 }
 
 /**
- * The content to register for the ribbon button: the terminal drawn in lines
+ * The content to register for the tile icon, the ribbon button's and a
+ * terminal tab's under Program status None: the terminal drawn in lines
  * alone (`tile`), a rounded square around a prompt, both in the icon's
  * colour, with no mark and no image. Its classes are its own, so no rule of
- * the tab icon reaches it; one rule of `tab-status.css` draws the square
- * fainter than the prompt.
+ * the tab icon or of a status reaches it; one rule of `tab-status.css`
+ * draws the square fainter than the prompt.
  */
-export function composeRibbonIcon(): string {
+export function composeTileIcon(): string {
   const { radius, size, x, y } = TAB_ICON_LINE_TILE,
-    { root, square } = RIBBON_ICON_CLASSES;
+    { root, square } = TILE_ICON_CLASSES;
   return [
     `<g class="${root}" ${TAB_ICON_WRAPPER_ATTRIBUTES}>`,
     `<rect class="${square}" x="${num(x)}" y="${num(y)}" width="${num(size)}" height="${num(size)}" rx="${num(radius)}"/>`,

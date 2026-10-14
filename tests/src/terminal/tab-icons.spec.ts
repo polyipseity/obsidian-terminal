@@ -2,8 +2,9 @@
  * Unit tests for `src/terminal/tab-icons.ts`, and checks of the stylesheet
  * that drives the icons, `src/terminal/tab-status.css`. The two are one
  * feature: the tab icon carries the tile and every mark, the stylesheet
- * decides what shows. The ribbon's icon is the terminal in lines alone, with
- * no mark and classes of its own.
+ * decides what shows. The tile icon, the ribbon's and a tab's under Program
+ * status None, is the terminal in lines alone, with no mark and classes of
+ * its own.
  *
  * Nothing is rendered here. The icon is read as XML into a tree; the
  * stylesheet is split into rules; and a small selector matcher with the
@@ -15,14 +16,14 @@
  * cannot judge fails the tests instead of passing unread.
  */
 import {
-  RIBBON_ICON_CLASSES,
+  TILE_ICON_CLASSES,
   TAB_ICON_CLASSES,
   TAB_ICON_LINE_TILE,
   TAB_ICON_MARKS,
   TAB_ICON_SIZE,
   TAB_ICON_TILE_BOX,
   TAB_ICON_WRAPPER_ATTRIBUTES,
-  composeRibbonIcon,
+  composeTileIcon,
   composeTabIcon,
   tabIconSkinned,
 } from "../../../src/terminal/tab-icons.js";
@@ -189,11 +190,11 @@ function place(of: Part): { readonly x: number; readonly y: number } {
 }
 
 const TAB_ICON = readXml(composeTabIcon()),
-  RIBBON_ICON = readXml(composeRibbonIcon()),
+  TILE_ICON = readXml(composeTileIcon()),
   /** Both icons, by what they are. */
   ICONS = [
-    ["tab", TAB_ICON],
-    ["ribbon", RIBBON_ICON],
+    ["bezel", TAB_ICON],
+    ["tile", TILE_ICON],
   ] as const;
 
 /** The tab icon, as a tree. */
@@ -534,8 +535,12 @@ function simplesOf({ compounds }: Complex): readonly Simple[] {
 
 /** A tab header, or a preview in the settings, with an icon on it. */
 interface Scene {
-  /** Which icon is drawn: the tab's, or, to show that no rule reaches it, the ribbon's. */
-  readonly icon: "ribbon" | "tab";
+  /**
+   * Which icon is drawn: the one with the marks (`bezel`), or the rounded
+   * square of Program status None and the ribbon (`tile`), which no rule of
+   * a status reaches.
+   */
+  readonly icon: "bezel" | "tile";
   /** `null`: the program has reported nothing, so no status is written. */
   readonly status: TabStatusDisplay | null;
   /** `null`: Program status None, under which no motion is written. */
@@ -569,7 +574,7 @@ interface Scene {
 const PLAIN: Scene = {
   active: false,
   host: "tab",
-  icon: "tab",
+  icon: "bezel",
   light: false,
   motion: "still",
   old: false,
@@ -613,7 +618,7 @@ function view(over: Partial<Scene> = {}): View {
       ...(scene.pop === null ? {} : { [TAB_STATUS_ATTRIBUTES.pop]: scene.pop }),
       ...(scene.title ? { [TAB_STATUS_ATTRIBUTES.title]: "" } : {}),
     },
-    icon = scene.icon === "tab" ? TAB_ICON : RIBBON_ICON,
+    icon = scene.icon === "bezel" ? TAB_ICON : TILE_ICON,
     svg = part("svg", new Map([["class", "svg-icon"]]), [icon]),
     tab = scene.host === "tab",
     container = box(tab ? "workspace-tab-header-inner-icon" : "tts-host-icon", [
@@ -1003,7 +1008,7 @@ describe("composeTabIcon", () => {
   );
 
   it("names no colour in either icon's markup", () => {
-    for (const source of [composeTabIcon(), composeRibbonIcon()]) {
+    for (const source of [composeTabIcon(), composeTileIcon()]) {
       expect(source).not.toMatch(/\b(?:rgba?|hsla?|color)\(/iu);
     }
   });
@@ -1031,11 +1036,11 @@ describe("composeTabIcon", () => {
   });
 });
 
-describe("composeRibbonIcon", () => {
+describe("composeTileIcon", () => {
   const square = (): Part =>
       one(
-        RIBBON_ICON.children.filter((child) =>
-          child.classes.has(RIBBON_ICON_CLASSES.square),
+        TILE_ICON.children.filter((child) =>
+          child.classes.has(TILE_ICON_CLASSES.square),
         ),
         "square",
       ),
@@ -1068,35 +1073,44 @@ describe("composeRibbonIcon", () => {
       return found;
     };
 
-  it("has a root of its own: no class of the tab icon, so no rule of the tab reaches it", () => {
-    expect(RIBBON_ICON.attributes.get("class")).toBe(RIBBON_ICON_CLASSES.root);
-    const classes = within([RIBBON_ICON]).flatMap((chain) => [
-      ...subject(chain).classes,
-    ]);
-    expect(classes.filter((name) => name.startsWith("tts"))).toEqual([]);
+  it("has a root of its own: no class of the tab icon, so no rule of the tab icon reaches it", () => {
+    expect(TILE_ICON.attributes.get("class")).toBe(TILE_ICON_CLASSES.root);
+    const classes = within([TILE_ICON]).flatMap((chain) => [
+        ...subject(chain).classes,
+      ]),
+      tabs = new Set(
+        within([TAB_ICON]).flatMap((chain) => [...subject(chain).classes]),
+      );
+    expect(classes.filter((name) => tabs.has(name))).toEqual([]);
+    // Not the root of the tab icon, nor a part of it: no mark, symbol or skin.
+    expect(
+      classes.filter((name) =>
+        /^tts(?:$|-(?:set|t|m|mk|sym|skin|ink)(?:-|$))/u.test(name),
+      ),
+    ).toEqual([]);
     expect([...new Set(classes)].sort()).toEqual(
-      [RIBBON_ICON_CLASSES.root, RIBBON_ICON_CLASSES.square].sort(),
+      [TILE_ICON_CLASSES.root, TILE_ICON_CLASSES.square].sort(),
     );
   });
 
   it("has no mark and no symbol", () => {
-    const source = composeRibbonIcon();
+    const source = composeTileIcon();
     expect(source).not.toMatch(/tts-m|tts-sym|<circle|<polyline/u);
     expect(
-      within([RIBBON_ICON])
+      within([TILE_ICON])
         .map(subject)
         .map((found) => found.tag),
     ).toEqual(["g", "rect", "g", "path", "path"]);
   });
 
   it("is a rounded square and a prompt, with no image and no shadow", () => {
-    const [tile, prompt, ...more] = RIBBON_ICON.children;
+    const [tile, prompt, ...more] = TILE_ICON.children;
     expect(more).toEqual([]);
     expect(tile).toBe(square());
     expect(tile?.tag).toBe("rect");
     expect(prompt?.tag).toBe("g");
     expect(prompt?.children.map((line) => line.tag)).toEqual(["path", "path"]);
-    expect(composeRibbonIcon()).not.toMatch(/<image|data:|opacity=/u);
+    expect(composeTileIcon()).not.toMatch(/<image|data:|opacity=/u);
   });
 
   it("draws the square to its measures, a square with rounded corners and no circle", () => {
@@ -1139,12 +1153,12 @@ describe("composeRibbonIcon", () => {
   });
 
   it("paints the square and the prompt as the icon's own lines: no paint of their own", () => {
-    for (const chain of within([RIBBON_ICON]).slice(1)) {
+    for (const chain of within([TILE_ICON]).slice(1)) {
       const { attributes } = subject(chain);
       expect(attributes.has("fill")).toBe(false);
       expect(attributes.has("stroke")).toBe(false);
     }
-    const [, prompt] = RIBBON_ICON.children;
+    const [, prompt] = TILE_ICON.children;
     // As wide as the square's line, which is the wrapper's.
     expect(
       prompt === undefined ? Number.NaN : number(prompt, "stroke-width"),
@@ -1154,7 +1168,7 @@ describe("composeRibbonIcon", () => {
 
   it("keeps the prompt inside the square, clear of its line", () => {
     const { size, x, y } = TAB_ICON_LINE_TILE,
-      [, prompt] = RIBBON_ICON.children,
+      [, prompt] = TILE_ICON.children,
       points = (prompt?.children ?? []).flatMap((line) =>
         corners(line.attributes.get("d") ?? ""),
       );
@@ -1498,13 +1512,13 @@ describe("tabIconSkinned", () => {
         .map(subject)
         .filter((found) => found.tag === "image");
 
-  it("stands the tab icon on the one rendered tile, and the ribbon's on none", () => {
+  it("stands the tab icon on the one rendered tile, and the tile icon on none", () => {
     expect(Object.keys(TAB_SKINS)).toEqual(["bezel"]);
     expect(isSkin("bezel")).toBe(true);
     expect(isSkin("tile")).toBe(false);
     // The tab icon is that tile's drawing, with the marks.
     expect(composeTabIcon()).toContain(tabIconSkinned("bezel").terminal);
-    expect(parts([RIBBON_ICON], "tts-skin")).toEqual([]);
+    expect(parts([TILE_ICON], "tts-skin")).toEqual([]);
   });
 
   it("gives the tile a raised border of a tenth of its width", () => {
@@ -1589,7 +1603,7 @@ describe("tabIconSkinned", () => {
   it("draws every prompt in lines about as wide as Obsidian's own", () => {
     for (const prompt of [
       subject(one(parts([drawn()], "tts-ink"), "prompt")),
-      RIBBON_ICON.children[1],
+      TILE_ICON.children[1],
     ]) {
       const width =
         prompt === undefined ? Number.NaN : number(prompt, "stroke-width");
@@ -1611,12 +1625,12 @@ describe("tab-status.css", () => {
         second.value === "terminal:terminal"
       );
     },
-    /** The classes of an icon's own root element: the tab icon's or the ribbon's. */
+    /** The classes of an icon's own root element: the tab icon's or the tile icon's. */
     isIcon = (simples: readonly Simple[]): boolean => {
       const [first] = simples;
       return (
         first?.kind === "class" &&
-        ["tts", "tts-set-bezel", RIBBON_ICON_CLASSES.root].includes(first.name)
+        ["tts", "tts-set-bezel", TILE_ICON_CLASSES.root].includes(first.name)
       );
     },
     isPreview = (simples: readonly Simple[]): boolean => {
@@ -1637,7 +1651,7 @@ describe("tab-status.css", () => {
     expect(sheet.rules.length).toBeGreaterThan(25);
   });
 
-  it("starts every selector at the terminal tab header, at .tts-host, at the tab icon or at the ribbon icon", () => {
+  it("starts every selector at the terminal tab header, at .tts-host, at the tab icon or at the tile icon", () => {
     for (const rule of READ) {
       for (const selector of rule.selectors) {
         const [start] = selector.compounds,
@@ -1784,6 +1798,25 @@ describe("tab-status.css", () => {
         [TAB_STATUS_ATTRIBUTES.status]: "done",
       }).length,
     ).toBeGreaterThan(sized.length);
+  });
+
+  it("asks for no attribute of a status, a motion, a pop or a title in a rule of the tile icon's classes", () => {
+    const tile = new Set<string>(Object.values(TILE_ICON_CLASSES)),
+      rules = READ.filter((rule) =>
+        rule.selectors
+          .flatMap(simplesOf)
+          .some((simple) => simple.kind === "class" && tile.has(simple.name)),
+      );
+    // The faint square, and nothing else.
+    expect(rules).toHaveLength(1);
+    for (const rule of rules) {
+      expect(
+        rule.selectors
+          .flatMap(simplesOf)
+          .flatMap((simple) => (simple.kind === "attribute" ? [simple] : [])),
+      ).toEqual([]);
+      expect([...rule.declarations.keys()]).toEqual(["stroke-opacity"]);
+    }
   });
 
   it("names only classes that an icon, a tab or a preview has", () => {
@@ -2133,12 +2166,12 @@ describe("tab-status.css", () => {
     );
 
     it.each(STATUSES)(
-      "leaves the ribbon's icon as it is under %s: no rule of a status reaches it",
+      "leaves the tile icon as it is under %s: no rule of a status reaches it",
       (status) => {
         for (const host of HOSTS) {
           for (const motion of MOTIONS) {
-            const on = view({ host, icon: "ribbon", motion, status }),
-              rest = view({ host, icon: "ribbon", motion: null, status: null });
+            const on = view({ host, icon: "tile", motion, status }),
+              rest = view({ host, icon: "tile", motion: null, status: null });
             for (const [index, chain] of within(on.icon).entries()) {
               const before = within(rest.icon)[index] ?? chain;
               for (const property of [
@@ -2217,35 +2250,32 @@ describe("tab-status.css", () => {
           true,
         );
       }
-      // The ribbon's icon is lines alone: nothing to cast a shadow, and none is drawn.
-      expect(parts([RIBBON_ICON], "tts-skin-drop")).toHaveLength(0);
+      // The tile icon is lines alone: nothing to cast a shadow, and none is drawn.
+      expect(parts([TILE_ICON], "tts-skin-drop")).toHaveLength(0);
     });
 
-    it("draws the prompt green on the tile with a dark face, and in the text colour on the ribbon", () => {
+    it("draws the prompt green on the tile with a dark face, and in the text colour on the tile icon", () => {
       const on = view();
       expect(
         declared(on, one(parts(on.icon, "tts-ink"), "prompt"), "stroke"),
       ).toBe("var(--color-green)");
       // Nothing declared: the icon's own `stroke="currentColor"` holds.
-      const ribbon = view({ icon: "ribbon" }),
-        [, prompt] = ribbon.icon.at(-1)?.children ?? [];
+      const lines = view({ icon: "tile" }),
+        [, prompt] = lines.icon.at(-1)?.children ?? [];
       expect(prompt?.tag).toBe("g");
       expect(
         prompt === undefined
           ? "no prompt"
-          : declared(ribbon, [...ribbon.icon, prompt], "stroke"),
+          : declared(lines, [...lines.icon, prompt], "stroke"),
       ).toBeUndefined();
     });
 
-    it("draws the ribbon's square fainter than its prompt, in every scene, and thins nothing of the tab's tile", () => {
+    it("draws the tile icon's square fainter than its prompt, in every scene, and thins nothing of the tab icon's tile", () => {
       for (const host of HOSTS) {
         for (const status of [null, ...STATUSES]) {
           for (const light of [false, true]) {
-            const on = view({ host, icon: "ribbon", light, status }),
-              square = one(
-                parts(on.icon, RIBBON_ICON_CLASSES.square),
-                "square",
-              ),
+            const on = view({ host, icon: "tile", light, status }),
+              square = one(parts(on.icon, TILE_ICON_CLASSES.square), "square"),
               [, prompt] = on.icon.at(-1)?.children ?? [],
               faint = Number(declared(on, square, "stroke-opacity"));
             expect(faint).toBeGreaterThan(0.4);
@@ -2261,8 +2291,8 @@ describe("tab-status.css", () => {
           }
         }
       }
-      // And it is the ribbon's alone: the same faint square, wherever the icon is.
-      const alone: Chain = [RIBBON_ICON],
+      // And it is the tile icon's alone: the same faint square, wherever the icon is.
+      const alone: Chain = [TILE_ICON],
         bare: View = {
           container: [],
           header: [],
@@ -2273,7 +2303,7 @@ describe("tab-status.css", () => {
       expect(
         declared(
           bare,
-          one(parts(alone, RIBBON_ICON_CLASSES.square), "square"),
+          one(parts(alone, TILE_ICON_CLASSES.square), "square"),
           "stroke-opacity",
         ),
       ).toBe("0.62");
@@ -2295,7 +2325,7 @@ describe("tab-status.css", () => {
       expect(
         sheet.rules.filter((rule) => /clip|mask/u.test(rule.body)),
       ).toEqual([]);
-      for (const source of [composeTabIcon(), composeRibbonIcon()]) {
+      for (const source of [composeTabIcon(), composeTileIcon()]) {
         expect(source).not.toMatch(/clip-path|mask/u);
       }
     });
@@ -2304,7 +2334,7 @@ describe("tab-status.css", () => {
       expect(css.replace(/\/\*[\s\S]*?\*\//gu, "")).not.toMatch(
         /stroke-dash|pathLength/u,
       );
-      for (const source of [composeTabIcon(), composeRibbonIcon()]) {
+      for (const source of [composeTabIcon(), composeTileIcon()]) {
         expect(source).not.toMatch(/stroke-dash|pathLength/u);
       }
     });
@@ -3267,6 +3297,45 @@ describe("tab-status.css", () => {
       expect(declared(preview, preview.container, "--icon-size")).toBe(
         "var(--tts-size, calc(var(--icon-xs, 14px) + 2px))",
       );
+    });
+
+    it("sizes and places the tile icon of Program status None as it does the tab icon, from the header and the container alone", () => {
+      const PROPERTIES = [
+        "--icon-size",
+        "--tts-down",
+        "--tts-u",
+        "position",
+        "top",
+      ] as const;
+      for (const host of HOSTS) {
+        for (const split of ["mod-root", ...SIDES] as const) {
+          // What a tab under None carries: the size, and nothing of a status.
+          const tile = view({
+              host,
+              icon: "tile",
+              motion: null,
+              split,
+              status: null,
+            }),
+            bezel = view({ host, motion: null, split, status: null }),
+            where = `${host} ${split}`;
+          for (const property of PROPERTIES) {
+            expect(declared(tile, tile.container, property), where).toBe(
+              declared(bezel, bezel.container, property),
+            );
+          }
+          expect(inherited(tile, tile.container, "--tts-size"), where).toBe(
+            inherited(bezel, bezel.container, "--tts-size"),
+          );
+        }
+        // Beside a title: 22 px, and a little lower.
+        const on = view({ host, icon: "tile", motion: null, status: null });
+        expect(inherited(on, on.container, "--tts-size")).toBe("22px");
+        expect(declared(on, on.container, "--icon-size")).toMatch(
+          /^var\(--tts-size, /u,
+        );
+        expect(declared(on, on.container, "top")).toBe("var(--tts-down)");
+      }
     });
 
     it("sets the icon a little lower beside a title, by layout", () => {

@@ -10,7 +10,7 @@
  * - Copy and edit pane-menu entries
  * - `focus` reveal ordering and failure handling
  * - Program status on the tab under Still and Animated, and nothing of it
- *   under None but the tab icon's size
+ *   under None but the icon's size; the tab's icon under each Program status
  * - `dressUnloadedTabs` and `undressUnloadedTabs`: the icon and size of tabs
  *   whose view is not loaded
  */
@@ -2246,8 +2246,17 @@ function setTabStatus(
   mutateSettings(context, { tabStatus });
 }
 
-/** The icon of every terminal tab, whatever Program status says. */
-const TAB_ICON = "terminal:tab-bezel";
+/**
+ * The icon of a terminal tab under each Program status: the rounded square
+ * without marks under None, the one with a raised border under the others.
+ */
+const TAB_ICONS = {
+    animated: "terminal:tab-bezel",
+    none: "terminal:tab-tile",
+    still: "terminal:tab-bezel",
+  } as const satisfies Readonly<Record<Settings.TabStatus, string>>,
+  BEZEL_ICON = TAB_ICONS.still,
+  TILE_ICON = TAB_ICONS.none;
 
 describe("program status on the tab", () => {
   const ATTRIBUTES = [
@@ -2301,7 +2310,13 @@ describe("program status on the tab", () => {
     const { context, workspace } = makeTerminalContext({ tabStatus }),
       { leaf, view } = makeTerminalLeaf(context),
       header = document.createElement("div"),
-      updateHeader = vi.fn<() => void>(),
+      // As Obsidian does: it draws the icon the view names.
+      updateHeader = vi.fn<() => string>(() => view.getIcon()),
+      /** The icons the tab was drawn with, since the last `mockClear`. */
+      drawn = (): readonly string[] =>
+        updateHeader.mock.results.flatMap((result) =>
+          result.type === "return" ? [result.value] : [],
+        ),
       registered: Handler[] = [],
       register = (key: Handler["key"], run: Handler["run"]): Handler => {
         const handler: Handler = {
@@ -2395,6 +2410,7 @@ describe("program status on the tab", () => {
     return {
       closing,
       context,
+      drawn,
       exit,
       follow,
       header,
@@ -2467,13 +2483,13 @@ describe("program status on the tab", () => {
       ).length;
   }
 
-  /** What `state()` says of a terminal under None: the size and the tab icon, and nothing of the feature. */
+  /** What `state()` says of a terminal under None: the size and the tile icon, and nothing of the feature. */
   const UNTOUCHED = {
       addons: 0,
       attributes: ["data-terminal-size"],
       focusListeners: 0,
       handlers: [],
-      icon: TAB_ICON,
+      icon: TILE_ICON,
       presenters: 0,
       registrations: 0,
       replies: 0,
@@ -2487,7 +2503,7 @@ describe("program status on the tab", () => {
       attributes: ["data-terminal-motion", "data-terminal-size"],
       focusListeners: 1,
       handlers: [7501, 133, "c"],
-      icon: TAB_ICON,
+      icon: BEZEL_ICON,
       presenters: 1,
       registrations: 3,
       replies: 0,
@@ -2495,7 +2511,7 @@ describe("program status on the tab", () => {
       windowFollowers: 1,
     };
 
-  it("does nothing under None: no handler, no reply, no listener, no attribute but the size, and the tab icon", async () => {
+  it("does nothing under None: no handler, no reply, no listener, no attribute but the size, and the tile icon", async () => {
     const opened = await openTerminal(),
       { context, header, lookedAt, osc, state, title, view, workspace } =
         opened;
@@ -2525,7 +2541,7 @@ describe("program status on the tab", () => {
   });
 
   it.each(["still", "animated"] as const)(
-    "does all of it under %s: the handlers, the reply, the listeners, the attributes and the tab icon",
+    "does all of it under %s: the handlers, the reply, the listeners, the attributes and the icon with the marks",
     async (tabStatus) => {
       const { header, osc, state, terminal } = await openTerminal(tabStatus);
       expect(state()).toEqual(SHOWING);
@@ -2576,16 +2592,17 @@ describe("program status on the tab", () => {
   );
 
   it("starts on an open terminal when turned from None, and takes everything back when turned to None", async () => {
-    const { context, header, osc, registered, state, updateHeader } =
+    const { context, drawn, header, osc, registered, state, updateHeader } =
       await openTerminal();
     expect(state()).toEqual(UNTOUCHED);
+    updateHeader.mockClear();
 
     setTabStatus(context, "still");
     // Applied when the change of the settings has been announced: no frame,
     // no timer and no new terminal is needed.
     expect(state()).toEqual(SHOWING);
-    // The icon stays the same: Obsidian has nothing to draw again.
-    expect(updateHeader).not.toHaveBeenCalled();
+    // Obsidian draws the tab again, once, with the icon that has the marks.
+    expect(drawn()).toEqual([BEZEL_ICON]);
     const handlers = [...registered];
     expect(osc(7501, "state=blocked")).toEqual([true]);
     runFrames();
@@ -2611,7 +2628,8 @@ describe("program status on the tab", () => {
       windowFollowers: 1,
     });
     expect(header.getAttributeNames()).toEqual(["data-terminal-size"]);
-    expect(updateHeader).not.toHaveBeenCalled();
+    // And once more, with the rounded square.
+    expect(drawn()).toEqual([BEZEL_ICON, TILE_ICON]);
     expect(osc(7501, "state=working")).toEqual([]);
     expect(osc(7501, "?")).toEqual([]);
 
@@ -2628,6 +2646,14 @@ describe("program status on the tab", () => {
     runFrames();
     expect(header.hasAttribute("data-terminal-status")).toBe(false);
     expect(header.getAttribute("data-terminal-motion")).toBe("animated");
+    expect(drawn()).toEqual([BEZEL_ICON, TILE_ICON, BEZEL_ICON]);
+  });
+
+  it("draws the tab again with the rounded square when Animated turns to None", async () => {
+    const { context, drawn, updateHeader } = await openTerminal("animated");
+    updateHeader.mockClear();
+    setTabStatus(context, "none");
+    expect(drawn()).toEqual([TILE_ICON]);
   });
 
   it("changes only the motion between Still and Animated: nothing restarts, and what was reported stays", async () => {
@@ -2643,7 +2669,7 @@ describe("program status on the tab", () => {
     expect(header.getAttribute("data-terminal-motion")).toBe("still");
     expect(header.getAttribute("data-terminal-status")).toBe("working");
     expect(state()).toEqual({ ...SHOWING, attributes: ATTRIBUTES });
-    // The icon is the same in both.
+    // The icon is the same in both: Obsidian has nothing to draw again.
     expect(updateHeader).not.toHaveBeenCalled();
   });
 
@@ -2945,60 +2971,73 @@ describe("TerminalView.dressUnloadedTabs", () => {
     },
   );
 
-  it.each([
+  /** Every icon a layout can have saved a terminal tab with, and none. */
+  const SAVED = [
     ["3.28.0's terminal icon", "lucide-terminal"],
-    ["the drawing in lines alone of earlier builds", "terminal:tab-tile"],
+    ["the rounded square", "terminal:tab-tile"],
+    ["the icon with a raised border", "terminal:tab-bezel"],
     ["an icon of another kind", "lucide-file"],
     ["no icon", null],
-  ] as const)(
-    "draws the tab icon on a tab saved with %s, whatever Program status says",
+  ] as const;
+
+  it.each(SAVED)(
+    "brings a tab saved with %s to the icon of the current Program status",
     (_what, saved) => {
       for (const tabStatus of Settings.TAB_STATUSES) {
         const { context, workspace } = makeTerminalContext({ tabStatus }),
-          tab = unloadedTab(saved);
+          tab = unloadedTab(saved),
+          id = TAB_ICONS[tabStatus];
         vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
         vi.mocked(setIcon).mockClear();
 
         TerminalView.dressUnloadedTabs(context);
 
-        expect(tab.view.icon, tabStatus).toBe(TAB_ICON);
-        expect(vi.mocked(setIcon).mock.calls, tabStatus).toEqual([
-          [tab.icon, TAB_ICON],
-        ]);
+        expect(tab.view.icon, tabStatus).toBe(id);
+        // Drawn where another icon, or none, is on the tab.
+        expect(vi.mocked(setIcon).mock.calls, tabStatus).toEqual(
+          saved === id ? [] : [[tab.icon, id]],
+        );
       }
     },
   );
 
-  it("leaves an icon that is already the tab icon, and writes nothing on a view that names it", () => {
-    const { context, workspace } = makeTerminalContext(),
-      tab = unloadedTab(tabIconId(context)),
-      before = tab.icon.firstElementChild;
-    expect(tab.view.icon).toBe(TAB_ICON);
-    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
-    vi.mocked(setIcon).mockClear();
-    // Not even written with what it holds: the view is Obsidian's.
-    Object.freeze(tab.view);
+  it.each(Settings.TAB_STATUSES)(
+    "leaves an icon that is already the one of %s, and writes nothing on a view that names it",
+    (tabStatus) => {
+      const { context, workspace } = makeTerminalContext({ tabStatus }),
+        tab = unloadedTab(tabIconId(context, { tabStatus })),
+        before = tab.icon.firstElementChild;
+      expect(tab.view.icon).toBe(TAB_ICONS[tabStatus]);
+      vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
+      vi.mocked(setIcon).mockClear();
+      // Not even written with what it holds: the view is Obsidian's.
+      Object.freeze(tab.view);
 
-    expect(() => {
+      expect(() => {
+        TerminalView.dressUnloadedTabs(context);
+      }).not.toThrow();
+
+      expect(setIcon).not.toHaveBeenCalled();
+      expect(tab.icon.firstElementChild).toBe(before);
+    },
+  );
+
+  it.each(Settings.TAB_STATUSES)(
+    "keeps the icon of %s on a never-opened tab that Obsidian draws again",
+    (tabStatus) => {
+      const { context, workspace } = makeTerminalContext({ tabStatus }),
+        tab = unloadedTab("lucide-terminal"),
+        id = TAB_ICONS[tabStatus];
+      vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
+      vi.mocked(setIcon).mockImplementation(drawIcon);
+
       TerminalView.dressUnloadedTabs(context);
-    }).not.toThrow();
+      redraw(tab);
 
-    expect(setIcon).not.toHaveBeenCalled();
-    expect(tab.icon.firstElementChild).toBe(before);
-  });
-
-  it("keeps the tab icon on a never-opened tab that Obsidian draws again", () => {
-    const { context, workspace } = makeTerminalContext(),
-      tab = unloadedTab("lucide-terminal");
-    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
-    vi.mocked(setIcon).mockImplementation(drawIcon);
-
-    TerminalView.dressUnloadedTabs(context);
-    redraw(tab);
-
-    expect(tab.view.icon).toBe(TAB_ICON);
-    expect(vi.mocked(setIcon).mock.lastCall).toEqual([tab.icon, TAB_ICON]);
-  });
+      expect(tab.view.icon).toBe(id);
+      expect(vi.mocked(setIcon).mock.lastCall).toEqual([tab.icon, id]);
+    },
+  );
 
   it("gives a never-opened tab its icon back when the saved one is no longer registered", () => {
     const { context, workspace } = makeTerminalContext(),
@@ -3008,13 +3047,13 @@ describe("TerminalView.dressUnloadedTabs", () => {
 
     TerminalView.dressUnloadedTabs(context);
 
-    expect(tab.view.icon).toBe(TAB_ICON);
-    expect(vi.mocked(setIcon).mock.calls).toEqual([[tab.icon, TAB_ICON]]);
+    expect(tab.view.icon).toBe(TILE_ICON);
+    expect(vi.mocked(setIcon).mock.calls).toEqual([[tab.icon, TILE_ICON]]);
   });
 
-  it("names the tab icon also for a never-opened tab whose header cannot be reached", () => {
+  it("names the icon also for a never-opened tab whose header cannot be reached", () => {
     const { context, workspace } = makeTerminalContext(),
-      saved = unloadedTab("terminal:tab-tile"),
+      saved = unloadedTab("terminal:tab-bezel"),
       other = unloadedTab("lucide-file");
     // As on an Obsidian that keeps the tab header under another name.
     Object.assign(saved.leaf, { tabHeaderEl: undefined });
@@ -3027,33 +3066,37 @@ describe("TerminalView.dressUnloadedTabs", () => {
 
     TerminalView.dressUnloadedTabs(context);
 
-    expect(saved.view.icon).toBe(TAB_ICON);
-    expect(other.view.icon).toBe(TAB_ICON);
+    expect(saved.view.icon).toBe(TILE_ICON);
+    expect(other.view.icon).toBe(TILE_ICON);
     expect(setIcon).not.toHaveBeenCalled();
   });
 
-  it("draws nothing on a loaded terminal's tab, and leaves its header to the view", () => {
-    const { context, workspace } = makeTerminalContext(),
-      loaded = loadedTab(context),
-      unloaded = unloadedTab();
-    loaded.header
-      .appendChild(document.createElement("div"))
-      .classList.add("workspace-tab-header-inner-icon");
-    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([
-      loaded.leaf,
-      unloaded.leaf,
-    ]);
-    vi.mocked(setIcon).mockClear();
+  it.each(Settings.TAB_STATUSES)(
+    "draws nothing on a loaded terminal's tab under %s, and leaves its header to the view",
+    (tabStatus) => {
+      const { context, workspace } = makeTerminalContext({ tabStatus }),
+        loaded = loadedTab(context),
+        unloaded = unloadedTab(),
+        id = TAB_ICONS[tabStatus];
+      loaded.header
+        .appendChild(document.createElement("div"))
+        .classList.add("workspace-tab-header-inner-icon");
+      vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([
+        loaded.leaf,
+        unloaded.leaf,
+      ]);
+      vi.mocked(setIcon).mockClear();
 
-    TerminalView.dressUnloadedTabs(context);
+      TerminalView.dressUnloadedTabs(context);
 
-    // The loaded tab's icon is Obsidian's to draw, from the view's `getIcon`,
-    // and its size is the view's to write.
-    expect(vi.mocked(setIcon).mock.calls).toEqual([[unloaded.icon, TAB_ICON]]);
-    expect(loaded.header.getAttributeNames()).toEqual([]);
-    expect(loaded.view.getIcon()).toBe(TAB_ICON);
-    expect(unloaded.header.getAttribute("data-terminal-size")).toBe("22");
-  });
+      // The loaded tab's icon is Obsidian's to draw, from the view's
+      // `getIcon`, and its size is the view's to write.
+      expect(vi.mocked(setIcon).mock.calls).toEqual([[unloaded.icon, id]]);
+      expect(loaded.header.getAttributeNames()).toEqual([]);
+      expect(loaded.view.getIcon()).toBe(id);
+      expect(unloaded.header.getAttribute("data-terminal-size")).toBe("22");
+    },
+  );
 
   it("writes the size on a header that has no icon element", () => {
     const { context, workspace } = makeTerminalContext(),
@@ -3102,8 +3145,8 @@ describe("TerminalView.dressUnloadedTabs", () => {
     expect(unloaded.header.getAttributeNames()).toEqual(["data-type"]);
     // What the loaded view wrote is its own to take back.
     expect(loaded.header.getAttribute("data-terminal-size")).toBe("22");
-    // The id stays: it is the tab icon's, which nothing replaces.
-    expect(unloaded.view.icon).toBe(TAB_ICON);
+    // The id stays: a registered icon of ours, which Obsidian draws as any.
+    expect(unloaded.view.icon).toBe(TILE_ICON);
   });
 
   /** Runs the loader on a context that keeps what it registers. */
@@ -3147,18 +3190,17 @@ describe("TerminalView.dressUnloadedTabs", () => {
   }
 
   it.each(Settings.TAB_STATUSES)(
-    "goes over the tabs when the layout is ready and whenever it changes, under %s, and listens to no setting for it",
+    "goes over the tabs when the layout is ready and whenever it changes, under %s",
     (tabStatus) => {
-      const { context, layoutListeners, ready, workspace } = loadViews({
-          tabStatus,
-        }),
+      const { layoutListeners, ready, workspace } = loadViews({ tabStatus }),
         tab = unloadedTab(),
-        later = unloadedTab("terminal:tab-tile"),
+        later = unloadedTab("lucide-file"),
         listed = vi
           .spyOn(workspace, "getLeavesOfType")
           .mockReturnValue([tab.leaf]),
         size = (header: Element): string | null =>
-          header.getAttribute("data-terminal-size");
+          header.getAttribute("data-terminal-size"),
+        id = TAB_ICONS[tabStatus];
       vi.mocked(setIcon).mockClear();
 
       // Nothing before the layout is there: there are no tabs to go over yet.
@@ -3166,36 +3208,61 @@ describe("TerminalView.dressUnloadedTabs", () => {
       expect(layoutListeners()).toBe(1);
       for (const callback of ready) callback();
       expect(size(tab.header)).toBe("22");
-      expect(vi.mocked(setIcon).mock.calls).toEqual([[tab.icon, TAB_ICON]]);
+      expect(vi.mocked(setIcon).mock.calls).toEqual([[tab.icon, id]]);
 
       // A tab that arrives later, unloaded as well.
       listed.mockReturnValue([tab.leaf, later.leaf]);
       workspace.trigger("layout-change");
       expect(size(later.header)).toBe("22");
-      expect(later.view.icon).toBe(TAB_ICON);
-
-      // Program status changes nothing of it: nothing listens to it here.
-      const probe = {
-        ...Settings.DEFAULT,
-        tabStatus: "animated",
-      } satisfies Settings;
-      expect(
-        vi
-          .mocked(context.settings)
-          .onMutate.mock.calls.filter(
-            ([accessor]) => accessor(probe) !== accessor(Settings.DEFAULT),
-          ),
-      ).toEqual([]);
-      for (const other of Settings.TAB_STATUSES) {
-        mutateSettings(context, { tabStatus: other });
-        expect(size(tab.header), other).toBe("22");
-        expect(tab.view.icon, other).toBe(TAB_ICON);
-      }
+      expect(later.view.icon).toBe(id);
     },
   );
 
-  it("takes the size back when the plugin unloads, and a late layout-ready writes nothing", () => {
-    const { disposers, ready, workspace } = loadViews({ tabStatus: "still" }),
+  it("draws the icon of the new Program status on never-opened tabs when it goes from None or to it, and not between Still and Animated", () => {
+    const { context, ready, workspace } = loadViews(),
+      tab = unloadedTab(),
+      listed = vi
+        .spyOn(workspace, "getLeavesOfType")
+        .mockReturnValue([tab.leaf]),
+      probe = { ...Settings.DEFAULT, tabStatus: "animated" } satisfies Settings,
+      // The listeners that hear Program status: their accessors read it.
+      hearing = vi
+        .mocked(context.settings)
+        .onMutate.mock.calls.filter(
+          ([accessor]) => accessor(probe) !== accessor(Settings.DEFAULT),
+        );
+    // One, and it asks only whether a status shows.
+    expect(hearing).toHaveLength(1);
+    expect(hearing[0]?.[0](probe)).toBe(true);
+    expect(hearing[0]?.[0](Settings.DEFAULT)).toBe(false);
+    for (const callback of ready) callback();
+    expect(tab.view.icon).toBe(TILE_ICON);
+
+    for (const [tabStatus, drawn] of [
+      ["still", [[tab.icon, BEZEL_ICON]]],
+      ["animated", []],
+      ["still", []],
+      ["none", [[tab.icon, TILE_ICON]]],
+      ["animated", [[tab.icon, BEZEL_ICON]]],
+      ["none", [[tab.icon, TILE_ICON]]],
+    ] as const) {
+      vi.mocked(setIcon).mockClear();
+      listed.mockClear();
+      mutateSettings(context, { tabStatus });
+      expect(vi.mocked(setIcon).mock.calls, tabStatus).toEqual(drawn);
+      expect(tab.view.icon, tabStatus).toBe(TAB_ICONS[tabStatus]);
+      // Between Still and Animated the tabs are not even looked at.
+      expect(listed.mock.calls.length, tabStatus).toBe(drawn.length);
+      expect(tab.header.getAttribute("data-terminal-size"), tabStatus).toBe(
+        "22",
+      );
+    }
+  });
+
+  it("takes the size back when the plugin unloads, and a late layout-ready or a change of Program status writes nothing", () => {
+    const { context, disposers, ready, workspace } = loadViews({
+        tabStatus: "still",
+      }),
       tab = unloadedTab();
     vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
     for (const callback of ready) callback();
@@ -3203,8 +3270,11 @@ describe("TerminalView.dressUnloadedTabs", () => {
 
     for (const dispose of disposers) dispose();
     expect(tab.header.hasAttribute("data-terminal-size")).toBe(false);
+    vi.mocked(setIcon).mockClear();
     for (const callback of ready) callback();
+    mutateSettings(context, { tabStatus: "none" });
     expect(tab.header.hasAttribute("data-terminal-size")).toBe(false);
+    expect(setIcon).not.toHaveBeenCalled();
   });
 });
 

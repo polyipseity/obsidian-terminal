@@ -12,7 +12,7 @@ import {
   pythonSettingsContext,
   withPythonSpare,
 } from "../../fixtures/python-settings-ui.js";
-import { ribbonIconId, tabIconId } from "../../../src/icons.js";
+import { bezelIconId, tileIconId } from "../../../src/icons.js";
 import { LocalSettings, Settings } from "../../../src/settings-data.js";
 import { loadTerminal } from "../../../src/terminal/load.js";
 import { CONPTY_HOST_POOL } from "../../../src/terminal/pseudoterminal.js";
@@ -219,16 +219,16 @@ describe("terminal ribbon profile access", () => {
     return event;
   }
 
-  it("gives the ribbon button its own icon, the terminal in lines alone, whatever Program status says", async () => {
+  it("gives the ribbon button the tile icon, the terminal in lines alone, whatever Program status says", async () => {
     for (const tabStatus of Settings.TAB_STATUSES) {
       const { context } = await ribbon("integrated", tabStatus);
       expect(context.settings.value.tabStatus).toBe(tabStatus);
       const icon = vi.mocked(addRibbonIcon).mock.calls.at(-1)?.[2];
-      expect(icon, tabStatus).toBe(ribbonIconId(context));
-      // `<plugin id>:ribbon`; this context has no manifest to name the id.
-      expect(icon, tabStatus).toMatch(/:ribbon$/u);
-      // Not the tab's icon, nor the plain one it had before.
-      expect(icon).not.toBe(tabIconId(context));
+      expect(icon, tabStatus).toBe(tileIconId(context));
+      // `<plugin id>:tab-tile`; this context has no manifest to name the id.
+      expect(icon, tabStatus).toMatch(/:tab-tile$/u);
+      // Not the icon with the marks, nor the plain one it had before.
+      expect(icon).not.toBe(bezelIconId(context));
       expect(icon).not.toBe("terminal-square");
     }
   });

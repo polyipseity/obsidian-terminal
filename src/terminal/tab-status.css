@@ -15,13 +15,16 @@
  *
  * Scope: every selector starts at the terminal tab header, at a class of
  * the tab icon's root, `.tts` or `.tts-set-bezel` (the theme is asked for
- * with `:is(.theme-light *)`, to keep that true), or at the ribbon icon's
- * root, `.terminal-ribbon-icon`. A rule for the tab header needs an
- * attribute on it that `view.ts` writes. Every terminal tab header carries
+ * with `:is(.theme-light *)`, to keep that true), or at the tile icon's
+ * root, `.tts-tile-icon`. A rule for the tab header needs an attribute on
+ * it that `view.ts` writes. Every terminal tab header carries
  * `data-terminal-size`, whatever Program status says, and the rules of the
- * icon's size and place (section 5) need nothing else. Every rule of a
- * status needs `data-terminal-status`, and a header that carries only the
- * size (Program status None, or no report yet) is styled by none of them.
+ * icon's size and place (section 5) need nothing else: they reach the icon
+ * container, so they size and place the tile icon of Program status None
+ * as they do the tab icon. Every rule of a status needs
+ * `data-terminal-status`, and a header that carries only the size (Program
+ * status None, or no report yet) is styled by none of them; nor has the
+ * tile icon anything a status rule selects.
  * `.tts-host` stands in for the tab header and `.tts-host-icon` for its icon
  * container wherever the plugin draws a preview (the settings pickers); it
  * takes the same attributes.
@@ -102,11 +105,12 @@
 }
 
 /*
- * The ribbon's icon (`tile`): no image, a rounded square drawn as a line
- * around the prompt, both in the icon's colour. The square is fainter than
- * the prompt, so the prompt reads first. It has no mark and no status.
+ * The tile icon (`tile`), the ribbon's and a tab's under Program status
+ * None: no image, a rounded square drawn as a line around the prompt, both
+ * in the icon's colour. The square is fainter than the prompt, so the
+ * prompt reads first. It has no mark and no status.
  */
-.terminal-ribbon-icon .terminal-ribbon-icon-square {
+.tts-tile-icon .tts-tile-icon-square {
   stroke-opacity: 0.62;
 }
 

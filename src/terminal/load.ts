@@ -16,7 +16,7 @@ import {
   type MenuItem,
   TFolder,
 } from "obsidian";
-import { ribbonIconId } from "../icons.js";
+import { tileIconId } from "../icons.js";
 import type { TerminalPlugin } from "../main.js";
 import { TERMINAL_CONPTY_PREWARM_DELAY } from "../magic.js";
 import { warmSystemPath } from "./environment.js";
@@ -218,8 +218,9 @@ export function loadTerminal(context: TerminalPlugin): void {
   const openTerminal = addRibbonIcon(
     context,
     i18n.t("asset:ribbons.open-terminal-id"),
+    // The tile icon, as on a terminal tab under Program status None.
     // Registered by `loadIcons`, which the plugin runs before this.
-    ribbonIconId(context),
+    tileIconId(context),
     () => {
       const entry = getDefaultProfile();
       if (entry) {

@@ -50,13 +50,14 @@ const CLASSES = Object.freeze({
 });
 
 /**
- * What the tile of a Program status option shows: the tab icon at the tab's
- * size, carrying what a terminal tab header carries under that option. None
- * has no status; Still and Animated show a working program, whose three dots
- * stand still or move.
+ * What the tile of a Program status option shows: the icon a terminal tab
+ * shows under that option, at the tab's size, carrying what its header
+ * carries. None has no status, and its icon no marks; Still and Animated
+ * show a working program, whose three dots stand still or move.
  *
  * @param value the option
- * @param icon the registered id of the tab icon
+ * @param icon the registered id of the icon a tab shows under the option
+ *   (`tabIconId`)
  * @returns the host of the option's tile
  */
 export function tabStatusOptionHost(

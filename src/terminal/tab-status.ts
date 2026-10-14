@@ -139,10 +139,11 @@ export function writeTabIconSize(header: Element): void {
 }
 
 /**
- * Draws the tab icon on a tab nobody presents.
+ * Draws a terminal tab's icon on a tab nobody presents.
  *
  * Such a tab shows the icon saved with the layout: an icon of an earlier
- * version, or nothing where that icon is no longer registered. Obsidian
+ * version or of another Program status, or nothing where that icon is no
+ * longer registered. Obsidian
  * marks a drawn icon with its id as a class, which is how an icon that is
  * already right is told and left alone.
  *

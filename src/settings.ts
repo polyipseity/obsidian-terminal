@@ -937,9 +937,10 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
           },
         ),
       );
-      const icon = tabIconId(context);
       picker.update({
-        describe: (value) => tabStatusOptionHost(value, icon),
+        // Each option on the icon a tab shows under it.
+        describe: (value) =>
+          tabStatusOptionHost(value, tabIconId(context, { tabStatus: value })),
         label: i18n.t("settings.tab-status"),
         options: Settings.TAB_STATUSES.map((value) => ({
           label: i18n.t(`settings.tab-status-options.${value}`),

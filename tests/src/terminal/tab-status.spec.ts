@@ -995,23 +995,32 @@ describe("writeTabIcon", () => {
     expect(draw).toHaveBeenCalledExactlyOnceWith(icon, "terminal:tab-bezel");
   });
 
-  it.each(["lucide-terminal", "terminal:tab-tile", "terminal:tab-gone"])(
-    "draws the tab icon over %s, saved with the layout",
-    (saved) => {
+  it.each([
+    ["lucide-terminal", "terminal:tab-bezel"],
+    ["lucide-terminal", "terminal:tab-tile"],
+    ["terminal:tab-tile", "terminal:tab-bezel"],
+    ["terminal:tab-bezel", "terminal:tab-tile"],
+    ["terminal:tab-gone", "terminal:tab-tile"],
+  ])(
+    "draws %s over with %s, the icon of another Program status",
+    (saved, id) => {
       const { icon } = drawn(saved),
         draw = vi.fn<(element: HTMLElement, id: string) => void>();
-      writeTabIcon(icon, "terminal:tab-bezel", draw);
-      expect(draw).toHaveBeenCalledExactlyOnceWith(icon, "terminal:tab-bezel");
+      writeTabIcon(icon, id, draw);
+      expect(draw).toHaveBeenCalledExactlyOnceWith(icon, id);
     },
   );
 
-  it("leaves an icon that is already the tab icon", () => {
-    const { icon, svg } = drawn("terminal:tab-bezel"),
-      draw = vi.fn<(element: HTMLElement, id: string) => void>();
-    writeTabIcon(icon, "terminal:tab-bezel", draw);
-    expect(draw).not.toHaveBeenCalled();
-    expect(icon.firstElementChild).toBe(svg);
-  });
+  it.each(["terminal:tab-bezel", "terminal:tab-tile"])(
+    "leaves an icon that is already %s",
+    (id) => {
+      const { icon, svg } = drawn(id),
+        draw = vi.fn<(element: HTMLElement, id: string) => void>();
+      writeTabIcon(icon, id, draw);
+      expect(draw).not.toHaveBeenCalled();
+      expect(icon.firstElementChild).toBe(svg);
+    },
+  );
 });
 
 describe("onWindowFocus", () => {
