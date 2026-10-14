@@ -57,7 +57,10 @@ export async function withPythonSpare(
 // The tests need a plugin context without loading managers or patching windows.
 vi.mock("../../src/main.js", () => ({
   TerminalPlugin: class {
-    public readonly language = { value: { t: (key: string): string => key } };
+    public readonly language = {
+      value: { t: (key: string): string => key },
+      onChangeLanguage: { listen: vi.fn().mockReturnValue(vi.fn()) },
+    };
     public readonly register = vi.fn();
     public readonly registerEvent = vi.fn();
     public readonly addChild = vi.fn();
