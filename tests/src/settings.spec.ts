@@ -1,7 +1,7 @@
 import {
   UpdatableUI,
   cloneAsWritable,
-  sanitizeHTML,
+  setSanitizedInnerHTML,
 } from "@polyipseity/obsidian-plugin-library";
 import { createInstance } from "i18next";
 import {
@@ -1347,13 +1347,10 @@ describe("settings tab descriptions", () => {
         shownIn = where === "main" ? document : settingsWindowDocument(),
         // The markup as the sanitizer leaves it: under happy-dom, DOMPurify
         // unwraps the first <code> of this text.
-        expected = new DOMParser().parseFromString(
-          sanitizeHTML(
-            window,
-            en.settings["expose-internal-modules-description-HTML"],
-          ),
-          "text/html",
-        ).body,
+        expected = setSanitizedInnerHTML(
+          document.createElement("span"),
+          en.settings["expose-internal-modules-description-HTML"],
+        ),
         codes = (root: ParentNode): readonly string[] =>
           Array.from(root.querySelectorAll("code"), (code) => code.textContent);
       expect(codes(expected)).not.toHaveLength(0);
