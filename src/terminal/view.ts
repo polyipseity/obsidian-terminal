@@ -639,8 +639,13 @@ export class TerminalView extends ItemView {
     // Everything else about those tabs is the feature's, and waits for it.
     context.register(
       whileExperimentEnabled(context.settings, "tabStatus", () => {
+        // Mutable: a listener that is removed while a change is announced
+        // still hears of that change, and must not dress what was undressed.
+        let stopped = false;
         const dress = (): void => {
-            TerminalView.dressUnloadedTabs(context, true);
+            if (!stopped) {
+              TerminalView.dressUnloadedTabs(context);
+            }
           },
           // Not `registerEvent`: the listener goes when the feature does.
           layout = workspace.on("layout-change", dress),
@@ -653,6 +658,7 @@ export class TerminalView extends ItemView {
           ];
         dress();
         return (): void => {
+          stopped = true;
           workspace.offref(layout);
           for (const stop of unlisten) {
             stop();
@@ -1219,6 +1225,9 @@ export class TerminalView extends ItemView {
    * @returns takes all of it back
    */
   protected showTabStatus(): () => void {
+    // Mutable: a listener that is removed while a change is announced still
+    // hears of that change, and must not write on the header that was cleared.
+    let stopped = false;
     const { context, contentEl, leaf } = this,
       {
         app: { workspace },
@@ -1240,7 +1249,9 @@ export class TerminalView extends ItemView {
       unfollow = onWindowFocus(contentEl, activeSelf(contentEl), look),
       // A tab moved to another pane or window can come back with a new header.
       layout = workspace.on("layout-change", () => {
-        presenter.render();
+        if (!stopped) {
+          presenter.render();
+        }
       }),
       unlisten = settings.onMutate(
         (value) => [
@@ -1249,6 +1260,9 @@ export class TerminalView extends ItemView {
           value.tabStatusAnimation,
         ],
         () => {
+          if (stopped) {
+            return;
+          }
           presenter.render();
           // The icon is Obsidian's to draw, from `getIcon`.
           updateView(context, this);
@@ -1262,6 +1276,7 @@ export class TerminalView extends ItemView {
     presenter.render();
     updateView(context, this);
     return (): void => {
+      stopped = true;
       contentEl.removeEventListener("focusin", look, { capture: true });
       unfollow();
       workspace.offref(layout);

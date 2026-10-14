@@ -13,6 +13,7 @@
 import { ChildProcess, spawn } from "node:child_process";
 import { once } from "node:events";
 import { PassThrough } from "node:stream";
+import { isDeepStrictEqual } from "node:util";
 import * as library from "@polyipseity/obsidian-plugin-library";
 import { readStateCollaboratively } from "@polyipseity/obsidian-plugin-library";
 import {
@@ -2212,6 +2213,39 @@ function setTabStatus(context: TerminalPlugin, on: boolean): void {
   }
 }
 
+/**
+ * Changes several settings the way one `settings.mutate` announces them: the
+ * new value first, then every listener whose accessor reads something else
+ * than before, in the order they were registered. The list is the one from
+ * before the first call, as the library's emitter takes it: a listener that
+ * an earlier one removes still hears of this change.
+ */
+function mutateSettings(
+  context: TerminalPlugin,
+  patch: Partial<Settings>,
+): void {
+  const { settings } = context,
+    before = settings.value,
+    { calls, results } = vi.mocked(settings).onMutate.mock,
+    listening = calls.filter((_call, index) => {
+      // What `onMutate` returned removes the listener: not those gone by now.
+      const removed = results[index];
+      return !(
+        removed?.type === "return" &&
+        vi.isMockFunction(removed.value) &&
+        removed.value.mock.calls.length > 0
+      );
+    });
+  Object.assign(settings, { value: { ...before, ...patch } });
+  for (const [accessor, changed] of listening) {
+    const prev = accessor(before),
+      cur = accessor(settings.value);
+    if (!isDeepStrictEqual(cur, prev)) {
+      changed(cur, prev, settings.value);
+    }
+  }
+}
+
 describe("program status on the tab, behind its experiment", () => {
   // The test translations answer with the key they were asked for.
   const PLAIN_ICON = "asset:components.terminal.icon",
@@ -2552,6 +2586,29 @@ describe("program status on the tab, behind its experiment", () => {
     expect(updateHeader).toHaveBeenCalledOnce();
   });
 
+  it("writes nothing on an open terminal's tab when the experiment goes off together with a look setting", async () => {
+    const { context, header } = await openTerminal({ tabStatus: true });
+    mutateSettings(context, { tabIconSize: 22 });
+    expect(header.getAttribute("data-terminal-size")).toBe("22");
+
+    // As resetting all settings does: one change turns it off and sets the look.
+    mutateSettings(context, { experiments: {}, tabIconSize: 18 });
+    expect(header.getAttributeNames()).toEqual([]);
+  });
+
+  it("writes nothing for a layout change that is announced while the experiment goes off", async () => {
+    const { context, header, workspace } = await openTerminal({
+      tabStatus: true,
+    });
+    // Obsidian calls the listeners an event had when it began: taking one
+    // back does not keep it from being called for that event.
+    vi.spyOn(workspace, "offref").mockReturnValue();
+
+    setTabStatus(context, false);
+    workspace.trigger("layout-change");
+    expect(header.getAttributeNames()).toEqual([]);
+  });
+
   it("shows a finish as unread until the user looks, by coming to the terminal or back to its window", async () => {
     const { header, lookedAt, osc, view } = await openTerminal({
         tabStatus: true,
@@ -2678,14 +2735,24 @@ describe("TerminalView.dressUnloadedTabs", () => {
     header.setAttribute("data-type", "terminal:terminal");
     icon.className = "workspace-tab-header-inner-icon";
     if (saved !== null) {
-      // The icon saved with the layout, marked with its id as Obsidian does.
-      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      svg.classList.add("svg-icon", saved);
-      icon.append(svg);
+      // The icon saved with the layout.
+      drawIcon(icon, saved);
     }
     Object.assign(leaf, { tabHeaderEl: header });
     return { leaf, header, icon };
   }
+
+  /** Draws an icon as Obsidian does: in place of the one before it, marked with its id. */
+  function drawIcon(parent: HTMLElement, id: string): void {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.classList.add("svg-icon", id);
+    parent.replaceChildren(svg);
+  }
+
+  afterEach(() => {
+    // The mock belongs to the module: what a test made it do would stay.
+    vi.mocked(setIcon).mockReset();
+  });
 
   function loadedTab(context: TerminalPlugin) {
     const made = makeTerminalLeaf(context),
@@ -2978,6 +3045,28 @@ describe("TerminalView.dressUnloadedTabs", () => {
 
     // Unloading while off has nothing left to take back.
     for (const dispose of disposers) dispose();
+    expect(tab.header.getAttributeNames()).toEqual(["data-type"]);
+  });
+
+  it("leaves a never-opened tab plain when the experiment goes off together with a look setting", () => {
+    const { context, ready, workspace } = loadViews({
+        experiments: { tabStatus: true },
+        tabIconSize: 22,
+      }),
+      tab = unloadedTab(tabIconId(context, "bezel"));
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
+    vi.mocked(setIcon).mockImplementation(drawIcon);
+    for (const callback of ready) callback();
+    expect(tab.header.getAttribute("data-terminal-size")).toBe("22");
+
+    // As resetting all settings does: one change turns it off and sets the look.
+    mutateSettings(context, { experiments: {}, tabIconSize: 18 });
+
+    // The test translations answer with the key they were asked for.
+    expect(vi.mocked(setIcon).mock.lastCall).toEqual([
+      tab.icon,
+      "asset:components.terminal.icon",
+    ]);
     expect(tab.header.getAttributeNames()).toEqual(["data-type"]);
   });
 
