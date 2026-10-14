@@ -940,6 +940,19 @@ export class Workspace extends Events {
 
 // ===== Keymap & Scope =====
 
+export interface KeymapContext {
+  modifiers: string | null;
+  key: string | null;
+  vkey: string;
+}
+
+export type KeymapEventListener = (
+  evt: KeyboardEvent,
+  ctx: KeymapContext,
+) => unknown;
+
+const MODIFIER_KEYS: readonly string[] = ["Alt", "Control", "Meta", "Shift"];
+
 export class Keymap {
   pushScope(scope: Scope): void {
     state.keymapScopes.push(scope);
@@ -955,21 +968,74 @@ export class Keymap {
   getScopes(): Scope[] {
     return [...state.keymapScopes];
   }
+
+  /**
+   * Mirrors Obsidian's private `Keymap.onKeyEvent`, which Obsidian adds as a
+   * capture `keydown` listener on every window: modifier-only keys skip the
+   * scopes; otherwise the top scope handles the key, and `false` consumes it.
+   * Modifiers use this mock's `register` format, in Ctrl+Meta+Alt+Shift order.
+   */
+  onKeyEvent(evt: KeyboardEvent): void {
+    const scope = state.keymapScopes.at(-1);
+    if (scope === undefined || MODIFIER_KEYS.includes(evt.key)) {
+      return;
+    }
+    const modifiers = [
+      evt.ctrlKey && "Ctrl",
+      evt.metaKey && "Meta",
+      evt.altKey && "Alt",
+      evt.shiftKey && "Shift",
+    ]
+      .filter(Boolean)
+      .join("+");
+    if (
+      scope.handleKey(evt, { modifiers, key: evt.key, vkey: evt.key }) === false
+    ) {
+      evt.preventDefault();
+      evt.stopPropagation();
+    }
+  }
 }
 
 export class Scope {
-  keys: Array<{ modifiers: string; key: string | null; func: () => unknown }> =
-    [];
+  keys: Array<{
+    modifiers: string | null;
+    key: string | null;
+    func: KeymapEventListener;
+  }> = [];
 
-  register(modifiers: string[], key: string | null, func: () => unknown): void {
-    this.keys.push({ modifiers: modifiers.join("+"), key, func });
+  constructor(public readonly parent?: Scope) {}
+
+  register(
+    modifiers: readonly string[] | null,
+    key: string | null,
+    func: KeymapEventListener,
+  ): void {
+    this.keys.push({ modifiers: modifiers?.join("+") ?? null, key, func });
   }
 
-  unregister(func: () => unknown): void {
+  unregister(func: KeymapEventListener): void {
     const index = this.keys.findIndex((k) => k.func === func);
     if (index >= 0) {
       this.keys.splice(index, 1);
     }
+  }
+
+  /**
+   * Runs the matching handlers (`null` matches anything) until one returns
+   * `false`, then defers to the parent scope, as Obsidian's scopes do.
+   */
+  handleKey(evt: KeyboardEvent, ctx: KeymapContext): unknown {
+    for (const { modifiers, key, func } of this.keys) {
+      if (
+        (modifiers === null || modifiers === ctx.modifiers) &&
+        (key === null || key === ctx.key) &&
+        func(evt, ctx) === false
+      ) {
+        return false;
+      }
+    }
+    return this.parent?.handleKey(evt, ctx);
   }
 }
 
