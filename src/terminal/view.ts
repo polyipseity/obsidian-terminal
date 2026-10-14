@@ -579,13 +579,31 @@ export class TerminalView extends ItemView {
     context: TerminalPlugin,
     enabled = isExperimentEnabled(context.settings.value, "tabStatus"),
   ): void {
-    const { tabIconSet, tabIconSize } = context.settings.value;
+    const { tabIconSet, tabIconSize } = context.settings.value,
+      ours = tabIconIdPrefix(context),
+      id = enabled ? tabIconId(context, tabIconSet) : terminalIconId(context);
     for (const leaf of context.app.workspace.getLeavesOfType(
       TerminalView.type.namespaced(context),
     )) {
-      if (leaf.view instanceof TerminalView) {
+      const { view } = leaf;
+      if (view instanceof TerminalView) {
         // Its presenter writes the header, and clears it when it goes.
         continue;
+      }
+      /*
+       * What Obsidian puts in the view's place holds the icon id saved with
+       * the layout in `icon`, a public field of `View`. Obsidian draws the
+       * tab from it again whenever it updates the header, as for a tab that
+       * is pinned, linked or moved, and saves it with the next layout: an
+       * icon that is only drawn here would not last. So the id follows too,
+       * while off only where it names an icon of the feature. The object is
+       * Obsidian's own, and nothing promises that it has an id.
+       */
+      const named =
+        enabled ||
+        (typeof view.icon === "string" && view.icon.startsWith(ours));
+      if (named && view.icon !== id) {
+        view.icon = id;
       }
       const header = tabHeaderOf(leaf);
       if (!header) {
@@ -596,15 +614,13 @@ export class TerminalView extends ItemView {
       if (!instanceOf(icon, HTMLElement)) {
         continue;
       }
-      if (enabled) {
-        writeTabIcon(icon, tabIconId(context, tabIconSet), setIcon);
+      if (named) {
+        // Also where nothing is drawn: an id that is no longer registered
+        // leaves the tab without an icon.
+        writeTabIcon(icon, id, setIcon);
       } else {
-        restoreTabIcon(
-          icon,
-          tabIconIdPrefix(context),
-          terminalIconId(context),
-          setIcon,
-        );
+        // Whatever the id says, an icon of the feature that is drawn goes.
+        restoreTabIcon(icon, ours, id, setIcon);
       }
     }
   }

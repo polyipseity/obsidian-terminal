@@ -2724,22 +2724,43 @@ describe("TerminalView.dressUnloadedTabs", () => {
   /**
    * A tab whose view Obsidian has not loaded yet: the leaf answers to the
    * terminal's type (`getLeavesOfType` is mocked to say so), its header has
-   * that type, and its view is not a `TerminalView`.
+   * that type, and its view is not a `TerminalView` but what Obsidian puts
+   * in its place, which holds the icon id saved with the layout.
+   *
+   * @param saved that id, or `null` when the layout has none
+   * @param drawn whether its icon is on the tab; an id that is no longer
+   *   registered draws nothing
    */
-  function unloadedTab(saved: string | null = "lucide-terminal") {
+  function unloadedTab(
+    saved: string | null = "lucide-terminal",
+    drawn = saved !== null,
+  ) {
     const leaf = new WorkspaceLeaf(),
       header = document.createElement("div"),
       icon = header
         .appendChild(document.createElement("div"))
-        .appendChild(document.createElement("div"));
+        .appendChild(document.createElement("div")),
+      view = {
+        getIcon(): string {
+          return this.icon || "lucide-file";
+        },
+        icon: saved ?? "",
+      };
     header.setAttribute("data-type", "terminal:terminal");
     icon.className = "workspace-tab-header-inner-icon";
-    if (saved !== null) {
-      // The icon saved with the layout.
+    if (saved !== null && drawn) {
       drawIcon(icon, saved);
     }
-    Object.assign(leaf, { tabHeaderEl: header });
-    return { leaf, header, icon };
+    Object.assign(leaf, { tabHeaderEl: header, view });
+    return { leaf, header, icon, view };
+  }
+
+  /**
+   * What Obsidian does whenever it updates a tab's header, as when the tab
+   * is pinned, linked or moved: it draws the icon its view names.
+   */
+  function redraw(tab: ReturnType<typeof unloadedTab>): void {
+    setIcon(tab.icon, tab.view.getIcon());
   }
 
   /** Draws an icon as Obsidian does: in place of the one before it, marked with its id. */
@@ -2937,6 +2958,92 @@ describe("TerminalView.dressUnloadedTabs", () => {
     expect(setIcon).not.toHaveBeenCalled();
     expect(plain.header.outerHTML).toBe(before);
     expect(empty.icon.childElementCount).toBe(0);
+  });
+
+  // The test translations answer with the key they were asked for.
+  const PLAIN_ICON = "asset:components.terminal.icon";
+
+  it("keeps the 3.28.0 icon on a never-opened tab that Obsidian draws again after the turn-off", () => {
+    const { context, workspace } = makeTerminalContext(),
+      tab = unloadedTab(tabIconId(context, "bezel"));
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
+    vi.mocked(setIcon).mockImplementation(drawIcon);
+
+    TerminalView.dressUnloadedTabs(context, false);
+    redraw(tab);
+
+    expect(tab.view.icon).toBe(PLAIN_ICON);
+    expect(vi.mocked(setIcon).mock.lastCall).toEqual([tab.icon, PLAIN_ICON]);
+  });
+
+  it("keeps the chosen icon on a never-opened tab that Obsidian draws again while on", () => {
+    const { context, workspace } = makeTerminalContext(),
+      tab = unloadedTab(),
+      chosen = tabIconId(context, "bezel");
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
+    vi.mocked(setIcon).mockImplementation(drawIcon);
+
+    TerminalView.dressUnloadedTabs(context, true);
+    redraw(tab);
+
+    expect(tab.view.icon).toBe(chosen);
+    expect(vi.mocked(setIcon).mock.lastCall).toEqual([tab.icon, chosen]);
+    // Nothing is written on a tab that already names the chosen icon.
+    Object.freeze(tab.view);
+    expect(() => {
+      TerminalView.dressUnloadedTabs(context, true);
+    }).not.toThrow();
+  });
+
+  it("gives a never-opened tab its icon back when the saved one is no longer registered", () => {
+    const { context, workspace } = makeTerminalContext(),
+      tab = unloadedTab("terminal:tab-gone", false);
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
+    vi.mocked(setIcon).mockClear();
+
+    TerminalView.dressUnloadedTabs(context, false);
+
+    expect(tab.view.icon).toBe(PLAIN_ICON);
+    expect(vi.mocked(setIcon).mock.calls).toEqual([[tab.icon, PLAIN_ICON]]);
+  });
+
+  it("leaves a never-opened tab alone whose saved icon is not the feature's", () => {
+    const { context, workspace } = makeTerminalContext(),
+      tab = unloadedTab("lucide-file");
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
+    // Not even written with what it holds: the view is Obsidian's.
+    Object.freeze(tab.view);
+    vi.mocked(setIcon).mockClear();
+
+    expect(() => {
+      TerminalView.dressUnloadedTabs(context, false);
+    }).not.toThrow();
+
+    expect(tab.view.icon).toBe("lucide-file");
+    expect(setIcon).not.toHaveBeenCalled();
+  });
+
+  it("names the right icon also for a never-opened tab whose header cannot be reached", () => {
+    const { context, workspace } = makeTerminalContext(),
+      saved = unloadedTab(tabIconId(context, "bezel")),
+      other = unloadedTab("lucide-file");
+    // As on an Obsidian that keeps the tab header under another name.
+    Object.assign(saved.leaf, { tabHeaderEl: undefined });
+    Object.assign(other.leaf, { tabHeaderEl: undefined });
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([
+      saved.leaf,
+      other.leaf,
+    ]);
+    vi.mocked(setIcon).mockClear();
+
+    TerminalView.dressUnloadedTabs(context, false);
+    expect(saved.view.icon).toBe(PLAIN_ICON);
+    expect(other.view.icon).toBe("lucide-file");
+
+    TerminalView.dressUnloadedTabs(context, true);
+    expect(saved.view.icon).toBe(tabIconId(context, "bezel"));
+    expect(other.view.icon).toBe(tabIconId(context, "bezel"));
+    expect(setIcon).not.toHaveBeenCalled();
   });
 
   it("follows the experiment when it is not told what to do", () => {
