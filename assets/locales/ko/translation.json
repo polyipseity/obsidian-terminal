@@ -390,6 +390,14 @@
       "donate": "$t(generic.documentations.donate)",
       "readme": "$t(generic.documentations.readme)"
     },
+    "experimental": "Experimental",
+    "experimental-applies": {
+      "newTerminals": "Applies to terminals opened after the change.",
+      "restart": "Restart Obsidian to apply the change."
+    },
+    "experimental-description": "These features are not finished. They may change or be removed in a later version. Each one is off until you turn it on.",
+    "experimental-feedback": "Send feedback",
+    "experimental-risk": "Known risk: {{risk}}",
     "expose-internal-modules": "내부 모듈 공개",
     "expose-internal-modules-description-HTML": "<code>obsidian</code>, <code>@codemirror/*</code>, <code>@lezer/*</code> 등의 모듈을 공개합니다.",
     "focus-on-new-instance": "새 $t(generic.instance)에 $t(generic.focus)",

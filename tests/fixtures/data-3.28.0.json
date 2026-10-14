@@ -1,0 +1,269 @@
+{
+  "addToCommand": true,
+  "addToContextMenu": true,
+  "createInstanceNearExistingOnes": true,
+  "errorNoticeTimeout": 0,
+  "exposeInternalModules": true,
+  "focusOnNewInstance": true,
+  "hideStatusBar": "focused",
+  "showTerminalTabPrefix": false,
+  "interceptKeysWhenFocused": true,
+  "interceptLogging": true,
+  "keymappings": [
+    {
+      "action": "sendEscapeSequence",
+      "actionArg": "\r",
+      "alt": false,
+      "ctrl": false,
+      "key": "Enter",
+      "meta": false,
+      "platform": null,
+      "shift": true
+    },
+    {
+      "action": "scrollPages",
+      "actionArg": -1,
+      "alt": false,
+      "ctrl": false,
+      "key": "PageUp",
+      "meta": false,
+      "platform": null,
+      "shift": false
+    },
+    {
+      "action": "scrollPages",
+      "actionArg": 1,
+      "alt": false,
+      "ctrl": false,
+      "key": "PageDown",
+      "meta": false,
+      "platform": null,
+      "shift": false
+    },
+    {
+      "action": "scrollToTop",
+      "actionArg": null,
+      "alt": false,
+      "ctrl": false,
+      "key": "Home",
+      "meta": false,
+      "platform": null,
+      "shift": false
+    },
+    {
+      "action": "scrollToBottom",
+      "actionArg": null,
+      "alt": false,
+      "ctrl": false,
+      "key": "End",
+      "meta": false,
+      "platform": null,
+      "shift": false
+    },
+    {
+      "action": "sendEscapeSequence",
+      "actionArg": "b",
+      "alt": true,
+      "ctrl": false,
+      "key": "ArrowLeft",
+      "meta": false,
+      "platform": "darwin",
+      "shift": false
+    },
+    {
+      "action": "sendEscapeSequence",
+      "actionArg": "f",
+      "alt": true,
+      "ctrl": false,
+      "key": "ArrowRight",
+      "meta": false,
+      "platform": "darwin",
+      "shift": false
+    },
+    {
+      "action": "sendHexCode",
+      "actionArg": "01",
+      "alt": false,
+      "ctrl": false,
+      "key": "ArrowLeft",
+      "meta": true,
+      "platform": "darwin",
+      "shift": false
+    },
+    {
+      "action": "sendHexCode",
+      "actionArg": "05",
+      "alt": false,
+      "ctrl": false,
+      "key": "ArrowRight",
+      "meta": true,
+      "platform": "darwin",
+      "shift": false
+    },
+    {
+      "action": "sendHexCode",
+      "actionArg": "17",
+      "alt": true,
+      "ctrl": false,
+      "key": "Backspace",
+      "meta": false,
+      "platform": "darwin",
+      "shift": false
+    },
+    {
+      "action": "sendHexCode",
+      "actionArg": "15",
+      "alt": false,
+      "ctrl": false,
+      "key": "Backspace",
+      "meta": true,
+      "platform": "darwin",
+      "shift": false
+    },
+    {
+      "action": "sendEscapeSequence",
+      "actionArg": "d",
+      "alt": true,
+      "ctrl": false,
+      "key": "Delete",
+      "meta": false,
+      "platform": "darwin",
+      "shift": false
+    }
+  ],
+  "language": "",
+  "macOSOptionKeyPassthrough": true,
+  "rightClickAction": "copyPaste",
+  "newInstanceBehavior": "newHorizontalSplit",
+  "noticeTimeout": 17,
+  "openChangelogOnUpdate": true,
+  "pinNewInstance": true,
+  "preferredRenderer": "webgl",
+  "prewarmConPty": true,
+  "pythonExecutable": "",
+  "profiles": {
+    "darwinExternalDefault": {
+      "args": ["\"$PWD\""],
+      "environment": [],
+      "executable": "/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal",
+      "followTheme": true,
+      "name": "",
+      "platforms": {
+        "darwin": true
+      },
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "external"
+    },
+    "darwinIntegratedDefault": {
+      "args": ["--login"],
+      "environment": [],
+      "executable": "/bin/zsh",
+      "followTheme": true,
+      "name": "My shell",
+      "platforms": {
+        "darwin": true
+      },
+      "pythonExecutable": "python3",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "integrated",
+      "win32Backend": "conpty"
+    },
+    "developerConsole": {
+      "followTheme": true,
+      "name": "",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "developerConsole"
+    },
+    "linuxExternalDefault": {
+      "args": [],
+      "environment": [],
+      "executable": "xterm",
+      "followTheme": true,
+      "name": "",
+      "platforms": {
+        "linux": true
+      },
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "external"
+    },
+    "linuxIntegratedDefault": {
+      "args": [],
+      "environment": [],
+      "executable": "/bin/sh",
+      "followTheme": true,
+      "name": "",
+      "platforms": {
+        "linux": true
+      },
+      "pythonExecutable": "python3",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "integrated",
+      "win32Backend": "conpty"
+    },
+    "win32ExternalDefault": {
+      "args": [],
+      "environment": [],
+      "executable": "C:\\Windows\\System32\\cmd.exe",
+      "followTheme": true,
+      "name": "",
+      "platforms": {
+        "win32": true
+      },
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "external"
+    },
+    "win32IntegratedDefault": {
+      "args": [],
+      "environment": [],
+      "executable": "C:\\Windows\\System32\\cmd.exe",
+      "followTheme": true,
+      "name": "",
+      "platforms": {
+        "win32": true
+      },
+      "pythonExecutable": "",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "integrated",
+      "win32Backend": "conpty"
+    }
+  },
+  "defaultProfile": "darwinIntegratedDefault",
+  "terminalOptions": {
+    "documentOverride": null
+  }
+}

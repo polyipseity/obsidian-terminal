@@ -143,6 +143,16 @@ When setting up a terminal profile, you need to distinguish between shells and t
 - iTerm2: `/Applications/iTerm.app/Contents/MacOS/iTerm2 "$PWD"`
 - xterm: `xterm`
 
+### Experimental features
+
+Features that are not finished are listed under `Experimental`, the last section of the plugin settings. The section is shown only when the installed version has such features.
+
+- Every experimental feature is off until you turn it on. An update never turns one on.
+- Each row says what the feature does, what the known risk is, and where to send feedback.
+- To try a feature, turn on its toggle. To stop, turn it off. The plugin then behaves as it did before, and nothing you stored is lost. A change applies at once unless the row says it needs new terminals or a restart.
+- An experimental feature may change or be removed in a later version. When one becomes a regular feature, its toggle leaves the section and the changelog says so.
+- The choice is stored with the other plugin settings, so it follows the vault to every device that syncs them.
+
 ### Miscellaneous
 
 This plugin patches `require` so that `require("obsidian")` and other Obsidian modules work in the developer console. It is toggleable as `Expose internal modules` in settings.

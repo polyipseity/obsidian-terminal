@@ -138,6 +138,7 @@
       "donate-icon": "$t(asset:generic.documentations.donate-icon)",
       "readme-icon": "$t(asset:generic.documentations.readme-icon)"
     },
+    "experimental-feature-icon": "flask-conical",
     "expose-internal-modules-icon": "puzzle",
     "focus-on-new-instance-icon": "$t(asset:generic.actions.focus-icon)",
     "hide-status-bar-icon": "eye-off",

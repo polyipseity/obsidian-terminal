@@ -1371,6 +1371,42 @@ export class ButtonComponent {
   }
 }
 
+/**
+ * The small icon button at the end of a setting row. Its click handler runs
+ * when `extraSettingsEl` is clicked, as in Obsidian.
+ */
+export class ExtraButtonComponent {
+  public readonly extraSettingsEl: HTMLElement = document.createElement("div");
+  private disabled = false;
+
+  constructor(containerEl?: HTMLElement) {
+    containerEl?.append(this.extraSettingsEl);
+  }
+
+  setDisabled(disabled: boolean): this {
+    this.disabled = disabled;
+    return this;
+  }
+
+  setTooltip(tooltip: string): this {
+    this.extraSettingsEl.setAttribute("aria-label", tooltip);
+    return this;
+  }
+
+  setIcon(_icon: string): this {
+    return this;
+  }
+
+  onClick(callback: () => unknown): this {
+    this.extraSettingsEl.onclick = (): void => {
+      if (!this.disabled) {
+        callback();
+      }
+    };
+    return this;
+  }
+}
+
 // --------- Add a lightweight `Setting` helper used by plugin tests ---------
 export class Setting {
   constructor(public capturedButtons?: ButtonComponent[]) {}
