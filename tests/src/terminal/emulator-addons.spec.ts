@@ -4111,6 +4111,54 @@ describe("DragAndDropAddon", () => {
     },
   );
 
+  // In the input mode of the Windows console, which ConPTY asks for, the
+  // terminal sends a record for each key that goes down and for each that
+  // comes up, and the fourth field tells which. Releasing a key types
+  // nothing, as releasing Shift or Control after a drag does. The records
+  // are those the key handler writes (see its tests above).
+  it.each<readonly [string, string]>([
+    ["Shift", "\u001b[16;42;0;0;0;1_"],
+    ["Control", "\u001b[17;29;0;0;0;1_"],
+    ["Shift while Control is held", "\u001b[16;42;0;0;8;1_"],
+    ["a letter", "\u001b[65;30;97;0;0;1_"],
+    // One record for each half of the character.
+    [
+      "a key of a character beyond 16 bits",
+      "\u001b[0;0;55357;0;0;1_\u001b[0;0;56832;0;0;1_",
+    ],
+  ])(
+    "still pastes a drop when %s is released while it waits, as the Windows console writes it",
+    async (_name, data) => {
+      const stat = pendingStat();
+      dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+      const bed = createBed();
+
+      await drop(bed, uriDrag());
+      bed.input(data);
+      stat.answer();
+      await tick();
+
+      expect(bed.paste.mock.calls).toEqual([[`${DESKTOP}/b.png `]]);
+      expect(notices()).toEqual([]);
+    },
+  );
+
+  // A character composed with Alt and the numpad is sent as a key that goes
+  // down and comes up, in one go.
+  it("pastes nothing of a drop when a key goes down and up in one record pair while it waits", async () => {
+    const stat = pendingStat();
+    dragAndDropEnvironment.stat.mockReturnValue(stat.promise);
+    const bed = createBed();
+
+    await drop(bed, uriDrag());
+    bed.input("\u001b[0;0;233;1;0;1_\u001b[0;0;233;0;0;1_");
+    stat.answer();
+    await tick();
+
+    expect(bed.paste).not.toHaveBeenCalled();
+    expect(notices()).toEqual([SKIPPED_PATHS]);
+  });
+
   it("pastes nothing of a drop that waits behind another when input reaches the terminal", async () => {
     const stat = pendingStat();
     dragAndDropEnvironment.stat.mockReturnValue(stat.promise);

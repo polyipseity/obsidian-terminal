@@ -237,6 +237,11 @@ export class DragAndDropAddon implements ITerminalAddon {
   // (Alt and `]`) has not.
   static readonly #REPORT_STRING = /^[\]P]/u;
 
+  // What follows it in a record of the input mode of the Windows console,
+  // which ConPTY asks for, when the record is of a key that comes up: its
+  // fourth field (key down) is 0.
+  static readonly #WIN32_KEY_UP = /^\[\d+;\d+;\d+;0;\d+;\d+_$/u;
+
   readonly #disposer = new Functions({ async: false, settled: true });
   // Set by `dispose()`: nothing would remove listeners added after it.
   #disposed = false;
@@ -361,6 +366,23 @@ export class DragAndDropAddon implements ITerminalAddon {
     );
   }
 
+  /**
+   * Tells whether data the terminal sends to its program is a key that comes
+   * up, in the input mode of the Windows console: one record, or two for a
+   * character beyond 16 bits. Releasing a key types nothing, as releasing
+   * Shift or Control after a drag does. `CustomKeyEventHandlerAddon` writes
+   * these records itself, so xterm.js tells no key for them, nor for the
+   * records of a key that goes down.
+   */
+  static #isWin32KeyUp(data: string): boolean {
+    const [before, ...records] = data.split(DragAndDropAddon.#ESCAPE);
+    return (
+      before === "" &&
+      records.length > 0 &&
+      records.every((record) => DragAndDropAddon.#WIN32_KEY_UP.test(record))
+    );
+  }
+
   public activate(terminal: Terminal): void {
     if (this.#disposed) {
       // Nothing would remove listeners added now.
@@ -381,7 +403,11 @@ export class DragAndDropAddon implements ITerminalAddon {
         this.#drop(terminal, activation, event);
       },
       input = terminal.onData((data) => {
-        if (!this.#pasting && !DragAndDropAddon.#isReport(data)) {
+        if (
+          !this.#pasting &&
+          !DragAndDropAddon.#isReport(data) &&
+          !DragAndDropAddon.#isWin32KeyUp(data)
+        ) {
           ++this.#input;
         }
       }),
