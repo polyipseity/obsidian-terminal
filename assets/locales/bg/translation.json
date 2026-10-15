@@ -333,6 +333,7 @@
     "drop-skipped-paths": "Some dropped items could not be inserted as paths.",
     "drop-typed-while-waiting": "Nothing was inserted: you typed before the dropped paths were ready. Drop them again.",
     "no-default-profile": "No $t(generic.default) $t(generic.profile) for $t(generic.type) '$t(generic.profile-types.{{type}}, capitalize)'",
+    "no-file-for-current-directory": "No active file: open a file to start a $t(generic.terminal) in its folder.",
     "resizer-install-command-copied": "Install command copied.",
     "spawning-terminal": "$t(generic.spawn_gerund, capitalize) $t(generic.terminal): {{title}}",
     "terminal-exited": "$t(generic.terminal, capitalize) $t(generic.exit_past): {{code}}",
