@@ -155,13 +155,13 @@ Terminal tabs show the plugin's own icon at 22 px, larger than Obsidian's own ta
 
 `Program status`, in the `Interface` section of the plugin settings, shows on a terminal tab what the program in it reports with the escape sequence OSC 7501: idle, working, needs input, finished or error.
 
-- `None` (default): no status is shown and the reports are ignored.
+- `None`: no status is shown and the reports are ignored.
 - `Still`: the tab icon gets a mark for the status. Nothing moves.
-- `Animated`: the same marks, and the working dots light up in turn, a changed tab title slides up from below, and a new finished, needs-input or error mark pops in. Nothing moves where the system asks for reduced motion.
+- `Animated` (default): the same marks, and the working dots light up in turn, a changed tab title slides up from below, and a new finished, needs-input or error mark pops in. Nothing moves where the system asks for reduced motion.
 
 A finished program stays marked until you look at its terminal. A program that does not send OSC 7501 shows no status. Inside tmux or screen, a report reaches the terminal only when passthrough is set up there. On Windows, a program that asks the terminal whether it understands the reports gets no answer, so a program that waits for that answer before it reports shows no status there. A program that was already running when you choose `Still` or `Animated` may report only after you restart it.
 
-The setting is stored with the other plugin settings, so it follows the vault to every device that syncs them. A device that runs 3.28.0 or earlier drops the `tabStatus` setting when it saves its settings, so `Program status` goes back to `None`.
+The setting is stored with the other plugin settings, so it follows the vault to every device that syncs them. A device that runs 3.28.0 or earlier drops the `tabStatus` setting when it saves its settings, so `Program status` goes back to `Animated`, the default.
 
 ### Experimental features
 

@@ -3040,7 +3040,7 @@ describe("TerminalView.dressUnloadedTabs", () => {
   );
 
   it("gives a never-opened tab its icon back when the saved one is no longer registered", () => {
-    const { context, workspace } = makeTerminalContext(),
+    const { context, workspace } = makeTerminalContext({ tabStatus: "none" }),
       tab = unloadedTab("terminal:tab-gone", false);
     vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
     vi.mocked(setIcon).mockClear();
@@ -3052,7 +3052,7 @@ describe("TerminalView.dressUnloadedTabs", () => {
   });
 
   it("names the icon also for a never-opened tab whose header cannot be reached", () => {
-    const { context, workspace } = makeTerminalContext(),
+    const { context, workspace } = makeTerminalContext({ tabStatus: "none" }),
       saved = unloadedTab("terminal:tab-bezel"),
       other = unloadedTab("lucide-file");
     // As on an Obsidian that keeps the tab header under another name.
@@ -3130,7 +3130,7 @@ describe("TerminalView.dressUnloadedTabs", () => {
   });
 
   it("takes the size back from the tabs whose view is not loaded when told to, and only from them", () => {
-    const { context, workspace } = makeTerminalContext(),
+    const { context, workspace } = makeTerminalContext({ tabStatus: "none" }),
       loaded = loadedTab(context),
       unloaded = unloadedTab();
     vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([
@@ -3219,22 +3219,23 @@ describe("TerminalView.dressUnloadedTabs", () => {
   );
 
   it("draws the icon of the new Program status on never-opened tabs when it goes from None or to it, and not between Still and Animated", () => {
-    const { context, ready, workspace } = loadViews(),
+    const { context, ready, workspace } = loadViews({ tabStatus: "none" }),
       tab = unloadedTab(),
       listed = vi
         .spyOn(workspace, "getLeavesOfType")
         .mockReturnValue([tab.leaf]),
+      none = { ...Settings.DEFAULT, tabStatus: "none" } satisfies Settings,
       probe = { ...Settings.DEFAULT, tabStatus: "animated" } satisfies Settings,
       // The listeners that hear Program status: their accessors read it.
       hearing = vi
         .mocked(context.settings)
         .onMutate.mock.calls.filter(
-          ([accessor]) => accessor(probe) !== accessor(Settings.DEFAULT),
+          ([accessor]) => accessor(probe) !== accessor(none),
         );
     // One, and it asks only whether a status shows.
     expect(hearing).toHaveLength(1);
     expect(hearing[0]?.[0](probe)).toBe(true);
-    expect(hearing[0]?.[0](Settings.DEFAULT)).toBe(false);
+    expect(hearing[0]?.[0](none)).toBe(false);
     for (const callback of ready) callback();
     expect(tab.view.icon).toBe(TILE_ICON);
 

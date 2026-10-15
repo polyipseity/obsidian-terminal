@@ -579,14 +579,14 @@ describe("src/settings-data.ts", () => {
         return written;
       };
 
-    it("is None until the user chooses another", () => {
-      expect(Settings.DEFAULT.tabStatus).toBe("none");
-      expect(Settings.fix({}).value.tabStatus).toBe("none");
+    it("is Animated until the user chooses another", () => {
+      expect(Settings.DEFAULT.tabStatus).toBe("animated");
+      expect(Settings.fix({}).value.tabStatus).toBe("animated");
     });
 
     it("offers None, Still and Animated, in the order the settings tab shows them", () => {
       expect(Settings.TAB_STATUSES).toEqual(["none", "still", "animated"]);
-      expect(Settings.DEFAULT.tabStatus).toBe(Settings.TAB_STATUSES[0]);
+      expect(Settings.DEFAULT.tabStatus).toBe(Settings.TAB_STATUSES[2]);
     });
 
     it("has no setting of the tab but Program status", () => {
@@ -617,7 +617,7 @@ describe("src/settings-data.ts", () => {
       },
     );
 
-    it("replaces an unknown or mistyped Program status with None", () => {
+    it("replaces an unknown or mistyped Program status with the default, Animated", () => {
       for (const bad of [
         "loop",
         "on",
@@ -629,7 +629,9 @@ describe("src/settings-data.ts", () => {
         ["still"],
         { still: true },
       ]) {
-        expect(Settings.fix({ tabStatus: bad }).value.tabStatus).toBe("none");
+        expect(Settings.fix({ tabStatus: bad }).value.tabStatus).toBe(
+          "animated",
+        );
       }
     });
 
@@ -665,44 +667,49 @@ describe("src/settings-data.ts", () => {
         },
       );
 
+      // Those builds stored the switch only when it was on, so any other
+      // value says no more than a switch never touched: the default.
       it.each([[false], ["true"], [1], [null], [{}], [[true]], [undefined]])(
-        "leaves Program status None for a switch stored as %j, whatever the motion",
+        "gives the default, Animated, for a switch stored as %j, whatever the motion",
         (on) => {
+          // Under "none" a switch read as on would give Still instead.
           for (const tabStatusAnimation of ["none", "loop"]) {
             expect(
               Settings.fix(experimental(on, { tabStatusAnimation })).value
                 .tabStatus,
-            ).toBe("none");
+            ).toBe("animated");
           }
         },
       );
 
       it("reads the switch only as the experiment's own stored key", () => {
         // An inherited flag is not a stored flag, as the experiment's fixer read it.
+        // A switch read as on would give Still: the motion is "none".
         const inherited: unknown = JSON.parse(
           '{"__proto__":{"tabStatus":true}}',
         );
         expect(
-          Settings.fix({ experiments: inherited, tabStatusAnimation: "loop" })
+          Settings.fix({ experiments: inherited, tabStatusAnimation: "none" })
             .value.tabStatus,
-        ).toBe("none");
+        ).toBe("animated");
         for (const experiments of [undefined, null, true, "tabStatus", []]) {
           expect(
-            Settings.fix({ experiments, tabStatusAnimation: "loop" }).value
+            Settings.fix({ experiments, tabStatusAnimation: "none" }).value
               .tabStatus,
             JSON.stringify(experiments),
-          ).toBe("none");
+          ).toBe("animated");
         }
       });
 
       // `JSON.parse` keeps `__proto__` as an own key, as `data.json` can hold
-      // it; a copy made by assignment then inherits what it holds.
+      // it; a copy made by assignment then inherits what it holds. Each
+      // inherited value would give another status than the expected one.
       it.each([
-        ["Program status", '{"__proto__":{"tabStatus":"animated"}}', "none"],
+        ["Program status", '{"__proto__":{"tabStatus":"still"}}', "animated"],
         [
           "the experiments",
-          '{"__proto__":{"experiments":{"tabStatus":true}},"tabStatusAnimation":"loop"}',
-          "none",
+          '{"__proto__":{"experiments":{"tabStatus":true}},"tabStatusAnimation":"none"}',
+          "animated",
         ],
         [
           "the motion",
@@ -763,12 +770,17 @@ describe("src/settings-data.ts", () => {
       });
     });
 
-    it("turns nothing on for a stored tabStatusReports", () => {
+    it("drops a stored tabStatusReports and reads nothing from it", () => {
       // The switch of the builds before the experiment: never released.
-      const fixed = Settings.fix(stored({ tabStatusReports: true }));
+      const fixed = Settings.fix({
+        ...JSON.parse(JSON.stringify(Settings.fix({}).value)),
+        tabStatus: undefined,
+        tabStatusReports: true,
+        tabStatusAnimation: "none",
+      });
       expect(fixed.valid).toBe(false);
       expect(fixed.value).not.toHaveProperty("tabStatusReports");
-      expect(fixed.value.tabStatus).toBe("none");
+      expect(fixed.value.tabStatus).toBe("animated");
       expect(fixed.value.experiments).toEqual({});
     });
 
@@ -791,13 +803,13 @@ describe("src/settings-data.ts", () => {
       expect(Settings.fix(JSON.parse(JSON.stringify(fixed))).valid).toBe(true);
     });
 
-    it("adds None to settings saved by 3.28.0", () => {
+    it("adds Animated, the default, to settings saved by 3.28.0", () => {
       // 3.28.0 wrote none of these keys.
       const released: Record<string, unknown> = { ...Settings.DEFAULT };
       delete released["tabStatus"];
       released["showTerminalTabPrefix"] = true;
       const fixed = Settings.fix(released).value;
-      expect(fixed.tabStatus).toBe("none");
+      expect(fixed.tabStatus).toBe("animated");
       expect(fixed.showTerminalTabPrefix).toBe(true);
       expect(Settings.fix(JSON.parse(JSON.stringify(fixed))).valid).toBe(true);
     });

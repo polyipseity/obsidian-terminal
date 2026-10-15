@@ -288,7 +288,7 @@ export namespace Settings {
     noticeTimeout: 5,
     openChangelogOnUpdate: true,
     showTerminalTabPrefix: false,
-    tabStatus: "none",
+    tabStatus: "animated",
     pinNewInstance: true,
     preferredRenderer: "webgl",
     prewarmConPty: true,

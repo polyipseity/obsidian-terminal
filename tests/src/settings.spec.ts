@@ -1614,14 +1614,14 @@ describe("program status row", () => {
     }
   });
 
-  it("resets to None", async () => {
-    const { context, dropdown, reset, tab } = await drawSettingsTab("animated");
+  it("resets to Animated, the default", async () => {
+    const { context, dropdown, reset, tab } = await drawSettingsTab("none");
     try {
-      expect(Settings.DEFAULT.tabStatus).toBe("none");
+      expect(Settings.DEFAULT.tabStatus).toBe("animated");
       reset.extraSettingsEl.click();
       await vi.waitFor(() => {
-        expect(context.settings.value.tabStatus).toBe("none");
-        expect(dropdown.getValue()).toBe("none");
+        expect(context.settings.value.tabStatus).toBe("animated");
+        expect(dropdown.getValue()).toBe("animated");
       });
     } finally {
       tab.dispose();
