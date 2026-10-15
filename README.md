@@ -157,7 +157,7 @@ Terminal tabs show the plugin's own icon at 21 px, larger than Obsidian's own ta
 
 - `None`: no status is shown and the reports are ignored.
 - `Still`: the tab icon gets a mark for the status. Nothing moves.
-- `Animated` (default): the same marks, and the working dots light up in turn, a changed tab title slides up from below, and a new finished, needs-input or error mark pops in. Nothing moves where the system asks for reduced motion.
+- `Animated` (default): the same marks, and the working dots light up in turn, a changed tab title slides up from below, and a new finished, needs-input or error mark pops in. Nothing moves where the system asks for reduced motion. On Windows that is `Animation effects` turned off under `Settings` > `Accessibility` > `Visual effects`.
 
 A finished program stays marked until you look at its terminal. A program that does not send OSC 7501 shows no status. Inside tmux or screen, a report reaches the terminal only when passthrough is set up there. On Windows, a program that asks the terminal whether it understands the reports gets no answer, so a program that waits for that answer before it reports shows no status there. A program that was already running when you choose `Still` or `Animated` may report only after you restart it.
 
