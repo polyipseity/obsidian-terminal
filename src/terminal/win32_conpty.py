@@ -2,10 +2,18 @@
 
 The plugin embeds this file as text, writes it to a temporary file, and runs::
 
-    python <file> <columns> <rows> <pipe-name> [--cwd <dir>] -- <executable> [args...]
+    python <file> <columns> <rows> <pipe-name> [--cwd <dir>] [--console-host <spec>]
+        -- <executable> [args...]
 
 The source exceeds the 32767-character Windows command-line limit, so a
 ``python -c`` spawn cannot work.
+
+``--console-host`` (or ``consoleHost`` in a deferred ``start``) asks for the
+``OpenConsole.exe`` that Windows Terminal ships instead of the console host
+built into Windows: ``auto`` finds Windows Terminal, an absolute path names the
+file. The host starts it the way ``conpty.dll`` does, falls back to the
+built-in console host when it cannot, and reports which one runs in the
+``consoleHost`` field of ``ready``.
 
 The host binds the child process to a pseudoconsole and bridges three channels.
 Its stdin and stdout carry raw terminal bytes.  A local named pipe, created by
@@ -27,13 +35,17 @@ Diagnostics go to stderr; stdout carries data only.
 from __future__ import annotations
 
 import ctypes
+import hashlib
 import json
+import ntpath
 import os
 import re
+import shutil
+import struct
 import sys
 import threading
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, BinaryIO, Callable, NamedTuple
 
 """Public API of this module."""
@@ -45,6 +57,7 @@ __all__ = (
     "DeferredArguments",
     "HostArguments",
     "NdjsonDecoder",
+    "WindowsTerminal",
     "assign_suspended_child",
     "build_command_line",
     "decode_message",
@@ -54,6 +67,7 @@ __all__ = (
     "main",
     "parse_arguments",
     "parse_resize",
+    "pick_windows_terminal",
     "pump_output",
     "quote_argument",
     "resolve_executable",
@@ -128,6 +142,36 @@ _PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE = 0x00020016
 """STARTUPINFO flag making the explicit null standard handles authoritative."""
 _STARTF_USESTDHANDLES = 0x00000100
 
+"""The ``consoleHost`` spec asking the host to find Windows Terminal."""
+_CONSOLE_HOST_AUTO = "auto"
+"""``consoleHost.engine`` while Windows Terminal's ``OpenConsole.exe`` runs."""
+_ENGINE_OPENCONSOLE = "openconsole"
+"""``consoleHost.engine`` while the console host built into Windows runs."""
+_ENGINE_CONHOST = "conhost"
+"""File name of Windows Terminal's console host and of the host's copies."""
+_CONSOLE_HOST_EXECUTABLE = "OpenConsole.exe"
+"""Path segment of the folder Windows refuses to start package programs from."""
+_WINDOWS_APPS = "windowsapps"
+"""Oldest Windows Terminal whose console host passes OSC input to programs.
+
+Release 1.22 also stopped answering DA1 itself, so programs can tell what the
+terminal supports.
+"""
+_MINIMUM_WINDOWS_TERMINAL = (1, 22, 0, 0)
+"""A Windows Terminal (or Preview) package full name from the AppModel repository."""
+_WINDOWS_TERMINAL_PACKAGE = re.compile(
+    r"Microsoft\.WindowsTerminal(?P<preview>Preview)?"
+    r"_(?P<version>\d+\.\d+\.\d+\.\d+)_(?P<architecture>[A-Za-z0-9]+)"
+    r"__8wekyb3d8bbwe",
+    re.IGNORECASE,
+)
+"""Package architecture names of the ``IsWow64Process2`` native machines."""
+_MACHINE_ARCHITECTURES = {0x8664: "x64", 0xAA64: "arm64", 0x014C: "x86"}
+"""Signal-pipe packet type of a resize, from ``winconpty.h``."""
+_PTY_SIGNAL_RESIZE_WINDOW = 8
+"""``E_FAIL``, reported when a failed write left no Win32 error."""
+_E_FAIL = 0x80004005
+
 
 class DeferredArguments(NamedTuple):
     """The parsed ``--defer-session`` host command line."""
@@ -143,6 +187,7 @@ class HostArguments(NamedTuple):
     pipe_name: str
     command: tuple[str, ...]
     cwd: str | None = None
+    console_host: str | None = None
 
 
 class _ControlFiles(NamedTuple):
@@ -224,9 +269,12 @@ def pump_output(
 ) -> None:
     """Forward chunks from ``read`` to ``write`` until ``read`` returns none.
 
-    A failed write stops the forwarding, never the reading: ``ClosePseudoConsole``
-    waits for conhost to flush into the output pipe, so a pump that left the
-    pipe undrained would hang the close, and the host with it, forever.
+    A failed write stops the forwarding, never the reading: the console host
+    flushes into the output pipe before it exits. The built-in
+    ``ClosePseudoConsole`` waits for that, so a pump that left the pipe
+    undrained would hang the close, and the host with it, forever; an
+    ``OpenConsole.exe`` would block instead of exiting, and its end of file
+    would never come.
     """
     forwarding = True
     while True:
@@ -398,16 +446,18 @@ def parse_arguments(
 ) -> DeferredArguments | HostArguments:
     """Parse the host command line.
 
-    Immediate form:
-    ``<columns> <rows> <pipe-name> [--cwd <dir>] -- <executable> [args...]``.
-    Deferred form: ``--defer-session <pipe-name>``.
+    Immediate form: ``<columns> <rows> <pipe-name> [--cwd <dir>]
+    [--console-host <spec>] -- <executable> [args...]``, the two options in
+    either order. Deferred form: ``--defer-session <pipe-name>``.
 
     Everything after the first ``--`` is the child command, so a ``--cwd``
     there belongs to the child.  The directory is taken verbatim, as the
     deferred ``start`` op takes its ``cwd``: whether it exists is decided when
-    the session starts, where a bad one is a shell-start failure. Host envelope
-    errors raise ``ValueError``; a missing/empty executable raises
-    ``ChildStartError`` with the profile-fault exit code.
+    the session starts, where a bad one is a shell-start failure. The console
+    host spec is judged at session start too, and an empty one means the
+    built-in console host, as in the ``start`` op. Host envelope errors raise
+    ``ValueError``; a missing/empty executable raises ``ChildStartError`` with
+    the profile-fault exit code.
     """
     values = list(arguments)
     if values and values[0] == "--defer-session":
@@ -419,11 +469,23 @@ def parse_arguments(
     separator = values.index("--")
     head = values[:separator]
     command = values[separator + 1 :]
-    options = head[3:]
-    has_cwd = len(options) == 2 and options[0] == "--cwd"
-    if len(head) < 3 or (options and not has_cwd):
+    options: dict[str, str] = {}
+    # Each option takes the next value verbatim, even one that looks like an
+    # option, so a directory named ``--cwd`` stays a directory.
+    for index in range(3, len(head), 2):
+        name = head[index]
+        if (
+            name not in ("--cwd", "--console-host")
+            or name in options
+            or index + 1 >= len(head)
+        ):
+            options.clear()
+            break
+        options[name] = head[index + 1]
+    if len(head) < 3 or len(options) * 2 != len(head) - 3:
         raise ValueError(
-            "expected <columns> <rows> <pipe-name> [--cwd <dir>] before --"
+            "expected <columns> <rows> <pipe-name> [--cwd <dir>] "
+            "[--console-host <spec>] before --"
         )
     pipe_name = _parse_pipe_name(head[2])
     columns = _parse_dimension(head[0], "columns")
@@ -437,7 +499,8 @@ def parse_arguments(
         rows=rows,
         pipe_name=pipe_name,
         command=tuple(command),
-        cwd=options[1] if has_cwd else None,
+        cwd=options.get("--cwd"),
+        console_host=options.get("--console-host") or None,
     )
 
 
@@ -661,6 +724,9 @@ def _parse_start(message: Mapping[str, Any], pipe_name: str) -> _StartRequest | 
     cwd = message.get("cwd")
     if cwd is not None and not isinstance(cwd, str):
         return None
+    console_host = message.get("consoleHost")
+    if console_host is not None and not isinstance(console_host, str):
+        return None
     environment = message.get("env")
     if environment is not None and (
         not isinstance(environment, dict)
@@ -677,6 +743,8 @@ def _parse_start(message: Mapping[str, Any], pipe_name: str) -> _StartRequest | 
             pipe_name=pipe_name,
             command=tuple(command),
             cwd=cwd,
+            # An empty spec asks for nothing, exactly like an absent one.
+            console_host=console_host or None,
         ),
         # The token authenticates this host; no child may ever receive it.
         environment={
@@ -688,6 +756,278 @@ def _parse_start(message: Mapping[str, Any], pipe_name: str) -> _StartRequest | 
     )
 
 
+class WindowsTerminal(NamedTuple):
+    """An installed Windows Terminal package with a usable console host."""
+
+    package: str
+    console_host: str
+
+
+def _is_absolute_windows_path(path: str) -> bool:
+    """Tell whether ``path`` names a drive or share and a root on it.
+
+    A rooted path without a drive, such as ``\\tools``, depends on the current
+    drive: Python 3.13 stopped calling it absolute, so it is refused on every
+    version.
+    """
+    return bool(ntpath.splitdrive(path)[0]) and ntpath.isabs(path)
+
+
+def _version(text: str) -> tuple[int, ...]:
+    """Parse a dotted package version into comparable integers."""
+    return tuple(int(part) for part in text.split("."))
+
+
+def pick_windows_terminal(
+    packages: Iterable[tuple[str, str]],
+    is_file: Callable[[str], bool],
+    native_architecture: str | None = None,
+) -> WindowsTerminal | None:
+    """Choose the Windows Terminal whose ``OpenConsole.exe`` a session runs.
+
+    ``packages`` holds ``(package full name, root folder)`` pairs from the
+    AppModel repository. A package qualifies when it is Windows Terminal or
+    its Preview, at least version 1.22, and its root folder holds
+    ``OpenConsole.exe``. Stable beats Preview, then the higher version wins,
+    then the package built for ``native_architecture``. Any architecture
+    qualifies: an emulated Python starts a native console host fine.
+    """
+    best: WindowsTerminal | None = None
+    best_rank: tuple[bool, tuple[int, ...], bool] | None = None
+    for name, root in packages:
+        match = _WINDOWS_TERMINAL_PACKAGE.fullmatch(name)
+        if match is None or not _is_absolute_windows_path(root):
+            continue
+        version = _version(match.group("version"))
+        if version < _MINIMUM_WINDOWS_TERMINAL:
+            continue
+        console_host = ntpath.join(root, _CONSOLE_HOST_EXECUTABLE)
+        if not is_file(console_host):
+            continue
+        rank = (
+            match.group("preview") is None,
+            version,
+            match.group("architecture").lower() == native_architecture,
+        )
+        if best_rank is None or rank > best_rank:
+            best, best_rank = WindowsTerminal(name, console_host), rank
+    return best
+
+
+class _ConsoleHost(NamedTuple):
+    """The console host a session runs, or plans to run, and why.
+
+    ``path`` is the ``OpenConsole.exe`` to start while ``engine`` is
+    ``openconsole``. ``fallback`` names why the built-in console host runs
+    instead of a requested one; it is ``None`` when none was requested.
+    """
+
+    engine: str = _ENGINE_CONHOST
+    path: str | None = None
+    fallback: str | None = None
+    detail: str | None = None
+
+    def report(self) -> dict[str, str | None]:
+        """Return the ``consoleHost`` value of the ``ready`` event."""
+        return {
+            "engine": self.engine,
+            "path": self.path,
+            "fallback": self.fallback,
+            "detail": self.detail,
+        }
+
+
+def _fall_back(code: str, detail: str | None) -> _ConsoleHost:
+    """Report the built-in console host running in place of a requested one."""
+    return _ConsoleHost(_ENGINE_CONHOST, None, code, detail)
+
+
+class _PseudoConsole(NamedTuple):
+    """A created pseudoconsole and the functions of the host that created it.
+
+    ``handle`` is the ``HPCON`` value for ``PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE``.
+    Only these functions may resize or close it: a handle from one console
+    host means nothing to the other.
+    """
+
+    handle: int
+    resize: Callable[[int, int], int]
+    close: Callable[[], None]
+
+
+class _ConsoleHostUnsupported(OSError):
+    """Windows lacks an export that starting ``OpenConsole.exe`` needs."""
+
+
+def _in_windows_apps(path: str) -> bool:
+    """Tell whether ``path`` lies inside a ``WindowsApps`` folder."""
+    return any(part.lower() == _WINDOWS_APPS for part in re.split(r"[\\/]", path))
+
+
+def _plan_console_host(
+    spec: str | None,
+    find_windows_terminal: Callable[[], WindowsTerminal | None],
+    is_file: Callable[[str], bool],
+    copy: Callable[[str, str], str],
+) -> _ConsoleHost:
+    """Decide which ``OpenConsole.exe`` a session will try to start.
+
+    ``spec`` is ``None`` for the built-in console host, ``auto`` for Windows
+    Terminal's, or the absolute path of an ``OpenConsole.exe``. Windows will
+    not start a program from inside ``WindowsApps`` for anyone but its
+    package, so such a file runs from a copy that ``copy`` returns for the
+    source path and the copy folder's name: the package full name, or the
+    name of the folder holding the file. Nothing here writes to stderr: the
+    plugin shows stderr as errors, and ``auto`` falls back on every terminal
+    of a device without Windows Terminal, so ``ready`` is the only report.
+    """
+    if spec is None:
+        return _ConsoleHost()
+    if spec == _CONSOLE_HOST_AUTO:
+        try:
+            found = find_windows_terminal()
+        except OSError as error:
+            return _fall_back("not-found", str(error))
+        if found is None:
+            minimum = ".".join(str(part) for part in _MINIMUM_WINDOWS_TERMINAL[:2])
+            return _fall_back(
+                "not-found", f"no Windows Terminal {minimum} or newer is installed"
+            )
+        path, name = found.console_host, found.package
+    else:
+        if not _is_absolute_windows_path(spec):
+            return _fall_back("not-absolute", spec)
+        # Windows resolves ``..`` by text too, so the copy folder's name
+        # comes from the path that will really run.
+        path = ntpath.normpath(spec)
+        if not is_file(path):
+            return _fall_back("missing", path)
+        name = ntpath.basename(ntpath.dirname(path))
+    if _in_windows_apps(path):
+        try:
+            path = copy(path, name)
+        except OSError as error:
+            return _fall_back("start-failed", str(error))
+    return _ConsoleHost(_ENGINE_OPENCONSOLE, path)
+
+
+def _file_digest(path: str) -> bytes:
+    """Return the SHA-256 digest of a file's content."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as stream:
+        for chunk in iter(lambda: stream.read(_CHUNK_SIZE), b""):
+            digest.update(chunk)
+    return digest.digest()
+
+
+def _same_content(source: str, copy: str) -> bool:
+    """Tell whether ``copy`` exists with exactly the content of ``source``."""
+    try:
+        return os.path.getsize(copy) == os.path.getsize(source) and (
+            _file_digest(copy) == _file_digest(source)
+        )
+    except OSError:
+        return False
+
+
+def _copy_console_host(source: str, name: str, root: str) -> str:
+    """Return ``<root>\\<name>\\OpenConsole.exe`` holding a copy of ``source``.
+
+    An identical copy is reused. Otherwise a temporary file in the same folder
+    replaces the copy, and the other folders under ``root``, older versions,
+    are removed where possible: one may still run in another terminal. A
+    copy that cannot be replaced because it runs is fine when it already has
+    the source's content, as when another host copied the same version first.
+    """
+    folder = os.path.join(root, name)
+    target = os.path.join(folder, _CONSOLE_HOST_EXECUTABLE)
+    if _same_content(source, target):
+        return target
+    os.makedirs(folder, exist_ok=True)
+    temporary = os.path.join(folder, f"{_CONSOLE_HOST_EXECUTABLE}.{os.getpid()}.tmp")
+    try:
+        shutil.copyfile(source, temporary)
+        try:
+            os.replace(temporary, target)
+        except OSError:
+            if not _same_content(source, target):
+                raise
+            return target
+    finally:
+        try:
+            os.remove(temporary)
+        except OSError:
+            pass
+    try:
+        entries = os.listdir(root)
+    except OSError:
+        entries = []
+    for entry in entries:
+        if os.path.normcase(entry) != os.path.normcase(name):
+            shutil.rmtree(os.path.join(root, entry), ignore_errors=True)
+    return target
+
+
+def _open_pseudoconsole(
+    host: _ConsoleHost,
+    launch: Callable[[str], _PseudoConsole],
+    create_built_in: Callable[[], _PseudoConsole],
+) -> tuple[_ConsoleHost, _PseudoConsole]:
+    """Create the pseudoconsole with the planned host, else the built-in one.
+
+    A failed ``OpenConsole.exe`` launch has released everything it created,
+    and the pipe ends it was given are still valid, so the built-in console
+    host gets them next. The returned report names the host that runs.
+    """
+    path = host.path
+    if host.engine == _ENGINE_OPENCONSOLE and path is not None:
+        try:
+            return host, launch(path)
+        except _ConsoleHostUnsupported as error:
+            host = _fall_back("unsupported-os", str(error))
+        except OSError as error:
+            host = _fall_back("start-failed", str(error))
+    return host, create_built_in()
+
+
+def _console_host_command_line(
+    path: str, columns: int, rows: int, signal: int, server: int
+) -> str:
+    """Build the ``OpenConsole.exe`` command line ``conpty.dll`` uses.
+
+    The handle values are printed as ``%tx`` prints them: lowercase hex.
+    """
+    return (
+        f'"{path}" --headless --width {columns} --height {rows} '
+        f"--signal 0x{signal:x} --server 0x{server:x}"
+    )
+
+
+def _resize_signal(columns: int, rows: int) -> bytes:
+    """Encode the signal-pipe packet asking ``OpenConsole.exe`` to resize."""
+    return struct.pack("<3H", _PTY_SIGNAL_RESIZE_WINDOW, columns, rows)
+
+
+def _hresult_from_win32(error: int) -> int:
+    """Convert a Win32 error to a signed ``HRESULT``, as ``HRESULT_FROM_WIN32``."""
+    value = 0x80070000 | (error & 0xFFFF) if error else _E_FAIL
+    return value - 0x100000000
+
+
+def _ready_event(child_pid: int, console_host: _ConsoleHost) -> dict[str, Any]:
+    """Build the ``ready`` event for a resumed, job-assigned child."""
+    return {
+        "event": "ready",
+        "attestation": READY_ATTESTATION,
+        "hostPid": os.getpid(),
+        "childPid": child_pid,
+        "createPseudoConsole": True,
+        "controlChannelAuthenticated": True,
+        "jobObjectAssigned": True,
+        "consoleHost": console_host.report(),
+    }
+
+
 def main() -> None:
     """Not implemented on non-Windows platforms."""
     raise NotImplementedError(sys.platform)
@@ -695,6 +1035,7 @@ def main() -> None:
 
 if sys.platform == "win32":
     import msvcrt
+    import winreg
     from ctypes import wintypes
 
     """Creation flag declaring an extended STARTUPINFO with attributes."""
@@ -717,6 +1058,27 @@ if sys.platform == "win32":
     _JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK = 0x00001000
     """Wait result meaning the waited-on object is signalled."""
     _WAIT_OBJECT_0 = 0x00000000
+    """Handle flag letting a new process inherit the handle."""
+    _HANDLE_FLAG_INHERIT = 0x00000001
+    """Process attribute naming the only handles a new process inherits."""
+    _PROC_THREAD_ATTRIBUTE_HANDLE_LIST = 0x00020002
+    """Access right requested for the console driver's server object."""
+    _GENERIC_ALL = 0x10000000
+    """Access rights requested for the console driver's reference object."""
+    _GENERIC_READ_WRITE_SYNCHRONIZE = 0x80000000 | 0x40000000 | 0x00100000
+    """``FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE``."""
+    _FILE_SHARE_ALL = 0x00000007
+    """Open option making the reference handle synchronous."""
+    _FILE_SYNCHRONOUS_IO_NONALERT = 0x00000020
+    """Object attribute making a name lookup case-insensitive."""
+    _OBJ_CASE_INSENSITIVE = 0x00000040
+    """Object attribute making the opened handle inheritable."""
+    _OBJ_INHERIT = 0x00000002
+    """Registry key listing the current user's installed packages."""
+    _PACKAGES_KEY = (
+        "Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows"
+        "\\CurrentVersion\\AppModel\\Repository\\Packages"
+    )
 
     """Milliseconds between child-liveness checks while a session runs."""
     _POLL_MILLISECONDS = 100
@@ -828,9 +1190,51 @@ if sys.platform == "win32":
             ("memory", _SIZE * 4),
         )
 
-    def _bind(name: str, argtypes: tuple[Any, ...], restype: Any) -> Any:
-        """Resolve one ``kernel32`` export and attach its explicit signature."""
-        function = getattr(_kernel32, name)
+    class _UNICODE_STRING(ctypes.Structure):
+        """NT ``UNICODE_STRING``: lengths in bytes, then the UTF-16 buffer."""
+
+        _fields_ = (
+            ("Length", _WORD),
+            ("MaximumLength", _WORD),
+            ("Buffer", ctypes.c_wchar_p),
+        )
+
+    class _OBJECT_ATTRIBUTES(ctypes.Structure):
+        """NT ``OBJECT_ATTRIBUTES`` naming the object ``NtOpenFile`` opens."""
+
+        _fields_ = (
+            ("Length", ctypes.c_ulong),
+            ("RootDirectory", _HANDLE),
+            ("ObjectName", ctypes.POINTER(_UNICODE_STRING)),
+            ("Attributes", ctypes.c_ulong),
+            ("SecurityDescriptor", _VOID),
+            ("SecurityQualityOfService", _VOID),
+        )
+
+    class _IO_STATUS_BLOCK(ctypes.Structure):
+        """NT ``IO_STATUS_BLOCK``: a status-or-pointer union and a count."""
+
+        _fields_ = (("Status", _VOID), ("Information", _SIZE))
+
+    class _PSEUDOCONSOLE(ctypes.Structure):
+        """The ``PseudoConsole`` struct an ``HPCON`` points to.
+
+        ``winconpty.h`` calls this layout "an ABI shared with the rest of the
+        operating system": ``CreateProcessW`` reads it to attach the shell to
+        the console host that ``_launch_console_host`` started.
+        """
+
+        _fields_ = (
+            ("hSignal", _HANDLE),
+            ("hPtyReference", _HANDLE),
+            ("hConPtyProcess", _HANDLE),
+        )
+
+    def _bind(
+        name: str, argtypes: tuple[Any, ...], restype: Any, library: Any = _kernel32
+    ) -> Any:
+        """Resolve one ``kernel32`` (or ``library``) export with its signature."""
+        function = getattr(library, name)
         function.argtypes = argtypes
         function.restype = restype
         return function
@@ -911,6 +1315,10 @@ if sys.platform == "win32":
     _SearchPathW = _bind(
         "SearchPathW", (_LPWSTR, _LPWSTR, _LPWSTR, _DWORD, _LPWSTR, _VOID), _DWORD
     )
+    """Turn handle inheritance on or off for one handle."""
+    _SetHandleInformation = _bind(
+        "SetHandleInformation", (_HANDLE, _DWORD, _DWORD), _BOOL
+    )
     """Apply limits to a job object."""
     _SetInformationJobObject = _bind(
         "SetInformationJobObject", (_HANDLE, ctypes.c_int, _VOID, _DWORD), _BOOL
@@ -952,6 +1360,32 @@ if sys.platform == "win32":
         _ResizePseudoConsole = _no_conpty
         """Flush and destroy a pseudoconsole."""
         _ClosePseudoConsole = _no_conpty
+
+    """The ``ntdll`` library, which opens console driver objects."""
+    _ntdll = ctypes.WinDLL("ntdll")  # ty: ignore[possibly-missing-attribute]
+
+    def _no_nt_open_file(*_arguments: Any) -> Any:
+        """Stand in for an ``NtOpenFile`` export this Windows lacks."""
+        raise _ConsoleHostUnsupported("ntdll does not export NtOpenFile")
+
+    try:
+        """Open a console driver object by its NT name."""
+        _NtOpenFile = _bind(
+            "NtOpenFile",
+            (
+                _PHANDLE,
+                _DWORD,
+                ctypes.POINTER(_OBJECT_ATTRIBUTES),
+                ctypes.POINTER(_IO_STATUS_BLOCK),
+                ctypes.c_ulong,
+                ctypes.c_ulong,
+            ),
+            _LONG,
+            _ntdll,
+        )
+    except AttributeError:
+        """Open a console driver object by its NT name."""
+        _NtOpenFile = _no_nt_open_file
 
     def _as_handle(value: int | None) -> int:
         """Return a pointer-width Win32 result as a plain integer handle."""
@@ -1024,8 +1458,8 @@ if sys.platform == "win32":
 
     def _create_pseudoconsole(
         columns: int, rows: int, input_read: int, output_write: int
-    ) -> int:
-        """Create the pseudoconsole that owns the child's console I/O."""
+    ) -> _PseudoConsole:
+        """Create a pseudoconsole on the console host built into Windows."""
         handle = _HPCON()
         result = int(
             _CreatePseudoConsole(
@@ -1039,7 +1473,278 @@ if sys.platform == "win32":
         # The result is an HRESULT, so only a negative value means failure.
         if result < 0 or not handle.value:
             raise OSError(f"CreatePseudoConsole failed: 0x{result & 0xFFFFFFFF:08X}")
+        value = _as_handle(handle.value)
+        return _PseudoConsole(
+            value,
+            lambda width, height: int(
+                _ResizePseudoConsole(value, _COORD(width, height))
+            ),
+            lambda: _ClosePseudoConsole(value),
+        )
+
+    def _open_console_driver(
+        name: str, access: int, root: int, attributes: int, options: int
+    ) -> int:
+        """Open a ``\\Device\\ConDrv`` object as ``DeviceHandle::_CreateHandle``."""
+        object_name = _UNICODE_STRING(len(name) * 2, len(name) * 2 + 2, name)
+        object_attributes = _OBJECT_ATTRIBUTES(
+            ctypes.sizeof(_OBJECT_ATTRIBUTES),
+            root or None,
+            ctypes.pointer(object_name),
+            attributes,
+            None,
+            None,
+        )
+        status_block = _IO_STATUS_BLOCK()
+        handle = _HANDLE()
+        status = int(
+            _NtOpenFile(
+                ctypes.byref(handle),
+                access,
+                ctypes.byref(object_attributes),
+                ctypes.byref(status_block),
+                _FILE_SHARE_ALL,
+                options,
+            )
+        )
+        # An NTSTATUS, like an HRESULT, fails only when negative.
+        if status < 0:
+            raise OSError(f"NtOpenFile({name}) failed: 0x{status & 0xFFFFFFFF:08X}")
         return _as_handle(handle.value)
+
+    def _start_console_host(
+        path: str,
+        command_line: str,
+        inherited: tuple[int, ...],
+        input_read: int,
+        output_write: int,
+    ) -> int:
+        """Start ``OpenConsole.exe`` with exactly ``inherited``; return its process."""
+        size = _SIZE(0)
+        # The first call is expected to fail; it only reports the buffer size.
+        _InitAttributeList(None, 1, 0, ctypes.byref(size))
+        if size.value == 0:
+            raise _last_error()
+        storage = ctypes.create_string_buffer(size.value)
+        attributes = ctypes.cast(storage, _VOID)
+        if not _InitAttributeList(attributes, 1, 0, ctypes.byref(size)):
+            raise _last_error()
+        # The attribute list points into this array until CreateProcessW returns.
+        handles = (_HANDLE * len(inherited))(*inherited)
+        information = _PROCESS_INFORMATION()
+        try:
+            if not _UpdateAttribute(
+                attributes,
+                0,
+                _PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+                ctypes.byref(handles),
+                ctypes.sizeof(handles),
+                None,
+                None,
+            ):
+                raise _last_error()
+            startup = _STARTUPINFOEXW()
+            startup.StartupInfo.cb = ctypes.sizeof(_STARTUPINFOEXW)
+            startup.StartupInfo.dwFlags = _STARTF_USESTDHANDLES
+            startup.StartupInfo.hStdInput = input_read
+            startup.StartupInfo.hStdOutput = output_write
+            startup.StartupInfo.hStdError = output_write
+            startup.lpAttributeList = attributes
+            buffer = ctypes.create_unicode_buffer(command_line)
+            try:
+                # A handle list accepts only inheritable handles; CreateProcessW
+                # fails with ERROR_INVALID_PARAMETER otherwise. conpty.dll
+                # passes inheritable duplicates; these two pipe ends become
+                # inheritable for this one launch instead. The shell starts
+                # with bInheritHandles=FALSE and the host closes both ends once
+                # it runs, so no other process inherits them.
+                for handle in (input_read, output_write):
+                    if not _SetHandleInformation(
+                        handle, _HANDLE_FLAG_INHERIT, _HANDLE_FLAG_INHERIT
+                    ):
+                        raise _last_error()
+                if not _CreateProcessW(
+                    path,
+                    ctypes.cast(buffer, _VOID),
+                    None,
+                    None,
+                    True,
+                    _EXTENDED_STARTUPINFO_PRESENT,
+                    None,
+                    None,
+                    ctypes.byref(startup),
+                    ctypes.byref(information),
+                ):
+                    raise _last_error()
+            finally:
+                for handle in (input_read, output_write):
+                    _SetHandleInformation(handle, _HANDLE_FLAG_INHERIT, 0)
+        finally:
+            _DeleteAttributeList(attributes)
+        _close(_as_handle(information.hThread))
+        return _as_handle(information.hProcess)
+
+    def _launch_console_host(
+        path: str, columns: int, rows: int, input_read: int, output_write: int
+    ) -> _PseudoConsole:
+        """Start ``OpenConsole.exe`` on the session's pipes as ``conpty.dll`` does.
+
+        Ported from ``_CreatePseudoConsole`` in Microsoft's ``winconpty.cpp``
+        (https://github.com/microsoft/terminal, MIT license), without the
+        driver-loading retry, which needs privileges: an interactive session
+        always has the console driver loaded. A failure releases everything
+        this function created and leaves both pipe ends untouched.
+        """
+        if _CreatePseudoConsole is _no_conpty:
+            # The shell attaches through PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
+            # which Windows understands only where it has ConPTY itself.
+            raise _ConsoleHostUnsupported(
+                "ConPTY requires Windows 10 version 1809 or newer"
+            )
+        # Closed whatever happens: OpenConsole holds its own inherited copies.
+        transient: list[int] = []
+        # Kept for the session; closed only when the launch fails.
+        kept: list[int] = []
+        try:
+            server = _open_console_driver(
+                "\\Device\\ConDrv\\Server",
+                _GENERIC_ALL,
+                0,
+                _OBJ_CASE_INSENSITIVE | _OBJ_INHERIT,
+                0,
+            )
+            transient.append(server)
+            # The reference keeps the server, and so OpenConsole, alive until
+            # the session closes it.
+            reference = _open_console_driver(
+                "\\Reference",
+                _GENERIC_READ_WRITE_SYNCHRONIZE,
+                server,
+                _OBJ_CASE_INSENSITIVE,
+                _FILE_SYNCHRONOUS_IO_NONALERT,
+            )
+            kept.append(reference)
+            signal_console_side, signal = _create_pipe()
+            transient.append(signal_console_side)
+            kept.append(signal)
+            if not _SetHandleInformation(
+                signal_console_side, _HANDLE_FLAG_INHERIT, _HANDLE_FLAG_INHERIT
+            ):
+                raise _last_error()
+            process = _start_console_host(
+                path,
+                _console_host_command_line(
+                    path, columns, rows, signal_console_side, server
+                ),
+                (server, input_read, output_write, signal_console_side),
+                input_read,
+                output_write,
+            )
+        except BaseException:
+            for handle in kept:
+                _close(handle)
+            raise
+        finally:
+            for handle in transient:
+                _close(handle)
+        pseudoconsole = _PSEUDOCONSOLE(signal, reference, process)
+
+        def resize(width: int, height: int) -> int:
+            """Send OpenConsole the resize packet ``conpty.dll`` sends."""
+            if _write_handle(
+                _as_handle(pseudoconsole.hSignal), _resize_signal(width, height)
+            ):
+                return 0
+            return _hresult_from_win32(_error_code(_last_error()))
+
+        def close() -> None:
+            """Close the three handles as ``_ClosePseudoConsoleMembers`` does.
+
+            Nothing waits: OpenConsole exits by itself once its signal pipe
+            breaks and its last output reaches the pipe.
+            """
+            for handle in (
+                pseudoconsole.hSignal,
+                pseudoconsole.hPtyReference,
+                pseudoconsole.hConPtyProcess,
+            ):
+                _close(_as_handle(handle))
+
+        # The closures keep the struct, which the HPCON points to, alive.
+        return _PseudoConsole(ctypes.addressof(pseudoconsole), resize, close)
+
+    def _native_architecture() -> str | None:
+        """Return the package architecture of the machine Windows runs on.
+
+        ``IsWow64Process2`` reports the real machine even to an emulated
+        Python; ``None`` means Windows cannot tell.
+        """
+        try:
+            is_wow64_process2 = _bind(
+                "IsWow64Process2",
+                (_HANDLE, ctypes.POINTER(_WORD), ctypes.POINTER(_WORD)),
+                _BOOL,
+            )
+        except AttributeError:
+            return None
+        process_machine = _WORD(0)
+        native_machine = _WORD(0)
+        if not is_wow64_process2(
+            _GetCurrentProcess(),
+            ctypes.byref(process_machine),
+            ctypes.byref(native_machine),
+        ):
+            return None
+        return _MACHINE_ARCHITECTURES.get(int(native_machine.value))
+
+    def _windows_terminal_packages() -> list[tuple[str, str]]:
+        """Read each Windows Terminal package's name and root folder."""
+        packages: list[tuple[str, str]] = []
+        try:
+            repository = winreg.OpenKey(  # ty: ignore[possibly-missing-attribute]
+                winreg.HKEY_CURRENT_USER,  # ty: ignore[possibly-missing-attribute]
+                _PACKAGES_KEY,
+            )
+        except FileNotFoundError:
+            # No package repository means no package installed, not an error.
+            return packages
+        with repository:
+            count = winreg.QueryInfoKey(  # ty: ignore[possibly-missing-attribute]
+                repository
+            )[0]
+            for index in range(count):
+                name = winreg.EnumKey(  # ty: ignore[possibly-missing-attribute]
+                    repository, index
+                )
+                if not name.lower().startswith("microsoft.windowsterminal"):
+                    continue
+                try:
+                    with winreg.OpenKey(  # ty: ignore[possibly-missing-attribute]
+                        repository, name
+                    ) as package:
+                        root, _kind = winreg.QueryValueEx(  # ty: ignore[possibly-missing-attribute]
+                            package, "PackageRootFolder"
+                        )
+                except OSError:
+                    continue
+                if isinstance(root, str):
+                    packages.append((name, root))
+        return packages
+
+    def _find_windows_terminal() -> WindowsTerminal | None:
+        """Find the installed Windows Terminal whose console host to run."""
+        return pick_windows_terminal(
+            _windows_terminal_packages(), os.path.isfile, _native_architecture()
+        )
+
+    def _copy_from_windows_apps(source: str, name: str) -> str:
+        """Copy a ``WindowsApps`` console host to the user's local app data."""
+        local = os.environ.get("LOCALAPPDATA")
+        if not local:
+            raise OSError("LOCALAPPDATA is not set")
+        return _copy_console_host(
+            source, name, os.path.join(local, "obsidian-terminal", "console-host")
+        )
 
     def _create_job() -> int:
         """Own only the shell in a kill-on-close job; descendants break away.
@@ -1246,7 +1951,10 @@ if sys.platform == "win32":
             )
             self._child_environment: dict[str, str] | None = None
             self._token = token
-            self._pseudoconsole = 0
+            # The console host that runs, reported in ``ready``; the built-in
+            # one until ``_start`` creates the pseudoconsole.
+            self._console_host = _ConsoleHost()
+            self._pseudoconsole: _PseudoConsole | None = None
             self._input_write = 0
             self._output_read = 0
             self._job = 0
@@ -1374,6 +2082,14 @@ if sys.platform == "win32":
                         f"working directory unavailable: {cwd}",
                         _EXIT_SHELL_START_FAILED,
                     ) from error
+            # Finding and copying the console host needs no session handle, so
+            # a fallback here leaves nothing to release.
+            console_host = _plan_console_host(
+                arguments.console_host,
+                _find_windows_terminal,
+                os.path.isfile,
+                _copy_from_windows_apps,
+            )
 
             input_read, self._input_write = _create_pipe()
             try:
@@ -1386,12 +2102,17 @@ if sys.platform == "win32":
 
             def create_session() -> tuple[int, int, int]:
                 """Create ConPTY and its suspended child before pipe cleanup."""
-                self._pseudoconsole = _create_pseudoconsole(
-                    arguments.columns,
-                    arguments.rows,
-                    input_read,
-                    output_write,
+                columns, rows = arguments.columns, arguments.rows
+                self._console_host, pseudoconsole = _open_pseudoconsole(
+                    console_host,
+                    lambda path: _launch_console_host(
+                        path, columns, rows, input_read, output_write
+                    ),
+                    lambda: _create_pseudoconsole(
+                        columns, rows, input_read, output_write
+                    ),
                 )
+                self._pseudoconsole = pseudoconsole
                 self._job = _create_job()
                 environment = self._child_environment
                 path = environment_path(environment)
@@ -1415,7 +2136,7 @@ if sys.platform == "win32":
                             *rest,
                         )
                     ),
-                    self._pseudoconsole,
+                    pseudoconsole.handle,
                     _build_environment_block(environment) if environment else None,
                 )
 
@@ -1450,17 +2171,7 @@ if sys.platform == "win32":
                 target=self._pump_input, name="conpty-input", daemon=True
             )
             self._input_thread.start()
-            self._send_required(
-                {
-                    "event": "ready",
-                    "attestation": READY_ATTESTATION,
-                    "hostPid": os.getpid(),
-                    "childPid": self._process_id,
-                    "createPseudoConsole": True,
-                    "controlChannelAuthenticated": True,
-                    "jobObjectAssigned": True,
-                }
-            )
+            self._send_required(_ready_event(self._process_id, self._console_host))
             self._control_thread = threading.Thread(
                 target=self._serve_control, name="conpty-control", daemon=True
             )
@@ -1488,11 +2199,14 @@ if sys.platform == "win32":
 
         def _finish(self) -> None:
             """Drain the pseudoconsole and release every session handle."""
-            # ``ClosePseudoConsole`` flushes the last child output through the
-            # pipe and only returns once a reader drains it, so the output pump
-            # must still run and its read handle must still be open.  Stopping
-            # the blocked stdin reader needs no drained output, so it runs
-            # concurrently to shorten the close path.
+            # The console host flushes the last child output through the pipe
+            # before it exits. The built-in ``ClosePseudoConsole`` only returns
+            # once a reader drains it; closing an OpenConsole returns at once,
+            # and OpenConsole drains and exits by itself, which ends the pump.
+            # Either way the output pump must still run and its read handle
+            # must still be open; the joins below bound a host that never
+            # finishes.  Stopping the blocked stdin reader needs no drained
+            # output, so it runs concurrently to shorten the close path.
             input_stop = threading.Thread(
                 target=self._stop_input_thread,
                 name="conpty-input-stop",
@@ -1514,7 +2228,8 @@ if sys.platform == "win32":
             """Close every handle the session still owns, exactly once."""
 
             # Without a pump to drain shutdown data, the output channel must
-            # break first or ClosePseudoConsole could block flushing into it.
+            # break first or the console host could block flushing into it,
+            # and the built-in ClosePseudoConsole with it.
             if self._output_thread is None:
                 output_read, self._output_read = self._output_read, 0
                 _close(output_read)
@@ -1543,15 +2258,14 @@ if sys.platform == "win32":
         def _close_pseudoconsole(self) -> None:
             """Close the pseudoconsole handle at most once.
 
-            Taking ``_resize_lock`` first waits out any in-flight
-            ``ResizePseudoConsole`` so the handle can never be closed under
-            it. The lock order is ``_resize_lock`` then ``_handles``,
-            matching ``_resize``.
+            Taking ``_resize_lock`` first waits out any in-flight resize so the
+            handle can never be closed under it. The lock order is
+            ``_resize_lock`` then ``_handles``, matching ``_resize``.
             """
             with self._resize_lock, self._handles:
-                pseudoconsole, self._pseudoconsole = self._pseudoconsole, 0
-            if pseudoconsole:
-                _ClosePseudoConsole(pseudoconsole)
+                pseudoconsole, self._pseudoconsole = self._pseudoconsole, None
+            if pseudoconsole is not None:
+                pseudoconsole.close()
 
         def _stop_input_thread(self) -> None:
             """Unblock the daemon stdin reader so it ends before the host does."""
@@ -1759,17 +2473,17 @@ if sys.platform == "win32":
             """Resize the pseudoconsole unless it has already been closed.
 
             ``_handles`` is held only for the handle read: holding it across
-            ``ResizePseudoConsole`` would block every input write for the
-            whole conhost reflow (milliseconds to tens of milliseconds).
+            the resize would block every input write for the whole console
+            host reflow (milliseconds to tens of milliseconds).
             ``_resize_lock`` keeps the close path from invalidating the
             handle while the call is in flight.
             """
             with self._resize_lock:
                 with self._handles:
                     pseudoconsole = self._pseudoconsole
-                if not pseudoconsole:
+                if pseudoconsole is None:
                     return
-                result = int(_ResizePseudoConsole(pseudoconsole, _COORD(columns, rows)))
+                result = int(pseudoconsole.resize(columns, rows))
             if result < 0:
                 diagnose(f"resize failed: 0x{result & 0xFFFFFFFF:08X}")
                 return
