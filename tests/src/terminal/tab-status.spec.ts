@@ -964,8 +964,8 @@ describe("writeTabIconSize", () => {
     const header = document.createElement("div");
     writeTabIconSize(header);
     expect(header.getAttributeNames()).toEqual([TAB_STATUS_ATTRIBUTES.size]);
-    expect(header.getAttribute(TAB_STATUS_ATTRIBUTES.size)).toBe("22");
-    expect(TAB_ICON_SIZE).toBe(22);
+    expect(header.getAttribute(TAB_STATUS_ATTRIBUTES.size)).toBe("21");
+    expect(TAB_ICON_SIZE).toBe(21);
   });
 
   it("leaves the header alone when the size is already there", () => {

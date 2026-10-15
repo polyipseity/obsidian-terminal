@@ -29,7 +29,7 @@ import { TAB_SKINS, type TabSkin, type TabSkinName } from "./tab-skins.js";
 export type TabIconSet = "bezel" | "tile";
 
 /** A terminal tab's icon size in CSS pixels, where the tab has a title. */
-export const TAB_ICON_SIZE = 22;
+export const TAB_ICON_SIZE = 21;
 
 /** The drawing space is 24 units; Obsidian's icon view box is 100. */
 export const TAB_ICON_WRAPPER_ATTRIBUTES =

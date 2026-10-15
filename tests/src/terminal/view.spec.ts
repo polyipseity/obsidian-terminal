@@ -2516,7 +2516,7 @@ describe("program status on the tab", () => {
       { context, header, lookedAt, osc, state, title, view, workspace } =
         opened;
     expect(state()).toEqual(UNTOUCHED);
-    expect(header.getAttribute("data-terminal-size")).toBe("22");
+    expect(header.getAttribute("data-terminal-size")).toBe("21");
 
     // A program that reports, asks and names itself is not heard.
     expect(osc(7501, "state=working")).toEqual([]);
@@ -2549,7 +2549,7 @@ describe("program status on the tab", () => {
       expect(
         Object.keys(vi.mocked(ProgramStatusAddon).mock.calls[0]?.[0] ?? {}),
       ).toEqual(["onChange"]);
-      expect(header.getAttribute("data-terminal-size")).toBe("22");
+      expect(header.getAttribute("data-terminal-size")).toBe("21");
       expect(header.getAttribute("data-terminal-motion")).toBe(tabStatus);
 
       expect(osc(7501, "?")).toEqual([true]);
@@ -2569,15 +2569,15 @@ describe("program status on the tab", () => {
     async (tabStatus) => {
       const { context, header, registerEvent, view, workspace } =
         await openTerminal(tabStatus);
-      expect(header.getAttribute("data-terminal-size"), tabStatus).toBe("22");
+      expect(header.getAttribute("data-terminal-size"), tabStatus).toBe("21");
       // Taken off by someone else: the next layout change puts it back.
       header.removeAttribute("data-terminal-size");
       workspace.trigger("layout-change");
-      expect(header.getAttribute("data-terminal-size"), tabStatus).toBe("22");
+      expect(header.getAttribute("data-terminal-size"), tabStatus).toBe("21");
       // A change of Program status leaves it alone.
       for (const other of Settings.TAB_STATUSES) {
         setTabStatus(context, other);
-        expect(header.getAttribute("data-terminal-size"), other).toBe("22");
+        expect(header.getAttribute("data-terminal-size"), other).toBe("21");
       }
       // The header belongs to the leaf and outlives the view.
       view.unload();
@@ -2947,7 +2947,7 @@ describe("TerminalView.dressUnloadedTabs", () => {
   }
 
   it.each(Settings.TAB_STATUSES)(
-    "writes the size of 22 px on a tab whose view is not loaded, under %s",
+    "writes the size of 21 px on a tab whose view is not loaded, under %s",
     (tabStatus) => {
       const { context, workspace } = makeTerminalContext({ tabStatus }),
         first = unloadedTab(),
@@ -2961,8 +2961,8 @@ describe("TerminalView.dressUnloadedTabs", () => {
       expect(listed).toHaveBeenCalledExactlyOnceWith(
         TerminalView.type.namespaced(context),
       );
-      expect(first.header.getAttribute("data-terminal-size")).toBe("22");
-      expect(second.header.getAttribute("data-terminal-size")).toBe("22");
+      expect(first.header.getAttribute("data-terminal-size")).toBe("21");
+      expect(second.header.getAttribute("data-terminal-size")).toBe("21");
       // The size and no other attribute: the tab shows no status.
       expect(first.header.getAttributeNames()).toEqual([
         "data-type",
@@ -3094,7 +3094,7 @@ describe("TerminalView.dressUnloadedTabs", () => {
       expect(vi.mocked(setIcon).mock.calls).toEqual([[unloaded.icon, id]]);
       expect(loaded.header.getAttributeNames()).toEqual([]);
       expect(loaded.view.getIcon()).toBe(id);
-      expect(unloaded.header.getAttribute("data-terminal-size")).toBe("22");
+      expect(unloaded.header.getAttribute("data-terminal-size")).toBe("21");
     },
   );
 
@@ -3109,7 +3109,7 @@ describe("TerminalView.dressUnloadedTabs", () => {
       TerminalView.dressUnloadedTabs(context);
       TerminalView.dressUnloadedTabs(context);
     }).not.toThrow();
-    expect(tab.header.getAttribute("data-terminal-size")).toBe("22");
+    expect(tab.header.getAttribute("data-terminal-size")).toBe("21");
     expect(setIcon).not.toHaveBeenCalled();
   });
 
@@ -3138,13 +3138,13 @@ describe("TerminalView.dressUnloadedTabs", () => {
       unloaded.leaf,
     ]);
     TerminalView.dressUnloadedTabs(context);
-    loaded.header.setAttribute("data-terminal-size", "22");
+    loaded.header.setAttribute("data-terminal-size", "21");
 
     TerminalView.undressUnloadedTabs(context);
 
     expect(unloaded.header.getAttributeNames()).toEqual(["data-type"]);
     // What the loaded view wrote is its own to take back.
-    expect(loaded.header.getAttribute("data-terminal-size")).toBe("22");
+    expect(loaded.header.getAttribute("data-terminal-size")).toBe("21");
     // The id stays: a registered icon of ours, which Obsidian draws as any.
     expect(unloaded.view.icon).toBe(TILE_ICON);
   });
@@ -3207,13 +3207,13 @@ describe("TerminalView.dressUnloadedTabs", () => {
       expect(size(tab.header)).toBeNull();
       expect(layoutListeners()).toBe(1);
       for (const callback of ready) callback();
-      expect(size(tab.header)).toBe("22");
+      expect(size(tab.header)).toBe("21");
       expect(vi.mocked(setIcon).mock.calls).toEqual([[tab.icon, id]]);
 
       // A tab that arrives later, unloaded as well.
       listed.mockReturnValue([tab.leaf, later.leaf]);
       workspace.trigger("layout-change");
-      expect(size(later.header)).toBe("22");
+      expect(size(later.header)).toBe("21");
       expect(later.view.icon).toBe(id);
     },
   );
@@ -3255,7 +3255,7 @@ describe("TerminalView.dressUnloadedTabs", () => {
       // Between Still and Animated the tabs are not even looked at.
       expect(listed.mock.calls.length, tabStatus).toBe(drawn.length);
       expect(tab.header.getAttribute("data-terminal-size"), tabStatus).toBe(
-        "22",
+        "21",
       );
     }
   });
@@ -3267,7 +3267,7 @@ describe("TerminalView.dressUnloadedTabs", () => {
       tab = unloadedTab();
     vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([tab.leaf]);
     for (const callback of ready) callback();
-    expect(tab.header.getAttribute("data-terminal-size")).toBe("22");
+    expect(tab.header.getAttribute("data-terminal-size")).toBe("21");
 
     for (const dispose of disposers) dispose();
     expect(tab.header.hasAttribute("data-terminal-size")).toBe(false);

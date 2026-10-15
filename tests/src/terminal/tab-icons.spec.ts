@@ -2582,10 +2582,11 @@ describe("tab-status.css", () => {
         /** The ring's outer radius at its largest, in CSS pixels, on an icon `size` pixels wide. */
         largest = (size: number): number =>
           (radius + ring + edge) * (size / 24) * end;
-      // Beside a title the icon is 22 px, and the strip clips 9 px above the
-      // mark's centre: a ring of 2.64 times lost 1.15 px of its top there,
-      // one of 3.13 times 3 px.
-      expect(largest(TAB_ICON_SIZE)).toBeCloseTo(8.5, 1);
+      // Beside a title the icon is 21 px, and the strip clips 9 px above the
+      // mark's centre (measured on a 22 px icon, whose mark sat 0.4 px
+      // higher): a ring of 2.64 times lost 1.15 px of its top there, one of
+      // 3.13 times 3 px.
+      expect(largest(TAB_ICON_SIZE)).toBeCloseTo(8.1, 1);
       expect(largest(TAB_ICON_SIZE)).toBeLessThan(9);
       // In a sidebar the icon is 16 px, and the strip clips 7 px above it.
       expect(largest(16)).toBeLessThan(7);
@@ -3382,7 +3383,7 @@ describe("tab-status.css", () => {
         ),
       );
       expect(sized).toEqual([String(TAB_ICON_SIZE)]);
-      expect(TAB_ICON_SIZE).toBe(22);
+      expect(TAB_ICON_SIZE).toBe(21);
     });
 
     it("has no size for a header without the attribute", () => {
@@ -3403,11 +3404,11 @@ describe("tab-status.css", () => {
       }
     });
 
-    it("draws the icon at 22 px where the tab has a title, whatever Program status says", () => {
+    it("draws the icon at 21 px where the tab has a title, whatever Program status says", () => {
       for (const motion of MOTIONS) {
         for (const status of [null, ...STATUSES]) {
           const on = view({ motion, status });
-          expect(inherited(on, on.container, "--tts-size")).toBe("22px");
+          expect(inherited(on, on.container, "--tts-size")).toBe("21px");
           // The size is the icon's.
           expect(declared(on, on.container, "--icon-size")).toMatch(
             /^var\(--tts-size, /u,
@@ -3456,9 +3457,9 @@ describe("tab-status.css", () => {
           inherited(bezel, bezel.container, "--tts-size"),
         );
       }
-      // Beside a title: 22 px, and a little lower.
+      // Beside a title: 21 px, and a little lower.
       const on = view({ icon: "tile", motion: null, status: null });
-      expect(inherited(on, on.container, "--tts-size")).toBe("22px");
+      expect(inherited(on, on.container, "--tts-size")).toBe("21px");
       expect(declared(on, on.container, "--icon-size")).toMatch(
         /^var\(--tts-size, /u,
       );

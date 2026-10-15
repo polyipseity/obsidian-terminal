@@ -227,7 +227,7 @@
  * Where a tab has a title (the root split of a window, `.mod-root`),
  * Obsidian draws its icon at `--icon-xs` (14 px), centred on the height of
  * the tab. The terminal's icon is a framed tile with a mark on its corner,
- * so it is drawn larger: at `TAB_ICON_SIZE`, 22 px, which the tab header
+ * so it is drawn larger: at `TAB_ICON_SIZE`, 21 px, which the tab header
  * carries as `data-terminal-size` (the one rule below). A size this
  * stylesheet does not know falls back to two pixels over `--icon-xs`.
  *
@@ -273,8 +273,8 @@
  * (`TerminalView.dressUnloadedTabs`), and until then it is drawn as Obsidian
  * draws any tab.
  */
-.workspace-tab-header[data-type="terminal:terminal"][data-terminal-size="22"] {
-  --tts-size: 22px;
+.workspace-tab-header[data-type="terminal:terminal"][data-terminal-size="21"] {
+  --tts-size: 21px;
 }
 
 /* ---------- 6. The three dots of a working program ---------- */
@@ -588,13 +588,14 @@
 
   /*
    * Where the ring may be cut off (measured in Obsidian 1.14.4). At its
-   * largest, 2.2 times the mark, it reaches 8.5 px from the mark's centre
-   * on a 22 px icon, 6.2 px on a sidebar's 16 px one.
+   * largest, 2.2 times the mark, it reaches 8.1 px from the mark's centre
+   * on a 21 px icon, 6.2 px on a sidebar's 16 px one.
    *
    * The strip of tabs (`.workspace-tab-header-container-inner`) clips at
    * its top edge, 1 px above the tab header: 9 px above the mark's centre
-   * in the root split, 7 px in a sidebar. A ring of 3.4 times, as first
-   * drawn, lost up to 4 px of its top there; 2.2 times fits both.
+   * in the root split (measured with a 22 px icon, whose mark sat 0.4 px
+   * higher), 7 px in a sidebar. A ring of 3.4 times, as first drawn, lost
+   * up to 4 px of its top there; 2.2 times fits both.
    *
    * The tab's row (`.workspace-tab-header-inner`) also clips, about 7 px
    * above the mark's centre in the root split. Where the container is no
