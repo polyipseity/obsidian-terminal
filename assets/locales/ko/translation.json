@@ -328,8 +328,8 @@
   "notices": {
     "Python-status-entry-": "{{name}}: {{version}} (요구사항 충족: {{requirement}})",
     "Python-status-entry-unsatisfied": "{{name}}: {{version}} (요구사항 미충족: {{requirement}})",
-    "no-active-file": "No active file: open a file to start a $t(generic.terminal) in its folder.",
     "no-default-profile": "'$t(generic.profile-types.{{type}})' $t(generic.type)에 대한 $t(generic.default) $t(generic.profile)이 설정되지 않았습니다",
+    "no-file-for-current-directory": "No active file: open a file to start a $t(generic.terminal) in its folder.",
     "resizer-install-command-copied": "Install command copied.",
     "spawning-terminal": "$t(generic.terminal) $t(generic.spawn_gerund) 중: {{title}}",
     "terminal-exited": "$t(generic.terminal) $t(generic.exit_past): {{code}}",

@@ -139,7 +139,7 @@ export function loadTerminal(context: TerminalPlugin): void {
               }
               if (!checking) {
                 notice2(
-                  () => i18n.t("notices.no-active-file"),
+                  () => i18n.t("notices.no-file-for-current-directory"),
                   settings.value.noticeTimeout,
                   context,
                 );
