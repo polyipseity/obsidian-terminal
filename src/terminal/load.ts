@@ -137,6 +137,13 @@ export function loadTerminal(context: TerminalPlugin): void {
               if (active?.parent) {
                 return adapter.getFullPath(active.parent.path);
               }
+              if (!checking) {
+                notice2(
+                  () => i18n.t("notices.no-active-file"),
+                  settings.value.noticeTimeout,
+                  context,
+                );
+              }
               return null;
             }
             // No default
@@ -412,10 +419,13 @@ export function loadTerminal(context: TerminalPlugin): void {
           id: `open-terminal.${type}.${cwd}`,
         },
       );
-      // "Current" needs an active file, and a focused terminal has none.
-      if (cwd === "root") {
-        TerminalView.allowWhileFocused(opening);
-      }
+      /*
+       * A focused terminal has no active file, so "current" only shows a
+       * notice there. Allowing it still lets the focused listener consume its
+       * hotkey instead of the shell: ConPTY encodes Ctrl+Shift+H as 0x08, so
+       * cmd.exe deletes a character and PowerShell can insert ^H.
+       */
+      TerminalView.allowWhileFocused(opening);
     }
   }
 

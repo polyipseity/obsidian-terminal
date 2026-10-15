@@ -328,6 +328,7 @@
   "notices": {
     "Python-status-entry-": "{{name}}: {{version}} (要件を満たしています: {{requirement}})",
     "Python-status-entry-unsatisfied": "{{name}}: {{version}} (要件を満たしていません: {{requirement}})",
+    "no-active-file": "No active file: open a file to start a $t(generic.terminal) in its folder.",
     "no-default-profile": "$t(generic.type) '$t(generic.profile-types.{{type}})' の$t(generic.default)$t(generic.profile)がありません",
     "resizer-install-command-copied": "Install command copied.",
     "spawning-terminal": "$t(generic.terminal)を$t(generic.spawn_gerund): {{title}}",

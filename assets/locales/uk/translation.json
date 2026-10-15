@@ -328,6 +328,7 @@
   "notices": {
     "Python-status-entry-": "{{name}}: {{version}} (задовольняє: {{requirement}})",
     "Python-status-entry-unsatisfied": "{{name}}: {{version}} (не задовольняє: {{requirement}})",
+    "no-active-file": "No active file: open a file to start a $t(generic.terminal) in its folder.",
     "no-default-profile": "Немає стандартного профілю для типу '$t(generic.profile-types.{{type}}, capitalize)'",
     "resizer-install-command-copied": "Install command copied.",
     "spawning-terminal": "$t(generic.spawn_gerund, capitalize) $t(generic.terminal): {{title}}",
