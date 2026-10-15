@@ -415,6 +415,15 @@ export function loadTerminal(context: TerminalPlugin): void {
             }
             return command(type, cwd)(checking);
           },
+          /*
+           * A default hotkey on purpose, against Obsidian's advice to avoid
+           * them: a letter stays on its printed key on every layout, unlike a
+           * backtick. "H", not "h": only the uppercase key code name matches
+           * on non-Latin layouts.
+           */
+          ...(type === "integrated" && cwd === "current"
+            ? { hotkeys: [{ key: "H", modifiers: ["Mod", "Shift"] }] }
+            : {}),
           icon: i18n.t(`asset:commands.open-terminal-${cwd}-icon`),
           id: `open-terminal.${type}.${cwd}`,
         },

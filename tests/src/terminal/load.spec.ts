@@ -448,6 +448,17 @@ describe("opening commands while a terminal has focus", () => {
     return { commands, context, run };
   }
 
+  it("binds Mod+Shift+H to the integrated current-directory command only", async () => {
+    const { commands } = await loadCommands();
+    expect(
+      commands.filter((command) => "hotkeys" in command).map(({ id }) => id),
+    ).toEqual(["open-terminal.integrated.current"]);
+    expect(
+      commands.find(({ id }) => id === "open-terminal.integrated.current")
+        ?.hotkeys,
+    ).toEqual([{ key: "H", modifiers: ["Mod", "Shift"] }]);
+  });
+
   it.each(["default", "external", "integrated", "select"])(
     "shows a notice when the %s current-directory command runs without an active file",
     async (type) => {
