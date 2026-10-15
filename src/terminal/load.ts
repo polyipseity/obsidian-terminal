@@ -420,11 +420,12 @@ export function loadTerminal(context: TerminalPlugin): void {
           },
           /*
            * A default hotkey on purpose, against Obsidian's advice to avoid
-           * them: a letter stays on its printed key on every layout, unlike a
-           * backtick. "H", not "h": only the uppercase key code name matches
-           * on non-Latin layouts.
+           * them: one key then opens a terminal from anywhere, also from a
+           * focused terminal. A letter stays on its printed key on every
+           * layout, unlike a backtick. "H", not "h": only the uppercase key
+           * code name matches on non-Latin layouts.
            */
-          ...(type === "integrated" && cwd === "current"
+          ...(type === "integrated" && cwd === "root"
             ? { hotkeys: [{ key: "H", modifiers: ["Mod", "Shift"] }] }
             : {}),
           icon: i18n.t(`asset:commands.open-terminal-${cwd}-icon`),
@@ -433,9 +434,10 @@ export function loadTerminal(context: TerminalPlugin): void {
       );
       /*
        * A focused terminal has no active file, so "current" only shows a
-       * notice there. Allowing it still lets the focused listener consume its
-       * hotkey instead of the shell: ConPTY encodes Ctrl+Shift+H as 0x08, so
-       * cmd.exe deletes a character and PowerShell can insert ^H.
+       * notice there. Allowing it still lets the focused listener consume a
+       * hotkey the user assigned to it instead of the shell: ConPTY turns
+       * Ctrl+Shift+<letter> into that letter's control character, e.g.
+       * Ctrl+Shift+H into 0x08, which cmd.exe treats as backspace.
        */
       TerminalView.allowWhileFocused(opening);
     }

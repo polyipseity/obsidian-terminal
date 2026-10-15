@@ -467,15 +467,18 @@ describe("opening commands while a terminal has focus", () => {
     return { commands, context, run };
   }
 
-  it("binds Mod+Shift+H to the integrated current-directory command only", async () => {
+  it("binds Mod+Shift+H to the integrated root-directory command only", async () => {
     const { commands } = await loadCommands();
     expect(
       commands.filter((command) => "hotkeys" in command).map(({ id }) => id),
-    ).toEqual(["open-terminal.integrated.current"]);
+    ).toEqual(["open-terminal.integrated.root"]);
     expect(
-      commands.find(({ id }) => id === "open-terminal.integrated.current")
+      commands.find(({ id }) => id === "open-terminal.integrated.root")
         ?.hotkeys,
     ).toEqual([{ key: "H", modifiers: ["Mod", "Shift"] }]);
+    expect(
+      commands.find(({ id }) => id === "open-terminal.integrated.current"),
+    ).not.toHaveProperty("hotkeys");
   });
 
   it.each(["default", "external", "integrated", "select"])(
