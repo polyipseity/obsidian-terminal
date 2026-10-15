@@ -3254,6 +3254,9 @@ def test_session_runs_on_the_windows_terminal_console_host(deferred: bool) -> No
     result = _run_host(
         ["cmd", "/c", "echo hello-openconsole"],
         deferred=deferred,
+        # OpenConsole ends its session when its input pipe breaks, so stdin
+        # stays open until the child exits, as it does under the plugin.
+        close_stdin=False,
         console_host="auto",
     )
     assert result.code == 0, result
