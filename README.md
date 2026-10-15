@@ -90,7 +90,7 @@ The keyboard shortcuts can be customized in hotkeys settings.
 
 - Toggle focus on last terminal: `Ctrl`+`Shift`+`` ` ``
   - Focus on last terminal: \(unbound; useful if you want separate keys for focus and unfocus\)
-- Open current directory in terminal \(integrated\): `Ctrl`+`Shift`+`H`, `Command`+`Shift`+`H` \(Apple\)
+- Open root directory in terminal \(integrated\): `Ctrl`+`Shift`+`H`, `Command`+`Shift`+`H` \(Apple\)
   - Another plugin may use the same keys. Obsidian then shows a conflict, which you can resolve under Settings → Hotkeys.
 
 #### Terminal is focused
@@ -104,9 +104,9 @@ This behavior can be turned off via the `Intercept keys when terminal is focused
 - Find in terminal: `Ctrl`+`Shift`+`F`, `Command`+`Shift`+`F` \(Apple\)
 - Toggle focus on last terminal: `Ctrl`+`Shift`+`` ` `` \(same as above\)
   - Unfocus terminal: \(unbound; useful if you want separate keys for focus and unfocus\)
-- Open root directory or current directory in terminal \(default, external, integrated, select\) and open developer console: \(unbound, except open current directory in terminal \(integrated\) above; a hotkey you assign also works here\)
+- Open root directory or current directory in terminal \(default, external, integrated, select\) and open developer console: \(unbound, except open root directory in terminal \(integrated\) above; a hotkey you assign also works here\)
   - A hotkey of one of these commands, the default above or one you assign, works everywhere in Obsidian. In a focused terminal it wins over a default shortcut of this list on the same keys, so do not ignore a conflict that Obsidian reports for it.
-  - The commands that open the current directory need an active file. In a focused terminal there is none, so their hotkeys show a notice and do not reach the shell.
+  - The commands that open the current directory need an active file. In a focused terminal there is none, so a hotkey you assign to one of them shows a notice and does not reach the shell.
 
 ### Theming
 
