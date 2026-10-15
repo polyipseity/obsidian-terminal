@@ -1440,6 +1440,9 @@ export interface ConPtyStartOp {
   readonly columns: number;
   readonly rows: number;
   readonly cwd: string | null;
+  /** Console host spec from {@link conPtyConsoleHostSpec}; `null` runs the
+   * console host built into Windows. */
+  readonly consoleHost: string | null;
   readonly env: Readonly<Record<string, string>>;
   readonly command: readonly string[];
 }
@@ -1452,9 +1455,38 @@ export interface ConPtyHelloEvent {
   readonly hostPid: number;
   readonly token: string;
 }
+/** Console host spec that asks the host to find Windows Terminal's
+ * `OpenConsole.exe`. */
+export const CONPTY_CONSOLE_HOST_AUTO = "auto";
+export const CONPTY_CONSOLE_HOST_ENGINES = deepFreeze([
+  "conhost",
+  "openconsole",
+]);
+/** Why the host fell back to the console host built into Windows. */
+export const CONPTY_CONSOLE_HOST_FALLBACKS = deepFreeze([
+  "not-found",
+  "not-absolute",
+  "missing",
+  "start-failed",
+  "unsupported-os",
+]);
+export type ConPtyConsoleHostFallback =
+  (typeof CONPTY_CONSOLE_HOST_FALLBACKS)[number];
+/** The console host a session runs on, as its ready event reports it. */
+export interface ConPtyConsoleHost {
+  /** `openconsole`: an `OpenConsole.exe` at `path`; `conhost`: the console
+   * host built into Windows. */
+  readonly engine: (typeof CONPTY_CONSOLE_HOST_ENGINES)[number];
+  readonly path: string | null;
+  /** `null` when no console host was requested or the requested one runs. */
+  readonly fallback: ConPtyConsoleHostFallback | null;
+  /** Short text for logs. */
+  readonly detail: string | null;
+}
 export interface ConPtyReadyEvent {
   readonly attestation: typeof CONPTY_READY_ATTESTATION;
   readonly childPid: number;
+  readonly consoleHost: ConPtyConsoleHost;
   readonly controlChannelAuthenticated: true;
   readonly createPseudoConsole: true;
   readonly event: "ready";
@@ -1494,6 +1526,7 @@ export function encodeConPtyOp(op: ConPtyOp): string {
 interface ConPtyHostEventFields {
   readonly attestation: unknown;
   readonly childPid: unknown;
+  readonly consoleHost: unknown;
   readonly event: unknown;
   readonly hostPid: unknown;
   readonly controlChannelAuthenticated: unknown;
@@ -1528,6 +1561,50 @@ function isProcessId(value: unknown): value is number {
   );
 }
 
+interface ConPtyConsoleHostFields {
+  readonly detail: unknown;
+  readonly engine: unknown;
+  readonly fallback: unknown;
+  readonly path: unknown;
+}
+
+/** Validates the `consoleHost` report of a ready event. */
+function parseConPtyConsoleHost(value: unknown): ConPtyConsoleHost | null {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value) ||
+    Object.keys(value).length !== 4
+  ) {
+    return null;
+  }
+  const { detail, engine, fallback, path } =
+    launderUnchecked<ConPtyConsoleHostFields>(value);
+  if (
+    !inSet(CONPTY_CONSOLE_HOST_ENGINES, engine) ||
+    (fallback !== null && !inSet(CONPTY_CONSOLE_HOST_FALLBACKS, fallback)) ||
+    (detail !== null && typeof detail !== "string")
+  ) {
+    return null;
+  }
+  if (engine === "openconsole") {
+    // The requested console host runs: nothing fell back.
+    if (
+      typeof path !== "string" ||
+      !path ||
+      fallback !== null ||
+      detail !== null
+    ) {
+      return null;
+    }
+    return Object.freeze({ detail, engine, fallback, path });
+  }
+  if (path !== null) {
+    return null;
+  }
+  return Object.freeze({ detail, engine, fallback, path });
+}
+
 /** Parses one NDJSON line sent by the host. Returns `null` when the line is
  * not a known, well-formed event. */
 export function parseConPtyHostEvent(line: string): ConPtyHostEvent | null {
@@ -1551,6 +1628,7 @@ export function parseConPtyHostEvent(line: string): ConPtyHostEvent | null {
     childPid,
     code,
     columns,
+    consoleHost: consoleHost0,
     controlChannelAuthenticated,
     createPseudoConsole,
     event,
@@ -1579,8 +1657,10 @@ export function parseConPtyHostEvent(line: string): ConPtyHostEvent | null {
     });
   }
   if (event === "ready") {
+    const consoleHost = parseConPtyConsoleHost(consoleHost0);
     if (
-      Object.keys(parsed).length !== 7 ||
+      Object.keys(parsed).length !== 8 ||
+      consoleHost === null ||
       attestation !== CONPTY_READY_ATTESTATION ||
       controlChannelAuthenticated !== true ||
       createPseudoConsole !== true ||
@@ -1594,6 +1674,7 @@ export function parseConPtyHostEvent(line: string): ConPtyHostEvent | null {
     return Object.freeze({
       attestation,
       childPid,
+      consoleHost,
       controlChannelAuthenticated,
       createPseudoConsole,
       event,
@@ -2559,6 +2640,71 @@ export const CONPTY_DEPENDENCIES: ConPtyPseudoterminalDependencies = {
   },
 };
 
+/**
+ * The console host spec a ConPTY session asks its host for: `"auto"` finds
+ * Windows Terminal's `OpenConsole.exe`, a path names one, and `null` runs the
+ * console host built into Windows. A value the fixer would reject also reads
+ * as `null`.
+ */
+export function conPtyConsoleHostSpec(
+  mode: Settings.Win32ConsoleHost,
+  path: string,
+): string | null {
+  switch (mode) {
+    case "automatic":
+      return CONPTY_CONSOLE_HOST_AUTO;
+    case "custom":
+      return path.trim() || null;
+    default:
+      return null;
+  }
+}
+
+/** Custom console host fallbacks already shown, per plugin load. */
+const shownConsoleHostFallbacks = new WeakMap<TerminalPlugin, Set<string>>();
+
+/**
+ * Logs the console host a session runs on, once per terminal. A fallback from
+ * a custom console host also shows a notice, once per plugin load for the same
+ * path and reason; other fallbacks only reach the debug log.
+ */
+function reportConPtyConsoleHost(
+  context: TerminalPlugin,
+  report: ConPtyConsoleHost,
+  mode: Settings.Win32ConsoleHost,
+  spec: string | null,
+): void {
+  const { fallback } = report;
+  // Automatic fallbacks are expected wherever Windows Terminal is missing.
+  if (fallback !== null && mode !== "custom") {
+    self.console.debug("ConPTY console host", report);
+    return;
+  }
+  self.console.info("ConPTY console host", report);
+  if (fallback === null || spec === null) return;
+  const key = JSON.stringify([spec, fallback]);
+  let shown = shownConsoleHostFallbacks.get(context);
+  if (!shown) {
+    shown = new Set();
+    shownConsoleHostFallbacks.set(context, shown);
+  }
+  if (shown.has(key)) return;
+  shown.add(key);
+  const { language, settings } = context;
+  notice2(
+    () =>
+      language.value.t("notices.win32-console-host-fallback", {
+        interpolation: { escapeValue: false },
+        path: spec,
+        reason: language.value.t(
+          `notices.win32-console-host-fallback-reasons.${fallback}`,
+        ),
+      }),
+    settings.value.noticeTimeout,
+    context,
+  );
+}
+
 /** One startup attempt: a host process and the channel that controls it. */
 interface ConPtySession {
   readonly control: ConPtyControlChannel;
@@ -2577,6 +2723,8 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
   public readonly shell;
   public readonly onExit;
   public readonly resizeIsAcknowledged = true;
+  /** The console host the session runs on, once the host is ready. */
+  public readonly consoleHost: Promise<ConPtyConsoleHost>;
   protected readonly control;
   protected readonly host;
   /** Current attempt changes once when an acquired spare fails before hello. */
@@ -2608,6 +2756,11 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
     dependencies: ConPtyPseudoterminalDependencies = CONPTY_DEPENDENCIES,
   ) {
     const { language, settings } = context,
+      { win32ConsoleHost, win32ConsoleHostPath } = settings.value,
+      consoleHostSpec = conPtyConsoleHostSpec(
+        win32ConsoleHost,
+        win32ConsoleHostPath,
+      ),
       pool = dependencies.pool,
       poolGeneration = conPtyPoolGeneration ?? pool?.generation,
       warm = pythonExecutable
@@ -2664,6 +2817,9 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
               normalizeConPtyDimension(rows, CONPTY_DEFAULT_ROWS).toString(),
               control0.path,
               ...(directory === null ? [] : ["--cwd", directory]),
+              ...(consoleHostSpec === null
+                ? []
+                : ["--console-host", consoleHostSpec]),
               "--",
               executable,
               ...(args ?? []),
@@ -2715,6 +2871,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
               argument.includes("\0"),
             ) ||
             directory?.includes("\0") ||
+            consoleHostSpec?.includes("\0") ||
             Object.entries(envRecord).some(
               ([key, value]) =>
                 !key ||
@@ -2733,6 +2890,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
                 CONPTY_DEFAULT_COLUMNS,
               ),
               command: [executable, ...(args ?? [])],
+              consoleHost: consoleHostSpec,
               cwd: directory,
               env: envRecord,
               op: "start",
@@ -2912,6 +3070,17 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
           );
         }
         this.#ready = true;
+        try {
+          reportConPtyConsoleHost(
+            context,
+            ready.consoleHost,
+            win32ConsoleHost,
+            consoleHostSpec,
+          );
+        } catch (error) {
+          // A report must never fail a terminal that is ready.
+          self.console.warn(error);
+        }
         return shell;
       } catch (error) {
         const shell = await host.catch(() => null),
@@ -2957,6 +3126,11 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
      * and the host exit above.
      */
     this.shell.catch(noop);
+    // After `shell`, `ready` holds the event that passed the host PID check.
+    this.consoleHost = this.shell.then(
+      async () => (await (await control).ready).consoleHost,
+    );
+    this.consoleHost.catch(noop);
     // Spare only after ready: earlier competes for CPU, after a failure
     // respawns a broken interpreter. A clear during startup retires this refill.
     this.shell

@@ -31,7 +31,12 @@ vi.mock("../../../src/main.js", () => ({
     public readonly language = { value: { t: vi.fn((key: string) => key) } };
     public readonly settings = {
       // Each test explicitly owns its spare; no automatic refill races cleanup.
-      value: { errorNoticeTimeout: 0, prewarmConPty: false },
+      // The console host built into Windows: no console host is requested.
+      value: {
+        errorNoticeTimeout: 0,
+        prewarmConPty: false,
+        win32ConsoleHost: "system",
+      },
     };
   },
 }));
@@ -335,6 +340,12 @@ async function assertReady(
         "create-pseudoconsole+authenticated-control-channel+job-object-assigned",
       hostPid: spawned.host.pid,
       childPid: hello.childPid,
+      consoleHost: {
+        engine: "conhost",
+        path: null,
+        fallback: null,
+        detail: null,
+      },
       controlChannelAuthenticated: true,
       createPseudoConsole: true,
       jobObjectAssigned: true,
@@ -362,6 +373,7 @@ async function assertReady(
     expect(Object.keys(start ?? {}).sort()).toEqual([
       "columns",
       "command",
+      "consoleHost",
       "cwd",
       "env",
       "op",
@@ -372,12 +384,14 @@ async function assertReady(
       columns: 80,
       rows: 24,
       command: COMMAND,
+      consoleHost: null,
       cwd: null,
     });
     expect(start?.env).toHaveProperty("TES166_CONTRACT", "字");
   } else {
     expect(spawned.args.slice(-COMMAND.length)).toEqual(COMMAND);
     expect(spawned.args).not.toContain("--defer-session");
+    expect(spawned.args).not.toContain("--console-host");
   }
 }
 

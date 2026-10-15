@@ -9,17 +9,20 @@ import nodeUrl, { pathToFileURL } from "node:url";
 import type { Terminal } from "@xterm/xterm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TerminalPlugin } from "../../../src/main.js";
+import type { Settings } from "../../../src/settings-data.js";
 import {
   TERMINAL_CONPTY_HOST_EXIT_WAIT,
   TERMINAL_RESIZER_WATCHDOG_WAIT,
   WINDOWS_CONHOST_PATH,
 } from "../../../src/magic.js";
 import {
+  CONPTY_CONSOLE_HOST_FALLBACKS,
   CONPTY_DEPENDENCIES,
   CONPTY_READY_TIMEOUT_MS,
   CONPTY_UNARMED_READY_TIMEOUT_FACTOR,
   ConPtyHostPool,
   logChildStderr,
+  type ConPtyConsoleHost,
   type ConPtyControlChannel,
   ConPtyControlError,
   ConPtyPseudoterminal,
@@ -34,6 +37,7 @@ import {
   RefPsuedoterminal,
   WindowsNamedPipeControlChannel,
   WindowsPseudoterminal,
+  conPtyConsoleHostSpec,
   encodeConPtyOp,
   normalizeConPtyDimension,
   parseConPtyHostEvent,
@@ -337,11 +341,16 @@ describe("Windows ConHost path", () => {
   });
 });
 
-function readyEvent(hostPid = 100, childPid = 200): ConPtyReadyEvent {
+function readyEvent(
+  hostPid = 100,
+  childPid = 200,
+  consoleHost: ConPtyConsoleHost = SYSTEM_CONSOLE_HOST,
+): ConPtyReadyEvent {
   return {
     attestation:
       "create-pseudoconsole+authenticated-control-channel+job-object-assigned",
     childPid,
+    consoleHost,
     controlChannelAuthenticated: true,
     createPseudoConsole: true,
     event: "ready",
@@ -349,6 +358,14 @@ function readyEvent(hostPid = 100, childPid = 200): ConPtyReadyEvent {
     jobObjectAssigned: true,
   };
 }
+
+/** The report when no console host was requested. */
+const SYSTEM_CONSOLE_HOST: ConPtyConsoleHost = {
+  detail: null,
+  engine: "conhost",
+  fallback: null,
+  path: null,
+};
 
 interface SocketLineReader {
   readonly next: () => Promise<string>;
@@ -544,6 +561,62 @@ describe("ConPTY control protocol", () => {
       ),
     ).toBeNull();
   });
+
+  it.each<ConPtyConsoleHost>([
+    {
+      detail: null,
+      engine: "openconsole",
+      fallback: null,
+      path: "C:\\Program Files\\WindowsApps\\Microsoft.WindowsTerminal_1.22.11141.0_x64__8wekyb3d8bbwe\\OpenConsole.exe",
+    },
+    SYSTEM_CONSOLE_HOST,
+    { detail: null, engine: "conhost", fallback: "not-found", path: null },
+    ...CONPTY_CONSOLE_HOST_FALLBACKS.map((fallback): ConPtyConsoleHost => ({
+      detail: "0x80070002",
+      engine: "conhost",
+      fallback,
+      path: null,
+    })),
+  ])("accepts the console host report %j", (consoleHost) => {
+    const event = readyEvent(10, 20, consoleHost);
+    expect(parseConPtyHostEvent(JSON.stringify(event))).toEqual(event);
+  });
+
+  it.each([
+    null,
+    "conhost",
+    [],
+    {},
+    { ...SYSTEM_CONSOLE_HOST, extra: null },
+    { detail: null, engine: "conhost", fallback: null },
+    { ...SYSTEM_CONSOLE_HOST, engine: "conpty" },
+    { ...SYSTEM_CONSOLE_HOST, engine: "openconsole" },
+    { ...SYSTEM_CONSOLE_HOST, engine: "openconsole", path: "" },
+    { ...SYSTEM_CONSOLE_HOST, engine: "openconsole", path: 1 },
+    {
+      ...SYSTEM_CONSOLE_HOST,
+      engine: "openconsole",
+      fallback: "start-failed",
+      path: "C:\\WT\\OpenConsole.exe",
+    },
+    {
+      ...SYSTEM_CONSOLE_HOST,
+      detail: "started",
+      engine: "openconsole",
+      path: "C:\\WT\\OpenConsole.exe",
+    },
+    { ...SYSTEM_CONSOLE_HOST, path: "C:\\WT\\OpenConsole.exe" },
+    { ...SYSTEM_CONSOLE_HOST, fallback: "load-failed" },
+    { ...SYSTEM_CONSOLE_HOST, fallback: "" },
+    { ...SYSTEM_CONSOLE_HOST, detail: 0x80004005 },
+  ])(
+    "rejects a ready record with the console host report %j",
+    (consoleHost) => {
+      expect(
+        parseConPtyHostEvent(JSON.stringify({ ...readyEvent(), consoleHost })),
+      ).toBeNull();
+    },
+  );
 
   it("rejects incomplete or forged ready records", () => {
     expect(
@@ -865,6 +938,7 @@ describe("Windows named-pipe ConPTY readiness", () => {
         channel.start({
           columns: 80,
           command: ["cmd.exe"],
+          consoleHost: null,
           cwd: null,
           env: {},
           op: "start",
@@ -1015,13 +1089,14 @@ describe("Windows named-pipe ConPTY readiness", () => {
     await channel.start({
       columns: 132,
       command: ["cmd.exe"],
+      consoleHost: "auto",
       cwd: "C:\\work",
       env: { A: "1" },
       op: "start",
       rows: 43,
     });
     await expect(reader.next()).resolves.toBe(
-      '{"columns":132,"command":["cmd.exe"],"cwd":"C:\\\\work","env":{"A":"1"},"op":"start","rows":43}',
+      '{"columns":132,"command":["cmd.exe"],"consoleHost":"auto","cwd":"C:\\\\work","env":{"A":"1"},"op":"start","rows":43}',
     );
     client.write(
       `${JSON.stringify({
@@ -1047,6 +1122,7 @@ describe("Windows named-pipe ConPTY readiness", () => {
       channel.start({
         columns: 80,
         command: ["cmd.exe"],
+        consoleHost: null,
         cwd: null,
         env: {},
         op: "start",
@@ -1397,6 +1473,23 @@ function conPtyDependencies(
   };
 }
 
+/** The plugin members a ConPTY terminal reads, with `settings` on top. */
+function conPtyContext(
+  t = vi.fn((key: string) => key),
+  settings: Readonly<Partial<Settings>> = {},
+): TerminalPlugin {
+  return {
+    language: {
+      onChangeLanguage: { listen: vi.fn(() => vi.fn()) },
+      value: { t },
+    },
+    register: vi.fn(),
+    settings: {
+      value: { errorNoticeTimeout: 0, prewarmConPty: true, ...settings },
+    },
+  } as unknown as TerminalPlugin;
+}
+
 function constructConPty(
   dependencies: ConPtyPseudoterminalDependencies,
   initialSize?: Readonly<{
@@ -1410,16 +1503,10 @@ function constructConPty(
     conPtyRuntimeUnavailable?: () => boolean;
   }>,
   t = vi.fn((key: string) => key),
+  context = conPtyContext(t),
 ): ConPtyPseudoterminal {
   return new ConPtyPseudoterminal(
-    {
-      language: {
-        onChangeLanguage: { listen: vi.fn(() => vi.fn()) },
-        value: { t },
-      },
-      register: vi.fn(),
-      settings: { value: { errorNoticeTimeout: 0, prewarmConPty: true } },
-    } as unknown as TerminalPlugin,
+    context,
     {
       executable: "cmd.exe",
       ...initialSize,
@@ -1855,6 +1942,7 @@ describe("ConPTY ready transition", () => {
       readonly profile?: Parameters<typeof constructConPty>[1];
       readonly coldControl?: ConPtyControlChannel;
       readonly sourceFile?: Promise<string>;
+      readonly settings?: Readonly<Partial<Settings>>;
     }
     async function fixture(options: StartupFixtureOptions = {}) {
       const control = await pendingControl(),
@@ -1891,7 +1979,12 @@ describe("ConPTY ready transition", () => {
         host: warm.host,
       });
       const release = vi.spyOn(pool, "release").mockImplementation(() => {}),
-        pty = constructConPty(dependencies, options.profile);
+        pty = constructConPty(
+          dependencies,
+          options.profile,
+          void 0,
+          conPtyContext(void 0, options.settings),
+        );
       await vi.advanceTimersByTimeAsync(0);
       return {
         cold,
@@ -1935,6 +2028,30 @@ describe("ConPTY ready transition", () => {
         }
       },
     );
+
+    it("declines a NUL in the console host path before sending a warm start", async () => {
+      const f = await fixture({
+        settings: {
+          win32ConsoleHost: "custom",
+          win32ConsoleHostPath: "C:\\x\0y\\OpenConsole.exe",
+        },
+      });
+      try {
+        expect(f.start).not.toHaveBeenCalled();
+        expect(f.release).toHaveBeenCalledExactlyOnceWith(
+          process.execPath,
+          expect.objectContaining({ host: f.warm.host }),
+        );
+        // The cold path reports the NUL without blaming Python.
+        await expect(f.pty.shell).rejects.toMatchObject({
+          message: "errors.profile-launch-nul",
+        });
+        await expect(f.pty.shell).rejects.toBeInstanceOf(ConPtySetupError);
+        expect(f.dependencies.spawn).not.toHaveBeenCalled();
+      } finally {
+        await f.cleanup();
+      }
+    });
 
     it.each(["dead spare", "declined warm start"])(
       "does not spawn after closing during cold preparation for a %s",
@@ -2381,6 +2498,7 @@ describe("ConPTY ready transition", () => {
               rows: 30,
               op: "start",
               command: ["cmd.exe"],
+              consoleHost: null,
               cwd: null,
               env: { PAD: "" },
             },
@@ -2583,6 +2701,248 @@ describe("ConPTY ready transition", () => {
     await pty.onExit;
     expect(t).not.toHaveBeenCalledWith("errors.conpty-control-unauthenticated");
     expect(t).not.toHaveBeenCalledWith("errors.conpty-readiness-timeout");
+  });
+});
+
+describe("ConPTY console host", () => {
+  const WT_PATH = "C:\\WT\\OpenConsole.exe",
+    OPENCONSOLE: ConPtyConsoleHost = {
+      detail: null,
+      engine: "openconsole",
+      fallback: null,
+      path: WT_PATH,
+    },
+    FALLBACK_KEY = "notices.win32-console-host-fallback";
+
+  /** Opens a cold terminal whose host reports `consoleHost` when ready. */
+  async function openReporting(
+    consoleHost: ConPtyConsoleHost,
+    context: TerminalPlugin,
+  ): Promise<ConPtyPseudoterminal> {
+    const host = testHost(),
+      hostPid = liveHostPid(host),
+      control = fakeControl(
+        Promise.resolve(readyEvent(hostPid, hostPid + 1, consoleHost)),
+        () => host.kill(),
+      ),
+      pty = constructConPty(
+        conPtyDependencies(control, host),
+        void 0,
+        void 0,
+        context,
+      );
+    await pty.shell;
+    return pty;
+  }
+
+  async function close(pty: ConPtyPseudoterminal): Promise<void> {
+    await pty.kill();
+    await pty.onExit;
+  }
+
+  function fallbackNotices(
+    t: ReturnType<typeof vi.fn<(key: string) => string>>,
+  ): unknown[][] {
+    return t.mock.calls.filter(([key]) => key === FALLBACK_KEY);
+  }
+
+  it.each([
+    ["automatic", "", "auto"],
+    ["automatic", WT_PATH, "auto"],
+    ["system", WT_PATH, null],
+    ["custom", ` ${WT_PATH} `, WT_PATH],
+    ["custom", " ", null],
+  ] as const)(
+    "asks the host for the %s console host with path %j as %j",
+    (mode, path, spec) => {
+      expect(conPtyConsoleHostSpec(mode, path)).toBe(spec);
+    },
+  );
+
+  it.each<readonly [string, Readonly<Partial<Settings>>, readonly string[]]>([
+    [
+      "automatic",
+      { win32ConsoleHost: "automatic" },
+      ["--console-host", "auto"],
+    ],
+    [
+      "custom",
+      { win32ConsoleHost: "custom", win32ConsoleHostPath: ` ${WT_PATH} ` },
+      ["--console-host", WT_PATH],
+    ],
+    [
+      "empty custom",
+      { win32ConsoleHost: "custom", win32ConsoleHostPath: "" },
+      [],
+    ],
+    [
+      "system",
+      { win32ConsoleHost: "system", win32ConsoleHostPath: WT_PATH },
+      [],
+    ],
+    ["absent", {}, []],
+  ])(
+    "passes the %s console host to a cold host before the command",
+    async (_name, settings, option) => {
+      const host = testHost(),
+        hostPid = liveHostPid(host),
+        control = fakeControl(
+          Promise.resolve(readyEvent(hostPid, hostPid + 1)),
+          () => host.kill(),
+        ),
+        dependencies = conPtyDependencies(control, host),
+        pty = constructConPty(
+          dependencies,
+          { cwd: "C:\\work" },
+          void 0,
+          conPtyContext(void 0, settings),
+        );
+      try {
+        await pty.shell;
+        const [, args] = vi.mocked(dependencies.spawn).mock.calls[0] ?? [];
+        expect(args?.slice(6)).toEqual([
+          "test-control-pipe",
+          "--cwd",
+          "C:\\work",
+          ...option,
+          "--",
+          "cmd.exe",
+        ]);
+      } finally {
+        await close(pty);
+      }
+    },
+  );
+
+  it.each<readonly [Readonly<Partial<Settings>>, string | null]>([
+    [{ win32ConsoleHost: "automatic" }, "auto"],
+    [
+      { win32ConsoleHost: "custom", win32ConsoleHostPath: ` ${WT_PATH} ` },
+      WT_PATH,
+    ],
+    [{ win32ConsoleHost: "system" }, null],
+  ])(
+    "names the console host %j in a warm start as %j",
+    async (settings, spec) => {
+      const host = testHost(),
+        hostPid = liveHostPid(host),
+        start = vi
+          .fn<(op: ConPtyStartOp) => Promise<void>>()
+          .mockResolvedValue(undefined),
+        warmControl = {
+          ...fakeControl(
+            Promise.resolve(readyEvent(hostPid, hostPid + 1)),
+            () => host.kill(),
+          ),
+          start,
+        },
+        pool = {
+          acquire: vi.fn(() => ({ control: warmControl, host })),
+          dispose: vi.fn(),
+          ensureSpare: vi.fn(),
+        },
+        dependencies = {
+          ...conPtyDependencies(
+            fakeControl(new Promise<never>(() => {}), () => {}),
+            host,
+          ),
+          pool: pool as unknown as ConPtyHostPool,
+        },
+        pty = constructConPty(
+          dependencies,
+          void 0,
+          void 0,
+          conPtyContext(void 0, settings),
+        );
+      try {
+        await pty.shell;
+        expect(dependencies.spawn).not.toHaveBeenCalled();
+        expect(start.mock.calls[0]?.[0]).toHaveProperty("consoleHost", spec);
+      } finally {
+        await close(pty);
+      }
+    },
+  );
+
+  it("exposes the report and logs it once at info level", async () => {
+    const info = vi.spyOn(self.console, "info").mockImplementation(() => {}),
+      t = vi.fn((key: string) => key),
+      pty = await openReporting(
+        OPENCONSOLE,
+        conPtyContext(t, { win32ConsoleHost: "automatic" }),
+      );
+    try {
+      await expect(pty.consoleHost).resolves.toEqual(OPENCONSOLE);
+      expect(info).toHaveBeenCalledExactlyOnceWith(
+        "ConPTY console host",
+        OPENCONSOLE,
+      );
+      expect(fallbackNotices(t)).toEqual([]);
+    } finally {
+      await close(pty);
+    }
+  });
+
+  it("logs an automatic fallback only at debug level, without a notice", async () => {
+    const report: ConPtyConsoleHost = {
+        detail: null,
+        engine: "conhost",
+        fallback: "not-found",
+        path: null,
+      },
+      info = vi.spyOn(self.console, "info").mockImplementation(() => {}),
+      debug = vi.spyOn(self.console, "debug").mockImplementation(() => {}),
+      t = vi.fn((key: string) => key),
+      pty = await openReporting(
+        report,
+        conPtyContext(t, { win32ConsoleHost: "automatic" }),
+      );
+    try {
+      expect(info).not.toHaveBeenCalled();
+      expect(debug).toHaveBeenCalledWith("ConPTY console host", report);
+      expect(fallbackNotices(t)).toEqual([]);
+    } finally {
+      await close(pty);
+    }
+  });
+
+  it("shows a custom fallback once per plugin load for each path and reason", async () => {
+    vi.spyOn(self.console, "info").mockImplementation(() => {});
+    const missing: ConPtyConsoleHost = {
+        detail: WT_PATH,
+        engine: "conhost",
+        fallback: "missing",
+        path: null,
+      },
+      startFailed: ConPtyConsoleHost = { ...missing, fallback: "start-failed" },
+      t = vi.fn((key: string) => key),
+      settings: Partial<Settings> = {
+        win32ConsoleHost: "custom",
+        win32ConsoleHostPath: WT_PATH,
+      },
+      context = conPtyContext(t, settings),
+      opened: ConPtyPseudoterminal[] = [];
+    try {
+      opened.push(await openReporting(missing, context));
+      expect(fallbackNotices(t)).toEqual([
+        [
+          FALLBACK_KEY,
+          expect.objectContaining({
+            path: WT_PATH,
+            reason: "notices.win32-console-host-fallback-reasons.missing",
+          }),
+        ],
+      ]);
+      opened.push(await openReporting(missing, context));
+      expect(fallbackNotices(t)).toHaveLength(1);
+      opened.push(await openReporting(startFailed, context));
+      expect(fallbackNotices(t)).toHaveLength(2);
+      // Another plugin load shows it again.
+      opened.push(await openReporting(missing, conPtyContext(t, settings)));
+      expect(fallbackNotices(t)).toHaveLength(3);
+    } finally {
+      for (const pty of opened) await close(pty);
+    }
   });
 });
 

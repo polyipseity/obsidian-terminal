@@ -219,6 +219,48 @@ describe("src/settings-data.ts", () => {
     );
   });
 
+  it("defaults the Windows console host to Windows Terminal's", () => {
+    expect(Settings.WIN32_CONSOLE_HOSTS).toEqual([
+      "automatic",
+      "system",
+      "custom",
+    ]);
+    expect(Settings.DEFAULT.win32ConsoleHost).toBe("automatic");
+    expect(Settings.DEFAULT.win32ConsoleHostPath).toBe("");
+    expect(Settings.fix({}).value).toMatchObject({
+      win32ConsoleHost: "automatic",
+      win32ConsoleHostPath: "",
+    });
+  });
+
+  it.each(Settings.WIN32_CONSOLE_HOSTS)(
+    "keeps the %s console host",
+    (win32ConsoleHost) => {
+      expect(Settings.fix({ win32ConsoleHost }).value.win32ConsoleHost).toBe(
+        win32ConsoleHost,
+      );
+    },
+  );
+
+  it.each(["folder", "", null, 1])(
+    "replaces the unknown console host %j with the default",
+    (win32ConsoleHost) => {
+      expect(Settings.fix({ win32ConsoleHost }).value.win32ConsoleHost).toBe(
+        "automatic",
+      );
+    },
+  );
+
+  it("keeps a console host path as typed and drops other types", () => {
+    const path = " C:\\Tools\\OpenConsole.exe ";
+    expect(
+      Settings.fix({ win32ConsoleHostPath: path }).value.win32ConsoleHostPath,
+    ).toBe(path);
+    expect(
+      Settings.fix({ win32ConsoleHostPath: 42 }).value.win32ConsoleHostPath,
+    ).toBe("");
+  });
+
   it("drops the retired discovery marker", () => {
     // The field holds only what the user typed, so nothing marks a value as
     // discovered any more.

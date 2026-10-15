@@ -1276,6 +1276,81 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               },
             ),
           );
+      })
+      .newSetting(containerEl, (setting) => {
+        setting
+          .setName(i18n.t("settings.win32-console-host"))
+          .setDesc(i18n.t("settings.win32-console-host-description"))
+          .addDropdown(
+            linkSetting(
+              (): string => settings.value.win32ConsoleHost,
+              setTextToEnum(Settings.WIN32_CONSOLE_HOSTS, async (value) =>
+                settings.mutate((settingsM) => {
+                  settingsM.win32ConsoleHost = value;
+                }),
+              ),
+              () => {
+                this.postMutate();
+              },
+              {
+                pre: (dropdown) => {
+                  dropdown.addOptions(
+                    Object.fromEntries(
+                      Settings.WIN32_CONSOLE_HOSTS.map((value) => [
+                        value,
+                        i18n.t(`settings.win32-console-host-options.${value}`),
+                      ]),
+                    ),
+                  );
+                },
+              },
+            ),
+          )
+          .addExtraButton(
+            resetButton(
+              i18n.t("asset:settings.win32-console-host-icon"),
+              i18n.t("settings.reset"),
+              async () =>
+                settings.mutate((settingsM) => {
+                  settingsM.win32ConsoleHost =
+                    Settings.DEFAULT.win32ConsoleHost;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          );
+      })
+      .newSetting(containerEl, (setting) => {
+        setting
+          .setName(i18n.t("settings.win32-console-host-path"))
+          .setDesc(i18n.t("settings.win32-console-host-path-description"))
+          .addText(
+            linkSetting(
+              () => settings.value.win32ConsoleHostPath,
+              async (value) =>
+                settings.mutate((settingsM) => {
+                  settingsM.win32ConsoleHostPath = value;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          )
+          .addExtraButton(
+            resetButton(
+              i18n.t("asset:settings.win32-console-host-path-icon"),
+              i18n.t("settings.reset"),
+              async () =>
+                settings.mutate((settingsM) => {
+                  settingsM.win32ConsoleHostPath =
+                    Settings.DEFAULT.win32ConsoleHostPath;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          );
       });
   }
 

@@ -161,6 +161,8 @@
     "python-rechecking-icon": "$t(asset:generic.load-icon)",
     "right-click-action-icon": "mouse-pointer-2",
     "terminal-options-edit-icon": "$t(asset:generic.edit-icon)",
-    "terminal-options-icon": "$t(asset:generic.terminal-icon)"
+    "terminal-options-icon": "$t(asset:generic.terminal-icon)",
+    "win32-console-host-icon": "monitor",
+    "win32-console-host-path-icon": "file-terminal"
   }
 }

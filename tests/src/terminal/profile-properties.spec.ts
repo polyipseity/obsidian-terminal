@@ -347,6 +347,12 @@ describe("openProfile with saved Windows backend choices", () => {
             attestation:
               "create-pseudoconsole+authenticated-control-channel+job-object-assigned",
             childPid: host.pid + 1,
+            consoleHost: {
+              detail: null,
+              engine: "conhost",
+              fallback: null,
+              path: null,
+            },
             controlChannelAuthenticated: true,
             createPseudoConsole: true,
             event: "ready",
