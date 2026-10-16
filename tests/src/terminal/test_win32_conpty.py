@@ -1520,6 +1520,58 @@ def test_plan_console_host_ahead_reports_a_missing_windows_terminal() -> None:
     assert host.fallback == "not-found"
 
 
+"""A plan for a copy of Windows Terminal's console host."""
+_COPY_PLAN = _MODULE._ConsoleHost("openconsole", "C:\\copy\\OpenConsole.exe")
+
+
+def test_console_host_for_start_reuses_a_plan_whose_copy_exists() -> None:
+    """An ``auto`` start runs the copy a prewarmed host found while it waited."""
+    is_file = Mock(return_value=True)
+    plan = Mock(side_effect=AssertionError("the start planned again"))
+
+    host = _MODULE._console_host_for_start("auto", _COPY_PLAN, is_file, plan)
+
+    assert host is _COPY_PLAN
+    is_file.assert_called_once_with("C:\\copy\\OpenConsole.exe")
+
+
+def test_console_host_for_start_plans_again_when_the_copy_is_gone() -> None:
+    """A copy removed since the plan was made is planned, and copied, again."""
+    fresh = _MODULE._ConsoleHost("openconsole", "C:\\copy2\\OpenConsole.exe")
+    plan = Mock(return_value=fresh)
+
+    host = _MODULE._console_host_for_start(
+        "auto", _COPY_PLAN, Mock(return_value=False), plan
+    )
+
+    assert host is fresh
+    plan.assert_called_once_with("auto")
+
+
+def test_console_host_for_start_never_reuses_a_fallback() -> None:
+    """Windows Terminal may have been installed since ``not-found`` was planned."""
+    planned = _MODULE._fall_back("not-found", "no Windows Terminal 1.22 or newer")
+    is_file = Mock(side_effect=AssertionError("a fallback has no file"))
+    plan = Mock(return_value=_COPY_PLAN)
+
+    host = _MODULE._console_host_for_start("auto", planned, is_file, plan)
+
+    assert host is _COPY_PLAN
+    plan.assert_called_once_with("auto")
+
+
+@pytest.mark.parametrize("planned", (None, _COPY_PLAN), ids=("unplanned", "planned"))
+def test_console_host_for_start_plans_a_start_without_a_spec(planned: Any) -> None:
+    """A start for the built-in host ignores any plan; one without a plan plans."""
+    built_in = _MODULE._ConsoleHost()
+    plan = Mock(return_value=built_in)
+
+    host = _MODULE._console_host_for_start(None, planned, Mock(return_value=True), plan)
+
+    assert host is built_in
+    plan.assert_called_once_with(None)
+
+
 def _copy_tree(root: Path) -> dict[str, bytes]:
     """Return every file under ``root`` by relative POSIX path, with content."""
     return {

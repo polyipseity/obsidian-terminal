@@ -948,7 +948,8 @@ def _plan_console_host_ahead(
     Windows Terminal's console host need not wait for the lookup. The host
     does not know the setting yet, so this writes nothing: ``find_copy``
     returns a copy that already exists, or ``None``. Without one there is no
-    plan, and ``start`` plans and copies as usual.
+    plan, and ``start`` plans and copies as usual; ``start`` plans again for
+    a fallback too (``_console_host_for_start``).
     """
 
     def reuse(source: str, name: str) -> str:
@@ -962,6 +963,32 @@ def _plan_console_host_ahead(
         return _plan_console_host(_CONSOLE_HOST_AUTO, find_windows_terminal, reuse)
     except _NoCopyYet:
         return None
+
+
+def _console_host_for_start(
+    spec: str | None,
+    planned: _ConsoleHost | None,
+    is_file: Callable[[str], bool],
+    plan: Callable[[str | None], _ConsoleHost],
+) -> _ConsoleHost:
+    """Return the console host plan of a ``start`` with ``spec``.
+
+    ``planned`` is what a prewarmed host planned while it waited. Only an
+    ``auto`` start uses it, and only when it names an ``OpenConsole.exe`` that
+    still exists. ``plan`` plans again otherwise: Windows Terminal may have
+    been installed since a fallback was planned, and a copy may have been
+    removed since it was found.
+    """
+    path = None if planned is None else planned.path
+    if (
+        spec == _CONSOLE_HOST_AUTO
+        and planned is not None
+        and planned.engine == _ENGINE_OPENCONSOLE
+        and path is not None
+        and is_file(path)
+    ):
+        return planned
+    return plan(spec)
 
 
 def _file_digest(path: str) -> bytes:
@@ -2336,13 +2363,14 @@ if sys.platform == "win32":
             # Finding and copying the console host needs no session handle, so
             # a fallback here leaves nothing to release. A prewarmed host
             # planned ``auto`` while it waited.
-            console_host = self._planned_console_host
-            if console_host is None or arguments.console_host != _CONSOLE_HOST_AUTO:
-                console_host = _plan_console_host(
-                    arguments.console_host,
-                    _find_windows_terminal,
-                    _copy_from_windows_apps,
-                )
+            console_host = _console_host_for_start(
+                arguments.console_host,
+                self._planned_console_host,
+                os.path.isfile,
+                lambda spec: _plan_console_host(
+                    spec, _find_windows_terminal, _copy_from_windows_apps
+                ),
+            )
 
             input_read, self._input_write = _create_pipe()
             try:
