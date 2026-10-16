@@ -2,18 +2,18 @@
 
 The plugin embeds this file as text, writes it to a temporary file, and runs::
 
-    python <file> <columns> <rows> <pipe-name> [--cwd <dir>] [--console-host <spec>]
+    python <file> <columns> <rows> <pipe-name> [--cwd <dir>] [--console-host auto]
         -- <executable> [args...]
 
 The source exceeds the 32767-character Windows command-line limit, so a
 ``python -c`` spawn cannot work.
 
-``--console-host`` (or ``consoleHost`` in a deferred ``start``) asks for the
-``OpenConsole.exe`` that Windows Terminal ships instead of the console host
-built into Windows: ``auto`` finds Windows Terminal, an absolute path names the
-file. The host starts it the way ``conpty.dll`` does, falls back to the
-built-in console host when it cannot, and reports which one runs in the
-``consoleHost`` field of ``ready``.
+``--console-host auto`` (or ``"consoleHost": "auto"`` in a deferred ``start``)
+asks for the ``OpenConsole.exe`` that Windows Terminal ships instead of the
+console host built into Windows. The host finds it through Windows' package
+API, starts it the way ``conpty.dll`` does, falls back to the built-in console
+host when it cannot, and reports which one runs in the ``consoleHost`` field of
+``ready``.
 
 The host binds the child process to a pseudoconsole and bridges three channels.
 Its stdin and stdout carry raw terminal bytes.  A local named pipe, created by
@@ -142,7 +142,7 @@ _PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE = 0x00020016
 """STARTUPINFO flag making the explicit null standard handles authoritative."""
 _STARTF_USESTDHANDLES = 0x00000100
 
-"""The ``consoleHost`` spec asking the host to find Windows Terminal."""
+"""The only ``consoleHost`` spec: run Windows Terminal's console host."""
 _CONSOLE_HOST_AUTO = "auto"
 """``consoleHost.engine`` while Windows Terminal's ``OpenConsole.exe`` runs."""
 _ENGINE_OPENCONSOLE = "openconsole"
@@ -158,7 +158,7 @@ Release 1.22 also stopped answering DA1 itself, so programs can tell what the
 terminal supports.
 """
 _MINIMUM_WINDOWS_TERMINAL = (1, 22, 0, 0)
-"""A Windows Terminal (or Preview) package full name from the AppModel repository."""
+"""A Windows Terminal (or Preview) package full name."""
 _WINDOWS_TERMINAL_PACKAGE = re.compile(
     r"Microsoft\.WindowsTerminal(?P<preview>Preview)?"
     r"_(?P<version>\d+\.\d+\.\d+\.\d+)_(?P<architecture>[A-Za-z0-9]+)"
@@ -167,6 +167,13 @@ _WINDOWS_TERMINAL_PACKAGE = re.compile(
 )
 """Package architecture names of the ``IsWow64Process2`` native machines."""
 _MACHINE_ARCHITECTURES = {0x8664: "x64", 0xAA64: "arm64", 0x014C: "x86"}
+"""Package family names of Windows Terminal and its Preview."""
+_WINDOWS_TERMINAL_FAMILIES = (
+    "Microsoft.WindowsTerminal_8wekyb3d8bbwe",
+    "Microsoft.WindowsTerminalPreview_8wekyb3d8bbwe",
+)
+"""Win32 error of a call whose buffer is too small; it reports the size needed."""
+_ERROR_INSUFFICIENT_BUFFER = 122
 """Signal-pipe packet type of a resize, from ``winconpty.h``."""
 _PTY_SIGNAL_RESIZE_WINDOW = 8
 """``E_FAIL``, reported when a failed write left no Win32 error."""
@@ -447,17 +454,16 @@ def parse_arguments(
     """Parse the host command line.
 
     Immediate form: ``<columns> <rows> <pipe-name> [--cwd <dir>]
-    [--console-host <spec>] -- <executable> [args...]``, the two options in
+    [--console-host auto] -- <executable> [args...]``, the two options in
     either order. Deferred form: ``--defer-session <pipe-name>``.
 
     Everything after the first ``--`` is the child command, so a ``--cwd``
     there belongs to the child.  The directory is taken verbatim, as the
     deferred ``start`` op takes its ``cwd``: whether it exists is decided when
-    the session starts, where a bad one is a shell-start failure. The console
-    host spec is judged at session start too, and an empty one means the
-    built-in console host, as in the ``start`` op. Host envelope errors raise
-    ``ValueError``; a missing/empty executable raises ``ChildStartError`` with
-    the profile-fault exit code.
+    the session starts, where a bad one is a shell-start failure. The only
+    console host spec is ``auto``. Host envelope errors raise ``ValueError``;
+    a missing/empty executable raises ``ChildStartError`` with the
+    profile-fault exit code.
     """
     values = list(arguments)
     if values and values[0] == "--defer-session":
@@ -485,8 +491,11 @@ def parse_arguments(
     if len(head) < 3 or len(options) * 2 != len(head) - 3:
         raise ValueError(
             "expected <columns> <rows> <pipe-name> [--cwd <dir>] "
-            "[--console-host <spec>] before --"
+            "[--console-host auto] before --"
         )
+    console_host = options.get("--console-host")
+    if console_host is not None and console_host != _CONSOLE_HOST_AUTO:
+        raise ValueError(f"--console-host takes only {_CONSOLE_HOST_AUTO}")
     pipe_name = _parse_pipe_name(head[2])
     columns = _parse_dimension(head[0], "columns")
     rows = _parse_dimension(head[1], "rows")
@@ -500,7 +509,7 @@ def parse_arguments(
         pipe_name=pipe_name,
         command=tuple(command),
         cwd=options.get("--cwd"),
-        console_host=options.get("--console-host") or None,
+        console_host=console_host,
     )
 
 
@@ -725,7 +734,7 @@ def _parse_start(message: Mapping[str, Any], pipe_name: str) -> _StartRequest | 
     if cwd is not None and not isinstance(cwd, str):
         return None
     console_host = message.get("consoleHost")
-    if console_host is not None and not isinstance(console_host, str):
+    if console_host is not None and console_host != _CONSOLE_HOST_AUTO:
         return None
     environment = message.get("env")
     if environment is not None and (
@@ -743,8 +752,7 @@ def _parse_start(message: Mapping[str, Any], pipe_name: str) -> _StartRequest | 
             pipe_name=pipe_name,
             command=tuple(command),
             cwd=cwd,
-            # An empty spec asks for nothing, exactly like an absent one.
-            console_host=console_host or None,
+            console_host=console_host,
         ),
         # The token authenticates this host; no child may ever receive it.
         environment={
@@ -785,8 +793,8 @@ def pick_windows_terminal(
 ) -> WindowsTerminal | None:
     """Choose the Windows Terminal whose ``OpenConsole.exe`` a session runs.
 
-    ``packages`` holds ``(package full name, root folder)`` pairs from the
-    AppModel repository. A package qualifies when it is Windows Terminal or
+    ``packages`` holds ``(package full name, root folder)`` pairs from
+    Windows' package API. A package qualifies when it is Windows Terminal or
     its Preview, at least version 1.22, and its root folder holds
     ``OpenConsole.exe``. Stable beats Preview, then the higher version wins,
     then the package built for ``native_architecture``. Any architecture
@@ -867,45 +875,33 @@ def _in_windows_apps(path: str) -> bool:
 def _plan_console_host(
     spec: str | None,
     find_windows_terminal: Callable[[], WindowsTerminal | None],
-    is_file: Callable[[str], bool],
     copy: Callable[[str, str], str],
 ) -> _ConsoleHost:
     """Decide which ``OpenConsole.exe`` a session will try to start.
 
-    ``spec`` is ``None`` for the built-in console host, ``auto`` for Windows
-    Terminal's, or the absolute path of an ``OpenConsole.exe``. Windows will
-    not start a program from inside ``WindowsApps`` for anyone but its
-    package, so such a file runs from a copy that ``copy`` returns for the
-    source path and the copy folder's name: the package full name, or the
-    name of the folder holding the file. Nothing here writes to stderr: the
-    plugin shows stderr as errors, and ``auto`` falls back on every terminal
-    of a device without Windows Terminal, so ``ready`` is the only report.
+    ``spec`` is ``None`` for the built-in console host and ``auto`` for
+    Windows Terminal's. Windows will not start a program from inside
+    ``WindowsApps`` for anyone but its package, so that file runs from a copy
+    that ``copy`` returns for the source path and the package full name.
+    Nothing here writes to stderr: the plugin shows stderr as errors, and
+    ``auto`` falls back on every terminal of a device without Windows
+    Terminal, so ``ready`` is the only report.
     """
     if spec is None:
         return _ConsoleHost()
-    if spec == _CONSOLE_HOST_AUTO:
-        try:
-            found = find_windows_terminal()
-        except OSError as error:
-            return _fall_back("not-found", str(error))
-        if found is None:
-            minimum = ".".join(str(part) for part in _MINIMUM_WINDOWS_TERMINAL[:2])
-            return _fall_back(
-                "not-found", f"no Windows Terminal {minimum} or newer is installed"
-            )
-        path, name = found.console_host, found.package
-    else:
-        if not _is_absolute_windows_path(spec):
-            return _fall_back("not-absolute", spec)
-        # Windows resolves ``..`` by text too, so the copy folder's name
-        # comes from the path that will really run.
-        path = ntpath.normpath(spec)
-        if not is_file(path):
-            return _fall_back("missing", path)
-        name = ntpath.basename(ntpath.dirname(path))
+    try:
+        found = find_windows_terminal()
+    except OSError as error:
+        return _fall_back("not-found", str(error))
+    if found is None:
+        minimum = ".".join(str(part) for part in _MINIMUM_WINDOWS_TERMINAL[:2])
+        return _fall_back(
+            "not-found", f"no Windows Terminal {minimum} or newer is installed"
+        )
+    path = found.console_host
     if _in_windows_apps(path):
         try:
-            path = copy(path, name)
+            path = copy(path, found.package)
         except OSError as error:
             return _fall_back("start-failed", str(error))
     return _ConsoleHost(_ENGINE_OPENCONSOLE, path)
@@ -1035,7 +1031,6 @@ def main() -> None:
 
 if sys.platform == "win32":
     import msvcrt
-    import winreg
     from ctypes import wintypes
 
     """Creation flag declaring an extended STARTUPINFO with attributes."""
@@ -1074,11 +1069,6 @@ if sys.platform == "win32":
     _OBJ_CASE_INSENSITIVE = 0x00000040
     """Object attribute making the opened handle inheritable."""
     _OBJ_INHERIT = 0x00000002
-    """Registry key listing the current user's installed packages."""
-    _PACKAGES_KEY = (
-        "Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows"
-        "\\CurrentVersion\\AppModel\\Repository\\Packages"
-    )
 
     """Milliseconds between child-liveness checks while a session runs."""
     _POLL_MILLISECONDS = 100
@@ -1698,37 +1688,63 @@ if sys.platform == "win32":
         return _MACHINE_ARCHITECTURES.get(int(native_machine.value))
 
     def _windows_terminal_packages() -> list[tuple[str, str]]:
-        """Read each Windows Terminal package's name and root folder."""
-        packages: list[tuple[str, str]] = []
+        """Ask Windows for each installed Windows Terminal package and its folder.
+
+        ``GetPackagesByPackageFamily`` lists the current user's packages of a
+        family and ``GetPackagePathByFullName`` gives a package's folder; both
+        are documented ``kernel32`` calls. A package Windows cannot describe
+        is skipped, and without the calls nothing is found.
+        """
         try:
-            repository = winreg.OpenKey(  # ty: ignore[possibly-missing-attribute]
-                winreg.HKEY_CURRENT_USER,  # ty: ignore[possibly-missing-attribute]
-                _PACKAGES_KEY,
+            get_packages = _bind(
+                "GetPackagesByPackageFamily",
+                (
+                    _LPWSTR,
+                    ctypes.POINTER(ctypes.c_uint32),
+                    ctypes.POINTER(ctypes.c_wchar_p),
+                    ctypes.POINTER(ctypes.c_uint32),
+                    ctypes.c_wchar_p,
+                ),
+                _LONG,
             )
-        except FileNotFoundError:
-            # No package repository means no package installed, not an error.
-            return packages
-        with repository:
-            count = winreg.QueryInfoKey(  # ty: ignore[possibly-missing-attribute]
-                repository
-            )[0]
-            for index in range(count):
-                name = winreg.EnumKey(  # ty: ignore[possibly-missing-attribute]
-                    repository, index
-                )
-                if not name.lower().startswith("microsoft.windowsterminal"):
+            get_path = _bind(
+                "GetPackagePathByFullName",
+                (_LPWSTR, ctypes.POINTER(ctypes.c_uint32), ctypes.c_wchar_p),
+                _LONG,
+            )
+        except AttributeError:
+            return []
+        packages: list[tuple[str, str]] = []
+        for family in _WINDOWS_TERMINAL_FAMILIES:
+            count = ctypes.c_uint32(0)
+            length = ctypes.c_uint32(0)
+            # Sizes first; a family without packages reports a count of 0.
+            result = get_packages(
+                family, ctypes.byref(count), None, ctypes.byref(length), None
+            )
+            if result not in (0, _ERROR_INSUFFICIENT_BUFFER) or not count.value:
+                continue
+            names = (ctypes.c_wchar_p * count.value)()
+            buffer = ctypes.create_unicode_buffer(length.value)
+            # The names point into ``buffer``, which stays alive while they are
+            # read. A package added between the two calls fails the second one.
+            if get_packages(
+                family, ctypes.byref(count), names, ctypes.byref(length), buffer
+            ):
+                continue
+            for name in names[: count.value]:
+                if not name:
                     continue
-                try:
-                    with winreg.OpenKey(  # ty: ignore[possibly-missing-attribute]
-                        repository, name
-                    ) as package:
-                        root, _kind = winreg.QueryValueEx(  # ty: ignore[possibly-missing-attribute]
-                            package, "PackageRootFolder"
-                        )
-                except OSError:
+                path_length = ctypes.c_uint32(0)
+                if (
+                    get_path(name, ctypes.byref(path_length), None)
+                    != _ERROR_INSUFFICIENT_BUFFER
+                ):
                     continue
-                if isinstance(root, str):
-                    packages.append((name, root))
+                path = ctypes.create_unicode_buffer(path_length.value)
+                if get_path(name, ctypes.byref(path_length), path):
+                    continue
+                packages.append((name, path.value))
         return packages
 
     def _find_windows_terminal() -> WindowsTerminal | None:
@@ -2087,7 +2103,6 @@ if sys.platform == "win32":
             console_host = _plan_console_host(
                 arguments.console_host,
                 _find_windows_terminal,
-                os.path.isfile,
                 _copy_from_windows_apps,
             )
 

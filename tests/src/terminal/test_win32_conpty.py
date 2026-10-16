@@ -901,6 +901,28 @@ def test_resolve_executable_defaults_to_the_host_path(
             "command": ["cmd"],
             "consoleHost": ["auto"],
         },
+        # ``auto`` is the only console host spec.
+        {
+            "op": "start",
+            "columns": 120,
+            "rows": 30,
+            "command": ["cmd"],
+            "consoleHost": "",
+        },
+        {
+            "op": "start",
+            "columns": 120,
+            "rows": 30,
+            "command": ["cmd"],
+            "consoleHost": "C:\\wt\\OpenConsole.exe",
+        },
+        {
+            "op": "start",
+            "columns": 120,
+            "rows": 30,
+            "command": ["cmd"],
+            "consoleHost": "AUTO",
+        },
     ),
 )
 def test_parse_start_rejects_malformed_operations(message: dict[str, Any]) -> None:
@@ -994,25 +1016,25 @@ def test_parse_arguments_reads_both_options_in_either_order(cwd_first: bool) -> 
     assert parsed.command == ("cmd", "/c", "x")
 
 
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    (
-        ("auto", "auto"),
-        ("C:\\Tools\\OpenConsole.exe", "C:\\Tools\\OpenConsole.exe"),
-        ("relative\\OpenConsole.exe", "relative\\OpenConsole.exe"),
-        ("--cwd", "--cwd"),
-        ("", None),
-    ),
-)
-def test_parse_arguments_reads_the_console_host_spec(
-    value: str, expected: str | None
-) -> None:
-    """The spec is taken verbatim; an empty one asks for nothing, as in ``start``."""
+def test_parse_arguments_reads_the_auto_console_host() -> None:
+    """``--console-host auto`` asks for Windows Terminal's console host."""
     parsed = _MODULE.parse_arguments(
-        ["120", "30", "\\\\.\\pipe\\p", "--console-host", value, "--", "cmd"]
+        ["120", "30", "\\\\.\\pipe\\p", "--console-host", "auto", "--", "cmd"]
     )
-    assert parsed.console_host == expected
+    assert parsed.console_host == "auto"
     assert parsed.cwd is None
+
+
+@pytest.mark.parametrize(
+    "value",
+    ("C:\\Tools\\OpenConsole.exe", "relative\\OpenConsole.exe", "--cwd", "", "AUTO"),
+)
+def test_parse_arguments_refuses_any_other_console_host(value: str) -> None:
+    """``auto`` is the only console host spec."""
+    with pytest.raises(ValueError, match="--console-host takes only auto"):
+        _MODULE.parse_arguments(
+            ["120", "30", "\\\\.\\pipe\\p", "--console-host", value, "--", "cmd"]
+        )
 
 
 def test_parse_arguments_leaves_a_console_host_flag_after_the_separator() -> None:
@@ -1029,9 +1051,7 @@ def test_parse_arguments_leaves_a_console_host_flag_after_the_separator() -> Non
     (
         ({}, None),
         ({"consoleHost": None}, None),
-        ({"consoleHost": ""}, None),
         ({"consoleHost": "auto"}, "auto"),
-        ({"consoleHost": "C:\\wt\\OpenConsole.exe"}, "C:\\wt\\OpenConsole.exe"),
     ),
 )
 def test_parse_start_reads_the_console_host_spec(
@@ -1371,13 +1391,12 @@ class _PlanCalls(NamedTuple):
 def _plan(
     spec: str | None,
     found: Any = None,
-    files: Collection[str] = (),
     copy: Mock | None = None,
 ) -> _PlanCalls:
-    """Plan a console host with a fake Windows Terminal lookup and file system."""
+    """Plan a console host with a fake Windows Terminal lookup and copy."""
     find = found if isinstance(found, Mock) else Mock(return_value=found)
     copier = copy if copy is not None else Mock(return_value="C:\\copy\\x.exe")
-    host = _MODULE._plan_console_host(spec, find, lambda path: path in files, copier)
+    host = _MODULE._plan_console_host(spec, find, copier)
     return _PlanCalls(host, find, copier)
 
 
@@ -1426,71 +1445,17 @@ def test_plan_console_host_auto_reports_a_missing_windows_terminal() -> None:
     assert "1.22" in calls.host.detail
 
 
-def test_plan_console_host_auto_reports_an_unreadable_registry() -> None:
-    """A registry error is a missing Windows Terminal, with its text as detail."""
+def test_plan_console_host_auto_reports_a_failed_lookup() -> None:
+    """A lookup error is a missing Windows Terminal, with its text as detail."""
     calls = _plan("auto", Mock(side_effect=PermissionError("access denied")))
     assert (calls.host.fallback, calls.host.detail) == ("not-found", "access denied")
 
 
-@pytest.mark.parametrize(
-    "spec",
-    (
-        "OpenConsole.exe",
-        "tools\\OpenConsole.exe",
-        "\\tools\\OpenConsole.exe",
-        "C:OpenConsole.exe",
-        "AUTO",
-    ),
-)
-def test_plan_console_host_refuses_a_relative_path(spec: str) -> None:
-    """A path that depends on the current directory or drive is refused."""
-    calls = _plan(spec, files={spec})
-    assert calls.host.report() == {
-        "engine": "conhost",
-        "path": None,
-        "fallback": "not-absolute",
-        "detail": spec,
-    }
-
-
-def test_plan_console_host_reports_a_missing_file() -> None:
-    """An absolute path that is not a file falls back with ``missing``."""
-    calls = _plan("C:\\Tools\\OpenConsole.exe")
-    assert (calls.host.fallback, calls.host.detail) == (
-        "missing",
-        "C:\\Tools\\OpenConsole.exe",
-    )
-
-
-def test_plan_console_host_runs_a_custom_path_in_place() -> None:
-    """A custom console host outside ``WindowsApps`` runs as given."""
-    calls = _plan("C:/Tools/OpenConsole.exe", files={"C:\\Tools\\OpenConsole.exe"})
-    calls.copy.assert_not_called()
-    assert calls.host.engine == "openconsole"
-    assert calls.host.path == "C:\\Tools\\OpenConsole.exe"
-
-
-def test_plan_console_host_copies_a_custom_path_from_windows_apps() -> None:
-    """The copy folder is named after the folder holding the custom file."""
-    source = _WINDOWS_APPS + "\\Pkg_1\\OpenConsole.exe"
-    calls = _plan(source, files={source})
-    calls.copy.assert_called_once_with(source, "Pkg_1")
-    assert calls.host.path == "C:\\copy\\x.exe"
-
-
-def test_plan_console_host_judges_the_normalized_path() -> None:
-    """``..`` out of ``WindowsApps`` needs no copy, as Windows resolves it."""
-    spec = _WINDOWS_APPS + "\\..\\Tools\\OpenConsole.exe"
-    path = "C:\\Program Files\\Tools\\OpenConsole.exe"
-    calls = _plan(spec, files={path})
-    calls.copy.assert_not_called()
-    assert calls.host.path == path
-
-
 def test_plan_console_host_reports_a_failed_copy() -> None:
     """A copy error is a failed start, with the error text as detail."""
-    source = _WINDOWS_APPS + "\\Pkg\\OpenConsole.exe"
-    calls = _plan(source, files={source}, copy=Mock(side_effect=OSError("disk full")))
+    package = _terminal_package()
+    found = _MODULE.WindowsTerminal(package[0], _console_host_of(package))
+    calls = _plan("auto", found, copy=Mock(side_effect=OSError("disk full")))
     assert calls.host.report() == {
         "engine": "conhost",
         "path": None,
@@ -1633,7 +1598,7 @@ def _fake_pseudoconsole(handle: int) -> Any:
 
 def test_open_pseudoconsole_uses_the_built_in_host_when_none_is_planned() -> None:
     """A conhost plan keeps its report and never launches OpenConsole."""
-    plan = _MODULE._fall_back("missing", "C:\\x.exe")
+    plan = _MODULE._fall_back("not-found", "no Windows Terminal")
     launch = Mock(side_effect=AssertionError("OpenConsole was launched"))
     built_in = _fake_pseudoconsole(7)
     host, pseudoconsole = _MODULE._open_pseudoconsole(
@@ -3234,7 +3199,7 @@ def _installed_windows_terminal() -> Any:
     try:
         found = _MODULE._find_windows_terminal()
     except OSError as error:
-        reason = f"the package repository is unreadable: {error}"
+        reason = f"the installed packages cannot be listed: {error}"
         pytest.skip(reason)  # ty: ignore[too-many-positional-arguments]
     if found is None:
         reason = "Windows Terminal 1.22 or newer is not installed"
@@ -3301,23 +3266,12 @@ def test_resize_reaches_the_child_on_the_windows_terminal_console_host() -> None
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
-@pytest.mark.parametrize("deferred", (False, True))
-def test_missing_console_host_falls_back_to_the_built_in_host(
-    tmp_path: Path, deferred: bool
-) -> None:
-    """A missing custom path is reported in ``ready``, never on stderr."""
-    missing = str(tmp_path / "OpenConsole.exe")
-    result = _run_host(
-        ["cmd", "/c", "echo hello-fallback"],
-        deferred=deferred,
-        console_host=missing,
-    )
-    assert result.code == 0, result
-    assert "hello-fallback" in result.text, result
-    assert _ready_report(result) == {
-        "engine": "conhost",
-        "path": None,
-        "fallback": "missing",
-        "detail": missing,
-    }, result
-    assert "OpenConsole" not in result.stderr.decode("utf-8", "replace"), result
+def test_windows_terminal_packages_name_installed_folders() -> None:
+    """Windows' package API lists each Windows Terminal package with its folder."""
+    _installed_windows_terminal()
+    packages = _MODULE._windows_terminal_packages()
+    assert packages
+    for name, root in packages:
+        assert _MODULE._WINDOWS_TERMINAL_PACKAGE.fullmatch(name), name
+        assert os.path.isdir(root), root
+        assert name.lower() in root.lower(), (name, root)
