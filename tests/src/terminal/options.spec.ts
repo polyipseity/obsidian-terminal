@@ -1,8 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 import {
+  CONPTY_REFLOW_BUILD_NUMBER,
+  type TerminalBackendOptions,
   mergeTerminalOptions,
   applyTerminalOptionDiffShallow,
   parseWin32BuildNumber,
+  settleConsoleHostBackendOptions,
 } from "../../../src/terminal/options.js";
 import { DEFAULT_LINK_HANDLER } from "../../../src/terminal/profile-presets.js";
 import { Settings } from "../../../src/settings-data.js";
@@ -167,6 +170,98 @@ describe("mergeTerminalOptions", () => {
       expect(parseWin32BuildNumber("10.0.-1")).toBeUndefined();
       expect(parseWin32BuildNumber("10.0.19045abc")).toBeUndefined();
       expect(parseWin32BuildNumber("24.6.0-darwin")).toBeUndefined();
+    });
+  });
+
+  describe("settleConsoleHostBackendOptions", () => {
+    const windows10 = {
+        platform: "win32",
+        win32Backend: "conpty",
+        win32BuildNumber: 19_045,
+      } as const,
+      OPENCONSOLE = { engine: "openconsole" } as const,
+      CONHOST = { engine: "conhost" } as const,
+      noOptions = { documentOverride: null };
+
+    it("names the build from which xterm.js reflows a ConPTY terminal", () => {
+      // xterm.js 6 reflows and drops its wrap guesses from this build on.
+      expect(CONPTY_REFLOW_BUILD_NUMBER).toBe(21_376);
+    });
+
+    it("raises a Windows 10 build to 21376 on Windows Terminal's console host", () => {
+      const settled = settleConsoleHostBackendOptions(windows10, OPENCONSOLE);
+
+      expect(settled).toEqual({ ...windows10, win32BuildNumber: 21_376 });
+      expect(Object.isFrozen(settled)).toBe(true);
+      expect(
+        mergeTerminalOptions(noOptions, noOptions, settled).windowsPty,
+      ).toEqual({ backend: "conpty", buildNumber: 21_376 });
+    });
+
+    it.each<TerminalBackendOptions>([
+      // A newer build already reflows.
+      { ...windows10, win32BuildNumber: 26_100 },
+      { ...windows10, win32BuildNumber: 21_376 },
+      // An unknown build sets no build number, and xterm.js then reflows.
+      { ...windows10, win32BuildNumber: void 0 },
+      // The ConHost backend has no ConPTY hint at all.
+      { ...windows10, win32Backend: "legacy" },
+      // ConPTY runs only on Windows.
+      { ...windows10, platform: "darwin" },
+      { ...windows10, platform: "linux" },
+    ])("keeps the options %j", (backendOptions) => {
+      expect(settleConsoleHostBackendOptions(backendOptions, OPENCONSOLE)).toBe(
+        backendOptions,
+      );
+    });
+
+    it("keeps the machine's build on the console host built into Windows", () => {
+      expect(settleConsoleHostBackendOptions(windows10, CONHOST)).toBe(
+        windows10,
+      );
+    });
+
+    it("leaves another platform's options without a Windows hint", () => {
+      const settled = settleConsoleHostBackendOptions(
+        { ...windows10, platform: "darwin" },
+        OPENCONSOLE,
+      );
+
+      expect(
+        mergeTerminalOptions(noOptions, noOptions, settled).windowsPty,
+      ).toBeUndefined();
+    });
+
+    it.each([
+      ["profile", { windowsPty: { buildNumber: 19_045 } }, {}],
+      ["global", {}, { windowsPty: { buildNumber: 19_045 } }],
+    ] as const)(
+      "lets a build number set in the %s terminal options win",
+      (_source, profileOptions, globalOptions) => {
+        const settled = settleConsoleHostBackendOptions(windows10, OPENCONSOLE);
+
+        expect(
+          mergeTerminalOptions(
+            { ...noOptions, ...profileOptions },
+            { ...noOptions, ...globalOptions },
+            settled,
+          ).windowsPty,
+        ).toEqual({ backend: "conpty", buildNumber: 19_045 });
+      },
+    );
+
+    it("keeps the raised build through a later settings change", () => {
+      // The live-update path merges the changed settings with the settled
+      // options, not with the machine's build.
+      const settled = settleConsoleHostBackendOptions(windows10, OPENCONSOLE),
+        changed = { documentOverride: null, fontSize: 14 };
+
+      expect(
+        mergeTerminalOptions(noOptions, changed, windows10).windowsPty,
+      ).toEqual({ backend: "conpty", buildNumber: 19_045 });
+      expect(
+        mergeTerminalOptions(noOptions, changed, settled).windowsPty,
+      ).toEqual({ backend: "conpty", buildNumber: 21_376 });
     });
   });
 

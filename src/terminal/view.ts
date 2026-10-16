@@ -100,6 +100,7 @@ import {
   applyTerminalOptionDiffShallow,
   mergeTerminalOptions,
   parseWin32BuildNumber,
+  settleConsoleHostBackendOptions,
 } from "./options.js";
 import { PROFILE_PROPERTIES, openProfile } from "./profile-properties.js";
 import {
@@ -1500,15 +1501,8 @@ export class TerminalView extends ItemView {
                   rows,
                   signal,
                 }),
-                requested = terminalBackendOptions;
-              terminalBackendOptions = settleTerminalBackendOptions(
-                requested,
-                ret,
-              );
-              if (terminalBackendOptions !== requested) {
-                // A ConHost fallback: nothing has been piped yet, so drop what
-                // only ConPTY understands before any output is parsed.
-                const merge = (
+                requested = terminalBackendOptions,
+                merge = (
                   backendOptions: TerminalBackendOptions,
                 ): ReturnType<typeof mergeTerminalOptions> =>
                   mergeTerminalOptions(
@@ -1516,12 +1510,39 @@ export class TerminalView extends ItemView {
                     settings.value.terminalOptions,
                     backendOptions,
                   );
+              terminalBackendOptions = settleTerminalBackendOptions(
+                requested,
+                ret,
+              );
+              if (terminalBackendOptions !== requested) {
+                // A ConHost fallback: nothing has been piped yet, so drop what
+                // only ConPTY understands before any output is parsed.
                 applyTerminalOptionDiffShallow(
                   terminal,
                   merge(requested),
                   merge(terminalBackendOptions),
                 );
               }
+              // Windows Terminal's console host reflows like a newer ConPTY
+              // than this machine's; later option patches merge with the
+              // raised build too.
+              ret?.consoleHost
+                ?.then((consoleHost) => {
+                  if (signal.aborted) return;
+                  const before = terminalBackendOptions;
+                  terminalBackendOptions = settleConsoleHostBackendOptions(
+                    before,
+                    consoleHost,
+                  );
+                  if (terminalBackendOptions !== before) {
+                    applyTerminalOptionDiffShallow(
+                      terminal,
+                      merge(before),
+                      merge(terminalBackendOptions),
+                    );
+                  }
+                }, noop) // A failed startup is reported with the shell.
+                .catch(warn);
               if (ret) {
                 return ret;
               }

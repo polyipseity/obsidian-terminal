@@ -1,6 +1,7 @@
 import {
   Platform,
   cloneAsWritable,
+  deepFreeze,
   deopaque,
 } from "@polyipseity/obsidian-plugin-library";
 import type { ITerminalOptions, Terminal } from "@xterm/xterm";
@@ -9,12 +10,22 @@ import { isEqual } from "es-toolkit/predicate";
 import type { DeepWritable } from "ts-essentials";
 import type { Settings } from "../settings-data.js";
 import { DEFAULT_LINK_HANDLER } from "./profile-presets.js";
+import type { ConPtyConsoleHost } from "./pseudoterminal.js";
+
+/**
+ * The first Windows build whose ConPTY leaves line reflow to the terminal.
+ * Below it, xterm.js does not reflow on resize and guesses which lines wrap,
+ * because that ConPTY re-sends wrapped lines itself.
+ */
+export const CONPTY_REFLOW_BUILD_NUMBER = 21376;
 
 export interface TerminalBackendOptions {
   /** Platform the terminal runs on. Defaults to the current platform. */
   readonly platform?: Platform.All | undefined;
   readonly win32Backend?: Settings.Profile.Win32Backend | undefined;
-  /** Windows build of this machine, from `parseWin32BuildNumber`. */
+  /** Windows build whose ConPTY the terminal runs on: this machine's, from
+   * `parseWin32BuildNumber`, until {@link settleConsoleHostBackendOptions}
+   * raises it for Windows Terminal's console host. */
   readonly win32BuildNumber?: number | undefined;
 }
 
@@ -28,6 +39,32 @@ export function parseWin32BuildNumber(release: string): number | undefined {
 }
 
 /**
+ * Backend options for a ConPTY terminal once its session reports the console
+ * host it runs on. Windows Terminal's console host is newer than the ConPTY of
+ * a Windows build below {@link CONPTY_REFLOW_BUILD_NUMBER} and re-sends no
+ * wrapped lines, so xterm.js must reflow as it does on that build. A
+ * `windowsPty.buildNumber` in the terminal options still wins in
+ * {@link mergeTerminalOptions}. Returns `backendOptions` itself when nothing
+ * changes.
+ */
+export function settleConsoleHostBackendOptions(
+  backendOptions: TerminalBackendOptions,
+  consoleHost: Pick<ConPtyConsoleHost, "engine">,
+): TerminalBackendOptions {
+  const { platform, win32Backend, win32BuildNumber } = backendOptions;
+  return (platform ?? deopaque(Platform.CURRENT)) === "win32" &&
+    win32Backend === "conpty" &&
+    consoleHost.engine === "openconsole" &&
+    win32BuildNumber !== void 0 &&
+    win32BuildNumber < CONPTY_REFLOW_BUILD_NUMBER
+    ? deepFreeze({
+        ...backendOptions,
+        win32BuildNumber: CONPTY_REFLOW_BUILD_NUMBER,
+      })
+    : backendOptions;
+}
+
+/**
  * Combine global defaults with a profile-specific set of terminal options.
  * Values present in `profileOpts` take precedence; everything else comes from
  * `globalOpts`. This is a shallow merge and mirrors the behavior previously
@@ -35,8 +72,8 @@ export function parseWin32BuildNumber(release: string): number | undefined {
  *
  * `windowsPty` is forced to the selected Windows backend, overriding a
  * persisted value that names a different one. A persisted `buildNumber`
- * stays, and a missing one takes the machine's: xterm.js reflows on resize
- * unless the build is below 21376, whose ConPTY re-emits wrapped lines itself.
+ * stays, and a missing one takes `win32BuildNumber`: xterm.js reflows on
+ * resize unless the build is below {@link CONPTY_REFLOW_BUILD_NUMBER}.
  */
 export function mergeTerminalOptions(
   profileOpts: Settings.Profile.TerminalOptions,
