@@ -169,6 +169,15 @@ _WINDOWS_TERMINAL_PACKAGE = re.compile(
     r"__8wekyb3d8bbwe",
     re.IGNORECASE,
 )
+"""A temporary file ``_copy_console_host`` writes before it replaces the copy."""
+_TEMPORARY_COPY = re.compile(re.escape(_CONSOLE_HOST_EXECUTABLE) + r"\.[0-9]+\.tmp")
+"""File attribute of a junction, a symbolic link, or another reparse point."""
+_FILE_ATTRIBUTE_REPARSE_POINT = 0x00000400
+"""Seconds before the one retry of a copy that could not replace the old one.
+
+Antivirus software may still hold a file that was just written.
+"""
+_REPLACE_RETRY_SECONDS = 0.1
 """Package architecture names of the ``IsWow64Process2`` native machines."""
 _MACHINE_ARCHITECTURES = {0x8664: "x64", 0xAA64: "arm64", 0x014C: "x86"}
 """Package family names of Windows Terminal and its Preview."""
@@ -983,42 +992,138 @@ def _existing_console_host_copy(source: str, name: str, root: str) -> str | None
     return target if _same_content(source, target) else None
 
 
-def _copy_console_host(source: str, name: str, root: str) -> str:
+def _is_reparse_point(path: str) -> bool:
+    """Tell whether ``path`` is a junction, a symbolic link or another reparse point.
+
+    A path that cannot be examined counts as one, so nothing is removed
+    through it.
+    """
+    try:
+        status = os.lstat(path)
+    except OSError:
+        return True
+    # Windows reports a junction as a directory; only the attribute tells.
+    if getattr(status, "st_file_attributes", 0) & _FILE_ATTRIBUTE_REPARSE_POINT:
+        return True
+    return os.path.islink(path)
+
+
+def _is_real_directory(path: str, is_reparse_point: Callable[[str], bool]) -> bool:
+    """Tell whether ``path`` is a directory itself, not a link to one."""
+    return not is_reparse_point(path) and os.path.isdir(path)
+
+
+def _list_directory(path: str) -> list[str]:
+    """Return the entry names of a directory, or none when it cannot be read."""
+    try:
+        return os.listdir(path)
+    except OSError:
+        return []
+
+
+def _prune_console_host_copies(
+    root: str, name: str, is_reparse_point: Callable[[str], bool]
+) -> None:
+    """Remove the leftovers of other copies under ``root``, best effort.
+
+    Only what this plugin writes goes: folders of other Windows Terminal
+    packages, whose copies may still run in another terminal, and temporary
+    files in the folder of ``name`` that another host left behind. Nothing is
+    removed when ``root`` or its parent is a junction or a symbolic link,
+    which could lead anywhere, and every other entry stays as it is.
+    """
+    if is_reparse_point(os.path.dirname(root)) or is_reparse_point(root):
+        return
+    folder = os.path.join(root, name)
+    if _is_real_directory(folder, is_reparse_point):
+        for entry in _list_directory(folder):
+            if _TEMPORARY_COPY.fullmatch(entry):
+                try:
+                    os.remove(os.path.join(folder, entry))
+                except OSError:
+                    pass
+    for entry in _list_directory(root):
+        path = os.path.join(root, entry)
+        if (
+            os.path.normcase(entry) != os.path.normcase(name)
+            and _WINDOWS_TERMINAL_PACKAGE.fullmatch(entry)
+            and _is_real_directory(path, is_reparse_point)
+        ):
+            shutil.rmtree(path, ignore_errors=True)
+
+
+def _replace_copy(source: str, temporary: str, target: str) -> None:
+    """Move ``temporary`` over ``target``, retrying once after a short wait.
+
+    A target that cannot be replaced because it runs is fine when it already
+    has the source's content, as when another host copied the same version
+    first.
+    """
+    try:
+        os.replace(temporary, target)
+        return
+    except OSError:
+        if _same_content(source, target):
+            return
+    time.sleep(_REPLACE_RETRY_SECONDS)
+    try:
+        os.replace(temporary, target)
+    except OSError:
+        if not _same_content(source, target):
+            raise
+
+
+def _copy_console_host(
+    source: str,
+    name: str,
+    root: str,
+    is_reparse_point: Callable[[str], bool] = _is_reparse_point,
+) -> str:
     """Return ``<root>\\<name>\\OpenConsole.exe`` holding a copy of ``source``.
 
     An identical copy is reused. Otherwise a temporary file in the same folder
-    replaces the copy, and the other folders under ``root``, older versions,
-    are removed where possible: one may still run in another terminal. A
-    copy that cannot be replaced because it runs is fine when it already has
-    the source's content, as when another host copied the same version first.
+    replaces the copy. Either way the leftovers of older versions are then
+    removed where possible (``_prune_console_host_copies``), so a folder that
+    was in use at one start goes at a later one.
     """
     folder = os.path.join(root, name)
     target = os.path.join(folder, _CONSOLE_HOST_EXECUTABLE)
-    if _same_content(source, target):
-        return target
-    os.makedirs(folder, exist_ok=True)
-    temporary = os.path.join(folder, f"{_CONSOLE_HOST_EXECUTABLE}.{os.getpid()}.tmp")
-    try:
-        shutil.copyfile(source, temporary)
+    if not _same_content(source, target):
+        os.makedirs(folder, exist_ok=True)
+        temporary = os.path.join(
+            folder, f"{_CONSOLE_HOST_EXECUTABLE}.{os.getpid()}.tmp"
+        )
         try:
-            os.replace(temporary, target)
-        except OSError:
-            if not _same_content(source, target):
-                raise
-            return target
-    finally:
-        try:
-            os.remove(temporary)
-        except OSError:
-            pass
-    try:
-        entries = os.listdir(root)
-    except OSError:
-        entries = []
-    for entry in entries:
-        if os.path.normcase(entry) != os.path.normcase(name):
-            shutil.rmtree(os.path.join(root, entry), ignore_errors=True)
+            shutil.copyfile(source, temporary)
+            _replace_copy(source, temporary, target)
+        finally:
+            try:
+                os.remove(temporary)
+            except OSError:
+                pass
+    _prune_console_host_copies(root, name, is_reparse_point)
     return target
+
+
+def _local_app_data(
+    known_folder: Callable[[], str], environment: Mapping[str, str]
+) -> str:
+    """Return the user's local application data folder.
+
+    ``known_folder`` asks Windows. ``LOCALAPPDATA`` serves only when that
+    fails, and only as a path with a drive or share and a root: a cold host
+    has entered the profile's directory, so a relative value would put the
+    copies, and their pruning, under the vault.
+    """
+    try:
+        path = known_folder()
+    except OSError:
+        path = ""
+    if not _is_absolute_windows_path(path):
+        path = environment.get("LOCALAPPDATA", "")
+        if not _is_absolute_windows_path(path):
+            raise OSError("the local application data folder is unknown")
+    return path
 
 
 def _open_pseudoconsole(
@@ -1276,6 +1381,24 @@ if sys.platform == "win32":
             ("hPtyReference", _HANDLE),
             ("hConPtyProcess", _HANDLE),
         )
+
+    class _GUID(ctypes.Structure):
+        """Win32 ``GUID``, which names a known folder."""
+
+        _fields_ = (
+            ("Data1", _DWORD),
+            ("Data2", _WORD),
+            ("Data3", _WORD),
+            ("Data4", ctypes.c_ubyte * 8),
+        )
+
+    """``FOLDERID_LocalAppData``: ``F1B32785-6FBA-4FCF-9D55-7B8E7F157091``."""
+    _FOLDERID_LOCAL_APP_DATA = _GUID(
+        0xF1B32785,
+        0x6FBA,
+        0x4FCF,
+        (ctypes.c_ubyte * 8)(0x9D, 0x55, 0x7B, 0x8E, 0x7F, 0x15, 0x70, 0x91),
+    )
 
     def _bind(
         name: str, argtypes: tuple[Any, ...], restype: Any, library: Any = _kernel32
@@ -1810,12 +1933,47 @@ if sys.platform == "win32":
             _windows_terminal_packages(), os.path.isfile, _native_architecture()
         )
 
+    def _known_local_app_data() -> str:
+        """Ask Windows for the user's local application data folder."""
+        try:
+            get_path = _bind(
+                "SHGetKnownFolderPath",
+                (ctypes.POINTER(_GUID), _DWORD, _HANDLE, ctypes.POINTER(_VOID)),
+                _LONG,
+                ctypes.WinDLL("shell32"),  # ty: ignore[possibly-missing-attribute]
+            )
+            free = _bind(
+                "CoTaskMemFree",
+                (_VOID,),
+                None,
+                ctypes.WinDLL("ole32"),  # ty: ignore[possibly-missing-attribute]
+            )
+        except AttributeError as error:
+            raise OSError(str(error)) from error
+        path = _VOID()
+        result = int(
+            get_path(
+                ctypes.byref(_FOLDERID_LOCAL_APP_DATA), 0, None, ctypes.byref(path)
+            )
+        )
+        try:
+            # The result is an HRESULT, so only a negative value means failure.
+            if result < 0 or not path.value:
+                raise OSError(
+                    f"SHGetKnownFolderPath failed: 0x{result & 0xFFFFFFFF:08X}"
+                )
+            return ctypes.wstring_at(path.value)
+        finally:
+            # The string is freed whether or not the call succeeded.
+            free(path)
+
     def _console_host_copies() -> str:
         """Return the folder that holds copies of ``WindowsApps`` console hosts."""
-        local = os.environ.get("LOCALAPPDATA")
-        if not local:
-            raise OSError("LOCALAPPDATA is not set")
-        return os.path.join(local, "obsidian-terminal", "console-host")
+        return os.path.join(
+            _local_app_data(_known_local_app_data, os.environ),
+            "obsidian-terminal",
+            "console-host",
+        )
 
     def _copy_from_windows_apps(source: str, name: str) -> str:
         """Copy a ``WindowsApps`` console host to the user's local app data."""

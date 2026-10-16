@@ -1575,24 +1575,37 @@ def test_copy_console_host_creates_a_missing_copy(tmp_path: Path) -> None:
     assert _copy_tree(root) == {"Pkg_1/OpenConsole.exe": b"console-host-v1"}
 
 
+"""Package full name of the Windows Terminal whose console host is copied."""
+_CURRENT = _terminal_package("1.24.12741.0")[0]
+"""Package full name of an older Windows Terminal copy."""
+_OLDER = _terminal_package("1.23.10000.0")[0]
+"""Package full name of a Windows Terminal Preview copy."""
+_OLDER_PREVIEW = _terminal_package("1.24.1.0", architecture="arm64", preview=True)[0]
+
+
 def test_copy_console_host_reuses_an_identical_copy(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """An up-to-date copy is neither rewritten nor are other versions removed."""
+    """An up-to-date copy is not rewritten, and older versions still go.
+
+    A copy that ran in another terminal at the last cleanup goes now.
+    """
     source = tmp_path / "source.exe"
     source.write_bytes(b"console-host-v1")
     root = tmp_path / "copies"
     _touch(root, "unrelated")
     (root / "Pkg_0").mkdir()
-    (root / "Pkg_1").mkdir()
-    (root / "Pkg_1" / "OpenConsole.exe").write_bytes(b"console-host-v1")
+    (root / _OLDER).mkdir()
+    (root / _OLDER / "OpenConsole.exe").write_bytes(b"older")
+    (root / _CURRENT).mkdir()
+    (root / _CURRENT / "OpenConsole.exe").write_bytes(b"console-host-v1")
     copy = Mock(side_effect=AssertionError("an identical copy was rewritten"))
     monkeypatch.setattr(_MODULE.shutil, "copyfile", copy)
 
-    target = _MODULE._copy_console_host(str(source), "Pkg_1", str(root))
+    target = _MODULE._copy_console_host(str(source), _CURRENT, str(root))
 
-    assert target == str(root / "Pkg_1" / "OpenConsole.exe")
-    assert (root / "Pkg_0").is_dir()
+    assert target == str(root / _CURRENT / "OpenConsole.exe")
+    assert sorted(os.listdir(root)) == sorted(("Pkg_0", _CURRENT, "unrelated"))
     copy.assert_not_called()
 
 
@@ -1604,15 +1617,139 @@ def test_copy_console_host_replaces_a_stale_copy(tmp_path: Path, stale: bytes) -
     source = tmp_path / "source.exe"
     source.write_bytes(b"console-host-v1")
     root = tmp_path / "copies"
-    (root / "Pkg_1").mkdir(parents=True)
-    (root / "Pkg_1" / "OpenConsole.exe").write_bytes(stale)
-    (root / "Pkg_0").mkdir()
-    (root / "Pkg_0" / "OpenConsole.exe").write_bytes(b"older")
+    (root / _CURRENT).mkdir(parents=True)
+    (root / _CURRENT / "OpenConsole.exe").write_bytes(stale)
+    (root / _OLDER).mkdir()
+    (root / _OLDER / "OpenConsole.exe").write_bytes(b"older")
 
-    target = _MODULE._copy_console_host(str(source), "Pkg_1", str(root))
+    target = _MODULE._copy_console_host(str(source), _CURRENT, str(root))
 
-    assert target == str(root / "Pkg_1" / "OpenConsole.exe")
-    assert _copy_tree(root) == {"Pkg_1/OpenConsole.exe": b"console-host-v1"}
+    assert target == str(root / _CURRENT / "OpenConsole.exe")
+    assert _copy_tree(root) == {f"{_CURRENT}/OpenConsole.exe": b"console-host-v1"}
+
+
+def test_copy_console_host_prunes_only_package_folders(tmp_path: Path) -> None:
+    """Only real folders named like Windows Terminal packages are removed.
+
+    Anything else under the copies folder is not this plugin's to remove: other
+    names, files named like a package, and links to folders elsewhere.
+    """
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    root = tmp_path / "copies"
+    kept_folders = ("Pkg_0", "notes", _OLDER + ".bak", "Microsoft.WindowsNotepad")
+    for name in (_OLDER, _OLDER_PREVIEW, *kept_folders):
+        (root / name).mkdir(parents=True)
+        (root / name / "OpenConsole.exe").write_bytes(b"older")
+    package_file = _terminal_package("1.21.1.0")[0]
+    _touch(root, "unrelated", package_file)
+    linked = root / _terminal_package("1.22.1.0")[0]
+    linked.mkdir()
+
+    target = _MODULE._copy_console_host(
+        str(source),
+        _CURRENT,
+        str(root),
+        is_reparse_point=lambda path: path == str(linked),
+    )
+
+    assert target == str(root / _CURRENT / "OpenConsole.exe")
+    assert sorted(os.listdir(root)) == sorted(
+        (_CURRENT, *kept_folders, "unrelated", package_file, linked.name)
+    )
+
+
+@pytest.mark.parametrize("linked", ("root", "parent"))
+def test_copy_console_host_prunes_nothing_through_a_link(
+    tmp_path: Path, linked: str
+) -> None:
+    """A copies folder, or a parent, that is a junction or link leads anywhere."""
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    root = tmp_path / "obsidian-terminal" / "copies"
+    (root / _OLDER).mkdir(parents=True)
+    (root / _CURRENT).mkdir()
+    (root / _CURRENT / "OpenConsole.exe.4242.tmp").write_bytes(b"partial")
+    reparse_point = str(root if linked == "root" else root.parent)
+
+    target = _MODULE._copy_console_host(
+        str(source),
+        _CURRENT,
+        str(root),
+        is_reparse_point=lambda path: path == reparse_point,
+    )
+
+    assert Path(target).read_bytes() == b"console-host-v1"
+    assert sorted(os.listdir(root)) == sorted((_OLDER, _CURRENT))
+    assert sorted(os.listdir(root / _CURRENT)) == [
+        "OpenConsole.exe",
+        "OpenConsole.exe.4242.tmp",
+    ]
+
+
+def test_copy_console_host_prunes_nothing_through_a_symbolic_link(
+    tmp_path: Path,
+) -> None:
+    """The default check sees a symbolic link, here as the copies folder."""
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    elsewhere = tmp_path / "elsewhere"
+    (elsewhere / _OLDER).mkdir(parents=True)
+    root = tmp_path / "copies"
+    try:
+        root.symlink_to(elsewhere, target_is_directory=True)
+    except OSError as error:
+        reason = f"symbolic links are unavailable: {error}"
+        pytest.skip(reason)  # ty: ignore[too-many-positional-arguments]
+
+    _MODULE._copy_console_host(str(source), _CURRENT, str(root))
+
+    assert sorted(os.listdir(elsewhere)) == sorted((_OLDER, _CURRENT))
+
+
+def test_is_reparse_point_sees_links_and_unreadable_paths(tmp_path: Path) -> None:
+    """A folder is none; a symbolic link and a missing path count as one."""
+    folder = tmp_path / "folder"
+    folder.mkdir()
+    assert _MODULE._is_reparse_point(str(folder)) is False
+    assert _MODULE._is_reparse_point(str(tmp_path / "missing")) is True
+    link = tmp_path / "link"
+    try:
+        link.symlink_to(folder, target_is_directory=True)
+    except OSError as error:
+        reason = f"symbolic links are unavailable: {error}"
+        pytest.skip(reason)  # ty: ignore[too-many-positional-arguments]
+    assert _MODULE._is_reparse_point(str(link)) is True
+
+
+def test_copy_console_host_removes_stale_temporary_files(tmp_path: Path) -> None:
+    """Temporary copies another host left behind go; nothing else does."""
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    root = tmp_path / "copies"
+    folder = root / _CURRENT
+    folder.mkdir(parents=True)
+    _touch(
+        folder,
+        "OpenConsole.exe.4242.tmp",
+        "OpenConsole.exe.7.tmp",
+        "OpenConsole.exe.abc.tmp",
+        "OpenConsole.exe.4242.tmp.bak",
+        "OpenConsole.exe.tmp",
+        "notes.txt",
+    )
+
+    _MODULE._copy_console_host(str(source), _CURRENT, str(root))
+
+    assert sorted(os.listdir(folder)) == sorted(
+        (
+            "OpenConsole.exe",
+            "OpenConsole.exe.abc.tmp",
+            "OpenConsole.exe.4242.tmp.bak",
+            "OpenConsole.exe.tmp",
+            "notes.txt",
+        )
+    )
 
 
 def test_copy_console_host_raises_when_the_source_cannot_be_read(
@@ -1640,10 +1777,12 @@ def test_copy_console_host_uses_a_running_copy_with_the_same_content(
         target.write_bytes(b"console-host-v1")
         raise PermissionError(13, "the copy is in use")
 
-    monkeypatch.setattr(_MODULE.os, "replace", Mock(side_effect=replace_while_running))
+    replace = Mock(side_effect=replace_while_running)
+    monkeypatch.setattr(_MODULE.os, "replace", replace)
 
     assert _MODULE._copy_console_host(str(source), "Pkg_1", str(root)) == str(target)
     assert _copy_tree(root) == {"Pkg_1/OpenConsole.exe": b"console-host-v1"}
+    replace.assert_called_once()
 
 
 def test_copy_console_host_raises_when_a_stale_copy_is_in_use(
@@ -1655,13 +1794,42 @@ def test_copy_console_host_raises_when_a_stale_copy_is_in_use(
     root = tmp_path / "copies"
     (root / "Pkg_1").mkdir(parents=True)
     (root / "Pkg_1" / "OpenConsole.exe").write_bytes(b"console-host-v0")
-    monkeypatch.setattr(
-        _MODULE.os, "replace", Mock(side_effect=PermissionError(13, "in use"))
-    )
+    replace = Mock(side_effect=PermissionError(13, "in use"))
+    monkeypatch.setattr(_MODULE.os, "replace", replace)
+    monkeypatch.setattr(_MODULE.time, "sleep", Mock())
 
     with pytest.raises(PermissionError):
         _MODULE._copy_console_host(str(source), "Pkg_1", str(root))
     assert _copy_tree(root) == {"Pkg_1/OpenConsole.exe": b"console-host-v0"}
+    assert replace.call_count == 2
+
+
+def test_copy_console_host_retries_a_replace_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Antivirus may hold a file just written; 100 ms later it lets go."""
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    root = tmp_path / "copies"
+    real_replace = os.replace
+
+    def replace_after_a_scan(temporary: str, target: str) -> None:
+        """Fail the first attempt only, as a scanner holding the file would."""
+        if replace.call_count == 1:
+            raise PermissionError(13, "held by a scanner")
+        real_replace(temporary, target)
+
+    replace = Mock(side_effect=replace_after_a_scan)
+    sleep = Mock()
+    monkeypatch.setattr(_MODULE.os, "replace", replace)
+    monkeypatch.setattr(_MODULE.time, "sleep", sleep)
+
+    target = _MODULE._copy_console_host(str(source), "Pkg_1", str(root))
+
+    assert target == str(root / "Pkg_1" / "OpenConsole.exe")
+    assert _copy_tree(root) == {"Pkg_1/OpenConsole.exe": b"console-host-v1"}
+    assert replace.call_count == 2
+    sleep.assert_called_once_with(0.1)
 
 
 def test_copy_console_host_removes_old_copies_best_effort(
@@ -1671,14 +1839,72 @@ def test_copy_console_host_removes_old_copies_best_effort(
     source = tmp_path / "source.exe"
     source.write_bytes(b"console-host-v1")
     root = tmp_path / "copies"
-    (root / "Pkg_0").mkdir(parents=True)
+    (root / _OLDER).mkdir(parents=True)
     remove = Mock()
     monkeypatch.setattr(_MODULE.shutil, "rmtree", remove)
 
-    target = _MODULE._copy_console_host(str(source), "Pkg_1", str(root))
+    target = _MODULE._copy_console_host(str(source), _CURRENT, str(root))
 
     assert Path(target).read_bytes() == b"console-host-v1"
-    remove.assert_called_once_with(str(root / "Pkg_0"), ignore_errors=True)
+    remove.assert_called_once_with(str(root / _OLDER), ignore_errors=True)
+
+
+"""The local application data folder Windows reports."""
+_LOCAL_APP_DATA = "C:\\Users\\u\\AppData\\Local"
+
+
+def test_local_app_data_asks_windows_first() -> None:
+    """The known folder wins over ``LOCALAPPDATA``, which a profile may change."""
+    folder = _MODULE._local_app_data(
+        Mock(return_value=_LOCAL_APP_DATA), {"LOCALAPPDATA": "D:\\elsewhere"}
+    )
+    assert folder == _LOCAL_APP_DATA
+
+
+@pytest.mark.parametrize(
+    "local", (_LOCAL_APP_DATA, "\\\\server\\share\\u\\AppData\\Local")
+)
+def test_local_app_data_takes_an_absolute_variable_when_windows_fails(
+    local: str,
+) -> None:
+    """Without the known folder, an absolute ``LOCALAPPDATA`` serves."""
+    folder = _MODULE._local_app_data(
+        Mock(side_effect=OSError("SHGetKnownFolderPath failed")),
+        {"LOCALAPPDATA": local},
+    )
+    assert folder == local
+
+
+@pytest.mark.parametrize(
+    "environment",
+    (
+        {"LOCALAPPDATA": "data"},
+        {"LOCALAPPDATA": "C:data"},
+        {"LOCALAPPDATA": "\\Users\\u\\AppData\\Local"},
+        {"LOCALAPPDATA": ""},
+        {},
+    ),
+    ids=("relative", "drive-relative", "rooted", "empty", "unset"),
+)
+def test_local_app_data_refuses_a_relative_variable(
+    environment: dict[str, str],
+) -> None:
+    """A cold host runs in the vault: ``data`` there would be the vault's.
+
+    ``OSError`` makes planning fall back to the built-in console host.
+    """
+    with pytest.raises(OSError):
+        _MODULE._local_app_data(
+            Mock(side_effect=OSError("SHGetKnownFolderPath failed")), environment
+        )
+
+
+def test_local_app_data_ignores_a_relative_known_folder() -> None:
+    """A known folder that is not absolute counts as no answer."""
+    folder = _MODULE._local_app_data(
+        Mock(return_value="AppData"), {"LOCALAPPDATA": _LOCAL_APP_DATA}
+    )
+    assert folder == _LOCAL_APP_DATA
 
 
 def _fake_pseudoconsole(handle: int) -> Any:
