@@ -3751,9 +3751,10 @@ describe("ConPTY reflow on Windows Terminal's console host", () => {
     // The fresh modules share this file's library, so its spies reach them.
     vi.doMock("@polyipseity/obsidian-plugin-library", () => library);
     // Fresh modules: view.ts caches the Windows build it reads first.
-    const [{ TerminalView: View }, profiles] = await Promise.all([
+    const [{ TerminalView: View }, profiles, options] = await Promise.all([
       import("../../../src/terminal/view.js"),
       import("../../../src/terminal/profile-properties.js"),
+      import("../../../src/terminal/options.js"),
     ]);
     class TestView extends View {
       public start(profile: Settings.Profile): void {
@@ -3767,7 +3768,10 @@ describe("ConPTY reflow on Windows Terminal's console host", () => {
     vi.spyOn(library, "notice2").mockImplementation(vi.fn());
     vi.spyOn(library, "onResize").mockImplementation(vi.fn());
     vi.spyOn(library, "updateView").mockImplementation(vi.fn());
-    const report = Promise.resolve(consoleHost);
+    // Watched: an option patch that leaves `windowsPty` equal assigns none, so
+    // only the merge shows which build the view keeps.
+    const merge = vi.spyOn(options, "mergeTerminalOptions"),
+      report = Promise.resolve(consoleHost);
     vi.spyOn(profiles, "openProfile").mockResolvedValue(
       new RefPsuedoterminal({
         ...pseudoterminal({ win32Backend: "conpty" }),
@@ -3833,6 +3837,7 @@ describe("ConPTY reflow on Windows Terminal's console host", () => {
     await report;
     await microtasks();
     return {
+      merge,
       /** Replaces the global terminal options and runs the view's handler. */
       setGlobalOptions: async (
         terminalOptions: Settings.Profile.TerminalOptions,
@@ -3888,9 +3893,10 @@ describe("ConPTY reflow on Windows Terminal's console host", () => {
   });
 
   it("keeps reflowing through a later change of the terminal options", async () => {
-    const { setGlobalOptions, terminal } = await open({
+    const { merge, setGlobalOptions, terminal } = await open({
       consoleHost: OPENCONSOLE,
     });
+    merge.mockClear();
     await setGlobalOptions({
       ...Settings.DEFAULT.terminalOptions,
       fontSize: 20,
@@ -3900,6 +3906,10 @@ describe("ConPTY reflow on Windows Terminal's console host", () => {
       backend: "conpty",
       buildNumber: 21_376,
     });
+    // The patch merges the old and the new options with the raised build.
+    expect(merge).toHaveBeenCalledTimes(2);
+    for (const [, , backendOptions] of merge.mock.calls)
+      expect(backendOptions).toMatchObject({ win32BuildNumber: 21_376 });
   });
 
   it("reflows once a build number set in the terminal options is removed", async () => {

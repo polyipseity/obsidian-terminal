@@ -251,17 +251,35 @@ describe("mergeTerminalOptions", () => {
     );
 
     it("keeps the raised build through a later settings change", () => {
-      // The live-update path merges the changed settings with the settled
-      // options, not with the machine's build.
+      // The live-update path patches the terminal with the difference of two
+      // merges, so only a change that moves `windowsPty` assigns it: here the
+      // removal of a build number that also reflows. The patch must merge
+      // with the settled options; the machine's build would stop reflowing.
       const settled = settleConsoleHostBackendOptions(windows10, OPENCONSOLE),
-        changed = { documentOverride: null, fontSize: 14 };
+        before = { ...noOptions, windowsPty: { buildNumber: 22_621 } },
+        changed = { ...noOptions, fontSize: 14 },
+        patch = (
+          backendOptions: TerminalBackendOptions,
+        ): { fontSize?: unknown; windowsPty?: unknown } => {
+          const term = { options: {} } as Terminal & {
+            options: { fontSize?: unknown; windowsPty?: unknown };
+          };
+          applyTerminalOptionDiffShallow(
+            term,
+            mergeTerminalOptions(noOptions, before, backendOptions),
+            mergeTerminalOptions(noOptions, changed, backendOptions),
+          );
+          return term.options;
+        };
 
-      expect(
-        mergeTerminalOptions(noOptions, changed, windows10).windowsPty,
-      ).toEqual({ backend: "conpty", buildNumber: 19_045 });
-      expect(
-        mergeTerminalOptions(noOptions, changed, settled).windowsPty,
-      ).toEqual({ backend: "conpty", buildNumber: 21_376 });
+      expect(patch(settled)).toEqual({
+        fontSize: 14,
+        windowsPty: { backend: "conpty", buildNumber: 21_376 },
+      });
+      expect(patch(windows10).windowsPty).toEqual({
+        backend: "conpty",
+        buildNumber: 19_045,
+      });
     });
   });
 
