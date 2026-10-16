@@ -65,6 +65,29 @@ export function settleConsoleHostBackendOptions(
 }
 
 /**
+ * Whether the console host report can still change the terminal's
+ * `windowsPty`: on Windows Terminal's console host,
+ * {@link settleConsoleHostBackendOptions} raises the build, and no
+ * `windowsPty.buildNumber` in the terminal options wins over it. Output parsed
+ * before the report then takes the wrap guesses of the older build.
+ */
+export function consoleHostMayRaiseBuild(
+  profileOpts: Settings.Profile.TerminalOptions,
+  globalOpts: Settings.Profile.TerminalOptions,
+  backendOptions: TerminalBackendOptions,
+): boolean {
+  // The shallow merge of `mergeTerminalOptions`: a profile's `windowsPty`
+  // replaces the global one whole.
+  const { windowsPty } = { ...globalOpts, ...profileOpts };
+  return (
+    windowsPty?.buildNumber === void 0 &&
+    settleConsoleHostBackendOptions(backendOptions, {
+      engine: "openconsole",
+    }) !== backendOptions
+  );
+}
+
+/**
  * Combine global defaults with a profile-specific set of terminal options.
  * Values present in `profileOpts` take precedence; everything else comes from
  * `globalOpts`. This is a shallow merge and mirrors the behavior previously

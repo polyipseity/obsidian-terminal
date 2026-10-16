@@ -98,15 +98,18 @@ import {
 import {
   type TerminalBackendOptions,
   applyTerminalOptionDiffShallow,
+  consoleHostMayRaiseBuild,
   mergeTerminalOptions,
   parseWin32BuildNumber,
   settleConsoleHostBackendOptions,
 } from "./options.js";
 import { PROFILE_PROPERTIES, openProfile } from "./profile-properties.js";
 import {
+  CONPTY_READY_TIMEOUT_MS,
   ConPtyControlError,
   type Pseudoterminal,
   TextPseudoterminal,
+  conPtyConsoleHostSpec,
 } from "./pseudoterminal.js";
 import { revealLeafWithoutFlash, tabHeaderOf } from "./reveal.js";
 import { writePromise } from "./utils.js";
@@ -174,6 +177,22 @@ export function settleTerminalBackendOptions(
   return win32Backend === void 0 || win32Backend === requested.win32Backend
     ? requested
     : deepFreeze({ ...requested, win32Backend });
+}
+
+/** Resolves once `promise` settles, either way, or after `timeoutMs`. */
+async function settleWithin(
+  promise: Promise<unknown>,
+  timeoutMs: number,
+): Promise<void> {
+  // Mutable: the timer starts inside the race.
+  let timer: number | undefined;
+  await Promise.race([
+    promise.then(noop, noop),
+    new Promise<void>((resolve) => {
+      timer = self.setTimeout(resolve, timeoutMs);
+    }),
+  ]);
+  self.clearTimeout(timer);
 }
 
 /** This machine's Windows build, read once, or `undefined` off Windows. */
@@ -1541,11 +1560,11 @@ export class TerminalView extends ItemView {
                   merge(terminalBackendOptions),
                 );
               }
-              // Windows Terminal's console host reflows like a newer ConPTY
-              // than this machine's; later option patches merge with the
-              // raised build too.
-              ret?.consoleHost
-                ?.then((consoleHost) => {
+              if (ret?.consoleHost) {
+                // Windows Terminal's console host reflows like a newer ConPTY
+                // than this machine's; later option patches merge with the
+                // raised build too.
+                const settled = ret.consoleHost.then((consoleHost) => {
                   if (signal.aborted) return;
                   const before = terminalBackendOptions;
                   terminalBackendOptions = settleConsoleHostBackendOptions(
@@ -1559,8 +1578,25 @@ export class TerminalView extends ItemView {
                       merge(terminalBackendOptions),
                     );
                   }
-                }, noop) // A failed startup is reported with the shell.
-                .catch(warn);
+                }, noop); // A failed startup is reported with the shell.
+                settled.catch(warn);
+                if (
+                  conPtyConsoleHostSpec(settings.value) !== null &&
+                  consoleHostMayRaiseBuild(
+                    currentProfileOptions(),
+                    settings.value.terminalOptions,
+                    terminalBackendOptions,
+                  )
+                ) {
+                  // Output parsed before the raise keeps the older build's
+                  // wrap guesses, which a wider terminal joins into one line.
+                  // The emulator pipes only after this returns. A report that
+                  // never comes releases the output as it is.
+                  ret.holdOutput?.(
+                    settleWithin(settled, CONPTY_READY_TIMEOUT_MS),
+                  );
+                }
+              }
               if (ret) {
                 return ret;
               }

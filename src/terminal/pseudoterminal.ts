@@ -246,6 +246,9 @@ async function clearTerminal(terminal: Terminal, keep = false): Promise<void> {
 }
 
 export interface PipeShellToTerminalOptions {
+  /** Output stays out of the terminal until this settles, either way, and is
+   * then written in order. */
+  readonly holdOutput?: Promise<unknown> | undefined;
   /** While active, chunks bypass write slicing. */
   readonly repaintWindow?: Pick<ResizeRepaintWindow, "active"> | undefined;
   /** Drops the first output chunk unwritten and untracked. */
@@ -264,30 +267,58 @@ export async function pipeShellToTerminal(
   onExit: Promise<unknown>,
   options?: PipeShellToTerminalOptions,
 ): Promise<void> {
-  let skipNextChunk = options?.skipFirstChunk ?? false;
+  let skipNextChunk = options?.skipFirstChunk ?? false,
+    // Chunks read while the output is held, in order, each with what settles
+    // its backpressure; `null` once the output is released.
+    held: (readonly [Buffer | string, () => void])[] | null =
+      options?.holdOutput ? [] : null;
   const repaintWindow = options?.repaintWindow,
     backpressure = createTerminalOutputBackpressure(outputs),
-    reader = (chunk: Buffer | string): void => {
-      if (skipNextChunk) {
-        skipNextChunk = false;
-        return;
-      }
+    write = (chunk: Buffer | string): Promise<void> => {
       const sliceBytes =
           (repaintWindow?.active() ?? false)
             ? Number.POSITIVE_INFINITY
             : void 0,
         written = writeTerminalSliced(terminal, chunk, sliceBytes);
-      backpressure.track(chunk, written);
       written.catch((error: unknown) => {
         activeSelf(terminal.element).console.error(error);
       });
+      return written;
+    },
+    reader = (chunk: Buffer | string): void => {
+      if (skipNextChunk) {
+        skipNextChunk = false;
+        return;
+      }
+      if (held) {
+        // Counted while held, so a flood pauses the shell until it is written.
+        const chunks = held;
+        backpressure.track(
+          chunk,
+          new Promise<void>((resolve) => {
+            chunks.push([chunk, resolve]);
+          }),
+        );
+        return;
+      }
+      backpressure.track(chunk, write(chunk));
+    },
+    release = (): void => {
+      const chunks = held ?? [];
+      held = null;
+      for (const [chunk, done] of chunks) write(chunk).then(done, done);
     };
+  options?.holdOutput?.then(release, release);
   await clearTerminal(terminal, true);
   terminal.loadAddon(
     new DisposerAddon(
       ...outputs.map((output) => (): void => {
         output.removeListener("data", reader);
       }),
+      () => {
+        // A disposed terminal takes no held output.
+        held = null;
+      },
       () => {
         backpressure.dispose();
       },
@@ -334,6 +365,9 @@ export interface Pseudoterminal {
   /** ConPTY only: the console host the session runs on, once the host is
    * ready. Rejects with {@link shell}. */
   readonly consoleHost?: Promise<ConPtyConsoleHost> | undefined;
+  /** ConPTY only: keeps output out of the terminal until `until` settles,
+   * either way, then writes it in order. Call it before {@link pipe}. */
+  readonly holdOutput?: ((until: Promise<unknown>) => void) | undefined;
 }
 
 export class RefPsuedoterminal<
@@ -378,6 +412,11 @@ export class RefPsuedoterminal<
 
   public get consoleHost(): Promise<ConPtyConsoleHost> | undefined {
     return this.delegate.consoleHost;
+  }
+
+  public get holdOutput(): ((until: Promise<unknown>) => void) | undefined {
+    const { delegate } = this;
+    return delegate.holdOutput?.bind(delegate);
   }
 
   public dup(): RefPsuedoterminal<T> {
@@ -2715,6 +2754,8 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
   #closing = false;
   #ready = false;
   #resizeSeq = 0;
+  /** Set by {@link holdOutput} before {@link pipe} reads it. */
+  #outputHold: Promise<unknown> | undefined;
   /** Open while conhost's post-resize repaint frames may still arrive.
    * Chunks inside the window bypass write slicing (see
    * {@link pipeShellToTerminal}). */
@@ -3192,11 +3233,18 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
     this.#repaintWindow.arm();
   }
 
+  /** Keeps the session's output out of the terminal until `until` settles,
+   * either way, then writes it in order. Call it before {@link pipe}. */
+  public holdOutput(until: Promise<unknown>): void {
+    this.#outputHold = until;
+  }
+
   public async pipe(terminal: Terminal): Promise<void> {
     // Gate on the selected host, not readiness: nothing arrives before the
     // host resumes the child.
     const shell = await this.host;
     await pipeShellToTerminal(terminal, shell, [shell.stdout], this.onExit, {
+      holdOutput: this.#outputHold,
       repaintWindow: this.#repaintWindow,
     });
   }
@@ -3220,6 +3268,7 @@ class Win32Pseudoterminal implements Pseudoterminal {
   public readonly win32Backend: Settings.Profile.Win32Backend;
   public readonly resizeIsAcknowledged;
   public readonly consoleHost;
+  public readonly holdOutput;
   protected readonly delegate;
 
   public constructor(
@@ -3234,6 +3283,12 @@ class Win32Pseudoterminal implements Pseudoterminal {
       delegate instanceof ConPtyPseudoterminal && delegate.resizeIsAcknowledged;
     this.consoleHost =
       delegate instanceof ConPtyPseudoterminal ? delegate.consoleHost : void 0;
+    this.holdOutput =
+      delegate instanceof ConPtyPseudoterminal
+        ? (until: Promise<unknown>): void => {
+            delegate.holdOutput(until);
+          }
+        : void 0;
     this.shell = delegate.shell;
     this.onExit = delegate.onExit;
   }

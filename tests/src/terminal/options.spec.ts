@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   CONPTY_REFLOW_BUILD_NUMBER,
   type TerminalBackendOptions,
+  consoleHostMayRaiseBuild,
   mergeTerminalOptions,
   applyTerminalOptionDiffShallow,
   parseWin32BuildNumber,
@@ -279,6 +280,54 @@ describe("mergeTerminalOptions", () => {
       expect(patch(windows10).windowsPty).toEqual({
         backend: "conpty",
         buildNumber: 19_045,
+      });
+    });
+
+    describe("consoleHostMayRaiseBuild", () => {
+      it("is true for a Windows 10 build without a build number in the options", () => {
+        expect(consoleHostMayRaiseBuild(noOptions, noOptions, windows10)).toBe(
+          true,
+        );
+      });
+
+      it.each<TerminalBackendOptions>([
+        { ...windows10, win32BuildNumber: 26_100 },
+        { ...windows10, win32BuildNumber: 21_376 },
+        { ...windows10, win32BuildNumber: void 0 },
+        { ...windows10, win32Backend: "legacy" },
+        { ...windows10, platform: "darwin" },
+        { ...windows10, platform: "linux" },
+      ])("is false for the options %j", (backendOptions) => {
+        expect(
+          consoleHostMayRaiseBuild(noOptions, noOptions, backendOptions),
+        ).toBe(false);
+      });
+
+      it.each([
+        ["profile", { windowsPty: { buildNumber: 19_045 } }, {}],
+        ["global", {}, { windowsPty: { buildNumber: 19_045 } }],
+      ] as const)(
+        "is false with a build number in the %s terminal options",
+        (_source, profileOptions, globalOptions) => {
+          expect(
+            consoleHostMayRaiseBuild(
+              { ...noOptions, ...profileOptions },
+              { ...noOptions, ...globalOptions },
+              windows10,
+            ),
+          ).toBe(false);
+        },
+      );
+
+      it("is true when the profile's windowsPty without a build number replaces a global one", () => {
+        // The merge is shallow: the profile's object hides the global build.
+        expect(
+          consoleHostMayRaiseBuild(
+            { ...noOptions, windowsPty: {} },
+            { ...noOptions, windowsPty: { buildNumber: 19_045 } },
+            windows10,
+          ),
+        ).toBe(true);
       });
     });
   });

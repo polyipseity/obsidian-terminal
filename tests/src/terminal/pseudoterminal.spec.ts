@@ -12,6 +12,7 @@ import type { TerminalPlugin } from "../../../src/main.js";
 import { Settings } from "../../../src/settings-data.js";
 import {
   TERMINAL_CONPTY_HOST_EXIT_WAIT,
+  TERMINAL_OUTPUT_HIGH_WATER_BYTES,
   TERMINAL_RESIZER_WATCHDOG_WAIT,
   WINDOWS_CONHOST_PATH,
 } from "../../../src/magic.js";
@@ -32,6 +33,7 @@ import {
   type ConPtyPseudoterminalDependencies,
   type ConPtyReadyEvent,
   type ConPtyStartOp,
+  type PipeShellToTerminalOptions,
   pipeShellToTerminal,
   Pseudoterminal,
   RefPsuedoterminal,
@@ -47,7 +49,7 @@ import {
 } from "../../../src/terminal/pseudoterminal.js";
 import * as environment from "../../../src/terminal/environment.js";
 import { conPtyFailureCondemnsRuntime } from "../../../src/terminal/profile-properties.js";
-import { pseudoterminal } from "../../support/helpers.js";
+import { microtasks, pseudoterminal } from "../../support/helpers.js";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -441,8 +443,22 @@ describe("ConPTY control protocol", () => {
     expect(new RefPsuedoterminal(pseudoterminal()).consoleHost).toBeUndefined();
   });
 
+  it("forwards the output hold through reference wrappers", () => {
+    const until = Promise.resolve(),
+      delegate = { ...pseudoterminal(), holdOutput: vi.fn() },
+      pty = new RefPsuedoterminal(delegate);
+    pty.holdOutput?.(until);
+    pty.dup().holdOutput?.(until);
+    expect(delegate.holdOutput).toHaveBeenCalledTimes(2);
+    expect(delegate.holdOutput).toHaveBeenNthCalledWith(1, until);
+    expect(delegate.holdOutput).toHaveBeenNthCalledWith(2, until);
+    // Bound: a ConPTY session keeps the hold in a private field.
+    expect(delegate.holdOutput.mock.contexts).toEqual([delegate, delegate]);
+    expect(new RefPsuedoterminal(pseudoterminal()).holdOutput).toBeUndefined();
+  });
+
   it.each<Pseudoterminal["win32Backend"]>(["conpty", "legacy", undefined])(
-    "exposes resize acknowledgment and the console host after selecting the %s backend",
+    "exposes resize acknowledgment, the console host and the output hold after selecting the %s backend",
     async (win32Backend) => {
       const error = new Error("stop before spawning"),
         // Only these context members are used before the seeded startup failure.
@@ -465,6 +481,14 @@ describe("ConPTY control protocol", () => {
       expect(pty.resizeIsAcknowledged).toBe(win32Backend === "conpty");
       // Only ConPTY reports a console host; it fails with the startup.
       expect(pty.consoleHost === void 0).toBe(win32Backend !== "conpty");
+      // Only ConPTY holds output, in the session it delegates to.
+      const holdOutput = vi.spyOn(ConPtyPseudoterminal.prototype, "holdOutput"),
+        until = Promise.resolve();
+      expect(pty.holdOutput === void 0).toBe(win32Backend !== "conpty");
+      pty.holdOutput?.(until);
+      expect(holdOutput.mock.calls).toEqual(
+        win32Backend === "conpty" ? [[until]] : [],
+      );
       await Promise.all([
         expect(pty.shell).rejects.toThrow(error.message),
         expect(pty.onExit).rejects.toThrow(error.message),
@@ -3148,41 +3172,54 @@ describe("resize repaint window", () => {
 
 describe("shell output piping", () => {
   function pipeFixture(): {
+    /** Disposes the addons the pipe loaded, as disposing the terminal does. */
+    readonly dispose: () => void;
     readonly emit: (chunk: Buffer | string) => void;
+    readonly pause: ReturnType<typeof vi.fn<() => void>>;
     readonly payloads: (Buffer | string)[];
-    readonly pipe: (
-      repaintWindow?: Readonly<{ active: () => boolean }>,
-    ) => Promise<void>;
+    readonly pipe: (options?: PipeShellToTerminalOptions) => Promise<void>;
+    readonly resume: ReturnType<typeof vi.fn<() => void>>;
   } {
     const { payloads, terminal } = captureTerminal(),
+      addons: { dispose: () => void }[] = [],
       listeners: ((chunk: Buffer | string) => void)[] = [],
       output = {
         on: (_event: string, listener: (chunk: Buffer | string) => void) => {
           listeners.push(listener);
         },
-        pause: (): void => {},
+        pause: vi.fn<() => void>(),
         removeListener: (): void => {},
-        resume: (): void => {},
+        resume: vi.fn<() => void>(),
       },
       shell = { stdin: {} } as unknown as Parameters<
         typeof pipeShellToTerminal
       >[1];
+    Object.assign(terminal, {
+      loadAddon: (addon: { dispose: () => void }): void => {
+        addons.push(addon);
+      },
+    });
     return {
+      dispose: (): void => {
+        for (const addon of addons) addon.dispose();
+      },
       emit: (chunk): void => {
         for (const listener of listeners) listener(chunk);
       },
+      pause: output.pause,
       payloads,
-      pipe: async (repaintWindow): Promise<void> => {
+      pipe: async (options): Promise<void> => {
         await pipeShellToTerminal(
           terminal,
           shell,
           [output as unknown as Parameters<typeof pipeShellToTerminal>[2][0]],
           new Promise(() => {}),
-          { repaintWindow },
+          options,
         );
         // Drop the screen-clear preamble the pipe writes on attach.
         payloads.length = 0;
       },
+      resume: output.resume,
     };
   }
 
@@ -3197,7 +3234,7 @@ describe("shell output piping", () => {
 
   it("writes oversized chunks whole while the repaint window is open", async () => {
     const fixture = pipeFixture();
-    await fixture.pipe({ active: () => true });
+    await fixture.pipe({ repaintWindow: { active: () => true } });
     fixture.emit(Buffer.alloc(20_000, 0x61));
     expect(payloadSizes(fixture.payloads)).toEqual([20_000]);
   });
@@ -3205,13 +3242,64 @@ describe("shell output piping", () => {
   it("returns to sliced writes when the repaint window closes", async () => {
     let active = true;
     const fixture = pipeFixture();
-    await fixture.pipe({ active: () => active });
+    await fixture.pipe({ repaintWindow: { active: () => active } });
     fixture.emit(Buffer.alloc(20_000, 0x61));
     expect(payloadSizes(fixture.payloads)).toEqual([20_000]);
     fixture.payloads.length = 0;
     active = false;
     fixture.emit(Buffer.alloc(20_000, 0x61));
     expect(payloadSizes(fixture.payloads)).toEqual([8_192, 8_192, 3_616]);
+  });
+
+  it("holds output until the hold settles, then writes it in order", async () => {
+    const fixture = pipeFixture(),
+      hold = Promise.withResolvers<undefined>();
+    await fixture.pipe({ holdOutput: hold.promise });
+    fixture.emit("first");
+    fixture.emit("second");
+    expect(fixture.payloads).toEqual([]);
+    hold.resolve(undefined);
+    await microtasks();
+    expect(fixture.payloads).toEqual(["first", "second"]);
+    fixture.emit("third");
+    expect(fixture.payloads).toEqual(["first", "second", "third"]);
+  });
+
+  it("releases held output unchanged when the hold rejects", async () => {
+    const fixture = pipeFixture(),
+      hold = Promise.withResolvers<undefined>();
+    await fixture.pipe({ holdOutput: hold.promise });
+    fixture.emit("held");
+    hold.reject(new Error("no console host report"));
+    await microtasks();
+    expect(fixture.payloads).toEqual(["held"]);
+  });
+
+  it("drops held output once the terminal is disposed", async () => {
+    const fixture = pipeFixture(),
+      hold = Promise.withResolvers<undefined>();
+    await fixture.pipe({ holdOutput: hold.promise });
+    fixture.emit("held");
+    fixture.dispose();
+    hold.resolve(undefined);
+    await microtasks();
+    expect(fixture.payloads).toEqual([]);
+  });
+
+  it("pauses the shell while held output passes the high watermark", async () => {
+    const fixture = pipeFixture(),
+      hold = Promise.withResolvers<undefined>();
+    await fixture.pipe({ holdOutput: hold.promise });
+    fixture.emit(Buffer.alloc(TERMINAL_OUTPUT_HIGH_WATER_BYTES + 1, 0x61));
+    expect(fixture.pause).toHaveBeenCalledOnce();
+    expect(fixture.resume).not.toHaveBeenCalled();
+    hold.resolve(undefined);
+    await microtasks();
+    // Resumed once the held chunk is written.
+    expect(fixture.resume).toHaveBeenCalledOnce();
+    expect(payloadSizes(fixture.payloads).reduce((a, b) => a + b, 0)).toBe(
+      TERMINAL_OUTPUT_HIGH_WATER_BYTES + 1,
+    );
   });
 });
 
@@ -3333,6 +3421,51 @@ describe("ConPTY resize repaint window wiring", () => {
       control.onResized?.({ columns: 100, event: "resized", rows: 40, seq: 1 });
       host.stdout.emit("data", Buffer.alloc(20_000, 0x61));
       expect(payloadSizes(payloads)).toEqual([20_000]);
+    } finally {
+      await pty.kill();
+      await pty.onExit;
+    }
+  });
+});
+
+describe("ConPTY output hold", () => {
+  it("writes the session's output only once its hold settles", async () => {
+    const host = testHost(),
+      hostPid = liveHostPid(host),
+      ready = Object.freeze(readyEvent(hostPid, hostPid + 1)),
+      control = fakeControl(Promise.resolve(ready), () => host.kill()),
+      dependencies = conPtyDependencies(control, host),
+      pty = constructConPty(dependencies),
+      hold = Promise.withResolvers<undefined>();
+    try {
+      const { payloads, terminal } = captureTerminal();
+      pty.holdOutput(hold.promise);
+      await pty.pipe(terminal);
+      payloads.length = 0;
+      host.stdout.emit("data", "early");
+      expect(payloads).toEqual([]);
+      hold.resolve(undefined);
+      await microtasks();
+      expect(payloads).toEqual(["early"]);
+    } finally {
+      await pty.kill();
+      await pty.onExit;
+    }
+  });
+
+  it("writes the session's output at once without a hold", async () => {
+    const host = testHost(),
+      hostPid = liveHostPid(host),
+      ready = Object.freeze(readyEvent(hostPid, hostPid + 1)),
+      control = fakeControl(Promise.resolve(ready), () => host.kill()),
+      dependencies = conPtyDependencies(control, host),
+      pty = constructConPty(dependencies);
+    try {
+      const { payloads, terminal } = captureTerminal();
+      await pty.pipe(terminal);
+      payloads.length = 0;
+      host.stdout.emit("data", "early");
+      expect(payloads).toEqual(["early"]);
     } finally {
       await pty.kill();
       await pty.onExit;
