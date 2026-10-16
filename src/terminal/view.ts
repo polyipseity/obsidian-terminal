@@ -1473,6 +1473,20 @@ export class TerminalView extends ItemView {
             profile.type === "invalid"
               ? Settings.Profile.DEFAULTS[""].terminalOptions
               : profile.terminalOptions,
+          // The live profile's terminal options, or `null` while the profile
+          // this terminal opened is gone or invalid.
+          liveProfileOptions = (
+            settings0: Settings,
+          ): Settings.Profile.TerminalOptions | null => {
+            const { profileSourceId } = this.state,
+              liveProfile =
+                profileSourceId !== null
+                  ? settings0.profiles[profileSourceId]
+                  : null;
+            return liveProfile && liveProfile.type !== "invalid"
+              ? liveProfile.terminalOptions
+              : null;
+          },
           customKeyEventHandler = new CustomKeyEventHandlerAddon(
             Platform.CURRENT,
             () => settings.value.keymappings,
@@ -1502,11 +1516,15 @@ export class TerminalView extends ItemView {
                   signal,
                 }),
                 requested = terminalBackendOptions,
+                // Read when called: the options may change while the session
+                // starts, and the live update path already applied them.
+                currentProfileOptions = (): Settings.Profile.TerminalOptions =>
+                  liveProfileOptions(settings.value) ?? profileTerminalOptions,
                 merge = (
                   backendOptions: TerminalBackendOptions,
                 ): ReturnType<typeof mergeTerminalOptions> =>
                   mergeTerminalOptions(
-                    profileTerminalOptions,
+                    currentProfileOptions(),
                     settings.value.terminalOptions,
                     backendOptions,
                   );
@@ -1768,10 +1786,7 @@ export class TerminalView extends ItemView {
                 profileSourceId !== null ? s.profiles[profileSourceId] : null;
               return {
                 globalOptions: s.terminalOptions,
-                profileOptions:
-                  liveProfile && liveProfile.type !== "invalid"
-                    ? liveProfile.terminalOptions
-                    : null,
+                profileOptions: liveProfileOptions(s),
                 followTheme: liveProfile
                   ? liveProfile.type === "invalid" || liveProfile.followTheme
                   : null,

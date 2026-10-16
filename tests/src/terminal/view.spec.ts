@@ -3719,7 +3719,8 @@ describe("ConPTY reflow on Windows Terminal's console host", () => {
       fallback: "not-found",
       path: null,
     },
-    WINDOWS_10 = "10.0.19045";
+    WINDOWS_10 = "10.0.19045",
+    PROFILE_ID = "conpty";
 
   afterEach(() => {
     platform.windows = false;
@@ -3727,10 +3728,11 @@ describe("ConPTY reflow on Windows Terminal's console host", () => {
 
   /**
    * Opens a view of an integrated ConPTY profile on a machine whose OS
-   * release is `release`, and waits for its session to report `consoleHost`.
+   * release is `release`, and waits for its session to report `consoleHost`,
+   * unless the report is a promise still pending.
    *
-   * @returns the terminal, and a way to change the global terminal options
-   * as the settings tab does
+   * @returns the terminal, and ways to change the global and the profile's
+   * terminal options as the settings tab does
    */
   async function open({
     consoleHost,
@@ -3739,7 +3741,7 @@ describe("ConPTY reflow on Windows Terminal's console host", () => {
     release = WINDOWS_10,
     windows = true,
   }: {
-    readonly consoleHost: ConPtyConsoleHost;
+    readonly consoleHost: ConPtyConsoleHost | Promise<ConPtyConsoleHost>;
     readonly globalOptions?: Partial<Settings.Profile.TerminalOptions>;
     readonly profileOptions?: Partial<Settings.Profile.TerminalOptions>;
     readonly release?: string;
@@ -3758,7 +3760,7 @@ describe("ConPTY reflow on Windows Terminal's console host", () => {
     ]);
     class TestView extends View {
       public start(profile: Settings.Profile): void {
-        this.state = { ...this.state, profile };
+        this.state = { ...this.state, profile, profileSourceId: PROFILE_ID };
         this.startEmulator(false);
       }
     }
@@ -3797,13 +3799,11 @@ describe("ConPTY reflow on Windows Terminal's console host", () => {
             } as unknown as TerminalView.EMULATOR;
           },
         ),
-      settings: Settings = {
-        ...Settings.DEFAULT,
-        tabStatus: "none",
-        terminalOptions: {
-          ...Settings.DEFAULT.terminalOptions,
-          ...globalOptions,
-        },
+      { integrated } = Settings.Profile.DEFAULTS,
+      profile = {
+        ...integrated,
+        platforms: { win32: true },
+        terminalOptions: { ...integrated.terminalOptions, ...profileOptions },
       },
       onMutate = vi.fn<
         (
@@ -3811,17 +3811,25 @@ describe("ConPTY reflow on Windows Terminal's console host", () => {
           callback: (current: unknown, previous: unknown) => unknown,
         ) => () => void
       >(() => vi.fn()),
+      // Mutable: a settings change replaces the value, as the manager does.
+      settings: { value: Settings; readonly onMutate: typeof onMutate } = {
+        onMutate,
+        value: {
+          ...Settings.DEFAULT,
+          profiles: { [PROFILE_ID]: profile },
+          tabStatus: "none",
+          terminalOptions: {
+            ...Settings.DEFAULT.terminalOptions,
+            ...globalOptions,
+          },
+        },
+      },
       context = {
         app: new App(),
         language: { value: { t: vi.fn((key: string) => key) } },
-        settings: { value: settings, onMutate },
-      } as unknown as ConstructorParameters<typeof View>[0],
-      { integrated } = Settings.Profile.DEFAULTS;
-    new TestView(context, new WorkspaceLeaf()).start({
-      ...integrated,
-      platforms: { win32: true },
-      terminalOptions: { ...integrated.terminalOptions, ...profileOptions },
-    });
+        settings,
+      } as unknown as ConstructorParameters<typeof View>[0];
+    new TestView(context, new WorkspaceLeaf()).start(profile);
     await vi.waitFor(() => {
       expect(emulator).toHaveBeenCalledOnce();
     });
@@ -3834,24 +3842,45 @@ describe("ConPTY reflow on Windows Terminal's console host", () => {
       { ...addons, fit: new FitAddon(), serialize: new SerializeAddon() },
       new AbortController().signal,
     );
-    await report;
+    // A pending report stays pending; the test settles it.
+    if (!(consoleHost instanceof Promise)) await report;
     await microtasks();
+    /** Replaces the settings and runs the view's terminal options handler. */
+    const change = async (
+      update: (previous: Settings) => Settings,
+    ): Promise<void> => {
+      const previous = settings.value,
+        current = update(previous);
+      settings.value = current;
+      for (const [accessor, callback] of onMutate.mock.calls) {
+        const before = accessor(previous);
+        if (
+          typeof before === "object" &&
+          before !== null &&
+          "globalOptions" in before
+        )
+          await callback(accessor(current), before);
+      }
+    };
     return {
       merge,
-      /** Replaces the global terminal options and runs the view's handler. */
+      /** Replaces the global terminal options. */
       setGlobalOptions: async (
         terminalOptions: Settings.Profile.TerminalOptions,
       ): Promise<void> => {
-        const changed = { ...settings, terminalOptions };
-        for (const [accessor, callback] of onMutate.mock.calls) {
-          const previous = accessor(settings);
-          if (
-            typeof previous === "object" &&
-            previous !== null &&
-            "globalOptions" in previous
-          )
-            await callback(accessor(changed), previous);
-        }
+        await change((previous) => ({ ...previous, terminalOptions }));
+      },
+      /** Replaces the terminal options of the profile the view opened. */
+      setProfileOptions: async (
+        terminalOptions: Settings.Profile.TerminalOptions,
+      ): Promise<void> => {
+        await change((previous) => ({
+          ...previous,
+          profiles: {
+            ...previous.profiles,
+            [PROFILE_ID]: { ...profile, terminalOptions },
+          },
+        }));
       },
       terminal,
     };
@@ -3927,6 +3956,39 @@ describe("ConPTY reflow on Windows Terminal's console host", () => {
       buildNumber: 21_376,
     });
   });
+
+  it.each([
+    {
+      name: "adds a build number",
+      from: {},
+      to: { windowsPty: { buildNumber: 18_363 } },
+      build: 18_363,
+    },
+    {
+      name: "removes a build number",
+      from: { windowsPty: { buildNumber: 18_363 } },
+      to: {},
+      build: 21_376,
+    },
+  ])(
+    "settles with the current options after a profile change that $name while the report is pending",
+    async ({ from, to, build }) => {
+      const report = Promise.withResolvers<ConPtyConsoleHost>(),
+        { integrated } = Settings.Profile.DEFAULTS,
+        { setProfileOptions, terminal } = await open({
+          consoleHost: report.promise,
+          profileOptions: from,
+        });
+      await setProfileOptions({ ...integrated.terminalOptions, ...to });
+      report.resolve(OPENCONSOLE);
+      await report.promise;
+      await microtasks();
+      expect(terminal.options.windowsPty).toEqual({
+        backend: "conpty",
+        buildNumber: build,
+      });
+    },
+  );
 
   it("sets no Windows hint off Windows", async () => {
     const { terminal } = await open({
