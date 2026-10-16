@@ -219,36 +219,6 @@ describe("src/settings-data.ts", () => {
     );
   });
 
-  it("defaults the Windows console host to Windows Terminal's", () => {
-    expect(Settings.WIN32_CONSOLE_HOSTS).toEqual(["automatic", "system"]);
-    expect(Settings.DEFAULT.win32ConsoleHost).toBe("automatic");
-    expect(Settings.fix({}).value.win32ConsoleHost).toBe("automatic");
-  });
-
-  it.each(Settings.WIN32_CONSOLE_HOSTS)(
-    "keeps the %s console host",
-    (win32ConsoleHost) => {
-      expect(Settings.fix({ win32ConsoleHost }).value.win32ConsoleHost).toBe(
-        win32ConsoleHost,
-      );
-    },
-  );
-
-  it.each(["folder", "", null, 1])(
-    "replaces the unknown console host %j with the default",
-    (win32ConsoleHost) => {
-      expect(Settings.fix({ win32ConsoleHost }).value.win32ConsoleHost).toBe(
-        "automatic",
-      );
-    },
-  );
-
-  it("replaces the retired custom console host with the default", () => {
-    expect(
-      Settings.fix({ win32ConsoleHost: "custom" }).value.win32ConsoleHost,
-    ).toBe("automatic");
-  });
-
   it("drops the retired discovery marker", () => {
     // The field holds only what the user typed, so nothing marks a value as
     // discovered any more.
@@ -474,6 +444,22 @@ describe("src/settings-data.ts", () => {
         "Settings.fix defaults experiments for %j",
         (experiments) => {
           expect(Settings.fix({ experiments }).value.experiments).toEqual({});
+        },
+      );
+
+      it("Settings.fix keeps the Windows Terminal console host flag", () => {
+        expect(
+          Settings.fix({ experiments: { windowsTerminalConsoleHost: true } })
+            .value.experiments,
+        ).toEqual({ windowsTerminalConsoleHost: true });
+      });
+
+      it.each(["automatic", "system", "custom"])(
+        "Settings.fix drops the retired console host setting %j and turns nothing on",
+        (win32ConsoleHost) => {
+          const fixed = Settings.fix({ win32ConsoleHost }).value;
+          expect(fixed).not.toHaveProperty("win32ConsoleHost");
+          expect(fixed.experiments).toEqual({});
         },
       );
 

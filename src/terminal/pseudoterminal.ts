@@ -67,6 +67,7 @@ import type { DeveloperConsoleContext } from "obsidian-terminal";
 import type { Position } from "source-map";
 import type { FileResult } from "tmp-promise";
 import type { AsyncOrSync } from "ts-essentials";
+import { isExperimentEnabled } from "../experiments.js";
 import { BUNDLE } from "../imports.js";
 import type { TerminalPlugin } from "../main.js";
 import type { Log } from "../patch.js";
@@ -1441,9 +1442,9 @@ export interface ConPtyStartOp {
   readonly rows: number;
   readonly cwd: string | null;
   /** Console host spec from {@link conPtyConsoleHostSpec}: `"auto"` finds
-   * Windows Terminal's `OpenConsole.exe`, and `null` runs the console host
-   * built into Windows. */
-  readonly consoleHost: string | null;
+   * Windows Terminal's `OpenConsole.exe`. Absent, as in the stable release,
+   * the session runs on the console host built into Windows. */
+  readonly consoleHost?: typeof CONPTY_CONSOLE_HOST_AUTO;
   readonly env: Readonly<Record<string, string>>;
   readonly command: readonly string[];
 }
@@ -2411,9 +2412,18 @@ export class ConPtyHostPool {
     return entry;
   }
 
+  /**
+   * Boots a spare host for `pythonExecutable` unless one exists or boots.
+   *
+   * @param consoleHost console host spec from {@link conPtyConsoleHostSpec}
+   *   while the spare spawns. It only lets the idle host look up Windows
+   *   Terminal early; the start op still names the console host the session
+   *   runs on. `null` spawns the spare as the stable release does.
+   */
   public ensureSpare(
     pythonExecutable: string,
     dependencies: ConPtyPseudoterminalDependencies,
+    consoleHost: typeof CONPTY_CONSOLE_HOST_AUTO | null = null,
   ): void {
     const generation = this.#generation;
     if (
@@ -2440,7 +2450,13 @@ export class ConPtyHostPool {
         );
         host = await dependencies.spawn(
           pythonExecutable,
-          [...CONPTY_PYTHON_FLAGS, sourceFile, "--defer-session", control.path],
+          [
+            ...CONPTY_PYTHON_FLAGS,
+            sourceFile,
+            "--defer-session",
+            control.path,
+            ...(consoleHost === null ? [] : ["--console-host", consoleHost]),
+          ],
           {
             env: await applyEnv({
               profile: [[CONPTY_TOKEN_ENVIRONMENT_VARIABLE, control.token]],
@@ -2640,14 +2656,18 @@ export const CONPTY_DEPENDENCIES: ConPtyPseudoterminalDependencies = {
 };
 
 /**
- * The console host spec a ConPTY session asks its host for: `"auto"` finds
- * Windows Terminal's `OpenConsole.exe`, and `null` runs the console host built
- * into Windows. A value the fixer would reject also reads as `null`.
+ * The console host spec a new ConPTY session asks its host for: `"auto"`
+ * finds Windows Terminal's `OpenConsole.exe` while the experimental Windows
+ * Terminal console host is on. `null`, the default, asks for nothing, as the
+ * stable release does: the session runs on the console host built into
+ * Windows. Only Windows reaches this: ConPTY runs nowhere else.
  */
 export function conPtyConsoleHostSpec(
-  mode: Settings.Win32ConsoleHost,
+  settings: Settings,
 ): typeof CONPTY_CONSOLE_HOST_AUTO | null {
-  return mode === "automatic" ? CONPTY_CONSOLE_HOST_AUTO : null;
+  return isExperimentEnabled(settings, "windowsTerminalConsoleHost")
+    ? CONPTY_CONSOLE_HOST_AUTO
+    : null;
 }
 
 /** Logs the console host a session runs on, once per terminal. */
@@ -2711,7 +2731,8 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
     dependencies: ConPtyPseudoterminalDependencies = CONPTY_DEPENDENCIES,
   ) {
     const { language, settings } = context,
-      consoleHostSpec = conPtyConsoleHostSpec(settings.value.win32ConsoleHost),
+      // Read once: a toggle applies to terminals opened after it.
+      consoleHostSpec = conPtyConsoleHostSpec(settings.value),
       pool = dependencies.pool,
       poolGeneration = conPtyPoolGeneration ?? pool?.generation,
       warm = pythonExecutable
@@ -2840,7 +2861,10 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
                 CONPTY_DEFAULT_COLUMNS,
               ),
               command: [executable, ...(args ?? [])],
-              consoleHost: consoleHostSpec,
+              // No key while the experimental feature is off.
+              ...(consoleHostSpec === null
+                ? {}
+                : { consoleHost: consoleHostSpec }),
               cwd: directory,
               env: envRecord,
               op: "start",
@@ -3020,11 +3044,13 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
           );
         }
         this.#ready = true;
-        try {
-          reportConPtyConsoleHost(ready.consoleHost);
-        } catch (error) {
-          // A report must never fail a terminal that is ready.
-          self.console.warn(error);
+        if (consoleHostSpec !== null) {
+          try {
+            reportConPtyConsoleHost(ready.consoleHost);
+          } catch (error) {
+            // A report must never fail a terminal that is ready.
+            self.console.warn(error);
+          }
         }
         return shell;
       } catch (error) {
@@ -3086,7 +3112,11 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
           pythonExecutable &&
           !(conPtyRuntimeUnavailable?.() ?? false)
         )
-          pool?.ensureSpare(pythonExecutable, dependencies);
+          pool?.ensureSpare(
+            pythonExecutable,
+            dependencies,
+            conPtyConsoleHostSpec(settings.value),
+          );
       })
       .catch(noop);
   }

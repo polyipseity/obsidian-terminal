@@ -124,8 +124,6 @@ export interface Settings extends PluginContext.Settings {
    * load; the Python check never writes here, since this value syncs.
    */
   readonly pythonExecutable: string;
-  /** Console host that runs ConPTY terminals on Windows. */
-  readonly win32ConsoleHost: Settings.Win32ConsoleHost;
 }
 export namespace Settings {
   export type DefaultProfile = Opaque<
@@ -307,7 +305,6 @@ export namespace Settings {
     defaultProfile: null,
     rightClickAction: "copyPaste",
     terminalOptions: DEFAULT_TERMINAL_OPTIONS,
-    win32ConsoleHost: "automatic",
   });
 
   export const DEFAULTABLE_LANGUAGES = deepFreeze([
@@ -338,12 +335,6 @@ export namespace Settings {
 
   export const PREFERRED_RENDERER_OPTIONS = RendererAddon.RENDERER_OPTIONS;
   export type PreferredRendererOption = RendererAddon.RendererOption;
-
-  /** Windows console hosts for ConPTY terminals, in the order the settings
-   * offer them: Windows Terminal's `OpenConsole.exe` when one is installed,
-   * or the one built into Windows. */
-  export const WIN32_CONSOLE_HOSTS = deepFreeze(["automatic", "system"]);
-  export type Win32ConsoleHost = (typeof WIN32_CONSOLE_HOSTS)[number];
 
   /**
    * All valid actions for a {@link Keymapping}.
@@ -1714,12 +1705,6 @@ export namespace Settings {
       terminalOptions: Settings.Profile.fixTerminalOptions(
         unc["terminalOptions"],
       ).value,
-      win32ConsoleHost: fixInSet(
-        DEFAULT,
-        unc,
-        "win32ConsoleHost",
-        WIN32_CONSOLE_HOSTS,
-      ),
     };
     return markFixed(self0, fixed);
   }

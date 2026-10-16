@@ -28,7 +28,7 @@ vi.mock("../../../src/main.js", () => ({
     public readonly register = vi.fn();
     public readonly language = { value: { t: vi.fn((key: string) => key) } };
     public readonly settings = {
-      value: { errorNoticeTimeout: 0, prewarmConPty: false },
+      value: { errorNoticeTimeout: 0, experiments: {}, prewarmConPty: false },
     };
   },
 }));

@@ -425,6 +425,15 @@ def test_parse_arguments_accepts_the_deferred_form() -> None:
     )
     assert isinstance(parsed, _MODULE.DeferredArguments)
     assert parsed.pipe_name == "\\\\.\\pipe\\obsidian-terminal-conpty-x"
+    assert parsed.console_host is None
+
+
+def test_parse_arguments_reads_the_deferred_console_host_hint() -> None:
+    """A spare may be told to look for Windows Terminal while it waits."""
+    parsed = _MODULE.parse_arguments(
+        ["--defer-session", "\\\\.\\pipe\\x", "--console-host", "auto"]
+    )
+    assert parsed == _MODULE.DeferredArguments("\\\\.\\pipe\\x", "auto")
 
 
 @pytest.mark.parametrize(
@@ -433,6 +442,10 @@ def test_parse_arguments_accepts_the_deferred_form() -> None:
         ["--defer-session"],
         ["--defer-session", "not-a-pipe"],
         ["--defer-session", "\\\\.\\pipe\\x", "extra"],
+        ["--defer-session", "\\\\.\\pipe\\x", "--console-host"],
+        ["--defer-session", "\\\\.\\pipe\\x", "--console-host", "AUTO"],
+        ["--defer-session", "\\\\.\\pipe\\x", "--cwd", "auto"],
+        ["--defer-session", "\\\\.\\pipe\\x", "--console-host", "auto", "x"],
     ),
 )
 def test_parse_arguments_rejects_malformed_deferred_forms(
@@ -2301,14 +2314,16 @@ def _run_host(
     hello_probe: Callable[[Mapping[str, Any]], None] | None = None,
     interpreter: str = sys.executable,
     console_host: str | None = None,
+    console_host_ahead: str | None = None,
 ) -> _HostResult:
     """Run the ConPTY host once against a real control pipe and child.
 
-    ``deferred`` boots the host with ``--defer-session`` and delivers the
-    command, size, ``child_environment``, ``child_cwd``, and ``console_host``
-    in a ``start`` op; an immediate host inherits ``child_environment`` and
-    receives ``child_cwd`` and ``console_host`` as its ``--cwd`` and
-    ``--console-host`` arguments.
+    ``deferred`` boots the host with ``--defer-session``, plus
+    ``--console-host`` with ``console_host_ahead`` when given, and delivers
+    the command, size, ``child_environment``, ``child_cwd``, and
+    ``console_host`` in a ``start`` op; an immediate host inherits
+    ``child_environment`` and receives ``child_cwd`` and ``console_host`` as
+    its ``--cwd`` and ``--console-host`` arguments.
     """
     pipe_name = "\\\\.\\pipe\\obsidian-terminal-conpty-test-" + uuid.uuid4().hex
     token = uuid.uuid4().hex
@@ -2344,6 +2359,8 @@ def _run_host(
         arguments = [interpreter, str(_module_path())]
         if deferred:
             arguments.extend(["--defer-session", pipe_name])
+            if console_host_ahead is not None:
+                arguments.extend(["--console-host", console_host_ahead])
         else:
             arguments.extend([str(columns), str(rows), pipe_name])
             if child_cwd is not None:
@@ -3285,17 +3302,25 @@ def _installed_windows_terminal() -> Any:
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
-@pytest.mark.parametrize("deferred", (False, True))
-def test_session_runs_on_the_windows_terminal_console_host(deferred: bool) -> None:
+@pytest.mark.parametrize(
+    ("deferred", "ahead"),
+    ((False, None), (True, None), (True, "auto")),
+    ids=("cold", "prewarmed", "prewarmed-planned-ahead"),
+)
+def test_session_runs_on_the_windows_terminal_console_host(
+    deferred: bool, ahead: str | None
+) -> None:
     """``auto`` starts Windows Terminal's OpenConsole, and the child runs on it.
 
     Windows refuses to start a program inside ``WindowsApps`` for anyone but
-    its package, so an installed Windows Terminal runs from a local copy.
+    its package, so an installed Windows Terminal runs from a local copy. A
+    spare without the hint finds it only when ``start`` asks.
     """
     found = _installed_windows_terminal()
     result = _run_host(
         ["cmd", "/c", "echo hello-openconsole"],
         deferred=deferred,
+        console_host_ahead=ahead,
         # OpenConsole ends its session when its input pipe breaks, so stdin
         # stays open until the child exits, as it does under the plugin.
         close_stdin=False,
@@ -3320,13 +3345,17 @@ def test_session_runs_on_the_windows_terminal_console_host(deferred: bool) -> No
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
 def test_deferred_session_on_the_built_in_host_ignores_the_plan_ahead() -> None:
-    """A spare plans Windows Terminal's host while idle; ``null`` still wins."""
+    """A spare planned Windows Terminal's host while idle; ``null`` still wins.
+
+    The plugin's setting may change after the spare booted with the hint.
+    """
     _installed_windows_terminal()
     result = _run_host(
         ["cmd", "/c", "echo hello-conhost"],
         deferred=True,
         close_stdin=False,
         console_host=None,
+        console_host_ahead="auto",
     )
     assert result.code == 0, result
     assert "hello-conhost" in result.text, result

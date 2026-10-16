@@ -9,7 +9,7 @@ import nodeUrl, { pathToFileURL } from "node:url";
 import type { Terminal } from "@xterm/xterm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TerminalPlugin } from "../../../src/main.js";
-import type { Settings } from "../../../src/settings-data.js";
+import { Settings } from "../../../src/settings-data.js";
 import {
   TERMINAL_CONPTY_HOST_EXIT_WAIT,
   TERMINAL_RESIZER_WATCHDOG_WAIT,
@@ -441,7 +441,7 @@ describe("ConPTY control protocol", () => {
         context = {
           language: { value: { t: vi.fn((key: string) => key) } },
           register: vi.fn(),
-          settings: { value: { errorNoticeTimeout: 0 } },
+          settings: { value: { errorNoticeTimeout: 0, experiments: {} } },
         } as unknown as TerminalPlugin;
       vi.spyOn(CONPTY_DEPENDENCIES, "createControl").mockRejectedValue(error);
       vi.spyOn(childProcess, "spawn").mockImplementation(() => {
@@ -941,7 +941,6 @@ describe("Windows named-pipe ConPTY readiness", () => {
         channel.start({
           columns: 80,
           command: ["cmd.exe"],
-          consoleHost: null,
           cwd: null,
           env: {},
           op: "start",
@@ -1125,7 +1124,6 @@ describe("Windows named-pipe ConPTY readiness", () => {
       channel.start({
         columns: 80,
         command: ["cmd.exe"],
-        consoleHost: null,
         cwd: null,
         env: {},
         op: "start",
@@ -1488,7 +1486,12 @@ function conPtyContext(
     },
     register: vi.fn(),
     settings: {
-      value: { errorNoticeTimeout: 0, prewarmConPty: true, ...settings },
+      value: {
+        errorNoticeTimeout: 0,
+        experiments: {},
+        prewarmConPty: true,
+        ...settings,
+      },
     },
   } as unknown as TerminalPlugin;
 }
@@ -2471,7 +2474,6 @@ describe("ConPTY ready transition", () => {
               rows: 30,
               op: "start",
               command: ["cmd.exe"],
-              consoleHost: null,
               cwd: null,
               env: { PAD: "" },
             },
@@ -2712,107 +2714,189 @@ describe("ConPTY console host", () => {
     await pty.onExit;
   }
 
-  it.each([
-    ["automatic", "auto"],
-    ["system", null],
-  ] as const)("asks the host for the %s console host as %j", (mode, spec) => {
-    expect(conPtyConsoleHostSpec(mode)).toBe(spec);
-  });
+  /** The flags that turn the experimental console host on. */
+  const ON = { experiments: { windowsTerminalConsoleHost: true } } as const;
 
-  it.each<readonly [string, Readonly<Partial<Settings>>, readonly string[]]>([
-    [
-      "automatic",
-      { win32ConsoleHost: "automatic" },
-      ["--console-host", "auto"],
-    ],
-    ["system", { win32ConsoleHost: "system" }, []],
-    ["absent", {}, []],
+  it.each<readonly [unknown, string | null]>([
+    [{}, null],
+    [{ windowsTerminalConsoleHost: false }, null],
+    [{ windowsTerminalConsoleHost: true }, "auto"],
   ])(
-    "passes the %s console host to a cold host before the command",
-    async (_name, settings, option) => {
-      const host = testHost(),
-        hostPid = liveHostPid(host),
-        control = fakeControl(
-          Promise.resolve(readyEvent(hostPid, hostPid + 1)),
-          () => host.kill(),
-        ),
-        dependencies = conPtyDependencies(control, host),
-        pty = constructConPty(
-          dependencies,
-          { cwd: "C:\\work" },
-          void 0,
-          conPtyContext(void 0, settings),
-        );
-      try {
-        await pty.shell;
-        const [, args] = vi.mocked(dependencies.spawn).mock.calls[0] ?? [];
-        expect(args?.slice(6)).toEqual([
-          "test-control-pipe",
-          "--cwd",
-          "C:\\work",
-          ...option,
-          "--",
-          "cmd.exe",
-        ]);
-      } finally {
-        await close(pty);
-      }
+    "asks a host with the stored flags %j for the console host %j",
+    (experiments, spec) => {
+      expect(conPtyConsoleHostSpec(Settings.fix({ experiments }).value)).toBe(
+        spec,
+      );
     },
   );
 
-  it.each<readonly [Readonly<Partial<Settings>>, string | null]>([
-    [{ win32ConsoleHost: "automatic" }, "auto"],
-    [{ win32ConsoleHost: "system" }, null],
-  ])(
-    "names the console host %j in a warm start as %j",
-    async (settings, spec) => {
-      const host = testHost(),
-        hostPid = liveHostPid(host),
-        start = vi
-          .fn<(op: ConPtyStartOp) => Promise<void>>()
-          .mockResolvedValue(undefined),
-        warmControl = {
-          ...fakeControl(
-            Promise.resolve(readyEvent(hostPid, hostPid + 1)),
+  /*
+   * The test AGENTS.md asks of every experimental feature: one scenario, a
+   * cold open that refills the pool and a prewarmed open, with the flag off
+   * and on. Off sends the host exactly what the stable release sends.
+   */
+  describe.each([
+    { experiments: {}, flag: "off", spec: null },
+    { ...ON, flag: "on", spec: "auto" },
+  ] as const)(
+    "with the experimental feature $flag",
+    ({ experiments, spec }) => {
+      const consoleHostArgs: readonly string[] =
+          spec === null ? [] : ["--console-host", spec],
+        // A host that is asked for nothing reports the built-in console host.
+        report = spec === null ? SYSTEM_CONSOLE_HOST : OPENCONSOLE,
+        logged = spec === null ? [] : [["ConPTY console host", report]];
+
+      /** Records what is logged about the console host. */
+      function consoleHostLog(): () => readonly unknown[] {
+        const info = vi
+            .spyOn(self.console, "info")
+            .mockImplementation(() => {}),
+          debug = vi.spyOn(self.console, "debug").mockImplementation(() => {});
+        return () =>
+          [...info.mock.calls, ...debug.mock.calls].filter(
+            ([label]) => label === "ConPTY console host",
+          );
+      }
+
+      it("a cold open and the spare it boots get the stable arguments, and the console host when on", async () => {
+        const server = createServer();
+        // Only the spare's arguments are under test: nothing connects.
+        vi.spyOn(server, "listen").mockImplementation(() => {
+          server.emit("listening");
+          return server;
+        });
+        const host = testHost(),
+          spareHost = testHost(),
+          hostPid = liveHostPid(host),
+          control = fakeControl(
+            Promise.resolve(readyEvent(hostPid, hostPid + 1, report)),
             () => host.kill(),
           ),
-          start,
-        },
-        pool = {
-          acquire: vi.fn(() => ({ control: warmControl, host })),
-          dispose: vi.fn(),
-          ensureSpare: vi.fn(),
-        },
-        dependencies = {
-          ...conPtyDependencies(
-            fakeControl(new Promise<never>(() => {}), () => {}),
-            host,
-          ),
-          pool: pool as unknown as ConPtyHostPool,
-        },
-        pty = constructConPty(
-          dependencies,
-          void 0,
-          void 0,
-          conPtyContext(void 0, settings),
-        );
-      try {
-        await pty.shell;
-        expect(dependencies.spawn).not.toHaveBeenCalled();
-        expect(start.mock.calls[0]?.[0]).toHaveProperty("consoleHost", spec);
-      } finally {
-        await close(pty);
-      }
+          pool = new ConPtyHostPool(),
+          spawn = vi
+            .fn<ConPtyPseudoterminalDependencies["spawn"]>()
+            .mockResolvedValueOnce(host)
+            .mockResolvedValueOnce(spareHost),
+          dependencies: ConPtyPseudoterminalDependencies = {
+            ...conPtyDependencies(control, host),
+            createDeferredControl: async () =>
+              WindowsNamedPipeControlChannel.create({
+                createServer: () => server,
+                deferred: true,
+                randomUUID,
+              }),
+            pool,
+            spawn,
+          },
+          log = consoleHostLog(),
+          pty = constructConPty(
+            dependencies,
+            { cwd: "C:\\work" },
+            void 0,
+            conPtyContext(void 0, { experiments }),
+          );
+        try {
+          await pty.shell;
+          expect(spawn.mock.calls[0]?.[1].slice(6)).toEqual([
+            "test-control-pipe",
+            "--cwd",
+            "C:\\work",
+            ...consoleHostArgs,
+            "--",
+            "cmd.exe",
+          ]);
+          // The pool refills once the terminal is ready.
+          await vi.waitFor(() => {
+            expect(spawn).toHaveBeenCalledTimes(2);
+          });
+          const [executable, spareArgs] = spawn.mock.calls[1] ?? [];
+          expect(executable).toBe(process.execPath);
+          expect(spareArgs).toEqual([
+            "-I",
+            "-S",
+            "-B",
+            "test-host.py",
+            "--defer-session",
+            expect.any(String),
+            ...consoleHostArgs,
+          ]);
+          expect(log()).toEqual(logged);
+        } finally {
+          pool.dispose();
+          spareHost.kill();
+          await close(pty);
+        }
+      });
+
+      it("a prewarmed open sends the stable start op, and the console host when on", async () => {
+        const host = testHost(),
+          hostPid = liveHostPid(host),
+          start = vi
+            .fn<(op: ConPtyStartOp) => Promise<void>>()
+            .mockResolvedValue(undefined),
+          warmControl = {
+            ...fakeControl(
+              Promise.resolve(readyEvent(hostPid, hostPid + 1, report)),
+              () => host.kill(),
+            ),
+            start,
+          },
+          ensureSpare = vi.fn<ConPtyHostPool["ensureSpare"]>(),
+          pool = {
+            acquire: vi.fn(() => ({ control: warmControl, host })),
+            dispose: vi.fn(),
+            ensureSpare,
+          },
+          dependencies = {
+            ...conPtyDependencies(
+              fakeControl(new Promise<never>(() => {}), () => {}),
+              host,
+            ),
+            pool: pool as unknown as ConPtyHostPool,
+          },
+          log = consoleHostLog(),
+          pty = constructConPty(
+            dependencies,
+            void 0,
+            void 0,
+            conPtyContext(void 0, { experiments }),
+          );
+        try {
+          await pty.shell;
+          expect(dependencies.spawn).not.toHaveBeenCalled();
+          const op = start.mock.calls[0]?.[0];
+          // The key is absent while off, not `undefined`.
+          expect(Object.keys(op ?? {}).sort()).toEqual([
+            "columns",
+            "command",
+            ...(spec === null ? [] : ["consoleHost"]),
+            "cwd",
+            "env",
+            "op",
+            "rows",
+          ]);
+          expect(op?.consoleHost).toBe(spec ?? undefined);
+          // The refill passes the same hint on to the next spare.
+          await vi.waitFor(() => {
+            expect(ensureSpare).toHaveBeenCalledExactlyOnceWith(
+              process.execPath,
+              dependencies,
+              spec,
+            );
+          });
+          expect(log()).toEqual(logged);
+        } finally {
+          await close(pty);
+        }
+      });
     },
   );
 
   it("exposes the report and logs it once at info level", async () => {
     const info = vi.spyOn(self.console, "info").mockImplementation(() => {}),
       debug = vi.spyOn(self.console, "debug").mockImplementation(() => {}),
-      pty = await openReporting(
-        OPENCONSOLE,
-        conPtyContext(void 0, { win32ConsoleHost: "automatic" }),
-      );
+      pty = await openReporting(OPENCONSOLE, conPtyContext(void 0, ON));
     try {
       await expect(pty.consoleHost).resolves.toEqual(OPENCONSOLE);
       expect(info).toHaveBeenCalledExactlyOnceWith(
@@ -2837,10 +2921,7 @@ describe("ConPTY console host", () => {
       },
       info = vi.spyOn(self.console, "info").mockImplementation(() => {}),
       debug = vi.spyOn(self.console, "debug").mockImplementation(() => {}),
-      pty = await openReporting(
-        report,
-        conPtyContext(void 0, { win32ConsoleHost: "automatic" }),
-      );
+      pty = await openReporting(report, conPtyContext(void 0, ON));
     try {
       expect(info).not.toHaveBeenCalled();
       expect(debug).toHaveBeenCalledWith("ConPTY console host", report);

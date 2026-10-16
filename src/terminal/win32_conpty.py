@@ -8,12 +8,16 @@ The plugin embeds this file as text, writes it to a temporary file, and runs::
 The source exceeds the 32767-character Windows command-line limit, so a
 ``python -c`` spawn cannot work.
 
+A prewarmed host runs as ``python <file> --defer-session <pipe-name>
+[--console-host auto]`` and gets the session inputs later in a ``start`` op.
+
 ``--console-host auto`` (or ``"consoleHost": "auto"`` in a deferred ``start``)
 asks for the ``OpenConsole.exe`` that Windows Terminal ships instead of the
 console host built into Windows. The host finds it through Windows' package
 API, starts it the way ``conpty.dll`` does, falls back to the built-in console
 host when it cannot, and reports which one runs in the ``consoleHost`` field of
-``ready``.
+``ready``. On a prewarmed host the option only lets it find Windows Terminal
+while it waits; the ``start`` op still decides.
 
 The host binds the child process to a pseudoconsole and bridges three channels.
 Its stdin and stdout carry raw terminal bytes.  A local named pipe, created by
@@ -181,9 +185,14 @@ _E_FAIL = 0x80004005
 
 
 class DeferredArguments(NamedTuple):
-    """The parsed ``--defer-session`` host command line."""
+    """The parsed ``--defer-session`` host command line.
+
+    ``console_host`` is ``auto`` when the host may look for Windows
+    Terminal's console host while it waits for ``start``.
+    """
 
     pipe_name: str
+    console_host: str | None = None
 
 
 class HostArguments(NamedTuple):
@@ -455,7 +464,8 @@ def parse_arguments(
 
     Immediate form: ``<columns> <rows> <pipe-name> [--cwd <dir>]
     [--console-host auto] -- <executable> [args...]``, the two options in
-    either order. Deferred form: ``--defer-session <pipe-name>``.
+    either order. Deferred form: ``--defer-session <pipe-name>
+    [--console-host auto]``.
 
     Everything after the first ``--`` is the child command, so a ``--cwd``
     there belongs to the child.  The directory is taken verbatim, as the
@@ -467,9 +477,17 @@ def parse_arguments(
     """
     values = list(arguments)
     if values and values[0] == "--defer-session":
-        if len(values) != 2:
-            raise ValueError("--defer-session takes exactly one pipe name")
-        return DeferredArguments(pipe_name=_parse_pipe_name(values[1]))
+        if len(values) not in (2, 4) or values[2:3] not in ([], ["--console-host"]):
+            raise ValueError(
+                "--defer-session takes one pipe name, then optionally "
+                "--console-host auto"
+            )
+        console_host = values[3] if len(values) == 4 else None
+        if console_host is not None and console_host != _CONSOLE_HOST_AUTO:
+            raise ValueError(f"--console-host takes only {_CONSOLE_HOST_AUTO}")
+        return DeferredArguments(
+            pipe_name=_parse_pipe_name(values[1]), console_host=console_host
+        )
     if "--" not in values:
         raise ValueError("a -- separator is required before the executable")
     separator = values.index("--")
@@ -2002,11 +2020,14 @@ if sys.platform == "win32":
             arguments: HostArguments | None,
             token: str,
             pipe_name: str | None = None,
+            console_host_ahead: str | None = None,
         ) -> None:
             """Store the launch inputs and initialise empty session state.
 
             A deferred host passes ``arguments=None`` plus ``pipe_name``; its
-            session inputs arrive later through the ``start`` operation.
+            session inputs arrive later through the ``start`` operation. With
+            ``console_host_ahead`` set to ``auto`` it looks for Windows
+            Terminal's console host while it waits.
             """
             self._arguments = arguments
             self._pipe_name = (
@@ -2019,6 +2040,7 @@ if sys.platform == "win32":
             # The console host that runs, reported in ``ready``; the built-in
             # one until ``_start`` creates the pseudoconsole.
             self._console_host = _ConsoleHost()
+            self._console_host_ahead = console_host_ahead
             # A prewarmed host's plan for ``auto``, made while it waited.
             self._planned_console_host: _ConsoleHost | None = None
             self._pseudoconsole: _PseudoConsole | None = None
@@ -2065,9 +2087,10 @@ if sys.platform == "win32":
                     }
                 )
                 self._authenticate_control()
-                self._planned_console_host = _plan_console_host_ahead(
-                    _find_windows_terminal, _copied_from_windows_apps
-                )
+                if self._console_host_ahead == _CONSOLE_HOST_AUTO:
+                    self._planned_console_host = _plan_console_host_ahead(
+                        _find_windows_terminal, _copied_from_windows_apps
+                    )
                 start = self._await_start()
             except OSError as error:
                 diagnose(f"could not enter the deferred session: {error}")
@@ -2618,7 +2641,10 @@ if sys.platform == "win32":
             sys.exit(
                 to_exit_status(
                     _ConPtyHost(
-                        None, token, pipe_name=arguments.pipe_name
+                        None,
+                        token,
+                        pipe_name=arguments.pipe_name,
+                        console_host_ahead=arguments.console_host,
                     ).run_deferred()
                 )
             )

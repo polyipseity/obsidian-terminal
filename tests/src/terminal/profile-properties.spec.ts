@@ -129,15 +129,24 @@ afterEach(() => {
 });
 
 /** A settings holder a test can replace, as the manager does on mutate. */
-function settingsOf(pythonExecutable = ""): {
+function settingsOf(
+  pythonExecutable = "",
+  experiments: Settings["experiments"] = {},
+): {
   value: {
     errorNoticeTimeout: number;
+    experiments: Settings["experiments"];
     prewarmConPty: boolean;
     pythonExecutable: string;
   };
 } {
   return {
-    value: { errorNoticeTimeout: 0, prewarmConPty: true, pythonExecutable },
+    value: {
+      errorNoticeTimeout: 0,
+      experiments,
+      prewarmConPty: true,
+      pythonExecutable,
+    },
   };
 }
 
@@ -1391,6 +1400,25 @@ describe("prewarmConPtyProfile on Windows", () => {
     expect(ensureSpare).toHaveBeenCalledTimes(1);
     expect(ensureSpare?.mock.calls[0]?.[0]).toBe("C:\\Python312\\python.exe");
   });
+
+  it.each<readonly [Settings["experiments"], string | null]>([
+    [{}, null],
+    [{ windowsTerminalConsoleHost: true }, "auto"],
+  ])(
+    "boots the spare with the stored flags %j and the console host hint %j",
+    async (experiments, spec) => {
+      checkWindowsPythonMock.mockResolvedValue(diagnosis());
+      await prewarmOnWindows(
+        context("", settingsOf("", experiments)),
+        integratedProfile({ pythonExecutable: "" }),
+      );
+      expect(ensureSpare).toHaveBeenCalledExactlyOnceWith(
+        "C:\\Python312\\python.exe",
+        CONPTY_DEPENDENCIES,
+        spec,
+      );
+    },
+  );
 
   it("boots the spare on the base interpreter behind a venv, as the open path spawns it", async () => {
     const venv = diagnosis({

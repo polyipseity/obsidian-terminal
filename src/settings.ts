@@ -23,6 +23,7 @@ import {
   describeExperiments,
   fixExperiments,
   isExperimentEnabled,
+  isExperimentOffered,
 } from "./experiments.js";
 import type { TerminalPlugin } from "./main.js";
 import {
@@ -880,20 +881,40 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
 
   /** Every registered experiment with its texts, in registry order. */
   protected experimentRows(): readonly Experiment.Row[] {
+    const { language } = this.context;
     // One entry per experiment in EXPERIMENTS: its name, effect and risk.
-    return describeExperiments(EXPERIMENTS, {});
+    return describeExperiments(EXPERIMENTS, {
+      windowsTerminalConsoleHost: {
+        effect: () =>
+          language.value.t(
+            "settings.experimental-features.windowsTerminalConsoleHost.effect",
+          ),
+        name: () =>
+          language.value.t(
+            "settings.experimental-features.windowsTerminalConsoleHost.name",
+          ),
+        risk: () =>
+          language.value.t(
+            "settings.experimental-features.windowsTerminalConsoleHost.risk",
+          ),
+      },
+    });
   }
 
   /**
-   * The Experimental section: nothing when there are no experiments.
+   * The Experimental section: nothing when no experiment is offered on this
+   * platform.
    *
    * `rows` is every registered experiment, in registry order: the toggles
-   * rewrite the stored flags against this list.
+   * rewrite the stored flags against this list, so the flag of a row that is
+   * not drawn here, stored on another device, is kept.
    */
   protected newExperimentalWidgets(
     rows: readonly Experiment.Row[] = this.experimentRows(),
   ): void {
-    if (rows.length === 0) {
+    const platform = deopaque(Platform.CURRENT),
+      offered = rows.filter((row) => isExperimentOffered(row, platform));
+    if (offered.length === 0) {
       return;
     }
     const {
@@ -915,7 +936,7 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
         ele.remove();
       },
     );
-    for (const row of rows) {
+    for (const row of offered) {
       const { applies, feedback, id, options } = row,
         // Off removes the key: the fixer keeps only a stored `true`.
         set = async (value: boolean): Promise<void> =>
@@ -1270,50 +1291,6 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               async () =>
                 settings.mutate((settingsM) => {
                   settingsM.prewarmConPty = Settings.DEFAULT.prewarmConPty;
-                }),
-              () => {
-                this.postMutate();
-              },
-            ),
-          );
-      })
-      .newSetting(containerEl, (setting) => {
-        setting
-          .setName(i18n.t("settings.win32-console-host"))
-          .setDesc(i18n.t("settings.win32-console-host-description"))
-          .addDropdown(
-            linkSetting(
-              (): string => settings.value.win32ConsoleHost,
-              setTextToEnum(Settings.WIN32_CONSOLE_HOSTS, async (value) =>
-                settings.mutate((settingsM) => {
-                  settingsM.win32ConsoleHost = value;
-                }),
-              ),
-              () => {
-                this.postMutate();
-              },
-              {
-                pre: (dropdown) => {
-                  dropdown.addOptions(
-                    Object.fromEntries(
-                      Settings.WIN32_CONSOLE_HOSTS.map((value) => [
-                        value,
-                        i18n.t(`settings.win32-console-host-options.${value}`),
-                      ]),
-                    ),
-                  );
-                },
-              },
-            ),
-          )
-          .addExtraButton(
-            resetButton(
-              i18n.t("asset:settings.win32-console-host-icon"),
-              i18n.t("settings.reset"),
-              async () =>
-                settings.mutate((settingsM) => {
-                  settingsM.win32ConsoleHost =
-                    Settings.DEFAULT.win32ConsoleHost;
                 }),
               () => {
                 this.postMutate();

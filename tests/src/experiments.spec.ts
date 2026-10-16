@@ -2,12 +2,14 @@
  * Unit tests for `src/experiments.ts`: the fixer of the stored flags, the gate
  * and the pairing of experiments with their texts.
  *
- * The registry is empty, so every test passes fixture experiments as
- * arguments. The two tests that walk the real registry guard later entries.
+ * Every test passes fixture experiments as arguments, so a change to the
+ * registry changes none of them. The tests that walk the real registry guard
+ * its entries.
  */
 import {
   AbstractSettingsManager,
   type AnyObject,
+  Platform,
   type SettingsManager,
   launderUnchecked,
   markFixed,
@@ -21,6 +23,7 @@ import {
   describeExperiments,
   fixExperiments,
   isExperimentEnabled,
+  isExperimentOffered,
   whileExperimentEnabled,
 } from "../../src/experiments.js";
 import { Settings } from "../../src/settings-data.js";
@@ -196,10 +199,44 @@ describe("src/experiments.ts", () => {
       isExperimentEnabled({ experiments: fixExperiments({}, [ALPHA]) }, "beta");
     });
 
+    it("takes only a registered id for the plugin's settings", () => {
+      expect(
+        isExperimentEnabled(Settings.DEFAULT, "windowsTerminalConsoleHost"),
+      ).toBe(false);
+      // @ts-expect-error -- "windowsTerminal" is no registered id.
+      isExperimentEnabled(Settings.DEFAULT, "windowsTerminal");
+    });
+
     it("is false for every registered experiment by default", () => {
       const registered: readonly Experiment[] = EXPERIMENTS;
       for (const { id } of registered) {
         expect(isExperimentEnabled<string>(Settings.DEFAULT, id), id).toBe(
+          false,
+        );
+      }
+    });
+  });
+
+  describe("isExperimentOffered", () => {
+    it.each(Platform.ALL)(
+      "offers an experiment without platforms on %s",
+      (platform) => {
+        expect(isExperimentOffered(ALPHA, platform)).toBe(true);
+      },
+    );
+
+    it.each(Platform.ALL)(
+      "offers an experiment for Windows only on Windows, not on %s",
+      (platform) => {
+        expect(
+          isExperimentOffered({ ...ALPHA, platforms: ["win32"] }, platform),
+        ).toBe(platform === "win32");
+      },
+    );
+
+    it("offers an experiment on none of no platforms", () => {
+      for (const platform of Platform.ALL) {
+        expect(isExperimentOffered({ ...ALPHA, platforms: [] }, platform)).toBe(
           false,
         );
       }
@@ -483,7 +520,27 @@ describe("src/experiments.ts", () => {
         expect(experiment.id).toMatch(/^[a-z][A-Za-z0-9]*$/u);
         expect(experiment.feedback, experiment.id).toMatch(/^https:\/\//u);
         expect(applies, experiment.id).toContain(experiment.applies);
+        // A platform list is never empty: that would hide the toggle everywhere.
+        const known: readonly string[] = Platform.ALL,
+          platforms: readonly string[] = experiment.platforms ?? known;
+        expect(platforms, experiment.id).not.toHaveLength(0);
+        for (const platform of platforms) {
+          expect(known, experiment.id).toContain(platform);
+        }
       }
+    });
+
+    it("offers the Windows Terminal console host on Windows only", () => {
+      const registered: readonly Experiment[] = EXPERIMENTS,
+        experiment = registered.find(
+          ({ id }) => id === "windowsTerminalConsoleHost",
+        );
+      expect(experiment).toEqual({
+        applies: "newTerminals",
+        feedback: "https://github.com/polyipseity/obsidian-terminal/issues",
+        id: "windowsTerminalConsoleHost",
+        platforms: ["win32"],
+      });
     });
   });
 });

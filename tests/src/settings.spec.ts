@@ -1,4 +1,5 @@
 import {
+  Platform,
   UpdatableUI,
   cloneAsWritable,
   setSanitizedInnerHTML,
@@ -6,7 +7,6 @@ import {
 import { createInstance } from "i18next";
 import {
   ButtonComponent,
-  DropdownComponent,
   ExtraButtonComponent,
   Setting,
   ToggleComponent,
@@ -41,6 +41,26 @@ import {
 } from "../../src/terminal/win32-doctor.js";
 
 vi.mock("../../src/modals.js", () => ({}));
+
+// The device platform. `null` keeps the real one; tests that set it reset it.
+const platform = vi.hoisted((): { current: Platform.All | null } => ({
+  current: null,
+}));
+vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@polyipseity/obsidian-plugin-library")
+    >();
+  return {
+    ...actual,
+    Platform: {
+      ...actual.Platform,
+      get CURRENT() {
+        return platform.current ?? actual.Platform.CURRENT;
+      },
+    },
+  };
+});
 
 async function renderPythonWidgets(
   diagnosis: Win32PythonDiagnosis | null,
@@ -574,6 +594,7 @@ const experimentRow = (
 
 describe("experimental section", () => {
   afterEach(() => {
+    platform.current = null;
     vi.restoreAllMocks();
     vi.clearAllMocks();
   });
@@ -618,17 +639,112 @@ describe("experimental section", () => {
     ).toEqual(["H2", "DIV", "alpha", "beta"]);
   });
 
-  it("draws the registered experiments when it is given no rows", async () => {
-    const registered: readonly Experiment[] = EXPERIMENTS,
-      { tab } = await drawExperimentalSection(null),
-      drawn = tab.containerEl.querySelectorAll("[data-experiment]");
-    // None is registered in this version, so there is no heading and no row.
-    expect(tab.containerEl.querySelectorAll("h2")).toHaveLength(
-      Math.min(registered.length, 1),
-    );
+  it.each(Platform.ALL)(
+    "draws the registered experiments offered on %s when it is given no rows",
+    async (current) => {
+      platform.current = current;
+      const registered: readonly Experiment[] = EXPERIMENTS,
+        offered = registered.filter(
+          ({ platforms }) => platforms?.includes(current) ?? true,
+        ),
+        { tab } = await drawExperimentalSection(null),
+        drawn = tab.containerEl.querySelectorAll("[data-experiment]");
+      // No heading and no description where no experiment is offered.
+      expect(tab.containerEl.querySelectorAll("h2")).toHaveLength(
+        Math.min(offered.length, 1),
+      );
+      expect(tab.containerEl.childElementCount === 0).toBe(
+        offered.length === 0,
+      );
+      expect(
+        Array.from(drawn, (row) => row.getAttribute("data-experiment")),
+      ).toEqual(offered.map(({ id }) => id));
+    },
+  );
+
+  it("draws the Windows Terminal console host row on Windows", async () => {
+    platform.current = "win32";
+    const section = await drawExperimentalSection(null),
+      row = section.row(0);
+    try {
+      expect(section.rows).toHaveLength(1);
+      expect(row.settingEl.getAttribute("data-experiment")).toBe(
+        "windowsTerminalConsoleHost",
+      );
+      expect(row.nameEl.textContent).toBe("Windows Terminal console host");
+      expect(
+        Array.from(row.descEl.children, (line) => line.textContent),
+      ).toEqual([
+        en.settings["experimental-features"].windowsTerminalConsoleHost.effect,
+        `Known risk: ${en.settings["experimental-features"].windowsTerminalConsoleHost.risk}`,
+        en.settings["experimental-applies"].newTerminals,
+        en.settings["experimental-feedback"],
+      ]);
+      expect(row.descEl.querySelector("a")?.getAttribute("href")).toBe(
+        "https://github.com/polyipseity/obsidian-terminal/issues",
+      );
+      expect(row.toggle.getValue()).toBe(false);
+      row.toggle.setValue(true);
+      await vi.waitFor(() => {
+        expect(section.context.settings.value.experiments).toEqual({
+          windowsTerminalConsoleHost: true,
+        });
+      });
+    } finally {
+      section.tab.dispose();
+    }
+  });
+
+  it("draws only the rows offered on this platform", async () => {
+    platform.current = "linux";
+    const { rows, tab } = await drawExperimentalSection([
+      { ...ALPHA, platforms: ["win32"] },
+      { ...BETA, platforms: ["darwin", "linux"] },
+    ]);
     expect(
-      Array.from(drawn, (row) => row.getAttribute("data-experiment")),
-    ).toEqual(registered.map(({ id }) => id));
+      Array.from(
+        tab.containerEl.children,
+        (child) => child.getAttribute("data-experiment") ?? child.tagName,
+      ),
+    ).toEqual(["H2", "DIV", "beta"]);
+    expect(rows.map((row) => row.nameEl.textContent)).toEqual([BETA.name()]);
+  });
+
+  it("draws no heading and no description when no row is offered here", async () => {
+    platform.current = "darwin";
+    const { rows, tab } = await drawExperimentalSection([
+      { ...ALPHA, platforms: ["win32"] },
+      { ...BETA, platforms: ["linux"] },
+    ]);
+    expect(tab.containerEl.childElementCount).toBe(0);
+    expect(rows).toHaveLength(0);
+  });
+
+  it("a toggle keeps the flag of an experiment that is not offered here", async () => {
+    platform.current = "darwin";
+    const hidden: Experiment.Row = { ...ALPHA, platforms: ["win32"] },
+      section = await drawExperimentalSection([hidden, BETA]),
+      { settings } = section.context;
+    // The flag was turned on on another device and synced here.
+    await settings.mutate((settingsM) => {
+      settingsM.experiments = fixExperiments({ alpha: true }, [hidden]);
+    });
+    section.tab.update();
+    expect(section.rows).toHaveLength(1);
+    const beta = section.row(0);
+    beta.toggle.setValue(true);
+    await vi.waitFor(() => {
+      expect(settings.value.experiments).toEqual({ alpha: true, beta: true });
+    });
+    beta.toggle.setValue(false);
+    await vi.waitFor(() => {
+      expect(settings.value.experiments).toEqual({ alpha: true });
+    });
+    beta.reset.extraSettingsEl.click();
+    await vi.waitFor(() => {
+      expect(beta.toggle.getValue()).toBe(false);
+    });
+    expect(settings.value.experiments).toEqual({ alpha: true });
   });
 
   it("a row shows the name, the effect, the known risk and a feedback link", async () => {
@@ -1424,155 +1540,4 @@ describe("settings tab descriptions", () => {
       }
     },
   );
-});
-
-/** A dropdown that keeps the options it offers. */
-class ConsoleHostDropdown extends DropdownComponent {
-  public offered: Record<string, string> = {};
-
-  public override addOptions(options: Record<string, string>): this {
-    this.offered = { ...this.offered, ...options };
-    return super.addOptions(options);
-  }
-}
-
-/** A settings row that keeps its dropdown and reset button. */
-class ConsoleHostRow extends Setting {
-  public override readonly settingEl = document.createElement("div");
-  public override readonly nameEl = document.createElement("div");
-  public override readonly descEl = document.createElement("div");
-  public dropdown: ConsoleHostDropdown | null = null;
-  public reset: ExtraButtonComponent | null = null;
-
-  public constructor(containerEl: HTMLElement) {
-    super(containerEl);
-    this.settingEl.append(this.nameEl, this.descEl);
-    containerEl.append(this.settingEl);
-  }
-
-  public override setName(name: string): this {
-    this.nameEl.textContent = name;
-    return this;
-  }
-
-  public override setDesc(description: DocumentFragment | string): this {
-    this.descEl.replaceChildren(description);
-    return this;
-  }
-
-  // The Python status buttons have their own tests above.
-  public override addButton(): this {
-    return this;
-  }
-
-  public override addDropdown(
-    configure: (dropdown: DropdownComponent) => unknown,
-  ): this {
-    this.dropdown ??= new ConsoleHostDropdown(this.settingEl);
-    // The mock's setValue calls the change handler; a redraw must not write.
-    this.dropdown.onChange(() => {});
-    configure(this.dropdown);
-    return this;
-  }
-
-  public override addExtraButton(
-    configure: (button: ExtraButtonComponent) => unknown,
-  ): this {
-    this.reset ??= new ExtraButtonComponent(this.settingEl);
-    configure(this.reset);
-    return this;
-  }
-}
-
-describe("Windows console host settings", () => {
-  afterEach(() => {
-    clearWindowsPythonDiagnoses();
-    vi.restoreAllMocks();
-    vi.clearAllMocks();
-  });
-
-  /** Draws the Windows-only rows in English and returns them by name. */
-  async function drawConsoleHostRows(initial: unknown = {}) {
-    const i18n = createInstance();
-    await i18n.init({
-      lng: "en",
-      resources: { en: { asset, translation: en } },
-    });
-    const rows: ConsoleHostRow[] = [];
-    vi.spyOn(UpdatableUI.prototype, "newSetting").mockImplementation(function (
-      this: UpdatableUI,
-      element,
-      configure,
-    ) {
-      return this.new(
-        () => {
-          const row = new ConsoleHostRow(element);
-          rows.push(row);
-          return row;
-        },
-        (row) => {
-          configure(row);
-        },
-        (row) => {
-          row.settingEl.remove();
-        },
-      );
-    });
-    const context = await pythonSettingsContext(initial);
-    Object.assign(context.language, { value: i18n });
-    const tab = new PythonSettingTab(context, loadDocumentations(context));
-    tab.renderPython();
-    const row = (name: string): ConsoleHostRow => {
-      const found = rows.find((row0) => row0.nameEl.textContent === name);
-      if (!found) throw new Error(`Missing row ${name}`);
-      return found;
-    };
-    return {
-      context,
-      host: row(en.settings["win32-console-host"]),
-      names: () => rows.map((row0) => row0.nameEl.textContent),
-      tab,
-    };
-  }
-
-  it("follows the prewarm toggle with the console host as the last row", async () => {
-    const { host, names, tab } = await drawConsoleHostRows();
-    try {
-      expect(names().slice(-2)).toEqual([
-        en.settings["prewarm-conpty"],
-        "Windows console host",
-      ]);
-      expect(host.descEl.textContent).toBe(
-        en.settings["win32-console-host-description"],
-      );
-    } finally {
-      tab.dispose();
-    }
-  });
-
-  it("offers Windows Terminal and Windows built-in, and stores the choice", async () => {
-    const { context, host, tab } = await drawConsoleHostRows(),
-      dropdown = host.dropdown;
-    if (!dropdown || !host.reset) throw new Error("Missing dropdown controls");
-    try {
-      expect(dropdown.offered).toEqual({
-        automatic: "Windows Terminal",
-        system: "Windows built-in",
-      });
-      expect(Object.keys(dropdown.offered)).toEqual([
-        ...Settings.WIN32_CONSOLE_HOSTS,
-      ]);
-      expect(dropdown.getValue()).toBe("automatic");
-      dropdown.setValue("system");
-      await vi.waitFor(() => {
-        expect(context.settings.value.win32ConsoleHost).toBe("system");
-      });
-      host.reset.extraSettingsEl.click();
-      await vi.waitFor(() => {
-        expect(context.settings.value.win32ConsoleHost).toBe("automatic");
-      });
-    } finally {
-      tab.dispose();
-    }
-  });
 });

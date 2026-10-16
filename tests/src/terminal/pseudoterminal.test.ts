@@ -31,12 +31,8 @@ vi.mock("../../../src/main.js", () => ({
     public readonly language = { value: { t: vi.fn((key: string) => key) } };
     public readonly settings = {
       // Each test explicitly owns its spare; no automatic refill races cleanup.
-      // The console host built into Windows: no console host is requested.
-      value: {
-        errorNoticeTimeout: 0,
-        prewarmConPty: false,
-        win32ConsoleHost: "system",
-      },
+      // The experimental console host is off: no console host is requested.
+      value: { errorNoticeTimeout: 0, experiments: {}, prewarmConPty: false },
     };
   },
 }));
@@ -373,7 +369,6 @@ async function assertReady(
     expect(Object.keys(start ?? {}).sort()).toEqual([
       "columns",
       "command",
-      "consoleHost",
       "cwd",
       "env",
       "op",
@@ -384,15 +379,15 @@ async function assertReady(
       columns: 80,
       rows: 24,
       command: COMMAND,
-      consoleHost: null,
       cwd: null,
     });
     expect(start?.env).toHaveProperty("TES166_CONTRACT", "字");
   } else {
     expect(spawned.args.slice(-COMMAND.length)).toEqual(COMMAND);
     expect(spawned.args).not.toContain("--defer-session");
-    expect(spawned.args).not.toContain("--console-host");
   }
+  // The experimental console host is off: neither path names one.
+  expect(spawned.args).not.toContain("--console-host");
 }
 
 // The fixture's source loading must work in Vitest even off Windows.

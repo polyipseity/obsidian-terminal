@@ -385,6 +385,13 @@
       "restart": "Restart Obsidian to apply the change."
     },
     "experimental-description": "These features are not finished. They may change or be removed in a later version. Each one is off until you turn it on.",
+    "experimental-features": {
+      "windowsTerminalConsoleHost": {
+        "effect": "ConPTY terminals run on the console host that ships with Windows Terminal 1.22 or newer, which passes more terminal replies to programs, such as the reply that lets a program show its status on the tab.",
+        "name": "Windows Terminal console host",
+        "risk": "It starts a copy of Windows Terminal's OpenConsole.exe from your local app data folder. Where Windows Terminal is missing or that copy cannot start, terminals use the console host built into Windows."
+      }
+    },
     "experimental-feedback": "Send feedback",
     "experimental-risk": "Known risk: {{risk}}",
     "expose-internal-modules": "顯示內部模塊",
@@ -464,12 +471,6 @@
     "show-terminal-tab-prefix": "顯示$t(generic.terminal)分頁前綴",
     "terminal-options": "$t(generic.terminal-option_other, capitalize)",
     "terminal-options-description": "除非特定$t(generic.profile)明確覆蓋它們，否則它們會被淺合併到每個$t(generic.profile)中。",
-    "terminal-options-edit": "$t(generic.edit, capitalize)",
-    "win32-console-host": "Windows console host",
-    "win32-console-host-description": "ConPTY terminals can run on the console host that ships with Windows Terminal, which passes more terminal replies to programs. They use it when Windows Terminal 1.22 or newer is installed, and the console host built into Windows otherwise. Choose Windows built-in to always use the console host built into Windows.",
-    "win32-console-host-options": {
-      "automatic": "Windows Terminal",
-      "system": "Windows built-in"
-    }
+    "terminal-options-edit": "$t(generic.edit, capitalize)"
   }
 }
