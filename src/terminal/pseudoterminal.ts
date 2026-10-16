@@ -1440,8 +1440,9 @@ export interface ConPtyStartOp {
   readonly columns: number;
   readonly rows: number;
   readonly cwd: string | null;
-  /** Console host spec from {@link conPtyConsoleHostSpec}; `null` runs the
-   * console host built into Windows. */
+  /** Console host spec from {@link conPtyConsoleHostSpec}: `"auto"` finds
+   * Windows Terminal's `OpenConsole.exe`, and `null` runs the console host
+   * built into Windows. */
   readonly consoleHost: string | null;
   readonly env: Readonly<Record<string, string>>;
   readonly command: readonly string[];
@@ -1465,8 +1466,6 @@ export const CONPTY_CONSOLE_HOST_ENGINES = deepFreeze([
 /** Why the host fell back to the console host built into Windows. */
 export const CONPTY_CONSOLE_HOST_FALLBACKS = deepFreeze([
   "not-found",
-  "not-absolute",
-  "missing",
   "start-failed",
   "unsupported-os",
 ]);
@@ -2642,67 +2641,23 @@ export const CONPTY_DEPENDENCIES: ConPtyPseudoterminalDependencies = {
 
 /**
  * The console host spec a ConPTY session asks its host for: `"auto"` finds
- * Windows Terminal's `OpenConsole.exe`, a path names one, and `null` runs the
- * console host built into Windows. A value the fixer would reject also reads
- * as `null`.
+ * Windows Terminal's `OpenConsole.exe`, and `null` runs the console host built
+ * into Windows. A value the fixer would reject also reads as `null`.
  */
 export function conPtyConsoleHostSpec(
   mode: Settings.Win32ConsoleHost,
-  path: string,
-): string | null {
-  switch (mode) {
-    case "automatic":
-      return CONPTY_CONSOLE_HOST_AUTO;
-    case "custom":
-      return path.trim() || null;
-    default:
-      return null;
-  }
+): typeof CONPTY_CONSOLE_HOST_AUTO | null {
+  return mode === "automatic" ? CONPTY_CONSOLE_HOST_AUTO : null;
 }
 
-/** Custom console host fallbacks already shown, per plugin load. */
-const shownConsoleHostFallbacks = new WeakMap<TerminalPlugin, Set<string>>();
-
-/**
- * Logs the console host a session runs on, once per terminal. A fallback from
- * a custom console host also shows a notice, once per plugin load for the same
- * path and reason; other fallbacks only reach the debug log.
- */
-function reportConPtyConsoleHost(
-  context: TerminalPlugin,
-  report: ConPtyConsoleHost,
-  mode: Settings.Win32ConsoleHost,
-  spec: string | null,
-): void {
-  const { fallback } = report;
-  // Automatic fallbacks are expected wherever Windows Terminal is missing.
-  if (fallback !== null && mode !== "custom") {
+/** Logs the console host a session runs on, once per terminal. */
+function reportConPtyConsoleHost(report: ConPtyConsoleHost): void {
+  // Fallbacks are expected wherever Windows Terminal is missing.
+  if (report.fallback === null) {
+    self.console.info("ConPTY console host", report);
+  } else {
     self.console.debug("ConPTY console host", report);
-    return;
   }
-  self.console.info("ConPTY console host", report);
-  if (fallback === null || spec === null) return;
-  const key = JSON.stringify([spec, fallback]);
-  let shown = shownConsoleHostFallbacks.get(context);
-  if (!shown) {
-    shown = new Set();
-    shownConsoleHostFallbacks.set(context, shown);
-  }
-  if (shown.has(key)) return;
-  shown.add(key);
-  const { language, settings } = context;
-  notice2(
-    () =>
-      language.value.t("notices.win32-console-host-fallback", {
-        interpolation: { escapeValue: false },
-        path: spec,
-        reason: language.value.t(
-          `notices.win32-console-host-fallback-reasons.${fallback}`,
-        ),
-      }),
-    settings.value.noticeTimeout,
-    context,
-  );
 }
 
 /** One startup attempt: a host process and the channel that controls it. */
@@ -2756,11 +2711,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
     dependencies: ConPtyPseudoterminalDependencies = CONPTY_DEPENDENCIES,
   ) {
     const { language, settings } = context,
-      { win32ConsoleHost, win32ConsoleHostPath } = settings.value,
-      consoleHostSpec = conPtyConsoleHostSpec(
-        win32ConsoleHost,
-        win32ConsoleHostPath,
-      ),
+      consoleHostSpec = conPtyConsoleHostSpec(settings.value.win32ConsoleHost),
       pool = dependencies.pool,
       poolGeneration = conPtyPoolGeneration ?? pool?.generation,
       warm = pythonExecutable
@@ -2871,7 +2822,6 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
               argument.includes("\0"),
             ) ||
             directory?.includes("\0") ||
-            consoleHostSpec?.includes("\0") ||
             Object.entries(envRecord).some(
               ([key, value]) =>
                 !key ||
@@ -3071,12 +3021,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
         }
         this.#ready = true;
         try {
-          reportConPtyConsoleHost(
-            context,
-            ready.consoleHost,
-            win32ConsoleHost,
-            consoleHostSpec,
-          );
+          reportConPtyConsoleHost(ready.consoleHost);
         } catch (error) {
           // A report must never fail a terminal that is ready.
           self.console.warn(error);

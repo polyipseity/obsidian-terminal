@@ -220,17 +220,9 @@ describe("src/settings-data.ts", () => {
   });
 
   it("defaults the Windows console host to Windows Terminal's", () => {
-    expect(Settings.WIN32_CONSOLE_HOSTS).toEqual([
-      "automatic",
-      "system",
-      "custom",
-    ]);
+    expect(Settings.WIN32_CONSOLE_HOSTS).toEqual(["automatic", "system"]);
     expect(Settings.DEFAULT.win32ConsoleHost).toBe("automatic");
-    expect(Settings.DEFAULT.win32ConsoleHostPath).toBe("");
-    expect(Settings.fix({}).value).toMatchObject({
-      win32ConsoleHost: "automatic",
-      win32ConsoleHostPath: "",
-    });
+    expect(Settings.fix({}).value.win32ConsoleHost).toBe("automatic");
   });
 
   it.each(Settings.WIN32_CONSOLE_HOSTS)(
@@ -251,14 +243,10 @@ describe("src/settings-data.ts", () => {
     },
   );
 
-  it("keeps a console host path as typed and drops other types", () => {
-    const path = " C:\\Tools\\OpenConsole.exe ";
+  it("replaces the retired custom console host with the default", () => {
     expect(
-      Settings.fix({ win32ConsoleHostPath: path }).value.win32ConsoleHostPath,
-    ).toBe(path);
-    expect(
-      Settings.fix({ win32ConsoleHostPath: 42 }).value.win32ConsoleHostPath,
-    ).toBe("");
+      Settings.fix({ win32ConsoleHost: "custom" }).value.win32ConsoleHost,
+    ).toBe("automatic");
   });
 
   it("drops the retired discovery marker", () => {

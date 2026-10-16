@@ -9,7 +9,6 @@ import {
   DropdownComponent,
   ExtraButtonComponent,
   Setting,
-  TextComponent,
   ToggleComponent,
 } from "obsidian";
 import * as doctor from "../../src/terminal/win32-doctor.js";
@@ -1437,34 +1436,12 @@ class ConsoleHostDropdown extends DropdownComponent {
   }
 }
 
-/** A text field whose value lives in its input, as the real one does. */
-class ConsoleHostText extends TextComponent {
-  public override readonly inputEl = document.createElement("input");
-
-  public override setValue(value: string): this {
-    this.inputEl.value = value;
-    return this;
-  }
-
-  public override getValue(): string {
-    return this.inputEl.value;
-  }
-
-  public override onChange(callback: (value: string) => unknown): this {
-    this.inputEl.oninput = () => {
-      callback(this.inputEl.value);
-    };
-    return this;
-  }
-}
-
-/** A settings row that keeps its dropdown, text field and reset button. */
+/** A settings row that keeps its dropdown and reset button. */
 class ConsoleHostRow extends Setting {
   public override readonly settingEl = document.createElement("div");
   public override readonly nameEl = document.createElement("div");
   public override readonly descEl = document.createElement("div");
   public dropdown: ConsoleHostDropdown | null = null;
-  public text: ConsoleHostText | null = null;
   public reset: ExtraButtonComponent | null = null;
 
   public constructor(containerEl: HTMLElement) {
@@ -1495,12 +1472,6 @@ class ConsoleHostRow extends Setting {
     // The mock's setValue calls the change handler; a redraw must not write.
     this.dropdown.onChange(() => {});
     configure(this.dropdown);
-    return this;
-  }
-
-  public override addText(configure: (text: TextComponent) => unknown): this {
-    this.text ??= new ConsoleHostText(this.settingEl);
-    configure(this.text);
     return this;
   }
 
@@ -1560,31 +1531,26 @@ describe("Windows console host settings", () => {
       context,
       host: row(en.settings["win32-console-host"]),
       names: () => rows.map((row0) => row0.nameEl.textContent),
-      path: row(en.settings["win32-console-host-path"]),
       tab,
     };
   }
 
-  it("follows the prewarm toggle with the console host and its path", async () => {
-    const { host, names, path, tab } = await drawConsoleHostRows();
+  it("follows the prewarm toggle with the console host as the last row", async () => {
+    const { host, names, tab } = await drawConsoleHostRows();
     try {
-      expect(names().slice(-3)).toEqual([
+      expect(names().slice(-2)).toEqual([
         en.settings["prewarm-conpty"],
         "Windows console host",
-        "OpenConsole.exe path",
       ]);
       expect(host.descEl.textContent).toBe(
         en.settings["win32-console-host-description"],
-      );
-      expect(path.descEl.textContent).toBe(
-        "The console host to use when Windows console host is Custom.",
       );
     } finally {
       tab.dispose();
     }
   });
 
-  it("offers Windows Terminal, Windows built-in and Custom, and stores the choice", async () => {
+  it("offers Windows Terminal and Windows built-in, and stores the choice", async () => {
     const { context, host, tab } = await drawConsoleHostRows(),
       dropdown = host.dropdown;
     if (!dropdown || !host.reset) throw new Error("Missing dropdown controls");
@@ -1592,46 +1558,19 @@ describe("Windows console host settings", () => {
       expect(dropdown.offered).toEqual({
         automatic: "Windows Terminal",
         system: "Windows built-in",
-        custom: "Custom",
       });
       expect(Object.keys(dropdown.offered)).toEqual([
         ...Settings.WIN32_CONSOLE_HOSTS,
       ]);
       expect(dropdown.getValue()).toBe("automatic");
-      dropdown.setValue("custom");
+      dropdown.setValue("system");
       await vi.waitFor(() => {
-        expect(context.settings.value.win32ConsoleHost).toBe("custom");
+        expect(context.settings.value.win32ConsoleHost).toBe("system");
       });
       host.reset.extraSettingsEl.click();
       await vi.waitFor(() => {
         expect(context.settings.value.win32ConsoleHost).toBe("automatic");
       });
-    } finally {
-      tab.dispose();
-    }
-  });
-
-  it("stores the typed path without a Python check and resets it", async () => {
-    const typed = "C:\\Tools\\OpenConsole.exe",
-      { context, path, tab } = await drawConsoleHostRows({
-        win32ConsoleHost: "custom",
-      }),
-      { text, reset } = path;
-    if (!text || !reset) throw new Error("Missing path controls");
-    try {
-      expect(text.getValue()).toBe("");
-      text.inputEl.value = typed;
-      text.inputEl.dispatchEvent(new Event("input"));
-      await vi.waitFor(() => {
-        expect(context.settings.value.win32ConsoleHostPath).toBe(typed);
-      });
-      text.inputEl.dispatchEvent(new Event("blur"));
-      expect(runPluginPythonCheck).not.toHaveBeenCalled();
-      reset.extraSettingsEl.click();
-      await vi.waitFor(() => {
-        expect(context.settings.value.win32ConsoleHostPath).toBe("");
-      });
-      expect(context.settings.value.win32ConsoleHost).toBe("custom");
     } finally {
       tab.dispose();
     }

@@ -126,8 +126,6 @@ export interface Settings extends PluginContext.Settings {
   readonly pythonExecutable: string;
   /** Console host that runs ConPTY terminals on Windows. */
   readonly win32ConsoleHost: Settings.Win32ConsoleHost;
-  /** `OpenConsole.exe` used when {@link win32ConsoleHost} is `"custom"`. */
-  readonly win32ConsoleHostPath: string;
 }
 export namespace Settings {
   export type DefaultProfile = Opaque<
@@ -310,7 +308,6 @@ export namespace Settings {
     rightClickAction: "copyPaste",
     terminalOptions: DEFAULT_TERMINAL_OPTIONS,
     win32ConsoleHost: "automatic",
-    win32ConsoleHostPath: "",
   });
 
   export const DEFAULTABLE_LANGUAGES = deepFreeze([
@@ -344,12 +341,8 @@ export namespace Settings {
 
   /** Windows console hosts for ConPTY terminals, in the order the settings
    * offer them: Windows Terminal's `OpenConsole.exe` when one is installed,
-   * the one built into Windows, or an `OpenConsole.exe` the user names. */
-  export const WIN32_CONSOLE_HOSTS = deepFreeze([
-    "automatic",
-    "system",
-    "custom",
-  ]);
+   * or the one built into Windows. */
+  export const WIN32_CONSOLE_HOSTS = deepFreeze(["automatic", "system"]);
   export type Win32ConsoleHost = (typeof WIN32_CONSOLE_HOSTS)[number];
 
   /**
@@ -1727,9 +1720,6 @@ export namespace Settings {
         "win32ConsoleHost",
         WIN32_CONSOLE_HOSTS,
       ),
-      win32ConsoleHostPath: fixTyped(DEFAULT, unc, "win32ConsoleHostPath", [
-        "string",
-      ]),
     };
     return markFixed(self0, fixed);
   }
