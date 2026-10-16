@@ -15,6 +15,7 @@ import {
   setTextToEnum,
 } from "@polyipseity/obsidian-plugin-library";
 import { cloneDeep } from "es-toolkit/object";
+import type { Setting } from "obsidian";
 import semverLt from "semver/functions/lt.js";
 import type { loadDocumentations } from "./documentations.js";
 import {
@@ -757,7 +758,8 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               },
             ),
           );
-      });
+      })
+      .newSetting(containerEl, this.tabStatusSetting());
     this.newNoticeTimeoutWidget(Settings.DEFAULT);
     this.newSectionWidget(() => i18n.t("settings.advanced"));
     ui.newSetting(containerEl, (setting) => {
@@ -878,6 +880,59 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
     this.newExperimentalWidgets();
   }
 
+  /** The Program status row: a dropdown of None, Still and Animated. */
+  protected tabStatusSetting(): (setting: Setting) => void {
+    const {
+      context: {
+        language: { value: i18n },
+        settings,
+      },
+    } = this;
+    return (setting) => {
+      setting
+        .setName(i18n.t("settings.tab-status"))
+        .setDesc(i18n.t("settings.tab-status-description"))
+        .addDropdown(
+          linkSetting(
+            (): string => settings.value.tabStatus,
+            setTextToEnum(Settings.TAB_STATUSES, async (value) =>
+              settings.mutate((settingsM) => {
+                settingsM.tabStatus = value;
+              }),
+            ),
+            () => {
+              this.postMutate();
+            },
+            {
+              pre: (dropdown) => {
+                dropdown.addOptions(
+                  Object.fromEntries(
+                    Settings.TAB_STATUSES.map((value) => [
+                      value,
+                      i18n.t(`settings.tab-status-options.${value}`),
+                    ]),
+                  ),
+                );
+              },
+            },
+          ),
+        )
+        .addExtraButton(
+          resetButton(
+            i18n.t("asset:settings.tab-status-icon"),
+            i18n.t("settings.reset"),
+            async () =>
+              settings.mutate((settingsM) => {
+                settingsM.tabStatus = Settings.DEFAULT.tabStatus;
+              }),
+            () => {
+              this.postMutate();
+            },
+          ),
+        );
+    };
+  }
+
   /** Every registered experiment with its texts, in registry order. */
   protected experimentRows(): readonly Experiment.Row[] {
     // One entry per experiment in EXPERIMENTS: its name, effect and risk.
@@ -905,16 +960,6 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
       ui,
     } = this;
     this.newSectionWidget(() => i18n.t("settings.experimental"));
-    ui.new(
-      () => createChildElement(containerEl, "div"),
-      (ele) => {
-        ele.classList.add(DOMClasses.SETTING_ITEM);
-        ele.textContent = i18n.t("settings.experimental-description");
-      },
-      (ele) => {
-        ele.remove();
-      },
-    );
     for (const row of rows) {
       const { applies, feedback, id, options } = row,
         // Off removes the key: the fixer keeps only a stored `true`.

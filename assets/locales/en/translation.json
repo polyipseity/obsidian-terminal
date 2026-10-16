@@ -405,7 +405,6 @@
       "newTerminals": "Applies to terminals opened after the change.",
       "restart": "Restart Obsidian to apply the change."
     },
-    "experimental-description": "These features are not finished. They may change or be removed in a later version. Each one is off until you turn it on.",
     "experimental-feedback": "Send feedback",
     "experimental-risk": "Known risk: {{risk}}",
     "expose-internal-modules": "Expose internal modules",
@@ -482,6 +481,13 @@
       "default": "Default",
       "nothing": "Nothing",
       "paste": "Paste"
+    },
+    "tab-status": "Program status",
+    "tab-status-description": "Marks on $t(generic.terminal) $t(generic.tab) icons for programs that report OSC 7501: working, needs input, finished, error.",
+    "tab-status-options": {
+      "animated": "Animated",
+      "none": "None",
+      "still": "Still"
     },
     "terminal-options": "$t(generic.terminal-option_other, capitalize)",
     "terminal-options-description": "Shallow-merged into every $t(generic.profile) unless a specific $t(generic.profile) explicitly overrides them.",

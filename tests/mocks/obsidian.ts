@@ -2042,6 +2042,11 @@ export function removeIcon(iconId: string): void {
   state.icons.delete(iconId);
 }
 
+/** Obsidian shows the tooltip of an element from its `aria-label`. */
+export function setTooltip(el: HTMLElement, tooltip: string): void {
+  el.setAttribute("aria-label", tooltip);
+}
+
 // ===== Test Helpers =====
 
 const appInstance = new App();

@@ -384,7 +384,6 @@
       "newTerminals": "Applies to terminals opened after the change.",
       "restart": "Restart Obsidian to apply the change."
     },
-    "experimental-description": "These features are not finished. They may change or be removed in a later version. Each one is off until you turn it on.",
     "experimental-feedback": "Send feedback",
     "experimental-risk": "Known risk: {{risk}}",
     "expose-internal-modules": "显示内部模块",
@@ -462,6 +461,13 @@
       "paste": "粘贴"
     },
     "show-terminal-tab-prefix": "显示$t(generic.terminal)标签页前缀",
+    "tab-status": "Program status",
+    "tab-status-description": "Marks on $t(generic.terminal) $t(generic.tab) icons for programs that report OSC 7501: working, needs input, finished, error.",
+    "tab-status-options": {
+      "animated": "Animated",
+      "none": "None",
+      "still": "Still"
+    },
     "terminal-options": "$t(generic.terminal-option_other, capitalize)",
     "terminal-options-description": "除非特定$t(generic.profile)明确覆盖它们，否则它们会被浅合并到每个$t(generic.profile)中。",
     "terminal-options-edit": "$t(generic.edit, capitalize)",

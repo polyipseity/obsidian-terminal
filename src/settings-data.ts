@@ -112,6 +112,9 @@ export interface Settings extends PluginContext.Settings {
   readonly hideStatusBar: Settings.HideStatusBarOption;
   readonly showTerminalTabPrefix: boolean;
 
+  /** Program status on terminal tabs (OSC 7501): off, still, or animated. */
+  readonly tabStatus: Settings.TabStatus;
+
   /** Experimental features the user turned on. A missing key is off. */
   readonly experiments: ExperimentFlags;
   readonly exposeInternalModules: boolean;
@@ -290,6 +293,7 @@ export namespace Settings {
     noticeTimeout: 5,
     openChangelogOnUpdate: true,
     showTerminalTabPrefix: false,
+    tabStatus: "animated",
     pinNewInstance: true,
     preferredRenderer: "webgl",
     prewarmConPty: true,
@@ -338,6 +342,15 @@ export namespace Settings {
     "running",
   ]);
   export type HideStatusBarOption = (typeof HIDE_STATUS_BAR_OPTIONS)[number];
+
+  /**
+   * Program status on terminal tabs (OSC 7501). `none` shows no status and
+   * leaves the program's reports unheard; `still` shows the marks, and
+   * nothing moves; `animated` also moves the dots of a working program, pops
+   * in a new finish, need of input or error, and slides a new title in.
+   */
+  export const TAB_STATUSES = deepFreeze(["none", "still", "animated"]);
+  export type TabStatus = (typeof TAB_STATUSES)[number];
 
   export const PREFERRED_RENDERER_OPTIONS = RendererAddon.RENDERER_OPTIONS;
   export type PreferredRendererOption = RendererAddon.RendererOption;
@@ -1600,6 +1613,43 @@ export namespace Settings {
       });
     }
   }
+  /**
+   * The stored Program status, or the one the builds before it stood for:
+   * their experiment's switch, which was on only for a stored `true`, with
+   * their Motion setting (`loop` moved the dots).
+   *
+   * @param self0 the stored settings, as read
+   * @returns the Program status to keep
+   */
+  function fixTabStatus(self0: unknown): TabStatus {
+    // Own keys only, as `fixExperiments` reads them: a stored `__proto__`
+    // object makes a laundered copy inherit what it holds.
+    const tabStatus = ownValue(self0, "tabStatus");
+    if (inSet(TAB_STATUSES, tabStatus)) {
+      return tabStatus;
+    }
+    if (ownValue(ownValue(self0, "experiments"), "tabStatus") === true) {
+      return ownValue(self0, "tabStatusAnimation") === "loop"
+        ? "animated"
+        : "still";
+    }
+    return DEFAULT.tabStatus;
+  }
+
+  /**
+   * @param value what was read
+   * @param key a key
+   * @returns the value `value` itself holds under `key`, or `undefined` when
+   *   it holds none (an inherited one included) or is no object
+   */
+  function ownValue(value: unknown, key: string): unknown {
+    if (typeof value !== "object" || value === null) {
+      return undefined;
+    }
+    const own: unknown = Object.getOwnPropertyDescriptor(value, key)?.value;
+    return own;
+  }
+
   export function fix(self0: unknown): Fixed<Settings> {
     const unc = launderUnchecked<Settings>(self0);
 
@@ -1648,6 +1698,7 @@ export namespace Settings {
       showTerminalTabPrefix: fixTyped(DEFAULT, unc, "showTerminalTabPrefix", [
         "boolean",
       ]),
+      tabStatus: fixTabStatus(self0),
       interceptKeysWhenFocused: fixTyped(
         DEFAULT,
         unc,

@@ -22,6 +22,7 @@ import {
   fixExperiments,
   isExperimentEnabled,
   whileExperimentEnabled,
+  whileSettingsHold,
 } from "../../src/experiments.js";
 import { Settings } from "../../src/settings-data.js";
 
@@ -414,6 +415,136 @@ describe("src/experiments.ts", () => {
         await settings.set({ alpha: true, beta: true });
         expect(start).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe("whileSettingsHold", () => {
+    interface Switch {
+      readonly level: "off" | "low" | "high";
+    }
+
+    /** A settings source of one setting that notifies only on a change. */
+    function source(initial: Switch["level"]) {
+      let value: Switch = { level: initial };
+      const listeners: (() => void)[] = [];
+      return {
+        get value(): Switch {
+          return value;
+        },
+        onMutate<V>(
+          accessor: (settings: Switch) => V,
+          callback: (cur: V) => unknown,
+        ): () => void {
+          let prev = accessor(value);
+          const listener = (): void => {
+            const cur = accessor(value);
+            if (cur !== prev) {
+              prev = cur;
+              callback(cur);
+            }
+          };
+          listeners.push(listener);
+          return () => {
+            listeners.splice(listeners.indexOf(listener), 1);
+          };
+        },
+        set(level: Switch["level"]): void {
+          value = { level };
+          for (const listener of [...listeners]) {
+            listener();
+          }
+        },
+      };
+    }
+
+    const on = (settings: Switch): boolean => settings.level !== "off";
+
+    it("runs start while the predicate holds, and only a change of its answer starts or stops", () => {
+      const settings = source("off"),
+        stop = vi.fn(),
+        start = vi.fn(() => stop);
+      whileSettingsHold(settings, on, "Level", start);
+      expect(start).not.toHaveBeenCalled();
+      settings.set("low");
+      expect(start).toHaveBeenCalledOnce();
+      // Another value for which it still holds: nothing restarts.
+      settings.set("high");
+      expect(start).toHaveBeenCalledOnce();
+      expect(stop).not.toHaveBeenCalled();
+      settings.set("off");
+      expect(stop).toHaveBeenCalledOnce();
+    });
+
+    it("starts at once where it already holds, and its disposer stops and unsubscribes", () => {
+      const settings = source("high"),
+        stop = vi.fn(),
+        start = vi.fn(() => stop),
+        dispose = whileSettingsHold(settings, on, "Level", start);
+      expect(start).toHaveBeenCalledOnce();
+      dispose();
+      expect(stop).toHaveBeenCalledOnce();
+      settings.set("off");
+      settings.set("low");
+      expect(start).toHaveBeenCalledOnce();
+    });
+
+    it("logs an error of start or of its disposer under the given name", () => {
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {}),
+        settings = source("off"),
+        failure = new Error("start failed");
+      whileSettingsHold(settings, on, "Program status on tabs", () => {
+        throw failure;
+      });
+      expect(() => {
+        settings.set("low");
+      }).not.toThrow();
+      expect(logged).toHaveBeenCalledExactlyOnceWith(
+        "Program status on tabs:",
+        failure,
+      );
+    });
+
+    it("starts and stops as the gate of an experiment does on the same changes", async () => {
+      const settings = fakeSettings<"alpha" | "beta">({}),
+        gate = { start: vi.fn(), stop: vi.fn() },
+        held = { start: vi.fn(), stop: vi.fn() };
+      whileExperimentEnabled(settings, "alpha", () => {
+        gate.start();
+        return gate.stop;
+      });
+      whileSettingsHold(
+        settings,
+        (value) => isExperimentEnabled(value, "alpha"),
+        "Alpha",
+        () => {
+          held.start();
+          return held.stop;
+        },
+      );
+      for (const flags of [
+        { alpha: true },
+        { alpha: true, beta: true },
+        { beta: true },
+        {},
+        { alpha: true },
+      ] as const) {
+        await settings.set(flags);
+        expect(held.start.mock.calls.length).toBe(gate.start.mock.calls.length);
+        expect(held.stop.mock.calls.length).toBe(gate.stop.mock.calls.length);
+      }
+      expect(gate.start).toHaveBeenCalledTimes(2);
+      expect(gate.stop).toHaveBeenCalledOnce();
+    });
+
+    it("accepts the plugin's settings manager with a predicate over its settings", () => {
+      const check = (manager: SettingsManager<Settings>): (() => void) =>
+        whileSettingsHold(
+          manager,
+          (value) => value.tabStatus !== "none",
+          "Program status on tabs",
+          () => () => {},
+        );
+      expect(check).toBeTypeOf("function");
     });
   });
 

@@ -7,6 +7,7 @@ import {
 import { createInstance } from "i18next";
 import {
   ButtonComponent,
+  DropdownComponent,
   ExtraButtonComponent,
   Setting,
   ToggleComponent,
@@ -793,16 +794,13 @@ describe("experimental section", () => {
     expect(rows).toHaveLength(0);
   });
 
-  it("draws the heading, the intro and one row per experiment in order", async () => {
+  it("draws the heading and one row per experiment in order, with no intro", async () => {
     const { rows, tab } = await drawExperimentalSection([ALPHA, BETA]),
       children = Array.from(tab.containerEl.children),
-      [heading, intro, alpha, beta] = children;
-    expect(children).toHaveLength(4);
+      [heading, alpha, beta] = children;
+    expect(children).toHaveLength(3);
     expect(heading?.tagName).toBe("H2");
     expect(heading?.textContent).toBe(en.settings.experimental);
-    expect(intro?.tagName).toBe("DIV");
-    expect(intro?.classList.contains("setting-item")).toBe(true);
-    expect(intro?.textContent).toBe(en.settings["experimental-description"]);
     expect(alpha?.getAttribute("data-experiment")).toBe("alpha");
     expect(beta?.getAttribute("data-experiment")).toBe("beta");
     expect(rows.map((row) => row.nameEl.textContent)).toEqual([
@@ -818,20 +816,20 @@ describe("experimental section", () => {
       null,
       TwoExperimentsSettingTab,
     );
-    // The heading, the intro and the two rows, as when the rows are given.
+    // The heading and the two rows, as when the rows are given.
     expect(
       Array.from(
         tab.containerEl.children,
         (child) => child.getAttribute("data-experiment") ?? child.tagName,
       ),
-    ).toEqual(["H2", "DIV", "alpha", "beta"]);
+    ).toEqual(["H2", "alpha", "beta"]);
   });
 
   it("draws the registered experiments when it is given no rows", async () => {
     const registered: readonly Experiment[] = EXPERIMENTS,
       { tab } = await drawExperimentalSection(null),
       drawn = tab.containerEl.querySelectorAll("[data-experiment]");
-    // None is registered in this version, so there is no heading and no row.
+    // One heading for the section, however many are registered.
     expect(tab.containerEl.querySelectorAll("h2")).toHaveLength(
       Math.min(registered.length, 1),
     );
@@ -994,6 +992,13 @@ describe("experimental section", () => {
     section.tab.update();
     expect(alpha.toggle.getValue()).toBe(true);
     expect(section.holder("alpha")?.style.display).toBe("");
+  });
+
+  it("registers no experiment: program status on tabs is no longer one", async () => {
+    const { rows, tab } = await drawExperimentalSection(null);
+    expect(EXPERIMENTS).toHaveLength(0);
+    expect(tab.containerEl.childElementCount).toBe(0);
+    expect(rows).toHaveLength(0);
   });
 });
 
@@ -1455,6 +1460,15 @@ class MainWindowRow extends Setting {
   public override readonly settingEl = document.createElement("div");
   public override readonly nameEl = document.createElement("div");
   public override readonly descEl = document.createElement("div");
+  public override readonly controlEl = document.createElement("div");
+  /** The extra button, kept across redraws as the real row keeps it. */
+  public reset: ExtraButtonComponent | null = null;
+  /** The dropdown, kept across redraws in the same way. */
+  public dropdown: DropdownComponent | null = null;
+  /** The options handed to the dropdown, in order. */
+  public readonly dropdownOptions = new Map<string, string>();
+  /** What the dropdown calls when the user chooses. */
+  protected changed: ((value: string) => unknown) | null = null;
 
   public override setName(name: string | DocumentFragment): this {
     MainWindowRow.setText(this.nameEl, name);
@@ -1471,6 +1485,46 @@ class MainWindowRow extends Setting {
   ): this {
     configure(new ButtonComponent(this.settingEl));
     return this;
+  }
+
+  public override addExtraButton(
+    configure: (button: ExtraButtonComponent) => unknown,
+  ): this {
+    this.reset ??= new ExtraButtonComponent(this.controlEl);
+    configure(this.reset);
+    return this;
+  }
+
+  public override addDropdown(
+    configure: (dropdown: DropdownComponent) => unknown,
+  ): this {
+    if (!this.dropdown) {
+      const dropdown = new DropdownComponent(this.controlEl),
+        { dropdownOptions } = this,
+        addOptions = dropdown.addOptions.bind(dropdown);
+      // The mock keeps its options to itself; the row notes them too.
+      vi.spyOn(dropdown, "addOptions").mockImplementation((options) => {
+        for (const [value, display] of Object.entries(options)) {
+          dropdownOptions.set(value, display);
+        }
+        return addOptions(options);
+      });
+      // As Obsidian's: setting the value is not a choice of the user's, and
+      // calls nothing. The mock's would, and a redraw would choose again.
+      vi.spyOn(dropdown, "onChange").mockImplementation((callback) => {
+        this.changed = callback;
+        return dropdown;
+      });
+      this.dropdown = dropdown;
+    }
+    configure(this.dropdown);
+    return this;
+  }
+
+  /** The user chooses an option, as from the dropdown's list. */
+  public choose(value: string): void {
+    this.dropdown?.setValue(value);
+    void this.changed?.(value);
   }
 
   protected static setText(element: HTMLElement, value: unknown): void {
@@ -1493,7 +1547,7 @@ function captureMainWindowRows(): ReadonlyMap<string, MainWindowRow> {
     return this.new(
       () => {
         const row = new MainWindowRow(element);
-        row.settingEl.append(row.nameEl, row.descEl);
+        row.settingEl.append(row.nameEl, row.descEl, row.controlEl);
         element.append(row.settingEl);
         return row;
       },
@@ -1521,6 +1575,9 @@ function settingsWindowDocument(): Document {
 class LoadedSettingTab extends SettingTab {
   public load(): void {
     this.onLoad();
+  }
+  public update(): void {
+    this.ui.update();
   }
   public dispose(): void {
     this.onUnload();
@@ -1633,4 +1690,192 @@ describe("settings tab descriptions", () => {
       }
     },
   );
+});
+
+describe("program status row", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.replaceChildren();
+  });
+
+  /** The whole settings tab, drawn as Obsidian draws it. */
+  async function drawSettingsTab(initial: Settings.TabStatus = "none") {
+    const i18n = createInstance();
+    await i18n.init({
+      lng: "en",
+      resources: { en: { asset, translation: en } },
+    });
+    const rows = captureMainWindowRows(),
+      context = await pythonSettingsContext();
+    Object.assign(context, {
+      localSettings: {
+        value: LocalSettings.fix({ lastReadChangelogVersion: "0.0.0" }).value,
+      },
+      version: null,
+    });
+    Object.assign(context.language, {
+      onChangeLanguage: { listen: vi.fn().mockReturnValue(vi.fn()) },
+      value: i18n,
+    });
+    // The fixer's round trip of the value is the settings data's to test.
+    vi.spyOn(context.settings, "mutate").mockImplementation(async (mutate) => {
+      const value = cloneAsWritable(context.settings.value);
+      await mutate(value);
+      Object.assign(context.settings, { value });
+    });
+    await context.settings.mutate((settingsM) => {
+      settingsM.tabStatus = initial;
+    });
+    const write = vi.spyOn(context.settings, "write");
+    const tab = new LoadedSettingTab(context, loadDocumentations(context));
+    document.body.append(tab.containerEl);
+    tab.load();
+    const named = (name: string): MainWindowRow => {
+        const row = rows.get(name);
+        if (!row) throw new Error(`Missing row ${name}`);
+        return row;
+      },
+      row = named(i18n.t("settings.tab-status")),
+      { dropdown, reset } = row;
+    if (!reset) throw new Error("Missing reset button");
+    if (!dropdown) throw new Error("Missing dropdown");
+    return { context, dropdown, i18n, named, reset, row, rows, tab, write };
+  }
+
+  it("is in the Interface section, right after Show terminal tab prefix", async () => {
+    const { i18n, named, row, tab } = await drawSettingsTab();
+    try {
+      expect(row.settingEl.previousElementSibling).toBe(
+        named(i18n.t("settings.show-terminal-tab-prefix")).settingEl,
+      );
+      let heading = row.settingEl.previousElementSibling;
+      while (heading && heading.tagName !== "H2") {
+        heading = heading.previousElementSibling;
+      }
+      expect(heading?.textContent).toBe(en.settings.interface);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("has its name and a one-sentence description that names OSC 7501", async () => {
+    const { row, tab } = await drawSettingsTab();
+    try {
+      expect(row.nameEl.textContent).toBe("Program status");
+      expect(row.descEl.textContent).toBe(
+        "Marks on terminal tab icons for programs that report OSC 7501: working, needs input, finished, error.",
+      );
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("offers None, Still and Animated in a dropdown, in that order, with the reset button", async () => {
+    const { dropdown, row, tab } = await drawSettingsTab();
+    try {
+      expect([...row.dropdownOptions]).toEqual([
+        ["none", "None"],
+        ["still", "Still"],
+        ["animated", "Animated"],
+      ]);
+      expect(dropdown.getValue()).toBe("none");
+      expect(row.reset?.extraSettingsEl.parentElement).toBe(row.controlEl);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("shows the stored value", async () => {
+    const { dropdown, tab } = await drawSettingsTab("animated");
+    try {
+      expect(dropdown.getValue()).toBe("animated");
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it.each(["still", "animated", "none"] as const)(
+    "stores %s when it is chosen, and saves",
+    async (value) => {
+      const initial = value === "none" ? "still" : "none",
+        { context, row, tab, write } = await drawSettingsTab(initial);
+      try {
+        row.choose(value);
+        await vi.waitFor(() => {
+          expect(context.settings.value.tabStatus).toBe(value);
+          expect(write).toHaveBeenCalled();
+        });
+      } finally {
+        tab.dispose();
+      }
+    },
+  );
+
+  it("stores nothing for a value it does not offer", async () => {
+    const { context, dropdown, row, tab } = await drawSettingsTab("still");
+    try {
+      row.choose("loop");
+      await vi.waitFor(() => {
+        expect(dropdown.getValue()).toBe("still");
+      });
+      expect(context.settings.value.tabStatus).toBe("still");
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("resets to Animated, the default", async () => {
+    const { context, dropdown, reset, tab } = await drawSettingsTab("none");
+    try {
+      expect(Settings.DEFAULT.tabStatus).toBe("animated");
+      reset.extraSettingsEl.click();
+      await vi.waitFor(() => {
+        expect(context.settings.value.tabStatus).toBe("animated");
+        expect(dropdown.getValue()).toBe("animated");
+      });
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("follows a change made elsewhere on the next redraw", async () => {
+    const { context, dropdown, tab } = await drawSettingsTab();
+    try {
+      await context.settings.mutate((settingsM) => {
+        settingsM.tabStatus = "still";
+      });
+      tab.update();
+      expect(dropdown.getValue()).toBe("still");
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("draws no icon, no tile, no preview strip, no icon set, size or motion picker and no experimental intro", async () => {
+    const { row, rows, tab } = await drawSettingsTab(),
+      { containerEl } = tab;
+    try {
+      for (const selector of [
+        ".tts-strip",
+        ".tts-pick",
+        ".tts-host",
+        '[role="radiogroup"]',
+      ]) {
+        expect(containerEl.querySelectorAll(selector), selector).toHaveLength(
+          0,
+        );
+      }
+      expect(row.settingEl.querySelectorAll("svg")).toHaveLength(0);
+      for (const name of ["Terminal icon", "Icon size", "Motion"]) {
+        expect(rows.has(name), name).toBe(false);
+      }
+      expect(containerEl.textContent).not.toContain("These features");
+      // An empty registry draws no Experimental section at all.
+      expect(
+        Array.from(containerEl.querySelectorAll("h2"), (h2) => h2.textContent),
+      ).not.toContain(en.settings.experimental);
+    } finally {
+      tab.dispose();
+    }
+  });
 });
