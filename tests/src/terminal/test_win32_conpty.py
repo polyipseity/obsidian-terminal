@@ -30,7 +30,7 @@ from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from types import ModuleType
 from typing import Any, NamedTuple
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 import pytest
 
@@ -2036,6 +2036,155 @@ def test_open_pseudoconsole_raises_when_the_built_in_host_fails() -> None:
         )
 
 
+def test_built_in_pseudoconsole_never_reports_an_exit() -> None:
+    """Only a launched ``OpenConsole.exe`` can exit before the shell starts."""
+    assert _fake_pseudoconsole(7).exited(1000) is None
+
+
+class _ChildStart(NamedTuple):
+    """The seams of one ``_create_child_or_fall_back`` call, in one recorder."""
+
+    events: Mock
+    openconsole: Any
+    built_in: Any
+
+
+def _child_start(exit_code: int | None, children: Sequence[Any]) -> _ChildStart:
+    """Prepare an OpenConsole whose exit reports ``exit_code``.
+
+    ``children`` are the results, or errors, of the successive child starts.
+    Every seam records into ``events``, so a test can check their order.
+    """
+    events = Mock()
+    events.create_child.side_effect = list(children)
+    events.exited.return_value = exit_code
+    events.create_built_in.return_value = _MODULE._PseudoConsole(
+        11, events.built_in_resize, events.built_in_close
+    )
+    openconsole = _MODULE._PseudoConsole(9, events.resize, events.close, events.exited)
+    return _ChildStart(events, openconsole, events.create_built_in.return_value)
+
+
+def _create_child_on_openconsole(start: _ChildStart) -> tuple[Any, Any]:
+    """Create the child on the prepared OpenConsole plan."""
+    return _MODULE._create_child_or_fall_back(
+        _MODULE._ConsoleHost("openconsole", "C:\\copy\\OpenConsole.exe"),
+        start.openconsole,
+        start.events.create_child,
+        start.events.discard_child,
+        start.events.create_built_in,
+    )
+
+
+def test_create_child_keeps_a_running_openconsole() -> None:
+    """A check without waiting finds OpenConsole alive; nothing else happens."""
+    start = _child_start(None, [(101, 102, 4242)])
+
+    host, child = _create_child_on_openconsole(start)
+
+    assert child == (101, 102, 4242)
+    assert host.report() == {
+        "engine": "openconsole",
+        "path": "C:\\copy\\OpenConsole.exe",
+        "fallback": None,
+        "detail": None,
+    }
+    assert start.events.mock_calls == [call.create_child(9), call.exited(0)]
+
+
+def test_create_child_on_the_built_in_host_never_checks_for_an_exit() -> None:
+    """The built-in console host is the fallback itself."""
+    start = _child_start(None, [(101, 102, 4242)])
+
+    host, child = _MODULE._create_child_or_fall_back(
+        _MODULE._ConsoleHost(),
+        start.built_in,
+        start.events.create_child,
+        start.events.discard_child,
+        start.events.create_built_in,
+    )
+
+    assert (host, child) == (_MODULE._ConsoleHost(), (101, 102, 4242))
+    assert start.events.mock_calls == [call.create_child(11)]
+
+
+def test_create_child_falls_back_after_a_failed_start_when_openconsole_exited() -> None:
+    """OpenConsole died while loading: the built-in host runs the shell instead.
+
+    Only once OpenConsole has exited, and its handles are closed, does the
+    built-in host get the pipe ends.
+    """
+    start = _child_start(
+        0xC0000135, [_MODULE.ChildStartError("broken", 251), (101, 102, 4242)]
+    )
+
+    host, child = _create_child_on_openconsole(start)
+
+    assert child == (101, 102, 4242)
+    assert start.events.mock_calls == [
+        call.create_child(9),
+        call.exited(1000),
+        call.close(),
+        call.create_built_in(),
+        call.create_child(11),
+    ]
+    assert (host.engine, host.path, host.fallback) == ("conhost", None, "exited")
+    assert "3221225781" in host.detail
+    assert "0xC0000135" in host.detail
+
+
+def test_create_child_raises_unchanged_while_openconsole_runs() -> None:
+    """A start that fails beside a live OpenConsole is the profile's fault."""
+    error = _MODULE.ChildStartError("access denied", 251)
+    start = _child_start(None, [error])
+
+    with pytest.raises(_MODULE.ChildStartError) as raised:
+        _create_child_on_openconsole(start)
+
+    assert raised.value is error
+    assert start.events.mock_calls == [call.create_child(9), call.exited(1000)]
+
+
+def test_create_child_falls_back_when_openconsole_exited_before_the_resume() -> None:
+    """The child exists but would die once resumed; it is ended unrun instead."""
+    start = _child_start(1, [(201, 202, 1111), (301, 302, 2222)])
+
+    host, child = _create_child_on_openconsole(start)
+
+    assert child == (301, 302, 2222)
+    assert start.events.mock_calls == [
+        call.create_child(9),
+        call.exited(0),
+        call.discard_child((201, 202, 1111)),
+        call.close(),
+        call.create_built_in(),
+        call.create_child(11),
+    ]
+    assert host.fallback == "exited"
+    assert "code 1 " in host.detail
+
+
+@pytest.mark.parametrize(
+    "children",
+    (
+        [OSError("first"), _MODULE.ChildStartError("again", 9009)],
+        [(201, 202, 1111), _MODULE.ChildStartError("again", 9009)],
+    ),
+    ids=("failed-start", "created-child"),
+)
+def test_create_child_raises_when_the_retry_fails(children: list[Any]) -> None:
+    """The one retry on the built-in host fails as any start does; no third try."""
+    start = _child_start(3, children)
+
+    with pytest.raises(_MODULE.ChildStartError) as raised:
+        _create_child_on_openconsole(start)
+
+    assert raised.value is children[1]
+    assert start.events.create_child.call_count == 2
+    start.events.close.assert_called_once_with()
+    start.events.create_built_in.assert_called_once_with()
+
+
 def test_console_host_command_line_matches_conpty_dll() -> None:
     """The quoted path, size, and lowercase-hex handles of ``winconpty.cpp``."""
     path = "C:\\Program Files\\Terminal\\OpenConsole.exe"
@@ -2593,6 +2742,7 @@ def _run_host(
     interpreter: str = sys.executable,
     console_host: str | None = None,
     console_host_ahead: str | None = None,
+    host_script: Path | None = None,
 ) -> _HostResult:
     """Run the ConPTY host once against a real control pipe and child.
 
@@ -2601,7 +2751,8 @@ def _run_host(
     the command, size, ``child_environment``, ``child_cwd``, and
     ``console_host`` in a ``start`` op; an immediate host inherits
     ``child_environment`` and receives ``child_cwd`` and ``console_host`` as
-    its ``--cwd`` and ``--console-host`` arguments.
+    its ``--cwd`` and ``--console-host`` arguments. ``host_script`` runs in
+    place of the host module, with the same arguments.
     """
     pipe_name = "\\\\.\\pipe\\obsidian-terminal-conpty-test-" + uuid.uuid4().hex
     token = uuid.uuid4().hex
@@ -2634,7 +2785,10 @@ def _run_host(
             os.environ if deferred or child_environment is None else child_environment
         )
         environment[_MODULE.TOKEN_ENVIRONMENT_VARIABLE] = token
-        arguments = [interpreter, str(_module_path())]
+        arguments = [
+            interpreter,
+            str(_module_path() if host_script is None else host_script),
+        ]
         if deferred:
             arguments.extend(["--defer-session", pipe_name])
             if console_host_ahead is not None:
@@ -3667,6 +3821,77 @@ def test_resize_reaches_the_child_on_the_windows_terminal_console_host() -> None
         "seq": 3,
     } in result.messages, result
     assert b"output drain timed out" not in result.stderr, result
+
+
+def _stub_console_host_script(directory: Path, console_host: Path) -> Path:
+    """Write a host script that runs ``console_host`` for ``auto``.
+
+    The script runs the host module with the same arguments. Only ``auto``
+    finds ``console_host`` as Windows Terminal's console host, and the host
+    waits for a launched one to exit, so a stub that exits at once is gone
+    before the shell starts however fast the host is.
+    """
+    script = directory / "stub_console_host.py"
+    script.write_text(
+        "from importlib.util import module_from_spec, spec_from_file_location\n"
+        f"spec = spec_from_file_location('win32_conpty', {str(_module_path())!r})\n"
+        "module = module_from_spec(spec)\n"
+        "spec.loader.exec_module(module)\n"
+        "module._find_windows_terminal = lambda: module.WindowsTerminal(\n"
+        f"    'stub', {str(console_host)!r}\n"
+        ")\n"
+        "launch = module._launch_console_host\n"
+        "def launch_and_wait(*arguments):\n"
+        "    pseudoconsole = launch(*arguments)\n"
+        "    pseudoconsole.exited(10000)\n"
+        "    return pseudoconsole\n"
+        "module._launch_console_host = launch_and_wait\n"
+        "module.main()\n",
+        encoding="utf-8",
+    )
+    return script
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize("deferred", (False, True))
+@pytest.mark.parametrize(
+    ("stub", "fallback"),
+    (("hostname", "exited"), ("text", "start-failed")),
+    ids=("exits-at-once", "not-a-program"),
+)
+def test_session_falls_back_from_a_broken_console_host(
+    tmp_path: Path, stub: str, fallback: str, deferred: bool
+) -> None:
+    """A console host that exits at once, or cannot start, hands over quietly.
+
+    ``hostname.exe`` prints an error for the console host's arguments and
+    exits. The built-in console host then runs the shell, ``ready`` says why,
+    and nothing reaches stderr, which the plugin shows as an error.
+    """
+    console_host = tmp_path / "OpenConsole.exe"
+    if stub == "hostname":
+        system = os.path.join(os.environ["SystemRoot"], "System32")
+        shutil.copyfile(os.path.join(system, "hostname.exe"), console_host)
+    else:
+        console_host.write_text("not a program\n", encoding="utf-8")
+    result = _run_host(
+        ["cmd", "/c", "echo hello-after-fallback"],
+        close_stdin=False,
+        deferred=deferred,
+        console_host="auto",
+        host_script=_stub_console_host_script(tmp_path, console_host),
+    )
+    assert result.code == 0, result
+    assert "hello-after-fallback" in result.text, result
+    report = _ready_report(result)
+    assert (report["engine"], report["path"], report["fallback"]) == (
+        "conhost",
+        None,
+        fallback,
+    ), result
+    assert isinstance(report["detail"], str), result
+    assert result.stderr == b"", result
+    assert result.messages[-1] == {"event": "exit", "code": 0}
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)

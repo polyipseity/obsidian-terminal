@@ -15,9 +15,10 @@ A prewarmed host runs as ``python <file> --defer-session <pipe-name>
 asks for the ``OpenConsole.exe`` that Windows Terminal ships instead of the
 console host built into Windows. The host finds it through Windows' package
 API, starts it the way ``conpty.dll`` does, falls back to the built-in console
-host when it cannot, and reports which one runs in the ``consoleHost`` field of
-``ready``. On a prewarmed host the option only lets it find Windows Terminal
-while it waits; the ``start`` op still decides.
+host when it cannot or when it exits before the shell starts, and reports which
+one runs in the ``consoleHost`` field of ``ready``. On a prewarmed host the
+option only lets it find Windows Terminal while it waits; the ``start`` op still
+decides.
 
 The host binds the child process to a pseudoconsole and bridges three channels.
 Its stdin and stdout carry raw terminal bytes.  A local named pipe, created by
@@ -178,6 +179,8 @@ _FILE_ATTRIBUTE_REPARSE_POINT = 0x00000400
 Antivirus software may still hold a file that was just written.
 """
 _REPLACE_RETRY_SECONDS = 0.1
+"""Milliseconds a failed shell start waits to see whether OpenConsole died."""
+_CONSOLE_HOST_EXIT_MILLISECONDS = 1000
 """Package architecture names of the ``IsWow64Process2`` native machines."""
 _MACHINE_ARCHITECTURES = {0x8664: "x64", 0xAA64: "arm64", 0x014C: "x86"}
 """Package family names of Windows Terminal and its Preview."""
@@ -877,17 +880,25 @@ def _fall_back(code: str, detail: str | None) -> _ConsoleHost:
     return _ConsoleHost(_ENGINE_CONHOST, None, code, detail)
 
 
+def _never_exited(_milliseconds: int) -> int | None:
+    """Report that the console host built into Windows has not exited."""
+    return None
+
+
 class _PseudoConsole(NamedTuple):
     """A created pseudoconsole and the functions of the host that created it.
 
     ``handle`` is the ``HPCON`` value for ``PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE``.
     Only these functions may resize or close it: a handle from one console
-    host means nothing to the other.
+    host means nothing to the other. ``exited`` waits up to the given
+    milliseconds for an ``OpenConsole.exe`` to exit and returns its exit code,
+    or ``None`` while it runs; the built-in console host never reports one.
     """
 
     handle: int
     resize: Callable[[int, int], int]
     close: Callable[[], None]
+    exited: Callable[[int], int | None] = _never_exited
 
 
 class _ConsoleHostUnsupported(OSError):
@@ -1173,6 +1184,51 @@ def _open_pseudoconsole(
         except OSError as error:
             host = _fall_back("start-failed", str(error))
     return host, create_built_in()
+
+
+def _create_child_or_fall_back(
+    host: _ConsoleHost,
+    pseudoconsole: _PseudoConsole,
+    create_child: Callable[[int], tuple[int, int, int]],
+    discard_child: Callable[[tuple[int, int, int]], None],
+    create_built_in: Callable[[], _PseudoConsole],
+) -> tuple[_ConsoleHost, tuple[int, int, int]]:
+    """Create the suspended child, on the built-in host if OpenConsole died.
+
+    ``create_child`` takes the ``HPCON`` value and returns the child's
+    process, thread, and PID. An ``OpenConsole.exe`` that dies while it loads
+    fails the child's start or leaves a child that would die once resumed.
+    So when the start fails, OpenConsole gets a moment to exit, and when it
+    succeeds, a check without waiting tells whether OpenConsole is already
+    gone; ``discard_child`` then terminates the child, which never ran. Only
+    once OpenConsole has exited does the built-in host get the pipe ends,
+    ``pseudoconsole.close`` having released OpenConsole's handles, and the
+    child is started once more. A start that fails while OpenConsole still
+    runs is the profile's fault and raises unchanged. Nothing is written to
+    stderr: ``ready`` reports the fallback.
+    """
+    if host.engine != _ENGINE_OPENCONSOLE:
+        return host, create_child(pseudoconsole.handle)
+    try:
+        child = create_child(pseudoconsole.handle)
+    except OSError:
+        code = pseudoconsole.exited(_CONSOLE_HOST_EXIT_MILLISECONDS)
+        if code is None:
+            raise
+    else:
+        # OpenConsole dying after this check, once the shell runs, is out of
+        # scope: the terminal then ends as after any crash.
+        code = pseudoconsole.exited(0)
+        if code is None:
+            return host, child
+        discard_child(child)
+    pseudoconsole.close()
+    host = _fall_back(
+        "exited",
+        f"OpenConsole.exe exited before the shell started, with code "
+        f"{code} (0x{code & 0xFFFFFFFF:08X})",
+    )
+    return host, create_child(create_built_in().handle)
 
 
 def _console_host_command_line(
@@ -1867,8 +1923,15 @@ if sys.platform == "win32":
             ):
                 _close(_as_handle(handle))
 
+        def exited(milliseconds: int) -> int | None:
+            """Return OpenConsole's exit code once it exits, or ``None``."""
+            process = _as_handle(pseudoconsole.hConPtyProcess)
+            if _WaitForSingleObject(process, milliseconds) != _WAIT_OBJECT_0:
+                return None
+            return _exit_code(process)
+
         # The closures keep the struct, which the HPCON points to, alive.
-        return _PseudoConsole(ctypes.addressof(pseudoconsole), resize, close)
+        return _PseudoConsole(ctypes.addressof(pseudoconsole), resize, close, exited)
 
     def _native_architecture() -> str | None:
         """Return the package architecture of the machine Windows runs on.
@@ -2047,6 +2110,14 @@ if sys.platform == "win32":
         if not _TerminateProcess(process, _EXIT_TERMINATED):
             raise _last_error()
         _WaitForSingleObject(process, _TERMINATE_GRACE_MILLISECONDS)
+
+    def _discard_child(process: int, thread: int) -> None:
+        """Terminate a suspended child that never ran and release its handles."""
+        try:
+            _terminate_process(process)
+        finally:
+            _close(thread)
+            _close(process)
 
     def _terminate_job(job: int) -> None:
         """Terminate every contained process; Job close remains the fallback."""
@@ -2382,16 +2453,27 @@ if sys.platform == "win32":
                 raise
 
             def create_session() -> tuple[int, int, int]:
-                """Create ConPTY and its suspended child before pipe cleanup."""
+                """Create ConPTY and its suspended child before pipe cleanup.
+
+                The retry on the built-in host after OpenConsole died happens
+                here too, while the pipe ends are still open.
+                """
                 columns, rows = arguments.columns, arguments.rows
+
+                def create_built_in() -> _PseudoConsole:
+                    """Create the built-in host's pseudoconsole for the session."""
+                    built_in = _create_pseudoconsole(
+                        columns, rows, input_read, output_write
+                    )
+                    self._pseudoconsole = built_in
+                    return built_in
+
                 self._console_host, pseudoconsole = _open_pseudoconsole(
                     console_host,
                     lambda path: _launch_console_host(
                         path, columns, rows, input_read, output_write
                     ),
-                    lambda: _create_pseudoconsole(
-                        columns, rows, input_read, output_write
-                    ),
+                    create_built_in,
                 )
                 self._pseudoconsole = pseudoconsole
                 self._job = _create_job()
@@ -2410,16 +2492,27 @@ if sys.platform == "win32":
                     # Windows C runtime. Never clear an inherited host opt-out.
                     os.environ["NoDefaultCurrentDirectoryInExePath"] = "1"
                 program, *rest = arguments.command
-                return _create_child(
-                    build_command_line(
-                        (
-                            resolve_executable(program, path),
-                            *rest,
-                        )
-                    ),
-                    pseudoconsole.handle,
-                    _build_environment_block(environment) if environment else None,
+                command_line = build_command_line(
+                    (
+                        resolve_executable(program, path),
+                        *rest,
+                    )
                 )
+                environment_block = (
+                    _build_environment_block(environment) if environment else None
+                )
+                self._console_host, child = _create_child_or_fall_back(
+                    self._console_host,
+                    # Closing through the session clears ``_pseudoconsole``
+                    # first, so ``_release`` cannot close it a second time.
+                    pseudoconsole._replace(close=self._close_pseudoconsole),
+                    lambda handle: _create_child(
+                        command_line, handle, environment_block
+                    ),
+                    lambda created: _discard_child(created[0], created[1]),
+                    create_built_in,
+                )
+                return child
 
             try:
                 self._process, self._thread, self._process_id = create_session()
