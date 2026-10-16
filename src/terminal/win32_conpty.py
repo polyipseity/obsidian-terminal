@@ -907,6 +907,36 @@ def _plan_console_host(
     return _ConsoleHost(_ENGINE_OPENCONSOLE, path)
 
 
+class _NoCopyYet(Exception):
+    """No copy of Windows Terminal's console host exists to reuse yet."""
+
+
+def _plan_console_host_ahead(
+    find_windows_terminal: Callable[[], WindowsTerminal | None],
+    find_copy: Callable[[str, str], str | None],
+) -> _ConsoleHost | None:
+    """Plan ``auto`` while a prewarmed host waits for its ``start``.
+
+    The plan is the one ``start`` would make, so a terminal that asks for
+    Windows Terminal's console host need not wait for the lookup. The host
+    does not know the setting yet, so this writes nothing: ``find_copy``
+    returns a copy that already exists, or ``None``. Without one there is no
+    plan, and ``start`` plans and copies as usual.
+    """
+
+    def reuse(source: str, name: str) -> str:
+        """Return the existing copy, or stop the plan."""
+        copy = find_copy(source, name)
+        if copy is None:
+            raise _NoCopyYet
+        return copy
+
+    try:
+        return _plan_console_host(_CONSOLE_HOST_AUTO, find_windows_terminal, reuse)
+    except _NoCopyYet:
+        return None
+
+
 def _file_digest(path: str) -> bytes:
     """Return the SHA-256 digest of a file's content."""
     digest = hashlib.sha256()
@@ -924,6 +954,15 @@ def _same_content(source: str, copy: str) -> bool:
         )
     except OSError:
         return False
+
+
+def _existing_console_host_copy(source: str, name: str, root: str) -> str | None:
+    """Return the copy ``_copy_console_host`` would return, if it exists.
+
+    It must have exactly the content of ``source``. Nothing is written.
+    """
+    target = os.path.join(root, name, _CONSOLE_HOST_EXECUTABLE)
+    return target if _same_content(source, target) else None
 
 
 def _copy_console_host(source: str, name: str, root: str) -> str:
@@ -1753,14 +1792,24 @@ if sys.platform == "win32":
             _windows_terminal_packages(), os.path.isfile, _native_architecture()
         )
 
-    def _copy_from_windows_apps(source: str, name: str) -> str:
-        """Copy a ``WindowsApps`` console host to the user's local app data."""
+    def _console_host_copies() -> str:
+        """Return the folder that holds copies of ``WindowsApps`` console hosts."""
         local = os.environ.get("LOCALAPPDATA")
         if not local:
             raise OSError("LOCALAPPDATA is not set")
-        return _copy_console_host(
-            source, name, os.path.join(local, "obsidian-terminal", "console-host")
-        )
+        return os.path.join(local, "obsidian-terminal", "console-host")
+
+    def _copy_from_windows_apps(source: str, name: str) -> str:
+        """Copy a ``WindowsApps`` console host to the user's local app data."""
+        return _copy_console_host(source, name, _console_host_copies())
+
+    def _copied_from_windows_apps(source: str, name: str) -> str | None:
+        """Return an existing copy of a ``WindowsApps`` console host, if any."""
+        try:
+            root = _console_host_copies()
+        except OSError:
+            return None
+        return _existing_console_host_copy(source, name, root)
 
     def _create_job() -> int:
         """Own only the shell in a kill-on-close job; descendants break away.
@@ -1970,6 +2019,8 @@ if sys.platform == "win32":
             # The console host that runs, reported in ``ready``; the built-in
             # one until ``_start`` creates the pseudoconsole.
             self._console_host = _ConsoleHost()
+            # A prewarmed host's plan for ``auto``, made while it waited.
+            self._planned_console_host: _ConsoleHost | None = None
             self._pseudoconsole: _PseudoConsole | None = None
             self._input_write = 0
             self._output_read = 0
@@ -2014,6 +2065,9 @@ if sys.platform == "win32":
                     }
                 )
                 self._authenticate_control()
+                self._planned_console_host = _plan_console_host_ahead(
+                    _find_windows_terminal, _copied_from_windows_apps
+                )
                 start = self._await_start()
             except OSError as error:
                 diagnose(f"could not enter the deferred session: {error}")
@@ -2099,12 +2153,15 @@ if sys.platform == "win32":
                         _EXIT_SHELL_START_FAILED,
                     ) from error
             # Finding and copying the console host needs no session handle, so
-            # a fallback here leaves nothing to release.
-            console_host = _plan_console_host(
-                arguments.console_host,
-                _find_windows_terminal,
-                _copy_from_windows_apps,
-            )
+            # a fallback here leaves nothing to release. A prewarmed host
+            # planned ``auto`` while it waited.
+            console_host = self._planned_console_host
+            if console_host is None or arguments.console_host != _CONSOLE_HOST_AUTO:
+                console_host = _plan_console_host(
+                    arguments.console_host,
+                    _find_windows_terminal,
+                    _copy_from_windows_apps,
+                )
 
             input_read, self._input_write = _create_pipe()
             try:

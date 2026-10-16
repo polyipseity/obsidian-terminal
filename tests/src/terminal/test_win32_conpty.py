@@ -1464,6 +1464,49 @@ def test_plan_console_host_reports_a_failed_copy() -> None:
     }
 
 
+def test_plan_console_host_ahead_reuses_an_existing_copy() -> None:
+    """A waiting host plans what ``start`` would plan with the same copy."""
+    package = _terminal_package()
+    found = _MODULE.WindowsTerminal(package[0], _console_host_of(package))
+    copy = "C:\\copy\\OpenConsole.exe"
+    find_copy = Mock(return_value=copy)
+
+    host = _MODULE._plan_console_host_ahead(Mock(return_value=found), find_copy)
+
+    find_copy.assert_called_once_with(_console_host_of(package), package[0])
+    assert host == _plan("auto", found, copy=Mock(return_value=copy)).host
+
+
+def test_plan_console_host_ahead_leaves_a_missing_copy_to_start() -> None:
+    """Without a copy there is no plan: only ``start`` may make the copy."""
+    package = _terminal_package()
+    found = _MODULE.WindowsTerminal(package[0], _console_host_of(package))
+    assert (
+        _MODULE._plan_console_host_ahead(
+            Mock(return_value=found), Mock(return_value=None)
+        )
+        is None
+    )
+
+
+def test_plan_console_host_ahead_runs_a_console_host_outside_windows_apps() -> None:
+    """A Windows Terminal installed elsewhere needs no copy to plan ahead."""
+    found = _MODULE.WindowsTerminal("pkg", "D:\\Terminal\\OpenConsole.exe")
+    find_copy = Mock(return_value=None)
+
+    host = _MODULE._plan_console_host_ahead(Mock(return_value=found), find_copy)
+
+    find_copy.assert_not_called()
+    assert (host.engine, host.path) == ("openconsole", "D:\\Terminal\\OpenConsole.exe")
+
+
+def test_plan_console_host_ahead_reports_a_missing_windows_terminal() -> None:
+    """The fallback is planned ahead too, as ``start`` would report it."""
+    host = _MODULE._plan_console_host_ahead(Mock(return_value=None), Mock())
+    assert host == _plan("auto").host
+    assert host.fallback == "not-found"
+
+
 def _copy_tree(root: Path) -> dict[str, bytes]:
     """Return every file under ``root`` by relative POSIX path, with content."""
     return {
@@ -1471,6 +1514,40 @@ def _copy_tree(root: Path) -> dict[str, bytes]:
         for path in root.rglob("*")
         if path.is_file()
     }
+
+
+def test_existing_console_host_copy_writes_nothing_without_a_copy(
+    tmp_path: Path,
+) -> None:
+    """Looking for a copy that does not exist creates no file or folder."""
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    root = tmp_path / "copies"
+
+    assert _MODULE._existing_console_host_copy(str(source), "Pkg_1", str(root)) is None
+    assert not root.exists()
+
+
+@pytest.mark.parametrize(
+    ("content", "found"),
+    ((b"console-host-v1", True), (b"console-host-v0", False), (b"old", False)),
+    ids=("identical", "same-size", "other-size"),
+)
+def test_existing_console_host_copy_takes_only_an_identical_copy(
+    tmp_path: Path, content: bytes, found: bool
+) -> None:
+    """A copy differing in size or SHA-256 is no copy; it stays as it is."""
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    root = tmp_path / "copies"
+    target = root / "Pkg_1" / "OpenConsole.exe"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(content)
+
+    copy = _MODULE._existing_console_host_copy(str(source), "Pkg_1", str(root))
+
+    assert copy == (str(target) if found else None)
+    assert _copy_tree(root) == {"Pkg_1/OpenConsole.exe": content}
 
 
 def test_copy_console_host_creates_a_missing_copy(tmp_path: Path) -> None:
@@ -3239,6 +3316,26 @@ def test_session_runs_on_the_windows_terminal_console_host(deferred: bool) -> No
     assert result.messages[-1] == {"event": "exit", "code": 0}
     # Closing the handles must make OpenConsole exit and end the output pipe.
     assert b"output drain timed out" not in result.stderr, result
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+def test_deferred_session_on_the_built_in_host_ignores_the_plan_ahead() -> None:
+    """A spare plans Windows Terminal's host while idle; ``null`` still wins."""
+    _installed_windows_terminal()
+    result = _run_host(
+        ["cmd", "/c", "echo hello-conhost"],
+        deferred=True,
+        close_stdin=False,
+        console_host=None,
+    )
+    assert result.code == 0, result
+    assert "hello-conhost" in result.text, result
+    assert _ready_report(result) == {
+        "engine": "conhost",
+        "path": None,
+        "fallback": None,
+        "detail": None,
+    }, result
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
