@@ -571,6 +571,13 @@ describe("ConPTY control protocol", () => {
     },
     SYSTEM_CONSOLE_HOST,
     { detail: null, engine: "conhost", fallback: "not-found", path: null },
+    // Windows Terminal's console host started but exited before the shell ran.
+    {
+      detail: "exited with code 1",
+      engine: "conhost",
+      fallback: "exited",
+      path: null,
+    },
     ...CONPTY_CONSOLE_HOST_FALLBACKS.map((fallback): ConPtyConsoleHost => ({
       detail: "0x80070002",
       engine: "conhost",
@@ -2912,23 +2919,27 @@ describe("ConPTY console host", () => {
     }
   });
 
-  it("logs a fallback only at debug level", async () => {
-    const report: ConPtyConsoleHost = {
-        detail: null,
-        engine: "conhost",
-        fallback: "not-found",
-        path: null,
-      },
-      info = vi.spyOn(self.console, "info").mockImplementation(() => {}),
-      debug = vi.spyOn(self.console, "debug").mockImplementation(() => {}),
-      pty = await openReporting(report, conPtyContext(void 0, ON));
-    try {
-      expect(info).not.toHaveBeenCalled();
-      expect(debug).toHaveBeenCalledWith("ConPTY console host", report);
-    } finally {
-      await close(pty);
-    }
-  });
+  it.each(["not-found", "exited"] as const)(
+    "logs the fallback %s only at debug level",
+    async (fallback) => {
+      const report: ConPtyConsoleHost = {
+          detail: null,
+          engine: "conhost",
+          fallback,
+          path: null,
+        },
+        info = vi.spyOn(self.console, "info").mockImplementation(() => {}),
+        debug = vi.spyOn(self.console, "debug").mockImplementation(() => {}),
+        pty = await openReporting(report, conPtyContext(void 0, ON));
+      try {
+        await expect(pty.consoleHost).resolves.toEqual(report);
+        expect(info).not.toHaveBeenCalled();
+        expect(debug).toHaveBeenCalledWith("ConPTY console host", report);
+      } finally {
+        await close(pty);
+      }
+    },
+  );
 });
 
 describe("ConPTY source materialization", () => {

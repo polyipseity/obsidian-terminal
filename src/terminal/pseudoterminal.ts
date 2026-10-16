@@ -1463,8 +1463,11 @@ export const CONPTY_CONSOLE_HOST_ENGINES = deepFreeze([
   "conhost",
   "openconsole",
 ]);
-/** Why the host fell back to the console host built into Windows. */
+/** Why the host fell back to the console host built into Windows.
+ * `exited`: Windows Terminal's console host started but exited before the
+ * shell ran. */
 export const CONPTY_CONSOLE_HOST_FALLBACKS = deepFreeze([
+  "exited",
   "not-found",
   "start-failed",
   "unsupported-os",
