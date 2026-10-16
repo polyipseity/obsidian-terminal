@@ -2235,6 +2235,100 @@ def test_create_child_raises_when_the_retry_fails(children: list[Any]) -> None:
     start.events.create_built_in.assert_called_once_with()
 
 
+def _check_before_hello(start: _ChildStart, host: Any, pseudoconsole: Any) -> Any:
+    """Check the prepared console host before ``hello`` names child 1111."""
+    return _MODULE._child_before_hello(
+        host,
+        pseudoconsole,
+        (201, 202, 1111),
+        start.events.create_child,
+        start.events.discard_child,
+        start.events.create_built_in,
+        start.events.adopt_child,
+    )
+
+
+def test_child_before_hello_falls_back_once_openconsole_exited() -> None:
+    """OpenConsole died after the child's start: a new child takes the built-in host.
+
+    ``hello`` will name the new child, which joins the job before it runs.
+    """
+    start = _child_start(5, [(301, 302, 2222)])
+
+    host = _check_before_hello(start, _COPY_PLAN, start.openconsole)
+
+    assert start.events.mock_calls == [
+        call.exited(0),
+        call.discard_child((201, 202, 1111)),
+        call.close(),
+        call.create_built_in(),
+        call.create_child(11),
+        call.adopt_child((301, 302, 2222)),
+    ]
+    assert (host.engine, host.path, host.fallback) == ("conhost", None, "exited")
+    assert "code 5 " in host.detail
+
+
+def test_child_before_hello_keeps_the_child_of_a_running_openconsole() -> None:
+    """A check without waiting finds OpenConsole alive; nothing else happens."""
+    start = _child_start(None, [])
+
+    host = _check_before_hello(start, _COPY_PLAN, start.openconsole)
+
+    assert host is _COPY_PLAN
+    assert start.events.mock_calls == [call.exited(0)]
+
+
+def test_child_before_hello_never_checks_the_built_in_host() -> None:
+    """After an earlier fallback, or without OpenConsole, the child stays as is."""
+    start = _child_start(3, [])
+    plan = _MODULE._fall_back("exited", "OpenConsole.exe exited")
+
+    host = _check_before_hello(start, plan, start.built_in)
+
+    assert host is plan
+    assert start.events.mock_calls == []
+
+
+def test_child_before_hello_raises_when_the_new_child_cannot_start() -> None:
+    """The one retry fails as any start does; nothing joins the job."""
+    error = _MODULE.ChildStartError("again", 9009)
+    start = _child_start(3, [error])
+
+    with pytest.raises(_MODULE.ChildStartError) as raised:
+        _check_before_hello(start, _COPY_PLAN, start.openconsole)
+
+    assert raised.value is error
+    start.events.discard_child.assert_called_once_with((201, 202, 1111))
+    start.events.adopt_child.assert_not_called()
+
+
+@pytest.mark.parametrize("exit_code", (1, None), ids=("exited", "running"))
+def test_resume_named_child_resumes_whether_or_not_openconsole_exited(
+    exit_code: int | None,
+) -> None:
+    """``hello`` has named the child, so a dead OpenConsole no longer replaces it.
+
+    The shell then fails on its own, with an exit code the plugin reports.
+    """
+    start = _child_start(exit_code, [])
+
+    _MODULE._resume_named_child(_COPY_PLAN, start.openconsole, start.events.resume)
+
+    assert start.events.mock_calls == [call.exited(0), call.resume()]
+
+
+def test_resume_named_child_on_the_built_in_host_only_resumes() -> None:
+    """The built-in console host never exits early, so nothing is checked."""
+    start = _child_start(1, [])
+
+    _MODULE._resume_named_child(
+        _MODULE._ConsoleHost(), start.built_in, start.events.resume
+    )
+
+    assert start.events.mock_calls == [call.resume()]
+
+
 def test_console_host_command_line_matches_conpty_dll() -> None:
     """The quoted path, size, and lowercase-hex handles of ``winconpty.cpp``."""
     path = "C:\\Program Files\\Terminal\\OpenConsole.exe"
@@ -4052,6 +4146,76 @@ def test_session_falls_back_from_a_broken_console_host(
         fallback,
     ), result
     assert isinstance(report["detail"], str), result
+    assert result.stderr == b"", result
+    assert result.messages[-1] == {"event": "exit", "code": 0}
+
+
+def _console_host_dies_before_hello_script(directory: Path) -> Path:
+    """Write a host script whose OpenConsole ends just before ``hello``.
+
+    The script runs the host module with the same arguments. It keeps the
+    process of the OpenConsole it launches, and right before the last check
+    ahead of ``hello`` terminates it with exit code 7 and waits until it is
+    gone, so every earlier check finds OpenConsole running.
+    """
+    script = directory / "console_host_dies_before_hello.py"
+    script.write_text(
+        "from importlib.util import module_from_spec, spec_from_file_location\n"
+        f"spec = spec_from_file_location('win32_conpty', {str(_module_path())!r})\n"
+        "module = module_from_spec(spec)\n"
+        "spec.loader.exec_module(module)\n"
+        "processes = []\n"
+        "start = module._start_console_host\n"
+        "def start_and_keep(*arguments):\n"
+        "    process = start(*arguments)\n"
+        "    processes.append(process)\n"
+        "    return process\n"
+        "module._start_console_host = start_and_keep\n"
+        "check = module._child_before_hello\n"
+        "def end_then_check(*arguments):\n"
+        "    if processes:\n"
+        "        module._TerminateProcess(processes[-1], 7)\n"
+        "        module._WaitForSingleObject(processes[-1], 10000)\n"
+        "    return check(*arguments)\n"
+        "module._child_before_hello = end_then_check\n"
+        "module.main()\n",
+        encoding="utf-8",
+    )
+    return script
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize("deferred", (False, True), ids=("cold", "prewarmed"))
+def test_session_falls_back_when_openconsole_dies_before_hello(
+    tmp_path: Path, deferred: bool
+) -> None:
+    """OpenConsole ending after the shell's start, before ``hello``, hands over.
+
+    The suspended shell never ran, so the built-in console host runs a new
+    one, ``hello`` and ``ready`` both name it, and nothing reaches stderr.
+    """
+    _installed_windows_terminal()
+    result = _run_host(
+        ["cmd", "/c", "echo hello-after-fallback"],
+        close_stdin=False,
+        deferred=deferred,
+        console_host="auto",
+        host_script=_console_host_dies_before_hello_script(tmp_path),
+    )
+    assert result.code == 0, result
+    assert "hello-after-fallback" in result.text, result
+    report = _ready_report(result)
+    assert (report["engine"], report["path"], report["fallback"]) == (
+        "conhost",
+        None,
+        "exited",
+    ), result
+    detail = report["detail"]
+    assert isinstance(detail, str), result
+    # The exit code the script gave OpenConsole: this fallback is its doing.
+    assert "0x00000007" in detail, result
+    events = {message.get("event"): message for message in result.messages}
+    assert events["hello"]["childPid"] == events["ready"]["childPid"], result
     assert result.stderr == b"", result
     assert result.messages[-1] == {"event": "exit", "code": 0}
 
