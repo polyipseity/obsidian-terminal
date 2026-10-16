@@ -1070,7 +1070,11 @@ def test_parse_arguments_leaves_a_console_host_flag_after_the_separator() -> Non
 def test_parse_start_reads_the_console_host_spec(
     fields: dict[str, Any], expected: str | None
 ) -> None:
-    """Absent, ``null`` and ``""`` all mean the built-in console host."""
+    """Absent and ``null`` mean the built-in console host; ``""`` is refused.
+
+    The plugin sends no key while the setting is off; a literal ``null`` still
+    means the same.
+    """
     start = _MODULE._parse_start(
         {"op": "start", "columns": 80, "rows": 24, "command": ["cmd"], **fields},
         "\\\\.\\pipe\\p",
@@ -2742,6 +2746,7 @@ def _run_host(
     interpreter: str = sys.executable,
     console_host: str | None = None,
     console_host_ahead: str | None = None,
+    start_fields: Mapping[str, Any] | None = None,
     host_script: Path | None = None,
 ) -> _HostResult:
     """Run the ConPTY host once against a real control pipe and child.
@@ -2749,10 +2754,10 @@ def _run_host(
     ``deferred`` boots the host with ``--defer-session``, plus
     ``--console-host`` with ``console_host_ahead`` when given, and delivers
     the command, size, ``child_environment``, ``child_cwd``, and
-    ``console_host`` in a ``start`` op; an immediate host inherits
-    ``child_environment`` and receives ``child_cwd`` and ``console_host`` as
-    its ``--cwd`` and ``--console-host`` arguments. ``host_script`` runs in
-    place of the host module, with the same arguments.
+    ``console_host`` in a ``start`` op, followed by ``start_fields``; an
+    immediate host inherits ``child_environment`` and receives ``child_cwd``
+    and ``console_host`` as its ``--cwd`` and ``--console-host`` arguments.
+    ``host_script`` runs in place of the host module, with the same arguments.
     """
     pipe_name = "\\\\.\\pipe\\obsidian-terminal-conpty-test-" + uuid.uuid4().hex
     token = uuid.uuid4().hex
@@ -2763,13 +2768,15 @@ def _run_host(
             "columns": columns,
             "rows": rows,
             "command": list(command),
-            # The plugin always sends the key, ``null`` for the built-in host.
-            "consoleHost": console_host,
         }
+        if console_host is not None:
+            # The plugin sends no key for the built-in host.
+            start["consoleHost"] = console_host
         if child_environment is not None:
             start["env"] = dict(child_environment)
         if child_cwd is not None:
             start["cwd"] = child_cwd
+        start.update(start_fields or {})
     server = _ControlServer(
         pipe_name,
         token,
@@ -3720,17 +3727,21 @@ def _ready_report(result: _HostResult) -> dict[str, Any]:
 def _installed_windows_terminal() -> Any:
     """Return the Windows Terminal ``auto`` picks, or skip without one.
 
-    ty reads ``pytest.skip`` as taking no arguments, hence the ignores.
+    On GitHub Actions the test fails instead: the ``windows-2025`` runner has
+    Windows Terminal 1.23, so a skip there would hide a broken lookup. ty
+    reads ``pytest.skip`` as taking no arguments, hence the ignore.
     """
     try:
         found = _MODULE._find_windows_terminal()
     except OSError as error:
         reason = f"the installed packages cannot be listed: {error}"
-        pytest.skip(reason)  # ty: ignore[too-many-positional-arguments]
-    if found is None:
+    else:
+        if found is not None:
+            return found
         reason = "Windows Terminal 1.22 or newer is not installed"
-        pytest.skip(reason)  # ty: ignore[too-many-positional-arguments]
-    return found
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        raise AssertionError(reason)
+    pytest.skip(reason)  # ty: ignore[too-many-positional-arguments]
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
@@ -3776,18 +3787,34 @@ def test_session_runs_on_the_windows_terminal_console_host(
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
-def test_deferred_session_on_the_built_in_host_ignores_the_plan_ahead() -> None:
-    """A spare planned Windows Terminal's host while idle; ``null`` still wins.
+@pytest.mark.parametrize(
+    "start_fields", ({}, {"consoleHost": None}), ids=("omitted", "null")
+)
+def test_deferred_session_on_the_built_in_host_ignores_the_plan_ahead(
+    start_fields: dict[str, Any],
+) -> None:
+    """A spare planned Windows Terminal's host while idle; the start still wins.
 
-    The plugin's setting may change after the spare booted with the hint.
+    The plugin's setting may change after the spare booted with the hint. The
+    start then has no ``consoleHost``; a literal ``null`` means the same.
     """
-    _installed_windows_terminal()
+    found = _installed_windows_terminal()
+    if _MODULE._in_windows_apps(found.console_host):
+        # A spare plans ahead only with an existing copy; make sure one exists.
+        _MODULE._copy_from_windows_apps(found.console_host, found.package)
+    # The spare runs this same lookup while it waits, so it holds this plan.
+    planned = _MODULE._plan_console_host_ahead(
+        _MODULE._find_windows_terminal, _MODULE._copied_from_windows_apps
+    )
+    assert planned is not None, planned
+    assert planned.engine == "openconsole", planned
     result = _run_host(
         ["cmd", "/c", "echo hello-conhost"],
         deferred=True,
         close_stdin=False,
         console_host=None,
         console_host_ahead="auto",
+        start_fields=start_fields,
     )
     assert result.code == 0, result
     assert "hello-conhost" in result.text, result
@@ -3821,6 +3848,95 @@ def test_resize_reaches_the_child_on_the_windows_terminal_console_host() -> None
         "seq": 3,
     } in result.messages, result
     assert b"output drain timed out" not in result.stderr, result
+
+
+"""An ``OSC 7501`` query, as a program's terminal would answer it, typed in."""
+_OSC_7501 = b"\x1b]7501;?\x1b\\"
+
+
+def _report_osc_input() -> list[str]:
+    """Return a child that tells whether ``OSC 7501`` reached its input.
+
+    It reads ``CONIN$`` raw in VT input mode, without line input, echo, or
+    processed input, for at most 10 seconds after it prints that it reads.
+    """
+    code = (
+        "import ctypes, os, threading\n"
+        "from ctypes import wintypes\n"
+        'kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)\n'
+        "kernel32.CreateFileW.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, "
+        "wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, "
+        "wintypes.HANDLE)\n"
+        "kernel32.CreateFileW.restype = wintypes.HANDLE\n"
+        "kernel32.SetConsoleMode.argtypes = (wintypes.HANDLE, wintypes.DWORD)\n"
+        "kernel32.SetConsoleMode.restype = wintypes.BOOL\n"
+        "kernel32.SetConsoleCP.argtypes = (wintypes.UINT,)\n"
+        "kernel32.SetConsoleCP.restype = wintypes.BOOL\n"
+        "kernel32.ReadFile.argtypes = (wintypes.HANDLE, ctypes.c_void_p, "
+        "wintypes.DWORD, ctypes.POINTER(wintypes.DWORD), ctypes.c_void_p)\n"
+        "kernel32.ReadFile.restype = wintypes.BOOL\n"
+        # GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        # OPEN_EXISTING.
+        'handle = kernel32.CreateFileW("CONIN$", 0xC0000000, 3, None, 3, 0, None)\n'
+        "if not handle or handle == ctypes.c_void_p(-1).value:\n"
+        "    raise ctypes.WinError(ctypes.get_last_error())\n"
+        # ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_EXTENDED_FLAGS: no line,
+        # echo, processed input, or Quick Edit modes.
+        "if not kernel32.SetConsoleMode(handle, 0x0200 | 0x0080):\n"
+        "    raise ctypes.WinError(ctypes.get_last_error())\n"
+        "if not kernel32.SetConsoleCP(65001):\n"
+        "    raise ctypes.WinError(ctypes.get_last_error())\n"
+        f"expected = {_OSC_7501!r}\n"
+        "data = bytearray()\n"
+        "seen = threading.Event()\n"
+        "def read():\n"
+        "    buffer = ctypes.create_string_buffer(256)\n"
+        "    count = wintypes.DWORD(0)\n"
+        "    while kernel32.ReadFile(handle, buffer, len(buffer), "
+        "ctypes.byref(count), None) and count.value:\n"
+        "        data.extend(buffer.raw[: count.value])\n"
+        "        if expected in data:\n"
+        "            seen.set()\n"
+        "            return\n"
+        "threading.Thread(target=read, daemon=True).start()\n"
+        "print('OSC7501-READING', flush=True)\n"
+        "seen.wait(10)\n"
+        "print('OSC7501-SEEN' if seen.is_set() else "
+        "'OSC7501-MISSING=' + bytes(data).hex() + ';', flush=True)\n"
+        # The reader may still block in ReadFile.
+        "os._exit(0)\n"
+    )
+    return [sys.executable, "-c", code]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize(
+    ("deferred", "ahead"),
+    ((False, None), (True, None), (True, "auto")),
+    ids=("cold", "prewarmed", "prewarmed-planned-ahead"),
+)
+def test_osc_input_reaches_the_child_on_the_windows_terminal_console_host(
+    deferred: bool, ahead: str | None
+) -> None:
+    """OpenConsole hands an OSC sequence in the input to the program.
+
+    This is what ``auto`` is for. The console host built into Windows differs
+    across Windows builds here, so it is not tested.
+    """
+    _installed_windows_terminal()
+    result = _run_host(
+        _report_osc_input(),
+        stdin=_OSC_7501,
+        stdout_ready=b"OSC7501-READING",
+        close_stdin=False,
+        wait_for_ready_before_stdin=True,
+        deferred=deferred,
+        console_host_ahead=ahead,
+        console_host="auto",
+    )
+    assert result.code == 0, result
+    assert _ready_report(result)["engine"] == "openconsole", result
+    assert "OSC7501-SEEN" in result.text, result
 
 
 def _stub_console_host_script(directory: Path, console_host: Path) -> Path:
