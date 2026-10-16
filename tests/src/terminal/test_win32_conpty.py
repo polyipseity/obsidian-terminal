@@ -1253,6 +1253,13 @@ def test_child_start_error_carries_the_exit_code() -> None:
     error = _MODULE.ChildStartError("refused", 251)
     assert isinstance(error, OSError)
     assert error.exit_code == 251
+    assert error.win32_error == 0
+
+
+def test_child_start_error_carries_the_win32_error() -> None:
+    """A failed ``CreateProcessW`` keeps its Win32 error beside the exit code."""
+    error = _MODULE.ChildStartError("[WinError 740] elevation", 251, 740)
+    assert (error.exit_code, error.win32_error) == (251, 740)
 
 
 # ---------------------------------------------------------------------------
@@ -2147,6 +2154,45 @@ def test_create_child_raises_unchanged_while_openconsole_runs() -> None:
 
     assert raised.value is error
     assert start.events.mock_calls == [call.create_child(9), call.exited(1000)]
+
+
+@pytest.mark.parametrize(
+    ("win32_error", "exit_code"),
+    ((2, 9009), (3, 9009), (123, 251), (193, 251), (216, 251), (740, 251)),
+    ids=(
+        "file-not-found",
+        "path-not-found",
+        "invalid-name",
+        "bad-exe-format",
+        "machine-type-mismatch",
+        "elevation-required",
+    ),
+)
+def test_create_child_raises_a_profile_error_without_waiting(
+    win32_error: int, exit_code: int
+) -> None:
+    """No console host causes these errors, so OpenConsole gets no moment to exit."""
+    error = _MODULE.ChildStartError("profile", exit_code, win32_error)
+    start = _child_start(0xC0000135, [error])
+
+    with pytest.raises(_MODULE.ChildStartError) as raised:
+        _create_child_on_openconsole(start)
+
+    assert raised.value is error
+    assert start.events.mock_calls == [call.create_child(9)]
+
+
+def test_create_child_waits_for_openconsole_after_any_other_win32_error() -> None:
+    """Any other Win32 error may come from a dying OpenConsole, so it still waits."""
+    start = _child_start(
+        0xC0000135, [_MODULE.ChildStartError("broken", 251, 6), (101, 102, 4242)]
+    )
+
+    host, child = _create_child_on_openconsole(start)
+
+    assert child == (101, 102, 4242)
+    assert start.events.mock_calls[:2] == [call.create_child(9), call.exited(1000)]
+    assert host.fallback == "exited"
 
 
 def test_create_child_falls_back_when_openconsole_exited_before_the_resume() -> None:

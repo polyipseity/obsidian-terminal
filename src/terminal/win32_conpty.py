@@ -129,8 +129,28 @@ _EXIT_TERMINATED = 1
 _ERROR_FILE_NOT_FOUND = 2
 """Win32 error meaning the executable's directory does not exist."""
 _ERROR_PATH_NOT_FOUND = 3
+"""Win32 error meaning the executable's name is not a valid file name."""
+_ERROR_INVALID_NAME = 123
+"""Win32 error meaning the executable is not a program Windows can run."""
+_ERROR_BAD_EXE_FORMAT = 193
+"""Win32 error meaning the executable is built for another machine."""
+_ERROR_EXE_MACHINE_TYPE_MISMATCH = 216
+"""Win32 error meaning the executable only runs elevated."""
+_ERROR_ELEVATION_REQUIRED = 740
 """Win32 error meaning the requested pending operation was not found."""
 _ERROR_NOT_FOUND = 1168
+"""Child-start errors the profile causes on any console host.
+
+A failed start with one of them never waits for OpenConsole to exit.
+"""
+_PROFILE_START_ERRORS = (
+    _ERROR_FILE_NOT_FOUND,
+    _ERROR_PATH_NOT_FOUND,
+    _ERROR_INVALID_NAME,
+    _ERROR_BAD_EXE_FORMAT,
+    _ERROR_EXE_MACHINE_TYPE_MISMATCH,
+    _ERROR_ELEVATION_REQUIRED,
+)
 
 """Standard descriptors, used raw so no buffered stream is ever shared."""
 _STDIN_FD = 0
@@ -557,10 +577,15 @@ def spawn_exit_code(win32_error: int) -> int:
 class ChildStartError(OSError):
     """The profile cannot start its shell; the host itself is healthy."""
 
-    def __init__(self, message: str, exit_code: int) -> None:
-        """Carry the exit code the host reports for this failure."""
+    def __init__(self, message: str, exit_code: int, win32_error: int = 0) -> None:
+        """Carry the exit code the host reports for this failure.
+
+        ``win32_error`` is the Win32 error of a failed ``CreateProcessW``, or
+        ``0`` when the host refused the start itself.
+        """
         super().__init__(message)
         self.exit_code = exit_code
+        self.win32_error = win32_error
 
 
 def to_exit_status(code: int) -> int:
@@ -1204,14 +1229,20 @@ def _create_child_or_fall_back(
     once OpenConsole has exited does the built-in host get the pipe ends,
     ``pseudoconsole.close`` having released OpenConsole's handles, and the
     child is started once more. A start that fails while OpenConsole still
-    runs is the profile's fault and raises unchanged. Nothing is written to
-    stderr: ``ready`` reports the fallback.
+    runs is the profile's fault and raises unchanged, and so does one whose
+    Win32 error no console host causes, such as a missing program, without
+    the wait. Nothing is written to stderr: ``ready`` reports the fallback.
     """
     if host.engine != _ENGINE_OPENCONSOLE:
         return host, create_child(pseudoconsole.handle)
     try:
         child = create_child(pseudoconsole.handle)
-    except OSError:
+    except OSError as error:
+        if (
+            isinstance(error, ChildStartError)
+            and error.win32_error in _PROFILE_START_ERRORS
+        ):
+            raise
         code = pseudoconsole.exited(_CONSOLE_HOST_EXIT_MILLISECONDS)
         if code is None:
             raise
@@ -2187,8 +2218,9 @@ if sys.platform == "win32":
                 ctypes.byref(information),
             ):
                 error = _last_error()
+                code = _error_code(error)
                 raise ChildStartError(
-                    str(error), spawn_exit_code(_error_code(error))
+                    str(error), spawn_exit_code(code), code
                 ) from error
         finally:
             _DeleteAttributeList(attributes)
