@@ -841,6 +841,22 @@ describe("layout-ready automatic Python work", () => {
     },
   );
 
+  it.each([false, true])(
+    "retires the spare without a new one when the console host setting turns to %s before first local use",
+    async (to) => {
+      const context = await layout("python", false, {
+          consoleHost: !to,
+          used: false,
+        }),
+        clear = vi.spyOn(CONPTY_HOST_POOL, "clear");
+      await switchConsoleHost(context, to);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(clear).toHaveBeenCalledOnce();
+      expect(checkWindowsPython).not.toHaveBeenCalled();
+      expect(ensureSpare).not.toHaveBeenCalled();
+    },
+  );
+
   it("retires the spare without a new one when the console host setting changes while prewarm is off", async () => {
     const context = await layout("python", false, { prewarm: false }),
       clear = vi.spyOn(CONPTY_HOST_POOL, "clear");
@@ -915,6 +931,10 @@ describe("ConPTY host settings invalidation", () => {
     Object.assign(context, {
       settings,
       loadData: vi.fn().mockResolvedValue(initial),
+      // A used plugin: a console host change prewarms only after first use.
+      localSettings: {
+        value: LocalSettings.fix({ hasUsedIntegratedTerminal: true }).value,
+      },
     });
     Object.assign(context.app.workspace, { onLayoutReady: vi.fn() });
     vi.spyOn(settings, "write").mockResolvedValue();

@@ -510,7 +510,8 @@ export function loadTerminal(context: TerminalPlugin): void {
         // A spare plans its console host at boot; replace it with one that
         // plans for the new setting. The clear retires in-flight refills too.
         CONPTY_HOST_POOL.clear();
-        prewarm();
+        // Like layout-ready: no spare before the first integrated terminal.
+        if (context.localSettings.value.hasUsedIntegratedTerminal) prewarm();
       },
     ),
   );
