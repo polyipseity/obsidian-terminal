@@ -441,7 +441,7 @@ describe("ConPTY control protocol", () => {
         context = {
           language: { value: { t: vi.fn((key: string) => key) } },
           register: vi.fn(),
-          settings: { value: { errorNoticeTimeout: 0, experiments: {} } },
+          settings: { value: { errorNoticeTimeout: 0 } },
         } as unknown as TerminalPlugin;
       vi.spyOn(CONPTY_DEPENDENCIES, "createControl").mockRejectedValue(error);
       vi.spyOn(childProcess, "spawn").mockImplementation(() => {
@@ -1488,8 +1488,9 @@ function conPtyContext(
     settings: {
       value: {
         errorNoticeTimeout: 0,
-        experiments: {},
         prewarmConPty: true,
+        // Off unless a test turns it on: the host gets no console host.
+        windowsTerminalConsoleHost: false,
         ...settings,
       },
     },
@@ -2714,33 +2715,32 @@ describe("ConPTY console host", () => {
     await pty.onExit;
   }
 
-  /** The flags that turn the experimental console host on. */
-  const ON = { experiments: { windowsTerminalConsoleHost: true } } as const;
+  /** The setting that turns the Windows Terminal console host on. */
+  const ON = { windowsTerminalConsoleHost: true } as const;
 
   it.each<readonly [unknown, string | null]>([
-    [{}, null],
+    [{}, "auto"],
     [{ windowsTerminalConsoleHost: false }, null],
     [{ windowsTerminalConsoleHost: true }, "auto"],
+    [{ windowsTerminalConsoleHost: "false" }, "auto"],
   ])(
-    "asks a host with the stored flags %j for the console host %j",
-    (experiments, spec) => {
-      expect(conPtyConsoleHostSpec(Settings.fix({ experiments }).value)).toBe(
-        spec,
-      );
+    "asks a host with the stored settings %j for the console host %j",
+    (stored, spec) => {
+      expect(conPtyConsoleHostSpec(Settings.fix(stored).value)).toBe(spec);
     },
   );
 
   /*
-   * The test AGENTS.md asks of every experimental feature: one scenario, a
-   * cold open that refills the pool and a prewarmed open, with the flag off
-   * and on. Off sends the host exactly what the stable release sends.
+   * One scenario, a cold open that refills the pool and a prewarmed open,
+   * with the setting off and on. Off sends the host exactly what releases
+   * before the setting sent.
    */
   describe.each([
-    { experiments: {}, flag: "off", spec: null },
-    { ...ON, flag: "on", spec: "auto" },
+    { setting: "off", spec: null, windowsTerminalConsoleHost: false },
+    { ...ON, setting: "on", spec: "auto" },
   ] as const)(
-    "with the experimental feature $flag",
-    ({ experiments, spec }) => {
+    "with the Windows Terminal console host setting $setting",
+    ({ spec, windowsTerminalConsoleHost }) => {
       const consoleHostArgs: readonly string[] =
           spec === null ? [] : ["--console-host", spec],
         // A host that is asked for nothing reports the built-in console host.
@@ -2794,7 +2794,7 @@ describe("ConPTY console host", () => {
             dependencies,
             { cwd: "C:\\work" },
             void 0,
-            conPtyContext(void 0, { experiments }),
+            conPtyContext(void 0, { windowsTerminalConsoleHost }),
           );
         try {
           await pty.shell;
@@ -2860,7 +2860,7 @@ describe("ConPTY console host", () => {
             dependencies,
             void 0,
             void 0,
-            conPtyContext(void 0, { experiments }),
+            conPtyContext(void 0, { windowsTerminalConsoleHost }),
           );
         try {
           await pty.shell;

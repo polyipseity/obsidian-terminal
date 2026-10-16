@@ -6,7 +6,6 @@
  */
 import {
   type AnyObject,
-  type Platform,
   deepFreeze,
   launderUnchecked,
 } from "@polyipseity/obsidian-plugin-library";
@@ -18,11 +17,6 @@ export interface Experiment {
   readonly feedback: string;
   /** How a change of the toggle takes effect. */
   readonly applies: Experiment.Applies;
-  /**
-   * The platforms whose settings show the toggle. Absent: every platform.
-   * A flag stored on another device is kept either way.
-   */
-  readonly platforms?: readonly Platform.All[];
 }
 export namespace Experiment {
   export const APPLIES = deepFreeze(["live", "newTerminals", "restart"]);
@@ -46,16 +40,9 @@ export namespace Experiment {
 }
 
 /** Every experiment of this version. One line each. */
-export const EXPERIMENTS = deepFreeze([
-  {
-    applies: "newTerminals",
-    feedback: "https://github.com/polyipseity/obsidian-terminal/issues",
-    id: "windowsTerminalConsoleHost",
-    platforms: ["win32"],
-  },
-]) satisfies readonly Experiment[];
+export const EXPERIMENTS = deepFreeze([]) satisfies readonly Experiment[];
 
-/** The id of a registered experiment; `never` while the registry is empty. */
+/** `never` while the registry is empty. */
 export type ExperimentId = (typeof EXPERIMENTS)[number]["id"];
 
 /** The stored flags: a key is present, with `true`, only for an experiment that is on. */
@@ -92,14 +79,6 @@ export function fixExperiments<E extends Experiment>(
     }
   }
   return ret;
-}
-
-/** Whether the settings show the toggle of `experiment` on `platform`. */
-export function isExperimentOffered(
-  experiment: Experiment,
-  platform: Platform.All,
-): boolean {
-  return experiment.platforms?.includes(platform) ?? true;
 }
 
 /** Whether the user turned the experiment on. */

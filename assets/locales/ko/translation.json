@@ -401,13 +401,6 @@
       "restart": "Restart Obsidian to apply the change."
     },
     "experimental-description": "These features are not finished. They may change or be removed in a later version. Each one is off until you turn it on.",
-    "experimental-features": {
-      "windowsTerminalConsoleHost": {
-        "effect": "ConPTY terminals run on the console host that ships with Windows Terminal 1.22 or newer, which passes more terminal replies to programs, such as the reply that lets a program show its status on the tab.",
-        "name": "Windows Terminal console host",
-        "risk": "It starts a copy of Windows Terminal's OpenConsole.exe from your local app data folder. Where Windows Terminal is missing or that copy cannot start, terminals use the console host built into Windows."
-      }
-    },
     "experimental-feedback": "Send feedback",
     "experimental-risk": "Known risk: {{risk}}",
     "expose-internal-modules": "내부 모듈 공개",
@@ -487,6 +480,8 @@
     "show-terminal-tab-prefix": "Show $t(generic.terminal) tab prefix",
     "terminal-options": "$t(generic.terminal-option_other, capitalize)",
     "terminal-options-description": "Shallow-merged into every $t(generic.profile) unless a specific $t(generic.profile) explicitly overrides them.",
-    "terminal-options-edit": "$t(generic.edit, capitalize)"
+    "terminal-options-edit": "$t(generic.edit, capitalize)",
+    "windows-terminal-console-host": "Windows Terminal console host",
+    "windows-terminal-console-host-description": "ConPTY terminals run on the console host that ships with Windows Terminal 1.22 or newer, which passes more terminal replies to programs, such as the reply that lets a program show its status on the tab. This starts a copy of Windows Terminal's OpenConsole.exe from your local app data folder. Where Windows Terminal is missing or that copy cannot start, terminals use the console host built into Windows. Applies to terminals opened after the change."
   }
 }

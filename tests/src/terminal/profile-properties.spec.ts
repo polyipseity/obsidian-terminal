@@ -131,21 +131,21 @@ afterEach(() => {
 /** A settings holder a test can replace, as the manager does on mutate. */
 function settingsOf(
   pythonExecutable = "",
-  experiments: Settings["experiments"] = {},
+  windowsTerminalConsoleHost = false,
 ): {
   value: {
     errorNoticeTimeout: number;
-    experiments: Settings["experiments"];
     prewarmConPty: boolean;
     pythonExecutable: string;
+    windowsTerminalConsoleHost: boolean;
   };
 } {
   return {
     value: {
       errorNoticeTimeout: 0,
-      experiments,
       prewarmConPty: true,
       pythonExecutable,
+      windowsTerminalConsoleHost,
     },
   };
 }
@@ -1401,15 +1401,15 @@ describe("prewarmConPtyProfile on Windows", () => {
     expect(ensureSpare?.mock.calls[0]?.[0]).toBe("C:\\Python312\\python.exe");
   });
 
-  it.each<readonly [Settings["experiments"], string | null]>([
-    [{}, null],
-    [{ windowsTerminalConsoleHost: true }, "auto"],
+  it.each<readonly [boolean, string | null]>([
+    [false, null],
+    [true, "auto"],
   ])(
-    "boots the spare with the stored flags %j and the console host hint %j",
-    async (experiments, spec) => {
+    "boots the spare with the Windows Terminal console host setting %j and the console host hint %j",
+    async (windowsTerminalConsoleHost, spec) => {
       checkWindowsPythonMock.mockResolvedValue(diagnosis());
       await prewarmOnWindows(
-        context("", settingsOf("", experiments)),
+        context("", settingsOf("", windowsTerminalConsoleHost)),
         integratedProfile({ pythonExecutable: "" }),
       );
       expect(ensureSpare).toHaveBeenCalledExactlyOnceWith(

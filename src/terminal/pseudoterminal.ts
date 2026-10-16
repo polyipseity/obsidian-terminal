@@ -67,7 +67,6 @@ import type { DeveloperConsoleContext } from "obsidian-terminal";
 import type { Position } from "source-map";
 import type { FileResult } from "tmp-promise";
 import type { AsyncOrSync } from "ts-essentials";
-import { isExperimentEnabled } from "../experiments.js";
 import { BUNDLE } from "../imports.js";
 import type { TerminalPlugin } from "../main.js";
 import type { Log } from "../patch.js";
@@ -1442,8 +1441,8 @@ export interface ConPtyStartOp {
   readonly rows: number;
   readonly cwd: string | null;
   /** Console host spec from {@link conPtyConsoleHostSpec}: `"auto"` finds
-   * Windows Terminal's `OpenConsole.exe`. Absent, as in the stable release,
-   * the session runs on the console host built into Windows. */
+   * Windows Terminal's `OpenConsole.exe`. Absent, as before the setting
+   * existed, the session runs on the console host built into Windows. */
   readonly consoleHost?: typeof CONPTY_CONSOLE_HOST_AUTO;
   readonly env: Readonly<Record<string, string>>;
   readonly command: readonly string[];
@@ -2418,7 +2417,7 @@ export class ConPtyHostPool {
    * @param consoleHost console host spec from {@link conPtyConsoleHostSpec}
    *   while the spare spawns. It only lets the idle host look up Windows
    *   Terminal early; the start op still names the console host the session
-   *   runs on. `null` spawns the spare as the stable release does.
+   *   runs on. `null` spawns the spare as before the setting existed.
    */
   public ensureSpare(
     pythonExecutable: string,
@@ -2657,17 +2656,15 @@ export const CONPTY_DEPENDENCIES: ConPtyPseudoterminalDependencies = {
 
 /**
  * The console host spec a new ConPTY session asks its host for: `"auto"`
- * finds Windows Terminal's `OpenConsole.exe` while the experimental Windows
- * Terminal console host is on. `null`, the default, asks for nothing, as the
- * stable release does: the session runs on the console host built into
+ * finds Windows Terminal's `OpenConsole.exe` while the Windows Terminal
+ * console host setting is on, the default. `null` asks for nothing, as
+ * earlier releases did: the session runs on the console host built into
  * Windows. Only Windows reaches this: ConPTY runs nowhere else.
  */
 export function conPtyConsoleHostSpec(
   settings: Settings,
 ): typeof CONPTY_CONSOLE_HOST_AUTO | null {
-  return isExperimentEnabled(settings, "windowsTerminalConsoleHost")
-    ? CONPTY_CONSOLE_HOST_AUTO
-    : null;
+  return settings.windowsTerminalConsoleHost ? CONPTY_CONSOLE_HOST_AUTO : null;
 }
 
 /** Logs the console host a session runs on, once per terminal. */
@@ -2861,7 +2858,7 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
                 CONPTY_DEFAULT_COLUMNS,
               ),
               command: [executable, ...(args ?? [])],
-              // No key while the experimental feature is off.
+              // No key while the setting is off.
               ...(consoleHostSpec === null
                 ? {}
                 : { consoleHost: consoleHostSpec }),

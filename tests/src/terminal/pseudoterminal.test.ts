@@ -12,7 +12,9 @@ import { promisify, stripVTControlCharacters } from "node:util";
 import { App } from "obsidian";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { TerminalPlugin } from "../../../src/main.js";
+import { Settings } from "../../../src/settings-data.js";
 import {
+  CONPTY_CONSOLE_HOST_FALLBACKS,
   CONPTY_DEPENDENCIES,
   ConPtyHostPool,
   ConPtyPseudoterminal,
@@ -20,6 +22,7 @@ import {
   type ConPtyResizedEvent,
   type ConPtySpareHost,
   WindowsNamedPipeControlChannel,
+  conPtyConsoleHostSpec,
 } from "../../../src/terminal/pseudoterminal.js";
 import { writePromise } from "../../../src/utils.js";
 
@@ -31,8 +34,8 @@ vi.mock("../../../src/main.js", () => ({
     public readonly language = { value: { t: vi.fn((key: string) => key) } };
     public readonly settings = {
       // Each test explicitly owns its spare; no automatic refill races cleanup.
-      // The experimental console host is off: no console host is requested.
-      value: { errorNoticeTimeout: 0, experiments: {}, prewarmConPty: false },
+      // `nativeFixture` replaces this with the settings of its run.
+      value: { errorNoticeTimeout: 0, prewarmConPty: false },
     };
   },
 }));
@@ -154,8 +157,24 @@ function loadHostSource(): Promise<string> {
   );
 }
 
+/**
+ * The plugin settings of a run: the shipped defaults, which ask for Windows
+ * Terminal's console host, or those with that setting off. Prewarming stays
+ * off: each test explicitly owns its spare, so no refill races cleanup.
+ */
+function contractSettings(consoleHost: "default" | "off"): Settings {
+  return Settings.fix({
+    errorNoticeTimeout: 0,
+    prewarmConPty: false,
+    ...(consoleHost === "off" ? { windowsTerminalConsoleHost: false } : {}),
+  }).value;
+}
+
 /** Isolated real pool with ownership tracking, reusable for spare lifecycle tests. */
-async function nativeFixture(python: string) {
+async function nativeFixture(
+  python: string,
+  settings: Settings = contractSettings("default"),
+) {
   const source = await loadHostSource(),
     pool = new ConPtyHostPool(),
     channels: RecordedChannel[] = [],
@@ -169,6 +188,7 @@ async function nativeFixture(python: string) {
       version: "0.0.0",
       minAppVersion: "1.4.11",
     });
+  Object.assign(context.settings, { value: settings });
   // Mutation is confined to this fixture's lifecycle and resource ledger.
   let closing = false;
   const track = async <T>(operation: () => Promise<T>): Promise<T> => {
@@ -248,7 +268,8 @@ async function nativeFixture(python: string) {
         dependencies,
       ),
     async spare(): Promise<ConPtySpareHost> {
-      pool.ensureSpare(python, dependencies);
+      // With the console host hint the plugin's own refills pass.
+      pool.ensureSpare(python, dependencies, conPtyConsoleHostSpec(settings));
       // Use the public ownership transfer to wait until the pool can serve it.
       return vi.waitFor(
         () => {
@@ -315,12 +336,38 @@ function only<T>(values: readonly T[]): T {
   return value;
 }
 
+// Typed `unknown`: the matchers are `any`, which the lint rules refuse.
+const OPENCONSOLE_PATH: unknown = expect.stringMatching(/OpenConsole\.exe$/iu),
+  FALLBACK: unknown = expect.toBeOneOf([...CONPTY_CONSOLE_HOST_FALLBACKS]),
+  FALLBACK_DETAIL: unknown = expect.toBeOneOf([null, expect.any(String)]),
+  /**
+   * The `consoleHost` report of a session that asked for Windows Terminal's
+   * console host: it runs, or the built-in one runs and says why. Which one
+   * depends on whether Windows Terminal 1.22 or newer is installed.
+   */
+  REQUESTED_CONSOLE_HOST: unknown = expect.toBeOneOf([
+    {
+      engine: "openconsole",
+      path: OPENCONSOLE_PATH,
+      fallback: null,
+      detail: null,
+    },
+    {
+      engine: "conhost",
+      path: null,
+      fallback: FALLBACK,
+      detail: FALLBACK_DETAIL,
+    },
+  ]);
+
 async function assertReady(
   channel: RecordedChannel,
   spawned: RecordedHost,
   warm: boolean,
+  settings: Settings = contractSettings("default"),
 ): Promise<void> {
-  const { control } = channel,
+  const consoleHost = conPtyConsoleHostSpec(settings),
+    { control } = channel,
     hello = await bounded(control.hello, "hello"),
     ready = await bounded(control.ready, "authenticated ready"),
     wire = connection(channel),
@@ -336,12 +383,10 @@ async function assertReady(
         "create-pseudoconsole+authenticated-control-channel+job-object-assigned",
       hostPid: spawned.host.pid,
       childPid: hello.childPid,
-      consoleHost: {
-        engine: "conhost",
-        path: null,
-        fallback: null,
-        detail: null,
-      },
+      consoleHost:
+        consoleHost === null
+          ? { engine: "conhost", path: null, fallback: null, detail: null }
+          : REQUESTED_CONSOLE_HOST,
       controlChannelAuthenticated: true,
       createPseudoConsole: true,
       jobObjectAssigned: true,
@@ -369,6 +414,7 @@ async function assertReady(
     expect(Object.keys(start ?? {}).sort()).toEqual([
       "columns",
       "command",
+      ...(consoleHost === null ? [] : ["consoleHost"]),
       "cwd",
       "env",
       "op",
@@ -381,18 +427,34 @@ async function assertReady(
       command: COMMAND,
       cwd: null,
     });
+    expect(start?.consoleHost).toBe(consoleHost ?? undefined);
     expect(start?.env).toHaveProperty("TES166_CONTRACT", "字");
   } else {
     expect(spawned.args.slice(-COMMAND.length)).toEqual(COMMAND);
     expect(spawned.args).not.toContain("--defer-session");
   }
-  // The experimental console host is off: neither path names one.
-  expect(spawned.args).not.toContain("--console-host");
+  if (consoleHost === null) {
+    // Neither path names a console host, as before the setting existed.
+    expect(spawned.args).not.toContain("--console-host");
+  } else {
+    // The cold host gets it before the command; the spare, as a hint, last.
+    expect(
+      warm
+        ? spawned.args.slice(-2)
+        : spawned.args.slice(-COMMAND.length - 3, -COMMAND.length),
+    ).toEqual(["--console-host", consoleHost, ...(warm ? [] : ["--"])]);
+  }
 }
 
 // The fixture's source loading must work in Vitest even off Windows.
 it("loads the real Python host source in the test environment", async () => {
   expect((await loadHostSource()).length).toBeGreaterThan(0);
+});
+
+// The default runs below ask for Windows Terminal's console host, as shipped.
+it("runs the contract on the shipped default and with the console host off", () => {
+  expect(conPtyConsoleHostSpec(contractSettings("default"))).toBe("auto");
+  expect(conPtyConsoleHostSpec(contractSettings("off"))).toBeNull();
 });
 
 // Explicit off-Windows skips are intentional: mocks cannot establish this contract.
@@ -416,10 +478,16 @@ describe.skipIf(process.platform !== "win32")("real ConPTY protocol", () => {
 
   afterEach(() => vi.restoreAllMocks());
 
-  it.each([false, true])(
-    "exchanges the complete contract (warm=%s)",
-    async (warm) => {
-      const fixture = await nativeFixture(python);
+  it.each([
+    { consoleHost: "default", warm: false },
+    { consoleHost: "default", warm: true },
+    { consoleHost: "off", warm: false },
+    { consoleHost: "off", warm: true },
+  ] as const)(
+    "exchanges the complete contract (console host $consoleHost, warm=$warm)",
+    async ({ consoleHost, warm }) => {
+      const settings = contractSettings(consoleHost),
+        fixture = await nativeFixture(python, settings);
       try {
         const spare = warm ? await fixture.spare() : null,
           pty = fixture.open(),
@@ -428,7 +496,7 @@ describe.skipIf(process.platform !== "win32")("real ConPTY protocol", () => {
           spawned = only(fixture.hosts);
         expect(host).toBe(spawned.host);
         if (spare) expect(host).toBe(spare.host); // No silent cold retry.
-        await assertReady(channel, spawned, warm);
+        await assertReady(channel, spawned, warm, settings);
         await vi.waitFor(
           () => {
             expect(spawned.output()).toContain(BARRIER);

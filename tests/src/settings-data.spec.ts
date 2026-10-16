@@ -219,6 +219,49 @@ describe("src/settings-data.ts", () => {
     );
   });
 
+  it("defaults the Windows Terminal console host to on", () => {
+    expect(Settings.DEFAULT.windowsTerminalConsoleHost).toBe(true);
+    expect(Settings.fix({}).value.windowsTerminalConsoleHost).toBe(true);
+  });
+
+  it.each([true, false])(
+    "keeps the Windows Terminal console host setting %j",
+    (windowsTerminalConsoleHost) => {
+      expect(
+        Settings.fix({ windowsTerminalConsoleHost }).value
+          .windowsTerminalConsoleHost,
+      ).toBe(windowsTerminalConsoleHost);
+    },
+  );
+
+  it.each(["false", 0, 1, null, {}])(
+    "replaces the Windows Terminal console host setting %j with the default",
+    (windowsTerminalConsoleHost) => {
+      expect(
+        Settings.fix({ windowsTerminalConsoleHost }).value
+          .windowsTerminalConsoleHost,
+      ).toBe(Settings.DEFAULT.windowsTerminalConsoleHost);
+    },
+  );
+
+  it.each(["automatic", "system", "custom"])(
+    "drops the retired console host setting %j",
+    (win32ConsoleHost) => {
+      const fixed = Settings.fix({ win32ConsoleHost }).value;
+      expect(fixed).not.toHaveProperty("win32ConsoleHost");
+      expect(fixed.windowsTerminalConsoleHost).toBe(true);
+    },
+  );
+
+  it("drops the flag of the console host experiment", () => {
+    // Test builds stored it as an experiment flag before it became a setting.
+    const fixed = Settings.fix({
+      experiments: { windowsTerminalConsoleHost: true },
+    }).value;
+    expect(fixed.experiments).toEqual({});
+    expect(fixed.windowsTerminalConsoleHost).toBe(true);
+  });
+
   it("drops the retired discovery marker", () => {
     // The field holds only what the user typed, so nothing marks a value as
     // discovered any more.
@@ -444,22 +487,6 @@ describe("src/settings-data.ts", () => {
         "Settings.fix defaults experiments for %j",
         (experiments) => {
           expect(Settings.fix({ experiments }).value.experiments).toEqual({});
-        },
-      );
-
-      it("Settings.fix keeps the Windows Terminal console host flag", () => {
-        expect(
-          Settings.fix({ experiments: { windowsTerminalConsoleHost: true } })
-            .value.experiments,
-        ).toEqual({ windowsTerminalConsoleHost: true });
-      });
-
-      it.each(["automatic", "system", "custom"])(
-        "Settings.fix drops the retired console host setting %j and turns nothing on",
-        (win32ConsoleHost) => {
-          const fixed = Settings.fix({ win32ConsoleHost }).value;
-          expect(fixed).not.toHaveProperty("win32ConsoleHost");
-          expect(fixed.experiments).toEqual({});
         },
       );
 
