@@ -433,8 +433,16 @@ describe("ConPTY control protocol", () => {
     },
   );
 
+  it("forwards the console host report through reference wrappers", () => {
+    const consoleHost = Promise.resolve(SYSTEM_CONSOLE_HOST),
+      pty = new RefPsuedoterminal({ ...pseudoterminal(), consoleHost });
+    expect(pty.consoleHost).toBe(consoleHost);
+    expect(pty.dup().consoleHost).toBe(consoleHost);
+    expect(new RefPsuedoterminal(pseudoterminal()).consoleHost).toBeUndefined();
+  });
+
   it.each<Pseudoterminal["win32Backend"]>(["conpty", "legacy", undefined])(
-    "exposes resize acknowledgment after selecting the %s backend",
+    "exposes resize acknowledgment and the console host after selecting the %s backend",
     async (win32Backend) => {
       const error = new Error("stop before spawning"),
         // Only these context members are used before the seeded startup failure.
@@ -455,11 +463,16 @@ describe("ConPTY control protocol", () => {
         win32Backend,
       });
       expect(pty.resizeIsAcknowledged).toBe(win32Backend === "conpty");
+      // Only ConPTY reports a console host; it fails with the startup.
+      expect(pty.consoleHost === void 0).toBe(win32Backend !== "conpty");
       await Promise.all([
         expect(pty.shell).rejects.toThrow(error.message),
         expect(pty.onExit).rejects.toThrow(error.message),
         // Observe ConHost's resizer promise when shell startup rejects.
         expect(pty.resize(80, 24)).rejects.toThrow(error.message),
+        ...(pty.consoleHost
+          ? [expect(pty.consoleHost).rejects.toThrow(error.message)]
+          : []),
       ]);
     },
   );

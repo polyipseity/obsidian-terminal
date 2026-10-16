@@ -331,6 +331,9 @@ export interface Pseudoterminal {
   /** The Windows backend in use. A ConHost fallback makes it differ from the
    * profile's, and the emulator must be configured for the one that runs. */
   readonly win32Backend?: Settings.Profile.Win32Backend | undefined;
+  /** ConPTY only: the console host the session runs on, once the host is
+   * ready. Rejects with {@link shell}. */
+  readonly consoleHost?: Promise<ConPtyConsoleHost> | undefined;
 }
 
 export class RefPsuedoterminal<
@@ -371,6 +374,10 @@ export class RefPsuedoterminal<
 
   public get resizeIsAcknowledged(): boolean | undefined {
     return this.delegate.resizeIsAcknowledged;
+  }
+
+  public get consoleHost(): Promise<ConPtyConsoleHost> | undefined {
+    return this.delegate.consoleHost;
   }
 
   public dup(): RefPsuedoterminal<T> {
@@ -3212,6 +3219,7 @@ class Win32Pseudoterminal implements Pseudoterminal {
   public readonly onExit;
   public readonly win32Backend: Settings.Profile.Win32Backend;
   public readonly resizeIsAcknowledged;
+  public readonly consoleHost;
   protected readonly delegate;
 
   public constructor(
@@ -3224,6 +3232,8 @@ class Win32Pseudoterminal implements Pseudoterminal {
     this.delegate = delegate;
     this.resizeIsAcknowledged =
       delegate instanceof ConPtyPseudoterminal && delegate.resizeIsAcknowledged;
+    this.consoleHost =
+      delegate instanceof ConPtyPseudoterminal ? delegate.consoleHost : void 0;
     this.shell = delegate.shell;
     this.onExit = delegate.onExit;
   }
