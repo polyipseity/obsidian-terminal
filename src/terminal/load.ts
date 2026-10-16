@@ -503,4 +503,15 @@ export function loadTerminal(context: TerminalPlugin): void {
       },
     ),
   );
+  context.register(
+    settings.onMutate(
+      (settings0) => settings0.windowsTerminalConsoleHost,
+      () => {
+        // A spare plans its console host at boot; replace it with one that
+        // plans for the new setting. The clear retires in-flight refills too.
+        CONPTY_HOST_POOL.clear();
+        prewarm();
+      },
+    ),
+  );
 }

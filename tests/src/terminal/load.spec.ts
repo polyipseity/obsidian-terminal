@@ -563,6 +563,7 @@ describe("layout-ready automatic Python work", () => {
     options: {
       readonly used?: boolean;
       readonly prewarm?: boolean;
+      readonly consoleHost?: boolean;
       readonly beforeLayout?: (
         context: Awaited<ReturnType<typeof pythonSettingsContext>>,
       ) => void;
@@ -570,12 +571,13 @@ describe("layout-ready automatic Python work", () => {
         context: Awaited<ReturnType<typeof pythonSettingsContext>>,
       ) => unknown;
     } = {},
-  ): Promise<void> {
+  ): Promise<Awaited<ReturnType<typeof pythonSettingsContext>>> {
     const profile = Settings.Profile.DEFAULTS.integrated,
       context = await terminalContext({
         pythonExecutable,
         defaultProfile: "overridden",
         prewarmConPty: options.prewarm ?? true,
+        windowsTerminalConsoleHost: options.consoleHost ?? true,
         profiles: {
           overridden: {
             ...profile,
@@ -611,6 +613,7 @@ describe("layout-ready automatic Python work", () => {
     expect(context.localSettings.value.hasUsedIntegratedTerminal).toBe(
       options.used ?? true,
     );
+    return context;
   }
 
   it("keeps the filtered plugin check but boots no spare before first local use", async () => {
@@ -789,6 +792,64 @@ describe("layout-ready automatic Python work", () => {
     expect(ensureSpare).toHaveBeenCalledTimes(1);
   });
 
+  /** Turns the console host setting to `to` and runs its load handler. */
+  async function switchConsoleHost(
+    context: Awaited<ReturnType<typeof pythonSettingsContext>>,
+    to: boolean,
+  ): Promise<void> {
+    const before = context.settings.value;
+    await context.settings.mutate((settings) => {
+      settings.windowsTerminalConsoleHost = to;
+    });
+    // The fixture only records subscriptions; run the one that changed. The
+    // array-valued accessors build a new array per call, so match booleans.
+    for (const [accessor, callback] of vi.mocked(context.settings).onMutate.mock
+      .calls) {
+      const current = accessor(context.settings.value),
+        previous = accessor(before);
+      if (typeof current === "boolean" && current !== previous)
+        await callback(current, previous, context.settings.value);
+    }
+  }
+
+  it.each([
+    { from: true, to: false },
+    { from: false, to: true },
+  ])(
+    "replaces the spare when the console host setting turns from $from to $to",
+    async ({ from, to }) => {
+      const context = await layout("python", false, { consoleHost: from });
+      expect(ensureSpare).toHaveBeenCalledExactlyOnceWith(
+        expect.any(String),
+        expect.anything(),
+        from ? "auto" : null,
+      );
+      const clear = vi.spyOn(CONPTY_HOST_POOL, "clear");
+      await switchConsoleHost(context, to);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(clear).toHaveBeenCalledOnce();
+      // The next spare boots after the clear, planning for the new setting.
+      expect(ensureSpare).toHaveBeenCalledTimes(2);
+      expect(ensureSpare).toHaveBeenLastCalledWith(
+        expect.any(String),
+        expect.anything(),
+        to ? "auto" : null,
+      );
+      expect(clear.mock.invocationCallOrder[0]).toBeLessThan(
+        ensureSpare.mock.invocationCallOrder[1] ?? -1,
+      );
+    },
+  );
+
+  it("retires the spare without a new one when the console host setting changes while prewarm is off", async () => {
+    const context = await layout("python", false, { prewarm: false }),
+      clear = vi.spyOn(CONPTY_HOST_POOL, "clear");
+    await switchConsoleHost(context, false);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(clear).toHaveBeenCalledOnce();
+    expect(ensureSpare).not.toHaveBeenCalled();
+  });
+
   it.each(["", "python", "C:\\Python\\python.exe", "D:/Tools/python.exe"])(
     "checks only the plugin and prewarms an inheriting profile for %j",
     async (value) => {
@@ -919,6 +980,33 @@ describe("ConPTY host settings invalidation", () => {
           expect(CONPTY_HOST_POOL.acquire("old-python")).toBeNull();
           expect(checkWindowsPython).not.toHaveBeenCalled();
           expect(runPluginPythonCheck).not.toHaveBeenCalled();
+        });
+      } finally {
+        fixture.unload();
+        fixture.settings.unload();
+      }
+    },
+  );
+
+  it.each([false, true])(
+    "reaps the old spare after turning the console host setting to %s",
+    async (to) => {
+      const fixture = await loadedSettings();
+      try {
+        await fixture.settings.mutate((settings) => {
+          settings.windowsTerminalConsoleHost = !to;
+        });
+        await withPythonSpare("old-python", async ({ host, control }) => {
+          await fixture.settings.mutate((settings) => {
+            settings.windowsTerminalConsoleHost = to;
+          });
+          expect(host.killed).toBe(true);
+          await expect(control.ready).rejects.toMatchObject({
+            reason: "aborted",
+          });
+          expect(CONPTY_HOST_POOL.acquire("old-python")).toBeNull();
+          // Its only profile overrides Python, so no spare replaces it.
+          expect(checkWindowsPython).not.toHaveBeenCalled();
         });
       } finally {
         fixture.unload();
