@@ -63,6 +63,9 @@ This file is automatically opened on first install. You can reopen it in setting
 - To save and restore integrated terminal history
   1. Keep the terminal open when exiting Obsidian.
   2. Terminal history will be restored next time Obsidian is opened.
+- To insert the path of a file or folder
+  1. Drag it onto an integrated terminal, from the vault or from another app such as Finder, Explorer or VS Code.
+  2. The path is escaped or quoted for the shell of the terminal's profile, and a notice says so when something could not be inserted.
 - Additional actions
   - Includes
     - Clear terminal: \(1\), \(4\)
