@@ -40,7 +40,7 @@ import {
   fittedSize,
   settleTerminalBackendOptions,
 } from "../../../src/terminal/view.js";
-import { pseudoterminal, tick } from "../../support/helpers.js";
+import { microtasks, pseudoterminal, tick } from "../../support/helpers.js";
 
 const platform = vi.hoisted(() => ({ windows: false }));
 vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => {
@@ -1394,6 +1394,101 @@ describe("TerminalView.spawn", () => {
 
     expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
     expect(activate).toHaveBeenCalledExactlyOnceWith(leaf, { focus: true });
+  });
+});
+
+describe("TerminalView reveal flash", () => {
+  const FLASH = "is-flashing";
+
+  // Obsidian keeps the leaf's tab header in `tabHeaderEl` and flashes it on reveal.
+  function makeTabbedLeaf(context: TerminalPlugin) {
+    const made = makeTerminalLeaf(context);
+    const header = document.createElement("div");
+    Object.assign(made.leaf, { tabHeaderEl: header });
+    return { ...made, header };
+  }
+
+  // Replaces `revealLeaf` with one that flashes the tab as Obsidian does.
+  // The returned promise resolves once it has been called.
+  function flashOnReveal(
+    workspace: App["workspace"],
+    header: HTMLElement,
+    returnsPromise: boolean,
+  ): Promise<undefined> {
+    const called = deferred();
+    const reveal = vi.fn<() => Promise<void> | undefined>(() => {
+      header.classList.add(FLASH);
+      called.resolve(undefined);
+      return returnsPromise ? Promise.resolve() : undefined;
+    });
+    Object.assign(workspace, { revealLeaf: reveal });
+    return called.promise;
+  }
+
+  it("removes the flash from the tab of a terminal it opens", async () => {
+    const { context, workspace, reveal } = makeTerminalContext();
+    const { leaf, header } = makeTabbedLeaf(context);
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([leaf]);
+    reveal.mockImplementation(() => {
+      header.classList.add(FLASH);
+      return Promise.resolve();
+    });
+
+    await TerminalView.spawn(context, TerminalView.State.DEFAULT, leaf);
+
+    expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
+    expect(header.classList.contains(FLASH)).toBe(false);
+  });
+
+  it("removes the flash from the tab of a terminal it focuses", () => {
+    const { context, reveal } = makeTerminalContext();
+    const { leaf, view, header } = makeTabbedLeaf(context);
+    // The reveal stays pending, as for a view that is still loading.
+    reveal.mockImplementation(() => {
+      header.classList.add(FLASH);
+      return deferred().promise;
+    });
+
+    view["focus"]();
+
+    expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
+    expect(header.classList.contains(FLASH)).toBe(false);
+  });
+
+  describe.each([
+    { returns: "a resolved promise", returnsPromise: true },
+    // Obsidian before 1.7.2 returned void from revealLeaf.
+    { returns: "nothing", returnsPromise: false },
+  ])("when revealLeaf returns $returns", ({ returnsPromise }) => {
+    it("removes the flash of a terminal it opens before another task runs", async () => {
+      const { context, workspace } = makeTerminalContext();
+      const { leaf, header } = makeTabbedLeaf(context);
+      vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([leaf]);
+      const revealed = flashOnReveal(workspace, header, returnsPromise);
+
+      const opened = TerminalView.spawn(
+        context,
+        TerminalView.State.DEFAULT,
+        leaf,
+      );
+      await revealed;
+      await microtasks();
+
+      expect(header.classList.contains(FLASH)).toBe(false);
+      await opened;
+    });
+
+    it("removes the flash of a terminal it focuses before another task runs", async () => {
+      const { context, workspace } = makeTerminalContext();
+      const { view, header } = makeTabbedLeaf(context);
+      const revealed = flashOnReveal(workspace, header, returnsPromise);
+
+      view["focus"]();
+      await revealed;
+      await microtasks();
+
+      expect(header.classList.contains(FLASH)).toBe(false);
+    });
   });
 });
 

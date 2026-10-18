@@ -91,6 +91,7 @@ import {
   type Pseudoterminal,
   TextPseudoterminal,
 } from "./pseudoterminal.js";
+import { revealLeafWithoutFlash } from "./reveal.js";
 import { writePromise } from "./utils.js";
 import { win32ExitCodeKey } from "./win32-doctor.js";
 
@@ -854,15 +855,11 @@ export class TerminalView extends ItemView {
 
   protected focus(): void {
     const { app, leaf, contentEl } = this;
-    const log = (error: unknown): void => {
+    // The reveal is async: one that throws, or returns nothing as Obsidian
+    // before 1.7.2 does, ends up here like any other.
+    revealLeafWithoutFlash(app.workspace, leaf).catch((error: unknown) => {
       activeSelf(contentEl).console.error(error);
-    };
-    try {
-      // Obsidian before 1.7.2 returns nothing here, not a promise.
-      Promise.resolve(app.workspace.revealLeaf(leaf)).catch(log);
-    } catch (error) {
-      log(error);
-    }
+    });
     // Focus in the same turn, whatever becomes of the reveal: a command that
     // runs right after this one must find the terminal focused.
     this.emulator?.terminal.focus();
@@ -1692,7 +1689,7 @@ export namespace TerminalView {
     ) {
       return;
     }
-    await workspace.revealLeaf(target);
+    await revealLeafWithoutFlash(workspace, target);
     recordTerminalUse(view);
     if (focus) {
       workspace.setActiveLeaf(target, { focus: true });

@@ -1768,6 +1768,33 @@ describe("VaultFileLinksAddon", () => {
     });
   });
 
+  it("removes the reveal flash from the tab of the note it opens", async () => {
+    const { provideLinks, openFile, revealLeaf, leaf } = createBed();
+    // Obsidian keeps the leaf's tab header in `tabHeaderEl` and flashes it on reveal.
+    const header = document.createElement("div");
+    header.className = "workspace-tab-header";
+    Object.assign(leaf, { tabHeaderEl: header });
+    // A note that is still loading keeps the reveal pending.
+    const reveal = Promise.withResolvers<undefined>();
+    revealLeaf.mockImplementationOnce((): unknown => {
+      header.classList.add("is-flashing");
+      return reveal.promise;
+    });
+
+    provideLinks("(test.md)")?.[0]?.activate(
+      new MouseEvent("click"),
+      "test.md",
+    );
+    expect(revealLeaf).toHaveBeenCalledExactlyOnceWith(leaf);
+    expect(header.className).toBe("workspace-tab-header");
+
+    reveal.resolve(undefined);
+    await vi.waitFor(() => {
+      expect(openFile).toHaveBeenCalledOnce();
+    });
+    expect(header.className).toBe("workspace-tab-header");
+  });
+
   it("logs to console.error without opening the file when revealLeaf rejects", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
     const { provideLinks, openFile, revealLeaf } = createBed();
