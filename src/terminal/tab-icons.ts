@@ -13,6 +13,12 @@
  * `id`. The tile icon has no image: its tile is a rounded square drawn as a
  * line.
  *
+ * Over the tile's dark face and under the prompt lies the face's light
+ * (`tts-skin-lift`): a square with rounded corners as large as the face,
+ * which the stylesheet paints in the prompt's green and shows, faintly, only
+ * while the pointer is on the tab. It is blended so that it lightens the
+ * black face and leaves what is lighter nearly as it is.
+ *
  * The marks stand on the tile's upper right corner and reach past it.
  * Nothing is cut out of the tile for them: a white ring and a dark hairline
  * around a mark set it off from whatever lies under it.
@@ -37,13 +43,14 @@ export const TAB_ICON_WRAPPER_ATTRIBUTES =
 
 /**
  * The parts of the tab icon, each as the classes one element carries: the
- * terminal group, the tile's images, the marks group, the four marks and
- * what pops in (the inside of the dot and of the eye). The tests look for
- * each.
+ * terminal group, the tile's images, the light on its face, the marks
+ * group, the four marks and what pops in (the inside of the dot and of the
+ * eye). The tests look for each.
  */
 export const TAB_ICON_CLASSES: readonly string[] = Object.freeze([
   "tts-t",
   "tts-skin",
+  "tts-skin-lift",
   "tts-m",
   "tts-mk tts-mk-dot",
   "tts-mk tts-mk-eye",
@@ -206,6 +213,12 @@ export const TILE_ICON_CLASSES = Object.freeze({
  * The tile is as wide as the tile box and stands around the box's middle: a
  * square with rounded corners.
  *
+ * Between the images and the prompt lies the face's light: the tile's dark
+ * face (`TabSkin.face`) drawn again as a shape, with no paint of its own.
+ * The wrapper's line is taken off it (`stroke="none"`) and its fill is the
+ * wrapper's `none` until the stylesheet gives it one, so without the
+ * stylesheet nothing of it shows.
+ *
  * @param name the tile
  * @returns the parts of the drawing
  */
@@ -213,6 +226,8 @@ export function tabIconSkinned(name: TabSkinName): TabIconParts {
   const skin: TabSkin = TAB_SKINS[name],
     { size, x, y } = TAB_ICON_TILE_BOX,
     corner = skin.radius * size,
+    inset = skin.face.inset * size,
+    face = skin.face.size * size,
     /** The tile's outline, `grow` outside it and `down` below it, as an open tag. */
     shape = (grow: number, down: number): string =>
       `<rect x="${num(x - grow)}" y="${num(y - grow + down)}" width="${num(size + 2 * grow)}" height="${num(size + 2 * grow)}" rx="${num(corner + grow)}"`,
@@ -224,6 +239,7 @@ export function tabIconSkinned(name: TabSkinName): TabIconParts {
       `<g class="tts-skin-drop" stroke="none" fill="black">${shape(0.4, 0.7)} opacity=".06"/>${shape(0, 0.6)} opacity=".12"/></g>`,
       image("dark"),
       image("light"),
+      `<rect class="tts-skin-lift" x="${num(x + inset)}" y="${num(y + inset)}" width="${num(face)}" height="${num(face)}" rx="${num(skin.face.radius * size)}" stroke="none"/>`,
       SKIN_PROMPT,
       "</g>",
     ].join("");
