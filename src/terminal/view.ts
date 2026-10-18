@@ -98,14 +98,18 @@ import {
 import {
   type TerminalBackendOptions,
   applyTerminalOptionDiffShallow,
+  consoleHostMayRaiseBuild,
   mergeTerminalOptions,
   parseWin32BuildNumber,
+  settleConsoleHostBackendOptions,
 } from "./options.js";
 import { PROFILE_PROPERTIES, openProfile } from "./profile-properties.js";
 import {
+  CONPTY_READY_TIMEOUT_MS,
   ConPtyControlError,
   type Pseudoterminal,
   TextPseudoterminal,
+  conPtyConsoleHostSpec,
 } from "./pseudoterminal.js";
 import { revealLeafWithoutFlash, tabHeaderOf } from "./reveal.js";
 import { writePromise } from "./utils.js";
@@ -173,6 +177,22 @@ export function settleTerminalBackendOptions(
   return win32Backend === void 0 || win32Backend === requested.win32Backend
     ? requested
     : deepFreeze({ ...requested, win32Backend });
+}
+
+/** Resolves once `promise` settles, either way, or after `timeoutMs`. */
+async function settleWithin(
+  promise: Promise<unknown>,
+  timeoutMs: number,
+): Promise<void> {
+  // Mutable: the timer starts inside the race.
+  let timer: number | undefined;
+  await Promise.race([
+    promise.then(noop, noop),
+    new Promise<void>((resolve) => {
+      timer = self.setTimeout(resolve, timeoutMs);
+    }),
+  ]);
+  self.clearTimeout(timer);
 }
 
 /** This machine's Windows build, read once, or `undefined` off Windows. */
@@ -1472,6 +1492,20 @@ export class TerminalView extends ItemView {
             profile.type === "invalid"
               ? Settings.Profile.DEFAULTS[""].terminalOptions
               : profile.terminalOptions,
+          // The live profile's terminal options, or `null` while the profile
+          // this terminal opened is gone or invalid.
+          liveProfileOptions = (
+            settings0: Settings,
+          ): Settings.Profile.TerminalOptions | null => {
+            const { profileSourceId } = this.state,
+              liveProfile =
+                profileSourceId !== null
+                  ? settings0.profiles[profileSourceId]
+                  : null;
+            return liveProfile && liveProfile.type !== "invalid"
+              ? liveProfile.terminalOptions
+              : null;
+          },
           customKeyEventHandler = new CustomKeyEventHandlerAddon(
             Platform.CURRENT,
             () => settings.value.keymappings,
@@ -1500,7 +1534,19 @@ export class TerminalView extends ItemView {
                   rows,
                   signal,
                 }),
-                requested = terminalBackendOptions;
+                requested = terminalBackendOptions,
+                // Read when called: the options may change while the session
+                // starts, and the live update path already applied them.
+                currentProfileOptions = (): Settings.Profile.TerminalOptions =>
+                  liveProfileOptions(settings.value) ?? profileTerminalOptions,
+                merge = (
+                  backendOptions: TerminalBackendOptions,
+                ): ReturnType<typeof mergeTerminalOptions> =>
+                  mergeTerminalOptions(
+                    currentProfileOptions(),
+                    settings.value.terminalOptions,
+                    backendOptions,
+                  );
               terminalBackendOptions = settleTerminalBackendOptions(
                 requested,
                 ret,
@@ -1508,19 +1554,48 @@ export class TerminalView extends ItemView {
               if (terminalBackendOptions !== requested) {
                 // A ConHost fallback: nothing has been piped yet, so drop what
                 // only ConPTY understands before any output is parsed.
-                const merge = (
-                  backendOptions: TerminalBackendOptions,
-                ): ReturnType<typeof mergeTerminalOptions> =>
-                  mergeTerminalOptions(
-                    profileTerminalOptions,
-                    settings.value.terminalOptions,
-                    backendOptions,
-                  );
                 applyTerminalOptionDiffShallow(
                   terminal,
                   merge(requested),
                   merge(terminalBackendOptions),
                 );
+              }
+              if (ret?.consoleHost) {
+                // Windows Terminal's console host reflows like a newer ConPTY
+                // than this machine's; later option patches merge with the
+                // raised build too.
+                const settled = ret.consoleHost.then((consoleHost) => {
+                  if (signal.aborted) return;
+                  const before = terminalBackendOptions;
+                  terminalBackendOptions = settleConsoleHostBackendOptions(
+                    before,
+                    consoleHost,
+                  );
+                  if (terminalBackendOptions !== before) {
+                    applyTerminalOptionDiffShallow(
+                      terminal,
+                      merge(before),
+                      merge(terminalBackendOptions),
+                    );
+                  }
+                }, noop); // A failed startup is reported with the shell.
+                settled.catch(warn);
+                if (
+                  conPtyConsoleHostSpec(settings.value) !== null &&
+                  consoleHostMayRaiseBuild(
+                    currentProfileOptions(),
+                    settings.value.terminalOptions,
+                    terminalBackendOptions,
+                  )
+                ) {
+                  // Output parsed before the raise keeps the older build's
+                  // wrap guesses, which a wider terminal joins into one line.
+                  // The emulator pipes only after this returns. A report that
+                  // never comes releases the output as it is.
+                  ret.holdOutput?.(
+                    settleWithin(settled, CONPTY_READY_TIMEOUT_MS),
+                  );
+                }
               }
               if (ret) {
                 return ret;
@@ -1747,10 +1822,7 @@ export class TerminalView extends ItemView {
                 profileSourceId !== null ? s.profiles[profileSourceId] : null;
               return {
                 globalOptions: s.terminalOptions,
-                profileOptions:
-                  liveProfile && liveProfile.type !== "invalid"
-                    ? liveProfile.terminalOptions
-                    : null,
+                profileOptions: liveProfileOptions(s),
                 followTheme: liveProfile
                   ? liveProfile.type === "invalid" || liveProfile.followTheme
                   : null,

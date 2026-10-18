@@ -9,17 +9,21 @@ import nodeUrl, { pathToFileURL } from "node:url";
 import type { Terminal } from "@xterm/xterm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TerminalPlugin } from "../../../src/main.js";
+import { Settings } from "../../../src/settings-data.js";
 import {
   TERMINAL_CONPTY_HOST_EXIT_WAIT,
+  TERMINAL_OUTPUT_HIGH_WATER_BYTES,
   TERMINAL_RESIZER_WATCHDOG_WAIT,
   WINDOWS_CONHOST_PATH,
 } from "../../../src/magic.js";
 import {
+  CONPTY_CONSOLE_HOST_FALLBACKS,
   CONPTY_DEPENDENCIES,
   CONPTY_READY_TIMEOUT_MS,
   CONPTY_UNARMED_READY_TIMEOUT_FACTOR,
   ConPtyHostPool,
   logChildStderr,
+  type ConPtyConsoleHost,
   type ConPtyControlChannel,
   ConPtyControlError,
   ConPtyPseudoterminal,
@@ -29,11 +33,13 @@ import {
   type ConPtyPseudoterminalDependencies,
   type ConPtyReadyEvent,
   type ConPtyStartOp,
+  type PipeShellToTerminalOptions,
   pipeShellToTerminal,
   Pseudoterminal,
   RefPsuedoterminal,
   WindowsNamedPipeControlChannel,
   WindowsPseudoterminal,
+  conPtyConsoleHostSpec,
   encodeConPtyOp,
   normalizeConPtyDimension,
   parseConPtyHostEvent,
@@ -43,7 +49,7 @@ import {
 } from "../../../src/terminal/pseudoterminal.js";
 import * as environment from "../../../src/terminal/environment.js";
 import { conPtyFailureCondemnsRuntime } from "../../../src/terminal/profile-properties.js";
-import { pseudoterminal } from "../../support/helpers.js";
+import { microtasks, pseudoterminal } from "../../support/helpers.js";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -337,11 +343,16 @@ describe("Windows ConHost path", () => {
   });
 });
 
-function readyEvent(hostPid = 100, childPid = 200): ConPtyReadyEvent {
+function readyEvent(
+  hostPid = 100,
+  childPid = 200,
+  consoleHost: ConPtyConsoleHost = SYSTEM_CONSOLE_HOST,
+): ConPtyReadyEvent {
   return {
     attestation:
       "create-pseudoconsole+authenticated-control-channel+job-object-assigned",
     childPid,
+    consoleHost,
     controlChannelAuthenticated: true,
     createPseudoConsole: true,
     event: "ready",
@@ -349,6 +360,14 @@ function readyEvent(hostPid = 100, childPid = 200): ConPtyReadyEvent {
     jobObjectAssigned: true,
   };
 }
+
+/** The report when no console host was requested. */
+const SYSTEM_CONSOLE_HOST: ConPtyConsoleHost = {
+  detail: null,
+  engine: "conhost",
+  fallback: null,
+  path: null,
+};
 
 interface SocketLineReader {
   readonly next: () => Promise<string>;
@@ -416,8 +435,30 @@ describe("ConPTY control protocol", () => {
     },
   );
 
+  it("forwards the console host report through reference wrappers", () => {
+    const consoleHost = Promise.resolve(SYSTEM_CONSOLE_HOST),
+      pty = new RefPsuedoterminal({ ...pseudoterminal(), consoleHost });
+    expect(pty.consoleHost).toBe(consoleHost);
+    expect(pty.dup().consoleHost).toBe(consoleHost);
+    expect(new RefPsuedoterminal(pseudoterminal()).consoleHost).toBeUndefined();
+  });
+
+  it("forwards the output hold through reference wrappers", () => {
+    const until = Promise.resolve(),
+      delegate = { ...pseudoterminal(), holdOutput: vi.fn() },
+      pty = new RefPsuedoterminal(delegate);
+    pty.holdOutput?.(until);
+    pty.dup().holdOutput?.(until);
+    expect(delegate.holdOutput).toHaveBeenCalledTimes(2);
+    expect(delegate.holdOutput).toHaveBeenNthCalledWith(1, until);
+    expect(delegate.holdOutput).toHaveBeenNthCalledWith(2, until);
+    // Bound: a ConPTY session keeps the hold in a private field.
+    expect(delegate.holdOutput.mock.contexts).toEqual([delegate, delegate]);
+    expect(new RefPsuedoterminal(pseudoterminal()).holdOutput).toBeUndefined();
+  });
+
   it.each<Pseudoterminal["win32Backend"]>(["conpty", "legacy", undefined])(
-    "exposes resize acknowledgment after selecting the %s backend",
+    "exposes resize acknowledgment, the console host and the output hold after selecting the %s backend",
     async (win32Backend) => {
       const error = new Error("stop before spawning"),
         // Only these context members are used before the seeded startup failure.
@@ -438,11 +479,24 @@ describe("ConPTY control protocol", () => {
         win32Backend,
       });
       expect(pty.resizeIsAcknowledged).toBe(win32Backend === "conpty");
+      // Only ConPTY reports a console host; it fails with the startup.
+      expect(pty.consoleHost === void 0).toBe(win32Backend !== "conpty");
+      // Only ConPTY holds output, in the session it delegates to.
+      const holdOutput = vi.spyOn(ConPtyPseudoterminal.prototype, "holdOutput"),
+        until = Promise.resolve();
+      expect(pty.holdOutput === void 0).toBe(win32Backend !== "conpty");
+      pty.holdOutput?.(until);
+      expect(holdOutput.mock.calls).toEqual(
+        win32Backend === "conpty" ? [[until]] : [],
+      );
       await Promise.all([
         expect(pty.shell).rejects.toThrow(error.message),
         expect(pty.onExit).rejects.toThrow(error.message),
         // Observe ConHost's resizer promise when shell startup rejects.
         expect(pty.resize(80, 24)).rejects.toThrow(error.message),
+        ...(pty.consoleHost
+          ? [expect(pty.consoleHost).rejects.toThrow(error.message)]
+          : []),
       ]);
     },
   );
@@ -544,6 +598,72 @@ describe("ConPTY control protocol", () => {
       ),
     ).toBeNull();
   });
+
+  it.each<ConPtyConsoleHost>([
+    {
+      detail: null,
+      engine: "openconsole",
+      fallback: null,
+      path: "C:\\Program Files\\WindowsApps\\Microsoft.WindowsTerminal_1.22.11141.0_x64__8wekyb3d8bbwe\\OpenConsole.exe",
+    },
+    SYSTEM_CONSOLE_HOST,
+    { detail: null, engine: "conhost", fallback: "not-found", path: null },
+    // Windows Terminal's console host started but exited before the shell ran.
+    {
+      detail: "exited with code 1",
+      engine: "conhost",
+      fallback: "exited",
+      path: null,
+    },
+    ...CONPTY_CONSOLE_HOST_FALLBACKS.map((fallback): ConPtyConsoleHost => ({
+      detail: "0x80070002",
+      engine: "conhost",
+      fallback,
+      path: null,
+    })),
+  ])("accepts the console host report %j", (consoleHost) => {
+    const event = readyEvent(10, 20, consoleHost);
+    expect(parseConPtyHostEvent(JSON.stringify(event))).toEqual(event);
+  });
+
+  it.each([
+    null,
+    "conhost",
+    [],
+    {},
+    { ...SYSTEM_CONSOLE_HOST, extra: null },
+    { detail: null, engine: "conhost", fallback: null },
+    { ...SYSTEM_CONSOLE_HOST, engine: "conpty" },
+    { ...SYSTEM_CONSOLE_HOST, engine: "openconsole" },
+    { ...SYSTEM_CONSOLE_HOST, engine: "openconsole", path: "" },
+    { ...SYSTEM_CONSOLE_HOST, engine: "openconsole", path: 1 },
+    {
+      ...SYSTEM_CONSOLE_HOST,
+      engine: "openconsole",
+      fallback: "start-failed",
+      path: "C:\\WT\\OpenConsole.exe",
+    },
+    {
+      ...SYSTEM_CONSOLE_HOST,
+      detail: "started",
+      engine: "openconsole",
+      path: "C:\\WT\\OpenConsole.exe",
+    },
+    { ...SYSTEM_CONSOLE_HOST, path: "C:\\WT\\OpenConsole.exe" },
+    { ...SYSTEM_CONSOLE_HOST, fallback: "load-failed" },
+    // The host no longer reports the fallbacks of a custom console host.
+    { ...SYSTEM_CONSOLE_HOST, fallback: "missing" },
+    { ...SYSTEM_CONSOLE_HOST, fallback: "not-absolute" },
+    { ...SYSTEM_CONSOLE_HOST, fallback: "" },
+    { ...SYSTEM_CONSOLE_HOST, detail: 0x80004005 },
+  ])(
+    "rejects a ready record with the console host report %j",
+    (consoleHost) => {
+      expect(
+        parseConPtyHostEvent(JSON.stringify({ ...readyEvent(), consoleHost })),
+      ).toBeNull();
+    },
+  );
 
   it("rejects incomplete or forged ready records", () => {
     expect(
@@ -1015,13 +1135,14 @@ describe("Windows named-pipe ConPTY readiness", () => {
     await channel.start({
       columns: 132,
       command: ["cmd.exe"],
+      consoleHost: "auto",
       cwd: "C:\\work",
       env: { A: "1" },
       op: "start",
       rows: 43,
     });
     await expect(reader.next()).resolves.toBe(
-      '{"columns":132,"command":["cmd.exe"],"cwd":"C:\\\\work","env":{"A":"1"},"op":"start","rows":43}',
+      '{"columns":132,"command":["cmd.exe"],"consoleHost":"auto","cwd":"C:\\\\work","env":{"A":"1"},"op":"start","rows":43}',
     );
     client.write(
       `${JSON.stringify({
@@ -1397,6 +1518,29 @@ function conPtyDependencies(
   };
 }
 
+/** The plugin members a ConPTY terminal reads, with `settings` on top. */
+function conPtyContext(
+  t = vi.fn((key: string) => key),
+  settings: Readonly<Partial<Settings>> = {},
+): TerminalPlugin {
+  return {
+    language: {
+      onChangeLanguage: { listen: vi.fn(() => vi.fn()) },
+      value: { t },
+    },
+    register: vi.fn(),
+    settings: {
+      value: {
+        errorNoticeTimeout: 0,
+        prewarmConPty: true,
+        // Off unless a test turns it on: the host gets no console host.
+        windowsTerminalConsoleHost: false,
+        ...settings,
+      },
+    },
+  } as unknown as TerminalPlugin;
+}
+
 function constructConPty(
   dependencies: ConPtyPseudoterminalDependencies,
   initialSize?: Readonly<{
@@ -1410,16 +1554,10 @@ function constructConPty(
     conPtyRuntimeUnavailable?: () => boolean;
   }>,
   t = vi.fn((key: string) => key),
+  context = conPtyContext(t),
 ): ConPtyPseudoterminal {
   return new ConPtyPseudoterminal(
-    {
-      language: {
-        onChangeLanguage: { listen: vi.fn(() => vi.fn()) },
-        value: { t },
-      },
-      register: vi.fn(),
-      settings: { value: { errorNoticeTimeout: 0, prewarmConPty: true } },
-    } as unknown as TerminalPlugin,
+    context,
     {
       executable: "cmd.exe",
       ...initialSize,
@@ -2586,6 +2724,261 @@ describe("ConPTY ready transition", () => {
   });
 });
 
+describe("ConPTY console host", () => {
+  const WT_PATH = "C:\\WT\\OpenConsole.exe",
+    OPENCONSOLE: ConPtyConsoleHost = {
+      detail: null,
+      engine: "openconsole",
+      fallback: null,
+      path: WT_PATH,
+    };
+
+  /** Opens a cold terminal whose host reports `consoleHost` when ready. */
+  async function openReporting(
+    consoleHost: ConPtyConsoleHost,
+    context: TerminalPlugin,
+  ): Promise<ConPtyPseudoterminal> {
+    const host = testHost(),
+      hostPid = liveHostPid(host),
+      control = fakeControl(
+        Promise.resolve(readyEvent(hostPid, hostPid + 1, consoleHost)),
+        () => host.kill(),
+      ),
+      pty = constructConPty(
+        conPtyDependencies(control, host),
+        void 0,
+        void 0,
+        context,
+      );
+    await pty.shell;
+    return pty;
+  }
+
+  async function close(pty: ConPtyPseudoterminal): Promise<void> {
+    await pty.kill();
+    await pty.onExit;
+  }
+
+  /** The setting that turns the Windows Terminal console host on. */
+  const ON = { windowsTerminalConsoleHost: true } as const;
+
+  it.each<readonly [unknown, string | null]>([
+    [{}, "auto"],
+    [{ windowsTerminalConsoleHost: false }, null],
+    [{ windowsTerminalConsoleHost: true }, "auto"],
+    [{ windowsTerminalConsoleHost: "false" }, "auto"],
+  ])(
+    "asks a host with the stored settings %j for the console host %j",
+    (stored, spec) => {
+      expect(conPtyConsoleHostSpec(Settings.fix(stored).value)).toBe(spec);
+    },
+  );
+
+  /*
+   * One scenario, a cold open that refills the pool and a prewarmed open,
+   * with the setting off and on. Off sends the host exactly what releases
+   * before the setting sent.
+   */
+  describe.each([
+    { setting: "off", spec: null, windowsTerminalConsoleHost: false },
+    { ...ON, setting: "on", spec: "auto" },
+  ] as const)(
+    "with the Windows Terminal console host setting $setting",
+    ({ spec, windowsTerminalConsoleHost }) => {
+      const consoleHostArgs: readonly string[] =
+          spec === null ? [] : ["--console-host", spec],
+        // A host that is asked for nothing reports the built-in console host.
+        report = spec === null ? SYSTEM_CONSOLE_HOST : OPENCONSOLE,
+        logged = spec === null ? [] : [["ConPTY console host", report]];
+
+      /** Records what is logged about the console host. */
+      function consoleHostLog(): () => readonly unknown[] {
+        const info = vi
+            .spyOn(self.console, "info")
+            .mockImplementation(() => {}),
+          debug = vi.spyOn(self.console, "debug").mockImplementation(() => {});
+        return () =>
+          [...info.mock.calls, ...debug.mock.calls].filter(
+            ([label]) => label === "ConPTY console host",
+          );
+      }
+
+      it("a cold open and the spare it boots get the stable arguments, and the console host when on", async () => {
+        const server = createServer();
+        // Only the spare's arguments are under test: nothing connects.
+        vi.spyOn(server, "listen").mockImplementation(() => {
+          server.emit("listening");
+          return server;
+        });
+        const host = testHost(),
+          spareHost = testHost(),
+          hostPid = liveHostPid(host),
+          control = fakeControl(
+            Promise.resolve(readyEvent(hostPid, hostPid + 1, report)),
+            () => host.kill(),
+          ),
+          pool = new ConPtyHostPool(),
+          spawn = vi
+            .fn<ConPtyPseudoterminalDependencies["spawn"]>()
+            .mockResolvedValueOnce(host)
+            .mockResolvedValueOnce(spareHost),
+          dependencies: ConPtyPseudoterminalDependencies = {
+            ...conPtyDependencies(control, host),
+            createDeferredControl: async () =>
+              WindowsNamedPipeControlChannel.create({
+                createServer: () => server,
+                deferred: true,
+                randomUUID,
+              }),
+            pool,
+            spawn,
+          },
+          log = consoleHostLog(),
+          pty = constructConPty(
+            dependencies,
+            { cwd: "C:\\work" },
+            void 0,
+            conPtyContext(void 0, { windowsTerminalConsoleHost }),
+          );
+        try {
+          await pty.shell;
+          expect(spawn.mock.calls[0]?.[1].slice(6)).toEqual([
+            "test-control-pipe",
+            "--cwd",
+            "C:\\work",
+            ...consoleHostArgs,
+            "--",
+            "cmd.exe",
+          ]);
+          // The pool refills once the terminal is ready.
+          await vi.waitFor(() => {
+            expect(spawn).toHaveBeenCalledTimes(2);
+          });
+          const [executable, spareArgs] = spawn.mock.calls[1] ?? [];
+          expect(executable).toBe(process.execPath);
+          expect(spareArgs).toEqual([
+            "-I",
+            "-S",
+            "-B",
+            "test-host.py",
+            "--defer-session",
+            expect.any(String),
+            ...consoleHostArgs,
+          ]);
+          expect(log()).toEqual(logged);
+        } finally {
+          pool.dispose();
+          spareHost.kill();
+          await close(pty);
+        }
+      });
+
+      it("a prewarmed open sends the stable start op, and the console host when on", async () => {
+        const host = testHost(),
+          hostPid = liveHostPid(host),
+          start = vi
+            .fn<(op: ConPtyStartOp) => Promise<void>>()
+            .mockResolvedValue(undefined),
+          warmControl = {
+            ...fakeControl(
+              Promise.resolve(readyEvent(hostPid, hostPid + 1, report)),
+              () => host.kill(),
+            ),
+            start,
+          },
+          ensureSpare = vi.fn<ConPtyHostPool["ensureSpare"]>(),
+          pool = {
+            acquire: vi.fn(() => ({ control: warmControl, host })),
+            dispose: vi.fn(),
+            ensureSpare,
+          },
+          dependencies = {
+            ...conPtyDependencies(
+              fakeControl(new Promise<never>(() => {}), () => {}),
+              host,
+            ),
+            pool: pool as unknown as ConPtyHostPool,
+          },
+          log = consoleHostLog(),
+          pty = constructConPty(
+            dependencies,
+            void 0,
+            void 0,
+            conPtyContext(void 0, { windowsTerminalConsoleHost }),
+          );
+        try {
+          await pty.shell;
+          expect(dependencies.spawn).not.toHaveBeenCalled();
+          const op = start.mock.calls[0]?.[0];
+          // The key is absent while off, not `undefined`.
+          expect(Object.keys(op ?? {}).sort()).toEqual([
+            "columns",
+            "command",
+            ...(spec === null ? [] : ["consoleHost"]),
+            "cwd",
+            "env",
+            "op",
+            "rows",
+          ]);
+          expect(op?.consoleHost).toBe(spec ?? undefined);
+          // The refill passes the same hint on to the next spare.
+          await vi.waitFor(() => {
+            expect(ensureSpare).toHaveBeenCalledExactlyOnceWith(
+              process.execPath,
+              dependencies,
+              spec,
+            );
+          });
+          expect(log()).toEqual(logged);
+        } finally {
+          await close(pty);
+        }
+      });
+    },
+  );
+
+  it("exposes the report and logs it once at info level", async () => {
+    const info = vi.spyOn(self.console, "info").mockImplementation(() => {}),
+      debug = vi.spyOn(self.console, "debug").mockImplementation(() => {}),
+      pty = await openReporting(OPENCONSOLE, conPtyContext(void 0, ON));
+    try {
+      await expect(pty.consoleHost).resolves.toEqual(OPENCONSOLE);
+      expect(info).toHaveBeenCalledExactlyOnceWith(
+        "ConPTY console host",
+        OPENCONSOLE,
+      );
+      expect(debug).not.toHaveBeenCalledWith(
+        "ConPTY console host",
+        expect.anything(),
+      );
+    } finally {
+      await close(pty);
+    }
+  });
+
+  it.each(["not-found", "exited"] as const)(
+    "logs the fallback %s only at debug level",
+    async (fallback) => {
+      const report: ConPtyConsoleHost = {
+          detail: null,
+          engine: "conhost",
+          fallback,
+          path: null,
+        },
+        info = vi.spyOn(self.console, "info").mockImplementation(() => {}),
+        debug = vi.spyOn(self.console, "debug").mockImplementation(() => {}),
+        pty = await openReporting(report, conPtyContext(void 0, ON));
+      try {
+        await expect(pty.consoleHost).resolves.toEqual(report);
+        expect(info).not.toHaveBeenCalled();
+        expect(debug).toHaveBeenCalledWith("ConPTY console host", report);
+      } finally {
+        await close(pty);
+      }
+    },
+  );
+});
+
 describe("ConPTY source materialization", () => {
   it.each(["EPERM", "EACCES", "EBUSY"])(
     "retries a transient %s rename failure",
@@ -2779,41 +3172,54 @@ describe("resize repaint window", () => {
 
 describe("shell output piping", () => {
   function pipeFixture(): {
+    /** Disposes the addons the pipe loaded, as disposing the terminal does. */
+    readonly dispose: () => void;
     readonly emit: (chunk: Buffer | string) => void;
+    readonly pause: ReturnType<typeof vi.fn<() => void>>;
     readonly payloads: (Buffer | string)[];
-    readonly pipe: (
-      repaintWindow?: Readonly<{ active: () => boolean }>,
-    ) => Promise<void>;
+    readonly pipe: (options?: PipeShellToTerminalOptions) => Promise<void>;
+    readonly resume: ReturnType<typeof vi.fn<() => void>>;
   } {
     const { payloads, terminal } = captureTerminal(),
+      addons: { dispose: () => void }[] = [],
       listeners: ((chunk: Buffer | string) => void)[] = [],
       output = {
         on: (_event: string, listener: (chunk: Buffer | string) => void) => {
           listeners.push(listener);
         },
-        pause: (): void => {},
+        pause: vi.fn<() => void>(),
         removeListener: (): void => {},
-        resume: (): void => {},
+        resume: vi.fn<() => void>(),
       },
       shell = { stdin: {} } as unknown as Parameters<
         typeof pipeShellToTerminal
       >[1];
+    Object.assign(terminal, {
+      loadAddon: (addon: { dispose: () => void }): void => {
+        addons.push(addon);
+      },
+    });
     return {
+      dispose: (): void => {
+        for (const addon of addons) addon.dispose();
+      },
       emit: (chunk): void => {
         for (const listener of listeners) listener(chunk);
       },
+      pause: output.pause,
       payloads,
-      pipe: async (repaintWindow): Promise<void> => {
+      pipe: async (options): Promise<void> => {
         await pipeShellToTerminal(
           terminal,
           shell,
           [output as unknown as Parameters<typeof pipeShellToTerminal>[2][0]],
           new Promise(() => {}),
-          { repaintWindow },
+          options,
         );
         // Drop the screen-clear preamble the pipe writes on attach.
         payloads.length = 0;
       },
+      resume: output.resume,
     };
   }
 
@@ -2828,7 +3234,7 @@ describe("shell output piping", () => {
 
   it("writes oversized chunks whole while the repaint window is open", async () => {
     const fixture = pipeFixture();
-    await fixture.pipe({ active: () => true });
+    await fixture.pipe({ repaintWindow: { active: () => true } });
     fixture.emit(Buffer.alloc(20_000, 0x61));
     expect(payloadSizes(fixture.payloads)).toEqual([20_000]);
   });
@@ -2836,13 +3242,64 @@ describe("shell output piping", () => {
   it("returns to sliced writes when the repaint window closes", async () => {
     let active = true;
     const fixture = pipeFixture();
-    await fixture.pipe({ active: () => active });
+    await fixture.pipe({ repaintWindow: { active: () => active } });
     fixture.emit(Buffer.alloc(20_000, 0x61));
     expect(payloadSizes(fixture.payloads)).toEqual([20_000]);
     fixture.payloads.length = 0;
     active = false;
     fixture.emit(Buffer.alloc(20_000, 0x61));
     expect(payloadSizes(fixture.payloads)).toEqual([8_192, 8_192, 3_616]);
+  });
+
+  it("holds output until the hold settles, then writes it in order", async () => {
+    const fixture = pipeFixture(),
+      hold = Promise.withResolvers<undefined>();
+    await fixture.pipe({ holdOutput: hold.promise });
+    fixture.emit("first");
+    fixture.emit("second");
+    expect(fixture.payloads).toEqual([]);
+    hold.resolve(undefined);
+    await microtasks();
+    expect(fixture.payloads).toEqual(["first", "second"]);
+    fixture.emit("third");
+    expect(fixture.payloads).toEqual(["first", "second", "third"]);
+  });
+
+  it("releases held output unchanged when the hold rejects", async () => {
+    const fixture = pipeFixture(),
+      hold = Promise.withResolvers<undefined>();
+    await fixture.pipe({ holdOutput: hold.promise });
+    fixture.emit("held");
+    hold.reject(new Error("no console host report"));
+    await microtasks();
+    expect(fixture.payloads).toEqual(["held"]);
+  });
+
+  it("drops held output once the terminal is disposed", async () => {
+    const fixture = pipeFixture(),
+      hold = Promise.withResolvers<undefined>();
+    await fixture.pipe({ holdOutput: hold.promise });
+    fixture.emit("held");
+    fixture.dispose();
+    hold.resolve(undefined);
+    await microtasks();
+    expect(fixture.payloads).toEqual([]);
+  });
+
+  it("pauses the shell while held output passes the high watermark", async () => {
+    const fixture = pipeFixture(),
+      hold = Promise.withResolvers<undefined>();
+    await fixture.pipe({ holdOutput: hold.promise });
+    fixture.emit(Buffer.alloc(TERMINAL_OUTPUT_HIGH_WATER_BYTES + 1, 0x61));
+    expect(fixture.pause).toHaveBeenCalledOnce();
+    expect(fixture.resume).not.toHaveBeenCalled();
+    hold.resolve(undefined);
+    await microtasks();
+    // Resumed once the held chunk is written.
+    expect(fixture.resume).toHaveBeenCalledOnce();
+    expect(payloadSizes(fixture.payloads).reduce((a, b) => a + b, 0)).toBe(
+      TERMINAL_OUTPUT_HIGH_WATER_BYTES + 1,
+    );
   });
 });
 
@@ -2964,6 +3421,51 @@ describe("ConPTY resize repaint window wiring", () => {
       control.onResized?.({ columns: 100, event: "resized", rows: 40, seq: 1 });
       host.stdout.emit("data", Buffer.alloc(20_000, 0x61));
       expect(payloadSizes(payloads)).toEqual([20_000]);
+    } finally {
+      await pty.kill();
+      await pty.onExit;
+    }
+  });
+});
+
+describe("ConPTY output hold", () => {
+  it("writes the session's output only once its hold settles", async () => {
+    const host = testHost(),
+      hostPid = liveHostPid(host),
+      ready = Object.freeze(readyEvent(hostPid, hostPid + 1)),
+      control = fakeControl(Promise.resolve(ready), () => host.kill()),
+      dependencies = conPtyDependencies(control, host),
+      pty = constructConPty(dependencies),
+      hold = Promise.withResolvers<undefined>();
+    try {
+      const { payloads, terminal } = captureTerminal();
+      pty.holdOutput(hold.promise);
+      await pty.pipe(terminal);
+      payloads.length = 0;
+      host.stdout.emit("data", "early");
+      expect(payloads).toEqual([]);
+      hold.resolve(undefined);
+      await microtasks();
+      expect(payloads).toEqual(["early"]);
+    } finally {
+      await pty.kill();
+      await pty.onExit;
+    }
+  });
+
+  it("writes the session's output at once without a hold", async () => {
+    const host = testHost(),
+      hostPid = liveHostPid(host),
+      ready = Object.freeze(readyEvent(hostPid, hostPid + 1)),
+      control = fakeControl(Promise.resolve(ready), () => host.kill()),
+      dependencies = conPtyDependencies(control, host),
+      pty = constructConPty(dependencies);
+    try {
+      const { payloads, terminal } = captureTerminal();
+      await pty.pipe(terminal);
+      payloads.length = 0;
+      host.stdout.emit("data", "early");
+      expect(payloads).toEqual(["early"]);
     } finally {
       await pty.kill();
       await pty.onExit;

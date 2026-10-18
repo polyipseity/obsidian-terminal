@@ -21,6 +21,7 @@ import {
   Pseudoterminal,
   RefPsuedoterminal,
   TextPseudoterminal,
+  conPtyConsoleHostSpec,
   registerConPtyPoolDisposal,
 } from "./pseudoterminal.js";
 import {
@@ -462,5 +463,9 @@ export async function prewarmConPtyProfile(
   if (diagnosis.status !== "ok" || hostExecutable === null || !wanted()) {
     return;
   }
-  CONPTY_HOST_POOL.ensureSpare(hostExecutable, CONPTY_DEPENDENCIES);
+  CONPTY_HOST_POOL.ensureSpare(
+    hostExecutable,
+    CONPTY_DEPENDENCIES,
+    conPtyConsoleHostSpec(context.settings.value),
+  );
 }

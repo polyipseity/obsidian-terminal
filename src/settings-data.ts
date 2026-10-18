@@ -122,6 +122,11 @@ export interface Settings extends PluginContext.Settings {
   readonly preferredRenderer: Settings.PreferredRendererOption;
   readonly prewarmConPty: boolean;
   /**
+   * Run ConPTY terminals on the console host that ships with Windows Terminal
+   * 1.22 or newer, falling back to the one built into Windows. Windows only.
+   */
+  readonly windowsTerminalConsoleHost: boolean;
+  /**
    * Plugin-level Python interpreter, inherited by Windows integrated profiles
    * with an empty `pythonExecutable`. Empty means auto-discover on every
    * load; the Python check never writes here, since this value syncs.
@@ -292,6 +297,7 @@ export namespace Settings {
     pinNewInstance: true,
     preferredRenderer: "webgl",
     prewarmConPty: true,
+    windowsTerminalConsoleHost: true,
     pythonExecutable: "",
     profiles: Object.fromEntries(
       (
@@ -1738,6 +1744,12 @@ export namespace Settings {
         PREFERRED_RENDERER_OPTIONS,
       ),
       prewarmConPty: fixTyped(DEFAULT, unc, "prewarmConPty", ["boolean"]),
+      windowsTerminalConsoleHost: fixTyped(
+        DEFAULT,
+        unc,
+        "windowsTerminalConsoleHost",
+        ["boolean"],
+      ),
       pythonExecutable: fixTyped(DEFAULT, unc, "pythonExecutable", ["string"]),
       profiles: fixedProfiles,
       // defaultProfile will be validated against fixedProfiles

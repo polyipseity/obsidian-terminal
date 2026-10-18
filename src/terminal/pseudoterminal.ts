@@ -246,6 +246,9 @@ async function clearTerminal(terminal: Terminal, keep = false): Promise<void> {
 }
 
 export interface PipeShellToTerminalOptions {
+  /** Output stays out of the terminal until this settles, either way, and is
+   * then written in order. */
+  readonly holdOutput?: Promise<unknown> | undefined;
   /** While active, chunks bypass write slicing. */
   readonly repaintWindow?: Pick<ResizeRepaintWindow, "active"> | undefined;
   /** Drops the first output chunk unwritten and untracked. */
@@ -264,30 +267,58 @@ export async function pipeShellToTerminal(
   onExit: Promise<unknown>,
   options?: PipeShellToTerminalOptions,
 ): Promise<void> {
-  let skipNextChunk = options?.skipFirstChunk ?? false;
+  let skipNextChunk = options?.skipFirstChunk ?? false,
+    // Chunks read while the output is held, in order, each with what settles
+    // its backpressure; `null` once the output is released.
+    held: (readonly [Buffer | string, () => void])[] | null =
+      options?.holdOutput ? [] : null;
   const repaintWindow = options?.repaintWindow,
     backpressure = createTerminalOutputBackpressure(outputs),
-    reader = (chunk: Buffer | string): void => {
-      if (skipNextChunk) {
-        skipNextChunk = false;
-        return;
-      }
+    write = (chunk: Buffer | string): Promise<void> => {
       const sliceBytes =
           (repaintWindow?.active() ?? false)
             ? Number.POSITIVE_INFINITY
             : void 0,
         written = writeTerminalSliced(terminal, chunk, sliceBytes);
-      backpressure.track(chunk, written);
       written.catch((error: unknown) => {
         activeSelf(terminal.element).console.error(error);
       });
+      return written;
+    },
+    reader = (chunk: Buffer | string): void => {
+      if (skipNextChunk) {
+        skipNextChunk = false;
+        return;
+      }
+      if (held) {
+        // Counted while held, so a flood pauses the shell until it is written.
+        const chunks = held;
+        backpressure.track(
+          chunk,
+          new Promise<void>((resolve) => {
+            chunks.push([chunk, resolve]);
+          }),
+        );
+        return;
+      }
+      backpressure.track(chunk, write(chunk));
+    },
+    release = (): void => {
+      const chunks = held ?? [];
+      held = null;
+      for (const [chunk, done] of chunks) write(chunk).then(done, done);
     };
+  options?.holdOutput?.then(release, release);
   await clearTerminal(terminal, true);
   terminal.loadAddon(
     new DisposerAddon(
       ...outputs.map((output) => (): void => {
         output.removeListener("data", reader);
       }),
+      () => {
+        // A disposed terminal takes no held output.
+        held = null;
+      },
       () => {
         backpressure.dispose();
       },
@@ -331,6 +362,12 @@ export interface Pseudoterminal {
   /** The Windows backend in use. A ConHost fallback makes it differ from the
    * profile's, and the emulator must be configured for the one that runs. */
   readonly win32Backend?: Settings.Profile.Win32Backend | undefined;
+  /** ConPTY only: the console host the session runs on, once the host is
+   * ready. Rejects with {@link shell}. */
+  readonly consoleHost?: Promise<ConPtyConsoleHost> | undefined;
+  /** ConPTY only: keeps output out of the terminal until `until` settles,
+   * either way, then writes it in order. Call it before {@link pipe}. */
+  readonly holdOutput?: ((until: Promise<unknown>) => void) | undefined;
 }
 
 export class RefPsuedoterminal<
@@ -371,6 +408,15 @@ export class RefPsuedoterminal<
 
   public get resizeIsAcknowledged(): boolean | undefined {
     return this.delegate.resizeIsAcknowledged;
+  }
+
+  public get consoleHost(): Promise<ConPtyConsoleHost> | undefined {
+    return this.delegate.consoleHost;
+  }
+
+  public get holdOutput(): ((until: Promise<unknown>) => void) | undefined {
+    const { delegate } = this;
+    return delegate.holdOutput?.bind(delegate);
   }
 
   public dup(): RefPsuedoterminal<T> {
@@ -1440,6 +1486,10 @@ export interface ConPtyStartOp {
   readonly columns: number;
   readonly rows: number;
   readonly cwd: string | null;
+  /** Console host spec from {@link conPtyConsoleHostSpec}: `"auto"` finds
+   * Windows Terminal's `OpenConsole.exe`. Absent, as before the setting
+   * existed, the session runs on the console host built into Windows. */
+  readonly consoleHost?: typeof CONPTY_CONSOLE_HOST_AUTO;
   readonly env: Readonly<Record<string, string>>;
   readonly command: readonly string[];
 }
@@ -1452,9 +1502,39 @@ export interface ConPtyHelloEvent {
   readonly hostPid: number;
   readonly token: string;
 }
+/** Console host spec that asks the host to find Windows Terminal's
+ * `OpenConsole.exe`. */
+export const CONPTY_CONSOLE_HOST_AUTO = "auto";
+export const CONPTY_CONSOLE_HOST_ENGINES = deepFreeze([
+  "conhost",
+  "openconsole",
+]);
+/** Why the host fell back to the console host built into Windows.
+ * `exited`: Windows Terminal's console host started but exited before the
+ * shell ran. */
+export const CONPTY_CONSOLE_HOST_FALLBACKS = deepFreeze([
+  "exited",
+  "not-found",
+  "start-failed",
+  "unsupported-os",
+]);
+export type ConPtyConsoleHostFallback =
+  (typeof CONPTY_CONSOLE_HOST_FALLBACKS)[number];
+/** The console host a session runs on, as its ready event reports it. */
+export interface ConPtyConsoleHost {
+  /** `openconsole`: an `OpenConsole.exe` at `path`; `conhost`: the console
+   * host built into Windows. */
+  readonly engine: (typeof CONPTY_CONSOLE_HOST_ENGINES)[number];
+  readonly path: string | null;
+  /** `null` when no console host was requested or the requested one runs. */
+  readonly fallback: ConPtyConsoleHostFallback | null;
+  /** Short text for logs. */
+  readonly detail: string | null;
+}
 export interface ConPtyReadyEvent {
   readonly attestation: typeof CONPTY_READY_ATTESTATION;
   readonly childPid: number;
+  readonly consoleHost: ConPtyConsoleHost;
   readonly controlChannelAuthenticated: true;
   readonly createPseudoConsole: true;
   readonly event: "ready";
@@ -1494,6 +1574,7 @@ export function encodeConPtyOp(op: ConPtyOp): string {
 interface ConPtyHostEventFields {
   readonly attestation: unknown;
   readonly childPid: unknown;
+  readonly consoleHost: unknown;
   readonly event: unknown;
   readonly hostPid: unknown;
   readonly controlChannelAuthenticated: unknown;
@@ -1528,6 +1609,50 @@ function isProcessId(value: unknown): value is number {
   );
 }
 
+interface ConPtyConsoleHostFields {
+  readonly detail: unknown;
+  readonly engine: unknown;
+  readonly fallback: unknown;
+  readonly path: unknown;
+}
+
+/** Validates the `consoleHost` report of a ready event. */
+function parseConPtyConsoleHost(value: unknown): ConPtyConsoleHost | null {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    Array.isArray(value) ||
+    Object.keys(value).length !== 4
+  ) {
+    return null;
+  }
+  const { detail, engine, fallback, path } =
+    launderUnchecked<ConPtyConsoleHostFields>(value);
+  if (
+    !inSet(CONPTY_CONSOLE_HOST_ENGINES, engine) ||
+    (fallback !== null && !inSet(CONPTY_CONSOLE_HOST_FALLBACKS, fallback)) ||
+    (detail !== null && typeof detail !== "string")
+  ) {
+    return null;
+  }
+  if (engine === "openconsole") {
+    // The requested console host runs: nothing fell back.
+    if (
+      typeof path !== "string" ||
+      !path ||
+      fallback !== null ||
+      detail !== null
+    ) {
+      return null;
+    }
+    return Object.freeze({ detail, engine, fallback, path });
+  }
+  if (path !== null) {
+    return null;
+  }
+  return Object.freeze({ detail, engine, fallback, path });
+}
+
 /** Parses one NDJSON line sent by the host. Returns `null` when the line is
  * not a known, well-formed event. */
 export function parseConPtyHostEvent(line: string): ConPtyHostEvent | null {
@@ -1551,6 +1676,7 @@ export function parseConPtyHostEvent(line: string): ConPtyHostEvent | null {
     childPid,
     code,
     columns,
+    consoleHost: consoleHost0,
     controlChannelAuthenticated,
     createPseudoConsole,
     event,
@@ -1579,8 +1705,10 @@ export function parseConPtyHostEvent(line: string): ConPtyHostEvent | null {
     });
   }
   if (event === "ready") {
+    const consoleHost = parseConPtyConsoleHost(consoleHost0);
     if (
-      Object.keys(parsed).length !== 7 ||
+      Object.keys(parsed).length !== 8 ||
+      consoleHost === null ||
       attestation !== CONPTY_READY_ATTESTATION ||
       controlChannelAuthenticated !== true ||
       createPseudoConsole !== true ||
@@ -1594,6 +1722,7 @@ export function parseConPtyHostEvent(line: string): ConPtyHostEvent | null {
     return Object.freeze({
       attestation,
       childPid,
+      consoleHost,
       controlChannelAuthenticated,
       createPseudoConsole,
       event,
@@ -2331,9 +2460,18 @@ export class ConPtyHostPool {
     return entry;
   }
 
+  /**
+   * Boots a spare host for `pythonExecutable` unless one exists or boots.
+   *
+   * @param consoleHost console host spec from {@link conPtyConsoleHostSpec}
+   *   while the spare spawns. It only lets the idle host look up Windows
+   *   Terminal early; the start op still names the console host the session
+   *   runs on. `null` spawns the spare as before the setting existed.
+   */
   public ensureSpare(
     pythonExecutable: string,
     dependencies: ConPtyPseudoterminalDependencies,
+    consoleHost: typeof CONPTY_CONSOLE_HOST_AUTO | null = null,
   ): void {
     const generation = this.#generation;
     if (
@@ -2360,7 +2498,13 @@ export class ConPtyHostPool {
         );
         host = await dependencies.spawn(
           pythonExecutable,
-          [...CONPTY_PYTHON_FLAGS, sourceFile, "--defer-session", control.path],
+          [
+            ...CONPTY_PYTHON_FLAGS,
+            sourceFile,
+            "--defer-session",
+            control.path,
+            ...(consoleHost === null ? [] : ["--console-host", consoleHost]),
+          ],
           {
             env: await applyEnv({
               profile: [[CONPTY_TOKEN_ENVIRONMENT_VARIABLE, control.token]],
@@ -2559,6 +2703,29 @@ export const CONPTY_DEPENDENCIES: ConPtyPseudoterminalDependencies = {
   },
 };
 
+/**
+ * The console host spec a new ConPTY session asks its host for: `"auto"`
+ * finds Windows Terminal's `OpenConsole.exe` while the Windows Terminal
+ * console host setting is on, the default. `null` asks for nothing, as
+ * earlier releases did: the session runs on the console host built into
+ * Windows. Only Windows reaches this: ConPTY runs nowhere else.
+ */
+export function conPtyConsoleHostSpec(
+  settings: Settings,
+): typeof CONPTY_CONSOLE_HOST_AUTO | null {
+  return settings.windowsTerminalConsoleHost ? CONPTY_CONSOLE_HOST_AUTO : null;
+}
+
+/** Logs the console host a session runs on, once per terminal. */
+function reportConPtyConsoleHost(report: ConPtyConsoleHost): void {
+  // Fallbacks are expected wherever Windows Terminal is missing.
+  if (report.fallback === null) {
+    self.console.info("ConPTY console host", report);
+  } else {
+    self.console.debug("ConPTY console host", report);
+  }
+}
+
 /** One startup attempt: a host process and the channel that controls it. */
 interface ConPtySession {
   readonly control: ConPtyControlChannel;
@@ -2577,6 +2744,8 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
   public readonly shell;
   public readonly onExit;
   public readonly resizeIsAcknowledged = true;
+  /** The console host the session runs on, once the host is ready. */
+  public readonly consoleHost: Promise<ConPtyConsoleHost>;
   protected readonly control;
   protected readonly host;
   /** Current attempt changes once when an acquired spare fails before hello. */
@@ -2585,6 +2754,8 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
   #closing = false;
   #ready = false;
   #resizeSeq = 0;
+  /** Set by {@link holdOutput} before {@link pipe} reads it. */
+  #outputHold: Promise<unknown> | undefined;
   /** Open while conhost's post-resize repaint frames may still arrive.
    * Chunks inside the window bypass write slicing (see
    * {@link pipeShellToTerminal}). */
@@ -2608,6 +2779,8 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
     dependencies: ConPtyPseudoterminalDependencies = CONPTY_DEPENDENCIES,
   ) {
     const { language, settings } = context,
+      // Read once: a toggle applies to terminals opened after it.
+      consoleHostSpec = conPtyConsoleHostSpec(settings.value),
       pool = dependencies.pool,
       poolGeneration = conPtyPoolGeneration ?? pool?.generation,
       warm = pythonExecutable
@@ -2664,6 +2837,9 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
               normalizeConPtyDimension(rows, CONPTY_DEFAULT_ROWS).toString(),
               control0.path,
               ...(directory === null ? [] : ["--cwd", directory]),
+              ...(consoleHostSpec === null
+                ? []
+                : ["--console-host", consoleHostSpec]),
               "--",
               executable,
               ...(args ?? []),
@@ -2733,6 +2909,10 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
                 CONPTY_DEFAULT_COLUMNS,
               ),
               command: [executable, ...(args ?? [])],
+              // No key while the setting is off.
+              ...(consoleHostSpec === null
+                ? {}
+                : { consoleHost: consoleHostSpec }),
               cwd: directory,
               env: envRecord,
               op: "start",
@@ -2912,6 +3092,14 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
           );
         }
         this.#ready = true;
+        if (consoleHostSpec !== null) {
+          try {
+            reportConPtyConsoleHost(ready.consoleHost);
+          } catch (error) {
+            // A report must never fail a terminal that is ready.
+            self.console.warn(error);
+          }
+        }
         return shell;
       } catch (error) {
         const shell = await host.catch(() => null),
@@ -2957,6 +3145,11 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
      * and the host exit above.
      */
     this.shell.catch(noop);
+    // After `shell`, `ready` holds the event that passed the host PID check.
+    this.consoleHost = this.shell.then(
+      async () => (await (await control).ready).consoleHost,
+    );
+    this.consoleHost.catch(noop);
     // Spare only after ready: earlier competes for CPU, after a failure
     // respawns a broken interpreter. A clear during startup retires this refill.
     this.shell
@@ -2967,7 +3160,11 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
           pythonExecutable &&
           !(conPtyRuntimeUnavailable?.() ?? false)
         )
-          pool?.ensureSpare(pythonExecutable, dependencies);
+          pool?.ensureSpare(
+            pythonExecutable,
+            dependencies,
+            conPtyConsoleHostSpec(settings.value),
+          );
       })
       .catch(noop);
   }
@@ -3036,11 +3233,18 @@ export class ConPtyPseudoterminal implements Pseudoterminal {
     this.#repaintWindow.arm();
   }
 
+  /** Keeps the session's output out of the terminal until `until` settles,
+   * either way, then writes it in order. Call it before {@link pipe}. */
+  public holdOutput(until: Promise<unknown>): void {
+    this.#outputHold = until;
+  }
+
   public async pipe(terminal: Terminal): Promise<void> {
     // Gate on the selected host, not readiness: nothing arrives before the
     // host resumes the child.
     const shell = await this.host;
     await pipeShellToTerminal(terminal, shell, [shell.stdout], this.onExit, {
+      holdOutput: this.#outputHold,
       repaintWindow: this.#repaintWindow,
     });
   }
@@ -3063,6 +3267,8 @@ class Win32Pseudoterminal implements Pseudoterminal {
   public readonly onExit;
   public readonly win32Backend: Settings.Profile.Win32Backend;
   public readonly resizeIsAcknowledged;
+  public readonly consoleHost;
+  public readonly holdOutput;
   protected readonly delegate;
 
   public constructor(
@@ -3075,6 +3281,14 @@ class Win32Pseudoterminal implements Pseudoterminal {
     this.delegate = delegate;
     this.resizeIsAcknowledged =
       delegate instanceof ConPtyPseudoterminal && delegate.resizeIsAcknowledged;
+    this.consoleHost =
+      delegate instanceof ConPtyPseudoterminal ? delegate.consoleHost : void 0;
+    this.holdOutput =
+      delegate instanceof ConPtyPseudoterminal
+        ? (until: Promise<unknown>): void => {
+            delegate.holdOutput(until);
+          }
+        : void 0;
     this.shell = delegate.shell;
     this.onExit = delegate.onExit;
   }

@@ -16,6 +16,7 @@
  */
 import { ChildProcess, spawn } from "node:child_process";
 import { once } from "node:events";
+import os from "node:os";
 import { PassThrough } from "node:stream";
 import { isDeepStrictEqual } from "node:util";
 import * as library from "@polyipseity/obsidian-plugin-library";
@@ -31,6 +32,7 @@ import {
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SerializeAddon } from "@xterm/addon-serialize";
+import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import type { TerminalPlugin } from "../../../src/main.js";
 import { TERMINAL_CONPTY_HOST_EXIT_WAIT } from "../../../src/magic.js";
@@ -43,12 +45,16 @@ import * as profileProperties from "../../../src/terminal/profile-properties.js"
 import { DETECTION_REPLY } from "../../../src/terminal/program-status.js";
 import { TabStatusPresenter } from "../../../src/terminal/tab-status.js";
 import {
+  CONPTY_READY_TIMEOUT_MS,
   ConPtyControlError,
   ConPtyPseudoterminal,
+  RefPsuedoterminal,
+  type ConPtyConsoleHost,
   type ConPtyControlChannel,
   type ConPtyPseudoterminalDependencies,
   type ConPtyReadyEvent,
   type Pseudoterminal,
+  pipeShellToTerminal,
 } from "../../../src/terminal/pseudoterminal.js";
 import {
   EditTerminalModal,
@@ -3694,5 +3700,449 @@ describe("TerminalView file link leaf", () => {
 
     expect(terminal.view["fileLinkLeaf"]()).toBe(next);
     expect(allocate).toHaveBeenCalledExactlyOnceWith("tab");
+  });
+});
+
+/*
+ * Last in the file: these tests load view.ts afresh, because it reads the
+ * machine's Windows build once per module load and the tests above have
+ * read it already.
+ */
+describe("ConPTY reflow on Windows Terminal's console host", () => {
+  const OPENCONSOLE: ConPtyConsoleHost = {
+      detail: null,
+      engine: "openconsole",
+      fallback: null,
+      path: "C:\\WT\\OpenConsole.exe",
+    },
+    CONHOST: ConPtyConsoleHost = {
+      detail: null,
+      engine: "conhost",
+      fallback: "not-found",
+      path: null,
+    },
+    WINDOWS_10 = "10.0.19045",
+    PROFILE_ID = "conpty";
+
+  afterEach(() => {
+    platform.windows = false;
+  });
+
+  /** The text on the terminal's rows, empty rows left out. */
+  function rowsOf(terminal: Terminal): string[] {
+    const { active } = terminal.buffer,
+      rows: string[] = [];
+    for (let row = 0; row < active.length; row++) {
+      const text = active.getLine(row)?.translateToString(true) ?? "";
+      if (text) rows.push(text);
+    }
+    return rows;
+  }
+
+  /** Waits until xterm.js parsed everything written to it so far. */
+  async function parsed(terminal: Terminal): Promise<void> {
+    await new Promise<void>((resolve) => {
+      terminal.write("", resolve);
+    });
+  }
+
+  /**
+   * Opens a view of an integrated ConPTY profile on a machine whose OS
+   * release is `release`, and waits for its session to report `consoleHost`,
+   * unless the report is a promise still pending.
+   *
+   * @returns the terminal and the pseudoterminal the view opened, the shell's
+   * output, and ways to change the global and the profile's terminal options
+   * as the settings tab does
+   */
+  async function open({
+    columns,
+    consoleHost,
+    globalOptions = {},
+    profileOptions = {},
+    release = WINDOWS_10,
+    settings: settingsOverride = {},
+    windows = true,
+  }: {
+    /** The terminal's width when the session opens. */
+    readonly columns?: number;
+    readonly consoleHost: ConPtyConsoleHost | Promise<ConPtyConsoleHost>;
+    readonly globalOptions?: Partial<Settings.Profile.TerminalOptions>;
+    readonly profileOptions?: Partial<Settings.Profile.TerminalOptions>;
+    readonly release?: string;
+    readonly settings?: Partial<Settings>;
+    readonly windows?: boolean;
+  }) {
+    platform.windows = windows;
+    vi.spyOn(os, "release").mockReturnValue(release);
+    vi.resetModules();
+    // The fresh modules share this file's library, so its spies reach them.
+    vi.doMock("@polyipseity/obsidian-plugin-library", () => library);
+    // Fresh modules: view.ts caches the Windows build it reads first.
+    const [{ TerminalView: View }, profiles, options] = await Promise.all([
+      import("../../../src/terminal/view.js"),
+      import("../../../src/terminal/profile-properties.js"),
+      import("../../../src/terminal/options.js"),
+    ]);
+    class TestView extends View {
+      public start(profile: Settings.Profile): void {
+        this.state = { ...this.state, profile, profileSourceId: PROFILE_ID };
+        this.startEmulator(false);
+      }
+    }
+    vi.spyOn(library, "awaitCSS").mockImplementation(async (element) => {
+      Object.assign(element, { onWindowMigrated: vi.fn() });
+    });
+    vi.spyOn(library, "notice2").mockImplementation(vi.fn());
+    vi.spyOn(library, "onResize").mockImplementation(vi.fn());
+    vi.spyOn(library, "updateView").mockImplementation(vi.fn());
+    // Watched: an option patch that leaves `windowsPty` equal assigns none, so
+    // only the merge shows which build the view keeps.
+    const merge = vi.spyOn(options, "mergeTerminalOptions"),
+      report = Promise.resolve(consoleHost),
+      // The session pipes its shell's output as ConPTY does, held while the
+      // view asks for it.
+      holdOutput = vi.fn<(until: Promise<unknown>) => void>(),
+      stdout = new PassThrough(),
+      shell = { stdin: new PassThrough() } as unknown as Parameters<
+        typeof pipeShellToTerminal
+      >[1];
+    vi.spyOn(profiles, "openProfile").mockResolvedValue(
+      new RefPsuedoterminal({
+        ...pseudoterminal({ win32Backend: "conpty" }),
+        consoleHost: report,
+        holdOutput,
+        onExit: new Promise<never>(() => {}),
+        pipe: async (terminal: Terminal): Promise<void> => {
+          await pipeShellToTerminal(
+            terminal,
+            shell,
+            [stdout],
+            new Promise<never>(() => {}),
+            { holdOutput: holdOutput.mock.calls.at(-1)?.[0] },
+          );
+        },
+      }),
+    );
+    // The emulator's terminal is real, so its options are what xterm.js uses.
+    const made: { terminal?: Terminal } = {},
+      emulator = vi
+        .spyOn(View, "EMULATOR")
+        .mockImplementation(
+          function (_element, _factory, _state, options, addons) {
+            const terminal = new Terminal(options);
+            terminal.loadAddon(new Unicode11Addon());
+            made.terminal = terminal;
+            return {
+              addons: { ...addons, followTheme: { refresh: vi.fn() } },
+              close: vi.fn().mockResolvedValue(undefined),
+              pseudoterminal: new Promise<never>(() => {}),
+              resize: vi.fn().mockResolvedValue(undefined),
+              terminal,
+            } as unknown as TerminalView.EMULATOR;
+          },
+        ),
+      { integrated } = Settings.Profile.DEFAULTS,
+      profile = {
+        ...integrated,
+        platforms: { win32: true },
+        terminalOptions: { ...integrated.terminalOptions, ...profileOptions },
+      },
+      onMutate = vi.fn<
+        (
+          accessor: (value: Settings) => unknown,
+          callback: (current: unknown, previous: unknown) => unknown,
+        ) => () => void
+      >(() => vi.fn()),
+      // Mutable: a settings change replaces the value, as the manager does.
+      settings: { value: Settings; readonly onMutate: typeof onMutate } = {
+        onMutate,
+        value: {
+          ...Settings.DEFAULT,
+          profiles: { [PROFILE_ID]: profile },
+          tabStatus: "none",
+          terminalOptions: {
+            ...Settings.DEFAULT.terminalOptions,
+            ...globalOptions,
+          },
+          ...settingsOverride,
+        },
+      },
+      context = {
+        app: new App(),
+        language: { value: { t: vi.fn((key: string) => key) } },
+        settings,
+      } as unknown as ConstructorParameters<typeof View>[0],
+      view = new TestView(context, new WorkspaceLeaf());
+    // The view saves the layout on every parse and resize of its terminal.
+    Object.assign(view.app.workspace, { requestSaveLayout: vi.fn() });
+    view.start(profile);
+    await vi.waitFor(() => {
+      expect(emulator).toHaveBeenCalledOnce();
+    });
+    const [, factory, , , addons] = emulator.mock.calls[0] ?? [],
+      { terminal } = made;
+    if (!factory || !addons || !terminal)
+      throw new Error("Missing emulator arguments");
+    if (columns !== void 0) terminal.resize(columns, terminal.rows);
+    const pty = await factory(
+      terminal,
+      { ...addons, fit: new FitAddon(), serialize: new SerializeAddon() },
+      new AbortController().signal,
+    );
+    // A pending report stays pending; the test settles it.
+    if (!(consoleHost instanceof Promise)) await report;
+    await microtasks();
+    /** Replaces the settings and runs the view's terminal options handler. */
+    const change = async (
+      update: (previous: Settings) => Settings,
+    ): Promise<void> => {
+      const previous = settings.value,
+        current = update(previous);
+      settings.value = current;
+      for (const [accessor, callback] of onMutate.mock.calls) {
+        const before = accessor(previous);
+        if (
+          typeof before === "object" &&
+          before !== null &&
+          "globalOptions" in before
+        )
+          await callback(accessor(current), before);
+      }
+    };
+    return {
+      holdOutput,
+      merge,
+      /** Writes `data` as the shell's output; waits until xterm.js parsed
+       * what reached it. */
+      output: async (data: string): Promise<void> => {
+        stdout.emit("data", data);
+        await parsed(terminal);
+      },
+      pty,
+      /** Replaces the global terminal options. */
+      setGlobalOptions: async (
+        terminalOptions: Settings.Profile.TerminalOptions,
+      ): Promise<void> => {
+        await change((previous) => ({ ...previous, terminalOptions }));
+      },
+      /** Replaces the terminal options of the profile the view opened. */
+      setProfileOptions: async (
+        terminalOptions: Settings.Profile.TerminalOptions,
+      ): Promise<void> => {
+        await change((previous) => ({
+          ...previous,
+          profiles: {
+            ...previous.profiles,
+            [PROFILE_ID]: { ...profile, terminalOptions },
+          },
+        }));
+      },
+      terminal,
+    };
+  }
+
+  it("reflows on a Windows 10 build", async () => {
+    const { terminal } = await open({ consoleHost: OPENCONSOLE });
+    expect(terminal.options.windowsPty).toEqual({
+      backend: "conpty",
+      buildNumber: 21_376,
+    });
+  });
+
+  it.each([
+    { name: "the console host built into Windows", consoleHost: CONHOST },
+    {
+      name: "a build that already reflows",
+      consoleHost: OPENCONSOLE,
+      release: "10.0.26100",
+    },
+  ])("keeps the machine's build on $name", async (options) => {
+    const { terminal } = await open(options),
+      [, , build] = (options.release ?? WINDOWS_10).split(".");
+    expect(terminal.options.windowsPty).toEqual({
+      backend: "conpty",
+      buildNumber: Number(build),
+    });
+  });
+
+  it("keeps a build number set in the profile's terminal options", async () => {
+    const { terminal } = await open({
+      consoleHost: OPENCONSOLE,
+      profileOptions: { windowsPty: { buildNumber: 18_363 } },
+    });
+    expect(terminal.options.windowsPty).toEqual({
+      backend: "conpty",
+      buildNumber: 18_363,
+    });
+  });
+
+  it("keeps reflowing through a later change of the terminal options", async () => {
+    const { merge, setGlobalOptions, terminal } = await open({
+      consoleHost: OPENCONSOLE,
+    });
+    merge.mockClear();
+    await setGlobalOptions({
+      ...Settings.DEFAULT.terminalOptions,
+      fontSize: 20,
+    });
+    expect(terminal.options.fontSize).toBe(20);
+    expect(terminal.options.windowsPty).toEqual({
+      backend: "conpty",
+      buildNumber: 21_376,
+    });
+    // The patch merges the old and the new options with the raised build.
+    expect(merge).toHaveBeenCalledTimes(2);
+    for (const [, , backendOptions] of merge.mock.calls)
+      expect(backendOptions).toMatchObject({ win32BuildNumber: 21_376 });
+  });
+
+  it("reflows once a build number set in the terminal options is removed", async () => {
+    const { setGlobalOptions, terminal } = await open({
+      consoleHost: OPENCONSOLE,
+      globalOptions: { windowsPty: { buildNumber: 18_363 } },
+    });
+    expect(terminal.options.windowsPty).toEqual({
+      backend: "conpty",
+      buildNumber: 18_363,
+    });
+    await setGlobalOptions(Settings.DEFAULT.terminalOptions);
+    expect(terminal.options.windowsPty).toEqual({
+      backend: "conpty",
+      buildNumber: 21_376,
+    });
+  });
+
+  it.each([
+    {
+      name: "adds a build number",
+      from: {},
+      to: { windowsPty: { buildNumber: 18_363 } },
+      build: 18_363,
+    },
+    {
+      name: "removes a build number",
+      from: { windowsPty: { buildNumber: 18_363 } },
+      to: {},
+      build: 21_376,
+    },
+  ])(
+    "settles with the current options after a profile change that $name while the report is pending",
+    async ({ from, to, build }) => {
+      const report = Promise.withResolvers<ConPtyConsoleHost>(),
+        { integrated } = Settings.Profile.DEFAULTS,
+        { setProfileOptions, terminal } = await open({
+          consoleHost: report.promise,
+          profileOptions: from,
+        });
+      await setProfileOptions({ ...integrated.terminalOptions, ...to });
+      report.resolve(OPENCONSOLE);
+      await report.promise;
+      await microtasks();
+      expect(terminal.options.windowsPty).toEqual({
+        backend: "conpty",
+        buildNumber: build,
+      });
+    },
+  );
+
+  it("writes early output after raising the build, so a full row and the next stay apart", async () => {
+    // xterm.js guesses that a full row followed by a line feed wraps while
+    // the build is below 21376, and a wider terminal then joins the two.
+    const report = Promise.withResolvers<ConPtyConsoleHost>(),
+      { holdOutput, output, pty, terminal } = await open({
+        columns: 10,
+        consoleHost: report.promise,
+      });
+    expect(holdOutput).toHaveBeenCalledOnce();
+    await pty.pipe(terminal);
+    await output("abcdefghij\r\nKLM\r\n");
+    expect(rowsOf(terminal)).toEqual([]);
+    report.resolve(OPENCONSOLE);
+    await report.promise;
+    await microtasks();
+    await parsed(terminal);
+    expect(terminal.options.windowsPty).toEqual({
+      backend: "conpty",
+      buildNumber: 21_376,
+    });
+    terminal.resize(20, terminal.rows);
+    expect(rowsOf(terminal)).toEqual(["abcdefghij", "KLM"]);
+  });
+
+  it.each([
+    { name: "a Windows 11 build", release: "10.0.26100" },
+    {
+      name: "the console host setting off",
+      settings: { windowsTerminalConsoleHost: false },
+    },
+    {
+      name: "a build number in the profile's terminal options",
+      profileOptions: { windowsPty: { buildNumber: 18_363 } },
+    },
+  ])("writes early output at once with $name", async (options) => {
+    const { holdOutput, output, pty, terminal } = await open({
+      ...options,
+      columns: 10,
+      consoleHost: new Promise<never>(() => {}),
+    });
+    await pty.pipe(terminal);
+    await output("abcdefghij\r\nKLM\r\n");
+    expect(holdOutput).not.toHaveBeenCalled();
+    expect(rowsOf(terminal)).toEqual(["abcdefghij", "KLM"]);
+  });
+
+  it("writes held output unchanged when the session fails before its report", async () => {
+    const report = Promise.withResolvers<ConPtyConsoleHost>(),
+      { output, pty, terminal } = await open({
+        columns: 10,
+        consoleHost: report.promise,
+      });
+    await pty.pipe(terminal);
+    await output("abcdefghij\r\nKLM\r\n");
+    expect(rowsOf(terminal)).toEqual([]);
+    report.reject(new Error("The ConPTY host exited before ready."));
+    await expect(report.promise).rejects.toThrow("exited before ready");
+    await microtasks();
+    await parsed(terminal);
+    expect(terminal.options.windowsPty).toEqual({
+      backend: "conpty",
+      buildNumber: 19_045,
+    });
+    expect(rowsOf(terminal)).toEqual(["abcdefghij", "KLM"]);
+  });
+
+  it("releases held output when no report comes within the ready timeout", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const { holdOutput } = await open({
+          consoleHost: new Promise<never>(() => {}),
+        }),
+        until = holdOutput.mock.calls[0]?.[0];
+      if (!until) throw new Error("The view held no output.");
+      let released = false;
+      until.then(
+        () => {
+          released = true;
+        },
+        () => {
+          released = true;
+        },
+      );
+      await vi.advanceTimersByTimeAsync(CONPTY_READY_TIMEOUT_MS - 1);
+      expect(released).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(released).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("sets no Windows hint off Windows", async () => {
+    const { terminal } = await open({
+      consoleHost: OPENCONSOLE,
+      windows: false,
+    });
+    expect(terminal.options.windowsPty).toEqual({});
   });
 });

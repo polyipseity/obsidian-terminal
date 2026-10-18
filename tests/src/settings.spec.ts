@@ -1,4 +1,5 @@
 import {
+  Platform,
   UpdatableUI,
   cloneAsWritable,
   setSanitizedInnerHTML,
@@ -41,6 +42,26 @@ import {
 } from "../../src/terminal/win32-doctor.js";
 
 vi.mock("../../src/modals.js", () => ({}));
+
+// The device platform. `null` keeps the real one; tests that set it reset it.
+const platform = vi.hoisted((): { current: Platform.All | null } => ({
+  current: null,
+}));
+vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@polyipseity/obsidian-plugin-library")
+    >();
+  return {
+    ...actual,
+    Platform: {
+      ...actual.Platform,
+      get CURRENT() {
+        return platform.current ?? actual.Platform.CURRENT;
+      },
+    },
+  };
+});
 
 async function renderPythonWidgets(
   diagnosis: Win32PythonDiagnosis | null,
@@ -410,6 +431,195 @@ class PythonSettingTab extends SettingTab {
     this.ui.update();
   }
 }
+
+/** A Windows settings row that keeps its toggle and reset button. */
+class ConsoleHostRow extends Setting {
+  public override readonly settingEl = document.createElement("div");
+  public override readonly nameEl = document.createElement("div");
+  public override readonly descEl = document.createElement("div");
+  public toggle: ToggleComponent | null = null;
+  public reset: ExtraButtonComponent | null = null;
+
+  public constructor(containerEl: HTMLElement) {
+    super(containerEl);
+    this.settingEl.append(this.nameEl, this.descEl);
+    containerEl.append(this.settingEl);
+  }
+
+  public override setName(name: DocumentFragment | string): this {
+    this.nameEl.replaceChildren(name);
+    return this;
+  }
+
+  public override setDesc(description: DocumentFragment | string): this {
+    this.descEl.replaceChildren(description);
+    return this;
+  }
+
+  // The Python status buttons have their own tests above.
+  public override addButton(): this {
+    return this;
+  }
+
+  public override addToggle(
+    configure: (toggle: ToggleComponent) => unknown,
+  ): this {
+    this.toggle ??= new ToggleComponent(this.settingEl);
+    // The mock's setValue calls the change handler; a redraw must not write.
+    this.toggle.onChange(() => {});
+    configure(this.toggle);
+    return this;
+  }
+
+  public override addExtraButton(
+    configure: (button: ExtraButtonComponent) => unknown,
+  ): this {
+    this.reset ??= new ExtraButtonComponent(this.settingEl);
+    configure(this.reset);
+    return this;
+  }
+}
+
+/** Loads the whole tab, the Windows-only rows included where they show. */
+class WholeSettingTab extends PythonSettingTab {
+  public load(): void {
+    this.onLoad();
+  }
+}
+
+describe("Windows Terminal console host setting", () => {
+  afterEach(() => {
+    platform.current = null;
+    clearWindowsPythonDiagnoses();
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
+  });
+
+  /** Draws the Windows-only rows, or the whole tab, in English. */
+  async function drawRows(initial: unknown = {}, whole = false) {
+    const i18n = createInstance();
+    await i18n.init({
+      lng: "en",
+      resources: { en: { asset, translation: en } },
+    });
+    const rows: ConsoleHostRow[] = [];
+    vi.spyOn(UpdatableUI.prototype, "newSetting").mockImplementation(function (
+      this: UpdatableUI,
+      element,
+      configure,
+    ) {
+      return this.new(
+        () => {
+          const row = new ConsoleHostRow(element);
+          rows.push(row);
+          return row;
+        },
+        (row) => {
+          configure(row);
+        },
+        (row) => {
+          row.settingEl.remove();
+        },
+      );
+    });
+    const context = await pythonSettingsContext(initial);
+    Object.assign(context, {
+      localSettings: {
+        value: LocalSettings.fix({ lastReadChangelogVersion: "0.0.0" }).value,
+      },
+      version: null,
+    });
+    Object.assign(context.language, {
+      onChangeLanguage: { listen: vi.fn().mockReturnValue(vi.fn()) },
+      value: i18n,
+    });
+    const tab = new WholeSettingTab(context, loadDocumentations(context));
+    if (whole) {
+      tab.load();
+    } else {
+      tab.renderPython();
+    }
+    const names = (): readonly string[] =>
+      rows.map((row) => row.nameEl.textContent);
+    return {
+      context,
+      host: (): ConsoleHostRow => {
+        const found = rows.find(
+          (row) =>
+            row.nameEl.textContent ===
+            en.settings["windows-terminal-console-host"],
+        );
+        if (!found?.toggle || !found.reset)
+          throw new Error("Missing console host controls");
+        return found;
+      },
+      names,
+      tab,
+    };
+  }
+
+  it("follows the prewarm toggle as the last Windows row", async () => {
+    const { host, names, tab } = await drawRows();
+    try {
+      expect(names().slice(-2)).toEqual([
+        en.settings["prewarm-conpty"],
+        "Windows Terminal console host",
+      ]);
+      expect(host().descEl.textContent).toBe(
+        en.settings["windows-terminal-console-host-description"],
+      );
+      expect(host().toggle?.getValue()).toBe(true);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("stores the toggle and resets it to on", async () => {
+    const { context, host, tab } = await drawRows(),
+      { reset, toggle } = host();
+    try {
+      toggle?.setValue(false);
+      await vi.waitFor(() => {
+        expect(context.settings.value.windowsTerminalConsoleHost).toBe(false);
+      });
+      expect(toggle?.getValue()).toBe(false);
+      reset?.extraSettingsEl.click();
+      await vi.waitFor(() => {
+        expect(context.settings.value.windowsTerminalConsoleHost).toBe(true);
+      });
+      expect(toggle?.getValue()).toBe(true);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("shows a stored off", async () => {
+    const { host, tab } = await drawRows({ windowsTerminalConsoleHost: false });
+    try {
+      expect(host().toggle?.getValue()).toBe(false);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it.each(Platform.ALL)("is drawn only on Windows (%s)", async (current) => {
+    platform.current = current;
+    const { names, tab } = await drawRows({}, true),
+      drawn = names(),
+      prewarm = drawn.indexOf(en.settings["prewarm-conpty"]);
+    try {
+      expect(drawn.includes("Windows Terminal console host")).toBe(
+        current === "win32",
+      );
+      // Directly under the prewarm toggle where it is drawn.
+      expect(drawn.indexOf("Windows Terminal console host")).toBe(
+        current === "win32" ? prewarm + 1 : -1,
+      );
+    } finally {
+      tab.dispose();
+    }
+  });
+});
 
 /** A settings row that keeps its toggle and reset button, as the real row does. */
 class ExperimentRow extends Setting {

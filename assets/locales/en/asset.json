@@ -161,6 +161,7 @@
     "right-click-action-icon": "mouse-pointer-2",
     "tab-status-icon": "activity",
     "terminal-options-edit-icon": "$t(asset:generic.edit-icon)",
-    "terminal-options-icon": "$t(asset:generic.terminal-icon)"
+    "terminal-options-icon": "$t(asset:generic.terminal-icon)",
+    "windows-terminal-console-host-icon": "monitor"
   }
 }

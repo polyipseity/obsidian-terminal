@@ -129,15 +129,24 @@ afterEach(() => {
 });
 
 /** A settings holder a test can replace, as the manager does on mutate. */
-function settingsOf(pythonExecutable = ""): {
+function settingsOf(
+  pythonExecutable = "",
+  windowsTerminalConsoleHost = false,
+): {
   value: {
     errorNoticeTimeout: number;
     prewarmConPty: boolean;
     pythonExecutable: string;
+    windowsTerminalConsoleHost: boolean;
   };
 } {
   return {
-    value: { errorNoticeTimeout: 0, prewarmConPty: true, pythonExecutable },
+    value: {
+      errorNoticeTimeout: 0,
+      prewarmConPty: true,
+      pythonExecutable,
+      windowsTerminalConsoleHost,
+    },
   };
 }
 
@@ -347,6 +356,12 @@ describe("openProfile with saved Windows backend choices", () => {
             attestation:
               "create-pseudoconsole+authenticated-control-channel+job-object-assigned",
             childPid: host.pid + 1,
+            consoleHost: {
+              detail: null,
+              engine: "conhost",
+              fallback: null,
+              path: null,
+            },
             controlChannelAuthenticated: true,
             createPseudoConsole: true,
             event: "ready",
@@ -1385,6 +1400,25 @@ describe("prewarmConPtyProfile on Windows", () => {
     expect(ensureSpare).toHaveBeenCalledTimes(1);
     expect(ensureSpare?.mock.calls[0]?.[0]).toBe("C:\\Python312\\python.exe");
   });
+
+  it.each<readonly [boolean, string | null]>([
+    [false, null],
+    [true, "auto"],
+  ])(
+    "boots the spare with the Windows Terminal console host setting %j and the console host hint %j",
+    async (windowsTerminalConsoleHost, spec) => {
+      checkWindowsPythonMock.mockResolvedValue(diagnosis());
+      await prewarmOnWindows(
+        context("", settingsOf("", windowsTerminalConsoleHost)),
+        integratedProfile({ pythonExecutable: "" }),
+      );
+      expect(ensureSpare).toHaveBeenCalledExactlyOnceWith(
+        "C:\\Python312\\python.exe",
+        CONPTY_DEPENDENCIES,
+        spec,
+      );
+    },
+  );
 
   it("boots the spare on the base interpreter behind a venv, as the open path spawns it", async () => {
     const venv = diagnosis({

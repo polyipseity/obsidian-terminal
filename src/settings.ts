@@ -1321,6 +1321,37 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
               },
             ),
           );
+      })
+      .newSetting(containerEl, (setting) => {
+        setting
+          .setName(i18n.t("settings.windows-terminal-console-host"))
+          .setDesc(i18n.t("settings.windows-terminal-console-host-description"))
+          .addToggle(
+            linkSetting(
+              () => settings.value.windowsTerminalConsoleHost,
+              async (value) =>
+                settings.mutate((settingsM) => {
+                  settingsM.windowsTerminalConsoleHost = value;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          )
+          .addExtraButton(
+            resetButton(
+              i18n.t("asset:settings.windows-terminal-console-host-icon"),
+              i18n.t("settings.reset"),
+              async () =>
+                settings.mutate((settingsM) => {
+                  settingsM.windowsTerminalConsoleHost =
+                    Settings.DEFAULT.windowsTerminalConsoleHost;
+                }),
+              () => {
+                this.postMutate();
+              },
+            ),
+          );
       });
   }
 

@@ -30,7 +30,7 @@ from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from types import ModuleType
 from typing import Any, NamedTuple
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 import pytest
 
@@ -425,6 +425,15 @@ def test_parse_arguments_accepts_the_deferred_form() -> None:
     )
     assert isinstance(parsed, _MODULE.DeferredArguments)
     assert parsed.pipe_name == "\\\\.\\pipe\\obsidian-terminal-conpty-x"
+    assert parsed.console_host is None
+
+
+def test_parse_arguments_reads_the_deferred_console_host_hint() -> None:
+    """A spare may be told to look for Windows Terminal while it waits."""
+    parsed = _MODULE.parse_arguments(
+        ["--defer-session", "\\\\.\\pipe\\x", "--console-host", "auto"]
+    )
+    assert parsed == _MODULE.DeferredArguments("\\\\.\\pipe\\x", "auto")
 
 
 @pytest.mark.parametrize(
@@ -433,6 +442,10 @@ def test_parse_arguments_accepts_the_deferred_form() -> None:
         ["--defer-session"],
         ["--defer-session", "not-a-pipe"],
         ["--defer-session", "\\\\.\\pipe\\x", "extra"],
+        ["--defer-session", "\\\\.\\pipe\\x", "--console-host"],
+        ["--defer-session", "\\\\.\\pipe\\x", "--console-host", "AUTO"],
+        ["--defer-session", "\\\\.\\pipe\\x", "--cwd", "auto"],
+        ["--defer-session", "\\\\.\\pipe\\x", "--console-host", "auto", "x"],
     ),
 )
 def test_parse_arguments_rejects_malformed_deferred_forms(
@@ -887,6 +900,42 @@ def test_resolve_executable_defaults_to_the_host_path(
             "command": ["cmd"],
             "env": {"a": 1},
         },
+        {
+            "op": "start",
+            "columns": 120,
+            "rows": 30,
+            "command": ["cmd"],
+            "consoleHost": 5,
+        },
+        {
+            "op": "start",
+            "columns": 120,
+            "rows": 30,
+            "command": ["cmd"],
+            "consoleHost": ["auto"],
+        },
+        # ``auto`` is the only console host spec.
+        {
+            "op": "start",
+            "columns": 120,
+            "rows": 30,
+            "command": ["cmd"],
+            "consoleHost": "",
+        },
+        {
+            "op": "start",
+            "columns": 120,
+            "rows": 30,
+            "command": ["cmd"],
+            "consoleHost": "C:\\wt\\OpenConsole.exe",
+        },
+        {
+            "op": "start",
+            "columns": 120,
+            "rows": 30,
+            "command": ["cmd"],
+            "consoleHost": "AUTO",
+        },
     ),
 )
 def test_parse_start_rejects_malformed_operations(message: dict[str, Any]) -> None:
@@ -966,6 +1015,74 @@ def test_parse_arguments_leaves_a_working_directory_flag_after_the_separator() -
     assert parsed.command == ("app.exe", "--cwd", "C:\\elsewhere")
 
 
+@pytest.mark.parametrize("cwd_first", (True, False))
+def test_parse_arguments_reads_both_options_in_either_order(cwd_first: bool) -> None:
+    """``--cwd`` and ``--console-host`` may come in any order before ``--``."""
+    cwd = ["--cwd", "C:\\vault"]
+    console_host = ["--console-host", "auto"]
+    options = cwd + console_host if cwd_first else console_host + cwd
+    parsed = _MODULE.parse_arguments(
+        ["120", "30", "\\\\.\\pipe\\p", *options, "--", "cmd", "/c", "x"]
+    )
+    assert parsed.cwd == "C:\\vault"
+    assert parsed.console_host == "auto"
+    assert parsed.command == ("cmd", "/c", "x")
+
+
+def test_parse_arguments_reads_the_auto_console_host() -> None:
+    """``--console-host auto`` asks for Windows Terminal's console host."""
+    parsed = _MODULE.parse_arguments(
+        ["120", "30", "\\\\.\\pipe\\p", "--console-host", "auto", "--", "cmd"]
+    )
+    assert parsed.console_host == "auto"
+    assert parsed.cwd is None
+
+
+@pytest.mark.parametrize(
+    "value",
+    ("C:\\Tools\\OpenConsole.exe", "relative\\OpenConsole.exe", "--cwd", "", "AUTO"),
+)
+def test_parse_arguments_refuses_any_other_console_host(value: str) -> None:
+    """``auto`` is the only console host spec."""
+    with pytest.raises(ValueError, match="--console-host takes only auto"):
+        _MODULE.parse_arguments(
+            ["120", "30", "\\\\.\\pipe\\p", "--console-host", value, "--", "cmd"]
+        )
+
+
+def test_parse_arguments_leaves_a_console_host_flag_after_the_separator() -> None:
+    """After ``--``, ``--console-host`` is an argument of the child."""
+    parsed = _MODULE.parse_arguments(
+        ["80", "24", "\\\\.\\pipe\\p", "--", "app.exe", "--console-host", "auto"]
+    )
+    assert parsed.console_host is None
+    assert parsed.command == ("app.exe", "--console-host", "auto")
+
+
+@pytest.mark.parametrize(
+    ("fields", "expected"),
+    (
+        ({}, None),
+        ({"consoleHost": None}, None),
+        ({"consoleHost": "auto"}, "auto"),
+    ),
+)
+def test_parse_start_reads_the_console_host_spec(
+    fields: dict[str, Any], expected: str | None
+) -> None:
+    """Absent and ``null`` mean the built-in console host; ``""`` is refused.
+
+    The plugin sends no key while the setting is off; a literal ``null`` still
+    means the same.
+    """
+    start = _MODULE._parse_start(
+        {"op": "start", "columns": 80, "rows": 24, "command": ["cmd"], **fields},
+        "\\\\.\\pipe\\p",
+    )
+    assert start is not None
+    assert start.arguments.console_host == expected
+
+
 def test_parse_arguments_keeps_a_child_argument_that_looks_like_a_separator() -> None:
     """Only the first ``--`` separates host options from the child command."""
     parsed = _MODULE.parse_arguments(
@@ -1006,6 +1123,40 @@ def test_parse_arguments_keeps_a_child_argument_that_looks_like_a_separator() ->
         ["120", "30", "\\\\.\\pipe\\p", "--dir", "C:\\a", "--", "cmd"],
         ["--cwd", "C:\\a", "120", "30", "\\\\.\\pipe\\p", "--", "cmd"],
         ["120", "30", "--cwd", "C:\\a", "\\\\.\\pipe\\p", "--", "cmd"],
+        # ``--console-host`` follows the same rules as ``--cwd``.
+        ["120", "30", "\\\\.\\pipe\\p", "--console-host", "--", "cmd"],
+        [
+            "120",
+            "30",
+            "\\\\.\\pipe\\p",
+            "--console-host",
+            "auto",
+            "--console-host",
+            "C:\\wt\\OpenConsole.exe",
+            "--",
+            "cmd",
+        ],
+        [
+            "120",
+            "30",
+            "\\\\.\\pipe\\p",
+            "--cwd",
+            "C:\\a",
+            "--console-host",
+            "--",
+            "cmd",
+        ],
+        [
+            "120",
+            "30",
+            "\\\\.\\pipe\\p",
+            "--console-host",
+            "auto",
+            "extra",
+            "--",
+            "cmd",
+        ],
+        ["120", "30", "\\\\.\\pipe\\p", "--conpty-dir", "C:\\a", "--", "cmd"],
     ),
 )
 def test_parse_arguments_rejects_a_malformed_command_line(
@@ -1102,6 +1253,1138 @@ def test_child_start_error_carries_the_exit_code() -> None:
     error = _MODULE.ChildStartError("refused", 251)
     assert isinstance(error, OSError)
     assert error.exit_code == 251
+    assert error.win32_error == 0
+
+
+def test_child_start_error_carries_the_win32_error() -> None:
+    """A failed ``CreateProcessW`` keeps its Win32 error beside the exit code."""
+    error = _MODULE.ChildStartError("[WinError 740] elevation", 251, 740)
+    assert (error.exit_code, error.win32_error) == (251, 740)
+
+
+# ---------------------------------------------------------------------------
+# Console host selection
+# ---------------------------------------------------------------------------
+
+
+"""Folder Windows installs package programs under."""
+_WINDOWS_APPS = "C:\\Program Files\\WindowsApps"
+
+
+def _terminal_package(
+    version: str = "1.24.12741.0", architecture: str = "x64", preview: bool = False
+) -> tuple[str, str]:
+    """Return a Windows Terminal ``(package full name, root folder)`` pair."""
+    product = "WindowsTerminalPreview" if preview else "WindowsTerminal"
+    name = f"Microsoft.{product}_{version}_{architecture}__8wekyb3d8bbwe"
+    return name, ntpath.join(_WINDOWS_APPS, name)
+
+
+def _console_host_of(package: tuple[str, str]) -> str:
+    """Return the ``OpenConsole.exe`` path inside a package root folder."""
+    return ntpath.join(package[1], "OpenConsole.exe")
+
+
+def _pick(
+    packages: Sequence[tuple[str, str]],
+    native_architecture: str | None = None,
+    missing: Collection[str] = (),
+) -> Any:
+    """Pick among packages whose ``OpenConsole.exe`` exists unless ``missing``."""
+    files = {_console_host_of(package) for package in packages} - set(missing)
+    return _MODULE.pick_windows_terminal(
+        packages, lambda path: path in files, native_architecture
+    )
+
+
+def test_pick_windows_terminal_prefers_stable_over_a_newer_preview() -> None:
+    """A Preview only wins when no stable Windows Terminal qualifies."""
+    stable = _terminal_package("1.23.10000.0")
+    preview = _terminal_package("1.25.1.0", preview=True)
+    assert _pick([preview, stable]) == _MODULE.WindowsTerminal(
+        stable[0], _console_host_of(stable)
+    )
+    assert _pick([preview]) == _MODULE.WindowsTerminal(
+        preview[0], _console_host_of(preview)
+    )
+
+
+def test_pick_windows_terminal_compares_versions_numerically() -> None:
+    """``1.100`` is newer than ``1.24``, though it sorts lower as text."""
+    packages = [
+        _terminal_package("1.24.9999.0"),
+        _terminal_package("1.100.1.0"),
+        _terminal_package("1.22.0.0"),
+    ]
+    assert _pick(packages).package == packages[1][0]
+
+
+def test_pick_windows_terminal_requires_version_1_22() -> None:
+    """Older releases still drop OSC input, so they never qualify."""
+    assert _pick([_terminal_package("1.21.3231.0")]) is None
+    oldest = _terminal_package("1.22.0.0")
+    assert _pick([_terminal_package("1.21.9999.9"), oldest]).package == oldest[0]
+
+
+@pytest.mark.parametrize(
+    ("native", "expected"),
+    (("arm64", "arm64"), ("x64", "x64"), (None, "x64"), ("x86", "x64")),
+)
+def test_pick_windows_terminal_prefers_the_native_architecture(
+    native: str | None, expected: str
+) -> None:
+    """Among equal versions the native build wins; any build still qualifies."""
+    packages = [
+        _terminal_package(architecture="x64"),
+        _terminal_package(architecture="arm64"),
+    ]
+    assert (
+        _pick(packages, native).package == _terminal_package(architecture=expected)[0]
+    )
+
+
+def test_pick_windows_terminal_takes_a_foreign_architecture_when_alone() -> None:
+    """An emulated or native mismatch still starts: ARM64 runs x64 and back."""
+    package = _terminal_package(architecture="arm64")
+    assert _pick([package], "x64").package == package[0]
+
+
+def test_pick_windows_terminal_skips_a_package_without_openconsole() -> None:
+    """A newer package missing ``OpenConsole.exe`` yields to an older one."""
+    newer = _terminal_package("1.24.1.0")
+    older = _terminal_package("1.23.1.0")
+    assert (
+        _pick([newer, older], missing={_console_host_of(newer)}).package == (older[0])
+    )
+    assert _pick([newer], missing={_console_host_of(newer)}) is None
+
+
+@pytest.mark.parametrize(
+    "package",
+    (
+        ("Microsoft.WindowsTerminal_1.24_x64__8wekyb3d8bbwe", _WINDOWS_APPS + "\\a"),
+        ("Microsoft.WindowsTerminal_1.24.1.0_x64__otherpublisher", _WINDOWS_APPS),
+        ("Microsoft.WindowsTerminalCanary_1.24.1.0_x64__8wekyb3d8bbwe", "C:\\a"),
+        ("Microsoft.WindowsNotepad_11.2.0.0_x64__8wekyb3d8bbwe", "C:\\a"),
+        ("Microsoft.WindowsTerminal_1.24.1.0_x64__8wekyb3d8bbwe.bak", "C:\\a"),
+        ("Microsoft.WindowsTerminal_1.24.1.0_x64__8wekyb3d8bbwe", "relative"),
+        ("Microsoft.WindowsTerminal_1.24.1.0_x64__8wekyb3d8bbwe", ""),
+    ),
+    ids=(
+        "short-version",
+        "publisher",
+        "canary",
+        "other-app",
+        "suffix",
+        "relative-root",
+        "empty-root",
+    ),
+)
+def test_pick_windows_terminal_ignores_malformed_packages(
+    package: tuple[str, str],
+) -> None:
+    """Only well-formed Windows Terminal names with an absolute root qualify."""
+    assert _pick([package]) is None
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    (
+        (_WINDOWS_APPS + "\\Pkg\\OpenConsole.exe", True),
+        ("c:\\program files\\windowsapps\\pkg\\OpenConsole.exe", True),
+        ("C:/Program Files/WindowsApps/Pkg/OpenConsole.exe", True),
+        ("C:\\WindowsAppsBackup\\OpenConsole.exe", False),
+        ("C:\\Tools\\OpenConsole.exe", False),
+    ),
+)
+def test_in_windows_apps_matches_a_whole_path_segment(
+    path: str, expected: bool
+) -> None:
+    """Any ``WindowsApps`` segment, in any case or separator, needs a copy."""
+    assert _MODULE._in_windows_apps(path) is expected
+
+
+class _PlanCalls(NamedTuple):
+    """The seams one ``_plan_console_host`` call used."""
+
+    host: Any
+    find: Mock
+    copy: Mock
+
+
+def _plan(
+    spec: str | None,
+    found: Any = None,
+    copy: Mock | None = None,
+) -> _PlanCalls:
+    """Plan a console host with a fake Windows Terminal lookup and copy."""
+    find = found if isinstance(found, Mock) else Mock(return_value=found)
+    copier = copy if copy is not None else Mock(return_value="C:\\copy\\x.exe")
+    host = _MODULE._plan_console_host(spec, find, copier)
+    return _PlanCalls(host, find, copier)
+
+
+def test_plan_console_host_without_a_spec_uses_the_built_in_host() -> None:
+    """No spec means no lookup, no copy, and no fallback to report."""
+    calls = _plan(None)
+    assert calls.host.report() == {
+        "engine": "conhost",
+        "path": None,
+        "fallback": None,
+        "detail": None,
+    }
+    calls.find.assert_not_called()
+    calls.copy.assert_not_called()
+
+
+def test_plan_console_host_auto_copies_windows_terminal_out_of_windows_apps() -> None:
+    """Windows refuses to start a package's program for anyone else."""
+    package = _terminal_package()
+    found = _MODULE.WindowsTerminal(package[0], _console_host_of(package))
+    calls = _plan("auto", found, copy=Mock(return_value="C:\\copy\\OpenConsole.exe"))
+    calls.copy.assert_called_once_with(_console_host_of(package), package[0])
+    assert calls.host.report() == {
+        "engine": "openconsole",
+        "path": "C:\\copy\\OpenConsole.exe",
+        "fallback": None,
+        "detail": None,
+    }
+
+
+def test_plan_console_host_auto_runs_a_console_host_outside_windows_apps() -> None:
+    """A Windows Terminal installed elsewhere runs in place."""
+    found = _MODULE.WindowsTerminal("pkg", "D:\\Terminal\\OpenConsole.exe")
+    calls = _plan("auto", found)
+    calls.copy.assert_not_called()
+    assert calls.host.engine == "openconsole"
+    assert calls.host.path == "D:\\Terminal\\OpenConsole.exe"
+
+
+def test_plan_console_host_auto_reports_a_missing_windows_terminal() -> None:
+    """``auto`` without Windows Terminal 1.22 falls back with ``not-found``."""
+    calls = _plan("auto")
+    assert calls.host.engine == "conhost"
+    assert calls.host.path is None
+    assert calls.host.fallback == "not-found"
+    assert "1.22" in calls.host.detail
+
+
+def test_plan_console_host_auto_reports_a_failed_lookup() -> None:
+    """A lookup error is a missing Windows Terminal, with its text as detail."""
+    calls = _plan("auto", Mock(side_effect=PermissionError("access denied")))
+    assert (calls.host.fallback, calls.host.detail) == ("not-found", "access denied")
+
+
+def test_plan_console_host_reports_a_failed_copy() -> None:
+    """A copy error is a failed start, with the error text as detail."""
+    package = _terminal_package()
+    found = _MODULE.WindowsTerminal(package[0], _console_host_of(package))
+    calls = _plan("auto", found, copy=Mock(side_effect=OSError("disk full")))
+    assert calls.host.report() == {
+        "engine": "conhost",
+        "path": None,
+        "fallback": "start-failed",
+        "detail": "disk full",
+    }
+
+
+def test_plan_console_host_ahead_reuses_an_existing_copy() -> None:
+    """A waiting host plans what ``start`` would plan with the same copy."""
+    package = _terminal_package()
+    found = _MODULE.WindowsTerminal(package[0], _console_host_of(package))
+    copy = "C:\\copy\\OpenConsole.exe"
+    find_copy = Mock(return_value=copy)
+
+    host = _MODULE._plan_console_host_ahead(Mock(return_value=found), find_copy)
+
+    find_copy.assert_called_once_with(_console_host_of(package), package[0])
+    assert host == _plan("auto", found, copy=Mock(return_value=copy)).host
+
+
+def test_plan_console_host_ahead_leaves_a_missing_copy_to_start() -> None:
+    """Without a copy there is no plan: only ``start`` may make the copy."""
+    package = _terminal_package()
+    found = _MODULE.WindowsTerminal(package[0], _console_host_of(package))
+    assert (
+        _MODULE._plan_console_host_ahead(
+            Mock(return_value=found), Mock(return_value=None)
+        )
+        is None
+    )
+
+
+def test_plan_console_host_ahead_runs_a_console_host_outside_windows_apps() -> None:
+    """A Windows Terminal installed elsewhere needs no copy to plan ahead."""
+    found = _MODULE.WindowsTerminal("pkg", "D:\\Terminal\\OpenConsole.exe")
+    find_copy = Mock(return_value=None)
+
+    host = _MODULE._plan_console_host_ahead(Mock(return_value=found), find_copy)
+
+    find_copy.assert_not_called()
+    assert (host.engine, host.path) == ("openconsole", "D:\\Terminal\\OpenConsole.exe")
+
+
+def test_plan_console_host_ahead_reports_a_missing_windows_terminal() -> None:
+    """The fallback is planned ahead too, as ``start`` would report it."""
+    host = _MODULE._plan_console_host_ahead(Mock(return_value=None), Mock())
+    assert host == _plan("auto").host
+    assert host.fallback == "not-found"
+
+
+"""A plan for a copy of Windows Terminal's console host."""
+_COPY_PLAN = _MODULE._ConsoleHost("openconsole", "C:\\copy\\OpenConsole.exe")
+
+
+def test_console_host_for_start_reuses_a_plan_whose_copy_exists() -> None:
+    """An ``auto`` start runs the copy a prewarmed host found while it waited."""
+    is_file = Mock(return_value=True)
+    plan = Mock(side_effect=AssertionError("the start planned again"))
+
+    host = _MODULE._console_host_for_start("auto", _COPY_PLAN, is_file, plan)
+
+    assert host is _COPY_PLAN
+    is_file.assert_called_once_with("C:\\copy\\OpenConsole.exe")
+
+
+def test_console_host_for_start_plans_again_when_the_copy_is_gone() -> None:
+    """A copy removed since the plan was made is planned, and copied, again."""
+    fresh = _MODULE._ConsoleHost("openconsole", "C:\\copy2\\OpenConsole.exe")
+    plan = Mock(return_value=fresh)
+
+    host = _MODULE._console_host_for_start(
+        "auto", _COPY_PLAN, Mock(return_value=False), plan
+    )
+
+    assert host is fresh
+    plan.assert_called_once_with("auto")
+
+
+def test_console_host_for_start_never_reuses_a_fallback() -> None:
+    """Windows Terminal may have been installed since ``not-found`` was planned."""
+    planned = _MODULE._fall_back("not-found", "no Windows Terminal 1.22 or newer")
+    is_file = Mock(side_effect=AssertionError("a fallback has no file"))
+    plan = Mock(return_value=_COPY_PLAN)
+
+    host = _MODULE._console_host_for_start("auto", planned, is_file, plan)
+
+    assert host is _COPY_PLAN
+    plan.assert_called_once_with("auto")
+
+
+@pytest.mark.parametrize("planned", (None, _COPY_PLAN), ids=("unplanned", "planned"))
+def test_console_host_for_start_plans_a_start_without_a_spec(planned: Any) -> None:
+    """A start for the built-in host ignores any plan; one without a plan plans."""
+    built_in = _MODULE._ConsoleHost()
+    plan = Mock(return_value=built_in)
+
+    host = _MODULE._console_host_for_start(None, planned, Mock(return_value=True), plan)
+
+    assert host is built_in
+    plan.assert_called_once_with(None)
+
+
+def _copy_tree(root: Path) -> dict[str, bytes]:
+    """Return every file under ``root`` by relative POSIX path, with content."""
+    return {
+        path.relative_to(root).as_posix(): path.read_bytes()
+        for path in root.rglob("*")
+        if path.is_file()
+    }
+
+
+def test_existing_console_host_copy_writes_nothing_without_a_copy(
+    tmp_path: Path,
+) -> None:
+    """Looking for a copy that does not exist creates no file or folder."""
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    root = tmp_path / "copies"
+
+    assert _MODULE._existing_console_host_copy(str(source), "Pkg_1", str(root)) is None
+    assert not root.exists()
+
+
+@pytest.mark.parametrize(
+    ("content", "found"),
+    ((b"console-host-v1", True), (b"console-host-v0", False), (b"old", False)),
+    ids=("identical", "same-size", "other-size"),
+)
+def test_existing_console_host_copy_takes_only_an_identical_copy(
+    tmp_path: Path, content: bytes, found: bool
+) -> None:
+    """A copy differing in size or SHA-256 is no copy; it stays as it is."""
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    root = tmp_path / "copies"
+    target = root / "Pkg_1" / "OpenConsole.exe"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(content)
+
+    copy = _MODULE._existing_console_host_copy(str(source), "Pkg_1", str(root))
+
+    assert copy == (str(target) if found else None)
+    assert _copy_tree(root) == {"Pkg_1/OpenConsole.exe": content}
+
+
+def test_copy_console_host_creates_a_missing_copy(tmp_path: Path) -> None:
+    """The first run copies the source and leaves no temporary file."""
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    root = tmp_path / "copies"
+
+    target = _MODULE._copy_console_host(str(source), "Pkg_1", str(root))
+
+    assert target == str(root / "Pkg_1" / "OpenConsole.exe")
+    assert _copy_tree(root) == {"Pkg_1/OpenConsole.exe": b"console-host-v1"}
+
+
+"""Package full name of the Windows Terminal whose console host is copied."""
+_CURRENT = _terminal_package("1.24.12741.0")[0]
+"""Package full name of an older Windows Terminal copy."""
+_OLDER = _terminal_package("1.23.10000.0")[0]
+"""Package full name of a Windows Terminal Preview copy."""
+_OLDER_PREVIEW = _terminal_package("1.24.1.0", architecture="arm64", preview=True)[0]
+
+
+def test_copy_console_host_reuses_an_identical_copy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An up-to-date copy is not rewritten, and older versions still go.
+
+    A copy that ran in another terminal at the last cleanup goes now.
+    """
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    root = tmp_path / "copies"
+    _touch(root, "unrelated")
+    (root / "Pkg_0").mkdir()
+    (root / _OLDER).mkdir()
+    (root / _OLDER / "OpenConsole.exe").write_bytes(b"older")
+    (root / _CURRENT).mkdir()
+    (root / _CURRENT / "OpenConsole.exe").write_bytes(b"console-host-v1")
+    copy = Mock(side_effect=AssertionError("an identical copy was rewritten"))
+    monkeypatch.setattr(_MODULE.shutil, "copyfile", copy)
+
+    target = _MODULE._copy_console_host(str(source), _CURRENT, str(root))
+
+    assert target == str(root / _CURRENT / "OpenConsole.exe")
+    assert sorted(os.listdir(root)) == sorted(("Pkg_0", _CURRENT, "unrelated"))
+    copy.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "stale", (b"console-host-v0", b"old"), ids=("same-size", "other-size")
+)
+def test_copy_console_host_replaces_a_stale_copy(tmp_path: Path, stale: bytes) -> None:
+    """A copy differing in size or SHA-256 is replaced; old versions go."""
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    root = tmp_path / "copies"
+    (root / _CURRENT).mkdir(parents=True)
+    (root / _CURRENT / "OpenConsole.exe").write_bytes(stale)
+    (root / _OLDER).mkdir()
+    (root / _OLDER / "OpenConsole.exe").write_bytes(b"older")
+
+    target = _MODULE._copy_console_host(str(source), _CURRENT, str(root))
+
+    assert target == str(root / _CURRENT / "OpenConsole.exe")
+    assert _copy_tree(root) == {f"{_CURRENT}/OpenConsole.exe": b"console-host-v1"}
+
+
+def test_copy_console_host_prunes_only_package_folders(tmp_path: Path) -> None:
+    """Only real folders named like Windows Terminal packages are removed.
+
+    Anything else under the copies folder is not this plugin's to remove: other
+    names, files named like a package, and links to folders elsewhere.
+    """
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    root = tmp_path / "copies"
+    kept_folders = ("Pkg_0", "notes", _OLDER + ".bak", "Microsoft.WindowsNotepad")
+    for name in (_OLDER, _OLDER_PREVIEW, *kept_folders):
+        (root / name).mkdir(parents=True)
+        (root / name / "OpenConsole.exe").write_bytes(b"older")
+    package_file = _terminal_package("1.21.1.0")[0]
+    _touch(root, "unrelated", package_file)
+    linked = root / _terminal_package("1.22.1.0")[0]
+    linked.mkdir()
+
+    target = _MODULE._copy_console_host(
+        str(source),
+        _CURRENT,
+        str(root),
+        is_reparse_point=lambda path: path == str(linked),
+    )
+
+    assert target == str(root / _CURRENT / "OpenConsole.exe")
+    assert sorted(os.listdir(root)) == sorted(
+        (_CURRENT, *kept_folders, "unrelated", package_file, linked.name)
+    )
+
+
+@pytest.mark.parametrize("linked", ("root", "parent"))
+def test_copy_console_host_prunes_nothing_through_a_link(
+    tmp_path: Path, linked: str
+) -> None:
+    """A copies folder, or a parent, that is a junction or link leads anywhere."""
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    root = tmp_path / "obsidian-terminal" / "copies"
+    (root / _OLDER).mkdir(parents=True)
+    (root / _CURRENT).mkdir()
+    (root / _CURRENT / "OpenConsole.exe.4242.tmp").write_bytes(b"partial")
+    reparse_point = str(root if linked == "root" else root.parent)
+
+    target = _MODULE._copy_console_host(
+        str(source),
+        _CURRENT,
+        str(root),
+        is_reparse_point=lambda path: path == reparse_point,
+    )
+
+    assert Path(target).read_bytes() == b"console-host-v1"
+    assert sorted(os.listdir(root)) == sorted((_OLDER, _CURRENT))
+    assert sorted(os.listdir(root / _CURRENT)) == [
+        "OpenConsole.exe",
+        "OpenConsole.exe.4242.tmp",
+    ]
+
+
+def test_copy_console_host_prunes_nothing_through_a_symbolic_link(
+    tmp_path: Path,
+) -> None:
+    """The default check sees a symbolic link, here as the copies folder."""
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    elsewhere = tmp_path / "elsewhere"
+    (elsewhere / _OLDER).mkdir(parents=True)
+    root = tmp_path / "copies"
+    try:
+        root.symlink_to(elsewhere, target_is_directory=True)
+    except OSError as error:
+        reason = f"symbolic links are unavailable: {error}"
+        pytest.skip(reason)  # ty: ignore[too-many-positional-arguments]
+
+    _MODULE._copy_console_host(str(source), _CURRENT, str(root))
+
+    assert sorted(os.listdir(elsewhere)) == sorted((_OLDER, _CURRENT))
+
+
+def test_is_reparse_point_sees_links_and_unreadable_paths(tmp_path: Path) -> None:
+    """A folder is none; a symbolic link and a missing path count as one."""
+    folder = tmp_path / "folder"
+    folder.mkdir()
+    assert _MODULE._is_reparse_point(str(folder)) is False
+    assert _MODULE._is_reparse_point(str(tmp_path / "missing")) is True
+    link = tmp_path / "link"
+    try:
+        link.symlink_to(folder, target_is_directory=True)
+    except OSError as error:
+        reason = f"symbolic links are unavailable: {error}"
+        pytest.skip(reason)  # ty: ignore[too-many-positional-arguments]
+    assert _MODULE._is_reparse_point(str(link)) is True
+
+
+def test_copy_console_host_removes_stale_temporary_files(tmp_path: Path) -> None:
+    """Temporary copies another host left behind go; nothing else does."""
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    root = tmp_path / "copies"
+    folder = root / _CURRENT
+    folder.mkdir(parents=True)
+    _touch(
+        folder,
+        "OpenConsole.exe.4242.tmp",
+        "OpenConsole.exe.7.tmp",
+        "OpenConsole.exe.abc.tmp",
+        "OpenConsole.exe.4242.tmp.bak",
+        "OpenConsole.exe.tmp",
+        "notes.txt",
+    )
+
+    _MODULE._copy_console_host(str(source), _CURRENT, str(root))
+
+    assert sorted(os.listdir(folder)) == sorted(
+        (
+            "OpenConsole.exe",
+            "OpenConsole.exe.abc.tmp",
+            "OpenConsole.exe.4242.tmp.bak",
+            "OpenConsole.exe.tmp",
+            "notes.txt",
+        )
+    )
+
+
+def test_copy_console_host_raises_when_the_source_cannot_be_read(
+    tmp_path: Path,
+) -> None:
+    """A copy error reaches the caller and leaves no temporary file behind."""
+    root = tmp_path / "copies"
+    with pytest.raises(OSError):
+        _MODULE._copy_console_host(str(tmp_path / "missing.exe"), "Pkg", str(root))
+    assert _copy_tree(root) == {}
+
+
+def test_copy_console_host_uses_a_running_copy_with_the_same_content(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Another host may put the same version in place and start it first."""
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    root = tmp_path / "copies"
+    target = root / "Pkg_1" / "OpenConsole.exe"
+    (root / "Pkg_0").mkdir(parents=True)
+
+    def replace_while_running(_source: str, _target: str) -> None:
+        """Lose the race: the other host's identical copy is now in use."""
+        target.write_bytes(b"console-host-v1")
+        raise PermissionError(13, "the copy is in use")
+
+    replace = Mock(side_effect=replace_while_running)
+    monkeypatch.setattr(_MODULE.os, "replace", replace)
+
+    assert _MODULE._copy_console_host(str(source), "Pkg_1", str(root)) == str(target)
+    assert _copy_tree(root) == {"Pkg_1/OpenConsole.exe": b"console-host-v1"}
+    replace.assert_called_once()
+
+
+def test_copy_console_host_raises_when_a_stale_copy_is_in_use(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A running copy of another version cannot stand in for the source."""
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    root = tmp_path / "copies"
+    (root / "Pkg_1").mkdir(parents=True)
+    (root / "Pkg_1" / "OpenConsole.exe").write_bytes(b"console-host-v0")
+    replace = Mock(side_effect=PermissionError(13, "in use"))
+    monkeypatch.setattr(_MODULE.os, "replace", replace)
+    monkeypatch.setattr(_MODULE.time, "sleep", Mock())
+
+    with pytest.raises(PermissionError):
+        _MODULE._copy_console_host(str(source), "Pkg_1", str(root))
+    assert _copy_tree(root) == {"Pkg_1/OpenConsole.exe": b"console-host-v0"}
+    assert replace.call_count == 2
+
+
+def test_copy_console_host_retries_a_replace_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Antivirus may hold a file just written; 100 ms later it lets go."""
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    root = tmp_path / "copies"
+    real_replace = os.replace
+
+    def replace_after_a_scan(temporary: str, target: str) -> None:
+        """Fail the first attempt only, as a scanner holding the file would."""
+        if replace.call_count == 1:
+            raise PermissionError(13, "held by a scanner")
+        real_replace(temporary, target)
+
+    replace = Mock(side_effect=replace_after_a_scan)
+    sleep = Mock()
+    monkeypatch.setattr(_MODULE.os, "replace", replace)
+    monkeypatch.setattr(_MODULE.time, "sleep", sleep)
+
+    target = _MODULE._copy_console_host(str(source), "Pkg_1", str(root))
+
+    assert target == str(root / "Pkg_1" / "OpenConsole.exe")
+    assert _copy_tree(root) == {"Pkg_1/OpenConsole.exe": b"console-host-v1"}
+    assert replace.call_count == 2
+    sleep.assert_called_once_with(0.1)
+
+
+def test_copy_console_host_removes_old_copies_best_effort(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An old copy still running in another terminal must not fail the copy."""
+    source = tmp_path / "source.exe"
+    source.write_bytes(b"console-host-v1")
+    root = tmp_path / "copies"
+    (root / _OLDER).mkdir(parents=True)
+    remove = Mock()
+    monkeypatch.setattr(_MODULE.shutil, "rmtree", remove)
+
+    target = _MODULE._copy_console_host(str(source), _CURRENT, str(root))
+
+    assert Path(target).read_bytes() == b"console-host-v1"
+    remove.assert_called_once_with(str(root / _OLDER), ignore_errors=True)
+
+
+"""The local application data folder Windows reports."""
+_LOCAL_APP_DATA = "C:\\Users\\u\\AppData\\Local"
+
+
+def test_local_app_data_asks_windows_first() -> None:
+    """The known folder wins over ``LOCALAPPDATA``, which a profile may change."""
+    folder = _MODULE._local_app_data(
+        Mock(return_value=_LOCAL_APP_DATA), {"LOCALAPPDATA": "D:\\elsewhere"}
+    )
+    assert folder == _LOCAL_APP_DATA
+
+
+@pytest.mark.parametrize(
+    "local", (_LOCAL_APP_DATA, "\\\\server\\share\\u\\AppData\\Local")
+)
+def test_local_app_data_takes_an_absolute_variable_when_windows_fails(
+    local: str,
+) -> None:
+    """Without the known folder, an absolute ``LOCALAPPDATA`` serves."""
+    folder = _MODULE._local_app_data(
+        Mock(side_effect=OSError("SHGetKnownFolderPath failed")),
+        {"LOCALAPPDATA": local},
+    )
+    assert folder == local
+
+
+@pytest.mark.parametrize(
+    "environment",
+    (
+        {"LOCALAPPDATA": "data"},
+        {"LOCALAPPDATA": "C:data"},
+        {"LOCALAPPDATA": "\\Users\\u\\AppData\\Local"},
+        {"LOCALAPPDATA": ""},
+        {},
+    ),
+    ids=("relative", "drive-relative", "rooted", "empty", "unset"),
+)
+def test_local_app_data_refuses_a_relative_variable(
+    environment: dict[str, str],
+) -> None:
+    """A cold host runs in the vault: ``data`` there would be the vault's.
+
+    ``OSError`` makes planning fall back to the built-in console host.
+    """
+    with pytest.raises(OSError):
+        _MODULE._local_app_data(
+            Mock(side_effect=OSError("SHGetKnownFolderPath failed")), environment
+        )
+
+
+def test_local_app_data_ignores_a_relative_known_folder() -> None:
+    """A known folder that is not absolute counts as no answer."""
+    folder = _MODULE._local_app_data(
+        Mock(return_value="AppData"), {"LOCALAPPDATA": _LOCAL_APP_DATA}
+    )
+    assert folder == _LOCAL_APP_DATA
+
+
+def _fake_pseudoconsole(handle: int) -> Any:
+    """Return a pseudoconsole whose functions record their calls."""
+    return _MODULE._PseudoConsole(handle, Mock(return_value=0), Mock())
+
+
+def test_open_pseudoconsole_uses_the_built_in_host_when_none_is_planned() -> None:
+    """A conhost plan keeps its report and never launches OpenConsole."""
+    plan = _MODULE._fall_back("not-found", "no Windows Terminal")
+    launch = Mock(side_effect=AssertionError("OpenConsole was launched"))
+    built_in = _fake_pseudoconsole(7)
+    host, pseudoconsole = _MODULE._open_pseudoconsole(
+        plan, launch, Mock(return_value=built_in)
+    )
+    assert host == plan
+    assert pseudoconsole is built_in
+
+
+def test_open_pseudoconsole_keeps_the_handle_of_the_launched_host() -> None:
+    """A launched OpenConsole owns the handle; the built-in host stays unused."""
+    plan = _MODULE._ConsoleHost("openconsole", "C:\\copy\\OpenConsole.exe")
+    launched = _fake_pseudoconsole(9)
+    launch = Mock(return_value=launched)
+    built_in = Mock(side_effect=AssertionError("the built-in host was used"))
+    host, pseudoconsole = _MODULE._open_pseudoconsole(plan, launch, built_in)
+    launch.assert_called_once_with("C:\\copy\\OpenConsole.exe")
+    assert host.report() == {
+        "engine": "openconsole",
+        "path": "C:\\copy\\OpenConsole.exe",
+        "fallback": None,
+        "detail": None,
+    }
+    assert pseudoconsole is launched
+
+
+@pytest.mark.parametrize(
+    ("error", "fallback"),
+    (
+        (OSError("[WinError 5] Access is denied"), "start-failed"),
+        (OSError("NtOpenFile(\\Reference) failed: 0xC0000022"), "start-failed"),
+        (
+            _MODULE._ConsoleHostUnsupported("ntdll does not export NtOpenFile"),
+            "unsupported-os",
+        ),
+    ),
+    ids=("create-process", "nt-status", "unsupported"),
+)
+def test_open_pseudoconsole_falls_back_after_a_failed_launch(
+    error: OSError, fallback: str
+) -> None:
+    """A failed launch reports why and hands the pipes to the built-in host."""
+    plan = _MODULE._ConsoleHost("openconsole", "C:\\copy\\OpenConsole.exe")
+    built_in = _fake_pseudoconsole(11)
+    create = Mock(return_value=built_in)
+    host, pseudoconsole = _MODULE._open_pseudoconsole(
+        plan, Mock(side_effect=error), create
+    )
+    create.assert_called_once_with()
+    assert host.report() == {
+        "engine": "conhost",
+        "path": None,
+        "fallback": fallback,
+        "detail": str(error),
+    }
+    assert pseudoconsole is built_in
+
+
+def test_open_pseudoconsole_raises_when_the_built_in_host_fails() -> None:
+    """No console host at all is a host error, as before."""
+    plan = _MODULE._ConsoleHost("openconsole", "C:\\copy\\OpenConsole.exe")
+    with pytest.raises(OSError, match="CreatePseudoConsole"):
+        _MODULE._open_pseudoconsole(
+            plan,
+            Mock(side_effect=OSError("launch failed")),
+            Mock(side_effect=OSError("CreatePseudoConsole failed: 0x80070057")),
+        )
+
+
+def test_built_in_pseudoconsole_never_reports_an_exit() -> None:
+    """Only a launched ``OpenConsole.exe`` can exit before the shell starts."""
+    assert _fake_pseudoconsole(7).exited(1000) is None
+
+
+class _ChildStart(NamedTuple):
+    """The seams of one ``_create_child_or_fall_back`` call, in one recorder."""
+
+    events: Mock
+    openconsole: Any
+    built_in: Any
+
+
+def _child_start(exit_code: int | None, children: Sequence[Any]) -> _ChildStart:
+    """Prepare an OpenConsole whose exit reports ``exit_code``.
+
+    ``children`` are the results, or errors, of the successive child starts.
+    Every seam records into ``events``, so a test can check their order.
+    """
+    events = Mock()
+    events.create_child.side_effect = list(children)
+    events.exited.return_value = exit_code
+    events.create_built_in.return_value = _MODULE._PseudoConsole(
+        11, events.built_in_resize, events.built_in_close
+    )
+    openconsole = _MODULE._PseudoConsole(9, events.resize, events.close, events.exited)
+    return _ChildStart(events, openconsole, events.create_built_in.return_value)
+
+
+def _create_child_on_openconsole(start: _ChildStart) -> tuple[Any, Any]:
+    """Create the child on the prepared OpenConsole plan."""
+    return _MODULE._create_child_or_fall_back(
+        _MODULE._ConsoleHost("openconsole", "C:\\copy\\OpenConsole.exe"),
+        start.openconsole,
+        start.events.create_child,
+        start.events.discard_child,
+        start.events.create_built_in,
+    )
+
+
+def test_create_child_keeps_a_running_openconsole() -> None:
+    """A check without waiting finds OpenConsole alive; nothing else happens."""
+    start = _child_start(None, [(101, 102, 4242)])
+
+    host, child = _create_child_on_openconsole(start)
+
+    assert child == (101, 102, 4242)
+    assert host.report() == {
+        "engine": "openconsole",
+        "path": "C:\\copy\\OpenConsole.exe",
+        "fallback": None,
+        "detail": None,
+    }
+    assert start.events.mock_calls == [call.create_child(9), call.exited(0)]
+
+
+def test_create_child_on_the_built_in_host_never_checks_for_an_exit() -> None:
+    """The built-in console host is the fallback itself."""
+    start = _child_start(None, [(101, 102, 4242)])
+
+    host, child = _MODULE._create_child_or_fall_back(
+        _MODULE._ConsoleHost(),
+        start.built_in,
+        start.events.create_child,
+        start.events.discard_child,
+        start.events.create_built_in,
+    )
+
+    assert (host, child) == (_MODULE._ConsoleHost(), (101, 102, 4242))
+    assert start.events.mock_calls == [call.create_child(11)]
+
+
+def test_create_child_falls_back_after_a_failed_start_when_openconsole_exited() -> None:
+    """OpenConsole died while loading: the built-in host runs the shell instead.
+
+    Only once OpenConsole has exited, and its handles are closed, does the
+    built-in host get the pipe ends.
+    """
+    start = _child_start(
+        0xC0000135, [_MODULE.ChildStartError("broken", 251), (101, 102, 4242)]
+    )
+
+    host, child = _create_child_on_openconsole(start)
+
+    assert child == (101, 102, 4242)
+    assert start.events.mock_calls == [
+        call.create_child(9),
+        call.exited(1000),
+        call.close(),
+        call.create_built_in(),
+        call.create_child(11),
+    ]
+    assert (host.engine, host.path, host.fallback) == ("conhost", None, "exited")
+    assert "3221225781" in host.detail
+    assert "0xC0000135" in host.detail
+
+
+def test_create_child_raises_unchanged_while_openconsole_runs() -> None:
+    """A start that fails beside a live OpenConsole is the profile's fault."""
+    error = _MODULE.ChildStartError("access denied", 251)
+    start = _child_start(None, [error])
+
+    with pytest.raises(_MODULE.ChildStartError) as raised:
+        _create_child_on_openconsole(start)
+
+    assert raised.value is error
+    assert start.events.mock_calls == [call.create_child(9), call.exited(1000)]
+
+
+@pytest.mark.parametrize(
+    ("win32_error", "exit_code"),
+    ((2, 9009), (3, 9009), (123, 251), (193, 251), (216, 251), (740, 251)),
+    ids=(
+        "file-not-found",
+        "path-not-found",
+        "invalid-name",
+        "bad-exe-format",
+        "machine-type-mismatch",
+        "elevation-required",
+    ),
+)
+def test_create_child_raises_a_profile_error_without_waiting(
+    win32_error: int, exit_code: int
+) -> None:
+    """No console host causes these errors, so OpenConsole gets no moment to exit."""
+    error = _MODULE.ChildStartError("profile", exit_code, win32_error)
+    start = _child_start(0xC0000135, [error])
+
+    with pytest.raises(_MODULE.ChildStartError) as raised:
+        _create_child_on_openconsole(start)
+
+    assert raised.value is error
+    assert start.events.mock_calls == [call.create_child(9)]
+
+
+def test_create_child_waits_for_openconsole_after_any_other_win32_error() -> None:
+    """Any other Win32 error may come from a dying OpenConsole, so it still waits."""
+    start = _child_start(
+        0xC0000135, [_MODULE.ChildStartError("broken", 251, 6), (101, 102, 4242)]
+    )
+
+    host, child = _create_child_on_openconsole(start)
+
+    assert child == (101, 102, 4242)
+    assert start.events.mock_calls[:2] == [call.create_child(9), call.exited(1000)]
+    assert host.fallback == "exited"
+
+
+def test_create_child_falls_back_when_openconsole_exited_before_the_resume() -> None:
+    """The child exists but would die once resumed; it is ended unrun instead."""
+    start = _child_start(1, [(201, 202, 1111), (301, 302, 2222)])
+
+    host, child = _create_child_on_openconsole(start)
+
+    assert child == (301, 302, 2222)
+    assert start.events.mock_calls == [
+        call.create_child(9),
+        call.exited(0),
+        call.discard_child((201, 202, 1111)),
+        call.close(),
+        call.create_built_in(),
+        call.create_child(11),
+    ]
+    assert host.fallback == "exited"
+    assert "code 1 " in host.detail
+
+
+@pytest.mark.parametrize(
+    "children",
+    (
+        [OSError("first"), _MODULE.ChildStartError("again", 9009)],
+        [(201, 202, 1111), _MODULE.ChildStartError("again", 9009)],
+    ),
+    ids=("failed-start", "created-child"),
+)
+def test_create_child_raises_when_the_retry_fails(children: list[Any]) -> None:
+    """The one retry on the built-in host fails as any start does; no third try."""
+    start = _child_start(3, children)
+
+    with pytest.raises(_MODULE.ChildStartError) as raised:
+        _create_child_on_openconsole(start)
+
+    assert raised.value is children[1]
+    assert start.events.create_child.call_count == 2
+    start.events.close.assert_called_once_with()
+    start.events.create_built_in.assert_called_once_with()
+
+
+def _check_before_hello(start: _ChildStart, host: Any, pseudoconsole: Any) -> Any:
+    """Check the prepared console host before ``hello`` names child 1111."""
+    return _MODULE._child_before_hello(
+        host,
+        pseudoconsole,
+        (201, 202, 1111),
+        start.events.create_child,
+        start.events.discard_child,
+        start.events.create_built_in,
+        start.events.adopt_child,
+    )
+
+
+def test_child_before_hello_falls_back_once_openconsole_exited() -> None:
+    """OpenConsole died after the child's start: a new child takes the built-in host.
+
+    ``hello`` will name the new child, which joins the job before it runs.
+    """
+    start = _child_start(5, [(301, 302, 2222)])
+
+    host = _check_before_hello(start, _COPY_PLAN, start.openconsole)
+
+    assert start.events.mock_calls == [
+        call.exited(0),
+        call.discard_child((201, 202, 1111)),
+        call.close(),
+        call.create_built_in(),
+        call.create_child(11),
+        call.adopt_child((301, 302, 2222)),
+    ]
+    assert (host.engine, host.path, host.fallback) == ("conhost", None, "exited")
+    assert "code 5 " in host.detail
+
+
+def test_child_before_hello_keeps_the_child_of_a_running_openconsole() -> None:
+    """A check without waiting finds OpenConsole alive; nothing else happens."""
+    start = _child_start(None, [])
+
+    host = _check_before_hello(start, _COPY_PLAN, start.openconsole)
+
+    assert host is _COPY_PLAN
+    assert start.events.mock_calls == [call.exited(0)]
+
+
+def test_child_before_hello_never_checks_the_built_in_host() -> None:
+    """After an earlier fallback, or without OpenConsole, the child stays as is."""
+    start = _child_start(3, [])
+    plan = _MODULE._fall_back("exited", "OpenConsole.exe exited")
+
+    host = _check_before_hello(start, plan, start.built_in)
+
+    assert host is plan
+    assert start.events.mock_calls == []
+
+
+def test_child_before_hello_raises_when_the_new_child_cannot_start() -> None:
+    """The one retry fails as any start does; nothing joins the job."""
+    error = _MODULE.ChildStartError("again", 9009)
+    start = _child_start(3, [error])
+
+    with pytest.raises(_MODULE.ChildStartError) as raised:
+        _check_before_hello(start, _COPY_PLAN, start.openconsole)
+
+    assert raised.value is error
+    start.events.discard_child.assert_called_once_with((201, 202, 1111))
+    start.events.adopt_child.assert_not_called()
+
+
+@pytest.mark.parametrize("exit_code", (1, None), ids=("exited", "running"))
+def test_resume_named_child_resumes_whether_or_not_openconsole_exited(
+    exit_code: int | None,
+) -> None:
+    """``hello`` has named the child, so a dead OpenConsole no longer replaces it.
+
+    The shell then fails on its own, with an exit code the plugin reports.
+    """
+    start = _child_start(exit_code, [])
+
+    _MODULE._resume_named_child(_COPY_PLAN, start.openconsole, start.events.resume)
+
+    assert start.events.mock_calls == [call.exited(0), call.resume()]
+
+
+def test_resume_named_child_on_the_built_in_host_only_resumes() -> None:
+    """The built-in console host never exits early, so nothing is checked."""
+    start = _child_start(1, [])
+
+    _MODULE._resume_named_child(
+        _MODULE._ConsoleHost(), start.built_in, start.events.resume
+    )
+
+    assert start.events.mock_calls == [call.resume()]
+
+
+def test_console_host_command_line_matches_conpty_dll() -> None:
+    """The quoted path, size, and lowercase-hex handles of ``winconpty.cpp``."""
+    path = "C:\\Program Files\\Terminal\\OpenConsole.exe"
+    command_line = _MODULE._console_host_command_line(path, 120, 30, 0x1A4, 0x2BC)
+    assert command_line == (
+        '"C:\\Program Files\\Terminal\\OpenConsole.exe" --headless '
+        "--width 120 --height 30 --signal 0x1a4 --server 0x2bc"
+    )
+    assert _split_command_line(command_line)[0] == path
+
+
+def test_resize_signal_is_three_little_endian_shorts() -> None:
+    """``PTY_SIGNAL_RESIZE_WINDOW`` (8), then the columns and the rows."""
+    assert _MODULE._resize_signal(120, 30) == b"\x08\x00\x78\x00\x1e\x00"
+    assert _MODULE._resize_signal(32767, 1) == b"\x08\x00\xff\x7f\x01\x00"
+
+
+@pytest.mark.parametrize(
+    ("error", "expected"), ((5, 0x80070005), (109, 0x8007006D), (0, 0x80004005))
+)
+def test_hresult_from_win32_is_a_negative_hresult(error: int, expected: int) -> None:
+    """A failed resize write reports a failing ``HRESULT``, as ``conpty.dll`` does."""
+    result = _MODULE._hresult_from_win32(error)
+    assert result < 0
+    assert result & 0xFFFFFFFF == expected
+
+
+def test_ready_event_reports_the_built_in_console_host_by_default() -> None:
+    """Without a requested console host, ``ready`` carries an all-null report."""
+    event = _MODULE._ready_event(42, _MODULE._ConsoleHost())
+    assert event == {
+        "event": "ready",
+        "attestation": _MODULE.READY_ATTESTATION,
+        "hostPid": os.getpid(),
+        "childPid": 42,
+        "createPseudoConsole": True,
+        "controlChannelAuthenticated": True,
+        "jobObjectAssigned": True,
+        "consoleHost": {
+            "engine": "conhost",
+            "path": None,
+            "fallback": None,
+            "detail": None,
+        },
+    }
+
+
+def test_ready_event_carries_a_fallback_report() -> None:
+    """The fallback code and detail reach the plugin unchanged."""
+    host = _MODULE._fall_back("start-failed", "[WinError 5] Access is denied")
+    assert _MODULE._ready_event(1, host)["consoleHost"] == {
+        "engine": "conhost",
+        "path": None,
+        "fallback": "start-failed",
+        "detail": "[WinError 5] Access is denied",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -1601,13 +2884,20 @@ def _run_host(
     child_cwd: str | None = None,
     hello_probe: Callable[[Mapping[str, Any]], None] | None = None,
     interpreter: str = sys.executable,
+    console_host: str | None = None,
+    console_host_ahead: str | None = None,
+    start_fields: Mapping[str, Any] | None = None,
+    host_script: Path | None = None,
 ) -> _HostResult:
     """Run the ConPTY host once against a real control pipe and child.
 
-    ``deferred`` boots the host with ``--defer-session`` and delivers the
-    command, size, ``child_environment``, and ``child_cwd`` in a ``start`` op;
-    an immediate host inherits ``child_environment`` and receives ``child_cwd``
-    as its ``--cwd`` argument.
+    ``deferred`` boots the host with ``--defer-session``, plus
+    ``--console-host`` with ``console_host_ahead`` when given, and delivers
+    the command, size, ``child_environment``, ``child_cwd``, and
+    ``console_host`` in a ``start`` op, followed by ``start_fields``; an
+    immediate host inherits ``child_environment`` and receives ``child_cwd``
+    and ``console_host`` as its ``--cwd`` and ``--console-host`` arguments.
+    ``host_script`` runs in place of the host module, with the same arguments.
     """
     pipe_name = "\\\\.\\pipe\\obsidian-terminal-conpty-test-" + uuid.uuid4().hex
     token = uuid.uuid4().hex
@@ -1619,10 +2909,14 @@ def _run_host(
             "rows": rows,
             "command": list(command),
         }
+        if console_host is not None:
+            # The plugin sends no key for the built-in host.
+            start["consoleHost"] = console_host
         if child_environment is not None:
             start["env"] = dict(child_environment)
         if child_cwd is not None:
             start["cwd"] = child_cwd
+        start.update(start_fields or {})
     server = _ControlServer(
         pipe_name,
         token,
@@ -1638,13 +2932,20 @@ def _run_host(
             os.environ if deferred or child_environment is None else child_environment
         )
         environment[_MODULE.TOKEN_ENVIRONMENT_VARIABLE] = token
-        arguments = [interpreter, str(_module_path())]
+        arguments = [
+            interpreter,
+            str(_module_path() if host_script is None else host_script),
+        ]
         if deferred:
             arguments.extend(["--defer-session", pipe_name])
+            if console_host_ahead is not None:
+                arguments.extend(["--console-host", console_host_ahead])
         else:
             arguments.extend([str(columns), str(rows), pipe_name])
             if child_cwd is not None:
                 arguments.extend(["--cwd", child_cwd])
+            if console_host is not None:
+                arguments.extend(["--console-host", console_host])
             arguments.append("--")
             arguments.extend(command)
         process = subprocess.Popen(
@@ -1896,6 +3197,12 @@ def test_host_announces_itself_and_reports_its_exit() -> None:
     assert ready["jobObjectAssigned"] is True
     assert ready["hostPid"] == hello["hostPid"]
     assert ready["childPid"] == hello["childPid"]
+    assert ready["consoleHost"] == {
+        "engine": "conhost",
+        "path": None,
+        "fallback": None,
+        "detail": None,
+    }
     assert result.messages[-1] == {"event": "exit", "code": result.code}
 
 
@@ -2543,3 +3850,383 @@ def test_deferred_start_environment_reaches_the_child_without_the_token() -> Non
     )
     assert result.code == 0, result
     assert "VALUE=from-start-op TOKEN=absent" in result.text, result
+
+
+def _ready_report(result: _HostResult) -> dict[str, Any]:
+    """Return the ``consoleHost`` report of a run's ``ready`` event."""
+    ready = next(
+        (message for message in result.messages if message.get("event") == "ready"),
+        None,
+    )
+    assert ready is not None, result
+    report = ready.get("consoleHost")
+    assert isinstance(report, dict), result
+    return report
+
+
+def _installed_windows_terminal() -> Any:
+    """Return the Windows Terminal ``auto`` picks, or skip without one.
+
+    On GitHub Actions the test fails instead: the ``windows-2025`` runner has
+    Windows Terminal 1.23, so a skip there would hide a broken lookup. ty
+    reads ``pytest.skip`` as taking no arguments, hence the ignore.
+    """
+    try:
+        found = _MODULE._find_windows_terminal()
+    except OSError as error:
+        reason = f"the installed packages cannot be listed: {error}"
+    else:
+        if found is not None:
+            return found
+        reason = "Windows Terminal 1.22 or newer is not installed"
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        raise AssertionError(reason)
+    pytest.skip(reason)  # ty: ignore[too-many-positional-arguments]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize(
+    ("deferred", "ahead"),
+    ((False, None), (True, None), (True, "auto")),
+    ids=("cold", "prewarmed", "prewarmed-planned-ahead"),
+)
+def test_session_runs_on_the_windows_terminal_console_host(
+    deferred: bool, ahead: str | None
+) -> None:
+    """``auto`` starts Windows Terminal's OpenConsole, and the child runs on it.
+
+    Windows refuses to start a program inside ``WindowsApps`` for anyone but
+    its package, so an installed Windows Terminal runs from a local copy. A
+    spare without the hint finds it only when ``start`` asks.
+    """
+    found = _installed_windows_terminal()
+    result = _run_host(
+        ["cmd", "/c", "echo hello-openconsole"],
+        deferred=deferred,
+        console_host_ahead=ahead,
+        # OpenConsole ends its session when its input pipe breaks, so stdin
+        # stays open until the child exits, as it does under the plugin.
+        close_stdin=False,
+        console_host="auto",
+    )
+    assert result.code == 0, result
+    assert "hello-openconsole" in result.text, result
+    report = _ready_report(result)
+    assert report["engine"] == "openconsole", result
+    assert (report["fallback"], report["detail"]) == (None, None), result
+    path = report["path"]
+    assert isinstance(path, str), result
+    assert ntpath.basename(path).lower() == "openconsole.exe", result
+    assert Path(path).is_file(), result
+    if _MODULE._in_windows_apps(found.console_host):
+        assert not _MODULE._in_windows_apps(path), result
+        assert path.lower().startswith(os.environ["LOCALAPPDATA"].lower()), result
+    assert result.messages[-1] == {"event": "exit", "code": 0}
+    # Closing the handles must make OpenConsole exit and end the output pipe.
+    assert b"output drain timed out" not in result.stderr, result
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize(
+    "start_fields", ({}, {"consoleHost": None}), ids=("omitted", "null")
+)
+def test_deferred_session_on_the_built_in_host_ignores_the_plan_ahead(
+    start_fields: dict[str, Any],
+) -> None:
+    """A spare planned Windows Terminal's host while idle; the start still wins.
+
+    The plugin's setting may change after the spare booted with the hint. The
+    start then has no ``consoleHost``; a literal ``null`` means the same.
+    """
+    found = _installed_windows_terminal()
+    if _MODULE._in_windows_apps(found.console_host):
+        # A spare plans ahead only with an existing copy; make sure one exists.
+        _MODULE._copy_from_windows_apps(found.console_host, found.package)
+    # The spare runs this same lookup while it waits, so it holds this plan.
+    planned = _MODULE._plan_console_host_ahead(
+        _MODULE._find_windows_terminal, _MODULE._copied_from_windows_apps
+    )
+    assert planned is not None, planned
+    assert planned.engine == "openconsole", planned
+    result = _run_host(
+        ["cmd", "/c", "echo hello-conhost"],
+        deferred=True,
+        close_stdin=False,
+        console_host=None,
+        console_host_ahead="auto",
+        start_fields=start_fields,
+    )
+    assert result.code == 0, result
+    assert "hello-conhost" in result.text, result
+    assert _ready_report(result) == {
+        "engine": "conhost",
+        "path": None,
+        "fallback": None,
+        "detail": None,
+    }, result
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+def test_resize_reaches_the_child_on_the_windows_terminal_console_host() -> None:
+    """The signal-pipe resize packet resizes OpenConsole and is acknowledged."""
+    _installed_windows_terminal()
+    result = _run_host(
+        _report_size(2.0),
+        columns=120,
+        rows=30,
+        replies=({"op": "resize", "columns": 90, "rows": 20, "seq": 3},),
+        close_stdin=False,
+        console_host="auto",
+    )
+    assert result.code == 0, result
+    assert _ready_report(result)["engine"] == "openconsole", result
+    assert "SIZE 90 20" in result.text, result
+    assert {
+        "event": "resized",
+        "columns": 90,
+        "rows": 20,
+        "seq": 3,
+    } in result.messages, result
+    assert b"output drain timed out" not in result.stderr, result
+
+
+"""An ``OSC 7501`` query, as a program's terminal would answer it, typed in."""
+_OSC_7501 = b"\x1b]7501;?\x1b\\"
+
+
+def _report_osc_input() -> list[str]:
+    """Return a child that tells whether ``OSC 7501`` reached its input.
+
+    It reads ``CONIN$`` raw in VT input mode, without line input, echo, or
+    processed input, for at most 10 seconds after it prints that it reads.
+    """
+    code = (
+        "import ctypes, os, threading\n"
+        "from ctypes import wintypes\n"
+        'kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)\n'
+        "kernel32.CreateFileW.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, "
+        "wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, "
+        "wintypes.HANDLE)\n"
+        "kernel32.CreateFileW.restype = wintypes.HANDLE\n"
+        "kernel32.SetConsoleMode.argtypes = (wintypes.HANDLE, wintypes.DWORD)\n"
+        "kernel32.SetConsoleMode.restype = wintypes.BOOL\n"
+        "kernel32.SetConsoleCP.argtypes = (wintypes.UINT,)\n"
+        "kernel32.SetConsoleCP.restype = wintypes.BOOL\n"
+        "kernel32.ReadFile.argtypes = (wintypes.HANDLE, ctypes.c_void_p, "
+        "wintypes.DWORD, ctypes.POINTER(wintypes.DWORD), ctypes.c_void_p)\n"
+        "kernel32.ReadFile.restype = wintypes.BOOL\n"
+        # GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        # OPEN_EXISTING.
+        'handle = kernel32.CreateFileW("CONIN$", 0xC0000000, 3, None, 3, 0, None)\n'
+        "if not handle or handle == ctypes.c_void_p(-1).value:\n"
+        "    raise ctypes.WinError(ctypes.get_last_error())\n"
+        # ENABLE_VIRTUAL_TERMINAL_INPUT | ENABLE_EXTENDED_FLAGS: no line,
+        # echo, processed input, or Quick Edit modes.
+        "if not kernel32.SetConsoleMode(handle, 0x0200 | 0x0080):\n"
+        "    raise ctypes.WinError(ctypes.get_last_error())\n"
+        "if not kernel32.SetConsoleCP(65001):\n"
+        "    raise ctypes.WinError(ctypes.get_last_error())\n"
+        f"expected = {_OSC_7501!r}\n"
+        "data = bytearray()\n"
+        "seen = threading.Event()\n"
+        "def read():\n"
+        "    buffer = ctypes.create_string_buffer(256)\n"
+        "    count = wintypes.DWORD(0)\n"
+        "    while kernel32.ReadFile(handle, buffer, len(buffer), "
+        "ctypes.byref(count), None) and count.value:\n"
+        "        data.extend(buffer.raw[: count.value])\n"
+        "        if expected in data:\n"
+        "            seen.set()\n"
+        "            return\n"
+        "threading.Thread(target=read, daemon=True).start()\n"
+        "print('OSC7501-READING', flush=True)\n"
+        "seen.wait(10)\n"
+        "print('OSC7501-SEEN' if seen.is_set() else "
+        "'OSC7501-MISSING=' + bytes(data).hex() + ';', flush=True)\n"
+        # The reader may still block in ReadFile.
+        "os._exit(0)\n"
+    )
+    return [sys.executable, "-c", code]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize(
+    ("deferred", "ahead"),
+    ((False, None), (True, None), (True, "auto")),
+    ids=("cold", "prewarmed", "prewarmed-planned-ahead"),
+)
+def test_osc_input_reaches_the_child_on_the_windows_terminal_console_host(
+    deferred: bool, ahead: str | None
+) -> None:
+    """OpenConsole hands an OSC sequence in the input to the program.
+
+    This is what ``auto`` is for. The console host built into Windows differs
+    across Windows builds here, so it is not tested.
+    """
+    _installed_windows_terminal()
+    result = _run_host(
+        _report_osc_input(),
+        stdin=_OSC_7501,
+        stdout_ready=b"OSC7501-READING",
+        close_stdin=False,
+        wait_for_ready_before_stdin=True,
+        deferred=deferred,
+        console_host_ahead=ahead,
+        console_host="auto",
+    )
+    assert result.code == 0, result
+    assert _ready_report(result)["engine"] == "openconsole", result
+    assert "OSC7501-SEEN" in result.text, result
+
+
+def _stub_console_host_script(directory: Path, console_host: Path) -> Path:
+    """Write a host script that runs ``console_host`` for ``auto``.
+
+    The script runs the host module with the same arguments. Only ``auto``
+    finds ``console_host`` as Windows Terminal's console host, and the host
+    waits for a launched one to exit, so a stub that exits at once is gone
+    before the shell starts however fast the host is.
+    """
+    script = directory / "stub_console_host.py"
+    script.write_text(
+        "from importlib.util import module_from_spec, spec_from_file_location\n"
+        f"spec = spec_from_file_location('win32_conpty', {str(_module_path())!r})\n"
+        "module = module_from_spec(spec)\n"
+        "spec.loader.exec_module(module)\n"
+        "module._find_windows_terminal = lambda: module.WindowsTerminal(\n"
+        f"    'stub', {str(console_host)!r}\n"
+        ")\n"
+        "launch = module._launch_console_host\n"
+        "def launch_and_wait(*arguments):\n"
+        "    pseudoconsole = launch(*arguments)\n"
+        "    pseudoconsole.exited(10000)\n"
+        "    return pseudoconsole\n"
+        "module._launch_console_host = launch_and_wait\n"
+        "module.main()\n",
+        encoding="utf-8",
+    )
+    return script
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize("deferred", (False, True))
+@pytest.mark.parametrize(
+    ("stub", "fallback"),
+    (("hostname", "exited"), ("text", "start-failed")),
+    ids=("exits-at-once", "not-a-program"),
+)
+def test_session_falls_back_from_a_broken_console_host(
+    tmp_path: Path, stub: str, fallback: str, deferred: bool
+) -> None:
+    """A console host that exits at once, or cannot start, hands over quietly.
+
+    ``hostname.exe`` prints an error for the console host's arguments and
+    exits. The built-in console host then runs the shell, ``ready`` says why,
+    and nothing reaches stderr, which the plugin shows as an error.
+    """
+    console_host = tmp_path / "OpenConsole.exe"
+    if stub == "hostname":
+        system = os.path.join(os.environ["SystemRoot"], "System32")
+        shutil.copyfile(os.path.join(system, "hostname.exe"), console_host)
+    else:
+        console_host.write_text("not a program\n", encoding="utf-8")
+    result = _run_host(
+        ["cmd", "/c", "echo hello-after-fallback"],
+        close_stdin=False,
+        deferred=deferred,
+        console_host="auto",
+        host_script=_stub_console_host_script(tmp_path, console_host),
+    )
+    assert result.code == 0, result
+    assert "hello-after-fallback" in result.text, result
+    report = _ready_report(result)
+    assert (report["engine"], report["path"], report["fallback"]) == (
+        "conhost",
+        None,
+        fallback,
+    ), result
+    assert isinstance(report["detail"], str), result
+    assert result.stderr == b"", result
+    assert result.messages[-1] == {"event": "exit", "code": 0}
+
+
+def _console_host_dies_before_hello_script(directory: Path) -> Path:
+    """Write a host script whose OpenConsole ends just before ``hello``.
+
+    The script runs the host module with the same arguments. It keeps the
+    process of the OpenConsole it launches, and right before the last check
+    ahead of ``hello`` terminates it with exit code 7 and waits until it is
+    gone, so every earlier check finds OpenConsole running.
+    """
+    script = directory / "console_host_dies_before_hello.py"
+    script.write_text(
+        "from importlib.util import module_from_spec, spec_from_file_location\n"
+        f"spec = spec_from_file_location('win32_conpty', {str(_module_path())!r})\n"
+        "module = module_from_spec(spec)\n"
+        "spec.loader.exec_module(module)\n"
+        "processes = []\n"
+        "start = module._start_console_host\n"
+        "def start_and_keep(*arguments):\n"
+        "    process = start(*arguments)\n"
+        "    processes.append(process)\n"
+        "    return process\n"
+        "module._start_console_host = start_and_keep\n"
+        "check = module._child_before_hello\n"
+        "def end_then_check(*arguments):\n"
+        "    if processes:\n"
+        "        module._TerminateProcess(processes[-1], 7)\n"
+        "        module._WaitForSingleObject(processes[-1], 10000)\n"
+        "    return check(*arguments)\n"
+        "module._child_before_hello = end_then_check\n"
+        "module.main()\n",
+        encoding="utf-8",
+    )
+    return script
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize("deferred", (False, True), ids=("cold", "prewarmed"))
+def test_session_falls_back_when_openconsole_dies_before_hello(
+    tmp_path: Path, deferred: bool
+) -> None:
+    """OpenConsole ending after the shell's start, before ``hello``, hands over.
+
+    The suspended shell never ran, so the built-in console host runs a new
+    one, ``hello`` and ``ready`` both name it, and nothing reaches stderr.
+    """
+    _installed_windows_terminal()
+    result = _run_host(
+        ["cmd", "/c", "echo hello-after-fallback"],
+        close_stdin=False,
+        deferred=deferred,
+        console_host="auto",
+        host_script=_console_host_dies_before_hello_script(tmp_path),
+    )
+    assert result.code == 0, result
+    assert "hello-after-fallback" in result.text, result
+    report = _ready_report(result)
+    assert (report["engine"], report["path"], report["fallback"]) == (
+        "conhost",
+        None,
+        "exited",
+    ), result
+    detail = report["detail"]
+    assert isinstance(detail, str), result
+    # The exit code the script gave OpenConsole: this fallback is its doing.
+    assert "0x00000007" in detail, result
+    events = {message.get("event"): message for message in result.messages}
+    assert events["hello"]["childPid"] == events["ready"]["childPid"], result
+    assert result.stderr == b"", result
+    assert result.messages[-1] == {"event": "exit", "code": 0}
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+def test_windows_terminal_packages_name_installed_folders() -> None:
+    """Windows' package API lists each Windows Terminal package with its folder."""
+    _installed_windows_terminal()
+    packages = _MODULE._windows_terminal_packages()
+    assert packages
+    for name, root in packages:
+        assert _MODULE._WINDOWS_TERMINAL_PACKAGE.fullmatch(name), name
+        assert os.path.isdir(root), root
+        assert name.lower() in root.lower(), (name, root)
