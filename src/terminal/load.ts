@@ -137,6 +137,13 @@ export function loadTerminal(context: TerminalPlugin): void {
               if (active?.parent) {
                 return adapter.getFullPath(active.parent.path);
               }
+              if (!checking) {
+                notice2(
+                  () => i18n.t("notices.no-file-for-current-directory"),
+                  settings.value.noticeTimeout,
+                  context,
+                );
+              }
               return null;
             }
             // No default
@@ -408,14 +415,28 @@ export function loadTerminal(context: TerminalPlugin): void {
             }
             return command(type, cwd)(checking);
           },
+          /*
+           * A default hotkey on purpose, against Obsidian's advice to avoid
+           * them: one key then opens a terminal from anywhere, also from a
+           * focused terminal. A letter stays on its printed key on every
+           * layout, unlike a backtick. "H", not "h": only the uppercase key
+           * code name matches on non-Latin layouts.
+           */
+          ...(type === "integrated" && cwd === "root"
+            ? { hotkeys: [{ key: "H", modifiers: ["Mod", "Shift"] }] }
+            : {}),
           icon: i18n.t(`asset:commands.open-terminal-${cwd}-icon`),
           id: `open-terminal.${type}.${cwd}`,
         },
       );
-      // "Current" needs an active file, and a focused terminal has none.
-      if (cwd === "root") {
-        TerminalView.allowWhileFocused(opening);
-      }
+      /*
+       * A focused terminal has no active file, so "current" only shows a
+       * notice there. Allowing it still lets the focused listener consume a
+       * hotkey the user assigned to it instead of the shell: ConPTY turns
+       * Ctrl+Shift+<letter> into that letter's control character, e.g.
+       * Ctrl+Shift+H into 0x08, which cmd.exe treats as backspace.
+       */
+      TerminalView.allowWhileFocused(opening);
     }
   }
 

@@ -369,7 +369,7 @@ describe("opening commands while a terminal has focus", () => {
     vi.mocked(addCommand).mockReset();
   });
 
-  it("keeps the root-directory commands and the developer console, not the current-directory commands", async () => {
+  it("keeps every opening command and the developer console", async () => {
     // The loader passes on what `addCommand` returns; the bare mock returns nothing.
     vi.mocked(addCommand).mockImplementation((_context, name, command) => ({
       ...command,
@@ -386,19 +386,132 @@ describe("opening commands while a terminal has focus", () => {
       allowed = vi
         .mocked(TerminalView)
         .allowWhileFocused.mock.calls.map(([{ id }]) => id);
-    expect(registered).toContain("open-terminal.default.current");
-    expect(allowed).toEqual(
-      registered.filter(
-        (id) => id === "open-terminal.developerConsole" || id.endsWith(".root"),
+    expect(allowed).toEqual(registered);
+    expect(allowed).toEqual([
+      "open-terminal.developerConsole",
+      "open-terminal.default.root",
+      "open-terminal.default.current",
+      "open-terminal.external.root",
+      "open-terminal.external.current",
+      "open-terminal.integrated.root",
+      "open-terminal.integrated.current",
+      "open-terminal.select.root",
+      "open-terminal.select.current",
+    ]);
+  });
+
+  async function loadCommands(
+    activeFile: { readonly parent: { readonly path: string } } | null = null,
+    fileSystem = true,
+  ) {
+    vi.mocked(addCommand).mockImplementation((_context, name, command) => ({
+      ...command,
+      name: name(),
+    }));
+    const context = await terminalContext({
+      defaultProfile: "integrated",
+      profiles: {
+        integrated: {
+          ...Settings.Profile.DEFAULTS.integrated,
+          platforms: { win32: true },
+        },
+      },
+    });
+    Object.assign(context.language, {
+      value: await createI18n(
+        PluginLocales.RESOURCES,
+        PluginLocales.FORMATTERS,
+        { lng: "en", fallbackLng: "en" },
       ),
+    });
+    Object.assign(context.app.vault, {
+      adapter: fileSystem
+        ? Object.assign(new FileSystemAdapter(), {
+            getBasePath: vi.fn().mockReturnValue("C:\\Vault"),
+            getFullPath: vi.fn((path: string) => `C:\\Vault\\${path}`),
+          })
+        : {},
+    });
+    Object.assign(context.app.workspace, {
+      getActiveFile: vi.fn().mockReturnValue(activeFile),
+      onLayoutReady: vi.fn(),
+    });
+    loadTerminal(context);
+    const commands = vi
+      .mocked(addCommand)
+      .mock.calls.map(([, , command]) => command);
+    function run(id: string, checking: boolean): unknown {
+      const command = commands.find((command0) => command0.id === id);
+      if (!command?.checkCallback) throw new Error(`No command: ${id}`);
+      return command.checkCallback(checking);
+    }
+    return { commands, context, run };
+  }
+
+  it("binds Mod+Shift+H to the integrated root-directory command only", async () => {
+    const { commands } = await loadCommands();
+    expect(
+      commands.filter((command) => "hotkeys" in command).map(({ id }) => id),
+    ).toEqual(["open-terminal.integrated.root"]);
+    expect(
+      commands.find(({ id }) => id === "open-terminal.integrated.root")
+        ?.hotkeys,
+    ).toEqual([{ key: "H", modifiers: ["Mod", "Shift"] }]);
+    expect(
+      commands.find(({ id }) => id === "open-terminal.integrated.current"),
+    ).not.toHaveProperty("hotkeys");
+  });
+
+  it.each(["default", "external", "integrated", "select"])(
+    "shows a notice when the %s current-directory command runs without an active file",
+    async (type) => {
+      const { context, run } = await loadCommands();
+      expect(run(`open-terminal.${type}.current`, false)).toBe(false);
+      expect(notice2).toHaveBeenCalledExactlyOnceWith(
+        expect.any(Function),
+        context.settings.value.noticeTimeout,
+        context,
+      );
+      expect(vi.mocked(notice2).mock.calls[0]?.[0]()).toBe(
+        "No active file: open a file to start a terminal in its folder.",
+      );
+      expect(spawnTerminal).not.toHaveBeenCalled();
+      expect(SelectProfileModal).not.toHaveBeenCalled();
+    },
+  );
+
+  it("hides a current-directory command without an active file silently", async () => {
+    const { run } = await loadCommands();
+    expect(run("open-terminal.integrated.current", true)).toBe(false);
+    expect(notice2).not.toHaveBeenCalled();
+  });
+
+  it("opens the folder of the active file without a notice", async () => {
+    const { context, run } = await loadCommands({ parent: { path: "Notes" } });
+    expect(run("open-terminal.integrated.current", false)).toBe(true);
+    expect(spawnTerminal).toHaveBeenCalledExactlyOnceWith(
+      context,
+      context.settings.value.profiles.integrated,
+      { cwd: "C:\\Vault\\Notes", profileSourceId: "integrated" },
     );
-    expect(allowed).toEqual(
-      expect.arrayContaining([
-        "open-terminal.developerConsole",
-        "open-terminal.default.root",
-      ]),
+    expect(notice2).not.toHaveBeenCalled();
+  });
+
+  it("opens the vault root without an active file and without a notice", async () => {
+    const { context, run } = await loadCommands();
+    expect(run("open-terminal.integrated.root", false)).toBe(true);
+    expect(spawnTerminal).toHaveBeenCalledExactlyOnceWith(
+      context,
+      context.settings.value.profiles.integrated,
+      { cwd: "C:\\Vault", profileSourceId: "integrated" },
     );
-    expect(allowed.filter((id) => id.endsWith(".current"))).toEqual([]);
+    expect(notice2).not.toHaveBeenCalled();
+  });
+
+  it("stays silent without a file-system vault", async () => {
+    const { run } = await loadCommands(null, false);
+    expect(run("open-terminal.integrated.current", false)).toBe(false);
+    expect(notice2).not.toHaveBeenCalled();
   });
 });
 
