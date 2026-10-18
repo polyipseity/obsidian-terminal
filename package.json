@@ -144,7 +144,7 @@
   "sideEffects": false,
   "style": "styles.css",
   "type": "module",
-  "version": "3.28.0",
+  "version": "3.29.0",
   "workspaces": [
     "."
   ]
