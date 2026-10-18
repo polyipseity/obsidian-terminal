@@ -1,12 +1,23 @@
 import {
   UpdatableUI,
+  cloneAsWritable,
   setSanitizedInnerHTML,
 } from "@polyipseity/obsidian-plugin-library";
 import { createInstance } from "i18next";
-import { ButtonComponent, Setting } from "obsidian";
+import {
+  ButtonComponent,
+  ExtraButtonComponent,
+  Setting,
+  ToggleComponent,
+} from "obsidian";
 import * as doctor from "../../src/terminal/win32-doctor.js";
 import { SettingTab } from "../../src/settings.js";
 import { loadDocumentations } from "../../src/documentations.js";
+import {
+  EXPERIMENTS,
+  type Experiment,
+  fixExperiments,
+} from "../../src/experiments.js";
 import { LocalSettings, Settings } from "../../src/settings-data.js";
 import {
   capturePythonRows,
@@ -15,6 +26,7 @@ import {
   withPythonSpare,
 } from "../fixtures/python-settings-ui.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import asset from "../../assets/locales/en/asset.json" with { type: "json" };
 import en from "../../assets/locales/en/translation.json" with { type: "json" };
 import {
   type Win32PythonDiagnosis,
@@ -397,6 +409,383 @@ class PythonSettingTab extends SettingTab {
     this.ui.update();
   }
 }
+
+/** A settings row that keeps its toggle and reset button, as the real row does. */
+class ExperimentRow extends Setting {
+  public override readonly settingEl = document.createElement("div");
+  public override readonly nameEl = document.createElement("div");
+  public override readonly descEl = document.createElement("div");
+  public toggle: ToggleComponent | null = null;
+  public reset: ExtraButtonComponent | null = null;
+
+  public constructor(containerEl: HTMLElement) {
+    super(containerEl);
+    this.settingEl.append(this.nameEl, this.descEl);
+    containerEl.append(this.settingEl);
+  }
+
+  public override setName(name: string): this {
+    this.nameEl.textContent = name;
+    return this;
+  }
+
+  public override setDesc(description: DocumentFragment | string): this {
+    this.descEl.replaceChildren(description);
+    return this;
+  }
+
+  public override addToggle(
+    configure: (toggle: ToggleComponent) => unknown,
+  ): this {
+    this.toggle ??= new ToggleComponent(this.settingEl);
+    // The mock's setValue calls the change handler; a redraw must not write.
+    this.toggle.onChange(() => {});
+    configure(this.toggle);
+    return this;
+  }
+
+  public override addExtraButton(
+    configure: (button: ExtraButtonComponent) => unknown,
+  ): this {
+    this.reset ??= new ExtraButtonComponent(this.settingEl);
+    configure(this.reset);
+    return this;
+  }
+}
+
+class ExperimentalSettingTab extends SettingTab {
+  public draw(rows: readonly Experiment.Row[]): void {
+    this.newExperimentalWidgets(rows);
+  }
+  /** Draws what `experimentRows()` returns, as `onLoad()` does. */
+  public drawRegistered(): void {
+    this.newExperimentalWidgets();
+  }
+  public update(): void {
+    this.ui.update();
+  }
+  public dispose(): void {
+    this.onUnload();
+  }
+  protected override postMutate(): void {
+    this.ui.update();
+  }
+}
+
+/** A tab whose registry holds the two fixture experiments. */
+class TwoExperimentsSettingTab extends ExperimentalSettingTab {
+  protected override experimentRows(): readonly Experiment.Row[] {
+    return [ALPHA, BETA];
+  }
+}
+
+/** Draws `rows`, or for `null` what the tab's own `experimentRows()` returns. */
+async function drawExperimentalSection(
+  rows: readonly Experiment.Row[] | null,
+  Tab: typeof ExperimentalSettingTab = ExperimentalSettingTab,
+) {
+  const i18n = createInstance();
+  await i18n.init({
+    lng: "en",
+    resources: { en: { asset, translation: en } },
+  });
+  const captured: ExperimentRow[] = [];
+  vi.spyOn(UpdatableUI.prototype, "newSetting").mockImplementation(function (
+    this: UpdatableUI,
+    element,
+    configure,
+  ) {
+    return this.new(
+      () => {
+        const row = new ExperimentRow(element);
+        captured.push(row);
+        return row;
+      },
+      (row) => {
+        configure(row);
+      },
+      (row) => {
+        row.settingEl.remove();
+      },
+    );
+  });
+  const context = await pythonSettingsContext();
+  Object.assign(context.language, { value: i18n });
+  // The fixture's mutate runs Settings.fix, which drops the fixture ids.
+  vi.spyOn(context.settings, "mutate").mockImplementation(async (mutate) => {
+    const value = cloneAsWritable(context.settings.value);
+    await mutate(value);
+    Object.assign(context.settings, { value });
+  });
+  const tab = new Tab(context, loadDocumentations(context));
+  if (rows) {
+    tab.draw(rows);
+  } else {
+    tab.drawRegistered();
+  }
+  return {
+    context,
+    holder: (id: string): HTMLElement | null =>
+      tab.containerEl.querySelector<HTMLElement>(
+        `[data-experiment-options="${id}"]`,
+      ),
+    row: (index: number) => {
+      const row = captured[index],
+        toggle = row?.toggle,
+        reset = row?.reset;
+      if (!row || !toggle || !reset)
+        throw new Error("Missing experiment row controls");
+      return {
+        descEl: row.descEl,
+        nameEl: row.nameEl,
+        reset,
+        settingEl: row.settingEl,
+        toggle,
+      };
+    },
+    rows: captured,
+    tab,
+  };
+}
+
+const experimentRow = (
+    experiment: Experiment,
+    name: string,
+  ): Experiment.Row => ({
+    ...experiment,
+    effect: () => `${name} effect.`,
+    name: () => name,
+    risk: () => `${name} risk.`,
+  }),
+  ALPHA = experimentRow(
+    { applies: "live", feedback: "https://example.invalid/alpha", id: "alpha" },
+    "Alpha",
+  ),
+  BETA = experimentRow(
+    {
+      applies: "restart",
+      feedback: "https://example.invalid/beta",
+      id: "beta",
+    },
+    // Markup in a text must be shown as it is, neither escaped nor parsed.
+    "Beta & <b>more</b>",
+  );
+
+describe("experimental section", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.clearAllMocks();
+  });
+
+  it("draws nothing when there are no experiments", async () => {
+    const { rows, tab } = await drawExperimentalSection([]);
+    expect(tab.containerEl.childElementCount).toBe(0);
+    expect(rows).toHaveLength(0);
+  });
+
+  it("draws the heading, the intro and one row per experiment in order", async () => {
+    const { rows, tab } = await drawExperimentalSection([ALPHA, BETA]),
+      children = Array.from(tab.containerEl.children),
+      [heading, intro, alpha, beta] = children;
+    expect(children).toHaveLength(4);
+    expect(heading?.tagName).toBe("H2");
+    expect(heading?.textContent).toBe(en.settings.experimental);
+    expect(intro?.tagName).toBe("DIV");
+    expect(intro?.classList.contains("setting-item")).toBe(true);
+    expect(intro?.textContent).toBe(en.settings["experimental-description"]);
+    expect(alpha?.getAttribute("data-experiment")).toBe("alpha");
+    expect(beta?.getAttribute("data-experiment")).toBe("beta");
+    expect(rows.map((row) => row.nameEl.textContent)).toEqual([
+      ALPHA.name(),
+      BETA.name(),
+    ]);
+    tab.dispose();
+    expect(tab.containerEl.childElementCount).toBe(0);
+  });
+
+  it("draws what experimentRows() returns when it is given no rows", async () => {
+    const { tab } = await drawExperimentalSection(
+      null,
+      TwoExperimentsSettingTab,
+    );
+    // The heading, the intro and the two rows, as when the rows are given.
+    expect(
+      Array.from(
+        tab.containerEl.children,
+        (child) => child.getAttribute("data-experiment") ?? child.tagName,
+      ),
+    ).toEqual(["H2", "DIV", "alpha", "beta"]);
+  });
+
+  it("draws the registered experiments when it is given no rows", async () => {
+    const registered: readonly Experiment[] = EXPERIMENTS,
+      { tab } = await drawExperimentalSection(null),
+      drawn = tab.containerEl.querySelectorAll("[data-experiment]");
+    // None is registered in this version, so there is no heading and no row.
+    expect(tab.containerEl.querySelectorAll("h2")).toHaveLength(
+      Math.min(registered.length, 1),
+    );
+    expect(
+      Array.from(drawn, (row) => row.getAttribute("data-experiment")),
+    ).toEqual(registered.map(({ id }) => id));
+  });
+
+  it("a row shows the name, the effect, the known risk and a feedback link", async () => {
+    const section = await drawExperimentalSection([ALPHA, BETA]),
+      alpha = section.row(0),
+      beta = section.row(1),
+      lines = (description: HTMLElement): readonly string[] =>
+        Array.from(description.children, (line) => line.textContent);
+    expect(alpha.nameEl.textContent).toBe("Alpha");
+    // Alpha applies live, so its row has no note on how a change applies.
+    expect(lines(alpha.descEl)).toEqual([
+      "Alpha effect.",
+      "Known risk: Alpha risk.",
+      en.settings["experimental-feedback"],
+    ]);
+    expect(lines(beta.descEl)).toEqual([
+      "Beta & <b>more</b> effect.",
+      "Known risk: Beta & <b>more</b> risk.",
+      en.settings["experimental-applies"].restart,
+      en.settings["experimental-feedback"],
+    ]);
+    expect(beta.settingEl.querySelector("b")).toBeNull();
+    expect(section.tab.containerEl.textContent).not.toContain("{{");
+
+    const links = alpha.descEl.querySelectorAll("a"),
+      link = links[0];
+    expect(links).toHaveLength(1);
+    expect(link?.getAttribute("href")).toBe(ALPHA.feedback);
+    expect(link?.textContent).toBe(en.settings["experimental-feedback"]);
+    expect(link?.target).toBe("_blank");
+
+    // The click opens the browser itself; the anchor is not followed.
+    const open = vi.spyOn(window, "open").mockReturnValue(null),
+      click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    link?.dispatchEvent(click);
+    expect(open).toHaveBeenCalledExactlyOnceWith(
+      ALPHA.feedback,
+      "_blank",
+      "noreferrer",
+    );
+    expect(click.defaultPrevented).toBe(true);
+  });
+
+  it("the toggle is off at first, stores true when turned on and removes the key when turned off", async () => {
+    const section = await drawExperimentalSection([ALPHA, BETA]),
+      { settings } = section.context,
+      alpha = section.row(0),
+      beta = section.row(1);
+    expect(alpha.toggle.getValue()).toBe(false);
+    expect(beta.toggle.getValue()).toBe(false);
+    expect(settings.value.experiments).toEqual({});
+
+    beta.toggle.setValue(true);
+    await vi.waitFor(() => {
+      expect(settings.value.experiments).toEqual({ beta: true });
+    });
+    alpha.toggle.setValue(true);
+    await vi.waitFor(() => {
+      expect(settings.value.experiments).toEqual({ alpha: true, beta: true });
+    });
+    alpha.toggle.setValue(false);
+    await vi.waitFor(() => {
+      expect(settings.value.experiments).toEqual({ beta: true });
+    });
+    // Off is the absence of the key, never a stored false.
+    expect(Object.keys(settings.value.experiments)).toEqual(["beta"]);
+    expect(beta.toggle.getValue()).toBe(true);
+  });
+
+  it("reset turns the experiment off", async () => {
+    const section = await drawExperimentalSection([ALPHA, BETA]),
+      { settings } = section.context,
+      alpha = section.row(0);
+    alpha.toggle.setValue(true);
+    await vi.waitFor(() => {
+      expect(settings.value.experiments).toEqual({ alpha: true });
+    });
+    alpha.reset.extraSettingsEl.click();
+    await vi.waitFor(() => {
+      expect(settings.value.experiments).toEqual({});
+      expect(alpha.toggle.getValue()).toBe(false);
+    });
+  });
+
+  it("options are drawn the first time the experiment is on and hidden while it is off", async () => {
+    const options = vi.fn(),
+      section = await drawExperimentalSection([{ ...ALPHA, options }, BETA]),
+      alpha = section.row(0),
+      beta = section.row(1),
+      holder = section.holder("alpha");
+    if (!holder) throw new Error("Missing options holder");
+    expect(options).not.toHaveBeenCalled();
+    expect(holder.style.display).toBe("none");
+    expect(holder.previousElementSibling).toBe(alpha.settingEl);
+    expect(holder.nextElementSibling).toBe(beta.settingEl);
+    expect(section.holder("beta")).toBeNull();
+
+    alpha.toggle.setValue(true);
+    await vi.waitFor(() => {
+      expect(options).toHaveBeenCalledExactlyOnceWith(holder);
+    });
+    expect(holder.style.display).toBe("");
+
+    alpha.toggle.setValue(false);
+    await vi.waitFor(() => {
+      expect(holder.style.display).toBe("none");
+    });
+
+    alpha.toggle.setValue(true);
+    await vi.waitFor(() => {
+      expect(holder.style.display).toBe("");
+    });
+    expect(options).toHaveBeenCalledOnce();
+
+    section.tab.dispose();
+    expect(section.tab.containerEl.childElementCount).toBe(0);
+  });
+
+  it("an options drawer that throws does not break the section", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {}),
+      failure = new Error("drawer failed"),
+      options = vi.fn(() => {
+        throw failure;
+      }),
+      section = await drawExperimentalSection([{ ...ALPHA, options }]),
+      { settings } = section.context,
+      alpha = section.row(0);
+    alpha.toggle.setValue(true);
+    await vi.waitFor(() => {
+      expect(logged).toHaveBeenCalledExactlyOnceWith(failure);
+    });
+    expect(() => {
+      section.tab.update();
+    }).not.toThrow();
+    expect(options).toHaveBeenCalledOnce();
+    expect(alpha.toggle.getValue()).toBe(true);
+
+    alpha.toggle.setValue(false);
+    await vi.waitFor(() => {
+      expect(settings.value.experiments).toEqual({});
+    });
+  });
+
+  it("a change made elsewhere is shown", async () => {
+    const section = await drawExperimentalSection([
+        { ...ALPHA, options: vi.fn() },
+      ]),
+      { settings } = section.context,
+      alpha = section.row(0);
+    expect(alpha.toggle.getValue()).toBe(false);
+    await settings.mutate((settingsM) => {
+      settingsM.experiments = fixExperiments({ alpha: true }, [ALPHA]);
+    });
+    section.tab.update();
+    expect(alpha.toggle.getValue()).toBe(true);
+    expect(section.holder("alpha")?.style.display).toBe("");
+  });
+});
 
 describe("plugin Python status notifications", () => {
   afterEach(() => {
@@ -975,6 +1364,60 @@ describe("settings tab descriptions", () => {
         // elements' document would prove nothing: insertion adopts every node
         // into the description's document, wherever it was made.
         expect(descEl ? codes(descEl) : null).toEqual(codes(expected));
+      } finally {
+        tab.dispose();
+      }
+    },
+  );
+
+  it.each(["main", "Settings"])(
+    "renders each experiment's description as elements in the %s window",
+    async (where) => {
+      const i18n = createInstance();
+      await i18n.init({
+        lng: "en",
+        resources: { en: { asset, translation: en } },
+      });
+      const rows = captureMainWindowRows(),
+        context = await pythonSettingsContext();
+      Object.assign(context.language, { value: i18n });
+      const tab = new ExperimentalSettingTab(
+          context,
+          loadDocumentations(context),
+        ),
+        shownIn = where === "main" ? document : settingsWindowDocument(),
+        lines = (descEl?: HTMLElement): readonly string[] =>
+          Array.from(
+            descEl?.children ?? [],
+            (line) => `${line.tagName} ${line.textContent}`,
+          );
+      shownIn.body.append(tab.containerEl);
+      try {
+        tab.draw([ALPHA, BETA]);
+        const alpha = rows.get(ALPHA.name())?.descEl,
+          beta = rows.get(BETA.name())?.descEl,
+          feedback = en.settings["experimental-feedback"];
+        expect(tab.containerEl.textContent).not.toContain(
+          "[object DocumentFragment]",
+        );
+        // Alpha applies live, so it has no line on how a change applies.
+        expect(lines(alpha)).toEqual([
+          "DIV Alpha effect.",
+          "DIV Known risk: Alpha risk.",
+          `A ${feedback}`,
+        ]);
+        expect(lines(beta)).toEqual([
+          "DIV Beta & <b>more</b> effect.",
+          "DIV Known risk: Beta & <b>more</b> risk.",
+          `DIV ${en.settings["experimental-applies"].restart}`,
+          `A ${feedback}`,
+        ]);
+        expect(alpha?.querySelector("a")?.getAttribute("href")).toBe(
+          ALPHA.feedback,
+        );
+        expect(beta?.querySelector("a")?.getAttribute("href")).toBe(
+          BETA.feedback,
+        );
       } finally {
         tab.dispose();
       }

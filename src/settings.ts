@@ -17,6 +17,13 @@ import {
 import { cloneDeep } from "es-toolkit/object";
 import semverLt from "semver/functions/lt.js";
 import type { loadDocumentations } from "./documentations.js";
+import {
+  EXPERIMENTS,
+  type Experiment,
+  describeExperiments,
+  fixExperiments,
+  isExperimentEnabled,
+} from "./experiments.js";
 import type { TerminalPlugin } from "./main.js";
 import {
   KeymappingsModal,
@@ -868,6 +875,135 @@ export class SettingTab extends AdvancedSettingTab<Settings> {
             ),
           );
       });
+    this.newExperimentalWidgets();
+  }
+
+  /** Every registered experiment with its texts, in registry order. */
+  protected experimentRows(): readonly Experiment.Row[] {
+    // One entry per experiment in EXPERIMENTS: its name, effect and risk.
+    return describeExperiments(EXPERIMENTS, {});
+  }
+
+  /**
+   * The Experimental section: nothing when there are no experiments.
+   *
+   * `rows` is every registered experiment, in registry order: the toggles
+   * rewrite the stored flags against this list.
+   */
+  protected newExperimentalWidgets(
+    rows: readonly Experiment.Row[] = this.experimentRows(),
+  ): void {
+    if (rows.length === 0) {
+      return;
+    }
+    const {
+      containerEl,
+      context: {
+        language: { value: i18n },
+        settings,
+      },
+      ui,
+    } = this;
+    this.newSectionWidget(() => i18n.t("settings.experimental"));
+    ui.new(
+      () => createChildElement(containerEl, "div"),
+      (ele) => {
+        ele.classList.add(DOMClasses.SETTING_ITEM);
+        ele.textContent = i18n.t("settings.experimental-description");
+      },
+      (ele) => {
+        ele.remove();
+      },
+    );
+    for (const row of rows) {
+      const { applies, feedback, id, options } = row,
+        // Off removes the key: the fixer keeps only a stored `true`.
+        set = async (value: boolean): Promise<void> =>
+          settings.mutate((settingsM) => {
+            settingsM.experiments = fixExperiments(
+              { ...settingsM.experiments, [id]: value },
+              rows,
+            );
+          });
+      ui.newSetting(containerEl, (setting) => {
+        const { settingEl } = setting;
+        settingEl.setAttribute("data-experiment", id);
+        setSettingDesc(setting, (frag) => {
+          createChildElement(frag, "div", (ele) => {
+            ele.textContent = row.effect();
+          });
+          createChildElement(frag, "div", (ele) => {
+            ele.textContent = i18n.t("settings.experimental-risk", {
+              interpolation: { escapeValue: false },
+              risk: row.risk(),
+            });
+          });
+          if (applies !== "live") {
+            createChildElement(frag, "div", (ele) => {
+              ele.textContent = i18n.t(
+                `settings.experimental-applies.${applies}`,
+              );
+            });
+          }
+          createChildElement(frag, "a", (ele) => {
+            ele.textContent = i18n.t("settings.experimental-feedback");
+            ele.href = feedback;
+            ele.target = "_blank";
+            ele.rel = "noopener noreferrer";
+            // The address shows on hover; the click opens it the way the
+            // Python download button opens its page.
+            ele.addEventListener("click", (event) => {
+              event.preventDefault();
+              openExternal(activeSelf(ele), feedback);
+            });
+          });
+        })
+          .setName(row.name())
+          .addToggle(
+            linkSetting(
+              () => isExperimentEnabled<string>(settings.value, id),
+              set,
+              () => {
+                this.postMutate();
+              },
+            ),
+          )
+          .addExtraButton(
+            resetButton(
+              i18n.t("asset:settings.experimental-feature-icon"),
+              i18n.t("settings.reset"),
+              async () => set(false),
+              () => {
+                this.postMutate();
+              },
+            ),
+          );
+      });
+      if (options) {
+        // The options of an experiment that was never on are never drawn:
+        // this tab is built at plugin load, for every user.
+        let drawn = false;
+        ui.new(
+          () => createChildElement(containerEl, "div"),
+          (holder) => {
+            holder.setAttribute("data-experiment-options", id);
+            const on = isExperimentEnabled<string>(settings.value, id);
+            holder.style.display = on ? "" : "none";
+            if (on && !drawn) {
+              drawn = true;
+              try {
+                options(holder);
+              } catch (error) {
+                activeSelf(containerEl).console.error(error);
+              }
+            }
+          },
+          (holder) => {
+            holder.remove();
+          },
+        );
+      }
+    }
   }
 
   /** Plugin-level Python controls, rendered on Windows only. */

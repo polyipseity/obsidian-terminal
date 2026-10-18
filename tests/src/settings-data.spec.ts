@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { LocalSettings, Settings } from "../../src/settings-data.js";
 import { PROFILE_PRESETS } from "../../src/terminal/profile-presets.js";
 import { inheritedPythonExecutable } from "../../src/terminal/win32-doctor.js";
+import released328 from "../fixtures/data-3.28.0.json" with { type: "json" };
 
 // Literal presets from 3.27.2 (a485e98b05f2dc0bc14e0a9d92c3d8cad6d0a95f),
 // src/terminal/profile-presets.ts and constants from src/magic.ts.
@@ -431,6 +432,65 @@ describe("src/settings-data.ts", () => {
         "pythonExecutable",
         "python3",
       );
+    });
+
+    describe("experiments", () => {
+      it("Settings.DEFAULT turns no experiment on", () => {
+        expect(Settings.DEFAULT.experiments).toEqual({});
+      });
+
+      // One tuple per case: `it.each` spreads a bare array into arguments.
+      it.each([[undefined], [null], ["x"], [3], [[]], [true]])(
+        "Settings.fix defaults experiments for %j",
+        (experiments) => {
+          expect(Settings.fix({ experiments }).value.experiments).toEqual({});
+        },
+      );
+
+      it("Settings.fix drops unknown and malformed experiment flags", () => {
+        const fixed = Settings.fix({
+          experiments: { gone: true, nested: { a: 1 }, other: "yes" },
+        }).value;
+        expect(fixed.experiments).toEqual({});
+        expect(fixed.profiles).toEqual(Settings.fix({}).value.profiles);
+      });
+
+      it("a removed experiment's flag is cleaned up in one cycle", () => {
+        const current = cloneAsWritable(Settings.DEFAULT),
+          [id, profile] = Object.entries(current.profiles)[0] ?? [];
+        if (id === undefined || profile === undefined) {
+          throw new Error("Expected a default profile");
+        }
+        const profiles = {
+            ...current.profiles,
+            [id]: { ...profile, name: "My shell" },
+          },
+          // The flag of an experiment that has since graduated or been removed.
+          fixed = expectConvergence(
+            JSON.parse(
+              JSON.stringify({
+                ...current,
+                experiments: { gone: true },
+                profiles,
+              }),
+            ),
+          );
+        expect(fixed.experiments).toEqual({});
+        expect(fixed.profiles).toEqual(profiles);
+      });
+
+      it("an upgrade from 3.28.0 changes no stored setting and turns nothing on", () => {
+        const released: unknown = JSON.parse(JSON.stringify(released328)),
+          fixed = expectConvergence(released);
+        expect(released328).not.toHaveProperty("experiments");
+        expect(released328.profiles.darwinIntegratedDefault.name).toBe(
+          "My shell",
+        );
+        expect(fixed).toMatchObject(released328);
+        expect(fixed.profiles).toEqual(released328.profiles);
+        expect(fixed.experiments).toEqual({});
+        expect(released).toEqual(released328);
+      });
     });
   });
 
