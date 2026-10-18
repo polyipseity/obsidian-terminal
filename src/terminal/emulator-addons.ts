@@ -14,6 +14,7 @@ import type { WebglAddon } from "@xterm/addon-webgl";
 import type { ILink, ITerminalAddon, ITheme, Terminal } from "@xterm/xterm";
 import { eastAsianWidth } from "get-east-asian-width";
 import { around } from "monkey-around";
+import { TFile, type WorkspaceLeaf } from "obsidian";
 import { noop } from "ts-essentials";
 import { BUNDLE } from "../imports.js";
 import { DOMClasses2 } from "../magic.js";
@@ -1346,12 +1347,29 @@ export class VaultFileLinksAddon implements ITerminalAddon {
   static readonly #BARE_REGEX =
     /(?:^|[\s"'])([^\s"'()[\]{}<>|\\:]+\.md)(?=[\s"'()[\]{}<>|\\:,;]|$)/gm;
 
-  public constructor(protected readonly context: PluginContext) {}
+  public constructor(
+    protected readonly context: PluginContext,
+    protected readonly fileLeaf: () => WorkspaceLeaf,
+  ) {}
 
   public activate(terminal: Terminal): void {
     const {
       context: { app },
+      fileLeaf,
     } = this;
+    const open = (file: TFile): void => {
+      (async (): Promise<void> => {
+        const leaf = fileLeaf();
+        // Reveal first: a leaf in a collapsed sidebar cannot take focus.
+        await app.workspace.revealLeaf(leaf);
+        // A tab closed during the wait is detached and would show nothing.
+        const listed = app.workspace.getLeavesOfType(leaf.view.getViewType());
+        if (!listed.includes(leaf)) return;
+        await leaf.openFile(file, { active: true });
+      })().catch((error: unknown) => {
+        activeSelf(terminal.element).console.error(error);
+      });
+    };
 
     const disposable = terminal.registerLinkProvider({
       provideLinks: (
@@ -1370,13 +1388,13 @@ export class VaultFileLinksAddon implements ITerminalAddon {
             lineText,
             bufferLineNumber,
             app,
-            terminal,
+            open,
           );
         const bareLinks = VaultFileLinksAddon.#processBareLinks(
           lineText,
           bufferLineNumber,
           app,
-          terminal,
+          open,
           parenRanges,
         );
         callback([...parenLinks, ...bareLinks]);
@@ -1410,10 +1428,11 @@ export class VaultFileLinksAddon implements ITerminalAddon {
     textStart: number,
     bufferLineNumber: number,
     app: PluginContext["app"],
-    terminal: Terminal,
+    open: (file: TFile) => void,
   ): ILink | null {
-    const file = app.vault.getFileByPath(filePath);
-    if (!file) return null;
+    // `Vault.getFileByPath` needs Obsidian 1.5.7, newer than `minAppVersion`.
+    const file = app.vault.getAbstractFileByPath(filePath);
+    if (!(file instanceof TFile)) return null;
     const startX = this.visualColumn(lineText, textStart) + 1;
     const endX = this.visualColumn(lineText, textStart + filePath.length);
     return {
@@ -1423,13 +1442,10 @@ export class VaultFileLinksAddon implements ITerminalAddon {
       },
       text: filePath,
 
-      activate(_event: MouseEvent, _text: string): void {
-        app.workspace
-          .getLeaf(false)
-          .openFile(file)
-          .catch((error: unknown) => {
-            activeSelf(terminal.element).console.error(error);
-          });
+      activate(event: MouseEvent, _text: string): void {
+        // xterm activates a link on any button; a paste click must not open it.
+        if (event.button !== 0) return;
+        open(file);
       },
     };
   }
@@ -1438,7 +1454,7 @@ export class VaultFileLinksAddon implements ITerminalAddon {
     lineText: string,
     bufferLineNumber: number,
     app: PluginContext["app"],
-    terminal: Terminal,
+    open: (file: TFile) => void,
   ): {
     links: readonly ILink[];
     ranges: readonly { readonly start: number; readonly end: number }[];
@@ -1453,7 +1469,7 @@ export class VaultFileLinksAddon implements ITerminalAddon {
         match.index + 1,
         bufferLineNumber,
         app,
-        terminal,
+        open,
       );
       if (link) links.push(link);
       ranges.push({
@@ -1468,7 +1484,7 @@ export class VaultFileLinksAddon implements ITerminalAddon {
     lineText: string,
     bufferLineNumber: number,
     app: PluginContext["app"],
-    terminal: Terminal,
+    open: (file: TFile) => void,
     parenRanges: readonly { readonly start: number; readonly end: number }[],
   ): readonly ILink[] {
     const links: ILink[] = [];
@@ -1485,7 +1501,7 @@ export class VaultFileLinksAddon implements ITerminalAddon {
         bareStart,
         bufferLineNumber,
         app,
-        terminal,
+        open,
       );
       if (link) links.push(link);
     }
