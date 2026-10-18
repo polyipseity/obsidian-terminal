@@ -48,6 +48,7 @@ import type { WebLinksAddon } from "@xterm/addon-web-links";
 import { type ITerminalOptions, Terminal } from "@xterm/xterm";
 import { noop, once } from "es-toolkit/function";
 import {
+  type Command,
   FileSystemAdapter,
   ItemView,
   type Menu,
@@ -393,6 +394,7 @@ export class TerminalView extends ItemView {
   protected static readonly focusedScope = new Scope();
 
   static #namespacedType: string;
+  static #focusedScopeIDs = new Set<string>();
   #rawTitle0 = "";
   #emulator0: TerminalView.EMULATOR | null = null;
   #find0:
@@ -693,9 +695,24 @@ export class TerminalView extends ItemView {
         null,
         newHotkeyListener(context, focusedScopeIDs),
       );
+    TerminalView.#focusedScopeIDs = focusedScopeIDs;
     context.register(() => {
       this.focusedScope.unregister(handler);
     });
+  }
+
+  /**
+   * Keeps the hotkeys of a command working while a terminal has focus and
+   * key interception is on.
+   *
+   * Call it while the plugin loads, after {@link TerminalView.load}. The
+   * listener reads the allowed commands when Obsidian next rebuilds its
+   * hotkey table, and nothing rebuilds it before the first key is pressed.
+   *
+   * @param command a command as Obsidian registered it
+   */
+  public static allowWhileFocused(command: Pick<Command, "id">): void {
+    TerminalView.#focusedScopeIDs.add(command.id);
   }
 
   public override async setState(
