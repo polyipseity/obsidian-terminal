@@ -1,0 +1,106 @@
+# Release Workflow: Version Tag Build
+#
+# On a version tag push, builds and attests main.js, manifest.json and styles.css.
+# Creates or updates a draft. Publish it by hand only after the release run for
+# that tag has succeeded and the draft lists the three files: a failed run can
+# leave files missing, and publishing during the run can let an upload replace
+# published files. A release that is already published keeps its files.
+# Release titles retain existing text when they already contain the version tag.
+# The steps that talk to GitHub are in scripts/draft-release.sh. AGENTS.md has
+# the release order and the fallback by hand.
+
+name: "Release: Version Tag Build"
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  attestations: write
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    name: "Draft Versioned Release"
+    # A version tag also reaches forks when they sync. Only the repository that
+    # cuts the releases runs this job; another one opts in, for a rehearsal, by
+    # setting its repository variable RELEASE_ON_TAG to "true".
+    if: github.repository == 'polyipseity/obsidian-terminal' || vars.RELEASE_ON_TAG == 'true'
+    runs-on: ubuntu-latest
+    # Cap the job: a hung step must not hold the tag's concurrency group for
+    # the 6 h default.
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          # The build runs the project's development dependencies. No later step
+          # needs git credentials: the submodule is fetched here and gh reads
+          # GH_TOKEN.
+          persist-credentials: false
+          submodules: "recursive"
+
+      - name: Check the tag matches manifest.json
+        run: jq -e --arg tag "$GITHUB_REF_NAME" '.version == $tag' manifest.json
+
+      # An attestation cannot be withdrawn, so what can stop the release is
+      # checked before the build. A release that is already published ends the
+      # run here: every later step is skipped.
+      - name: Check the release state and notes
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/draft-release.sh check
+
+      - name: Setup bun
+        if: steps.check.outputs.published != 'true'
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+
+      - name: Setup uv
+        if: steps.check.outputs.published != 'true'
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        with:
+          resolution-strategy: "lowest"
+
+      - name: Install project
+        if: steps.check.outputs.published != 'true'
+        run: |
+          cd vendor/obsidian-plugin-library
+          bun install --frozen-lockfile --ignore-scripts
+          bun run build:force
+          cd ../..
+          bun install --frozen-lockfile --ignore-scripts
+          uv sync --locked
+
+      - name: Build project
+        if: steps.check.outputs.published != 'true'
+        run: bun run build
+
+      # The files are attested and released under the tag's name, and the tag
+      # can be moved while the build runs.
+      - name: Check the tag still points at the built commit
+        if: steps.check.outputs.published != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/draft-release.sh tag
+
+      - name: Attest build provenance
+        if: steps.check.outputs.published != 'true'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
+
+      # Reads the release state again: it can have changed during the build.
+      - name: Draft release
+        if: steps.check.outputs.published != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/draft-release.sh draft

@@ -129,6 +129,18 @@ jobs:
       - name: Install TypeScript tests
         run: bun install --frozen-lockfile --ignore-scripts
 
+      # Bun Shell runs `rm -f` for `bun run` on Windows.
+      - name: Check that `bun run clean` works on Windows
+        run: |
+          $files = "main.js", "metafile.json", "styles.css"
+          New-Item -ItemType File $files | Out-Null
+          bun run clean
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $left = $files | Where-Object { Test-Path $_ }
+          if ($left) { throw "bun run clean left: $left" }
+          bun run clean
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Install the locked Windows test environment
         run: uv sync --locked --python ${{ matrix.python }}
 
