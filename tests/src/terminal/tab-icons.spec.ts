@@ -6,6 +6,9 @@
  * status None, is the terminal in lines alone, with no mark and classes of
  * its own.
  *
+ * It also checks `src/terminal/tab-skins.ts`: its raster tiles exist only to
+ * be drawn by `tabIconSkinned`, so they are tested where they are drawn.
+ *
  * Nothing is rendered here. The icon is read as XML into a tree; the
  * stylesheet is split into rules; and a small selector matcher with the
  * cascade (specificity, then order) says what the rules declare for a part
@@ -49,12 +52,24 @@ const /** The at-rules of the stylesheet: what must hold of the device for their
   SCOPES = "@supports (anchor-scope: --tts-icon)",
   /** Whether it cannot (before Chromium 131): a box's frame stays its container. */
   UNSCOPED = "@supports not (anchor-scope: --tts-icon)",
+  /** Whether the browser can make a colour from another (relative colour, Chromium 119 and later). */
+  COLOURS = "@supports (color: oklch(from red l c h))",
   /** Between the at-rules a rule sits in, from the outermost. */
   INSIDE = " / ",
   /** How far an icon beside a title is lowered: `--tts-down` on its container. */
   LOWERING = "var(--tts-drop, calc(var(--tab-font-size, 13px) * 0.06))",
   /** The same on the drawing, as a margin above that the one below takes back. */
-  CARRIED = "var(--tts-down, 0px) calc(-1 * var(--tts-down, 0px))";
+  CARRIED = "var(--tts-down, 0px) calc(-1 * var(--tts-down, 0px))",
+  /** The prompt's colour where the browser can make it: the theme's green, its chroma multiplied in OKLCH. */
+  VIVID =
+    "oklch(from var(--color-green) l calc(c * var(--tts-prompt-chroma)) h)";
+
+/**
+ * What a scene writes on the elements the pointer is on, for `:hover`. The
+ * selector reader reads no attribute with a colon in its name, so no rule
+ * of the stylesheet can ask for this one.
+ */
+const POINTER = ":hover";
 
 // ---------- The icon, read as XML ----------
 
@@ -183,6 +198,35 @@ function number(of: Part, name: string): number {
   return Number(of.attributes.get(name) ?? Number.NaN);
 }
 
+/** The corners of a path of straight lines (`m`, `M`, `l`, `h`, `v` and their numbers). */
+function corners(d: string): readonly (readonly [number, number])[] {
+  const found: (readonly [number, number])[] = [];
+  let at: readonly [number, number] = [0, 0];
+  for (const [, command = "", rest = ""] of d.matchAll(
+    /(?<command>[A-Za-z])(?<rest>[^A-Za-z]*)/gu,
+  )) {
+    const numbers = (rest.match(/-?\d*\.?\d+/gu) ?? []).map(Number);
+    if (!/^[MmLlHhVv]$/u.test(command)) {
+      throw new Error(`a command this reader does not know: ${command}`);
+    }
+    const step = /[Hh]/u.test(command) || /[Vv]/u.test(command) ? 1 : 2;
+    for (let index = 0; index < numbers.length; index += step) {
+      const first = numbers[index] ?? Number.NaN,
+        second = numbers[index + 1] ?? Number.NaN,
+        relative = command === command.toLowerCase();
+      if (/[Hh]/u.test(command)) {
+        at = [relative ? at[0] + first : first, at[1]];
+      } else if (/[Vv]/u.test(command)) {
+        at = [at[0], relative ? at[1] + first : first];
+      } else {
+        at = relative ? [at[0] + first, at[1] + second] : [first, second];
+      }
+      found.push(at);
+    }
+  }
+  return found;
+}
+
 /** Where a `transform="translate(x y)"` puts an element. */
 function place(of: Part): { readonly x: number; readonly y: number } {
   const found = /^translate\((?<x>-?[\d.]+) (?<y>-?[\d.]+)\)$/u.exec(
@@ -293,6 +337,17 @@ function parse(source: string): Sheet {
     };
   walk(source.replace(/\/\*[\s\S]*?\*\//gu, ""), "");
   return { keyframes, rules };
+}
+
+/**
+ * A value on one line with no space just inside a parenthesis: Prettier
+ * breaks a long colour function over lines and leaves those spaces.
+ */
+function tight(value: string): string {
+  return value
+    .replace(/\s+/gu, " ")
+    .replace(/\( /gu, "(")
+    .replace(/ \)/gu, ")");
 }
 
 /** What a block declares, by property. */
@@ -470,8 +525,8 @@ function holds(
     case "class":
       return element.classes.has(simple.name);
     case "hover":
-      // The pointer is nowhere.
-      return false;
+      // Where the scene puts the pointer: on the elements it marks.
+      return element.attributes.has(POINTER);
     case "is":
       return simple.options.some(
         (option) =>
@@ -568,6 +623,16 @@ interface Scene {
   readonly old: boolean;
   /** It can, but cannot keep an anchor's name to one element (Chromium 125 to 130). */
   readonly unscoped: boolean;
+  /**
+   * The browser cannot make a colour from another (before Chromium 119), so
+   * the prompt is the theme's green as it is.
+   */
+  readonly plainGreen: boolean;
+  /**
+   * The pointer is on the tab, over its title: the title, the tab's row
+   * and everything around them are under it (`:hover`).
+   */
+  readonly pointer: boolean;
 }
 
 /** A tab under Program status Still that has no report yet. */
@@ -577,6 +642,8 @@ const PLAIN: Scene = {
   light: false,
   motion: "still",
   old: false,
+  plainGreen: false,
+  pointer: false,
   pop: null,
   size: TAB_ICON_SIZE,
   split: "mod-root",
@@ -618,17 +685,21 @@ function view(over: Partial<Scene> = {}): View {
       ...(scene.title ? { [TAB_STATUS_ATTRIBUTES.title]: "" } : {}),
     },
     icon = scene.icon === "bezel" ? TAB_ICON : TILE_ICON,
+    /** On the title and on everything around it, where the pointer is. */
+    pointed: Readonly<Record<string, string>> = scene.pointer
+      ? { [POINTER]: "" }
+      : {},
     svg = part("svg", new Map([["class", "svg-icon"]]), [icon]),
     container = box("workspace-tab-header-inner-icon", [svg]),
-    title = box("workspace-tab-header-inner-title", []),
-    inner = box("workspace-tab-header-inner", [container, title]),
+    title = box("workspace-tab-header-inner-title", [], pointed),
+    inner = box("workspace-tab-header-inner", [container, title], pointed),
     header = box(
       `workspace-tab-header${scene.active ? " is-active" : ""}`,
       [inner],
-      { "data-type": "terminal:terminal", ...written },
+      { "data-type": "terminal:terminal", ...written, ...pointed },
     ),
-    split = box(scene.split, [header]),
-    body = box(scene.light ? "theme-light" : "theme-dark", [split]),
+    split = box(scene.split, [header], pointed),
+    body = box(scene.light ? "theme-light" : "theme-dark", [split], pointed),
     above = [body, split, header],
     upTo = [...above, inner, container];
   return {
@@ -641,6 +712,7 @@ function view(over: Partial<Scene> = {}): View {
       ...(scene.still ? [] : [MOTION]),
       ...(scene.old ? [] : [ANCHORS]),
       ...(scene.old || scene.unscoped ? [UNSCOPED] : [SCOPES]),
+      ...(scene.plainGreen ? [] : [COLOURS]),
     ]),
   };
 }
@@ -954,6 +1026,31 @@ describe("composeTabIcon", () => {
     expect(drawn().children.map((child) => child.tag)).toEqual(["g", "g"]);
   });
 
+  it("lays one light on the face, between the tile's images and the prompt and under the marks, with no id and no paint of its own", () => {
+    const terminal = one(parts([drawn()], "tts-t"), "terminal"),
+      light = subject(one(parts([drawn()], "tts-skin-lift"), "the light"));
+    // Over the images, under the prompt: later is over.
+    expect(
+      subject(terminal).children.map((child) => child.attributes.get("class")),
+    ).toEqual([
+      "tts-skin-drop",
+      "tts-skin tts-skin-dark",
+      "tts-skin tts-skin-light",
+      "tts-skin-lift",
+      "tts-ink",
+    ]);
+    // In the terminal group, which the marks group is drawn over.
+    expect(subject(terminal).children).toContain(light);
+    expect(light.tag).toBe("rect");
+    expect(light.children).toEqual([]);
+    // No id; the wrapper's line taken off, and no fill or strength of its
+    // own: the stylesheet gives both, and without it nothing shows.
+    expect([...light.attributes.keys()].sort()).toEqual(
+      ["class", "height", "rx", "stroke", "width", "x", "y"].sort(),
+    );
+    expect(light.attributes.get("stroke")).toBe("none");
+  });
+
   it("places nothing of the tile by a transform", () => {
     // The tile, its shadow and its face stand where they are drawn; only the marks are moved to their corner.
     const terminal = one(parts([drawn()], "tts-t"), "terminal");
@@ -1029,40 +1126,12 @@ describe("composeTabIcon", () => {
 
 describe("composeTileIcon", () => {
   const square = (): Part =>
-      one(
-        TILE_ICON.children.filter((child) =>
-          child.classes.has(TILE_ICON_CLASSES.square),
-        ),
-        "square",
+    one(
+      TILE_ICON.children.filter((child) =>
+        child.classes.has(TILE_ICON_CLASSES.square),
       ),
-    /** The corners of a path of straight lines (`m`, `M`, `l`, `h`, `v` and their numbers). */
-    corners = (d: string): readonly (readonly [number, number])[] => {
-      const found: (readonly [number, number])[] = [];
-      let at: readonly [number, number] = [0, 0];
-      for (const [, command = "", rest = ""] of d.matchAll(
-        /(?<command>[A-Za-z])(?<rest>[^A-Za-z]*)/gu,
-      )) {
-        const numbers = (rest.match(/-?\d*\.?\d+/gu) ?? []).map(Number);
-        if (!/^[MmLlHhVv]$/u.test(command)) {
-          throw new Error(`a command this reader does not know: ${command}`);
-        }
-        const step = /[Hh]/u.test(command) || /[Vv]/u.test(command) ? 1 : 2;
-        for (let index = 0; index < numbers.length; index += step) {
-          const first = numbers[index] ?? Number.NaN,
-            second = numbers[index + 1] ?? Number.NaN,
-            relative = command === command.toLowerCase();
-          if (/[Hh]/u.test(command)) {
-            at = [relative ? at[0] + first : first, at[1]];
-          } else if (/[Vv]/u.test(command)) {
-            at = [at[0], relative ? at[1] + first : first];
-          } else {
-            at = relative ? [at[0] + first, at[1] + second] : [first, second];
-          }
-          found.push(at);
-        }
-      }
-      return found;
-    };
+      "square",
+    );
 
   it("has a root of its own: no class of the tab icon, so no rule of the tab icon reaches it", () => {
     expect(TILE_ICON.attributes.get("class")).toBe(TILE_ICON_CLASSES.root);
@@ -1591,6 +1660,70 @@ describe("tabIconSkinned", () => {
     );
   });
 
+  it("measures the face of each tile inside its border on every side, around the tile's middle, and less round than the tile", () => {
+    for (const [name, skin] of SKINS) {
+      const { inset, radius, size } = skin.face;
+      expect(inset, name).toBeGreaterThan(skin.border);
+      expect(inset + size, name).toBeLessThan(1 - skin.border);
+      // Off the middle by less than a hundredth of the tile.
+      expect(Math.abs(inset + size / 2 - 0.5), name).toBeLessThan(0.01);
+      expect(radius, name).toBeGreaterThan(0);
+      expect(radius, name).toBeLessThan(skin.radius);
+    }
+  });
+
+  it.each(SKINS)(
+    "draws the light of %s as its face: a square with rounded corners, where the face is, around the whole prompt",
+    (name, skin) => {
+      const terminal = terminalOf(tabIconSkinned(named(name)).terminal),
+        light = subject(one(parts(terminal, "tts-skin-lift"), "the light")),
+        { size, x, y } = TAB_ICON_TILE_BOX,
+        inset = skin.face.inset * size,
+        [left, top, width, height, radius] = [
+          "x",
+          "y",
+          "width",
+          "height",
+          "rx",
+        ].map((attribute) => number(light, attribute));
+      // To the measures of the face, as the markup rounds them (0.01).
+      expect(left).toBeCloseTo(x + inset, 2);
+      expect(top).toBeCloseTo(y + inset, 2);
+      expect(width).toBeCloseTo(skin.face.size * size, 2);
+      expect(height).toBe(width);
+      expect(radius).toBeCloseTo(skin.face.radius * size, 2);
+      // Inside the tile's image, past its border on every side.
+      const border = skin.border * size;
+      expect(left).toBeGreaterThan(x + border);
+      expect(top).toBeGreaterThan(y + border);
+      expect((left ?? 0) + (width ?? 0)).toBeLessThan(x + size - border);
+      expect((top ?? 0) + (height ?? 0)).toBeLessThan(y + size - border);
+      // Every corner of the prompt, with half its line around it, lies on
+      // the light, clear of its rounded corners too.
+      const prompt = subject(one(parts(terminal, "tts-ink"), "prompt")),
+        half = number(prompt, "stroke-width") / 2,
+        points = prompt.children.flatMap((line) =>
+          corners(line.attributes.get("d") ?? ""),
+        ),
+        round = radius ?? 0,
+        inside = ([px, py]: readonly [number, number]): number => {
+          const cx = Math.min(
+              Math.max(px, (left ?? 0) + round),
+              (left ?? 0) + (width ?? 0) - round,
+            ),
+            cy = Math.min(
+              Math.max(py, (top ?? 0) + round),
+              (top ?? 0) + (height ?? 0) - round,
+            );
+          return round - Math.hypot(px - cx, py - cy);
+        };
+      expect(points).toHaveLength(5);
+      for (const point of points) {
+        expect(inside(point), point.join(" ")).toBeGreaterThanOrEqual(half);
+      }
+    },
+  );
+
   it("draws every prompt in lines about as wide as Obsidian's own", () => {
     for (const prompt of [
       subject(one(parts([drawn()], "tts-ink"), "prompt")),
@@ -1624,10 +1757,11 @@ describe("tab-status.css", () => {
       );
     };
 
-  it("sits in no at-rule but the five it is read with", () => {
+  it("sits in no at-rule but the six it is read with", () => {
     expect([...new Set(sheet.rules.map((rule) => rule.at))].sort()).toEqual(
       [
         "",
+        COLOURS,
         HOVER,
         MOTION,
         `${MOTION}${INSIDE}${ANCHORS}`,
@@ -1887,7 +2021,12 @@ describe("tab-status.css", () => {
   it("takes its colours from the theme, or uses black and white", () => {
     const rules = css.replace(/\/\*[\s\S]*?\*\//gu, "");
     expect(rules).not.toMatch(/#[0-9a-f]{3,8}\b/iu);
-    expect(rules).not.toMatch(/\b(?:rgba?|hsla?|oklch|color-mix)\(/u);
+    expect(rules).not.toMatch(/\b(?:rgba?|hsla?|color-mix)\(/u);
+    // The one colour made from another is made from the theme's green; the
+    // other `oklch(` only asks whether the browser can make one.
+    expect(rules.match(/\boklch\(/gu)).toHaveLength(2);
+    expect(rules).toContain(COLOURS);
+    expect(tight(rules)).toContain(VIVID);
   });
 
   describe("which mark a tab shows", () => {
@@ -2197,11 +2336,24 @@ describe("tab-status.css", () => {
       expect(parts([TILE_ICON], "tts-skin-drop")).toHaveLength(0);
     });
 
-    it("draws the prompt green on the tile with a dark face, and in the text colour on the tile icon", () => {
-      const on = view();
-      expect(
-        declared(on, one(parts(on.icon, "tts-ink"), "prompt"), "stroke"),
-      ).toBe("var(--color-green)");
+    it("draws the prompt in the theme's green made more vivid on the tile with a dark face, and in the text colour on the tile icon", () => {
+      for (const light of [false, true]) {
+        const on = view({ light }),
+          prompt = one(parts(on.icon, "tts-ink"), "prompt"),
+          plain = view({ light, plainGreen: true });
+        expect(declared(on, prompt, "stroke")).toBe("var(--tts-prompt)");
+        // The theme's green with its chroma multiplied: its lightness and
+        // its hue stay the green's, so it follows the theme.
+        expect(tight(inherited(on, prompt, "--tts-prompt") ?? "")).toBe(VIVID);
+        // Where the browser cannot make a colour from another, the green as it is.
+        expect(
+          inherited(
+            plain,
+            one(parts(plain.icon, "tts-ink"), "prompt"),
+            "--tts-prompt",
+          ),
+        ).toBe("var(--color-green)");
+      }
       // Nothing declared: the icon's own `stroke="currentColor"` holds.
       const lines = view({ icon: "tile" }),
         [, prompt] = lines.icon.at(-1)?.children ?? [];
@@ -2211,6 +2363,31 @@ describe("tab-status.css", () => {
           ? "no prompt"
           : declared(lines, [...lines.icon, prompt], "stroke"),
       ).toBeUndefined();
+    });
+
+    it("makes the green more vivid by one factor, declared once on the icon, and asks for the vivid green only where the browser can make it", () => {
+      const factors = READ.filter((rule) =>
+          rule.declarations.has("--tts-prompt-chroma"),
+        ),
+        vivid = READ.filter(
+          (rule) =>
+            tight(rule.declarations.get("--tts-prompt") ?? "") === VIVID,
+        );
+      expect(factors).toHaveLength(1);
+      expect(vivid).toHaveLength(1);
+      for (const rule of [...factors, ...vivid]) {
+        expect(rule.selectors.map((selector) => simplesOf(selector))).toEqual([
+          [{ kind: "class", name: "tts-set-bezel" }],
+        ]);
+      }
+      expect(factors.map((rule) => rule.at)).toEqual([""]);
+      expect(vivid.map((rule) => rule.at)).toEqual([COLOURS]);
+      // More vivid, not another colour: a little over the theme's chroma.
+      const on = view(),
+        factor = Number(inherited(on, on.icon, "--tts-prompt-chroma"));
+      expect(factor).toBe(1.2);
+      expect(factor).toBeGreaterThan(1);
+      expect(factor).toBeLessThan(1.6);
     });
 
     it("draws the tile icon's square at full strength, as its prompt, in every scene", () => {
@@ -2267,6 +2444,174 @@ describe("tab-status.css", () => {
     });
   });
 
+  describe("the light on the face", () => {
+    /** The light of a scene's icon. */
+    const lightOf = (on: View): Chain =>
+        one(parts(on.icon, "tts-skin-lift"), "the light"),
+      /** Every place, theme, motion and status a tab can have. */
+      scenes = (over: Partial<Scene> = {}): readonly View[] =>
+        SPLITS.flatMap((split) =>
+          [false, true].flatMap((light) =>
+            MOTIONS.flatMap((motion) =>
+              [null, ...STATUSES].map((status) =>
+                view({ light, motion, split, status, ...over }),
+              ),
+            ),
+          ),
+        ),
+      /** How strongly the light shows under the pointer. */
+      LIFT = "var(--tts-lift)",
+      /** How it fades, where it does. */
+      FADE = "opacity 0.15s ease-out";
+
+    it("is not seen at rest, in any place, theme, motion or status", () => {
+      for (const on of scenes()) {
+        expect(declared(on, lightOf(on), "opacity")).toBe("0");
+      }
+    });
+
+    it("lights the face while the pointer is on the tab, in every place, theme, motion and status", () => {
+      for (const on of scenes({ pointer: true })) {
+        expect(declared(on, lightOf(on), "opacity")).toBe(LIFT);
+        expect(inherited(on, lightOf(on), "--tts-lift")).toBe("0.16");
+      }
+    });
+
+    it("lights it on a tab the plugin has not dressed yet, too: the rule asks the tab for nothing", () => {
+      const on = view({
+        motion: null,
+        pointer: true,
+        size: null,
+        status: null,
+      });
+      expect(
+        [...subject(on.header).attributes.keys()].filter((name) =>
+          name.startsWith("data-terminal-"),
+        ),
+      ).toEqual([]);
+      expect(declared(on, lightOf(on), "opacity")).toBe(LIFT);
+    });
+
+    it("asks for the pointer as Obsidian does to brighten a tab's icon: on the tab's row, on a device that can hover", () => {
+      const lighting = READ.filter(
+        (rule) => rule.declarations.get("opacity") === LIFT,
+      );
+      expect(lighting).toHaveLength(1);
+      for (const rule of lighting) {
+        expect(rule.at).toBe(HOVER);
+        for (const selector of rule.selectors) {
+          // From the icon's root, which is the one that has the light.
+          expect(selector.compounds[0]?.simples[0]).toEqual({
+            kind: "class",
+            name: "tts-set-bezel",
+          });
+          const hovered = simplesOf(selector).flatMap((simple) =>
+            simple.kind === "is"
+              ? simple.options.map((option) =>
+                  option.compounds.map((compound) => compound.simples),
+                )
+              : [],
+          );
+          expect(hovered).toEqual([
+            [
+              [
+                { kind: "class", name: "workspace-tab-header-inner" },
+                { kind: "hover" },
+              ],
+              [{ kind: "any" }],
+            ],
+          ]);
+        }
+      }
+      // Where the device cannot hover, a tap leaves nothing lit.
+      const on = view({ pointer: true }),
+        touch: View = {
+          ...on,
+          media: new Set([...on.media].filter((media) => media !== HOVER)),
+        };
+      expect(declared(touch, lightOf(touch), "opacity")).toBe("0");
+    });
+
+    it("is as strong as one value says, and faint", () => {
+      const strengths = READ.filter((rule) =>
+          rule.declarations.has("--tts-lift"),
+        ),
+        on = view(),
+        strength = Number(inherited(on, lightOf(on), "--tts-lift"));
+      expect(strengths).toHaveLength(1);
+      expect(strengths.map((rule) => rule.at)).toEqual([""]);
+      expect(strength).toBe(0.16);
+      expect(strength).toBeGreaterThan(0);
+      expect(strength).toBeLessThanOrEqual(0.3);
+    });
+
+    it("paints the light in the prompt's colour, lightens what is dark more than what is light, and lets the pointer through", () => {
+      for (const on of [...scenes(), ...scenes({ pointer: true })]) {
+        const light = lightOf(on);
+        expect(declared(on, light, "fill")).toBe("var(--tts-prompt)");
+        expect(declared(on, light, "mix-blend-mode")).toBe("screen");
+        expect(declared(on, light, "pointer-events")).toBe("none");
+        // Nothing else of a light: no line, no glow, no shadow.
+        expect(declared(on, light, "stroke")).toBeUndefined();
+        expect(declared(on, light, "filter")).toBeUndefined();
+        expect(shown(on, light)).toBe(true);
+      }
+    });
+
+    it("lights nothing of an icon on no tab, and the tile icon has no light", () => {
+      const icon = drawn(),
+        alone: View = {
+          container: [],
+          header: [],
+          icon: [part("svg", new Map([["class", "svg-icon"]]), [icon]), icon],
+          media: new Set([COLOURS, HOVER, MOTION]),
+          title: null,
+        };
+      expect(declared(alone, lightOf(alone), "opacity")).toBe("0");
+      expect(declared(alone, lightOf(alone), "transition")).toBeUndefined();
+      expect(parts([TILE_ICON], "tts-skin-lift")).toEqual([]);
+    });
+
+    it("leaves the prompt, the marks and the glow of a status as they are", () => {
+      for (const status of [null, ...STATUSES]) {
+        for (const light of [false, true]) {
+          const rest = view({ light, status }),
+            lit = view({ light, pointer: true, status }),
+            label = `${String(status)} ${String(light)}`;
+          expect(showing(lit), label).toEqual(showing(rest));
+          for (const [index, chain] of within(lit.icon).entries()) {
+            if (subject(chain).classes.has("tts-skin-lift")) {
+              continue;
+            }
+            const before = within(rest.icon)[index] ?? chain;
+            for (const property of ["display", "fill", "filter", "stroke"]) {
+              expect(declared(lit, chain, property), label).toBe(
+                declared(rest, before, property),
+              );
+            }
+          }
+        }
+      }
+    });
+
+    it("fades in and out in 0.15 s under Animated where motion is welcome, and comes and goes at once everywhere else", () => {
+      for (const motion of MOTIONS) {
+        for (const still of [false, true]) {
+          for (const pointer of [false, true]) {
+            const on = view({ motion, pointer, still, status: "working" });
+            expect(
+              declared(on, lightOf(on), "transition"),
+              `${String(motion)} ${String(still)} ${String(pointer)}`,
+            ).toBe(motion === "animated" && !still ? FADE : undefined);
+          }
+        }
+      }
+      // A tab whose view is not loaded yet carries no motion: no fade.
+      const bare = view({ motion: null, pointer: true, size: null });
+      expect(declared(bare, lightOf(bare), "transition")).toBeUndefined();
+    });
+  });
+
   describe("motion", () => {
     /** What moves, turns, resizes or fades something over time. */
     const MOVES =
@@ -2274,6 +2619,8 @@ describe("tab-status.css", () => {
       moving = READ.filter((rule) =>
         [...rule.declarations.keys()].some((property) => MOVES.test(property)),
       ),
+      /** What only answers a change: it plays when something else changes, never by itself. */
+      ANSWERS = /^transition(?:-.+)?$/u,
       frames = stops(sheet.keyframes.get("tts-dots") ?? ""),
       { dots } = TAB_ICON_MARKS;
 
@@ -2292,12 +2639,16 @@ describe("tab-status.css", () => {
         })
           .flatMap((simple) => (simple.kind === "class" ? [simple.name] : []))
           .sort(),
-      /** Whether a part moves in a scene: a property that moves is declared on it. */
+      /**
+       * Whether a part moves by itself in a scene: a property that moves is
+       * declared on it, other than a transition, which only answers a change.
+       */
       moves = (on: View, chain: Chain, pseudo: Pseudo = null): boolean =>
         moving.some((rule) =>
           [...rule.declarations.keys()].some(
             (property) =>
               MOVES.test(property) &&
+              !ANSWERS.test(property) &&
               declared(on, chain, property, pseudo) !== undefined,
           ),
         ),
@@ -2358,7 +2709,7 @@ describe("tab-status.css", () => {
       millis = (time: string | undefined): number =>
         Number.parseFloat(time ?? "") * 1000;
 
-    it("moves four things only, each under Animated where motion is welcome: the dots' two boxes, the ring and the inside of a new mark, a new title", () => {
+    it("moves five things only, each under Animated where motion is welcome: the dots' two boxes, the ring and the inside of a new mark, a new title, the light on the face", () => {
       expect(moving.length).toBeGreaterThan(0);
       const kinds = new Set<string>();
       for (const rule of moving) {
@@ -2389,6 +2740,14 @@ describe("tab-status.css", () => {
                 "error",
               ]);
             }
+          } else if (classesIn(last).includes("tts-skin-lift")) {
+            // The light on the face, on a tab: a transition of its opacity
+            // and nothing else, so it fades only as the pointer comes or goes.
+            kinds.add("lift");
+            expect(isTab(selector.compounds[0]?.simples ?? [])).toBe(true);
+            expect(rest).toHaveLength(1);
+            expect(classesIn(last)).toEqual(["tts-skin-lift"]);
+            expect([...rule.declarations.keys()]).toEqual(["transition"]);
           } else if (asked.includes(`${TAB_STATUS_ATTRIBUTES.pop}=null`)) {
             // A new mark: the group inside the dot or the eye, which has no
             // transform attribute for the stylesheet's to replace.
@@ -2411,7 +2770,26 @@ describe("tab-status.css", () => {
           }
         }
       }
-      expect([...kinds].sort()).toEqual(["dots", "pop", "ring", "title"]);
+      expect([...kinds].sort()).toEqual([
+        "dots",
+        "lift",
+        "pop",
+        "ring",
+        "title",
+      ]);
+      // Only the light answers a change; everything else plays by itself.
+      expect(
+        moving
+          .filter((rule) =>
+            [...rule.declarations.keys()].some((property) =>
+              ANSWERS.test(property),
+            ),
+          )
+          .flatMap((rule) => rule.selectors)
+          .map((selector) =>
+            classesIn(selector.compounds.at(-1)?.simples ?? []),
+          ),
+      ).toEqual([["tts-skin-lift"]]);
     });
 
     it("moves nothing at rest, whatever the status and the motion", () => {

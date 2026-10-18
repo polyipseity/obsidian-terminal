@@ -13,14 +13,19 @@
  *   else: no coloured border, no dashes, no wash;
  * - working and done are the theme's accent; needs input and error are red.
  *
+ * Whatever the status, the pointer on a tab lights the tile's black face a
+ * little, in the prompt's green (section 9). That light is the pointer's,
+ * never a state's.
+ *
  * Scope: every selector starts at the terminal tab header, or at a class
  * of the tab icon's root, `.tts` or `.tts-set-bezel` (the theme is asked
- * for with `:is(.theme-light *)`, to keep that true). A rule for the tab
- * header needs an attribute on it that `view.ts` writes. Every terminal tab
- * header carries `data-terminal-size`, whatever Program status says, and
- * the rules of the icon's size and place (section 5) need nothing else:
- * they reach the icon container, so they size and place the tile icon of
- * Program status None (`.tts-tile-icon`) as they do the tab icon. Every
+ * for with `:is(.theme-light *)`, and the pointer on a tab with
+ * `:is(.workspace-tab-header-inner:hover *)`, to keep that true). A rule
+ * for the tab header needs an attribute on it that `view.ts` writes. Every
+ * terminal tab header carries `data-terminal-size`, whatever Program status
+ * says, and the rules of the icon's size and place (section 5) need nothing
+ * else: they reach the icon container, so they size and place the tile icon
+ * of Program status None (`.tts-tile-icon`) as they do the tab icon. Every
  * rule of a status needs `data-terminal-status`, and a header that carries
  * only the size (Program status None, or no report yet) is styled by none
  * of them. No rule names the tile icon: it is drawn in the icon's colour at
@@ -28,7 +33,7 @@
  * selects.
  *
  * Motion, only under `data-terminal-motion="animated"` and only where the
- * system does not ask for reduced motion (sections 6 and 7); everywhere
+ * system does not ask for reduced motion (sections 6, 7 and 9); everywhere
  * else nothing moves:
  * - the three dots of a working program light up in turn. What moves is not
  *   a part of the icon: it is drawn over the icon with the two boxes of the
@@ -40,7 +45,9 @@
  *   colour ripples out from it, once (`data-terminal-pop`). The mark is a
  *   part of the icon and moves for 0.42 s; the ring is the container's
  *   `::after`, as the dots' boxes are;
- * - a new title slides up, once (`data-terminal-title-change`).
+ * - a new title slides up, once (`data-terminal-title-change`);
+ * - the light on the face fades in as the pointer comes onto a tab and out
+ *   as it leaves. Elsewhere the light comes and goes at once.
  */
 
 /* ---------- 1. The marks, hidden wherever the icon is shown ---------- */
@@ -100,9 +107,45 @@
   display: inline;
 }
 
-/* `bezel`: the face is dark, so the prompt has a colour of its own. */
+/*
+ * `bezel`: the face is dark, so the prompt has a colour of its own, and the
+ * light on the face (section 9) takes it too: `--tts-prompt`, the theme's
+ * green made more vivid. It keeps the green's lightness and hue and
+ * multiplies its chroma, in OKLCH, by `--tts-prompt-chroma`, so it follows
+ * the theme as the green does. `--tts-lift` is how strongly the light on
+ * the face shows under the pointer.
+ *
+ * A browser that cannot make a colour from another (relative colour, from
+ * Chromium 119 on) takes the green as it is. A custom property keeps
+ * whatever is written in it, and whether the colour can be read is found
+ * out only where the prompt uses it, too late to fall back on the plain
+ * green. So the plain green is declared here, and the vivid one only where
+ * the browser says it can read it (`@supports`).
+ *
+ * At 1.2 the dark theme's green (#44cf6e) has about the chroma of
+ * Obsidian's default accent and red (0.217 in OKLCH) and only just leaves
+ * sRGB, so every display shows it nearly as meant. The light theme's green
+ * (#08b94e) already sits at the edge of sRGB: a wide-gamut display shows it
+ * in full (it lies inside Display P3), and an sRGB display cuts it back, a
+ * little towards yellow. A higher factor cuts more there, and above 1.41
+ * the light green leaves Display P3 too.
+ */
+.tts-set-bezel {
+  --tts-prompt: var(--color-green);
+  --tts-prompt-chroma: 1.2;
+  --tts-lift: 0.16;
+}
+
+@supports (color: oklch(from red l c h)) {
+  .tts-set-bezel {
+    --tts-prompt: oklch(
+      from var(--color-green) l calc(c * var(--tts-prompt-chroma)) h
+    );
+  }
+}
+
 .tts-set-bezel .tts-ink {
-  stroke: var(--color-green);
+  stroke: var(--tts-prompt);
 }
 
 /* ---------- 3. Colour and light ---------- */
@@ -709,5 +752,56 @@
   .workspace-tab-header[data-type="terminal:terminal"][data-terminal-status]
     .workspace-tab-header-inner:hover {
     --tts-o: var(--icon-opacity-hover, 1);
+  }
+}
+
+/* ---------- 9. The light on the face, under the pointer ---------- */
+
+/*
+ * While the pointer is on a tab, the tile's black face lights up a little in
+ * the prompt's green. What lights it is the face drawn again over the
+ * tile's image (`tts-skin-lift`, as large as the face and as round at its
+ * corners), under the prompt and under the marks, so neither is dimmed nor
+ * tinted, and the glow of a state stays on the image around it.
+ *
+ * It is blended as `screen`: over black it gives the green itself, over
+ * anything lighter it adds less and less, so the face lights up and its edge
+ * and the border around it stay as they are. `--tts-lift` (section 2) is how
+ * strongly it shows; at rest it is not seen. It never takes the pointer.
+ *
+ * The pointer is asked for as Obsidian asks for it to brighten a tab's icon:
+ * on the tab's row (`.workspace-tab-header-inner`), only on a device that
+ * can hover. The rule starts at the icon, so it lights the face on every tab
+ * that shows this icon, whether or not its program has reported, and also
+ * before the plugin has dressed the tab. Obsidian 1.14.4 gives a tab header
+ * no keyboard focus (it is a `div` without `tabindex`), so there is no focus
+ * to light it for.
+ */
+.tts-set-bezel .tts-skin-lift {
+  fill: var(--tts-prompt);
+  opacity: 0;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+@media (hover: hover) {
+  .tts-set-bezel:is(.workspace-tab-header-inner:hover *) .tts-skin-lift {
+    opacity: var(--tts-lift);
+  }
+}
+
+/*
+ * Under "animated", where motion is welcome, the light fades in and out in
+ * 0.15 s, easing out. The light is a part of the icon, so at a page zoom
+ * other than 1 the fade runs on the main thread (the header of this file):
+ * for 0.15 s, each time the pointer comes or goes. Everywhere else (under
+ * Still, on a tab whose view is not loaded yet, and where the system asks
+ * for reduced motion) it comes and goes at once, as Obsidian's own hover
+ * does.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .workspace-tab-header[data-type="terminal:terminal"][data-terminal-motion="animated"]
+    .tts-skin-lift {
+    transition: opacity 0.15s ease-out;
   }
 }
