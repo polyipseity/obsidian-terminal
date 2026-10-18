@@ -898,6 +898,14 @@ describe("Obsidian Mock", () => {
       expect(calls).toBe(1);
     });
 
+    it("setTooltip gives the element its tooltip as a label", async () => {
+      const { setTooltip } = await import("./obsidian.js");
+      const element = document.createElement("button");
+
+      setTooltip(element, "Rounded square");
+      expect(element.getAttribute("aria-label")).toBe("Rounded square");
+    });
+
     it("TextComponent respects disabled state", async () => {
       const { TextComponent } = await import("./obsidian.js");
       const text = new TextComponent();

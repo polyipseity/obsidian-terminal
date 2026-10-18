@@ -125,7 +125,6 @@
     "open-terminal-icon": "$t(asset:generic.profile-types.{{type}}-icon)"
   },
   "ribbons": {
-    "open-terminal-icon": "$t(asset:generic.terminal-alt-icon)",
     "open-terminal-id": "Open terminal"
   },
   "settings": {
@@ -160,6 +159,7 @@
     "python-recheck-icon": "refresh-cw",
     "python-rechecking-icon": "$t(asset:generic.load-icon)",
     "right-click-action-icon": "mouse-pointer-2",
+    "tab-status-icon": "activity",
     "terminal-options-edit-icon": "$t(asset:generic.edit-icon)",
     "terminal-options-icon": "$t(asset:generic.terminal-icon)"
   }

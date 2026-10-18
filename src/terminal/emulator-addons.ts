@@ -44,6 +44,14 @@ import {
   vaultDragSkipped,
   wslDistribution,
 } from "./dropped-paths.js";
+import {
+  DETECTION_REPLY,
+  type Kind,
+  ProgramStatusStore,
+  type State,
+  displayText,
+  parseProgramStatus,
+} from "./program-status.js";
 import { revealLeafWithoutFlash } from "./reveal.js";
 import { Win32InputMode, isWin32ClipboardChord } from "./win32-input-mode.js";
 
@@ -2294,6 +2302,276 @@ export class SynchronizedOutputScrollAddon implements ITerminalAddon {
 
   public dispose(): void {
     this.#disposer.call();
+  }
+}
+
+/** A notification of `ProgramStatusAddon` that waits for a frame or a timer. */
+interface PendingNotification {
+  readonly cancel: () => void;
+  readonly window: Window;
+}
+
+/**
+ * Addon that keeps what the program inside the terminal reports about itself
+ * through the Program Status Protocol (OSC 7501): idle, working, done, needs
+ * input or failed, with an optional message.
+ *
+ * Reports are validated by `parseProgramStatus` and held in a
+ * `ProgramStatusStore`; nothing from a rejected report is applied. The only
+ * bytes ever sent back are the fixed detection reply. The addon never touches
+ * the DOM: the owner reads `status`, or is told through `onChange`, and
+ * decides how to show it.
+ *
+ * Record lifetime follows the protocol: a new shell prompt (OSC 133 `A`) and
+ * process exit drop Working and Needs input, a full reset (`ESC c`) drops
+ * every record, and Done and Error stay.
+ *
+ * There is no switch on the addon: it listens from the moment it is loaded
+ * on a terminal until it is disposed, and a terminal without it drops every
+ * report and leaves the detection query unanswered. Whoever turns the
+ * feature off disposes the addon, and what it was told goes with it.
+ */
+export class ProgramStatusAddon implements ITerminalAddon {
+  readonly #disposer = new Functions({ async: false, settled: true });
+  readonly #store = new ProgramStatusStore();
+  #terminal: Terminal | null = null;
+  /** The status `onChange` was last called with. */
+  #notified: ProgramStatusAddon.Status | null = null;
+  /**
+   * The scheduled notification, when there is one: how to cancel it, and the
+   * window that was asked for it.
+   */
+  #pending: PendingNotification | null = null;
+  /** The user has looked since the last report. */
+  #seen = false;
+  /** A report arrived after the user looked: notify even if nothing differs. */
+  #renotify = false;
+  /** The process has ended. A restarted terminal gets a new addon. */
+  #exited = false;
+  #disposed = false;
+
+  public constructor(protected readonly options: ProgramStatusAddon.Options) {}
+
+  static #same(
+    left: ProgramStatusAddon.Status | null,
+    right: ProgramStatusAddon.Status | null,
+  ): boolean {
+    if (left === null || right === null) {
+      return left === right;
+    }
+    return (
+      left.state === right.state &&
+      left.kind === right.kind &&
+      left.progress === right.progress &&
+      left.app === right.app &&
+      left.title === right.title &&
+      left.message === right.message
+    );
+  }
+
+  static #text(text: string | null): string | null {
+    if (text === null) {
+      return null;
+    }
+    const shown = displayText(text);
+    return shown === "" ? null : shown;
+  }
+
+  /** The most urgent live record, or `null`. */
+  public get status(): ProgramStatusAddon.Status | null {
+    const record = this.#store.mostUrgent();
+    if (record === null) {
+      return null;
+    }
+    return {
+      app: this.#store.appOf(record),
+      kind: record.kind,
+      message: ProgramStatusAddon.#text(record.msg),
+      progress: record.progress,
+      state: record.state,
+      title: ProgramStatusAddon.#text(record.title),
+    };
+  }
+
+  public activate(terminal: Terminal): void {
+    this.#terminal = terminal;
+    const reportHandler = terminal.parser.registerOscHandler(
+        7501,
+        (payload) => {
+          const result = parseProgramStatus(payload);
+          if (result.type === "query") {
+            // The only bytes ever written back; nothing in them comes from
+            // a report.
+            terminal.input(DETECTION_REPLY, false);
+          } else if (this.#store.apply(result)) {
+            if (this.#exited) {
+              // Output the process left behind, parsed after its end: it is
+              // not working or waiting, and nothing follows to say so.
+              this.#store.dropTransient();
+            }
+            // Only a report of the record that shows is news of it: one of
+            // another record leaves what the user has seen as it was.
+            if (
+              result.type === "report" &&
+              this.#seen &&
+              this.#store.mostUrgent() === result.record
+            ) {
+              this.#seen = false;
+              this.#renotify = true;
+            }
+            this.#schedule();
+          }
+          // Handled either way: xterm.js has nothing to do with OSC 7501.
+          return true;
+        },
+      ),
+      // OSC 133 `A` marks a new shell prompt: the program that was working
+      // or waiting is gone.
+      promptHandler = terminal.parser.registerOscHandler(133, (payload) => {
+        if (payload.startsWith("A") && this.#store.dropTransient()) {
+          this.#schedule();
+        }
+        // Return false so anything else can still see the sequence.
+        return false;
+      }),
+      // A full reset (`ESC c`, RIS) removes every record. A soft reset
+      // (DECSTR) must not, and has no handler here.
+      resetHandler = terminal.parser.registerEscHandler({ final: "c" }, () => {
+        if (this.#store.reset()) {
+          this.#schedule();
+        }
+        // Return false so xterm still performs the reset.
+        return false;
+      });
+    this.#disposer.push(
+      () => {
+        reportHandler.dispose();
+      },
+      () => {
+        promptHandler.dispose();
+      },
+      () => {
+        resetHandler.dispose();
+      },
+    );
+  }
+
+  /**
+   * The process ended: drop Working and Needs input, also from what is
+   * still to be parsed of its output.
+   */
+  public processExited(): void {
+    this.#exited = true;
+    if (this.#store.dropTransient()) {
+      this.#schedule();
+    }
+  }
+
+  /**
+   * The user looked at the tab. Does not remove Done or Error: records and
+   * `status` stay as they are. The next report of the record that shows is
+   * announced through `onChange` even when it leaves `status` identical, so
+   * a second Done after the first was seen is not lost.
+   */
+  public markSeen(): void {
+    this.#seen = true;
+  }
+
+  /**
+   * The terminal is in another window now. A notification that waits for the
+   * window it left is asked of the new one: the old window may close, and a
+   * closed window runs neither its animation frames nor its timers.
+   */
+  public windowMigrated(): void {
+    if (this.#pending !== null) {
+      this.#schedule();
+    }
+  }
+
+  public dispose(): void {
+    this.#disposed = true;
+    this.#pending?.cancel();
+    this.#pending = null;
+    this.#disposer.call();
+    this.#terminal = null;
+  }
+
+  /**
+   * Coalesces notifications: any number of changes before the next animation
+   * frame end in one `onChange` call, and in none if the visible status ends
+   * where it started. A hidden document gets no animation frames, so it uses
+   * a timer instead. A request made of a window that the terminal has left,
+   * or that has closed, is made again.
+   */
+  #schedule(): void {
+    if (this.#disposed) {
+      return;
+    }
+    const win = activeSelf(this.#terminal?.element),
+      pending = this.#pending,
+      flush = (): void => {
+        this.#pending = null;
+        this.#flush();
+      };
+    if (pending !== null) {
+      if (pending.window === win && !win.closed) {
+        return;
+      }
+      pending.cancel();
+    }
+    if (
+      typeof win.requestAnimationFrame === "function" &&
+      !win.document.hidden
+    ) {
+      const handle = win.requestAnimationFrame(flush);
+      this.#pending = {
+        cancel: (): void => {
+          win.cancelAnimationFrame(handle);
+        },
+        window: win,
+      };
+    } else {
+      const handle = win.setTimeout(flush, 0);
+      this.#pending = {
+        cancel: (): void => {
+          win.clearTimeout(handle);
+        },
+        window: win,
+      };
+    }
+  }
+
+  #flush(): void {
+    const { status } = this,
+      forced = this.#renotify && status !== null;
+    this.#renotify = false;
+    if (!forced && ProgramStatusAddon.#same(this.#notified, status)) {
+      return;
+    }
+    this.#notified = status;
+    this.options.onChange(status);
+  }
+}
+export namespace ProgramStatusAddon {
+  export interface Options {
+    /**
+     * Called after the visible status changed. Coalesced: at most once per
+     * animation frame. One exception to "changed": the first report of the
+     * record that shows after `markSeen()` is announced even when it leaves
+     * the status identical.
+     */
+    readonly onChange: (status: Status | null) => void;
+  }
+  export interface Status {
+    readonly state: State;
+    readonly kind: Kind | null;
+    readonly progress: number | null;
+    /** Inherited from the nearest ancestor record when the record has none. */
+    readonly app: string | null;
+    /** Already passed through `displayText`. */
+    readonly title: string | null;
+    /** Already passed through `displayText`. */
+    readonly message: string | null;
   }
 }
 

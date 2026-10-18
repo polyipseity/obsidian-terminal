@@ -56,9 +56,11 @@ import {
   View,
   type ViewStateResult,
   type WorkspaceLeaf,
+  setIcon,
 } from "obsidian";
 import { mount, unmount } from "svelte";
 import type { DeepWritable } from "ts-essentials";
+import { tabIconId } from "../icons.js";
 import { BUNDLE } from "../imports.js";
 import {
   DEFAULT_ENCODING,
@@ -74,12 +76,25 @@ import {
   DisposerAddon,
   DragAndDropAddon,
   FollowThemeAddon,
+  ProgramStatusAddon,
   RendererAddon,
   RightClickActionAddon,
   SynchronizedOutputScrollAddon,
   VaultFileLinksAddon,
 } from "./emulator-addons.js";
 import { XtermTerminalEmulator } from "./emulator.js";
+import {
+  TAB_STATUS_ATTRIBUTES,
+  TabStatusPresenter,
+  isTabStatusShown,
+  needsAttention,
+  onWindowFocus,
+  tabStatusLook,
+  whileTabStatusShown,
+  writeAttribute,
+  writeTabIcon,
+  writeTabIconSize,
+} from "./tab-status.js";
 import {
   type TerminalBackendOptions,
   applyTerminalOptionDiffShallow,
@@ -92,7 +107,7 @@ import {
   type Pseudoterminal,
   TextPseudoterminal,
 } from "./pseudoterminal.js";
-import { revealLeafWithoutFlash } from "./reveal.js";
+import { revealLeafWithoutFlash, tabHeaderOf } from "./reveal.js";
 import { writePromise } from "./utils.js";
 import { win32ExitCodeKey } from "./win32-doctor.js";
 
@@ -401,6 +416,18 @@ export class TerminalView extends ItemView {
     readonly [ReturnType<typeof FindComponent>, FindComponent$.Props] | null =
     null;
   #state = TerminalView.State.DEFAULT;
+  /**
+   * Writes the tab header. There is one only while the tab shows a status:
+   * while Program status is not None.
+   */
+  #tabStatus: TabStatusPresenter | null = null;
+  /** The title the tab header was last given, or `null` before its first. */
+  #shownTitle: string | null = null;
+  /**
+   * What the program in the newest terminal of this view reports. There is
+   * one only while the tab shows a status.
+   */
+  #programStatus: ProgramStatusAddon | null = null;
 
   public constructor(
     protected readonly context: TerminalPlugin,
@@ -413,6 +440,11 @@ export class TerminalView extends ItemView {
   protected get isFocused(): boolean {
     const { contentEl } = this;
     return contentEl.contains(contentEl.ownerDocument.activeElement);
+  }
+
+  /** The terminal has the keyboard and its window is the one in front. */
+  protected get isLookedAt(): boolean {
+    return this.isFocused && this.contentEl.ownerDocument.hasFocus();
   }
 
   protected get state(): TerminalView.State {
@@ -494,7 +526,7 @@ export class TerminalView extends ItemView {
           : null;
       },
     });
-    updateView(this.context, this);
+    this.redrawHeader();
   }
 
   protected set emulator(val: TerminalView.EMULATOR | null) {
@@ -523,7 +555,75 @@ export class TerminalView extends ItemView {
 
   protected set rawTitle(value: string) {
     this.#rawTitle0 = value;
-    updateView(this.context, this);
+    this.redrawHeader();
+  }
+
+  /**
+   * Gives the tabs whose view is not loaded the icon of the current Program
+   * status and its size, as a loaded view has them.
+   *
+   * Obsidian loads the view of a background tab only when the tab is
+   * opened. Until then the tab has this view's type and no view of ours, so
+   * nothing has written its header or asked for its icon: it shows the icon
+   * saved with the layout (3.28.0 saved Lucide's `terminal`; later builds
+   * `terminal:tab-tile` or `terminal:tab-bezel`, whichever Program status
+   * then chose), at Obsidian's size, beside tabs that show their icon at
+   * `TAB_ICON_SIZE`.
+   *
+   * @param context the plugin
+   */
+  public static dressUnloadedTabs(context: TerminalPlugin): void {
+    const id = tabIconId(context, context.settings.value);
+    for (const leaf of context.app.workspace.getLeavesOfType(
+      TerminalView.type.namespaced(context),
+    )) {
+      const { view } = leaf;
+      if (view instanceof TerminalView) {
+        // It writes its own header (`onOpen`), and Obsidian draws its icon
+        // from `getIcon`.
+        continue;
+      }
+      /*
+       * What Obsidian puts in the view's place holds the icon id saved with
+       * the layout in `icon`, a public field of `View`. Obsidian draws the
+       * tab from it again whenever it updates the header, as for a tab that
+       * is pinned, linked or moved, and saves it with the next layout: an
+       * icon that is only drawn here would not last. So the id follows too.
+       * The object is Obsidian's own: it is written only where it differs.
+       */
+      if (view.icon !== id) {
+        view.icon = id;
+      }
+      const header = tabHeaderOf(leaf);
+      if (!header) {
+        continue;
+      }
+      writeTabIconSize(header);
+      const icon = header.querySelector(".workspace-tab-header-inner-icon");
+      if (instanceOf(icon, HTMLElement)) {
+        // Also where nothing is drawn: an id that is no longer registered
+        // leaves the tab without an icon.
+        writeTabIcon(icon, id, setIcon);
+      }
+    }
+  }
+
+  /**
+   * Takes the size back from the tabs whose view is not loaded, as the
+   * plugin unloads: what stays on a header outlives the stylesheet that
+   * reads it.
+   *
+   * @param context the plugin
+   */
+  public static undressUnloadedTabs(context: TerminalPlugin): void {
+    for (const leaf of context.app.workspace.getLeavesOfType(
+      TerminalView.type.namespaced(context),
+    )) {
+      const header = tabHeaderOf(leaf);
+      if (header && !(leaf.view instanceof TerminalView)) {
+        writeAttribute(header, TAB_STATUS_ATTRIBUTES.size, null);
+      }
+    }
   }
 
   public static load(context: TerminalPlugin): void {
@@ -536,6 +636,31 @@ export class TerminalView extends ItemView {
       TerminalView.type.namespaced(context),
       (leaf) => new TerminalView(context, leaf),
     );
+
+    /*
+     * The tabs whose view is not loaded get their icon and its size when the
+     * layout is there, and again whenever it changes: a layout can bring new
+     * ones (a saved workspace, a tab moved to another window). Their icon
+     * changes when Program status goes from None or to it; between Still and
+     * Animated it stays. `onLayoutReady` has no unsubscribe and still fires
+     * after the plugin unloads; the flag keeps it from writing on tabs the
+     * plugin has left.
+     */
+    let unloaded = false;
+    const dress = (): void => {
+      if (!unloaded) {
+        TerminalView.dressUnloadedTabs(context);
+      }
+    };
+    workspace.onLayoutReady(dress);
+    context.registerEvent(workspace.on("layout-change", dress));
+    context.register(
+      context.settings.onMutate((value) => isTabStatusShown(value), dress),
+    );
+    context.register(() => {
+      unloaded = true;
+      TerminalView.undressUnloadedTabs(context);
+    });
 
     // Track the last non-terminal leaf for restoring focus on unfocus
     const track = (leaf: WorkspaceLeaf | null): void => {
@@ -758,9 +883,7 @@ export class TerminalView extends ItemView {
   }
 
   public override getIcon(): string {
-    return this.context.language.value.t(
-      `asset:components.${TerminalView.type.id}.icon`,
-    );
+    return tabIconId(this.context, this.context.settings.value);
   }
 
   public getViewType(): string {
@@ -1015,7 +1138,7 @@ export class TerminalView extends ItemView {
 
     this.register(
       language.onChangeLanguage.listen(() => {
-        updateView(context, this);
+        this.redrawHeader();
         if (this.find) {
           this.find[1].i18nt = i18n.t.bind(i18n); // `bind` to preserve the context for potential i18n features that rely on it
         }
@@ -1048,6 +1171,22 @@ export class TerminalView extends ItemView {
       },
       { capture: true, passive: true },
     );
+    this.showTabIconSize();
+    this.register(whileTabStatusShown(settings, () => this.showTabStatus()));
+    /*
+     * The icon is Obsidian's to draw, from `getIcon`: it changes when Program
+     * status goes from None or to it. The gate above hears the same change;
+     * whichever is first, Obsidian's redraw writes only the icon, the title
+     * and the type, and leaves the status attributes as the gate leaves them.
+     */
+    this.register(
+      settings.onMutate(
+        (value) => isTabStatusShown(value),
+        () => {
+          this.redrawHeader();
+        },
+      ),
+    );
     TerminalView.lastFocusTimes.set(this, Date.now());
     if (this.isFocused && settings.value.interceptKeysWhenFocused) {
       keymap.pushScope(focusedScope);
@@ -1067,7 +1206,7 @@ export class TerminalView extends ItemView {
       settings.onMutate(
         (s) => s.showTerminalTabPrefix,
         () => {
-          updateView(context, this);
+          this.redrawHeader();
         },
       ),
     );
@@ -1076,6 +1215,116 @@ export class TerminalView extends ItemView {
     this.register(() => {
       this.emulator = null;
     });
+  }
+
+  /**
+   * Updates the tab header (`updateView`). A title that differs from the one
+   * the header had slides in, under Program status Animated
+   * (`TabStatusPresenter.titleChanged`): Obsidian has drawn it by the time
+   * `updateView` returns. The first title a view gives its tab does not.
+   */
+  protected redrawHeader(): void {
+    updateView(this.context, this);
+    const title = this.getDisplayText(),
+      before = this.#shownTitle;
+    this.#shownTitle = title;
+    if (before !== null && title !== before) {
+      this.#tabStatus?.titleChanged();
+    }
+  }
+
+  /**
+   * Puts the tab icon's size on this terminal's tab header, whatever Program
+   * status says, until the view closes: the header belongs to the leaf and
+   * outlives the view.
+   */
+  protected showTabIconSize(): void {
+    const {
+        app: { workspace },
+        leaf,
+      } = this,
+      write = (): void => {
+        const header = tabHeaderOf(leaf);
+        if (header) {
+          writeTabIconSize(header);
+        }
+      };
+    write();
+    // Obsidian 1.14 keeps a leaf's header for the leaf's life, also when the
+    // tab moves to another split or window; this is for one that does not.
+    this.registerEvent(workspace.on("layout-change", write));
+    this.register(() => {
+      const header = tabHeaderOf(leaf);
+      if (header) {
+        writeAttribute(header, TAB_STATUS_ATTRIBUTES.size, null);
+      }
+    });
+  }
+
+  /**
+   * Shows on this terminal's tab what its program reports, from now on.
+   *
+   * Everything of the feature that belongs to the view starts here and ends
+   * in the function this returns: the presenter, its listeners and what it
+   * wrote on the tab header (the size stays: `showTabIconSize`). What listens
+   * on the terminal itself starts with each terminal (`startEmulator`).
+   *
+   * @returns takes all of it back
+   */
+  protected showTabStatus(): () => void {
+    // Mutable: a listener that is removed while a change is announced still
+    // hears of that change, and must not write on the header that was cleared.
+    let stopped = false;
+    const { context, contentEl, leaf } = this,
+      {
+        app: { workspace },
+        settings,
+      } = context,
+      presenter = new TabStatusPresenter({
+        header: (): Element | null => tabHeaderOf(leaf),
+        look: () => tabStatusLook(settings.value),
+        lookedAt: (): boolean => this.isLookedAt,
+      }),
+      look = (): void => {
+        if (this.isLookedAt) {
+          this.#programStatus?.markSeen();
+          presenter.look();
+        }
+      },
+      // Coming back to the window with the terminal still focused counts as
+      // looking at it, in whichever window the tab is by then.
+      unfollow = onWindowFocus(contentEl, activeSelf(contentEl), look),
+      // A tab moved to another pane or window can come back with a new header.
+      layout = workspace.on("layout-change", () => {
+        if (!stopped) {
+          presenter.render();
+        }
+      }),
+      // Still or Animated: the motion. None stops all of this instead.
+      unlisten = settings.onMutate(
+        (value) => value.tabStatus,
+        () => {
+          if (!stopped) {
+            presenter.render();
+          }
+        },
+      );
+    contentEl.addEventListener("focusin", look, {
+      capture: true,
+      passive: true,
+    });
+    this.#tabStatus = presenter;
+    presenter.render();
+    return (): void => {
+      stopped = true;
+      contentEl.removeEventListener("focusin", look, { capture: true });
+      unfollow();
+      workspace.offref(layout);
+      unlisten();
+      this.#tabStatus = null;
+      // The tab header belongs to the leaf and outlives this view.
+      presenter.clear();
+    };
   }
 
   protected startFind(): void {
@@ -1371,6 +1620,56 @@ export class TerminalView extends ItemView {
           ),
           { pseudoterminal, terminal, addons } = emulator,
           { disposer, renderer, search } = addons;
+        /*
+         * What the program reports is heard only while Program status is not
+         * None: until then nothing of it is on this terminal, so a report is
+         * dropped and the detection query gets no answer.
+         */
+        // Mutable: the addon comes and goes with the feature.
+        let programStatus: ProgramStatusAddon | null = null;
+        disposer.push(
+          whileTabStatusShown(settings, () => {
+            const addon = new ProgramStatusAddon({
+              onChange: (status): void => {
+                const presenter = this.#tabStatus;
+                if (this.#programStatus !== addon || presenter === null) {
+                  // A terminal that was replaced no longer speaks for the tab.
+                  return;
+                }
+                const state = status?.state ?? null;
+                presenter.report(state);
+                if (
+                  state !== null &&
+                  needsAttention(state) &&
+                  !presenter.unread
+                ) {
+                  // It arrived while the user was looking: the next one,
+                  // even an identical one, is news again.
+                  addon.markSeen();
+                }
+              },
+            });
+            terminal.loadAddon(addon);
+            // What waits for a frame of a window must not be lost with it.
+            const unfollow = ele.onWindowMigrated(() => {
+              addon.windowMigrated();
+            });
+            programStatus = addon;
+            // The newest terminal of the view speaks for its tab from here
+            // on, and what the one before it reported is not its status.
+            this.#programStatus = addon;
+            this.#tabStatus?.report(null);
+            return (): void => {
+              unfollow();
+              addon.dispose();
+              programStatus = null;
+              if (this.#programStatus === addon) {
+                this.#programStatus = null;
+                this.#tabStatus?.report(null);
+              }
+            };
+          }),
+        );
         pseudoterminal
           .then(async (pty0) => ({
             code: await pty0.onExit,
@@ -1389,6 +1688,8 @@ export class TerminalView extends ItemView {
           }))
           .then(
             ({ code, startupFailure }) => {
+              // The program is gone: it is no longer working or waiting.
+              programStatus?.processExited();
               // Closing or replacing the view intentionally kills its old PTY.
               // ConPTY owns failures it already announced during startup.
               if (this.emulator !== emulator || startupFailure === "notified") {

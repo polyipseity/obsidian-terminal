@@ -60,6 +60,15 @@ export interface ExperimentSettings<I extends string> {
   ): () => void;
 }
 
+/** The part of a settings manager that `whileSettingsHold` needs. */
+export interface WatchedSettings<S> {
+  readonly value: S;
+  onMutate<V>(
+    accessor: (settings: S) => V,
+    callback: (cur: V) => unknown,
+  ): () => void;
+}
+
 /**
  * Keeps the flag of every experiment in `experiments` that is stored as
  * `true` and drops everything else. Walks the registry, not the input, so an
@@ -104,6 +113,39 @@ export function whileExperimentEnabled<I extends string>(
   id: NoInfer<I>,
   start: () => () => void,
 ): () => void {
+  return whileSettingsHold(
+    settings,
+    (value) => isExperimentEnabled(value, id),
+    // The console line is the only trace: it has to say which experiment.
+    `Experiment "${id}"`,
+    start,
+  );
+}
+
+/**
+ * Runs `start` while `holds` says yes of the settings: at once if it already
+ * does, and again each time it comes to. Calls the function `start` returned
+ * when it stops holding. `start` and that function are synchronous and must
+ * not write settings. An error from either is logged under `name` and does
+ * not reach the settings change that caused it.
+ *
+ * `whileExperimentEnabled` is this gate on an experiment's switch; it lives
+ * here so that a feature that leaves the registry keeps the same gate.
+ *
+ * @param settings the settings manager, or what stands in for one
+ * @param holds whether the feature is on; asked anew on every change, and
+ *   only a change of its answer starts or stops anything
+ * @param name what the console line names
+ * @param start starts the feature and returns what stops it
+ * @returns stops a running feature and ends the subscription; register it
+ *   with the owner
+ */
+export function whileSettingsHold<S>(
+  settings: WatchedSettings<S>,
+  holds: (settings: S) => boolean,
+  name: string,
+  start: () => () => void,
+): () => void {
   let stop: (() => void) | null = null,
     disposed = false;
   const apply = (on: boolean): void => {
@@ -127,15 +169,11 @@ export function whileExperimentEnabled<I extends string>(
           stop0();
         }
       } catch (error) {
-        // The console line is the only trace: it has to say which experiment.
-        self.console.error(`Experiment "${id}":`, error);
+        self.console.error(`${name}:`, error);
       }
     },
-    unlisten = settings.onMutate(
-      (value) => isExperimentEnabled(value, id),
-      apply,
-    );
-  apply(isExperimentEnabled(settings.value, id));
+    unlisten = settings.onMutate(holds, apply);
+  apply(holds(settings.value));
   return (): void => {
     disposed = true;
     unlisten();

@@ -23,6 +23,7 @@ This file is automatically opened on first install. You can reopen it in setting
 - Find in terminal.
 - Save terminal history as file.
 - Customize terminal appearance.
+- Show program status on terminal tabs.
 
 ## Installation
 
@@ -148,6 +149,20 @@ When setting up a terminal profile, you need to distinguish between shells and t
 - iTerm2: `/Applications/iTerm.app/Contents/MacOS/iTerm2 "$PWD"`
 - xterm: `xterm`
 
+### Program status on tabs
+
+Terminal tabs show the plugin's own icon at 21 px, larger than Obsidian's own tab icons. A tab in a sidebar keeps Obsidian's size. With `Program status` at `None` the icon is a rounded square, the same as on the `Open terminal` ribbon button. With `Still` or `Animated` it is a square with a raised border, which carries the status marks.
+
+`Program status`, in the `Interface` section of the plugin settings, shows on a terminal tab what the program in it reports with the escape sequence OSC 7501: idle, working, needs input, finished or error.
+
+- `None`: no status is shown and the reports are ignored.
+- `Still`: the tab icon gets a mark for the status. Nothing moves.
+- `Animated` (default): the same marks, and the working dots light up in turn, a changed tab title slides up from below, and a new finished, needs-input or error mark pops in. Nothing moves where the system asks for reduced motion. On Windows that is `Animation effects` turned off under `Settings` > `Accessibility` > `Visual effects`.
+
+A finished program stays marked until you look at its terminal. A program that does not send OSC 7501 shows no status. Inside tmux or screen, a report reaches the terminal only when passthrough is set up there. On Windows, a program that asks the terminal whether it understands the reports gets no answer, so a program that waits for that answer before it reports shows no status there. A program that was already running when you choose `Still` or `Animated` may report only after you restart it.
+
+The setting is stored with the other plugin settings, so it follows the vault to every device that syncs them. A device that runs 3.28.0 or earlier drops the `tabStatus` setting when it saves its settings, so `Program status` goes back to `Animated`, the default.
+
 ### Experimental features
 
 Features that are not finished are listed under `Experimental`, the last section of the plugin settings. The section is shown only when the installed version has such features.
@@ -156,7 +171,7 @@ Features that are not finished are listed under `Experimental`, the last section
 - Each row says what the feature does, what the known risk is, and where to send feedback.
 - To try a feature, turn on its toggle. To stop, turn it off. The plugin then behaves as it did before, and nothing you stored is lost. A change applies at once unless the row says it needs new terminals or a restart.
 - An experimental feature may change or be removed in a later version. When one becomes a regular feature, its toggle leaves the section and the changelog says so.
-- The choice is stored with the other plugin settings, so it follows the vault to every device that syncs them.
+- The choice is stored with the other plugin settings, so it follows the vault to every device that syncs them. A device that still runs an older version turns the feature off again and resets its options when it saves its settings, because that version drops settings it does not know.
 
 ### Miscellaneous
 
@@ -272,7 +287,7 @@ Obsidian's [community Scorecard][community plugin scorecard] flags the plugin fo
 
 - **Environment variables.** Terminals inherit Obsidian's environment, such as `HOME` and `PATH`. The plugin removes variables left by the terminal or editor Obsidian was started from (such as `TMUX` and `VSCODE_*`) and, for integrated terminals, sets `TERM`, `COLORTERM`, `TERM_PROGRAM`, `TERM_PROGRAM_VERSION`, and `PYTHONIOENCODING`. Your profile's variables are applied last. The environment goes only to the processes the plugin starts.
 - **System `PATH` and Windows version.** Obsidian started from a desktop launcher often has a short `PATH`. To find shells and Python, the plugin adds the system `PATH`: from `/usr/libexec/path_helper` on macOS, `/etc/environment` or `getconf PATH` on Linux, and the registry on Windows. On Windows, it also reads the OS build number, which tells the terminal display how ConPTY wraps lines.
-- **Files outside the vault.** The plugin runs the shells, terminal emulators, and Python interpreters named in your profiles or settings. On Windows, when no configured Python executable works, it tries `python`, `python3`, and the `py` launcher (run with `-3`) from `PATH`. On Windows, it writes the ConPTY host script (`obsidian-terminal-conpty-*.py`) to the system temporary folder and keeps it for later sessions. With the ConHost backend, it also writes a `.bat` file holding the command line to that folder and deletes that file when the terminal exits.
+- **Files outside the vault.** The plugin runs the shells, terminal emulators, and Python interpreters named in your profiles or settings. On Windows, when no configured Python executable works, it tries `python`, `python3`, and the `py` launcher (run with `-3`) from `PATH`. On Windows, it writes the ConPTY host script (`obsidian-terminal-conpty-*.py`) to the system temporary folder and keeps it for later sessions. With the ConHost backend, it also writes a `.bat` file holding the command line to that folder and deletes that file when the terminal exits. When a drop on a terminal names files by URI, as a drag out of VS Code does, it asks the file system whether each path is a file or a folder before it inserts the path. It does not read the files.
 
 ### Supported versions
 
@@ -285,6 +300,10 @@ Obsidian's [community Scorecard][community plugin scorecard] flags the plugin fo
 ### Reporting a vulnerability
 
 Please report a vulnerability by opening a [private vulnerability report][new security advisory]. We will get back to you as soon as possible.
+
+## Credits
+
+The idle mark on terminal tabs is the moon of Phosphor Icons (MIT License, Copyright (c) 2023 Phosphor Icons).
 
 [Buy Me a Coffee]: https://buymeacoffee.com/polyipseity
 [Buy Me a Coffee/embed]: https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=polyipseity&button_colour=40DCA5&font_colour=ffffff&font_family=Lato&outline_colour=000000&coffee_colour=FFDD00
