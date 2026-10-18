@@ -1,5 +1,10 @@
-import { ProfileModal, TerminalOptionsModal } from "../../src/modals.js";
+import {
+  KeymappingEditModal,
+  ProfileModal,
+  TerminalOptionsModal,
+} from "../../src/modals.js";
 import * as doctor from "../../src/terminal/win32-doctor.js";
+import { Keymap, Scope } from "../mocks/obsidian.js";
 import { Settings } from "../../src/settings-data.js";
 import {
   DEFAULT_TERMINAL_OPTIONS,
@@ -873,5 +878,162 @@ describe("terminal options font family", () => {
     await vi.waitFor(() => {
       expect(field.value).toBe(cssList);
     });
+  });
+});
+
+describe("keymapping editor key recorder", () => {
+  // Obsidian's keymap listens on every window in the capture phase, so it sees
+  // each key before any document listener and consumes keys its scopes handle.
+  const keymap = new Keymap(),
+    onKeyEvent = (evt: KeyboardEvent): void => {
+      keymap.onKeyEvent(evt);
+    },
+    previous = {
+      ...Settings.Keymapping.DEFAULT,
+      ctrl: true,
+      key: "k",
+    } satisfies Settings.Keymapping;
+  let runHotkey = vi.fn(),
+    closeModal = vi.fn(),
+    modalScope = new Scope();
+
+  beforeEach(() => {
+    // An Obsidian hotkey bound to every key, behind the open modal's scope,
+    // whose Escape handler closes the modal.
+    const appScope = new Scope();
+    runHotkey = vi.fn().mockReturnValue(false);
+    closeModal = vi.fn().mockReturnValue(false);
+    modalScope = new Scope(appScope);
+    appScope.register(null, null, runHotkey);
+    modalScope.register([], "Escape", closeModal);
+    keymap.pushScope(modalScope);
+    self.addEventListener("keydown", onKeyEvent, true);
+  });
+  afterEach(() => {
+    self.removeEventListener("keydown", onKeyEvent, true);
+    for (const scope of keymap.getScopes()) {
+      keymap.popScope(scope);
+    }
+    document.body.replaceChildren();
+    vi.restoreAllMocks();
+  });
+
+  async function openRecorder(): Promise<{
+    readonly callback: ReturnType<typeof vi.fn>;
+    readonly modal: KeymappingEditModal;
+    readonly press: (init: KeyboardEventInit) => KeyboardEvent;
+    readonly record: () => void;
+    readonly recordDesc: () => string | null | undefined;
+  }> {
+    const rows = capturePythonRows(),
+      context = await pythonSettingsContext(),
+      callback = vi.fn(),
+      modal = new KeymappingEditModal(context, previous, callback);
+    document.body.append(modal.contentEl);
+    modal.open();
+    const row = (): ReturnType<typeof rows.get> =>
+      rows.get("components.keymappings.record");
+    return {
+      callback,
+      modal,
+      press: (init) => {
+        const evt = new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          ...init,
+        });
+        modal.contentEl.dispatchEvent(evt);
+        return evt;
+      },
+      record: () => {
+        row()?.buttons[0]?.buttonEl.click();
+      },
+      recordDesc: () => row()?.descEl.textContent,
+    };
+  }
+
+  it("records a key bound to an Obsidian hotkey instead of running the hotkey", async () => {
+    const { callback, modal, press, record, recordDesc } = await openRecorder();
+    record();
+    expect(modal.titleEl.textContent).toBe("components.keymappings.recording");
+    expect(recordDesc()).toBe("components.keymappings.recording");
+    const evt = press({ key: "p", metaKey: true });
+    expect(runHotkey).not.toHaveBeenCalled();
+    expect(evt.defaultPrevented).toBe(true);
+    expect(callback).toHaveBeenCalledExactlyOnceWith({
+      ...previous,
+      ctrl: false,
+      key: "p",
+      meta: true,
+    });
+    expect(modal.titleEl.textContent).toBe("Meta+p");
+    expect(recordDesc()).toBe("Meta+p");
+    expect(keymap.getScopes()).toEqual([modalScope]);
+    modal.close();
+  });
+
+  it("keeps recording through modifier-only keydowns", async () => {
+    const { callback, modal, press, record } = await openRecorder();
+    record();
+    press({ ctrlKey: true, key: "Control" });
+    expect(callback).not.toHaveBeenCalled();
+    expect(modal.titleEl.textContent).toBe("components.keymappings.recording");
+    press({ ctrlKey: true, key: "j" });
+    expect(runHotkey).not.toHaveBeenCalled();
+    expect(callback).toHaveBeenCalledExactlyOnceWith({ ...previous, key: "j" });
+    modal.close();
+  });
+
+  it("cancels on a bare Escape, keeping the previous key and the modal open", async () => {
+    const { callback, modal, press, record, recordDesc } = await openRecorder();
+    record();
+    const evt = press({ key: "Escape" });
+    expect(closeModal).not.toHaveBeenCalled();
+    expect(evt.defaultPrevented).toBe(true);
+    expect(callback).not.toHaveBeenCalled();
+    expect(modal.titleEl.textContent).toBe("Ctrl+k");
+    expect(recordDesc()).toBe("Ctrl+k");
+    expect(keymap.getScopes()).toEqual([modalScope]);
+    modal.close();
+  });
+
+  it("records Escape pressed with a modifier", async () => {
+    const { callback, modal, press, record } = await openRecorder();
+    record();
+    press({ key: "Escape", shiftKey: true });
+    expect(closeModal).not.toHaveBeenCalled();
+    expect(runHotkey).not.toHaveBeenCalled();
+    expect(callback).toHaveBeenCalledExactlyOnceWith({
+      ...previous,
+      ctrl: false,
+      key: "Escape",
+      shift: true,
+    });
+    expect(keymap.getScopes()).toEqual([modalScope]);
+    modal.close();
+  });
+
+  it("returns keys to Obsidian when the record button is pressed again", async () => {
+    const { callback, modal, press, record, recordDesc } = await openRecorder();
+    record();
+    expect(keymap.getScopes()).toHaveLength(2);
+    record();
+    expect(keymap.getScopes()).toEqual([modalScope]);
+    expect(recordDesc()).toBe("Ctrl+k");
+    press({ ctrlKey: true, key: "p" });
+    expect(runHotkey).toHaveBeenCalledOnce();
+    expect(callback).not.toHaveBeenCalled();
+    modal.close();
+  });
+
+  it("returns keys to Obsidian when the modal closes while recording", async () => {
+    const { callback, modal, press, record } = await openRecorder();
+    record();
+    expect(keymap.getScopes()).toHaveLength(2);
+    modal.close();
+    expect(keymap.getScopes()).toEqual([modalScope]);
+    press({ ctrlKey: true, key: "p" });
+    expect(runHotkey).toHaveBeenCalledOnce();
+    expect(callback).not.toHaveBeenCalled();
   });
 });
