@@ -6,6 +6,7 @@ import { rm, writeFile } from "node:fs/promises";
 import { builtinModules } from "node:module";
 import { argv } from "node:process";
 import { PATHS } from "./utils.mjs";
+import { xtermCanvasFont } from "./xterm-canvas-font.mjs";
 
 const ARGV_PRODUCTION = 2,
   COMMENT = "// repository: https://github.com/polyipseity/obsidian-terminal",
@@ -64,6 +65,7 @@ async function esbuild() {
           [/\/\/(?<c>[@#]) sourceMappingURL=/gu, "//$1 sourceMappingURL= "],
         ],
       }),
+      xtermCanvasFont(),
     ],
     sourcemap: DEV && "inline",
     sourcesContent: true,

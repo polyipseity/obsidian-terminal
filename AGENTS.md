@@ -350,6 +350,7 @@ This section contains concise, actionable rules and project-specific examples to
 - Settings pattern: always prefer `.fix()` functions (see `Settings.fix`/`LocalSettings.fix`) to validate/normalize external inputs before persisting or mutating settings.
 - I18n: use `createI18n(PluginLocales.RESOURCES, ...)` and `language.value.t(...)` for translations. Never hardcode translatable strings—use existing translation keys in `assets/locales/`.
 - Build/Dev pattern: `scripts/build.mjs` uses esbuild `context()`; pass `dev` as `argv[2]` to enable watch mode. Tests mock esbuild in `tests/scripts/build.test.ts`.
+- xterm font workaround: `scripts/xterm-canvas-font.mjs` trims the canvas font strings of `@xterm/addon-canvas` and `@xterm/addon-webgl` at build time, because Chromium 150 (Obsidian 1.15) ignores a canvas font that starts with a space. The build fails when a bundle does not have exactly two such strings; after an xterm upgrade, check whether upstream fixed it and remove the plugin if so.
 - Script behavior: `scripts/obsidian-install.mjs` exits 1 with a short error message when `manifest.json` is missing. Mirror error changes in `tests/scripts/obsidian-install.spec.ts`.
 - Test conventions: `*.spec.*` = unit (fast, isolated); `*.test.*` = integration (may use filesystem or child processes). Follow the one-test-file-per-source-file convention and place tests under `tests/` mirroring `src/`.
 - Formatting & linting: run `bun run format` and `bun run check` before committing. CI uses `bun install`.
