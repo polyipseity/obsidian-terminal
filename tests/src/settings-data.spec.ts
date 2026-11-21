@@ -959,7 +959,7 @@ describe("src/settings-data.ts", () => {
 
     it("come back in place where a device on 3.29.0 made them Ignore", () => {
       // 3.29.0 does not know the action, saves it as Ignore and drops the
-      // version, so the next start of 3.29.1 finds the list not offered.
+      // version, so the next start of 3.29.2 finds the list not offered.
       const later = { ...own, key: "m" } as const,
         upgraded = upgrade(released329()).settings.keymappings,
         rewritten = upgraded.map((mapping) =>

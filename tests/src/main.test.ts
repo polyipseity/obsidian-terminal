@@ -354,7 +354,7 @@ async function start(
       id: ID,
       minAppVersion: "1.4.11",
       name: "Terminal",
-      version: "3.29.1",
+      version: "3.29.2",
     }),
     // The mock `Plugin` is no `Component`; the app's plugin is one.
     owner = new Component();
