@@ -56,7 +56,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-obsidianmd": "^0.4.1",
     "globals": "^17.6.0",
-    "happy-dom": "^20.9.0",
+    "happy-dom": "^21.0.4",
     "if-ci": "^3.0.0",
     "markdownlint-cli2": "^0.23.3",
     "p-lazy": "^5.0.0",
@@ -105,6 +105,7 @@
     "name": "Terminal"
   },
   "overrides": {
+    "happy-dom": "^21.0.4",
     "katex": "^0.18.2",
     "markdown-it": "^15.0.3",
     "moment": "^2.31.0",

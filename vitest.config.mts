@@ -41,6 +41,15 @@ export default defineConfig({
       provider: "istanbul", // istanbul is agnostic of engine
     },
     environment: "happy-dom",
+    // happy-dom 21 disables iframe page loading by default. The Settings window
+    // and pop-out window tests rely on iframe documents.
+    environmentOptions: {
+      happyDOM: {
+        settings: {
+          enableIframePageLoading: true,
+        },
+      },
+    },
     include: ["tests/**/*.spec.{ts,js,mjs}", "tests/**/*.test.{ts,js,mjs}"],
     server: {
       deps: {
