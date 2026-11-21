@@ -27,7 +27,8 @@
         "scrollToTop": "Scroll to top",
         "sendEscapeSequence": "Send escape sequence",
         "sendHexCode": "Send hex code",
-        "sendText": "Send text"
+        "sendText": "Send text",
+        "sendToObsidian": "Send to Obsidian"
       },
       "edit": "$t(generic.edit, capitalize)",
       "placeholders": {
@@ -39,7 +40,8 @@
         "scrollToTop": "",
         "sendEscapeSequence": "e.g. b",
         "sendHexCode": "e.g. 01 0d",
-        "sendText": "e.g. hello"
+        "sendText": "e.g. hello",
+        "sendToObsidian": ""
       },
       "platform": "$t(generic.platform, capitalize)",
       "platform-options-": "All $t(generic.platform_other)",
@@ -192,6 +194,7 @@
     }
   },
   "errors": {
+    "conhost-cannot-pass": "ConHost cannot start this command: it contains a line break, its $t(generic.executable) path contains a quote, or it is too long for cmd, which runs lines of at most {{limit}} characters, including the text that starts the command. Change the $t(generic.profile).",
     "conpty-control-unauthenticated": "The ConPTY host disconnected before completing its authenticated startup handshake. The host was stopped.",
     "conpty-host-exited-before-ready": "The ConPTY host exited before it became ready.",
     "conpty-readiness-timeout": "The ConPTY host did not become ready in time.",
@@ -333,7 +336,6 @@
     "drop-skipped-paths": "Some dropped items could not be inserted as paths.",
     "drop-typed-while-waiting": "Nothing was inserted: you typed before the dropped paths were ready. Drop them again.",
     "no-default-profile": "'$t(generic.profile-types.{{type}})' $t(generic.type)에 대한 $t(generic.default) $t(generic.profile)이 설정되지 않았습니다",
-    "no-file-for-current-directory": "No active file: open a file to start a $t(generic.terminal) in its folder.",
     "resizer-install-command-copied": "Install command copied.",
     "spawning-terminal": "$t(generic.terminal) $t(generic.spawn_gerund) 중: {{title}}",
     "terminal-exited": "$t(generic.terminal) $t(generic.exit_past): {{code}}",
@@ -386,7 +388,7 @@
     "create-instance-near-existing-ones": "기존 인스턴스 근처에 $t(generic.instance) 생성",
     "create-instance-near-existing-ones-description": "$t(generic.instance)가 이미 $t(generic.exist_singular)하는 경우 '$t(settings.new-instance-behavior)' 설정을 재정의합니다 ($t(generic.true)로 설정된 경우).",
     "default-profile": "Default $t(generic.profile)",
-    "default-profile-description": "$t(generic.profile, capitalize) to open when clicking the ribbon icon. Leave empty to show $t(generic.profile) selector.",
+    "default-profile-description": "$t(generic.profile, capitalize) to open when clicking the ribbon icon on this device. Leave empty to show $t(generic.profile) selector. Commands for its $t(generic.terminal) $t(generic.type) open it too. Right-click the ribbon icon to list all profiles.",
     "default-profile-name-": "$t(profile-name-formats.short)",
     "default-profile-name-incompatible": "($t(generic.incompatible, capitalize)) $t(settings.default-profile-name-)",
     "documentation": "$t(generic.documentation)",
@@ -417,10 +419,12 @@
     "instancing": "$t(generic.instance_gerund)",
     "intercept-keys-when-focused": "$t(generic.intercept, capitalize) keys when $t(generic.terminal) is $t(generic.focus_past-participle)",
     "intercept-keys-when-focused-description": "When enabled, keyboard shortcuts are routed to $t(generic.terminal)-specific commands while the $t(generic.terminal) is $t(generic.focus_past-participle), and most Obsidian hotkeys are suppressed. Disable to let Obsidian hotkeys continue to work while typing in the $t(generic.terminal).",
+    "intercept-keys-when-focused-description-send-to-obsidian": "Keys whose $t(generic.keymapping) is '$t(components.keymappings.actions.sendToObsidian)' are the exception: Obsidian runs their hotkeys.",
     "intercept-logging": "로깅 가로채기",
     "interface": "인터페이스",
     "keymappings": "$t(generic.keymapping_other, capitalize)",
     "keymappings-description": "Custom key bindings intercepted before the $t(generic.terminal). Each entry maps a key combo (with optional platform filter) to an action: escape sequence, raw text, or hex code. First matching entry wins. Example: the built-in Shift+Enter → ESC+CR lets TUI programs distinguish Enter (submit) from Shift+Enter (newline).",
+    "keymappings-description-send-to-obsidian": "The action '$t(components.keymappings.actions.sendToObsidian)' leaves the key to Obsidian, which runs its hotkey for it. The built-in Ctrl+P on Windows and Command+P on macOS use it to open the command palette.",
     "keymappings-edit": "$t(generic.edit, capitalize)",
     "macOS-option-key-passthrough": "macOS: Option key passthrough",
     "macOS-option-key-passthrough-description": "Sends Option+key as the composed character (e.g., Option+2 → @ on Scandinavian/German keyboards) instead of an ESC sequence, working around xterm.js bug #2831. Only active on macOS; visible on all platforms for pre-configuration.",
@@ -445,7 +449,7 @@
     "profile-defaults": "$t(generic.profile, capitalize) defaults",
     "profile-defaults-description": "Default options for $t(generic.profile_other). Acts as a fallback for every $t(generic.profile) unless a $t(generic.profile) explicitly overrides them.",
     "profile-list": {
-      "description": "목록에서 첫 번째 $t(generic.compatible) $t(generic.profile)이 해당 $t(generic.terminal) $t(generic.type)의 $t(generic.default)로 설정됩니다."
+      "description": "$t(generic.terminal) $t(generic.type)별 명령은 $t(generic.default) $t(generic.profile)이 해당 $t(generic.type)이면 그것을 열고, 아니면 목록에서 해당 $t(generic.type)의 첫 번째 $t(generic.compatible) $t(generic.profile)을 엽니다."
     },
     "profiles": "$t(generic.profile_other)",
     "profiles-description": "$t(generic.list-description)",

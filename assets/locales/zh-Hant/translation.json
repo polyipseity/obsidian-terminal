@@ -27,7 +27,8 @@
         "scrollToTop": "捲動至頂部",
         "sendEscapeSequence": "傳送跳脫序列",
         "sendHexCode": "傳送十六進位代碼",
-        "sendText": "傳送文字"
+        "sendText": "傳送文字",
+        "sendToObsidian": "傳送到 Obsidian"
       },
       "edit": "$t(generic.edit, capitalize)",
       "placeholders": {
@@ -39,7 +40,8 @@
         "scrollToTop": "",
         "sendEscapeSequence": "例如 b",
         "sendHexCode": "例如 01 0d",
-        "sendText": "例如 hello"
+        "sendText": "例如 hello",
+        "sendToObsidian": ""
       },
       "platform": "$t(generic.platform, capitalize)",
       "platform-options-": "所有平台",
@@ -192,6 +194,7 @@
     }
   },
   "errors": {
+    "conhost-cannot-pass": "ConHost cannot start this command: it contains a line break, its $t(generic.executable) path contains a quote, or it is too long for cmd, which runs lines of at most {{limit}} characters, including the text that starts the command. Change the $t(generic.profile).",
     "conpty-control-unauthenticated": "The ConPTY host disconnected before completing its authenticated startup handshake. The host was stopped.",
     "conpty-host-exited-before-ready": "The ConPTY host exited before it became ready.",
     "conpty-readiness-timeout": "The ConPTY host did not become ready in time.",
@@ -317,7 +320,6 @@
     "drop-skipped-paths": "Some dropped items could not be inserted as paths.",
     "drop-typed-while-waiting": "Nothing was inserted: you typed before the dropped paths were ready. Drop them again.",
     "no-default-profile": "沒有$t(generic.type)「$t(generic.profile-types.{{type}})」的$t(generic.default)$t(generic.profile)",
-    "no-file-for-current-directory": "No active file: open a file to start a $t(generic.terminal) in its folder.",
     "resizer-install-command-copied": "Install command copied.",
     "spawning-terminal": "$t(generic.terminal)$t(generic.spawn)中：{{title}}",
     "terminal-exited": "$t(generic.terminal)已$t(generic.exit)：{{code}}",
@@ -370,7 +372,7 @@
     "create-instance-near-existing-ones": "在$t(generic.exist)$t(generic.instance)附近創建$t(generic.instance)",
     "create-instance-near-existing-ones-description": "如果為$t(generic.true)，則在$t(generic.instance)$t(generic.exist)時覆蓋「$t(settings.new-instance-behavior)」。",
     "default-profile": "預設$t(generic.profile)",
-    "default-profile-description": "點擊側邊欄圖示時要打開的$t(generic.profile)。留空以顯示$t(generic.profile)選擇器。",
+    "default-profile-description": "在此裝置上點擊側邊欄圖示時要打開的$t(generic.profile)。留空以顯示$t(generic.profile)選擇器。其$t(generic.terminal)$t(generic.type)的命令也會打開它。右鍵點擊側邊欄圖示可列出所有$t(generic.profile)。",
     "default-profile-name-": "$t(profile-name-formats.short)",
     "default-profile-name-incompatible": "（$t(generic.incompatible)）$t(settings.default-profile-name-)",
     "documentation": "$t(generic.documentation)",
@@ -401,10 +403,12 @@
     "instancing": "$t(generic.instance)",
     "intercept-keys-when-focused": "$t(generic.intercept)$t(generic.terminal)獲得焦點時的按鍵",
     "intercept-keys-when-focused-description": "啟用此項後，當$t(generic.terminal)獲得焦點時，按鍵將優先路由至$t(generic.terminal)命令，大部份 Obsidian 快捷鍵會被停用。停用此項可在$t(generic.terminal)獲得焦點時繼續使用 Obsidian 快捷鍵。",
+    "intercept-keys-when-focused-description-send-to-obsidian": "$t(generic.keymapping)為「$t(components.keymappings.actions.sendToObsidian)」的按鍵是例外：Obsidian 會執行它們的快捷鍵。",
     "intercept-logging": "攔截記錄",
     "interface": "界面",
     "keymappings": "$t(generic.keymapping_other, capitalize)",
     "keymappings-description": "在$t(generic.terminal)之前攔截的自訂按鍵綁定。每條記錄將按鍵組合（可選平台篩選器）映射到一個動作——跳脫序列、原始文字或十六進位代碼。第一條符合的記錄優先。例如：內建的 Shift+Enter → ESC+CR 可讓 TUI 程式區分 Enter（提交）與 Shift+Enter（換行）。",
+    "keymappings-description-send-to-obsidian": "動作「$t(components.keymappings.actions.sendToObsidian)」將按鍵交給 Obsidian，由 Obsidian 執行該按鍵的快捷鍵。內建的 Ctrl+P（Windows）和 Command+P（macOS）用它開啟命令面板。",
     "keymappings-edit": "$t(generic.edit, capitalize)",
     "macOS-option-key-passthrough": "macOS：Option鍵穿透",
     "macOS-option-key-passthrough-description": "將 Option+鍵 以合成字符形式（例如，斯堪的納維亞/德國鍵盤上 Option+2 → @）傳送到$t(generic.terminal)，而非 ESC 序列，以規避 xterm.js 缺陷 #2831。僅在 macOS 上生效；對所有平台可見，以便預先配置。",
@@ -429,7 +433,7 @@
     "profile-defaults": "$t(generic.profile)默認值",
     "profile-defaults-description": "$t(generic.profile)的後備默認選項。特定$t(generic.profile)可以覆蓋這些選項以滿足特定需求。",
     "profile-list": {
-      "description": "$t(generic.list)中第一個$t(generic.compatible)的$t(generic.profile)是其$t(generic.terminal)$t(generic.type)的$t(generic.default)。"
+      "description": "針對某一$t(generic.terminal)$t(generic.type)的$t(generic.command)：若$t(generic.default)$t(generic.profile)屬於該$t(generic.type)，則打開它；否則打開$t(generic.list)中該$t(generic.type)的第一個$t(generic.compatible)的$t(generic.profile)。"
     },
     "profiles": "$t(generic.profile)",
     "profiles-description": "$t(generic.list-description)",

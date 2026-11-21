@@ -155,6 +155,8 @@ function context(
   settings = settingsOf(pythonExecutable),
 ): TerminalPlugin {
   return {
+    // A ConPTY terminal registers its quit hook here.
+    app: { workspace: { offref: vi.fn(), on: vi.fn(() => ({})) } },
     language: { value: { t: (key: string): string => key } },
     register: vi.fn(),
     settings,

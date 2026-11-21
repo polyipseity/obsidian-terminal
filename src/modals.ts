@@ -1786,7 +1786,9 @@ export class KeymappingEditModal extends Modal {
     callback: (data: DeepWritable<Settings.Keymapping>) => unknown,
   ) {
     super(context.app);
-    this.data = cloneAsWritable(keymapping);
+    // The fields save only an argument of the kind the action takes, so a
+    // mapping with another kind is fixed first, as loading the settings does.
+    this.data = cloneAsWritable(Settings.Keymapping.fix(keymapping).value);
     this.#callback = callback;
   }
 
@@ -1909,9 +1911,17 @@ export class KeymappingEditModal extends Modal {
           }
           dd.setValue(data.action);
           dd.onChange(async (val) => {
-            data.action = Settings.isKeymappingAction(val)
+            const action = Settings.isKeymappingAction(val)
               ? val
               : Settings.Keymapping.DEFAULT.action;
+            // The new action can take another kind of argument. The fixer
+            // keeps an argument of the right kind and puts in its default
+            // otherwise, as loading the settings would.
+            const { actionArg } = Settings.Keymapping.fix({
+              ...data,
+              action,
+            }).value;
+            Object.assign(data, { action, actionArg });
             await this.postMutate();
           });
         });
@@ -1962,17 +1972,41 @@ export class KeymappingEditModal extends Modal {
         // Display current value if it's a number, else empty
         const numValue = data.actionArg;
         if (typeof numValue === "number") {
-          text.setValue(String(numValue));
+          // A focused field whose text already stands for the number keeps
+          // its text, so a number being typed is not rewritten under the caret.
+          const { inputEl } = text;
+          if (
+            inputEl !== inputEl.ownerDocument.activeElement ||
+            Number(text.getValue()) !== numValue
+          ) {
+            text.setValue(String(numValue));
+          }
           text.onChange(async (val) => {
+            // Only a whole number is stored. Other text, such as an emptied
+            // field, a minus typed first or "1.5", stays as typed.
+            if (!/^-?\d+$/u.test(val)) {
+              return;
+            }
             const parsed = parseInt(val, 10);
             if (!Settings.Keymapping.isValidActionArg("number", parsed)) {
-              text.setValue(String(data.actionArg));
               return;
             }
             data.actionArg = parsed;
             await this.postMutate();
           });
         }
+        // Leaving the field shows the stored number again. A switch to
+        // another window blurs the field too, but it stays the focused
+        // element of its page and has the keyboard again on return.
+        text.inputEl.onblur = (): void => {
+          const { inputEl } = text;
+          if (inputEl === inputEl.ownerDocument.activeElement) {
+            return;
+          }
+          if (typeof data.actionArg === "number") {
+            text.setValue(String(data.actionArg));
+          }
+        };
       });
 
       // Text area for string actions (sendEscapeSequence, sendHexCode, sendText)

@@ -14,10 +14,16 @@ import {
   MarkdownView,
   Menu,
   type MenuItem,
+  TFile,
   TFolder,
 } from "obsidian";
 import { tileIconId } from "../icons.js";
 import type { TerminalPlugin } from "../main.js";
+import {
+  deviceDefaultProfile,
+  deviceProfileEntries,
+  runnableProfile,
+} from "../profile-choice.js";
 import { TERMINAL_CONPTY_PREWARM_DELAY } from "../magic.js";
 import { warmSystemPath } from "./environment.js";
 import { Settings } from "../settings-data.js";
@@ -34,8 +40,36 @@ import {
   runPluginPythonCheck,
 } from "./win32-doctor.js";
 
+/**
+ * Adds the built-in keymappings that a list from an earlier version lacks,
+ * once, and saves. It runs outside the fixer, so that loading such a list
+ * does not count as a change.
+ *
+ * @param context the plugin
+ */
+function offerKeymappingDefaults(context: TerminalPlugin): void {
+  const { settings } = context;
+  if (
+    (settings.value.keymappingDefaultsVersion ?? 0) >=
+    Settings.KEYMAPPING_DEFAULTS_VERSION
+  ) {
+    return;
+  }
+  settings
+    .mutate((settingsM) => {
+      Settings.addKeymappingDefaults(settingsM);
+    })
+    .then(async () => settings.write())
+    .catch((error: unknown) => {
+      self.console.error(error);
+    });
+}
+
 export function loadTerminal(context: TerminalPlugin): void {
   TerminalView.load(context);
+  offerKeymappingDefaults(context);
+  // Files that were active, newest first; a few spare ones skip deleted files.
+  const recentFiles: TFile[] = [];
   const PROFILE_TYPES = deepFreeze(
       (
         ["default", "external", "integrated", "select"] satisfies readonly (
@@ -53,19 +87,8 @@ export function loadTerminal(context: TerminalPlugin): void {
       language: { value: i18n },
       settings,
     } = context,
-    getDefaultProfile = (): readonly [string, Settings.Profile] | null => {
-      const { defaultProfile, profiles } = settings.value;
-      if (defaultProfile) {
-        const profile = profiles[defaultProfile];
-        if (
-          profile &&
-          Settings.Profile.isCompatible(profile, Platform.CURRENT)
-        ) {
-          return [defaultProfile, profile];
-        }
-      }
-      return null;
-    },
+    getDefaultProfile = (): readonly [string, Settings.Profile] | null =>
+      deviceDefaultProfile(context),
     getPrewarmProfile = (): Settings.Profile | null => {
       const isCandidate = (profile: Settings.Profile): boolean =>
         profile.type === "integrated" &&
@@ -76,18 +99,56 @@ export function loadTerminal(context: TerminalPlugin): void {
       if (fromDefault && isCandidate(fromDefault)) {
         return fromDefault;
       }
-      return Object.values(settings.value.profiles).find(isCandidate) ?? null;
+      return (
+        deviceProfileEntries(context).find(([, profile]) =>
+          isCandidate(profile),
+        )?.[1] ?? null
+      );
     },
+    // The default profile when it has this type, else the first one that has.
     getDefaultProfileOfType = (
       type: Settings.Profile.Type,
     ): readonly [string, Settings.Profile] | null => {
+      const preferred = getDefaultProfile();
+      if (preferred && Settings.Profile.isType(type, preferred[1])) {
+        return preferred;
+      }
       return Settings.Profile.defaultEntryOfType(
         type,
         settings.value.profiles,
         Platform.CURRENT,
+        context.localSettings.value.profileOrder ?? [],
       );
     },
     adapter = vault.adapter instanceof FileSystemAdapter ? vault.adapter : null,
+    /*
+     * The folder of the file the user last looked at. A focused terminal, an
+     * empty tab or the graph view has no active file, so take the newest file
+     * that was active and still exists. Not the open tabs: a tab can move on
+     * to another view, as the graph view does. Before any file was active in
+     * this session, Obsidian's recent-file list stands in. It comes last
+     * because it also records files created in the vault, by a shell for
+     * example, and keeps the paths of deleted files. Without any file the
+     * caller opens the vault root.
+     */
+    getCurrentFolder = (): TFolder | null => {
+      const active = workspace.getActiveFile();
+      if (active) return active.parent;
+      // By path: a file deleted and created again is a new object.
+      const parentAt = (path: string): TFolder | null => {
+        const file = vault.getAbstractFileByPath(path);
+        return file instanceof TFile ? file.parent : null;
+      };
+      for (const file of recentFiles) {
+        const parent = parentAt(file.path);
+        if (parent) return parent;
+      }
+      for (const path of workspace.getLastOpenFiles()) {
+        const parent = parentAt(path);
+        if (parent) return parent;
+      }
+      return null;
+    },
     contextMenu = (
       type: (typeof PROFILE_TYPES)[number],
       cwd?: TFolder,
@@ -134,18 +195,10 @@ export function loadTerminal(context: TerminalPlugin): void {
             case "root":
               return adapter.getBasePath();
             case "current": {
-              const active = workspace.getActiveFile();
-              if (active?.parent) {
-                return adapter.getFullPath(active.parent.path);
-              }
-              if (!checking) {
-                notice2(
-                  () => i18n.t("notices.no-file-for-current-directory"),
-                  settings.value.noticeTimeout,
-                  context,
-                );
-              }
-              return null;
+              const folder = getCurrentFolder();
+              return folder
+                ? adapter.getFullPath(folder.path)
+                : adapter.getBasePath();
             }
             // No default
           }
@@ -156,6 +209,16 @@ export function loadTerminal(context: TerminalPlugin): void {
         if (type === "select") return openSelectProfile(cwd0, checking);
         return openDefaultProfileOfType(type, cwd0, checking);
       };
+
+  context.registerEvent(
+    workspace.on("file-open", (file) => {
+      if (!file) return;
+      const index = recentFiles.indexOf(file);
+      if (index !== -1) recentFiles.splice(index, 1);
+      recentFiles.unshift(file);
+      recentFiles.splice(10);
+    }),
+  );
 
   const openSelectProfile = (cwd?: string, checking?: boolean): boolean => {
     if (!checking) {
@@ -265,7 +328,7 @@ export function loadTerminal(context: TerminalPlugin): void {
       const menu = new Menu(),
         cwd = adapter?.getBasePath();
       let hasProfileItems = false;
-      for (const [id, profile] of Object.entries(settings.value.profiles)) {
+      for (const [id, profile] of deviceProfileEntries(context)) {
         if (!Settings.Profile.isCompatible(profile, Platform.CURRENT)) {
           continue;
         }
@@ -339,10 +402,43 @@ export function loadTerminal(context: TerminalPlugin): void {
     ),
   );
 
+  // The ribbon names this device's default. Redraw when that name changes in
+  // either store, as when data.json loses or renames the profile. Each
+  // listener watches a part of its own store only: a manager compares with
+  // what the listener saw last, which goes stale for the other store.
+  const ribbonName = (
+    profiles: Settings.Profiles,
+    id: Settings.DefaultProfile | undefined,
+  ): string | null => {
+    const entry = runnableProfile(profiles, id ?? null);
+    return entry ? Settings.Profile.info(entry).nameOrID : null;
+  };
+  let shownName = ribbonName(
+    settings.value.profiles,
+    context.localSettings.value.defaultProfile,
+  );
+  const redrawRibbon = (name: string | null): void => {
+    if (name !== shownName) {
+      shownName = name;
+      openTerminal.reload();
+    }
+  };
   context.register(
     settings.onMutate(
-      (settings) => settings.defaultProfile,
-      openTerminal.reload,
+      (settings0) => settings0.profiles,
+      (profiles) => {
+        redrawRibbon(
+          ribbonName(profiles, context.localSettings.value.defaultProfile),
+        );
+      },
+    ),
+  );
+  context.register(
+    context.localSettings.onMutate(
+      (local) => local.defaultProfile ?? null,
+      (id) => {
+        redrawRibbon(ribbonName(settings.value.profiles, id));
+      },
     ),
   );
 
@@ -389,7 +485,19 @@ export function loadTerminal(context: TerminalPlugin): void {
 
   /* Always register command for interop with other plugins */
 
-  TerminalView.allowWhileFocused(
+  /*
+   * Their hotkeys pass a focused terminal only while Add to command is on.
+   * With it off their checks decline, but Obsidian still reports the key as
+   * handled, so on the list the key would reach neither a command nor the
+   * shell. Off the list it goes to the shell.
+   */
+  // Filled while the commands are registered below, and only read after.
+  const openers: ReturnType<typeof addCommand>[] = [],
+    allowWhileCommand = (opener: ReturnType<typeof addCommand>): void => {
+      openers.push(opener);
+      TerminalView.allowWhileFocused(opener, settings.value.addToCommand);
+    };
+  allowWhileCommand(
     addCommand(context, () => i18n.t("commands.open-developer-console"), {
       checkCallback(checking) {
         if (!settings.value.addToCommand) {
@@ -421,11 +529,12 @@ export function loadTerminal(context: TerminalPlugin): void {
           /*
            * A default hotkey on purpose, against Obsidian's advice to avoid
            * them: one key then opens a terminal from anywhere, also from a
-           * focused terminal. A letter stays on its printed key on every
+           * focused terminal, in the folder of the file last looked at or
+           * else the vault root. A letter stays on its printed key on every
            * layout, unlike a backtick. "H", not "h": only the uppercase key
            * code name matches on non-Latin layouts.
            */
-          ...(type === "integrated" && cwd === "root"
+          ...(type === "integrated" && cwd === "current"
             ? { hotkeys: [{ key: "H", modifiers: ["Mod", "Shift"] }] }
             : {}),
           icon: i18n.t(`asset:commands.open-terminal-${cwd}-icon`),
@@ -433,15 +542,28 @@ export function loadTerminal(context: TerminalPlugin): void {
         },
       );
       /*
-       * A focused terminal has no active file, so "current" only shows a
-       * notice there. Allowing it still lets the focused listener consume a
-       * hotkey the user assigned to it instead of the shell: ConPTY turns
+       * A focused terminal has no active file, so "current" opens in the
+       * folder of the file last looked at, or the vault root. Allowing it also
+       * lets the focused listener consume its hotkey, the default one or one
+       * the user assigned, instead of the shell: ConPTY turns
        * Ctrl+Shift+<letter> into that letter's control character, e.g.
-       * Ctrl+Shift+H into 0x08, which cmd.exe treats as backspace.
+       * Ctrl+Shift+H into 0x08, which cmd.exe treats as backspace. This holds
+       * while Add to command is on; with it off the key goes to the shell.
        */
-      TerminalView.allowWhileFocused(opening);
+      allowWhileCommand(opening);
     }
   }
+  context.register(
+    settings.onMutate(
+      (settings0) => settings0.addToCommand,
+      (addToCommand) => {
+        for (const opener of openers) {
+          TerminalView.allowWhileFocused(opener, addToCommand);
+        }
+        TerminalView.reloadFocusedHotkeys(context);
+      },
+    ),
+  );
 
   /*
    * `onLayoutReady` has no unsubscribe and still fires after the plugin

@@ -1,7 +1,9 @@
 import {
+  EditDataModal,
   Platform,
   UpdatableUI,
   cloneAsWritable,
+  createI18n,
   setSanitizedInnerHTML,
 } from "@polyipseity/obsidian-plugin-library";
 import { createInstance } from "i18next";
@@ -14,6 +16,7 @@ import {
 } from "obsidian";
 import * as doctor from "../../src/terminal/win32-doctor.js";
 import { SettingTab } from "../../src/settings.js";
+import { TerminalSettingsManager } from "../../src/settings-manager.js";
 import { loadDocumentations } from "../../src/documentations.js";
 import {
   EXPERIMENTS,
@@ -21,6 +24,7 @@ import {
   fixExperiments,
 } from "../../src/experiments.js";
 import { LocalSettings, Settings } from "../../src/settings-data.js";
+import type { ProfileListModal } from "../../src/modals.js";
 import {
   capturePythonRows,
   pythonSettingsContext,
@@ -28,6 +32,7 @@ import {
   withPythonSpare,
 } from "../fixtures/python-settings-ui.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { PluginLocales } from "../../assets/locales.js";
 import asset from "../../assets/locales/en/asset.json" with { type: "json" };
 import en from "../../assets/locales/en/translation.json" with { type: "json" };
 import {
@@ -41,7 +46,29 @@ import {
   win32PythonConfigurationKey,
 } from "../../src/terminal/win32-doctor.js";
 
-vi.mock("../../src/modals.js", () => ({}));
+// What the settings tab opened each profile list with; a test answers for it.
+const profileLists = vi.hoisted(
+  (): {
+    readonly data: ProfileListModal.Data;
+    readonly callback: NonNullable<ProfileListModal.Options["callback"]>;
+  }[] => [],
+);
+// The modals the settings tab opens, one member each.
+const modalMocks = vi.hoisted(() => ({
+  ProfileListModal: class {
+    public constructor(
+      _context: unknown,
+      data: ProfileListModal.Data,
+      options: ProfileListModal.Options,
+    ) {
+      profileLists.push({ data, callback: options.callback ?? vi.fn() });
+    }
+    public open(): void {
+      // Nothing to show; the test calls the callback.
+    }
+  },
+}));
+vi.mock("../../src/modals.js", () => ({ ...modalMocks }));
 
 // The device platform. `null` keeps the real one; tests that set it reset it.
 const platform = vi.hoisted((): { current: Platform.All | null } => ({
@@ -1587,10 +1614,248 @@ class LoadedSettingTab extends SettingTab {
   }
 }
 
+describe("Undo under All settings after an import of older settings", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.body.replaceChildren();
+  });
+
+  // The mock's button, which Obsidian's typings do not describe.
+  interface MockButton {
+    readonly click?: () => void;
+    readonly getCta?: () => boolean;
+    readonly getTooltip?: () => string;
+  }
+
+  const { keymappingDefaultsVersion: _version, ...unversioned } =
+      Settings.DEFAULT,
+    // Settings as a device on 3.29.0 saves them: no version of the built-in
+    // keymappings, and Send to Obsidian turned to Ignore.
+    saved329: unknown = JSON.parse(
+      JSON.stringify({
+        ...unversioned,
+        keymappings: unversioned.keymappings.map((mapping) =>
+          mapping.action === "sendToObsidian"
+            ? { ...mapping, action: "ignore" }
+            : mapping,
+        ),
+      }),
+    ),
+    json = (value: unknown): unknown => JSON.parse(JSON.stringify(value));
+
+  it.each(["Reset", "an import of settings with a version"] as const)(
+    "gives back settings without a version after %s, so the next start offers the built-in keymappings",
+    async (change) => {
+      const i18n = createInstance();
+      await i18n.init({ lng: "en", resources: { en: { translation: en } } });
+      captureMainWindowRows();
+      const context = await pythonSettingsContext(),
+        // The plugin's own manager, over data.json as this version saves it.
+        settings = new TerminalSettingsManager(context, Settings.fix);
+      Object.assign(context, {
+        loadData: vi.fn().mockResolvedValue(json(Settings.DEFAULT)),
+        localSettings: {
+          value: LocalSettings.fix({ lastReadChangelogVersion: "0.0.0" }).value,
+        },
+        settings,
+        version: null,
+      });
+      Object.assign(context.language, {
+        onChangeLanguage: { listen: vi.fn().mockReturnValue(vi.fn()) },
+        value: i18n,
+      });
+      vi.spyOn(settings, "write").mockResolvedValue();
+      settings.load();
+      await vi.waitFor(() => settings.value);
+      // The buttons the tab draws, newest last; each redraw draws new ones.
+      const buttons: MockButton[] = [];
+      vi.spyOn(MainWindowRow.prototype, "addButton").mockImplementation(
+        function (this: MainWindowRow, configure) {
+          const button = new ButtonComponent(this.settingEl);
+          configure(button);
+          buttons.push(button as MockButton);
+          return this;
+        },
+      );
+      const button = (tooltip: string): MockButton | undefined =>
+        buttons.findLast((drawn) => drawn.getTooltip?.() === tooltip);
+      // Import settings from clipboard, as the command reads them.
+      await settings.read(() => saved329);
+      const before = settings.value;
+      expect(before.keymappingDefaultsVersion).toBeUndefined();
+      const tab = new LoadedSettingTab(context, loadDocumentations(context));
+      document.body.append(tab.containerEl);
+      try {
+        tab.load();
+        tab.display();
+        if (change === "Reset") {
+          button(i18n.t("settings.all-settings-actions.reset"))?.click?.();
+        } else {
+          // Settings that this version exported.
+          await settings.read(() => json(Settings.DEFAULT));
+        }
+        await vi.waitFor(() => {
+          expect(settings.value.keymappingDefaultsVersion).toBe(
+            Settings.KEYMAPPING_DEFAULTS_VERSION,
+          );
+          expect(
+            button(i18n.t("settings.all-settings-actions.undo"))?.getCta?.(),
+          ).toBe(true);
+        });
+        button(i18n.t("settings.all-settings-actions.undo"))?.click?.();
+        await vi.waitFor(() => {
+          expect(settings.value.keymappings).toStrictEqual(before.keymappings);
+        });
+        // data.json as Undo leaves it. Without a version, the next start
+        // offers the built-in keymappings again.
+        expect(json(settings.value)).toStrictEqual(json(before));
+      } finally {
+        tab.dispose();
+      }
+    },
+  );
+
+  it("does not call onInvalidData or create a recovery entry when the editor resets settings restored by Undo", async () => {
+    class ObservedSettingsManager extends TerminalSettingsManager {
+      public override readonly onInvalidData = vi
+        .fn(super.onInvalidData.bind(this))
+        .mockName("onInvalidData");
+    }
+
+    const i18n = createInstance();
+    await i18n.init({ lng: "en", resources: { en: { translation: en } } });
+    const rows = captureMainWindowRows(),
+      context = await pythonSettingsContext(),
+      settings = new ObservedSettingsManager(context, Settings.fix),
+      localSettings = {
+        value: LocalSettings.fix({ lastReadChangelogVersion: "0.0.0" }).value,
+        mutate: vi.fn(
+          async (
+            mutate: (
+              value: ReturnType<typeof LocalSettings.fix>["value"],
+            ) => unknown,
+          ): Promise<void> => {
+            await mutate(localSettings.value);
+          },
+        ),
+        write: vi.fn().mockResolvedValue(undefined),
+      };
+    Object.assign(context, {
+      loadData: vi.fn().mockResolvedValue(json(Settings.DEFAULT)),
+      localSettings,
+      settings,
+      version: null,
+    });
+    Object.assign(context.language, {
+      onChangeLanguage: { listen: vi.fn().mockReturnValue(vi.fn()) },
+      value: i18n,
+    });
+    vi.spyOn(settings, "write").mockResolvedValue();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    settings.load();
+    await settings.onLoaded;
+    const buttons: MockButton[] = [];
+    vi.spyOn(MainWindowRow.prototype, "addButton").mockImplementation(function (
+      this: MainWindowRow,
+      configure,
+    ) {
+      const button = new ButtonComponent(this.settingEl);
+      configure(button);
+      buttons.push(button as MockButton);
+      return this;
+    });
+    const button = (tooltip: string): MockButton | undefined =>
+        buttons.findLast((drawn) => drawn.getTooltip?.() === tooltip),
+      open = vi.spyOn(EditDataModal.prototype, "open");
+    await settings.read(() => saved329);
+    const before = settings.value,
+      tab = new LoadedSettingTab(context, loadDocumentations(context));
+    expect(before).not.toHaveProperty("keymappingDefaultsVersion");
+    expect(settings.onInvalidData).not.toHaveBeenCalled();
+    expect(Object.keys(localSettings.value.recovery)).toHaveLength(0);
+    document.body.append(tab.containerEl);
+    try {
+      tab.load();
+      tab.display();
+      button(i18n.t("settings.all-settings-actions.reset"))?.click?.();
+      await vi.waitFor(() => {
+        expect(settings.value.keymappingDefaultsVersion).toBe(
+          Settings.KEYMAPPING_DEFAULTS_VERSION,
+        );
+        expect(
+          button(i18n.t("settings.all-settings-actions.undo"))?.getCta?.(),
+        ).toBe(true);
+      });
+      button(i18n.t("settings.all-settings-actions.undo"))?.click?.();
+      await vi.waitFor(() => {
+        expect(settings.value.keymappings).toStrictEqual(before.keymappings);
+      });
+      expect(settings.value.keymappingDefaultsVersion).toBeUndefined();
+      button(i18n.t("settings.all-settings-actions.edit"))?.click?.();
+      expect(open).toHaveBeenCalledOnce();
+      const reset = rows.get(i18n.t("components.edit-data.data"))?.reset;
+      expect(reset).not.toBeNull();
+      expect(reset).toBeDefined();
+      const mutate = vi.spyOn(settings, "mutate");
+      reset?.extraSettingsEl.click();
+      await vi.waitFor(() => {
+        expect(mutate).toHaveBeenCalled();
+      });
+      await Promise.all(mutate.mock.results.map(({ value }): unknown => value));
+      // Settle again to include any later-arriving mutation.
+      await Promise.all(mutate.mock.results.map(({ value }): unknown => value));
+      // The text-area mock is inert. Exercise the supplied fixer and the manager's
+      // invalid-data path directly, preserving the own undefined property that a
+      // JSON round trip would drop.
+      expect(Settings.fix(settings.value).value).toStrictEqual(before);
+      await settings.read(() => settings.value);
+      expect.soft(settings.onInvalidData).toHaveBeenCalledTimes(0);
+      expect.soft(Object.keys(localSettings.value.recovery)).toHaveLength(0);
+    } finally {
+      const modal = open.mock.contexts[0];
+      if (modal instanceof EditDataModal) modal.close();
+      tab.dispose();
+      settings.unload();
+    }
+  });
+});
+
 describe("settings tab descriptions", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     document.body.replaceChildren();
+  });
+
+  it("says which keys reach Obsidian while a terminal is focused", async () => {
+    const i18n = createInstance();
+    await i18n.init({ lng: "en", resources: { en: { translation: en } } });
+    const rows = captureMainWindowRows(),
+      context = await pythonSettingsContext();
+    Object.assign(context, {
+      localSettings: {
+        value: LocalSettings.fix({ lastReadChangelogVersion: "0.0.0" }).value,
+      },
+      version: null,
+    });
+    Object.assign(context.language, {
+      onChangeLanguage: { listen: vi.fn().mockReturnValue(vi.fn()) },
+      value: i18n,
+    });
+    const tab = new LoadedSettingTab(context, loadDocumentations(context)),
+      description = (name: string): string | undefined =>
+        rows.get(name)?.descEl.textContent;
+    document.body.append(tab.containerEl);
+    try {
+      tab.load();
+      expect(description(i18n.t("settings.intercept-keys-when-focused"))).toBe(
+        `${i18n.t("settings.intercept-keys-when-focused-description")} Keys whose keymapping is 'Send to Obsidian' are the exception: Obsidian runs their hotkeys.`,
+      );
+      expect(description(i18n.t("settings.keymappings"))).toMatch(
+        / The action 'Send to Obsidian' leaves the key to Obsidian, which runs its hotkey for it\. The built-in Ctrl\+P on Windows and Command\+P on macOS use it to open the command palette\.$/u,
+      );
+    } finally {
+      tab.dispose();
+    }
   });
 
   it.each(["main", "Settings"])(
@@ -1685,6 +1950,750 @@ describe("settings tab descriptions", () => {
         expect(beta?.querySelector("a")?.getAttribute("href")).toBe(
           BETA.feedback,
         );
+      } finally {
+        tab.dispose();
+      }
+    },
+  );
+});
+
+/**
+ * The whole settings tab, with this device's store `local` (`null`: a fresh
+ * one). `edit` presses the Edit button of Profiles and returns what the
+ * profile list was opened with.
+ */
+async function drawProfiles(initial: unknown, local: unknown = null) {
+  const i18n = await createI18n(
+    PluginLocales.RESOURCES,
+    PluginLocales.FORMATTERS,
+    { lng: "en", fallbackLng: "en" },
+  );
+  const rows = captureMainWindowRows(),
+    context = await pythonSettingsContext(initial);
+  Object.assign(context, { version: null });
+  Object.assign(context.localSettings, {
+    value: LocalSettings.fix(local).value,
+  });
+  Object.assign(context.language, {
+    onChangeLanguage: { listen: vi.fn().mockReturnValue(vi.fn()) },
+    value: i18n,
+  });
+  // The value is stored as given; the next start's fixer is the test's.
+  vi.spyOn(context.settings, "mutate").mockImplementation(async (mutate) => {
+    const value = cloneAsWritable(context.settings.value);
+    await mutate(value);
+    Object.assign(context.settings, { value });
+  });
+  // The button of each row, kept as the row keeps it.
+  const buttons = new Map<MainWindowRow, ButtonComponent>();
+  vi.spyOn(MainWindowRow.prototype, "addButton").mockImplementation(function (
+    this: MainWindowRow,
+    configure,
+  ) {
+    const button = buttons.get(this) ?? new ButtonComponent(this.settingEl);
+    buttons.set(this, button);
+    configure(button);
+    return this;
+  });
+  const addOption = vi.spyOn(DropdownComponent.prototype, "addOption"),
+    write = vi.spyOn(context.settings, "write"),
+    writeLocal = vi.spyOn(context.localSettings, "write"),
+    tab = new LoadedSettingTab(context, loadDocumentations(context));
+  document.body.append(tab.containerEl);
+  tab.load();
+  const named = (name: string): MainWindowRow => {
+      const row = rows.get(name);
+      if (!row) throw new Error(`Missing row ${name}`);
+      return row;
+    },
+    profilesRow = named(i18n.t("settings.profiles")),
+    defaultRow = named(i18n.t("settings.default-profile")),
+    { reset } = profilesRow;
+  if (!reset) throw new Error("Missing profiles reset button");
+  return {
+    context,
+    defaultRow,
+    reset,
+    tab,
+    write,
+    writeLocal,
+    /** The options of the Default profile row as last drawn, in order. */
+    defaultOptions: (): [string, string][] => {
+      const drawn = addOption.mock.calls.filter(
+        (_call, index) =>
+          addOption.mock.contexts[index] === defaultRow.dropdown,
+      );
+      return drawn
+        .slice(drawn.findLastIndex(([value]) => value === ""))
+        .map(([value, display]) => [value, display]);
+    },
+    edit: () => {
+      // The mock's click; Obsidian's button has none.
+      (
+        buttons.get(profilesRow) as { click?: () => void } | undefined
+      )?.click?.();
+      const opened = profileLists.at(-1);
+      if (!opened) throw new Error("Profile list did not open");
+      return {
+        data: opened.data,
+        // As the list modal: each edit sends copies of its profiles.
+        send: async (data: ProfileListModal.Data) =>
+          opened.callback(cloneAsWritable(data)),
+      };
+    },
+    /** data.json as the next start reads it. */
+    nextStart: () =>
+      Settings.fix(JSON.parse(JSON.stringify(context.settings.value))),
+  };
+}
+
+describe("default profile after profile list edits", () => {
+  afterEach(() => {
+    profileLists.length = 0;
+    vi.restoreAllMocks();
+    document.body.replaceChildren();
+  });
+
+  // data.json with one of the user's own profiles as the default.
+  const custom = {
+    defaultProfile: "mine",
+    profiles: {
+      mine: { ...Settings.Profile.DEFAULTS.integrated, name: "Mine" },
+      other: { ...Settings.Profile.DEFAULTS.integrated, name: "Other" },
+    },
+  };
+
+  it("clears the default profile when the profile list deletes it", async () => {
+    const { context, edit, nextStart, tab } = await drawProfiles(custom);
+    try {
+      const { data, send } = edit();
+      await send({
+        defaultProfile: data.defaultProfile,
+        entries: data.entries.filter(([id]) => id !== "mine"),
+      });
+      expect(context.settings.value.defaultProfile).toBeNull();
+      expect(nextStart().valid).toBe(true);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("keeps it cleared when the same list sends its next edit", async () => {
+    const { context, edit, nextStart, tab } = await drawProfiles(custom);
+    try {
+      const { data, send } = edit();
+      // The list modal keeps sending the default it was opened with.
+      const [, other] = data.entries.find(([id]) => id === "other") ?? [];
+      if (!other) throw new Error("Missing profile other");
+      await send({
+        defaultProfile: data.defaultProfile,
+        entries: [["other", other]],
+      });
+      await send({
+        defaultProfile: data.defaultProfile,
+        entries: [["other", { ...other, name: "Renamed" }]],
+      });
+      expect(context.settings.value.profiles["other"]?.name).toBe("Renamed");
+      expect(context.settings.value.defaultProfile).toBeNull();
+      expect(nextStart().valid).toBe(true);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("keeps the default profile when the list deletes another one", async () => {
+    const { context, edit, nextStart, tab } = await drawProfiles(custom);
+    try {
+      const { data, send } = edit();
+      await send({
+        defaultProfile: data.defaultProfile,
+        entries: data.entries.filter(([id]) => id !== "other"),
+      });
+      expect(context.settings.value.defaultProfile).toBe("mine");
+      expect(nextStart().valid).toBe(true);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("clears the default profile when Reset removes it", async () => {
+    const { context, nextStart, reset, tab } = await drawProfiles(custom);
+    try {
+      reset.extraSettingsEl.click();
+      await vi.waitFor(() => {
+        expect(context.settings.value.profiles).not.toHaveProperty("mine");
+      });
+      expect(context.settings.value.defaultProfile).toBeNull();
+      expect(nextStart().valid).toBe(true);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("keeps a preset default that Reset brings back", async () => {
+    const { context, nextStart, reset, tab } = await drawProfiles({
+      defaultProfile: "linuxIntegratedDefault",
+      profiles: {
+        ...custom.profiles,
+        linuxIntegratedDefault:
+          Settings.DEFAULT.profiles["linuxIntegratedDefault"],
+      },
+    });
+    try {
+      reset.extraSettingsEl.click();
+      await vi.waitFor(() => {
+        expect(context.settings.value.profiles).not.toHaveProperty("mine");
+      });
+      expect(context.settings.value.defaultProfile).toBe(
+        "linuxIntegratedDefault",
+      );
+      expect(nextStart().valid).toBe(true);
+    } finally {
+      tab.dispose();
+    }
+  });
+});
+
+describe("default profile and profile order of this device", () => {
+  beforeEach(() => {
+    platform.current = "darwin";
+  });
+  afterEach(() => {
+    platform.current = null;
+    profileLists.length = 0;
+    vi.restoreAllMocks();
+    document.body.replaceChildren();
+  });
+
+  const integrated = Settings.Profile.DEFAULTS.integrated,
+    // data.json as a Windows device that chose pwsh last wrote it; this
+    // device is a Mac.
+    synced = {
+      defaultProfile: "pwsh",
+      profiles: {
+        pwsh: { ...integrated, name: "pwsh", platforms: { win32: true } },
+        zsh: { ...integrated, name: "zsh", platforms: { darwin: true } },
+        bash: { ...integrated, name: "bash", platforms: { darwin: true } },
+      },
+    };
+
+  it("does not show a default that another device chose", async () => {
+    const { defaultRow, tab } = await drawProfiles(synced);
+    try {
+      expect(defaultRow.dropdown?.getValue()).toBe("");
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("keeps the default in data.json when this device chooses its own", async () => {
+    const { context, defaultRow, tab, write } = await drawProfiles(synced);
+    try {
+      defaultRow.choose("zsh");
+      await vi.waitFor(() => {
+        expect([
+          context.settings.value.defaultProfile,
+          context.localSettings.value.defaultProfile,
+        ]).toContain("zsh");
+      });
+      // The Windows device still finds its pwsh in data.json.
+      expect(context.settings.value.defaultProfile).toBe("pwsh");
+      expect(context.localSettings.value.defaultProfile).toBe("zsh");
+      expect(write).not.toHaveBeenCalled();
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("keeps the key order of data.json when this device reorders", async () => {
+    const { context, edit, tab } = await drawProfiles(synced);
+    try {
+      const { data, send } = edit();
+      await send({
+        defaultProfile: data.defaultProfile,
+        entries: [...data.entries].reverse(),
+      });
+      expect(Object.keys(context.settings.value.profiles)).toEqual([
+        "pwsh",
+        "zsh",
+        "bash",
+      ]);
+      expect(context.localSettings.value.profileOrder).toEqual([
+        "bash",
+        "zsh",
+        "pwsh",
+      ]);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("does not save data.json after a move, and redraws the default profile options in the new order", async () => {
+    const { defaultOptions, edit, tab, write, writeLocal } =
+      await drawProfiles(synced);
+    try {
+      expect(defaultOptions().map(([id]) => id)).toEqual([
+        "",
+        "pwsh",
+        "zsh",
+        "bash",
+      ]);
+      const { data, send } = edit();
+      await send({
+        defaultProfile: data.defaultProfile,
+        entries: [...data.entries].reverse(),
+      });
+      expect(write).not.toHaveBeenCalled();
+      expect(writeLocal).toHaveBeenCalledTimes(1);
+      expect(defaultOptions()).toEqual([
+        ["", "(Unselected)"],
+        ["bash", "Integrated: bash"],
+        ["zsh", "Integrated: zsh"],
+        ["pwsh", "(Incompatible) Integrated: pwsh"],
+      ]);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("adds a new profile at the end of data.json, which keeps the keys it had", async () => {
+    const { context, edit, tab, write } = await drawProfiles(synced),
+      keys = Object.keys(context.settings.value);
+    try {
+      const { data, send } = edit();
+      await send({
+        defaultProfile: data.defaultProfile,
+        entries: [["new", { ...integrated, name: "new" }], ...data.entries],
+      });
+      expect(write).toHaveBeenCalledTimes(1);
+      expect(Object.keys(context.settings.value)).toEqual(keys);
+      expect(Object.keys(context.settings.value.profiles)).toEqual([
+        "pwsh",
+        "zsh",
+        "bash",
+        "new",
+      ]);
+      expect(context.settings.value.defaultProfile).toBe("pwsh");
+      expect(context.localSettings.value.profileOrder).toEqual([
+        "new",
+        "pwsh",
+        "zsh",
+        "bash",
+      ]);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("drops a deleted profile from data.json and from this device's order", async () => {
+    const { context, edit, nextStart, tab } = await drawProfiles(synced, {
+      lastReadChangelogVersion: "0.0.0",
+      profileOrder: ["bash", "zsh", "pwsh"],
+    });
+    try {
+      const { data, send } = edit();
+      await send({
+        defaultProfile: data.defaultProfile,
+        entries: data.entries.filter(([id]) => id !== "zsh"),
+      });
+      expect(Object.keys(context.settings.value.profiles)).toEqual([
+        "pwsh",
+        "bash",
+      ]);
+      expect(context.localSettings.value.profileOrder).toEqual([
+        "bash",
+        "pwsh",
+      ]);
+      expect(nextStart().valid).toBe(true);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("stores a default marked in the profile list on this device only", async () => {
+    const { context, edit, tab, write } = await drawProfiles(synced);
+    try {
+      const { data, send } = edit();
+      await send({
+        defaultProfile: "bash" as Settings.DefaultProfile,
+        entries: data.entries,
+      });
+      expect(context.localSettings.value.defaultProfile).toBe("bash");
+      expect(context.settings.value.defaultProfile).toBe("pwsh");
+      expect(write).not.toHaveBeenCalled();
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("clears this device's default when the list deletes it, and on the list's next edit", async () => {
+    const { context, edit, tab } = await drawProfiles(synced, {
+      lastReadChangelogVersion: "0.0.0",
+      defaultProfile: "zsh",
+    });
+    try {
+      const { data, send } = edit();
+      expect(data.defaultProfile).toBe("zsh");
+      const without = data.entries.filter(([id]) => id !== "zsh");
+      await send({ defaultProfile: data.defaultProfile, entries: without });
+      expect(context.localSettings.value.defaultProfile).toBeNull();
+      // The list modal keeps sending the default it was opened with.
+      await send({
+        defaultProfile: data.defaultProfile,
+        entries: [...without].reverse(),
+      });
+      expect(context.localSettings.value.defaultProfile).toBeNull();
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("brings back data.json with Undo after the list deletes a profile, but not this device's choice", async () => {
+    const { context, defaultOptions, defaultRow, edit, tab } =
+      await drawProfiles(synced, {
+        lastReadChangelogVersion: "0.0.0",
+        defaultProfile: "zsh",
+        profileOrder: ["bash", "zsh", "pwsh"],
+      });
+    try {
+      // Undo under All settings goes back to data.json as the tab showed it;
+      // it learns of changes from the settings store, as in the library.
+      type Listener = readonly [
+        (value: Settings) => unknown,
+        (cur: unknown, prev: unknown, value: Settings) => unknown,
+      ];
+      const listeners: Listener[] = [];
+      vi.spyOn(context.settings, "onMutate").mockImplementation(
+        (accessor, callback) => {
+          const listener: Listener = [accessor, callback];
+          listeners.push(listener);
+          return () => {
+            listeners.splice(listeners.indexOf(listener), 1);
+          };
+        },
+      );
+      vi.spyOn(context.settings, "mutate").mockImplementation(
+        async (mutate) => {
+          const prev = context.settings.value,
+            value = cloneAsWritable(prev);
+          await mutate(value);
+          Object.assign(context.settings, { value });
+          for (const [accessor, callback] of [...listeners]) {
+            const before = accessor(prev),
+              after = accessor(value);
+            if (JSON.stringify(before) !== JSON.stringify(after)) {
+              await callback(after, before, value);
+            }
+          }
+        },
+      );
+      // The mock's button, which Obsidian's typings do not describe.
+      interface MockButton {
+        readonly click?: () => void;
+        readonly getCta?: () => boolean;
+        readonly getTooltip?: () => string;
+      }
+      const undoTooltip = context.language.value.t(
+          "settings.all-settings-actions.undo",
+        ),
+        undoButtons: MockButton[] = [];
+      vi.spyOn(MainWindowRow.prototype, "addButton").mockImplementation(
+        function (this: MainWindowRow, configure) {
+          const button = new ButtonComponent(this.settingEl),
+            mock = button as MockButton;
+          configure(button);
+          if (mock.getTooltip?.() === undoTooltip) undoButtons.push(mock);
+          return this;
+        },
+      );
+      tab.display();
+      const { data, send } = edit();
+      await send({
+        defaultProfile: data.defaultProfile,
+        entries: data.entries.filter(([id]) => id !== "zsh"),
+      });
+      expect(defaultRow.dropdown?.getValue()).toBe("");
+      const undo = undoButtons.at(-1);
+      await vi.waitFor(() => {
+        expect(undo?.getCta?.()).toBe(true);
+      });
+      undo?.click?.();
+      await vi.waitFor(() => {
+        expect(Object.keys(context.settings.value.profiles)).toEqual([
+          "pwsh",
+          "zsh",
+          "bash",
+        ]);
+      });
+      expect(context.settings.value.defaultProfile).toBe("pwsh");
+      // Undo covers data.json only. This device's default and order stay as
+      // the deletion left them, so the profile comes back after the ones
+      // this device ordered, and is not its default.
+      expect(context.localSettings.value).toMatchObject({
+        defaultProfile: null,
+        profileOrder: ["bash", "pwsh"],
+      });
+      expect(defaultRow.dropdown?.getValue()).toBe("");
+      expect(defaultOptions().map(([id]) => id)).toEqual([
+        "",
+        "bash",
+        "pwsh",
+        "zsh",
+      ]);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("keeps data.json in its order through a series of edits in one list", async () => {
+    const { context, edit, tab } = await drawProfiles(synced);
+    try {
+      const { data, send } = edit(),
+        [pwsh, zsh, bash] = data.entries;
+      if (!pwsh || !zsh || !bash) throw new Error("Missing profiles");
+      const added = ["new", { ...integrated, name: "new" }] as const;
+      for (const entries of [
+        [zsh, pwsh, bash],
+        [bash, zsh, pwsh],
+        [bash, pwsh],
+        [added, bash, pwsh],
+      ]) {
+        await send({ defaultProfile: data.defaultProfile, entries });
+      }
+      expect(Object.keys(context.settings.value.profiles)).toEqual([
+        "pwsh",
+        "bash",
+        "new",
+      ]);
+      expect(context.localSettings.value.profileOrder).toEqual([
+        "new",
+        "bash",
+        "pwsh",
+      ]);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("opens the profile list in this device's order, with this device's default", async () => {
+    const { edit, tab } = await drawProfiles(synced, {
+      lastReadChangelogVersion: "0.0.0",
+      defaultProfile: "bash",
+      profileOrder: ["bash", "constructor", "__proto__", "pwsh"],
+    });
+    try {
+      const { data } = edit();
+      expect(data.defaultProfile).toBe("bash");
+      expect(data.entries.map(([id]) => id)).toEqual(["bash", "pwsh", "zsh"]);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("reads a store that 3.29.0 wrote as no choice, in the order of data.json", async () => {
+    const { defaultOptions, defaultRow, edit, tab } = await drawProfiles(
+      synced,
+      { lastReadChangelogVersion: "0.0.0" },
+    );
+    try {
+      expect(defaultRow.dropdown?.getValue()).toBe("");
+      expect(defaultOptions().map(([id]) => id)).toEqual([
+        "",
+        "pwsh",
+        "zsh",
+        "bash",
+      ]);
+      const { data } = edit();
+      expect(data.defaultProfile).toBeNull();
+      expect(data.entries.map(([id]) => id)).toEqual(["pwsh", "zsh", "bash"]);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("shows the placeholder when this device's default was deleted on another device", async () => {
+    const { defaultRow, tab } = await drawProfiles(synced, {
+      lastReadChangelogVersion: "0.0.0",
+      defaultProfile: "gone",
+    });
+    try {
+      expect(defaultRow.dropdown?.getValue()).toBe("");
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("shows this device's default when it does not run here", async () => {
+    const { defaultRow, tab } = await drawProfiles(synced, {
+      lastReadChangelogVersion: "0.0.0",
+      defaultProfile: "pwsh",
+    });
+    try {
+      // Edited on another device to run only on Windows.
+      expect(defaultRow.dropdown?.getValue()).toBe("pwsh");
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("keeps this device's order of ids such as 2 and 10", async () => {
+    const { defaultOptions, tab } = await drawProfiles(
+      {
+        profiles: {
+          10: { ...integrated, name: "ten" },
+          2: { ...integrated, name: "two" },
+        },
+      },
+      { lastReadChangelogVersion: "0.0.0", profileOrder: ["10", "2"] },
+    );
+    try {
+      expect(defaultOptions().map(([id]) => id)).toEqual(["", "10", "2"]);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("stores nothing for a value it does not offer", async () => {
+    const { context, defaultRow, tab } = await drawProfiles(synced);
+    try {
+      defaultRow.choose("constructor");
+      await vi.waitFor(() => {
+        expect(defaultRow.dropdown?.getValue()).toBe("");
+      });
+      expect(context.localSettings.value.defaultProfile).toBeNull();
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("resets this device's default only", async () => {
+    const { context, defaultRow, tab, write, writeLocal } = await drawProfiles(
+      synced,
+      { lastReadChangelogVersion: "0.0.0", defaultProfile: "zsh" },
+    );
+    try {
+      defaultRow.reset?.extraSettingsEl.click();
+      await vi.waitFor(() => {
+        expect(context.localSettings.value.defaultProfile).toBeNull();
+      });
+      expect(defaultRow.dropdown?.getValue()).toBe("");
+      expect(context.settings.value.defaultProfile).toBe("pwsh");
+      expect(write).not.toHaveBeenCalled();
+      expect(writeLocal).toHaveBeenCalledTimes(1);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it("keeps data.json as a device on 3.29.0 reads it through every edit, and saves it only when it changed", async () => {
+    const { context, defaultRow, edit, nextStart, reset, tab, write } =
+      await drawProfiles(synced, {
+        lastReadChangelogVersion: "0.0.0",
+        defaultProfile: "zsh",
+      });
+    try {
+      const keys = Object.keys(context.settings.value).sort();
+      let saved = JSON.stringify(context.settings.value),
+        writes = 0;
+      const check = (step: string, changes: boolean): void => {
+          const now = JSON.stringify(context.settings.value);
+          expect([step, now !== saved]).toEqual([step, changes]);
+          // The fixer of 3.29.0 finds nothing to change.
+          expect([step, nextStart().valid]).toEqual([step, true]);
+          expect([step, Object.keys(context.settings.value).sort()]).toEqual([
+            step,
+            keys,
+          ]);
+          if (now !== saved) writes += 1;
+          saved = now;
+          expect([step, write.mock.calls.length]).toEqual([step, writes]);
+        },
+        sendList = async (
+          change: (
+            data: ProfileListModal.Data,
+          ) => Partial<ProfileListModal.Data>,
+        ): Promise<void> => {
+          const { data, send } = edit();
+          await send({ ...data, ...change(data) });
+        };
+      defaultRow.choose("bash");
+      await vi.waitFor(() => {
+        expect(context.localSettings.value.defaultProfile).toBe("bash");
+      });
+      check("choose a default", false);
+      defaultRow.reset?.extraSettingsEl.click();
+      await vi.waitFor(() => {
+        expect(context.localSettings.value.defaultProfile).toBeNull();
+      });
+      check("reset the default", false);
+      await sendList(({ entries }) => ({ entries: [...entries].reverse() }));
+      check("move", false);
+      await sendList(() => ({
+        defaultProfile: "zsh" as Settings.DefaultProfile,
+      }));
+      check("mark as default", false);
+      await sendList(({ entries }) => ({
+        entries: entries.map(([id, profile]) => [
+          id,
+          id === "bash" ? { ...profile, name: "Bash" } : profile,
+        ]),
+      }));
+      check("rename", true);
+      await sendList(({ entries }) => ({
+        entries: [["fish", { ...integrated, name: "fish" }], ...entries],
+      }));
+      check("add", true);
+      await sendList(({ entries }) => ({
+        entries: entries.filter(([id]) => id !== "pwsh"),
+      }));
+      check("delete the default of data.json", true);
+      expect(context.settings.value.defaultProfile).toBeNull();
+      reset.extraSettingsEl.click();
+      await vi.waitFor(() => {
+        expect(context.settings.value.profiles).toEqual(
+          Settings.DEFAULT.profiles,
+        );
+      });
+      check("reset the profiles", true);
+      expect(writes).toBe(4);
+    } finally {
+      tab.dispose();
+    }
+  });
+
+  it.each([
+    ["zsh", null],
+    ["darwinIntegratedDefault", "darwinIntegratedDefault"],
+  ])(
+    "resets the profiles, this device's order and its default %s (kept: %s)",
+    async (defaultProfile, kept) => {
+      const { context, reset, tab, write } = await drawProfiles(
+        {
+          ...synced,
+          profiles: {
+            ...synced.profiles,
+            darwinIntegratedDefault:
+              Settings.DEFAULT.profiles["darwinIntegratedDefault"],
+          },
+        },
+        {
+          lastReadChangelogVersion: "0.0.0",
+          defaultProfile,
+          profileOrder: ["bash", "darwinIntegratedDefault"],
+        },
+      );
+      try {
+        reset.extraSettingsEl.click();
+        await vi.waitFor(() => {
+          expect(context.localSettings.value.profileOrder).toEqual([]);
+        });
+        expect(context.localSettings.value.defaultProfile).toBe(kept);
+        expect(Object.keys(context.settings.value.profiles)).toEqual(
+          Object.keys(Settings.DEFAULT.profiles),
+        );
+        // pwsh is gone, so data.json's default is too.
+        expect(context.settings.value.defaultProfile).toBeNull();
+        expect(write).toHaveBeenCalledTimes(1);
       } finally {
         tab.dispose();
       }

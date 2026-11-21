@@ -19,6 +19,7 @@ import ntpath
 import os
 import shutil
 import signal
+import struct
 import subprocess
 import sys
 import threading
@@ -218,6 +219,1054 @@ def test_main_is_not_implemented_off_windows() -> None:
     """The fallback ``main`` should refuse to run on other platforms."""
     with pytest.raises(NotImplementedError):
         _MODULE.main()
+
+
+# ---------------------------------------------------------------------------
+# Session-end sweep: the platform-free decisions
+# ---------------------------------------------------------------------------
+
+
+def _record(
+    pid: int, parent_pid: int | None, subsystem: str, created: int | None = None
+) -> Any:
+    """Build one descendant record; ``created`` defaults to the PID's order."""
+    return _MODULE.DescendantRecord(
+        pid, parent_pid, pid if created is None else created, subsystem
+    )
+
+
+def _consoles(*pids: int) -> Callable[[Sequence[int]], Mapping[int, str]]:
+    """Return a console check that gives exactly ``pids`` a console of their own.
+
+    Every other process asked about has no console at all.
+    """
+    return lambda asked: {pid: "own" if pid in pids else "none" for pid in asked}
+
+
+def test_sweep_ends_console_programs_without_a_live_gui_ancestor() -> None:
+    """A console program ends unless a running GUI program is above it."""
+    records = [
+        # The shell: its parent is not a record.
+        _record(10, 1, "console"),
+        # A hidden-console helper the shell started.
+        _record(20, 10, "console"),
+        # An editor started from the shell, with a console child and a grandchild.
+        _record(30, 10, "gui"),
+        _record(40, 30, "console"),
+        _record(50, 40, "console"),
+        # An orphan: its launcher has exited.
+        _record(60, 999, "console"),
+    ]
+    ended = _MODULE.select_descendants_to_end(records, _consoles(10, 20, 40, 50, 60))
+    assert ended == [10, 20, 60]
+
+
+def test_sweep_does_not_follow_a_reused_parent_pid() -> None:
+    """A parent created after its child is a recycled PID, not an ancestor."""
+    records = [_record(30, 1, "gui", created=5), _record(20, 30, "console", created=2)]
+    assert _MODULE.select_descendants_to_end(records, _consoles(20)) == [20]
+
+
+def test_sweep_keeps_gui_unknown_and_console_less_programs() -> None:
+    """GUI images, unreadable images, detached programs and unanswered PIDs stay.
+
+    So does a program attached to the session's pseudoconsole: its console
+    host closes it with the pseudoconsole.
+    """
+    records = [
+        _record(10, 1, "unknown"),
+        _record(20, 1, "gui"),
+        _record(30, 1, "console"),
+        _record(40, 1, "console"),
+        _record(50, 1, "console"),
+    ]
+    # 30 has no console, 50 is attached to the pseudoconsole; the check says
+    # nothing about 40.
+    answers = {30: "none", 50: "attached"}
+    assert _MODULE.select_descendants_to_end(records, lambda _pids: answers) == []
+
+
+def test_sweep_leaves_attached_programs_to_the_console_host() -> None:
+    """A program attached to the pseudoconsole is not swept, nor does it shelter.
+
+    The console host closes it with the pseudoconsole and gives it the usual
+    time to answer. What it left in a hidden console of its own is the leak
+    the sweep exists for, so that still ends.
+    """
+    records = [
+        # The shell, attached to the pseudoconsole.
+        _record(10, 1, "console"),
+        # An agent CLI running in the terminal, attached as well.
+        _record(20, 10, "console"),
+        # A helper the agent left in a hidden console of its own.
+        _record(30, 20, "console"),
+    ]
+    answers = {10: "attached", 20: "attached", 30: "own"}
+    assert _MODULE.select_descendants_to_end(records, lambda _pids: answers) == [30]
+
+
+def test_sweep_asks_the_console_check_about_console_images_only() -> None:
+    """Every console image is asked about once, GUI and unreadable ones never.
+
+    A console image under a GUI program is asked about as well: its answer
+    decides whether it shelters what runs under it.
+    """
+    asked: list[list[int]] = []
+
+    def probe(pids: Sequence[int]) -> Mapping[int, str]:
+        """Record the question and give every process a console of its own."""
+        asked.append(list(pids))
+        return {pid: "own" for pid in pids}
+
+    records = [
+        _record(10, 1, "console"),
+        _record(20, 1, "gui"),
+        _record(30, 20, "console"),
+        _record(40, 1, "unknown"),
+    ]
+    assert _MODULE.select_descendants_to_end(records, probe) == [10]
+    assert asked == [[10, 30]]
+    probe_mock = Mock()
+    assert _MODULE.select_descendants_to_end([_record(20, 1, "gui")], probe_mock) == []
+    probe_mock.assert_not_called()
+
+
+def test_sweep_survives_a_parent_cycle() -> None:
+    """Two records naming each other as parent are both ended, once."""
+    records = [_record(10, 20, "console"), _record(20, 10, "console")]
+    assert _MODULE.select_descendants_to_end(records, _consoles(10, 20)) == [10, 20]
+
+
+def test_sweep_counts_a_parent_from_the_same_clock_tick_as_an_ancestor() -> None:
+    """A GUI parent created in the same clock tick as its console child covers it.
+
+    Creation times are only as fine as the system clock, so a GUI program and
+    a console program it starts at once can share one. Only a parent created
+    after its child is a recycled PID.
+    """
+    records = [_record(30, 1, "gui", created=7), _record(40, 30, "console", created=7)]
+    assert _MODULE.select_descendants_to_end(records, _consoles(40)) == []
+
+
+def test_sweep_ends_only_candidates_the_console_check_confirms() -> None:
+    """An answer about a process that is no candidate ends nothing.
+
+    A probe that also reports a console for a GUI program, or for a console
+    program under one, must not get either of them ended.
+    """
+    records = [
+        _record(10, 1, "console"),
+        _record(20, 1, "gui"),
+        _record(30, 20, "console"),
+    ]
+    answers = {10: "own", 20: "own", 30: "own"}
+    assert _MODULE.select_descendants_to_end(records, lambda _pids: answers) == [10]
+
+
+def test_sweep_keeps_a_program_whose_parent_is_not_known_yet() -> None:
+    """A process listed without a parent this round is kept until the next.
+
+    The job lists a process that the snapshot does not show only when it is
+    too new to judge or already gone; neither is an orphan to end.
+    """
+    records = [_record(10, 1, "console"), _record(20, None, "console")]
+    assert _MODULE.select_descendants_to_end(records, _consoles(10, 20)) == [10]
+
+
+def test_sweep_keeps_what_a_console_less_program_runs() -> None:
+    """A detached program keeps the console programs it runs itself.
+
+    Detached programs stay because daemons that serve other applications must
+    go on working. A daemon whose workers end with the session does not: the
+    worker in a hidden console under it stays as well.
+    """
+    records = [
+        # The shell.
+        _record(10, 1, "console"),
+        # A daemon it started detached, without a console.
+        _record(20, 10, "console"),
+        # The daemon's worker, in a hidden console of its own.
+        _record(30, 20, "console"),
+    ]
+    assert _MODULE.select_descendants_to_end(records, _consoles(10, 30)) == [10]
+
+
+def test_sweep_keeps_a_program_with_a_window_and_what_runs_under_it() -> None:
+    """A console program that shows a window of its own stays, with its helpers.
+
+    A Tk or Qt app run as ``start python app.py`` is a console image in a
+    console of its own that shows a window: it keeps running like a GUI
+    program, and so does what it runs. So does the console program it runs
+    under, here one judged to have a console of its own, as every program is
+    while the pseudoconsole's host is unknown.
+    """
+    records = [
+        # The shell.
+        _record(10, 1, "console"),
+        # A console image showing a window, in a console of its own.
+        _record(20, 10, "console"),
+        # A hidden-console helper it runs.
+        _record(30, 20, "console"),
+        # A hidden-console helper the shell left behind.
+        _record(40, 10, "console"),
+    ]
+    ended = _MODULE.select_descendants_to_end(
+        records, _consoles(10, 20, 30, 40), windowed={20}
+    )
+    assert ended == [40]
+
+
+def test_sweep_keeps_the_launcher_of_a_program_that_shows_a_window() -> None:
+    """``start python app.py`` through a launcher keeps the Tk app running.
+
+    A venv's ``python.exe``, ``py.exe``, the install manager's ``python``
+    alias and pip's and uv's entry-point executables are console programs
+    that run the real interpreter under them and wait for it, holding it in
+    a job that kills it when the launcher ends
+    (``JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE``). The launcher is the first
+    program in the new console, so the console window names the launcher;
+    the Tk window names the interpreter. Ending the launcher ends the app.
+    """
+    records = [
+        # The shell, attached to the pseudoconsole.
+        _record(10, 1, "console"),
+        # The launcher, first program in a console window of its own.
+        _record(20, 10, "console"),
+        # The interpreter it waits for, in the same console, showing a Tk window.
+        _record(30, 20, "console"),
+    ]
+    answers = {10: "attached", 20: "own", 30: "own"}
+    windowed = _MODULE.windowed_programs(
+        [(20, "ConsoleWindowClass"), (30, "TkTopLevel")]
+    )
+    ended = _MODULE.select_descendants_to_end(
+        records, lambda _pids: answers, windowed=windowed
+    )
+    assert ended == []
+
+
+def test_windowed_programs_leave_out_console_windows() -> None:
+    """A console window is nobody's own window; a window of any other class counts.
+
+    Windows names the program in a classic console window, not the console
+    host, as the window's owner, so ``start cmd`` or a minimized ``ping``
+    would pass for a program that shows a window and outlive the session. The
+    session's own console window names the shell once a program in the
+    terminal shows it. A Tk app run as ``start python app.py`` has a console
+    window too and counts through the window of its own, as a console program
+    showing a message box does.
+    """
+    windows = [
+        # The session's own console window, shown by a program in the terminal.
+        (10, "PseudoConsoleWindow"),
+        # ping, in a minimized console window of its own.
+        (20, "ConsoleWindowClass"),
+        # A Tk app run as ``start python app.py``: its console window and its own.
+        (30, "ConsoleWindowClass"),
+        (30, "TkTopLevel"),
+        # A console program showing a message box.
+        (40, "#32770"),
+    ]
+    assert _MODULE.windowed_programs(windows) == {30, 40}
+
+
+def test_windowed_programs_count_a_window_whose_class_cannot_be_read() -> None:
+    """A window whose class could not be read counts as the program's own.
+
+    Keeping a program that may show a window is the safe failure; ending one
+    that does is not.
+    """
+    assert _MODULE.windowed_programs([(20, None)]) == {20}
+
+
+def test_sweep_ends_a_console_program_in_a_console_window_of_its_own() -> None:
+    """``start cmd`` from the terminal closes with it; a Tk app beside it stays.
+
+    Both run in a console of their own and both are named as the owner of
+    their console window. Only the Tk app shows a window of its own, so it
+    keeps running with its helper, while the ``cmd`` ends like a hidden one.
+    """
+    records = [
+        # The shell, attached to the pseudoconsole.
+        _record(10, 1, "console"),
+        # cmd, run as ``start cmd``, in a console window of its own.
+        _record(20, 10, "console"),
+        # A Tk app run as ``start python app.py``, and a hidden helper it runs.
+        _record(30, 10, "console"),
+        _record(40, 30, "console"),
+    ]
+    answers = {10: "attached", 20: "own", 30: "own", 40: "own"}
+    windowed = _MODULE.windowed_programs(
+        [(20, "ConsoleWindowClass"), (30, "ConsoleWindowClass"), (30, "TkTopLevel")]
+    )
+    ended = _MODULE.select_descendants_to_end(
+        records, lambda _pids: answers, windowed=windowed
+    )
+    assert ended == [20]
+
+
+def test_sweep_ends_the_helpers_of_a_shell_whose_console_window_is_shown() -> None:
+    """A program that shows the session's console window must not stop the sweep.
+
+    ``GetConsoleWindow`` gives every program in the terminal the
+    pseudoconsole's hidden window, and the console host names the shell, its
+    first program, as that window's owner; this host sets no owner window for
+    it. Once a program shows it (``powershell -WindowStyle Normal`` does), it
+    is a visible, unowned top-level window that names the shell. Counted as
+    the shell's own window, the shell would shelter every helper under it and
+    the session end nothing.
+    """
+    records = [
+        # The shell, attached to the pseudoconsole.
+        _record(10, 1, "console"),
+        # A hidden-console helper the shell left behind.
+        _record(20, 10, "console"),
+    ]
+    answers = {10: "attached", 20: "own"}
+    windowed = _MODULE.windowed_programs([(10, "PseudoConsoleWindow")])
+    ended = _MODULE.select_descendants_to_end(
+        records, lambda _pids: answers, windowed=windowed
+    )
+    assert ended == [20]
+
+
+def test_sweep_keeps_a_program_too_new_to_judge_and_reports_it() -> None:
+    """A program that has not connected to a console yet is kept and reported.
+
+    The shell started it a moment ago; a later survey can judge it.
+    """
+    records = [_record(10, 1, "console"), _record(20, 10, "console")]
+    undecided: set[int] = set()
+    answers = {10: "attached", 20: "young"}
+    ended = _MODULE.select_descendants_to_end(
+        records, lambda _pids: answers, undecided=undecided
+    )
+    assert ended == []
+    assert undecided == {20}
+
+
+def test_sweep_waits_only_for_a_new_program_it_could_end() -> None:
+    """A new program that would be kept once judged is not reported.
+
+    An editor started from the shell may start short console helpers all the
+    time. The last sweep must not wait for one: it runs under a program that
+    keeps running, so it is kept whatever its console turns out to be.
+    """
+    records = [
+        # The shell, attached to the pseudoconsole, and a helper it started.
+        _record(10, 1, "console"),
+        _record(20, 10, "console"),
+        # An editor started from the shell, and a helper it started.
+        _record(30, 10, "gui"),
+        _record(40, 30, "console"),
+        # A daemon started detached, and a worker it started.
+        _record(50, 10, "console"),
+        _record(60, 50, "console"),
+        # A console program that shows a window of its own.
+        _record(70, 10, "console"),
+    ]
+    undecided: set[int] = set()
+    answers = {
+        10: "attached",
+        20: "young",
+        40: "young",
+        50: "none",
+        60: "young",
+        70: "young",
+    }
+    ended = _MODULE.select_descendants_to_end(
+        records, lambda _pids: answers, windowed={70}, undecided=undecided
+    )
+    assert ended == []
+    assert undecided == {20}
+
+
+@pytest.mark.parametrize(
+    ("image", "host"),
+    [
+        ("C:\\Windows\\System32\\conhost.exe", 70),
+        ("C:\\WINDOWS\\system32\\CONHOST.EXE", 70),
+        ("C:\\Program Files\\WindowsApps\\Terminal\\OpenConsole.exe", 70),
+        ("C:/Windows/System32/conhost.exe", 70),
+        ("C:\\Windows\\System32\\cmd.exe", 0),
+        ("C:\\Python\\python.exe", 0),
+        ("C:\\Tools\\notconhost.exe", 0),
+        ("C:\\conhost.exe\\python.exe", 0),
+        ("", 0),
+        (None, 0),
+    ],
+)
+def test_verified_console_host_takes_only_a_console_host(
+    image: str | None, host: int
+) -> None:
+    """The pseudoconsole's host counts only when its image is a console host.
+
+    Anything else, or an image that cannot be read, leaves the host unknown,
+    so that no program attached to the pseudoconsole is swept before the
+    drain.
+    """
+    assert _MODULE.verified_console_host(70, image) == host
+
+
+def _pe_header(magic: int, subsystem: int, signature_offset: int = 0x80) -> bytes:
+    """Build the start of a PE image with the given optional-header fields."""
+    header = bytearray(signature_offset + 24 + 70)
+    header[:2] = b"MZ"
+    struct.pack_into("<I", header, 0x3C, signature_offset)
+    header[signature_offset : signature_offset + 4] = b"PE\0\0"
+    struct.pack_into("<H", header, signature_offset + 24, magic)
+    struct.pack_into("<H", header, signature_offset + 24 + 68, subsystem)
+    return bytes(header)
+
+
+@pytest.mark.parametrize(
+    ("magic", "subsystem", "expected"),
+    (
+        (0x10B, 2, "gui"),
+        (0x10B, 3, "console"),
+        (0x20B, 2, "gui"),
+        (0x20B, 3, "console"),
+        (0x20B, 9, "unknown"),
+        (0x107, 2, "unknown"),
+    ),
+)
+def test_image_subsystem_reads_pe32_and_pe32_plus_headers(
+    magic: int, subsystem: int, expected: str
+) -> None:
+    """``Subsystem`` is read at the same offset for both optional-header kinds."""
+    assert _MODULE.image_subsystem(_pe_header(magic, subsystem)) == expected
+    assert _MODULE.image_subsystem(_pe_header(magic, subsystem, 0x100)) == expected
+
+
+def test_image_subsystem_rejects_images_it_cannot_read() -> None:
+    """Anything that is not a whole PE header is unknown, never a console image."""
+    assert _MODULE.image_subsystem(b"") == "unknown"
+    assert _MODULE.image_subsystem(b"#!/bin/sh\n" + bytes(0x100)) == "unknown"
+    assert _MODULE.image_subsystem(_pe_header(0x10B, 3)[:0x90]) == "unknown"
+    wrong_signature = bytearray(_pe_header(0x10B, 3))
+    wrong_signature[0x80:0x84] = b"PX\0\0"
+    assert _MODULE.image_subsystem(bytes(wrong_signature)) == "unknown"
+    far_signature = bytearray(_pe_header(0x10B, 3))
+    struct.pack_into("<I", far_signature, 0x3C, 1 << 24)
+    assert _MODULE.image_subsystem(bytes(far_signature)) == "unknown"
+
+
+def test_image_subsystem_needs_the_whole_subsystem_field() -> None:
+    """A header ending right after ``Subsystem`` is read; one byte less is unknown."""
+    for magic in (0x10B, 0x20B):
+        header = _pe_header(magic, 3)
+        assert len(header) == 0x80 + 24 + 70
+        assert _MODULE.image_subsystem(header) == "console"
+        assert _MODULE.image_subsystem(header[:-1]) == "unknown"
+
+
+def test_read_image_header_reads_through_the_subsystem_field(tmp_path: Path) -> None:
+    """The reader stops after ``Subsystem`` and goes through the native path."""
+    image = tmp_path / "program.exe"
+    image.write_bytes(_pe_header(0x20B, 3, 0x100) + bytes(4096))
+    native_calls: list[str] = []
+
+    def native(path: str) -> str:
+        """Record the path asked for and answer with the image file."""
+        native_calls.append(path)
+        return str(image)
+
+    header = _MODULE.read_image_header(r"C:\Windows\System32\program.exe", native)
+    assert native_calls == [r"C:\Windows\System32\program.exe"]
+    assert len(header) == 0x100 + 24 + 70
+    assert _MODULE.image_subsystem(header) == "console"
+    assert _MODULE.read_image_header(str(tmp_path / "missing.exe"), native=str) == b""
+    short = tmp_path / "short.exe"
+    short.write_bytes(b"MZ")
+    assert _MODULE.image_subsystem(_MODULE.read_image_header(str(short), str)) == (
+        "unknown"
+    )
+
+
+def test_job_process_ids_grows_the_buffer_until_the_list_is_complete() -> None:
+    """A list cut short by the buffer is read again with room for every PID."""
+    capacities: list[int] = []
+    pids = [11, 12, 13, 14, 15]
+
+    def query(capacity: int) -> tuple[int, Sequence[int]]:
+        """Report five processes and list as many as fit."""
+        capacities.append(capacity)
+        return len(pids), pids[:capacity]
+
+    assert _MODULE.job_process_ids(query, capacity=2) == pids
+    assert capacities[0] == 2
+    assert len(capacities) == 2
+    assert capacities[1] >= len(pids)
+
+
+def test_job_process_ids_accepts_a_list_that_keeps_growing() -> None:
+    """Processes arriving faster than the list is read end the retries."""
+
+    def query(capacity: int) -> tuple[int, Sequence[int]]:
+        """Always report one process more than the buffer holds."""
+        return capacity + 1, list(range(capacity))
+
+    listed = _MODULE.job_process_ids(query, capacity=1, attempts=4)
+    assert listed == list(range(8))
+
+
+def test_wait_each_waits_on_every_handle_within_one_deadline() -> None:
+    """More handles than ``WaitForMultipleObjects`` takes share one deadline."""
+    waited: list[tuple[int, int]] = []
+    now = [0.0]
+
+    def exited(handle: int, milliseconds: int) -> bool:
+        """Record the wait; even handles exit, odd ones run on."""
+        waited.append((handle, milliseconds))
+        now[0] += 0.4
+        return handle % 2 == 0
+
+    handles = list(range(1, 66))
+    running = _MODULE.wait_each(handles, 1.0, exited, clock=lambda: now[0])
+    assert [handle for handle, _ in waited] == handles
+    assert running == [handle for handle in handles if handle % 2 == 1]
+    assert [milliseconds for _, milliseconds in waited[:4]] == [1000, 600, 200, 0]
+    assert all(milliseconds == 0 for _, milliseconds in waited[3:])
+
+
+def test_sweep_descendants_repeats_while_a_round_ended_something() -> None:
+    """A program respawned during the first round is caught by the next."""
+    rounds = [[20], [21], []]
+    ended: list[list[int]] = []
+
+    def end(pids: Sequence[int], _deadline: float) -> Sequence[int]:
+        """Record the round and report that everything ended."""
+        ended.append(list(pids))
+        return []
+
+    left = _MODULE.sweep_descendants(
+        lambda: rounds.pop(0), end, clock=lambda: 0.0, deadline=10.0, rounds=3
+    )
+    assert left == []
+    assert ended == [[20], [21]]
+    assert rounds == []
+
+
+def test_sweep_descendants_stops_at_the_deadline_and_the_round_limit() -> None:
+    """A supervisor that respawns forever is cut off by time or by rounds."""
+    now = [0.0]
+    surveys = [0]
+
+    def survey() -> Sequence[int]:
+        """Always find the respawned program."""
+        surveys[0] += 1
+        return [7]
+
+    def end(_pids: Sequence[int], _deadline: float) -> Sequence[int]:
+        """Take 0.6 s to end it."""
+        now[0] += 0.6
+        return []
+
+    assert _MODULE.sweep_descendants(survey, end, lambda: now[0], 1.5, rounds=10) == []
+    assert surveys[0] == 3
+    surveys[0] = 0
+    now[0] = 0.0
+    assert _MODULE.sweep_descendants(survey, end, lambda: now[0], 10.0, rounds=2) == []
+    assert surveys[0] == 2
+
+
+def test_sweep_descendants_reports_what_refused_to_end() -> None:
+    """A process still running at the deadline ends the sweep and is reported."""
+    surveys = [0]
+
+    def survey() -> Sequence[int]:
+        """Find two programs."""
+        surveys[0] += 1
+        return [7, 8]
+
+    left = _MODULE.sweep_descendants(
+        survey, lambda _pids, _deadline: [8], lambda: 0.0, 10.0, rounds=3
+    )
+    assert left == [8]
+    assert surveys[0] == 1
+
+
+def test_sweep_descendants_waits_for_a_process_too_new_to_judge() -> None:
+    """A survey that could not judge a new process yet is repeated until it can.
+
+    A program the shell started just before the session ended has not yet
+    connected to its console; the sweep must not end before it is judged.
+    """
+    now = [0.0]
+    surveys = [0]
+    young: set[int] = set()
+    ended: list[list[int]] = []
+    slept: list[float] = []
+
+    def survey() -> Sequence[int]:
+        """Leave process 30 undecided twice, then select it once."""
+        surveys[0] += 1
+        young.clear()
+        if surveys[0] < 3:
+            young.add(30)
+            return []
+        return [30] if surveys[0] == 3 else []
+
+    def end(pids: Sequence[int], _deadline: float) -> Sequence[int]:
+        """Record the round and report that everything ended."""
+        ended.append(list(pids))
+        return []
+
+    def sleep(seconds: float) -> None:
+        """Let the time pass at once."""
+        slept.append(seconds)
+        now[0] += seconds
+
+    left = _MODULE.sweep_descendants(
+        survey,
+        end,
+        lambda: now[0],
+        1.0,
+        undecided=lambda: bool(young),
+        sleep=sleep,
+    )
+    assert left == []
+    assert ended == [[30]]
+    assert surveys[0] == 4
+    assert slept == [_MODULE._SWEEP_RETRY] * 2
+
+
+def test_sweep_descendants_keeps_a_process_too_new_to_judge_at_the_deadline() -> None:
+    """A process that never becomes judgeable holds the sweep until the deadline."""
+    now = [0.0]
+    surveys = [0]
+    slept: list[float] = []
+
+    def survey() -> Sequence[int]:
+        """Never select anything."""
+        surveys[0] += 1
+        return []
+
+    def end(pids: Sequence[int], _deadline: float) -> Sequence[int]:
+        """Fail: nothing was selected."""
+        raise AssertionError(pids)
+
+    def sleep(seconds: float) -> None:
+        """Let the time pass at once."""
+        slept.append(seconds)
+        now[0] += seconds
+
+    left = _MODULE.sweep_descendants(
+        survey,
+        end,
+        lambda: now[0],
+        0.125,
+        undecided=lambda: True,
+        sleep=sleep,
+    )
+    assert left == []
+    assert surveys[0] == 3
+    assert slept == pytest.approx([0.05, 0.05, 0.025])
+    assert now[0] == pytest.approx(0.125)
+
+
+# ---------------------------------------------------------------------------
+# Session-end sweep: the desktop survey, through stand-in user32 functions
+# ---------------------------------------------------------------------------
+
+
+class _Library:
+    """Stand in for one ``ctypes.WinDLL``; note how it was loaded."""
+
+    def __init__(
+        self, loads: list[tuple[str, Mapping[str, Any]]], name: str, **options: Any
+    ) -> None:
+        """Note the library's name and load options in ``loads``."""
+        loads.append((name, options))
+        self._functions: dict[str, Mock] = {}
+
+    def __getattr__(self, name: str) -> Mock:
+        """Return one stand-in export per name."""
+        if name.startswith("__"):
+            raise AttributeError(name)
+        return self._functions.setdefault(name, Mock(name=name))
+
+
+class _WindowsModule(NamedTuple):
+    """The module loaded as on Windows, and the libraries it loaded."""
+
+    module: ModuleType
+    loads: list[tuple[str, Mapping[str, Any]]]
+
+
+@pytest.fixture
+def windows_module(monkeypatch: pytest.MonkeyPatch) -> _WindowsModule:
+    """Load the module's Windows-only part with stand-in Win32 libraries.
+
+    The desktop survey (``_windowed_process_ids`` and ``_window_class``) lives
+    in that part. With every library export a ``Mock`` and the stdcall
+    callback type the plain one, its filters, its class read and their
+    failures run on any platform; only the real bindings need Windows.
+    """
+    loads: list[tuple[str, Mapping[str, Any]]] = []
+    with monkeypatch.context() as patch:
+        patch.setitem(sys.modules, "msvcrt", ModuleType("msvcrt"))
+        patch.setattr(
+            ctypes,
+            "WinDLL",
+            lambda name, **options: _Library(loads, name, **options),
+            raising=False,
+        )
+        patch.setattr(ctypes, "WINFUNCTYPE", ctypes.CFUNCTYPE, raising=False)
+        patch.setattr(sys, "platform", "win32")
+        module = _load_module()
+    return _WindowsModule(module, loads)
+
+
+class _Window(NamedTuple):
+    """One top-level window on the stand-in desktop.
+
+    ``window_class`` is ``None`` when ``GetClassNameW`` fails for the window.
+    ``gone_after`` names the call after which the window no longer exists.
+    """
+
+    handle: int
+    pid: int
+    window_class: str | None
+    visible: bool = True
+    owner: int = 0
+    gone_after: str = ""
+
+
+class _Desktop:
+    """The ``user32`` functions the desktop survey calls, over fixed windows."""
+
+    def __init__(
+        self, module: ModuleType, windows: Sequence[_Window], fail_at: int | None = None
+    ) -> None:
+        """Hold ``windows`` in Z order; ``EnumWindows`` fails at index ``fail_at``."""
+        self.module = module
+        self.windows = {window.handle: window for window in windows}
+        self.order = [window.handle for window in windows]
+        self.fail_at = fail_at
+        self.gone: set[int] = set()
+        self.class_buffers: list[int] = []
+        self.diagnostics: list[str] = []
+
+    def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Put the stand-ins in place of the module's bindings."""
+        module = self.module
+        monkeypatch.setattr(module, "_EnumWindows", self.enum_windows)
+        monkeypatch.setattr(module, "_IsWindowVisible", self.is_window_visible)
+        monkeypatch.setattr(module, "_GetWindow", self.get_window)
+        monkeypatch.setattr(
+            module, "_GetWindowThreadProcessId", self.get_window_thread_process_id
+        )
+        monkeypatch.setattr(module, "_GetClassNameW", self.get_class_name)
+        monkeypatch.setattr(module, "diagnose", self.diagnostics.append)
+        monkeypatch.setattr(module, "_last_error", lambda: OSError(8, "out of memory"))
+
+    def _live(self, handle: int) -> _Window | None:
+        """Return the window behind ``handle`` while it exists."""
+        return None if handle in self.gone else self.windows.get(handle)
+
+    def _after(self, window: _Window, call: str) -> None:
+        """Destroy ``window`` once ``call`` returned, when it is set to go then."""
+        if window.gone_after == call:
+            self.gone.add(window.handle)
+
+    def enum_windows(self, visit: Callable[[int, int], int], parameter: int) -> int:
+        """Call ``visit`` per window; fail when ``fail_at`` is reached."""
+        for index, handle in enumerate(self.order):
+            if index == self.fail_at:
+                return 0
+            if not visit(handle, parameter):
+                return 0
+        return 1
+
+    def is_window_visible(self, handle: int) -> int:
+        """Report the visible style; a destroyed window is not visible."""
+        window = self._live(handle)
+        if window is None:
+            return 0
+        self._after(window, "visible")
+        return int(window.visible)
+
+    def get_window(self, handle: int, relationship: int) -> int | None:
+        """Return the owner; a destroyed window has none (``NULL``, the error)."""
+        assert relationship == self.module._GW_OWNER, relationship
+        window = self._live(handle)
+        return None if window is None or not window.owner else window.owner
+
+    def get_window_thread_process_id(self, handle: int, pid: Any) -> int:
+        """Store the owner PID through ``pid`` and return a thread, 0 when gone."""
+        window = self._live(handle)
+        if window is None:
+            return 0
+        pid._obj.value = window.pid
+        self._after(window, "owner")
+        return 1000 + window.pid
+
+    def get_class_name(self, handle: int, name: Any, characters: int) -> int:
+        """Copy the class as ``GetClassNameW`` does: truncated, terminated, or 0."""
+        self.class_buffers.append(characters)
+        assert characters == len(name)
+        window = self._live(handle)
+        if window is None or window.window_class is None:
+            return 0
+        copied = window.window_class[: characters - 1]
+        name.value = copied
+        return len(copied)
+
+
+def _survey(
+    windows_module: _WindowsModule,
+    monkeypatch: pytest.MonkeyPatch,
+    windows: Sequence[_Window],
+    fail_at: int | None = None,
+) -> tuple[set[int], _Desktop]:
+    """Run the desktop survey over a stand-in desktop; return it and the desktop."""
+    desktop = _Desktop(windows_module.module, windows, fail_at)
+    desktop.install(monkeypatch)
+    return windows_module.module._windowed_process_ids(), desktop
+
+
+def test_desktop_survey_counts_visible_unowned_windows_of_any_class_but_a_console_s(
+    windows_module: _WindowsModule, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The visible, unowned window of a program in a console window keeps it.
+
+    A console window alone, a dialog owned by another window and a hidden
+    window keep nobody.
+    """
+    result, _desktop = _survey(
+        windows_module,
+        monkeypatch,
+        [
+            _Window(0x10, 20, "ConsoleWindowClass"),
+            _Window(0x11, 30, "ConsoleWindowClass"),
+            _Window(0x12, 30, "TkTopLevel"),
+            _Window(0x13, 40, "ConsoleWindowClass"),
+            _Window(0x14, 40, "#32770", owner=0x13),
+            _Window(0x15, 50, "Chrome_WidgetWin_1", visible=False),
+        ],
+    )
+    assert result == {30}
+
+
+def test_desktop_survey_names_windows_terminal_for_its_window_only(
+    windows_module: _WindowsModule, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Windows Terminal's window names Windows Terminal, which no session tracks.
+
+    The pseudoconsole window it gives a console it hosts is owned by that
+    window, so it is not listed at all.
+    """
+    result, _desktop = _survey(
+        windows_module,
+        monkeypatch,
+        [
+            _Window(0x10, 900, "CASCADIA_HOSTING_WINDOW_CLASS"),
+            _Window(0x11, 20, "PseudoConsoleWindow", owner=0x10),
+        ],
+    )
+    assert result == {900}
+
+
+def test_desktop_survey_leaves_out_a_shown_pseudoconsole_window(
+    windows_module: _WindowsModule, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The session's own console window, once a program shows it, keeps nobody.
+
+    This host gives the pseudoconsole no owner window, so ``ShowWindow`` on
+    ``GetConsoleWindow()`` makes it a visible, unowned top-level window that
+    names the shell.
+    """
+    result, _desktop = _survey(
+        windows_module, monkeypatch, [_Window(0x10, 10, "PseudoConsoleWindow")]
+    )
+    assert result == set()
+
+
+def test_desktop_survey_counts_a_window_whose_class_cannot_be_read(
+    windows_module: _WindowsModule, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``GetClassNameW`` returning 0 keeps the owner: the safe failure."""
+    result, _desktop = _survey(windows_module, monkeypatch, [_Window(0x10, 60, None)])
+    assert result == {60}
+
+
+def test_desktop_survey_holds_the_longest_class_name(
+    windows_module: _WindowsModule, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The class buffer holds 256 characters and the terminator; a cut class counts."""
+    result, desktop = _survey(
+        windows_module,
+        monkeypatch,
+        [_Window(0x10, 70, "X" * 300), _Window(0x11, 71, "C" * 256)],
+    )
+    assert result == {70, 71}
+    assert desktop.class_buffers == [257, 257]
+
+
+def test_desktop_survey_skips_a_window_that_closes_while_it_runs(
+    windows_module: _WindowsModule, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A window gone before its owner is read is skipped; gone after, it counts.
+
+    The program of a console window that closes between the two reads stays
+    for this round only, which is the safe side.
+    """
+    result, _desktop = _survey(
+        windows_module,
+        monkeypatch,
+        [
+            _Window(0x10, 80, "TkTopLevel", gone_after="visible"),
+            _Window(0x11, 81, "ConsoleWindowClass", gone_after="owner"),
+        ],
+    )
+    assert result == {81}
+
+
+def test_desktop_survey_keeps_what_a_failed_enumeration_listed(
+    windows_module: _WindowsModule, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``EnumWindows`` failing midway gives the owners read so far and a diagnostic."""
+    result, desktop = _survey(
+        windows_module,
+        monkeypatch,
+        [
+            _Window(0x10, 90, "ConsoleWindowClass"),
+            _Window(0x11, 91, "TkTopLevel"),
+            _Window(0x12, 90, "TkTopLevel"),
+        ],
+        fail_at=2,
+    )
+    assert result == {91}
+    assert desktop.diagnostics == [
+        "could not list the windows on the desktop: [Errno 8] out of memory"
+    ]
+
+
+def test_user32_is_loaded_with_its_last_error_kept(
+    windows_module: _WindowsModule,
+) -> None:
+    """``user32`` is loaded so ``_last_error`` reads what ``EnumWindows`` set.
+
+    ``ctypes.get_last_error`` sees only calls through a library loaded with
+    ``use_last_error``; otherwise the diagnostic names a stale error.
+    """
+    options = dict(windows_module.loads)
+    assert options["kernel32"].get("use_last_error") is True
+    assert options["user32"].get("use_last_error") is True
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+def test_window_class_reads_the_desktop_window_s_class() -> None:
+    """The real ``GetClassNameW`` binding names the desktop window's class.
+
+    The desktop window is always there and its class is fixed, so this pins
+    the binding whatever the default terminal is. No window reads as ``None``.
+    """
+    user32 = ctypes.WinDLL("user32")  # ty: ignore[possibly-missing-attribute]
+    user32.GetDesktopWindow.restype = ctypes.c_void_p
+    assert _MODULE._window_class(user32.GetDesktopWindow()) == "#32769"
+    assert _MODULE._window_class(0) is None
+
+
+# ---------------------------------------------------------------------------
+# Session end: the tracking jobs let go, through stand-in Win32 libraries
+# ---------------------------------------------------------------------------
+
+
+"""Stand-in handles of the root tracking job and the job below it."""
+_TRACKING_JOB, _BREAKAWAY_JOB = 11, 12
+
+
+def test_sweep_lets_what_the_session_kept_break_away_before_release(
+    windows_module: _WindowsModule, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A finished sweep restores breakaway without waiting for handle release."""
+    module = windows_module.module
+    events: list[tuple[str, object]] = []
+    monkeypatch.setattr(module, "_sweep_descendants", Mock())
+    monkeypatch.setattr(
+        module, "_permit_breakaway", lambda jobs: events.append(("permit", tuple(jobs)))
+    )
+    monkeypatch.setattr(
+        module, "_close", lambda handle: events.append(("close", handle))
+    )
+    monkeypatch.setattr(module, "diagnose", Mock())
+    host = module._ConPtyHost(module.HostArguments(80, 24, "pipe", ("cmd",)), "token")
+    host._tracking_job, host._breakaway_job = _TRACKING_JOB, _BREAKAWAY_JOB
+    drained = threading.Event()
+    drained.set()
+
+    host._sweep_after_drain(drained, time.monotonic())
+
+    assert events == [("permit", (_TRACKING_JOB, _BREAKAWAY_JOB))]
+
+
+@pytest.mark.parametrize(
+    "end", ("sweep-finished", "start-failed", "sweep-outlived-join")
+)
+def test_every_session_end_lets_what_the_session_kept_break_away(
+    windows_module: _WindowsModule, monkeypatch: pytest.MonkeyPatch, end: str
+) -> None:
+    """The tracking jobs permit a breakaway again before the host lets go of them.
+
+    The root tracking job refuses a breakaway while the session runs, and the
+    jobs outlive their handles for as long as a program in them runs. So the
+    refusal is lifted before the jobs are closed or left to the host's
+    exit, however the session ends: after a sweep that finished, after a
+    start that failed once the shell ran (no sweep runs then), and after a
+    sweep that outlived ``_finish``'s join, which the host's exit abandons.
+    Otherwise what the session kept could never break away again, where
+    3.29.0 put it in no job.
+    """
+    module = windows_module.module
+    events: list[tuple[str, object]] = []
+    monkeypatch.setattr(
+        module, "_permit_breakaway", lambda jobs: events.append(("permit", tuple(jobs)))
+    )
+    monkeypatch.setattr(
+        module, "_close", lambda handle: events.append(("close", handle))
+    )
+    monkeypatch.setattr(module, "diagnose", lambda _message: None)
+    stuck = threading.Event()
+
+    def sweep_descendants(*_args: object, **_kwargs: object) -> None:
+        """End nothing; hang past the join when the sweep is to outlive it."""
+        if end == "sweep-outlived-join":
+            stuck.wait(5.0)
+
+    monkeypatch.setattr(module, "_sweep_descendants", sweep_descendants)
+    if end == "sweep-outlived-join":
+        monkeypatch.setattr(module, "_SWEEP_DEADLINE", 0.05)
+        monkeypatch.setattr(module, "_SWEEP_JOIN_MARGIN", 0.05)
+    host = module._ConPtyHost(module.HostArguments(80, 24, "pipe", ("cmd",)), "token")
+    host._tracking_job, host._breakaway_job = _TRACKING_JOB, _BREAKAWAY_JOB
+    try:
+        if end == "start-failed":
+
+            def start() -> None:
+                """Fail as the ``ready`` write does once Obsidian's window has gone."""
+                raise OSError("the control channel is unavailable")
+
+            monkeypatch.setattr(host, "_start", start)
+            assert host._run_session() == module._EXIT_HOST_ERROR
+        else:
+            host._finish()
+        sweep = host._sweep_thread
+        abandoned = sweep is not None and sweep.is_alive()
+        assert abandoned == (end == "sweep-outlived-join"), events
+        jobs = (_TRACKING_JOB, _BREAKAWAY_JOB)
+        # An abandoned sweep may still use the jobs: they close with the host.
+        closed = [] if abandoned else [("close", job) for job in jobs]
+        permit = ("permit", jobs)
+        assert permit in events, events
+        assert [event for event in events if event[1] in jobs] == closed, events
+        for event in closed:
+            assert events.index(permit) < events.index(event), events
+    finally:
+        stuck.set()
+        if host._sweep_thread is not None:
+            host._sweep_thread.join(5.0)
 
 
 # ---------------------------------------------------------------------------
@@ -2615,6 +3664,10 @@ class _ProcessWatch:
             )
         self._handles[pid] = int(handle)
 
+    def handle(self, pid: int) -> int:
+        """Return the open handle of a pinned process."""
+        return self._handles[pid]
+
     def survivors(self, timeout: float, expected: Collection[int] = ()) -> list[int]:
         """Return the pinned PIDs still running once ``timeout`` seconds pass.
 
@@ -2649,14 +3702,58 @@ class _ProcessWatch:
         return [pid for pid in self._handles if pid in alive]
 
 
+class _ExitTimes:
+    """Note when pinned processes exit, from one waiting thread per process."""
+
+    def __init__(self) -> None:
+        """Start with nothing watched."""
+        self._times: dict[int, float] = {}
+        self._threads: list[threading.Thread] = []
+
+    def watch(self, pid: int, handle: int, timeout: float) -> None:
+        """Wait on ``handle`` in the background and note when ``pid`` exits."""
+        wait = _kernel32().WaitForSingleObject
+        wait.argtypes = (ctypes.c_void_p, ctypes.c_uint32)
+        wait.restype = ctypes.c_uint32
+
+        def run() -> None:
+            """Note the time once the process handle is signalled."""
+            if wait(handle, int(timeout * 1000)) == 0:
+                self._times[pid] = time.monotonic()
+
+        thread = threading.Thread(target=run, daemon=True)
+        thread.start()
+        self._threads.append(thread)
+
+    def of(self, pid: int) -> float | None:
+        """Return when ``pid`` exited, once every watcher is done; ``None`` if not."""
+        for thread in self._threads:
+            thread.join()
+        return self._times.get(pid)
+
+
 def _read_when_published(path: Path, timeout: float) -> str:
-    """Poll for a file another process publishes atomically; return its text."""
+    """Poll for a file another process publishes atomically; return its text.
+
+    A ``timeout`` below zero, the rest of a budget already spent, counts as 0.
+    """
+    timeout = max(0.0, timeout)
     deadline = time.monotonic() + timeout
     while not path.exists():
         if time.monotonic() >= deadline:
             raise AssertionError(f"{path} was not published within {timeout:.0f}s")
         time.sleep(0.05)
     return path.read_text(encoding="utf-8")
+
+
+def test_a_wait_with_no_time_left_reports_zero_seconds(tmp_path: Path) -> None:
+    """A file awaited after its budget ran out is reported within 0s, not -0s.
+
+    Files read in turn share one deadline, so the last of them can be given
+    what is left of it, which is below zero once an earlier file came late.
+    """
+    with pytest.raises(AssertionError, match=r"was not published within 0s$"):
+        _read_when_published(tmp_path / "program.json", -0.3)
 
 
 def _create_control_server(pipe_name: str) -> int:
@@ -2828,7 +3925,7 @@ class _ControlServer:
             return
         try:
             probe(message)
-        except (AssertionError, OSError) as error:
+        except Exception as error:  # noqa: BLE001 -- the test raises it later
             self.probe_error = error
 
     def _read(self) -> bytes:
@@ -2865,6 +3962,23 @@ class _ControlServer:
         write(self.handle, payload, len(payload), ctypes.byref(count), None)
 
 
+def test_a_probe_error_of_any_type_is_kept_for_the_test() -> None:
+    """A probe that fails with an error other than an assertion is kept too.
+
+    An error that escaped would end the server thread before its replies,
+    and the run would end as a host timeout that does not name the cause.
+    """
+    server = _ControlServer.__new__(_ControlServer)
+    server.probe_error = None
+
+    def probe(message: Mapping[str, Any]) -> None:
+        """Parse a record that is not JSON."""
+        json.loads(message["record"])
+
+    server._probe(probe, {"record": ""})
+    assert isinstance(server.probe_error, json.JSONDecodeError)
+
+
 def _run_host(
     command: Sequence[str],
     columns: int = 120,
@@ -2888,6 +4002,7 @@ def _run_host(
     console_host_ahead: str | None = None,
     start_fields: Mapping[str, Any] | None = None,
     host_script: Path | None = None,
+    creationflags: int = 0,
 ) -> _HostResult:
     """Run the ConPTY host once against a real control pipe and child.
 
@@ -2898,6 +4013,7 @@ def _run_host(
     immediate host inherits ``child_environment`` and receives ``child_cwd``
     and ``console_host`` as its ``--cwd`` and ``--console-host`` arguments.
     ``host_script`` runs in place of the host module, with the same arguments.
+    ``creationflags`` are the host process's own creation flags.
     """
     pipe_name = "\\\\.\\pipe\\obsidian-terminal-conpty-test-" + uuid.uuid4().hex
     token = uuid.uuid4().hex
@@ -2954,6 +4070,7 @@ def _run_host(
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             env=environment,
+            creationflags=creationflags,
         )
         output: list[bytes] = []
         errors: list[bytes] = []
@@ -3011,6 +4128,10 @@ def _run_host(
         server.close()
         stderr = b"".join(errors)
         if timeout_error is not None:
+            if server.probe_error is not None:
+                # A probe that failed before it released the shell is the
+                # cause of the timeout; report the cause.
+                raise server.probe_error from timeout_error
             raise AssertionError(
                 f"ConPTY host timed out after {timeout:.2f}s; "
                 f"command={list(command)!r}; "
@@ -3171,6 +4292,161 @@ def _spawn_grandchild(
     )
     # A venv redirector would add an unassigned interpreter between the shell
     # PID reported by the host and the process that actually runs this probe.
+    return [getattr(sys, "_base_executable", sys.executable), "-c", code]
+
+
+"""Kinds of descendant ``_spawn_breakaway_descendants`` publishes, in order."""
+_DESCENDANT_KINDS = (
+    "newConsole",
+    "noWindow",
+    "gui",
+    "guiChild",
+    "guiOrphan",
+    "breakaway",
+    "grandBreakaway",
+    "detached",
+)
+
+"""The kinds a session end leaves running, in ``_DESCENDANT_KINDS`` order."""
+_DESCENDANTS_KEPT = ("gui", "guiChild", "detached")
+
+
+def _spawn_breakaway_descendants(ready_file: Path, exit_gate: Path) -> list[str]:
+    """Start one descendant of each kind outside the pseudoconsole; gate exit.
+
+    ``newConsole`` and ``noWindow`` are console programs left in a hidden
+    console by a launcher that has exited: the ``Start-Process -WindowStyle
+    Hidden`` shape and the console a Node helper gets. ``gui`` is a program of
+    the GUI subsystem, ``guiChild`` a console program it runs itself, and
+    ``guiOrphan`` one it ran through a launcher that has exited. ``breakaway``
+    is a console program the shell created with ``CREATE_BREAKAWAY_FROM_JOB``
+    and ``grandBreakaway`` one that a launcher of the shell created that way:
+    that creation must not be refused. ``detached`` is a console program with
+    no console at all. The shell publishes the PIDs, or an ``error``, then
+    waits for ``exit_gate`` and exits 42.
+    """
+    sleeper = "import time; time.sleep(120)"
+
+    def launcher(flags: str) -> str:
+        """Return code that starts a sleeper with ``flags``, prints its PID, exits."""
+        return (
+            "import subprocess, sys\n"
+            "child = subprocess.Popen(\n"
+            f"    [sys.executable, '-c', {sleeper!r}],\n"
+            "    stdin=subprocess.DEVNULL,\n"
+            "    stdout=subprocess.DEVNULL,\n"
+            "    stderr=subprocess.DEVNULL,\n"
+            f"    creationflags={flags},\n"
+            ")\n"
+            "print(child.pid)\n"
+        )
+
+    gui_code = (
+        "import json, os, subprocess, sys, time\n"
+        "child = subprocess.Popen(\n"
+        f"    [sys.argv[1], '-c', {sleeper!r}],\n"
+        "    stdin=subprocess.DEVNULL,\n"
+        "    stdout=subprocess.DEVNULL,\n"
+        "    stderr=subprocess.DEVNULL,\n"
+        "    creationflags=subprocess.CREATE_NO_WINDOW,\n"
+        ")\n"
+        "done = subprocess.run(\n"
+        f"    [sys.argv[1], '-c', {launcher('0')!r}],\n"
+        "    stdin=subprocess.DEVNULL,\n"
+        "    capture_output=True,\n"
+        "    check=True,\n"
+        "    creationflags=subprocess.CREATE_NO_WINDOW,\n"
+        ")\n"
+        "record = {'pid': os.getpid(), 'child': child.pid, 'orphan': int(done.stdout)}\n"
+        "with open(sys.argv[2] + '.tmp', 'w', encoding='utf-8') as stream:\n"
+        "    json.dump(record, stream)\n"
+        "os.replace(sys.argv[2] + '.tmp', sys.argv[2])\n"
+        "time.sleep(120)\n"
+    )
+    gui_file = str(ready_file) + ".gui"
+    breakaway_flags = (
+        "subprocess.CREATE_BREAKAWAY_FROM_JOB | subprocess.CREATE_NO_WINDOW"
+    )
+    code = (
+        "import json, os, subprocess, sys, time\n"
+        f"sleeper = {sleeper!r}\n"
+        f"launcher = {launcher('0')!r}\n"
+        f"breakaway_launcher = {launcher(breakaway_flags)!r}\n"
+        f"gui_code = {gui_code!r}\n"
+        "def hidden():\n"
+        "    info = subprocess.STARTUPINFO()\n"
+        "    info.dwFlags = subprocess.STARTF_USESHOWWINDOW\n"
+        "    info.wShowWindow = subprocess.SW_HIDE\n"
+        "    return info\n"
+        "def quiet(command, **kwargs):\n"
+        "    return subprocess.Popen(\n"
+        "        command,\n"
+        "        stdin=subprocess.DEVNULL,\n"
+        "        stdout=subprocess.DEVNULL,\n"
+        "        stderr=subprocess.DEVNULL,\n"
+        "        **kwargs,\n"
+        "    )\n"
+        "def launch(flags, code=launcher):\n"
+        "    done = subprocess.run(\n"
+        "        [sys.executable, '-c', code],\n"
+        "        stdin=subprocess.DEVNULL,\n"
+        "        capture_output=True,\n"
+        "        creationflags=flags,\n"
+        "        startupinfo=hidden(),\n"
+        "    )\n"
+        "    if done.returncode != 0:\n"
+        "        raise RuntimeError(done.stderr.decode('utf-8', 'replace'))\n"
+        "    return int(done.stdout)\n"
+        "def start():\n"
+        "    pythonw = os.path.join(os.path.dirname(sys.executable), 'pythonw.exe')\n"
+        "    if not os.path.isfile(pythonw):\n"
+        "        raise FileNotFoundError(pythonw)\n"
+        "    record = {'pid': os.getpid()}\n"
+        "    record['newConsole'] = launch(subprocess.CREATE_NEW_CONSOLE)\n"
+        "    record['noWindow'] = launch(subprocess.CREATE_NO_WINDOW)\n"
+        f"    gui = quiet([pythonw, '-c', gui_code, sys.executable, {gui_file!r}])\n"
+        "    deadline = time.monotonic() + 30\n"
+        f"    while not os.path.exists({gui_file!r}):\n"
+        "        if time.monotonic() >= deadline:\n"
+        "            raise TimeoutError('the GUI program did not start')\n"
+        "        time.sleep(0.05)\n"
+        f"    with open({gui_file!r}, encoding='utf-8') as stream:\n"
+        "        published = json.load(stream)\n"
+        "    record['gui'] = gui.pid\n"
+        "    record['guiChild'] = published['child']\n"
+        "    record['guiOrphan'] = published['orphan']\n"
+        f"    record['breakaway'] = quiet([sys.executable, '-c', sleeper], "
+        f"creationflags={breakaway_flags}).pid\n"
+        "    try:\n"
+        "        record['grandBreakaway'] = launch(\n"
+        "            subprocess.CREATE_NO_WINDOW, breakaway_launcher\n"
+        "        )\n"
+        "    except RuntimeError as error:\n"
+        "        # Reported, not fatal: the other kinds still tell their story.\n"
+        "        record['grandBreakawayRefused'] = str(error).strip().splitlines()[-1]\n"
+        "    record['detached'] = quiet(\n"
+        "        [sys.executable, '-c', sleeper],\n"
+        "        creationflags=subprocess.DETACHED_PROCESS,\n"
+        "    ).pid\n"
+        "    return record\n"
+        "try:\n"
+        "    record = start()\n"
+        "except Exception as error:\n"
+        "    record = {'error': repr(error)}\n"
+        f"path = {str(ready_file)!r}\n"
+        "with open(path + '.tmp', 'w', encoding='utf-8') as stream:\n"
+        "    json.dump(record, stream)\n"
+        "os.replace(path + '.tmp', path)\n"
+        "if 'error' in record:\n"
+        "    sys.exit(2)\n"
+        "deadline = time.monotonic() + 120\n"
+        f"while not os.path.exists({str(exit_gate)!r}):\n"
+        "    assert time.monotonic() < deadline, 'shell exit gate was not released'\n"
+        "    time.sleep(0.05)\n"
+        "sys.exit(42)\n"
+    )
+    # As in ``_spawn_grandchild``: the base interpreter is the shell the host
+    # reports, and ``pythonw.exe`` is installed beside it.
     return [getattr(sys, "_base_executable", sys.executable), "-c", code]
 
 
@@ -3433,6 +4709,75 @@ def test_host_fails_closed_on_bad_control_authentication(tmp_path: Path) -> None
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize(
+    "console_host", (None, "auto"), ids=("built-in", "windows-terminal")
+)
+def test_a_cold_host_whose_window_went_before_it_connected_ends_its_shell(
+    tmp_path: Path, console_host: str | None
+) -> None:
+    """A tab's host still booting when Obsidian's window goes ends by itself.
+
+    The plugin spawns the host detached, so the window's exit no longer ends
+    it. With nobody on the control pipe, the host gives up after
+    ``_CONTROL_CONNECT`` and closes the job: the shell, created suspended,
+    ends without having run, and the console host ends with it.
+    """
+    if console_host is not None:
+        _installed_windows_terminal()
+    marker = tmp_path / "shell-ran"
+    environment = dict(os.environ)
+    environment[_MODULE.TOKEN_ENVIRONMENT_VARIABLE] = uuid.uuid4().hex
+    # The base interpreter, as the plugin spawns it: a venv redirector would
+    # stand between this test and the host's own children.
+    arguments = [
+        getattr(sys, "_base_executable", sys.executable),
+        str(_module_path()),
+        "80",
+        "24",
+        # Nobody listens on this pipe: the window that made it has gone.
+        "\\\\.\\pipe\\obsidian-terminal-conpty-test-" + uuid.uuid4().hex,
+    ]
+    if console_host is not None:
+        arguments.extend(["--console-host", console_host])
+    arguments.extend(["--", *_create_marker(marker)])
+    earlier = set(_MODULE._parent_process_ids())
+    children: set[int] = set()
+    with closing(_ProcessWatch()) as watch:
+        host = subprocess.Popen(
+            arguments,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=environment,
+            # Node's ``detached`` spawn: no console, a new process group.
+            creationflags=_DETACHED_PROCESS | _CREATE_NEW_PROCESS_GROUP,
+        )
+        deadline = time.monotonic() + _MODULE._CONTROL_CONNECT + 10.0
+        try:
+            # The console host and the shell wait while the host retries.
+            while len(children) < 2 and host.poll() is None:
+                assert time.monotonic() < deadline, children
+                time.sleep(0.05)
+                children = {
+                    pid
+                    for pid, parent in _MODULE._parent_process_ids().items()
+                    if parent == host.pid and pid not in earlier
+                }
+            for pid in children:
+                watch.pin(pid)
+            _, errors = host.communicate(timeout=deadline - time.monotonic())
+        finally:
+            if host.poll() is None:
+                host.kill()
+                host.wait(10.0)
+        assert len(children) == 2, (children, errors)
+        assert watch.survivors(15.0) == []
+    assert host.returncode == 250, errors
+    assert b"control pipe unavailable" in errors, errors
+    assert not marker.exists()
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
 def test_host_forwards_child_output_to_stdout() -> None:
     """Child output must reach the host stdout data plane."""
     result = _run_host(["cmd", "/c", "echo hello-conpty"])
@@ -3581,11 +4926,14 @@ def test_host_preserves_edited_utf8_input_through_enter(coalesced: bool) -> None
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
-def test_ctrl_c_byte_reaches_the_child() -> None:
+@pytest.mark.parametrize("detached", (False, True), ids=("attached", "detached"))
+def test_ctrl_c_byte_reaches_the_child(detached: bool) -> None:
     """A ``0x03`` byte on stdin must interrupt the child, not just close stdin.
 
     The byte is sent only once the child has attached to the console: a
     Ctrl+C that conhost translates before then has no process to signal.
+    ``detached`` starts the host as Node's ``detached`` spawn does, with no
+    console and in a new process group, which starts with Ctrl+C ignored.
     """
     started = time.monotonic()
     result = _run_host(
@@ -3601,6 +4949,7 @@ def test_ctrl_c_byte_reaches_the_child() -> None:
         stdout_ready=b"CHILD_READY",
         close_stdin=False,
         timeout=25.0,
+        creationflags=_DETACHED_PROCESS | _CREATE_NEW_PROCESS_GROUP if detached else 0,
     )
     assert time.monotonic() - started < 25.0
     assert result.code != 0
@@ -3660,12 +5009,1796 @@ def test_descendant_lifetime_follows_console_attachment(
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize("shutdown", ("natural-exit", "kill", "host-death"))
+@pytest.mark.parametrize("deferred", (False, True), ids=("immediate", "deferred"))
+def test_session_end_ends_hidden_console_programs_and_keeps_gui_programs(
+    tmp_path: Path, shutdown: str, deferred: bool
+) -> None:
+    """Console programs that run in a console of their own end with the session.
+
+    That holds for the ones a launcher left behind, for one that asked to
+    break away from the job, and for one under a GUI program whose launcher
+    has exited. A GUI program, the console program it runs itself, and a
+    console program with no console at all keep running. A host that is
+    killed cannot act, so everything it tracked survives that, as before. A
+    launcher of the shell is still allowed to ask for a breakaway.
+    """
+    ready_file = tmp_path / "descendants.json"
+    exit_gate = tmp_path / "shell-exit"
+    records: list[dict[str, int]] = []
+    refusals: list[object] = []
+    with closing(_ProcessWatch()) as watch:
+
+        def pin_before_shutdown(ready: Mapping[str, object]) -> None:
+            """Pin the shell and every descendant before the shutdown starts."""
+            assert isinstance(ready["childPid"], int)
+            watch.pin(ready["childPid"])
+            published: object = json.loads(_read_when_published(ready_file, 45.0))
+            assert isinstance(published, dict), published
+            assert "error" not in published, published
+            refusals.append(published.get("grandBreakawayRefused"))
+            by_kind = {kind: published.get(kind) for kind in _DESCENDANT_KINDS}
+            pids = {kind: pid for kind, pid in by_kind.items() if isinstance(pid, int)}
+            # A refused breakaway is asserted last; the lifetimes come first.
+            assert pids.keys() >= set(_DESCENDANT_KINDS) - {"grandBreakaway"}, published
+            for pid in pids.values():
+                watch.pin(pid)
+            records.append(pids)
+            assert watch.survivors(0.0) == [ready["childPid"], *pids.values()]
+            if shutdown == "natural-exit":
+                exit_gate.touch()
+            elif shutdown == "host-death":
+                # On Windows SIGTERM calls TerminateProcess on the host.
+                assert isinstance(ready["hostPid"], int)
+                os.kill(ready["hostPid"], signal.SIGTERM)
+
+        result = _run_host(
+            _spawn_breakaway_descendants(ready_file, exit_gate),
+            close_stdin=False,
+            replies=({"op": "kill"},) if shutdown == "kill" else (),
+            ready_probe=pin_before_shutdown,
+            timeout=90.0,
+            deferred=deferred,
+        )
+        # A startup failure must not pass the host-death case with no handles.
+        assert len(records) == 1, result
+        pids = records[0]
+        if shutdown == "host-death":
+            assert "exit" not in [message["event"] for message in result.messages]
+            kept: tuple[str, ...] = _DESCENDANT_KINDS
+        else:
+            assert result.messages[-1] == {"event": "exit", "code": result.code}
+            if shutdown == "natural-exit":
+                assert result.code == 42, result
+            kept = _DESCENDANTS_KEPT
+        # Assert through pinned handles before closing the watch kills survivors.
+        survivors = [pids[kind] for kind in kept if kind in pids]
+        assert watch.survivors(15.0, expected=survivors) == survivors, result.stderr
+    # Only now the guard: a refusal here is the regression the breakaway job
+    # must prevent, and the lifetimes above must not hide behind it.
+    assert refusals == [None], refusals
+
+
+def _spawn_detached_supervisor(ready_file: Path, exit_gate: Path) -> list[str]:
+    """Start a detached program that runs a worker in a hidden console; gate exit.
+
+    This is how a daemon started from the terminal looks on Windows: Node's
+    ``detached`` gives it no console, and each worker it starts with
+    ``windowsHide`` gets a hidden console of its own. The daemon publishes its
+    PID and the worker's once the worker runs. The shell waits for
+    ``exit_gate`` and exits 42.
+    """
+    worker_code = (
+        "import sys, time\n"
+        "with open(sys.argv[1], 'w', encoding='utf-8') as stream:\n"
+        "    stream.write('up')\n"
+        "time.sleep(120)\n"
+    )
+    daemon_code = (
+        "import json, os, subprocess, sys, time\n"
+        "up = sys.argv[1] + '.worker'\n"
+        "worker = subprocess.Popen(\n"
+        f"    [sys.executable, '-c', {worker_code!r}, up],\n"
+        "    stdin=subprocess.DEVNULL,\n"
+        "    stdout=subprocess.DEVNULL,\n"
+        "    stderr=subprocess.DEVNULL,\n"
+        "    creationflags=subprocess.CREATE_NO_WINDOW,\n"
+        ")\n"
+        "deadline = time.monotonic() + 30\n"
+        "while not os.path.exists(up) and time.monotonic() < deadline:\n"
+        "    time.sleep(0.05)\n"
+        "record = {'pid': os.getpid(), 'worker': worker.pid}\n"
+        "with open(sys.argv[1] + '.tmp', 'w', encoding='utf-8') as stream:\n"
+        "    json.dump(record, stream)\n"
+        "os.replace(sys.argv[1] + '.tmp', sys.argv[1])\n"
+        "time.sleep(120)\n"
+    )
+    code = (
+        "import os, subprocess, sys, time\n"
+        "subprocess.Popen(\n"
+        f"    [sys.executable, '-c', {daemon_code!r}, {str(ready_file)!r}],\n"
+        "    stdin=subprocess.DEVNULL,\n"
+        "    stdout=subprocess.DEVNULL,\n"
+        "    stderr=subprocess.DEVNULL,\n"
+        "    creationflags=subprocess.DETACHED_PROCESS,\n"
+        ")\n"
+        "deadline = time.monotonic() + 120\n"
+        f"while not os.path.exists({str(exit_gate)!r}):\n"
+        "    assert time.monotonic() < deadline, 'shell exit gate was not released'\n"
+        "    time.sleep(0.05)\n"
+        "sys.exit(42)\n"
+    )
+    return [getattr(sys, "_base_executable", sys.executable), "-c", code]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize("shutdown", ("natural-exit", "kill"))
+def test_session_end_keeps_the_workers_of_a_detached_program(
+    tmp_path: Path, shutdown: str
+) -> None:
+    """A detached program keeps running together with the workers it runs itself.
+
+    Detached programs outlive the session so that daemons serving other
+    applications go on working. A daemon whose workers are ended under it is
+    running, but no longer working.
+    """
+    ready_file = tmp_path / "daemon.json"
+    exit_gate = tmp_path / "shell-exit"
+    published: list[tuple[int, int]] = []
+    consoles: list[dict[int, int | None]] = []
+    with closing(_ProcessWatch()) as watch:
+
+        def pin_before_shutdown(ready: Mapping[str, object]) -> None:
+            """Pin the shell, the daemon and its worker; check their consoles."""
+            shell = ready["childPid"]
+            assert isinstance(shell, int), ready
+            watch.pin(shell)
+            record: object = json.loads(_read_when_published(ready_file, 45.0))
+            assert isinstance(record, dict), record
+            daemon, worker = record.get("pid"), record.get("worker")
+            assert isinstance(daemon, int) and isinstance(worker, int), record
+            watch.pin(daemon)
+            watch.pin(worker)
+            published.append((daemon, worker))
+            handles = {
+                pid: _MODULE._as_handle(_MODULE._OpenProcess(_QUERY_ACCESS, False, pid))
+                for pid in (daemon, worker)
+            }
+            try:
+                consoles.append(
+                    {pid: _MODULE._console_host_of(h) for pid, h in handles.items()}
+                )
+            finally:
+                for handle in handles.values():
+                    _MODULE._close(handle)
+            if shutdown == "natural-exit":
+                exit_gate.touch()
+
+        result = _run_host(
+            _spawn_detached_supervisor(ready_file, exit_gate),
+            close_stdin=False,
+            replies=({"op": "kill"},) if shutdown == "kill" else (),
+            ready_probe=pin_before_shutdown,
+            timeout=60.0,
+        )
+        assert len(published) == 1, result
+        daemon, worker = published[0]
+        # The shape holds: the daemon has no console host, its worker has one
+        # of its own.
+        assert consoles[0][daemon] == 0, consoles
+        assert consoles[0][worker] not in (None, 0, worker), consoles
+        assert result.messages[-1] == {"event": "exit", "code": result.code}
+        if shutdown == "natural-exit":
+            assert result.code == 42, result
+        survivors = [daemon, worker]
+        assert watch.survivors(15.0, expected=survivors) == survivors, result.stderr
+
+
+"""Hidden-console programs one session leaves behind in the many-program test.
+
+With their console hosts the tracking job holds more than twice as many
+processes, past the first read of its process list (64) and past the 64
+handles one ``WaitForMultipleObjects`` call takes.
+"""
+_MANY_HELPERS = 70
+
+
+def _spawn_many_hidden_helpers(ready_file: Path, exit_gate: Path) -> list[str]:
+    """Start ``_MANY_HELPERS`` pings in hidden consoles, publish them, gate exit."""
+    code = (
+        "import json, os, subprocess, sys, time\n"
+        "ping = os.path.join(os.environ['SystemRoot'], 'System32', 'PING.EXE')\n"
+        "pids = [\n"
+        "    subprocess.Popen(\n"
+        "        [ping, '-n', '300', '127.0.0.1'],\n"
+        "        stdin=subprocess.DEVNULL,\n"
+        "        stdout=subprocess.DEVNULL,\n"
+        "        stderr=subprocess.DEVNULL,\n"
+        "        creationflags=subprocess.CREATE_NO_WINDOW,\n"
+        "    ).pid\n"
+        f"    for _ in range({_MANY_HELPERS})\n"
+        "]\n"
+        f"path = {str(ready_file)!r}\n"
+        "with open(path + '.tmp', 'w', encoding='utf-8') as stream:\n"
+        "    json.dump({'pids': pids}, stream)\n"
+        "os.replace(path + '.tmp', path)\n"
+        "deadline = time.monotonic() + 120\n"
+        f"while not os.path.exists({str(exit_gate)!r}):\n"
+        "    assert time.monotonic() < deadline, 'shell exit gate was not released'\n"
+        "    time.sleep(0.05)\n"
+        "sys.exit(42)\n"
+    )
+    return [getattr(sys, "_base_executable", sys.executable), "-c", code]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize("shutdown", ("natural-exit", "kill"))
+def test_session_end_ends_more_programs_than_one_list_read_holds(
+    tmp_path: Path, shutdown: str
+) -> None:
+    """Every hidden-console program ends, however many, within the exit budget."""
+    ready_file = tmp_path / "helpers.json"
+    exit_gate = tmp_path / "shell-exit"
+    pinned: list[int] = []
+    started: list[float] = []
+    with closing(_ProcessWatch()) as watch:
+
+        def pin_before_shutdown(ready: Mapping[str, object]) -> None:
+            """Pin the shell and every helper before the shutdown starts."""
+            shell = ready["childPid"]
+            assert isinstance(shell, int), ready
+            watch.pin(shell)
+            record: object = json.loads(_read_when_published(ready_file, 60.0))
+            assert isinstance(record, dict), record
+            pids = record.get("pids")
+            assert isinstance(pids, list), record
+            assert len(pids) == _MANY_HELPERS, record
+            for pid in pids:
+                assert isinstance(pid, int), record
+                watch.pin(pid)
+                pinned.append(pid)
+            if shutdown == "natural-exit":
+                exit_gate.touch()
+            started.append(time.monotonic())
+
+        result = _run_host(
+            _spawn_many_hidden_helpers(ready_file, exit_gate),
+            close_stdin=False,
+            replies=({"op": "kill"},) if shutdown == "kill" else (),
+            ready_probe=pin_before_shutdown,
+            timeout=90.0,
+        )
+        elapsed = time.monotonic() - started[0]
+        assert len(pinned) == _MANY_HELPERS, result
+        assert result.messages[-1] == {"event": "exit", "code": result.code}
+        assert elapsed < _IGNORED_CLOSE_BOUND, (elapsed, result.stderr)
+        assert watch.survivors(15.0) == [], result.stderr
+        assert b"did not end" not in result.stderr, result.stderr
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+def test_session_end_classifies_programs_at_non_ascii_paths(tmp_path: Path) -> None:
+    """A hidden-console program whose image path is not ASCII ends too.
+
+    The sweep reads each image's header from the path Windows reports. A user
+    folder named Jürgen, or a project named in Japanese, must not leave the
+    program unclassified and running.
+    """
+    base = Path(getattr(sys, "_base_executable", sys.executable))
+    folder = tmp_path / "Jürgen ünïcödé 日本語"
+    folder.mkdir()
+    copy = folder / "python.exe"
+    shutil.copy2(base, copy)
+    for library in base.parent.glob("*.dll"):
+        shutil.copy2(library, folder / library.name)
+    ready_file = tmp_path / "helper.json"
+    exit_gate = tmp_path / "shell-exit"
+    code = (
+        "import json, os, subprocess, sys, time\n"
+        "helper = subprocess.Popen(\n"
+        f"    [{str(copy)!r}, '-c', 'import time; time.sleep(120)'],\n"
+        "    stdin=subprocess.DEVNULL,\n"
+        "    stdout=subprocess.DEVNULL,\n"
+        "    stderr=subprocess.DEVNULL,\n"
+        "    env={**os.environ, 'PYTHONHOME': sys.base_prefix},\n"
+        "    creationflags=subprocess.CREATE_NO_WINDOW,\n"
+        ")\n"
+        f"path = {str(ready_file)!r}\n"
+        "with open(path + '.tmp', 'w', encoding='utf-8') as stream:\n"
+        "    json.dump({'pid': helper.pid}, stream)\n"
+        "os.replace(path + '.tmp', path)\n"
+        "deadline = time.monotonic() + 120\n"
+        f"while not os.path.exists({str(exit_gate)!r}):\n"
+        "    assert time.monotonic() < deadline, 'shell exit gate was not released'\n"
+        "    time.sleep(0.05)\n"
+        "sys.exit(42)\n"
+    )
+    pinned: list[int] = []
+    with closing(_ProcessWatch()) as watch:
+
+        def pin_before_shutdown(ready: Mapping[str, object]) -> None:
+            """Pin the shell and the helper, and see that the helper runs."""
+            pid = _pin_shell_and_published_pid(watch, ready, ready_file, 45.0)
+            pinned.append(pid)
+            # Still running a second later: the copy found its libraries.
+            time.sleep(1.0)
+            assert watch.survivors(0.0) == [ready["childPid"], pid]
+            exit_gate.touch()
+
+        result = _run_host(
+            [str(base), "-c", code],
+            close_stdin=False,
+            ready_probe=pin_before_shutdown,
+            timeout=60.0,
+        )
+        assert len(pinned) == 1, result
+        assert result.code == 42, result
+        assert watch.survivors(15.0) == [], result.stderr
+        assert b"could not classify" not in result.stderr, result.stderr
+
+
+def _spawn_published_program(
+    ready_file: Path,
+    exit_gate: Path,
+    program: str,
+    flags: str,
+    startupinfo: str = "None",
+) -> list[str]:
+    """Start ``program`` with creation ``flags``; it publishes itself; gate exit.
+
+    ``program`` is Python code that writes its record to ``sys.argv[1]``;
+    ``startupinfo`` is code for the ``STARTUPINFO`` it starts with. The shell
+    waits for ``exit_gate`` and exits 42.
+    """
+    code = (
+        "import os, subprocess, sys, time\n"
+        "subprocess.Popen(\n"
+        f"    [sys.executable, '-c', {program!r}, {str(ready_file)!r}],\n"
+        "    stdin=subprocess.DEVNULL,\n"
+        "    stdout=subprocess.DEVNULL,\n"
+        "    stderr=subprocess.DEVNULL,\n"
+        f"    creationflags={flags},\n"
+        f"    startupinfo={startupinfo},\n"
+        ")\n"
+        "deadline = time.monotonic() + 120\n"
+        f"while not os.path.exists({str(exit_gate)!r}):\n"
+        "    assert time.monotonic() < deadline, 'shell exit gate was not released'\n"
+        "    time.sleep(0.05)\n"
+        "sys.exit(42)\n"
+    )
+    return [getattr(sys, "_base_executable", sys.executable), "-c", code]
+
+
+"""A console program that lets go of its hidden console, as daemons do.
+
+It publishes its PID and whether ``FreeConsole`` succeeded.
+"""
+_CONSOLE_FREEING_PROGRAM = (
+    "import ctypes, json, os, sys, time\n"
+    "kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)\n"
+    "freed = bool(kernel32.FreeConsole())\n"
+    "time.sleep(0.5)\n"
+    "with open(sys.argv[1] + '.tmp', 'w', encoding='utf-8') as stream:\n"
+    "    json.dump({'pid': os.getpid(), 'freed': freed}, stream)\n"
+    "os.replace(sys.argv[1] + '.tmp', sys.argv[1])\n"
+    "time.sleep(120)\n"
+)
+
+
+def _run_published_program(
+    tmp_path: Path,
+    shutdown: str,
+    program: str,
+    flags: str,
+    shape: str,
+    deadline: float = 30.0,
+    announces_start: bool = False,
+    ends: bool = False,
+    startupinfo: str = "None",
+) -> tuple[_HostResult, Mapping[str, Any], list[int]]:
+    """Run a session whose shell starts ``program``; return what is still running.
+
+    The program's record must report ``shape`` as true before the shutdown.
+    The program publishes it within ``deadline`` seconds of its start; the
+    probe allows 15 seconds more for the start, and the host 15 more again.
+    A program that ``announces_start`` first publishes ``<record>.started``,
+    so a record that does not come says whether the program had started.
+    ``startupinfo`` is code for the ``STARTUPINFO`` the program starts with.
+    The result holds the host's result, the program's record, and the pinned
+    processes that outlive the session, the program expected among them
+    unless it ``ends`` with the session.
+    """
+    ready_file = tmp_path / "program.json"
+    exit_gate = tmp_path / "shell-exit"
+    read_timeout = deadline + 15.0
+    records: list[Mapping[str, Any]] = []
+    with closing(_ProcessWatch()) as watch:
+
+        def pin_before_shutdown(ready: Mapping[str, object]) -> None:
+            """Pin the shell and the program; check its shape."""
+            shell = ready["childPid"]
+            assert isinstance(shell, int), ready
+            watch.pin(shell)
+            until = time.monotonic() + read_timeout
+            if announces_start:
+                started = Path(f"{ready_file}.started")
+                _read_when_published(started, until - time.monotonic())
+            record: Mapping[str, Any] = json.loads(
+                _read_when_published(ready_file, until - time.monotonic())
+            )
+            assert isinstance(record, dict), record
+            pid = record.get("pid")
+            assert isinstance(pid, int), record
+            watch.pin(pid)
+            records.append(record)
+            assert record.get(shape) is True, record
+            if shutdown == "natural-exit":
+                exit_gate.touch()
+
+        result = _run_host(
+            _spawn_published_program(
+                ready_file, exit_gate, program, flags, startupinfo
+            ),
+            close_stdin=False,
+            replies=({"op": "kill"},) if shutdown == "kill" else (),
+            ready_probe=pin_before_shutdown,
+            timeout=read_timeout + 15.0,
+        )
+        assert len(records) == 1, result
+        (published,) = records
+        assert result.messages[-1] == {"event": "exit", "code": result.code}
+        # Assert through pinned handles before closing the watch kills survivors.
+        return (
+            result,
+            published,
+            watch.survivors(15.0, expected=() if ends else [published["pid"]]),
+        )
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize("shutdown", ("natural-exit", "kill"))
+def test_session_end_keeps_a_program_that_freed_its_console(
+    tmp_path: Path, shutdown: str
+) -> None:
+    """A program that let go of its hidden console counts as detached and stays.
+
+    Once ``FreeConsole`` returns, the program holds no console host, so it is
+    a program without a console, which the session end keeps running.
+    """
+    result, record, survivors = _run_published_program(
+        tmp_path,
+        shutdown,
+        _CONSOLE_FREEING_PROGRAM,
+        "subprocess.CREATE_NO_WINDOW",
+        "freed",
+    )
+    assert survivors == [record["pid"]], result.stderr
+
+
+"""Seconds the windowed program waits for its window to show."""
+_WINDOW_DEADLINE = 60.0
+
+"""A console program that shows a window, as ``start python app.py`` runs a Tk app.
+
+The window is a message box shown by another thread. The program publishes
+its PID to ``<record>.started`` as it starts, then its record once the
+window is visible or ``_WINDOW_DEADLINE`` has passed: whether the window was
+found, whether it is visible, and the seconds it waited.
+"""
+_WINDOWED_CONSOLE_PROGRAM = (
+    "import ctypes, json, os, sys, threading, time\n"
+    "def publish(path, record):\n"
+    "    with open(path + '.tmp', 'w', encoding='utf-8') as stream:\n"
+    "        json.dump(record, stream)\n"
+    "    os.replace(path + '.tmp', path)\n"
+    "started = time.monotonic()\n"
+    "publish(sys.argv[1] + '.started', {'pid': os.getpid()})\n"
+    "user32 = ctypes.WinDLL('user32', use_last_error=True)\n"
+    "user32.FindWindowW.restype = ctypes.c_void_p\n"
+    "title = f'session-end window {os.getpid()}'\n"
+    "threading.Thread(\n"
+    "    target=lambda: user32.MessageBoxW(None, 'unsaved work', title, 0),\n"
+    "    daemon=True,\n"
+    ").start()\n"
+    "window = None\n"
+    "visible = False\n"
+    f"while not visible and time.monotonic() < started + {_WINDOW_DEADLINE}:\n"
+    "    time.sleep(0.05)\n"
+    "    window = user32.FindWindowW(None, title)\n"
+    "    visible = bool(window) and bool(\n"
+    "        user32.IsWindowVisible(ctypes.c_void_p(window))\n"
+    "    )\n"
+    "publish(sys.argv[1], {\n"
+    "    'pid': os.getpid(),\n"
+    "    'found': bool(window),\n"
+    "    'visible': visible,\n"
+    "    'waited': round(time.monotonic() - started, 1),\n"
+    "})\n"
+    "time.sleep(120)\n"
+)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize("shutdown", ("natural-exit", "kill"))
+def test_session_end_keeps_a_console_program_that_shows_a_window(
+    tmp_path: Path, shutdown: str
+) -> None:
+    """A console program with a window of its own keeps running, as on 3.29.0.
+
+    The changeset keeps programs with a window. A Tk or Qt app run as
+    ``start python app.py``, a Swing app run through ``java.exe`` and a GUI
+    app built as a console image all have one, in a console of their own.
+    """
+    result, record, survivors = _run_published_program(
+        tmp_path,
+        shutdown,
+        _WINDOWED_CONSOLE_PROGRAM,
+        "subprocess.CREATE_NEW_CONSOLE",
+        "visible",
+        deadline=_WINDOW_DEADLINE,
+        announces_start=True,
+    )
+    assert survivors == [record["pid"]], result.stderr
+
+
+"""A console program whose only window is its console window, as ``start ping``.
+
+The program publishes its record once its console window is visible or
+``_WINDOW_DEADLINE`` has passed: whether the window is visible, the class of
+the window and the process Windows names as its owner.
+"""
+_PROGRAM_IN_A_CONSOLE_WINDOW = (
+    "import ctypes, json, os, sys, time\n"
+    "from ctypes import wintypes\n"
+    "kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)\n"
+    "user32 = ctypes.WinDLL('user32', use_last_error=True)\n"
+    "kernel32.GetConsoleWindow.restype = ctypes.c_void_p\n"
+    "def console_window():\n"
+    "    window = kernel32.GetConsoleWindow()\n"
+    "    visible = bool(window) and bool(\n"
+    "        user32.IsWindowVisible(ctypes.c_void_p(window))\n"
+    "    )\n"
+    "    return window, visible\n"
+    "started = time.monotonic()\n"
+    "window, visible = console_window()\n"
+    f"while not visible and time.monotonic() < started + {_WINDOW_DEADLINE}:\n"
+    "    time.sleep(0.05)\n"
+    "    window, visible = console_window()\n"
+    "owner = wintypes.DWORD(0)\n"
+    "name = ctypes.create_unicode_buffer(257)\n"
+    "if window:\n"
+    "    user32.GetWindowThreadProcessId(ctypes.c_void_p(window), ctypes.byref(owner))\n"
+    "    user32.GetClassNameW(ctypes.c_void_p(window), name, len(name))\n"
+    "with open(sys.argv[1] + '.tmp', 'w', encoding='utf-8') as stream:\n"
+    "    json.dump({\n"
+    "        'pid': os.getpid(),\n"
+    "        'visible': visible,\n"
+    "        'owner': owner.value,\n"
+    "        'class': name.value,\n"
+    "    }, stream)\n"
+    "os.replace(sys.argv[1] + '.tmp', sys.argv[1])\n"
+    "time.sleep(120)\n"
+)
+
+"""``ShowWindow`` state of a minimized window the console host keeps for itself.
+
+The console host hands a new console to the default terminal unless it was
+started hidden or minimized, so a minimized program sits in a classic console
+window of its own wherever the test runs. A minimized window keeps the visible
+style.
+"""
+_SW_SHOWMINNOACTIVE = 7
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize("shutdown", ("natural-exit", "kill"))
+def test_session_end_ends_a_console_program_in_a_console_window_of_its_own(
+    tmp_path: Path, shutdown: str
+) -> None:
+    """A console program whose only window is its console window ends.
+
+    A console window opened from the terminal, with ``start cmd`` say, closes
+    with it, as the changeset says. The console host names the program in the
+    window as the window's owner, so that window must not pass for one of the
+    program's own. The program starts minimized, as ``start /min`` starts one,
+    so its window is a classic console window of its own whatever the default
+    terminal is. Under a handoff the window would be the pseudoconsole's,
+    owned by Windows Terminal's window, and there would be nothing to tell
+    apart; the guard below then says so instead of failing.
+    """
+    result, record, survivors = _run_published_program(
+        tmp_path,
+        shutdown,
+        _PROGRAM_IN_A_CONSOLE_WINDOW,
+        "subprocess.CREATE_NEW_CONSOLE",
+        "visible",
+        deadline=_WINDOW_DEADLINE,
+        ends=True,
+        startupinfo=(
+            "subprocess.STARTUPINFO(dwFlags=subprocess.STARTF_USESHOWWINDOW,"
+            f" wShowWindow={_SW_SHOWMINNOACTIVE})"
+        ),
+    )
+    if record["class"] != "ConsoleWindowClass" or record["owner"] != record["pid"]:
+        reason = f"the console window is not the program's own: {record}"
+        pytest.skip(reason)  # ty: ignore[too-many-positional-arguments]
+    assert survivors == [], result.stderr
+
+
+"""Creation flag of a child with a hidden console of its own."""
+_CREATE_NO_WINDOW = 0x08000000
+"""Creation flag of a child with no console at all."""
+_DETACHED_PROCESS = 0x00000008
+"""Creation flag of a child that leads a new process group."""
+_CREATE_NEW_PROCESS_GROUP = 0x00000200
+"""Creation flag asking to leave the creator's job."""
+_CREATE_BREAKAWAY_FROM_JOB = 0x01000000
+"""Process access to assign a running child to jobs and to wait on it."""
+_ASSIGN_ACCESS = 0x0100 | 0x0001 | 0x0400 | 0x1000 | 0x00100000
+"""``PROCESS_QUERY_LIMITED_INFORMATION``: what the sweep opens a process with."""
+_QUERY_ACCESS = 0x1000
+"""Code of a child that starts a plain and a breakaway grandchild once gated.
+
+It publishes both PIDs, or the error text of a refused breakaway, then sleeps.
+"""
+_CHILD_IN_JOBS = (
+    "import json, os, subprocess, sys, time\n"
+    "gate, out = sys.argv[1], sys.argv[2]\n"
+    "while not os.path.exists(gate):\n"
+    "    time.sleep(0.05)\n"
+    "sleeper = [sys.executable, '-c', 'import time; time.sleep(60)']\n"
+    f"plain = subprocess.Popen(sleeper, creationflags={_CREATE_NO_WINDOW}).pid\n"
+    "try:\n"
+    "    away = subprocess.Popen(\n"
+    f"        sleeper, creationflags={_CREATE_NO_WINDOW | _CREATE_BREAKAWAY_FROM_JOB}\n"
+    "    ).pid\n"
+    "except OSError as error:\n"
+    "    away = str(error)\n"
+    "with open(out + '.tmp', 'w', encoding='utf-8') as stream:\n"
+    "    json.dump({'plain': plain, 'away': away}, stream)\n"
+    "os.replace(out + '.tmp', out)\n"
+    "time.sleep(60)\n"
+)
+
+
+"""Code of a sleeper that writes ``up`` to the file named by its argument first."""
+_UP_SLEEPER = (
+    "import sys, time\n"
+    "with open(sys.argv[1], 'w', encoding='utf-8') as stream:\n"
+    "    stream.write('up')\n"
+    "time.sleep(60)\n"
+)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+def test_console_check_tells_consoles_apart(tmp_path: Path) -> None:
+    """A program with a hidden console of its own has a console host; a detached one has none.
+
+    Asked before a child has finished starting, the check sees the stand-in
+    its creator left, not the child's own console, so both children report
+    that they are up before the question is put. Named as the pseudoconsole's
+    host, a console makes its client an attached one.
+    """
+    started = (tmp_path / "own", tmp_path / "detached")
+    own = subprocess.Popen(
+        [sys.executable, "-c", _UP_SLEEPER, str(started[0])],
+        creationflags=_CREATE_NO_WINDOW,
+    )
+    detached = subprocess.Popen(
+        [sys.executable, "-c", _UP_SLEEPER, str(started[1])],
+        creationflags=_DETACHED_PROCESS,
+    )
+    handles = {
+        pid: _MODULE._as_handle(_MODULE._OpenProcess(_QUERY_ACCESS, False, pid))
+        for pid in (own.pid, detached.pid, os.getpid())
+    }
+    try:
+        assert all(handles.values()), handles
+        for marker in started:
+            assert _read_when_published(marker, 30.0) == "up"
+        kinds = _MODULE._console_kinds(handles, 0)
+        assert kinds.get(own.pid) == "own", kinds
+        assert kinds.get(detached.pid) == "none", kinds
+        # Whether this process has a console depends on the runner; either way
+        # the answer is one the sweep understands.
+        assert kinds.get(os.getpid()) in ("own", "none"), kinds
+        host = _MODULE._console_host_of(handles[own.pid])
+        assert isinstance(host, int) and host not in (0, own.pid), host
+        attached = _MODULE._console_kinds({own.pid: handles[own.pid]}, host)
+        assert attached == {own.pid: "attached"}, attached
+    finally:
+        for handle in handles.values():
+            _MODULE._close(handle)
+        own.kill()
+        detached.kill()
+        own.wait(timeout=15.0)
+        detached.wait(timeout=15.0)
+
+
+"""Code of a pseudoconsole client that starts a plain and a hidden child.
+
+Each child writes ``up`` to the marker named for it once it runs; the client
+then publishes both PIDs and sleeps.
+"""
+_PSEUDOCONSOLE_CLIENT = (
+    "import json, os, subprocess, sys, time\n"
+    "out, plain_up, hidden_up = sys.argv[1:4]\n"
+    f"plain = subprocess.Popen([sys.executable, '-c', {_UP_SLEEPER!r}, plain_up]).pid\n"
+    "hidden = subprocess.Popen(\n"
+    f"    [sys.executable, '-c', {_UP_SLEEPER!r}, hidden_up],\n"
+    f"    creationflags={_CREATE_NO_WINDOW},\n"
+    ").pid\n"
+    "with open(out + '.tmp', 'w', encoding='utf-8') as stream:\n"
+    "    json.dump({'plain': plain, 'hidden': hidden}, stream)\n"
+    "os.replace(out + '.tmp', out)\n"
+    "time.sleep(60)\n"
+)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+def test_pseudoconsole_names_the_console_host_its_clients_report(
+    tmp_path: Path,
+) -> None:
+    """The console host a pseudoconsole names is the one its clients report.
+
+    The shell started on the pseudoconsole and a child that inherits its
+    console both report that host, so the check reads them as attached; a
+    child with a hidden console of its own does not. Before it runs, the
+    shell reports its creator's PID in place of a console host, and the
+    check told who created it reads it as too new to judge rather than as a
+    program in a console of its own.
+    """
+    out = tmp_path / "children.json"
+    markers = (tmp_path / "plain", tmp_path / "hidden")
+    input_read, input_write = _MODULE._create_pipe()
+    output_read, output_write = _MODULE._create_pipe()
+    pseudoconsole = _MODULE._create_pseudoconsole(80, 24, input_read, output_write)
+    handles: dict[int, int] = {}
+    thread = 0
+    try:
+        host = pseudoconsole.host
+        assert host not in (0, os.getpid()), host
+        process, thread, pid = _MODULE._create_child(
+            subprocess.list2cmdline(
+                [sys.executable, "-c", _PSEUDOCONSOLE_CLIENT, str(out)]
+                + [str(marker) for marker in markers]
+            ),
+            pseudoconsole.handle,
+        )
+        handles[pid] = process
+        # Suspended, the shell has not connected: its creator's PID stands in.
+        assert _MODULE._console_host_of(process) == os.getpid()
+        assert _MODULE._console_kinds({pid: process}, host) == {pid: "own"}
+        assert _MODULE._console_kinds({pid: process}, host, {pid: os.getpid()}) == {
+            pid: "young"
+        }
+        assert _MODULE._ResumeThread(thread) == 1, _MODULE._last_error()
+        record: object = json.loads(_read_when_published(out, 30.0))
+        assert isinstance(record, dict), record
+        for marker in markers:
+            assert _read_when_published(marker, 30.0) == "up"
+        plain, hidden = record.get("plain"), record.get("hidden")
+        assert isinstance(plain, int) and isinstance(hidden, int), record
+        for child in (plain, hidden):
+            handles[child] = _MODULE._as_handle(
+                _MODULE._OpenProcess(_MODULE._PROCESS_SWEEP_ACCESS, False, child)
+            )
+        assert all(handles.values()), (handles, _MODULE._last_error())
+        creators = {pid: os.getpid(), plain: pid, hidden: pid}
+        kinds = _MODULE._console_kinds(handles, host, creators)
+        assert kinds == {pid: "attached", plain: "attached", hidden: "own"}, (
+            kinds,
+            host,
+            {child: _MODULE._console_host_of(h) for child, h in handles.items()},
+        )
+    finally:
+        for handle in handles.values():
+            if handle:
+                _MODULE._TerminateProcess(handle, 1)
+                _MODULE._WaitForSingleObject(handle, 15000)
+                _MODULE._close(handle)
+        if thread:
+            _MODULE._close(thread)
+        # The read end breaks first: the built-in close waits for a drain.
+        _MODULE._close(output_read)
+        pseudoconsole.close()
+        for handle in (input_read, input_write, output_write):
+            _MODULE._close(handle)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+def test_pseudoconsole_host_is_unknown_when_it_names_no_console_host() -> None:
+    """A pseudoconsole whose host handle names another program has no known host.
+
+    The struct an ``HPCON`` points to is not a documented contract. Should
+    its host slot ever name a program that is not a console host, every
+    attached program would pass for one in a console of its own and end
+    without its close event. An unknown host ends nothing early.
+    """
+    process = _MODULE._as_handle(
+        _MODULE._OpenProcess(_MODULE._PROCESS_SWEEP_ACCESS, False, os.getpid())
+    )
+    assert process, _MODULE._last_error()
+    try:
+        # The slot names this Python process instead of a console host.
+        struct = _MODULE._PSEUDOCONSOLE(0, 0, process)
+        assert _MODULE._pseudoconsole_console_host(ctypes.addressof(struct)) == 0
+    finally:
+        _MODULE._close(process)
+
+
+"""Seconds after the kill that the late helper is let connect to its console.
+
+Past both sweeps of the session end, which run within milliseconds of the
+kill when nothing holds the pseudoconsole open, and well inside their
+deadline.
+"""
+_LATE_CONNECT = 0.3
+
+
+def _spawn_suspended_helper(ready_file: Path) -> list[str]:
+    """Start a hidden ping suspended, publish its PID, then wait for the kill.
+
+    Suspended, the helper has not connected to its console yet, as a helper
+    the shell started a moment before the session ended has not.
+    """
+    code = (
+        "import json, os, subprocess, sys, time\n"
+        "ping = os.path.join(os.environ['SystemRoot'], 'System32', 'PING.EXE')\n"
+        "helper = subprocess.Popen(\n"
+        "    [ping, '-n', '300', '127.0.0.1'],\n"
+        "    stdin=subprocess.DEVNULL,\n"
+        "    stdout=subprocess.DEVNULL,\n"
+        "    stderr=subprocess.DEVNULL,\n"
+        "    creationflags=subprocess.CREATE_NO_WINDOW | 0x00000004,\n"
+        ")\n"
+        f"path = {str(ready_file)!r}\n"
+        "with open(path + '.tmp', 'w', encoding='utf-8') as stream:\n"
+        "    json.dump({'pid': helper.pid}, stream)\n"
+        "os.replace(path + '.tmp', path)\n"
+        "time.sleep(120)\n"
+    )
+    return [getattr(sys, "_base_executable", sys.executable), "-c", code]
+
+
+def _resume_later(pid: int, delay: float) -> None:
+    """Resume the suspended process ``pid`` once ``delay`` seconds have passed."""
+    kernel32 = _kernel32()
+    open_process = kernel32.OpenProcess
+    open_process.argtypes = (ctypes.c_uint32, ctypes.c_int32, ctypes.c_uint32)
+    open_process.restype = ctypes.c_void_p
+    # ``PROCESS_SUSPEND_RESUME``.
+    handle = open_process(0x0800, False, pid)
+    assert handle, _win32_error()
+    ntdll = ctypes.WinDLL("ntdll")  # ty: ignore[possibly-missing-attribute]
+    ntdll.NtResumeProcess.argtypes = (ctypes.c_void_p,)
+    ntdll.NtResumeProcess.restype = ctypes.c_int32
+    try:
+        time.sleep(delay)
+        assert ntdll.NtResumeProcess(handle) == 0
+    finally:
+        kernel32.CloseHandle(ctypes.c_void_p(handle))
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+def test_session_end_ends_a_helper_that_connects_to_its_console_late(
+    tmp_path: Path,
+) -> None:
+    """A hidden helper too new to judge at the kill is ended once it connects.
+
+    The sweep cannot judge a program that has not connected to its console
+    yet. Its last round must wait for that program, or a helper the shell
+    started just before the session ended outlives the session, which is the
+    leak the sweep is there to close.
+    """
+    ready_file = tmp_path / "helper.json"
+    resumers: list[threading.Thread] = []
+    with closing(_ProcessWatch()) as watch:
+
+        def pin_before_kill(ready: Mapping[str, object]) -> None:
+            """Pin the shell and the helper; let the helper connect after the kill."""
+            shell = ready["childPid"]
+            assert isinstance(shell, int), ready
+            watch.pin(shell)
+            record: object = json.loads(_read_when_published(ready_file, 30.0))
+            assert isinstance(record, dict), record
+            pid = record.get("pid")
+            assert isinstance(pid, int), record
+            watch.pin(pid)
+            resumer = threading.Thread(target=_resume_later, args=(pid, _LATE_CONNECT))
+            resumer.start()
+            resumers.append(resumer)
+
+        result = _run_host(
+            _spawn_suspended_helper(ready_file),
+            close_stdin=False,
+            replies=({"op": "kill"},),
+            ready_probe=pin_before_kill,
+            timeout=60.0,
+        )
+        for resumer in resumers:
+            resumer.join(10.0)
+        assert len(resumers) == 1, result
+        assert result.messages[-1] == {"event": "exit", "code": result.code}
+        assert watch.survivors(15.0) == [], result.stderr
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+def test_tracking_jobs_hold_what_leaves_the_kill_on_close_job(tmp_path: Path) -> None:
+    """The root job lists a child's plain and breakaway descendants; the inner job only the child.
+
+    A plain grandchild leaves the kill-on-close job silently and stops in the
+    middle job, which permits no silent breakaway; one that asks to break away
+    is not refused and is still tracked.
+    """
+    gate = tmp_path / "gate"
+    out = tmp_path / "pids.json"
+    tracking, breakaway = _MODULE._create_tracking_jobs()
+    inner = _MODULE._create_job()
+    child = subprocess.Popen(
+        [sys.executable, "-c", _CHILD_IN_JOBS, str(gate), str(out)],
+        creationflags=_CREATE_NO_WINDOW,
+    )
+    handle = _MODULE._as_handle(_MODULE._OpenProcess(_ASSIGN_ACCESS, False, child.pid))
+    assert handle, _MODULE._last_error()
+    try:
+        for job in (tracking, breakaway, inner):
+            assert _MODULE._AssignProcessToJobObject(job, handle), _MODULE._last_error()
+        gate.touch()
+        published: object = json.loads(_read_when_published(out, 30.0))
+        assert isinstance(published, dict), published
+        plain, away = published.get("plain"), published.get("away")
+        assert isinstance(plain, int), published
+        assert isinstance(away, int), published
+        tracked = _MODULE._tracked_process_ids(tracking)
+        assert {child.pid, plain, away} <= set(tracked), tracked
+        # The console hosts of the hidden consoles sit in the jobs as well.
+        middle = set(_MODULE._tracked_process_ids(breakaway))
+        assert {child.pid, plain} <= middle, middle
+        assert _MODULE._tracked_process_ids(inner) == [child.pid]
+        for pid in (child.pid, plain, away):
+            opened = _MODULE._open_tracked_process(pid, tracking)
+            assert opened, (pid, _MODULE._last_error())
+            _MODULE._close(opened)
+        assert _MODULE._open_tracked_process(os.getpid(), tracking) == 0
+    finally:
+        _MODULE._TerminateJobObject(tracking, 1)
+        child.wait(timeout=15.0)
+        for job in (inner, breakaway, tracking):
+            _MODULE._close(job)
+        _MODULE._close(handle)
+
+
+"""Git for Windows' native bash launcher, where its installer puts it."""
+_GIT_BASH_LAUNCHER = Path(r"C:\Program Files\Git\bin\bash.exe")
+"""The MSYS ``bash.exe`` that the launcher starts."""
+_MSYS_BASH = Path(r"C:\Program Files\Git\usr\bin\bash.exe")
+"""Seconds within which the sweep ends a hidden helper, whatever else runs.
+
+The plugin kills the host ``TERMINAL_EXIT_CLEANUP_WAIT`` (5 s) after it asks
+for the kill, so the sweep's own deadline and join margin sit below that.
+"""
+_IGNORED_CLOSE_BOUND = 4.0
+"""Seconds an attached program that ignores the close is known to live on.
+
+The console host ends such a program through its own five-second timeout;
+a sweep that ended it sooner would take that time away from programs that
+use it to save their state.
+"""
+_CONSOLE_HOST_PATIENCE = 3.0
+"""Seconds a session end may take once an attached program ignores the close.
+
+The console host's timeout decides, as on 3.29.0, and nothing may hang after it.
+"""
+_SESSION_END_BOUND = 10.0
+
+
+def _pin_shell_and_published_pid(
+    watch: _ProcessWatch, ready: Mapping[str, object], ready_file: Path, timeout: float
+) -> int:
+    """Pin the shell and the program whose PID ``ready_file`` names; return it."""
+    shell = ready["childPid"]
+    assert isinstance(shell, int), ready
+    watch.pin(shell)
+    record: object = json.loads(_read_when_published(ready_file, timeout))
+    assert isinstance(record, dict), record
+    pid = record.get("pid")
+    assert isinstance(pid, int), record
+    watch.pin(pid)
+    return pid
+
+
+def _write_hidden_sleeper_launcher(
+    script: Path, ready_file: Path, exit_gate: Path
+) -> None:
+    """Write a program that leaves a sleeper in a hidden console, then waits.
+
+    It publishes the sleeper's PID to ``ready_file``, waits for ``exit_gate``
+    and exits 42, so the shell that runs it as its last command exits 42 too.
+    """
+    script.write_text(
+        "import json, os, subprocess, sys, time\n"
+        "child = subprocess.Popen(\n"
+        "    [sys.executable, '-c', 'import time; time.sleep(120)'],\n"
+        "    stdin=subprocess.DEVNULL,\n"
+        "    stdout=subprocess.DEVNULL,\n"
+        "    stderr=subprocess.DEVNULL,\n"
+        "    creationflags=subprocess.CREATE_NO_WINDOW,\n"
+        ")\n"
+        f"path = {str(ready_file)!r}\n"
+        "with open(path + '.tmp', 'w', encoding='utf-8') as stream:\n"
+        "    json.dump({'pid': child.pid}, stream)\n"
+        "os.replace(path + '.tmp', path)\n"
+        "deadline = time.monotonic() + 120\n"
+        f"while not os.path.exists({str(exit_gate)!r}):\n"
+        "    assert time.monotonic() < deadline, 'shell exit gate was not released'\n"
+        "    time.sleep(0.05)\n"
+        "sys.exit(42)\n",
+        encoding="utf-8",
+    )
+
+
+def _msys_shell(shape: str, launcher: Path) -> list[str]:
+    """Return a shell that runs ``launcher`` through MSYS bash in one shape.
+
+    ``gitBash`` is the plugin's Git Bash preset: the native launcher in
+    ``bin`` starts the MSYS ``bash.exe``. ``libuvLike`` is a Node-style
+    program: it puts itself in a job with libuv's limits, then starts the MSYS
+    ``bash.exe`` itself. MSYS rewrites arguments that look like POSIX paths,
+    so the Windows paths keep their drive letter and use forward slashes.
+    """
+    python = getattr(sys, "_base_executable", sys.executable)
+    command = f'"{Path(python).as_posix()}" "{launcher.as_posix()}"'
+    if shape == "gitBash":
+        return [str(_GIT_BASH_LAUNCHER), "-c", command]
+    code = (
+        "import ctypes, subprocess, sys\n"
+        "from ctypes import wintypes\n"
+        "kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)\n"
+        "kernel32.CreateJobObjectW.restype = ctypes.c_void_p\n"
+        "kernel32.GetCurrentProcess.restype = ctypes.c_void_p\n"
+        "kernel32.SetInformationJobObject.argtypes = (\n"
+        "    ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD\n"
+        ")\n"
+        "kernel32.AssignProcessToJobObject.argtypes = (ctypes.c_void_p, ctypes.c_void_p)\n"
+        "class Limits(ctypes.Structure):\n"
+        "    _fields_ = (\n"
+        "        ('times', ctypes.c_int64 * 2),\n"
+        "        ('LimitFlags', wintypes.DWORD),\n"
+        "        ('working_set', ctypes.c_size_t * 2),\n"
+        "        ('ActiveProcessLimit', wintypes.DWORD),\n"
+        "        ('Affinity', ctypes.c_size_t),\n"
+        "        ('classes', wintypes.DWORD * 2),\n"
+        "        ('io_counters', ctypes.c_uint64 * 6),\n"
+        "        ('memory', ctypes.c_size_t * 4),\n"
+        "    )\n"
+        "job = kernel32.CreateJobObjectW(None, None)\n"
+        "assert job, ctypes.get_last_error()\n"
+        "limits = Limits()\n"
+        "# KILL_ON_JOB_CLOSE | SILENT_BREAKAWAY_OK | BREAKAWAY_OK, as libuv sets.\n"
+        "limits.LimitFlags = 0x2000 | 0x1000 | 0x800\n"
+        "assert kernel32.SetInformationJobObject(\n"
+        "    job, 9, ctypes.byref(limits), ctypes.sizeof(limits)\n"
+        "), ctypes.get_last_error()\n"
+        "assert kernel32.AssignProcessToJobObject(\n"
+        "    job, kernel32.GetCurrentProcess()\n"
+        "), ctypes.get_last_error()\n"
+        f"sys.exit(subprocess.run([{str(_MSYS_BASH)!r}, '-c', {command!r}]).returncode)\n"
+    )
+    return [python, "-c", code]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.skipif(
+    not (_GIT_BASH_LAUNCHER.is_file() and _MSYS_BASH.is_file()),
+    reason="Git for Windows is not installed at its default path",
+)
+@pytest.mark.parametrize("shutdown", ("natural-exit", "kill"))
+@pytest.mark.parametrize("shape", ("gitBash", "libuvLike"))
+def test_session_end_ends_programs_left_behind_through_msys_bash(
+    tmp_path: Path, shutdown: str, shape: str
+) -> None:
+    """A hidden-console program started under MSYS bash ends with the session.
+
+    MSYS asks for ``CREATE_BREAKAWAY_FROM_JOB`` whenever the job it runs in
+    permits a breakaway, so a job layout that permits one at the wrong level
+    loses everything that Git Bash, or an agent's Bash tool, runs.
+    """
+    ready_file = tmp_path / "sleeper.json"
+    exit_gate = tmp_path / "shell-exit"
+    launcher = tmp_path / "launcher.py"
+    _write_hidden_sleeper_launcher(launcher, ready_file, exit_gate)
+    sleeper_pids: list[int] = []
+    with closing(_ProcessWatch()) as watch:
+
+        def pin_before_shutdown(ready: Mapping[str, object]) -> None:
+            """Pin the shell and the sleeper before the shutdown starts."""
+            pid = _pin_shell_and_published_pid(watch, ready, ready_file, 45.0)
+            sleeper_pids.append(pid)
+            if shutdown == "natural-exit":
+                exit_gate.touch()
+
+        result = _run_host(
+            _msys_shell(shape, launcher),
+            close_stdin=False,
+            replies=({"op": "kill"},) if shutdown == "kill" else (),
+            ready_probe=pin_before_shutdown,
+            timeout=90.0,
+        )
+        assert len(sleeper_pids) == 1, result
+        assert result.messages[-1] == {"event": "exit", "code": result.code}
+        if shutdown == "natural-exit":
+            assert result.code == 42, result
+        assert watch.survivors(15.0) == [], result.stderr
+
+
+"""Code defining ``job_flags()``: the limit flags of the caller's job, or ``None``.
+
+With a ``NULL`` job handle, ``QueryInformationJobObject`` answers for the job
+the calling process is in.
+"""
+_JOB_FLAGS_CODE = (
+    "import ctypes\n"
+    "from ctypes import wintypes\n"
+    "kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)\n"
+    "class Basic(ctypes.Structure):\n"
+    "    _fields_ = (\n"
+    "        ('times', ctypes.c_int64 * 2),\n"
+    "        ('LimitFlags', wintypes.DWORD),\n"
+    "        ('working_set', ctypes.c_size_t * 2),\n"
+    "        ('ActiveProcessLimit', wintypes.DWORD),\n"
+    "        ('Affinity', ctypes.c_size_t),\n"
+    "        ('classes', wintypes.DWORD * 2),\n"
+    "    )\n"
+    "kernel32.QueryInformationJobObject.argtypes = (\n"
+    "    ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p\n"
+    ")\n"
+    "def job_flags():\n"
+    "    basic = Basic()\n"
+    "    # JobObjectBasicLimitInformation of the job this process is in.\n"
+    "    known = kernel32.QueryInformationJobObject(\n"
+    "        None, 2, ctypes.byref(basic), ctypes.sizeof(basic), None\n"
+    "    )\n"
+    "    return basic.LimitFlags if known else None\n"
+)
+"""Code defining ``break_away(record)``: start a sleeper outside the job.
+
+It notes the sleeper's PID under ``away``, or the error under ``refused``.
+"""
+_BREAK_AWAY_CODE = (
+    "import subprocess, sys\n"
+    "def break_away(record):\n"
+    "    try:\n"
+    "        record['away'] = subprocess.Popen(\n"
+    "            [sys.executable, '-c', 'import time; time.sleep(60)'],\n"
+    "            stdin=subprocess.DEVNULL,\n"
+    "            stdout=subprocess.DEVNULL,\n"
+    "            stderr=subprocess.DEVNULL,\n"
+    "            creationflags=subprocess.CREATE_BREAKAWAY_FROM_JOB\n"
+    "            | subprocess.CREATE_NO_WINDOW,\n"
+    "        ).pid\n"
+    "    except OSError as error:\n"
+    "        record['refused'] = str(error)\n"
+)
+"""Code defining ``publish(path, record)``: write a JSON record atomically."""
+_PUBLISH_CODE = (
+    "import json, os\n"
+    "def publish(path, record):\n"
+    "    with open(path + '.tmp', 'w', encoding='utf-8') as stream:\n"
+    "        json.dump(record, stream)\n"
+    "    os.replace(path + '.tmp', path)\n"
+)
+"""Code of a program that asks to leave its job, publishes the answer, then waits.
+
+The answer carries the limit flags of the job the program runs in, so that a
+refusal names the job that refused: the session's root job has none.
+"""
+_BREAKAWAY_PROBE = (
+    _JOB_FLAGS_CODE + _BREAK_AWAY_CODE + _PUBLISH_CODE + "import os, sys, time\n"
+    "record = {'pid': os.getpid(), 'jobFlags': job_flags()}\n"
+    "break_away(record)\n"
+    "publish(sys.argv[1], record)\n"
+    "time.sleep(60)\n"
+)
+"""Code of a kept program that asks to leave its job once a gate opens.
+
+It publishes its PID and job flags at once (``sys.argv[2]``), waits for the
+gate (``sys.argv[1]``), then publishes its job flags again with the answer to
+its breakaway (``sys.argv[3]``), and waits.
+"""
+_KEPT_PROBE = (
+    _JOB_FLAGS_CODE + _BREAK_AWAY_CODE + _PUBLISH_CODE + "import os, sys, time\n"
+    "gate, before, after = sys.argv[1:4]\n"
+    "publish(before, {'pid': os.getpid(), 'jobFlags': job_flags()})\n"
+    "deadline = time.monotonic() + 120\n"
+    "while not os.path.exists(gate) and time.monotonic() < deadline:\n"
+    "    time.sleep(0.05)\n"
+    "record = {'jobFlags': job_flags()}\n"
+    "break_away(record)\n"
+    "publish(after, record)\n"
+    "time.sleep(120)\n"
+)
+"""``JOB_OBJECT_LIMIT_BREAKAWAY_OK | JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK``."""
+_BREAKAWAY_LIMITS = 0x00000800 | 0x00001000
+"""``JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK``: a job that does not track children."""
+_SILENT_BREAKAWAY_LIMIT = 0x00001000
+
+
+"""What the breakaway probe publishes."""
+_BREAKAWAY_RECORD_KEYS = ("pid", "jobFlags", "away", "refused")
+
+
+def _breakaway_probe_shell(shape: str, script: Path, ready_file: Path) -> list[str]:
+    """Return a shell that runs the breakaway probe one breakaway below the shell.
+
+    ``breakawayChild``: the shell starts the probe with
+    ``CREATE_BREAKAWAY_FROM_JOB``, as a launcher that means to outlive its
+    caller does. ``gitBash``: the Git Bash preset runs the probe as an
+    ordinary command, and MSYS asks for that breakaway itself.
+    """
+    python = getattr(sys, "_base_executable", sys.executable)
+    if shape == "gitBash":
+        command = (
+            f'"{Path(python).as_posix()}" "{script.as_posix()}" '
+            f'"{ready_file.as_posix()}"'
+        )
+        return [str(_GIT_BASH_LAUNCHER), "-c", command]
+    code = (
+        "import subprocess, sys, time\n"
+        "subprocess.Popen(\n"
+        f"    [sys.executable, {str(script)!r}, {str(ready_file)!r}],\n"
+        "    creationflags=subprocess.CREATE_BREAKAWAY_FROM_JOB,\n"
+        ")\n"
+        "time.sleep(120)\n"
+    )
+    return [python, "-c", code]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize(
+    "shape",
+    (
+        "breakawayChild",
+        pytest.param(
+            "gitBash",
+            marks=pytest.mark.skipif(
+                not (_GIT_BASH_LAUNCHER.is_file() and _MSYS_BASH.is_file()),
+                reason="Git for Windows is not installed at its default path",
+            ),
+        ),
+    ),
+)
+def test_a_program_in_the_root_job_may_not_break_away_while_the_session_runs(
+    tmp_path: Path, shape: str
+) -> None:
+    """A second breakaway under the shell is refused until the session ends.
+
+    Every program Git Bash runs has broken away once already, because MSYS
+    asks for it, and so has one the shell started with
+    ``CREATE_BREAKAWAY_FROM_JOB``: both sit in the root tracking job. That
+    job permits no breakaway, or MSYS would carry everything it runs out of
+    the sweep's reach, so such a program's own ``CREATE_BREAKAWAY_FROM_JOB``
+    fails with access denied while the session runs. This pins the price of
+    tracking MSYS, and the limit flags name the job that refused. On a
+    desktop 3.29.0 let the call succeed, as nothing above the shell's job
+    refused it; under this runner's own job it refused there as well, so the
+    difference to 3.29.0 does not show here. The next test pins that the
+    refusal ends with the session.
+    """
+    script = tmp_path / "probe.py"
+    script.write_text(_BREAKAWAY_PROBE, encoding="utf-8")
+    ready_file = tmp_path / "probe.json"
+    records: list[dict[str, object]] = []
+    with closing(_ProcessWatch()) as watch:
+
+        def pin_before_kill(ready: Mapping[str, object]) -> None:
+            """Pin the probe and what it started, and keep its answer."""
+            shell = ready["childPid"]
+            assert isinstance(shell, int), ready
+            watch.pin(shell)
+            record: object = json.loads(_read_when_published(ready_file, 45.0))
+            assert isinstance(record, dict), record
+            for key in ("pid", "away"):
+                pid = record.get(key)
+                if isinstance(pid, int):
+                    watch.pin(pid)
+            records.append({key: record.get(key) for key in _BREAKAWAY_RECORD_KEYS})
+
+        result = _run_host(
+            _breakaway_probe_shell(shape, script, ready_file),
+            close_stdin=False,
+            replies=({"op": "kill"},),
+            ready_probe=pin_before_kill,
+            timeout=60.0,
+        )
+        assert len(records) == 1, result
+        # The root tracking job, which has no limit flags, refused.
+        assert records[0]["jobFlags"] == 0, records[0]
+        assert records[0]["away"] is None, records[0]
+        refused = records[0]["refused"]
+        assert isinstance(refused, str) and "WinError 5" in refused, records[0]
+
+
+def _kept_probe_shell(script: Path, gate: Path, before: Path, after: Path) -> list[str]:
+    """Return a shell that starts the kept probe in the root job, then waits.
+
+    The shell starts the probe with ``CREATE_BREAKAWAY_FROM_JOB``, which
+    carries it up into the root tracking job, and ``DETACHED_PROCESS``, so it
+    has no console and the session end keeps it. The shell waits to be killed.
+    """
+    code = (
+        "import subprocess, sys, time\n"
+        "subprocess.Popen(\n"
+        f"    [sys.executable, {str(script)!r}, {str(gate)!r}, {str(before)!r},"
+        f" {str(after)!r}],\n"
+        "    stdin=subprocess.DEVNULL,\n"
+        "    stdout=subprocess.DEVNULL,\n"
+        "    stderr=subprocess.DEVNULL,\n"
+        "    creationflags=subprocess.CREATE_BREAKAWAY_FROM_JOB\n"
+        "    | subprocess.DETACHED_PROCESS,\n"
+        ")\n"
+        "time.sleep(120)\n"
+    )
+    return [getattr(sys, "_base_executable", sys.executable), "-c", code]
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+def test_what_the_session_kept_may_break_away_once_it_has_ended(
+    tmp_path: Path,
+) -> None:
+    """Once the session has ended, a kept program's job lets it and its children go.
+
+    While the session runs, the tracking jobs hold a kept program's children
+    and refuse its breakaway. Once the sweep is over, the host lets both
+    jobs permit every breakaway, so a program the session kept behaves as on
+    3.29.0 from then on: a child it starts is not tracked, and one it asks to
+    break away is not refused.
+    """
+    script = tmp_path / "probe.py"
+    script.write_text(_KEPT_PROBE, encoding="utf-8")
+    gate, before, after = (tmp_path / name for name in ("gate", "before", "after"))
+    records: list[Mapping[str, object]] = []
+    with closing(_ProcessWatch()) as watch:
+
+        def pin_before_kill(ready: Mapping[str, object]) -> None:
+            """Pin the shell and the probe, and keep the probe's first answer."""
+            shell = ready["childPid"]
+            assert isinstance(shell, int), ready
+            watch.pin(shell)
+            record: object = json.loads(_read_when_published(before, 45.0))
+            assert isinstance(record, dict), record
+            pid = record.get("pid")
+            assert isinstance(pid, int), record
+            watch.pin(pid)
+            records.append({"pid": pid, "jobFlags": record.get("jobFlags")})
+
+        result = _run_host(
+            _kept_probe_shell(script, gate, before, after),
+            close_stdin=False,
+            replies=({"op": "kill"},),
+            ready_probe=pin_before_kill,
+            timeout=60.0,
+        )
+        assert result.messages[-1] == {"event": "exit", "code": result.code}
+        assert len(records) == 1, result
+        probe = records[0]["pid"]
+        assert isinstance(probe, int), records
+        # The probe has no console, so it outlived the session.
+        assert watch.survivors(15.0, expected=[probe]) == [probe], result.stderr
+        gate.touch()
+        answer: object = json.loads(_read_when_published(after, 30.0))
+        assert isinstance(answer, dict), answer
+        away = answer.get("away")
+        if isinstance(away, int):
+            watch.pin(away)
+        records.append(
+            {key: answer.get(key) for key in ("jobFlags", "away", "refused")}
+        )
+    tracked, freed = records[0].get("jobFlags"), records[1].get("jobFlags")
+    # While the session ran, the probe's job held its children ...
+    assert isinstance(tracked, int) and not tracked & _SILENT_BREAKAWAY_LIMIT, records
+    # ... and once it ended, the job lets them and the probe go.
+    assert isinstance(freed, int) and freed & _BREAKAWAY_LIMITS == _BREAKAWAY_LIMITS, (
+        records,
+        result.stderr,
+    )
+    assert records[1].get("refused") is None and isinstance(away, int), records
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+def test_what_a_session_kept_may_break_away_after_its_start_failed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A session that fails once its shell ran lets what it kept break away too.
+
+    When Obsidian's window goes just as the host reports ``ready``, the write
+    fails after the shell has run, and the host releases the session without
+    a sweep. A program the shell had started with
+    ``CREATE_BREAKAWAY_FROM_JOB`` is then in the root tracking job alone,
+    which refuses its breakaway while the session runs and outlives its
+    handles for as long as the program runs. The release must lift that
+    refusal as a finished sweep does, or the program could never break away
+    again, where 3.29.0 put it in no job.
+    """
+    script = tmp_path / "probe.py"
+    script.write_text(_KEPT_PROBE, encoding="utf-8")
+    gate, before, after = (tmp_path / name for name in ("gate", "before", "after"))
+    host = _MODULE._ConPtyHost(_MODULE.HostArguments(80, 24, "pipe", ("cmd",)), "token")
+    with closing(_ProcessWatch()) as watch:
+        probe = subprocess.Popen(
+            [
+                getattr(sys, "_base_executable", sys.executable),
+                *(str(path) for path in (script, gate, before, after)),
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=_CREATE_NO_WINDOW,
+        )
+        watch.pin(probe.pid)
+
+        def start() -> None:
+            """Hold the probe as the session's jobs do; fail as a lost ``ready`` does."""
+            tracking, breakaway = _MODULE._create_tracking_jobs()
+            host._tracking_job, host._breakaway_job = tracking, breakaway
+            handle = _MODULE._as_handle(
+                _MODULE._OpenProcess(_ASSIGN_ACCESS, False, probe.pid)
+            )
+            assert handle, _MODULE._last_error()
+            try:
+                assigned = _MODULE._AssignProcessToJobObject(tracking, handle)
+                assert assigned, _MODULE._last_error()
+            finally:
+                _MODULE._close(handle)
+            raise OSError("the control channel is unavailable")
+
+        monkeypatch.setattr(host, "_start", start)
+        assert host._run_session() == _MODULE._EXIT_HOST_ERROR
+        gate.touch()
+        answer: object = json.loads(_read_when_published(after, 30.0))
+        assert isinstance(answer, dict), answer
+        away = answer.get("away")
+        if isinstance(away, int):
+            watch.pin(away)
+    # The probe's job, the root, lets it and its children go ...
+    flags = answer.get("jobFlags")
+    assert isinstance(flags, int), answer
+    assert flags & _BREAKAWAY_LIMITS == _BREAKAWAY_LIMITS, answer
+    # ... so its own breakaway is not refused.
+    assert answer.get("refused") is None and isinstance(away, int), answer
+
+
+def _spawn_closing_grandchild(
+    ready_file: Path,
+    marker: Path,
+    exit_gate: Path,
+    handler_seconds: float,
+    helper_file: Path | None = None,
+) -> list[str]:
+    """Publish an attached grandchild that marks ``CTRL_CLOSE_EVENT``; gate exit.
+
+    The grandchild shares the shell's pseudoconsole. Its control handler
+    writes ``marker`` and then keeps running for ``handler_seconds`` before it
+    lets the process end. With ``helper_file``, the shell also leaves a
+    sleeper in a hidden console of its own and publishes its PID there.
+    """
+    helper_code = (
+        ""
+        if helper_file is None
+        else (
+            "helper = subprocess.Popen(\n"
+            "    [sys.executable, '-c', 'import time; time.sleep(120)'],\n"
+            "    stdin=subprocess.DEVNULL,\n"
+            "    stdout=subprocess.DEVNULL,\n"
+            "    stderr=subprocess.DEVNULL,\n"
+            "    creationflags=subprocess.CREATE_NO_WINDOW,\n"
+            ")\n"
+            f"with open({str(helper_file)!r} + '.tmp', 'w', encoding='utf-8') as s:\n"
+            "    json.dump({'pid': helper.pid}, s)\n"
+            f"os.replace({str(helper_file)!r} + '.tmp', {str(helper_file)!r})\n"
+        )
+    )
+    grandchild_code = (
+        "import ctypes, json, os, sys, time\n"
+        "from ctypes import wintypes\n"
+        "kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)\n"
+        "HANDLER = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.DWORD)\n"
+        f"marker = {str(marker)!r}\n"
+        "def handle(event):\n"
+        "    if event == 2:  # CTRL_CLOSE_EVENT\n"
+        "        with open(marker + '.tmp', 'w', encoding='utf-8') as stream:\n"
+        "            stream.write(str(event))\n"
+        "        os.replace(marker + '.tmp', marker)\n"
+        f"        time.sleep({handler_seconds!r})\n"
+        "    return True\n"
+        "routine = HANDLER(handle)\n"
+        "kernel32.SetConsoleCtrlHandler.argtypes = (HANDLER, wintypes.BOOL)\n"
+        "assert kernel32.SetConsoleCtrlHandler(routine, True), ctypes.get_last_error()\n"
+        f"path = {str(ready_file)!r}\n"
+        "with open(path + '.tmp', 'w', encoding='utf-8') as stream:\n"
+        "    json.dump({'pid': os.getpid()}, stream)\n"
+        "os.replace(path + '.tmp', path)\n"
+        "time.sleep(120)\n"
+    )
+    code = (
+        "import json, os, subprocess, sys, time\n"
+        "grandchild = subprocess.Popen(\n"
+        f"    [sys.executable, '-c', {grandchild_code!r}],\n"
+        "    stdin=subprocess.DEVNULL,\n"
+        "    stdout=subprocess.DEVNULL,\n"
+        "    stderr=subprocess.DEVNULL,\n"
+        ")\n"
+        f"{helper_code}"
+        "deadline = time.monotonic() + 120\n"
+        f"while not os.path.exists({str(exit_gate)!r}):\n"
+        "    assert time.monotonic() < deadline, 'shell exit gate was not released'\n"
+        "    time.sleep(0.05)\n"
+        "sys.exit(42)\n"
+    )
+    return [getattr(sys, "_base_executable", sys.executable), "-c", code]
+
+
+class _ClosingRun(NamedTuple):
+    """What a session with an attached closing grandchild left behind.
+
+    ``elapsed`` is what passed between the shutdown request and the host's
+    exit; ``exits`` holds, per pinned role, how long after that request the
+    process exited, or ``None`` if it did not within the watch.
+    """
+
+    result: _HostResult
+    marker: Path
+    elapsed: float
+    exits: Mapping[str, float | None]
+
+
+def _run_closing_grandchild(
+    tmp_path: Path, shutdown: str, handler_seconds: float, with_helper: bool = False
+) -> _ClosingRun:
+    """Run a session with an attached grandchild; return what it left behind.
+
+    With ``with_helper``, the shell also leaves a sleeper in a hidden console
+    of its own, timed under the role ``helper``; the grandchild is ``attached``.
+    """
+    ready_file = tmp_path / "grandchild.json"
+    helper_file = tmp_path / "helper.json" if with_helper else None
+    marker = tmp_path / "close-event"
+    exit_gate = tmp_path / "shell-exit"
+    started: list[float] = []
+    roles: dict[str, int] = {}
+    times = _ExitTimes()
+    with closing(_ProcessWatch()) as watch:
+
+        def pin_before_shutdown(ready: Mapping[str, object]) -> None:
+            """Pin the shell, the grandchild and the helper before the shutdown."""
+            roles["attached"] = _pin_shell_and_published_pid(
+                watch, ready, ready_file, 30.0
+            )
+            if helper_file is not None:
+                record: object = json.loads(_read_when_published(helper_file, 30.0))
+                assert isinstance(record, dict), record
+                helper = record.get("pid")
+                assert isinstance(helper, int), record
+                watch.pin(helper)
+                roles["helper"] = helper
+            for pid in roles.values():
+                times.watch(pid, watch.handle(pid), 60.0)
+            if shutdown == "natural-exit":
+                exit_gate.touch()
+            started.append(time.monotonic())
+
+        result = _run_host(
+            _spawn_closing_grandchild(
+                ready_file, marker, exit_gate, handler_seconds, helper_file
+            ),
+            close_stdin=False,
+            replies=({"op": "kill"},) if shutdown == "kill" else (),
+            ready_probe=pin_before_shutdown,
+            timeout=60.0,
+        )
+        elapsed = time.monotonic() - started[0]
+        assert result.messages[-1] == {"event": "exit", "code": result.code}
+        assert watch.survivors(15.0) == [], result.stderr
+        exits = {
+            role: None if at is None else at - started[0]
+            for role, pid in roles.items()
+            for at in (times.of(pid),)
+        }
+    return _ClosingRun(result, marker, elapsed, exits)
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize("shutdown", ("natural-exit", "kill"))
+def test_attached_programs_get_the_console_close_event_at_session_end(
+    tmp_path: Path, shutdown: str
+) -> None:
+    """A program attached to the pseudoconsole sees ``CTRL_CLOSE_EVENT`` and ends.
+
+    The event is how an agent CLI, a REPL or an editor saves its state when
+    the terminal closes, so nothing may end such a program before it arrives.
+    """
+    run = _run_closing_grandchild(tmp_path, shutdown, 0.0)
+    if shutdown == "natural-exit":
+        assert run.result.code == 42, run.result
+    assert run.marker.is_file(), run.result
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+def test_session_end_ends_hidden_helpers_while_an_attached_program_ignores_the_close(
+    tmp_path: Path,
+) -> None:
+    """A hidden helper ends within the budget; the attached program keeps its time.
+
+    A program attached to the pseudoconsole whose close handler never
+    returns is left to the console host, which ends it through its own
+    five-second timeout, as on 3.29.0; the sweep does not cut that short.
+    The sleeper the shell left in a hidden console of its own is ended within
+    the sweep's budget all the same, and the session ends once the console
+    host has given up on the attached program.
+    """
+    run = _run_closing_grandchild(tmp_path, "kill", 30.0, with_helper=True)
+    assert run.marker.is_file()
+    helper, attached = run.exits["helper"], run.exits["attached"]
+    assert helper is not None and helper < _IGNORED_CLOSE_BOUND, (
+        run.exits,
+        run.result.stderr,
+    )
+    assert attached is not None and attached >= _CONSOLE_HOST_PATIENCE, (
+        run.exits,
+        run.result.stderr,
+    )
+    assert run.elapsed < _SESSION_END_BOUND, (run.elapsed, run.exits, run.result.stderr)
+
+
+def _spawn_saving_grandchild(
+    ready_file: Path, saved: Path, exit_gate: Path, save_seconds: float
+) -> list[str]:
+    """Publish an attached grandchild that saves for a while on close; gate exit.
+
+    The grandchild shares the shell's pseudoconsole. On ``CTRL_CLOSE_EVENT``
+    its handler works for ``save_seconds``, as a program saving its state
+    does, and only then writes ``saved`` and lets the process end.
+    """
+    grandchild_code = (
+        "import ctypes, json, os, sys, time\n"
+        "from ctypes import wintypes\n"
+        "kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)\n"
+        "HANDLER = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.DWORD)\n"
+        f"saved = {str(saved)!r}\n"
+        "def handle(event):\n"
+        "    if event == 2:  # CTRL_CLOSE_EVENT\n"
+        f"        time.sleep({save_seconds!r})\n"
+        "        with open(saved + '.tmp', 'w', encoding='utf-8') as stream:\n"
+        "            stream.write('saved')\n"
+        "        os.replace(saved + '.tmp', saved)\n"
+        "    return True\n"
+        "routine = HANDLER(handle)\n"
+        "kernel32.SetConsoleCtrlHandler.argtypes = (HANDLER, wintypes.BOOL)\n"
+        "assert kernel32.SetConsoleCtrlHandler(routine, True), ctypes.get_last_error()\n"
+        f"path = {str(ready_file)!r}\n"
+        "with open(path + '.tmp', 'w', encoding='utf-8') as stream:\n"
+        "    json.dump({'pid': os.getpid()}, stream)\n"
+        "os.replace(path + '.tmp', path)\n"
+        "time.sleep(120)\n"
+    )
+    code = (
+        "import os, subprocess, sys, time\n"
+        "grandchild = subprocess.Popen(\n"
+        f"    [sys.executable, '-c', {grandchild_code!r}],\n"
+        "    stdin=subprocess.DEVNULL,\n"
+        "    stdout=subprocess.DEVNULL,\n"
+        "    stderr=subprocess.DEVNULL,\n"
+        ")\n"
+        "deadline = time.monotonic() + 120\n"
+        f"while not os.path.exists({str(exit_gate)!r}):\n"
+        "    assert time.monotonic() < deadline, 'shell exit gate was not released'\n"
+        "    time.sleep(0.05)\n"
+        "sys.exit(42)\n"
+    )
+    return [getattr(sys, "_base_executable", sys.executable), "-c", code]
+
+
+"""Seconds the saving grandchild works in its close handler.
+
+Well inside the five seconds the console host gives a close handler, and
+longer than a program usually needs, but not longer than a large save does.
+"""
+_SAVE_ON_CLOSE_SECONDS = 2.5
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize("shutdown", ("natural-exit", "kill"))
+def test_attached_programs_may_finish_saving_on_close(
+    tmp_path: Path, shutdown: str
+) -> None:
+    """A program that answers the close event by saving for a while gets to finish.
+
+    On 3.29.0 such a program had the console host's five seconds. Ending it
+    after a shorter grace loses whatever it was writing.
+    """
+    ready_file = tmp_path / "grandchild.json"
+    saved = tmp_path / "saved"
+    exit_gate = tmp_path / "shell-exit"
+    with closing(_ProcessWatch()) as watch:
+
+        def pin_before_shutdown(ready: Mapping[str, object]) -> None:
+            """Pin the shell and the grandchild before the shutdown starts."""
+            shell = ready["childPid"]
+            assert isinstance(shell, int), ready
+            watch.pin(shell)
+            record: object = json.loads(_read_when_published(ready_file, 30.0))
+            assert isinstance(record, dict), record
+            pid = record.get("pid")
+            assert isinstance(pid, int), record
+            watch.pin(pid)
+            if shutdown == "natural-exit":
+                exit_gate.touch()
+
+        result = _run_host(
+            _spawn_saving_grandchild(
+                ready_file, saved, exit_gate, _SAVE_ON_CLOSE_SECONDS
+            ),
+            close_stdin=False,
+            replies=({"op": "kill"},) if shutdown == "kill" else (),
+            ready_probe=pin_before_shutdown,
+            timeout=60.0,
+        )
+        assert result.messages[-1] == {"event": "exit", "code": result.code}
+        assert watch.survivors(15.0) == [], result.stderr
+    assert saved.is_file(), result.stderr
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
 def test_stdin_end_of_file_shuts_the_session_down() -> None:
     """Closing host stdin stands in for the pane closing."""
     result = _run_host(
         [sys.executable, "-c", "import time; time.sleep(30)"], timeout=25.0
     )
     assert result.code == 1
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+def test_stdin_end_of_file_ends_hidden_console_programs(tmp_path: Path) -> None:
+    """The stdin end of a session sweeps like a kill and a natural exit do.
+
+    The plugin's end of the host's stdin closes when Obsidian lets go of the
+    host without a kill; the session then ends through this path.
+    """
+    ready_file = tmp_path / "sleeper.json"
+    launcher = tmp_path / "launcher.py"
+    launcher.write_text(
+        "import json, os, subprocess, sys, time\n"
+        "child = subprocess.Popen(\n"
+        "    [sys.executable, '-c', 'import time; time.sleep(120)'],\n"
+        "    stdin=subprocess.DEVNULL,\n"
+        "    stdout=subprocess.DEVNULL,\n"
+        "    stderr=subprocess.DEVNULL,\n"
+        "    creationflags=subprocess.CREATE_NO_WINDOW,\n"
+        ")\n"
+        f"path = {str(ready_file)!r}\n"
+        "with open(path + '.tmp', 'w', encoding='utf-8') as stream:\n"
+        "    json.dump({'pid': child.pid}, stream)\n"
+        "os.replace(path + '.tmp', path)\n"
+        "print('SLEEPER-UP', flush=True)\n"
+        "time.sleep(120)\n",
+        encoding="utf-8",
+    )
+    pinned: list[int] = []
+    with closing(_ProcessWatch()) as watch:
+
+        def pin(ready: Mapping[str, object]) -> None:
+            """Pin the shell and the sleeper; stdin closes once it is up."""
+            pinned.append(_pin_shell_and_published_pid(watch, ready, ready_file, 30.0))
+
+        result = _run_host(
+            [getattr(sys, "_base_executable", sys.executable), str(launcher)],
+            stdout_ready=b"SLEEPER-UP",
+            ready_probe=pin,
+            timeout=60.0,
+        )
+        assert len(pinned) == 1, result
+        assert result.messages[-1] == {"event": "exit", "code": result.code}
+        assert watch.survivors(15.0) == [], result.stderr
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
@@ -4148,6 +7281,48 @@ def test_session_falls_back_from_a_broken_console_host(
     assert isinstance(report["detail"], str), result
     assert result.stderr == b"", result
     assert result.messages[-1] == {"event": "exit", "code": 0}
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason=_WINDOWS_ONLY)
+@pytest.mark.parametrize("deferred", (False, True), ids=("immediate", "deferred"))
+def test_session_end_sweeps_after_a_console_host_fallback(
+    tmp_path: Path, deferred: bool
+) -> None:
+    """A shell that runs on the built-in host after a fallback is tracked too.
+
+    The fallback starts the shell again on the built-in console host; that
+    shell, the one that runs, must sit in the tracking jobs, so the program
+    it leaves in a hidden console ends with the session.
+    """
+    console_host = tmp_path / "OpenConsole.exe"
+    system = os.path.join(os.environ["SystemRoot"], "System32")
+    shutil.copyfile(os.path.join(system, "hostname.exe"), console_host)
+    ready_file = tmp_path / "sleeper.json"
+    exit_gate = tmp_path / "shell-exit"
+    launcher = tmp_path / "launcher.py"
+    _write_hidden_sleeper_launcher(launcher, ready_file, exit_gate)
+    pinned: list[int] = []
+    with closing(_ProcessWatch()) as watch:
+
+        def pin_before_kill(ready: Mapping[str, object]) -> None:
+            """Pin the shell and the sleeper before the kill."""
+            pinned.append(_pin_shell_and_published_pid(watch, ready, ready_file, 45.0))
+
+        result = _run_host(
+            [getattr(sys, "_base_executable", sys.executable), str(launcher)],
+            close_stdin=False,
+            replies=({"op": "kill"},),
+            ready_probe=pin_before_kill,
+            timeout=60.0,
+            deferred=deferred,
+            console_host="auto",
+            host_script=_stub_console_host_script(tmp_path, console_host),
+        )
+        assert len(pinned) == 1, result
+        report = _ready_report(result)
+        assert (report["engine"], report["fallback"]) == ("conhost", "exited"), result
+        assert result.messages[-1] == {"event": "exit", "code": result.code}
+        assert watch.survivors(15.0) == [], result.stderr
 
 
 def _console_host_dies_before_hello_script(directory: Path) -> Path:

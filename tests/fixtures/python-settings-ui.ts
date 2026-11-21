@@ -16,7 +16,7 @@ import {
 import type { DeepWritable } from "ts-essentials";
 import { vi } from "vitest";
 import { TerminalPlugin } from "../../src/main.js";
-import { Settings } from "../../src/settings-data.js";
+import { LocalSettings, Settings } from "../../src/settings-data.js";
 import {
   CONPTY_HOST_POOL,
   type ConPtySpareHost,
@@ -77,6 +77,19 @@ vi.mock("../../src/main.js", () => ({
           const value = cloneAsWritable(this.settings.value);
           await mutate(value);
           this.settings.value = Settings.fix(value).value;
+        },
+      ),
+      onMutate: vi.fn().mockReturnValue(vi.fn()),
+      write: vi.fn().mockResolvedValue(void 0),
+    };
+    // This device's store, as on a fresh install.
+    public readonly localSettings = {
+      value: LocalSettings.fix(null).value,
+      mutate: vi.fn(
+        async (mutate: (value: DeepWritable<LocalSettings>) => unknown) => {
+          const value = cloneAsWritable(this.localSettings.value);
+          await mutate(value);
+          this.localSettings.value = LocalSettings.fix(value).value;
         },
       ),
       onMutate: vi.fn().mockReturnValue(vi.fn()),

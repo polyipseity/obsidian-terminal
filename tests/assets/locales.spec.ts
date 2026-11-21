@@ -1,3 +1,4 @@
+import { createI18n } from "@polyipseity/obsidian-plugin-library";
 import { createInstance } from "i18next";
 import { describe, it, expect } from "vitest";
 import { PluginLocales } from "../../assets/locales.js";
@@ -71,6 +72,86 @@ describe("PluginLocales", () => {
 
       expect(notices["drop-no-paths"]).toBe(
         "Nothing to insert: no local file path was found in the dropped items.",
+      );
+    });
+  });
+
+  // The profile list says which profile a command of one terminal type opens.
+  describe("says in every declared locale which profile a command of one type opens", () => {
+    async function profileListDescription(
+      language: (typeof PluginLocales.LANGUAGES)[number],
+    ): Promise<string> {
+      const translation = await PluginLocales.RESOURCES[language].translation(),
+        i18n = createInstance();
+      await i18n.init({
+        lng: language,
+        fallbackLng: false,
+        resources: { [language]: { translation } },
+      });
+      return i18n.t("settings.profile-list.description");
+    }
+
+    it.each(Array.from(PluginLocales.LANGUAGES))("%s", async (language) => {
+      const text = await profileListDescription(language);
+      expect(text).toMatch(/\S/u);
+      // A reference that does not resolve shows its key.
+      expect(text).not.toContain("$t(");
+      expect(text).not.toContain("generic.");
+    });
+
+    // Words the library leaves in English must not reach a translated text.
+    it.each([
+      ["ko", ["command", "list"]],
+      ["ja", ["command", "list"]],
+    ] as const)(
+      "keeps the %s text free of the English words %j",
+      async (language, words) => {
+        const text = await profileListDescription(language);
+        for (const word of words) {
+          expect(text).not.toMatch(new RegExp(`\\b${word}\\b`, "u"));
+        }
+      },
+    );
+
+    it("names the default profile first in English", async () => {
+      expect(await profileListDescription("en")).toBe(
+        "A command for one terminal type opens the default profile when it has that type, otherwise the first compatible profile of that type in the list.",
+      );
+    });
+  });
+
+  // The Default profile row says the choice belongs to this device.
+  describe("says in every declared locale that the default profile is this device's", () => {
+    async function defaultProfileDescription(
+      language: (typeof PluginLocales.LANGUAGES)[number],
+    ): Promise<string> {
+      const translation = await PluginLocales.RESOURCES[language].translation(),
+        i18n = createInstance();
+      await i18n.init({
+        lng: language,
+        fallbackLng: false,
+        resources: { [language]: { translation } },
+      });
+      return i18n.t("settings.default-profile-description");
+    }
+
+    it.each(Array.from(PluginLocales.LANGUAGES))("%s", async (language) => {
+      const text = await defaultProfileDescription(language);
+      expect(text).toMatch(/\S/u);
+      // A reference that does not resolve shows its key.
+      expect(text).not.toContain("$t(");
+      expect(text).not.toContain("generic.");
+    });
+
+    it("names this device in English", async () => {
+      // As the plugin shows it, with its formatters.
+      const i18n = await createI18n(
+        PluginLocales.RESOURCES,
+        PluginLocales.FORMATTERS,
+        { lng: "en", fallbackLng: "en" },
+      );
+      expect(i18n.t("settings.default-profile-description")).toBe(
+        "Profile to open when clicking the ribbon icon on this device. Leave empty to show profile selector. Commands for its terminal type open it too. Right-click the ribbon icon to list all profiles.",
       );
     });
   });
@@ -300,6 +381,37 @@ describe("PluginLocales", () => {
       ).toBe(
         "Recommend {{version}} or up. Required on $t(generic.platforms.unix) to $t(generic.spawn) $t(generic.profile-types.integrated) $t(generic.terminal). $t(generic.clear, capitalize) $t(generic.text-field) to $t(generic.disable) $t(generic.Python) on platforms other than $t(generic.platforms.win32). On $t(generic.platforms.win32), an empty $t(generic.text-field) uses the plugin's '$t(settings.python-executable)' setting.",
       );
+    }
+  });
+
+  it("names every cause of a refused ConHost command, with its limit, in all 49 locales", async () => {
+    const { errors } = await PluginLocales.RESOURCES.en.translation();
+    expect(errors["conhost-cannot-pass"]).toBe(
+      "ConHost cannot start this command: it contains a line break, its $t(generic.executable) path contains a quote, or it is too long for cmd, which runs lines of at most {{limit}} characters, including the text that starts the command. Change the $t(generic.profile).",
+    );
+    for (const language of PluginLocales.LANGUAGES) {
+      const translation = await PluginLocales.RESOURCES[language].translation();
+      expect(translation.errors["conhost-cannot-pass"], language).toContain(
+        "{{limit}}",
+      );
+    }
+  });
+
+  it("renders a refused ConHost command's message with its limit and its nested words in every locale", async () => {
+    for (const language of PluginLocales.LANGUAGES) {
+      const translation = await PluginLocales.RESOURCES[language].translation(),
+        i18n = createInstance();
+      await i18n.init({
+        lng: language,
+        fallbackLng: false,
+        resources: { [language]: { translation } },
+      });
+      const message = i18n.t("errors.conhost-cannot-pass", {
+        interpolation: { escapeValue: false },
+        limit: 8191,
+      });
+      expect(message, language).toContain("8191");
+      expect(message, language).not.toMatch(/\{\{|\$t\(|generic\./u);
     }
   });
 
