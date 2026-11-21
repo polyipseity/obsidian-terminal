@@ -146,7 +146,7 @@
   "sideEffects": false,
   "style": "styles.css",
   "type": "module",
-  "version": "3.29.1",
+  "version": "3.29.2",
   "workspaces": [
     "."
   ]
