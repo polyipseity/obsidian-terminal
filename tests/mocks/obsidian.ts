@@ -887,6 +887,11 @@ export class Workspace extends Events {
     return this.activeLeaf?.view.file ?? null;
   }
 
+  /** Obsidian's recent files, newest first; the mock has opened none. */
+  getLastOpenFiles(): string[] {
+    return [];
+  }
+
   getActiveViewOfType<T>(_type: new (...args: unknown[]) => T): T | null {
     return null;
   }

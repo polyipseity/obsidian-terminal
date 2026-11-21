@@ -1,4 +1,6 @@
 import {
+  type $App,
+  type $HotkeyManager,
   DialogModal,
   FindComponent,
   type FindComponent$,
@@ -34,6 +36,7 @@ import {
   readStateCollaboratively,
   recordViewStateHistory,
   resetButton,
+  revealPrivateFilter,
   saveFileAs,
   svelteState,
   updateView,
@@ -51,6 +54,7 @@ import {
   type Command,
   FileSystemAdapter,
   ItemView,
+  type KeymapEventListener,
   type Menu,
   Scope,
   View,
@@ -69,6 +73,7 @@ import {
 } from "../magic.js";
 import type { TerminalPlugin } from "../main.js";
 import { ProfileModal } from "../modals.js";
+import { deviceProfileEntries } from "../profile-choice.js";
 import { Settings } from "../settings-data.js";
 import {
   AltScreenExitAddon,
@@ -211,6 +216,15 @@ const win32BuildNumber = once(async (): Promise<number | undefined> => {
 const terminalUses = new WeakMap<TerminalView, number>();
 // Intentionally mutable so session uses have a strict order even within one tick.
 let terminalUseSequence = 0;
+// When each terminal last had the keyboard, on the same sequence: a clock that
+// is set back would reorder times, but not these marks.
+const terminalFocuses = new WeakMap<TerminalView, number>();
+
+function recordTerminalFocus(view: TerminalView): number {
+  const mark = ++terminalUseSequence;
+  terminalFocuses.set(view, mark);
+  return mark;
+}
 
 function recordTerminalUse(view: TerminalView): void {
   terminalUses.set(view, ++terminalUseSequence);
@@ -222,10 +236,45 @@ function terminalUseOf(leaf: WorkspaceLeaf | undefined): number {
   return view instanceof TerminalView ? (terminalUses.get(view) ?? 0) : 0;
 }
 
+/**
+ * The listener of the focused terminal's scope. A key that the keymappings
+ * send to Obsidian runs whatever hotkey Obsidian has for it and is consumed
+ * either way, so that it never reaches the shell. Every other key runs only
+ * the hotkeys of the commands allowed while a terminal has focus.
+ *
+ * @param context the plugin
+ * @param ids the commands allowed while a terminal has focus
+ * @param platform the platform the terminal runs on, as its key handler has it
+ * @returns the listener
+ */
+export function newFocusedKeyListener(
+  context: TerminalPlugin,
+  ids: ReadonlySet<string>,
+  platform: string,
+): KeymapEventListener {
+  const allowed = newHotkeyListener(context, ids),
+    all = newHotkeyListener(context);
+  return (evt, ctx) => {
+    if (
+      CustomKeyEventHandlerAddon.sendsToObsidian(
+        context.settings.value.keymappings,
+        evt,
+        platform,
+      )
+    ) {
+      all(evt, ctx);
+      return false;
+    }
+    const ret: unknown = allowed(evt, ctx);
+    return ret;
+  };
+}
+
 export class EditTerminalModal extends DialogModal {
   protected readonly state;
   #profile: string | null = null;
   readonly #confirm;
+  #confirming = false;
 
   public constructor(
     protected override readonly context: TerminalPlugin,
@@ -339,35 +388,32 @@ export class EditTerminalModal extends DialogModal {
               },
               {
                 pre: (component) => {
-                  component
-                    .addOption(
-                      unselected,
+                  component.addOption(
+                    unselected,
+                    i18n.t(
+                      "components.terminal.edit-modal.profile-placeholder",
+                    ),
+                  );
+                  // One by one: an object would put ids such as "2" first.
+                  for (const entry of deviceProfileEntries(context)) {
+                    component.addOption(
+                      entry[0],
                       i18n.t(
-                        "components.terminal.edit-modal.profile-placeholder",
-                      ),
-                    )
-                    .addOptions(
-                      Object.fromEntries(
-                        Object.entries(profiles).map((entry) => [
-                          entry[0],
-
-                          i18n.t(
-                            `components.terminal.edit-modal.profile-name-${
-                              Settings.Profile.isCompatible(
-                                entry[1],
-                                Platform.CURRENT,
-                              )
-                                ? ""
-                                : "incompatible"
-                            }`,
-                            {
-                              info: Settings.Profile.info(entry),
-                              interpolation: { escapeValue: false },
-                            },
-                          ),
-                        ]),
+                        `components.terminal.edit-modal.profile-name-${
+                          Settings.Profile.isCompatible(
+                            entry[1],
+                            Platform.CURRENT,
+                          )
+                            ? ""
+                            : "incompatible"
+                        }`,
+                        {
+                          info: Settings.Profile.info(entry),
+                          interpolation: { escapeValue: false },
+                        },
                       ),
                     );
+                  }
                 },
               },
             ),
@@ -407,8 +453,18 @@ export class EditTerminalModal extends DialogModal {
   }
 
   protected override async confirm(close: () => void): Promise<void> {
-    await this.#confirm(cloneAsWritable(this.state));
-    await super.confirm(close);
+    // A second click or Enter while the first one is still at work, as while
+    // an external program starts, confirms nothing more.
+    if (this.#confirming) {
+      return;
+    }
+    this.#confirming = true;
+    try {
+      await this.#confirm(cloneAsWritable(this.state));
+      await super.confirm(close);
+    } finally {
+      this.#confirming = false;
+    }
   }
 
   protected postMutate(): void {
@@ -493,26 +549,7 @@ export class TerminalView extends ItemView {
   }
 
   protected get titleGenerated(): string {
-    const { context: plugin, state } = this,
-      { value: i18n } = plugin.language,
-      { profile } = state,
-      { name, type } = profile;
-    if (this.rawTitle) {
-      return this.rawTitle;
-    }
-    if (typeof name === "string" && name) {
-      return name;
-    }
-    if ("executable" in profile) {
-      const { executable } = profile;
-      if (typeof executable === "string") {
-        return basename(executable, extname(executable));
-      }
-    }
-    return i18n.t("components.terminal.name.profile-type", {
-      interpolation: { escapeValue: false },
-      type,
-    });
+    return this.rawTitle || profileTitle(this.context, this.state.profile);
   }
 
   protected get hidesStatusBar(): boolean {
@@ -714,10 +751,41 @@ export class TerminalView extends ItemView {
           lastFocusTime = time;
           lastFocus = view;
         }
-        if (!lastFocus || !focused.includes(lastFocus.isFocused)) {
+        if (!lastFocus || !focused.includes(lastFocus.isLookedAt)) {
           return false;
         }
         return callback(checking, lastFocus);
+      };
+    /*
+     * The terminal the user works in: the one that has the keyboard in the
+     * window in front, else the one of the active tab, as long as no other
+     * terminal had the keyboard since it opened or last had it. A ribbon
+     * click or the command palette takes the keyboard but leaves the active
+     * tab as it was. A note, also one in another window, is neither. A
+     * terminal that only opened takes nothing from the one in use.
+     */
+    const terminalInUse = (): TerminalView | null => {
+      const open = [...this.lastFocusTimes.keys()],
+        lookedAt = open.find((view) => view.isLookedAt);
+      if (lookedAt) {
+        return lookedAt;
+      }
+      const active = workspace.getActiveViewOfType(TerminalView),
+        since = active ? this.lastFocusTimes.get(active) : void 0;
+      return since !== void 0 &&
+        open.every(
+          (view) => view === active || (terminalFocuses.get(view) ?? 0) < since,
+        )
+        ? active
+        : null;
+    };
+    const withTerminalInUse =
+      (
+        callback: (checking: boolean, view: TerminalView) => boolean,
+      ): ((checking: boolean) => boolean) =>
+      (checking) => {
+        const view = terminalInUse();
+        return view !== null && callback(checking, view);
       };
     addCommand(context, () => i18n.t("commands.focus-on-last-terminal"), {
       checkCallback: withLastFocusedView(
@@ -741,7 +809,7 @@ export class TerminalView extends ItemView {
             checkCallback: withLastFocusedView(
               (checking, view) => {
                 if (!checking) {
-                  if (view.isFocused) {
+                  if (view.isLookedAt) {
                     view.unfocus();
                   } else {
                     view.focus();
@@ -774,7 +842,7 @@ export class TerminalView extends ItemView {
           id: "unfocus-terminal",
         }).id,
         addCommand(context, () => i18n.t("commands.clear-terminal"), {
-          checkCallback: withLastFocusedView((checking, view) => {
+          checkCallback: withTerminalInUse((checking, view) => {
             if (!checking) {
               view.emulator?.terminal.clear();
             }
@@ -790,7 +858,7 @@ export class TerminalView extends ItemView {
           id: "clear-terminal",
         }).id,
         addCommand(context, () => i18n.t("commands.close-terminal"), {
-          checkCallback: withLastFocusedView((checking, view) => {
+          checkCallback: withTerminalInUse((checking, view) => {
             if (!checking) {
               view.leaf.detach();
             }
@@ -806,7 +874,7 @@ export class TerminalView extends ItemView {
           id: "close-terminal",
         }).id,
         addCommand(context, () => i18n.t("commands.find-in-terminal"), {
-          checkCallback: withLastFocusedView((checking, view) => {
+          checkCallback: withTerminalInUse((checking, view) => {
             if (!checking) {
               view.startFind();
             }
@@ -838,7 +906,7 @@ export class TerminalView extends ItemView {
       handler = this.focusedScope.register(
         null,
         null,
-        newHotkeyListener(context, focusedScopeIDs),
+        newFocusedKeyListener(context, focusedScopeIDs, Platform.CURRENT),
       );
     TerminalView.#focusedScopeIDs = focusedScopeIDs;
     context.register(() => {
@@ -853,11 +921,37 @@ export class TerminalView extends ItemView {
    * Call it while the plugin loads, after {@link TerminalView.load}. The
    * listener reads the allowed commands when Obsidian next rebuilds its
    * hotkey table, and nothing rebuilds it before the first key is pressed.
+   * A change after that takes effect once
+   * {@link TerminalView.reloadFocusedHotkeys} has run.
    *
    * @param command a command as Obsidian registered it
+   * @param allowed `false` takes the command off the list again, so that its
+   * hotkeys go on to the terminal
    */
-  public static allowWhileFocused(command: Pick<Command, "id">): void {
-    TerminalView.#focusedScopeIDs.add(command.id);
+  public static allowWhileFocused(
+    command: Pick<Command, "id">,
+    allowed = true,
+  ): void {
+    if (allowed) TerminalView.#focusedScopeIDs.add(command.id);
+    else TerminalView.#focusedScopeIDs.delete(command.id);
+  }
+
+  /**
+   * Has Obsidian rebuild its hotkey table at the next key, and with it the
+   * table the focused terminal's listener reads, so that a change made with
+   * {@link TerminalView.allowWhileFocused} applies from that key on.
+   *
+   * @param context the plugin
+   */
+  public static reloadFocusedHotkeys(context: TerminalPlugin): void {
+    revealPrivateFilter<[$App, $HotkeyManager]>()(
+      context,
+      [context.app],
+      (app) => {
+        app.hotkeyManager.baked = false;
+      },
+      noop,
+    );
   }
 
   public override async setState(
@@ -963,9 +1057,22 @@ export class TerminalView extends ItemView {
           .setTitle(i18n.t("components.terminal.menus.edit"))
           .setIcon(i18n.t("asset:components.terminal.menus.edit-icon"))
           .onClick(() => {
-            new EditTerminalModal(context, this.state, async (state) =>
-              TerminalView.spawn(context, state, leaf, this.getViewType()),
-            ).open();
+            new EditTerminalModal(context, this.state, async (state) => {
+              // A program that opens in its own window replaces this terminal.
+              // The tab closes with this terminal's state, so Undo close tab
+              // brings the terminal back and does not start the program again.
+              if (opensOutside(state.profile)) {
+                await TerminalView.spawn(context, state);
+                leaf.detach();
+                return;
+              }
+              await TerminalView.spawn(
+                context,
+                state,
+                leaf,
+                this.getViewType(),
+              );
+            }).open();
           }),
       )
       .addItem((item) =>
@@ -1182,7 +1289,7 @@ export class TerminalView extends ItemView {
       contentEl,
       "focusin",
       () => {
-        TerminalView.lastFocusTimes.set(this, Date.now());
+        TerminalView.lastFocusTimes.set(this, recordTerminalFocus(this));
         recordTerminalUse(this);
         if (settings.value.interceptKeysWhenFocused) {
           keymap.pushScope(focusedScope);
@@ -1207,7 +1314,7 @@ export class TerminalView extends ItemView {
         },
       ),
     );
-    TerminalView.lastFocusTimes.set(this, Date.now());
+    TerminalView.lastFocusTimes.set(this, ++terminalUseSequence);
     if (this.isFocused && settings.value.interceptKeysWhenFocused) {
       keymap.pushScope(focusedScope);
     }
@@ -1440,16 +1547,7 @@ export class TerminalView extends ItemView {
         );
       };
     if (!PROFILE_PROPERTIES[profile.type].integratable) {
-      (async (): Promise<void> => {
-        noticeSpawn();
-        await openProfile(context, profile, { cwd: cwd ?? void 0 });
-      })().catch((error: unknown) => {
-        printError(
-          anyToError(error),
-          () => i18n.t("errors.error-spawning-terminal"),
-          context,
-        );
-      });
+      void openOutside(context, profile, cwd, this.title);
       leaf.detach();
       return;
     }
@@ -1935,6 +2033,79 @@ export class TerminalView extends ItemView {
     });
   }
 }
+
+/**
+ * What a terminal of the profile is called before the program names it or the
+ * user renames it: the profile's name, else the base name of its program when
+ * it has a program setting, even an empty one, else its type.
+ */
+function profileTitle(
+  context: TerminalPlugin,
+  profile: Settings.Profile,
+): string {
+  const { name, type } = profile;
+  if (typeof name === "string" && name) {
+    return name;
+  }
+  if ("executable" in profile) {
+    const { executable } = profile;
+    if (typeof executable === "string") {
+      return basename(executable, extname(executable));
+    }
+  }
+  return context.language.value.t("components.terminal.name.profile-type", {
+    interpolation: { escapeValue: false },
+    type,
+  });
+}
+
+/**
+ * Whether the profile's program opens in its own window, outside Obsidian. A
+ * type that the plugin does not know does not: it reaches the tab, whose fix
+ * turns it into an invalid profile, as before.
+ */
+function opensOutside(profile: Settings.Profile): boolean {
+  return (
+    Object.hasOwn(PROFILE_PROPERTIES, profile.type) &&
+    !PROFILE_PROPERTIES[profile.type].integratable
+  );
+}
+
+/**
+ * Starts the program of a profile that opens in its own window, after a
+ * notice that names it. A failed start is reported; the promise never
+ * rejects, and it settles once the program has started.
+ */
+async function openOutside(
+  context: TerminalPlugin,
+  profile: Settings.Profile,
+  cwd: string | null,
+  title: string,
+): Promise<void> {
+  const {
+    language: { value: i18n },
+    settings,
+  } = context;
+  notice2(
+    () =>
+      i18n.t("notices.spawning-terminal", {
+        interpolation: { escapeValue: false },
+        title,
+      }),
+    settings.value.noticeTimeout,
+    context,
+  );
+  try {
+    await openProfile(context, profile, { cwd: cwd ?? void 0 });
+  } catch (error) {
+    printError(
+      anyToError(error),
+      () => i18n.t("errors.error-spawning-terminal"),
+      context,
+    );
+  }
+}
+
 export namespace TerminalView {
   export const EMULATOR = XtermTerminalEmulator<Addons>;
   export type EMULATOR = XtermTerminalEmulator<Addons>;
@@ -2064,6 +2235,18 @@ export namespace TerminalView {
     leaf?: WorkspaceLeaf,
     type: string = TerminalView.type.namespaced(context),
   ): Promise<void> {
+    const { profile } = state;
+    if (!leaf && opensOutside(profile)) {
+      // A program that opens in its own window needs no tab. Making one and
+      // closing it again would change the shown tab and the active leaf.
+      await openOutside(
+        context,
+        profile,
+        state.cwd,
+        state.userTitle || profileTitle(context, profile),
+      );
+      return;
+    }
     const { focus } = state,
       {
         app: { workspace },

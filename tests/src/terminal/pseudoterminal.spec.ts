@@ -8,6 +8,7 @@ import { PassThrough, Writable } from "node:stream";
 import nodeUrl, { pathToFileURL } from "node:url";
 import type { Terminal } from "@xterm/xterm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { expectTypeOf } from "vitest";
 import type { TerminalPlugin } from "../../../src/main.js";
 import { Settings } from "../../../src/settings-data.js";
 import {
@@ -17,13 +18,18 @@ import {
   WINDOWS_CONHOST_PATH,
 } from "../../../src/magic.js";
 import {
+  CONHOST_LAUNCH_VARIABLES,
+  CONHOST_LINE_LIMIT,
+  type ConHostLaunch,
   CONPTY_CONSOLE_HOST_FALLBACKS,
   CONPTY_DEPENDENCIES,
+  CONPTY_QUIT_TASK_WAIT,
   CONPTY_READY_TIMEOUT_MS,
   CONPTY_UNARMED_READY_TIMEOUT_FACTOR,
   ConPtyHostPool,
   logChildStderr,
   type ConPtyConsoleHost,
+  type ConPtyConsoleHostFallback,
   type ConPtyControlChannel,
   ConPtyControlError,
   ConPtyPseudoterminal,
@@ -37,12 +43,15 @@ import {
   pipeShellToTerminal,
   Pseudoterminal,
   RefPsuedoterminal,
+  type ShellPseudoterminalArguments,
   WindowsNamedPipeControlChannel,
   WindowsPseudoterminal,
   conPtyConsoleHostSpec,
+  conhostLaunch,
   encodeConPtyOp,
   normalizeConPtyDimension,
   parseConPtyHostEvent,
+  quoteWindowsArgument,
   selectWin32Pseudoterminal,
   splitConPtyLines,
   writeTerminalSliced,
@@ -343,6 +352,873 @@ describe("Windows ConHost path", () => {
   });
 });
 
+interface RecordedConHostLaunch {
+  readonly batch: string;
+  readonly env: Readonly<Record<string, string | undefined>>;
+}
+
+interface ConHostLaunchFixture {
+  readonly pty: WindowsPseudoterminal;
+  readonly launches: readonly RecordedConHostLaunch[];
+  readonly processes: { conhost?: ChildProcess; resizer?: ChildProcess };
+  readonly cleanup: () => void;
+}
+
+/**
+ * A ConHost pseudoterminal for `options`. Its conhost spawn records the batch
+ * path and environment it was given, then runs `conhostScript` with the batch
+ * path as its argument. A `test-python` resizer keeps alive until killed.
+ */
+function conhostLaunchFixture(
+  options: ShellPseudoterminalArguments,
+  conhostScript = "setTimeout(() => process.exit(0), 50)",
+): ConHostLaunchFixture {
+  const nativeSpawn = childProcess.spawn.bind(childProcess),
+    launches: RecordedConHostLaunch[] = [],
+    processes: ConHostLaunchFixture["processes"] = {};
+  vi.spyOn(childProcess, "spawn").mockImplementation(
+    (executable, args, spawnOptions) => {
+      if (executable === "test-python") {
+        processes.resizer = nativeSpawn(
+          process.execPath,
+          ["-e", KEEPALIVE_SCRIPT],
+          spawnOptions,
+        );
+        return processes.resizer;
+      }
+      if (executable === WINDOWS_CONHOST_PATH) {
+        const [batch = ""] = args;
+        launches.push({ batch, env: { ...spawnOptions.env } });
+        processes.conhost = nativeSpawn(
+          process.execPath,
+          ["-e", conhostScript, batch],
+          spawnOptions,
+        );
+        return processes.conhost;
+      }
+      return nativeSpawn(executable, args, spawnOptions);
+    },
+  );
+  const context = {
+    language: {
+      onChangeLanguage: { listen: vi.fn(() => vi.fn()) },
+      value: { t: vi.fn((key: string) => key) },
+    },
+    resourceSampler: {
+      trackResource: vi.fn(() => ({ close: vi.fn() })),
+    },
+    settings: { value: { errorNoticeTimeout: 0 } },
+  } as unknown as TerminalPlugin;
+  return {
+    cleanup: (): void => {
+      for (const child of [processes.conhost, processes.resizer])
+        if (child?.exitCode === null && child.signalCode === null) child.kill();
+    },
+    launches,
+    processes,
+    pty: new WindowsPseudoterminal(context, options),
+  };
+}
+
+/** The one conhost launch of `fixture`, with the batch text it was given. */
+async function onlyConHostLaunch(
+  fixture: ConHostLaunchFixture,
+): Promise<RecordedConHostLaunch & { readonly text: string }> {
+  await fixture.pty.shell;
+  expect(fixture.launches).toHaveLength(1);
+  const [launch] = fixture.launches;
+  if (launch === undefined) throw new Error("conhost was not spawned");
+  return { ...launch, text: await readFile(launch.batch, "utf8") };
+}
+
+/**
+ * What cmd makes of the last line of the batch file, as far as the program is
+ * concerned: percent expansion with conhost's environment (`%%` is `%`, an
+ * unset name is empty), then the split at each `&` outside quotes, with the
+ * carets outside quotes removed. Returns the command that starts with the
+ * quoted program, leading spaces removed.
+ */
+function batchProgramCommand(
+  { env, text }: RecordedConHostLaunch & { readonly text: string },
+  program: string,
+): string {
+  const expanded = expandedBatchLine(text, env),
+    commands: string[] = [];
+  let current = "",
+    quoted = false;
+  for (let index = 0; index < expanded.length; ++index) {
+    const character = expanded[index] ?? "";
+    if (!quoted && character === "^") {
+      current += expanded[++index] ?? "";
+      continue;
+    }
+    if (!quoted && character === "&") {
+      commands.push(current);
+      current = "";
+      continue;
+    }
+    if (character === '"') quoted = !quoted;
+    current += character;
+  }
+  commands.push(current);
+  const command = commands
+    .map((text0) => text0.trimStart())
+    .find((text0) => text0.startsWith(`"${program}"`));
+  if (command === undefined)
+    throw new Error(`No command starts the program: ${expanded}`);
+  return command;
+}
+
+/**
+ * What `cmd /c` or `cmd /k` runs, by the rules `cmd /?` documents. When the
+ * text after the switch starts with a quote, cmd keeps the quotes only if the
+ * quoted text names an executable file; `prompt CMD$G$S` does not, so cmd
+ * removes the first quote and the last quote and keeps the rest.
+ */
+function commandAfterSwitch(commandLine: string): string {
+  const at = /\/[ck]/iu.exec(commandLine);
+  if (at === null) throw new Error(`No /c or /k in ${commandLine}`);
+  let rest = commandLine.slice(at.index + 2);
+  if (rest.trimStart().startsWith('"')) {
+    rest = rest.trimStart();
+    const last = rest.lastIndexOf('"');
+    rest = `${rest.slice(1, last)}${rest.slice(last + 1)}`;
+  }
+  return rest.trimStart();
+}
+
+describe("ConHost command line", () => {
+  it("leaves cmd the command after /k that ConPTY gives it", async () => {
+    const fixture = conhostLaunchFixture({
+      args: ["/d", "/k", "prompt CMD$G$S"],
+      executable: "cmd.exe",
+    });
+    try {
+      const command = batchProgramCommand(
+        await onlyConHostLaunch(fixture),
+        "cmd.exe",
+      );
+      expect(commandAfterSwitch(command)).toBe("prompt CMD$G$S");
+      // The argument text of the ConPTY command line, with no trailing space.
+      expect(command).toBe('"cmd.exe" /d /k "prompt CMD$G$S"');
+    } finally {
+      fixture.cleanup();
+      await fixture.pty.onExit;
+    }
+  });
+
+  it("hands conhost the program, arguments and exit-code file in its environment, not in the batch text", async () => {
+    const executable = "C:\\Tools\\cmd.exe",
+      fixture = conhostLaunchFixture({
+        args: ["/d", "/k", "prompt CMD$G$S"],
+        executable,
+      });
+    try {
+      const launch = await onlyConHostLaunch(fixture);
+      expect(launch.env).toMatchObject({
+        OBSIDIAN_TERMINAL_CONHOST_ARGUMENTS: '/d /k ^"prompt CMD$G$S^"',
+        OBSIDIAN_TERMINAL_CONHOST_EXIT_CODE_FILE: launch.batch,
+        OBSIDIAN_TERMINAL_CONHOST_PROGRAM: executable,
+      });
+      for (const text of [executable, "prompt", "CMD$G$S", launch.batch])
+        expect(launch.text).not.toContain(text);
+    } finally {
+      fixture.cleanup();
+      await fixture.pty.onExit;
+    }
+  });
+
+  it("keeps its launch variables when the profile environment sets the same names", async () => {
+    const executable = "C:\\Windows\\System32\\cmd.exe",
+      fixture = conhostLaunchFixture({
+        args: ["/d", "/c", "exit"],
+        environment: [
+          ["OBSIDIAN_TERMINAL_CONHOST_ARGUMENTS", "& calc"],
+          ["OBSIDIAN_TERMINAL_CONHOST_EXIT_CODE_FILE", "C:\\elsewhere.txt"],
+          ["OBSIDIAN_TERMINAL_CONHOST_PROGRAM", "calc.exe"],
+        ],
+        executable,
+      });
+    try {
+      const launch = await onlyConHostLaunch(fixture);
+      expect(launch.env).toMatchObject({
+        OBSIDIAN_TERMINAL_CONHOST_ARGUMENTS: "/d /c exit",
+        OBSIDIAN_TERMINAL_CONHOST_EXIT_CODE_FILE: launch.batch,
+        OBSIDIAN_TERMINAL_CONHOST_PROGRAM: executable,
+      });
+    } finally {
+      fixture.cleanup();
+      await fixture.pty.onExit;
+    }
+  });
+
+  it.each<readonly [string, string, readonly string[], string]>([
+    [
+      "a line feed in an argument",
+      "cmd.exe",
+      ["/d", "/c", "echo a\nexit 9"],
+      "errors.conhost-cannot-pass",
+    ],
+    [
+      "a carriage return in an argument",
+      "cmd.exe",
+      ["/d", "/c", "echo a\rexit 9"],
+      "errors.conhost-cannot-pass",
+    ],
+    [
+      "a line feed in the program",
+      "cmd\n.exe",
+      [],
+      "errors.conhost-cannot-pass",
+    ],
+    [
+      "a quote in the program",
+      '"C:\\Program Files\\PowerShell\\7\\pwsh.exe"',
+      [],
+      "errors.conhost-cannot-pass",
+    ],
+    [
+      "a command in quotes in the program",
+      'C:\\x.exe" & calc & "',
+      [],
+      "errors.conhost-cannot-pass",
+    ],
+    [
+      "a NUL in an argument",
+      "cmd.exe",
+      ["/d", "/c", "echo a\0b"],
+      "errors.profile-launch-nul",
+    ],
+  ])(
+    "refuses %s before conhost starts",
+    async (_label, executable, args, message) => {
+      const unhandled = vi.fn(),
+        fixture = conhostLaunchFixture({
+          args,
+          executable,
+          pythonExecutable: "test-python",
+        });
+      process.on("unhandledRejection", unhandled);
+      try {
+        const onExit = fixture.pty.onExit.catch((error: unknown) => error);
+        await expect(fixture.pty.shell).rejects.toThrow(message);
+        await expect(onExit).resolves.toBeInstanceOf(Error);
+        expect(fixture.launches).toEqual([]);
+        // The resizer started first; the refusal must not leave it running.
+        await vi.waitFor(() => {
+          const { resizer } = fixture.processes;
+          expect(resizer?.exitCode ?? resizer?.signalCode ?? null).not.toBe(
+            null,
+          );
+        });
+        await new Promise((resolve) => {
+          window.setTimeout(resolve, 10);
+        });
+        expect(unhandled).not.toHaveBeenCalled();
+      } finally {
+        process.off("unhandledRejection", unhandled);
+        fixture.cleanup();
+      }
+    },
+  );
+
+  it("names the batch file with a space, so conhost quotes its path", async () => {
+    const fixture = conhostLaunchFixture({ executable: "cmd.exe" });
+    try {
+      const { batch } = await onlyConHostLaunch(fixture);
+      expect(basename(batch)).toMatch(/^obsidian-terminal conhost-.+\.bat$/u);
+    } finally {
+      fixture.cleanup();
+      await fixture.pty.onExit;
+    }
+  });
+
+  it("reads the exit code the batch file writes", async () => {
+    const fixture = conhostLaunchFixture(
+      { executable: "cmd.exe" },
+      // The text the batch file writes: the code, then CR LF.
+      "require('node:fs').writeFileSync(process.argv[1], '7\\r\\n'); setTimeout(() => process.exit(0), 50);",
+    );
+    try {
+      await fixture.pty.shell;
+      await expect(fixture.pty.onExit).resolves.toBe(7);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it.each<readonly [string, string, number, number]>([
+    // cmd prints a status such as STATUS_CONTROL_C_EXIT as a signed number.
+    [
+      "a negative code",
+      "require('node:fs').writeFileSync(process.argv[1], '-1073741510\\r\\n');",
+      0,
+      -1073741510,
+    ],
+    // The batch text starts with `@echo off`, never with a number.
+    ["conhost's code when the batch never wrote one", "", 5, 5],
+    [
+      "conhost's code when the file is empty",
+      "require('node:fs').writeFileSync(process.argv[1], '');",
+      6,
+      6,
+    ],
+  ])("reads %s", async (_label, write, conhostCode, expected) => {
+    const fixture = conhostLaunchFixture(
+      { args: ["/d"], executable: "cmd.exe" },
+      `${write} setTimeout(() => process.exit(${String(conhostCode)}), 50);`,
+    );
+    try {
+      await fixture.pty.shell;
+      await expect(fixture.pty.onExit).resolves.toBe(expected);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it("keeps its launch values through the Windows environment, whatever case the profile uses", async () => {
+    const executable = "C:\\Windows\\System32\\cmd.exe",
+      fixture = conhostLaunchFixture({
+        args: ["/d", "/c", "exit"],
+        environment: [
+          ["obsidian_terminal_conhost_arguments", "& calc"],
+          ["Obsidian_Terminal_Conhost_Exit_Code_File", "C:\\elsewhere.txt"],
+          ["OBSIDIAN_TERMINAL_CONHOST_program", "calc.exe"],
+        ],
+        executable,
+      });
+    try {
+      const launch = await onlyConHostLaunch(fixture),
+        passed = new Map<string, string | undefined>();
+      // Node on Windows sorts the keys and passes only the first of the names
+      // that differ in case alone. An all-uppercase name sorts before every
+      // other spelling of it, so the launch values win.
+      for (const name of [
+        CONHOST_LAUNCH_VARIABLES.arguments,
+        CONHOST_LAUNCH_VARIABLES.exitCodeFile,
+        CONHOST_LAUNCH_VARIABLES.program,
+      ])
+        expect(name).toBe(name.toUpperCase());
+      for (const key of Object.keys(launch.env).sort()) {
+        const upper = key.toUpperCase();
+        if (!passed.has(upper)) passed.set(upper, launch.env[key]);
+      }
+      expect(
+        Object.fromEntries(
+          [...passed].filter(([key]) =>
+            key.startsWith("OBSIDIAN_TERMINAL_CONHOST_"),
+          ),
+        ),
+      ).toEqual({
+        OBSIDIAN_TERMINAL_CONHOST_ARGUMENTS: "/d /c exit",
+        OBSIDIAN_TERMINAL_CONHOST_EXIT_CODE_FILE: launch.batch,
+        OBSIDIAN_TERMINAL_CONHOST_PROGRAM: executable,
+      });
+    } finally {
+      fixture.cleanup();
+      await fixture.pty.onExit;
+    }
+  });
+
+  /** A plugin context whose `t` records the options of each message. */
+  function recordingContext(): {
+    readonly context: TerminalPlugin;
+    readonly t: ReturnType<typeof vi.fn>;
+  } {
+    const t = vi.fn((key: string) => key);
+    return {
+      context: {
+        language: {
+          onChangeLanguage: { listen: vi.fn(() => vi.fn()) },
+          value: { t },
+        },
+        resourceSampler: {
+          trackResource: vi.fn(() => ({ close: vi.fn() })),
+        },
+        settings: { value: { errorNoticeTimeout: 0 } },
+      } as unknown as TerminalPlugin,
+      t,
+    };
+  }
+
+  it.each<readonly [string, string, readonly string[], string, object]>([
+    [
+      "a command too long for cmd",
+      "cmd.exe",
+      ["x".repeat(CONHOST_LINE_LIMIT)],
+      "errors.conhost-cannot-pass",
+      {
+        interpolation: { escapeValue: false },
+        limit: CONHOST_LINE_LIMIT,
+      },
+    ],
+    [
+      "a carriage return in the program",
+      "cmd\r.exe",
+      [],
+      "errors.conhost-cannot-pass",
+      {
+        interpolation: { escapeValue: false },
+        limit: CONHOST_LINE_LIMIT,
+      },
+    ],
+  ])(
+    "refuses %s with the line limit in its message",
+    async (_label, executable, args, key, options) => {
+      const spawn = vi.spyOn(childProcess, "spawn"),
+        { context, t } = recordingContext(),
+        pty = new WindowsPseudoterminal(context, { args, executable }),
+        onExit = pty.onExit.catch((error: unknown) => error);
+      await expect(pty.shell).rejects.toThrow(key);
+      await expect(onExit).resolves.toBeInstanceOf(Error);
+      expect(t).toHaveBeenCalledWith(key, options);
+      expect(spawn).not.toHaveBeenCalled();
+    },
+  );
+
+  it("removes the batch file and stops the resizer when conhost cannot start", async () => {
+    const nativeSpawn = childProcess.spawn.bind(childProcess),
+      batches: string[] = [],
+      processes: { resizer?: ChildProcess } = {},
+      unhandled = vi.fn();
+    vi.spyOn(childProcess, "spawn").mockImplementation(
+      (executable, args, spawnOptions) => {
+        if (executable === "test-python") {
+          processes.resizer = nativeSpawn(
+            process.execPath,
+            ["-e", KEEPALIVE_SCRIPT],
+            spawnOptions,
+          );
+          return processes.resizer;
+        }
+        if (executable === WINDOWS_CONHOST_PATH) {
+          batches.push(args[0] ?? "");
+          // As a missing or blocked conhost.exe fails: an `error` event.
+          return nativeSpawn(
+            join(tmpdir(), `missing-conhost-${randomUUID()}`),
+            [],
+            spawnOptions,
+          );
+        }
+        return nativeSpawn(executable, args, spawnOptions);
+      },
+    );
+    process.on("unhandledRejection", unhandled);
+    try {
+      const pty = new WindowsPseudoterminal(recordingContext().context, {
+          args: ["/d"],
+          executable: "cmd.exe",
+          pythonExecutable: "test-python",
+        }),
+        onExit = pty.onExit.catch((error: unknown) => error);
+      await expect(pty.shell).rejects.toThrow(/ENOENT/u);
+      await expect(onExit).resolves.toBeInstanceOf(Error);
+      expect(batches).toHaveLength(1);
+      await expect(fsPromises.access(batches[0] ?? "")).rejects.toThrow(
+        /ENOENT/u,
+      );
+      await vi.waitFor(() => {
+        const { resizer } = processes;
+        expect(resizer?.exitCode ?? resizer?.signalCode ?? null).not.toBe(null);
+      });
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, 10);
+      });
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off("unhandledRejection", unhandled);
+      const { resizer } = processes;
+      if (resizer?.exitCode === null && resizer.signalCode === null)
+        resizer.kill();
+    }
+  });
+
+  it("refuses a command with one error, not also a resizer that exited", async () => {
+    const nativeSpawn = childProcess.spawn.bind(childProcess),
+      processes: { resizer?: ChildProcess } = {},
+      { context, t } = recordingContext();
+    vi.spyOn(childProcess, "spawn").mockImplementation(
+      (executable, args, spawnOptions) => {
+        if (executable === "test-python") {
+          processes.resizer = nativeSpawn(
+            process.execPath,
+            ["-e", KEEPALIVE_SCRIPT],
+            spawnOptions,
+          );
+          return processes.resizer;
+        }
+        return nativeSpawn(executable, args, spawnOptions);
+      },
+    );
+    try {
+      const pty = new WindowsPseudoterminal(context, {
+          args: ["/d", "/c", "echo a\nexit 9"],
+          executable: "cmd.exe",
+          pythonExecutable: "test-python",
+        }),
+        onExit = pty.onExit.catch((error: unknown) => error);
+      await expect(pty.shell).rejects.toThrow("errors.conhost-cannot-pass");
+      await onExit;
+      await vi.waitFor(() => {
+        const { resizer } = processes;
+        expect(resizer?.exitCode ?? resizer?.signalCode ?? null).not.toBe(null);
+      });
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, 10);
+      });
+      expect(t).not.toHaveBeenCalledWith(
+        "errors.resizer-exited-unexpectedly",
+        expect.anything(),
+      );
+    } finally {
+      const { resizer } = processes;
+      if (resizer?.exitCode === null && resizer.signalCode === null)
+        resizer.kill();
+    }
+  });
+});
+
+/**
+ * Splits a command line by the C runtime's `argv` rules: a port of
+ * `_split_command_line` in `test_win32_conpty.py`, the inverse of the
+ * quoting, so that the quoting is proved by round trip.
+ */
+function splitWindowsCommandLine(commandLine: string): string[] {
+  const ret: string[] = [];
+  let backslashes = 0,
+    current = "",
+    quoted = false,
+    started = false;
+  for (const character of commandLine) {
+    if (character === "\\") {
+      ++backslashes;
+      started = true;
+      continue;
+    }
+    if (character === '"') {
+      current += "\\".repeat(Math.floor(backslashes / 2));
+      if (backslashes % 2 === 1) current += '"';
+      else quoted = !quoted;
+      backslashes = 0;
+      started = true;
+      continue;
+    }
+    current += "\\".repeat(backslashes);
+    backslashes = 0;
+    if ((character === " " || character === "\t") && !quoted) {
+      if (started) ret.push(current);
+      current = "";
+      started = false;
+      continue;
+    }
+    current += character;
+    started = true;
+  }
+  current += "\\".repeat(backslashes);
+  if (started) ret.push(current);
+  return ret;
+}
+
+/**
+ * The last line of the batch text `batch` after cmd's percent expansion with
+ * `env`: `%%` is `%`, and an unset name is empty.
+ */
+function expandedBatchLine(
+  batch: string,
+  env: Readonly<Record<string, string | undefined>>,
+): string {
+  return (batch.split("\r\n").at(-1) ?? "").replace(
+    /%%|%([^%]+)%/gu,
+    (_match, name: string | undefined) =>
+      name === undefined ? "%" : (env[name] ?? ""),
+  );
+}
+
+// The line-limit cases compare launches with and without this default.
+const CONHOST_EXIT_CODE_FILE = "C:\\Temp\\tmp-1-abc.bat";
+
+function acceptedLaunch(
+  program: string,
+  args: readonly string[],
+  exitCodeFile = CONHOST_EXIT_CODE_FILE,
+): Extract<ConHostLaunch, { type: "launch" }> {
+  const launch = conhostLaunch(program, args, exitCodeFile);
+  if (launch.type !== "launch")
+    throw new Error(`Refused: ${launch.reason} ${JSON.stringify(args)}`);
+  return launch;
+}
+
+describe("Windows argument quoting", () => {
+  it.each([
+    // The table of `test_quote_argument_matches_the_canonical_rules`.
+    ["plain", "plain"],
+    ["", '""'],
+    ["with space", '"with space"'],
+    ["with\ttab", '"with\ttab"'],
+    ["C:\\dir\\file", "C:\\dir\\file"],
+    ['say "hi"', '"say \\"hi\\""'],
+    ["C:\\dir with space\\", '"C:\\dir with space\\\\"'],
+    ['a\\"b', '"a\\\\\\"b"'],
+    // Output of `quote_argument` for the cases ConHost used to break.
+    ["C:\\dir\\", "C:\\dir\\"],
+    ["C:\\Program Files\\", '"C:\\Program Files\\\\"'],
+    ['c\\\\"d', '"c\\\\\\\\\\"d"'],
+    ["a\nb", '"a\nb"'],
+    ["a\u000bb", '"a\u000bb"'],
+    ['"', '"\\""'],
+    ["a  b", '"a  b"'],
+    ["J\u00fcrgen", "J\u00fcrgen"],
+    ["\u{1f600}", "\u{1f600}"],
+    ["a^b", "a^b"],
+    ["100%", "100%"],
+    ["!x!", "!x!"],
+    ["a&b", "a&b"],
+  ])("quotes %j as %j, as the ConPTY host does", (argument, expected) => {
+    expect(quoteWindowsArgument(argument)).toBe(expected);
+  });
+
+  it.each(
+    [
+      ["plain"],
+      ["two words"],
+      ["/d", "/k", "-c"],
+      ["a^b!", "100%", "%PATH%", "%%", "%~dp0"],
+      ["a&b|c<d>e(f)g", "a & b | c > d"],
+      ['say "hi"', '"', "x", 'a"&"b'],
+      ["C:\\dir\\", "C:\\Program Files\\", "next"],
+      ['a\\"b', 'c\\\\"d', "\\\\", '\\"'],
+      ["", "", "x", ""],
+      ["wow!", "!PATH!", "!q!", "!ERRORLEVEL!", "%q%"],
+      ["end^", "a  b", "a\tb", "a=b,c;d", "it's `x`"],
+      [
+        "J\u00fcrgen",
+        "\u65e5\u672c\u8a9e",
+        "\u{1f600}",
+        "a\u001ab",
+        "line1\nline2",
+      ],
+      ["C:\\Program Files\\x y\\", "-c", 'print("a & b")', "100% ^!"],
+    ].map((args) => ({ args })),
+  )(
+    "splits the quoted line of $args back into the same arguments",
+    ({ args }) => {
+      expect(
+        splitWindowsCommandLine(args.map(quoteWindowsArgument).join(" ")),
+      ).toEqual(args);
+    },
+  );
+});
+
+describe("ConHost launch", () => {
+  const program = "C:\\Windows\\System32\\cmd.exe",
+    exitCodeFile = CONHOST_EXIT_CODE_FILE;
+
+  it("passes the profile's cmd arguments as the ConPTY host quotes them", () => {
+    expect(
+      acceptedLaunch(program, ["/d", "/k", "prompt CMD$G$S"]).environment,
+    ).toEqual({
+      [CONHOST_LAUNCH_VARIABLES.arguments]: '/d /k ^"prompt CMD$G$S^"',
+      [CONHOST_LAUNCH_VARIABLES.exitCodeFile]: exitCodeFile,
+      [CONHOST_LAUNCH_VARIABLES.program]: program,
+    });
+  });
+
+  it.each([
+    ["a^b", "a^^b"],
+    ["a&b|c<d>e(f)g", "a^&b^|c^<d^>e^(f^)g"],
+    ['say "hi"', '^"say \\^"hi\\^"^"'],
+    ["C:\\Program Files\\", '^"C:\\Program Files\\\\^"'],
+    ["100%", "100%"],
+    ["wow!", "wow!"],
+    ["%PATH%", "%PATH%"],
+  ])(
+    "escapes %j for the one cmd parse that sees it as %j",
+    (argument, expected) => {
+      expect(
+        acceptedLaunch(program, [argument]).environment[
+          CONHOST_LAUNCH_VARIABLES.arguments
+        ],
+      ).toBe(expected);
+    },
+  );
+
+  it("writes a fixed ASCII batch file that clears its variables before the program starts", () => {
+    expect(acceptedLaunch(program, ["/d"]).batch).toBe(
+      [
+        "@echo off",
+        "setlocal DisableDelayedExpansion",
+        'set "ERRORLEVEL=" & set "OBSIDIAN_TERMINAL_CONHOST_ARGUMENTS=" & set "OBSIDIAN_TERMINAL_CONHOST_EXIT_CODE_FILE=" & set "OBSIDIAN_TERMINAL_CONHOST_PROGRAM=" & "%OBSIDIAN_TERMINAL_CONHOST_PROGRAM%" %OBSIDIAN_TERMINAL_CONHOST_ARGUMENTS%& >"%OBSIDIAN_TERMINAL_CONHOST_EXIT_CODE_FILE%" call "C:\\Windows\\System32\\cmd.exe" /d /c echo %%ERRORLEVEL%%',
+      ].join("\r\n"),
+    );
+    // Without arguments, nothing at all follows the program.
+    expect(acceptedLaunch(program, []).batch).toContain(
+      '"%OBSIDIAN_TERMINAL_CONHOST_PROGRAM%"& >',
+    );
+  });
+
+  it("keeps all profile text out of the batch file", () => {
+    const args = [
+        "prompt",
+        "&",
+        "%PATH%",
+        "!q!",
+        "^",
+        "J\u00fcrgen",
+        "\u{1f600}",
+      ],
+      { batch } = acceptedLaunch("C:\\J\u00fcrgen\\a^b & c.exe", args);
+    expect(batch).toMatch(/^[\x20-\x7e\r\n]*$/u);
+    // The batch text depends only on whether there are arguments.
+    expect(batch).toBe(acceptedLaunch("x", ["y"], "z").batch);
+    for (const text of ["prompt", "%PATH%", "!q!", "^", "a^b", "c.exe"])
+      expect(batch).not.toContain(text);
+  });
+
+  it.each<readonly [string, string, readonly string[], string]>([
+    ["NUL", "nul", ["a\0b"], program],
+    ["NUL in the program", "nul", [], "cmd\0.exe"],
+    ["line feed", "line-break", ["a\nb"], program],
+    ["carriage return", "line-break", ["a\rb"], program],
+    ["line feed in the program", "line-break", [], "C:\\a\nb.exe"],
+    ["quote in the program", "program-quote", [], '"C:\\a b\\c.exe"'],
+  ])("refuses a %s", (_label, reason, args, program0) => {
+    expect(conhostLaunch(program0, args, exitCodeFile)).toEqual({
+      reason,
+      type: "refusal",
+    });
+  });
+
+  it("passes a quote in an argument", () => {
+    expect(conhostLaunch(program, ['"'], exitCodeFile).type).toBe("launch");
+  });
+
+  describe("line limit", () => {
+    // The expanded line holds one argument of `length` characters; find the
+    // length at which it is exactly the limit.
+    const short = acceptedLaunch(program, ["x"]),
+      fixed = expandedBatchLine(short.batch, short.environment).length - 1,
+      fits = CONHOST_LINE_LIMIT - fixed;
+
+    it("accepts a line of exactly the limit", () => {
+      const { batch, environment: env } = acceptedLaunch(program, [
+        "x".repeat(fits),
+      ]);
+      expect(expandedBatchLine(batch, env)).toHaveLength(CONHOST_LINE_LIMIT);
+    });
+
+    it.each([
+      ["one character more", "x".repeat(fits + 1)],
+      ["a caret, which counts twice", `${"x".repeat(fits - 1)}^`],
+      [
+        "a surrogate pair, which counts twice",
+        `${"x".repeat(fits - 1)}\u{1f600}`,
+      ],
+      ["a space, which adds quotes", `${"x".repeat(fits - 1)} `],
+    ])("refuses %s", (_label, argument) => {
+      expect(conhostLaunch(program, [argument], exitCodeFile)).toEqual({
+        reason: "too-long",
+        type: "refusal",
+      });
+    });
+
+    it("counts the program and the exit-code file", () => {
+      expect(
+        conhostLaunch(`${program}x`, ["x".repeat(fits)], exitCodeFile),
+      ).toEqual({ reason: "too-long", type: "refusal" });
+      expect(
+        conhostLaunch(program, ["x".repeat(fits)], `${exitCodeFile}x`),
+      ).toEqual({ reason: "too-long", type: "refusal" });
+    });
+
+    it("accepts a surrogate pair that fits", () => {
+      expect(
+        conhostLaunch(
+          program,
+          [`${"x".repeat(fits - 2)}\u{1f600}`],
+          exitCodeFile,
+        ).type,
+      ).toBe("launch");
+    });
+
+    it("counts the text that starts the command, as its message says", () => {
+      // The limit is cmd's whole line, so a command that alone fits it can
+      // still be refused. This one is 8,100 characters after quoting, as the
+      // ConPTY host quotes it.
+      const args = ["x".repeat(8100 - program.length - 1)],
+        command = [program, ...args].map(quoteWindowsArgument).join(" ");
+      expect(command).toHaveLength(8100);
+      expect(command.length).toBeLessThanOrEqual(CONHOST_LINE_LIMIT);
+      expect(conhostLaunch(program, args, exitCodeFile)).toEqual({
+        reason: "too-long",
+        type: "refusal",
+      });
+    });
+  });
+
+  /**
+   * cmd's split of an expanded line: the commands between `&` outside quotes,
+   * with the carets outside quotes removed, and the `|`, `<`, `>`, `(` and
+   * `)` each command has outside quotes and unescaped.
+   */
+  function cmdCommands(
+    line: string,
+  ): readonly { readonly specials: string; readonly text: string }[] {
+    const ret: { specials: string; text: string }[] = [];
+    let current = { specials: "", text: "" },
+      quoted = false;
+    for (let index = 0; index < line.length; ++index) {
+      const character = line[index] ?? "";
+      if (character === '"') quoted = !quoted;
+      else if (!quoted && character === "^") {
+        current.text += line[++index] ?? "";
+        continue;
+      } else if (!quoted && character === "&") {
+        ret.push(current);
+        current = { specials: "", text: "" };
+        continue;
+      } else if (!quoted && "|<>()".includes(character))
+        current.specials += character;
+      current.text += character;
+    }
+    ret.push(current);
+    return ret;
+  }
+
+  it("gives cmd six commands and the program the ConPTY arguments, whatever the arguments hold", () => {
+    // A seeded walk over the characters that cmd or the argv rules treat
+    // specially, in every position and combination.
+    const alphabet = Array.from(
+      " \t\v\f\"\\^&|<>()%!=,;@:~*?/$`'1a\u001a\u00a0\u00fc\u00ff\u{1f600}",
+    );
+    let seed = 1;
+    const next = (bound: number): number => {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      return seed % bound;
+    };
+    for (let round = 0; round < 2000; ++round) {
+      const args = Array.from({ length: next(5) }, () =>
+          Array.from(
+            { length: next(7) },
+            () => alphabet[next(alphabet.length)],
+          ).join(""),
+        ),
+        { batch, environment } = acceptedLaunch(program, args),
+        commands = cmdCommands(expandedBatchLine(batch, environment)),
+        command = commands[4]?.text.trimStart() ?? "",
+        tail = command.slice(`"${program}"`.length);
+      expect(
+        commands.map(({ specials }) => specials),
+        tail,
+      ).toEqual(["", "", "", "", "", ">"]);
+      expect(command.startsWith(`"${program}"`)).toBe(true);
+      expect(tail).toBe(
+        args.length > 0 ? ` ${args.map(quoteWindowsArgument).join(" ")}` : "",
+      );
+      expect(splitWindowsCommandLine(tail)).toEqual(args);
+    }
+  });
+});
+
 function readyEvent(
   hostPid = 100,
   childPid = 200,
@@ -463,6 +1339,8 @@ describe("ConPTY control protocol", () => {
       const error = new Error("stop before spawning"),
         // Only these context members are used before the seeded startup failure.
         context = {
+          // ConPTY registers its quit hook before anything is spawned.
+          app: { workspace: { offref: vi.fn(), on: vi.fn(() => ({})) } },
           language: { value: { t: vi.fn((key: string) => key) } },
           register: vi.fn(),
           settings: { value: { errorNoticeTimeout: 0 } },
@@ -597,6 +1475,22 @@ describe("ConPTY control protocol", () => {
         '{"event":"resized","columns":100,"rows":40,"seq":3,"forged":true}',
       ),
     ).toBeNull();
+  });
+
+  // The tuple type is written out, so that a source archive without the
+  // vendored library still knows the reasons. It must stay what `deepFreeze`
+  // made of it: frozen and literal rather than widened to `string`.
+  it("knows the four reasons for falling back to the system console host", () => {
+    expect(CONPTY_CONSOLE_HOST_FALLBACKS).toEqual([
+      "exited",
+      "not-found",
+      "start-failed",
+      "unsupported-os",
+    ]);
+    expect(Object.isFrozen(CONPTY_CONSOLE_HOST_FALLBACKS)).toBe(true);
+    expectTypeOf<ConPtyConsoleHostFallback>().toEqualTypeOf<
+      "exited" | "not-found" | "start-failed" | "unsupported-os"
+    >();
   });
 
   it.each<ConPtyConsoleHost>([
@@ -1524,6 +2418,8 @@ function conPtyContext(
   settings: Readonly<Partial<Settings>> = {},
 ): TerminalPlugin {
   return {
+    // The quit hook registers here; `quitContext()` below observes it.
+    app: { workspace: { offref: vi.fn(), on: vi.fn(() => ({})) } },
     language: {
       onChangeLanguage: { listen: vi.fn(() => vi.fn()) },
       value: { t },
@@ -3469,6 +4365,181 @@ describe("ConPTY output hold", () => {
     } finally {
       await pty.kill();
       await pty.onExit;
+    }
+  });
+});
+
+describe("ConPTY quit hook", () => {
+  /** A plugin context whose workspace hands out the quit hook it is given. */
+  function quitContext(): {
+    readonly context: TerminalPlugin;
+    readonly offref: ReturnType<typeof vi.fn>;
+    readonly on: ReturnType<typeof vi.fn>;
+    readonly quit: () => Promise<unknown>[];
+    readonly ref: object;
+  } {
+    const ref = {},
+      listeners: ((tasks: unknown) => unknown)[] = [],
+      on = vi.fn((name: string, callback: (tasks: unknown) => unknown) => {
+        if (name === "quit") listeners.push(callback);
+        return ref;
+      }),
+      offref = vi.fn(),
+      // The spec's partial plugin stub, with a workspace that records the hook.
+      context: TerminalPlugin = Object.assign(conPtyContext(), {
+        app: { workspace: { offref, on } },
+      });
+    return {
+      context,
+      offref,
+      on,
+      quit: () => {
+        const tasks: Promise<unknown>[] = [];
+        for (const listener of listeners) {
+          listener({
+            add: (callback: () => Promise<unknown>): void => {
+              tasks.push(callback());
+            },
+          });
+        }
+        return tasks;
+      },
+      ref,
+    };
+  }
+
+  function pendingControl(host: ReturnType<typeof testHost>) {
+    return fakeControl(
+      new Promise<ConPtyReadyEvent>(() => {
+        // Never ready.
+      }),
+      () => host.kill(),
+    );
+  }
+
+  it("ends the session as an Obsidian quit task and lets go of the hook afterwards", async () => {
+    const host = testHost(),
+      hostPid = liveHostPid(host),
+      ready = Object.freeze(readyEvent(hostPid, hostPid + 1)),
+      control = fakeControl(Promise.resolve(ready), () => host.kill()),
+      { context, offref, on, quit, ref } = quitContext(),
+      pty = constructConPty(
+        conPtyDependencies(control, host),
+        undefined,
+        undefined,
+        context,
+      );
+    try {
+      expect(on).toHaveBeenCalledWith("quit", expect.any(Function));
+      await pty.shell;
+      expect(offref).not.toHaveBeenCalled();
+      const tasks = quit();
+      expect(tasks).toHaveLength(1);
+      await tasks[0];
+      expect(control.kill).toHaveBeenCalledTimes(1);
+      await pty.onExit;
+      await vi.waitFor(() => {
+        expect(offref).toHaveBeenCalledWith(ref);
+      });
+    } finally {
+      host.kill();
+    }
+  });
+
+  it("spawns the host outside the job that ends it with Obsidian's window", async () => {
+    const host = testHost(),
+      spawn = vi.spyOn(childProcess, "spawn").mockReturnValue(host);
+    try {
+      await CONPTY_DEPENDENCIES.spawn("python", ["host.py"], { env: {} });
+      // libuv holds a child spawned without `detached` in a job that ends it
+      // when the window's process exits, even before the quit task settles.
+      expect(spawn).toHaveBeenCalledWith(
+        "python",
+        ["host.py"],
+        expect.objectContaining({ detached: true, env: {} }),
+      );
+    } finally {
+      host.kill();
+    }
+  });
+
+  it("kills the host of a session that never became ready", async () => {
+    const host = testHost(),
+      { context, quit } = quitContext(),
+      dependencies = conPtyDependencies(pendingControl(host), host),
+      pty = constructConPty(dependencies, undefined, undefined, context);
+    try {
+      // The host is up, the shell is not: `kill()` has only the host to end.
+      await vi.waitFor(() => {
+        expect(dependencies.spawn).toHaveBeenCalledTimes(1);
+      });
+      const [task] = quit();
+      await task;
+      expect(host.killed).toBe(true);
+      await pty.onExit;
+    } finally {
+      host.kill();
+    }
+  });
+
+  it("spawns no host for a session that quits before its host is up", async () => {
+    const host = testHost(),
+      { context, quit } = quitContext(),
+      dependencies = conPtyDependencies(pendingControl(host), host),
+      pty = constructConPty(dependencies, undefined, undefined, context);
+    try {
+      const [task] = quit();
+      await expect(task).resolves.toBeUndefined();
+      await expect(pty.shell).rejects.toThrow();
+      expect(dependencies.spawn).not.toHaveBeenCalled();
+    } finally {
+      host.kill();
+    }
+  });
+
+  it("settles the quit task when the kill itself fails", async () => {
+    const host = testHost(),
+      { context, quit } = quitContext(),
+      dependencies = {
+        ...conPtyDependencies(pendingControl(host), host),
+        createControl: vi.fn().mockRejectedValue(new Error("control failed")),
+      },
+      pty = constructConPty(dependencies, undefined, undefined, context);
+    try {
+      await expect(pty.shell).rejects.toThrow();
+      const [task] = quit();
+      await expect(task).resolves.toBeUndefined();
+      await expect(pty.kill()).rejects.toThrow();
+    } finally {
+      host.kill();
+    }
+  });
+
+  it("gives up on a kill that never settles once the exit wait and its margin pass", async () => {
+    vi.useFakeTimers();
+    const host = testHost(),
+      { context, quit } = quitContext(),
+      dependencies = {
+        ...conPtyDependencies(pendingControl(host), host),
+        createControl: () =>
+          new Promise<ConPtyControlChannel>(() => {
+            // Never connects, so `kill()` never settles.
+          }),
+      };
+    try {
+      constructConPty(dependencies, undefined, undefined, context);
+      const [task] = quit();
+      let settled = false;
+      void task?.then(() => {
+        settled = true;
+      });
+      await vi.advanceTimersByTimeAsync(CONPTY_QUIT_TASK_WAIT * 1000 - 1);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(2);
+      expect(settled).toBe(true);
+    } finally {
+      vi.useRealTimers();
+      host.kill();
     }
   });
 });

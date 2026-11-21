@@ -5,6 +5,7 @@ import {
   revealPrivateFilter,
 } from "@polyipseity/obsidian-plugin-library";
 import { FuzzySuggestModal } from "obsidian";
+import { deviceProfileEntries } from "../profile-choice.js";
 import { Settings } from "../settings-data.js";
 import type { TerminalPlugin } from "../main.js";
 import type { $SuggestModal } from "../@types/obsidian.js";
@@ -55,7 +56,7 @@ export class SelectProfileModal extends FuzzySuggestModal<Settings.Profile.Entry
   public override getItems(): (Settings.Profile.Entry | null)[] {
     return [
       null,
-      ...Object.entries(this.context.settings.value.profiles)
+      ...deviceProfileEntries(this.context)
         /*
 				Platform filtering: Filter profiles in the selection modal to
 				show only profiles compatible with the current platform

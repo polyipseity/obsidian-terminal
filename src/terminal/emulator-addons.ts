@@ -1716,10 +1716,11 @@ export namespace RightClickActionAddon {
  *    - `"ignore"` — suppress the event, send nothing.
  *    - `"passthrough"` — yield to xterm.js as if no mapping matched; useful
  *      for explicitly opting out of a default mapping for a specific combo.
+ *    - `"sendToObsidian"` — suppress the event; the key is Obsidian's.
  *    - `"sendEscapeSequence"` / `"sendHexCode"` / `"sendText"` — fire the
  *      configured output and suppress the event.
  *    Each mapping can be restricted to a specific platform via its `platform`
- *    field; `undefined` means all platforms.
+ *    field; `null` means all platforms.
  *
  * 3. **macOS Option key passthrough** (enabled by `isPassthroughEnabled`):
  *    xterm.js issue #2831 — when `macOptionIsMeta` is `false`, xterm still
@@ -2070,19 +2071,10 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
   }
 
   #matches(event: KeyboardEvent, mapping: Settings.Keymapping): boolean {
-    // Skip mappings that don't match the current platform
-    if (
-      mapping.platform !== null &&
-      mapping.platform !== this.currentPlatform
-    ) {
-      return false;
-    }
-    return (
-      event.key === mapping.key &&
-      event.ctrlKey === mapping.ctrl &&
-      event.altKey === mapping.alt &&
-      event.metaKey === mapping.meta &&
-      event.shiftKey === mapping.shift
+    return CustomKeyEventHandlerAddon.matches(
+      mapping,
+      event,
+      this.currentPlatform,
     );
   }
 
@@ -2099,6 +2091,13 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
       case "passthrough":
         // Yield to xterm.js as if no mapping matched.
         return true;
+      case "sendToObsidian":
+        // Suppress the event, send nothing. With key interception on, the
+        // focused terminal's listener (`newFocusedKeyListener` in view.ts)
+        // has run Obsidian's hotkey for the key and kept the keydown from
+        // xterm.js. This case keeps the key from the shell when it gets here
+        // all the same: with interception off and no Obsidian hotkey on it.
+        break;
       case "scrollLines": {
         // actionArg is a number; scroll that many lines (negative = up).
         terminal.scrollLines(mapping.actionArg);
@@ -2147,6 +2146,65 @@ export class CustomKeyEventHandlerAddon implements ITerminalAddon {
       // No default
     }
     return false;
+  }
+}
+
+export namespace CustomKeyEventHandlerAddon {
+  /** What a keymapping is matched against: the key and its modifiers. */
+  export interface KeyEvent {
+    readonly key: string;
+    readonly altKey: boolean;
+    readonly ctrlKey: boolean;
+    readonly metaKey: boolean;
+    readonly shiftKey: boolean;
+  }
+
+  /**
+   * Whether a keymapping applies to a key on a platform: the key and every
+   * modifier must be the same, and a mapping with a platform applies only
+   * there.
+   *
+   * @param mapping a keymapping
+   * @param event the key
+   * @param platform the platform the terminal runs on
+   * @returns whether the mapping applies
+   */
+  export function matches(
+    mapping: Settings.Keymapping,
+    event: KeyEvent,
+    platform: string,
+  ): boolean {
+    // Skip mappings that don't match the current platform
+    if (mapping.platform !== null && mapping.platform !== platform) {
+      return false;
+    }
+    return (
+      event.key === mapping.key &&
+      event.ctrlKey === mapping.ctrl &&
+      event.altKey === mapping.alt &&
+      event.metaKey === mapping.meta &&
+      event.shiftKey === mapping.shift
+    );
+  }
+
+  /**
+   * Whether the terminal leaves a key to Obsidian: the first keymapping that
+   * applies to it, as the terminal finds it, is Send to Obsidian.
+   *
+   * @param mappings the keymappings, in order
+   * @param event the key
+   * @param platform the platform the terminal runs on
+   * @returns whether the key is Obsidian's
+   */
+  export function sendsToObsidian(
+    mappings: readonly Settings.Keymapping[],
+    event: KeyEvent,
+    platform: string,
+  ): boolean {
+    return (
+      mappings.find((mapping) => matches(mapping, event, platform))?.action ===
+      "sendToObsidian"
+    );
   }
 }
 

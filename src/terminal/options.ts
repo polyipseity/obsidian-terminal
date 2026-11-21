@@ -21,7 +21,7 @@ export const CONPTY_REFLOW_BUILD_NUMBER = 21376;
 
 export interface TerminalBackendOptions {
   /** Platform the terminal runs on. Defaults to the current platform. */
-  readonly platform?: Platform.All | undefined;
+  readonly platform?: Platform.All;
   readonly win32Backend?: Settings.Profile.Win32Backend | undefined;
   /** Windows build whose ConPTY the terminal runs on: this machine's, from
    * `parseWin32BuildNumber`, until {@link settleConsoleHostBackendOptions}

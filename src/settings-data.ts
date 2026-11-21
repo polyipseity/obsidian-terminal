@@ -72,10 +72,23 @@ type RequiredWithUndefined<T> = {
 export interface LocalSettings extends PluginContext.LocalSettings {
   readonly hasUsedIntegratedTerminal: boolean;
   readonly lastReadChangelogVersion: SemVerString;
+  /**
+   * This device's default profile. Absent in a store that 3.29.0 wrote, until
+   * the first start of this version takes it over (`migrateProfileChoice`).
+   */
+  readonly defaultProfile?: Settings.DefaultProfile;
+  /**
+   * This device's order of the profiles, as ids. Absent like `defaultProfile`.
+   * Profiles it does not name follow in the order of `Settings.profiles`.
+   */
+  readonly profileOrder?: readonly string[];
 }
 export namespace LocalSettings {
   export function fix(self0: unknown): Fixed<LocalSettings> {
-    const unc = launderUnchecked<LocalSettings>(self0);
+    const unc = launderUnchecked<LocalSettings>(self0),
+      // A new store gets both keys. One that 3.29.0 wrote keeps them absent,
+      // so it stays valid and its first start can be told apart.
+      fresh = typeof self0 !== "object" || self0 === null;
     return markFixed(self0, {
       ...PluginContext.LocalSettings.fix(self0).value,
       hasUsedIntegratedTerminal: unc.hasUsedIntegratedTerminal === true,
@@ -84,6 +97,29 @@ export namespace LocalSettings {
         String(unc.lastReadChangelogVersion),
         NULL_SEM_VER_STRING,
       ),
+      ...(fresh || Object.hasOwn(unc, "defaultProfile")
+        ? {
+            defaultProfile:
+              typeof unc.defaultProfile === "string" && unc.defaultProfile
+                ? // Cast: the opaque type only marks a profile id. This store
+                  // cannot see the profiles, so readers check that it names one.
+                  (unc.defaultProfile as Settings.DefaultProfile)
+                : null,
+          }
+        : {}),
+      ...(fresh || Object.hasOwn(unc, "profileOrder")
+        ? {
+            profileOrder: Array.isArray(unc.profileOrder)
+              ? [
+                  ...new Set(
+                    unc.profileOrder.filter(
+                      (id: unknown): id is string => typeof id === "string",
+                    ),
+                  ),
+                ]
+              : [],
+          }
+        : {}),
     });
   }
 }
@@ -106,6 +142,12 @@ export interface Settings extends PluginContext.Settings {
   readonly rightClickAction: RightClickActionAddon.Action;
   readonly interceptKeysWhenFocused: boolean;
   readonly keymappings: readonly Settings.Keymapping[];
+  /**
+   * The version of the built-in keymappings `keymappings` was offered, see
+   * {@link Settings.addKeymappingDefaults}. None in a data.json from before
+   * there were versions.
+   */
+  readonly keymappingDefaultsVersion?: number;
   readonly macOSOptionKeyPassthrough: boolean;
 
   readonly openChangelogOnUpdate: boolean;
@@ -138,6 +180,43 @@ export namespace Settings {
     keyof Profiles,
     (typeof PluginUUIDs)["UUID0"]
   > | null;
+
+  /**
+   * The built-in keymappings by the version that brought them: version `n` is
+   * the entry at `n - 1`. {@link addKeymappingDefaults} offers a list the
+   * versions it has not been offered.
+   */
+  export const KEYMAPPING_DEFAULTS_BY_VERSION: readonly (readonly Keymapping[])[] =
+    deepFreeze([
+      [
+        // Ctrl+P → the command palette on Windows, where PowerShell and cmd.exe
+        // do not use the key. bash in WSL and Git Bash lose its history key.
+        {
+          action: "sendToObsidian",
+          actionArg: null,
+          alt: false,
+          ctrl: true,
+          key: "p",
+          meta: false,
+          platform: "win32",
+          shift: false,
+        },
+        // Command+P → the command palette on macOS. No shell gets Command.
+        {
+          action: "sendToObsidian",
+          actionArg: null,
+          alt: false,
+          ctrl: false,
+          key: "p",
+          meta: true,
+          platform: "darwin",
+          shift: false,
+        },
+      ],
+    ]);
+  /** The version of the built-in keymappings. */
+  export const KEYMAPPING_DEFAULTS_VERSION =
+    KEYMAPPING_DEFAULTS_BY_VERSION.length;
 
   export const DEFAULT: Settings = deepFreeze({
     addToCommand: true,
@@ -286,7 +365,9 @@ export namespace Settings {
         platform: "darwin",
         shift: false,
       },
+      ...KEYMAPPING_DEFAULTS_BY_VERSION.flat(),
     ],
+    keymappingDefaultsVersion: KEYMAPPING_DEFAULTS_VERSION,
     language: "",
     macOSOptionKeyPassthrough: true,
     newInstanceBehavior: "newHorizontalSplit",
@@ -362,6 +443,8 @@ export namespace Settings {
    * - `"passthrough"` — yield to xterm.js; the event is processed as if no
    *   mapping matched. Useful for explicitly opting out of a default mapping
    *   for a specific key combination without deleting the default entry.
+   * - `"sendToObsidian"` — keep the key from the terminal; while key
+   *   interception is on, the focused terminal runs Obsidian's hotkey for it.
    * - `"scrollLines"` — scroll the terminal viewport by the number of lines
    *   given in {@link Keymapping.actionArg} (negative = up, positive = down).
    *   Defaults to 1 if the arg is absent or non-numeric.
@@ -379,6 +462,7 @@ export namespace Settings {
   export const KEY_MAPPING_ACTIONS = deepFreeze([
     "ignore",
     "passthrough",
+    "sendToObsidian",
     "scrollLines",
     "scrollPages",
     "scrollToBottom",
@@ -393,6 +477,7 @@ export namespace Settings {
   export const ACTION_ARG_TYPES = deepFreeze({
     ignore: null,
     passthrough: null,
+    sendToObsidian: null,
     scrollLines: "number",
     scrollPages: "number",
     scrollToBottom: null,
@@ -430,7 +515,11 @@ export namespace Settings {
   } & (
     | {
         readonly action:
-          "ignore" | "passthrough" | "scrollToBottom" | "scrollToTop";
+          | "ignore"
+          | "passthrough"
+          | "scrollToBottom"
+          | "scrollToTop"
+          | "sendToObsidian";
         readonly actionArg: null;
       }
     | {
@@ -471,7 +560,8 @@ export namespace Settings {
         case null:
           return value === null;
         case "number":
-          return typeof value === "number" && isFinite(value);
+          // xterm's scroll methods throw on a number that is not whole.
+          return Number.isInteger(value);
         case "string":
           return typeof value === "string";
       }
@@ -486,7 +576,8 @@ export namespace Settings {
           case "ignore":
           case "passthrough":
           case "scrollToBottom":
-          case "scrollToTop": {
+          case "scrollToTop":
+          case "sendToObsidian": {
             ACTION_ARG_TYPES[action] satisfies null; // Assert correct type for `actionArg`
             let actionArg = fixTyped(DEFAULT, unc, "actionArg", ["null"]);
             if (!isValidActionArg(ACTION_ARG_TYPES[action], actionArg)) {
@@ -535,7 +626,7 @@ export namespace Settings {
      * Two entries with the same key combination but different, non-overlapping
      * platforms (e.g., one `"darwin"` and one `"linux"`) will never both fire
      * for the same event, so they do **not** conflict. An entry with
-     * `platform: undefined` (all platforms) overlaps with every other entry.
+     * `platform: null` (all platforms) overlaps with every other entry.
      *
      * Use this instead of a plain key-equality check to avoid false positives
      * when detecting duplicates in the keymappings list.
@@ -556,6 +647,54 @@ export namespace Settings {
     }
   }
 
+  /**
+   * Offers `settings.keymappings` the built-in keymappings of the versions it
+   * was not offered yet, then records the current version.
+   *
+   * A built-in keymapping goes to the end of the list, so that the user's
+   * entries keep coming first, unless the list maps its key already, for an
+   * overlapping platform and with any action. An entry that is the built-in
+   * one with the action Ignore, which is how a device on 3.29.0 saves an
+   * action it does not know, gets the built-in action back in its place.
+   *
+   * @param settings the settings to change
+   * @returns whether the list changed
+   */
+  export function addKeymappingDefaults(
+    settings: DeepWritable<Settings>,
+  ): boolean {
+    const offered = settings.keymappingDefaultsVersion ?? 0;
+    if (offered >= KEYMAPPING_DEFAULTS_VERSION) {
+      return false;
+    }
+    const keymappings = [...settings.keymappings];
+    let changed = false;
+    for (const mapping of KEYMAPPING_DEFAULTS_BY_VERSION.slice(
+      offered,
+    ).flat()) {
+      const ignored = keymappings.findIndex(
+        (entry) =>
+          entry.action === "ignore" &&
+          entry.platform === mapping.platform &&
+          Keymapping.conflictsKey(entry, mapping),
+      );
+      if (ignored !== -1) {
+        keymappings[ignored] = cloneAsWritable(mapping);
+        changed = true;
+      } else if (
+        !keymappings.some((entry) => Keymapping.conflictsKey(entry, mapping))
+      ) {
+        keymappings.push(cloneAsWritable(mapping));
+        changed = true;
+      }
+    }
+    if (changed) {
+      settings.keymappings = keymappings;
+    }
+    settings.keymappingDefaultsVersion = KEYMAPPING_DEFAULTS_VERSION;
+    return changed;
+  }
+
   export type Profile =
     | Profile.DeveloperConsole
     | Profile.Empty
@@ -565,7 +704,13 @@ export namespace Settings {
   export type Profiles = Readonly<Record<string, Profile>>;
   export namespace Profile {
     export type Entry = readonly [key: string, value: Profile];
-    export const TYPES = deepFreeze([
+    export const TYPES: readonly [
+      "",
+      "invalid",
+      "developerConsole",
+      "external",
+      "integrated",
+    ] = deepFreeze([
       "",
       "invalid",
       "developerConsole",
@@ -578,15 +723,17 @@ export namespace Settings {
       type: T,
       profiles: Profiles,
       platform?: Platform.All,
+      order: readonly string[] = [],
     ): Typed<T> | null {
-      return defaultEntryOfType(type, profiles, platform)?.[1] ?? null;
+      return defaultEntryOfType(type, profiles, platform, order)?.[1] ?? null;
     }
     export function defaultEntryOfType<T extends Type>(
       type: T,
       profiles: Profiles,
       platform?: Platform.All,
+      order: readonly string[] = [],
     ): readonly [string, Typed<T>] | null {
-      for (const [key, profile] of Object.entries(profiles)) {
+      for (const [key, profile] of orderedEntries(profiles, order)) {
         if (
           isType(type, profile) &&
           (platform === void 0 || isCompatible(profile, platform))
@@ -595,6 +742,41 @@ export namespace Settings {
         }
       }
       return null;
+    }
+    /**
+     * @param profiles the profiles
+     * @param id an id
+     * @returns the profile stored under `id`, never a property every object
+     *   inherits (`constructor`, `__proto__`, …)
+     */
+    export function byId(profiles: Profiles, id: string): Profile | null {
+      return Object.hasOwn(profiles, id) ? (profiles[id] ?? null) : null;
+    }
+    /**
+     * @param profiles the profiles, in their stored order
+     * @param order ids in a device's order
+     * @returns the profiles that `order` names, in its order, then the others
+     *   in their stored order. Ids of missing profiles and repeats are skipped.
+     */
+    export function orderedEntries(
+      profiles: Profiles,
+      order: readonly string[],
+    ): Entry[] {
+      const ret: Entry[] = [],
+        seen = new Set<string>();
+      for (const id of order) {
+        const profile = seen.has(id) ? null : byId(profiles, id);
+        if (profile) {
+          seen.add(id);
+          ret.push([id, profile]);
+        }
+      }
+      for (const entry of Object.entries(profiles)) {
+        if (!seen.has(entry[0])) {
+          ret.push(entry);
+        }
+      }
+      return ret;
     }
     export function isCompatible(
       profile: Profile,
@@ -684,7 +866,10 @@ export namespace Settings {
     }
     /** Windows process and pseudoterminal implementations, in the order the
      * profile editor offers them. */
-    export const WIN32_BACKENDS = deepFreeze(["conpty", "legacy"]);
+    export const WIN32_BACKENDS: readonly ["conpty", "legacy"] = deepFreeze([
+      "conpty",
+      "legacy",
+    ]);
     export type Win32Backend = (typeof WIN32_BACKENDS)[number];
     export const DEFAULTS: {
       readonly [key in Type]: DeepRequired<
@@ -788,7 +973,7 @@ export namespace Settings {
           return ret2;
         };
 
-      return markFixed(
+      const fixed = markFixed(
         self0,
         ((): DeepWritable<Profile> => {
           const type = inSet(TYPES, unc.type) ? unc.type : "invalid";
@@ -960,6 +1145,11 @@ export namespace Settings {
           }
         })(),
       );
+      // A value without a known type becomes an invalid profile that keeps
+      // every key it has. Only adding `type`, it would pass as unchanged.
+      return fixed.value.type === "invalid" && unc.type !== "invalid"
+        ? Object.freeze({ valid: false, value: fixed.value })
+        : fixed;
     }
 
     export type TerminalOptions = Omit<
@@ -1650,6 +1840,49 @@ export namespace Settings {
     return own;
   }
 
+  /**
+   * The version of the built-in keymappings, as {@link Settings.fix} keeps
+   * it. A data.json from before there were versions has none and keeps none,
+   * so that it loads unchanged, also on a device that has not updated; the
+   * built-in keymappings it lacks are added outside the fixer, by
+   * {@link addKeymappingDefaults}. Without a list of its own, the list is the
+   * default one, which has every built-in keymapping.
+   *
+   * A later version comes back to this one when the list holds an action
+   * that this version does not know and so loads as Ignore: the later
+   * version then offers its built-in keymappings again and gives such an
+   * entry its action back, as this version does after 3.29.0.
+   *
+   * @param unc the settings read
+   * @returns the version, or nothing
+   */
+  function fixKeymappingDefaultsVersion(
+    unc: Unchecked<Settings>,
+  ): Pick<Settings, "keymappingDefaultsVersion"> {
+    const { keymappingDefaultsVersion: version, keymappings } = unc;
+    if (
+      typeof version === "number" &&
+      Number.isSafeInteger(version) &&
+      version >= 0
+    ) {
+      if (
+        version > KEYMAPPING_DEFAULTS_VERSION &&
+        Array.isArray(keymappings) &&
+        keymappings.some(
+          (mapping: unknown) =>
+            !isKeymappingAction(launderUnchecked<Keymapping>(mapping).action),
+        )
+      ) {
+        return { keymappingDefaultsVersion: KEYMAPPING_DEFAULTS_VERSION };
+      }
+      return { keymappingDefaultsVersion: version };
+    }
+    if (!Array.isArray(keymappings)) {
+      return { keymappingDefaultsVersion: KEYMAPPING_DEFAULTS_VERSION };
+    }
+    return version === undefined ? {} : { keymappingDefaultsVersion: 0 };
+  }
+
   export function fix(self0: unknown): Fixed<Settings> {
     const unc = launderUnchecked<Settings>(self0);
 
@@ -1713,6 +1946,7 @@ export namespace Settings {
         }
         return cloneAsWritable(DEFAULT.keymappings);
       })(),
+      ...fixKeymappingDefaultsVersion(unc),
       language: fixInSet(DEFAULT, unc, "language", DEFAULTABLE_LANGUAGES),
       macOSOptionKeyPassthrough: fixTyped(
         DEFAULT,
@@ -1760,7 +1994,7 @@ export namespace Settings {
         }
         // eslint-disable-next-line @typescript-eslint/no-base-to-string -- Intended conversion.
         const rp = String(raw);
-        if (rp && fixedProfiles[rp] !== undefined) {
+        if (rp && Object.hasOwn(fixedProfiles, rp)) {
           return rp as Settings.DefaultProfile;
         }
         return null;
@@ -1769,6 +2003,20 @@ export namespace Settings {
         unc["terminalOptions"],
       ).value,
     };
+    // Undo leaves the version unset as an own undefined key.
+    if (
+      typeof self0 === "object" &&
+      self0 !== null &&
+      !Array.isArray(self0) &&
+      (Object.getPrototypeOf(self0) === Object.prototype ||
+        Object.getPrototypeOf(self0) === null) &&
+      Object.hasOwn(self0, "keymappingDefaultsVersion") &&
+      "keymappingDefaultsVersion" in self0 &&
+      self0.keymappingDefaultsVersion === undefined
+    ) {
+      const { keymappingDefaultsVersion: _version, ...rest } = self0;
+      return markFixed(rest, fixed);
+    }
     return markFixed(self0, fixed);
   }
 }

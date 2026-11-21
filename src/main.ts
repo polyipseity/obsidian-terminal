@@ -2,7 +2,6 @@ import {
   LanguageManager,
   type PluginContext,
   SI_PREFIX_SCALE,
-  type SemVerString,
   SettingsManager,
   StatusBarHider,
   StorageSettingsManager,
@@ -16,7 +15,9 @@ import { loadDocumentations } from "./documentations.js";
 import { loadIcons } from "./icons.js";
 import { MAX_HISTORY, PLUGIN_UNLOAD_DELAY } from "./magic.js";
 import { EarlyPatchManager, loadPatch } from "./patch.js";
+import { migrateProfileChoice } from "./profile-choice.js";
 import { LocalSettings, Settings } from "./settings-data.js";
+import { TerminalSettingsManager } from "./settings-manager.js";
 import { loadSettings } from "./settings.js";
 import { loadTerminal } from "./terminal/load.js";
 import { DeveloperConsolePseudoterminal } from "./terminal/pseudoterminal.js";
@@ -25,7 +26,7 @@ export class TerminalPlugin
   extends Plugin
   implements PluginContext<Settings, LocalSettings>
 {
-  public readonly version: SemVerString | null;
+  public readonly version;
   public readonly language: LanguageManager;
   public readonly localSettings: StorageSettingsManager<LocalSettings>;
   public readonly settings: SettingsManager<Settings>;
@@ -54,7 +55,7 @@ export class TerminalPlugin
       }),
     );
     this.localSettings = new StorageSettingsManager(this, LocalSettings.fix);
-    this.settings = new SettingsManager(this, Settings.fix);
+    this.settings = new TerminalSettingsManager(this, Settings.fix);
   }
 
   public displayName(unlocalized = false): string {
@@ -96,6 +97,7 @@ export class TerminalPlugin
         child.load();
       }
       await Promise.all(earlyChildren.map(async (child) => child.onLoaded));
+      await migrateProfileChoice(this);
       for (const child of children) {
         this.addChild(child);
       }

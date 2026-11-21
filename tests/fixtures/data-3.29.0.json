@@ -1,0 +1,1080 @@
+{
+  "addToCommand": false,
+  "addToContextMenu": false,
+  "createInstanceNearExistingOnes": false,
+  "errorNoticeTimeout": 12.5,
+  "experiments": {},
+  "exposeInternalModules": false,
+  "focusOnNewInstance": false,
+  "hideStatusBar": "running",
+  "showTerminalTabPrefix": true,
+  "tabStatus": "still",
+  "interceptKeysWhenFocused": false,
+  "interceptLogging": false,
+  "keymappings": [
+    {
+      "action": "sendEscapeSequence",
+      "actionArg": "\r",
+      "alt": false,
+      "ctrl": false,
+      "key": "Enter",
+      "meta": false,
+      "platform": null,
+      "shift": true
+    },
+    {
+      "action": "scrollPages",
+      "actionArg": -1,
+      "alt": false,
+      "ctrl": false,
+      "key": "PageUp",
+      "meta": false,
+      "platform": null,
+      "shift": false
+    },
+    {
+      "action": "scrollPages",
+      "actionArg": 1,
+      "alt": false,
+      "ctrl": false,
+      "key": "PageDown",
+      "meta": false,
+      "platform": null,
+      "shift": false
+    },
+    {
+      "action": "scrollToTop",
+      "actionArg": null,
+      "alt": false,
+      "ctrl": false,
+      "key": "Home",
+      "meta": false,
+      "platform": null,
+      "shift": false
+    },
+    {
+      "action": "scrollToBottom",
+      "actionArg": null,
+      "alt": false,
+      "ctrl": false,
+      "key": "End",
+      "meta": false,
+      "platform": null,
+      "shift": false
+    },
+    {
+      "action": "sendEscapeSequence",
+      "actionArg": "b",
+      "alt": true,
+      "ctrl": false,
+      "key": "ArrowLeft",
+      "meta": false,
+      "platform": "darwin",
+      "shift": false
+    },
+    {
+      "action": "sendEscapeSequence",
+      "actionArg": "f",
+      "alt": true,
+      "ctrl": false,
+      "key": "ArrowRight",
+      "meta": false,
+      "platform": "darwin",
+      "shift": false
+    },
+    {
+      "action": "sendHexCode",
+      "actionArg": "01",
+      "alt": false,
+      "ctrl": false,
+      "key": "ArrowLeft",
+      "meta": true,
+      "platform": "darwin",
+      "shift": false
+    },
+    {
+      "action": "sendHexCode",
+      "actionArg": "05",
+      "alt": false,
+      "ctrl": false,
+      "key": "ArrowRight",
+      "meta": true,
+      "platform": "darwin",
+      "shift": false
+    },
+    {
+      "action": "sendHexCode",
+      "actionArg": "17",
+      "alt": true,
+      "ctrl": false,
+      "key": "Backspace",
+      "meta": false,
+      "platform": "darwin",
+      "shift": false
+    },
+    {
+      "action": "sendHexCode",
+      "actionArg": "15",
+      "alt": false,
+      "ctrl": false,
+      "key": "Backspace",
+      "meta": true,
+      "platform": "darwin",
+      "shift": false
+    },
+    {
+      "action": "sendEscapeSequence",
+      "actionArg": "d",
+      "alt": true,
+      "ctrl": false,
+      "key": "Delete",
+      "meta": false,
+      "platform": "darwin",
+      "shift": false
+    },
+    {
+      "action": "ignore",
+      "actionArg": null,
+      "alt": true,
+      "ctrl": true,
+      "key": "F1",
+      "meta": true,
+      "platform": null,
+      "shift": false
+    },
+    {
+      "action": "passthrough",
+      "actionArg": null,
+      "alt": false,
+      "ctrl": true,
+      "key": "F2",
+      "meta": false,
+      "platform": "darwin",
+      "shift": true
+    },
+    {
+      "action": "scrollLines",
+      "actionArg": -4,
+      "alt": true,
+      "ctrl": true,
+      "key": "F3",
+      "meta": false,
+      "platform": "linux",
+      "shift": false
+    },
+    {
+      "action": "scrollPages",
+      "actionArg": -5,
+      "alt": false,
+      "ctrl": true,
+      "key": "F4",
+      "meta": true,
+      "platform": "win32",
+      "shift": true
+    },
+    {
+      "action": "scrollToBottom",
+      "actionArg": null,
+      "alt": true,
+      "ctrl": true,
+      "key": "F5",
+      "meta": false,
+      "platform": null,
+      "shift": false
+    },
+    {
+      "action": "scrollToTop",
+      "actionArg": null,
+      "alt": false,
+      "ctrl": true,
+      "key": "F6",
+      "meta": false,
+      "platform": "darwin",
+      "shift": true
+    },
+    {
+      "action": "sendEscapeSequence",
+      "actionArg": "\\e[6~",
+      "alt": true,
+      "ctrl": true,
+      "key": "F7",
+      "meta": true,
+      "platform": "linux",
+      "shift": false
+    },
+    {
+      "action": "sendHexCode",
+      "actionArg": "\\e[7~",
+      "alt": false,
+      "ctrl": true,
+      "key": "F8",
+      "meta": false,
+      "platform": "win32",
+      "shift": true
+    },
+    {
+      "action": "sendText",
+      "actionArg": "\\e[8~",
+      "alt": true,
+      "ctrl": true,
+      "key": "F9",
+      "meta": false,
+      "platform": null,
+      "shift": false
+    }
+  ],
+  "language": "de",
+  "macOSOptionKeyPassthrough": false,
+  "rightClickAction": "paste",
+  "newInstanceBehavior": "newRightTab",
+  "noticeTimeout": 5.5,
+  "openChangelogOnUpdate": false,
+  "pinNewInstance": false,
+  "preferredRenderer": "dom",
+  "prewarmConPty": false,
+  "windowsTerminalConsoleHost": false,
+  "pythonExecutable": "C:\\Python312\\python.exe",
+  "profiles": {
+    "darwinExternalDefault": {
+      "args": ["\"$PWD\""],
+      "environment": [],
+      "executable": "/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal",
+      "followTheme": true,
+      "name": "",
+      "platforms": {
+        "darwin": true
+      },
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "external"
+    },
+    "darwinIntegratedDefault": {
+      "args": ["--login"],
+      "environment": [],
+      "executable": "/bin/zsh",
+      "followTheme": true,
+      "name": "My shell",
+      "platforms": {
+        "darwin": true
+      },
+      "pythonExecutable": "python3",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "integrated",
+      "win32Backend": "conpty"
+    },
+    "developerConsole": {
+      "followTheme": true,
+      "name": "",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "developerConsole"
+    },
+    "linuxExternalDefault": {
+      "args": [],
+      "environment": [],
+      "executable": "xterm",
+      "followTheme": true,
+      "name": "",
+      "platforms": {
+        "linux": true
+      },
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "external"
+    },
+    "linuxIntegratedDefault": {
+      "args": [],
+      "environment": [],
+      "executable": "/bin/sh",
+      "followTheme": true,
+      "name": "",
+      "platforms": {
+        "linux": true
+      },
+      "pythonExecutable": "python3",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "integrated",
+      "win32Backend": "conpty"
+    },
+    "win32ExternalDefault": {
+      "args": [],
+      "environment": [],
+      "executable": "C:\\Windows\\System32\\cmd.exe",
+      "followTheme": true,
+      "name": "",
+      "platforms": {
+        "win32": true
+      },
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "external"
+    },
+    "win32IntegratedDefault": {
+      "args": [],
+      "environment": [],
+      "executable": "C:\\Windows\\System32\\cmd.exe",
+      "followTheme": true,
+      "name": "",
+      "platforms": {
+        "win32": true
+      },
+      "pythonExecutable": "",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "integrated",
+      "win32Backend": "conpty"
+    },
+    "preset-bashIntegrated": {
+      "args": ["--login"],
+      "environment": [],
+      "executable": "/bin/bash",
+      "followTheme": true,
+      "name": "Custom bashIntegrated",
+      "platforms": {
+        "darwin": true,
+        "linux": true
+      },
+      "pythonExecutable": "python3",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "integrated",
+      "win32Backend": "conpty"
+    },
+    "preset-cmdExternal": {
+      "args": [],
+      "environment": [],
+      "executable": "C:\\Windows\\System32\\cmd.exe",
+      "followTheme": true,
+      "name": "Custom cmdExternal",
+      "platforms": {
+        "win32": true
+      },
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "external"
+    },
+    "preset-cmdIntegrated": {
+      "args": [],
+      "environment": [],
+      "executable": "C:\\Windows\\System32\\cmd.exe",
+      "followTheme": true,
+      "name": "Custom cmdIntegrated",
+      "platforms": {
+        "win32": true
+      },
+      "pythonExecutable": "",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "integrated",
+      "win32Backend": "conpty"
+    },
+    "preset-dashIntegrated": {
+      "args": [],
+      "environment": [],
+      "executable": "/bin/dash",
+      "followTheme": true,
+      "name": "Custom dashIntegrated",
+      "platforms": {
+        "darwin": true,
+        "linux": true
+      },
+      "pythonExecutable": "python3",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "integrated",
+      "win32Backend": "conpty"
+    },
+    "preset-developerConsole": {
+      "followTheme": true,
+      "name": "Custom developerConsole",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "developerConsole"
+    },
+    "preset-empty": {
+      "followTheme": true,
+      "name": "Custom empty",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": ""
+    },
+    "preset-gitBashIntegrated": {
+      "args": ["--login"],
+      "environment": [],
+      "executable": "C:\\Program Files\\Git\\bin\\bash.exe",
+      "followTheme": true,
+      "name": "Custom gitBashIntegrated",
+      "platforms": {
+        "win32": true
+      },
+      "pythonExecutable": "",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "integrated",
+      "win32Backend": "conpty"
+    },
+    "preset-gnomeTerminalExternal": {
+      "args": [],
+      "environment": [],
+      "executable": "gnome-terminal",
+      "followTheme": true,
+      "name": "Custom gnomeTerminalExternal",
+      "platforms": {
+        "linux": true
+      },
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "external"
+    },
+    "preset-iTerm2External": {
+      "args": ["\"$PWD\""],
+      "environment": [],
+      "executable": "/Applications/iTerm.app/Contents/MacOS/iTerm2",
+      "followTheme": true,
+      "name": "Custom iTerm2External",
+      "platforms": {
+        "darwin": true
+      },
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "external"
+    },
+    "preset-konsoleExternal": {
+      "args": [],
+      "environment": [],
+      "executable": "konsole",
+      "followTheme": true,
+      "name": "Custom konsoleExternal",
+      "platforms": {
+        "linux": true
+      },
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "external"
+    },
+    "preset-powershellExternal": {
+      "args": [],
+      "environment": [],
+      "executable": "powershell",
+      "followTheme": true,
+      "name": "Custom powershellExternal",
+      "platforms": {
+        "win32": true
+      },
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "external"
+    },
+    "preset-powershellIntegrated": {
+      "args": [],
+      "environment": [],
+      "executable": "powershell",
+      "followTheme": true,
+      "name": "Custom powershellIntegrated",
+      "platforms": {
+        "win32": true
+      },
+      "pythonExecutable": "",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "integrated",
+      "win32Backend": "conpty"
+    },
+    "preset-pwshExternal": {
+      "args": [],
+      "environment": [],
+      "executable": "pwsh",
+      "followTheme": true,
+      "name": "Custom pwshExternal",
+      "platforms": {
+        "darwin": true,
+        "linux": true,
+        "win32": true
+      },
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "external"
+    },
+    "preset-pwshIntegrated": {
+      "args": [],
+      "environment": [],
+      "executable": "pwsh",
+      "followTheme": true,
+      "name": "Custom pwshIntegrated",
+      "platforms": {
+        "darwin": true,
+        "linux": true,
+        "win32": true
+      },
+      "pythonExecutable": "python3",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "integrated",
+      "win32Backend": "conpty"
+    },
+    "preset-shIntegrated": {
+      "args": [],
+      "environment": [],
+      "executable": "/bin/sh",
+      "followTheme": true,
+      "name": "Custom shIntegrated",
+      "platforms": {
+        "darwin": true,
+        "linux": true
+      },
+      "pythonExecutable": "python3",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "integrated",
+      "win32Backend": "conpty"
+    },
+    "preset-terminalMacOSExternal": {
+      "args": ["\"$PWD\""],
+      "environment": [],
+      "executable": "/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal",
+      "followTheme": true,
+      "name": "Custom terminalMacOSExternal",
+      "platforms": {
+        "darwin": true
+      },
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "external"
+    },
+    "preset-wslIntegrated": {
+      "args": [],
+      "environment": [],
+      "executable": "C:\\Windows\\System32\\wsl.exe",
+      "followTheme": true,
+      "name": "Custom wslIntegrated",
+      "platforms": {
+        "win32": true
+      },
+      "pythonExecutable": "",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "integrated",
+      "win32Backend": "conpty"
+    },
+    "preset-wtExternal": {
+      "args": [],
+      "environment": [],
+      "executable": "wt",
+      "followTheme": true,
+      "name": "Custom wtExternal",
+      "platforms": {
+        "win32": true
+      },
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "external"
+    },
+    "preset-xtermExternal": {
+      "args": [],
+      "environment": [],
+      "executable": "xterm",
+      "followTheme": true,
+      "name": "Custom xtermExternal",
+      "platforms": {
+        "darwin": true,
+        "linux": true
+      },
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "external"
+    },
+    "preset-zshIntegrated": {
+      "args": ["--login"],
+      "environment": [],
+      "executable": "/bin/zsh",
+      "followTheme": true,
+      "name": "Custom zshIntegrated",
+      "platforms": {
+        "darwin": true,
+        "linux": true
+      },
+      "pythonExecutable": "python3",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "integrated",
+      "win32Backend": "conpty"
+    },
+    "preset-darwinExternalDefault": {
+      "args": ["\"$PWD\""],
+      "environment": [],
+      "executable": "/System/Applications/Utilities/Terminal.app/Contents/macOS/Terminal",
+      "followTheme": true,
+      "name": "Custom darwinExternalDefault",
+      "platforms": {
+        "darwin": true
+      },
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "external"
+    },
+    "preset-darwinIntegratedDefault": {
+      "args": ["--login"],
+      "environment": [],
+      "executable": "/bin/zsh",
+      "followTheme": true,
+      "name": "Custom darwinIntegratedDefault",
+      "platforms": {
+        "darwin": true
+      },
+      "pythonExecutable": "python3",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "integrated",
+      "win32Backend": "conpty"
+    },
+    "preset-linuxExternalDefault": {
+      "args": [],
+      "environment": [],
+      "executable": "xterm",
+      "followTheme": true,
+      "name": "Custom linuxExternalDefault",
+      "platforms": {
+        "linux": true
+      },
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "external"
+    },
+    "preset-linuxIntegratedDefault": {
+      "args": [],
+      "environment": [],
+      "executable": "/bin/sh",
+      "followTheme": true,
+      "name": "Custom linuxIntegratedDefault",
+      "platforms": {
+        "linux": true
+      },
+      "pythonExecutable": "python3",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "integrated",
+      "win32Backend": "conpty"
+    },
+    "preset-win32ExternalDefault": {
+      "args": [],
+      "environment": [],
+      "executable": "C:\\Windows\\System32\\cmd.exe",
+      "followTheme": true,
+      "name": "Custom win32ExternalDefault",
+      "platforms": {
+        "win32": true
+      },
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "external"
+    },
+    "preset-win32IntegratedDefault": {
+      "args": [],
+      "environment": [],
+      "executable": "C:\\Windows\\System32\\cmd.exe",
+      "followTheme": true,
+      "name": "Custom win32IntegratedDefault",
+      "platforms": {
+        "win32": true
+      },
+      "pythonExecutable": "",
+      "restoreHistory": false,
+      "rightClickAction": "copyPaste",
+      "successExitCodes": ["0", "SIGINT", "SIGTERM"],
+      "terminalOptions": {
+        "documentOverride": null
+      },
+      "type": "integrated",
+      "win32Backend": "conpty"
+    },
+    "custom-integrated": {
+      "args": ["-l", "-i"],
+      "environment": [
+        ["LANG", "en_US.UTF-8"],
+        ["TERM_PROGRAM", "obsidian"]
+      ],
+      "executable": "/opt/homebrew/bin/fish",
+      "followTheme": false,
+      "name": "Fish everywhere",
+      "platforms": {
+        "darwin": true,
+        "linux": true,
+        "win32": false
+      },
+      "pythonExecutable": "python3.12",
+      "restoreHistory": true,
+      "rightClickAction": "nothing",
+      "successExitCodes": ["0", "130", "SIGINT"],
+      "terminalOptions": {
+        "allowProposedApi": true,
+        "allowTransparency": true,
+        "altClickMovesCursor": false,
+        "convertEol": true,
+        "cursorBlink": true,
+        "cursorInactiveStyle": "underline",
+        "cursorStyle": "bar",
+        "cursorWidth": 2,
+        "customGlyphs": false,
+        "disableStdin": false,
+        "documentOverride": null,
+        "drawBoldTextInBrightColors": false,
+        "fastScrollSensitivity": 7,
+        "fontFamily": "JetBrains Mono, monospace",
+        "fontSize": 14.5,
+        "fontWeight": "300",
+        "fontWeightBold": 800,
+        "ignoreBracketedPasteMode": true,
+        "letterSpacing": 1,
+        "lineHeight": 1.2,
+        "logLevel": "warn",
+        "macOptionClickForcesSelection": true,
+        "macOptionIsMeta": true,
+        "minimumContrastRatio": 4.5,
+        "overviewRuler": {
+          "showBottomBorder": true,
+          "showTopBorder": true,
+          "width": 12
+        },
+        "reflowCursorLine": true,
+        "rescaleOverlappingGlyphs": true,
+        "rightClickSelectsWord": true,
+        "screenReaderMode": true,
+        "scrollOnEraseInDisplay": true,
+        "scrollOnUserInput": false,
+        "scrollSensitivity": 2,
+        "scrollback": 5000,
+        "smoothScrollDuration": 120,
+        "tabStopWidth": 4,
+        "theme": {
+          "background": "#1e1e2e",
+          "black": "#45475a",
+          "blue": "#89b4fa",
+          "brightBlack": "#585b70",
+          "brightBlue": "#74c7ec",
+          "brightCyan": "#89dceb",
+          "brightGreen": "#a6e3a1",
+          "brightMagenta": "#f5c2e7",
+          "brightRed": "#f38ba8",
+          "brightWhite": "#a6adc8",
+          "brightYellow": "#f9e2af",
+          "cursor": "#f5e0dc",
+          "cursorAccent": "#11111b",
+          "cyan": "#94e2d5",
+          "extendedAnsi": ["#101010", "#202020"],
+          "foreground": "#cdd6f4",
+          "green": "#a6e3a1",
+          "magenta": "#cba6f7",
+          "overviewRulerBorder": "#313244",
+          "red": "#f38ba8",
+          "scrollbarSliderBackground": "#45475a",
+          "scrollbarSliderActiveBackground": "#6c7086",
+          "scrollbarSliderHoverBackground": "#585b70",
+          "selectionBackground": "#585b70",
+          "selectionForeground": "#cdd6f4",
+          "selectionInactiveBackground": "#313244",
+          "white": "#bac2de",
+          "yellow": "#f9e2af"
+        },
+        "windowOptions": {
+          "fullscreenWin": true,
+          "getCellSizePixels": true,
+          "getIconTitle": true,
+          "getScreenSizeChars": true,
+          "getScreenSizePixels": true,
+          "getWinPosition": true,
+          "getWinSizeChars": true,
+          "getWinSizePixels": true,
+          "getWinState": true,
+          "getWinTitle": true,
+          "lowerWin": true,
+          "maximizeWin": true,
+          "minimizeWin": true,
+          "popTitle": true,
+          "pushTitle": true,
+          "raiseWin": true,
+          "refreshWin": true,
+          "restoreWin": true,
+          "setWinLines": true,
+          "setWinPosition": true,
+          "setWinSizeChars": true,
+          "setWinSizePixels": true
+        },
+        "windowsPty": {
+          "backend": "conpty",
+          "buildNumber": 22631
+        },
+        "wordSeparator": " ()[]{}',\"`|"
+      },
+      "type": "integrated",
+      "win32Backend": "legacy"
+    },
+    "custom-external": {
+      "args": ["--hold"],
+      "environment": [["EDITOR", "nvim"]],
+      "executable": "C:\\Program Files\\Alacritty\\alacritty.exe",
+      "followTheme": false,
+      "name": "Alacritty",
+      "platforms": {
+        "win32": true
+      },
+      "restoreHistory": true,
+      "rightClickAction": "default",
+      "successExitCodes": ["0", "1"],
+      "terminalOptions": {
+        "documentOverride": null,
+        "windowOptions": {
+          "getWinTitle": true,
+          "setWinLines": true
+        },
+        "windowsPty": {
+          "backend": "winpty",
+          "buildNumber": 19045
+        }
+      },
+      "type": "external"
+    },
+    "custom-developer-console": {
+      "followTheme": false,
+      "name": "Console",
+      "restoreHistory": true,
+      "rightClickAction": "nothing",
+      "successExitCodes": ["0"],
+      "terminalOptions": {
+        "documentOverride": null,
+        "fontSize": 12
+      },
+      "type": "developerConsole"
+    }
+  },
+  "defaultProfile": "custom-integrated",
+  "terminalOptions": {
+    "allowProposedApi": true,
+    "allowTransparency": true,
+    "altClickMovesCursor": false,
+    "convertEol": true,
+    "cursorBlink": true,
+    "cursorInactiveStyle": "underline",
+    "cursorStyle": "bar",
+    "cursorWidth": 2,
+    "customGlyphs": false,
+    "disableStdin": false,
+    "documentOverride": null,
+    "drawBoldTextInBrightColors": false,
+    "fastScrollSensitivity": 7,
+    "fontFamily": "JetBrains Mono, monospace",
+    "fontSize": 14.5,
+    "fontWeight": "300",
+    "fontWeightBold": 800,
+    "ignoreBracketedPasteMode": true,
+    "letterSpacing": 1,
+    "lineHeight": 1.2,
+    "logLevel": "warn",
+    "macOptionClickForcesSelection": true,
+    "macOptionIsMeta": true,
+    "minimumContrastRatio": 4.5,
+    "overviewRuler": {
+      "showBottomBorder": true,
+      "showTopBorder": true,
+      "width": 12
+    },
+    "reflowCursorLine": true,
+    "rescaleOverlappingGlyphs": true,
+    "rightClickSelectsWord": true,
+    "screenReaderMode": true,
+    "scrollOnEraseInDisplay": true,
+    "scrollOnUserInput": false,
+    "scrollSensitivity": 2,
+    "scrollback": 5000,
+    "smoothScrollDuration": 120,
+    "tabStopWidth": 4,
+    "theme": {
+      "background": "#1e1e2e",
+      "black": "#45475a",
+      "blue": "#89b4fa",
+      "brightBlack": "#585b70",
+      "brightBlue": "#74c7ec",
+      "brightCyan": "#89dceb",
+      "brightGreen": "#a6e3a1",
+      "brightMagenta": "#f5c2e7",
+      "brightRed": "#f38ba8",
+      "brightWhite": "#a6adc8",
+      "brightYellow": "#f9e2af",
+      "cursor": "#f5e0dc",
+      "cursorAccent": "#11111b",
+      "cyan": "#94e2d5",
+      "extendedAnsi": ["#101010", "#202020"],
+      "foreground": "#cdd6f4",
+      "green": "#a6e3a1",
+      "magenta": "#cba6f7",
+      "overviewRulerBorder": "#313244",
+      "red": "#f38ba8",
+      "scrollbarSliderBackground": "#45475a",
+      "scrollbarSliderActiveBackground": "#6c7086",
+      "scrollbarSliderHoverBackground": "#585b70",
+      "selectionBackground": "#585b70",
+      "selectionForeground": "#cdd6f4",
+      "selectionInactiveBackground": "#313244",
+      "white": "#bac2de",
+      "yellow": "#f9e2af"
+    },
+    "windowOptions": {
+      "fullscreenWin": true,
+      "getCellSizePixels": true,
+      "getIconTitle": true,
+      "getScreenSizeChars": true,
+      "getScreenSizePixels": true,
+      "getWinPosition": true,
+      "getWinSizeChars": true,
+      "getWinSizePixels": true,
+      "getWinState": true,
+      "getWinTitle": true,
+      "lowerWin": true,
+      "maximizeWin": true,
+      "minimizeWin": true,
+      "popTitle": true,
+      "pushTitle": true,
+      "raiseWin": true,
+      "refreshWin": true,
+      "restoreWin": true,
+      "setWinLines": true,
+      "setWinPosition": true,
+      "setWinSizeChars": true,
+      "setWinSizePixels": true
+    },
+    "windowsPty": {
+      "backend": "conpty",
+      "buildNumber": 22631
+    },
+    "wordSeparator": " ()[]{}',\"`|"
+  }
+}

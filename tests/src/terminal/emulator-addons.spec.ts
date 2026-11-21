@@ -1295,6 +1295,239 @@ describe("CustomKeyEventHandlerAddon", () => {
     expect(inputSpy).toHaveBeenCalledWith("\x1bb");
   });
 
+  describe("'sendToObsidian' action", () => {
+    const sendCtrlF9 = {
+        action: "sendToObsidian",
+        actionArg: null,
+        alt: false,
+        ctrl: true,
+        key: "F9",
+        meta: false,
+        platform: null,
+        shift: false,
+      } as const satisfies Settings.Keymapping,
+      ctrlF9 = (type: "keydown" | "keyup" = "keydown"): KeyboardEvent =>
+        fakeKeyEvent({ code: "F9", ctrlKey: true, key: "F9", type });
+
+    it("keeps the keydown and the keyup from xterm.js and sends nothing", () => {
+      setup(false, () => [sendCtrlF9], "linux");
+
+      expect(handler(ctrlF9())).toBe(false);
+      expect(handler(ctrlF9("keyup"))).toBe(false);
+      expect(inputSpy).not.toHaveBeenCalled();
+    });
+
+    it("sends no Win32 key record for the key while Win32 input mode is active", () => {
+      setupWin32InputMode(() => [sendCtrlF9]);
+      triggerCsi("?", "h", [9001]);
+
+      expect(handler(ctrlF9())).toBe(false);
+      expect(handler(ctrlF9("keyup"))).toBe(false);
+      expect(inputSpy).not.toHaveBeenCalled();
+
+      // A key that no mapping takes is still encoded.
+      expect(handler(fakeKeyEvent({ code: "KeyA", key: "a" }))).toBe(false);
+      expect(inputSpy).toHaveBeenCalledOnce();
+    });
+
+    it("loses to an earlier mapping of the same key", () => {
+      setup(
+        false,
+        () => [
+          { ...sendCtrlF9, action: "sendText", actionArg: "x" },
+          sendCtrlF9,
+        ],
+        "linux",
+      );
+
+      expect(handler(ctrlF9())).toBe(false);
+      expect(inputSpy).toHaveBeenCalledExactlyOnceWith("x");
+    });
+
+    describe("in the built-in keymappings", () => {
+      const defaults = (): readonly Settings.Keymapping[] =>
+          Settings.DEFAULT.keymappings,
+        p = (
+          init: Partial<KeyboardEvent> = {},
+          type: "keydown" | "keyup" = "keydown",
+        ): KeyboardEvent =>
+          fakeKeyEvent({ code: "KeyP", key: "p", type, ...init });
+
+      it("keeps Ctrl+P on Windows from the shell", () => {
+        setup(false, defaults, "win32");
+
+        expect(handler(p({ ctrlKey: true }))).toBe(false);
+        expect(handler(p({ ctrlKey: true }, "keyup"))).toBe(false);
+        expect(inputSpy).not.toHaveBeenCalled();
+      });
+
+      it("sends no Win32 key record for Ctrl+P, and one for P alone", () => {
+        setupWin32InputMode(defaults);
+        triggerCsi("?", "h", [9001]);
+
+        expect(handler(p({ ctrlKey: true }))).toBe(false);
+        expect(handler(p({ ctrlKey: true }, "keyup"))).toBe(false);
+        expect(inputSpy).not.toHaveBeenCalled();
+
+        expect(handler(p())).toBe(false);
+        expect(inputSpy).toHaveBeenCalledOnce();
+      });
+
+      it("keeps Command+P on macOS from xterm.js and leaves Ctrl+P to the shell", () => {
+        setup(false, defaults, "darwin");
+
+        expect(handler(p({ metaKey: true }))).toBe(false);
+        expect(handler(p({ metaKey: true }, "keyup"))).toBe(false);
+        expect(handler(p({ ctrlKey: true }))).toBe(true);
+        expect(inputSpy).not.toHaveBeenCalled();
+      });
+
+      it("leaves Ctrl+P on Linux to the shell", () => {
+        setup(false, defaults, "linux");
+
+        expect(handler(p({ ctrlKey: true }))).toBe(true);
+        expect(handler(p({ metaKey: true }))).toBe(true);
+      });
+    });
+  });
+
+  describe("the rule that matches a key to a mapping", () => {
+    const ctrlP = {
+        action: "sendToObsidian",
+        actionArg: null,
+        alt: false,
+        ctrl: true,
+        key: "p",
+        meta: false,
+        platform: null,
+        shift: false,
+      } as const satisfies Settings.Keymapping,
+      key = (
+        init: Partial<CustomKeyEventHandlerAddon.KeyEvent>,
+      ): CustomKeyEventHandlerAddon.KeyEvent => ({
+        altKey: false,
+        ctrlKey: false,
+        key: "p",
+        metaKey: false,
+        shiftKey: false,
+        ...init,
+      });
+
+    it("takes the key and every modifier as they are, Shift included", () => {
+      const { matches } = CustomKeyEventHandlerAddon;
+      expect(matches(ctrlP, key({ ctrlKey: true }), "linux")).toBe(true);
+      expect(
+        matches(ctrlP, key({ ctrlKey: true, shiftKey: true }), "linux"),
+      ).toBe(false);
+      expect(
+        matches(ctrlP, key({ altKey: true, ctrlKey: true }), "linux"),
+      ).toBe(false);
+      expect(matches(ctrlP, key({ metaKey: true }), "linux")).toBe(false);
+      // Caps Lock: the browser reports "P", which a mapping of "p" misses.
+      expect(matches(ctrlP, key({ ctrlKey: true, key: "P" }), "linux")).toBe(
+        false,
+      );
+    });
+
+    it("applies a mapping without a platform everywhere, one with a platform only there", () => {
+      const { matches } = CustomKeyEventHandlerAddon,
+        darwin = { ...ctrlP, platform: "darwin" } as const;
+      for (const platform of ["darwin", "linux", "win32"]) {
+        expect(matches(ctrlP, key({ ctrlKey: true }), platform)).toBe(true);
+      }
+      expect(matches(darwin, key({ ctrlKey: true }), "darwin")).toBe(true);
+      expect(matches(darwin, key({ ctrlKey: true }), "win32")).toBe(false);
+    });
+
+    it("sends a key to Obsidian only when the first mapping it matches says so", () => {
+      const { sendsToObsidian } = CustomKeyEventHandlerAddon,
+        pressed = key({ ctrlKey: true }),
+        sendText = { ...ctrlP, action: "sendText", actionArg: "x" } as const;
+      expect(sendsToObsidian([ctrlP], pressed, "linux")).toBe(true);
+      expect(sendsToObsidian([], pressed, "linux")).toBe(false);
+      expect(sendsToObsidian([sendText, ctrlP], pressed, "linux")).toBe(false);
+      expect(sendsToObsidian([ctrlP, sendText], pressed, "linux")).toBe(true);
+      // A mapping for another platform is skipped, as the terminal skips it.
+      expect(
+        sendsToObsidian(
+          [{ ...sendText, platform: "darwin" }, ctrlP],
+          pressed,
+          "linux",
+        ),
+      ).toBe(true);
+      expect(
+        sendsToObsidian([{ ...ctrlP, platform: "darwin" }], pressed, "linux"),
+      ).toBe(false);
+    });
+
+    it("finds the mapping the terminal takes, on every platform", () => {
+      const { sendsToObsidian } = CustomKeyEventHandlerAddon,
+        // Every other action that keeps the key types a marker, so that the
+        // terminal shows which mapping it took.
+        marked = (
+          mappings: readonly Settings.Keymapping[],
+        ): readonly Settings.Keymapping[] =>
+          mappings.map((mapping, index): Settings.Keymapping =>
+            mapping.action === "sendToObsidian" ||
+            mapping.action === "passthrough"
+              ? mapping
+              : {
+                  ...mapping,
+                  action: "sendText",
+                  actionArg: `#${String(index)}`,
+                },
+          ),
+        lists = [
+          Settings.DEFAULT.keymappings,
+          [
+            { ...ctrlP, action: "passthrough" },
+            ...Settings.DEFAULT.keymappings,
+          ],
+          [
+            { ...ctrlP, action: "ignore", platform: "darwin" },
+            { ...ctrlP, ctrl: false, meta: true, platform: "win32" },
+            ...Settings.DEFAULT.keymappings,
+          ],
+        ] as const,
+        events = [
+          key({ ctrlKey: true }),
+          key({ metaKey: true }),
+          key({ ctrlKey: true, key: "P" }),
+          key({ ctrlKey: true, key: "P", shiftKey: true }),
+          key({ altKey: true, ctrlKey: true }),
+          key({}),
+        ];
+      for (const [platform, win32InputMode] of [
+        ["android", false],
+        ["darwin", false],
+        ["ios", false],
+        ["linux", false],
+        ["unknown", false],
+        ["win32", false],
+        ["win32", true],
+      ] as const) {
+        for (const list of lists.map(marked)) {
+          if (win32InputMode) {
+            setupWin32InputMode(() => list);
+            triggerCsi("?", "h", [9001]);
+          } else {
+            setup(false, () => list, platform);
+          }
+          for (const event of events) {
+            inputSpy.mockClear();
+            const kept =
+              !handler(fakeKeyEvent({ ...event, code: "KeyP" })) &&
+              inputSpy.mock.calls.length === 0;
+            expect(
+              kept,
+              `${platform} ${String(win32InputMode)} ${JSON.stringify(event)}`,
+            ).toBe(sendsToObsidian(list, event, platform));
+          }
+        }
+      }
+    });
+  });
+
   // === Shift+Enter (now provided via keymapping, not hardcoded) ===
 
   it("Shift+Enter sends ESC+CR when the default mapping is provided", () => {

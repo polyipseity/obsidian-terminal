@@ -23,8 +23,11 @@ import * as library from "@polyipseity/obsidian-plugin-library";
 import { readStateCollaboratively } from "@polyipseity/obsidian-plugin-library";
 import {
   App,
+  ButtonComponent,
+  DropdownComponent,
   type Menu,
   type MenuItem,
+  Setting,
   View,
   WorkspaceLeaf,
   setIcon,
@@ -42,6 +45,8 @@ import { ProgramStatusAddon } from "../../../src/terminal/emulator-addons.js";
 import * as environment from "../../../src/terminal/environment.js";
 import { mergeTerminalOptions } from "../../../src/terminal/options.js";
 import * as profileProperties from "../../../src/terminal/profile-properties.js";
+import { PROFILE_PRESETS } from "../../../src/terminal/profile-presets.js";
+import released328 from "../../fixtures/data-3.28.0.json" with { type: "json" };
 import { DETECTION_REPLY } from "../../../src/terminal/program-status.js";
 import { TabStatusPresenter } from "../../../src/terminal/tab-status.js";
 import {
@@ -56,10 +61,12 @@ import {
   type Pseudoterminal,
   pipeShellToTerminal,
 } from "../../../src/terminal/pseudoterminal.js";
+import { spawnTerminal } from "../../../src/terminal/spawn.js";
 import {
   EditTerminalModal,
   TerminalView,
   fittedSize,
+  newFocusedKeyListener,
   settleTerminalBackendOptions,
 } from "../../../src/terminal/view.js";
 import { microtasks, pseudoterminal, tick } from "../../support/helpers.js";
@@ -297,8 +304,8 @@ describe("hotkeys while a terminal has focus", () => {
 
   // Runs the real `TerminalView.load` and the library's real hotkey listener
   // against the Obsidian parts both of them reach for.
-  function loadView() {
-    const { context } = makeTerminalContext(),
+  function loadView(overrides: Partial<Settings> = {}) {
+    const { context } = makeTerminalContext(overrides),
       hotkeys = new HotkeyTable(),
       registry = new Map<string, Command>(),
       // Obsidian runs the check with `false` and reports success unless it throws.
@@ -340,7 +347,9 @@ describe("hotkeys while a terminal has focus", () => {
     const listener = register.mock.lastCall?.[2];
     if (!listener) throw new Error("Missing focused-scope listener");
     return {
+      context,
       executeCommand,
+      listener,
       // The user's own hotkey and no default one, as on an opening command.
       addBoundCommand: (id: string, hotkey: Hotkey) => {
         const check = vi.fn((_checking: boolean): boolean => true),
@@ -353,12 +362,17 @@ describe("hotkeys while a terminal has focus", () => {
       },
       // Hands back what the listener answers Obsidian: after `false` Obsidian
       // consumes the key, after `undefined` the key goes on to the terminal.
-      press: (modifiers: readonly string[], key: string): unknown =>
-        listener(new KeyboardEvent("keydown", { key }), {
+      press: (
+        modifiers: readonly string[],
+        key: string,
+        init: KeyboardEventInit = {},
+      ): unknown =>
+        listener(new KeyboardEvent("keydown", { key, ...init }), {
           key,
           modifiers: compile(modifiers),
           vkey: key,
         }),
+      hotkeys,
     };
   }
 
@@ -417,6 +431,162 @@ describe("hotkeys while a terminal has focus", () => {
     );
   });
 
+  describe("while a key is held", () => {
+    // Windows sends 31 key repeats while a key is held for about 1.5 s.
+    const REPEATS = 31;
+
+    /**
+     * Hands the listener of the last `loadView` one key-down, as Obsidian does.
+     * Spying again hands back the spy that caught the listener.
+     */
+    function send(
+      modifiers: readonly string[],
+      key: string,
+      repeat: boolean,
+    ): unknown {
+      const listener = vi.spyOn(ScopeView.scope, "register").mock.lastCall?.[2];
+      if (!listener) throw new Error("Missing focused-scope listener");
+      return listener(new KeyboardEvent("keydown", { key, repeat }), {
+        key,
+        modifiers: compile(modifiers),
+        vkey: key,
+      });
+    }
+
+    // The first key-down, then one key-down with `repeat` set per key repeat.
+    function hold(modifiers: readonly string[], key: string): unknown[] {
+      return [
+        send(modifiers, key, false),
+        ...Array.from({ length: REPEATS }, () => send(modifiers, key, true)),
+      ];
+    }
+
+    const consumed = Array<unknown>(REPEATS + 1).fill(false),
+      passedOn = Array<unknown>(REPEATS + 1).fill(undefined);
+
+    it.each([
+      ["Clear terminal", "clear-terminal", ["Mod", "Shift"], "k"],
+      ["Close terminal", "close-terminal", ["Mod", "Shift"], "w"],
+      ["Find in terminal", "find-in-terminal", ["Mod", "Shift"], "f"],
+      [
+        "Toggle focus on last terminal",
+        "toggle-focus-on-last-terminal",
+        ["Ctrl", "Shift"],
+        "`",
+      ],
+    ] as const)(
+      "runs %s once and lets none of its repeats reach the shell",
+      (_name, id, modifiers, key) => {
+        const { executeCommand } = loadView();
+
+        expect(hold(modifiers, key)).toStrictEqual(consumed);
+
+        expect(executeCommand).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({ id: `terminal:${id}` }),
+        );
+      },
+    );
+
+    it("runs an opening hotkey once and lets none of its repeats reach the shell", () => {
+      const { addBoundCommand, executeCommand } = loadView(),
+        { check, command } = addBoundCommand("open-terminal.integrated.root", {
+          key: "H",
+          modifiers: ["Mod", "Shift"],
+        });
+      TerminalView.allowWhileFocused(command);
+
+      expect(hold(["Mod", "Shift"], "H")).toStrictEqual(consumed);
+
+      expect(executeCommand).toHaveBeenCalledExactlyOnceWith(command);
+      expect(check).toHaveBeenCalledExactlyOnceWith(false);
+    });
+
+    it("consumes repeats without their key-down, as in the terminal the key opened, and runs nothing", () => {
+      const { addBoundCommand, executeCommand } = loadView(),
+        { check, command } = addBoundCommand("open-terminal.integrated.root", {
+          key: "H",
+          modifiers: ["Mod", "Shift"],
+        });
+      TerminalView.allowWhileFocused(command);
+
+      expect(
+        Array.from({ length: REPEATS }, () =>
+          send(["Mod", "Shift"], "H", true),
+        ),
+      ).toStrictEqual(consumed.slice(1));
+
+      expect(executeCommand).not.toHaveBeenCalled();
+      expect(check).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["a letter", [], "x"],
+      ["Ctrl+H, a Backspace to the shell", ["Ctrl"], "h"],
+      ["Backspace", [], "Backspace"],
+    ] as const)(
+      "lets every repeat of %s reach the shell when no hotkey has it",
+      (_name, modifiers, key) => {
+        const { executeCommand } = loadView();
+
+        expect(hold(modifiers, key)).toStrictEqual(passedOn);
+
+        expect(executeCommand).not.toHaveBeenCalled();
+      },
+    );
+
+    it("lets every repeat of a hotkey outside the list reach the shell", () => {
+      const { addBoundCommand, executeCommand } = loadView(),
+        { check } = addBoundCommand("editor:toggle-bold", {
+          key: "b",
+          modifiers: ["Mod"],
+        });
+
+      expect(hold(["Mod"], "b")).toStrictEqual(passedOn);
+
+      expect(executeCommand).not.toHaveBeenCalled();
+      expect(check).not.toHaveBeenCalled();
+    });
+
+    it("matches each repeat by its own modifiers", () => {
+      const { executeCommand } = loadView();
+
+      expect(send(["Mod", "Shift"], "k", false)).toBe(false);
+      // Shift comes up while K stays down: the repeats are Mod+K.
+      expect(send(["Mod"], "k", true)).toBeUndefined();
+      expect(send(["Mod"], "k", true)).toBeUndefined();
+
+      expect(executeCommand).toHaveBeenCalledOnce();
+    });
+
+    it("runs a repeatable command again on each repeat", () => {
+      const { addBoundCommand, executeCommand } = loadView(),
+        { check, command } = addBoundCommand("open-terminal.external.root", {
+          key: "t",
+          modifiers: ["Alt", "Ctrl"],
+        });
+      Object.assign(command, { repeatable: true });
+      TerminalView.allowWhileFocused(command);
+
+      expect(hold(["Ctrl", "Alt"], "t")).toStrictEqual(consumed);
+
+      expect(executeCommand).toHaveBeenCalledTimes(REPEATS + 1);
+      expect(check).toHaveBeenCalledTimes(REPEATS + 1);
+    });
+
+    it("does not run a command that failed again on its repeats, nor pass them on", () => {
+      const { executeCommand } = loadView();
+      // Obsidian answers `false` when the command threw.
+      executeCommand.mockReturnValueOnce(false);
+
+      expect(hold(["Mod", "Shift"], "k")).toStrictEqual([
+        undefined,
+        ...consumed.slice(1),
+      ]);
+
+      expect(executeCommand).toHaveBeenCalledOnce();
+    });
+  });
+
   it("forgets the commands of an earlier load", () => {
     const hotkey = { key: "t", modifiers: ["Alt", "Ctrl"] },
       earlier = loadView();
@@ -431,6 +601,229 @@ describe("hotkeys while a terminal has focus", () => {
     expect(executeCommand).not.toHaveBeenCalled();
     expect(check).not.toHaveBeenCalled();
   });
+
+  it("leaves the key of a command taken off the list to the terminal once the hotkey table is stale", () => {
+    const { addBoundCommand, executeCommand, press } = loadView(),
+      { check, command } = addBoundCommand("open-terminal.integrated.root", {
+        key: "r",
+        modifiers: ["Ctrl"],
+      });
+    TerminalView.allowWhileFocused(command);
+    expect(press(["Ctrl"], "r")).toBe(false);
+
+    TerminalView.allowWhileFocused(command, false);
+    // Any change of a hotkey marks the table stale.
+    addBoundCommand("command-palette", { key: "p", modifiers: ["Mod"] });
+
+    expect(press(["Ctrl"], "r")).toBeUndefined();
+    expect(executeCommand).toHaveBeenCalledExactlyOnceWith(command);
+    expect(check).toHaveBeenCalledOnce();
+  });
+
+  it("leaves the key of a command taken off the list to the terminal once the hotkeys reload", () => {
+    const { addBoundCommand, context, executeCommand, press } = loadView(),
+      { command } = addBoundCommand("open-terminal.integrated.root", {
+        key: "r",
+        modifiers: ["Ctrl"],
+      });
+    TerminalView.allowWhileFocused(command);
+    expect(press(["Ctrl"], "r")).toBe(false);
+
+    // The table baked at the first key still holds the command.
+    TerminalView.allowWhileFocused(command, false);
+    expect(press(["Ctrl"], "r")).toBe(false);
+
+    TerminalView.reloadFocusedHotkeys(context);
+    expect(press(["Ctrl"], "r")).toBeUndefined();
+    expect(executeCommand).toHaveBeenCalledTimes(2);
+
+    // Allowed again, the key runs the command again.
+    TerminalView.allowWhileFocused(command);
+    TerminalView.reloadFocusedHotkeys(context);
+    expect(press(["Ctrl"], "r")).toBe(false);
+    expect(executeCommand).toHaveBeenCalledTimes(3);
+    expect(executeCommand).toHaveBeenLastCalledWith(command);
+  });
+
+  it("leaves the repeats of a held key to the terminal once its command left the list", () => {
+    const { addBoundCommand, context, executeCommand, listener, press } =
+        loadView(),
+      { command } = addBoundCommand("open-terminal.integrated.root", {
+        key: "r",
+        modifiers: ["Ctrl"],
+      }),
+      repeat = (): unknown =>
+        listener(new KeyboardEvent("keydown", { key: "r", repeat: true }), {
+          key: "r",
+          modifiers: compile(["Ctrl"]),
+          vkey: "r",
+        });
+    TerminalView.allowWhileFocused(command);
+    press(["Ctrl"], "r");
+
+    TerminalView.allowWhileFocused(command, false);
+    TerminalView.reloadFocusedHotkeys(context);
+
+    expect(press(["Ctrl"], "r")).toBeUndefined();
+    expect(repeat()).toBeUndefined();
+    expect(repeat()).toBeUndefined();
+    expect(executeCommand).toHaveBeenCalledOnce();
+  });
+
+  it("gives the keys back to a terminal hotkey once a command on them left the list", () => {
+    const { addBoundCommand, context, executeCommand, press } = loadView(),
+      { command } = addBoundCommand("open-terminal.integrated.root", {
+        key: "k",
+        modifiers: ["Mod", "Shift"],
+      });
+    TerminalView.allowWhileFocused(command);
+    // The user's key comes before the default key of Clear terminal.
+    expect(press(["Mod", "Shift"], "k")).toBe(false);
+    expect(executeCommand).toHaveBeenCalledExactlyOnceWith(command);
+
+    TerminalView.allowWhileFocused(command, false);
+    TerminalView.reloadFocusedHotkeys(context);
+
+    expect(press(["Mod", "Shift"], "k")).toBe(false);
+    expect(executeCommand).toHaveBeenCalledTimes(2);
+    expect(executeCommand).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: "terminal:clear-terminal" }),
+    );
+  });
+
+  it("ignores taking a command off the list that is not on it", () => {
+    const { addBoundCommand, context, executeCommand, press } = loadView(),
+      { command } = addBoundCommand("open-terminal.external.root", {
+        key: "t",
+        modifiers: ["Alt", "Ctrl"],
+      });
+    TerminalView.allowWhileFocused(command);
+
+    TerminalView.allowWhileFocused(
+      { id: "terminal:open-terminal.select.root" },
+      false,
+    );
+    TerminalView.reloadFocusedHotkeys(context);
+
+    expect(press(["Ctrl", "Alt"], "t")).toBe(false);
+    expect(executeCommand).toHaveBeenCalledExactlyOnceWith(command);
+  });
+
+  it("marks Obsidian's hotkey table stale to reload the hotkeys", () => {
+    const { context } = makeTerminalContext(),
+      hotkeyManager = { baked: true };
+    Object.assign(context.app, { hotkeyManager });
+
+    TerminalView.reloadFocusedHotkeys(context);
+
+    expect(hotkeyManager.baked).toBe(false);
+  });
+
+  it("reloads nothing and warns without a hotkey table", () => {
+    const { context } = makeTerminalContext(),
+      warn = vi.spyOn(self.console, "warn").mockImplementation(() => {});
+    vi.spyOn(self.console, "debug").mockImplementation(() => {});
+
+    expect(() => {
+      TerminalView.reloadFocusedHotkeys(context);
+    }).not.toThrow();
+
+    expect(warn).toHaveBeenCalledExactlyOnceWith(
+      "errors.private-API-changed",
+      expect.any(TypeError),
+    );
+  });
+
+  it("warns and changes nothing when the hotkey table refuses the reload", () => {
+    const { context } = makeTerminalContext(),
+      hotkeyManager = Object.freeze({ baked: true }),
+      warn = vi.spyOn(self.console, "warn").mockImplementation(() => {});
+    vi.spyOn(self.console, "debug").mockImplementation(() => {});
+    Object.assign(context.app, { hotkeyManager });
+
+    // A settings change runs the reload; it must not fail that change.
+    expect(() => {
+      TerminalView.reloadFocusedHotkeys(context);
+    }).not.toThrow();
+
+    expect(hotkeyManager.baked).toBe(true);
+    expect(warn).toHaveBeenCalledExactlyOnceWith(
+      "errors.private-API-changed",
+      expect.any(TypeError),
+    );
+  });
+
+  it("leaves the default hotkey of a command off the list to the terminal", () => {
+    const { context, executeCommand, press } = loadView(),
+      // Registered with a default key, as the integrated current-directory
+      // command is with Mod+Shift+H.
+      command = library.addCommand(context, () => "open", {
+        checkCallback: vi.fn((_checking: boolean): boolean => true),
+        hotkeys: [{ key: "H", modifiers: ["Mod", "Shift"] }],
+        id: "open-terminal.integrated.root",
+      });
+    TerminalView.allowWhileFocused(command);
+    expect(press(["Mod", "Shift"], "H")).toBe(false);
+
+    TerminalView.allowWhileFocused(command, false);
+    TerminalView.reloadFocusedHotkeys(context);
+    expect(press(["Mod", "Shift"], "H")).toBeUndefined();
+
+    TerminalView.allowWhileFocused(command);
+    TerminalView.reloadFocusedHotkeys(context);
+    expect(press(["Mod", "Shift"], "H")).toBe(false);
+    expect(executeCommand).toHaveBeenCalledTimes(2);
+    expect(executeCommand).toHaveBeenLastCalledWith(command);
+  });
+
+  it("leaves the key to the terminal when the command leaves the list before the first key", () => {
+    const { addBoundCommand, executeCommand, press } = loadView(),
+      { check, command } = addBoundCommand("open-terminal.integrated.root", {
+        key: "r",
+        modifiers: ["Ctrl"],
+      });
+    TerminalView.allowWhileFocused(command);
+    TerminalView.allowWhileFocused(command, false);
+
+    expect(press(["Ctrl"], "r")).toBeUndefined();
+    expect(executeCommand).not.toHaveBeenCalled();
+    expect(check).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["one that reads every hotkey", undefined],
+    ["one with a list of its own", new Set(["other-plugin:command"])],
+  ])(
+    "applies a change of the list beside another hotkey listener, %s",
+    (_name, ids) => {
+      const { addBoundCommand, context, executeCommand, press } = loadView(),
+        { command } = addBoundCommand("open-terminal.integrated.root", {
+          key: "r",
+          modifiers: ["Ctrl"],
+        }),
+        // Another listener of the library patches the same table later.
+        other = library.newHotkeyListener(context, ids),
+        pressOther = (): unknown =>
+          other(new KeyboardEvent("keydown", { key: "r" }), {
+            key: "r",
+            modifiers: compile(["Ctrl"]),
+            vkey: "r",
+          });
+      TerminalView.allowWhileFocused(command);
+      expect(press(["Ctrl"], "r")).toBe(false);
+
+      TerminalView.allowWhileFocused(command, false);
+      TerminalView.reloadFocusedHotkeys(context);
+      expect(press(["Ctrl"], "r")).toBeUndefined();
+      // The other listener keeps its own table.
+      expect(pressOther()).toBe(ids ? undefined : false);
+
+      TerminalView.allowWhileFocused(command);
+      TerminalView.reloadFocusedHotkeys(context);
+      expect(press(["Ctrl"], "r")).toBe(false);
+      expect(executeCommand).toHaveBeenCalledTimes(ids ? 2 : 3);
+    },
+  );
 
   it("honours a command allowed after a bake only once the hotkey table is stale again", () => {
     const { addBoundCommand, executeCommand, press } = loadView(),
@@ -451,6 +844,340 @@ describe("hotkeys while a terminal has focus", () => {
     addBoundCommand("command-palette", { key: "p", modifiers: ["Mod"] });
     press(["Ctrl", "Alt"], "t");
     expect(executeCommand).toHaveBeenCalledExactlyOnceWith(command);
+  });
+
+  describe("a key mapped to Send to Obsidian", () => {
+    // For every platform, so that the tests do not depend on the one they
+    // run on. `Mod` is Ctrl outside macOS.
+    const ctrlP = {
+        action: "sendToObsidian",
+        actionArg: null,
+        alt: false,
+        ctrl: true,
+        key: "p",
+        meta: false,
+        platform: null,
+        shift: false,
+      } as const satisfies Settings.Keymapping,
+      ctrl = { ctrlKey: true } as const,
+      palette = { key: "p", modifiers: ["Mod"] } as const;
+
+    it("runs the Obsidian hotkey of the key and keeps the key from the terminal", () => {
+      const { addBoundCommand, executeCommand, press } = loadView({
+          keymappings: [ctrlP],
+        }),
+        { check, command } = addBoundCommand("command-palette:open", palette);
+
+      expect(press(["Mod"], "p", ctrl)).toBe(false);
+
+      expect(executeCommand).toHaveBeenCalledExactlyOnceWith(command);
+      expect(check).toHaveBeenCalledExactlyOnceWith(false);
+    });
+
+    it("leaves the key to the terminal when no mapping sends it", () => {
+      const { addBoundCommand, executeCommand, press } = loadView({
+        keymappings: [],
+      });
+      addBoundCommand("command-palette:open", palette);
+
+      expect(press(["Mod"], "p", ctrl)).toBeUndefined();
+      expect(executeCommand).not.toHaveBeenCalled();
+    });
+
+    it("keeps a key that no Obsidian hotkey takes from the terminal", () => {
+      const { executeCommand, press } = loadView({
+        keymappings: [{ ...ctrlP, key: "F9" }],
+      });
+
+      expect(press(["Mod"], "F9", ctrl)).toBe(false);
+      expect(executeCommand).not.toHaveBeenCalled();
+    });
+
+    it("keeps the key from the terminal when Obsidian runs nothing for it", () => {
+      const { addBoundCommand, executeCommand, press } = loadView({
+          keymappings: [ctrlP],
+        }),
+        { command } = addBoundCommand("command-palette:open", palette);
+      executeCommand.mockReturnValue(false);
+
+      expect(press(["Mod"], "p", ctrl)).toBe(false);
+      expect(executeCommand).toHaveBeenCalledExactlyOnceWith(command);
+    });
+
+    it("keeps the repeats of a held key from the terminal without running the command again", () => {
+      const { addBoundCommand, executeCommand, press } = loadView({
+        keymappings: [ctrlP],
+      });
+      addBoundCommand("command-palette:open", palette);
+
+      expect(press(["Mod"], "p", ctrl)).toBe(false);
+      expect(press(["Mod"], "p", { ...ctrl, repeat: true })).toBe(false);
+      expect(press(["Mod"], "p", { ...ctrl, repeat: true })).toBe(false);
+      expect(executeCommand).toHaveBeenCalledOnce();
+    });
+
+    it("leaves the key to an earlier mapping of it", () => {
+      const { addBoundCommand, executeCommand, press } = loadView({
+        keymappings: [{ ...ctrlP, action: "sendText", actionArg: "x" }, ctrlP],
+      });
+      addBoundCommand("command-palette:open", palette);
+
+      expect(press(["Mod"], "p", ctrl)).toBeUndefined();
+      expect(executeCommand).not.toHaveBeenCalled();
+    });
+
+    it("skips a mapping for another platform, as the terminal does", () => {
+      const other = library.Platform.CURRENT === "win32" ? "darwin" : "win32",
+        { addBoundCommand, executeCommand, press } = loadView({
+          keymappings: [{ ...ctrlP, platform: other }],
+        });
+      addBoundCommand("command-palette:open", palette);
+
+      expect(press(["Mod"], "p", ctrl)).toBeUndefined();
+      expect(executeCommand).not.toHaveBeenCalled();
+    });
+
+    it("leaves a key typed with Caps Lock to the terminal's own hotkeys", () => {
+      const { addBoundCommand, executeCommand, press } = loadView({
+        keymappings: [ctrlP],
+      });
+      addBoundCommand("command-palette:open", palette);
+
+      // Obsidian matches its hotkey by the key's code; the mapping takes the
+      // character, which Caps Lock makes "P". As in 3.29.0, the palette's
+      // hotkey does not run.
+      expect(press(["Mod"], "p", { ...ctrl, key: "P" })).toBeUndefined();
+      expect(executeCommand).not.toHaveBeenCalled();
+    });
+
+    it("follows the keymappings as they are when the key is pressed", () => {
+      const { addBoundCommand, context, executeCommand, press } = loadView({
+        keymappings: [],
+      });
+      addBoundCommand("command-palette:open", palette);
+      expect(press(["Mod"], "p", ctrl)).toBeUndefined();
+
+      // A change of the settings replaces their value, as `mutate` does.
+      Object.assign(context.settings, {
+        value: { ...context.settings.value, keymappings: [ctrlP] },
+      });
+
+      expect(press(["Mod"], "p", ctrl)).toBe(false);
+      expect(executeCommand).toHaveBeenCalledOnce();
+    });
+
+    it("keeps the terminal's own hotkeys and its list of other commands", () => {
+      const { addBoundCommand, executeCommand, hotkeys, press } = loadView({
+          keymappings: [ctrlP],
+        }),
+        { command } = addBoundCommand("command-palette:open", palette),
+        other = addBoundCommand("open-terminal.external.root", {
+          key: "t",
+          modifiers: ["Alt", "Ctrl"],
+        });
+
+      expect(press(["Mod"], "p", ctrl)).toBe(false);
+      expect(press(["Ctrl", "Alt"], "t")).toBeUndefined();
+      expect(press(["Mod", "Shift"], "k")).toBe(false);
+      // Obsidian's own table still holds every hotkey, also once a change
+      // made it stale and both listeners baked it again.
+      expect(hotkeys.bakedIds).toContain(other.command.id);
+      addBoundCommand("command-palette:toggle", {
+        key: "y",
+        modifiers: ["Mod"],
+      });
+      expect(press(["Mod"], "p", ctrl)).toBe(false);
+      expect(press(["Ctrl", "Alt"], "t")).toBeUndefined();
+      expect(hotkeys.bakedIds).toEqual(
+        expect.arrayContaining([command.id, other.command.id]),
+      );
+
+      expect(executeCommand.mock.calls).toEqual([
+        [command],
+        [expect.objectContaining({ id: "terminal:clear-terminal" })],
+        [command],
+      ]);
+      expect(other.check).not.toHaveBeenCalled();
+    });
+
+    it("runs a hotkey that Obsidian has for the key by default", () => {
+      const { context, executeCommand, press } = loadView({
+          keymappings: [ctrlP],
+        }),
+        // A core command: its key is a default one, which the user kept.
+        command = library.addCommand(context, () => "palette", {
+          callback: vi.fn(),
+          hotkeys: [{ key: "p", modifiers: ["Mod"] }],
+          id: "command-palette:open",
+        });
+
+      expect(press(["Mod"], "p", ctrl)).toBe(false);
+      expect(executeCommand).toHaveBeenCalledExactlyOnceWith(command);
+    });
+
+    it("runs a terminal command whose key it takes once", () => {
+      const { executeCommand, press } = loadView({
+        keymappings: [{ ...ctrlP, key: "K", shift: true }],
+      });
+
+      expect(
+        press(["Mod", "Shift"], "k", {
+          ctrlKey: true,
+          key: "K",
+          shiftKey: true,
+        }),
+      ).toBe(false);
+      expect(executeCommand).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({ id: "terminal:clear-terminal" }),
+      );
+    });
+
+    it("keeps the key from the terminal when its command throws", () => {
+      const { addBoundCommand, executeCommand, press } = loadView({
+          keymappings: [ctrlP],
+        }),
+        warn = vi.spyOn(self.console, "warn").mockImplementation(() => {});
+      vi.spyOn(self.console, "debug").mockImplementation(() => {});
+      addBoundCommand("command-palette:open", palette);
+      executeCommand.mockImplementation(() => {
+        throw new Error("the command failed");
+      });
+
+      expect(press(["Mod"], "p", ctrl)).toBe(false);
+      expect(executeCommand).toHaveBeenCalledOnce();
+      expect(warn).toHaveBeenCalled();
+    });
+
+    it("takes both of its changes off Obsidian's hotkey table at unload", () => {
+      const { addBoundCommand, context, hotkeys, press } = loadView({
+        keymappings: [ctrlP],
+      });
+      addBoundCommand("command-palette:open", palette);
+      expect(press(["Mod"], "p", ctrl)).toBe(false);
+
+      // The bed's `register` is a mock already, which spying hands back.
+      for (const [dispose] of vi.spyOn(context, "register").mock.calls) {
+        dispose();
+      }
+      // A stale table bakes once, as Obsidian's own, without hiding the
+      // user's keys of the commands outside the focused list.
+      const { command } = addBoundCommand("command-palette:toggle", {
+          key: "y",
+          modifiers: ["Mod"],
+        }),
+        removed = vi.spyOn(hotkeys, "removeHotkeys"),
+        baked = vi.spyOn(HotkeyTable.prototype, "bake");
+      hotkeys.bake();
+
+      expect(removed).not.toHaveBeenCalled();
+      expect(baked).toHaveBeenCalledOnce();
+      expect(Object.hasOwn(hotkeys, "bake")).toBe(false);
+      expect(hotkeys.bakedIds).toContain(command.id);
+    });
+  });
+
+  describe("the built-in palette keys", () => {
+    afterEach(() => {
+      platform.windows = false;
+    });
+
+    it("open the palette from a focused terminal on Windows", () => {
+      platform.windows = true;
+      const { addBoundCommand, executeCommand, press } = loadView(),
+        { command } = addBoundCommand("command-palette:open", {
+          key: "p",
+          modifiers: ["Mod"],
+        });
+
+      expect(press(["Mod"], "p", { ctrlKey: true })).toBe(false);
+      expect(executeCommand).toHaveBeenCalledExactlyOnceWith(command);
+    });
+
+    // The listener as `TerminalView.load` makes it, for any platform: the
+    // test runs on one only.
+    function listenerOn(platform0: string) {
+      const { addBoundCommand, context, executeCommand } = loadView(),
+        { command: palette } = addBoundCommand("command-palette:open", {
+          key: "p",
+          modifiers: ["Mod"],
+        }),
+        listener = newFocusedKeyListener(context, new Set(), platform0);
+      return {
+        executeCommand,
+        palette,
+        press: (init: KeyboardEventInit): unknown =>
+          listener(new KeyboardEvent("keydown", { key: "p", ...init }), {
+            key: "p",
+            modifiers: compile(["Mod"]),
+            vkey: "p",
+          }),
+      };
+    }
+
+    it.each([
+      ["win32", { ctrlKey: true }, { metaKey: true }],
+      ["darwin", { metaKey: true }, { ctrlKey: true }],
+    ] as const)(
+      "send the palette key on %s to Obsidian and no other",
+      (platform0, palette, other) => {
+        const listener = listenerOn(platform0);
+
+        expect(listener.press(other)).toBeUndefined();
+        expect(listener.executeCommand).not.toHaveBeenCalled();
+        expect(listener.press(palette)).toBe(false);
+        expect(listener.executeCommand).toHaveBeenCalledExactlyOnceWith(
+          listener.palette,
+        );
+      },
+    );
+
+    it("send no key to Obsidian on Linux", () => {
+      const listener = listenerOn("linux");
+
+      expect(listener.press({ ctrlKey: true })).toBeUndefined();
+      expect(listener.press({ metaKey: true })).toBeUndefined();
+      expect(listener.executeCommand).not.toHaveBeenCalled();
+    });
+
+    it.each(["android", "ios", "unknown"])(
+      "send no key to Obsidian on %s",
+      (platform0) => {
+        const listener = listenerOn(platform0);
+
+        expect(listener.press({ ctrlKey: true })).toBeUndefined();
+        expect(listener.press({ metaKey: true })).toBeUndefined();
+        expect(listener.executeCommand).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each([
+      ["win32", { ctrlKey: true }],
+      ["darwin", { metaKey: true }],
+    ] as const)(
+      "take the palette key on %s with exactly its modifier",
+      (platform0, palette) => {
+        const listener = listenerOn(platform0);
+
+        for (const init of [
+          { ...palette, key: "P", shiftKey: true },
+          { ...palette, shiftKey: true },
+          { ...palette, altKey: true },
+          { ...palette, ctrlKey: true, metaKey: true },
+          // Caps Lock
+          { ...palette, key: "P" },
+        ]) {
+          expect(listener.press(init)).toBeUndefined();
+        }
+        expect(listener.executeCommand).not.toHaveBeenCalled();
+
+        // Held: the palette opens once, and no repeat reaches the shell.
+        expect(listener.press(palette)).toBe(false);
+        expect(listener.press({ ...palette, repeat: true })).toBe(false);
+        expect(listener.executeCommand).toHaveBeenCalledExactlyOnceWith(
+          listener.palette,
+        );
+      },
+    );
   });
 });
 
@@ -521,6 +1248,8 @@ describe("src/terminal/view.ts", () => {
         },
       );
       const context = {
+          // A ConPTY terminal registers its quit hook here.
+          app: { workspace: { offref: vi.fn(), on: vi.fn(() => ({})) } },
           language: { value: { t: vi.fn((key: string) => key) } },
           settings: { value: Settings.DEFAULT, onMutate: vi.fn() },
         } as unknown as ConstructorParameters<typeof TerminalView>[0],
@@ -1295,6 +2024,49 @@ describe("src/terminal/view.ts", () => {
         expect(fixed.value.cwd).toBe("/home/user");
         expect(fixed.value.userTitle).toBe("dev server");
       });
+
+      it("restores a state saved before some of its keys existed without a report", () => {
+        // An older version's tab: no title, no profile source, no scroll
+        // line, and a profile without its Windows backend.
+        const profile: Record<string, unknown> = {
+          ...Settings.Profile.DEFAULTS.integrated,
+        };
+        Reflect.deleteProperty(profile, "win32Backend");
+        const fixed = TerminalView.State.fix({
+          cwd: "/home/user",
+          focus: false,
+          profile,
+          serial: { columns: 80, data: "$ ", rows: 24 },
+        });
+        expect(fixed.valid).toBe(true);
+        expect(fixed.value).toMatchObject({
+          cwd: "/home/user",
+          profileSourceId: null,
+          serial: { columns: 80, data: "$ ", rows: 24 },
+          userTitle: "",
+        });
+      });
+
+      it("still reports a state value it replaces or drops", () => {
+        const state = {
+          cwd: null,
+          focus: false,
+          profile: Settings.Profile.DEFAULTS.integrated,
+          profileSourceId: null,
+          serial: null,
+          userTitle: "",
+        };
+        expect(TerminalView.State.fix(state).valid).toBe(true);
+        for (const change of [
+          { focus: "x" },
+          { serial: { columns: "80", data: "", rows: 1, scrollLine: -1 } },
+          { later: true },
+        ]) {
+          expect(TerminalView.State.fix({ ...state, ...change }).valid).toBe(
+            false,
+          );
+        }
+      });
     });
   });
 
@@ -1488,6 +2260,658 @@ describe("TerminalView focus", () => {
         expect(view["isFocused"]).toBe(true);
       },
     );
+  });
+
+  /*
+   * A ribbon click or the command palette takes the keyboard away from the
+   * terminal but leaves its tab the active one. The terminal used last is
+   * still the one the user works in: Clear, Close and Find are offered for
+   * it and act on it. From a note, or for a terminal other than the one used
+   * last, they are not.
+   */
+  describe("from a palette opened away from the terminal", () => {
+    // The leaf Obsidian made active last, which `getActiveViewOfType` reads.
+    let active: WorkspaceLeaf | null = null;
+    afterEach(() => {
+      document.body.replaceChildren();
+      platform.windows = false;
+      active = null;
+    });
+
+    function activate(context: TerminalPlugin, leaf: WorkspaceLeaf): void {
+      active = leaf;
+      context.app.workspace.setActiveLeaf(leaf);
+    }
+
+    const ACTING = [
+      "clear-terminal",
+      "close-terminal",
+      "find-in-terminal",
+    ] as const;
+
+    function loadCommands(overrides: Partial<Settings> = {}) {
+      listenForFocus();
+      const { context, workspace } = makeTerminalContext(overrides);
+      const addCommand = vi.fn<TerminalPlugin["addCommand"]>(
+        (command) => command,
+      );
+      Object.assign(context, {
+        addCommand,
+        register: vi.fn(),
+        registerEvent: vi.fn(),
+        registerView: vi.fn(),
+      });
+      vi.spyOn(library, "newHotkeyListener").mockReturnValue(vi.fn());
+      vi.spyOn(TerminalView["focusedScope"], "register").mockImplementation(
+        vi.fn(),
+      );
+      // Obsidian answers from the active leaf; the mock answers null always.
+      vi.spyOn(workspace, "getActiveViewOfType").mockImplementation((type) => {
+        const view: unknown = active?.view;
+        return view instanceof type ? view : null;
+      });
+      TerminalView.load(context);
+      const command = (id: string) => {
+        const found = addCommand.mock.calls
+          .map(([registered]) => registered)
+          .find((registered) => registered.id === id);
+        if (!found?.checkCallback) throw new Error(`No command ${id}`);
+        return found.checkCallback;
+      };
+      return { command, context, workspace };
+    }
+
+    async function openTerminal(
+      context: TerminalPlugin,
+      into: Document = document,
+    ) {
+      const { leaf, view } = makeTerminalLeaf(context);
+      // `onOpen` makes the view the last focused terminal.
+      await view["onOpen"]();
+      const clear = vi.fn(),
+        detach = vi.fn(),
+        startFind = vi.fn(),
+        textarea = into.createElement("textarea");
+      Object.assign(leaf, { detach });
+      // `startFind` is protected, so `vi.spyOn` cannot name it.
+      view["startFind"] = startFind;
+      const { emulator } = makeEmulator();
+      Object.assign(emulator.terminal, { clear });
+      view["emulator"] = emulator;
+      view.contentEl.append(textarea);
+      into.body.append(view.contentEl);
+      return {
+        clear,
+        detach,
+        leaf,
+        startFind,
+        view,
+        // How many times Clear, Close or Find reached this terminal.
+        acted(): number {
+          return (
+            clear.mock.calls.length +
+            detach.mock.calls.length +
+            startFind.mock.calls.length
+          );
+        },
+        // Typing in a terminal focuses it and makes its leaf the active one.
+        use(): void {
+          textarea.focus();
+          activate(context, leaf);
+        },
+      };
+    }
+
+    function openPalette(): HTMLInputElement {
+      const palette = document.createElement("div");
+      palette.className = "modal-container";
+      const input = document.createElement("input");
+      palette.append(input);
+      document.body.append(palette);
+      input.focus();
+      return input;
+    }
+
+    function clickIntoNote(context: TerminalPlugin): void {
+      const note = new WorkspaceLeaf(),
+        editor = document.createElement("textarea");
+      document.body.append(editor);
+      editor.focus();
+      activate(context, note);
+    }
+
+    /*
+     * The mock's `registerDomEvent` drops the listener. Obsidian keeps it, and
+     * the view's `focusin` listener is what records a use of the terminal, so
+     * `loadCommands` calls this before any terminal opens.
+     */
+    function listenForFocus(): void {
+      vi.spyOn(TerminalView.prototype, "registerDomEvent").mockImplementation(
+        (
+          el: Document | HTMLElement | Window,
+          type: string,
+          callback: (this: HTMLElement, event: Event) => unknown,
+          options?: AddEventListenerOptions | boolean,
+        ) => {
+          el.addEventListener(type, callback, options);
+        },
+      );
+    }
+
+    it.each(ACTING)(
+      "offers %s for the terminal used last while its tab is active",
+      async (id) => {
+        const { command, context } = loadCommands();
+        const terminal = await openTerminal(context);
+        terminal.use();
+        openPalette();
+        expect(terminal.view["isFocused"]).toBe(false);
+
+        expect(command(id)(true)).toBe(true);
+      },
+    );
+
+    it("clears, closes and finds in the terminal used last when chosen", async () => {
+      const { command, context } = loadCommands();
+      const terminal = await openTerminal(context);
+      terminal.use();
+      openPalette();
+
+      command("clear-terminal")(false);
+      command("find-in-terminal")(false);
+      command("close-terminal")(false);
+
+      expect(terminal.clear).toHaveBeenCalledOnce();
+      expect(terminal.startFind).toHaveBeenCalledOnce();
+      expect(terminal.detach).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+      { windows: false, interceptKeysWhenFocused: true },
+      { windows: false, interceptKeysWhenFocused: false },
+      { windows: true, interceptKeysWhenFocused: true },
+      { windows: true, interceptKeysWhenFocused: false },
+    ])(
+      "clears from the palette on Windows: $windows, intercepting keys: $interceptKeysWhenFocused",
+      async ({ windows, interceptKeysWhenFocused }) => {
+        platform.windows = windows;
+        const { command, context } = loadCommands({ interceptKeysWhenFocused });
+        const terminal = await openTerminal(context);
+        terminal.use();
+        openPalette();
+
+        expect(command("clear-terminal")(true)).toBe(true);
+        command("clear-terminal")(false);
+        expect(terminal.clear).toHaveBeenCalledOnce();
+      },
+    );
+
+    it("offers them in a palette opened by a key from the focused terminal", async () => {
+      const { command, context } = loadCommands();
+      const terminal = await openTerminal(context);
+      terminal.use();
+      // The palette takes the keyboard while it lists the commands...
+      const input = openPalette();
+      for (const id of ACTING) expect(command(id)(true)).toBe(true);
+      // ...and gives it back to the terminal when it closes.
+      input.blur();
+      terminal.use();
+      command("clear-terminal")(false);
+
+      expect(terminal.clear).toHaveBeenCalledOnce();
+    });
+
+    it("runs the Clear hotkey while the terminal's tab is active and nothing has the keyboard", async () => {
+      const { command, context } = loadCommands();
+      const terminal = await openTerminal(context);
+      terminal.use();
+      // A ribbon click and Escape leave the keyboard on the page itself.
+      openPalette().blur();
+      expect(document.activeElement).toBe(document.body);
+
+      command("clear-terminal")(false);
+
+      expect(terminal.clear).toHaveBeenCalledOnce();
+    });
+
+    it("offers them for a terminal restored as the active tab before anyone typed in it", async () => {
+      const { command, context } = loadCommands();
+      const terminal = await openTerminal(context);
+      // The layout comes back with this tab active and nothing focused.
+      activate(context, terminal.leaf);
+      openPalette();
+
+      for (const id of ACTING) expect(command(id)(true)).toBe(true);
+      command("clear-terminal")(false);
+      expect(terminal.clear).toHaveBeenCalledOnce();
+    });
+
+    it("clears the terminal that Toggle focus left as the active tab with no other tab to go back to", async () => {
+      const { command, context } = loadCommands();
+      const terminal = await openTerminal(context);
+      terminal.use();
+      TerminalView["lastActiveOtherLeaf"] = null;
+
+      command("toggle-focus-on-last-terminal")(false);
+      expect(terminal.view["isFocused"]).toBe(false);
+      expect(command("unfocus-terminal")(true)).toBe(false);
+
+      command("clear-terminal")(false);
+      expect(terminal.clear).toHaveBeenCalledOnce();
+    });
+
+    it.each(ACTING)("neither offers nor runs %s from a note", async (id) => {
+      const { command, context } = loadCommands();
+      const terminal = await openTerminal(context);
+      terminal.use();
+      clickIntoNote(context);
+
+      expect(command(id)(true)).toBe(false);
+      command(id)(false);
+      expect(terminal.acted()).toBe(0);
+    });
+
+    it.each(ACTING)(
+      "neither offers nor runs %s from a palette opened over a note",
+      async (id) => {
+        const { command, context } = loadCommands();
+        const terminal = await openTerminal(context);
+        terminal.use();
+        clickIntoNote(context);
+        openPalette();
+
+        expect(command(id)(true)).toBe(false);
+        command(id)(false);
+        expect(terminal.acted()).toBe(0);
+      },
+    );
+
+    it("keeps Unfocus terminal to a terminal that has the keyboard", async () => {
+      const { command, context } = loadCommands();
+      const terminal = await openTerminal(context);
+      terminal.use();
+      expect(command("unfocus-terminal")(true)).toBe(true);
+      openPalette();
+      expect(command("unfocus-terminal")(true)).toBe(false);
+      openPalette().blur();
+      expect(command("unfocus-terminal")(true)).toBe(false);
+    });
+
+    it.each([
+      "focus-on-last-terminal",
+      "toggle-focus-on-last-terminal",
+      "rename-terminal",
+    ])("still offers %s from the palette", async (id) => {
+      const { command, context } = loadCommands();
+      const terminal = await openTerminal(context);
+      terminal.use();
+      openPalette();
+
+      expect(command(id)(true)).toBe(true);
+    });
+
+    it("offers nothing while no terminal was opened in this session", async () => {
+      const { command, context } = loadCommands();
+      const terminal = await openTerminal(context);
+      terminal.use();
+      TerminalView["lastFocusTimes"].clear();
+      openPalette();
+
+      for (const id of ACTING) {
+        expect(command(id)(true)).toBe(false);
+        command(id)(false);
+      }
+      expect(terminal.acted()).toBe(0);
+    });
+
+    it("does not act on another terminal than the one used last", async () => {
+      const { command, context } = loadCommands();
+      const shown = await openTerminal(context),
+        used = await openTerminal(context);
+      used.use();
+      // A click on a tab header makes a leaf active without focusing it.
+      activate(context, shown.leaf);
+      openPalette();
+
+      for (const id of ACTING) {
+        expect(command(id)(true)).toBe(false);
+        command(id)(false);
+      }
+      expect(shown.acted() + used.acted()).toBe(0);
+    });
+
+    it("offers them for the terminal in use after another one opened behind it", async () => {
+      const { command, context } = loadCommands();
+      const inUse = await openTerminal(context);
+      inUse.use();
+      // Opened in another split with neither the keyboard nor the active tab,
+      // as with Focus on new instance off.
+      const behind = await openTerminal(context);
+      openPalette();
+
+      for (const id of ACTING) expect(command(id)(true)).toBe(true);
+      command("clear-terminal")(false);
+      expect(inUse.clear).toHaveBeenCalledOnce();
+      expect(behind.acted()).toBe(0);
+    });
+
+    it("clears the terminal that has the keyboard after another one opened behind it", async () => {
+      const { command, context } = loadCommands();
+      const inUse = await openTerminal(context);
+      inUse.use();
+      const behind = await openTerminal(context);
+      expect(inUse.view["isLookedAt"]).toBe(true);
+
+      // Its hotkey, as the focused terminal's scope runs it.
+      command("clear-terminal")(false);
+      expect(inUse.clear).toHaveBeenCalledOnce();
+      expect(behind.acted()).toBe(0);
+    });
+
+    it("follows the terminal used last when the clock went back between two uses", async () => {
+      const { command, context } = loadCommands();
+      const earlier = await openTerminal(context),
+        later = await openTerminal(context);
+      earlier.use();
+      // The system clock is set back, by hand or by a time sync.
+      let now = Date.now() - 60_000;
+      vi.spyOn(Date, "now").mockImplementation(() => ++now);
+      later.use();
+      openPalette();
+
+      for (const id of ACTING) expect(command(id)(true)).toBe(true);
+      command("clear-terminal")(false);
+      expect(later.clear).toHaveBeenCalledOnce();
+      expect(earlier.acted()).toBe(0);
+    });
+
+    it("does not act on a closed terminal whose leaf is still the active one", async () => {
+      const { command, context } = loadCommands();
+      const older = await openTerminal(context),
+        closed = await openTerminal(context);
+      older.use();
+      closed.use();
+      openPalette();
+      closed.view.unload();
+      expect(TerminalView["lastFocusTimes"].has(closed.view)).toBe(false);
+
+      for (const id of ACTING) {
+        expect(command(id)(true)).toBe(false);
+        command(id)(false);
+      }
+      expect(older.acted() + closed.acted()).toBe(0);
+    });
+
+    it("moves on to the terminal used before once the one used last closes and its tab takes over", async () => {
+      const { command, context } = loadCommands();
+      const older = await openTerminal(context),
+        closed = await openTerminal(context);
+      older.use();
+      closed.use();
+      openPalette();
+      closed.view.unload();
+      // Obsidian shows the neighbour tab; the keyboard stays outside every leaf.
+      activate(context, older.leaf);
+
+      for (const id of ACTING) expect(command(id)(true)).toBe(true);
+      command("clear-terminal")(false);
+      expect(older.clear).toHaveBeenCalledOnce();
+      expect(closed.acted()).toBe(0);
+    });
+
+    it("acts on the terminal typed in last, not on the one opened last", async () => {
+      const { command, context } = loadCommands();
+      const typedIn = await openTerminal(context),
+        openedLast = await openTerminal(context);
+      openedLast.use();
+      typedIn.use();
+      openPalette();
+
+      for (const id of ACTING) expect(command(id)(true)).toBe(true);
+      command("clear-terminal")(false);
+      expect(typedIn.clear).toHaveBeenCalledOnce();
+      expect(openedLast.acted()).toBe(0);
+    });
+
+    it("needs the keyboard in the terminal when another kind of view is active", async () => {
+      const { command, context } = loadCommands();
+      const terminal = await openTerminal(context);
+      terminal.use();
+      // A sidebar view, such as the file explorer, became the active leaf.
+      activate(context, new WorkspaceLeaf());
+      expect(command("clear-terminal")(true)).toBe(true);
+      openPalette();
+      expect(command("clear-terminal")(true)).toBe(false);
+    });
+
+    it("acts on the terminal that has the keyboard when another kind of view is active", async () => {
+      const { command, context } = loadCommands();
+      const terminal = await openTerminal(context);
+      terminal.use();
+      activate(context, new WorkspaceLeaf());
+
+      command("clear-terminal")(false);
+      command("find-in-terminal")(false);
+      command("close-terminal")(false);
+      expect(terminal.acted()).toBe(3);
+    });
+
+    it("does not throw when the terminal used last has no emulator", async () => {
+      const { command, context } = loadCommands();
+      const terminal = await openTerminal(context);
+      terminal.use();
+      terminal.view["emulator"] = null;
+      openPalette();
+
+      expect(() => command("clear-terminal")(false)).not.toThrow();
+    });
+
+    describe("in a pop-out window", () => {
+      function popOut(): Document {
+        const popout = document.implementation.createHTMLDocument("pop-out");
+        // The window in front is the main one.
+        vi.spyOn(popout, "hasFocus").mockReturnValue(false);
+        return popout;
+      }
+
+      // Obsidian moves the active leaf into a window when it gets the focus, so
+      // a click on the main window's ribbon does not reach this state.
+      it("follows the active tab across windows", async () => {
+        const { command, context } = loadCommands();
+        const terminal = await openTerminal(context, popOut());
+        terminal.use();
+        openPalette();
+
+        for (const id of ACTING) expect(command(id)(true)).toBe(true);
+        command("clear-terminal")(false);
+        expect(terminal.clear).toHaveBeenCalledOnce();
+      });
+
+      it.each(ACTING)(
+        "neither offers nor runs %s from a note in the main window",
+        async (id) => {
+          const { command, context } = loadCommands();
+          const terminal = await openTerminal(context, popOut());
+          terminal.use();
+          clickIntoNote(context);
+          // The pop-out still remembers its focused element.
+          expect(terminal.view["isFocused"]).toBe(true);
+
+          expect(command(id)(true)).toBe(false);
+          command(id)(false);
+          expect(terminal.acted()).toBe(0);
+        },
+      );
+
+      it("toggles the focus to it from a note in the main window", async () => {
+        const { command, context } = loadCommands();
+        const terminal = await openTerminal(context, popOut());
+        terminal.use();
+        clickIntoNote(context);
+        // `focus` and `unfocus` are protected, so `vi.spyOn` cannot name them.
+        const focus = vi.fn(),
+          unfocus = vi.fn();
+        terminal.view["focus"] = focus;
+        terminal.view["unfocus"] = unfocus;
+
+        command("toggle-focus-on-last-terminal")(false);
+        expect({
+          focus: focus.mock.calls.length,
+          unfocus: unfocus.mock.calls.length,
+        }).toEqual({ focus: 1, unfocus: 0 });
+      });
+
+      it("offers Focus on last terminal, not Unfocus terminal, from a note in the main window", async () => {
+        const { command, context } = loadCommands();
+        const terminal = await openTerminal(context, popOut());
+        terminal.use();
+        clickIntoNote(context);
+        // The pop-out still remembers its focused element.
+        expect(terminal.view["isFocused"]).toBe(true);
+
+        expect(command("focus-on-last-terminal")(true)).toBe(true);
+        expect(command("unfocus-terminal")(true)).toBe(false);
+      });
+
+      // `focus` and `unfocus` are protected, so `vi.spyOn` cannot name them.
+      function watchFocus(view: TerminalView) {
+        const focus = vi.fn(),
+          unfocus = vi.fn();
+        view["focus"] = focus;
+        view["unfocus"] = unfocus;
+        return () => ({
+          focus: focus.mock.calls.length,
+          unfocus: unfocus.mock.calls.length,
+        });
+      }
+
+      it("unfocuses a pop-out terminal that has the keyboard in the window in front", async () => {
+        const { command, context } = loadCommands();
+        const popout = document.implementation.createHTMLDocument("pop-out"),
+          terminal = await openTerminal(context, popout);
+        terminal.use();
+        // The pop-out is the window in front; the main one is behind it.
+        vi.spyOn(document, "hasFocus").mockReturnValue(false);
+        const calls = watchFocus(terminal.view);
+
+        expect(command("unfocus-terminal")(true)).toBe(true);
+        expect(command("focus-on-last-terminal")(true)).toBe(false);
+        expect(command("rename-terminal")(true)).toBe(true);
+        command("toggle-focus-on-last-terminal")(false);
+        expect(calls()).toEqual({ focus: 0, unfocus: 1 });
+      });
+
+      it("toggles the focus to a main-window terminal from a note in a pop-out window", async () => {
+        const { command, context } = loadCommands();
+        const terminal = await openTerminal(context);
+        terminal.use();
+        // The pop-out comes to the front, and a note in it takes the keyboard.
+        const popout = document.implementation.createHTMLDocument("pop-out"),
+          editor = popout.createElement("textarea");
+        popout.body.append(editor);
+        editor.focus();
+        vi.spyOn(document, "hasFocus").mockReturnValue(false);
+        activate(context, new WorkspaceLeaf());
+        // The main window still remembers its focused element.
+        expect(terminal.view["isFocused"]).toBe(true);
+        const calls = watchFocus(terminal.view);
+
+        expect(command("focus-on-last-terminal")(true)).toBe(true);
+        expect(command("unfocus-terminal")(true)).toBe(false);
+        expect(command("rename-terminal")(true)).toBe(true);
+        command("toggle-focus-on-last-terminal")(false);
+        expect(calls()).toEqual({ focus: 1, unfocus: 0 });
+      });
+
+      it("toggles the focus to the pop-out terminal used last, not to a main-window one used before", async () => {
+        const { command, context } = loadCommands();
+        const before = await openTerminal(context),
+          last = await openTerminal(context, popOut());
+        before.use();
+        last.use();
+        clickIntoNote(context);
+        const beforeCalls = watchFocus(before.view),
+          lastCalls = watchFocus(last.view);
+
+        command("toggle-focus-on-last-terminal")(false);
+        command("focus-on-last-terminal")(false);
+
+        expect({ before: beforeCalls(), last: lastCalls() }).toEqual({
+          before: { focus: 0, unfocus: 0 },
+          last: { focus: 2, unfocus: 0 },
+        });
+      });
+
+      it.each(ACTING)(
+        "neither offers nor runs %s for a main-window terminal from a note in a pop-out window",
+        async (id) => {
+          const { command, context } = loadCommands();
+          const terminal = await openTerminal(context);
+          terminal.use();
+          // The pop-out comes to the front, and a note in it takes the keyboard.
+          const popout = document.implementation.createHTMLDocument("pop-out"),
+            editor = popout.createElement("textarea");
+          popout.body.append(editor);
+          editor.focus();
+          vi.spyOn(document, "hasFocus").mockReturnValue(false);
+          activate(context, new WorkspaceLeaf());
+          // The main window still remembers its focused element.
+          expect(terminal.view["isFocused"]).toBe(true);
+
+          expect(command(id)(true)).toBe(false);
+          command(id)(false);
+          expect(terminal.acted()).toBe(0);
+        },
+      );
+
+      it("offers and runs them from a palette in the pop-out window over its terminal", async () => {
+        const { command, context } = loadCommands();
+        const popout = document.implementation.createHTMLDocument("pop-out"),
+          terminal = await openTerminal(context, popout);
+        terminal.use();
+        // The pop-out is the window in front, and its palette has the keyboard.
+        vi.spyOn(document, "hasFocus").mockReturnValue(false);
+        const input = popout.createElement("input");
+        popout.body.append(input);
+        input.focus();
+        expect(terminal.view["isFocused"]).toBe(false);
+
+        for (const id of ACTING) expect(command(id)(true)).toBe(true);
+        command("clear-terminal")(false);
+        command("find-in-terminal")(false);
+        command("close-terminal")(false);
+        expect(terminal.acted()).toBe(3);
+      });
+
+      it("reaches neither terminal from the tab of a main-window terminal while a pop-out terminal was used last", async () => {
+        const { command, context } = loadCommands();
+        const shown = await openTerminal(context),
+          used = await openTerminal(context, popOut());
+        used.use();
+        // A click on a tab header in the main window makes its leaf active.
+        activate(context, shown.leaf);
+        expect(used.view["isFocused"]).toBe(true);
+
+        for (const id of ACTING) {
+          expect(command(id)(true)).toBe(false);
+          command(id)(false);
+        }
+        expect(shown.acted() + used.acted()).toBe(0);
+      });
+
+      it("follows the keyboard in the pop-out window in front when another kind of view is active", async () => {
+        const { command, context } = loadCommands();
+        const popout = document.implementation.createHTMLDocument("pop-out"),
+          terminal = await openTerminal(context, popout);
+        terminal.use();
+        // The main window is behind it, and a sidebar view is the active leaf.
+        vi.spyOn(document, "hasFocus").mockReturnValue(false);
+        activate(context, new WorkspaceLeaf());
+
+        command("clear-terminal")(false);
+        expect(terminal.clear).toHaveBeenCalledOnce();
+      });
+    });
   });
 });
 
@@ -1830,6 +3254,786 @@ describe("TerminalView.spawn", () => {
 
     expect(reveal).toHaveBeenCalledExactlyOnceWith(leaf);
     expect(activate).toHaveBeenCalledExactlyOnceWith(leaf, { focus: true });
+  });
+});
+
+describe("TerminalView.spawn of a profile that opens outside Obsidian", () => {
+  const external = {
+    ...Settings.Profile.DEFAULTS.external,
+    executable: "/usr/bin/true",
+    name: "Stand-in",
+    platforms: { darwin: true, linux: true, win32: true },
+  };
+
+  afterEach(() => {
+    platform.windows = false;
+  });
+
+  // Watches every way the workspace could make, move, pin or show a leaf.
+  function bed(overrides: Partial<Settings> = {}) {
+    const made = makeTerminalContext(overrides),
+      { workspace } = made;
+    return {
+      ...made,
+      left: vi.spyOn(workspace, "getLeftLeaf"),
+      right: vi.spyOn(workspace, "getRightLeaf"),
+      pin: vi.spyOn(WorkspaceLeaf.prototype, "setPinned"),
+      notice: vi.spyOn(library, "notice2").mockImplementation(vi.fn()),
+      report: vi.spyOn(library, "printError").mockImplementation(vi.fn()),
+      open: vi.spyOn(profileProperties, "openProfile").mockResolvedValue(null),
+    };
+  }
+  type Bed = ReturnType<typeof bed>;
+
+  function opening(
+    overrides: Partial<TerminalView.State> = {},
+  ): TerminalView.State {
+    return {
+      ...TerminalView.State.DEFAULT,
+      cwd: "/vault",
+      profile: external,
+      ...overrides,
+    };
+  }
+
+  // The spies of `bed` that watch the leaves.
+  function leafSpies({ allocate, left, right, activate, reveal, pin }: Bed) {
+    return [allocate, left, right, activate, reveal, pin];
+  }
+
+  function expectNoLeaf(spies: Bed): void {
+    for (const spy of leafSpies(spies)) expect(spy).not.toHaveBeenCalled();
+  }
+
+  // The opening notice names the program by this title.
+  function expectNoticeTitle(spies: Bed, title: string): void {
+    const { t } = spies.context.language.value;
+    vi.mocked(t).mockClear();
+    const [message] = spies.notice.mock.calls[0] ?? [];
+    message?.();
+    expect(t).toHaveBeenCalledExactlyOnceWith("notices.spawning-terminal", {
+      interpolation: { escapeValue: false },
+      title,
+    });
+  }
+
+  // Two terminal tabs: "second" opened last, then the user went back to "first".
+  async function twoTabs(spies: Bed) {
+    const { context, workspace } = spies,
+      first = makeTerminalLeaf(context),
+      second = makeTerminalLeaf(context);
+    vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([
+      first.leaf,
+      second.leaf,
+    ]);
+    await TerminalView.spawn(context, TerminalView.State.DEFAULT, second.leaf);
+    await TerminalView.spawn(context, TerminalView.State.DEFAULT, first.leaf);
+    for (const spy of leafSpies(spies)) spy.mockClear();
+    return { first, second };
+  }
+
+  it.each(Settings.NEW_INSTANCE_BEHAVIORS)(
+    "opens the program once and makes no leaf for %s",
+    async (newInstanceBehavior) => {
+      const spies = bed({
+        createInstanceNearExistingOnes: false,
+        newInstanceBehavior,
+      });
+
+      await TerminalView.spawn(spies.context, opening());
+
+      expectNoLeaf(spies);
+      expect(spies.open).toHaveBeenCalledExactlyOnceWith(
+        spies.context,
+        external,
+        { cwd: "/vault" },
+      );
+    },
+  );
+
+  describe.each([false, true])("on Windows: %s", (windows) => {
+    it("leaves the terminal used last in front and the one to open next to", async () => {
+      platform.windows = windows;
+      const spies = bed({ createInstanceNearExistingOnes: true }),
+        { first } = await twoTabs(spies);
+
+      await TerminalView.spawn(spies.context, opening());
+
+      expectNoLeaf(spies);
+      expect(spies.open).toHaveBeenCalledOnce();
+      // The next terminal still opens next to "first", the one used last.
+      TerminalView.getLeaf(spies.context);
+      expect(spies.activate).toHaveBeenCalledExactlyOnceWith(first.leaf);
+    });
+  });
+
+  it.each(["leftSplit", "rightSplit"] as const)(
+    "makes no sidebar leaf when the terminal used last is in the %s",
+    async (side) => {
+      const spies = bed({ createInstanceNearExistingOnes: true }),
+        { first } = await twoTabs(spies);
+      Object.assign(first.leaf, { getRoot: () => spies.workspace[side] });
+
+      await TerminalView.spawn(spies.context, opening());
+
+      expectNoLeaf(spies);
+      expect(spies.open).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("does not bring forward a pop-out window that holds the terminal used last", async () => {
+    const spies = bed({ createInstanceNearExistingOnes: true }),
+      { first } = await twoTabs(spies),
+      popout = {};
+    Object.assign(first.leaf, {
+      getContainer: () => popout,
+      getRoot: () => popout,
+    });
+
+    await TerminalView.spawn(spies.context, opening());
+
+    expectNoLeaf(spies);
+    expect(spies.open).toHaveBeenCalledOnce();
+  });
+
+  it("moves no focus when the opening asks for focus", async () => {
+    const spies = bed({ focusOnNewInstance: true, pinNewInstance: true });
+
+    await TerminalView.spawn(spies.context, opening({ focus: true }));
+
+    expectNoLeaf(spies);
+    expect(spies.open).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["its name", { name: "Stand-in" }, "", "Stand-in"],
+    ["its program without a name", { name: "" }, "", "true"],
+    [
+      "a Windows program without a name",
+      { executable: "C:\\Windows\\System32\\cmd.exe", name: "" },
+      "",
+      "cmd",
+    ],
+    [
+      "a macOS app without a name",
+      {
+        executable: "/System/Applications/Utilities/Terminal.app",
+        name: "",
+      },
+      "",
+      "Terminal",
+    ],
+    ["the title the user gave", { name: "Stand-in" }, "Build box", "Build box"],
+    [
+      "a name with markup, unescaped",
+      { name: "Git & <Bash>" },
+      "",
+      "Git & <Bash>",
+    ],
+  ])(
+    "names the program by %s in the opening notice",
+    async (_, profile, userTitle, title) => {
+      const spies = bed({ noticeTimeout: 7 });
+
+      await TerminalView.spawn(
+        spies.context,
+        opening({ profile: { ...external, ...profile }, userTitle }),
+      );
+
+      expect(spies.notice).toHaveBeenCalledExactlyOnceWith(
+        expect.any(Function),
+        7,
+        spies.context,
+      );
+      expectNoticeTitle(spies, title);
+    },
+  );
+
+  it("shows the notice before the program starts", async () => {
+    const spies = bed();
+
+    await TerminalView.spawn(spies.context, opening());
+
+    expect(spies.notice).toHaveBeenCalledBefore(spies.open);
+  });
+
+  it("settles once the program has started", async () => {
+    const spies = bed(),
+      started = deferred();
+    spies.open.mockReturnValue(started.promise.then(() => null));
+    let settled = false;
+
+    const spawning = TerminalView.spawn(spies.context, opening()).then(() => {
+      settled = true;
+    });
+    await tick();
+
+    expect(spies.open).toHaveBeenCalledOnce();
+    expect(settled).toBe(false);
+    started.resolve(undefined);
+    await spawning;
+    expect(settled).toBe(true);
+  });
+
+  it.each([
+    [null, undefined],
+    ["/vault", "/vault"],
+    ["C:\\Users\\Jane Doe\\Vault ü", "C:\\Users\\Jane Doe\\Vault ü"],
+  ])("starts the program in %j", async (cwd, expected) => {
+    const spies = bed();
+
+    await TerminalView.spawn(spies.context, opening({ cwd }));
+
+    expect(spies.open).toHaveBeenCalledExactlyOnceWith(
+      spies.context,
+      external,
+      { cwd: expected },
+    );
+  });
+
+  it.each([new Error("spawn /bin/sh ENOENT"), "not an error"])(
+    "reports a failed start once and still settles: %s",
+    async (failure) => {
+      const spies = bed(),
+        { t } = spies.context.language.value;
+      spies.open.mockRejectedValue(failure);
+
+      await expect(
+        TerminalView.spawn(spies.context, opening()),
+      ).resolves.toBeUndefined();
+      await tick();
+
+      expect(spies.report).toHaveBeenCalledOnce();
+      const [error, message, context] = spies.report.mock.calls[0] ?? [];
+      expect(error).toBeInstanceOf(Error);
+      if (failure instanceof Error) expect(error).toBe(failure);
+      expect(context).toBe(spies.context);
+      vi.mocked(t).mockClear();
+      message?.();
+      expect(t).toHaveBeenCalledExactlyOnceWith(
+        "errors.error-spawning-terminal",
+      );
+      expectNoLeaf(spies);
+    },
+  );
+
+  // On its way to the program, 3.29.0 sent the profile through the state's
+  // fix, which this path skips. Every external profile the settings can hold
+  // must therefore come out of that fix as it went in.
+  it("starts each external profile the settings can hold as they hold it", async () => {
+    const spies = bed(),
+      externalOf = (
+        profiles: readonly Settings.Profile[],
+      ): readonly Settings.Profile[] =>
+        profiles.filter(({ type }) => type === "external"),
+      held = (data: unknown): readonly Settings.Profile[] =>
+        externalOf(Object.values(Settings.fix(data).value.profiles)),
+      groups = [
+        externalOf(Object.values(PROFILE_PRESETS)),
+        // Saved by 3.28.0, and by 3.29.0 (its defaults, written and read back).
+        held(released328),
+        held(JSON.parse(JSON.stringify(Settings.DEFAULT))),
+      ],
+      profiles = groups.flat();
+    for (const group of groups) expect(group).not.toHaveLength(0);
+
+    for (const profile of profiles) {
+      expect(
+        TerminalView.State.fix({ ...TerminalView.State.DEFAULT, profile }).value
+          .profile,
+      ).toStrictEqual(profile);
+      spawnTerminal(spies.context, profile, { cwd: "/vault" });
+    }
+    await tick();
+
+    expect(spies.open.mock.calls.map(([, profile]) => profile)).toEqual(
+      profiles,
+    );
+    expectNoLeaf(spies);
+  });
+
+  it("opens the program from a command without a leaf or a logged error", async () => {
+    const spies = bed(),
+      logged = vi.spyOn(self.console, "error").mockImplementation(vi.fn());
+    spies.open.mockRejectedValue(new Error("no shell"));
+
+    // The profile it came from is gone from the settings; the copy still opens.
+    spawnTerminal(spies.context, external, {
+      cwd: "/vault",
+      profileSourceId: "deleted",
+    });
+    await tick();
+
+    expect(spies.open).toHaveBeenCalledExactlyOnceWith(
+      spies.context,
+      external,
+      { cwd: "/vault" },
+    );
+    expect(spies.report).toHaveBeenCalledOnce();
+    expect(logged).not.toHaveBeenCalled();
+    expectNoLeaf(spies);
+  });
+
+  it("opens the program the user picked in the edit dialog without a leaf", async () => {
+    const spies = bed(),
+      close = vi.fn(),
+      confirmations: Promise<void>[] = [];
+    vi.spyOn(EditTerminalModal.prototype, "open").mockImplementation(function (
+      this: EditTerminalModal,
+    ) {
+      // The user switches the dialog to the external profile and confirms.
+      Object.assign(this["state"], { profile: external });
+      confirmations.push(this["confirm"](close));
+    });
+
+    spawnTerminal(spies.context, Settings.Profile.DEFAULTS.integrated, {
+      cwd: "/vault",
+      edit: true,
+    });
+    await Promise.all(confirmations);
+
+    expect(spies.open).toHaveBeenCalledExactlyOnceWith(
+      spies.context,
+      external,
+      { cwd: "/vault" },
+    );
+    expect(close).toHaveBeenCalledOnce();
+    expectNoLeaf(spies);
+  });
+
+  it("still puts the program's state into a leaf the caller gives", async () => {
+    const spies = bed(),
+      { leaf, setViewState } = makeTerminalLeaf(spies.context),
+      type = TerminalView.type.namespaced(spies.context),
+      state = opening(),
+      leaves = vi
+        .spyOn(spies.workspace, "getLeavesOfType")
+        .mockReturnValue([leaf]);
+    // The view opens the program and closes its tab while the state is set.
+    setViewState.mockImplementation(() => {
+      leaves.mockReturnValue([]);
+      return Promise.resolve();
+    });
+
+    await TerminalView.spawn(spies.context, state, leaf, type);
+
+    expect(setViewState).toHaveBeenCalledExactlyOnceWith({
+      state: { [type]: state },
+      type,
+    });
+    expect(spies.open).not.toHaveBeenCalled();
+    expectNoLeaf(spies);
+  });
+
+  it.each(["", "developerConsole", "integrated", "invalid"] as const)(
+    "still opens a %j profile in a new leaf",
+    async (profileType) => {
+      const spies = bed({
+          createInstanceNearExistingOnes: false,
+          newInstanceBehavior: "newTab",
+        }),
+        setViewState = vi.spyOn(spies.next, "setViewState");
+
+      await TerminalView.spawn(
+        spies.context,
+        opening({ profile: Settings.Profile.DEFAULTS[profileType] }),
+      );
+
+      expect(spies.allocate).toHaveBeenCalledExactlyOnceWith("tab");
+      expect(setViewState).toHaveBeenCalledOnce();
+      expect(spies.open).not.toHaveBeenCalled();
+    },
+  );
+
+  it("opens a profile of a type it does not know in a new leaf, as 3.29.0 did", async () => {
+    const spies = bed({
+        createInstanceNearExistingOnes: false,
+        newInstanceBehavior: "newTab",
+      }),
+      setViewState = vi.spyOn(spies.next, "setViewState"),
+      // A state that did not come through the settings' fix, for example from
+      // another plugin; the leaf's own fix turns it into an invalid profile.
+      unknownType = {
+        ...external,
+        type: "externalTerminal",
+      } as unknown as Settings.Profile;
+
+    await expect(
+      TerminalView.spawn(spies.context, opening({ profile: unknownType })),
+    ).resolves.toBeUndefined();
+
+    expect(spies.allocate).toHaveBeenCalledExactlyOnceWith("tab");
+    expect(setViewState).toHaveBeenCalledOnce();
+    expect(spies.open).not.toHaveBeenCalled();
+  });
+
+  it("opens two programs for two runs, also at once", async () => {
+    const spies = bed();
+
+    await Promise.all([
+      TerminalView.spawn(spies.context, opening()),
+      TerminalView.spawn(spies.context, opening({ cwd: "/other" })),
+    ]);
+    await TerminalView.spawn(spies.context, opening());
+
+    expect(spies.open.mock.calls.map(([, , options]) => options)).toEqual([
+      { cwd: "/vault" },
+      { cwd: "/other" },
+      { cwd: "/vault" },
+    ]);
+    expect(spies.notice).toHaveBeenCalledTimes(3);
+    expectNoLeaf(spies);
+  });
+
+  describe("a tab restored with the program's state", () => {
+    function restore(spies: Bed, state: TerminalView.State) {
+      const leaf = new WorkspaceLeaf(),
+        detach = vi.fn(),
+        view = new TerminalView(spies.context, leaf);
+      Object.assign(leaf, { detach });
+      view.app = spies.context.app;
+      Object.defineProperty(view, "state", { value: state });
+      return { detach, view };
+    }
+
+    it("opens the program once and closes the tab", async () => {
+      const spies = bed(),
+        { detach, view } = restore(spies, opening({ userTitle: "Restored" }));
+
+      view["startEmulator"](false);
+      await tick();
+
+      expect(spies.open).toHaveBeenCalledExactlyOnceWith(
+        spies.context,
+        external,
+        { cwd: "/vault" },
+      );
+      expect(detach).toHaveBeenCalledOnce();
+      expect(view.contentEl.childElementCount).toBe(0);
+      expectNoticeTitle(spies, "Restored");
+    });
+
+    it("reports a failed start once and still closes the tab", async () => {
+      const spies = bed(),
+        { detach, view } = restore(spies, opening());
+      spies.open.mockRejectedValue(new Error("no shell"));
+
+      view["startEmulator"](false);
+      await tick();
+
+      expect(spies.report).toHaveBeenCalledOnce();
+      expect(detach).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("the tab title of a terminal", () => {
+    interface Shown {
+      readonly profile: Settings.Profile;
+      readonly userTitle?: string;
+      readonly rawTitle?: string;
+    }
+
+    function titleOf({
+      profile,
+      userTitle = "",
+      rawTitle = "",
+    }: Shown): string {
+      const { context } = makeTerminalContext({
+          showTerminalTabPrefix: false,
+        }),
+        view = new TerminalView(context, new WorkspaceLeaf());
+      Object.defineProperty(view, "state", {
+        value: { ...TerminalView.State.DEFAULT, profile, userTitle },
+      });
+      Object.defineProperty(view, "rawTitle", { value: rawTitle });
+      return view.getDisplayText();
+    }
+
+    it.each<readonly [string, Shown, string]>([
+      [
+        "the profile's name",
+        { profile: { ...external, name: "Stand-in" } },
+        "Stand-in",
+      ],
+      [
+        "the program's base name",
+        {
+          profile: {
+            ...Settings.Profile.DEFAULTS.integrated,
+            executable: "C:\\Program Files\\PowerShell\\7\\pwsh.exe",
+            name: "",
+          },
+        },
+        "pwsh",
+      ],
+      [
+        "the type for a profile without a program",
+        { profile: Settings.Profile.DEFAULTS.developerConsole },
+        "components.terminal.name.profile-type",
+      ],
+      [
+        "the program's own title",
+        {
+          profile: { ...external, name: "Stand-in" },
+          rawTitle: "vim notes.md",
+        },
+        "vim notes.md",
+      ],
+      [
+        "the user's title over the program's",
+        {
+          profile: { ...external, name: "Stand-in" },
+          rawTitle: "vim notes.md",
+          userTitle: "Build box",
+        },
+        "Build box",
+      ],
+    ])("is %s", (_, shown, expected) => {
+      expect(titleOf(shown)).toBe(expected);
+    });
+  });
+});
+
+describe("closing the tab of a program that opens outside Obsidian", () => {
+  const external = {
+    ...Settings.Profile.DEFAULTS.external,
+    executable: "/usr/bin/true",
+  };
+
+  // A terminal that runs an integrated shell; its pane menu's Edit switches it
+  // to the external profile, or to the profile given, and confirms, as many
+  // times as given before the first confirmation is done.
+  function editToExternal(profile: Settings.Profile = external, confirms = 1) {
+    const { context, workspace } = makeTerminalContext(),
+      { leaf, view, setViewState } = makeTerminalLeaf(context),
+      type = TerminalView.type.namespaced(context),
+      // What Obsidian keeps for Undo close tab: the view's state at the close.
+      closed: unknown[] = [],
+      close = vi.fn(),
+      confirmations: Promise<void>[] = [];
+    vi.spyOn(library, "notice2").mockImplementation(vi.fn());
+    const report = vi.spyOn(library, "printError").mockImplementation(vi.fn()),
+      open = vi.spyOn(profileProperties, "openProfile").mockResolvedValue(null),
+      leaves = vi.spyOn(workspace, "getLeavesOfType").mockReturnValue([leaf]),
+      // A local, so that the assertions need no unbound method.
+      detach = vi.fn(() => {
+        closed.push(readStateCollaboratively(type, view.getState()));
+        leaves.mockReturnValue([]);
+      });
+    Object.assign(workspace, { requestUpdateLayout: vi.fn() });
+    Object.assign(leaf, { detach, updateHeader: vi.fn() });
+    // Obsidian hands a state of the leaf's own view type to that view.
+    setViewState.mockImplementation(async ({ state }) =>
+      view.setState(state, { history: false }),
+    );
+    view["state"] = {
+      ...TerminalView.State.DEFAULT,
+      cwd: "/vault",
+      profile: Settings.Profile.DEFAULTS.integrated,
+    };
+    vi.spyOn(EditTerminalModal.prototype, "open").mockImplementation(function (
+      this: EditTerminalModal,
+    ) {
+      Object.assign(this["state"], { profile });
+      for (let count = 0; count < confirms; ++count) {
+        confirmations.push(this["confirm"](close));
+      }
+    });
+    return {
+      close,
+      closed,
+      context,
+      detach,
+      open,
+      report,
+      setViewState,
+      async edit(): Promise<void> {
+        terminalPaneActions(view).get("components.terminal.menus.edit")?.();
+        await Promise.all(confirmations);
+        await tick();
+      },
+    };
+  }
+
+  // The tab closed once, after the program was started, with the shell's own
+  // state: Undo close tab brings the shell back and starts no program.
+  function expectClosedWithShell({
+    closed,
+    detach,
+    open,
+  }: ReturnType<typeof editToExternal>): void {
+    expect(detach).toHaveBeenCalledOnce();
+    expect(open).toHaveBeenCalledBefore(detach);
+    expect(closed).toEqual([
+      expect.objectContaining({
+        cwd: "/vault",
+        profile: expect.objectContaining({ type: "integrated" }) as unknown,
+      }),
+    ]);
+  }
+
+  it("leaves no closed tab that starts the program again after the pane menu's Edit", async () => {
+    const edited = editToExternal();
+
+    await edited.edit();
+
+    expect(edited.open).toHaveBeenCalledExactlyOnceWith(
+      edited.context,
+      external,
+      { cwd: "/vault" },
+    );
+    expect(edited.close).toHaveBeenCalledOnce();
+    expectClosedWithShell(edited);
+  });
+
+  it("starts the program once when the dialog is confirmed again while it starts", async () => {
+    // A double click on the confirm button, or Enter pressed twice.
+    const edited = editToExternal(external, 2);
+
+    await edited.edit();
+
+    expect({
+      close: edited.close.mock.calls.length,
+      open: edited.open.mock.calls.length,
+    }).toEqual({ close: 1, open: 1 });
+    expectClosedWithShell(edited);
+  });
+
+  it("switches the tab to an integrated profile once when the dialog is confirmed again", async () => {
+    const edited = editToExternal(
+      { ...Settings.Profile.DEFAULTS.integrated, name: "Second shell" },
+      2,
+    );
+
+    await edited.edit();
+
+    expect({
+      close: edited.close.mock.calls.length,
+      setViewState: edited.setViewState.mock.calls.length,
+    }).toEqual({ close: 1, setViewState: 1 });
+    expect(edited.open).not.toHaveBeenCalled();
+    expect(edited.detach).not.toHaveBeenCalled();
+  });
+
+  it("closes the edited terminal with its own state when the program fails to start", async () => {
+    const edited = editToExternal();
+    edited.open.mockRejectedValue(new Error("spawn /bin/sh ENOENT"));
+
+    await edited.edit();
+
+    expect(edited.report).toHaveBeenCalledOnce();
+    expect(edited.close).toHaveBeenCalledOnce();
+    expectClosedWithShell(edited);
+  });
+
+  it("hands a profile of a type it does not know to the edited tab, as 3.29.0 did", async () => {
+    const edited = editToExternal({
+      ...external,
+      type: "externalTerminal",
+    } as unknown as Settings.Profile);
+
+    await edited.edit();
+
+    // The tab's own fix turns the state into an invalid profile.
+    expect(edited.close).toHaveBeenCalledOnce();
+    expect(edited.setViewState).toHaveBeenCalledOnce();
+    expect(edited.detach).not.toHaveBeenCalled();
+  });
+});
+
+describe("EditTerminalModal", () => {
+  it("can be confirmed again after a confirmation that failed", async () => {
+    const { context } = makeTerminalContext(),
+      close = vi.fn(),
+      callback = vi
+        .fn<() => Promise<void>>()
+        .mockRejectedValueOnce(new Error("failed"))
+        .mockResolvedValue(),
+      modal = new EditTerminalModal(
+        context,
+        TerminalView.State.DEFAULT,
+        callback,
+      );
+
+    await expect(modal["confirm"](close)).rejects.toThrow("failed");
+    expect(close).not.toHaveBeenCalled();
+    await modal["confirm"](close);
+
+    expect(callback).toHaveBeenCalledTimes(2);
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  /*
+   * The dialog with the close that the library hands to `confirm` from its
+   * button and its Enter handler. That close is private; `cancel` gets the
+   * same one, so a first Escape caught here gives it.
+   */
+  async function openDialog(callback: () => Promise<void>) {
+    const { Modal } = await import("obsidian"),
+      { context } = makeTerminalContext(),
+      modal = new EditTerminalModal(
+        context,
+        TerminalView.State.DEFAULT,
+        callback,
+      );
+    let close = (): void => {
+      throw new Error("No close");
+    };
+    vi.spyOn(
+      modal as unknown as { cancel: (close_: () => void) => unknown },
+      "cancel",
+    ).mockImplementationOnce((close_) => {
+      close = close_;
+    });
+    modal.close();
+    const closed = vi.spyOn(Modal.prototype, "close");
+    return {
+      closed,
+      async press(): Promise<void> {
+        await modal["confirm"](close);
+      },
+    };
+  }
+
+  it("closes once and runs its callback once for more presses while the first is at work", async () => {
+    let finish = (): void => {};
+    const callback = vi.fn(
+        async () =>
+          new Promise<void>((resolve) => {
+            finish = resolve;
+          }),
+      ),
+      dialog = await openDialog(callback);
+
+    const first = dialog.press();
+    await dialog.press();
+    await dialog.press();
+    // The later presses return at once and leave the dialog open.
+    expect(dialog.closed).not.toHaveBeenCalled();
+    finish();
+    await first;
+
+    expect(callback).toHaveBeenCalledOnce();
+    expect(dialog.closed).toHaveBeenCalledOnce();
+  });
+
+  it("guards each dialog on its own", async () => {
+    const finishers: (() => void)[] = [];
+    const callback = vi.fn(
+        async () =>
+          new Promise<void>((resolve) => {
+            finishers.push(resolve);
+          }),
+      ),
+      one = await openDialog(callback),
+      two = await openDialog(callback);
+
+    const pressed = [one.press(), two.press()];
+    await tick();
+    for (const finish of finishers) finish();
+    await Promise.all(pressed);
+
+    expect(callback).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -3345,6 +5549,71 @@ describe("TerminalView pane menu", () => {
       leaf,
       view.getViewType(),
     );
+  });
+});
+
+describe("EditTerminalModal profile dropdown", () => {
+  it("lists the profiles in this device's order, ids such as 2 and 10 too", () => {
+    const profile = Settings.Profile.DEFAULTS.integrated;
+    const profiles = {
+      first: profile,
+      second: profile,
+      third: profile,
+      2: profile,
+      10: profile,
+    };
+    const { context } = makeTerminalContext({ profiles });
+    Object.assign(context, {
+      localSettings: { value: { profileOrder: ["third", "10", "first", "2"] } },
+    });
+    // The mock row ignores its dropdown and keeps its buttons in the array
+    // it was made with; this one hands both out.
+    class DropdownRow extends Setting {
+      public override addButton(
+        configure: (button: ButtonComponent) => unknown,
+      ): this {
+        configure(new ButtonComponent(this.settingEl));
+        return this;
+      }
+
+      public override addDropdown(
+        configure: (dropdown: DropdownComponent) => unknown,
+      ): this {
+        configure(new DropdownComponent(this.settingEl));
+        return this;
+      }
+    }
+    vi.spyOn(library.UpdatableUI.prototype, "newSetting").mockImplementation(
+      function (this: library.UpdatableUI, element, configure) {
+        configure(new DropdownRow(element));
+        return this;
+      },
+    );
+    // Obsidian adds the options of an object in its key order.
+    vi.spyOn(DropdownComponent.prototype, "addOptions").mockImplementation(
+      function (this: DropdownComponent, options) {
+        for (const [id, name] of Object.entries(options)) {
+          this.addOption(id, name);
+        }
+        return this;
+      },
+    );
+    const addOption = vi.spyOn(DropdownComponent.prototype, "addOption");
+
+    const modal = new EditTerminalModal(
+      context,
+      TerminalView.State.DEFAULT,
+      vi.fn(),
+    );
+    // The mock modal has no key scope; the dialog registers Enter there.
+    Object.assign(modal, { scope: { register: vi.fn(), unregister: vi.fn() } });
+    modal.open();
+
+    expect(
+      addOption.mock.calls
+        .map(([id]) => id)
+        .filter((id) => Object.hasOwn(profiles, id)),
+    ).toEqual(["third", "10", "first", "2", "second"]);
   });
 });
 

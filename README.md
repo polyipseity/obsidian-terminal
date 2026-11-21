@@ -45,6 +45,7 @@ This file is automatically opened on first install. You can reopen it in setting
    1. Install [Python] 3.9 or above. The default ConPTY backend needs no pip packages; the ConHost backend's resizer additionally needs Python packages. Use the profile's "Copy install command" button and run the command in PowerShell, or run `python -m pip install --upgrade "psutil>=5.9.5" "pywinctl>=0.0.50" "typing_extensions>=4.7.1"` if your profile uses `python`. <!-- Keep package minimums in sync with the runtime source, `src/python-requirements.json`. -->
    2. On Windows, the plugin tries the profile's Python interpreter, then the interpreter in the plugin settings, then `python`, `python3`, and `py -3`, using the first working interpreter. Stored profile values stay unchanged. An empty profile Python field no longer disables Python on Windows; the ConHost resizer runs whenever a usable Python with its packages is found, and there is no setting to turn it off. If ConPTY is selected but no usable Python is found, its ConPTY host cannot be confirmed, or the host already failed with this Python configuration, that terminal opens with ConHost. If the ConPTY host fails while a terminal starts, that terminal shows an error and later terminals open with ConHost. The saved backend stays ConPTY; after installing or repairing Python, select "Recheck Python" in the plugin settings (or restart Obsidian) to retry ConPTY. On other platforms, configure the Python executable per profile and press the "Check" button to validate it.
    3. On Windows, ConPTY terminals run on the console host that Windows Terminal ships (`OpenConsole.exe`) when Windows Terminal 1.22 or newer is installed, which passes more terminal replies to programs. Otherwise, or when it cannot start, they use the console host built into Windows. To always use the built-in one, turn off "Windows Terminal console host" in the plugin settings.
+   4. On Windows, closing a ConPTY terminal or quitting Obsidian also ends the console programs the shell left running in a console of their own, hidden or visible. Such a console program keeps running if a program with a window is running under it when the terminal closes, for example a Python app with a window that you started in it. Apps that hand their window to another process, such as `code .` and `explorer .`, do not count. Programs with a window, programs started without a console (`DETACHED_PROCESS`), and whatever runs under either keep running; a program still running in the terminal is closed by the console host as before. To keep a console program running after the terminal closes, start it without a console, or start it from a program with a window and leave that program open until then.
 3. Enable plugin.
 4. (optional) Configure plugin settings.
 
@@ -70,11 +71,12 @@ This file is automatically opened on first install. You can reopen it in setting
   2. The path is escaped or quoted for the shell of the terminal's profile, and a notice says so when something could not be inserted.
 - Additional actions
   - Includes
-    - Clear terminal: \(1\), \(4\)
+    - Clear terminal: \(1\), \(3\), \(4\)
+    - Close terminal: \(3\), \(4\)
     - Copy terminal: \(1\)
     - Edit terminal: \(1\)
     - Export, import, or edit settings: \(2\), \(3\)
-    - Find in terminal: \(1\), \(4\)
+    - Find in terminal: \(1\), \(3\), \(4\)
     - Open documentation: \(2\), \(3\)
     - Restart terminal: \(1\)
     - Save terminal history: \(1\)
@@ -92,7 +94,8 @@ The keyboard shortcuts can be customized in hotkeys settings.
 
 - Toggle focus on last terminal: `Ctrl`+`Shift`+`` ` ``
   - Focus on last terminal: \(unbound; useful if you want separate keys for focus and unfocus\)
-- Open root directory in terminal \(integrated\): `Ctrl`+`Shift`+`H`, `Command`+`Shift`+`H` \(Apple\)
+- Open current directory in terminal \(integrated\): `Ctrl`+`Shift`+`H`, `Command`+`Shift`+`H` \(Apple\)
+  - It opens the default profile when that profile is integrated and runs on this platform, and otherwise the first integrated profile in the profile list that does. The other commands and menu items for one profile type work the same way.
   - Another plugin may use the same keys. Obsidian then shows a conflict, which you can resolve under Settings → Hotkeys.
 
 #### Terminal is focused
@@ -106,9 +109,14 @@ This behavior can be turned off via the `Intercept keys when terminal is focused
 - Find in terminal: `Ctrl`+`Shift`+`F`, `Command`+`Shift`+`F` \(Apple\)
 - Toggle focus on last terminal: `Ctrl`+`Shift`+`` ` `` \(same as above\)
   - Unfocus terminal: \(unbound; useful if you want separate keys for focus and unfocus\)
-- Open root directory or current directory in terminal \(default, external, integrated, select\) and open developer console: \(unbound, except open root directory in terminal \(integrated\) above; a hotkey you assign also works here\)
+- Command palette: `Ctrl`+`P` \(Windows\), `Command`+`P` \(Apple\)
+  - These keys are keymappings with the action `Send to Obsidian` \(Settings → Keymappings\). Obsidian runs its hotkey for a key with that action, and the shell does not get the key. Map more keys to it, or delete an entry to give its key back to the shell. On Windows, the entry keeps `Ctrl`+`P` from all programs in the terminal, such as bash in WSL, Git Bash and SSH sessions, and vim and nano. Linux has no such entry, because bash and zsh use `Ctrl`+`P`.
+  - If another device that syncs this vault still runs 3.29.0 or older, a deleted entry comes back each time this device starts after that one saved its settings, which it does at each start. To keep the key in the shell, set the entry's action to `Passthrough` instead of deleting it.
+  - A keymapping matches the character a key types. With Caps Lock on, or on a layout where the key types another letter, `Ctrl`+`P` goes to the shell.
+- Open root directory or current directory in terminal \(default, external, integrated, select\) and open developer console: \(unbound, except open current directory in terminal \(integrated\) above; a hotkey you assign also works here\)
   - A hotkey of one of these commands, the default above or one you assign, works everywhere in Obsidian. In a focused terminal it wins over a default shortcut of this list on the same keys, so do not ignore a conflict that Obsidian reports for it.
-  - The commands that open the current directory need an active file. In a focused terminal there is none, so a hotkey you assign to one of them shows a notice and does not reach the shell.
+  - The commands that open the current directory use the folder of the active file. Without one, for example in a focused terminal, on an empty tab or in the graph view, they use the folder of the file you looked at last, and the vault root when no file is open or recently opened. Their hotkeys do not reach the shell.
+  - With `Add to command` off, these commands do nothing. In a focused terminal their hotkeys, the default above included, then go to the shell.
 
 ### Theming
 
@@ -125,6 +133,8 @@ Theming is possible. However, there is no user-friendly interface for now.
 This plugin comes with several profile presets that you can reference.
 
 When setting up a terminal profile, you need to distinguish between shells and terminal emulators. (Search online if needed.) Generally, integrated profiles only work with shells while external ones only work with terminal emulators.
+
+The profiles sync with your vault, but the default profile and the order of the profile list belong to each device. Choosing a default or moving a profile on one device leaves your other devices as they are. On a new device, after Obsidian's local storage is cleared, or after going back to an older version of the plugin, choose the default profile again. Undo, Reload and Reset under All settings change only the synced settings, not this device's default profile and order. If they remove the profile that is this device's default, choose a default again. The `defaultProfile` value in the plugin's settings file is kept only for devices that run an older version of the plugin.
 
 #### Examples
 
@@ -187,7 +197,7 @@ The full API is available from [`src/@types/obsidian-terminal.ts`](src/%40types/
 - Is the plugin useful on mobile?
   - Compared to on desktop, it is much less useful. The only use for it for now is opening a developer console on mobile.
 - Why do hotkeys not work?
-  - If the terminal is in focus, all Obsidian hotkeys are disabled so that you can type special characters into the terminal. You can unfocus the terminal by pressing `Ctrl`+`Shift`+`` ` ``, then you can use Obsidian hotkeys again. Alternatively, disable the `Intercept keys when terminal is focused` setting to keep Obsidian hotkeys working while the terminal has focus.
+  - If the terminal is in focus, all Obsidian hotkeys are disabled so that you can type special characters into the terminal. You can unfocus the terminal by pressing `Ctrl`+`Shift`+`` ` ``, then you can use Obsidian hotkeys again. Alternatively, disable the `Intercept keys when terminal is focused` setting to keep Obsidian hotkeys working while the terminal has focus. To let one key through, map it to the keymapping action `Send to Obsidian`, as the built-in `Ctrl`+`P` on Windows and `Command`+`P` on macOS are.
 
 ## Contributing
 
@@ -288,7 +298,7 @@ Obsidian's [community Scorecard][community plugin scorecard] flags the plugin fo
 
 - **Environment variables.** Terminals inherit Obsidian's environment, such as `HOME` and `PATH`. The plugin removes variables left by the terminal or editor Obsidian was started from (such as `TMUX` and `VSCODE_*`) and, for integrated terminals, sets `TERM`, `COLORTERM`, `TERM_PROGRAM`, `TERM_PROGRAM_VERSION`, and `PYTHONIOENCODING`. Your profile's variables are applied last. The environment goes only to the processes the plugin starts.
 - **System `PATH` and Windows version.** Obsidian started from a desktop launcher often has a short `PATH`. To find shells and Python, the plugin adds the system `PATH`: from `/usr/libexec/path_helper` on macOS, `/etc/environment` or `getconf PATH` on Linux, and the registry on Windows. On Windows, it also reads the OS build number, which tells the terminal display how ConPTY wraps lines.
-- **Files outside the vault.** The plugin runs the shells, terminal emulators, and Python interpreters named in your profiles or settings. On Windows, when no configured Python executable works, it tries `python`, `python3`, and the `py` launcher (run with `-3`) from `PATH`. On Windows, it writes the ConPTY host script (`obsidian-terminal-conpty-*.py`) to the system temporary folder and keeps it for later sessions. With the ConHost backend, it also writes a `.bat` file holding the command line to that folder and deletes that file when the terminal exits. With the Windows Terminal console host setting on (the default), the ConPTY host script asks Windows where the installed Windows Terminal packages are, through the documented package API (`GetPackagesByPackageFamily` and `GetPackagePathByFullName`), and starts the `OpenConsole.exe` it finds there. Windows does not let other programs start files inside Windows Terminal's install folder, so the script copies that `OpenConsole.exe` to `%LOCALAPPDATA%\obsidian-terminal\console-host` and starts the copy. When a drop on a terminal names files by URI, as a drag out of VS Code does, it asks the file system whether each path is a file or a folder before it inserts the path. It does not read the files.
+- **Files outside the vault.** The plugin runs the shells, terminal emulators, and Python interpreters named in your profiles or settings. On Windows, when no configured Python executable works, it tries `python`, `python3`, and the `py` launcher (run with `-3`) from `PATH`. On Windows, it writes the ConPTY host script (`obsidian-terminal-conpty-*.py`) to the system temporary folder and keeps it for later sessions. With the ConHost backend, it also writes a short `.bat` file to that folder, which starts the program and records its exit code through a second `C:\Windows\System32\cmd.exe /d`, and deletes that file when the terminal exits. The program and its arguments reach that file through the environment of `conhost.exe`, and the file clears them before the program starts. With the Windows Terminal console host setting on (the default), the ConPTY host script asks Windows where the installed Windows Terminal packages are, through the documented package API (`GetPackagesByPackageFamily` and `GetPackagePathByFullName`), and starts the `OpenConsole.exe` it finds there. Windows does not let other programs start files inside Windows Terminal's install folder, so the script copies that `OpenConsole.exe` to `%LOCALAPPDATA%\obsidian-terminal\console-host` and starts the copy. When a drop on a terminal names files by URI, as a drag out of VS Code does, it asks the file system whether each path is a file or a folder before it inserts the path. It does not read the files.
 
 ### Supported versions
 

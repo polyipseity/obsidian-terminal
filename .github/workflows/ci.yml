@@ -147,7 +147,7 @@ jobs:
       - name: Run ConPTY host and ConHost resizer tests
         run: >-
           uv run --locked --python ${{ matrix.python }} pytest
-          -n 0 --no-cov
+          -n 0 --no-cov -rs
           tests/src/terminal/test_win32_conpty.py
           tests/src/terminal/test_win32_resizer.py
 
