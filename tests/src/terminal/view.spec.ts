@@ -6415,3 +6415,187 @@ describe("ConPTY reflow on Windows Terminal's console host", () => {
     expect(terminal.options.windowsPty).toEqual({});
   });
 });
+
+describe("double-clicking a terminal tab title to rename it", () => {
+  function child(parent: Element, className: string): HTMLElement {
+    const el = document.createElement("span");
+    el.className = className;
+    parent.append(el);
+    return el;
+  }
+
+  async function openTab(headerReady = true) {
+    const { context, workspace } = makeTerminalContext({
+        showTerminalTabPrefix: false,
+        tabStatus: "none",
+      }),
+      { leaf, view } = makeTerminalLeaf(context),
+      header = document.createElement("div"),
+      title = child(header, "workspace-tab-header-inner-title"),
+      opened = vi
+        .spyOn(library.DialogModal.prototype, "open")
+        .mockImplementation(vi.fn());
+    title.textContent = "Terminal";
+    if (headerReady) Object.assign(leaf, { tabHeaderEl: header });
+    await view["onOpen"]();
+    return { context, header, leaf, opened, title, view, workspace };
+  }
+
+  function click(target: Element, type = "dblclick", button = 0): MouseEvent {
+    const event = new MouseEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      button,
+    });
+    target.dispatchEvent(event);
+    return event;
+  }
+
+  it("opens one dialog for the title, including a double-click while it is open", async () => {
+    const { opened, title } = await openTab();
+    click(child(title, "label"));
+    expect(opened).toHaveBeenCalledOnce();
+    click(title);
+    expect(opened).toHaveBeenCalledOnce();
+  });
+
+  it("lets a single click reach tab activation", async () => {
+    const { header, opened, title } = await openTab(),
+      activate = vi.fn(),
+      tabs = document.createElement("div");
+    tabs.append(header);
+    tabs.addEventListener("click", activate);
+    expect(click(title, "click").defaultPrevented).toBe(false);
+    expect(activate).toHaveBeenCalledOnce();
+    expect(opened).not.toHaveBeenCalled();
+  });
+
+  it.each([1, 2])(
+    "ignores a title double-click with button %i",
+    async (button) => {
+      const { opened, title } = await openTab();
+      click(title, "dblclick", button);
+      expect(opened).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    "workspace-tab-header-inner-icon",
+    "tts-mk tts-mk-badge",
+    "workspace-tab-header-inner-close-button",
+  ])("ignores a double-click inside %s", async (className) => {
+    const { opened, title } = await openTab();
+    // Even if a theme or another plugin nests the control inside the title.
+    click(child(child(title, className), "glyph"));
+    expect(opened).not.toHaveBeenCalled();
+  });
+
+  it("leaves a non-terminal tab untouched when a leaf changes view", async () => {
+    const { header, leaf, opened, title } = await openTab(),
+      onDoubleClick = vi.fn(),
+      tabs = document.createElement("div");
+    tabs.append(header);
+    tabs.addEventListener("dblclick", onDoubleClick);
+    leaf.view = new WorkspaceLeaf().view;
+    expect(click(title).defaultPrevented).toBe(false);
+    expect(onDoubleClick).toHaveBeenCalledOnce();
+    expect(opened).not.toHaveBeenCalled();
+  });
+
+  it("handles the title that Obsidian redraws", async () => {
+    const { header, opened, title } = await openTab();
+    header.replaceChildren();
+    click(child(header, title.className));
+    expect(opened).toHaveBeenCalledOnce();
+  });
+
+  it("attaches when a restored tab receives its header", async () => {
+    const { header, leaf, opened, title, workspace } = await openTab(false);
+    click(title);
+    expect(opened).not.toHaveBeenCalled();
+    Object.assign(leaf, { tabHeaderEl: header });
+    workspace.trigger("layout-change");
+    click(title);
+    expect(opened).toHaveBeenCalledOnce();
+  });
+
+  it("moves the listener when the leaf receives a different header", async () => {
+    const { leaf, opened, title, workspace } = await openTab(),
+      next = document.createElement("div");
+    Object.assign(leaf, { tabHeaderEl: next });
+    workspace.trigger("layout-change");
+    click(title);
+    expect(opened).not.toHaveBeenCalled();
+    click(child(next, title.className));
+    expect(opened).toHaveBeenCalledOnce();
+  });
+
+  it("removes the listener when the terminal view closes", async () => {
+    const { opened, title, view } = await openTab();
+    view.unload();
+    click(title);
+    expect(opened).not.toHaveBeenCalled();
+  });
+
+  it("keeps the draft through an OSC title change, trims on Enter, discards on cancel and clears a blank name", async () => {
+    const { context, leaf, opened, title, view, workspace } = await openTab(),
+      // Use the shared control mock. Its setValue calls the dialog's onChange.
+      { TextComponent } =
+        await vi.importActual<typeof import("obsidian")>("obsidian"),
+      field = new TextComponent(document.createElement("div")),
+      registerKey = vi.spyOn(context.app.scope, "register");
+    Object.assign(leaf, { updateHeader: vi.fn() });
+    Object.assign(workspace, { requestUpdateLayout: vi.fn() });
+    // Supply the setting controls and key scope missing from the host mock.
+    vi.spyOn(library.UpdatableUI.prototype, "newSetting").mockImplementation(
+      function (this: library.UpdatableUI, element, configure) {
+        const row = new Setting(element);
+        Object.assign(row, { controlEl: element });
+        vi.spyOn(row, "addButton").mockReturnValue(row);
+        vi.spyOn(row, "addText").mockImplementation((draw) => {
+          draw(field);
+          return row;
+        });
+        configure(row);
+        return this;
+      },
+    );
+    opened.mockImplementation(function (this: library.DialogModal) {
+      Object.assign(this, { scope: context.app.scope });
+      this.onOpen();
+    });
+    async function enter(): Promise<void> {
+      const binding = registerKey.mock.calls.at(-1);
+      if (binding?.[1] !== "enter") throw new Error("Missing Enter binding");
+      await binding[2](new KeyboardEvent("keydown", { key: "Enter" }), {
+        key: "Enter",
+        modifiers: "",
+        vkey: "Enter",
+      });
+    }
+
+    click(title);
+    field.setValue("  Build  ");
+    // xterm's onTitleChange writes this setter for OSC 0/2.
+    view["rawTitle"] = "running";
+    expect(field.getValue()).toBe("  Build  ");
+    expect(view.getDisplayText()).toBe("running");
+    await enter();
+    expect(view.getDisplayText()).toBe("Build");
+
+    click(title);
+    expect(field.getValue()).toBe("Build");
+    field.setValue("discard this");
+    const dialog = opened.mock.contexts.at(-1);
+    if (!(dialog instanceof library.DialogModal))
+      throw new Error("Missing dialog");
+    dialog.close();
+    expect(view.getDisplayText()).toBe("Build");
+
+    click(title);
+    expect(field.getValue()).toBe("Build");
+    field.setValue("   ");
+    await enter();
+    expect(view.getDisplayText()).toBe("running");
+  });
+});

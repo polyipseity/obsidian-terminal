@@ -487,6 +487,7 @@ export class TerminalView extends ItemView {
   static #namespacedType: string;
   static #focusedScopeIDs = new Set<string>();
   #rawTitle0 = "";
+  #renameDialogOpen = false;
   #emulator0: TerminalView.EMULATOR | null = null;
   #find0:
     readonly [ReturnType<typeof FindComponent>, FindComponent$.Props] | null =
@@ -1219,6 +1220,7 @@ export class TerminalView extends ItemView {
   }
 
   protected openRenameDialog(): void {
+    if (this.#renameDialogOpen) return;
     const { context, titleGenerated, state } = this,
       {
         language: { value: i18n },
@@ -1231,7 +1233,10 @@ export class TerminalView extends ItemView {
         state.userTitle = userTitle.trim();
         this.state = state;
       },
-      draw(ui, contentEl) {
+      draw: (ui, contentEl) => {
+        ui.finally(() => {
+          this.#renameDialogOpen = false;
+        });
         ui.newSetting(contentEl, (setting) => {
           const { controlEl } = setting.addText((component) => {
             component
@@ -1253,6 +1258,39 @@ export class TerminalView extends ItemView {
         return i18n.t("components.terminal.menus.rename-prompt");
       },
     }).open();
+    this.#renameDialogOpen = true;
+  }
+
+  private listenForTabRename(): void {
+    const {
+      leaf,
+      app: { workspace },
+    } = this;
+    // The header can appear after the view opens or change when the tab moves.
+    let header: HTMLElement | null = null;
+    const rename = ({ button, target }: MouseEvent): void => {
+      if (
+        button === 0 &&
+        leaf.view === this &&
+        instanceOf(target, Element) &&
+        !target.closest(
+          ".workspace-tab-header-inner-icon, .tts-mk, .workspace-tab-header-inner-close-button",
+        ) &&
+        target.closest(".workspace-tab-header-inner-title")
+      ) {
+        this.openRenameDialog();
+      }
+    };
+    const attach = (): void => {
+      const next = tabHeaderOf(leaf);
+      if (next === header) return;
+      header?.removeEventListener("dblclick", rename);
+      header = next;
+      header?.addEventListener("dblclick", rename);
+    };
+    attach();
+    this.registerEvent(workspace.on("layout-change", attach));
+    this.register(() => header?.removeEventListener("dblclick", rename));
   }
 
   protected override async onOpen(): Promise<void> {
@@ -1298,6 +1336,7 @@ export class TerminalView extends ItemView {
       },
       { capture: true, passive: true },
     );
+    this.listenForTabRename();
     this.showTabIconSize();
     this.register(whileTabStatusShown(settings, () => this.showTabStatus()));
     /*
