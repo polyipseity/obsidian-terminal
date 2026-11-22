@@ -1,5 +1,6 @@
 // @ts-check
 import eslintJs from "@eslint/js";
+import eslintJson from "@eslint/json";
 import eslintPrettier from "eslint-config-prettier/flat";
 import eslintObsidianMd from "eslint-plugin-obsidianmd";
 import { defineConfig, includeIgnoreFile } from "eslint/config";
@@ -23,9 +24,14 @@ export const FILE_GLOBS = [
 ];
 
 export default defineConfig([
-  eslintJs.configs.recommended,
-  ...eslintTs.configs.strictTypeChecked,
-  eslintPrettier,
+  {
+    files: FILE_GLOBS,
+    extends: [
+      eslintJs.configs.recommended,
+      ...eslintTs.configs.strictTypeChecked,
+      eslintPrettier,
+    ],
+  },
   // Obsidian
   ...eslintObsidianMd.configs.recommendedWithLocalesEn.filter(
     (config) => !config.name?.endsWith("typescript-eslint/base"),
@@ -33,8 +39,6 @@ export default defineConfig([
   includeIgnoreFile(path.join(import.meta.dirname, ".gitignore")),
   {
     files: FILE_GLOBS,
-  },
-  {
     languageOptions: {
       parserOptions: {
         projectService: {
@@ -55,6 +59,18 @@ export default defineConfig([
       ],
     },
   },
+  {
+    files: ["src/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "error",
+    },
+  },
+  {
+    files: ["scripts/**/*.mjs"],
+    rules: {
+      "obsidianmd/no-global-this": "warn",
+    },
+  },
   // Scripts and tests run on Node.js — provide Node globals so `console` is defined
   {
     files: ["*.mjs", "*.mts", "scripts/**", "tests/**"],
@@ -71,11 +87,22 @@ export default defineConfig([
       "obsidianmd/rule-custom-message": "off",
     },
   },
-  // JSON files are data declarations, not executable code — expression and UI-text rules don't apply
+  {
+    files: ["tests/**"],
+    rules: {
+      // Scoped to tests/**: xterm and its add-ons read KeyboardEvent.keyCode, so these specs construct events with it on
+      // purpose. The rule still applies to production code.
+      "@typescript-eslint/no-deprecated": "off",
+      // Scoped to tests/**: production class instances are checked; the tests assign mocks on purpose and their assertions do not change.
+      "@typescript-eslint/no-unsafe-class-instance-assignment": "off",
+    },
+  },
   {
     files: ["assets/**/*.json"],
+    plugins: { json: eslintJson },
+    language: "json/json",
     rules: {
-      "@typescript-eslint/no-unused-expressions": "off",
+      "json/no-duplicate-keys": "error",
       "obsidianmd/ui/sentence-case-json": "off",
     },
   },

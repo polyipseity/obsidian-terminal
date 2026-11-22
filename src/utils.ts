@@ -1,9 +1,5 @@
 import { createDocumentFragment } from "@polyipseity/obsidian-plugin-library";
-// eslint-disable-next-line eslint-comments/no-restricted-disable -- See below.
-// eslint-disable-next-line obsidianmd/no-nodejs-modules -- Type-only import.
 import type { ChildProcess } from "node:child_process";
-// eslint-disable-next-line eslint-comments/no-restricted-disable -- See below.
-// eslint-disable-next-line obsidianmd/no-nodejs-modules -- Type-only import.
 import type { Writable } from "node:stream";
 import type { Setting } from "obsidian";
 import type { AsyncOrSync } from "ts-essentials";
