@@ -273,6 +273,7 @@ export function newFocusedKeyListener(
 
 class RenameTerminalModal extends Modal {
   readonly #form = createChildElement(this.contentEl, "form");
+  readonly #label = createChildElement(this.#form, "label");
   readonly #input = createChildElement(this.#form, "input");
   readonly #hint = createChildElement(this.#form, "p");
   readonly #buttons = createChildElement(this.#form, "div");
@@ -298,6 +299,9 @@ class RenameTerminalModal extends Modal {
     this.modalEl.setAttribute("aria-labelledby", this.titleEl.id);
     this.#form.classList.add("terminal:rename-form");
     input.classList.add("terminal:rename-input");
+    input.id = `terminal-rename-input-${id}`;
+    this.#label.htmlFor = input.id;
+    this.#label.classList.add("terminal:rename-label-sr");
     input.type = "text";
     input.spellcheck = false;
     input.autocomplete = "off";
@@ -326,40 +330,44 @@ class RenameTerminalModal extends Modal {
       readonly keyCode: number;
     }): boolean => composing || event.isComposing || event.keyCode === 229;
     // Obsidian dispatches scope bindings during window capture, before an
-    // input listener can stop Escape. A child scope gets first refusal.
-    const scope = new Scope(this.scope);
+    // input listener can stop Escape. Its first matching named binding wins,
+    // including when the handler returns undefined to leave the IME alone.
+    const parent = this.scope,
+      scope = new Scope(parent);
     scope.register([], "Escape", (event) => {
-      if (
-        event.defaultPrevented ||
-        (event.target === input && isComposing(event))
-      )
-        return;
+      if (event.defaultPrevented || isComposing(event)) return;
       event.preventDefault();
       this.close();
     });
-    // Recent Obsidian versions keep the modal's focus trap on the top scope.
-    if ("tabFocusContainerEl" in scope) {
-      scope.tabFocusContainerEl = this.containerEl;
+    if ("tabFocusContainerEl" in parent) {
+      scope.tabFocusContainerEl = parent.tabFocusContainerEl;
     }
     this.scope = scope;
     input.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && isComposing(event)) event.stopPropagation();
     });
+    // Implicit submission can follow compositionend in the same keydown.
+    // Keep the native candidate confirmation and suppress only its submit.
+    let composingEnter = false;
     this.#form.addEventListener("keydown", (event) => {
-      if (
-        event.key === "Enter" &&
-        (isComposing(event) ||
-          event.altKey ||
-          event.ctrlKey ||
-          event.metaKey ||
-          event.shiftKey)
+      if (event.key !== "Enter") return;
+      composingEnter = isComposing(event);
+      if (composingEnter) {
+        activeSelf(input).setTimeout(() => {
+          composingEnter = false;
+        }, 0);
+      } else if (
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.shiftKey
       ) {
         event.preventDefault();
       }
     });
     this.#form.addEventListener("submit", (event) => {
       event.preventDefault();
-      if (this.#closing) return;
+      if (this.#closing || composingEnter) return;
       submit(input.value.replace(/[\r\n\0]+/g, " ").trim());
       this.close();
     });
@@ -371,9 +379,8 @@ class RenameTerminalModal extends Modal {
   public updateLabels(): void {
     const { value: i18n } = this.context.language;
     this.titleEl.textContent = i18n.t("components.terminal.rename-modal.title");
-    this.#input.setAttribute(
-      "aria-label",
-      i18n.t("components.terminal.rename-modal.input-label"),
+    this.#label.textContent = i18n.t(
+      "components.terminal.rename-modal.input-label",
     );
     this.#hint.textContent = i18n.t("components.terminal.rename-modal.hint");
     this.#rename.textContent = i18n.t(
@@ -390,6 +397,10 @@ class RenameTerminalModal extends Modal {
       this.context.language.value.t(
         "components.terminal.rename-modal.placeholder-automatic",
       );
+  }
+
+  public get closing(): boolean {
+    return this.#closing;
   }
 
   public focusInput(): void {
@@ -639,6 +650,7 @@ export class TerminalView extends ItemView {
   static #namespacedType: string;
   static #focusedScopeIDs = new Set<string>();
   #rawTitle0 = "";
+  readonly #renameMenus = new WeakSet<Menu>();
   #renameDialog: RenameTerminalModal | null = null;
   #emulator0: TerminalView.EMULATOR | null = null;
   #find0:
@@ -1046,7 +1058,7 @@ export class TerminalView extends ItemView {
           checkCallback: withLastFocusedView(
             (checking, view) => {
               if (!checking) {
-                view.openRenameDialog();
+                view.openRenameDialog("command");
               }
               return true;
             },
@@ -1235,42 +1247,53 @@ export class TerminalView extends ItemView {
           .onClick(() => {
             this.startEmulator(true);
           }),
-      )
-      .addItem((item) =>
-        item
-          .setTitle(i18n.t("components.terminal.menus.rename"))
-          .setIcon(i18n.t("asset:components.terminal.menus.rename-icon"))
-          .onClick(() => {
-            this.openRenameDialog();
-          }),
-      )
-      .addSeparator()
-      .addItem((item) =>
-        item
-          .setTitle(i18n.t("components.terminal.menus.save-as-HTML"))
-          .setIcon(i18n.t("asset:components.terminal.menus.save-as-HTML-icon"))
-          .setDisabled(!this.emulator?.addons.serialize)
-          .onClick(async () => {
-            const ser = this.emulator?.addons.serialize;
-            if (!ser) {
-              return;
-            }
-            await saveFileAs(
-              context,
-              adapter,
-              new File(
-                [
-                  ser.serializeAsHTML({
-                    includeGlobalBackground: false,
-                    onlySelection: false,
-                  }),
-                ],
-                `${this.title}.html`,
-                { type: `text/html; charset=${DEFAULT_ENCODING};` },
-              ),
-            );
-          }),
       );
+    this.addRenameMenuItem(menu, source === "more-options" ? "pane" : "tab");
+    menu.addSeparator().addItem((item) =>
+      item
+        .setTitle(i18n.t("components.terminal.menus.save-as-HTML"))
+        .setIcon(i18n.t("asset:components.terminal.menus.save-as-HTML-icon"))
+        .setDisabled(!this.emulator?.addons.serialize)
+        .onClick(async () => {
+          const ser = this.emulator?.addons.serialize;
+          if (!ser) {
+            return;
+          }
+          await saveFileAs(
+            context,
+            adapter,
+            new File(
+              [
+                ser.serializeAsHTML({
+                  includeGlobalBackground: false,
+                  onlySelection: false,
+                }),
+              ],
+              `${this.title}.html`,
+              { type: `text/html; charset=${DEFAULT_ENCODING};` },
+            ),
+          );
+        }),
+    );
+  }
+
+  public override onTabMenu(menu: Menu): void {
+    super.onTabMenu?.(menu);
+    this.addRenameMenuItem(menu, "tab");
+  }
+
+  private addRenameMenuItem(menu: Menu, source: "pane" | "tab"): void {
+    if (this.#renameMenus.has(menu)) return;
+    this.#renameMenus.add(menu);
+    const { value: i18n } = this.context.language;
+    menu.addItem((item) =>
+      item
+        .setTitle(i18n.t("components.terminal.menus.rename"))
+        .setIcon(i18n.t("asset:components.terminal.menus.rename-icon"))
+        .onClick(() => {
+          this.openRenameDialog(source);
+        }),
+    );
   }
 
   protected focus(): void {
@@ -1371,14 +1394,17 @@ export class TerminalView extends ItemView {
     }
   }
 
-  protected openRenameDialog(fromDoubleClick = false): void {
-    if (this.#renameDialog) {
+  protected openRenameDialog(
+    source: "command" | "pane" | "tab" | "double-click",
+  ): void {
+    if (this.#renameDialog && !this.#renameDialog.closing) {
       this.#renameDialog.focusInput();
       return;
     }
     const restoreFocus =
-      fromDoubleClick ||
-      this.isFocused ||
+      source === "double-click" ||
+      source === "pane" ||
+      this.isLookedAt ||
       this.app.workspace.getActiveViewOfType(TerminalView) === this;
     const modal = new RenameTerminalModal(
       this.context,
@@ -1400,10 +1426,16 @@ export class TerminalView extends ItemView {
         this.#renameDialog = null;
         if (restoreFocus) {
           activeSelf(this.contentEl).queueMicrotask(() => {
+            const doc = this.contentEl.ownerDocument,
+              focused = doc.activeElement;
             if (
               !this.#renameDialog &&
               this.leaf.view === this &&
-              this.contentEl.offsetParent !== null
+              this.contentEl.offsetParent !== null &&
+              doc.hasFocus() &&
+              (focused === doc.body ||
+                modal.containerEl.contains(focused) ||
+                this.contentEl.contains(focused))
             ) {
               this.emulator?.terminal.focus();
             }
@@ -1442,13 +1474,13 @@ export class TerminalView extends ItemView {
         !target.closest(
           ".workspace-tab-header-inner-icon, .tts-mk, .workspace-tab-header-inner-close-button, " +
             ".workspace-tab-header-status-container, .workspace-tab-header-status-icon, " +
-            "button, a, [role='button'], .clickable-icon",
+            "input, select, textarea, [contenteditable], button, a, [role='button'], .clickable-icon",
         ) &&
         target.closest(".workspace-tab-header-inner-title")
       ) {
         event.preventDefault();
         event.stopPropagation();
-        this.openRenameDialog(true);
+        this.openRenameDialog("double-click");
       }
     };
     const attach = (): void => {

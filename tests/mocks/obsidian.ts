@@ -1025,17 +1025,20 @@ export class Scope {
   }
 
   /**
-   * Runs the matching handlers (`null` matches anything) until one returns
-   * `false`, then defers to the parent scope, as Obsidian's scopes do.
+   * The first matching named binding wins even if it returns undefined.
+   * Only a wildcard with no result lets dispatch continue.
    */
   handleKey(evt: KeyboardEvent, ctx: KeymapContext): unknown {
     for (const { modifiers, key, func } of this.keys) {
       if (
         (modifiers === null || modifiers === ctx.modifiers) &&
-        (key === null || key === ctx.key) &&
-        func(evt, ctx) === false
+        (key === null ||
+          key === ctx.vkey ||
+          key.toLowerCase() === ctx.key?.toLowerCase())
       ) {
-        return false;
+        const result = func(evt, ctx);
+        if (result !== undefined || key !== null || modifiers !== null)
+          return result;
       }
     }
     return this.parent?.handleKey(evt, ctx);
@@ -1726,6 +1729,8 @@ export class DropdownComponent {
 // ===== Modal & Notice =====
 
 export class Modal extends Component {
+  readonly containerEl = document.createElement("div");
+  scope = Object.assign(new Scope(), { tabFocusContainerEl: this.containerEl });
   app: App;
   titleEl: HTMLElement = document.createElement("div");
   contentEl: HTMLElement = document.createElement("div");
@@ -1735,6 +1740,12 @@ export class Modal extends Component {
   constructor(app: App) {
     super();
     this.app = app;
+    this.scope.register([], "Escape", (evt) => {
+      if (!evt.defaultPrevented) {
+        evt.preventDefault();
+        this.close();
+      }
+    });
   }
 
   open(): void {
