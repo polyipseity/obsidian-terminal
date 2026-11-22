@@ -170,12 +170,19 @@
         "edit": "$t(generic.edit)",
         "find": "$t(generic.find)",
         "rename": "$t(generic.rename, capitalize)",
-        "rename-prompt": "$t(generic.rename, capitalize) $t(generic.terminal)",
         "restart": "$t(generic.restart)",
         "save-as-HTML": "$t(generic.file-extensions.HTML)로 $t(generic.save)"
       },
       "name": {
         "profile-type": "$t(generic.profile-types.{{type}})"
+      },
+      "rename-modal": {
+        "cancel": "$t(generic.cancel, capitalize)",
+        "hint": "Leave blank to use the automatic name.",
+        "input-label": "Terminal name",
+        "placeholder-automatic": "Automatic",
+        "rename": "$t(generic.rename, capitalize)",
+        "title": "$t(generic.rename, capitalize) $t(generic.terminal)"
       },
       "restored-history": "\r\n * {{datetime, datetime(dateStyle: full, timeStyle: full)}}에 $t(generic.history) $t(generic.restore_past)\r\n\r\n",
       "unsupported-profile": "지원되지 않는 $t(generic.profile):\r\n{{profile}}\r\n"

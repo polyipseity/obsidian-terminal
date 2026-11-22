@@ -21,3 +21,18 @@
     )
   );
 }
+
+.terminal\:rename-modal {
+  width: min(var(--dialog-width, 440px), 90vw);
+}
+
+.terminal\:rename-input {
+  width: 100%;
+}
+
+.terminal\:rename-hint {
+  margin: var(--size-4-2) 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: var(--line-height-tight);
+}

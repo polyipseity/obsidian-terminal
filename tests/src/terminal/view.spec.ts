@@ -27,7 +27,7 @@ import {
   DropdownComponent,
   type Menu,
   type MenuItem,
-  TextComponent as ObsidianTextComponent,
+  Modal,
   Setting,
   View,
   WorkspaceLeaf,
@@ -38,6 +38,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
+import { PluginLocales } from "../../../assets/locales.js";
 import type { TerminalPlugin } from "../../../src/main.js";
 import { TERMINAL_CONPTY_HOST_EXIT_WAIT } from "../../../src/magic.js";
 import { tabIconId } from "../../../src/icons.js";
@@ -70,6 +71,7 @@ import {
   newFocusedKeyListener,
   settleTerminalBackendOptions,
 } from "../../../src/terminal/view.js";
+import { Scope as MockScope } from "../../mocks/obsidian.js";
 import { microtasks, pseudoterminal, tick } from "../../support/helpers.js";
 
 const platform = vi.hoisted(() => ({ windows: false }));
@@ -6433,23 +6435,67 @@ describe("double-clicking a terminal tab title to rename it", () => {
       { leaf, view } = makeTerminalLeaf(context),
       header = document.createElement("div"),
       title = child(header, "workspace-tab-header-inner-title"),
-      opened = vi
-        .spyOn(library.DialogModal.prototype, "open")
-        .mockImplementation(vi.fn());
+      // eslint-disable-next-line @typescript-eslint/unbound-method -- Called below with the actual modal receiver.
+      open = Modal.prototype.open,
+      // eslint-disable-next-line @typescript-eslint/unbound-method -- Called below with the actual modal receiver.
+      close = Modal.prototype.close,
+      opened = vi.spyOn(Modal.prototype, "open").mockImplementation(function (
+        this: Modal,
+      ) {
+        // The shared Modal handles lifecycle but leaves its DOM detached.
+        this.modalEl.append(this.titleEl, this.contentEl);
+        document.body.append(this.modalEl);
+        this.modalEl.addEventListener(
+          "keydown",
+          (event) => {
+            if (this.scope instanceof MockScope) {
+              this.scope.handleKey(event, {
+                key: event.key,
+                vkey: event.key,
+                modifiers: "",
+              });
+            }
+          },
+          { capture: true },
+        );
+        open.call(this);
+      });
+    vi.spyOn(Modal.prototype, "close").mockImplementation(function (
+      this: Modal,
+    ) {
+      this.modalEl.remove();
+      close.call(this);
+    });
+    Object.assign(leaf, { updateHeader: vi.fn() });
+    Object.assign(workspace, { requestUpdateLayout: vi.fn() });
+    Object.assign(context.language, {
+      onChangeLanguage: new library.EventEmitterLite<readonly [string]>(),
+    });
     title.textContent = "Terminal";
     if (headerReady) Object.assign(leaf, { tabHeaderEl: header });
     await view["onOpen"]();
     return { context, header, leaf, opened, title, view, workspace };
   }
 
-  function click(target: Element, type = "dblclick", button = 0): MouseEvent {
+  function click(
+    target: Element,
+    type = "dblclick",
+    init: MouseEventInit = {},
+  ): MouseEvent {
     const event = new MouseEvent(type, {
       bubbles: true,
       cancelable: true,
-      button,
+      ...init,
     });
     target.dispatchEvent(event);
     return event;
+  }
+
+  function renameByDoubleClick(title: Element, view: TerminalView): void {
+    expect(click(title).defaultPrevented).toBe(true);
+    controls().input.value = "Build";
+    pressEnter();
+    expect(view["state"].userTitle).toBe("Build");
   }
 
   it("opens one dialog for the title, including a double-click while it is open", async () => {
@@ -6461,7 +6507,7 @@ describe("double-clicking a terminal tab title to rename it", () => {
   });
 
   it("lets a single click reach tab activation", async () => {
-    const { header, opened, title } = await openTab(),
+    const { header, opened, title, view } = await openTab(),
       activate = vi.fn(),
       tabs = document.createElement("div");
     tabs.append(header);
@@ -6469,30 +6515,50 @@ describe("double-clicking a terminal tab title to rename it", () => {
     expect(click(title, "click").defaultPrevented).toBe(false);
     expect(activate).toHaveBeenCalledOnce();
     expect(opened).not.toHaveBeenCalled();
+    renameByDoubleClick(title, view);
   });
 
-  it.each([1, 2])(
-    "ignores a title double-click with button %i",
-    async (button) => {
-      const { opened, title } = await openTab();
-      click(title, "dblclick", button);
+  it.each([
+    { button: 1 },
+    { button: 2 },
+    { altKey: true },
+    { ctrlKey: true },
+    { metaKey: true },
+    { shiftKey: true },
+  ])("ignores a title double-click with %j", async (init) => {
+    const { opened, title, view } = await openTab();
+    expect(click(title, "dblclick", init).defaultPrevented).toBe(false);
+    expect(opened).not.toHaveBeenCalled();
+    renameByDoubleClick(title, view);
+  });
+
+  it.each([
+    ["span", "workspace-tab-header-inner-icon"],
+    ["span", "tts-mk tts-mk-badge"],
+    ["span", "workspace-tab-header-inner-close-button"],
+    ["span", "workspace-tab-header-status-container"],
+    ["span", "workspace-tab-header-status-icon"],
+    ["span", "clickable-icon"],
+    ["button", ""],
+    ["a", ""],
+    ["span", "", "button"],
+  ])(
+    "ignores a double-click inside %s %s %s",
+    async (tag, className, role = "") => {
+      const { opened, title, view } = await openTab();
+      // Even if a theme or another plugin nests the control inside the title.
+      const control = document.createElement(tag);
+      control.className = className;
+      if (role) control.setAttribute("role", role);
+      title.append(control);
+      expect(click(child(control, "glyph")).defaultPrevented).toBe(false);
       expect(opened).not.toHaveBeenCalled();
+      renameByDoubleClick(title, view);
     },
   );
 
-  it.each([
-    "workspace-tab-header-inner-icon",
-    "tts-mk tts-mk-badge",
-    "workspace-tab-header-inner-close-button",
-  ])("ignores a double-click inside %s", async (className) => {
-    const { opened, title } = await openTab();
-    // Even if a theme or another plugin nests the control inside the title.
-    click(child(child(title, className), "glyph"));
-    expect(opened).not.toHaveBeenCalled();
-  });
-
   it("leaves a non-terminal tab untouched when a leaf changes view", async () => {
-    const { header, leaf, opened, title } = await openTab(),
+    const { header, leaf, opened, title, view } = await openTab(),
       onDoubleClick = vi.fn(),
       tabs = document.createElement("div");
     tabs.append(header);
@@ -6501,6 +6567,8 @@ describe("double-clicking a terminal tab title to rename it", () => {
     expect(click(title).defaultPrevented).toBe(false);
     expect(onDoubleClick).toHaveBeenCalledOnce();
     expect(opened).not.toHaveBeenCalled();
+    leaf.view = view;
+    renameByDoubleClick(title, view);
   });
 
   it("handles the title that Obsidian redraws", async () => {
@@ -6511,23 +6579,24 @@ describe("double-clicking a terminal tab title to rename it", () => {
   });
 
   it("attaches when a restored tab receives its header", async () => {
-    const { header, leaf, opened, title, workspace } = await openTab(false);
+    const { header, leaf, opened, title, view, workspace } =
+      await openTab(false);
     click(title);
     expect(opened).not.toHaveBeenCalled();
     Object.assign(leaf, { tabHeaderEl: header });
     workspace.trigger("layout-change");
-    click(title);
+    renameByDoubleClick(title, view);
     expect(opened).toHaveBeenCalledOnce();
   });
 
   it("moves the listener when the leaf receives a different header", async () => {
-    const { leaf, opened, title, workspace } = await openTab(),
+    const { leaf, opened, title, view, workspace } = await openTab(),
       next = document.createElement("div");
     Object.assign(leaf, { tabHeaderEl: next });
     workspace.trigger("layout-change");
-    click(title);
+    expect(click(title).defaultPrevented).toBe(false);
     expect(opened).not.toHaveBeenCalled();
-    click(child(next, title.className));
+    renameByDoubleClick(child(next, title.className), view);
     expect(opened).toHaveBeenCalledOnce();
   });
 
@@ -6536,83 +6605,24 @@ describe("double-clicking a terminal tab title to rename it", () => {
     view.unload();
     click(title);
     expect(opened).not.toHaveBeenCalled();
-  });
-
-  it("keeps the draft through an OSC title change, trims on Enter, discards on cancel and clears a blank name", async () => {
-    const { context, leaf, opened, title, view, workspace } = await openTab(),
-      // Use the shared control mock. Its setValue calls the dialog's onChange.
-      { TextComponent } =
-        await vi.importActual<typeof import("obsidian")>("obsidian"),
-      field = new TextComponent(document.createElement("div")),
-      registerKey = vi.spyOn(context.app.scope, "register");
-    Object.assign(leaf, { updateHeader: vi.fn() });
-    Object.assign(workspace, { requestUpdateLayout: vi.fn() });
-    // Supply the setting controls and key scope missing from the host mock.
-    vi.spyOn(library.UpdatableUI.prototype, "newSetting").mockImplementation(
-      function (this: library.UpdatableUI, element, configure) {
-        const row = new Setting(element);
-        Object.assign(row, { controlEl: element });
-        vi.spyOn(row, "addButton").mockReturnValue(row);
-        vi.spyOn(row, "addText").mockImplementation((draw) => {
-          draw(field);
-          return row;
-        });
-        configure(row);
-        return this;
-      },
-    );
-    opened.mockImplementation(function (this: library.DialogModal) {
-      Object.assign(this, { scope: context.app.scope });
-      this.onOpen();
-    });
-    async function enter(): Promise<void> {
-      const binding = registerKey.mock.calls.at(-1);
-      if (binding?.[1] !== "enter") throw new Error("Missing Enter binding");
-      await binding[2](new KeyboardEvent("keydown", { key: "Enter" }), {
-        key: "Enter",
-        modifiers: "",
-        vkey: "Enter",
-      });
-    }
-
-    click(title);
-    field.setValue("  Build  ");
-    // xterm's onTitleChange writes this setter for OSC 0/2.
-    view["rawTitle"] = "running";
-    expect(field.getValue()).toBe("  Build  ");
-    expect(view.getDisplayText()).toBe("running");
-    await enter();
-    expect(view.getDisplayText()).toBe("Build");
-
-    click(title);
-    expect(field.getValue()).toBe("Build");
-    field.setValue("discard this");
-    const dialog = opened.mock.contexts.at(-1);
-    if (!(dialog instanceof library.DialogModal))
-      throw new Error("Missing dialog");
-    dialog.close();
-    expect(view.getDisplayText()).toBe("Build");
-
-    click(title);
-    expect(field.getValue()).toBe("Build");
-    field.setValue("   ");
-    await enter();
-    expect(view.getDisplayText()).toBe("running");
+    view.load();
+    await view["onOpen"]();
+    renameByDoubleClick(title, view);
   });
 
   it("stops a handled title double-click before it reaches the tab strip", async () => {
-    const { header, opened, title } = await openTab(),
+    const { header, opened, title, view } = await openTab(),
       tabs = document.createElement("div"),
       onDoubleClick = vi.fn();
     tabs.append(header);
     tabs.addEventListener("dblclick", onDoubleClick);
-    click(title);
+    renameByDoubleClick(title, view);
     expect(opened).toHaveBeenCalledOnce();
     expect(onDoubleClick).not.toHaveBeenCalled();
   });
 
   it("lets an excluded icon double-click reach the tab strip", async () => {
-    const { header, opened, title } = await openTab(),
+    const { header, opened, title, view } = await openTab(),
       tabs = document.createElement("div"),
       onDoubleClick = vi.fn();
     tabs.append(header);
@@ -6620,10 +6630,11 @@ describe("double-clicking a terminal tab title to rename it", () => {
     const event = click(child(title, "workspace-tab-header-inner-icon"));
     expect(onDoubleClick).toHaveBeenCalledExactlyOnceWith(event);
     expect(opened).not.toHaveBeenCalled();
+    renameByDoubleClick(title, view);
   });
 
   it("lets the tab strip receive both title clicks before rename", async () => {
-    const { header, opened, title } = await openTab(),
+    const { header, opened, title, view } = await openTab(),
       tabs = document.createElement("div"),
       onClick = vi.fn();
     tabs.append(header);
@@ -6632,57 +6643,381 @@ describe("double-clicking a terminal tab title to rename it", () => {
       second = click(title, "click");
     expect(onClick.mock.calls).toEqual([[first], [second]]);
     expect(opened).not.toHaveBeenCalled();
-    click(title);
+    renameByDoubleClick(title, view);
     expect(opened).toHaveBeenCalledOnce();
   });
 
-  it("closes the draft on unload and ignores its confirm after reopening", async () => {
-    const { context, opened, title, view } = await openTab(),
-      field = new ObsidianTextComponent(document.createElement("div")),
-      registerKey = vi.spyOn(context.app.scope, "register"),
-      closed = vi.spyOn(library.DialogModal.prototype, "onClose"),
-      originalTitle = view["state"].userTitle,
-      // Expose the protected accessor to Vitest so the spy observes real writes.
-      setState = vi.spyOn(
-        view as unknown as { state: TerminalView.State },
-        "state",
-        "set",
-      );
-    vi.spyOn(library.UpdatableUI.prototype, "newSetting").mockImplementation(
-      function (this: library.UpdatableUI, element, configure) {
-        const row = Object.assign(new Setting(element), { controlEl: element });
-        vi.spyOn(row, "addButton").mockReturnValue(row);
-        vi.spyOn(row, "addText").mockImplementation((draw) => {
-          draw(field);
-          return row;
-        });
-        configure(row);
-        return this;
-      },
-    );
-    opened.mockImplementation(function (this: library.DialogModal) {
-      Object.assign(this, { scope: context.app.scope });
-      this.onOpen();
-    });
-    click(title);
-    field.setValue("discard this draft");
-    const enter = registerKey.mock.lastCall;
-    if (enter?.[1] !== "enter") throw new Error("Missing Enter binding");
+  function controls() {
+    const modal = document.querySelector('[role="dialog"]'),
+      input = modal?.querySelector("input"),
+      form = input?.form,
+      rename = form?.querySelector<HTMLButtonElement>('button[type="submit"]'),
+      cancel = form?.querySelector<HTMLButtonElement>('button[type="button"]');
+    if (!modal || !input || !form || !rename || !cancel)
+      throw new Error("Missing rename form");
+    return { modal, form, input, rename, cancel };
+  }
 
+  // Synthetic key events do not perform Chromium's implicit form submission
+  // or keyboard activation of the focused button in happy-dom.
+  function pressEnter(init: KeyboardEventInit = {}): void {
+    const target = document.activeElement;
+    const event = new KeyboardEvent("keydown", {
+      bubbles: true,
+      cancelable: true,
+      key: "Enter",
+      ...init,
+    });
+    if (!target?.dispatchEvent(event)) return;
+    if (target instanceof HTMLInputElement) target.form?.requestSubmit();
+    if (target instanceof HTMLButtonElement) target.click();
+  }
+
+  it("labels the native form and selects the bare custom title on open", async () => {
+    const { context, title, view } = await openTab();
+    Object.assign(context.language, {
+      value: await library.createI18n(
+        PluginLocales.RESOURCES,
+        PluginLocales.FORMATTERS,
+        { lng: "en", fallbackLng: "en" },
+      ),
+    });
+    Object.assign(context.settings.value, { showTerminalTabPrefix: true });
+    view["state"] = { ...view["state"], userTitle: "Build" };
+    view["rawTitle"] = "shell";
+    click(title);
+    const { modal, form, input, rename, cancel } = controls();
+    expect(modal.getAttribute("aria-modal")).toBe("true");
+    expect(modal.querySelector(".setting-item")).toBeNull();
+    expect(
+      modal.querySelector(".modal-button-container")?.children,
+    ).toHaveLength(2);
+    expect(
+      Array.from(form.querySelectorAll(".modal-button-container > button")),
+    ).toEqual([rename, cancel]);
+    expect(rename.classList.contains("mod-cta")).toBe(true);
+    expect([rename.textContent, cancel.textContent]).toEqual([
+      "Rename",
+      "Cancel",
+    ]);
+    expect(
+      document.getElementById(modal.getAttribute("aria-labelledby") ?? "")
+        ?.textContent,
+    ).toBe("Rename terminal");
+    expect(
+      document.getElementById(input.getAttribute("aria-describedby") ?? "")
+        ?.textContent,
+    ).toBe("Leave blank to use the automatic name.");
+    expect(input.getAttribute("aria-label")).toBe("Terminal name");
+    expect([
+      input.type,
+      input.spellcheck,
+      input.autocomplete,
+      input.maxLength,
+    ]).toEqual(["text", false, "off", 256]);
+    expect(input.placeholder).toBe("shell");
+    expect(document.activeElement).toBe(input);
+    expect([input.value, input.selectionStart, input.selectionEnd]).toEqual([
+      "Build",
+      0,
+      5,
+    ]);
+  });
+
+  it.each([true, false])(
+    "refocuses next frame only when focus left the modal (%s)",
+    async (outside) => {
+      const { title, view } = await openTab(),
+        frame = vi.spyOn(window, "requestAnimationFrame").mockReturnValue(1);
+      view["state"] = { ...view["state"], userTitle: "Build" };
+      click(title);
+      const { input, cancel } = controls();
+      input.setSelectionRange(2, 3);
+      if (outside) input.blur();
+      else cancel.focus();
+      expect(frame).toHaveBeenCalledOnce();
+      frame.mock.calls[0]?.[0](0);
+      expect(document.activeElement).toBe(outside ? input : cancel);
+      expect([input.selectionStart, input.selectionEnd]).toEqual(
+        outside ? [0, 5] : [2, 3],
+      );
+    },
+  );
+
+  it("keeps draft and selection during OSC and language changes", async () => {
+    const { context, title, view } = await openTab();
+    click(title);
+    const { input, rename } = controls();
+    expect(input.value).toBe("");
+    input.value = "draft";
+    input.setSelectionRange(1, 3);
+    view["rawTitle"] = "running";
+    expect(input.placeholder).toBe("running");
+    expect([input.value, input.selectionStart, input.selectionEnd]).toEqual([
+      "draft",
+      1,
+      3,
+    ]);
+    // An unnamed integrated profile with no executable has no generated name.
+    view["state"] = {
+      ...view["state"],
+      profile: {
+        ...Settings.Profile.DEFAULTS.integrated,
+        name: "",
+        executable: "",
+      },
+    };
+    view["rawTitle"] = "";
+    expect(input.placeholder).toBe(
+      "components.terminal.rename-modal.placeholder-automatic",
+    );
+    Object.assign(context.language, {
+      value: { t: vi.fn((key: string) => `translated ${key}`) },
+    });
+    await context.language.onChangeLanguage.emit("de");
+    expect(rename.textContent).toBe(
+      "translated components.terminal.rename-modal.rename",
+    );
+    expect(input.placeholder).toBe(
+      "translated components.terminal.rename-modal.placeholder-automatic",
+    );
+    expect([input.value, input.selectionStart, input.selectionEnd]).toEqual([
+      "draft",
+      1,
+      3,
+    ]);
+  });
+
+  it("submits a trimmed name and restores automatic naming for a blank value", async () => {
+    const { title, view } = await openTab();
+    view["rawTitle"] = "shell";
+    click(title);
+    controls().input.value = "  Build  ";
+    pressEnter();
+    expect(view.getDisplayText()).toBe("Build");
+    click(title);
+    controls().input.value = "   ";
+    pressEnter();
+    expect(view["state"].userTitle).toBe("");
+    expect(view.getDisplayText()).toBe("shell");
+  });
+
+  it("normalizes runs of CR, LF and NUL before writing", async () => {
+    const { title, view } = await openTab();
+    click(title);
+    // Text inputs strip CR/LF on assignment. Supply the raw submit value.
+    vi.spyOn(controls().input, "value", "get").mockReturnValue(
+      " a\r\n\0b\nc\0d ",
+    );
+    pressEnter();
+    expect(view["state"].userTitle).toBe("a b c d");
+  });
+
+  it("skips an unchanged title", async () => {
+    const { title, view } = await openTab();
+    view["state"] = { ...view["state"], userTitle: "Build" };
+    const before = view["state"];
+    click(title);
+    controls().input.value = " Build ";
+    pressEnter();
+    expect(view["state"]).toBe(before);
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it.each(["Escape", "Cancel", "Enter on Cancel"])(
+    "%s closes without a write",
+    async (gesture) => {
+      const { title, view } = await openTab(),
+        before = view["state"];
+      click(title);
+      const { input, cancel, modal } = controls();
+      input.value = "discard";
+      if (gesture === "Escape")
+        input.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+        );
+      else if (gesture === "Cancel") cancel.click();
+      else {
+        cancel.focus();
+        pressEnter();
+      }
+      expect(modal.isConnected).toBe(false);
+      expect(view["state"]).toBe(before);
+    },
+  );
+
+  it.each([
+    { isComposing: true },
+    { keyCode: 229 },
+    { altKey: true },
+    { ctrlKey: true },
+    { shiftKey: true },
+    { metaKey: true },
+  ])("ignores Enter with %j", async (init) => {
+    const { title, view } = await openTab();
+    click(title);
+    const { input, modal } = controls();
+    input.value = "draft";
+    pressEnter(init);
+    expect(modal.isConnected).toBe(true);
+    expect(view["state"].userTitle).toBe("");
+    pressEnter();
+    expect(view["state"].userTitle).toBe("draft");
+  });
+
+  it("ignores a modified Enter on the Rename button", async () => {
+    const { title, view } = await openTab();
+    click(title);
+    const { input, rename, modal } = controls();
+    input.value = "draft";
+    rename.focus();
+    pressEnter({ shiftKey: true });
+    expect(modal.isConnected).toBe(true);
+    expect(view["state"].userTitle).toBe("");
+    pressEnter();
+    expect(view["state"].userTitle).toBe("draft");
+  });
+
+  it.each([{ isComposing: true }, { keyCode: 229 }])(
+    "lets the IME handle Escape with %j",
+    async (init) => {
+      const { title } = await openTab();
+      click(title);
+      const { input, modal } = controls(),
+        bubble = vi.fn();
+      modal.addEventListener("keydown", bubble);
+      const event = new KeyboardEvent("keydown", {
+        key: "Escape",
+        bubbles: true,
+        cancelable: true,
+        ...init,
+      });
+      input.dispatchEvent(event);
+      expect(modal.isConnected).toBe(true);
+      expect(bubble).not.toHaveBeenCalled();
+      expect(event.defaultPrevented).toBe(false);
+    },
+  );
+
+  it("keeps Escape and Enter inside an active IME composition", async () => {
+    const { title, view } = await openTab();
+    click(title);
+    const { input, modal } = controls();
+    input.value = "draft";
+    input.dispatchEvent(new Event("compositionstart"));
+    pressEnter();
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+    expect(modal.isConnected).toBe(true);
+    expect(view["state"].userTitle).toBe("");
+    input.dispatchEvent(new Event("compositionend"));
+    pressEnter();
+    expect(view["state"].userTitle).toBe("draft");
+  });
+
+  it("focuses the same field on re-entry", async () => {
+    const { title, opened } = await openTab();
+    click(title);
+    const { input, cancel } = controls();
+    cancel.focus();
+    click(title);
+    expect(opened).toHaveBeenCalledOnce();
+    expect(document.activeElement).toBe(input);
+  });
+
+  it("can reopen after the host throws from open", async () => {
+    const { view, opened } = await openTab();
+    opened.mockImplementationOnce(() => {
+      throw new Error("open failed");
+    });
+    expect(() => {
+      view["openRenameDialog"]();
+    }).toThrow("open failed");
+    view["openRenameDialog"]();
+    expect(controls().input).toBe(document.activeElement);
+  });
+
+  it("closes on unload and ignores a stale submit after reopening", async () => {
+    const { title, view } = await openTab(),
+      before = view["state"];
+    click(title);
+    const stale = controls();
+    stale.input.value = "discard";
     view.unload();
-    expect(closed).toHaveBeenCalledOnce();
-    expect(closed.mock.contexts[0]).toBe(opened.mock.contexts[0]);
+    expect(stale.modal.isConnected).toBe(false);
     view.load();
     await view["onOpen"]();
     click(title);
-    expect(opened).toHaveBeenCalledTimes(2);
-    expect(opened.mock.contexts[1]).not.toBe(opened.mock.contexts[0]);
-    await enter[2](new KeyboardEvent("keydown", { key: "Enter" }), {
-      key: "Enter",
-      modifiers: "",
-      vkey: "Enter",
-    });
-    expect(view["state"].userTitle).toBe(originalTitle);
-    expect(setState).not.toHaveBeenCalled();
+    const current = controls();
+    stale.form.dispatchEvent(new Event("submit", { cancelable: true }));
+    expect(view["state"]).toBe(before);
+    expect(current.modal.isConnected).toBe(true);
   });
+
+  it("ignores a submit during the host's closing animation", async () => {
+    const { title, view } = await openTab(),
+      before = view["state"];
+    click(title);
+    const { input, cancel, form } = controls();
+    input.value = "discard";
+    vi.spyOn(Modal.prototype, "close").mockImplementationOnce(vi.fn());
+    cancel.click();
+    form.requestSubmit();
+    expect(view["state"]).toBe(before);
+  });
+
+  it("discards a submit if the leaf has switched views", async () => {
+    const { title, view, leaf } = await openTab(),
+      before = view["state"];
+    click(title);
+    const { input, modal } = controls();
+    input.value = "discard";
+    leaf.view = new WorkspaceLeaf().view;
+    pressEnter();
+    expect(view["state"]).toBe(before);
+    expect(modal.isConnected).toBe(false);
+  });
+
+  it.each([
+    "focused",
+    "active",
+    "double-click",
+    "background-menu",
+    "hidden",
+    "replaced",
+  ])(
+    "restores focus for a visible terminal when invoked from %s",
+    async (source) => {
+      const { view, leaf, title, workspace, opened } = await openTab(),
+        focus = vi.fn();
+      Object.defineProperty(view, "emulator", {
+        value: { terminal: { focus } },
+        writable: true,
+      });
+      Object.defineProperty(view.contentEl, "offsetParent", {
+        value: source === "hidden" ? null : document.body,
+      });
+      if (source === "focused") {
+        document.body.append(view.contentEl);
+        view.contentEl.tabIndex = 0;
+        view.contentEl.focus();
+      }
+      if (source === "active")
+        vi.spyOn(workspace, "getActiveViewOfType").mockReturnValue(view);
+      if (["focused", "active", "background-menu"].includes(source))
+        view["openRenameDialog"]();
+      else click(title);
+      const modal = opened.mock.contexts[0];
+      if (!(modal instanceof Modal)) throw new Error("Missing modal");
+      expect(modal.shouldRestoreSelection).toBe(source === "background-menu");
+      if (source === "replaced") leaf.view = new WorkspaceLeaf().view;
+      controls().cancel.click();
+      await Promise.resolve();
+      expect(focus).toHaveBeenCalledTimes(
+        ["focused", "active", "double-click"].includes(source) ? 1 : 0,
+      );
+      view.contentEl.remove();
+    },
+  );
 });

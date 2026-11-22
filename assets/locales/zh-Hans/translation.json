@@ -170,12 +170,19 @@
         "edit": "$t(generic.edit)",
         "find": "$t(generic.find)",
         "rename": "$t(generic.rename, capitalize)",
-        "rename-prompt": "$t(generic.rename, capitalize) $t(generic.terminal)",
         "restart": "$t(generic.restart)",
         "save-as-HTML": "$t(generic.save)为$t(generic.file-extensions.HTML)"
       },
       "name": {
         "profile-type": "$t(generic.profile-types.{{type}})"
+      },
+      "rename-modal": {
+        "cancel": "$t(generic.cancel, capitalize)",
+        "hint": "Leave blank to use the automatic name.",
+        "input-label": "Terminal name",
+        "placeholder-automatic": "Automatic",
+        "rename": "$t(generic.rename, capitalize)",
+        "title": "$t(generic.rename, capitalize) $t(generic.terminal)"
       },
       "restored-history": "\r\n * 已$t(generic.restore)于{{datetime, datetime(dateStyle: full, timeStyle: full)}}的$t(generic.history)\r\n\r\n",
       "unsupported-profile": "不支持的$t(generic.profile)：\r\n{{profile}}\r\n"
