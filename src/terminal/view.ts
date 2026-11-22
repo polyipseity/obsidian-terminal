@@ -487,6 +487,7 @@ export class TerminalView extends ItemView {
   static #namespacedType: string;
   static #focusedScopeIDs = new Set<string>();
   #rawTitle0 = "";
+  #renameDialog?: DialogModal;
   #renameDialogOpen = false;
   #emulator0: TerminalView.EMULATOR | null = null;
   #find0:
@@ -1226,8 +1227,9 @@ export class TerminalView extends ItemView {
         language: { value: i18n },
       } = context;
     let userTitle = state.userTitle;
-    new DialogModal(context, {
+    const dialog = new DialogModal(context, {
       confirm: (close) => {
+        if (this.#renameDialog !== dialog) return;
         close();
         const state = cloneAsWritable(this.state);
         state.userTitle = userTitle.trim();
@@ -1235,6 +1237,7 @@ export class TerminalView extends ItemView {
       },
       draw: (ui, contentEl) => {
         ui.finally(() => {
+          this.#renameDialog = void 0;
           this.#renameDialogOpen = false;
         });
         ui.newSetting(contentEl, (setting) => {
@@ -1257,7 +1260,9 @@ export class TerminalView extends ItemView {
       title() {
         return i18n.t("components.terminal.menus.rename-prompt");
       },
-    }).open();
+    });
+    dialog.open();
+    this.#renameDialog = dialog;
     this.#renameDialogOpen = true;
   }
 
@@ -1268,7 +1273,8 @@ export class TerminalView extends ItemView {
     } = this;
     // The header can appear after the view opens or change when the tab moves.
     let header: HTMLElement | null = null;
-    const rename = ({ button, target }: MouseEvent): void => {
+    const rename = (event: MouseEvent): void => {
+      const { button, target } = event;
       if (
         button === 0 &&
         leaf.view === this &&
@@ -1278,6 +1284,7 @@ export class TerminalView extends ItemView {
         ) &&
         target.closest(".workspace-tab-header-inner-title")
       ) {
+        event.stopPropagation();
         this.openRenameDialog();
       }
     };
@@ -1337,6 +1344,11 @@ export class TerminalView extends ItemView {
       { capture: true, passive: true },
     );
     this.listenForTabRename();
+    this.register(() => {
+      const dialog = this.#renameDialog;
+      this.#renameDialog = void 0;
+      dialog?.close();
+    });
     this.showTabIconSize();
     this.register(whileTabStatusShown(settings, () => this.showTabStatus()));
     /*

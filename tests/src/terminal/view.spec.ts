@@ -27,6 +27,7 @@ import {
   DropdownComponent,
   type Menu,
   type MenuItem,
+  TextComponent as ObsidianTextComponent,
   Setting,
   View,
   WorkspaceLeaf,
@@ -6597,5 +6598,91 @@ describe("double-clicking a terminal tab title to rename it", () => {
     field.setValue("   ");
     await enter();
     expect(view.getDisplayText()).toBe("running");
+  });
+
+  it("stops a handled title double-click before it reaches the tab strip", async () => {
+    const { header, opened, title } = await openTab(),
+      tabs = document.createElement("div"),
+      onDoubleClick = vi.fn();
+    tabs.append(header);
+    tabs.addEventListener("dblclick", onDoubleClick);
+    click(title);
+    expect(opened).toHaveBeenCalledOnce();
+    expect(onDoubleClick).not.toHaveBeenCalled();
+  });
+
+  it("lets an excluded icon double-click reach the tab strip", async () => {
+    const { header, opened, title } = await openTab(),
+      tabs = document.createElement("div"),
+      onDoubleClick = vi.fn();
+    tabs.append(header);
+    tabs.addEventListener("dblclick", onDoubleClick);
+    const event = click(child(title, "workspace-tab-header-inner-icon"));
+    expect(onDoubleClick).toHaveBeenCalledExactlyOnceWith(event);
+    expect(opened).not.toHaveBeenCalled();
+  });
+
+  it("lets the tab strip receive both title clicks before rename", async () => {
+    const { header, opened, title } = await openTab(),
+      tabs = document.createElement("div"),
+      onClick = vi.fn();
+    tabs.append(header);
+    tabs.addEventListener("click", onClick);
+    const first = click(title, "click"),
+      second = click(title, "click");
+    expect(onClick.mock.calls).toEqual([[first], [second]]);
+    expect(opened).not.toHaveBeenCalled();
+    click(title);
+    expect(opened).toHaveBeenCalledOnce();
+  });
+
+  it("closes the draft on unload and ignores its confirm after reopening", async () => {
+    const { context, opened, title, view } = await openTab(),
+      field = new ObsidianTextComponent(document.createElement("div")),
+      registerKey = vi.spyOn(context.app.scope, "register"),
+      closed = vi.spyOn(library.DialogModal.prototype, "onClose"),
+      originalTitle = view["state"].userTitle,
+      // Expose the protected accessor to Vitest so the spy observes real writes.
+      setState = vi.spyOn(
+        view as unknown as { state: TerminalView.State },
+        "state",
+        "set",
+      );
+    vi.spyOn(library.UpdatableUI.prototype, "newSetting").mockImplementation(
+      function (this: library.UpdatableUI, element, configure) {
+        const row = Object.assign(new Setting(element), { controlEl: element });
+        vi.spyOn(row, "addButton").mockReturnValue(row);
+        vi.spyOn(row, "addText").mockImplementation((draw) => {
+          draw(field);
+          return row;
+        });
+        configure(row);
+        return this;
+      },
+    );
+    opened.mockImplementation(function (this: library.DialogModal) {
+      Object.assign(this, { scope: context.app.scope });
+      this.onOpen();
+    });
+    click(title);
+    field.setValue("discard this draft");
+    const enter = registerKey.mock.lastCall;
+    if (enter?.[1] !== "enter") throw new Error("Missing Enter binding");
+
+    view.unload();
+    expect(closed).toHaveBeenCalledOnce();
+    expect(closed.mock.contexts[0]).toBe(opened.mock.contexts[0]);
+    view.load();
+    await view["onOpen"]();
+    click(title);
+    expect(opened).toHaveBeenCalledTimes(2);
+    expect(opened.mock.contexts[1]).not.toBe(opened.mock.contexts[0]);
+    await enter[2](new KeyboardEvent("keydown", { key: "Enter" }), {
+      key: "Enter",
+      modifiers: "",
+      vkey: "Enter",
+    });
+    expect(view["state"].userTitle).toBe(originalTitle);
+    expect(setState).not.toHaveBeenCalled();
   });
 });
