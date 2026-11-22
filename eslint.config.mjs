@@ -5,6 +5,7 @@ import eslintObsidianMd from "eslint-plugin-obsidianmd";
 import { defineConfig, includeIgnoreFile } from "eslint/config";
 import globals from "globals"; // provide Node/browser globals for file-level overrides
 import path from "node:path";
+import ts from "typescript";
 import eslintTs from "typescript-eslint";
 
 export const FILE_GLOBS = [
@@ -22,9 +23,14 @@ export const FILE_GLOBS = [
   "**/*.svelte.ts",
 ];
 
+const ASSET_JSON = "assets/**/*.json";
+const lintFiles = [...FILE_GLOBS, ASSET_JSON];
+/** @type {{ parseForESLint(text: string, options: object): ReturnType<typeof eslintTs.parser.parseForESLint> }} */
+const assetParser = eslintTs.parser;
+
 export default defineConfig([
   {
-    files: FILE_GLOBS,
+    files: lintFiles,
     extends: [
       eslintJs.configs.recommended,
       ...eslintTs.configs.strictTypeChecked,
@@ -37,7 +43,7 @@ export default defineConfig([
   ),
   includeIgnoreFile(path.join(import.meta.dirname, ".gitignore")),
   {
-    files: FILE_GLOBS,
+    files: lintFiles,
     languageOptions: {
       parserOptions: {
         projectService: {
@@ -56,6 +62,18 @@ export default defineConfig([
           varsIgnorePattern: "^_",
         },
       ],
+    },
+  },
+  {
+    files: ["src/**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "error",
+    },
+  },
+  {
+    files: ["scripts/**/*.mjs"],
+    rules: {
+      "obsidianmd/no-global-this": "warn",
     },
   },
   // Scripts and tests run on Node.js — provide Node globals so `console` is defined
@@ -84,12 +102,44 @@ export default defineConfig([
       "@typescript-eslint/no-unsafe-class-instance-assignment": "off",
     },
   },
-  // JSON files are data declarations, not executable code — expression and UI-text rules don't apply
+  // Use TypeScript's JSON parser for every locale so the shared rules see object literals.
   {
-    files: ["assets/**/*.json"],
-    languageOptions: { parser: eslintTs.parser },
+    files: [ASSET_JSON],
+    language: "@/js",
+    languageOptions: {
+      parser: {
+        ...eslintTs.parser,
+        /**
+         * @param {string} text
+         * @param {{ filePath: string }} options
+         */
+        parseForESLint(text, options) {
+          // TypeScript also accepts JSON with comments and trailing commas.
+          JSON.parse(text);
+          // A JSON asset can be linted before any TypeScript module imports it.
+          const { filePath } = options;
+          const compilerOptions = {
+            resolveJsonModule: true,
+            noLib: true,
+            types: [],
+          };
+          const host = ts.createCompilerHost(compilerOptions, true);
+          host.readFile = (name) =>
+            path.resolve(name) === filePath ? text : undefined;
+          const program = ts.createProgram([filePath], compilerOptions, host);
+          return assetParser.parseForESLint(text, {
+            ...options,
+            programs: [program],
+          });
+        },
+      },
+      parserOptions: { projectService: false },
+    },
     rules: {
       "@typescript-eslint/no-unused-expressions": "off",
+      "no-dupe-keys": "error",
+      "no-unexpected-multiline": "error",
+      "no-unused-vars": "error",
       "obsidianmd/ui/sentence-case-json": "off",
     },
   },
