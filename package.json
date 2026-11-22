@@ -38,6 +38,7 @@
     "@commitlint/cli": "^20.5.3",
     "@commitlint/config-conventional": "^20.5.3",
     "@eslint/js": "^10.0.1",
+    "@eslint/json": "^2.1.1",
     "@j178/prek": "^0.4.5",
     "@polyipseity/obsidian": "~1.8.7",
     "@types/ansi-escape-sequences": "^4.0.4",
