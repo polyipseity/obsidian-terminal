@@ -1497,7 +1497,7 @@ export class TerminalView extends ItemView {
         optional: { anchor?: Element } = {};
       assignExact(optional, "anchor", contentEl.firstElementChild ?? void 0);
       const props = svelteState({
-        focused: true,
+        initialFocus: true,
         i18nt: i18n.t.bind(i18n), // `bind` to preserve the context for potential i18n features that rely on it
         onClose: () => {
           this.find = null;
