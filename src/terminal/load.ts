@@ -319,6 +319,8 @@ export function loadTerminal(context: TerminalPlugin): void {
     (evt) => {
       if (
         evt.button !== 2 ||
+        // eslint-disable-next-line eslint-comments/no-restricted-disable -- Keep the ribbon's existing window check.
+        // eslint-disable-next-line obsidianmd/prefer-instanceof -- existing behaviour is intended; changing it alters pop-out ribbon context menus
         !(evt.target instanceof Node) ||
         !openTerminal.elementRef.contains(evt.target)
       ) {

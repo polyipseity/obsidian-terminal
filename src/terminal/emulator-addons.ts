@@ -347,6 +347,8 @@ export class DragAndDropAddon implements ITerminalAddon {
     // in its header (the icon of a web viewer) carries that image as a file
     // and a URI. The global `document` is read on purpose: the class is on
     // the body of the main window, also when the terminal is in a pop-out.
+    // eslint-disable-next-line eslint-comments/no-restricted-disable -- Allow the main-document lookup below.
+    // eslint-disable-next-line obsidianmd/prefer-active-doc -- Obsidian places the drag marker on the main document body even when the terminal is in a pop-out, so activeDocument would look in the wrong body.
     if (document.body.classList.contains(DragAndDropAddon.#GRABBING)) {
       return null;
     }
@@ -1228,8 +1230,6 @@ export class FollowThemeAddon implements ITerminalAddon {
     }
 
     // Robust path: let the browser resolve var(...) into a concrete color
-    // eslint-disable-next-line eslint-comments/no-restricted-disable -- Need to suppress prefer-create-el (see below)
-    // eslint-disable-next-line obsidianmd/prefer-create-el -- Probe must be created in `doc` (a possibly-popout document); the global `createDiv` binds to the main window.
     const probe = doc.createElement("div");
     probe.classList.add(DOMClasses2.COLOR_PROBE);
     probe.style.backgroundColor = `var(${varName})`;
@@ -1532,8 +1532,6 @@ export class FollowThemeAddon implements ITerminalAddon {
       return null;
     }
 
-    // eslint-disable-next-line eslint-comments/no-restricted-disable -- Need to suppress prefer-create-el (see below)
-    // eslint-disable-next-line obsidianmd/prefer-create-el -- Probe must be created in `doc` (a possibly-popout document); the global `createSpan` binds to the main window.
     const span = doc.createElement("span");
     // A fresh element has an empty `color`; assigning the input tests whether the browser can parse it.
     span.style.color = input ?? "";

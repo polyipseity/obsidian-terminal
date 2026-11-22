@@ -437,8 +437,6 @@ export class FileManager {
   }
 
   async trashFile(file: TFile): Promise<void> {
-    // eslint-disable-next-line eslint-comments/no-restricted-disable -- What is the point of this useless lint?
-    // eslint-disable-next-line obsidianmd/prefer-file-manager-trash-file -- Required to implement `trashFile` properly in test mocks.
     await this.vault.delete(file);
   }
 

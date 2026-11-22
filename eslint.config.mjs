@@ -23,9 +23,14 @@ export const FILE_GLOBS = [
 ];
 
 export default defineConfig([
-  eslintJs.configs.recommended,
-  ...eslintTs.configs.strictTypeChecked,
-  eslintPrettier,
+  {
+    files: FILE_GLOBS,
+    extends: [
+      eslintJs.configs.recommended,
+      ...eslintTs.configs.strictTypeChecked,
+      eslintPrettier,
+    ],
+  },
   // Obsidian
   ...eslintObsidianMd.configs.recommendedWithLocalesEn.filter(
     (config) => !config.name?.endsWith("typescript-eslint/base"),
@@ -33,8 +38,6 @@ export default defineConfig([
   includeIgnoreFile(path.join(import.meta.dirname, ".gitignore")),
   {
     files: FILE_GLOBS,
-  },
-  {
     languageOptions: {
       parserOptions: {
         projectService: {
@@ -71,9 +74,20 @@ export default defineConfig([
       "obsidianmd/rule-custom-message": "off",
     },
   },
+  {
+    files: ["tests/**"],
+    rules: {
+      // Scoped to tests/**: xterm and its add-ons read KeyboardEvent.keyCode, so these specs construct events with it on
+      // purpose. The rule still applies to production code.
+      "@typescript-eslint/no-deprecated": "off",
+      // Scoped to tests/**: production class instances are checked; the tests assign mocks on purpose and their assertions do not change.
+      "@typescript-eslint/no-unsafe-class-instance-assignment": "off",
+    },
+  },
   // JSON files are data declarations, not executable code — expression and UI-text rules don't apply
   {
     files: ["assets/**/*.json"],
+    languageOptions: { parser: eslintTs.parser },
     rules: {
       "@typescript-eslint/no-unused-expressions": "off",
       "obsidianmd/ui/sentence-case-json": "off",

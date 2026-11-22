@@ -957,6 +957,7 @@ export namespace Settings {
           const Vs extends ReadonlyTuple<string>,
         >(
           defaults: V,
+          // eslint-disable-next-line @typescript-eslint/no-generated-empty-object-type -- Unchecked<V> keeps each platform key optional until its value is validated.
           from: Unchecked<V>,
           set: Vs,
         ): Platforms<Vs[number]> => {
