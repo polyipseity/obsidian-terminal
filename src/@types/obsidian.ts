@@ -1,4 +1,12 @@
 declare module "obsidian" {
+  // Host hooks present in Obsidian 1.15.1 but absent from the public typings.
+  interface ItemView {
+    onTabMenu?(menu: Menu): void;
+  }
+  interface Scope {
+    tabFocusContainerEl?: HTMLElement | null;
+  }
+
   interface PluginManifest {
     readonly fundingUrl?: string | Record<string, string>;
   }

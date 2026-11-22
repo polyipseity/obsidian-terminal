@@ -170,12 +170,19 @@
         "edit": "$t(generic.edit, capitalize)",
         "find": "$t(generic.find, capitalize)",
         "rename": "$t(generic.rename, capitalize)",
-        "rename-prompt": "$t(generic.rename, capitalize) $t(generic.terminal)",
         "restart": "$t(generic.restart, capitalize)",
         "save-as-HTML": "$t(generic.save, capitalize) як $t(generic.file-extensions.HTML)"
       },
       "name": {
         "profile-type": "$t(generic.profile-types.{{type}}, capitalize)"
+      },
+      "rename-modal": {
+        "cancel": "$t(generic.cancel, capitalize)",
+        "hint": "Leave blank to use the automatic name.",
+        "input-label": "Terminal name",
+        "placeholder-automatic": "Automatic",
+        "rename": "$t(generic.rename, capitalize)",
+        "title": "$t(generic.rename, capitalize) $t(generic.terminal)"
       },
       "restored-history": "\r\n * $t(generic.restore_past, capitalize) $t(generic.history) о {{datetime, datetime(dateStyle: full, timeStyle: full)}}\r\n\r\n",
       "unsupported-profile": "Непідтримуваний $t(generic.profile):\r\n{{profile}}\r\n"

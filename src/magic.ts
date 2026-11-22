@@ -105,7 +105,6 @@ export namespace DOMClasses2 {
     export const TERMINAL = "terminal";
   }
   export const COLOR_PROBE = `${Namespaced.TERMINAL}:color-probe`,
-    FULL_WIDTH = `${Namespaced.TERMINAL}:full-width`,
     HIDDEN = `${Namespaced.TERMINAL}:hidden`,
     LUCIDE_HEART = "lucide-heart",
     SETTING_ITEM = "setting-item",
