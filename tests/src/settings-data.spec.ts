@@ -1396,6 +1396,41 @@ describe("src/settings-data.ts", () => {
         expect(loaded.value.noticeTimeout).toBe(Settings.DEFAULT.noticeTimeout);
       });
 
+      it("rejects settings containing a profile without a type, including after undo", () => {
+        const profile = { name: "My shell" },
+          profiles = { shell: profile, valid: { type: "external" } };
+        expect(Settings.Profile.fix(profile).valid).toBe(false);
+        expect(Settings.fix({ profiles }).valid).toBe(false);
+        expect(
+          Settings.fix({ profiles, keymappingDefaultsVersion: undefined })
+            .valid,
+        ).toBe(false);
+      });
+
+      it("keeps one recovery copy for Recover when a profile has no type", async () => {
+        const profile = { name: "My shell", args: ["-l"] },
+          data = { profiles: { shell: profile } },
+          first = await loadSettings(copy(data));
+        expect(first.errors.map(([message]) => message)).toEqual([
+          "errors.malformed-data",
+        ]);
+        expect(Object.keys(first.copies)).toEqual([
+          expect.stringMatching(/^settings\.\d{4}-/u),
+        ]);
+        for (const text of Object.values(first.copies)) {
+          const saved: unknown = JSON.parse(text);
+          expect(saved).toStrictEqual(data);
+          // Recover highlights a stored copy while the settings fixer rejects it.
+          expect(Settings.fix(saved).valid).toBe(false);
+        }
+        const second = await loadSettings(copy(first.written));
+        expect(second.value.profiles).toStrictEqual({
+          shell: { ...profile, type: "invalid" },
+        });
+        expect(second.errors).toEqual([]);
+        expect(second.copies).toEqual({});
+      });
+
       it("loads 3.29.0 local settings without a report and keeps the copy 3.29.0 made", async () => {
         const recovery = {
             "settings.2026-10-14T08:32:47.171Z": JSON.stringify(

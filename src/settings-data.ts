@@ -1885,23 +1885,20 @@ export namespace Settings {
   }
 
   export function fix(self0: unknown): Fixed<Settings> {
-    const unc = launderUnchecked<Settings>(self0);
-
-    // prepare profiles ahead of the main fixed object so defaultProfile
-    // validation can reference the fixed set.
-    const fixedProfiles: DeepWritable<Profiles> = (() => {
-      const defaults2 = DEFAULT.profiles,
-        { profiles } = unc;
-      if (typeof profiles === "object" && profiles) {
-        return Object.fromEntries(
-          Object.entries(profiles).map(([id, profile]) => [
-            id,
-            Profile.fix(profile).value,
-          ]),
-        );
-      }
-      return cloneAsWritable(defaults2);
-    })();
+    const unc = launderUnchecked<Settings>(self0),
+      { profiles } = unc,
+      entries =
+        typeof profiles === "object" && profiles
+          ? Object.entries(profiles).map(
+              ([id, profile]): readonly [string, Fixed<Profile>] => [
+                id,
+                Profile.fix(profile),
+              ],
+            )
+          : null,
+      fixedProfiles: DeepWritable<Profiles> = entries
+        ? Object.fromEntries(entries.map(([id, { value }]) => [id, value]))
+        : cloneAsWritable(DEFAULT.profiles);
 
     const fixed = {
       ...PluginContext.Settings.fix(self0).value,
@@ -2004,6 +2001,14 @@ export namespace Settings {
         unc["terminalOptions"],
       ).value,
     };
+    // The outer markFixed accepts an added type. Keep the profile's verdict.
+    if (
+      entries?.some(
+        ([, result]) => result.value.type === "invalid" && !result.valid,
+      )
+    ) {
+      return Object.freeze({ valid: false, value: fixed });
+    }
     // Undo leaves the version unset as an own undefined key.
     if (
       typeof self0 === "object" &&
