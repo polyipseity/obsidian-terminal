@@ -36,6 +36,7 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
+import { tick as svelteTick, unmount } from "svelte";
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import type { TerminalPlugin } from "../../../src/main.js";
 import { TERMINAL_CONPTY_HOST_EXIT_WAIT } from "../../../src/magic.js";
@@ -72,6 +73,14 @@ import {
 import { microtasks, pseudoterminal, tick } from "../../support/helpers.js";
 
 const platform = vi.hoisted(() => ({ windows: false }));
+// Vitest resolves Svelte's server entry even in happy-dom. Use the real
+// browser entry for both the view's mount and the component's onMount.
+vi.mock("svelte", () =>
+  vi.importActual(
+    new URL("./src/index-client.js", import.meta.resolve("svelte/package.json"))
+      .href,
+  ),
+);
 vi.mock("@polyipseity/obsidian-plugin-library", async (importOriginal) => {
   const actual =
     await importOriginal<
@@ -2107,6 +2116,32 @@ describe("src/terminal/view.ts", () => {
       expect(result).toBe("components.terminal.display-name");
     });
   });
+});
+
+it("focuses the search box on the first Find and refocuses it on the next Find", async ({
+  onTestFinished,
+}) => {
+  const { context } = makeTerminalContext();
+  const { view } = makeTerminalLeaf(context);
+  // Keep the slide transition idle so teardown can unmount it mid-animation.
+  vi.spyOn(Element.prototype, "animate").mockReturnValue(new Animation());
+  document.body.append(view.contentEl);
+  onTestFinished(async () => {
+    const find = view["find"];
+    if (find) await unmount(find[0]);
+    view.contentEl.remove();
+  });
+
+  view["startFind"]();
+  await svelteTick();
+  const input = view.contentEl.querySelector(".document-search-input");
+  expect.assert(input instanceof HTMLInputElement);
+  expect(document.activeElement).toBe(input);
+
+  input.blur();
+  expect(document.activeElement).not.toBe(input);
+  view["startFind"]();
+  expect(document.activeElement).toBe(input);
 });
 
 describe("TerminalView focus", () => {
